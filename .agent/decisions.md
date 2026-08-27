@@ -8593,3 +8593,47 @@ or writes a new one per producer is a T002 question, not a schema question.
 
 REVERSE by deleting this decision and requiring an options list of every
 producing branch as part of F032.
+
+## DECISION F032 D4 (2026-08-27) — the Python names carry a domain word; the WIRE name stays `evidence_refs`
+
+THE QUESTION, found by reading the source before ordering the code rather than
+after. `docs/roadmap/features/T5_F032.md` names the field `evidence_refs[]`
+throughout and suggests the test path
+`tests/orchestration/test_evidence_triple.py`. Both spellings are already taken
+in this repository, for different concepts. `packages/orchestration/watchdog.py:63`
+calls its own three-part evidence "the evidence triple", and
+`tests/orchestration/test_watchdog.py:533` and `:873` name two tests after it.
+`packages/orchestration/orchestrator_brain.py` carries
+`evidence_refs: list[OrchestratorEvidenceRef]` at `:187` and `:208` and uses the
+attribute thirteen times, where `OrchestratorEvidenceRef` (`:87-95`) has fields
+`source`, `status`, `ref`, `summary` — a different shape for a different
+purpose. AGENTS.md's Code Discoverability Conventions require one spelling per
+concept repo-wide and a name that greps to its own definition and real usages
+only, so taking either spelling for F032's Python surface would make BOTH
+concepts unfindable by text search, which is how every worker and reviewer here
+navigates.
+
+CHOSEN, AND IT IS A SPLIT BETWEEN THE TWO LAYERS BECAUSE THEY HAVE DIFFERENT
+NAMESPACES. The Python module is `packages/orchestration/decision_evidence.py`
+and its types are `DecisionEvidenceRef`, `DecisionOptionOutcome` and
+`DecisionEvidenceTriple`; the kind vocabulary is `DECISION_EVIDENCE_REF_KINDS`;
+the test file is `tests/orchestration/test_decision_evidence.py`, which also
+satisfies the convention that a test file is named after the source it covers.
+The WIRE key stays `evidence_refs`, exactly as the feature file specifies,
+because a key inside a decision card's JSON is namespaced by the card and cannot
+collide with a Python attribute on an unrelated dataclass — and because changing
+it would put this decision at odds with the one document a later reader treats
+as the specification.
+
+ALTERNATIVES CONSIDERED. Taking `evidence_triple.py` and renaming the watchdog's
+usage: rejected because AGENTS.md forbids mass renames of existing code as their
+own activity and the watchdog is not in F032's scope. Prefixing only the module
+and leaving bare type names: rejected because `EvidenceRef` is precisely the name
+that would not grep to itself, which is the convention's own stated test.
+
+THIS DIVERGES FROM THE FEATURE FILE'S SUGGESTED TEST PATH, and the file says
+"Suggested tests", so nothing binding is broken; amendment A4 records it where a
+builder reads it.
+
+REVERSE by deleting this decision, renaming the module and its three types back
+to the bare spellings, and accepting the two collisions.

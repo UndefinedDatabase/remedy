@@ -30,3 +30,8 @@
   reach — "cannot be reopened from this machine" — that no command in that
   session established, the sandbox having refused every read outside the
   repository; the class already carries `R-0709`.
+
+- 2026-08-27 · F032 R2 · An item-status row in the authored `.agent/plan.md`
+  replacement wrapped across two source lines, so the markdown table rendered
+  one ordered item as two rows; the worker applied it byte for byte and
+  declared it, and the next round's plan rewrite clears it.
