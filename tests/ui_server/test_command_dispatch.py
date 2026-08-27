@@ -34,6 +34,37 @@ def _make_job() -> Job:
     )
 
 
+def _start_ui_server_for_job(job_id: str, tmp_path: Path) -> tuple[int, str]:
+    """Start a real UI server for `job_id` in a thread and return `(port, token)`.
+
+    Module-level because both dispatch-effect classes below need it identically
+    (finding R-0701). Two copies of a server-start helper drift, and the failure
+    mode is quiet: a timeout raised in one copy makes one class flaky on a slow
+    runner while its sibling stays green, and the divergence reads as an
+    environment problem rather than as a duplicate.
+    """
+    import secrets
+
+    from packages.orchestration.ui_server import start_ui_server
+
+    info_file = str(tmp_path / "server_info.json")
+    token = secrets.token_urlsafe(16)
+
+    def run():
+        try:
+            start_ui_server(job_id, host="127.0.0.1", port=0, token=token,
+                            open_browser=False, info_file=info_file)
+        except (SystemExit, KeyboardInterrupt):
+            pass
+
+    threading.Thread(target=run, daemon=True).start()
+    for _ in range(50):
+        if Path(info_file).exists():
+            return json.loads(Path(info_file).read_text())["port"], token
+        time.sleep(0.1)
+    pytest.fail("Server did not start in time")
+
+
 class TestJobStopDispatchEffects:
     """Integration tests that start a real server and then read what it wrote."""
 
@@ -46,28 +77,6 @@ class TestJobStopDispatchEffects:
         self.job_id = str(self.job.id)
         self.tmp_path = tmp_path
         self.control = tmp_path / "control"
-
-    def _start_server(self):
-        import secrets
-
-        from packages.orchestration.ui_server import start_ui_server
-
-        info_file = str(self.tmp_path / "server_info.json")
-        token = secrets.token_urlsafe(16)
-
-        def run():
-            try:
-                start_ui_server(self.job_id, host="127.0.0.1", port=0, token=token,
-                                open_browser=False, info_file=info_file)
-            except (SystemExit, KeyboardInterrupt):
-                pass
-
-        threading.Thread(target=run, daemon=True).start()
-        for _ in range(50):
-            if Path(info_file).exists():
-                return json.loads(Path(info_file).read_text())["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
 
     def _post(self, port, token, nonce, **overrides):
         """One fully credentialed `job.stop` submission, valid unless overridden."""
@@ -94,7 +103,7 @@ class TestJobStopDispatchEffects:
         """D5's effect really ran: the request_id on the wire is the one on disk."""
         from packages.orchestration import safe_points
 
-        port, token = self._start_server()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-effect",
                                   args={"reason": "operator asked"})
 
@@ -110,7 +119,7 @@ class TestJobStopDispatchEffects:
         """D8's replay is byte-exact only if the store holds what was sent."""
         from packages.orchestration.command_nonce import lookup_nonce_result
 
-        port, token = self._start_server()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         status, body = self._post(port, token, "nonce-published")
 
         assert status == 200, body
@@ -120,7 +129,7 @@ class TestJobStopDispatchEffects:
 
     def test_a_retry_of_the_same_nonce_is_audited_replayed(self):
         """Finding R-0636: a replay REPEATS an acceptance rather than being one."""
-        port, token = self._start_server()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         first = self._post(port, token, "nonce-twice")
         second = self._post(port, token, "nonce-twice")
 
@@ -134,7 +143,7 @@ class TestJobStopDispatchEffects:
         def explode(*_args, **_kwargs):
             raise safe_points.StopControlError("containment could not be guaranteed")
 
-        port, token = self._start_server()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(safe_points, "request_stop", explode)
         status, body = self._post(port, token, "nonce-raises")
 
@@ -162,28 +171,6 @@ class TestFlightPlanApprovalDispatchEffects:
         self.job_id = str(self.job.id)
         self.tmp_path = tmp_path
 
-    def _start_server(self):
-        import secrets
-
-        from packages.orchestration.ui_server import start_ui_server
-
-        info_file = str(self.tmp_path / "server_info.json")
-        token = secrets.token_urlsafe(16)
-
-        def run():
-            try:
-                start_ui_server(self.job_id, host="127.0.0.1", port=0, token=token,
-                                open_browser=False, info_file=info_file)
-            except (SystemExit, KeyboardInterrupt):
-                pass
-
-        threading.Thread(target=run, daemon=True).start()
-        for _ in range(50):
-            if Path(info_file).exists():
-                return json.loads(Path(info_file).read_text())["port"], token
-            time.sleep(0.1)
-        pytest.fail("Server did not start in time")
-
     def _approve(self, port, token, nonce):
         payload = {"command": "decision.resolve", "client_nonce": nonce,
                    "args": {"decision_id": "fp:approval", "answer": "approve"}}
@@ -203,7 +190,7 @@ class TestFlightPlanApprovalDispatchEffects:
         """The effect ran: the plan is `approved` in a job RELOADED from storage."""
         from packages.orchestration.storage import load_job
 
-        port, token = self._start_server()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         status, body = self._approve(port, token, "nonce-fp-effect")
 
         assert status == 200, body
@@ -227,7 +214,7 @@ class TestFlightPlanApprovalDispatchEffects:
             saves.append(str(job.id))
             return real_save_job(job, *args, **kwargs)
 
-        port, token = self._start_server()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
         monkeypatch.setattr(storage, "save_job", counting_save_job)
         status, body = self._approve(port, token, "nonce-fp-save-once")
 
