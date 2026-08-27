@@ -8266,3 +8266,33 @@ repository has paid for before.
 
 REVERSE IT by deleting this entry and the `## Blocked` carve-out from the block
 template, which returns the worker to reporting blockers in the handback only.
+
+## DECISION F031 D26 (2026-08-27) — the write door takes the operator's clarification answers, and it refuses a question id it does not know
+
+THE GAP DECISION F031 D24 LEFT ON PURPOSE: that entry ruled that the `fp:`
+branch passes `answers={}`, so every open clarification takes its own
+`default_answer` and an operator approving from the inbox accepts them all, and
+it named a FORM over `payload.clarifications` as where any other choice would
+come from. The card has carried those questions all along — the pending arm of
+`decision_queue.py` exports `payload["clarifications"]` from
+`open_clarification_questions` — so the door was the only half that could not
+receive an answer.
+
+CHOSEN, `args.answers` IS OPTIONAL AND VALIDATED. ABSENT, the door behaves
+exactly as D24 ruled, so every client written against D24 stays correct and no
+existing test moves. PRESENT, it must be a map of OPEN question ids to strings,
+and `_validated_clarification_answers` refuses the whole request otherwise, with
+the same 409 and `rejected_state` the door's other refusals give. The
+alternative — dropping an unknown id and carrying on — is REJECTED because
+`apply_clarification_answers` would then write `answered_by="default"` for a
+question the operator really answered, and saying who decided is the one job the
+assumption log has.
+
+CHOSEN, THE FORM LANDS IN TWO ROUNDS, SERVER THEN BROWSER. R51 is the door plus
+the effect test that reads the operator's own words back off disk; R52 is the
+browser form together with the tests pinning the two refusals this entry rules.
+The split is forced by DECISION F085 D6's 490-line block cap — one block cannot
+carry both halves and their slices — and it is recorded here rather than left
+implicit because for one round the door refuses on a condition no test guards.
+The seam is real rather than convenient: the door is reachable by any client, so
+the capability is usable and provable before a component exists.
