@@ -5,8 +5,10 @@ arrive at all: the REFS that let a reader check the claim, the EXPECTED OUTCOME
 of each option, and that option's DOWNSIDE.  This module holds the shape of
 those receipts and the one function that says why a given set of them is not
 acceptable.  It is the schema half of T001; the emit gate that refuses a
-tripleless decision is T001b (DECISION F032 D1) and lives at the derivation
-point, not here.
+tripleless decision is T001b (DECISION F032 D1) and its CALL SITE is the
+derivation point ``decision_queue.list_decisions``, not here — this module only
+supplies ``enforce_decision_evidence`` for that call site to use, and never
+reaches back into the queue.
 
 This module is PURE: it performs no I/O, opens no path, keeps no state and
 imports nothing from ``decision_queue`` — so when ``list_decisions`` starts
@@ -25,11 +27,16 @@ Public API::
     NO_MATERIAL_DOWNSIDE — str, the one permitted benign downside literal
     UNKEYED_OPTION — str, the option key an optionless decision uses
     BOILERPLATE_PHRASES — frozenset[str], the anti-boilerplate denylist
+    DECISION_EVIDENCE_STATUS_PRESENT — str, the per-card marker for a real triple
+    DECISION_EVIDENCE_STATUS_LEGACY — str, the per-card honest placeholder
+    TRIPLE_REQUIRED_TYPES — frozenset[str], the decision types the gate enforces
     DecisionEvidenceRef(kind, target, label)
     DecisionOptionOutcome(option, expected_outcome, downside)
     DecisionEvidenceTriple(refs, outcomes)
     evidence_triple_problems(triple, *, options) -> list[str]
     export_decision_evidence(triple) -> dict
+    DecisionEvidenceError — ValueError, raised by the emit gate
+    enforce_decision_evidence(decisions) -> None
 """
 
 from __future__ import annotations
@@ -84,6 +91,28 @@ BOILERPLATE_PHRASES = frozenset({
     "to be determined",
     "unknown",
 })
+
+#: The two values of a card's own ``evidence_status``.  THIS IS A PER-CARD
+#: MARKER AND NOT A BUMP OF ``DECISION_INBOX_VERSION`` (DECISION F032 D5):
+#: that constant has no reader anywhere in ``packages/`` or ``apps/`` — the
+#: only code comparing it compares it against the value the same process just
+#: wrote — and a migration story built on a stamp nothing reads is a story
+#: nothing tells.  A single job can also hold legacy and upgraded decisions
+#: side by side, which a document-level stamp cannot express at all.
+DECISION_EVIDENCE_STATUS_PRESENT = "present"
+
+#: The honest placeholder ``docs/roadmap/features/T5_F032.md:28-31`` asks for,
+#: in those words: a decision recorded before F032 says so, rather than
+#: carrying a fabricated triple that no producer ever wrote.
+DECISION_EVIDENCE_STATUS_LEGACY = "recorded_before_evidence_requirements"
+
+#: The decision types the emit gate actually enforces — EMPTY at T001b, and
+#: that emptiness is the whole safety argument of this round: no existing
+#: producer changes behaviour while the gate is live and pinned by the canary.
+#: A type is added here by T002 ONLY in the same commit that gives its producer
+#: a real triple.  When all eight types are in the set the gate is fully live
+#: and this constant has become a formality, which is when it can be deleted.
+TRIPLE_REQUIRED_TYPES: frozenset[str] = frozenset()
 
 
 # One checkable reference behind a decision: WHAT kind of thing, WHICH one, and
@@ -273,3 +302,46 @@ def export_decision_evidence(triple: Any) -> dict[str, Any]:
             for outcome in _members(getattr(triple, "outcomes", None))
         ],
     }
+
+
+# The one exception this subsystem raises: an ENFORCED decision type reached the
+# emit point without an acceptable triple.  A ``ValueError`` subclass because the
+# offending value is the decision itself, and because callers that already catch
+# ``ValueError`` around the derivation keep catching this.
+class DecisionEvidenceError(ValueError):
+    """An enforced decision type carried no acceptable evidence triple."""
+
+
+def enforce_decision_evidence(decisions: Sequence[Any]) -> None:
+    """Raise on any ENFORCED decision whose triple is missing or unacceptable.
+
+    WHY IT RAISES RATHER THAN DROPPING THE DECISION, which is the question a
+    reader arrives with.  Dropping a tripleless decision would LOSE A HUMAN
+    QUESTION, and not losing one is exactly what ``decision_inbox.py`` says this
+    subsystem will not do.  A producer that ships an ENFORCED type with no
+    triple is a programming error, which is what
+    ``docs/roadmap/features/T5_F032.md:25`` means by "a canary producer missing
+    a field fails CI" — a statement about CI, not about runtime refusal.  And
+    because ``TRIPLE_REQUIRED_TYPES`` only ever holds types whose producer has
+    already been upgraded (DECISION F032 D5), the raise can fire only on a
+    regression, never on a record that predates the requirement.
+
+    A decision whose type is NOT in ``TRIPLE_REQUIRED_TYPES`` is left entirely
+    alone: it is not read, not validated and not altered.
+    """
+    for decision in decisions:
+        if _text(getattr(decision, "type", None)) not in TRIPLE_REQUIRED_TYPES:
+            continue
+        payload = getattr(decision, "payload", None)
+        options = payload.get("options", []) if isinstance(payload, dict) else []
+        problems = evidence_triple_problems(
+            getattr(decision, "evidence", None),
+            options=_members(options),
+        )
+        if problems:
+            decision_id = _text(getattr(decision, "id", None))
+            decision_type = _text(getattr(decision, "type", None))
+            raise DecisionEvidenceError(
+                f"decision {decision_id!r} of type {decision_type!r} carries no "
+                f"acceptable evidence triple: {' '.join(problems)}"
+            )

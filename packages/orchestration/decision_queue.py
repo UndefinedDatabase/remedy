@@ -26,6 +26,17 @@ from typing import Any
 
 from packages.core.models import Job
 
+# F032 T001b: the import direction is ONE-WAY and stays that way —
+# ``decision_evidence`` is pure and imports nothing from this module, so the
+# emit gate below can live at the derivation point with no cycle to break.
+from packages.orchestration.decision_evidence import (
+    DECISION_EVIDENCE_STATUS_LEGACY,
+    DECISION_EVIDENCE_STATUS_PRESENT,
+    DecisionEvidenceTriple,
+    enforce_decision_evidence,
+    export_decision_evidence,
+)
+
 
 @dataclass(frozen=True)
 class HumanDecision:
@@ -48,6 +59,13 @@ class HumanDecision:
     #: The flight-plan approval uses it to bundle the plan's open
     #: clarifications, so one decision covers the whole plan.
     payload: dict[str, Any] = field(default_factory=dict)
+    #: The receipts behind this decision: refs, expected outcomes, downsides.
+    #: Additive (F032 T001b) exactly as ``payload`` is: every existing producer
+    #: omits it and gets ``None``, which renders as the honest legacy
+    #: placeholder rather than as a fabricated triple.  IT MUST KEEP ITS
+    #: DEFAULT — the twelve fields above are positionally required and a
+    #: defaultless field here would break all nine construction sites at once.
+    evidence: DecisionEvidenceTriple | None = None
 
 
 DECISION_TYPES = frozenset({
@@ -220,7 +238,11 @@ def list_decisions(
     try:
         from packages.memory.local_gateway import list_memory
         entries = list_memory()
-        stale = [e for e in entries if e.validity in ("stale", "needs_review")]
+        # `validity` and `review_status` are SEPARATE fields on the memory card
+        # (`packages/memory/models.py:44-45`): "needs_review" is a value of
+        # `review_status` only, so reading it out of `validity` selected nothing.
+        stale = [e for e in entries
+                 if e.validity == "stale" or e.review_status == "needs_review"]
         for me in stale[:5]:
             decisions.append(HumanDecision(
                 id=f"mem:{me.key}",
@@ -371,6 +393,11 @@ def list_decisions(
     except (ImportError, ValueError, OSError, AttributeError):
         pass
 
+    # THE EMIT GATE (DECISION F032 D1): this derivation point is the one seam
+    # every producer funnels through, so it is where an enforced decision type
+    # is refused for arriving without its receipts.  It enforces only the types
+    # in `TRIPLE_REQUIRED_TYPES`, which is EMPTY until T002 upgrades a producer.
+    enforce_decision_evidence(decisions)
     return decisions
 
 
@@ -407,7 +434,20 @@ def explain_decisions(job: Job, events: list[dict[str, Any]]) -> str:
 
 
 def export_decision_json(d: HumanDecision) -> dict[str, Any]:
-    """Export as safe JSON dict."""
+    """Export as safe JSON dict.
+
+    ``evidence_refs`` and ``outcomes`` are ALWAYS present and are EMPTY when the
+    decision carries no triple — never absent, because a key that appears only
+    sometimes forces every reader to branch, and never fabricated, which is the
+    failure mode ``docs/roadmap/features/T5_F032.md:29-31`` names.  The card's
+    own ``evidence_status`` is what tells a legacy record apart from a poorly
+    evidenced one (DECISION F032 D5).
+    """
+    wire_evidence = (
+        export_decision_evidence(d.evidence)
+        if d.evidence is not None
+        else {"evidence_refs": [], "outcomes": []}
+    )
     return {
         "id": d.id,
         "type": d.type,
@@ -422,6 +462,13 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
         "created_at": d.created_at,
         "resolved_at": d.resolved_at,
         "payload": dict(d.payload),
+        "evidence_refs": wire_evidence["evidence_refs"],
+        "outcomes": wire_evidence["outcomes"],
+        "evidence_status": (
+            DECISION_EVIDENCE_STATUS_PRESENT
+            if d.evidence is not None
+            else DECISION_EVIDENCE_STATUS_LEGACY
+        ),
     }
 
 
