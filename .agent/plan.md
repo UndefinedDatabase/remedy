@@ -12,38 +12,35 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R16 finishes T002. `DiffView.tsx` draws the rows `diffViewModel.ts` builds —
-file rows, hunk heads that collapse on click, line rows against the binding CSS
-— and the last named piece of T002 is ruled rather than deferred: Acceptance
-requires intraline emphasis, the three binding authorities say nothing about it,
-and DECISION F037 D9 settles it as the binding CSS's own two hues at a higher
-alpha, so no new hue and no new token enters the sheet. Amendment A5 records
-that in the feature file. The component is deliberately not mounted yet.
+R17 opens T003 at the seam T002 stopped short of: the DOOR the client fetches a
+diff envelope through. `remedyApi.ts` gains a URL builder and a loader for the
+two scopes `packages/orchestration/ui_server.py` really routes — a job's diff
+and one task run's — and every payload leaves that loader through
+`readDiffEnvelope`, so a 403, a dead socket and a junk body all degrade to the
+same total envelope rather than three shapes the viewer would have to know
+about. A Python guard pins the client's URL template against the server's own
+route conditions, which is the agreement vitest cannot see. Nothing is mounted.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R15 verdict and the type-gate slip | ordered | record first |
-| C3 DECISION F037 D9 and amendment A5 | ordered | the ruling before what it governs |
-| C4 the intraline segmentation and its tests | ordered | the last decidable rule |
-| C5/C6 the stylesheet and the component | ordered | the drawing half |
-| C7 the render guard | ordered | nothing here can render it |
-| C8 the handback | ordered | |
+| C2 the R16 verdict | ordered | record first |
+| C3 the envelope door and its vitest tests | ordered | the fetch seam |
+| C4 the cross-language guard and the polarity test | ordered | vitest sees no routes |
+| C5 the handback | ordered | |
 
 ## Next Steps
-1. T003 mounts what T002 built: the entry point `component_spec.md` names —
-   `onOpenDiff(taskId)` from `DetailPopover` — the fetch through `remedyApi.ts`
-   calling `readDiffEnvelope`, and the file sidebar over
-   `buildDiffFileSummaries`.
-2. T003 then carries virtual scrolling beyond two thousand lines and the lazy
-   language bundles, which are its last two named pieces.
+1. Mount the viewer: the "Open diff" button `component_spec.md:113-116` puts in
+   `DetailPopover`, the state holding the opened task, and `DiffView` behind it.
+2. The file sidebar over `buildDiffFileSummaries`, then virtual scrolling beyond
+   two thousand lines, the lazy language bundles and the perf fixture.
 
 ## Risks
-- Round 16 of a 25-round soft limit. T003 is three or four rounds of work, so
-  the feature fits only if T003's rounds each close a named piece; the session
-  that reaches round 21 with T003 unfinished owes a scope report instead.
-- Nothing in this repository can execute a `.tsx` file. `tsc --noEmit` type-
-  checks it through `tests/ui_server/test_dashboard_contract.py` and
-  `tests/ui_contracts/` reads it as text, and those two are the whole of the
-  gate; a rendering defect that both admit is invisible until the L3 tab exists.
+- Round 17 of a 25-round soft limit, session 5 of 7. The named pieces of T003
+  still open are the mount, the sidebar, the virtual scrolling, the lazy
+  language bundles, the perf fixture and the L3 tab integration, so a round
+  closing none of them is the one to stop and re-scope after.
+- No TypeScript mutation red-proof is orderable anywhere here. The `.ts` layer
+  is covered by vitest in the primary checkout and by text guards; the `.tsx`
+  layer by `tsc --noEmit` and text guards, and by nothing else.
