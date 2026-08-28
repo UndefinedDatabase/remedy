@@ -1,237 +1,273 @@
-# Handback — F257 Self-use track, round 1 (THE CLAIM)
+# Handback — F257 Self-use track, round 2 (THE QUEUE)
 
 ## Session
 
-SESSION 1 of feature F257 · round 1 · rounds so far 1
+SESSION 1 of feature F257 · round 2 · rounds so far 2
 
 ## Range
 
-Review of `f17b1d0d`..HEAD
+Review of `cbf081eb`..HEAD
 
-`f17b1d0d03e4042df8452b2019b719cbe4704b21` is BASE — the tip of `main` after
-constraint 0 merged pull request #220. It is the merge commit of that PR.
+`cbf081eb2ea9d2d6572891ee8185f66f56041c0c` is BASE — the tip of
+`feature/f257-self-use-track` at the end of round 1, verified by
+`git rev-parse HEAD` before the first commit.
 
 ## Commits
 
 Every `+/-` cell below is taken from `git diff --numstat` and matches, cell for
-cell, the figures G7 reports.
+cell, the figures G8 reports.
 
-### bb6612d7 chore(f257): save the round 1 claim block
+### 204bbfd7 chore(f257): save the round 2 queue block
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f257-r1.md` | +373 / -0 | C0a, the block saved verbatim |
+| `.agent/authored/f257-r2.md` | +329 / -0 | C0a, the block saved verbatim |
 
-### 5b3fbe83 chore(f257): mirror the round 1 block to last_block
+### f2a22a9a chore(f257): mirror the round 2 block to last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +332 / -318 | C0b, mirrored from the same source bytes |
+| `.agent/last_block.md` | +256 / -300 | C0b, mirrored from the same source bytes |
 
-### 451b1329 docs(f257): retarget the state and rule the queue format
+### 9f107573 docs(f257): advance the plan to the queue round
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +24 / -20 | C1, whole-file PLANF257R1 |
-| `.agent/context.md` | +22 / -20 | C1, whole-file CTXF257R1 |
-| `.agent/decisions.md` | +85 / -0 | C1, DECF257D1 then DECF257D2, appended |
+| `.agent/plan.md` | +8 / -9 | C1, whole-file PLANF257R2 |
 
-### e406d1ee docs(f257): claim F257 in STATUS
+### 1026aae5 docs(f257): book the round 1 verdict and the two prose slips
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/roadmap/STATUS.md` | +1 / -1 | C2, the F257 line flipped `[ ]` → `[~]` |
+| `.agent/live_review.md` | +10 / -0 | C2, GATEF257R1 appended |
+| `.agent/prose_slips.md` | +4 / -0 | C2, SLIPSF257R1 appended |
 
-### C3 — the handback commit (self-reference, R-0149 pattern)
+### 5a0c5346 feat(f257): add the self-use queue and its read-only loader
+| Path | +/- | Reason |
+|------|-----|--------|
+| `packages/orchestration/self_use_queue.py` | +191 / -0 | C3, the loader (S4–S7) |
+| `scripts/self_use_queue.json` | +13 / -0 | C3, the curated queue (S1–S3) |
+| `tests/orchestration/test_self_use_queue.py` | +193 / -0 | C3, the tests (S8) |
+
+### C4 — the handback commit (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | self-reference | this file; a handoff cannot table its own commit |
 
-`.agent/live_review.md` is NOT edited this round. F256 R10 was the last round of
-its branch, and docs/agents/planner_reviewer_prompt.md §4 item 13 rules that such
-a round has no on-disk gate entry, so nothing was owed to the ledger. The F256
-R10 verdict is PASS; it lives in the reviewer's report and in pull request #220.
-
 ## External actions
 
 - `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → exit
-  0, output verbatim:
-  `[{"baseRefName":"main","headRefName":"feature/f256-diff-viewer-completion","isDraft":false,"number":220}]`
-  — exactly one entry, number 220, head `feature/f256-diff-viewer-completion`,
-  base `main`, `isDraft` false, exactly as constraint 0 requires.
-- `gh pr merge 220 --merge --delete-branch` → exit 0. Fast-forwarded
-  `0e8ab5b4..f17b1d0d` on `main`, 30 files changed, 6653 insertions, 667
-  deletions. The remote head branch was deleted by the gate's own
-  `--delete-branch` and nothing else was deleted.
-- `git checkout main` → exit 0, "Already on 'main'".
-- `git pull --ff-only` → exit 0, "Already up to date".
-- `git rev-parse HEAD` → `f17b1d0d03e4042df8452b2019b719cbe4704b21` (BASE).
-- `git checkout -b feature/f257-self-use-track` → exit 0.
-- `git push -u origin feature/f257-self-use-track` after C3. The outcome cannot
-  be written into this file, which is inside C3; it is reported in the round's
-  final message.
-- NO pull request was created and nothing beyond pull request 220 was merged.
-  Nothing was force-pushed, rebased or amended, and no history was rewritten.
-- No `git worktree` was added or removed: this round writes no production code
-  and needed no destructive verification.
+  0, output verbatim `[]`. Constraint 0 satisfied; no pull request existed and
+  none was created.
+- `git rev-parse HEAD` → `cbf081eb2ea9d2d6572891ee8185f66f56041c0c`, equal to the
+  BASE constraint 0 names. `git branch --show-current` →
+  `feature/f257-self-use-track`.
+- `git worktree add .remedy-wt/g6 5a0c5346 --detach` → exit 0, detached at
+  `5a0c5346`. Used for G6 only.
+- `git worktree remove --force .remedy-wt/g6` → exit 0. Afterwards
+  `git worktree list` prints ONE line, the primary checkout at `5a0c5346`, and
+  `git status --porcelain | wc -l` = 0 in the primary.
+- `git push origin feature/f257-self-use-track` after C4. The outcome cannot be
+  written into this file, which is inside C4; it is reported in the round's final
+  message.
+- NO pull request was created, nothing was merged, nothing was force-pushed,
+  rebased or amended, and no history was rewritten.
 
 ## Verification — one line per gate
 
-- G1 HYGIENE — PASS. `.agent/STOP` absent before C0a (False) and absent again
-  before C2 (False). Open PR Gate output, merge result and BASE are recorded
-  under External actions above. `git branch --show-current` =
-  `feature/f257-self-use-track`. `git status --porcelain | wc -l` = 0 after C1
-  and 0 after C2, measured directly; after C0a and after C0b the reading is 0 as
-  well, established by the `git status --porcelain` run immediately after each,
-  which printed ONLY the intended next edit (` M .agent/last_block.md` after
-  C0a; the three C1 paths after C0b) and no other entry — see deviation 5.
+- G1 HYGIENE — PASS. `.agent/STOP` absent before C0a (`os.path.exists` → False)
+  and absent again before C3 (False). Constraint 0's three readings are under
+  External actions above: `gh pr list` → `[]`, HEAD → `cbf081eb…`, branch →
+  `feature/f257-self-use-track`. `git status --porcelain | wc -l` = 0 after C0a,
+  0 after C0b, 0 after C1, 0 after C2 and 0 after C3 — five direct readings.
 - G2 TRANSPORT — PASS. The committed C0a blob
-  `git show bb6612d7:.agent/authored/f257-r1.md` and the reviewer's own original
-  `.remedy-wt/f257-r1-block.md` are both 20338 bytes with sha256
-  `5854eb042b5cc4916d1f01808e696df0bef1894d4b9e5f74ae4642621036a2aa`; EQUAL True.
+  `git show 204bbfd7:.agent/authored/f257-r2.md` and the reviewer's own original
+  `.remedy-wt/f257-r2-block.md` are both 21619 bytes with sha256
+  `4eb114cad7a8059de6b870894193cd11a086efb5add9171c375802a8c654655f`; EQUAL True.
   That original was written before this worker existed and is not this worker's
-  output, so the reading covers real transport and not merely self-consistency.
-  At C0b, `git rev-parse 5b3fbe83:.agent/authored/f257-r1.md` and
-  `git rev-parse 5b3fbe83:.agent/last_block.md` print ONE blob id,
-  `b358ea1b7a6dd948714e288db526bca99592800a`.
-- G3 THE STATE SLICES AT C1 — PASS. `.agent/plan.md` at C1 equals PLANF257R1
-  including the trailing newline: True. `.agent/context.md` at C1 equals
-  CTXF257R1 including it: True. `wc -l` of `.agent/plan.md` = 36, under 50.
-  Lines exactly `## Goal` = 1 and exactly `## Next Steps` = 1 in
-  `.agent/plan.md`; lines exactly `## Active Branch` = 1 in `.agent/context.md`.
-- G4 THE DECISIONS APPEND AT C1 — PASS, both readers. (a) BASE blob + newline +
-  DECF257D1 + newline + DECF257D2 equals the C1 blob: True. NEGATIVE CONTROL:
-  byte offset 710539, which the script confirmed lies strictly inside the FIRST
-  appended paragraph's span of 710499..710666, was flipped and the equality
-  became False. (b) N = 12, the number of blank-line
-  paragraphs the two slices hold together, counted by the script FROM THE SLICES
-  and never read off the block; the LAST 12 units of the C1 file match those 12
-  paragraphs IN ORDER, unit by unit, all True. The pre-round blob is a byte
-  PREFIX of the C1 blob: True, 710498 bytes → 715877 bytes.
-- G5 THE CLAIM AT C2 — PASS. Over `docs/roadmap/STATUS.md` at C2: CLAIMFROM
-  count 0, CLAIMTO count 1; CLAIMTO is present as a WHOLE LINE exactly 1 time.
-  Lines matching `^- \[~\] F\d{3} — ` = 1, within the at-most-1 that
-  `tests/docs/test_docs_consistency.py` requires. Lines matching
-  `^- \[x\] F\d{3} — ` = 61 before C2 and 61 after C2 — UNMOVED at 61. The
-  containment test on the pair, run mechanically, printed `TO contains FROM:
-  False`, so the pair is a REWRITE and was gated as a FROM-zero / TO-one count.
-- G6 THE SUITES AT C2 — PASS. One pytest process at a time, from the repository
-  root, in the PRIMARY checkout, each with its real exit code:
-  `tests/docs/` 295 passed in 0.44 s, exit 0;
-  `tests/orchestration/test_roadmap_index.py` 30 passed in 0.34 s, exit 0;
-  `tests/ui_server/` 497 passed in 32.23 s, exit 0;
-  `tests/orchestration/test_test_runner.py` 52 passed in 5.31 s, exit 0;
-  `tests/regression/test_resource_safety.py` 21 passed in 11.52 s, exit 0;
-  `tests/orchestration/test_integrity_gate.py` 16 passed in 0.30 s, exit 0;
-  the canary `tests/cli/test_golden_path.py` 42 passed in 20.54 s, exit 0.
-  Seven runs, seven exit-0 readings, none red.
-- G7 STRUCTURE over `f17b1d0d..e406d1ee` — PASS on every clause except one
-  residue that is unmeetable by construction; see deviation 4.
-  `git diff --name-only` prints exactly six paths: `.agent/authored/f257-r1.md`,
-  `.agent/context.md`, `.agent/decisions.md`, `.agent/last_block.md`,
-  `.agent/plan.md`, `docs/roadmap/STATUS.md`. Residue actual − change set: `[]`,
-  empty. Residue change set − actual: `['.agent/handoff.md']`, NOT empty —
-  because the range ends at C2 and `.agent/handoff.md` is written by C3.
-  Per-commit insertions from `git diff --numstat`: 373, 332, 131 and 1 — each
-  under 500 — and each of C0a, C0b, C1 and C2 is single-parent (1 parent each).
-  Counted affirmatively over each file's C2 content: lines beginning `<<<SLICE `
-  and lines beginning `<<<END ` are 0 and 0 in `.agent/plan.md`, 0 and 0 in
-  `.agent/context.md`, 0 and 0 in `.agent/decisions.md`, and 0 and 0 in
-  `docs/roadmap/STATUS.md`, against the non-zero control
-  `.agent/authored/f257-r1.md` at 6 and 6. `git ls-files .remedy-wt | wc -l` = 0.
+  output, so the reading covers real transport and not merely self-consistency;
+  it covers no EMISSION, because this workflow has none. At C0b,
+  `git rev-parse f2a22a9a:.agent/authored/f257-r2.md` and
+  `git rev-parse f2a22a9a:.agent/last_block.md` print ONE blob id,
+  `7696a515198319d27abd6972e08515998a1fd6c8`.
+- G3 THE PLAN AT C1 — PASS. `.agent/plan.md` at C1 equals PLANF257R2 including
+  the trailing newline: True. `wc -l` = 35, under 50. Lines exactly `## Goal` =
+  1; lines exactly `## Next Steps` = 1.
+- G4 THE RECORD APPEND AT C2 — PASS, both readers, over `.agent/live_review.md`.
+  (a) The `cbf081eb` blob + newline + GATEF257R1 + newline equals the C2 blob
+  under constraint 8: True. NEGATIVE CONTROL: byte offset 1375223, which the
+  script confirmed lies inside the FIRST appended paragraph (context
+  `which merged the F256 closure `), was flipped and the equality became False.
+  (b) N = 5, the number of blank-line paragraphs GATEF257R1 holds, counted by the
+  script FROM THE SLICE and never read off the block; the LAST 5 units of the C2
+  file match those 5 paragraphs IN ORDER, unit by unit, all True, at lengths 299,
+  593, 961, 647 and 675. The pre-round blob is a byte PREFIX of the C2 blob:
+  True, 1375172 bytes → 1378357 bytes. Separately, `.agent/prose_slips.md` at C2
+  reconstructs from its `cbf081eb` blob and SLIPSF257R1 under constraint 8: True,
+  14908 bytes → 15556 bytes.
+- G5 THE LEDGER AT C2 — PASS. Over `.agent/live_review.md`, `cbf081eb` → C2:
+  lines matching `^- R-\d+ — ` 293 → 293, UNMOVED, and ALL DISTINCT at both
+  points; `^Done: R-\d+ — ` 44 → 44, UNMOVED; `^Landed: R-` 11 → 11, UNMOVED;
+  `^Gate: F\d+ R\d+ — ` 106 → 107, risen by exactly one; OPEN SET
+  (registrations − resolutions) 249 → 249, UNMOVED. Lines matching
+  `^Gate: F257 R1 — ` at C2 = 1. See deviation 5 on the open-set figure.
+- G6 THE LOADER RED-PROOF AT C3 — PASS, entirely inside the disposable worktree
+  `.remedy-wt/g6`, never in the primary. UNMUTATED CONTROL FIRST, in that
+  worktree: `python3 -m pytest tests/orchestration/test_self_use_queue.py -q` →
+  REAL exit 0, 18 passed. MUTATION (i), breaking S5 by returning an empty tuple
+  instead of raising when the queue file is missing (anchor asserted unique,
+  count = 1) → REAL exit 1, 1 failed / 17 passed, the failure being
+  `TestLoaderRaisesRatherThanReturningEmpty::test_missing_file_raises`
+  ("DID NOT RAISE"). Reverted byte-clean (sha256 back to
+  `c3359e5b2ce3f50b9609b22e3dfc3fa0b2d67b7c4da943bb49a1f2fa999c5d3f`). MUTATION
+  (ii), breaking S6 by answering the first item regardless of `consumed_by`
+  (anchor asserted unique, count = 1) → REAL exit 1, 2 failed / 16 passed,
+  the failures being `TestNextSelfUseItem::test_skips_a_consumed_item` and
+  `TestNextSelfUseItem::test_all_consumed_answers_none`. Reverted byte-clean to
+  the same sha256. CONTROL AGAIN, module restored: REAL exit 0, 18 passed, and
+  `git status --porcelain` inside the worktree printed nothing, so the module was
+  byte-identical to the committed blob. After removal, `git worktree list` prints
+  one line — `/home/decodeux/Repos/remedy 5a0c5346 [feature/f257-self-use-track]`
+  — and `git status --porcelain | wc -l` = 0 in the primary.
+- G7 THE SUITES AT C3 — PASS. One pytest process at a time, from the repository
+  root, in the PRIMARY checkout, each with its REAL exit code:
+  `tests/orchestration/test_self_use_queue.py` 18 passed, exit 0;
+  `tests/test_data_paths.py` 23 passed, exit 0;
+  `tests/test_path_utils.py` 28 passed, exit 0;
+  `tests/regression/test_named_bugs.py` 64 passed / 6 skipped, exit 0;
+  `tests/orchestration/test_development_artifact_boundary.py` 18 passed, exit 0;
+  `tests/ui_server/` 497 passed, exit 0;
+  `tests/orchestration/test_test_runner.py` 52 passed, exit 0;
+  `tests/regression/test_resource_safety.py` 21 passed, exit 0;
+  `tests/orchestration/test_integrity_gate.py` 16 passed, exit 0;
+  `tests/orchestration/test_job_promote.py` 85 passed, exit 0;
+  `tests/orchestration/test_fences.py` 78 passed, exit 0;
+  the canary `tests/cli/test_golden_path.py` 42 passed, exit 0.
+  Twelve runs, twelve exit-0 readings, none red.
+- G8 STRUCTURE over `cbf081eb..5a0c5346` — PASS on every clause. The range
+  touches exactly eight paths: `.agent/authored/f257-r2.md`,
+  `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
+  `.agent/prose_slips.md`, `packages/orchestration/self_use_queue.py`,
+  `scripts/self_use_queue.json`, `tests/orchestration/test_self_use_queue.py`.
+  The path EXCLUDED from the change-set side, as G8 directs, is
+  `.agent/handoff.md`, which C4 writes; the changeset-minus-range residue over
+  the remaining eight is `[]`, EMPTY. The range-minus-changeset residue, computed
+  against the FULL nine-path change set, is `[]`, EMPTY. Per-commit insertions
+  from `git diff --numstat`: 329, 256, 8, 14 and 397 — each under 500 — and each
+  of C0a, C0b, C1, C2 and C3 is single-parent (1 parent each). Counted
+  affirmatively over each file's C3 content, lines beginning `<<<SLICE ` and
+  lines beginning `<<<END ` are 0 and 0 in `.agent/plan.md`, 0 and 0 in
+  `.agent/live_review.md`, 0 and 0 in `.agent/prose_slips.md`, 0 and 0 in
+  `scripts/self_use_queue.json`, 0 and 0 in
+  `packages/orchestration/self_use_queue.py`, and 0 and 0 in
+  `tests/orchestration/test_self_use_queue.py`, against the non-zero control
+  `.agent/authored/f257-r2.md` at 3 and 3. `git ls-files .remedy-wt | wc -l` = 0.
 
 ## Authored-text proofs
 
 Every reviewer-authored text applied this round was extracted from the COMMITTED
-blob `git show bb6612d7:.agent/authored/f257-r1.md` under constraint 3, never
-from the prompt, and the delimiter lines reached no target file (G7, 0 and 0 in
-all four targets).
+blob `git show 204bbfd7:.agent/authored/f257-r2.md` under constraint 3, never
+from the prompt, and the delimiter lines reached no target file (G8, 0 and 0 in
+all six targets against 3 and 3 in the control).
 
-- `.agent/plan.md` at C1 — whole-blob equality with PLANF257R1, True (G3).
-- `.agent/context.md` at C1 — whole-blob equality with CTXF257R1, True (G3).
-- `.agent/decisions.md` at C1 — the whole file reconstructs byte for byte as
-  BASE + newline + DECF257D1 + newline + DECF257D2, True, with the pre-round
-  blob a byte prefix, a negative control rejected, and the last 12 paragraphs
-  matching the slices in order (G4).
-- `docs/roadmap/STATUS.md` at C2 — the CLAIMTO string occurs exactly once and as
-  a whole line, the CLAIMFROM string zero times (G5).
+- `.agent/plan.md` at C1 — whole-blob equality with PLANF257R2, True (G3).
+- `.agent/live_review.md` at C2 — the whole file reconstructs byte for byte as
+  the `cbf081eb` blob + newline + GATEF257R1 + newline, True, with the pre-round
+  blob a byte prefix, a negative control rejected, and the last 5 paragraphs
+  matching the slice in order (G4).
+- `.agent/prose_slips.md` at C2 — reconstructs byte for byte as the `cbf081eb`
+  blob + newline + SLIPSF257R1 + newline, True (G4).
+- The production code of C3 is DESCRIBED by the block's SPEC rather than sliced,
+  so no authored-text proof applies to it; it is proved by G6 and G7 instead.
 
 ## Deviations & assumptions
 
-1. NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE. C0a, C0b, C1, C2 and C3 were
-   committed in that order; none was added, none dropped, none reordered.
+1. NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE. C0a, C0b, C1, C2, C3 and C4
+   were committed in that order; none was added, none dropped, none reordered.
 2. The Session line carries the block's exact string
-   `SESSION 1 of feature F257 · round 1` and then appends `· rounds so far 1`,
+   `SESSION 1 of feature F257 · round 2` and then appends `· rounds so far 2`,
    because docs/agents/handback_template.md mandates the `rounds so far <total>`
    field. Both requirements are met rather than one chosen over the other.
-3. GUARD RE-EXPRESSIONS. Constraint 6 obliges reporting these. NO command was
-   actually rejected by this session's guard, because the rejected forms were
-   avoided pre-emptively rather than discovered: every counting, hashing,
-   byte-offset and slice-extraction step ran through a `python3 - <<'PY'`
-   heredoc; the two block copies used `shutil.copyfile` and never `cp`; no
-   environment variable was assigned in any of the three rejected spellings; and
-   every exit code reported above was captured with
+3. GUARD RE-EXPRESSIONS, which constraint 6 obliges reporting. TWO commands were
+   ACTUALLY rejected by this session's guard and re-expressed, never skipped and
+   never weakened:
+   (a) the G5 ledger reader was first written as a `python3 - <<'PY'` heredoc
+   whose body contained a brace literal holding quotes (a dict of regex names);
+   it was REJECTED, and was re-expressed as a scratch script
+   `.remedy-wt/g5_ledger.py` built from parallel `list([...])` structures with no
+   quoted brace literal, then run as `python3 .remedy-wt/g5_ledger.py`. Every
+   count it makes is the count the gate ordered.
+   (b) a combined `bash -c` chaining `git status …; python3 -c …` with nested
+   single quotes was REJECTED with a shell syntax error; it was re-expressed as
+   two separate single-purpose calls, and both readings were taken.
+   Pre-emptively avoided rather than discovered: `cp` was never used (both block
+   copies went through `shutil.copyfile`); no environment variable was assigned
+   in any of the three rejected spellings (the tests set `REMEDY_DATA_DIR`
+   in-process through pytest's `monkeypatch.setenv`); the G6 mutations were
+   applied from a scratch script `.remedy-wt/g6_mutate.py` rather than an inline
+   heredoc; and every exit code above was captured with
    `bash -c '<cmd>; echo "REAL_EXIT=$?"'` or, for the piped pytest runs, with
-   `${PIPESTATUS[0]}` inside such a `bash -c`, which this session accepted. No
-   check was skipped and none was replaced by a weaker spelling.
-4. G7's SECOND RESIDUE IS NOT EMPTY, and cannot be. G7 orders the range
-   `BASE..<C2>`, "the range that ends BEFORE the handback commit", and also
-   orders both residues against a change set that LISTS `.agent/handoff.md` —
-   the file C3 writes. So `change set − actual` is `['.agent/handoff.md']` by
-   construction, for every possible correct run. It is reported as measured
-   rather than quietly narrowed: no unexpected path appears in either direction,
-   and the residue in the other direction is empty. Nothing on disk is wrong;
-   this is a reviewer-prose inaccuracy in the gate's expectation.
-5. G1's per-commit `git status --porcelain | wc -l` was measured DIRECTLY after
-   C1 and after C2 (0 and 0). After C0a and after C0b it was not run as its own
-   `wc -l`; the reading comes from the `git status --porcelain` executed
-   immediately after each of those commits, which listed ONLY the edit made
-   after the commit and nothing else, so the tree was clean at both. Declared
-   because it is an indirect reading of the two, not a direct one.
-6. THE COMMIT SUMMARY AND `git diff --numstat` DISAGREE ON TWO COMMITS, and the
-   handback tables the numstat figures as G7 orders. `git commit` printed
-   "373 insertions(+), 359 deletions(-)" with "rewrite .agent/last_block.md
-   (96%)" for C0b where numstat gives 332/318, and "143 insertions(+), 52
-   deletions(-)" with "rewrite .agent/plan.md (92%)" for C1 where numstat gives
-   131/40. The gap is git's rewrite detection in the commit summary. Both
-   readings are under 500 on every commit, so no cap is at stake; it is declared
-   so the reviewer re-running either command is not surprised by the other.
-7. THE TWO DECISION SLICES ARE DATED 2026-08-28 and this round ran on
+   `${PIPESTATUS[0]}` inside such a `bash -c`. Three scratch files
+   (`g5_ledger.py`, `g6_mutate.py`, `g8_structure.py`) and one pristine module
+   copy (`g6_pristine.py`) were written under the gitignored `.remedy-wt/`;
+   `git ls-files .remedy-wt | wc -l` = 0 confirms none is tracked.
+4. NO GATE FORMULA CONTRADICTED CONSTRAINT 8 THIS ROUND. Both appends were made
+   as base + one newline + slice + one newline, exactly as constraint 8 states,
+   and G4's own wording asks for the reconstruction "under constraint 8", so the
+   R1 disagreement that constraint 8 exists to prevent did not recur. Declared
+   affirmatively because the prompt asked for it either way.
+5. G5's OPEN-SET FIGURE IS 249, WHERE THE ROUND 1 HANDBACK SAID 251. The 249 is
+   computed by G5's own stated formula — registrations (293) minus resolutions
+   (44) — measured identically at `cbf081eb` and at C2, so the round's claim
+   (UNMOVED) holds on either reading. The earlier 251 was inherited prose, not
+   re-derived by this gate's formula; it is flagged rather than reconciled,
+   because reconciling it is not in this round's change set and no id is minted.
+6. THE TWO PROSE-SLIP LINES ARE DATED 2026-08-28 and this round ran on
    2026-08-29. They are reviewer-authored text and constraint 1 forbids
-   correction, so they were applied byte for byte as written. Likewise both
-   decisions state their measurements "at `c9c54d27`", the pre-merge F256 tip,
-   which is the reviewer's own measurement point and not this round's BASE.
-8. `.agent/live_review.md` was not edited, as the block directs, and is
-   byte-unchanged in `f17b1d0d..e406d1ee` — it does not appear in G7's
-   `git diff --name-only`.
-9. NO PRODUCTION CODE was written and no file outside the change set was created
-   or edited, per constraint 7. Nothing under `packages/`, `apps/`, `tests/` or
-   `scripts/` appears in the range.
+   correction, so they were applied byte for byte as written. The same holds for
+   GATEF257R1's own dating and its internal readings, all of which are the
+   reviewer's measurements at `cbf081eb` and not this round's.
+7. CONSTRAINT 7'S GUARDS ARE SATISFIED BY CONSTRUCTION, verified by grep over
+   `packages/orchestration/self_use_queue.py` before C3: no
+   `os.environ.get("REMEDY_DATA_DIR")`, no `_MAX_PATH_COMPONENT_LENGTH`, no
+   `[^a-zA-Z0-9_-]` regex, no bare `except: pass`, and no reference to
+   `.agent/live_review.md`. All four named guard suites ran green in G7.
+8. NO `Done:` OR `Gate:` PARAGRAPH OF THIS WORKER'S OWN was written anywhere.
+   GATEF257R1 is the only such paragraph added to `.agent/live_review.md`, and it
+   is reviewer-authored text applied verbatim. This round mints no finding id and
+   resolves none.
+9. `python3 -B` and `-p no:cacheprovider` were used for the G6 mutation runs so a
+   stale `__pycache__` could not mask a mutation. The G6 control runs before and
+   after the mutations used the plain command the gate names; both were green.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a save this block to `.agent/authored/f257-r1.md` | done | |
-| C0b mirror the same bytes into `.agent/last_block.md` | done | |
-| C1 retarget plan and context, append DECISIONS F257 D1 and D2 | done | |
-| C2 the STATUS claim | done | `[ ]` → `[~]` |
-| C3 rewrite `.agent/handoff.md` | done | this file |
+| C0a save this block to `.agent/authored/f257-r2.md` | done | `204bbfd7` |
+| C0b mirror the same bytes into `.agent/last_block.md` | done | `f2a22a9a` |
+| C1 advance `.agent/plan.md` | done | `9f107573` |
+| C2 book the R1 verdict and append the two prose slips | done | `1026aae5` |
+| C3 the queue file, its loader and its tests | done | `5a0c5346` |
+| C4 rewrite `.agent/handoff.md` | done | this file |
 | the push | done | outcome in the round's final message, not tableable here |
-| G1 hygiene | done | PASS; two `.agent/STOP` readings both False |
-| G2 transport | done | PASS; one blob id, 20338 bytes, digests EQUAL |
-| G3 the state slices at C1 | done | PASS; both byte-equal, plan 36 lines |
-| G4 the decisions append at C1 | done | PASS; N = 12, negative control rejected |
-| G5 the claim at C2 | done | PASS; 0 / 1, `[~]` count 1, `[x]` unmoved at 61 |
-| G6 the suites at C2 | done | PASS; seven runs, every one exit 0 |
-| G7 structure | deviated | PASS except the `.agent/handoff.md` residue, which is unmeetable by construction — deviation 4 |
+| G1 hygiene | done | PASS; both `.agent/STOP` readings False, five clean-tree readings |
+| G2 transport | done | PASS; 21619 bytes, digests EQUAL, one blob id at C0b |
+| G3 the plan at C1 | done | PASS; byte-equal True, 35 lines, 1 and 1 |
+| G4 the record append at C2 | done | PASS; N = 5, negative control rejected, prefix True |
+| G5 the ledger at C2 | done | PASS; 293 / 44 / 11 unmoved, gates 106 → 107, F257 R1 = 1 |
+| G6 the loader red-proof at C3 | done | PASS; control 18 green, both mutations exit 1 |
+| G7 the suites at C3 | done | PASS; twelve runs, every one exit 0 |
+| G8 structure | done | PASS; both residues empty, insertions 329/256/8/14/397 |
 
 ## Open findings
 
-251 open in the ledger, all inherited from earlier features, unchanged from the
-F256 R10 reading: `.agent/live_review.md` is byte-unchanged in this round's
-range, so no finding was registered, resolved or moved. None is open against
-F257, which is claimed for the first time in this round.
+249 open in the ledger by G5's formula, all inherited from earlier features and
+UNMOVED across this round's range: 293 registrations minus 44 resolutions at
+`cbf081eb` and the same at C2. No finding was registered, resolved or moved this
+round — the only ledger line added is the reviewer-authored `Gate: F257 R1`
+paragraph, which is a verdict and not a finding. None is open against F257. See
+deviation 5 on the 249-versus-251 reading.
 
 ## Next
 
-The single expected next action is THE NEXT DELEGATED ROUND OF F257, which builds
-`scripts/self_use_queue.json` and its read-only loader
-`packages/orchestration/self_use_queue.py`, with tests, against DECISION F257 D2.
-No pull request exists for this branch and none is created this round.
+The single expected next action is THE NEXT DELEGATED ROUND OF F257, which
+renders a pending queue item into a job file and plans it through
+`plan_job_from_file`, so the queue reaches the real job path. No pull request
+exists for this branch and none was created this round.
