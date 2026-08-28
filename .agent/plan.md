@@ -13,37 +13,36 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A4.
 
 ## Current Step
-R9 lands the half of T002 this environment can actually verify: the diff surface
-stylesheet, transcribed from the feature file's binding CSS, and a Python
-conformance guard over it in `tests/ui_contracts/`, which is how this repository
-already pins frontend CSS. The rendering core stays unwritten because the
-frontend test runner is REFUSED here for both roles, measured at R8 — code that
-neither role can execute must not be certified.
+R10 opens session 3. It books the R9 verdict and repairs `R-0720`, a blindness
+the reviewer measured in R9's own conformance guard: the guard's failure message
+names declaration ORDER as what keeps ligatures off, and the guard never checks
+it, so moving `font-feature-settings` above the `font` shorthand leaves the suite
+green while the diff surface composes glyphs.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
-| C1 the plan | ordered | first substantive commit, repairs its own cap |
-| C2 the R8 gate and the slip | ordered | record first |
-| C3 DECISION F037 D4 and the stylesheet | ordered | the choice beside what it governs |
-| C4 the conformance guard | ordered | must go red when the sheet drifts |
-| C5 the handback | ordered | last round of the session |
+| C1 the plan | ordered | first substantive commit |
+| C2 the R9 verdict and R-0720 | ordered | record first, before the repair |
+| C3 the ordering assertion | ordered | must go red on the reorder alone |
+| C4 the resolution | ordered | written after the repair is proved |
+| C5 the handback | ordered | |
 
 ## Next Steps
-1. UNBLOCK THE RUNNER. `npx vitest run --root apps/ui`, `npm --prefix apps/ui
-   run test:unit` and the direct binary were all refused at R8. Until one is
-   permitted, no `.ts`, `.tsx` or React component of T002 can be verified, and
-   none is ordered.
-2. T002's rendering core as a pure `.ts` view-model beside its `.test.ts`, the
-   only shape this package tests: `apps/ui/vitest.config.ts` sets
-   `environment: "node"` and there is no jsdom and no testing library.
-3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
+1. R11 closes T001's last named corpus shape, the huge diff. The task slicing
+   lists "huge file chunking" and no test in the corpus names one; the parser
+   carries no size bound of its own, since `truncated` is only relayed from an
+   upstream sentinel.
+2. R12 records the same budget where the JSON is actually serialised, at the
+   read endpoint.
+3. T002's rendering core and all of T003 stay BLOCKED. `npx vitest`, the `npm`
+   script and the direct binary were refused again while planning R10, for the
+   reviewer, as they were for both roles at R8.
 
 ## Risks
-- The binding CSS defines no intraline treatment, and Acceptance requires
-  intraline emphasis. That is a design question for the round that renders
-  spans; inventing a colour early would breach the feature file's own banner.
-- `R-0711` carries a `Landed:` line and no `Done:` text because F032's branch
-  ended first. It is the terminator case, not a gap for F037 to close.
-- No bundle-size budget exists in `tests/` or `apps/ui/vite.config.ts`, so T003
-  would be creating that ceiling rather than satisfying one.
+- The binding CSS defines no intraline treatment while Acceptance requires
+  intraline emphasis. Inventing a colour early would breach the feature file's
+  own banner, so it stays a question for the round that renders spans.
+- A parse budget is a number from one host. R11 must record it as a measurement
+  naming its machine, never as a portable ceiling, or the suite turns flaky on a
+  slower runner.
