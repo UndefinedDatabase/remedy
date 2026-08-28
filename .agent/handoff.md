@@ -1,47 +1,43 @@
-# Handback — F037 R1 (claim, ledger reset, source inventory)
+# Handback — F037 R2 (book R1, register R-0715, amend the spec)
 
 ## Session
 
-SESSION 1 of feature F037 · round 1 · rounds so far 1
+SESSION 1 of feature F037 · round 2 · rounds so far 2
 
 ## Range
 
-Review of 9dde54956afbe5f432bfd429bf4ba0bb272f6d07..HEAD
+Review of 69f6478c6c18b7957f3e244b9f121e372f22a99d..HEAD
 
 ## Commits
 
-### 3f0e0ab4 docs(agent): save the F037 R1 block as authored
+### 1f8d7826 chore(agent): save the F037 R2 block as authored
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f037-r1.md | 458 / 0 | C0a — the block copied byte for byte from `.remedy-wt/f037-r1.md` |
+| .agent/authored/f037-r2.md | 416 / 0 | C0a — the block copied byte for byte from `.remedy-wt/f037-r2.md` with `shutil.copyfile` |
 
-### f7b5e638 docs(agent): mirror the F037 R1 block into the last-block slot
+### 07d2a3f7 chore(agent): mirror the F037 R2 block into the last-block slot
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | 446 / 393 | C0b — mirror written from the committed C0a blob; same git blob `2da50bdb` |
+| .agent/last_block.md | 314 / 356 | C0b — mirror written from the committed C0a blob; same git blob `c0812abbe876801a5ac5c737918400f46ced453b` |
 
-### 89b96df7 docs(agent): point the plan and the context at F037
+### 9b8cce95 docs(agent): point the plan at the F037 R2 booking round
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/context.md | 15 / 13 | C1 — byte-equal to slice CTXF037R1 |
-| .agent/plan.md | 34 / 31 | C1 — byte-equal to slice PLANF037R1 |
+| .agent/plan.md | 24 / 27 | C1 — byte-equal to slice PLANF037R2 |
 
-### 689f181f docs(roadmap): claim F037 as the active feature
+### 1d703c57 docs(agent): book the F037 R1 verdict, R-0715 and both DECISIONS
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/roadmap/STATUS.md | 1 / 1 | C2 — SFROM to STO, `[ ]` becomes `[~]` on the F037 line |
+| .agent/decisions.md | 84 / 0 | C2 — DECR2 appended; DECISIONS F037 D1 and D2 |
+| .agent/live_review.md | 4 / 0 | C2 — RECORDR2 appended; the F037 R1 gate paragraph and finding R-0715 |
+| .agent/prose_slips.md | 11 / 0 | C2 — SLIPR2 appended; the reviewer's own authoring slip |
 
-### d4aef1db docs(agent): reset the live-review header for F037 and book the F032 R19 gate
+### 390234c1 docs(roadmap): amend the F037 design against the R1 source inventory
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | 26 / 23 | C3 — LFROM/LTO header rewrite plus the GATEF032R19 EOF append; findings region byte-identical |
+| docs/roadmap/features/T5_F037.md | 48 / 0 | C3 — DFROM→DTO pointer under the Design heading, then AMENDF037 appended (A1, A2, A3) |
 
-### 7d9b32df docs(agent): add the F037 source inventory
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/f037_inventory.md | 435 / 0 | C4 — Q1 through Q8, each measured |
-
-### C5 docs(agent): hand back the F037 R1 round
+### C4 docs(agent): hand back the F037 R2 round
 | Path | +/- | Reason |
 |------|-----|--------|
 | .agent/handoff.md | self | a handoff cannot table the commit that writes it (R-0149) |
@@ -50,216 +46,189 @@ Review of 9dde54956afbe5f432bfd429bf4ba0bb272f6d07..HEAD
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a save this block | done | `.agent/authored/f037-r1.md`, byte-identical |
+| C0a save this block | done | `.agent/authored/f037-r2.md`, byte-identical to the scratch file |
 | C0b mirror it into `last_block` | done | same git blob as C0a |
-| C1 the plan and the context | done | both byte-equal to their slices |
-| C2 the STATUS claim | done | `[ ]` → `[~]` on the F037 line |
-| C3 the live-review header reset and the F032 R19 gate append | done | header rewritten, gate appended, findings region untouched |
-| C4 the inventory | done | `.agent/f037_inventory.md`, Q1-Q8 |
-| C5 the handback | done | this file |
-| push | done | ordered after C5; outcome reported in the round report, not here |
-| Q1 the parsers that already exist | done | one reader exists; a new module is needed |
-| Q2 the file-status vocabulary | done | seven statuses; `binary` absent |
-| Q3 where a diff comes from at runtime | done | per task run and per job; none per attempt |
-| Q4 the server route table | done | 10 GET shapes, 14 dict endpoints, 1 POST; guards cited |
-| Q5 the attempt identifier | done | three notions, no canonical id |
-| Q6 the client entry point | done | 0 hits; 4 props; no test pins the component |
-| Q7 the fetch seam and the bundle budget | done | `fetchJson` throws; no budget exists |
-| Q8 the guards a new module must satisfy | done | equality guards cited; the status vocabulary is unguarded directly |
+| C1 the plan | done | byte-equal to PLANF037R2, 44 lines |
+| C2 the record — the R1 gate, `R-0715`, the slip and both DECISIONS | done | three EOF appends, each proved two ways |
+| C3 the feature-file amendments | done | pair applied, AMENDF037 appended |
+| C4 the handback | done | this file |
+| push | done | ordered after C4; outcome reported in the round report, not here |
 
-Open findings after this round: **251** (275 registered, 24 resolved, maximum id
-`R-0714`). No finding was registered or resolved this round.
+Open findings after this round: **252** (276 registered, 24 resolved, maximum id
+`R-0715`). One finding registered this round, `R-0715`; none resolved.
 
 ## External actions
 
 - `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — run
-  twice: once before the branch was cut, as the AGENTS.md Open PR Gate requires,
-  and once at G8. Both read `[]`. Nothing merged, nothing created.
-- `git checkout -b feature/f037-rendered-diff-viewer` from `main` at
-  `9dde54956afbe5f432bfd429bf4ba0bb272f6d07` — the branch this round's six
-  commits land on.
-- `git push -u origin feature/f037-rendered-diff-viewer` is INTENDED immediately
-  after this commit. Its exit code and the resulting remote tip do not appear
+  once, at G8, after C3 and before C4. Output verbatim: `[]`. Nothing merged,
+  nothing created, no pull request exists for this branch.
+- `git push origin feature/f037-rendered-diff-viewer` is INTENDED immediately
+  after this commit. Its exit code and the resulting remote tip do NOT appear
   here: this file is authored before the push exists, so stating either would be
   a value that cannot be true when written. Both are reported in the round
   report instead, per the block's G8.
-- No pull request was created. No worktree was added or removed. No merge.
+- No worktree was added or removed. No branch was created or deleted. No merge.
+  No `npm`, `npx`, `node` or `vite` was run and nothing was built.
 
 ## Verification
 
-- **G1 — hygiene, branch, sentinel · exit 0.** `git rev-parse HEAD` before the
-  cut: `9dde54956afbe5f432bfd429bf4ba0bb272f6d07`. `git branch --show-current`
-  after C0a: `feature/f037-rendered-diff-viewer`. `git status --porcelain` line
-  count after C0a, C0b, C1, C2, C3, C4: `0 0 0 0 0 0`. `.agent/STOP` read from
-  disk before C0a: ABSENT; read again before C5: ABSENT.
-- **G2 — transport · exit 0.** Four points, all EQUAL: sha256
-  `906b7ee592aed02e7161797030d5adfc2906390f7367feae446f55fe2b2e1231`, 32631
-  bytes, 458 lines, at `.remedy-wt/f037-r1.md`, the C0a commit blob, the C0b
-  commit blob and the working copy at C4. C0a and C0b are the SAME git blob,
-  `2da50bdba5ca4a632eac5e5255fc0bdf34a7c2df`. Lines that are a run of one
-  repeated character at length 4 or more: NONE. What this proof covers: the
-  scratch file, the saved copy, its mirror and the working copy — and NOT the
-  bytes of any prompt, which no party to this round measured.
-- **G3 — extraction and caps · exit 0.** Extractor printed 7 slices from the
-  committed C0a blob at their marker lines: PLANF037R1 47, CTXF037R1 55, LFROM
-  26, LTO 27, GATEF032R19 1, SFROM 1, STO 1. CONTENT 158, TOTAL 458, PROSE
-  = 458 − 158 = 300. PROSE 300 ≤ 400 and TOTAL 458 ≤ 490; both caps hold.
-- **G4 — plan and context · exit 0.** `.agent/plan.md` at C1 BYTE-EQUAL to
-  PLANF037R1: True; negative control against the slice minus its trailing
-  newline: False. `.agent/context.md` at C1 BYTE-EQUAL to CTXF037R1: True;
-  negative control: False. Contract readings — plan: `^## Goal$` 1,
-  `^## Next Steps$` 1, `\bF\d{3}\b` matched (`F037`), `wc -l` 47, strictly under
-  50; context: `^## Active Branch$` 1, `feature/` matched, `\bF\d{3}\b` matched,
-  substring `Steps` present.
-- **G5 — ledger reset, gate append, findings region · exit 0.** Reconstruction
-  BYTE-EQUAL to `.agent/live_review.md` at C3: True. Negative control, one byte
-  flipped at offset 1126777, which lies inside the appended paragraph (starting
-  at 1126577, file ending at 1130704): False. Pair readings — LFROM 1 before,
-  0 after; LTO 0 before, 1 after; the pre-commit blob is NOT a byte prefix of
-  the result, because the header changed. The region from the first byte of
-  `## Findings` to the end of the pre-commit blob measured 1124868 bytes, sha256
-  `abc8bdb4f682d04bc84d56ca0eda9d23dc17c32cb5987fab8e3d91c932a7f528`, IDENTICAL
-  at both points and equal to the reviewer's base measurement. Line-anchored
-  counts, pre then C3: `^- R-\d+ — ` 275 → 275, `^Done: R-\d+ — ` 24 → 24,
-  `^Landed: R-` 1 → 1, `^Gate: R\d+ — ` 19 → 19, `^Gate: F\d+ R\d+ — ` 70 → 71.
-  Finding ids added `[]`, removed `[]`; resolved ids added `[]`, removed `[]`.
-  All ids DISTINCT at both points. Maximum id `R-0714` at both points. Open set
-  251 at both points. `^## Findings$` exactly 1 at both points. `Steps` present
-  at both. Literal `Gate: F032 R19 — ` 0 before, exactly 1 after.
-- **G6 — STATUS claim and docs gate · REAL exit 0.**
-  `python3 -m pytest tests/docs/ tests/orchestration/test_roadmap_index.py -q`,
-  run from the repository root BEFORE C2 was committed. Summary line verbatim:
-  `325 passed in 0.62s`. Matches the reviewer's `325 passed` reference at a real
-  exit 0. `docs/roadmap/STATUS.md` at C2: SFROM 0 occurrences, STO exactly 1.
-  Line-anchored counts, base then C2: `^- \[ \] ` 196 → 195, `^- \[x\] `
-  59 → 59, `^- \[~\] ` 0 → 1. Total lines matching `^- \[`: 255 at both points,
-  UNCHANGED.
-- **G7 — state readers and canary · REAL exit 0.** One pytest process, run
-  after C4 and before C5: `python3 -m pytest tests/ui_server/
-  tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py
-  tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q`.
-  Summary line verbatim: `620 passed in 66.51s (0:01:06)`. Count of lines
-  matching `^FAILED`: 0. The `^FAILED` extractor is NOT blind: run over the
-  control string `one\nFAILED tests/x.py::test_y - AssertionError\ntwo\n` it
-  matched 1 line, `FAILED tests/x.py::test_y - AssertionError`.
-- **G8 — structure, artifacts, Open PR Gate · exit 0.** Path set of
-  `git diff --name-only 9dde5495..7d9b32df` compared BOTH WAYS against the
-  Change list minus `.agent/handoff.md`: residue GOT−WANT `[]`, residue
-  WANT−GOT `[]`. `git diff --stat` restricted to `apps/`, `packages/` and
-  `tests/`: EMPTY, EMPTY, EMPTY; restricted to `docs/`:
-  `docs/roadmap/STATUS.md | 2 +-`, that file alone. Per-commit insertions from
-  `git diff --numstat`, each single-parent and under 500: C0a 458, C0b 446,
-  C1 49, C2 1, C3 26, C4 435. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0
-  and 0 in `.agent/plan.md` and `.agent/context.md` at C1 and in
-  `.agent/live_review.md` at C3, against a CONTROL over the C0a blob reading 7
-  and 7. `git ls-files .remedy-wt` 0 lines, `git worktree list` 1 line,
-  `git branch --list "tmp/*"` 0 lines. Open PR Gate output verbatim: `[]`.
+- **G1 — hygiene, the base and the sentinel · exit 0.** `git rev-parse HEAD`
+  before C0a: `69f6478c6c18b7957f3e244b9f121e372f22a99d`, as ordered.
+  `git branch --show-current`: `feature/f037-rendered-diff-viewer`.
+  `git status --porcelain` LINE COUNT after C0a, C0b, C1, C2, C3: `0 0 0 0 0`.
+  C4's own reading is taken after this commit and reported in the round report,
+  as ordered. `.agent/STOP` read from disk before C0a: ABSENT; read again before
+  C4: ABSENT.
+- **G2 — transport · exit 0.** Four points, ALL EQUAL: sha256
+  `e6ef75ba2400c2bc4c3ab30256e85f0a1bf7fb42e9a1ae4f9760763d485fc332`, 31950
+  bytes, 416 lines — at `.remedy-wt/f037-r2.md`, at the C0a commit blob, at the
+  C0b commit blob, and read off disk at C3. C0a and C0b are the SAME git blob,
+  `c0812abbe876801a5ac5c737918400f46ced453b`. Lines of the saved block that are
+  a run of one repeated character at length 4 or more: NONE. What this proof
+  covers, in one sentence: the scratch file, the saved copy, its mirror and the
+  working copy — and NOT the bytes of any prompt, which no party to this round
+  measured.
+- **G3 — extraction and caps · exit 0.** The extractor read the COMMITTED C0a
+  blob by its marker LINES and printed 7 slices: PLANF037R2 44, RECORDR2 3,
+  SLIPR2 10, DECR2 83, DFROM 1, DTO 3, AMENDF037 45. CONTENT 189, TOTAL 416,
+  PROSE = 416 − 189 = 227. Markers counted as prose. PROSE 227 ≤ 400 and TOTAL
+  416 ≤ 490; both caps hold.
+- **G4 — the plan · exit 0.** `.agent/plan.md` at C1 BYTE-EQUAL to PLANF037R2
+  under the newline-included convention: True. Negative control against the
+  slice MINUS its trailing newline: False. Contract readings: `^## Goal$` 1,
+  `^## Next Steps$` 1, `\bF\d{3}\b` matched (`F037`), `wc -l` 44 — strictly
+  under 50.
+- **G5 — the three record appends, at C2 · exit 0.** Each baseline was read with
+  `git show`, never by reading a tracked working file; see Deviations for the
+  baseline SHA. Reader (a), RECONSTRUCTION, and reader (b), STRUCTURE, both hold
+  for all three, and every negative control was rejected by BOTH readers:
+
+  | File | Slice | (a) byte-equal | (a) prefix | arithmetic (bytes) | N | (b) last N units | flip offset | (a) rejects | (b) rejects |
+  |------|-------|----------------|------------|--------------------|---|------------------|-------------|-------------|-------------|
+  | `.agent/live_review.md` | RECORDR2 | True | True | 1130704 + 1 + 5684 = 1136389 | 2 | equal IN ORDER | 1130710, inside the first appended paragraph (1130705…1133955) | True | True |
+  | `.agent/prose_slips.md` | SLIPR2 | True | True | 4319 + 1 + 750 = 5070 | 1 | equal IN ORDER | 4325, inside the first appended paragraph (4320…5068) | True | True |
+  | `.agent/decisions.md` | DECR2 | True | True | 649977 + 1 + 5442 = 655420 | 12 | equal IN ORDER | 649983, inside the first appended paragraph (649978…650125) | True | True |
+
+  N is counted by the script from the slice itself, never asserted by the block.
+  Line-anchored counts for `.agent/live_review.md`, before C2 then after C2:
+  `^- R-\d+ — ` 275 → 276, `^Done: R-\d+ — ` 24 → 24, `^Landed: R-` 1 → 1,
+  `^Gate: R\d+ — ` 19 → 19, `^Gate: F\d+ R\d+ — ` 71 → 72. All five match the
+  block's ordered post-C2 values exactly. Finding ids ADDED as a SET:
+  `{R-0715}`. Resolved ids ADDED: `{}`; resolved ids REMOVED: `{}`; finding ids
+  REMOVED: `{}` — all three EMPTY. All 276 ids DISTINCT: True. Maximum id after
+  C2: `R-0715`. Open set after C2: 252. `.agent/decisions.md`: `^## DECISION `
+  166 before, 168 after; literal `## DECISION F037 D1 ` 0 before and EXACTLY 1
+  after; literal `## DECISION F037 D2 ` 0 before and EXACTLY 1 after.
+- **G6 — the feature file, at C3 · exit 0.** `docs/roadmap/features/T5_F037.md`:
+  DFROM occurs EXACTLY 1x BEFORE the edit. After C3, DFROM occurs 1x and DTO
+  occurs EXACTLY 1x — the APPEND-shaped obligation constraint 11 assigns this
+  pair, `TO contains FROM` re-measured True here, which is why no FROM-zero
+  count is ordered or attainable. The 2 TO-ONLY lines of DTO each occur EXACTLY
+  1x among the lines C3's diff ADDS to that file: `> Amended below — see "Design
+  amendments" at the end of this file. Where an` 1x, and `> amendment conflicts
+  with this section, the amendment wins.` 1x. RECONSTRUCTION against the
+  baseline with the pair applied in memory first: BYTE-EQUAL True, the paired
+  baseline a byte PREFIX of the result True, arithmetic 5110 + 1 + 2870 = 7981
+  bytes. `^## Design amendments$` 0 before, EXACTLY 1 after. `^## Do not touch$`
+  1 before and 1 after.
+- **G7 — the docs gate and the canary · REAL exit 0.** Run as ONE pytest
+  process after C3 and before C4, from the repository root:
+  `python3 -m pytest tests/docs/ tests/orchestration/test_roadmap_index.py
+  tests/cli/test_golden_path.py -q`. Summary line VERBATIM:
+  `367 passed in 21.04s`. COUNT of lines matching `^FAILED`: 0. The `^FAILED`
+  extractor is NOT blind: run over the control string
+  `FAILED tests/x.py::test_y - AssertionError\nok\n` it matched exactly 1 line.
+  The reviewer's base reference `367 passed` at a real exit 0 with zero
+  `^FAILED` lines is reproduced exactly.
+- **G8 — structure, artifacts, the Open PR Gate and the push · exit 0.** Path
+  set of `git diff --name-only 69f6478c..390234c1` compared BOTH WAYS against
+  the Change list minus `.agent/handoff.md`: residue GOT−WANT `[]`, residue
+  WANT−GOT `[]`. `git diff --stat 69f6478c..390234c1` restricted to `apps/`,
+  `packages/` and `tests/`: EMPTY, EMPTY, EMPTY; restricted to `docs/` WHOLE:
+  `docs/roadmap/features/T5_F037.md | 48 ++++…`, `1 file changed, 48
+  insertions(+)` — that file ALONE. Per-commit insertions from
+  `git diff --numstat`, each single-parent and under 500: C0a 416, C0b 314,
+  C1 24, C2 99, C3 48. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in
+  `.agent/plan.md` at C1 and in `.agent/live_review.md`, `.agent/prose_slips.md`,
+  `.agent/decisions.md` at C2 and in `docs/roadmap/features/T5_F037.md` at C3,
+  against a CONTROL over the C0a blob reading 7 and 7 — not 0. `git ls-files
+  .remedy-wt` 0 lines, `git worktree list` 1 line, `git branch --list "tmp/*"`
+  0 lines. Open PR Gate output VERBATIM: `[]`. Nothing merged, nothing created.
 
 ## Authored-text proofs
 
 Every slice applied this round was extracted PROGRAMMATICALLY from the committed
-C0a blob via `git show 3f0e0ab4…:.agent/authored/f037-r1.md` and applied from
-there in Python; nothing was retyped.
+C0a blob via `git show 1f8d7826:.agent/authored/f037-r2.md`, split on its
+`<<<SLICE ` / `<<<END ` marker LINES, and applied from there in Python. Nothing
+was retyped, reflowed or corrected.
 
 | Slice | Applied to | Disk-to-disk result |
 |-------|-----------|---------------------|
-| PLANF037R1 | `.agent/plan.md` at C1 | BYTE-EQUAL True, trailing-newline control False |
-| CTXF037R1 | `.agent/context.md` at C1 | BYTE-EQUAL True, trailing-newline control False |
-| LFROM → LTO | `.agent/live_review.md` at C3 | FROM 1 → 0, TO 0 → 1 |
-| GATEF032R19 | `.agent/live_review.md` at C3 | EOF append reconstructed BYTE-EQUAL, one-byte-flip control False |
-| SFROM → STO | `docs/roadmap/STATUS.md` at C2 | FROM 1 → 0, TO 0 → 1 |
+| PLANF037R2 | `.agent/plan.md` at C1 | BYTE-EQUAL True; trailing-newline negative control False |
+| RECORDR2 | `.agent/live_review.md` at C2 | EOF append; reconstruction BYTE-EQUAL True, structure reader True, both controls reject |
+| SLIPR2 | `.agent/prose_slips.md` at C2 | EOF append; reconstruction BYTE-EQUAL True, structure reader True, both controls reject |
+| DECR2 | `.agent/decisions.md` at C2 | EOF append; reconstruction BYTE-EQUAL True, structure reader True, both controls reject |
+| DFROM → DTO | `docs/roadmap/features/T5_F037.md` at C3 | FROM 1x before; FROM 1x and TO 1x after; both TO-ONLY lines 1x among added lines |
+| AMENDF037 | `docs/roadmap/features/T5_F037.md` at C3 | EOF append; reconstruction BYTE-EQUAL True against the paired baseline |
 
-The block itself: `.agent/authored/f037-r1.md` and `.agent/last_block.md` carry
-the identical sha256 as `.remedy-wt/f037-r1.md` and are ONE git blob.
+The block itself: `.agent/authored/f037-r2.md` and `.agent/last_block.md` carry
+the identical sha256 as `.remedy-wt/f037-r2.md` and are ONE git blob.
 
 ## Deviations & assumptions
 
-**Commit sequence.** The ordered sequence C0a, C0b, C1, C2, C3, C4, C5 was
-followed exactly. No extra commit, no dropped commit, no reordering. ANY COMMIT
-MADE BEYOND THE ORDERED SEQUENCE RECEIVES ITS OWN `## Commits` ROW AND ITS OWN
-ITEM-STATUS ROW; none was made, so no such row exists.
+**Commit sequence.** The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed
+exactly, in that order, with the record moving before the feature file as
+constraint 4 fixes. No extra commit, no dropped commit, no reordering. ANY
+COMMIT MADE BEYOND THE ORDERED SEQUENCE RECEIVES ITS OWN `## Commits` ROW AND
+ITS OWN ITEM-STATUS ROW; none was made, so no such row exists.
 
-**One wording disagreement, applied as written and declared here rather than
-corrected.** G5 orders the reconstruction built as "LTO plus two newlines plus
-everything from the first byte of `## Findings`". Constraint 2 defines a slice's
-text as its content lines joined with a newline PLUS ONE TRAILING NEWLINE. Under
-that definition the two readings differ by one byte, and I measured both against
-the applied edit:
+**ONE DEVIATION, DECLARED AND NOT SILENTLY CORRECTED: the G5 baseline SHA is
+stale for one of the three files.** G5 orders each baseline read with
+`git show 89b96df7:<path>`. I measured all three at that commit and at the round
+base `69f6478c`:
 
-- LTO's content lines joined, then two newlines: BYTE-EQUAL True.
-- LTO's newline-included slice text, then two newlines: BYTE-EQUAL False.
+- `.agent/prose_slips.md` — identical at both, 4319 bytes, sha256 `635bb72a2b75…`.
+- `.agent/decisions.md` — identical at both, 649977 bytes, sha256 `b4073db0ecd0…`.
+- `.agent/live_review.md` — DIFFERENT: 1126556 bytes at `89b96df7` against
+  1130704 bytes at `69f6478c`. `89b96df7` is R1's C1; R1's C3 (`d4aef1db`) later
+  reset the live-review header and appended the F032 R19 gate paragraph.
 
-The applied edit is the plain LFROM→LTO replacement plus exactly one newline plus
-GATEF032R19, which is the first reading. Nothing in the slice was altered. The
-pre-commit blob separates the header from `## Findings` with exactly one `\n`
-after LFROM's own trailing newline, so the two readings cannot both be satisfied;
-the reviewer holds the ruling.
+Appending to the `89b96df7` bytes would have DELETED R1's own header reset and
+its F032 R19 gate entry from an append-only record, which constraint 5 forbids
+outright, and constraint 3 — the block's stated ONLY definition of this
+operation — says the baseline is "the target file's bytes as they stood before
+the commit". I therefore read that one baseline with `git show
+9b8cce95:.agent/live_review.md`, the pre-C2 tip, which is byte-identical to
+`git show 69f6478c:.agent/live_review.md`. No tracked file was ever overwritten
+to obtain a baseline, which is the property G5's clause exists to secure. The
+block's own numbers confirm which reading it intended: `^Gate: F\d+ R\d+ — `
+reads 70 at `89b96df7` and 71 at `69f6478c`, and the block states the base as
+71. The other two files are unaffected because their bytes are equal at both
+commits.
 
-**Every numeral the block stated about the round base was reproduced exactly**,
-so there is nothing to reconcile: 275 / 24 / 1 / 19 / 70 line-anchored counts,
-maximum id `R-0714`, open set 251, findings region 1124868 bytes at sha256
-`abc8bdb4…f528`, STATUS counts 196 / 59 / 0, `325 passed`, `620 passed`, Open PR
-Gate `[]`.
+**Every other numeral the block stated about the round base was reproduced
+exactly**, so there is nothing further to reconcile: 275 / 24 / 1 / 19 / 71
+line-anchored counts before C2, `TO contains FROM: true` for the DFROM/DTO pair,
+`367 passed` at a real exit 0 with zero `^FAILED` lines, and the Open PR Gate
+reading `[]`.
 
-**WHAT Q1 MEASURED, stated plainly because it decides the contract.** The
-repository already holds ONE structured unified-diff reader,
-`packages/orchestration/review_scope.py`, and it cannot be extended into F037's
-JSON contract v1 without breaking its current consumers. `_parse_diff`
-(`review_scope.py:73`) discards the OLD line numbers at the regex level —
-`_HUNK_RE` at `review_scope.py:51` matches `-\d+(?:,\d+)?` with NO capture group
-— records no per-line kind (only `+` bodies reach `added_lines`,
-`review_scope.py:127-128`), keeps the hunk header only as raw text, drops the old
-path of a rename (`review_scope.py:97-99`), and NEVER SEES A BINARY FILE AT ALL,
-because a `Binary files … differ` stanza carries no `---`/`+++` pair. I proved
-the last two empirically against the real module: a binary diff parses to `[]`,
-and a rename diff comes back keyed by the new path only. Meanwhile
-`parse_diff_line_ranges` is pinned by `diff_repair` and `source_apply`, both of
-which state in source that they deliberately hold no parser of their own
-(`diff_repair.py:8-13`, `diff_repair_apply.py:16`). CONCLUSION: T001 needs a NEW
-module, and the existing seam should be left exactly as it is.
+**No defect was observed in the slices themselves.** Every slice applied cleanly
+and every gate the block ordered came back green at a real exit code. I minted
+no finding id, wrote no `Gate:` or `Done:` line and authored no DECISION, per
+constraint 6.
 
-**WHAT Q2 MEASURED, stated plainly for the same reason.**
-`packages/orchestration/review_subject.py` defines seven statuses at
-`review_subject.py:72-78` — `added`, `modified`, `deleted`, `renamed`, `copied`,
-`type_changed`, `dirty` — with `_GIT_STATUS_MAP` at `:80-86` and `_VALID_STATUSES`
-at `:597-598`. Against F037's `modified|added|deleted|renamed|binary`: four of
-the five EXIST, `binary` DOES NOT EXIST anywhere in the module, and the contract
-OMITS `copied`, `type_changed` and `dirty`. Nothing in this repository maps a
-binary file to a review file STATUS today: binary is a BLOCKER rejection in
-`provider_trust.py:627-629`, an omission REASON in `diff_repair.py:68-73`, a
-refusal in `source_apply.py:379`, and a rendered PLACEHOLDER `[binary file]` in
-`pingpong_loop.py:1769-1770` — four vocabularies, none of them
-`review_subject`'s. So the feature file's five-value status list is neither a
-subset nor a superset of the built one, and the reviewer's DECISION is owed
-before T001 fixes a schema.
-
-**Three further measurements the inventory records and the reviewer may want to
-rule on.** (a) There is TODAY no per-attempt diff anywhere on disk — diffs exist
-per task run (`safe.diff`) and per job (`workspace.diff`) only, and
-`repair_loop_v2` forbids diffs in its attempt records by name
-(`repair_loop_v2.py:24`, `:45`, `:595`) — so the feature file's endpoint
-parameter has nothing to key on yet. (b) `rg -n 'onOpenDiff|DiffViewer'
-apps/ui/src/` returns 0 hits: the entry point the design reference names at
-`docs/ui/design_reference/component_spec.md:114-115` does not exist, and no
-vitest file anywhere under `apps/ui` names `DetailPopover`. (c) No bundle-size or
-asset-size budget exists in `tests/` or in `apps/ui/vite.config.ts`, so the
-"bundle-budget discipline" `T5_F037.md:37` leans on would be CREATED by T003, not
-satisfied by it.
-
-**One defect observed, not fixed, per Constraint 7.** The docstring at
-`tests/ui_server/test_command_channel.py:1240` says "The thirteen job endpoints
-live in a dict literal inside `do_GET`", while that dict at
-`ui_server.py:3429-3444` holds FOURTEEN keys. It is a docstring, not an
-assertion, so nothing is red; I minted no id and wrote no `Gate:` or `Done:`
-line. The reviewer rules.
-
-**Assumptions.** The `## Findings` region of `.agent/live_review.md` was treated
-as beginning at the first byte of the line `## Findings` and running to the end
-of the pre-commit blob, which is the block's own wording; that region is proved
-byte-identical across C3.
+**Assumptions.** (1) A slice's TEXT is its content lines joined with a newline
+plus ONE trailing newline, per constraint 2, and that single definition was used
+for every extraction, every reconstruction and every negative control. (2) A
+"blank-line unit" in G5 reader (b) is a maximal run of non-empty lines, so runs
+of consecutive blank lines separate the same units; under that reading the last
+N units of each file equal the slice's N units in order. (3) The round base
+`69f6478c` and the pre-C2 tip `9b8cce95` carry identical bytes for all three
+record files, since C0a, C0b and C1 touch none of them.
 
 ## Next
 
-The reviewer books the R1 verdict as a `Gate:` paragraph and rules on the Q1/Q2
-findings above — whether F037's contract v1 keeps its `binary` status and its
-attempt parameter — before T001 is planned.
+The reviewer books the R2 verdict as a `Gate:` paragraph and plans T001 — the
+unified-to-JSON parser as a NEW module with its corpus tests, then the read
+endpoint — against the now-amended spec in
+`docs/roadmap/features/T5_F037.md`.
