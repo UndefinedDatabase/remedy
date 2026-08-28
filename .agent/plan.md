@@ -13,30 +13,32 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-T001, T002 and T003 are COMPLETE and the integration gate PASSED at R17: the
-branch's full suite is exit 0 at 17982 passed, the branch-only failure set is
-empty, and both base-only ids pass serially at the merge base and on the
-branch. R18 is closure part one — the R17 verdict and the one finding the gate
-produced, the feature file's Built State section that closure precondition 4
-requires and that does not exist yet, then the evidence job and the FRESH
-review zip. The STATUS flip, the README sync and the pull request are R19's.
+R19 CLOSES F032. T001, T002 and T003 are complete, the integration gate passed
+at R17 with an empty branch-only failure set, and R18 produced the evidence
+bundle and the review package from the accepted HEAD `c3cf408f`. This round
+books the R18 verdict, flips the STATUS line to `[x]` and syncs the README's
+capability prose and its two ledger-derived counts in the SAME commit — they
+may never disagree in a committed state — and then opens the pull request.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R17 verdict, R-0714 and the reviewer's slip | ordered | the record is touched first |
-| C3 the feature file's Built State | ordered | precondition 4; the accepted HEAD |
-| C4 the handback | ordered | records the bundle and the package |
+| C2 the R18 verdict and the reviewer's slip | ordered | the record is touched first |
+| C3 the closure commit and the handback | ordered | STATUS and README together, last on the branch |
+| the pull request | ordered | after C3; NOT merged this session |
 
 ## Next Steps
-1. R19, closure part two: the authored STATUS line and the README capability
-   sync in ONE commit, last on the branch, then the pull request — which is NOT
-   merged in this session, per the closure protocol's step 6.
+1. The pull request merges at the NEXT feature's start, through the Open PR
+   Gate of AGENTS.md. The gap is the operator's manual review window, and the
+   operator may merge manually at any time instead.
+2. The next feature is chosen by Rule A5 from `docs/roadmap/STATUS.md`, in a
+   fresh session. `docs/roadmap/STATUS.md` names F037 as the next open line.
 
 ## Risks
-- A failing zip build is a closure BLOCKER, not a thing to route around. The
-  raw error goes in the handback and the branch is left as it is.
-- Closure precondition 3 names a CLI this session's guard refuses. The check is
-  reached through its Python module instead and the route used is named, so no
-  PASS is reported that was not produced.
+- The package's filename, SHA-256 and archived path rest on R18's transcript:
+  the archive directory lies outside this session's allowed working
+  directories, so the reviewer could not re-read them.
+- R-0714 is open and Medium. It does not touch F032's own code; it makes the
+  integration gate's auto-build lever unenforceable and belongs to whoever
+  repairs `tests/ui_server/test_dashboard_contract.py`.
