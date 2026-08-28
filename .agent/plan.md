@@ -13,27 +13,27 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-T003 is COMPLETE: the model carries the triple, the card renders it, and the
-receipt chip is the entry point F023 wires. R16 is the integration gate of
-docs/agents/integration_gate.md — the full suite on this branch and at the
-merge base `a399a330` with artifact parity restored and measured, the two
-failure sets compared, every branch-only id attributed. It writes no production
-code. R16 IS BLOCKED AT SPEC ITEM S1: this session's permission layer denies
-every form of the frontend build, `_frontend_is_stale()` is still `True`, and
-S1 orders the round stopped rather than a stale run passed off as a gate.
+T003 is COMPLETE. R17 is the integration gate of docs/agents/integration_gate.md,
+which R16 could not start because its session was denied `npm run build` and it
+refused to fake the precondition. The reviewer has since built the frontend, so
+`_frontend_is_stale()` is False and no run rebuilds `dist` mid-flight. R17 runs
+the full suite on this branch and at the merge base `a399a330` with artifact
+parity restored and MEASURED by an mtime window, compares the failure sets and
+attributes every branch-only id. It writes no production code and runs no build.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a and C0b, save and mirror the block | done | |
-| C1 the plan | done | first substantive commit |
-| C2 the R15 verdict and the reviewer's prose slip | done | the record is touched first |
-| C3 the gate evidence directory | skipped | S1 blocked, so no run and no evidence |
-| C4 the handback | done | names the blocker |
+| C0a and C0b, save and mirror the block | ordered | |
+| C1 the plan | ordered | first substantive commit |
+| C2 the R16 verdict | ordered | the record is touched first |
+| C3 the gate evidence directory | ordered | S1 to S8 |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. R17 re-runs this same gate in a session whose permissions allow the frontend
-   build; nothing else about the block changes.
-2. Then the closure sequence, per docs/roadmap/STATUS_closure_protocol.md.
+1. The closure sequence, part one: the evidence job and a FRESH review zip, per
+   docs/roadmap/STATUS_closure_protocol.md.
+2. The closure sequence, part two: the authored STATUS line committed last on
+   the branch, then the pull request, which is NOT merged in this session.
 
 ## Risks
 - A branch-only failure that reproduces serially and touches this feature's
