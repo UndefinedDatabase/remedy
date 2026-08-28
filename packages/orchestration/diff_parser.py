@@ -97,10 +97,12 @@ DIFF_BINARY_SENTINEL = "[binary file]"
 DIFF_TRUNCATED_SENTINEL = "[DIFF TRUNCATED]"
 DIFF_UNSAFE_ARTIFACT_PREFIX = "[unsafe staged artifact skipped:"
 
-#: A paired deletion/addition whose ``difflib.SequenceMatcher.ratio()`` is STRICTLY
-#: BELOW this gets no intraline spans at all: two lines with almost nothing in common
-#: are a whole-line replacement, and marking every character of both is the same as
-#: marking none. Exported so a test can name the threshold rather than transcribe it.
+#: A paired deletion/addition whose SIGNIFICANT-token
+#: ``difflib.SequenceMatcher.ratio()`` is STRICTLY BELOW this gets no intraline spans
+#: at all: two lines with almost nothing in common are a whole-line replacement, and
+#: marking every character of both is the same as marking none. Exported so a test can
+#: name the threshold rather than transcribe it. Which token stream the ratio is taken
+#: over is the whole of finding ``R-0718`` — see ``_intraline_pair_is_similar``.
 DIFF_INTRALINE_MIN_RATIO = 0.3
 
 _NO_NEWLINE_PREFIX = "\\ No newline"
@@ -302,14 +304,51 @@ def _normalise_intraline_spans(
     return [[low, high - low] for low, high in merged]
 
 
+def _significant_intraline_tokens(tokens: list[str]) -> list[str]:
+    """The tokens of one line that carry WORD evidence: everything not pure whitespace.
+
+    ``_INTRALINE_TOKEN_RE`` deliberately keeps the separators, because the offset
+    arithmetic needs every character in exactly one token. A separator says nothing
+    about whether two lines are the same sentence, so the similarity DECISION reads
+    this reduced stream while the span mapping keeps reading the full one.
+    """
+    return [token for token in tokens if token.strip() != ""]
+
+
+def _intraline_pair_is_similar(old_tokens: list[str], new_tokens: list[str]) -> bool:
+    """True when a changed-line pair is close enough to mark word-by-word.
+
+    WHY the ratio is taken over the SIGNIFICANT tokens rather than over the stream the
+    spans are mapped from (finding ``R-0718``): two space-separated lines with the same
+    word count always match on their separator tokens, which puts a FLOOR under the
+    full-stream ratio even when the lines share no word at all — 0.333 at two words,
+    0.400 at three, 0.444 at five, 0.474 at ten, rising toward 0.5. Measured against
+    ``DIFF_INTRALINE_MIN_RATIO`` that floor made the guard UNREACHABLE for every
+    multi-word line, so the only shape it could ever refuse was a single-word one, and
+    ``alpha beta gamma`` against ``zzz qqq www`` had every word of both sides marked —
+    exactly the all-marked noise the guard exists to prevent.
+
+    Two lines carrying no significant token at all give no word evidence either way.
+    That pair is treated as SIMILAR and gets spans from the full stream, because
+    marking is the recoverable half of a choice this rule cannot make honestly.
+    """
+    old_significant = _significant_intraline_tokens(old_tokens)
+    new_significant = _significant_intraline_tokens(new_tokens)
+    if not old_significant and not new_significant:
+        return True
+    ratio = difflib.SequenceMatcher(a=old_significant, b=new_significant).ratio()
+    return ratio >= DIFF_INTRALINE_MIN_RATIO
+
+
 def _intraline_spans_for_pair(
     old_content: str, new_content: str
 ) -> tuple[list[list[int]], list[list[int]]]:
     """Return ``(old_spans, new_spans)`` marking what differs INSIDE one changed line.
 
     ``replace`` and ``delete`` opcodes mark the OLD side, ``replace`` and ``insert``
-    mark the NEW side, and ``equal`` marks neither. Below
-    ``DIFF_INTRALINE_MIN_RATIO`` both sides come back empty — see that constant.
+    mark the NEW side, and ``equal`` marks neither. A pair ``_intraline_pair_is_similar``
+    rejects comes back empty on both sides — see that function and
+    ``DIFF_INTRALINE_MIN_RATIO``.
     """
     old_tokens = _INTRALINE_TOKEN_RE.findall(old_content)
     new_tokens = _INTRALINE_TOKEN_RE.findall(new_content)
@@ -319,10 +358,11 @@ def _intraline_spans_for_pair(
         # guessing keeps the parser total if that ever stops being true.
         return [], []
 
-    matcher = difflib.SequenceMatcher(a=old_tokens, b=new_tokens)
-    if matcher.ratio() < DIFF_INTRALINE_MIN_RATIO:
+    if not _intraline_pair_is_similar(old_tokens, new_tokens):
         return [], []
 
+    # The MAPPING runs over the FULL token stream: offsets must stay exact.
+    matcher = difflib.SequenceMatcher(a=old_tokens, b=new_tokens)
     old_offsets = _intraline_token_offsets(old_tokens)
     new_offsets = _intraline_token_offsets(new_tokens)
     old_raw: list[tuple[int, int]] = []

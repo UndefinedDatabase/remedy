@@ -269,6 +269,30 @@ INTRALINE_PURE_INSERTION_DIFF = (
     "+keep the extra words here\n"
 )
 
+#: `R-0718`: two MULTI-WORD lines sharing no word at all. Over the full token stream
+#: their ratio is 0.400 — floored by the matching separators alone — so the guard
+#: could not fire and every word of both lines was marked. The single-word
+#: `alpha`/`zulu` pair below is the one shape with no such floor, which is why it
+#: passed while the guard it tests was inert for every real line.
+INTRALINE_MULTI_WORD_NO_SHARED_WORD_DIFF = (
+    "--- a/pkg/nothing_shared.py\n"
+    "+++ b/pkg/nothing_shared.py\n"
+    "@@ -1,1 +1,1 @@\n"
+    "-alpha beta gamma\n"
+    "+zzz qqq www\n"
+)
+
+#: `R-0718`'s other side: a multi-word pair that SHARES most of its words must still
+#: be marked word-by-word. Narrowing the ratio's stream must not narrow what it lets
+#: through.
+INTRALINE_MULTI_WORD_ONE_WORD_CHANGED_DIFF = (
+    "--- a/pkg/one_word.py\n"
+    "+++ b/pkg/one_word.py\n"
+    "@@ -1,1 +1,1 @@\n"
+    "-the fox jumps\n"
+    "+the cat jumps\n"
+)
+
 
 def _tuples(hunk: dict) -> list[tuple]:
     """Reduce a hunk's lines to the four fields the viewer actually renders."""
@@ -635,6 +659,53 @@ def test_intraline_spans_mark_a_pure_insertion_on_the_add_side_only():
     assert added["intraline"] == [[9, 6]]
     assert [added["content"][s:s + n] for s, n in added["intraline"]] == ["extra "]
     assert deleted["intraline"] == []
+
+
+def _significant_tokens(content: str) -> list[str]:
+    """The test's own reading of "not pure whitespace", written out rather than imported.
+
+    A test that imported the module's helper would agree with the module by
+    construction and could never notice it drifting.
+    """
+    return [token for token in re.findall(r"\w+|\W", content) if token.strip() != ""]
+
+
+def test_intraline_spans_are_empty_for_multi_word_lines_that_share_no_word():
+    """`R-0718`: the guard fires for a MULTI-WORD pair, not only for a one-word one.
+
+    Named against the exported constant, not against a transcribed 0.3, and computed
+    over the significant tokens because that is the stream the guard now reads.
+    """
+    view = parse_unified_diff_to_view(INTRALINE_MULTI_WORD_NO_SHARED_WORD_DIFF)
+
+    deleted = _line_at(view, "del")
+    added = _line_at(view, "add")
+    assert deleted["content"] == "alpha beta gamma"
+    assert added["content"] == "zzz qqq www"
+    ratio = difflib.SequenceMatcher(
+        a=_significant_tokens(deleted["content"]),
+        b=_significant_tokens(added["content"]),
+    ).ratio()
+    assert ratio < DIFF_INTRALINE_MIN_RATIO
+    assert deleted["intraline"] == []
+    assert added["intraline"] == []
+
+
+def test_intraline_spans_still_mark_a_multi_word_pair_that_shares_its_other_words():
+    """`R-0718`'s regression guard: a real one-word edit is still marked word-by-word."""
+    view = parse_unified_diff_to_view(INTRALINE_MULTI_WORD_ONE_WORD_CHANGED_DIFF)
+
+    deleted = _line_at(view, "del")
+    added = _line_at(view, "add")
+    ratio = difflib.SequenceMatcher(
+        a=_significant_tokens(deleted["content"]),
+        b=_significant_tokens(added["content"]),
+    ).ratio()
+    assert ratio >= DIFF_INTRALINE_MIN_RATIO
+    assert deleted["intraline"] == [[4, 3]]
+    assert added["intraline"] == [[4, 3]]
+    assert [deleted["content"][s:s + n] for s, n in deleted["intraline"]] == ["fox"]
+    assert [added["content"][s:s + n] for s, n in added["intraline"]] == ["cat"]
 
 
 def test_every_intraline_span_lies_inside_its_own_content():
