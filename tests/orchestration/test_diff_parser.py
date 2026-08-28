@@ -16,6 +16,7 @@ merely to cover the function.
 from __future__ import annotations
 
 import difflib
+import json
 import re
 import time
 
@@ -27,6 +28,7 @@ from packages.orchestration.diff_parser import (
     DIFF_STATUS_MODIFIED,
     DIFF_STATUS_RENAMED,
     DIFF_VIEW_MAX_BODY_LINES,
+    DIFF_VIEW_MAX_FILES,
     DIFF_VIEW_STATUSES,
     DIFF_VIEW_VERSION,
     parse_unified_diff_to_view,
@@ -808,13 +810,21 @@ def _generated_huge_single_file_diff(
     return "\n".join(lines) + "\n"
 
 
-def _generated_many_file_diff(file_count: int) -> str:
-    """`file_count` files, one one-line hunk each, in a single diff text.
+def _generated_many_file_diff(file_count: int, pairs_per_file: int = 1) -> str:
+    """`file_count` files, one hunk of `pairs_per_file` deletion/addition pairs each.
 
     Generated for the same reason as the single-file builder above: several hundred
     header pairs written out inline are unreadable, and the shape they stand for —
     many small files rather than one enormous one — is the other half of what a real
     `workspace.diff` looks like.
+
+    `pairs_per_file` moves the two dimensions INDEPENDENTLY, which is what lets a test
+    build a diff that crosses the body ceiling without crossing the file ceiling. The
+    hunk header's counts follow it, so the walk consumes exactly the body it is told to
+    expect. At the default of one pair the emitted text is byte-identical to what this
+    builder produced before the parameter existed, so every existing caller is unmoved.
+    The pair TEXT does not carry the pair index: no assertion in this file reads it, and
+    keeping it constant is what preserves that byte-identity.
     """
     lines: list[str] = []
     for index in range(file_count):
@@ -824,11 +834,12 @@ def _generated_many_file_diff(file_count: int) -> str:
                 f"diff --git a/{path} b/{path}",
                 f"--- a/{path}",
                 f"+++ b/{path}",
-                "@@ -1,1 +1,1 @@",
-                f"-old line in {path}",
-                f"+new line in {path}",
+                f"@@ -1,{pairs_per_file} +1,{pairs_per_file} @@",
             ]
         )
+        for _ in range(pairs_per_file):
+            lines.append(f"-old line in {path}")
+            lines.append(f"+new line in {path}")
     return "\n".join(lines) + "\n"
 
 
@@ -962,12 +973,16 @@ def test_the_huge_diff_parses_inside_the_recorded_perf_budget():
 # The parse ceiling — DECISION F037 D5, the parser half of finding `R-0721`.
 # --------------------------------------------------------------------------- #
 
-#: A file count whose TOTAL body lines exceed the ceiling. `_generated_many_file_diff`
-#: writes one deletion and one addition per file, so half the ceiling's own value is
-#: exactly the ceiling, and the extra files are the ones that must not appear at all in
-#: the truncated view. Expressed in the two constants rather than as a literal so it
-#: follows the ceiling if DECISION F037 D5 is ever re-decided.
-TRUNCATING_MANY_FILE_COUNT = DIFF_VIEW_MAX_BODY_LINES // 2 + MANY_FILE_DIFF_FILE_COUNT
+#: A many-files shape that crosses the BODY ceiling and ONLY the body ceiling: strictly
+#: below `DIFF_VIEW_MAX_FILES` files, each carrying enough pairs that their TOTAL body
+#: lines are strictly above `DIFF_VIEW_MAX_BODY_LINES`. Expressed in the module constants
+#: rather than as literals so it follows either ceiling if it is ever re-decided.
+#: WHY the shape is stated this way rather than as many one-line files: DECISION F037 D6
+#: added a ceiling on FILE ENTRIES, so a fixture reaching the body ceiling through file
+#: COUNT alone would now be cut by the file ceiling first and would stop measuring the
+#: body counter at all.
+TRUNCATING_MANY_FILE_COUNT = DIFF_VIEW_MAX_FILES // 2
+TRUNCATING_MANY_FILE_PAIRS_PER_FILE = 20
 
 
 def _total_parsed_body_lines(view: dict) -> int:
@@ -1024,16 +1039,31 @@ def test_many_small_files_are_bounded_by_the_same_total_counter():
     `workspace.diff` shape rather than a contrived one. The last file present may hold
     an empty hunk — the walk stopped inside it — and the files generated after it are
     absent from the view.
+
+    WHY THE FIXTURE MOVED at F037 R13: it was 10,400 one-line files, and DECISION F037
+    D6 added a ceiling on FILE ENTRIES at `DIFF_VIEW_MAX_FILES`. That old shape crosses
+    the FILE ceiling as well as the body one, so the file cut would bite first and this
+    test would stop measuring the body counter it exists to measure. The shape is now
+    `DIFF_VIEW_MAX_FILES // 2` files carrying twenty pairs each: strictly below the file
+    ceiling, strictly above the body one. The assertion that the surviving file count is
+    STRICTLY BELOW `DIFF_VIEW_MAX_FILES` is the discriminator that keeps it that way — a
+    file cut can never be mistaken here for the body cut.
     """
-    diff_text = _generated_many_file_diff(TRUNCATING_MANY_FILE_COUNT)
-    generated_body_lines = 2 * TRUNCATING_MANY_FILE_COUNT
+    diff_text = _generated_many_file_diff(
+        TRUNCATING_MANY_FILE_COUNT, TRUNCATING_MANY_FILE_PAIRS_PER_FILE
+    )
+    generated_body_lines = (
+        2 * TRUNCATING_MANY_FILE_COUNT * TRUNCATING_MANY_FILE_PAIRS_PER_FILE
+    )
     assert generated_body_lines > DIFF_VIEW_MAX_BODY_LINES
+    assert TRUNCATING_MANY_FILE_COUNT < DIFF_VIEW_MAX_FILES
 
     view = parse_unified_diff_to_view(diff_text)
 
     assert view["truncated"] is True
     assert _total_parsed_body_lines(view) == DIFF_VIEW_MAX_BODY_LINES
     assert len(view["files"]) < TRUNCATING_MANY_FILE_COUNT
+    assert len(view["files"]) < DIFF_VIEW_MAX_FILES
 
 
 def test_the_acceptance_fixture_stays_below_the_ceiling_and_is_not_truncated():
@@ -1062,9 +1092,16 @@ def test_every_file_stats_still_recount_its_own_lines_under_truncation():
     worse than no bound, because the sidebar would then promise content the viewer
     cannot show. Checked over the many-files shape so the file whose hunk the walk
     stopped inside — the partial or empty one — is covered too.
+
+    The fixture moved at F037 R13 for the reason
+    `test_many_small_files_are_bounded_by_the_same_total_counter` records: the old
+    10,400-file shape crosses the FILE ceiling DECISION F037 D6 added, so the truncation
+    under test here would no longer be the body one.
     """
     view = parse_unified_diff_to_view(
-        _generated_many_file_diff(TRUNCATING_MANY_FILE_COUNT)
+        _generated_many_file_diff(
+            TRUNCATING_MANY_FILE_COUNT, TRUNCATING_MANY_FILE_PAIRS_PER_FILE
+        )
     )
 
     assert view["truncated"] is True
@@ -1072,3 +1109,248 @@ def test_every_file_stats_still_recount_its_own_lines_under_truncation():
         kinds = [line["kind"] for hunk in entry["hunks"] for line in hunk["lines"]]
         assert entry["stats"]["added"] == kinds.count("add")
         assert entry["stats"]["deleted"] == kinds.count("del")
+
+
+# --------------------------------------------------------------------------- #
+# The FILE ceiling — DECISION F037 D6, finding `R-0722`.
+#
+# Every fixture below carries NO body line, or carries the body lines of a shape that
+# stays under `DIFF_VIEW_MAX_BODY_LINES`. That is the point: these are the shapes the
+# body ceiling cannot see, because nothing about them is ever appended to its counter.
+# --------------------------------------------------------------------------- #
+
+#: A path of at least sixty characters — the shape the payload figures recorded in
+#: `DIFF_VIEW_MAX_PAYLOAD_BYTES`'s comment were measured on. A short-path fixture
+#: serializes to roughly two thirds of that figure and would therefore record a budget
+#: the real worst case can exceed.
+_LONG_PATH_TEMPLATE = (
+    "packages/orchestration/deeply/nested/generated/module_dir/module_{index:05d}.py"
+)
+
+
+def _generated_mode_change_diff(file_count: int) -> str:
+    """`file_count` files that change MODE only: a header, `old mode`/`new mode`, no hunk.
+
+    This is the shape finding `R-0722` measured. Each file adds a view entry and appends
+    NOTHING to the body-line counter, so before DECISION F037 D6 a diff made only of
+    these reached no bound at all: the reviewer parsed 100,000 of them to 100,000 entries
+    at 13.8 MB of serialized JSON with `truncated` still False.
+    """
+    lines: list[str] = []
+    for index in range(file_count):
+        path = f"pkg/mode_changed_{index:05d}.py"
+        lines.extend(
+            [
+                f"diff --git a/{path} b/{path}",
+                "old mode 100644",
+                "new mode 100755",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _generated_binary_marker_diff(file_count: int) -> str:
+    """`file_count` files carrying git's own `Binary files ... differ` marker and no hunk.
+
+    Kept separate from the mode-change builder because the per-file COST differs: the
+    binary note is carried into every file entry, which is what made this the largest
+    payload of any shape the reviewer measured.
+    """
+    lines: list[str] = []
+    for index in range(file_count):
+        path = f"assets/blob_{index:05d}.bin"
+        lines.extend(
+            [
+                f"diff --git a/{path} b/{path}",
+                f"Binary files a/{path} and b/{path} differ",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _generated_doubled_header_many_file_diff(file_count: int) -> str:
+    """`file_count` files in the `workspace.diff` shape: every header pair written TWICE.
+
+    Each file comes from `_emitter_shaped_workspace_file_diff`, which reproduces
+    `job_evidence._build_workspace_diff` exactly — that emitter writes `--- a/<rel>` and
+    `+++ b/<rel>` itself and then appends a `difflib.unified_diff` whose own first two
+    lines are the same pair. `WORKSPACE_DOUBLED_HEADER_DIFF` above shows the shape for
+    one file. The walk therefore opens TWO regions per file and
+    `_collapse_doubled_header_regions` folds them back to one, which is what makes this
+    fixture the discriminator for WHERE the file ceiling is applied.
+    """
+    return "".join(
+        _emitter_shaped_workspace_file_diff(
+            f"pkg/workspace_{index:05d}.py",
+            ["alpha\n", "beta\n", "gamma\n"],
+            ["alpha\n", "BETA\n", "gamma\n"],
+        )
+        for index in range(file_count)
+    )
+
+
+def _generated_long_path_many_file_diff(file_count: int) -> str:
+    """`file_count` one-pair files at paths of sixty characters and more.
+
+    Written out rather than routed through `_generated_many_file_diff` because that
+    builder's short path is load-bearing for the byte-identity its own docstring records,
+    and the payload budget below needs the opposite: the longest realistic path, because
+    a path is carried in the serialized view once per file entry.
+    """
+    lines: list[str] = []
+    for index in range(file_count):
+        path = _LONG_PATH_TEMPLATE.format(index=index)
+        lines.extend(
+            [
+                f"diff --git a/{path} b/{path}",
+                f"--- a/{path}",
+                f"+++ b/{path}",
+                "@@ -1,1 +1,1 @@",
+                f"-old line in {path}",
+                f"+new line in {path}",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
+def test_a_diff_of_files_with_no_body_lines_is_cut_to_the_file_ceiling():
+    """`R-0722`: the shape the BODY ceiling cannot see is bounded by the FILE ceiling.
+
+    A mode change adds a file entry and appends nothing to `DIFF_VIEW_MAX_BODY_LINES`'s
+    counter, so a diff made only of these was bounded by nothing whatsoever before this
+    ceiling existed.
+
+    THE BODY-LINE TOTAL OF ZERO IS THE DISCRIMINATOR, and it is the whole of the finding:
+    it proves the truncation asserted here cannot have come from the body ceiling,
+    because that counter never moved.
+    """
+    view = parse_unified_diff_to_view(
+        _generated_mode_change_diff(DIFF_VIEW_MAX_FILES + 10)
+    )
+
+    assert view["truncated"] is True
+    assert len(view["files"]) == DIFF_VIEW_MAX_FILES
+    assert _total_parsed_body_lines(view) == 0
+
+
+def test_the_file_ceiling_boundary_holds_on_both_of_its_sides():
+    """Exactly the ceiling parses in full; exactly one more is cut to the ceiling.
+
+    Both halves live in one test for the reason
+    `test_the_ceiling_boundary_holds_on_both_of_its_sides` already states for the body
+    ceiling: each half alone is satisfiable by a bound one off in either direction — a
+    `>=` in place of the `>` still truncates the larger input, and a ceiling one file
+    lower still parses a smaller one in full. Only the pair pins the value.
+    """
+    at_ceiling = parse_unified_diff_to_view(
+        _generated_mode_change_diff(DIFF_VIEW_MAX_FILES)
+    )
+    above_ceiling = parse_unified_diff_to_view(
+        _generated_mode_change_diff(DIFF_VIEW_MAX_FILES + 1)
+    )
+
+    assert at_ceiling["truncated"] is False
+    assert len(at_ceiling["files"]) == DIFF_VIEW_MAX_FILES
+
+    assert above_ceiling["truncated"] is True
+    assert len(above_ceiling["files"]) == DIFF_VIEW_MAX_FILES
+
+
+def test_binary_marker_files_are_bounded_by_the_file_ceiling_too():
+    """The largest payload any input shape produced, and it carries no body line either.
+
+    MEASURED by the reviewer at `327c1333`: 100,000 files each holding git's own
+    `Binary files ... differ` marker parsed to 100,000 entries at 20.3 MB of serialized
+    JSON — more than the mode-change shape's 13.8 MB, and ten times the 2.096 MB the
+    single-file worst case AT the body ceiling produces — because the binary note is
+    carried PER FILE. That measured cost is why this is a separate shape from the mode
+    change rather than a second spelling of it.
+    """
+    view = parse_unified_diff_to_view(
+        _generated_binary_marker_diff(DIFF_VIEW_MAX_FILES + 10)
+    )
+
+    assert view["truncated"] is True
+    assert len(view["files"]) == DIFF_VIEW_MAX_FILES
+
+
+def test_the_file_ceiling_counts_files_after_the_doubled_header_collapse():
+    """The discriminator for WHERE the cut is applied: applied earlier it halves.
+
+    `workspace.diff` carries every file's header pair twice (`R-0716`), so the walk opens
+    two regions per file and `_collapse_doubled_header_regions` folds them back to one. A
+    ceiling applied to the UNCOLLAPSED list would keep `DIFF_VIEW_MAX_FILES` regions,
+    which collapse to HALF that many files — a bound whose effective value depends on
+    which producer wrote the artifact. Asserting the full ceiling here is what forbids
+    that placement.
+    """
+    view = parse_unified_diff_to_view(
+        _generated_doubled_header_many_file_diff(DIFF_VIEW_MAX_FILES + 1)
+    )
+
+    assert view["truncated"] is True
+    assert len(view["files"]) == DIFF_VIEW_MAX_FILES
+
+
+def test_the_acceptance_many_file_fixture_stays_below_the_file_ceiling():
+    """The 400-file corpus shape renders in FULL, and the relation is asserted directly.
+
+    A file ceiling at or below `MANY_FILE_DIFF_FILE_COUNT` would truncate the fixture the
+    R11 corpus round added while satisfying every other assertion in this section, so the
+    relationship between the two constants is pinned here rather than merely implied by a
+    parse.
+    """
+    assert MANY_FILE_DIFF_FILE_COUNT < DIFF_VIEW_MAX_FILES
+
+    view = parse_unified_diff_to_view(
+        _generated_many_file_diff(MANY_FILE_DIFF_FILE_COUNT)
+    )
+
+    assert view["truncated"] is False
+    assert len(view["files"]) == MANY_FILE_DIFF_FILE_COUNT
+
+
+#: The recorded budget, in BYTES of serialized view, that both ceilings exist to keep.
+#: MEASURED by the reviewer at `327c1333`: the file dimension's worst case —
+#: `DIFF_VIEW_MAX_FILES` entries at paths of sixty characters and more — is 1.269 MB, and
+#: the body dimension's — `DIFF_VIEW_MAX_BODY_LINES` body lines in one file — is 2.096 MB.
+#: The budget is roughly twice the larger of the two, which leaves room for path lengths
+#: the fixtures do not model while still failing an order-of-magnitude change to either
+#: ceiling.
+DIFF_VIEW_MAX_PAYLOAD_BYTES = 4_000_000
+
+
+def test_the_worst_case_payload_stays_inside_the_recorded_budget():
+    """The only assertion in this file that a WIDENED ceiling can fail.
+
+    Every other ceiling assertion here is expressed in terms of the constant it tests, so
+    the suite follows a constant wherever it is moved: the reviewer raised
+    `DIFF_VIEW_MAX_BODY_LINES` tenfold at `327c1333` and this whole file stayed green at
+    37 passed. That blindness is the second half of finding `R-0722`. A budget over the
+    SERIALIZED bytes is stated in a unit NEITHER ceiling controls, so it is the one
+    assertion that fires when a ceiling is re-decided upward.
+
+    Both dimensions are checked in one test because either one alone would leave the
+    other free to grow: the file ceiling bounds entries and says nothing about the lines
+    inside them, and the body ceiling bounds lines and says nothing about how many
+    entries carry none.
+    """
+    file_dimension = parse_unified_diff_to_view(
+        _generated_long_path_many_file_diff(DIFF_VIEW_MAX_FILES + 100)
+    )
+    body_dimension = parse_unified_diff_to_view(
+        _generated_huge_single_file_diff(DIFF_VIEW_MAX_BODY_LINES * 2)
+    )
+
+    # A budget met by parsing nothing is not a budget: pin the work first.
+    assert file_dimension["truncated"] is True
+    assert len(file_dimension["files"]) == DIFF_VIEW_MAX_FILES
+    assert body_dimension["truncated"] is True
+    assert _total_parsed_body_lines(body_dimension) == DIFF_VIEW_MAX_BODY_LINES
+
+    for dimension, view in (("file", file_dimension), ("body", body_dimension)):
+        payload_bytes = len(json.dumps(view).encode())
+        assert payload_bytes <= DIFF_VIEW_MAX_PAYLOAD_BYTES, (
+            f"{dimension}-dimension worst case serialized to {payload_bytes} bytes, "
+            f"budget {DIFF_VIEW_MAX_PAYLOAD_BYTES}"
+        )
