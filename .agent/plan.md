@@ -14,35 +14,36 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments that reconcile it with the source.
 
 ## Current Step
-R6 opens session 2 and builds the first half of what T001 still owes: a new
-module `packages/orchestration/diff_view_source.py` resolving an evidence
-directory, and optionally one task run, to the right diff artifact and returning
-the contract-v1 envelope with every absence named rather than raised. It also
-books the R5 verdict, replaces the `Landed:` lines of `R-0717` and `R-0718` with
-reviewer-authored `Done:` text, and records four reviewer-prose slips. No route
-is added: the server wiring is R7's and needs the route-walk guard measured
-first.
+R7 finishes T001 by making the resolver reachable over HTTP: a job-scope route
+as a key in the `do_GET` handlers dict, which enters the route walk for free,
+and a task-run-scope route spelled out structurally because it needs a second
+path segment. An unknown task run answers 200 with a named absence rather than
+404, because absence is data in this envelope. The round also repairs `R-0715`,
+a stale numeral in the docstring of the very route-walk guard it edits, by
+deleting the numeral as that finding's counter-measure requires.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R5 gate, both resolutions, the slips | ordered | record first |
-| C3 the resolver module and its tests | ordered | refusal proved, not asserted |
-| C4 the handback | ordered | |
+| C2 the R6 gate | ordered | record first |
+| C3 the two routes | ordered | no new literal route |
+| C4 the walk registration and `R-0715` | ordered | the guard must see the new route |
+| C5 the endpoint tests | ordered | |
+| C6 the handback | ordered | |
 
 ## Next Steps
-1. The two GET routes onto this module — the job scope as a handler-dict key and
-   the task-run scope as a structural route — with the route walk in
-   `tests/ui_server/test_command_channel.py` measured before the edit. That
-   finishes T001.
-2. T002 the rendering core, the binding CSS and the goldens.
-3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
+1. T002 the rendering core: lines, intraline emphasis, hunk heads and collapse,
+   against the binding CSS in `docs/roadmap/features/T5_F037.md`, with goldens
+   per fixture shape.
+2. T003 sidebar, virtual scrolling, lazy language bundles, the 10k-line perf
+   fixture and the L3 evidence-panel tab.
+3. The integration-gate round before closure, then the closure sequence.
 
 ## Risks
-- `R-0715` is open and Low; it is a stale count in a test docstring and belongs
-  to whoever next edits that file.
 - `R-0711` carries a `Landed:` line and no `Done:` text because F032's branch
   ended first. It is the terminator case, not a gap for F037 to close.
-- The parser still has no consumer. R6 gives it one that no HTTP layer can
-  reach yet, so its corpus keeps carrying the weight until R7.
+- The endpoint tests start a real server on a free port. Run the suites
+  serially: two pytest processes at once produce false reds in this directory.
+- T002 is the first UI work of this feature, so the design reference in
+  `docs/ui/design_reference/` becomes binding from the next round on.
