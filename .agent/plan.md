@@ -13,32 +13,30 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-T003 is COMPLETE. R17 is the integration gate of docs/agents/integration_gate.md,
-which R16 could not start because its session was denied `npm run build` and it
-refused to fake the precondition. The reviewer has since built the frontend, so
-`_frontend_is_stale()` is False and no run rebuilds `dist` mid-flight. R17 runs
-the full suite on this branch and at the merge base `a399a330` with artifact
-parity restored and MEASURED by an mtime window, compares the failure sets and
-attributes every branch-only id. It writes no production code and runs no build.
+T001, T002 and T003 are COMPLETE and the integration gate PASSED at R17: the
+branch's full suite is exit 0 at 17982 passed, the branch-only failure set is
+empty, and both base-only ids pass serially at the merge base and on the
+branch. R18 is closure part one — the R17 verdict and the one finding the gate
+produced, the feature file's Built State section that closure precondition 4
+requires and that does not exist yet, then the evidence job and the FRESH
+review zip. The STATUS flip, the README sync and the pull request are R19's.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R16 verdict | ordered | the record is touched first |
-| C3 the gate evidence directory | ordered | S1 to S8 |
-| C4 the handback | ordered | |
+| C2 the R17 verdict, R-0714 and the reviewer's slip | ordered | the record is touched first |
+| C3 the feature file's Built State | ordered | precondition 4; the accepted HEAD |
+| C4 the handback | ordered | records the bundle and the package |
 
 ## Next Steps
-1. The closure sequence, part one: the evidence job and a FRESH review zip, per
-   docs/roadmap/STATUS_closure_protocol.md.
-2. The closure sequence, part two: the authored STATUS line committed last on
-   the branch, then the pull request, which is NOT merged in this session.
+1. R19, closure part two: the authored STATUS line and the README capability
+   sync in ONE commit, last on the branch, then the pull request — which is NOT
+   merged in this session, per the closure protocol's step 6.
 
 ## Risks
-- A branch-only failure that reproduces serially and touches this feature's
-  code is a blocker, not a repair to fold into this round; it would cost a
-  reviewer-gated round of its own before closure can start.
-- The base worktree carries neither `node_modules` nor `dist`, both gitignored.
-  Parity is restored by copy and then MEASURED by an mtime window, because the
-  environment variable that disables the auto-build has been ignored once.
+- A failing zip build is a closure BLOCKER, not a thing to route around. The
+  raw error goes in the handback and the branch is left as it is.
+- Closure precondition 3 names a CLI this session's guard refuses. The check is
+  reached through its Python module instead and the route used is named, so no
+  PASS is reported that was not produced.
