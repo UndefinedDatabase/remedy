@@ -12,35 +12,38 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R17 opens T003 at the seam T002 stopped short of: the DOOR the client fetches a
-diff envelope through. `remedyApi.ts` gains a URL builder and a loader for the
-two scopes `packages/orchestration/ui_server.py` really routes — a job's diff
-and one task run's — and every payload leaves that loader through
-`readDiffEnvelope`, so a 403, a dead socket and a junk body all degrade to the
-same total envelope rather than three shapes the viewer would have to know
-about. A Python guard pins the client's URL template against the server's own
-route conditions, which is the agreement vitest cannot see. Nothing is mounted.
+R18 makes the viewer real. `DiffView` has been on disk since R16 and mounted by
+nothing; this round opens the door to it. `DetailPopover` grows the "Open diff"
+button `component_spec.md` names, emitting `onOpenDiff(taskId)`; `RemedyShell`
+holds which task run is open, reads its envelope through the door R17 built, and
+draws `DiffView` behind it. A response arriving after the selection changed is
+discarded rather than shown under the wrong task. The round also repairs finding
+`R-0725`, the reviewer's own: two presence assertions in R17's cross-language
+guard searched the whole module where they meant one function, so renaming the
+job path alone, or replacing the reader call while keeping its import, left the
+guard green.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R16 verdict | ordered | record first |
-| C3 the envelope door and its vitest tests | ordered | the fetch seam |
-| C4 the cross-language guard and the polarity test | ordered | vitest sees no routes |
-| C5 the handback | ordered | |
+| C2 the R17 verdict and finding R-0725 | ordered | findings persist first |
+| C3 the R-0725 repair | ordered | after the record, before the new work |
+| C4 the entry point in DetailPopover | ordered | the button the spec names |
+| C5 the mount in RemedyShell | ordered | state, read, drawing |
+| C6 the mount guard | ordered | nothing here can render a component |
+| C7 the handback | ordered | |
 
 ## Next Steps
-1. Mount the viewer: the "Open diff" button `component_spec.md:113-116` puts in
-   `DetailPopover`, the state holding the opened task, and `DiffView` behind it.
-2. The file sidebar over `buildDiffFileSummaries`, then virtual scrolling beyond
-   two thousand lines, the lazy language bundles and the perf fixture.
+1. The file sidebar over `buildDiffFileSummaries`, which the model already
+   exports and nothing yet draws.
+2. Virtual scrolling beyond two thousand lines, the lazy language bundles, and
+   the perf fixture whose numbers Acceptance requires recorded.
 
 ## Risks
-- Round 17 of a 25-round soft limit, session 5 of 7. The named pieces of T003
-  still open are the mount, the sidebar, the virtual scrolling, the lazy
-  language bundles, the perf fixture and the L3 tab integration, so a round
-  closing none of them is the one to stop and re-scope after.
-- No TypeScript mutation red-proof is orderable anywhere here. The `.ts` layer
-  is covered by vitest in the primary checkout and by text guards; the `.tsx`
-  layer by `tsc --noEmit` and text guards, and by nothing else.
+- Round 18 of a 25-round soft limit, session 5 of 7. The sidebar, the virtual
+  scrolling, the lazy bundles and the perf fixture remain, so a round closing
+  none of them is the one to stop and re-scope after.
+- Nothing in this repository renders a `.tsx` file. This round's wiring is
+  covered by `tsc --noEmit` and by text guards, and by nothing else — which is
+  why the guard scopes to function bodies rather than to files.
