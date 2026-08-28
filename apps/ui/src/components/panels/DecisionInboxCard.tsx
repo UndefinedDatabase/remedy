@@ -66,7 +66,7 @@
 // reason keeps both of those out of this file.
 import { Fragment, useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
-import type { DecisionCardModel } from "../../api/decisionCard";
+import type { DecisionCardModel, DecisionEvidenceRef } from "../../api/decisionCard";
 import { answerDecisionCard } from "../../api/decisionAnswerFlow";
 import { collectDecisionClarificationAnswers, decisionClarificationFieldKey } from "../../api/decisionClarificationForm";
 import { DECISION_FILTER_ALL, decisionInboxView } from "../../api/decisionFilter";
@@ -169,7 +169,7 @@ const DECISION_CLARIFICATION_IMPACT_LABEL = "Impact";
 /** Every open question in one calm place. With no models this renders nothing at
  *  all — an empty inbox is not news, exactly as `NeedsAttentionCard` shows
  *  nothing when it has no item. */
-export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSelectNode }: {
+export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSelectNode, onOpenEvidence }: {
   decisions: DecisionCardModel[];
   tasks: readonly FocusableTask[];
   /** The job every answer from this card addresses — `dashboard.jobId`, the same
@@ -182,6 +182,15 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
    *  and `RightLivePanel` under this one spelling at every hop. */
   serverToken: string;
   onSelectNode: (nodeId: string | null) => void;
+  /** WHERE A RECEIPT GOES WHEN THERE IS SOMEWHERE TO GO — the evidence panel's
+   *  ENTRY POINT, and nothing supplies it today (DECISION F032 D8). The panel
+   *  itself is `docs/roadmap/features/T5_F023.md` T003, which is unclaimed, so
+   *  every card in this release renders its receipts as plain chips; F023
+   *  supplies this handler and the panel together and the wiring is one prop at
+   *  one call site. It takes the WHOLE ref rather than a field of it, so the
+   *  panel that finally arrives gets `kind` and `target` without this component
+   *  ever reading either — passing a ref on is not rendering it. */
+  onOpenEvidence?: (evidenceRef: DecisionEvidenceRef) => void;
 }) {
   const [chosenType, setChosenType] = useState<string>(DECISION_FILTER_ALL);
   // WHICH answers are waiting on the wire, as a SET of keys rather than one key
@@ -317,8 +326,9 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                     default UI to show raw ids, and a ref's `target` is
                     frequently exactly one — a test run id, an escalation id
                     like `td:1` — so it is carried on the model for the deep
-                    link the next task adds and appears here in no text, no
-                    `title` and no other attribute a browser shows.
+                    link, travels to `onOpenEvidence` as a field of the ref it
+                    is part of, and appears here in no text, no `title` and no
+                    other attribute a browser shows.
                     BOTH REGIONS RENDER UNCONDITIONALLY, and that is the model's
                     doing rather than this markup's luck: `evidenceRefs` is an
                     EMPTY ARRAY and `evidenceNote` the EMPTY STRING on a card
@@ -327,13 +337,34 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                     empty one OUT OF FLOW rather than removing it. */}
                 <div className={styles.decisionEvidence} role="group" aria-label={DECISION_EVIDENCE_LABEL}>
                   {decision.evidenceRefs.map((evidenceRef, evidenceIndex) => (
+                    // A RECEIPT IS A CONTROL ONLY WHEN THERE IS SOMEWHERE TO GO
+                    // (T5_F032 T003c, DECISION F032 D8). That is the jump chip's
+                    // rule one row above, for the same stated reason — the
+                    // affordance never lies — and the discriminator is the
+                    // PRESENCE of the handler rather than anything this file
+                    // reads off the ref. The whole ref travels to it, so the
+                    // panel F023 builds receives `kind` and `target` while this
+                    // component still shows neither.
                     // THE KEY PAIRS THE RECEIPT'S POSITION WITH ITS LABEL, by
                     // the rule every other key on this card follows: nothing
                     // between the endpoint and the model deduplicates refs, so
                     // two receipts carrying one label still get distinct keys.
-                    <span key={`${evidenceIndex}-${evidenceRef.label}`} className={styles.decisionEvidenceChip}>
-                      {evidenceRef.label}
-                    </span>
+                    // It rides on the outer element of BOTH arms, because React
+                    // keys the node the map yields and not the branch above it.
+                    onOpenEvidence ? (
+                      <button
+                        key={`${evidenceIndex}-${evidenceRef.label}`}
+                        type="button"
+                        className={styles.decisionEvidenceChip}
+                        onClick={() => onOpenEvidence(evidenceRef)}
+                      >
+                        {evidenceRef.label}
+                      </button>
+                    ) : (
+                      <span key={`${evidenceIndex}-${evidenceRef.label}`} className={styles.decisionEvidenceChip}>
+                        {evidenceRef.label}
+                      </span>
+                    )
                   ))}
                 </div>
                 {/* WHY A CARD HAS NO RECEIPTS, in the model's own sentence and

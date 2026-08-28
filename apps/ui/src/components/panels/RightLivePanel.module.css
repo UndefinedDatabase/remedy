@@ -279,6 +279,33 @@
   font-size: 11px;
   color: var(--remedy-muted);
 }
+/* THE RECEIPT AS A CONTROL (T5_F032 T003c, DECISION F032 D8). A receipt renders
+   as a <button> only when the card is handed an onOpenEvidence handler, and as
+   the <span> above when it is not, so these three rules are SCOPED to the button
+   element: the span case must keep exactly the chrome it already has, and a
+   hover border on a chip nobody can press is the dishonest affordance R-0693
+   registered. What they add is only what a browser's own button styling would
+   otherwise impose over the shared rule above — its font, its centred text and
+   its margin — plus the pointer and the two states .decisionJumpChip already
+   spells this way. The font-size, the pill radius, the tint and the border stay
+   the shared rule's, which is why nothing here restates them. The focus ring
+   names --remedy-blue-strong and not the reference sheet's --remedy-focus, for
+   the reason .decisionFilterChip:focus-visible records: tokens.css has never
+   adopted that name and an unresolved custom property drops the whole
+   declaration (R-0661). */
+button.decisionEvidenceChip {
+  font-family: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: left;
+  margin: 0;
+  cursor: pointer;
+}
+button.decisionEvidenceChip:hover { border-color: var(--remedy-blue-strong); color: var(--remedy-ink); }
+button.decisionEvidenceChip:focus-visible {
+  outline: 2px solid var(--remedy-blue-strong);
+  outline-offset: 2px;
+}
 .decisionEvidenceNote {
   margin: 0;
   font-size: 11px;
