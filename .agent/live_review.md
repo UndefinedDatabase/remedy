@@ -1,30 +1,35 @@
-# Live Review — F037 Rendered diff viewer
+# Live Review — F033 Hunk-level diff approval
 
-> Round-by-round review record for the F037 branch, reset at the feature claim.
-> The F032 record closed with pull request #217, merged into `main` as
-> `9dde5495`, this branch's point. F032's LAST round, R19, is the round whose
-> own bundle CREATED that pull request, so it is a branch terminator under
-> `docs/agents/planner_reviewer_prompt.md` §4 item 13 and owes this record no
-> entry. Its verdict is nevertheless the first `Gate:` paragraph below, because
-> the finding record carries across the reset and an entry therefore costs this
-> round nothing — the disposition F031's own R1 chose for F022 R19. Finding ids
-> continue the monotonic R-XXXX series across the reset, and every finding
-> record F032 carried is carried forward unchanged: measured at `9dde5495`,
-> 275 findings, 24 resolved, 251 open, the maximum id `R-0714`.
+> Round-by-round review record for the F033 branch, reset at the feature claim.
+> The F037 record closed with pull request #218, merged into `main` at this
+> round's Open PR Gate, and that merge commit is this branch's point. F037's
+> LAST round, R27, is the round whose own bundle CREATED that pull request, so
+> it is a branch terminator under `docs/agents/planner_reviewer_prompt.md` §4
+> item 13 and owes its own record no entry. Its verdict is the first `Gate:`
+> paragraph below, because the finding record carries across the reset and an
+> entry therefore costs this round nothing — the disposition F037's own R1 chose
+> for F032 R19. Finding ids continue the monotonic R-XXXX series across the
+> reset, and every finding record F037 carried is carried forward unchanged:
+> measured by the reviewer at `1f0329f4`, 292 registered ids, all distinct, 43
+> `Done:` lines, 11 `Landed:` lines, an open set of 251 computed as a set, and
+> the maximum id `R-0731`.
 
 ## Steps
 
-R1 claim F037 in the roadmap ledger, cut the branch, reset this record carrying
-every finding record forward, gate F032 R19, and put the F037 source inventory
-on disk — the unified-diff readers that already exist and what each discards,
-the file-status vocabulary and whether it names `binary`, where a diff is
-produced and whether one is kept per attempt, the server route table and the
-guards over it, what identifies an attempt, the client entry point the design
-reference names, the fetch seam and the bundle budget, and the guards a new
-parser must satisfy → R2 book the R1 verdict and plan T001 against that
-inventory → T001 the parser, its corpus and the read endpoint → T002 the
-rendering core, the binding CSS and the goldens → T003 sidebar, virtual
-scrolling, lazy languages and the L3 tab.
+R1 claim F033 in the roadmap ledger, merge F037's pull request at the Open PR
+Gate, cut the branch, reset this record carrying every finding record forward,
+gate F037 R27, and put the F033 source inventory on disk — what identifies a
+hunk today and where that id is produced, the viewer JSON's version field and
+its bump precedent, the hunk library `diff_repair` keeps to itself and the tests
+that guard it, the applicator's entry point and its atomicity contract, the
+write channel's command catalogue and the guards a new command must satisfy, the
+validation precedent that already requires a reason, the seam a rejection would
+ride into the next round's prompt, where a task's change state is recorded, and
+the three surfaces a partial state must render truthfully in → R2 book the R1
+verdict and plan T001 against that inventory → T001 stable ids, the stability
+property and the shared-helper consolidation → T002 the command, its validation
+and subset-apply atomicity → T003 rejection-to-repair injection and
+partial-state rendering.
 
 ## Findings
 
@@ -1722,3 +1727,7 @@ ONE READING IS RECORDED BECAUSE IT CONTRADICTS AN OPEN FINDING'S PREDICTION, and
 THE ROUND'S ONE SUBSTANTIVE DEVIATION IS CORRECT AND WAS CHECKED. The block ordered the package MOVED to the archive directory, and the worker reported the move as a no-op because `make_review_zip.sh` writes to `REVIEW_PACKAGE_DIR`, which already IS that directory — so the package was born at its archived path. The reviewer confirmed the file is really there rather than accepting the explanation, which is the only thing that distinguishes a correct no-op from an omitted step. The block's own order was the avoidable defect, not the worker's handling of it.
 
 RE-RUN BY THE REVIEWER, primary checkout, ONE pytest process at a time, each exit 0: `tests/orchestration/test_test_runner.py` with `tests/docs/` 347 passed — the docs-round gate this round's `docs/roadmap/**` path requires — and the canary `tests/cli/test_golden_path.py` 42 passed. THE STRUCTURE IS CLEAN: six single-parent commits with insertions 490, 416, 21, 12, 49 and 305, each under 500 and each equal to the corresponding cell of the handback's `## Commits` table; the path residue is EMPTY IN BOTH DIRECTIONS; `git diff --stat` restricted to `apps/`, to `packages/` and to `tests/` prints NOTHING in all three; the transport-marker sweep is 0 in all three real targets against the block blob as its non-zero control; the build-output glob sweep `R-0677` binds totals 0; `git ls-files .remedy-wt` is 0; and `gh pr list --state open` is `[]`.
+
+Gate: F037 R27 — the F037 closure round, and the entry F037's own record could not write. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of them itself at `1f0329f4` before that branch's pull request was merged; because R27 created that pull request it is a branch terminator under `docs/agents/planner_reviewer_prompt.md` §4 item 13, so this paragraph is written by the next feature's first round rather than by a round of F037. TRANSPORT IS PROVED FROM A VALUE THAT EXISTED BEFORE THE WORKER DID: sha256 `c61bfc2eeeff1a450cd1d4d8c1e1640cc48154a423ebfc4b2c28f83869b5bc7c` over 20360 bytes and 286 lines is equal across the scratch original `.remedy-wt/f037-r27-block.md`, which an earlier session's reviewer wrote, and the committed `.agent/authored/f037-r27.md` blob at `314159ab`, and at `ae1b8b2c` that path and `.agent/last_block.md` are ONE git blob, `2b0101abe6cc702d70815e7d31936dcfdb32414e`. That chain covers the original, the saved copy and the mirror, and it claims NOTHING about the bytes of any prompt — the limit finding R-0705 requires to be stated rather than implied. THE PLAN IS BYTE-EQUAL to slice PLANF037R27 re-extracted from the committed C0a blob, with the trailing-newline negative control `False`, at 42 lines carrying one `## Goal` and one `## Next Steps`. THE APPEND INTO THE RECORD RECONSTRUCTS EXACTLY UNDER BOTH READERS: `.agent/live_review.md` at `7d84971b` equals its `6a32be79` blob plus one newline plus GATER26; a byte flipped at offset 50, which lies inside the FIRST appended paragraph, makes that equality `False`; the last 6 blank-line units of the file equal the slice's 6 paragraphs in order; and the pre-round blob is a byte PREFIX, 1329032 bytes growing to 1334200. THE LEDGER MOVED BY EXACTLY ONE GATE AND BY NOTHING ELSE, re-measured by this reviewer at both commits: 292 registrations all distinct, 43 `Done:` lines and 11 `Landed:` lines unmoved, the open set 251 unmoved, `^Gate: F\d+ R\d+ — ` rising 96 to 97, `Gate: F037 R26` occurring exactly once, and `R-0714` carrying one registration line, no `Done:` line and no `Landed:` line — so it closes F037 OPEN as the documented Medium risk closure precondition 1 admits. THE FOUR CLOSURE PAIRS HOLD IN THE SHAPE THE BLOCK ASSIGNED THEM, measured against `6a32be79`: every FROM occurred exactly 1x before the edit; P1, P2 and P3 are REWRITES and read FROM 0x and TO 1x after; P4 is the APPEND, its TO containing its FROM, and reads FROM 1x and TO 1x after. THE STATUS LINE IS PRESENT AS A WHOLE LINE EXACTLY ONCE at `1f0329f4`, the accepted count rising 59 to 60 and the in-progress count falling 1 to 0. THE CLOSURE PRECONDITIONS WERE RE-RUN BY THIS REVIEWER AT REAL EXIT CODES: `python3 -m pytest tests/docs/ -q` exit 0 at `295 passed`, `python3 -m pytest -n auto -q` exit 0 at `18119 passed, 20 skipped` in 159.2 seconds with the `^FAILED ` pattern matching 0 lines, and `run_integrity_checks()` reporting `passed=True` and `fail_count=0` across `handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked` and `high_blockers_open`. THE ONE FIGURE R27 COULD NOT MEASURE, THIS REVIEWER MEASURED: with `README.md` reverted to its `6a32be79` content inside a disposable worktree at `1f0329f4`, `tests/docs/` reads exit 1 at `2 failed, 293 passed`, the two failures being `test_the_readme_accepted_count_equals_the_status_count` and `test_the_readme_tier_table_done_column_matches_the_ledger` — so the R-0154 pin that forces STATUS and README into one commit demonstrably bites, and R27's quoted control is confirmed rather than inherited. THE README CAPABILITY PARAGRAPH IS TRUE AND NOT MERELY APPLIED, which is the reading the block's own gates did not order: the server parses a unified diff in `packages/orchestration/diff_parser.py`, which emits intraline spans through `_normalise_intraline_spans`, and serves the result at two routes — the per-job `diff` handler in the dispatch table of `packages/orchestration/ui_server.py` and the per-task-run `/api/jobs/<job_id>/task-runs/<task_id>/diff` structural route beside it; the file sidebar is `apps/ui/src/components/diff/DiffFileSidebar.tsx`; `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` in `apps/ui/src/api/diffViewModel.ts` is 2000 and the list is NOT virtualized at or below it, which is what "past two thousand rows" says; and highlighting is modelled by `DIFF_SUPPORTED_LANGUAGES`, `diffLanguageForPath` and `loadDiffLanguageBundle` in that same module while no `.tsx` file under `apps/ui/src` references any of the three, which is what "deliberately not wired" says. STRUCTURE HELD: `git diff --name-only 6a32be79..1f0329f4` returns exactly the block's seven paths with both residues empty, the four restricted stats over `apps/`, `packages/`, `tests/` and `docs/roadmap/features/T5_F037.md` all print the empty string, all five commits are single-parent at 286, 211, 21, 12 and 271 insertions, the transport markers count 0 in each of the four target files against 3 in the control, `git ls-files .remedy-wt` prints 0 lines, and the remote tip equalled the local tip at `1f0329f4877d16c9c13dec3b313f6b12ed062f24`. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+
+WHAT THIS REVIEWER COULD NOT VERIFY IS STATED RATHER THAN IMPLIED, and it is the same limit the F032 R19 entry above records: the package filename `remedy-review-20260828-142213-READY_FOR_REVIEW.zip`, its SHA-256 and its archived path `/home/decodeux/Repos/remedy-history/zips` rest on R26's transcript and on R27's application of them, because that directory lies outside this session's allowed working directories, where `ls` and `sha256sum` are both refused; the STATUS line records all three on that basis and this sentence is their provenance. The `accepted HEAD` that line names, `5e557a1c2b4f7f9187f5388b18a3712d4a5c3d7e`, IS verifiable here and was verified: it is an ancestor of `1f0329f4` and is the commit `docs(roadmap): record F037's Built State on the feature file`. PULL REQUEST #218 WAS MERGED AT THE OPEN PR GATE AFTER THIS VERDICT AND BEFORE THIS PARAGRAPH WAS COMMITTED, which constraint 2 of the F033 R1 block fixes as that round's first action; its CI run `33172259776` was WATCHED TO COMPLETION rather than assumed, reporting conclusion `success` in 25m31s against a merge state of `CLEAN`, and the merge commit is this branch's point. F037 IS CLOSED.
