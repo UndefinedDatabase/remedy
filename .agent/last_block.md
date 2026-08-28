@@ -1,128 +1,145 @@
-# F037 R10 — book the R9 verdict, repair R-0720
+# F037 R11 — the huge-diff corpus shape and the recorded budget
 
 ## Goal
 
-Session 3 opens. R9's verdict is booked, the defect the reviewer measured in R9's
-own conformance guard is registered as `R-0720`, and the guard is repaired so the
-drift its own failure message names is actually caught.
+Book the R10 verdict, close the one shape T001's own task slicing names and the
+corpus never grew, and record the number Acceptance asks for.
 
-`R-0720` is not a wording complaint. The guard
-`tests/ui_contracts/test_diff_surface_css.py` tells a reader, in the message of
-`test_ligatures_are_off_in_the_diff_line_rule`, that "the `font` shorthand resets
-this property, so the declaration must follow it", and the stylesheet's own header
-comment says reordering the two "silently turns ligatures back on". Neither
-sentence is enforced. The reviewer measured it at `5cba4674`, inside a disposable
-worktree: moving `font-feature-settings: "liga" 0` ABOVE the `font` shorthand in
-the `.diffLine` rule, changing nothing else, leaves the file at exit 0 with
-`7 passed`. That is a gate over production code shown to be blind, so it earns an
-id under operator amendment amend0827 rule 2, and the product effect is the one
-`assets_spec.md` section 2 and amendment A4 forbid: a `!=` or a `->` in a diff
-rendering as one composed glyph.
+`docs/roadmap/features/T5_F037.md` slices T001 as "the parser (unified → JSON) +
+corpus tests (rename, binary, mode change, empty file, huge file chunking)". Every
+shape in that list has a test except the last. Acceptance asks for a "10k-line
+fixture within the perf budget (recorded)" and no fixture in the repository is
+larger than a few dozen lines. This round closes the corpus gap and records the
+measurement; it changes no parser behaviour.
+
+It also registers, without repairing, what the reviewer measured while sizing the
+round: nothing in F037 bounds the work a single diff can cost. That is `R-0721`,
+and R12 carries the repair, because a ceiling is a behaviour change and belongs in
+a round whose red-proofs are about it rather than beside a corpus addition.
 
 ## Base
 
-Base commit `c777fe83818ab7d4aa7c8150b2f387e562450483`, branch
-`feature/f037-rendered-diff-viewer`. This is the SHA of the R9 handback this round
+Base commit `dc938d0e2faa11c84fc1da459e967cc0bc655c82`, branch
+`feature/f037-rendered-diff-viewer`. This is the SHA of the R10 handback this round
 starts from; every range reading below is against it.
 
-## Bundle — six commits
+## Bundle — five commits
 
 | Commit | Subject | Paths |
 |--------|---------|-------|
-| C0a | docs(agent): save the F037 R10 step block | `.agent/authored/f037-r10.md` |
-| C0b | docs(agent): mirror the F037 R10 block into last_block | `.agent/last_block.md` |
-| C1 | docs(agent): point the plan at the F037 R10 repair round | `.agent/plan.md` |
-| C2 | docs(agent): book the R9 gate verdict and register R-0720 | `.agent/live_review.md` |
-| C3 | test(ui-contracts): catch a font shorthand that resets the ligature setting | `tests/ui_contracts/test_diff_surface_css.py` |
-| C4 | docs(agent): resolve R-0720 | `.agent/live_review.md` |
-| C5 | docs(agent): hand back F037 R10 | `.agent/handoff.md` |
+| C0a | docs(agent): save the F037 R11 step block | `.agent/authored/f037-r11.md` |
+| C0b | docs(agent): mirror the F037 R11 block into last_block | `.agent/last_block.md` |
+| C1 | docs(agent): point the plan at the F037 R11 corpus round | `.agent/plan.md` |
+| C2 | docs(agent): book the R10 gate verdict and register R-0721 | `.agent/live_review.md` |
+| C3 | test(orchestration): add the huge-diff corpus shape and record its budget | `tests/orchestration/test_diff_parser.py` |
+| C4 | docs(agent): hand back F037 R11 | `.agent/handoff.md` |
 
 ## Exact change set
 
-Nothing outside these seven paths is written, created or deleted:
+Nothing outside these six paths is written, created or deleted:
 
-    .agent/authored/f037-r10.md
+    .agent/authored/f037-r11.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    tests/ui_contracts/test_diff_surface_css.py
+    tests/orchestration/test_diff_parser.py
     .agent/handoff.md
 
-Plus the push of `feature/f037-rendered-diff-viewer` after C5, which is ordered
+Plus the push of `feature/f037-rendered-diff-viewer` after C4, which is ordered
 explicitly here and sits outside every gate below.
 
 ## Constraints
 
-1. A slice between its marker lines is applied BYTE FOR BYTE and is never
-   edited, retyped, reflowed or trimmed — not to make a numeral in this block
-   come true, and not to satisfy a cap. A slice's text already carries exactly
-   one trailing newline. If a slice and a gate in this block disagree, apply the
-   slice, report the measurement, and declare the contradiction under
-   Deviations. A worker that edits a slice to make a number green destroys the
-   only evidence that the file on disk is the reviewer's text.
-2. Production code is DESCRIBED by the SPEC below, never sliced. The worker
-   writes that code itself, in the idiom of the file it is editing, and reads the
-   whole file before touching it.
-3. No `.ts`, `.tsx`, `.jsx` or React component is written this round. The
-   frontend test runner is refused in this environment and code neither role can
-   execute must not be certified.
-4. `docs/`, `packages/`, `apps/` and `docs/roadmap/` are NOT touched. The
-   stylesheet `apps/ui/src/components/diff/DiffView.module.css` is READ by C3 and
-   is not modified: the sheet on disk is already correct, and the defect is in the
-   guard.
-5. No existing assertion in `tests/ui_contracts/test_diff_surface_css.py` is
-   weakened, deleted or renamed. C3 ADDS; the seven tests already there keep
-   their names and their bodies.
+1. A slice between its marker lines is applied BYTE FOR BYTE and is never edited,
+   retyped, reflowed or trimmed — not to make a numeral in this block come true,
+   and not to satisfy a cap. A slice's text already carries exactly one trailing
+   newline. If a slice and a gate disagree, apply the slice, report the
+   measurement, and declare the contradiction under Deviations.
+2. Production code is DESCRIBED by the SPEC below, never sliced. The worker writes
+   that code itself, in the idiom of the file it is editing, and reads the whole
+   file before touching it.
+3. `packages/` IS NOT TOUCHED THIS ROUND. `packages/orchestration/diff_parser.py`
+   is READ and exercised; not one byte of it changes. This round pins the parser's
+   CURRENT behaviour. R12 changes it.
+4. `docs/`, `docs/roadmap/`, `apps/` are NOT touched. No `.ts`, `.tsx` or React
+   code is written: the frontend test runner is refused in this environment and
+   code neither role can execute must not be certified.
+5. No existing test, fixture constant, helper or import in
+   `tests/orchestration/test_diff_parser.py` is weakened, deleted, renamed or
+   reordered. C3 ADDS.
 6. `.agent/live_review.md` is append-only. Nothing already in it is edited,
-   renumbered or deleted, and no id other than `R-0720` is registered or
-   resolved.
+   renumbered or deleted, and no id other than `R-0721` is registered. NOTHING is
+   resolved this round: `R-0721` is registered OPEN and stays open.
 7. No PR is created and nothing is merged. The Open PR Gate is READ and reported.
-8. Every destructive check — every mutation — runs inside a disposable
-   `git worktree` under `.remedy-wt/`, never in the primary checkout, and the
-   worktree is removed and pruned afterwards.
+8. Every destructive check runs inside a disposable `git worktree` under
+   `.remedy-wt/`, never in the primary checkout, and the worktree is removed and
+   pruned afterwards.
+9. NO TEST ADDED THIS ROUND ASSERTS A TIMING FIGURE AS AN EQUALITY OR A TIGHT
+   BOUND. The only wall-clock assertion permitted is the single generous ceiling
+   SPEC S5 describes, whose purpose is to catch a change in COMPLEXITY CLASS, not
+   to police a machine. A test that would go red on a runner three times slower
+   than this one is a defect, not a budget.
 
-## SPEC — C3, the ordering assertion
+## SPEC — C3, the huge-diff corpus shape
 
-Read the whole of `tests/ui_contracts/test_diff_surface_css.py` first. It is 131
-lines at the base and defines one class, `TestDiffSurfaceStylesheet`, holding
-seven tests, above which sit four module-level helpers: `_strip_comments`,
-`_rule_body`, `_declaration` and `_normalise`.
+Read the whole of `tests/orchestration/test_diff_parser.py` first. At the base it
+is 763 lines: a module docstring, `from __future__` , two stdlib imports, an
+import block from `packages.orchestration.diff_parser`, a run of inline fixture
+constants each introduced by a `#:` comment naming the shape it covers, small
+module-level helpers, and module-level test FUNCTIONS — there is no test class in
+this file. Match that idiom exactly.
 
-**S1.** Add ONE module-level helper, after the existing helpers and before the
-class, named `_declaration_offset`. It takes a rule body and a property name and
-returns the character offset at which that property's declaration begins, or `-1`
-when the property is absent. It finds the property with the same left-boundary
-guard the existing `_declaration` uses — a negative lookbehind for `[-\w]` — so
-that a search for `font` does not match inside `font-size` or
-`font-feature-settings`. It carries a one-line docstring in the file's own voice.
+Add a new section at the END of the file, introduced by the same
+`# ---- #` banner comment style the file already uses between sections, titled for
+the huge shape.
 
-**S2.** Add ONE further module-level helper beside it, named
-`_font_shorthand_after`. It takes a rule body and a character offset and returns
-`True` when a `font` SHORTHAND declaration begins after that offset in that body.
-It uses the same left-boundary guard. Its docstring states the WHY in one or two
-sentences: the `font` shorthand resets `font-feature-settings` to its initial
-value, so a `liga 0` declaration sitting ABOVE a shorthand is dead and the rule
-composes ligatures anyway.
+**S1 — the builders, not inline constants.** The file's docstring says every
+fixture carries its diff text INLINE. A ten-thousand-line fixture cannot, and that
+exception is DOCUMENTED rather than left for a reader to notice: add two
+module-level builder functions whose docstrings say in one sentence why this shape
+is generated where every other shape is literal. The first builds a single-file
+diff of N changed body lines as alternating `-`/`+` pairs under one hunk header,
+with a `diff --git` header pair. The second builds an N-file diff, each file with
+one small hunk, so the many-files dimension is covered as well as the many-lines
+one. Both take their size as a parameter and return diff TEXT.
 
-**S3.** Add ONE test method to `TestDiffSurfaceStylesheet`, after the two existing
-ligature tests, named
-`test_no_font_shorthand_follows_the_ligature_declaration`. For EACH of the two
-selectors `.diffLine` and `.hunkHead` it takes the normalised rule body, asserts
-that a `font-feature-settings` declaration is present at all, and asserts that no
-`font` shorthand follows it. Both assertion messages NAME THE SELECTOR they are
-about, so a failure says which rule drifted rather than only that one did.
+**S2 — the ten-thousand-line shape parses completely.** A test asserting the
+STRUCTURE, with no timing in it: the fixture parses to exactly one file entry,
+whose hunks hold exactly as many body lines as were generated, whose `stats`
+`added` and `deleted` each equal a recount of that file's own parsed line kinds,
+and whose hunk ids are all distinct. Assert the PROPERTY against the generated
+size, never a transcribed literal — the file's existing
+`test_every_file_stats_equal_a_recount_of_its_own_parsed_lines` is the model.
 
-**S4.** The second message states the consequence in the file's own register, not
-merely the rule: ligatures return to the diff surface, so a `!=` or a `->` renders
-as one composed glyph instead of the characters really in the file, and it cites
-`assets_spec.md` section 2 the way the two existing ligature messages do.
+**S3 — line numbering survives the whole file.** The same fixture, asserting that
+the old-side line numbers of the `del` lines are strictly increasing across the
+entire parsed file and likewise the new-side numbers of the `add` lines, and that
+the LAST line of the file carries the line number its position implies. This is
+the assertion that would catch a counter that drifts only after thousands of
+lines — the shapes already in the corpus are far too short to reach it.
 
-**S5.** Nothing else changes. The module docstring, `ROOT`, the five binding
-constants, the four existing helpers and the seven existing tests are untouched.
+**S4 — the many-files shape.** The second builder at a size in the hundreds: the
+parsed view holds exactly that many file entries, their paths are all distinct and
+in input order, and no entry is a phantom with zero hunks. The doubled-header
+collapse this parser performs is what makes this worth asserting at scale.
+
+**S5 — the recorded budget, as a complexity guard.** One test that parses the
+larger of the two sizes and asserts the elapsed wall-clock time is under a
+GENEROUS absolute ceiling. Its docstring RECORDS, as prose, the figure measured
+when the test was written, and names the machine class it was measured on, and
+states plainly that the ceiling is not that figure: it is set roughly an order of
+magnitude above it so that a slower runner passes while a change from linear to
+quadratic cost fails. Say in the docstring what the quadratic figure would be, so
+the next reader can see the ceiling separates the two cases rather than having to
+trust that it does. Use `time.perf_counter`; add `time` to the stdlib imports in
+the existing import block, in alphabetical order.
+
+**S6 — nothing else changes.** The module docstring, the existing imports, every
+fixture constant, every helper and all twenty-eight existing tests are untouched.
 
 ## Slices
 
-<<<SLICE PLANF037R10
+<<<SLICE PLANF037R11
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
@@ -138,123 +155,125 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A4.
 
 ## Current Step
-R10 opens session 3. It books the R9 verdict and repairs `R-0720`, a blindness
-the reviewer measured in R9's own conformance guard: the guard's failure message
-names declaration ORDER as what keeps ligatures off, and the guard never checks
-it, so moving `font-feature-settings` above the `font` shorthand leaves the suite
-green while the diff surface composes glyphs.
+R11 closes the one shape T001's task slicing names and the corpus never grew —
+the huge diff — and records the perf number Acceptance asks for. It changes no
+parser behaviour. It also registers `R-0721`: nothing in F037 bounds the work one
+diff can cost, and the contract's own `truncated` field is only ever relayed from
+an upstream sentinel, never set by this feature.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R9 verdict and R-0720 | ordered | record first, before the repair |
-| C3 the ordering assertion | ordered | must go red on the reorder alone |
-| C4 the resolution | ordered | written after the repair is proved |
-| C5 the handback | ordered | |
+| C2 the R10 verdict and R-0721 | ordered | record first; nothing is resolved |
+| C3 the huge-diff corpus shape | ordered | structure, numbering, scale, budget |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. R11 closes T001's last named corpus shape, the huge diff. The task slicing
-   lists "huge file chunking" and no test in the corpus names one; the parser
-   carries no size bound of its own, since `truncated` is only relayed from an
-   upstream sentinel.
-2. R12 records the same budget where the JSON is actually serialised, at the
-   read endpoint.
+1. R12 repairs `R-0721`: a line ceiling the parser enforces itself, setting the
+   contract's `truncated` flag when it bites, with the ceiling above the 10k
+   fixture Acceptance names so that fixture still renders in full.
+2. R13 carries the same bound at the endpoint, where the artifact is read whole
+   into memory before the parser ever sees it.
 3. T002's rendering core and all of T003 stay BLOCKED. `npx vitest`, the `npm`
-   script and the direct binary were refused again while planning R10, for the
-   reviewer, as they were for both roles at R8.
+   script and the direct binary were each refused again while planning R10, for
+   the reviewer, as they were for both roles at R8.
 
 ## Risks
+- A wall-clock assertion is the flakiest thing a suite can hold. R11's ceiling is
+  set an order of magnitude above the measured figure so it separates linear from
+  quadratic cost and nothing finer; tightening it later would buy noise.
 - The binding CSS defines no intraline treatment while Acceptance requires
   intraline emphasis. Inventing a colour early would breach the feature file's
   own banner, so it stays a question for the round that renders spans.
-- A parse budget is a number from one host. R11 must record it as a measurement
-  naming its machine, never as a portable ceiling, or the suite turns flaky on a
-  slower runner.
-<<<END PLANF037R10
+<<<END PLANF037R11
 
-<<<SLICE GATER9
-Gate: F037 R9 — the diff surface round, T002 part one, and the last round of session 2. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of them itself at `c777fe83` before writing this line. TRANSPORT REPRODUCES: the committed `.agent/authored/f037-r9.md` and `.agent/last_block.md` are ONE git blob `131e48d9907ca9b2e9e764d8f0c873799c04ed8a`, 25955 bytes and 383 lines at sha256 `c7face0455a87e074563b640f8837c9cc61c617e958605a4f4bc914ecf520d3a`; that chain covers the saved copy and its mirror and claims nothing about any prompt's bytes, which the handback states plainly rather than overclaiming. EXTRACTION REPRODUCES THE BLOCK'S ARITHMETIC EXACTLY: 4 slices at 49, 1, 9 and 36 content lines, CONTENT 95 against TOTAL 383, so PROSE is 288 and both caps hold. THE PLAN IS BYTE-EQUAL to PLANF037R9 with the trailing-newline negative control `False`, at 49 lines with one `## Goal` and one `## Next Steps`. ALL THREE APPENDS ARE PROVED BY BYTE IDENTITY, `result == before + b"\n" + slice`, each with its negative control `False`, and every base size the block named was measured rather than assumed: `.agent/live_review.md` 1173234, `.agent/prose_slips.md` 8992 and `.agent/decisions.md` 657352, all three exact. THE RECORD MOVED AS ORDERED AND ONLY AS ORDERED: `^- R-\d+ — ` unmoved at 280, `^Done: R-\d+ — ` unmoved at 28, `^Landed: R-` unmoved at 1, `^Gate: F\d+ R\d+ — ` at 79, `^## DECISION ` at 170 with `F037 D4` occurring exactly once, no id minted, the open set unmoved at 252, `R-0719` still in it and every id distinct. THE SUITES AND THE LINT ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/ui_contracts/ -q` exit 0 at `587 passed, 4 skipped`, `python3 -m ruff check tests/ui_contracts/test_diff_surface_css.py` exit 0 at `All checks passed!`, and the canary `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0 at `42 passed`, matching the base figure. ALL THREE RED-PROOFS REPRODUCE EXACTLY AS REPORTED, run by the reviewer in a disposable worktree at the C4 tree with `__pycache__` purged and `python3 -B` used before every run and the sheet restored and re-verified between mutations: unmutated control exit 0 at `7 passed`; the track list narrowed to two columns exit 1; the ligature declaration deleted from the `.diffLine` line alone exit 1; and the `.ln` colour token renamed to one that is not defined exit 1. THE SECOND OF THOSE IS THE ONE THAT MATTERS AND IT LANDS: exactly ONE of the two ligature tests fired while the `.hunkHead` test stayed green, so the assertion is genuinely PER RULE and not a count over the file that the surviving declaration could have masked. THE ROUND'S ONE DECLARED DEVIATION IS THE REVIEWER'S AND IT IS CORRECTLY HANDLED: the PLANF037R9 slice measures 49 lines where the block predicted 48 twice, the worker applied the slice byte for byte and reported the measurement instead of trimming a slice constraint 1 forbids it to edit, and the LOAD-BEARING clause — `.agent/plan.md` strictly under 50 — is met, so the R8 defect is genuinely repaired from 50 to 49. That is a reviewer-prose inaccuracy with no product effect, it spends no id under operator amendment amend0827 rule 2, and it earns no correction round under the same rule's fourth bullet. THE HANDBACK'S FOUR OTHER DECLARATIONS ARE ALL HONEST AND THE REVIEWER MEASURED THE LOAD-BEARING ONE: deviation 3 states in as many words that an unimported CSS module is INERT and ships in no bundle, rather than letting a committed file read as a rendered feature, and G8's reading of 0 imports across `apps/ui/src` is reproduced; deviation 4 states the guard's reach honestly by naming six properties it does NOT pin, and the reviewer CONFIRMED that claim by mutation rather than accepting it — `.ln`'s `text-align` and `padding-right` and `.hunkHead`'s `font-size` and `letter-spacing` were each drifted in the worktree and each left the file at exit 0 with `7 passed`, exactly as declared. ONE DEFECT THE ROUND HAD NO WAY TO SEE IS REGISTERED BELOW AS `R-0720`, found by the reviewer while probing that same declared reach: the guard is blind to declaration ORDER, which its own failure message names as the property that keeps ligatures off. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END GATER9
+<<<SLICE GATER10
+Gate: F037 R10 — the repair round that opened session 3, and the first round of this feature whose transport proof begins at a value the reviewer held BEFORE delegating. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of them itself at `dc938d0e`. TRANSPORT IS PROVED END TO END, WHICH IS STRONGER THAN THE CHAIN R9 COULD OFFER: the block was written to the reviewer's gitignored scratch at `.remedy-wt/f037-r10-block.md` before the worker existed, measured there at sha256 `fd579581a57a690f379763b89d3404d51d7f8afe70ab44fada1ec1c8c9080335` over 25073 bytes and 301 lines, and the committed `.agent/authored/f037-r10.md` is byte-identical to that scratch original, so the FIRST link is measured rather than merely disclaimed; the saved copy and `.agent/last_block.md` are ONE git blob `12c20a91f4ea4e5477c1eba4a56725c2a5a22191`. EXTRACTION REPRODUCES THE BLOCK'S ARITHMETIC EXACTLY: 4 slices at 48, 1, 1 and 1 content lines, CONTENT 51 against TOTAL 301, PROSE 250, both caps holding. THE PLAN IS BYTE-EQUAL to PLANF037R10 with the trailing-newline negative control `False`, at 48 lines with one `## Goal` and one `## Next Steps` — and the block deliberately named no predicted line count for that slice, which is why the off-by-one that cost R8 a defect and R9 a declared deviation could not recur. ALL THREE APPENDS ARE PROVED BY BYTE IDENTITY re-read from disk, `result == before + b"\n" + slice`, applied in order GATER9 then FIND0720 at C2 and DONE0720 at C4, each negative control `False`, the base of `.agent/live_review.md` measured at 1176292 bytes exactly as the block named it, and the pre-round blob is a byte PREFIX of the result so nothing in the append-only record was rewritten. THE RECORD MOVED AS ORDERED AND ONLY AS ORDERED: `^- R-\d+ — ` 280 to 281, `^Done: R-\d+ — ` 28 to 29, `^Landed: R-` unmoved at 1, `^Gate: F\d+ R\d+ — ` 79 to 80, the single id added being `R-0720`, exactly `R-0720` resolved, every id distinct and the open set unmoved at 252. THE SUITES AND THE LINT ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/ui_contracts/ -q` exit 0 at `588 passed, 4 skipped`, the delta of exactly one being C3's new test; `python3 -m ruff check tests/ui_contracts/test_diff_surface_css.py` exit 0 at `All checks passed!`; and the canary `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0 at `42 passed`, matching the base figure. THE RED-PROOF REPRODUCES AND IT IS GENUINELY DISCRIMINATING, which is the whole point of this round: in a disposable worktree at the C3 tree with `__pycache__` purged and `python3 -B` used, the unmutated control is exit 0 at `8 passed`; the mutation is a PURE REORDER of the `.diffLine` rule — the reviewer verified the declaration MULTISET is identical before and after and only the order differs — and it comes back exit 1 at `1 failed, 7 passed` failing exactly `test_no_font_shorthand_follows_the_ligature_declaration`; and THE SAME REORDER RUN AGAINST THE GUARD AS IT STOOD AT THE BASE `c777fe83` comes back exit 0 at `7 passed`. That third reading is the one that matters: it proves the defect was real rather than asserted, and it proves the NEW assertion is what fires rather than an existing substring assertion the reorder happens to disturb. THE CODE MATCHES THE SPEC WITHOUT DRIFT: two module-level helpers with the same left-boundary guard the file's existing `_declaration` uses, one test covering BOTH `.diffLine` and `.hunkHead` because a shorthand could be introduced into either, and each assertion message naming the selector it is about; not one existing assertion was weakened, renamed or reordered, and the stylesheet itself is byte-identical, which the restricted `apps/` diff proves rather than claims. THE FIVE DECLARED DEVIATIONS ARE ALL HONEST AND NONE IS A DEFECT: a second `git worktree remove` returned exit 128 because the first had already succeeded, and the worker reported the failing call rather than only the good one; the base-guard negative control reused the one worktree via a detach-and-remutate rather than creating a second, which leaves constraint 8 intact because no mutation ever touched the primary checkout; the `tests/ui_contracts/` figure moved 587 to 588, for which the block predicted nothing; and the stated assumption about the shorthand's right boundary is correct and was verified behaviourally, since `.hunkHead` carries both `font-size` and `font-feature-settings` and stayed green throughout. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END GATER10
 
-<<<SLICE FIND0720
-- R-0720 — Medium, THE LIGATURE GUARD IS BLIND TO THE ONE DRIFT ITS OWN FAILURE MESSAGE NAMES. Raised by the reviewer at the F037 R9 gate while probing the reach that round declared for itself; no round was ordered to look for it. `tests/ui_contracts/test_diff_surface_css.py` asserts that `.diffLine` and `.hunkHead` each CONTAIN the declaration `font-feature-settings: "liga" 0`, by substring over the normalised rule body, and the message of the `.diffLine` test closes with "Note the `font` shorthand resets this property, so the declaration must follow it." The stylesheet's own header comment says the same thing harder: `font-feature-settings` is declared after the `font` shorthand "because the shorthand resets it; reordering the two silently turns ligatures back on." NEITHER SENTENCE IS ENFORCED, AND THE REVIEWER MEASURED THAT RATHER THAN INFERRING IT: inside a disposable worktree at the C4 tree `5cba4674`, with `__pycache__` purged and `python3 -B` used, the `.diffLine` rule was rewritten to place `font-feature-settings: "liga" 0` BEFORE the `font` shorthand and nothing else was changed — every declaration, every value and every byte of the other four rules identical — and `python3 -B -m pytest tests/ui_contracts/test_diff_surface_css.py -q` came back REAL EXIT CODE 0 at `7 passed in 0.17s`. A substring test cannot see order, and order is the whole property here. THE PRODUCT EFFECT IS THE ONE THE AUTHORITY FORBIDS: per the CSS Fonts specification the `font` shorthand resets `font-feature-settings` to `normal`, so the reordered rule composes ligatures, and a `!=` or a `->` in a diff would draw as one glyph where the source holds two characters — a reader judging a change against type that does not match the bytes. `docs/ui/design_reference/assets_spec.md:92-95` requires ligatures OFF on diff surfaces and amendment A4 of `docs/roadmap/features/T5_F037.md` names that file as one of the three binding authorities for this surface. MEDIUM AND NOT HIGH because the stylesheet on disk is CORRECT today — the reviewer confirmed the shipped order is shorthand first, ligature declaration second, in both rules — so nothing renders wrong now and no suite is red; the defect is that the guard would not stop the regression it exists to stop. NOT LOW because this is the only guard over that stylesheet, the frontend test runner is refused in this environment so no second reader exists, and a reordering is exactly the kind of edit a later formatter, minifier or well-meaning tidy-up performs without a human looking at it. THIS IS NOT `R-0719`, which is a pointer in the feature file to a design-reference section that does not exist, and it is not the six unpinned properties R9 declared under its own deviation 4: those are absences the round STATED, and the reviewer reproduced all four it could mutate, whereas this one is a property the file's own text claims to hold and does not. COUNTER-MEASURE: the guard asserts the ORDER, for both rules, by offset rather than by substring — no `font` shorthand may begin after the `font-feature-settings` declaration in the same rule body — and the assertion is red-proved against the pure reorder above, which leaves the existing substring assertions satisfied and therefore fires only on the new one. F037 R10 carries the repair. OPEN.
-<<<END FIND0720
-
-<<<SLICE DONE0720
-Done: R-0720 — RESOLVED at F037 R10 by the round's C3. `tests/ui_contracts/test_diff_surface_css.py` now carries `test_no_font_shorthand_follows_the_ligature_declaration`, which reads the normalised body of `.diffLine` and of `.hunkHead`, locates each rule's `font-feature-settings` declaration by OFFSET rather than by substring, and refuses any `font` shorthand beginning after it — the property the two existing ligature messages and the stylesheet's own header comment both assert and neither enforced. Both selectors are covered because a shorthand could be introduced into either, and each assertion message names the selector it is about so a failure says which rule drifted. The repair is proved in both colours, not asserted: the pure reorder that returned exit 0 at `7 passed` when the defect was registered now returns a real exit 1, while the unmutated tree is green — so the new assertion is what fires, and the existing substring assertions, which the reorder leaves satisfied, are not doing the work. The guard's reach is unchanged in every other respect: the six properties F037 R9 declared unpinned under its deviation 4 are still unpinned, and this resolution claims nothing about them.
-<<<END DONE0720
+<<<SLICE FIND0721
+- R-0721 — Medium, NOTHING IN F037 BOUNDS THE WORK ONE DIFF CAN COST, AND THE CONTRACT FIELD THAT EXISTS TO SAY SO IS NEVER SET BY THIS FEATURE. Raised by the reviewer at the F037 R10 gate while sizing the huge-diff corpus round; no round was ordered to look for it. THE CONTRACT ALREADY HAS THE SEAM: `parse_unified_diff_to_view` returns a top-level `truncated` flag and `build_diff_view` copies it onto the envelope, but the ONLY thing that ever sets it True is the upstream `[DIFF TRUNCATED]` sentinel that some other producer wrote into the artifact first. F037 itself never truncates anything, so `truncated` is a relay, not a bound. NEITHER HALF OF THE FEATURE BOUNDS ANYTHING ELSE EITHER: `packages/orchestration/diff_view_source.py` reads the artifact with `artifact.read_text(encoding="utf-8")`, whole, with no size check before or after, and `packages/orchestration/diff_parser.py` splits that string and appends one dict per body line with no ceiling on the count. The endpoint then serialises the whole structure into a single response. MEASURED BY THE REVIEWER at `dc938d0e` on this host, parsing generated single-file diffs: 10004 input lines and 0.42 MB of text produce 10001 parsed line objects, 1.28 MB of JSON and a 5.1 MB peak allocation in 0.363 s; 20004 input lines produce 2.57 MB of JSON and a 10.3 MB peak in 0.740 s. COST IS LINEAR AND THAT IS THE GOOD NEWS — the reviewer measured 1k, 2k, 5k, 10k and 20k lines and the per-line cost is flat, and a 400-file shape scales the same way, so there is no quadratic defect hiding here and the JSON is a steady ~3.1x the input bytes. THE DEFECT IS THE ABSENCE OF A CEILING, NOT THE SLOPE: a linear function with no bound is still unbounded, and `workspace.diff` is a job's ENTIRE workspace diff, a size no code in this repository constrains. A job that rewrote a lockfile or vendored a dependency would have the server read the whole artifact into memory, build one dict per line, and serialise several tens of megabytes into one HTTP response, on a request any viewer makes automatically when the panel opens. MEDIUM AND NOT HIGH because nothing is wrong on disk today, no suite is red, no artifact in the repository is known to be that large, and the failure mode is degradation rather than incorrectness. NOT LOW because Acceptance names a recorded perf budget and there is nothing to record against, because the field that would express the bound already exists and is inert, and because the client half that would otherwise defend itself — virtual scrolling beyond 2k lines, per T003 — cannot be built in this environment while the frontend test runner is refused, so the server is the only place a bound can currently live. THIS IS NOT `R-0719`, a feature-file pointer to a design-reference section that does not exist, and not `R-0720`, a guard blind to declaration order: this is a missing bound in shipped production code. COUNTER-MEASURE: the parser enforces a ceiling on parsed body lines ITSELF and sets `truncated` True when it bites, with the ceiling set ABOVE the 10k-line fixture Acceptance names so that fixture still renders in full; the endpoint half follows, since the artifact is read whole before the parser ever sees it. F037 R11 records the measurements and adds the corpus shape and changes no behaviour; R12 carries the repair, which is a behaviour change and earns red-proofs of its own. OPEN.
+<<<END FIND0721
 
 ## Gates — every command is RUN and its REAL exit code recorded
 
 Eight gates. "Green" as a word is a finding; a gate that was not executed is
 reported as not executed.
 
-**G1 hygiene.** Read `.agent/STOP` from disk BEFORE C0a and again before C5, and
-report the literal reading both times — the sentinel can appear mid-session and is
-otherwise invisible. Report `git rev-parse HEAD` before C0a and state whether it
-equals the base above, and `git branch --show-current`. Report the LINE COUNT of
-`git status --porcelain` after each of C0a, C0b, C1, C2, C3 and C4.
+**G1 hygiene.** Read `.agent/STOP` from disk BEFORE C0a and again before C4, and
+report the literal reading both times. Report `git rev-parse HEAD` before C0a and
+state whether it equals the base above, and `git branch --show-current`. Report the
+LINE COUNT of `git status --porcelain` after each of C0a, C0b, C1, C2 and C3.
 
 **G2 transport, ONE digest comparison.** After C0b, report `git rev-parse` of both
-`HEAD:.agent/authored/f037-r10.md` and `HEAD:.agent/last_block.md` and state
+`HEAD:.agent/authored/f037-r11.md` and `HEAD:.agent/last_block.md` and state
 whether they are the same blob hash. Report the sha256, byte count and line count
-of the working copy of `.agent/authored/f037-r10.md`. State plainly what the chain
-does and does not cover: it covers the saved copy and its mirror, and it asserts
-nothing about the bytes of any prompt.
+of the working copy of `.agent/authored/f037-r11.md`. State plainly what the chain
+covers: the saved copy and its mirror.
 
 **G3 extraction and caps.** Extract every slice from the COMMITTED C0a blob by its
-marker lines, in Python, and report each slice's line count, the CONTENT total,
-the TOTAL line count of the blob and PROSE = TOTAL − CONTENT. State whether TOTAL
-is at most 490 and PROSE at most 400. Do not carry any figure from this block's
-prose into that table: measure the blob.
+marker lines, in Python, and report each slice's line count, the CONTENT total, the
+TOTAL line count of the blob and PROSE = TOTAL − CONTENT. State whether TOTAL is at
+most 490 and PROSE at most 400. Measure the blob; carry no figure from this block's
+prose into that table.
 
 **G4 the plan at C1.** Report whether `.agent/plan.md` is byte-equal to the
-PLANF037R10 slice, newline included, and report a NEGATIVE CONTROL comparing it
-against the same slice minus its trailing newline, which must read False. Report
-the count of lines exactly matching `## Goal` and of lines exactly matching
-`## Next Steps`. Report `wc -l` and state whether it is STRICTLY under 50. The
-binding clause is the strict inequality; if the measured count and any figure
-elsewhere in this block disagree, the measurement wins and the disagreement is
+PLANF037R11 slice, newline included, and a NEGATIVE CONTROL against the same slice
+minus its trailing newline, which must read False. Report the count of lines
+exactly matching `## Goal` and of lines exactly matching `## Next Steps`. Report
+`wc -l` and state whether it is STRICTLY under 50. The binding clause is the strict
+inequality; the measurement wins over any figure elsewhere and disagreement is
 declared.
 
-**G5 the record at C2 and C4.** For each of the three appends — GATER9 and
-FIND0720 at C2, DONE0720 at C4 — report the file's byte size before and after,
-and TWO independent readers. Reader (a) is the BYTE IDENTITY
-`result == before + b"\n" + slice`, re-read from disk. Reader (b) counts the N
-blank-line-separated units in the slice and compares the LAST N units of the file
-against the slice's N units IN ORDER. Report a NEGATIVE CONTROL for each append
-that flips ONE byte INSIDE the first appended paragraph; BOTH readers must come
-back False. `.agent/live_review.md` measures 1176292 bytes at the base — report
-the measured figure beside that one and declare any disagreement.
-Then report these counts over `.agent/live_review.md` after C4, line-anchored:
-`^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: F\d+ R\d+ — `, the size
-of the open set, whether every id is distinct, and whether `R-0720` occurs exactly
-once as a registration and exactly once as a resolution.
+**G5 the record at C2.** For each of the two appends — GATER10 then FIND0721 —
+report the file's byte size before and after and TWO independent readers. Reader
+(a) is the BYTE IDENTITY `result == before + b"\n" + slice`, re-read from disk.
+Reader (b) counts the N blank-line-separated units in the slice and compares the
+LAST N units of the file against the slice's N units IN ORDER. Report a NEGATIVE
+CONTROL per append flipping ONE byte INSIDE the first appended paragraph; BOTH
+readers must come back False. Report whether the pre-round blob of
+`.agent/live_review.md` is a byte PREFIX of the result.
+Then report these counts over `.agent/live_review.md` after C2, line-anchored:
+`^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: F\d+ R\d+ — `, the size of
+the open set, whether every id is distinct, whether `R-0721` occurs exactly once as
+a registration, and whether it occurs ZERO times as a resolution — constraint 6
+orders it left open.
 
-**G6 the red-proof of the ordering assertion.** All of this runs inside a
-disposable `git worktree` under `.remedy-wt/`, at the C3 tree, never in the
-primary checkout; purge `__pycache__` and use `python3 -B` before EVERY run;
-restore the mutated file between runs and verify the restore is byte-identical.
+**G6 the corpus round's red-proofs.** All of this runs inside a disposable
+`git worktree` under `.remedy-wt/`, at the C3 tree, never in the primary checkout;
+purge `__pycache__` and use `python3 -B` before EVERY run; restore the mutated file
+between runs and verify each restore is byte-identical.
 
 Report the UNMUTATED CONTROL first: `python3 -B -m pytest
-tests/ui_contracts/test_diff_surface_css.py -q`, its REAL exit code and its
-verbatim summary line.
+tests/orchestration/test_diff_parser.py -q`, its REAL exit code and verbatim
+summary line.
 
-Then the MUTATION, which is a PURE REORDER of the `.diffLine` rule in
-`apps/ui/src/components/diff/DiffView.module.css`: the `font-feature-settings:
-"liga" 0` declaration is moved to sit BEFORE the `font` shorthand within that same
-rule, with every declaration, every value and every other rule byte-identical.
-Report the two rule texts before and after so the reorder is visible, and report
-the REAL exit code and the verbatim summary line. REPORT which node ids fail, as
-measured — do not treat any predicted name or count as the gate. THE ORDERED
-PROPERTY IS THE COLOUR: this mutation must be RED.
+Then TWO mutations of `packages/orchestration/diff_parser.py`, each applied alone
+and reverted before the next. Both are SILENT TRUNCATIONS — they cap the parser's
+output at a size every fixture already in the corpus sits below, so the twenty-eight
+existing tests cannot see either one. That is deliberate: it is what makes them
+discriminators for the tests C3 adds rather than proofs that the old corpus works.
+The reviewer measured both against the base corpus at `dc938d0e` and both came back
+exit 0 at `28 passed`; C3's tests are the only thing that can turn them red.
 
-Then run the SAME mutation against the file as it stands at the BASE commit
-`c777fe83` — the guard before C3 — and report its REAL exit code. This is the
-negative control that proves the new assertion is what fires: at the base the
-reorder is expected to be green, and if it is not, stop and declare it, because
-then the defect was never real.
+For each, report the exact string replaced, the count of its occurrences in the file
+BEFORE the edit, the REAL exit code, the verbatim summary line, and WHICH node ids
+fail as measured. THE ORDERED PROPERTY IS THE COLOUR: each must be RED. Do not treat
+any predicted name or count as the gate.
+
+- **(a) a cap on parsed body lines.** Insert, immediately before the single
+  `hunk["lines"].append(` statement and at that statement's own indentation, a guard
+  that skips the append once the current hunk already holds 100 lines. Every fixture
+  in the corpus is far shorter than 100 lines, so nothing already written can notice.
+- **(b) a cap on file regions.** Replace the single `regions.append(current)`
+  statement with the same append guarded by a check that fewer than 10 regions exist
+  so far. The corpus's multi-file fixtures hold a handful of files, so again nothing
+  already written can notice.
+
+If a mutation comes back GREEN, STOP: report it, diagnose WHY the new assertions
+could not see it, and declare it rather than substituting a different mutation. A
+green here means C3's tests do not actually reach the scale they claim to.
 
 Afterwards report `git worktree remove`, `git worktree prune`, the line count of
 `git worktree list` and the line count of `git status --porcelain` in the primary
@@ -263,39 +282,45 @@ checkout.
 **G7 suite, lint and canary at C3.** ONE pytest process at a time; never two in
 parallel. Report the REAL exit code and verbatim summary of each:
 
-- `python3 -m pytest tests/ui_contracts/ -q`, and the count of lines matching
-  `^FAILED`. Report an EXTRACTOR-BLINDNESS CONTROL: run the same counter over a
-  control string that does begin with `FAILED` and report that it returns a
-  non-zero count, so a zero above is a measurement rather than a blind spot.
-- `python3 -m pytest tests/ui_contracts/test_diff_surface_css.py --collect-only -q`
-  and the full node-id inventory it lists. Never derive node ids by regexing `-v`
-  output.
-- `python3 -m ruff check tests/ui_contracts/test_diff_surface_css.py` under the
+- `python3 -m pytest tests/orchestration/test_diff_parser.py tests/orchestration/test_diff_view_source.py -q`, and the count of
+  lines matching `^FAILED`. Report an EXTRACTOR-BLINDNESS CONTROL: run the same
+  counter over a control string that does begin with `FAILED` and report a non-zero
+  count, so a zero above is a measurement rather than a blind spot.
+- `python3 -m pytest tests/orchestration/test_diff_parser.py --collect-only -q` and
+  the COUNT of node ids it lists, together with the node ids of the tests C3 added.
+  Never derive node ids by regexing `-v` output.
+- `python3 -m ruff check tests/orchestration/test_diff_parser.py` under the
   repository's own configuration, with NO `--isolated`.
 - The canary `python3 -m pytest tests/cli/test_golden_path.py -q`. The base figure
   is `42 passed`; report the measured figure beside it and name any difference.
+- REPORT THE WALL-CLOCK COST C3 ADDS: the verbatim `in <n>s` figure of the parser
+  suite at the base commit `dc938d0e` and at C3, both measured, and state the
+  difference. A corpus test that makes the suite several times slower is a finding
+  even when it is green.
 
-**G8 structure, artifacts and the Open PR Gate at C4.** Report
-`git diff --name-only c777fe83..<C4>` and both RESIDUES against the change set
+**G8 structure, artifacts and the Open PR Gate at C3.** Report
+`git diff --name-only dc938d0e..<C3>` and both RESIDUES against the change set
 above minus `.agent/handoff.md`: actual minus expected, and expected minus actual.
-Report `git diff --stat` restricted to `packages/`, `docs/` and `apps/` — each
-must be EMPTY — and to `tests/`, which must hold only
-`tests/ui_contracts/test_diff_surface_css.py`. Report per-commit insertions from
-`git diff --numstat` for C0a through C4, each commit's parent count, and whether
-each insertion count is under 500. Report a marker sweep of `^<<<SLICE ` and
-`^<<<END ` over `.agent/plan.md` at C1 and `.agent/live_review.md` at C4, and the
-SAME counter over the C0a blob, whose figures must be greater than zero so the
-zeros are a measurement. Report `git ls-files .remedy-wt` line count. Report the
-Open PR Gate verbatim:
+Report `git diff --stat` restricted to `packages/`, `docs/` and `apps/` — EACH MUST
+BE EMPTY, and the `packages/` reading is the one that proves constraint 3 — and to
+`tests/`, which must hold only `tests/orchestration/test_diff_parser.py`. Report
+per-commit insertions from `git diff --numstat` for C0a through C3, each commit's
+parent count, and whether each insertion count is under 500. Report a marker sweep
+of `^<<<SLICE ` and `^<<<END ` over `.agent/plan.md` at C1 and `.agent/live_review.md`
+at C2, and the SAME counter over the C0a blob, whose figures must be greater than
+zero so the zeros are a measurement. Report `git ls-files .remedy-wt` line count.
+Report the Open PR Gate verbatim:
 `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 
 ## Done when
 
-C0a, C0b, C1, C2, C3, C4 and C5 are committed in that order, one commit each, the
+C0a, C0b, C1, C2, C3 and C4 are committed in that order, one commit each, the
 branch is pushed, `.agent/handoff.md` is rewritten per
 `docs/agents/handback_template.md` carrying the state block, the deviations, the
 item-status table and the next steps, and every gate above is reported with its
-REAL exit code. The handback names SESSION 3 of feature F037 and round 10.
+REAL exit code. The handback names SESSION 3 of feature F037 and round 11, and it
+states the measured wall-clock figures S5 recorded, so the next round reads them
+without re-deriving them.
 
 A gate that could not be run is reported as NOT RUN with the literal refusal or
 error text — never as a pass, and never worked around.
