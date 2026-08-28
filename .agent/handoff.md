@@ -1,303 +1,327 @@
-# Handback — F037 R6
+# Handback — F037 R7 (T001 read-endpoint part two)
 
 ## Session
-SESSION 2 of feature F037 · round 6 · rounds so far 6.
-The 25-round / 7-session soft limit is not approached: 6 rounds, 2 sessions.
+
+SESSION 2 of feature F037 · round 7 · rounds so far 7
 
 ## Range
-Review of 9deb942eda94ec82ba00badbeece4cde05138bed..HEAD
-(plus the C4 handoff commit that writes this file).
-Branch: `feature/f037-rendered-diff-viewer`. Round base: `9deb942e`.
+
+Review of `6b778634`..`HEAD` (base SHA `6b778634e7b952ef2cb5fff6c3e02634249405ae`,
+branch `feature/f037-rendered-diff-viewer`).
 
 ## Commits
 
-### e99c9840 docs(agent): save the F037 R6 step block verbatim
+### 36832de5 docs(agent): save the F037 R7 step block
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f037-r6.md | +407 / -0 | C0a — the block saved verbatim, then worked from; every slice below was extracted from this COMMITTED blob in Python, never retyped |
+|---|---|---|
+| .agent/authored/f037-r7.md | +364 -0 | C0a — the block saved verbatim, 24804 bytes, 364 lines |
 
-### 7c73cba3 docs(agent): mirror the F037 R6 block into last_block
+### 7d5d8733 docs(agent): mirror the F037 R7 block into last_block
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/last_block.md | +376 / -329 | C0b — `git cat-file blob HEAD:.agent/authored/f037-r6.md` written out; the paired-line numstat is the full-file-rewrite shape, not a partial copy |
+|---|---|---|
+| .agent/last_block.md | +283 -326 | C0b — mirror written from the committed C0a blob, same blob hash |
 
-### a597bad9 docs(agent): point the plan at the F037 R6 resolver round
+### 402677f6 docs(agent): point the plan at the F037 R7 route round
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/plan.md | +19 / -16 | C1 — whole-file replacement, byte-equal to slice PLANF037R6; 48 lines, under the 50-line rule |
+|---|---|---|
+| .agent/plan.md | +22 -21 | C1 — whole-file replacement by PLANF037R7 |
 
-### daf03d1c docs(agent): book the R5 verdict, resolve R-0717 and R-0718, record four prose slips
+### a89b6cd6 docs(agent): book the F037 R6 gate verdict
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | +4 / -2 | C2 — the DONE717 and DONE718 FROM/TO pairs, then the GATER5 EOF append |
-| .agent/prose_slips.md | +25 / -0 | C2 — the SLIPR6 EOF append, four slips, no id |
+|---|---|---|
+| .agent/live_review.md | +2 -0 | C2 — GATER6 appended at EOF |
 
-### c30ec76d feat(diff-view): resolve evidence artifacts to the contract-v1 diff envelope
+### 7a83d3ba feat(ui-server): serve the F037 diff envelope on two GET routes
 | Path | +/- | Reason |
-|------|-----|--------|
-| packages/orchestration/diff_view_source.py | +158 / -0 | C3 — the resolver, written from the SPEC; `ui_server.py` and `diff_parser.py` untouched |
-| tests/orchestration/test_diff_view_source.py | +182 / -0 | C3 — nine tests, including the refusal test that pins that nothing was READ |
+|---|---|---|
+| packages/orchestration/ui_server.py | +35 -0 | C3 — S1 dict key, S2/S3 the two thin builders, S4 the structural route, S5 the import style |
 
-### C4 (this commit) docs(agent): hand back F037 R6
+### 23b9ab39 test(ui-server): walk the task-run diff route and drop the stale endpoint count
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/handoff.md | n/a | C4 — a handback cannot table the commit that writes it (R-0149 pattern) |
+|---|---|---|
+| tests/ui_server/test_command_channel.py | +3 -2 | C4 — WALKPAIR registers the new route, DOCPAIR deletes the numeral (`R-0715`) |
+| .agent/live_review.md | +2 -0 | C4 — LANDED715 appended at EOF |
+
+### 995b42cd test(ui-server): cover the two F037 diff routes over real HTTP
+| Path | +/- | Reason |
+|---|---|---|
+| tests/ui_server/test_diff_endpoint.py | +188 -0 | C5 — new file, S6 to S12, six tests |
+
+### C6 (this commit) docs(agent): hand back F037 R7
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | not measurable | C6 — a handback cannot table the commit that writes it; G8's per-commit reading deliberately stops at C5 |
 
 ## External actions
-- `git worktree add .remedy-wt/f037-r6-redproof c30ec76d` — created for G6.
-- `git worktree remove .remedy-wt/f037-r6-redproof` then `git worktree prune` —
-  removed; `git worktree list` back to 1 line, primary `git status --porcelain`
-  0 lines.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` —
-  returned `[]` verbatim. No PR created, nothing merged, as the block ordered.
-- `git push origin feature/f037-rendered-diff-viewer` — ordered AFTER C4 and
-  deliberately outside every gate, so its result is not named here; the reviewer
-  reads the remote tip itself.
+
+- `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/f037r7wt HEAD` — created at `995b42cd` (detached).
+- `git worktree remove … --force` then `git worktree prune` — removed; `git worktree list` back to 1 line, primary `git status --porcelain` 0 lines.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. No PR created, nothing merged.
+- `git push origin feature/f037-rendered-diff-viewer` — ordered AFTER this commit and deliberately not part of any gate; its result is not named here, the reviewer reads the remote tip itself.
 
 ## Verification
 
-**G1 hygiene — PASS.** `.agent/STOP` ABSENT before C0a and ABSENT again before
-C4. `git rev-parse HEAD` before C0a = `9deb942eda94ec82ba00badbeece4cde05138bed`,
-equal to the base SHA. `git branch --show-current` =
-`feature/f037-rendered-diff-viewer`. `git status --porcelain` LINE COUNT after
-C0a 0, after C0b 0, after C1 0, after C2 0, after C3 0.
+**G1 hygiene — PASS.** `.agent/STOP` read from disk before C0a: ABSENT. Read again
+before C6: ABSENT. `git rev-parse HEAD` before C0a =
+`6b778634e7b952ef2cb5fff6c3e02634249405ae`, equal to the base.
+`git branch --show-current` = `feature/f037-rendered-diff-viewer`.
+`git status --porcelain` line count after C0a 0, C0b 0, C1 0, C2 0, C3 0, C4 0, C5 0.
 
 **G2 transport, one digest comparison — PASS.** After C0a:
-`.agent/authored/f037-r6.md` sha256
-`0bf34beb051ea36b84b8e1cb1ed3fa3d5e7dfde97f1cd5f1665d5a8591e3d778`, 29657 bytes,
-407 lines. After C0b: `git rev-parse HEAD:.agent/authored/f037-r6.md` =
-`eff8007ac053110c3b94b2e10d648831c3d63e40` and
-`git rev-parse HEAD:.agent/last_block.md` =
-`eff8007ac053110c3b94b2e10d648831c3d63e40` — the SAME blob hash. Stated plainly:
-this chain covers the saved copy, its mirror and the working copy, and claims
-NOTHING about the bytes of any prompt.
+`.agent/authored/f037-r7.md` sha256
+`a2b07da54d9a81408f8d10e4a6dc7bb5703d897ef9a3555b2c6a4ad45186ec55`, 24804 bytes,
+364 lines. After C0b: `git rev-parse HEAD:.agent/authored/f037-r7.md` and
+`git rev-parse HEAD:.agent/last_block.md` are BOTH
+`a4bee2a8a2a989270d0366fd193d9c2303e02fd7` — the same blob. This chain covers the
+saved copy, its mirror and the working copy, and it claims nothing whatever about
+the bytes of any prompt.
 
-**G3 extraction and caps — PASS.** All five slices extracted from the COMMITTED
-C0a blob by their marker lines: PLANF037R6 48 lines, DONE717 1, DONE718 1,
-GATER5 1, SLIPR6 24. TOTAL 407 (measured), CONTENT 75 (measured),
-PROSE = 407 − 75 = 332 (measured). PROSE 332 ≤ 400 and TOTAL 407 ≤ 490.
+**G3 extraction and caps — PASS.** Every slice extracted from the COMMITTED C0a
+blob by its marker lines: PLANF037R7 49 lines, GATER6 1, LANDED715 1, WALKPAIR 17,
+DOCPAIR 8. TOTAL 364, CONTENT 76, PROSE = 364 − 76 = 288. PROSE 288 ≤ 400 and
+TOTAL 364 ≤ 490.
 
-**G4 the plan at C1 — PASS.** `.agent/plan.md` byte-equal to PLANF037R6 under
-the newline-included convention: **True**. NEGATIVE CONTROL against the slice
-minus its trailing newline: **False**. `^## Goal$` 1, `^## Next Steps$` 1,
-`wc -l` 48, strictly under 50.
+**G4 the plan at C1 — PASS.** `.agent/plan.md` byte-equal to PLANF037R7 under the
+newline-included convention: **True**. NEGATIVE CONTROL against the slice minus its
+trailing newline: **False**. `^## Goal$` 1, `^## Next Steps$` 1, `wc -l` 49
+(strictly under 50).
 
-**G5 the record at C2, full byte forensics — PASS.**
-PAIRS. R-0717 FROM count before C2 1, after C2 0; TO count before 0, after 1.
-R-0718 FROM count before C2 1, after C2 0; TO count before 0, after 1. The
-containment readings were re-measured on disk: DONE717 `TO contains FROM: false`,
-DONE718 `TO contains FROM: false` — both as the block states.
-APPEND, live_review.md. Base 1156642 bytes. L (after the two pairs, before the
-append) = 1159601. GATER5 byte length 2512. Post-append length 1162114 =
-L + 1 + 2512 = 1162114 → **True**. Reader (a): the intermediate is a byte PREFIX
-of the final → **True**. Reader (b), independent and structural: N, the number of
-blank-line units in GATER5, measured by the script as **1**; the LAST 1 unit of
-the final file equals the slice's 1 unit IN ORDER → **True**. NEGATIVE CONTROL:
-one byte flipped inside the FIRST appended paragraph → reader (a) **False** and
-reader (b) **False**.
-APPEND, prose_slips.md. Base length before C2 measured at **6840** bytes, beside
-the block's stated 6840 — they agree. SLIPR6 byte length 1583. Post-append length
-8424 = 6840 + 1 + 1583 = 8424 → **True**. Reader (a) prefix → **True**. Reader
-(b): Np = **4** blank-line units in SLIPR6; the LAST 4 units of the final file
-equal the slice's 4 units IN ORDER → **True**. NEGATIVE CONTROL with the flipped
-byte inside the FIRST appended bullet → reader (a) **False**, reader (b)
-**False**.
-COUNTS after C2, line-anchored, each MEASURED and each equal to the value the
-block names: `^- R-\d+ — ` **279** (ordered 279, unchanged); `^Done: R-\d+ — `
-**27** (ordered 27); `^Landed: R-` **1** (ordered 1); `^Gate: F\d+ R\d+ — `
-**76** (ordered 76); `^Gate: R\d+ — ` **19** (ordered 19, unchanged).
-Ids ADDED: **[]** (empty, as ordered). Ids newly RESOLVED: **R-0717, R-0718**
-(exactly the two, as ordered). All ids DISTINCT: **True** (279 lines, 279
-distinct). Maximum id: **R-0718**. Open set size: **252** — every registered id
-minus every resolved id, 279 − 27, and two lower than the 254 GATER5 records for
-the state before its own commit, which is the two resolutions this commit lands.
+**G5 the record, full byte forensics — PASS.**
+At C2, GATER6: base `.agent/live_review.md` measured **1162114 bytes**, which is the
+figure the block named. Reader (a): 1162114 + 1 + 3583 = 1165698 = measured
+post-append length, and the base IS a byte prefix of the result — True. Reader (b),
+independent and structural: the script counted N = 1 blank-line unit in GATER6 and
+compared the LAST 1 unit of the file against the slice's 1 unit in order — True.
+NEGATIVE CONTROL, one byte flipped inside the FIRST appended paragraph (offset
+1162119, `b':'` → `b'\x1a'`): reader (a) **False**, reader (b) **False**.
+At C4, LANDED715: base measured 1165698 (the length after C2). Reader (a):
+1165698 + 1 + 647 = 1166346 = measured post-append length, base is a byte prefix —
+True. Reader (b), N = 1 — True. NEGATIVE CONTROL at offset 1165703
+(`b'e'` → `b'E'`): reader (a) **False**, reader (b) **False**.
+COUNTS after C4, line-anchored, each as measured:
+`^- R-\d+ — ` **279** (ordered 279, unchanged — no id minted);
+`^Done: R-\d+ — ` **27** (ordered 27, unchanged);
+`^Landed: R-` **2** (ordered 2 — the surviving `R-0711` line plus LANDED715);
+`^Gate: F\d+ R\d+ — ` **77** (ordered 77).
+Open set = 279 distinct registered − 27 distinct resolved = **252**, and `R-0715`
+IS still in it (registered True, resolved False), exactly as constraint 6 requires.
 
-**G6 red-proofs — PASS, both mutations RED.** Run only inside the disposable
-worktree `.remedy-wt/f037-r6-redproof` at the C3 tree, never in the primary
-checkout; `__pycache__` purged and `python3 -B` used before EVERY run; the module
-restored with `git checkout --` between mutations, each restore verified at
-`git status --porcelain` 0 lines.
+**G6 the red-proofs — PASS, all three mutations red.** Run only inside the
+disposable worktree `/home/decodeux/Repos/remedy/.remedy-wt/f037r7wt` at the C5
+tree, never in the primary checkout; `__pycache__` purged and `python3 -B` used
+before EVERY run; the file restored with `git checkout --` between mutations
+(`git status --porcelain` in the worktree 0 lines after each restore).
 
-- UNMUTATED CONTROL:
-  `python3 -B -m pytest tests/orchestration/test_diff_view_source.py -q` —
-  real exit code **0**, verbatim summary `9 passed in 0.21s`.
-- MUTATION (a), defeat S5(b) — the task-run branch accepts ANY `task_id` without
-  testing membership in `list_task_run_ids`, so the path is built from the
-  argument directly. FROM (occurrences counted at exactly 1 before the edit):
+UNMUTATED CONTROL: `python3 -B -m pytest tests/ui_server/test_diff_endpoint.py -q`
+→ real exit code **0**, `6 passed in 5.43s`.
 
-      if task_id is not None and task_id not in task_run_ids:
-          view["reason"] = DIFF_REASON_UNKNOWN_TASK_RUN
-          return view
+(a) remove the `"diff"` key from the `handlers` dict — occurrences of the FROM
+string before the edit: **1**.
+FROM:
+```
+                "diagnostics": _build_diagnostics_json,
+                "diff": _build_diff_json,
+```
+TO:
+```
+                "diagnostics": _build_diagnostics_json,
+```
+→ real exit code **1**, `2 failed, 4 passed in 0.89s`. Failing node ids:
+`tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff`,
+`tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200`.
+The job route falls through to the 404, as the mutation's property predicts.
 
-  TO: the three lines deleted entirely.
-  Real exit code **1**, verbatim summary `2 failed, 7 passed in 0.23s`. Failing
-  node ids in full:
-  `tests/orchestration/test_diff_view_source.py::test_unknown_task_run_is_refused_and_reports_the_real_runs`
-  and
-  `tests/orchestration/test_diff_view_source.py::test_traversal_task_ids_are_refused_without_reading_anything`.
-- MUTATION (b), defeat S5(d) — the missing-artifact branch reports `available`
-  True with `reason` None. FROM (occurrences counted at exactly 1 before the
-  edit):
+(b) make the structural route ignore `parts[5]` and pass `task_id=None` —
+occurrences of the FROM string before the edit: **1**.
+FROM:
+```
+            self._send_json(200, _build_task_run_diff_json(job, parts[5]))
+```
+TO:
+```
+            self._send_json(200, _build_task_run_diff_json(job, None))
+```
+→ real exit code **1**, `2 failed, 4 passed in 0.90s`. Failing node ids:
+`tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff`,
+`tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200`.
+The reported body confirms the mutant served the JOB diff
+(`'path': 'packages/orchestration/job_scope_only.py'`, `'scope': 'job'`), which is
+what S7's different-file-paths design exists to catch.
 
-      if diff_text is None:
-          view["reason"] = DIFF_REASON_ARTIFACT_MISSING
-          return view
+(c) make the unknown-task-run case answer 404 instead of 200 with the named
+absence — occurrences of the FROM string before the edit: **1**.
+FROM:
+```
+            self._send_json(200, _build_task_run_diff_json(job, parts[5]))
+```
+TO:
+```
+            _view = _build_task_run_diff_json(job, parts[5])
+            if _view.get("reason") == "unknown_task_run":
+                self._send_json(*_safe_error(404, "not found"))
+                return
+            self._send_json(200, _view)
+```
+→ real exit code **1**, `1 failed, 5 passed in 0.90s`. Failing node id:
+`tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200`
+(`AssertionError: {'error': 'not found'}` / `assert 404 == 200`). The mutation was
+made in the ROUTE, which is the code this round wrote;
+`packages/orchestration/diff_view_source.py` was never touched, in the worktree or
+out of it.
 
-  TO:
+The guard C4 edits, UNMUTATED and in the SAME worktree:
+`python3 -B -m pytest tests/ui_server/test_command_channel.py -q` → real exit code
+**0**, `106 passed in 11.26s`. No mutation came back green.
+After removal and prune: `git worktree list` **1** line,
+`git status --porcelain` in the primary checkout **0** lines.
 
-      if diff_text is None:
-          view["available"] = True
-          view["reason"] = None
-          return view
+**G7 suite, lint and canary at C5 — PASS.** One pytest process at a time
+throughout; no two suites ran in parallel.
+`python3 -m pytest tests/ui_server/test_diff_endpoint.py tests/ui_server/test_command_channel.py tests/orchestration/test_diff_view_source.py -q`
+→ real exit code **0**, `121 passed in 12.11s`, lines matching `^FAILED`: **0**.
+Extractor-blindness control: the SAME counter over a control string containing
+`FAILED tests/ui_server/test_diff_endpoint.py::test_control_string` returns **1**,
+so the 0 above is a measurement and not a blind spot.
+`tests/ui_server/test_command_channel.py` alone: real exit code **0**,
+`106 passed in 11.01s` — the count measured is 106, equal to the base reading the
+block named; no difference to report.
+Node-id inventory of the new file from
+`python3 -m pytest tests/ui_server/test_diff_endpoint.py --collect-only -q` —
+**6 tests collected**, never derived from `-v` output:
+- `tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff`
+- `tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff`
+- `tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200`
+- `tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token`
+- `tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token`
+- `tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200`
 
-  Real exit code **1**, verbatim summary `1 failed, 8 passed in 0.23s`. Failing
-  node id in full:
-  `tests/orchestration/test_diff_view_source.py::test_missing_job_artifact_still_names_the_path_it_looked_for`.
-- Worktree removed and pruned. `git worktree list` LINE COUNT **1**; primary
-  `git status --porcelain` LINE COUNT **0**.
+`python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_diff_endpoint.py tests/ui_server/test_command_channel.py`
+under the repository's own configuration, no `--isolated` → real exit code **0**,
+verbatim output `All checks passed!`.
+Canary `python3 -m pytest tests/cli/test_golden_path.py -q` → real exit code **0**,
+`42 passed in 20.58s`.
 
-**G7 suite, lint and canary at C3 — PASS.** One pytest process at a time, never
-two in parallel.
-
-- `python3 -m pytest tests/orchestration/test_diff_view_source.py
-  tests/orchestration/test_diff_parser.py -q` — real exit code **0**, verbatim
-  summary `37 passed in 0.26s`, `^FAILED` line count **0**.
-- EXTRACTOR-BLINDNESS CONTROL: the SAME `^FAILED` counter run over a control
-  string containing
-  `FAILED tests/orchestration/test_diff_view_source.py::test_control_string`
-  returns **1**. The 0 above is therefore a measurement, not a blind spot.
-- NODE-ID INVENTORY from
-  `python3 -m pytest tests/orchestration/test_diff_view_source.py --collect-only -q`
-  — **9 tests collected**, never derived from `-v` output:
-  `::test_job_scope_reads_the_workspace_diff`,
-  `::test_task_run_scope_reads_that_runs_safe_diff`,
-  `::test_version_is_the_parsers_imported_contract_version`,
-  `::test_absent_evidence_dir_is_named_rather_than_raised`,
-  `::test_missing_job_artifact_still_names_the_path_it_looked_for`,
-  `::test_unknown_task_run_is_refused_and_reports_the_real_runs`,
-  `::test_traversal_task_ids_are_refused_without_reading_anything`,
-  `::test_list_task_run_ids_sorts_and_filters_the_listing`,
-  `::test_an_empty_diff_artifact_is_available_with_no_files`, each prefixed
-  `tests/orchestration/test_diff_view_source.py`.
-- `python3 -m ruff check packages/orchestration/diff_view_source.py
-  tests/orchestration/test_diff_view_source.py` with the repository's own
-  configuration and NO `--isolated` — real exit code **0**, verbatim output
-  `All checks passed!`, stderr empty.
-- CANARY `python3 -m pytest tests/cli/test_golden_path.py -q` — real exit code
-  **0**, verbatim summary `42 passed in 20.80s`.
-
-**G8 structure, artifacts and the Open PR Gate at C3 — PASS.**
-
-- `git diff --name-only 9deb942e..c30ec76d` returns exactly:
-  `.agent/authored/f037-r6.md`, `.agent/last_block.md`, `.agent/live_review.md`,
-  `.agent/plan.md`, `.agent/prose_slips.md`,
-  `packages/orchestration/diff_view_source.py`,
-  `tests/orchestration/test_diff_view_source.py`. Residue ACTUAL minus EXPECTED
-  **[]**; residue EXPECTED minus ACTUAL **[]**.
-- Restricted `git diff --stat`: `apps/` **EMPTY**; `docs/` **EMPTY**;
-  `packages/` holds only `packages/orchestration/diff_view_source.py`
-  (158 insertions); `tests/` holds only
-  `tests/orchestration/test_diff_view_source.py` (182 insertions).
-- Per-commit INSERTION count from `git diff --numstat`, every commit
-  single-parent (parents = 1) and every count under 500: C0a `e99c9840` **407**;
-  C0b `7c73cba3` **376**; C1 `a597bad9` **19**; C2 `daf03d1c` **29**;
-  C3 `c30ec76d` **340**. C4 is deliberately not counted — its own count cannot
-  exist while its text is being written.
-- Line-anchored `^<<<SLICE ` plus `^<<<END ` sweep: `.agent/plan.md` at C1
-  **0**; `.agent/live_review.md` at C2 **0**; `.agent/prose_slips.md` at C2
-  **0**. The SAME counter over the C0a blob measures **10**, greater than zero,
-  so the sweep is shown not to be blind.
-- `git ls-files .remedy-wt` LINE COUNT **0**.
-- Open PR Gate, verbatim:
-  `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-  returned `[]`.
+**G8 structure, artifacts and the Open PR Gate at C5 — PASS.**
+`git diff --name-only 6b778634..995b42cd` returns exactly:
+`.agent/authored/f037-r7.md`, `.agent/last_block.md`, `.agent/live_review.md`,
+`.agent/plan.md`, `packages/orchestration/ui_server.py`,
+`tests/ui_server/test_command_channel.py`, `tests/ui_server/test_diff_endpoint.py`.
+Residue actual-minus-expected: **[]**. Residue expected-minus-actual: **[]**.
+Restricted `git diff --stat`: `apps/` **empty**, `docs/` **empty**, `packages/`
+holds only `ui_server.py` (1 file changed, 35 insertions), `tests/` holds only
+`test_command_channel.py` and `test_diff_endpoint.py` (2 files changed, 191
+insertions, 2 deletions).
+Per-commit INSERTION counts from `git diff --numstat`, each single-parent and each
+under 500: C0a `36832de5` **364** (parents 1), C0b `7d5d8733` **283** (1), C1
+`402677f6` **22** (1), C2 `a89b6cd6` **2** (1), C3 `7a83d3ba` **35** (1), C4
+`23b9ab39` **5** (1), C5 `995b42cd` **188** (1). C6 is deliberately not measured:
+its own count cannot exist while its text is being written.
+Line-anchored `^<<<SLICE ` / `^<<<END `: `.agent/plan.md` at C1 **0 / 0**,
+`.agent/live_review.md` at C4 **0 / 0**. The SAME counter over the C0a blob
+measures **5 / 5**, greater than zero, so the sweep is shown not to be blind.
+Count of the string `thirteen` in `tests/ui_server/test_command_channel.py` after
+C4: **0** — that is `R-0715`'s repair, done by DELETING the numeral. The
+counter-measure was checked against substitution too: `twelve` 0, `fourteen` 0,
+`fifteen` 0, `sixteen` 0, so no other numeral word took its place.
+`git ls-files .remedy-wt` line count **0**.
+Open PR Gate, verbatim:
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
 
 ## Authored-text proofs
-Five slices, all extracted in Python from the COMMITTED C0a blob by their marker
-LINES and applied byte for byte; none was retyped and none was edited.
-- PLANF037R6 → `.agent/plan.md`: whole-file replacement, byte-equality **True**,
-  negative control **False** (G4).
-- DONE717 → `.agent/live_review.md`: FROM 1→0, TO 0→1 (G5).
-- DONE718 → `.agent/live_review.md`: FROM 1→0, TO 0→1 (G5).
-- GATER5 → `.agent/live_review.md`: prefix reader **True**, unit reader **True**,
-  negative control **False**/**False** (G5).
-- SLIPR6 → `.agent/prose_slips.md`: prefix reader **True**, unit reader **True**,
-  negative control **False**/**False** (G5).
+
+Every reviewer-authored text was extracted from the COMMITTED C0a blob by its
+marker lines in Python and applied without retyping.
+
+| Slice | Proof |
+|---|---|
+| PLANF037R7 | whole-file replacement; disk byte-equal to the slice **True**, negative control (slice minus trailing newline) **False** |
+| GATER6 | append at EOF; reader (a) True, reader (b) True, negative control both False (G5) |
+| LANDED715 | append at EOF; reader (a) True, reader (b) True, negative control both False (G5) |
+| WALKPAIR | FROM measured at **1** occurrence before the edit; `TO contains FROM: False`; after C4 FROM **0x**, TO **1x** |
+| DOCPAIR | FROM measured at **1** occurrence before the edit; `TO contains FROM: False`; after C4 FROM **0x**, TO **1x** |
+
+## Deviations & assumptions
+
+1. **G5 reader (a) is the byte identity, not only its two reported facts.** The
+   block names reader (a) by two properties — post-append length equals base + 1 +
+   slice length, and the base is a byte prefix of the result — and then orders a
+   NEGATIVE CONTROL that flips one byte INSIDE the appended paragraph to come back
+   False for reader (a) as well as reader (b). Those two properties alone are blind
+   to such a flip: neither the length nor the prefix changes. Reader (a) was
+   therefore implemented as the full byte identity
+   `result == base + b"\n" + slice`, which ENTAILS both named properties, and all
+   three components are reported separately above for both appends (real:
+   length True, prefix True, tail-identity True; control: length True, prefix True,
+   tail-identity False). This is the only reading under which the ordered control
+   result is achievable; no gate was weakened.
+2. **Assumption, S5 import style.** The neighbouring `_build_*_json` builders in
+   `ui_server.py` all use FUNCTION-LOCAL imports
+   (`from packages.orchestration.ui_view_model import …` inside the body), so both
+   new builders import `build_diff_view` function-locally rather than at module
+   top. `_resolve_evidence_dir` was neither redefined nor moved.
+3. **Assumption, S3 annotation.** `_build_task_run_diff_json(job: Any, task_id: str)`
+   is annotated `str` for `task_id`, matching the neighbouring
+   `_build_node_detail_json(job: Any, node_id: str)` shape; the spec gave no
+   annotation. `build_diff_view` itself accepts `str | None`.
+4. **Assumption, S8/S9 "files naming the path".** Asserted as an exact ordered list
+   of `f["path"]` values, so the job route naming the task file (or the reverse) is
+   a red rather than a permissive superset check.
+5. No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4,
+   C5, C6 were committed in that order, one commit each, with no extra commit, no
+   dropped commit and no reordering.
+6. No finding id was minted. `R-0715` was REPAIRED and carries a `Landed:` line
+   only; no `Done:` paragraph was written for it, per constraint 6 — the reviewer
+   authors that at the next gate. The `Landed: R-0711` line and every existing
+   `Done:` paragraph are untouched.
+7. `packages/orchestration/diff_view_source.py` and
+   `packages/orchestration/diff_parser.py` were not touched, in the primary
+   checkout or in the worktree.
 
 ## Item status
 
 | Item | Status | Reason |
-|------|--------|--------|
-| C0a save the block verbatim | done | `e99c9840`, 407 lines |
-| C0b mirror the C0a blob | done | `7c73cba3`, same blob hash `eff8007a` |
-| C1 the plan | done | `a597bad9`, byte-equal to PLANF037R6 |
-| C2 the record | done | `daf03d1c`, both pairs plus both appends in one commit |
-| C3 the module and its tests | done | `c30ec76d`, written from the SPEC |
-| C4 the handback | done | this commit |
-| Constraint 1 slices from the committed blob | done | extracted by marker LINES in Python |
-| Constraint 2 plan whole-file | done | G4 True |
-| Constraint 3 both pairs are rewrites | done | G5 FROM 1→0, TO 0→1 for each |
-| Constraint 4 appends after the pairs, same commit | done | single separator newline, file's own convention |
-| Constraint 5 no id minted | done | ids ADDED [] |
-| Constraint 6 `Landed: R-0711` untouched | done | `^Landed: R-` reads 1, exactly that line |
-| Constraint 7 production code written from the SPEC | done | module docstring, one-line WHY above each definition, type hints, `from packages.orchestration...` import style |
-| Constraint 8 `ui_server.py` untouched | done | not in the name-only list; no `tests/ui_server/` file touched |
-| Constraint 9 `diff_parser.py` untouched | done | not in the name-only list; imported only |
-| Constraint 10 no interactive constructs | done | `python3 -m pytest tests/test_no_interactive_guard.py -q` exit 0, `6 passed in 1.13s` |
-| Constraint 11 report disagreements | done | none arose; every named value was met on measurement |
-| S1 module docstring states the WHY | done | names the split from `diff_parser.py`, the no-HTTP boundary and the named-absence contract |
-| S2 the public names | done | all eleven present with the ordered values, including `SAFE_TASK_RUN_ID_RE` |
-| S3 `list_task_run_ids` | done | sorted, `SAFE_TASK_RUN_ID_RE.fullmatch`, `[]` on all three absences; re-declaration reason stated |
-| S4 the nine envelope keys | done | exactly those keys, `version` IMPORTED, no second version literal |
-| S5(a) no evidence dir | done | reason `evidence_dir_unavailable`, source None, files [], task_run_ids [] |
-| S5(b) unknown task run | done | membership in the REAL listing; WHY comment names the deliberate absence of `path_utils.sanitize_path_component` |
-| S5(c) artifact path and early `source` | done | `source` set before the read |
-| S5(d) unreadable artifact | done | `OSError`/`UnicodeDecodeError`, `source` kept, mutation (b) RED |
-| S5(e) parse, and EMPTY is AVAILABLE | done | WHY comment says it; pinned by `test_an_empty_diff_artifact_is_available_with_no_files` |
-| S6 never raises | done | the path coercion is guarded too, so a non-path argument becomes a named absence rather than a `TypeError` |
-| S7 trees under `tmp_path` | done | one helper, real unified-diff text, nothing under the repository |
-| S8 job happy path | done | `test_job_scope_reads_the_workspace_diff` |
-| S9 task-run happy path | done | asserts `packages/orchestration/task_only.py`, a path ONLY the task diff holds |
-| S10 version by IMPORT | done | `test_version_is_the_parsers_imported_contract_version`, no transcribed integer |
-| S11 one test per absence reason | done | three tests, each with reason, `available is False`, `files == []`, plus the ordered extra assertions |
-| S12 the refusal test | done | all five hostile ids; marker planted OUTSIDE the evidence dir absent from every `repr()` |
-| S13 sorts and filters | done | `["T001", "T002", "T010"]` exactly, with `nope` and the FILE `T999` excluded |
-| S14 empty artifact | done | available True, `files == []` |
-| G1 hygiene | done | STOP ABSENT twice, HEAD = base, five status readings all 0 |
-| G2 transport | done | one digest comparison, blob hashes identical |
-| G3 extraction and caps | done | PROSE 332 ≤ 400, TOTAL 407 ≤ 490 |
-| G4 the plan | done | True / False / 1 / 1 / 48 |
-| G5 the record | done | every count met, both negative controls False |
-| G6 red-proofs | done | control green, both mutations RED, worktree removed |
-| G7 suite, lint, canary | done | 37 passed, blindness control 1, 9 node ids, ruff 0, canary 42 passed |
-| G8 structure and Open PR Gate | done | both residues empty, marker sweep 0/0/0 against a control of 10, `[]` |
-
-## Deviations & assumptions
-None. Every value the block named was met on measurement: `^- R-\d+ — ` 279,
-`^Done: R-\d+ — ` 27, `^Landed: R-` 1, `^Gate: F\d+ R\d+ — ` 76,
-`^Gate: R\d+ — ` 19, and the `.agent/prose_slips.md` base length 6840. The
-ordered commit sequence C0a, C0b, C1, C2, C3, C4 was followed exactly — no extra
-commit, none dropped, none reordered.
-
-Two assumptions worth naming, neither of which changed what was built:
-1. `evidence_dir` is typed `Path | None`. The block's SPEC gives no annotation
-   for it, and `Path` is what every caller in `packages/orchestration/` already
-   holds; the coercion `Path(evidence_dir)` also accepts a `str`, so an
-   endpoint layer passing a string still works.
-2. S5(d) is implemented as ONE absence flag rather than two branches, so
-   "the path is not a file" and "the bytes would not decode" reach a single
-   place that sets `DIFF_REASON_ARTIFACT_MISSING`. That is what makes mutation
-   (b) a single-site edit; the observable behaviour is exactly as S5(d) states.
+|---|---|---|
+| C0a save the block | done | `36832de5`, 364 lines, sha256 `a2b07da5…` |
+| C0b mirror the blob | done | `7d5d8733`, same blob hash as C0a |
+| C1 plan from PLANF037R7 | done | `402677f6`, byte-equal True |
+| C2 live_review append GATER6 | done | `a89b6cd6` |
+| C3 ui_server routes | done | `7a83d3ba` |
+| C4 WALKPAIR + DOCPAIR + LANDED715 | done | `23b9ab39` |
+| C5 test_diff_endpoint.py | done | `995b42cd`, 6 tests |
+| C6 handback | done | this commit |
+| S1 `"diff"` key in the handlers dict | done | added to that dict and nowhere else |
+| S2 `_build_diff_json(job)` | done | thin caller, one-line WHY above it |
+| S3 `_build_task_run_diff_json(job, task_id)` | done | same shape, `task_id=` passed through |
+| S4 structural task-run route | done | after `debug-detail`, before the 404; WHY comment names the `_walkable_paths` hand-registration |
+| S5 import style + 200-on-unknown | done | function-local import matching the neighbours; unknown run answers 200 with `unknown_task_run` |
+| S6 harness matched to `TestUIServerIntegration` | done | autouse fixture, `REMEDY_DATA_DIR`, port 0 daemon thread, info-file wait, `HTTPConnection` on `127.0.0.1`; nothing imported from `test_command_channel.py` |
+| S7 evidence index + two different-path diffs | done | `job_evidence_index/<job_id>.json` with `evidence_dir_local`; `workspace.diff` names `…/job_scope_only.py`, `task_runs/T001/safe.diff` names `…/task_scope_only.py` |
+| S8 job route 200 | done | `test_job_route_serves_the_workspace_diff` |
+| S9 task-run route 200, files ONLY the task path | done | `test_task_run_route_serves_only_that_runs_diff` |
+| S10 unknown run, explicit 200 | done | `test_unknown_task_run_is_a_named_absence_at_status_200` |
+| S11 bad token 403 on both routes | done | two tests, one per route |
+| S12 absent evidence index | done | `test_job_without_evidence_names_the_absence_at_status_200` |
+| G1 hygiene | done | STOP ABSENT twice, HEAD = base, 7 clean readings of 0 |
+| G2 transport | done | one digest comparison, identical blob hash |
+| G3 extraction and caps | done | PROSE 288 ≤ 400, TOTAL 364 ≤ 490 |
+| G4 the plan | done | True / False / 1 / 1 / 49 |
+| G5 the record | done | both appends, both readers, both controls False; four counts as ordered; open set 252 with `R-0715` in it |
+| G6 red-proofs | done | control exit 0; three mutations exit 1; guard suite exit 0; worktree removed |
+| G7 suite, lint, canary | done | 121 passed, `^FAILED` 0 with a control of 1, ruff exit 0, canary exit 0 |
+| G8 structure and Open PR Gate | done | both residues empty, all insertion counts under 500, `thirteen` 0, `[]` |
 
 ## Next
-The first action of the next round is to re-read `.agent/STOP` from disk
-(self-drive Phase 1 rule 1), and only then the Open PR Gate
-(`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
 
-After that, R7 is the second half of T001: the two GET routes onto
-`build_diff_view` — the job scope as a handler-dict key and the task-run scope as
-a structural route — with the route walk in
-`tests/ui_server/test_command_channel.py` MEASURED at the base before the edit,
-since `packages/orchestration/ui_server.py` was deliberately left untouched this
-round. `build_diff_view` currently has no caller anywhere in the tree; R7 gives
-it one.
+The first action of the next round is to re-read `.agent/STOP` from disk
+(self-drive Phase 1 rule 1), and only then run the Open PR Gate
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
+
+T001 is COMPLETE: the parser, the resolver and both read routes are on disk and
+exercised over real HTTP. T002 is next — the rendering core (lines, intraline
+emphasis, hunk heads, hunk collapse) against the binding CSS in
+`docs/roadmap/features/T5_F037.md`, with goldens per fixture shape. That is the
+first UI work of this feature, so `docs/ui/design_reference/` becomes binding from
+the next round on.
+
+Open findings: 252. `R-0715` is repaired on disk and carries a `Landed:` line; it
+stays OPEN until reviewer-authored `Done:` text resolves it at the next gate.
