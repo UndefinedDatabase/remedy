@@ -129,3 +129,40 @@ class TestPlanNextSelfUseItem:
                 tmp_path / "jobs", str(tmp_path), queue_path=queue_path
             )
         assert str(queue_path) in str(excinfo.value)
+
+
+class TestWriteSelfUseJobFileRefusesToEscapeDestDir:
+    """R-0733 — a caller-built id may not carry the file out of ``dest_dir``.
+
+    The loader refuses any id but ``^SU-\\d{3}$``, so these ids cannot arrive on
+    the shipped path; the renderer is a PUBLIC export taking a caller-built
+    entry, and this pins that it is safe on its own terms.
+    """
+
+    def test_a_traversal_id_raises_rather_than_writing(self, tmp_path: Path):
+        entry = _entry(id="../../escaped")
+        with pytest.raises(SelfUseJobError):
+            write_self_use_job_file(entry, tmp_path / "jobs")
+
+    def test_an_absolute_id_raises_rather_than_writing(self, tmp_path: Path):
+        entry = _entry(id=str(tmp_path / "outside" / "evil"))
+        with pytest.raises(SelfUseJobError):
+            write_self_use_job_file(entry, tmp_path / "jobs")
+
+    def test_the_message_names_the_offending_id(self, tmp_path: Path):
+        entry = _entry(id="../../escaped")
+        with pytest.raises(SelfUseJobError) as excinfo:
+            write_self_use_job_file(entry, tmp_path / "jobs")
+        assert "../../escaped" in str(excinfo.value)
+
+    def test_nothing_is_written_outside_dest_dir_when_it_refuses(self, tmp_path: Path):
+        # ``../escaped`` aims one level up, so the directory listed below is
+        # exactly where the escaped file would land if the guard let it through.
+        dest_dir = tmp_path / "jobs"
+        dest_dir.mkdir()
+        before = sorted(p.name for p in tmp_path.iterdir())
+        with pytest.raises(SelfUseJobError):
+            write_self_use_job_file(_entry(id="../escaped"), dest_dir)
+        after = sorted(p.name for p in tmp_path.iterdir())
+        assert after == before
+        assert sorted(p.name for p in dest_dir.iterdir()) == []

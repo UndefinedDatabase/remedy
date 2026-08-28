@@ -13,7 +13,8 @@ writes files is not the place to keep proving that a module writes none.
 
 Public API::
 
-    SelfUseJobError: asked to render or plan with no pending queue item
+    SelfUseJobError: asked to render or plan with no pending queue item, or
+        asked to write outside the destination directory
     write_self_use_job_file(entry, dest_dir) -> Path
     plan_self_use_item(entry, dest_dir, repo_path=".") -> tuple[Path, object]
     plan_next_self_use_item(dest_dir, repo_path=".", queue_path=None)
@@ -47,7 +48,10 @@ from packages.orchestration.self_use_queue import SelfUseQueueEntry, next_self_u
 
 
 class SelfUseJobError(RuntimeError):
-    """Asked to render or plan a self-use job when the queue has no pending item.
+    """Asked to render or plan a self-use job the module refuses to carry out.
+
+    Two refusals wear this one error: the queue has no pending item, and a
+    destination that would fall outside the caller's ``dest_dir``.
 
     Raised rather than answered with ``None``: "the track is exhausted" is a
     state a caller must handle deliberately — a human has to curate more items —
@@ -66,12 +70,41 @@ def write_self_use_job_file(entry: SelfUseQueueEntry, dest_dir: Path) -> Path:
 
     ``dest_dir`` is created when absent.  The destination is the CALLER'S and is
     never derived here — this module resolves no data root.
+
+    Raises:
+        SelfUseJobError: ``entry.id`` would place the file outside ``dest_dir``.
+            The message names the offending id.
     """
     dest_dir = Path(dest_dir)
+    candidate = dest_dir / f"{entry.id}.md"
+    # CONTAINMENT IS CHECKED ON RESOLVED PATHS, NOT ON THE CHARACTERS OF THE ID.
+    # Comparing the candidate's resolved parent with the resolved ``dest_dir``
+    # also catches an ABSOLUTE id and a symlinked escape, which a character
+    # filter would not; and the character route is not available anyway, because
+    # ``tests/test_path_utils.py::TestSingleImplementationInvariant`` reserves
+    # path-sanitising regexes and length constants to
+    # :mod:`packages.orchestration.path_utils`.
+    #
+    # IT REFUSES RATHER THAN SANITISES.  The contract is that the file is named
+    # ``<id>.md``; a sanitiser would quietly make the written name differ from
+    # the id the caller asked for — the same silent divergence the verbatim-bytes
+    # rule above exists to prevent — and raising is what this module already does
+    # for its one other failure.
+    #
+    # WORTH A GUARD EVEN THOUGH THE LOADER VALIDATES: ``load_self_use_queue``
+    # refuses any id but ``^SU-\d{3}$``, so the SHIPPED path cannot reach this.
+    # But ``write_self_use_job_file`` and :func:`plan_self_use_item` are PUBLIC
+    # exports taking a caller-built :class:`SelfUseQueueEntry`, and that frozen
+    # dataclass validates nothing — the guard is what makes the public function
+    # safe on its own terms rather than only as far as today's callers behave.
+    if candidate.resolve().parent != dest_dir.resolve():
+        raise SelfUseJobError(
+            f"self-use item id {entry.id!r} would write outside {dest_dir}: "
+            f"a job file is named <id>.md inside the destination directory"
+        )
     dest_dir.mkdir(parents=True, exist_ok=True)
-    path = dest_dir / f"{entry.id}.md"
-    path.write_text(entry.job_markdown, encoding="utf-8")
-    return path
+    candidate.write_text(entry.job_markdown, encoding="utf-8")
+    return candidate
 
 
 # The seam where the curated queue meets the job path Remedy already has: one
