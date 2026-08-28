@@ -1,28 +1,29 @@
-# Context — F256 Diff viewer completion
+# Context — F257 Self-use track
 
 ## Active Branch
-feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`, the merge
-commit of pull request #219.
+feature/f257-self-use-track, cut from `main` at the merge commit of pull
+request #220.
 
 ## Scope
-Feature F256, `docs/roadmap/features/T5_F256.md` — the scope DECISION F037 D11
-split off F037 and operator order amend0828-daily-driver registered.
-The pieces: wire the highlighting, measure the 10k-line fixture end to end and
-record it, rule on the file sidebar's visual treatment.
+Feature F257, `docs/roadmap/features/T5_F257.md` — the standing self-use track
+operator order amend0828-daily-driver registered. The pieces: a curated queue
+file, exactly one item consumed per feature close, the run taken to the normal
+approval gate, and findings recorded as operator findings in the feature file
+that owns the surface.
 
 ## Do not touch
-The diff JSON schema, the read endpoint, hunk-id stability (that is F033's
-contract) and apply mechanics. Nothing F037 built is removed — DECISION F037
-D11 says so in as many words. `docs/roadmap/ROADMAP.md` is not edited. The
-server-side diff source under `packages/` is outside this feature.
+STATUS semantics — a job must never check itself off. The approval gate: the
+`--approve` barrier in `packages/orchestration/job_promote.py` is unchanged. The
+scope-fence builtin deny list in `packages/orchestration/scope_fences.py`.
+`docs/roadmap/ROADMAP.md` is not edited.
 
 ## Assumptions
-- No third-party syntax highlighter is reachable from this build environment,
-  so DECISION F256 D1 rules that Remedy writes its own lazy bundles.
-- No file under `docs/ui/design_reference/` contains the word "syntax", so no
-  authority rules a token palette. The round that ships the stylesheet rules
-  it, deriving it from custom properties already defined under `apps/ui/src`;
-  `tests/ui_contracts/test_design_drift.py` fails any that is not.
+- The queue will store job-file TEXT in the format
+  `packages/orchestration/pingpong_job.py:parse_job_file` accepts, so it cannot
+  drift into a second task format.
+- Shipped curated data lives in `scripts/` with one named loader under
+  `packages/orchestration/`, the convention `scripts/dead_models.json` and
+  `packages/orchestration/dead_model_list.py` already set.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -47,9 +48,10 @@ CI run.
   `\bF\d{3}\b` and the word `Steps`; `.agent/plan.md` carries `## Goal`,
   `## Next Steps` and a feature id; `.agent/live_review.md` carries `Steps`.
 
-- A `.ts` mutation red-proof follows DECISION F037 D10: vitest is spawned from
-  the primary checkout so it resolves its own package there, `--root` points
-  discovery at the worktree, and both flags are load-bearing.
+- A new module under `packages/orchestration/` is swept by repo-wide guards that
+  name no path: the `REMEDY_DATA_DIR` single-reader invariant, the path-utils
+  single-implementation invariant, the bare-`except: pass` ban, and the
+  development-artifact boundary.
 
 ## Steps
 The item-status table for this feature lives in the `## Current Step` section

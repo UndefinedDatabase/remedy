@@ -9781,3 +9781,88 @@ route proves things about mutated SOURCE and never about a change to
 REVERSE by deleting this decision; a later session that finds `node_modules`
 reachable from inside a worktree should prefer the plain route and delete the
 scratch config with it.
+
+## DECISION F257 D1 (2026-08-28, F257 R1) — F257 IS claimable; the feature file's "NOT to build it" clause bounds the round that registered it, not every later round
+
+CONTEXT. `docs/roadmap/features/T5_F257.md` opens with a provenance blockquote
+reading "REGISTRATION ONLY — the order says to register it with a feature file
+and NOT to build it. Nothing in this file has been implemented." No other
+feature file carries such a clause, and no round has ever interpreted it:
+measured at `c9c54d27`, the string `F257` appears nowhere in
+`.agent/live_review.md`, `.agent/decisions.md` or `.agent/context.md`. Rule A5
+nevertheless names F257 as the next feature, because it is the first `[ ]` line
+after F256, and both `.agent/plan.md` and `.agent/handoff.md` at `c9c54d27` say
+so in as many words.
+
+CHOSEN. The clause is read as a scope fence on the ROUND THAT EXECUTED THE ORDER
+— register the feature, do not also build it in the same breath — and not as a
+standing prohibition. Three readings on disk carry that. The clause's own
+grammatical subject is what THE ORDER SAID, and it sits inside the blockquote
+whose purpose is registration provenance. The STATUS line is plain `[ ]` rather
+than the `[!]` marker docs/agents/planner_reviewer_prompt.md §1 reserves for a
+line a session must surface instead of claim. And the file carries a full
+Acceptance section and an Orchestrator brief addressed to the planner, which is
+text written for a round that builds it. Point 4 of the SAME operator order
+registered F256 with no such clause and points 1 through 3 were built
+immediately, so the order mixed both kinds and marked which was which.
+
+ALTERNATIVES CONSIDERED. (a) Treat the clause as standing and advance Rule A5 to
+F033. Rejected on evidence as well as cost: F033's branch already exists, nine
+commits ahead of `main` and five behind, halted on a STOP sentinel at its round
+2, so it is not the cheaper path; and reading a registration note as a permanent
+gate would leave the first `[ ]` line unclaimable with nothing on disk ever
+saying when that lifts. (b) Ask the operator. Forbidden — §2 of the reviewer
+prompt bars questions and menus, and §4 item 7 requires exactly this instead: a
+loud, persisted, reversible decision.
+
+CONSEQUENCE. F257 is claimed and built in STATUS order. To keep the exposure
+near zero if this reading is wrong, this round ships only rulings and state and
+nothing that runs — which is also what the feature file's own Orchestrator brief
+demands of a first round.
+
+REVERSE by ruling that F257 stays parked. Nothing this round builds runs on its
+own or is reachable from any CLI command: flip the STATUS line back to `[ ]` and
+Rule A5 advances to F033.
+
+## DECISION F257 D2 (2026-08-28, F257 R1) — the self-use queue is shipped curated JSON holding job-file TEXT, and only the closure round may mark an item consumed
+
+CONTEXT. F257's Orchestrator brief rules that the queue format and the
+consumption point are settled before anything that runs is written, because the
+feature's risk sits in curation and in the "exactly one" rule rather than in
+code. Measured at `c9c54d27`: no queue-like file that code reads exists in this
+repository; `packages/orchestration/job_queue.py` is a per-project queue under
+the DATA root rather than in the repo; and `plan_job_from_file` in
+`packages/orchestration/pingpong_job.py` accepts a Markdown job file — a
+`# Job:` H1 and `## Task N` headings, each task carrying an `Acceptance:` line.
+
+CHOSEN, in three parts. FORMAT: `scripts/self_use_queue.json`, a
+`schema_version`-stamped object read by one named loader,
+`packages/orchestration/self_use_queue.py` — the convention
+`scripts/dead_models.json` and `packages/orchestration/dead_model_list.py`
+already set for shipped, operator-editable input. CONTENT: each item carries the
+literal `job_markdown` the existing parser accepts, so the queue never grows a
+second task format that has to be kept in step with the first, and a test
+asserts every shipped item really parses. CONSUMPTION POINT: an item is marked
+consumed by an edit the CLOSURE ROUND makes, and the loader ships no writer at
+all.
+
+ALTERNATIVES CONSIDERED. (a) A second, richer task schema in the queue, rendered
+into a job file later. Rejected: two spellings of one concept is the synonym
+drift AGENTS.md's discoverability conventions forbid, and the renderer becomes a
+thing to keep in step forever. (b) Let the job itself mark its item consumed at
+promotion. Rejected on this feature's own Do-not-touch: a job that can check
+itself off is the failure `docs/roadmap/STATUS.md`'s place in
+`scope_fences.BUILTIN_DENY` exists to prevent, and the queue is a ledger of the
+same kind. (c) Put the queue under `docs/`. Rejected because
+`tests/docs/test_docs_consistency.py` counts the files under
+`docs/roadmap/features/` and pins the primary docs, and a data file that code
+reads is not a doc.
+
+CONSEQUENCE, stated plainly because it is a real dependency on a human step.
+Consumption is a HUMAN-SEQUENCED edit, so the track rots if the closure sequence
+never performs it. That is why a later round wires the consumption point into
+the closure protocol rather than leaving it an intention — which is this
+feature's Goal & Done clause in as many words.
+
+REVERSE by deleting this decision; nothing depends on it until the next round
+builds the queue file and its loader against it.

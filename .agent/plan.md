@@ -1,32 +1,36 @@
-# Plan — F256 Diff viewer completion
+# Plan — F257 Self-use track
 
-Branch: feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`.
-F256 was claimed by Rule A5 as the first unchecked line of Package 1 in
-`docs/roadmap/STATUS.md`.
+Branch: feature/f257-self-use-track, cut from `main` at the merge commit of pull
+request #220. F257 was claimed by Rule A5 as the first unchecked line in
+`docs/roadmap/STATUS.md` after F256.
 
 ## Goal
-Finish the rendered diff viewer F037 shipped: highlighting actually rendered
-rather than only modelled, the 10k-line budget measured and recorded, and the
-file sidebar's visual treatment ruled by a named authority.
+Remedy is used on Remedy on a schedule that cannot be skipped: a curated queue
+of small maintenance jobs, exactly one consumed per feature close, run through
+`do job-plan` and `do job-run` against this repository and taken to the normal
+approval gate.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 wire the highlighting | done | DECISIONS F256 D1 and D2 |
-| T002 measure and record both halves | done | D4, D5, D6, Built State |
-| T003 rule on the sidebar's treatment | done | DECISION F256 D3 |
-| the integration gate and the package | done | READY_FOR_REVIEW at `c6775b3c` |
-| resolve `R-0732` | done | this round |
-| the STATUS closure and the PR | done | this round |
+| claim F257 and retarget the state | done | this round |
+| rule the queue format and the consumption point | done | DECISIONS F257 D1 and D2 |
+| the queue file and its read-only loader | open | next round, against D2 |
+| render a queue item into a job file and plan it | open | needs the loader first |
+| consume exactly one item per feature close | open | the closure-protocol edit |
+| document the format where a reader looks | open | acceptance item 1 |
 
 ## Next Steps
-1. The closure PR is NOT merged this session; it merges at the next feature's
-   start through the Open PR Gate, which is the operator's review window.
-2. The next feature by Rule A5 is F257 — Self-use track, the first unchecked
-   STATUS line after F256.
-3. `.agent/candidates.md` stays empty unless the closure gate raised one.
+1. Build `scripts/self_use_queue.json` and its read-only loader
+   `packages/orchestration/self_use_queue.py`, with tests, against DECISION
+   F257 D2.
+2. Render a pending queue item into a job file and plan it through
+   `plan_job_from_file`, so the queue reaches the real job path.
+3. Wire the consumption point into the closure sequence, so exactly one item is
+   consumed per feature close and the track cannot rot.
 
 ## Risks
-- None open against F256. `R-0732` is resolved this round; the wider ledger's
-  251 open findings belong to earlier features.
+- A job must never mark its own queue item consumed; the loader will ship no
+  writer and DECISION F257 D2 rules the consumption point.
+- `docs/roadmap/STATUS.md` is in `scope_fences.BUILTIN_DENY` and stays there.
