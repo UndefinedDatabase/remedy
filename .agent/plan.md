@@ -3,45 +3,42 @@
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
 merge commit of pull request #217 which closed F032.
 `.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series.
+`.agent/decisions.md` carries the DECISION series, F037 D1 onward.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
 into structured JSON — files, hunks, lines, intraline spans — served as a read
-endpoint per task and attempt, and the client renders it with a file sidebar,
-hunk collapse, virtual scrolling and lazily loaded syntax bundles.
+endpoint, and the client renders it with a file sidebar, hunk collapse, virtual
+scrolling and lazily loaded syntax bundles.
 `docs/roadmap/features/T5_F037.md` holds Goal & Done, the task slicing, the
-binding CSS and the orchestrator brief.
+binding CSS and — from this round — the design amendments that reconcile it
+with the source.
 
 ## Current Step
-R1 claims F037 in the roadmap ledger, cuts the branch, resets this record set
-for the new feature, books the F032 R19 verdict, and puts the F037 source
-inventory on disk. The inventory is the round's substance: `review_scope.py`
-already parses unified diffs and `review_subject.py` already names a
-file-status vocabulary, while the feature file specifies a contract matching
-neither exactly, so what already exists is measured before T001 is planned.
+R2 books the R1 verdict, registers `R-0715`, records the reviewer's authoring
+slip, and lands the DECISIONS the R1 inventory forced together with the
+feature-file amendments they rule. The inventory measured that no vocabulary in
+this repository carries a `binary` file status and that no per-attempt diff
+exists anywhere, so the spec is amended on disk before T001 is planned against
+it.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
-| C1 plan and context for F037 | ordered | first substantive commit |
-| C2 STATUS claim, open to active | ordered | |
-| C3 ledger reset and the F032 R19 gate | ordered | findings carried forward |
-| C4 the F037 source inventory | ordered | Q1-Q8, each measured |
-| C5 the handback | ordered | |
+| C1 the plan | ordered | first substantive commit |
+| C2 the record, the finding, the slip, both DECISIONS | ordered | record first |
+| C3 the feature-file amendments | ordered | the spec moves on disk |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. Book R1's verdict and plan T001 against the inventory — the parser seam, the
-   status vocabulary and the route the read endpoint attaches to.
-2. T001: the unified-to-JSON parser, its corpus tests and the read endpoint.
-3. T002 the rendering core, then T003 sidebar, virtual scrolling, lazy
-   languages and the L3 tab.
+1. T001: the unified-to-JSON parser as a NEW module with its corpus tests, then
+   the read endpoint, planned against the amended spec.
+2. T002 the rendering core, the binding CSS and the goldens.
+3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
-- The feature file's contract names a `binary` file status that
-  `review_subject.py`'s vocabulary does not carry, and that vocabulary carries
-  `copied` and `type_changed` which the contract omits. If the inventory
-  confirms this, the reviewer rules a DECISION under §4 item 7 rather than
-  widening scope silently.
-- `.agent/live_review.md` is append-only below `## Findings`. R1 rewrites the
-  header region and appends the F032 R19 gate entry, and G5 proves both.
+- `R-0715` is open and Low. It is a stale count in a test docstring, turns
+  nothing red, and belongs to whoever next edits that file.
+- The amended spec drops the endpoint's attempt parameter for v1. If a later
+  feature makes per-attempt diffs real, DECISION F037 D2 names how to reverse
+  that.
