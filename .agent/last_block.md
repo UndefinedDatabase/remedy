@@ -1,39 +1,38 @@
-### STEP T002a — F256 Diff viewer completion, round 6 (THE SERVER-SIDE MEASUREMENT)
+### STEP T002b — F256 Diff viewer completion, round 7 (THE CLIENT MEASUREMENT)
 
-Goal: measure the 10k-line fixture through the REAL read endpoint and pin the
-result with a guard that survives a slower machine, so F037's Acceptance bullet
-"10k-line fixture within the perf budget (recorded)" stops being a claim. This
-round measures the SERVER half — artifact on disk, parse, envelope, JSON, HTTP.
-The CLIENT half and the recording into the feature file are round 7 and round 8.
+Goal: measure the 10k-line fixture through the CLIENT model and pin the property
+that actually makes a diff that size viable — that the drawn window stays a small
+constant however long the document gets. Round 6 measured the server half. This
+round measures the half the server hands to, so that round 8 can write both sets
+of numbers into the feature file's Built State.
 
-Base: `08f6218a`, the tip of `feature/f256-diff-viewer-completion`. Every reading
+Base: `dff36f33`, the tip of `feature/f256-diff-viewer-completion`. Every reading
 below was taken there by the reviewer.
 
 Bundle, in commit order:
 
-- C0a save this block verbatim to `.agent/authored/f256-r6.md`
+- C0a save this block verbatim to `.agent/authored/f256-r7.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
 - C1 advance `.agent/plan.md`
-- C2 append the R5 verdict to `.agent/live_review.md` and DECISION F256 D4 to
-  `.agent/decisions.md`
-- C3 the end-to-end measurement in `tests/ui_server/test_diff_endpoint.py`
+- C2 append the R6 verdict to `.agent/live_review.md` and DECISIONS F256 D5 and
+  F256 D6 to `.agent/decisions.md`
+- C3 the client measurement in `apps/ui/src/api/diffViewModel.test.ts`
 - C4 rewrite `.agent/handoff.md`
 
 Change set, these paths and nothing else:
 
-- `.agent/authored/f256-r6.md`
+- `.agent/authored/f256-r7.md`
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
 - `.agent/decisions.md`
-- `tests/ui_server/test_diff_endpoint.py`
+- `apps/ui/src/api/diffViewModel.test.ts`
 - `.agent/handoff.md`
 
-NO PRODUCTION FILE IS EDITED BY THIS ROUND. `packages/orchestration/diff_parser.py`,
-`packages/orchestration/diff_view_source.py`, `packages/orchestration/ui_server.py`,
-`docs/roadmap/features/T5_F256.md` and everything under `apps/ui/` are NOT touched
-in the primary checkout. The red-proof mutates two of them inside a disposable
-worktree and reverts each; that is the only place any of them changes.
+NO PRODUCTION FILE IS EDITED BY THIS ROUND. `apps/ui/src/api/diffViewModel.ts`,
+everything else under `apps/ui/src/`, `packages/` and `docs/` are NOT touched in
+the primary checkout. The red-proof mutates `diffViewModel.ts` inside a disposable
+worktree and reverts it; that is the only place it changes.
 
 ### Constraints
 
@@ -46,99 +45,86 @@ worktree and reverts each; that is the only place any of them changes.
 2. The delimiter lines `<<<SLICE …` and `<<<END …` are transport only and never
    reach a target file.
 3. Extract every slice from the COMMITTED blob with
-   `git show <C0a>:.agent/authored/f256-r6.md`, never from this prompt's text.
+   `git show <C0a>:.agent/authored/f256-r7.md`, never from this prompt's text.
 4. AGENTS.md binds in full: self-review before every commit, one logical step per
    commit, `.agent/plan.md` current before every commit, clean tree, push.
 5. Destructive verification runs ONLY inside a disposable `git worktree` under the
    gitignored `.remedy-wt/`. The primary checkout satisfies
-   `git status --porcelain` empty at every commit.
+   `git status --porcelain` empty at every commit. G7 below states the exact
+   route by which a vitest red-proof meets this, because vitest CANNOT run inside
+   a worktree — see DECISION F256 D6, which you are applying, not deciding.
 6. Shell forms rejected by this session's guard are RE-EXPRESSED as a script file
    under `.remedy-wt/` run with `python3`, never skipped and never weakened.
    Report each one.
-7. READ `tests/ui_server/test_diff_endpoint.py` IN FULL BEFORE EDITING IT. Its
-   `TestDiffEndpoint` carries a `_setup_job` fixture, a `_start_server` and a
-   static `_get`. Your class needs the same three shapes over a DIFFERENT evidence
-   body, and `_start_server` reads `self.tmp_path` and `self.job_id` off the
-   instance, so it cannot be called from a class that does not have them. Measured
-   at `08f6218a`, SEVEN modules under `tests/ui_server/` each carry their own
-   `start_ui_server` harness, so a second one inside this module follows the
-   package's established shape rather than inventing one. Give your class its own
-   fixture and its own start helper; `TestDiffEndpoint._get` is a `@staticmethod`
-   and is callable unchanged, so reuse that one. Report which you reused and which
-   you re-declared. DO NOT EDIT `TestDiffEndpoint` AND DO NOT SUBCLASS IT — a
-   subclass would re-run all of its tests under a new name.
+7. READ `apps/ui/src/api/diffViewModel.test.ts` IN FULL BEFORE EDITING IT. It
+   already carries the fixture helpers `wireEnvelope`, `wireFile`, `wireHunk` and
+   `envelopeWithHunkOf`, and a `SCALE_ROWS` constant of 10000 used for the window
+   tests. REUSE those helpers; do not write a second envelope builder. Report
+   which you reused.
 8. NO EXISTING ASSERTION IS WEAKENED, DELETED OR RELAXED, and no existing test in
    that file changes by one byte. If an existing guard genuinely contradicts this
    block, STOP and hand back with the contradiction stated.
 9. A MEASURED NUMBER IS NEVER INVENTED AND NEVER COPIED FROM THIS BLOCK. Every
-   figure you write into a docstring is one YOUR OWN run produced. The figures
-   inside the DECF256D4 slice are the REVIEWER'S, measured at `08f6218a`; they are
-   applied as part of that slice byte for byte, and they are never transcribed
-   into a test docstring as though this round had measured them.
-10. NO CEILING IS RAISED TO MAKE A RUN PASS. The four constants in S2 are ruled by
-    DECISION F256 D4 and are applied as given. If a real run cannot meet them,
-    that is a finding: STOP and hand back with the full numbers.
+   figure you write into a comment or a docstring is one YOUR OWN run produced.
+   The figures inside the DECF256D5 slice are the REVIEWER'S, measured at
+   `dff36f33`; they are applied as part of that slice byte for byte and are never
+   transcribed into a test as though this round had measured them.
+10. NO CONSTANT IN `diffViewModel.ts` IS CHANGED to make an assertion pass. If a
+    real run cannot meet what S2 fixes, that is a finding: STOP and hand back with
+    the full numbers.
 
 ### SPEC — the measurement of C3
 
-S1. Add ONE new class to `tests/ui_server/test_diff_endpoint.py`, after the
-existing `TestDiffEndpoint` class, covering the 10k-line fixture end to end over
-the REAL HTTP route that class already exercises, under the split constraint 7
-rules. It does not call `build_diff_view` directly, because the thing under
-measurement is the route and everything behind it, not the builder alone.
+S1. Add ONE new `describe` block to `apps/ui/src/api/diffViewModel.test.ts`,
+after the existing ones, covering the Acceptance fixture through the client model.
+It builds its envelope with the file's OWN helpers and asserts on
+`buildDiffRowModels`, `defaultCollapsedHunkIds` and `diffRowWindowForViewport`.
 
-S2. Four module-level constants, each with a `#:` comment saying what it is for
-and naming DECISION F256 D4 as the authority for the two guards:
+S2. THE TRAP THIS BLOCK EXISTS TO AVOID, and the reason S3 is written the way it
+is. Measured by the reviewer at `dff36f33`: `defaultCollapsedHunkIds` collapses a
+single hunk of 10,000 lines AND a single hunk of 1,000 lines — its returned set
+has size 1 in both cases — and a collapsed hunk emits NO line rows, so
+`buildDiffRowModels(envelope, defaultCollapsedHunkIds(envelope))` returns just TWO
+rows for the Acceptance fixture. A benchmark written that way measures two rows
+however large the fixture is. Every measurement below therefore passes an EMPTY
+collapsed set, and one test pins the collapse fact itself so the trap is recorded
+rather than merely avoided.
 
-- the Acceptance fixture's body-line count, `10_000`;
-- the LINEAR REFERENCE body-line count, `1_000`, measured through the same route
-  so the two figures differ only in size;
-- the SCALE RATIO CEILING, `20`, which the measured
-  `t(10_000) / t(1_000)` must stay under;
-- the HANG NET in seconds, `5.0`, a coarse absolute bound on a single 10k request.
+S3. THE RECORDING TEST. Over an envelope of one file and one hunk of 10,000 body
+lines, with an EMPTY collapsed set, build the row models several times and record
+the MEDIAN, MINIMUM and MAXIMUM wall clock in a comment, dated and attributed to
+a machine class the way `test_the_huge_diff_parses_inside_the_recorded_perf_budget`
+in `tests/orchestration/test_diff_parser.py` does. Pin the WORK first — a
+measurement of an empty answer is not a measurement: the row count is exactly the
+body-line count plus one file row plus one hunk-head row, and that arithmetic is
+written as an expression over the constants, never as a bare literal.
 
-The fixture body-line counts must both be EVEN — the body is written as
-alternating deletion/addition pairs — and the large one must be strictly below
-`DIFF_VIEW_MAX_BODY_LINES`, asserted directly and not merely implied, so a
-re-decided ceiling that truncated the very fixture Acceptance names turns this
-file red instead of quietly measuring a truncated parse.
+S4. THE GUARD, and it is EXACT rather than timed. Build the window over the
+Acceptance row count and over a row count TEN TIMES larger, and assert that
+`diffRowWindowForViewport` reports `virtualized` true for both and that
+`rowsInWindow` is IDENTICAL for the two — the drawn row count does not grow when
+the document does. That constant is what makes a 10k-line diff viable at all, it
+is decided by `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` and
+`DIFF_VIRTUAL_OVERSCAN_ROWS` rather than by the document, and unlike a duration it
+is the same number on every machine. Assert also that `rowsInWindow` is far below
+the total row count, expressed as a comparison against the row count and not as a
+literal.
 
-S3. A generator for the fixture, local to this module: one file, `body_line_count`
-body lines as alternating `-`/`+` pairs, with a hunk header whose counts follow.
-`tests/orchestration/test_diff_parser.py` carries a twin of this generator; a
-comment on yours must say so, and say why this module carries its own rather than
-importing a private helper across test packages. Do NOT import from that module.
+S5. THE COLLAPSE FACT. One test pinning what S2 records: over the Acceptance
+fixture, `defaultCollapsedHunkIds` returns a set of size 1, and building with THAT
+set yields exactly two rows while building with an empty set yields the full
+count. Its comment states plainly that this is the viewer's FIRST PAINT of a
+10k-line diff — the hunk arrives collapsed — and that the expanded number is what
+S3 measures.
 
-S4. The RECORDING test. Serve the 10k fixture as `workspace.diff` through the job
-route, five times, and record the MEDIAN wall clock of the request. Before any
-timing assertion, pin the WORK — a budget met by serving nothing is not a budget:
-the response status is 200, `available` is True, `truncated` is False, exactly one
-file entry, and the body lines summed across its hunks equal the Acceptance
-count. Then assert the median is under the hang net. The docstring records, as
-figures YOUR run produced: the median, the minimum and the maximum request time,
-and the byte length of the serialized JSON response. Date the measurement and name
-the machine class the way
-`test_the_huge_diff_parses_inside_the_recorded_perf_budget` in
-`tests/orchestration/test_diff_parser.py` does — read that docstring first and
-follow its shape.
-
-S5. The COMPLEXITY GUARD. Measure the median request time at the linear reference
-count and at the Acceptance count, over the same route in the same test, and
-assert their ratio is under the ratio ceiling. The docstring states, in its own
-words, what the assertion separates: a pipeline linear in body lines answers near
-the size ratio itself, a pipeline quadratic in body lines answers near its square,
-and because both figures come off the SAME machine in the SAME run the assertion
-never becomes a report on machine speed. It must also say which direction the
-fixed per-request overhead moves the measured ratio, and that the direction is the
-safe one.
-
-S6. Both tests must name, in an assertion message, the measured figures and the
-constant they were compared against — a red that prints only `assert False`
-tells the next reader nothing about which half moved.
+S6. Every assertion names, in its failure message or through `expect`'s own
+output, the measured figure and what it was compared against. Print the recorded
+figures with `console.log` in the shape round 6 used in
+`tests/ui_server/test_diff_endpoint.py`, so a run reports what the comments carry.
 
 ### The authored slices
 
-<<<SLICE PLANF256R6
+<<<SLICE PLANF256R7
 # Plan — F256 Diff viewer completion
 
 Branch: feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`.
@@ -158,238 +144,276 @@ file sidebar's visual treatment ruled by a named authority.
 | the DiffView wiring and the derived palette | done | `678bc698` |
 | make the lazy load real, repairing `R-0732` | done | `8bcff3db` |
 | rule on the sidebar's treatment | done | `1b70fb02`, DECISION F256 D3 |
-| measure the 10k fixture, server half | done | this round |
-| measure the 10k fixture, client half | open | round 7, in vitest |
-| record the numbers in the feature file | open | round 8 |
+| measure the 10k fixture, server half | done | `4aea7ba2`, DECISION F256 D4 |
+| measure the 10k fixture, client half | done | this round |
+| record the numbers in the feature file | open | next round |
 
 ## Next Steps
-1. Measure `buildDiffRowModels` and `diffRowWindowForViewport` over a 10k-row
-   envelope in vitest, which is the client half of the same fixture.
-2. Write all measured numbers into the Built State of
-   `docs/roadmap/features/T5_F256.md`, which is what Acceptance asks for.
-3. Run the integration gate, then the closure sequence.
+1. Write both halves' measured numbers into the Built State of
+   `docs/roadmap/features/T5_F256.md`, which is what Acceptance asks for: a
+   recorded measurement rather than a claim.
+2. Run the integration gate.
+3. Run the closure sequence, which needs two rounds — evidence and zip, then the
+   STATUS commit.
 
 ## Risks
-- A perf assertion that pins an absolute second count on a hosted runner is a
-  report on machine speed; DECISION F256 D4 rules the ratio guard instead.
-- The 10k measurement must be a real run against a real fixture; a budget is
-  re-derived from a re-measured maximum and never raised by hand.
-<<<END PLANF256R6
+- A collapsed hunk emits no line rows, so a client benchmark built with the
+  DEFAULT collapsed set measures two rows however large the fixture is.
+- The client model costs about a millisecond with a threefold run-to-run spread,
+  so a timing assertion there would measure the JIT; DECISION F256 D5 rules the
+  exact bounded-window property instead.
+<<<END PLANF256R7
 
-<<<SLICE GATEF256R5
-Gate: F256 R5 — the SIDEBAR RULING round, which discharged the deferral `DiffFileSidebar.tsx` had carried in its own header since F037. THE ROUND PASSED on every gate its block ordered, G1 through G9, and the reviewer re-ran each one independently at `08f6218a` rather than reading the handback's figures.
+<<<SLICE GATEF256R6
+Gate: F256 R6 — the SERVER-SIDE MEASUREMENT round, which measured the Acceptance fixture through the real read endpoint and guarded its shape by a ratio rather than a second count. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran each one independently at `dff36f33`.
 
-TRANSPORT COVERS THE EMISSION AND NOT MERELY THE WORKER'S SELF-CONSISTENCY: the reviewer's own scratch original `.remedy-wt/f256-r5-block.md` predates the worker, and the committed `.agent/authored/f256-r5.md` blob at `212af2ca` is BYTE EQUAL to it at 22380 bytes, sha256 `f69b68d7635072d23d862d8aa3134c2bf1ebf159e5a2c64ac7608c332b0429b9`. At `d3ee4aac` the authored path and `.agent/last_block.md` are ONE blob id, `6289fa93296611c447ae08f42849477cf27a2a44`.
+TRANSPORT COVERS THE EMISSION: the reviewer's own scratch original `.remedy-wt/f256-r6-block.md` predates the worker, and the committed `.agent/authored/f256-r6.md` blob at `250529ba` is BYTE EQUAL to it at 27077 bytes, sha256 `9c873ffb6f5d31498d0305f4e7ebe10412a3d7e739ff59516882e5fc65516b67`. At `b402da84` the authored path and `.agent/last_block.md` are ONE blob id, `2fd3a32f39c5b70ca4dd0d9257a2c03c411f0df6`. `.agent/plan.md` at `221c1dd2` is byte-equal to its slice at 35 lines, both appends at `1962f8ef` reconstruct byte for byte from the `08f6218a` blob plus a newline plus their slice with each pre-round blob a byte PREFIX, and in each a byte flipped inside the FIRST appended paragraph is REJECTED. The ledger moved as a round that registers and resolves nothing should: registrations 293 and all DISTINCT, `^Done:` 43, `^Landed:` 11, the OPEN SET as a set 252, and `^Gate: F\d+ R\d+ — ` alone rising by one to 102, with `Gate: F256 R5` occurring exactly once.
 
-THE RECORD AND THE LEDGER MOVED EXACTLY AS A ROUND THAT REGISTERS AND RESOLVES NOTHING SHOULD. Both appends at `4afe74f9` reconstruct byte for byte from the `78e71b3c` blob plus a newline plus their slice, each pre-round blob is a byte PREFIX, and in each a byte the reviewer's own script confirmed lies inside the FIRST appended paragraph is REJECTED. Registrations stay at 293 and all DISTINCT, `^Done: R-\d+ — ` at 43, `^Landed: R-` at 11, the OPEN SET computed AS A SET at 252, and `^Gate: F\d+ R\d+ — ` rises by exactly one to 101. `Gate: F256 R4` occurs exactly once and `R-0732` still carries no `Done:` and no `Landed:` line.
+THE MEASUREMENT IS REAL AND THE REVIEWER RE-TOOK IT RATHER THAN READING IT. Running the new class alone at `dff36f33` the reviewer measured a median of 0.1343 s over five GETs at 10,000 body lines, minimum 0.1292 s, maximum 0.1408 s, for a response of 1,045,960 bytes — against the 0.1331 s, 0.1282 s, 0.1489 s and 1,045,960 bytes the docstring records. The byte figure is EXACT and the three durations sit inside ordinary run-to-run spread, so the recorded numbers are this machine's numbers. The route served `available` True, `truncated` False, one file and exactly 10,000 summed body lines, so the budget is not being met by serving nothing, and `DIFF_VIEW_MAX_BODY_LINES` is 20,000 with the fixture asserted strictly below it.
 
-THE RULING REACHED THE SCREEN RATHER THAN ONLY THE PROSE, which is the failure a CSS module makes silent by answering `undefined` for a name with no rule. At `1b70fb02` the four classes the component names are exactly `fileMeta`, `filePath`, `statAdd`, `statDel` and every one of them is a SUBSET of the fourteen `DiffView.module.css` defines; the four custom properties the new rules name are each already defined in `apps/ui/src/styles/tokens.css`, which is BYTE UNCHANGED, so no new hue and no new property entered the product. The markup was dressed and not grown: `<span` is 6 before and 6 after, `<strong` 1 and 1, `aria-hidden` 0, every spelling `TestTheSidebarDerivesNothing` forbids is 0 both before and after, and all eight summary fields are still read.
+THE RESPONSE-SIZE FIGURE IS RECONSTRUCTED, AND THE RECONSTRUCTION IS FAITHFUL. `_get` hands back a decoded body, so the test reports `len(json.dumps(body, default=str).encode())`; the reviewer read `_send_json` in `packages/orchestration/ui_server.py` and it writes exactly `json.dumps(data, default=str).encode()`, so the two are the same bytes rather than an estimate of them. A six-byte difference against the reviewer's own earlier probe is fully explained by that probe's fixture carrying a `task_runs/T001` directory, which puts one more entry in `task_run_ids`.
 
-THE RED-PROOF IS REAL, AND THE REVIEWER ADDED A THIRD MUTATION THE BLOCK DID NOT ORDER. In a disposable worktree at `d75eb339`: the unmutated control passed 16, deleting the `.statAdd` rule while the component still named the class turned the subset assertion red at exit 1, removing the `.filePath` class from the path element turned the ruled-classes assertion red at exit 1, and the control passed 16 again. The reviewer's own third mutation cut ALL FOUR rules while KEEPING the D3 comment that names all four selectors in prose — the one shape that would make the stylesheet scanner blind — and the file still went red, so `strip_css_comments` is load-bearing rather than decorative.
+THE RED-PROOF IS REAL, AND THE REVIEWER RAN THREE MUTATIONS WHERE THE BLOCK ORDERED TWO. In a disposable worktree at `4aea7ba2`: control 8 passed; lowering `DIFF_VIEW_MAX_BODY_LINES` from 20_000 to 5_000 turned the file RED with 2 failed; the reviewer's own dry-run spelling `diff_text.count(stripped[:1])` in the parser's per-line path turned the ratio test RED; the shipped spelling `diff_text.replace("body", "BODY")` turned the ratio test RED; and the control passed 8 again, with worktree porcelain empty after every revert.
 
-RE-RUN IN THE PRIMARY CHECKOUT, one pytest process at a time, each exit 0 and each equal to the handback's figure: `tests/ui_contracts/` 664 passed with 4 skipped, `tests/orchestration/test_test_runner.py` 52 passed, `tests/ui_server/` 495 passed, `tests/regression/test_resource_safety.py` 21 passed, `tests/orchestration/test_integrity_gate.py` 16 passed, the canary `tests/cli/test_golden_path.py` 42 passed, and `npx tsc --noEmit` exit 0. `apps/ui/dist` was NOT stale at review time. The branch tip equals `origin/feature/f256-diff-viewer-completion`, the primary checkout reads `git status --porcelain` empty, `git worktree list` shows the primary alone, `git ls-files .remedy-wt` is 0, and `gh pr list --state open` is `[]`.
+THE WORKER'S DECLARED DEVIATION 1 IS TRUE, AND IT IS THE MOST VALUABLE LINE IN THE HANDBACK. It reported that its first mutation, `diff_text.count(stripped)`, was a genuine whole-input scan that nevertheless did NOT redden the file, and that it therefore switched spellings rather than touching a constant or an assertion. The reviewer ran that exact spelling and confirms it: exit 0, 8 passed. So the ratio ceiling of 20 is NOT tripped by every whole-input scan — only by one costly enough to move the median — which is a real limit on the guard's reach, and the worker recorded it instead of quietly shipping a mutation that happened to work.
 
-THE ONE DEVIATION WORTH RECORDING IS ACCEPTED AND IS NOT A WEAKENING. S1 asked for the mono family with `font-feature-settings` declared AFTER any `font` shorthand; the worker used `font-family` and no shorthand at all, because a shorthand would have obliged it to invent a size and a line height for a sidebar no authority in this repository fixes, which the CANONICAL DESIGN REFERENCE banner forbids. The literal fallback stack it names is the same `ui-monospace, monospace` the rules above it use, and with no shorthand present there is nothing for `font-feature-settings` to be reset by, so the ordering clause is satisfied vacuously and the ligature rule still holds. The reviewer confirms the reasoning on the file's own bytes.
-<<<END GATEF256R5
+RE-RUN IN THE PRIMARY CHECKOUT, one pytest process at a time, each exit 0 and each equal to the handback's figure: `tests/ui_server/` 497 passed in 30.42 s against 495 at the base, `tests/orchestration/test_diff_parser.py` 43 passed, `tests/orchestration/test_diff_view_source.py` 15 passed, `tests/ui_contracts/` 664 passed with 4 skipped, `tests/orchestration/test_integrity_gate.py` 16 passed, and the canary `tests/cli/test_golden_path.py` 42 passed. `ruff check` on the changed test file reports "All checks passed!". The change set is six paths with both residues empty, every commit single-parent and under 500 insertions, and NO file under `packages/`, `apps/` or `docs/` moved by a byte. The branch tip equals `origin/feature/f256-diff-viewer-completion`, the primary checkout reads `git status --porcelain` empty, and `gh pr list --state open` is `[]`.
+<<<END GATEF256R6
 
-<<<SLICE DECF256D4
-## DECISION F256 D4 (2026-08-28, F256 R6) — the end-to-end diff budget is guarded by a scale RATIO measured on one machine in one run, not by an absolute second count
+<<<SLICE DECF256D5
+## DECISION F256 D5 (2026-08-28, F256 R7) — the client half of the 10k budget is guarded by the EXACT bounded-window property, not by a duration, and the numbers are recorded beside it
 
-CONTEXT. F037's Acceptance names a "10k-line fixture within the perf budget
-(recorded)" and amendment A6 records that bullet as UNMET, which is why F256
-carries T002. One half of the budget already exists:
-`test_the_huge_diff_parses_inside_the_recorded_perf_budget` in
-`tests/orchestration/test_diff_parser.py` measures the PARSER alone against an
-absolute ceiling of 0.5 s, and its own docstring states the rule that ceiling was
-chosen by — it must sit BETWEEN the measured linear case and where a quadratic
-parser would land, or it records nothing. What has never been measured is the
-whole server path: artifact on disk, parse, envelope, JSON serialisation and the
-HTTP response the client actually receives.
+CONTEXT. DECISION F256 D4 ruled the SERVER half of F037's Acceptance budget and
+guarded it with a scale ratio taken on one machine in one run. The CLIENT half —
+`readDiffEnvelope`, `buildDiffRowModels` and `diffRowWindowForViewport` in
+`apps/ui/src/api/diffViewModel.ts` — is what turns that envelope into the rows a
+renderer draws, and it has never been measured at the Acceptance size.
 
-WHAT THE REVIEWER MEASURED AT `08f6218a`, on the machine this feature is being
-built on, as the median of nine runs at each size. The whole envelope path —
-artifact read, parse, envelope assembly — costs 12.5 ms at 1,000 body lines,
-24.5 ms at 2,000 and 123.5 ms at 10,000, while the PARSER ALONE costs 12.1 ms and
-121.8 ms at the two ends of that range. Serialising the envelope adds 0.9 ms and
-10.0 ms, and the serialised JSON is 102,954 and 1,045,960 bytes against artifacts
-of 18,903 and 197,905. The parser is therefore about ninety-two per cent of the
-whole server-side cost, and everything composed around it is the remaining eight.
+WHAT THE REVIEWER MEASURED AT `dff36f33`, over an envelope of one file and one
+hunk, with the collapsed set EMPTY, as the median of seven builds: 0.469 ms at
+1,000 body lines producing 1,002 rows, and 1.688 ms at 10,000 body lines producing
+10,002 rows. The spread is the point: 0.122 ms to 0.918 ms at the small size and
+0.943 ms to 3.043 ms at the large one, a factor of three or more between the
+fastest and slowest sample in the same run, because a millisecond of JavaScript is
+mostly the JIT deciding whether to compile. The measured ratio was 3.60, nowhere
+near the algorithmic 10, for the same reason.
 
-THE ABSOLUTE CEILING IS ALREADY SPENT, AND SPENDING IT AGAIN GUARDS NOTHING NEW.
-`HUGE_DIFF_PARSE_CEILING_SECONDS` bounds the parser at 0.5 s and its own docstring
-records the rule it was chosen by. A second absolute ceiling over the endpoint
-would bound that same ninety-two per cent a second time and more loosely, and its
-red would be as likely to mean the runner was busy as that the code changed:
-AGENTS.md already names "a stage budget too small for a slower hosted runner" as
-one of the three classes of CI failure, and a bound that goes red for that reason
-teaches a future session to raise it, which is the one repair this repository
-forbids. What is genuinely UNGUARDED is the composition — nothing on disk today
-fails if the envelope layer, the serialiser or the route stops being linear in
-body lines.
+CHOSEN. The client half records its durations and asserts on something else
+entirely: that `diffRowWindowForViewport` reports `virtualized` true at the
+Acceptance row count and that its `rowsInWindow` is IDENTICAL at ten times that
+row count. Measured at `dff36f33`, 10,002 rows draw 48. That number is decided by
+`DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` and `DIFF_VIRTUAL_OVERSCAN_ROWS` and not by
+the document, so it is the same integer on every machine, in every run, forever —
+and it is the property that actually makes a 10,000-line diff viable, because what
+would make the viewer unusable is drawing ten thousand rows, not spending two
+milliseconds building a list. An exact invariant is a better guard than a noisy
+duration, and here one is available.
 
-CHOSEN. The end-to-end guard is a RATIO. The same route is measured at 1,000 and
-at 10,000 body lines, in the same test, in the same run, on the same machine, and
-the assertion is that the second median divided by the first stays under 20. A
-pipeline linear in body lines answers near 10, the size ratio itself; a pipeline
-quadratic in body lines answers near 100. Because both figures come off one
-machine in one run, every constant factor a machine contributes — clock speed,
-load, interpreter version — divides out, and the assertion cannot become a report
-on machine speed however slow the runner is. A coarse absolute HANG NET of 5.0 s
-on a single 10,000-line request sits beside it to catch a pipeline that stopped
-answering at all rather than one that got slower; at more than forty times the
-115.7 ms the route itself costs at that size it is not a budget and is not
-described as one.
+THE COLLAPSE TRAP IS RECORDED BECAUSE IT MAKES THE OBVIOUS BENCHMARK VACUOUS.
+`defaultCollapsedHunkIds` returns a set of size 1 for a single hunk of 10,000
+lines and ALSO for one of 1,000, and a collapsed hunk emits no line rows at all,
+so the natural spelling — build the default collapsed set, then build the rows —
+returns TWO rows however large the fixture is, and times nothing. The reviewer hit
+this on the first probe. Every client measurement therefore passes an EMPTY
+collapsed set, and a test pins the collapse fact itself so that the next reader
+meets it as an assertion rather than as a surprise. It is also a real product
+fact worth recording: the viewer's FIRST PAINT of a 10,000-line diff is two rows,
+and the ten thousand arrive only when the reader expands the hunk.
 
-THE FIXED PER-REQUEST OVERHEAD MOVES THE RATIO THE SAFE WAY, and this is the
-reason the ratio is sound rather than merely convenient. Server dispatch, socket
-setup and JSON decoding cost the same at both sizes, so they inflate the SMALLER
-median proportionally more than the larger one and the measured ratio comes out
-BELOW the true algorithmic ratio. The error therefore makes the guard more
-permissive and never falsely red — it can miss a mild regression, it cannot
-manufacture one — which is the only direction a bound in a suite that must stay
-green is allowed to err in.
+ALTERNATIVES CONSIDERED. (a) A ratio guard mirroring D4. Rejected: at a
+millisecond, with a threefold spread inside one run, the measured ratio would
+sometimes be 3 and sometimes 12, so the assertion would report the JIT rather than
+the code. (b) An absolute millisecond ceiling. Rejected for the same noise, and
+because it would be the flakiest assertion in a suite of 628 that currently
+finishes in under a second. (c) Measure nothing on the client and rely on the
+server figure. Rejected because Acceptance says "end to end", and the row model is
+the half a reader actually looks at.
 
-BOTH DIRECTIONS WERE MEASURED BEFORE THE CEILING WAS FIXED, so 20 is a derived
-number and not a taste. Over the real route at `08f6218a` the linear ratio is
-7.42 — a median of 15.6 ms at 1,000 body lines against 115.7 ms at 10,000, for a
-1,045,966 byte response — which sits BELOW the algorithmic 10 exactly as the
-paragraph above predicts, and leaves the ceiling 2.7 times of headroom. In the
-other direction, inserting one statement into the parser's per-line path that
-scans the whole input on every iteration moves the PARSER's own ratio from 10.07
-to 39.51 while the parse still returns 10,000 body lines and `truncated` False —
-a regression that changes no answer and only costs time, which is precisely the
-class of defect this guard exists for. Damped by the same fixed overhead, that
-mutation reaches the route at roughly 31, so the ceiling separates the two cases
-with margin on both sides. At 25 the mutated margin would have been 1.2 times,
-and that is why the ceiling is 20.
+CONSEQUENCE. What is ASSERTED on the client is exact and machine-independent; what
+is RECORDED is the real duration, in a comment and in the Built State of
+`docs/roadmap/features/T5_F256.md`, dated and attributed to a machine class. A
+reader who wants to know how fast the client model is reads the numbers; a runner
+that is merely slow, or merely cold, does not turn the suite red.
 
-ALTERNATIVES CONSIDERED. (a) A second absolute ceiling, matching the parser
-test's idiom. Rejected for the reason above: it re-guards the parser's own cost
-and its red is machine-shaped. For the record, a quadratic pipeline matching
-today's cost at 1,000 body lines lands near 1.3 s at 10,000, so such a ceiling
-would have to sit under that to separate the two cases at all. The idiom is right
-for a function whose cost is nearly all algorithm and wrong for a path whose cost
-includes a server. (b) An absolute ceiling above the quadratic case. Rejected
-because it separates nothing and would record a number while guarding no
-property. (c) Measure the parser again through the endpoint and assert nothing.
-Rejected because Acceptance asks for a budget, not only a figure.
+REVERSE by deleting this decision and replacing the bounded-window assertions with
+a duration bound, accepting the flakiness the paragraphs above measure. The
+recorded numbers are unaffected either way, because they are a measurement and not
+a bound.
+<<<END DECF256D5
 
-CONSEQUENCE. The recorded numbers and the guarded property become two different
-things, deliberately: the docstring of the recording test carries the real
-medians, the real spread and the real serialised byte size, dated and attributed
-to a machine class, and the Built State of `docs/roadmap/features/T5_F256.md` will
-carry them too, while the ASSERTIONS pin only what survives a change of machine.
-A reader who wants to know how fast the viewer is reads the numbers; a runner that
-is merely slow does not turn the suite red.
+<<<SLICE DECF256D6
+## DECISION F256 D6 (2026-08-28, F256 R7) — a vitest red-proof runs the WORKTREE's mutated sources against the PRIMARY checkout's node_modules, because vitest cannot run inside a worktree
 
-REVERSE by deleting this decision and replacing the ratio assertion with an
-absolute ceiling under the quadratic figure named above, accepting that the bound
-then tracks the machine. The recorded numbers are unaffected either way, because
-they are a measurement and not a bound.
-<<<END DECF256D4
+CONTEXT. Guardrail G5 of docs/agents/self_drive_protocol.md requires destructive
+verification — mutation and red-proof checks — to run only inside a disposable
+`git worktree`, never in the primary checkout, so that `git status --porcelain` is
+empty at every verdict. Every red-proof in this feature so far has been a pytest
+run, which needs nothing but the repository. A vitest red-proof does not have that
+property, and F256 R7 is the first round in this feature whose new test is a
+vitest test.
 
-`PLANF256R6` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF256R5` and
-`DECF256D4` are APPENDS to `.agent/live_review.md` and `.agent/decisions.md`. For
-each, append exactly what gate G4 measures — the pre-round blob, one newline, then
-the slice — whatever blank lines that file already ends with.
+THE OBSTACLE, measured by the reviewer at `dff36f33`. A `git worktree` contains no
+`node_modules`, symlinking one in is denied in this environment, and installing
+one inside a throwaway worktree is neither fast nor guaranteed to have a network.
+Running `npx vitest run` from inside a worktree's `apps/ui` fails at startup with
+`Cannot find package 'vitest'`, because the only `node_modules` above it is the
+repository root's, which does not carry vitest. So the literal reading of G5 makes
+a vitest red-proof impossible, and the tempting repair — mutate the primary
+checkout and revert afterwards — is exactly what G5 exists to forbid.
+
+CHOSEN, and it satisfies G5 rather than excusing it. The mutation is applied to
+the WORKTREE's copy of the source, and vitest is invoked with its working
+directory set to the PRIMARY `apps/ui`, so module resolution finds the primary's
+`node_modules`, while the FILES under test are named by absolute path inside the
+worktree. Concretely: a scratch config under `.remedy-wt/` exports a plain object —
+it must NOT `import` from `vitest/config`, because a config outside the package
+cannot resolve that specifier — setting `root` to the primary `apps/ui`, `cacheDir`
+to a path under `.remedy-wt/`, and `test.include` to the absolute path of the
+worktree's test file. The primary checkout's sources are never written to.
+
+THE ROUTE WAS PROVED, NOT ASSUMED, and the proof is the part worth keeping. Simply
+observing that the suite runs would not show WHICH copy of the source it ran: the
+reviewer first mutated the worktree's `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` and saw
+90 tests still pass, which is consistent both with the route being a lie and with
+those particular tests deriving their expectation from the constant they import.
+The question was settled by gutting `buildDiffRowModels` in the WORKTREE copy so
+that it returns an empty array: 8 of the 90 tests went red, and reverting restored
+all 90. The worktree's source is therefore genuinely the one under test.
+
+`cacheDir` IS LOAD-BEARING AND NOT TIDINESS. Without it, running vitest with the
+primary as root writes an untracked `.vite/` directory into the repository root,
+which is not gitignored, so the red-proof would leave the primary checkout DIRTY —
+the precise condition G5 exists to prevent. With `cacheDir` pointed inside the
+gitignored `.remedy-wt/`, the reviewer measured `git status --porcelain` empty in
+the primary after a full run.
+
+CONSEQUENCE. A vitest test in this repository can now be red-proved to the same
+standard as a pytest one, and G5 is met literally rather than waived. The residual
+limit is stated plainly: the run borrows the primary's INSTALLED PACKAGES, so this
+route proves things about mutated SOURCE and never about a change to
+`package.json` or to a dependency version, which it cannot see.
+
+REVERSE by deleting this decision; a later session that finds `node_modules`
+reachable from inside a worktree should prefer the plain route and delete the
+scratch config with it.
+<<<END DECF256D6
+
+`PLANF256R7` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF256R6` is an
+APPEND to `.agent/live_review.md`. `DECF256D5` and `DECF256D6` are APPENDS to
+`.agent/decisions.md`, in that order, D5 before D6. For each append add exactly
+what gate G4 measures — the pre-round blob, one newline, then the slice —
+whatever blank lines that file already ends with; and when both decision slices go
+into one file, append D5 first and then D6 the same way, so the file ends with D6.
 
 ### Done when
 
 G1 HYGIENE AND STRUCTURE. Read `.agent/STOP` with `os.path.exists` before C0a and
 again before C3; report both, and stop after the commit in hand if it exists.
-Report `git rev-parse HEAD` before C0a — it must equal `08f6218a` —
+Report `git rev-parse HEAD` before C0a — it must equal `dff36f33` —
 `git branch --show-current`, and `git status --porcelain | wc -l` after each of
-C0a, C0b, C1, C2 and C3. Then, over `08f6218a..<C3>` — the range ending BEFORE the
+C0a, C0b, C1, C2 and C3. Then, over `dff36f33..<C3>` — the range ending BEFORE the
 handback commit, so `.agent/handoff.md` is expected in the change set but not in
 this range — report `git diff --name-only` and both residues against the change
 set with `.agent/handoff.md` set aside, printed in both directions and both
 expected empty. Report each commit's insertions from `git diff --numstat`, each
 under 500, and that each of C0a, C0b, C1, C2 and C3 is single-parent. Report the
 counts of lines beginning `<<<SLICE ` and `<<<END ` in every target other than
-`.agent/authored/f256-r6.md` and `.agent/last_block.md` — each expected 0 — beside
+`.agent/authored/f256-r7.md` and `.agent/last_block.md` — each expected 0 — beside
 those two as the non-zero control. Report `git ls-files .remedy-wt | wc -l`,
 expected 0, and `git worktree list` after the red-proof worktree is removed.
 
 G2 TRANSPORT. One digest comparison: sha256 of
-`git show <C0a>:.agent/authored/f256-r6.md` against the reviewer's own original at
-`.remedy-wt/f256-r6-block.md`, reporting both digests, the byte length and
+`git show <C0a>:.agent/authored/f256-r7.md` against the reviewer's own original at
+`.remedy-wt/f256-r7-block.md`, reporting both digests, the byte length and
 equality; that original predates this worker, so say the reading covers more than
-self-consistency. Report that `<C0b>:.agent/authored/f256-r6.md` and
+self-consistency. Report that `<C0b>:.agent/authored/f256-r7.md` and
 `<C0b>:.agent/last_block.md` are ONE blob id.
 
-G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF256R6 including the trailing
+G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF256R7 including the trailing
 newline — report `True` or `False` — with `wc -l` under 50 and the counts of lines
 exactly `## Goal` and exactly `## Next Steps`.
 
-G4 THE RECORD AT C2, two readers per appended file. (a) The `08f6218a` blob plus a
-newline plus the slice equals the C2 blob, reported separately for
-`.agent/live_review.md` with GATEF256R5 and `.agent/decisions.md` with DECF256D4;
-NEGATIVE CONTROL for each, flipping one byte at an offset your script confirms
-lies INSIDE THE FIRST appended paragraph and reporting the equality now `False`.
-(b) Let N be each slice's paragraph count, COUNTED BY YOUR SCRIPT from the slice
-and never taken from this block, ignoring an empty trailing unit; report N and
-that the LAST N blank-line units of each file match those paragraphs IN ORDER.
-Report each pre-round blob is a byte PREFIX.
+G4 THE RECORD AT C2. (a) For `.agent/live_review.md`, the `dff36f33` blob plus a
+newline plus GATEF256R6 equals the C2 blob; for `.agent/decisions.md`, the
+`dff36f33` blob plus a newline plus DECF256D5 plus a newline plus DECF256D6 equals
+the C2 blob. Report each as `True` or `False`, and report each pre-round blob is a
+byte PREFIX. NEGATIVE CONTROL for each file, flipping one byte at an offset your
+script confirms lies INSIDE THE FIRST appended paragraph and reporting the
+equality now `False`. (b) Let N be the paragraph count of the appended text for
+each file, COUNTED BY YOUR SCRIPT and never taken from this block, ignoring an
+empty trailing unit; report N and that the LAST N blank-line units of each file
+match those paragraphs IN ORDER. Report that `## DECISION F256 D5` and
+`## DECISION F256 D6` each occur exactly once in the C2 blob, and that D5's offset
+is smaller than D6's.
 
-G5 THE LEDGER AT C2. Over the C2 blob and the `08f6218a` blob beside it, report
+G5 THE LEDGER AT C2. Over the C2 blob and the `dff36f33` blob beside it, report
 `^- R-\d+ — ` and whether all DISTINCT, `^Done: R-\d+ — `, `^Landed: R-`,
 `^Gate: F\d+ R\d+ — `, and the OPEN SET as a set. This round registers and
 resolves nothing, so every figure is UNMOVED except `^Gate: F\d+ R\d+ — `, which
-rises by exactly ONE. Report that `Gate: F256 R5` occurs exactly 1 time.
+rises by exactly ONE. Report that `Gate: F256 R6` occurs exactly 1 time.
 
-G6 THE MEASUREMENT AT C3, the numbers this round exists to produce. Run the new
-class alone and report, from that run: the median, minimum and maximum request
-time at the Acceptance count and at the linear reference count; their RATIO; the
-byte length of the serialised JSON response at the Acceptance count; and the four
-pinned readings `status`, `available`, `truncated` and the summed body-line count.
-State whether each figure you wrote into a docstring is the figure this run
-produced. Report the value of `DIFF_VIEW_MAX_BODY_LINES` you read and that the
-Acceptance count is strictly below it.
+G6 THE MEASUREMENT AT C3. Run the new tests and report, from that run: the median,
+minimum and maximum build time at the Acceptance size; the row count built with an
+EMPTY collapsed set and the row count built with the DEFAULT collapsed set; the
+size of the set `defaultCollapsedHunkIds` returns; `virtualized` and `rowsInWindow`
+at the Acceptance row count and at ten times it, with confirmation that the two
+`rowsInWindow` values are EQUAL. State whether every figure you wrote into a
+comment is the figure this run produced. Run the WHOLE vitest suite too and report
+its exit code and totals.
 
-G7 THE RED-PROOF AT C3, in a disposable worktree, never in the primary checkout.
-Report the UNMUTATED CONTROL FIRST, then each mutation, with exit code and
-passed/failed counts, using
+G7 THE RED-PROOF AT C3, applying DECISION F256 D6's route exactly. Create a
+disposable worktree under `.remedy-wt/` at the C3 commit. Write a scratch vitest
+config under `.remedy-wt/` that exports a PLAIN OBJECT — it must not `import` from
+`vitest/config` — with `root` set to the PRIMARY `apps/ui`, `cacheDir` set to a
+path under `.remedy-wt/`, and `test.include` set to the absolute path of the
+WORKTREE's `apps/ui/src/api/diffViewModel.test.ts`. Invoke
 
-    ["python3", "-B", "-m", "pytest", "tests/ui_server/test_diff_endpoint.py", "-q"]
+    ["npx", "vitest", "run", "--config", "<that config>"]
 
-with `cwd` set to the WORKTREE. THE MUTATIONS, each applied ALONE and reverted
-before the next, each of which must turn that file RED:
-(i) in `packages/orchestration/diff_parser.py`, change the assignment
-`DIFF_VIEW_MAX_BODY_LINES = 20_000` to `DIFF_VIEW_MAX_BODY_LINES = 5_000`, so the
-Acceptance fixture truncates;
-(ii) in the same file, immediately after the line `        stripped = line.strip()`
-inside `parse_unified_diff_to_view`, insert one line that makes the per-line work
-proportional to the WHOLE input — a scan of `diff_text` on every iteration — so
-the pipeline becomes quadratic in body lines while still returning the same
-answer. Report the exact line you inserted, the ratio the mutated run measured,
-and WHICH assertion went red. Purge `__pycache__` in the worktree before each run.
-Report the control again, green, and `git status --porcelain` inside the worktree
-after the last revert.
+with `cwd` set to the PRIMARY `apps/ui`. Report the UNMUTATED CONTROL FIRST, then
+each mutation with its exit code and passed/failed totals. THE MUTATIONS, each
+applied ALONE to the WORKTREE's `apps/ui/src/api/diffViewModel.ts` and reverted
+before the next, each of which must turn the file RED:
+(i) make `buildDiffRowModels` return an empty array as its first statement, so the
+row-count pins have nothing to count;
+(ii) in `diffRowWindowForViewport`, make the unmeasured-viewport fallback grow
+with the document by changing the line
 
-G8 THE SUITES AT C3. One pytest process at a time, from the repository root, in
-the PRIMARY checkout, each with its exit code and its own passed/failed line:
-`tests/ui_server/` in full; `tests/orchestration/test_diff_parser.py`;
-`tests/orchestration/test_diff_view_source.py`; `tests/ui_contracts/`;
-`tests/orchestration/test_integrity_gate.py`; and the canary
-`tests/cli/test_golden_path.py`. Report the WALL CLOCK of `tests/ui_server/`
-beside its figure at `08f6218a`, which the reviewer measured as 495 passed in
-about 30 seconds, so the cost this round adds to that suite is visible. Every one
-must be exit 0. If any is red, STOP and write the handback with the FULL
-untruncated failure list.
+        ? DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS
+
+to read `        ? totalRows` instead, so `visibleRowCount` tracks the document
+and the bounded-window assertion of S4 no longer holds. The reviewer measured
+this anchor as occurring exactly once in that file at `dff36f33`. Report the
+exact edit you made, WHICH assertions went red, and note that this mutation is
+expected to redden existing window tests as well as the new one — that is
+correct, not a scope problem.
+Report the control again, green. Then report `git status --porcelain` in the
+PRIMARY — it must be EMPTY, which is what `cacheDir` is for — and confirm the
+worktree was removed.
+
+G8 THE SUITES AT C3. In the PRIMARY checkout: the whole vitest suite via `npx
+vitest run` in `apps/ui` with its real exit code and totals; `npx tsc --noEmit` in
+`apps/ui` with its real exit code; then, one pytest process at a time from the
+repository root, `tests/orchestration/test_test_runner.py` — it spawns `npx vitest
+run` under a 30-second timeout, so report its WALL CLOCK beside the reviewer's
+measurement at `dff36f33` of 628 tests in 33 files finishing in about 1.0 second —
+`tests/ui_contracts/`, `tests/ui_server/`, and the canary
+`tests/cli/test_golden_path.py`. Every one must be exit 0. If any is red, STOP and
+write the handback with the FULL untruncated failure list.
 
 ### Handback
 
 Rewrite `.agent/handoff.md` in C4 per docs/agents/handback_template.md. It
-carries: `SESSION 2 of feature F256 · round 6`; the range `08f6218a..HEAD`; a
+carries: `SESSION 2 of feature F256 · round 7`; the range `dff36f33..HEAD`; a
 per-commit changed-files table with `+/-` from `git diff --numstat` compared cell
 by cell against G1's figures; ONE LINE PER GATE G1 through G8 with its real
 result; the deviations, including every guard re-expression constraint 6 required;
 the item-status table with every C-item and every gate appearing exactly once; and
-the next expected action, which is the CLIENT half of the same measurement in
-vitest.
+the next expected action, which is writing both halves' numbers into the Built
+State of `docs/roadmap/features/T5_F256.md`.
 
 Do not write a `Done:` or `Gate:` paragraph of your own anywhere — only
-reviewer-authored text sets those. GATEF256R5 above is reviewer-authored and
+reviewer-authored text sets those. GATEF256R6 above is reviewer-authored and
 applied as a slice, which is not the same thing.
 
 After C4: push with `git push -u origin feature/f256-diff-viewer-completion` and
