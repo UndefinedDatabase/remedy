@@ -1,0 +1,33 @@
+C3f — PARITY: the mtime window of the base run
+=============================================
+
+run window: start 1787918225.502663 (Fri Aug 28 13:57:05 2026)
+            end   1787918380.7180617 (Fri Aug 28 13:59:40 2026)
+            wall  155.2s
+
+files under base apps/ui/dist: 4 before, 4 after
+
+per-file mtime, immediately before and immediately after the run:
+  apps/ui/dist/assets
+    before: 1787918420.6318452
+    after : 1787918302.0531702
+  apps/ui/dist/assets/index-B5aVi7qQ.js
+    before: 1787918420.6318452
+    after : None
+  apps/ui/dist/assets/index-D0y3OK7n.css
+    before: None
+    after : 1787918302.0531702
+  apps/ui/dist/assets/index-DBZlPUBM.css
+    before: 1787918420.6318452
+    after : None
+  apps/ui/dist/assets/index-D_a-qpxM.js
+    before: None
+    after : 1787918302.0531702
+  apps/ui/dist/index.html
+    before: 1787918420.6318452
+    after : 1787918302.0531702
+
+files whose mtime CHANGED across the run: 4 ['apps/ui/dist/assets', 'apps/ui/dist/assets/index-D0y3OK7n.css', 'apps/ui/dist/assets/index-D_a-qpxM.js', 'apps/ui/dist/index.html']
+files whose mtime falls INSIDE the run window: 4 ['apps/ui/dist/assets', 'apps/ui/dist/assets/index-D0y3OK7n.css', 'apps/ui/dist/assets/index-D_a-qpxM.js', 'apps/ui/dist/index.html']
+
+VERDICT: PARITY VOID — at least one apps/ui/dist mtime falls inside the run window.

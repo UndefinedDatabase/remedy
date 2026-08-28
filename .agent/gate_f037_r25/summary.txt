@@ -1,0 +1,48 @@
+F037 R25 — INTEGRATION GATE, one-screen summary
+===============================================
+
+base commit (merge-base main HEAD) : 9dde54956afbe5f432bfd429bf4ba0bb272f6d07
+branch                             : feature/f037-rendered-diff-viewer @ 9a7e5f16
+command, both runs                 : python3 -m pytest -n auto -q
+
+dist warmth before the branch run  : apps/ui/dist/index.html PRESENT,
+                                     mtime 1787917601.76 > newest of 128 files
+                                     under apps/ui/src (1787914723.65) — WARM,
+                                     nothing rebuilt
+
+                      exit code   wall time   FAILED lines   passed / skipped
+  branch run              1         161.0s          1          18118 / 20
+  base run                1         155.2s          1          17981 / 20
+
+  comm -13 (branch-only)  : 1 id
+  comm -23 (base-only)    : 1 id
+  intersection            : 0 ids
+
+  branch-only : tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_the_suite
+                serial 10/10 PASS ⇒ xdist-flake, recorded, NOT a blocker;
+                file untouched by the branch, reaches no feature code
+  base-only   : tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+                serial 10/10 PASS at the base itself ⇒ xdist-flake
+                (machine-wide pgrep matching another worker), not a genuine
+                base failure and not a failure the branch fixed
+
+parity verdict : VOID. All four files under the base worktree's apps/ui/dist
+                 carry mtime 1787918302.05, inside the run window
+                 1787918225.50 → 1787918380.72, and the hashed asset filenames
+                 changed across the run. Cause MEASURED, not inferred:
+                 tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior
+                 ::test_auto_build_runs_by_default pops REMEDY_UI_NO_AUTO_BUILD
+                 from a cleared environment and calls the real
+                 _auto_build_frontend(); run alone with the flag set it moved the
+                 same four mtimes again. Reported as VOID, not repaired. Both
+                 attributions above stand without it.
+
+canary        : both exit 0, run after the C3 gate work in the primary checkout,
+                one pytest process at a time (canary.txt):
+                  tests/cli/test_golden_path.py -> 42 passed in 20.50s
+                  tests/ui_contracts/           -> 653 passed, 4 skipped in 5.57s
+                Both equal the reviewer's readings at 38966bf3.
+
+cleanup       : worktree removed, pruned, branch tmp/f037-r25-base deleted.
+                `git worktree list` prints the primary checkout alone:
+                  /home/decodeux/Repos/remedy  9a7e5f16 [feature/f037-rendered-diff-viewer]

@@ -1,0 +1,17 @@
+C3g — COMPARE the two failure sets, IN FULL, never truncated
+===========================================================
+
+branch_failed.txt (feature/f037-rendered-diff-viewer @ 9a7e5f16), 1 line:
+FAILED tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_the_suite
+
+base_failed.txt (merge base 9dde5495 @ tmp/f037-r25-base), 1 line:
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+
+$ comm -13 base_failed.txt branch_failed.txt   # BRANCH-ONLY, 1 id
+FAILED tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_the_suite
+
+$ comm -23 base_failed.txt branch_failed.txt   # BASE-ONLY (fixed by the branch), 1 id
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+
+Set sizes: branch-only 1, base-only 1. Both lists are complete above; neither
+was truncated, and the intersection is EMPTY.
