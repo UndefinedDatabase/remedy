@@ -13,25 +13,23 @@ file sidebar's visual treatment ruled by a named authority.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| claim F256 and retarget the state | done | `d4c00438` |
 | the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
-| compose the token cut with the intraline cut | done | `739d31e0` |
 | the DiffView wiring and the derived palette | done | `678bc698` |
 | make the lazy load real, repairing `R-0732` | done | `8bcff3db` |
-| rule on the sidebar's treatment | done | this round |
-| measure the 10k-line fixture | open | needs a real fixture and a real run |
+| rule on the sidebar's treatment | done | `1b70fb02`, DECISION F256 D3 |
+| measure the 10k fixture, server half | done | this round |
+| measure the 10k fixture, client half | open | round 7, in vitest |
+| record the numbers in the feature file | open | round 8 |
 
 ## Next Steps
-1. Measure the 10k-line fixture end to end and record the numbers in the
-   feature file's Built State, which is F256's last unbuilt piece.
-2. Update `docs/roadmap/features/T5_F256.md` Built State with the three pieces
-   and their test files.
+1. Measure `buildDiffRowModels` and `diffRowWindowForViewport` over a 10k-row
+   envelope in vitest, which is the client half of the same fixture.
+2. Write all measured numbers into the Built State of
+   `docs/roadmap/features/T5_F256.md`, which is what Acceptance asks for.
 3. Run the integration gate, then the closure sequence.
 
 ## Risks
-- `tests/ui_contracts/test_diff_file_sidebar.py` and
-  `tests/ui_contracts/test_diff_view_render.py` both read comment-stripped
-  sources; a class and its rule must land in one commit or the element ships
-  unstyled.
-- The 10k-line measurement must be a real run against a real fixture; a budget
-  is re-derived from a re-measured maximum and never raised by hand.
+- A perf assertion that pins an absolute second count on a hosted runner is a
+  report on machine speed; DECISION F256 D4 rules the ratio guard instead.
+- The 10k measurement must be a real run against a real fixture; a budget is
+  re-derived from a re-measured maximum and never raised by hand.
