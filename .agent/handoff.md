@@ -1,234 +1,183 @@
-# Handback — F037 R2 (book R1, register R-0715, amend the spec)
+# Handback — F037 R3
 
 ## Session
-
-SESSION 1 of feature F037 · round 2 · rounds so far 2
+SESSION 1 of feature F037 · round 3 · rounds so far 3
 
 ## Range
-
-Review of 69f6478c6c18b7957f3e244b9f121e372f22a99d..HEAD
+Review of 09cbe24c2723b2aacb62e355fe5e03f9c8e46fe7..b8b832d3730a3bad51cd4cd3f6073b9f243a0b70
+(plus the C5 handoff commit that writes this file).
+Branch: `feature/f037-rendered-diff-viewer`. Round base: `09cbe24c`.
 
 ## Commits
 
-### 1f8d7826 chore(agent): save the F037 R2 block as authored
+### 69fb2d2f chore(agent): save the F037 R3 block as authored
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f037-r2.md | 416 / 0 | C0a — the block copied byte for byte from `.remedy-wt/f037-r2.md` with `shutil.copyfile` |
+| .agent/authored/f037-r3.md | +389 / -0 | C0a — the block copied byte for byte from `.remedy-wt/f037-r3.md` with `shutil.copyfile` |
 
-### 07d2a3f7 chore(agent): mirror the F037 R2 block into the last-block slot
+### 40f9cf74 chore(agent): mirror the R3 block into the last-block slot
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | 314 / 356 | C0b — mirror written from the committed C0a blob; same git blob `c0812abbe876801a5ac5c737918400f46ced453b` |
+| .agent/last_block.md | +318 / -345 | C0b — mirror of the committed C0a blob; same git blob `b26bbb83` |
 
-### 9b8cce95 docs(agent): point the plan at the F037 R2 booking round
+### 685611a2 docs(agent): point the plan at the F037 parser round
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | 24 / 27 | C1 — byte-equal to slice PLANF037R2 |
+| .agent/plan.md | +21 / -19 | C1 — byte-equal to slice PLANF037R3 |
 
-### 1d703c57 docs(agent): book the F037 R1 verdict, R-0715 and both DECISIONS
+### ea7a3a67 docs(agent): book the R2 verdict and the authoring slip
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/decisions.md | 84 / 0 | C2 — DECR2 appended; DECISIONS F037 D1 and D2 |
-| .agent/live_review.md | 4 / 0 | C2 — RECORDR2 appended; the F037 R1 gate paragraph and finding R-0715 |
-| .agent/prose_slips.md | 11 / 0 | C2 — SLIPR2 appended; the reviewer's own authoring slip |
+| .agent/live_review.md | +2 / -0 | C2 — EOF append of slice RECORDR3 onto the C1 baseline |
+| .agent/prose_slips.md | +13 / -0 | C2 — EOF append of slice SLIPR3 onto the C1 baseline |
 
-### 390234c1 docs(roadmap): amend the F037 design against the R1 source inventory
+### ba4e6f32 feat(orchestration): add the F037 unified-diff view parser
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/roadmap/features/T5_F037.md | 48 / 0 | C3 — DFROM→DTO pointer under the Design heading, then AMENDF037 appended (A1, A2, A3) |
+| packages/orchestration/diff_parser.py | +420 / -0 | C3 — the parser, implemented from SPEC S1–S11; stdlib only |
 
-### C4 docs(agent): hand back the F037 R2 round
+### b8b832d3 test(orchestration): pin the F037 diff-parser corpus
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/handoff.md | self | a handoff cannot table the commit that writes it (R-0149) |
+| tests/orchestration/test_diff_parser.py | +393 / -0 | C4 — the corpus, implemented from SPEC S12–S15 |
+
+### C5 docs(agent): hand back F037 R3
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/handoff.md | self | C5 — a handoff cannot table the commit that writes it (R-0149) |
+
+## External actions
+- `git worktree add .remedy-wt/g7 b8b832d3 --detach` — added for G7. Outcome: created at detached `b8b832d3`.
+- `git worktree remove --force .remedy-wt/g7` then `git worktree prune` — outcome: `git worktree list` back to 1 line, primary `git status --porcelain` 0 lines.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — exit 0, stdout `[]`. Nothing merged, nothing created.
+- INTENT after C5: `git push origin feature/f037-rendered-diff-viewer`. Its outcome cannot be a value of this file — C5 is authored before the push exists — so it is reported in the round's completion report instead.
+- No PR created. Nothing merged. No `npm`/`npx`/`node`/`vite` run.
+
+## Verification
+
+- **G1** exit 0. `git rev-parse HEAD` before C0a = `09cbe24c2723b2aacb62e355fe5e03f9c8e46fe7`; `git branch --show-current` = `feature/f037-rendered-diff-viewer`. `git status --porcelain` line count after C0a/C0b/C1/C2/C3/C4 = 0/0/0/0/0/0. `.agent/STOP` read from disk before C0a: ABSENT (`ls` exit 2, "No such file or directory"); read again before C5: ABSENT.
+- **G2** exit 0. sha256 `e5bd63a70b28652d86c6f76eaebd16fc0da95f11ddb46d9c7758d4607721f61a`, 30544 bytes, 389 lines — identical at all FOUR points: the scratch `.remedy-wt/f037-r3.md`, the C0a blob, the C0b blob and the working copy read off disk at C4. ALL FOUR EQUAL: True. C0a and C0b are the SAME git blob, `b26bbb839cc26ef523c328f974d741e678310b7a`. Lines that are a run of one repeated character at length ≥ 4: 0. What this proof covers: the scratch file, the saved copy, its mirror and the working copy — and NOT the bytes of any prompt.
+- **G3** exit 0. Extractor printed 3 slices from the committed C0a blob by marker lines: PLANF037R3 46 content lines, RECORDR3 1, SLIPR3 12. CONTENT 59, TOTAL 389, PROSE = 389 − 59 = 330. PROSE ≤ 400 True; TOTAL ≤ 490 True.
+- **G4** exit 0. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF037R3 (2357 bytes both sides). Negative control against the slice MINUS its trailing newline: FALSE. `^## Goal$` 1, `^## Next Steps$` 1, `\bF\d{3}\b` matched `F037`, `wc -l` 46 (strictly under 50).
+- **G5** exit 0. Both appends built by the constraint-3 operation with baselines read from C1 (`685611a2`).
+  - `.agent/live_review.md` — reader (a): 1136389 + 1 + 4411 = 1140801, file at C2 = 1140801, BYTE-EQUAL True, baseline is a byte PREFIX True. Reader (b): N = 1 blank-line unit counted from the slice by the script; the LAST 1 unit of the file equals the slice's unit in order: True. Negative control: byte flipped at offset 1136395, inside the FIRST appended paragraph `[1136390, 1140801)` (`' '` → `'!'`) — reader (a) rejects True, reader (b) rejects True.
+  - `.agent/prose_slips.md` — reader (a): 5070 + 1 + 922 = 5993, file at C2 = 5993, BYTE-EQUAL True, PREFIX True. Reader (b): N = 1, last 1 unit equals the slice in order True. Negative control: byte flipped at offset 5076, inside `[5071, 5993)` (`'6'` → `'7'`) — both readers reject True.
+  - Line-anchored counts in `.agent/live_review.md`, before C2 → after C2: `^- R-\d+ — ` 276 → 276; `^Done: R-\d+ — ` 24 → 24; `^Landed: R-` 1 → 1; `^Gate: R\d+ — ` 19 → 19; `^Gate: F\d+ R\d+ — ` 72 → 73. All five match the block's ordered readings.
+  - Finding ids ADDED `[]`, REMOVED `[]`; resolved ids ADDED `[]`, REMOVED `[]` — all four EMPTY. Maximum id `R-0715` at both points. Open set 252 at both points. `R-0715` still ends with the word `OPEN.` at both points.
+- **G6** all three commands exit 0, at C4, from the repository root.
+  - `python3 -m pytest tests/orchestration/test_diff_parser.py -q` — REAL exit 0, summary VERBATIM `16 passed in 0.22s`, `^FAILED` count 0. Extractor blindness proof: the same `^FAILED` regex over a control string holding two such lines reports 2, so it is not blind.
+  - `python3 -m ruff check packages/orchestration/diff_parser.py tests/orchestration/test_diff_parser.py` — REAL exit 0, stdout VERBATIM `All checks passed!`, stderr empty. Repository configuration, no `--isolated`, no `--line-length`. Both paths are added by this branch, so no baseline reading at an earlier commit exists.
+  - Canary `python3 -m pytest tests/cli/test_golden_path.py -q` — REAL exit 0, summary VERBATIM `42 passed in 22.13s`.
+- **G7** exit 0 for the control, exit 1 for each of the three mutations. All of it inside the disposable worktree `.remedy-wt/g7` at detached `b8b832d3`; the primary checkout was never mutated. Every mutation was applied in `packages/orchestration/diff_parser.py` INSIDE that worktree, `__pycache__` purged and `python3 -B` used each time, the file restored between mutations.
+  - UNMUTATED CONTROL: `python3 -B -m pytest tests/orchestration/test_diff_parser.py -q`, REAL exit 0, `16 passed in 0.26s`, `^FAILED` 0.
+  - (a) old-side counter never advances — replaced text `                    old_ln += 1\n`, occurrences before the edit 1. REAL exit 1, `5 failed, 11 passed in 0.25s`, `^FAILED` 5: `test_parse_unified_diff_to_view_reads_a_deletion`, `test_parse_unified_diff_to_view_seeds_each_hunk_from_its_own_header`, `test_parse_unified_diff_to_view_numbers_both_sides_of_every_line`, `test_parse_unified_diff_to_view_drops_the_no_newline_marker`, `test_parse_unified_diff_to_view_reads_real_difflib_output`. S13's full-tuple node is among them, as ordered.
+  - (b) `[binary file]` literal made unreachable — replaced text `DIFF_BINARY_SENTINEL = "[binary file]"`, occurrences before the edit 1. REAL exit 1, `1 failed, 15 passed in 0.23s`, `^FAILED` 1: `test_parse_unified_diff_to_view_reads_the_binary_sentinel`. S12's binary node, as ordered.
+  - (c) `stats["deleted"]` forced to 0 — replaced text `"deleted": deleted`, occurrences before the edit 1. REAL exit 1, `4 failed, 12 passed in 0.24s`, `^FAILED` 4: `test_parse_unified_diff_to_view_reads_a_plain_modification`, `test_parse_unified_diff_to_view_reads_a_deletion`, `test_parse_unified_diff_to_view_reads_a_git_rename_and_keeps_the_old_path`, `test_every_file_stats_equal_a_recount_of_its_own_parsed_lines`. S14's stats-property node is among them, as ordered.
+  - After removal and prune: `git worktree list` 1 line, primary `git status --porcelain` 0 lines.
+- **G8** exit 0 on every command. Path set of `git diff --name-only 09cbe24c..b8b832d3` compared BOTH WAYS against the Change list minus `.agent/handoff.md`: residue actual−expected `[]`, residue expected−actual `[]`. `git diff --stat 09cbe24c..b8b832d3` restricted by area: `apps/` EMPTY, `docs/` EMPTY, `packages/` holds ONLY `packages/orchestration/diff_parser.py` (+420), `tests/` holds ONLY `tests/orchestration/test_diff_parser.py` (+393). Per-commit insertions from `git diff --numstat`, each single-parent and under 500: C0a 389, C0b 318, C1 21, C2 15, C3 420, C4 393. Line-anchored `^<<<SLICE ` / `^<<<END `: `.agent/plan.md` at C1 0/0, `.agent/live_review.md` at C2 0/0, `.agent/prose_slips.md` at C2 0/0, against the CONTROL over the C0a blob which reads 3/3. `git ls-files .remedy-wt` 0 lines; `git branch --list "tmp/*"` 0 lines. Open PR Gate VERBATIM: `[]` at exit 0 — nothing merged, nothing created.
+
+## Authored-text proofs
+
+Three reviewer-authored slices applied, every one of them extracted programmatically
+from the COMMITTED C0a blob (`git show 69fb2d2f:.agent/authored/f037-r3.md`) by its
+marker LINES and applied from there in Python. None was retyped.
+
+| Slice | Target | Result |
+|-------|--------|--------|
+| PLANF037R3 | `.agent/plan.md` at C1 | BYTE-EQUAL, 2357 = 2357; negative control (slice minus trailing newline) FALSE |
+| RECORDR3 | `.agent/live_review.md` at C2 | reconstruction 1136389 + 1 + 4411 = 1140801 BYTE-EQUAL, baseline a PREFIX; structure reader last-1-unit equal; both negative controls reject |
+| SLIPR3 | `.agent/prose_slips.md` at C2 | reconstruction 5070 + 1 + 922 = 5993 BYTE-EQUAL, baseline a PREFIX; structure reader last-1-unit equal; both negative controls reject |
+
+The block asserts no digest of its own; the four-point equality under G2 is the
+transport proof, and the reviewer holds the scratch value.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a save this block | done | `.agent/authored/f037-r2.md`, byte-identical to the scratch file |
-| C0b mirror it into `last_block` | done | same git blob as C0a |
-| C1 the plan | done | byte-equal to PLANF037R2, 44 lines |
-| C2 the record — the R1 gate, `R-0715`, the slip and both DECISIONS | done | three EOF appends, each proved two ways |
-| C3 the feature-file amendments | done | pair applied, AMENDF037 appended |
-| C4 the handback | done | this file |
-| push | done | ordered after C4; outcome reported in the round report, not here |
-
-Open findings after this round: **252** (276 registered, 24 resolved, maximum id
-`R-0715`). One finding registered this round, `R-0715`; none resolved.
-
-## External actions
-
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — run
-  once, at G8, after C3 and before C4. Output verbatim: `[]`. Nothing merged,
-  nothing created, no pull request exists for this branch.
-- `git push origin feature/f037-rendered-diff-viewer` is INTENDED immediately
-  after this commit. Its exit code and the resulting remote tip do NOT appear
-  here: this file is authored before the push exists, so stating either would be
-  a value that cannot be true when written. Both are reported in the round
-  report instead, per the block's G8.
-- No worktree was added or removed. No branch was created or deleted. No merge.
-  No `npm`, `npx`, `node` or `vite` was run and nothing was built.
-
-## Verification
-
-- **G1 — hygiene, the base and the sentinel · exit 0.** `git rev-parse HEAD`
-  before C0a: `69f6478c6c18b7957f3e244b9f121e372f22a99d`, as ordered.
-  `git branch --show-current`: `feature/f037-rendered-diff-viewer`.
-  `git status --porcelain` LINE COUNT after C0a, C0b, C1, C2, C3: `0 0 0 0 0`.
-  C4's own reading is taken after this commit and reported in the round report,
-  as ordered. `.agent/STOP` read from disk before C0a: ABSENT; read again before
-  C4: ABSENT.
-- **G2 — transport · exit 0.** Four points, ALL EQUAL: sha256
-  `e6ef75ba2400c2bc4c3ab30256e85f0a1bf7fb42e9a1ae4f9760763d485fc332`, 31950
-  bytes, 416 lines — at `.remedy-wt/f037-r2.md`, at the C0a commit blob, at the
-  C0b commit blob, and read off disk at C3. C0a and C0b are the SAME git blob,
-  `c0812abbe876801a5ac5c737918400f46ced453b`. Lines of the saved block that are
-  a run of one repeated character at length 4 or more: NONE. What this proof
-  covers, in one sentence: the scratch file, the saved copy, its mirror and the
-  working copy — and NOT the bytes of any prompt, which no party to this round
-  measured.
-- **G3 — extraction and caps · exit 0.** The extractor read the COMMITTED C0a
-  blob by its marker LINES and printed 7 slices: PLANF037R2 44, RECORDR2 3,
-  SLIPR2 10, DECR2 83, DFROM 1, DTO 3, AMENDF037 45. CONTENT 189, TOTAL 416,
-  PROSE = 416 − 189 = 227. Markers counted as prose. PROSE 227 ≤ 400 and TOTAL
-  416 ≤ 490; both caps hold.
-- **G4 — the plan · exit 0.** `.agent/plan.md` at C1 BYTE-EQUAL to PLANF037R2
-  under the newline-included convention: True. Negative control against the
-  slice MINUS its trailing newline: False. Contract readings: `^## Goal$` 1,
-  `^## Next Steps$` 1, `\bF\d{3}\b` matched (`F037`), `wc -l` 44 — strictly
-  under 50.
-- **G5 — the three record appends, at C2 · exit 0.** Each baseline was read with
-  `git show`, never by reading a tracked working file; see Deviations for the
-  baseline SHA. Reader (a), RECONSTRUCTION, and reader (b), STRUCTURE, both hold
-  for all three, and every negative control was rejected by BOTH readers:
-
-  | File | Slice | (a) byte-equal | (a) prefix | arithmetic (bytes) | N | (b) last N units | flip offset | (a) rejects | (b) rejects |
-  |------|-------|----------------|------------|--------------------|---|------------------|-------------|-------------|-------------|
-  | `.agent/live_review.md` | RECORDR2 | True | True | 1130704 + 1 + 5684 = 1136389 | 2 | equal IN ORDER | 1130710, inside the first appended paragraph (1130705…1133955) | True | True |
-  | `.agent/prose_slips.md` | SLIPR2 | True | True | 4319 + 1 + 750 = 5070 | 1 | equal IN ORDER | 4325, inside the first appended paragraph (4320…5068) | True | True |
-  | `.agent/decisions.md` | DECR2 | True | True | 649977 + 1 + 5442 = 655420 | 12 | equal IN ORDER | 649983, inside the first appended paragraph (649978…650125) | True | True |
-
-  N is counted by the script from the slice itself, never asserted by the block.
-  Line-anchored counts for `.agent/live_review.md`, before C2 then after C2:
-  `^- R-\d+ — ` 275 → 276, `^Done: R-\d+ — ` 24 → 24, `^Landed: R-` 1 → 1,
-  `^Gate: R\d+ — ` 19 → 19, `^Gate: F\d+ R\d+ — ` 71 → 72. All five match the
-  block's ordered post-C2 values exactly. Finding ids ADDED as a SET:
-  `{R-0715}`. Resolved ids ADDED: `{}`; resolved ids REMOVED: `{}`; finding ids
-  REMOVED: `{}` — all three EMPTY. All 276 ids DISTINCT: True. Maximum id after
-  C2: `R-0715`. Open set after C2: 252. `.agent/decisions.md`: `^## DECISION `
-  166 before, 168 after; literal `## DECISION F037 D1 ` 0 before and EXACTLY 1
-  after; literal `## DECISION F037 D2 ` 0 before and EXACTLY 1 after.
-- **G6 — the feature file, at C3 · exit 0.** `docs/roadmap/features/T5_F037.md`:
-  DFROM occurs EXACTLY 1x BEFORE the edit. After C3, DFROM occurs 1x and DTO
-  occurs EXACTLY 1x — the APPEND-shaped obligation constraint 11 assigns this
-  pair, `TO contains FROM` re-measured True here, which is why no FROM-zero
-  count is ordered or attainable. The 2 TO-ONLY lines of DTO each occur EXACTLY
-  1x among the lines C3's diff ADDS to that file: `> Amended below — see "Design
-  amendments" at the end of this file. Where an` 1x, and `> amendment conflicts
-  with this section, the amendment wins.` 1x. RECONSTRUCTION against the
-  baseline with the pair applied in memory first: BYTE-EQUAL True, the paired
-  baseline a byte PREFIX of the result True, arithmetic 5110 + 1 + 2870 = 7981
-  bytes. `^## Design amendments$` 0 before, EXACTLY 1 after. `^## Do not touch$`
-  1 before and 1 after.
-- **G7 — the docs gate and the canary · REAL exit 0.** Run as ONE pytest
-  process after C3 and before C4, from the repository root:
-  `python3 -m pytest tests/docs/ tests/orchestration/test_roadmap_index.py
-  tests/cli/test_golden_path.py -q`. Summary line VERBATIM:
-  `367 passed in 21.04s`. COUNT of lines matching `^FAILED`: 0. The `^FAILED`
-  extractor is NOT blind: run over the control string
-  `FAILED tests/x.py::test_y - AssertionError\nok\n` it matched exactly 1 line.
-  The reviewer's base reference `367 passed` at a real exit 0 with zero
-  `^FAILED` lines is reproduced exactly.
-- **G8 — structure, artifacts, the Open PR Gate and the push · exit 0.** Path
-  set of `git diff --name-only 69f6478c..390234c1` compared BOTH WAYS against
-  the Change list minus `.agent/handoff.md`: residue GOT−WANT `[]`, residue
-  WANT−GOT `[]`. `git diff --stat 69f6478c..390234c1` restricted to `apps/`,
-  `packages/` and `tests/`: EMPTY, EMPTY, EMPTY; restricted to `docs/` WHOLE:
-  `docs/roadmap/features/T5_F037.md | 48 ++++…`, `1 file changed, 48
-  insertions(+)` — that file ALONE. Per-commit insertions from
-  `git diff --numstat`, each single-parent and under 500: C0a 416, C0b 314,
-  C1 24, C2 99, C3 48. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in
-  `.agent/plan.md` at C1 and in `.agent/live_review.md`, `.agent/prose_slips.md`,
-  `.agent/decisions.md` at C2 and in `docs/roadmap/features/T5_F037.md` at C3,
-  against a CONTROL over the C0a blob reading 7 and 7 — not 0. `git ls-files
-  .remedy-wt` 0 lines, `git worktree list` 1 line, `git branch --list "tmp/*"`
-  0 lines. Open PR Gate output VERBATIM: `[]`. Nothing merged, nothing created.
-
-## Authored-text proofs
-
-Every slice applied this round was extracted PROGRAMMATICALLY from the committed
-C0a blob via `git show 1f8d7826:.agent/authored/f037-r2.md`, split on its
-`<<<SLICE ` / `<<<END ` marker LINES, and applied from there in Python. Nothing
-was retyped, reflowed or corrected.
-
-| Slice | Applied to | Disk-to-disk result |
-|-------|-----------|---------------------|
-| PLANF037R2 | `.agent/plan.md` at C1 | BYTE-EQUAL True; trailing-newline negative control False |
-| RECORDR2 | `.agent/live_review.md` at C2 | EOF append; reconstruction BYTE-EQUAL True, structure reader True, both controls reject |
-| SLIPR2 | `.agent/prose_slips.md` at C2 | EOF append; reconstruction BYTE-EQUAL True, structure reader True, both controls reject |
-| DECR2 | `.agent/decisions.md` at C2 | EOF append; reconstruction BYTE-EQUAL True, structure reader True, both controls reject |
-| DFROM → DTO | `docs/roadmap/features/T5_F037.md` at C3 | FROM 1x before; FROM 1x and TO 1x after; both TO-ONLY lines 1x among added lines |
-| AMENDF037 | `docs/roadmap/features/T5_F037.md` at C3 | EOF append; reconstruction BYTE-EQUAL True against the paired baseline |
-
-The block itself: `.agent/authored/f037-r2.md` and `.agent/last_block.md` carry
-the identical sha256 as `.remedy-wt/f037-r2.md` and are ONE git blob.
+| C0a save this block | done | |
+| C0b mirror into last_block | done | |
+| C1 the plan | done | |
+| C2 the record | done | |
+| C3 the parser module | done | |
+| C4 the corpus tests | done | |
+| C5 the handback | done | this commit |
+| push | done | ordered by G8 after C5; outcome reported in the round report, not here |
+| S1 module header / three shapes / A1 absence | done | docstring names shapes (a) difflib, (b) git hunks, (c) `--- /dev/null` untracked markers, with their producers, and the deliberate absence of `review_subject.py`'s vocabulary pointing at amendment A1 |
+| S2 public names | done | `DIFF_VIEW_VERSION`, the five `DIFF_STATUS_*`, `DIFF_VIEW_STATUSES`, `parse_unified_diff_to_view(diff_text: str) -> dict` |
+| S3 return shape | done | shape as specified; the `stats {+,-}` shorthand and the `truncated`/`note` additions are stated in the docstring |
+| S4 file splitting | deviated | implemented AS WRITTEN; see Deviations D1 — the real `workspace.diff` shape emits its header pair twice and therefore yields one extra empty file entry |
+| S5 status derivation | done | order renamed → binary → added → deleted → modified; a hunkless file with no other signal is `modified` |
+| S6 hunk headers | done | both sides captured, absent count = 1, header kept VERBATIM incl. section heading; a non-matching `@@` line is recorded as a `note` rather than treated as a hunk |
+| S7 line numbering | done | two counters seeded from the header's two starts; `\ No newline` dropped |
+| S8 sentinels | done | `[binary file]`, `[unsafe staged artifact skipped:`, `[DIFF TRUNCATED]`, `#` comments; see Deviations D2 for `[FOCUSED DIFF TRUNCATED]` |
+| S9 provisional hunk ids | done | `f"{file_index}:{hunk_index}"`; the F033 note and the `DIFF_VIEW_VERSION` seam are in the docstring |
+| S10 stats | done | counted from the parsed entries only |
+| S11 empty and malformed | done | both return the empty-files shape; nothing raises |
+| S12 one test per shape | done | 9 ordered shapes plus a real-`difflib` generator test |
+| S13 both-sided full-tuple test | done | `test_parse_unified_diff_to_view_numbers_both_sides_of_every_line`; red-proof (a) confirms it fails when the old side stops advancing |
+| S14 further pins | done | statuses frozenset, truncated flag, `\ No newline`, and the stats-recount PROPERTY over the whole corpus |
+| S15 nothing else touched | done | the only two `packages/`/`tests/` paths in the range are the two new files |
 
 ## Deviations & assumptions
 
-**Commit sequence.** The ordered sequence C0a, C0b, C1, C2, C3, C4 was followed
-exactly, in that order, with the record moving before the feature file as
-constraint 4 fixes. No extra commit, no dropped commit, no reordering. ANY
-COMMIT MADE BEYOND THE ORDERED SEQUENCE RECEIVES ITS OWN `## Commits` ROW AND
-ITS OWN ITEM-STATUS ROW; none was made, so no such row exists.
+**D1 — the real `workspace.diff` shape disagrees with S4, and S4 was followed as
+written.** `packages/orchestration/job_evidence.py` writes `--- a/<rel>` and
+`+++ b/<rel>` itself (lines 1212–1213) and then appends the output of
+`difflib.unified_diff(..., fromfile="a/<rel>", tofile="b/<rel>")` (lines 1242–1251),
+which carries the SAME header pair again. S4 says a `--- ` line outside a hunk body
+starts a new file entry, so that shape parses to TWO file entries for one file: a
+first with the right path, no hunks, no note, status `modified`, and a second
+carrying the actual hunks. Measured on a reconstruction of that emitter, not
+reasoned about. I implemented S4 exactly as written and did NOT add a
+same-path merge rule, because the block orders the contradiction declared rather
+than silently corrected. The fix, if the reviewer wants one, is one condition:
+reuse the current region when it is hunkless, note-less and its `+++` path equals
+the incoming pair's. No test pins the duplicate behaviour either way, so a repair
+next round breaks nothing.
 
-**ONE DEVIATION, DECLARED AND NOT SILENTLY CORRECTED: the G5 baseline SHA is
-stale for one of the three files.** G5 orders each baseline read with
-`git show 89b96df7:<path>`. I measured all three at that commit and at the round
-base `69f6478c`:
+**D2 — `[FOCUSED DIFF TRUNCATED]` exists and S8 does not name it.**
+`pingpong_loop.py` line 1365 appends `[FOCUSED DIFF TRUNCATED]` on the
+reviewer-scoped path, alongside the `[DIFF TRUNCATED]` of lines 1378 and 1813. S8
+orders the stripped form `[DIFF TRUNCATED]` and only that, so the focused variant
+does NOT set `truncated`; it falls through to the unrecognized-line branch and is
+dropped. Implemented as ordered. Widening the sentinel to a prefix or to both
+literals is a one-line change for a later round.
 
-- `.agent/prose_slips.md` — identical at both, 4319 bytes, sha256 `635bb72a2b75…`.
-- `.agent/decisions.md` — identical at both, 649977 bytes, sha256 `b4073db0ecd0…`.
-- `.agent/live_review.md` — DIFFERENT: 1126556 bytes at `89b96df7` against
-  1130704 bytes at `69f6478c`. `89b96df7` is R1's C1; R1's C3 (`d4aef1db`) later
-  reset the live-review header and appended the F032 R19 gate paragraph.
+**D3 — the parser trusts the hunk header's declared counts to bound the body.** S6
+orders both counts captured and S7 orders the body walked; it does not say how the
+body ends. Ending it on "the first line that is not ` `/`+`/`-`" is wrong for this
+repository, because a deleted line reading `-- foo` arrives as `--- foo` and a
+`rstrip`-ed blank context line arrives as the empty string, both of which are
+indistinguishable from structure by shape alone. Counting down from the header's
+declared counts resolves both. Consequence to be aware of: after `[DIFF TRUNCATED]`
+the counts are meaningless by construction, which is why the truncation sentinel is
+tested BEFORE the body and closes the file cleanly.
 
-Appending to the `89b96df7` bytes would have DELETED R1's own header reset and
-its F032 R19 gate entry from an append-only record, which constraint 5 forbids
-outright, and constraint 3 — the block's stated ONLY definition of this
-operation — says the baseline is "the target file's bytes as they stood before
-the commit". I therefore read that one baseline with `git show
-9b8cce95:.agent/live_review.md`, the pre-C2 tip, which is byte-identical to
-`git show 69f6478c:.agent/live_review.md`. No tracked file was ever overwritten
-to obtain a baseline, which is the property G5's clause exists to secure. The
-block's own numbers confirm which reading it intended: `^Gate: F\d+ R\d+ — `
-reads 70 at `89b96df7` and 71 at `69f6478c`, and the block states the base as
-71. The other two files are unaffected because their bytes are equal at both
-commits.
+**D4 — `note` is first-come, with two forced exceptions.** S8 gives four different
+things that can set `note` and does not order a precedence. A file region keeps the
+FIRST marker it sees, because every producer in this repository puts the marker
+immediately after the file's own header; `[binary file]` and
+`[unsafe staged artifact skipped:` overwrite it, because S8 states outright what
+each of those two sets `note` to.
 
-**Every other numeral the block stated about the round base was reproduced
-exactly**, so there is nothing further to reconcile: 275 / 24 / 1 / 19 / 71
-line-anchored counts before C2, `TO contains FROM: true` for the DFROM/DTO pair,
-`367 passed` at a real exit 0 with zero `^FAILED` lines, and the Open PR Gate
-reading `[]`.
+**D5 — `parse_unified_diff_to_view` also tolerates a non-`str` argument**, returning
+the empty-files shape rather than raising. The signature is `str` as S2 orders; this
+is constraint 8's totality carried one step further, and it is three lines.
 
-**No defect was observed in the slices themselves.** Every slice applied cleanly
-and every gate the block ordered came back green at a real exit code. I minted
-no finding id, wrote no `Gate:` or `Done:` line and authored no DECISION, per
-constraint 6.
+**D6 — no departure from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4,
+C5 were made in that order and nothing else was committed. No extra commit, none
+dropped, none reordered.
 
-**Assumptions.** (1) A slice's TEXT is its content lines joined with a newline
-plus ONE trailing newline, per constraint 2, and that single definition was used
-for every extraction, every reconstruction and every negative control. (2) A
-"blank-line unit" in G5 reader (b) is a maximal run of non-empty lines, so runs
-of consecutive blank lines separate the same units; under that reading the last
-N units of each file equal the slice's N units in order. (3) The round base
-`69f6478c` and the pre-C2 tip `9b8cce95` carry identical bytes for all three
-record files, since C0a, C0b and C1 touch none of them.
+**D7 — one scratch artifact note.** The G7 worktree and the gate scripts live under
+the gitignored `.remedy-wt/`; `git ls-files .remedy-wt` reads 0 lines, and the
+worktree itself was removed and pruned before this commit.
 
 ## Next
 
-The reviewer books the R2 verdict as a `Gate:` paragraph and plans T001 — the
-unified-to-JSON parser as a NEW module with its corpus tests, then the read
-endpoint — against the now-amended spec in
-`docs/roadmap/features/T5_F037.md`.
+Reviewer rules on D1 and D2 — whether the duplicated `workspace.diff` header pair
+gets a same-path merge rule and whether `[FOCUSED DIFF TRUNCATED]` joins the
+truncation sentinel — and then orders R4: the intraline spans over the parsed
+lines, with the word-diff fixture the feature file's Acceptance names.
+
+Open findings after this round: 252.
