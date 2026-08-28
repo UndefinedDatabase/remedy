@@ -1,50 +1,44 @@
-# STEP T003 (fifth round) — F037 Rendered diff viewer, round 21
+# STEP T003 (sixth round) — F037 Rendered diff viewer, round 22
 
-BASE: `6d13fae4`. SESSION 6 of feature F037. This block carries no line that is a
+BASE: `665be6ef`. SESSION 6 of feature F037. This block carries no line that is a
 run of a single repeated character, so nothing in its frame has a length a reader
 must recover by eye.
 
 ## Goal
 
-Make the window real. R20 built `computeDiffRowWindow` and wired it to nothing;
-this round gives it the one caller it was written for, so a diff of ten thousand
-rows draws a bounded number of them. The division a viewport forces — scroll
-offset and panel height into row indices — goes into the MODEL, not the markup,
-so the rule stays where vitest runs it. The five stale WHY comments R20 reported
-but could not repair are repaired, closing `R-0727`.
+Take the last named build piece: lazy language bundles. Acceptance asks for one
+property above all — "unknown language renders plain WITHOUT a bundle fetch" —
+and that is a decidable rule, so it is built in `diffViewModel.ts` where vitest
+executes it, with the importer INJECTED exactly as `loadDiffEnvelope` injects its
+fetcher. No component is wired this round. Three comments this feature's own
+progress falsified are repaired first.
 
 ## Bundle
 
-- C0a save this block verbatim to `.agent/authored/f037-r21.md`.
+- C0a save this block verbatim to `.agent/authored/f037-r22.md`.
 - C0b mirror the same bytes into `.agent/last_block.md`.
-- C1 rewrite `.agent/plan.md` from the PLANF037R21 slice.
-- C2 append GATER20, DONE727 and DONE728 to `.agent/live_review.md`, and in the
-  SAME commit append PROSESLIP to `.agent/prose_slips.md`.
-- C3 append DECISIOND10 to `.agent/decisions.md`.
-- C4 the staleness repairs: SPEC S1.
-- C5 the viewport rule and its vitest tests: SPEC S2 and S3.
-- C6 the wiring: SPEC S4.
-- C7 the guards over the wiring: SPEC S5.
-- C8 rewrite `.agent/handoff.md` as the handback.
+- C1 rewrite `.agent/plan.md` from the PLANF037R22 slice.
+- C2 append GATER21, FINDING729 and FINDING730 to `.agent/live_review.md`.
+- C3 the three comment repairs: SPEC S1, plus the two `Landed:` lines of SPEC S5.
+- C4 the language rule and its vitest tests: SPEC S2 and S4.
+- C5 the lazy bundle loader and its vitest tests: SPEC S3 and S4.
+- C6 the guards: SPEC S6.
+- C7 rewrite `.agent/handoff.md` as the handback.
 
 ## Change set
 
 Exactly these paths, and nothing outside them:
 
-- `.agent/authored/f037-r21.md` (new)
+- `.agent/authored/f037-r22.md` (new)
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
-- `.agent/prose_slips.md`
-- `.agent/decisions.md`
-- `tests/ui_contracts/test_diff_viewer_mount.py`
 - `apps/ui/src/api/diffViewModel.ts`
 - `apps/ui/src/api/diffViewModel.test.ts`
-- `apps/ui/src/components/diff/DiffView.tsx`
-- `tests/ui_contracts/test_diff_view_render.py`
+- `tests/ui_contracts/test_diff_view_model.py`
 - `.agent/handoff.md`
 
-Push the branch after C8 with `git push -u origin feature/f037-rendered-diff-viewer`.
+Push the branch after C7 with `git push -u origin feature/f037-rendered-diff-viewer`.
 Create no PR. Merge nothing. Rewrite no history.
 
 ## Constraints
@@ -53,219 +47,184 @@ Create no PR. Merge nothing. Rewrite no history.
    line into a target file. If a slice looks wrong, apply it and declare it.
 2. The SPEC items describe PRODUCTION CODE and are not slices. The WHY comments
    they ask for are yours to word.
-3. Nothing under `packages/` changes. No component other than `DiffView.tsx` is
-   edited, and no file under `apps/ui/src/components/detail/` or
-   `apps/ui/src/components/shell/` is touched.
-4. NO NEW CSS, no new stylesheet, no change to `apps/ui/src/styles/tokens.css`,
-   and no new class name asked of the CSS module. The spacer elements S4 adds
-   carry an inline `style` height and NO class — `test_diff_view_render.py`
-   requires every `styles.<name>` the component asks for to have a rule in
-   `DiffView.module.css`, and inventing a seventh class is what the CANONICAL
-   DESIGN REFERENCE banner forbids.
-5. `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` and
-   `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` keep their current values. This round
-   declares new constants but changes no existing one.
-6. Commit order is C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8 and nothing is
-   reordered. C5 MUST precede C6: the component may not import a symbol that
-   does not exist yet, and a `tsc --noEmit` run between the two would be red
-   through no fault of the wiring.
-7. C7 MUST follow C6. A guard committed before the code it reads is a guard that
-   was red at its own commit.
-8. Every destructive check — every mutation of any file — runs ONLY inside a
+3. NO COMPONENT IS WIRED THIS ROUND. `DiffView.tsx` is NOT in the change set and
+   is not edited. Nothing under `packages/`, `apps/ui/src/components/` or
+   `apps/ui/src/styles/` changes, and no CSS anywhere is touched.
+4. `diffViewModel.ts` gains code by APPENDING. No existing export changes its
+   name, signature, value or behaviour; the only edit above the append is the
+   two comment repairs of SPEC S1.
+5. NO NETWORK, NO GLOBAL, NO MOCKING LIBRARY. The bundle importer is a function
+   ARGUMENT with a default, exactly as `loadDiffEnvelope` takes `fetchPayload`.
+   There is no `vi.stubGlobal`, no `vi.mock` and no `vi.fn` anywhere in
+   `apps/ui/src`, and this round starts none: a test that needs to count calls
+   writes its own counting function.
+6. Commit order is C0a, C0b, C1, C2, C3, C4, C5, C6, C7, and nothing is
+   reordered. C6 MUST follow C4 and C5 — a guard committed before the code it
+   reads is a guard that was red at its own commit.
+7. Every destructive check — every mutation of any file — runs ONLY inside a
    disposable `git worktree` under `.remedy-wt/`, never in the primary checkout.
    Remove the worktree by its EXACT path and report `git worktree list` as one
-   line BEFORE running any pytest gate: a live worktree makes
-   `tests/orchestration/test_test_runner.py` fail in the primary checkout, because
-   that node shells out to `npx vitest run`, which discovers the worktree's own
-   config and dies on module resolution. That red is an artifact of the
-   measurement, not a regression.
-9. TYPESCRIPT MUTATION RED-PROOFS ARE ORDERED THIS ROUND AND THEY ARE
-   MEASURABLE. The standing note that they are not is WRONG and DECISION F037
-   D10, which C3 lands, records the route: spawn vitest FROM the primary
-   checkout so it resolves its own package, and point `--root` at the worktree
-   so the tree under test is the worktree's. G6 gives the exact invocation. Do
-   not attempt `npx` or `node_modules/.bin/vitest` from a shell command — that
-   is denied to this session class; drive it from a `python3` script under
-   `.remedy-wt/`, as G6 shows.
-10. Do NOT author any `Done:` or `Gate:` paragraph. Those are the reviewer's
-    and arrive only as the slices of C2. You author the `Landed:` line SPEC S6
-    asks for, and nothing else in `.agent/live_review.md`.
-11. STALENESS SWEEP. Re-read every WHY comment in each file you edit. Repair the
-    five sites SPEC S1 names. Any OTHER stale claim you find: report it in the
+   line BEFORE running any pytest gate in the primary checkout: a live worktree
+   makes `tests/orchestration/test_test_runner.py` fail there, because that node
+   shells out to `npx vitest run` and discovers the worktree's own config. That
+   red is an artifact of the measurement, not a regression.
+8. TYPESCRIPT MUTATION RED-PROOFS ARE ORDERED AND THEY ARE MEASURABLE. DECISION
+   F037 D10, landed at F037 R21, records the route: spawn vitest FROM the primary
+   checkout so it resolves its own package, and point `--root` at the worktree so
+   the tree under test is the worktree's. Both flags are required. Direct `npx`
+   or `node_modules/.bin/vitest` from a shell command is denied to this session
+   class — drive it from a `python3` script under `.remedy-wt/`.
+9. Do NOT author any `Done:` or `Gate:` paragraph. Those are the reviewer's and
+   arrive only as the slices of C2. You author the two `Landed:` lines SPEC S5
+   asks for, and nothing else in `.agent/live_review.md`.
+10. STALENESS SWEEP. Re-read every WHY comment in each file you edit. Repair the
+    three sites SPEC S1 names. Any OTHER stale claim you find: report it in the
     handback and leave it alone.
 
 ## SPEC
 
-### S1 — the five stale claims, repaired
+### S1 — the three claims this feature's own progress falsified
 
-R20 measured and reported all five; constraint 12 of that block forbade the
-repair. Each says the diff viewer has no caller, or that the current round may
-not edit it, and both have been false since R18.
+All three were reported by the R21 worker's sweep and left alone correctly; the
+reviewer registered them as `R-0729` and `R-0730`.
 
-In `tests/ui_contracts/test_diff_viewer_mount.py`:
+In `tests/ui_contracts/test_diff_view_model.py`, the module docstring — this is
+`R-0729` and it is the load-bearing one:
 
-1. Module docstring, lines 3-4: "`DiffView.tsx` has been on disk since F037 R16
-   with no caller at all. This round opens the door to it." Replace with the
-   state that IS true: the door was opened by F037 R18, this module is the guard
-   that keeps it open, and it reads the three files named below.
-2. Line 43, the comment above `DIFF_VIEW_DELEGATED_RULES`: "Constraint 3 of the
-   F037 R18 block forbids this round from editing that component at all."
-   Replace with what the four names actually buy — that a round claiming only to
-   mount or wire the component would lose one of them if it quietly rewrote the
-   drawing half. Do not tie the sentence to any round number.
-3. Line 260, an assertion message: "`DiffView.tsx` keeps the zero callers it has
-   had since F037 R16." False at HEAD, and it prints only on failure — the
-   moment a reader is already confused. Reword to the property really held.
-4. Line 369, the `TestTheDrawingHalfIsUnchanged` docstring: "this round MOUNTS
-   `DiffView.tsx` and does not edit it." Reword so it describes the CLASS's own
-   standing property and names no round.
+1. It states that DECISION F037 D8 "records that a mutation red-proof of
+   TypeScript is not orderable in this repository", and gives the gitignored
+   `node_modules` as the reason. That is FALSE at HEAD: DECISION F037 D10, landed
+   at F037 R21, records the route that makes it orderable, and that round took
+   six such red-proofs. Replace the claim with what is now true — a TypeScript
+   red-proof IS orderable via D10's route, and this guard is Python for the
+   reason D8 really gives, which is that vitest cannot see these structural facts
+   about itself. Keep the three bullets above it unchanged; they are still exact.
 
-In `apps/ui/src/api/diffViewModel.ts`:
+In `apps/ui/src/api/diffViewModel.ts` — this is `R-0730`:
 
-5. Line 327, inside the `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` comment: "the
-   component that will render these rows". It has rendered them since R16 and
-   has been mounted since R18. Put it in the present tense and name
-   `DiffView.tsx`.
+2. Line 512, in the `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` comment: "the component
+   that will consume it". Wrong twice over. The future tense outlived F037 R21's
+   C6, and the component does not name this constant at all — it calls
+   `diffRowWindowForViewport`, and `tests/ui_contracts/test_diff_view_render.py`
+   now FORBIDS the component naming the row-height constant. Name the real
+   consumer, which is `computeDiffRowWindow` in this same module.
+3. Line 555, in the `computeDiffRowWindow` comment: "That division is the only
+   untestable part of virtual scrolling". False since R21's C5 moved the division
+   into `diffRowWindowForViewport`, where vitest executes it. What remains
+   untestable here is the DOM READ alone — `scrollTop` and `clientHeight`. Say
+   that instead.
 
-Line 317's "the state F037 R16 left behind — a component on disk that nothing
-draws" is NOT stale: it describes a past state in the past tense. Leave it.
+Change NO executable line in S1: comment, docstring and message text only.
 
-Change NO assertion, NO test name and NO executable line in S1: comment and
-message text only, with every `assert` expression left byte-identical.
+### S2 — the language rule, in `apps/ui/src/api/diffViewModel.ts`
 
-### S2 — the viewport rule, in `apps/ui/src/api/diffViewModel.ts`
+Appended. Two new exports.
 
-Append after `computeDiffRowWindow`. Four new exports.
+`DIFF_SUPPORTED_LANGUAGES` — the SMALL supported set the Design section names
+("a small supported set; unknown languages render plain — honest, fast"), as a
+frozen mapping from a lower-case file extension WITHOUT its dot to a language id.
+Include at most a dozen entries covering what this repository itself is written
+in and what its diffs carry: `ts`, `tsx`, `js`, `jsx`, `py`, `json`, `css`, `md`,
+`sh`, `yml`, `yaml`, `toml`. Say in the comment that the set is deliberately
+small because every entry is a bundle someone must ship, and that the honest
+answer for anything else is plain text rather than a guess.
 
-`DIFF_VIRTUAL_ROW_HEIGHT_PX = 20` — the row height every spacer and every index
-is computed from. WHY 20 AND WHY IT IS HONEST TO FIX IT: `DiffView.module.css`
-sets `.diffLine { font: 12.5px/1.6 ... }`, and 12.5 x 1.6 is exactly 20, so this
-is the binding CSS's own line box transcribed rather than a number invented here.
-Say in the comment that it is an ESTIMATE for the hunk-head and file rows, which
-are not line rows, and that the overscan below is what absorbs that error.
+`diffLanguageForPath(path: string): string | null` — TOTAL: no input throws, and
+`null` is the plain answer rather than an error. It must resolve, and the WHY
+comment must say why each is decided the way it is:
 
-`DIFF_VIRTUAL_OVERSCAN_ROWS = 8` — rows drawn beyond the viewport at each end,
-so a row scrolled into view is already drawn rather than appearing as a stripe.
+- the extension is what follows the LAST dot, lower-cased, so `App.TSX` and
+  `a/b.c/d.ts` both resolve correctly;
+- a path with NO dot, an empty path, or a path whose last dot is the FIRST
+  character of the basename — a dotfile such as `.gitignore` — has no extension
+  and is plain. A dotfile is the case a naive `split(".").pop()` gets wrong, and
+  it must be pinned;
+- a path ENDING in a dot has an empty extension and is plain;
+- an extension not in the supported set is plain. This is Acceptance's sentence,
+  and the next item is what makes it observable.
 
-`DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS = 40` — the visible-row count assumed when
-the panel has NOT been measured yet. THIS CONSTANT IS THE ROUND'S ONE REAL TRAP
-AND IT IS WHY THE FALLBACK IS A RULE RATHER THAN A DEFAULT ARGUMENT: on first
-render a panel's `clientHeight` is 0, so a viewport height of 0 divides to a
-visible count of 0, and `computeDiffRowWindow` answers a visible count of 0 with
-an EMPTY window — correctly, by its own third rule. An empty window draws no
-rows, a panel with no rows in it never scrolls, and a panel that never scrolls
-never fires the event that would measure it. The viewer would be blank forever.
-Resolve it HERE, where vitest can execute the resolution.
+### S3 — the lazy bundle loader, in the same file
 
-`diffRowWindowForViewport(rowCount, scrollTopPx, viewportHeightPx)` returning
-`DiffRowWindow & { rowsBeforePx: number; rowsAfterPx: number }` — declare that as
-a named exported interface, `DiffRowViewportWindow`, rather than inline. It:
+`DiffLanguageBundleImporter` — an exported type: a function taking a language id
+and returning a promise of the bundle. It is a TYPE and nothing more; this module
+ships no real bundles and imports nothing.
 
-- resolves each of its three arguments through the same whole-count reading
-  `computeDiffRowWindow` already uses, so a NaN, an infinity, a fraction or a
-  negative cannot become an index;
-- takes the first visible row index as the scroll offset divided by
-  `DIFF_VIRTUAL_ROW_HEIGHT_PX`, rounded DOWN, because a partly-scrolled row is
-  still on screen;
-- takes the visible row count as the viewport height divided by
-  `DIFF_VIRTUAL_ROW_HEIGHT_PX`, rounded UP for the same reason, and falls back to
-  `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` when the resolved viewport height is 0;
-- delegates to `computeDiffRowWindow` with `DIFF_VIRTUAL_OVERSCAN_ROWS` — it
-  reimplements none of that function's rules;
-- returns the two spacer heights as `rowsBefore` and `rowsAfter` multiplied by
-  the row height, so the component does no arithmetic of its own.
+`loadDiffLanguageBundle(path, importBundle)` — returns a promise of
+`{ language: string | null; bundle: unknown }`, `bundle` being `null` whenever
+the answer is plain. `importBundle` has NO default that performs a real import:
+give the parameter an explicit default that throws only if called, or make it
+required — choose one, say which in the comment, and make the choice consistent
+with the guard S6 orders. It must satisfy, and the comment must name each:
 
-### S3 — the vitest tests for S2, in `apps/ui/src/api/diffViewModel.test.ts`
+- **THE ACCEPTANCE PROPERTY.** For a path whose language is plain, `importBundle`
+  IS NEVER CALLED — not called and discarded, not called and awaited: never
+  invoked at all. The answer is `{ language: null, bundle: null }`. This is the
+  one behaviour Acceptance states in so many words, and S4 pins it with a
+  counter.
+- **A FAILING IMPORT DEGRADES TO PLAIN.** If `importBundle` rejects or throws,
+  the answer is `{ language, bundle: null }` — the language is still reported,
+  because it was resolved from the path and remains true, but the bundle is
+  absent. Nothing throws out of this function, exactly as `loadDiffEnvelope`
+  never throws.
+- **ONE IMPORT PER LANGUAGE.** A language already loaded is not imported again;
+  keep a module-level cache keyed by language id. Export a
+  `resetDiffLanguageBundleCache()` so a test can start from a known state, and
+  say in its comment that it exists FOR THE TESTS and why that is honest here —
+  a module-level cache is otherwise unobservable, and an unobservable cache is
+  one no gate can hold to its promise.
+- **A FAILED IMPORT IS NOT CACHED AS A SUCCESS.** A language whose import
+  rejected may be retried later. State which of the two you implement — retry, or
+  cache the failure — and pin it in S4 either way.
 
-A new `describe` beside the existing ones. It must pin, at minimum:
+### S4 — the vitest tests, in `apps/ui/src/api/diffViewModel.test.ts`
 
-- an unmeasured viewport (height 0) above the virtualization threshold yields a
-  NON-EMPTY window — the trap S2 names, asserted directly, so a future
-  simplification that drops the fallback turns this red;
-- below the threshold the answer is not virtualized, both spacers are 0 px, and
-  every row is in the window;
-- the first visible index is the FLOOR of the scroll division and the visible
-  count the CEILING of the height division, each with a fractional case that
-  would differ under the other rounding;
-- `rowsBeforePx` and `rowsAfterPx` are the row counts times
-  `DIFF_VIRTUAL_ROW_HEIGHT_PX`, named through the constant and never as digits;
-- a non-finite or negative scroll offset and viewport height resolve rather than
-  propagate;
-- THE SCALE CASE, which is what this round exists for: at 10000 rows with a
-  realistic viewport, `rowsInWindow` is bounded well under the row count — assert
-  it is at most `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS + 2 * DIFF_VIRTUAL_OVERSCAN_ROWS`
-  — while `rowsBefore + rowsInWindow + rowsAfter` still equals 10000 exactly, so
-  the document is fully accounted for while only a window is drawn.
+New `describe` blocks beside the existing ones. Pin at minimum:
 
-Reference `DIFF_VIRTUAL_ROW_HEIGHT_PX` and the other constants BY NAME. A
-transcribed `20` or `2000` in this file is what `R-0728` was about.
+- every entry of `DIFF_SUPPORTED_LANGUAGES` resolves from a path bearing its
+  extension, iterated FROM the mapping rather than transcribed, so an added entry
+  cannot go untested;
+- an UPPER-CASE extension, a multi-dot path, a dotfile, a path with no dot, an
+  empty path and a path ending in a dot — each named separately;
+- an unsupported extension is plain;
+- **THE ACCEPTANCE TEST, and it is the round's centre**: for an unknown language,
+  a counting importer written in the test file records ZERO calls and the answer
+  is `{ language: null, bundle: null }`. Assert the count is exactly 0, not
+  merely falsy;
+- a supported language calls the importer exactly ONCE and returns its bundle;
+- a second call for the same language leaves the count at 1 — the cache;
+- a rejecting importer yields `{ language, bundle: null }` and does not throw;
+- whichever retry-or-cache rule S3 chose, asserted directly;
+- `resetDiffLanguageBundleCache()` really restores the pre-load state, shown by a
+  count that rises again after it.
 
-### S4 — the wiring, in `apps/ui/src/components/diff/DiffView.tsx`
+Reference the mapping and the constants BY NAME; transcribe no extension list.
 
-The component gains scroll state and draws a window. It derives NOTHING new: the
-only rule it may express is "ask the model, render the answer".
+### S5 — the two `Landed:` lines
 
-- One piece of state holding the panel's scroll offset and client height
-  together, both starting at 0.
-- One `onScroll` handler on the scrolling element, setting both from
-  `event.currentTarget.scrollTop` and `event.currentTarget.clientHeight`. This
-  single line is the whole of the untestable DOM measurement, deliberately: it
-  reads two numbers and decides nothing.
-- `diffRowWindowForViewport(rows.length, scrollTop, clientHeight)` called once
-  per render, after `rows` is built.
-- The drawn rows become `rows.slice(window.startIndex, window.endIndex)`.
-- When the answer is virtualized, a spacer element before and after the drawn
-  rows, each with an inline `style` height in pixels taken from `rowsBeforePx`
-  and `rowsAfterPx` and NO class, so the scrollbar still describes the whole
-  document. When it is not virtualized, render no spacers at all.
-- The scrolling element needs a bounded height for any of this to mean anything.
-  It has no class and may not gain one (constraint 4), so give the existing
-  `<section data-ui="diff-view">` an inline `style` with `overflowY: "auto"` and
-  a `maxHeight` in viewport units, noting in a comment that this is presentation
-  the binding CSS does not cover, not a new visual language.
-- The truncation notice keeps rendering after the rows, OUTSIDE the window, so it
-  is never scrolled out of existence by virtualization.
-- Every existing behaviour survives: the collapse set and its reset on a new
-  envelope, the row keys, the file row's `id`, the intraline cut, and the
-  hunk-head button with its `aria-expanded`.
+In the SAME commit as C3, append TWO lines to `.agent/live_review.md`, one
+beginning `Landed: R-0729 — ` and one beginning `Landed: R-0730 — `, each naming
+the sites repaired and the commit that repaired them. Author no other line in
+that file.
 
-WHAT MUST NOT HAPPEN: no division, no multiplication and no comparison against a
-row count appears in this file. Every number comes out of the model's answer.
+### S6 — the guards, in `tests/ui_contracts/test_diff_view_model.py`
 
-### S5 — the guards, in `tests/ui_contracts/test_diff_view_render.py`
+Extend the existing module; add no new file. This module already proves the
+structural facts vitest cannot see about itself, and these are of that kind:
 
-Extend the existing module; add no new file.
-
-- Add `diffRowWindowForViewport` to `DELEGATED_RULES`, so the component is
-  required to CALL it.
-- Add to `REIMPLEMENTED_RULE_SPELLINGS` the spellings that would mean the
-  component did the arithmetic itself: `DIFF_VIRTUAL_ROW_HEIGHT_PX` (the
-  component must never name the row height — it receives pixels already
-  computed), `Math.floor(`, `Math.ceil(` and `.slice(0,`.
-- One new test class pinning that the component really virtualizes: it calls
-  `diffRowWindowForViewport`, it slices the row list by the window's own two
-  indices, it carries an `onScroll` handler, and both spacer heights reach an
-  inline `style`. Scope every assertion to a region — a function body, a JSX
-  open tag — never to the whole file. `R-0725` is what a whole-file `in` check
-  produces.
-- One test asserting the ROW HEIGHT AGREES WITH THE STYLESHEET: read
-  `DiffView.module.css`, extract the `font: 12.5px/1.6` shorthand from the
-  `.diffLine` rule, multiply, and assert the product equals the
-  `DIFF_VIRTUAL_ROW_HEIGHT_PX` declared in `diffViewModel.ts`. This is the one
-  guard that stops the two drifting apart silently, and it must parse both
-  numbers out of the files rather than transcribing either.
-- A vacuity assertion beside the new scopers, proving each returns strictly less
-  than its whole file, exactly as the existing classes do.
-
-### S6 — the `Landed:` line
-
-In the SAME commit as C4, append ONE line to `.agent/live_review.md` beginning
-`Landed: R-0727 — ` naming the five sites repaired and the commit that repaired
-them. Author no other line in that file.
+- the module declares no import of any real syntax-highlighting package — the
+  bundle importer is a parameter, and a static import would put a bundle in the
+  main chunk, which is the whole point of "lazy". Assert over the module's
+  COMMENT-STRIPPED import section, not the whole file;
+- `DIFF_SUPPORTED_LANGUAGES` is declared exactly once and every language id in it
+  is also named in the vitest suite, so no entry ships untested;
+- there is no `vi.stubGlobal`, `vi.mock` or `vi.fn` anywhere in
+  `apps/ui/src/api/diffViewModel.test.ts` — constraint 5 made mechanical;
+- a vacuity assertion beside each new scoper, proving it returns strictly less
+  than the whole file, exactly as this module's existing classes do.
 
 ## Slices
 
-<<<SLICE PLANF037R21
+<<<SLICE PLANF037R22
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495` (the
@@ -280,111 +239,62 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R21 gives `computeDiffRowWindow` its caller. The division a viewport forces —
-scroll offset and panel height into row indices — goes into `diffViewModel.ts`
-as `diffRowWindowForViewport`, so the rule stays where vitest executes it and
-`DiffView` keeps deriving nothing. The trap it exists to resolve is an
-unmeasured panel: `clientHeight` is 0 on first render, 0 divides to a visible
-count of 0, and an empty window draws no rows, so the panel never scrolls and
-never gets measured. R20's five reported stale comments are repaired, closing
-`R-0727`.
+R22 builds the last named piece, lazy language bundles, in the layer vitest
+executes. Acceptance states one property in so many words — an unknown language
+renders plain WITHOUT a bundle fetch — so the loader takes its importer as an
+ARGUMENT, the way `loadDiffEnvelope` takes its fetcher, and a counting importer
+in the test proves the count is zero rather than merely that the answer is
+plain. No component is wired this round. Three comments R21's own code falsified
+are repaired first: `R-0729`, a docstring telling future rounds that a
+TypeScript red-proof cannot be ordered, which DECISION F037 D10 disproved, and
+`R-0730`, two stale sentences in the model.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R20 verdict and two resolutions | ordered | record first |
-| C3 DECISION F037 D10 | ordered | it licenses this round's own red-proofs |
-| C4 the five staleness repairs | ordered | closes `R-0727` |
-| C5 the viewport rule and its vitest tests | ordered | before its caller |
-| C6 the wiring | ordered | the window becomes real |
-| C7 the guards over the wiring | ordered | after the code they read |
-| C8 the handback | ordered | |
+| C2 the R21 verdict and two findings | ordered | record first |
+| C3 the three comment repairs | ordered | one misleads future rounds |
+| C4 the language rule and its tests | ordered | |
+| C5 the lazy loader and its tests | ordered | the Acceptance property |
+| C6 the guards | ordered | after the code they read |
+| C7 the handback | ordered | |
 
 ## Next Steps
-1. The lazy language bundles, unknown languages rendering plain with no bundle
-   fetch, which Acceptance names.
-2. The 10k-line perf fixture measured END TO END and its numbers recorded; S3 of
-   this round bounds the window's row count but times nothing.
-3. A ruling on the sidebar's visual treatment, still owed.
+1. Wire highlighting into `DiffView`, and the 10k-line perf fixture measured END
+   TO END with its numbers recorded, which Acceptance requires.
+2. A ruling on the sidebar's visual treatment, still owed.
+3. Then T003 is complete and the closure sequence can begin.
 
 ## Risks
-- Round 21 of a 25-round soft limit, session 6 of 7. Two named pieces remain
-  after this round. If both do not fit in session 7, that session owes a SCOPE
-  REPORT rather than more work.
-- Nothing here renders a `.tsx` file, so S4 is gated by text and `tsc --noEmit`
-  alone, as every `.tsx` round of this feature has been.
-<<<END PLANF037R21
+- Round 22 of a 25-round soft limit, and session 6 of 7. Three named pieces
+  remain across two Next Steps. If they do not fit by round 25, the session that
+  reaches it owes a SCOPE REPORT rather than more work.
+- Nothing here renders a `.tsx` file, so the wiring of step 1 will be gated by
+  text and `tsc --noEmit` alone, as every `.tsx` round of this feature has been.
+<<<END PLANF037R22
 
-<<<SLICE GATER20
-Gate: F037 R20 — the round that repaired two findings, gated a third and built the windowing rule. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran it independently at `b2658466` rather than reading the handback's numbers. RE-MEASURED, NOT ACCEPTED. The committed C0a blob is 31941 bytes, 375 lines, sha256 `aa59eaffe0e1754662c91be15745e6cbe8f28ee2797b3153ecad72d8847c3101`, BYTE EQUAL to the reviewer's own scratch original, and at C0b `.agent/authored/f037-r20.md` and `.agent/last_block.md` are ONE blob `c442a90f33feda64fd1c5d334063984dfd342348`. Caps: CONTENT 56, TOTAL 375, PROSE 319. The plan at `f0e1ffeb` is byte equal to PLANF037R20 including its trailing newline, negative control False, 47 lines, one `## Goal`, one `## Next Steps`. The five-slice append at `161dc2c9` satisfies reader (a) byte for byte and reader (b) over 7 ordered units, both negative controls False, with the pre-round blob a byte PREFIX at 1253563 bytes growing to 1264769. The ledger at the tip reads 289 registered ids ALL DISTINCT, 37 `Done:` lines, 6 `Landed:` lines, 90 `Gate:` entries and an open set of 254 computed AS A SET, against 287, 35, 4, 89 and 253 at base. Per-commit insertions over `fe3f1179..b2658466` are 375, 249, 23, 14, 13, 11, 67 and 309, every one under five hundred, every one single-parent, and every one matching the `+/-` column of the handback's `## Commits` table cell by cell. The path residue is EMPTY in both directions against the block's nine non-handoff paths; `git diff --stat` over `packages/` is empty and over `apps/ui/src/components/` names `DiffView.tsx` alone at 11 insertions and 8 deletions; the marker sweep is 0 in all four targets against 12 in the block blob as its control; and `git ls-files .remedy-wt` is 0. RE-RUN SUITES, primary checkout, one process at a time, every one exit 0: `tests/ui_contracts/` 642 passed 4 skipped against 641 at base, `tests/ui_server/` 495 passed, `tests/orchestration/test_test_runner.py` with `tests/docs/` 347 passed, ruff `All checks passed!`, the canary 42 passed, and the typescript node 1 passed 73 deselected, PASSED and not skipped.
+<<<SLICE GATER21
+Gate: F037 R21 — the round that gave the windowing rule its caller and closed the two findings R20 raised. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran it independently at `835ba84b` rather than reading the handback's numbers. TRANSPORT IS PROVED AT ITS STRONGEST AVAILABLE LINK: the committed C0a blob is 38781 bytes, 490 lines, sha256 `212f83b8a43a0bfe07fb1e5b2f55fa1142a5e7b9bece95c3eb02b26d207f7252`, and is BYTE EQUAL to the reviewer's own scratch original `.remedy-wt/f037-r21-block.md`, which existed before the worker did — so this chain covers the emission and not merely the worker's self-consistency; at C0b both paths are ONE blob `3d1f37a3e7b5df7b13f0646c7213da951f67217e`. Caps: CONTENT 103, TOTAL 490, PROSE 387. EVERY SLICE WAS RE-EXTRACTED FROM THE COMMITTED BLOB AND RE-APPLIED BY THE REVIEWER: `.agent/plan.md` at `68d29e36` is byte equal to PLANF037R22's predecessor PLANF037R21 including its trailing newline, negative control False, 48 lines, one `## Goal`, one `## Next Steps`; the three-slice append to `.agent/live_review.md` at `cebca097` satisfies the byte reader with its negative control False and the base blob a byte prefix; the PROSESLIP append to `.agent/prose_slips.md` satisfies the same reader, taking `^- 2026-` from 19 to 20; and the DECISIOND10 append to `.agent/decisions.md` at `f2b96d03` takes `^## DECISION ` from 175 to 176 with `F037 D10` occurring exactly once. THE RECORD MOVED AS ORDERED AND ONLY AS ORDERED: registrations UNMOVED at 289 and all distinct, `^Done: R-\d+ — ` 37 to 39, `^Landed: R-` 6 to 7 at the tip, `^Gate: F\d+ R\d+ — ` 90 to 91, and the OPEN SET computed AS A SET fell from 254 to 252, which is `R-0727` and `R-0728` each named by a `Done:` line for the first time and no id registered — exactly the movement the block predicted before the round ran.
 
-BOTH OF THE WORKER'S DECLARED DEVIATIONS ARE NOW CLOSED BY MEASUREMENT, AND THE STANDING CLAIM BEHIND THEM WAS FALSE. The worker reported that a TypeScript mutation red-proof is unmeasurable here, because a fresh worktree has no `apps/ui/node_modules` and vitest there is exit 1 UNMUTATED with `ERR_MODULE_NOT_FOUND` — no discriminator, a vacuous proof. That reading was correct for every route the worker was able to try, and its three attempted provisioning routes really are denied to this session class. IT IS NOT THE ONLY ROUTE. Spawning vitest FROM the primary checkout, so the tool resolves its own package out of the primary's `node_modules`, while passing `--root` at the worktree and `--config` at the primary, roots DISCOVERY at the worktree while leaving the primary read-only — guardrail G5 intact. MEASURED AT `b2658466`: the unmutated control is exit 0 at 61 passed, and five separate mutations of the WORKTREE's `diffViewModel.ts` are each exit 1, each killing exactly the named test for the property it broke — the threshold boundary `<=` weakened to `<` kills the AT-the-threshold case, the overscan dropped from the leading edge and from the trailing edge each kill the both-ends widening case, `rowsAfter` forced to 0 kills the three-counts invariant, and the end clamp removed kills the past-the-end and the never-leaves-the-list cases. Control green again after the last restore, every file restored to its pre-mutation sha256. So the windowing rule's vitest suite is NOT vacuous, and this is the first TypeScript red-proof taken in this repository. The second deviation, that the vitest TOTAL is unreportable because the shipped node captures output and surfaces it only on failure, is closed the same way: the same tool driven from a scratch pytest node with `--reporter=verbose` reports 584 passed across 32 test files at `b2658466`, with all eighteen `computeDiffRowWindow` cases named and green, so the new `describe` is EXECUTED and not merely shipped. DECISION F037 D10 records the route.
+THE CODE IS RIGHT AND THE REVIEWER READ IT RATHER THAN THE SUMMARY. `diffRowWindowForViewport` resolves all three arguments through `wholeRowCount`, floors the scroll division and ceilings the height division, falls back to `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` only when the resolved height is exactly 0 — a height of 1 through 19 still ceilings to one visible row, which is the correct boundary — and delegates the window itself to `computeDiffRowWindow`, reimplementing none of its rules. THE TRAP THE ROUND EXISTED TO CLOSE IS REALLY CLOSED: an unmeasured panel reports `clientHeight` 0, 0 divides to a visible count of 0, `computeDiffRowWindow` answers 0 visible rows with an EMPTY window by its own third rule, an empty window draws nothing, a panel with nothing in it never scrolls, and a panel that never scrolls is never measured — the viewer would have been blank forever, and the fallback is what stops it. `DiffView.tsx` derives nothing: it holds `scrollTop` and `clientHeight`, hands both to the model, slices by the window's own two indices, sizes both spacers from the model's pixel answers, renders neither spacer when the list is not virtualized, and keeps the truncation notice OUTSIDE the window so virtualization cannot scroll the one warning that a diff is incomplete out of existence.
 
-THE TWO PYTHON RED-PROOFS THE WORKER TOOK BOTH REPRODUCE INDEPENDENTLY, in a disposable worktree at `b2658466` with `__pycache__` purged and `python3 -B` throughout, control exit 0 at 17 passed before and after, each replaced string counted at exactly 1 before its edit and each file restored to its pre-mutation sha256. Moving the `Open diff` button back inside the `{changedFiles && ...}` section is exit 1 failing exactly `TestTheEntryPointSitsAtPopoverLevel::test_the_entry_point_is_outside_and_after_the_changed_files_section`, so C5's gate really catches the return of `R-0726` — the state that was GREEN across every guard in this repository for a whole round. Reverting C4's anchored pattern to the bare `.count(literal)` form is exit 1 failing exactly `test_collapse_threshold_literal_occurs_exactly_once`, AND IT GOES RED WITHOUT ANY FURTHER MUTATION, because C6's `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS = 2000` is already in the module and `200` is a substring of `2000`. That is `R-0728`'s predicted false red arriving in the same round that repaired it: the C4 anchor was load-bearing rather than speculative, and the block's ordering constraint putting C4 before C6 is what kept the round green.
+THE STALENESS REPAIR IS PROVED MECHANICALLY RATHER THAN BY EYE. `tests/ui_contracts/test_diff_viewer_mount.py` at C4 differs from its parent as raw bytes, and its ABSTRACT SYNTAX TREE with every string and f-string literal blanked is EQUAL — so the commit changed docstrings, comments and assertion messages and nothing else, with every `assert` expression intact. The negative control, renaming one test method, makes that comparison False, so the blanking is not vacuous. All five sites the block named were verified present at HEAD before the round and absent after it.
 
-THE CODE IS RIGHT AND THE REVIEWER READ IT RATHER THAN THE SUMMARY. `computeDiffRowWindow` is total: the three-counts invariant holds algebraically on BOTH branches, since `rowsBefore + rowsInWindow + rowsAfter` telescopes to `totalRows` for any `startIndex` and `endIndex`, and `startIndex <= endIndex` holds because `first` is clamped into the list, `startIndex` never exceeds `first`, and `endIndex` is a minimum of two values each at least `startIndex`. The zero-visible branch returns an empty window at the viewport's own position rather than at the top, which is the honest answer. C3's replacement comment was checked against the files it describes rather than against the block's prose: `DetailPopover.tsx` really emits `onOpenDiff(taskId)` at popover level, `RemedyShell.tsx` really holds the open task run and reads through `loadDiffEnvelope`, and `component_spec.md:108` really is the line listing the popover's `Open diff` button. C5's new guard carries its own vacuity assertions — that its scoper returns strictly less than the file and that the region it returns is the "Changed files" section — so it cannot silently stop scoping.
+ALL SIX ORDERED RED-PROOFS REPRODUCE, run by the reviewer in a disposable worktree at `835ba84b` per DECISION F037 D10, each replaced string counted at exactly 1 before its edit and each file restored to its pre-mutation sha256, with the unmutated controls green first and last at 69 vitest tests and 33 pytest tests: the unmeasured-viewport fallback removed is exit 1 on the fallback case; the scroll division's floor turned to ceil and the height division's ceil turned to floor are each exit 1 on exactly their own rounding test; a spacer height forced to 0 is exit 1 on the spacer test and on the ten-thousand-row scale test; the model call replaced by in-component arithmetic is exit 1 on three guards including the new delegation guard; and the row height moved from 20 to 24 is exit 1 on exactly the stylesheet-agreement test, which is the discriminator proving that test really parses `12.5px/1.6` out of `DiffView.module.css` rather than transcribing a number. THE REVIEWER ADDED FOUR THE BLOCK DID NOT ORDER, because a gate list is only as good as the mutations nobody thought to try: dropping the overscan from the delegation is exit 1 on four cases, forcing the TRAILING spacer to 0 is exit 1 on two, and slicing the drawn rows from index 0 instead of the window start is exit 1 on two including the new slice guard. THE FOURTH CAME BACK GREEN AND IS REPORTED RATHER THAN BURIED: passing `rowCount` to `computeDiffRowWindow` UNRESOLVED, dropping the outer `wholeRowCount` call, leaves all 69 tests passing. That is NOT a gate gap — `computeDiffRowWindow` resolves its own first argument on its first line, so the outer call is redundant by construction and the mutation changes no behaviour a test could observe. It is noted here as a small piece of dead defensiveness rather than registered, because it has no product effect and removing it would be churn.
 
-ONE GAP THIS ROUND LEAVES, NAMED RATHER THAN CARRIED SILENTLY, AND IT IS THE REVIEWER'S. `computeDiffRowWindow` is exported and has NO caller: the block ordered the rule built and explicitly forbade wiring it, which is a defensible slice, but a rule with no caller is a rule whose real behaviour is still unmeasured — the R-0220 lesson that a green gate is not a working feature. It is not registered as a finding because it is the block's declared plan rather than a defect, and C6 of F037 R21 closes it under that block's ordering constraint. THE BLOCK'S OWN CONTRADICTION EARNS NO ID AND IS APPENDED TO `.agent/prose_slips.md` BY C2 OF THIS ROUND, per operator amendment amend0827-process-diet rule 2: constraint 10 of the R20 block stated that no TypeScript mutation red-proof was ordered while G6 ordered two, and the block's claim that the `Gate: F037 R16` entry records why every vitest route is blind is inexact. Both damaged nothing on disk, and the worker declared both. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END GATER20
+THE SUITES ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER, primary checkout, one pytest process at a time, base figures in brackets: `tests/ui_contracts/` 648 passed 4 skipped [642, 4]; `tests/ui_server/` 495 passed [495]; `tests/orchestration/test_test_runner.py` with `tests/docs/` 347 passed [347]; ruff over both edited test modules `All checks passed!`; the typescript node 1 passed 73 deselected, PASSED and not skipped, which is most of this round's gate because C6 is `.tsx`; and the canary 42 passed [42]. THE VITEST TOTAL IS 592 PASSED ACROSS 32 FILES [584], measured by the reviewer through D10's route with `--reporter=verbose`, with all eight new `diffRowWindowForViewport` cases printed by name as EXECUTED — including the ten-thousand-row scale case, which is the first evidence in this feature that the window really bounds what a large diff draws. THE STRUCTURE IS CLEAN: the path residue is EMPTY in both directions over eleven paths, `packages/` is empty, `apps/ui/src/components/detail/` and `.../shell/` are empty, `tokens.css` and `DiffView.module.css` are UNTOUCHED — constraints 3 and 4 measured rather than asserted — `apps/ui/src/components/` names `DiffView.tsx` alone, every commit is single-parent and under 500 insertions, the marker sweep is 0 in all nine targets against 12 in the C0a blob as its control, and `git ls-files .remedy-wt` is 0.
 
-<<<SLICE DONE727
-Done: R-0727 — RESOLVED at F037 R20 IN PART and FULLY at F037 R21 by that round's C4, which this block's ordering constraint 6 places after this record. The finding was that a WHY comment in a production component still told its reader the component had no caller, two rounds after `RemedyShell` began drawing it. C3 of F037 R20 repaired the site the finding NAMED: `apps/ui/src/components/diff/DiffView.tsx` at `13904147` replaces `THIS COMPONENT IS NOT MOUNTED YET` with a paragraph naming the real wiring — the `Open diff` button in `DetailPopover`, `RemedyShell` holding the open task run and reading through `loadDiffEnvelope`, and this component drawn inside that panel — and the reviewer verified all three claims against the files at HEAD rather than against the block's prose, plus the `component_spec.md:108` citation on disk. An AST-free reading is enough here because the commit changes 11 lines and deletes 8, all inside a comment block, and `git diff` shows no executable line moved. THE REMAINDER, and why it is this paragraph's to name rather than a new id's: the R20 worker's staleness sweep — constraint 12 of that block, the standing counter-measure `R-0582` left behind — found FOUR MORE SITES of the same sentence in `tests/ui_contracts/test_diff_viewer_mount.py` at lines 3-4, 43, 260 and 369, and a fifth in `apps/ui/src/api/diffViewModel.ts` at line 327 whose future tense outlived the render it predicted. The worker reported all five and repaired none, which was right: constraint 12 permitted repairing only the site C3 named. The open set was searched before any new id was considered (§3 item 30) and the defect is not merely the same CLASS but the same SENTENCE, so this takes a second resolution paragraph on the precedent `R-0721` and `R-0725` both set in this record rather than a new id. All five were re-verified present at HEAD by the reviewer at `b2658466` before this paragraph was written. C4 of F037 R21 repairs them, editing comment and message text only, with every `assert` expression left byte-identical. THE LESSON THIS FINDING LEAVES: a stale claim propagates by COPYING, so the sweep that finds one must read every file that quotes it, and a block that repairs one site while its worker has already reported four more spends a round to buy a fifth of a repair.
-<<<END DONE727
+THE WORKER'S TWO DEVIATIONS ARE BOTH HONEST AND THE FIRST SHOWS GOOD JUDGEMENT. It repaired one comment outside SPEC S1: `DiffView.tsx`'s header named "the virtual scrolling and the lazy language bundles" as outstanding, and C6 lands the virtual scrolling, so leaving it would have shipped a false sentence in the very commit that falsified it. Reading constraint 10's "leave it alone" as binding on claims already stale at the sweep rather than on one the round's own code breaks is the correct reading, and it declared the call rather than making it quietly. The second is that the `Landed:` line names its commit by role rather than by SHA, which is unavoidable for a line written into the commit it describes and is the form every other such line in this record uses. THREE STALE CLAIMS IT FOUND AND CORRECTLY LEFT ALONE ARE REGISTERED BELOW as `R-0729` and `R-0730`. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END GATER21
 
-<<<SLICE DONE728
-Done: R-0728 — RESOLVED at F037 R20 by that round's C4, and the resolution is unusually well evidenced because the predicted failure ARRIVED INSIDE THE SAME ROUND. The finding was that `test_collapse_threshold_literal_occurs_exactly_once` in `tests/ui_contracts/test_diff_view_model.py` counted the collapse threshold as a bare substring, so any new constant whose digits contain `200` would turn the guard red for breaking nothing. At `5897d2c8` the count is taken through a pattern compiled from `re.escape(literal)` and fenced with `(?<![\w.])` and `(?![\w.])`, so the literal is counted only where it stands as a whole number; `re` was already imported by that module and no import changed. MEASURED BY THE REVIEWER in a disposable worktree at `b2658466`, control exit 0 at 17 passed before and after: reverting the anchored pattern to the bare `.count(literal)` form and mutating NOTHING ELSE is exit 1 on exactly that node — because C6 of the same round added `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS = 2000` and `200` is a substring of `2000`. So this was not a hypothetical: the guard would have gone falsely red at C6 had C4 not preceded it, and the block's ordering constraint 6 is what made the round green rather than luck. The anchor does not weaken what the guard was written for — a bare `200` transcribed into the module still turns it red, which the R20 worker measured and the reviewer reproduced. THE GENERAL RULE, and it is `R-0725`'s in the other direction: an unanchored substring test is wrong in BOTH colours — as a PRESENCE check it goes falsely green on an unrelated occurrence, and as a COUNT check it goes falsely red on one. Anchor the pattern or scope the region; a bare `in` and a bare `.count` are the same defect wearing two signs.
-<<<END DONE728
+<<<SLICE FINDING729
+- R-0729 — Medium, A GUARD'S DOCSTRING TELLS EVERY FUTURE ROUND THAT A TYPESCRIPT MUTATION RED-PROOF CANNOT BE ORDERED HERE, WHICH IS THE EXACT BELIEF THAT BLINDED THIS FEATURE'S `.ts` LAYER FOR THIRTEEN ROUNDS AND WHICH THE SAME ROUND DISPROVED. Raised by the WORKER of F037 R21 in its staleness sweep, which found it and correctly left it alone because that round's constraint 10 permitted repairing only the sites SPEC S1 named, and registered here with the reviewer's own reading. MEASURED AT `835ba84b`: the module docstring of `tests/ui_contracts/test_diff_view_model.py` states that DECISION F037 D8 "records that a mutation red-proof of TypeScript is not orderable in this repository", giving the gitignored `apps/ui/node_modules` and guardrail G5's disposable worktree as the reason. At that same commit DECISION F037 D10 is on disk, landed by C3 of the same round, recording the route that makes it orderable — vitest spawned FROM the primary checkout so it resolves its own package, with `--root` pointed at the worktree so the tree under test is the worktree's — and G6 of that round took SIX such red-proofs through it, every one of them red, plus four more the reviewer added. So the sentence is not merely stale: it is contradicted by a DECISION in the same repository, and it cites the wrong decision as its authority. MEDIUM AND NOT LOW because of WHO READS IT AND WHEN: this docstring is the first thing a builder or reviewer of the diff view model reads, it is phrased as a settled repository-wide fact, and believing it is what caused F037 R8 through R20 to ship `.ts` code with no mutation proof at all — the cost is not a wrong byte on screen but a whole class of gate never ordered, which is the most expensive kind of stale claim this repository can carry. MEDIUM AND NOT HIGH because nothing on a user's screen is wrong, no suite is red, and the guard the docstring introduces is itself correct and green. THE OPEN SET WAS SEARCHED BEFORE THIS ID WAS MINTED (§3 item 30): `R-0727` is the nearest neighbour and is the same FAMILY — a stale claim about what exists — but it is a different sentence, a different file and a different fact, and it is fully resolved, so this takes its own id rather than a third resolution paragraph. THE FIX, which C3 of F037 R22 lands under that block's ordering constraint 6: replace the claim with what D10 established, keep the three bullets above it, which remain exact, and change no executable line. OPEN.
+<<<END FINDING729
 
-<<<SLICE PROSESLIP
-- 2026-08-28 · F037 R21 · The R20 block contradicted itself and one of its
-  asides was inexact: constraint 10 stated that NO TypeScript mutation red-proof
-  was ordered while G6 ordered two, and the claim that the `Gate: F037 R16`
-  entry records why every vitest route is blind is not what that entry says. The
-  worker declared both and routed around neither, and nothing landed wrong on
-  disk. DECISION F037 D10 settles the underlying question by measurement: the
-  red-proofs were orderable all along, and successive blocks said otherwise
-  because each inherited the sentence instead of re-running it.
-<<<END PROSESLIP
-
-<<<SLICE DECISIOND10
-## DECISION F037 D10 (2026-08-28) — TypeScript mutation red-proofs ARE measurable in this repository, and this is the route
-
-CONTEXT. From F037 R8 onward every block in this feature carried a standing
-claim that no TypeScript mutation red-proof can be ordered, because a
-`git worktree` has no `apps/ui/node_modules` — it is gitignored — and vitest
-there is exit 1 UNMUTATED with `ERR_MODULE_NOT_FOUND`, which is no
-discriminator and so a vacuous proof. TRUE of every route tried, FALSE in
-general, and it cost this feature its `.ts` red-proofs for thirteen rounds.
-
-THE RULING. Vitest is spawned FROM the primary checkout, so it resolves its own
-package out of the primary's `node_modules`, and `--root` points discovery at
-the worktree, so the tree under test is the worktree's:
-
-    subprocess.run(["npx", "vitest", "run",
-                    "--root", f"{WT}/apps/ui",
-                    "--config", f"{PRIMARY}/apps/ui/vitest.config.ts",
-                    "<path relative to --root>", "--reporter=basic"],
-                   cwd=f"{PRIMARY}/apps/ui", capture_output=True)
-
-BOTH FLAGS ARE LOAD-BEARING AND THE FAILURE MODES DIFFER. `--root` alone cannot
-resolve the `vitest` package from the worktree's own config and exits 1 before
-any test loads. `--config` alone re-runs the PRIMARY tree and stays GREEN under
-a worktree mutation — the dangerous one, because it looks like a passing gate.
-Only the pair roots discovery at the worktree while resolving the tool at the
-primary. The test path is RELATIVE and resolves against `--root`. G5 is intact:
-the primary is only READ, and the only tree written to is the disposable
-worktree. Direct `npx` and `node_modules/.bin/vitest` shell commands are denied
-to this session class, so drive it from a `python3` script under the gitignored
-`.remedy-wt/` — the refusal binds the shell caller, not the environment, which
-is finding `R-0724`'s lesson.
-
-EVIDENCE, taken at `b2658466`: control exit 0 at 61 passed, then five mutations
-of the worktree's `diffViewModel.ts` each exit 1 killing exactly the named test
-for the property broken, then control exit 0 again with every file restored to
-its pre-mutation sha256. REVERSE by deleting this decision; but the claim it
-replaces is measurably false, so reversing it re-blinds the `.ts` layer.
-<<<END DECISIOND10
+<<<SLICE FINDING730
+- R-0730 — Low, TWO WHY COMMENTS IN THE VIEW MODEL WERE FALSIFIED BY THE VERY ROUND THAT WROTE THE CODE BESIDE THEM. Raised by the WORKER of F037 R21 in its staleness sweep and correctly left alone under that round's constraint 10, registered here with the reviewer's own reading, and verified present at `835ba84b`. THE FIRST is at line 512, inside the `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` comment, which lists the sites naming that constant as "the function below, the component that will consume it, and the vitest suite". It is wrong in TWO ways rather than one: the future tense outlived C6 of that round, which wired the window; and the component does not name this constant AT ALL, then or now — it calls `diffRowWindowForViewport`, and `tests/ui_contracts/test_diff_view_render.py` gained a guard in the same round FORBIDDING the component to name the row-height constant, so the sentence describes an arrangement the round's own gates now prohibit. The real consumer is `computeDiffRowWindow`, in that same module. THE SECOND is at line 555, in the `computeDiffRowWindow` comment: "That division is the only untestable part of virtual scrolling". True when written at R20, false since C5 of R21 moved the division into `diffRowWindowForViewport`, where vitest executes it and where the reviewer's own red-proofs turned both of its roundings red. What remains untestable is the DOM READ alone — `scrollTop` and `clientHeight` — which is a narrower and more useful thing to tell a reader. LOW because no behaviour is affected, no gate is blind and no suite is red; both are comments, and the code they sit beside is correct. IT IS STILL AN ID AND NOT A PROSE SLIP because it is wrong state on disk under `apps/`, which is what operator amendment amend0827-process-diet rule 2 reserves an id for, and because AGENTS.md's Code Discoverability Conventions make these comments load-bearing: a WHY comment that answers a reader's question with a confident falsehood is worse than no comment, since the reader has no reason to doubt it. THE OPEN SET WAS SEARCHED BEFORE THIS ID WAS MINTED (§3 item 30): it is `R-0727`'s family and `R-0729`'s round, but a different file and different sentences from both, and both of those are resolved. THE PATTERN WORTH RECORDING, because this is the third staleness finding in three rounds: a round that MOVES a rule into a new function falsifies every comment that described where that rule used to live, and the sweep that catches it must read the comments AROUND the change and not only the lines the diff touched. THE FIX, which C3 of F037 R22 lands under that block's ordering constraint 6: name `computeDiffRowWindow` as the consumer, and narrow the untestable part to the DOM read. OPEN.
+<<<END FINDING730
 
 ## Done when
 
@@ -392,89 +302,73 @@ Every gate below is EXECUTED and its real exit code recorded in the handback.
 "Green" as a word is a finding. Report one line per gate.
 
 - **G1 HYGIENE.** `.agent/STOP` absent, read from disk before C0a and again
-  before C8. `git rev-parse HEAD` before C0a equals BASE. Branch is
+  before C7. `git rev-parse HEAD` before C0a equals BASE. Branch is
   `feature/f037-rendered-diff-viewer`. `git status --porcelain | wc -l` is 0
   after every commit.
 - **G2 TRANSPORT.** Report the committed C0a blob's byte count, line count and
-  sha256, and show `git rev-parse` of `.agent/authored/f037-r21.md` and
+  sha256, and show `git rev-parse` of `.agent/authored/f037-r22.md` and
   `.agent/last_block.md` at C0b as ONE blob.
-- **G3 THE PLAN AT C1.** Byte equality of PLANF037R21, extracted from the
+- **G3 THE PLAN AT C1.** Byte equality of PLANF037R22, extracted from the
   COMMITTED C0a blob, with `git show <C1>:.agent/plan.md`, including the trailing
   newline. Negative control: the same slice minus its trailing newline, which
-  must be False. Report `wc -l` and that it is strictly under 50, and the count
-  of lines exactly `## Goal` and exactly `## Next Steps`.
-- **G4 THE RECORD AT C2 AND C3.** For `.agent/live_review.md`: the pre-round blob
-  joined to GATER20, DONE727 and DONE728 in Bundle order with exactly one newline
-  before each equals the C2 blob. Negative control: flip one byte inside
-  GATER20's FIRST paragraph; it must be False. Show the pre-round blob is a byte
-  PREFIX of the committed one. For `.agent/prose_slips.md`: the same byte reader
-  over PROSESLIP, its own negative control, the prefix check, and the count of
-  lines matching `^- 2026-` [19 at base], which must rise by exactly one to 20 —
-  that file is append-only and is never rewritten or renumbered. Its entries are
-  WRAPPED with a two-space continuation indent and separated by one blank line,
-  and the slice is already in that shape: apply it verbatim and do not re-wrap
-  it.
-  For `.agent/decisions.md`: the same byte reader
-  over DECISIOND10, its own negative control, the prefix check, and the count of
-  lines beginning `## DECISION ` [175 at base, so 176 at C3], with the string
-  `F037 D10` occurring EXACTLY ONCE [0 at base]. Note that `.agent/decisions.md`
-  ends with a single newline and NOT a blank line, so the one joining newline
-  this reader prescribes is what separates the new heading from the last
-  paragraph — the same shape as the `live_review.md` append.
+  must be False. Report `wc -l`, that it is strictly under 50, and the count of
+  lines exactly `## Goal` and exactly `## Next Steps`.
+- **G4 THE RECORD AT C2.** The pre-round blob joined to GATER21, FINDING729 and
+  FINDING730 in Bundle order with exactly one newline before each equals the C2
+  blob. Negative control: flip one byte inside GATER21's FIRST paragraph; it must
+  be False. Show the pre-round blob is a byte PREFIX of the committed one.
 - **G5 THE LEDGER.** Line-anchored over the C2 blob, each with its base figure
-  from `b2658466` in brackets: `^- R-\d+ — ` [289], `^Done: R-\d+ — ` [37],
-  `^Landed: R-` [6], `^Gate: F\d+ R\d+ — ` [90], and the OPEN SET computed AS A
+  from `665be6ef` in brackets: `^- R-\d+ — ` [289], `^Done: R-\d+ — ` [39],
+  `^Landed: R-` [7], `^Gate: F\d+ R\d+ — ` [91], and the OPEN SET computed AS A
   SET — registered ids minus ids named by a `Done:` line, never by subtraction
-  [254]. Report that every registered id is distinct. The open set must FALL BY
-  TWO, to 252: `R-0727` and `R-0728` are each named by a `Done:` line for the
-  FIRST time here — at base both carry only a `Landed:` line, which resolves
-  nothing — and this block registers no new id. Registrations and `Landed:` lines
-  are therefore UNMOVED, and only the `Done:` and `Gate:` counts rise, by two and
-  by one. If any figure disagrees, STOP and report it rather than adjusting it.
-- **G6 THE RED-PROOFS.** In a disposable worktree at the C7 tree, `__pycache__`
-  purged before every run and `python3 -B` throughout. Count each replaced string
-  at exactly 1 BEFORE editing; restore every file to its pre-mutation sha256
-  after every run and show the restore. Report the UNMUTATED control first and
-  again last.
-  TypeScript, driven per constraint 9 and DECISION F037 D10 over
-  `src/api/diffViewModel.test.ts`:
-  - (a) the unmeasured-viewport fallback removed, so a viewport height of 0
-    yields a visible count of 0. MUST be RED, and it is the trap S2 exists for.
-  - (b) the scroll division's `Math.floor` changed to `Math.ceil`, and, as a
-    separate run, the height division's `Math.ceil` changed to `Math.floor`.
-    BOTH MUST be RED.
-  - (c) one spacer height returned as 0 instead of its row count times the row
-    height. MUST be RED.
-  Python, over `tests/ui_contracts/test_diff_view_render.py`:
-  - (d) the call to `diffRowWindowForViewport` removed from `DiffView.tsx` and
-    replaced with a direct `computeDiffRowWindow` call doing the division in the
-    component. MUST be RED on the new delegation guard.
-  - (e) `DIFF_VIRTUAL_ROW_HEIGHT_PX` changed from 20 to 24. MUST be RED on the
-    stylesheet-agreement test of S5 — the discriminator proving it parses the CSS.
-  If any of the six runs is NOT red, STOP and report it. Do not repair it.
-- **G7 SUITES, TYPES AND LINT AT C7.** Primary checkout, ONE pytest process at a
+  [252]. Report that every registered id is distinct. Registrations must RISE BY
+  TWO to 291 and the open set must RISE BY TWO to 254, because `R-0729` and
+  `R-0730` are registered here and neither is resolved this round; `Done:` is
+  UNMOVED at 39 and `Gate:` rises by one to 92. `^Landed: R-` rises by two to 9
+  at C3, per SPEC S5. If any figure disagrees, STOP and report it.
+- **G6 THE RED-PROOFS.** In a disposable worktree at the C6 tree, `__pycache__`
+  purged before every run and `python3 -B` throughout, TypeScript driven per
+  constraint 8. Count each replaced string at exactly 1 BEFORE editing; restore
+  every file to its pre-mutation sha256 and show the restore. Report the
+  UNMUTATED control first and again last.
+  - (a) the plain-language early return removed, so `importBundle` is called for
+    an unknown language too. MUST be RED on the zero-call Acceptance test, and it
+    is the single most important reading of this round.
+  - (b) the cache lookup removed, so a repeated language imports twice. MUST be
+    RED on the cache test.
+  - (c) the `try`/`catch` around `importBundle` removed. MUST be RED on the
+    rejecting-importer test.
+  - (d) the extension taken from the FIRST dot rather than the last. MUST be RED
+    on the multi-dot case.
+  - (e) the dotfile guard removed, so `.gitignore` resolves to a language. MUST
+    be RED on the dotfile case.
+  - (f) one entry deleted from `DIFF_SUPPORTED_LANGUAGES`. MUST be RED, and it is
+    the discriminator proving S4 iterates the mapping rather than transcribing it.
+  - (g) Python: a `vi.fn()` inserted into the vitest test file. MUST be RED on
+    the S6 guard forbidding it.
+  If any of the seven is NOT red, STOP and report it. Do not repair it.
+- **G7 SUITES, TYPES AND LINT AT C6.** Primary checkout, ONE pytest process at a
   time, the worktree removed and `git worktree list` reported as one line first.
   Each with its base figure in brackets:
-  - `python3 -m pytest tests/ui_contracts/ -q` [642 passed, 4 skipped]
+  - `python3 -m pytest tests/ui_contracts/ -q` [648 passed, 4 skipped]
   - `python3 -m pytest tests/ui_server/ -q` [495 passed]
   - `python3 -m pytest tests/orchestration/test_test_runner.py tests/docs/ -q` [347 passed]
-  - `python3 -m ruff check tests/ui_contracts/test_diff_view_render.py tests/ui_contracts/test_diff_viewer_mount.py`
+  - `python3 -m ruff check tests/ui_contracts/test_diff_view_model.py`
   - the typescript node
     `python3 -m pytest tests/ui_server/test_dashboard_contract.py -k "typescript or tsc or noEmit" -q -rs`
-    [1 passed, 73 deselected] — it must PASS and not SKIP, and it is most of this
-    round's gate because S4 is `.tsx`. If `tsc --noEmit` is RED, STOP and report;
-    do not repair.
+    [1 passed, 73 deselected] — it must PASS and not SKIP. If `tsc --noEmit` is
+    RED, STOP and report; do not repair.
   - the canary `python3 -m pytest tests/cli/test_golden_path.py -q` [42 passed]
-  - the vitest TOTAL, driven per DECISION F037 D10 with `--reporter=verbose`
-    against the PRIMARY tree, reporting the test-file and test counts [32 files,
-    584 tests] and naming the new `describe`'s cases as executed.
-- **G8 STRUCTURE AND THE OPEN PR GATE AT C7.** `git diff --name-only <BASE>..<C7>`
+  - the vitest TOTAL, driven per constraint 8 with `--reporter=verbose` against
+    the PRIMARY tree, reporting the test-file and test counts [32 files, 592
+    tests] and naming the new cases as executed.
+- **G8 STRUCTURE AND THE OPEN PR GATE AT C6.** `git diff --name-only <BASE>..<C6>`
   equals the Change set minus `.agent/handoff.md`; report ACTUAL MINUS EXPECTED
-  and EXPECTED MINUS ACTUAL. `git diff --stat` restricted to `packages/` is
-  EMPTY, and restricted to `apps/ui/src/components/` names `DiffView.tsx` and
-  nothing else. Per-commit insertions from `git show --numstat`, each under 500,
-  each matching the handback's table. Lines matching `^<<<SLICE ` or `^<<<END `
-  are 0 in every edited target, with the C0a blob as a NON-ZERO control.
+  and EXPECTED MINUS ACTUAL. `git diff --stat` restricted to each of `packages/`,
+  `apps/ui/src/components/` and `apps/ui/src/styles/` is EMPTY. Per-commit
+  insertions from `git show --numstat`, each under 500, each matching the
+  handback's table. Lines matching `^<<<SLICE ` or `^<<<END ` are 0 in every
+  edited target, with the C0a blob as a NON-ZERO control.
   `git ls-files .remedy-wt | wc -l` is 0.
   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 
@@ -482,7 +376,7 @@ Every gate below is EXECUTED and its real exit code recorded in the handback.
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
 round, the SESSION NUMBER, branch, per-commit changed-files tables, the real
-verification transcript one line per gate, constraint 11's staleness sweep,
+verification transcript one line per gate, constraint 10's staleness sweep,
 deviations and assumptions, the item-status table covering every C and every G,
 and the next expected action. Derive its length bound yourself from AGENTS.md.
 
