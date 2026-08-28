@@ -14,32 +14,35 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments that reconcile it with the source.
 
 ## Current Step
-R5 closes the parser's verification gaps and ends the session. It books R4,
-resolves `R-0716`, and registers and repairs two defects the R4 red-proofs
-exposed: `R-0717`, the intraline side mapping is pinned only for `replace`
-opcodes, and `R-0718`, the similarity guard cannot fire for a multi-word line
-because separator tokens floor its ratio. Both repairs are proved by the reds
-their own fixtures now cause.
+R6 opens session 2 and builds the first half of what T001 still owes: a new
+module `packages/orchestration/diff_view_source.py` resolving an evidence
+directory, and optionally one task run, to the right diff artifact and returning
+the contract-v1 envelope with every absence named rather than raised. It also
+books the R5 verdict, replaces the `Landed:` lines of `R-0717` and `R-0718` with
+reviewer-authored `Done:` text, and records four reviewer-prose slips. No route
+is added: the server wiring is R7's and needs the route-walk guard measured
+first.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R4 gate, the resolution and both registrations | ordered | record first |
-| C3 the `R-0717` discriminating fixtures | ordered | must kill both mutations |
-| C4 the `R-0718` repair and its test | ordered | ratio over significant tokens |
-| C5 the handback | ordered | last round of the session |
+| C2 the R5 gate, both resolutions, the slips | ordered | record first |
+| C3 the resolver module and its tests | ordered | refusal proved, not asserted |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. The read endpoint, keyed on task run and job per DECISION F037 D2, against
-   the route guards the R1 inventory measured. That is what T001 still owes.
+1. The two GET routes onto this module — the job scope as a handler-dict key and
+   the task-run scope as a structural route — with the route walk in
+   `tests/ui_server/test_command_channel.py` measured before the edit. That
+   finishes T001.
 2. T002 the rendering core, the binding CSS and the goldens.
 3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
 - `R-0715` is open and Low; it is a stale count in a test docstring and belongs
   to whoever next edits that file.
-- The parser still has no consumer, so its corpus carries the whole weight.
-  Every round that touches it orders mutation red-proofs for that reason, and
-  R4 is the round that proved why: a red-proof reported green is how both of
-  this round's findings were found.
+- `R-0711` carries a `Landed:` line and no `Done:` text because F032's branch
+  ended first. It is the terminator case, not a gap for F037 to close.
+- The parser still has no consumer. R6 gives it one that no HTTP layer can
+  reach yet, so its corpus keeps carrying the weight until R7.
