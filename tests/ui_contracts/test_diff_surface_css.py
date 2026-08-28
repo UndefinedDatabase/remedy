@@ -55,6 +55,21 @@ def _normalise(body: str) -> str:
     return re.sub(r"\s*:\s*", ": ", re.sub(r"\s+", " ", body)).strip()
 
 
+def _declaration_offset(body: str, prop: str) -> int:
+    """Return the offset at which `prop`'s declaration begins in a rule body, or -1 when it is absent."""
+    match = re.search(r"(?<![-\w])" + re.escape(prop) + r"\s*:", body)
+    return match.start() if match else -1
+
+
+def _font_shorthand_after(body: str, offset: int) -> bool:
+    """Report whether a `font` SHORTHAND declaration begins after `offset` in this rule body.
+
+    The shorthand resets `font-feature-settings` to its initial value, so a `"liga" 0`
+    declaration sitting ABOVE one is dead and the rule composes ligatures anyway.
+    """
+    return any(match.start() > offset for match in re.finditer(r"(?<![-\w])font\s*:", body))
+
+
 class TestDiffSurfaceStylesheet:
     def test_stylesheet_exists(self):
         assert DIFF_CSS.is_file(), (
@@ -118,6 +133,23 @@ class TestDiffSurfaceStylesheet:
             "whose characters must not compose either "
             "(assets_spec.md section 2, ligatures OFF on diff surfaces)"
         )
+
+    def test_no_font_shorthand_follows_the_ligature_declaration(self):
+        css = DIFF_CSS.read_text()
+        for selector in (".diffLine", ".hunkHead"):
+            body = _normalise(_rule_body(css, selector))
+            offset = _declaration_offset(body, "font-feature-settings")
+            assert offset >= 0, (
+                f"`{selector}` declares no `font-feature-settings` at all, so there is no ligature "
+                f"setting left for this rule to keep off ({AUTHORITY})"
+            )
+            assert not _font_shorthand_after(body, offset), (
+                f"`{selector}` places a `font` shorthand AFTER its `{LIGATURES_OFF}` declaration; the "
+                "shorthand resets that property, so ligatures come back to the diff surface and a `!=` "
+                "or a `->` renders as one composed glyph instead of the characters really in the file "
+                "(assets_spec.md section 2, ligatures OFF on diff surfaces). Declare the shorthand "
+                "first and the feature settings after it."
+            )
 
     def test_every_referenced_token_is_defined_in_the_shipped_sheet(self):
         referenced = set(re.findall(r"var\(\s*(--remedy-[\w-]+)", _strip_comments(DIFF_CSS.read_text())))
