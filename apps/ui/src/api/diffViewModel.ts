@@ -557,7 +557,7 @@ function wholeRowCount(value: number): number {
  *  data out and imports nothing, so a measurement of the DOM cannot reach it —
  *  the caller does the one division it owns (scroll offset by row height) and
  *  hands the result here as a row index. Since F037 R21 that caller is
- *  `diffRowWindowForViewport` at the foot of this file, so the division is not
+ *  `diffRowWindowForViewport`, below in this same module, so the division is not
  *  untestable either — vitest executes it there. What remains untestable is the
  *  DOM READ alone, `scrollTop` and `clientHeight`, and keeping that read out of
  *  this module is what puts every rule of virtual scrolling in the layer
