@@ -1,10 +1,11 @@
 """Guard: the diff viewer is really MOUNTED, not merely present on disk.
 
-`apps/ui/src/components/diff/DiffView.tsx` has been on disk since F037 R16 with no caller
-at all. This round opens the door to it (`docs/roadmap/features/T5_F037.md`, T003): the
-"Open diff" button `docs/ui/design_reference/component_spec.md:108` names emits
-`onOpenDiff(taskId)` from `DetailPopover`, and `RemedyShell` holds which task run is open,
-reads its envelope through `loadDiffEnvelope` and draws `DiffView` behind it.
+F037 R18 opened the door to `apps/ui/src/components/diff/DiffView.tsx`
+(`docs/roadmap/features/T5_F037.md`, T003), and THIS MODULE IS THE GUARD THAT KEEPS IT
+OPEN — it reads the three files named below and fails the moment any link in that chain
+is dropped. The chain: the "Open diff" button `docs/ui/design_reference/component_spec.md:108`
+names emits `onOpenDiff(taskId)` from `DetailPopover`, and `RemedyShell` holds which task
+run is open, reads its envelope through `loadDiffEnvelope` and draws `DiffView` behind it.
 
 NOTHING IN THIS REPOSITORY CAN RENDER ANY OF THE THREE. There is no DOM environment here
 and `apps/ui/vitest.config.ts` collects `src/**/*.test.ts` in a NODE environment, so the
@@ -39,10 +40,10 @@ VITEST_AUTHORITY = (
     "DECISION F031 D5 and DECISION F037 D8"
 )
 
-# The four rules `DiffView` calls out to `diffViewModel.ts` for. Constraint 3 of the F037
-# R18 block forbids this round from editing that component at all, and these four names are
-# that prohibition made mechanical: a round that quietly rewrote the drawing half while
-# claiming only to mount it would lose one of them.
+# The four rules `DiffView` calls out to `diffViewModel.ts` for. WHAT THE FOUR NAMES BUY:
+# a round that claims only to MOUNT or WIRE the component, and then quietly rewrites the
+# drawing half, would lose one of them — so this list is the mechanical difference between
+# touching the wiring around `DiffView` and rewriting the rules inside it.
 DIFF_VIEW_DELEGATED_RULES = (
     "buildDiffRowModels",
     "defaultCollapsedHunkIds",
@@ -257,7 +258,7 @@ class TestThePopoverOffersTheEntryPoint:
         signature = ts_function_signature(popover_code(), "DetailPopover")
         assert "onOpenDiff" in signature, (
             f"{POPOVER.name} declares no onOpenDiff prop, so no caller can open the viewer "
-            f"and {DIFF_VIEW.name} keeps the zero callers it has had since F037 R16"
+            f"and the only door into {DIFF_VIEW.name} this repository has is closed again"
         )
         assert re.search(r"onOpenDiff\?\s*:\s*\(\s*taskId\s*:\s*string\s*\)\s*=>\s*void",
                          signature), (
@@ -366,9 +367,10 @@ class TestALateResponseIsDiscarded:
 
 
 class TestTheDrawingHalfIsUnchanged:
-    """(f) Constraint 3 of the F037 R18 block made mechanical: this round MOUNTS
-    `DiffView.tsx` and does not edit it. The four rules it delegates to `diffViewModel.ts`
-    are what a quiet rewrite would lose first."""
+    """(f) A STANDING property of this module, not a claim about any one round: whoever
+    changes the wiring AROUND `DiffView.tsx` leaves the four rules it delegates to
+    `diffViewModel.ts` in place. Those four calls are what a quiet rewrite of the drawing
+    half would lose first, so they are pinned here rather than assumed."""
 
     def test_the_diff_view_still_calls_every_rule_it_delegates(self):
         body = ts_function_body(diff_view_code(), "DiffView")

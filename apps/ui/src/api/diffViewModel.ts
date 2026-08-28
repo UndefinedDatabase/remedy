@@ -323,10 +323,11 @@ export function readDiffEnvelope(raw: unknown): DiffEnvelope {
  *  SINGLE hunk. That is the point at which an open hunk stops being a reading
  *  aid and becomes a wall to scroll past on the way to the next file.
  *
- *  Declared once, here. Every other site — `defaultCollapsedHunkIds`, the
- *  component that will render these rows, and both test files — names this
- *  constant rather than repeating the number, which is what stops the rule and
- *  its tests from drifting apart. */
+ *  Declared once, here. Every other site — `defaultCollapsedHunkIds`,
+ *  `DiffView.tsx`, which renders these rows and has been mounted by
+ *  `RemedyShell` since F037 R18, and both test files — names this constant
+ *  rather than repeating the number, which is what stops the rule and its tests
+ *  from drifting apart. */
 export const DIFF_HUNK_COLLAPSE_THRESHOLD_LINES = 200;
 
 /** The hunks that start collapsed: those carrying strictly MORE than
