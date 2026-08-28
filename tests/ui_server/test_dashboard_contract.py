@@ -570,18 +570,67 @@ class TestReadinessEndpointUsesAutonomyReadiness:
 
 
 
+def _record_build_seam_calls(*, no_auto_build: str | None):
+    """Drive ``_auto_build_frontend`` with the lever in one position; return the argv it ran.
+
+    THE SEAM IS PATCHED, NOT THE ENVIRONMENT (finding R-0714). ``_auto_build_frontend``
+    reaches npm only through ``exec_guard.run_guarded_runtime_build_command`` as a module
+    attribute, so replacing that attribute observes the decision without spending a real
+    ``npm install`` and ``npm run build`` inside the suite. Its ``ui_root`` is resolved from
+    ``__file__``, never from the working directory, so ``package.json`` always exists and the
+    only thing that can stop the build is the lever itself — which is precisely what makes
+    the lever, and nothing else, the variable under test here.
+
+    ``no_auto_build`` of ``None`` means the variable is absent from the environment.
+    """
+    import subprocess as sp
+
+    from packages.orchestration import exec_guard, ui_server
+
+    seen: list[list[str]] = []
+
+    def _record(cmd, *, timeout_sec, cwd, check=False):
+        seen.append(list(cmd))
+        return sp.CompletedProcess(list(cmd), 0, b"", b"")
+
+    env = os.environ.copy()
+    env.pop("REMEDY_UI_NO_AUTO_BUILD", None)
+    if no_auto_build is not None:
+        env["REMEDY_UI_NO_AUTO_BUILD"] = no_auto_build
+
+    with patch.dict(os.environ, env, clear=True):
+        with patch.object(exec_guard, "run_guarded_runtime_build_command", _record):
+            result = ui_server._auto_build_frontend()
+    return seen, result
+
+
 class TestAutoBuildBehavior:
+    """REMEDY_UI_NO_AUTO_BUILD is the integration gate's ONE neutralisation lever.
+
+    `docs/agents/integration_gate.md` step 3 sets it so a full-suite run does not
+    rebuild the frontend underneath itself. These tests must therefore DISCRIMINATE
+    the lever in both directions: unset must reach the build seam, and ``1`` must
+    leave it unreached. Asserting anything weaker leaves the lever unenforceable for
+    every future feature, which is finding R-0714.
+    """
+
     def test_auto_build_runs_by_default(self):
-        """Without REMEDY_UI_NO_AUTO_BUILD, auto-build proceeds (returns None in test env)."""
-        from packages.orchestration.ui_server import _auto_build_frontend
+        """Lever unset: the build seam IS reached with the npm build argv (R-0714).
 
-        env = os.environ.copy()
-        env.pop("REMEDY_UI_NO_AUTO_BUILD", None)
+        Replaces an assertion that could not fail — ``result is None or
+        isinstance(result, Path)`` over a function annotated ``-> Path | None`` is
+        satisfied by every possible execution, including one where npm is missing or
+        the build errors out.
+        """
+        seen, _result = _record_build_seam_calls(no_auto_build=None)
 
-        with patch.dict(os.environ, env, clear=True):
-            result = _auto_build_frontend()
-        # Returns None because package.json path doesn't match test env, but it tried
-        assert result is None or isinstance(result, Path)
+        assert seen, (
+            "the lever was unset and the build seam was never reached: "
+            "auto-build no longer runs by default"
+        )
+        assert ["npm", "run", "build"] in seen, (
+            f"the npm build command never reached the guard; saw {seen!r}"
+        )
 
     def test_auto_build_disabled_with_env(self):
         """REMEDY_UI_NO_AUTO_BUILD=1 disables auto-build."""
@@ -592,14 +641,20 @@ class TestAutoBuildBehavior:
         assert result is None
 
     def test_no_npm_when_disabled(self):
-        """No subprocess calls when auto-build is disabled."""
-        import subprocess as sp
+        """Lever set to 1: the build seam is NOT reached (R-0714).
 
-        with patch.dict(os.environ, {"REMEDY_UI_NO_AUTO_BUILD": "1"}):
-            with patch.object(sp, "run") as mock_run:
-                from packages.orchestration.ui_server import _auto_build_frontend
-                _auto_build_frontend()
-                mock_run.assert_not_called()
+        The former version patched ``subprocess.run``, which ``_auto_build_frontend``
+        does not call — it reaches npm through the guard — so the assertion held
+        whether or not the lever worked. The guard is the seam that has to stay
+        unreached.
+        """
+        seen, result = _record_build_seam_calls(no_auto_build="1")
+
+        assert seen == [], (
+            f"REMEDY_UI_NO_AUTO_BUILD=1 did not neutralise the build: "
+            f"the guard was still called with {seen!r}"
+        )
+        assert result is None
 
     def test_auto_build_npm_commands_run_through_the_guard(self):
         """Both npm commands reach the runtime-build seam; none reaches a bare run."""
