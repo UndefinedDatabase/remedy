@@ -1,32 +1,37 @@
-# Plan — amend0828-daily-driver
+# Plan — F256 Diff viewer completion
 
-Branch: feature/amend0828-daily-driver, cut from `main` at the merge of PR #218
-(which closed F037). Operator collective order amend0828-daily-driver, five
-points, carrying the operator's authorization for every decision it names.
+Branch: feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`.
+F256 was claimed by Rule A5 as the first unchecked line of Package 1 in
+`docs/roadmap/STATUS.md`.
 
 ## Goal
-Make Remedy fit as a daily driver. Two operator dogfooding findings become built
-behaviour (deliberate partial promotion on `do job-promote`; cost truth on the
-`do job-run` path), one blind test is repaired, and the two remaining pieces of
-planned-but-unregistered scope get honest STATUS lines.
+Finish the rendered diff viewer F037 shipped: highlighting actually rendered
+rather than only modelled, the 10k-line budget measured and recorded, and the
+file sidebar's visual treatment ruled by a named authority.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| 3 — repair the R-0714 tautology test | done | red-proved in both directions |
-| 1 — `--skip-blocked` partial promotion | done | red-proved; flag-shape pinned |
-| 2 — cost truth on the job-run path | done | stats cost shows 1 row |
-| 4 — register the split-off F037 rest | done | F256, Tier 5, before F033 |
-| 5 — register the self-use track | done | F257, registered not built |
+| claim F256 and retarget the state | done | this round |
+| the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
+| compose the token cut with the intraline cut | open | model layer, not yet begun |
+| lazy bundles, DiffView wiring, the palette | open | needs the composition first |
+| rule on the sidebar's treatment | open | a ruling to record, not code |
+| measure the 10k-line fixture | open | needs a real fixture and a real run |
 
 ## Next Steps
-1. Run the full battery: docs suite, canary, every touched test file, ruff.
-2. Push the branch and open the PR.
-3. Watch the hosted run to GREEN, repairing red as work rather than reporting it.
-4. Merge this branch's own PR. End state: 0 open PRs.
+1. Compose the token cut with the intraline cut in the model layer, so one line
+   carries both without either losing characters.
+2. Ship the lazy per-language bundles and wire `loadDiffLanguageBundle` into
+   `DiffView`, with a palette derived from custom properties already defined
+   under `apps/ui/src` rather than invented.
+3. Rule on the file sidebar's visual treatment and record the authority.
+4. Measure the 10k-line fixture end to end and record the numbers in the
+   feature file's Built State.
 
 ## Risks
-- The two registrations shift every downstream feature counter; STATUS and the
-  four README pins must land in ONE commit or `tests/docs/` goes red.
-- Point 2 makes `do job-run` write an evidence bundle it did not write before.
+- The palette may name only custom properties defined under `apps/ui/src`;
+  `tests/ui_contracts/test_design_drift.py` fails any that is not.
+- `npx vitest run` is gated under a 30-second timeout in
+  `tests/orchestration/test_test_runner.py`.

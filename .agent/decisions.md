@@ -9438,3 +9438,40 @@ rather than leaving a reader to discover it. Nothing already built is removed.
 REVERSE by deleting this decision and amendment A6 from
 `docs/roadmap/features/T5_F037.md`; the three pieces then return to F037's scope
 and the soft-limit obligation returns with them.
+
+## DECISION F256 D1 (2026-08-28, F256 R1) — Remedy writes its OWN lazy syntax bundles for the diff surface rather than adding a third-party highlighter
+
+CONTEXT. F256 T001 must wire `loadDiffLanguageBundle` into `DiffView` so a diff
+of a supported language really renders highlighted. That function takes its
+`importBundle` as a REQUIRED argument and names no highlighter, deliberately, so
+the wiring round has to decide what the bundles ARE. Measured at `0e8ab5b4`:
+`apps/ui/package.json` declares no highlighter among its dependencies or
+devDependencies, and `apps/ui/node_modules` holds no shiki, prism, highlight.js
+or lowlight. A registry query for a candidate package was refused by this
+session class, so a new dependency can be neither installed nor verified here.
+
+CHOSEN. The bundles are Remedy's own modules under `apps/ui/src/api/`, loaded
+through the dynamic `import()` the existing importer type already describes. A
+bundle is a pure tokenizer: a function from a line of text and a language id to
+a list of typed segments. This keeps every decidable rule in the layer
+`apps/ui/vitest.config.ts` really executes, which is DECISION F031 D5, and it
+adds no dependency, no main-chunk weight and no build step.
+
+ALTERNATIVES CONSIDERED. (a) Add shiki or prismjs. Rejected on independent
+grounds: the registry is unreachable from this environment, so the change could
+not be verified where it is made; and a third-party tokenizer's rules would sit
+outside what any runner in this repository executes, which is the same blindness
+DECISION F031 D5 exists to prevent. (b) Ship no highlighting and close F256 on
+the other two pieces. Rejected because it abandons the Goal & Done clause A6
+already recorded as UNMET, and a second deferral of the same clause is how a
+promise stops being one.
+
+CONSEQUENCE, stated plainly because it is a real narrowing. Remedy's
+highlighting is COARSER than a full grammar — a closed token set and no semantic
+analysis — which is the honest ceiling of a per-line tokenizer and enough for
+helping a reader see structure in a changed line.
+
+REVERSE by deleting this decision and the modules it authorises, and adding a
+highlighter dependency once registry access exists; `loadDiffLanguageBundle`
+needs no change either way, because the importer is its argument.
+
