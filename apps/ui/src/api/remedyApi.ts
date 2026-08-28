@@ -1,5 +1,7 @@
 import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
 import { decisionCardModels } from "./decisionCard";
+import { readDiffEnvelope } from "./diffViewModel";
+import type { DiffEnvelope } from "./diffViewModel";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
@@ -654,4 +656,80 @@ export async function loadRemedyDashboard(o: ApiClientOptions): Promise<RemedyDa
   }
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// The diff envelope door (F037 T003)
+// ---------------------------------------------------------------------------
+
+/** What the diff door needs to address ONE diff envelope on the server.
+ *
+ *  An object rather than positional arguments because three of its four fields
+ *  are strings, and a job id handed in where a token belonged would type-check
+ *  in silence. AGENTS.md asks under "Code Discoverability Conventions" for
+ *  distinct shapes exactly where an argument swap is plausible; naming the
+ *  fields is the cheapest form of that here. */
+export interface DiffEnvelopeRequest {
+  jobId: string;
+  token: string;
+  baseUrl?: string;
+  taskId?: string | null;
+}
+
+/** How the door reaches the network, INJECTED rather than reached for.
+ *
+ *  The tests hand `loadDiffEnvelope` a fake of this shape, which is why no test
+ *  in this package patches a global. There is no `vi.stubGlobal` anywhere in
+ *  `apps/ui/src` and this door deliberately does not start one. */
+export type DiffEnvelopeFetcher = (path: string) => Promise<unknown>;
+
+/** The URL of one diff envelope. PURE: no fetch, no state, no throw.
+ *
+ *  Two scopes, because `packages/orchestration/ui_server.py` really routes two:
+ *  a job's whole diff through the five-segment handler dictionary, and one task
+ *  run's through the seven-segment route beside it. An absent, null, empty or
+ *  whitespace-only task id selects the job scope — those are the four spellings
+ *  of "no task run was chosen", and each has to mean the same URL or the viewer
+ *  would silently address a run named by whitespace.
+ *
+ *  WHY every interpolated value is percent-encoded here, unlike
+ *  `loadRemedyDashboard` above, which interpolates its job id raw: the task id
+ *  is a path SEGMENT, so an unencoded slash inside it would not be a bad
+ *  request but a DIFFERENT route — the server dispatches on segment positions
+ *  (`parts[4]`, `parts[6]`), and an extra segment shifts every one of them. The
+ *  token is encoded for the matching reason on the query side: an `&` in it
+ *  would end the parameter and start another. */
+export function diffEnvelopePath(request: DiffEnvelopeRequest): string {
+  const base = request.baseUrl || "";
+  const q = `token=${encodeURIComponent(request.token)}`;
+  const job = encodeURIComponent(request.jobId);
+  const taskId = request.taskId ?? "";
+  if (taskId.trim() === "") {
+    return `${base}/api/jobs/${job}/diff?${q}`;
+  }
+  return `${base}/api/jobs/${job}/task-runs/${encodeURIComponent(taskId)}/diff?${q}`;
+}
+
+/** Read one diff envelope through the single door.
+ *
+ *  THIS FUNCTION NEVER THROWS AND NEVER RETURNS A SHAPE A CALLER MUST BRANCH
+ *  ON. A 403 from a stale token, a dead socket, a body that is a string, and a
+ *  server that answered an envelope of a version this client does not know all
+ *  arrive at the viewer as the SAME total `DiffEnvelope` with `available`
+ *  false — which is the entire reason `readDiffEnvelope` exists rather than a
+ *  cast. A caller that had to tell those apart would carry the branch this
+ *  module is here to remove.
+ *
+ *  `fetchPayload` defaults to the module's private `fetchJson`, so production
+ *  callers pass nothing and the tests pass a fake. */
+export async function loadDiffEnvelope(
+  request: DiffEnvelopeRequest,
+  fetchPayload: DiffEnvelopeFetcher = fetchJson,
+): Promise<DiffEnvelope> {
+  try {
+    const payload = await fetchPayload(diffEnvelopePath(request));
+    return readDiffEnvelope(payload);
+  } catch {
+    return readDiffEnvelope(null);
+  }
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline } from "./remedyApi";
+import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope } from "./remedyApi";
+import type { DiffEnvelopeRequest } from "./remedyApi";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -571,5 +572,74 @@ describe("decisionInbox projection", () => {
 
   it("the failure dashboard carries the empty inbox", () => {
     expect(normalizeApiFailure("abc-123", ["dashboard"]).decisionInbox).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The diff envelope door (T5_F037 T003). No global is patched and no fetch is
+// mocked: `loadDiffEnvelope` takes its fetcher as an argument, so a plain arrow
+// function is the whole test double.
+// ---------------------------------------------------------------------------
+
+describe("the diff envelope door", () => {
+  const request: DiffEnvelopeRequest = { jobId: "abc-123", token: "t0k" };
+
+  it("addresses the job scope when the request names no task run", () => {
+    expect(diffEnvelopePath(request)).toBe("/api/jobs/abc-123/diff?token=t0k");
+  });
+
+  it("addresses the task-run scope when the request names one", () => {
+    expect(diffEnvelopePath({ ...request, taskId: "run-7" })).toBe(
+      "/api/jobs/abc-123/task-runs/run-7/diff?token=t0k",
+    );
+  });
+
+  it("percent-encodes the token and the task id, so neither can add a parameter or a segment", () => {
+    const path = diffEnvelopePath({ jobId: "abc-123", token: "a&b=c", taskId: "run/7" });
+    expect(path).toBe("/api/jobs/abc-123/task-runs/run%2F7/diff?token=a%26b%3Dc");
+    expect(path).not.toContain("run/7");
+    expect(path.split("&")).toHaveLength(1);
+  });
+
+  it("prefixes an explicit baseUrl and stays relative without one", () => {
+    expect(diffEnvelopePath({ ...request, baseUrl: "http://127.0.0.1:8123" })).toBe(
+      "http://127.0.0.1:8123/api/jobs/abc-123/diff?token=t0k",
+    );
+    expect(diffEnvelopePath(request).startsWith("/api/")).toBe(true);
+  });
+
+  it("reads null, empty and whitespace-only task ids as the job scope", () => {
+    const jobScope = "/api/jobs/abc-123/diff?token=t0k";
+    expect(diffEnvelopePath({ ...request, taskId: null })).toBe(jobScope);
+    expect(diffEnvelopePath({ ...request, taskId: "" })).toBe(jobScope);
+    expect(diffEnvelopePath({ ...request, taskId: "   " })).toBe(jobScope);
+  });
+
+  it("returns the parsed envelope and reads its own path exactly once", async () => {
+    const seen: string[] = [];
+    const envelope = await loadDiffEnvelope(request, async (path) => {
+      seen.push(path);
+      return { version: 1, scope: "job", available: true, files: [], task_run_ids: ["r1"] };
+    });
+    expect(seen).toEqual([diffEnvelopePath(request)]);
+    expect(envelope.available).toBe(true);
+    expect(envelope.version).toBe(1);
+    expect(envelope.scope).toBe("job");
+    expect(envelope.taskRunIds).toEqual(["r1"]);
+  });
+
+  it("degrades a rejected fetch to an unavailable envelope rather than throwing", async () => {
+    const envelope = await loadDiffEnvelope(request, () => Promise.reject(new Error("403")));
+    expect(envelope.available).toBe(false);
+    expect(envelope.files).toEqual([]);
+  });
+
+  it("degrades a junk body to the same unavailable envelope", async () => {
+    const fromString = await loadDiffEnvelope(request, async () => "not an envelope");
+    expect(fromString.available).toBe(false);
+    expect(fromString.files).toEqual([]);
+    const fromArray = await loadDiffEnvelope(request, async () => [1, 2, 3]);
+    expect(fromArray.available).toBe(false);
+    expect(fromArray.files).toEqual([]);
   });
 });
