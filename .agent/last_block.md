@@ -1,35 +1,33 @@
-STEP R1 / F037 — RENDERED DIFF VIEWER
-Goal:        CLAIM F037. Cut the branch, flip `docs/roadmap/STATUS.md` from
-             `[ ]` to `[~]`, reset the live-review header for the new feature
-             carrying every finding record forward, append the F032 R19 gate
-             entry the reviewer authored, and put the F037 SOURCE INVENTORY on
-             disk. The inventory is this round's substance, not its
-             bookkeeping: the feature file specifies a JSON contract with a
-             `binary` file status and a unified-diff parser, while
-             `packages/orchestration/review_scope.py` ALREADY parses unified
-             diffs and `packages/orchestration/review_subject.py` ALREADY names
-             a file-status vocabulary that carries `copied` and `type_changed`
-             and no `binary`. What already exists, and what each existing
-             reader DISCARDS, is a MEASUREMENT this feature must take before it
-             plans T001.
+STEP R2 / F037 — RENDERED DIFF VIEWER
+Goal:        BOOK R1 AND AMEND THE SPEC THE INVENTORY CONTRADICTED. R1 measured
+             two assumptions in `docs/roadmap/features/T5_F037.md` that the
+             source does not meet: the contract's `binary` file status exists
+             in no vocabulary this repository has, and there is NO per-attempt
+             diff for the endpoint's attempt parameter to key on. Under
+             `docs/agents/planner_reviewer_prompt.md` §4 item 7 a wrong spec is
+             a finding routed to planning, so this round writes the R1 verdict,
+             registers the finding R1 surfaced, records the reviewer's own
+             authoring slip, and lands the DECISIONS and the feature-file
+             amendments they rule. The design MOVES on disk this round so that
+             T001 is planned against a spec the source can meet.
              YOU CREATE NO PULL REQUEST THIS ROUND AND YOU MERGE NOTHING.
 Bundle:      C0a save this block · C0b mirror it into `last_block` · C1 the
-             plan and the context · C2 the STATUS claim · C3 the live-review
-             header reset and the F032 R19 gate append · C4 the inventory ·
-             C5 the handback · then push.
-Change:      Exactly these paths, nothing else. `.agent/authored/f037-r1.md`,
-             `.agent/last_block.md`, `.agent/plan.md`, `.agent/context.md`,
-             `docs/roadmap/STATUS.md`, `.agent/live_review.md`,
-             `.agent/f037_inventory.md`, `.agent/handoff.md`. This list bounds
-             what you WRITE INTO THE REPOSITORY. It does NOT bound what you DO:
-             G8 orders a branch creation and a push. NOTHING under `apps/`,
-             `packages/` or `tests/` is written, and under `docs/` ONLY
-             `docs/roadmap/STATUS.md`.
+             plan · C2 the record — the R1 gate, finding `R-0715`, the
+             reviewer's slip and both DECISIONS · C3 the feature-file
+             amendments · C4 the handback · then push.
+Change:      Exactly these paths, nothing else. `.agent/authored/f037-r2.md`,
+             `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
+             `.agent/prose_slips.md`, `.agent/decisions.md`,
+             `docs/roadmap/features/T5_F037.md`, `.agent/handoff.md`. This list
+             bounds what you WRITE INTO THE REPOSITORY. It does NOT bound what
+             you DO: G8 orders a push. NOTHING under `apps/`, `packages/` or
+             `tests/` is written, and under `docs/` ONLY
+             `docs/roadmap/features/T5_F037.md`.
 
 Constraints:
  1. THIS BLOCK REACHES YOU AS A FILE, NOT AS PROSE IN A PROMPT. Read
-    `.remedy-wt/f037-r1.md` from disk and copy it BYTE FOR BYTE to
-    `.agent/authored/f037-r1.md` — with `shutil.copyfile` or a read-then-write
+    `.remedy-wt/f037-r2.md` from disk and copy it BYTE FOR BYTE to
+    `.agent/authored/f037-r2.md` — with `shutil.copyfile` or a read-then-write
     in python, never by retyping it and never with `cp`, which this session's
     guard rejects. This block asserts NO digest of its own, because a digest
     written inside the text it measures cannot be true; G2 has you measure four
@@ -37,46 +35,40 @@ Constraints:
     independently.
  2. EVERY SLICE IS APPLIED BYTE FOR BYTE. Never retype one, never reflow one,
     never fix one. A SLICE begins at the line AFTER `<<<SLICE NAME` and ends at
-    the line BEFORE `<<<END NAME`; its text is its content lines joined with a
-    newline plus ONE trailing newline. If a slice contradicts something you
-    measure, apply it anyway and DECLARE the contradiction in the handback
+    the line BEFORE `<<<END NAME`; its TEXT is its content lines joined with a
+    newline plus ONE trailing newline, and that is the ONLY definition of a
+    slice's bytes used anywhere in this block. If a slice contradicts something
+    you measure, apply it anyway and DECLARE the contradiction in the handback
     under Deviations — a corrected slice destroys the transport proof.
-    Declaring beats fixing every time, because a declared contradiction reaches
-    a reviewer who can measure it while a silent fix reaches nobody.
- 3. THE BRANCH IS CUT BEFORE C0a. From `main` at `9dde5495`, which is where
-    your `git rev-parse HEAD` must already stand, run
-    `git checkout -b feature/f037-rendered-diff-viewer`. Every commit of this
-    round lands on that branch. NEVER COMMIT ON `main`.
- 4. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5. Every sentence in
-    PLANF037R1 that describes THIS round's own landed change depends on that
-    order, and this constraint is what fixes it.
- 5. C0a AND C0b LAND WHILE `.agent/plan.md` STILL DESCRIBES F032. That is
-    ordered: the plan becomes current at C1, which is the FIRST substantive
-    commit of the round.
- 6. NOTHING IS EDITED OUT OF THE FINDINGS REGION. `.agent/live_review.md` is
-    append-only from its `## Findings` heading down. This round rewrites ONLY
-    the header region ABOVE that heading, via the single LFROM/LTO pair, and
-    APPENDS the GATEF032R19 slice at end of file. No finding
-    paragraph, no `Done:` line and no existing `Gate:` paragraph is rewritten,
-    deleted, renumbered or touched, and NO finding is registered or resolved
-    this round.
- 7. EVERY SLICE IS THE REVIEWER'S TEXT. You never write a `Gate:` paragraph of
-    your own, never mint a finding id and never author a `Done:` line. If you
-    find a defect, report it in the handback under Deviations and let the
-    reviewer rule on it.
- 8. THE INVENTORY IS YOURS TO WRITE AND IT IS THE ONLY SUCH FILE. Everything
-    in `.agent/f037_inventory.md` is YOUR OWN MEASUREMENT, written by you, not
-    a slice. Every answer cites `path:line` or a command and its real output.
-    WHERE YOU CANNOT MEASURE SOMETHING, WRITE THAT YOU COULD NOT AND WHY —
-    an honest gap is worth more to the next round than a confident guess, and
-    a guess in an inventory becomes a wrong T001 plan.
- 9. RE-READ `.agent/STOP` FROM DISK before C0a and again before C5. If it
+ 3. EVERY EOF APPEND IN THIS ROUND IS THE SAME OPERATION: the target file's
+    bytes as they stood before the commit, plus exactly ONE newline, plus the
+    slice's TEXT as constraint 2 defines it. That is the operation for
+    `.agent/live_review.md`, `.agent/prose_slips.md`, `.agent/decisions.md` and
+    `docs/roadmap/features/T5_F037.md`. No other separator is added and none is
+    removed.
+ 4. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4. The record moves
+    BEFORE the feature file: C2 carries every ledger and decision append and C3
+    carries the spec. Every sentence in PLANF037R2 that describes THIS round's
+    own landed change depends on that order, and this constraint is what fixes
+    it. `.agent/plan.md` is advanced at C1, the FIRST substantive commit, as
+    `docs/agents/planner_reviewer_prompt.md` §3 item 23 requires of any round
+    that touches the finding ledger.
+ 5. NOTHING IS EDITED OUT OF ANY APPEND-ONLY RECORD. `.agent/live_review.md` is
+    append-only from its `## Findings` heading down, `.agent/prose_slips.md` and
+    `.agent/decisions.md` are append-only entire. No existing finding
+    paragraph, no `Done:` line, no existing `Gate:` paragraph and no existing
+    DECISION is rewritten, deleted or renumbered. This round RESOLVES nothing.
+ 6. EVERY SLICE IS THE REVIEWER'S TEXT. You never write a `Gate:` paragraph of
+    your own, never mint a finding id, never author a `Done:` line and never
+    write a DECISION. If you find a defect, report it in the handback under
+    Deviations and let the reviewer rule on it.
+ 7. RE-READ `.agent/STOP` FROM DISK before C0a and again before C4. If it
     exists at either reading, finish the commit in hand, write the handback and
     STOP.
-10. NOTHING DESTRUCTIVE IS ORDERED THIS ROUND. Create no worktree. Run no
+ 8. NOTHING DESTRUCTIVE IS ORDERED THIS ROUND. Create no worktree. Run no
     `npm`, `npx`, `node` or `vite`, and build nothing. The primary checkout
     reads `git status --porcelain` 0 lines at every commit.
-11. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
+ 9. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
     compound, `${...}` and every other expansion, `cp`, brace literals
     containing a quote character, `cd x && y`, file redirects, and every form
     of environment assignment. Route anything that counts, hashes or compares
@@ -84,94 +76,35 @@ Constraints:
     `subprocess.run(...).returncode`, and pass `cwd=` rather than `cd`. Run
     pytest SERIALLY — never two pytest processes alive at once. `--timeout` IS
     NOT AVAILABLE to pytest here: passing it exits 4 and reports no failure.
-12. EVERY NUMERAL THIS BLOCK STATES ABOUT THE ROUND BASE `9dde5495` was
+10. EVERY NUMERAL THIS BLOCK STATES ABOUT THE ROUND BASE `69f6478c` was
     measured by the reviewer at that commit. It is a REFERENCE to report
     against, NOT a target to reproduce. Where your measurement differs, report
     BOTH and reconcile NOTHING.
-13. THE REPLACEMENT PAIRS ARE CLASSIFIED BY A MECHANICAL CONTAINMENT TEST
-    THE REVIEWER RAN, one reading per pair, and the output is printed here.
-    LFROM/LTO — `TO contains FROM: false`, so REWRITE. SFROM/STO —
-    `TO contains FROM: false`, so REWRITE. Both therefore carry the FROM-zero
-    obligation of `docs/agents/planner_reviewer_prompt.md` §4.9 and neither
-    carries the append obligation. GATEF032R19 is not a pair at all: it is an
-    EOF APPEND to `.agent/live_review.md`, proved by G5's reconstruction.
-14. YOUR HANDBACK CARRIES A `## Session` SECTION reading that this is SESSION 1
-    of F037 and that R1 is the round. The handback has NO LENGTH CAP — operator
+11. THE REPLACEMENT PAIR IS CLASSIFIED BY A MECHANICAL CONTAINMENT TEST THE
+    REVIEWER RAN, and the output is printed here. DFROM/DTO —
+    `TO contains FROM: true`, so APPEND-SHAPED. It therefore carries the §4.9
+    APPEND obligation — FROM exactly 1x in the target BEFORE the edit, and each
+    TO-ONLY line exactly 1x among the lines C3's diff ADDS — and NO FROM-zero
+    count is ordered or attainable for it. Everything else this round applies
+    is an EOF append under constraint 3, not a pair.
+12. YOUR HANDBACK CARRIES A `## Session` SECTION reading that this is SESSION 1
+    of F037 and that R2 is the round. The handback has NO LENGTH CAP — operator
     amendment amend0827 rule 3 withdrew every tier — so do not declare, measure
     or apologise for its length. It is VALID when its mandated sections are
     present, and DROPPING one is the finding the cap used to stand in for.
 
-Inventory spec — `.agent/f037_inventory.md`, answer each, MEASURED:
- Q1. THE PARSERS THAT ALREADY EXIST, which is the question that decides T001.
-     For `packages/orchestration/review_scope.py`, give the signature and the
-     return shape of `_parse_diff`, `parse_diff_line_ranges` and
-     `split_diff_by_path`, and state for EACH what it DISCARDS of what F037's
-     contract needs: the per-line kind (`ctx`/`add`/`del`), old and new line
-     numbers, the hunk header text, rename headers, binary markers. Then run
-     `rg -ln 'unified|@@' packages/ --type py` and, for every module it
-     returns that really reads unified-diff syntax, name the module and what
-     it parses in one line each. Answer in ONE sentence: can F037's JSON
-     contract v1 be produced by extending an existing reader, or does it need
-     a new module?
- Q2. THE FILE-STATUS VOCABULARY. From `packages/orchestration/review_subject.py`
-     list every `STATUS_*` constant and the whole of `_GIT_STATUS_MAP` with
-     `path:line`. F037's contract names `modified|added|deleted|renamed|binary`.
-     State exactly which of those five exist, which do not, and which existing
-     constants the contract omits. Then find what this repository does with a
-     BINARY file in a diff today and cite the code that decides it; if nothing
-     does, say so plainly.
- Q3. WHERE A DIFF COMES FROM AT RUNTIME. Name every place a unified diff TEXT
-     is produced or stored for a job, task or attempt — the module, the
-     function, and the on-disk path if it is persisted. State whether a diff is
-     kept PER ATTEMPT or only for the latest state, because the feature file's
-     endpoint takes an attempt parameter and that answer decides whether it can
-     be served at all.
- Q4. THE SERVER ROUTE TABLE. In `packages/orchestration/ui_server.py` list
-     EVERY request path the handler answers, with `path:line`, and show the
-     exact code shape by which a route is added. Then run
-     `rg -ln 'ui_server' tests/` and name every test that pins the route set,
-     an exact endpoint list, or counts something over the whole of
-     `ui_server.py` — the guards a new endpoint would turn red. Cite
-     `path:line` for each.
- Q5. THE ATTEMPT IDENTIFIER. Three attempt notions appear in
-     `ui_server.py`: `list_repair_attempts`, the `repair_attempts_v1` job
-     metadata, and `self_dogfood_execution.list_attempts`. For each name the
-     module, the id field and its type. Answer in ONE sentence whether a single
-     canonical attempt id exists across all three, because the endpoint's
-     parameter must name exactly one.
- Q6. THE CLIENT ENTRY POINT. `docs/ui/design_reference/component_spec.md`
-     names `onOpenDiff(taskId)` on the DetailPopover as the viewer's entry
-     point. Run `rg -n 'onOpenDiff|DiffViewer' apps/ui/src/` and report the
-     REAL count and every hit. Then report what props
-     `apps/ui/src/components/detail/DetailPopover.tsx` takes today and name the
-     test file that pins that component.
- Q7. THE FETCH SEAM AND THE BUNDLE BUDGET. In `apps/ui/src/api/remedyApi.ts`
-     name the function that performs a GET, its error and degraded convention,
-     and how a caller reaches it. Then search the suite for any bundle-size or
-     asset-size budget (`rg -ln 'bundle|dist|asset' tests/`) and report the
-     exact ceiling and the file that holds it, or state that none exists —
-     F037 lazy-loads language bundles and that budget binds T003.
- Q8. THE GUARDS A NEW MODULE MUST SATISFY. Run
-     `rg -ln 'review_scope|review_subject' tests/` and, for what it returns,
-     list every assertion that COUNTS something over a whole file, pins an
-     exact field set, an exact export set or an exact list of statuses — the
-     equality guards a new parser or a widened vocabulary would turn red. Cite
-     `path:line` for each.
-
 Done when:
- G1. HYGIENE, THE BRANCH AND THE SENTINEL. Report `git rev-parse HEAD` BEFORE
-     the branch is cut, which must be
-     `9dde54956afbe5f432bfd429bf4ba0bb272f6d07`, and `git branch
-     --show-current` after C0a, which must be
+ G1. HYGIENE, THE BASE AND THE SENTINEL. Report `git rev-parse HEAD` BEFORE
+     C0a, which must be `69f6478c6c18b7957f3e244b9f121e372f22a99d`, and
+     `git branch --show-current`, which must be
      `feature/f037-rendered-diff-viewer`. Report `git status --porcelain` as a
-     LINE COUNT after each of C0a, C0b, C1, C2, C3 and C4, each 0. C5's own
-     reading is NOT ordered here and belongs in no file this round writes: C5
-     is the commit that writes the handback, so the reviewer takes that reading
-     itself at the gate. Report `.agent/STOP` read from disk before C0a and
-     before C5, both ABSENT.
+     LINE COUNT after each of C0a, C0b, C1, C2 and C3, each 0. C4's own reading
+     belongs in no file this round writes, because C4 is the commit that writes
+     the handback; take it and report it in your completion report instead.
+     Report `.agent/STOP` read from disk before C0a and before C4, both ABSENT.
  G2. TRANSPORT. Report the sha256, byte count and line count of this block as
-     read from `.remedy-wt/f037-r1.md`, as saved at C0a, as mirrored at C0b and
-     as read off disk at C4 — all four must be EQUAL — and say whether C0a and
+     read from `.remedy-wt/f037-r2.md`, as saved at C0a, as mirrored at C0b and
+     as read off disk at C3 — all four must be EQUAL — and say whether C0a and
      C0b are the same git blob. Report whether any line of the block as saved
      is a run of a single repeated character at length 4 or more, which must
      come back as none. THEN STATE IN ONE SENTENCE WHAT THIS PROOF COVERS: the
@@ -182,277 +115,302 @@ Done when:
      slice's own line count, the CONTENT total, the TOTAL line count, and PROSE
      as TOTAL minus CONTENT. MARKERS ARE PROSE. PROSE at most 400, TOTAL at
      most 490.
- G4. THE PLAN AND THE CONTEXT. `.agent/plan.md` at C1 is BYTE-EQUAL to
-     PLANF037R1 and `.agent/context.md` at C1 is BYTE-EQUAL to CTXF037R1, both
-     under the newline-INCLUDED convention. Run the negative control against
-     each slice MINUS its trailing newline and report both FALSE. Then report
-     the contract readings: in `.agent/plan.md`, `^## Goal$` 1,
-     `^## Next Steps$` 1, a match for `\bF\d{3}\b`, and `wc -l` STRICTLY UNDER
-     50; in `.agent/context.md`, `^## Active Branch$` 1, a match for
-     `feature/`, a match for `\bF\d{3}\b`, and the substring `Steps` present.
- G5. THE LEDGER RESET, THE GATE APPEND, AND THE FINDINGS REGION PROVED
-     UNTOUCHED. Apply the LFROM/LTO pair, then append GATEF032R19 as: the file
-     as it stood before C3, plus exactly ONE newline, plus the slice. Prove the
-     result by RECONSTRUCTION: build, in memory, LTO plus two newlines plus
-     everything from the first byte of the line `## Findings` in the PRE-COMMIT
-     blob to its end, plus one newline, plus GATEF032R19 — and report that it
-     is BYTE-EQUAL to `.agent/live_review.md` at C3. Report a NEGATIVE CONTROL:
-     the same comparison with ONE byte flipped, at a byte offset you assert and
-     report to lie INSIDE the appended paragraph, must come back FALSE. Then,
-     comparing the pre-commit blob with the file at C3: LFROM occurs EXACTLY
-     ONCE before and 0 times after, LTO 0 before and EXACTLY ONCE after, and
-     the pre-commit blob is NOT a byte prefix of the result, because the header
-     changed. Report the byte count and sha256 of the region from the first
-     byte of `## Findings` to the END OF THE PRE-COMMIT BLOB at both points and
-     prove them EQUAL — the reviewer measured that region at the round base as
-     1124868 bytes, sha256
-     `abc8bdb4f682d04bc84d56ca0eda9d23dc17c32cb5987fab8e3d91c932a7f528`. Report
-     the line-anchored counts of `^- R-\d+ — `, `^Done: R-\d+ — `,
-     `^Landed: R-`, `^Gate: R\d+ — ` and `^Gate: F\d+ R\d+ — ` at both points;
-     the reviewer measured 275, 24, 1, 19 and 70 at the base, and every one
-     MUST be unchanged EXCEPT the last, which must read 71. Report the finding
-     ids and the resolved ids ADDED and REMOVED as SETS — all four EMPTY —
-     whether all ids are DISTINCT, the maximum id at each point, which is
-     `R-0714`, and the open set at each point, which is 251. Report that
-     `^## Findings$` occurs exactly 1 at both points, that `Steps` is present
-     at both, and that the literal string `Gate: F032 R19 — ` occurs 0 times
-     before and EXACTLY ONCE after.
- G6. THE STATUS CLAIM AND THE DOCS GATE. Apply the SFROM/STO pair, then BEFORE
-     committing C2 run, as ONE pytest process, `python3 -m pytest tests/docs/
-     tests/orchestration/test_roadmap_index.py -q` from the repository root and
-     report the REAL exit code and the summary line VERBATIM; the reviewer
-     measured `325 passed` at a real exit 0 at the round base. Then report, for
-     `docs/roadmap/STATUS.md` at C2: SFROM occurs 0 times and STO occurs
-     EXACTLY ONCE; the line-anchored counts of `^- \[ \] `, `^- \[x\] ` and
-     `^- \[~\] ` at both points, which the reviewer measured as 196, 59 and 0
-     at the base and which must read 195, 59 and 1 after; and that the total
-     count of lines matching `^- \[` is UNCHANGED at both points.
- G7. THE STATE READERS AND THE CANARY, run AFTER C4 and BEFORE C5. This round
-     rewrites `.agent/` state, so `.agent/context.md`'s standing constraint
-     binds: run, as ONE pytest process and never two at once, `python3 -m
-     pytest tests/ui_server/ tests/orchestration/test_test_runner.py
-     tests/regression/test_resource_safety.py
-     tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py
-     -q` from the repository root. Report the REAL exit code, the summary line
-     VERBATIM, and the COUNT of lines matching `^FAILED`. PROVE YOUR `^FAILED`
-     EXTRACTOR IS NOT BLIND by running it over a string you know contains such
-     a line and reporting that it matched. The reviewer measured `620 passed`
-     at a REAL exit 0 with zero `^FAILED` lines at the round base. IF YOUR RUN
-     IS RED, report the failing node ids VERBATIM and hand back.
+ G4. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF037R2 under the
+     newline-INCLUDED convention of constraint 2. Run the negative control
+     against the slice MINUS its trailing newline and report FALSE. Then report
+     the contract readings: `^## Goal$` 1, `^## Next Steps$` 1, a match for
+     `\bF\d{3}\b`, and `wc -l` STRICTLY UNDER 50.
+ G5. THE THREE RECORD APPENDS, AT C2. Apply RECORDR2 to `.agent/live_review.md`,
+     SLIPR2 to `.agent/prose_slips.md` and DECR2 to `.agent/decisions.md`, each
+     by the single operation constraint 3 defines. For EACH of the three, read
+     the baseline with `git show 89b96df7:<path>` so no tracked file is ever
+     overwritten to obtain one, and prove the result TWO WAYS. Reader (a),
+     RECONSTRUCTION: baseline bytes plus one newline plus the slice text is
+     BYTE-EQUAL to the file at C2, and the baseline is a byte PREFIX of it;
+     report the arithmetic as `<baseline> + 1 + <slice> = <post>` in bytes.
+     Reader (b), STRUCTURE: split the file at C2 on blank lines, count N as the
+     number of blank-line units the SLICE itself holds — N is a number YOUR
+     script counts from the slice, never one this block asserts — and report
+     that the LAST N units of the file equal the slice's N units IN ORDER.
+     NEGATIVE CONTROL for each of the three: flip ONE byte at a byte offset you
+     assert and report to lie inside the FIRST appended paragraph, and report
+     that BOTH readers reject. Then report, for `.agent/live_review.md` before
+     and after C2, the line-anchored counts of `^- R-\d+ — `,
+     `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: R\d+ — ` and
+     `^Gate: F\d+ R\d+ — `; the reviewer measured 275, 24, 1, 19 and 71 at the
+     base, and after C2 they must read 276, 24, 1, 19 and 72. Report the
+     finding ids ADDED as a SET, which must be exactly `R-0715`, the resolved
+     ids ADDED and REMOVED and the finding ids REMOVED as SETS, all three
+     EMPTY, whether all ids are DISTINCT, the maximum id after C2, which is
+     `R-0715`, and the open set after C2, which is 252. Report the count of
+     `^## DECISION ` in `.agent/decisions.md` before and after C2, and the
+     literal strings `## DECISION F037 D1 ` and `## DECISION F037 D2 `, each 0
+     before and EXACTLY 1 after.
+ G6. THE FEATURE FILE, AT C3. Apply the DFROM/DTO pair, then append AMENDF037
+     by the operation of constraint 3. Report, for
+     `docs/roadmap/features/T5_F037.md`: DFROM occurs EXACTLY 1x BEFORE the
+     edit; after C3, DFROM occurs 1x and DTO occurs EXACTLY 1x, which is the
+     APPEND-shaped obligation constraint 11 assigns this pair and the reason no
+     FROM-zero count is ordered. Report that each of the TO-ONLY lines of DTO —
+     the lines of DTO that are not lines of DFROM — occurs EXACTLY 1x among the
+     lines C3's diff ADDS to that file. Prove the append by RECONSTRUCTION as
+     in G5 reader (a), against the baseline `git show d4aef1db:<path>` with the
+     DFROM/DTO pair applied to it in memory first, and report the byte
+     arithmetic. Report `^## Design amendments$` 0 before and EXACTLY 1 after,
+     and `^## Do not touch$` 1 both before and after.
+ G7. THE DOCS GATE AND THE CANARY, run AFTER C3 and BEFORE C4. This round's
+     change set includes `docs/roadmap/**`, so `.agent/context.md`'s standing
+     constraint binds: run, as ONE pytest process and never two at once,
+     `python3 -m pytest tests/docs/ tests/orchestration/test_roadmap_index.py
+     tests/cli/test_golden_path.py -q` from the repository root. Report the
+     REAL exit code, the summary line VERBATIM, and the COUNT of lines matching
+     `^FAILED`. PROVE YOUR `^FAILED` EXTRACTOR IS NOT BLIND by running it over
+     a string you know contains such a line and reporting that it matched. The
+     reviewer measured `367 passed` at a REAL exit 0 with zero `^FAILED` lines
+     at the round base. IF YOUR RUN IS RED, report the failing node ids
+     VERBATIM and hand back.
  G8. STRUCTURE, ARTIFACTS, THE OPEN PR GATE AND THE PUSH. Compare the path set
-     of `git diff --name-only 9dde5495..C4` BOTH WAYS against this round's
-     expected set — the Change line's list MINUS `.agent/handoff.md`, which C5
+     of `git diff --name-only 69f6478c..C3` BOTH WAYS against this round's
+     expected set — the Change line's list MINUS `.agent/handoff.md`, which C4
      writes — and report both residues EMPTY. Report `git diff --stat
-     9dde5495..C4` restricted to `apps/`, `packages/`, `tests/` and `docs/` —
+     69f6478c..C3` restricted to `apps/`, `packages/`, `tests/` and `docs/` —
      the last WHOLE — and confirm the first three EMPTY and the fourth holding
-     `docs/roadmap/STATUS.md` alone. Report each commit's insertions from `git
-     diff --numstat` for C0a through C4, confirm each single-parent and under
-     500. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in
-     `.agent/plan.md`, `.agent/context.md` and `.agent/live_review.md` at their
+     `docs/roadmap/features/T5_F037.md` alone. Report each commit's insertions
+     from `git diff --numstat` for C0a through C3, confirm each single-parent
+     and under 500. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in
+     `.agent/plan.md`, `.agent/live_review.md`, `.agent/prose_slips.md`,
+     `.agent/decisions.md` and `docs/roadmap/features/T5_F037.md` at their
      commits, against a CONTROL over the C0a blob which is not 0. Report `git
      ls-files .remedy-wt` 0 lines, `git worktree list` 1 line, and `git branch
      --list "tmp/*"` 0 lines. Run `gh pr list --state open --json
      number,headRefName,baseRefName,isDraft` and report it VERBATIM; the
      reviewer read `[]` at the round base; MERGE NOTHING and CREATE NOTHING.
-     After C5, run `git push -u origin feature/f037-rendered-diff-viewer`. ITS
-     OUTCOME IS NOT A VALUE OF ANY FILE THIS ROUND WRITES: C5 is authored
+     After C4, run `git push origin feature/f037-rendered-diff-viewer`. ITS
+     OUTCOME IS NOT A VALUE OF ANY FILE THIS ROUND WRITES: C4 is authored
      before the push exists, so `.agent/handoff.md` states the push only as an
      INTENT under `## External actions`, with NO exit code and NO remote tip.
      Report the real exit code and the resulting remote tip in your completion
      report instead.
 Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
-             C5: the `## Session` section constraint 14 orders, feature and
-             round, branch, the round base SHA `9dde5495`, the per-commit
+             C4: the `## Session` section constraint 12 orders, feature and
+             round, branch, the round base SHA `69f6478c`, the per-commit
              changed-files table with the `+/-` column taken from `git diff
              --numstat` ITSELF and agreeing cell for cell with G8, an
-             item-status row for EVERY Bundle item AND every Q1-Q8 inventory
-             question, ONE LINE PER GATE for G1 through G8 with its real exit
-             code, the open-findings count after this round, and the next
-             expected action. C5 cannot table its own numstat — write `self` in
-             that cell, as `R-0149` requires, and put C5's own numbers nowhere.
-             STATE PLAINLY in the Deviations section what Q1 and Q2 measured,
-             because those two answers decide whether the feature file's
-             contract survives contact with the source and the reviewer rules
-             on it next round.
+             item-status row for EVERY Bundle item, ONE LINE PER GATE for G1
+             through G8 with its real exit code, the open-findings count after
+             this round, and the next expected action. C4 cannot table its own
+             numstat — write `self` in that cell, as `R-0149` requires, and put
+             C4's own numbers nowhere.
              ANY COMMIT YOU MAKE BEYOND THE ORDERED SEQUENCE RECEIVES ITS OWN
              `## Commits` ROW AND ITS OWN ITEM-STATUS ROW, and the Deviations
              section says so in those same words.
 
-<<<SLICE PLANF037R1
+<<<SLICE PLANF037R2
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
 merge commit of pull request #217 which closed F032.
 `.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series.
+`.agent/decisions.md` carries the DECISION series, F037 D1 onward.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
 into structured JSON — files, hunks, lines, intraline spans — served as a read
-endpoint per task and attempt, and the client renders it with a file sidebar,
-hunk collapse, virtual scrolling and lazily loaded syntax bundles.
+endpoint, and the client renders it with a file sidebar, hunk collapse, virtual
+scrolling and lazily loaded syntax bundles.
 `docs/roadmap/features/T5_F037.md` holds Goal & Done, the task slicing, the
-binding CSS and the orchestrator brief.
+binding CSS and — from this round — the design amendments that reconcile it
+with the source.
 
 ## Current Step
-R1 claims F037 in the roadmap ledger, cuts the branch, resets this record set
-for the new feature, books the F032 R19 verdict, and puts the F037 source
-inventory on disk. The inventory is the round's substance: `review_scope.py`
-already parses unified diffs and `review_subject.py` already names a
-file-status vocabulary, while the feature file specifies a contract matching
-neither exactly, so what already exists is measured before T001 is planned.
+R2 books the R1 verdict, registers `R-0715`, records the reviewer's authoring
+slip, and lands the DECISIONS the R1 inventory forced together with the
+feature-file amendments they rule. The inventory measured that no vocabulary in
+this repository carries a `binary` file status and that no per-attempt diff
+exists anywhere, so the spec is amended on disk before T001 is planned against
+it.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
-| C1 plan and context for F037 | ordered | first substantive commit |
-| C2 STATUS claim, open to active | ordered | |
-| C3 ledger reset and the F032 R19 gate | ordered | findings carried forward |
-| C4 the F037 source inventory | ordered | Q1-Q8, each measured |
-| C5 the handback | ordered | |
+| C1 the plan | ordered | first substantive commit |
+| C2 the record, the finding, the slip, both DECISIONS | ordered | record first |
+| C3 the feature-file amendments | ordered | the spec moves on disk |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. Book R1's verdict and plan T001 against the inventory — the parser seam, the
-   status vocabulary and the route the read endpoint attaches to.
-2. T001: the unified-to-JSON parser, its corpus tests and the read endpoint.
-3. T002 the rendering core, then T003 sidebar, virtual scrolling, lazy
-   languages and the L3 tab.
+1. T001: the unified-to-JSON parser as a NEW module with its corpus tests, then
+   the read endpoint, planned against the amended spec.
+2. T002 the rendering core, the binding CSS and the goldens.
+3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
-- The feature file's contract names a `binary` file status that
-  `review_subject.py`'s vocabulary does not carry, and that vocabulary carries
-  `copied` and `type_changed` which the contract omits. If the inventory
-  confirms this, the reviewer rules a DECISION under §4 item 7 rather than
-  widening scope silently.
-- `.agent/live_review.md` is append-only below `## Findings`. R1 rewrites the
-  header region and appends the F032 R19 gate entry, and G5 proves both.
-<<<END PLANF037R1
+- `R-0715` is open and Low. It is a stale count in a test docstring, turns
+  nothing red, and belongs to whoever next edits that file.
+- The amended spec drops the endpoint's attempt parameter for v1. If a later
+  feature makes per-attempt diffs real, DECISION F037 D2 names how to reverse
+  that.
+<<<END PLANF037R2
 
-<<<SLICE CTXF037R1
-# Context — F037 Rendered diff viewer
+<<<SLICE RECORDR2
+Gate: F037 R1 — the F037 claim-and-inventory round, and the first entry of this record. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all eight itself at `69f6478c`. TRANSPORT IS PROVED FROM A VALUE THE REVIEWER HELD BEFORE DELEGATING: sha256 `906b7ee592aed02e7161797030d5adfc2906390f7367feae446f55fe2b2e1231` over 32631 bytes and 458 lines, equal across the reviewer's gitignored scratch original, the committed `.agent/authored/f037-r1.md` blob and the committed `.agent/last_block.md` blob, the two committed paths being ONE git blob, `2da50bdba5ca4a632eac5e5255fc0bdf34a7c2df`; that chain covers the original, the saved copy and the mirror, and claims nothing about any prompt's bytes. EXTRACTION FROM THE COMMITTED BLOB REPRODUCES THE BLOCK'S ARITHMETIC: 7 slices at 47, 55, 26, 27, 1, 1 and 1 content lines, CONTENT 158 against TOTAL 458, so PROSE is 300 and both caps hold. THE PLAN AND THE CONTEXT ARE BYTE-EQUAL to their slices with the trailing-newline negative controls `False`, the plan at 47 lines. THE LEDGER RESET IS PROVED BY WHOLE-FILE RECONSTRUCTION AND THE FINDINGS REGION IS UNTOUCHED: the region from `## Findings` to the end of the pre-commit blob is byte-identical at 1124868 bytes and sha256 `abc8bdb4f682d04bc84d56ca0eda9d23dc17c32cb5987fab8e3d91c932a7f528` at both points, the header pair moved `1`→`0` and `0`→`1`, and the counters read 275, 24, 1, 19 and 70→71 with the open set unmoved at 251 and the maximum id `R-0714`. THE STATUS CLAIM IS EXACTLY ONE LINE: `^- \[ \] ` 196→195, `^- \[x\] ` 59 unchanged, `^- \[~\] ` 0→1, the total `^- \[` unchanged at 255, and the single active line is F037. THE TWO SUITES WERE RE-RUN BY THE REVIEWER at a real exit 0 with zero `^FAILED` lines: `325 passed` over `tests/docs/` with `tests/orchestration/test_roadmap_index.py`, and `620 passed` over the four state readers with the canary. THE INVENTORY IS THE ROUND'S SUBSTANCE AND IT WAS SPOT-CHECKED RATHER THAN TRUSTED: the reviewer re-read `packages/orchestration/repair_loop_v2.py`, `packages/orchestration/pingpong_evidence.py` and `packages/orchestration/job_evidence.py` at the citations the inventory gives and all three resolve exactly as written. THE ROUND'S ONE DECLARED DEVIATION IS THE REVIEWER'S, NOT THE WORKER'S, and it is recorded in `.agent/prose_slips.md`: G5 ordered the reconstruction as the LTO slice "plus two newlines", while constraint 2 defines a slice's text as already carrying one trailing newline, so the two readings differ by a byte and cannot both hold. The worker measured both, applied the plain pair replacement, and declared the contradiction instead of correcting a slice — which is exactly what constraint 2 asks for. The reviewer confirms the landed bytes are the correct ones: the applied file equals the pair replacement plus one newline plus the gate slice, byte for byte. TWO SPEC CONTRADICTIONS THE INVENTORY MEASURED ARE RULED THIS ROUND rather than left to be rediscovered at T001, as DECISIONS F037 D1 and D2 and as amendments A1 and A2 of `docs/roadmap/features/T5_F037.md`. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
 
-## Active Branch
-feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the merge
-commit of pull request #217 which closed F032.
+- R-0715 — Low, A TEST DOCSTRING COUNTS THE SERVED JOB ENDPOINTS AND THE SERVER HAS CARRIED ONE MORE SINCE F031 LANDED. Raised by the reviewer at the F037 R1 gate; the worker found and named the mismatch under the standing staleness gate and correctly minted no id, because its block ordered none. `tests/ui_server/test_command_channel.py`, in the docstring of `_do_get_route_facts`, reads "The thirteen job endpoints live in a dict literal inside `do_GET`", and the `handlers` dict literal in `packages/orchestration/ui_server.py::do_GET` holds FOURTEEN keys. THE SENTENCE WAS TRUE WHEN IT WAS WRITTEN AND WENT STALE UNDER A LATER FEATURE, which is why it is registered rather than blamed: measured by the reviewer, the dict held thirteen keys at `aa2b9048`, the commit that wrote the docstring, and thirteen still at `a164317b`; the fourteenth key, `"decisions"`, was added by `ce462ecc` when F031 exposed the decision inbox as a read endpoint, and nothing swept the prose that counted the old set. LOW AND NOT MEDIUM because the gate it sits in is NOT blind: the same docstring says the list is "derived rather than transcribed", and the test really does walk `do_GET` by AST, so a fourteenth endpoint entered that walk for free and the suite is green at `69f6478c` — the count is wrong only in the prose a reader searches by. THIS IS NOT A DUPLICATE OF `R-0644`, and the neighbour is named so a later reader does not re-litigate it: R-0644 is a REVIEWER-AUTHORED DECISION paragraph in `.agent/decisions.md` whose route arithmetic was wrong AT THE MOMENT IT WAS WRITTEN, and it explicitly records that the `handlers` dict "yields thirteen, which is right" as measured at `a164317b`. That entry is therefore correct about the same dict at its own commit, and this finding is the SEPARATE fact that the dict has since grown; resolving one does not resolve the other. Nor is it `R-0427`, which is a stale claim in a module docstring under `packages/`, a different file and a different claim. COUNTER-MEASURE: delete the numeral rather than update it. The docstring's own next clause — "adding one puts it in the walk for free" — is the property that matters and is the one a reader needs, so "The job endpoints live in a dict literal inside `do_GET`" carries the whole meaning and cannot go stale again, which is the counter-measure `docs/agents/planner_reviewer_prompt.md` §3 item 16 states for exactly this shape. OPEN.
+<<<END RECORDR2
 
-## Scope
-Feature F037 per `docs/roadmap/features/T5_F037.md`: a versioned structured
-diff JSON served as a read endpoint per task and attempt, and a client viewer
-that renders files, hunks, lines and intraline spans with a file sidebar, hunk
-collapse, virtual scrolling beyond 2k lines and lazily loaded language bundles.
+<<<SLICE SLIPR2
+- 2026-08-28 · F037 R1 · The block's G5 ordered the ledger reconstruction as
+  the LTO slice "plus two newlines plus everything from `## Findings`", while
+  constraint 2 of the same block defines a slice's text as its content lines
+  joined plus ONE trailing newline — so the two clauses describe byte strings
+  one newline apart and cannot both hold, and only the content-joined reading
+  matches the file. The worker measured both readings, applied the plain
+  FROM/TO replacement plus one newline plus the appended slice, and declared
+  the contradiction rather than correcting a slice. Nothing landed wrong on
+  disk. Where a gate restates an operation the constraints already define,
+  NAME the constraint instead of paraphrasing its bytes.
+<<<END SLIPR2
 
-## Do not touch
-The feature file's own list: hunk-id stability, which is F033's contract; apply
-mechanics; evidence formats. No approval logic is added early — the viewer
-precedes hunk approval in STATUS deliberately. R1 additionally writes no file
-under `packages/`, `apps/` or `tests/` at all.
+<<<SLICE DECR2
+## DECISION F037 D1 (2026-08-28) — `binary` is a VIEWER status this feature defines, and `review_subject`'s vocabulary is deliberately not widened
 
-## Assumptions
-- Rule A5 chose F037: `docs/roadmap/STATUS.md` carried no `[~]` and no `[!]`
-  line and F037 was the first `[ ]`, measured at `9dde5495`.
-- `.agent/candidates.md` is EMPTY at the claim, so no block condition stands.
-- The feature file's Design is a SUGGESTED shape, not a settled spec; the
-  inventory measures the real one before T001 is planned.
-- This is a UI feature, so `docs/ui/design_reference/` is binding from T002 on
-  and any visual deviation is documented with a technical reason.
+CONTEXT. `docs/roadmap/features/T5_F037.md` specifies a JSON contract whose
+`status` field is one of `modified|added|deleted|renamed|binary`. The F037 R1
+inventory measured that no vocabulary in this repository carries `binary` as a
+status. `packages/orchestration/review_subject.py` defines seven — `added`,
+`modified`, `deleted`, `renamed`, `copied`, `type_changed` and `dirty` — mapped
+one-for-one from the `git diff --name-status` letters `A M D R C T`. Binary-ness
+is not among them because git does not report it as a status letter: a binary
+file comes back `M` or `A` exactly like a text file, and its binary-ness is a
+property of the CONTENT, discovered when the diff body reads `Binary files …
+differ`. Where this repository does handle binary today it handles it as a
+REFUSAL rather than a status, in four separate places the inventory names:
+a blocker in `provider_trust.py`, an omission reason in `diff_repair.py`, a
+refusal in `source_apply.py` and a rendered placeholder in `pingpong_loop.py`.
 
-## Constraints
-The bullets in this first group are STANDING project constraints, carried
-forward from the context this file replaced. They are not this feature's, and
-deleting them with the rest of a rewrite is what cost an earlier round a red
-CI run.
+CHOSEN. F037's parser emits the contract's five-value `status` as its OWN
+viewer-facing vocabulary, deriving `binary` from the diff body's binary marker
+and the other four from the git status letter. `review_subject.py` is NOT
+touched, and its seven-value vocabulary keeps its one-for-one relationship with
+the git letters.
 
-- A round touching `docs/roadmap/**` also gates
-  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
-- A round rewriting `.agent/` state gates the four state readers:
-  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
-  `tests/regression/test_resource_safety.py` and
-  `tests/orchestration/test_integrity_gate.py`.
-- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
-- Destructive verification runs only inside a disposable git worktree under
-  `.remedy-wt/`, never in the primary checkout, which satisfies
-  `git status --porcelain` empty at every verdict.
-- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The full contract those
-  readers hold over the three state files, so a rewrite is checked against it
-  directly rather than rediscovered from a red: this file carries
-  `## Active Branch`, a `feature/` branch name, a roadmap feature id matching
-  `\bF\d{3}\b` and the word `Steps`; `.agent/plan.md` carries `## Goal`,
-  `## Next Steps` and a feature id; `.agent/live_review.md` carries `Steps`.
+ALTERNATIVES CONSIDERED. (a) Widen `review_subject.STATUS_*` with `binary`:
+rejected because it would break the property that makes that vocabulary
+checkable — every constant maps to a letter git actually emits — and because
+the inventory found equality guards pinning that set, which such a change would
+turn red for no gain to any existing reader. (b) Drop `binary` from F037's
+contract: rejected because the feature file's Acceptance requires binary
+placeholders to render, and a viewer that cannot say "this file is binary" must
+either lie or show an empty diff. (c) Carry a separate `is_binary` boolean
+beside a four-value status: rejected as a third vocabulary for one fact, when
+the contract already specifies a single field and F033 will version it anyway.
 
-## Steps
-The round map for this feature lives in the `## Steps` section of
-`.agent/live_review.md`, and the current round's items in the `## Current Step`
-table of `.agent/plan.md`. This file deliberately restates neither — a second
-copy of the map is what fell out of step and cost F022 a finding.
-<<<END CTXF037R1
+CONSEQUENCE. The two vocabularies are deliberately different and that
+difference is documented where a reader searches for it — amendment A1 of
+`docs/roadmap/features/T5_F037.md` says so in the feature file, and the parser
+module's header will say so at T001. `copied`, `type_changed` and `dirty` are
+NOT rendered by the viewer's v1 and the JSON version field is what F033 uses to
+widen the set.
 
-<<<SLICE LFROM
-# Live Review — F032 Approval with the evidence triple
+REVERSE by deleting amendment A1 from `docs/roadmap/features/T5_F037.md` and
+this decision; the contract in the Design section above A1 is then the spec
+again, unamended.
 
-> Round-by-round review record for the F032 branch, reset at the feature claim.
-> The F031 record closed with pull request #215, merged into `main` as
-> `f4eae1d4`, and the operator collection order amend0827 which followed it
-> merged as pull request #216 at `a399a330`, this branch's point. F031's LAST
-> round has no gate entry in its own record by construction, because a round's
-> verdict is written by the NEXT reviewed round (DECISION F085 D9) and it was
-> the last round F031 had; the amend0827 order was a single-session micro-round
-> whose verdict lives in its own handback and in pull request #216, and it
-> appended its notes to this file without a gate entry for the same reason.
-> Finding ids continue the monotonic R-XXXX series across the reset, and every
-> finding record F031 carried is carried forward unchanged: measured at
-> `a399a330`, 270 findings, 21 resolved, 249 open, the maximum id `R-0709`.
+## DECISION F037 D2 (2026-08-28) — the read endpoint keys on task run and job, and the attempt parameter is dropped from v1
 
-## Steps
+CONTEXT. `docs/roadmap/features/T5_F037.md` specifies the diff endpoint as
+"a read endpoint per task/attempt" and its edge-case section says "the endpoint
+takes an attempt parameter". The F037 R1 inventory measured that NO per-attempt
+diff exists anywhere in this repository. Diffs are persisted at exactly two
+scopes: `task_runs/<task_id>/safe.diff` per TASK RUN, and `workspace.diff` per
+JOB, both under a job's evidence directory. The module that owns repair
+attempts, `packages/orchestration/repair_loop_v2.py`, does not merely lack a
+diff — it FORBIDS one in its records, listing diffs among the raw content its
+schema excludes and carrying `"diff --git"` in its raw-marker rejection tuple.
+`self_dogfood_execution.py` persists an attempt record and a request text, and
+no diff file. The nearest per-attempt artifact, `patch_intent_diff_preview`, is
+documented in its own source as "NOT a real patch; read-only" and is stripped
+from review bundles and named on three separate redaction lists.
 
-R1 claim F032 in the roadmap ledger, cut the branch, reset this record carrying
-every finding record forward, and put the F032 source inventory on disk — the
-eight producing branches of `decision_queue.list_decisions`, the record each
-derives from, whether any enqueue seam is common to them, the evidence-ref
-vocabulary and its resolver, the options a decision offers, the card's
-rendering surface, the migration precedent and the guards a schema change must
-satisfy → R2 book the R1 verdict and plan T001 against that inventory → T001
-the schema, the enforcement point, legacy rendering and the CI canary → T002
-the per-producer upgrades → T003 card enrichment and the chip deep links.
-<<<END LFROM
+CHOSEN. The v1 endpoint takes a TASK RUN and falls back to the JOB scope, and
+carries NO attempt parameter. The feature file's attempt clause is amended to
+record why, and the JSON contract's version field is the seam through which a
+later feature adds the parameter if per-attempt diffs ever become real.
 
-<<<SLICE LTO
-# Live Review — F037 Rendered diff viewer
+ALTERNATIVES CONSIDERED. (a) Persist a diff per attempt: rejected on two
+independent grounds — `evidence formats` is named in this feature's own
+Do-not-touch, and writing diffs into attempt records would reverse a deliberate
+redaction rule that three modules enforce, which is far outside a viewer's
+scope. (b) Accept an `attempt` parameter and serve the task-run diff under it:
+rejected as a false live indicator, which is a block condition under
+`docs/agents/planner_reviewer_prompt.md` §4 item 5 — a parameter that does not
+select anything is a lie the API tells every caller. (c) Block the feature until
+per-attempt diffs exist: rejected because the viewer's whole value is readable
+diffs and the two scopes that DO exist carry them.
 
-> Round-by-round review record for the F037 branch, reset at the feature claim.
-> The F032 record closed with pull request #217, merged into `main` as
-> `9dde5495`, this branch's point. F032's LAST round, R19, is the round whose
-> own bundle CREATED that pull request, so it is a branch terminator under
-> `docs/agents/planner_reviewer_prompt.md` §4 item 13 and owes this record no
-> entry. Its verdict is nevertheless the first `Gate:` paragraph below, because
-> the finding record carries across the reset and an entry therefore costs this
-> round nothing — the disposition F031's own R1 chose for F022 R19. Finding ids
-> continue the monotonic R-XXXX series across the reset, and every finding
-> record F032 carried is carried forward unchanged: measured at `9dde5495`,
-> 275 findings, 24 resolved, 251 open, the maximum id `R-0714`.
+CONSEQUENCE. The feature file's Acceptance is met without the attempt
+parameter, and the absence is documented rather than silent — amendment A2 of
+`docs/roadmap/features/T5_F037.md` states it where a reader would search for
+it, per the deliberate-absence convention in `AGENTS.md`.
 
-## Steps
+REVERSE by deleting amendment A2 from `docs/roadmap/features/T5_F037.md` and
+this decision, restoring the attempt parameter to the endpoint spec.
+<<<END DECR2
 
-R1 claim F037 in the roadmap ledger, cut the branch, reset this record carrying
-every finding record forward, gate F032 R19, and put the F037 source inventory
-on disk — the unified-diff readers that already exist and what each discards,
-the file-status vocabulary and whether it names `binary`, where a diff is
-produced and whether one is kept per attempt, the server route table and the
-guards over it, what identifies an attempt, the client entry point the design
-reference names, the fetch seam and the bundle budget, and the guards a new
-parser must satisfy → R2 book the R1 verdict and plan T001 against that
-inventory → T001 the parser, its corpus and the read endpoint → T002 the
-rendering core, the binding CSS and the goldens → T003 sidebar, virtual
-scrolling, lazy languages and the L3 tab.
-<<<END LTO
+<<<SLICE DFROM
+## Design (binding specifics)
+<<<END DFROM
 
-<<<SLICE GATEF032R19
-Gate: F032 R19 — the F032 closure round, and the entry F032's own record could not write. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran the reproducible ones itself at `97e91098` before merging the pull request; because R19 created that pull request it is a branch terminator under `docs/agents/planner_reviewer_prompt.md` §4 item 13, and this paragraph is written by the next feature's first round rather than by a round of F032. TRANSPORT IS PROVED OVER THE THREE DISK COPIES AND NO FURTHER: sha256 `bccbd4be2011a1b90f2533bea086d6f2fe6aa548c1fc0c22aaf29e0e206a35ff` is equal across the working copies of `.agent/authored/f032-r19.md` and `.agent/last_block.md` at `97e91098`, and the two committed paths are ONE git blob, `3797fb6373eb133fc0fcf3e47d3d5d329db012f1`. The reviewer of this round held no scratch original, R19 having been authored in a previous session, so the chain covers the saved copy, its mirror and the working copy, and claims NOTHING about the bytes of any prompt — the limit operator amendment amend0827 rule 5 and finding R-0705 both require to be stated rather than implied. EXTRACTION REPRODUCES THE BLOCK'S OWN ARITHMETIC: 11 regions extracted from the committed C0a blob at their marker lines, at 44, 1, 10, 1, 1, 1, 6, 1, 1, 1 and 1 content lines, CONTENT 68 against a TOTAL of 405, so PROSE is 337 and both caps hold. THE PLAN IS BYTE-EQUAL to slice PLANF032R19 with the trailing-newline negative control `False`, at 44 lines. BOTH APPENDS RECONSTRUCT EXACTLY: `.agent/live_review.md` and `.agent/prose_slips.md` each equal their pre-commit blob at `0b83f8a1` plus one newline plus their slice, with the pre-commit blob a byte PREFIX in each case. THE FOUR PAIRS HOLD IN THE SHAPE THE BLOCK ASSIGNED THEM, measured against `e9af5b63`: every FROM occurred exactly 1x before the edit; STATUSFLIP, READMECOUNT and READMETIER are REWRITES and read FROM 0x and TO 1x after; READMECAP is the APPEND, its TO containing its FROM, and reads FROM 1x and TO 1x after. THE CLOSURE COMMIT'S NUMSTAT AGREES WITH THE HANDBACK CELL FOR CELL — `git show --numstat 97e91098` reads `7 2 README.md` and `1 1 docs/roadmap/STATUS.md`, which is what the handback reported from the tree that became that commit, so its declared deviation about the timing of that reading cost the record nothing. THE LEDGER-DERIVED COUNTS IN THE README ARE TRUE AND NOT MERELY APPLIED, which is the reading the block's own gates did not order: derived mechanically from `docs/roadmap/STATUS.md` at `97e91098`, the accepted lines number 59 of 255 and Tier 5 stands at 7 of 29, and the README states exactly those two figures and names F037 as next, which is the first `[ ]` line in that file. THE TWO SUITES WERE RE-RUN BY THIS REVIEWER at a real exit 0: `python3 -m pytest tests/docs/ -q` → `295 passed in 0.44s`, and `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in 20.62s`. THE RECORD DID NOT MOVE, as ordered: `^- R-\d+ — ` 275, `^Done: R-\d+ — ` 24, open set 251, maximum id `R-0714`, and every id distinct. HYGIENE HELD AT THE VERDICT: `git status --porcelain` 0 lines, `git worktree list` one line, `git ls-files .remedy-wt` 0 lines, and the remote tip equal to the local tip. WHAT THIS REVIEWER DID NOT VERIFY IS STATED RATHER THAN IMPLIED: the package filename `remedy-review-20260828-032101-READY_FOR_REVIEW.zip`, its SHA-256 and its archived path `/home/decodeux/Repos/remedy-history/zips` rest on R18's transcript and on R19's application of them, because that directory lies outside this session's allowed working directories where `ls` and `sha256sum` are both refused; the STATUS line records them on that basis and this sentence is their provenance. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change. PULL REQUEST #217 WAS MERGED AT THE OPEN PR GATE after this verdict, with CI reported `pass` and the merge state `CLEAN`, and `main` fast-forwarded to `9dde54956afbe5f432bfd429bf4ba0bb272f6d07`, which is the point F037's branch is cut from.
-<<<END GATEF032R19
+<<<SLICE DTO
+## Design (binding specifics)
+> Amended below — see "Design amendments" at the end of this file. Where an
+> amendment conflicts with this section, the amendment wins.
+<<<END DTO
 
-<<<SLICE SFROM
-- [ ] F037 — Rendered diff viewer
-<<<END SFROM
+<<<SLICE AMENDF037
+## Design amendments
 
-<<<SLICE STO
-- [~] F037 — Rendered diff viewer
-<<<END STO
+> Added 2026-08-28 at F037 R2, after the R1 source inventory
+> (`.agent/f037_inventory.md`) measured assumptions in the Design, Task
+> slicing and Edge-case sections above that the source does not meet. The
+> sections above are left as written — this file records how the design MOVED,
+> and the amendments below win where they conflict with it. Full reasoning,
+> alternatives and reversal instructions: `.agent/decisions.md`, DECISION
+> F037 D1 and D2.
+
+**A1 — `binary` is a VIEWER status F037 defines, and `review_subject`'s
+vocabulary is not widened (DECISION F037 D1).** No vocabulary in this
+repository carries `binary` as a file status.
+`packages/orchestration/review_subject.py` defines seven — `added`, `modified`,
+`deleted`, `renamed`, `copied`, `type_changed`, `dirty` — mapped one-for-one
+from the `git diff --name-status` letters, and git reports a binary file with
+the same letter as a text file. Binary-ness is a property of the diff BODY, and
+this repository treats it today as a refusal or an omission in four modules,
+never as a status. F037's parser therefore emits the five-value `status` of the
+contract above as its OWN viewer vocabulary, deriving `binary` from the diff
+body's binary marker; `review_subject.py` is not touched. The viewer's v1 does
+not render `copied`, `type_changed` or `dirty`, and the JSON version field is
+how F033 widens the set.
+
+**A2 — the endpoint keys on task run and job; there is no attempt parameter in
+v1 (DECISION F037 D2).** "A read endpoint per task/attempt" and the edge-case
+clause "the endpoint takes an attempt parameter" cannot be built: no
+per-attempt diff exists. Diffs are persisted at exactly two scopes,
+`task_runs/<task_id>/safe.diff` per task run and `workspace.diff` per job, both
+under a job's evidence directory. The module owning repair attempts forbids
+diffs in its records outright, and the nearest per-attempt artifact is
+documented in its own source as not a real patch and is stripped from review
+bundles. Serving the task-run diff under an `attempt` parameter would be a
+false live indicator, so the parameter is dropped from v1 and the JSON version
+field is the seam a later feature uses if per-attempt diffs become real.
+
+**A3 — T001 builds a NEW parser module; the existing reader is not extended
+(the R1 inventory, `.agent/f037_inventory.md`).** One structured unified-diff
+reader exists, `packages/orchestration/review_scope.py`, and it discards every
+field the contract needs: its hunk regex does not capture old line numbers, it
+records no per-line kind because only added lines reach its output, it drops a
+rename's old path, and it never sees a binary file at all. Its two consumers
+state in their own source that they hold no parser, so widening it would change
+what they read. The new module owns the contract, and `review_scope.py` is left
+alone.
+<<<END AMENDF037
