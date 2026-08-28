@@ -8935,3 +8935,34 @@ it, per the deliberate-absence convention in `AGENTS.md`.
 
 REVERSE by deleting amendment A2 from `docs/roadmap/features/T5_F037.md` and
 this decision, restoring the attempt parameter to the endpoint spec.
+
+## DECISION F037 D3 — the diff surface's design authority is named in the feature file, and `ux_spec.md` is not one of the three (2026-08-28, F037 R8)
+
+CONTEXT. `docs/roadmap/features/T5_F037.md:14` directs builders to "diff surface
+tokens per `ux_spec.md`". Measured at `996ffea9`, `docs/ui/design_reference/ux_spec.md`
+contains no occurrence of `diff` at all, case-insensitively, so that pointer
+resolves to nothing. T002 and T003 are the entire remaining scope of this
+feature and both are UI rounds whose builders read that banner first. Registered
+as finding `R-0719`.
+
+CHOSEN. Amend the FEATURE FILE with amendment A4, naming the three authorities
+that do exist: this file's own binding CSS, whose `--remedy-ink-soft` and
+`--remedy-bg-2` were confirmed present in `apps/ui/src/styles/tokens.css`;
+`component_spec.md:113-116` for the entry-point contract; and
+`assets_spec.md:92-95` for the mono family and the ligatures-off rule on diff
+surfaces. The banner's other clauses are untouched.
+
+ALTERNATIVES CONSIDERED. (a) Add a diff-surface section to `ux_spec.md`. Rejected:
+the design reference is the operator's artifact, AGENTS.md's documentation
+boundary keeps `docs/` describing what IS, and `component_spec.md:115-116`
+states that the design-reference package deliberately does not build the viewer
+— so its silence is a decision, not a gap for a feature branch to fill.
+(b) Delete the clause and leave the diff surface unattributed. Rejected: it would
+leave a builder with a banner that forbids inventing a visual language and no
+authority to follow, which is the same defect wearing a shorter sentence.
+(c) Leave it and rely on reviewers to catch it each round. Rejected: it had
+already survived seven rounds unread.
+
+REVERSE by deleting amendment A4 from `docs/roadmap/features/T5_F037.md` and
+this decision, restoring the banner's `ux_spec.md` pointer as the sole
+feature-specific authority for the diff surface.
