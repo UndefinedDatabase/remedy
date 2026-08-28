@@ -165,3 +165,13 @@
   be written into the append-only record is measured by the SAME instrument the
   round will use to check it, never through a profiler that is switched on for the
   memory reading beside it; a measurement's harness is part of the measurement.
+
+- 2026-08-28 · F037 R12 · The resolution `Done: R-0721 — RESOLVED IN PART`
+  removes that id from the open set the pre-emission checklist derives
+  mechanically — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — `
+  line — while half of the finding, the unbounded artifact read in
+  `diff_view_source.py`, is still open on disk. The remaining half survives in
+  prose only, in the handback and in the plan's Next Steps. A partial
+  resolution is invisible to the one arithmetic the checklist runs, so a round
+  that resolves half of a finding says so in the resolution AND leaves the
+  remainder somewhere the count can see it.
