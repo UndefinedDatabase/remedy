@@ -187,3 +187,12 @@
   called unavailable after being refused from ONE caller, the first being the
   vitest runner that `R-0724` records: before writing that a tool cannot run
   here, grep `tests/` for a node that already runs it.
+
+- 2026-08-28 · F037 R21 · The R20 block contradicted itself and one of its
+  asides was inexact: constraint 10 stated that NO TypeScript mutation red-proof
+  was ordered while G6 ordered two, and the claim that the `Gate: F037 R16`
+  entry records why every vitest route is blind is not what that entry says. The
+  worker declared both and routed around neither, and nothing landed wrong on
+  disk. DECISION F037 D10 settles the underlying question by measurement: the
+  red-proofs were orderable all along, and successive blocks said otherwise
+  because each inherited the sentence instead of re-running it.
