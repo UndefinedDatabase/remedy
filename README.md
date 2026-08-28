@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-59 of 255 registered items accepted. Next: F037 (Rendered diff viewer).
+60 of 255 registered items accepted. Next: F033 (Hunk-level diff approval).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 7 | 29 |
+| 5 | Operator Cockpit | 8 | 29 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -88,6 +88,11 @@ evidence refs, an expected outcome and a downside, enforced where the decision
 is derived so a producer that omits one fails its own test; the inbox card
 renders the receipts, the honest note when a card has none, and each answer's
 own outcome and downside under the answer it belongs to).
+F037 rendered diff viewer (a unified diff parsed server-side into structured
+JSON — files, hunks, lines and intraline spans — served per job and per task run,
+and rendered in the client with a file sidebar, hunk collapse beyond a size
+threshold and virtual scrolling past two thousand rows; syntax highlighting is
+modelled and deliberately not wired, per this feature's amendment A6).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
