@@ -168,6 +168,23 @@ def import_statement(code: str, module: str) -> str:
     return match.group(0)
 
 
+def changed_files_guarded_block(code: str) -> str:
+    """The whole `{changedFiles && ...}` expression of the popover, brace depth respected.
+
+    ANCHORED ON THE CONDITION rather than on the `<section>` element: the popover renders
+    several sections and only this one is gated by `changedFilesSafe`, which is the exact
+    condition finding `R-0726` was about. The expression is returned WHOLE so a caller can
+    ask both what it contains and where it ends.
+    """
+    match = re.search(r"\{\s*changedFiles\s*&&", code)
+    assert match, (
+        f"no `{{changedFiles && ...}}` expression was found in {POPOVER.name}. The placement "
+        f"guard below reads the entry point's position RELATIVE to that block, so a rename "
+        f"of the condition must stop the guard rather than silently pass it"
+    )
+    return _braced_region(code, match.start())
+
+
 def diff_read_effect_body(code: str) -> str:
     """The body of the `useEffect` that calls `loadDiffEnvelope`.
 
@@ -361,3 +378,53 @@ class TestTheDrawingHalfIsUnchanged:
                 f"the drawing half changed it instead. Scoped to the component's body "
                 f"because the import list names all four too (finding R-0725)"
             )
+
+
+class TestTheEntryPointSitsAtPopoverLevel:
+    """(g) The repair of finding `R-0726` pinned by PLACEMENT rather than by shape.
+
+    Every other assertion in this module reads the button's own opening tag, and the move
+    that caused `R-0726` leaves that tag byte-identical — so putting the entry point back
+    inside the "Changed files" section was measured GREEN across every guard in this
+    repository for one whole round. This is the assertion that sees it.
+
+    WHY THE PLACEMENT IS THE PROPERTY: the section renders only when `changedFilesSafe` is a
+    non-empty list, and `packages/orchestration/ui_server.py` builds that list from
+    `patch_intent_applied` events, while the diff this button opens is a separate artifact
+    under the job's evidence directory. A task run that has a diff and no safe file list
+    would have no way into the viewer at all, so the button must not inherit that condition.
+    `docs/ui/design_reference/component_spec.md:108` puts the popover's buttons at peer level
+    with its sections for the same reason.
+
+    THE ANCHOR IS NAMED DELIBERATELY. A position cannot be read out of text without naming
+    what it is a position relative to, so this guard names the `{changedFiles && ...}`
+    expression through `changed_files_guarded_block`; renaming that condition is a change to
+    the very code this assertion describes and stops the guard rather than passing it. No
+    marker was added to the component: the condition it already carries is the anchor.
+    """
+
+    def test_the_entry_point_is_outside_and_after_the_changed_files_section(self):
+        code = popover_code()
+        block = changed_files_guarded_block(code)
+        tag = jsx_open_tag(code, "button", "onOpenDiff")
+        assert len(block) < len(code), (
+            f"the changed-files scanner returned {len(block)} characters out of {len(code)}, "
+            f"so it is not scoping and the two assertions below are whole-file searches "
+            f"wearing a scoper's name (finding R-0725)"
+        )
+        assert "Changed files" in block, (
+            f"the block scoped out of {POPOVER.name} is not the \"Changed files\" section, so "
+            f"this guard is pinning the entry point against the wrong region"
+        )
+        assert tag not in block, (
+            f"the diff entry point in {POPOVER.name} sits INSIDE the "
+            f"`{{changedFiles && ...}}` section, so it renders only when the task run has a "
+            f"non-empty changedFilesSafe list — a run that has a diff but no safe file list "
+            f"gets no door into the viewer. That is finding R-0726, and it is the state this "
+            f"guard exists to stop returning ({VITEST_AUTHORITY} reaches none of this)"
+        )
+        assert code.index(tag) > code.index(block) + len(block), (
+            f"the diff entry point in {POPOVER.name} no longer follows the changed-files "
+            f"section. It belongs at popover level after the sections, where "
+            f"docs/ui/design_reference/component_spec.md:108 lists the popover's buttons"
+        )
