@@ -17,17 +17,14 @@ planned-but-unregistered scope get honest STATUS lines.
 | 3 — repair the R-0714 tautology test | done | red-proved in both directions |
 | 1 — `--skip-blocked` partial promotion | done | red-proved; flag-shape pinned |
 | 2 — cost truth on the job-run path | done | stats cost shows 1 row |
-| 4 — register the split-off F037 rest | next | new line before F033 |
-| 5 — register the self-use track | pending | registration only, not built |
+| 4 — register the split-off F037 rest | done | F256, Tier 5, before F033 |
+| 5 — register the self-use track | done | F257, registered not built |
 
 ## Next Steps
-1. Point 1: `--skip-blocked` on `do job-promote`, plus the honest `Next:` line on
-   every blocked output. The guardrail itself is NOT weakened.
-2. Point 2: arm the F103 ledger mirror on the `do job-run` path.
-3. Points 4 and 5: two new Package 1 feature lines with full ledger atomicity —
-   the TOTAL_FEATURES pin and the README counters in the same commit as STATUS.
-4. Full battery (docs suite, canary, touched tests, ruff), PR, hosted run green,
-   then merge. End state: 0 open PRs.
+1. Run the full battery: docs suite, canary, every touched test file, ruff.
+2. Push the branch and open the PR.
+3. Watch the hosted run to GREEN, repairing red as work rather than reporting it.
+4. Merge this branch's own PR. End state: 0 open PRs.
 
 ## Risks
 - The two registrations shift every downstream feature counter; STATUS and the

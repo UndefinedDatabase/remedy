@@ -18,15 +18,19 @@ FEATURE_FILE_RE = re.compile(r"\AT(\d{1,2})_F(\d{3})\.md\Z")
 STATUS_LINE_RE = re.compile(r"^- \[[ ~x]\] F(\d{3}) — ")
 TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 
-#: 250 roadmap features (F001-F250) plus five registered additions: F251,
+#: 250 roadmap features (F001-F250) plus seven registered additions: F251,
 #: added by the planning amendment of 2026-07-27; F252 (standing-red
 #: paydown), added by operator ruling A of 2026-07-28; F253 (headless
 #: API contract), added by operator decision of 2026-08-03; F254
 #: (model alias table & dead-model doctor check), added by amendment
-#: round amend0805-v3 of 2026-08-05; and F255 (teacher role), added by
-#: registration round plan0806 of 2026-08-06. See docs/roadmap/features/
-#: T1_F251.md, T1_F252.md, T12_F253.md, T2_F254.md and T5_F255.md.
-TOTAL_FEATURES = 255
+#: round amend0805-v3 of 2026-08-05; F255 (teacher role), added by
+#: registration round plan0806 of 2026-08-06; and F256 (diff viewer
+#: completion) plus F257 (self-use track), both added by operator order
+#: amend0828-daily-driver of 2026-08-28 — F256 carrying the scope
+#: DECISION F037 D11 split off from F037. See docs/roadmap/features/
+#: T1_F251.md, T1_F252.md, T12_F253.md, T2_F254.md, T5_F255.md,
+#: T5_F256.md and T5_F257.md.
+TOTAL_FEATURES = 257
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
