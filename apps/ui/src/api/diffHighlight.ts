@@ -15,6 +15,19 @@
 // highlight state. A reader searching here for a block-comment rule, a
 // here-document rule or a carried-over string state will not find one, and the
 // absence is the ruling rather than an omission.
+//
+// THIS IS THE EAGER HALF, and the grammar TABLES are not here — they live in
+// `./diffHighlightGrammars`, which is fetched lazily. The scanner below is what
+// a diff row needs SYNCHRONOUSLY to be drawn at all, while a grammar is needed
+// only once a file's path has resolved to a language, so that is where the cut
+// falls. THE CUT IS ALSO WHAT MAKES THE LAZINESS REAL — finding `R-0732`: a
+// module imported both statically and dynamically BY THE SAME FILE is not
+// code-split at all, and `../components/diff/DiffView.tsx` imported this one
+// both ways until the tables moved out, so every grammar shipped in the main
+// chunk while the bundler warned that the dynamic import would move nothing.
+// Every function below therefore takes a `DiffHighlightGrammar | null` as an
+// ARGUMENT rather than looking a language id up in a table of its own; the
+// caller owns that dependency, exactly as it already owns the intraline cut.
 
 /** The CLOSED token set. It is small on purpose: every kind must eventually map
  *  to a custom property already defined under `apps/ui/src`, which
@@ -42,98 +55,17 @@ export interface DiffHighlightSegment {
 
 /** The three rules one language contributes to the scanner. Everything else —
  *  digits, identifiers, punctuation — is language-independent by design, because
- *  a per-line tokenizer cannot honour more than this without lying. */
+ *  a per-line tokenizer cannot honour more than this without lying.
+ *
+ *  THE TYPE IS DECLARED HERE AND THE TABLES ARE NOT. `./diffHighlightGrammars`
+ *  imports this type — a type import is erased at build time, so it is no
+ *  runtime edge — and exports `diffHighlightGrammarFor`, which is the one way a
+ *  language id becomes one of these. */
 export interface DiffHighlightGrammar {
   lineComment: readonly string[];
   stringDelimiters: readonly string[];
   keywords: ReadonlySet<string>;
 }
-
-/** Freezes one grammar and its two arrays, so a caller that reaches into the
- *  exported mapping cannot mutate the rules another line will be scanned with. */
-function freezeDiffHighlightGrammar(
-  lineComment: readonly string[],
-  stringDelimiters: readonly string[],
-  keywords: readonly string[],
-): DiffHighlightGrammar {
-  return Object.freeze({
-    lineComment: Object.freeze([...lineComment]),
-    stringDelimiters: Object.freeze([...stringDelimiters]),
-    keywords: new Set<string>(keywords),
-  });
-}
-
-const JS_KEYWORDS: readonly string[] = [
-  "as", "async", "await", "break", "case", "catch", "class", "const",
-  "continue", "default", "delete", "do", "else", "enum", "export", "extends",
-  "false", "finally", "for", "from", "function", "if", "implements", "import",
-  "in", "instanceof", "interface", "let", "new", "null", "of", "return",
-  "satisfies", "static", "super", "switch", "this", "throw", "true", "try",
-  "type", "typeof", "undefined", "var", "void", "while", "yield",
-];
-
-/** The grammar per language id, keyed by the VALUES of `DIFF_SUPPORTED_LANGUAGES`
- *  in `./diffViewModel` — the ids `diffLanguageForPath` answers.
- *
- *  BUILT ON `Object.create(null)` AND READ THROUGH AN OWN-PROPERTY CHECK, both
- *  halves load-bearing, for the reason `diffViewModel.ts` states above
- *  `DIFF_SUPPORTED_LANGUAGES` and finding `R-0731` proved: the language id
- *  originates in a diff path from a repository this viewer does not control, so
- *  the key set is the attacker's and not ours. A mapping with a prototype
- *  answers `constructor` and `__proto__` with inherited values, and reading the
- *  result against `undefined` calls that a hit. Neither half may be removed as
- *  redundant — either one alone repairs the defect, which is exactly why
- *  dropping one lets a later refactor of the other restore it silently. */
-export const DIFF_HIGHLIGHT_GRAMMARS: Readonly<Record<string, DiffHighlightGrammar>> =
-  Object.freeze(
-    Object.assign(Object.create(null) as Record<string, DiffHighlightGrammar>, {
-      typescript: freezeDiffHighlightGrammar(["//"], ['"', "'", "`"], JS_KEYWORDS),
-      tsx: freezeDiffHighlightGrammar(["//"], ['"', "'", "`"], JS_KEYWORDS),
-      javascript: freezeDiffHighlightGrammar(["//"], ['"', "'", "`"], JS_KEYWORDS),
-      jsx: freezeDiffHighlightGrammar(["//"], ['"', "'", "`"], JS_KEYWORDS),
-      python: freezeDiffHighlightGrammar(
-        ["#"],
-        ['"""', "'''", '"', "'"],
-        [
-          "and", "as", "assert", "async", "await", "break", "class", "continue",
-          "def", "del", "elif", "else", "except", "False", "finally", "for",
-          "from", "global", "if", "import", "in", "is", "lambda", "None",
-          "nonlocal", "not", "or", "pass", "raise", "return", "True", "try",
-          "while", "with", "yield",
-        ],
-      ),
-      json: freezeDiffHighlightGrammar([], ['"'], ["true", "false", "null"]),
-      css: freezeDiffHighlightGrammar(
-        [],
-        ['"', "'"],
-        [
-          "auto", "block", "flex", "grid", "hidden", "important", "inherit",
-          "initial", "none", "absolute", "relative", "fixed", "sticky", "solid",
-          "transparent", "unset",
-        ],
-      ),
-      markdown: freezeDiffHighlightGrammar([], ["`"], []),
-      shell: freezeDiffHighlightGrammar(
-        ["#"],
-        ['"', "'"],
-        [
-          "case", "do", "done", "elif", "else", "esac", "exit", "export", "fi",
-          "for", "function", "if", "in", "local", "readonly", "return", "set",
-          "then", "until", "while",
-        ],
-      ),
-      yaml: freezeDiffHighlightGrammar(
-        ["#"],
-        ['"', "'"],
-        ["true", "false", "null", "yes", "no", "on", "off"],
-      ),
-      toml: freezeDiffHighlightGrammar(
-        ["#"],
-        ['"""', "'''", '"', "'"],
-        ["true", "false"],
-      ),
-    }),
-  );
 
 /** A single ASCII digit. Kept as an explicit range rather than a regular
  *  expression so it cannot match a digit from another script that the number
@@ -192,11 +124,15 @@ function diffHighlightMatchAt(
   return undefined;
 }
 
-/** Splits one line of diff text into typed segments for `language`.
+/** Splits one line of diff text into typed segments under `grammar`.
  *
- *  TOTAL: no input throws, for any string and any language id, and a language
- *  the mapping does not OWN is an ANSWER — the whole line comes back `plain` —
- *  rather than an error, exactly as `diffLanguageForPath` answers `null`.
+ *  TOTAL: no input throws, for any string and any grammar. A `null` grammar is
+ *  an ANSWER — the whole line comes back `plain` — rather than an error, exactly
+ *  as `diffLanguageForPath` answers `null` for a path it does not recognise and
+ *  `diffHighlightGrammarFor` answers `null` for an id its tables do not OWN.
+ *  That `null` therefore covers three cases at once and renders them alike: an
+ *  unsupported language, a file whose language has not been resolved yet, and a
+ *  lazy grammar chunk that never arrived.
  *
  *  THE LOAD-BEARING INVARIANT, which every case below is written to preserve and
  *  the vitest suite pins for each of them: joining the returned segments' `text`
@@ -213,18 +149,14 @@ function diffHighlightMatchAt(
  *  both carry `plain` and a renderer draws one element per visible run. */
 export function tokenizeDiffLine(
   text: string,
-  language: string | null,
+  grammar: DiffHighlightGrammar | null,
 ): readonly DiffHighlightSegment[] {
   if (text.length === 0) {
     return [];
   }
-  if (
-    language === null ||
-    !Object.prototype.hasOwnProperty.call(DIFF_HIGHLIGHT_GRAMMARS, language)
-  ) {
+  if (grammar === null) {
     return [{ text, kind: "plain" }];
   }
-  const grammar = DIFF_HIGHLIGHT_GRAMMARS[language];
   const segments: DiffHighlightSegment[] = [];
   const push = (chunk: string, kind: DiffHighlightTokenKind): void => {
     if (
@@ -303,7 +235,7 @@ export interface DiffMarkedSegment {
 /** Composes the intraline cut with the token cut of the SAME line, so one line
  *  carries word-level emphasis and syntax colour at once.
  *
- *  TOTAL: no input throws, for any segment list and any language id. An empty
+ *  TOTAL: no input throws, for any segment list and any grammar. An empty
  *  list, and a list whose texts are all empty, both yield the EMPTY ARRAY —
  *  there is no run to describe, and a run carrying the empty string would render
  *  an element around nothing, which is the ruling
@@ -322,12 +254,18 @@ export interface DiffMarkedSegment {
  *  joining the returned runs' `text` reproduces the joined input exactly; every
  *  character keeps the `marked` of the input segment covering it; and every
  *  character keeps the `kind` `tokenizeDiffLine` gives that position for the
- *  same language. Adjacent runs agreeing on BOTH are MERGED, so no two
+ *  same grammar. Adjacent runs agreeing on BOTH are MERGED, so no two
  *  consecutive runs share both and a renderer draws one element per visible
- *  run. */
+ *  run.
+ *
+ *  THE GRAMMAR IS PASSED STRAIGHT THROUGH and is never looked up here, for the
+ *  reason the header gives: the tables are the lazy half in
+ *  `./diffHighlightGrammars` and this module is the eager one, so the caller
+ *  hands in whatever the lazy chunk answered — including `null` while it is
+ *  still in flight. */
 export function composeHighlightedRuns(
   segments: readonly DiffMarkedSegment[],
-  language: string | null,
+  grammar: DiffHighlightGrammar | null,
 ): readonly DiffHighlightRun[] {
   const line = segments.map((segment) => segment.text).join("");
   if (line.length === 0) {
@@ -350,7 +288,7 @@ export function composeHighlightedRuns(
     line.length,
   ).fill("plain");
   cursor = 0;
-  for (const token of tokenizeDiffLine(line, language)) {
+  for (const token of tokenizeDiffLine(line, grammar)) {
     for (let offset = 0; offset < token.text.length; offset += 1) {
       kindAt[cursor] = token.kind;
       cursor += 1;
