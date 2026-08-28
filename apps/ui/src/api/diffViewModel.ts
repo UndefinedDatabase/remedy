@@ -3,16 +3,17 @@
 // markup, issues no fetch and touches no stylesheet, so every rule below is
 // decidable from plain data alone.
 //
-// DECISION F031 D5 is why the rule lives HERE rather than inside the component
-// that will draw it: the shipped `apps/ui/vitest.config.ts` collects
-// `src/**/*.test.ts` in a NODE environment and reaches no markup at all, so a
-// collapse rule or a row key written into a `.tsx` file is a rule no gate in
-// this repository can execute. DECISION F037 D8 records the same reasoning for
-// this feature specifically, and `tests/ui_contracts/test_diff_view_model.py`
-// pins the structural half vitest cannot see about itself. The segments
-// `splitLineIntoIntralineSegments` returns at the foot of this file are what
-// `DiffView.tsx` wraps in the intraline mark, and DECISION F037 D9 rules what
-// that mark looks like — this module chooses no colour and names no class.
+// DECISION F031 D5 is why the rule lives HERE rather than inside `DiffView.tsx`,
+// the component that draws these rows: the shipped `apps/ui/vitest.config.ts`
+// collects `src/**/*.test.ts` in a NODE environment and reaches no markup at
+// all, so a collapse rule or a row key written into a `.tsx` file is a rule no
+// gate in this repository can execute. DECISION F037 D8 records the same
+// reasoning for this feature specifically, and
+// `tests/ui_contracts/test_diff_view_model.py` pins the structural half vitest
+// cannot see about itself. The segments `splitLineIntoIntralineSegments`
+// returns are what `DiffView.tsx` wraps in the intraline mark, and DECISION
+// F037 D9 rules what that mark looks like — this module chooses no colour and
+// names no class.
 //
 // Remedy deliberately does NOT re-sort files or hunks here. A reader looking
 // for a comparator over paths, over change size or over status will not find
@@ -323,11 +324,14 @@ export function readDiffEnvelope(raw: unknown): DiffEnvelope {
  *  SINGLE hunk. That is the point at which an open hunk stops being a reading
  *  aid and becomes a wall to scroll past on the way to the next file.
  *
- *  Declared once, here. Every other site — `defaultCollapsedHunkIds`,
- *  `DiffView.tsx`, which renders these rows and has been mounted by
- *  `RemedyShell` since F037 R18, and both test files — names this constant
- *  rather than repeating the number, which is what stops the rule and its tests
- *  from drifting apart. */
+ *  Declared once, here. Every other site NAMES this constant rather than
+ *  repeating the number, which is what stops the rule and its tests from
+ *  drifting apart, and each of these was grepped before being written down:
+ *  `defaultCollapsedHunkIds` below, `diffViewModel.test.ts`,
+ *  `tests/ui_contracts/test_diff_view_model.py` and
+ *  `tests/ui_contracts/test_diff_view_render.py`. `DiffView.tsx` is NOT among
+ *  them — it renders these rows but never names this constant, and an earlier
+ *  wording of this paragraph said it did. */
 export const DIFF_HUNK_COLLAPSE_THRESHOLD_LINES = 200;
 
 /** The hunks that start collapsed: those carrying strictly MORE than
