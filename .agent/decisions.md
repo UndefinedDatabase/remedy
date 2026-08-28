@@ -8851,3 +8851,87 @@ guard class the F032 R15 block's item S7 adds to
 `tests/ui_contracts/test_decision_answer_wiring.py`. No other change is
 required, and amendment A7 of `docs/roadmap/features/T5_F032.md` is the text to
 strike with it.
+
+## DECISION F037 D1 (2026-08-28) — `binary` is a VIEWER status this feature defines, and `review_subject`'s vocabulary is deliberately not widened
+
+CONTEXT. `docs/roadmap/features/T5_F037.md` specifies a JSON contract whose
+`status` field is one of `modified|added|deleted|renamed|binary`. The F037 R1
+inventory measured that no vocabulary in this repository carries `binary` as a
+status. `packages/orchestration/review_subject.py` defines seven — `added`,
+`modified`, `deleted`, `renamed`, `copied`, `type_changed` and `dirty` — mapped
+one-for-one from the `git diff --name-status` letters `A M D R C T`. Binary-ness
+is not among them because git does not report it as a status letter: a binary
+file comes back `M` or `A` exactly like a text file, and its binary-ness is a
+property of the CONTENT, discovered when the diff body reads `Binary files …
+differ`. Where this repository does handle binary today it handles it as a
+REFUSAL rather than a status, in four separate places the inventory names:
+a blocker in `provider_trust.py`, an omission reason in `diff_repair.py`, a
+refusal in `source_apply.py` and a rendered placeholder in `pingpong_loop.py`.
+
+CHOSEN. F037's parser emits the contract's five-value `status` as its OWN
+viewer-facing vocabulary, deriving `binary` from the diff body's binary marker
+and the other four from the git status letter. `review_subject.py` is NOT
+touched, and its seven-value vocabulary keeps its one-for-one relationship with
+the git letters.
+
+ALTERNATIVES CONSIDERED. (a) Widen `review_subject.STATUS_*` with `binary`:
+rejected because it would break the property that makes that vocabulary
+checkable — every constant maps to a letter git actually emits — and because
+the inventory found equality guards pinning that set, which such a change would
+turn red for no gain to any existing reader. (b) Drop `binary` from F037's
+contract: rejected because the feature file's Acceptance requires binary
+placeholders to render, and a viewer that cannot say "this file is binary" must
+either lie or show an empty diff. (c) Carry a separate `is_binary` boolean
+beside a four-value status: rejected as a third vocabulary for one fact, when
+the contract already specifies a single field and F033 will version it anyway.
+
+CONSEQUENCE. The two vocabularies are deliberately different and that
+difference is documented where a reader searches for it — amendment A1 of
+`docs/roadmap/features/T5_F037.md` says so in the feature file, and the parser
+module's header will say so at T001. `copied`, `type_changed` and `dirty` are
+NOT rendered by the viewer's v1 and the JSON version field is what F033 uses to
+widen the set.
+
+REVERSE by deleting amendment A1 from `docs/roadmap/features/T5_F037.md` and
+this decision; the contract in the Design section above A1 is then the spec
+again, unamended.
+
+## DECISION F037 D2 (2026-08-28) — the read endpoint keys on task run and job, and the attempt parameter is dropped from v1
+
+CONTEXT. `docs/roadmap/features/T5_F037.md` specifies the diff endpoint as
+"a read endpoint per task/attempt" and its edge-case section says "the endpoint
+takes an attempt parameter". The F037 R1 inventory measured that NO per-attempt
+diff exists anywhere in this repository. Diffs are persisted at exactly two
+scopes: `task_runs/<task_id>/safe.diff` per TASK RUN, and `workspace.diff` per
+JOB, both under a job's evidence directory. The module that owns repair
+attempts, `packages/orchestration/repair_loop_v2.py`, does not merely lack a
+diff — it FORBIDS one in its records, listing diffs among the raw content its
+schema excludes and carrying `"diff --git"` in its raw-marker rejection tuple.
+`self_dogfood_execution.py` persists an attempt record and a request text, and
+no diff file. The nearest per-attempt artifact, `patch_intent_diff_preview`, is
+documented in its own source as "NOT a real patch; read-only" and is stripped
+from review bundles and named on three separate redaction lists.
+
+CHOSEN. The v1 endpoint takes a TASK RUN and falls back to the JOB scope, and
+carries NO attempt parameter. The feature file's attempt clause is amended to
+record why, and the JSON contract's version field is the seam through which a
+later feature adds the parameter if per-attempt diffs ever become real.
+
+ALTERNATIVES CONSIDERED. (a) Persist a diff per attempt: rejected on two
+independent grounds — `evidence formats` is named in this feature's own
+Do-not-touch, and writing diffs into attempt records would reverse a deliberate
+redaction rule that three modules enforce, which is far outside a viewer's
+scope. (b) Accept an `attempt` parameter and serve the task-run diff under it:
+rejected as a false live indicator, which is a block condition under
+`docs/agents/planner_reviewer_prompt.md` §4 item 5 — a parameter that does not
+select anything is a lie the API tells every caller. (c) Block the feature until
+per-attempt diffs exist: rejected because the viewer's whole value is readable
+diffs and the two scopes that DO exist carry them.
+
+CONSEQUENCE. The feature file's Acceptance is met without the attempt
+parameter, and the absence is documented rather than silent — amendment A2 of
+`docs/roadmap/features/T5_F037.md` states it where a reader would search for
+it, per the deliberate-absence convention in `AGENTS.md`.
+
+REVERSE by deleting amendment A2 from `docs/roadmap/features/T5_F037.md` and
+this decision, restoring the attempt parameter to the endpoint spec.

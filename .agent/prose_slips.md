@@ -71,3 +71,14 @@
   The landed entry is not rewritten — the R19 entry carries the dated
   correction that indexes it. One round, one key: where an entry covers two,
   give it the later round's key and name the earlier one in the body.
+
+- 2026-08-28 · F037 R1 · The block's G5 ordered the ledger reconstruction as
+  the LTO slice "plus two newlines plus everything from `## Findings`", while
+  constraint 2 of the same block defines a slice's text as its content lines
+  joined plus ONE trailing newline — so the two clauses describe byte strings
+  one newline apart and cannot both hold, and only the content-joined reading
+  matches the file. The worker measured both readings, applied the plain
+  FROM/TO replacement plus one newline plus the appended slice, and declared
+  the contradiction rather than correcting a slice. Nothing landed wrong on
+  disk. Where a gate restates an operation the constraints already define,
+  NAME the constraint instead of paraphrasing its bytes.
