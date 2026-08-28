@@ -15,24 +15,21 @@ file sidebar's visual treatment ruled by a named authority.
 |------|--------|--------|
 | claim F256 and retarget the state | done | `d4c00438` |
 | the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
-| compose the token cut with the intraline cut | done | this round |
-| lazy bundles, DiffView wiring, the palette | open | the composition is its input |
+| compose the token cut with the intraline cut | done | `739d31e0` |
+| lazy bundles, DiffView wiring, the palette | done | this round |
 | rule on the sidebar's treatment | open | a ruling to record, not code |
 | measure the 10k-line fixture | open | needs a real fixture and a real run |
 
 ## Next Steps
-1. Ship the lazy per-language bundles and wire `loadDiffLanguageBundle` into
-   `DiffView`, rendering one element per composed run, with a palette derived
-   from custom properties already defined under `apps/ui/src` rather than
-   invented.
-2. Rule on the file sidebar's visual treatment and record the authority.
-3. Measure the 10k-line fixture end to end and record the numbers in the
+1. Rule on the file sidebar's visual treatment and record the authority, which
+   is the last of F256's three pieces that is a ruling rather than code.
+2. Measure the 10k-line fixture end to end and record the numbers in the
    feature file's Built State.
+3. Run the integration gate, then the closure sequence.
 
 ## Risks
-- The palette may name only custom properties defined under `apps/ui/src`;
-  `tests/ui_contracts/test_design_drift.py` fails any that is not.
-- Wiring `DiffView` changes a file gated by
-  `tests/ui_contracts/test_diff_view_render.py`, which reads its
-  comment-stripped source and requires every class it names to have a rule in
-  `DiffView.module.css`.
+- `tests/ui_contracts/test_diff_view_render.py` reads the comment-stripped
+  source of `DiffView.tsx` and requires every `styles.` class it names to have
+  a rule in `DiffView.module.css`, so a class and its rule land together.
+- Nothing in this repository renders `DiffView.tsx`, so the wiring is gated by
+  that source contract and by `tsc --noEmit`, never by a DOM test.
