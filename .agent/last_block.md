@@ -1,110 +1,128 @@
-### STEP T005 — F256 Diff viewer completion, round 9 (THE INTEGRATION GATE AND THE PACKAGE)
+### STEP T006 — F256 Diff viewer completion, round 10 (THE CLOSURE)
 
-Goal: satisfy closure preconditions 2, 3 and 5 of
-`docs/roadmap/STATUS_closure_protocol.md` — the dedicated integration-gate round
-over the full suite, the integrity check, the evidence bundle and the review
-package — and record the package name, its SHA-256 and its archived path so the
-NEXT round can write the STATUS line. THIS ROUND DOES NOT CLOSE THE FEATURE: it
-does not touch `docs/roadmap/STATUS.md` or `README.md`, and it creates no pull
-request. Precondition 4, the feature file's Built State, was met at `f6d5d064`.
+Goal: resolve `R-0732`, book the round 9 verdict, and CLOSE F256 — the STATUS
+line flipped to `[x]` with the README capability sync in the SAME commit, then the
+pull request. The package, its SHA-256, its archived path and the accepted HEAD
+were all measured in round 9 and are carried below; nothing here re-derives them.
 
-Base: `f69bff0d`, the tip of `feature/f256-diff-viewer-completion`. Every reading
+Base: `64c3774f`, the tip of `feature/f256-diff-viewer-completion`. Every reading
 below was taken there by the reviewer.
 
 Bundle, in commit order:
 
-- C0a save this block verbatim to `.agent/authored/f256-r9.md`
+- C0a save this block verbatim to `.agent/authored/f256-r10.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
 - C1 advance `.agent/plan.md`
-- C2 append the R8 verdict to `.agent/live_review.md`
-- then the integration gate, the evidence job, the integrity check, the package
-  and the archive — NONE of which is a commit
-- C3 rewrite `.agent/handoff.md`
+- C2 append the `R-0732` resolution and the round 9 verdict to
+  `.agent/live_review.md`
+- C3 THE CLOSURE COMMIT: `docs/roadmap/STATUS.md`, `README.md` and
+  `.agent/handoff.md` in ONE commit, the LAST on this branch
+- then `gh pr create`, which is NOT a commit and does NOT merge
 
 Change set, these paths and nothing else:
 
-- `.agent/authored/f256-r9.md`
+- `.agent/authored/f256-r10.md`
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
+- `docs/roadmap/STATUS.md`
+- `README.md`
 - `.agent/handoff.md`
 
-C2 IS THE ACCEPTED HEAD. The package records the tree at C2 as the head it
-covers, so NOTHING IS COMMITTED BETWEEN C2 AND THE ZIP BUILD. C3 is the handback
-and follows the READY package, exactly as F037's closure sequence did.
+RULE A4 BINDS: C3 is the LAST commit on this branch. The STATUS edit and the
+README sync travel in it TOGETHER — the reviewer measured that flipping STATUS
+while leaving README alone turns `tests/docs/` RED with exactly two failures, so
+this is a proven pin and not a convention. The single permitted successor is
+DECISION amend0827 D2's `.agent/candidates.md`-only commit, and only if the
+closure gate raises a candidate.
 
 ### Constraints
 
 0. BEFORE ANYTHING: report `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-   with its real output. Do NOT create or merge a pull request. Stay on
+   with its real output. Expected `[]`. Stay on
    `feature/f256-diff-viewer-completion`; do not branch, never work on `main`.
-1. Apply every authored slice BYTE FOR BYTE. A slice you believe is wrong is
-   applied as written and the problem is declared in the handback's deviations.
+1. Apply every authored slice and every FROM/TO pair BYTE FOR BYTE. A slice you
+   believe is wrong is applied as written and the problem is declared in the
+   handback's deviations.
 2. The delimiter lines `<<<SLICE …` and `<<<END …` are transport only and never
    reach a target file.
 3. Extract every slice from the COMMITTED blob with
-   `git show <C0a>:.agent/authored/f256-r9.md`, never from this prompt's text.
-   That includes EVIDENCESCRIPT, which you write to
-   `.remedy-wt/f256_evidence.py` and run — never retype it.
+   `git show <C0a>:.agent/authored/f256-r10.md`, never from this prompt's text.
 4. AGENTS.md binds in full: self-review before every commit, one logical step per
    commit, `.agent/plan.md` current before every commit, clean tree, push.
-5. NO FILE UNDER `apps/`, `packages/`, `tests/` OR `docs/` CHANGES BY A BYTE, and
-   neither does `docs/roadmap/STATUS.md` or `README.md`. This round writes only
-   the five `.agent/` paths above.
+5. NO FILE UNDER `apps/`, `packages/`, `tests/` OR `docs/roadmap/features/`
+   CHANGES BY A BYTE, and neither does `docs/roadmap/ROADMAP.md`. The feature
+   file's Built State is already current from `f6d5d064`.
 6. Shell forms rejected by this session's guard are RE-EXPRESSED as a script file
-   under `.remedy-wt/` run with `python3`, never skipped and never weakened. A
-   rejected form NEVER justifies weakening or skipping a gate. Report each one.
-7. A BLOCKED_EVIDENCE PACKAGE, OR ANY ZIP BUILD ERROR, ENDS THE ROUND: record the
-   raw error in full, write the handback, hand back. Never retry with a reduced
-   record, never trim a node-id list, never delete a verification run to make the
-   package go READY. PACKAGE_STATUS IS THE READING, NEVER THE EXIT CODE — the
-   pipeline returns exit 0 for both READY_FOR_REVIEW and BLOCKED_EVIDENCE, so an
-   exit code alone proves nothing. Say so in the handback beside the status.
-8. The evidence directory and the zip are GITIGNORED. If either appears as
-   untracked in `git status --porcelain`, STOP — it was written to the wrong
-   place. `git status --porcelain` is 0 at every commit boundary.
-9. If the integration gate at G6 is RED, the round ends there: record the FULL
-   untruncated failure list and hand back. A closure cannot be built on a red
-   suite, and no test is deleted, deselected or weakened to make it green.
+   under `.remedy-wt/` run with `python3`, never skipped and never weakened.
+   Report each one.
+7. EACH FROM STRING BELOW OCCURS EXACTLY ONCE in its target, measured by the
+   reviewer at `64c3774f`. Assert that count is 1 BEFORE replacing, and report
+   each measured count. If any is not 1, STOP and hand back — a replacement over
+   a count you did not verify is how the wrong line gets edited.
+8. DO NOT MERGE THE PULL REQUEST. It merges at the NEXT feature's start via the
+   Open PR Gate; the gap is the operator's manual-review window. Never
+   force-push, never rewrite history, never delete a branch.
 
-### The pipeline, in detail
+### The closure edits of C3
 
-j. Write the EVIDENCESCRIPT slice to `.remedy-wt/f256_evidence.py` and run it
-   from the repository root with `python3`. It asserts its own expected counts,
-   so a changed count is a RED here rather than a surprise at packaging time.
-   Record its full stdout. Every `OUTPUT_HASH` line must read True and
-   `SCAN rejected strings` must be 0 with the red control reading True.
+Apply these three FROM/TO pairs and one APPEND. Nothing else in either file
+changes: no other line is edited, reordered or deleted.
 
-k. Closure precondition 3, the integrity check. The `remedy` CLI is denied in
-   this session, so run
-   `from packages.orchestration.integrity_gate import run_integrity_checks`. The
-   result is an `IntegrityGateResult` OBJECT with attributes `.passed`,
-   `.fail_count` and `.checks` — it is not a dict and `.get(...)` raises. Report
-   `.passed`, `.fail_count` and each check's name and status. The reviewer
-   measured `passed=True`, `fail_count=0` and all five checks PASS at `f69bff0d`
-   — `handler_import`, `live_review_verdict`, `plan_consistency`,
-   `relevant_untracked` and `high_blockers_open`; you re-measure at C2.
+EVERY FROM AND TO BELOW IS DISPLAYED INDENTED BY FOUR SPACES so it renders as a
+block; THAT INDENTATION IS NOT PART OF THE STRING. Strip exactly four leading
+spaces from each displayed line before matching or writing it. The F256 R7
+handback records this same presentation catching a worker out, which is why it is
+stated here: constraint 7's "count must be 1" check will fail loudly if you match
+the indented form, and that failure is the intended guard rather than a licence
+to guess.
 
-l. Build the package with
-   `bash scripts/make_review_zip.sh --evidence-dir <the EVIDENCE_DIR the script
-   used>` from a CLEAN tree at C2. Record the script's final output verbatim.
-   Then read the manifest INSIDE the package and report `PACKAGE_STATUS`,
-   `EVIDENCE_AUTHORITATIVE`, and `committed_review_subject`'s base and head — the
-   head MUST equal C2 and the base MUST equal
-   `0e8ab5b4f780b5265a6aa604ee89067399046b1e`. Report the package FILENAME and
-   its SHA-256, computed by you over the file on disk.
+PAIR S1, in `docs/roadmap/STATUS.md`.
 
-m. Archive the package by MOVING it to `/home/decodeux/Repos/remedy-history/zips`,
-   which the reviewer measured at `f69bff0d` as an existing writable directory
-   already holding the previous closures' packages. Record the ABSOLUTE directory
-   as the `package path` value DECISION amend0827 D1 requires; if the move fails,
-   record the literal `NOT ARCHIVED` and the reason. Then delete
-   `.remedy-wt/f256_evidence.py` by that exact path, never by a glob, and leave
-   the evidence directory itself in place.
+FROM (one line):
+
+    - [~] F256 — Diff viewer completion (highlighting wiring, 10k-line perf measurement, sidebar ruling; split off F037 by DECISION F037 D11 / amendment A6)
+
+TO (one line):
+
+    - [x] F256 — Diff viewer completion (T001–T003 complete; accepted 2026-08-28 · live review PASS — ACCEPTED · Evidence job f256-closure · package remedy-review-20260828-233819-READY_FOR_REVIEW.zip · SHA-256 5f18d7acdeab790b0f79181c7179023535b389ce0b76ec427f2765b20cda4ad5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c6775b3c41f1d1fa4b0f4bb7907307573855a61b)
+
+The dash in `T001–T003` is an EN DASH, matching every accepted line above it.
+
+PAIR S2, in `README.md`.
+
+FROM (one line):
+
+    60 of 257 registered items accepted. Next: F256 (Diff viewer completion).
+
+TO (one line):
+
+    61 of 257 registered items accepted. Next: F257 (Self-use track).
+
+`F257` is the next unchecked STATUS line after F256, which the reviewer confirmed
+at `64c3774f`.
+
+PAIR S3, in `README.md`.
+
+FROM (one line):
+
+    | 5 | Operator Cockpit | 8 | 31 |
+
+TO (one line):
+
+    | 5 | Operator Cockpit | 9 | 31 |
+
+APPEND S4, in `README.md`. The CAPABILITY slice below is inserted immediately
+after the line
+
+    modelled and deliberately not wired, per this feature's amendment A6).
+
+and before the blank line that precedes `Full per-feature state:`. It is an
+insertion; the F037 paragraph above it is not edited.
 
 ### The authored slices
 
-<<<SLICE PLANF256R9
+<<<SLICE PLANF256R10
 # Plan — F256 Diff viewer completion
 
 Branch: feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`.
@@ -121,289 +139,221 @@ file sidebar's visual treatment ruled by a named authority.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001 wire the highlighting | done | DECISIONS F256 D1 and D2 |
+| T002 measure and record both halves | done | D4, D5, D6, Built State |
 | T003 rule on the sidebar's treatment | done | DECISION F256 D3 |
-| T002 measure and record, both halves | done | `f6d5d064`, D4 D5 D6 |
-| the integration gate | done | this round, full suite |
-| the evidence bundle and the package | done | this round |
-| the STATUS closure commit | open | next round, with the README sync |
+| the integration gate and the package | done | READY_FOR_REVIEW at `c6775b3c` |
+| resolve `R-0732` | done | this round |
+| the STATUS closure and the PR | done | this round |
 
 ## Next Steps
-1. Author the STATUS line from the package name, SHA-256 and archived path this
-   round recorded, and apply it with the README capability sync in ONE commit.
-2. Open the closure PR per the AGENTS.md workflow; it is NOT merged this
-   session — the gap is the operator's manual-review window.
-3. Leave `.agent/candidates.md` empty unless the closure gate raises one.
+1. The closure PR is NOT merged this session; it merges at the next feature's
+   start through the Open PR Gate, which is the operator's review window.
+2. The next feature by Rule A5 is F257 — Self-use track, the first unchecked
+   STATUS line after F256.
+3. `.agent/candidates.md` stays empty unless the closure gate raised one.
 
 ## Risks
-- The STATUS `[x]` flip and the README sync must land in the SAME commit or the
-  ledger cross-check pin goes red.
-- The closure commit is the last on the branch (Rule A4), with the single
-  permitted successor DECISION amend0827 D2 names.
-<<<END PLANF256R9
+- None open against F256. `R-0732` is resolved this round; the wider ledger's
+  251 open findings belong to earlier features.
+<<<END PLANF256R10
 
-<<<SLICE GATEF256R8
-Gate: F256 R8 — the RECORDED MEASUREMENT round, which wrote F256's three pieces and both halves of the 10k measurement into the feature file's Built State. THE ROUND PASSED on every gate its block ordered, G1 through G7, and the reviewer re-ran each one independently at `f69bff0d`.
+<<<SLICE DONER0732
+Done: R-0732 — RESOLVED at F256 R4 by that round's refactor, and verified by the reviewer at `78e71b3c` by RUNNING the bundler rather than reading the handback. The finding was that `apps/ui/src/components/diff/DiffView.tsx` imported `apps/ui/src/api/diffHighlight` both STATICALLY and DYNAMICALLY, so the module was not code-split at all and DECISION F256 D1's stated benefit of no main-chunk weight went unmet. THE FIX IS ON DISK AND MEASURED: the grammar tables moved to their own module `apps/ui/src/api/diffHighlightGrammars.ts`, and at `78e71b3c` `npx vite build` exits 0 with ZERO output lines carrying both `dynamically imported` and `statically imported`, against exactly 1 at `e23dad09`; the build emits a real separate chunk, `dist/assets/diffHighlightGrammars-o9XqnLhb.js` at 1.70 kB, so the tables genuinely left the main bundle rather than being re-described as having left it. THE REFACTOR CHANGED NO VALUE, and the reviewer proved that by EXECUTING both grammar tables in two disposable worktrees and comparing them field by field: 11 language ids on both sides, no id's comment openers, string delimiters or keyword set differing, and 271 keywords in total on each — a refactor that quietly drops a keyword is the one failure that comparison exists to catch, and it did not happen. It stayed OPEN for the rest of the feature because only a reviewer may author a resolution and the repair had already landed inside the round that registered it; it is resolved here, in the closure round, so F256 closes with no open finding of its own. THE LESSON: a module imported both statically and dynamically by the SAME file is not split, and the bundler says so in a warning that exits 0 — a build whose exit code is the only thing read will report success for a lazy load that never happened.
+<<<END DONER0732
 
-TRANSPORT COVERS THE EMISSION: the reviewer's own scratch original `.remedy-wt/f256-r8-block.md` predates the worker, and the committed `.agent/authored/f256-r8.md` blob at `8569ef20` is BYTE EQUAL to it at 22031 bytes, sha256 `619bf5d68f82d88878248b3ed66e19825f24ade29ae829e1bbbcd6acf352d9dd`. `.agent/plan.md` at `21cc5157` is byte-equal to its slice at 33 lines. At `cb2f3ce1` both appends reconstruct byte for byte from the `b8a918a1` blob plus a newline plus their slice, each pre-round blob is a byte PREFIX, and each negative control is REJECTED; `.agent/prose_slips.md` went from 6 dated lines to 7, gained exactly one, and its first six are unchanged. The ledger moved as a round that registers and resolves nothing should: registrations 293 all DISTINCT, `^Done:` 43, `^Landed:` 11, the OPEN SET as a set 252, and `^Gate: F\d+ R\d+ — ` alone rising by one to 104, with `Gate: F256 R7` occurring exactly once.
+<<<SLICE GATEF256R9
+Gate: F256 R9 — the INTEGRATION GATE AND PACKAGE round, which satisfied closure preconditions 2, 3 and 5 and produced the review package F256 closes against. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran each one independently at `64c3774f`.
 
-THE BUILT STATE IS AN APPEND AND ITS NUMBERS ARE TRUE, which is the gate this round existed for. At `f6d5d064` the feature file is the `b8a918a1` blob plus a newline plus the slice, byte for byte, the pre-round blob is a byte PREFIX so no existing line moved, and `## Built State` occurs exactly once. The reviewer then re-ran the whole cross-check independently: every one of the seventeen recorded literals — `0.1331`, `0.1282`, `0.1489`, `1,045,960` and `4.97` against `tests/ui_server/test_diff_endpoint.py`; `0.678`, `0.271`, `1.408`, `10,002` and `100,020` against `apps/ui/src/api/diffViewModel.test.ts`; `0.105`, `0.010` and `0.021` against `tests/orchestration/test_diff_parser.py`; and the four sidebar class names against `DiffView.module.css` — is present on BOTH sides. A recorded number that is not in the file that produced it would have been a false record, and there is none.
+TRANSPORT COVERS THE EMISSION: the reviewer's own scratch original `.remedy-wt/f256-r9-block.md` predates the worker, and the committed `.agent/authored/f256-r9.md` blob at `c46042a9` is BYTE EQUAL to it at 23804 bytes, sha256 `8237c1e4fdcde6ab70e6a0a2a3abc79c559ee3e8d7f5e75d206f819f73d559db`. `.agent/plan.md` at `c47ad2ea` is byte-equal to its slice at 34 lines. At `c6775b3c` the append reconstructs byte for byte from the `f69bff0d` blob plus a newline plus GATEF256R8, the pre-round blob is a byte PREFIX, the negative control is REJECTED, and the last 6 blank-line units match the slice's paragraphs in order. The ledger moved as a round that registers and resolves nothing should: registrations 293 all DISTINCT, `^Done:` 43, `^Landed:` 11, the OPEN SET as a set 252, and `^Gate: F\d+ R\d+ — ` alone rising by one to 105. No file under `apps/`, `packages/`, `tests/` or `docs/` changed by a byte, and `git ls-files` over the build-output globs is empty.
 
-RE-RUN IN THE PRIMARY CHECKOUT, one pytest process at a time, each exit 0 and each equal to the handback's figure: `tests/docs/` 295 passed, `tests/ui_contracts/` 664 passed with 4 skipped, `tests/ui_server/` 497 passed, `tests/orchestration/test_diff_parser.py` 43 passed, and the canary `tests/cli/test_golden_path.py` 42 passed. The change set is six paths with both residues empty, every commit single-parent and under 500 insertions, and NO file under `apps/`, `packages/`, `tests/`, `docs/roadmap/STATUS.md` or `docs/roadmap/ROADMAP.md` changed by a byte.
+THE INTEGRATION GATE IS GREEN AND THREE INDEPENDENT RUNS AGREE ON ITS COUNTS. The reviewer ran the full suite at `f69bff0d` before the round and again at `64c3774f` after it, and the worker ran it at `c6775b3c`: `python3 -B -m pytest -n auto -q` returned REAL exit 0 with 18150 passed and 20 skipped every time, at 104.3 s, 145.6 s and 160.0 s of wall clock. The wall clock differs by more than half; the COUNTS do not differ at all, which is the reading that matters. `apps/ui/dist` was verified not stale before each run. The integrity gate, reached through `packages.orchestration.integrity_gate.run_integrity_checks` because the `remedy` CLI is denied in this session, returned `passed=True` and `fail_count=0` with all five checks PASS.
 
-THE REVIEWER ALSO RAN THE FULL SUITE AT `f69bff0d`, ahead of the integration-gate round, so that round begins from a measured position rather than a hope: `python3 -B -m pytest -n auto -q` returned exit 0 with 18150 passed and 20 skipped in 104.3 seconds, with `apps/ui/dist` verified NOT stale beforehand. The integrity gate, run through `packages.orchestration.integrity_gate.run_integrity_checks` because the `remedy` CLI is denied in this session, returned `passed=True` and `fail_count=0` with all five checks PASS.
+THE PACKAGE IS READY AND THE REVIEWER READ IT OUT OF THE ZIP RATHER THAN OFF THE HANDBACK. Opening `remedy-review-20260828-233819-READY_FOR_REVIEW.zip` at its archived path, the manifest inside reports `package_status` READY_FOR_REVIEW, `committed_review_subject.base_commit` `0e8ab5b4f780b5265a6aa604ee89067399046b1e` — the branch point — and `head_commit` `c6775b3c41f1d1fa4b0f4bb7907307573855a61b`, which is C2 and therefore the accepted HEAD. `evidence_authoritative` reads True at `current_evidence.evidence_freshness`. The reviewer computed the file's SHA-256 independently over the 18076792 bytes on disk and got `5f18d7acdeab790b0f79181c7179023535b389ce0b76ec427f2765b20cda4ad5`, equal to the worker's figure. The nine verification runs each carry `selected` equal to their node-id count with one test file apiece, the packaging scan rejected zero strings with its red control reading True, and all nine `OUTPUT_HASH` lines read True.
 
-THE ONE DECLARED DEVIATION IS ACCEPTED AND IS A READING, NOT A DEFECT. The worker reported that `packages/orchestration/diff_parser.py` literally carries `DIFF_VIEW_MAX_BODY_LINES = 20_000` where the Built State's prose says "20,000" — the same value in a different digit grouping — and it adjusted neither side, which is exactly what constraint 8 of that block asked for. The reviewer confirms the file's bytes and the slice's prose both say twenty thousand.
-<<<END GATEF256R8
+THE WORKER'S SIX DECLARED DEVIATIONS ARE ALL ACCEPTED, AND TWO OF THEM CORRECT THE BLOCK. It reported that step (m)'s move was a NO-OP because the packaging pipeline already writes into the archive directory, so the package was never moved and the recorded path is where it was built — the reviewer confirmed the file is there. It reported that the manifest carries no top-level `evidence_authoritative` key where the block's wording implied one, and named the real location; the reviewer read it at that location and agrees. It flagged `review_subject_evidence_alignment.dirty_file_count_total` of 1 without letting it pass unremarked: the reviewer checked, and `review_subject.dirty_file_count_total` is 0 with `dirty_files` empty and `git_status_snapshot.status` OK, so the reviewed subject is clean and the 1 belongs to the alignment view, which lists no source or test file. It also declined to delete a stale zip left in the repository root by an earlier session, correctly, because it is untracked, gitignored and not this round's artifact.
+<<<END GATEF256R9
 
-<<<SLICE EVIDENCESCRIPT
-"""F256 closure evidence bundle. Run with python3 from the repository root."""
-import hashlib
-import json
-import os
-import re
-import subprocess
-import sys
-from datetime import datetime, timezone
+<<<SLICE CAPABILITY
+F256 diff viewer completion (the highlighting F037 only modelled is now rendered,
+with the grammar tables split into their own lazily imported chunk so they leave
+the main bundle; the 10k-line fixture measured end to end and its numbers
+recorded — the route answers a 1,045,960-byte envelope in 0.1331 s, and the
+client draws 48 rows of 10,002 however far the document grows — and the file
+sidebar's visual treatment ruled by a named design authority and applied).
+<<<END CAPABILITY
 
-REPO = os.path.abspath(".")
-EVIDENCE_DIR = os.path.join(
-    REPO, ".remedy-wt", "f256_closure_evidence", "remedy-job-evidence-f256-closure"
-)
-os.makedirs(EVIDENCE_DIR, exist_ok=True)
-BASE = "0e8ab5b4f780b5265a6aa604ee89067399046b1e"
-assert len(BASE) == 40, BASE
+<<<SLICE PRBODY
+## What changed
 
-HEAD = subprocess.run(
-    ["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True
-).stdout.strip()
-assert len(HEAD) == 40, HEAD
+F256 finishes the rendered diff viewer F037 shipped, in the three pieces the
+feature file scopes: T001 the highlighting actually rendered, T002 the 10k-line
+budget measured end to end and recorded, T003 the file sidebar's visual treatment
+ruled by a named authority.
 
+## Why
 
-def _tail(text):
-    """The last 2000 chars on a WHOLE-LINE boundary, path-scrubbed TWICE.
+F037 closed with three clauses of its own Goal and Acceptance UNMET, recorded
+honestly in its amendment A6 rather than quietly dropped. F256 is the operator's
+execution of that split, and it exists to close exactly those three.
 
-    job_evidence._scrub_paths only relativises paths under REPO. A pytest header
-    line can end in the interpreter's own absolute path, which
-    build_review_manifest._unsafe_text correctly rejects as a local absolute
-    path -> BLOCKED_EVIDENCE.
-    """
-    from packages.common.path_redaction import scrub_paths
-    from packages.orchestration.job_evidence import _scrub_paths
+## Key decisions
 
-    cut = text[-2000:]
-    if len(text) > 2000 and "\n" in cut:
-        cut = cut[cut.index("\n") + 1:]
-    return scrub_paths(_scrub_paths(cut, REPO))
+- **F256 D1** — Remedy writes its own lazy syntax bundles rather than adding a
+  third-party highlighter.
+- **F256 D2** — the syntax palette is four custom properties the shipped token
+  sheet already defines; no new hue enters the product. `plain` is deliberately
+  given no rule.
+- **F256 D3** — the sidebar takes its treatment from the diff body's own
+  vocabulary, and Remedy draws NO proportional stats bar; the two counts carry
+  the magnitude exactly.
+- **F256 D4** — the end-to-end server budget is guarded by a scale RATIO measured
+  on one machine in one run, not by an absolute second count that would report
+  machine speed on a hosted runner.
+- **F256 D5** — the client half is guarded by an EXACT bounded-window invariant
+  rather than by a duration, because a millisecond of JavaScript is mostly the
+  JIT; the durations are recorded beside it.
+- **F256 D6** — a vitest red-proof runs the worktree's mutated sources against
+  the primary checkout's `node_modules`, because vitest cannot run inside a
+  worktree; this satisfies guardrail G5 rather than waiving it.
 
+## The measurement, recorded
 
-def mkrun(rid, path, expect):
-    """One verification record. Node ids come from --collect-only, never from a
-    -v log: a parametrized id can contain whitespace and a regex over -v output
-    splits it. The reviewer measured all nine suites at `f69bff0d` with zero
-    deselected, zero skipped and node-id counts equal to their passed counts.
-    """
-    assert re.match(r"^vr-\d{4,}$", rid), rid
-    collect = subprocess.run(
-        ["python3", "-m", "pytest", path, "-q", "--collect-only"],
-        cwd=REPO, capture_output=True, text=True,
-    )
-    assert collect.returncode == 0, (rid, collect.returncode)
-    ids = [ln for ln in collect.stdout.split("\n") if ln.startswith("tests/")]
-    run = subprocess.run(
-        ["python3", "-m", "pytest", path, "-q"],
-        cwd=REPO, capture_output=True, text=True,
-    )
-    text = run.stdout + run.stderr
-    assert run.returncode == 0, (rid, run.returncode, text[-400:])
-    passed = sum(int(x) for x in re.findall(r"(\d+) passed", text))
-    failed = sum(int(x) for x in re.findall(r"(\d+) (?:failed|error)", text))
-    skipped = sum(int(x) for x in re.findall(r"(\d+) skipped", text))
-    desel = sum(int(x) for x in re.findall(r"(\d+) deselected", text))
-    dur = float(re.findall(r"in ([\d.]+)s", text)[-1])
-    assert (passed, failed, skipped, desel) == (expect, 0, 0, 0), (
-        rid, passed, failed, skipped, desel)
-    selected = passed + failed + skipped
-    assert len(ids) == selected, (rid, len(ids), selected)
-    files = sorted(set(i.split("::")[0] for i in ids))
-    for f in files:
-        assert os.path.isfile(os.path.join(REPO, f)), f
-    return {
-        "run_id": rid, "command": "python3 -m pytest " + path + " -q",
-        "exit_code": 0, "passed": passed, "failed": failed, "skipped": skipped,
-        "selected": selected, "deselected": desel, "node_ids": ids,
-        "test_files": files, "duration_seconds": dur,
-        "head_sha": HEAD, "stdout_summary": _tail(text),
-    }
+Written into the Built State of `docs/roadmap/features/T5_F256.md`, and pinned by
+a cross-check that every recorded number is present in the file that produced it:
+the parser at a median of 0.105 s for 10,000 body lines; the whole server path at
+0.1331 s for a 1,045,960-byte JSON envelope, with a scale ratio of 4.97 against a
+ceiling of 20; the client model at 0.678 ms building 10,002 rows, of which the
+virtual window draws 48 — and the same 48 at 100,020 rows.
 
+## How to review
 
-runs = [
-    mkrun("vr-0001", "tests/orchestration/test_diff_parser.py", 43),
-    mkrun("vr-0002", "tests/orchestration/test_diff_view_source.py", 15),
-    mkrun("vr-0003", "tests/ui_contracts/test_diff_envelope_door.py", 13),
-    mkrun("vr-0004", "tests/ui_contracts/test_diff_file_sidebar.py", 16),
-    mkrun("vr-0005", "tests/ui_contracts/test_diff_surface_css.py", 8),
-    mkrun("vr-0006", "tests/ui_contracts/test_diff_view_model.py", 8),
-    mkrun("vr-0007", "tests/ui_contracts/test_diff_view_render.py", 25),
-    mkrun("vr-0008", "tests/ui_contracts/test_diff_viewer_mount.py", 14),
-    mkrun("vr-0009", "tests/ui_server/test_diff_endpoint.py", 8),
-]
-for r in runs:
-    print(r["run_id"], "selected", r["selected"], "node_ids", len(r["node_ids"]),
-          "files", len(r["test_files"]), "dur", r["duration_seconds"])
+Start with the Built State section of `docs/roadmap/features/T5_F256.md`, which
+states what exists and what was measured. The two measurement tests are
+`tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget` and the
+`the ten-thousand-line diff through the client model` block of
+`apps/ui/src/api/diffViewModel.test.ts`. The sidebar ruling is enforced by
+`tests/ui_contracts/test_diff_file_sidebar.py::TestTheSidebarWearsTheRuledTreatment`.
 
-# Every packaged string is scanned; prove the ids and commands pass BEFORE the
-# bundle is written, so a rejection is a red here and not a BLOCKED zip later.
-sys.path.insert(0, os.path.join(REPO, "scripts"))
-from build_review_manifest import _unsafe_text  # noqa: E402
+Full suite: `python3 -m pytest -n auto -q` → 18150 passed, 20 skipped, exit 0.
+Frontend: `npx vitest run` in `apps/ui` → 631 passed in 33 files; `npx tsc
+--noEmit` → exit 0.
 
-rejected = [(r["run_id"], v) for r in runs for v in r["node_ids"] + [r["command"]]
-            if _unsafe_text(v)]
-print("SCAN rejected strings:", len(rejected), rejected[:3])
-assert not rejected, rejected
-print("SCAN red control:", bool(_unsafe_text("/home/user/repo/tests/x.py::t")))
+## Verdict and findings
 
-now = datetime.now(timezone.utc)
-from packages.orchestration.job_evidence import create_manual_completion_bundle  # noqa: E402
+Latest live review verdict: PASS. Findings registered by F256: one, `R-0732`,
+registered and repaired in the same round and RESOLVED in the closure round. No
+finding is left open against this feature.
 
-result = create_manual_completion_bundle(
-    EVIDENCE_DIR,
-    repo_root=REPO,
-    base_commit=BASE,
-    head_commit=HEAD,
-    job_id="f256-closure",
-    job_title="F256 Diff viewer completion - closure",
-    step_range="T001-T003",
-    prior_job_ids=["f037-closure"],
-    verification_runs=runs,
-    timestamp=now.replace(microsecond=0).isoformat(),
-    generated_at=now.isoformat(),
-    num_tasks=3,
-    note_prefix="operator-attested manual completion - F256 closure",
-    review_feature_id="f256",
-)
-print(json.dumps(result, indent=2, sort_keys=True))
+## Runtime actuals
 
-# The output_hash preimage rule: sha256 over stdout_summary EXACTLY.
-vt = os.path.join(EVIDENCE_DIR, "verification_tests.json")
-if os.path.isfile(vt):
-    with open(vt, encoding="utf-8") as fh:
-        doc = json.load(fh)
-    for row in doc.get("runs", []):
-        want = hashlib.sha256(row.get("stdout_summary", "").encode()).hexdigest()
-        print("OUTPUT_HASH", row.get("run_id"), "matches sha256(stdout_summary):",
-              row.get("output_hash") == want)
-else:
-    print("OUTPUT_HASH no verification_tests.json at", vt)
-<<<END EVIDENCESCRIPT
+Rounds 1–10 across 2 sessions. Wall clock, models, tokens and cost:
+not-measured — the ledger does not carry them for this feature, and a guess would
+be worse than the absence.
+<<<END PRBODY
 
-`PLANF256R9` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF256R8` is an
-APPEND to `.agent/live_review.md`: the pre-round blob, one newline, then the
-slice. `EVIDENCESCRIPT` is not applied to any tracked file — it is written to
-`.remedy-wt/f256_evidence.py`, run, and deleted at step m.
+`PLANF256R10` is a WHOLE-FILE replacement of `.agent/plan.md`. `DONER0732` and
+`GATEF256R9` are APPENDS to `.agent/live_review.md`, in that order — the pre-round
+blob, one newline, then `DONER0732`, one newline, then `GATEF256R9`. `CAPABILITY`
+is the S4 insertion into `README.md`. `PRBODY` is the pull request's body and
+reaches no tracked file.
 
 ### Done when
 
 G1 HYGIENE AND STRUCTURE. Read `.agent/STOP` with `os.path.exists` before C0a and
 again before C3; report both, and stop after the commit in hand if it exists.
-Report `git rev-parse HEAD` before C0a — it must equal `f69bff0d` —
+Report `git rev-parse HEAD` before C0a — it must equal `64c3774f` —
 `git branch --show-current`, and `git status --porcelain | wc -l` after each of
-C0a, C0b, C1 and C2 and again after the package is archived. Over
-`f69bff0d..<C2>` report `git diff --name-only` and both residues against the
-change set with `.agent/handoff.md` set aside, printed in both directions and
-both expected empty. Report `git diff --stat f69bff0d..<C2>` restricted to
-`apps/`, to `packages/`, to `tests/` and to `docs/` — all four expected to print
-NOTHING. Report each commit's insertions from `git diff --numstat`, each under
-500, and that C0a, C0b, C1 and C2 are single-parent. Report the counts of lines
-beginning `<<<SLICE ` and `<<<END ` in `.agent/plan.md` and
-`.agent/live_review.md` — each expected 0 — beside `.agent/authored/f256-r9.md`
-as the non-zero control. Because this round writes an evidence directory, run
-`git ls-files` over each build-output glob `.gitignore` names — `*.zip`, `*.log`,
-`dist`, `build`, `node_modules`, `sdist`, `packages.zip` and
-`remedy-job-evidence-*` — and require the total EMPTY. Report
+C0a, C0b, C1, C2 and C3. Over `64c3774f..<C3>` report `git diff --name-only` and
+both residues against the change set, printed in both directions and both
+expected empty. Report `git diff --stat 64c3774f..<C3>` restricted to `apps/`, to
+`packages/`, to `tests/` and to `docs/roadmap/features/` — all four expected to
+print NOTHING. Report each commit's insertions from `git diff --numstat`, each
+under 500, and that C0a, C0b, C1, C2 and C3 are single-parent. Report the counts
+of lines beginning `<<<SLICE ` and `<<<END ` in `.agent/plan.md`,
+`.agent/live_review.md`, `docs/roadmap/STATUS.md` and `README.md` — each expected
+0 — beside `.agent/authored/f256-r10.md` as the non-zero control. Report
 `git ls-files .remedy-wt | wc -l`, expected 0.
 
 G2 TRANSPORT. One digest comparison: sha256 of
-`git show <C0a>:.agent/authored/f256-r9.md` against the reviewer's own original at
-`.remedy-wt/f256-r9-block.md`, reporting both digests, the byte length and
-equality; that original predates this worker, so say the reading covers more than
-self-consistency. Report that `<C0b>:.agent/authored/f256-r9.md` and
-`<C0b>:.agent/last_block.md` are ONE blob id.
+`git show <C0a>:.agent/authored/f256-r10.md` against the reviewer's own original
+at `.remedy-wt/f256-r10-block.md`, reporting both digests, the byte length and
+equality; that original predates this worker. Report that
+`<C0b>:.agent/authored/f256-r10.md` and `<C0b>:.agent/last_block.md` are ONE blob
+id.
 
-G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF256R9 including the
-trailing newline — report `True` or `False` — with `wc -l` under 50 and the
-counts of lines exactly `## Goal` and exactly `## Next Steps`.
+G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF256R10 including the
+trailing newline — report `True` or `False` — with `wc -l` under 50 and the counts
+of lines exactly `## Goal` and exactly `## Next Steps`.
 
-G4 THE RECORD AT C2, two readers. (a) The `f69bff0d` blob of
-`.agent/live_review.md` plus a newline plus GATEF256R8 equals the C2 blob —
-report `True` or `False` — the pre-round blob is a byte PREFIX, and a NEGATIVE
-CONTROL flipping one byte at an offset your script confirms lies INSIDE THE FIRST
-appended paragraph reports the equality now `False`. (b) Let N be the slice's
-paragraph count, COUNTED BY YOUR SCRIPT and never taken from this block, ignoring
-an empty trailing unit; report N and that the LAST N blank-line units of the file
-match those paragraphs IN ORDER.
+G4 THE RECORD AT C2. The `64c3774f` blob of `.agent/live_review.md` plus a newline
+plus DONER0732 plus a newline plus GATEF256R9 equals the C2 blob — report `True`
+or `False` — the pre-round blob is a byte PREFIX, and a NEGATIVE CONTROL flipping
+one byte at an offset your script confirms lies INSIDE THE FIRST appended
+paragraph reports the equality now `False`. Let N be the appended text's paragraph
+count, COUNTED BY YOUR SCRIPT, ignoring an empty trailing unit; report N and that
+the LAST N blank-line units match those paragraphs IN ORDER. Report that
+`Done: R-0732 — ` occurs exactly once and that `Gate: F256 R9` occurs exactly once.
 
-G5 THE LEDGER AT C2. Over the C2 blob and the `f69bff0d` blob beside it, report
+G5 THE LEDGER AT C2. Over the C2 blob and the `64c3774f` blob beside it, report
 `^- R-\d+ — ` and whether all DISTINCT, `^Done: R-\d+ — `, `^Landed: R-`,
-`^Gate: F\d+ R\d+ — `, and the OPEN SET as a set. This round registers and
-resolves nothing, so every figure is UNMOVED except `^Gate: F\d+ R\d+ — `, which
-rises by exactly ONE. Report that `Gate: F256 R8` occurs exactly 1 time. Report
-that `.agent/candidates.md` still contains no candidate entry.
+`^Gate: F\d+ R\d+ — `, and the OPEN SET as a set. This round RESOLVES ONE finding
+and registers none, so: registrations UNMOVED at 293, `^Landed: R-` UNMOVED,
+`^Done: R-\d+ — ` rises by exactly ONE, `^Gate: F\d+ R\d+ — ` rises by exactly
+ONE, and the OPEN SET FALLS BY EXACTLY ONE, from 252 to 251. Report that `R-0732`
+is NOT in the open set at C2 and WAS in it at `64c3774f`.
 
-G6 THE INTEGRATION GATE, closure precondition 2, run at C2 from the repository
-root in the PRIMARY checkout. Before it, report whether `apps/ui/dist` is stale
-against `apps/ui/src` by comparing the newest mtime under each, and if it is,
-warm it with `npx vite build` in `apps/ui` spawned from Python with `cwd` set,
-reporting that command's REAL exit code — a cold `dist` times out one
-`tests/ui_server` test under `-n auto`. Then run
+G6 THE CLOSURE EDIT AT C3. For each of S1, S2 and S3 report the count of the FROM
+string in its target at `64c3774f` — each must be 1 — and the count of the TO
+string at C3, each also 1, with the FROM count at C3 now 0. For S4 report that the
+CAPABILITY text occurs exactly once at C3 and that the F037 paragraph above it is
+byte-unchanged. Report `git diff --numstat 64c3774f..<C3> -- docs/roadmap/STATUS.md`
+— expected exactly 1 insertion and 1 deletion — and confirm that the count of
+lines matching `^- \[x\] F\d{3} — ` in `docs/roadmap/STATUS.md` at C3 EQUALS the
+number the README's `N of 257` line states. Report both numbers.
 
-    ["python3", "-B", "-m", "pytest", "-n", "auto", "-q"]
+G7 THE DOCS GATE AND THE SUITES, at C3, in the PRIMARY checkout, one pytest
+process at a time, each with its exit code and its own passed/failed line:
+`tests/docs/` in full; `tests/ui_contracts/`; `tests/ui_server/`; and the canary
+`tests/cli/test_golden_path.py`. Every one must be exit 0. The reviewer measured,
+in a disposable worktree at `64c3774f`, that applying S1 ALONE — the STATUS flip
+with `README.md` untouched — turns `tests/docs/` RED at 2 failed and 293 passed,
+naming `test_the_readme_accepted_count_equals_the_status_count` and
+`test_the_readme_tier_table_done_column_matches_the_ledger`; you do not need to
+reproduce that, but state in the handback that the four edits travel in ONE commit
+for that measured reason. If any suite is red, STOP and hand back with the FULL
+untruncated failure list.
 
-and report its REAL exit code, the final summary line verbatim, and the wall
-clock. The reviewer measured exit 0 with 18150 passed and 20 skipped in 104.3
-seconds at `f69bff0d`; you re-measure at C2, and a difference in the counts is
-reported rather than explained away. Save the FULL raw output to a file under
-`.remedy-wt/` and name that file in the handback. If the gate is RED, constraint
-9 binds.
-
-G7 THE EVIDENCE JOB AND THE INTEGRITY CHECK, steps (j) and (k). Report the
-script's per-run lines with every `selected` equal to its `node_ids` length and
-every `files` count 1; `SCAN rejected strings: 0` with the red control reading
-True; every `OUTPUT_HASH` line True; and the integrity result's `.passed`,
-`.fail_count` and all five check names with their statuses.
-
-G8 THE PACKAGE, steps (l) and (m). Report the zip script's final output verbatim;
-`PACKAGE_STATUS` and `EVIDENCE_AUTHORITATIVE` read from the manifest INSIDE the
-package; `committed_review_subject`'s base and head, with the head equal to C2 and
-the base equal to `0e8ab5b4f780b5265a6aa604ee89067399046b1e`; the package
-FILENAME; its SHA-256 computed by you over the file on disk; and the ABSOLUTE
-archived directory or the literal `NOT ARCHIVED` with its reason. State explicitly
-that PACKAGE_STATUS was READ from the manifest and not inferred from an exit code.
-Report `gh pr list --state open` again after the archive, still expected `[]`.
+G8 THE PULL REQUEST. After C3 is committed and pushed, create the PR with
+`gh pr create`, title `F256 — Diff viewer completion`, body exactly the PRBODY
+slice, base `main`, head `feature/f256-diff-viewer-completion`. Report the PR
+NUMBER and URL, and `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+afterwards. DO NOT MERGE IT. Report that C3 is the last commit on the branch by
+printing `git log --oneline -n 1` and confirming it is the closure commit.
 
 ### Handback
 
-Rewrite `.agent/handoff.md` in C3 per docs/agents/handback_template.md. It
-carries: `SESSION 2 of feature F256 · round 9`; the range `f69bff0d..HEAD`; a
-per-commit changed-files table with `+/-` from `git diff --numstat` compared cell
-by cell against G1's figures; ONE LINE PER GATE G1 through G8 with its real
-result; the deviations, including every guard re-expression constraint 6 required;
-the item-status table with every C-item and every gate appearing exactly once.
+Rewrite `.agent/handoff.md` INSIDE C3 — it is part of the closure commit's path
+set — per docs/agents/handback_template.md. It carries: `SESSION 2 of feature
+F256 · round 10 · THE CLOSURE`; the range `64c3774f..HEAD`; a per-commit
+changed-files table with `+/-` from `git diff --numstat`; ONE LINE PER GATE G1
+through G8 with its real result, with G8's PR number filled in after the fact
+being impossible — so state instead that the PR is created after C3 and record its
+number in your final message; the deviations; and the item-status table with every
+C-item and every gate appearing exactly once.
 
-IT ALSO CARRIES, AS ITS OWN SECTION, THE FOUR VALUES THE NEXT ROUND NEEDS TO
-WRITE THE STATUS LINE, because `.agent/handoff.md` is the durable carrier and the
-evidence directory is not committed: the evidence job id `f256-closure`, the
-package FILENAME, the package SHA-256, the ABSOLUTE archived directory (or
-`NOT ARCHIVED`), and the ACCEPTED HEAD — the full 40-character SHA of C2. Label
-that section clearly; a later session that cannot find these values cannot close
-the feature.
+It also carries, as its own labelled section, the CLOSURE RECORD: evidence job
+`f256-closure`, the package filename, its SHA-256, the archived path, and the
+accepted HEAD `c6775b3c41f1d1fa4b0f4bb7907307573855a61b`.
 
-State that the next expected action is the closure commit: the STATUS `[x]` line
-and the README capability sync in ONE commit, followed by the PR, which is NOT
-merged this session.
+Include the grep proof the closure protocol's step 5 requires: that every piece of
+reviewer-authored applied text — the STATUS line, the README pins, the CAPABILITY
+paragraph and the two `.agent/live_review.md` appends — is byte-identical to the
+authored slice or pair it came from.
 
-Do not write a `Done:` or `Gate:` paragraph of your own anywhere — only
-reviewer-authored text sets those. GATEF256R8 above is reviewer-authored and
-applied as a slice, which is not the same thing.
+State that the next expected action is the Open PR Gate at the NEXT feature's
+start, that this PR is deliberately unmerged, and that Rule A5's next feature is
+F257 — Self-use track.
 
-After C3: push with `git push -u origin feature/f256-diff-viewer-completion` and
-report the outcome. Do NOT create a pull request and do NOT merge anything.
+Do not write a `Done:`, `Gate:` or `Landed:` paragraph of your own anywhere —
+DONER0732 and GATEF256R9 are the reviewer's text and are the only things entering
+`.agent/live_review.md`.
