@@ -13,8 +13,9 @@ writes files is not the place to keep proving that a module writes none.
 
 Public API::
 
-    SelfUseJobError: asked to render or plan with no pending queue item, or
-        asked to write outside the destination directory
+    SelfUseJobError: asked to render or plan with no pending queue item, asked
+        to render an id that is not a single file name, or asked to write
+        outside the destination directory
     write_self_use_job_file(entry, dest_dir) -> Path
     plan_self_use_item(entry, dest_dir, repo_path=".") -> tuple[Path, object]
     plan_next_self_use_item(dest_dir, repo_path=".", queue_path=None)
@@ -50,8 +51,9 @@ from packages.orchestration.self_use_queue import SelfUseQueueEntry, next_self_u
 class SelfUseJobError(RuntimeError):
     """Asked to render or plan a self-use job the module refuses to carry out.
 
-    Two refusals wear this one error: the queue has no pending item, and a
-    destination that would fall outside the caller's ``dest_dir``.
+    Three refusals wear this one error: the queue has no pending item, an
+    ``entry.id`` that is not a single file name, and a destination that would
+    fall outside the caller's ``dest_dir``.
 
     Raised rather than answered with ``None``: "the track is exhausted" is a
     state a caller must handle deliberately — a human has to curate more items —
@@ -72,10 +74,32 @@ def write_self_use_job_file(entry: SelfUseQueueEntry, dest_dir: Path) -> Path:
     never derived here — this module resolves no data root.
 
     Raises:
-        SelfUseJobError: ``entry.id`` would place the file outside ``dest_dir``.
-            The message names the offending id.
+        SelfUseJobError: ``entry.id`` is not a single path component, or it
+            would place the file outside ``dest_dir``.  The message names the
+            offending id.
     """
     dest_dir = Path(dest_dir)
+    # R-0735 — THE ID MUST BE ONE PATH COMPONENT, AND THIS IS CHECKED FIRST.
+    # ``Path.resolve()`` NORMALISES ``..`` away, so the containment check below
+    # cannot see an id like ``x/../SU-001``: its resolved parent genuinely is
+    # ``dest_dir``, the guard passes, and ``write_text`` then leaks a raw
+    # ``FileNotFoundError`` because ``dest_dir/x`` was never created.  Comparing
+    # ``Path(id).name`` with the id itself refuses that, and with it ``sub/dir``,
+    # ``../../escaped`` and an absolute id.  ``.`` fails it too, because
+    # ``Path(".").name`` is the empty string — but ``Path("..").name`` is ``".."``
+    # and NOT empty, measured here, so the one directory id the name comparison
+    # cannot catch is named outright beside it.
+    #
+    # THE TWO CHECKS ANSWER DIFFERENT QUESTIONS AND NEITHER IS REDUNDANT: this
+    # one asks "is this id one file name?", the resolved comparison below asks
+    # "does that file land inside the caller's directory?".  A name comparison
+    # cannot see a destination reached through a symlink, and a resolved
+    # comparison cannot see a component that normalises itself away.
+    if Path(entry.id).name != entry.id or entry.id in (".", ".."):
+        raise SelfUseJobError(
+            f"self-use item id {entry.id!r} is not a single file name: "
+            f"a job file is named <id>.md inside the destination directory"
+        )
     candidate = dest_dir / f"{entry.id}.md"
     # CONTAINMENT IS CHECKED ON RESOLVED PATHS, NOT ON THE CHARACTERS OF THE ID.
     # Comparing the candidate's resolved parent with the resolved ``dest_dir``
@@ -89,7 +113,7 @@ def write_self_use_job_file(entry: SelfUseQueueEntry, dest_dir: Path) -> Path:
     # ``<id>.md``; a sanitiser would quietly make the written name differ from
     # the id the caller asked for — the same silent divergence the verbatim-bytes
     # rule above exists to prevent — and raising is what this module already does
-    # for its one other failure.
+    # for its other failures.
     #
     # WORTH A GUARD EVEN THOUGH THE LOADER VALIDATES: ``load_self_use_queue``
     # refuses any id but ``^SU-\d{3}$``, so the SHIPPED path cannot reach this.
