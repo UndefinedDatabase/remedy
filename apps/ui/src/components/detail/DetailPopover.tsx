@@ -124,19 +124,6 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           <ul className={styles.fileList}>
             {changedFiles.map(f => <li key={f}>{f}</li>)}
           </ul>
-          {/* THE DIFF VIEWER'S ENTRY POINT, in the section about the change it
-              opens, per `docs/ui/design_reference/component_spec.md:108` and
-              `:113-116`. A real button and not a div, for the reason the hunk
-              head in `DiffView.tsx` is one: a div carries no keyboard
-              affordance, and the explicit type stops it submitting a form it
-              may one day sit in. It passes the TASK id — what the server's
-              task-run route keys on — rather than the graph node id, and it
-              wears no class because this round may not touch the stylesheet. */}
-          {task && onOpenDiff && (
-            <button type="button" onClick={() => onOpenDiff(task.id)}>
-              Open diff
-            </button>
-          )}
         </section>
       )}
 
@@ -156,6 +143,31 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
 
       {/* Prompt trace — compact, redacted-only evidence */}
       <PromptTracePanel prompts={prompts} selectedPromptId={selectedPromptId} />
+
+      {/* THE DIFF VIEWER'S ENTRY POINT, at POPOVER LEVEL rather than inside the
+          "Changed files" section. That placement is the repair of finding
+          `R-0726` and not a preference: the section renders only when
+          `changedFilesSafe` is a non-empty list, and
+          `packages/orchestration/ui_server.py` builds that list from
+          `patch_intent_applied` EVENTS, while the diff this button opens is a
+          separate artifact under the job's evidence directory. The two genuinely
+          diverge, so a task run that HAS a diff and no safe file list offered no
+          way into the viewer at all — the feature's only door held shut by a
+          condition about something else.
+          `docs/ui/design_reference/component_spec.md:108` also lists the
+          popover's buttons as a PEER of its sections rather than inside one, so
+          this is where the design reference put it in the first place.
+          A real button and not a div, for the reason the hunk head in
+          `DiffView.tsx` is one: a div carries no keyboard affordance, and the
+          explicit type stops it submitting a form it may one day sit in. It
+          passes the TASK id — what the server's task-run route keys on — rather
+          than the graph node id, and it wears no class because this round may not
+          touch the stylesheet. */}
+      {task && onOpenDiff && (
+        <button type="button" onClick={() => onOpenDiff(task.id)}>
+          Open diff
+        </button>
+      )}
     </aside>
   );
 }
