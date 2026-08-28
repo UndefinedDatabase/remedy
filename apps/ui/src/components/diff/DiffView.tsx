@@ -9,14 +9,17 @@
 // would be a rule no suite in this repository can execute. This component owns
 // only WHICH element each row becomes and WHERE the collapse set is held.
 //
-// THIS COMPONENT IS NOT MOUNTED YET, AND THAT IS THE PLAN RATHER THAN AN
-// OMISSION. A reader who greps for a caller of `DiffView` and finds none has
-// found the task slicing, not dead code: `docs/ui/design_reference/
-// component_spec.md:113-116` puts the viewer's entry point in `DetailPopover`,
-// as a button emitting `onOpenDiff(taskId)`, and the Task slicing of
-// `docs/roadmap/features/T5_F037.md` puts that L3 tab integration in T003
-// together with the file sidebar, the virtual scrolling and the lazy language
-// bundles. T002 ships the surface; T003 opens the door to it.
+// WHO MOUNTS THIS COMPONENT, so a reader grepping for a caller knows what they
+// have found when they find one. The entry point is the `Open diff` button in
+// `../detail/DetailPopover.tsx`, which emits `onOpenDiff(taskId)` and sits at
+// popover level rather than inside a section, as
+// `docs/ui/design_reference/component_spec.md:108` asks.
+// `../shell/RemedyShell.tsx` receives that id, holds it as the open task run,
+// reads the envelope for it through `loadDiffEnvelope`, and draws THIS
+// component inside its diff panel beside `DiffFileSidebar`. Changing the props
+// below therefore changes that shell, and the T003 pieces still outstanding —
+// the virtual scrolling and the lazy language bundles — arrive at this
+// component rather than at some new caller.
 //
 // NOTHING IN THIS REPOSITORY CAN RENDER THIS FILE. There is no DOM environment
 // here and the shipped vitest config reaches no markup, so what gates this
