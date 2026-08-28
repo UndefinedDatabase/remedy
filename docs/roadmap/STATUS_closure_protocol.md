@@ -17,6 +17,18 @@
 3. `remedy integrity check --json` → PASS; no relevant untracked files.
 4. Feature file's Built State section is current.
 5. Working tree clean, branch pushed, worker idle.
+6. EXACTLY ONE SELF-USE ITEM IS CONSUMED BY THIS CLOSE (F257). The first
+   pending item in `scripts/self_use_queue.json` — the one
+   `packages.orchestration.self_use_queue.next_self_use_item` answers — has
+   been planned through `packages.orchestration.self_use_job`, taken to the
+   normal approval gate like any other job, and its `consumed_by` set to this
+   feature's id in the closure commit. If the queue holds NO pending item the
+   track is exhausted, not blocked: record `self-use NONE (queue exhausted)`
+   in the handback and close normally, because an empty queue asks the
+   operator to curate more rather than stopping a feature. Why this is a
+   precondition and not an intention: "Remedy is used on Remedy" rots the
+   moment it depends on someone remembering to do it, which is DECISION F257
+   D2's CONSEQUENCE clause in as many words.
 
 ## Algorithm
 1. **Evidence job (worker).** Final evidence run, fresh job id, feature-
@@ -105,7 +117,8 @@
    capability sync lands in the SAME commit as the STATUS `[x]` edit —
    README and STATUS may never disagree in any committed state (the
    ledger cross-check pin). The closure commit touches exactly
-   docs/roadmap/STATUS.md, README.md and the final .agent/ state
+   docs/roadmap/STATUS.md, README.md, scripts/self_use_queue.json (the one
+   `consumed_by` edit precondition 6 requires) and the final .agent/ state
    (incl. handoff.md rewrite) — nothing else; the feature file's Built
    State is already current from an earlier commit (precondition 4).
    Then the AGENTS.md PR workflow; description carries what/why, key
