@@ -59,7 +59,11 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void }) {
+// `onOpenDiff` is OPTIONAL because this popover predates the viewer by many
+// features and is mounted from more than one place. A caller that passes no
+// handler keeps exactly the popover it had, and the entry point below is simply
+// absent — never a dead control that answers a click with nothing.
+export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClose, onOpenDiff }: { dashboard: RemedyDashboard; selectedNode: RemedyGraphNode; selectedPromptId?: string | null; onClose: () => void; onOpenDiff?: (taskId: string) => void }) {
   const task = dashboard.tasks.find(i => i.nodeId === selectedNode.nodeId);
   // Prompt-trace items for the selected task (prompt item taskId === task id).
   const prompts = task
@@ -120,6 +124,19 @@ export function DetailPopover({ dashboard, selectedNode, selectedPromptId, onClo
           <ul className={styles.fileList}>
             {changedFiles.map(f => <li key={f}>{f}</li>)}
           </ul>
+          {/* THE DIFF VIEWER'S ENTRY POINT, in the section about the change it
+              opens, per `docs/ui/design_reference/component_spec.md:108` and
+              `:113-116`. A real button and not a div, for the reason the hunk
+              head in `DiffView.tsx` is one: a div carries no keyboard
+              affordance, and the explicit type stops it submitting a form it
+              may one day sit in. It passes the TASK id — what the server's
+              task-run route keys on — rather than the graph node id, and it
+              wears no class because this round may not touch the stylesheet. */}
+          {task && onOpenDiff && (
+            <button type="button" onClick={() => onOpenDiff(task.id)}>
+              Open diff
+            </button>
+          )}
         </section>
       )}
 
