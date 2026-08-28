@@ -126,11 +126,19 @@ def test_collapse_threshold_literal_occurs_exactly_once() -> None:
 
     Counted over the RAW text of both files, comments included: a number repeated in prose
     drifts from the rule exactly as readily as one repeated in code.
+
+    ANCHORED TO WHOLE NUMBERS, the repair of finding `R-0728`. A bare `.count(literal)` is a
+    substring count, so an unrelated constant whose digits merely CONTAIN the threshold's —
+    `2000` beside a threshold of `200` — inflated the count and turned this guard red for a
+    change that neither transcribed nor drifted from the collapse rule. The fence below
+    forbids a word character or a `.` on either side, which drops `2000`, `1200` and `200.5`
+    while still catching the bare `200` this guard exists to catch.
     """
     module_text = MODULE.read_text()
     tests_text = MODULE_TESTS.read_text()
     literal = threshold_literal(strip_ts_comments(module_text))
-    occurrences = module_text.count(literal) + tests_text.count(literal)
+    whole_number = re.compile(rf"(?<![\w.]){re.escape(literal)}(?![\w.])")
+    occurrences = len(whole_number.findall(module_text)) + len(whole_number.findall(tests_text))
     assert occurrences == 1, (
         f"the literal {literal!r} occurs {occurrences} time(s) across {MODULE.name} and "
         f"{MODULE_TESTS.name}; {THRESHOLD_NAME} is declared once and referenced BY NAME "
