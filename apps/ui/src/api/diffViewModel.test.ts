@@ -5,9 +5,15 @@ import {
   buildDiffRowModels,
   defaultCollapsedHunkIds,
   readDiffEnvelope,
+  splitLineIntoIntralineSegments,
   toggleHunkCollapse,
 } from "./diffViewModel";
-import type { DiffEnvelope } from "./diffViewModel";
+import type {
+  DiffEnvelope,
+  DiffIntralineSpan,
+  DiffLine,
+  DiffLineSegment,
+} from "./diffViewModel";
 
 /** A hunk in the SNAKE_CASE form the endpoint really sends, carrying `count`
  *  context lines. The id is passed in because every row key derives from it. */
@@ -365,5 +371,124 @@ describe("buildDiffFileSummaries", () => {
 
   it("summarises the unavailable envelope as no files rather than as an error", () => {
     expect(buildDiffFileSummaries(readDiffEnvelope(null))).toEqual([]);
+  });
+});
+
+/** One `del` line carrying exactly the spans a case is about, built directly
+ *  rather than read off a payload: `readDiffEnvelope` has its own tests above,
+ *  and a span this hostile would not survive being routed through one. */
+function lineWith(content: string, intraline: DiffIntralineSpan[]): DiffLine {
+  return { kind: "del", oldLn: 1, newLn: null, content, intraline };
+}
+
+function joined(segments: DiffLineSegment[]): string {
+  return segments.map((segment) => segment.text).join("");
+}
+
+/** Every case below, named once so the round-trip property can be asserted over
+ *  ALL of them rather than restated case by case. That property — the segments
+ *  concatenate back to `content` — is what catches an arithmetic slip whatever
+ *  form it takes: a dropped character, a duplicated one, an off-by-one clamp. */
+const SEGMENT_CASES: Array<{ what: string; content: string; spans: DiffIntralineSpan[] }> = [
+  { what: "no spans", content: "alpha beta", spans: [] },
+  { what: "one span in the middle", content: "alpha beta gamma", spans: [[6, 4]] },
+  { what: "a span at offset zero", content: "alpha beta", spans: [[0, 5]] },
+  { what: "two overlapping spans", content: "abcdefgh", spans: [[1, 3], [2, 4]] },
+  { what: "two out-of-order spans", content: "abcdefgh", spans: [[5, 2], [1, 2]] },
+  { what: "a span past the end", content: "abc", spans: [[9, 2]] },
+  { what: "a span starting exactly at the end", content: "abc", spans: [[3, 1]] },
+  { what: "a span running past the end", content: "abcde", spans: [[3, 99]] },
+  { what: "a zero-length and a negative-length span", content: "abcde", spans: [[1, 0], [2, -3]] },
+  { what: "a span reaching back before offset zero", content: "abcde", spans: [[-2, 4]] },
+  { what: "empty content", content: "", spans: [[0, 3]] },
+];
+
+describe("splitLineIntoIntralineSegments", () => {
+  it("yields one unmarked segment when the line carries no spans", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("alpha beta", []))).toEqual([
+      { text: "alpha beta", marked: false },
+    ]);
+  });
+
+  it("cuts a span in the middle into unmarked, marked, unmarked", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("alpha beta gamma", [[6, 4]]))).toEqual([
+      { text: "alpha ", marked: false },
+      { text: "beta", marked: true },
+      { text: " gamma", marked: false },
+    ]);
+  });
+
+  it("emits no leading empty segment for a span at offset zero", () => {
+    const segments = splitLineIntoIntralineSegments(lineWith("alpha beta", [[0, 5]]));
+    expect(segments).toEqual([
+      { text: "alpha", marked: true },
+      { text: " beta", marked: false },
+    ]);
+    expect(segments.every((segment) => segment.text !== "")).toBe(true);
+  });
+
+  it("marks the union of two overlapping spans exactly once", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("abcdefgh", [[1, 3], [2, 4]]))).toEqual([
+      { text: "a", marked: false },
+      { text: "bcdef", marked: true },
+      { text: "gh", marked: false },
+    ]);
+  });
+
+  it("marks both regions when the spans arrive out of order", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("abcdefgh", [[5, 2], [1, 2]]))).toEqual([
+      { text: "a", marked: false },
+      { text: "bc", marked: true },
+      { text: "de", marked: false },
+      { text: "fg", marked: true },
+      { text: "h", marked: false },
+    ]);
+  });
+
+  it("drops a span that starts at or past the end of the content", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("abc", [[9, 2]]))).toEqual([
+      { text: "abc", marked: false },
+    ]);
+    expect(splitLineIntoIntralineSegments(lineWith("abc", [[3, 1]]))).toEqual([
+      { text: "abc", marked: false },
+    ]);
+  });
+
+  it("clamps a span that runs past the end rather than dropping it", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("abcde", [[3, 99]]))).toEqual([
+      { text: "abc", marked: false },
+      { text: "de", marked: true },
+    ]);
+  });
+
+  it("drops a zero-length and a negative-length span", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("abcde", [[1, 0], [2, -3]]))).toEqual([
+      { text: "abcde", marked: false },
+    ]);
+  });
+
+  it("clamps a span reaching back before offset zero", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("abcde", [[-2, 4]]))).toEqual([
+      { text: "ab", marked: true },
+      { text: "cde", marked: false },
+    ]);
+  });
+
+  it("answers empty content with the empty array rather than an empty segment", () => {
+    expect(splitLineIntoIntralineSegments(lineWith("", [[0, 3]]))).toEqual([]);
+  });
+
+  it("concatenates back to the line's own content in every case", () => {
+    for (const testCase of SEGMENT_CASES) {
+      const segments = splitLineIntoIntralineSegments(lineWith(testCase.content, testCase.spans));
+      expect(joined(segments), testCase.what).toBe(testCase.content);
+    }
+  });
+
+  it("never emits an empty segment in any case", () => {
+    for (const testCase of SEGMENT_CASES) {
+      const segments = splitLineIntoIntralineSegments(lineWith(testCase.content, testCase.spans));
+      expect(segments.filter((segment) => segment.text === ""), testCase.what).toEqual([]);
+    }
   });
 });

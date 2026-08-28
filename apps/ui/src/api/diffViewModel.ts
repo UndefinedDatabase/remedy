@@ -9,7 +9,10 @@
 // collapse rule or a row key written into a `.tsx` file is a rule no gate in
 // this repository can execute. DECISION F037 D8 records the same reasoning for
 // this feature specifically, and `tests/ui_contracts/test_diff_view_model.py`
-// pins the structural half vitest cannot see about itself.
+// pins the structural half vitest cannot see about itself. The segments
+// `splitLineIntoIntralineSegments` returns at the foot of this file are what
+// `DiffView.tsx` wraps in the intraline mark, and DECISION F037 D9 rules what
+// that mark looks like — this module chooses no colour and names no class.
 //
 // Remedy deliberately does NOT re-sort files or hunks here. A reader looking
 // for a comparator over paths, over change size or over status will not find
@@ -428,4 +431,70 @@ export function buildDiffFileSummaries(envelope: DiffEnvelope): DiffFileSummary[
     note: file.note,
     rowKey: `file:${fileIndex}`,
   }));
+}
+
+/** One consecutive run of a line's own `content`, and whether the intraline
+ *  spans cover it. `marked` is the only thing this type says about appearance:
+ *  the emphasis itself is two CSS rules DECISION F037 D9 rules and
+ *  `DiffView.module.css` carries. */
+export interface DiffLineSegment {
+  text: string;
+  marked: boolean;
+}
+
+/** One line's `content` cut into consecutive segments, the marked ones covering
+ *  EXACTLY the characters the line's `intraline` spans cover.
+ *
+ *  WHY THIS IS HERE AND NOT IN THE COMPONENT: it is the last decidable rule of
+ *  the rendering core, and DECISION F031 D5 keeps decidable rules in the layer
+ *  the node-environment vitest config reaches. A `.tsx` file computing this
+ *  would be arithmetic no suite in this repository can execute.
+ *
+ *  TOTAL, and the arithmetic is the whole of its difficulty. `readIntralineSpans`
+ *  above checked only the SHAPE of each span — a pair of finite numbers — and
+ *  nothing upstream has checked what those numbers MEAN against this particular
+ *  content. So every hostile case is resolved here, once:
+ *
+ *  * a span starting at or past the end of the content is DROPPED;
+ *  * a span running past the end is CLAMPED to it;
+ *  * a zero-length or negative-length span is DROPPED;
+ *  * a span reaching back before offset zero is CLAMPED to zero, which is the
+ *    same reading as the clamp at the other end;
+ *  * OVERLAPPING and OUT-OF-ORDER spans are resolved by marking the UNION of
+ *    the characters they cover.
+ *
+ *  A COVERAGE MAP is what makes that union free rather than a merge routine to
+ *  get wrong: each span paints its own characters, the runs are read off
+ *  afterwards, and no character can be emitted twice or dropped whatever the
+ *  spans overlap. The invariant a caller may rely on, and which the vitest suite
+ *  pins for every case above: the concatenation of every segment's `text` equals
+ *  `content` exactly. An empty `intraline` therefore yields ONE unmarked
+ *  segment, and an empty `content` yields the EMPTY ARRAY — there is no run to
+ *  describe, and a segment carrying the empty string would render a `mark`
+ *  element around nothing. */
+export function splitLineIntoIntralineSegments(line: DiffLine): DiffLineSegment[] {
+  const content = line.content;
+  if (content.length === 0) {
+    return [];
+  }
+  const covered: boolean[] = new Array<boolean>(content.length).fill(false);
+  for (const [start, length] of line.intraline) {
+    if (length <= 0 || start >= content.length) {
+      continue;
+    }
+    const from = start < 0 ? 0 : start;
+    const until = Math.min(content.length, start + length);
+    for (let index = from; index < until; index += 1) {
+      covered[index] = true;
+    }
+  }
+  const segments: DiffLineSegment[] = [];
+  let runStart = 0;
+  for (let index = 1; index <= content.length; index += 1) {
+    if (index === content.length || covered[index] !== covered[runStart]) {
+      segments.push({ text: content.slice(runStart, index), marked: covered[runStart] });
+      runStart = index;
+    }
+  }
+  return segments;
 }
