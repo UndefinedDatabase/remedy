@@ -12,36 +12,36 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R22 builds the last named piece, lazy language bundles, in the layer vitest
-executes. Acceptance states one property in so many words — an unknown language
-renders plain WITHOUT a bundle fetch — so the loader takes its importer as an
-ARGUMENT, the way `loadDiffEnvelope` takes its fetcher, and a counting importer
-in the test proves the count is zero rather than merely that the answer is
-plain. No component is wired this round. Three comments R21's own code falsified
-are repaired first: `R-0729`, a docstring telling future rounds that a
-TypeScript red-proof cannot be ordered, which DECISION F037 D10 disproved, and
-`R-0730`, two stale sentences in the model.
+R23 fixes `R-0731`, a defect the round that shipped it could not see and its
+whole green suite did not catch: the language mapping is a plain object literal,
+so an extension naming an INHERITED property resolves off `Object.prototype`
+instead of to plain, and `src/x.constructor` really does reach the bundle
+importer that Acceptance says must not be called. The fix closes both halves —
+a null-prototype map AND an own-property read — because either alone is undone
+silently by a later refactor. Then `R-0730`'s remaining three comments are
+repaired, one of them a sentence the reviewer's own R21 spec introduced.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R21 verdict and two findings | ordered | record first |
-| C3 the three comment repairs | ordered | one misleads future rounds |
-| C4 the language rule and its tests | ordered | |
-| C5 the lazy loader and its tests | ordered | the Acceptance property |
-| C6 the guards | ordered | after the code they read |
-| C7 the handback | ordered | |
+| C2 the R22 verdict, two resolutions, one finding | ordered | record first |
+| C3 the `R-0731` fix and its tests | ordered | a measured defect |
+| C4 the structural guard | ordered | after the code it reads |
+| C5 the three comment repairs | ordered | closes `R-0730` |
+| C6 the handback | ordered | |
 
 ## Next Steps
-1. Wire highlighting into `DiffView`, and the 10k-line perf fixture measured END
-   TO END with its numbers recorded, which Acceptance requires.
-2. A ruling on the sidebar's visual treatment, still owed.
-3. Then T003 is complete and the closure sequence can begin.
+1. Wire highlighting into `DiffView` through `loadDiffLanguageBundle`.
+2. The 10k-line perf fixture measured END TO END with its numbers recorded,
+   which Acceptance requires and nothing has yet measured.
+3. A ruling on the sidebar's visual treatment, still owed.
 
 ## Risks
-- Round 22 of a 25-round soft limit, and session 6 of 7. Three named pieces
-  remain across two Next Steps. If they do not fit by round 25, the session that
-  reaches it owes a SCOPE REPORT rather than more work.
-- Nothing here renders a `.tsx` file, so the wiring of step 1 will be gated by
-  text and `tsc --noEmit` alone, as every `.tsx` round of this feature has been.
+- Round 23 of a 25-round soft limit, session 6 of 7. THREE named pieces remain
+  and only two rounds are left inside the limit, so the session that reaches
+  round 25 owes a SCOPE REPORT rather than more work — most likely proposing
+  that the highlighting wiring and the perf fixture become their own STATUS
+  line.
+- Nothing here renders a `.tsx` file, so step 1 will be gated by text and
+  `tsc --noEmit` alone, as every `.tsx` round of this feature has been.
