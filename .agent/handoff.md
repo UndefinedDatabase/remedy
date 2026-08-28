@@ -1,360 +1,274 @@
-# Handback — F032 R13 (T003a: the card model learns the triple)
+# Handback — F032 R14 (T003b: the card renders its receipts)
 
 ## Session
 
-SESSION 3 of feature F032 · round R13 · rounds so far 13
+SESSION 3 of feature F032 · round R14 · rounds so far 14
 
 Session 3 began at R10. Session 1 was R1 through R5; session 2 was R6 through
-R9. Thirteen rounds across three sessions is inside the soft limit of 25 rounds
+R9. Fourteen rounds across three sessions is inside the soft limit of 25 rounds
 or 7 sessions, so no limit report is owed and none is emitted.
 
 ## Range
 
-Review of `4b1b2e99`..`8694120b` (C5, the commit writing this file, is not in
-that range and cannot table itself).
+Review of `f28640ef`..`4b6a357a` (C5, the commit writing this file, is not in
+that range and cannot table its own numstat).
 
 ## State
 
-- Feature: F032, the evidence triple. Round R13, task T003a.
-- Branch: `feature/f032-evidence-triple`. Base of the round: `4b1b2e99`,
-  confirmed by `git rev-parse HEAD` before C0a.
-- `.agent/STOP`: ABSENT at both readings constraint 8 orders — once before C0a,
+- Feature: F032, the evidence triple. Round R14, task T003b.
+- Branch: `feature/f032-evidence-triple`. Base of the round: `f28640ef`,
+  confirmed by `git rev-parse HEAD` before C0a and equal to the base constraint
+  8 states.
+- `.agent/STOP`: ABSENT at both readings constraint 7 orders — once before C0a,
   once before C5.
 - No pull request created, none merged. Open PR Gate reports `[]`.
 - Open findings: 250 (unmoved; this round registered none and resolved none).
   Maximum id `R-0713`, unmoved.
+- The evidence triple is now VISIBLE: a card's receipts and its honest note ride
+  above the answer strip, and each answer's expected outcome and downside ride
+  under the answer they belong to. A ref's `target` is rendered nowhere.
 
 ## Commits
 
-### 7f1da6e6 docs(agent): save the F032 R13 step block
+### 527d236d chore(agent): save the R14 step block
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f032-r13.md` | +321 / -0 | C0a, the byte-preserving copy of the block |
+| `.agent/authored/f032-r14.md` | +306 / -0 | C0a, the byte-preserving copy of the block |
 
-### 3bc7141f docs(agent): mirror the R13 block into last_block
+### 1e31d4fa chore(agent): mirror the R14 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +252 / -288 | C0b, the same bytes written over the previous round's block |
+| `.agent/last_block.md` | +226 / -241 | C0b, the same bytes over the previous round's block |
 
-### 03c6b9be docs(agent): open T003 in the plan
+### 83df7d73 docs(agent): point the plan at the R14 card round
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +23 / -24 | C1, slice PLANF032R13 applied whole |
+| `.agent/plan.md` | +21 / -23 | C1, slice PLANF032R14 applied whole |
 
-### 92ebbc4f docs(agent): book the R12 verdict and the close of T002
+### d29f0cbe docs(agent): book the R13 verdict in the review record
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +2 / -0 | C2, slice LEDGER13 appended; the only commit touching the record |
+| `.agent/live_review.md` | +2 / -0 | C2, slice LEDGER14 appended; the only commit touching the record |
 
-### 5284ba66 feat(ui): the card model carries the evidence triple
+### 07b52260 feat(ui): the decision card renders its receipts and each answer's stakes
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/ui/src/api/decisionCard.ts` | +225 / -5 | C3, spec items S2 through S7 |
+| `apps/ui/src/components/panels/DecisionInboxCard.tsx` | +64 / -0 | C3, S2/S3/S5: the receipts strip, the note, the per-answer outcome and downside, one new label constant |
+| `apps/ui/src/components/panels/RightLivePanel.module.css` | +69 / -0 | C3, S4: the rules for all five new classes and their `:empty` collapses |
 
-### 8694120b test(ui): pin the triple on the card model and its answers
+### 4b6a357a test(ui): pin the rendered evidence triple and the target that is not shown
 | Path | +/- | Reason |
 |------|-----|--------|
-| `apps/ui/src/api/decisionCard.test.ts` | +407 / -17 | C4, spec item S8 |
+| `tests/ui_contracts/test_decision_answer_wiring.py` | +125 / -0 | C4, S6: `TestTheCardShowsTheEvidenceTriple`, 8 guards |
 
-### C5 docs(agent): hand back F032 R13
+### C5 (this commit) docs(agent): hand back F032 R14
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | not tabled | A handoff cannot table the commit that writes it (R-0149 pattern). Its numstat is not read, not predicted and not stated here. |
-
-The `+/-` cells above and the insertion counts reported under G8 are ONE
-`git diff --numstat` reading written twice; they were compared cell by cell and
-they agree.
+| `.agent/handoff.md` | not tabled | C5 writes this file, so it cannot read its own `git diff --numstat`; every other commit's `+/-` above is one `git diff --numstat` reading compared cell by cell against G8's |
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a save this block | done | |
-| C0b mirror it into `last_block` | done | |
+| C0b mirror into last_block | done | same bytes, same git blob |
 | C1 the plan | done | |
-| C2 the R12 verdict | done | |
-| C3 the model and its types | done | |
-| C4 its tests | done | |
+| C2 the R13 verdict | done | |
+| C3 the component and its styles | done | one commit, both files |
+| C4 the contract guards | done | |
 | C5 the handback | done | this file |
-| S1 read first | done | module, its tests and the producer read before any edit |
-| S2 the copy rule | done | `scrubUiText` from `../copy/humanCopy` decides every chip's text |
-| S3 the ref projection | done | `DecisionEvidenceRef` + `evidenceRefs`; blank target dropped |
-| S4 the outcome reaches its answer | done | matched inside `decisionAnswers`, no `card.type` branch |
-| S5 the status becomes a sentence | done | `evidenceNote`; no raw status on the model, no boolean beside it |
-| S6 nothing else changes | done | no other field, function or type altered |
-| S7 the three endpoint keys | done | `evidence_refs`/`outcomes`/`evidence_status`, optional and `unknown` |
-| S8 the tests | done | 80 tests in `decisionCard.test.ts`, every listed case covered |
+| S1 read the four existing guards first | done | all four re-measured at C3, see G6 |
+| S2 receipts above the answer strip | deviated | one `span` per ref showing its `label`, the note in its own `p`, both unconditional — plus a `role="group"` and a label the item does not list; see deviation 2 |
+| S3 outcome and downside under their answer | done | two `p` elements after the outcome paragraph, no operator, no `aria-live` |
+| S4 the styles and the `:empty` collapses | deviated | a FOURTH `:empty` rule beyond the three named; see deviation 1 |
+| S5 labels are module constants | done | the one label introduced is `DECISION_EVIDENCE_LABEL`, declared beside the file's existing constants |
+| S6 the new guards | done | 8 tests in a class of their own; the region reader is REUSED, not re-written |
+| S7 nothing else changes | done | `apps/ui/src/api/` untouched; send flow, in-flight set, jump chip, clarification form and outcome paragraph unchanged |
 
 ## External actions
 
-- `git worktree add .remedy-wt/r13mut 8694120b --detach` — created for the G7
-  mutation runs. Outcome: "HEAD is now at 8694120b".
-- `git worktree remove .remedy-wt/r13mut` — outcome: `git worktree list` back to
-  1 line.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` —
-  outcome `[]`. Nothing created, nothing merged.
-- `git push -u origin feature/f032-evidence-triple` — run after C5.
+- `git worktree add --detach .remedy-wt/f032-r14-mut 4b6a357a` — created for G7.
+- `git worktree remove .remedy-wt/f032-r14-mut` then `git worktree prune` —
+  removed; `git worktree list` is back to 1 line.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — `[]`.
+  Nothing merged, nothing created.
+- `git push -u origin feature/f032-evidence-triple` after C5 (see Next).
 
 ## Verification
 
-**G1 — hygiene, base and the sentinel.**
-`git rev-parse HEAD` before C0a → `4b1b2e995aebe1e997a90e47f8008c8981f643b2`,
-which IS the base of constraint 10. `git rev-parse --abbrev-ref HEAD` →
-`feature/f032-evidence-triple`. `git status --porcelain | wc -l` after each of
-C0a, C0b, C1, C2, C3, C4 → `0`, `0`, `0`, `0`, `0`, `0`. `.agent/STOP` at both
-ordered readings → `ls: cannot access '.agent/STOP': No such file or directory`,
-exit 2 both times, so ABSENT both times.
-
-**G2 — transport.** All three artifacts carry sha256
-`35bccbc815fdae5117a4c88155c7a26027bfc03c4695e87f7df32d0d29108119` over
-`26943` bytes and `321` lines:
-
-| Artifact | sha256 | bytes | lines |
-|---|---|---|---|
-| `.remedy-wt/f032-r13.md` (reviewer's scratch original) | `35bccbc8…08119` | 26943 | 321 |
-| committed `.agent/authored/f032-r13.md` blob | `35bccbc8…08119` | 26943 | 321 |
-| committed `.agent/last_block.md` blob | `35bccbc8…08119` | 26943 | 321 |
-
-All three EQUAL. `git rev-parse HEAD:.agent/authored/f032-r13.md` and
-`HEAD:.agent/last_block.md` both → `755261e837a5bcc99b1d9eda6e7072c7a749b315`,
-so C0a and C0b are the SAME git blob. Plainly: this proves the reviewer's
-scratch original, the saved copy and the mirror agree. It says NOTHING about the
-bytes of any prompt — under docs/agents/self_drive_protocol.md there is no paste
-relay, and the chain measured here runs scratch file → committed copy → mirror.
-
-**G3 — extraction and caps.** From the COMMITTED C0a blob:
-
-| Region | content lines |
-|---|---|
-| `PLANF032R13` | 48 |
-| `LEDGER13` | 1 |
-
-Regions: `2`. CONTENT total: `49`. Block TOTAL: `321`. PROSE = 321 − 49 = `272`.
-PROSE under 400: TRUE. TOTAL under 490: TRUE. These are the numbers the
-extraction measured, not numbers restated from the block.
-
-**G4 — the plan.** `.agent/plan.md` at C1 byte-equal to slice PLANF032R13 under
-constraint 2 → `True`. NEGATIVE CONTROL, the same comparison with the trailing
-newline removed → `False`, as required. `wc -l` → `48`, under 50 → TRUE.
-`^## Goal$` count → `1`. `^## Next Steps$` count → `1`.
-
-**G5 — the ledger append.** Pre-commit blob read with
-`git show 4b1b2e99:.agent/live_review.md`; the tracked file was never written
-over to obtain it, and it was asserted equal to the on-disk file before the
-append.
-
-- Arithmetic: `1086751 + 1 + 5183 = 1091935` → holds.
-- Base is a byte PREFIX of the result → `True`.
-- READER 1 (exact byte identity, base + one newline + slice) → accepts.
-- READER 2 (independent structural: split the whole file on blank lines, take
-  the LAST N units against the slice's own N paragraphs in order), N = `1` →
-  accepts.
-- NEGATIVE CONTROL: one byte flipped in memory at offset `1086762`, inside the
-  FIRST appended paragraph (`' '` → `'\x00'`). READER 1 rejects → `True`.
-  READER 2 rejects → `True`. BOTH readers reject it.
-
-Base measurements confirmed independently at `4b1b2e99`: `1086751` bytes over
-`429` blank-line units — both equal to the reviewer's stated figures.
-
-| Pattern | before | after |
-|---|---|---|
-| `^Gate: F\d+ R\d+ — ` | 64 | 65 |
-| `^- R-\d+ — ` | 274 | 274 |
-| `^Done: R-\d+ — ` | 24 | 24 |
-| `^Landed: R-` | 1 | 1 |
-| `^Gate: R\d+ — ` | 19 | 19 |
-| open set | 250 | 250 |
-| maximum id | `R-0713` | `R-0713` |
-
-All five "before" counts equal the reviewer's stated 64, 274, 24, 1 and 19, with
-the open set 250 and the maximum `R-0713`. Gate keys ADDED: `['F032 R12']`.
-Ids ADDED to the resolved set: `[]` — this round registered no finding and
-resolved none.
-
-**G6 — the typecheck, and the model read back.**
-`cd apps/ui && npx tsc --noEmit` → exit 0, NO output. Verbatim output: (empty).
-That matches the reviewer's base reading exactly, so this round contributed
-nothing. Re-run after C4 as `npm run typecheck` (script body `tsc --noEmit`) →
-exit 0, no output beyond the two npm banner lines.
-
-The four-card read-back is reported from ASSERTED tests rather than from an
-ad-hoc script — see the deviation below for why. The describe block
-"the T003a read-back the block's G6 orders" in `decisionCard.test.ts` builds
-each card through `buildDecisionCardModel` and asserts exactly these tuples;
-all four assertions pass in every green run reported under G7, and each fails
-under the mutation that would break it.
-
-Card A — two options, two KEYED outcomes:
-- `answers` (kind, value, expectedOutcome, downside):
-  `("option", "retry", "The export job runs again", "Costs another ten minutes")`,
-  `("option", "skip", "The pipeline moves on", "The export stays stale")`
-- `evidenceRefs` (kind, target, label):
-  `("test_run", "tr-9", "Test result for the export job")`
-- `evidenceNote`: `""`
-
-Card B — one UNKEYED outcome, two next actions:
-- `answers`:
-  `("command", "remedy resume", "The run continues under the raised budget", "Spends more than planned")`,
-  `("command", "remedy abort", "The run continues under the raised budget", "Spends more than planned")`
-- `evidenceRefs`: none
-- `evidenceNote`: `""`
-
-Card C — NO triple at all:
-- `answers`: `("option", "approve", "", "")`, `("option", "reject", "", "")`
-- `evidenceRefs`: none
-- `evidenceNote`: `"Recorded before receipts were required."`
-
-Card D — a blank-target ref beside a valid one:
-- `answers`: `("option", "approve", "", "")`
-- `evidenceRefs`: `("escalation", "td:1", "Escalation raised by the worker")`
-  — the `stop_record` ref whose target was `"   "` is DROPPED
-- `evidenceNote`: `"Recorded before receipts were required."`
-
-**G7 — the model's tests, green then red.** Every run below is the command
-`vitest run src/api/decisionCard.test.ts` (plus the worktree flags where
-stated), reached through `npm run test:unit --`, which echoes its script body in
-the transcript. Runs were serial; never two test processes at once.
-
-| Run | exit | count line |
-|---|---|---|
-| PRIMARY checkout at C4 | 0 | `Test Files 1 passed (1)` / `Tests 80 passed (80)` |
-| WORKTREE control, unmutated | 0 | `Test Files 1 passed (1)` / `Tests 80 passed (80)` |
-| mutation (a), unkeyed fallback removed | 1 | `Test Files 1 failed (1)` / `Tests 2 failed \| 78 passed (80)` |
-| mutation (b), blank-target drop removed | 1 | `Test Files 1 failed (1)` / `Tests 3 failed \| 77 passed (80)` |
-| mutation (c), `scrubUiText` replaced by the raw label | 1 | `Test Files 1 failed (1)` / `Tests 2 failed \| 78 passed (80)` |
-| WORKTREE control again, after all three restorations | 0 | `Test Files 1 passed (1)` / `Tests 80 passed (80)` |
-
-Worktree recipe used, exactly as constraint 9 orders: run from the PRIMARY
-checkout's `apps/ui`, with
-`--root /home/decodeux/Repos/remedy/.remedy-wt/r13mut/apps/ui` and
-`--config /home/decodeux/Repos/remedy/apps/ui/vitest.config.ts`, SCOPED to
-`src/api/decisionCard.test.ts`. Vitest confirms the root in its banner:
-`RUN v2.1.9 /home/decodeux/Repos/remedy/.remedy-wt/r13mut/apps/ui`.
-
-Every mutation was applied to the FILE
-`.remedy-wt/r13mut/apps/ui/src/api/decisionCard.ts`. Each exact byte string was
-counted IN THAT FILE before it was applied and the count was `1` in all three
-cases; each was restored byte for byte before the next was applied. The
-worktree's `git status --porcelain` was EMPTY after the restorations
-(`wc -l` → `0`).
-
-The failures name the right things. (a) → `applies ONE unkeyed outcome to EVERY
-next-action answer of the card`, expected the budget sentence, received `''`.
-(b) → `DROPS a ref whose target is blank after trimming`, the `stop_record` ref
-with target `"   "` survives. (c) → `shows the fallback for a label that is a
-bare hex id`, `expected 'a3f9c2e1b4d7' to be 'Receipt'` — the raw id reaches the
-model, which is precisely the leak S2 exists to prevent.
-
-**G8 — the guards, the canary and the PR gate.**
-`python3 -m pytest tests/ui_contracts/ -q` → exit 0, `566 passed, 4 skipped in
-5.60s`. That equals the reviewer's base reading exactly, so no other reading is
-owed an explanation. `python3 -m pytest tests/cli/test_golden_path.py -q` →
-exit 0, `42 passed in 20.73s`.
-
-`git diff --name-only 4b1b2e99..8694120b` →
-`.agent/authored/f032-r13.md`, `.agent/last_block.md`, `.agent/live_review.md`,
-`.agent/plan.md`, `apps/ui/src/api/decisionCard.test.ts`,
-`apps/ui/src/api/decisionCard.ts`. Against the Change set less
-`.agent/handoff.md`: residue changed−ordered `[]`, residue ordered−changed `[]`
-— BOTH EMPTY.
-
-`git diff --stat 4b1b2e99..8694120b -- packages/` → `''` EMPTY. Same for
-`-- tests/` → `''` EMPTY. Same for `-- docs/` → `''` EMPTY.
-`git diff --name-only 4b1b2e99..8694120b -- 'apps/**/*.tsx' 'apps/**/*.css'` →
-`''` EMPTY.
-
-| Commit | insertions | parents | under 500 |
-|---|---|---|---|
-| `7f1da6e6` | +321 | 1 | TRUE |
-| `3bc7141f` | +252 | 1 | TRUE |
-| `03c6b9be` | +23 | 1 | TRUE |
-| `92ebbc4f` | +2 | 1 | TRUE |
-| `5284ba66` | +225 | 1 | TRUE |
-| `8694120b` | +407 | 1 | TRUE |
-
-Marker counts, each 0 as required, against a non-zero CONTROL:
-
-| File | `^<<<SLICE ` | `^<<<END ` |
-|---|---|---|
-| `.agent/plan.md` | 0 | 0 |
-| `.agent/live_review.md` | 0 | 0 |
-| `apps/ui/src/api/decisionCard.ts` | 0 | 0 |
-| `apps/ui/src/api/decisionCard.test.ts` | 0 | 0 |
-| CONTROL: committed C0a blob | 2 | 2 |
-
-`git ls-files .remedy-wt` → 0 lines. `git worktree list` → 1 line.
-`git branch --list "tmp/*"` → 0 lines.
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
-Nothing merged, nothing created.
+- G1 HYGIENE, BASE, SENTINEL. `git rev-parse HEAD` before C0a →
+  `f28640ef6f5056e7bc587148968f7b88bfbdb5a1`, which IS constraint 8's base.
+  `git rev-parse --abbrev-ref HEAD` → `feature/f032-evidence-triple`.
+  `git status --porcelain | wc -l` after each of C0a, C0b, C1, C2, C3, C4 → `0`,
+  `0`, `0`, `0`, `0`, `0`. `.agent/STOP`: `ls -la .agent/STOP` before C0a → exit
+  2, `ls: cannot access '.agent/STOP': No such file or directory`; the same
+  command before C5 → the same exit 2 and the same line. ABSENT at both.
+- G2 TRANSPORT. `sha256`, bytes and lines, all three
+  `ab8e552d5733df15bb7fb17f4d2183ef077803649b81180459dbdc26521c23de`, `25057`,
+  `306`: `.remedy-wt/f032-r14.md`, the committed `527d236d:.agent/authored/f032-r14.md`
+  blob and the committed `1e31d4fa:.agent/last_block.md` blob. ALL THREE EQUAL:
+  `True`. `git rev-parse` gives both committed paths blob
+  `16367574f3dcd28d5bca0f6f87bb7732871e1d25` — the SAME blob. This proves the
+  reviewer's scratch original, the saved copy and the mirror agree with one
+  another on disk. It says NOTHING about the bytes of any prompt, and no claim
+  about a prompt is made anywhere in this handback.
+- G3 EXTRACTION AND CAPS, measured on the COMMITTED C0a blob: `PLANF032R14` 46
+  content lines, `LEDGER14` 1 content line; regions `2`; CONTENT total `47`;
+  TOTAL `306`; PROSE = 306 − 47 = `259`. PROSE under 400: `True`. TOTAL under
+  490: `True`.
+- G4 THE PLAN, at `83df7d73`. Byte-equal to slice `PLANF032R14` under constraint
+  2: `True`. NEGATIVE CONTROL, the same comparison with the trailing newline
+  removed: `False`. `wc -l` → `46`, under 50: `True`. `^## Goal$` → `1`.
+  `^## Next Steps$` → `1`.
+- G5 THE LEDGER APPEND, at `d29f0cbe`, read with `git show
+  f28640ef:.agent/live_review.md` (the tracked file was never overwritten to get
+  it). READER 1, byte identity against base + one newline + the slice + one
+  newline: `True`; arithmetic, the three numbers summing to the result,
+  `1091935 + 1 + 4513 = 1096449` (the third being the slice's 4512 bytes plus
+  its one trailing newline); the base blob IS a byte PREFIX: `True`. Base measured at `f28640ef`:
+  `1091935` bytes over `430` blank-line units, matching the reviewer's numbers.
+  READER 2, structural: N = `1` paragraph in the slice, the LAST 1 blank-line
+  unit matches it IN ORDER: `True`. NEGATIVE CONTROL, one byte flipped in memory
+  inside the FIRST appended paragraph: reader 1 rejects `True`, reader 2 rejects
+  `True`. Counts before → after C2: `^Gate: F\d+ R\d+ — ` 65 → 66; `^- R-\d+ — `
+  274 → 274; `^Done: R-\d+ — ` 24 → 24; `^Landed: R-` 1 → 1; `^Gate: R\d+ — ` 19
+  → 19. Open set 250 → 250. Maximum id `R-0713` → `R-0713`. Gate keys ADDED:
+  `['Gate: F032 R13 — ']`. Ids ADDED to the resolved set: `[]`.
+- G6 TYPECHECK AND THE FOUR TEXT READINGS. From `apps/ui`: `npx tsc --noEmit`
+  produced NO output; re-run as `npx tsc --noEmit && echo "TSC EXIT 0 WITH NO
+  OUTPUT ABOVE"` it printed only that marker, so exit 0 with no output — the
+  same reading the reviewer took at the base, and nothing in it is this round's.
+  (The `&&` marker is used because this session's bash guard refuses `$?`.) Over
+  `DecisionInboxCard.tsx` at C3, comments stripped by the module's own
+  `strip_ts_comments`: count of `hidden` → `0`; the LAST `aria-live="polite"` is
+  opened by a `<p` tag → `True`; the exact text
+  `jsx_between_answer_button_and_live_paragraph` returns →
+  `'\n                        ) : (\n                          <code className={styles.decisionAnswerText}>{answer.value}</code>\n                        )}\n                        {}\n                        '`
+  with `?` → 0, `&&` → 0, `||` → 0; `setSendingKeys(` → `2`;
+  `clarification.defaultAnswer` → `1`; `.target` → `1`, and the line carrying it
+  is `const typed = event.target.value;`, the clarification input's DOM event
+  target. No ref's target reached the markup.
+- G7 THE GUARDS, GREEN THEN RED. At C4:
+  `python3 -m pytest tests/ui_contracts/test_decision_answer_wiring.py -q` → exit
+  0 (`&&`-chained marker `PYTEST EXIT 0` printed), `49 passed in 0.29s`.
+  `python3 -m pytest tests/ui_contracts/ -q` → exit 0, `574 passed, 4 skipped in
+  5.41s`; the reviewer measured `566 passed, 4 skipped` at the base, so passed
+  GREW by 8 (the 8 new guards) and skipped did not move. In the disposable
+  worktree `git worktree add --detach .remedy-wt/f032-r14-mut 4b6a357a`, one
+  test file per run:
+  - CONTROL before any mutation → exit 0, `49 passed in 0.30s`, `^FAILED` 0.
+  - (a) render of `answer.downside` deleted. FILE
+    `apps/ui/src/components/panels/DecisionInboxCard.tsx`; exact byte string
+    occurrences in that file before applying: `1`. → exit 1, `3 failed, 46
+    passed in 0.30s`, `^FAILED` 3:
+    `test_each_answer_shows_its_own_expected_outcome_and_downside`,
+    `test_every_receipt_class_the_card_names_has_a_rule_of_its_own`,
+    `test_the_answer_stakes_sit_after_the_live_region_and_add_no_operator`.
+  - (b) a ref's `target` rendered beside its label. FILE
+    `apps/ui/src/components/panels/DecisionInboxCard.tsx`; occurrences before
+    applying: `1`. → exit 1, `1 failed, 48 passed in 0.29s`, `^FAILED` 1:
+    `test_no_refs_target_ever_reaches_the_markup`.
+  - (c) the `:empty` collapse rule replaced by `display: none`. FILE
+    `apps/ui/src/components/panels/RightLivePanel.module.css`; occurrences
+    before applying: `1`. → exit 1, `2 failed, 47 passed in 0.29s`, `^FAILED` 2:
+    `test_every_new_empty_state_is_collapsed_out_of_flow`,
+    `test_the_new_collapse_rules_never_remove_the_node`.
+  - CONTROL after all three restorations → exit 0, `49 passed in 0.28s`,
+    `^FAILED` 0, and the worktree's `git status --porcelain` 0 lines (it was 0
+    after each individual restoration too). Worktree removed and pruned.
+- G8 STRUCTURE, CANARY, PR GATE. `python3 -m pytest tests/cli/test_golden_path.py
+  -q` → exit 0, `42 passed in 20.69s`. `git diff --name-only f28640ef..4b6a357a`
+  → exactly the 7 paths the Change set lists other than `.agent/handoff.md`;
+  both residues EMPTY (`[]` and `[]`). `git diff --stat f28640ef..4b6a357a --
+  packages/` EMPTY, the same for `-- docs/` EMPTY, `git diff --name-only
+  f28640ef..4b6a357a -- apps/ui/src/api/` EMPTY. Insertions per commit, each
+  single-parent and each under 500: `527d236d` +306, `1e31d4fa` +226,
+  `83df7d73` +21, `d29f0cbe` +2, `07b52260` +133, `4b6a357a` +125 — these are
+  the same `git diff --numstat` reading as the `## Commits` column above,
+  compared cell by cell, and they agree. `^<<<SLICE ` and `^<<<END ` counts:
+  `.agent/plan.md` 0/0, `.agent/live_review.md` 0/0, `DecisionInboxCard.tsx`
+  0/0, `RightLivePanel.module.css` 0/0,
+  `tests/ui_contracts/test_decision_answer_wiring.py` 0/0, against a CONTROL
+  over the committed C0a blob of 2/2. `git ls-files .remedy-wt` 0 lines, `git
+  worktree list` 1 line, `git branch --list "tmp/*"` 0 lines. `gh pr list
+  --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
 
 ## Authored-text proofs
 
-Two reviewer-authored slices were applied, plus the block itself.
+Two reviewer-authored texts were applied, and neither was retyped: both were
+extracted programmatically from the COMMITTED C0a blob and written under
+constraint 2's convention.
 
-- The BLOCK: `.remedy-wt/f032-r13.md` → committed `.agent/authored/f032-r13.md`
-  → committed `.agent/last_block.md`. Disk-to-disk sha256 equal across all
-  three (G2), and C0a/C0b are the same git blob `755261e8`.
-- `PLANF032R13` → `.agent/plan.md`: byte-equal under constraint 2's convention
-  (G4), with the no-trailing-newline negative control FALSE.
-- `LEDGER13` → `.agent/live_review.md`: byte-equal as base + one newline +
-  slice, proved by two independent readers, both of which reject a single
-  flipped byte in the first appended paragraph (G5).
+- `PLANF032R14` → `.agent/plan.md` at `83df7d73`: byte-equal `True`, negative
+  control (trailing newline removed) `False`. See G4.
+- `LEDGER14` → `.agent/live_review.md` at `d29f0cbe`: byte identity `True`,
+  base a byte prefix `True`, structural reader `True`, both readers rejecting a
+  flipped byte. See G5.
+- The block itself: `.remedy-wt/f032-r14.md`, `.agent/authored/f032-r14.md` and
+  `.agent/last_block.md` are one sha256 and one git blob. See G2.
+
+## The design reference
+
+This is the first F032 round `docs/ui/design_reference/ux_spec.md` binds, and
+three of its rules governed real choices:
+
+- §17 (copy rules) decided the whole shape of S2. The default UI never shows raw
+  UUIDs or present/missing signals, so a chip carries the ref's already-scrubbed
+  `label` and nothing else, a ref's `target` appears in no text and no attribute
+  a browser shows, and the note is the model's prose rather than the raw
+  `evidence_status`. The new guard `test_no_refs_target_ever_reaches_the_markup`
+  is that rule made mechanical.
+- §14 (states) decided the downside's styling: it is NOT told by colour alone —
+  it carries a left rule as well as the warn tint, so an operator who cannot
+  separate the two hues still reads two differently marked lines.
+- §4/§5 by way of this card's own established scale: the receipt chips reuse the
+  `.decisionChip` scale rather than inventing a second chip shape inside one
+  card, and every value resolves to a `--remedy-*` property
+  `apps/ui/src/styles/tokens.css` already defines (R-0661).
+
+NO VISUAL DEVIATION WAS TAKEN. Nothing in this round departs from the canonical
+reference, so the assumption_log gains no visual entry.
 
 ## Deviations & assumptions
 
-1. **G7's ordered command could not be run verbatim; an equivalent was used and
-   is declared.** `npx vitest run src/api/decisionCard.test.ts` is DENIED by
-   this session's permission sandbox, as are `npx vite-node` and
-   `node node_modules/vitest/vitest.mjs`. Every G7 run therefore went through
-   `npm run test:unit -- <args>`, which is allowed. This is not a weaker gate:
-   npm echoes the resolved script body into the transcript, so each run shows
-   `> vitest run src/api/decisionCard.test.ts` (with the worktree flags where
-   they apply) above its own result. Same binary, same arguments, same working
-   directory.
-2. **G6's read-back is reported at C4, not at C3, and from assertions rather
-   than from a print.** The block orders the four cards' values reported "at
-   C3". Producing them at C3 needs an ad-hoc TypeScript runner, and both
-   available ones (`vite-node`, the vitest node entrypoint) are denied by the
-   sandbox as above. The values are instead ASSERTED in `decisionCard.test.ts`
-   and reported from the C4 run. The reported values are the model's behaviour
-   at C3 unchanged: C4 touches only the test file, so `decisionCard.ts` is
-   byte-identical at `5284ba66` and `8694120b`. This is arguably the stronger
-   form — a read-back that the suite re-runs rather than a transcript a reader
-   must trust — but it IS a departure from the ordered commit at which the
-   measurement was to be made, so it is recorded here.
-3. **No visual change, and nothing is owed to an assumption_log.** Stating
-   constraint 12 plainly: this round adds no component, no element, no class and
-   no token. It touches no `.tsx` and no CSS — proved EMPTY under G8. The
-   canonical design reference therefore imposes no visual decision on this
-   round, and NOTHING is owed to an assumption_log. The next round, T003b, is
-   the one it binds.
-4. **No slice was edited.** Both slices were applied byte for byte from the
-   COMMITTED C0a blob rather than retyped, and neither looked wrong.
-5. **The ordered commit sequence was followed exactly** — C0a, C0b, C1, C2, C3,
-   C4, C5, in that order, with no commit between them and no extra commit. C2 is
-   the only commit touching `.agent/live_review.md`.
-6. **One naming choice the spec left to me.** S3 says to pass "a fallback of
-   your choosing that reads as a receipt"; the chosen word is `Receipt`, held in
-   `EVIDENCE_REF_FALLBACK_LABEL`. S5's sentence is likewise mine:
-   `Recorded before receipts were required.` Both are asserted by name in the
-   tests, so a reword is a visible change rather than a silent one.
-7. **S4's unkeyed rule was implemented on its literal wording** — the fallback
-   applies when the card carries exactly one outcome whose `option` is the empty
-   string, found by filtering for that key rather than by requiring the card to
-   carry exactly one outcome in total. The two readings coincide on every shape
-   the eight producers emit, since rule (h) emits exactly one outcome and keys
-   it `UNKEYED_OPTION`.
+1. S4 names three empty states to collapse — the receipt note, the expected
+   outcome and the downside. A FOURTH `:empty` rule was added, for
+   `.decisionEvidence`, the receipt strip itself. Reason: `.decisionRow` is a
+   column flex box with an 8px `gap`, so an empty strip still claims a gap and
+   would show as a stray blank band on every card carrying no receipts. It uses
+   the SAME out-of-flow mechanism S4 mandates (`position: absolute`), never
+   `display: none` or `visibility: hidden`, and the new guards read all four
+   selectors as one set.
+2. S2 does not ask for a label on the receipts strip; S5 rules how one must be
+   written if introduced. One WAS introduced: `DECISION_EVIDENCE_LABEL = "What
+   this decision is based on"`, a module-level constant beside the file's
+   existing ones, carried on a `role="group"` rather than a bare `div` because
+   an `aria-label` on a `generic` role is computed and dropped (finding R-0682,
+   the same reason the filter row above carries one). Without it the chips reach
+   a screen-reader user as bare words with no context. It names no status, no
+   schema key and no field name.
+3. G7's restoration step: this session's sandbox refuses `git checkout -- <path>`
+   inside the worktree, so each mutated file was restored by writing back the
+   bytes of `git -C <worktree> show HEAD:<path>` — a byte-for-byte restore of the
+   committed blob, verified by the worktree's `git status --porcelain` reporting
+   0 lines after EACH restoration and after the final control run.
+4. Mutation (a) reddened THREE tests rather than one. That is not a deviation
+   from the block, which orders the count to be reported rather than predicted;
+   it is reported above. Deleting the downside paragraph removes the class the
+   stylesheet guard looks for and makes the source-order guard's `index` lookup
+   raise, so three of the eight guards see it.
+5. `npx tsc --noEmit`, the pytest runs and the mutation runs were chained with
+   `&& echo …` markers to surface their exit codes, because this session's bash
+   guard refuses `$?`. The commands themselves are exactly the ones the block
+   ordered.
+6. Constraint 10 is noted and nothing was corrected by a commit of its own: no
+   numeral in the R13 handback was found false this round.
 
 ## Next
 
-1. **Phase 1 rule 1 of docs/agents/self_drive_protocol.md, before anything
-   else: re-read `.agent/STOP` FROM DISK.** It is one-shot at Phase 0 but binds
-   at any point; never delete the sentinel.
-2. Then the Open PR Gate:
-   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-3. Then **T003b: the card component projects what this round's model now
-   carries** — chips for `evidenceRefs`, and each option's `expectedOutcome` and
-   `downside` under its own answer. That is the round which touches `.tsx` and
-   CSS, so it IS bound by the canonical design reference, and it must FIRST read
-   the source-counting guards in
-   `tests/ui_contracts/test_decision_answer_wiring.py`.
+1. Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: re-read `.agent/STOP`
+   FROM DISK before anything else.
+2. The Open PR Gate: `gh pr list --state open --json
+   number,headRefName,baseRefName,isDraft`.
+3. T003c: the receipt chips become deep links into the evidence panel — the
+   slice that finally uses the `target` this round deliberately does not render.
