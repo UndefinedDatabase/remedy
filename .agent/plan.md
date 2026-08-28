@@ -17,19 +17,21 @@ file sidebar's visual treatment ruled by a named authority.
 | the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
 | compose the token cut with the intraline cut | done | `739d31e0` |
 | the DiffView wiring and the derived palette | done | `678bc698` |
-| make the lazy load real, repairing `R-0732` | done | this round |
-| rule on the sidebar's treatment | open | a ruling to record, not code |
+| make the lazy load real, repairing `R-0732` | done | `8bcff3db` |
+| rule on the sidebar's treatment | done | this round |
 | measure the 10k-line fixture | open | needs a real fixture and a real run |
 
 ## Next Steps
-1. Rule on the file sidebar's visual treatment and record the authority.
-2. Measure the 10k-line fixture end to end and record the numbers in the
-   feature file's Built State.
+1. Measure the 10k-line fixture end to end and record the numbers in the
+   feature file's Built State, which is F256's last unbuilt piece.
+2. Update `docs/roadmap/features/T5_F256.md` Built State with the three pieces
+   and their test files.
 3. Run the integration gate, then the closure sequence.
 
 ## Risks
-- `tests/ui_contracts/test_diff_view_render.py` reads the comment-stripped
-  source of `DiffView.tsx`; its `DELEGATED_RULES` and
-  `REIMPLEMENTED_RULE_SPELLINGS` tuples are not to be edited.
-- Moving the grammar tables must change no value in them, or a refactor has
-  silently changed what a language highlights as.
+- `tests/ui_contracts/test_diff_file_sidebar.py` and
+  `tests/ui_contracts/test_diff_view_render.py` both read comment-stripped
+  sources; a class and its rule must land in one commit or the element ships
+  unstyled.
+- The 10k-line measurement must be a real run against a real fixture; a budget
+  is re-derived from a re-measured maximum and never raised by hand.
