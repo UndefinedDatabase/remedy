@@ -8785,3 +8785,69 @@ continue` to the loop in `enforce_decision_evidence` and deleting the resolved
 arms' triples from branches 7 and 8; no other change is required, and the
 per-arm tests named in the F032 R11 and R12 blocks are the ones that then go
 red.
+
+## DECISION F032 D8 (2026-08-28) — the receipt chip is an ENTRY POINT F023 wires, not a link F032 invents
+
+CONTEXT, measured at `a4a24663`. `docs/roadmap/features/T5_F032.md` makes "the
+card's evidence chips deep-link into the evidence panel" part of Goal & Done,
+and its Design section names the destination outright: "evidence panel deep
+links (the zoom feature's L3 tabs)". That panel is
+`docs/roadmap/features/T5_F023.md` T003 — "EvidencePanel + lazy tabs + deep
+links + cluster" — and `docs/roadmap/STATUS.md` carries F023 as `[ ]`,
+unclaimed. Nothing in `apps/ui/src` renders one. The only detail surface that
+exists is `apps/ui/src/components/detail/DetailPopover.tsx`, which
+`docs/ui/design_reference/component_spec.md` names the "DetailPanel /
+EvidencePanel entry" and which shows a TASK's apply, test and proof status and
+its prompt trace; it has no tab, no route and no prop that accepts a decision's
+evidence ref. F032 depends on F031 alone. This is the same shape as amendment
+A2, where the resolver and its staleness badges were found to be F066's unbuilt
+spec, and it is settled the same way.
+
+CHOSEN. `DecisionInboxCard` takes an OPTIONAL `onOpenEvidence` handler. A
+receipt renders as a `<button>` calling it with the whole
+`DecisionEvidenceRef` when a handler is supplied, and as the `<span>` R14
+shipped when none is. Nothing supplies one in this release, so every card
+renders spans today; F023 supplies the handler and the panel together, and the
+wiring is one prop at one call site. A ref's `target` continues to reach no
+markup, no text and no attribute a browser shows — it travels to the handler as
+a field of the ref, which is not rendering.
+
+WHY. Three reasons, in the order they bind. FIRST, the affordance never lies.
+The card already states that rule at its jump chip — only a decision that can
+really jump gets the control — and a chip that looks pressable while no panel
+exists to receive the press is exactly the dishonest affordance finding R-0693
+registered against the answer buttons. SECOND, this is the pattern the
+canonical design reference itself prescribes for an entry point whose
+destination is not built: `component_spec.md` gives the DiffViewer "a button in
+DetailPopover emitting `onOpenDiff(taskId)` (no-op today)" and the
+RuntimePreview a control "visible only when `dashboard` exposes a runtime URL
+(not yet)". Shipping the entry point and letting the destination arrive later
+is the house style, not an invention of this round. THIRD, it is the smallest
+thing that makes F023 cheap. The alternative that ships nothing leaves F023 to
+discover the receipts, design the payload and edit this component; the prop and
+its call fix the contract now, while the reasoning that produced it is on this
+page.
+
+REJECTED, and why. (1) A `<button disabled>`
+carrying an honest tooltip — "the evidence panel arrives with a later feature" —
+which `ux_spec.md` §14 permits for a disabled control and which the ChatInput
+already does for steering. Rejected because a disabled control is drawn at 45%
+opacity, and the thing dimmed here would be the RECEIPT ITSELF, whose label is
+the evidence and is fully present; F032 would ship the receipts it exists to
+show and immediately style them as unavailable. A disabled button is also
+removed from the tab order, so the honest tooltip is unreachable by exactly the
+reader who most needs it. (2) Rendering nothing beyond R14's span and deferring
+the entire item to F023. Rejected because the deep link is Goal & Done material
+for F032 and handing the whole of it to an unclaimed feature would leave this
+feature's own acceptance unmet with nothing on disk to show where it went.
+
+REVERSE by deleting the `onOpenEvidence` prop from the props type of
+`apps/ui/src/components/panels/DecisionInboxCard.tsx`, deleting its type-only
+`DecisionEvidenceRef` import, collapsing the receipt's two arms back to the
+single `<span>`, deleting the `.decisionEvidenceChip` button, hover and
+focus-visible rules from
+`apps/ui/src/components/panels/RightLivePanel.module.css`, and deleting the
+guard class the F032 R15 block's item S7 adds to
+`tests/ui_contracts/test_decision_answer_wiring.py`. No other change is
+required, and amendment A7 of `docs/roadmap/features/T5_F032.md` is the text to
+strike with it.
