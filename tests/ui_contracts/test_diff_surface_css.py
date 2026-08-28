@@ -7,9 +7,10 @@ column track that lost a gutter, a changed-line background that was copy-pasted 
 sides, a ligature setting that drifted out of one rule, or a `var()` naming a design token
 that was never defined. This guard prevents each of those from landing silently.
 
-It reads files as text and imports nothing from `apps/`: the frontend test runner cannot be
-executed in this environment, so the conformance of this stylesheet is pinned from Python,
-which is how this repository already pins frontend CSS.
+It reads files as text and imports nothing from `apps/`: `apps/ui/vitest.config.ts` collects
+`src/**/*.test.ts` in a NODE environment, so the frontend runner reaches no stylesheet and no
+markup whatever its availability, which is why the conformance of this stylesheet is pinned
+from Python, which is how this repository already pins frontend CSS.
 """
 from __future__ import annotations
 

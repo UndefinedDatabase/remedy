@@ -9222,3 +9222,69 @@ exists.
 `view["truncated"] = parsed["truncated"]`, and delete the tests F037 R14 added
 in the final section of `tests/orchestration/test_diff_view_source.py`.
 DECISION F037 D5 and D6 are untouched by this decision and survive its reversal.
+
+## DECISION F037 D8 — T002 and T003 are NOT blocked; the client is built in the layer vitest reaches, and no TypeScript colour is ordered because none can be run
+
+**Date:** 2026-08-28 · **Round:** F037 R15 · **Findings:** `R-0724`, `R-0723`
+
+**The choice.** F037's remaining scope is built with this repository's existing
+frontend pattern rather than waiting for a runner. Decidable rules go in
+`apps/ui/src/api/*.ts` with `*.test.ts` beside them, which
+`apps/ui/vitest.config.ts` collects in a NODE environment; markup, stylesheets
+and wiring are pinned from `tests/ui_contracts/` in Python. That is what
+DECISION F031 D5 already ruled for the decision inbox, and F037 follows it.
+
+**Why the blocked premise was wrong.** Measured at `0d750765`:
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+runs `npx vitest run` from pytest with `cwd` at `apps/ui` and asserts a return
+code of 0, and it is exit 0 here in 0.92 s. CI runs the same node. What is
+refused is a DIRECT `npx vitest` from the session's own shell — a permission on
+one caller, not a property of the environment. Reading that refusal as "the
+runner cannot be executed" is what recorded T002 and T003 as blocked from R8
+through R14, and it is registered as `R-0724`.
+
+**What a red-proof of TypeScript can be here, and what it cannot.** It cannot be
+a mutation. Guardrail G5 of `docs/agents/self_drive_protocol.md` confines every
+destructive check to a disposable `git worktree`, `apps/ui/node_modules` is
+gitignored and therefore absent from any fresh worktree, and the reviewer
+measured the consequence at `0d750765`: the vitest node run with its `cwd` in a
+worktree fails at STARTUP with `Cannot find package 'vitest'` before any test is
+loaded, so it is red for every possible module under test. A colour from a
+command that cannot pass proves nothing — that is finding `R-0703`'s rule and
+this decision does not break it. What IS ordered instead, and what makes the
+TypeScript honest: the vitest suite runs GREEN through the pytest node in the
+primary checkout, where it is a real gate that a broken module turns red; and a
+Python guard under `tests/ui_contracts/` pins the structural facts vitest cannot
+see about itself, and THAT guard is mutated and red-proved normally, because it
+is Python and needs no `node_modules`.
+
+**What this costs, stated plainly.** A defect that a vitest test would catch is
+caught only when the whole vitest suite is run, and never by a mutation aimed at
+one function. The mitigation is the shape of the code rather than more gates:
+the more of the client's behaviour that lives in `src/api/` as total functions
+over plain data, the more of it a green suite actually covers. That is the
+reason the view model is built before the component and carries the collapse
+rule, the row keys and the sidebar, rather than leaving them in markup where
+nothing here can reach them at all.
+
+**Why the feature file is not amended.** Its Task slicing already names T002 as
+the rendering core and T003 as the sidebar and virtual scrolling, and neither
+mentions a runner. The blocked premise never lived in
+`docs/roadmap/features/T5_F037.md` — it lived in a test docstring, in
+`.agent/plan.md` and in handbacks. Amendment A4 stands unchanged.
+
+**Alternatives rejected.** (1) Keep waiting for a direct runner — rejected: it
+is a session permission that has already varied between sessions, and a feature
+cannot be paced by it. (2) Copy `apps/ui/node_modules` into the worktree to
+enable mutations — rejected: it is hundreds of megabytes per proof, and
+`shutil.copytree` defaults to dereferencing the bin shims, which is exactly the
+mechanism finding `R-0591` records as having CAUSED failures it was meant to
+prevent. (3) Build the component first and the model after — rejected: it puts
+the collapse rule and the row keys in markup no gate here can reach, which is
+the arrangement DECISION F031 D5 exists to prevent.
+
+**How to reverse.** Delete this decision and the three files F037 R15 added —
+`apps/ui/src/api/diffViewModel.ts`, `apps/ui/src/api/diffViewModel.test.ts` and
+`tests/ui_contracts/test_diff_view_model.py`. Nothing else imports them; no
+existing module changes as part of this decision, and the two comment repairs it
+carries stand on their own findings rather than on this ruling.

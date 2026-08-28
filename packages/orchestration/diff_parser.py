@@ -123,9 +123,11 @@ DIFF_VIEW_MAX_BODY_LINES = 20_000
 #: each add a file entry and append nothing to that counter — so a diff made only of such
 #: files reached no bound at all however large it grew.
 #: DELIBERATE ABSENCE — these two ceilings bound the OUTPUT this module BUILDS, and
-#: neither bounds what is READ. ``packages/orchestration/diff_view_source.py`` still
-#: reads the artifact WHOLE before this function is called, and that is where the bound
-#: on the INPUT belongs.
+#: neither bounds what is READ. The INPUT is bounded separately, by
+#: ``DIFF_VIEW_MAX_ARTIFACT_BYTES`` in ``packages/orchestration/diff_view_source.py`` under
+#: DECISION F037 D7, which is where the file is read. Neither bound subsumes the other:
+#: these two count file entries and body lines, that one counts bytes, and they are
+#: different resources in different units.
 DIFF_VIEW_MAX_FILES = 2_000
 
 _NO_NEWLINE_PREFIX = "\\ No newline"
