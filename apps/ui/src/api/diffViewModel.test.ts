@@ -24,6 +24,7 @@ import type {
   DiffLanguageBundleImporter,
   DiffLine,
   DiffLineSegment,
+  DiffRowModel,
   DiffRowViewportWindow,
   DiffRowWindow,
 } from "./diffViewModel";
@@ -1087,5 +1088,193 @@ describe("loadDiffLanguageBundle", () => {
     resetDiffLanguageBundleCache();
     await loadDiffLanguageBundle("a.css", importer.importBundle);
     expect(importer.calls.length).toBe(2);
+  });
+});
+
+/** The Acceptance size of F037's budget, counted in BODY LINES, and deliberately
+ *  the SAME ten thousand `SCALE_ROWS` above counts in rows: one number for one
+ *  scale, so the window tests and the row-model tests cannot drift apart. */
+const ACCEPTANCE_BODY_LINES = SCALE_ROWS;
+
+/** The arithmetic `buildDiffRowModels` performs, written as an expression over
+ *  the fixture's shape rather than as a literal somebody counted once: one file
+ *  row, one hunk-head row, and one row per body line of an OPEN hunk. */
+const ROWS_PER_FILE = 1;
+const ROWS_PER_HUNK_HEAD = 1;
+const ACCEPTANCE_ROW_COUNT =
+  ACCEPTANCE_BODY_LINES + ROWS_PER_FILE + ROWS_PER_HUNK_HEAD;
+
+/** Builds taken per recording, ODD so the median is a duration a build really
+ *  took rather than the mean of the two either side of the middle. */
+const BUILD_SAMPLE_COUNT = 7;
+
+/** THE TRAP DECISION F256 D5 RECORDS, and the reason every measurement below
+ *  passes THIS set. `defaultCollapsedHunkIds` collapses a hunk of ten thousand
+ *  lines, and a collapsed hunk emits NO line rows, so the natural spelling —
+ *  build the default set, then build the rows — returns two rows however large
+ *  the fixture is and times nothing. The last test of this block pins that fact
+ *  so a reader meets it as an assertion rather than as a surprise. */
+const NOTHING_COLLAPSED: ReadonlySet<string> = new Set<string>();
+
+/** The viewport a panel reports on its FIRST render: not measured yet, so both
+ *  numbers are zero and `diffRowWindowForViewport` falls back to
+ *  `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS`. That is the state a ten-thousand-line
+ *  diff is really first drawn in, which is why the bounded-window guard is taken
+ *  there rather than at a height no first paint ever has. */
+const UNMEASURED_SCROLL_PX = 0;
+const UNMEASURED_VIEWPORT_PX = 0;
+
+/** Ten times the Acceptance document, which is the whole point of the guard: the
+ *  drawn row count must NOT follow it. */
+const TENFOLD = 10;
+
+/** How far below the document the drawn window must sit, as a FACTOR rather than
+ *  a row count, so "far below" stays a statement about the two numbers instead of
+ *  a literal that would need re-deciding whenever either of them moves. */
+const FAR_BELOW_FACTOR = 100;
+
+/** The median of an ODD-length sample list, as the middle sample after sorting —
+ *  a sample rather than an interpolation, so every duration recorded below is one
+ *  a build really took. */
+function medianOf(samples: number[]): number {
+  const sorted = [...samples].sort((left, right) => left - right);
+  return sorted[(sorted.length - 1) / 2];
+}
+
+describe("the ten-thousand-line diff through the client model", () => {
+  it("builds every row of the Acceptance fixture, and RECORDS what that costs", () => {
+    // The CLIENT half of the figure F037's Acceptance asks to have RECORDED,
+    // matching the server half `test_the_acceptance_fixture_is_served_inside_the_hang_net`
+    // records in `tests/ui_server/test_diff_endpoint.py`.
+    //
+    // MEASURED 2026-08-28 on the machine this feature is being built on — a Linux
+    // x86-64 development workstation, Node v22 under vitest, unloaded — as the
+    // median of seven builds of one file and one hunk of 10,000 body lines with
+    // NOTHING collapsed: MEDIAN 0.678 ms, minimum 0.271 ms, maximum 1.408 ms, for
+    // 10,002 rows. The spread is the interesting half: fastest to slowest inside
+    // ONE run differs by more than a factor of five, which is a millisecond of JS
+    // being mostly the JIT deciding whether to compile.
+    //
+    // NOTHING HERE IS ASSERTED ABOUT THE DURATION, by DECISION F256 D5. The
+    // fastest and slowest samples of the run recorded above differ by more than
+    // fivefold, and that is the JIT deciding whether to compile rather than the
+    // code doing more or less work, so a bound on it would report the machine
+    // and its warm-up rather than this module. What IS asserted is
+    // the WORK: a measurement of an empty answer is not a measurement, and the
+    // row count is the one number that says the ten thousand lines were really
+    // walked. The exact, machine-independent guard is the test below this one.
+    const envelope = envelopeWithHunkOf(ACCEPTANCE_BODY_LINES);
+    const samples: number[] = [];
+    let rows: DiffRowModel[] = [];
+    for (let build = 0; build < BUILD_SAMPLE_COUNT; build += 1) {
+      const startedAt = performance.now();
+      rows = buildDiffRowModels(envelope, NOTHING_COLLAPSED);
+      samples.push(performance.now() - startedAt);
+    }
+    // PRINTED because "recorded" is half of what Acceptance asks for: a run of
+    // this block reports the figures the comments carry, so re-recording them
+    // after a change needs no edit here. vitest captures it, so a green run shows
+    // nothing; `--reporter=verbose` or a failing file surfaces it.
+    console.log(
+      `F256 T002 rowModel@${ACCEPTANCE_BODY_LINES}: `
+      + `median ${medianOf(samples).toFixed(3)}ms `
+      + `min ${Math.min(...samples).toFixed(3)}ms `
+      + `max ${Math.max(...samples).toFixed(3)}ms rows ${rows.length}`);
+
+    expect(samples, "durations recorded").toHaveLength(BUILD_SAMPLE_COUNT);
+    expect(
+      rows,
+      `rows built from ${ACCEPTANCE_BODY_LINES} body lines, against `
+      + `${ACCEPTANCE_BODY_LINES} + ${ROWS_PER_FILE} + ${ROWS_PER_HUNK_HEAD}`,
+    ).toHaveLength(ACCEPTANCE_ROW_COUNT);
+    expect(
+      rows.filter((row) => row.kind === "line"),
+      `line rows built from ${ACCEPTANCE_BODY_LINES} body lines`,
+    ).toHaveLength(ACCEPTANCE_BODY_LINES);
+  });
+
+  it("draws the SAME bounded window at ten times the Acceptance size", () => {
+    // THE PROPERTY THAT MAKES A TEN-THOUSAND-LINE DIFF VIABLE AT ALL, and the
+    // reason DECISION F256 D5 guards the client half with this rather than with a
+    // duration: what would make the viewer unusable is drawing ten thousand rows,
+    // not the sub-millisecond list build the test above records. It is decided by
+    // `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` and `DIFF_VIRTUAL_OVERSCAN_ROWS` and by
+    // nothing about the document, so it is the same integer on every machine and
+    // in every run — an exact invariant where the duration above is a report.
+    //
+    // MEASURED 2026-08-28 in the same run as the recording above: 48 rows drawn at
+    // 10,002 and 48 drawn at 100,020.
+    const tenfoldRowCount = ACCEPTANCE_ROW_COUNT * TENFOLD;
+    const acceptance = diffRowWindowForViewport(
+      ACCEPTANCE_ROW_COUNT,
+      UNMEASURED_SCROLL_PX,
+      UNMEASURED_VIEWPORT_PX,
+    );
+    const tenfold = diffRowWindowForViewport(
+      tenfoldRowCount,
+      UNMEASURED_SCROLL_PX,
+      UNMEASURED_VIEWPORT_PX,
+    );
+    console.log(
+      `F256 T002 rowWindow: ${acceptance.rowsInWindow} drawn@${ACCEPTANCE_ROW_COUNT} `
+      + `${tenfold.rowsInWindow} drawn@${tenfoldRowCount}`);
+
+    expect(acceptance.virtualized, `${ACCEPTANCE_ROW_COUNT} rows`).toBe(true);
+    expect(tenfold.virtualized, `${tenfoldRowCount} rows`).toBe(true);
+    expect(
+      tenfold.rowsInWindow,
+      `${acceptance.rowsInWindow} rows drawn at ${ACCEPTANCE_ROW_COUNT} against `
+      + `${tenfold.rowsInWindow} at ${tenfoldRowCount}: the drawn window must not `
+      + `grow with the document`,
+    ).toBe(acceptance.rowsInWindow);
+    expect(
+      acceptance.rowsInWindow,
+      `${acceptance.rowsInWindow} rows drawn at ${ACCEPTANCE_ROW_COUNT}, against `
+      + `the two constants that decide it`,
+    ).toBe(DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS + DIFF_VIRTUAL_OVERSCAN_ROWS);
+    expect(
+      acceptance.rowsInWindow * FAR_BELOW_FACTOR,
+      `${acceptance.rowsInWindow} rows drawn of ${ACCEPTANCE_ROW_COUNT}, which is `
+      + `not ${FAR_BELOW_FACTOR} times smaller`,
+    ).toBeLessThan(ACCEPTANCE_ROW_COUNT);
+    expect(windowSum(acceptance), `${ACCEPTANCE_ROW_COUNT} rows accounted for`)
+      .toBe(ACCEPTANCE_ROW_COUNT);
+    expect(windowSum(tenfold), `${tenfoldRowCount} rows accounted for`)
+      .toBe(tenfoldRowCount);
+  });
+
+  it("paints the Acceptance fixture as TWO rows until the reader expands the hunk", () => {
+    // THE VIEWER'S FIRST PAINT OF A TEN-THOUSAND-LINE DIFF, which is two rows: the
+    // single hunk arrives COLLAPSED, because ten thousand is past
+    // `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES`, and a collapsed hunk emits its head
+    // row and none of its lines. The ten thousand arrive only when the reader
+    // expands it, and THAT is the build the recording test above measures. Pinned
+    // here because it is both a real product fact and the trap that makes the
+    // obvious client benchmark vacuous — see DECISION F256 D5.
+    //
+    // MEASURED 2026-08-28 in the same run as the two above: a collapsed set of 1,
+    // 2 rows at first paint, 10,002 once expanded.
+    const envelope = envelopeWithHunkOf(ACCEPTANCE_BODY_LINES);
+    const collapsedByDefault = defaultCollapsedHunkIds(envelope);
+    const firstPaint = buildDiffRowModels(envelope, collapsedByDefault);
+    const expanded = buildDiffRowModels(envelope, NOTHING_COLLAPSED);
+    console.log(
+      `F256 T002 firstPaint@${ACCEPTANCE_BODY_LINES}: collapsed set `
+      + `${collapsedByDefault.size} rows ${firstPaint.length} `
+      + `expanded ${expanded.length}`);
+
+    expect(
+      collapsedByDefault.size,
+      `hunks collapsed by default at ${ACCEPTANCE_BODY_LINES} body lines`,
+    ).toBe(1);
+    expect(firstPaint.map((row) => row.kind)).toEqual(["file", "hunkHead"]);
+    expect(
+      firstPaint,
+      `rows drawn at first paint of ${ACCEPTANCE_BODY_LINES} body lines`,
+    ).toHaveLength(ROWS_PER_FILE + ROWS_PER_HUNK_HEAD);
+    expect(
+      expanded,
+      `rows drawn once the hunk of ${ACCEPTANCE_BODY_LINES} lines is expanded`,
+    ).toHaveLength(ACCEPTANCE_ROW_COUNT);
   });
 });
