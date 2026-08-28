@@ -13,25 +13,26 @@ file sidebar's visual treatment ruled by a named authority.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| claim F256 and retarget the state | done | this round |
+| claim F256 and retarget the state | done | `d4c00438` |
 | the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
-| compose the token cut with the intraline cut | open | model layer, not yet begun |
-| lazy bundles, DiffView wiring, the palette | open | needs the composition first |
+| compose the token cut with the intraline cut | done | this round |
+| lazy bundles, DiffView wiring, the palette | open | the composition is its input |
 | rule on the sidebar's treatment | open | a ruling to record, not code |
 | measure the 10k-line fixture | open | needs a real fixture and a real run |
 
 ## Next Steps
-1. Compose the token cut with the intraline cut in the model layer, so one line
-   carries both without either losing characters.
-2. Ship the lazy per-language bundles and wire `loadDiffLanguageBundle` into
-   `DiffView`, with a palette derived from custom properties already defined
-   under `apps/ui/src` rather than invented.
-3. Rule on the file sidebar's visual treatment and record the authority.
-4. Measure the 10k-line fixture end to end and record the numbers in the
+1. Ship the lazy per-language bundles and wire `loadDiffLanguageBundle` into
+   `DiffView`, rendering one element per composed run, with a palette derived
+   from custom properties already defined under `apps/ui/src` rather than
+   invented.
+2. Rule on the file sidebar's visual treatment and record the authority.
+3. Measure the 10k-line fixture end to end and record the numbers in the
    feature file's Built State.
 
 ## Risks
 - The palette may name only custom properties defined under `apps/ui/src`;
   `tests/ui_contracts/test_design_drift.py` fails any that is not.
-- `npx vitest run` is gated under a 30-second timeout in
-  `tests/orchestration/test_test_runner.py`.
+- Wiring `DiffView` changes a file gated by
+  `tests/ui_contracts/test_diff_view_render.py`, which reads its
+  comment-stripped source and requires every class it names to have a rule in
+  `DiffView.module.css`.
