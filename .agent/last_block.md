@@ -1,201 +1,286 @@
-STEP T002 preparation — F037 R8
+STEP T002 part one, the diff surface — F037 R9
 
-Goal: correct the design authority the remaining UI rounds will build against,
-book the R7 verdict, resolve `R-0715`, register `R-0719`, and establish by
-MEASUREMENT whether the frontend test runner can run here at all.
+Goal: the diff surface's binding CSS becomes a real stylesheet in the package,
+and a Python guard makes it impossible to drift without a red. The rendering
+core stays unwritten: R8 measured the frontend test runner as refused for both
+roles, and code neither role can execute must not be certified.
 
-Base: `996ffea9`. Branch: `feature/f037-rendered-diff-viewer`. SESSION 2 of
-feature F037, round 8, rounds so far 7.
+Base: `98b4495d`. Branch: `feature/f037-rendered-diff-viewer`. SESSION 2 of
+feature F037, round 9, rounds so far 8. THIS IS THE LAST ROUND OF THE SESSION.
 
 Bundle, one commit each, in this order:
-C0a  save this block verbatim to `.agent/authored/f037-r8.md`
+C0a  save this block verbatim to `.agent/authored/f037-r9.md`
 C0b  mirror the C0a blob into `.agent/last_block.md`
-C1   `.agent/plan.md` from slice PLANF037R8
-C2   `.agent/live_review.md` from pair DONE715PAIR, then append GATER7, then
-     append R0719; `.agent/prose_slips.md` append SLIPR8
-C3   `docs/roadmap/features/T5_F037.md` append AMEND4;
-     `.agent/decisions.md` append DECISION3
-C4   `.agent/handoff.md`, the handback
+C1   `.agent/plan.md` from slice PLANF037R9
+C2   `.agent/live_review.md` append GATER8; `.agent/prose_slips.md` append SLIPR9
+C3   `.agent/decisions.md` append DECISION4;
+     `apps/ui/src/components/diff/DiffView.module.css`, new, per SPEC S1 to S4
+C4   `tests/ui_contracts/test_diff_surface_css.py`, new, per SPEC S5 to S11
+C5   `.agent/handoff.md`, the handback
 
 Change set — these paths and no others:
-  .agent/authored/f037-r8.md
+  .agent/authored/f037-r9.md
   .agent/last_block.md
   .agent/plan.md
   .agent/live_review.md
   .agent/prose_slips.md
   .agent/decisions.md
-  docs/roadmap/features/T5_F037.md
+  apps/ui/src/components/diff/DiffView.module.css
+  tests/ui_contracts/test_diff_surface_css.py
   .agent/handoff.md
-Run `git push origin feature/f037-rendered-diff-viewer` AFTER C4. Create no pull
+Run `git push origin feature/f037-rendered-diff-viewer` AFTER C5. Create no pull
 request and merge nothing: the Open PR Gate returned `[]` when this block was
 authored.
 
-Slice convention: the authored texts in this block are PLANF037R8, DONE715PAIR,
-GATER7, R0719, SLIPR8, AMEND4 and DECISION3. Each is delimited by a line
-`<<<SLICE <NAME>` and a line `<<<END <NAME>`; the marker lines are never part of
-the text. A pair slice carries a `<<<FROM` line and a `<<<TO` line inside it,
-which are likewise never part of either text.
+Slice convention: the authored texts in this block are PLANF037R9, GATER8,
+SLIPR9 and DECISION4. Each is delimited by a line `<<<SLICE <NAME>` and a line
+`<<<END <NAME>`; the marker lines are never part of the text.
 
 Constraints:
 1. Apply every slice byte for byte, extracted from the COMMITTED C0a blob by its
    marker LINES in Python. Never retype a slice, never edit a slice.
-2. `.agent/plan.md` is a WHOLE-FILE replacement by PLANF037R8.
-3. DONE715PAIR is a FROM/TO pair against `.agent/live_review.md`. The
-   containment test was run before emission: `TO contains FROM: false`. It is a
-   REWRITE, so it orders its FROM at 0x and its TO at 1x in the file after C2,
-   and it orders no append reading. The FROM was measured at exactly ONE
-   occurrence at the base; report the count you measure before the edit.
-4. GATER7 and R0719 are appends at EOF of `.agent/live_review.md`, applied in
-   that order and AFTER the pair, in the same commit. SLIPR8 appends at EOF of
-   `.agent/prose_slips.md`. AMEND4 appends at EOF of
-   `docs/roadmap/features/T5_F037.md`. DECISION3 appends at EOF of
-   `.agent/decisions.md`. Every append uses the file's existing convention: a
-   single separator newline, then the slice bytes.
-5. `R-0719` is the only id minted this round, and it is the next free one: the
-   maximum registered id at the base is `R-0718`, measured.
-6. Do NOT touch the `Landed: R-0711` line or any existing `Done:` paragraph.
-7. NO TypeScript, TSX, CSS or any file under `apps/` is written this round. The
-   reason is gate G7 and it is deliberate: the reviewer's three attempts to run
-   the frontend test runner were all refused by this environment, and no code
-   will be ordered that neither the worker nor the reviewer can execute. G7
-   settles that question; the next round acts on the answer.
-8. Do NOT touch `packages/`, `tests/`, `docs/roadmap/ROADMAP.md` or
-   `docs/roadmap/STATUS.md`.
+2. `.agent/plan.md` is a WHOLE-FILE replacement by PLANF037R9. That slice is 48
+   lines as authored, which repairs the 50-line file R8 left behind: AGENTS.md
+   requires this file strictly under 50 and R8's slice was exactly 50, a
+   reviewer authoring error already recorded.
+3. GATER8 appends at EOF of `.agent/live_review.md`, SLIPR9 at EOF of
+   `.agent/prose_slips.md`, DECISION4 at EOF of `.agent/decisions.md`. Every
+   append uses the file's existing convention: a single separator newline, then
+   the slice bytes.
+4. No finding id is minted this round. R8 PASSED; its one deviation was a
+   reviewer authoring error with no product effect, which goes to SLIPR9 with no
+   id per operator amendment amend0827 rule 2.
+5. Do NOT touch the `Landed: R-0711` line or any existing `Done:` paragraph.
+6. NO `.ts`, `.tsx` and no React component is written this round, and nothing
+   under `apps/ui/src` other than the ONE new `.module.css` file. The reason is
+   R8's G7: `npx vitest run --root apps/ui`, `npm --prefix apps/ui run
+   test:unit` and `apps/ui/node_modules/.bin/vitest run --root apps/ui` were all
+   REFUSED by the environment for both the reviewer and the worker, so no
+   TypeScript can be executed, red-proved or certified here.
+7. Do NOT touch `packages/`, `docs/`, `apps/ui/src/styles/tokens.css`, or any
+   existing file under `tests/` other than by adding the one new file.
+8. Do NOT import the new stylesheet from any component. Nothing consumes it yet;
+   the component that will is blocked by constraint 6, and an unimported CSS
+   module is inert — Vite bundles only imported ones. Say so in the handback
+   rather than wiring it to something to look finished.
 
-SPEC — there is no production code in this round. The work is the four authored
-appends, the one pair and the probe.
+SPEC — apps/ui/src/components/diff/DiffView.module.css, new file
+
+S1. A header comment stating, in your own words, that these declarations are
+    BINDING and are transcribed from the binding CSS block in the Design section
+    of `docs/roadmap/features/T5_F037.md`, that amendment A4 of that file names
+    the authorities, and that class names are camelCase per this package's
+    CSS-module convention while the binding block's kebab-case names map
+    one-for-one. Name in that comment WHY ligatures are disabled: a `!=` or a
+    `->` in a diff must render as the characters that are really in the file,
+    not as a single composed glyph, which is `assets_spec.md` section 2's rule
+    for diff surfaces.
+
+S2. Match this package's existing CSS-module idiom, which you must read first —
+    `apps/ui/src/components/detail/DetailPopover.module.css` is a good example:
+    camelCase class names, one rule per line with the body on the same line, and
+    custom properties referenced as `var(--remedy-x, <fallback>)`.
+
+S3. The rules, with these EXACT values. Every numeric and colour value below is
+    transcribed from the feature file's binding CSS and must not be adjusted:
+      `.diffLine`   — `display: grid`; `grid-template-columns: 56px 56px 1fr`;
+                      a font shorthand giving size `12.5px` and line-height
+                      `1.6` over `var(--remedy-font-mono, ui-monospace,
+                      monospace)`; and `font-feature-settings: "liga" 0`.
+      `.diffLine.add` — `background: rgba(56,217,169,.12)`.
+      `.diffLine.del` — `background: rgba(247,103,7,.10)`.
+      `.diffLine .ln` — `color: var(--remedy-ink-soft, #6f82a8)`;
+                      `text-align: right`; `padding-right: 10px`;
+                      `user-select: none`.
+      `.hunkHead`   — `background: var(--remedy-bg-2, #f8fbff)`;
+                      `color: var(--remedy-ink-soft, #6f82a8)`;
+                      `padding: 4px 12px`; `font-size: 11px`;
+                      `letter-spacing: .08em`; and
+                      `font-feature-settings: "liga" 0`.
+
+S4. Define NO other class. In particular define NO intraline treatment: the
+    binding CSS gives none, and the feature file's banner forbids inventing a
+    visual language, so that is a design question for the round that renders
+    spans and not a colour to guess at now. Write that as a closing comment in
+    the file, so a reader who searches for the missing rule finds the reason —
+    the "deliberate absence" convention of AGENTS.md's discoverability section.
+
+SPEC — tests/ui_contracts/test_diff_surface_css.py, new file
+
+S5. Follow the idiom of `tests/ui_contracts/test_main_layout_guard.py`, which
+    you must read first: a module docstring saying what the guard prevents,
+    `from __future__ import annotations`, `ROOT = Path(__file__).resolve()
+    .parent.parent.parent`, module-level path constants, and plain assertions
+    inside a class. Import nothing from `apps/`.
+S6. Assert the stylesheet exists at
+    `apps/ui/src/components/diff/DiffView.module.css`.
+S7. `.diffLine` declares `display: grid` and the exact three-column track list
+    `56px 56px 1fr`. Assert the track list as its own value, not merely that the
+    string appears somewhere in the file.
+S8. The line rule's font is 12.5px over line-height 1.6, and it names
+    `--remedy-font-mono`.
+S9. The two changed-line backgrounds are exactly `rgba(56,217,169,.12)` for
+    `add` and `rgba(247,103,7,.10)` for `del`. Assert both, and assert they are
+    DIFFERENT from each other, so a copy-paste that gives both sides one colour
+    is a red.
+S10. LIGATURES ARE OFF ON EVERY DIFF SURFACE: assert `font-feature-settings:
+     "liga" 0` appears in BOTH the `.diffLine` rule and the `.hunkHead` rule.
+     Write the assertion per rule rather than as a count over the file, so
+     moving the declaration out of one rule cannot be hidden by the other.
+     Normalise whitespace around the colon before matching, so the guard pins
+     the DECLARATION and not one particular spacing of it.
+S11. THE CROSS-FILE GUARD, and it is the one worth the most: every
+     `--remedy-*` custom property this stylesheet REFERENCES is really DEFINED
+     in `apps/ui/src/styles/tokens.css`. Collect the referenced names from the
+     sheet with a regular expression rather than a hand-written list, so a token
+     added later is covered without editing the test, and assert the set of
+     referenced names is a subset of the defined ones. Report the offending
+     names in the assertion message. This is the guard that would catch a
+     stylesheet built on a token that does not exist, which no visual review
+     reliably catches.
 
 Done when — eight gates. Run every one, record its REAL exit code and its
 verbatim summary line, and put one line per gate in the handback.
 
-G1 hygiene. Read `.agent/STOP` from disk before C0a and again before C4; report
+G1 hygiene. Read `.agent/STOP` from disk before C0a and again before C5; report
    ABSENT or PRESENT at both points, and if PRESENT stop after the current
    commit and hand off. Report `git rev-parse HEAD` before C0a — it must equal
    the base above — and `git branch --show-current`. Report the
-   `git status --porcelain` LINE COUNT after each of C0a, C0b, C1, C2 and C3;
-   each must be 0.
+   `git status --porcelain` LINE COUNT after each of C0a, C0b, C1, C2, C3 and
+   C4; each must be 0.
 
 G2 transport, ONE digest comparison. After C0a report the sha256, byte count and
-   line count of `.agent/authored/f037-r8.md`. After C0b report that
-   `git rev-parse HEAD:.agent/authored/f037-r8.md` and
+   line count of `.agent/authored/f037-r9.md`. After C0b report that
+   `git rev-parse HEAD:.agent/authored/f037-r9.md` and
    `git rev-parse HEAD:.agent/last_block.md` are the SAME blob hash. State
    plainly that this chain covers the saved copy, its mirror and the working
    copy, and claims nothing about the bytes of any prompt.
 
 G3 extraction and caps. Extract every slice from the COMMITTED C0a blob by its
    marker lines and print each slice's NAME and line count. Print TOTAL, CONTENT
-   (the sum of the slice line counts) and PROSE = TOTAL − CONTENT, all as
-   measured. PROSE must be at most 400 and TOTAL at most 490.
+   and PROSE = TOTAL − CONTENT, all as measured. PROSE at most 400, TOTAL at
+   most 490.
 
-G4 the plan at C1. `.agent/plan.md` byte-equal to PLANF037R8 under the
+G4 the plan at C1. `.agent/plan.md` byte-equal to PLANF037R9 under the
    newline-included convention: report True or False. Report the NEGATIVE
    CONTROL against the slice minus its trailing newline; it must be False.
-   Report `^## Goal$` 1, `^## Next Steps$` 1 and `wc -l` strictly under 50.
+   Report `^## Goal$` 1, `^## Next Steps$` 1, and `wc -l`, which must be
+   STRICTLY UNDER 50 and is expected to read 48. If it does not read strictly
+   under 50, say so plainly — that is the exact defect this slice exists to
+   repair and it must not be reported as met.
 
-G5 the record at C2, full byte forensics — this is the append into the record.
-   PAIR: report the FROM count before and after (1 then 0) and the TO count
-   before and after (0 then 1).
-   APPENDS: the base `.agent/live_review.md` is 1166346 bytes and
-   `.agent/prose_slips.md` is 8424 bytes; report the measured values beside
-   them. For EACH of the three appends — GATER7, R0719, SLIPR8 — report reader
-   (a) as the BYTE IDENTITY `result == before + b"\n" + slice`, stating that
-   identity explicitly rather than a length sum with a prefix check, because
-   those two properties together cannot reject a byte flipped inside the
-   appended region and this gate's own control requires exactly that rejection.
-   Report reader (b) independently and structurally: have your script COUNT N,
-   the number of blank-line units in the slice, and compare the LAST N units of
-   the file against the slice's N units IN ORDER. NEGATIVE CONTROL per append:
-   flip one byte inside the FIRST appended paragraph and report that reader (a)
-   and reader (b) BOTH come back False.
-   COUNTS after C2, line-anchored, each reported as measured:
-     `^- R-\d+ — ` 280 — `R-0719` is the one id minted
-     `^Done: R-\d+ — ` 28 — `R-0715` resolved
-     `^Landed: R-` 1 — only the `R-0711` line survives
-     `^Gate: F\d+ R\d+ — ` 78
-   Report the ids ADDED (exactly `R-0719`), the ids newly RESOLVED (exactly
-   `R-0715`), whether all ids are DISTINCT, the maximum id, and the size of the
-   open set.
+G5 the record at C2 and the decision at C3. The base sizes are
+   `.agent/live_review.md` 1173234, `.agent/prose_slips.md` 8992 and
+   `.agent/decisions.md` 657352; report each measured value beside its figure.
+   For EACH of the three appends report reader (a) as the BYTE IDENTITY
+   `result == before + b"\n" + slice`, re-read from disk and stated as an
+   identity — not a length sum with a prefix check, which cannot reject a byte
+   flipped inside the appended region. Report reader (b) independently: have
+   your script COUNT N, the number of blank-line units in the slice, and compare
+   the LAST N units of the file against the slice's N units IN ORDER. NEGATIVE
+   CONTROL per append: flip one byte inside the FIRST appended paragraph and
+   report that reader (a) and reader (b) BOTH come back False.
+   COUNTS after C3, line-anchored, each reported as measured:
+     `^- R-\d+ — ` 280, unchanged — no id is minted this round
+     `^Done: R-\d+ — ` 28, unchanged
+     `^Landed: R-` 1, unchanged
+     `^Gate: F\d+ R\d+ — ` 79
+     `^## DECISION ` in `.agent/decisions.md` 170, with `F037 D4` occurring
+     exactly once
+   Report the size of the open set and confirm `R-0719` is still in it.
 
-G6 the two docs appends at C3. For EACH of AMEND4 into
-   `docs/roadmap/features/T5_F037.md` (base 7981 bytes) and DECISION3 into
-   `.agent/decisions.md` (base 655420 bytes), report the measured base size
-   beside the figure above and reader (a) as the same BYTE IDENTITY G5 defines,
-   plus reader (b) over the last N blank-line units with N counted by your
-   script. Report the line-anchored count of `^## DECISION ` in
-   `.agent/decisions.md` before and after C3: 168 then 169, and report that
-   `F037 D3` occurs exactly once in that file after C3. Report the
-   line-anchored counts of `^<<<SLICE ` and `^<<<END ` in both files after C3;
-   both must be 0 in both files.
+G6 the red-proofs for the conformance guard, run ONLY inside a disposable
+   `git worktree` at the C4 tree and never in the primary checkout. Purge
+   `__pycache__` and use `python3 -B` before EVERY run, and restore the
+   stylesheet between mutations. Report the UNMUTATED CONTROL first —
+   `python3 -B -m pytest tests/ui_contracts/test_diff_surface_css.py -q` — with
+   its real exit code and verbatim summary; a colour with no baseline is not
+   evidence. Then three mutations of
+   `apps/ui/src/components/diff/DiffView.module.css`, each quoted exactly FROM
+   and TO with the count of that string's occurrences before the edit, and for
+   each the real exit code, verbatim summary and every failing node id in full:
+     (a) change the track list `56px 56px 1fr` to `56px 1fr`.
+     (b) delete the `font-feature-settings: "liga" 0` declaration from the
+         `.diffLine` rule only, leaving the one in `.hunkHead` in place — this
+         is the mutation that proves S10's per-rule assertion is really per
+         rule and not a count over the file.
+     (c) change `var(--remedy-ink-soft, #6f82a8)` to
+         `var(--remedy-ink-nonexistent, #6f82a8)` in the `.ln` rule — this
+         proves the S11 cross-file token guard bites.
+   If any mutation comes back GREEN, report the green plainly and diagnose WHY
+   the assertion did not fire. Do NOT substitute a different mutation and do NOT
+   change a test to make it red. Remove and prune the worktree afterwards and
+   report `git worktree list` line count and `git status --porcelain` line count
+   in the primary checkout.
 
-G7 THE PROBE — can the frontend test runner run here at all? This gate produces
-   an ANSWER, not a colour, and either answer is a pass for this round.
-   Attempt each of the following THREE commands, in this order, from the
-   repository root, and report for each one: the exact command, whether it RAN
-   or was REFUSED by the environment, and either its real exit code with its
-   summary line, or the refusal message verbatim.
-     1. `npx vitest run --root apps/ui`
-     2. `npm --prefix apps/ui run test:unit`
-     3. `apps/ui/node_modules/.bin/vitest run --root apps/ui`
-   If ANY of them RUNS, report the full result — the suite is expected green at
-   the base since this round writes no frontend code, so report the real number
-   of passing tests and treat a red as a finding to declare, not to fix.
-   If ALL THREE are REFUSED, say so plainly and state that no vitest result
-   exists for this round. Do NOT claim, estimate or infer a test outcome you did
-   not observe, do NOT attempt any other route to the runner, and do NOT install
-   or modify anything to make it run. A refusal is a measurement and it is the
-   single most useful thing this round can produce.
-   ALSO in this gate, and these two DO run: the docs gate
-   `python3 -m pytest tests/docs/ -q`, required because this round's change set
-   includes `docs/roadmap/**`, measured GREEN at the base at `295 passed`; and
-   the canary `python3 -m pytest tests/cli/test_golden_path.py -q`, measured
-   GREEN at the base at `42 passed`. Report the real exit code and verbatim
-   summary of each, and if either differs from the base figure report the
-   difference rather than explaining it away.
+G7 suite, lint and canary at C4, in the primary checkout, ONE pytest process at
+   a time and never two in parallel.
+   Run `python3 -m pytest tests/ui_contracts/ -q`; report the real exit code,
+   the verbatim summary line and the count of lines matching `^FAILED`. Add the
+   extractor-blindness control: run the SAME counter over a control string
+   containing
+   `FAILED tests/ui_contracts/test_diff_surface_css.py::test_control_string`
+   and report that it returns 1, so a 0 above is a measurement and not a blind
+   spot. Report the whole-directory figure as measured; if it is red, report the
+   failures rather than narrowing the selection until it is green.
+   Report the node-id inventory of the new file from
+   `python3 -m pytest tests/ui_contracts/test_diff_surface_css.py --collect-only -q`
+   — the count and the ids. Never derive node ids by regexing `-v` output.
+   Run `python3 -m ruff check tests/ui_contracts/test_diff_surface_css.py` with
+   the repository's own configuration and NO `--isolated`; report the real exit
+   code and the verbatim output.
+   Run the canary `python3 -m pytest tests/cli/test_golden_path.py -q`, measured
+   GREEN at the base at `42 passed`; report the real exit code and verbatim
+   summary, and report any difference rather than explaining it away.
 
-G8 structure, artifacts and the Open PR Gate, measured at C3.
-   Report `git diff --name-only <base>..<C3>` against the change set above minus
+G8 structure, artifacts and the Open PR Gate, measured at C4.
+   Report `git diff --name-only <base>..<C4>` against the change set above minus
    `.agent/handoff.md`, and report BOTH residues — actual minus expected and
    expected minus actual — each of which must be empty.
-   Report a restricted `git diff --stat` showing that `apps/`, `packages/` and
-   `tests/` are ALL EMPTY for this round, and that `docs/` holds only
-   `docs/roadmap/features/T5_F037.md`.
+   Report a restricted `git diff --stat`: `packages/` and `docs/` EMPTY;
+   `apps/` holding only `apps/ui/src/components/diff/DiffView.module.css`;
+   `tests/` holding only `tests/ui_contracts/test_diff_surface_css.py`.
    Report the per-commit INSERTION count from `git diff --numstat` for C0a, C0b,
-   C1, C2 and C3 — not for C4, whose own count cannot exist while its text is
-   being written — and confirm each commit is single-parent and each insertion
-   count is under 500.
-   Run the `^<<<SLICE ` / `^<<<END ` counter over the C0a blob and report the
-   number it measures, which must be greater than zero, so the sweeps in G5 and
-   G6 are shown not to be blind.
-   Report `git ls-files .remedy-wt` line count, which must be 0, and
-   `git worktree list` line count, which must be 1 — this round opens no
-   worktree, because it runs no destructive verification.
+   C1, C2, C3 and C4 — not for C5, whose own count cannot exist while its text
+   is being written — and confirm each commit is single-parent and each
+   insertion count is under 500.
+   Report the line-anchored counts of `^<<<SLICE ` and `^<<<END ` in
+   `.agent/plan.md` at C1 and `.agent/live_review.md` at C2; both must be 0.
+   Then run the SAME counter over the C0a blob and report the number it
+   measures, which must be greater than zero, so the sweep is not blind.
+   Report the count of `import` statements naming the new stylesheet across
+   `apps/ui/src`, which must be 0 — constraint 8 forbids wiring it, and this is
+   the reading that proves the constraint was kept rather than asserted.
+   Report `git ls-files .remedy-wt` line count, which must be 0.
    Report the Open PR Gate verbatim:
    `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-   The PUSH is ordered after C4 and is deliberately NOT part of any gate: C4
+   The PUSH is ordered after C5 and is deliberately NOT part of any gate: C5
    writes the handback, so the handback cannot report a value that does not
    exist when it is written. Run the push, and do not name its result in
    `.agent/handoff.md`; the reviewer reads the remote tip itself.
 
 Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It
-carries the Session block naming SESSION 2 of feature F037 and round 8, the
-range and base SHA, a per-commit changed-files table with a `+/-` column taken
-from `git diff --numstat` itself and agreeing cell for cell with the per-commit
-reading G8 orders, the external actions, one line per gate G1 through G8 with
-its real result, the item-status table covering every C-item and every gate with
-`done`, `skipped` or `deviated` plus a reason, the Deviations, and the Next
-section. It has NO length cap. In the Next section state the G7 answer FIRST and
-in one unmissable sentence — whether the frontend test runner can be executed
-here — because the next round's whole shape depends on it, then that the first
-action of the next round is to re-read `.agent/STOP` from disk, then the Open PR
-Gate.
+carries the Session block naming SESSION 2 of feature F037 and round 9, and
+states plainly that THE SESSION ENDS HERE and why — R9 was ordered as the last
+round of the session. Include the range and base SHA, a per-commit changed-files
+table with a `+/-` column taken from `git diff --numstat` itself and agreeing
+cell for cell with the per-commit reading G8 orders, the external actions, one
+line per gate G1 through G8 with its real result, the item-status table covering
+every C-item, every S-item and every gate with `done`, `skipped` or `deviated`
+plus a reason, the Deviations, and the Next section. It has NO length cap.
+In the Next section, FIRST and unmissably, state that the frontend test runner
+is refused in this environment for both roles, that R8's G7 measured all three
+routes, and that T002's rendering core and all of T003 are BLOCKED on the
+operator permitting one of them — that is the single thing the next session most
+needs to know. Then state that the first action of the next round is to re-read
+`.agent/STOP` from disk, then the Open PR Gate.
 
-<<<SLICE PLANF037R8
+<<<SLICE PLANF037R9
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
 merge commit of pull request #217 which closed F032.
-`.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series, F037 D1, D2 and D3.
+`.agent/decisions.md` carries the DECISION series, F037 D1 through D4.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
@@ -203,129 +288,96 @@ into structured JSON — files, hunks, lines, intraline spans — served as a re
 endpoint, and the client renders it with a file sidebar, hunk collapse, virtual
 scrolling and lazily loaded syntax bundles.
 `docs/roadmap/features/T5_F037.md` holds Goal & Done, the task slicing, the
-binding CSS and the design amendments that reconcile it with the source.
+binding CSS and the design amendments A1 through A4.
 
 ## Current Step
-T001 is COMPLETE: the parser, the resolver and the two GET routes all landed and
-were proved by mutation. R8 prepares T002 rather than starting it. It corrects
-the feature file's design authority for the diff surface, which named a section
-that does not exist, and it MEASURES whether the frontend test runner can be
-executed in this environment at all — the reviewer's three attempts were
-refused, and no UI code is ordered until that has an answer, because code that
-neither role can execute cannot be verified and must not be certified.
+R9 lands the half of T002 this environment can actually verify: the diff surface
+stylesheet, transcribed from the feature file's binding CSS, and a Python
+conformance guard over it in `tests/ui_contracts/`, which is how this repository
+already pins frontend CSS. The rendering core stays unwritten because the
+frontend test runner is REFUSED here for both roles, measured at R8 — code that
+neither role can execute must not be certified.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
-| C1 the plan | ordered | first substantive commit |
-| C2 the R7 gate, `R-0715`, `R-0719`, the slip | ordered | record first |
-| C3 the feature-file amendment and the decision | ordered | authority before builders |
-| C4 the handback | ordered | carries the probe's answer first |
+| C1 the plan | ordered | first substantive commit, repairs its own cap |
+| C2 the R8 gate and the slip | ordered | record first |
+| C3 DECISION F037 D4 and the stylesheet | ordered | the choice beside what it governs |
+| C4 the conformance guard | ordered | must go red when the sheet drifts |
+| C5 the handback | ordered | last round of the session |
 
 ## Next Steps
-1. Act on the G7 answer. If the runner executes, T002's rendering core lands as
-   a pure `.ts` view-model beside its `.test.ts`, which is the only shape this
-   package tests: `apps/ui/vitest.config.ts` sets `environment: "node"` and the
-   repository has neither jsdom nor a testing library, so no React component is
-   rendered in any of its 31 test files. If the runner cannot execute, the
-   session hands off asking the operator to grant it, and orders no UI code.
-2. T002 the rendering core, then the React components and their CSS module
-   against the binding CSS and amendment A4.
+1. UNBLOCK THE RUNNER. `npx vitest run --root apps/ui`, `npm --prefix apps/ui
+   run test:unit` and the direct binary were all refused at R8. Until one is
+   permitted, no `.ts`, `.tsx` or React component of T002 can be verified, and
+   none is ordered.
+2. T002's rendering core as a pure `.ts` view-model beside its `.test.ts`, the
+   only shape this package tests: `apps/ui/vitest.config.ts` sets
+   `environment: "node"` and there is no jsdom and no testing library.
 3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
-- The frontend runner is unproven here. That is what G7 measures, and it is the
-  single largest risk to the rest of this feature.
+- The binding CSS defines no intraline treatment, and Acceptance requires
+  intraline emphasis. That is a design question for the round that renders
+  spans; inventing a colour early would breach the feature file's own banner.
 - `R-0711` carries a `Landed:` line and no `Done:` text because F032's branch
   ended first. It is the terminator case, not a gap for F037 to close.
-- No bundle-size budget exists anywhere in `tests/` or `apps/ui/vite.config.ts`,
-  so T003 would be creating that ceiling rather than satisfying one.
-<<<END PLANF037R8
+- No bundle-size budget exists in `tests/` or `apps/ui/vite.config.ts`, so T003
+  would be creating that ceiling rather than satisfying one.
+<<<END PLANF037R9
 
-<<<SLICE DONE715PAIR
-<<<FROM
-Landed: R-0715 — the docstring of `_do_get_route_facts` in `tests/ui_server/test_command_channel.py` no longer counts the job endpoints: "The thirteen job endpoints live in a dict literal inside `do_GET`" is now "The job endpoints live in a dict literal inside `do_GET`", which is the delete-the-numeral counter-measure the finding names rather than an update to fifteen, and the clause that carries the real property — that adding one puts it in the walk for free — is unchanged. The same commit adds the task-run diff route to `_walkable_paths`, so the route this round introduces is walked by the 405 discipline. In commit C4 of F037 R7.
-<<<TO
-Done: R-0715 — RESOLVED at F037 R7, commit `23b9ab39`, and verified by the reviewer at `996ffea9`. The docstring of `_do_get_route_facts` in `tests/ui_server/test_command_channel.py` no longer counts the job endpoints at all: "The thirteen job endpoints live in a dict literal inside `do_GET`" is now "The job endpoints live in a dict literal inside `do_GET`". THAT IS THE COUNTER-MEASURE THE FINDING NAMED — delete the numeral rather than update it — and it is the right one for a reason this round demonstrated rather than argued: the same round added a FIFTEENTH endpoint key, so a numeral updated to fourteen at R7 would have been stale inside its own commit. The clause carrying the real property, that adding one puts it in the walk for free, is unchanged and still true. THE REPAIR IS MEASURED, NOT READ: the reviewer counted `thirteen` at 0 in that file at `996ffea9`, and the worker additionally counted `twelve`, `fourteen`, `fifteen` and `sixteen` at 0, so no substitute numeral was quietly put in its place — which is the failure mode this class of repair invites. The guard the docstring belongs to is unharmed: `tests/ui_server/test_command_channel.py` is exit 0 at `106 passed` both at the base and at `996ffea9`, measured by the reviewer in the primary checkout and again inside a disposable worktree, and the same commit registered the round's new structural route in `_walkable_paths` so the 405 discipline really walks it.
-<<<END DONE715PAIR
+<<<SLICE GATER8
+Gate: F037 R8 — the preparation round, and the round whose most valuable output is a REFUSAL it was ordered to measure rather than to work around. THE ROUND PASSED on the seven gates that could be met and DECLARED the one that could not, and the reviewer re-ran the load-bearing ones itself at `98b4495d`. THE PROBE IS THE HEADLINE: `npx vitest run --root apps/ui`, `npm --prefix apps/ui run test:unit` and `apps/ui/node_modules/.bin/vitest run --root apps/ui` were each attempted and each REFUSED before execution with `This command requires approval`, so no exit code exists for any of them and none was claimed. That reproduces the reviewer's own three refusals exactly, which is what makes the reading a property of the ENVIRONMENT rather than of one role's permissions, and it is why no TypeScript was ordered this round or the next: code that neither the worker nor the reviewer can execute cannot be red-proved, and certifying it would be the unverified-completion-claim block condition rather than a shortcut. THE DOCS GATE AND THE CANARY BOTH RAN AND BOTH MATCH THE BASE: `python3 -m pytest tests/docs/ -q` exit 0 at `295 passed` and `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0 at `42 passed`. THE SPEC REPAIR IS REAL AND THE REVIEWER RE-MEASURED ITS PREMISE RATHER THAN TRUSTING IT: `docs/ui/design_reference/ux_spec.md` contains the string `diff` ZERO times, case-insensitively, at `98b4495d`, so the feature file's banner really did send every UI builder of this feature to a section that does not exist; amendment A4 now names the three authorities that do — the feature file's own binding CSS, `component_spec.md:113-116` and `assets_spec.md:92-95` — and DECISION F037 D3 records the choice, the three alternatives and how to reverse it. THE RECORD MOVED AS ORDERED: `^- R-\d+ — ` 279 to 280, `^Done: R-\d+ — ` 27 to 28, `^Landed: R-` 2 to 1, `^Gate: F\d+ R\d+ — ` 77 to 78, `^## DECISION ` 168 to 169 with `F037 D3` occurring exactly once, the single id added being `R-0719`, exactly `R-0715` resolved, all ids distinct and the open set unmoved at 252. ONE DEVIATION IS DECLARED AND IT IS THE REVIEWER'S: G4 ordered `.agent/plan.md` strictly under 50 lines while the PLANF037R8 slice was authored at exactly 50, so the two clauses could not both be met; the worker kept byte-equality with the authored text, reported the count as measured and refused to trim a slice constraint 1 forbids it to edit — which is the correct precedence, because a worker that edits a slice to make a number green destroys the only evidence that the file on disk is the reviewer's text. The file was left one line over AGENTS.md's rule for the length of one round and is repaired by the R9 slice, and the authoring failure is recorded in `.agent/prose_slips.md` with no id: `.agent/plan.md` is not one of the paths operator amendment amend0827 rule 2 reserves an id for. NO BLOCK CONDITION AROSE: nothing fabricated, no false live indicator, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END GATER8
 
-<<<SLICE GATER7
-Gate: F037 R7 — the routing round, and the round that COMPLETES T001. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran the load-bearing ones itself at `996ffea9`. THE FEATURE'S SERVER HALF IS NOW WHOLE: a job-scope route as a key in the `do_GET` handlers dict, and a task-run-scope route spelled out structurally because it needs a second path segment, both calling `build_diff_view` through thin builders that hold no filesystem logic of their own. THE SUITE AND THE GUARD ARE GREEN AT REAL EXIT CODES: `python3 -m pytest tests/ui_server/test_diff_endpoint.py tests/ui_server/test_command_channel.py tests/orchestration/test_diff_view_source.py -q` is exit 0 at `121 passed`, `python3 -m ruff check` over the three touched paths under the repository's own configuration is exit 0 at `All checks passed!`, and the canary is exit 0 at `42 passed`. ALL THREE ROUTE MUTATIONS REPRODUCE EXACTLY AS REPORTED, run by the reviewer in a disposable worktree with `__pycache__` purged before every run and the module restored between them, each mutated string counted at exactly one occurrence before its edit: unmutated control exit 0 at `6 passed`; removing the `"diff"` handlers key is exit 1 at `2 failed, 4 passed`; making the structural route pass `task_id=None` is exit 1 at `2 failed, 4 passed`, and it fails on the assertion that the task run's files are its OWN, which is the discriminator that fixture pair exists for; and answering 404 instead of 200 for an unknown run is exit 1 at `1 failed, 5 passed`. THE ROUTE-WALK GUARD WAS MEASURED IN BOTH PLACES AND IS UNMOVED AT `106 passed`, in the primary checkout and inside the worktree, which matters because C4 edited that very file. THE DESIGN DECISION THE ROUND CARRIES IS RIGHT AND IS PINNED: an unknown task run answers 200 with `available` False and `reason` `unknown_task_run` rather than 404, because absence is DATA in this envelope and a 404 would make a job with no diff indistinguishable from a bad URL — and the test asserts the status explicitly so a later change to 404 is a red rather than a silent drift. THE ROUND ADDED NO NEW LITERAL GET ROUTE, so the `LITERAL_GET_ROUTES` exact-set guard was never at risk, and the job scope was deliberately made a dict key so the AST walk acquires it for free while the structural route was registered in `_walkable_paths` by hand. `R-0715` IS RESOLVED ABOVE. THE RECORD MOVED AS ORDERED: `^- R-\d+ — ` unmoved at 279, `^Done: R-\d+ — ` unmoved at 27, `^Landed: R-` 1 to 2, `^Gate: F\d+ R\d+ — ` 76 to 77, and the open set 252 at both points. ONE DEVIATION IS DECLARED AND IT IS A REPAIR OF THE REVIEWER'S OWN GATE: G5 worded append reader (a) as a length sum plus a byte-prefix check, and those two properties together cannot reject a byte flipped INSIDE the appended region, which is precisely what the same gate's negative control ordered them to reject; the worker implemented the stronger byte IDENTITY instead and said so. The reviewer accepts the stronger reading, has adopted it in this round's own gates, and records the authoring failure in `.agent/prose_slips.md` with no id, because nothing landed wrong on disk. NO BLOCK CONDITION AROSE: nothing fabricated, no false live indicator, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END GATER7
+<<<SLICE SLIPR9
+- 2026-08-28 · F037 R8 · The PLANF037R8 slice was authored at exactly 50 lines
+  while the same block's G4 ordered `.agent/plan.md` strictly under 50, so the
+  block contained two clauses no worker could satisfy together and the file sat
+  one line over AGENTS.md's rule for a round. Checklist item 3 requires every
+  authored full-replacement text to be counted against its own file's cap BEFORE
+  emission; the count was carried over from an earlier round's slice instead of
+  being re-measured after the last edit, which is the staleness shape the
+  checklist already names. A cap is re-measured on the FINAL bytes of the slice
+  that will land, never inherited from the slice it was adapted from.
+<<<END SLIPR9
 
-<<<SLICE R0719
-- R-0719 — Medium, THE FEATURE FILE SENDS EVERY UI BUILDER OF THIS FEATURE TO A DESIGN-REFERENCE SECTION THAT DOES NOT EXIST. Raised by the reviewer at the F037 R7 gate, while scoping T002; no round was ordered to look for it. `docs/roadmap/features/T5_F037.md:14` closes its CANONICAL DESIGN REFERENCE banner with "Feature-specific: diff surface tokens per `ux_spec.md`; the viewer's entry-point contract per `component_spec.md`." THE SECOND HALF RESOLVES AND THE FIRST DOES NOT. MEASURED BY THE REVIEWER AT `996ffea9`, case-insensitively over the whole of `docs/ui/design_reference/ux_spec.md`: the string `diff` occurs ZERO times, so there are no diff surface tokens there to follow, and a grep of the whole design-reference folder returns the viewer's material in two OTHER files entirely — `component_spec.md:113-116`, which names the entry point `onOpenDiff(taskId)` from `DetailPopover` and states that the design-reference package deliberately does not build the viewer, and `assets_spec.md:92-95`, which puts the mono family on diff surfaces and requires ligatures OFF via `font-feature-settings:"liga" 0`. THE EFFECT IS ON THE FEATURE'S WHOLE REMAINING SCOPE, which is why this is not cosmetic: the same banner binds builders to the design reference and forbids inventing a visual language, with any deviation requiring an assumption_log entry, so a T002 builder told to take diff tokens from `ux_spec.md` finds nothing, and the two honest routes left to it are to stall or to invent — and the banner forbids the second. MEDIUM AND NOT HIGH because nothing is unbuildable and no suite is red: the Design section of the feature file itself carries the binding CSS, and the reviewer confirmed at `996ffea9` that the two custom properties that CSS names, `--remedy-ink-soft` and `--remedy-bg-2`, are both really defined in the shipped sheet `apps/ui/src/styles/tokens.css`, so the visual authority does exist — it is only pointed at the wrong file. NOT LOW because T002 and T003 are the entire remaining scope of this feature and both are UI rounds that read this banner first. THIS IS NOT `R-0715`, which was a stale numeral in a test docstring, and not `R-0427`, which is a stale claim in a module docstring under `packages/`: this is a pointer to a section that never existed rather than a sentence that went stale. COUNTER-MEASURE: amend the feature file rather than the design reference, because the design reference is the operator's artifact and its silence on the viewer is deliberate — `component_spec.md:115-116` says so in as many words. The amendment names the three real authorities, and the reviewer authors it into this same round as A4 with DECISION F037 D3 recording the choice and how to reverse it. OPEN.
-<<<END R0719
+<<<SLICE DECISION4
+## DECISION F037 D4 — the diff surface takes its mono family from `--remedy-font-mono`, keeping the binding CSS's stack as the fallback (2026-08-28, F037 R9)
 
-<<<SLICE SLIPR8
-- 2026-08-28 · F037 R7 · G5 worded append reader (a) as a length sum plus a
-  byte-PREFIX check, and those two properties together cannot reject a byte
-  flipped INSIDE the appended region — which is exactly the rejection the same
-  gate's negative control ordered them to produce, so the control could have
-  passed a corrupted append. The worker implemented the stronger byte IDENTITY
-  `result == before + b"\n" + slice` and declared the substitution. An append
-  reader is stated as the IDENTITY it must prove, never as an arithmetic a
-  control can satisfy.
-<<<END SLIPR8
+CONTEXT. Two authorities named by amendment A4 speak to the diff surface's font
+and they do not say the same thing. The binding CSS block in
+`docs/roadmap/features/T5_F037.md` writes the shorthand
+`font:12.5px/1.6 ui-monospace,monospace`, naming a literal family stack.
+`docs/ui/design_reference/assets_spec.md:90-93` defines `--remedy-font-mono` as
+the canonical mono token and names the diff viewer as one of its usages. Every
+other stylesheet in `apps/ui/src/components/` references families and colours
+through `var(--remedy-*, <fallback>)` rather than through literals.
 
-<<<SLICE AMEND4
-**A4 — the diff surface's design authority is this file's binding CSS together
-with `component_spec.md` and `assets_spec.md`; `ux_spec.md` carries nothing
-about diffs (finding `R-0719`, DECISION F037 D3).** The CANONICAL DESIGN
-REFERENCE banner at the top of this file ends with "Feature-specific: diff
-surface tokens per `ux_spec.md`". Measured at `996ffea9`, case-insensitively
-over the whole of `docs/ui/design_reference/ux_spec.md`, the string `diff`
-occurs ZERO times: there are no diff surface tokens in that file to follow. The
-three authorities that DO exist, and which builders of T002 and T003 follow
-instead:
+CHOSEN. Write the shorthand as
+`font: 12.5px/1.6 var(--remedy-font-mono, ui-monospace, monospace)`. The size
+`12.5px` and the line-height `1.6` are taken from the binding CSS unchanged;
+the family resolves to the design reference's token when it is defined, and
+falls back to exactly the stack the binding CSS names when it is not. Both
+authorities are then satisfied by one declaration and neither is contradicted.
+This is not treated as a visual deviation requiring an assumption-log entry:
+the token's own stack is monospace throughout, and the size, line-height and
+weight the binding CSS fixes are untouched — what changes is the mechanism by
+which the family is named, not the type that renders.
 
-1. The binding CSS block in the Design section of this file. Its two custom
-   properties resolve in the shipped sheet: `--remedy-ink-soft` and
-   `--remedy-bg-2` are both defined in `apps/ui/src/styles/tokens.css`.
-2. `docs/ui/design_reference/component_spec.md:113-116` — the entry point is a
-   button in `DetailPopover` emitting `onOpenDiff(taskId)`. That section also
-   states that the design-reference package deliberately does NOT build the
-   viewer, which is why F037 owns it and why the silence elsewhere is not an
-   oversight to be filled by invention.
-3. `docs/ui/design_reference/assets_spec.md:92-95` — the mono family applies to
-   diff surfaces, and ligatures are OFF there:
-   `font-feature-settings:"liga" 0`.
+ALTERNATIVES CONSIDERED. (a) Transcribe `ui-monospace, monospace` literally.
+Rejected: it pins the diff surface to a different family from every other mono
+surface in the package the moment the token changes, which is the synonym drift
+AGENTS.md's discoverability section forbids, and it ignores an authority A4
+itself names. (b) Use `var(--remedy-font-mono)` with no fallback. Rejected: a
+stylesheet that renders proportional text when one token is missing fails in
+the worst direction for a diff, where column alignment carries meaning.
+(c) Add a diff-specific font token. Rejected: a second spelling for one concept,
+and `assets_spec.md` is the operator's artifact and already answers the question.
 
-The banner's `ux_spec.md` pointer is SUPERSEDED for the diff surface and for
-nothing else; every other clause of that banner, including the prohibition on
-inventing a visual language and the assumption_log requirement for any
-deviation, stands unchanged.
-<<<END AMEND4
-
-<<<SLICE DECISION3
-## DECISION F037 D3 — the diff surface's design authority is named in the feature file, and `ux_spec.md` is not one of the three (2026-08-28, F037 R8)
-
-CONTEXT. `docs/roadmap/features/T5_F037.md:14` directs builders to "diff surface
-tokens per `ux_spec.md`". Measured at `996ffea9`, `docs/ui/design_reference/ux_spec.md`
-contains no occurrence of `diff` at all, case-insensitively, so that pointer
-resolves to nothing. T002 and T003 are the entire remaining scope of this
-feature and both are UI rounds whose builders read that banner first. Registered
-as finding `R-0719`.
-
-CHOSEN. Amend the FEATURE FILE with amendment A4, naming the three authorities
-that do exist: this file's own binding CSS, whose `--remedy-ink-soft` and
-`--remedy-bg-2` were confirmed present in `apps/ui/src/styles/tokens.css`;
-`component_spec.md:113-116` for the entry-point contract; and
-`assets_spec.md:92-95` for the mono family and the ligatures-off rule on diff
-surfaces. The banner's other clauses are untouched.
-
-ALTERNATIVES CONSIDERED. (a) Add a diff-surface section to `ux_spec.md`. Rejected:
-the design reference is the operator's artifact, AGENTS.md's documentation
-boundary keeps `docs/` describing what IS, and `component_spec.md:115-116`
-states that the design-reference package deliberately does not build the viewer
-— so its silence is a decision, not a gap for a feature branch to fill.
-(b) Delete the clause and leave the diff surface unattributed. Rejected: it would
-leave a builder with a banner that forbids inventing a visual language and no
-authority to follow, which is the same defect wearing a shorter sentence.
-(c) Leave it and rely on reviewers to catch it each round. Rejected: it had
-already survived seven rounds unread.
-
-REVERSE by deleting amendment A4 from `docs/roadmap/features/T5_F037.md` and
-this decision, restoring the banner's `ux_spec.md` pointer as the sole
-feature-specific authority for the diff surface.
-<<<END DECISION3
+REVERSE by replacing the `font` declaration in
+`apps/ui/src/components/diff/DiffView.module.css` with the binding CSS's literal
+shorthand, deleting this decision, and relaxing the corresponding assertion in
+`tests/ui_contracts/test_diff_surface_css.py`.
+<<<END DECISION4
