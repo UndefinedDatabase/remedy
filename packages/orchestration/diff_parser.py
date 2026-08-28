@@ -182,6 +182,57 @@ class _FileRegion:
         return DIFF_STATUS_MODIFIED
 
 
+def _region_is_redundant_header_echo(earlier: _FileRegion, later: _FileRegion) -> bool:
+    """True when ``earlier`` is nothing but a repeat of ``later``'s header pair.
+
+    Every condition is on the EARLIER region: it carries no hunks, no ``note``, no
+    binary flag and no rename, both of its own headers are present, and its
+    ``(minus_header, plus_header)`` pair equals the later region's pair.
+
+    The comparison is on the HEADER PAIR and NEVER on the resolved path.
+    ``repair_attest.build_safe_diff_text`` legitimately puts a tracked region and an
+    untracked ``--- /dev/null`` marker for ONE path into ``safe.diff``, and those are
+    two distinct facts a viewer must keep apart. A region carrying a ``note`` is
+    never dropped either, because the note is the only explanation an empty region
+    has.
+    """
+    if earlier.hunks or earlier.note is not None or earlier.binary:
+        return False
+    if earlier.rename_from is not None or earlier.rename_to is not None:
+        return False
+    if earlier.minus_header is None or earlier.plus_header is None:
+        return False
+    return (earlier.minus_header, earlier.plus_header) == (
+        later.minus_header,
+        later.plus_header,
+    )
+
+
+def _collapse_doubled_header_regions(regions: list[_FileRegion]) -> list[_FileRegion]:
+    """Fold each redundant header-echo region into the region that FOLLOWS it.
+
+    WHY this exists (finding ``R-0716``): ``job_evidence._build_workspace_diff``
+    appends ``--- a/<rel>`` and ``+++ b/<rel>`` itself and then appends
+    ``difflib.unified_diff(..., fromfile="a/<rel>", tofile="b/<rel>")``, whose own
+    first two lines are that same pair. Every file in ``workspace.diff`` therefore
+    carries the header pair TWICE, and the ``--- `` rule in the walk opens a second,
+    empty region on the repeat — one file rendered as two, the first with no hunks
+    and zero stats.
+
+    Done at flush time rather than as a lookahead in the walk, so the walk keeps its
+    one-line-at-a-time shape. Walking backwards makes the fold IDEMPOTENT over runs:
+    three repeats of a header pair collapse as cleanly as two, because each dropped
+    region is compared against the region that SURVIVED to its right. File order is
+    preserved; nothing is reordered and nothing is merged.
+    """
+    kept: list[_FileRegion] = []
+    for region in reversed(regions):
+        if kept and _region_is_redundant_header_echo(region, kept[0]):
+            continue
+        kept.insert(0, region)
+    return kept
+
+
 def _header_path(header: str | None) -> str | None:
     """Return a ``---``/``+++`` header's path, ``/dev/null`` preserved as itself."""
     if header is None:
@@ -382,6 +433,10 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
 
         # Everything else outside a hunk (`index `, `new file mode `, `similarity
         # index `, ordinary prose) carries nothing the viewer renders.
+
+    # R-0716: fold the `workspace.diff` header echo away BEFORE regions become files,
+    # so file indices — and therefore hunk ids — are numbered over the real files.
+    regions = _collapse_doubled_header_regions(regions)
 
     for file_index, region in enumerate(regions):
         path, old_path = region.resolve_path()

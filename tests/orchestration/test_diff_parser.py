@@ -151,6 +151,69 @@ NO_NEWLINE_DIFF = (
 )
 
 
+def _emitter_shaped_workspace_file_diff(
+    rel_path: str, repo_lines: list[str], ws_lines: list[str], repeats: int = 1
+) -> str:
+    """Reproduce one file's emission by `job_evidence._build_workspace_diff`.
+
+    That emitter appends `--- a/<rel>` and `+++ b/<rel>` ITSELF and then appends
+    `difflib.unified_diff(..., fromfile="a/<rel>", tofile="b/<rel>", lineterm="")`,
+    whose own first two lines are that SAME pair — so every file in `workspace.diff`
+    carries the header pair TWICE. That doubling is finding `R-0716`. The fixture is
+    GENERATED from `difflib` rather than typed out so it cannot drift away from the
+    producer it stands for, and `repeats` lets a test push the echo past two.
+    """
+    out = [f"--- a/{rel_path}", f"+++ b/{rel_path}"] * repeats
+    out.extend(
+        line.rstrip()
+        for line in difflib.unified_diff(
+            repo_lines,
+            ws_lines,
+            fromfile=f"a/{rel_path}",
+            tofile=f"b/{rel_path}",
+            lineterm="",
+        )
+    )
+    out.append("")
+    return "\n".join(out) + "\n"
+
+
+#: The `workspace.diff` shape in full: `job_evidence`'s `#` preamble, then one file
+#: whose header pair appears twice. `R-0716`: the parser read this as TWO files.
+WORKSPACE_DOUBLED_HEADER_DIFF = (
+    "# Job workspace diff (workspace vs original target repo)\n"
+    "# Workspace: <workspace>\n"
+    "# Repo: <repo>\n"
+    "\n"
+) + _emitter_shaped_workspace_file_diff(
+    "pkg/app.py",
+    ["alpha\n", "beta\n", "gamma\n"],
+    ["alpha\n", "BETA\n", "gamma\n"],
+)
+
+#: The same shape with the header pair written THREE times, because the collapse is
+#: applied repeatedly rather than exactly once.
+WORKSPACE_TRIPLED_HEADER_DIFF = _emitter_shaped_workspace_file_diff(
+    "pkg/app.py",
+    ["alpha\n", "beta\n", "gamma\n"],
+    ["alpha\n", "BETA\n", "gamma\n"],
+    repeats=3,
+)
+
+#: The `R-0716` guard: `repair_attest.build_safe_diff_text` puts a TRACKED region and
+#: an UNTRACKED `--- /dev/null` marker for ONE path into `safe.diff`, and those are
+#: two distinct facts. The tracked region here is deliberately hunkless so that every
+#: other fold precondition holds and ONLY the header-pair comparison keeps the two
+#: entries apart — a collapse written against the resolved PATH would merge them.
+SAME_PATH_DIFFERENT_HEADERS_DIFF = (
+    "--- a/pkg/thing.py\n"
+    "+++ b/pkg/thing.py\n"
+    "--- /dev/null\n"
+    "+++ b/pkg/thing.py\n"
+    "# new untracked file (sha256=cafe, size=7)\n"
+)
+
+
 def _tuples(hunk: dict) -> list[tuple]:
     """Reduce a hunk's lines to the four fields the viewer actually renders."""
     return [(ln["kind"], ln["old_ln"], ln["new_ln"], ln["content"]) for ln in hunk["lines"]]
@@ -371,6 +434,57 @@ def test_every_file_stats_equal_a_recount_of_its_own_parsed_lines():
             assert entry["stats"]["deleted"] == kinds.count("del")
             assert entry["status"] in DIFF_VIEW_STATUSES
     assert seen > 0
+
+
+# --------------------------------------------------------------------------- #
+# R-0716: the `workspace.diff` doubled header pair, and the guard on the fix.
+# --------------------------------------------------------------------------- #
+
+
+def test_parse_unified_diff_to_view_collapses_the_doubled_workspace_header():
+    """`R-0716`: one file emitted with its header pair twice is ONE file entry.
+
+    Before the repair this returned two entries — a phantom with no hunks, zero
+    stats and no note, which a sidebar would render as a real changed file holding
+    nothing.
+    """
+    view = parse_unified_diff_to_view(WORKSPACE_DOUBLED_HEADER_DIFF)
+
+    assert len(view["files"]) == 1
+    entry = view["files"][0]
+    assert entry["path"] == "pkg/app.py"
+    assert entry["old_path"] is None
+    assert entry["status"] == DIFF_STATUS_MODIFIED
+    assert entry["note"] is None
+    assert entry["stats"] == {"added": 1, "deleted": 1}
+    assert len(entry["hunks"]) == 1
+    assert _tuples(entry["hunks"][0]) == [
+        ("ctx", 1, 1, "alpha"),
+        ("del", 2, None, "beta"),
+        ("add", None, 2, "BETA"),
+        ("ctx", 3, 3, "gamma"),
+    ]
+
+
+def test_parse_unified_diff_to_view_collapses_three_repeats_as_cleanly_as_two():
+    view = parse_unified_diff_to_view(WORKSPACE_TRIPLED_HEADER_DIFF)
+
+    assert len(view["files"]) == 1
+    assert view["files"][0]["path"] == "pkg/app.py"
+    assert view["files"][0]["stats"] == {"added": 1, "deleted": 1}
+
+
+def test_parse_unified_diff_to_view_keeps_two_regions_for_one_path():
+    """The `R-0716` guard: same resolved path, DIFFERENT header pairs, two entries."""
+    view = parse_unified_diff_to_view(SAME_PATH_DIFFERENT_HEADERS_DIFF)
+
+    assert len(view["files"]) == 2
+    assert [f["path"] for f in view["files"]] == ["pkg/thing.py", "pkg/thing.py"]
+    tracked, untracked = view["files"]
+    assert tracked["status"] == DIFF_STATUS_MODIFIED
+    assert tracked["note"] is None
+    assert untracked["status"] == DIFF_STATUS_ADDED
+    assert untracked["note"] == "# new untracked file (sha256=cafe, size=7)"
 
 
 def test_parse_unified_diff_to_view_reads_real_difflib_output():
