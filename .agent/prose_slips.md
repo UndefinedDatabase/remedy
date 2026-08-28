@@ -41,3 +41,12 @@
   --porcelain` count after C6, so one clause of one gate was unmeetable by
   construction; the worker declared it and reported the reading outside the
   file, and the reviewer measured it at `91b00286` as 0.
+
+- 2026-08-28 · F032 R15 · The block did not carry forward the clause the F032
+  R12 gate entry had labelled binding on the next block ordering a handback —
+  that a false numeral in `.agent/handoff.md` is repaired by a deviation line
+  in the NEXT handback rather than by a commit of its own — so the worker,
+  finding an unmeasured sentence in its own committed handback, spent a ninth
+  commit repairing it and declared the write-once breach itself. Nothing on
+  disk under `packages/`, `apps/`, `tests/` or `docs/` was wrong, so no id was
+  spent; the clause is quoted in the R16 block instead.
