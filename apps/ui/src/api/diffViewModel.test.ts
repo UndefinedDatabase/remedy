@@ -1,11 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   DIFF_HUNK_COLLAPSE_THRESHOLD_LINES,
+  DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS,
+  DIFF_VIRTUAL_OVERSCAN_ROWS,
+  DIFF_VIRTUAL_ROW_HEIGHT_PX,
   DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS,
   buildDiffFileSummaries,
   buildDiffRowModels,
   computeDiffRowWindow,
   defaultCollapsedHunkIds,
+  diffRowWindowForViewport,
   readDiffEnvelope,
   splitLineIntoIntralineSegments,
   toggleHunkCollapse,
@@ -15,6 +19,7 @@ import type {
   DiffIntralineSpan,
   DiffLine,
   DiffLineSegment,
+  DiffRowViewportWindow,
   DiffRowWindow,
 } from "./diffViewModel";
 
@@ -689,6 +694,150 @@ describe("computeDiffRowWindow", () => {
   it("treats the overscan as optional and defaults it to none", () => {
     expect(computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 50)).toEqual(
       computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 50, 0),
+    );
+  });
+});
+
+/** A panel measured at exactly `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` rows, so the
+ *  measured path and the unmeasured fallback answer the same visible count and
+ *  every difference between them is the fallback itself. */
+const MEASURED_VIEWPORT_PX =
+  DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS * DIFF_VIRTUAL_ROW_HEIGHT_PX;
+
+/** A scroll offset of exactly FIFTY-ONE AND A HALF rows. The half is the whole
+ *  point: the floor is `HALF_ROW_SCROLL_ROWS` and the ceiling one more, so the
+ *  two roundings give different answers and the assertion below can tell them
+ *  apart. Far enough down the list that the overscan does not clamp the
+ *  difference away at the top. */
+const HALF_ROW_SCROLL_ROWS = 51;
+const HALF_ROW_SCROLL_PX =
+  HALF_ROW_SCROLL_ROWS * DIFF_VIRTUAL_ROW_HEIGHT_PX + DIFF_VIRTUAL_ROW_HEIGHT_PX / 2;
+
+/** A panel measured at TWO AND A HALF rows, the mirror case: the ceiling is one
+ *  more than `HALF_ROW_VIEWPORT_ROWS` and the floor is that number itself, so a
+ *  height division rounded the other way changes the drawn count. */
+const HALF_ROW_VIEWPORT_ROWS = 2;
+const HALF_ROW_VIEWPORT_PX =
+  HALF_ROW_VIEWPORT_ROWS * DIFF_VIRTUAL_ROW_HEIGHT_PX + DIFF_VIRTUAL_ROW_HEIGHT_PX / 2;
+
+/** The scale this whole round exists for: a diff far larger than any viewport,
+ *  which must still be drawn as a bounded window. */
+const SCALE_ROWS = 10000;
+
+/** Offsets and heights nothing upstream validates, which must be RESOLVED here
+ *  rather than carried into an index or a pixel height. */
+const HOSTILE_PIXEL_VALUES = [
+  Number.NaN,
+  Number.POSITIVE_INFINITY,
+  Number.NEGATIVE_INFINITY,
+  -DIFF_VIRTUAL_ROW_HEIGHT_PX * 3,
+];
+
+describe("diffRowWindowForViewport", () => {
+  it("answers an UNMEASURED viewport with a NON-EMPTY window", () => {
+    // THE TRAP THIS FUNCTION EXISTS FOR. A panel's clientHeight is 0 on the
+    // first render; without the fallback the visible count is 0, the window is
+    // empty, nothing is drawn, the panel never scrolls and so is never measured.
+    const answer = diffRowWindowForViewport(VIRTUALIZED_ROWS, 0, 0);
+    expect(answer.virtualized).toBe(true);
+    expect(answer.rowsInWindow).toBeGreaterThan(0);
+    expect(answer.endIndex).toBeGreaterThan(answer.startIndex);
+    expect(answer.rowsInWindow).toBe(
+      DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS + DIFF_VIRTUAL_OVERSCAN_ROWS,
+    );
+  });
+
+  it("does not virtualize below the threshold: no spacers, every row drawn", () => {
+    const rows = 17;
+    const answer = diffRowWindowForViewport(rows, HALF_ROW_SCROLL_PX, MEASURED_VIEWPORT_PX);
+    expect(answer.virtualized).toBe(false);
+    expect(answer.startIndex).toBe(0);
+    expect(answer.endIndex).toBe(rows);
+    expect(answer.rowsInWindow).toBe(rows);
+    expect(answer.rowsBeforePx).toBe(0);
+    expect(answer.rowsAfterPx).toBe(0);
+  });
+
+  it("takes the first visible row as the FLOOR of the scroll division", () => {
+    const answer = diffRowWindowForViewport(
+      VIRTUALIZED_ROWS,
+      HALF_ROW_SCROLL_PX,
+      MEASURED_VIEWPORT_PX,
+    );
+    expect(answer.startIndex).toBe(HALF_ROW_SCROLL_ROWS - DIFF_VIRTUAL_OVERSCAN_ROWS);
+    expect(answer.startIndex).not.toBe(HALF_ROW_SCROLL_ROWS + 1 - DIFF_VIRTUAL_OVERSCAN_ROWS);
+  });
+
+  it("takes the visible count as the CEILING of the height division", () => {
+    const answer = diffRowWindowForViewport(
+      VIRTUALIZED_ROWS,
+      HALF_ROW_SCROLL_PX,
+      HALF_ROW_VIEWPORT_PX,
+    );
+    expect(answer.rowsInWindow).toBe(
+      HALF_ROW_VIEWPORT_ROWS + 1 + 2 * DIFF_VIRTUAL_OVERSCAN_ROWS,
+    );
+    expect(answer.rowsInWindow).not.toBe(
+      HALF_ROW_VIEWPORT_ROWS + 2 * DIFF_VIRTUAL_OVERSCAN_ROWS,
+    );
+  });
+
+  it("sizes both spacers as their row count times the row height", () => {
+    const answer = diffRowWindowForViewport(
+      VIRTUALIZED_ROWS,
+      HALF_ROW_SCROLL_PX,
+      MEASURED_VIEWPORT_PX,
+    );
+    expect(answer.rowsBeforePx).toBe(answer.rowsBefore * DIFF_VIRTUAL_ROW_HEIGHT_PX);
+    expect(answer.rowsAfterPx).toBe(answer.rowsAfter * DIFF_VIRTUAL_ROW_HEIGHT_PX);
+    expect(answer.rowsBeforePx).toBeGreaterThan(0);
+    expect(answer.rowsAfterPx).toBeGreaterThan(0);
+  });
+
+  it("resolves a hostile SCROLL OFFSET to the top rather than propagating it", () => {
+    for (const hostile of HOSTILE_PIXEL_VALUES) {
+      const answer: DiffRowViewportWindow = diffRowWindowForViewport(
+        VIRTUALIZED_ROWS,
+        hostile,
+        MEASURED_VIEWPORT_PX,
+      );
+      expect(answer.startIndex, `scrollTop ${hostile}`).toBe(0);
+      expect(answer.rowsBeforePx, `scrollTop ${hostile}`).toBe(0);
+      expect(windowSum(answer), `scrollTop ${hostile}`).toBe(VIRTUALIZED_ROWS);
+    }
+  });
+
+  it("resolves a hostile VIEWPORT HEIGHT through the unmeasured fallback", () => {
+    for (const hostile of HOSTILE_PIXEL_VALUES) {
+      const answer: DiffRowViewportWindow = diffRowWindowForViewport(
+        VIRTUALIZED_ROWS,
+        HALF_ROW_SCROLL_PX,
+        hostile,
+      );
+      expect(answer.rowsInWindow, `height ${hostile}`).toBe(
+        DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS + 2 * DIFF_VIRTUAL_OVERSCAN_ROWS,
+      );
+      expect(windowSum(answer), `height ${hostile}`).toBe(VIRTUALIZED_ROWS);
+    }
+  });
+
+  it("draws a BOUNDED window of a ten-thousand-row diff and accounts for all of it", () => {
+    // What this round exists for, asserted at the scale Acceptance names: the
+    // drawn row count stays inside one viewport plus its two overscans, while
+    // the two spacers and the window still add up to the whole document.
+    const answer = diffRowWindowForViewport(
+      SCALE_ROWS,
+      HALF_ROW_SCROLL_PX,
+      MEASURED_VIEWPORT_PX,
+    );
+    expect(answer.virtualized).toBe(true);
+    expect(answer.rowsInWindow).toBeLessThanOrEqual(
+      DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS + 2 * DIFF_VIRTUAL_OVERSCAN_ROWS,
+    );
+    expect(answer.rowsInWindow).toBeLessThan(SCALE_ROWS);
+    expect(windowSum(answer)).toBe(SCALE_ROWS);
+    expect(answer.rowsBeforePx + answer.rowsAfterPx).toBe(
+      (SCALE_ROWS - answer.rowsInWindow) * DIFF_VIRTUAL_ROW_HEIGHT_PX,
     );
   });
 });

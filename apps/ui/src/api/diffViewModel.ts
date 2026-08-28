@@ -608,3 +608,112 @@ export function computeDiffRowWindow(
     rowsAfter: totalRows - endIndex,
   };
 }
+
+/** The pixel height ONE row is assumed to occupy — the single number every row
+ *  index and every spacer height below is computed from.
+ *
+ *  WHY TWENTY, AND WHY FIXING IT IS HONEST RATHER THAN LAZY:
+ *  `../components/diff/DiffView.module.css` declares `.diffLine` with
+ *  `font: 12.5px/1.6`, and 12.5 x 1.6 is exactly twenty, so this constant is
+ *  that sheet's own line box transcribed rather than a number invented here.
+ *  `tests/ui_contracts/test_diff_view_render.py` parses both numbers out of the
+ *  stylesheet, multiplies them and compares the product with this declaration,
+ *  so the two cannot drift apart in silence.
+ *
+ *  IT IS AN ESTIMATE FOR THE ROWS THAT ARE NOT LINE ROWS. A hunk-head row wears
+ *  `.hunkHead` and a file row wears no class at all, so neither is exactly this
+ *  tall, and a document mixing the three has a real height this number only
+ *  approximates. `DIFF_VIRTUAL_OVERSCAN_ROWS` below is what absorbs that error:
+ *  the window is widened at both ends by more rows than the accumulated
+ *  mis-estimate can shift it, so a slightly wrong offset still lands on a drawn
+ *  row rather than on a blank stripe. */
+export const DIFF_VIRTUAL_ROW_HEIGHT_PX = 20;
+
+/** Rows drawn BEYOND the viewport at each end. A row scrolled into view is then
+ *  already in the document instead of mounting as the operator reaches it,
+ *  which is the difference between a list that scrolls and one that flashes an
+ *  empty band at every turn of the wheel. It is also the slack that absorbs the
+ *  row-height estimate above. */
+export const DIFF_VIRTUAL_OVERSCAN_ROWS = 8;
+
+/** The visible-row count assumed while the panel has NOT been measured yet.
+ *
+ *  THIS IS THE ONE REAL TRAP OF VIRTUAL SCROLLING HERE, AND IT IS WHY THE
+ *  FALLBACK IS A RULE IN THIS MODULE RATHER THAN A DEFAULT ARGUMENT ON THE
+ *  CALLER'S SIDE. On the first render a panel's `clientHeight` is 0, because the
+ *  element does not exist yet. A viewport height of 0 divides to a visible count
+ *  of 0; `computeDiffRowWindow` answers a visible count of 0 with an EMPTY
+ *  window, correctly and by its own third rule; an empty window draws no rows; a
+ *  panel with no rows in it never scrolls; and a panel that never scrolls never
+ *  fires the event that would have measured it. The viewer would be blank
+ *  forever. Resolving it HERE puts the resolution in the layer
+ *  `apps/ui/vitest.config.ts` executes (DECISION F031 D5), so the trap is held
+ *  shut by a test rather than by a reviewer's memory. */
+export const DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS = 40;
+
+/** A `DiffRowWindow` with the two spacer heights already in PIXELS.
+ *
+ *  Declared as a named type rather than left inline because it is what a
+ *  component's whole render depends on, and because the pixel fields are the
+ *  reason this shape exists at all: a caller sizes its spacers straight from
+ *  `rowsBeforePx` and `rowsAfterPx` and performs no arithmetic of its own, which
+ *  is what keeps every number of this feature's virtualization inside the layer
+ *  vitest reaches. */
+export interface DiffRowViewportWindow extends DiffRowWindow {
+  rowsBeforePx: number;
+  rowsAfterPx: number;
+}
+
+/** The window to draw, derived from a SCROLLED VIEWPORT rather than from row
+ *  indices the caller worked out itself. TOTAL: no input makes this throw.
+ *
+ *  It is the division a viewport forces, and it lives here for the reason
+ *  DECISION F031 D5 gives: a `.tsx` file computing it would be arithmetic no
+ *  suite in this repository can execute. What the component keeps is the two
+ *  numbers the DOM alone can supply — `scrollTop` and `clientHeight` — and
+ *  nothing decided from them.
+ *
+ *  THE RULES:
+ *  * every argument is resolved through the same whole-count reading
+ *    `computeDiffRowWindow` uses, so a NaN, an infinity, a fraction or a
+ *    negative can never become an index;
+ *  * the first visible row is the scroll offset divided by
+ *    `DIFF_VIRTUAL_ROW_HEIGHT_PX` rounded DOWN, because a row scrolled halfway
+ *    off the top is still on screen;
+ *  * the visible count is the viewport height divided by the same height
+ *    rounded UP, for the same reason at the other edge — a row half in view is a
+ *    row that must be drawn;
+ *  * an UNMEASURED viewport, meaning a resolved height of 0, falls back to
+ *    `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS`; the comment on that constant is the
+ *    whole reason this function exists rather than a default argument;
+ *  * the window itself is `computeDiffRowWindow`'s answer, widened by
+ *    `DIFF_VIRTUAL_OVERSCAN_ROWS`. None of that function's rules — the
+ *    threshold, the clamps, the invariant — is reimplemented here.
+ *
+ *  The two pixel heights are the row counts on either side multiplied by the row
+ *  height, so the spacers keep the scrollbar describing the WHOLE document while
+ *  only a window of it is in the DOM. */
+export function diffRowWindowForViewport(
+  rowCount: number,
+  scrollTopPx: number,
+  viewportHeightPx: number,
+): DiffRowViewportWindow {
+  const totalRows = wholeRowCount(rowCount);
+  const scrollTop = wholeRowCount(scrollTopPx);
+  const viewportHeight = wholeRowCount(viewportHeightPx);
+  const firstVisibleRowIndex = Math.floor(scrollTop / DIFF_VIRTUAL_ROW_HEIGHT_PX);
+  const visibleRowCount = viewportHeight === 0
+    ? DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS
+    : Math.ceil(viewportHeight / DIFF_VIRTUAL_ROW_HEIGHT_PX);
+  const rowWindow = computeDiffRowWindow(
+    totalRows,
+    firstVisibleRowIndex,
+    visibleRowCount,
+    DIFF_VIRTUAL_OVERSCAN_ROWS,
+  );
+  return {
+    ...rowWindow,
+    rowsBeforePx: rowWindow.rowsBefore * DIFF_VIRTUAL_ROW_HEIGHT_PX,
+    rowsAfterPx: rowWindow.rowsAfter * DIFF_VIRTUAL_ROW_HEIGHT_PX,
+  };
+}
