@@ -1,41 +1,38 @@
-### STEP T001d — F256 Diff viewer completion, round 4 (THE REPAIR)
+### STEP T003 — F256 Diff viewer completion, round 5 (THE SIDEBAR RULING)
 
-Goal: make the lazy load REAL. The grammar tables move to their own module, so
-the module `DiffView` imports dynamically is one it does NOT also import
-statically, and `loadDiffLanguageBundle` fetches something that was genuinely
-not in the main chunk. This repairs finding `R-0732`, which this round also
-registers.
+Goal: rule on the file sidebar's visual treatment, record the ruling as a
+DECISION, and ship it — so the deferral `DiffFileSidebar.tsx` has carried in its
+own header since F037 is discharged rather than deferred a further time.
 
-Base: `e23dad09`, the tip of `feature/f256-diff-viewer-completion`. Every
+Base: `78e71b3c`, the tip of `feature/f256-diff-viewer-completion`. Every
 reading below was taken there.
 
 Bundle, in commit order:
 
-- C0a save this block verbatim to `.agent/authored/f256-r4.md`
+- C0a save this block verbatim to `.agent/authored/f256-r5.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
 - C1 advance `.agent/plan.md`
-- C2 append the R3 verdict and the registration of `R-0732` to
-  `.agent/live_review.md`, and the slips to `.agent/prose_slips.md`
-- C3 the grammar module, the scanner change and the vitest suite
-- C4 the `DiffView` rewiring and the contract-test update
+- C2 append the R4 verdict to `.agent/live_review.md` and DECISION F256 D3 to
+  `.agent/decisions.md`
+- C3 the sidebar rules in `DiffView.module.css` and the classes in
+  `DiffFileSidebar.tsx`
+- C4 the contract-test extension
 - C5 rewrite `.agent/handoff.md`
 
 Change set — these paths and nothing else:
 
-- `.agent/authored/f256-r4.md`
+- `.agent/authored/f256-r5.md`
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
-- `.agent/prose_slips.md`
-- `apps/ui/src/api/diffHighlightGrammars.ts`
-- `apps/ui/src/api/diffHighlight.ts`
-- `apps/ui/src/api/diffHighlight.test.ts`
-- `apps/ui/src/components/diff/DiffView.tsx`
-- `tests/ui_contracts/test_diff_view_render.py`
+- `.agent/decisions.md`
+- `apps/ui/src/components/diff/DiffView.module.css`
+- `apps/ui/src/components/diff/DiffFileSidebar.tsx`
+- `tests/ui_contracts/test_diff_file_sidebar.py`
 - `.agent/handoff.md`
 
-`DiffView.module.css` is NOT edited — the palette DECISION F256 D2 ruled stands
-unchanged, and this round moves code rather than colour.
+`DiffView.tsx`, `apps/ui/src/api/diffHighlight.ts`,
+`apps/ui/src/api/diffHighlightGrammars.ts` and `RemedyShell.tsx` are NOT edited.
 
 ### Constraints
 
@@ -48,7 +45,7 @@ unchanged, and this round moves code rather than colour.
 2. The delimiter lines `<<<SLICE …` and `<<<END …` are transport only and never
    reach a target file.
 3. Extract every slice from the COMMITTED blob with
-   `git show <C0a>:.agent/authored/f256-r4.md`, never from this prompt's text.
+   `git show <C0a>:.agent/authored/f256-r5.md`, never from this prompt's text.
 4. AGENTS.md binds in full: self-review before every commit, one logical step
    per commit, `.agent/plan.md` current before every commit, clean tree, push.
 5. Destructive verification runs ONLY inside a disposable `git worktree` under
@@ -56,92 +53,76 @@ unchanged, and this round moves code rather than colour.
    `git status --porcelain` empty at every commit.
 6. Shell forms rejected by this session's guard are RE-EXPRESSED through
    `python3 - <<'PY'`, never skipped and never weakened. Report each one.
-7. THE GUARDS ON `DiffView.tsx`, unchanged from last round and still the most
-   likely red. `tests/ui_contracts/test_diff_view_render.py` at `e23dad09`
-   requires the comment-stripped source to CALL every name in `DELEGATED_RULES`
-   — `splitLineIntoIntralineSegments` among them — and forbids the spellings in
-   `REIMPLEMENTED_RULE_SPELLINGS`: `200`, `.length >`, `sort(`,
-   `DIFF_VIRTUAL_ROW_HEIGHT_PX`, `Math.floor(`, `Math.ceil(`, `.slice(0,`. It
-   also requires every `styles.<name>` the component names to have a rule in
-   `DiffView.module.css`. Neither tuple may be edited.
+7. READ `tests/ui_contracts/test_diff_file_sidebar.py` IN FULL BEFORE EDITING
+   `DiffFileSidebar.tsx`. Its `TestTheSidebarDerivesNothing` class forbids a set
+   of spellings in that component's comment-stripped source and its
+   `TestEverySummaryFieldIsReallyDrawn` class requires every summary field to be
+   read. Report the forbidden set you found and the count of each after C3; none
+   may be introduced, and no field may stop being drawn.
 8. NO EXISTING ASSERTION IS WEAKENED, DELETED OR RELAXED to make a gate pass.
-   Where this round's design genuinely changes what a test should say — the
-   dynamic-import target moves from `diffHighlight` to `diffHighlightGrammars` —
-   the assertion is RETARGETED, not dropped, and the handback names it.
-9. `.agent/decisions.md` is NOT in this change set. DECISION F256 D1 stated a
-   main-chunk benefit that `R-0732` records as unmet; this round MAKES IT TRUE
-   rather than amending it, so no decision text needs editing. Say so in the
-   handback if you disagree; do not edit the file.
+   If an existing guard genuinely contradicts this block, STOP and hand back
+   with the contradiction stated.
+9. `tests/ui_contracts/test_design_drift.py` fails any `var(--remedy-…)` used
+   under `apps/ui/src` but defined nowhere there. Every custom property the new
+   rules name is already defined in `apps/ui/src/styles/tokens.css` at
+   `78e71b3c`; introduce no new one.
+10. The sidebar's classes ship in the SAME commit as the rules that define them,
+    for the reason `DiffView.tsx` already lives under: a CSS module hands back
+    `undefined` for a name with no rule, and the element then ships unstyled.
 
-### SPEC — the production code
+### SPEC — the production code of C3
 
-S1. New file `apps/ui/src/api/diffHighlightGrammars.ts`. It holds what
-`diffHighlight.ts` currently exports as `DIFF_HIGHLIGHT_GRAMMARS`, moved
-VERBATIM — the same language ids, the same comment openers, string delimiters
-and keyword sets, the same `Object.create(null)` construction and the same
-freezing helper. Moving it must change no value; a keyword added or dropped here
-would be a behaviour change smuggled into a refactor.
+S1. In `apps/ui/src/components/diff/DiffView.module.css`, add the sidebar rules
+DECISION F256 D3 rules, using ONLY custom properties already defined in
+`apps/ui/src/styles/tokens.css` at `78e71b3c`:
+`.filePath` → the mono family via `var(--remedy-font-mono, …)` with the same
+literal stack fallback the rules above it use, and `font-feature-settings:
+"liga" 0` declared AFTER any `font` shorthand;
+`.fileMeta` → `color: var(--remedy-ink-soft, #6f82a8)`;
+`.statAdd` → `color: var(--remedy-green-500, #34c27e)`;
+`.statDel` → `color: var(--remedy-orange-400, #f5a34e)`.
+A comment above the block records that these are DECISION F256 D3's mapping,
+that no new hue and no new custom property enters the sheet, that ligatures are
+off on this surface for the reason `assets_spec.md` section 2 already gives the
+diff rows, and how to reverse it.
 
-S2. That module also exports
-`diffHighlightGrammarFor(language: string | null): DiffHighlightGrammar | null`,
-which answers `null` for `null` and for any id the mapping does not OWN, read
-through `Object.prototype.hasOwnProperty.call`. The null-prototype and
-own-property reasoning currently written above the mapping moves WITH it, since
-it is the reason the construction looks as it does.
+S2. In `DiffFileSidebar.tsx`, import the sheet and put those classes on the
+elements that already exist: the path `strong` takes `.filePath`; the status,
+the old-path span and the hunk-count span take `.fileMeta`; the `+N` span takes
+`.statAdd` and the `-N` span takes `.statDel`. The note span takes `.fileMeta`.
+NO ELEMENT IS ADDED, REMOVED OR REORDERED and no text changes — this round
+dresses the markup that is already there.
 
-S3. It imports the `DiffHighlightGrammar` TYPE from `./diffHighlight`. A type
-import is erased at build time, so it creates no runtime edge and cannot pull
-the scanner back into this chunk.
+S3. THE DEFERRAL IN THE HEADER IS REPLACED, NOT LEFT STANDING. The paragraph
+beginning "NO CLASS ON ANY ELEMENT BELOW" is now false and must be rewritten to
+record the ruling instead: that DECISION F256 D3 rules this surface, that the
+treatment is DERIVED from the diff body's own vocabulary rather than invented,
+and — as a deliberate absence a reader will search here for — that Remedy does
+NOT draw a proportional stats bar, because the two counts already carry the
+magnitude and a bar would be a visual primitive no authority defines. Cite D3.
 
-S4. In `diffHighlight.ts`, `DIFF_HIGHLIGHT_GRAMMARS` and the local keyword
-constants are REMOVED, and `tokenizeDiffLine` changes signature to
-`tokenizeDiffLine(text: string, grammar: DiffHighlightGrammar | null)`. A `null`
-grammar yields a single `plain` segment carrying the whole text, which is
-exactly the answer an unowned language id produced before. Empty text still
-yields the empty array. Every other rule — first match wins, the string
-delimiter precedence, the digit and identifier runs, the merge of adjacent
-`plain` — is unchanged.
+### SPEC — the contract test of C4
 
-S5. `composeHighlightedRuns` changes its second parameter the same way, to
-`grammar: DiffHighlightGrammar | null`, and passes it through. Its three
-invariants are unchanged and stay pinned.
+S4. Extend `tests/ui_contracts/test_diff_file_sidebar.py` with one class that:
+scans the classes `DiffFileSidebar.tsx` names and the classes
+`DiffView.module.css` defines, and asserts the first is a SUBSET of the second,
+printing any difference; asserts each of the four class names S1 introduces is
+really named by the component; and asserts the component contains no
+`aria-hidden` and no element added beyond those it already draws, by pinning
+that the count of `<span` in the comment-stripped source is UNCHANGED from
+`78e71b3c` — report that base count and use it.
 
-S6. THE WHY COMMENTS CARRY THE REASON, in `diffHighlight.ts` and in the new
-module: the grammar tables are the LAZY half and the scanner is the eager half,
-because `DiffView` needs the scanner synchronously to render a row and needs a
-grammar only once a file's language is known. Name finding `R-0732` and record
-that a module imported both statically and dynamically by the same file is not
-code-split at all — which is what the previous shape did, and what this shape
-exists to prevent.
-
-S7. In `DiffView.tsx`: the importer becomes
-`() => import("../../api/diffHighlightGrammars")`, and `diffHighlight` is
-imported STATICALLY only. The per-path state now holds the resolved
-`DiffHighlightGrammar | null` rather than a language id — take it from the
-bundle `loadDiffLanguageBundle` returns, via that module's
-`diffHighlightGrammarFor`, and pass it to `composeHighlightedRuns`. The
-cancellation-flag effect shape, the reset on a new envelope, and S5's Acceptance
-property that a plain path never invokes the importer are all unchanged.
-
-S8. `apps/ui/src/api/diffHighlight.test.ts` is updated to the new signature.
-Cases that named a language id now name the grammar
-`diffHighlightGrammarFor` answers for it, so the suite still covers every
-grammar; the unknown-language cases pass `null`. THE INHERITED-PROPERTY TESTS
-MOVE RATHER THAN DISAPPEAR: `constructor`, `__proto__`, `toString` and
-`hasOwnProperty` are now asserted against `diffHighlightGrammarFor`, which must
-answer `null` for each. That is the same `R-0731` property at its new home, and
-losing it would be the round's worst outcome.
-
-S9. `tests/ui_contracts/test_diff_view_render.py` has its dynamic-import
-assertion RETARGETED to `diffHighlightGrammars`, and gains one test asserting
-that `DiffView.tsx` does NOT statically import the module it imports
-dynamically — the `R-0732` property, expressed over the comment-stripped source
-by checking that no `import … from "…/diffHighlightGrammars"` statement exists
-while the dynamic `import(` of it does.
+S5. Write the two scanners this file does not yet have — one for
+`styles.<name>` in the component and one for `.<name>` rules in the stylesheet —
+modelled on the ones already in `tests/ui_contracts/test_diff_view_render.py`,
+and pin each with a NOT-VACUOUS test proving it returns a non-empty set on the
+real files, in the shape `TestTheStripperIsNotVacuous` already uses in this
+file. A scanner that silently returns nothing would make every assertion above
+pass over an empty set.
 
 ### The authored slices
 
-<<<SLICE PLANF256R4
+<<<SLICE PLANF256R5
 # Plan — F256 Diff viewer completion
 
 Branch: feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`.
@@ -161,117 +142,164 @@ file sidebar's visual treatment ruled by a named authority.
 | the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
 | compose the token cut with the intraline cut | done | `739d31e0` |
 | the DiffView wiring and the derived palette | done | `678bc698` |
-| make the lazy load real, repairing `R-0732` | done | this round |
-| rule on the sidebar's treatment | open | a ruling to record, not code |
+| make the lazy load real, repairing `R-0732` | done | `8bcff3db` |
+| rule on the sidebar's treatment | done | this round |
 | measure the 10k-line fixture | open | needs a real fixture and a real run |
 
 ## Next Steps
-1. Rule on the file sidebar's visual treatment and record the authority.
-2. Measure the 10k-line fixture end to end and record the numbers in the
-   feature file's Built State.
+1. Measure the 10k-line fixture end to end and record the numbers in the
+   feature file's Built State, which is F256's last unbuilt piece.
+2. Update `docs/roadmap/features/T5_F256.md` Built State with the three pieces
+   and their test files.
 3. Run the integration gate, then the closure sequence.
 
 ## Risks
-- `tests/ui_contracts/test_diff_view_render.py` reads the comment-stripped
-  source of `DiffView.tsx`; its `DELEGATED_RULES` and
-  `REIMPLEMENTED_RULE_SPELLINGS` tuples are not to be edited.
-- Moving the grammar tables must change no value in them, or a refactor has
-  silently changed what a language highlights as.
-<<<END PLANF256R4
+- `tests/ui_contracts/test_diff_file_sidebar.py` and
+  `tests/ui_contracts/test_diff_view_render.py` both read comment-stripped
+  sources; a class and its rule must land in one commit or the element ships
+  unstyled.
+- The 10k-line measurement must be a real run against a real fixture; a budget
+  is re-derived from a re-measured maximum and never raised by hand.
+<<<END PLANF256R5
 
-<<<SLICE GATEF256R3
-Gate: F256 R3 — the WIRING round, in which the diff surface first renders coloured runs. THE ROUND PASSED on every gate its block ordered, G1 through G9, and the reviewer re-ran each independently at `e23dad09`. THE WORKER ALSO DECLARED A DEFECT IN THE BLOCK RATHER THAN PAPERING OVER IT, which is registered below as `R-0732` and is the reviewer's error and not the round's.
+<<<SLICE GATEF256R4
+Gate: F256 R4 — the REPAIR round, which registered `R-0732` and fixed it in the same round. THE ROUND PASSED on every gate its block ordered, G1 through G10, and the reviewer re-ran each independently at `78e71b3c`.
 
-TRANSPORT COVERS THE EMISSION rather than only the worker's self-consistency: the reviewer's own scratch original `.remedy-wt/f256-r3-block.md` predates the worker, and the committed `.agent/authored/f256-r3.md` blob at `b1c24555` is BYTE EQUAL to it at 24546 bytes, sha256 `ccc593d323c1200288f6184e8b9ce7a98467406ad82e59b49677e2ed89e8a26b`. At `b30a5a89` that path and `.agent/last_block.md` are ONE blob.
+TRANSPORT COVERS THE EMISSION: the reviewer's own scratch original `.remedy-wt/f256-r4-block.md` predates the worker, and the committed `.agent/authored/f256-r4.md` blob at `47fbc7e9` is BYTE EQUAL to it at 21034 bytes, sha256 `a7e58e46339fe1458d0b0d478bea25662cf0dfc81250196178b3bb9c97d6d4b8`. Both appends at `f996e727` reconstruct byte for byte from the `e23dad09` blob plus a newline plus their slice, each pre-round blob is a byte PREFIX, and in each a byte flipped inside the FIRST appended paragraph is REJECTED.
 
-ALL THREE APPENDS WERE RECONSTRUCTED BY THE REVIEWER at `4bd65c04`: for `.agent/live_review.md`, `.agent/prose_slips.md` and `.agent/decisions.md` alike, the `2251c6d4` blob plus a newline plus the round's slice equals the C2 blob exactly, each pre-round blob is a byte PREFIX — 1339712 to 1344549, 13551 to 13924 and 689972 to 692805 — and in each file a byte flipped inside the FIRST appended paragraph is REJECTED. THE LEDGER MOVED AS PREDICTED: registrations UNMOVED at 292 and all DISTINCT, the OPEN SET computed AS A SET UNMOVED at 251, `^Landed: R-` UNMOVED at 11, and `^Gate: F\d+ R\d+ — ` rising by exactly ONE from 98 to 99, with `Gate: F256 R2` occurring exactly once.
+THE LEDGER MOVED EXACTLY AS A REGISTERING ROUND SHOULD: registrations 292 to 293 and all DISTINCT, the OPEN SET computed AS A SET 251 to 252, `^Gate: F\d+ R\d+ — ` 99 to 100, `^Done: R-\d+ — ` and `^Landed: R-` both UNMOVED, `Gate: F256 R3` occurring exactly once, and `R-0732` present as exactly one registration carrying no `Done:` and no `Landed:` line — which is the correct disk state for a finding whose repair has landed but whose resolution only a reviewer may author.
 
-THE GUARD THIS ROUND WAS MOST LIKELY TO BREAK HELD, and the reviewer measured it rather than reading it: over the comment-stripped `DiffView.tsx` at `678bc698` the string `splitLineIntoIntralineSegments(` still occurs, so the wiring COMPOSED that call instead of replacing it and the `DELEGATED_RULES` tuple is satisfied by a real call; every forbidden spelling of `REIMPLEMENTED_RULE_SPELLINGS` counts zero; and the classes the component names are exactly the classes `DiffView.module.css` defines, with the residue empty. RE-RUN IN THE PRIMARY CHECKOUT, one pytest process at a time, each exit 0 and each equal to the handback's figure: `tests/ui_contracts/` 658 passed with 4 skipped, `tests/ui_server/` 495 passed, the canary `tests/cli/test_golden_path.py` 42 passed, and `tsc --noEmit` exit 0.
+`R-0732` IS GENUINELY REPAIRED, AND THE REVIEWER MEASURED THE REPAIR RATHER THAN THE INTENTION. At `78e71b3c` the reviewer ran `npx vite build` itself: exit 0, and the count of output lines carrying both `dynamically imported` and `statically imported` is ZERO, against 1 at `e23dad09`. The build emits a real separate chunk, `dist/assets/diffHighlightGrammars-o9XqnLhb.js` at 1.70 kB, so the grammar tables genuinely left the main bundle rather than being re-described as having left it. In `DiffView.tsx` the grammar module is named only by a dynamic `import(` and by a `typeof import(…)` TYPE position, which carries no `from` clause and links nothing — the static imports there name `diffHighlight` alone.
 
-- R-0732 — MEDIUM. `apps/ui/src/components/diff/DiffView.tsx` imports `apps/ui/src/api/diffHighlight` STATICALLY, for `composeHighlightedRuns`, and DYNAMICALLY in the same file, as the bundle importer passed to `loadDiffLanguageBundle`. A module imported both ways by the same file is not code-split at all, so the dynamic import buys nothing: the tokenizer and every grammar table ship in the main chunk. The reviewer reproduced it directly at `e23dad09` — `npx vite build` exits 0 and warns that the module `is dynamically imported by DiffView.tsx but also statically imported`, and that the dynamic import `will not move module into another chunk`. THE DEFECT IS THE REVIEWER'S: the F256 R3 block's S2 ordered the dynamic importer while its S6 and S8 ordered the static call, and the worker implemented both exactly as written and declared the contradiction with the bundler's own words rather than hiding it. WHAT IS AND IS NOT BROKEN: the Acceptance property that a plain path never invokes the importer still HOLDS and is still pinned by the vitest suite, because `loadDiffLanguageBundle` resolves the language before asking for a bundle; what is unmet is DECISION F256 D1's stated benefit of no main-chunk weight. FIX: give the lazy half its own module, so the file that dynamically imports it does not also statically import it — the grammar tables move to `apps/ui/src/api/diffHighlightGrammars.ts`, the scanner stays eager because a row cannot render without it, and a contract test pins that the dynamically imported module is imported no other way. This finding is registered and repaired in the SAME round that follows it, and the repair is verified by the absence of that build warning.
-<<<END GATEF256R3
+THE REFACTOR CHANGED NO VALUE, and the reviewer proved it by EXECUTING both tables rather than by reading them. In two disposable worktrees, the grammar mapping was dumped from `apps/ui/src/api/diffHighlight.ts` at `e23dad09` and from `apps/ui/src/api/diffHighlightGrammars.ts` at `78e71b3c` and compared field by field: the language id sets are IDENTICAL at 11 ids, no id's comment openers, string delimiters or keyword set differs, and the total keyword count is 271 on both sides. A refactor that quietly drops a keyword is the one failure this comparison exists to catch, and it did not happen.
 
-<<<SLICE SLIPSF256R3
-2026-08-28 · F256 R3 · The block's prose ordered `.agent/decisions.md`'s append "separated by exactly one blank line" while its gate G4(a) ordered `base + newline + slice`, and that file's blob already ended with a blank line; the two are unsatisfiable together, the worker obeyed the gate and declared it, so D2's heading is preceded by two blank lines.
-2026-08-28 · F256 R3 · The block's G9 marker sweep expected 0 in "every non-authored target", which cannot hold for `.agent/last_block.md` because C0b and G2 require that file to be the identical blob to the authored control; the worker reported 4 and declared it.
-<<<END SLIPSF256R3
+RE-RUN IN THE PRIMARY CHECKOUT, one pytest process at a time, each exit 0 and each equal to the handback's figure: `tests/ui_contracts/` 659 passed with 4 skipped — four more than the round before, which is the new module's own coverage — `tests/orchestration/test_test_runner.py` 52 passed, the canary `tests/cli/test_golden_path.py` 42 passed, and `tsc --noEmit` exit 0. The branch tip equals `origin/feature/f256-diff-viewer-completion`, the primary checkout reads `git status --porcelain` empty, and `gh pr list --state open` is `[]`.
 
-`PLANF256R4` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF256R3` and
-`SLIPSF256R3` are APPENDS to `.agent/live_review.md` and `.agent/prose_slips.md`.
-For each, append exactly what gate G4(a) below measures — the pre-round blob,
-one newline, then the slice — whatever blank lines that file already ends with.
+THE WORKER RETARGETED ONE ASSERTION AND WEAKENED NONE, which is the distinction constraint 8 of that block exists to force: the dynamic-import test now names the grammar module, and the specifier constant it used survives as the subject of the NEW test that pins `R-0732`'s property in the static direction. `DELEGATED_RULES` and `REIMPLEMENTED_RULE_SPELLINGS` are untouched. The worker also flagged, without acting on it, that `diffHighlightGrammarFor` is covered from `diffHighlight.test.ts` rather than from a test file named after its own source; that sits at an angle to the AGENTS.md discoverability convention and is recorded here as a known, deliberate consequence of the block's closed change set rather than as a defect.
+<<<END GATEF256R4
+
+<<<SLICE DECF256R3
+## DECISION F256 D3 (2026-08-28, F256 R5) — the diff file sidebar takes its treatment from the diff body's own vocabulary, and Remedy draws no proportional stats bar
+
+CONTEXT. `apps/ui/src/components/diff/DiffFileSidebar.tsx` has carried a
+DEFERRAL in its own header since F037 built it: semantic markup, real numbers,
+no class, because the binding CSS of `docs/roadmap/features/T5_F037.md` defines
+no rule for a sidebar and the CANONICAL DESIGN REFERENCE banner forbids
+inventing a visual language. Measured at `78e71b3c`: no file under
+`docs/ui/design_reference/` contains the word "syntax" or rules this surface,
+and the only sidebar `component_spec.md` names is `BrandSidebar`, which is the
+left brand rail and not this panel. F256's own feature file states in as many
+words that the ruling is this feature's to make and to record.
+
+CHOSEN, by DERIVATION rather than invention, which is the same method DECISION
+F037 D9 used for intraline emphasis and DECISION F256 D2 used for the syntax
+palette. The sidebar borrows the vocabulary the diff body has already taught the
+reader: a file path is set in the mono family with ligatures OFF, for the reason
+`assets_spec.md` section 2 gives every diff surface — a path must render as the
+characters that are really in it; the added and removed counts take the
+product's own green and orange, the same two hues the diff rows tint with; and
+every other piece of metadata takes `--remedy-ink-soft`, the same rank of
+de-emphasis this sheet already gives the line-number gutter. No new custom
+property is introduced and `apps/ui/src/styles/tokens.css` is not extended.
+
+THE DELIBERATE ABSENCE, recorded because a reader will search for it and text
+search cannot find code that does not exist: Remedy does NOT draw a proportional
+stats bar in this sidebar. The feature file's Design section says "paths + stats
+bars", and this decision reads that as satisfied by the counts themselves. A bar
+is a visual primitive no authority in this repository defines — it needs a
+track, a fill, a minimum width for a one-line change and a rule for what happens
+when a file is pure deletion — and inventing all four here is exactly what the
+banner forbids. The counts already carry the magnitude, and they carry it
+exactly rather than approximately.
+
+ALTERNATIVES CONSIDERED. (a) Draw the bar anyway. Rejected: four undefined
+sub-decisions, and a bar that lies at small widths is worse than a number that
+does not. (b) Defer the ruling again. Rejected because F037 already deferred it
+once, F256 exists to close exactly that kind of deferral, and a second deferral
+would make the promise permanent. (c) Ask the operator to rule it. Rejected
+because docs/agents/planner_reviewer_prompt.md §2 forbids a ruling request and
+§4 item 7 requires the reviewer to rule loudly and reversibly instead.
+
+CONSEQUENCE. The sidebar stops shipping unstyled, and the ruling is enforced by
+guards that already exist: `tests/ui_contracts/test_design_drift.py` fails any
+custom property used but not defined under `apps/ui/src`, and the contract test
+this round extends fails any class the component names without a rule behind it.
+The absence of the bar is enforced by nothing, which is why it is written down
+here and in the component's header rather than left to be rediscovered.
+
+REVERSE by deleting this decision and the sidebar rules it authorises from
+`apps/ui/src/components/diff/DiffView.module.css`, and restoring the deferral
+paragraph in `DiffFileSidebar.tsx` from git history at `78e71b3c`; the sidebar
+then returns to semantic markup with no class, which is a state it is known to
+work in.
+<<<END DECF256R3
+
+`PLANF256R5` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF256R4` and
+`DECF256R3` are APPENDS to `.agent/live_review.md` and `.agent/decisions.md`.
+For each, append exactly what gate G4(a) measures — the pre-round blob, one
+newline, then the slice — whatever blank lines that file already ends with.
 
 ### Done when
 
 G1 HYGIENE. Read `.agent/STOP` with `os.path.exists` before C0a and again
 before C3; report both, and stop after the commit in hand if it exists. Report
-`git rev-parse HEAD` before C0a — it must equal `e23dad09` —
+`git rev-parse HEAD` before C0a — it must equal `78e71b3c` —
 `git branch --show-current`, and `git status --porcelain | wc -l` after each of
 C0a, C0b, C1, C2, C3 and C4.
 
 G2 TRANSPORT. One digest comparison: sha256 of
-`git show <C0a>:.agent/authored/f256-r4.md` against the reviewer's own original
-at `.remedy-wt/f256-r4-block.md`, reporting both digests, the byte length and
+`git show <C0a>:.agent/authored/f256-r5.md` against the reviewer's own original
+at `.remedy-wt/f256-r5-block.md`, reporting both digests, the byte length and
 equality; that original predates this worker, so say the reading covers more
-than self-consistency. Report that `<C0b>:.agent/authored/f256-r4.md` and
+than self-consistency. Report that `<C0b>:.agent/authored/f256-r5.md` and
 `<C0b>:.agent/last_block.md` are ONE blob id.
 
-G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF256R4 including the
+G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF256R5 including the
 trailing newline — report `True` or `False` — with `wc -l` under 50 and the
 counts of lines exactly `## Goal` and exactly `## Next Steps`.
 
-G4 THE RECORD AT C2, two readers per appended file. (a) The `e23dad09` blob plus
+G4 THE RECORD AT C2, two readers per appended file. (a) The `78e71b3c` blob plus
 a newline plus the slice equals the C2 blob, reported separately for
-`.agent/live_review.md` with GATEF256R3 and `.agent/prose_slips.md` with
-SLIPSF256R3; NEGATIVE CONTROL for each, flipping one byte at an offset your
-script confirms lies INSIDE THE FIRST appended paragraph and reporting the
-equality now `False`. (b) Let N be each slice's paragraph count, COUNTED BY YOUR
-SCRIPT from the slice and never taken from this block, ignoring an empty
-trailing unit; report N and that the LAST N blank-line units of each file match
-those paragraphs IN ORDER. Report each pre-round blob is a byte PREFIX.
+`.agent/live_review.md` with GATEF256R4 and `.agent/decisions.md` with
+DECF256R3; NEGATIVE CONTROL for each, flipping one byte at an offset your script
+confirms lies INSIDE THE FIRST appended paragraph and reporting the equality now
+`False`. (b) Let N be each slice's paragraph count, COUNTED BY YOUR SCRIPT from
+the slice and never taken from this block, ignoring an empty trailing unit;
+report N and that the LAST N blank-line units of each file match those
+paragraphs IN ORDER. Report each pre-round blob is a byte PREFIX.
 
-G5 THE LEDGER AT C2. Over the C2 blob and the `e23dad09` blob beside it, report
+G5 THE LEDGER AT C2. Over the C2 blob and the `78e71b3c` blob beside it, report
 `^- R-\d+ — ` and whether all DISTINCT, `^Done: R-\d+ — `, `^Landed: R-`,
-`^Gate: F\d+ R\d+ — `, and the OPEN SET as a set. This round REGISTERS ONE
-finding and resolves none, so registrations rise by exactly ONE, the open set
-rises by exactly ONE, `^Gate: F\d+ R\d+ — ` rises by exactly ONE, and the other
-figures are UNMOVED. Report that `R-0732` occurs exactly once as a registration
-and carries no `Done:` and no `Landed:` line, and that `Gate: F256 R3` occurs
-exactly 1 time.
+`^Gate: F\d+ R\d+ — `, and the OPEN SET as a set. This round registers and
+resolves nothing, so every figure is UNMOVED except `^Gate: F\d+ R\d+ — `,
+which rises by exactly ONE. Report that `Gate: F256 R4` occurs exactly 1 time,
+and that `R-0732` still carries no `Done:` and no `Landed:` line.
 
-G6 THE MOVE CHANGED NO VALUE, measured and not asserted. In a `python3` script,
-parse the grammar table out of `apps/ui/src/api/diffHighlight.ts` at `e23dad09`
-and out of `apps/ui/src/api/diffHighlightGrammars.ts` at C3, and report that the
-set of language ids is IDENTICAL and that for each id the comment openers, the
-string delimiters and the keyword set are identical, printing any difference. A
-refactor that quietly drops a keyword is the failure this gate exists to catch.
+G6 THE SIDEBAR GUARDS AT C3. Over the comment-stripped `DiffFileSidebar.tsx` at
+C3, report: the count of each spelling `TestTheSidebarDerivesNothing` forbids,
+each of which must be 0; that every summary field
+`TestEverySummaryFieldIsReallyDrawn` requires is still read; the count of
+`<span` beside the same count at `78e71b3c`, which must be EQUAL; and the set of
+`styles.<name>` the component names beside the set of classes
+`DiffView.module.css` defines at C3, with confirmation that the first is a
+SUBSET of the second and the difference printed. Report every `var(--remedy-…)`
+the new rules name and that each is defined under `apps/ui/src`.
 
-G7 THE `R-0732` PROPERTY AT C4, which is what this round exists to repair.
-Report, over `apps/ui/src/components/diff/DiffView.tsx` at C4: the count of
-dynamic `import(` naming `diffHighlightGrammars`, which must be at least 1; the
-count of STATIC `import` statements naming `diffHighlightGrammars`, which must
-be 0; and the count of static imports naming `diffHighlight`, which must be at
-least 1. Then run `npx vite build` in `apps/ui` from a `python3` script,
-report its real exit code, and report the count of lines in its combined output
-containing both `dynamically imported` and `statically imported`, which must now
-be 0 — beside the reviewer's reading of that same count at `e23dad09`, which was
-1. Report the full warning line if any remains.
-
-G8 THE RED-PROOF AT C4, in a disposable worktree, never in the primary
+G7 THE RED-PROOF AT C4, in a disposable worktree, never in the primary
 checkout. Report the UNMUTATED CONTROL FIRST, then each mutation, with exit code
 and passed/failed counts, using
 
-    ["python3", "-m", "pytest", "tests/ui_contracts/test_diff_view_render.py", "-q"]
+    ["python3", "-m", "pytest", "tests/ui_contracts/test_diff_file_sidebar.py", "-q"]
 
 with `cwd` set to the WORKTREE. THE MUTATIONS, each applied alone and reverted
 before the next, inside the worktree, each of which must turn that file RED:
-(i) add a static import of `diffHighlightGrammars` to `DiffView.tsx` beside the
-dynamic one — the exact shape `R-0732` describes, which the new test must
-catch; (ii) point the dynamic importer back at `../../api/diffHighlight`.
-Report the control again, green, and `git worktree list` plus
-`git status --porcelain | wc -l` in the primary after removal.
+(i) delete the `.statAdd` rule from
+`apps/ui/src/components/diff/DiffView.module.css` while the component still
+names the class; (ii) remove the `.filePath` class from the path element in
+`DiffFileSidebar.tsx`. Report the control again, green, and `git worktree list`
+plus `git status --porcelain | wc -l` in the primary after removal.
 
-G9 THE SUITES AT C4. One pytest process at a time, from the repository root, in
+G8 THE SUITES AT C4. One pytest process at a time, from the repository root, in
 the PRIMARY checkout, each with exit code and its own passed/failed line:
 `tests/ui_contracts/` in full; `tests/orchestration/test_test_runner.py` (it
 spawns `npx vitest run` under a 30-second timeout — report the wall clock, and
@@ -282,7 +310,7 @@ warm `apps/ui/dist` first if `src` is newer, declaring it); `tests/ui_server/`;
 and report its real exit code. Every one must be exit 0. If any is red, STOP and
 write the handback with the full untruncated failure list.
 
-G10 STRUCTURE, over `e23dad09..<C4>` — the range ending BEFORE the handback
+G9 STRUCTURE, over `78e71b3c..<C4>` — the range ending BEFORE the handback
 commit, so `.agent/handoff.md` is expected in the change set but NOT in this
 range, and `.agent/last_block.md` mirrors the authored blob by construction.
 Report `git diff --name-only` and both residues against the change set with
@@ -290,23 +318,27 @@ Report `git diff --name-only` and both residues against the change set with
 empty. Report each commit's insertions from `git diff --numstat`, each under
 500, and that each of C0a, C0b, C1, C2, C3 and C4 is single-parent. Report the
 counts of lines beginning `<<<SLICE ` and `<<<END ` in every target other than
-`.agent/authored/f256-r4.md` and `.agent/last_block.md` — each expected 0 —
-beside those two as the non-zero control. Report `git ls-files .remedy-wt | wc -l`,
-expected 0.
+`.agent/authored/f256-r5.md` and `.agent/last_block.md` — each expected 0 —
+beside those two as the non-zero control. Report
+`git ls-files .remedy-wt | wc -l`, expected 0.
 
 ### Handback
 
 Rewrite `.agent/handoff.md` in C5 per docs/agents/handback_template.md. It
-carries: `SESSION 1 of feature F256 · round 4`; the range `e23dad09..HEAD`; a
+carries: `SESSION 1 of feature F256 · round 5`; the range `78e71b3c..HEAD`; a
 per-commit changed-files table with `+/-` from `git diff --numstat` compared
-cell by cell against G10's figures; ONE LINE PER GATE G1 through G10 with its
-real result; the deviations, including every guard re-expression constraint 6
-required and every assertion constraint 8 made you RETARGET; the item-status
-table with every C-item and every gate appearing exactly once; and the next
-expected action, which is the sidebar ruling.
+cell by cell against G9's figures; ONE LINE PER GATE G1 through G9 with its real
+result; the deviations, including every guard re-expression constraint 6
+required; the item-status table with every C-item and every gate appearing
+exactly once; and the next expected action, which is the 10k-line measurement.
+
+THIS IS THE LAST ROUND OF THIS SESSION. The handback additionally states that
+rounds 1 through 4 were reviewed and PASSED, that this round awaits review, and
+that the next session's FIRST action is Phase 1 rule 1 — read `.agent/STOP` —
+BEFORE rule 2, the Open PR Gate.
 
 Do not write a `Done:` or `Gate:` paragraph of your own anywhere — only
-reviewer-authored text sets those. GATEF256R3 above is reviewer-authored and
+reviewer-authored text sets those. GATEF256R4 above is reviewer-authored and
 applied as a slice, which is not the same thing.
 
 After C5: push with `git push -u origin feature/f256-diff-viewer-completion` and
