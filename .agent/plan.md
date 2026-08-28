@@ -12,33 +12,33 @@ slicing, the binding CSS and the design amendments A1 through A6, the last of
 which records what this feature deliberately no longer ships.
 
 ## Current Step
-R25 is the INTEGRATION-GATE round, the first of F037's closure sequence. It books
-the R24 verdict, resolves `R-0719` — whose counter-measure landed as amendment A4
-at `c60a7318`, two commits after the entry that registered it, and was never
-written up — and then runs the full suite twice: once on this branch and once in
-a throwaway worktree at the merge base `9dde5495`, comparing the two failure sets
-and attributing every branch-only id. The raw evidence lands under
-`.agent/gate_f037_r25/`. Nothing under `apps/`, `packages/`, `tests/` or `docs/`
-is touched.
+R26 is the EVIDENCE-AND-ZIP round, the second of F037's closure sequence. The
+integration gate PASSED at R25: branch and merge base each showed one failure,
+both serial-pass flakes, with no branch-only failure reaching feature code. This
+round books the R25 verdict, appends the feature file's Built State section so
+closure precondition 4 holds, then builds the `f037-closure` evidence bundle and
+a FRESH review package from the clean tree at the Built State commit. Nothing
+under `apps/`, `packages/` or `tests/` is touched.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R24 verdict and one resolution | ordered | record first |
-| C3 the integration-gate evidence | ordered | the round's substance |
-| C4 the handback | ordered | |
+| C2 the R25 verdict | ordered | record first |
+| C3 the Built State section | ordered | closure precondition 4 |
+| the evidence job and the review zip | ordered | from the clean tree at C3 |
+| C4 the handback | ordered | carries package, hash and path |
 
 ## Next Steps
-1. The evidence-and-zip round: the feature file's Built State section, the
-   `create_manual_completion_bundle` evidence job, and a FRESH review zip whose
-   failure is a closure blocker.
-2. The STATUS round: the `[x]` line, the README capability sync in the SAME
-   commit, and the closure PR, which this session does not merge.
+1. The STATUS round: the `[x]` line for F037, the README capability paragraph,
+   the README accepted count with its `Next:` clause and the README tier row —
+   all four in the SAME commit — then the closure PR, which is not merged here.
+2. The split-off scope of amendment A6 wants its own STATUS line. That remains a
+   PROPOSAL to the operator and is executed by no session.
 
 ## Risks
-- A6 narrows what F037 ships. Reversing it is one paragraph in each of
-  `.agent/decisions.md` and the feature file, both named in D11.
-- The base worktree lacks `apps/ui/node_modules` and `apps/ui/dist`. Both are
-  restored with symlinks PRESERVED, or the base-only set fills with environment
-  failures that mask the real ones.
+- A failing zip build is a closure BLOCKER, not a deviation. If it packages
+  BLOCKED_EVIDENCE, the round stops and hands back with the raw error.
+- `R-0714` stays open and is carried into closure as a documented Medium risk:
+  it is a defect in a ui_server test, out of F037's scope, and fixing it here
+  would be scope drift.
