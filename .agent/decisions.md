@@ -9146,3 +9146,79 @@ reads it in `parse_unified_diff_to_view`, delete
 fixture of the two tests S5 re-based to the 10,400-file shape they carried at
 `327c1333`. DECISION F037 D5 and its ceiling are untouched by this decision and
 survive its reversal.
+
+## DECISION F037 D7 — the diff artifact is read under a byte ceiling, and `truncated` becomes an OR over every source of it
+
+**Date:** 2026-08-28 · **Round:** F037 R14 · **Finding:** `R-0721`
+
+**The choice.** `packages/orchestration/diff_view_source.py` gains a module
+constant `DIFF_VIEW_MAX_ARTIFACT_BYTES = 8_000_000` and reads the diff artifact
+in binary under that ceiling instead of calling
+`artifact.read_text(encoding="utf-8")` on it whole. When the artifact is larger,
+the bytes are cut to the ceiling and then cut back to the last newline they
+contain, and the envelope's `truncated` becomes `parsed["truncated"] or
+read_truncated`.
+
+**Why a read bound is not made redundant by the two parser ceilings.** DECISION
+F037 D5 bounds the body lines the view carries and D6 the file entries, and both
+bound what is BUILT. The read happens first and is unbounded by either: a
+`workspace.diff` of one enormous minified line appends nothing to the body
+counter and adds one file entry, so it passes both ceilings untouched and still
+costs the entire read. The layering is deliberate — this bound is on INPUT
+BYTES, those are on OUTPUT OBJECTS, and neither can be expressed in the other's
+unit.
+
+**Why 8,000,000 bytes.** Measured by the reviewer at `922f3223`, a diff that
+saturates BOTH parser ceilings at once is 1,423,907 bytes of input: 397,907 for
+`DIFF_VIEW_MAX_BODY_LINES` body lines in a single file, and 1,026,000 for
+`DIFF_VIEW_MAX_FILES` one-pair files at paths of sixty characters and more. The
+ceiling is over five times that, so for any realistic line length the parser's
+own bounds take over long before this one does, and this one is what stops the
+pathological shapes those bounds cannot see. A diff whose body lines are
+hundreds of characters wide can reach it first; that is a real cut, it is
+reported in the data, and it is the point of having a byte bound at all.
+
+**Why the cut goes back to the last newline.** Two hazards share one fix. A cut
+at an arbitrary byte can land inside a multi-byte UTF-8 character, and the
+decode then raises — which this module's existing handler would report as
+`DIFF_REASON_ARTIFACT_MISSING`, turning a readable diff into an absent one. A
+cut can also land in the middle of a body line, which would put half a line into
+the contract as if it were whole. A newline is never inside a multi-byte
+character and never inside a line, so cutting back to the last one answers both.
+When the ceiling's worth of bytes holds no newline at all the result is the
+empty text, which parses to the empty-files shape and is reported as available
+and truncated: for one enormous line that is the honest answer, and it is the
+same answer this module already gives for every other absence — name it in the
+data rather than raise.
+
+**Why the flag is an OR and not a replacement.** `truncated` now has three
+sources: the upstream `[DIFF TRUNCATED]` sentinel some other producer wrote,
+the parser's own two ceilings, and this read. They are independent and any of
+them makes the view a prefix, so the envelope reports their disjunction. A test
+whose artifact carries the sentinel while staying under the read ceiling is the
+discriminator, because a replacement rather than an OR would drop it.
+
+**What the endpoint needs.** Nothing. `packages/orchestration/ui_server.py`
+builds its diff JSON by returning `build_diff_view`'s envelope, so the flag
+reaches the client already; this decision changes what sets it, not what carries
+it.
+
+**Alternatives rejected.** (1) Check `artifact.stat().st_size` and refuse above
+the ceiling — rejected because a refusal is exactly what this module's docstring
+forbids: a viewer that shows the first part of a large job's diff is better than
+one that shows nothing, and the contract already has the field for saying which
+it did. (2) Cut at the ceiling with `errors="replace"` instead of at a newline —
+rejected because it puts a replacement character into a line's content, which is
+data the viewer would render as if the artifact contained it. (3) Stream the
+artifact and parse incrementally — the honest long-term answer, rejected for
+this round as a rewrite of a module that is total and pure by contract, and it
+buys nothing the two ceilings and this bound do not already buy. (4) Derive the
+byte ceiling from the two parser ceilings rather than stating it — rejected
+because line length is not bounded by either of them, so no such derivation
+exists.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_ARTIFACT_BYTES` and restore the single
+`artifact.read_text(encoding="utf-8")` call in `build_diff_view`, restore
+`view["truncated"] = parsed["truncated"]`, and delete the tests F037 R14 added
+in the final section of `tests/orchestration/test_diff_view_source.py`.
+DECISION F037 D5 and D6 are untouched by this decision and survive its reversal.

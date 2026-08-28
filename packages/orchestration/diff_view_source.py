@@ -44,6 +44,20 @@ DIFF_REASON_NO_EVIDENCE_DIR = "evidence_dir_unavailable"
 DIFF_REASON_ARTIFACT_MISSING = "diff_artifact_missing"
 DIFF_REASON_UNKNOWN_TASK_RUN = "unknown_task_run"
 
+#: Ceiling on the BYTES read from a diff artifact; above it the read stops and the view is
+#: reported ``truncated``. DECISION F037 D7 fixes the value.
+#: WHY this bound is NOT made redundant by the parser's two ceilings: ``DIFF_VIEW_MAX_BODY_LINES``
+#: and ``DIFF_VIEW_MAX_FILES`` bound the view that is BUILT, and both are counted while walking
+#: text that has already been read whole. A diff of one enormous line with no newline in it
+#: reaches NEITHER of them — it appends no body line and adds one file entry — while still
+#: costing the entire read, so the INPUT needs a bound of its own, in its own unit.
+#: Measured at `922f3223`: a diff that saturates BOTH parser ceilings at once is 1,423,907
+#: bytes of input — 397,907 for ``DIFF_VIEW_MAX_BODY_LINES`` body lines in one file, and
+#: 1,026,000 for ``DIFF_VIEW_MAX_FILES`` one-pair files at paths of sixty characters and more —
+#: so this ceiling is over five times the input any diff needs before the parser's own bounds
+#: take over.
+DIFF_VIEW_MAX_ARTIFACT_BYTES = 8_000_000
+
 #: Filters the LISTING of ``task_runs/`` — it never validates a caller's argument. Same
 #: shape as ``final_verifier._task_ids`` applies to that same directory; re-declared here
 #: rather than imported because that name is private to that module.
@@ -79,7 +93,10 @@ def build_diff_view(evidence_dir: Path | None, task_id: str | None = None) -> di
     The envelope always carries ``version``, ``scope``, ``task_id``, ``source``,
     ``available``, ``reason``, ``truncated``, ``files`` and ``task_run_ids``. It NEVER
     raises: every failure arrives as ``available`` False plus exactly one
-    ``DIFF_REASON_*`` value in ``reason``.
+    ``DIFF_REASON_*`` value in ``reason``. The artifact is read under
+    ``DIFF_VIEW_MAX_ARTIFACT_BYTES``, and ``truncated`` is True when that read cut the
+    artifact, when the parser hit one of its own two ceilings, or when the artifact carried
+    an upstream truncation sentinel.
     """
     # WHY the scope is set first: it is what the caller ASKED FOR, not what was found, so
     # an envelope describing a failure still says which question produced it.
@@ -138,9 +155,29 @@ def build_diff_view(evidence_dir: Path | None, task_id: str | None = None) -> di
     # would not decode" are the same answer to a viewer — there is no readable diff here —
     # and folding them keeps a single place that can set DIFF_REASON_ARTIFACT_MISSING.
     diff_text: str | None = None
+    read_truncated = False
     if artifact.is_file():
         try:
-            diff_text = artifact.read_text(encoding="utf-8")
+            with artifact.open("rb") as handle:
+                # WHY one byte MORE than the ceiling is read: it is how "larger than the
+                # ceiling" is told apart from "exactly the ceiling" in a single read, and
+                # exactly the ceiling is NOT truncated — the same inclusive boundary the
+                # parser's two ceilings have.
+                raw = handle.read(DIFF_VIEW_MAX_ARTIFACT_BYTES + 1)
+            if len(raw) > DIFF_VIEW_MAX_ARTIFACT_BYTES:
+                read_truncated = True
+                raw = raw[:DIFF_VIEW_MAX_ARTIFACT_BYTES]
+                # WHY the cut goes back to the last newline: it is what keeps the parser from
+                # being handed a PARTIAL LINE, and it is also what keeps a MULTI-BYTE CHARACTER
+                # from being split across the boundary, since a newline is never inside one.
+                # Without it a cut landing mid-character raises ``UnicodeDecodeError`` below and
+                # a perfectly readable artifact would be reported as missing.
+                # An artifact whose first ``DIFF_VIEW_MAX_ARTIFACT_BYTES`` bytes hold no newline
+                # at all yields the EMPTY text here, which parses to the empty-files shape and is
+                # reported as available and truncated: that is the one enormous line, and saying
+                # so in the data is this module's whole design.
+                raw = raw[: raw.rfind(b"\n") + 1]
+            diff_text = raw.decode("utf-8")
         except (OSError, UnicodeDecodeError):
             diff_text = None
     if diff_text is None:
@@ -153,6 +190,6 @@ def build_diff_view(evidence_dir: Path | None, task_id: str | None = None) -> di
     parsed = parse_unified_diff_to_view(diff_text)
     view["version"] = parsed["version"]
     view["files"] = parsed["files"]
-    view["truncated"] = parsed["truncated"]
+    view["truncated"] = parsed["truncated"] or read_truncated
     view["available"] = True
     return view
