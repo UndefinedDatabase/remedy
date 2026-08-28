@@ -13,25 +13,21 @@ file sidebar's visual treatment ruled by a named authority.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the per-line highlight model | done | `apps/ui/src/api/diffHighlight.ts` |
-| the DiffView wiring and the derived palette | done | `678bc698` |
-| make the lazy load real, repairing `R-0732` | done | `8bcff3db` |
-| rule on the sidebar's treatment | done | `1b70fb02`, DECISION F256 D3 |
-| measure the 10k fixture, server half | done | `4aea7ba2`, DECISION F256 D4 |
-| measure the 10k fixture, client half | done | this round |
-| record the numbers in the feature file | open | next round |
+| T001 wire the highlighting | done | `678bc698`, `8bcff3db`, DECISIONS D1 D2 |
+| T003 rule on the sidebar's treatment | done | `1b70fb02`, DECISION F256 D3 |
+| T002 measure, server half | done | `4aea7ba2`, DECISION F256 D4 |
+| T002 measure, client half | done | `95ecaf14`, DECISIONS F256 D5 D6 |
+| T002 record the numbers | done | this round |
+| the integration gate | open | next round |
+| the closure sequence | open | needs two rounds |
 
 ## Next Steps
-1. Write both halves' measured numbers into the Built State of
-   `docs/roadmap/features/T5_F256.md`, which is what Acceptance asks for: a
-   recorded measurement rather than a claim.
-2. Run the integration gate.
-3. Run the closure sequence, which needs two rounds — evidence and zip, then the
-   STATUS commit.
+1. Run the integration gate over the whole branch.
+2. Build the closure evidence and the review zip.
+3. Commit the STATUS closure in a round of its own, per the closure protocol.
 
 ## Risks
-- A collapsed hunk emits no line rows, so a client benchmark built with the
-  DEFAULT collapsed set measures two rows however large the fixture is.
-- The client model costs about a millisecond with a threefold run-to-run spread,
-  so a timing assertion there would measure the JIT; DECISION F256 D5 rules the
-  exact bounded-window property instead.
+- The closure sequence needs TWO rounds — evidence and zip, then the STATUS
+  commit — and a STATUS `[x]` flip needs its README and ledger pins in the same
+  commit or `tests/docs/` goes red.
+- `.agent/candidates.md` is empty and must stay empty through closure.
