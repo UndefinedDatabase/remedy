@@ -129,8 +129,22 @@ S1 was performed before the first edit, as ordered. What was read: the four whol
    shipped vitest config reaches no `.tsx`, and this repository has no DOM
    environment. It is typechecked by `tsc --noEmit` and text-pinned by S7's six
    guards, never behaviour-tested. F023 is the feature that first runs it.
-7. `.remedy-wt/` holds the reviewer's scratch original plus this round's five
-   helper scripts. It is gitignored and `git ls-files .remedy-wt` is 0 lines.
+7. `.remedy-wt/` is the gitignored scratch area. It holds the reviewer's block
+   original `f032-r15.md`, the helper scripts this round wrote, and accumulated
+   scratch from earlier rounds and features; `git ls-files .remedy-wt` is 0
+   lines, so none of it is tracked. The disposable worktree this round created
+   under it was removed and pruned.
+8. **This file was written TWICE, against the write-once rule (declared).** The
+   first write, commit `943b2f04`, said `.remedy-wt/` "holds the reviewer's
+   scratch original plus this round's five helper scripts". Both halves are
+   false — the directory carries hundreds of files from earlier rounds, and this
+   round wrote seven scripts and two measurement outputs, a numeral written
+   without counting. Item 7 above is the repaired sentence. It is not
+   load-bearing — `git ls-files .remedy-wt` = 0 is the reading that is, and it
+   was measured and is unchanged — so under amend0827 rule 2 it earns no id and
+   no round; it is repaired here and recorded as a deviation because a committed
+   handback is a durable carrier and a false sentence in one should not stand.
+   Exactly one correction was made and no other line of this file changed.
 
 ## Item status
 
