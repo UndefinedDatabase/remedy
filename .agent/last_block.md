@@ -1,286 +1,322 @@
-STEP R5 / F037 — RENDERED DIFF VIEWER — T001 PART THREE, THE INTRALINE GUARDS
-Goal:        MAKE THE INTRALINE TESTS DISCRIMINATE, AND MAKE THE SIMILARITY
-             GUARD REACHABLE. R4 landed intraline spans and its own red-proof
-             reported one mutation GREEN. Following that thread the reviewer
-             measured two defects, both of them the reviewer's spec rather than
-             R4's execution. `R-0717`: the side mapping is pinned only for
-             `replace` opcodes, so dropping `delete` from the old side OR
-             `insert` from the new side leaves the suite green. `R-0718`: the
-             similarity guard cannot fire for any multi-word line, because
-             separator tokens count toward the ratio and floor it at 0.333 for
-             two words and higher above that. This round books R4, registers
-             both, resolves `R-0716`, and repairs both with the discriminators
-             they lack. IT IS THE LAST ROUND OF THIS SESSION.
-             YOU CREATE NO PULL REQUEST THIS ROUND AND YOU MERGE NOTHING.
-Bundle:      C0a save this block · C0b mirror it into `last_block` · C1 the
-             plan · C2 the record — the R4 gate, the `R-0716` resolution, the
-             registration of `R-0717` and `R-0718`, and the reviewer's slip ·
-             C3 the `R-0717` discriminating fixtures · C4 the `R-0718` repair
-             with its test · C5 the handback · then push.
-Change:      Exactly these paths, nothing else. `.agent/authored/f037-r5.md`,
-             `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
-             `.agent/prose_slips.md`,
-             `packages/orchestration/diff_parser.py`,
-             `tests/orchestration/test_diff_parser.py`, `.agent/handoff.md`.
-             This list bounds what you WRITE INTO THE REPOSITORY. It does NOT
-             bound what you DO: G6 and G7 order a disposable worktree and G8
-             orders a push. NOTHING under `apps/` or `docs/` is written.
+STEP T001 read-endpoint part one — F037 R6
+
+Goal: the diff artifacts become readable as contract-v1 JSON without a server.
+One new module resolves an evidence directory, and optionally one task run, to
+the right unified-diff artifact and returns the F037 envelope, naming every
+absence instead of raising. R7 wires the routes onto it.
+
+Base: `9deb942eda94ec82ba00badbeece4cde05138bed`.
+Branch: `feature/f037-rendered-diff-viewer`. SESSION 2 of feature F037, round 6,
+rounds so far 5.
+
+Bundle, one commit each, in this order:
+C0a  save this block verbatim to `.agent/authored/f037-r6.md`
+C0b  mirror the C0a blob into `.agent/last_block.md`
+C1   `.agent/plan.md` from slice PLANF037R6
+C2   `.agent/live_review.md` from pairs DONE717 and DONE718, then append GATER5;
+     `.agent/prose_slips.md` append SLIPR6
+C3   `packages/orchestration/diff_view_source.py` and
+     `tests/orchestration/test_diff_view_source.py`, written by you from the SPEC
+C4   `.agent/handoff.md`, the handback
+
+Change set — these paths and no others:
+  .agent/authored/f037-r6.md
+  .agent/last_block.md
+  .agent/plan.md
+  .agent/live_review.md
+  .agent/prose_slips.md
+  packages/orchestration/diff_view_source.py
+  tests/orchestration/test_diff_view_source.py
+  .agent/handoff.md
+Run `git push origin feature/f037-rendered-diff-viewer` AFTER C4. Create no pull
+request and merge nothing: the Open PR Gate returned `[]` when this block was
+authored, so there is nothing to merge.
+
+Slice convention: the authored texts in this block are PLANF037R6, DONE717,
+DONE718, GATER5 and SLIPR6. Each is delimited by a line `<<<SLICE <NAME>` and a
+line `<<<END <NAME>`; the marker lines are never part of the text.
 
 Constraints:
- 1. THIS BLOCK REACHES YOU AS A FILE, NOT AS PROSE IN A PROMPT. Read
-    `.remedy-wt/f037-r5.md` from disk and copy it BYTE FOR BYTE to
-    `.agent/authored/f037-r5.md` — with `shutil.copyfile` or a read-then-write
-    in python, never by retyping it and never with `cp`, which this session's
-    guard rejects. This block asserts NO digest of its own; G2 has you measure
-    four points and prove them EQUAL.
- 2. THE SLICES ARE APPLIED BYTE FOR BYTE; THE SPEC IS IMPLEMENTED, NOT COPIED.
-    A SLICE begins at the line AFTER `<<<SLICE NAME` and ends at the line
-    BEFORE `<<<END NAME`; its TEXT is its content lines joined with a newline
-    plus ONE trailing newline, and that is the ONLY definition of a slice's
-    bytes used anywhere in this block. The numbered SPEC items are NOT slices.
-    If a slice contradicts something you measure, apply it anyway and DECLARE
-    it under Deviations.
- 3. C2 APPLIES A PAIR AND THEN AN APPEND, IN THAT ORDER. First replace the
-    single line LANDEDFROM with the paragraph LANDEDTO — this is the ONE
-    sanctioned rewrite of landed text in this workflow, because
-    `docs/agents/planner_reviewer_prompt.md` §4 item 4 reserves `Done:` for
-    reviewer-authored text and has the worker's `Landed:` line replaced by it
-    at the next gate. Then append RECORDR5 by the EOF operation: the file's
-    bytes as they stand AFTER the pair, plus exactly ONE newline, plus the
-    slice's TEXT. Read the pre-commit baseline with `git show <sha>:<path>`
-    where `<sha>` is THE COMMIT YOU ARE ABOUT TO BUILD ON — for C2 that is C1,
-    whose SHA you know because you just made it. Never read a baseline from an
-    earlier ROUND and never overwrite a tracked file to obtain one.
- 4. SLIPR5 IS AN EOF APPEND TO `.agent/prose_slips.md` at C2, by the same
-    operation: baseline, one newline, the slice's text.
- 5. THE COMMIT ORDER IS FIXED: C0a, C0b, C1, C2, C3, C4, C5. The record moves
-    BEFORE the code. `.agent/plan.md` is advanced at C1, the FIRST substantive
-    commit, as `docs/agents/planner_reviewer_prompt.md` §3 item 23 requires of
-    any round that touches the finding ledger.
- 6. NOTHING ELSE IN THE RECORD IS EDITED. Apart from the single LANDEDFROM line
-    that constraint 3 replaces, no finding paragraph, no `Done:` line and no
-    existing `Gate:` paragraph is rewritten, deleted or renumbered. `R-0715`
-    is NOT touched and stays OPEN.
- 7. YOU RESOLVE NOTHING YOURSELF. You never write a `Gate:` paragraph, never
-    mint a finding id, never author a `Done:` line of your own and never write
-    a DECISION. When the repairs land you append, as the LAST lines of
-    `.agent/live_review.md` in the commit that lands each, exactly one line of
-    the form `Landed: R-XXXX — <one sentence: what changed, and the commit>` —
-    one for `R-0717` at C3 and one for `R-0718` at C4 — and nothing else.
- 8. THE MODULE STAYS SELF-CONTAINED, PURE AND TOTAL. Standard library only,
-    never `review_scope` or `review_subject`, no file system, no subprocess, no
-    network, no logging, no global mutable state, and it NEVER raises on
-    malformed input.
- 9. RE-READ `.agent/STOP` FROM DISK before C0a and again before C5. If it
-    exists at either reading, finish the commit in hand, write the handback and
-    STOP.
-10. DESTRUCTIVE VERIFICATION IS ISOLATED. The red-proofs of G6 and G7 run ONLY
-    inside a disposable `git worktree` under `.remedy-wt/`, never in the
-    primary checkout, which reads `git status --porcelain` 0 lines at every
-    commit. Remove the worktree and run `git worktree prune` before C5. Run no
-    `npm`, `npx`, `node` or `vite`.
-11. THIS SESSION'S COMMAND GUARD rejects shell loops, `$?`, `$( )` inside a
-    compound, `${...}` and every other expansion, `cp`, brace literals
-    containing a quote character, `cd x && y`, file redirects, and every form
-    of environment assignment. Route anything that counts, hashes, compares or
-    mutates through a quoted python heredoc, read real exit codes from
-    `subprocess.run(...).returncode`, and pass `cwd=` rather than `cd`. Run
-    pytest SERIALLY. `--timeout` IS NOT AVAILABLE to pytest here. Purge
-    `__pycache__` and use `python3 -B` around any mutation.
-12. EVERY NUMERAL THIS BLOCK STATES ABOUT THE ROUND BASE `c6c490cb` was
-    measured by the reviewer at that commit. It is a REFERENCE to report
-    against, NOT a target to reproduce. Where your measurement differs, report
-    BOTH and reconcile NOTHING.
-13. YOUR HANDBACK CARRIES A `## Session` SECTION reading that this is SESSION 1
-    of F037, that R5 is the round, and THAT THE SESSION ENDS HERE. Its `## Next`
-    section names, as the next session's FIRST action, re-reading `.agent/STOP`
-    from disk (Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`) and only
-    then the Open PR Gate, and states that F037's branch has NO open pull
-    request, so the gate finds nothing to merge and work resumes at T001's read
-    endpoint. The handback has NO LENGTH CAP.
+1. Apply every slice byte for byte, extracted from the COMMITTED C0a blob by its
+   marker LINES in Python. Never retype a slice, never edit a slice.
+2. `.agent/plan.md` is a WHOLE-FILE replacement by PLANF037R6.
+3. DONE717 and DONE718 are FROM/TO pairs. The containment test was run before
+   emission, one reading per pair: DONE717 `TO contains FROM: false`, DONE718
+   `TO contains FROM: false`. Both are REWRITES, so each orders its FROM at 0x
+   and its TO at 1x in the file after C2, and neither orders an append reading.
+   The FROM of each pair is the whole existing `Landed:` line for that finding.
+4. GATER5 is appended at EOF of `.agent/live_review.md` AFTER both pairs are
+   applied, in the same commit. SLIPR6 is appended at EOF of
+   `.agent/prose_slips.md`. The append convention is the file's existing one: a
+   single separator newline, then the slice bytes.
+5. No finding id is minted this round. R5 PASSED and produced no defect with
+   product effect; the reviewer-prose slips it exposed go to SLIPR6 with no id,
+   per AGENTS.md `### prose_slips.md` and operator amendment amend0827 rule 2.
+6. Do NOT touch the `Landed: R-0711` line. It belongs to F032, whose branch
+   ended before a reviewer could author its `Done:` text — the
+   docs/agents/planner_reviewer_prompt.md §4 item 13 terminator, not a gap for
+   this round to close. Its survival is why `^Landed: R-` reads 1 and not 0
+   after C2.
+7. Production code is written by YOU from the SPEC. It is described, not sliced,
+   so no gate compares it to authored bytes. Match the surrounding module's
+   idiom: module docstring, a one-line WHY above each definition, type hints,
+   the same import style `packages/orchestration/diff_parser.py` uses.
+8. `packages/orchestration/ui_server.py` is NOT touched. No route, no handler
+   dict key, no test under `tests/ui_server/`. R7 does the wiring and needs the
+   route-walk guard measured first.
+9. `packages/orchestration/diff_parser.py` is NOT touched. R6 consumes it.
+10. `tests/test_no_interactive_guard.py` sweeps every file under
+    `packages/orchestration` for interactive constructs against an EMPTY
+    allowlist (read at the base). The new module contains no `input(`, no
+    `getpass`, no interactive prompt of any kind.
+11. Where a measurement disagrees with a value this block names, report the
+    measured value and the disagreement under Deviations. Never bend a
+    measurement to a gate, and never change code to suit a number.
 
-SPEC — the `R-0717` discriminators, in `tests/orchestration/test_diff_parser.py`:
- S1. THE GAP, measured, so the fixtures are aimed at a real thing. Across every
-     intraline fixture the file holds at `c6c490cb`, the paired lines that clear
-     the ratio guard produce only `equal` and `replace` opcodes. The reviewer
-     confirmed the consequence in a worktree at that commit: changing the OLD
-     side's opcode tuple from `("replace", "delete")` to `("replace",)` leaves
-     the suite at `24 passed`, exit 0, and changing the NEW side's from
-     `("replace", "insert")` to `("replace",)` does the same.
- S2. A PURE-DELETION FIXTURE. One `del`/`add` pair where the new line is the old
-     line with an interior run of words REMOVED and nothing else changed — the
-     reviewer measured `keep the extra words here` against `keep the words here`
-     as producing opcodes `equal`, `delete`, `equal` at a ratio of 0.875. Assert
-     the EXACT spans on the `del` entry, assert that slicing `content` by them
-     yields the removed text, and assert the `add` entry's spans are `[]`. That
-     last assertion is the discriminator: it is what fails when `delete` is
-     dropped from the old side.
- S3. A PURE-INSERTION FIXTURE, the mirror of S2: the new line is the old line
-     with an interior run of words ADDED. Assert the exact spans on the `add`
-     entry, assert the sliced text, and assert the `del` entry's spans are `[]`.
- S4. THE PROOF THAT THEY DISCRIMINATE is G6, which re-runs the two mutations of
-     S1 against the C3 tree and requires BOTH to go red. A fixture that does not
-     kill its mutation has not closed the gap it was written for.
+SPEC — packages/orchestration/diff_view_source.py
 
-SPEC — the `R-0718` repair, in `packages/orchestration/diff_parser.py`:
- S5. THE DEFECT, measured. The similarity ratio is computed over the FULL token
-     stream produced by `re.findall(r"\w+|\W", s)`, which interleaves separator
-     tokens. Two space-separated lines of equal word count always match on their
-     separators, so the ratio has a FLOOR even when no word matches: the reviewer
-     measured 0.333 at two words, 0.400 at three, 0.444 at five and 0.474 at ten,
-     rising toward 0.5. With `DIFF_INTRALINE_MIN_RATIO` at 0.3 the guard
-     therefore CANNOT fire for any multi-word line pair, and the only fixture in
-     the file that exercises it is a single-word line, `alpha` against `zulu`,
-     which is the one shape where a separator floor does not exist.
- S6. THE REPAIR. Compute the guard's ratio over the SIGNIFICANT tokens only —
-     the tokens that are not pure whitespace — while the SPAN MAPPING continues
-     to run over the full token stream, because offsets must stay exact. Keep
-     `DIFF_INTRALINE_MIN_RATIO` at 0.3; the constant was never the defect, the
-     stream it was measured over was. Where BOTH significant-token lists are
-     empty — two lines made entirely of whitespace and punctuation — treat the
-     pair as similar and emit spans from the full stream, because there is no
-     word evidence either way and refusing to mark anything is the safer half of
-     a choice this rule cannot make honestly.
- S7. THE TEST. Add a case with two multi-word lines that share no word — the
-     reviewer measured `alpha beta gamma` against `zzz qqq www` as scoring 0.400
-     on the full stream and therefore emitting spans over EVERY word today — and
-     assert `[]` on both entries. Compute the significant-token ratio inside the
-     test and assert it is below the exported constant, naming the constant
-     rather than transcribing 0.3, exactly as the existing threshold test does.
-     Keep that existing single-word test passing unchanged.
- S8. WHAT MUST NOT REGRESS. `the fox jumps` against `the cat jumps` still emits
-     spans — its significant-token ratio is 0.667 — and every test the file
-     already holds still passes. G7 measures that by node id.
+S1. The module docstring states the WHY: `diff_parser.py` turns diff TEXT into
+    the contract-v1 view and touches no filesystem; this module is the other
+    half — it decides WHICH artifact to read for a scope and hands the text
+    over. It performs no HTTP and imports nothing from `ui_server.py`, so the
+    endpoint layer stays a thin caller and this half is testable with no server.
 
-Done when:
- G1. HYGIENE, THE BASE AND THE SENTINEL. Report `git rev-parse HEAD` BEFORE
-     C0a, which must be `c6c490cb83fe4889e41fc0d14d54d80fb306d4f1`, and
-     `git branch --show-current`, which must be
-     `feature/f037-rendered-diff-viewer`. Report `git status --porcelain` as a
-     LINE COUNT after each of C0a, C0b, C1, C2, C3 and C4, each 0. C5's own
-     reading belongs in no file this round writes; take it and report it in
-     your completion report. Report `.agent/STOP` read from disk before C0a and
-     before C5, both ABSENT.
- G2. TRANSPORT. Report the sha256, byte count and line count of this block as
-     read from `.remedy-wt/f037-r5.md`, as saved at C0a, as mirrored at C0b and
-     as read off disk at C4 — all four must be EQUAL — and say whether C0a and
-     C0b are the same git blob. Report whether any line of the block as saved
-     is a run of a single repeated character at length 4 or more, which must
-     come back as none. THEN STATE IN ONE SENTENCE WHAT THIS PROOF COVERS: the
-     scratch file, the saved copy, its mirror and the working copy, and NOT the
-     bytes of any prompt.
- G3. EXTRACTION AND CAPS. Extract the slices from the COMMITTED C0a blob by
-     their marker LINES. Report how many slices your extractor printed, each
-     slice's own line count, the CONTENT total, the TOTAL line count, and PROSE
-     as TOTAL minus CONTENT. MARKERS ARE PROSE. PROSE at most 400, TOTAL at
-     most 490.
- G4. THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to PLANF037R5 under the
-     newline-INCLUDED convention of constraint 2. Run the negative control
-     against the slice MINUS its trailing newline and report FALSE. Report
-     `^## Goal$` 1, `^## Next Steps$` 1, a match for `\bF\d{3}\b`, and `wc -l`
-     STRICTLY UNDER 50.
- G5. THE RECORD, AT C2. For the PAIR: report that LANDEDFROM occurs EXACTLY 1
-     time in `.agent/live_review.md` before the edit and 0 times after, and that
-     LANDEDTO occurs 0 times before and EXACTLY 1 time after; the reviewer
-     measured `TO contains FROM: false`, so this is a REWRITE and the FROM-zero
-     count is the right obligation for it. For the APPEND, prove it TWO WAYS
-     against the file AS IT STANDS AFTER THE PAIR. Reader (a),
-     RECONSTRUCTION: those bytes plus one newline plus RECORDR5's text is
-     BYTE-EQUAL to the file at C2; report the arithmetic in bytes. Reader (b),
-     STRUCTURE: split the file at C2 on blank lines, count N as the number of
-     blank-line units the SLICE holds — a number YOUR script counts, never one
-     this block asserts — and report that the LAST N units equal the slice's N
-     units IN ORDER. NEGATIVE CONTROL: flip ONE byte at an offset you assert
-     and report to lie inside the FIRST appended paragraph, and report that
-     BOTH readers reject. Do the same two readers and control for SLIPR5 against
-     `.agent/prose_slips.md`. Then report the line-anchored counts of
-     `^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: R\d+ — ` and
-     `^Gate: F\d+ R\d+ — ` before and after C2; the reviewer measured 277, 24,
-     2, 19 and 74 at the base, and after C2 they must read 279, 25, 1, 19 and
-     75. Report the finding ids ADDED as a SET, which must be exactly `R-0717`
-     and `R-0718`; the finding ids REMOVED and the resolved ids REMOVED as
-     SETS, both EMPTY; the resolved ids ADDED as a SET, which must be exactly
-     `R-0716`; that all ids are DISTINCT; the maximum id after C2, which is
-     `R-0718`; and the open set after C2, which is 254.
- G6. THE DISCRIMINATORS ARE PROVED BY THE REDS THEY NOW CAUSE, in a disposable
-     worktree under `.remedy-wt/` and NEVER in the primary checkout, at the C3
-     tree. FIRST report the UNMUTATED CONTROL: `python3 -B -m pytest
-     tests/orchestration/test_diff_parser.py -q`, real exit code 0, with its
-     summary line. THEN run each mutation SEPARATELY against
-     `packages/orchestration/diff_parser.py`, restoring between them and purging
-     `__pycache__` each time, and report for each the real exit code and the
-     failing node ids VERBATIM:
-     (a) the OLD side's opcode tuple `("replace", "delete")` narrowed to
-         `("replace",)`. The S2 pure-deletion test must fail.
-     (b) the NEW side's opcode tuple `("replace", "insert")` narrowed to
-         `("replace",)`. The S3 pure-insertion test must fail.
-     For EACH, name the exact file and report the count of the bytes you
-     replaced IN THAT FILE, which must be 1 before the edit. The reviewer
-     measured BOTH of these as exit 0 at `24 passed` against the ROUND BASE
-     `c6c490cb`; both going red at C3 is the whole point of the commit, and a
-     mutation that stays green means the fixture does not discriminate and must
-     be reported plainly rather than replaced.
- G7. THE SUITE, THE LINT AND THE CANARY, at C4, in the PRIMARY checkout. Run,
-     as ONE pytest process from the repository root, `python3 -m pytest
-     tests/orchestration/test_diff_parser.py -q`; report the REAL exit code,
-     the summary line VERBATIM and the COUNT of `^FAILED` lines, which must be
-     0, PROVING YOUR EXTRACTOR IS NOT BLIND over a control string containing
-     such a line. Report the test COUNT at C4 against the 24 the reviewer
-     measured at `c6c490cb`, and confirm that every one of those 24 node ids is
-     still present and still passing — name any that is not. Report
-     specifically that the existing single-word threshold test and the
-     `the fox jumps` replacement test both still pass, which is S8. Run
-     `python3 -m ruff check packages/orchestration/diff_parser.py
-     tests/orchestration/test_diff_parser.py` with the repository's own
-     configuration, no `--isolated`, and report the real exit code and output
-     VERBATIM. Run the canary `python3 -m pytest tests/cli/test_golden_path.py
-     -q` and report its real exit code and summary line. Then, in a disposable
-     worktree at C4, report the UNMUTATED CONTROL and then ONE further
-     mutation: widen the guard so it can never fire — compare the significant
-     ratio against a value no ratio can be below — and report the real exit
-     code and failing node ids; the S7 test must fail. Remove the worktree and
-     prune, then report `git worktree list` 1 line and `git status --porcelain`
-     0 lines in the primary checkout.
- G8. STRUCTURE, ARTIFACTS, THE OPEN PR GATE AND THE PUSH. Compare the path set
-     of `git diff --name-only c6c490cb..C4` BOTH WAYS against this round's
-     expected set — the Change line's list MINUS `.agent/handoff.md`, which C5
-     writes — and report both residues EMPTY. Report `git diff --stat
-     c6c490cb..C4` restricted to `apps/`, `docs/`, `packages/` and `tests/` and
-     confirm the first two EMPTY and the last two holding ONLY
-     `packages/orchestration/diff_parser.py` and
-     `tests/orchestration/test_diff_parser.py`. Report each commit's insertions
-     from `git diff --numstat` for C0a through C4, confirm each single-parent
-     and under 500. Line-anchored `^<<<SLICE ` and `^<<<END ` are 0 and 0 in
-     `.agent/plan.md`, `.agent/live_review.md` and `.agent/prose_slips.md` at
-     their commits, against a CONTROL over the C0a blob which is not 0. Report
-     that `^Landed: R-` counts 2 in `.agent/live_review.md` at C4 — the two
-     lines constraint 7 orders — and that `^Done: R-\d+ — ` counts 25 there.
-     Report `git ls-files .remedy-wt` 0 lines and `git branch --list "tmp/*"`
-     0 lines. Run `gh pr list --state open --json
-     number,headRefName,baseRefName,isDraft` and report it VERBATIM; the
-     reviewer read `[]` at the round base; MERGE NOTHING and CREATE NOTHING.
-     After C5, run `git push origin feature/f037-rendered-diff-viewer`. ITS
-     OUTCOME IS NOT A VALUE OF ANY FILE THIS ROUND WRITES: C5 is authored
-     before the push exists, so `.agent/handoff.md` states the push only as an
-     INTENT under `## External actions`. Report the real exit code and the
-     resulting remote tip in your completion report instead.
-Handback:    Rewrite `.agent/handoff.md` per docs/agents/handback_template.md at
-             C5: the `## Session` section constraint 13 orders IN FULL, feature
-             and round, branch, the round base SHA `c6c490cb`, the per-commit
-             changed-files table with the `+/-` column taken from `git diff
-             --numstat` ITSELF and agreeing cell for cell with G8, an
-             item-status row for EVERY Bundle item AND every SPEC item S1
-             through S8, ONE LINE PER GATE for G1 through G8 with its real exit
-             code, the open-findings count after this round, and the next
-             expected action. C5 cannot table its own numstat — write `self` in
-             that cell, as `R-0149` requires. Because this is the session's LAST
-             round, the handback is the only return channel: state under
-             `## Next` exactly what T001 still owes — the read endpoint — and
-             that `R-0715` remains open and untouched.
-             ANY COMMIT YOU MAKE BEYOND THE ORDERED SEQUENCE RECEIVES ITS OWN
-             `## Commits` ROW AND ITS OWN ITEM-STATUS ROW.
+S2. The module's public names:
+      DIFF_SCOPE_JOB = "job"
+      DIFF_SCOPE_TASK_RUN = "task_run"
+      DIFF_JOB_ARTIFACT_NAME = "workspace.diff"
+      DIFF_TASK_RUN_ARTIFACT_NAME = "safe.diff"
+      DIFF_TASK_RUNS_DIR_NAME = "task_runs"
+      DIFF_REASON_NO_EVIDENCE_DIR = "evidence_dir_unavailable"
+      DIFF_REASON_ARTIFACT_MISSING = "diff_artifact_missing"
+      DIFF_REASON_UNKNOWN_TASK_RUN = "unknown_task_run"
+      SAFE_TASK_RUN_ID_RE = re.compile(r"^T\d{3,}$")
+      list_task_run_ids(evidence_dir) -> list[str]
+      build_diff_view(evidence_dir, task_id=None) -> dict
+    `DIFF_REASON_NO_EVIDENCE_DIR`'s VALUE repeats the string
+    `packages/orchestration/ui_server.py` already uses for the same condition in
+    its `_empty_prompt_trace("evidence_dir_unavailable")` call, read at the base
+    commit named above — one spelling per concept, per AGENTS.md "Code
+    Discoverability Conventions".
 
-<<<SLICE PLANF037R5
+S3. `list_task_run_ids(evidence_dir)` returns the SORTED names of the
+    subdirectories of `<evidence_dir>/task_runs` that `SAFE_TASK_RUN_ID_RE`
+    fully matches. It returns `[]` when `evidence_dir` is None, is not a
+    directory, or holds no `task_runs` directory. The pattern is the same shape
+    `packages/orchestration/final_verifier.py` applies to that same directory in
+    its own `_task_ids` reader, read at the base commit; it is re-declared here
+    rather than imported because that name is private to that module.
+
+S4. `build_diff_view(evidence_dir, task_id=None)` returns a dict with exactly
+    these keys:
+      version      — `diff_parser.DIFF_VIEW_VERSION`, IMPORTED. The module
+                     declares no second version literal of its own.
+      scope        — DIFF_SCOPE_TASK_RUN when `task_id` is not None, else
+                     DIFF_SCOPE_JOB. It is what was ASKED FOR, so it is set
+                     before anything can fail.
+      task_id      — the argument unchanged, or None.
+      source       — the artifact path RELATIVE to the evidence dir, or None.
+      available    — True only when a diff artifact was actually read.
+      reason       — None when available, else exactly one DIFF_REASON_* value.
+      truncated    — the parser's value, or False.
+      files        — the parser's list, or [].
+      task_run_ids — `list_task_run_ids(evidence_dir)`, always present so a
+                     caller that asked for the wrong run can see the real set.
+
+S5. The order of decisions, which is load-bearing:
+    (a) `evidence_dir` is None or is not a directory: available False, reason
+        DIFF_REASON_NO_EVIDENCE_DIR, source None, files [], task_run_ids [].
+    (b) `task_id` is not None and is NOT a member of
+        `list_task_run_ids(evidence_dir)`: available False, reason
+        DIFF_REASON_UNKNOWN_TASK_RUN, source None, files [].
+        MEMBERSHIP IN THE REAL LISTING is the check, never a pattern match over
+        the argument alone. A name that is not already a directory there cannot
+        be reached, so `..`, an absolute path and any traversal are refused by
+        construction rather than by pattern; the regex filters the LISTING,
+        which is a different job. Write the one-line WHY above the check, and
+        state there that `path_utils.sanitize_path_component` is deliberately
+        NOT used: sanitizing rewrites an unsafe id into a DIFFERENT valid one
+        and would serve the wrong task run's diff, where refusing serves none.
+    (c) otherwise the artifact is
+        `<task_runs>/<task_id>/<DIFF_TASK_RUN_ARTIFACT_NAME>` for a task run and
+        `<DIFF_JOB_ARTIFACT_NAME>` for a job. `source` is set to that relative
+        path at this point, so an absence still tells the caller what was
+        looked for.
+    (d) the artifact does not exist, is not a file, or cannot be read as UTF-8
+        (`OSError`, `UnicodeDecodeError`): available False, reason
+        DIFF_REASON_ARTIFACT_MISSING, files [], truncated False, `source` kept.
+    (e) otherwise parse the text with `parse_unified_diff_to_view` and take its
+        `files`, `truncated` and `version`; available True, reason None. An
+        EMPTY artifact is AVAILABLE with zero files: "nothing changed" and "no
+        diff was written" are different answers and this module must not merge
+        them. Say that in the WHY comment.
+
+S6. `build_diff_view` never raises. Every failure is one of the three reasons.
+
+SPEC — tests/orchestration/test_diff_view_source.py
+
+S7. Build every evidence tree under pytest's `tmp_path`, never under the
+    repository. One helper writes an evidence dir carrying `workspace.diff` and
+    `task_runs/T001/safe.diff` from real unified-diff text.
+S8. Job scope, happy path: scope is DIFF_SCOPE_JOB, source is
+    `workspace.diff`, available True, reason None, and `files` carries the path
+    the job fixture's diff names.
+S9. Task-run scope, happy path: scope DIFF_SCOPE_TASK_RUN, task_id `T001`,
+    source `task_runs/T001/safe.diff`, available True. Assert on a file path
+    that ONLY the task diff contains, so the test fails if the two artifacts
+    were ever swapped.
+S10. Assert `version` equals `diff_parser.DIFF_VIEW_VERSION` by IMPORT, never a
+     transcribed integer.
+S11. One test per absence reason: `evidence_dir=None`; an evidence dir with no
+     `workspace.diff`; `task_id="T404"` against a tree holding `T001`. Each
+     asserts the exact reason constant, `available is False` and `files == []`;
+     the unknown run additionally asserts `source is None` and that
+     `task_run_ids` holds `T001`, and the missing artifact additionally asserts
+     that `source` still names the path that was looked for.
+S12. The refusal test, which must not be weakened: for each of
+     `"../../../etc"`, `"T001/../../.."`, `"/etc"`, `"."` and `""`, assert
+     reason DIFF_REASON_UNKNOWN_TASK_RUN and `source is None`. Before the calls,
+     write a file OUTSIDE the evidence dir but under `tmp_path` holding a
+     recognisable marker string, and assert that marker appears nowhere in
+     `repr()` of any returned dict — so the test proves nothing was READ, not
+     merely that a field was set.
+S13. `list_task_run_ids` sorts and filters: build `T001`, `T010`, `T002`, a
+     directory named `nope` and a FILE named `T999`, then assert the result is
+     exactly `["T001", "T002", "T010"]`.
+S14. An EMPTY `workspace.diff` is available with `files == []`, pinning the
+     S5(e) distinction so a later simplification cannot fold it into
+     DIFF_REASON_ARTIFACT_MISSING.
+
+Done when — eight gates. Run every one, record its REAL exit code and its
+verbatim summary line, and put one line per gate in the handback.
+
+G1 hygiene. Read `.agent/STOP` from disk before C0a and again before C4; report
+   ABSENT or PRESENT at both points, and if PRESENT stop after the current
+   commit and hand off. Report `git rev-parse HEAD` before C0a — it must equal
+   the base SHA above — and `git branch --show-current`. Report the
+   `git status --porcelain` LINE COUNT after each of C0a, C0b, C1, C2 and C3;
+   each must be 0.
+
+G2 transport, ONE digest comparison. After C0a report the sha256, byte count and
+   line count of `.agent/authored/f037-r6.md`. After C0b report
+   `git rev-parse HEAD:.agent/authored/f037-r6.md` and
+   `git rev-parse HEAD:.agent/last_block.md`; they must be the SAME blob hash.
+   State plainly that this chain covers the saved copy, its mirror and the
+   working copy, and claims nothing about the bytes of any prompt.
+
+G3 extraction and caps. Extract all five slices from the COMMITTED C0a blob by
+   their marker lines and print each slice's NAME and line count. Print TOTAL
+   (the block's lines), CONTENT (the sum of the slice line counts) and
+   PROSE = TOTAL − CONTENT. Report all three as measured. PROSE must be at most
+   400 and TOTAL at most 490.
+
+G4 the plan at C1. `.agent/plan.md` is byte-equal to PLANF037R6 under the
+   newline-included convention: report True or False. Report the NEGATIVE
+   CONTROL against the slice minus its trailing newline; it must be False.
+   Report the line-anchored counts of `^## Goal$` and `^## Next Steps$`, each 1,
+   and `wc -l`, which must be strictly under 50.
+
+G5 the record at C2, full byte forensics — this is the append into the record,
+   which the gate budget reserves it for.
+   PAIRS: for each of R-0717 and R-0718 report the count of its FROM line before
+   and after C2 (1 then 0) and of its TO line before and after (0 then 1).
+   APPEND, live_review.md: measure the byte length AFTER the two pairs and
+   BEFORE the append — call it L — then report that the post-append length
+   equals L + 1 + the GATER5 byte length, and that the intermediate is a byte
+   PREFIX of the final. Reader (b), independent and structural: have your script
+   COUNT N, the number of blank-line units in GATER5, and compare the LAST N
+   units of the final file against the slice's N units IN ORDER. NEGATIVE
+   CONTROL: flip one byte inside the FIRST appended paragraph and report that
+   reader (a) and reader (b) BOTH come back False.
+   APPEND, prose_slips.md: the same two readers and the same control, with the
+   control byte inside the FIRST appended bullet. The base length before C2 is
+   6840 bytes; report the measured value beside it.
+   COUNTS after C2, line-anchored, each reported as measured:
+     `^- R-\d+ — ` 279, unchanged — no id is minted this round
+     `^Done: R-\d+ — ` 27
+     `^Landed: R-` 1
+     `^Gate: F\d+ R\d+ — ` 76
+     `^Gate: R\d+ — ` 19, unchanged
+   Also report: the set of ids ADDED (must be empty), the set of ids newly
+   RESOLVED (must be exactly R-0717 and R-0718), whether all ids are DISTINCT,
+   the maximum id, and the size of the open set, which is every registered id
+   minus every resolved id.
+
+G6 the red-proofs for the new module, run ONLY inside a disposable
+   `git worktree` at the C3 tree and never in the primary checkout. Purge
+   `__pycache__` and use `python3 -B` before EVERY run, and restore the module
+   between mutations. Report the UNMUTATED CONTROL first —
+   `python3 -B -m pytest tests/orchestration/test_diff_view_source.py -q` — with
+   its real exit code and verbatim summary; a colour with no baseline is not
+   evidence. Then two mutations, each described BY PROPERTY because you wrote
+   the code, and for each one quote the exact lines you changed FROM and TO, the
+   real exit code, the verbatim summary and every failing node id in full:
+     (a) defeat S5(b): make the task-run branch accept ANY `task_id` without
+         testing membership in `list_task_run_ids`, so the path is built from
+         the argument directly.
+     (b) defeat S5(d): make the missing-artifact branch report `available` True
+         with `reason` None.
+   If either mutation comes back GREEN, report the green plainly and diagnose
+   WHY the mutated branch is unreachable by the tests. Do NOT substitute a
+   different mutation and do NOT add a test to make it red. Remove and prune the
+   worktree afterwards and report `git worktree list` line count and
+   `git status --porcelain` line count in the primary checkout.
+
+G7 suite, lint and canary at C3, in the primary checkout, ONE pytest process at
+   a time and never two in parallel.
+   Run `python3 -m pytest tests/orchestration/test_diff_view_source.py
+   tests/orchestration/test_diff_parser.py -q`; report the real exit code, the
+   verbatim summary line and the count of lines matching `^FAILED`. Add the
+   extractor-blindness control: run the SAME counter over a control string that
+   contains `FAILED tests/orchestration/test_diff_view_source.py::test_control_string`
+   and report that it returns 1, so a 0 above is a measurement and not a blind
+   spot.
+   Report the node-id inventory of the new file from
+   `python3 -m pytest tests/orchestration/test_diff_view_source.py --collect-only -q`
+   — the count and the ids. Never derive node ids by regexing `-v` output.
+   Run `python3 -m ruff check packages/orchestration/diff_view_source.py
+   tests/orchestration/test_diff_view_source.py` with the repository's own
+   configuration and NO `--isolated`; report the real exit code and the verbatim
+   output.
+   Run the canary `python3 -m pytest tests/cli/test_golden_path.py -q`; report
+   the real exit code and the verbatim summary.
+
+G8 structure, artifacts and the Open PR Gate, measured at C3.
+   Report `git diff --name-only <base>..<C3>` against the change set above minus
+   `.agent/handoff.md`, and report BOTH residues — actual minus expected and
+   expected minus actual — each of which must be empty.
+   Report a restricted `git diff --stat`: `apps/` empty, `docs/` empty,
+   `packages/` holding only `diff_view_source.py`, `tests/` holding only
+   `test_diff_view_source.py`.
+   Report the per-commit INSERTION count from `git diff --numstat` for C0a, C0b,
+   C1, C2 and C3 — not for C4, whose own count cannot exist while its text is
+   being written — and confirm each commit is single-parent and each insertion
+   count is under 500.
+   Report the line-anchored counts of `^<<<SLICE ` and `^<<<END ` in
+   `.agent/plan.md` at C1, `.agent/live_review.md` at C2 and
+   `.agent/prose_slips.md` at C2; all must be 0. Then run the SAME counter over
+   the C0a blob and report the number it measures, which must be greater than
+   zero, so the sweep is shown not to be blind.
+   Report `git ls-files .remedy-wt` line count, which must be 0.
+   Report the Open PR Gate verbatim:
+   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
+   The PUSH is ordered after C4 and is deliberately NOT part of any gate: C4
+   writes the handback, so the handback cannot report a value that does not
+   exist when it is written. Run the push, and do not name its result in
+   `.agent/handoff.md`; the reviewer reads the remote tip itself.
+
+Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It
+carries the Session block naming SESSION 2 of feature F037 and round 6, the
+range and base SHA, a per-commit changed-files table with a `+/-` column taken
+from `git diff --numstat` itself and agreeing cell for cell with the per-commit
+reading G8 orders, the external actions, one line per gate G1 through G8 with
+its real result, the item-status table covering every C-item and every S-item
+and every gate with `done`, `skipped` or `deviated` plus a reason, the
+Deviations, and the Next section. It has NO length cap. State in the Next
+section that the first action of the next round is to re-read `.agent/STOP`
+from disk, then the Open PR Gate.
+
+<<<SLICE PLANF037R6
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
@@ -297,64 +333,75 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments that reconcile it with the source.
 
 ## Current Step
-R5 closes the parser's verification gaps and ends the session. It books R4,
-resolves `R-0716`, and registers and repairs two defects the R4 red-proofs
-exposed: `R-0717`, the intraline side mapping is pinned only for `replace`
-opcodes, and `R-0718`, the similarity guard cannot fire for a multi-word line
-because separator tokens floor its ratio. Both repairs are proved by the reds
-their own fixtures now cause.
+R6 opens session 2 and builds the first half of what T001 still owes: a new
+module `packages/orchestration/diff_view_source.py` resolving an evidence
+directory, and optionally one task run, to the right diff artifact and returning
+the contract-v1 envelope with every absence named rather than raised. It also
+books the R5 verdict, replaces the `Landed:` lines of `R-0717` and `R-0718` with
+reviewer-authored `Done:` text, and records four reviewer-prose slips. No route
+is added: the server wiring is R7's and needs the route-walk guard measured
+first.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R4 gate, the resolution and both registrations | ordered | record first |
-| C3 the `R-0717` discriminating fixtures | ordered | must kill both mutations |
-| C4 the `R-0718` repair and its test | ordered | ratio over significant tokens |
-| C5 the handback | ordered | last round of the session |
+| C2 the R5 gate, both resolutions, the slips | ordered | record first |
+| C3 the resolver module and its tests | ordered | refusal proved, not asserted |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. The read endpoint, keyed on task run and job per DECISION F037 D2, against
-   the route guards the R1 inventory measured. That is what T001 still owes.
+1. The two GET routes onto this module — the job scope as a handler-dict key and
+   the task-run scope as a structural route — with the route walk in
+   `tests/ui_server/test_command_channel.py` measured before the edit. That
+   finishes T001.
 2. T002 the rendering core, the binding CSS and the goldens.
 3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
 - `R-0715` is open and Low; it is a stale count in a test docstring and belongs
   to whoever next edits that file.
-- The parser still has no consumer, so its corpus carries the whole weight.
-  Every round that touches it orders mutation red-proofs for that reason, and
-  R4 is the round that proved why: a red-proof reported green is how both of
-  this round's findings were found.
-<<<END PLANF037R5
+- `R-0711` carries a `Landed:` line and no `Done:` text because F032's branch
+  ended first. It is the terminator case, not a gap for F037 to close.
+- The parser still has no consumer. R6 gives it one that no HTTP layer can
+  reach yet, so its corpus keeps carrying the weight until R7.
+<<<END PLANF037R6
 
-<<<SLICE LANDEDFROM
-Landed: R-0716 — `packages/orchestration/diff_parser.py` now folds a hunkless, noteless, non-binary, non-rename region into the region that FOLLOWS it whenever both carry the same `(minus_header, plus_header)` pair, so the `workspace.diff` shape's doubled header pair reads as ONE file entry instead of two, proved red first and guarded against the same-path/different-headers case, in commit C3 of F037 R4.
-<<<END LANDEDFROM
+<<<SLICE DONE717
+Done: R-0717 — RESOLVED at F037 R5, commit `763cc6a9`, and verified by the reviewer at `9deb942e`. `tests/orchestration/test_diff_parser.py` now carries `INTRALINE_PURE_DELETION_DIFF` and `INTRALINE_PURE_INSERTION_DIFF`, each producing the bare opcode the corpus never held, and each asserting the exact spans AND the sliced text on the marked side AND `[]` on the other — the discriminator the finding asked for, not merely a fixture. THE PIN IS PROVED AND NOT ASSERTED, and the reviewer reproduced both proofs itself in a disposable worktree at `9deb942e` with `__pycache__` purged before every run: against an unmutated control of exit 0 at `28 passed`, narrowing the old-side opcode tuple `("replace", "delete")` to `("replace",)` is exit 1 at `1 failed, 27 passed` failing exactly `test_intraline_spans_mark_a_pure_deletion_on_the_del_side_only`, and narrowing the new-side tuple `("replace", "insert")` to `("replace",)` is exit 1 at `1 failed, 27 passed` failing exactly `test_intraline_spans_mark_a_pure_insertion_on_the_add_side_only`. Each mutated string occurred exactly once in the module before its edit, counted rather than assumed. Both clauses were deletable at `c6c490cb` and neither is deletable now, which is the whole of the finding. ONE PART OF THE ORDER WAS WRONG AND THE ROUND CAUGHT IT: the block's stated discriminator for the deletion fixture named the `add`-side `[]` as the assertion that fails under the ordered mutation, and the assertion that actually fails is the `del`-side span equality, because dropping `delete` from the old tuple empties the old side. The fixture is correct either way and the test fails under the mutation as ordered; only the reviewer's explanation of which clause fires was wrong, and it is recorded in `.agent/prose_slips.md` with no id because nothing landed wrong on disk.
+<<<END DONE717
 
-<<<SLICE LANDEDTO
-Done: R-0716 — RESOLVED at F037 R4, commit `b2fdbc4ea07b60894f8171a5edfeb8b46162254b`, and verified by the reviewer at `c6c490cb`. `packages/orchestration/diff_parser.py` now folds a region into the one that FOLLOWS it when the earlier region has no hunks, no note, no binary flag and no rename AND both carry the same `(minus_header, plus_header)` pair, which is the collapse-at-flush-time counter-measure the finding names rather than a lookahead in the walk. THE REPAIR WAS PROVED RED BEFORE IT WAS PROVED GREEN, which is the part worth recording: against the UNREPAIRED module the round's two new regression tests failed at exit 1 and the parser returned 2 files for the doubled-header input, matching the reviewer's own measurement of 2 at `6dfd27d9`; at the repaired tree the suite is exit 0. THE GUARD THE FINDING ASKED FOR IS PRESENT AND TESTED: a tracked region and a `--- /dev/null` untracked region for the SAME path stay TWO entries, because the fold compares the header PAIR and never the resolved path. The reviewer re-ran the repaired parser over a reconstruction of `job_evidence._build_workspace_diff`'s output and it returns ONE file entry carrying the real hunk and stats.
-<<<END LANDEDTO
+<<<SLICE DONE718
+Done: R-0718 — RESOLVED at F037 R5, commit `c984c161`, and verified by the reviewer at `9deb942e`. `packages/orchestration/diff_parser.py` now decides similarity in `_intraline_pair_is_similar`, which takes the `difflib` ratio over the SIGNIFICANT tokens — everything that is not pure whitespace — while `_intraline_spans_for_pair` keeps mapping spans over the FULL token stream so character offsets stay exact. That is precisely the counter-measure the finding named, and `DIFF_INTRALINE_MIN_RATIO` is unchanged at 0.3 because the constant was never the defect. THE REPAIR IS MEASURED IN BOTH DIRECTIONS BY THE REVIEWER AT `9deb942e`, not read: the FULL-STREAM ratio for `alpha beta gamma` against `zzz qqq www` is still 0.400, above the 0.3 threshold, so the old code could not have refused that pair and the finding's diagnosis is confirmed on the shipped module; the repaired module returns `[]` on BOTH sides for that pair, and a real one-word edit — `the fox jumps` against `the cat jumps` — is still marked at `[[4, 3]]` on both sides, so narrowing the ratio's stream did not narrow what it lets through. Widening the guard so it can never fire, `return ratio >= 0.0`, is exit 1 at `2 failed, 26 passed`: it kills the new multi-word test AND the pre-existing single-word threshold test together, which is the correct blast radius for that mutation rather than an over-broad one, since every test asserting the guard fired must die when the guard cannot fire. ONE PART OF THE ORDER WAS UNMEETABLE AND THE ROUND HANDLED IT WELL: the block ordered a report that a `the fox jumps` regression test still passes, and the corpus held no such test; the worker added it as `test_intraline_spans_still_mark_a_multi_word_pair_that_shares_its_other_words` with its ratio asserted rather than transcribed, instead of reporting a result it could not have measured. That authoring slip is recorded in `.agent/prose_slips.md` with no id.
+<<<END DONE718
 
-<<<SLICE RECORDR5
-Gate: F037 R4 — the repair-and-intraline round, and the round whose own RED-PROOF REPORTING GREEN is what found the two findings registered below. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran them itself at `c6c490cb`. TRANSPORT: sha256 `8304eb095e810cedc7266eaf5bacc35d9053fecaae3b2c3a35946eee6076670f` over 28725 bytes and 339 lines, equal across the reviewer's scratch original and the two committed paths, which are ONE git blob `437db60f492af15f9f9fcb2c093c1ee799541aa1`; the chain covers the original, the saved copy and the mirror and claims nothing about any prompt's bytes. EXTRACTION: 2 slices at 42 and 3 content lines, CONTENT 45 against TOTAL 339, PROSE 294, both caps holding. THE PLAN is byte-equal with the trailing-newline control `False`, at 42 lines. THE REGISTRATION RECONSTRUCTS at `1140801 + 1 + 5958 = 1146760` with the baseline a byte PREFIX, and the record moved exactly as ordered: `^- R-\d+ — ` 276 to 277, the single id added being `R-0716`, nothing resolved, the open set 253 and every id distinct. THE REPAIR IS PROVED IN BOTH COLOURS, which is the discipline this record exists to enforce: against the UNREPAIRED module the two new regression tests failed at exit 1 and the parser returned 2 files for the doubled-header input, and at the repaired tree the suite is exit 0. `R-0716` IS RESOLVED ABOVE. THE ROUND'S SECOND MUTATION CAME BACK GREEN AND THE WORKER SAID SO INSTEAD OF REACHING FOR ANOTHER ONE. That mutation was the reviewer's and it was VACUOUS BY CONSTRUCTION: `difflib.SequenceMatcher.get_opcodes()` emits every `insert` opcode with `i1 == i2`, so mapping `insert` onto the OLD side can only ever produce a zero-length span, which the module's own normalisation drops — no corpus could have turned it red. The reviewer confirmed the identity independently at `c6c490cb`. The authoring failure is recorded in `.agent/prose_slips.md` and spends no id, because nothing landed wrong on disk. WHAT THE WORKER DID NEXT IS THE BEST WORK OF THE ROUND: rather than stopping at "the mutation was bad", it measured WHY, found that every intraline fixture in the file produces only `equal` and `replace` opcodes, and declared the residual blind spot it had no order to look for. THE REVIEWER VERIFIED THAT BLIND SPOT AND WIDENED IT: at `c6c490cb`, narrowing the OLD side's opcode tuple to `("replace",)` leaves the suite at `24 passed` exit 0, and narrowing the NEW side's does the same — so BOTH halves of the side mapping are unpinned, not one. That is `R-0717`. FOLLOWING THE SAME THREAD THE REVIEWER MEASURED A SECOND DEFECT the round had no way to see, `R-0718`: the similarity guard cannot fire for any multi-word line. THE CODE ITSELF IS CORRECT ON EVERY SHAPE THE REVIEWER PROBED, which is why both findings are coverage and reachability rather than wrong output: a pure interior deletion marks the removed words on the `del` side alone, a pure interior insertion marks them on the `add` side alone, a replacement marks both, and no emitted span lies outside its own content in any fixture. THREE FURTHER DECLARED DEVIATIONS ARE ALL SOUND: the `last_block.md` numstat reads `234/284` against a file of 339 lines because a full-file rewrite pairs unchanged lines, which is the R-0592 shape reported correctly rather than fabricated; the `Landed:` line names its round and commit role rather than a SHA that cannot exist when the text is written; and the token-identity check added ahead of the offset arithmetic is a refusal where the block's own S6 named the identity as the property the offsets rest on. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<SLICE GATER5
+Gate: F037 R5 — the closing round of session 1, and the round that repaired both defects session 1's own red-proof discipline had exposed. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran the load-bearing ones itself at `9deb942e`: the scoped suite `python3 -m pytest tests/orchestration/test_diff_parser.py -q` is exit 0 at `28 passed`, `python3 -m ruff check` over the two touched paths with the repository's own configuration is exit 0 at `All checks passed!`, and the canary `python3 -m pytest tests/cli/test_golden_path.py -q` is exit 0 at `42 passed`. ALL THREE MUTATION RED-PROOFS REPRODUCE EXACTLY AS REPORTED, run by the reviewer inside a disposable worktree with `__pycache__` purged before every run and the module restored between them, each mutated string counted at exactly one occurrence before its edit: unmutated control exit 0 at `28 passed`, the old-side opcode tuple narrowed exit 1 at `1 failed, 27 passed`, the new-side tuple narrowed exit 1 at `1 failed, 27 passed`, and the similarity guard widened to `return ratio >= 0.0` exit 1 at `2 failed, 26 passed`. `R-0717` AND `R-0718` ARE BOTH RESOLVED ABOVE, each with its own reviewer-authored text. THE RECORD IS AS THE ROUND LEFT IT: `^- R-\d+ — ` stands at 279 with every id distinct and a maximum of `R-0718`, and the open set stood at 254 before this entry's own commit. THE ROUND'S BEST WORK IS ITS DEVIATIONS, WHICH ARE ALL SOUND AND ALL REVIEWER-CAUSED. G8 ordered `^Landed: R-` to read 2 where 3 was the only reachable value, because the base's third such line belongs to `R-0711` and the same block's constraint 6 forbade deleting it — the worker declared the contradiction rather than bending either half, and it was right to. The block's stated discriminator for the pure-deletion fixture named the wrong failing assertion. Item S6's gloss on the both-empty case contradicted S6's own definition, and the worker implemented the DEFINITION, which is the operative clause and the one S5's diagnosis requires. Item S8 named a `the fox jumps` regression test the corpus did not hold, so the worker added it rather than transcribing a result. All four are reviewer-prose defects that left nothing wrong on disk, so under operator amendment amend0827 rule 2 they spend no id and are recorded in `.agent/prose_slips.md` instead. NO BLOCK CONDITION AROSE: nothing fabricated, no false live indicator, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END GATER5
 
-- R-0717 — Medium, THE INTRALINE SIDE MAPPING IS PINNED ONLY FOR `replace` OPCODES, SO HALF OF IT IS A GATE THAT CANNOT FAIL. Raised by the reviewer at the F037 R4 gate; the worker found the gap while diagnosing a vacuous mutation it had been ordered to run, named it in its own Deviations and correctly minted no id. `packages/orchestration/diff_parser.py` maps `difflib` opcodes to character spans with two tuples — `("replace", "delete")` for the old side and `("replace", "insert")` for the new — and every intraline fixture the corpus holds produces only `equal` and `replace`. THE EFFECT IS MEASURED, NOT INFERRED, and the reviewer measured BOTH halves where the worker reported one: in a disposable worktree at `c6c490cb`, narrowing the OLD tuple to `("replace",)` gives exit 0 at `24 passed`, and narrowing the NEW tuple to `("replace",)` gives exit 0 at `24 passed`. Either whole clause can be deleted and the suite stays green, which is the blind-gate class operator amendment amend0827 rule 2 reserves an id for. MEDIUM AND NOT HIGH because the behaviour is CORRECT today — the reviewer exercised both unpinned shapes at `c6c490cb` and a pure interior deletion marks only the `del` side while a pure interior insertion marks only the `add` side — so nothing is wrong on disk and no green is false; what is missing is any test that would notice if it broke. NOT LOW because intraline emphasis is a named line of the feature file's Acceptance and this is the only gate over it. THIS IS NOT `R-0715`, which is a stale numeral in a docstring, and NOT `R-0718`, which is about whether the similarity guard can fire at all rather than about which side a span lands on. COUNTER-MEASURE: a fixture whose pair produces a bare `delete` opcode and one whose pair produces a bare `insert`, each asserting the spans on the marked side AND `[]` on the other — the second assertion is the discriminator, and a fixture that does not kill its mutation has not closed the gap. OPEN.
+<<<SLICE SLIPR6
+- 2026-08-28 · F037 R5 · G8 ordered `^Landed: R-` to read 2 after C4 while the
+  same block's constraint 6 forbade deleting the third such line, which belongs
+  to `R-0711`, so 3 was the only reachable value and the gate contradicted the
+  block's own constraint; a count over a SHARED record file is derived from the
+  base reading plus the lines the round's own constraints add, and pre-existing
+  entries are counted rather than assumed away.
 
-- R-0718 — Medium, THE INTRALINE SIMILARITY GUARD CANNOT FIRE FOR ANY MULTI-WORD LINE, BECAUSE SEPARATOR TOKENS PUT A FLOOR UNDER ITS RATIO. Raised by the reviewer at the F037 R4 gate, following the thread `R-0717` opened; no round was ordered to look for it. `packages/orchestration/diff_parser.py` tokenises with `re.findall(r"\w+|\W", s)`, which interleaves separators, and computes the guard's ratio over that FULL stream. Two space-separated lines with the SAME word count always match on their separators, so the ratio has a floor no content can go below. MEASURED BY THE REVIEWER at `c6c490cb`, for pairs sharing no word at all: 0.333 at two words, 0.400 at three, 0.429 at four, 0.444 at five and 0.474 at ten, rising toward 0.5. `DIFF_INTRALINE_MIN_RATIO` is 0.3, so the guard is UNREACHABLE for every one of them. The reviewer confirmed the consequence on the shipped module: `alpha beta gamma` against `zzz qqq www` emits spans over EVERY word of BOTH lines — precisely the outcome the guard's own stated purpose is to prevent, since marking every character is the same as marking none. THE ONLY FIXTURE THAT EXERCISES THE GUARD IS SINGLE-WORD, `alpha` against `zulu`, which is the one shape with no separator floor, so the existing threshold test passes while the guard it tests is inert for real lines. MEDIUM AND NOT HIGH because nothing consumes the parser yet and no suite is red. NOT LOW because the guard exists solely to keep whole-line replacements from rendering as all-marked noise, and it does not do that for any line a viewer will actually show. THE DEFECT IS THE REVIEWER'S SPEC: item S7 of the R4 block named the constant and the stream in one sentence and never checked whether the second made the first reachable, which is exactly the reachability class `docs/agents/planner_reviewer_prompt.md` §3 item 5 exists for, arriving through a threshold rather than through a branch. COUNTER-MEASURE: compute the ratio over the SIGNIFICANT tokens only, leaving the span mapping on the full stream so offsets stay exact, and keep the constant where it is — the constant was never the defect. OPEN.
-<<<END RECORDR5
+- 2026-08-28 · F037 R5 · SPEC S2 named the `add`-side `[]` as the assertion that
+  fails when `delete` is dropped from the old-side opcode tuple, and the
+  assertion that actually fails is the `del`-side span equality; a stated
+  discriminator is RUN against the mutation it names before it is written down,
+  because a fixture can be right while the sentence explaining it is wrong.
 
-<<<SLICE SLIPR5
-- 2026-08-28 · F037 R4 · The block's G7 ordered a mutation that was VACUOUS BY
-  CONSTRUCTION: it had `insert` opcodes mark the OLD side, and
-  `difflib.SequenceMatcher.get_opcodes()` emits every `insert` with `i1 == i2`,
-  so the resulting span is always zero-length and the module's own
-  normalisation drops it. No corpus could have turned that mutation red. The
-  worker ran it, reported the green plainly, diagnosed the cause and declined
-  to substitute another mutation, which is the ordered behaviour. Nothing
-  landed wrong on disk. A mutation is checked against the SHAPE OF THE DATA THE
-  MUTATED BRANCH RECEIVES before it is ordered, not only against the branch
-  being reachable — `docs/agents/planner_reviewer_prompt.md` §3 item 5 asks for
-  the probe form where that is not obvious, and this is the case it was written
-  for.
-<<<END SLIPR5
+- 2026-08-28 · F037 R5 · SPEC S6 defined significant tokens as "the tokens that
+  are not pure whitespace" and then glossed the both-empty case as lines made of
+  "whitespace and punctuation", which that definition excludes; where a spec
+  states a definition and a gloss beside it, the two are read against each other
+  before emission and the gloss is deleted rather than left to be chosen between.
+
+- 2026-08-28 · F037 R5 · SPEC S8 ordered a report that a `the fox jumps`
+  replacement test still passes, and no such test existed in the corpus; a gate
+  naming a test by its CONTENT is resolved against the file at the base commit,
+  the same obligation `docs/agents/planner_reviewer_prompt.md` §3 item 24 places
+  on a path a gate names.
+<<<END SLIPR6
