@@ -681,3 +681,129 @@ class TestTheCardShowsTheEvidenceTriple:
                 f"{field} must sit AFTER the outcome paragraph in source order "
                 "or the reader above aims at the wrong node and pins nothing"
             )
+
+
+class TestTheReceiptIsAnEntryPointRatherThanALink:
+    """T5_F032 T003c, DECISION F032 D8. The evidence panel the feature file sends
+    these chips to is `docs/roadmap/features/T5_F023.md` T003 and F023 is
+    unclaimed, so F032 ships the ENTRY POINT and F023 wires it: the card takes an
+    OPTIONAL `onOpenEvidence` handler, a receipt renders as a control only when
+    one is supplied, and the plain chip T003b shipped is what every card in this
+    release still shows.
+
+    NOTHING RUNS THE HANDLER'S ARM. No call site supplies the prop, this
+    repository has no DOM environment, and the shipped vitest config reaches
+    none of this markup — so what stands between the two arms and a silent
+    regression is `tsc --noEmit` and the readings below, and they are written to
+    fail on the two ways the honesty could be lost: a control that appears with
+    no handler behind it, and a handler handed a FIELD of a ref instead of the
+    ref itself, which is how a raw `target` would start travelling alone."""
+
+    def test_the_props_type_declares_the_optional_handler(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "onOpenEvidence?: (evidenceRef: DecisionEvidenceRef) => void;" in code, (
+            "the handler is declared in the card's own props type and is "
+            "OPTIONAL, which is the whole reason no existing call site had to "
+            "change; a required prop would make F032 edit RightLivePanel for a "
+            "panel that does not exist yet"
+        )
+        assert "onSelectNode, onOpenEvidence }" in code, (
+            "and it is really destructured beside the callback it sits next to; "
+            "a prop declared but never taken out of the object is a type that "
+            "pins nothing"
+        )
+
+    def test_the_ref_type_is_imported_as_a_type_from_the_model_module(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert (
+            'import type { DecisionCardModel, DecisionEvidenceRef } '
+            'from "../../api/decisionCard";'
+        ) in code, (
+            "the ref's shape is the model module's, imported as a TYPE so no "
+            "value crosses at runtime, and it joins the line already importing "
+            "from that module rather than opening a second one"
+        )
+        assert 'import type { DecisionEvidenceRef }' not in code, (
+            "one import line per module: a second type import from "
+            "decisionCard would be the synonym drift AGENTS.md forbids, spelled "
+            "in import statements"
+        )
+
+    def test_the_control_arm_hands_the_handler_the_whole_ref(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert code.count("onOpenEvidence(") == 1, (
+            "exactly one call site: a second would be a rule about a receipt "
+            "arriving in markup no vitest reaches (DECISION F031 D5)"
+        )
+        call = code[code.index("onOpenEvidence("):]
+        assert call.startswith("onOpenEvidence(evidenceRef)"), (
+            "the handler takes the WHOLE ref, so the panel F023 builds reads "
+            "`kind` and `target` for itself and this component reads neither; "
+            "handing it a field instead is how a raw id starts travelling alone "
+            "and is the leak §17 of docs/ui/design_reference/ux_spec.md forbids"
+        )
+        assert "onClick={() => onOpenEvidence(evidenceRef)}" in code, (
+            "and the call really is the receipt's click, not a bare reference "
+            "the markup never invokes"
+        )
+
+    def test_a_card_with_no_handler_still_renders_the_plain_chip(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert "onOpenEvidence ? (" in code, (
+            "the discriminator is the PRESENCE of the handler and nothing this "
+            "file reads off the ref, which is the jump chip's own rule one row "
+            "above: only a receipt that can really open something gets the "
+            "control, so the affordance never lies"
+        )
+        assert (
+            "<span key={`${evidenceIndex}-${evidenceRef.label}`} "
+            "className={styles.decisionEvidenceChip}>"
+        ) in code, (
+            "the span arm is what every card in this release renders, because "
+            "nothing supplies the handler yet; losing it would ship a pressable "
+            "chip with no panel behind it (finding R-0693's shape)"
+        )
+        arm = code[code.index("onOpenEvidence ? ("):code.index("<span key={`${evidenceIndex}")]
+        assert "<button" in arm and 'type="button"' in arm, (
+            "and the control arm is a real button with an explicit type, not a "
+            "clickable span: a span carries no keyboard affordance at all, and "
+            "a button with no type submits the form it may one day sit in"
+        )
+
+    def test_both_arms_wear_the_same_receipt_class(self):
+        code = strip_ts_comments(CARD.read_text())
+        assert code.count("className={styles.decisionEvidenceChip}") == 2, (
+            "exactly two arms and both wear the receipt class: a receipt must "
+            "read as the same object whether or not it can be pressed, and a "
+            "second class here would make the entry point a different chip"
+        )
+
+    def test_the_pressable_receipt_shows_where_the_keyboard_is(self):
+        body = css_rule_body(CARD_CSS.read_text(), "button.decisionEvidenceChip:focus-visible")
+        assert body.strip(), (
+            "a control with no focus-visible rule of its own is invisible to "
+            "the keyboard operator the moment it takes focus"
+        )
+        assert "outline: 2px solid var(--remedy-blue-strong)" in body, (
+            "the ring is the one .decisionJumpChip already spells, in a custom "
+            "property tokens.css really defines — an unresolved one would drop "
+            "the whole declaration and leave no ring at all (R-0661)"
+        )
+        assert "outline-offset: 2px" in body, (
+            "and it sits off the pill's own border, or the ring reads as part "
+            "of the chip rather than as focus"
+        )
+        assert "outline: none" not in body, (
+            "removing the outline is the regression this whole test exists to "
+            "catch, and it is spelled in one declaration"
+        )
+        pressable = css_rule_body(CARD_CSS.read_text(), "button.decisionEvidenceChip")
+        assert "cursor: pointer" in pressable, (
+            "the control arm says it is pressable under the mouse too, exactly "
+            "as .decisionJumpChip does"
+        )
+        assert "cursor: pointer" not in css_rule_body(CARD_CSS.read_text(), ".decisionEvidenceChip"), (
+            "and the SHARED rule stays untouched: a pointer cursor on the span "
+            "arm would dress an inert chip as a control, which is the lie "
+            "R-0693 registered"
+        )
