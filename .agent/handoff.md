@@ -1,372 +1,221 @@
-# Handback — F256 Diff viewer completion, round 7 (THE CLIENT MEASUREMENT)
+# Handback — F256 Diff viewer completion, round 8 (THE RECORDED MEASUREMENT)
 
 ## Session
 
-SESSION 2 of feature F256 · round 7 · rounds so far 7
+SESSION 2 of feature F256 · round 8 · rounds so far 8
 
 ## Range
 
-Review of dff36f33..HEAD (branch `feature/f256-diff-viewer-completion`).
+Review of b8a918a1..HEAD (branch `feature/f256-diff-viewer-completion`).
 
 ## Commits
 
-### 029f4119 chore(f256): save the round 7 block
+### 8569ef20 chore(f256): save the round 8 block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f256-r7.md` | +420 / -0 | C0a: the block copied byte for byte from `.remedy-wt/f256-r7-block.md` |
+| `.agent/authored/f256-r8.md` | +322 / -0 | C0a: the block copied byte for byte from `.remedy-wt/f256-r8-block.md` |
 
-### 43f1930b chore(f256): mirror the round 7 block
+### 3f21db4b chore(f256): mirror the round 8 block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +311 / -287 | C0b: written from the COMMITTED C0a blob, so the two are one blob id |
+| `.agent/last_block.md` | +226 / -324 | C0b: written from the COMMITTED C0a blob, so the two are one blob id |
 
-### 68d945ba docs(f256): advance the plan to the client measurement round
+### 21cc5157 docs(f256): advance the plan to the recorded measurement round
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +14 / -12 | C1: whole-file replacement by the `PLANF256R7` slice |
+| `.agent/plan.md` | +14 / -18 | C1: whole-file replacement by the `PLANF256R8` slice |
 
-### 7ae7400c docs(f256): book the round 6 verdict and DECISIONS F256 D5 and D6
+### cb2f3ce1 docs(f256): book the round 7 verdict and its prose slip
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +114 / -0 | C2: the `DECF256D5` and `DECF256D6` slices appended, D5 first |
-| `.agent/live_review.md` | +14 / -0 | C2: the `GATEF256R6` slice appended, the R6 verdict |
+| `.agent/live_review.md` | +12 / -0 | C2: append of the `GATEF256R7` slice |
+| `.agent/prose_slips.md` | +2 / -0 | C2: append of the `SLIPF256R7` slice, one dated line |
 
-### 95ecaf14 test(diff-view-model): measure the 10k fixture through the client model
+### f6d5d064 docs(f256): record the measured Built State in the feature file
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/ui/src/api/diffViewModel.test.ts` | +189 / -0 | C3: S1–S6 — nine constants, the `medianOf` helper, one new `describe` with three tests, and `DiffRowModel` added to the existing type import |
+| `docs/roadmap/features/T5_F256.md` | +87 / -0 | C3: append of the `BUILTF256` slice; no existing line changed |
 
-### C4 (this commit) chore(f256): hand back round 7
+### C4 (this commit) chore(f256): hand back round 8
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | rewritten | C4: this handback. A handoff cannot table the commit that writes it (R-0149) |
+| `.agent/handoff.md` | rewrite | C4: this handback; a handoff cannot table the commit that writes it |
 
-Every `+/-` cell above was compared cell by cell against G1's `git diff --numstat`
-figures and agrees with them.
+Every `+/-` cell above was taken from `git diff --numstat <sha>^ <sha>` and agrees
+cell for cell with the figures G1 reports below.
 
 ## External actions
 
-| Command | Outcome |
-|---|---|
-| `gh pr list --state open --json number,headRefName` | `[]` — no open PR. No PR created, nothing merged. |
-| `git worktree add .remedy-wt/f256r7wt 95ecaf14` | created detached at `95ecaf14` for G7 |
-| `git worktree remove --force .remedy-wt/f256r7wt` | removed; `git worktree list` shows the primary alone |
-| `git push -u origin feature/f256-diff-viewer-completion` | run AFTER this commit, so its outcome cannot be written into the file it pushes; the branch tip equalling `origin/feature/f256-diff-viewer-completion` is the reading that proves it |
-
-No `npm run build` and no `npx vite build`. `apps/ui/dist` was warm at the base and
-this round edits only a `.test.ts` file, which no build output carries.
+- `gh pr list --state open --json number,headRefName` → `[]` (constraint 0; no PR
+  created, none merged).
+- `git push -u origin feature/f256-diff-viewer-completion` after C4 — outcome
+  recorded in the round report; no PR create, no merge, no force-push, no rebase.
+- No `git worktree add` and no `git worktree remove`: constraint 5 orders no
+  destructive verification this round, because the round ships no code.
 
 ## Verification
 
-**G1 HYGIENE AND STRUCTURE.** `.agent/STOP` read with `os.path.exists` before C0a →
-`False`; read again before C3 → `False`. `git rev-parse HEAD` before C0a =
-`dff36f336fb2b8be18584c3d8b6fac5239938361`, which equals the ordered base `dff36f33`.
-`git branch --show-current` = `feature/f256-diff-viewer-completion`.
-`git status --porcelain | wc -l` = **0** after each of C0a, C0b, C1, C2 and C3, and
-**0** again after the red-proof worktree was removed.
+STOP sentinel, both ordered reads with `os.path.exists`:
+`/home/decodeux/Repos/remedy/.agent/STOP` — before C0a: `False`; before C3: `False`.
 
-Over `dff36f33..95ecaf14` — the range ending BEFORE this handback commit —
-`git diff --name-only` returns exactly six paths: `.agent/authored/f256-r7.md`,
-`.agent/decisions.md`, `.agent/last_block.md`, `.agent/live_review.md`,
-`.agent/plan.md`, `apps/ui/src/api/diffViewModel.test.ts`. Both residues against the
-change set with `.agent/handoff.md` set aside are **empty**: changed − expected =
-`[]`, expected − changed = `[]`. `.agent/handoff.md` is confirmed NOT in the range.
+`git rev-parse HEAD` before C0a = `b8a918a16b1e3b2491f13fa333e1cc76014131e3`,
+which is the ordered base `b8a918a1`. `git branch --show-current` =
+`feature/f256-diff-viewer-completion`. `git status --porcelain | wc -l` = 0 after
+each of C0a, C0b, C1, C2 and C3.
 
-Per-commit insertions from `git diff --numstat`, each under 500, each single-parent:
+G1 HYGIENE AND STRUCTURE — PASS. `git diff --name-only b8a918a1..f6d5d064` lists
+exactly six paths: `.agent/authored/f256-r8.md`, `.agent/last_block.md`,
+`.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md`,
+`docs/roadmap/features/T5_F256.md`. With `.agent/handoff.md` set aside, both
+residues are empty: expected−actual `[]`, actual−expected `[]`. Insertions per
+commit, each under 500 and each single-parent: C0a 322, C0b 226, C1 14, C2 14,
+C3 87. Marker sweep at C3, lines beginning `<<<SLICE ` / `<<<END `:
+`.agent/plan.md` 0/0, `.agent/live_review.md` 0/0, `.agent/prose_slips.md` 0/0,
+`docs/roadmap/features/T5_F256.md` 0/0, beside the non-zero control
+`.agent/authored/f256-r8.md` 4/4 and `.agent/last_block.md` 4/4.
+`git ls-files .remedy-wt | wc -l` = 0.
+`git diff --name-only b8a918a1..HEAD -- apps/ packages/ tests/ docs/roadmap/STATUS.md docs/roadmap/ROADMAP.md`
+is EMPTY.
 
-| Commit | + | − | parents |
-|---|---|---|---|
-| 029f4119 C0a | 420 | 0 | 1 |
-| 43f1930b C0b | 311 | 287 | 1 |
-| 68d945ba C1 | 14 | 12 | 1 |
-| 7ae7400c C2 | 128 | 0 | 1 |
-| 95ecaf14 C3 | 189 | 0 | 1 |
+G2 TRANSPORT — PASS. `git show 8569ef20:.agent/authored/f256-r8.md` is 22031 bytes,
+sha256 `619bf5d68f82d88878248b3ed66e19825f24ade29ae829e1bbbcd6acf352d9dd`; the
+reviewer's own original `.remedy-wt/f256-r8-block.md` is 22031 bytes with the same
+digest; EQUAL `True`. That original predates this worker and was not written by it,
+so the reading covers the reviewer-to-disk transport and not merely this worker's
+self-consistency. At C0b, `.agent/authored/f256-r8.md` and `.agent/last_block.md`
+are ONE blob id: `21a3cfc8a6a8f3b91558a61d8fb6e9ae788cc3a7` for both.
 
-Lines beginning `<<<SLICE ` / `<<<END ` at `95ecaf14`: `.agent/plan.md` **0 / 0**,
-`.agent/live_review.md` **0 / 0**, `.agent/decisions.md` **0 / 0**,
-`apps/ui/src/api/diffViewModel.test.ts` **0 / 0**; the two authored controls,
-`.agent/authored/f256-r7.md` and `.agent/last_block.md`, are **4 / 4** each by
-construction. `.agent/handoff.md` as written for this commit carries **0 / 0** as
-well. `git ls-files .remedy-wt | wc -l` = **0**. After the red-proof worktree was
-removed, `git worktree list` shows only
-`/home/decodeux/Repos/remedy  95ecaf14 [feature/f256-diff-viewer-completion]`.
+G3 THE PLAN AT C1 — PASS. `.agent/plan.md` at `21cc5157` equals `PLANF256R8`
+including the trailing newline: `True`. `wc -l` 33, under 50. Lines exactly
+`## Goal`: 1. Lines exactly `## Next Steps`: 1.
 
-**G2 TRANSPORT.** One digest comparison. `git show 029f4119:.agent/authored/f256-r7.md`
-and the reviewer's own original `.remedy-wt/f256-r7-block.md` both hash to
-`f4a0bae315e3514acc14eb85a606ea6c95a49cc0c4c3ee079359da678d3477f4` at **28746 bytes** —
-EQUAL. That original predates this worker, so the reading covers the EMISSION and not
-merely the worker's self-consistency. At C0b,
-`43f1930b:.agent/authored/f256-r7.md` and `43f1930b:.agent/last_block.md` are ONE blob
-id, `f7163037d96bdaf98a4cc78ca68a2bc81dbef51b`.
+G4 THE RECORD AT C2 — PASS. (a) `.agent/live_review.md`: base blob + `\n` +
+`GATEF256R7` equals the C2 blob `True`, pre-round blob is a byte PREFIX `True`;
+NEGATIVE CONTROL flipped one byte at offset 1361469, which the script confirms lies
+inside the first appended paragraph spanning [1361321, 1361618), and equality became
+`False`. `.agent/prose_slips.md`: base + `\n` + `SLIPF256R7` equals the C2 blob
+`True`, prefix `True`; NEGATIVE CONTROL at offset 14729 inside the first appended
+paragraph spanning [14550, 14908), equality became `False`.
+(b) Paragraph counts were counted by the script from each slice, not taken from the
+block: N=6 for `GATEF256R7` and N=1 for `SLIPF256R7`; the last N blank-line units of
+each file match those paragraphs IN ORDER — `[True × 6]` and `[True]`.
+`.agent/prose_slips.md` lines matching `^\d{4}-\d{2}-\d{2} · F`: 6 at base, 7 at C2,
+gained exactly ONE, and the first six are unchanged (`True`).
 
-**G3 THE PLAN AT C1.** `68d945ba:.agent/plan.md` byte-equal to the `PLANF256R7` slice
-including the trailing newline → **True**. `wc -l` = **37** (< 50). Lines exactly
-`## Goal` = **1**; lines exactly `## Next Steps` = **1**.
+G5 THE LEDGER AT C2 — PASS, and it moved exactly as a round that registers and
+resolves nothing should. Base `b8a918a1` → C2 `cb2f3ce1`: `^- R-\d+ — ` 293 → 293,
+all DISTINCT in both; `^Done: R-\d+ — ` 43 → 43; `^Landed: R-` 11 → 11; the OPEN SET
+as a set 252 → 252; `^Gate: F\d+ R\d+ — ` 103 → 104, a rise of exactly ONE.
+`Gate: F256 R7` occurs exactly 1 time.
 
-**G4 THE RECORD AT C2**, two readers per appended file.
+G6 THE BUILT STATE AT C3 AND ITS CROSS-CHECK — PASS. The `b8a918a1` blob of
+`docs/roadmap/features/T5_F256.md` plus a newline plus `BUILTF256` equals the C3
+blob: `True`. The pre-round blob is a byte PREFIX: `True`. `## Built State` occurs
+exactly once. The CROSS-CHECK was taken over the C3 BLOB of the feature file, and
+every figure is present on BOTH sides — feature-file count first, source-file count
+second, both at least 1 in every row:
 
-(a) the `dff36f33` blob + a newline + the slice(s) == the C2 blob:
-- `.agent/live_review.md` with `GATEF256R6` → **True**; 1356682 → 1361320 bytes; the
-  pre-round blob is a byte PREFIX → **True**. NEGATIVE CONTROL: the script measured the
-  FIRST appended paragraph as spanning file offsets 1356682..1356992 and flipped the
-  byte at offset **1356837**, inside it → equality now **False**.
-- `.agent/decisions.md` with `DECF256D5` then a newline then `DECF256D6` → **True**;
-  702832 → 710498 bytes; the pre-round blob is a byte PREFIX → **True**. NEGATIVE
-  CONTROL: first appended paragraph spans 702832..703019, byte at offset **702925**
-  flipped → equality now **False**.
+- `tests/ui_server/test_diff_endpoint.py` — `0.1331` 1/1, `0.1282` 1/1,
+  `0.1489` 1/1, `1,045,960` 1/1, `4.97` 1/1
+- `apps/ui/src/api/diffViewModel.test.ts` — `0.678` 1/1, `0.271` 1/1, `1.408` 1/1,
+  `10,002` 2/3, `100,020` 1/1
+- `tests/orchestration/test_diff_parser.py` — `0.105` 1/1
+- `apps/ui/src/components/diff/DiffView.module.css` — `.filePath` 1/3,
+  `.fileMeta` 1/2, `.statAdd` 1/2, `.statDel` 1/2
 
-(b) N counted BY THE SCRIPT from each appended text, empty trailing unit ignored:
-- `GATEF256R6` → **N = 7**; the last 7 blank-line units of `.agent/live_review.md`
-  match those paragraphs IN ORDER → **True**.
-- `DECF256D5` + `DECF256D6` → **N = 16** (8 and 8); the last 16 blank-line units of
-  `.agent/decisions.md` match those paragraphs IN ORDER → **True**.
+The prose claims resolve too: `packages/orchestration/diff_parser.py` reads
+`DIFF_VIEW_MAX_BODY_LINES = 20_000`, `tests/ui_server/test_diff_endpoint.py` reads
+`DIFF_ENDPOINT_SCALE_RATIO_CEILING = 20`, `tests/orchestration/test_diff_parser.py`
+reads `HUGE_DIFF_PARSE_CEILING_SECONDS = 0.5`, and both
+`apps/ui/src/api/diffHighlightGrammars.ts` and `apps/ui/src/api/diffHighlight.test.ts`
+EXIST. No recorded number was missing from the file that produced it, so
+constraint 8's stop condition was not reached.
 
-Both (b) readings are the SECOND spelling of the check; the first returned **False**
-for an artifact of my own splitter, and both spellings are reported in deviation 1.
+G7 THE SUITES AT C3 — PASS, one pytest process at a time from the repository root,
+each exit 0:
 
-`## DECISION F256 D5` occurs exactly **1** time in the C2 `.agent/decisions.md` blob,
-`## DECISION F256 D6` exactly **1** time, and D5's offset is smaller than D6's →
-**True**, so the file ends with D6.
+    python3 -m pytest tests/docs/ -q                                → 295 passed in 0.44s        · exit 0
+    python3 -m pytest tests/ui_contracts/ -q                        → 664 passed, 4 skipped in 5.41s · exit 0
+    python3 -m pytest tests/ui_server/ -q                           → 497 passed in 30.34s       · exit 0
+    python3 -m pytest tests/orchestration/test_diff_parser.py -q    → 43 passed in 2.34s         · exit 0
+    python3 -m pytest tests/cli/test_golden_path.py -q              → 42 passed in 20.55s        · exit 0
 
-**G5 THE LEDGER AT C2.** The `7ae7400c` blob beside the `dff36f33` blob:
-
-| Reader | base | C2 | delta |
-|---|---|---|---|
-| `^- R-\d+ — ` (registrations) | 293 | 293 | 0 |
-| registrations all DISTINCT | True | True | — |
-| `^Done: R-\d+ — ` | 43 | 43 | 0 |
-| `^Landed: R-` | 11 | 11 | 0 |
-| `^Gate: F\d+ R\d+ — ` | 102 | 103 | **+1** |
-| OPEN SET, computed AS A SET | 252 | 252 | 0 |
-
-Every figure UNMOVED except the gate count, which rises by exactly ONE, as a round that
-registers and resolves nothing should. `Gate: F256 R6` occurs exactly **1** time.
-
-**G6 THE MEASUREMENT AT C3.** Command `["npx","vitest","run",
-"src/api/diffViewModel.test.ts"]` with `cwd` set to the primary `apps/ui`, exit **0**,
-`Test Files 1 passed (1)`, `Tests 93 passed (93)`. The three new tests print their
-figures; this is that run's output, verbatim:
-
-    F256 T002 rowModel@10000: median 0.683ms min 0.261ms max 1.555ms rows 10002
-    F256 T002 rowWindow: 48 drawn@10002 48 drawn@100020
-    F256 T002 firstPaint@10000: collapsed set 1 rows 2 expanded 10002
-
-Read out against what G6 asks for:
-
-| Figure | This run |
-|---|---|
-| median build time at the Acceptance size | **0.683 ms** |
-| minimum / maximum build time | **0.261 ms** / **1.555 ms** |
-| rows built with an EMPTY collapsed set | **10002** |
-| rows built with the DEFAULT collapsed set | **2** |
-| size of the set `defaultCollapsedHunkIds` returns | **1** |
-| `virtualized` / `rowsInWindow` at 10002 rows | **true** / **48** |
-| `virtualized` / `rowsInWindow` at 100020 rows | **true** / **48** |
-| the two `rowsInWindow` values EQUAL | **yes**, 48 = 48 |
-
-WHETHER EVERY FIGURE IN A COMMENT IS THE FIGURE THIS RUN PRODUCED — the honest answer
-is: every EXACT figure yes, the three DURATIONS no, and they cannot be. The comments
-carry 10,002 rows, 48 drawn at 10,002 and at 100,020, a collapsed set of 1 and 2 rows
-at first paint; all six are identical in this run. The durations recorded — MEDIAN
-0.678 ms, minimum 0.271 ms, maximum 1.408 ms — come from MY OWN recording run taken
-minutes earlier in the primary checkout, in which the printed line was
-`median 0.678ms min 0.271ms max 1.408ms rows 10002`; this run measured 0.683 / 0.261 /
-1.555 ms. Nothing was transcribed from the block: the `DECF256D5` slice's 0.469 ms,
-1.688 ms and ratio 3.60 appear nowhere in the test file. A duration is not reproducible
-byte for byte, which is precisely why DECISION F256 D5 asserts on the exact
-bounded-window property and merely RECORDS the durations.
-
-Whole vitest suite, `["npx","vitest","run"]` with `cwd` = primary `apps/ui`: exit **0**,
-`Test Files 33 passed (33)`, `Tests 631 passed (631)`, Duration 631ms — against the
-reviewer's 628 tests in 33 files at `dff36f33`, so this round adds exactly three tests
-and no file.
-
-Helpers REUSED rather than rebuilt (constraint 7): `envelopeWithHunkOf`, and through it
-`wireEnvelope`, `wireFile` and `wireHunk`; also the existing `windowSum` helper and the
-existing `SCALE_ROWS` constant. No second envelope builder was written.
-
-**G7 THE RED-PROOF AT C3**, applying DECISION F256 D6's route exactly, in the
-disposable worktree `.remedy-wt/f256r7wt` at `95ecaf14`, never in the primary checkout.
-The scratch config `.remedy-wt/f256r7-vitest.config.mjs` exports a PLAIN OBJECT with no
-`import` from `vitest/config`; `root` = `/home/decodeux/Repos/remedy/apps/ui`,
-`cacheDir` = `/home/decodeux/Repos/remedy/.remedy-wt/f256r7-vite-cache`, `test.include`
-= the absolute path of the WORKTREE's `apps/ui/src/api/diffViewModel.test.ts`, and
-`test.environment` = `"node"` to match the primary config. Command
-`["npx","vitest","run","--config",<that config>]` with `cwd` = the PRIMARY `apps/ui`.
-
-| Run | exit | result |
-|---|---|---|
-| UNMUTATED CONTROL (first) | 0 | Test Files 1 passed (1) · Tests 93 passed (93) |
-| (i) `buildDiffRowModels` returns `[]` first | **1** | Tests **10 failed** \| 83 passed (93) |
-| (ii) unmeasured-viewport fallback → `totalRows` | **1** | Tests **3 failed** \| 90 passed (93) |
-| CONTROL AGAIN (after the last revert) | 0 | Test Files 1 passed (1) · Tests 93 passed (93) |
-
-(i) THE EXACT EDIT: `return [];` inserted as the first statement of the function body,
-between `): DiffRowModel[] {` and `const rows: DiffRowModel[] = [];`. The anchor was
-measured as occurring exactly **1** time before the edit. It reddened all three tests
-that count rows — including the new
-`builds every row of the Acceptance fixture, and RECORDS what that costs`
-(`AssertionError: rows built from 10000 body lines, against 10000 + 1 + 1: expected []
-to have a length of 10002 but got +0`) and
-`paints the Acceptance fixture as TWO rows until the reader expands the hunk`
-(`expected [] to deeply equal [ 'file', 'hunkHead' ]`) — plus seven existing
-`buildDiffRowModels` / `buildDiffFileSummaries` tests.
-
-(ii) THE EXACT EDIT, inside `diffRowWindowForViewport`, the line
-
-        ? DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS
-
-replaced by
-
-        ? totalRows
-
-The anchor `"    ? DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS\n"` was measured as occurring
-exactly **1** time in the file, confirming the reviewer's reading. WHICH ASSERTIONS
-WENT RED: the new `draws the SAME bounded window at ten times the Acceptance size` —
-`AssertionError: 10002 rows drawn at 10002 against 100020 at 100020: the drawn window
-must not grow with the document: expected 100020 to be 10002` — and, as the block
-predicts and calls correct rather than a scope problem, two EXISTING tests:
-`answers an UNMEASURED viewport with a NON-EMPTY window` (`expected 2001 to be 48`) and
-`resolves a hostile VIEWPORT HEIGHT through the unmeasured fallback`
-(`height NaN: expected 1958 to be 56`).
-
-Each mutation was applied ALONE to the WORKTREE's `apps/ui/src/api/diffViewModel.ts`
-and reverted with `git checkout --` before the next; `git status --porcelain` inside
-the worktree was `''` after every revert. After the whole sequence,
-`git status --porcelain` in the PRIMARY is **EMPTY** — which is what `cacheDir` is for,
-and the worktree was then removed.
-
-THE ROUTE REALLY RAN THE WORKTREE'S SOURCE, and the mutations are the proof rather
-than an assumption: the primary's `diffViewModel.ts` was never written to, only the
-worktree's copy was, and both edits changed the run's colour.
-
-**G8 THE SUITES AT C3**, in the PRIMARY checkout, pytest one process at a time from
-the repository root:
-
-| Command | exit | result | wall clock |
-|---|---|---|---|
-| `npx vitest run` in `apps/ui` | 0 | 33 files, 631 passed | Duration 631ms |
-| `npx tsc --noEmit` in `apps/ui` | 0 | no output | — |
-| `python3 -m pytest tests/orchestration/test_test_runner.py -q` | 0 | 52 passed in 5.33s | **5.56s** |
-| `python3 -m pytest tests/ui_contracts/ -q` | 0 | 664 passed, 4 skipped in 5.19s | 5.47s |
-| `python3 -m pytest tests/ui_server/ -q` | 0 | 497 passed in 31.97s | 32.23s |
-| `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | 42 passed in 20.70s | 20.93s |
-
-`test_test_runner.py` spawns `npx vitest run` under a 30-second timeout; its whole-file
-wall clock here is **5.56 s**, well inside that, and the vitest suite it spawns is the
-same one measured directly above at 631 tests in 33 files in 631 ms — against the
-reviewer's 628 tests in 33 files in about 1.0 second at `dff36f33`.
-
-**G-push.** `git push -u origin feature/f256-diff-viewer-completion` runs AFTER this
-commit. Its outcome is not written here — a file cannot record the result of the push
-that carries it — and is verified instead by `git rev-parse HEAD` equalling
-`git rev-parse origin/feature/f256-diff-viewer-completion`.
+No gate came back red, so no failure list is reproduced here.
 
 ## Authored-text proofs
 
-| Slice | Target | Result |
-|---|---|---|
-| whole block | `.agent/authored/f256-r7.md` | sha256 equal to `.remedy-wt/f256-r7-block.md`, 28746 bytes (G2) |
-| whole block | `.agent/last_block.md` | same blob id as the authored path (G2) |
-| `PLANF256R7` | `.agent/plan.md` | byte-equal whole-file replacement, trailing newline included (G3) |
-| `GATEF256R6` | `.agent/live_review.md` | base + newline + slice, negative control rejected (G4) |
-| `DECF256D5` | `.agent/decisions.md` | base + newline + slice, appended FIRST (G4) |
-| `DECF256D6` | `.agent/decisions.md` | + newline + slice, appended SECOND so the file ends with it (G4) |
+Four reviewer-authored slices were applied this round, every one extracted from the
+COMMITTED blob `git show 8569ef20:.agent/authored/f256-r8.md` per constraint 3 and
+never from the prompt text. The committed `.agent/authored/f256-r8.md` is byte-equal
+to the reviewer's original `.remedy-wt/f256-r8-block.md` at 22031 bytes, sha256
+`619bf5d68f82d88878248b3ed66e19825f24ade29ae829e1bbbcd6acf352d9dd` (G2).
 
-Every slice was extracted from the COMMITTED `029f4119` blob by
-`.remedy-wt/f256r7_slices.py`, never from the prompt (constraint 3).
+| Slice | Target | Disk-to-disk result |
+|---|---|---|
+| `PLANF256R8` | `.agent/plan.md` | whole-file equality including trailing newline, `True` (G3) |
+| `GATEF256R7` | `.agent/live_review.md` | base + `\n` + slice equals the C2 blob, `True`; negative control `False` (G4) |
+| `SLIPF256R7` | `.agent/prose_slips.md` | base + `\n` + slice equals the C2 blob, `True`; negative control `False` (G4) |
+| `BUILTF256` | `docs/roadmap/features/T5_F256.md` | base + `\n` + slice equals the C3 blob, `True`; prefix `True` (G6) |
+
+The `<<<SLICE` / `<<<END` delimiters reached no target file: G1's marker sweep reads
+0/0 in all four targets, against 4/4 in the two authored controls.
 
 ## Deviations & assumptions
 
-1. **G4(b)'s FIRST SPELLING RETURNED `False`, AND THE REASON WAS MY SPLITTER, NOT THE
-   FILE.** My first check split blank-line units with `re.split(r"\n\s*\n", …)` and
-   compared them UNSTRIPPED. Splitting the appended text ALONE leaves the leading
-   newline I prepend attached to its first unit, while splitting the whole file consumes
-   that same newline as part of the separator, so unit 0 differed by exactly one leading
-   `\n` and the ordered comparison read `False` for both files. Re-measured with each
-   unit stripped — `.remedy-wt/f256r7_g4b.py` — both read **True**, with N = 7 and
-   N = 16 unchanged, and the per-index mismatch print is empty. G4(a)'s byte equality
-   was `True` in the first spelling and is the stronger reading of the same fact.
-   Nothing on disk was changed in response.
-2. **THE MUTATION (ii) ANCHOR IS INDENTED BY FOUR SPACES ON DISK, NOT EIGHT.** G7 quotes
-   the anchor inside a four-space-indented code block, so the literal prompt text carries
-   eight leading spaces. The real line in `diffViewModel.ts` is
-   `"    ? DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS"`. I applied the four-space form, asserted
-   it occurs exactly once before editing, and replaced it with `"    ? totalRows"`, which
-   is the block's `        ? totalRows` under the same de-indent. This is a reading of
-   the block's transport, not a change to what it ordered.
-3. **`DiffRowModel` WAS ADDED TO THE EXISTING TYPE IMPORT.** The recording test declares
-   `let rows: DiffRowModel[]`, which needs the type. That one added line is the only edit
-   outside the appended block, and it adds a line rather than changing one: the C3 diff
-   is **+189 / −0**, zero deletions, so constraint 8 holds mechanically — no existing
-   test changed by a byte and no assertion was weakened, deleted or relaxed.
-4. **S4 IS TAKEN AT THE UNMEASURED VIEWPORT (scroll 0, height 0), AND THAT IS LOAD-
-   BEARING.** `diffRowWindowForViewport` reaches
-   `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` only when the resolved viewport height is 0, so a
-   guard taken at a MEASURED height would be untouched by G7's mutation (ii) and the
-   red-proof would prove nothing about it. Taking it at the unmeasured viewport is also
-   the viewer's real first paint, and it is the path whose answer — 48 rows — is the
-   figure `DECF256D5` records. At a measured viewport the same invariant holds at 56.
-5. **`ACCEPTANCE_BODY_LINES` IS DEFINED AS `SCALE_ROWS`, WHICH IS A ROW COUNT ABOVE AND A
-   BODY-LINE COUNT HERE.** Constraint 7 orders the file's own constants reused rather
-   than duplicated, and both are the same ten thousand; the alias exists so the two
-   readings are tied together instead of drifting, and its comment says exactly that.
-   The Acceptance ROW count is then `ACCEPTANCE_BODY_LINES + ROWS_PER_FILE +
-   ROWS_PER_HUNK_HEAD`, an expression over constants, never a literal 10002.
-6. **THE RECORDED DURATIONS ARE FROM MY RECORDING RUN, NOT FROM THE G6 RUN.** Reported in
-   full under G6: recorded 0.678 / 0.271 / 1.408 ms, G6 measured 0.683 / 0.261 / 1.555 ms,
-   every exact figure identical in both. No figure from the `DECF256D5` slice was
-   transcribed into the test (constraint 9), and no constant in `diffViewModel.ts` was
-   changed (constraint 10) — that file is byte-unchanged in the primary checkout.
-7. **Shell-guard re-expressions (constraint 6).** One command FORM was refused this
-   round: `node --version; npx vitest --version 2>&1 | tail -2; uname -m` was rejected
-   as "multiple operations". It was re-expressed as the single command `node --version`
-   (answer `v22.22.2`), which is the only part of it the handback needed; nothing was
-   skipped or weakened. To stay clear of the refused forms, every multi-step check ran as
-   a file under the gitignored `.remedy-wt/`: `f256r7_copy.py` (C0a), `f256r7_mirror.py`
-   (C0b), `f256r7_slices.py` (slice extraction), `f256r7_c1.py` (C1), `f256r7_c2.py`
-   (C2), `f256r7_vitest.py` and `f256r7_tsc.py` (G6/G8), `f256r7_redproof.py` (G7),
-   `f256r7_pytest.py` (G8), `f256r7_gates.py` (G1–G5) and `f256r7_g4b.py` (G4(b)
-   re-measure), plus the scratch config `f256r7-vitest.config.mjs` and the
-   `f256r7-vite-cache/` directory. `git ls-files .remedy-wt` is **0**.
-8. **THE `PLANF256R7` SLICE MARKS THE CLIENT HALF `done | this round` AT C1, BEFORE C3
-   LANDED IT.** Applied byte for byte as constraint 1 orders; it became true two commits
-   later in the same round.
-9. **All three new tests `console.log` their figures**, in the shape round 6 used, as S6
-   orders. vitest captures stdout, so a green run shows nothing and no existing output
-   changes; a failing file or `--reporter=verbose` surfaces it.
-10. **No production file was edited.** `git diff --name-only dff36f33..95ecaf14` contains
-    no path under `packages/` or `docs/`, and its only `apps/` path is the `.test.ts`
-    file. `diffViewModel.ts` changed only inside the disposable worktree and was reverted
-    there before the worktree was removed.
-11. **No `Done:` or `Gate:` paragraph of my own** appears anywhere. `GATEF256R6`,
-    `DECF256D5` and `DECF256D6` are reviewer-authored and were applied as slices, byte
-    for byte, append only.
-12. **No departure from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4 in that
-    order, one commit each, nothing extra, nothing dropped, nothing reordered.
+The ordered commit sequence was followed exactly — C0a, C0b, C1, C2, C3, C4, in that
+order, with no extra commit, no dropped commit and no reordering. No slice was
+reflowed, reworded, shortened or corrected; no number in `BUILTF256` was adjusted.
+
+1. GUARD RE-EXPRESSION (constraint 6). The spelling
+   `python3 -m pytest tests/docs/ -q 2>&1 | tail -20; echo "EXIT=${PIPESTATUS[0]}"`
+   was refused by this session's shell guard with `Contains expansion` — the guard
+   rejects `${...[...]}` indexing by FORM. It was re-expressed, not weakened, as the
+   script `.remedy-wt/r8_run.py`, which runs the same `python3 -m pytest <target> -q`
+   through `subprocess.run` and prints the FULL stdout plus the real
+   `returncode`. All five G7 suites ran through it, untruncated. The check became
+   strictly stronger, since the refused spelling would have truncated output to the
+   last 20 lines.
+2. ASSUMED (no ruling needed): every slice-application, digest, ledger, paragraph
+   and cross-check computation ran from script files under the gitignored
+   `.remedy-wt/` — `r8_c0a.py`, `r8_c0b.py`, `r8_slices.py`, `r8_c1.py`, `r8_c2.py`,
+   `r8_c3.py`, `r8_g1.py`, `r8_g2345.py`, `r8_g6_cross.py`, `r8_g6_cross_blob.py`,
+   `r8_run.py` — because /tmp is denied to this session. `git ls-files .remedy-wt`
+   is 0, so none of them entered the commit range.
+3. NOTED, not a deviation: the G6 cross-check was additionally run once against the
+   WORKING-TREE copy of the feature file before C3 was committed, so that a missing
+   number would have stopped the round before the commit rather than after it. It
+   was then re-run against the C3 BLOB, which is the reading reported above. Both
+   runs agree on every row.
+4. NOTED: `packages/orchestration/diff_parser.py` spells the ceiling
+   `DIFF_VIEW_MAX_BODY_LINES = 20_000`, a Python underscore literal, where the
+   `BUILTF256` slice's prose says "is 20,000". The VALUE is the same 20000; only the
+   digit grouping differs, so G6's claim holds. Reported because the block ordered
+   the literal reading and this is what the file literally carries.
+5. `.agent/context.md` and `.agent/decisions.md` were NOT touched: the change set
+   names neither, this round makes no new technical decision of its own, and the
+   scope and constraints of the branch are unchanged from round 7.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block verbatim | done | `029f4119` |
-| C0b mirror into `.agent/last_block.md` | done | `43f1930b` |
-| C1 advance `.agent/plan.md` | done | `68d945ba` |
-| C2 append the R6 verdict and DECISIONS F256 D5 and D6 | done | `7ae7400c` |
-| C3 the client measurement | done | `95ecaf14` |
-| C4 rewrite `.agent/handoff.md` | done | this commit |
-| G1 hygiene and structure | done | STOP `False` twice; base and branch as ordered; porcelain 0 six times; both residues empty; five single-parent commits, all under 500 |
-| G2 transport | done | one digest, equal at 28746 bytes; C0b one blob id |
-| G3 the plan at C1 | done | byte-equal True; 37 lines; 1 and 1 |
-| G4 the record at C2 | deviated | (a) both appends True, both negative controls False; (b) True at N = 7 and N = 16 only on the second, stripped spelling — see deviation 1 |
-| G5 the ledger at C2 | done | only `^Gate:` moved, +1 to 103; `Gate: F256 R6` exactly once |
-| G6 the measurement at C3 | done | exit 0, 93 passed; median 0.683 ms, 10002 rows empty-collapsed against 2 default-collapsed, collapsed set 1, 48 drawn at both 10002 and 100020 |
-| G7 the red-proof at C3 | done | control 0, both mutations exit 1 (10 and 3 failed), control again 0; primary porcelain empty |
-| G8 the suites at C3 | done | vitest 631/33 exit 0, tsc exit 0, four pytest targets exit 0 |
-| push | done | run after C4; verified by the branch tip equalling `origin/feature/f256-diff-viewer-completion` |
+| C0a save the block | done | `8569ef20` |
+| C0b mirror the block | done | `3f21db4b` |
+| C1 advance the plan | done | `21cc5157` |
+| C2 book the verdict and the slip | done | `cb2f3ce1` |
+| C3 append the Built State | done | `f6d5d064` |
+| C4 rewrite the handback | done | this commit |
+| G1 hygiene and structure | done | PASS |
+| G2 transport | done | PASS |
+| G3 the plan at C1 | done | PASS |
+| G4 the record at C2 | done | PASS |
+| G5 the ledger at C2 | done | PASS |
+| G6 the Built State and its cross-check | done | PASS |
+| G7 the suites at C3 | done | PASS, all five exit 0 |
 
 ## Next
 
-Write BOTH halves' measured numbers — the server figures round 6 recorded and the
-client figures above — into the Built State of `docs/roadmap/features/T5_F256.md`,
-which is what F037's Acceptance asks for: a recorded measurement rather than a claim.
+Run the integration gate over the whole branch, and then the two-round closure
+sequence — the evidence bundle and the review zip in one round, the
+`docs/roadmap/STATUS.md` closure commit with its README and ledger pins in a round
+of its own.
