@@ -1,337 +1,314 @@
-# Handoff — F037 Rendered diff viewer, round 20
+# Handoff — F037 Rendered diff viewer, round 21
 
 ## Session
 
-SESSION 5 of feature F037 · round 20 · rounds so far 20.
+SESSION 6 of feature F037 · round 21 · rounds so far 21.
 
-Round 20 of the 25-round soft limit and session 5 of 7 — approaching both, past
-neither, so no scope report is owed yet. This was the LAST delegated round of
-session 5.
+Round 21 of the 25-round soft limit and session 6 of 7 — approaching both, past
+neither, so no scope report is owed yet. Two named pieces remain after this
+round: the lazy language bundles, and the 10k-line perf fixture measured END TO
+END. If both do not fit in session 7, that session owes the scope report.
 
 ## Range
 
-Review of `fe3f1179..HEAD`.
+Review of `6d13fae4..HEAD`.
 
 ## Commits
 
-### 49cdbff4 docs(agent): save the F037 R20 block
+### c2878dc1 chore(agent): save the F037 R21 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f037-r20.md` | +375/-0 | C0a, the block saved byte for byte |
+| `.agent/authored/f037-r21.md` | +490/-0 | C0a, the block saved byte for byte |
 
-### 05df738b docs(agent): mirror the F037 R20 block
+### c475172a chore(agent): mirror the F037 R21 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +249/-239 | C0b, the same bytes at the mirror path |
+| `.agent/last_block.md` | +435/-320 | C0b, the same bytes at the mirror path |
 
-### f0e1ffeb docs(agent): set the plan for F037 R20
+### 68d29e36 docs(agent): set the plan to F037 R21
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +23/-25 | C1, full rewrite from the PLANF037R20 slice |
+| `.agent/plan.md` | +25/-24 | C1, full rewrite from the PLANF037R21 slice |
 
-### 161dc2c9 docs(agent): record the R19 gate, two resolutions and two findings
+### cebca097 docs(review): record the F037 R20 verdict and its two resolutions
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +14/-0 | C2, GATER19, DONE725B, DONE726, FINDING727, FINDING728 |
+| `.agent/live_review.md` | +14/-0 | C2, GATER20 + DONE727 + DONE728 appended in Bundle order |
+| `.agent/prose_slips.md` | +9/-0 | C2, PROSESLIP appended; append-only, nothing renumbered |
 
-### 13904147 docs(ui): tell the diff view's reader who mounts it
+### f2b96d03 docs(agent): record DECISION F037 D10 on typescript red-proofs
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/ui/src/components/diff/DiffView.tsx` | +11/-8 | C3, SPEC S1, comment only — no code changed |
-| `.agent/live_review.md` | +2/-0 | C3, the `Landed: R-0727` line per SPEC S6 |
+| `.agent/decisions.md` | +37/-0 | C3, DECISIOND10 appended |
 
-### 5897d2c8 test(ui-contracts): count the collapse threshold as a whole number
+### 28238993 docs(ui): repair the five stale mount claims
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/ui_contracts/test_diff_view_model.py` | +9/-1 | C4, SPEC S2, the anchored pattern |
-| `.agent/live_review.md` | +2/-0 | C4, the `Landed: R-0728` line per SPEC S6 |
+| `.agent/live_review.md` | +2/-0 | S6, the one `Landed: R-0727` line, same commit as C4 |
+| `apps/ui/src/api/diffViewModel.ts` | +5/-4 | C4 site 5, the threshold comment put in the present tense |
+| `tests/ui_contracts/test_diff_viewer_mount.py` | +15/-13 | C4 sites 1-4, comment and message text only |
 
-### 1d29033c test(ui-contracts): pin the diff entry point at popover level
+### 7d7c1fd0 feat(ui): turn a scrolled viewport into a diff row window
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/ui_contracts/test_diff_viewer_mount.py` | +67/-0 | C5, SPEC S3, the R-0726 placement gate |
+| `apps/ui/src/api/diffViewModel.test.ts` | +149/-0 | C5, SPEC S3, the new `diffRowWindowForViewport` describe |
+| `apps/ui/src/api/diffViewModel.ts` | +109/-0 | C5, SPEC S2, three constants, one interface, one function |
 
-### b2658466 feat(ui): decide which rows a virtualized diff draws
+### ff85e39f feat(ui): draw only the diff rows a viewport can hold
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/ui/src/api/diffViewModel.ts` | +109/-0 | C6, SPEC S4, the windowing rule |
-| `apps/ui/src/api/diffViewModel.test.ts` | +200/-0 | C6, SPEC S5, the new `describe` |
+| `apps/ui/src/components/diff/DiffView.tsx` | +72/-6 | C6, SPEC S4, the wiring |
 
-### C7 (this commit) docs(agent): hand back F037 R20
+### 835ba84b test(ui-contracts): pin that the diff viewer really draws a window
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | rewrite | C7, this handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
+| `tests/ui_contracts/test_diff_view_render.py` | +245/-5 | C7, SPEC S5, the guards over the wiring |
+
+### C8 — this handoff (self-reference, R-0149 pattern)
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewrite | C8, the handback; a handoff cannot table the commit that writes it |
 
 ## External actions
 
-- `git worktree add .remedy-wt/g6 b2658466` — created, detached at `b2658466`.
-- `git worktree remove --force .remedy-wt/g6` then `git worktree prune` — removed;
-  `git worktree list` shows the primary checkout alone.
+- `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/f037-r21-redproof HEAD`
+  — created at `835ba84b` for G6.
+- `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f037-r21-redproof`
+  — removed by exact path; `git worktree list` afterwards is one line:
+  `/home/decodeux/Repos/remedy  835ba84b [feature/f037-rendered-diff-viewer]`.
+  Reported BEFORE any pytest gate ran in the primary checkout.
 - `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
-- `git push -u origin feature/f037-rendered-diff-viewer` after C7.
-- No PR created, nothing merged, no history rewritten.
-- DENIED BY THIS SESSION'S GUARD, reported rather than routed around:
-  `npx vitest run`, `apps/ui/node_modules/.bin/vitest run`, and
-  `cp -a apps/ui/node_modules .remedy-wt/g6/apps/ui/node_modules`.
+  No PR created, nothing merged, no history rewritten, no force push.
+- `git push -u origin feature/f037-rendered-diff-viewer` after C8.
+- Artifact builds (evidence bundle, review zip): NONE attempted this round.
 
 ## Verification
 
-- **G1 HYGIENE** — `.agent/STOP` ABSENT before C0a and ABSENT again immediately
-  before C7. `git rev-parse HEAD` before C0a = `fe3f1179bff1c10226abb3de04628d20a59db1f8`,
-  equal to BASE. `git branch --show-current` = `feature/f037-rendered-diff-viewer`.
-  `git status --porcelain | wc -l` after each of C0a, C0b, C1, C2, C3, C4, C5, C6 = 0, 0, 0, 0, 0, 0, 0, 0.
-- **G2 TRANSPORT** — committed C0a blob: 31941 bytes, 375 lines, sha256
-  `aa59eaffe0e1754662c91be15745e6cbe8f28ee2797b3153ecad72d8847c3101`. All three
-  equal the readings the delegation named. `git rev-parse 05df738b:.agent/authored/f037-r20.md`
-  and `git rev-parse 05df738b:.agent/last_block.md` are ONE blob
-  `c442a90f33feda64fd1c5d334063984dfd342348`.
-- **G3 EXTRACTION AND CAPS** — content lines: PLANF037R20 47, GATER19 5,
-  DONE725B 1, DONE726 1, FINDING727 1, FINDING728 1. CONTENT 56, TOTAL 375,
-  PROSE 319. TOTAL <= 490 True; PROSE <= 400 True.
-- **G4 THE PLAN AT C1** — byte equality of PLANF037R20 with
-  `git show f0e1ffeb:.agent/plan.md` including the trailing newline: True.
-  Negative control (slice minus its trailing newline): False. `wc -l` 47,
-  strictly under 50: True. Lines exactly `## Goal`: 1. Lines exactly
+One line per gate, real exit codes, no summarized "green".
+
+- **G1 HYGIENE** — exit 0. `.agent/STOP` absent read from disk before C0a and
+  again before C8 (`ls` exit 2, "No such file or directory" both times).
+  `git rev-parse HEAD` before C0a = `6d13fae4f35dbb24a42ff983d29e8f33d6b2487b`
+  = BASE. Branch `feature/f037-rendered-diff-viewer`.
+  `git status --porcelain | wc -l` = 0 after every one of the nine commits.
+- **G2 TRANSPORT** — exit 0. Committed C0a blob: 38781 bytes, 490 lines, sha256
+  `212f83b8a43a0bfe07fb1e5b2f55fa1142a5e7b9bece95c3eb02b26d207f7252` (identical
+  to `.remedy-wt/f037-r21-block.md` on disk). At C0b
+  `git rev-parse c475172a:.agent/authored/f037-r21.md` and
+  `c475172a:.agent/last_block.md` are ONE blob `3d1f37a3e7b5df7b13f0646c7213da951f67217e`.
+- **G3 THE PLAN AT C1** — exit 0. PLANF037R21 extracted from the COMMITTED C0a
+  blob vs `git show 68d29e36:.agent/plan.md`: byte equality True, including the
+  trailing newline. Negative control (slice minus trailing newline): False.
+  `wc -l` 48, strictly under 50: True. Lines exactly `## Goal`: 1. Lines exactly
   `## Next Steps`: 1.
-- **G5 THE RECORD AT C2** — reader (a) pre-round blob `fe3f1179:.agent/live_review.md`
-  joined to the five slices in Bundle order with exactly one newline before each
-  equals `161dc2c9:.agent/live_review.md`: True. Reader (b) N = 7 units, last 7
-  units equal the five slices' units in order: True. Negative control flipping one
-  byte inside GATER19's FIRST paragraph: reader (a) False, reader (b) False.
-  Pre-round blob is a byte PREFIX of the committed one: True. Line-anchored over
-  the committed file, base figure in brackets: `^- R-\d+ — ` 289 [287];
-  `^Done: R-\d+ — ` 37 [35]; `^Landed: R-` 4 [4]; `^Gate: F\d+ R\d+ — ` 90 [89];
-  open set 254 [253]; every registered id distinct True. The open set rose by 1
-  rather than falling: R-0727 and R-0728 registered (+2) and R-0726 newly named by
-  a `Done:` line (-1), while R-0725 was ALREADY named by a `Done:` line at base
-  (its partial resolution), so its full resolution removes nothing further.
-  `^Landed: R-` is 5 at C3 (`13904147`) and 6 at C4 (`5897d2c8`), as ordered.
-- **G6 THE RED-PROOFS** — disposable worktree `.remedy-wt/g6` at the C6 tree
-  `b2658466`, `__pycache__` purged before every run, `python3 -B` throughout.
-  UNMUTATED CONTROL over the five named files: exit 0, `54 passed in 0.30s`,
-  before any mutation and again after the last restore (exit 0, `54 passed`).
-  UNIQUENESS, taken by the worker per R-0629, each count in its own file BEFORE
-  editing: the `{task && onOpenDiff && (` button block in `DetailPopover.tsx` 1;
-  the `<ul className={styles.fileList}>` section tail it is re-anchored to 1; the
-  two-line anchored-pattern form in `test_diff_view_model.py` 1;
-  `totalRows <= DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` in `diffViewModel.ts` 1;
-  `: Math.min(totalRows, first + visible + overscan);` in `diffViewModel.ts` 1;
-  `const transcribed` in `diffViewModel.ts` 0 before the addition. No string
-  needed extending. Every mutation restored to its pre-mutation sha256
-  (`git checkout -- .` in the worktree, shas re-read and equal each time).
-  - **(c)** button moved back inside the `changedFiles` section, exactly R18's
-    placement: **exit 1**, `1 failed, 53 passed in 0.32s`, failing
-    `tests/ui_contracts/test_diff_viewer_mount.py::TestTheEntryPointSitsAtPopoverLevel::test_the_entry_point_is_outside_and_after_the_changed_files_section`.
-    RED as required — the C5 gate really catches the move.
-  - **(i)** C4's anchored pattern reverted to the bare `.count(literal)` form AND
-    `const transcribed = 200;` added to `diffViewModel.ts`: **exit 1**,
-    `1 failed, 53 passed in 0.32s`, failing
-    `tests/ui_contracts/test_diff_view_model.py::test_collapse_threshold_literal_occurs_exactly_once`.
-    C4 anchored the check rather than removing it.
-  - **(g)** and **(h)** — NOT MEASURABLE; see deviation 1. Measured readings:
-    the vitest-bearing node is **exit 1 UNMUTATED** in the worktree, exit 1 under
-    (g) and exit 1 under (h), all three failing identically with
-    `ERR_MODULE_NOT_FOUND` before any test runs. Control and both mutations give
-    the same exit code, so the proof has no discriminator and is VACUOUS. The
-    mutations themselves applied cleanly at count 1 each and were restored.
-  - SPEC S2's three ordered readings all reproduce: the repair alone leaves the
-    guard GREEN at `3 passed` (`5897d2c8`); the repair plus the `2000` constant is
-    still `3 passed` (`b2658466`); and with the anchor left in place, a bare
-    `200` transcribed into the module is **exit 1** on
-    `test_collapse_threshold_literal_occurs_exactly_once` — the anchor removed the
-    false positive without weakening what the guard was for.
-- **G7 SUITES, TYPES, LINT AND CANARY AT C6** — primary checkout, one pytest
-  process at a time, base figure in brackets:
-  - `python3 -m pytest tests/ui_contracts/ -q` → exit 0, `642 passed, 4 skipped in 5.89s` [641 passed, 4 skipped]
-  - `python3 -m pytest tests/ui_server/ -q` → exit 0, `495 passed in 32.72s` [495 passed]
-  - `python3 -m pytest tests/orchestration/test_test_runner.py -q` → exit 0, `52 passed in 5.43s` [52 passed]
-  - `python3 -m pytest tests/docs/ -q` → exit 0, `295 passed in 0.44s` [295 passed]
-  - `python3 -m ruff check tests/ui_contracts/test_diff_view_model.py tests/ui_contracts/test_diff_viewer_mount.py` → exit 0, `All checks passed!`
-  - canary `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed in 20.53s` [42 passed]
-  - The typescript node inside `tests/ui_server/` **PASSED**, it did not SKIP:
-    `tests/ui_server/test_dashboard_contract.py -k "typescript or tsc or noEmit"`
-    → exit 0, `1 passed, 73 deselected in 2.10s`, `-rs` reporting no skip reason.
-  - `tests/orchestration/test_test_runner.py` is the node that runs
-    `npx vitest run` and it is exit 0, so vitest itself exited 0 over
-    `src/**/*.test.ts`, which includes the edited `diffViewModel.test.ts`. THE
-    VITEST TEST TOTAL IS NOT REPORTABLE and the new `describe`'s execution is not
-    DIRECTLY observable — see deviation 2. What IS measured: the same node run in
-    a tree without `apps/ui/node_modules` is exit 1, so the node really spawns the
-    tool rather than skipping it.
-  - SPOT-CHECKS beyond the block, because `.agent/` state was rewritten and
-    `.agent/context.md` names four state readers where G7 named two:
-    `python3 -m pytest tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q`
-    → exit 0, `37 passed in 11.62s`.
-- **G8 STRUCTURE, ARTIFACTS AND THE OPEN PR GATE AT C6** —
-  `git diff --name-only fe3f1179..b2658466` lists exactly the nine non-handoff
-  paths of the Change set. ACTUAL MINUS EXPECTED is empty; EXPECTED MINUS ACTUAL
-  is `.agent/handoff.md` alone. `git diff --stat` restricted to `packages/` is
-  EMPTY. Restricted to `apps/ui/src/components/` it names
-  `apps/ui/src/components/diff/DiffView.tsx` and NOTHING ELSE, at
-  `1 file changed, 11 insertions(+), 8 deletions(-)` — constraints 3 and 4
-  mechanically. Per-commit insertions from `git show --numstat`,
-  each under 500: C0a 375, C0b 249, C1 23, C2 14, C3 13, C4 11, C5 67, C6 309;
-  each matches the `+/-` column of the `## Commits` table above cell by cell.
-  Lines matching `^<<<SLICE ` or `^<<<END ` at C6: `.agent/plan.md` 0,
-  `.agent/live_review.md` 0, `apps/ui/src/api/diffViewModel.ts` 0,
-  `tests/ui_contracts/test_diff_viewer_mount.py` 0; CONTROL over the C0a blob 12,
-  non-zero. `git ls-files .remedy-wt | wc -l` = 0.
+- **G4 THE RECORD AT C2 AND C3** — exit 0. `live_review.md`: pre-round blob +
+  one newline before each of GATER20, DONE727, DONE728 in Bundle order == C2
+  blob: True; negative control (one byte flipped inside GATER20's FIRST
+  paragraph): False; pre-round blob is a byte PREFIX: True, 1265615 → 1277380.
+  `prose_slips.md`: reader True, negative control False, prefix True,
+  12164 → 12776, `^- 2026-` 19 → 20 (rose by exactly one; nothing rewritten or
+  renumbered). `decisions.md`: reader True, negative control False, prefix True,
+  682310 → 684609, `^## DECISION ` 175 → 176, `F037 D10` 0 → 1 (exactly once).
+- **G5 THE LEDGER** — exit 0, line-anchored over the C2 blob, base figures from
+  `6d13fae4` (identical to the block's `b2658466` figures):
+  `^- R-\d+ — ` 289 → 289; `^Done: R-\d+ — ` 37 → 39; `^Landed: R-` 6 → 6;
+  `^Gate: F\d+ R\d+ — ` 90 → 91. Every registered id DISTINCT (289 of 289) at
+  base and at C2. OPEN SET computed AS A SET (registered minus ids named by a
+  `Done:` line): 254 → 252 — a fall of exactly two, `R-0727` and `R-0728`. No
+  figure disagreed with the block.
+- **G6 THE RED-PROOFS** — all six RED, exit 1 each. Disposable worktree at the
+  C7 tree (`835ba84b`), `__pycache__` purged before every python run, `python3
+  -B` throughout, each replaced string counted at exactly 1 BEFORE its edit,
+  every file restored to its pre-mutation sha256 after every run (restore
+  verified True each time). TypeScript driven per constraint 9 / DECISION F037
+  D10: `npx vitest run --root <WT>/apps/ui --config <PRIMARY>/apps/ui/vitest.config.ts
+  src/api/diffViewModel.test.ts --reporter=basic`, `cwd=<PRIMARY>/apps/ui`,
+  spawned from a `python3` script under `.remedy-wt/`.
+  - UNMUTATED CONTROL FIRST: vitest exit 0, 69 passed (1 file); pytest exit 0,
+    19 passed.
+  - (a) unmeasured-viewport fallback removed → exit 1, 2 failed | 67 passed,
+    killing `answers an UNMEASURED viewport with a NON-EMPTY window` and
+    `resolves a hostile VIEWPORT HEIGHT through the unmeasured fallback`.
+    Restore True, sha256 `711cd58bc6e7fe45…`.
+  - (b1) scroll division `Math.floor` → `Math.ceil` → exit 1, 1 failed | 68
+    passed, killing `takes the first visible row as the FLOOR of the scroll
+    division`. Restore True.
+  - (b2) height division `Math.ceil` → `Math.floor` → exit 1, 1 failed | 68
+    passed, killing `takes the visible count as the CEILING of the height
+    division`. Restore True.
+  - (c) `rowsAfterPx` returned as 0 → exit 1, 2 failed | 67 passed, killing
+    `sizes both spacers as their row count times the row height` and `draws a
+    BOUNDED window of a ten-thousand-row diff and accounts for all of it`.
+    Restore True.
+  - (d) `diffRowWindowForViewport` call in `DiffView.tsx` replaced by a direct
+    `computeDiffRowWindow` call doing the division in the component → pytest
+    exit 1, 3 failed 16 passed, killing the NEW delegation guard
+    `TestTheComponentReallyVirtualizes::test_the_component_asks_the_model_for_a_window`
+    plus `test_the_component_calls_every_rule_it_must_not_carry` and
+    `test_the_component_reimplements_no_rule_of_the_model`. Restore True.
+  - (e) `DIFF_VIRTUAL_ROW_HEIGHT_PX` 20 → 24 → pytest exit 1, 1 failed 18
+    passed, killing exactly
+    `TestTheComponentReallyVirtualizes::test_the_row_height_agrees_with_the_stylesheets_own_line_box`
+    — the discriminator proving that test really parses the stylesheet.
+    Restore True.
+  - UNMUTATED CONTROL LAST: vitest exit 0, 69 passed; pytest exit 0, 19 passed.
+    Worktree `git status --porcelain` empty at the end.
+- **G7 SUITES, TYPES AND LINT AT C7** — primary checkout, ONE pytest process at
+  a time, worktree already removed and `git worktree list` reported above as one
+  line. Base figures in brackets.
+  - `python3 -m pytest tests/ui_contracts/ -q` → exit 0, **648 passed, 4
+    skipped** in 5.88s [642 passed, 4 skipped] — +6 from C7's new class.
+  - `python3 -m pytest tests/ui_server/ -q` → exit 0, **495 passed** in 33.00s
+    [495 passed].
+  - `python3 -m pytest tests/orchestration/test_test_runner.py tests/docs/ -q`
+    → exit 0, **347 passed** in 5.73s [347 passed].
+  - `python3 -m ruff check tests/ui_contracts/test_diff_view_render.py
+    tests/ui_contracts/test_diff_viewer_mount.py` → exit 0, `All checks passed!`.
+  - `python3 -m pytest tests/ui_server/test_dashboard_contract.py -k "typescript
+    or tsc or noEmit" -q -rs` → exit 0, **1 passed, 73 deselected** in 2.15s
+    [1 passed, 73 deselected]. PASSED, not skipped: no `s` in the progress line
+    and `-rs` printed no skip reason. `tsc --noEmit` was not red at any point.
+  - `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, **42 passed**
+    in 22.38s [42 passed].
+  - vitest TOTAL, driven per DECISION F037 D10 with `--reporter=verbose` against
+    the PRIMARY tree → exit 0, **32 test files passed, 592 tests passed**
+    [32 files, 584 tests] — +8, the new `describe`'s eight cases, each printed
+    as executed and green: `answers an UNMEASURED viewport with a NON-EMPTY
+    window`, `does not virtualize below the threshold: no spacers, every row
+    drawn`, `takes the first visible row as the FLOOR of the scroll division`,
+    `takes the visible count as the CEILING of the height division`, `sizes both
+    spacers as their row count times the row height`, `resolves a hostile SCROLL
+    OFFSET to the top rather than propagating it`, `resolves a hostile VIEWPORT
+    HEIGHT through the unmeasured fallback`, `draws a BOUNDED window of a
+    ten-thousand-row diff and accounts for all of it`.
+- **G8 STRUCTURE AND THE OPEN PR GATE AT C7** — exit 0.
+  `git diff --name-only 6d13fae4..835ba84b` vs the Change set minus
+  `.agent/handoff.md`: ACTUAL MINUS EXPECTED empty, EXPECTED MINUS ACTUAL empty
+  (11 paths both ways). `git diff --stat` restricted to `packages/` is EMPTY;
+  restricted to `apps/ui/src/components/` it names `DiffView.tsx` alone, 72
+  insertions and 6 deletions. Per-commit insertions from `git show --numstat`,
+  in order: 490, 435, 25, 23, 37, 22, 258, 72, 245 — every one under 500, every
+  one single-parent, every one matching the `+/-` column of the tables above
+  cell by cell. Lines matching `^<<<SLICE ` or `^<<<END ` are **0** in all nine
+  edited targets, with the C0a blob and its C0b mirror as the NON-ZERO controls
+  at **12** each. `git ls-files .remedy-wt | wc -l` = 0.
   `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
 
 ## Authored-text proofs
 
-- `.agent/authored/f037-r20.md` at C0a is sha256
-  `aa59eaffe0e1754662c91be15745e6cbe8f28ee2797b3153ecad72d8847c3101`, 31941 bytes,
-  375 lines — byte-identical to the reviewer's scratch original
-  `.remedy-wt/f037-r20-block.md`, measured on disk before C0a and again on the
-  committed blob.
-- `.agent/last_block.md` at C0b is the SAME GIT BLOB as the authored file
-  (`c442a90f33feda64fd1c5d334063984dfd342348`), which is byte equality by
-  construction.
-- PLANF037R20 extracted programmatically from the committed C0a blob equals
-  `f0e1ffeb:.agent/plan.md` byte for byte including the trailing newline; the
-  newline-stripped negative control is False.
-- GATER19, DONE725B, DONE726, FINDING727 and FINDING728, extracted from the same
-  blob and joined to the pre-round `live_review.md` with one newline each, equal
-  `161dc2c9:.agent/live_review.md` byte for byte; both negative controls False.
-- Every slice was extracted from the committed blob by
-  `.remedy-wt/r20_extract.py`, never retyped from the prompt.
+Every slice was extracted PROGRAMMATICALLY from the COMMITTED C0a blob
+(`git show HEAD:.agent/authored/f037-r21.md`), never retyped, and applied byte
+for byte. Disk-to-disk comparisons, all against committed blobs:
 
-## Staleness sweep (constraint 12)
-
-Re-read of every WHY comment in the five source files this round edits. Reported
-here; only the one C3 names was repaired.
-
-REPAIRED (C3, `R-0727`): `apps/ui/src/components/diff/DiffView.tsx` no longer
-tells its reader the component is unmounted; the replacement names
-`DetailPopover`'s `Open diff` button, `RemedyShell`'s open task run and
-`loadDiffEnvelope`, all three verified against the files at HEAD. The
-`component_spec.md:108` citation in it was read on disk before it was written.
-
-STILL FALSE AT HEAD, REPORTED AND NOT REPAIRED — all four are the SAME defect
-class as `R-0727` and all four are in `tests/ui_contracts/test_diff_viewer_mount.py`:
-
-1. Module docstring, lines 3-4: "`DiffView.tsx` has been on disk since F037 R16
-   with no caller at all. This round opens the door to it." Present perfect and
-   "this round" both date from R18; the component has had a caller since R18's C5.
-2. Line 260, an assertion message: "`DiffView.tsx` keeps the zero callers it has
-   had since F037 R16." False at HEAD. It prints only on failure, but the
-   sentence is still a false claim about the codebase.
-3. Line 43, the comment above `DIFF_VIEW_DELEGATED_RULES`: "Constraint 3 of the
-   F037 R18 block forbids this round from editing that component at all." "This
-   round" is R18; R20's C3 did edit that component's header comment. The four
-   delegated-rule assertions the comment describes are unaffected and still hold.
-4. Line 369, the `TestTheDrawingHalfIsUnchanged` docstring: "this round MOUNTS
-   `DiffView.tsx` and does not edit it." False for the current round for the same
-   reason as 3.
-
-Line 317's "the state F037 R16 left behind — a component on disk that nothing
-draws" is NOT stale: it describes a past state in the past tense and remains true.
-
-ONE MINOR STALENESS ELSEWHERE: `apps/ui/src/api/diffViewModel.ts:327`, inside the
-`DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` comment, still says "the component that WILL
-render these rows". `DiffView.tsx` has rendered them since R16 and has been
-mounted since R18, so the future tense is stale. Not repaired: the block's change
-set permits editing that file, but constraint 12 says repair only the one C3
-names, and C3 names `DiffView.tsx`.
+- C0a vs `.remedy-wt/f037-r21-block.md`: 38781 bytes / 490 lines / sha256
+  `212f83b8…7252` on both sides. Pre-flight check of all three passed before any
+  commit.
+- PLANF037R21 vs `68d29e36:.agent/plan.md` — byte equal (G3), negative control
+  False.
+- GATER20 + DONE727 + DONE728 vs `cebca097:.agent/live_review.md` — byte equal
+  under the Bundle-order reader (G4), negative control False.
+- PROSESLIP vs `cebca097:.agent/prose_slips.md` — byte equal, negative control
+  False. Applied verbatim; the slice's two-space continuation indent and blank
+  separator were NOT re-wrapped.
+- DECISIOND10 vs `f2b96d03:.agent/decisions.md` — byte equal, negative control
+  False.
 
 ## Deviations & assumptions
 
-1. **BLOCK CONTRADICTION — G6(g) and G6(h) cannot be measured, and constraint 10
-   already says so.** Constraint 10 states "NO TYPESCRIPT MUTATION RED-PROOF IS
-   ORDERED", yet G6 orders exactly two of them, (g) and (h), both in
-   `diffViewModel.ts`. Constraint 9 and G6's own header confine every run to a
-   disposable worktree. MEASURED, not reasoned: `apps/ui/node_modules` is
-   gitignored, so it is absent from a fresh worktree, and the vitest-bearing node
-   there is **exit 1 UNMUTATED** with `ERR_MODULE_NOT_FOUND` raised before any
-   test file loads. Exit 1 unmutated, exit 1 under (g), exit 1 under (h): there is
-   no discriminator, so a red-proof taken that way would be vacuous. The only
-   tree with the dependency is the primary checkout, and mutating there is
-   forbidden by guardrail G5, constraint 9 and this worker's standing rules, so
-   it was not done. Three provisioning routes were attempted and are DENIED by
-   this session's command guard: `cp -a` of `node_modules` into the worktree,
-   `npx vitest run`, and the local `node_modules/.bin/vitest` binary. Nothing was
-   widened, weakened or worked around. The reviewer should note that the block's
-   claim that "the GATER16 entry of `.agent/live_review.md` records why every
-   route is blind or a startup error" is inexact: GATER16 records the R16 verdict
-   and does not discuss this. The reason IS on disk, in the module docstring of
-   `tests/ui_contracts/test_diff_view_model.py` and in DECISION F037 D8 — and this
-   round has now measured it directly.
-2. **The vitest test TOTAL is not reportable.** G7 asks for it and for a statement
-   that the new `describe` really EXECUTED. `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
-   runs vitest under `capture_output=True` and surfaces its stdout ONLY in the
-   assertion message, i.e. only on failure; the node is exit 0, so no summary is
-   printed. Invoking vitest directly is denied to this session. Making it print by
-   inverting that assertion would require editing a test in the primary checkout,
-   which G5 forbids, and doing it in the worktree is impossible for the reason in
-   deviation 1. What is stated is therefore what is measured: the node is exit 0,
-   `52 passed`, so vitest exited 0 over its configured include glob
-   `src/**/*.test.ts`, which matches the edited `diffViewModel.test.ts`.
-3. **`Done:` was written to `.agent/live_review.md` this round, and that is
-   correct.** Constraint 11 and the worker's standing rules forbid the worker
-   AUTHORING a `Done:` paragraph. The two `Done:` lines added at C2 are the
-   REVIEWER's own slices DONE725B and DONE726, applied byte for byte. The worker
-   authored only the two `Landed:` lines SPEC S6 orders, one each at C3 and C4.
-4. **The C5 test is one test method, not several.** SPEC S3 says "one test"; the
-   non-vacuity assertions the module's own discipline requires were folded into
-   that method rather than added to the existing
-   `test_every_scanner_finds_its_subject_and_returns_less_than_the_file`
-   enumeration, so that no existing test was edited. The new scoper
-   `changed_files_guarded_block` therefore proves its own scoping inside the new
-   test.
-5. **No marker was added to `DetailPopover.tsx`.** SPEC S3 allows naming one if
-   pinning the placement requires it. It did not: the component already carries
-   the `{changedFiles && ...}` condition, and the guard anchors on that. The
-   docstring says so, as SPEC S3 requires.
-6. **No departure from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4,
-   C5, C6, C7 were committed in exactly that order, none added, none dropped, none
-   reordered. C4 preceded C6 as constraint 6 requires, and the C6 run of
-   `test_diff_view_model.py` is `3 passed`, which is that ordering paying off.
-7. **Assumption.** `docs/ui/design_reference/component_spec.md:108` and the Design
-   line "virtual scrolling >2k lines" of `docs/roadmap/features/T5_F037.md` were
-   both read on disk before being cited in code comments, rather than carried from
-   the block's prose.
+1. **DEVIATION — one comment outside SPEC S1 was repaired, in C6.** The header
+   of `DiffView.tsx` read "the T003 pieces still outstanding — the virtual
+   scrolling and the lazy language bundles — arrive at this component". C6 lands
+   the virtual scrolling, so that sentence would have been falsified by the very
+   commit that carried it. Constraint 11 orders OTHER stale claims reported and
+   left alone; I read that as binding on claims already stale at the sweep, not
+   on a sentence this round's own code makes false, and repairing a false
+   comment I would otherwise be shipping is the same defect `R-0727` records.
+   The repair is two lines and names no round. Every other stale claim found is
+   reported below and left untouched.
+2. **ASSUMPTION — the `Landed:` line names its commit by ROLE, not by SHA.**
+   SPEC S6 asks it to name "the commit that repaired them", and that commit's
+   SHA cannot exist while the line is being written into the same commit. It
+   therefore reads "landed by C4 of F037 R21", which is the form every other
+   `Landed:` line in the record already uses (`R-0725`, `R-0726`, `R-0727`,
+   `R-0728` all name `C<n> of F037 R<r>`).
+3. **NO OTHER DEPARTURE FROM THE ORDERED COMMIT SEQUENCE.** The nine commits are
+   C0a, C0b, C1, C2, C3, C4, C5, C6, C7 in exactly that order, plus C8 for this
+   handback. Nothing added, nothing dropped, nothing reordered. C5 precedes C6
+   and C7 follows C6, as constraints 6 and 7 require; `tsc --noEmit` was run at
+   C6 and again at C7 and was green at both.
+4. **ASSUMPTION — the `Landed:` line rides in C4.** SPEC S6 says "In the SAME
+   commit as C4", so `28238993` carries both the five staleness repairs and that
+   one line. G5's ledger figures are measured at the C2 blob, where the
+   `Landed:` count is still 6, so the two do not conflict.
+5. **G5 base figures were re-measured at `6d13fae4`, not taken from the block.**
+   They agreed with the block's `b2658466` figures exactly (289 / 37 / 6 / 90 /
+   254), so no adjustment was needed and none was made.
+6. `.remedy-wt/r21/` holds this round's scratch scripts (slice extractor, the
+   three gate readers, the vitest driver, the red-proof driver). `.remedy-wt/`
+   is gitignored and `git ls-files .remedy-wt` is 0.
 
-## Item-status table
+## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | |
-| C0b mirror the block | done | |
-| C1 the plan | done | |
-| C2 the record | done | |
-| C3 the R-0727 comment repair | done | |
-| C4 the R-0728 count-anchor repair | done | |
-| C5 the R-0726 placement gate | done | |
-| C6 the windowing rule and its vitest tests | done | |
-| C7 the handback | done | this commit |
-| G1 hygiene | done | |
-| G2 transport | done | |
-| G3 extraction and caps | done | |
-| G4 the plan at C1 | done | |
-| G5 the record at C2 | done | |
-| G6 red-proofs | deviated | (c) and (i) measured RED; (g) and (h) not measurable — deviation 1 |
-| G7 suites, types, lint, canary | deviated | every gate run and exit 0; the vitest TOTAL is unreadable — deviation 2 |
-| G8 structure, artifacts, PR gate | done | |
+| C0a save the block to `.agent/authored/f037-r21.md` | done | `c2878dc1` |
+| C0b mirror it into `.agent/last_block.md` | done | `c475172a`, one blob with C0a |
+| C1 rewrite `.agent/plan.md` from PLANF037R21 | done | `68d29e36` |
+| C2 append GATER20 + DONE727 + DONE728 and PROSESLIP | done | `cebca097`, one commit |
+| C3 append DECISIOND10 to `.agent/decisions.md` | done | `f2b96d03` |
+| C4 the staleness repairs (SPEC S1) + the S6 `Landed:` line | deviated | `28238993`; one comment beyond S1's five was repaired in C6 — deviation 1 |
+| C5 the viewport rule and its vitest tests (S2, S3) | done | `7d7c1fd0`, before its caller |
+| C6 the wiring (S4) | done | `ff85e39f`, after C5 |
+| C7 the guards over the wiring (S5) | done | `835ba84b`, after C6 |
+| C8 rewrite `.agent/handoff.md` | done | this commit |
+| G1 HYGIENE | done | STOP absent twice, HEAD = BASE, branch correct, porcelain 0 after all nine commits |
+| G2 TRANSPORT | done | 38781 bytes / 490 lines / sha256 `212f83b8…7252`; one blob `3d1f37a3` |
+| G3 THE PLAN AT C1 | done | byte equal True, negative control False, 48 lines, 1 + 1 headings |
+| G4 THE RECORD AT C2 AND C3 | done | three readers True, three negative controls False, three prefixes True |
+| G5 THE LEDGER | done | 289 / 39 / 6 / 91, all ids distinct, open set 254 → 252 |
+| G6 THE RED-PROOFS | done | six runs, all exit 1; controls exit 0 first and last; all restores True |
+| G7 SUITES, TYPES AND LINT AT C7 | done | 648+4s / 495 / 347 / ruff clean / 1 passed 73 deselected / 42 / 32 files 592 tests |
+| G8 STRUCTURE AND THE OPEN PR GATE | done | both residues empty, markers 0 vs 12 control, `.remedy-wt` 0 files, `gh pr list` `[]` |
+
+## Staleness sweep (constraint 11)
+
+Every WHY comment in each edited file was re-read. The five sites SPEC S1 names
+were repaired in C4. What else was found, REPORTED AND LEFT ALONE:
+
+1. `apps/ui/src/api/diffViewModel.ts`, the `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS`
+   comment: "Every other site — the function below, **the component that will
+   consume it**, and the vitest suite — names this constant". Same future tense
+   as S1's site 5, one constant further down, and not in S1's list of five. The
+   component now consumes the threshold indirectly through
+   `diffRowWindowForViewport`; it still never names the constant, so the clause
+   is arguable rather than plainly false. Left byte-identical.
+2. `apps/ui/src/api/diffViewModel.ts`, the `computeDiffRowWindow` header:
+   "the caller does the one division it owns (scroll offset by row height) …
+   **That division is the only untestable part of virtual scrolling**". The
+   first half is still exactly true — `diffRowWindowForViewport` is that caller
+   and does that division. The second half stopped being true at C5: the
+   division moved into this module and vitest now executes it, so the only
+   untestable part left is the DOM read of `scrollTop` and `clientHeight`.
+   Left byte-identical.
+3. NOT a file this round edits, but falsified by this round's own C3:
+   `tests/ui_contracts/test_diff_view_model.py`, module docstring, "the same
+   decision records that a mutation red-proof of TypeScript is not orderable in
+   this repository — `apps/ui/node_modules` is gitignored, so it is absent from
+   the disposable worktree". DECISION F037 D10 (landed at `f2b96d03`) measures
+   the opposite, and G6 of this round took four TypeScript red-proofs through
+   that route. Left untouched; a future round owns it.
+4. A note rather than a stale claim: `test_diff_view_render.py`'s docstring says
+   "Every assertion runs over COMMENT-STRIPPED source". C7's
+   `declared_row_height_px` reads the model module RAW, anchored on
+   `^export const DIFF_VIRTUAL_ROW_HEIGHT_PX = (\d+);`, which no JSDoc line in
+   this repository's style can satisfy; the CSS side goes through
+   `strip_css_comments`. Red-proof (e) shows the test discriminates.
 
 ## Next
 
-THIS ROUND HAS NO GATE ENTRY ON DISK. `.agent/live_review.md` carries no
-`Gate: F037 R20 —` paragraph, because the reviewer writes it and the reviewer is
-the NEXT session. Do not read this handback as a verdict; it is a worker report.
-
-The next session's first action, in this order:
-
-1. Re-read `.agent/STOP` from disk — Phase 1 rule 1 of
-   `docs/agents/self_drive_protocol.md`, BEFORE rule 2. It was ABSENT at both
-   readings this round.
-2. The Open PR Gate — `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
-   It was `[]` at C6.
-3. Review THIS round at its C6 commit `b2658466`, over the range
-   `fe3f1179..b2658466`, re-running the verification independently, and book the
-   verdict — plus deviations 1 and 2, which are reviewer-block defects rather than
-   worker findings — in the FIRST substantive commit of round 21, per operator
-   amendment amend0827-process-diet rule 1.
-
-Then round 21's own work: wire the window into `DiffView` with the perf fixture
-Acceptance requires, per `.agent/plan.md`'s Next Steps.
+Review this round: `git diff 6d13fae4..HEAD`, re-run G1 through G8. Before
+authoring the next block, re-read `.agent/STOP` from disk (Phase 1 rule 1) and
+then run the Open PR Gate (rule 2). The next work order is the lazy language
+bundles — unknown languages rendering plain with no bundle fetch — and the
+10k-line perf fixture measured END TO END with its numbers recorded; S3 of this
+round bounds the window's row count but times nothing.
