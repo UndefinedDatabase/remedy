@@ -9667,3 +9667,117 @@ REVERSE by deleting this decision and replacing the ratio assertion with an
 absolute ceiling under the quadratic figure named above, accepting that the bound
 then tracks the machine. The recorded numbers are unaffected either way, because
 they are a measurement and not a bound.
+
+## DECISION F256 D5 (2026-08-28, F256 R7) — the client half of the 10k budget is guarded by the EXACT bounded-window property, not by a duration, and the numbers are recorded beside it
+
+CONTEXT. DECISION F256 D4 ruled the SERVER half of F037's Acceptance budget and
+guarded it with a scale ratio taken on one machine in one run. The CLIENT half —
+`readDiffEnvelope`, `buildDiffRowModels` and `diffRowWindowForViewport` in
+`apps/ui/src/api/diffViewModel.ts` — is what turns that envelope into the rows a
+renderer draws, and it has never been measured at the Acceptance size.
+
+WHAT THE REVIEWER MEASURED AT `dff36f33`, over an envelope of one file and one
+hunk, with the collapsed set EMPTY, as the median of seven builds: 0.469 ms at
+1,000 body lines producing 1,002 rows, and 1.688 ms at 10,000 body lines producing
+10,002 rows. The spread is the point: 0.122 ms to 0.918 ms at the small size and
+0.943 ms to 3.043 ms at the large one, a factor of three or more between the
+fastest and slowest sample in the same run, because a millisecond of JavaScript is
+mostly the JIT deciding whether to compile. The measured ratio was 3.60, nowhere
+near the algorithmic 10, for the same reason.
+
+CHOSEN. The client half records its durations and asserts on something else
+entirely: that `diffRowWindowForViewport` reports `virtualized` true at the
+Acceptance row count and that its `rowsInWindow` is IDENTICAL at ten times that
+row count. Measured at `dff36f33`, 10,002 rows draw 48. That number is decided by
+`DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` and `DIFF_VIRTUAL_OVERSCAN_ROWS` and not by
+the document, so it is the same integer on every machine, in every run, forever —
+and it is the property that actually makes a 10,000-line diff viable, because what
+would make the viewer unusable is drawing ten thousand rows, not spending two
+milliseconds building a list. An exact invariant is a better guard than a noisy
+duration, and here one is available.
+
+THE COLLAPSE TRAP IS RECORDED BECAUSE IT MAKES THE OBVIOUS BENCHMARK VACUOUS.
+`defaultCollapsedHunkIds` returns a set of size 1 for a single hunk of 10,000
+lines and ALSO for one of 1,000, and a collapsed hunk emits no line rows at all,
+so the natural spelling — build the default collapsed set, then build the rows —
+returns TWO rows however large the fixture is, and times nothing. The reviewer hit
+this on the first probe. Every client measurement therefore passes an EMPTY
+collapsed set, and a test pins the collapse fact itself so that the next reader
+meets it as an assertion rather than as a surprise. It is also a real product
+fact worth recording: the viewer's FIRST PAINT of a 10,000-line diff is two rows,
+and the ten thousand arrive only when the reader expands the hunk.
+
+ALTERNATIVES CONSIDERED. (a) A ratio guard mirroring D4. Rejected: at a
+millisecond, with a threefold spread inside one run, the measured ratio would
+sometimes be 3 and sometimes 12, so the assertion would report the JIT rather than
+the code. (b) An absolute millisecond ceiling. Rejected for the same noise, and
+because it would be the flakiest assertion in a suite of 628 that currently
+finishes in under a second. (c) Measure nothing on the client and rely on the
+server figure. Rejected because Acceptance says "end to end", and the row model is
+the half a reader actually looks at.
+
+CONSEQUENCE. What is ASSERTED on the client is exact and machine-independent; what
+is RECORDED is the real duration, in a comment and in the Built State of
+`docs/roadmap/features/T5_F256.md`, dated and attributed to a machine class. A
+reader who wants to know how fast the client model is reads the numbers; a runner
+that is merely slow, or merely cold, does not turn the suite red.
+
+REVERSE by deleting this decision and replacing the bounded-window assertions with
+a duration bound, accepting the flakiness the paragraphs above measure. The
+recorded numbers are unaffected either way, because they are a measurement and not
+a bound.
+
+## DECISION F256 D6 (2026-08-28, F256 R7) — a vitest red-proof runs the WORKTREE's mutated sources against the PRIMARY checkout's node_modules, because vitest cannot run inside a worktree
+
+CONTEXT. Guardrail G5 of docs/agents/self_drive_protocol.md requires destructive
+verification — mutation and red-proof checks — to run only inside a disposable
+`git worktree`, never in the primary checkout, so that `git status --porcelain` is
+empty at every verdict. Every red-proof in this feature so far has been a pytest
+run, which needs nothing but the repository. A vitest red-proof does not have that
+property, and F256 R7 is the first round in this feature whose new test is a
+vitest test.
+
+THE OBSTACLE, measured by the reviewer at `dff36f33`. A `git worktree` contains no
+`node_modules`, symlinking one in is denied in this environment, and installing
+one inside a throwaway worktree is neither fast nor guaranteed to have a network.
+Running `npx vitest run` from inside a worktree's `apps/ui` fails at startup with
+`Cannot find package 'vitest'`, because the only `node_modules` above it is the
+repository root's, which does not carry vitest. So the literal reading of G5 makes
+a vitest red-proof impossible, and the tempting repair — mutate the primary
+checkout and revert afterwards — is exactly what G5 exists to forbid.
+
+CHOSEN, and it satisfies G5 rather than excusing it. The mutation is applied to
+the WORKTREE's copy of the source, and vitest is invoked with its working
+directory set to the PRIMARY `apps/ui`, so module resolution finds the primary's
+`node_modules`, while the FILES under test are named by absolute path inside the
+worktree. Concretely: a scratch config under `.remedy-wt/` exports a plain object —
+it must NOT `import` from `vitest/config`, because a config outside the package
+cannot resolve that specifier — setting `root` to the primary `apps/ui`, `cacheDir`
+to a path under `.remedy-wt/`, and `test.include` to the absolute path of the
+worktree's test file. The primary checkout's sources are never written to.
+
+THE ROUTE WAS PROVED, NOT ASSUMED, and the proof is the part worth keeping. Simply
+observing that the suite runs would not show WHICH copy of the source it ran: the
+reviewer first mutated the worktree's `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` and saw
+90 tests still pass, which is consistent both with the route being a lie and with
+those particular tests deriving their expectation from the constant they import.
+The question was settled by gutting `buildDiffRowModels` in the WORKTREE copy so
+that it returns an empty array: 8 of the 90 tests went red, and reverting restored
+all 90. The worktree's source is therefore genuinely the one under test.
+
+`cacheDir` IS LOAD-BEARING AND NOT TIDINESS. Without it, running vitest with the
+primary as root writes an untracked `.vite/` directory into the repository root,
+which is not gitignored, so the red-proof would leave the primary checkout DIRTY —
+the precise condition G5 exists to prevent. With `cacheDir` pointed inside the
+gitignored `.remedy-wt/`, the reviewer measured `git status --porcelain` empty in
+the primary after a full run.
+
+CONSEQUENCE. A vitest test in this repository can now be red-proved to the same
+standard as a pytest one, and G5 is met literally rather than waived. The residual
+limit is stated plainly: the run borrows the primary's INSTALLED PACKAGES, so this
+route proves things about mutated SOURCE and never about a change to
+`package.json` or to a dependency version, which it cannot see.
+
+REVERSE by deleting this decision; a later session that finds `node_modules`
+reachable from inside a worktree should prefer the plain route and delete the
+scratch config with it.
