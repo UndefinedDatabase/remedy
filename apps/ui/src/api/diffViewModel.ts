@@ -498,3 +498,112 @@ export function splitLineIntoIntralineSegments(line: DiffLine): DiffLineSegment[
   }
   return segments;
 }
+
+/** The ROW count beyond which the viewer virtualizes — draws a window of rows
+ *  instead of the whole list. WHY THIS NUMBER: the Design section of
+ *  `docs/roadmap/features/T5_F037.md` names "virtual scrolling >2k lines", and
+ *  this constant is that sentence made executable. It counts ROWS and not diff
+ *  lines, which is the more useful of the two readings here: a collapsed hunk
+ *  contributes ONE head row in place of the hundreds of lines it hides, and it
+ *  is rows in the document that cost a browser anything.
+ *
+ *  Declared once, here, exactly as `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` above
+ *  is. Every other site — the function below, the component that will consume
+ *  it, and the vitest suite — names this constant rather than repeating the
+ *  digits, which is what keeps the rule and its own tests from drifting apart. */
+export const DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS = 2000;
+
+/** WHICH rows a virtualized viewer draws, and how many lie on either side.
+ *
+ *  `startIndex` is INCLUSIVE and `endIndex` EXCLUSIVE — the half-open form
+ *  `Array.prototype.slice` already takes — so a caller draws its window with
+ *  `rows.slice(startIndex, endIndex)` and does no arithmetic of its own.
+ *  `rowsBefore` and `rowsAfter` are what the two spacer elements of a
+ *  virtualized list are sized from, and `virtualized` is false when the list is
+ *  short enough to draw whole, so a caller can skip the spacers entirely. */
+export interface DiffRowWindow {
+  virtualized: boolean;
+  startIndex: number;
+  endIndex: number;
+  rowsBefore: number;
+  rowsInWindow: number;
+  rowsAfter: number;
+}
+
+/** A whole count of at least zero: the single reading this module gives any
+ *  number a viewport hands it. NOTHING UPSTREAM CHECKS THESE VALUES — they come
+ *  from a scroll offset divided by an element height — so a NaN, an infinity, a
+ *  fraction or a negative is resolved HERE rather than becoming a slice bound
+ *  that quietly returns the wrong rows. A non-finite number becomes 0 because
+ *  it names no position in any list, and 0 is the one position every list has. */
+function wholeRowCount(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  const whole = Math.trunc(value);
+  return whole > 0 ? whole : 0;
+}
+
+/** The window a virtualized diff viewer draws, from the row COUNT and the
+ *  viewport alone. TOTAL: no input makes this throw, and every answer satisfies
+ *  the invariant below.
+ *
+ *  IT DERIVES FROM COUNTS, NEVER FROM PIXELS. This module is pure data in, pure
+ *  data out and imports nothing, so a measurement of the DOM cannot reach it —
+ *  the caller does the one division it owns (scroll offset by row height) and
+ *  hands the result here as a row index. That division is the only untestable
+ *  part of virtual scrolling, and keeping it out of this function is what puts
+ *  the rest in the layer `apps/ui/vitest.config.ts` reaches (DECISION F031 D5).
+ *
+ *  THE RULES:
+ *  * at or below `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` the list is NOT
+ *    virtualized — the window is every row and both sides are empty, so a small
+ *    diff pays none of virtualization's cost;
+ *  * above it, the window is the visible range widened by `overscanRows` at
+ *    BOTH ends and clamped to the list, because a row scrolled into view before
+ *    it is drawn is a blank stripe the operator sees;
+ *  * a visible count of zero or less yields an EMPTY window wherever the
+ *    viewport sits — there is no visible range for the overscan to widen, and
+ *    inventing rows around nothing would draw a viewport that does not exist;
+ *  * an index past the end is CLAMPED to the end rather than refused, which
+ *    reads as "you are past the last row" and is the honest answer to a scroll
+ *    position the list has since outgrown.
+ *
+ *  THE INVARIANT A CALLER MAY RELY ON, and which the vitest suite pins across a
+ *  range of inputs: `rowsBefore + rowsInWindow + rowsAfter` equals the row count
+ *  EXACTLY, and `startIndex` is never past `endIndex`. Both spacers and the
+ *  drawn rows therefore always account for the whole document, whatever the
+ *  viewport claimed. */
+export function computeDiffRowWindow(
+  rowCount: number,
+  firstVisibleRowIndex: number,
+  visibleRowCount: number,
+  overscanRows = 0,
+): DiffRowWindow {
+  const totalRows = wholeRowCount(rowCount);
+  if (totalRows <= DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS) {
+    return {
+      virtualized: false,
+      startIndex: 0,
+      endIndex: totalRows,
+      rowsBefore: 0,
+      rowsInWindow: totalRows,
+      rowsAfter: 0,
+    };
+  }
+  const visible = wholeRowCount(visibleRowCount);
+  const overscan = wholeRowCount(overscanRows);
+  const first = Math.min(wholeRowCount(firstVisibleRowIndex), totalRows);
+  const startIndex = visible === 0 ? first : Math.max(0, first - overscan);
+  const endIndex = visible === 0
+    ? startIndex
+    : Math.min(totalRows, first + visible + overscan);
+  return {
+    virtualized: true,
+    startIndex,
+    endIndex,
+    rowsBefore: startIndex,
+    rowsInWindow: endIndex - startIndex,
+    rowsAfter: totalRows - endIndex,
+  };
+}

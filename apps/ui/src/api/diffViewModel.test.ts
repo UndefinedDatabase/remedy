@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   DIFF_HUNK_COLLAPSE_THRESHOLD_LINES,
+  DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS,
   buildDiffFileSummaries,
   buildDiffRowModels,
+  computeDiffRowWindow,
   defaultCollapsedHunkIds,
   readDiffEnvelope,
   splitLineIntoIntralineSegments,
@@ -13,6 +15,7 @@ import type {
   DiffIntralineSpan,
   DiffLine,
   DiffLineSegment,
+  DiffRowWindow,
 } from "./diffViewModel";
 
 /** A hunk in the SNAKE_CASE form the endpoint really sends, carrying `count`
@@ -490,5 +493,202 @@ describe("splitLineIntoIntralineSegments", () => {
       const segments = splitLineIntoIntralineSegments(lineWith(testCase.content, testCase.spans));
       expect(segments.filter((segment) => segment.text === ""), testCase.what).toEqual([]);
     }
+  });
+});
+
+/** A list one row longer than the threshold: the SMALLEST list that virtualizes,
+ *  so the boundary is exercised from the virtualized side rather than from far
+ *  above it. Every count here is derived from the constant rather than written
+ *  out, which is the same discipline the collapse threshold follows. */
+const VIRTUALIZED_ROWS = DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS + 1;
+
+/** The invariant of `DiffRowWindow` as one expression, so the sum test reads as
+ *  the sentence the module's comment promises rather than as arithmetic. */
+function windowSum(window: DiffRowWindow): number {
+  return window.rowsBefore + window.rowsInWindow + window.rowsAfter;
+}
+
+/** Row counts on both sides of the threshold, including the boundary itself and
+ *  the degenerate empty list. */
+const WINDOW_ROW_COUNTS = [
+  0,
+  1,
+  17,
+  DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS,
+  VIRTUALIZED_ROWS,
+  DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS * 5,
+];
+
+/** `[firstVisibleRowIndex, visibleRowCount, overscanRows]`, well-formed and
+ *  hostile together: the sum invariant is worth pinning precisely because it
+ *  must survive the inputs nothing upstream validates. */
+const WINDOW_VIEWPORTS: Array<[number, number, number]> = [
+  [0, 40, 0],
+  [0, 40, 10],
+  [500, 40, 10],
+  [-5, 40, 10],
+  [Number.NaN, 40, 10],
+  [Number.POSITIVE_INFINITY, 40, 10],
+  [9999999, 40, 10],
+  [500, 0, 10],
+  [500, -3, 10],
+  [500, 40, -7],
+  [12.9, 40.7, 3.2],
+];
+
+describe("computeDiffRowWindow", () => {
+  it("does not virtualize a list AT the threshold, and draws every row", () => {
+    expect(computeDiffRowWindow(DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS, 500, 40, 10)).toEqual({
+      virtualized: false,
+      startIndex: 0,
+      endIndex: DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS,
+      rowsBefore: 0,
+      rowsInWindow: DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS,
+      rowsAfter: 0,
+    });
+  });
+
+  it("does not virtualize a list below the threshold", () => {
+    expect(computeDiffRowWindow(17, 5, 4, 2)).toEqual({
+      virtualized: false,
+      startIndex: 0,
+      endIndex: 17,
+      rowsBefore: 0,
+      rowsInWindow: 17,
+      rowsAfter: 0,
+    });
+  });
+
+  it("answers the empty list with an empty, unvirtualized window", () => {
+    expect(computeDiffRowWindow(0, 0, 40, 10)).toEqual({
+      virtualized: false,
+      startIndex: 0,
+      endIndex: 0,
+      rowsBefore: 0,
+      rowsInWindow: 0,
+      rowsAfter: 0,
+    });
+  });
+
+  it("virtualizes one row above the threshold", () => {
+    expect(computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 40, 0).virtualized).toBe(true);
+  });
+
+  it("widens the visible range by the overscan at BOTH ends", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 50, 10);
+    expect(window.startIndex).toBe(490);
+    expect(window.endIndex).toBe(560);
+    expect(window.rowsInWindow).toBe(70);
+  });
+
+  it("clamps the widened window to the start of the list", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, 5, 50, 10);
+    expect(window.startIndex).toBe(0);
+    expect(window.rowsBefore).toBe(0);
+  });
+
+  it("clamps the widened window to the end of the list", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, VIRTUALIZED_ROWS - 5, 50, 10);
+    expect(window.endIndex).toBe(VIRTUALIZED_ROWS);
+    expect(window.rowsAfter).toBe(0);
+  });
+
+  it("resolves a NEGATIVE first visible index to the top of the list", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, -5, 40, 0);
+    expect(window.startIndex).toBe(0);
+    expect(window.endIndex).toBe(40);
+  });
+
+  it("resolves a NON-FINITE first visible index to the top of the list", () => {
+    for (const hostile of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const window = computeDiffRowWindow(VIRTUALIZED_ROWS, hostile, 40, 0);
+      expect(window.startIndex, `index ${hostile}`).toBe(0);
+      expect(window.endIndex, `index ${hostile}`).toBe(40);
+    }
+  });
+
+  it("answers a NON-POSITIVE visible count with an empty window", () => {
+    for (const hostile of [0, -5]) {
+      const window = computeDiffRowWindow(VIRTUALIZED_ROWS, 500, hostile, 10);
+      expect(window.rowsInWindow, `visible ${hostile}`).toBe(0);
+      expect(window.startIndex, `visible ${hostile}`).toBe(window.endIndex);
+    }
+  });
+
+  it("resolves a NEGATIVE overscan to no overscan at all", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 50, -7);
+    expect(window.startIndex).toBe(500);
+    expect(window.endIndex).toBe(550);
+  });
+
+  it("clamps a first visible index PAST THE END to the end of the list", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, VIRTUALIZED_ROWS + 9999, 40, 0);
+    expect(window.startIndex).toBe(VIRTUALIZED_ROWS);
+    expect(window.endIndex).toBe(VIRTUALIZED_ROWS);
+    expect(window.rowsBefore).toBe(VIRTUALIZED_ROWS);
+    expect(window.rowsAfter).toBe(0);
+  });
+
+  it("resolves a NON-FINITE or NEGATIVE row count to the empty list", () => {
+    for (const hostile of [Number.NaN, Number.POSITIVE_INFINITY, -12]) {
+      const window = computeDiffRowWindow(hostile, 500, 40, 10);
+      expect(window, `rowCount ${hostile}`).toEqual({
+        virtualized: false,
+        startIndex: 0,
+        endIndex: 0,
+        rowsBefore: 0,
+        rowsInWindow: 0,
+        rowsAfter: 0,
+      });
+    }
+  });
+
+  it("truncates fractional counts rather than carrying them into an index", () => {
+    const window = computeDiffRowWindow(VIRTUALIZED_ROWS, 12.9, 40.7, 3.2);
+    expect(window.startIndex).toBe(9);
+    expect(window.endIndex).toBe(55);
+  });
+
+  it("keeps the three counts summing to the row count across every input", () => {
+    for (const rowCount of WINDOW_ROW_COUNTS) {
+      for (const [first, visible, overscan] of WINDOW_VIEWPORTS) {
+        const what = `rows ${rowCount}, viewport ${first}/${visible}/${overscan}`;
+        const window = computeDiffRowWindow(rowCount, first, visible, overscan);
+        expect(windowSum(window), what).toBe(rowCount);
+      }
+    }
+  });
+
+  it("never puts the start past the end, and never leaves the list", () => {
+    for (const rowCount of WINDOW_ROW_COUNTS) {
+      for (const [first, visible, overscan] of WINDOW_VIEWPORTS) {
+        const what = `rows ${rowCount}, viewport ${first}/${visible}/${overscan}`;
+        const window = computeDiffRowWindow(rowCount, first, visible, overscan);
+        expect(window.startIndex, what).toBeLessThanOrEqual(window.endIndex);
+        expect(window.startIndex, what).toBeGreaterThanOrEqual(0);
+        expect(window.endIndex, what).toBeLessThanOrEqual(rowCount);
+      }
+    }
+  });
+
+  it("virtualizes on the ROW COUNT alone and on nothing about the viewport", () => {
+    for (const [first, visible, overscan] of WINDOW_VIEWPORTS) {
+      const what = `viewport ${first}/${visible}/${overscan}`;
+      expect(
+        computeDiffRowWindow(DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS, first, visible, overscan)
+          .virtualized,
+        what,
+      ).toBe(false);
+      expect(
+        computeDiffRowWindow(VIRTUALIZED_ROWS, first, visible, overscan).virtualized,
+        what,
+      ).toBe(true);
+    }
+  });
+
+  it("treats the overscan as optional and defaults it to none", () => {
+    expect(computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 50)).toEqual(
+      computeDiffRowWindow(VIRTUALIZED_ROWS, 500, 50, 0),
+    );
   });
 });
