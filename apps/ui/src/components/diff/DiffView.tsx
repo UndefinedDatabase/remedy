@@ -103,7 +103,14 @@ export function DiffView({ envelope }: DiffViewProps) {
       {rows.map((row) => {
         if (row.kind === "file") {
           return (
-            <div key={row.key}>
+            // TWO DIFFERENT THINGS WEARING THE SAME STRING, DELIBERATELY. `key`
+            // is React's reconciliation handle and never reaches the DOM, so a
+            // sidebar entry has nothing to move to while it is the only one
+            // here; `id` is the DOM anchor `DiffFileSidebar.tsx` looks up. The
+            // string is the model's — `buildDiffFileSummaries` puts the SAME
+            // value in each summary's `rowKey` — which is what lets the two
+            // halves agree without either of them recomputing it.
+            <div key={row.key} id={row.key}>
               <strong>{row.file.path}</strong>
               <span>{row.file.status}</span>
               <span>{`+${row.file.stats.added}`}</span>

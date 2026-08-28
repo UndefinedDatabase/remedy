@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
 import { loadDiffEnvelope } from "../../api/remedyApi";
+import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
 import { TopMetricsBar } from "../metrics/TopMetricsBar";
@@ -125,7 +126,16 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
           {diffEnvelope === null ? (
             <p>{DIFF_PENDING_TEXT}</p>
           ) : diffEnvelope.available ? (
-            <DiffView envelope={diffEnvelope} />
+            // THE SIDEBAR AND THE BODY APPEAR AND DISAPPEAR TOGETHER, under this
+            // one `available` condition, because a file list beside a panel that
+            // is saying "no diff" would offer rows to jump to that are not on the
+            // screen. They are siblings rather than nested for the same reason
+            // the panel wears no class: the layout that puts one beside the other
+            // is the ruling this round defers.
+            <>
+              <DiffFileSidebar envelope={diffEnvelope} />
+              <DiffView envelope={diffEnvelope} />
+            </>
           ) : (
             <p>{diffEnvelope.reason === null ? DIFF_UNAVAILABLE_TEXT : `${DIFF_UNAVAILABLE_TEXT} ${diffEnvelope.reason}`}</p>
           )}
