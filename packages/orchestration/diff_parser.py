@@ -114,6 +114,20 @@ DIFF_INTRALINE_MIN_RATIO = 0.3
 #: ``packages/orchestration/diff_view_source.py``, which is where the file is read.
 DIFF_VIEW_MAX_BODY_LINES = 20_000
 
+#: Ceiling on the FILE ENTRIES ``parse_unified_diff_to_view`` carries; above it the file
+#: list is cut to this length and ``truncated`` is set. DECISION F037 D6 fixes the value
+#: at five times the 400-file corpus shape ``MANY_FILE_DIFF_FILE_COUNT`` names in
+#: ``tests/orchestration/test_diff_parser.py``, so that fixture still renders in full.
+#: WHY a SECOND ceiling exists (finding ``R-0722``): ``DIFF_VIEW_MAX_BODY_LINES`` counts
+#: BODY LINES, and a file can carry none — a mode change, a binary marker, a pure rename
+#: each add a file entry and append nothing to that counter — so a diff made only of such
+#: files reached no bound at all however large it grew.
+#: DELIBERATE ABSENCE — these two ceilings bound the OUTPUT this module BUILDS, and
+#: neither bounds what is READ. ``packages/orchestration/diff_view_source.py`` still
+#: reads the artifact WHOLE before this function is called, and that is where the bound
+#: on the INPUT belongs.
+DIFF_VIEW_MAX_FILES = 2_000
+
 _NO_NEWLINE_PREFIX = "\\ No newline"
 _DEV_NULL = "/dev/null"
 
@@ -434,7 +448,10 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
     "note", "hunks"}``; a hunk is ``{"id", "header", "old_start", "new_start",
     "lines"}``; a line is ``{"kind", "old_ln", "new_ln", "content", "intraline"}``,
     where ``intraline`` is a possibly empty list of ``[start, length]`` character
-    spans into that line's OWN ``content``.
+    spans into that line's OWN ``content``. Two ceilings bound what is returned —
+    ``DIFF_VIEW_MAX_BODY_LINES`` on the body lines appended across the whole diff and
+    ``DIFF_VIEW_MAX_FILES`` on the file entries — and ``truncated`` is True whenever
+    either of them bites.
 
     Never raises. Empty text, and text that is not a diff at all, both return the
     empty-files shape.
@@ -633,6 +650,17 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
     # R-0716: fold the `workspace.diff` header echo away BEFORE regions become files,
     # so file indices — and therefore hunk ids — are numbered over the real files.
     regions = _collapse_doubled_header_regions(regions)
+
+    # WHY the file ceiling is applied HERE, after the collapse rather than during the
+    # walk: `workspace.diff` carries every file's header pair TWICE (finding `R-0716`),
+    # so a count taken during the walk would bound that shape at half the files a reader
+    # sees. The collapsed list is the list that becomes `files`, so it is the list the
+    # ceiling belongs to. WHY the comparison is `>` and not `>=`: exactly the ceiling
+    # parses in full and is NOT marked truncated, which is the same inclusive boundary
+    # `DIFF_VIEW_MAX_BODY_LINES` already has.
+    if len(regions) > DIFF_VIEW_MAX_FILES:
+        truncated = True
+        regions = regions[:DIFF_VIEW_MAX_FILES]
 
     for file_index, region in enumerate(regions):
         path, old_path = region.resolve_path()

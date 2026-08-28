@@ -9066,3 +9066,83 @@ ceiling with an error — rejected for the reason above.
 in `parse_unified_diff_to_view`, and delete the tests F037 R12 added in the final
 section of `tests/orchestration/test_diff_parser.py`. Nothing else depends on the
 constant; the `truncated` field returns to relaying the upstream sentinel alone.
+
+## DECISION F037 D6 — the parsed diff is bounded in BOTH dimensions, and a recorded payload budget is what notices a ceiling being widened
+
+**Date:** 2026-08-28 · **Round:** F037 R13 · **Finding:** `R-0722`
+
+**The choice.** `packages/orchestration/diff_parser.py` gains a second module
+constant `DIFF_VIEW_MAX_FILES = 2_000`. Where the collapsed region list becomes
+the view's `files`, a list longer than that ceiling is cut to it and the
+contract's `truncated` flag is set. A diff of exactly the ceiling parses in full
+and is not marked truncated, which is the same inclusive boundary
+`DIFF_VIEW_MAX_BODY_LINES` already has. `tests/orchestration/test_diff_parser.py`
+gains a recorded payload budget, `DIFF_VIEW_MAX_PAYLOAD_BYTES = 4_000_000`,
+asserted over the serialized worst case of both dimensions.
+
+**Why a second ceiling exists at all.** D5's ceiling counts BODY LINES, and a
+file can carry none: a mode change, a binary marker and a pure rename each add a
+file entry and append nothing to that counter. Measured at `327c1333`, 100,000
+mode-change files parse to 100,000 entries and 13.8 MB of JSON with `truncated`
+False, and 100,000 binary-marker files to 20.3 MB, against 2.096 MB for the
+single-file worst case at the body ceiling. D5 bounded the dimension that was
+easy to see and left the other one open.
+
+**Why 2,000 files.** The corpus's many-files shape is 400
+(`MANY_FILE_DIFF_FILE_COUNT`), so five times it leaves the fixture the R11 round
+added rendering in full with room to spare, and the file dimension's worst case
+then measures 1.269 MB of JSON at long paths. A sidebar listing more than two
+thousand files is not a reading surface in any case; beyond it the honest answer
+is the one the contract already has, which is to say in the data that the list
+is a prefix.
+
+**Why the cut is applied AFTER the doubled-header collapse.** `workspace.diff`
+emits every file's header pair twice — that is finding `R-0716`, and
+`_collapse_doubled_header_regions` exists to fold it away. A count taken during
+the walk would therefore bound the job-scope shape at half the files a reader
+sees, which is a bound that depends on which producer wrote the artifact. The
+collapsed list is the list that becomes `files`, so it is the list the ceiling
+belongs to.
+
+**Why a recorded payload budget rather than more assertions about the
+constants.** Every ceiling assertion in the suite is expressed in terms of the
+constant it tests, so the suite follows a constant wherever it is moved: raising
+`DIFF_VIEW_MAX_BODY_LINES` tenfold at `327c1333` left the file green at 37
+passed. A budget over the SERIALIZED bytes is the only assertion in this file
+that is stated in a unit neither ceiling controls, so it is the only one that
+fails when a ceiling is widened. The value is roughly twice the larger of the
+two measured worst cases, which leaves room for path lengths the fixtures do not
+model while still failing an order-of-magnitude change.
+
+**What a truncated view looks like, unchanged from D5.** The last file present
+may carry a partial hunk or none, files after it do not appear, each file's
+`stats` still equal a recount of that file's own parsed lines, and `truncated`
+True is the client's signal that the list is a prefix. A file-dimension
+truncation drops whole file entries from the tail and changes nothing about the
+entries that remain.
+
+**What is still NOT bounded, stated plainly.** The INPUT.
+`packages/orchestration/diff_view_source.py` reads the artifact with
+`read_text`, whole, before the parser is called, so both ceilings bound what is
+BUILT and SERVED and neither bounds what is READ. That is the remaining half of
+`R-0721` and it is the next round's; a diff of one enormous minified line is the
+shape that reaches neither ceiling and still costs the read.
+
+**Alternatives rejected.** (1) Stop the walk when the region count crosses the
+ceiling — rejected because the count during the walk is the UNCOLLAPSED one, so
+the effective limit would differ between the two artifacts F037 serves. (2)
+Fold the file ceiling into the body counter by charging each file header a
+notional number of lines — rejected as a bound nobody can read off the contract.
+(3) Bound the serialized bytes directly in the parser — rejected because the
+parser builds a structure and does not serialize it; the byte figure belongs to
+the layer that does, and as a TEST budget it pins the consequence without
+putting a serialization step in a pure function. (4) Leave the file dimension
+unbounded and rely on the read bound coming next — rejected because the input
+bound cannot express a file count and 8 MB of headers is still 100,000 entries.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_FILES` and the three-line cut that
+reads it in `parse_unified_diff_to_view`, delete
+`DIFF_VIEW_MAX_PAYLOAD_BYTES` and the tests F037 R13 added, and restore the
+fixture of the two tests S5 re-based to the 10,400-file shape they carried at
+`327c1333`. DECISION F037 D5 and its ceiling are untouched by this decision and
+survive its reversal.
