@@ -3,8 +3,12 @@
 `apps/ui/src/api/diffViewModel.ts` is the pure half of F037's rendering core, and
 `apps/ui/src/api/diffViewModel.test.ts` proves its BEHAVIOUR under vitest, run here through
 `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`.
-This guard proves the structural facts vitest cannot see ABOUT ITSELF, and there is no
-overlap between the two: a green vitest run says nothing about any of the classes below.
+This guard proves the structural facts vitest cannot see ABOUT ITSELF: for every bullet below,
+a green vitest run says nothing at all. `TestLanguageLookupIsSafeForArbitraryKeys` is the ONE
+deliberate exception, added at F037 R23 with finding `R-0731`'s fix — it states the SHAPE that
+a behaviour vitest does execute rests on, because either half of that shape alone keeps the
+suite green while leaving the defect one refactor away. Its own docstring says so, and says
+which of the two guards is the stronger.
 
 * Vitest passes just as happily on a module that pulls in React or a `.css` module — it would
   simply stop being loadable in the node environment `apps/ui/vitest.config.ts` pins, and the
@@ -50,6 +54,13 @@ VITEST_CONFIG_AUTHORITY = (
 )
 THRESHOLD_NAME = "DIFF_HUNK_COLLAPSE_THRESHOLD_LINES"
 LANGUAGES_NAME = "DIFF_SUPPORTED_LANGUAGES"
+LOOKUP_NAME = "diffLanguageForPath"
+
+# The two halves of finding `R-0731`'s fix, as the spellings the module really uses. Named here
+# so the guard below quotes one string rather than three, and so a refactor that changes the
+# spelling has to change it deliberately, in a constant, rather than by drifting past a regex.
+NULL_PROTOTYPE_SPELLING = "Object.create(null)"
+OWN_PROPERTY_SPELLING = "Object.prototype.hasOwnProperty.call"
 
 # The syntax highlighters a `.ts` module would plausibly reach for. Named rather
 # than pattern-matched because the point is a SHORT list a reader can audit; the
@@ -131,14 +142,14 @@ def supported_languages_declaration(source: str) -> str:
     what is declared.
     """
     match = re.search(
-        rf"^export const {LANGUAGES_NAME}\b.*?^\);",
+        rf"^export const {LANGUAGES_NAME}\b.*?^\}}?\);",
         source,
         re.MULTILINE | re.DOTALL,
     )
     assert match is not None, (
-        f"{LANGUAGES_NAME} is not declared in {MODULE.name} as a single statement ending in a "
-        f"`);` of its own; the supported set of docs/roadmap/features/T5_F037.md must be "
-        f"declared exactly once, by name, so this guard and the vitest suite read the same "
+        f"{LANGUAGES_NAME} is not declared in {MODULE.name} as a single statement closing on a "
+        f"`);` or `}});` of its own; the supported set of docs/roadmap/features/T5_F037.md must "
+        f"be declared exactly once, by name, so this guard and the vitest suite read the same "
         f"mapping"
     )
     return match.group(0)
@@ -162,6 +173,27 @@ def supported_languages_block(source: str) -> str:
         f"here for a guard or a reader to read"
     )
     return declaration[opened + 1:closed]
+
+
+def diff_language_for_path_body(source: str) -> str:
+    """The body of `diffLanguageForPath`, from its `export function` to its closing brace.
+
+    THE SCOPER for the absence-check guard, and it has to be a scoper rather than a whole-file
+    scan because the assertion it feeds FORBIDS a token: `undefined` is a perfectly ordinary
+    word elsewhere in this module, so a file-wide ban would either be red for unrelated code or
+    would have to be weakened until it caught nothing.
+    """
+    match = re.search(
+        rf"^export function {LOOKUP_NAME}\b.*?^\}}",
+        source,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert match is not None, (
+        f"{LOOKUP_NAME} is not declared in {MODULE.name} as an exported function whose body "
+        f"closes on a brace of its own; the path-to-language rule of "
+        f"docs/roadmap/features/T5_F037.md is declared exactly once, by name"
+    )
+    return match.group(0)
 
 
 def supported_language_ids(source: str) -> list[str]:
@@ -341,3 +373,94 @@ def test_the_vitest_suite_counts_calls_without_a_mocking_library() -> None:
         f"with a hand-written counter beside it, which is what keeps the zero-call Acceptance "
         f"property readable at the point of use rather than at the point of configuration"
     )
+
+
+class TestLanguageLookupIsSafeForArbitraryKeys:
+    """(g) The STRUCTURAL promise behind finding `R-0731`, stated where a refactor will read it.
+
+    THIS CLASS IS TEXT OVER A `.ts` FILE, AND IT IS THE WEAKER OF THE TWO GUARDS. The stronger
+    one is `apps/ui/src/api/diffViewModel.test.ts`, which EXECUTES the lookup: it asks what
+    `src/x.constructor` really resolves to, and it counts the bundle importer's calls at zero
+    for it. If the two ever disagree, the vitest suite is right and this class is stale.
+
+    It exists anyway, and deliberately overlaps with vitest here — which the bullets at the top
+    of this module say the other classes do not. The two guards state DIFFERENT KINDS of thing.
+    Vitest states the BEHAVIOUR: today, for these inputs, the answer is `null` and no bundle is
+    fetched. This class states the SHAPE that behaviour rests on: the mapping is built with no
+    prototype, and absence is decided by asking whether the mapping OWNS the key rather than by
+    comparing what reading it yielded to `undefined`. Either half alone makes today's behaviour
+    correct, so a refactor that drops one keeps every vitest test green while leaving the defect
+    one edit away from returning. That is precisely the promise a behavioural suite cannot
+    express, and it is why `R-0731`'s fix is belt and braces rather than one change.
+
+    The key is a file extension taken from a diff path, and a diff path comes from a repository
+    this viewer does not control, so the key set is external by construction.
+    """
+
+    def test_the_supported_set_is_built_on_a_null_prototype(self) -> None:
+        raw = MODULE.read_text()
+        source = strip_ts_comments(raw)
+        declaration = supported_languages_declaration(source)
+        assert 0 < len(declaration) < len(source), (
+            f"the {LANGUAGES_NAME} declaration scoper returned {len(declaration)} of "
+            f"{len(source)} characters of {MODULE.name}; a scoper that returns nothing, or the "
+            f"whole module, is not scoping anything and the assertion below would be reading "
+            f"the file rather than the declaration"
+        )
+
+        control = supported_languages_declaration(
+            f"export const {LANGUAGES_NAME}: Readonly<Record<string, string>> = Object.freeze({{\n"
+            f'  ts: "typescript",\n'
+            f"}});\n"
+        )
+        assert NULL_PROTOTYPE_SPELLING not in control, (
+            f"the null-prototype check passes on a planted PLAIN object literal, so its silence "
+            f"over {MODULE.name} proves nothing; the control declaration it read was "
+            f"{control!r}"
+        )
+
+        assert NULL_PROTOTYPE_SPELLING in declaration, (
+            f"the {LANGUAGES_NAME} declaration in {MODULE.name} does not name "
+            f"{NULL_PROTOTYPE_SPELLING!r} in executable code, so the mapping inherits from "
+            f"`Object.prototype` and an extension naming an inherited property — "
+            f"`constructor`, `__proto__` — resolves to a value nobody put in the mapping. That "
+            f"is finding `R-0731`, and it reached the bundle importer for a path Acceptance "
+            f"says renders plain WITHOUT a fetch"
+        )
+
+    def test_the_lookup_decides_absence_by_own_property(self) -> None:
+        raw = MODULE.read_text()
+        source = strip_ts_comments(raw)
+        body = diff_language_for_path_body(source)
+        assert 0 < len(body) < len(source), (
+            f"the {LOOKUP_NAME} body scoper returned {len(body)} of {len(source)} characters of "
+            f"{MODULE.name}; a scoper that returns nothing, or the whole module, is not scoping "
+            f"anything, and an assertion FORBIDDING a token over the whole file would forbid it "
+            f"everywhere rather than in the lookup"
+        )
+
+        control = diff_language_for_path_body(
+            f"export function {LOOKUP_NAME}(path: string): string | null {{\n"
+            f"  const language: string | undefined = {LANGUAGES_NAME}[path];\n"
+            f"  return language === undefined ? null : language;\n"
+            f"}}\n"
+        )
+        assert "undefined" in control and OWN_PROPERTY_SPELLING not in control, (
+            f"the absence-check scan does not discriminate: over a planted body that decides "
+            f"absence by an `undefined` comparison it must find `undefined` and must not find "
+            f"{OWN_PROPERTY_SPELLING!r}; it read {control!r}"
+        )
+
+        assert "undefined" not in body, (
+            f"{LOOKUP_NAME} in {MODULE.name} names `undefined` in executable code; absence in a "
+            f"lookup keyed by an ARBITRARY EXTERNAL STRING is decided by asking whether the "
+            f"mapping OWNS the key, never by comparing what reading it yielded to `undefined` — "
+            f"that comparison answers 'present' for every key the object merely INHERITS, which "
+            f"is finding `R-0731`"
+        )
+        assert OWN_PROPERTY_SPELLING in body, (
+            f"{LOOKUP_NAME} in {MODULE.name} does not name {OWN_PROPERTY_SPELLING!r}; the second "
+            f"half of `R-0731`'s fix is an own-property check, and it is load-bearing even with "
+            f"the null prototype in place, because a refactor that undoes one half must not "
+            f"silently restore the defect through the other"
+        )
