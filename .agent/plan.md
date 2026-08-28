@@ -1,47 +1,43 @@
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495` (the
-merge of PR #217, which closed F032). `.agent/decisions.md` holds F037 D1 to D10.
+merge of PR #217, which closed F032). `.agent/decisions.md` holds F037 D1 to D11.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
 into structured JSON — files, hunks, lines, intraline spans — served as a read
-endpoint, and the client renders it with a file sidebar, hunk collapse, virtual
-scrolling and lazily loaded syntax bundles.
-`docs/roadmap/features/T5_F037.md` holds Goal & Done, the task slicing, the
-binding CSS and the design amendments A1 through A5.
+endpoint, and the client renders it with a file sidebar, hunk collapse and
+virtual scrolling. `docs/roadmap/features/T5_F037.md` holds Goal & Done, the task
+slicing, the binding CSS and the design amendments A1 through A6, the last of
+which records what this feature deliberately no longer ships.
 
 ## Current Step
-R23 fixes `R-0731`, a defect the round that shipped it could not see and its
-whole green suite did not catch: the language mapping is a plain object literal,
-so an extension naming an INHERITED property resolves off `Object.prototype`
-instead of to plain, and `src/x.constructor` really does reach the bundle
-importer that Acceptance says must not be called. The fix closes both halves —
-a null-prototype map AND an own-property read — because either alone is undone
-silently by a later refactor. Then `R-0730`'s remaining three comments are
-repaired, one of them a sentence the reviewer's own R21 spec introduced.
+R24 is the SCOPE REPORT round. F037 has reached session 7 of a seven-session soft
+limit, so operator amendment amend0827-process-diet rule 6 makes a report the
+next obligation rather than more work. This round books the R23 verdict, resolves
+`R-0731`, records DECISION F037 D11 splitting the three unbuilt pieces out of the
+feature, amends the feature file to say so, and writes the report into the
+handback. Nothing under `apps/`, `packages/` or `tests/` is touched.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R22 verdict, two resolutions, one finding | ordered | record first |
-| C3 the `R-0731` fix and its tests | ordered | a measured defect |
-| C4 the structural guard | ordered | after the code it reads |
-| C5 the three comment repairs | ordered | closes `R-0730` |
-| C6 the handback | ordered | |
+| C2 the R23 verdict and one resolution | ordered | record first |
+| C3 DECISION F037 D11 | ordered | the ruling, not a question |
+| C4 the feature-file amendment A6 | ordered | after the decision it cites |
+| C5 the handback carrying the scope report | ordered | |
 
 ## Next Steps
-1. Wire highlighting into `DiffView` through `loadDiffLanguageBundle`.
-2. The 10k-line perf fixture measured END TO END with its numbers recorded,
-   which Acceptance requires and nothing has yet measured.
-3. A ruling on the sidebar's visual treatment, still owed.
+1. The closure sequence for F037 as amended by A6: the integration-gate round,
+   then the evidence-and-zip round, then the STATUS round.
+2. The split-off scope — wiring `loadDiffLanguageBundle` into `DiffView`, the
+   10k-line perf measurement, and the sidebar visual ruling — wants its own
+   STATUS line. That is a PROPOSAL to the operator and is not executed here.
 
 ## Risks
-- Round 23 of a 25-round soft limit, session 6 of 7. THREE named pieces remain
-  and only two rounds are left inside the limit, so the session that reaches
-  round 25 owes a SCOPE REPORT rather than more work — most likely proposing
-  that the highlighting wiring and the perf fixture become their own STATUS
-  line.
-- Nothing here renders a `.tsx` file, so step 1 will be gated by text and
-  `tsc --noEmit` alone, as every `.tsx` round of this feature has been.
+- A6 narrows what F037 ships. Reversing it is one paragraph in each of
+  `.agent/decisions.md` and the feature file, both named in D11.
+- `loadDiffLanguageBundle` has NO production caller at `82d3d584`, measured by
+  the reviewer with `git grep -l`: the lazy-bundle model is complete and unwired,
+  and A6 exists so that gap is stated rather than silent.
