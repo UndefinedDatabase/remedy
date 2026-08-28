@@ -509,9 +509,13 @@ export function splitLineIntoIntralineSegments(line: DiffLine): DiffLineSegment[
  *  is rows in the document that cost a browser anything.
  *
  *  Declared once, here, exactly as `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` above
- *  is. Every other site — the function below, the component that will consume
- *  it, and the vitest suite — names this constant rather than repeating the
- *  digits, which is what keeps the rule and its own tests from drifting apart. */
+ *  is. Its ONE consumer is `computeDiffRowWindow` below; that function and the
+ *  vitest suite name this constant rather than repeating the digits, which is
+ *  what keeps the rule and its own tests from drifting apart. The component
+ *  names it nowhere and never did: `DiffView.tsx` calls
+ *  `diffRowWindowForViewport` and derives no threshold of its own, and
+ *  `tests/ui_contracts/test_diff_view_render.py` forbids it the row-height
+ *  constant for the same reason. */
 export const DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS = 2000;
 
 /** WHICH rows a virtualized viewer draws, and how many lie on either side.
@@ -552,9 +556,12 @@ function wholeRowCount(value: number): number {
  *  IT DERIVES FROM COUNTS, NEVER FROM PIXELS. This module is pure data in, pure
  *  data out and imports nothing, so a measurement of the DOM cannot reach it —
  *  the caller does the one division it owns (scroll offset by row height) and
- *  hands the result here as a row index. That division is the only untestable
- *  part of virtual scrolling, and keeping it out of this function is what puts
- *  the rest in the layer `apps/ui/vitest.config.ts` reaches (DECISION F031 D5).
+ *  hands the result here as a row index. Since F037 R21 that caller is
+ *  `diffRowWindowForViewport` at the foot of this file, so the division is not
+ *  untestable either — vitest executes it there. What remains untestable is the
+ *  DOM READ alone, `scrollTop` and `clientHeight`, and keeping that read out of
+ *  this module is what puts every rule of virtual scrolling in the layer
+ *  `apps/ui/vitest.config.ts` reaches (DECISION F031 D5).
  *
  *  THE RULES:
  *  * at or below `DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS` the list is NOT

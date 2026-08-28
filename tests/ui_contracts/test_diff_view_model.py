@@ -14,11 +14,17 @@ overlap between the two: a green vitest run says nothing about any of the three 
   spellings agree right up to the moment one of them is edited.
 
 DECISION F037 D8 records why this file is Python: `apps/ui/vitest.config.ts` collects
-`src/**/*.test.ts` in a NODE environment, and the same decision records that a mutation
-red-proof of TypeScript is not orderable in this repository — `apps/ui/node_modules` is
-gitignored, so it is absent from the disposable worktree guardrail G5 of
-`docs/agents/self_drive_protocol.md` confines every destructive check to. This guard needs no
-`node_modules`, so it is mutated and red-proved normally.
+`src/**/*.test.ts` in a NODE environment, so vitest cannot be the witness for its own
+configuration — the three facts above are exactly the ones it is blind to.
+
+A TYPESCRIPT MUTATION RED-PROOF *IS* ORDERABLE IN THIS REPOSITORY, and an earlier wording of
+this docstring told every future round that it was not. DECISION F037 D10, landed at F037 R21,
+records the route: spawn vitest FROM the primary checkout, so it resolves its own gitignored
+`apps/ui/node_modules`, and point `--root` at the disposable worktree that guardrail G5 of
+`docs/agents/self_drive_protocol.md` confines every destructive check to, so the tree under
+test is the worktree's. That round took six such red-proofs through it. The absent
+`node_modules` is a routing problem, never a ceiling. This guard needs no `node_modules` at
+all, so it is mutated and red-proved directly.
 
 It reads both files AS TEXT and imports nothing from `apps/`.
 """
