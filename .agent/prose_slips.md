@@ -95,3 +95,16 @@
   BUILDS ON, never carried over from the previous round's block, and where the
   worker makes that commit itself the gate names it by ROLE — "the commit you
   are about to build on" — rather than by a SHA the reviewer guessed.
+
+- 2026-08-28 · F037 R4 · The block's G7 ordered a mutation that was VACUOUS BY
+  CONSTRUCTION: it had `insert` opcodes mark the OLD side, and
+  `difflib.SequenceMatcher.get_opcodes()` emits every `insert` with `i1 == i2`,
+  so the resulting span is always zero-length and the module's own
+  normalisation drops it. No corpus could have turned that mutation red. The
+  worker ran it, reported the green plainly, diagnosed the cause and declined
+  to substitute another mutation, which is the ordered behaviour. Nothing
+  landed wrong on disk. A mutation is checked against the SHAPE OF THE DATA THE
+  MUTATED BRANCH RECEIVES before it is ordered, not only against the branch
+  being reachable — `docs/agents/planner_reviewer_prompt.md` §3 item 5 asks for
+  the probe form where that is not obvious, and this is the case it was written
+  for.
