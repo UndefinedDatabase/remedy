@@ -365,3 +365,210 @@ routes by hand, including `f"/api/jobs/{self.job_id}/task-runs/T001/diff"`.
 `test_the_walk_knows_every_route_the_source_dispatches` is what stops that list
 from going stale, and `test_every_route_the_server_serves_refuses_post_put_and_delete`
 asserts the commands path is the ONLY POST that is not 405.
+
+## 6. THE VALIDATION PRECEDENT
+
+NO COMMAND IN THIS REPOSITORY REQUIRES A REASON ON A NEGATIVE ANSWER TODAY.
+Searched: every `reject`/`reason` pairing under `packages/` and `apps/`; every
+test function name matching `test_.*reason` under `tests/`; the strings "requires
+a reason", "reason required", "mandatory reason", "veto"; `approval_queue.py`,
+`flight_plan.py`, `escalation.py`, `decision_queue.py`, `proposed_tasks.py` and
+`apps/cli/commands/decision.py` read directly.
+
+The feature this repository calls the veto is `F027 — Task veto`, and
+`docs/roadmap/STATUS.md:93` carries it as `- [ ] F027`, i.e. NOT BUILT.
+`docs/roadmap/ROADMAP.md:805` describes it as "Forbid a not-yet-applied node with
+a mandatory reason". So "the veto lesson" names an unbuilt feature's rule, not an
+existing enforcement.
+
+WHAT IS NEGATIVE-ANSWER-ADJACENT AND OPTIONAL, so F033 must not mistake it for
+the precedent:
+
+- `approval_queue.set_approval_state(job, intent_id, state, *, reason=None, ...)`
+  — `reason` is documented "optional free-text note from the user"; the pair
+  `test_reject_with_reason_prints_recorded` / `test_reject_without_reason_prints_none`
+  in `tests/test_patch_intent_approval.py:619` and `:626` pins that BOTH are legal.
+- `proposed_tasks.reject_proposed_task(..., reason: str = "")` writes
+  `evaluation_notes` only `if reason:`; `tests/orchestration/test_proposed_tasks.py:361`.
+- `_dispatch_decision_resolve` in `ui_server.py:3740` accepts exactly `approve`
+  and `reject` for an `fp:`-prefixed id and carries no reason at all.
+
+THE TWO REAL PRECEDENTS FOR "AN EXCEPTIONAL STATE MUST NAME ITS REASON OR IT
+BLOCKS", which is the rule F033 actually wants:
+
+1. `JobFulfillmentContract.check` in `packages/orchestration/job_fulfillment.py:130-136`:
+
+       if self.requires_proof_verified:
+           if record.proof_status == "verified":
+               pass  # OK
+           elif record.proof_status == "accepted" and record.proof_accepted_reason:
+               pass  # explicit accept with reason
+           else:
+               blockers.append(f"proof_not_verified:{record.proof_status}")
+
+   An `accepted` proof with an EMPTY `proof_accepted_reason` blocks. Tested in
+   `tests/orchestration/test_job_fulfillment.py:254`
+   `test_accepted_proof_without_reason_blocks` against its positive twin
+   `test_accepted_proof_with_reason_passes` at `:268`.
+2. The run-manifest snapshot phase requirement: an `unavailable` workspace
+   identity with an empty `problems` list is a hole. Tested in
+   `tests/orchestration/test_run_manifest_snapshot_phase_requirements.py:70`
+   `test_an_unavailable_workspace_identity_without_a_reason_blocks` ("A blank
+   unavailable is a hole"), asserting the problem text contains "gives no
+   reason", against `test_an_unavailable_workspace_identity_with_a_reason_is_accepted`
+   at `:78`.
+3. A weaker third, on the CLI: `apps/cli/commands/decision.py:240-249` refuses a
+   task-decision resolution whose `--reason` is blank AND whose record has no
+   `safe_default`, with "Error: --reason carries the answer for a task decision,
+   and this one has no safe default to fall back on."
+
+## 7. THE SEAM A REJECTION RIDES INTO THE NEXT ROUND'S PROMPT
+
+THERE IS NO MODULE, FUNCTION OR CONSTANT NAMED "steering" OR "volatile injection"
+IN THIS REPOSITORY. `grep -rn "steering"` over `packages/` and `apps/` returns
+exactly ONE line, and it is prose inside a docstring:
+`packages/orchestration/context_compiler.py:1031`, in
+`register_compiled_context_segment`, explaining that `JOB_CONTEXT` "composes after
+the stable system and conventions prefixes a provider cache wants byte-identical,
+and before the volatile task and steering tails." `packages/orchestration/prompt_segments.py:52`
+carries the same idea as "Stable prefixes first so the provider cache can hit
+them, volatile tails last." The `SegmentStabilityRank` ordering is real; a
+"steering" segment is not.
+
+THE SEAM THAT ACTUALLY EXISTS, and the one F033's rejections must ride:
+
+- MODULE `packages/orchestration/repair_context.py`, FUNCTION
+  `build_repair_context(job_id, test_run_event, events) -> dict`. It returns a
+  flat dict with keys `version` (1), `job_id`, `test_run_id`,
+  `related_apply_id`, `status`, `safe_summary`, `failure_kind`, `affected_files`,
+  `estimated_tokens`, `truncated`. Its contract is "suitable for logging as
+  ``repair_context_created`` event metadata — never contains raw stdout/stderr or
+  tracebacks."
+- THE ENRICHMENT SITE is `_attach_diff_repair_hunks` in
+  `packages/orchestration/builder_bridge.py:342`. It is the ONLY place that adds
+  keys to that dict:
+
+      repair_ctx["diff_hunks"] = [ {path, start_line, end_line, text}, ... ]
+      repair_ctx["diff_hunks_omitted"] = [list(entry) for entry in selection.omitted]
+
+  and it sets `repair_ctx["repair_mode"]` to `"diff"` or `"full_file"` plus
+  `full_file_reason` on the fallback arm (`:493-494`). Its docstring warns
+  "`build_repair_context`'s contract is that its dict is safe to log; source
+  [text is not put in the metadata]" — hunk TEXT goes into the CONTEXT but the
+  EVIDENCE metadata carries counts only.
+- THE CARRIER into the prompt is `run_builder_bridge_loop` at
+  `builder_bridge.py:402`, which calls `output = build_fn(repair_ctx)` at `:436`.
+- ONE CONCRETE `build_fn` shows what "flows through it today":
+  `long_run_executor.default_repair_step` at `:1137` builds
+
+      prior_task_summaries=[json.dumps(repair_context or findings, sort_keys=True)]
+
+  inside a `TaskExecutionContext`. So the repair context is serialised WHOLE, as
+  sorted JSON, into `prior_task_summaries`.
+- `long_run_executor.build_cycle_repair_findings` at `:1155` is the other
+  producer: it starts from `build_repair_context` and adds `source`,
+  `cycle_index`, `repair_round`, `failing_test_ids`, `failure_tail` and
+  `changed_files`.
+
+WHAT ALREADY FLOWS THROUGH IT TODAY: the failure kind and exit code, the related
+apply id, the affected file list, the failing test ids, a bounded failure tail,
+the changed files, the repair mode and — since F111 — the margin-expanded source
+hunks and the per-path omission reasons. NOTHING carrying a human's words flows
+through it yet.
+
+## 8. WHERE A TASK'S CHANGE STATE IS RECORDED
+
+THREE RECORDS, at three levels. None of them has a value meaning PARTIAL.
+
+1. THE TASK'S OWN LIFECYCLE. `packages/core/models.py:125` — `Task.status: RunState`.
+   `RunState` (`:38-47`) accepts exactly `pending`, `planned`, `running`,
+   `paused`, `completed`, `failed`, `cancelled`. This is a RUN state, not a
+   change state.
+2. THE PER-CHANGE APPLY STATE, which is the real answer. `ProofChange` in
+   `packages/orchestration/proof_chain.py:69`, field `apply_state`, whose
+   declaring comment at `:79` is the whole vocabulary:
+
+       apply_state: str          # not_applied | applied | reverted
+
+   `proof_status` beside it is drawn from `PROOF_VERIFIED`, `PROOF_FAILED`,
+   `PROOF_INCOMPLETE`, `PROOF_UNVERIFIED`, `PROOF_NOT_APPLICABLE`
+   (`proof_chain.py:34-42`).
+3. THE PER-TASK ROLL-UP the UI reads. `_task_truth_maps(chain)` at
+   `packages/orchestration/ui_server.py:508` groups `chain.changes` by `task_id`
+   and folds:
+
+       apply_states = [getattr(c, "apply_state", "") for c in changes]
+       if "applied" in apply_states:
+           apply_by_task[tid] = "applied"
+       elif "reverted" in apply_states:
+           apply_by_task[tid] = "reverted"
+       else:
+           apply_by_task[tid] = "not_applied"
+
+   The call site at `:1829` adds one more value — `"unknown"` when the proof
+   chain is unavailable — into the dashboard field `apply_status`.
+
+DOES ANY EXISTING VALUE ALREADY MEAN PARTIAL? NO. And the fold above is worse
+than merely silent: `if "applied" in apply_states` is an ANY, so a task whose
+changes are half applied and half not reports `applied` today. That is the exact
+untruth F033's partial state has to replace, and it lives in one function.
+
+The nearest thing to the word in the tree is `DurableApplyRecord.state`
+(`packages/orchestration/repository_snapshot.py:144`), documented
+`"pending" | "applied" | "reverted" | "revert_failed" | "partial_revert"`. Its
+`partial_revert` means a ROLLBACK that could not finish — see
+`_rollback_from_snapshot`'s `rollback_incomplete` in section 4 — and NOT a
+partially approved change. Reusing that token for hunk approval would collide
+with an existing meaning.
+
+## 9. THE THREE SURFACES A PARTIAL STATE MUST RENDER IN
+
+1. THE VIEWER. `apps/ui/src/components/diff/DiffView.tsx`, exporting
+   `DiffViewProps` (`:86`) and `function DiffView({ envelope })` (`:94`), with
+   `apps/ui/src/components/diff/DiffFileSidebar.tsx` exporting
+   `DiffFileSidebarProps` (`:45`) and `DiffFileSidebar` (`:53`), both mounted
+   side by side in `apps/ui/src/components/shell/RemedyShell.tsx:136-137`. The
+   row model they render is `buildDiffRowModels(envelope, collapsed)` in
+   `apps/ui/src/api/diffViewModel.ts:281`, whose row keys are `file:<i>` and
+   `hunk:<hunkId>`; per-hunk state therefore has a per-row seat already.
+   Styling is `apps/ui/src/components/diff/DiffView.module.css`; the envelope
+   reader is `readDiffEnvelope` (`diffViewModel.ts:291`) and the fetch seam is
+   `apps/ui/src/api/remedyApi.ts`, which imports `readDiffEnvelope` at `:3`.
+2. THE NODE GLYPH. `apps/ui/src/components/detail/DetailPopover.tsx`, function
+   `StateIcon({ state })` at `:17`, which maps `done` → `TaskDoneGlyph`,
+   `current` → `TaskCurrentGlyph`, `blocked` → `TaskPlannedGlyph` in red, and
+   everything else → `TaskPlannedGlyph` in `--remedy-ink-soft`. The label table
+   beside it is `STATE_LABELS` at `:6` (`done`, `current`, `planned`, `blocked`,
+   `pending`, `suggested`), and the same file already renders the apply state
+   through `applyStatus(task)` at `:34`, which returns "Applied", "Reverted",
+   "Not applied" or `UNKNOWN` — the function a `partial` value has to reach.
+   The glyphs themselves are `TaskDoneGlyph`, `TaskCurrentGlyph` and
+   `TaskPlannedGlyph` in `apps/ui/src/components/icons/RemedyGlyphs.tsx` (`:44`,
+   `:60`, `:52`); THERE IS NO PARTIAL GLYPH IN THAT FILE. The graph node state
+   vocabulary is narrowed in `apps/ui/src/components/graph/buildForceBrainModel.ts:76`
+   to `done | current | blocked | suggested | planned`, defaulting anything
+   unknown to `planned` — a new state added upstream renders as `planned` unless
+   that line is widened. `apps/ui/src/components/panels/TaskChecklistCard.tsx:7`
+   is the second glyph consumer, with only a done/else branch.
+3. THE REPORT LINE. `_task_lines(sources)` at
+   `packages/orchestration/run_report.py:424`, whose body is exactly:
+
+       f"- `{t.task_id}` — {_text(t.description)} — **{_text(t.status)}**"
+       + (f" — {_link('evidence', t.evidence_ref)}" if t.evidence_ref else "")
+
+   `t` is a `TaskOutcome` (`:227`) of `task_id`, `description`, `status`,
+   `evidence_ref`. Its `status` is filled in `collect_report_sources(job)` at
+   `:727` from `getattr(getattr(t, "status", None), "value", ...)` — that is
+   `Task.status`, the RunState of section 8, NOT the apply state. So a report
+   line reading "partially approved (5/8 hunks)" needs a NEW field on
+   `TaskOutcome`; today the record carries nothing that could say it.
+   `recommended_next_action` at `:360` reads the same statuses and treats
+   `all(status == "completed")` as `all-green`, so a partial task must not be
+   allowed to reach `completed` without that rule being revisited.
+
+## Unanswered
+
+None. Every question above is answered from code read at this round's base. The
+two answers that are ABSENCES rather than findings — no reason-on-rejection
+enforcement exists (section 6), and no steering/volatile-injection symbol exists
+(section 7) — are stated as absences on purpose.
