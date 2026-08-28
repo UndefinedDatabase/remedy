@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "description": "F257 — the self-use queue Remedy runs against its own repository. Operator-curated DATA, not discovery: Remedy never invents an item and never appends one. Exactly one item is consumed per feature close, and an item is marked consumed by the closure round and NEVER by a job, because a run that can check itself off is not a gate. Mark an item consumed by setting its consumed_by to the feature id that consumed it; the loader packages/orchestration/self_use_queue.py reads this file and ships no writer.",
+  "items": [
+    {
+      "id": "SU-001",
+      "title": "Document the Markdown job-file format under docs",
+      "why": "Measured at cbf081eb: no built-state page under docs/ states the job-file format packages/orchestration/pingpong_job.py:parse_job_file accepts. The grammar is written down only in scripts/remedy_self_job_flow.sh, and apps/cli/command_catalog.py carries no more than the one-line argument description 'Path to Markdown job file'. So the first job file an operator writes is guessed from an example rather than read from the documentation index. Small, bounded, genuinely useful, and it touches no path the scope fences deny.",
+      "job_markdown": "# Job: Document the Markdown job-file format\n\n## Task 1\nWrite one new page under `docs/` describing the Markdown job-file format that\n`packages/orchestration/pingpong_job.py:parse_job_file` accepts, so a reader\nlooking for the format finds it where the documentation index sends them.\n\nThe page states, at minimum: the `# Job: <title>` H1 that names the job; the\n`## Task N` headings that split the file into tasks; and the `Acceptance:` line\nthat separates a task's body from its acceptance criteria. Describe what the\nparser really does rather than what a reader might assume — task ids are\nassigned by parse order (T001, T002, ...) and not by the heading number, which\nis kept separately. Cite the parser by path so the page can be checked against\nthe code it describes.\n\nRegister the new page in the `docs/README.md` index with its category, a\none-line description and a status marker, the way AGENTS.md's Documentation\nUpdates rules require of every new ist-doc.\n\nAcceptance:\n- A new page under `docs/` describes the job-file format, naming the `# Job:` H1, the `## Task N` headings and the `Acceptance:` line.\n- That page is registered in the `docs/README.md` index with a category, a one-line description and a status marker.\n",
+      "consumed_by": ""
+    }
+  ]
+}
