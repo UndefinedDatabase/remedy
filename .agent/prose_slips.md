@@ -60,3 +60,14 @@
   the discrepancy. Nothing on disk under `packages/`, `apps/`, `tests/` or
   `docs/` was wrong, so no id was spent. Measure a SHA in full or write only
   the short form that was measured.
+
+- 2026-08-28 · F032 R18 · The LEDGER18 slice was headed `Gate: F032 R16 and R17
+  — `, a shape the record's own `^Gate: F\d+ R\d+ — ` pattern cannot match, so
+  the entry for those two rounds adds no gate key and the count stood still at
+  69 across the commit that wrote it. The reviewer's own pre-emission checklist
+  requires a slice joining a repeating record format to be compared
+  MECHANICALLY against the headers it joins, and that comparison was not run;
+  the block's own gate reported the standing count and the worker declared it.
+  The landed entry is not rewritten — the R19 entry carries the dated
+  correction that indexes it. One round, one key: where an entry covers two,
+  give it the later round's key and name the earlier one in the body.
