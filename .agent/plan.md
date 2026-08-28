@@ -1,42 +1,41 @@
-# Plan — F037 Rendered diff viewer
+# Plan — F033 Hunk-level diff approval
 
-Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495` (the
-merge of PR #217, which closed F032). `.agent/decisions.md` holds F037 D1 to D11.
+Branch: feature/f033-hunk-approval, cut from `main` at the merge of pull request
+#218, which closed F037. `.agent/decisions.md` carries the F033 decisions.
 
 ## Goal
-Changes become readable, not merely present. The server parses a unified diff
-into structured JSON — files, hunks, lines, intraline spans — served as a read
-endpoint, and the client renders it with a file sidebar, hunk collapse and
-virtual scrolling. `docs/roadmap/features/T5_F037.md` holds Goal & Done, the task
-slicing, the binding CSS, the design amendments A1 through A6 and the Built State
-section recording what actually shipped.
+Surgical consent over changes. Hunks get STABLE content-hash ids, an
+`approve_hunks` command applies the approved set atomically to the job branch,
+and rejected hunks become precise repair feedback quoted verbatim in the next
+round — every partial state rendered truthfully in the viewer, on the node and
+in the report. `docs/roadmap/features/T5_F033.md` holds Goal & Done, the task
+slicing, the acceptance criteria and the Do-not-touch list.
 
 ## Current Step
-R27 is the CLOSURE round, the last of F037's closure sequence and the last round
-of this branch. Every closure precondition is met: the integration gate PASSED at
-R25 with no branch-only failure reaching feature code, the R26 package is
-READY_FOR_REVIEW at accepted head `5e557a1c`, the integrity gate passes with zero
-failures, and F037 carries no open finding of its own. This round books the R26
-verdict, flips the STATUS line to `[x]`, syncs the four README pins in that same
-commit, and opens the PR — which is NOT merged here.
+R1 is the CLAIM AND INVENTORY round. It merges F037's pull request at the Open
+PR Gate, cuts this branch, flips F033 to `[~]`, resets this record's header
+carrying every finding forward, books the F037 R27 verdict, and puts the F033
+source inventory on disk. No production code is touched.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a/C0b save and mirror the block | ordered | |
+| C0a and C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R26 verdict | ordered | record first |
-| C3 STATUS, README and the handback | ordered | one commit, last on the branch |
-| the closure PR | ordered | created, never merged |
+| C2 the STATUS claim | ordered | `[ ]` becomes `[~]` |
+| C3 the record header and the F037 R27 gate | ordered | record before work |
+| C4 the source inventory | ordered | the questions, answered from code |
+| C5 the handback | ordered | last commit of the round |
 
 ## Next Steps
-1. A fresh session claims the next feature by Rule A5 — `F033 Hunk-level diff
-   approval` — and its Open PR Gate merges this feature's PR first.
-2. The split-off scope of amendment A6 wants its own STATUS line before F033.
-   That remains a PROPOSAL to the operator and is executed by no session.
+1. Book the R1 verdict and plan T001 against the inventory.
+2. T001 stable-id hashing, the stability property tests, the viewer JSON
+   version bump and the shared-helper consolidation with `diff_repair`.
+3. T002 the `approve_hunks` command, its validation, subset-apply atomicity
+   and the hunk ledger.
+4. T003 rejection-to-repair injection, the verbatim-quote trace proof and
+   partial-state rendering across viewer, node and report.
 
 ## Risks
-- `R-0714` closes OPEN as a documented Medium risk: a ui_server test runs a real
-  frontend build from inside the suite, which F037 does not own and did not
-  cause. Closure precondition 1 admits exactly this case.
-- The STATUS and README edits must land in ONE commit or the ledger pins in
-  `tests/docs/` go red; the reviewer measured that red as the control.
+- T001 moves hunk identity out of `diff_repair`; that module's regression suite
+  is the safety net the feature file names in its Orchestrator brief.
+- `R-0714` stays open as a documented Medium risk inherited across the reset.
