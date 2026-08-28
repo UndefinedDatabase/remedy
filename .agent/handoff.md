@@ -1,250 +1,369 @@
-# Handoff — F037 Rendered diff viewer, round 24
+# Handback — F037 Rendered diff viewer, round 25 (THE INTEGRATION GATE)
 
 ## Session
 
-SESSION 7 of feature F037 · round 24 · rounds so far 24.
+SESSION 8 of feature F037 · round 25 · rounds so far 25
 
-THIS IS THE LAST DELEGATED ROUND OF SESSION 7 AND OF THIS SESSION. F037 stands
-AT the soft limit of operator amendment amend0827-process-diet rule 6 — session
-7 of 7, round 24 of 25 — with DECISION F037 D11 and feature-file amendment A6
-both recorded on disk. Its remaining work is the closure sequence, and ONE
-proposal is open to the operator that no session may execute for them: giving
-the split-off scope its own STATUS line.
-
-Branch: `feature/f037-rendered-diff-viewer`. No PR exists and none was created.
-
-## Scope report — F037 at the soft limit
-
-SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
-
-F037 has reached SESSION 7 of a seven-session soft limit at round 24 of
-twenty-five. Operator amendment amend0827-process-diet rule 6 makes this report
-the obligation, not more feature work.
-
-WHAT IS FINISHED. T001 the parser and the read endpoint, with its corpus tests
-and the bounds of DECISIONS F037 D5, D6 and D7. T002 the rendering core — lines,
-intraline spans, hunk heads, collapse — against the feature file's binding CSS.
-T003 in the greater part: the file sidebar, virtual scrolling and its windowing
-rule, the door and mount into `RemedyShell`, and the lazy language-bundle model
-with its promise cache, its retry-after-rejection rule and the prototype-safe
-lookup that finding `R-0731` forced.
-
-WHAT IS MISSING, and none of it is discovered late — all three have stood under
-Next Steps in `.agent/plan.md` at `82d3d584` and in the two rounds before it:
-
-1. `loadDiffLanguageBundle` is UNWIRED. Measured at `82d3d584`, it has no caller
-   outside its own module and its two test files, so highlighting is built and
-   not rendered.
-2. The 10k-line perf fixture is UNMEASURED end to end, so the Acceptance bullet
-   naming a recorded perf budget is unmet.
-3. The sidebar's visual treatment is unruled; amendment A4's three design
-   authorities are silent on it.
-
-WHAT THIS SESSION DID ABOUT IT. DECISION F037 D11 rules the three pieces OUT of
-F037's scope and feature-file amendment A6 records that on the roadmap, so the
-narrowing is visible where a later reader looks rather than only in a session
-log. F037's remaining work is its closure sequence: the integration-gate round,
-the evidence-and-zip round, then the STATUS round.
-
-THE PROPOSAL TO THE OPERATOR, which this session does NOT execute because rule 6
-reserves it: give the split-off scope its own STATUS line immediately before
-F033 — the highlighting wiring, the 10k-line perf measurement and the sidebar
-ruling, as one line of about three to four rounds. The alternative is to reject
-A6, in which case reversing it is one paragraph in each of `.agent/decisions.md`
-and `docs/roadmap/features/T5_F037.md`, and F037 continues past its soft limit
-with the operator's knowledge rather than without it.
+Rounds planned for this session: R25 (this one), R26, R27. R27 ends the session
+and F037's closure sequence. This round is permitted past the seven-session soft
+limit by operator amendment amend0827-process-diet rule 1, which names a
+feature's CLOSURE SEQUENCE as the one exception to the ban on bookkeeping-only
+rounds; the rule-6 scope-report obligation was already discharged at R24 (D11,
+amendment A6, and the report in the `38966bf3` handback).
 
 ## Range
 
-Review of `82d3d584`..`HEAD`.
+Review of `38966bf3..HEAD`.
 
 ## Commits
 
-### 61b8f183 chore(agent): save the F037 R24 step block
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f037-r24.md` | +341 / -0 | C0a, the block saved verbatim |
+### 1e5f423a docs(agent): save the F037 R25 integration-gate block
 
-### a01d9036 chore(agent): mirror the R24 block into last_block
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +270 / -282 | C0b, the same bytes mirrored |
+|------|-----|--------|
+| `.agent/authored/f037-r25.md` | +346 / -0 | C0a — the block saved verbatim |
 
-### e6e8851f docs(agent): retarget the plan at the F037 scope report
+### fe72ccae docs(agent): mirror the R25 block into last_block
+
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +25 / -29 | C1, rewritten from the PLANF037R24 slice |
+|------|-----|--------|
+| `.agent/last_block.md` | +301 / -296 | C0b — same bytes, one blob with C0a |
 
-### f4181491 docs(review): book the R23 verdict and resolve the lookup finding
+### 3d99164d docs(agent): point the plan at the F037 integration gate
+
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +10 / -0 | C2, GATER23 then DONE731 appended |
+|------|-----|--------|
+| `.agent/plan.md` | +19 / -18 | C1 — the PLANF037R25 slice, rewritten not appended |
 
-### 421a4004 docs(agent): rule the unbuilt F037 pieces out of scope as D11
+### 9a7e5f16 docs(review): book the R24 verdict and resolve R-0719
+
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/decisions.md` | +46 / -0 | C3, DECISIOND11 appended |
+|------|-----|--------|
+| `.agent/live_review.md` | +12 / -0 | C2 — GATER24 then DONE719, in that order |
 
-### 24a28760 docs(roadmap): narrow F037 to what it ships with amendment A6
+### 7c2a45d2 test(gate): record the F037 integration-gate evidence
+
 | Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/features/T5_F037.md` | +33 / -0 | C4, AMENDMENTA6 appended |
+|------|-----|--------|
+| `.agent/gate_f037_r25/attribution.txt` | +160 / -0 | C3h — per-id attribution, both sets |
+| `.agent/gate_f037_r25/auto_build_neutralization.txt` | +32 / -0 | C3e — the real predicate's answer |
+| `.agent/gate_f037_r25/base_failed.txt` | +1 / -0 | C3f — sorted FAILED lines at base |
+| `.agent/gate_f037_r25/base_run.txt` | +68 / -0 | C3f — base run, tail, exit, wall |
+| `.agent/gate_f037_r25/branch_failed.txt` | +1 / -0 | C3b — sorted FAILED lines on branch |
+| `.agent/gate_f037_r25/branch_run.txt` | +66 / -0 | C3b — branch run, tail, exit, wall |
+| `.agent/gate_f037_r25/canary.txt` | +21 / -0 | G7 — canary and state contracts |
+| `.agent/gate_f037_r25/comm.txt` | +17 / -0 | C3g — both comm sets in full |
+| `.agent/gate_f037_r25/parity.txt` | +33 / -0 | C3f — the mtime window and verdict |
+| `.agent/gate_f037_r25/summary.txt` | +48 / -0 | C3i — the one-screen summary |
 
-### C5 — this handoff commit (self-reference exception, R-0149 pattern)
+10 files under `.agent/gate_f037_r25/`; commit total +447 / -0.
+
+### C4 docs(agent): hand back F037 R25 with the integration-gate result
+
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | rewrite | C5, the handback carrying the scope report verbatim |
-
-Six commits precede this one; the ordered sequence C0a, C0b, C1, C2, C3, C4, C5
-was followed exactly, with no extra commit, no dropped commit and no reordering.
+|------|-----|--------|
+| `.agent/handoff.md` | (self-reference) | C4 — this file; a handback cannot table the commit that writes it (R-0149 pattern). Its insertion count belongs to the next round's ledger entry and was not gated here, as G8 states. |
 
 ## External actions
 
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`,
-  exit 0. No PR created, nothing merged, no history rewritten.
-- `git push -u origin feature/f037-rendered-diff-viewer` after C5 — see the
-  Verification block for its recorded outcome.
-- No `git worktree` was added or removed this round; none was needed.
-- Scratch: `.remedy-wt/f037-r24-names.txt` was written to hold the measured
-  `git diff --name-only` output for G8's set arithmetic and REMOVED by that exact
-  path afterwards. `git ls-files .remedy-wt` is 0.
+| Command | Outcome |
+|---------|---------|
+| `git worktree add -b tmp/f037-r25-base .remedy-wt/f037-r25-base 9dde54956afbe5f432bfd429bf4ba0bb272f6d07` | Created on a BRANCH, never detached. "Preparing worktree (new branch 'tmp/f037-r25-base') / HEAD is now at 9dde5495 Merge pull request #217…" |
+| `git worktree remove --force .remedy-wt/f037-r25-base` | Removed |
+| `git worktree prune` | Ran, exit 0 |
+| `git branch -D tmp/f037-r25-base` | "Deleted branch tmp/f037-r25-base (was 9dde5495)." |
+| `git worktree list` | One line: `/home/decodeux/Repos/remedy  9a7e5f16 [feature/f037-rendered-diff-viewer]` |
+| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — no open PRs |
+| `git push -u origin feature/f037-rendered-diff-viewer` | Runs immediately AFTER the commit that writes this file; see the note below |
+
+No PR was created. No merge. No force-push, no history rewrite, no work on `main`.
+
+THE PUSH OUTCOME IS NOT STATED HERE, and that is deliberate. The push necessarily
+happens after the commit that writes this file, so any outcome printed here would
+be a value that could not exist when the text was written — and the write-once
+rule forbids a second handoff commit to fill it in. The outcome is reported in
+this round's session output instead, and the reviewer can measure it directly:
+`git rev-parse HEAD` equals
+`git rev-parse origin/feature/f037-rendered-diff-viewer` if and only if the push
+succeeded.
 
 ## Verification
 
-One line per gate, all real and all executed in the primary checkout.
+**G1 HYGIENE — PASS.** `.agent/STOP` read from disk before C0a: `ls` reported
+"No such file or directory" — ABSENT. Read again before C4:
+`pathlib.Path('.agent/STOP').exists()` → `False` — ABSENT. `git rev-parse HEAD`
+before C0a = `38966bf309bd92deca3bc928818df55b18050860`, equal to the BASE
+`38966bf3`. `git branch --show-current` = `feature/f037-rendered-diff-viewer`.
+`git status --porcelain | wc -l` = 0 after C0a, after C0b, after C1, after C2 and
+after C3 — five readings, all 0.
 
-- **G1 HYGIENE — PASS.** `.agent/STOP` read from disk and ABSENT before C0a and
-  again before C5 (`ls` exit 2, "No such file or directory"). `git rev-parse HEAD`
-  before C0a was `82d3d58460b64c473f008d733ba5bf8ac915ed04`, equal to BASE. Branch
-  `feature/f037-rendered-diff-viewer`. `git status --porcelain | wc -l` was 0
-  after C0a, C0b, C1, C2, C3 and C4.
-- **G2 TRANSPORT — PASS.** The committed C0a blob is 26106 bytes, 341 lines,
-  sha256 `fe2e3a1afdc6479472ec744f9afb7f34b86f640d353ebe21a0010f890b674cda`. At
-  C0b `git rev-parse HEAD:.agent/authored/f037-r24.md` and
-  `HEAD:.agent/last_block.md` are ONE blob,
-  `dce091538cc0d1e695cc0f92d0cd616bf1c308b1`. THIS CHAIN COVERS THE SAVED COPY
-  AND ITS MIRROR ONLY, and says nothing about the emitted bytes, which this
-  workflow cannot measure and which this handback therefore does not claim.
-- **G3 THE PLAN AT C1 — PASS.** PLANF037R24 extracted from the COMMITTED C0a blob
-  (`git show 61b8f183:.agent/authored/f037-r24.md`) versus
-  `git show e6e8851f:.agent/plan.md`: byte equality True, including the trailing
-  newline. Negative control, the same slice minus its trailing newline: False.
-  `wc -l` 43, strictly under 50. Lines exactly `## Goal`: 1. Lines exactly
-  `## Next Steps`: 1.
-- **G4 THE RECORD AT C2 — PASS, both readers.** (a) `82d3d584` blob + `\n` +
-  GATER23 + `\n` + DONE731 == the `f4181491` blob: True. Negative control, one
-  byte flipped inside GATER23, the FIRST appended paragraph: False. (b) Splitting
-  the C2 blob on blank lines, MY script measured 5 appended units against the
-  slices' 5 paragraphs, matching IN ORDER: True — units 1-4 the GATER23
-  paragraphs, unit 5 `Done: R-0731 …`. The pre-round blob is a byte PREFIX of the
-  C2 blob, 1308970 bytes growing to 1316230. Every non-current revision was read
-  with `git show <sha>:<path>` into memory; nothing was written over a tracked
-  file.
-- **G5 THE LEDGER — PASS, every figure as ordered.** Over the C2 blob:
-  `^- R-\d+ — ` 292 [292], UNMOVED, and all 292 DISTINCT; `^Done: R-\d+ — ` 42
-  [41], risen by ONE for `R-0731`; `^Landed: R-` 11 [11], UNMOVED;
-  `^Gate: F\d+ R\d+ — ` 94 [93], risen by ONE; the OPEN SET computed AS A SET 252
-  [253], FALLEN BY ONE. `Gate: F037 R23` occurs exactly 1 time in the C2 blob.
-  Base figures were re-measured at `82d3d584` before C0a, not inherited.
-- **G6 THE DECISION AT C3 AND THE AMENDMENT AT C4 — PASS.** C3: the `f4181491`
-  blob of `.agent/decisions.md` is a byte PREFIX of the `421a4004` blob, 684609 →
-  687668; pre + `\n` + DECISIOND11 == post True; negative control with one byte
-  flipped in that slice's FIRST paragraph False. C4: the `421a4004` blob of
-  `docs/roadmap/features/T5_F037.md` is a byte PREFIX of the `24a28760` blob,
-  10885 → 12982; pre + `\n` + AMENDMENTA6 == post True; negative control False.
-  Over the C3 blob `^## DECISION ` is 177 [176], risen by ONE, and `F037 D11`
-  occurs exactly 1 time. Over the C4 blob lines starting `**A6` are exactly 1 and
-  lines starting `**A5 ` are still exactly 1.
-- **G7 SUITES AND THE DOCS GATE AT C4 — PASS, all four, run after C4 and before
-  C5, ONE pytest process at a time in the primary checkout, each exit 0.**
-  `python3 -m pytest tests/ui_contracts/ -q` → `653 passed, 4 skipped in 5.75s`
-  [653, 4]. `python3 -m pytest tests/ui_server/ -q` → `495 passed in 30.17s`
-  [495, 0 skipped]. `python3 -m pytest tests/orchestration/test_test_runner.py
-  tests/docs/ -q` → `347 passed in 5.58s` [347], constraint 7's docs-round gate.
-  Canary `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in
-  20.70s` [42]. Nothing was repaired and no test was edited.
-- **G8 STRUCTURE AND THE OPEN PR GATE AT C4 — PASS.**
-  `git diff --name-only 82d3d584..24a28760` is exactly the six Change-set paths
-  minus `.agent/handoff.md`; RESIDUE IS EMPTY BOTH WAYS — measured-minus-changeset
-  `[]` and changeset-minus-measured `[]`. `git diff --stat 82d3d584..24a28760`
-  restricted to `apps/`, to `packages/` and to `tests/` printed NOTHING in all
-  three cases — measured, not asserted. Per-commit insertions 341, 270, 25, 10,
-  46 and 33, each under 500 and each matching the `## Commits` table above cell by
-  cell; every commit single-parent, the chain running
-  `82d3d584 → 61b8f183 → a01d9036 → e6e8851f → f4181491 → 421a4004 → 24a28760`.
-  `git grep -c` for `^<<<SLICE ` and for `^<<<END ` at `24a28760` matched NEITHER
-  `.agent/plan.md` NOR `.agent/live_review.md` NOR `.agent/decisions.md` NOR
-  `docs/roadmap/features/T5_F037.md` — 0 in all four — against the NON-ZERO
-  control `.agent/authored/f037-r24.md` at 6 and 6. `git ls-files .remedy-wt | wc -l`
-  is 0. `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-  is `[]`.
+**G2 TRANSPORT — PASS.** sha256 of the committed `.agent/authored/f037-r25.md`
+blob = `790f708e7f3492ea3a369baf52f0a54b67a74ec214528dc54dc1a9d5da4c9980`
+(25345 bytes, 346 lines). sha256 of the reviewer's own original at
+`.remedy-wt/f037-r25-block.md` = the same digest, same 25345 bytes. They are
+EQUAL. That file existed before this worker did and was not written by it, so
+this reading covers the EMISSION and not merely the worker's own
+self-consistency. No digest is stated here that was not computed here. At C0b,
+`git rev-parse HEAD:.agent/authored/f037-r25.md` and
+`git rev-parse HEAD:.agent/last_block.md` both print
+`0888befa412e7ae0923fa7f14fd7a5f00d8c57c3` — ONE blob.
+
+**G3 THE PLAN AT C1 — PASS.** PLANF037R25 was re-extracted from the COMMITTED
+C0a blob via `git show 1e5f423a:.agent/authored/f037-r25.md` and compared with
+`.agent/plan.md` at `3d99164d`: BYTE EQUAL including the trailing newline
+(`True`). Negative control, the same comparison with the trailing newline
+dropped: `False`. `wc -l` = 44, strictly under 50. Lines exactly `## Goal`: 1.
+Lines exactly `## Next Steps`: 1.
+
+**G4 THE RECORD AT C2, both readers — PASS.** (a) `38966bf3` blob of
+`.agent/live_review.md` + `\n` + GATER24 + `\n` + DONE719 == the C2 blob →
+`True`. NEGATIVE CONTROL: byte offset 20 of GATER24 — inside the FIRST appended
+paragraph, `h` → `H` — recomputed, equality `False`. REJECTED as required.
+(b) The C2 blob split on blank lines; N, counted by the script from the two
+slices themselves, is **6** (5 paragraphs in GATER24, 1 in DONE719); the LAST 6
+units of the file match those 6 paragraphs IN ORDER, unit by unit, all `True`.
+The pre-round blob is a byte PREFIX of the C2 blob: `True`, 1316230 bytes growing
+to 1322142. Every non-current revision was read with `git show <sha>:<path>` into
+memory; no tracked file was written for a measurement.
+
+**G5 THE LEDGER — PASS.** Base figures re-measured by this worker at `38966bf3`,
+not inherited: registrations `^- R-\d+ — ` 292, all DISTINCT; `^Done: R-\d+ — `
+42; `^Landed: R-` 11; `^Gate: F\d+ R\d+ — ` 94; OPEN SET as a set 252. Every one
+equals the figure the block states. Over the C2 blob: registrations **292**,
+UNMOVED, all 292 DISTINCT; `^Done: R-\d+ — ` **43**, a rise of exactly ONE;
+`^Landed: R-` **11**, UNMOVED; `^Gate: F\d+ R\d+ — ` **95**, a rise of exactly
+ONE; OPEN SET **251**, a fall of exactly one from 252. `Gate: F037 R24` occurs
+exactly **1** time in the C2 blob. `R-0719` now has a `Done:` line: `True`.
+
+**G6 THE INTEGRATION GATE — EXECUTED IN FULL; ONE ITEM VOID AND REPORTED VOID.**
+All of C3 (a) through (i) ran; 10 evidence files are present under
+`.agent/gate_f037_r25/`.
+
+- (a) DIST READINGS, measured rather than taken on trust:
+  `apps/ui/dist/index.html` EXISTS; its mtime is `1787917601.759354`
+  (Fri Aug 28 13:46:41 2026). The newest of the 128 files under `apps/ui/src` is
+  `apps/ui/src/api/diffViewModel.ts` at `1787914723.6506479`
+  (Fri Aug 28 12:58:43 2026). dist mtime EXCEEDS every source file: `True`. The
+  dist is WARM; nothing was rebuilt and no handoff was owed.
+- (b) BRANCH RUN, `python3 -m pytest -n auto -q` from the repository root, output
+  captured in memory by `subprocess.run(capture_output=True)` and written to the
+  evidence directory only after the process exited: **exit code 1**, **wall
+  161.0s**, `1 failed, 18118 passed, 20 skipped in 160.41s`. **1** `FAILED` line.
+- (c) BASE WORKTREE created on a BRANCH at
+  `9dde54956afbe5f432bfd429bf4ba0bb272f6d07`, which this worker re-measured with
+  `git merge-base main HEAD` and which matched the block's SHA. Never detached.
+- (d) PARITY COPY with `shutil.copytree(src, dst, symlinks=True)` — the argument
+  passed explicitly, not left to `copytree`'s `symlinks=False` default (R-0591):
+  `apps/ui/node_modules` 44839 entries with **27 symlinks preserved as
+  symlinks**, `apps/ui/dist` 4 entries. Neither directory is itself a symlink.
+- (e) STALENESS PREDICATE NEUTRALISED AND PROVED BY CALLING IT. Base
+  `apps/ui/dist` mtimes raised to `1787918420.63`, above the base worktree's
+  newest source file `1787918120.63`. Then the REAL function was imported from
+  the BASE WORKTREE's own module with that worktree as the working directory:
+  module file
+  `/home/decodeux/Repos/remedy/.remedy-wt/f037-r25-base/packages/orchestration/ui_server.py`,
+  `_frontend_is_stale()` → **False**, exit 0.
+- (f) BASE RUN, same command, cwd the base worktree, `REMEDY_UI_NO_AUTO_BUILD=1`
+  supplied through `subprocess.run(env=...)` and not exported: **exit code 1**,
+  **wall 155.2s**, `1 failed, 17981 passed, 20 skipped in 154.66s`. **1** `FAILED`
+  line.
+- (f) PARITY VERDICT: **VOID.** Run window `1787918225.502663`
+  (13:57:05) → `1787918380.7180617` (13:59:40). All four files under the base
+  worktree's `apps/ui/dist` carry mtime `1787918302.0531702` (13:58:22) after the
+  run, which falls INSIDE that window, and the hashed asset filenames changed
+  across it — `index-B5aVi7qQ.js` → `index-D_a-qpxM.js`,
+  `index-DBZlPUBM.css` → `index-D0y3OK7n.css`. Changed hashed filenames are a
+  real vite rebuild, not a touch. Reported as VOID and NOT repaired, exactly as
+  C3(f) orders. The block's clause that a void claim costs nothing when the
+  base-only set is empty does NOT apply here — the base-only set holds one id, so
+  an attribution was owed, and it is given below.
+- (g) COMPARE, both sets in full, never truncated. `comm -13 base_failed.txt
+  branch_failed.txt` = **1** id; `comm -23` = **1** id; intersection EMPTY.
+  - branch-only:
+    `FAILED tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_the_suite`
+  - base-only (fixed by the branch):
+    `FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup`
+- (h) ATTRIBUTION, unconditional and per id.
+  - BRANCH-ONLY `test_no_zombie_processes_after_the_suite` — failed under `-n
+    auto` with `AssertionError: port 5273 still open` at
+    `tests/orchestration/test_product_smoke.py:500`. Serial re-run of the exact
+    node id, alone, in the primary checkout, **10 runs, exit codes
+    [0,0,0,0,0,0,0,0,0,0], 10 of 10 PASS**. SERIAL-PASS ⇒ the xdist-flake class;
+    recorded, NOT a blocker. Not coupled to feature code, by direct evidence:
+    the file is not among the 57 paths of `git diff --name-only 9dde5495..HEAD`;
+    the test builds two synthetic apps under its own `tmp_path` and reaches none
+    of `diff_parser.py`, `diff_view_source.py`, the diff endpoint or any
+    `apps/ui/src` diff component; and the assertion is a 0.2 s grace window on a
+    child's socket teardown, which is a race under load. Constraint 5 does not
+    fire.
+  - BASE-ONLY `TestSubprocessCleanup::test_timeout_raises_with_cleanup` — failed
+    at base with `AssertionError: Orphan process found after timeout cleanup` at
+    `tests/cli/test_review_bundle_runtime.py:327`. NO MISSING ARTIFACT EXPLAINS
+    IT, and that is stated plainly rather than forced into the environment
+    bucket: both artifacts `integration_gate.md` names were PRESENT (44839
+    `node_modules` entries and `dist` copied in), and the assertion reads no
+    build output — it shells out to `pgrep -f "apps.cli.grouped.*--help"`, a
+    MACHINE-WIDE match that another xdist worker satisfies. Serial re-run of the
+    exact node id, alone, IN THE BASE WORKTREE at the merge base, **10 runs, exit
+    codes [0,0,0,0,0,0,0,0,0,0], 10 of 10 PASS**. It does not reproduce serially
+    at the commit that produced it, so it is neither a genuine base failure nor a
+    failure the branch fixed. The file is likewise untouched by the branch.
+  - THE VOID'S CAUSE IS NAMED AND MEASURED, not inferred. In the base worktree
+    `tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default`
+    (lines 574-584) pops `REMEDY_UI_NO_AUTO_BUILD` from a CLEARED environment and
+    calls the real, unmocked `_auto_build_frontend()`. Its docstring assumes the
+    call cannot build; a git worktree is a full checkout, so `apps/ui/package.json`
+    is present and `npm run build` ran. Re-run ALONE with the flag set through
+    `env=`, that one passing test moved all four `apps/ui/dist` mtimes again —
+    `1787918302.05` → `1787918576.12`, exit 0, `1 passed in 1.74s`. The `env=`
+    the block ordered was passed and was honoured at `ui_server.py:3083`; it was
+    removed inside the process by a test. This is the R-0169 class
+    `integration_gate.md` names. It is reported, not repaired.
+- (i) CLEAN UP. `git worktree list` after the cleanup prints the primary checkout
+  alone: `/home/decodeux/Repos/remedy  9a7e5f16 [feature/f037-rendered-diff-viewer]`.
+  `.remedy-wt/f037-r25-base` no longer exists; branch `tmp/f037-r25-base`
+  deleted. No scratch file was created outside `.agent/gate_f037_r25/` — every
+  measurement ran through an inline `python3 - <<'PY'` heredoc — so nothing was
+  deleted by path and nothing by glob. The pre-existing
+  `.remedy-wt/f037-r25-block.md` was left untouched.
+
+**G7 THE CANARY AND THE STATE CONTRACTS — PASS.** Run in the primary checkout
+after all of C3 (a)-(i), ONE pytest process at a time, never concurrently:
+
+| Command | Exit | Result |
+|---------|------|--------|
+| `python3 -m pytest tests/cli/test_golden_path.py -q` | 0 | `42 passed in 20.50s` |
+| `python3 -m pytest tests/ui_contracts/ -q` | 0 | `653 passed, 4 skipped in 5.57s` |
+
+Both equal the reviewer's readings at `38966bf3` — 42, and 653 passed with 4
+skipped. `tests/ui_contracts/` is the suite that reads the `.agent/plan.md` this
+round rewrote, and it is green against the rewritten file. Recorded to
+`.agent/gate_f037_r25/canary.txt`.
+
+**G8 STRUCTURE AND THE OPEN PR GATE, measured at C3 (`7c2a45d2`) — PASS.**
+`git diff --name-only 38966bf3..7c2a45d2` returns **14** paths; the change set
+minus `.agent/handoff.md` is **14** paths. RESIDUE measured-minus-changeset:
+`[]`. RESIDUE changeset-minus-measured: `[]`. Both printed, both EMPTY.
+`git diff --stat 38966bf3..7c2a45d2 -- <dir>` prints the empty string `''` for
+`apps/`, for `packages/`, for `tests/` and for `docs/` — all four cases print
+NOTHING. Every commit C0a through C3 is single-parent (parent count 1, five
+times); insertions from `git diff --numstat`, each under 500 and each equal to
+the corresponding `## Commits` cell above:
+
+| Commit | Insertions | Under 500 |
+|--------|-----------|-----------|
+| `1e5f423a` | 346 | yes |
+| `fe72ccae` | 301 | yes |
+| `3d99164d` | 19 | yes |
+| `9a7e5f16` | 12 | yes |
+| `7c2a45d2` | 447 | yes |
+
+`git grep -c` for `^<<<SLICE ` and for `^<<<END `: both exit 1 with empty output
+in `.agent/plan.md` and in `.agent/live_review.md` — 0 in all four readings —
+against the non-zero control `.agent/authored/f037-r25.md`, which reports 3 and 3.
+`git ls-files .remedy-wt | wc -l` = **0**.
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`,
+no open PRs, so the Open PR Gate is clear and nothing was merged.
+BUILD-OUTPUT GLOB SWEEP, re-measured rather than inherited, the fix clause
+`R-0677` binds on a change set carrying an evidence path — `git ls-files` over
+each `.gitignore` build-output glob: `*.zip` 0, `*.log` 0, `*.egg` 0,
+`*.egg-info` 0, `build` 0, `*/build/*` 0, `dist` 0, `*/dist/*` 0, `node_modules`
+0, `*/node_modules/*` 0, `sdist` 0, `packages.zip` 0, `remedy-job-evidence-*` 0.
+TOTAL **0** — EMPTY. All ten evidence files are `.txt`; none is a `.log`, which
+`.gitignore` would drop silently and the review-zip guard would reject (R-0169).
 
 ## Authored-text proofs
 
-- PLANF037R24 → `.agent/plan.md` at C1: byte-equal to the slice extracted from
-  the COMMITTED `.agent/authored/f037-r24.md`, with the negative control False
-  (G3).
-- GATER23 and DONE731 → `.agent/live_review.md` at C2: append equality True with
-  the negative control False, and an independent paragraph-order reader agreeing
-  at 5 units (G4).
-- DECISIOND11 → `.agent/decisions.md` at C3 and AMENDMENTA6 →
-  `docs/roadmap/features/T5_F037.md` at C4: append equality True with a negative
-  control False on each (G6).
-- SCOPEREPORT → the section above in this file: applied byte for byte from the
-  same committed blob.
+Three reviewer-authored slices were applied this round. Every one was
+re-extracted from the COMMITTED `.agent/authored/f037-r25.md` blob — not from the
+session's copy of the block — and compared on disk.
+
+| Slice | Target | Result |
+|-------|--------|--------|
+| PLANF037R25 | `.agent/plan.md` at `3d99164d` | BYTE EQUAL including trailing newline (`True`); negative control dropping that newline `False` |
+| GATER24 | `.agent/live_review.md` at `9a7e5f16` | Appended first; reader (a) equality `True`, negative control inside its first paragraph `False`; reader (b) 5 of the 6 tail paragraphs match in order |
+| DONE719 | `.agent/live_review.md` at `9a7e5f16` | Appended second; the 6th and last tail paragraph, matched in order |
+
+No slice was reflowed, reworded, retitled, corrected or shortened. The delimiter
+lines never reached a target file — G8's marker sweep measures 0 in both targets.
 
 ## Deviations & assumptions
 
-- NO DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE. There is no commit
-  beyond the ordered sequence, none was dropped and none was reordered: C0a, C0b,
-  C1, C2, C3, C4, C5 ran in exactly that order.
-- No production code and no test file changed. `apps/`, `packages/` and `tests/`
-  are measurably untouched (G8), as constraint 2 requires.
-- No `Done:` or `Gate:` paragraph was authored by this worker and no `Landed:`
-  line was added: everything entering `.agent/live_review.md` is the two C2
-  slices applied byte for byte, per constraint 5.
-- Constraint 6 was read and this round was NOT flagged as a contradiction: rule 6
-  makes the scope report the obligation at the soft limit, and C3 and C4 are
-  neither verdicts, registrations nor corrections, with C4 landing under
-  `docs/roadmap/`.
-- Tooling note, not a scope change: two G8 measurement commands were rejected by
-  this session's shell guard on their FORM (brace-literal and indexed-expansion
-  syntax). They were re-expressed — the changed-path list captured to
-  `.remedy-wt/f037-r24-names.txt` and the set arithmetic run over that file, the
-  file then removed by exact path. No gate was weakened or skipped, and no gate's
-  ordered property was replaced by a weaker one.
-- Assumption about placement: A6 is appended at the END of the file, which is the
-  end of its "Design amendments" section and directly after A5 — where every
-  prior amendment of this file sits. Nothing above it was edited, reordered or
-  deleted, as constraint 3 requires.
+1. **The ordered commit sequence C0a, C0b, C1, C2, C3, C4 was followed exactly.**
+   No extra commit, no dropped commit, no reordering.
+2. **Shell-guard re-expressions (constraint 8).** Two command FORMS were rejected
+   by this session's guard and were re-expressed rather than weakened or skipped.
+   (a) A `python3 - <<'PY'` heredoc using the local identifier `env` for the
+   child environment was rejected; the same script with the local renamed to `e`
+   was accepted. `REMEDY_UI_NO_AUTO_BUILD=1` is still supplied exactly as
+   ordered, through `subprocess.run(..., env=...)`, never exported — only the
+   Python variable's NAME changed, not the mechanism. Isolated by four probes:
+   `env=dict(os.environ)` alone passes, an added key passes, the real key passes;
+   only the identifier `env` trips the guard. (b) A `git diff --name-only … |
+   grep … ; echo "$?"` pipeline was rejected for the `$?` expansion; the same
+   measurement was re-expressed as `subprocess.run(['git','diff','--name-only',…])`
+   with the membership test done in Python, which is the reading reported under
+   G6 (h).
+3. **G7 ran after all of C3 (a)-(i) but before the C3 COMMIT.** The block orders
+   the canary "after C3 and before C4", and separately places
+   `.agent/gate_f037_r25/canary.txt` inside the change set while giving C4 only
+   `.agent/handoff.md`. Committing the canary after `7c2a45d2` would have
+   required a commit the block does not order. The canary therefore ran after the
+   whole integration gate and its evidence was committed with the rest of C3.
+   Nothing was measured before it happened: `canary.txt` and the canary line of
+   `summary.txt` both carry figures produced before either file was committed.
+4. **PARITY IS VOID and is handed back VOID.** Nothing was changed to make it
+   hold, no run was repeated to get a better reading, and the base-only id was
+   attributed by direct serial reproduction at the base rather than by parity.
+5. **An observation for the reviewer, deliberately NOT written into the ledger.**
+   The parity void has a measured cause in production-adjacent test code:
+   `tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default`
+   clears the environment, drops `REMEDY_UI_NO_AUTO_BUILD` and invokes the real
+   `_auto_build_frontend()`, so any full-suite run in a real checkout rebuilds
+   `apps/ui/dist` mid-run. That defeats the neutralisation every future
+   integration gate depends on, and it looks like a candidate for registration.
+   It is NOT registered here: constraint 4 forbids this worker authoring any
+   ledger paragraph, and the change set is exhaustive. Raised here for the
+   reviewer to rule on.
+6. **No assumption was carried from the block's numbers.** Every base figure the
+   block states — the merge-base SHA, the 292/42/11/94/252 ledger readings, the
+   42 and 653/4 canary readings, the warm dist — was independently re-measured by
+   this worker, and each matched.
 
 ## Item status
 
 | Item | Status | Reason |
-|---|---|---|
-| C0a save the block verbatim | done | |
-| C0b mirror into `last_block.md` | done | one blob with C0a |
-| C1 rewrite `.agent/plan.md` | done | |
-| C2 append GATER23 then DONE731 | done | |
-| C3 append DECISIOND11 | done | |
-| C4 append AMENDMENTA6 | done | after C3, as ordered |
-| C5 rewrite `.agent/handoff.md` | done | this file |
-| G1 hygiene | done | STOP absent twice, tree clean, BASE matched |
-| G2 transport | done | one blob; saved copy and mirror only |
-| G3 the plan at C1 | done | equality True, control False, 43 lines |
-| G4 the record at C2 | done | both readers, 5 units |
-| G5 the ledger | done | 292 / 42 / 11 / 94 / open set 252 |
-| G6 decision at C3, amendment at C4 | done | both appends proved |
-| G7 suites and the docs gate | done | 653+4, 495, 347, 42 — all exit 0 |
-| G8 structure and the Open PR Gate | done | residue empty both ways, no open PR |
+|------|--------|--------|
+| C0a save the block | done | `1e5f423a` |
+| C0b mirror the block | done | `fe72ccae` |
+| C1 the plan | done | `3d99164d` |
+| C2 the record | done | `9a7e5f16` |
+| C3 the gate evidence | done | `7c2a45d2` |
+| C4 the handback | done | this commit, then the push |
+| G1 hygiene | done | STOP absent twice, base SHA equal, branch correct, 5×0 porcelain |
+| G2 transport | done | digests EQUAL against the pre-existing original; one blob `0888befa` |
+| G3 the plan at C1 | done | byte equal, control False, 44 lines, 1 and 1 |
+| G4 the record at C2 | done | reader (a) True with control False; reader (b) N=6 in order; prefix True |
+| G5 the ledger | done | 292 / 43 / 11 / 95 / open 251; `Gate: F037 R24` once |
+| G6 the integration gate | done | executed in full; parity VOID and reported VOID; both sets attributed |
+| G7 canary and state contracts | done | 42 passed; 653 passed 4 skipped; both exit 0 |
+| G8 structure and Open PR Gate | done | residue empty both ways; 4 restricted stats empty; 5 single-parent commits; glob sweep 0 |
 
-Open findings: the OPEN SET stands at 252, down one from 253 with `R-0731`
-resolved.
+## Open findings
+
+**251** open, computed AS A SET over the C2 blob — 292 distinct registered ids
+minus 43 distinct `Done:` ids. That is one fewer than the 252 at `38966bf3`:
+`R-0719` resolved, no id registered. F037 now carries no open finding of its own,
+which is what the closure sequence needed from this round. Closure precondition 2
+is satisfied by a real integration-gate run, with the parity caveat stated above.
 
 ## Next
 
-Review this round at `82d3d584..HEAD`, then run F037's closure sequence as
-amended by A6 — the integration-gate round first. Before anything else the next
-session applies Phase 1 rule 1 (`.agent/STOP`) and only then rule 2 (the Open PR
-Gate). The STATUS-split proposal in the scope report above is the operator's to
-accept or reject and is NOT executed by any session.
+The EVIDENCE-AND-ZIP round: the feature file's Built State section, the
+`create_manual_completion_bundle` evidence job, and a FRESH review zip whose
+failure is a closure blocker. Then the STATUS round — the `[x]` line, the README
+capability sync in the SAME commit, and the closure PR, which this session does
+not merge.
+
+The next session applies Phase 1 rule 1 (read `.agent/STOP`) BEFORE rule 2 (the
+Open PR Gate), in that order.
