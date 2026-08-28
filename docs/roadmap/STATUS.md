@@ -81,7 +81,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F031 — Decision inbox (T001–T003 complete; accepted 2026-08-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f031-closure · package remedy-review-20260827-122441-READY_FOR_REVIEW.zip · SHA-256 4b862bf093f4082821662357d730042c28ad6c16078dfa5bced812aca0db4bfa · accepted HEAD f0dad9a8076e8cfc4208dbe5a7097619a31d4cd5)
 - [x] F032 — Approval with the evidence triple (T001–T003 complete; accepted 2026-08-28 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f032-closure · package remedy-review-20260828-032101-READY_FOR_REVIEW.zip · SHA-256 a368e28c61381e17de4bb46a5b35ecc975046be85d456983adf469759c1e2cf4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c3cf408f537de393bb156e45feae46d5de9f63da)
 - [x] F037 — Rendered diff viewer (T001–T003 complete; accepted 2026-08-28 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f037-closure · package remedy-review-20260828-142213-READY_FOR_REVIEW.zip · SHA-256 c3755b73a6cbaf21cd0547ce590aafee244d4143ace6ca1833bc93b50c87ef26 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 5e557a1c2b4f7f9187f5388b18a3712d4a5c3d7e)
-- [ ] F256 — Diff viewer completion (highlighting wiring, 10k-line perf measurement, sidebar ruling; split off F037 by DECISION F037 D11 / amendment A6)
+- [~] F256 — Diff viewer completion (highlighting wiring, 10k-line perf measurement, sidebar ruling; split off F037 by DECISION F037 D11 / amendment A6)
 - [ ] F257 — Self-use track (one curated maintenance job per feature close, run through job-plan/job-run against Remedy itself)
 - [ ] F033 — Hunk-level diff approval
 - [ ] F040 — Completion/return digest
