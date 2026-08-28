@@ -9573,3 +9573,97 @@ REVERSE by deleting this decision and the sidebar rules it authorises from
 paragraph in `DiffFileSidebar.tsx` from git history at `78e71b3c`; the sidebar
 then returns to semantic markup with no class, which is a state it is known to
 work in.
+
+## DECISION F256 D4 (2026-08-28, F256 R6) — the end-to-end diff budget is guarded by a scale RATIO measured on one machine in one run, not by an absolute second count
+
+CONTEXT. F037's Acceptance names a "10k-line fixture within the perf budget
+(recorded)" and amendment A6 records that bullet as UNMET, which is why F256
+carries T002. One half of the budget already exists:
+`test_the_huge_diff_parses_inside_the_recorded_perf_budget` in
+`tests/orchestration/test_diff_parser.py` measures the PARSER alone against an
+absolute ceiling of 0.5 s, and its own docstring states the rule that ceiling was
+chosen by — it must sit BETWEEN the measured linear case and where a quadratic
+parser would land, or it records nothing. What has never been measured is the
+whole server path: artifact on disk, parse, envelope, JSON serialisation and the
+HTTP response the client actually receives.
+
+WHAT THE REVIEWER MEASURED AT `08f6218a`, on the machine this feature is being
+built on, as the median of nine runs at each size. The whole envelope path —
+artifact read, parse, envelope assembly — costs 12.5 ms at 1,000 body lines,
+24.5 ms at 2,000 and 123.5 ms at 10,000, while the PARSER ALONE costs 12.1 ms and
+121.8 ms at the two ends of that range. Serialising the envelope adds 0.9 ms and
+10.0 ms, and the serialised JSON is 102,954 and 1,045,960 bytes against artifacts
+of 18,903 and 197,905. The parser is therefore about ninety-two per cent of the
+whole server-side cost, and everything composed around it is the remaining eight.
+
+THE ABSOLUTE CEILING IS ALREADY SPENT, AND SPENDING IT AGAIN GUARDS NOTHING NEW.
+`HUGE_DIFF_PARSE_CEILING_SECONDS` bounds the parser at 0.5 s and its own docstring
+records the rule it was chosen by. A second absolute ceiling over the endpoint
+would bound that same ninety-two per cent a second time and more loosely, and its
+red would be as likely to mean the runner was busy as that the code changed:
+AGENTS.md already names "a stage budget too small for a slower hosted runner" as
+one of the three classes of CI failure, and a bound that goes red for that reason
+teaches a future session to raise it, which is the one repair this repository
+forbids. What is genuinely UNGUARDED is the composition — nothing on disk today
+fails if the envelope layer, the serialiser or the route stops being linear in
+body lines.
+
+CHOSEN. The end-to-end guard is a RATIO. The same route is measured at 1,000 and
+at 10,000 body lines, in the same test, in the same run, on the same machine, and
+the assertion is that the second median divided by the first stays under 20. A
+pipeline linear in body lines answers near 10, the size ratio itself; a pipeline
+quadratic in body lines answers near 100. Because both figures come off one
+machine in one run, every constant factor a machine contributes — clock speed,
+load, interpreter version — divides out, and the assertion cannot become a report
+on machine speed however slow the runner is. A coarse absolute HANG NET of 5.0 s
+on a single 10,000-line request sits beside it to catch a pipeline that stopped
+answering at all rather than one that got slower; at more than forty times the
+115.7 ms the route itself costs at that size it is not a budget and is not
+described as one.
+
+THE FIXED PER-REQUEST OVERHEAD MOVES THE RATIO THE SAFE WAY, and this is the
+reason the ratio is sound rather than merely convenient. Server dispatch, socket
+setup and JSON decoding cost the same at both sizes, so they inflate the SMALLER
+median proportionally more than the larger one and the measured ratio comes out
+BELOW the true algorithmic ratio. The error therefore makes the guard more
+permissive and never falsely red — it can miss a mild regression, it cannot
+manufacture one — which is the only direction a bound in a suite that must stay
+green is allowed to err in.
+
+BOTH DIRECTIONS WERE MEASURED BEFORE THE CEILING WAS FIXED, so 20 is a derived
+number and not a taste. Over the real route at `08f6218a` the linear ratio is
+7.42 — a median of 15.6 ms at 1,000 body lines against 115.7 ms at 10,000, for a
+1,045,966 byte response — which sits BELOW the algorithmic 10 exactly as the
+paragraph above predicts, and leaves the ceiling 2.7 times of headroom. In the
+other direction, inserting one statement into the parser's per-line path that
+scans the whole input on every iteration moves the PARSER's own ratio from 10.07
+to 39.51 while the parse still returns 10,000 body lines and `truncated` False —
+a regression that changes no answer and only costs time, which is precisely the
+class of defect this guard exists for. Damped by the same fixed overhead, that
+mutation reaches the route at roughly 31, so the ceiling separates the two cases
+with margin on both sides. At 25 the mutated margin would have been 1.2 times,
+and that is why the ceiling is 20.
+
+ALTERNATIVES CONSIDERED. (a) A second absolute ceiling, matching the parser
+test's idiom. Rejected for the reason above: it re-guards the parser's own cost
+and its red is machine-shaped. For the record, a quadratic pipeline matching
+today's cost at 1,000 body lines lands near 1.3 s at 10,000, so such a ceiling
+would have to sit under that to separate the two cases at all. The idiom is right
+for a function whose cost is nearly all algorithm and wrong for a path whose cost
+includes a server. (b) An absolute ceiling above the quadratic case. Rejected
+because it separates nothing and would record a number while guarding no
+property. (c) Measure the parser again through the endpoint and assert nothing.
+Rejected because Acceptance asks for a budget, not only a figure.
+
+CONSEQUENCE. The recorded numbers and the guarded property become two different
+things, deliberately: the docstring of the recording test carries the real
+medians, the real spread and the real serialised byte size, dated and attributed
+to a machine class, and the Built State of `docs/roadmap/features/T5_F256.md` will
+carry them too, while the ASSERTIONS pin only what survives a change of machine.
+A reader who wants to know how fast the viewer is reads the numbers; a runner that
+is merely slow does not turn the suite red.
+
+REVERSE by deleting this decision and replacing the ratio assertion with an
+absolute ceiling under the quadratic figure named above, accepting that the bound
+then tracks the machine. The recorded numbers are unaffected either way, because
+they are a measurement and not a bound.
