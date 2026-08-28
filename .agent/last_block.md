@@ -1,8 +1,8 @@
-STEP T003c / F032 — ROUND R15 — the receipt chip becomes the evidence entry point
+STEP INTEGRATION GATE / F032 — ROUND R16 — the full suite, twice, with parity
 
-BASE. This block is authored against `a4a24663eb3d99bdc9507d1877ba9e623462d598`,
-the tip of `feature/f032-evidence-triple` and the commit that handed back R14.
-Every reading below was taken there by the reviewer unless another SHA is named.
+BASE. This block is authored against `2a8722271815f6560220d84243d7d59daa49b6c0`,
+the tip of `feature/f032-evidence-triple` and the last commit of R15. Every
+reading below was taken there by the reviewer unless another SHA is named.
 
 FRAME CONVENTION. Every rule line in this block is exactly ten hyphens, and no
 other line is a run of one repeated character. Nothing in the frame is
@@ -13,104 +13,79 @@ target by its own gate.
 
 GOAL
 
-Close T003 by ruling its deep link honestly. The evidence panel the feature
-file sends the chips to does not exist and is not F032's to build, so F032
-ships the ENTRY POINT that F023 will wire: the card takes an optional handler,
-a receipt is a control only when one is supplied, and a ref's raw `target`
-still reaches no markup. The ruling is recorded as DECISION F032 D8 and as
-amendment A7 in the feature file.
+Run the integration gate of docs/agents/integration_gate.md for F032: the full
+suite on this branch, the full suite at the merge base with artifact parity
+restored, the two failure sets compared, and every branch-only id attributed.
+This round writes NO production code. Its product is the evidence directory and
+an honest verdict about whether this branch may proceed to closure.
 
 ----------
 
-WHAT THE REVIEWER READ BEFORE ORDERING ANY OF THIS
+WHAT THE REVIEWER READ AND MEASURED BEFORE ORDERING ANY OF THIS
 
-Stated here rather than left implied, because every order below rests on one of
-these readings and a worker must be able to check them.
-
-(a) `docs/roadmap/features/T5_F032.md` lines 16-25 make "the card's evidence
-    chips deep-link into the evidence panel" part of Goal & Done, and line 54
-    names the destination: "evidence panel deep links (the zoom feature's L3
-    tabs)".
-(b) `docs/roadmap/features/T5_F023.md` line 70 is "**T003** EvidencePanel +
-    lazy tabs + deep links + cluster", and `docs/roadmap/STATUS.md` line 89 is
-    `- [ ] F023 — Semantic zoom L0–L3`. Unclaimed, unbuilt.
-(c) `apps/ui/src/components/detail/DetailPopover.tsx` is the only detail
-    surface in `apps/ui/src`, and `docs/ui/design_reference/component_spec.md`
-    line 103 names it the "DetailPanel / EvidencePanel entry". It renders a
-    TASK's apply/test/proof status and a prompt trace. It has no tab, no route
-    and no prop that accepts a decision's evidence ref.
-(d) The same file, lines 113-120, rules how this repository handles an entry
-    point whose destination is not built: the DiffViewer entry is "a button in
-    DetailPopover emitting `onOpenDiff(taskId)` (no-op today)", and the
-    RuntimePreview entry is "visible only when `dashboard` exposes a runtime
-    URL (not yet). Disabled otherwise with tooltip."
-(e) `apps/ui/src/components/panels/DecisionInboxCard.tsx` at `a4a24663`: the
-    props are an inline object type at the `export function` line carrying
-    `decisions`, `tasks`, `jobId`, `serverToken` and `onSelectNode`; the file
-    already renders a chip-shaped control conditionally, `{jumpNodeId ? (
-    <button … /> ) : null}`, under the comment "Only a decision that can really
-    jump gets the control, so the affordance never lies"; and the receipts strip
-    R14 added renders one `<span className={styles.decisionEvidenceChip}>` per
-    ref inside a `<div role="group">`.
-(f) `apps/ui/src/components/panels/RightLivePanel.module.css` at `a4a24663`
-    carries `.decisionJumpChip` with `display: inline-flex`, `align-items:
-    center`, `padding: 2px 8px`, `border-radius: var(--remedy-radius-pill)`,
-    `background: var(--remedy-bg-2)`, `border: 1px solid
-    var(--remedy-line-strong)`, `font-size: 11px`, `font-weight: 500`, `color:
-    var(--remedy-muted)`, `cursor: pointer`, plus a `:hover` rule setting
-    `border-color: var(--remedy-blue-strong)` and `color: var(--remedy-ink)`
-    and a `:focus-visible` rule setting `outline: 2px solid
-    var(--remedy-blue-strong)` and `outline-offset: 2px`. That is the button
-    chip pattern this card already has, and S5 mirrors it rather than inventing
-    a second one.
-(g) THE GUARDS THAT ALREADY BIND THIS FILE, all in
-    `tests/ui_contracts/test_decision_answer_wiring.py` at `a4a24663`, which is
-    the only file under `tests/` naming `DecisionInboxCard`. These are
-    whole-file counts over the comment-stripped source and every one of them
-    binds the lines this round adds: `code.count("ANSWER_PENDING_TITLE") == 0`,
-    `code.count("setSendingKeys(") == 2`,
-    `code.count("clarification.defaultAnswer") == 1` and
-    `code.count(".target") == 1`. Beside them is a whole-file absence,
-    `assert "hidden" not in code`. And
-    `jsx_between_answer_button_and_live_paragraph` reads the LAST
-    `aria-live="polite"` in the file, requires a `<p` to open it, and slices
-    back to the nearest PRECEDING `</button>` — so a control added ABOVE the
-    answer strip leaves that reader aimed where it already aims, while a
-    control or an `aria-live` added BELOW the outcome paragraph would break it.
-(h) `apps/ui/src/styles/tokens.css` defines every custom property S5 uses:
-    `--remedy-radius-pill`, `--remedy-bg-2`, `--remedy-line`,
-    `--remedy-line-strong`, `--remedy-muted`, `--remedy-blue-strong` and
-    `--remedy-ink`. There is NO `--remedy-focus` property, which is why the
-    focus ring below is `--remedy-blue-strong` exactly as `.decisionJumpChip`
-    already writes it.
-(i) `.agent/live_review.md` at `a4a24663`, read mechanically: 274 paragraphs
+(a) `git merge-base HEAD main` at the base is
+    `a399a3304f9d962cd920c251488c40c486b35fdc`, which is also the commit
+    `.agent/plan.md` names as this branch's cut point. That is the base run's
+    commit.
+(b) THE FRONTEND IS STALE IN THE PRIMARY CHECKOUT RIGHT NOW, and this is the
+    load-bearing reading of this block. `packages/orchestration/ui_server.py`
+    defines `_frontend_is_stale()` at line 3050: it returns True when ANY file
+    under `apps/ui/src` has an mtime newer than `apps/ui/dist/index.html`.
+    Measured at the base: `dist/index.html` carries `Thu Aug 27 23:05:36 2026`
+    while the newest source file,
+    `apps/ui/src/components/panels/RightLivePanel.module.css`, carries `Fri Aug
+    28 02:25:15 2026`, and `_frontend_is_stale()` returns `True`. R14 and R15
+    both edited `apps/ui/src`, which is why. Line 3141 of the same module
+    reaches `_auto_build_frontend` on that condition, so a full-suite run
+    started now would rebuild `dist` MID-RUN — the exact class R-0169 records,
+    where a dist rewritten during a run produced false manifest-identity
+    failures. G6 therefore builds the frontend BEFORE the branch run and proves
+    staleness is gone, rather than discovering it as failures.
+(c) `apps/ui/dist` and `apps/ui/node_modules` both EXIST in the primary
+    checkout and are both gitignored — `git check-ignore -v` resolves them to
+    `.gitignore` lines 13 and 221. A fresh worktree therefore carries NEITHER,
+    which is precisely the environment class step 3 of
+    docs/agents/integration_gate.md exists to neutralise.
+(d) `apps/ui/package.json` declares `"build": "vite build"`, so the build
+    command is `npm run build` from `apps/ui`.
+(e) `.agent/gate_f255_r18/` is the most recent gate evidence directory and its
+    file names are `attribution.txt`, `base_failed.txt`, `base_parity.txt`,
+    `branch_failed.txt`, `branch_meta.txt`, `branch_run_tail.txt`,
+    `comm_base_only_failures.txt`, `comm_branch_only_failures.txt` and
+    `full_log_provenance.txt`. This round reuses those names exactly rather
+    than inventing a second vocabulary.
+(f) `.agent/live_review.md` at the base, read mechanically: 274 paragraphs
     matching `^- R-\d+ — `, 24 lines matching `^Done: R-\d+ — `, so the OPEN
-    SET is 250 and the maximum id is `R-0713`. This round registers no finding
-    and resolves none, so no id is minted. The open set was searched for the
-    defect this round rules on — an unbuilt deep-link destination — and holds
-    none.
+    SET is 250 and the maximum id is `R-0713`. `^Gate: F\d+ R\d+ — ` counts 67
+    and its newest key is `F032 R14`.
+(g) `.agent/prose_slips.md` at the base is 43 lines and its entries are of the
+    form `- <date> · F032 R<n> · <sentence>`, wrapped with two-space
+    continuation indent. SLIP16 below matches that shape.
+(h) THE OPEN SET WAS SEARCHED FOR THE DEFECT SLIP16 RECORDS — a reviewer block
+    that failed to carry forward a fix clause another entry had labelled
+    binding — before deciding it earns no id. Under operator amendment
+    amend0827 rule 2 it is reviewer prose that left nothing wrong under
+    `packages/`, `apps/`, `tests/` or `docs/`, so it is one dated line in
+    `.agent/prose_slips.md` and never an R-id.
 
 ----------
 
 BUNDLE
 
-C0a  save this block verbatim to `.agent/authored/f032-r15.md`
+C0a  save this block verbatim to `.agent/authored/f032-r16.md`
 C0b  mirror the same bytes over `.agent/last_block.md`
-C1   `.agent/plan.md`, slice PLANF032R15 applied whole
-C2   `.agent/live_review.md`, slice LEDGER15 appended
-C3   `.agent/decisions.md` slice DECISION8 appended, and
-     `docs/roadmap/features/T5_F032.md` slice AMEND7 appended
-C4   the component and its styles, items S2 to S6
-C5   the contract guards, item S7
-C6   the handback
+C1   `.agent/plan.md`, slice PLANF032R16 applied whole
+C2   `.agent/live_review.md` slice LEDGER16 appended, and
+     `.agent/prose_slips.md` slice SLIP16 appended
+C3   the gate evidence directory `.agent/gate_f032_r16/`
+C4   the handback
 
 CHANGE SET. Exactly these paths, and nothing else is created, edited or
-deleted: `.agent/authored/f032-r15.md`, `.agent/last_block.md`,
-`.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md`,
-`docs/roadmap/features/T5_F032.md`,
-`apps/ui/src/components/panels/DecisionInboxCard.tsx`,
-`apps/ui/src/components/panels/RightLivePanel.module.css`,
-`tests/ui_contracts/test_decision_answer_wiring.py`, `.agent/handoff.md`.
+deleted: `.agent/authored/f032-r16.md`, `.agent/last_block.md`,
+`.agent/plan.md`, `.agent/live_review.md`, `.agent/prose_slips.md`, the files
+of `.agent/gate_f032_r16/` named in G8, and `.agent/handoff.md`. NO file under
+`packages/`, `apps/`, `tests/` or `docs/` is edited this round. `apps/ui/dist`
+is REBUILT, which changes no tracked file because it is gitignored.
 
 ----------
 
@@ -123,113 +98,123 @@ CONSTRAINTS
     ends at the line before `<<<END NAME>>>`. The slice's bytes are those lines
     including the newline that ends the last of them. Extract them
     PROGRAMMATICALLY from the committed C0a blob — `git show
-    <C0a>:.agent/authored/f032-r15.md` — never by retyping from this prompt.
-    PLANF032R15 REPLACES `.agent/plan.md` whole. LEDGER15, DECISION8 and AMEND7
-    are APPENDS: the target's existing bytes, then exactly one newline, then
-    the slice.
-3.  Production code is DESCRIBED by the SPEC below, not sliced. Write it in the
-    file's own idiom — its comment density, its naming, its WHY-above-the-
-    definition habit — and match the neighbours it sits between.
-4.  The commits happen in the order the Bundle lists. C1 is the first
-    substantive commit, so `.agent/plan.md` is current before anything else is
-    committed.
-5.  Every commit passes the AGENTS.md self-review loop and the Commit Gate, and
+    <C0a>:.agent/authored/f032-r16.md` — never by retyping from this prompt.
+    PLANF032R16 REPLACES `.agent/plan.md` whole. LEDGER16 and SLIP16 are
+    APPENDS: the target's existing bytes, then exactly one newline, then the
+    slice.
+3.  RUN LOGS ARE WRITTEN OUTSIDE THE REPOSITORY WORKTREE WHILE A SUITE RUNS and
+    copied into `.agent/gate_f032_r16/` only after the run has exited. A log
+    growing inside the repo during a run changes the worktree digest mid-run
+    and fails the manifest-identity ids as false positives (finding R-0176).
+    Use `.remedy-wt/` for the live logs; it is gitignored and outside every
+    tracked path.
+4.  Evidence files carry `.txt` names and never `.log`: `.gitignore` drops
+    `*.log` silently and the review-zip guard rejects any member matching
+    `\.log$` (finding R-0169).
+5.  The base worktree is created ON A THROWAWAY BRANCH, `git worktree add -b
+    tmp/base-gate <path> a399a3304f9d962cd920c251488c40c486b35fdc`. The
+    self-dogfood branch guard refuses a detached HEAD by design, so a detached
+    base worktree fails the guard-dependent ids for a reason that has nothing
+    to do with this branch (DECISION D3). The worktree AND the branch are both
+    removed before the handback.
+6.  The two suite runs are SERIAL — never two pytest processes at once. The
+    runtime suites bind ports and a concurrent second process produces false
+    reds.
+7.  Every commit passes the AGENTS.md self-review loop and the Commit Gate, and
     the tree is clean after each. Commit subjects carry no leading-slash token,
     no absolute path and no secret-like string.
-6.  Push after C6: `git push -u origin feature/f032-evidence-triple`. Create no
+8.  Push after C4: `git push -u origin feature/f032-evidence-triple`. Create no
     pull request and merge nothing.
-7.  Read `.agent/STOP` from disk twice — once before C0a and once before C6 —
+9.  Read `.agent/STOP` from disk twice — once before C0a and once before C4 —
     and report the exact command output both times. If it EXISTS at either
     reading, stop, write the handback, and end.
-8.  Every destructive check runs in a disposable `git worktree` under
-    `.remedy-wt/`, never in the primary checkout, and the worktree is removed
-    and pruned before the handback.
-9.  Where a command's exit code is needed and this session's shell refuses
+10. Where a command's exit code is needed and this session's shell refuses
     `$?`, chain `&& echo <MARKER>` and report whether the marker printed. Never
     report an exit code that was not observed.
-10. A numeral this block states about a gate's expected result is the
-    reviewer's measurement at `a4a24663` and is named as such. Where a gate
-    below says REPORT, report the number measured; never predict one.
+11. NOTHING IN THIS ROUND MAY BE MADE GREEN BY EDITING A TEST. If the gate
+    finds a reproducible branch-only failure coupled to this feature's code,
+    that is a BLOCKER: stop, write the handback naming the id and the evidence,
+    and end the round. The repair is its own reviewer-gated round.
 
 ----------
 
-SPEC — what the code must do
+SPEC — what this round produces
 
-S1. READ FIRST, BEFORE EDITING ANYTHING. Re-read the guards named in (g) above
-    in `tests/ui_contracts/test_decision_answer_wiring.py`, and the whole of
-    `TestTheCardShowsTheEvidenceTriple` that R14 added. Everything S2 to S6
-    writes lands inside their reach. State in the handback that this was done
-    and what each of those readings was.
+S1. THE FRONTEND IS BUILT BEFORE THE BRANCH RUN, for reading (b). From
+    `apps/ui`, run `npm run build`. Then prove the staleness is gone by
+    importing `_frontend_is_stale` from `packages.orchestration.ui_server` and
+    reporting that it returns `False`, together with the mtime of
+    `apps/ui/dist/index.html` and of the newest file under `apps/ui/src`. If it
+    still returns `True`, stop and report — a run started stale is not a gate.
 
-S2. THE PROP. `DecisionInboxCard` gains ONE optional prop, `onOpenEvidence`, in
-    the inline props object type at its `export function` line, declared after
-    `onSelectNode`. Its type is
-    `((evidenceRef: DecisionEvidenceRef) => void) | undefined`, written in
-    whichever of the two equivalent spellings reads better beside its
-    neighbours. `DecisionEvidenceRef` is imported as a TYPE from
-    `../../api/decisionCard`, joining the existing
-    `import type { DecisionCardModel }` line rather than adding a second import
-    from the same module. The prop carries a WHY comment above it saying what
-    it is for and that nothing supplies it yet.
+S2. THE BRANCH RUN, then THE BASE RUN, in that order and serially, per
+    docs/agents/integration_gate.md steps 1 and 2.
 
-S3. THE RECEIPT RENDERS AS A CONTROL ONLY WHEN A HANDLER EXISTS. Inside the
-    existing `decision.evidenceRefs.map(...)` the body becomes a conditional on
-    the PRESENCE of `onOpenEvidence` — the same shape as the `jumpNodeId ? … :
-    null` control the file already carries, and for the same stated reason:
-    the affordance never lies. When the handler is present the receipt is a
-    `<button type="button">` with the SAME `className={styles.decisionEvidenceChip}`
-    and an `onClick` that calls `onOpenEvidence(evidenceRef)` — the WHOLE ref,
-    so the panel that finally arrives receives `kind` and `target` without this
-    component ever reading either. When it is absent the receipt is exactly the
-    `<span>` R14 shipped, unchanged. The `key` stays on the outer element in
-    both arms and keeps its current expression.
+S3. BASE PARITY IS RESTORED BEFORE THE BASE RUN, and the restoration is
+    MEASURED rather than asserted, per step 3 of that file. Copy the primary
+    checkout's `apps/ui/node_modules` and `apps/ui/dist` INTO the base
+    worktree with `shutil.copytree(src, dst, symlinks=True)`. THE
+    `symlinks=True` ARGUMENT IS THE POINT AND IS NOT OPTIONAL: `copytree`
+    defaults to `symlinks=False`, which DEREFERENCES npm's bin shims and itself
+    causes base-only failures the parity exists to prevent (finding R-0591).
+    Never symlink either directory into the worktree — the UI auto-build writes
+    THROUGH such a symlink into the primary checkout. If this session's sandbox
+    refuses to create a symlink inside the destination, report the exact
+    refusal and continue to S4's attribution route instead of silently copying
+    without it.
 
-S4. NO RAW TARGET, STILL. Nothing this round adds may write `.target`, name a
-    ref's `target` in any rendered text, or put it in a `title`, an
-    `aria-label` or any other attribute a browser shows. Passing the whole ref
-    to a handler is not rendering it. §17 of
-    `docs/ui/design_reference/ux_spec.md` is the rule and guard (g)'s
-    `code.count(".target") == 1` is its mechanical form.
+S4. THE AUTO-BUILD IS NEUTRALISED TWICE OVER FOR THE BASE RUN, because the env
+    var alone has been ignored once before (finding R-0169). FIRST, after the
+    copy, set `apps/ui/dist/index.html`'s mtime in the base worktree to NOW, so
+    `_frontend_is_stale()` is False by construction against source files a
+    fresh checkout stamped at checkout time; report the function's return value
+    IN THE BASE WORKTREE and it must be `False`. SECOND, set
+    `REMEDY_UI_NO_AUTO_BUILD=1` in the base run's environment. THIRD, verify by
+    measuring the EVENT and not the outcome (finding R-0444): record the mtime
+    of EVERY file under the base worktree's `apps/ui/dist` immediately before
+    the base run and immediately after it, and report the run's start and end
+    times. ANY mtime falling inside that window VOIDS the parity claim, and the
+    verdict then requires per-id attribution of every base-only failure by
+    direct evidence. A content hash may accompany the mtime reading but never
+    replaces it, because equal content is consistent both with no rebuild and
+    with a byte-identical one.
 
-S5. THE STYLES. `RightLivePanel.module.css` gains the button chrome
-    `.decisionEvidenceChip` needs once it can be a `<button>`, written so the
-    span case is untouched. Mirror `.decisionJumpChip` as (f) records it: the
-    chip resets the browser's button chrome to the values
-    `.decisionEvidenceChip` already sets, takes `cursor: pointer`, and gains a
-    `:hover` and a `:focus-visible` rule using `var(--remedy-blue-strong)` for
-    both the hover border and the 2px focus outline at `outline-offset: 2px`.
-    Every value resolves to a custom property `apps/ui/src/styles/tokens.css`
-    already defines (finding R-0661); (h) lists the ones available. Change no
-    existing rule, and leave all four `:empty` collapse rules exactly as they
-    are.
+S5. THE COMPARISON, per step 3. Sort both FAILED lists. `comm -13
+    base_failed.txt branch_failed.txt` is the BRANCH-ONLY set; `comm -23` is
+    the set the branch FIXED or that fails only at base. Report both in full,
+    never truncated — no `head`, no `tail` on either list.
 
-S6. NOTHING ELSE CHANGES. `apps/ui/src/api/` is not touched.
-    `RightLivePanel.tsx` is not touched — the prop is OPTIONAL precisely so no
-    call site has to change. The send flow, the in-flight key set, the jump
-    chip, the clarification form, the outcome paragraph and the two stakes
-    paragraphs are untouched.
+S6. ATTRIBUTION OF EVERY BRANCH-ONLY ID, per step 4, one id at a time and none
+    skipped. Re-run the exact node id SERIALLY. A serial PASS is the xdist
+    flake class: record it, it is not a blocker. A serial FAIL is reproduced at
+    the merge base before this feature is blamed. A reproducible branch-only
+    failure coupled to this feature's code is a BLOCKER under constraint 11.
+    Report, per id, which of the three it was and the evidence that decided it.
 
-S7. THE GUARDS. `tests/ui_contracts/test_decision_answer_wiring.py` gains a new
-    class of its own, beside `TestTheCardShowsTheEvidenceTriple` and reusing
-    that file's existing readers rather than writing new ones. It pins, each in
-    its own test: that the props type declares `onOpenEvidence`; that
-    `DecisionEvidenceRef` is imported as a type from `../../api/decisionCard`;
-    that the receipt's control arm calls `onOpenEvidence(` with the whole ref
-    and never with a field of it; that the span arm still exists, so a card
-    with no handler renders no control; that both arms carry the SAME
-    `styles.decisionEvidenceChip`; and that `.decisionEvidenceChip` has a
-    `:focus-visible` rule with a real outline behind it, read with the file's
-    own `css_rule_body`. Every assertion carries a message saying what breaks
-    if it fails, in the file's established voice.
+S7. EVERY BASE-ONLY ID IS ATTRIBUTED TOO whenever the parity claim did not hold
+    on the mtime reading of S4, and the attribution names the missing artifact
+    per id. This obligation is stated unconditionally for the ids themselves:
+    if the parity claim DID hold and base-only ids nonetheless exist, they are
+    still reported in full and still attributed, because a base-only failure
+    with parity intact is a real base failure and is exactly what this gate
+    must not swallow.
 
-S8. THE SPEC AND THE BUNDLE AGREE. S2 to S6 are C4; S7 is C5. Nothing in this
-    SPEC is performed by a commit the Bundle does not list.
+S8. THE EVIDENCE DIRECTORY. `.agent/gate_f032_r16/` is created with the file
+    names reading (e) lists, carrying: the branch run's meta and raw tail and
+    sorted FAILED list; the base run's parity record and sorted FAILED list;
+    both `comm` outputs; the per-id attribution; and a provenance note saying
+    where each full log lived while its run was in flight and when it was
+    copied in. No file in it is a `.log`.
+
+S9. THE SPEC AND THE BUNDLE AGREE. S1 to S7 are the work whose OUTPUT C3
+    commits as S8's directory. Nothing in this SPEC is performed by a commit
+    the Bundle does not list.
 
 ----------
 
 SLICES
 
-<<<SLICE PLANF032R15>>>
+<<<SLICE PLANF032R16>>>
 # Plan — F032 Approval with the evidence triple
 
 Branch: feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge
@@ -245,146 +230,69 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-R15 closes T003 and rules its deep link. The evidence panel the feature file
-sends the chips to is `docs/roadmap/features/T5_F023.md` T003, and F023 is
-unclaimed in `docs/roadmap/STATUS.md`, so F032 ships the ENTRY POINT rather
-than a link to nothing: the card takes an optional `onOpenEvidence` handler, a
-receipt renders as a control only when one is supplied and as the span R14
-shipped when none is, and no ref's `target` reaches the markup either way.
-DECISION F032 D8 and amendment A7 record the ruling and how to reverse it.
+T003 is COMPLETE: the model carries the triple, the card renders it, and the
+receipt chip is the entry point F023 wires. R16 is the integration gate of
+docs/agents/integration_gate.md — the full suite on this branch and at the
+merge base `a399a330` with artifact parity restored and measured, the two
+failure sets compared, every branch-only id attributed. It writes no production
+code. The frontend is REBUILT before the branch run, because R14 and R15 edited
+`apps/ui/src` and a stale dist makes the suite rebuild itself mid-run.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R14 verdict | ordered | the record is touched first |
-| C3 the D8 ruling and the A7 amendment | ordered | |
-| C4 the component and its styles | ordered | S2 to S6, one commit |
-| C5 the contract guards | ordered | S7 |
-| C6 the handback | ordered | |
+| C2 the R15 verdict and the reviewer's prose slip | ordered | the record is touched first |
+| C3 the gate evidence directory | ordered | S1 to S8 |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. The integration gate — the full suite, per docs/agents/integration_gate.md.
-2. The closure sequence: evidence job, a fresh review zip, the STATUS line and
-   the pull request, per docs/roadmap/STATUS_closure_protocol.md.
+1. The closure sequence, part one: the evidence job and a FRESH review zip, per
+   docs/roadmap/STATUS_closure_protocol.md.
+2. The closure sequence, part two: the authored STATUS line committed last on
+   the branch, then the pull request, which is NOT merged in this session.
 
 ## Risks
-- The card's guards read the `.tsx` as TEXT, and the whole-file counts they
-  carry bind every line this round adds as tightly as the markup they were
-  written for.
-- The handler's arm is unreached today, because nothing supplies the prop. It
-  is typechecked and text-pinned, never behaviour-tested, and F023 is the
-  feature that first runs it.
-<<<END PLANF032R15>>>
+- A branch-only failure that reproduces serially and touches this feature's
+  code is a blocker, not a repair to fold into this round; it would cost a
+  reviewer-gated round of its own before closure can start.
+- The base worktree carries neither `node_modules` nor `dist`, both gitignored.
+  Parity is restored by copy and then MEASURED by an mtime window, because the
+  environment variable that disables the auto-build has been ignored once.
+<<<END PLANF032R16>>>
 
-<<<SLICE LEDGER15>>>
-Gate: F032 R14 — the F032 T003b CARD-RENDER entry, and the first F032 round to touch `.tsx` and CSS. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all eight itself at `a4a24663`. TRANSPORT: sha256 `ab8e552d5733df15bb7fb17f4d2183ef077803649b81180459dbdc26521c23de` over 25057 bytes and 306 lines is carried by the reviewer's scratch original `.remedy-wt/f032-r14.md`, by the committed `.agent/authored/f032-r14.md` blob and by the committed `.agent/last_block.md` blob, the last two being the SAME git blob `16367574f3dcd28d5bca0f6f87bb7732871e1d25`. THAT CHAIN COVERS THE SCRATCH ORIGINAL, THE SAVED COPY AND THE MIRROR AND NOTHING ELSE: under docs/agents/self_drive_protocol.md there is no paste relay, so it says nothing about the bytes of any prompt, and no claim about a prompt is made here. WHAT THE REVIEWER MEASURED ITSELF, every number below being its own run and not the worker's: `npx tsc --noEmit` from `apps/ui` printed only the chained marker, so exit 0 with no output; `python3 -m pytest tests/ui_contracts/ -q` exit 0 at `574 passed, 4 skipped`, against the `566 passed, 4 skipped` the reviewer had taken at the base, so passed grew by exactly the eight new guards and skipped did not move; the golden-path canary exit 0 at `42 passed`; the PLAN at `83df7d73` byte-equal to slice `PLANF032R14` extracted from the committed C0a blob `True` with the trailing-newline negative control `False`, 46 lines, `^## Goal$` and `^## Next Steps$` one each; the LEDGER at `d29f0cbe` byte-identical to base plus one newline plus the slice `True`, with the base blob a byte PREFIX `True`; and the block's own caps, 306 total lines against 47 content lines in two regions, so 259 prose lines, under 400 and under 490. THE OPEN SET IS UNMOVED AND WAS RECOMPUTED RATHER THAN CARRIED: 274 paragraphs matching `^- R-\d+ — ` minus 24 lines matching `^Done: R-\d+ — ` gives 250 open, maximum id `R-0713`, ids added to the registered set `[]` and to the resolved set `[]`, while `^Gate: F\d+ R\d+ — ` went 65 to 66 adding exactly the `F032 R13` key. THE REVIEWER RAN TWO MUTATIONS OF ITS OWN CHOOSING, neither ordered by the block, in a disposable worktree at `a4a24663` with the exact byte string counted 1 in the named file before each was applied: deleting the render of `{decision.evidenceNote}` from `apps/ui/src/components/panels/DecisionInboxCard.tsx` gave exit 1 at `1 failed, 48 passed` naming `test_the_card_renders_the_note_that_says_why_there_are_none`; moving the two stakes paragraphs ABOVE the outcome paragraph in the same file gave exit 1 at `1 failed, 48 passed` naming `test_the_answer_stakes_sit_after_the_live_region_and_add_no_operator`, which is the guard whose reader is subtlest and which no ordered mutation had exercised; and the controls before the first mutation and after both restorations were a real exit 0 at `49 passed` with the worktree's `git status --porcelain` at 0 lines, after which it was removed and `git worktree list` returned to one line. SO THE ROUND'S OWN GUARDS BITE ON MORE THAN THE THREE MUTATIONS IT REPORTED. THE DESIGN REFERENCE WAS REALLY APPLIED AND THE REVIEWER CHECKED THE CLAIM: every custom property the new rules use — `--remedy-radius-pill`, `--remedy-bg-2`, `--remedy-line`, `--remedy-line-strong`, `--remedy-muted` and `--remedy-orange-400` — resolves in `apps/ui/src/styles/tokens.css`, the downside carries a left rule as well as the warn tint so §14's colour-alone prohibition is met, and §17 is met mechanically rather than by assertion, the only `.target` in the comment-stripped component being `const typed = event.target.value;`. THE TWO DECLARED DEVIATIONS ARE BOTH ACCEPTED. The FOURTH `:empty` rule, on `.decisionEvidence` itself, is right: `.decisionRow` is a column flex box with an 8px gap, so an empty strip would claim a band on every card carrying no receipts, and the rule uses the same out-of-flow mechanism the ordered three use. The `role="group"` carrying `DECISION_EVIDENCE_LABEL` is right for the reason finding R-0682 already records — an `aria-label` on a `generic` role is computed and dropped — and the label names what the chips are without naming a status, a schema key or a count. NOTHING ELSE MOVED: `git diff --name-only f28640ef..4b6a357a` is exactly the change set less `.agent/handoff.md` with both residues EMPTY, `packages/` and `docs/` EMPTY across the whole range, `apps/ui/src/api/` EMPTY, per-commit insertions 306, 226, 21, 2, 133, 125 and 212 each single-parent and each under 500 and each agreeing cell by cell with the handback's own `## Commits` column, `^<<<SLICE ` and `^<<<END ` zero in every written file against a control of two each over the C0a blob, `git ls-files .remedy-wt` 0 lines, `git worktree list` one line, `git branch --list "tmp/*"` empty, the remote tip equal to the local tip and the Open PR Gate `[]`. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END LEDGER15>>>
+<<<SLICE LEDGER16>>>
+Gate: F032 R15 — the F032 T003c ENTRY-POINT entry, and the close of T003. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all eight itself at `2a872227`. TRANSPORT IS PROVED FROM A VALUE THE REVIEWER HELD BEFORE DELEGATING, which is the strongest shape this workflow can produce: sha256 `43605b6b924f123c59415e36f390bb4701644a0f8ab27b2751653ae7be5c9991` over 33459 bytes and 488 lines was computed on the scratch original `.remedy-wt/f032-r15.md` at authoring time, before the worker was delegated to, and the reviewer re-read that original after the handback and compared it BYTE FOR BYTE against the committed `.agent/authored/f032-r15.md` blob and the committed `.agent/last_block.md` blob: all three equal, the two committed paths being the SAME git blob `c365552eb6019179032ee5a61345acf4a5e24f93`. THAT CHAIN COVERS THE SCRATCH ORIGINAL, THE SAVED COPY AND THE MIRROR AND NOTHING MORE; under docs/agents/self_drive_protocol.md there is no paste relay and no claim about any prompt's bytes is made here. THE ROUND'S DESIGN MOVE IS THE ONE THAT MATTERS AND THE REVIEWER MEASURED THE GROUND IT RESTS ON RATHER THAN ACCEPTING IT: `docs/roadmap/features/T5_F032.md` makes the chips' deep link into the evidence panel part of Goal & Done, that panel is `docs/roadmap/features/T5_F023.md` T003, `docs/roadmap/STATUS.md` carries F023 as `[ ]` unclaimed, and the only detail surface in `apps/ui/src` is the per-task `DetailPopover` which `docs/ui/design_reference/component_spec.md` names the DetailPanel/EvidencePanel entry and which has no tab and no prop for a decision's evidence ref. So the destination genuinely does not exist, F032 depends on F031 and not on F023, and DECISION F032 D8 rules the honest half: an OPTIONAL `onOpenEvidence` handler, a receipt that is a `<button>` only when one is supplied and the `<span>` R14 shipped when none is, and a ref's `target` still reaching no markup. That is the pattern the canonical design reference itself prescribes for an entry point whose destination is unbuilt, and D8 records the rejected alternatives with a reversal recipe. WHAT THE REVIEWER MEASURED ITSELF, every number its own run: `npx tsc --noEmit` from `apps/ui` printed only the chained marker, so exit 0 with no output; `python3 -m pytest tests/ui_contracts/ -q` exit 0 at `580 passed, 4 skipped` against the `574 passed, 4 skipped` it had taken at `a4a24663`, so passed grew by exactly the six new guards and skipped did not move; the golden-path canary exit 0 at `42 passed`; the docs gate, owed because this round's change set includes `docs/roadmap/`, exit 0 at `295 passed`; the PLAN byte-equal to slice `PLANF032R15` extracted from the committed C0a blob `True` with the trailing-newline negative control `False` at 45 lines; and all three appends byte-identical to base plus one newline plus their slice with the base a byte PREFIX in each case — `.agent/live_review.md` 1096449 + 1 + 5039 = 1101489 at one paragraph, `.agent/decisions.md` 645690 + 1 + 4286 = 649977 at six paragraphs, and `docs/roadmap/features/T5_F032.md` 10538 + 1 + 1189 = 11728 at one paragraph — each structural reader matching the file's last N units against the slice's N paragraphs IN ORDER. THE OPEN SET IS UNMOVED AND WAS RECOMPUTED RATHER THAN CARRIED: 274 registered minus 24 resolved gives 250 open, maximum `R-0713`, ids added to either set `[]`, while `^Gate: F\d+ R\d+ — ` gained exactly the `F032 R14` key and `^## DECISION F032 D\d+ ` went 7 to 8 adding exactly `DECISION F032 D8`. THE REVIEWER RAN TWO MUTATIONS OF ITS OWN CHOOSING, neither ordered by the block, in a disposable worktree at `2a872227`, each exact byte string counted 1 in its named file before it was applied: adding `cursor: pointer` to the SHARED `.decisionEvidenceChip` rule in `apps/ui/src/components/panels/RightLivePanel.module.css` gave exit 1 at `1 failed, 54 passed` naming `test_the_pressable_receipt_shows_where_the_keyboard_is`; and replacing the discriminator `onOpenEvidence ? (` with `true ? (` in `apps/ui/src/components/panels/DecisionInboxCard.tsx`, which is the mutation that makes the inert chip pressable and is the exact dishonesty D8 exists to prevent, gave exit 1 at `1 failed, 54 passed` naming `test_a_card_with_no_handler_still_renders_the_plain_chip`. The controls before the first mutation and after both restorations were a real exit 0 at `55 passed`, the worktree's `git status --porcelain` 0 lines, and it was removed and pruned. SO THE HONESTY PROPERTY IS PINNED AND NOT MERELY ASSERTED. THE WORKER'S DEVIATION 2 IS ACCEPTED AND IS BETTER THAN WHAT THE BLOCK ORDERED: item S5 said only that the span case must stay untouched, and the worker scoped its three new rules to `button.decisionEvidenceChip` rather than writing them on the shared class, leaving `.decisionEvidenceChip` byte-unchanged so no pointer cursor or hover border can dress the inert arm as a control. The reviewer's first mutation above is the guard that now pins exactly that. ONE EXTRA COMMIT WAS MADE AND DECLARED, `2a872227`, repairing a false unmeasured sentence about `.remedy-wt/` in the handback the previous commit had written. The sentence was not load-bearing, so under amend0827 rule 2 it earns no id; but the F032 R12 entry of this record already carries a clause BINDING ON THE NEXT BLOCK THAT ORDERS A HANDBACK, that a false numeral in `.agent/handoff.md` is corrected by a deviation line in the NEXT handback and never by a commit of its own, and the R15 block did not carry that clause forward to the worker. THAT OMISSION IS THE REVIEWER'S AND IS RECORDED IN `.agent/prose_slips.md` FOR THIS ROUND; the worker's commit is accepted as declared, and the clause is carried explicitly in the R16 block. NOTHING ELSE MOVED: `git diff --name-only a4a24663..2a872227` is exactly the block's change set, `packages/` and `apps/ui/src/api/` EMPTY across the whole range, per-commit insertions 488, 464, 21, 2, 83, 65, 126, 126 and 16 each single-parent and each under 500, markers 0 in every written file against a control of 8 over the C0a blob, `git ls-files .remedy-wt` 0 lines, `git worktree list` one line, `git branch --list "tmp/*"` empty, the remote tip equal to the local tip and the Open PR Gate `[]`. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END LEDGER16>>>
 
-<<<SLICE DECISION8>>>
-## DECISION F032 D8 (2026-08-28) — the receipt chip is an ENTRY POINT F023 wires, not a link F032 invents
-
-CONTEXT, measured at `a4a24663`. `docs/roadmap/features/T5_F032.md` makes "the
-card's evidence chips deep-link into the evidence panel" part of Goal & Done,
-and its Design section names the destination outright: "evidence panel deep
-links (the zoom feature's L3 tabs)". That panel is
-`docs/roadmap/features/T5_F023.md` T003 — "EvidencePanel + lazy tabs + deep
-links + cluster" — and `docs/roadmap/STATUS.md` carries F023 as `[ ]`,
-unclaimed. Nothing in `apps/ui/src` renders one. The only detail surface that
-exists is `apps/ui/src/components/detail/DetailPopover.tsx`, which
-`docs/ui/design_reference/component_spec.md` names the "DetailPanel /
-EvidencePanel entry" and which shows a TASK's apply, test and proof status and
-its prompt trace; it has no tab, no route and no prop that accepts a decision's
-evidence ref. F032 depends on F031 alone. This is the same shape as amendment
-A2, where the resolver and its staleness badges were found to be F066's unbuilt
-spec, and it is settled the same way.
-
-CHOSEN. `DecisionInboxCard` takes an OPTIONAL `onOpenEvidence` handler. A
-receipt renders as a `<button>` calling it with the whole
-`DecisionEvidenceRef` when a handler is supplied, and as the `<span>` R14
-shipped when none is. Nothing supplies one in this release, so every card
-renders spans today; F023 supplies the handler and the panel together, and the
-wiring is one prop at one call site. A ref's `target` continues to reach no
-markup, no text and no attribute a browser shows — it travels to the handler as
-a field of the ref, which is not rendering.
-
-WHY. Three reasons, in the order they bind. FIRST, the affordance never lies.
-The card already states that rule at its jump chip — only a decision that can
-really jump gets the control — and a chip that looks pressable while no panel
-exists to receive the press is exactly the dishonest affordance finding R-0693
-registered against the answer buttons. SECOND, this is the pattern the
-canonical design reference itself prescribes for an entry point whose
-destination is not built: `component_spec.md` gives the DiffViewer "a button in
-DetailPopover emitting `onOpenDiff(taskId)` (no-op today)" and the
-RuntimePreview a control "visible only when `dashboard` exposes a runtime URL
-(not yet)". Shipping the entry point and letting the destination arrive later
-is the house style, not an invention of this round. THIRD, it is the smallest
-thing that makes F023 cheap. The alternative that ships nothing leaves F023 to
-discover the receipts, design the payload and edit this component; the prop and
-its call fix the contract now, while the reasoning that produced it is on this
-page.
-
-REJECTED, and why. (1) A `<button disabled>`
-carrying an honest tooltip — "the evidence panel arrives with a later feature" —
-which `ux_spec.md` §14 permits for a disabled control and which the ChatInput
-already does for steering. Rejected because a disabled control is drawn at 45%
-opacity, and the thing dimmed here would be the RECEIPT ITSELF, whose label is
-the evidence and is fully present; F032 would ship the receipts it exists to
-show and immediately style them as unavailable. A disabled button is also
-removed from the tab order, so the honest tooltip is unreachable by exactly the
-reader who most needs it. (2) Rendering nothing beyond R14's span and deferring
-the entire item to F023. Rejected because the deep link is Goal & Done material
-for F032 and handing the whole of it to an unclaimed feature would leave this
-feature's own acceptance unmet with nothing on disk to show where it went.
-
-REVERSE by deleting the `onOpenEvidence` prop from the props type of
-`apps/ui/src/components/panels/DecisionInboxCard.tsx`, deleting its type-only
-`DecisionEvidenceRef` import, collapsing the receipt's two arms back to the
-single `<span>`, deleting the `.decisionEvidenceChip` button, hover and
-focus-visible rules from
-`apps/ui/src/components/panels/RightLivePanel.module.css`, and deleting the
-guard class the F032 R15 block's item S7 adds to
-`tests/ui_contracts/test_decision_answer_wiring.py`. No other change is
-required, and amendment A7 of `docs/roadmap/features/T5_F032.md` is the text to
-strike with it.
-<<<END DECISION8>>>
-
-<<<SLICE AMEND7>>>
-**A7 — the chip's deep link is an ENTRY POINT, and the panel it opens belongs to
-F023 (DECISION F032 D8).** "The card's evidence chips deep-link into the
-evidence panel" names a destination this repository has not built: the panel is
-`docs/roadmap/features/T5_F023.md` T003, F023 is unclaimed in
-`docs/roadmap/STATUS.md`, and the only detail surface in `apps/ui/src` is the
-per-task `DetailPopover`, which carries no tab and no prop for a decision's
-evidence ref. F032 depends on F031 and does not own F023's panel. So F032 ships
-the ENTRY POINT and F023 wires it: `DecisionInboxCard` takes an optional
-`onOpenEvidence` handler, a receipt renders as a control when one is supplied
-and as a plain chip when none is, and a ref's `target` reaches no markup either
-way. This is amendment A2's shape a second time — there the resolver and its
-staleness badges were F066's, here the panel is F023's — and it is settled the
-same way, by shipping the honest half and naming the feature that completes it.
-The Goal & Done bullet above is read accordingly: DONE for F032 means the entry
-point exists, is typechecked and is pinned by a guard; the navigation itself is
-F023 acceptance material.
-<<<END AMEND7>>>
+<<<SLICE SLIP16>>>
+- 2026-08-28 · F032 R15 · The block did not carry forward the clause the F032
+  R12 gate entry had labelled binding on the next block ordering a handback —
+  that a false numeral in `.agent/handoff.md` is repaired by a deviation line
+  in the NEXT handback rather than by a commit of its own — so the worker,
+  finding an unmeasured sentence in its own committed handback, spent a ninth
+  commit repairing it and declared the write-once breach itself. Nothing on
+  disk under `packages/`, `apps/`, `tests/` or `docs/` was wrong, so no id was
+  spent; the clause is quoted in the R16 block instead.
+<<<END SLIP16>>>
 
 ----------
 
 DONE WHEN — the gates, in this order
 
 Every gate is EXECUTED and its real output recorded. "Green" as a word is a
-finding. Each gate runs at a commit strictly earlier than C6, so the handback
-can quote all of them; C6's own numbers are not gated and are not owed.
+finding. Each gate runs at a commit strictly earlier than C4, so the handback
+can quote all of them; C4's own numbers are not gated and are not owed.
 
 G1 HYGIENE, BASE, SENTINEL. `git rev-parse HEAD` before C0a — REPORT it and
    confirm it equals the base this block names. `git rev-parse --abbrev-ref
    HEAD` is `feature/f032-evidence-triple`. `git status --porcelain | wc -l` is
-   `0` after each of C0a, C0b, C1, C2, C3, C4 and C5. `ls -la .agent/STOP`
-   before C0a and again before C6 — report the exact output of both.
+   `0` after each of C0a, C0b, C1, C2 and C3. `ls -la .agent/STOP` before C0a
+   and again before C4 — report the exact output of both.
 
 G2 TRANSPORT. One digest comparison, disk to disk. Report `sha256sum` over the
-   reviewer's gitignored scratch original `.remedy-wt/f032-r15.md`, over
-   `.agent/authored/f032-r15.md` at C0a and over `.agent/last_block.md` at C0b —
+   reviewer's gitignored scratch original `.remedy-wt/f032-r16.md`, over
+   `.agent/authored/f032-r16.md` at C0a and over `.agent/last_block.md` at C0b —
    all three equal — plus the git blob id of the two committed paths, which must
    be one blob. That chain covers the original, the copy and the mirror, and
    makes no claim about any prompt's bytes.
@@ -394,95 +302,81 @@ G3 EXTRACTION AND CAPS, measured on the COMMITTED C0a blob. Report the content
    block's TOTAL line count, and PROSE as TOTAL minus the content total. PROSE
    must be under 400 and TOTAL under 490.
 
-G4 THE PLAN, at C1. `.agent/plan.md` is byte-equal to slice PLANF032R15
+G4 THE PLAN, at C1. `.agent/plan.md` is byte-equal to slice PLANF032R16
    extracted from the committed C0a blob — report `True`. NEGATIVE CONTROL: the
    same comparison with the slice's trailing newline removed — report `False`.
    Report `wc -l`, which must be under 50, and the counts of `^## Goal$` and
    `^## Next Steps$`, one each.
 
-G5 THE THREE APPENDS, at C2 and C3, each read with `git show <base-sha>:<path>`
-   so no tracked file is ever overwritten to get a baseline. For EACH of
-   `.agent/live_review.md`, `.agent/decisions.md` and
-   `docs/roadmap/features/T5_F032.md`: READER (a), byte identity — the
-   post-commit bytes equal the pre-commit bytes plus one newline plus the
-   slice — report `True`, and report the arithmetic as three numbers summing to
+G5 THE APPENDS, at C2, each read with `git show <base-sha>:<path>` so no
+   tracked file is ever overwritten to get a baseline. For EACH of
+   `.agent/live_review.md` and `.agent/prose_slips.md`: READER (a), byte
+   identity — the post-commit bytes equal the pre-commit bytes plus one newline
+   plus the slice — report `True`, the arithmetic as three numbers summing to
    the result, and that the pre-commit blob is a byte PREFIX. READER (b),
    structural — count N, the number of blank-line-separated paragraphs in the
    slice, and compare the LAST N blank-line units of the post-commit file
-   against the slice's N paragraphs IN ORDER; report N and the result.
-   NEGATIVE CONTROL for each: flip one byte IN MEMORY inside the FIRST appended
+   against the slice's N paragraphs IN ORDER; report N and the result. NEGATIVE
+   CONTROL for each: flip one byte IN MEMORY inside the FIRST appended
    paragraph and report that BOTH readers reject it. Then report, before and
-   after C2: the counts of `^Gate: F\d+ R\d+ — `, `^- R-\d+ — `,
-   `^Done: R-\d+ — ` and `^Landed: R-`, the size of the open set and the
-   maximum id, the list of gate keys ADDED and the list of ids ADDED to the
-   registered and resolved sets. The reviewer measured the open set at 250 and
-   the maximum at `R-0713` at `a4a24663`; this round registers and resolves
-   nothing, so both must be unmoved. Report `^## DECISION F032 D\d+ ` before
-   and after C3, and the list of DECISION keys added.
+   after C2, the counts of `^Gate: F\d+ R\d+ — `, `^- R-\d+ — `,
+   `^Done: R-\d+ — ` and `^Landed: R-`, the size of the open set, the maximum
+   id, and the lists of gate keys and ids ADDED. The reviewer measured the open
+   set at 250 and the maximum at `R-0713`; this round registers and resolves
+   nothing, so both must be unmoved.
 
-G6 TYPECHECK AND THE TEXT READINGS, at C4. From `apps/ui`, `npx tsc --noEmit`
-   chained with a marker — report whether the marker printed and whether any
-   other output appeared; it must be exit 0 with no output. Then over
-   `apps/ui/src/components/panels/DecisionInboxCard.tsx` at C4, with comments
-   stripped by the module's own `strip_ts_comments`, report each of these
-   numbers and the pass/fail against the value the guards require: the count of
-   `hidden` (0), of `ANSWER_PENDING_TITLE` (0), of `setSendingKeys(` (2), of
-   `clarification.defaultAnswer` (1), of `.target` (1) together with the full
-   text of the line carrying it, and the count of `onOpenEvidence` (report the
-   number measured). Report also that the LAST `aria-live="polite"` in the file
-   is opened by a `<p` tag, and the exact string
-   `jsx_between_answer_button_and_live_paragraph` returns, with its counts of
-   `?`, `&&` and `||`.
+G6 THE BRANCH RUN, at C2, after S1's build. Report the build command's exit
+   marker, `_frontend_is_stale()` returning `False` with the mtimes S1 names,
+   and then `python3 -m pytest -n auto -q` from the repository root:
+   exit code, wall time, the raw tail, and the COMPLETE sorted `^FAILED` list
+   with no truncation of any kind. State where the full log lived while the run
+   was in flight.
 
-G7 THE GUARDS, GREEN THEN RED, at C5. `python3 -m pytest
-   tests/ui_contracts/test_decision_answer_wiring.py -q` — report exit code and
-   the pass line. `python3 -m pytest tests/ui_contracts/ -q` — report exit code
-   and the pass line; the reviewer measured `574 passed, 4 skipped` at
-   `a4a24663`, so report the growth rather than predicting it. Then, in a
-   disposable worktree created with `git worktree add --detach
-   .remedy-wt/f032-r15-mut <C5>`, one mutation per run, each exact byte string
-   counted in its named FILE before it is applied and that count reported:
-   (a) delete the `onClick` that calls `onOpenEvidence` from
-   `apps/ui/src/components/panels/DecisionInboxCard.tsx`; (b) delete the
-   `onOpenEvidence` entry from the props type in the same file; (c) delete the
-   `:focus-visible` rule the round adds for `.decisionEvidenceChip` from
-   `apps/ui/src/components/panels/RightLivePanel.module.css`. For each report
-   the exit code, the pass/fail line and every `^FAILED` name. Run an UNMUTATED
-   CONTROL before the first mutation and again after all restorations, and
-   report both exit codes and the worktree's `git status --porcelain` line
-   count after each restoration. Purge `__pycache__` and pass `python3 -B`.
-   Remove the worktree, prune, and report `git worktree list`.
+G7 THE BASE RUN, at C2, serially after G6. Report the worktree creation command
+   including its `-b tmp/base-gate` argument; the parity copy with its
+   `symlinks=True` argument named; `_frontend_is_stale()` returning `False`
+   INSIDE the base worktree; the base run's own exit code, wall time, raw tail
+   and COMPLETE sorted `^FAILED` list; and the MTIME WINDOW of S4 — the run's
+   start and end times against the before-and-after mtimes of every file under
+   the base worktree's `apps/ui/dist`, with an explicit statement of whether
+   any mtime fell inside the window and therefore whether the parity claim
+   HOLDS or is VOID. Then remove the worktree, delete `tmp/base-gate`, and
+   report `git worktree list` and `git branch --list "tmp/*"`.
 
-G8 STRUCTURE, CANARY, DOCS AND THE PR GATE, at C5. `python3 -m pytest
-   tests/cli/test_golden_path.py -q` — exit code and pass line. This round's
-   change set includes `docs/roadmap/**`, so also `python3 -m pytest
-   tests/docs/ -q` — exit code and pass line. `git diff --name-only
-   a4a24663..<C5>` is exactly the Change set above less `.agent/handoff.md` —
-   report BOTH residues. `git diff --stat a4a24663..<C5> -- packages/` and the
-   same for `-- apps/ui/src/api/` are EMPTY. Report the insertion count of
-   every commit from C0a through C5, each single-parent and each under 500, and
-   compare them cell by cell against the `+/-` column the handback's
-   `## Commits` table carries — the two readings must agree. Report
-   `^<<<SLICE ` and `^<<<END ` counts in `.agent/plan.md`,
-   `.agent/live_review.md`, `.agent/decisions.md`,
-   `docs/roadmap/features/T5_F032.md`, `DecisionInboxCard.tsx`,
-   `RightLivePanel.module.css` and
-   `tests/ui_contracts/test_decision_answer_wiring.py`, against a CONTROL count
-   over the committed C0a blob. Report `git ls-files .remedy-wt`, `git worktree
-   list`, `git branch --list "tmp/*"`, and `gh pr list --state open --json
-   number,headRefName,baseRefName,isDraft`.
+G8 THE COMPARISON, THE ATTRIBUTION AND THE PR GATE, at C3. Report the complete
+   `comm -13` branch-only set and the complete `comm -23` base-only set, both
+   untruncated. Report the per-id attribution S6 and S7 require, one line per
+   id, naming for each which class decided it and on what evidence; state
+   plainly whether any id is a BLOCKER under constraint 11. Report the file
+   names actually written under `.agent/gate_f032_r16/` and that none matches
+   `\.log$`. Report `git diff --name-only 2a872227..<C3>`, which is exactly the
+   Change set less `.agent/handoff.md` — report BOTH residues. Report `git diff
+   --stat 2a872227..<C3> -- packages/ apps/ tests/ docs/`, which must be EMPTY.
+   Report the insertion count of every commit from C0a through C3, each
+   single-parent and each under 500, compared cell by cell against the `+/-`
+   column of the handback's `## Commits` table. Report `git ls-files
+   .remedy-wt`, `git worktree list`, `git branch --list "tmp/*"`, and `gh pr
+   list --state open --json number,headRefName,baseRefName,isDraft`.
 
 ----------
 
 HANDBACK
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It has no
-length cap; it is valid when its mandated sections are present. It carries:
-the feature and round, the SESSION NUMBER — this is SESSION 4 of F032, whose
-rounds so far are R1 to R5 in session 1, R6 to R9 in session 2, R10 to R14 in
-session 3, and R15 opening this one — the branch, the base and every commit
-SHA, a per-commit changed-files table with the `+/-` column, ONE LINE PER GATE
-G1 to G8 carrying its real readings, the item-status table covering C0a to C6
-and S1 to S8 with every item present exactly once, the open-findings count, the
+length cap; it is valid when its mandated sections are present. It carries: the
+feature and round, the SESSION NUMBER — this is SESSION 4 of F032, whose rounds
+so far are R1 to R5 in session 1, R6 to R9 in session 2, R10 to R14 in session
+3, and R15 and R16 in this one — the branch, the base and every commit SHA, a
+per-commit changed-files table with the `+/-` column, ONE LINE PER GATE G1 to
+G8 carrying its real readings, the item-status table covering C0a to C4 and S1
+to S9 with every item present exactly once, the open-findings count, the
 deviations and assumptions, and the next expected action. State plainly that no
 pull request was created and nothing was merged.
+
+WRITE THIS FILE ONCE. `.agent/handoff.md` is rewritten in full every round and
+is not an append-only record, so if a sentence in it turns out to be false, the
+repair is a deviation line in the NEXT round's handback and NEVER a commit of
+its own — that clause is carried here from the F032 R12 entry of
+`.agent/live_review.md`, which labelled it binding on the next block ordering a
+handback. Measure every numeral before writing it, and state no count you did
+not count.
