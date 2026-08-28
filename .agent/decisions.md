@@ -9519,3 +9519,57 @@ REVERSE by deleting this decision and the four rules it authorises from
 `apps/ui/src/components/diff/DiffView.module.css`; the runs then render in the
 row's own colour and the wiring stays intact, because the class mapping maps
 `plain` to the empty string already.
+
+## DECISION F256 D3 (2026-08-28, F256 R5) — the diff file sidebar takes its treatment from the diff body's own vocabulary, and Remedy draws no proportional stats bar
+
+CONTEXT. `apps/ui/src/components/diff/DiffFileSidebar.tsx` has carried a
+DEFERRAL in its own header since F037 built it: semantic markup, real numbers,
+no class, because the binding CSS of `docs/roadmap/features/T5_F037.md` defines
+no rule for a sidebar and the CANONICAL DESIGN REFERENCE banner forbids
+inventing a visual language. Measured at `78e71b3c`: no file under
+`docs/ui/design_reference/` contains the word "syntax" or rules this surface,
+and the only sidebar `component_spec.md` names is `BrandSidebar`, which is the
+left brand rail and not this panel. F256's own feature file states in as many
+words that the ruling is this feature's to make and to record.
+
+CHOSEN, by DERIVATION rather than invention, which is the same method DECISION
+F037 D9 used for intraline emphasis and DECISION F256 D2 used for the syntax
+palette. The sidebar borrows the vocabulary the diff body has already taught the
+reader: a file path is set in the mono family with ligatures OFF, for the reason
+`assets_spec.md` section 2 gives every diff surface — a path must render as the
+characters that are really in it; the added and removed counts take the
+product's own green and orange, the same two hues the diff rows tint with; and
+every other piece of metadata takes `--remedy-ink-soft`, the same rank of
+de-emphasis this sheet already gives the line-number gutter. No new custom
+property is introduced and `apps/ui/src/styles/tokens.css` is not extended.
+
+THE DELIBERATE ABSENCE, recorded because a reader will search for it and text
+search cannot find code that does not exist: Remedy does NOT draw a proportional
+stats bar in this sidebar. The feature file's Design section says "paths + stats
+bars", and this decision reads that as satisfied by the counts themselves. A bar
+is a visual primitive no authority in this repository defines — it needs a
+track, a fill, a minimum width for a one-line change and a rule for what happens
+when a file is pure deletion — and inventing all four here is exactly what the
+banner forbids. The counts already carry the magnitude, and they carry it
+exactly rather than approximately.
+
+ALTERNATIVES CONSIDERED. (a) Draw the bar anyway. Rejected: four undefined
+sub-decisions, and a bar that lies at small widths is worse than a number that
+does not. (b) Defer the ruling again. Rejected because F037 already deferred it
+once, F256 exists to close exactly that kind of deferral, and a second deferral
+would make the promise permanent. (c) Ask the operator to rule it. Rejected
+because docs/agents/planner_reviewer_prompt.md §2 forbids a ruling request and
+§4 item 7 requires the reviewer to rule loudly and reversibly instead.
+
+CONSEQUENCE. The sidebar stops shipping unstyled, and the ruling is enforced by
+guards that already exist: `tests/ui_contracts/test_design_drift.py` fails any
+custom property used but not defined under `apps/ui/src`, and the contract test
+this round extends fails any class the component names without a rule behind it.
+The absence of the bar is enforced by nothing, which is why it is written down
+here and in the component's header rather than left to be rediscovered.
+
+REVERSE by deleting this decision and the sidebar rules it authorises from
+`apps/ui/src/components/diff/DiffView.module.css`, and restoring the deferral
+paragraph in `DiffFileSidebar.tsx` from git history at `78e71b3c`; the sidebar
+then returns to semantic markup with no class, which is a state it is known to
+work in.
