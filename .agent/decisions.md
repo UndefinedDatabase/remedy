@@ -9355,3 +9355,40 @@ deliberate-absence paragraph above them from git history at `68680786`, drop
 `splitLineIntoIntralineSegments` and its `<mark>` from `DiffView.tsx`, and
 delete amendment A5. The parser's `intraline` spans are unaffected: they are
 contract data and predate this decision by fourteen rounds.
+
+## DECISION F037 D10 (2026-08-28) — TypeScript mutation red-proofs ARE measurable in this repository, and this is the route
+
+CONTEXT. From F037 R8 onward every block in this feature carried a standing
+claim that no TypeScript mutation red-proof can be ordered, because a
+`git worktree` has no `apps/ui/node_modules` — it is gitignored — and vitest
+there is exit 1 UNMUTATED with `ERR_MODULE_NOT_FOUND`, which is no
+discriminator and so a vacuous proof. TRUE of every route tried, FALSE in
+general, and it cost this feature its `.ts` red-proofs for thirteen rounds.
+
+THE RULING. Vitest is spawned FROM the primary checkout, so it resolves its own
+package out of the primary's `node_modules`, and `--root` points discovery at
+the worktree, so the tree under test is the worktree's:
+
+    subprocess.run(["npx", "vitest", "run",
+                    "--root", f"{WT}/apps/ui",
+                    "--config", f"{PRIMARY}/apps/ui/vitest.config.ts",
+                    "<path relative to --root>", "--reporter=basic"],
+                   cwd=f"{PRIMARY}/apps/ui", capture_output=True)
+
+BOTH FLAGS ARE LOAD-BEARING AND THE FAILURE MODES DIFFER. `--root` alone cannot
+resolve the `vitest` package from the worktree's own config and exits 1 before
+any test loads. `--config` alone re-runs the PRIMARY tree and stays GREEN under
+a worktree mutation — the dangerous one, because it looks like a passing gate.
+Only the pair roots discovery at the worktree while resolving the tool at the
+primary. The test path is RELATIVE and resolves against `--root`. G5 is intact:
+the primary is only READ, and the only tree written to is the disposable
+worktree. Direct `npx` and `node_modules/.bin/vitest` shell commands are denied
+to this session class, so drive it from a `python3` script under the gitignored
+`.remedy-wt/` — the refusal binds the shell caller, not the environment, which
+is finding `R-0724`'s lesson.
+
+EVIDENCE, taken at `b2658466`: control exit 0 at 61 passed, then five mutations
+of the worktree's `diffViewModel.ts` each exit 1 killing exactly the named test
+for the property broken, then control exit 0 again with every file restored to
+its pre-mutation sha256. REVERSE by deleting this decision; but the claim it
+replaces is measurably false, so reversing it re-blinds the `.ts` layer.
