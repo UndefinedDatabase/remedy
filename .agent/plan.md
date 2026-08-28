@@ -1,44 +1,47 @@
-# Plan — F032 Approval with the evidence triple
+# Plan — F037 Rendered diff viewer
 
-Branch: feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge
-commit of pull request #216 which closed the amend0827 process-diet order.
+Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
+merge commit of pull request #217 which closed F032.
 `.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series, F032 D1 through D8.
+`.agent/decisions.md` carries the DECISION series.
 
 ## Goal
-No decision without its receipts. Every decision a human is asked to answer
-carries the evidence triple — `evidence_refs[]`, `expected_outcome` and
-`downside` — the inbox card renders all three, and a producer that omits one
-fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
-task slicing and the design amendments that reconcile it with the source.
+Changes become readable, not merely present. The server parses a unified diff
+into structured JSON — files, hunks, lines, intraline spans — served as a read
+endpoint per task and attempt, and the client renders it with a file sidebar,
+hunk collapse, virtual scrolling and lazily loaded syntax bundles.
+`docs/roadmap/features/T5_F037.md` holds Goal & Done, the task slicing, the
+binding CSS and the orchestrator brief.
 
 ## Current Step
-R19 CLOSES F032. T001, T002 and T003 are complete, the integration gate passed
-at R17 with an empty branch-only failure set, and R18 produced the evidence
-bundle and the review package from the accepted HEAD `c3cf408f`. This round
-books the R18 verdict, flips the STATUS line to `[x]` and syncs the README's
-capability prose and its two ledger-derived counts in the SAME commit — they
-may never disagree in a committed state — and then opens the pull request.
+R1 claims F037 in the roadmap ledger, cuts the branch, resets this record set
+for the new feature, books the F032 R19 verdict, and puts the F037 source
+inventory on disk. The inventory is the round's substance: `review_scope.py`
+already parses unified diffs and `review_subject.py` already names a
+file-status vocabulary, while the feature file specifies a contract matching
+neither exactly, so what already exists is measured before T001 is planned.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a and C0b, save and mirror the block | ordered | |
-| C1 the plan | ordered | first substantive commit |
-| C2 the R18 verdict and the reviewer's slip | ordered | the record is touched first |
-| C3 the closure commit and the handback | ordered | STATUS and README together, last on the branch |
-| the pull request | ordered | after C3; NOT merged this session |
+| C0a/C0b save and mirror the block | ordered | |
+| C1 plan and context for F037 | ordered | first substantive commit |
+| C2 STATUS claim, open to active | ordered | |
+| C3 ledger reset and the F032 R19 gate | ordered | findings carried forward |
+| C4 the F037 source inventory | ordered | Q1-Q8, each measured |
+| C5 the handback | ordered | |
 
 ## Next Steps
-1. The pull request merges at the NEXT feature's start, through the Open PR
-   Gate of AGENTS.md. The gap is the operator's manual review window, and the
-   operator may merge manually at any time instead.
-2. The next feature is chosen by Rule A5 from `docs/roadmap/STATUS.md`, in a
-   fresh session. `docs/roadmap/STATUS.md` names F037 as the next open line.
+1. Book R1's verdict and plan T001 against the inventory — the parser seam, the
+   status vocabulary and the route the read endpoint attaches to.
+2. T001: the unified-to-JSON parser, its corpus tests and the read endpoint.
+3. T002 the rendering core, then T003 sidebar, virtual scrolling, lazy
+   languages and the L3 tab.
 
 ## Risks
-- The package's filename, SHA-256 and archived path rest on R18's transcript:
-  the archive directory lies outside this session's allowed working
-  directories, so the reviewer could not re-read them.
-- R-0714 is open and Medium. It does not touch F032's own code; it makes the
-  integration gate's auto-build lever unenforceable and belongs to whoever
-  repairs `tests/ui_server/test_dashboard_contract.py`.
+- The feature file's contract names a `binary` file status that
+  `review_subject.py`'s vocabulary does not carry, and that vocabulary carries
+  `copied` and `type_changed` which the contract omits. If the inventory
+  confirms this, the reviewer rules a DECISION under §4 item 7 rather than
+  widening scope silently.
+- `.agent/live_review.md` is append-only below `## Findings`. R1 rewrites the
+  header region and appends the F032 R19 gate entry, and G5 proves both.
