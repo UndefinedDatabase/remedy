@@ -152,3 +152,16 @@
   being re-measured after the last edit, which is the staleness shape the
   checklist already names. A cap is re-measured on the FINAL bytes of the slice
   that will land, never inherited from the slice it was adapted from.
+
+- 2026-08-28 · F037 R11 · Finding `R-0721` states a parse cost of 0.363 s for a
+  10k-line diff, and the figure is an artifact of the reviewer's own probe rather
+  than a property of the parser: it was measured with `tracemalloc` active around
+  the call. Measured clean afterwards, the same fixture parses in 0.101 s and the
+  same fixture with `tracemalloc` running takes 0.262 s, so the instrumentation
+  accounted for a factor of 2.6 and the different generated content of the probe
+  for the rest. The R11 worker measured 0.105 s, reported the disagreement instead
+  of transcribing the finding, and was right to. The finding's substance — linear
+  cost, no ceiling — is unaffected and was re-confirmed. A timing figure that will
+  be written into the append-only record is measured by the SAME instrument the
+  round will use to check it, never through a profiler that is switched on for the
+  memory reading beside it; a measurement's harness is part of the measurement.
