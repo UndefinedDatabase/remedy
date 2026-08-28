@@ -23,8 +23,18 @@
 // component inside its diff panel beside `DiffFileSidebar`. Changing the props
 // below therefore changes that shell, and the lazy language bundles landed HERE
 // rather than at some new caller: the importer constant below is the only place
-// in the product that names the highlight module to `loadDiffLanguageBundle`,
+// in the product that names the grammar module to `loadDiffLanguageBundle`,
 // which is what keeps that shell out of F256's wiring entirely.
+//
+// THE TWO HALVES OF THE HIGHLIGHT, and which of them this file imports HOW —
+// finding `R-0732`, which this wiring exists to keep repaired.
+// `../../api/diffHighlight` is the SCANNER and is imported STATICALLY, because a
+// row cannot be drawn without it. `../../api/diffHighlightGrammars` is the
+// TABLES and is imported ONLY through the dynamic `import(...)` below. The two
+// must stay different modules: a module a file imports both statically and
+// dynamically is not code-split at all — the bundler keeps it in the main chunk
+// and says so — and that is exactly what this file did until the tables moved
+// out, which made DECISION F256 D1's lazy chunk a chunk in name alone.
 //
 // NOTHING IN THIS REPOSITORY CAN RENDER THIS FILE. There is no DOM environment
 // here and the shipped vitest config reaches no markup, so what gates this
@@ -42,27 +52,65 @@ import {
   splitLineIntoIntralineSegments,
   toggleHunkCollapse,
 } from "../../api/diffViewModel";
-import type { DiffEnvelope, DiffLineKind } from "../../api/diffViewModel";
+import type {
+  DiffEnvelope,
+  DiffLanguageBundleAnswer,
+  DiffLineKind,
+} from "../../api/diffViewModel";
 import { composeHighlightedRuns } from "../../api/diffHighlight";
-import type { DiffHighlightTokenKind } from "../../api/diffHighlight";
+import type {
+  DiffHighlightGrammar,
+  DiffHighlightTokenKind,
+} from "../../api/diffHighlight";
 import styles from "./DiffView.module.css";
 
-/** HOW THE HIGHLIGHT BUNDLE IS ASKED FOR, and it is a CALL EXPRESSION rather
- *  than a static import on purpose: DECISION F256 D1 rules that a language's
- *  tokenizer is fetched lazily, as its own chunk, instead of riding in the main
- *  chunk for every operator who never opens a diff. `loadDiffLanguageBundle`
- *  takes this function rather than naming a module itself — the model module
- *  imports nothing at runtime, which is what keeps every rule in it decidable —
- *  so THIS file is the one place in the product that names the highlight module
- *  to the loader, and it is the reason the wiring lives here rather than in
+/** HOW THE GRAMMAR BUNDLE IS ASKED FOR, and it is a CALL EXPRESSION rather than
+ *  a static import on purpose: DECISION F256 D1 rules that a language's grammar
+ *  is fetched lazily, as its own chunk, instead of riding in the main chunk for
+ *  every operator who never opens a diff. `loadDiffLanguageBundle` takes this
+ *  function rather than naming a module itself — the model module imports
+ *  nothing at runtime, which is what keeps every rule in it decidable — so THIS
+ *  file is the one place in the product that names the grammar module to the
+ *  loader, and it is the reason the wiring lives here rather than in
  *  `../shell/RemedyShell.tsx`.
+ *
+ *  IT NAMES THE GRAMMAR MODULE AND NOT THE SCANNER, which is finding `R-0732`.
+ *  `../../api/diffHighlight` is imported STATICALLY a few lines above for
+ *  `composeHighlightedRuns`, and naming that same module here would leave it
+ *  imported both ways by one file — which a bundler does not split at all. The
+ *  module this line names must therefore be one this file imports NO OTHER WAY,
+ *  and `tests/ui_contracts/test_diff_view_render.py` pins exactly that.
  *
  *  IT IS NEVER INVOKED FOR A PATH THAT RENDERS PLAIN. That is the acceptance
  *  property `loadDiffLanguageBundle` owns and its vitest suite pins at a call
  *  count of exactly zero, and passing the importer instead of calling it is what
  *  lets that function decide: the language is resolved from the path first, and
  *  a plain answer never reaches this line. */
-const DIFF_HIGHLIGHT_BUNDLE_IMPORTER = () => import("../../api/diffHighlight");
+const DIFF_HIGHLIGHT_BUNDLE_IMPORTER = () => import("../../api/diffHighlightGrammars");
+
+/** The SHAPE of that lazy chunk, written as a type-only `typeof import(...)`.
+ *  TypeScript erases it at build time, so it is not the static import the
+ *  paragraph above forbids — it is how this file type-checks against a module it
+ *  deliberately never links to. */
+type DiffHighlightGrammarModule = typeof import("../../api/diffHighlightGrammars");
+
+/** The grammar a loaded bundle answers for the language it was loaded FOR, or
+ *  `null` when there is none to have. Three different things arrive here as
+ *  `null` and all three render identically — a path whose language is plain, an
+ *  import that never landed (`loadDiffLanguageBundle` degrades to
+ *  `bundle: null` for both), and an id the tables do not own, which
+ *  `diffHighlightGrammarFor` answers `null` for itself. This function decides
+ *  none of that; it only reads the answer, because the ownership rule of that
+ *  mapping lives in the module that carries the mapping. */
+function diffGrammarFromBundle(
+  answer: DiffLanguageBundleAnswer,
+): DiffHighlightGrammar | null {
+  const loaded = answer.bundle as DiffHighlightGrammarModule | null | undefined;
+  if (loaded === null || loaded === undefined) {
+    return null;
+  }
+  return loaded.diffHighlightGrammarFor(answer.language);
+}
 
 /** The tint a line's kind gives its row, as a `Record` lookup rather than a
  *  branch: the binding CSS composes `.diffLine.add` and `.diffLine.del` from two
@@ -79,7 +127,9 @@ const DIFF_LINE_KIND_CLASS: Record<DiffLineKind, string> = {
  *  as a `Record` for the same reason `DIFF_LINE_KIND_CLASS` above is one: the
  *  lookup is total over the closed kind set, so a kind added to
  *  `../../api/diffHighlight` without a class here becomes a type error rather
- *  than a run that silently renders untinted.
+ *  than a run that silently renders untinted. That module is the SCANNER and is
+ *  imported statically, which is what makes this a compile-time total rather
+ *  than a promise about a chunk that may not have arrived.
  *
  *  `plain` TAKES THE EMPTY STRING, exactly as `ctx` does above and for the same
  *  reason: an unhighlighted run wears no extra class, there is no `.tokPlain`
@@ -149,16 +199,18 @@ export function DiffView({ envelope }: DiffViewProps) {
     setCollapsed(defaultCollapsedHunkIds(envelope));
   }, [envelope]);
 
-  // WHICH LANGUAGE EACH FILE IS HIGHLIGHTED AS, keyed by the file's own path and
-  // holding the model's answer verbatim: a language id, or `null` meaning "render
-  // this file plain". A `Map` rather than an object literal because the keys are
-  // diff paths from a repository this viewer does not control, and a lookup over
-  // an inherited key is the defect finding `R-0731` recorded in the model module.
-  // A path that is not a key yet is the honest reading of an answer that has not
-  // arrived, and it renders plain until it does.
-  const [languageByPath, setLanguageByPath] = useState<ReadonlyMap<string, string | null>>(
-    () => new Map<string, string | null>(),
-  );
+  // WHICH GRAMMAR EACH FILE IS HIGHLIGHTED WITH, keyed by the file's own path and
+  // holding the RESOLVED grammar rather than a language id — the scanner takes a
+  // grammar now, and holding the id would mean resolving it again on every render
+  // against a table this file has no static access to anyway. `null` means
+  // "render this file plain". A `Map` rather than an object literal because the
+  // keys are diff paths from a repository this viewer does not control, and a
+  // lookup over an inherited key is the defect finding `R-0731` recorded in the
+  // model module. A path that is not a key yet is the honest reading of an answer
+  // that has not arrived, and it renders plain until it does.
+  const [grammarByPath, setGrammarByPath] = useState<
+    ReadonlyMap<string, DiffHighlightGrammar | null>
+  >(() => new Map<string, DiffHighlightGrammar | null>());
 
   // A NEW ENVELOPE STARTS A NEW MAP, for the reason the collapse set above is
   // reset on a new envelope: the keys are the previous diff's paths, and a stale
@@ -173,11 +225,13 @@ export function DiffView({ envelope }: DiffViewProps) {
   // its own read.
   useEffect(() => {
     let cancelled = false;
-    setLanguageByPath(new Map<string, string | null>());
+    setGrammarByPath(new Map<string, DiffHighlightGrammar | null>());
     for (const path of Array.from(new Set(envelope.files.map((file) => file.path)))) {
       void loadDiffLanguageBundle(path, DIFF_HIGHLIGHT_BUNDLE_IMPORTER).then((answer) => {
         if (!cancelled) {
-          setLanguageByPath((current) => new Map(current).set(path, answer.language));
+          setGrammarByPath((current) =>
+            new Map(current).set(path, diffGrammarFromBundle(answer)),
+          );
         }
       });
     }
@@ -280,12 +334,12 @@ export function DiffView({ envelope }: DiffViewProps) {
             </button>
           );
         }
-        // THE LANGUAGE THIS ROW IS COLOURED AS, looked up by the path of the file
-        // the row belongs to. `null` covers both "this file renders plain" and
-        // "its answer has not arrived", which are the same thing on screen: the
-        // token cut then makes the whole line `plain` and every run wears no
+        // THE GRAMMAR THIS ROW IS COLOURED WITH, looked up by the path of the
+        // file the row belongs to. `null` covers both "this file renders plain"
+        // and "its answer has not arrived", which are the same thing on screen:
+        // the token cut then makes the whole line `plain` and every run wears no
         // class, so the row's markup is what it was before F256.
-        const rowLanguage = languageByPath.get(envelope.files[row.fileIndex].path) ?? null;
+        const rowGrammar = grammarByPath.get(envelope.files[row.fileIndex].path) ?? null;
         return (
           <div
             key={row.key}
@@ -314,7 +368,7 @@ export function DiffView({ envelope }: DiffViewProps) {
                   are the model's own and are used above and nowhere else. */}
               {composeHighlightedRuns(
                 splitLineIntoIntralineSegments(row.line),
-                rowLanguage,
+                rowGrammar,
               ).map((run, runIndex) => {
                 const kindClass = DIFF_HIGHLIGHT_KIND_CLASS[run.kind];
                 if (run.marked) {

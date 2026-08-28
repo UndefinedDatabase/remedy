@@ -70,8 +70,16 @@ REIMPLEMENTED_RULE_SPELLINGS = (
 # to one place. These are DELIBERATELY NOT in DELEGATED_RULES above: that tuple is the set of
 # decidable rules the component must not carry, and widening it would change what the
 # existing delegation test means.
+#
+# THE TWO MODULES ARE NAMED SEPARATELY, which is finding `R-0732`. The SCANNER is the eager
+# half and the component imports it statically; the GRAMMAR TABLES are the lazy half and the
+# component reaches them only through the dynamic importer. A module imported both ways by
+# one file is not code-split at all, so which name goes with which import form is the whole
+# of the property `TestTheHighlightIsWiredAndLazy` below pins.
 HIGHLIGHT_MODULE = "apps/ui/src/api/diffHighlight.ts"
 HIGHLIGHT_IMPORT_SPECIFIER = '"../../api/diffHighlight"'
+GRAMMARS_MODULE = "apps/ui/src/api/diffHighlightGrammars.ts"
+GRAMMARS_IMPORT_SPECIFIER = '"../../api/diffHighlightGrammars"'
 HIGHLIGHT_IMPORTER_NAME = "DIFF_HIGHLIGHT_BUNDLE_IMPORTER"
 HIGHLIGHT_KIND_CLASS_NAME = "DIFF_HIGHLIGHT_KIND_CLASS"
 HIGHLIGHT_WIRED_CALLS = ("loadDiffLanguageBundle", "composeHighlightedRuns")
@@ -168,6 +176,23 @@ def highlight_kind_class_entries(code: str) -> list[tuple[str, str]]:
         (match.group(1), match.group(2).strip())
         for match in re.finditer(r"(\w+)\s*:\s*([^,\n]+?)\s*,", body)
     ]
+
+
+def static_import_count(code: str, specifier: str) -> int:
+    """How many `import ... from <specifier>` statements the source carries.
+
+    A `from` clause is what makes an import STATIC — the form that puts a module in the
+    importing chunk — and it is the only form that can carry one. `import type ... from` is
+    counted too and deliberately so: it is erased at build time, so a guard that had to tell
+    the two apart would be guessing at the bundler's behaviour instead of forbidding a
+    spelling. The component reaches its lazy module by neither form.
+    """
+    return len(re.findall(rf"from\s+{re.escape(specifier)}", code))
+
+
+def dynamic_import_count(code: str, specifier: str) -> int:
+    """How many dynamic `import(<specifier>)` expressions the source carries."""
+    return len(re.findall(rf"import\s*\(\s*{re.escape(specifier)}\s*\)", code))
 
 
 def jsx_opening_tag_at(code: str, start: int) -> str:
@@ -598,10 +623,11 @@ class TestTheHighlightIsWiredAndLazy:
     """(g) F256's wiring, expressed where it can fail. `apps/ui/src/api/diffHighlight.ts` shipped
     the token model and `composeHighlightedRuns` shipped the composition, but a model with no
     caller highlights nothing — the defect class finding `R-0220` records. This class asserts the
-    three halves of the wiring the component owns: that it CALLS the two functions, that it
-    reaches the highlight module through a DYNAMIC import so the tokenizer is a chunk rather
-    than main-chunk weight (DECISION F256 D1), and that every class DECISION F256 D2's mapping
-    names has a rule behind it.
+    four halves of the wiring the component owns: that it CALLS the two functions, that it
+    reaches the GRAMMAR module through a DYNAMIC import so the tables are a chunk rather than
+    main-chunk weight (DECISION F256 D1), that the module it imports dynamically is imported no
+    other way (finding `R-0732`), and that every class DECISION F256 D2's mapping names has a
+    rule behind it.
 
     Every assertion reads the COMMENT-STRIPPED source: the component's WHY header names
     `loadDiffLanguageBundle`, `composeHighlightedRuns` and the import specifier in prose, so an
@@ -641,15 +667,48 @@ class TestTheHighlightIsWiredAndLazy:
                 f"({HIGHLIGHT_AUTHORITY})"
             )
 
-    def test_the_highlight_module_is_reached_through_a_dynamic_import(self):
+    def test_the_grammar_module_is_reached_through_a_dynamic_import(self):
         statement = ts_const_statement(strip_ts_comments(COMPONENT.read_text()), HIGHLIGHT_IMPORTER_NAME)
-        assert f"import({HIGHLIGHT_IMPORT_SPECIFIER})" in statement, (
+        assert f"import({GRAMMARS_IMPORT_SPECIFIER})" in statement, (
             f"`const {HIGHLIGHT_IMPORTER_NAME}` in {COMPONENT.name} does not reach "
-            f"{HIGHLIGHT_MODULE} through a dynamic `import(...)` call. A static import of the "
+            f"{GRAMMARS_MODULE} through a dynamic `import(...)` call. A static import of the "
             f"same module puts every grammar in the main chunk for every operator who never "
             f"opens a diff, which is the whole of what DECISION F256 D1 promised the lazy "
             f"bundles would avoid, and the laziness would then exist only in the name of "
             f"`loadDiffLanguageBundle`"
+        )
+
+    def test_the_dynamically_imported_module_is_imported_no_other_way(self):
+        """(g2) Finding `R-0732`, expressed where it can fail.
+
+        `npx vite build` at `e23dad09` exited 0 and WARNED that the module was "dynamically
+        imported by DiffView.tsx but also statically imported", and that the dynamic import
+        "will not move module into another chunk" — the tokenizer and every grammar table
+        shipped in the main chunk while the code read as if they did not. No bundler runs
+        inside this repository's suites, so the property is pinned over the source instead:
+        the module the component imports DYNAMICALLY must carry no `from` clause anywhere in
+        the same file, while the module it CALLS into must still be imported statically.
+        """
+        code = strip_ts_comments(COMPONENT.read_text())
+        dynamic = dynamic_import_count(code, GRAMMARS_IMPORT_SPECIFIER)
+        assert dynamic >= 1, (
+            f"{COMPONENT.name} carries no dynamic `import({GRAMMARS_IMPORT_SPECIFIER})` at all, "
+            f"so this assertion would be forbidding a static import of a module the component "
+            f"never reaches — a guard over nothing"
+        )
+        static = static_import_count(code, GRAMMARS_IMPORT_SPECIFIER)
+        assert static == 0, (
+            f"{COMPONENT.name} imports {GRAMMARS_MODULE} STATICALLY {static} time(s) as well as "
+            f"dynamically. A module imported both ways by the SAME file is not code-split at "
+            f"all: the bundler keeps it in the main chunk and warns that the dynamic import "
+            f"will not move it, so every grammar table ships to every operator who never opens "
+            f"a diff and DECISION F256 D1's chunk exists in name only (finding R-0732)"
+        )
+        assert static_import_count(code, HIGHLIGHT_IMPORT_SPECIFIER) >= 1, (
+            f"{COMPONENT.name} no longer imports {HIGHLIGHT_MODULE} statically. The SCANNER is "
+            f"the eager half on purpose — a diff row cannot be drawn without it — and making it "
+            f"lazy too would leave every line uncoloured until a chunk arrived, which is a "
+            f"different feature from the one DECISION F256 D1 ruled on"
         )
 
     def test_every_class_the_kind_mapping_names_has_a_rule_in_the_stylesheet(self):
