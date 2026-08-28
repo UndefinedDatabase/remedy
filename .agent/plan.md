@@ -12,37 +12,36 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R21 gives `computeDiffRowWindow` its caller. The division a viewport forces —
-scroll offset and panel height into row indices — goes into `diffViewModel.ts`
-as `diffRowWindowForViewport`, so the rule stays where vitest executes it and
-`DiffView` keeps deriving nothing. The trap it exists to resolve is an
-unmeasured panel: `clientHeight` is 0 on first render, 0 divides to a visible
-count of 0, and an empty window draws no rows, so the panel never scrolls and
-never gets measured. R20's five reported stale comments are repaired, closing
-`R-0727`.
+R22 builds the last named piece, lazy language bundles, in the layer vitest
+executes. Acceptance states one property in so many words — an unknown language
+renders plain WITHOUT a bundle fetch — so the loader takes its importer as an
+ARGUMENT, the way `loadDiffEnvelope` takes its fetcher, and a counting importer
+in the test proves the count is zero rather than merely that the answer is
+plain. No component is wired this round. Three comments R21's own code falsified
+are repaired first: `R-0729`, a docstring telling future rounds that a
+TypeScript red-proof cannot be ordered, which DECISION F037 D10 disproved, and
+`R-0730`, two stale sentences in the model.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R20 verdict and two resolutions | ordered | record first |
-| C3 DECISION F037 D10 | ordered | it licenses this round's own red-proofs |
-| C4 the five staleness repairs | ordered | closes `R-0727` |
-| C5 the viewport rule and its vitest tests | ordered | before its caller |
-| C6 the wiring | ordered | the window becomes real |
-| C7 the guards over the wiring | ordered | after the code they read |
-| C8 the handback | ordered | |
+| C2 the R21 verdict and two findings | ordered | record first |
+| C3 the three comment repairs | ordered | one misleads future rounds |
+| C4 the language rule and its tests | ordered | |
+| C5 the lazy loader and its tests | ordered | the Acceptance property |
+| C6 the guards | ordered | after the code they read |
+| C7 the handback | ordered | |
 
 ## Next Steps
-1. The lazy language bundles, unknown languages rendering plain with no bundle
-   fetch, which Acceptance names.
-2. The 10k-line perf fixture measured END TO END and its numbers recorded; S3 of
-   this round bounds the window's row count but times nothing.
-3. A ruling on the sidebar's visual treatment, still owed.
+1. Wire highlighting into `DiffView`, and the 10k-line perf fixture measured END
+   TO END with its numbers recorded, which Acceptance requires.
+2. A ruling on the sidebar's visual treatment, still owed.
+3. Then T003 is complete and the closure sequence can begin.
 
 ## Risks
-- Round 21 of a 25-round soft limit, session 6 of 7. Two named pieces remain
-  after this round. If both do not fit in session 7, that session owes a SCOPE
-  REPORT rather than more work.
-- Nothing here renders a `.tsx` file, so S4 is gated by text and `tsc --noEmit`
-  alone, as every `.tsx` round of this feature has been.
+- Round 22 of a 25-round soft limit, and session 6 of 7. Three named pieces
+  remain across two Next Steps. If they do not fit by round 25, the session that
+  reaches it owes a SCOPE REPORT rather than more work.
+- Nothing here renders a `.tsx` file, so the wiring of step 1 will be gated by
+  text and `tsc --noEmit` alone, as every `.tsx` round of this feature has been.
