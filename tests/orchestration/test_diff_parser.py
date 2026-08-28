@@ -26,6 +26,7 @@ from packages.orchestration.diff_parser import (
     DIFF_STATUS_DELETED,
     DIFF_STATUS_MODIFIED,
     DIFF_STATUS_RENAMED,
+    DIFF_VIEW_MAX_BODY_LINES,
     DIFF_VIEW_STATUSES,
     DIFF_VIEW_VERSION,
     parse_unified_diff_to_view,
@@ -955,3 +956,119 @@ def test_the_huge_diff_parses_inside_the_recorded_perf_budget():
         f"parsing {HUGE_DIFF_BODY_LINE_COUNT} body lines took {elapsed:.3f}s, "
         f"ceiling {HUGE_DIFF_PARSE_CEILING_SECONDS}s"
     )
+
+
+# --------------------------------------------------------------------------- #
+# The parse ceiling — DECISION F037 D5, the parser half of finding `R-0721`.
+# --------------------------------------------------------------------------- #
+
+#: A file count whose TOTAL body lines exceed the ceiling. `_generated_many_file_diff`
+#: writes one deletion and one addition per file, so half the ceiling's own value is
+#: exactly the ceiling, and the extra files are the ones that must not appear at all in
+#: the truncated view. Expressed in the two constants rather than as a literal so it
+#: follows the ceiling if DECISION F037 D5 is ever re-decided.
+TRUNCATING_MANY_FILE_COUNT = DIFF_VIEW_MAX_BODY_LINES // 2 + MANY_FILE_DIFF_FILE_COUNT
+
+
+def _total_parsed_body_lines(view: dict) -> int:
+    """Body lines the view actually carries, summed across every file and hunk.
+
+    The ceiling is a property of the WHOLE payload, so the quantity every ceiling
+    assertion below reads is this total and never one file's share of it.
+    """
+    return sum(len(hunk["lines"]) for entry in view["files"] for hunk in entry["hunks"])
+
+
+def test_a_diff_far_above_the_ceiling_stops_at_exactly_the_ceiling():
+    """The bound bites, and it bites at its own value rather than near it.
+
+    WHAT A TRUNCATED VIEW LOOKS LIKE, so a reader meeting the shape does not file it
+    as a defect: the walk stops mid-input, so the LAST file in the list may carry a
+    partial hunk or a hunk holding no lines at all, and files after it do not appear
+    at all. `truncated` True is the client's signal that the list is a prefix.
+    """
+    diff_text = _generated_huge_single_file_diff(DIFF_VIEW_MAX_BODY_LINES * 2)
+
+    view = parse_unified_diff_to_view(diff_text)
+
+    assert view["truncated"] is True
+    assert _total_parsed_body_lines(view) == DIFF_VIEW_MAX_BODY_LINES
+
+
+def test_the_ceiling_boundary_holds_on_both_of_its_sides():
+    """Exactly the ceiling parses in full; exactly two more is cut to the ceiling.
+
+    Both halves live in one test because an off-by-one in the comparison moves the
+    boundary by one line and leaves each half alone still satisfiable: a `>` instead
+    of a `>=` still truncates the larger input, and a bound one line lower still
+    parses a smaller one in full. Only the pair pins the value.
+    """
+    at_ceiling = parse_unified_diff_to_view(
+        _generated_huge_single_file_diff(DIFF_VIEW_MAX_BODY_LINES)
+    )
+    above_ceiling = parse_unified_diff_to_view(
+        _generated_huge_single_file_diff(DIFF_VIEW_MAX_BODY_LINES + 2)
+    )
+
+    assert at_ceiling["truncated"] is False
+    assert _total_parsed_body_lines(at_ceiling) == DIFF_VIEW_MAX_BODY_LINES
+
+    assert above_ceiling["truncated"] is True
+    assert _total_parsed_body_lines(above_ceiling) == DIFF_VIEW_MAX_BODY_LINES
+
+
+def test_many_small_files_are_bounded_by_the_same_total_counter():
+    """Thousands of one-line files hit the ceiling on their SUM, not per file.
+
+    This is the case a per-file ceiling would miss entirely, and it is a realistic
+    `workspace.diff` shape rather than a contrived one. The last file present may hold
+    an empty hunk — the walk stopped inside it — and the files generated after it are
+    absent from the view.
+    """
+    diff_text = _generated_many_file_diff(TRUNCATING_MANY_FILE_COUNT)
+    generated_body_lines = 2 * TRUNCATING_MANY_FILE_COUNT
+    assert generated_body_lines > DIFF_VIEW_MAX_BODY_LINES
+
+    view = parse_unified_diff_to_view(diff_text)
+
+    assert view["truncated"] is True
+    assert _total_parsed_body_lines(view) == DIFF_VIEW_MAX_BODY_LINES
+    assert len(view["files"]) < TRUNCATING_MANY_FILE_COUNT
+
+
+def test_the_acceptance_fixture_stays_below_the_ceiling_and_is_not_truncated():
+    """The 10k-line fixture the feature is accepted against renders in FULL.
+
+    A ceiling at or below `HUGE_DIFF_BODY_LINE_COUNT` would truncate the very fixture
+    Acceptance names, satisfying every other assertion here while breaking the feature,
+    so the relationship between the two constants is asserted directly and not merely
+    implied by the parse.
+    """
+    assert HUGE_DIFF_BODY_LINE_COUNT < DIFF_VIEW_MAX_BODY_LINES
+
+    view = parse_unified_diff_to_view(
+        _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+    )
+
+    assert view["truncated"] is False
+    assert _total_parsed_body_lines(view) == HUGE_DIFF_BODY_LINE_COUNT
+
+
+def test_every_file_stats_still_recount_its_own_lines_under_truncation():
+    """Truncation never leaves `stats` describing lines the payload does not carry.
+
+    `test_every_file_stats_equal_a_recount_of_its_own_parsed_lines` asserts this for
+    the untruncated corpus; a bound that cut the lines but kept the counters would be
+    worse than no bound, because the sidebar would then promise content the viewer
+    cannot show. Checked over the many-files shape so the file whose hunk the walk
+    stopped inside — the partial or empty one — is covered too.
+    """
+    view = parse_unified_diff_to_view(
+        _generated_many_file_diff(TRUNCATING_MANY_FILE_COUNT)
+    )
+
+    assert view["truncated"] is True
+    for entry in view["files"]:
+        kinds = [line["kind"] for hunk in entry["hunks"] for line in hunk["lines"]]
+        assert entry["stats"]["added"] == kinds.count("add")
+        assert entry["stats"]["deleted"] == kinds.count("del")
