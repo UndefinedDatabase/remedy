@@ -3276,6 +3276,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--approve", "Apply changes (without this flag, dry-run only)", required=False, is_option=True, default="false"),
             ArgDef("--dry-run", "Preview only, no target mutation", required=False, is_option=True, default="false"),
             ArgDef("--test-command", "Post-apply test command", required=False, is_option=True, default=""),
+            ArgDef("--skip-blocked", "Promote the non-blocked files and deliberately leave the protected ones unpromoted (they are named, never written)", required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         may_mutate_repo=True,

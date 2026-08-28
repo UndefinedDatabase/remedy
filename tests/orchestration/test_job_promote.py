@@ -2167,3 +2167,301 @@ def test_job_promote_post_test_runs_on_the_guarded_seam(tmp_path, monkeypatch):
     assert summary.startswith("exit=0")
     assert "out-line" in summary
     assert "err-line" in summary
+
+
+# ---------------------------------------------------------------------------
+# Operator order amend0828-daily-driver, point 1 — deliberate partial promotion
+#
+# Reproduces the 2026-08-25 dogfooding finding in T0_F017 exactly: a builder
+# wrote an unasked-for `.gitignore` beside two reviewed files, `.gitignore` is in
+# `_BLOCKED_EXACT`, and the whole promotion died with `files_applied: []`. The
+# guardrail is correct and stays; what was missing is the operator's SECOND
+# decision, taken after reading the blocked list.
+# ---------------------------------------------------------------------------
+
+#: The blocked path from the operator's own run. Kept as a name so a reader can
+#: see which fence entry these tests are standing on.
+_OPERATOR_BLOCKED_PATH = ".gitignore"
+_OPERATOR_FREE_PATHS = ("fizzbuzz.py", "test_fizzbuzz.py")
+
+
+def _make_partially_blocked_job(tmp_path, *, free_paths=_OPERATOR_FREE_PATHS,
+                                blocked_path=_OPERATOR_BLOCKED_PATH):
+    """A completed job whose apply manifest holds free files AND one blocked path.
+
+    Every file is a create (it does not exist in the target), so the baseline
+    proof is the new-file shape and nothing but the fence can stop a promotion.
+    """
+    import hashlib
+
+    from packages.orchestration.pingpong_job import (
+        AppliedFileProof,
+        ApplyManifest,
+        JobPlan,
+        TaskEntry,
+        _persist_job,
+    )
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    target = tmp_path / "target"
+    target.mkdir()
+
+    all_paths = [*free_paths, blocked_path] if blocked_path else list(free_paths)
+    proofs = []
+    for rel in all_paths:
+        content = f"# {rel}\n"
+        (workspace / rel).write_text(content)
+        proofs.append(AppliedFileProof(
+            path=rel,
+            existed_before_job=False,
+            baseline_sha256="",
+            final_workspace_sha256=hashlib.sha256(content.encode()).hexdigest(),
+            task_id="T001",
+            run_id="run1",
+        ))
+
+    job = JobPlan(
+        repo_path=str(target),
+        job_title="FizzBuzz Demo v2",
+        status="completed",
+        job_workspace_path=str(workspace),
+        tasks=[
+            TaskEntry(
+                task_id="T001", title="write fizzbuzz", body="t",
+                status="applied_to_job_workspace", run_id="run1",
+                reviewer_verdict="pass", test_passed=True,
+                apply_manifest=ApplyManifest(
+                    task_id="T001", run_id="run1",
+                    applied_files=all_paths,
+                    applied_file_proofs=proofs,
+                    status="applied",
+                ),
+            ),
+        ],
+    )
+    _persist_job(job)
+    return job, workspace, target
+
+
+class TestSkipBlockedPartialPromotion:
+    """--skip-blocked promotes the remainder and provably leaves the blocked path."""
+
+    def test_two_free_files_promote_and_the_blocked_one_stays_behind(
+        self, isolate_data_root, tmp_path,
+    ):
+        from packages.orchestration.job_promote import promote_job
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+
+        result = promote_job(
+            job.job_id, str(target), approve=True, skip_blocked=True,
+        )
+
+        assert result.status == "promoted", result.blocked_reason
+        assert sorted(result.files_applied) == sorted(_OPERATOR_FREE_PATHS)
+
+        # The two free files really landed, with their workspace bytes.
+        for rel in _OPERATOR_FREE_PATHS:
+            assert (target / rel).is_file()
+            assert (target / rel).read_text() == f"# {rel}\n"
+
+        # THE BLOCKED PATH WAS NOT WRITTEN. This is the whole point: skipping is
+        # deliberate and visible, never a silent half-apply.
+        assert not (target / _OPERATOR_BLOCKED_PATH).exists()
+        assert _OPERATOR_BLOCKED_PATH not in result.files_applied
+        assert _OPERATOR_BLOCKED_PATH not in result.files_planned
+
+        # And it is NAMED, so the operator can see what was left behind.
+        assert any(e.startswith(_OPERATOR_BLOCKED_PATH) for e in result.files_blocked)
+        assert result.skip_blocked is True
+
+    def test_the_summary_says_what_was_withheld(self, isolate_data_root, tmp_path):
+        from packages.orchestration.job_promote import (
+            promote_job,
+            summarize_job_promotion,
+        )
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+        result = promote_job(
+            job.job_id, str(target), approve=True, skip_blocked=True,
+        )
+        text = summarize_job_promotion(result)
+
+        assert "--skip-blocked deliberately left 1 protected path(s) unpromoted" in text
+        assert "were not written to the target" in text
+        assert _OPERATOR_BLOCKED_PATH in text
+
+    def test_every_file_blocked_still_blocks_with_an_honest_next(
+        self, isolate_data_root, tmp_path,
+    ):
+        """--skip-blocked with no remainder is a block, not an empty success."""
+        from packages.orchestration.job_promote import (
+            promote_job,
+            summarize_job_promotion,
+        )
+
+        job, _workspace, target = _make_partially_blocked_job(
+            tmp_path, free_paths=(), blocked_path=_OPERATOR_BLOCKED_PATH,
+        )
+        result = promote_job(
+            job.job_id, str(target), approve=True, skip_blocked=True,
+        )
+
+        assert result.status == "blocked"
+        assert result.blocked_reason == "no_promotable_files"
+        assert result.files_applied == []
+        assert not (target / _OPERATOR_BLOCKED_PATH).exists()
+
+        last = summarize_job_promotion(result).strip().splitlines()[-1]
+        assert last.startswith("Next:")
+        assert "no remainder for --skip-blocked" in last
+
+
+class TestWithoutSkipBlockedNothingChanges:
+    """The default path must behave EXACTLY as it did before the flag existed."""
+
+    def test_default_still_blocks_the_whole_promotion(
+        self, isolate_data_root, tmp_path,
+    ):
+        from packages.orchestration.job_promote import promote_job
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        assert result.status == "blocked"
+        assert result.blocked_reason.startswith("blocked_paths:")
+        assert result.files_applied == []
+        assert result.skip_blocked is False
+
+        # Atomic: not one of the three files reached the target.
+        for rel in (*_OPERATOR_FREE_PATHS, _OPERATOR_BLOCKED_PATH):
+            assert not (target / rel).exists(), (
+                f"{rel} was applied without --skip-blocked: the all-or-nothing "
+                f"rule was weakened"
+            )
+
+    def test_the_blocked_output_ends_with_the_route_through(
+        self, isolate_data_root, tmp_path,
+    ):
+        """Finding (c): the blocked output owes an honest Next: line."""
+        from packages.orchestration.job_promote import (
+            promote_job,
+            summarize_job_promotion,
+        )
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+        result = promote_job(job.job_id, str(target), approve=True)
+
+        lines = summarize_job_promotion(result).strip().splitlines()
+        last = lines[-1]
+
+        assert last.startswith("Next:"), f"blocked output ended with {last!r}"
+        assert _OPERATOR_BLOCKED_PATH in last
+        assert "--skip-blocked" in last
+        assert "remaining 2 file(s)" in last
+
+    def test_the_fence_itself_is_not_weakened(self):
+        """--skip-blocked changes one decision; it does not widen what may be written."""
+        from packages.orchestration.job_promote import (
+            _BLOCKED_EXACT,
+            _is_blocked_path,
+        )
+
+        assert _OPERATOR_BLOCKED_PATH in _BLOCKED_EXACT
+        assert _is_blocked_path(_OPERATOR_BLOCKED_PATH)
+        assert _is_blocked_path(".git")
+        assert _is_blocked_path(".env")
+        assert _is_blocked_path("../escape.py") == "path_traversal"
+
+    def test_a_non_path_block_does_not_advertise_skip_blocked(
+        self, isolate_data_root, tmp_path,
+    ):
+        """The Next: line must name the route that actually applies."""
+        from packages.orchestration.job_promote import (
+            promote_job,
+            summarize_job_promotion,
+        )
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+        # A create whose target file already exists is a baseline block, not a
+        # fence block — --skip-blocked cannot lift it and must not claim to.
+        (target / _OPERATOR_FREE_PATHS[0]).write_text("someone got here first\n")
+
+        result = promote_job(
+            job.job_id, str(target), approve=True, skip_blocked=True,
+        )
+
+        assert result.status == "blocked"
+        assert not result.blocked_reason.startswith("blocked_paths:")
+
+        last = summarize_job_promotion(result).strip().splitlines()[-1]
+        assert last.startswith("Next:")
+        assert "does not apply to this one" in last
+
+
+class TestSkipBlockedThroughTheGroupedCLI:
+    """--skip-blocked must be a real boolean FLAG, off unless typed.
+
+    Declared without ``is_flag=True`` it falls through to the catalog's generic
+    valued-option branch, whose default is the STRING ``"false"`` — which is
+    truthy, so the partial promotion would arm itself on every run and the
+    all-or-nothing rule would silently stop holding. That is exactly the hazard
+    the ``is_flag`` field exists for, so the shape is pinned here rather than
+    left to the option's spelling.
+    """
+
+    def test_the_flag_is_declared_as_a_boolean_flag(self):
+        from apps.cli.command_catalog import CATALOG
+
+        entry = next(c for c in CATALOG if c.command_id == "do.job-promote")
+        arg = next(a for a in entry.args if a.name == "--skip-blocked")
+        assert arg.is_flag is True, (
+            "--skip-blocked must be declared is_flag=True or its default becomes "
+            "the truthy string 'false' and partial promotion arms itself"
+        )
+
+    def test_absent_flag_still_blocks_through_the_real_cli(
+        self, isolate_data_root, tmp_path,
+    ):
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target),
+             "--approve", "--json"],
+            isolate_data_root,
+        )
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+
+        assert data["skip_blocked"] is False
+        assert data["status"] == "blocked"
+        assert data["blocked_reason"].startswith("blocked_paths:")
+        assert data["files_applied"] == []
+        for rel in (*_OPERATOR_FREE_PATHS, _OPERATOR_BLOCKED_PATH):
+            assert not (target / rel).exists()
+
+    def test_typed_flag_promotes_the_remainder_through_the_real_cli(
+        self, isolate_data_root, tmp_path,
+    ):
+        from tests.cli.runtime_helpers import run_grouped_cli
+
+        job, _workspace, target = _make_partially_blocked_job(tmp_path)
+
+        result = run_grouped_cli(
+            ["do", "job-promote", job.job_id, "--repo", str(target),
+             "--approve", "--skip-blocked", "--json"],
+            isolate_data_root,
+        )
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        data = json.loads(result.stdout)
+
+        assert data["skip_blocked"] is True
+        assert data["status"] == "promoted"
+        assert sorted(data["files_applied"]) == sorted(_OPERATOR_FREE_PATHS)
+        for rel in _OPERATOR_FREE_PATHS:
+            assert (target / rel).is_file()
+        assert not (target / _OPERATOR_BLOCKED_PATH).exists()

@@ -1614,6 +1614,7 @@ def _cmd_do_job_promote(
     approve: bool = False,
     dry_run: bool = False,
     test_command: str = "",
+    skip_blocked: bool = False,
     json_output: bool = False,
 ) -> None:
     """Review and apply job workspace changes to target repo."""
@@ -1632,6 +1633,7 @@ def _cmd_do_job_promote(
         approve=approve,
         dry_run=dry_run,
         test_command=test_command,
+        skip_blocked=skip_blocked,
     )
 
     if json_output:
@@ -3148,6 +3150,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         approve=getattr(args, "approve", False),
         dry_run=getattr(args, "dry_run", False),
         test_command=getattr(args, "test_command", None) or "",
+        skip_blocked=getattr(args, "skip_blocked", False),
         json_output=getattr(args, "json", False),
     ),
     "do.job-evidence": lambda args: _cmd_do_job_evidence(
