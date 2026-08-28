@@ -247,6 +247,28 @@ INTRALINE_UNEVEN_RUNS_DIFF = (
     "+tail added line\n"
 )
 
+#: `R-0717`: a pair whose token diff is a BARE `delete` opcode — the new line is the
+#: old line with an interior run of words removed and nothing else touched. Every
+#: other intraline fixture in this file produces only `equal` and `replace`, so
+#: before this one the `delete` half of the old-side opcode tuple was unpinned.
+INTRALINE_PURE_DELETION_DIFF = (
+    "--- a/pkg/pure_del.py\n"
+    "+++ b/pkg/pure_del.py\n"
+    "@@ -1,1 +1,1 @@\n"
+    "-keep the extra words here\n"
+    "+keep the words here\n"
+)
+
+#: `R-0717`, the mirror: a pair whose token diff is a BARE `insert` opcode, pinning
+#: the `insert` half of the new-side tuple.
+INTRALINE_PURE_INSERTION_DIFF = (
+    "--- a/pkg/pure_add.py\n"
+    "+++ b/pkg/pure_add.py\n"
+    "@@ -1,1 +1,1 @@\n"
+    "-keep the words here\n"
+    "+keep the extra words here\n"
+)
+
 
 def _tuples(hunk: dict) -> list[tuple]:
     """Reduce a hunk's lines to the four fields the viewer actually renders."""
@@ -580,6 +602,39 @@ def test_intraline_spans_are_empty_on_a_surplus_unpaired_line():
     assert [ln["content"] for ln in added] == ["the quick blue fox", "tail added line"]
     assert added[0]["intraline"] == [[10, 4]]
     assert added[1]["intraline"] == []
+
+
+def test_intraline_spans_mark_a_pure_deletion_on_the_del_side_only():
+    """`R-0717`: a bare `delete` opcode marks the OLD side and leaves the NEW side bare.
+
+    The old-side opcode tuple carries `delete` beside `replace`, and until this
+    fixture existed nothing in the corpus produced a `delete` at all: narrowing that
+    tuple to `("replace",)` left the whole suite green. The `[]` on the `add` entry
+    is the other half of the pin — a mapping that let `delete` reach the new side
+    would mark text that was never added.
+    """
+    view = parse_unified_diff_to_view(INTRALINE_PURE_DELETION_DIFF)
+
+    deleted = _line_at(view, "del")
+    added = _line_at(view, "add")
+    assert deleted["content"] == "keep the extra words here"
+    assert added["content"] == "keep the words here"
+    assert deleted["intraline"] == [[9, 6]]
+    assert [deleted["content"][s:s + n] for s, n in deleted["intraline"]] == ["extra "]
+    assert added["intraline"] == []
+
+
+def test_intraline_spans_mark_a_pure_insertion_on_the_add_side_only():
+    """`R-0717`, mirrored: a bare `insert` opcode marks the NEW side only."""
+    view = parse_unified_diff_to_view(INTRALINE_PURE_INSERTION_DIFF)
+
+    deleted = _line_at(view, "del")
+    added = _line_at(view, "add")
+    assert deleted["content"] == "keep the words here"
+    assert added["content"] == "keep the extra words here"
+    assert added["intraline"] == [[9, 6]]
+    assert [added["content"][s:s + n] for s, n in added["intraline"]] == ["extra "]
+    assert deleted["intraline"] == []
 
 
 def test_every_intraline_span_lies_inside_its_own_content():
