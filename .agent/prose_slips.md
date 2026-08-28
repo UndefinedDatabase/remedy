@@ -142,3 +142,13 @@
   `result == before + b"\n" + slice` and declared the substitution. An append
   reader is stated as the IDENTITY it must prove, never as an arithmetic a
   control can satisfy.
+
+- 2026-08-28 · F037 R8 · The PLANF037R8 slice was authored at exactly 50 lines
+  while the same block's G4 ordered `.agent/plan.md` strictly under 50, so the
+  block contained two clauses no worker could satisfy together and the file sat
+  one line over AGENTS.md's rule for a round. Checklist item 3 requires every
+  authored full-replacement text to be counted against its own file's cap BEFORE
+  emission; the count was carried over from an earlier round's slice instead of
+  being re-measured after the last edit, which is the staleness shape the
+  checklist already names. A cap is re-measured on the FINAL bytes of the slice
+  that will land, never inherited from the slice it was adapted from.
