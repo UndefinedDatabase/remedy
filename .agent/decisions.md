@@ -9003,3 +9003,66 @@ REVERSE by replacing the `font` declaration in
 `apps/ui/src/components/diff/DiffView.module.css` with the binding CSS's literal
 shorthand, deleting this decision, and relaxing the corresponding assertion in
 `tests/ui_contracts/test_diff_surface_css.py`.
+
+## DECISION F037 D5 — the parsed diff is bounded at 20,000 body lines, and `truncated` becomes something F037 decides
+
+**Date:** 2026-08-28 · **Round:** F037 R12 · **Finding:** `R-0721`
+
+**The choice.** `packages/orchestration/diff_parser.py` gains a module constant
+`DIFF_VIEW_MAX_BODY_LINES = 20_000` and refuses to append a body line once the
+count of appended lines ACROSS THE WHOLE DIFF has reached it, setting the
+contract's existing top-level `truncated` flag True and stopping the walk. A diff
+of exactly the ceiling parses in full and is not marked truncated; the flag and
+the stop appear only above it.
+
+**Why a bound exists at all.** `R-0721` measured the absence: the parser appended
+one dict per body line with no ceiling, `build_diff_view` copied the result onto
+the envelope, and the endpoint serialised the whole thing into one response.
+`workspace.diff` is a job's ENTIRE workspace diff and no code in this repository
+constrains its size, so a job that vendored a dependency or rewrote a lockfile
+would have the server build tens of megabytes of JSON on a request the viewer
+makes automatically. The cost is linear — the reviewer measured 1k through 20k
+lines and the per-line cost is flat — but a linear function with no bound is still
+unbounded, and the client half that would otherwise defend itself, T003's virtual
+scrolling, cannot be built while the frontend test runner is refused here.
+
+**Why 20,000.** The feature file's Acceptance names a 10,000-line fixture that
+must render within budget. A ceiling at or below that would truncate the very
+fixture the feature is accepted against, so the value is twice it: the Acceptance
+case renders in full with room to spare, and the worst-case payload is bounded at
+roughly 2.6 MB of JSON rather than growing with whatever a job happened to touch.
+
+**Why a TOTAL rather than a per-file ceiling.** The payload is the sum. A per-file
+bound leaves a diff of fifteen thousand one-line files completely unbounded, which
+is a realistic `workspace.diff` shape, so the counter spans the whole diff and the
+tests exercise that case directly.
+
+**Why truncation rather than a refusal.** `truncated` already exists in the
+contract v1 and has until now only ever relayed an upstream `[DIFF TRUNCATED]`
+sentinel. The viewer's whole design, stated in `diff_view_source.py`'s own module
+docstring, is that every absence is NAMED in the data rather than raised: a viewer
+that 500s on a large job is worse than one that says, in the data, that it is
+showing the first part. This makes the existing field mean what its name says.
+
+**What a truncated view looks like, plainly.** The walk stops mid-input, so the
+LAST file in the list may carry a partial hunk or a hunk holding no lines at all,
+and files after it do not appear. Each file's `stats` still equal a recount of
+that file's own parsed lines, so nothing in the payload describes content the
+payload does not carry. `truncated` True is the client's signal that the list is a
+prefix and not the whole diff.
+
+**Alternatives rejected.** (1) Leave it unbounded — this is the status quo
+`R-0721` registers, and it makes the server's memory a function of an
+unconstrained artifact. (2) Bound the artifact READ instead — that is a real and
+complementary bound, it belongs in `diff_view_source.py` where the filesystem is
+touched, and F037 R13 carries it; it is not an alternative to this one, because
+0.4 MB of input still expands to over 1 MB of JSON. (3) A byte ceiling on the
+input text rather than a line ceiling on the output — rejected because the
+contract's unit is a line, the cost is per line object, and a byte cut lands
+mid-hunk at an offset no field of the contract can express. (4) Refuse above the
+ceiling with an error — rejected for the reason above.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_BODY_LINES` and the guard that reads it
+in `parse_unified_diff_to_view`, and delete the tests F037 R12 added in the final
+section of `tests/orchestration/test_diff_parser.py`. Nothing else depends on the
+constant; the `truncated` field returns to relaying the upstream sentinel alone.

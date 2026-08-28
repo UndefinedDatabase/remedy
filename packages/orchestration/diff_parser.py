@@ -105,6 +105,15 @@ DIFF_UNSAFE_ARTIFACT_PREFIX = "[unsafe staged artifact skipped:"
 #: over is the whole of finding ``R-0718`` — see ``_intraline_pair_is_similar``.
 DIFF_INTRALINE_MIN_RATIO = 0.3
 
+#: Ceiling on the hunk BODY LINES ``parse_unified_diff_to_view`` appends across the
+#: WHOLE diff; above it the walk stops and ``truncated`` is set. DECISION F037 D5 fixes
+#: the value at twice the 10,000-line fixture the Acceptance of
+#: ``docs/roadmap/features/T5_F037.md`` names, so that fixture still renders in full.
+#: DELIBERATE ABSENCE — Remedy does NOT bound the artifact READ here, because this
+#: module touches no filesystem at all; that bound belongs to
+#: ``packages/orchestration/diff_view_source.py``, which is where the file is read.
+DIFF_VIEW_MAX_BODY_LINES = 20_000
+
 _NO_NEWLINE_PREFIX = "\\ No newline"
 _DEV_NULL = "/dev/null"
 
@@ -433,6 +442,9 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
     files: list[dict[str, Any]] = []
     regions: list[_FileRegion] = []
     truncated = False
+    # Counted across the WHOLE diff, not per file or per hunk: the payload is the sum,
+    # and a per-file ceiling would leave a diff of many small files unbounded.
+    body_lines_appended = 0
 
     current: _FileRegion | None = None
     hunk: dict[str, Any] | None = None
@@ -503,6 +515,15 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
             elif line.startswith("-") and old_left > 0:
                 kind = DIFF_LINE_DELETED
             if kind is not None:
+                # WHY the walk may stop here: ``truncated`` is the contract's OWN
+                # top-level field, so reaching ``DIFF_VIEW_MAX_BODY_LINES`` is a
+                # deliberate stop that is REPORTED in the data, never an error raised.
+                # The boundary is inclusive: exactly the ceiling parses in full. Above
+                # it the LAST file in the view may carry a partial hunk or a hunk
+                # holding no lines at all, and files after it do not appear.
+                if body_lines_appended >= DIFF_VIEW_MAX_BODY_LINES:
+                    truncated = True
+                    break
                 on_old = kind in (DIFF_LINE_CONTEXT, DIFF_LINE_DELETED)
                 on_new = kind in (DIFF_LINE_CONTEXT, DIFF_LINE_ADDED)
                 hunk["lines"].append(
@@ -515,6 +536,7 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
                         "content": line[1:] if line else "",
                     }
                 )
+                body_lines_appended += 1
                 if on_old:
                     old_ln += 1
                     old_left -= 1
