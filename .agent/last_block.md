@@ -1,184 +1,207 @@
-STEP T001 — F037 Rendered diff viewer — ROUND 14
+STEP T002 — F037 Rendered diff viewer — ROUND 15
 
-Goal: close the remaining half of `R-0721`. Both parser ceilings bound what
-F037 BUILDS; neither bounds what it READS.
-`packages/orchestration/diff_view_source.py` still calls
-`artifact.read_text(encoding="utf-8")` on `workspace.diff` before the parser is
-ever entered, so the whole artifact is in memory whatever its size — and a diff
-of one enormous line reaches neither ceiling and still costs the read. This
-round bounds the read, folds that truncation into the envelope's existing
-`truncated` flag, and proves the cut never hands the parser a partial line or a
-split character.
+Goal: start T002. Three rounds of this feature recorded T002 and T003 as BLOCKED
+on a refused frontend test runner, and that premise is false: the runner is
+reachable through this repository's own pytest gate. This round rules that in a
+DECISION, repairs the two shipped comments that assert it and the superseded
+read bound, and lands the first half of the rendering core — the PURE view model
+the renderer will draw, in the one layer vitest reaches.
 
-Base: the round starts from `922f3223` on branch
+Base: the round starts from `0d750765` on branch
 `feature/f037-rendered-diff-viewer`. Nothing else is in flight.
 
 Bundle, one commit each, in this order:
-- C0a save this block verbatim to `.agent/authored/f037-r14.md`
+- C0a save this block verbatim to `.agent/authored/f037-r15.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
-- C1 apply PLANF037R14 to `.agent/plan.md`
-- C2 append GATER13 to `.agent/live_review.md`
-- C3 append DECISION7 to `.agent/decisions.md` and write SPEC S1 through S4 into
-  `packages/orchestration/diff_view_source.py`
-- C4 write SPEC S5 through S11 into
-  `tests/orchestration/test_diff_view_source.py`
-- C5 append DONE0721B to `.agent/live_review.md`
-- C6 rewrite `.agent/handoff.md` as the handback
+- C1 apply PLANF037R15 to `.agent/plan.md`
+- C2 append GATER14, FIND0723 and FIND0724 to `.agent/live_review.md`
+- C3 append DECISION8 to `.agent/decisions.md` and write SPEC S1 and S2 — the
+  two stale-claim repairs — into `packages/orchestration/diff_parser.py` and
+  `tests/ui_contracts/test_diff_surface_css.py`
+- C4 write SPEC S3 through S9 into a NEW file
+  `apps/ui/src/api/diffViewModel.ts`
+- C5 write SPEC S10 into a NEW file `apps/ui/src/api/diffViewModel.test.ts`
+- C6 write SPEC S11 into a NEW file
+  `tests/ui_contracts/test_diff_view_model.py`
+- C7 append DONE0723 and DONE0724 to `.agent/live_review.md`
+- C8 rewrite `.agent/handoff.md` as the handback
 
-Change set, and nothing outside it: `.agent/authored/f037-r14.md`,
+Change set, and nothing outside it: `.agent/authored/f037-r15.md`,
 `.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
 `.agent/decisions.md`, `.agent/handoff.md`,
-`packages/orchestration/diff_view_source.py`,
-`tests/orchestration/test_diff_view_source.py`. Push the branch after C6.
-Create no PR, merge nothing.
+`packages/orchestration/diff_parser.py`,
+`tests/ui_contracts/test_diff_surface_css.py`,
+`apps/ui/src/api/diffViewModel.ts`, `apps/ui/src/api/diffViewModel.test.ts`,
+`tests/ui_contracts/test_diff_view_model.py`. Push the branch after C8. Create
+no PR, merge nothing.
 
 Constraints:
 1. A slice between the markers is applied BYTE FOR BYTE. Never edit a slice,
    never reflow it, never fix a typo in it. If a slice looks wrong, apply it and
    say so in the handback's Deviations.
 2. Production code and test code are DESCRIBED by the SPEC below, not sliced.
-   Write them yourself, in this repository's idiom — this test module annotates
-   its tests `(tmp_path: Path) -> None` and builds every tree under `tmp_path` —
-   and report every place your reading of the SPEC differed from what you wrote.
-3. `packages/orchestration/diff_parser.py` and
-   `tests/orchestration/test_diff_parser.py` are NOT touched. The two ceilings
-   DECISION F037 D5 and D6 set stay exactly as they are at `922f3223`; this
-   round bounds a different resource in a different module, and keeping them
-   apart is what lets the red-proofs say which bound they proved.
-4. `packages/orchestration/ui_server.py` is NOT touched. It already copies the
-   envelope's `truncated` through, so the endpoint needs no change; say so in
-   the handback rather than editing it.
-5. Nothing under `apps/` or `docs/` is touched.
-6. Every existing test in `tests/orchestration/test_diff_view_source.py` as it
-   stands at `922f3223` is left byte-identical. This round only appends.
+   Write them yourself, in each language's local idiom. `apps/ui/src/api/` is
+   TypeScript with a heavy WHY-comment style and total functions —
+   `decisionOrder.ts` and `decisionOrder.test.ts` are the models to follow, down
+   to `import { describe, it, expect } from "vitest"`.
+3. NO BEHAVIOUR of `packages/orchestration/diff_parser.py` changes. S1 edits
+   COMMENT TEXT only: after C3 the file's Python statements are byte-identical
+   to `0d750765`, and the handback proves that by comparing the two blobs with
+   every `#`-comment line and docstring removed.
+4. `packages/orchestration/diff_view_source.py`, `ui_server.py` and every test
+   under `tests/orchestration/` are NOT touched.
+5. Nothing under `apps/ui/src/components/`, no `.css` file and no existing
+   `apps/ui` file is touched. C4, C5 and C6 create three NEW files and change no
+   existing one.
+6. `apps/ui/src/api/diffViewModel.ts` imports NOTHING — not React, not a `.css`
+   module, not another `src/api` module. It is pure data in, pure data out. That
+   is what keeps it inside what `apps/ui/vitest.config.ts` reaches, which
+   collects `src/**/*.test.ts` in a NODE environment with no DOM.
 7. Ruff runs under this repository's own configuration — line length 120, rules
    `E`, `F`, `W`, `I`, `UP`. Never `--isolated`.
 8. Every destructive check runs inside a disposable `git worktree` under
    `.remedy-wt/`, never in the primary checkout, which reads
    `git status --porcelain` empty after every commit.
-9. C5 runs after C3 and C4. DONE0721B states what this round landed, so the
-   commit order is what makes it true.
-10. The value in SPEC S1 and the figures quoted with it are the reviewer's
-    measurements. Do not re-derive them; if a measurement of yours disagrees,
-    report the disagreement and apply the SPEC.
+9. C7 runs after C3, C4, C5 and C6. DONE0723 and DONE0724 state what this round
+   landed, so the commit order is what makes them true.
+10. NO RED-PROOF IS ORDERED FOR THE TYPESCRIPT, and the reason is measured
+    rather than assumed — see gate G6. Do not invent one: a colour taken from a
+    command that cannot pass is not evidence.
 
-SPEC — `packages/orchestration/diff_view_source.py`
+SPEC — the two stale-claim repairs
 
-S1. A module-level constant `DIFF_VIEW_MAX_ARTIFACT_BYTES = 8_000_000`, placed
-    with the other module constants, above `SAFE_TASK_RUN_ID_RE`. Its comment
-    block states: it is the ceiling on BYTES read from a diff artifact; DECISION
-    F037 D7 fixes it; and WHY this bound is not made redundant by the parser's
-    two ceilings — those bound the view that is BUILT, and a diff of one
-    enormous line with no newline reaches NEITHER of them while still costing
-    the whole read. Record the reviewer's measurement beside it: a diff that
-    saturates BOTH parser ceilings at once is 1,423,907 bytes of input —
-    397,907 for `DIFF_VIEW_MAX_BODY_LINES` body lines in one file and 1,026,000
-    for `DIFF_VIEW_MAX_FILES` one-pair files at paths of sixty characters and
-    more — so this ceiling is over five times the input any diff needs before
-    the parser's own bounds take over.
+S1. `packages/orchestration/diff_parser.py`, in the comment block above
+    `DIFF_VIEW_MAX_FILES`. Its DELIBERATE ABSENCE paragraph currently says that
+    `packages/orchestration/diff_view_source.py` "still reads the artifact WHOLE
+    before this function is called, and that is where the bound on the INPUT
+    belongs". That was true when it was written and is false at `0d750765`.
+    Replace that clause so the paragraph says what is now true: the two ceilings
+    here bound the OUTPUT this module BUILDS, the INPUT is bounded separately by
+    `DIFF_VIEW_MAX_ARTIFACT_BYTES` in `diff_view_source.py` under DECISION F037
+    D7, and the two are different resources in different units so neither
+    subsumes the other. Change nothing else in that block, and change no
+    statement anywhere in the file.
 
-S2. The read in `build_diff_view` becomes bounded. Keep the existing
-    `if artifact.is_file():` guard, the existing `except (OSError,
-    UnicodeDecodeError): diff_text = None` handler and the existing
-    `if diff_text is None:` absence branch exactly as they are — a file that
-    cannot be read or decoded still arrives as `DIFF_REASON_ARTIFACT_MISSING`
-    and nothing about that path changes. Inside the `try`, replace
-    `artifact.read_text(encoding="utf-8")` with: open the artifact in BINARY
-    mode and read `DIFF_VIEW_MAX_ARTIFACT_BYTES + 1` bytes; if what came back is
-    LONGER than `DIFF_VIEW_MAX_ARTIFACT_BYTES`, set a local `read_truncated`
-    True, cut the bytes to `DIFF_VIEW_MAX_ARTIFACT_BYTES`, and then cut them
-    again to end at the LAST newline they contain — `raw[: raw.rfind(b"\n") + 1]`
-    is the expression, and it yields the empty bytes when there is no newline at
-    all. Then decode as UTF-8. `read_truncated` starts False.
+S2. `tests/ui_contracts/test_diff_surface_css.py`, module docstring. It
+    currently reads "the frontend test runner cannot be executed in this
+    environment, so the conformance of this stylesheet is pinned from Python".
+    The first half is false — see DECISION F037 D8 — while the CONCLUSION is
+    right for a reason the sentence never gives. Replace the clause with the
+    real reason: `apps/ui/vitest.config.ts` collects `src/**/*.test.ts` in a
+    NODE environment, so the runner reaches no stylesheet and no markup whatever
+    its availability, which is why this conformance is pinned from Python.
+    Change nothing else in the file, and change no assertion.
 
-S3. The WHY comment above that cut carries three facts. FIRST, reading one byte
-    MORE than the ceiling is how "larger than the ceiling" is distinguished from
-    "exactly the ceiling" in one read, and exactly the ceiling is NOT truncated —
-    the same inclusive boundary the parser's two ceilings have. SECOND, the cut
-    back to the last newline is what keeps the parser from being handed a
-    partial line, and it is also what keeps a multi-byte character from being
-    split across the boundary, since a newline is never inside one — without it
-    a cut mid-character raises `UnicodeDecodeError` and a readable artifact
-    would be reported as missing. THIRD, an artifact whose first
-    `DIFF_VIEW_MAX_ARTIFACT_BYTES` bytes hold no newline yields the empty text,
-    which parses to the empty-files shape and is reported as available and
-    truncated: that is the one enormous line, and saying so in the data is this
-    module's whole design.
+SPEC — `apps/ui/src/api/diffViewModel.ts`, a NEW file
 
-S4. The envelope's `truncated` becomes `parsed["truncated"] or read_truncated`,
-    so a truncation from EITHER source reaches the caller. `build_diff_view`'s
-    docstring gains one sentence naming the read ceiling and saying that
-    `truncated` is True when the read cut the artifact, when the parser hit one
-    of its own two ceilings, or when the artifact carried an upstream truncation
-    sentinel.
+S3. A module comment opening the file, in the style of `decisionOrder.ts`: this
+    is the PURE half of F037's rendering core, the endpoint's diff envelope
+    turned into the rows a renderer draws; it holds no markup and no fetch
+    because DECISION F031 D5 keeps decidable rules in the layer the shipped
+    vitest config reaches; and Remedy deliberately does NOT re-sort files or
+    hunks here — the server's order is the reading order, and `diff_parser.py`
+    preserves input order on purpose.
 
-SPEC — `tests/orchestration/test_diff_view_source.py`
+S4. Exported TypeScript types for what the endpoint sends, named after the
+    contract they mirror: a line (`kind`, `oldLn`, `newLn`, `content`,
+    `intraline`), a hunk (`id`, `header`, `oldStart`, `newStart`, `lines`), a
+    file (`path`, `oldPath`, `status`, `stats` with `added` and `deleted`,
+    `note`, `hunks`), and the envelope (`version`, `scope`, `taskId`, `source`,
+    `available`, `reason`, `truncated`, `files`, `taskRunIds`). The wire form is
+    snake_case and this module's form is camelCase; that translation is
+    `readDiffEnvelope`'s job and is the reason it exists.
 
-S5. A helper that writes a job-scope evidence tree whose `workspace.diff` is
-    given text, returning the evidence directory — the existing
-    `_write_evidence_tree` builds a fixed pair and is not what these tests need.
-    Do not modify it; add the new helper beside it.
+S5. `export function readDiffEnvelope(raw: unknown): DiffEnvelope`. TOTAL: no
+    input makes it throw, and anything it cannot trust becomes the same answer
+    an absent artifact gives — `available` false, `files` empty. It reads BOTH
+    spellings of every field that has two (`task_run_ids` and `taskRunIds`, and
+    so on), the way `remedyApi.ts` already does; a line whose `kind` is not one
+    of the three the contract names is DROPPED rather than rendered as
+    something; `intraline` defaults to the empty array; `truncated` is true only
+    when the wire value is literally true. State in a WHY comment that this is
+    where a malformed payload stops, so no function below it has to be
+    defensive twice.
 
-S6. `test_an_artifact_above_the_read_ceiling_is_cut_and_the_envelope_says_so`,
-    at the REAL constant and monkeypatching nothing. Write a `workspace.diff`
-    of a single file whose body lines carry more than
-    `DIFF_VIEW_MAX_ARTIFACT_BYTES` bytes in total, parse it, and assert
-    `available` True, `truncated` True, and that at least one file came back —
-    a bound that returned nothing would satisfy a truncation assertion alone.
-    Its docstring records what this test costs and why it is worth it: it is the
-    only test here that exercises the real ceiling, and the parser stops at its
-    own body-line ceiling early in that text, so the cost is the read and the
-    split rather than a full parse of eight megabytes.
+S6. `export const DIFF_HUNK_COLLAPSE_THRESHOLD_LINES = 200`, with the WHY the
+    feature file's "collapsed by default beyond a size threshold" does not give:
+    the binding CSS sets `.diffLine` at `12.5px/1.6`, so a line is twenty
+    pixels and two hundred of them is roughly four thousand — several screens of
+    one hunk, which is the point at which an open hunk stops being a reading aid
+    and becomes a wall to scroll past. Declared once, here, and referenced by
+    name everywhere else including the tests.
 
-S7. The remaining shape tests run against a SMALL ceiling, set with
-    `monkeypatch.setattr` on the module attribute
-    `DIFF_VIEW_MAX_ARTIFACT_BYTES`, because a boundary is a property of the
-    comparison and not of the value, and a fixture per test at the real value
-    would cost tens of megabytes of writes to prove the same thing. State that
-    in a comment where the small ceiling is introduced.
+S7. `export function defaultCollapsedHunkIds(envelope: DiffEnvelope):
+    Set<string>` — the ids of every hunk carrying MORE than
+    `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` lines. Exactly the threshold is OPEN;
+    the boundary is inclusive the same way both parser ceilings are.
+    `export function toggleHunkCollapse(collapsed: ReadonlySet<string>, hunkId:
+    string): Set<string>` returns a NEW set and never mutates its argument, for
+    the reason `orderDecisionInbox` gives for not sorting in place.
 
-S8. `test_the_read_ceiling_boundary_holds_on_both_of_its_sides`. Under a small
-    ceiling: an artifact of EXACTLY the ceiling's bytes is available and NOT
-    truncated, and one of exactly one byte more IS truncated. Both halves in one
-    test, for the reason the parser's two boundary tests already state — each
-    half alone is satisfiable by a bound one off in either direction.
+S8. `export function buildDiffRowModels(envelope: DiffEnvelope, collapsed:
+    ReadonlySet<string>): DiffRowModel[]` — one FLAT array, in the envelope's
+    own order, of rows discriminated by a `kind` field of `"file"`, `"hunkHead"`
+    or `"line"`. Every row carries a `key` that is unique across the whole array
+    and stable under collapse: derive it from the server's own hunk `id`, which
+    `diff_parser.py` assigns as `"<fileIndex>:<hunkIndex>"`. A COLLAPSED hunk
+    emits its head row and NONE of its line rows, and its head row says how many
+    lines it is hiding so the renderer can label it without a second pass. A
+    file with no hunks — a binary marker, a pure rename — still emits its file
+    row, because the sidebar and the body must agree on which files exist.
+    Note in a comment that hunk ids are PROVISIONAL and F033 replaces them with
+    content-hash ids, which is what the envelope's `version` field is for.
 
-S9. `test_the_cut_never_hands_the_parser_a_partial_line`. Under a small ceiling,
-    an artifact whose cut would land in the MIDDLE of a body line. Assert that
-    every `content` the view carries equals the corresponding whole generated
-    line, so no half line reached the contract. Assert `truncated` True beside
-    it, so the test cannot pass by the cut never having happened.
+S9. `export function buildDiffFileSummaries(envelope: DiffEnvelope):
+    DiffFileSummary[]` — one entry per file, in the envelope's order, carrying
+    the path, the added and deleted counts, the hunk count, the note, and the
+    `key` of that file's own row so a sidebar click can find its row without
+    recomputing anything. This is the file sidebar T003 renders; it is built
+    here because it is decidable and therefore testable.
 
-S10. `test_the_cut_never_splits_a_multi_byte_character`. Under a small ceiling,
-    an artifact whose body lines carry multi-byte UTF-8 characters and whose cut
-    point falls INSIDE one of them — choose the ceiling so that it does, and
-    assert in the test that the byte at the ceiling is a UTF-8 continuation
-    byte, so the fixture cannot silently stop exercising the case. Assert
-    `available` True and `reason` None: without the newline cut this artifact
-    raises `UnicodeDecodeError` and comes back as
-    `DIFF_REASON_ARTIFACT_MISSING`, which is a readable diff reported as absent.
+SPEC — `apps/ui/src/api/diffViewModel.test.ts`, a NEW file
 
-S11. `test_one_enormous_line_is_bounded_though_it_reaches_neither_parser_ceiling`
-    and `test_the_parsers_own_truncation_still_reaches_the_envelope`. The first,
-    under a small ceiling, writes an artifact that is one single line with no
-    newline anywhere and asserts `available` True, `truncated` True and `files`
-    empty — the shape that motivates this bound, since it appends nothing to
-    either parser counter. The second writes an artifact SMALLER than the
-    ceiling that carries the upstream `[DIFF TRUNCATED]` sentinel, and asserts
-    `truncated` True with the read having done nothing: it is the discriminator
-    that the envelope's flag is an OR over both sources rather than a
-    replacement of one by the other.
+S10. Vitest tests, `describe` per exported name, covering at least: a
+    well-formed envelope round-trips through `readDiffEnvelope` with both wire
+    spellings; a malformed payload — a string, null, a `files` that is not an
+    array, a line with an unknown `kind` — yields the unavailable envelope or
+    drops the line rather than throwing; the collapse threshold is exercised on
+    BOTH of its sides, at exactly `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` and at
+    one more, referencing the constant by name and never repeating its literal;
+    `toggleHunkCollapse` leaves its input set unchanged and returns the opposite
+    membership; `buildDiffRowModels` emits every line of an open hunk and none
+    of a collapsed one while still emitting its head, keeps every `key` unique
+    across a two-file envelope, and emits a file row for a file with no hunks;
+    and `buildDiffFileSummaries` reports one entry per file with the stats the
+    envelope carries. Each `it` names the property rather than the function.
+
+SPEC — `tests/ui_contracts/test_diff_view_model.py`, a NEW file
+
+S11. A Python guard reading the two new TypeScript files AS TEXT, importing
+    nothing from `apps/`, with a module docstring stating what it is for: vitest
+    proves the module's BEHAVIOUR, and this proves the two structural facts
+    vitest cannot see about itself. Assert, each with a message naming its
+    authority: (a) `diffViewModel.ts` contains no `import` statement at all and
+    no `.tsx`-only construct, because constraint 6's rule — the module stays in
+    the layer the node-environment vitest config reaches — is invisible to
+    vitest itself, which passes just as happily on a module it cannot load in a
+    browser; (b) every name the module exports appears in `diffViewModel.test.ts`,
+    computed by scanning the module for `export function` and `export const` and
+    checking each against the test file's text, so a later export cannot ship
+    untested; (c) `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES`'s numeric literal occurs
+    EXACTLY ONCE across the two files, which is what stops the threshold from
+    drifting between the rule and its tests. Derive the export set from the
+    module rather than listing it here, so the guard grows with the module.
 
 Slice convention: each authored text sits between a line beginning `<<<SLICE `
 and a line beginning `<<<END `, both carrying the slice's name. The marker lines
-are NEVER written into any target file. The slices are PLANF037R14, GATER13,
-DECISION7 and DONE0721B.
+are NEVER written into any target file. The slices are PLANF037R15, GATER14,
+FIND0723, FIND0724, DECISION8, DONE0723 and DONE0724.
 
-<<<SLICE PLANF037R14
+<<<SLICE PLANF037R15
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495` (the
-merge of PR #217, which closed F032). `.agent/decisions.md` holds F037 D1 to D7.
+merge of PR #217, which closed F032). `.agent/decisions.md` holds F037 D1 to D8.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
@@ -189,142 +212,143 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A4.
 
 ## Current Step
-R14 closes the remaining half of `R-0721`. DECISION F037 D5 and D6 bound what
-the parser BUILDS; neither bounds what `diff_view_source.py` READS, and a diff
-of one enormous line with no newline reaches neither ceiling while still costing
-the whole read. The read is bounded at `DIFF_VIEW_MAX_ARTIFACT_BYTES`, cut back
-to the last newline so no partial line and no split character reaches the
-parser, and the envelope's `truncated` becomes an OR over both sources.
-DECISION F037 D7 records the value and how to reverse it.
+R15 starts T002 and corrects the premise that stopped it. DECISION F037 D8
+records that the frontend runner IS reachable here — through
+`tests/orchestration/test_test_runner.py`, which runs `npx vitest run` from
+pytest — and that the build pattern is this repository's own: decidable rules in
+`apps/ui/src/api/` where vitest reaches them, markup and stylesheets pinned from
+`tests/ui_contracts/`. The round lands `diffViewModel.ts`, its vitest tests and
+a structural guard, and repairs two shipped comments that assert otherwise
+(`R-0723`, `R-0724`).
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R13 verdict | ordered | record first |
-| C3 DECISION F037 D7 and the read bound | ordered | the choice beside what it governs |
-| C4 the read-bound tests | ordered | both sides, and the two cut hazards |
-| C5 the resolution | ordered | written after the repair is proved |
-| C6 the handback | ordered | |
+| C2 the R14 verdict and two registrations | ordered | record first |
+| C3 DECISION F037 D8 and both comment repairs | ordered | the choice beside what it governs |
+| C4/C5 the view model and its vitest tests | ordered | the decidable half of the core |
+| C6 the structural guard | ordered | what vitest cannot see about itself |
+| C7 the resolutions | ordered | written after the repairs are proved |
+| C8 the handback | ordered | |
 
 ## Next Steps
-1. T002 is NOT blocked by the refused runner and the round after this one says
-   so in a DECISION and starts the rendering core. `apps/ui/vitest.config.ts`
-   collects `src/**/*.test.ts` in a node environment,
-   `tests/orchestration/test_test_runner.py` runs `npx vitest run` from pytest
-   and is exit 0 here at `922f3223`, and `tests/ui_contracts/` pins the markup
-   vitest never renders. Logic goes in `apps/ui/src/api/`, where vitest reaches
-   it; markup is pinned from pytest.
-2. T003 — sidebar, virtual scrolling, lazy language bundles, the L3 tab —
-   follows the rendering core and is the feature's last slice.
+1. The round after this one renders: the `DiffView` component over these row
+   models, the hunk-head and line markup against the binding CSS, and the entry
+   point `component_spec.md` names — `onOpenDiff(taskId)` from `DetailPopover`.
+   Its behaviour is pinned by `tests/ui_contracts/`, its rules by vitest here.
+2. T003 — the sidebar over `buildDiffFileSummaries`, virtual scrolling beyond
+   two thousand lines, lazy language bundles, the L3 tab — is the last slice.
 
 ## Risks
-- The feature is at round 14 against a soft limit of 25, with T002 and T003 both
-  still to build. If the rendering core does not start within two rounds, the
-  next handback carries a scope report rather than another step.
+- Round 15 of a 25-round soft limit with T002 and T003 both unfinished. If the
+  component does not land next round, the handback after it carries a scope
+  report proposing a split rather than another step.
 - The binding CSS defines no intraline treatment while Acceptance requires it,
   so that stays a question for the round that renders spans.
-<<<END PLANF037R14
+<<<END PLANF037R15
 
-<<<SLICE GATER13
-Gate: F037 R13 — the round that closed `R-0722`, the second dimension of the parser's bound. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of the load-bearing ones itself at `922f3223`. TRANSPORT IS PROVED FROM A VALUE THE REVIEWER HELD BEFORE DELEGATING, which is the strongest link this workflow can offer: the block was written to the gitignored scratch `.remedy-wt/f037-r13-block.md` before the worker existed and measured there at sha256 `39a60cc6aa9423c9b7bfa3ed76e4e00b9597706efed9a0ccd8e6e79aac161260` over 34679 bytes and 439 lines, and the committed `.agent/authored/f037-r13.md` is byte-identical to that original, with the saved copy and `.agent/last_block.md` ONE git blob `2f9c30ae910007b4e7301b72d361ca347a3202b3`. EXTRACTION REPRODUCES THE ARITHMETIC: slices at 49, 1, 1, 9, 79 and 1 content lines, CONTENT 140 against TOTAL 439, PROSE 299, both caps holding. THE PLAN IS BYTE-EQUAL to PLANF037R13 with the trailing-newline negative control False, at 49 lines with one `## Goal` and one `## Next Steps` — under the AGENTS.md fifty-line rule by one line, which is where the reviewer's own last trim put it. THE RECORD MOVED AS ORDERED AND ONLY AS ORDERED, recomputed mechanically: `^- R-\d+ — ` 282 to 283 with every id distinct, `^Done: R-\d+ — ` 30 to 31, `^Landed: R-` unmoved at 1, `^Gate: F\d+ R\d+ — ` 82 to 83, and the OPEN SET UNMOVED at 252 because `R-0722` was registered and resolved in the same round, which is the shape §4 item 4 prescribes rather than an anomaly. Each of the three append-only files is a byte PREFIX of its result — `.agent/live_review.md` 1200063 to 1209025, `.agent/decisions.md` 663863 to 668900, `.agent/prose_slips.md` 10681 to 11331 — so nothing landed was rewritten. `.agent/decisions.md` carries 172 `## DECISION ` headings and `F037 D6` exactly once. THE CODE MATCHES THE SPEC AND THE REVIEWER READ THE CODE RATHER THAN THE SUMMARY: the cut sits directly after `_collapse_doubled_header_regions`, uses `>` so exactly the ceiling parses in full, and the reviewer checked the one thing that could have made the file-ceiling tests measure nothing — `_region_is_redundant_header_echo` returns False when either header is None, so the mode-change fixtures, which carry no header pair at all, are never folded and the entry counts those tests assert are real. THE SUITES AND THE LINT ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/orchestration/test_diff_parser.py -q` exit 0 at `43 passed in 2.32s` against the base `37 passed in 2.14s`; `python3 -m pytest tests/orchestration/test_diff_view_source.py tests/ui_server/test_diff_endpoint.py tests/cli/test_golden_path.py -q` exit 0 at `57 passed`, which holds the canary's 42 and the base's 15 unmoved; and `python3 -m ruff check` over both changed files exit 0 at `All checks passed!`. ALL FIVE RED-PROOFS REPRODUCE EXACTLY, run by the reviewer in a disposable worktree at `922f3223` with `python3 -B`, each replaced string counted at exactly 1 before its edit and the module restored and re-hashed to `b66d3164b74a23c3d5fe1b7fdef8496f079fd0002a2c2c5d68a435fd56b56027` after every run: unmutated control exit 0 at `43 passed`; deleting the cut exit 1 at `5 failed, 38 passed`; `>` to `>=` exit 1 at `1 failed, 42 passed` killing exactly the boundary test; the cut moved ABOVE the collapse exit 1 at `1 failed, 42 passed` killing exactly the doubled-header test, which is the discriminator for its placement; raising `DIFF_VIEW_MAX_FILES` tenfold exit 1 at `2 failed, 41 passed`. THE FIFTH IS THE ONE THIS ROUND EXISTED FOR AND IT TURNED OVER: raising `DIFF_VIEW_MAX_BODY_LINES` tenfold was exit 0 at `43 passed` in the reviewer's own measurement at `327c1333`, and at `922f3223` it is exit 1 at `3 failed, 40 passed` with the payload-budget test among the failures. THE STRUCTURE IS CLEAN: the path residue is empty in both directions, `docs/` and `apps/` are untouched, `packages/` holds only `diff_parser.py`, every commit is single-parent and under 500 insertions, and the marker sweep is 0 in all four targets against 6 in the block blob as its control. THE ELEVEN DECLARED DEVIATIONS ARE ALL HONEST and two are worth recording: the worker measured the file-dimension payload at 1.233 MB where the SPEC states 1.269 MB, because its long-path template is shorter than the reviewer's, and it applied the SPEC value and reported the disagreement rather than quietly correcting either; and it added an assertion of its own that the re-based fixture's file count is strictly below `DIFF_VIEW_MAX_FILES`, which is the discriminator the block described in prose and did not order. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END GATER13
+<<<SLICE GATER14
+Gate: F037 R14 — the round that closed the remaining half of `R-0721` by bounding the artifact READ. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of the load-bearing ones itself at `0d750765`. TRANSPORT IS PROVED FROM A VALUE THE REVIEWER HELD BEFORE DELEGATING: the block was written to the gitignored scratch `.remedy-wt/f037-r14-block.md` and measured there at sha256 `19ac258925457ddf3b82dcd29751ae49e72854b8ba10cdf03c572025df09e6fc` over 32272 bytes and 419 lines, and the committed `.agent/authored/f037-r14.md` is byte-identical to that original, with the saved copy and `.agent/last_block.md` ONE git blob `af7b2387e3c27925a085f7e1737e6b4a77c5d44b`. EXTRACTION REPRODUCES: slices at 49, 1, 75 and 1 content lines, CONTENT 126 against TOTAL 419, PROSE 293, both caps holding. THE PLAN IS BYTE-EQUAL to PLANF037R14 with the trailing-newline control False, at 49 lines. THE RECORD MOVED AS ORDERED: registrations unmoved at 283 and all distinct, `^Done: R-\d+ — ` 31 to 32, `^Landed: R-` unmoved at 1, `^Gate: F\d+ R\d+ — ` 83 to 84, open set unmoved at 252, and `.agent/decisions.md` at 173 headings with `F037 D7` exactly once. THE REPEATED RESOLUTION ID IS DELIBERATE AND MEASURED: 32 resolution lines over 31 distinct ids, the repeat being `R-0721`, which is the second paragraph closing the half F037 R12 left open — the shape the round was ordered to produce and to declare. THE CODE MATCHES THE SPEC WITHOUT DRIFT: the read is `handle.read(DIFF_VIEW_MAX_ARTIFACT_BYTES + 1)` in binary, the cut is to the ceiling and then back through `raw.rfind(b"\n") + 1`, the flag is `parsed["truncated"] or read_truncated`, and the existing `except (OSError, UnicodeDecodeError)` handler and the `DIFF_REASON_ARTIFACT_MISSING` branch are untouched, so an unreadable artifact still arrives as the same named absence. THE TESTS PIN THE HAZARDS RATHER THAN DESCRIBING THEM, which is the part worth recording: the partial-line fixture asserts that the bytes on BOTH sides of the cut point are not newlines, and the multi-byte fixture asserts that the first byte the cut would drop satisfies `0x80 <= byte < 0xC0`, so neither fixture can silently stop exercising its case. THE SUITES AND THE LINT ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/orchestration/test_diff_view_source.py -q` exit 0 at `15 passed in 0.26s` against the base `9 passed in 0.21s`, the whole rise being the one test that writes an eight-megabyte artifact; `python3 -m pytest tests/orchestration/test_diff_parser.py tests/ui_server/test_diff_endpoint.py -q` exit 0 at `49 passed`, UNMOVED, which is what constraints 3 and 4 asked for; and ruff exit 0 at `All checks passed!`. ALL FIVE ORDERED RED-PROOFS REPRODUCE, run by the reviewer in a disposable worktree at `0d750765` with `python3 -B`, each replaced string counted at exactly 1 and the module restored and re-hashed to `35ee01c1c8acf21b1b142cff8a2065ab39db4c4ed4ec51f088d7c7a5e97b6644` after every run: control exit 0 at `15 passed`; `>` to `>=` exit 1 killing exactly the boundary test; dropping the newline cut-back exit 1 killing exactly the two hazard tests; dropping the read source from the flag exit 1 at `4 failed`; dropping the parser source from it exit 1 killing exactly the OR discriminator. THE REVIEWER ADDED A SIXTH THE BLOCK DID NOT ORDER, because the `+ 1` in the read is load-bearing and nothing else pins it: reading exactly `DIFF_VIEW_MAX_ARTIFACT_BYTES` instead of one more is exit 1 at `4 failed, 11 passed`, so the inclusive boundary cannot be broken silently. THE WORKER'S DECLARED DEVIATIONS ARE HONEST AND TWO ARE SUBSTANTIVE: the test module's IMPORT BLOCK had to change, which constraint 6 did not foresee, and the worker proved the nine existing tests byte-identical by showing the base file's tail survives as one contiguous substring rather than asserting it; and the parser appends one trailing EMPTY body line when a cut hunk still has lines outstanding in its header, which the worker reported as pre-existing behaviour and asserted exactly rather than filtering — the reviewer confirmed it at `0d750765` on a four-line hunk header carrying two lines, where the parsed contents are `alpha`, `beta` and the empty string with `truncated` False, so the behaviour is the parser's and not the cut's. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END GATER14
 
-<<<SLICE DECISION7
-## DECISION F037 D7 — the diff artifact is read under a byte ceiling, and `truncated` becomes an OR over every source of it
+<<<SLICE FIND0723
+- R-0723 — Low, A SHIPPED COMMENT IN THE PARSER TELLS A READER THE OPPOSITE OF WHAT THE CODE DOES, AND IT SITS ON THE CONSTANT IT IS WRONG ABOUT. Raised by the reviewer at the F037 R14 gate; the worker found it first, declared it under its own Deviations, and correctly minted no id because constraint 3 of the R14 block forbade the edit. The DELIBERATE ABSENCE paragraph above `DIFF_VIEW_MAX_FILES` in `packages/orchestration/diff_parser.py` reads, at `0d750765`, that `packages/orchestration/diff_view_source.py` "still reads the artifact WHOLE before this function is called, and that is where the bound on the INPUT belongs". THAT SENTENCE WAS TRUE WHEN F037 R13 WROTE IT AND F037 R14 FALSIFIED IT ONE ROUND LATER: `build_diff_view` now reads under `DIFF_VIEW_MAX_ARTIFACT_BYTES` per DECISION F037 D7, so the artifact is not read whole and the bound the comment says belongs elsewhere is already there. LOW AND NOT MEDIUM because no behaviour is wrong, no suite is red, and the paragraph's CONCLUSION — that the input bound belongs in the other module — is exactly what landed; what is false is the present-tense claim about the other module's state. NOT a slip under operator amendment amend0827 rule 2: the wrong state is on disk under `packages/`, in shipped production code, which is the first clause of what rule 2 reserves an id for, and it is the class the checklist's own item 20 exists to prevent — a slice stating a present-tense fact about a file a later commit of the same branch falsifies. THIS IS NOT `R-0724`, which is a false claim about this environment's test runner in a test module's docstring; this one is a false claim about a sibling module's code, in production code. COUNTER-MEASURE: replace the clause with what is now true — the two ceilings here bound the OUTPUT this module builds, the INPUT is bounded by `DIFF_VIEW_MAX_ARTIFACT_BYTES` under DECISION F037 D7, and neither subsumes the other because they are different resources in different units — changing no statement in the file, which the round proves by comparing the comment-stripped blobs. OPEN.
+<<<END FIND0723
 
-**Date:** 2026-08-28 · **Round:** F037 R14 · **Finding:** `R-0721`
+<<<SLICE FIND0724
+- R-0724 — Low, A TEST MODULE'S DOCSTRING STATES AS FACT THE PREMISE THAT STOPPED TWO THIRDS OF THIS FEATURE, AND THE PREMISE IS FALSE. Raised by the reviewer at the F037 R14 gate while probing whether T002 is really blocked; no round was ordered to look for it. `tests/ui_contracts/test_diff_surface_css.py` opens, at `0d750765`, with "the frontend test runner cannot be executed in this environment, so the conformance of this stylesheet is pinned from Python". MEASURED BY THE REVIEWER at `0d750765`: `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes` runs `npx vitest run` with `cwd` at `apps/ui` and asserts its return code is 0, and that node is REAL EXIT CODE 0 in 0.92 s in this environment — so the runner executes here, through this repository's own gate, and CI runs the same node. What is refused is a DIRECT `npx vitest` invocation from the session's own shell, which is a permission on one caller and not a property of the environment. THE COST IS THE REASON THIS EARNS AN ID RATHER THAN A SLIP: this sentence, and the same claim repeated in `.agent/plan.md` and in three handbacks, is why F037 R8 through R14 recorded T002 and T003 as BLOCKED and built only server-side work, and wrong state under `tests/` is the first clause of what operator amendment amend0827 rule 2 reserves an id for. LOW AND NOT HIGHER because the sentence's CONCLUSION is right for a reason it never gives — `apps/ui/vitest.config.ts` collects `src/**/*.test.ts` in a NODE environment, so the runner reaches no stylesheet and no markup whatever its availability, and pinning this conformance from Python is correct either way — so no guard is weaker than it looks and nothing on the CSS side needs rebuilding. THIS IS NOT `R-0723`, a stale bound clause in the parser's own comment. COUNTER-MEASURE: replace the false half with the real reason, and rule the general question in a DECISION rather than in a docstring, since it governs the whole remaining scope of this feature — DECISION F037 D8 does that, and records what a red-proof of TypeScript can and cannot be here. OPEN.
+<<<END FIND0724
 
-**The choice.** `packages/orchestration/diff_view_source.py` gains a module
-constant `DIFF_VIEW_MAX_ARTIFACT_BYTES = 8_000_000` and reads the diff artifact
-in binary under that ceiling instead of calling
-`artifact.read_text(encoding="utf-8")` on it whole. When the artifact is larger,
-the bytes are cut to the ceiling and then cut back to the last newline they
-contain, and the envelope's `truncated` becomes `parsed["truncated"] or
-read_truncated`.
+<<<SLICE DECISION8
+## DECISION F037 D8 — T002 and T003 are NOT blocked; the client is built in the layer vitest reaches, and no TypeScript colour is ordered because none can be run
 
-**Why a read bound is not made redundant by the two parser ceilings.** DECISION
-F037 D5 bounds the body lines the view carries and D6 the file entries, and both
-bound what is BUILT. The read happens first and is unbounded by either: a
-`workspace.diff` of one enormous minified line appends nothing to the body
-counter and adds one file entry, so it passes both ceilings untouched and still
-costs the entire read. The layering is deliberate — this bound is on INPUT
-BYTES, those are on OUTPUT OBJECTS, and neither can be expressed in the other's
-unit.
+**Date:** 2026-08-28 · **Round:** F037 R15 · **Findings:** `R-0724`, `R-0723`
 
-**Why 8,000,000 bytes.** Measured by the reviewer at `922f3223`, a diff that
-saturates BOTH parser ceilings at once is 1,423,907 bytes of input: 397,907 for
-`DIFF_VIEW_MAX_BODY_LINES` body lines in a single file, and 1,026,000 for
-`DIFF_VIEW_MAX_FILES` one-pair files at paths of sixty characters and more. The
-ceiling is over five times that, so for any realistic line length the parser's
-own bounds take over long before this one does, and this one is what stops the
-pathological shapes those bounds cannot see. A diff whose body lines are
-hundreds of characters wide can reach it first; that is a real cut, it is
-reported in the data, and it is the point of having a byte bound at all.
+**The choice.** F037's remaining scope is built with this repository's existing
+frontend pattern rather than waiting for a runner. Decidable rules go in
+`apps/ui/src/api/*.ts` with `*.test.ts` beside them, which
+`apps/ui/vitest.config.ts` collects in a NODE environment; markup, stylesheets
+and wiring are pinned from `tests/ui_contracts/` in Python. That is what
+DECISION F031 D5 already ruled for the decision inbox, and F037 follows it.
 
-**Why the cut goes back to the last newline.** Two hazards share one fix. A cut
-at an arbitrary byte can land inside a multi-byte UTF-8 character, and the
-decode then raises — which this module's existing handler would report as
-`DIFF_REASON_ARTIFACT_MISSING`, turning a readable diff into an absent one. A
-cut can also land in the middle of a body line, which would put half a line into
-the contract as if it were whole. A newline is never inside a multi-byte
-character and never inside a line, so cutting back to the last one answers both.
-When the ceiling's worth of bytes holds no newline at all the result is the
-empty text, which parses to the empty-files shape and is reported as available
-and truncated: for one enormous line that is the honest answer, and it is the
-same answer this module already gives for every other absence — name it in the
-data rather than raise.
+**Why the blocked premise was wrong.** Measured at `0d750765`:
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+runs `npx vitest run` from pytest with `cwd` at `apps/ui` and asserts a return
+code of 0, and it is exit 0 here in 0.92 s. CI runs the same node. What is
+refused is a DIRECT `npx vitest` from the session's own shell — a permission on
+one caller, not a property of the environment. Reading that refusal as "the
+runner cannot be executed" is what recorded T002 and T003 as blocked from R8
+through R14, and it is registered as `R-0724`.
 
-**Why the flag is an OR and not a replacement.** `truncated` now has three
-sources: the upstream `[DIFF TRUNCATED]` sentinel some other producer wrote,
-the parser's own two ceilings, and this read. They are independent and any of
-them makes the view a prefix, so the envelope reports their disjunction. A test
-whose artifact carries the sentinel while staying under the read ceiling is the
-discriminator, because a replacement rather than an OR would drop it.
+**What a red-proof of TypeScript can be here, and what it cannot.** It cannot be
+a mutation. Guardrail G5 of `docs/agents/self_drive_protocol.md` confines every
+destructive check to a disposable `git worktree`, `apps/ui/node_modules` is
+gitignored and therefore absent from any fresh worktree, and the reviewer
+measured the consequence at `0d750765`: the vitest node run with its `cwd` in a
+worktree fails at STARTUP with `Cannot find package 'vitest'` before any test is
+loaded, so it is red for every possible module under test. A colour from a
+command that cannot pass proves nothing — that is finding `R-0703`'s rule and
+this decision does not break it. What IS ordered instead, and what makes the
+TypeScript honest: the vitest suite runs GREEN through the pytest node in the
+primary checkout, where it is a real gate that a broken module turns red; and a
+Python guard under `tests/ui_contracts/` pins the structural facts vitest cannot
+see about itself, and THAT guard is mutated and red-proved normally, because it
+is Python and needs no `node_modules`.
 
-**What the endpoint needs.** Nothing. `packages/orchestration/ui_server.py`
-builds its diff JSON by returning `build_diff_view`'s envelope, so the flag
-reaches the client already; this decision changes what sets it, not what carries
-it.
+**What this costs, stated plainly.** A defect that a vitest test would catch is
+caught only when the whole vitest suite is run, and never by a mutation aimed at
+one function. The mitigation is the shape of the code rather than more gates:
+the more of the client's behaviour that lives in `src/api/` as total functions
+over plain data, the more of it a green suite actually covers. That is the
+reason the view model is built before the component and carries the collapse
+rule, the row keys and the sidebar, rather than leaving them in markup where
+nothing here can reach them at all.
 
-**Alternatives rejected.** (1) Check `artifact.stat().st_size` and refuse above
-the ceiling — rejected because a refusal is exactly what this module's docstring
-forbids: a viewer that shows the first part of a large job's diff is better than
-one that shows nothing, and the contract already has the field for saying which
-it did. (2) Cut at the ceiling with `errors="replace"` instead of at a newline —
-rejected because it puts a replacement character into a line's content, which is
-data the viewer would render as if the artifact contained it. (3) Stream the
-artifact and parse incrementally — the honest long-term answer, rejected for
-this round as a rewrite of a module that is total and pure by contract, and it
-buys nothing the two ceilings and this bound do not already buy. (4) Derive the
-byte ceiling from the two parser ceilings rather than stating it — rejected
-because line length is not bounded by either of them, so no such derivation
-exists.
+**Why the feature file is not amended.** Its Task slicing already names T002 as
+the rendering core and T003 as the sidebar and virtual scrolling, and neither
+mentions a runner. The blocked premise never lived in
+`docs/roadmap/features/T5_F037.md` — it lived in a test docstring, in
+`.agent/plan.md` and in handbacks. Amendment A4 stands unchanged.
 
-**How to reverse.** Delete `DIFF_VIEW_MAX_ARTIFACT_BYTES` and restore the single
-`artifact.read_text(encoding="utf-8")` call in `build_diff_view`, restore
-`view["truncated"] = parsed["truncated"]`, and delete the tests F037 R14 added
-in the final section of `tests/orchestration/test_diff_view_source.py`.
-DECISION F037 D5 and D6 are untouched by this decision and survive its reversal.
-<<<END DECISION7
+**Alternatives rejected.** (1) Keep waiting for a direct runner — rejected: it
+is a session permission that has already varied between sessions, and a feature
+cannot be paced by it. (2) Copy `apps/ui/node_modules` into the worktree to
+enable mutations — rejected: it is hundreds of megabytes per proof, and
+`shutil.copytree` defaults to dereferencing the bin shims, which is exactly the
+mechanism finding `R-0591` records as having CAUSED failures it was meant to
+prevent. (3) Build the component first and the model after — rejected: it puts
+the collapse rule and the row keys in markup no gate here can reach, which is
+the arrangement DECISION F031 D5 exists to prevent.
 
-<<<SLICE DONE0721B
-Done: R-0721 — THE REMAINDER RESOLVED at F037 R14 by the round's C3 and C4, in the commit order constraint 9 of the R14 block fixes. This is the SECOND resolution paragraph for this id and it is deliberate: F037 R12 resolved the finding IN PART, and a partial resolution is invisible to the open-set arithmetic the pre-emission checklist runs — every `^- R-\d+ — ` paragraph minus every `^Done: R-\d+ — ` line — so the remaining half survived in prose only, which is recorded as a reviewer slip in `.agent/prose_slips.md` and is closed here rather than left to a reader to reconstruct. WHAT WAS STILL OPEN: `packages/orchestration/diff_view_source.py` read the artifact whole with `artifact.read_text(encoding="utf-8")` before `parse_unified_diff_to_view` was ever entered, so the two ceilings DECISION F037 D5 and D6 set bounded the view that was BUILT while the INPUT stayed unbounded — and a diff of one enormous line with no newline reaches neither of those ceilings and still costs the entire read. WHAT LANDED: the artifact is read in binary under `DIFF_VIEW_MAX_ARTIFACT_BYTES`, cut to that ceiling and then cut back to the last newline, and the envelope's `truncated` became an OR over the read, the parser's own ceilings and the upstream sentinel. DECISION F037 D7 records the value against the reviewer's measurement that a diff saturating both parser ceilings at once is 1,423,907 bytes of input, why the cut goes back to a newline rather than to an arbitrary byte, and how to reverse the whole thing. THE TWO CUT HAZARDS ARE PROVED RATHER THAN ARGUED, because they are the half of this repair that fails silently in opposite directions: a cut inside a multi-byte character would raise and be reported as `DIFF_REASON_ARTIFACT_MISSING`, turning a readable diff into an absent one, and a cut inside a body line would put half a line into the contract as if it were whole — each has a test whose fixture is built so the cut point lands exactly there. WHAT THIS RESOLUTION DOES NOT CLAIM: nothing here bounds the SERIALIZED response the endpoint writes, which is bounded only through the two parser ceilings and the payload budget F037 R13 recorded; and the read is bounded rather than streamed, so the ceiling's worth of bytes is still held in memory at once, which DECISION F037 D7 states as the alternative it rejected for this round.
-<<<END DONE0721B
+**How to reverse.** Delete this decision and the three files F037 R15 added —
+`apps/ui/src/api/diffViewModel.ts`, `apps/ui/src/api/diffViewModel.test.ts` and
+`tests/ui_contracts/test_diff_view_model.py`. Nothing else imports them; no
+existing module changes as part of this decision, and the two comment repairs it
+carries stand on their own findings rather than on this ruling.
+<<<END DECISION8
+
+<<<SLICE DONE0723
+Done: R-0723 — RESOLVED at F037 R15 by the round's C3, in the commit order constraint 9 of the R15 block fixes. The DELIBERATE ABSENCE paragraph above `DIFF_VIEW_MAX_FILES` in `packages/orchestration/diff_parser.py` no longer claims that `diff_view_source.py` reads the artifact whole: it now says that the two ceilings here bound the OUTPUT this module builds, that the INPUT is bounded by `DIFF_VIEW_MAX_ARTIFACT_BYTES` under DECISION F037 D7, and that neither subsumes the other because they are different resources in different units. THE REPAIR CHANGED NO CODE AND THE ROUND PROVED THAT RATHER THAN ASSERTING IT: the commit's blob and the base blob are byte-identical once every `#`-comment line and docstring is removed, which is a stronger reading than a green suite, because a suite cannot tell a comment edit from an equivalent statement edit. The counter-measure is the one the finding named — correct the clause, change nothing else — and not a rewrite of the paragraph, because the paragraph's conclusion was right all along.
+<<<END DONE0723
+
+<<<SLICE DONE0724
+Done: R-0724 — RESOLVED at F037 R15 by the round's C3, in the commit order constraint 9 of the R15 block fixes. `tests/ui_contracts/test_diff_surface_css.py`'s docstring no longer says that the frontend test runner cannot be executed in this environment. It now gives the REAL reason that guard is written in Python, which the false clause was standing in for: `apps/ui/vitest.config.ts` collects `src/**/*.test.ts` in a NODE environment, so the runner reaches no stylesheet and no markup whatever its availability. No assertion in that file changed and none needed to — the finding is explicit that the guard was never weaker than it looked. THE GENERAL QUESTION IS RULED WHERE IT BELONGS: DECISION F037 D8 records that T002 and T003 are not blocked, that the build pattern is decidable rules in `apps/ui/src/api/` with markup pinned from `tests/ui_contracts/`, and — the part a docstring could not have carried — that no mutation red-proof of TypeScript is orderable here, because `apps/ui/node_modules` is gitignored and the vitest node run with its `cwd` in a disposable worktree fails at startup for every possible module under test. WHAT THIS RESOLUTION DOES NOT CLAIM: that the runner is available to every caller. A direct `npx vitest` from the session's own shell is still refused, and the finding is about the difference between that permission and a property of the environment.
+<<<END DONE0724
 
 Done when — the gates below, every one executed with its REAL exit code
 recorded, one line per gate in the handback. G1 through G8 run at the commits
-named; none of them runs after C6, so the handback can quote every one of them.
+named; none of them runs after C8, so the handback can quote every one of them.
 
-G1 HYGIENE. Read `.agent/STOP` from disk before C0a and again before C6 and
+G1 HYGIENE. Read `.agent/STOP` from disk before C0a and again before C8 and
 report both readings. Report `git rev-parse HEAD` before C0a and state whether
-it equals `922f3223`, `git branch --show-current`, and the `git status
---porcelain` line count after each of C0a through C5.
+it equals `0d750765`, `git branch --show-current`, and the `git status
+--porcelain` line count after each of C0a through C7.
 
 G2 TRANSPORT, ONE DIGEST COMPARISON. Report sha256, byte count and line count of
-the committed `.agent/authored/f037-r14.md` blob, and state whether they equal
-the reviewer's scratch original at `.remedy-wt/f037-r14-block.md` — compare the
-two files directly, disk to disk. Report `git rev-parse <C0b>:.agent/authored/f037-r14.md`
+the committed `.agent/authored/f037-r15.md` blob, and state whether they equal
+the reviewer's scratch original at `.remedy-wt/f037-r15-block.md` — compare the
+two files directly, disk to disk. Report `git rev-parse <C0b>:.agent/authored/f037-r15.md`
 and `git rev-parse <C0b>:.agent/last_block.md` and whether they are the same
 blob. State what the chain covers and what it does not.
 
@@ -333,78 +357,88 @@ prose. For each slice report its content line count; report TOTAL lines of the
 blob, CONTENT as their sum, PROSE as TOTAL minus CONTENT, and whether TOTAL is
 at most 490 and PROSE at most 400.
 
-G4 THE PLAN AT C1. Report whether `.agent/plan.md` is byte-equal to the
-PLANF037R14 slice extracted from the committed C0a blob, including the trailing
-newline, plus the negative control against that slice minus its trailing
-newline. Report the count of lines exactly `## Goal` and exactly `## Next
-Steps`, and `wc -l` with whether it is strictly under 50.
+G4 THE PLAN AT C1, AND THE COMMENT-ONLY PROOF AT C3. Report whether
+`.agent/plan.md` is byte-equal to the PLANF037R15 slice extracted from the
+committed C0a blob, including the trailing newline, plus the negative control
+against that slice minus its trailing newline; the count of lines exactly
+`## Goal` and exactly `## Next Steps`; and `wc -l` with whether it is strictly
+under 50. Then, for `packages/orchestration/diff_parser.py`, report whether the
+C3 blob and the `0d750765` blob are byte-identical after removing every line
+whose first non-space character is `#` and every triple-quoted docstring — and
+report the same comparison WITHOUT that removal, which must be False, so the
+first reading is shown not to be a comparison that cannot fail.
 
-G5 THE RECORD AT C2 AND C5. For each of the three appends — GATER13 into
-`.agent/live_review.md`, DECISION7 into `.agent/decisions.md`, DONE0721B into
-`.agent/live_review.md` — report reader (a), `result == before + b"\n" + slice`
-re-read from disk; reader (b), which COUNTS the blank-line-separated units of
-the slice and compares the LAST that many units of the file against them IN
-ORDER, reporting the count it measured; and a negative control for both readers
-that flips one byte inside the FIRST appended paragraph. Report whether each
-file's pre-round blob is a byte PREFIX of the result, reading that blob with
-`git show 922f3223:<path>` into memory and never over the tracked file. Then
-report, line-anchored over `.agent/live_review.md` after C5 with the base figure
-beside each: `^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: F\d+ R\d+
-— `, the open-set size, and whether every REGISTERED id is distinct. The
-resolution lines are NOT expected to be distinct this round: report the number
-of `^Done: R-\d+ — ` lines and the number of distinct ids among them, and name
-the id that repeats — DONE0721B is a second resolution paragraph for `R-0721` by
-design, and constraint 1 forbids repairing that by editing either paragraph.
-Over `.agent/decisions.md`, report `^## DECISION ` and the count of `F037 D7`.
+G5 THE RECORD AT C2 AND C7. For each of the five appends — GATER14, FIND0723 and
+FIND0724 into `.agent/live_review.md`, DECISION8 into `.agent/decisions.md`,
+DONE0723 and DONE0724 into `.agent/live_review.md` — report reader (a),
+`result == before + b"\n" + slice` re-read from disk; reader (b), which COUNTS
+the blank-line-separated units of the slice and compares the LAST that many
+units of the file against them IN ORDER, reporting the count it measured; and a
+negative control for both readers that flips one byte inside the FIRST appended
+paragraph. Report whether each file's pre-round blob is a byte PREFIX of the
+result, reading that blob with `git show 0d750765:<path>` into memory and never
+over the tracked file. Then report, line-anchored over `.agent/live_review.md`
+after C7 with the base figure beside each: `^- R-\d+ — `, `^Done: R-\d+ — `,
+`^Landed: R-`, `^Gate: F\d+ R\d+ — `, the open-set size, whether every
+REGISTERED id is distinct, and the number of resolution lines against the number
+of distinct ids among them. Over `.agent/decisions.md`, report `^## DECISION `
+and the count of `F037 D8`.
 
-G6 THE RED-PROOFS OF THE READ BOUND. All runs inside a disposable worktree at
-the C4 tree, never in the primary checkout, with `__pycache__` purged and
-`python3 -B` for every run, the module restored between runs and each restore
-verified byte-identical by sha256 against the unmutated C4 blob. Report the
-UNMUTATED CONTROL's exit code and summary line first. Then, for each mutation,
-report the occurrences of the replaced string BEFORE the edit — which must be
-1 — the REAL exit code, the summary line, and the node ids that fail. The
-ordered property is the COLOUR: report the names and counts you measure rather
-than any this block predicts.
-(a) Restore the unbounded read: replace the bounded read with
-`artifact.read_text(encoding="utf-8")` and drop `read_truncated` from the flag.
-Expect RED.
-(b) Change the ceiling comparison so that exactly the ceiling counts as
-truncated. Expect RED.
-(c) Drop the cut back to the last newline, keeping the cut at the ceiling.
-Expect RED.
-(d) Replace `parsed["truncated"] or read_truncated` with `parsed["truncated"]`.
-Expect RED.
-(e) Replace it with `read_truncated` alone. Expect RED.
+G6 THE RED-PROOFS, WHICH ARE OF THE PYTHON GUARD AND OF NOTHING ELSE. FIRST
+report the measurement that says why: in a disposable worktree at the C6 tree,
+run `python3 -B -m pytest tests/orchestration/test_test_runner.py -q -k vitest`
+with the worktree as the working directory and report its REAL exit code and the
+reason text — it is expected to FAIL at startup because `apps/ui/node_modules`
+is gitignored and absent there, which is what makes a TypeScript mutation
+unmeasurable under guardrail G5. Then, in that same worktree and with
+`__pycache__` purged and `python3 -B` for every run, red-prove
+`tests/ui_contracts/test_diff_view_model.py` — the file restored between runs and
+each restore verified byte-identical by sha256. Report the UNMUTATED CONTROL's
+exit code and summary line first, then for each mutation the occurrences of the
+replaced string BEFORE the edit, which must be 1, the REAL exit code, the
+summary line and the failing node ids:
+(a) add a line `import { foo } from "./bar";` at the top of
+`apps/ui/src/api/diffViewModel.ts`. Expect RED.
+(b) rename one exported function in `apps/ui/src/api/diffViewModel.ts` so the
+test file no longer names it. Expect RED.
+(c) replace the reference to `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` in
+`apps/ui/src/api/diffViewModel.test.ts` with its numeric literal. Expect RED.
+The ordered property is the COLOUR: report the names and counts you measure
+rather than any this block predicts.
 
-G7 SUITE, LINT AND CANARY AT C4. One pytest process at a time; never two at
-once. Report the REAL exit code and the full summary line of each:
-`python3 -m pytest tests/orchestration/test_diff_view_source.py -q`, whose base
-figure at `922f3223` is `9 passed in 0.21s`;
+G7 SUITES, LINT AND CANARY AT C6, IN THE PRIMARY CHECKOUT. One pytest process at
+a time; never two at once. Report the REAL exit code and the full summary line
+of each: `python3 -m pytest tests/orchestration/test_test_runner.py -q`, which
+is the gate that RUNS vitest and whose base figure at `0d750765` is
+`52 passed`; `python3 -m pytest tests/ui_contracts/ -q`;
 `python3 -m pytest tests/orchestration/test_diff_parser.py
-tests/ui_server/test_diff_endpoint.py -q`, whose base figure is `49 passed` and
-which must be unmoved because constraints 3 and 4 forbid touching either side of
-it; `python3 -m ruff check packages/orchestration/diff_view_source.py
-tests/orchestration/test_diff_view_source.py` under this repository's own
+tests/orchestration/test_diff_view_source.py -q`, whose base figure is
+`58 passed` and which must be UNMOVED because constraints 3 and 4 forbid
+touching either side of it; `python3 -m ruff check
+tests/ui_contracts/test_diff_view_model.py
+tests/ui_contracts/test_diff_surface_css.py
+packages/orchestration/diff_parser.py` under this repository's own
 configuration; and the canary `python3 -m pytest tests/cli/test_golden_path.py
--q`, whose base figure is `42 passed`. Report the view-source suite's `in <n>s`
-figure and, since S6 writes an artifact of more than eight megabytes, name the
-tests that account for the difference from the base rather than treating a rise
-as a defect.
+-q`, whose base figure is `42 passed`. For the first of these, ALSO report the
+`in <n>s` figure and state how many vitest tests the run covers, taking that
+count from a separate run of `npx vitest run` you make yourself in the primary
+checkout if your permissions allow it and reporting the refusal verbatim if they
+do not.
 
-G8 STRUCTURE, ARTIFACTS AND THE OPEN PR GATE AT C5. Report `git diff
---name-only 922f3223..<C5>` and both residues against the change set above —
+G8 STRUCTURE, ARTIFACTS AND THE OPEN PR GATE AT C7. Report `git diff
+--name-only 0d750765..<C7>` and both residues against the change set above —
 actual minus expected and expected minus actual, with `.agent/handoff.md`
-expected to be the only member of the second because C6 writes it. Report
-`git diff --stat` restricted to `docs/`, to `apps/`, and to `packages/`; the
-third must hold `packages/orchestration/diff_view_source.py` and nothing else,
-which is what proves constraints 3 and 4. Report each commit's insertion count
-from `git show --numstat` for C0a through C5 and whether each is under 500, and
-check those figures cell by cell against the `+/-` column of the handback's own
-`## Commits` table. Report the count of lines matching `^<<<SLICE ` and
-`^<<<END ` in `.agent/plan.md`, `.agent/live_review.md`,
-`packages/orchestration/diff_view_source.py` and
-`tests/orchestration/test_diff_view_source.py`, and the same counts over the C0a
+expected to be the only member of the second because C8 writes it. Report `git
+diff --stat` restricted to `docs/`, to `packages/`, and to `apps/`; the second
+must hold `packages/orchestration/diff_parser.py` alone and the third must hold
+`apps/ui/src/api/diffViewModel.ts` and `apps/ui/src/api/diffViewModel.test.ts`
+alone, which is what proves constraints 4 and 5. Report each commit's insertion
+count from `git show --numstat` for C0a through C7 and whether each is under
+500, and check those figures cell by cell against the `+/-` column of the
+handback's own `## Commits` table. Report the count of lines matching
+`^<<<SLICE ` and `^<<<END ` in `.agent/plan.md`, `.agent/live_review.md`,
+`apps/ui/src/api/diffViewModel.ts` and
+`tests/ui_contracts/test_diff_view_model.py`, and the same counts over the C0a
 blob as the control that the counter is not blind. Report
 `git ls-files .remedy-wt` line count. Run `gh pr list --state open --json
 number,headRefName,baseRefName,isDraft` verbatim and report its exit code and
@@ -412,8 +446,8 @@ stdout.
 
 Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It
 carries the SESSION NUMBER of this feature — session 4 — the round, the range
-`922f3223..<C6>`, a per-commit changed-files table with the `+/-` column, one
+`0d750765..<C8>`, a per-commit changed-files table with the `+/-` column, one
 line per gate G1 through G8 with its real result, the authored-text proofs, the
-deviations, the item-status table covering C0a through C6 and G1 through G8 and
-`R-0721`, and the next expected action. Derive any cap it must respect from
-AGENTS.md yourself; this block states none. Then push the branch.
+deviations, the item-status table covering C0a through C8 and G1 through G8 and
+`R-0723` and `R-0724`, and the next expected action. Derive any cap it must
+respect from AGENTS.md yourself; this block states none. Then push the branch.
