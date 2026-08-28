@@ -56,3 +56,31 @@
 
 .diffLine.add .intraline { background: rgba(56,217,169,.32); border-radius: 2px; }
 .diffLine.del .intraline { background: rgba(247,103,7,.30); border-radius: 2px; }
+
+/* THE SYNTAX PALETTE, ruled by DECISION F256 D2, which is where a reader looking
+   for the authority behind these four hues goes first. It is a DERIVATION and
+   not an invention, in exactly the sense D9 above was: each of the four coloured
+   token kinds takes a custom property `apps/ui/src/styles/tokens.css` ALREADY
+   defines, so NO NEW HUE enters this stylesheet and NO NEW CUSTOM PROPERTY
+   enters that one. `comment` takes `--remedy-ink-soft`, the property this sheet
+   already gives the line-number gutter, so a comment reads as the same rank of
+   de-emphasis; `keyword` takes `--remedy-blue-700`, the product's own accent,
+   which is why it goes to the kind a reader scans for first. Each rule carries
+   the literal fallback its token already uses elsewhere in this sheet's idiom.
+
+   THE FIFTH KIND IS ABSENT ON PURPOSE. `plain` gets no rule here and no class in
+   `DiffView.tsx`, which maps it to the empty string: it inherits the row's own
+   colour, and that is what keeps an unhighlighted run — an unknown language, or
+   a language whose answer has not arrived yet — rendering exactly as this viewer
+   rendered it before F256. A reader searching this sheet for a `.tokPlain` will
+   not find one, and the absence is the ruling rather than an omission.
+
+   REVERSE by deleting DECISION F256 D2 and the four rules below. The runs then
+   render in the row's own colour and the wiring in `DiffView.tsx` stays intact,
+   because that file's class mapping already answers the empty string for a kind
+   with no rule behind it. */
+
+.tokComment { color: var(--remedy-ink-soft, #6f82a8); }
+.tokString { color: var(--remedy-green-500, #34c27e); }
+.tokNumber { color: var(--remedy-orange-400, #f5a34e); }
+.tokKeyword { color: var(--remedy-blue-700, #2459d6); }

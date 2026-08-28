@@ -21,9 +21,10 @@
 // `../shell/RemedyShell.tsx` receives that id, holds it as the open task run,
 // reads the envelope for it through `loadDiffEnvelope`, and draws THIS
 // component inside its diff panel beside `DiffFileSidebar`. Changing the props
-// below therefore changes that shell, and the one T003 piece still outstanding —
-// the lazy language bundles — arrives at this component rather than at some new
-// caller.
+// below therefore changes that shell, and the lazy language bundles landed HERE
+// rather than at some new caller: the importer constant below is the only place
+// in the product that names the highlight module to `loadDiffLanguageBundle`,
+// which is what keeps that shell out of F256's wiring entirely.
 //
 // NOTHING IN THIS REPOSITORY CAN RENDER THIS FILE. There is no DOM environment
 // here and the shipped vitest config reaches no markup, so what gates this
@@ -37,11 +38,31 @@ import {
   buildDiffRowModels,
   defaultCollapsedHunkIds,
   diffRowWindowForViewport,
+  loadDiffLanguageBundle,
   splitLineIntoIntralineSegments,
   toggleHunkCollapse,
 } from "../../api/diffViewModel";
 import type { DiffEnvelope, DiffLineKind } from "../../api/diffViewModel";
+import { composeHighlightedRuns } from "../../api/diffHighlight";
+import type { DiffHighlightTokenKind } from "../../api/diffHighlight";
 import styles from "./DiffView.module.css";
+
+/** HOW THE HIGHLIGHT BUNDLE IS ASKED FOR, and it is a CALL EXPRESSION rather
+ *  than a static import on purpose: DECISION F256 D1 rules that a language's
+ *  tokenizer is fetched lazily, as its own chunk, instead of riding in the main
+ *  chunk for every operator who never opens a diff. `loadDiffLanguageBundle`
+ *  takes this function rather than naming a module itself — the model module
+ *  imports nothing at runtime, which is what keeps every rule in it decidable —
+ *  so THIS file is the one place in the product that names the highlight module
+ *  to the loader, and it is the reason the wiring lives here rather than in
+ *  `../shell/RemedyShell.tsx`.
+ *
+ *  IT IS NEVER INVOKED FOR A PATH THAT RENDERS PLAIN. That is the acceptance
+ *  property `loadDiffLanguageBundle` owns and its vitest suite pins at a call
+ *  count of exactly zero, and passing the importer instead of calling it is what
+ *  lets that function decide: the language is resolved from the path first, and
+ *  a plain answer never reaches this line. */
+const DIFF_HIGHLIGHT_BUNDLE_IMPORTER = () => import("../../api/diffHighlight");
 
 /** The tint a line's kind gives its row, as a `Record` lookup rather than a
  *  branch: the binding CSS composes `.diffLine.add` and `.diffLine.del` from two
@@ -52,6 +73,26 @@ const DIFF_LINE_KIND_CLASS: Record<DiffLineKind, string> = {
   ctx: "",
   add: styles.add,
   del: styles.del,
+};
+
+/** The colour a RUN's token kind gives it, ruled by DECISION F256 D2 and carried
+ *  as a `Record` for the same reason `DIFF_LINE_KIND_CLASS` above is one: the
+ *  lookup is total over the closed kind set, so a kind added to
+ *  `../../api/diffHighlight` without a class here becomes a type error rather
+ *  than a run that silently renders untinted.
+ *
+ *  `plain` TAKES THE EMPTY STRING, exactly as `ctx` does above and for the same
+ *  reason: an unhighlighted run wears no extra class, there is no `.tokPlain`
+ *  rule in the stylesheet, and this component may not invent one. That single
+ *  mapping is what makes an unknown language — and the moment before a known
+ *  language's answer arrives — render byte for byte as this viewer rendered it
+ *  before F256. */
+const DIFF_HIGHLIGHT_KIND_CLASS: Record<DiffHighlightTokenKind, string> = {
+  comment: styles.tokComment,
+  string: styles.tokString,
+  number: styles.tokNumber,
+  keyword: styles.tokKeyword,
+  plain: "",
 };
 
 /** What a COLLAPSED hunk head says after its header. The colon form is used
@@ -106,6 +147,41 @@ export function DiffView({ envelope }: DiffViewProps) {
   // merely inherited an id and leave the genuinely huge ones open.
   useEffect(() => {
     setCollapsed(defaultCollapsedHunkIds(envelope));
+  }, [envelope]);
+
+  // WHICH LANGUAGE EACH FILE IS HIGHLIGHTED AS, keyed by the file's own path and
+  // holding the model's answer verbatim: a language id, or `null` meaning "render
+  // this file plain". A `Map` rather than an object literal because the keys are
+  // diff paths from a repository this viewer does not control, and a lookup over
+  // an inherited key is the defect finding `R-0731` recorded in the model module.
+  // A path that is not a key yet is the honest reading of an answer that has not
+  // arrived, and it renders plain until it does.
+  const [languageByPath, setLanguageByPath] = useState<ReadonlyMap<string, string | null>>(
+    () => new Map<string, string | null>(),
+  );
+
+  // A NEW ENVELOPE STARTS A NEW MAP, for the reason the collapse set above is
+  // reset on a new envelope: the keys are the previous diff's paths, and a stale
+  // entry would colour one task run's file as another task run's language.
+  //
+  // ONE ASK PER DISTINCT PATH, and the answer is stored rather than the bundle —
+  // `loadDiffLanguageBundle` caches the import itself, one per language, so this
+  // effect never needs to know whether a chunk is already in flight. `cancelled`
+  // is the answer to a reply that comes back AFTER the envelope moved on: React
+  // runs the cleanup before the next effect, so a slow import finds the flag set
+  // and stores nothing, which is the shape `../shell/RemedyShell.tsx` uses for
+  // its own read.
+  useEffect(() => {
+    let cancelled = false;
+    setLanguageByPath(new Map<string, string | null>());
+    for (const path of Array.from(new Set(envelope.files.map((file) => file.path)))) {
+      void loadDiffLanguageBundle(path, DIFF_HIGHLIGHT_BUNDLE_IMPORTER).then((answer) => {
+        if (!cancelled) {
+          setLanguageByPath((current) => new Map(current).set(path, answer.language));
+        }
+      });
+    }
+    return () => { cancelled = true; };
   }, [envelope]);
 
   // THE TWO NUMBERS ONLY THE DOM CAN SUPPLY, held together because they are
@@ -204,6 +280,12 @@ export function DiffView({ envelope }: DiffViewProps) {
             </button>
           );
         }
+        // THE LANGUAGE THIS ROW IS COLOURED AS, looked up by the path of the file
+        // the row belongs to. `null` covers both "this file renders plain" and
+        // "its answer has not arrived", which are the same thing on screen: the
+        // token cut then makes the whole line `plain` and every run wears no
+        // class, so the row's markup is what it was before F256.
+        const rowLanguage = languageByPath.get(envelope.files[row.fileIndex].path) ?? null;
         return (
           <div
             key={row.key}
@@ -216,22 +298,38 @@ export function DiffView({ envelope }: DiffViewProps) {
             <span className={styles.ln}>{row.line.oldLn === null ? "" : row.line.oldLn}</span>
             <span className={styles.ln}>{row.line.newLn === null ? "" : row.line.newLn}</span>
             <span>
-              {/* THE INTRALINE MARK, ruled by DECISION F037 D9 and recorded as
-                  amendment A5 of the feature file. The cut is the model's — this
-                  file decides nothing about which characters are marked — and a
-                  marked run becomes a `mark` element wearing the class the
-                  stylesheet defines for it inside an added and a removed row.
-                  The segments of ONE line are positional and derived, so their
-                  index is the honest key among these siblings; the ROW keys, the
-                  ones that must survive a collapse, are the model's own and are
-                  used above and nowhere else. */}
-              {splitLineIntoIntralineSegments(row.line).map((segment, segmentIndex) =>
-                segment.marked ? (
-                  <mark key={segmentIndex} className={styles.intraline}>{segment.text}</mark>
-                ) : (
-                  <Fragment key={segmentIndex}>{segment.text}</Fragment>
-                ),
-              )}
+              {/* THE INTRALINE MARK AND THE SYNTAX COLOUR, COMPOSED — DECISION
+                  F037 D9 with amendment A5 for the first and DECISION F256 D1
+                  and D2 for the second. BOTH CUTS ARE THE MODEL'S: this file
+                  decides neither which characters are marked nor which are
+                  keywords. `composeHighlightedRuns` is what turns the two into
+                  ONE list of runs uniform in both dimensions, so each run below
+                  becomes exactly one element and no character is drawn twice
+                  however the two cuts interleave. The intraline behaviour is
+                  UNCHANGED by this composition — a marked run is still a `mark`
+                  wearing `styles.intraline`, and colour is added to it rather
+                  than substituted for it. The runs of ONE line are positional
+                  and derived, so their index is the honest key among these
+                  siblings; the ROW keys, the ones that must survive a collapse,
+                  are the model's own and are used above and nowhere else. */}
+              {composeHighlightedRuns(
+                splitLineIntoIntralineSegments(row.line),
+                rowLanguage,
+              ).map((run, runIndex) => {
+                const kindClass = DIFF_HIGHLIGHT_KIND_CLASS[run.kind];
+                if (run.marked) {
+                  return (
+                    <mark
+                      key={runIndex}
+                      className={`${styles.intraline} ${kindClass}`.trim()}
+                    >{run.text}</mark>
+                  );
+                }
+                if (kindClass === "") {
+                  return <Fragment key={runIndex}>{run.text}</Fragment>;
+                }
+                return <span key={runIndex} className={kindClass}>{run.text}</span>;
+              })}
             </span>
           </div>
         );
