@@ -189,9 +189,19 @@ class TestTheTaskRunScopeRouteAgrees:
     structural route rather than a dictionary key. Both of its conditions are literals."""
 
     def test_the_client_addresses_the_task_run_segment(self):
-        assert "task-runs" in client_code(), (
-            f"{CLIENT.name} builds no task-run path, so a diff scoped to one attempt — half of "
-            f"what T5_F037 T003 exists to fetch — is unreachable from the viewer"
+        # Scoped to diffEnvelopePath's body, and to this template's ENDING as well as its
+        # segment. `"task-runs" in client_code()` pinned the segment and said nothing about
+        # where the path stops, so renaming THIS template's `/diff?` to `/diffs?` — leaving
+        # the job one alone — kept the whole guard green: finding `R-0725`'s own class
+        # surviving in the assertion its first repair did not reach. The two halves are read
+        # together, in one template literal, because a segment that leads nowhere the server
+        # routes is not an agreement.
+        body = ts_function_body(client_code(), "diffEnvelopePath")
+        assert re.search(r"task-runs/[^`]*/diff\?", body), (
+            f"diffEnvelopePath in {CLIENT.name} builds no task-run path ENDING in the diff "
+            f"endpoint, so a diff scoped to one attempt — half of what T5_F037 T003 exists to "
+            f"fetch — is either not built at all or stops at a segment {SERVER.name} does not "
+            f"route with `parts[6] == \"diff\"`"
         )
 
     def test_the_server_routes_both_segments_of_the_task_run_path(self):
