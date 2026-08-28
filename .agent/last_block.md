@@ -1,202 +1,192 @@
-STEP T002 — F037 Rendered diff viewer — ROUND 16
+# STEP T003 (first round) — F037 Rendered diff viewer, round 17
 
-Goal: finish T002. The view model exists; this round draws it. `DiffView.tsx`
-renders file rows, hunk heads that collapse on click, and line rows against the
-binding CSS, and the last named piece of T002 — intraline emphasis — is ruled
-rather than deferred again: Acceptance requires it, all three binding
-authorities are silent about it, and DECISION F037 D9 settles the treatment
-without inventing a hue or a token.
+BASE: `44a8493b`. SESSION 5 of feature F037. This block carries no line that is a
+run of a single repeated character, so nothing in its frame has a length a reader
+must recover by eye.
 
-Base: the round starts from `68680786` on branch
-`feature/f037-rendered-diff-viewer`. Nothing else is in flight.
+## Goal
 
-Bundle, one commit each, in this order:
-- C0a save this block verbatim to `.agent/authored/f037-r16.md`
-- C0b mirror the same bytes into `.agent/last_block.md`
-- C1 apply PLANF037R16 to `.agent/plan.md`
-- C2 append GATER15 to `.agent/live_review.md` and SLIPR16 to
-  `.agent/prose_slips.md`
-- C3 append DECISION9 to `.agent/decisions.md` and AMENDA5 to
-  `docs/roadmap/features/T5_F037.md`
-- C4 write SPEC S1 and S2 into `apps/ui/src/api/diffViewModel.ts` and SPEC S3
-  into `apps/ui/src/api/diffViewModel.test.ts`
-- C5 write SPEC S4 into
-  `apps/ui/src/components/diff/DiffView.module.css`
-- C6 write SPEC S5 through S9 into a NEW file
-  `apps/ui/src/components/diff/DiffView.tsx`
-- C7 write SPEC S10 into a NEW file
-  `tests/ui_contracts/test_diff_view_render.py`
-- C8 rewrite `.agent/handoff.md` as the handback
+Open T003 at the seam T002 stopped short of: the DOOR the client fetches a diff
+envelope through. `apps/ui/src/api/remedyApi.ts` gains a URL builder and a loader
+for the two scopes `packages/orchestration/ui_server.py` really routes, every
+payload leaves that loader through `readDiffEnvelope`, and a Python guard pins
+the client's URL template against the server's own route conditions — the one
+agreement vitest cannot see, because it spans two languages. Nothing is mounted
+this round.
 
-Change set, and nothing outside it: `.agent/authored/f037-r16.md`,
-`.agent/last_block.md`, `.agent/plan.md`, `.agent/live_review.md`,
-`.agent/prose_slips.md`, `.agent/decisions.md`, `.agent/handoff.md`,
-`docs/roadmap/features/T5_F037.md`, `apps/ui/src/api/diffViewModel.ts`,
-`apps/ui/src/api/diffViewModel.test.ts`,
-`apps/ui/src/components/diff/DiffView.module.css`,
-`apps/ui/src/components/diff/DiffView.tsx`,
-`tests/ui_contracts/test_diff_view_render.py`. Push the branch after C8. Create
-no PR, merge nothing.
+## Bundle
 
-Constraints:
-1. A slice between the markers is applied BYTE FOR BYTE. Never edit a slice,
-   never reflow it, never fix a typo in it. If a slice looks wrong, apply it and
-   say so in the handback's Deviations.
-2. Production code and test code are DESCRIBED by the SPEC below, not sliced.
-   Write them yourself. `apps/ui/src/api/diffViewModel.ts` is the idiom for the
-   model half; `apps/ui/src/components/panels/DecisionInboxCard.tsx` is the
-   idiom for a component in this package — read it before writing C6.
-3. NO EXISTING DECLARATION in `DiffView.module.css` changes. S4 APPENDS rules;
-   the five rules that stylesheet carries at `68680786` keep every byte,
-   including the order of `font` and `font-feature-settings` that finding
-   `R-0720` pinned.
-4. The new CSS introduces NO `var()` and NO new custom property.
-   `tests/ui_contracts/test_diff_surface_css.py` asserts that every token the
-   sheet references is defined in `apps/ui/src/styles/tokens.css`, and
-   `tokens.css` is the operator's design system, which this feature does not
-   edit. The literal values in S4 are the reason that constraint is satisfiable.
-5. Nothing in `packages/`, nothing in `tests/orchestration/`, nothing in
-   `tests/ui_server/`, and no other file under `apps/ui/` is touched.
-6. `apps/ui/src/api/diffViewModel.ts` still imports NOTHING after C4. The rule
-   `tests/ui_contracts/test_diff_view_model.py` pins is unchanged and must stay
-   green.
-7. `DiffView.tsx` is NOT mounted anywhere this round, and that is deliberate,
-   not an omission: `component_spec.md:113-116` puts the entry point in
-   `DetailPopover` behind `onOpenDiff(taskId)`, and the feature file's Task
-   slicing puts the L3 tab integration in T003. Say so in the component's own
-   header comment so a reader does not file it as dead code.
-8. Ruff runs under this repository's own configuration — line length 120, rules
-   `E`, `F`, `W`, `I`, `UP`. Never `--isolated`.
-9. Every destructive check runs inside a disposable `git worktree` under
-   `.remedy-wt/`, never in the primary checkout, which reads
-   `git status --porcelain` empty after every commit.
-10. NO mutation red-proof of TypeScript is ordered — DECISION F037 D8 records
-    why one cannot be run here, and gate G6 re-measures it rather than citing
-    it. The red-proofs this round orders are of the PYTHON guard.
+- C0a save this block verbatim to `.agent/authored/f037-r17.md`.
+- C0b mirror the same bytes into `.agent/last_block.md`.
+- C1 rewrite `.agent/plan.md` from the PLANF037R17 slice.
+- C2 append the GATER16 slice to `.agent/live_review.md`.
+- C3 the envelope door and its vitest tests: SPEC S1 through S6 in
+  `apps/ui/src/api/remedyApi.ts` and `apps/ui/src/api/remedyApi.test.ts`.
+- C4 the cross-language guard: SPEC S7 in the NEW file
+  `tests/ui_contracts/test_diff_envelope_door.py`, and SPEC S8 appended to
+  `tests/ui_contracts/test_diff_view_render.py`.
+- C5 rewrite `.agent/handoff.md` as the handback.
 
-SPEC — `apps/ui/src/api/diffViewModel.ts`
+## Change set
 
-S1. `export interface DiffLineSegment { text: string; marked: boolean }` and
-    `export function splitLineIntoIntralineSegments(line: DiffLine):
-    DiffLineSegment[]` — the line's `content` cut into consecutive segments, the
-    marked ones being exactly the characters its `intraline` spans cover. WHY
-    THIS IS HERE AND NOT IN THE COMPONENT: it is the last decidable rule of the
-    rendering core, and DECISION F031 D5 keeps decidable rules in the layer the
-    node-environment vitest config reaches. TOTAL, and this is the whole of its
-    difficulty — the spans arrive from a payload and nothing upstream has
-    checked their ARITHMETIC, only their shape. A span starting past the end of
-    the content is dropped; a span running past the end is clamped to it; a
-    negative or zero length is dropped; OVERLAPPING and out-of-order spans are
-    resolved by marking the UNION of the characters they cover, so no character
-    is ever emitted twice and the concatenation of every segment's `text` equals
-    `content` exactly. An empty `intraline` yields one unmarked segment, and an
-    empty `content` yields the empty array.
+Exactly these paths, and nothing outside them:
 
-S2. The module header gains one sentence: the segments this function returns are
-    what `DiffView.tsx` wraps in the intraline mark, and DECISION F037 D9 rules
-    what that mark looks like.
+- `.agent/authored/f037-r17.md` (new)
+- `.agent/last_block.md`
+- `.agent/plan.md`
+- `.agent/live_review.md`
+- `apps/ui/src/api/remedyApi.ts`
+- `apps/ui/src/api/remedyApi.test.ts`
+- `tests/ui_contracts/test_diff_envelope_door.py` (new)
+- `tests/ui_contracts/test_diff_view_render.py`
+- `.agent/handoff.md`
 
-S3. Vitest tests for `splitLineIntoIntralineSegments` in
-    `apps/ui/src/api/diffViewModel.test.ts`, appended as a new `describe` and
-    changing no existing test. Cover at least: no spans yields one unmarked
-    segment; one span in the middle yields unmarked, marked, unmarked; a span at
-    offset zero yields no leading empty segment; two overlapping spans mark
-    their union once; two out-of-order spans mark both regions; a span past the
-    end is dropped; a span running past the end is clamped; a zero-length and a
-    negative-length span are dropped; and — as the property that catches every
-    arithmetic slip at once — for each of those cases the concatenation of the
-    segment texts equals the input `content`.
+Push the branch after C5 with `git push -u origin feature/f037-rendered-diff-viewer`.
+Create no PR. Merge nothing. Rewrite no history.
 
-SPEC — `apps/ui/src/components/diff/DiffView.module.css`
+## Constraints
 
-S4. APPEND two rules and a WHY comment. The rules are, exactly:
+1. Apply every slice BYTE FOR BYTE. Do not edit, reflow, correct or re-wrap a
+   slice, and never write a `<<<SLICE` or `<<<END` marker line into a target
+   file. If a slice looks wrong, apply it anyway and declare it in the handback.
+2. The SPEC items below describe PRODUCTION CODE and are not slices. Write that
+   code yourself, in this repository's idiom, satisfying every numbered clause.
+   The WHY comments the clauses ask for are yours to word.
+3. `apps/ui/src/api/diffViewModel.ts` is NOT edited this round. The door imports
+   from it and adds nothing to it. Two guards in
+   `tests/ui_contracts/test_diff_view_model.py` bind that file — every export
+   must be named by `diffViewModel.test.ts`, and the collapse threshold literal
+   must occur exactly once across the module and its tests — and leaving the
+   module alone is what keeps both satisfied.
+4. Nothing under `packages/` changes. The server routes already exist; this
+   round reads them and agrees with them.
+5. No new npm dependency, no new config file, no change to
+   `apps/ui/vitest.config.ts`.
+6. `vi.stubGlobal` and any other global patching is FORBIDDEN in the vitest
+   tests. There is no precedent for it in `apps/ui/src` and this round does not
+   create one — the door takes its fetcher as an argument precisely so the tests
+   need no global at all (SPEC S4).
+7. Order the commits exactly C0a, C0b, C1, C2, C3, C4, C5. C1 is the first
+   substantive commit, which is what keeps `.agent/plan.md` true before every
+   later commit's gate.
+8. Every gate below runs at a commit STRICTLY EARLIER than C5, so the handback
+   can quote all of them. G1's second STOP reading is the sole exception and is
+   taken immediately before C5 is written.
+9. Destructive verification runs ONLY inside a disposable worktree under
+   `.remedy-wt/`. The primary checkout reads `git status --porcelain` empty
+   after every commit.
+10. NO TYPESCRIPT MUTATION RED-PROOF IS ORDERED, and this round does not retry
+    the route. The reviewer measured every variant at `44a8493b` and the result
+    is recorded in the GATER16 slice: a worktree vitest run given the PRIMARY
+    checkout's config path runs green but reads the PRIMARY tree, staying green
+    under a worktree mutation, and every invocation that really roots at the
+    worktree dies with `ERR_MODULE_NOT_FOUND`. The `.ts` door is covered by
+    vitest in the primary checkout; the Python guard is red-proved in full.
 
-        .diffLine.add .intraline { background: rgba(56,217,169,.32); border-radius: 2px; }
-        .diffLine.del .intraline { background: rgba(247,103,7,.30); border-radius: 2px; }
+## SPEC — the envelope door (C3)
 
-    The comment above them carries three facts: DECISION F037 D9 rules this
-    treatment, and the feature file's amendment A5 records it where a builder
-    looks; the two hues are the binding CSS's OWN added and removed colours, at
-    a higher alpha, so the emphasis introduces NO new hue into the sheet; and
-    the deliberate-absence paragraph the file already carries — that Remedy does
-    not style intraline spans — is SUPERSEDED by these two rules and by nothing
-    else, so replace that paragraph's claim rather than leaving a comment that
-    contradicts the rules beneath it. That replacement is the ONLY edit to
-    existing bytes constraint 3 permits, and it touches no declaration.
+All of S1 through S5 land in `apps/ui/src/api/remedyApi.ts`.
 
-SPEC — `apps/ui/src/components/diff/DiffView.tsx`, a NEW file
+S1. A new exported interface `DiffEnvelopeRequest` with fields `jobId: string`,
+`token: string`, `baseUrl?: string` and `taskId?: string | null`. It is an
+object rather than positional arguments because three of its four fields are
+strings and a swap between them would type-check silently — the rule AGENTS.md
+states under "Code Discoverability Conventions".
 
-S5. A header comment: this draws the rows `diffViewModel.ts` builds, it derives
-    nothing itself, and it is NOT MOUNTED yet — `component_spec.md:113-116` puts
-    the entry point in `DetailPopover` behind `onOpenDiff(taskId)` and the
-    feature file's Task slicing puts that integration in T003, so a reader
-    finding no caller has found the plan rather than dead code. Name
-    `tests/ui_contracts/test_diff_view_render.py` as what gates this file,
-    since no test in this repository can render it.
+S2. A new exported type
+`DiffEnvelopeFetcher = (path: string) => Promise<unknown>`.
 
-S6. `export interface DiffViewProps { envelope: DiffEnvelope }` and
-    `export function DiffView({ envelope }: DiffViewProps)`. The component takes
-    an ALREADY-READ envelope: `readDiffEnvelope` is the door a payload comes
-    through and the round that fetches will call it, so this component is never
-    the second place a malformed payload is handled.
+S3. A new exported PURE function `diffEnvelopePath(request: DiffEnvelopeRequest): string`.
+Its value is `${base}/api/jobs/${job}/diff?${q}` when the request names no task
+run, and `${base}/api/jobs/${job}/task-runs/${task}/diff?${q}` when it does,
+where `base` is `request.baseUrl` or the empty string and `q` is
+`token=` followed by the percent-encoded token. `job` and `task` are
+percent-encoded too — unlike `loadRemedyDashboard` above, which interpolates its
+job id raw; say in the WHY comment that a task id is a path SEGMENT here, so an
+unencoded slash in it would silently address a different route. A `taskId` that
+is `undefined`, `null`, empty, or whitespace only selects the job scope.
 
-S7. Collapse state: `useState` initialised from `defaultCollapsedHunkIds(envelope)`
-    with the lazy initialiser form, and a `useEffect` that RESETS it whenever
-    `envelope` changes — a viewer switched from one task run to another must not
-    keep the previous diff's collapse set, whose hunk ids mean nothing in the new
-    one. A hunk head's click calls `setCollapsed((current) =>
-    toggleHunkCollapse(current, hunkId))`, using the updater form so two clicks
-    in one render cannot lose one.
+S4. A new exported function
+`loadDiffEnvelope(request: DiffEnvelopeRequest, fetchPayload?: DiffEnvelopeFetcher): Promise<DiffEnvelope>`.
+It awaits `fetchPayload(diffEnvelopePath(request))` and returns
+`readDiffEnvelope` of the result; on ANY rejection it returns
+`readDiffEnvelope(null)` instead. `fetchPayload` DEFAULTS to the module's
+existing private `fetchJson`, so callers pass nothing and the tests pass a fake.
+The WHY comment states the property: this door never throws and never returns a
+shape a caller must branch on — a 403, a dead socket and a junk body all arrive
+as the same total `DiffEnvelope` with `available` false, which is the reason
+`readDiffEnvelope` exists.
 
-S8. The rows. Walk `buildDiffRowModels(envelope, collapsed)` once and render each
-    row by its `kind`, using each row's `key` as the React key and nothing else.
-    A `file` row renders the path, the status, the added and deleted counts and
-    the note when there is one. A `hunkHead` row is a `<button type="button">`
-    carrying `styles.hunkHead`, because it is clickable and a div is not
-    reachable by keyboard; it renders the header VERBATIM, carries
-    `aria-expanded` reflecting the collapse state, and when collapsed also says
-    how many lines it is hiding, taken from the row's `hiddenLineCount` and never
-    recomputed. A `line` row renders `styles.diffLine` plus `styles.add` or
-    `styles.del` for those two kinds and neither for `ctx`, then the two gutter
-    cells with `styles.ln` — the old number, the new number, each blank when its
-    value is null — and then the content.
+S5. The imports S3 and S4 need, from `./diffViewModel`: the value
+`readDiffEnvelope`, and the TYPE `DiffEnvelope` as a `type` import.
 
-S9. The content cell renders `splitLineIntoIntralineSegments(row.line)`: an
-    unmarked segment as plain text, a marked one wrapped in a `<mark>` carrying
-    `styles.intraline`. When the envelope's `truncated` is true the component
-    renders one trailing notice saying the view is a prefix and why — that is
-    the flag DECISION F037 D5, D6 and D7 all feed, and a viewer that silently
-    shows part of a diff is the failure those three ceilings exist to avoid.
+S6. A new `describe` block in `apps/ui/src/api/remedyApi.test.ts`, added at the
+end and changing no existing test. It imports the three new exports beside the
+four it already imports, and covers, one `it` per clause:
+(a) the job-scope path is the exact expected string for a plain request;
+(b) the task-run path is the exact expected string for the same request plus a
+    task id;
+(c) a token containing `&` and a task id containing `/` are percent-encoded, so
+    neither can add a query parameter nor a path segment;
+(d) a request carrying `baseUrl` prefixes it, and one without it yields a
+    relative path beginning `/api/`;
+(e) `taskId` of `null`, of `""` and of `"   "` each select the job scope;
+(f) `loadDiffEnvelope` with a fake fetcher returns the parsed envelope, and the
+    fetcher was called exactly once with the value `diffEnvelopePath` returns
+    for the same request;
+(g) a fetcher that REJECTS yields `available` false and does not throw;
+(h) a fetcher resolving a junk body — a string, and an array — yields
+    `available` false with an empty `files`.
 
-SPEC — `tests/ui_contracts/test_diff_view_render.py`, a NEW file
+## SPEC — the guards (C4)
 
-S10. A Python guard reading `DiffView.tsx` and `DiffView.module.css` AS TEXT,
-    importing nothing from `apps/`, over COMMENT-STRIPPED source, with a module
-    docstring saying why it is Python: nothing in this repository can render
-    this component — `apps/ui/vitest.config.ts` collects `src/**/*.test.ts` in a
-    NODE environment — so its wiring is gated by reading it, exactly as
-    `tests/ui_contracts/test_decision_answer_wiring.py` gates the decision
-    inbox. Assert, each with a message naming its authority: (a) the component
-    DERIVES nothing — it names `buildDiffRowModels`, `defaultCollapsedHunkIds`,
-    `toggleHunkCollapse` and `splitLineIntoIntralineSegments`, and contains no
-    literal `200`, no `.length >` comparison against a threshold and no `sort(`,
-    because a rule reimplemented here is a rule no gate can execute; (b) every
-    class the component names is one the stylesheet really defines, computed by
-    scanning `styles.<name>` in the component and the rule selectors in the CSS,
-    so a typo cannot render an unstyled diff; (c) the hunk head is a `button`
-    with `type="button"` and an `aria-expanded`, not a div; (d) the intraline
-    mark exists — the component names `splitLineIntoIntralineSegments` and
-    `styles.intraline`, and BOTH `.diffLine.add .intraline` and
-    `.diffLine.del .intraline` are rules in the stylesheet — which is amendment
-    A5's requirement expressed where it can fail; (e) the truncation notice
-    exists: the component reads `envelope.truncated`.
+S7. A NEW file `tests/ui_contracts/test_diff_envelope_door.py`. It reads
+`apps/ui/src/api/remedyApi.ts`, `apps/ui/src/api/remedyApi.test.ts` and
+`packages/orchestration/ui_server.py` AS TEXT and imports nothing from `apps/`,
+exactly as `tests/ui_contracts/test_diff_view_render.py` does. Reuse that file's
+`strip_ts_comments` shape; every assertion over the client runs on
+COMMENT-STRIPPED source, because the door's own WHY comments name the symbols
+asserted below. Assertions:
+(a) the client's job-scope route agrees with the server's: the stripped client
+    carries the literal `/diff?`, and `ui_server.py` carries `"diff":` as a key
+    of the handler dictionary its five-segment job route dispatches on;
+(b) the client's task-run route agrees with the server's: the stripped client
+    carries the literal `task-runs`, and `ui_server.py` carries both
+    `parts[4] == "task-runs"` and `parts[6] == "diff"`;
+(c) the client sends the token on the diff route — the stripped client's
+    `diffEnvelopePath` body carries `token=`, which is what
+    `ui_server.py` requires of every `/api/` path before dispatch;
+(d) the door normalizes through the single door: `readDiffEnvelope` occurs in
+    the stripped client, and `loadDiffEnvelope` contains a `catch`, so the
+    degradation path is in the CODE and not only in the comment;
+(e) every name the door exports is named by `remedyApi.test.ts`, the same reach
+    `tests/ui_contracts/test_diff_view_model.py` gives the model module;
+(f) a NOT-VACUOUS class, above the others, in the shape
+    `TestTheStripperIsNotVacuous` of `test_diff_view_render.py`: the stripper
+    really removes both comment forms, the client source really loses text to
+    it, and the server scan really finds more than zero route literals. Without
+    it every assertion above is satisfiable by prose.
 
-Slice convention: each authored text sits between a line beginning `<<<SLICE `
-and a line beginning `<<<END `, both carrying the slice's name. The marker lines
-are NEVER written into any target file. The slices are PLANF037R16, GATER15,
-SLIPR16, DECISION9 and AMENDA5.
+S8. One test appended to `tests/ui_contracts/test_diff_view_render.py`, inside
+the existing `TestTheHunkHeadIsAControl` class, using the existing
+`hunk_head_tag` helper. It asserts that the tag binds `aria-expanded` to the
+NEGATION of the row's collapse flag: `aria-expanded={!row.collapsed}` is in the
+tag, and `aria-expanded={row.collapsed}` is not. Change no existing test. The
+reviewer measured at `774cf732` that inverting that expression leaves the whole
+guard green at 12 passed, so the guard pins the attribute's PRESENCE — which is
+all the R16 block ordered — and not its polarity; a viewer that reports every
+open hunk as closed is exactly what a screen reader would then announce.
 
-<<<SLICE PLANF037R16
+## Slice convention
+
+Each slice below sits between a `<<<SLICE <NAME>` line and a `<<<END <NAME>`
+line. Neither marker line is part of the slice, and neither is ever written into
+a target file. The slices this block carries are PLANF037R17 and GATER16.
+PLANF037R17 is a FULL REWRITE of `.agent/plan.md`. GATER16 is an APPEND to
+`.agent/live_review.md`: join it to the existing bytes with exactly one newline
+between the file's current content and the slice's first line.
+
+<<<SLICE PLANF037R17
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495` (the
@@ -211,261 +201,162 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R16 finishes T002. `DiffView.tsx` draws the rows `diffViewModel.ts` builds —
-file rows, hunk heads that collapse on click, line rows against the binding CSS
-— and the last named piece of T002 is ruled rather than deferred: Acceptance
-requires intraline emphasis, the three binding authorities say nothing about it,
-and DECISION F037 D9 settles it as the binding CSS's own two hues at a higher
-alpha, so no new hue and no new token enters the sheet. Amendment A5 records
-that in the feature file. The component is deliberately not mounted yet.
+R17 opens T003 at the seam T002 stopped short of: the DOOR the client fetches a
+diff envelope through. `remedyApi.ts` gains a URL builder and a loader for the
+two scopes `packages/orchestration/ui_server.py` really routes — a job's diff
+and one task run's — and every payload leaves that loader through
+`readDiffEnvelope`, so a 403, a dead socket and a junk body all degrade to the
+same total envelope rather than three shapes the viewer would have to know
+about. A Python guard pins the client's URL template against the server's own
+route conditions, which is the agreement vitest cannot see. Nothing is mounted.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R15 verdict and the type-gate slip | ordered | record first |
-| C3 DECISION F037 D9 and amendment A5 | ordered | the ruling before what it governs |
-| C4 the intraline segmentation and its tests | ordered | the last decidable rule |
-| C5/C6 the stylesheet and the component | ordered | the drawing half |
-| C7 the render guard | ordered | nothing here can render it |
-| C8 the handback | ordered | |
+| C2 the R16 verdict | ordered | record first |
+| C3 the envelope door and its vitest tests | ordered | the fetch seam |
+| C4 the cross-language guard and the polarity test | ordered | vitest sees no routes |
+| C5 the handback | ordered | |
 
 ## Next Steps
-1. T003 mounts what T002 built: the entry point `component_spec.md` names —
-   `onOpenDiff(taskId)` from `DetailPopover` — the fetch through `remedyApi.ts`
-   calling `readDiffEnvelope`, and the file sidebar over
-   `buildDiffFileSummaries`.
-2. T003 then carries virtual scrolling beyond two thousand lines and the lazy
-   language bundles, which are its last two named pieces.
+1. Mount the viewer: the "Open diff" button `component_spec.md:113-116` puts in
+   `DetailPopover`, the state holding the opened task, and `DiffView` behind it.
+2. The file sidebar over `buildDiffFileSummaries`, then virtual scrolling beyond
+   two thousand lines, the lazy language bundles and the perf fixture.
 
 ## Risks
-- Round 16 of a 25-round soft limit. T003 is three or four rounds of work, so
-  the feature fits only if T003's rounds each close a named piece; the session
-  that reaches round 21 with T003 unfinished owes a scope report instead.
-- Nothing in this repository can execute a `.tsx` file. `tsc --noEmit` type-
-  checks it through `tests/ui_server/test_dashboard_contract.py` and
-  `tests/ui_contracts/` reads it as text, and those two are the whole of the
-  gate; a rendering defect that both admit is invisible until the L3 tab exists.
-<<<END PLANF037R16
+- Round 17 of a 25-round soft limit, session 5 of 7. The named pieces of T003
+  still open are the mount, the sidebar, the virtual scrolling, the lazy
+  language bundles, the perf fixture and the L3 tab integration, so a round
+  closing none of them is the one to stop and re-scope after.
+- No TypeScript mutation red-proof is orderable anywhere here. The `.ts` layer
+  is covered by vitest in the primary checkout and by text guards; the `.tsx`
+  layer by `tsc --noEmit` and text guards, and by nothing else.
+<<<END PLANF037R17
 
-<<<SLICE GATER15
-Gate: F037 R15 — the round that lifted the blocked premise and landed the first client-side module of this feature. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of the load-bearing ones itself at `68680786`. TRANSPORT IS PROVED FROM A VALUE THE REVIEWER HELD BEFORE DELEGATING: the block was written to the gitignored scratch `.remedy-wt/f037-r15-block.md` and measured there at sha256 `960fc3cf13b3e99888585bf800afd8f49cd95b10199e82d6f18ceb8695aa5868` over 38414 bytes and 453 lines, and the committed `.agent/authored/f037-r15.md` is byte-identical to that original, with the saved copy and `.agent/last_block.md` one git blob. EXTRACTION REPRODUCES: slices at 48, 1, 1, 1, 65, 1 and 1 content lines, CONTENT 118 against TOTAL 453, PROSE 335, both caps holding, and the plan byte-equal to PLANF037R15 at 48 lines with the trailing-newline control False. THE RECORD MOVED AS ORDERED: registrations 283 to 285 and all 285 distinct, `^Done: R-\d+ — ` 32 to 34, `^Gate: F\d+ R\d+ — ` 84 to 85, open set unmoved at 252, and the single repeating resolution id is `R-0721`, carried in from R14 rather than added here. `.agent/decisions.md` is at 174 headings with `F037 D8` exactly once. CONSTRAINT 3 IS PROVED BY A STRONGER READING THAN THE ONE ORDERED: the block asked for a comment-stripped comparison of `packages/orchestration/diff_parser.py`, and the reviewer additionally compared the two blobs' ABSTRACT SYNTAX TREES, which is immune to a bug in a comment stripper — `ast.dump` of the `0d750765` blob and of the C3 blob are equal while the raw blobs differ, so the repair really did change comment text and nothing else. BOTH STALE CLAIMS ARE GONE AND THEIR REPLACEMENTS ARE TRUE: the parser's DELIBERATE ABSENCE paragraph now names `DIFF_VIEW_MAX_ARTIFACT_BYTES` and DECISION F037 D7 as the input bound, and the CSS guard's docstring now gives the real reason it is written in Python — the node-environment vitest config reaches no stylesheet whatever the runner's availability. THE VIEW MODEL IS SOUND AND THE REVIEWER READ IT LINE BY LINE, because no mutation of it can be run here and a review is therefore the gate: `readDiffEnvelope` is total and is the single door a malformed payload stops at; the three line kinds it accepts are exactly the `ctx`, `add` and `del` that `diff_parser.py` defines, which the reviewer checked against the constants themselves rather than against the docstring, and both sides pin those literals in their own tests so neither can drift silently; row keys are prefixed per kind and derived from the server's hunk id, so a collapse renumbers nothing; and `toggleHunkCollapse` returns a new set, which is what makes it usable as React state at all. THE SUITES ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/orchestration/test_test_runner.py tests/ui_contracts/ -q` exit 0 at `643 passed, 4 skipped`, and that range includes the node which RUNS `npx vitest run`, so the new vitest suite is executed and green rather than merely shipped. ALL THREE ORDERED RED-PROOFS OF THE PYTHON GUARD REPRODUCE, in a disposable worktree at `68680786` with `python3 -B`, each replaced string counted at exactly 1 and each file restored byte-identically: control exit 0 at `3 passed`; an added import, a renamed export and a transcribed threshold literal are each exit 1 at `1 failed, 2 passed`. THE REVIEWER ADDED A FOURTH THE BLOCK DID NOT ORDER — a JSX construct inserted into the module — and it is exit 1 on the same guard, so the `.tsx`-construct half of that assertion is not the dead clause it could have been. THE BLOCK'S OWN OMISSION IS RECORDED IN `.agent/prose_slips.md` RATHER THAN AS A FINDING, because nothing landed wrong: the block ordered no type gate and declared TypeScript untypecheckable here, and `tests/ui_server/test_dashboard_contract.py` runs the repository's local `tsc --noEmit` from pytest — the reviewer ran that node at `68680786` and it is REAL EXIT CODE 0, so the new module and its tests do type-check and the handback's contrary sentence is the reviewer's omission surfacing in the worker's honest report. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END GATER15
+<<<SLICE GATER16
+Gate: F037 R16 — the round that finished T002 by drawing the rows and ruling the intraline emphasis. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran it independently at `44a8493b` rather than reading the handback's numbers. RE-MEASURED, NOT ACCEPTED. `git log --numstat` over `68680786..44a8493b` reproduces the `+/-` column of the handback's `## Commits` table cell for cell, every per-commit insertion count under five hundred. The committed C0a blob `git show 8368a4c5:.agent/authored/f037-r16.md` is 33024 bytes, 471 lines, sha256 `fda049537c12a805285830bac86f023690bae4570ffcc6d923f9aa1f16c4612e`, and is byte equal to the reviewer's own scratch original `.remedy-wt/f037-r16-block.md` — which under docs/agents/self_drive_protocol.md IS the artifact the worker read from disk, so this chain covers the emission itself and not only the worker's self-consistency; `git rev-parse 81fb30c5:.agent/authored/f037-r16.md` and `git rev-parse 81fb30c5:.agent/last_block.md` are one blob `9185d96ca9d9323aa05f2b55dbf8124c28b45891`. Every slice was re-extracted from that blob and re-applied by the reviewer: `.agent/plan.md` at `0042f710` is byte equal to PLANF037R16 including its trailing newline, with the newline-stripped negative control False, 49 lines, one `## Goal` and one `## Next Steps`; the four appends GATER15, SLIPR16, DECISION9 and AMENDA5 each satisfy the byte reader and the ordered-unit reader over 1, 1, 9 and 2 units, each with its negative control False and its base blob a byte prefix. RE-RUN SUITES, primary checkout, one process at a time, every one exit 0: `tests/ui_contracts/` 603 passed 4 skipped, `tests/orchestration/test_test_runner.py` 52 passed, `tests/docs/` 295 passed, `tests/ui_server/test_dashboard_contract.py -k typescript` 1 passed 73 deselected, `tests/cli/test_golden_path.py` 42 passed. SPOT-CHECKS THE BLOCK DID NOT ORDER were added because the round touched `docs/roadmap/**` and rewrote `.agent/` state while gating neither reader set in full: `tests/orchestration/test_roadmap_index.py` 30 passed, and `tests/ui_server/` with `tests/regression/test_resource_safety.py` and `tests/orchestration/test_integrity_gate.py` together 532 passed, all exit 0. AN INDEPENDENT RED-PROOF ran in a disposable worktree at `774cf732`: the unmutated guard is exit 0 at 12 passed before and after, the handback's mutation (d) reproduces at exit 1 with `1 failed, 11 passed` failing exactly `TestEveryClassTheComponentNamesIsReal::test_every_class_the_component_names_has_a_rule_in_the_stylesheet`, and the file was restored to its pre-mutation sha256.
 
-<<<SLICE SLIPR16
-- 2026-08-28 · F037 R15 · The R15 block declared that the round's TypeScript
-  could not be type-checked here and ordered no gate for it, and the worker
-  reported the same in its deviations after `tsc --noEmit` was refused from its
-  shell. Both are wrong about the environment rather than about the code:
-  `tests/ui_server/test_dashboard_contract.py` runs the repository's LOCAL
-  `apps/ui/node_modules/.bin/tsc --noEmit` from pytest and skips only when that
-  binary is absent, and the reviewer measured it at `68680786` as exit 0 with
-  the new module on disk. This is the second time in two rounds that a tool was
-  called unavailable after being refused from ONE caller, the first being the
-  vitest runner that `R-0724` records: before writing that a tool cannot run
-  here, grep `tests/` for a node that already runs it.
-<<<END SLIPR16
+TWO MEASUREMENTS THIS GATE ADDS TO THE RECORD, both taken by the reviewer and neither ordered by the R16 block. FIRST, THE GUARD'S REACH. Inverting `aria-expanded={!row.collapsed}` to `aria-expanded={row.collapsed}` in `apps/ui/src/components/diff/DiffView.tsx` at `774cf732`, in the same disposable worktree, leaves the guard GREEN at 12 passed. The guard therefore pins the attribute's PRESENCE, which is exactly what that block's SPEC item S10 (c) ordered, and not its POLARITY. The component's polarity is correct as shipped and nothing on disk is wrong, so no id is spent under operator amendment amend0827-process-diet rule 2; the missing assertion is ordered in this same round's C4 instead, appended to the existing hunk-head class. SECOND, WHY NO TYPESCRIPT COLOUR IS ORDERABLE, which DECISION F037 D8 rules and which this gate now measures by a route D8 never tried. Checklist item 33 of docs/agents/planner_reviewer_prompt.md says a worktree vitest run needs the PRIMARY checkout's config path, since `apps/ui/node_modules` is gitignored and absent from any fresh worktree. Measured at `44a8493b` in a disposable worktree: given `--config <primary>/apps/ui/vitest.config.ts` and scoped to `src/api/`, the run is exit 0 at 29 files and 533 tests — with and without `--root .` — and it stays exit 0 at 533 passed when `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` is changed from 200 to 3 IN THE WORKTREE, so that green is reading the PRIMARY tree and is blind by construction. Every invocation that really roots at the worktree — its own config, no config, or `--dir` — exits 1 with `ERR_MODULE_NOT_FOUND` before loading a test. The dichotomy is exact and general: whichever tree vitest roots at is the tree it needs `node_modules` in, and a worktree never has one. A later round that reads item 33 and reaches for the config flag would ship a gate that cannot fail; it is written here so that it does not.
+<<<END GATER16
 
-<<<SLICE DECISION9
-## DECISION F037 D9 — intraline emphasis is the binding CSS's own two hues at a higher alpha, and no new hue, token or type treatment enters the sheet
+## Done when — the gates
 
-**Date:** 2026-08-28 · **Round:** F037 R16 · **Slice:** T002
+Run every gate yourself and record its REAL exit code and its REAL summary line.
+"Green" as a word is a finding. One line per gate in the handback.
 
-**The question this settles.** The Goal & Done of
-`docs/roadmap/features/T5_F037.md` requires that "intraline markers highlight
-word-level changes", its Acceptance requires that "intraline spans match a
-word-diff fixture", and its Design section lists "intraline emphasis on the
-marked spans". Its binding CSS block defines no intraline rule, and the same
-file's CANONICAL DESIGN REFERENCE banner forbids inventing a visual language.
-Measured by the reviewer at `68680786`: `intraline` occurs ZERO times in
-`docs/ui/design_reference/component_spec.md` and ZERO times in
-`assets_spec.md`, the two design-reference files amendment A4 names as binding
-for this surface, and neither of the binding CSS's two colours is a named token
-in `apps/ui/src/styles/tokens.css`. So the requirement exists, the authority for
-how to meet it does not, and F037 R9 through R15 each deferred it.
+G1 HYGIENE. Read `.agent/STOP` from disk before C0a and again immediately before
+C5; report ABSENT or PRESENT each time, and on PRESENT stop after finishing the
+commit in hand and hand off. `git rev-parse` before C0a must equal `44a8493b`.
+Report `git branch --show-current`. Report the `git status --porcelain` line
+count after each of C0a through C4; each must be 0.
 
-**The choice.** The marked span inside a changed line takes that line's OWN
-background colour at roughly three times the alpha —
-`rgba(56,217,169,.32)` inside an added line and `rgba(247,103,7,.30)` inside a
-removed one, against the binding block's `.12` and `.10` for the whole row —
-with a two-pixel corner radius so a span reads as one mark rather than as a
-ragged run of characters.
+G2 TRANSPORT, one digest comparison. Report the byte count, line count and
+sha256 of the committed C0a blob (`git show <C0a>:.agent/authored/f037-r17.md`)
+and compare all three against the three readings the delegation named. Then
+report whether `git rev-parse <C0b>:.agent/authored/f037-r17.md` and
+`git rev-parse <C0b>:.agent/last_block.md` are the same blob.
 
-**Why this is a derivation and not an invention.** The two hues are the binding
-CSS's own, transcribed unchanged; only the alpha differs, and the alpha is what
-makes an emphasis inside an already-tinted row legible at all. Nothing new is
-named: no hue a designer did not choose, no token, and no change to
-`apps/ui/src/styles/tokens.css`, which is the operator's design system and is
-not this feature's to edit. A `var()` would in fact turn
-`tests/ui_contracts/test_diff_surface_css.py` RED, because that guard asserts
-every referenced token is defined in the shipped sheet — so the literal values
-are what makes the existing guard satisfiable, rather than a shortcut around it.
+G3 EXTRACTION AND CAPS, measured on the committed C0a blob. Report the content
+line count of PLANF037R17 and of GATER16, their sum as CONTENT, the blob's line
+count as TOTAL, and TOTAL minus CONTENT as PROSE. Report TOTAL <= 490 and
+PROSE <= 400.
 
-**Why not weight, underline or a border.** Bold competes with the syntax
-highlighting T003 lazily loads onto the same characters, and the two would be
-indistinguishable in a monospace face. Underline collides with the underscore,
-which is a character diffs are full of. A border adds a pixel of width per span
-and would break the alignment of the two gutter columns the binding grid fixes
-at `56px 56px`. A background is the only treatment that composes with a
-per-token colour arriving later.
+G4 THE PLAN AT C1. Extract PLANF037R17 from the committed C0a blob
+programmatically — never retype it — and report whether `git show <C1>:.agent/plan.md`
+is byte equal to it INCLUDING the trailing newline. Report the negative control
+against that slice minus its trailing newline; it must be False. Report the
+file's `wc -l` and that it is strictly under 50, and the count of lines exactly
+`## Goal` and exactly `## Next Steps`; each must be 1.
 
-**On the assumption_log the banner requires.** The banner directs any visual
-deviation to "the assumption_log". Measured at `68680786`, no file of that name
-exists anywhere in this repository. The DECISION series in `.agent/decisions.md`
-is what this repository actually uses for exactly this purpose — D3 and D4 of
-this feature are both design rulings recorded there — and amendment A5 puts the
-same ruling into the feature file, which is where a T003 builder looks first.
-This decision claims nothing about what the banner should say; it records where
-the reasoning went, and it went to both places.
+G5 THE RECORD AT C2. Extract GATER16 from the committed C0a blob. Report reader
+(a): the pre-round blob `git show 44a8493b:.agent/live_review.md` plus one
+newline plus the slice equals `git show <C2>:.agent/live_review.md`. Report
+reader (b): the last N blank-line-separated units of the committed file equal
+the slice's N units IN ORDER, where N is a number your script COUNTS. Report a
+negative control for each reader, flipping one byte inside the FIRST appended
+paragraph; both must be False. Report that the pre-round blob is a byte PREFIX
+of the committed one. Then report, line-anchored over the committed file, with
+the figure at `44a8493b` beside each: lines matching `^- R-\d+ — ` (285 at base),
+`^Done: R-\d+ — ` (34), `^Landed: R-` (1), `^Gate: F\d+ R\d+ — ` (86), the open
+set (252), and whether every registered id is distinct.
 
-**Alternatives rejected.** (1) Ship no intraline emphasis and mark Acceptance
-short — rejected: it is a named line of Goal & Done, it has been deferred since
-R9, and deferring it a seventh time is how a feature reaches its round limit
-with a hole in the middle. (2) Ask the operator — forbidden by
-`docs/agents/planner_reviewer_prompt.md` §2, which requires a loud, persisted,
-reversible ruling instead of a question. (3) Add two tokens to `tokens.css` —
-rejected as an edit to the design system by a feature that the banner binds TO
-that system.
+G6 THE RED-PROOFS OF THE PYTHON GUARDS. All runs in a disposable worktree at the
+C4 tree, `__pycache__` purged before every run, `python3 -B` throughout. Report
+the UNMUTATED control for
+`tests/ui_contracts/test_diff_envelope_door.py tests/ui_contracts/test_diff_view_render.py`
+before any mutation and again after the last restore; both must be exit 0. Then,
+one at a time, each mutation restored byte-identically to its pre-mutation
+sha256 before the next, reporting for each the REAL exit code, the summary line
+and the failing node ids.
 
-**How to reverse.** Delete the two `.intraline` rules from
-`apps/ui/src/components/diff/DiffView.module.css`, restore the
-deliberate-absence paragraph above them from git history at `68680786`, drop
-`splitLineIntoIntralineSegments` and its `<mark>` from `DiffView.tsx`, and
-delete amendment A5. The parser's `intraline` spans are unaffected: they are
-contract data and predate this decision by fourteen rounds.
-<<<END DECISION9
+UNIQUENESS, PER FINDING `R-0629`, WHICH IS OPEN AND BINDING ON ANY BLOCK THAT
+ORDERS A DESTRUCTIVE CONTROL. That finding requires the REVIEWER's own script to
+count a control's target in the named file at the SHA the control runs at, and
+the block to carry that script's output. Mutation (d) targets a file that exists
+at the base, so the reviewer measured it and the numbers are stated here.
+MEASURED AT `44a8493b` over `apps/ui/src/components/diff/DiffView.tsx`, which is
+173 lines: the literal `aria-expanded={!row.collapsed}` is 30 characters, holds
+no backtick, and occurs as a SUBSTRING exactly 1 time, on physical line 130 at 14
+leading spaces; that physical line read WHOLE and anchored at both ends occurs 1
+time, and read indentation-agnostically also 1 time — the two readings agree. The
+replacement `aria-expanded={row.collapsed}` occurs 0 times before the edit.
 
-<<<SLICE AMENDA5
-**A5 — intraline emphasis is this file's own added and removed colours at a
-higher alpha (DECISION F037 D9).** The Goal & Done above requires intraline
-markers to highlight word-level changes and the Design section lists "intraline
-emphasis on the marked spans", while the binding CSS block defines no intraline
-rule. Measured at `68680786`, the word `intraline` occurs ZERO times in both
-design-reference files amendment A4 names as binding for this surface,
-`component_spec.md` and `assets_spec.md`, so there is no treatment to follow
-there. The treatment T002 ships, and which T003 keeps: the marked span inside a
-changed line takes that line's own background hue at roughly three times the
-alpha — `rgba(56,217,169,.32)` inside an added line, `rgba(247,103,7,.30)`
-inside a removed one, against `.12` and `.10` for the whole row — with a
-two-pixel corner radius.
+Mutations (a), (b) and (c) target code THIS ROUND CREATES, so no such count can
+exist while this block is written and the reviewer states none. For those three
+only, YOU take the reading: count the replaced string in the named file before
+editing and report the count. If it is not 1 — `token=` is already in
+`loadRemedyDashboard`, and a WHY comment may well name `task-runs` — EXTEND the
+string with the characters around it until it reads 1 in that file, report the
+extended string and its count, and mutate that. Replacing a string that occurs
+twice changes a site the mutation does not name, and the red then proves nothing.
 
-This introduces NO new hue, NO new custom property and NO change to
-`apps/ui/src/styles/tokens.css`: the two colours are this file's own binding CSS
-values and only their alpha differs. The banner's prohibition on inventing a
-visual language therefore stands unweakened, and the banner's assumption_log
-requirement is met by DECISION F037 D9, which also records that no file of that
-name exists in this repository.
-<<<END AMENDA5
+The mutations:
+(a) in `remedyApi.ts`, change the task-run segment literal `task-runs` to
+    `task-run`;
+(b) in `remedyApi.ts`, delete the `catch` clause of `loadDiffEnvelope` so a
+    rejection propagates;
+(c) in `remedyApi.ts`, drop `token=` from the diff path;
+(d) in `DiffView.tsx`, invert `aria-expanded={!row.collapsed}` to
+    `aria-expanded={row.collapsed}`.
+Each must be exit 1. If any mutation is GREEN, say so plainly and do not adjust
+the test to suit it — a green mutation is a finding about the guard and the
+reviewer wants the true reading.
 
-Done when — the gates below, every one executed with its REAL exit code
-recorded, one line per gate in the handback. G1 through G8 run at the commits
-named; none of them runs after C8, so the handback can quote every one of them.
+G7 SUITES, TYPES, LINT AND CANARY AT C4, primary checkout, ONE pytest process at
+a time. Report exit code and summary line for each, with the base figure beside
+it where one is given: `python3 -m pytest tests/ui_contracts/ -q` (603 passed, 4
+skipped at base), `python3 -m pytest tests/orchestration/test_test_runner.py -q`
+(52 passed), `python3 -m pytest tests/ui_server/test_dashboard_contract.py -q -k typescript`
+(1 passed, 73 deselected), `python3 -m pytest tests/docs/ -q` (295 passed),
+`python3 -m ruff check tests/ui_contracts/test_diff_envelope_door.py tests/ui_contracts/test_diff_view_render.py`,
+and the canary `python3 -m pytest tests/cli/test_golden_path.py -q` (42 passed).
+State explicitly whether the typescript node PASSED or SKIPPED — it skips only
+when `apps/ui/node_modules/.bin/tsc` is absent, and a skip means the new door was
+never type-checked. `tests/orchestration/test_test_runner.py` is the node that
+runs `npx vitest run`, so state that the new `describe` really EXECUTED.
 
-G1 HYGIENE. Read `.agent/STOP` from disk before C0a and again before C8 and
-report both readings. Report `git rev-parse HEAD` before C0a and state whether
-it equals `68680786`, `git branch --show-current`, and the `git status
---porcelain` line count after each of C0a through C7.
+G8 STRUCTURE, ARTIFACTS AND THE OPEN PR GATE AT C4. Report
+`git diff --name-only 44a8493b..<C4>` and set-difference it BOTH ways against
+the Change set above; ACTUAL MINUS EXPECTED must be empty and EXPECTED MINUS
+ACTUAL must be `.agent/handoff.md` alone. Report `git diff --stat` restricted to
+`packages/`, which must be EMPTY. Report each commit's insertion count from
+`git show --numstat`, each under 500, and confirm each matches the `+/-` column
+of your own `## Commits` table cell by cell. Report the count of lines matching
+`^<<<SLICE ` and `^<<<END ` in `.agent/plan.md`, `.agent/live_review.md`,
+`apps/ui/src/api/remedyApi.ts` and `tests/ui_contracts/test_diff_envelope_door.py`
+— each must be 0 — with a CONTROL count over the C0a blob, which must be
+non-zero, so the counter is shown not to be blind. Report
+`git ls-files .remedy-wt | wc -l`, which must be 0. Report
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 
-G2 TRANSPORT, ONE DIGEST COMPARISON. Report sha256, byte count and line count of
-the committed `.agent/authored/f037-r16.md` blob, and state whether they equal
-the reviewer's scratch original at `.remedy-wt/f037-r16-block.md` — compare the
-two files directly, disk to disk. Report `git rev-parse <C0b>:.agent/authored/f037-r16.md`
-and `git rev-parse <C0b>:.agent/last_block.md` and whether they are the same
-blob. State what the chain covers and what it does not.
+## Handback
 
-G3 EXTRACTION AND CAPS, measured on the COMMITTED C0a blob and never on the
-prose. For each slice report its content line count; report TOTAL lines of the
-blob, CONTENT as their sum, PROSE as TOTAL minus CONTENT, and whether TOTAL is
-at most 490 and PROSE at most 400.
-
-G4 THE PLAN AT C1, AND THE STYLESHEET'S UNTOUCHED DECLARATIONS AT C5. Report
-whether `.agent/plan.md` is byte-equal to the PLANF037R16 slice extracted from
-the committed C0a blob, including the trailing newline, plus the negative
-control against that slice minus its trailing newline; the count of lines
-exactly `## Goal` and exactly `## Next Steps`; and `wc -l` with whether it is
-strictly under 50. Then, for `apps/ui/src/components/diff/DiffView.module.css`,
-report the five existing rule bodies — `.diffLine`, `.diffLine.add`,
-`.diffLine.del`, `.diffLine .ln` and `.hunkHead` — extracted from the C5 blob
-and from the `68680786` blob, and whether each pair is byte-identical, which is
-constraint 3. Report the same comparison for the WHOLE file, which must be
-False, so the first reading is shown not to be a comparison that cannot fail.
-
-G5 THE RECORD AT C2 AND C3. For each of the four appends — GATER15 into
-`.agent/live_review.md`, SLIPR16 into `.agent/prose_slips.md`, DECISION9 into
-`.agent/decisions.md`, AMENDA5 into `docs/roadmap/features/T5_F037.md` — report
-reader (a), `result == before + b"\n" + slice` re-read from disk; reader (b),
-which COUNTS the blank-line-separated units of the slice and compares the LAST
-that many units of the file against them IN ORDER, reporting the count it
-measured; and a negative control for both readers that flips one byte inside the
-FIRST appended paragraph. Report whether each file's pre-round blob is a byte
-PREFIX of the result, reading that blob with `git show 68680786:<path>` into
-memory and never over the tracked file. Then report, line-anchored over
-`.agent/live_review.md` after C3 with the base figure beside each:
-`^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: F\d+ R\d+ — `, the
-open-set size, and whether every REGISTERED id is distinct. Over
-`.agent/decisions.md`, report `^## DECISION ` and the count of `F037 D9`. Over
-`docs/roadmap/features/T5_F037.md`, report the count of lines beginning
-`**A` — one per amendment.
-
-G6 THE RED-PROOFS, WHICH ARE OF THE PYTHON GUARD AND OF NOTHING ELSE. FIRST
-re-measure the reason, rather than citing DECISION F037 D8: in a disposable
-worktree at the C7 tree, run `python3 -B -m pytest
-tests/orchestration/test_test_runner.py -q -k vitest` with the worktree as the
-working directory, and report its REAL exit code and whether the failure is a
-STARTUP error naming `vitest` rather than a test result. Then, in that same
-worktree with `__pycache__` purged and `python3 -B` for every run, red-prove
-`tests/ui_contracts/test_diff_view_render.py`, the file restored between runs
-and each restore verified byte-identical by sha256. Report the UNMUTATED
-CONTROL's exit code and summary line first, then for each mutation the
-occurrences of the replaced string BEFORE the edit, which must be 1, the REAL
-exit code, the summary line and the failing node ids:
-(a) in `DiffView.tsx`, replace the call to `splitLineIntoIntralineSegments` with
-a plain render of the line's `content`. Expect RED.
-(b) in `DiffView.tsx`, change the hunk head's `<button` to `<div`. Expect RED.
-(c) in `DiffView.module.css`, delete the `.diffLine.del .intraline` rule.
-Expect RED.
-(d) in `DiffView.tsx`, rename one `styles.<name>` reference to a class the
-stylesheet does not define. Expect RED.
-The ordered property is the COLOUR: report the names and counts you measure
-rather than any this block predicts.
-
-G7 SUITES, TYPES, LINT AND CANARY AT C7, IN THE PRIMARY CHECKOUT. One pytest
-process at a time; never two at once. Report the REAL exit code and the full
-summary line of each: `python3 -m pytest tests/ui_server/test_dashboard_contract.py
--q -k typescript`, which is the node that runs this repository's LOCAL
-`apps/ui/node_modules/.bin/tsc --noEmit` and therefore TYPE-CHECKS the new
-`.tsx` — report whether it PASSED or SKIPPED, because it skips when the UI
-toolchain is absent and a skip is not a type check; `python3 -m pytest
-tests/orchestration/test_test_runner.py -q`, the node that RUNS vitest, whose
-base figure at `68680786` is `52 passed`; `python3 -m pytest tests/ui_contracts/
--q`, whose base figure is `591 passed, 4 skipped`; `python3 -m pytest
-tests/docs/ -q`, which this round owes because its change set includes
-`docs/roadmap/**` and whose base figure at `68680786` is `295 passed`;
-`python3 -m ruff check tests/ui_contracts/test_diff_view_render.py`;
-and the canary `python3 -m pytest tests/cli/test_golden_path.py -q`, whose base
-figure is `42 passed`.
-
-G8 STRUCTURE, ARTIFACTS AND THE OPEN PR GATE AT C7. Report `git diff
---name-only 68680786..<C7>` and both residues against the change set above —
-actual minus expected and expected minus actual, with `.agent/handoff.md`
-expected to be the only member of the second because C8 writes it. Report `git
-diff --stat` restricted to `packages/`, which must be EMPTY, to `tests/`, which
-must hold `tests/ui_contracts/test_diff_view_render.py` alone, and to `apps/`.
-Report each commit's insertion count from `git show --numstat` for C0a through
-C7 and whether each is under 500, and check those figures cell by cell against
-the `+/-` column of the handback's own `## Commits` table. Report the count of
-lines matching `^<<<SLICE ` and `^<<<END ` in `.agent/plan.md`,
-`.agent/live_review.md`, `docs/roadmap/features/T5_F037.md` and
-`apps/ui/src/components/diff/DiffView.tsx`, and the same counts over the C0a
-blob as the control that the counter is not blind. Report
-`git ls-files .remedy-wt` line count. Run `gh pr list --state open --json
-number,headRefName,baseRefName,isDraft` verbatim and report its exit code and
-stdout.
-
-Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It
-carries the SESSION NUMBER of this feature — session 4 — the round, the range
-`68680786..<C8>`, a per-commit changed-files table with the `+/-` column, one
-line per gate G1 through G8 with its real result, the authored-text proofs, the
-deviations, the item-status table covering C0a through C8 and G1 through G8, and
-the next expected action. Derive any cap it must respect from AGENTS.md
-yourself; this block states none. Then push the branch.
+Rewrite `.agent/handoff.md` at C5 per docs/agents/handback_template.md. It has no
+length cap. It must carry: the Session line naming SESSION 5 of F037 and round
+17; the review range; a `## Commits` section with one `+/-` table per commit; the
+external actions; one Verification line per gate G1 through G8 with real exit
+codes; the authored-text proofs; the deviations and assumptions; the item-status
+table covering every C and every G exactly once; and the next expected action.
+Derive the handback's own tier from AGENTS.md rather than from any number here.
