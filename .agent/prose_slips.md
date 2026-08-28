@@ -133,3 +133,12 @@
   naming a test by its CONTENT is resolved against the file at the base commit,
   the same obligation `docs/agents/planner_reviewer_prompt.md` §3 item 24 places
   on a path a gate names.
+
+- 2026-08-28 · F037 R7 · G5 worded append reader (a) as a length sum plus a
+  byte-PREFIX check, and those two properties together cannot reject a byte
+  flipped INSIDE the appended region — which is exactly the rejection the same
+  gate's negative control ordered them to produce, so the control could have
+  passed a corrupted append. The worker implemented the stronger byte IDENTITY
+  `result == before + b"\n" + slice` and declared the substitution. An append
+  reader is stated as the IDENTITY it must prove, never as an arithmetic a
+  control can satisfy.
