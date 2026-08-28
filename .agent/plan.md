@@ -18,22 +18,22 @@ receipt chip is the entry point F023 wires. R16 is the integration gate of
 docs/agents/integration_gate.md — the full suite on this branch and at the
 merge base `a399a330` with artifact parity restored and measured, the two
 failure sets compared, every branch-only id attributed. It writes no production
-code. The frontend is REBUILT before the branch run, because R14 and R15 edited
-`apps/ui/src` and a stale dist makes the suite rebuild itself mid-run.
+code. R16 IS BLOCKED AT SPEC ITEM S1: this session's permission layer denies
+every form of the frontend build, `_frontend_is_stale()` is still `True`, and
+S1 orders the round stopped rather than a stale run passed off as a gate.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a and C0b, save and mirror the block | ordered | |
-| C1 the plan | ordered | first substantive commit |
-| C2 the R15 verdict and the reviewer's prose slip | ordered | the record is touched first |
-| C3 the gate evidence directory | ordered | S1 to S8 |
-| C4 the handback | ordered | |
+| C0a and C0b, save and mirror the block | done | |
+| C1 the plan | done | first substantive commit |
+| C2 the R15 verdict and the reviewer's prose slip | done | the record is touched first |
+| C3 the gate evidence directory | skipped | S1 blocked, so no run and no evidence |
+| C4 the handback | done | names the blocker |
 
 ## Next Steps
-1. The closure sequence, part one: the evidence job and a FRESH review zip, per
-   docs/roadmap/STATUS_closure_protocol.md.
-2. The closure sequence, part two: the authored STATUS line committed last on
-   the branch, then the pull request, which is NOT merged in this session.
+1. R17 re-runs this same gate in a session whose permissions allow the frontend
+   build; nothing else about the block changes.
+2. Then the closure sequence, per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - A branch-only failure that reproduces serially and touches this feature's
