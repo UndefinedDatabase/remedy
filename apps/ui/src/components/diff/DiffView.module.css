@@ -84,3 +84,38 @@
 .tokString { color: var(--remedy-green-500, #34c27e); }
 .tokNumber { color: var(--remedy-orange-400, #f5a34e); }
 .tokKeyword { color: var(--remedy-blue-700, #2459d6); }
+
+/* THE FILE SIDEBAR'S TREATMENT, ruled by DECISION F256 D3, which is where a
+   reader looking for the authority behind the four rules below goes first. It is
+   a DERIVATION and not an invention, in exactly the sense D9 and D2 above were:
+   the sidebar borrows the vocabulary this sheet has already taught the reader,
+   so NO NEW HUE enters this stylesheet and NO NEW CUSTOM PROPERTY enters
+   `apps/ui/src/styles/tokens.css`, which is not touched. The mapping D3 rules is
+   `.filePath` to the mono family, `.fileMeta` to `--remedy-ink-soft` — the same
+   rank of de-emphasis this sheet already gives the line-number gutter and a
+   comment run — `.statAdd` to `--remedy-green-500` and `.statDel` to
+   `--remedy-orange-400`, the product's own green and orange, which are the two
+   hues the added and removed rows above are already tinted with. Each rule
+   carries the literal fallback its token already uses elsewhere in this sheet.
+
+   LIGATURES ARE OFF ON THIS SURFACE TOO, for the reason `assets_spec.md` section
+   2 gives every diff surface and this file's own header states for the rows: a
+   file path must render as the characters that are really in it, and a composing
+   font would draw one glyph where the path holds two. `.filePath` names the
+   family through `font-family` rather than through the `font` shorthand, because
+   no authority in this repository fixes a size for this sidebar and inventing
+   one would be the visual language the CANONICAL DESIGN REFERENCE banner
+   forbids; with no shorthand in the rule there is none for
+   `font-feature-settings` to be reset by, and the declaration still sits after
+   every font declaration in it.
+
+   REVERSE by deleting DECISION F256 D3 and the four rules below, and restoring
+   the deferral paragraph in `DiffFileSidebar.tsx` from git history at
+   `78e71b3c`. The sidebar then returns to semantic markup with no class, which
+   is a state it is known to work in, because a CSS module hands back `undefined`
+   for a name with no rule behind it. */
+
+.filePath { font-family: var(--remedy-font-mono, ui-monospace, monospace); font-feature-settings: "liga" 0; }
+.fileMeta { color: var(--remedy-ink-soft, #6f82a8); }
+.statAdd { color: var(--remedy-green-500, #34c27e); }
+.statDel { color: var(--remedy-orange-400, #f5a34e); }

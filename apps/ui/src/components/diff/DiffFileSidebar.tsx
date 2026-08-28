@@ -7,17 +7,25 @@
 // would be a rule no suite in this repository can execute, and a second spelling
 // of a number the model already decided.
 //
-// NO CLASS ON ANY ELEMENT BELOW, AND THAT IS A RULING DEFERRED RATHER THAN AN
-// OVERSIGHT. `DiffView.module.css` is a transcription of the binding CSS of
-// `docs/roadmap/features/T5_F037.md`, whose vocabulary amendment A5 fixes, and
-// the CANONICAL DESIGN REFERENCE banner forbids inventing a visual language.
-// That feature file's Design section names "paths + stats bars" for this
-// sidebar, and the binding CSS defines no rule for either of them — so this
-// round ships SEMANTIC MARKUP ONLY: a list, real numbers, no class. What a stats
-// bar should LOOK like needs a ruling this round does not make, and inventing
-// one here would be the visual language the banner forbids. The diff panel
-// wrapper in `RemedyShell.tsx` and `DiffView`'s own root already take exactly
-// this posture.
+// THE VISUAL TREATMENT OF THIS SURFACE IS RULED BY DECISION F256 D3, and the
+// deferral this header carried from F037 until F256 R5 is discharged rather than
+// renewed. D3 DERIVES the treatment from the diff body's own vocabulary instead
+// of inventing one, which is what keeps it inside what the CANONICAL DESIGN
+// REFERENCE banner allows: the path takes `DiffView.module.css`'s mono family
+// with ligatures off, the added and removed counts take the same green and
+// orange the diff rows are tinted with, and every other piece of metadata takes
+// the same de-emphasis that sheet already gives the line-number gutter. No new
+// hue and no new custom property enter the stylesheet.
+//
+// REMEDY DELIBERATELY DOES NOT DRAW A PROPORTIONAL STATS BAR HERE, and this is
+// where a reader searching for one will look, because text search cannot find
+// code that does not exist. The Design section of
+// `docs/roadmap/features/T5_F037.md` names "paths + stats bars" and D3 reads
+// that as satisfied by the two counts themselves: they carry the magnitude
+// exactly rather than approximately, while a bar is a visual primitive no
+// authority in this repository defines — it would need a track, a fill, a
+// minimum width for a one-line change and a rule for a pure deletion, and
+// inventing all four is what the banner forbids.
 //
 // NOTHING IN THIS REPOSITORY CAN RENDER THIS FILE — no DOM environment, and the
 // shipped vitest config reaches no markup — so what gates it is
@@ -25,6 +33,7 @@
 // COMMENT-STRIPPED source, and `tsc --noEmit`.
 import { buildDiffFileSummaries } from "../../api/diffViewModel";
 import type { DiffEnvelope } from "../../api/diffViewModel";
+import styles from "./DiffView.module.css";
 
 /** What the sidebar says INSTEAD of an empty container. An envelope with no
  *  files is a real answer — an empty diff, or a ceiling that admitted none of
@@ -81,16 +90,16 @@ export function DiffFileSidebar({ envelope }: DiffFileSidebarProps) {
             // handed over, and a path is data the parser read out of the diff.
             <li key={summary.rowKey}>
               <button type="button" onClick={() => goToFileRow(summary.rowKey)}>
-                <strong>{summary.path}</strong>
+                <strong className={styles.filePath}>{summary.path}</strong>
                 {/* Absent far more often than present, so both render only when
                     the file really carries one — an always-present element
                     holding an empty string is a row of blank space. */}
-                {summary.oldPath === null ? null : <span>{`${OLD_PATH_LABEL} ${summary.oldPath}`}</span>}
-                <span>{summary.status}</span>
-                <span>{`+${summary.added}`}</span>
-                <span>{`-${summary.deleted}`}</span>
-                <span>{`${HUNK_COUNT_LABEL}: ${summary.hunkCount}`}</span>
-                {summary.note === null ? null : <span>{summary.note}</span>}
+                {summary.oldPath === null ? null : <span className={styles.fileMeta}>{`${OLD_PATH_LABEL} ${summary.oldPath}`}</span>}
+                <span className={styles.fileMeta}>{summary.status}</span>
+                <span className={styles.statAdd}>{`+${summary.added}`}</span>
+                <span className={styles.statDel}>{`-${summary.deleted}`}</span>
+                <span className={styles.fileMeta}>{`${HUNK_COUNT_LABEL}: ${summary.hunkCount}`}</span>
+                {summary.note === null ? null : <span className={styles.fileMeta}>{summary.note}</span>}
               </button>
             </li>
           ))}
