@@ -31,11 +31,28 @@
 
 .hunkHead { background: var(--remedy-bg-2, #f8fbff); color: var(--remedy-ink-soft, #6f82a8); padding: 4px 12px; font-size: 11px; letter-spacing: .08em; font-feature-settings: "liga" 0; }
 
-/* Remedy deliberately does not style intraline spans here. A reader looking for
-   the added/removed word emphasis inside a changed line will not find it, and
-   its absence is a choice rather than an omission: the feature file's binding
-   CSS defines no intraline treatment, and the same file's CANONICAL DESIGN
-   REFERENCE banner forbids inventing a visual language for this surface. The
-   colour, weight and shape of that emphasis is a design question for the round
-   that actually renders the spans, and guessing one here would put an
-   unauthorised token into the shipped sheet where it is hardest to notice. */
+/* THE INTRALINE EMPHASIS, ruled by DECISION F037 D9 and recorded as amendment A5
+   of `docs/roadmap/features/T5_F037.md`, which is where a builder of T003 looks
+   first. It is a DERIVATION and not an invention: the two hues below are this
+   sheet's OWN added and removed backgrounds, transcribed unchanged from the
+   binding CSS block, and only the ALPHA differs — `.32` inside an added line and
+   `.30` inside a removed one, against the `.12` and `.10` the two rules above
+   give the whole row. So NO new hue enters this stylesheet, no new custom
+   property is introduced and `apps/ui/src/styles/tokens.css` is not touched. The
+   higher alpha is what makes a mark legible inside a row that is already tinted;
+   the two-pixel radius is what makes a span read as one mark rather than as a
+   ragged run of characters.
+
+   THIS REPLACES THE DELIBERATE ABSENCE THIS FILE CARRIED UNTIL F037 R16 — that
+   Remedy does not style intraline spans here, because the binding CSS defines no
+   intraline treatment and the CANONICAL DESIGN REFERENCE banner forbids
+   inventing a visual language. That silence is real and unchanged; what changed
+   is that D9 ruled the treatment from the sheet's own values instead of
+   deferring it a seventh time. The two rules beneath this comment are the whole
+   of what that ruling authorises, and a reader searching this file for the
+   word-level emphasis inside a changed line now finds it here rather than an
+   explanation of why it is missing. Reverse by deleting both rules and restoring
+   that paragraph from git history at `68680786`. */
+
+.diffLine.add .intraline { background: rgba(56,217,169,.32); border-radius: 2px; }
+.diffLine.del .intraline { background: rgba(247,103,7,.30); border-radius: 2px; }
