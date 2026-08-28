@@ -1,0 +1,41 @@
+/* BINDING diff-surface declarations. Every value below is transcribed from the
+   binding CSS block in the Design section of `docs/roadmap/features/T5_F037.md`
+   and must not be adjusted here: that block, not this file, is the authority.
+   Amendment A4 of the same feature file names the three authorities for this
+   surface — its own binding CSS, `component_spec.md` for the entry point, and
+   `assets_spec.md` for the mono family. `ux_spec.md` carries nothing about
+   diffs, which is what A4 corrects.
+
+   Class names are camelCase because that is this package's CSS-module
+   convention; the binding block's kebab-case names map one-for-one:
+   `.diff-line` is `.diffLine`, `.hunk-head` is `.hunkHead`, and the nested
+   `.add`, `.del` and `.ln` names are unchanged.
+
+   The mono family is named through `var(--remedy-font-mono, …)` rather than as
+   the binding block's literal stack, with that literal stack kept as the
+   fallback — DECISION F037 D4 records why and how to reverse it.
+
+   LIGATURES ARE OFF ON EVERY DIFF SURFACE. A `!=` or a `->` in a diff must
+   render as the characters that are really in the file; a composing font would
+   draw one glyph where the source holds two, so a reader would be judging a
+   change against type that does not match the bytes. That is the rule in
+   `assets_spec.md` section 2, "Canonical monospace font", for diff surfaces.
+   `font-feature-settings` is declared AFTER the `font` shorthand in the rules
+   below because the shorthand resets it; reordering the two silently turns
+   ligatures back on. */
+
+.diffLine { display: grid; grid-template-columns: 56px 56px 1fr; font: 12.5px/1.6 var(--remedy-font-mono, ui-monospace, monospace); font-feature-settings: "liga" 0; }
+.diffLine.add { background: rgba(56,217,169,.12); }
+.diffLine.del { background: rgba(247,103,7,.10); }
+.diffLine .ln { color: var(--remedy-ink-soft, #6f82a8); text-align: right; padding-right: 10px; user-select: none; }
+
+.hunkHead { background: var(--remedy-bg-2, #f8fbff); color: var(--remedy-ink-soft, #6f82a8); padding: 4px 12px; font-size: 11px; letter-spacing: .08em; font-feature-settings: "liga" 0; }
+
+/* Remedy deliberately does not style intraline spans here. A reader looking for
+   the added/removed word emphasis inside a changed line will not find it, and
+   its absence is a choice rather than an omission: the feature file's binding
+   CSS defines no intraline treatment, and the same file's CANONICAL DESIGN
+   REFERENCE banner forbids inventing a visual language for this surface. The
+   colour, weight and shape of that emphasis is a design question for the round
+   that actually renders the spans, and guessing one here would put an
+   unauthorised token into the shipped sheet where it is hardest to notice. */

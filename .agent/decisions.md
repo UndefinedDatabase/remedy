@@ -8966,3 +8966,40 @@ already survived seven rounds unread.
 REVERSE by deleting amendment A4 from `docs/roadmap/features/T5_F037.md` and
 this decision, restoring the banner's `ux_spec.md` pointer as the sole
 feature-specific authority for the diff surface.
+
+## DECISION F037 D4 — the diff surface takes its mono family from `--remedy-font-mono`, keeping the binding CSS's stack as the fallback (2026-08-28, F037 R9)
+
+CONTEXT. Two authorities named by amendment A4 speak to the diff surface's font
+and they do not say the same thing. The binding CSS block in
+`docs/roadmap/features/T5_F037.md` writes the shorthand
+`font:12.5px/1.6 ui-monospace,monospace`, naming a literal family stack.
+`docs/ui/design_reference/assets_spec.md:90-93` defines `--remedy-font-mono` as
+the canonical mono token and names the diff viewer as one of its usages. Every
+other stylesheet in `apps/ui/src/components/` references families and colours
+through `var(--remedy-*, <fallback>)` rather than through literals.
+
+CHOSEN. Write the shorthand as
+`font: 12.5px/1.6 var(--remedy-font-mono, ui-monospace, monospace)`. The size
+`12.5px` and the line-height `1.6` are taken from the binding CSS unchanged;
+the family resolves to the design reference's token when it is defined, and
+falls back to exactly the stack the binding CSS names when it is not. Both
+authorities are then satisfied by one declaration and neither is contradicted.
+This is not treated as a visual deviation requiring an assumption-log entry:
+the token's own stack is monospace throughout, and the size, line-height and
+weight the binding CSS fixes are untouched — what changes is the mechanism by
+which the family is named, not the type that renders.
+
+ALTERNATIVES CONSIDERED. (a) Transcribe `ui-monospace, monospace` literally.
+Rejected: it pins the diff surface to a different family from every other mono
+surface in the package the moment the token changes, which is the synonym drift
+AGENTS.md's discoverability section forbids, and it ignores an authority A4
+itself names. (b) Use `var(--remedy-font-mono)` with no fallback. Rejected: a
+stylesheet that renders proportional text when one token is missing fails in
+the worst direction for a diff, where column alignment carries meaning.
+(c) Add a diff-specific font token. Rejected: a second spelling for one concept,
+and `assets_spec.md` is the operator's artifact and already answers the question.
+
+REVERSE by replacing the `font` declaration in
+`apps/ui/src/components/diff/DiffView.module.css` with the binding CSS's literal
+shorthand, deleting this decision, and relaxing the corresponding assertion in
+`tests/ui_contracts/test_diff_surface_css.py`.
