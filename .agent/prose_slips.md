@@ -175,3 +175,15 @@
   resolution is invisible to the one arithmetic the checklist runs, so a round
   that resolves half of a finding says so in the resolution AND leaves the
   remainder somewhere the count can see it.
+
+- 2026-08-28 · F037 R15 · The R15 block declared that the round's TypeScript
+  could not be type-checked here and ordered no gate for it, and the worker
+  reported the same in its deviations after `tsc --noEmit` was refused from its
+  shell. Both are wrong about the environment rather than about the code:
+  `tests/ui_server/test_dashboard_contract.py` runs the repository's LOCAL
+  `apps/ui/node_modules/.bin/tsc --noEmit` from pytest and skips only when that
+  binary is absent, and the reviewer measured it at `68680786` as exit 0 with
+  the new module on disk. This is the second time in two rounds that a tool was
+  called unavailable after being refused from ONE caller, the first being the
+  vitest runner that `R-0724` records: before writing that a tool cannot run
+  here, grep `tests/` for a node that already runs it.
