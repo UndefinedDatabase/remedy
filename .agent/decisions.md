@@ -9288,3 +9288,70 @@ the arrangement DECISION F031 D5 exists to prevent.
 `tests/ui_contracts/test_diff_view_model.py`. Nothing else imports them; no
 existing module changes as part of this decision, and the two comment repairs it
 carries stand on their own findings rather than on this ruling.
+
+## DECISION F037 D9 — intraline emphasis is the binding CSS's own two hues at a higher alpha, and no new hue, token or type treatment enters the sheet
+
+**Date:** 2026-08-28 · **Round:** F037 R16 · **Slice:** T002
+
+**The question this settles.** The Goal & Done of
+`docs/roadmap/features/T5_F037.md` requires that "intraline markers highlight
+word-level changes", its Acceptance requires that "intraline spans match a
+word-diff fixture", and its Design section lists "intraline emphasis on the
+marked spans". Its binding CSS block defines no intraline rule, and the same
+file's CANONICAL DESIGN REFERENCE banner forbids inventing a visual language.
+Measured by the reviewer at `68680786`: `intraline` occurs ZERO times in
+`docs/ui/design_reference/component_spec.md` and ZERO times in
+`assets_spec.md`, the two design-reference files amendment A4 names as binding
+for this surface, and neither of the binding CSS's two colours is a named token
+in `apps/ui/src/styles/tokens.css`. So the requirement exists, the authority for
+how to meet it does not, and F037 R9 through R15 each deferred it.
+
+**The choice.** The marked span inside a changed line takes that line's OWN
+background colour at roughly three times the alpha —
+`rgba(56,217,169,.32)` inside an added line and `rgba(247,103,7,.30)` inside a
+removed one, against the binding block's `.12` and `.10` for the whole row —
+with a two-pixel corner radius so a span reads as one mark rather than as a
+ragged run of characters.
+
+**Why this is a derivation and not an invention.** The two hues are the binding
+CSS's own, transcribed unchanged; only the alpha differs, and the alpha is what
+makes an emphasis inside an already-tinted row legible at all. Nothing new is
+named: no hue a designer did not choose, no token, and no change to
+`apps/ui/src/styles/tokens.css`, which is the operator's design system and is
+not this feature's to edit. A `var()` would in fact turn
+`tests/ui_contracts/test_diff_surface_css.py` RED, because that guard asserts
+every referenced token is defined in the shipped sheet — so the literal values
+are what makes the existing guard satisfiable, rather than a shortcut around it.
+
+**Why not weight, underline or a border.** Bold competes with the syntax
+highlighting T003 lazily loads onto the same characters, and the two would be
+indistinguishable in a monospace face. Underline collides with the underscore,
+which is a character diffs are full of. A border adds a pixel of width per span
+and would break the alignment of the two gutter columns the binding grid fixes
+at `56px 56px`. A background is the only treatment that composes with a
+per-token colour arriving later.
+
+**On the assumption_log the banner requires.** The banner directs any visual
+deviation to "the assumption_log". Measured at `68680786`, no file of that name
+exists anywhere in this repository. The DECISION series in `.agent/decisions.md`
+is what this repository actually uses for exactly this purpose — D3 and D4 of
+this feature are both design rulings recorded there — and amendment A5 puts the
+same ruling into the feature file, which is where a T003 builder looks first.
+This decision claims nothing about what the banner should say; it records where
+the reasoning went, and it went to both places.
+
+**Alternatives rejected.** (1) Ship no intraline emphasis and mark Acceptance
+short — rejected: it is a named line of Goal & Done, it has been deferred since
+R9, and deferring it a seventh time is how a feature reaches its round limit
+with a hole in the middle. (2) Ask the operator — forbidden by
+`docs/agents/planner_reviewer_prompt.md` §2, which requires a loud, persisted,
+reversible ruling instead of a question. (3) Add two tokens to `tokens.css` —
+rejected as an edit to the design system by a feature that the banner binds TO
+that system.
+
+**How to reverse.** Delete the two `.intraline` rules from
+`apps/ui/src/components/diff/DiffView.module.css`, restore the
+deliberate-absence paragraph above them from git history at `68680786`, drop
+`splitLineIntoIntralineSegments` and its `<mark>` from `DiffView.tsx`, and
+delete amendment A5. The parser's `intraline` spans are unaffected: they are
+contract data and predate this decision by fourteen rounds.
