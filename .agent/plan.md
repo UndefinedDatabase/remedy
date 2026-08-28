@@ -13,33 +13,32 @@ fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
 task slicing and the design amendments that reconcile it with the source.
 
 ## Current Step
-R15 closes T003 and rules its deep link. The evidence panel the feature file
-sends the chips to is `docs/roadmap/features/T5_F023.md` T003, and F023 is
-unclaimed in `docs/roadmap/STATUS.md`, so F032 ships the ENTRY POINT rather
-than a link to nothing: the card takes an optional `onOpenEvidence` handler, a
-receipt renders as a control only when one is supplied and as the span R14
-shipped when none is, and no ref's `target` reaches the markup either way.
-DECISION F032 D8 and amendment A7 record the ruling and how to reverse it.
+T003 is COMPLETE: the model carries the triple, the card renders it, and the
+receipt chip is the entry point F023 wires. R16 is the integration gate of
+docs/agents/integration_gate.md — the full suite on this branch and at the
+merge base `a399a330` with artifact parity restored and measured, the two
+failure sets compared, every branch-only id attributed. It writes no production
+code. The frontend is REBUILT before the branch run, because R14 and R15 edited
+`apps/ui/src` and a stale dist makes the suite rebuild itself mid-run.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a and C0b, save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R14 verdict | ordered | the record is touched first |
-| C3 the D8 ruling and the A7 amendment | ordered | |
-| C4 the component and its styles | ordered | S2 to S6, one commit |
-| C5 the contract guards | ordered | S7 |
-| C6 the handback | ordered | |
+| C2 the R15 verdict and the reviewer's prose slip | ordered | the record is touched first |
+| C3 the gate evidence directory | ordered | S1 to S8 |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. The integration gate — the full suite, per docs/agents/integration_gate.md.
-2. The closure sequence: evidence job, a fresh review zip, the STATUS line and
-   the pull request, per docs/roadmap/STATUS_closure_protocol.md.
+1. The closure sequence, part one: the evidence job and a FRESH review zip, per
+   docs/roadmap/STATUS_closure_protocol.md.
+2. The closure sequence, part two: the authored STATUS line committed last on
+   the branch, then the pull request, which is NOT merged in this session.
 
 ## Risks
-- The card's guards read the `.tsx` as TEXT, and the whole-file counts they
-  carry bind every line this round adds as tightly as the markup they were
-  written for.
-- The handler's arm is unreached today, because nothing supplies the prop. It
-  is typechecked and text-pinned, never behaviour-tested, and F023 is the
-  feature that first runs it.
+- A branch-only failure that reproduces serially and touches this feature's
+  code is a blocker, not a repair to fold into this round; it would cost a
+  reviewer-gated round of its own before closure can start.
+- The base worktree carries neither `node_modules` nor `dist`, both gitignored.
+  Parity is restored by copy and then MEASURED by an mtime window, because the
+  environment variable that disables the auto-build has been ignored once.
