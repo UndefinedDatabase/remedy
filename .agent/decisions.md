@@ -9475,3 +9475,47 @@ REVERSE by deleting this decision and the modules it authorises, and adding a
 highlighter dependency once registry access exists; `loadDiffLanguageBundle`
 needs no change either way, because the importer is its argument.
 
+
+## DECISION F256 D2 (2026-08-28, F256 R3) — the diff surface's syntax palette is four custom properties the shipped token sheet already defines, and no new hue enters the product
+
+CONTEXT. A rendered highlight needs colour, and colour on this surface needs an
+authority. Measured at `2251c6d4`: no file under `docs/ui/design_reference/`
+contains the word "syntax", and amendment A4 of
+`docs/roadmap/features/T5_F037.md` names the authorities that bind this surface
+— that file's own binding CSS, `component_spec.md` for the entry point and
+`assets_spec.md` for the mono family — none of which rules a token palette. The
+CANONICAL DESIGN REFERENCE banner forbids inventing a visual language, so the
+palette is DERIVED or it does not ship.
+
+CHOSEN, and it is a derivation in the same sense DECISION F037 D9 was when it
+ruled intraline emphasis from this sheet's own two hues: each token kind takes a
+custom property `apps/ui/src/styles/tokens.css` ALREADY defines — `comment` to
+`--remedy-ink-soft`, the property this sheet already gives the line-number
+gutter, so a comment reads as the same rank of de-emphasis; `string` to
+`--remedy-green-500`, `number` to `--remedy-orange-400` and `keyword` to
+`--remedy-blue-700`, the product's own accent, which is why it goes to the kind
+a reader scans for first. `plain` takes NO rule and NO class and simply inherits
+the row's colour. No new custom property is introduced and the token sheet is
+not extended.
+
+ALTERNATIVES CONSIDERED. (a) Import a highlighter's theme. Rejected: DECISION
+F256 D1 already rules out the dependency, and a second colour system in a
+product that has one is exactly what the banner forbids. (b) Ask the operator to
+rule the palette. Rejected because docs/agents/planner_reviewer_prompt.md §2
+forbids a ruling request and §4 item 7 requires the reviewer to rule loudly and
+reversibly instead. (c) Colour more kinds. Rejected because the token set is
+closed at five by DECISION F256 D1 and a distinction with no property behind it
+would have to invent one.
+
+CONSEQUENCE. The mapping is enforced by a guard that already exists rather than
+by discipline: `tests/ui_contracts/test_design_drift.py` fails any
+`var(--remedy-…)` used under `apps/ui/src` but defined nowhere there, and
+`tests/ui_contracts/test_diff_view_render.py` fails any `styles.` class the
+component names without a rule behind it. The palette is also DELIBERATELY
+COARSE — four coloured kinds — and a reader wanting per-language precision will
+not find it here, because the tokenizer behind it is per-line by ruling.
+
+REVERSE by deleting this decision and the four rules it authorises from
+`apps/ui/src/components/diff/DiffView.module.css`; the runs then render in the
+row's own colour and the wiring stays intact, because the class mapping maps
+`plain` to the empty string already.
