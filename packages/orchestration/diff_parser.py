@@ -40,6 +40,9 @@ CONTRACT NOTES a reader will otherwise have to guess at:
   the feature file states it. They are exactly what ``DIFF_VIEW_VERSION`` exists to
   carry: the version field is authoritative over the prose contract, and a consumer
   pinning version 1 gets these two keys.
+* ``intraline`` joined the per-line shape after version 1 was first written and
+  ``DIFF_VIEW_VERSION`` STAYS 1, because version 1 has never been served to anything —
+  there is no endpoint yet — so this completes v1 rather than changing a shipped shape.
 * Hunk ``id`` values are PROVISIONAL — ``"<file_index>:<hunk_index>"``, both
   zero-based, stable only within a single parse of a single diff text. F033
   replaces them with content-hash ids, and ``DIFF_VIEW_VERSION`` is the seam
@@ -55,6 +58,7 @@ the region.
 
 from __future__ import annotations
 
+import difflib
 import re
 from typing import Any
 
@@ -93,8 +97,20 @@ DIFF_BINARY_SENTINEL = "[binary file]"
 DIFF_TRUNCATED_SENTINEL = "[DIFF TRUNCATED]"
 DIFF_UNSAFE_ARTIFACT_PREFIX = "[unsafe staged artifact skipped:"
 
+#: A paired deletion/addition whose ``difflib.SequenceMatcher.ratio()`` is STRICTLY
+#: BELOW this gets no intraline spans at all: two lines with almost nothing in common
+#: are a whole-line replacement, and marking every character of both is the same as
+#: marking none. Exported so a test can name the threshold rather than transcribe it.
+DIFF_INTRALINE_MIN_RATIO = 0.3
+
 _NO_NEWLINE_PREFIX = "\\ No newline"
 _DEV_NULL = "/dev/null"
+
+#: Word-or-single-other-character tokens for the intraline diff. It keeps the
+#: SEPARATORS, so every character of the input lands in exactly one token and the
+#: concatenation of the tokens is the original string again — that identity is what
+#: makes a token index convertible into a character offset without drift.
+_INTRALINE_TOKEN_RE = re.compile(r"\w+|\W")
 
 _HUNK_HEADER_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 _GIT_HEADER_RE = re.compile(r"^diff --git a/(.+) b/(.+)$")
@@ -245,13 +261,131 @@ def _header_path(header: str | None) -> str | None:
     return _strip_side_prefix(raw)
 
 
+def _intraline_token_offsets(tokens: list[str]) -> list[int]:
+    """Character offset at which each token starts, with the total length appended.
+
+    Length ``len(tokens) + 1`` so a half-open token range ``[i1, i2)`` converts to the
+    character span ``(offsets[i1], offsets[i2] - offsets[i1])`` with no special case
+    for the last token.
+    """
+    offsets = [0]
+    position = 0
+    for token in tokens:
+        position += len(token)
+        offsets.append(position)
+    return offsets
+
+
+def _normalise_intraline_spans(
+    raw_spans: list[tuple[int, int]], content_length: int
+) -> list[list[int]]:
+    """Clamp, drop empties, merge touching or overlapping spans, sort by ``start``.
+
+    Every returned span satisfies ``0 <= start`` and ``start + length <=
+    content_length``; a span that indexes past its own content is exactly the defect
+    this normalisation exists to make impossible.
+    """
+    bounds: list[tuple[int, int]] = []
+    for start, length in raw_spans:
+        low = max(0, start)
+        high = min(content_length, start + length)
+        if high > low:
+            bounds.append((low, high))
+    bounds.sort()
+    merged: list[list[int]] = []
+    for low, high in bounds:
+        if merged and low <= merged[-1][1]:
+            if high > merged[-1][1]:
+                merged[-1][1] = high
+        else:
+            merged.append([low, high])
+    return [[low, high - low] for low, high in merged]
+
+
+def _intraline_spans_for_pair(
+    old_content: str, new_content: str
+) -> tuple[list[list[int]], list[list[int]]]:
+    """Return ``(old_spans, new_spans)`` marking what differs INSIDE one changed line.
+
+    ``replace`` and ``delete`` opcodes mark the OLD side, ``replace`` and ``insert``
+    mark the NEW side, and ``equal`` marks neither. Below
+    ``DIFF_INTRALINE_MIN_RATIO`` both sides come back empty — see that constant.
+    """
+    old_tokens = _INTRALINE_TOKEN_RE.findall(old_content)
+    new_tokens = _INTRALINE_TOKEN_RE.findall(new_content)
+    if "".join(old_tokens) != old_content or "".join(new_tokens) != new_content:
+        # The offset arithmetic below is sound only while the tokens rejoin to the
+        # original string. They always do for this regex; refusing rather than
+        # guessing keeps the parser total if that ever stops being true.
+        return [], []
+
+    matcher = difflib.SequenceMatcher(a=old_tokens, b=new_tokens)
+    if matcher.ratio() < DIFF_INTRALINE_MIN_RATIO:
+        return [], []
+
+    old_offsets = _intraline_token_offsets(old_tokens)
+    new_offsets = _intraline_token_offsets(new_tokens)
+    old_raw: list[tuple[int, int]] = []
+    new_raw: list[tuple[int, int]] = []
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag in ("replace", "delete"):
+            old_raw.append((old_offsets[i1], old_offsets[i2] - old_offsets[i1]))
+        if tag in ("replace", "insert"):
+            new_raw.append((new_offsets[j1], new_offsets[j2] - new_offsets[j1]))
+    return (
+        _normalise_intraline_spans(old_raw, len(old_content)),
+        _normalise_intraline_spans(new_raw, len(new_content)),
+    )
+
+
+def _apply_intraline_spans(lines: list[dict[str, Any]]) -> None:
+    """Give every line of ONE hunk its ``intraline`` key, in place.
+
+    The key is set to ``[]`` on every entry FIRST, so a client never has to test for
+    its presence: a ``ctx`` line, an unpaired line and a pair below the ratio
+    threshold all carry an empty list rather than nothing.
+
+    PAIRING: each maximal run of consecutive ``del`` entries IMMEDIATELY followed by a
+    maximal run of consecutive ``add`` entries is one replacement block, and within it
+    the i-th deletion is paired with the i-th addition. The surplus entries of the
+    longer run keep ``[]`` — there is no line to compare them against, and inventing
+    one is how an intraline highlighter starts marking unrelated text.
+    """
+    for entry in lines:
+        entry["intraline"] = []
+
+    index = 0
+    total = len(lines)
+    while index < total:
+        if lines[index]["kind"] != DIFF_LINE_DELETED:
+            index += 1
+            continue
+        del_start = index
+        while index < total and lines[index]["kind"] == DIFF_LINE_DELETED:
+            index += 1
+        add_start = index
+        while index < total and lines[index]["kind"] == DIFF_LINE_ADDED:
+            index += 1
+        paired = min(add_start - del_start, index - add_start)
+        for offset in range(paired):
+            old_entry = lines[del_start + offset]
+            new_entry = lines[add_start + offset]
+            old_spans, new_spans = _intraline_spans_for_pair(
+                old_entry["content"], new_entry["content"]
+            )
+            old_entry["intraline"] = old_spans
+            new_entry["intraline"] = new_spans
+
+
 def parse_unified_diff_to_view(diff_text: str) -> dict:
     """Parse ``diff_text`` into the F037 diff-view JSON.
 
     Returns ``{"version": DIFF_VIEW_VERSION, "truncated": bool, "files": [...]}``.
     A file is ``{"path", "old_path", "status", "stats": {"added", "deleted"},
     "note", "hunks"}``; a hunk is ``{"id", "header", "old_start", "new_start",
-    "lines"}``; a line is ``{"kind", "old_ln", "new_ln", "content"}``.
+    "lines"}``; a line is ``{"kind", "old_ln", "new_ln", "content", "intraline"}``,
+    where ``intraline`` is a possibly empty list of ``[start, length]`` character
+    spans into that line's OWN ``content``.
 
     Never raises. Empty text, and text that is not a diff at all, both return the
     empty-files shape.
@@ -445,6 +579,9 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
         added = 0
         deleted = 0
         for hunk_index, raw in enumerate(region.hunks):
+            # Intraline pairing is a WITHIN-HUNK relation, so it runs here, once per
+            # hunk, rather than during the walk where a run is not yet complete.
+            _apply_intraline_spans(raw["lines"])
             for entry in raw["lines"]:
                 # Counted from the PARSED entries, never from a second walk of the
                 # text, so stats can never disagree with the rendered lines.

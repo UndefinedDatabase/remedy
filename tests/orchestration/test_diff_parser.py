@@ -16,8 +16,10 @@ merely to cover the function.
 from __future__ import annotations
 
 import difflib
+import re
 
 from packages.orchestration.diff_parser import (
+    DIFF_INTRALINE_MIN_RATIO,
     DIFF_STATUS_ADDED,
     DIFF_STATUS_BINARY,
     DIFF_STATUS_DELETED,
@@ -211,6 +213,38 @@ SAME_PATH_DIFFERENT_HEADERS_DIFF = (
     "--- /dev/null\n"
     "+++ b/pkg/thing.py\n"
     "# new untracked file (sha256=cafe, size=7)\n"
+)
+
+#: One word changes inside one line — the fixture the feature file's Acceptance names
+#: for intraline highlighting. `brown` becomes `blue` and nothing else moves.
+INTRALINE_WORD_DIFF = (
+    "--- a/pkg/greet.py\n"
+    "+++ b/pkg/greet.py\n"
+    "@@ -1,1 +1,1 @@\n"
+    "-the quick brown fox\n"
+    "+the quick blue fox\n"
+)
+
+#: A pair with almost nothing in common. Marking every character of both lines says
+#: no more than marking none, so the similarity guard emits `[]` on both.
+INTRALINE_WHOLE_LINE_REPLACEMENT_DIFF = (
+    "--- a/pkg/swap.py\n"
+    "+++ b/pkg/swap.py\n"
+    "@@ -1,1 +1,1 @@\n"
+    "-alpha\n"
+    "+zulu\n"
+)
+
+#: One deletion against TWO additions: the first addition pairs, the second is
+#: surplus with no line to compare against. The `ctx` line is here for the same test.
+INTRALINE_UNEVEN_RUNS_DIFF = (
+    "--- a/pkg/uneven.py\n"
+    "+++ b/pkg/uneven.py\n"
+    "@@ -1,2 +1,3 @@\n"
+    " head\n"
+    "-the quick brown fox\n"
+    "+the quick blue fox\n"
+    "+tail added line\n"
 )
 
 
@@ -485,6 +519,102 @@ def test_parse_unified_diff_to_view_keeps_two_regions_for_one_path():
     assert tracked["note"] is None
     assert untracked["status"] == DIFF_STATUS_ADDED
     assert untracked["note"] == "# new untracked file (sha256=cafe, size=7)"
+
+
+# --------------------------------------------------------------------------- #
+# Intraline spans.
+# --------------------------------------------------------------------------- #
+
+
+def _line_at(view: dict, kind: str, file_index: int = 0, hunk_index: int = 0) -> dict:
+    """First line of the given kind in one hunk, so a test names what it means."""
+    for line in view["files"][file_index]["hunks"][hunk_index]["lines"]:
+        if line["kind"] == kind:
+            return line
+    raise AssertionError(f"no {kind} line in file {file_index} hunk {hunk_index}")
+
+
+def test_intraline_spans_mark_only_the_word_that_changed():
+    """The exact spans AND the text they slice out, because numbers alone hide drift."""
+    view = parse_unified_diff_to_view(INTRALINE_WORD_DIFF)
+
+    deleted = _line_at(view, "del")
+    added = _line_at(view, "add")
+    assert deleted["content"] == "the quick brown fox"
+    assert added["content"] == "the quick blue fox"
+    assert deleted["intraline"] == [[10, 5]]
+    assert added["intraline"] == [[10, 4]]
+    assert [deleted["content"][s:s + n] for s, n in deleted["intraline"]] == ["brown"]
+    assert [added["content"][s:s + n] for s, n in added["intraline"]] == ["blue"]
+
+
+def test_intraline_spans_are_empty_below_the_similarity_threshold():
+    """Named against the exported constant, not against a transcribed 0.3."""
+    view = parse_unified_diff_to_view(INTRALINE_WHOLE_LINE_REPLACEMENT_DIFF)
+
+    deleted = _line_at(view, "del")
+    added = _line_at(view, "add")
+    ratio = difflib.SequenceMatcher(
+        a=re.findall(r"\w+|\W", deleted["content"]),
+        b=re.findall(r"\w+|\W", added["content"]),
+    ).ratio()
+    assert ratio < DIFF_INTRALINE_MIN_RATIO
+    assert deleted["intraline"] == []
+    assert added["intraline"] == []
+
+
+def test_intraline_spans_are_empty_on_a_context_line():
+    view = parse_unified_diff_to_view(INTRALINE_UNEVEN_RUNS_DIFF)
+
+    context = _line_at(view, "ctx")
+    assert context["content"] == "head"
+    assert context["intraline"] == []
+
+
+def test_intraline_spans_are_empty_on_a_surplus_unpaired_line():
+    """One deletion, two additions: the second addition has no partner."""
+    view = parse_unified_diff_to_view(INTRALINE_UNEVEN_RUNS_DIFF)
+
+    lines = view["files"][0]["hunks"][0]["lines"]
+    added = [ln for ln in lines if ln["kind"] == "add"]
+    assert [ln["content"] for ln in added] == ["the quick blue fox", "tail added line"]
+    assert added[0]["intraline"] == [[10, 4]]
+    assert added[1]["intraline"] == []
+
+
+def test_every_intraline_span_lies_inside_its_own_content():
+    """The property over EVERY `*_DIFF` fixture in this file, gathered so it cannot go stale."""
+    fixtures = sorted(
+        name
+        for name, value in list(globals().items())
+        if name.endswith("_DIFF") and isinstance(value, str)
+    )
+    assert len(fixtures) >= 15
+    spans_seen = 0
+    lines_seen = 0
+    for name in fixtures:
+        view = parse_unified_diff_to_view(globals()[name])
+        for entry in view["files"]:
+            for hunk in entry["hunks"]:
+                for line in hunk["lines"]:
+                    lines_seen += 1
+                    assert "intraline" in line, name
+                    assert isinstance(line["intraline"], list), name
+                    if line["kind"] == "ctx":
+                        assert line["intraline"] == [], name
+                    previous_end = -1
+                    for span in line["intraline"]:
+                        assert isinstance(span, list) and len(span) == 2, (name, span)
+                        start, length = span
+                        assert start >= 0, (name, span)
+                        assert length > 0, (name, span)
+                        assert start + length <= len(line["content"]), (name, span)
+                        # Sorted by start, and merged: touching spans cannot survive.
+                        assert start > previous_end, (name, span)
+                        previous_end = start + length
+                        spans_seen += 1
+    assert lines_seen > 0
+    assert spans_seen > 0
 
 
 def test_parse_unified_diff_to_view_reads_real_difflib_output():
