@@ -196,3 +196,7 @@
   disk. DECISION F037 D10 settles the underlying question by measurement: the
   red-proofs were orderable all along, and successive blocks said otherwise
   because each inherited the sentence instead of re-running it.
+
+2026-08-28 · F256 R1 · The PLANF256R1 slice's Current Step table read `the per-line highlight model | done` at C1, where the slice lands and the model does not yet exist; it became true at C3 within the same round. The worker applied it byte for byte per constraint 1 and declared it.
+2026-08-28 · F256 R1 · The block listed `.agent/handoff.md` in its change set while fixing G8's range to end at C3, which cannot reach the commit that writes the handback; the worker reported both readings rather than the convenient one.
+2026-08-28 · F256 R1 · The G4 reader (b) counted N as 7 blank-line units where the DECF256R1 slice holds 6 paragraphs plus an empty trailing unit; the comparison still covered the whole appended region, so the obligation of §3 item 36 was met.
