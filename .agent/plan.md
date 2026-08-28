@@ -17,19 +17,21 @@ file sidebar's visual treatment ruled by a named authority.
 | the DiffView wiring and the derived palette | done | `678bc698` |
 | make the lazy load real, repairing `R-0732` | done | `8bcff3db` |
 | rule on the sidebar's treatment | done | `1b70fb02`, DECISION F256 D3 |
-| measure the 10k fixture, server half | done | this round |
-| measure the 10k fixture, client half | open | round 7, in vitest |
-| record the numbers in the feature file | open | round 8 |
+| measure the 10k fixture, server half | done | `4aea7ba2`, DECISION F256 D4 |
+| measure the 10k fixture, client half | done | this round |
+| record the numbers in the feature file | open | next round |
 
 ## Next Steps
-1. Measure `buildDiffRowModels` and `diffRowWindowForViewport` over a 10k-row
-   envelope in vitest, which is the client half of the same fixture.
-2. Write all measured numbers into the Built State of
-   `docs/roadmap/features/T5_F256.md`, which is what Acceptance asks for.
-3. Run the integration gate, then the closure sequence.
+1. Write both halves' measured numbers into the Built State of
+   `docs/roadmap/features/T5_F256.md`, which is what Acceptance asks for: a
+   recorded measurement rather than a claim.
+2. Run the integration gate.
+3. Run the closure sequence, which needs two rounds — evidence and zip, then the
+   STATUS commit.
 
 ## Risks
-- A perf assertion that pins an absolute second count on a hosted runner is a
-  report on machine speed; DECISION F256 D4 rules the ratio guard instead.
-- The 10k measurement must be a real run against a real fixture; a budget is
-  re-derived from a re-measured maximum and never raised by hand.
+- A collapsed hunk emits no line rows, so a client benchmark built with the
+  DEFAULT collapsed set measures two rows however large the fixture is.
+- The client model costs about a millisecond with a threefold run-to-run spread,
+  so a timing assertion there would measure the JIT; DECISION F256 D5 rules the
+  exact bounded-window property instead.
