@@ -82,3 +82,16 @@
   the contradiction rather than correcting a slice. Nothing landed wrong on
   disk. Where a gate restates an operation the constraints already define,
   NAME the constraint instead of paraphrasing its bytes.
+
+- 2026-08-28 · F037 R2 · The block's G5 ordered every append baseline read with
+  `git show 89b96df7:<path>`, naming R1's C1 instead of the round base — a
+  commit at which `.agent/live_review.md` predates R1's own header reset and
+  F032 R19 gate append by 4148 bytes and one gate key. Obeying it literally
+  would have deleted landed text from an append-only record, which the same
+  block's constraint 5 forbids, so the block contradicted itself and the worker
+  had to resolve it. Nothing landed wrong: the worker measured all three
+  baselines against the base first, used the correct pre-commit tip and
+  declared the deviation. A baseline SHA is COPIED FROM THE COMMIT THE APPEND
+  BUILDS ON, never carried over from the previous round's block, and where the
+  worker makes that commit itself the gate names it by ROLE — "the commit you
+  are about to build on" — rather than by a SHA the reviewer guessed.
