@@ -9392,3 +9392,49 @@ of the worktree's `diffViewModel.ts` each exit 1 killing exactly the named test
 for the property broken, then control exit 0 again with every file restored to
 its pre-mutation sha256. REVERSE by deleting this decision; but the claim it
 replaces is measurably false, so reversing it re-blinds the `.ts` layer.
+
+## DECISION F037 D11 (2026-08-28) — F037 ships the diff viewer it has built, and the highlighting wiring, the perf measurement and the sidebar ruling are split off
+
+CONTEXT. F037 reached round 24 of a twenty-five-round soft limit in session 7 of
+seven. Operator amendment amend0827-process-diet rule 6 makes the obligation at
+that point a SCOPE REPORT with a proposal, not more work. Three pieces of T003
+are outstanding and are named in `.agent/plan.md` at `82d3d584`, as they were in
+the two rounds before it: the WIRING of `loadDiffLanguageBundle` into
+`DiffView`, the 10k-line perf fixture measured end to end with its numbers
+recorded, and a ruling on the sidebar's visual treatment. Measured at
+`82d3d584` with `git grep -l`, `loadDiffLanguageBundle` has NO caller outside
+`apps/ui/src/api/diffViewModel.ts` and its two test files: the lazy-bundle model
+is complete, tested and UNWIRED. Finishing all three and then running F037's
+closure sequence needs roughly five to seven further rounds, which is twice the
+budget that remains.
+
+THE RULING, made under docs/agents/planner_reviewer_prompt.md §4 item 7 and
+under the fix clause of finding `R-0709`, which binds the next block whose round
+turns on a judgement the operator has not made: the reviewer rules and records,
+and never asks. The three pieces LEAVE F037's scope. Feature-file amendment A6
+states this in `docs/roadmap/features/T5_F037.md`, so the narrowing is on the
+roadmap rather than only in this file, and F037's remaining work is its closure
+sequence. The alternative rule 6 also offers — splitting F037 into two STATUS
+lines — is a DOCUMENTED PROPOSAL TO THE OPERATOR, carried in this round's
+handback, and is NOT executed here, because rule 6 forbids executing it on the
+session's own authority.
+
+ALTERNATIVES CONSIDERED. (1) Row on to round 25 and beyond: forbidden by rule 6
+in as many words, and it would still not finish, because three pieces plus a
+closure sequence do not fit in one round. (2) Keep the scope and close F037 with
+the Acceptance bullets unmet: dishonest, and exactly the "green gate is not a
+working feature" failure this record already carries as `R-0220`. (3) Drop the
+pieces silently: worse than either, because nothing on the roadmap would ever
+record that a diff viewer shipped with its highlighting unwired.
+
+CONSEQUENCE, stated plainly because it is a real narrowing. F037 ships a diff
+viewer whose syntax highlighting is BUILT AND NOT WIRED, and whose 10k-line perf
+budget is UNMEASURED. The Acceptance bullet "unknown language renders plain
+without a bundle fetch" is met and proved at the model layer; the Goal & Done
+clause "the client renders it with syntax highlighting" and the Acceptance bullet
+"10k-line fixture within the perf budget (recorded)" are NOT met, and A6 says so
+rather than leaving a reader to discover it. Nothing already built is removed.
+
+REVERSE by deleting this decision and amendment A6 from
+`docs/roadmap/features/T5_F037.md`; the three pieces then return to F037's scope
+and the soft-limit obligation returns with them.
