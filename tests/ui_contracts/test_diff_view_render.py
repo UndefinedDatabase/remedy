@@ -246,6 +246,25 @@ class TestTheHunkHeadIsAControl:
             f"whose state is visible only as a row count announces nothing"
         )
 
+    def test_the_declared_state_is_the_negation_of_the_collapse_flag(self):
+        """The POLARITY, which the presence assertion above does not pin.
+
+        Measured at `774cf732`: inverting this expression left the whole module green at 12
+        passed, so `aria-expanded` bound to the flag itself rather than to its negation would
+        ship unnoticed — and a screen reader would then announce every OPEN hunk as closed,
+        which is worse than announcing nothing at all.
+        """
+        tag = hunk_head_tag(strip_ts_comments(COMPONENT.read_text()))
+        assert "aria-expanded={!row.collapsed}" in tag, (
+            f"the hunk head in {COMPONENT.name} must bind aria-expanded to the NEGATION of "
+            f"row.collapsed; `expanded` and `collapsed` are opposites, and binding one to the "
+            f"other inverts every announcement the control makes"
+        )
+        assert "aria-expanded={row.collapsed}" not in tag, (
+            f"the hunk head in {COMPONENT.name} binds aria-expanded to row.collapsed itself, "
+            f"so an open hunk announces itself as collapsed and a collapsed one as open"
+        )
+
 
 class TestTheIntralineMarkExists:
     """(d) Amendment A5 of `docs/roadmap/features/T5_F037.md` and DECISION F037 D9. Acceptance
