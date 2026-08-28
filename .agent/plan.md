@@ -16,8 +16,8 @@ planned-but-unregistered scope get honest STATUS lines.
 |------|--------|--------|
 | 3 — repair the R-0714 tautology test | done | red-proved in both directions |
 | 1 — `--skip-blocked` partial promotion | done | red-proved; flag-shape pinned |
-| 2 — cost truth on the job-run path | next | operator picked shape 1 |
-| 4 — register the split-off F037 rest | pending | new line before F033 |
+| 2 — cost truth on the job-run path | done | stats cost shows 1 row |
+| 4 — register the split-off F037 rest | next | new line before F033 |
 | 5 — register the self-use track | pending | registration only, not built |
 
 ## Next Steps

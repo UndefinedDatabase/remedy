@@ -1499,11 +1499,28 @@ def _cmd_do_job_run(
         **invocation.as_run_job_kwargs(),
     )
 
+    # F103 cost truth on the job path: a run that spent money must leave a cost
+    # row, so the evidence export that arms the live ledger mirror runs here
+    # rather than waiting for someone to type `do job-evidence`. Never fatal.
+    from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+    cost_mirror = mirror_job_run_into_ledger(job.job_id)
+
     if json_output:
-        print(json.dumps(export_job_report(job), indent=2))
+        report = export_job_report(job)
+        report["cost_mirror"] = cost_mirror
+        print(json.dumps(report, indent=2))
     else:
         from packages.orchestration.pingpong_job import format_job_report_text
         print(format_job_report_text(job))
+        if cost_mirror["ledger_mirrored"]:
+            print("Cost recorded to the ledger. See: remedy stats cost")
+        else:
+            print(
+                f"Cost NOT recorded to the ledger: {cost_mirror['error']}\n"
+                f"Next: run `remedy do job-evidence {job.job_id}` and then "
+                f"`remedy stats backfill-ledger` to reconcile it.",
+                file=sys.stderr,
+            )
 
 
 def _cmd_do_job_evidence(

@@ -2161,3 +2161,259 @@ class TestQuerySegmentShares:
         assert share_ledger.read_bytes() == before
         assert sorted(p.name for p in share_ledger.parent.iterdir()) == [
             LEDGER_FILENAME]
+
+
+# ---------------------------------------------------------------------------
+# Operator order amend0828-daily-driver, point 2 — cost truth on the JOB RUNNER
+#
+# The 2026-08-25 dogfooding finding in T2_F103: two real claude-cli calls with
+# measured usage ran under `remedy do job-run`, and `remedy stats cost` then
+# reported "0 ledger(s) read". The scope was right and the report was honest —
+# the ledger simply did not exist, because the live mirror is armed only from
+# `export_job_evidence` and the job runner never reached it.
+#
+# The operator ruled for the shape with the least wiring depth: reuse the seam
+# that is already armed, rather than reopen DECISION D16's row granularity or
+# add a second backfill source that would leave `stats cost` empty until someone
+# asked. `mirror_job_run_into_ledger` is that one call.
+# ---------------------------------------------------------------------------
+
+
+from packages.orchestration.pingpong_provider import FakeProvider  # noqa: E402
+
+
+class _MeasuredStubProvider(FakeProvider):
+    """A FakeProvider that reports MEASURED usage, like a real CLI provider does.
+
+    `_aggregate_usage_actuals` skips every attempt whose provider is named
+    ``fake``, so a stub that wants its usage counted must not be called that.
+    Cost coverage must be COMPLETE for `total_cost_usd` to survive aggregation,
+    which is why both roles report — a half-measured run is deliberately NULL.
+    """
+
+    #: One call's reported usage. Small, exact, and asserted on downstream.
+    USAGE = {
+        "input_tokens": 1000,
+        "output_tokens": 500,
+        "cache_read": 0,
+        "cache_creation": 0,
+        "total_cost_usd": 0.125,
+        "num_turns": 1,
+        "duration_ms": 10,
+        "session_id": "stub-session",
+        "cli_version": "stub-1.0",
+        "parse_source": "claude_cli_json",
+    }
+
+    #: Any name but "fake" — see `_run_measured_job`.
+    PROVIDER_NAME = "measured-stub"
+
+    @property
+    def name(self) -> str:
+        return self.PROVIDER_NAME
+
+    def build(self, prompt, **kwargs):
+        out = super().build(prompt, **kwargs)
+        out.usage_actuals = dict(self.USAGE)
+        return out
+
+    def review(self, prompt, **kwargs):
+        out = super().review(prompt, **kwargs)
+        out.usage_actuals = dict(self.USAGE)
+        return out
+
+
+def _run_measured_job(repo):
+    """A real `run_job` whose provider calls carry measured usage."""
+    from packages.orchestration.pingpong_job import parse_job_file, run_job
+
+    plan = parse_job_file(_LIVE_JOB_FILE, str(repo))
+    # The NAME matters as much as the object: `_aggregate_usage_actuals` skips
+    # every attempt whose recorded provider is "fake", and the recorded name comes
+    # from `builder_name`/`reviewer_name`, not from the injected object's own
+    # `.name`. A stub that only overrides the property is silently uncounted.
+    return run_job(
+        plan.job_id,
+        builder_name=_MeasuredStubProvider.PROVIDER_NAME,
+        reviewer_name=_MeasuredStubProvider.PROVIDER_NAME,
+        builder_provider=_MeasuredStubProvider(pass_on_round=1, fail_on_round=99),
+        reviewer_provider=_MeasuredStubProvider(pass_on_round=1, fail_on_round=99),
+        repair_rounds=0,
+    )
+
+
+class TestCostTruthOnTheJobRunPath:
+    """`stats cost` must find a row after a run, without anyone exporting by hand."""
+
+    def test_a_measured_run_leaves_a_row_stats_cost_finds(
+        self, live_data_root, live_job_repo,
+    ):
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("cost-truth", str(live_job_repo))
+        job = _run_measured_job(live_job_repo)
+
+        # This is the ONE call `remedy do job-run` now makes. Nothing else here
+        # arms the ledger, and no ledger_* argument is passed by hand.
+        mirror = mirror_job_run_into_ledger(job.job_id)
+        assert mirror["ledger_mirrored"] is True, mirror["error"]
+
+        report = query_cost(project_id=project.id)
+
+        assert report.ledger_exists is True, (
+            "remedy stats cost would still report 'No ledger on disk for this "
+            "scope' after a real run — the dogfooding finding is not fixed"
+        )
+        assert report.total.calls >= 1
+        assert report.project_id == str(project.id)
+
+        # The money is VISIBLE, not merely counted.
+        assert report.total.cost_usd is not None
+        assert report.total.cost_usd > 0
+        assert report.total.measured_calls >= 1
+
+    def test_the_row_lands_in_the_right_project_scope(
+        self, live_data_root, live_job_repo, tmp_path,
+    ):
+        """A job's cost belongs to the repo the job ran against, not an ambient one."""
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        from packages.orchestration.project_registry import register_project_repo
+
+        other_repo = _git_repo(tmp_path / "other_repo")
+        project = register_project_repo("cost-truth", str(live_job_repo))
+        other = register_project_repo("cost-truth-other", str(other_repo))
+
+        job = _run_measured_job(live_job_repo)
+        mirror_job_run_into_ledger(job.job_id)
+
+        assert query_cost(project_id=project.id).total.calls >= 1
+        assert query_cost(project_id=other.id).total.calls == 0
+        assert token_ledger_path_for(other.id).is_file() is False
+
+    def test_unmeasured_cost_stays_honestly_unmeasured(
+        self, live_data_root, live_job_repo,
+    ):
+        """P6: an unmeasured figure must never render as a measured zero."""
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("cost-truth", str(live_job_repo))
+        job = _run_fake_provider_job(live_job_repo)   # reports no usage at all
+
+        mirror = mirror_job_run_into_ledger(job.job_id)
+        assert mirror["ledger_mirrored"] is True, mirror["error"]
+
+        report = query_cost(project_id=project.id)
+        assert report.ledger_exists is True
+        assert report.total.calls >= 1
+
+        # NOT 0.0 — the call is counted, the money is unknown, and it says so.
+        assert report.total.cost_usd is None
+        assert report.total.measured_calls == 0
+        assert report.total.unmeasured_calls >= 1
+
+        row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001")
+        assert row["cost_usd"] is None
+        assert row["cost_basis"] == COST_BASIS_UNKNOWN
+
+    def test_the_measured_row_carries_the_provider_reported_basis(
+        self, live_data_root, live_job_repo,
+    ):
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("cost-truth", str(live_job_repo))
+        job = _run_measured_job(live_job_repo)
+        mirror_job_run_into_ledger(job.job_id)
+
+        row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001")
+        assert row["cost_basis"] == COST_BASIS_PROVIDER_REPORTED
+        assert row["cost_usd"] is not None
+        assert row["tokens_in"] is not None and row["tokens_in"] > 0
+
+    def test_mirroring_twice_adds_no_second_row(
+        self, live_data_root, live_job_repo,
+    ):
+        """`do job-run` then `do job-evidence` must not double-count the money."""
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("cost-truth", str(live_job_repo))
+        job = _run_measured_job(live_job_repo)
+
+        mirror_job_run_into_ledger(job.job_id)
+        first = query_cost(project_id=project.id).total
+        mirror_job_run_into_ledger(job.job_id)
+        second = query_cost(project_id=project.id).total
+
+        assert second.calls == first.calls
+        assert second.cost_usd == first.cost_usd
+
+    def test_a_mirror_failure_never_fails_the_run(self, live_data_root):
+        """A job that ran is a job that ran; an unmirrorable one reports and moves on."""
+        from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+
+        mirror = mirror_job_run_into_ledger("no-such-job-id")
+
+        assert mirror["ledger_mirrored"] is False
+        assert mirror["error"]
+
+
+class TestJobRunActuallyCallsTheMirror:
+    """A working seam nobody calls is the original defect in another dress.
+
+    The finding was never that the mirror could not record — `do job-evidence`
+    already proved it could. It was that `remedy do job-run` did not reach it.
+    So the wiring is asserted on the COMMAND, not only on the function.
+    """
+
+    def test_the_job_run_command_mirrors_the_job_it_just_ran(self, monkeypatch):
+        from apps.cli.commands import do_cmd
+        from packages.orchestration import job_evidence, pingpong_job
+
+        class _StubJob:
+            job_id = "jid-under-test"
+
+        monkeypatch.setattr(pingpong_job, "run_job", lambda *a, **k: _StubJob())
+        monkeypatch.setattr(
+            pingpong_job, "format_job_report_text", lambda job: "report",
+        )
+
+        seen: list[str] = []
+
+        def _record(job_id):
+            seen.append(job_id)
+            return {"ledger_mirrored": True, "out_dir": "/tmp/x", "error": ""}
+
+        monkeypatch.setattr(job_evidence, "mirror_job_run_into_ledger", _record)
+
+        do_cmd._cmd_do_job_run("jid-under-test")
+
+        assert seen == ["jid-under-test"], (
+            "remedy do job-run did not mirror its own run into the ledger: "
+            "stats cost would still be empty after a real run"
+        )
+
+    def test_a_mirror_failure_does_not_crash_the_command(self, monkeypatch, capsys):
+        from apps.cli.commands import do_cmd
+        from packages.orchestration import job_evidence, pingpong_job
+
+        class _StubJob:
+            job_id = "jid-under-test"
+
+        monkeypatch.setattr(pingpong_job, "run_job", lambda *a, **k: _StubJob())
+        monkeypatch.setattr(
+            pingpong_job, "format_job_report_text", lambda job: "report",
+        )
+        monkeypatch.setattr(
+            job_evidence, "mirror_job_run_into_ledger",
+            lambda job_id: {"ledger_mirrored": False, "out_dir": "",
+                            "error": "boom"},
+        )
+
+        do_cmd._cmd_do_job_run("jid-under-test")
+
+        err = capsys.readouterr().err
+        assert "Cost NOT recorded to the ledger" in err
+        assert "backfill-ledger" in err
