@@ -8489,3 +8489,365 @@ is the reason `.agent/candidates.md` exists at all.
 REVERSAL. Delete the permitting paragraph from
 `docs/roadmap/STATUS_closure_protocol.md`; the disk-vehicle rule then reads as
 it did before this date.
+
+## DECISION F032 D1 (2026-08-27) — the triple is enforced at the DERIVATION point, because no enqueue seam exists
+
+THE QUESTION. `docs/roadmap/features/T5_F032.md:31-33` names the enforcement
+point as "the enqueue seam every producer already funnels through (one gate)".
+R1's inventory measured that seam and it does not exist. All nine
+`HumanDecision(...)` constructions in the repository outside `tests/` sit inside
+`packages/orchestration/decision_queue.py::list_decisions` (function at `:62`),
+which is a read-only derivation — its own module docstring says so at `:4-6`.
+The eight producing branches derive from sixteen distinct record-creation sites
+across twelve modules, and only branch 8 has an enqueue-shaped function,
+`escalation.enqueue_task_decision` at `escalation.py:211`, serving that one
+branch. There is nothing to gate on the way IN, because nothing is created.
+
+CHOSEN: THE GATE SITS AT `list_decisions`, WHICH IS THE EMIT POINT. It is the
+one function every decision passes through, and a decision that reaches a human
+without a triple is precisely what the feature exists to prevent — so refusing
+to EMIT is the property F032 actually wants, and refusing to CREATE was only
+ever a means to it. `evidence_refs`, `expected_outcome` and `downside` become
+required of every card the function yields, and the canary is a producing
+branch that omits one and is caught there.
+
+ALTERNATIVES CONSIDERED. Building an enqueue seam first, by routing all sixteen
+creation sites through one constructor: rejected as a refactor of twelve modules
+that F032 neither needs nor is scoped for, and one that AGENTS.md's own
+churn-is-the-enemy rule argues against. Gating at each of the sixteen sites:
+rejected because it multiplies the guard by sixteen and still cannot see a
+decision that is derived rather than created.
+
+CONSEQUENCE FOR THE FEATURE FILE'S DO-NOT-TOUCH LIST: "queue storage" names
+nothing — inventory Q3 measured that no decision store exists — so that item is
+vacuous rather than restrictive, and D2 settles the third name on that list.
+
+REVERSE by deleting this decision and the `## Design amendments` entry that
+mirrors it, and restoring the enqueue reading of the feature file.
+
+## DECISION F032 D2 (2026-08-27) — F032 defines its own minimal evidence ref and does NOT wait for F066
+
+THE QUESTION. The feature file says refs "use the typed provenance vocabulary
+(file/failure/decision kinds cover the current producers; the resolver's badges
+render on the chips)" and its Do-not-touch list names the "provenance resolver".
+Inventory Q4 measured that neither exists: `grep -rn
+"resolve_ref\|ProvenanceRef\|REF_KIND\|ref_kind" packages/ apps/` returns zero
+lines. Both are the unbuilt spec `docs/roadmap/features/T3_F066.md:24-40`, and
+F066 is unclaimed at `docs/roadmap/STATUS.md:136`, as is its own dependency
+F063 at `:133`. F032's header declares a dependency on F031 alone.
+
+CHOSEN: F032 DEFINES THE SMALLEST REF IT NEEDS AND SHIPS NO RESOLVER. A ref
+carries a kind, a target and a label, with the kind vocabulary held as a real
+constant rather than a comment — the failure mode both nearest precedents share,
+`ProviderVerificationEvidenceRef` at `provider_trust_verification.py:171-177`
+and `OrchestratorEvidenceRef` at `orchestrator_brain.py:87-95`, each of which
+states its vocabulary only in a comment. No badge is rendered, because a badge
+without a resolver would be a false live indicator; the chips render the label
+and the kind, and F066 supplies resolution when it lands.
+
+ALTERNATIVES CONSIDERED. Blocking F032 until F066 is built: rejected because
+F066 is not this feature's declared dependency and is not claimable ahead of
+F063, so blocking would stall a tier on an undeclared chain. Untyped strings:
+rejected because the whole point is that a ref be clickable later, and an
+untyped string cannot be resolved without re-parsing.
+
+REVERSE by deleting this decision and blocking F032 on F066. When F066 lands,
+the migration is a rename of this feature's kind constant onto F066's, which is
+why the constant is named in one place.
+
+## DECISION F032 D3 (2026-08-27) — the triple is per option only where options exist, and F032 grows no options list
+
+THE QUESTION. `docs/roadmap/features/T5_F032.md:43-45` specifies
+`expected_outcome: str per option` and `downside: str per option`, "keyed to the
+options list — outcomes are per-choice, that's the point". Inventory Q5
+measured that only two of the eight producing branches have an options list at
+all: branch 7's pending arm, `payload["options"] = ["approve", "reject"]` at
+`decision_queue.py:288`, and branch 8, which forwards the escalation record's
+own `options` at `:365`. The other six carry only `next_actions`, which are
+shell commands and prose, not choices. For six of eight, "per option" is
+undefined.
+
+CHOSEN: THE TRIPLE IS KEYED PER OPTION WHERE AN OPTIONS LIST EXISTS AND CARRIES
+EXACTLY ONE UNKEYED PAIR WHERE NONE DOES. A decision with options gets one
+`expected_outcome` and one `downside` per option; a decision without gets one of
+each for the decision as a whole, which is the honest reading of "what happens
+next" when the human is not being offered a choice. GIVING THE OTHER SIX
+BRANCHES AN OPTIONS LIST IS EXPLICITLY OUT OF F032's SCOPE — it changes what
+those decisions ARE, not what evidence they carry, and it belongs to the
+features that own them.
+
+ALTERNATIVES CONSIDERED. Growing options lists for all eight branches first:
+rejected as a behaviour change to six subsystems smuggled in under a
+documentation-shaped feature. Treating `next_actions` as the options list:
+rejected because inventory Q5 measured that
+`apps/ui/src/api/decisionCard.ts::decisionAnswers` at `:223` already falls back
+from `payload.options` to `next_actions`, so keying outcomes to commands would
+attach a consequence sentence to a shell invocation and read as though running
+it were the choice.
+
+ONE THING THIS DECISION DOES NOT SETTLE, recorded so T002 does not rediscover
+it: inventory Q2 measured that branch 8 drops the escalation record's `impact`
+field at `escalation.py:242` when deriving the card, and that field is the
+nearest thing to an `expected_outcome` already on disk. Whether T002 forwards it
+or writes a new one per producer is a T002 question, not a schema question.
+
+REVERSE by deleting this decision and requiring an options list of every
+producing branch as part of F032.
+
+## DECISION F032 D4 (2026-08-27) — the Python names carry a domain word; the WIRE name stays `evidence_refs`
+
+THE QUESTION, found by reading the source before ordering the code rather than
+after. `docs/roadmap/features/T5_F032.md` names the field `evidence_refs[]`
+throughout and suggests the test path
+`tests/orchestration/test_evidence_triple.py`. Both spellings are already taken
+in this repository, for different concepts. `packages/orchestration/watchdog.py:63`
+calls its own three-part evidence "the evidence triple", and
+`tests/orchestration/test_watchdog.py:533` and `:873` name two tests after it.
+`packages/orchestration/orchestrator_brain.py` carries
+`evidence_refs: list[OrchestratorEvidenceRef]` at `:187` and `:208` and uses the
+attribute thirteen times, where `OrchestratorEvidenceRef` (`:87-95`) has fields
+`source`, `status`, `ref`, `summary` — a different shape for a different
+purpose. AGENTS.md's Code Discoverability Conventions require one spelling per
+concept repo-wide and a name that greps to its own definition and real usages
+only, so taking either spelling for F032's Python surface would make BOTH
+concepts unfindable by text search, which is how every worker and reviewer here
+navigates.
+
+CHOSEN, AND IT IS A SPLIT BETWEEN THE TWO LAYERS BECAUSE THEY HAVE DIFFERENT
+NAMESPACES. The Python module is `packages/orchestration/decision_evidence.py`
+and its types are `DecisionEvidenceRef`, `DecisionOptionOutcome` and
+`DecisionEvidenceTriple`; the kind vocabulary is `DECISION_EVIDENCE_REF_KINDS`;
+the test file is `tests/orchestration/test_decision_evidence.py`, which also
+satisfies the convention that a test file is named after the source it covers.
+The WIRE key stays `evidence_refs`, exactly as the feature file specifies,
+because a key inside a decision card's JSON is namespaced by the card and cannot
+collide with a Python attribute on an unrelated dataclass — and because changing
+it would put this decision at odds with the one document a later reader treats
+as the specification.
+
+ALTERNATIVES CONSIDERED. Taking `evidence_triple.py` and renaming the watchdog's
+usage: rejected because AGENTS.md forbids mass renames of existing code as their
+own activity and the watchdog is not in F032's scope. Prefixing only the module
+and leaving bare type names: rejected because `EvidenceRef` is precisely the name
+that would not grep to itself, which is the convention's own stated test.
+
+THIS DIVERGES FROM THE FEATURE FILE'S SUGGESTED TEST PATH, and the file says
+"Suggested tests", so nothing binding is broken; amendment A4 records it where a
+builder reads it.
+
+REVERSE by deleting this decision, renaming the module and its three types back
+to the bare spellings, and accepting the two collisions.
+
+## DECISION F032 D5 (2026-08-27) — the migration marker is PER CARD, and enforcement is opt-in per type
+
+THE QUESTION, in two halves that share one answer. FIRST, how does a reader
+tell a decision recorded before F032 from one that simply has poor receipts?
+The feature file asks for a "migration story for legacy entries" and an honest
+"recorded before evidence requirements" placeholder rather than fake triples
+(`docs/roadmap/features/T5_F032.md:28-31`). The obvious carrier is the document
+version stamp, and inventory Q7 measured that it cannot work: `DECISION_INBOX_VERSION`
+(`packages/orchestration/decision_inbox.py:37`) is WRITE-ONLY — the only code
+that compares it is the test that compares it against the constant the same
+process just wrote, and the browser does not model the key at all
+(`apps/ui/src/api/decisionCard.ts:124-126` declares the document with no
+`version` key). A migration story told through a stamp nothing reads is a story
+nothing tells. SECOND, DECISION F032 D1 puts the gate at `list_decisions`, and
+if the gate became fatal the moment it landed, all eight existing producers
+would fail at once, because not one of them carries a triple. T001 would then
+either break the suite or ship a gate that gates nothing until T002 finished.
+
+CHOSEN, AND THE TWO HALVES ARE ONE MECHANISM. Every card carries its own
+`evidence_status`, either `present` or the literal
+`recorded_before_evidence_requirements`, emitted by `export_decision_json`
+beside an always-present `evidence_refs` and `outcomes` that are EMPTY when
+there is no triple — never absent, because a key that appears only sometimes
+forces every reader to branch, and never fabricated, which is the failure the
+feature file names. And `TRIPLE_REQUIRED_TYPES` starts EMPTY: a decision type
+enters it in T002, in the same commit that gives its producer a real triple, so
+the gate is live and pinned by the canary from the first commit while changing
+no existing producer's behaviour. When all eight types are in the set, the gate
+is fully live and the opt-in set has become a formality — which is the point at
+which it can be deleted.
+
+WHY THE GATE RAISES RATHER THAN DROPS. Dropping a tripleless decision would
+lose a human question, which is exactly what `decision_inbox.py:141-143` says
+this subsystem will not do. A producer that ships an ENFORCED type with no
+triple is a programming error, and "a canary producer missing a field fails CI"
+(`docs/roadmap/features/T5_F032.md:25`) is a statement about CI, not about
+runtime refusal. Because the set only ever holds upgraded types, the raise can
+fire only on a regression.
+
+ALTERNATIVES CONSIDERED. Bumping `DECISION_INBOX_VERSION` to 2: rejected on
+Q7's measurement — it would have to acquire its first reader before it could
+carry anything, and a per-card marker is needed regardless, since a single job
+can hold legacy and upgraded decisions side by side. Making the gate fatal
+immediately and upgrading all eight producers in T001: rejected because it
+merges T001 and T002 into one unreviewable round, against the feature file's
+own slicing and against AGENTS.md's change-size limits. A warning list instead
+of a raise: rejected because nothing reads warnings and it would make the
+canary unassertable.
+
+REVERSE by deleting this decision, dropping `TRIPLE_REQUIRED_TYPES` and
+`evidence_status`, and making the triple unconditionally required at the emit
+point.
+
+## DECISION F032 D6 (2026-08-27) — the budget stop states its options explicitly, so its outcomes can be keyed per choice
+
+CONTEXT, measured at `59c8bcd0e589`. `docs/roadmap/features/T5_F032.md` Goal &
+Done requires `expected_outcome` and `downside` PER OPTION, and its Design names
+this producer's content by example: the budget stop's extend/abandon consequence
+math, with the arithmetic as refs into the budget evidence. DECISION F032 D3
+then narrowed the keying to "per option only where options exist", counting the
+branches that carry an options list. The budget branch of
+`packages/orchestration/decision_queue.py` is not one of them, and yet it does
+offer the human two real choices: it sets `next_actions=("extend", "abandon")`
+and carries no `payload` at all, while
+`decision_evidence.enforce_decision_evidence` reads a decision's options from
+`payload.get("options")` and from nowhere else. So the gate sees an OPTIONLESS
+decision, and rule (h) of `evidence_triple_problems` would refuse the very
+per-choice outcomes the feature file asks this producer for.
+
+CHOSEN. The budget card states its options where the gate and the browser both
+already look: `payload={"options": ["extend", "abandon"]}`, with one
+`DecisionOptionOutcome` keyed to each. `next_actions` is NOT changed.
+
+WHY THIS IS BEHAVIOUR-PRESERVING, MEASURED RATHER THAN ASSUMED.
+`apps/ui/src/api/decisionCard.ts::decisionAnswers` resolves a card's answers in
+the order options, then next actions, then free text, without branching on the
+card's type. This card's `next_actions` are already exactly `extend` and
+`abandon`, so serving those two from `payload.options` yields the same two
+answers in the same order. The write door is untouched:
+`decision_inbox._answerable_by_decision_resolve` branches on the decision's ID
+PREFIX and on its escalation record, never on a payload, so the budget card
+stays not-answerable-by-`decision.resolve` and `ANSWERABLE_DECISION_TYPES` in
+`tests/orchestration/test_decision_inbox.py` remains correct for this type.
+
+REJECTED, and why. One unkeyed outcome under `UNKEYED_OPTION`, which the gate
+accepts for an optionless decision and which would have required no wire
+change. It loses exactly the per-choice consequence math the feature file names
+for this producer, and it would record as a design intention what is really an
+omission: this card has two choices, and only its options LIST was missing.
+
+REVERSE by deleting `payload` from the budget branch's `HumanDecision` and
+collapsing its two outcomes into one keyed `UNKEYED_OPTION`; the gate accepts
+that shape with no other change.
+
+## DECISION F032 D7 (2026-08-28) — a RESOLVED card owes the same triple as an open one, and its outcome speaks of the answer already recorded
+
+CONTEXT, measured at `91b00286`. Two of the eight producing branches of
+`packages/orchestration/decision_queue.py::list_decisions` have TWO ARMS. Branch
+7 builds an open `flight_plan_approval` when the plan's `_approval` is
+`pending`, and a card whose `status` is `resolved`, whose `next_actions` are
+empty and which carries no `payload` at all when the plan was already approved
+and left an `_approval_audit`. Branch 8 has the same shape for `task_decision`.
+`decision_evidence.enforce_decision_evidence` selects the decisions it checks by
+TYPE ALONE and never reads `status`, so the moment either type joins
+`TRIPLE_REQUIRED_TYPES` both of its arms are enforced together. The resolved arm
+is not hypothetical: `tests/orchestration/test_decision_inbox.py` drives it
+directly. The question this decision settles is what a triple MEANS on a card
+whose question has already been answered, since `expected_outcome` and
+`downside` are written in the language of a choice still to come.
+
+CHOSEN. The gate keeps its type-only selection, and a resolved card carries a
+real triple like any other. Its REFS are the audit trail the answer actually
+left — the card's own id, and the recorded reason and mode where the record
+carries them. Its single outcome, keyed `UNKEYED_OPTION` because the arm passes
+no payload, states the consequence of the answer THAT WAS RECORDED rather than
+of one still open: what the run now proceeds to do, and what it costs if the
+ground the answer rested on has since moved.
+
+WHY. Three reasons, in the order they bind. FIRST, the gate's reach would
+otherwise depend on a field each producer sets on its own: `status` is written
+independently by eight branches, and a gate that reads it becomes eight gates
+whose behaviour a reader has to reconstruct per branch, where today the entry
+rule is one sentence — a type is enforced or it is not. SECOND, a resolved card
+is still RENDERED. `build_decision_inbox` returns it, the browser draws it, and
+a reader looking at a plan that was auto-approved has exactly the question the
+triple answers: on what, and at what cost. Enforcement that stopped at
+`status == "open"` would leave that card carrying the honest-legacy placeholder
+forever, which is a false statement about a card this feature did upgrade.
+THIRD, the alternative silently halves the enforcement of both two-armed types:
+`flight_plan_approval` and `task_decision` would report as enforced while the
+arm nobody tested went unchecked, and `docs/roadmap/features/T5_F032.md` makes
+"a canary producer missing a field fails CI" the acceptance criterion, not "a
+canary producer missing a field on one arm".
+
+REJECTED, and why. Guarding the gate with `status == "open"`, so a resolved card
+is left entirely alone. It is the smaller diff and it reads as principled — the
+triple exists so a human can decide, and a resolved card asks nothing. It was
+rejected because the card is still shown, because it makes the enforced set a
+weaker statement than it appears, and because the audit refs a resolved card
+carries are the most checkable evidence in this whole feature: they are the only
+place the record says what was actually answered.
+
+REVERSE by adding `if _text(getattr(decision, "status", None)) != "open":
+continue` to the loop in `enforce_decision_evidence` and deleting the resolved
+arms' triples from branches 7 and 8; no other change is required, and the
+per-arm tests named in the F032 R11 and R12 blocks are the ones that then go
+red.
+
+## DECISION F032 D8 (2026-08-28) — the receipt chip is an ENTRY POINT F023 wires, not a link F032 invents
+
+CONTEXT, measured at `a4a24663`. `docs/roadmap/features/T5_F032.md` makes "the
+card's evidence chips deep-link into the evidence panel" part of Goal & Done,
+and its Design section names the destination outright: "evidence panel deep
+links (the zoom feature's L3 tabs)". That panel is
+`docs/roadmap/features/T5_F023.md` T003 — "EvidencePanel + lazy tabs + deep
+links + cluster" — and `docs/roadmap/STATUS.md` carries F023 as `[ ]`,
+unclaimed. Nothing in `apps/ui/src` renders one. The only detail surface that
+exists is `apps/ui/src/components/detail/DetailPopover.tsx`, which
+`docs/ui/design_reference/component_spec.md` names the "DetailPanel /
+EvidencePanel entry" and which shows a TASK's apply, test and proof status and
+its prompt trace; it has no tab, no route and no prop that accepts a decision's
+evidence ref. F032 depends on F031 alone. This is the same shape as amendment
+A2, where the resolver and its staleness badges were found to be F066's unbuilt
+spec, and it is settled the same way.
+
+CHOSEN. `DecisionInboxCard` takes an OPTIONAL `onOpenEvidence` handler. A
+receipt renders as a `<button>` calling it with the whole
+`DecisionEvidenceRef` when a handler is supplied, and as the `<span>` R14
+shipped when none is. Nothing supplies one in this release, so every card
+renders spans today; F023 supplies the handler and the panel together, and the
+wiring is one prop at one call site. A ref's `target` continues to reach no
+markup, no text and no attribute a browser shows — it travels to the handler as
+a field of the ref, which is not rendering.
+
+WHY. Three reasons, in the order they bind. FIRST, the affordance never lies.
+The card already states that rule at its jump chip — only a decision that can
+really jump gets the control — and a chip that looks pressable while no panel
+exists to receive the press is exactly the dishonest affordance finding R-0693
+registered against the answer buttons. SECOND, this is the pattern the
+canonical design reference itself prescribes for an entry point whose
+destination is not built: `component_spec.md` gives the DiffViewer "a button in
+DetailPopover emitting `onOpenDiff(taskId)` (no-op today)" and the
+RuntimePreview a control "visible only when `dashboard` exposes a runtime URL
+(not yet)". Shipping the entry point and letting the destination arrive later
+is the house style, not an invention of this round. THIRD, it is the smallest
+thing that makes F023 cheap. The alternative that ships nothing leaves F023 to
+discover the receipts, design the payload and edit this component; the prop and
+its call fix the contract now, while the reasoning that produced it is on this
+page.
+
+REJECTED, and why. (1) A `<button disabled>`
+carrying an honest tooltip — "the evidence panel arrives with a later feature" —
+which `ux_spec.md` §14 permits for a disabled control and which the ChatInput
+already does for steering. Rejected because a disabled control is drawn at 45%
+opacity, and the thing dimmed here would be the RECEIPT ITSELF, whose label is
+the evidence and is fully present; F032 would ship the receipts it exists to
+show and immediately style them as unavailable. A disabled button is also
+removed from the tab order, so the honest tooltip is unreachable by exactly the
+reader who most needs it. (2) Rendering nothing beyond R14's span and deferring
+the entire item to F023. Rejected because the deep link is Goal & Done material
+for F032 and handing the whole of it to an unclaimed feature would leave this
+feature's own acceptance unmet with nothing on disk to show where it went.
+
+REVERSE by deleting the `onOpenEvidence` prop from the props type of
+`apps/ui/src/components/panels/DecisionInboxCard.tsx`, deleting its type-only
+`DecisionEvidenceRef` import, collapsing the receipt's two arms back to the
+single `<span>`, deleting the `.decisionEvidenceChip` button, hover and
+focus-visible rules from
+`apps/ui/src/components/panels/RightLivePanel.module.css`, and deleting the
+guard class the F032 R15 block's item S7 adds to
+`tests/ui_contracts/test_decision_answer_wiring.py`. No other change is
+required, and amendment A7 of `docs/roadmap/features/T5_F032.md` is the text to
+strike with it.

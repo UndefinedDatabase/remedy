@@ -66,7 +66,7 @@
 // reason keeps both of those out of this file.
 import { Fragment, useState } from "react";
 import { countOpenDecisions } from "../../api/decisionCard";
-import type { DecisionCardModel } from "../../api/decisionCard";
+import type { DecisionCardModel, DecisionEvidenceRef } from "../../api/decisionCard";
 import { answerDecisionCard } from "../../api/decisionAnswerFlow";
 import { collectDecisionClarificationAnswers, decisionClarificationFieldKey } from "../../api/decisionClarificationForm";
 import { DECISION_FILTER_ALL, decisionInboxView } from "../../api/decisionFilter";
@@ -139,6 +139,17 @@ const DECISION_JUMP_LABEL = "In graph";
  *  visible word would then be missing from the accessible name it explains. */
 const DECISION_JUMP_TITLE = "Show this decision's task in the graph";
 
+/** What the strip of receipt chips IS, for a reader who meets it without the
+ *  card around it. It rides on a `role="group"`, never on a bare `div`: a
+ *  `div`/`span` maps to the ARIA `generic` role, which prohibits an accessible
+ *  name, so the label would be computed and dropped (finding R-0682) — the same
+ *  reason the filter row above carries one. It names what the chips ARE and
+ *  never how many there are or whether any exist: a present/missing signal is
+ *  exactly what §17 of docs/ui/design_reference/ux_spec.md keeps out of the
+ *  default UI, and the model's own note already says the honest sentence when a
+ *  card carries none. */
+const DECISION_EVIDENCE_LABEL = "What this decision is based on";
+
 /** What the plan will take for a question the operator leaves alone. It
  *  PREFIXES the model's own `defaultAnswer` and never replaces it: the value is
  *  the question's and only this noun is the card's. It is a WORD BESIDE AN EMPTY
@@ -158,7 +169,7 @@ const DECISION_CLARIFICATION_IMPACT_LABEL = "Impact";
 /** Every open question in one calm place. With no models this renders nothing at
  *  all — an empty inbox is not news, exactly as `NeedsAttentionCard` shows
  *  nothing when it has no item. */
-export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSelectNode }: {
+export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSelectNode, onOpenEvidence }: {
   decisions: DecisionCardModel[];
   tasks: readonly FocusableTask[];
   /** The job every answer from this card addresses — `dashboard.jobId`, the same
@@ -171,6 +182,15 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
    *  and `RightLivePanel` under this one spelling at every hop. */
   serverToken: string;
   onSelectNode: (nodeId: string | null) => void;
+  /** WHERE A RECEIPT GOES WHEN THERE IS SOMEWHERE TO GO — the evidence panel's
+   *  ENTRY POINT, and nothing supplies it today (DECISION F032 D8). The panel
+   *  itself is `docs/roadmap/features/T5_F023.md` T003, which is unclaimed, so
+   *  every card in this release renders its receipts as plain chips; F023
+   *  supplies this handler and the panel together and the wiring is one prop at
+   *  one call site. It takes the WHOLE ref rather than a field of it, so the
+   *  panel that finally arrives gets `kind` and `target` without this component
+   *  ever reading either — passing a ref on is not rendering it. */
+  onOpenEvidence?: (evidenceRef: DecisionEvidenceRef) => void;
 }) {
   const [chosenType, setChosenType] = useState<string>(DECISION_FILTER_ALL);
   // WHICH answers are waiting on the wire, as a SET of keys rather than one key
@@ -298,6 +318,61 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                     </button>
                   ) : null}
                 </div>
+                {/* THE RECEIPTS, ABOVE EVERYTHING THE OPERATOR CAN PRESS
+                    (T5_F032 T003b). A chip shows the ref's `label` and NOTHING
+                    ELSE. The label reaches the model already scrubbed, and it
+                    is the only one of a ref's three fields a renderer may show:
+                    §17 of docs/ui/design_reference/ux_spec.md forbids the
+                    default UI to show raw ids, and a ref's `target` is
+                    frequently exactly one — a test run id, an escalation id
+                    like `td:1` — so it is carried on the model for the deep
+                    link, travels to `onOpenEvidence` as a field of the ref it
+                    is part of, and appears here in no text, no `title` and no
+                    other attribute a browser shows.
+                    BOTH REGIONS RENDER UNCONDITIONALLY, and that is the model's
+                    doing rather than this markup's luck: `evidenceRefs` is an
+                    EMPTY ARRAY and `evidenceNote` the EMPTY STRING on a card
+                    with no receipts, so the map yields no nodes, the note
+                    yields no text, and RightLivePanel.module.css collapses each
+                    empty one OUT OF FLOW rather than removing it. */}
+                <div className={styles.decisionEvidence} role="group" aria-label={DECISION_EVIDENCE_LABEL}>
+                  {decision.evidenceRefs.map((evidenceRef, evidenceIndex) => (
+                    // A RECEIPT IS A CONTROL ONLY WHEN THERE IS SOMEWHERE TO GO
+                    // (T5_F032 T003c, DECISION F032 D8). That is the jump chip's
+                    // rule one row above, for the same stated reason — the
+                    // affordance never lies — and the discriminator is the
+                    // PRESENCE of the handler rather than anything this file
+                    // reads off the ref. The whole ref travels to it, so the
+                    // panel F023 builds receives `kind` and `target` while this
+                    // component still shows neither.
+                    // THE KEY PAIRS THE RECEIPT'S POSITION WITH ITS LABEL, by
+                    // the rule every other key on this card follows: nothing
+                    // between the endpoint and the model deduplicates refs, so
+                    // two receipts carrying one label still get distinct keys.
+                    // It rides on the outer element of BOTH arms, because React
+                    // keys the node the map yields and not the branch above it.
+                    onOpenEvidence ? (
+                      <button
+                        key={`${evidenceIndex}-${evidenceRef.label}`}
+                        type="button"
+                        className={styles.decisionEvidenceChip}
+                        onClick={() => onOpenEvidence(evidenceRef)}
+                      >
+                        {evidenceRef.label}
+                      </button>
+                    ) : (
+                      <span key={`${evidenceIndex}-${evidenceRef.label}`} className={styles.decisionEvidenceChip}>
+                        {evidenceRef.label}
+                      </span>
+                    )
+                  ))}
+                </div>
+                {/* WHY A CARD HAS NO RECEIPTS, in the model's own sentence and
+                    never in a status word. `evidence_status` IS the
+                    present/missing signal §17 excludes, so it never reaches the
+                    model at all; what arrives here is prose, or the empty
+                    string when there is nothing to explain. */}
+                <p className={styles.decisionEvidenceNote}>{decision.evidenceNote}</p>
                 {/* THE STILL-OPEN QUESTIONS, ABOVE THE ANSWER STRIP: the
                     operator reads what the plan is waiting on before pressing
                     the control that resolves it. A card carrying none renders
@@ -415,6 +490,26 @@ export function DecisionInboxCard({ decisions, tasks, jobId, serverToken, onSele
                         <p className={outcomeClass} aria-live="polite">
                           {outcome === null ? "" : outcome.sentence}
                         </p>
+                        {/* WHAT THIS ANSWER IS EXPECTED TO DO AND WHAT IT
+                            COSTS, under the answer they belong to — the whole
+                            reason F032 hangs both on the ANSWER rather than on
+                            the card, so consent is informed by the option
+                            actually being pressed. THEY SIT AFTER THE OUTCOME
+                            PARAGRAPH IN SOURCE ORDER ON PURPOSE: the guard in
+                            tests/ui_contracts/test_decision_answer_wiring.py
+                            reads the LAST `aria-live` in this file and requires
+                            a `<p` to open it (finding R-0690), so a region
+                            added above it would aim that reader at the wrong
+                            node. Neither carries an `aria-live` of its own: the
+                            text is there from the row's first render and never
+                            mutates, so announcing it would interrupt rather
+                            than inform. BOTH RENDER UNCONDITIONALLY and under
+                            no conditional operator at all — decisionCard.ts
+                            guarantees each is a string, EMPTY rather than
+                            absent, and the stylesheet collapses an empty one
+                            out of flow. */}
+                        <p className={styles.decisionExpectedOutcome}>{answer.expectedOutcome}</p>
+                        <p className={styles.decisionDownside}>{answer.downside}</p>
                       </Fragment>
                     );
                   })}

@@ -30,3 +30,44 @@
   reach — "cannot be reopened from this machine" — that no command in that
   session established, the sandbox having refused every read outside the
   repository; the class already carries `R-0709`.
+
+- 2026-08-27 · F032 R2 · An item-status row in the authored `.agent/plan.md`
+  replacement wrapped across two source lines, so the markdown table rendered
+  one ordered item as two rows; the worker applied it byte for byte and
+  declared it, and the next round's plan rewrite clears it.
+
+- 2026-08-28 · F032 R10 · The block's Done-when preamble put every gate at a
+  commit strictly earlier than C6 while G1 asked for the `git status
+  --porcelain` count after C6, so one clause of one gate was unmeetable by
+  construction; the worker declared it and reported the reading outside the
+  file, and the reviewer measured it at `91b00286` as 0.
+
+- 2026-08-28 · F032 R15 · The block did not carry forward the clause the F032
+  R12 gate entry had labelled binding on the next block ordering a handback —
+  that a false numeral in `.agent/handoff.md` is repaired by a deviation line
+  in the NEXT handback rather than by a commit of its own — so the worker,
+  finding an unmeasured sentence in its own committed handback, spent a ninth
+  commit repairing it and declared the write-once breach itself. Nothing on
+  disk under `packages/`, `apps/`, `tests/` or `docs/` was wrong, so no id was
+  spent; the clause is quoted in the R16 block instead.
+
+- 2026-08-28 · F032 R17 · The block's BASE paragraph wrote the base commit as
+  `c1e208334cd8c7c0cef0a0ae3e5a1e63a4dc65d5` after measuring only the leading
+  eight characters, so thirty-two of the forty were invented and the string
+  names no git object; the real tip was
+  `c1e20833405fc3a5a8f3b50729046578dbc97329`. The worker resolved the intent
+  from the short form the gates quote, ran against the real tip and declared
+  the discrepancy. Nothing on disk under `packages/`, `apps/`, `tests/` or
+  `docs/` was wrong, so no id was spent. Measure a SHA in full or write only
+  the short form that was measured.
+
+- 2026-08-28 · F032 R18 · The LEDGER18 slice was headed `Gate: F032 R16 and R17
+  — `, a shape the record's own `^Gate: F\d+ R\d+ — ` pattern cannot match, so
+  the entry for those two rounds adds no gate key and the count stood still at
+  69 across the commit that wrote it. The reviewer's own pre-emission checklist
+  requires a slice joining a repeating record format to be compared
+  MECHANICALLY against the headers it joins, and that comparison was not run;
+  the block's own gate reported the standing count and the worker declared it.
+  The landed entry is not rewritten — the R19 entry carries the dated
+  correction that indexes it. One round, one key: where an entry covers two,
+  give it the later round's key and name the earlier one in the body.

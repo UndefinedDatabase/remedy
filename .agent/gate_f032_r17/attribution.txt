@@ -1,0 +1,66 @@
+ATTRIBUTION - F032 integration gate, round R17
+docs/agents/integration_gate.md steps 3 and 4; block SPEC items S5, S6 and S7.
+
+THE TWO SETS, IN FULL AND UNTRUNCATED
+  comm -13 base_failed.txt branch_failed.txt   BRANCH-ONLY   0 ids
+    (no lines)
+  comm -23 base_failed.txt branch_failed.txt   BASE-ONLY     2 ids
+    tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+    tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash
+
+S6 - BRANCH-ONLY IDS. The set is EMPTY, so there is nothing to classify and no id
+is a BLOCKER under the block's constraint 12. The branch run exited 0 with
+17982 passed, 20 skipped and no FAILED line at all.
+
+S7 - BASE-ONLY IDS. The obligation is unconditional and the parity claim is VOID
+(see base_parity.txt), so each id below carries direct evidence and, where an
+artifact is implicated, names it.
+
+1. tests/orchestration/test_run_manifest_logical_identity.py::
+   TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash
+   CLASS      : xdist / mid-run artifact rewrite. NOT a blocker, NOT coupled to F032.
+   SERIAL AT BASE   : re-ran the exact node id in the base worktree with
+                      REMEDY_UI_NO_AUTO_BUILD=1 -> exit 0, "1 passed in 1.65s".
+   SERIAL ON BRANCH : re-ran the exact node id in the primary checkout
+                      -> exit 0, "1 passed in 1.69s".
+   REWRITTEN ARTIFACT: apps/ui/dist inside the base worktree. All three of its
+                      files carry mtime Fri Aug 28 02:57:08 2026, inside the base
+                      run window Fri Aug 28 02:55:51 2026 -> Fri Aug 28 02:58:15
+                      2026, and the two asset names changed from the copied-in
+                      index-D_a-qpxM.js / index-D0y3OK7n.css to index-D9dcd0E7.js
+                      / index-Xx8vqzN3.css. A build wrote into the worktree while
+                      the suite was in flight, which changes the worktree digest
+                      mid-run - the exact mechanism finding R-0176 records for
+                      this test file. The test passes the moment that rewrite is
+                      not concurrent with it, which the two serial runs show.
+   NOT F032   : `git diff --stat a399a330..1fa2b3df -- tests/orchestration/ tests/cli/`
+                lists exactly one path, `tests/orchestration/test_decision_evidence.py`
+                at 2116 insertions - a file this branch ADDS. The failing test file
+                is not in that diff, so the branch changed neither it nor anything
+                under tests/cli/.
+
+2. tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+   CLASS      : xdist parallel contention. NOT a blocker, NOT coupled to F032.
+   SERIAL AT BASE   : re-ran the exact node id in the base worktree with
+                      REMEDY_UI_NO_AUTO_BUILD=1 -> exit 0, "1 passed in 0.29s".
+   SERIAL ON BRANCH : re-ran the exact node id in the primary checkout
+                      -> exit 0, "1 passed in 0.30s".
+   EVIDENCE   : the assertion is `assert result.returncode != 0` over
+                `pgrep -f "apps.cli.grouped.*--help"`, and the recorded failure
+                reads `returncode=0, stdout='2351843\n'` - a process matching that
+                pattern existed on the machine at the moment of the assertion.
+                The predicate is machine-wide and cannot distinguish this test's
+                own child from any other process matching the same pattern, so it
+                is sensitive to whatever else is running under `-n auto`. This
+                gate does not claim to know which process owned pid 2351843; it
+                claims only what it measured - the pattern matched under parallel
+                load and did not match on either serial re-run.
+   NO ARTIFACT IMPLICATED: this id is not an environment-parity failure. It needs
+                neither apps/ui/node_modules nor apps/ui/dist, so the VOID parity
+                claim is not its cause and is not offered as one.
+
+VERDICT INPUT (the verdict itself is the reviewer's)
+  BRANCH-ONLY FAILURES : none. No id is a BLOCKER under constraint 12.
+  BASE-ONLY FAILURES   : 2, both attributed above, both passing serially at the
+                         merge base and on the branch, neither touching F032 code.
+  UNATTRIBUTED IDS     : none.

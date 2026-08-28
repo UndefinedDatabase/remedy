@@ -1,0 +1,79 @@
+BASE RUN - F032 integration gate, round R17
+
+WORKTREE
+  command      : git worktree add -b tmp/base-gate \
+                 /home/decodeux/Repos/remedy/.remedy-wt/base-gate \
+                 a399a3304f9d962cd920c251488c40c486b35fdc
+  output       : Preparing worktree (new branch 'tmp/base-gate')
+                 HEAD is now at a399a330 Merge pull request #216 from UndefinedDatabase/feature/amend0827-process-diet
+  merge base   : a399a3304f9d962cd920c251488c40c486b35fdc, from `git merge-base HEAD main`
+  The worktree sits on a throwaway BRANCH and never on a detached HEAD: the
+  self-dogfood branch guard refuses a detached HEAD by design (DECISION D3).
+
+S3 PARITY RESTORE - copy, never symlink, and symlinks=True is the point
+  Before the copy neither artifact existed in the base worktree:
+    ls: cannot access '.../base-gate/apps/ui/node_modules': No such file or directory
+    ls: cannot access '.../base-gate/apps/ui/dist': No such file or directory
+  apps/ui/node_modules
+    call               : shutil.copytree(src, dst, symlinks=True)
+    src                : /home/decodeux/Repos/remedy/apps/ui/node_modules
+    dst                : /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/node_modules
+    files copied       : 43032
+    symlinks preserved : 27
+    seconds            : 1.47
+  apps/ui/dist
+    call               : shutil.copytree(src, dst, symlinks=True)
+    src                : /home/decodeux/Repos/remedy/apps/ui/dist
+    dst                : /home/decodeux/Repos/remedy/.remedy-wt/base-gate/apps/ui/dist
+    files copied       : 3
+    symlinks preserved : 0
+    seconds            : 0.0
+  symlinks=True is not optional: copytree defaults to symlinks=False, which
+  DEREFERENCES npm's bin shims and itself causes base-only failures the parity
+  exists to prevent (finding R-0591). 27 links under node_modules survived the
+  copy as links, so the argument took effect. The sandbox raised no refusal, and
+  neither directory was symlinked into the worktree.
+
+S4 THE AUTO-BUILD NEUTRALISED TWICE OVER
+  FIRST  dist/index.html mtime set to NOW in the base worktree : Fri Aug 28 02:55:51 2026
+         _frontend_is_stale() INSIDE the base worktree         : False
+  SECOND REMEDY_UI_NO_AUTO_BUILD                               : 1, in the base run's environment
+  THIRD  the EVENT is measured and not the outcome (finding R-0444):
+
+THE RUN
+  command      : python3 -m pytest -n auto -q
+  cwd          : /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+  exit code    : 1
+  start        : Fri Aug 28 02:55:51 2026
+  end          : Fri Aug 28 02:58:15 2026
+  wall seconds : 143.98
+  result line  : 2 failed, 17832 passed, 20 skipped in 143.33s (0:02:23)
+  FAILED ids   : 2
+
+THE MTIME WINDOW - every file under the base worktree's apps/ui/dist
+  run window   : Fri Aug 28 02:55:51 2026 -> Fri Aug 28 02:58:15 2026
+  files before : 3      files after : 3
+    assets/index-D9dcd0E7.js           Fri Aug 28 02:57:08 2026   INSIDE the window
+    assets/index-Xx8vqzN3.css          Fri Aug 28 02:57:08 2026   INSIDE the window
+    index.html                         Fri Aug 28 02:57:08 2026   INSIDE the window
+  files removed by the run : assets/index-D_a-qpxM.js, assets/index-D0y3OK7n.css
+  files added by the run   : assets/index-D9dcd0E7.js, assets/index-Xx8vqzN3.css
+
+  PARITY CLAIM : VOID
+  All three files under the base worktree's apps/ui/dist carry an mtime inside
+  the run window, and the two asset NAMES changed: index-D_a-qpxM.js and
+  index-D0y3OK7n.css were copied in, index-D9dcd0E7.js and index-Xx8vqzN3.css
+  were on disk afterwards. vite content-hashes an asset's name, so different
+  names are different bytes - a real build ran inside the base worktree, from
+  the base commit's own sources, which is why its hashes differ from the
+  branch's. The parity claim is therefore VOID, and under S7 every base-only id
+  is attributed by direct evidence in attribution.txt. A content hash is
+  deliberately not offered in place of this reading, because equal content is
+  consistent both with no rebuild and with a byte-identical one.
+
+CLEANUP
+  git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+  git worktree prune
+  git branch -D tmp/base-gate  ->  Deleted branch tmp/base-gate (was a399a330).
+  git worktree list            ->  /home/decodeux/Repos/remedy  1fa2b3df [feature/f032-evidence-triple]
+  git branch --list "tmp/*"    ->  0 lines

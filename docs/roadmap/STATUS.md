@@ -79,7 +79,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F021 — Live activity feed + "agent is doing now" (T001–T003 complete; accepted 2026-08-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f021-closure · package remedy-review-20260823-005026-READY_FOR_REVIEW.zip · SHA-256 be70b65dd4a397ac7697a3c37b2f5cfb1a52197c9434cde67dec4a0a502e3dd8 · accepted HEAD a0a883f7bf47e92bd3c084d127bf56f5f4feaad2)
 - [x] F022 — Live cost ticker (T001–T003 complete; accepted 2026-08-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f022-closure · package remedy-review-20260823-135731-READY_FOR_REVIEW.zip · SHA-256 85fe27aaeefe0b885b6b2fe081187cff51a0e070ae7d9d5320e7d57d1e150f58 · accepted HEAD f215ced4998f6eb6e5ca82117d889b70777ffe12)
 - [x] F031 — Decision inbox (T001–T003 complete; accepted 2026-08-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f031-closure · package remedy-review-20260827-122441-READY_FOR_REVIEW.zip · SHA-256 4b862bf093f4082821662357d730042c28ad6c16078dfa5bced812aca0db4bfa · accepted HEAD f0dad9a8076e8cfc4208dbe5a7097619a31d4cd5)
-- [ ] F032 — Approval with the evidence triple
+- [x] F032 — Approval with the evidence triple (T001–T003 complete; accepted 2026-08-28 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f032-closure · package remedy-review-20260828-032101-READY_FOR_REVIEW.zip · SHA-256 a368e28c61381e17de4bb46a5b35ecc975046be85d456983adf469759c1e2cf4 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c3cf408f537de393bb156e45feae46d5de9f63da)
 - [ ] F037 — Rendered diff viewer
 - [ ] F033 — Hunk-level diff approval
 - [ ] F040 — Completion/return digest

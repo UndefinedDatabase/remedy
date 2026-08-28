@@ -1,0 +1,34 @@
+BRANCH RUN - F032 integration gate, round R17
+
+command            : python3 -m pytest -n auto -q
+cwd                : /home/decodeux/Repos/remedy
+branch             : feature/f032-evidence-triple
+commit             : 1fa2b3df26355f54a89cced41aeb48e286671b85 (C2)
+exit code          : 0
+start              : Fri Aug 28 02:52:30 2026
+end                : Fri Aug 28 02:55:31 2026
+wall seconds       : 180.52
+result line        : 17982 passed, 20 skipped in 179.96s (0:02:59)
+FAILED ids         : 0
+
+S1 - the frontend's currency measured, not assumed and not rebuilt by this worker.
+  _frontend_is_stale()                    : False
+  apps/ui/dist/index.html mtime           : Fri Aug 28 02:46:30 2026
+  newest file under apps/ui/src           : apps/ui/src/components/panels/RightLivePanel.module.css
+  its mtime                               : Fri Aug 28 02:25:15 2026
+  apps/ui/dist/assets contents            : index-D0y3OK7n.css, index-D_a-qpxM.js
+  The build behind those bytes was performed by the REVIEWER before this round,
+  not by this worker; see full_log_provenance.txt.
+
+MTIME WINDOW OF THE PRIMARY CHECKOUT'S apps/ui/dist ACROSS THE BRANCH RUN.
+The block orders this measurement for the base run only. It is recorded here too
+because the same event happened on the branch side, and a gate that measured it
+at base and stayed silent about it here would be reporting selectively.
+  branch run window                       : Fri Aug 28 02:52:30 2026 -> Fri Aug 28 02:55:31 2026
+  apps/ui/dist/index.html                 : Fri Aug 28 02:53:50 2026   INSIDE the window
+  apps/ui/dist/assets/index-D_a-qpxM.js   : Fri Aug 28 02:53:50 2026   INSIDE the window
+  apps/ui/dist/assets/index-D0y3OK7n.css  : Fri Aug 28 02:53:50 2026   INSIDE the window
+  The three asset NAMES are unchanged. vite content-hashes an asset's name, so
+  identical names mean identical bytes: a byte-identical rebuild from the same
+  sources. The branch run recorded 0 failures. What performed it is named in
+  full_log_provenance.txt.
