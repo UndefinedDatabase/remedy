@@ -18,14 +18,16 @@ approval gate.
 | rule the queue format and the consumption point | done | DECISIONS F257 D1 and D2 |
 | the queue file and its read-only loader | done | round 2, 18 tests |
 | render a queue item and plan it on the real job path | done | round 3, 7 tests |
-| refuse a job file written outside its destination | done | this round, R-0733 |
-| consume exactly one item per feature close | done | this round, precondition 6 |
-| document the format where a reader looks | open | acceptance item 1 |
+| refuse a job file written outside its destination | done | round 4, R-0733 |
+| consume exactly one item per feature close | done | round 4, precondition 6 |
+| refuse an id that is not one file name | done | this round, R-0735 |
+| document the format where a reader looks | done | this round |
 
 ## Next Steps
-1. Document the queue format and the job-file format where a reader would look,
-   and register the page in `docs/README.md`.
-2. Run the integration gate and build the closure package.
+1. Run the integration gate — full suite, `pytest -n auto`, raw output — and
+   build the closure package.
+2. Close F257 through docs/roadmap/STATUS_closure_protocol.md, whose new
+   precondition 6 this feature must itself satisfy.
 
 ## Risks
 - A job must never mark its own queue item consumed; neither shipped module owns
