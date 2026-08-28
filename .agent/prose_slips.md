@@ -108,3 +108,28 @@
   being reachable — `docs/agents/planner_reviewer_prompt.md` §3 item 5 asks for
   the probe form where that is not obvious, and this is the case it was written
   for.
+
+- 2026-08-28 · F037 R5 · G8 ordered `^Landed: R-` to read 2 after C4 while the
+  same block's constraint 6 forbade deleting the third such line, which belongs
+  to `R-0711`, so 3 was the only reachable value and the gate contradicted the
+  block's own constraint; a count over a SHARED record file is derived from the
+  base reading plus the lines the round's own constraints add, and pre-existing
+  entries are counted rather than assumed away.
+
+- 2026-08-28 · F037 R5 · SPEC S2 named the `add`-side `[]` as the assertion that
+  fails when `delete` is dropped from the old-side opcode tuple, and the
+  assertion that actually fails is the `del`-side span equality; a stated
+  discriminator is RUN against the mutation it names before it is written down,
+  because a fixture can be right while the sentence explaining it is wrong.
+
+- 2026-08-28 · F037 R5 · SPEC S6 defined significant tokens as "the tokens that
+  are not pure whitespace" and then glossed the both-empty case as lines made of
+  "whitespace and punctuation", which that definition excludes; where a spec
+  states a definition and a gloss beside it, the two are read against each other
+  before emission and the gloss is deleted rather than left to be chosen between.
+
+- 2026-08-28 · F037 R5 · SPEC S8 ordered a report that a `the fox jumps`
+  replacement test still passes, and no such test existed in the corpus; a gate
+  naming a test by its CONTENT is resolved against the file at the base commit,
+  the same obligation `docs/agents/planner_reviewer_prompt.md` §3 item 24 places
+  on a path a gate names.
