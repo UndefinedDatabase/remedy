@@ -218,3 +218,6 @@
 
 2026-08-29 · F257 R4 · The block's PLANF257R5 predecessor marked the consumption-point item `done` in the plan applied at C1, three commits before C4 made it true; the worker applied it verbatim under constraint 1 and declared it, which is the required behaviour.
 2026-08-29 · F257 R4 · The block's FINDF257R4 called the R-0733 fix "four lines long" where the shipped guard is an `if` and a three-line `raise`; the estimate was written before the code existed and nothing on disk depended on it.
+
+2026-08-29 · F257 R5 · The block's S2 asserted that `Path("..").name` is the empty string and that a single-component comparison would therefore refuse `..` unaided; it is `".."`, the worker measured it, and the explicit `entry.id in (".", "..")` arm it added is what makes the shipped check correct.
+2026-08-29 · F257 R5 · Constraint 8's own summarising sentence — "one newline, then the slice, then one newline" — would leave every appended file ending in two newlines; the clauses around it are right, the worker followed those, and every append since round 3 has reconstructed byte-exactly.
