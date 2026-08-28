@@ -12,38 +12,36 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A5.
 
 ## Current Step
-R19 closes the two gaps the R18 gate found and then draws the sidebar. The
-remainder of `R-0725` is the task-run path's own ending, which no assertion
-pins: renaming it alone left the guard green where its two repaired siblings now
-go red. `R-0726` is sharper — the "Open diff" button sat inside the "Changed
-files" section, which renders only on a non-empty `changedFilesSafe`, and that
-list is built from apply EVENTS while the diff is a separate artifact, so the
-viewer's only entry point was invisible for a task run holding a diff and no
-safe file list. The button moves to popover level, which is where
-`component_spec.md:108` lists it. Then `buildDiffFileSummaries`, exported since
-R15 and drawn by nothing, becomes the file sidebar.
+R20 closes what R19 left open and starts the last named piece. `DiffView.tsx`
+still tells its reader the component is not mounted, two rounds after R18
+mounted it, which is `R-0727`. The collapse-threshold count guard counts a bare
+substring, so the `2000` this feature needs next would turn it red for breaking
+nothing — `R-0728`, measured rather than predicted. The `R-0726` repair landed in
+source at R19 and no gate catches the button moving back, so it gets one. Then
+the windowing rule of "virtual scrolling >2k lines" is built in `diffViewModel.ts`
+where vitest really runs it; no component is wired to it this round.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R18 verdict, R-0725 in part, R-0726 | ordered | record first |
-| C3 the R-0725 remainder | ordered | after the record |
-| C4 the R-0726 repair | ordered | the entry point becomes reachable |
-| C5 the file sidebar and its DOM anchor | ordered | the drawing half |
-| C6 the sidebar guard | ordered | nothing here can render a component |
+| C2 the R19 verdict, two resolutions, two findings | ordered | record first |
+| C3 the R-0727 comment repair | ordered | it has been false for two rounds |
+| C4 the R-0728 count-anchor repair | ordered | before C6 needs it |
+| C5 the R-0726 placement gate | ordered | the repair is real but ungated |
+| C6 the windowing rule and its vitest tests | ordered | the last named piece |
 | C7 the handback | ordered | |
 
 ## Next Steps
-1. Virtual scrolling beyond two thousand lines, which the Design section names
-   and which the row list already makes possible.
-2. The lazy language bundles, and the perf fixture whose numbers Acceptance
-   requires recorded.
-3. A ruling on the sidebar's visual treatment: the Design names "paths + stats
-   bars", the binding CSS defines neither, so R19 ships semantics only.
+1. Wire the window into `DiffView`, with the perf fixture Acceptance requires:
+   the 10k-line fixture within budget, and the numbers recorded.
+2. The lazy language bundles, unknown languages rendering plain with no bundle
+   fetch, which Acceptance also names.
+3. A ruling on the sidebar's visual treatment, still owed.
 
 ## Risks
-- Round 19 of a 25-round soft limit, session 5 of 7. Virtual scrolling, the lazy
-  bundles, the perf fixture and the sidebar's styling remain.
-- Nothing in this repository renders a `.tsx` file, so every guard here reads
-  text and `tsc --noEmit` does the rest.
+- Round 20 of a 25-round soft limit, and this is the last round of session 5 of
+  7. If the wiring, the perf fixture and the lazy bundles do not all fit in the
+  next session, the one after it owes a scope report rather than more work.
+- Nothing in this repository renders a `.tsx` file, so the wiring of step 1 will
+  be gated by text and `tsc --noEmit` alone, as every `.tsx` round here has been.
