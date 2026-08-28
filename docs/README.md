@@ -16,6 +16,7 @@
 | planner prompt | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | agents |
 | split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
 | self-drive | [self_drive_protocol.md](agents/self_drive_protocol.md) | agents |
+| self-use track | [self-use-track-v1.md](system/self-use-track-v1.md) | system |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
@@ -132,6 +133,7 @@ Specifications and design documents for the built system.
 | [run-replay-to-self-repair-proposal-v0.md](system/run-replay-to-self-repair-proposal-v0.md) | Replay analysis to self-repair proposal pipeline |
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
 | [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
+| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
 | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-aware-repair-loop-v1-v2.md](system/token-aware-repair-loop-v1-v2.md) | Token-aware repair loop architecture |
