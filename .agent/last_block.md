@@ -1,51 +1,52 @@
-# F037 R11 — the huge-diff corpus shape and the recorded budget
+# F037 R12 — the parse ceiling, repairing R-0721
 
 ## Goal
 
-Book the R10 verdict, close the one shape T001's own task slicing names and the
-corpus never grew, and record the number Acceptance asks for.
+Give the parser a bound it enforces itself, and make the contract's `truncated`
+flag mean something F037 actually decides rather than something an upstream
+producer once wrote into an artifact.
 
-`docs/roadmap/features/T5_F037.md` slices T001 as "the parser (unified → JSON) +
-corpus tests (rename, binary, mode change, empty file, huge file chunking)". Every
-shape in that list has a test except the last. Acceptance asks for a "10k-line
-fixture within the perf budget (recorded)" and no fixture in the repository is
-larger than a few dozen lines. This round closes the corpus gap and records the
-measurement; it changes no parser behaviour.
-
-It also registers, without repairing, what the reviewer measured while sizing the
-round: nothing in F037 bounds the work a single diff can cost. That is `R-0721`,
-and R12 carries the repair, because a ceiling is a behaviour change and belongs in
-a round whose red-proofs are about it rather than beside a corpus addition.
+`R-0721` is registered OPEN against exactly this: `parse_unified_diff_to_view`
+appends one dict per body line with no ceiling, `build_diff_view` copies the
+result onto an envelope the endpoint serialises whole, and the only thing that
+ever sets `truncated` True today is the `[DIFF TRUNCATED]` sentinel some other
+producer emitted. This round closes the parser half. The endpoint half — the
+artifact is read whole into memory before the parser ever sees it — is R13.
 
 ## Base
 
-Base commit `dc938d0e2faa11c84fc1da459e967cc0bc655c82`, branch
-`feature/f037-rendered-diff-viewer`. This is the SHA of the R10 handback this round
-starts from; every range reading below is against it.
+Base commit `f676f41981d83613ab4b216b75e372151881bd83`, branch
+`feature/f037-rendered-diff-viewer`. This is the SHA of the R11 handback this
+round starts from; every range reading below is against it.
 
-## Bundle — five commits
+## Bundle — seven commits
 
 | Commit | Subject | Paths |
 |--------|---------|-------|
-| C0a | docs(agent): save the F037 R11 step block | `.agent/authored/f037-r11.md` |
-| C0b | docs(agent): mirror the F037 R11 block into last_block | `.agent/last_block.md` |
-| C1 | docs(agent): point the plan at the F037 R11 corpus round | `.agent/plan.md` |
-| C2 | docs(agent): book the R10 gate verdict and register R-0721 | `.agent/live_review.md` |
-| C3 | test(orchestration): add the huge-diff corpus shape and record its budget | `tests/orchestration/test_diff_parser.py` |
-| C4 | docs(agent): hand back F037 R11 | `.agent/handoff.md` |
+| C0a | docs(agent): save the F037 R12 step block | `.agent/authored/f037-r12.md` |
+| C0b | docs(agent): mirror the F037 R12 block into last_block | `.agent/last_block.md` |
+| C1 | docs(agent): point the plan at the F037 R12 ceiling round | `.agent/plan.md` |
+| C2 | docs(agent): book the R11 gate verdict and the timing slip | `.agent/live_review.md`, `.agent/prose_slips.md` |
+| C3 | feat(orchestration): bound the parsed diff with DECISION F037 D5 | `.agent/decisions.md`, `packages/orchestration/diff_parser.py` |
+| C4 | test(orchestration): pin the parse ceiling and its exact boundary | `tests/orchestration/test_diff_parser.py` |
+| C5 | docs(agent): resolve R-0721 | `.agent/live_review.md` |
+| C6 | docs(agent): hand back F037 R12 | `.agent/handoff.md` |
 
 ## Exact change set
 
-Nothing outside these six paths is written, created or deleted:
+Nothing outside these eight paths is written, created or deleted:
 
-    .agent/authored/f037-r11.md
+    .agent/authored/f037-r12.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
+    .agent/prose_slips.md
+    .agent/decisions.md
+    packages/orchestration/diff_parser.py
     tests/orchestration/test_diff_parser.py
     .agent/handoff.md
 
-Plus the push of `feature/f037-rendered-diff-viewer` after C4, which is ordered
+Plus the push of `feature/f037-rendered-diff-viewer` after C6, which is ordered
 explicitly here and sits outside every gate below.
 
 ## Constraints
@@ -58,93 +59,121 @@ explicitly here and sits outside every gate below.
 2. Production code is DESCRIBED by the SPEC below, never sliced. The worker writes
    that code itself, in the idiom of the file it is editing, and reads the whole
    file before touching it.
-3. `packages/` IS NOT TOUCHED THIS ROUND. `packages/orchestration/diff_parser.py`
-   is READ and exercised; not one byte of it changes. This round pins the parser's
-   CURRENT behaviour. R12 changes it.
-4. `docs/`, `docs/roadmap/`, `apps/` are NOT touched. No `.ts`, `.tsx` or React
+3. `packages/orchestration/diff_view_source.py` IS NOT TOUCHED. Its unbounded
+   `read_text` is the OTHER half of `R-0721` and belongs to R13; changing it here
+   would leave this round's red-proofs unable to say which half they proved.
+   `packages/orchestration/ui_server.py` is not touched either.
+4. `docs/`, `docs/roadmap/` and `apps/` are NOT touched. No `.ts`, `.tsx` or React
    code is written: the frontend test runner is refused in this environment and
    code neither role can execute must not be certified.
-5. No existing test, fixture constant, helper or import in
-   `tests/orchestration/test_diff_parser.py` is weakened, deleted, renamed or
-   reordered. C3 ADDS.
+5. NO EXISTING TEST IS WEAKENED, DELETED, RENAMED OR REORDERED, and no existing
+   fixture constant, helper or import changes. In particular the four tests R11
+   added stay exactly as they are: they are this round's regression guard, and the
+   ceiling is chosen so that all four still pass untouched. C4 ADDS.
 6. `.agent/live_review.md` is append-only. Nothing already in it is edited,
-   renumbered or deleted, and no id other than `R-0721` is registered. NOTHING is
-   resolved this round: `R-0721` is registered OPEN and stays open.
+   renumbered or deleted. No id is registered this round; exactly `R-0721` is
+   resolved.
 7. No PR is created and nothing is merged. The Open PR Gate is READ and reported.
 8. Every destructive check runs inside a disposable `git worktree` under
    `.remedy-wt/`, never in the primary checkout, and the worktree is removed and
    pruned afterwards.
-9. NO TEST ADDED THIS ROUND ASSERTS A TIMING FIGURE AS AN EQUALITY OR A TIGHT
-   BOUND. The only wall-clock assertion permitted is the single generous ceiling
-   SPEC S5 describes, whose purpose is to catch a change in COMPLEXITY CLASS, not
-   to police a machine. A test that would go red on a runner three times slower
-   than this one is a defect, not a budget.
+9. THE CEILING MUST NOT BITE ON THE FIXTURE ACCEPTANCE NAMES. `T5_F037.md`
+   requires a 10k-line fixture to render within budget; a bound that truncated it
+   would satisfy this block and break the feature. The value in SPEC S1 is twice
+   that fixture for exactly this reason, and G6 mutation (d) is the proof.
 
-## SPEC — C3, the huge-diff corpus shape
+## SPEC — C3, the bound in `packages/orchestration/diff_parser.py`
 
-Read the whole of `tests/orchestration/test_diff_parser.py` first. At the base it
-is 763 lines: a module docstring, `from __future__` , two stdlib imports, an
-import block from `packages.orchestration.diff_parser`, a run of inline fixture
-constants each introduced by a `#:` comment naming the shape it covers, small
-module-level helpers, and module-level test FUNCTIONS — there is no test class in
-this file. Match that idiom exactly.
+Read the whole module first. It is 652 lines at the base and it is PURE and TOTAL
+by contract: it touches no filesystem and never raises. Both properties survive
+this change.
 
-Add a new section at the END of the file, introduced by the same
-`# ---- #` banner comment style the file already uses between sections, titled for
-the huge shape.
+**S1 — the constant.** Add ONE module-level constant beside the existing tuning
+constant `DIFF_INTRALINE_MIN_RATIO`, in the same `#:` comment idiom the file uses
+for every other constant, named `DIFF_VIEW_MAX_BODY_LINES`, with the value
+`20_000`. Its comment names DECISION F037 D5 and states in one sentence that the
+value is twice the 10,000-line fixture the feature file's Acceptance names, so
+that fixture renders in full.
 
-**S1 — the builders, not inline constants.** The file's docstring says every
-fixture carries its diff text INLINE. A ten-thousand-line fixture cannot, and that
-exception is DOCUMENTED rather than left for a reader to notice: add two
-module-level builder functions whose docstrings say in one sentence why this shape
-is generated where every other shape is literal. The first builds a single-file
-diff of N changed body lines as alternating `-`/`+` pairs under one hunk header,
-with a `diff --git` header pair. The second builds an N-file diff, each file with
-one small hunk, so the many-files dimension is covered as well as the many-lines
-one. Both take their size as a parameter and return diff TEXT.
+**S2 — the counter.** Add ONE local counter beside the existing `truncated = False`
+initialisation in `parse_unified_diff_to_view`, counting body lines appended
+ACROSS THE WHOLE DIFF rather than per file or per hunk. The total is what the
+payload costs, and a per-file ceiling would leave a diff of many small files
+unbounded — which is the case G6 mutation (c) exercises.
 
-**S2 — the ten-thousand-line shape parses completely.** A test asserting the
-STRUCTURE, with no timing in it: the fixture parses to exactly one file entry,
-whose hunks hold exactly as many body lines as were generated, whose `stats`
-`added` and `deleted` each equal a recount of that file's own parsed line kinds,
-and whose hunk ids are all distinct. Assert the PROPERTY against the generated
-size, never a transcribed literal — the file's existing
-`test_every_file_stats_equal_a_recount_of_its_own_parsed_lines` is the model.
+**S3 — the guard.** In the hunk-body branch, at the point where a classified line
+is about to be appended, refuse the append once the counter has REACHED the
+ceiling: set `truncated` True and stop walking the input. Increment the counter
+once per appended line. The boundary is INCLUSIVE of the ceiling — a diff of
+exactly `DIFF_VIEW_MAX_BODY_LINES` body lines parses in full and is NOT marked
+truncated; the flag and the stop appear only for input that exceeds it.
 
-**S3 — line numbering survives the whole file.** The same fixture, asserting that
-the old-side line numbers of the `del` lines are strictly increasing across the
-entire parsed file and likewise the new-side numbers of the `add` lines, and that
-the LAST line of the file carries the line number its position implies. This is
-the assertion that would catch a counter that drifts only after thousands of
-lines — the shapes already in the corpus are far too short to reach it.
+**S4 — the WHY comment.** The guard carries the one-line WHY comment this
+repository's discoverability conventions put directly above a definition, and it
+states what the reader most needs: the flag is the contract's own field, the stop
+is deliberate rather than an error, and the last file in a truncated view may hold
+a partial hunk or none at all.
 
-**S4 — the many-files shape.** The second builder at a size in the hundreds: the
-parsed view holds exactly that many file entries, their paths are all distinct and
-in input order, and no entry is a phantom with zero hunks. The doubled-header
-collapse this parser performs is what makes this worth asserting at scale.
+**S5 — the deliberate absence, documented where a reader would search for it.**
+State in the module — in the guard's comment or the constant's — that Remedy
+deliberately does NOT bound the artifact READ here, because this module touches no
+filesystem, and name `diff_view_source.py` as where that bound belongs. Text
+search cannot find code that does not exist, and the next reader will look here
+first.
 
-**S5 — the recorded budget, as a complexity guard.** One test that parses the
-larger of the two sizes and asserts the elapsed wall-clock time is under a
-GENEROUS absolute ceiling. Its docstring RECORDS, as prose, the figure measured
-when the test was written, and names the machine class it was measured on, and
-states plainly that the ceiling is not that figure: it is set roughly an order of
-magnitude above it so that a slower runner passes while a change from linear to
-quadratic cost fails. Say in the docstring what the quadratic figure would be, so
-the next reader can see the ceiling separates the two cases rather than having to
-trust that it does. Use `time.perf_counter`; add `time` to the stdlib imports in
-the existing import block, in alphabetical order.
+**S6 — nothing else changes.** No existing function signature, docstring,
+constant, regex or branch is altered. `parse_unified_diff_to_view` still never
+raises and still returns the empty-files shape for empty input, non-diff text and
+a non-string argument.
 
-**S6 — nothing else changes.** The module docstring, the existing imports, every
-fixture constant, every helper and all twenty-eight existing tests are untouched.
+## SPEC — C4, the tests in `tests/orchestration/test_diff_parser.py`
+
+Add a new section at the END of the file, in the same banner-comment idiom, using
+the `_generated_huge_single_file_diff` and `_generated_many_file_diff` builders
+R11 already added. Import `DIFF_VIEW_MAX_BODY_LINES` by adding it to the existing
+import block in alphabetical order. Every size below is expressed in terms of that
+constant, never as a transcribed literal, so the tests follow the ceiling if it is
+ever re-decided.
+
+**S7 — above the ceiling, the bound bites.** A diff generated well above the
+ceiling parses to exactly `DIFF_VIEW_MAX_BODY_LINES` body lines in total across
+all files, and `truncated` is True.
+
+**S8 — the exact boundary, both sides.** A diff of exactly
+`DIFF_VIEW_MAX_BODY_LINES` body lines parses in FULL with `truncated` False, and a
+diff of exactly two more parses to exactly the ceiling with `truncated` True. Both
+halves in the assertions, because an off-by-one in the comparison moves the
+boundary by one and only a test that pins both sides can see it.
+
+**S9 — the many-files dimension is bounded by the same counter.** A diff of
+several thousand one-line files, whose TOTAL body lines exceed the ceiling, is
+truncated at the same total. This is the case a per-file ceiling would miss.
+
+**S10 — the Acceptance fixture is NOT truncated.** The 10,000-line fixture R11
+added parses in full with `truncated` False, asserted against
+`HUGE_DIFF_BODY_LINE_COUNT` and `DIFF_VIEW_MAX_BODY_LINES` rather than against
+literals, together with the relationship the two constants must keep — the ceiling
+is strictly greater than the fixture. This is constraint 9 written as a test.
+
+**S11 — stats stay honest under truncation.** For the truncated view, each file's
+`stats` still equal a recount of that file's OWN parsed lines, the way
+`test_every_file_stats_equal_a_recount_of_its_own_parsed_lines` asserts it for the
+untruncated corpus. A bound that left stats describing lines that are not in the
+payload would be worse than no bound.
+
+**S12 — the docstrings say what the truncated view IS.** At least one of the new
+tests states in its docstring that the last file of a truncated view may carry a
+partial hunk or an empty one, so a reader meeting that shape does not file it as a
+defect.
 
 ## Slices
 
-<<<SLICE PLANF037R11
+<<<SLICE PLANF037R12
 # Plan — F037 Rendered diff viewer
 
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
 merge commit of pull request #217 which closed F032.
-`.agent/decisions.md` carries the DECISION series, F037 D1 through D4.
+`.agent/decisions.md` carries the DECISION series, F037 D1 through D5.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
@@ -155,61 +184,143 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments A1 through A4.
 
 ## Current Step
-R11 closes the one shape T001's task slicing names and the corpus never grew —
-the huge diff — and records the perf number Acceptance asks for. It changes no
-parser behaviour. It also registers `R-0721`: nothing in F037 bounds the work one
-diff can cost, and the contract's own `truncated` field is only ever relayed from
-an upstream sentinel, never set by this feature.
+R12 repairs `R-0721`: the parser bounds its own output at
+`DIFF_VIEW_MAX_BODY_LINES` and sets the contract's `truncated` flag when the bound
+bites, so that flag becomes something F037 decides rather than only a relay of an
+upstream sentinel. The ceiling is twice the 10k fixture Acceptance names, so that
+fixture still renders in full. DECISION F037 D5 records the value and how to
+reverse it.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R10 verdict and R-0721 | ordered | record first; nothing is resolved |
-| C3 the huge-diff corpus shape | ordered | structure, numbering, scale, budget |
-| C4 the handback | ordered | |
+| C2 the R11 verdict and the timing slip | ordered | record first |
+| C3 DECISION F037 D5 and the ceiling | ordered | the choice beside what it governs |
+| C4 the boundary tests | ordered | both sides of the ceiling, or an off-by-one hides |
+| C5 the resolution | ordered | written after the repair is proved |
+| C6 the handback | ordered | |
 
 ## Next Steps
-1. R12 repairs `R-0721`: a line ceiling the parser enforces itself, setting the
-   contract's `truncated` flag when it bites, with the ceiling above the 10k
-   fixture Acceptance names so that fixture still renders in full.
-2. R13 carries the same bound at the endpoint, where the artifact is read whole
-   into memory before the parser ever sees it.
-3. T002's rendering core and all of T003 stay BLOCKED. `npx vitest`, the `npm`
+1. R13 carries the other half of `R-0721`: `diff_view_source.py` reads the whole
+   artifact with `read_text` before the parser ever sees it, so the input is
+   still unbounded even once the output is not.
+2. T002's rendering core and all of T003 stay BLOCKED. `npx vitest`, the `npm`
    script and the direct binary were each refused again while planning R10, for
    the reviewer, as they were for both roles at R8.
 
 ## Risks
-- A wall-clock assertion is the flakiest thing a suite can hold. R11's ceiling is
-  set an order of magnitude above the measured figure so it separates linear from
-  quadratic cost and nothing finer; tightening it later would buy noise.
+- A ceiling is a behaviour change on a shipped read path. The four tests R11 added
+  are the regression guard and constraint 5 forbids touching them; if one of them
+  moves, the ceiling was chosen wrong rather than the test being stale.
 - The binding CSS defines no intraline treatment while Acceptance requires
   intraline emphasis. Inventing a colour early would breach the feature file's
   own banner, so it stays a question for the round that renders spans.
-<<<END PLANF037R11
+<<<END PLANF037R12
 
-<<<SLICE GATER10
-Gate: F037 R10 — the repair round that opened session 3, and the first round of this feature whose transport proof begins at a value the reviewer held BEFORE delegating. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of them itself at `dc938d0e`. TRANSPORT IS PROVED END TO END, WHICH IS STRONGER THAN THE CHAIN R9 COULD OFFER: the block was written to the reviewer's gitignored scratch at `.remedy-wt/f037-r10-block.md` before the worker existed, measured there at sha256 `fd579581a57a690f379763b89d3404d51d7f8afe70ab44fada1ec1c8c9080335` over 25073 bytes and 301 lines, and the committed `.agent/authored/f037-r10.md` is byte-identical to that scratch original, so the FIRST link is measured rather than merely disclaimed; the saved copy and `.agent/last_block.md` are ONE git blob `12c20a91f4ea4e5477c1eba4a56725c2a5a22191`. EXTRACTION REPRODUCES THE BLOCK'S ARITHMETIC EXACTLY: 4 slices at 48, 1, 1 and 1 content lines, CONTENT 51 against TOTAL 301, PROSE 250, both caps holding. THE PLAN IS BYTE-EQUAL to PLANF037R10 with the trailing-newline negative control `False`, at 48 lines with one `## Goal` and one `## Next Steps` — and the block deliberately named no predicted line count for that slice, which is why the off-by-one that cost R8 a defect and R9 a declared deviation could not recur. ALL THREE APPENDS ARE PROVED BY BYTE IDENTITY re-read from disk, `result == before + b"\n" + slice`, applied in order GATER9 then FIND0720 at C2 and DONE0720 at C4, each negative control `False`, the base of `.agent/live_review.md` measured at 1176292 bytes exactly as the block named it, and the pre-round blob is a byte PREFIX of the result so nothing in the append-only record was rewritten. THE RECORD MOVED AS ORDERED AND ONLY AS ORDERED: `^- R-\d+ — ` 280 to 281, `^Done: R-\d+ — ` 28 to 29, `^Landed: R-` unmoved at 1, `^Gate: F\d+ R\d+ — ` 79 to 80, the single id added being `R-0720`, exactly `R-0720` resolved, every id distinct and the open set unmoved at 252. THE SUITES AND THE LINT ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/ui_contracts/ -q` exit 0 at `588 passed, 4 skipped`, the delta of exactly one being C3's new test; `python3 -m ruff check tests/ui_contracts/test_diff_surface_css.py` exit 0 at `All checks passed!`; and the canary `python3 -m pytest tests/cli/test_golden_path.py -q` exit 0 at `42 passed`, matching the base figure. THE RED-PROOF REPRODUCES AND IT IS GENUINELY DISCRIMINATING, which is the whole point of this round: in a disposable worktree at the C3 tree with `__pycache__` purged and `python3 -B` used, the unmutated control is exit 0 at `8 passed`; the mutation is a PURE REORDER of the `.diffLine` rule — the reviewer verified the declaration MULTISET is identical before and after and only the order differs — and it comes back exit 1 at `1 failed, 7 passed` failing exactly `test_no_font_shorthand_follows_the_ligature_declaration`; and THE SAME REORDER RUN AGAINST THE GUARD AS IT STOOD AT THE BASE `c777fe83` comes back exit 0 at `7 passed`. That third reading is the one that matters: it proves the defect was real rather than asserted, and it proves the NEW assertion is what fires rather than an existing substring assertion the reorder happens to disturb. THE CODE MATCHES THE SPEC WITHOUT DRIFT: two module-level helpers with the same left-boundary guard the file's existing `_declaration` uses, one test covering BOTH `.diffLine` and `.hunkHead` because a shorthand could be introduced into either, and each assertion message naming the selector it is about; not one existing assertion was weakened, renamed or reordered, and the stylesheet itself is byte-identical, which the restricted `apps/` diff proves rather than claims. THE FIVE DECLARED DEVIATIONS ARE ALL HONEST AND NONE IS A DEFECT: a second `git worktree remove` returned exit 128 because the first had already succeeded, and the worker reported the failing call rather than only the good one; the base-guard negative control reused the one worktree via a detach-and-remutate rather than creating a second, which leaves constraint 8 intact because no mutation ever touched the primary checkout; the `tests/ui_contracts/` figure moved 587 to 588, for which the block predicted nothing; and the stated assumption about the shorthand's right boundary is correct and was verified behaviourally, since `.hunkHead` carries both `font-size` and `font-feature-settings` and stayed green throughout. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
-<<<END GATER10
+<<<SLICE GATER11
+Gate: F037 R11 — the corpus round that closed T001's last named shape and recorded Acceptance's perf figure. THE ROUND PASSED on every gate its block ordered, G1 through G8, and the reviewer re-ran all of them itself at `f676f419`. TRANSPORT IS PROVED FROM A VALUE THE REVIEWER HELD BEFORE DELEGATING: the block was written to the gitignored scratch `.remedy-wt/f037-r11-block.md` and measured there at sha256 `d44846216a9cf57accbb7575308622452d020fe1244838c50ad4b59ac9b1a242` over 26435 bytes and 326 lines, and the committed `.agent/authored/f037-r11.md` is byte-identical to that original, with the saved copy and `.agent/last_block.md` ONE git blob `9cf846287e22e52a6596f23d92b5630a07712626`. EXTRACTION REPRODUCES: 3 slices at 46, 1 and 1 content lines, CONTENT 48 against TOTAL 326, PROSE 278, both caps holding. THE PLAN IS BYTE-EQUAL to PLANF037R11 with the trailing-newline control `False`, at 46 lines. BOTH APPENDS ARE PROVED BY BYTE IDENTITY re-read from disk with the negative control `False`, and the pre-round blob is a byte PREFIX of the result. THE RECORD MOVED AS ORDERED AND ONLY AS ORDERED: `^- R-\d+ — ` 281 to 282, `^Done: R-\d+ — ` unmoved at 29, `^Landed: R-` unmoved at 1, `^Gate: F\d+ R\d+ — ` 80 to 81, the single id added being `R-0721`, NOTHING resolved as constraint 6 required, every id distinct, and the open set 252 to 253. CONSTRAINT 3 IS PROVED RATHER THAN ASSERTED: the restricted `git diff --stat` over `packages/` between the base and C3 is EMPTY, so the parser this round pins was not touched while being pinned. THE SUITES AND THE LINT ARE GREEN AT REAL EXIT CODES RE-RUN BY THE REVIEWER: `python3 -m pytest tests/orchestration/test_diff_parser.py tests/orchestration/test_diff_view_source.py -q` exit 0 at `41 passed`, `python3 -m ruff check tests/orchestration/test_diff_parser.py` exit 0 at `All checks passed!`, and the canary exit 0 at `42 passed`, matching the base figure. BOTH RED-PROOFS REPRODUCE EXACTLY, run by the reviewer in a disposable worktree at the C3 tree with `__pycache__` purged and `python3 -B` used and each restore verified byte-identical: unmutated control exit 0 at `32 passed`; a cap of 100 parsed body lines is exit 1 at `3 failed, 29 passed`, killing all three of the huge-file tests; and a cap of 10 file regions is exit 1 at `1 failed, 31 passed`, killing the many-files test. THE DISCRIMINATOR IS THE POINT AND IT HOLDS: the reviewer measured both mutations against the corpus AS IT STOOD AT THE BASE and both came back exit 0 at `28 passed`, so neither is visible to the twenty-eight tests that existed before this round — C3's four tests are the only thing that can see a silent truncation, which is precisely what `R-0721` says the corpus was blind to. THE REVIEWER ADDED A VACUOUSNESS CONTROL THE BLOCK DID NOT ORDER, because a timing assertion is the easiest thing in a suite to satisfy by doing nothing: making the parser return the empty shape immediately is exit 1 at `29 failed, 3 passed`, and the budget test is among the failures — it pins the parsed-line count before it looks at the clock, so it cannot be met by parsing nothing. THE TIMING ASSERTION IS NOT FLAKY AND THE REVIEWER MEASURED THAT RATHER THAN TRUSTING IT: twenty consecutive parses of the committed fixture ran from 0.0998 s to 0.1052 s, so the 0.5 s ceiling holds 4.8 times the WORST sample, which clears the block's own constraint 9 requirement of surviving a three-times-slower runner. THE ROUND'S TWO SUBSTANTIVE DEVIATIONS ARE BOTH CORRECT AND THE SECOND IS THE REVIEWER'S ERROR, NOT THE WORKER'S. First, the worker set the ceiling at five times the measurement rather than the "roughly an order of magnitude" SPEC S5 asked for, because ten times would land at 1.0 s, which is exactly where the quadratic case lands — a ten-times ceiling would have passed both the linear and the quadratic parser and recorded nothing. That is the SPEC's purpose clause defeating its own adjective, the worker read the purpose, chose the value that separates the two cases, and wrote both figures into the docstring. Second, the worker could not reproduce the 0.363 s figure FIND0721 states and measured 0.105 s. The worker is right and the finding's numeral is the reviewer's measurement artifact: that figure was taken with `tracemalloc` active, and the reviewer has since measured the same fixture at 0.101 s clean against 0.262 s with `tracemalloc` running — 2.6 times slower — with the remainder explained by the different generated content the reviewer's probe used. The finding's SUBSTANCE is unaffected and was re-confirmed: the cost is linear and the output is unbounded, which is what `R-0721` is about. The inaccurate numeral is a reviewer-prose slip with no product effect, so under operator amendment amend0827 rule 2 it spends no id, and under the same rule's fourth bullet it earns no correction round; it is recorded in `.agent/prose_slips.md` by this round's C2. NO BLOCK CONDITION AROSE: nothing fabricated, no false green, no missing changed-files table, no unverified completion claim and no silent scope change.
+<<<END GATER11
 
-<<<SLICE FIND0721
-- R-0721 — Medium, NOTHING IN F037 BOUNDS THE WORK ONE DIFF CAN COST, AND THE CONTRACT FIELD THAT EXISTS TO SAY SO IS NEVER SET BY THIS FEATURE. Raised by the reviewer at the F037 R10 gate while sizing the huge-diff corpus round; no round was ordered to look for it. THE CONTRACT ALREADY HAS THE SEAM: `parse_unified_diff_to_view` returns a top-level `truncated` flag and `build_diff_view` copies it onto the envelope, but the ONLY thing that ever sets it True is the upstream `[DIFF TRUNCATED]` sentinel that some other producer wrote into the artifact first. F037 itself never truncates anything, so `truncated` is a relay, not a bound. NEITHER HALF OF THE FEATURE BOUNDS ANYTHING ELSE EITHER: `packages/orchestration/diff_view_source.py` reads the artifact with `artifact.read_text(encoding="utf-8")`, whole, with no size check before or after, and `packages/orchestration/diff_parser.py` splits that string and appends one dict per body line with no ceiling on the count. The endpoint then serialises the whole structure into a single response. MEASURED BY THE REVIEWER at `dc938d0e` on this host, parsing generated single-file diffs: 10004 input lines and 0.42 MB of text produce 10001 parsed line objects, 1.28 MB of JSON and a 5.1 MB peak allocation in 0.363 s; 20004 input lines produce 2.57 MB of JSON and a 10.3 MB peak in 0.740 s. COST IS LINEAR AND THAT IS THE GOOD NEWS — the reviewer measured 1k, 2k, 5k, 10k and 20k lines and the per-line cost is flat, and a 400-file shape scales the same way, so there is no quadratic defect hiding here and the JSON is a steady ~3.1x the input bytes. THE DEFECT IS THE ABSENCE OF A CEILING, NOT THE SLOPE: a linear function with no bound is still unbounded, and `workspace.diff` is a job's ENTIRE workspace diff, a size no code in this repository constrains. A job that rewrote a lockfile or vendored a dependency would have the server read the whole artifact into memory, build one dict per line, and serialise several tens of megabytes into one HTTP response, on a request any viewer makes automatically when the panel opens. MEDIUM AND NOT HIGH because nothing is wrong on disk today, no suite is red, no artifact in the repository is known to be that large, and the failure mode is degradation rather than incorrectness. NOT LOW because Acceptance names a recorded perf budget and there is nothing to record against, because the field that would express the bound already exists and is inert, and because the client half that would otherwise defend itself — virtual scrolling beyond 2k lines, per T003 — cannot be built in this environment while the frontend test runner is refused, so the server is the only place a bound can currently live. THIS IS NOT `R-0719`, a feature-file pointer to a design-reference section that does not exist, and not `R-0720`, a guard blind to declaration order: this is a missing bound in shipped production code. COUNTER-MEASURE: the parser enforces a ceiling on parsed body lines ITSELF and sets `truncated` True when it bites, with the ceiling set ABOVE the 10k-line fixture Acceptance names so that fixture still renders in full; the endpoint half follows, since the artifact is read whole before the parser ever sees it. F037 R11 records the measurements and adds the corpus shape and changes no behaviour; R12 carries the repair, which is a behaviour change and earns red-proofs of its own. OPEN.
-<<<END FIND0721
+<<<SLICE SLIPR12
+- 2026-08-28 · F037 R11 · Finding `R-0721` states a parse cost of 0.363 s for a
+  10k-line diff, and the figure is an artifact of the reviewer's own probe rather
+  than a property of the parser: it was measured with `tracemalloc` active around
+  the call. Measured clean afterwards, the same fixture parses in 0.101 s and the
+  same fixture with `tracemalloc` running takes 0.262 s, so the instrumentation
+  accounted for a factor of 2.6 and the different generated content of the probe
+  for the rest. The R11 worker measured 0.105 s, reported the disagreement instead
+  of transcribing the finding, and was right to. The finding's substance — linear
+  cost, no ceiling — is unaffected and was re-confirmed. A timing figure that will
+  be written into the append-only record is measured by the SAME instrument the
+  round will use to check it, never through a profiler that is switched on for the
+  memory reading beside it; a measurement's harness is part of the measurement.
+<<<END SLIPR12
+
+<<<SLICE DECISION5
+## DECISION F037 D5 — the parsed diff is bounded at 20,000 body lines, and `truncated` becomes something F037 decides
+
+**Date:** 2026-08-28 · **Round:** F037 R12 · **Finding:** `R-0721`
+
+**The choice.** `packages/orchestration/diff_parser.py` gains a module constant
+`DIFF_VIEW_MAX_BODY_LINES = 20_000` and refuses to append a body line once the
+count of appended lines ACROSS THE WHOLE DIFF has reached it, setting the
+contract's existing top-level `truncated` flag True and stopping the walk. A diff
+of exactly the ceiling parses in full and is not marked truncated; the flag and
+the stop appear only above it.
+
+**Why a bound exists at all.** `R-0721` measured the absence: the parser appended
+one dict per body line with no ceiling, `build_diff_view` copied the result onto
+the envelope, and the endpoint serialised the whole thing into one response.
+`workspace.diff` is a job's ENTIRE workspace diff and no code in this repository
+constrains its size, so a job that vendored a dependency or rewrote a lockfile
+would have the server build tens of megabytes of JSON on a request the viewer
+makes automatically. The cost is linear — the reviewer measured 1k through 20k
+lines and the per-line cost is flat — but a linear function with no bound is still
+unbounded, and the client half that would otherwise defend itself, T003's virtual
+scrolling, cannot be built while the frontend test runner is refused here.
+
+**Why 20,000.** The feature file's Acceptance names a 10,000-line fixture that
+must render within budget. A ceiling at or below that would truncate the very
+fixture the feature is accepted against, so the value is twice it: the Acceptance
+case renders in full with room to spare, and the worst-case payload is bounded at
+roughly 2.6 MB of JSON rather than growing with whatever a job happened to touch.
+
+**Why a TOTAL rather than a per-file ceiling.** The payload is the sum. A per-file
+bound leaves a diff of fifteen thousand one-line files completely unbounded, which
+is a realistic `workspace.diff` shape, so the counter spans the whole diff and the
+tests exercise that case directly.
+
+**Why truncation rather than a refusal.** `truncated` already exists in the
+contract v1 and has until now only ever relayed an upstream `[DIFF TRUNCATED]`
+sentinel. The viewer's whole design, stated in `diff_view_source.py`'s own module
+docstring, is that every absence is NAMED in the data rather than raised: a viewer
+that 500s on a large job is worse than one that says, in the data, that it is
+showing the first part. This makes the existing field mean what its name says.
+
+**What a truncated view looks like, plainly.** The walk stops mid-input, so the
+LAST file in the list may carry a partial hunk or a hunk holding no lines at all,
+and files after it do not appear. Each file's `stats` still equal a recount of
+that file's own parsed lines, so nothing in the payload describes content the
+payload does not carry. `truncated` True is the client's signal that the list is a
+prefix and not the whole diff.
+
+**Alternatives rejected.** (1) Leave it unbounded — this is the status quo
+`R-0721` registers, and it makes the server's memory a function of an
+unconstrained artifact. (2) Bound the artifact READ instead — that is a real and
+complementary bound, it belongs in `diff_view_source.py` where the filesystem is
+touched, and F037 R13 carries it; it is not an alternative to this one, because
+0.4 MB of input still expands to over 1 MB of JSON. (3) A byte ceiling on the
+input text rather than a line ceiling on the output — rejected because the
+contract's unit is a line, the cost is per line object, and a byte cut lands
+mid-hunk at an offset no field of the contract can express. (4) Refuse above the
+ceiling with an error — rejected for the reason above.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_BODY_LINES` and the guard that reads it
+in `parse_unified_diff_to_view`, and delete the tests F037 R12 added in the final
+section of `tests/orchestration/test_diff_parser.py`. Nothing else depends on the
+constant; the `truncated` field returns to relaying the upstream sentinel alone.
+<<<END DECISION5
+
+<<<SLICE DONE0721
+Done: R-0721 — RESOLVED IN PART at F037 R12, and the remaining part is named rather than left implied. `packages/orchestration/diff_parser.py` now carries `DIFF_VIEW_MAX_BODY_LINES` and refuses to append a body line once that many have been appended across the whole diff, setting the contract's `truncated` flag and stopping the walk — so the flag is now something F037 DECIDES, where before it only ever relayed an upstream `[DIFF TRUNCATED]` sentinel, which is the specific inertness the finding registered. DECISION F037 D5 records the value, why it is twice the 10,000-line fixture Acceptance names, why the counter spans the whole diff rather than each file, and how to reverse the whole thing. The repair is proved in both colours rather than asserted, and the boundary is pinned on BOTH sides so an off-by-one in the comparison cannot hide: a diff of exactly the ceiling parses in full and is not marked truncated, a diff of two more parses to exactly the ceiling and is. The many-files dimension is covered by the same counter and the same tests, which is the case a per-file ceiling would have missed. THE PART THAT IS NOT REPAIRED, STATED PLAINLY: `packages/orchestration/diff_view_source.py` still reads the artifact whole with `read_text` before the parser ever sees it, so the INPUT is still unbounded even though the OUTPUT no longer is; constraint 3 of the R12 block deliberately kept that module out of this round so these red-proofs could say which half they proved, and F037 R13 carries it. The four tests F037 R11 added are untouched and still pass, which is what proves the ceiling was chosen high enough not to truncate the fixture the feature is accepted against.
+<<<END DONE0721
 
 ## Gates — every command is RUN and its REAL exit code recorded
 
 Eight gates. "Green" as a word is a finding; a gate that was not executed is
 reported as not executed.
 
-**G1 hygiene.** Read `.agent/STOP` from disk BEFORE C0a and again before C4, and
+**G1 hygiene.** Read `.agent/STOP` from disk BEFORE C0a and again before C6, and
 report the literal reading both times. Report `git rev-parse HEAD` before C0a and
 state whether it equals the base above, and `git branch --show-current`. Report the
-LINE COUNT of `git status --porcelain` after each of C0a, C0b, C1, C2 and C3.
+LINE COUNT of `git status --porcelain` after each of C0a, C0b, C1, C2, C3, C4 and
+C5.
 
 **G2 transport, ONE digest comparison.** After C0b, report `git rev-parse` of both
-`HEAD:.agent/authored/f037-r11.md` and `HEAD:.agent/last_block.md` and state
+`HEAD:.agent/authored/f037-r12.md` and `HEAD:.agent/last_block.md` and state
 whether they are the same blob hash. Report the sha256, byte count and line count
-of the working copy of `.agent/authored/f037-r11.md`. State plainly what the chain
+of the working copy of `.agent/authored/f037-r12.md`. State plainly what the chain
 covers: the saved copy and its mirror.
 
 **G3 extraction and caps.** Extract every slice from the COMMITTED C0a blob by its
@@ -219,108 +330,110 @@ most 490 and PROSE at most 400. Measure the blob; carry no figure from this bloc
 prose into that table.
 
 **G4 the plan at C1.** Report whether `.agent/plan.md` is byte-equal to the
-PLANF037R11 slice, newline included, and a NEGATIVE CONTROL against the same slice
+PLANF037R12 slice, newline included, and a NEGATIVE CONTROL against the same slice
 minus its trailing newline, which must read False. Report the count of lines
 exactly matching `## Goal` and of lines exactly matching `## Next Steps`. Report
 `wc -l` and state whether it is STRICTLY under 50. The binding clause is the strict
 inequality; the measurement wins over any figure elsewhere and disagreement is
 declared.
 
-**G5 the record at C2.** For each of the two appends — GATER10 then FIND0721 —
-report the file's byte size before and after and TWO independent readers. Reader
-(a) is the BYTE IDENTITY `result == before + b"\n" + slice`, re-read from disk.
-Reader (b) counts the N blank-line-separated units in the slice and compares the
-LAST N units of the file against the slice's N units IN ORDER. Report a NEGATIVE
-CONTROL per append flipping ONE byte INSIDE the first appended paragraph; BOTH
-readers must come back False. Report whether the pre-round blob of
-`.agent/live_review.md` is a byte PREFIX of the result.
-Then report these counts over `.agent/live_review.md` after C2, line-anchored:
+**G5 the record at C2, C3 and C5.** For each of the four appends — GATER11 into
+`.agent/live_review.md` and SLIPR12 into `.agent/prose_slips.md` at C2, DECISION5
+into `.agent/decisions.md` at C3, DONE0721 into `.agent/live_review.md` at C5 —
+report the file's byte size before and after and TWO independent readers. Reader (a)
+is the BYTE IDENTITY `result == before + b"\n" + slice`, re-read from disk. Reader
+(b) counts the N blank-line-separated units in the slice and compares the LAST N
+units of the file against the slice's N units IN ORDER. Report a NEGATIVE CONTROL
+per append flipping ONE byte INSIDE the first appended paragraph; BOTH readers must
+come back False. Report whether the pre-round blob of each file is a byte PREFIX of
+its result.
+Then report these counts over `.agent/live_review.md` after C5, line-anchored:
 `^- R-\d+ — `, `^Done: R-\d+ — `, `^Landed: R-`, `^Gate: F\d+ R\d+ — `, the size of
-the open set, whether every id is distinct, whether `R-0721` occurs exactly once as
-a registration, and whether it occurs ZERO times as a resolution — constraint 6
-orders it left open.
+the open set, whether every id is distinct, whether `R-0721` occurs ZERO times as a
+new registration this round and exactly once as a resolution. Report `^## DECISION `
+over `.agent/decisions.md` and the count of `F037 D5`, which must be exactly 1.
 
-**G6 the corpus round's red-proofs.** All of this runs inside a disposable
-`git worktree` under `.remedy-wt/`, at the C3 tree, never in the primary checkout;
+**G6 the red-proofs of the ceiling.** All of this runs inside a disposable
+`git worktree` under `.remedy-wt/`, at the C4 tree, never in the primary checkout;
 purge `__pycache__` and use `python3 -B` before EVERY run; restore the mutated file
 between runs and verify each restore is byte-identical.
 
 Report the UNMUTATED CONTROL first: `python3 -B -m pytest
-tests/orchestration/test_diff_parser.py -q`, its REAL exit code and verbatim
-summary line.
+tests/orchestration/test_diff_parser.py -q`, its REAL exit code and verbatim summary
+line.
 
-Then TWO mutations of `packages/orchestration/diff_parser.py`, each applied alone
-and reverted before the next. Both are SILENT TRUNCATIONS — they cap the parser's
-output at a size every fixture already in the corpus sits below, so the twenty-eight
-existing tests cannot see either one. That is deliberate: it is what makes them
-discriminators for the tests C3 adds rather than proofs that the old corpus works.
-The reviewer measured both against the base corpus at `dc938d0e` and both came back
-exit 0 at `28 passed`; C3's tests are the only thing that can turn them red.
+Then FOUR mutations of `packages/orchestration/diff_parser.py`, each applied alone
+and reverted before the next. For each report the exact string replaced, the count
+of its occurrences BEFORE the edit, the REAL exit code, the verbatim summary line,
+and WHICH node ids fail as measured. THE ORDERED PROPERTY IS THE COLOUR: each must
+be RED. Do not treat any predicted name or count as the gate.
 
-For each, report the exact string replaced, the count of its occurrences in the file
-BEFORE the edit, the REAL exit code, the verbatim summary line, and WHICH node ids
-fail as measured. THE ORDERED PROPERTY IS THE COLOUR: each must be RED. Do not treat
-any predicted name or count as the gate.
+- **(a) the bound removed.** Delete the guard so the parser is unbounded again —
+  the state `R-0721` registers. This is the proof the repair is load-bearing.
+- **(b) the flag not set.** Keep the stop but do not set `truncated` True. This
+  separates "stopped" from "said it stopped"; a bound that truncates silently is
+  worse than none, because the client cannot tell a short diff from a cut one.
+- **(c) the counter scoped to one hunk instead of the whole diff.** Change the
+  guard to compare the CURRENT HUNK's own line count against the ceiling rather
+  than the whole-diff counter. This is the realistic wrong-scope mistake and it is
+  the mutation S9 exists for; report what actually fires.
+  A NOTE ON WHY THIS SPELLING AND NOT ANOTHER: resetting the counter inside
+  `open_region` instead looks equivalent and is NOT — that function is a closure
+  and would bind a fresh local rather than the enclosing counter unless a
+  `nonlocal` is added, so the edit is inert and the mutation comes back green for
+  a reason that has nothing to do with the tests. The reviewer measured that dead
+  end; do not substitute it.
+- **(d) the ceiling lowered below the Acceptance fixture.** Set the constant to a
+  value under 10,000. THIS MUTATION IS CONSTRAINT 9 WRITTEN AS A PROOF: it must
+  turn the R11 tests red, showing that those four tests really do guard the
+  fixture the feature is accepted against against a ceiling chosen too low.
 
-- **(a) a cap on parsed body lines.** Insert, immediately before the single
-  `hunk["lines"].append(` statement and at that statement's own indentation, a guard
-  that skips the append once the current hunk already holds 100 lines. Every fixture
-  in the corpus is far shorter than 100 lines, so nothing already written can notice.
-- **(b) a cap on file regions.** Replace the single `regions.append(current)`
-  statement with the same append guarded by a check that fewer than 10 regions exist
-  so far. The corpus's multi-file fixtures hold a handful of files, so again nothing
-  already written can notice.
-
-If a mutation comes back GREEN, STOP: report it, diagnose WHY the new assertions
-could not see it, and declare it rather than substituting a different mutation. A
-green here means C3's tests do not actually reach the scale they claim to.
+If a mutation comes back GREEN, STOP: report it, diagnose WHY the assertions could
+not see it, and declare it rather than substituting a different mutation.
 
 Afterwards report `git worktree remove`, `git worktree prune`, the line count of
 `git worktree list` and the line count of `git status --porcelain` in the primary
 checkout.
 
-**G7 suite, lint and canary at C3.** ONE pytest process at a time; never two in
+**G7 suite, lint and canary at C4.** ONE pytest process at a time; never two in
 parallel. Report the REAL exit code and verbatim summary of each:
 
-- `python3 -m pytest tests/orchestration/test_diff_parser.py tests/orchestration/test_diff_view_source.py -q`, and the count of
-  lines matching `^FAILED`. Report an EXTRACTOR-BLINDNESS CONTROL: run the same
-  counter over a control string that does begin with `FAILED` and report a non-zero
-  count, so a zero above is a measurement rather than a blind spot.
-- `python3 -m pytest tests/orchestration/test_diff_parser.py --collect-only -q` and
-  the COUNT of node ids it lists, together with the node ids of the tests C3 added.
-  Never derive node ids by regexing `-v` output.
-- `python3 -m ruff check tests/orchestration/test_diff_parser.py` under the
-  repository's own configuration, with NO `--isolated`.
+- `python3 -m pytest tests/orchestration/ -q` — THE WHOLE DIRECTORY, not a
+  selection, because C3 changes shipped production code that other suites import —
+  and the count of lines matching `^FAILED`. Report an EXTRACTOR-BLINDNESS CONTROL:
+  the same counter over a control string that does begin with `FAILED`, returning a
+  non-zero count.
+- `python3 -m pytest tests/ui_server/test_diff_endpoint.py -q`, which exercises the
+  endpoint that serves this parser's output.
+- `python3 -m ruff check packages/orchestration/diff_parser.py tests/orchestration/test_diff_parser.py`
+  under the repository's own configuration, with NO `--isolated`.
 - The canary `python3 -m pytest tests/cli/test_golden_path.py -q`. The base figure
   is `42 passed`; report the measured figure beside it and name any difference.
-- REPORT THE WALL-CLOCK COST C3 ADDS: the verbatim `in <n>s` figure of the parser
-  suite at the base commit `dc938d0e` and at C3, both measured, and state the
-  difference. A corpus test that makes the suite several times slower is a finding
-  even when it is green.
+- Report the parser suite's verbatim `in <n>s` figure at the base `f676f419` and at
+  C4, and state the difference.
 
-**G8 structure, artifacts and the Open PR Gate at C3.** Report
-`git diff --name-only dc938d0e..<C3>` and both RESIDUES against the change set
-above minus `.agent/handoff.md`: actual minus expected, and expected minus actual.
-Report `git diff --stat` restricted to `packages/`, `docs/` and `apps/` — EACH MUST
-BE EMPTY, and the `packages/` reading is the one that proves constraint 3 — and to
-`tests/`, which must hold only `tests/orchestration/test_diff_parser.py`. Report
-per-commit insertions from `git diff --numstat` for C0a through C3, each commit's
-parent count, and whether each insertion count is under 500. Report a marker sweep
-of `^<<<SLICE ` and `^<<<END ` over `.agent/plan.md` at C1 and `.agent/live_review.md`
-at C2, and the SAME counter over the C0a blob, whose figures must be greater than
-zero so the zeros are a measurement. Report `git ls-files .remedy-wt` line count.
-Report the Open PR Gate verbatim:
+**G8 structure, artifacts and the Open PR Gate at C5.** Report
+`git diff --name-only f676f419..<C5>` and both RESIDUES against the change set above
+minus `.agent/handoff.md`: actual minus expected, and expected minus actual. Report
+`git diff --stat` restricted to `docs/` and `apps/` — each must be EMPTY — and to
+`packages/`, which MUST HOLD ONLY `packages/orchestration/diff_parser.py`; that last
+reading is what proves constraint 3. Report per-commit insertions from
+`git diff --numstat` for C0a through C5, each commit's parent count, and whether each
+insertion count is under 500. Report a marker sweep of `^<<<SLICE ` and `^<<<END `
+over `.agent/plan.md` at C1, `.agent/live_review.md` at C5,
+`packages/orchestration/diff_parser.py` at C3 and
+`tests/orchestration/test_diff_parser.py` at C4, and the SAME counter over the C0a
+blob, whose figures must be greater than zero so the zeros are a measurement. Report
+`git ls-files .remedy-wt` line count. Report the Open PR Gate verbatim:
 `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 
 ## Done when
 
-C0a, C0b, C1, C2, C3 and C4 are committed in that order, one commit each, the
-branch is pushed, `.agent/handoff.md` is rewritten per
+C0a, C0b, C1, C2, C3, C4, C5 and C6 are committed in that order, one commit each,
+the branch is pushed, `.agent/handoff.md` is rewritten per
 `docs/agents/handback_template.md` carrying the state block, the deviations, the
-item-status table and the next steps, and every gate above is reported with its
-REAL exit code. The handback names SESSION 3 of feature F037 and round 11, and it
-states the measured wall-clock figures S5 recorded, so the next round reads them
-without re-deriving them.
+item-status table and the next steps, and every gate above is reported with its REAL
+exit code. The handback names SESSION 3 of feature F037 and round 12.
 
 A gate that could not be run is reported as NOT RUN with the literal refusal or
 error text — never as a pass, and never worked around.
