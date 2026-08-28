@@ -7,7 +7,11 @@
 // rule in the layer `apps/ui/vitest.config.ts` reaches — it collects
 // `src/**/*.test.ts` in a NODE environment, so a rule written into this file
 // would be a rule no suite in this repository can execute. This component owns
-// only WHICH element each row becomes and WHERE the collapse set is held.
+// only WHICH element each row becomes, WHERE the collapse set is held, and the
+// two numbers no test environment here can produce — the panel's `scrollTop` and
+// its `clientHeight`. It READS those two and decides nothing from them:
+// `diffRowWindowForViewport` turns them into row indices and spacer pixels, so
+// the arithmetic of virtual scrolling stays where vitest executes it.
 //
 // WHO MOUNTS THIS COMPONENT, so a reader grepping for a caller knows what they
 // have found when they find one. The entry point is the `Open diff` button in
@@ -17,9 +21,9 @@
 // `../shell/RemedyShell.tsx` receives that id, holds it as the open task run,
 // reads the envelope for it through `loadDiffEnvelope`, and draws THIS
 // component inside its diff panel beside `DiffFileSidebar`. Changing the props
-// below therefore changes that shell, and the T003 pieces still outstanding —
-// the virtual scrolling and the lazy language bundles — arrive at this
-// component rather than at some new caller.
+// below therefore changes that shell, and the one T003 piece still outstanding —
+// the lazy language bundles — arrives at this component rather than at some new
+// caller.
 //
 // NOTHING IN THIS REPOSITORY CAN RENDER THIS FILE. There is no DOM environment
 // here and the shipped vitest config reaches no markup, so what gates this
@@ -32,6 +36,7 @@ import { Fragment, useEffect, useState } from "react";
 import {
   buildDiffRowModels,
   defaultCollapsedHunkIds,
+  diffRowWindowForViewport,
   splitLineIntoIntralineSegments,
   toggleHunkCollapse,
 } from "../../api/diffViewModel";
@@ -65,6 +70,19 @@ const TRUNCATED_NOTICE =
   "ceilings, so files, hunk lines or bytes beyond them were never parsed and " +
   "are not on this screen (DECISION F037 D5, D6 and D7).";
 
+/** THE ONE PIECE OF PRESENTATION THE BINDING CSS DOES NOT COVER, and it is not a
+ *  new visual language. The binding CSS block of
+ *  `docs/roadmap/features/T5_F037.md` styles the ROWS of a diff and says nothing
+ *  about the box they scroll inside; the stylesheet beside this file transcribes
+ *  that block and defines exactly six classes, so asking it for a seventh is what
+ *  the CANONICAL DESIGN REFERENCE banner forbids. Virtual scrolling is
+ *  meaningless without a bounded, scrolling container — a panel that grows to fit
+ *  its content never scrolls, so `scrollTop` stays 0 and the window never moves —
+ *  and these two declarations are the minimum that gives it one. The height is in
+ *  VIEWPORT UNITS rather than pixels so the panel keeps its proportion on every
+ *  screen without this file learning anything about layout. */
+const DIFF_VIEW_SCROLL_STYLE = { overflowY: "auto", maxHeight: "70vh" } as const;
+
 export interface DiffViewProps {
   /** An ALREADY-READ envelope. `readDiffEnvelope` is the single door a payload
    *  comes through and the round that fetches calls it, so this component is
@@ -90,11 +108,31 @@ export function DiffView({ envelope }: DiffViewProps) {
     setCollapsed(defaultCollapsedHunkIds(envelope));
   }, [envelope]);
 
+  // THE TWO NUMBERS ONLY THE DOM CAN SUPPLY, held together because they are
+  // read together and are meaningless apart: a scroll offset without the height
+  // it was measured against names no range of rows. Both start at 0, which is
+  // the honest reading of a panel that has not been rendered yet — and
+  // `DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` in the model is what stops that zero
+  // from drawing an empty viewer forever.
+  const [viewport, setViewport] = useState({ scrollTopPx: 0, clientHeightPx: 0 });
+
   // ONE WALK, and the row list is the only thing this render reads. Collapse is
   // an ARGUMENT to it rather than a filter applied afterwards, which is what
   // keeps the hidden-line counts and the row keys the model's answer instead of
   // this file's.
   const rows = buildDiffRowModels(envelope, collapsed);
+
+  // ASK THE MODEL, RENDER THE ANSWER. Every index and every pixel below comes
+  // out of this one call: which rows to draw, and how tall the two spacers that
+  // stand in for the rest must be. This file performs no division, no
+  // multiplication and no comparison against a row count, because any of the
+  // three would be a rule `apps/ui/vitest.config.ts` could never execute.
+  const rowWindow = diffRowWindowForViewport(
+    rows.length,
+    viewport.scrollTopPx,
+    viewport.clientHeightPx,
+  );
+  const drawnRows = rows.slice(rowWindow.startIndex, rowWindow.endIndex);
 
   return (
     // NO CLASS ON THE WRAPPER. The stylesheet is a transcription of the feature
@@ -102,8 +140,29 @@ export function DiffView({ envelope }: DiffViewProps) {
     // here would be the visual language the CANONICAL DESIGN REFERENCE banner
     // forbids, so the container is a bare landmark and every styled element
     // below wears a class the sheet really carries.
-    <section data-ui="diff-view">
-      {rows.map((row) => {
+    <section
+      data-ui="diff-view"
+      style={DIFF_VIEW_SCROLL_STYLE}
+      // THE WHOLE OF THE UNTESTABLE DOM MEASUREMENT, in one expression that
+      // decides nothing: it reads two numbers off the element that just
+      // scrolled and stores them. Everything derived from them is the model's.
+      onScroll={(event) => setViewport({
+        scrollTopPx: event.currentTarget.scrollTop,
+        clientHeightPx: event.currentTarget.clientHeight,
+      })}
+    >
+      {/* THE SPACERS, and why they carry no class. They stand in for the rows
+          that are not in the DOM, so the scrollbar keeps describing the WHOLE
+          document rather than the window: without them a ten-thousand-row diff
+          would scroll as if it were fifty rows long. Their height is the
+          model's answer in pixels, and they wear an inline style because the
+          binding CSS defines no class for a spacer and this component may not
+          invent one. When the list is short enough to draw whole there is
+          nothing to stand in for, so neither is rendered. */}
+      {rowWindow.virtualized
+        ? <div style={{ height: `${rowWindow.rowsBeforePx}px` }} />
+        : null}
+      {drawnRows.map((row) => {
         if (row.kind === "file") {
           return (
             // TWO DIFFERENT THINGS WEARING THE SAME STRING, DELIBERATELY. `key`
@@ -177,6 +236,13 @@ export function DiffView({ envelope }: DiffViewProps) {
           </div>
         );
       })}
+      {rowWindow.virtualized
+        ? <div style={{ height: `${rowWindow.rowsAfterPx}px` }} />
+        : null}
+      {/* OUTSIDE THE WINDOW, DELIBERATELY. The notice belongs to the ENVELOPE
+          and not to any row, so it renders after the rows and after the trailing
+          spacer; drawing it inside the window would let virtualization scroll
+          the one warning that a diff is incomplete out of existence. */}
       {envelope.truncated ? <p>{TRUNCATED_NOTICE}</p> : null}
     </section>
   );
