@@ -1,0 +1,68 @@
+command: python3 -m pytest -n auto -q
+cwd: /home/decodeux/Repos/remedy/.remedy-wt/f037-r25-base
+REMEDY_UI_NO_AUTO_BUILD=1 supplied through subprocess.run(env=...), not exported
+base commit: 9dde54956afbe5f432bfd429bf4ba0bb272f6d07 (branch tmp/f037-r25-base)
+exit code: 1
+wall time: 155.2s
+FAILED lines: 1
+--- raw tail (last 60 lines) ---
+........................................................................ [ 90%]
+........................................................................ [ 90%]
+.........................................................s.............. [ 91%]
+........................................................................ [ 91%]
+........................................s............................... [ 91%]
+.....................................s.................................. [ 92%]
+........................................s............................... [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+..                                                                       [100%]
+=================================== FAILURES ===================================
+____________ TestSubprocessCleanup.test_timeout_raises_with_cleanup ____________
+[gw3] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.cli.test_review_bundle_runtime.TestSubprocessCleanup object at 0x7865c6573f10>
+
+    def test_timeout_raises_with_cleanup(self):
+        """A very short timeout raises TimeoutExpired after cleanup."""
+        import subprocess as sp
+        try:
+            # Run a sleep command with 1-second timeout
+            _run_grouped_cli(
+                ["--help"],  # fast command, but use tiny timeout
+                timeout=0,  # immediate timeout
+            )
+            # If it didn't timeout (fast enough), that's OK too
+        except sp.TimeoutExpired:
+            pass  # Expected — process group was cleaned up
+        # Verify no orphan process from this test
+        import time
+        time.sleep(0.1)
+        result = subprocess.run(
+            ["pgrep", "-f", "apps.cli.grouped.*--help"],
+            capture_output=True, text=True,
+        )
+>       assert result.returncode != 0, "Orphan process found after timeout cleanup"
+E       AssertionError: Orphan process found after timeout cleanup
+E       assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['pgrep', '-f', 'apps.cli.grouped.*--help'], returncode=0, stdout='3530519\n', stderr='').returncode
+
+tests/cli/test_review_bundle_runtime.py:327: AssertionError
+=========================== short test summary info ============================
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+1 failed, 17981 passed, 20 skipped in 154.66s (0:02:34)

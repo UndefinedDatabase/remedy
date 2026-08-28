@@ -1,27 +1,29 @@
-# Context — F032 Approval with the evidence triple
+# Context — F037 Rendered diff viewer
 
 ## Active Branch
-feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge commit
-of pull request #216 which closed the amend0827 process-diet order.
+feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the merge
+commit of pull request #217 which closed F032.
 
 ## Scope
-Feature F032 per `docs/roadmap/features/T5_F032.md`: the evidence triple —
-`evidence_refs[]`, `expected_outcome`, `downside` — becomes a required part of
-every decision a human is asked to answer, enforced at the point the inventory
-measures such a point to be, rendered by the inbox card, and pinned by a canary
-producer that must fail CI when a field is missing.
+Feature F037 per `docs/roadmap/features/T5_F037.md`: a versioned structured
+diff JSON served as a read endpoint per task and attempt, and a client viewer
+that renders files, hunks, lines and intraline spans with a file sidebar, hunk
+collapse, virtual scrolling beyond 2k lines and lazily loaded language bundles.
 
 ## Do not touch
-The feature file's own list: the decision ANSWERING flow, queue STORAGE and the
-provenance RESOLVER. R1 additionally writes no file under `packages/`, `apps/`
-or `tests/` at all.
+The feature file's own list: hunk-id stability, which is F033's contract; apply
+mechanics; evidence formats. No approval logic is added early — the viewer
+precedes hunk approval in STATUS deliberately. R1 additionally writes no file
+under `packages/`, `apps/` or `tests/` at all.
 
 ## Assumptions
-- Rule A5 chose F032: `docs/roadmap/STATUS.md` carried no `[~]` and no `[!]`
-  line and F032 was the first `[ ]`, measured at `a399a330`.
+- Rule A5 chose F037: `docs/roadmap/STATUS.md` carried no `[~]` and no `[!]`
+  line and F037 was the first `[ ]`, measured at `9dde5495`.
 - `.agent/candidates.md` is EMPTY at the claim, so no block condition stands.
 - The feature file's Design is a SUGGESTED shape, not a settled spec; the
   inventory measures the real one before T001 is planned.
+- This is a UI feature, so `docs/ui/design_reference/` is binding from T002 on
+  and any visual deviation is documented with a technical reason.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried

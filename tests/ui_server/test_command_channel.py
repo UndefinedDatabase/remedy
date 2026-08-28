@@ -1237,8 +1237,8 @@ class TestCommandChannelDoor:
         """The route literals and endpoint keys `do_GET` carries, read by AST.
 
         Derived rather than transcribed: a walk over a hand-written list proves
-        that list, not the server. The thirteen job endpoints live in a dict
-        literal inside `do_GET`, so adding one puts it in the walk for free.
+        that list, not the server. The job endpoints live in a dict literal
+        inside `do_GET`, so adding one puts it in the walk for free.
 
         The known limit, written where a reader will search for it: a route
         matched STRUCTURALLY — by splitting `path` and comparing parts, as
@@ -1292,6 +1292,7 @@ class TestCommandChannelDoor:
             f"/api/jobs/{self.job_id}/nodes/node-1/detail",
             f"/api/jobs/{self.job_id}/nodes/node-1/human-detail",
             f"/api/jobs/{self.job_id}/nodes/node-1/debug-detail",
+            f"/api/jobs/{self.job_id}/task-runs/T001/diff",
         ]
         return paths
 

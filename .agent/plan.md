@@ -1,44 +1,42 @@
-# Plan — F032 Approval with the evidence triple
+# Plan — F037 Rendered diff viewer
 
-Branch: feature/f032-evidence-triple, cut from `main` at `a399a330`, the merge
-commit of pull request #216 which closed the amend0827 process-diet order.
-`.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series, F032 D1 through D8.
+Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495` (the
+merge of PR #217, which closed F032). `.agent/decisions.md` holds F037 D1 to D11.
 
 ## Goal
-No decision without its receipts. Every decision a human is asked to answer
-carries the evidence triple — `evidence_refs[]`, `expected_outcome` and
-`downside` — the inbox card renders all three, and a producer that omits one
-fails its own test. `docs/roadmap/features/T5_F032.md` holds Goal & Done, the
-task slicing and the design amendments that reconcile it with the source.
+Changes become readable, not merely present. The server parses a unified diff
+into structured JSON — files, hunks, lines, intraline spans — served as a read
+endpoint, and the client renders it with a file sidebar, hunk collapse and
+virtual scrolling. `docs/roadmap/features/T5_F037.md` holds Goal & Done, the task
+slicing, the binding CSS, the design amendments A1 through A6 and the Built State
+section recording what actually shipped.
 
 ## Current Step
-R19 CLOSES F032. T001, T002 and T003 are complete, the integration gate passed
-at R17 with an empty branch-only failure set, and R18 produced the evidence
-bundle and the review package from the accepted HEAD `c3cf408f`. This round
-books the R18 verdict, flips the STATUS line to `[x]` and syncs the README's
-capability prose and its two ledger-derived counts in the SAME commit — they
-may never disagree in a committed state — and then opens the pull request.
+R27 is the CLOSURE round, the last of F037's closure sequence and the last round
+of this branch. Every closure precondition is met: the integration gate PASSED at
+R25 with no branch-only failure reaching feature code, the R26 package is
+READY_FOR_REVIEW at accepted head `5e557a1c`, the integrity gate passes with zero
+failures, and F037 carries no open finding of its own. This round books the R26
+verdict, flips the STATUS line to `[x]`, syncs the four README pins in that same
+commit, and opens the PR — which is NOT merged here.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a and C0b, save and mirror the block | ordered | |
+| C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R18 verdict and the reviewer's slip | ordered | the record is touched first |
-| C3 the closure commit and the handback | ordered | STATUS and README together, last on the branch |
-| the pull request | ordered | after C3; NOT merged this session |
+| C2 the R26 verdict | ordered | record first |
+| C3 STATUS, README and the handback | ordered | one commit, last on the branch |
+| the closure PR | ordered | created, never merged |
 
 ## Next Steps
-1. The pull request merges at the NEXT feature's start, through the Open PR
-   Gate of AGENTS.md. The gap is the operator's manual review window, and the
-   operator may merge manually at any time instead.
-2. The next feature is chosen by Rule A5 from `docs/roadmap/STATUS.md`, in a
-   fresh session. `docs/roadmap/STATUS.md` names F037 as the next open line.
+1. A fresh session claims the next feature by Rule A5 — `F033 Hunk-level diff
+   approval` — and its Open PR Gate merges this feature's PR first.
+2. The split-off scope of amendment A6 wants its own STATUS line before F033.
+   That remains a PROPOSAL to the operator and is executed by no session.
 
 ## Risks
-- The package's filename, SHA-256 and archived path rest on R18's transcript:
-  the archive directory lies outside this session's allowed working
-  directories, so the reviewer could not re-read them.
-- R-0714 is open and Medium. It does not touch F032's own code; it makes the
-  integration gate's auto-build lever unenforceable and belongs to whoever
-  repairs `tests/ui_server/test_dashboard_contract.py`.
+- `R-0714` closes OPEN as a documented Medium risk: a ui_server test runs a real
+  frontend build from inside the suite, which F037 does not own and did not
+  cause. Closure precondition 1 admits exactly this case.
+- The STATUS and README edits must land in ONE commit or the ledger pins in
+  `tests/docs/` go red; the reviewer measured that red as the control.

@@ -8851,3 +8851,590 @@ guard class the F032 R15 block's item S7 adds to
 `tests/ui_contracts/test_decision_answer_wiring.py`. No other change is
 required, and amendment A7 of `docs/roadmap/features/T5_F032.md` is the text to
 strike with it.
+
+## DECISION F037 D1 (2026-08-28) — `binary` is a VIEWER status this feature defines, and `review_subject`'s vocabulary is deliberately not widened
+
+CONTEXT. `docs/roadmap/features/T5_F037.md` specifies a JSON contract whose
+`status` field is one of `modified|added|deleted|renamed|binary`. The F037 R1
+inventory measured that no vocabulary in this repository carries `binary` as a
+status. `packages/orchestration/review_subject.py` defines seven — `added`,
+`modified`, `deleted`, `renamed`, `copied`, `type_changed` and `dirty` — mapped
+one-for-one from the `git diff --name-status` letters `A M D R C T`. Binary-ness
+is not among them because git does not report it as a status letter: a binary
+file comes back `M` or `A` exactly like a text file, and its binary-ness is a
+property of the CONTENT, discovered when the diff body reads `Binary files …
+differ`. Where this repository does handle binary today it handles it as a
+REFUSAL rather than a status, in four separate places the inventory names:
+a blocker in `provider_trust.py`, an omission reason in `diff_repair.py`, a
+refusal in `source_apply.py` and a rendered placeholder in `pingpong_loop.py`.
+
+CHOSEN. F037's parser emits the contract's five-value `status` as its OWN
+viewer-facing vocabulary, deriving `binary` from the diff body's binary marker
+and the other four from the git status letter. `review_subject.py` is NOT
+touched, and its seven-value vocabulary keeps its one-for-one relationship with
+the git letters.
+
+ALTERNATIVES CONSIDERED. (a) Widen `review_subject.STATUS_*` with `binary`:
+rejected because it would break the property that makes that vocabulary
+checkable — every constant maps to a letter git actually emits — and because
+the inventory found equality guards pinning that set, which such a change would
+turn red for no gain to any existing reader. (b) Drop `binary` from F037's
+contract: rejected because the feature file's Acceptance requires binary
+placeholders to render, and a viewer that cannot say "this file is binary" must
+either lie or show an empty diff. (c) Carry a separate `is_binary` boolean
+beside a four-value status: rejected as a third vocabulary for one fact, when
+the contract already specifies a single field and F033 will version it anyway.
+
+CONSEQUENCE. The two vocabularies are deliberately different and that
+difference is documented where a reader searches for it — amendment A1 of
+`docs/roadmap/features/T5_F037.md` says so in the feature file, and the parser
+module's header will say so at T001. `copied`, `type_changed` and `dirty` are
+NOT rendered by the viewer's v1 and the JSON version field is what F033 uses to
+widen the set.
+
+REVERSE by deleting amendment A1 from `docs/roadmap/features/T5_F037.md` and
+this decision; the contract in the Design section above A1 is then the spec
+again, unamended.
+
+## DECISION F037 D2 (2026-08-28) — the read endpoint keys on task run and job, and the attempt parameter is dropped from v1
+
+CONTEXT. `docs/roadmap/features/T5_F037.md` specifies the diff endpoint as
+"a read endpoint per task/attempt" and its edge-case section says "the endpoint
+takes an attempt parameter". The F037 R1 inventory measured that NO per-attempt
+diff exists anywhere in this repository. Diffs are persisted at exactly two
+scopes: `task_runs/<task_id>/safe.diff` per TASK RUN, and `workspace.diff` per
+JOB, both under a job's evidence directory. The module that owns repair
+attempts, `packages/orchestration/repair_loop_v2.py`, does not merely lack a
+diff — it FORBIDS one in its records, listing diffs among the raw content its
+schema excludes and carrying `"diff --git"` in its raw-marker rejection tuple.
+`self_dogfood_execution.py` persists an attempt record and a request text, and
+no diff file. The nearest per-attempt artifact, `patch_intent_diff_preview`, is
+documented in its own source as "NOT a real patch; read-only" and is stripped
+from review bundles and named on three separate redaction lists.
+
+CHOSEN. The v1 endpoint takes a TASK RUN and falls back to the JOB scope, and
+carries NO attempt parameter. The feature file's attempt clause is amended to
+record why, and the JSON contract's version field is the seam through which a
+later feature adds the parameter if per-attempt diffs ever become real.
+
+ALTERNATIVES CONSIDERED. (a) Persist a diff per attempt: rejected on two
+independent grounds — `evidence formats` is named in this feature's own
+Do-not-touch, and writing diffs into attempt records would reverse a deliberate
+redaction rule that three modules enforce, which is far outside a viewer's
+scope. (b) Accept an `attempt` parameter and serve the task-run diff under it:
+rejected as a false live indicator, which is a block condition under
+`docs/agents/planner_reviewer_prompt.md` §4 item 5 — a parameter that does not
+select anything is a lie the API tells every caller. (c) Block the feature until
+per-attempt diffs exist: rejected because the viewer's whole value is readable
+diffs and the two scopes that DO exist carry them.
+
+CONSEQUENCE. The feature file's Acceptance is met without the attempt
+parameter, and the absence is documented rather than silent — amendment A2 of
+`docs/roadmap/features/T5_F037.md` states it where a reader would search for
+it, per the deliberate-absence convention in `AGENTS.md`.
+
+REVERSE by deleting amendment A2 from `docs/roadmap/features/T5_F037.md` and
+this decision, restoring the attempt parameter to the endpoint spec.
+
+## DECISION F037 D3 — the diff surface's design authority is named in the feature file, and `ux_spec.md` is not one of the three (2026-08-28, F037 R8)
+
+CONTEXT. `docs/roadmap/features/T5_F037.md:14` directs builders to "diff surface
+tokens per `ux_spec.md`". Measured at `996ffea9`, `docs/ui/design_reference/ux_spec.md`
+contains no occurrence of `diff` at all, case-insensitively, so that pointer
+resolves to nothing. T002 and T003 are the entire remaining scope of this
+feature and both are UI rounds whose builders read that banner first. Registered
+as finding `R-0719`.
+
+CHOSEN. Amend the FEATURE FILE with amendment A4, naming the three authorities
+that do exist: this file's own binding CSS, whose `--remedy-ink-soft` and
+`--remedy-bg-2` were confirmed present in `apps/ui/src/styles/tokens.css`;
+`component_spec.md:113-116` for the entry-point contract; and
+`assets_spec.md:92-95` for the mono family and the ligatures-off rule on diff
+surfaces. The banner's other clauses are untouched.
+
+ALTERNATIVES CONSIDERED. (a) Add a diff-surface section to `ux_spec.md`. Rejected:
+the design reference is the operator's artifact, AGENTS.md's documentation
+boundary keeps `docs/` describing what IS, and `component_spec.md:115-116`
+states that the design-reference package deliberately does not build the viewer
+— so its silence is a decision, not a gap for a feature branch to fill.
+(b) Delete the clause and leave the diff surface unattributed. Rejected: it would
+leave a builder with a banner that forbids inventing a visual language and no
+authority to follow, which is the same defect wearing a shorter sentence.
+(c) Leave it and rely on reviewers to catch it each round. Rejected: it had
+already survived seven rounds unread.
+
+REVERSE by deleting amendment A4 from `docs/roadmap/features/T5_F037.md` and
+this decision, restoring the banner's `ux_spec.md` pointer as the sole
+feature-specific authority for the diff surface.
+
+## DECISION F037 D4 — the diff surface takes its mono family from `--remedy-font-mono`, keeping the binding CSS's stack as the fallback (2026-08-28, F037 R9)
+
+CONTEXT. Two authorities named by amendment A4 speak to the diff surface's font
+and they do not say the same thing. The binding CSS block in
+`docs/roadmap/features/T5_F037.md` writes the shorthand
+`font:12.5px/1.6 ui-monospace,monospace`, naming a literal family stack.
+`docs/ui/design_reference/assets_spec.md:90-93` defines `--remedy-font-mono` as
+the canonical mono token and names the diff viewer as one of its usages. Every
+other stylesheet in `apps/ui/src/components/` references families and colours
+through `var(--remedy-*, <fallback>)` rather than through literals.
+
+CHOSEN. Write the shorthand as
+`font: 12.5px/1.6 var(--remedy-font-mono, ui-monospace, monospace)`. The size
+`12.5px` and the line-height `1.6` are taken from the binding CSS unchanged;
+the family resolves to the design reference's token when it is defined, and
+falls back to exactly the stack the binding CSS names when it is not. Both
+authorities are then satisfied by one declaration and neither is contradicted.
+This is not treated as a visual deviation requiring an assumption-log entry:
+the token's own stack is monospace throughout, and the size, line-height and
+weight the binding CSS fixes are untouched — what changes is the mechanism by
+which the family is named, not the type that renders.
+
+ALTERNATIVES CONSIDERED. (a) Transcribe `ui-monospace, monospace` literally.
+Rejected: it pins the diff surface to a different family from every other mono
+surface in the package the moment the token changes, which is the synonym drift
+AGENTS.md's discoverability section forbids, and it ignores an authority A4
+itself names. (b) Use `var(--remedy-font-mono)` with no fallback. Rejected: a
+stylesheet that renders proportional text when one token is missing fails in
+the worst direction for a diff, where column alignment carries meaning.
+(c) Add a diff-specific font token. Rejected: a second spelling for one concept,
+and `assets_spec.md` is the operator's artifact and already answers the question.
+
+REVERSE by replacing the `font` declaration in
+`apps/ui/src/components/diff/DiffView.module.css` with the binding CSS's literal
+shorthand, deleting this decision, and relaxing the corresponding assertion in
+`tests/ui_contracts/test_diff_surface_css.py`.
+
+## DECISION F037 D5 — the parsed diff is bounded at 20,000 body lines, and `truncated` becomes something F037 decides
+
+**Date:** 2026-08-28 · **Round:** F037 R12 · **Finding:** `R-0721`
+
+**The choice.** `packages/orchestration/diff_parser.py` gains a module constant
+`DIFF_VIEW_MAX_BODY_LINES = 20_000` and refuses to append a body line once the
+count of appended lines ACROSS THE WHOLE DIFF has reached it, setting the
+contract's existing top-level `truncated` flag True and stopping the walk. A diff
+of exactly the ceiling parses in full and is not marked truncated; the flag and
+the stop appear only above it.
+
+**Why a bound exists at all.** `R-0721` measured the absence: the parser appended
+one dict per body line with no ceiling, `build_diff_view` copied the result onto
+the envelope, and the endpoint serialised the whole thing into one response.
+`workspace.diff` is a job's ENTIRE workspace diff and no code in this repository
+constrains its size, so a job that vendored a dependency or rewrote a lockfile
+would have the server build tens of megabytes of JSON on a request the viewer
+makes automatically. The cost is linear — the reviewer measured 1k through 20k
+lines and the per-line cost is flat — but a linear function with no bound is still
+unbounded, and the client half that would otherwise defend itself, T003's virtual
+scrolling, cannot be built while the frontend test runner is refused here.
+
+**Why 20,000.** The feature file's Acceptance names a 10,000-line fixture that
+must render within budget. A ceiling at or below that would truncate the very
+fixture the feature is accepted against, so the value is twice it: the Acceptance
+case renders in full with room to spare, and the worst-case payload is bounded at
+roughly 2.6 MB of JSON rather than growing with whatever a job happened to touch.
+
+**Why a TOTAL rather than a per-file ceiling.** The payload is the sum. A per-file
+bound leaves a diff of fifteen thousand one-line files completely unbounded, which
+is a realistic `workspace.diff` shape, so the counter spans the whole diff and the
+tests exercise that case directly.
+
+**Why truncation rather than a refusal.** `truncated` already exists in the
+contract v1 and has until now only ever relayed an upstream `[DIFF TRUNCATED]`
+sentinel. The viewer's whole design, stated in `diff_view_source.py`'s own module
+docstring, is that every absence is NAMED in the data rather than raised: a viewer
+that 500s on a large job is worse than one that says, in the data, that it is
+showing the first part. This makes the existing field mean what its name says.
+
+**What a truncated view looks like, plainly.** The walk stops mid-input, so the
+LAST file in the list may carry a partial hunk or a hunk holding no lines at all,
+and files after it do not appear. Each file's `stats` still equal a recount of
+that file's own parsed lines, so nothing in the payload describes content the
+payload does not carry. `truncated` True is the client's signal that the list is a
+prefix and not the whole diff.
+
+**Alternatives rejected.** (1) Leave it unbounded — this is the status quo
+`R-0721` registers, and it makes the server's memory a function of an
+unconstrained artifact. (2) Bound the artifact READ instead — that is a real and
+complementary bound, it belongs in `diff_view_source.py` where the filesystem is
+touched, and F037 R13 carries it; it is not an alternative to this one, because
+0.4 MB of input still expands to over 1 MB of JSON. (3) A byte ceiling on the
+input text rather than a line ceiling on the output — rejected because the
+contract's unit is a line, the cost is per line object, and a byte cut lands
+mid-hunk at an offset no field of the contract can express. (4) Refuse above the
+ceiling with an error — rejected for the reason above.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_BODY_LINES` and the guard that reads it
+in `parse_unified_diff_to_view`, and delete the tests F037 R12 added in the final
+section of `tests/orchestration/test_diff_parser.py`. Nothing else depends on the
+constant; the `truncated` field returns to relaying the upstream sentinel alone.
+
+## DECISION F037 D6 — the parsed diff is bounded in BOTH dimensions, and a recorded payload budget is what notices a ceiling being widened
+
+**Date:** 2026-08-28 · **Round:** F037 R13 · **Finding:** `R-0722`
+
+**The choice.** `packages/orchestration/diff_parser.py` gains a second module
+constant `DIFF_VIEW_MAX_FILES = 2_000`. Where the collapsed region list becomes
+the view's `files`, a list longer than that ceiling is cut to it and the
+contract's `truncated` flag is set. A diff of exactly the ceiling parses in full
+and is not marked truncated, which is the same inclusive boundary
+`DIFF_VIEW_MAX_BODY_LINES` already has. `tests/orchestration/test_diff_parser.py`
+gains a recorded payload budget, `DIFF_VIEW_MAX_PAYLOAD_BYTES = 4_000_000`,
+asserted over the serialized worst case of both dimensions.
+
+**Why a second ceiling exists at all.** D5's ceiling counts BODY LINES, and a
+file can carry none: a mode change, a binary marker and a pure rename each add a
+file entry and append nothing to that counter. Measured at `327c1333`, 100,000
+mode-change files parse to 100,000 entries and 13.8 MB of JSON with `truncated`
+False, and 100,000 binary-marker files to 20.3 MB, against 2.096 MB for the
+single-file worst case at the body ceiling. D5 bounded the dimension that was
+easy to see and left the other one open.
+
+**Why 2,000 files.** The corpus's many-files shape is 400
+(`MANY_FILE_DIFF_FILE_COUNT`), so five times it leaves the fixture the R11 round
+added rendering in full with room to spare, and the file dimension's worst case
+then measures 1.269 MB of JSON at long paths. A sidebar listing more than two
+thousand files is not a reading surface in any case; beyond it the honest answer
+is the one the contract already has, which is to say in the data that the list
+is a prefix.
+
+**Why the cut is applied AFTER the doubled-header collapse.** `workspace.diff`
+emits every file's header pair twice — that is finding `R-0716`, and
+`_collapse_doubled_header_regions` exists to fold it away. A count taken during
+the walk would therefore bound the job-scope shape at half the files a reader
+sees, which is a bound that depends on which producer wrote the artifact. The
+collapsed list is the list that becomes `files`, so it is the list the ceiling
+belongs to.
+
+**Why a recorded payload budget rather than more assertions about the
+constants.** Every ceiling assertion in the suite is expressed in terms of the
+constant it tests, so the suite follows a constant wherever it is moved: raising
+`DIFF_VIEW_MAX_BODY_LINES` tenfold at `327c1333` left the file green at 37
+passed. A budget over the SERIALIZED bytes is the only assertion in this file
+that is stated in a unit neither ceiling controls, so it is the only one that
+fails when a ceiling is widened. The value is roughly twice the larger of the
+two measured worst cases, which leaves room for path lengths the fixtures do not
+model while still failing an order-of-magnitude change.
+
+**What a truncated view looks like, unchanged from D5.** The last file present
+may carry a partial hunk or none, files after it do not appear, each file's
+`stats` still equal a recount of that file's own parsed lines, and `truncated`
+True is the client's signal that the list is a prefix. A file-dimension
+truncation drops whole file entries from the tail and changes nothing about the
+entries that remain.
+
+**What is still NOT bounded, stated plainly.** The INPUT.
+`packages/orchestration/diff_view_source.py` reads the artifact with
+`read_text`, whole, before the parser is called, so both ceilings bound what is
+BUILT and SERVED and neither bounds what is READ. That is the remaining half of
+`R-0721` and it is the next round's; a diff of one enormous minified line is the
+shape that reaches neither ceiling and still costs the read.
+
+**Alternatives rejected.** (1) Stop the walk when the region count crosses the
+ceiling — rejected because the count during the walk is the UNCOLLAPSED one, so
+the effective limit would differ between the two artifacts F037 serves. (2)
+Fold the file ceiling into the body counter by charging each file header a
+notional number of lines — rejected as a bound nobody can read off the contract.
+(3) Bound the serialized bytes directly in the parser — rejected because the
+parser builds a structure and does not serialize it; the byte figure belongs to
+the layer that does, and as a TEST budget it pins the consequence without
+putting a serialization step in a pure function. (4) Leave the file dimension
+unbounded and rely on the read bound coming next — rejected because the input
+bound cannot express a file count and 8 MB of headers is still 100,000 entries.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_FILES` and the three-line cut that
+reads it in `parse_unified_diff_to_view`, delete
+`DIFF_VIEW_MAX_PAYLOAD_BYTES` and the tests F037 R13 added, and restore the
+fixture of the two tests S5 re-based to the 10,400-file shape they carried at
+`327c1333`. DECISION F037 D5 and its ceiling are untouched by this decision and
+survive its reversal.
+
+## DECISION F037 D7 — the diff artifact is read under a byte ceiling, and `truncated` becomes an OR over every source of it
+
+**Date:** 2026-08-28 · **Round:** F037 R14 · **Finding:** `R-0721`
+
+**The choice.** `packages/orchestration/diff_view_source.py` gains a module
+constant `DIFF_VIEW_MAX_ARTIFACT_BYTES = 8_000_000` and reads the diff artifact
+in binary under that ceiling instead of calling
+`artifact.read_text(encoding="utf-8")` on it whole. When the artifact is larger,
+the bytes are cut to the ceiling and then cut back to the last newline they
+contain, and the envelope's `truncated` becomes `parsed["truncated"] or
+read_truncated`.
+
+**Why a read bound is not made redundant by the two parser ceilings.** DECISION
+F037 D5 bounds the body lines the view carries and D6 the file entries, and both
+bound what is BUILT. The read happens first and is unbounded by either: a
+`workspace.diff` of one enormous minified line appends nothing to the body
+counter and adds one file entry, so it passes both ceilings untouched and still
+costs the entire read. The layering is deliberate — this bound is on INPUT
+BYTES, those are on OUTPUT OBJECTS, and neither can be expressed in the other's
+unit.
+
+**Why 8,000,000 bytes.** Measured by the reviewer at `922f3223`, a diff that
+saturates BOTH parser ceilings at once is 1,423,907 bytes of input: 397,907 for
+`DIFF_VIEW_MAX_BODY_LINES` body lines in a single file, and 1,026,000 for
+`DIFF_VIEW_MAX_FILES` one-pair files at paths of sixty characters and more. The
+ceiling is over five times that, so for any realistic line length the parser's
+own bounds take over long before this one does, and this one is what stops the
+pathological shapes those bounds cannot see. A diff whose body lines are
+hundreds of characters wide can reach it first; that is a real cut, it is
+reported in the data, and it is the point of having a byte bound at all.
+
+**Why the cut goes back to the last newline.** Two hazards share one fix. A cut
+at an arbitrary byte can land inside a multi-byte UTF-8 character, and the
+decode then raises — which this module's existing handler would report as
+`DIFF_REASON_ARTIFACT_MISSING`, turning a readable diff into an absent one. A
+cut can also land in the middle of a body line, which would put half a line into
+the contract as if it were whole. A newline is never inside a multi-byte
+character and never inside a line, so cutting back to the last one answers both.
+When the ceiling's worth of bytes holds no newline at all the result is the
+empty text, which parses to the empty-files shape and is reported as available
+and truncated: for one enormous line that is the honest answer, and it is the
+same answer this module already gives for every other absence — name it in the
+data rather than raise.
+
+**Why the flag is an OR and not a replacement.** `truncated` now has three
+sources: the upstream `[DIFF TRUNCATED]` sentinel some other producer wrote,
+the parser's own two ceilings, and this read. They are independent and any of
+them makes the view a prefix, so the envelope reports their disjunction. A test
+whose artifact carries the sentinel while staying under the read ceiling is the
+discriminator, because a replacement rather than an OR would drop it.
+
+**What the endpoint needs.** Nothing. `packages/orchestration/ui_server.py`
+builds its diff JSON by returning `build_diff_view`'s envelope, so the flag
+reaches the client already; this decision changes what sets it, not what carries
+it.
+
+**Alternatives rejected.** (1) Check `artifact.stat().st_size` and refuse above
+the ceiling — rejected because a refusal is exactly what this module's docstring
+forbids: a viewer that shows the first part of a large job's diff is better than
+one that shows nothing, and the contract already has the field for saying which
+it did. (2) Cut at the ceiling with `errors="replace"` instead of at a newline —
+rejected because it puts a replacement character into a line's content, which is
+data the viewer would render as if the artifact contained it. (3) Stream the
+artifact and parse incrementally — the honest long-term answer, rejected for
+this round as a rewrite of a module that is total and pure by contract, and it
+buys nothing the two ceilings and this bound do not already buy. (4) Derive the
+byte ceiling from the two parser ceilings rather than stating it — rejected
+because line length is not bounded by either of them, so no such derivation
+exists.
+
+**How to reverse.** Delete `DIFF_VIEW_MAX_ARTIFACT_BYTES` and restore the single
+`artifact.read_text(encoding="utf-8")` call in `build_diff_view`, restore
+`view["truncated"] = parsed["truncated"]`, and delete the tests F037 R14 added
+in the final section of `tests/orchestration/test_diff_view_source.py`.
+DECISION F037 D5 and D6 are untouched by this decision and survive its reversal.
+
+## DECISION F037 D8 — T002 and T003 are NOT blocked; the client is built in the layer vitest reaches, and no TypeScript colour is ordered because none can be run
+
+**Date:** 2026-08-28 · **Round:** F037 R15 · **Findings:** `R-0724`, `R-0723`
+
+**The choice.** F037's remaining scope is built with this repository's existing
+frontend pattern rather than waiting for a runner. Decidable rules go in
+`apps/ui/src/api/*.ts` with `*.test.ts` beside them, which
+`apps/ui/vitest.config.ts` collects in a NODE environment; markup, stylesheets
+and wiring are pinned from `tests/ui_contracts/` in Python. That is what
+DECISION F031 D5 already ruled for the decision inbox, and F037 follows it.
+
+**Why the blocked premise was wrong.** Measured at `0d750765`:
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+runs `npx vitest run` from pytest with `cwd` at `apps/ui` and asserts a return
+code of 0, and it is exit 0 here in 0.92 s. CI runs the same node. What is
+refused is a DIRECT `npx vitest` from the session's own shell — a permission on
+one caller, not a property of the environment. Reading that refusal as "the
+runner cannot be executed" is what recorded T002 and T003 as blocked from R8
+through R14, and it is registered as `R-0724`.
+
+**What a red-proof of TypeScript can be here, and what it cannot.** It cannot be
+a mutation. Guardrail G5 of `docs/agents/self_drive_protocol.md` confines every
+destructive check to a disposable `git worktree`, `apps/ui/node_modules` is
+gitignored and therefore absent from any fresh worktree, and the reviewer
+measured the consequence at `0d750765`: the vitest node run with its `cwd` in a
+worktree fails at STARTUP with `Cannot find package 'vitest'` before any test is
+loaded, so it is red for every possible module under test. A colour from a
+command that cannot pass proves nothing — that is finding `R-0703`'s rule and
+this decision does not break it. What IS ordered instead, and what makes the
+TypeScript honest: the vitest suite runs GREEN through the pytest node in the
+primary checkout, where it is a real gate that a broken module turns red; and a
+Python guard under `tests/ui_contracts/` pins the structural facts vitest cannot
+see about itself, and THAT guard is mutated and red-proved normally, because it
+is Python and needs no `node_modules`.
+
+**What this costs, stated plainly.** A defect that a vitest test would catch is
+caught only when the whole vitest suite is run, and never by a mutation aimed at
+one function. The mitigation is the shape of the code rather than more gates:
+the more of the client's behaviour that lives in `src/api/` as total functions
+over plain data, the more of it a green suite actually covers. That is the
+reason the view model is built before the component and carries the collapse
+rule, the row keys and the sidebar, rather than leaving them in markup where
+nothing here can reach them at all.
+
+**Why the feature file is not amended.** Its Task slicing already names T002 as
+the rendering core and T003 as the sidebar and virtual scrolling, and neither
+mentions a runner. The blocked premise never lived in
+`docs/roadmap/features/T5_F037.md` — it lived in a test docstring, in
+`.agent/plan.md` and in handbacks. Amendment A4 stands unchanged.
+
+**Alternatives rejected.** (1) Keep waiting for a direct runner — rejected: it
+is a session permission that has already varied between sessions, and a feature
+cannot be paced by it. (2) Copy `apps/ui/node_modules` into the worktree to
+enable mutations — rejected: it is hundreds of megabytes per proof, and
+`shutil.copytree` defaults to dereferencing the bin shims, which is exactly the
+mechanism finding `R-0591` records as having CAUSED failures it was meant to
+prevent. (3) Build the component first and the model after — rejected: it puts
+the collapse rule and the row keys in markup no gate here can reach, which is
+the arrangement DECISION F031 D5 exists to prevent.
+
+**How to reverse.** Delete this decision and the three files F037 R15 added —
+`apps/ui/src/api/diffViewModel.ts`, `apps/ui/src/api/diffViewModel.test.ts` and
+`tests/ui_contracts/test_diff_view_model.py`. Nothing else imports them; no
+existing module changes as part of this decision, and the two comment repairs it
+carries stand on their own findings rather than on this ruling.
+
+## DECISION F037 D9 — intraline emphasis is the binding CSS's own two hues at a higher alpha, and no new hue, token or type treatment enters the sheet
+
+**Date:** 2026-08-28 · **Round:** F037 R16 · **Slice:** T002
+
+**The question this settles.** The Goal & Done of
+`docs/roadmap/features/T5_F037.md` requires that "intraline markers highlight
+word-level changes", its Acceptance requires that "intraline spans match a
+word-diff fixture", and its Design section lists "intraline emphasis on the
+marked spans". Its binding CSS block defines no intraline rule, and the same
+file's CANONICAL DESIGN REFERENCE banner forbids inventing a visual language.
+Measured by the reviewer at `68680786`: `intraline` occurs ZERO times in
+`docs/ui/design_reference/component_spec.md` and ZERO times in
+`assets_spec.md`, the two design-reference files amendment A4 names as binding
+for this surface, and neither of the binding CSS's two colours is a named token
+in `apps/ui/src/styles/tokens.css`. So the requirement exists, the authority for
+how to meet it does not, and F037 R9 through R15 each deferred it.
+
+**The choice.** The marked span inside a changed line takes that line's OWN
+background colour at roughly three times the alpha —
+`rgba(56,217,169,.32)` inside an added line and `rgba(247,103,7,.30)` inside a
+removed one, against the binding block's `.12` and `.10` for the whole row —
+with a two-pixel corner radius so a span reads as one mark rather than as a
+ragged run of characters.
+
+**Why this is a derivation and not an invention.** The two hues are the binding
+CSS's own, transcribed unchanged; only the alpha differs, and the alpha is what
+makes an emphasis inside an already-tinted row legible at all. Nothing new is
+named: no hue a designer did not choose, no token, and no change to
+`apps/ui/src/styles/tokens.css`, which is the operator's design system and is
+not this feature's to edit. A `var()` would in fact turn
+`tests/ui_contracts/test_diff_surface_css.py` RED, because that guard asserts
+every referenced token is defined in the shipped sheet — so the literal values
+are what makes the existing guard satisfiable, rather than a shortcut around it.
+
+**Why not weight, underline or a border.** Bold competes with the syntax
+highlighting T003 lazily loads onto the same characters, and the two would be
+indistinguishable in a monospace face. Underline collides with the underscore,
+which is a character diffs are full of. A border adds a pixel of width per span
+and would break the alignment of the two gutter columns the binding grid fixes
+at `56px 56px`. A background is the only treatment that composes with a
+per-token colour arriving later.
+
+**On the assumption_log the banner requires.** The banner directs any visual
+deviation to "the assumption_log". Measured at `68680786`, no file of that name
+exists anywhere in this repository. The DECISION series in `.agent/decisions.md`
+is what this repository actually uses for exactly this purpose — D3 and D4 of
+this feature are both design rulings recorded there — and amendment A5 puts the
+same ruling into the feature file, which is where a T003 builder looks first.
+This decision claims nothing about what the banner should say; it records where
+the reasoning went, and it went to both places.
+
+**Alternatives rejected.** (1) Ship no intraline emphasis and mark Acceptance
+short — rejected: it is a named line of Goal & Done, it has been deferred since
+R9, and deferring it a seventh time is how a feature reaches its round limit
+with a hole in the middle. (2) Ask the operator — forbidden by
+`docs/agents/planner_reviewer_prompt.md` §2, which requires a loud, persisted,
+reversible ruling instead of a question. (3) Add two tokens to `tokens.css` —
+rejected as an edit to the design system by a feature that the banner binds TO
+that system.
+
+**How to reverse.** Delete the two `.intraline` rules from
+`apps/ui/src/components/diff/DiffView.module.css`, restore the
+deliberate-absence paragraph above them from git history at `68680786`, drop
+`splitLineIntoIntralineSegments` and its `<mark>` from `DiffView.tsx`, and
+delete amendment A5. The parser's `intraline` spans are unaffected: they are
+contract data and predate this decision by fourteen rounds.
+
+## DECISION F037 D10 (2026-08-28) — TypeScript mutation red-proofs ARE measurable in this repository, and this is the route
+
+CONTEXT. From F037 R8 onward every block in this feature carried a standing
+claim that no TypeScript mutation red-proof can be ordered, because a
+`git worktree` has no `apps/ui/node_modules` — it is gitignored — and vitest
+there is exit 1 UNMUTATED with `ERR_MODULE_NOT_FOUND`, which is no
+discriminator and so a vacuous proof. TRUE of every route tried, FALSE in
+general, and it cost this feature its `.ts` red-proofs for thirteen rounds.
+
+THE RULING. Vitest is spawned FROM the primary checkout, so it resolves its own
+package out of the primary's `node_modules`, and `--root` points discovery at
+the worktree, so the tree under test is the worktree's:
+
+    subprocess.run(["npx", "vitest", "run",
+                    "--root", f"{WT}/apps/ui",
+                    "--config", f"{PRIMARY}/apps/ui/vitest.config.ts",
+                    "<path relative to --root>", "--reporter=basic"],
+                   cwd=f"{PRIMARY}/apps/ui", capture_output=True)
+
+BOTH FLAGS ARE LOAD-BEARING AND THE FAILURE MODES DIFFER. `--root` alone cannot
+resolve the `vitest` package from the worktree's own config and exits 1 before
+any test loads. `--config` alone re-runs the PRIMARY tree and stays GREEN under
+a worktree mutation — the dangerous one, because it looks like a passing gate.
+Only the pair roots discovery at the worktree while resolving the tool at the
+primary. The test path is RELATIVE and resolves against `--root`. G5 is intact:
+the primary is only READ, and the only tree written to is the disposable
+worktree. Direct `npx` and `node_modules/.bin/vitest` shell commands are denied
+to this session class, so drive it from a `python3` script under the gitignored
+`.remedy-wt/` — the refusal binds the shell caller, not the environment, which
+is finding `R-0724`'s lesson.
+
+EVIDENCE, taken at `b2658466`: control exit 0 at 61 passed, then five mutations
+of the worktree's `diffViewModel.ts` each exit 1 killing exactly the named test
+for the property broken, then control exit 0 again with every file restored to
+its pre-mutation sha256. REVERSE by deleting this decision; but the claim it
+replaces is measurably false, so reversing it re-blinds the `.ts` layer.
+
+## DECISION F037 D11 (2026-08-28) — F037 ships the diff viewer it has built, and the highlighting wiring, the perf measurement and the sidebar ruling are split off
+
+CONTEXT. F037 reached round 24 of a twenty-five-round soft limit in session 7 of
+seven. Operator amendment amend0827-process-diet rule 6 makes the obligation at
+that point a SCOPE REPORT with a proposal, not more work. Three pieces of T003
+are outstanding and are named in `.agent/plan.md` at `82d3d584`, as they were in
+the two rounds before it: the WIRING of `loadDiffLanguageBundle` into
+`DiffView`, the 10k-line perf fixture measured end to end with its numbers
+recorded, and a ruling on the sidebar's visual treatment. Measured at
+`82d3d584` with `git grep -l`, `loadDiffLanguageBundle` has NO caller outside
+`apps/ui/src/api/diffViewModel.ts` and its two test files: the lazy-bundle model
+is complete, tested and UNWIRED. Finishing all three and then running F037's
+closure sequence needs roughly five to seven further rounds, which is twice the
+budget that remains.
+
+THE RULING, made under docs/agents/planner_reviewer_prompt.md §4 item 7 and
+under the fix clause of finding `R-0709`, which binds the next block whose round
+turns on a judgement the operator has not made: the reviewer rules and records,
+and never asks. The three pieces LEAVE F037's scope. Feature-file amendment A6
+states this in `docs/roadmap/features/T5_F037.md`, so the narrowing is on the
+roadmap rather than only in this file, and F037's remaining work is its closure
+sequence. The alternative rule 6 also offers — splitting F037 into two STATUS
+lines — is a DOCUMENTED PROPOSAL TO THE OPERATOR, carried in this round's
+handback, and is NOT executed here, because rule 6 forbids executing it on the
+session's own authority.
+
+ALTERNATIVES CONSIDERED. (1) Row on to round 25 and beyond: forbidden by rule 6
+in as many words, and it would still not finish, because three pieces plus a
+closure sequence do not fit in one round. (2) Keep the scope and close F037 with
+the Acceptance bullets unmet: dishonest, and exactly the "green gate is not a
+working feature" failure this record already carries as `R-0220`. (3) Drop the
+pieces silently: worse than either, because nothing on the roadmap would ever
+record that a diff viewer shipped with its highlighting unwired.
+
+CONSEQUENCE, stated plainly because it is a real narrowing. F037 ships a diff
+viewer whose syntax highlighting is BUILT AND NOT WIRED, and whose 10k-line perf
+budget is UNMEASURED. The Acceptance bullet "unknown language renders plain
+without a bundle fetch" is met and proved at the model layer; the Goal & Done
+clause "the client renders it with syntax highlighting" and the Acceptance bullet
+"10k-line fixture within the perf budget (recorded)" are NOT met, and A6 says so
+rather than leaving a reader to discover it. Nothing already built is removed.
+
+REVERSE by deleting this decision and amendment A6 from
+`docs/roadmap/features/T5_F037.md`; the three pieces then return to F037's scope
+and the soft-limit obligation returns with them.

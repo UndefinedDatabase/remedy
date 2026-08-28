@@ -1,0 +1,32 @@
+C3e — NEUTRALISE THE STALENESS PREDICATE, then prove it
+=======================================================
+
+Base worktree: /home/decodeux/Repos/remedy/.remedy-wt/f037-r25-base
+Base commit:   9dde54956afbe5f432bfd429bf4ba0bb272f6d07 (branch tmp/f037-r25-base)
+
+Parity copy (C3d), shutil.copytree(src, dst, symlinks=True) — symlinks=True passed
+explicitly, not left to copytree's symlinks=False default (defect R-0591):
+  apps/ui/node_modules -> 44839 entries, 27 symlinks PRESERVED as symlinks
+  apps/ui/dist         -> 4 entries, 0 symlinks
+Neither directory is itself a symlink; both are real copied trees.
+
+mtime arithmetic:
+  newest file under base apps/ui/src : 1787918120.6318452 (Fri Aug 28 13:55:20 2026)
+  base apps/ui/dist/index.html mtime : 1787918420.6318452 (Fri Aug 28 14:00:20 2026)
+  dist mtime exceeds every src file  : True
+
+THE REAL PREDICATE, imported from the BASE WORKTREE's own module and called with
+that worktree as the working directory:
+
+  $ cd /home/decodeux/Repos/remedy/.remedy-wt/f037-r25-base
+  $ python3 -c 'import os,sys; sys.path.insert(0,os.getcwd());
+      from packages.orchestration import ui_server as m;
+      print(m.__file__); print(m._frontend_is_stale())'
+  exit code: 0
+  cwd:         /home/decodeux/Repos/remedy/.remedy-wt/f037-r25-base
+  module file: /home/decodeux/Repos/remedy/.remedy-wt/f037-r25-base/packages/orchestration/ui_server.py
+  _frontend_is_stale() -> False
+
+The predicate resolves apps/ui from Path(__file__).resolve().parent.parent.parent,
+so the module loaded above is the base worktree's own copy and the answer False is
+the base worktree's own reading, not the primary checkout's.

@@ -1,0 +1,160 @@
+C3h — ATTRIBUTION, unconditional and per id
+==========================================
+
+This file is written whether or not the parity claim held. Parity is VOID for
+this run (see parity.txt), and the obligation below is discharged by direct
+evidence per id rather than by parity.
+
+
+BRANCH-ONLY SET — 1 id
+----------------------
+
+id: tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_the_suite
+    failure in the -n auto branch run:
+      AssertionError: port 5273 still open
+      assert 0 != 0  (socket.connect_ex(("127.0.0.1", 5273)))
+      tests/orchestration/test_product_smoke.py:500
+
+    SERIAL RE-RUN, exact node id, alone, primary checkout:
+      $ python3 -m pytest tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_the_suite -q
+      run  1 exit 0 — 1 passed in 0.98s
+      run  2 exit 0 — 1 passed in 0.77s
+      run  3 exit 0 — 1 passed in 0.77s
+      run  4 exit 0 — 1 passed in 0.77s
+      run  5 exit 0 — 1 passed in 0.78s
+      run  6 exit 0 — 1 passed in 0.86s
+      run  7 exit 0 — 1 passed in 0.78s
+      run  8 exit 0 — 1 passed in 0.78s
+      run  9 exit 0 — 1 passed in 0.78s
+      run 10 exit 0 — 1 passed in 0.78s
+      exit codes [0,0,0,0,0,0,0,0,0,0] — 10 of 10 PASS
+
+    CLASSIFICATION: serial-pass ⇒ the xdist-flake class (F135/F052 pattern,
+    integration_gate.md step 4). RECORDED, NOT A BLOCKER.
+
+    WHY IT IS NOT COUPLED TO FEATURE CODE, by direct evidence:
+      1. The file is not touched by the branch. `git diff --name-only
+         9dde5495..HEAD` lists 57 paths and
+         `tests/orchestration/test_product_smoke.py` is not among them.
+      2. The test body builds two SYNTHETIC apps under its own tmp_path
+         (GOOD_APP, BROKEN_APP fixtures), runs the product-smoke check against
+         them and asserts the ports they opened are closed 0.2 s later. It
+         reaches none of the paths this feature changed — not
+         packages/orchestration/diff_parser.py, not diff_view_source.py, not
+         the diff endpoint in ui_server.py, and no apps/ui/src diff component.
+      3. The assertion is a 0.2 s grace window on a child process's socket
+         teardown. Under `-n auto` on a loaded machine that window is a race,
+         which is precisely what a serial pass 10 times over demonstrates.
+
+    Constraint 5 of the block therefore does NOT fire: this is not a
+    reproducible branch-only failure coupled to feature code.
+
+
+BASE-ONLY SET (comm -23 — failures the branch does not have) — 1 id
+-------------------------------------------------------------------
+
+id: tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+    failure in the -n auto base run:
+      AssertionError: Orphan process found after timeout cleanup
+      assert 0 != 0  (pgrep -f "apps.cli.grouped.*--help" returned 0, stdout '3530519')
+      tests/cli/test_review_bundle_runtime.py:327
+
+    NO MISSING ARTIFACT EXPLAINS THIS ID, and the honest reading is that it is
+    not the environment class at all. Stating that plainly rather than forcing
+    it into the missing-artifact bucket:
+      - apps/ui/node_modules (44839 entries, 27 symlinks preserved) and
+        apps/ui/dist were both copied into the base worktree before the run, so
+        the two artifacts integration_gate.md names as the environment class
+        were PRESENT.
+      - The assertion does not read any build output. It shells out to
+        `pgrep -f "apps.cli.grouped.*--help"`, a MACHINE-WIDE process match, and
+        fails when any process anywhere matches that pattern. Under `-n auto`
+        another xdist worker running another test that spawns the grouped CLI
+        satisfies that pattern, and the test then reports a foreign process as
+        its own orphan.
+
+    SERIAL RE-RUN AT THE MERGE BASE, exact node id, alone, in the base worktree
+    (cwd .remedy-wt/f037-r25-base, REMEDY_UI_NO_AUTO_BUILD=1 via env=):
+      run  1 exit 0 — 1 passed in 0.28s
+      run  2 exit 0 — 1 passed in 0.28s
+      run  3 exit 0 — 1 passed in 0.28s
+      run  4 exit 0 — 1 passed in 0.28s
+      run  5 exit 0 — 1 passed in 0.29s
+      run  6 exit 0 — 1 passed in 0.29s
+      run  7 exit 0 — 1 passed in 0.29s
+      run  8 exit 0 — 1 passed in 0.28s
+      run  9 exit 0 — 1 passed in 0.29s
+      run 10 exit 0 — 1 passed in 0.28s
+      exit codes [0,0,0,0,0,0,0,0,0,0] — 10 of 10 PASS at the base itself
+
+    CLASSIFICATION: serial-pass at the base ⇒ the same xdist-flake class, a
+    cross-worker process-visibility race. It is NOT a failure the branch fixed,
+    and it is NOT a genuine base failure: it does not reproduce serially at the
+    commit that produced it.
+
+    The file is likewise untouched by the branch —
+    `tests/cli/test_review_bundle_runtime.py` is not among the 57 paths in
+    `git diff --name-only 9dde5495..HEAD`.
+
+
+NEITHER SET IS EMPTY, so both attributions above were owed and both are given.
+The intersection of the two failure sets is EMPTY: no id failed in both runs.
+
+
+THE PARITY VOID, and its named cause
+------------------------------------
+
+parity.txt records the void: all four files under the base worktree's
+apps/ui/dist have mtime 1787918302.05 (13:58:22), which is 77 s inside the
+13:57:05 → 13:59:40 run window, and the asset FILENAMES changed across the run —
+index-B5aVi7qQ.js → index-D_a-qpxM.js and index-DBZlPUBM.css → index-D0y3OK7n.css.
+Changed hashed filenames are a real vite rebuild, not a touch.
+
+The cause is named by direct evidence and is a test that removes the flag ON
+PURPOSE. In the base worktree,
+tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default
+(lines 574-584) does:
+
+    env = os.environ.copy()
+    env.pop("REMEDY_UI_NO_AUTO_BUILD", None)
+    with patch.dict(os.environ, env, clear=True):
+        result = _auto_build_frontend()
+
+It pops REMEDY_UI_NO_AUTO_BUILD from a CLEARED environment and then calls the
+real, unmocked _auto_build_frontend(). Its own docstring assumes the call cannot
+build — "Returns None because package.json path doesn't match test env, but it
+tried" — but a git worktree is a full checkout, apps/ui/package.json is present
+and apps/ui/node_modules was copied in for parity, so `npm run build` DID run and
+rewrote apps/ui/dist from the BASE sources. The env= the block ordered was
+correctly passed and correctly honoured by _auto_build_frontend at line 3083; it
+was removed inside the process by the test, which is exactly the "spawned build
+path ignored it" class integration_gate.md attributes to R-0169.
+
+WHAT THE VOID DOES AND DOES NOT COST HERE. It costs the right to say "the base
+run saw the same dist bytes throughout". It does not weaken either attribution
+above, because neither rests on parity: the branch-only id passed 10/10 serially
+in the primary checkout, and the base-only id passed 10/10 serially IN THE BASE
+WORKTREE AFTER the rebuild. It also does not silently favour the branch — the
+rebuild replaced the branch's copied bundle with the base's own bundle, which is
+the more conservative direction for a base run.
+
+THE CAUSE IS MEASURED, NOT INFERRED. That single node id was re-run ALONE in the
+base worktree, with REMEDY_UI_NO_AUTO_BUILD=1 supplied through env= exactly as
+the base run supplied it, and the four dist mtimes moved again:
+
+  $ cd .remedy-wt/f037-r25-base
+  $ python3 -m pytest tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default -q
+  exit 0 — 1 passed in 1.74s (wall 2.0s)
+  apps/ui/dist BEFORE : assets, assets/index-D0y3OK7n.css, assets/index-D_a-qpxM.js,
+                        index.html — all mtime 1787918302.05
+  apps/ui/dist AFTER  : the same four paths — all mtime 1787918576.12
+  changed across the single test: all 4;  inside the single test's window: all 4
+
+One passing test, alone, with the flag set, rewrites the build output. The
+filenames did not change this time because the base sources did not change
+between the two builds, which is why the mtime reading and not a content hash is
+the one that catches this — equal content is consistent both with no rebuild and
+with a byte-identical one (R-0444).
+
+This is a report, not a repair. No file was changed to make the parity claim
+hold, and the void is carried into the handback for the reviewer.

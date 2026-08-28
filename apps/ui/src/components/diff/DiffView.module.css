@@ -1,0 +1,58 @@
+/* BINDING diff-surface declarations. Every value below is transcribed from the
+   binding CSS block in the Design section of `docs/roadmap/features/T5_F037.md`
+   and must not be adjusted here: that block, not this file, is the authority.
+   Amendment A4 of the same feature file names the three authorities for this
+   surface — its own binding CSS, `component_spec.md` for the entry point, and
+   `assets_spec.md` for the mono family. `ux_spec.md` carries nothing about
+   diffs, which is what A4 corrects.
+
+   Class names are camelCase because that is this package's CSS-module
+   convention; the binding block's kebab-case names map one-for-one:
+   `.diff-line` is `.diffLine`, `.hunk-head` is `.hunkHead`, and the nested
+   `.add`, `.del` and `.ln` names are unchanged.
+
+   The mono family is named through `var(--remedy-font-mono, …)` rather than as
+   the binding block's literal stack, with that literal stack kept as the
+   fallback — DECISION F037 D4 records why and how to reverse it.
+
+   LIGATURES ARE OFF ON EVERY DIFF SURFACE. A `!=` or a `->` in a diff must
+   render as the characters that are really in the file; a composing font would
+   draw one glyph where the source holds two, so a reader would be judging a
+   change against type that does not match the bytes. That is the rule in
+   `assets_spec.md` section 2, "Canonical monospace font", for diff surfaces.
+   `font-feature-settings` is declared AFTER the `font` shorthand in the rules
+   below because the shorthand resets it; reordering the two silently turns
+   ligatures back on. */
+
+.diffLine { display: grid; grid-template-columns: 56px 56px 1fr; font: 12.5px/1.6 var(--remedy-font-mono, ui-monospace, monospace); font-feature-settings: "liga" 0; }
+.diffLine.add { background: rgba(56,217,169,.12); }
+.diffLine.del { background: rgba(247,103,7,.10); }
+.diffLine .ln { color: var(--remedy-ink-soft, #6f82a8); text-align: right; padding-right: 10px; user-select: none; }
+
+.hunkHead { background: var(--remedy-bg-2, #f8fbff); color: var(--remedy-ink-soft, #6f82a8); padding: 4px 12px; font-size: 11px; letter-spacing: .08em; font-feature-settings: "liga" 0; }
+
+/* THE INTRALINE EMPHASIS, ruled by DECISION F037 D9 and recorded as amendment A5
+   of `docs/roadmap/features/T5_F037.md`, which is where a builder of T003 looks
+   first. It is a DERIVATION and not an invention: the two hues below are this
+   sheet's OWN added and removed backgrounds, transcribed unchanged from the
+   binding CSS block, and only the ALPHA differs — `.32` inside an added line and
+   `.30` inside a removed one, against the `.12` and `.10` the two rules above
+   give the whole row. So NO new hue enters this stylesheet, no new custom
+   property is introduced and `apps/ui/src/styles/tokens.css` is not touched. The
+   higher alpha is what makes a mark legible inside a row that is already tinted;
+   the two-pixel radius is what makes a span read as one mark rather than as a
+   ragged run of characters.
+
+   THIS REPLACES THE DELIBERATE ABSENCE THIS FILE CARRIED UNTIL F037 R16 — that
+   Remedy does not style intraline spans here, because the binding CSS defines no
+   intraline treatment and the CANONICAL DESIGN REFERENCE banner forbids
+   inventing a visual language. That silence is real and unchanged; what changed
+   is that D9 ruled the treatment from the sheet's own values instead of
+   deferring it a seventh time. The two rules beneath this comment are the whole
+   of what that ruling authorises, and a reader searching this file for the
+   word-level emphasis inside a changed line now finds it here rather than an
+   explanation of why it is missing. Reverse by deleting both rules and restoring
+   that paragraph from git history at `68680786`. */
+
+.diffLine.add .intraline { background: rgba(56,217,169,.32); border-radius: 2px; }
+.diffLine.del .intraline { background: rgba(247,103,7,.30); border-radius: 2px; }

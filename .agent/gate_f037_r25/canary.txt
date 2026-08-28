@@ -1,0 +1,21 @@
+G7 — THE CANARY AND THE STATE CONTRACTS
+=======================================
+
+Run after the C3 integration-gate work and before C4, in the primary checkout,
+ONE pytest process at a time (never concurrently).
+
+canary
+  $ python3 -m pytest tests/cli/test_golden_path.py -q
+  exit code: 0
+  wall time: 20.7s
+  result:    42 passed in 20.50s
+
+state contracts
+  $ python3 -m pytest tests/ui_contracts/ -q
+  exit code: 0
+  wall time: 5.8s
+  result:    653 passed, 4 skipped in 5.57s
+
+Reviewer's readings at 38966bf3, for comparison:
+  tests/cli/test_golden_path.py  -> 42 passed
+  tests/ui_contracts/            -> 653 passed, 4 skipped

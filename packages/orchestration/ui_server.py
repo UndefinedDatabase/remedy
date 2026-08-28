@@ -2586,6 +2586,22 @@ def _build_human_node_detail_json(job: Any, node_id: str) -> dict[str, Any]:
     return build_human_node_detail(job, events, node_id)
 
 
+def _build_diff_json(job: Any) -> dict[str, Any]:
+    """Build the F037 diff envelope for one job — a THIN caller, deliberately: it has no
+    filesystem logic, no path building and no error handling of its own, because
+    `build_diff_view` never raises and names every absence in its own envelope."""
+    from packages.orchestration.diff_view_source import build_diff_view
+    return build_diff_view(_resolve_evidence_dir(str(job.id)))
+
+
+def _build_task_run_diff_json(job: Any, task_id: str) -> dict[str, Any]:
+    """Build the F037 diff envelope for one task run — a THIN caller for the same reason
+    `_build_diff_json` is one: `build_diff_view` never raises and names every absence,
+    including an unknown task id, in its own envelope."""
+    from packages.orchestration.diff_view_source import build_diff_view
+    return build_diff_view(_resolve_evidence_dir(str(job.id)), task_id=task_id)
+
+
 def _build_layers_json() -> dict[str, Any]:
     """Build layer definitions — Step 167."""
     from packages.orchestration.ui_view_model import build_layers
@@ -3441,6 +3457,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "story": _build_story_json,
                 "checklist": _build_checklist_json,
                 "diagnostics": _build_diagnostics_json,
+                "diff": _build_diff_json,
             }
             handler = handlers.get(endpoint)
             if handler:
@@ -3519,6 +3536,24 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 self._send_json(*err)
                 return
             self._send_json(200, _build_node_detail_json(job, node_id))
+            return
+
+        # /api/jobs/<job_id>/task-runs/<task_id>/diff
+        # WHY a structural route rather than a handlers-dict key: the task-run scope needs a
+        # SECOND path segment, and the dict dispatch above is keyed on a single `parts[4]`.
+        # This route is therefore spelled out in `_walkable_paths`
+        # (tests/ui_server/test_command_channel.py) by hand, because the AST walk that
+        # derives the job endpoints has no literal here to derive it from.
+        if (len(parts) == 7 and parts[1] == "api" and parts[2] == "jobs"
+                and parts[4] == "task-runs" and parts[6] == "diff"):
+            job, err = _load_job(parts[3])
+            if err:
+                self._send_json(*err)
+                return
+            # An UNKNOWN task run is NOT an HTTP error: the envelope answers 200 with
+            # `available` False and `reason` `unknown_task_run`. A 404 would make a job with
+            # no diff indistinguishable from a bad URL.
+            self._send_json(200, _build_task_run_diff_json(job, parts[5]))
             return
 
         self._send_json(*_safe_error(404, "not found"))
