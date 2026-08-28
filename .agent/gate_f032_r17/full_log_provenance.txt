@@ -1,0 +1,76 @@
+FULL LOG PROVENANCE - F032 integration gate, round R17
+
+WHO BUILT THE FRONTEND BEHIND THESE RUNS
+The reviewer built it before this round, in the primary checkout, from apps/ui.
+This worker ran NO build and invoked neither npm, npx, node nor vite at any
+point, which the block's constraint 7 requires. The worker MEASURED the result
+rather than taking the reviewer's word for it: `_frontend_is_stale()` returned
+False, apps/ui/dist/index.html carried Fri Aug 28 02:46:30 2026 against a newest
+source file, apps/ui/src/components/panels/RightLivePanel.module.css, at Fri Aug
+28 02:25:15 2026, and apps/ui/dist/assets held index-D0y3OK7n.css and
+index-D_a-qpxM.js - the two files the reviewer's build emitted.
+
+WHERE EACH FULL LOG LIVED WHILE ITS RUN WAS IN FLIGHT
+Both live logs were written to the gitignored .remedy-wt/ directory, which is
+outside every tracked path (.gitignore line 235 resolves .remedy-wt/). Neither
+log grew inside a tracked path during a run, which is what finding R-0176
+requires: a log growing inside the repo changes the worktree digest mid-run and
+fails the manifest-identity ids as false positives.
+
+  branch run  : /home/decodeux/Repos/remedy/.remedy-wt/branch_run.txt
+                written Fri Aug 28 02:52:30 -> 02:55:31 2026
+  base run    : /home/decodeux/Repos/remedy/.remedy-wt/base_run.txt
+                written Fri Aug 28 02:55:51 -> 02:58:15 2026
+
+WHEN THE EVIDENCE WAS COPIED IN
+Nothing was written under .agent/gate_f032_r17/ until BOTH runs had exited and
+the base worktree had been removed. The files here are derived from those two
+live logs and from the meta and parity records the runners wrote alongside them;
+no live log was ever opened for writing inside .agent/.
+
+NO MEMBER OF THIS DIRECTORY IS A .log FILE
+Every file carries a .txt name. .gitignore drops *.log silently and the
+review-zip guard rejects any member matching \.log$ (finding R-0169).
+
+WHAT REWROTE apps/ui/dist DURING BOTH RUNS - NAMED, BECAUSE THE GATE MEASURED IT
+The base run set REMEDY_UI_NO_AUTO_BUILD=1 and still saw its apps/ui/dist
+rewritten inside the run window, with the asset content-hash names changing.
+That is finding R-0169's mechanism recurring, and S4's event measurement is what
+caught it. The suite contains a test that removes the variable from the
+environment and then calls the real build:
+
+  tests/ui_server/test_dashboard_contract.py::TestAutoBuildBehavior::test_auto_build_runs_by_default
+    env = os.environ.copy()
+    env.pop("REMEDY_UI_NO_AUTO_BUILD", None)
+    with patch.dict(os.environ, env, clear=True):
+        result = _auto_build_frontend()
+
+  packages/orchestration/ui_server.py:3083 returns early only when
+  REMEDY_UI_NO_AUTO_BUILD == "1"; with the variable popped, control reaches the
+  `npm run build` site at line 3110. The sibling test at line 604 patches the
+  exec_guard seam and so does not really build; this one patches nothing.
+
+That test is present at the merge base a399a330 in the same shape - the same
+env.pop and the same unpatched call - so the behaviour predates this branch and
+is not something F032 introduced. It also explains the branch side: the primary
+checkout's apps/ui/dist was rewritten at Fri Aug 28 02:53:50 2026, inside the
+branch run window, with its asset NAMES unchanged, i.e. a byte-identical rebuild
+from the same sources.
+
+This round registers no finding for it. Under operator amendment amend0827 rule
+2 an R-id is the reviewer's to spend, and this block ordered no registration:
+the observation is recorded here and in the handback so the reviewer can decide.
+It did not change the outcome of either run in a way this gate could not
+attribute - the branch run had zero failures, and both base-only ids pass
+serially (see attribution.txt).
+
+COMMANDS, VERBATIM
+  branch run : python3 -m pytest -n auto -q
+               cwd /home/decodeux/Repos/remedy
+               exit 0
+  base run   : python3 -m pytest -n auto -q
+               cwd /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+               env REMEDY_UI_NO_AUTO_BUILD=1
+               exit 1
+  The two runs were SERIAL. The base run started at 02:55:51, twenty seconds
+  after the branch run ended at 02:55:31; no two pytest processes overlapped.
