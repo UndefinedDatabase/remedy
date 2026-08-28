@@ -3,7 +3,7 @@
 Branch: feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the
 merge commit of pull request #217 which closed F032.
 `.agent/live_review.md` is the review record and the finding-id ceiling;
-`.agent/decisions.md` carries the DECISION series, F037 D1 and D2.
+`.agent/decisions.md` carries the DECISION series, F037 D1, D2 and D3.
 
 ## Goal
 Changes become readable, not merely present. The server parses a unified diff
@@ -14,36 +14,37 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments that reconcile it with the source.
 
 ## Current Step
-R7 finishes T001 by making the resolver reachable over HTTP: a job-scope route
-as a key in the `do_GET` handlers dict, which enters the route walk for free,
-and a task-run-scope route spelled out structurally because it needs a second
-path segment. An unknown task run answers 200 with a named absence rather than
-404, because absence is data in this envelope. The round also repairs `R-0715`,
-a stale numeral in the docstring of the very route-walk guard it edits, by
-deleting the numeral as that finding's counter-measure requires.
+T001 is COMPLETE: the parser, the resolver and the two GET routes all landed and
+were proved by mutation. R8 prepares T002 rather than starting it. It corrects
+the feature file's design authority for the diff surface, which named a section
+that does not exist, and it MEASURES whether the frontend test runner can be
+executed in this environment at all — the reviewer's three attempts were
+refused, and no UI code is ordered until that has an answer, because code that
+neither role can execute cannot be verified and must not be certified.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R6 gate | ordered | record first |
-| C3 the two routes | ordered | no new literal route |
-| C4 the walk registration and `R-0715` | ordered | the guard must see the new route |
-| C5 the endpoint tests | ordered | |
-| C6 the handback | ordered | |
+| C2 the R7 gate, `R-0715`, `R-0719`, the slip | ordered | record first |
+| C3 the feature-file amendment and the decision | ordered | authority before builders |
+| C4 the handback | ordered | carries the probe's answer first |
 
 ## Next Steps
-1. T002 the rendering core: lines, intraline emphasis, hunk heads and collapse,
-   against the binding CSS in `docs/roadmap/features/T5_F037.md`, with goldens
-   per fixture shape.
-2. T003 sidebar, virtual scrolling, lazy language bundles, the 10k-line perf
-   fixture and the L3 evidence-panel tab.
-3. The integration-gate round before closure, then the closure sequence.
+1. Act on the G7 answer. If the runner executes, T002's rendering core lands as
+   a pure `.ts` view-model beside its `.test.ts`, which is the only shape this
+   package tests: `apps/ui/vitest.config.ts` sets `environment: "node"` and the
+   repository has neither jsdom nor a testing library, so no React component is
+   rendered in any of its 31 test files. If the runner cannot execute, the
+   session hands off asking the operator to grant it, and orders no UI code.
+2. T002 the rendering core, then the React components and their CSS module
+   against the binding CSS and amendment A4.
+3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
+- The frontend runner is unproven here. That is what G7 measures, and it is the
+  single largest risk to the rest of this feature.
 - `R-0711` carries a `Landed:` line and no `Done:` text because F032's branch
   ended first. It is the terminator case, not a gap for F037 to close.
-- The endpoint tests start a real server on a free port. Run the suites
-  serially: two pytest processes at once produce false reds in this directory.
-- T002 is the first UI work of this feature, so the design reference in
-  `docs/ui/design_reference/` becomes binding from the next round on.
+- No bundle-size budget exists anywhere in `tests/` or `apps/ui/vite.config.ts`,
+  so T003 would be creating that ceiling rather than satisfying one.
