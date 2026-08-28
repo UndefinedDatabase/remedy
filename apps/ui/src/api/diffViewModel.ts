@@ -799,3 +799,85 @@ export function diffLanguageForPath(path: string): string | null {
   const language: string | undefined = DIFF_SUPPORTED_LANGUAGES[extension];
   return language === undefined ? null : language;
 }
+
+/** How a syntax bundle is fetched: a function from a language id to a promise of
+ *  that language's bundle. It is a TYPE AND NOTHING MORE. This module ships no
+ *  bundles and imports nothing, which is the whole of what "lazy" means here — a
+ *  static import of a highlighter would put every language in the main chunk and
+ *  the laziness would exist only in the name of the function. */
+export type DiffLanguageBundleImporter = (language: string) => Promise<unknown>;
+
+/** What `loadDiffLanguageBundle` answers. `language` is `null` exactly when the
+ *  path renders plain, and `bundle` is `null` whenever there is nothing to
+ *  highlight WITH — either because the answer is plain or because the import did
+ *  not arrive. The two fields are separate for that second case: a language
+ *  resolved from a path stays true even when its bundle never loads. */
+export interface DiffLanguageBundleAnswer {
+  language: string | null;
+  bundle: unknown;
+}
+
+const diffLanguageBundleCache = new Map<string, Promise<unknown>>();
+
+/** Forget every bundle loaded so far. IT EXISTS FOR THE TESTS, and saying so is
+ *  more honest than dressing it up: the cache below is module state no caller
+ *  can otherwise observe, and an unobservable cache is one no gate can hold to
+ *  its promise of "one import per language". A test that cannot reset it either
+ *  leaks state into the next test or proves nothing. The application never calls
+ *  this — a bundle stays loaded for the life of the page, which is the point. */
+export function resetDiffLanguageBundleCache(): void {
+  diffLanguageBundleCache.clear();
+}
+
+/** The syntax bundle for `path`'s language, loaded at most once per language.
+ *  TOTAL: it never throws and never rejects, exactly as `loadDiffEnvelope` never
+ *  throws — a viewer that cannot highlight still has to render the diff.
+ *
+ *  `importBundle` IS REQUIRED AND HAS NO DEFAULT, which is the one real design
+ *  choice here. A default that threw only when called would be swallowed by this
+ *  function's own degrade-to-plain rule below and arrive at the operator as "that
+ *  language is not supported" — a wiring mistake wearing the costume of a correct
+ *  answer. Required makes the same mistake a compile error instead, and it keeps
+ *  the promise the type above makes: this module names no highlighter.
+ *
+ *  THE FOUR RULES:
+ *
+ *  * THE ACCEPTANCE PROPERTY, which is the reason this function exists rather
+ *    than a `diffLanguageForPath` call at the call site: for a path that renders
+ *    plain, `importBundle` IS NEVER CALLED. Not called and discarded, not called
+ *    and left unawaited — never invoked, so no chunk is ever requested for a file
+ *    this viewer was never going to highlight. The answer is
+ *    `{ language: null, bundle: null }` and the vitest suite pins the call count
+ *    at exactly zero rather than at "falsy".
+ *  * A FAILING IMPORT DEGRADES TO PLAIN. Whether `importBundle` throws
+ *    synchronously or returns a promise that rejects, the answer is
+ *    `{ language, bundle: null }`: the language is still reported, because it was
+ *    resolved from the path and remains true, and only the bundle is missing.
+ *  * ONE IMPORT PER LANGUAGE. The cache is keyed by language id and holds the
+ *    PROMISE rather than the resolved bundle, so two files of the same language
+ *    asking at the same moment share one import instead of racing to start two.
+ *  * A FAILED IMPORT IS RETRIED, NOT CACHED. The rejected promise is dropped from
+ *    the cache, so a later call tries again. A bundle request fails for transient
+ *    reasons — a chunk that lost the network — and caching that failure would
+ *    make one bad second permanent for the life of the page, with no way for the
+ *    operator to ask again short of a reload. */
+export async function loadDiffLanguageBundle(
+  path: string,
+  importBundle: DiffLanguageBundleImporter,
+): Promise<DiffLanguageBundleAnswer> {
+  const language = diffLanguageForPath(path);
+  if (language === null) {
+    return { language: null, bundle: null };
+  }
+  try {
+    let pending = diffLanguageBundleCache.get(language);
+    if (pending === undefined) {
+      pending = Promise.resolve(importBundle(language));
+      diffLanguageBundleCache.set(language, pending);
+    }
+    return { language, bundle: await pending };
+  } catch {
+    diffLanguageBundleCache.delete(language);
+    return { language, bundle: null };
+  }
+}

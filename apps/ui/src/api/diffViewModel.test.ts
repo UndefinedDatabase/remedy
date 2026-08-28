@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   DIFF_HUNK_COLLAPSE_THRESHOLD_LINES,
   DIFF_SUPPORTED_LANGUAGES,
@@ -12,13 +12,16 @@ import {
   defaultCollapsedHunkIds,
   diffLanguageForPath,
   diffRowWindowForViewport,
+  loadDiffLanguageBundle,
   readDiffEnvelope,
+  resetDiffLanguageBundleCache,
   splitLineIntoIntralineSegments,
   toggleHunkCollapse,
 } from "./diffViewModel";
 import type {
   DiffEnvelope,
   DiffIntralineSpan,
+  DiffLanguageBundleImporter,
   DiffLine,
   DiffLineSegment,
   DiffRowViewportWindow,
@@ -916,5 +919,121 @@ describe("diffLanguageForPath", () => {
     expect(DIFF_SUPPORTED_LANGUAGES.rs).toBeUndefined();
     expect(diffLanguageForPath("crates/main.rs")).toBeNull();
     expect(diffLanguageForPath("notes.unknownlanguage")).toBeNull();
+  });
+});
+
+/** An importer that RECORDS the language of every call and answers a bundle
+ *  named after it. Written here rather than reached for from a mocking library,
+ *  because nothing under `apps/ui/src` uses one and this round starts nothing:
+ *  counting calls needs a counter, not a framework, and a hand-written counter is
+ *  readable at the point of use instead of at the point of configuration.
+ *  `tests/ui_contracts/test_diff_view_model.py` holds that line mechanically. */
+function countingBundleImporter(): { calls: string[]; importBundle: DiffLanguageBundleImporter } {
+  const calls: string[] = [];
+  return {
+    calls,
+    importBundle: (language: string) => {
+      calls.push(language);
+      return Promise.resolve({ bundleFor: language });
+    },
+  };
+}
+
+/** The same counter, over an importer whose promise REJECTS — a bundle chunk
+ *  that did not arrive. */
+function rejectingBundleImporter(): { calls: string[]; importBundle: DiffLanguageBundleImporter } {
+  const calls: string[] = [];
+  return {
+    calls,
+    importBundle: (language: string) => {
+      calls.push(language);
+      return Promise.reject(new Error(`no bundle chunk for ${language}`));
+    },
+  };
+}
+
+const PLAIN_PATHS = ["", "Makefile", ".gitignore", "trailing.", "a/b.c/d", "notes.rs"];
+
+describe("loadDiffLanguageBundle", () => {
+  beforeEach(() => {
+    // The cache is module state, so a test that did not reset it would be reading
+    // the previous test's imports.
+    resetDiffLanguageBundleCache();
+  });
+
+  it("NEVER asks for a bundle when the language is plain", async () => {
+    // Acceptance in so many words: "unknown language renders plain WITHOUT a
+    // bundle fetch". The count is asserted at exactly zero, not merely falsy,
+    // because "did not fetch" is the property and not "answered plain".
+    const importer = countingBundleImporter();
+    const answer = await loadDiffLanguageBundle("notes.unknownlanguage", importer.importBundle);
+    expect(importer.calls.length).toBe(0);
+    expect(answer).toEqual({ language: null, bundle: null });
+  });
+
+  it("asks for no bundle for ANY kind of plain path", async () => {
+    const importer = countingBundleImporter();
+    for (const plain of PLAIN_PATHS) {
+      const answer = await loadDiffLanguageBundle(plain, importer.importBundle);
+      expect(answer, `plain path ${JSON.stringify(plain)}`).toEqual({
+        language: null,
+        bundle: null,
+      });
+    }
+    expect(importer.calls.length).toBe(0);
+  });
+
+  it("imports a supported language EXACTLY once and answers its bundle", async () => {
+    const importer = countingBundleImporter();
+    const answer = await loadDiffLanguageBundle("apps/ui/src/main.ts", importer.importBundle);
+    expect(importer.calls).toEqual([DIFF_SUPPORTED_LANGUAGES.ts]);
+    expect(answer.language).toBe(DIFF_SUPPORTED_LANGUAGES.ts);
+    expect(answer.bundle).toEqual({ bundleFor: DIFF_SUPPORTED_LANGUAGES.ts });
+  });
+
+  it("imports ONE bundle per language however many files ask for it", async () => {
+    const importer = countingBundleImporter();
+    const first = await loadDiffLanguageBundle("a.ts", importer.importBundle);
+    const second = await loadDiffLanguageBundle("b/c.ts", importer.importBundle);
+    expect(importer.calls.length).toBe(1);
+    expect(second.bundle).toBe(first.bundle);
+  });
+
+  it("degrades a REJECTING import to plain, still reporting the language", async () => {
+    const importer = rejectingBundleImporter();
+    const answer = await loadDiffLanguageBundle("main.py", importer.importBundle);
+    expect(answer).toEqual({ language: DIFF_SUPPORTED_LANGUAGES.py, bundle: null });
+    expect(importer.calls.length).toBe(1);
+  });
+
+  it("degrades a THROWING import to plain in the same way", async () => {
+    const calls: string[] = [];
+    const importBundle: DiffLanguageBundleImporter = (language: string) => {
+      calls.push(language);
+      throw new Error("bundle chunk missing");
+    };
+    const answer = await loadDiffLanguageBundle("main.py", importBundle);
+    expect(answer).toEqual({ language: DIFF_SUPPORTED_LANGUAGES.py, bundle: null });
+    expect(calls.length).toBe(1);
+  });
+
+  it("RETRIES a language whose import failed rather than caching the failure", async () => {
+    const failing = rejectingBundleImporter();
+    const failed = await loadDiffLanguageBundle("main.py", failing.importBundle);
+    expect(failed.bundle).toBeNull();
+    const succeeding = countingBundleImporter();
+    const retried = await loadDiffLanguageBundle("main.py", succeeding.importBundle);
+    expect(succeeding.calls.length).toBe(1);
+    expect(retried.bundle).toEqual({ bundleFor: DIFF_SUPPORTED_LANGUAGES.py });
+  });
+
+  it("really forgets what it loaded when the cache is reset", async () => {
+    const importer = countingBundleImporter();
+    await loadDiffLanguageBundle("a.css", importer.importBundle);
+    await loadDiffLanguageBundle("a.css", importer.importBundle);
+    expect(importer.calls.length).toBe(1);
+    resetDiffLanguageBundleCache();
+    await loadDiffLanguageBundle("a.css", importer.importBundle);
+    expect(importer.calls.length).toBe(2);
   });
 });
