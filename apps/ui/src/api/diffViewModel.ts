@@ -741,21 +741,40 @@ export function diffRowWindowForViewport(
  *  FROZEN because it is shared module state that a caller could otherwise extend
  *  at runtime, which would put a language id in the map with no bundle behind
  *  it. TWO EXTENSIONS MAY SHARE ONE ID — `yml` and `yaml` are one language — and
- *  that is why this is a mapping rather than a list of extensions. */
-export const DIFF_SUPPORTED_LANGUAGES: Readonly<Record<string, string>> = Object.freeze({
-  ts: "typescript",
-  tsx: "tsx",
-  js: "javascript",
-  jsx: "jsx",
-  py: "python",
-  json: "json",
-  css: "css",
-  md: "markdown",
-  sh: "shell",
-  yml: "yaml",
-  yaml: "yaml",
-  toml: "toml",
-});
+ *  that is why this is a mapping rather than a list of extensions.
+ *
+ *  ON A NULL PROTOTYPE, which is the first half of finding `R-0731`'s fix and is
+ *  LOAD-BEARING rather than decorative. A plain object literal INHERITS from
+ *  `Object.prototype`, so `map.constructor` answers the `Object` constructor
+ *  function and `map.__proto__` answers `Object.prototype` — values nobody put
+ *  in the mapping. THE GENERAL RULE, not a special case for those two names: an
+ *  object literal is the wrong shape for a lookup keyed by an ARBITRARY EXTERNAL
+ *  STRING, in any language with prototype inheritance. The key here is a file
+ *  extension taken from a diff path, and a diff path comes from a repository
+ *  this viewer does not control, so the key set is the attacker's and not ours.
+ *  `Object.create(null)` gives the mapping nothing to inherit, so every miss is
+ *  a real miss.
+ *
+ *  `diffLanguageForPath` ALSO reads this through an own-property check, and the
+ *  belt-and-braces is deliberate: either change alone repairs today's defect, so
+ *  either one alone would let a later refactor undoing the other silently
+ *  restore it. Both are load-bearing, and neither may be removed as redundant. */
+export const DIFF_SUPPORTED_LANGUAGES: Readonly<Record<string, string>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<string, string>, {
+    ts: "typescript",
+    tsx: "tsx",
+    js: "javascript",
+    jsx: "jsx",
+    py: "python",
+    json: "json",
+    css: "css",
+    md: "markdown",
+    sh: "shell",
+    yml: "yaml",
+    yaml: "yaml",
+    toml: "toml",
+  }),
+);
 
 /** The language id to highlight `path` as, or `null` meaning "render it plain".
  *  TOTAL: no input throws, and `null` is an ANSWER rather than an error — plain
@@ -793,11 +812,22 @@ export function diffLanguageForPath(path: string): string | null {
     return null;
   }
   const extension = basename.slice(dot + 1).toLowerCase();
-  // `Record<string, string>` claims every key resolves, which is exactly what an
-  // arbitrary extension does not do; the annotation restores the truth so the
-  // absent case can be compared for rather than read as a language id.
-  const language: string | undefined = DIFF_SUPPORTED_LANGUAGES[extension];
-  return language === undefined ? null : language;
+  // ABSENCE IS DECIDED BY AN OWN-PROPERTY CHECK, never by comparing the read
+  // value to `undefined`. That comparison is what finding `R-0731` was: it
+  // answers "present" for every key an object INHERITS, so a path ending in
+  // `.constructor` resolved to a function and then reached the bundle importer
+  // that Acceptance says must never be called for a plain file. The extension is
+  // an arbitrary external string — it arrives inside a diff path from a
+  // repository this viewer does not control — and the safe question about such a
+  // key is whether the mapping OWNS it, not whether reading it yielded something.
+  // This is the second half of that fix; the declaration above builds the mapping
+  // on a null prototype and is the first. BOTH ARE LOAD-BEARING: either alone
+  // repairs the defect, which is exactly why removing either one as redundant
+  // restores it the moment the other is refactored away.
+  if (!Object.prototype.hasOwnProperty.call(DIFF_SUPPORTED_LANGUAGES, extension)) {
+    return null;
+  }
+  return DIFF_SUPPORTED_LANGUAGES[extension];
 }
 
 /** How a syntax bundle is fetched: a function from a language id to a promise of

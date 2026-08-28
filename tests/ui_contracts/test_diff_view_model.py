@@ -119,25 +119,49 @@ def module_specifiers(source: str) -> list[str]:
     return re.findall(r"""(?:\bfrom|\bimport|\brequire)\s*\(?\s*["']([^"']+)["']""", source)
 
 
-def supported_languages_block(source: str) -> str:
-    """The body of the `DIFF_SUPPORTED_LANGUAGES` object literal, as text.
+def supported_languages_declaration(source: str) -> str:
+    """The WHOLE `DIFF_SUPPORTED_LANGUAGES` declaration, from `export const` to its `);`.
 
-    THE SCOPER for the language-set guard. It is deliberately narrow: reading the ids out of
-    the declaration itself means the guard tracks the mapping rather than a list repeated
-    here, so an entry added to the module is an entry this file immediately demands a test
-    for.
+    THE REGION SCOPER, and the one both language guards below read through. It is anchored on
+    the declaration's OWN boundaries rather than on a particular way of writing the right-hand
+    side, which is the repair finding `R-0731` forced: the earlier spelling of this function
+    matched `= Object.freeze({` literally, so it read the shape of the initialiser as if that
+    shape were the promise. It is not — the promise is that the supported set is declared
+    exactly once, by name, and R-0731's fix changed how the mapping is BUILT without changing
+    what is declared.
     """
     match = re.search(
-        rf"^export const {LANGUAGES_NAME}[^=]*= Object\.freeze\(\{{(.*?)^\}}\);",
+        rf"^export const {LANGUAGES_NAME}\b.*?^\);",
         source,
         re.MULTILINE | re.DOTALL,
     )
     assert match is not None, (
-        f"{LANGUAGES_NAME} is not declared as a frozen object literal in {MODULE.name}; the "
-        f"supported set of docs/roadmap/features/T5_F037.md must be declared exactly once, by "
-        f"name, so this guard and the vitest suite read the same mapping"
+        f"{LANGUAGES_NAME} is not declared in {MODULE.name} as a single statement ending in a "
+        f"`);` of its own; the supported set of docs/roadmap/features/T5_F037.md must be "
+        f"declared exactly once, by name, so this guard and the vitest suite read the same "
+        f"mapping"
     )
-    return match.group(1)
+    return match.group(0)
+
+
+def supported_languages_block(source: str) -> str:
+    """The body of the `DIFF_SUPPORTED_LANGUAGES` entry literal, as text.
+
+    THE SCOPER for the language-set guard. It is deliberately narrow: reading the ids out of
+    the declaration itself means the guard tracks the mapping rather than a list repeated
+    here, so an entry added to the module is an entry this file immediately demands a test
+    for. Taken as everything between the declaration's first `{` and its last `}`, so the
+    entries are found wherever the initialiser wraps them.
+    """
+    declaration = supported_languages_declaration(source)
+    opened = declaration.find("{")
+    closed = declaration.rfind("}")
+    assert 0 <= opened < closed, (
+        f"the {LANGUAGES_NAME} declaration in {MODULE.name} carries no braced entry literal; "
+        f"the supported set is a mapping from extension to language id and there is nothing "
+        f"here for a guard or a reader to read"
+    )
+    return declaration[opened + 1:closed]
 
 
 def supported_language_ids(source: str) -> list[str]:

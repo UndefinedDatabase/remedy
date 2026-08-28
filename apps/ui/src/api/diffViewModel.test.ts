@@ -920,6 +920,43 @@ describe("diffLanguageForPath", () => {
     expect(diffLanguageForPath("crates/main.rs")).toBeNull();
     expect(diffLanguageForPath("notes.unknownlanguage")).toBeNull();
   });
+
+  it("renders an extension naming an INHERITED property plain", () => {
+    // Finding `R-0731`. These keys are in nobody's mapping, but a plain object
+    // literal read by an `undefined` comparison answers them off
+    // `Object.prototype` anyway. `toBeNull` rather than a falsy check, because
+    // the wrong answers here — the `Object` constructor and `Object.prototype` —
+    // are both truthy and both "not undefined".
+    for (const inherited of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+    ]) {
+      expect(diffLanguageForPath(`src/x.${inherited}`), inherited).toBeNull();
+    }
+  });
+
+  it("never answers a FUNCTION for an inherited extension", () => {
+    // The TYPE is asserted separately from the value so that a regression to a
+    // prototype value fails here even if `null` is never restored: a language id
+    // is a string, and handing a function on to code expecting one is the
+    // downstream half of `R-0731`. `constructor` and `__proto__` are the two the
+    // defect really reached — the other three survived only because lower-casing
+    // turned them into keys nothing inherits.
+    expect(typeof diffLanguageForPath("src/x.constructor")).not.toBe("function");
+    expect(typeof diffLanguageForPath("src/x.__proto__")).not.toBe("function");
+    // `typeof null` is already `"object"`, so the type cannot discriminate the
+    // `__proto__` case; identity can, and this is the exact value it answered.
+    expect(diffLanguageForPath("src/x.__proto__")).not.toBe(Object.prototype);
+  });
+
+  it("builds the supported set with NO prototype to inherit from", () => {
+    // The structural half of the fix, asserted where vitest can see it: a
+    // mapping keyed by arbitrary external strings has nothing to inherit.
+    expect(Object.getPrototypeOf(DIFF_SUPPORTED_LANGUAGES)).toBeNull();
+  });
 });
 
 /** An importer that RECORDS the language of every call and answers a bundle
@@ -980,6 +1017,21 @@ describe("loadDiffLanguageBundle", () => {
         bundle: null,
       });
     }
+    expect(importer.calls.length).toBe(0);
+  });
+
+  it("asks for NO bundle for an extension naming an INHERITED property", async () => {
+    // THE POINT OF FINDING `R-0731`, and the reason it is Medium rather than
+    // cosmetic: with the old plain-literal mapping this call really did reach
+    // the importer — the counter read 1 — for a file Acceptance says renders
+    // plain WITHOUT a bundle fetch. The count is asserted at exactly zero, the
+    // same way the ordinary unknown-extension case is.
+    const importer = countingBundleImporter();
+    for (const path of ["src/x.constructor", "src/x.__proto__"]) {
+      const answer = await loadDiffLanguageBundle(path, importer.importBundle);
+      expect(answer, path).toEqual({ language: null, bundle: null });
+    }
+    expect(importer.calls).toEqual([]);
     expect(importer.calls.length).toBe(0);
   });
 
