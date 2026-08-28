@@ -14,33 +14,29 @@ scrolling and lazily loaded syntax bundles.
 binding CSS and the design amendments that reconcile it with the source.
 
 ## Current Step
-R3 opens T001 with the parser itself: a new self-contained module that turns a
-unified diff into the versioned view JSON, plus the corpus that pins one shape
-per row of the feature file's list. It reads the THREE diff shapes this
-repository really produces — difflib output, git hunks, and untracked-file
-markers — rather than the single git-style shape the contract assumed. The
-round also books the R2 verdict and the reviewer's authoring slip.
+R4 closes T001's parser half. It registers `R-0716` — the parser splits one
+file into two entries for the `workspace.diff` shape, whose emitter writes the
+header pair itself and then hands the same pair to `difflib` — repairs it in
+the commit after the registration, and adds the intraline spans the contract's
+line shape carries. The repair is proved by its own red before it lands.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R2 gate and the reviewer's slip | ordered | the record moves first |
-| C3 the parser module | ordered | production code, spec-driven |
-| C4 the corpus tests | ordered | one shape per row, plus red-proofs |
+| C2 the R3 gate and the `R-0716` registration | ordered | findings persist first |
+| C3 the `R-0716` repair and its regression test | ordered | red proved before green |
+| C4 intraline spans and their tests | ordered | the contract's line shape |
 | C5 the handback | ordered | |
 
 ## Next Steps
-1. Intraline spans over the parsed lines, with the word-diff fixture the
-   feature file's Acceptance names.
-2. The read endpoint, keyed on task run and job per DECISION F037 D2, with the
-   route guards the R1 inventory measured.
-3. T002 the rendering core, the binding CSS and the goldens; then T003 sidebar,
-   virtual scrolling, lazy languages and the L3 tab.
+1. The read endpoint, keyed on task run and job per DECISION F037 D2, against
+   the route guards the R1 inventory measured.
+2. T002 the rendering core, the binding CSS and the goldens.
+3. T003 sidebar, virtual scrolling, lazy languages and the L3 tab.
 
 ## Risks
-- `R-0715` is open and Low. It is a stale count in a test docstring, turns
-  nothing red, and belongs to whoever next edits that file.
-- The parser is new surface with no consumer yet. Until the endpoint lands it
-  is proved only by its own corpus, so the corpus carries the whole weight and
-  the round orders mutation red-proofs against it.
+- `R-0715` is open and Low; it is a stale count in a test docstring and belongs
+  to whoever next edits that file.
+- The parser still has no consumer, so its corpus carries the whole weight.
+  Every round that touches it orders mutation red-proofs for that reason.
