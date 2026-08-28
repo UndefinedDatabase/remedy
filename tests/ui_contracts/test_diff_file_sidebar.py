@@ -29,6 +29,7 @@ UI_SRC = REPO_ROOT / "apps" / "ui" / "src"
 SIDEBAR = UI_SRC / "components" / "diff" / "DiffFileSidebar.tsx"
 VIEW = UI_SRC / "components" / "diff" / "DiffView.tsx"
 SHELL = UI_SRC / "components" / "shell" / "RemedyShell.tsx"
+SIDEBAR_CSS = UI_SRC / "components" / "diff" / "DiffView.module.css"
 
 MODEL = "apps/ui/src/api/diffViewModel.ts"
 BUILDER = "buildDiffFileSummaries"
@@ -53,6 +54,17 @@ SUMMARY_FIELDS = (
 # Spellings of a rule the sidebar would be REIMPLEMENTING. Each is a derivation the model
 # already made: the hunk count, the per-file stats and the file order the parser fixed.
 REIMPLEMENTED_RULE_SPELLINGS = (".hunks.length", ".stats.", "sort(")
+
+# The four classes DECISION F256 D3 rules for this surface, and the authority that rules
+# them. Listed here rather than derived, because the question is whether the component still
+# ASKS for the treatment D3 ruled — a set read off the component would answer itself.
+RULED_SIDEBAR_CLASSES = ("filePath", "fileMeta", "statAdd", "statDel")
+DESIGN_AUTHORITY = "DECISION F256 D3 (2026-08-28, `.agent/decisions.md`)"
+
+# The number of `<span` tags the comment-stripped sidebar carried at `78e71b3c`, the commit
+# BEFORE D3's treatment landed, measured there. D3 dresses markup that already exists: it
+# added no element, and this number is what says so a year from now.
+SIDEBAR_SPAN_COUNT_BEFORE_THE_RULING = 6
 
 
 def strip_ts_comments(text: str) -> str:
@@ -87,6 +99,44 @@ def view_code() -> str:
 
 def shell_code() -> str:
     return strip_ts_comments(SHELL.read_text())
+
+
+def strip_css_comments(css: str) -> str:
+    """Drop `/* ... */` blocks so a selector NAMED in prose is never read as a rule.
+
+    The header D3 added to `DiffView.module.css` names all four of its own selectors while
+    explaining them, so a scanner that read comments would report every one of them as
+    defined even after its rule was deleted.
+    """
+    return re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+
+
+def stylesheet_class_names(css: str) -> set[str]:
+    """Every class name a selector that really opens a declaration block in the sheet names.
+
+    Modelled on `css_rule_selectors` / `css_class_names` in `test_diff_view_render.py`, and
+    derived from the sheet rather than listed, so a rule added or lost changes this set on its
+    own.
+    """
+    selectors: set[str] = set()
+    for chunk in strip_css_comments(css).split("}"):
+        head, brace, _body = chunk.partition("{")
+        if not brace:
+            continue
+        for part in head.split(","):
+            selector = " ".join(part.split())
+            if selector:
+                selectors.add(selector)
+    return set(re.findall(r"\.([A-Za-z_][\w-]*)", " ".join(selectors)))
+
+
+def component_class_names(code: str) -> set[str]:
+    """Every class the component asks the CSS module for, as `styles.<name>`.
+
+    The counterpart of the scanner above and the same one `test_diff_view_render.py` uses on
+    the body of this viewer; taken over COMMENT-STRIPPED source like every other reader here.
+    """
+    return set(re.findall(r"styles\.(\w+)", code))
 
 
 def ts_function_body(code: str, name: str, source: Path) -> str:
@@ -229,6 +279,26 @@ class TestTheStripperIsNotVacuous:
                 f"assertion about what the function does with it"
             )
 
+    def test_the_component_class_scanner_returns_a_non_empty_set(self):
+        """Every class assertion below is a set comparison, and a scanner that silently
+        returned nothing would satisfy all of them over an empty set."""
+        named = component_class_names(sidebar_code())
+        assert named, (
+            f"the styles.<name> scanner found no class at all in {SIDEBAR.name}; either the "
+            f"sidebar asks the CSS module for nothing — which {DESIGN_AUTHORITY} rules it must "
+            f"— or the scanner is broken, and in both cases the subset assertion below is a "
+            f"comparison of two empty sets"
+        )
+
+    def test_the_stylesheet_class_scanner_returns_a_non_empty_set(self):
+        """The other half of the same comparison, and the half whose comments name the very
+        selectors it scans for."""
+        defined = stylesheet_class_names(SIDEBAR_CSS.read_text())
+        assert defined, (
+            f"the stylesheet scanner found no class rule at all in {SIDEBAR_CSS.name}, so the "
+            f"subset assertion below could not fail however unstyled the sidebar shipped"
+        )
+
     def test_both_tag_scanners_find_their_subject(self):
         entry = sidebar_entry_tag(sidebar_code())
         assert entry.startswith("<button"), (
@@ -338,3 +408,50 @@ class TestTheShellRendersBothHalves:
                 f"mounting it, and half of the viewer would be unreachable from the shell "
                 f"while every other gate in this repository stayed green"
             )
+
+
+class TestTheSidebarWearsTheRuledTreatment:
+    """(g) `DECISION F256 D3` ends the deferral this component's header carried since F037 and
+    rules its visual treatment by DERIVING it from the diff body's own vocabulary. Two things
+    can go wrong silently: a class the stylesheet does not define, which a CSS module answers
+    with `undefined` so the element ships unstyled while every other gate here stays green;
+    and a treatment that quietly grew MARKUP, when D3 authorises dress and nothing else."""
+
+    def test_every_class_the_sidebar_names_has_a_rule_in_the_stylesheet(self):
+        named = component_class_names(sidebar_code())
+        defined = stylesheet_class_names(SIDEBAR_CSS.read_text())
+        assert named <= defined, (
+            f"{SIDEBAR.name} names {sorted(named - defined)}, which {SIDEBAR_CSS.name} does "
+            f"not define. A CSS module hands back undefined for such a name, so the element "
+            f"ships unstyled and the treatment {DESIGN_AUTHORITY} rules never reaches the "
+            f"screen. Named: {sorted(named)}; defined: {sorted(defined)}"
+        )
+
+    def test_the_sidebar_names_every_class_the_ruling_gives_it(self):
+        named = component_class_names(sidebar_code())
+        missing = [name for name in RULED_SIDEBAR_CLASSES if name not in named]
+        assert not missing, (
+            f"{SIDEBAR.name} asks the CSS module for none of {missing}, which "
+            f"{DESIGN_AUTHORITY} rules for this surface. A rule nothing names is dead: the "
+            f"stylesheet would still carry the treatment and no element would wear it"
+        )
+
+    def test_the_ruling_dressed_the_markup_without_growing_it(self):
+        """`DECISION F256 D3` authorises classes and stylesheet rules, not elements. A stats
+        bar — the one thing D3 records Remedy deliberately does NOT draw here — would arrive
+        as new markup, and so would a decorative span carrying `aria-hidden`."""
+        code = sidebar_code()
+        spans = code.count("<span")
+        assert spans == SIDEBAR_SPAN_COUNT_BEFORE_THE_RULING, (
+            f"{SIDEBAR.name} draws {spans} <span tags, against "
+            f"{SIDEBAR_SPAN_COUNT_BEFORE_THE_RULING} at `78e71b3c`, the commit before "
+            f"{DESIGN_AUTHORITY} landed. That ruling dresses markup that already exists; an "
+            f"element added or removed under it is a change no authority in this repository "
+            f"made"
+        )
+        assert "aria-hidden" not in code, (
+            f"{SIDEBAR.name} carries an aria-hidden. Every element in this sidebar draws a "
+            f"value {BUILDER} computed, so there is nothing here to hide from a screen "
+            f"reader; the attribute would mean decoration arrived, which {DESIGN_AUTHORITY} "
+            f"does not authorise"
+        )

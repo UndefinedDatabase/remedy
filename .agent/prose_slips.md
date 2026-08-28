@@ -196,3 +196,14 @@
   disk. DECISION F037 D10 settles the underlying question by measurement: the
   red-proofs were orderable all along, and successive blocks said otherwise
   because each inherited the sentence instead of re-running it.
+
+2026-08-28 · F256 R1 · The PLANF256R1 slice's Current Step table read `the per-line highlight model | done` at C1, where the slice lands and the model does not yet exist; it became true at C3 within the same round. The worker applied it byte for byte per constraint 1 and declared it.
+2026-08-28 · F256 R1 · The block listed `.agent/handoff.md` in its change set while fixing G8's range to end at C3, which cannot reach the commit that writes the handback; the worker reported both readings rather than the convenient one.
+2026-08-28 · F256 R1 · The G4 reader (b) counted N as 7 blank-line units where the DECF256R1 slice holds 6 paragraphs plus an empty trailing unit; the comparison still covered the whole appended region, so the obligation of §3 item 36 was met.
+
+2026-08-28 · F256 R2 · The reviewer's R1 fuzz probe used a 32-bit LCG evaluated in floating point, so its low bits degenerated and its language and character coverage were narrower than the R1 entry's wording implies; re-measured with a xorshift generator at F256 R2, the property held over 4452 distinct lines. The correction is appended to the record in the R2 entry.
+
+2026-08-28 · F256 R3 · The block's prose ordered `.agent/decisions.md`'s append "separated by exactly one blank line" while its gate G4(a) ordered `base + newline + slice`, and that file's blob already ended with a blank line; the two are unsatisfiable together, the worker obeyed the gate and declared it, so D2's heading is preceded by two blank lines.
+2026-08-28 · F256 R3 · The block's G9 marker sweep expected 0 in "every non-authored target", which cannot hold for `.agent/last_block.md` because C0b and G2 require that file to be the identical blob to the authored control; the worker reported 4 and declared it.
+
+2026-08-28 · F256 R7 · The block's G7 mutation (ii) quoted its anchor inside a four-space-indented code block, so the line it displayed carried eight leading spaces where `apps/ui/src/api/diffViewModel.ts` carries four; the worker asserted uniqueness on the correct four-space form, applied it and declared the difference, so nothing on disk was affected.

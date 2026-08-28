@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-60 of 257 registered items accepted. Next: F256 (Diff viewer completion).
+61 of 257 registered items accepted. Next: F257 (Self-use track).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 8 | 31 |
+| 5 | Operator Cockpit | 9 | 31 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -93,6 +93,12 @@ JSON — files, hunks, lines and intraline spans — served per job and per task
 and rendered in the client with a file sidebar, hunk collapse beyond a size
 threshold and virtual scrolling past two thousand rows; syntax highlighting is
 modelled and deliberately not wired, per this feature's amendment A6).
+F256 diff viewer completion (the highlighting F037 only modelled is now rendered,
+with the grammar tables split into their own lazily imported chunk so they leave
+the main bundle; the 10k-line fixture measured end to end and its numbers
+recorded — the route answers a 1,045,960-byte envelope in 0.1331 s, and the
+client draws 48 rows of 10,002 however far the document grows — and the file
+sidebar's visual treatment ruled by a named design authority and applied).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

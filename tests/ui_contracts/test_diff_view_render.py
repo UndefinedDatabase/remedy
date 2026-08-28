@@ -65,6 +65,27 @@ REIMPLEMENTED_RULE_SPELLINGS = (
     ".slice(0,",
 )
 
+# F256's wiring, named here rather than inside the assertions so the two halves of it — the
+# module the component reaches and the two functions it calls out of the model layer — grep
+# to one place. These are DELIBERATELY NOT in DELEGATED_RULES above: that tuple is the set of
+# decidable rules the component must not carry, and widening it would change what the
+# existing delegation test means.
+#
+# THE TWO MODULES ARE NAMED SEPARATELY, which is finding `R-0732`. The SCANNER is the eager
+# half and the component imports it statically; the GRAMMAR TABLES are the lazy half and the
+# component reaches them only through the dynamic importer. A module imported both ways by
+# one file is not code-split at all, so which name goes with which import form is the whole
+# of the property `TestTheHighlightIsWiredAndLazy` below pins.
+HIGHLIGHT_MODULE = "apps/ui/src/api/diffHighlight.ts"
+HIGHLIGHT_IMPORT_SPECIFIER = '"../../api/diffHighlight"'
+GRAMMARS_MODULE = "apps/ui/src/api/diffHighlightGrammars.ts"
+GRAMMARS_IMPORT_SPECIFIER = '"../../api/diffHighlightGrammars"'
+HIGHLIGHT_IMPORTER_NAME = "DIFF_HIGHLIGHT_BUNDLE_IMPORTER"
+HIGHLIGHT_KIND_CLASS_NAME = "DIFF_HIGHLIGHT_KIND_CLASS"
+HIGHLIGHT_WIRED_CALLS = ("loadDiffLanguageBundle", "composeHighlightedRuns")
+HIGHLIGHT_PLAIN_KIND = "plain"
+HIGHLIGHT_AUTHORITY = "DECISION F256 D1 (lazy bundles) and DECISION F256 D2 (the palette)"
+
 
 def strip_ts_comments(text: str) -> str:
     """Drop `//` and `/* */` comments, the scanner `test_decision_answer_wiring.py` uses.
@@ -121,6 +142,57 @@ def css_class_names(css: str) -> set[str]:
 def component_class_names(code: str) -> list[str]:
     """Every class the component asks the CSS module for, as `styles.<name>`."""
     return re.findall(r"styles\.(\w+)", code)
+
+
+def ts_const_statement(code: str, name: str) -> str:
+    """The whole `const <name> ... ;` statement, from the keyword to its own semicolon.
+
+    SCOPED rather than swept, for the reason finding `R-0725` records: the questions below
+    are about ONE declaration each — what the importer imports, and what the kind mapping
+    maps — and a whole-file `in` check would be answered by any other line of the component.
+    Neither of the two declarations this reads carries a semicolon inside its initialiser,
+    which is what makes so plain a terminator trustworthy here; a future initialiser that did
+    would cut this short and the vacuity assertion below is what would catch it.
+    """
+    match = re.search(rf"^const {name}\b", code, re.MULTILINE)
+    assert match, (
+        f"{COMPONENT.name} declares no module-level `const {name}`, which {HIGHLIGHT_AUTHORITY} "
+        f"requires it to carry"
+    )
+    end = code.find(";", match.end())
+    assert end != -1, f"the `const {name}` statement in {COMPONENT.name} never terminates"
+    return code[match.start():end + 1]
+
+
+def highlight_kind_class_entries(code: str) -> list[tuple[str, str]]:
+    """Every `<kind>: <value>` pair of the token-kind class mapping, in source order.
+
+    The kinds are read off the component rather than listed here, so a kind added to
+    `apps/ui/src/api/diffHighlight.ts` and wired in changes this set on its own.
+    """
+    statement = ts_const_statement(code, HIGHLIGHT_KIND_CLASS_NAME)
+    body = statement[statement.index("{"):]
+    return [
+        (match.group(1), match.group(2).strip())
+        for match in re.finditer(r"(\w+)\s*:\s*([^,\n]+?)\s*,", body)
+    ]
+
+
+def static_import_count(code: str, specifier: str) -> int:
+    """How many `import ... from <specifier>` statements the source carries.
+
+    A `from` clause is what makes an import STATIC — the form that puts a module in the
+    importing chunk — and it is the only form that can carry one. `import type ... from` is
+    counted too and deliberately so: it is erased at build time, so a guard that had to tell
+    the two apart would be guessing at the bundler's behaviour instead of forbidding a
+    spelling. The component reaches its lazy module by neither form.
+    """
+    return len(re.findall(rf"from\s+{re.escape(specifier)}", code))
+
+
+def dynamic_import_count(code: str, specifier: str) -> int:
+    """How many dynamic `import(<specifier>)` expressions the source carries."""
+    return len(re.findall(rf"import\s*\(\s*{re.escape(specifier)}\s*\)", code))
 
 
 def jsx_opening_tag_at(code: str, start: int) -> str:
@@ -544,4 +616,140 @@ class TestTheComponentReallyVirtualizes:
             f"declares {ROW_HEIGHT_NAME} = {declared}. Every row index and both spacer heights "
             f"of the virtualized window are computed from the constant, so a disagreement "
             f"scrolls the viewer to the wrong rows and mis-sizes the document ({CSS_AUTHORITY})"
+        )
+
+
+class TestTheHighlightIsWiredAndLazy:
+    """(g) F256's wiring, expressed where it can fail. `apps/ui/src/api/diffHighlight.ts` shipped
+    the token model and `composeHighlightedRuns` shipped the composition, but a model with no
+    caller highlights nothing — the defect class finding `R-0220` records. This class asserts the
+    four halves of the wiring the component owns: that it CALLS the two functions, that it
+    reaches the GRAMMAR module through a DYNAMIC import so the tables are a chunk rather than
+    main-chunk weight (DECISION F256 D1), that the module it imports dynamically is imported no
+    other way (finding `R-0732`), and that every class DECISION F256 D2's mapping names has a
+    rule behind it.
+
+    Every assertion reads the COMMENT-STRIPPED source: the component's WHY header names
+    `loadDiffLanguageBundle`, `composeHighlightedRuns` and the import specifier in prose, so an
+    unstripped guard would be satisfied by the description rather than by the code (finding
+    `R-0584`).
+    """
+
+    def test_the_two_new_scanners_return_strictly_less_than_the_whole_file(self):
+        """The vacuity guard the scoped assertions below stand on.
+
+        A `ts_const_statement` that silently handed back its input would turn the importer
+        assertion into the whole-file search finding `R-0725` describes, and an empty entry list
+        would make the mapping assertions pass over nothing at all.
+        """
+        code = strip_ts_comments(COMPONENT.read_text())
+        for name in (HIGHLIGHT_IMPORTER_NAME, HIGHLIGHT_KIND_CLASS_NAME):
+            statement = ts_const_statement(code, name)
+            assert statement, f"the scanner for `const {name}` found nothing at all"
+            assert len(statement) < len(code), (
+                f"the scanner for `const {name}` returned {len(statement)} characters out of "
+                f"{len(code)}, so it is not scoping and every assertion built on it is a "
+                f"whole-file search (finding R-0725)"
+            )
+        entries = highlight_kind_class_entries(code)
+        assert entries, (
+            f"no `<kind>: <class>` entry was read out of `{HIGHLIGHT_KIND_CLASS_NAME}` in "
+            f"{COMPONENT.name}, so the mapping assertions below would be checking an empty list"
+        )
+
+    def test_the_component_calls_the_loader_and_the_composition(self):
+        code = strip_ts_comments(COMPONENT.read_text())
+        for name in HIGHLIGHT_WIRED_CALLS:
+            assert f"{name}(" in code, (
+                f"{COMPONENT.name} never CALLS {name}. The highlight model and its composition "
+                f"are shipped and pinned by their own vitest suite, but a model with no caller "
+                f"colours nothing on screen: naming it in an import or a comment is not using it "
+                f"({HIGHLIGHT_AUTHORITY})"
+            )
+
+    def test_the_grammar_module_is_reached_through_a_dynamic_import(self):
+        statement = ts_const_statement(strip_ts_comments(COMPONENT.read_text()), HIGHLIGHT_IMPORTER_NAME)
+        assert f"import({GRAMMARS_IMPORT_SPECIFIER})" in statement, (
+            f"`const {HIGHLIGHT_IMPORTER_NAME}` in {COMPONENT.name} does not reach "
+            f"{GRAMMARS_MODULE} through a dynamic `import(...)` call. A static import of the "
+            f"same module puts every grammar in the main chunk for every operator who never "
+            f"opens a diff, which is the whole of what DECISION F256 D1 promised the lazy "
+            f"bundles would avoid, and the laziness would then exist only in the name of "
+            f"`loadDiffLanguageBundle`"
+        )
+
+    def test_the_dynamically_imported_module_is_imported_no_other_way(self):
+        """(g2) Finding `R-0732`, expressed where it can fail.
+
+        `npx vite build` at `e23dad09` exited 0 and WARNED that the module was "dynamically
+        imported by DiffView.tsx but also statically imported", and that the dynamic import
+        "will not move module into another chunk" — the tokenizer and every grammar table
+        shipped in the main chunk while the code read as if they did not. No bundler runs
+        inside this repository's suites, so the property is pinned over the source instead:
+        the module the component imports DYNAMICALLY must carry no `from` clause anywhere in
+        the same file, while the module it CALLS into must still be imported statically.
+        """
+        code = strip_ts_comments(COMPONENT.read_text())
+        dynamic = dynamic_import_count(code, GRAMMARS_IMPORT_SPECIFIER)
+        assert dynamic >= 1, (
+            f"{COMPONENT.name} carries no dynamic `import({GRAMMARS_IMPORT_SPECIFIER})` at all, "
+            f"so this assertion would be forbidding a static import of a module the component "
+            f"never reaches — a guard over nothing"
+        )
+        static = static_import_count(code, GRAMMARS_IMPORT_SPECIFIER)
+        assert static == 0, (
+            f"{COMPONENT.name} imports {GRAMMARS_MODULE} STATICALLY {static} time(s) as well as "
+            f"dynamically. A module imported both ways by the SAME file is not code-split at "
+            f"all: the bundler keeps it in the main chunk and warns that the dynamic import "
+            f"will not move it, so every grammar table ships to every operator who never opens "
+            f"a diff and DECISION F256 D1's chunk exists in name only (finding R-0732)"
+        )
+        assert static_import_count(code, HIGHLIGHT_IMPORT_SPECIFIER) >= 1, (
+            f"{COMPONENT.name} no longer imports {HIGHLIGHT_MODULE} statically. The SCANNER is "
+            f"the eager half on purpose — a diff row cannot be drawn without it — and making it "
+            f"lazy too would leave every line uncoloured until a chunk arrived, which is a "
+            f"different feature from the one DECISION F256 D1 ruled on"
+        )
+
+    def test_every_class_the_kind_mapping_names_has_a_rule_in_the_stylesheet(self):
+        code = strip_ts_comments(COMPONENT.read_text())
+        defined = css_class_names(COMPONENT_CSS.read_text())
+        named = component_class_names(
+            ts_const_statement(code, HIGHLIGHT_KIND_CLASS_NAME)
+        )
+        assert named, (
+            f"`{HIGHLIGHT_KIND_CLASS_NAME}` in {COMPONENT.name} asks the CSS module for no class "
+            f"at all, so DECISION F256 D2's palette reaches no run on screen"
+        )
+        missing = sorted({name for name in named if name not in defined})
+        assert not missing, (
+            f"`{HIGHLIGHT_KIND_CLASS_NAME}` in {COMPONENT.name} names {missing}, which "
+            f"{COMPONENT_CSS.name} does not define. A CSS module hands back undefined for such a "
+            f"name, so that token kind ships in the row's own colour and no visual review "
+            f"reliably catches one uncoloured kind among five ({HIGHLIGHT_AUTHORITY})"
+        )
+
+    def test_the_plain_kind_maps_to_the_empty_string(self):
+        """Why `plain` may demand no rule, said where it can fail.
+
+        The mapping is total over a closed kind set, so `plain` must be IN it; and it must be
+        in it as the empty string, because an unhighlighted run wears no extra class and the
+        stylesheet deliberately carries no `.tokPlain`. A `plain` bound to a class name would
+        make every ordinary character of every diff line ask for a rule that is not there — and
+        would break the promise that an unknown language renders exactly as it did before F256.
+        """
+        code = strip_ts_comments(COMPONENT.read_text())
+        entries = highlight_kind_class_entries(code)
+        values = [value for kind, value in entries if kind == HIGHLIGHT_PLAIN_KIND]
+        assert len(values) == 1, (
+            f"`{HIGHLIGHT_KIND_CLASS_NAME}` in {COMPONENT.name} carries {len(values)} entries for "
+            f"the `{HIGHLIGHT_PLAIN_KIND}` kind; exactly one is required, because the mapping is "
+            f"total over the closed token set of {HIGHLIGHT_MODULE}"
+        )
+        assert values[0] == '""', (
+            f"`{HIGHLIGHT_KIND_CLASS_NAME}` maps `{HIGHLIGHT_PLAIN_KIND}` to {values[0]!r} rather "
+            f"than to the empty string. `{HIGHLIGHT_PLAIN_KIND}` is the kind that must wear no "
+            f"class at all — the stylesheet defines no rule for it on purpose, exactly as `ctx` "
+            f"wears none in DIFF_LINE_KIND_CLASS — and a class name here would put an undefined "
+            f"CSS-module lookup on every ordinary run of every diff line ({HIGHLIGHT_AUTHORITY})"
         )

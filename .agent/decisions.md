@@ -9438,3 +9438,346 @@ rather than leaving a reader to discover it. Nothing already built is removed.
 REVERSE by deleting this decision and amendment A6 from
 `docs/roadmap/features/T5_F037.md`; the three pieces then return to F037's scope
 and the soft-limit obligation returns with them.
+
+## DECISION F256 D1 (2026-08-28, F256 R1) — Remedy writes its OWN lazy syntax bundles for the diff surface rather than adding a third-party highlighter
+
+CONTEXT. F256 T001 must wire `loadDiffLanguageBundle` into `DiffView` so a diff
+of a supported language really renders highlighted. That function takes its
+`importBundle` as a REQUIRED argument and names no highlighter, deliberately, so
+the wiring round has to decide what the bundles ARE. Measured at `0e8ab5b4`:
+`apps/ui/package.json` declares no highlighter among its dependencies or
+devDependencies, and `apps/ui/node_modules` holds no shiki, prism, highlight.js
+or lowlight. A registry query for a candidate package was refused by this
+session class, so a new dependency can be neither installed nor verified here.
+
+CHOSEN. The bundles are Remedy's own modules under `apps/ui/src/api/`, loaded
+through the dynamic `import()` the existing importer type already describes. A
+bundle is a pure tokenizer: a function from a line of text and a language id to
+a list of typed segments. This keeps every decidable rule in the layer
+`apps/ui/vitest.config.ts` really executes, which is DECISION F031 D5, and it
+adds no dependency, no main-chunk weight and no build step.
+
+ALTERNATIVES CONSIDERED. (a) Add shiki or prismjs. Rejected on independent
+grounds: the registry is unreachable from this environment, so the change could
+not be verified where it is made; and a third-party tokenizer's rules would sit
+outside what any runner in this repository executes, which is the same blindness
+DECISION F031 D5 exists to prevent. (b) Ship no highlighting and close F256 on
+the other two pieces. Rejected because it abandons the Goal & Done clause A6
+already recorded as UNMET, and a second deferral of the same clause is how a
+promise stops being one.
+
+CONSEQUENCE, stated plainly because it is a real narrowing. Remedy's
+highlighting is COARSER than a full grammar — a closed token set and no semantic
+analysis — which is the honest ceiling of a per-line tokenizer and enough for
+helping a reader see structure in a changed line.
+
+REVERSE by deleting this decision and the modules it authorises, and adding a
+highlighter dependency once registry access exists; `loadDiffLanguageBundle`
+needs no change either way, because the importer is its argument.
+
+
+## DECISION F256 D2 (2026-08-28, F256 R3) — the diff surface's syntax palette is four custom properties the shipped token sheet already defines, and no new hue enters the product
+
+CONTEXT. A rendered highlight needs colour, and colour on this surface needs an
+authority. Measured at `2251c6d4`: no file under `docs/ui/design_reference/`
+contains the word "syntax", and amendment A4 of
+`docs/roadmap/features/T5_F037.md` names the authorities that bind this surface
+— that file's own binding CSS, `component_spec.md` for the entry point and
+`assets_spec.md` for the mono family — none of which rules a token palette. The
+CANONICAL DESIGN REFERENCE banner forbids inventing a visual language, so the
+palette is DERIVED or it does not ship.
+
+CHOSEN, and it is a derivation in the same sense DECISION F037 D9 was when it
+ruled intraline emphasis from this sheet's own two hues: each token kind takes a
+custom property `apps/ui/src/styles/tokens.css` ALREADY defines — `comment` to
+`--remedy-ink-soft`, the property this sheet already gives the line-number
+gutter, so a comment reads as the same rank of de-emphasis; `string` to
+`--remedy-green-500`, `number` to `--remedy-orange-400` and `keyword` to
+`--remedy-blue-700`, the product's own accent, which is why it goes to the kind
+a reader scans for first. `plain` takes NO rule and NO class and simply inherits
+the row's colour. No new custom property is introduced and the token sheet is
+not extended.
+
+ALTERNATIVES CONSIDERED. (a) Import a highlighter's theme. Rejected: DECISION
+F256 D1 already rules out the dependency, and a second colour system in a
+product that has one is exactly what the banner forbids. (b) Ask the operator to
+rule the palette. Rejected because docs/agents/planner_reviewer_prompt.md §2
+forbids a ruling request and §4 item 7 requires the reviewer to rule loudly and
+reversibly instead. (c) Colour more kinds. Rejected because the token set is
+closed at five by DECISION F256 D1 and a distinction with no property behind it
+would have to invent one.
+
+CONSEQUENCE. The mapping is enforced by a guard that already exists rather than
+by discipline: `tests/ui_contracts/test_design_drift.py` fails any
+`var(--remedy-…)` used under `apps/ui/src` but defined nowhere there, and
+`tests/ui_contracts/test_diff_view_render.py` fails any `styles.` class the
+component names without a rule behind it. The palette is also DELIBERATELY
+COARSE — four coloured kinds — and a reader wanting per-language precision will
+not find it here, because the tokenizer behind it is per-line by ruling.
+
+REVERSE by deleting this decision and the four rules it authorises from
+`apps/ui/src/components/diff/DiffView.module.css`; the runs then render in the
+row's own colour and the wiring stays intact, because the class mapping maps
+`plain` to the empty string already.
+
+## DECISION F256 D3 (2026-08-28, F256 R5) — the diff file sidebar takes its treatment from the diff body's own vocabulary, and Remedy draws no proportional stats bar
+
+CONTEXT. `apps/ui/src/components/diff/DiffFileSidebar.tsx` has carried a
+DEFERRAL in its own header since F037 built it: semantic markup, real numbers,
+no class, because the binding CSS of `docs/roadmap/features/T5_F037.md` defines
+no rule for a sidebar and the CANONICAL DESIGN REFERENCE banner forbids
+inventing a visual language. Measured at `78e71b3c`: no file under
+`docs/ui/design_reference/` contains the word "syntax" or rules this surface,
+and the only sidebar `component_spec.md` names is `BrandSidebar`, which is the
+left brand rail and not this panel. F256's own feature file states in as many
+words that the ruling is this feature's to make and to record.
+
+CHOSEN, by DERIVATION rather than invention, which is the same method DECISION
+F037 D9 used for intraline emphasis and DECISION F256 D2 used for the syntax
+palette. The sidebar borrows the vocabulary the diff body has already taught the
+reader: a file path is set in the mono family with ligatures OFF, for the reason
+`assets_spec.md` section 2 gives every diff surface — a path must render as the
+characters that are really in it; the added and removed counts take the
+product's own green and orange, the same two hues the diff rows tint with; and
+every other piece of metadata takes `--remedy-ink-soft`, the same rank of
+de-emphasis this sheet already gives the line-number gutter. No new custom
+property is introduced and `apps/ui/src/styles/tokens.css` is not extended.
+
+THE DELIBERATE ABSENCE, recorded because a reader will search for it and text
+search cannot find code that does not exist: Remedy does NOT draw a proportional
+stats bar in this sidebar. The feature file's Design section says "paths + stats
+bars", and this decision reads that as satisfied by the counts themselves. A bar
+is a visual primitive no authority in this repository defines — it needs a
+track, a fill, a minimum width for a one-line change and a rule for what happens
+when a file is pure deletion — and inventing all four here is exactly what the
+banner forbids. The counts already carry the magnitude, and they carry it
+exactly rather than approximately.
+
+ALTERNATIVES CONSIDERED. (a) Draw the bar anyway. Rejected: four undefined
+sub-decisions, and a bar that lies at small widths is worse than a number that
+does not. (b) Defer the ruling again. Rejected because F037 already deferred it
+once, F256 exists to close exactly that kind of deferral, and a second deferral
+would make the promise permanent. (c) Ask the operator to rule it. Rejected
+because docs/agents/planner_reviewer_prompt.md §2 forbids a ruling request and
+§4 item 7 requires the reviewer to rule loudly and reversibly instead.
+
+CONSEQUENCE. The sidebar stops shipping unstyled, and the ruling is enforced by
+guards that already exist: `tests/ui_contracts/test_design_drift.py` fails any
+custom property used but not defined under `apps/ui/src`, and the contract test
+this round extends fails any class the component names without a rule behind it.
+The absence of the bar is enforced by nothing, which is why it is written down
+here and in the component's header rather than left to be rediscovered.
+
+REVERSE by deleting this decision and the sidebar rules it authorises from
+`apps/ui/src/components/diff/DiffView.module.css`, and restoring the deferral
+paragraph in `DiffFileSidebar.tsx` from git history at `78e71b3c`; the sidebar
+then returns to semantic markup with no class, which is a state it is known to
+work in.
+
+## DECISION F256 D4 (2026-08-28, F256 R6) — the end-to-end diff budget is guarded by a scale RATIO measured on one machine in one run, not by an absolute second count
+
+CONTEXT. F037's Acceptance names a "10k-line fixture within the perf budget
+(recorded)" and amendment A6 records that bullet as UNMET, which is why F256
+carries T002. One half of the budget already exists:
+`test_the_huge_diff_parses_inside_the_recorded_perf_budget` in
+`tests/orchestration/test_diff_parser.py` measures the PARSER alone against an
+absolute ceiling of 0.5 s, and its own docstring states the rule that ceiling was
+chosen by — it must sit BETWEEN the measured linear case and where a quadratic
+parser would land, or it records nothing. What has never been measured is the
+whole server path: artifact on disk, parse, envelope, JSON serialisation and the
+HTTP response the client actually receives.
+
+WHAT THE REVIEWER MEASURED AT `08f6218a`, on the machine this feature is being
+built on, as the median of nine runs at each size. The whole envelope path —
+artifact read, parse, envelope assembly — costs 12.5 ms at 1,000 body lines,
+24.5 ms at 2,000 and 123.5 ms at 10,000, while the PARSER ALONE costs 12.1 ms and
+121.8 ms at the two ends of that range. Serialising the envelope adds 0.9 ms and
+10.0 ms, and the serialised JSON is 102,954 and 1,045,960 bytes against artifacts
+of 18,903 and 197,905. The parser is therefore about ninety-two per cent of the
+whole server-side cost, and everything composed around it is the remaining eight.
+
+THE ABSOLUTE CEILING IS ALREADY SPENT, AND SPENDING IT AGAIN GUARDS NOTHING NEW.
+`HUGE_DIFF_PARSE_CEILING_SECONDS` bounds the parser at 0.5 s and its own docstring
+records the rule it was chosen by. A second absolute ceiling over the endpoint
+would bound that same ninety-two per cent a second time and more loosely, and its
+red would be as likely to mean the runner was busy as that the code changed:
+AGENTS.md already names "a stage budget too small for a slower hosted runner" as
+one of the three classes of CI failure, and a bound that goes red for that reason
+teaches a future session to raise it, which is the one repair this repository
+forbids. What is genuinely UNGUARDED is the composition — nothing on disk today
+fails if the envelope layer, the serialiser or the route stops being linear in
+body lines.
+
+CHOSEN. The end-to-end guard is a RATIO. The same route is measured at 1,000 and
+at 10,000 body lines, in the same test, in the same run, on the same machine, and
+the assertion is that the second median divided by the first stays under 20. A
+pipeline linear in body lines answers near 10, the size ratio itself; a pipeline
+quadratic in body lines answers near 100. Because both figures come off one
+machine in one run, every constant factor a machine contributes — clock speed,
+load, interpreter version — divides out, and the assertion cannot become a report
+on machine speed however slow the runner is. A coarse absolute HANG NET of 5.0 s
+on a single 10,000-line request sits beside it to catch a pipeline that stopped
+answering at all rather than one that got slower; at more than forty times the
+115.7 ms the route itself costs at that size it is not a budget and is not
+described as one.
+
+THE FIXED PER-REQUEST OVERHEAD MOVES THE RATIO THE SAFE WAY, and this is the
+reason the ratio is sound rather than merely convenient. Server dispatch, socket
+setup and JSON decoding cost the same at both sizes, so they inflate the SMALLER
+median proportionally more than the larger one and the measured ratio comes out
+BELOW the true algorithmic ratio. The error therefore makes the guard more
+permissive and never falsely red — it can miss a mild regression, it cannot
+manufacture one — which is the only direction a bound in a suite that must stay
+green is allowed to err in.
+
+BOTH DIRECTIONS WERE MEASURED BEFORE THE CEILING WAS FIXED, so 20 is a derived
+number and not a taste. Over the real route at `08f6218a` the linear ratio is
+7.42 — a median of 15.6 ms at 1,000 body lines against 115.7 ms at 10,000, for a
+1,045,966 byte response — which sits BELOW the algorithmic 10 exactly as the
+paragraph above predicts, and leaves the ceiling 2.7 times of headroom. In the
+other direction, inserting one statement into the parser's per-line path that
+scans the whole input on every iteration moves the PARSER's own ratio from 10.07
+to 39.51 while the parse still returns 10,000 body lines and `truncated` False —
+a regression that changes no answer and only costs time, which is precisely the
+class of defect this guard exists for. Damped by the same fixed overhead, that
+mutation reaches the route at roughly 31, so the ceiling separates the two cases
+with margin on both sides. At 25 the mutated margin would have been 1.2 times,
+and that is why the ceiling is 20.
+
+ALTERNATIVES CONSIDERED. (a) A second absolute ceiling, matching the parser
+test's idiom. Rejected for the reason above: it re-guards the parser's own cost
+and its red is machine-shaped. For the record, a quadratic pipeline matching
+today's cost at 1,000 body lines lands near 1.3 s at 10,000, so such a ceiling
+would have to sit under that to separate the two cases at all. The idiom is right
+for a function whose cost is nearly all algorithm and wrong for a path whose cost
+includes a server. (b) An absolute ceiling above the quadratic case. Rejected
+because it separates nothing and would record a number while guarding no
+property. (c) Measure the parser again through the endpoint and assert nothing.
+Rejected because Acceptance asks for a budget, not only a figure.
+
+CONSEQUENCE. The recorded numbers and the guarded property become two different
+things, deliberately: the docstring of the recording test carries the real
+medians, the real spread and the real serialised byte size, dated and attributed
+to a machine class, and the Built State of `docs/roadmap/features/T5_F256.md` will
+carry them too, while the ASSERTIONS pin only what survives a change of machine.
+A reader who wants to know how fast the viewer is reads the numbers; a runner that
+is merely slow does not turn the suite red.
+
+REVERSE by deleting this decision and replacing the ratio assertion with an
+absolute ceiling under the quadratic figure named above, accepting that the bound
+then tracks the machine. The recorded numbers are unaffected either way, because
+they are a measurement and not a bound.
+
+## DECISION F256 D5 (2026-08-28, F256 R7) — the client half of the 10k budget is guarded by the EXACT bounded-window property, not by a duration, and the numbers are recorded beside it
+
+CONTEXT. DECISION F256 D4 ruled the SERVER half of F037's Acceptance budget and
+guarded it with a scale ratio taken on one machine in one run. The CLIENT half —
+`readDiffEnvelope`, `buildDiffRowModels` and `diffRowWindowForViewport` in
+`apps/ui/src/api/diffViewModel.ts` — is what turns that envelope into the rows a
+renderer draws, and it has never been measured at the Acceptance size.
+
+WHAT THE REVIEWER MEASURED AT `dff36f33`, over an envelope of one file and one
+hunk, with the collapsed set EMPTY, as the median of seven builds: 0.469 ms at
+1,000 body lines producing 1,002 rows, and 1.688 ms at 10,000 body lines producing
+10,002 rows. The spread is the point: 0.122 ms to 0.918 ms at the small size and
+0.943 ms to 3.043 ms at the large one, a factor of three or more between the
+fastest and slowest sample in the same run, because a millisecond of JavaScript is
+mostly the JIT deciding whether to compile. The measured ratio was 3.60, nowhere
+near the algorithmic 10, for the same reason.
+
+CHOSEN. The client half records its durations and asserts on something else
+entirely: that `diffRowWindowForViewport` reports `virtualized` true at the
+Acceptance row count and that its `rowsInWindow` is IDENTICAL at ten times that
+row count. Measured at `dff36f33`, 10,002 rows draw 48. That number is decided by
+`DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS` and `DIFF_VIRTUAL_OVERSCAN_ROWS` and not by
+the document, so it is the same integer on every machine, in every run, forever —
+and it is the property that actually makes a 10,000-line diff viable, because what
+would make the viewer unusable is drawing ten thousand rows, not spending two
+milliseconds building a list. An exact invariant is a better guard than a noisy
+duration, and here one is available.
+
+THE COLLAPSE TRAP IS RECORDED BECAUSE IT MAKES THE OBVIOUS BENCHMARK VACUOUS.
+`defaultCollapsedHunkIds` returns a set of size 1 for a single hunk of 10,000
+lines and ALSO for one of 1,000, and a collapsed hunk emits no line rows at all,
+so the natural spelling — build the default collapsed set, then build the rows —
+returns TWO rows however large the fixture is, and times nothing. The reviewer hit
+this on the first probe. Every client measurement therefore passes an EMPTY
+collapsed set, and a test pins the collapse fact itself so that the next reader
+meets it as an assertion rather than as a surprise. It is also a real product
+fact worth recording: the viewer's FIRST PAINT of a 10,000-line diff is two rows,
+and the ten thousand arrive only when the reader expands the hunk.
+
+ALTERNATIVES CONSIDERED. (a) A ratio guard mirroring D4. Rejected: at a
+millisecond, with a threefold spread inside one run, the measured ratio would
+sometimes be 3 and sometimes 12, so the assertion would report the JIT rather than
+the code. (b) An absolute millisecond ceiling. Rejected for the same noise, and
+because it would be the flakiest assertion in a suite of 628 that currently
+finishes in under a second. (c) Measure nothing on the client and rely on the
+server figure. Rejected because Acceptance says "end to end", and the row model is
+the half a reader actually looks at.
+
+CONSEQUENCE. What is ASSERTED on the client is exact and machine-independent; what
+is RECORDED is the real duration, in a comment and in the Built State of
+`docs/roadmap/features/T5_F256.md`, dated and attributed to a machine class. A
+reader who wants to know how fast the client model is reads the numbers; a runner
+that is merely slow, or merely cold, does not turn the suite red.
+
+REVERSE by deleting this decision and replacing the bounded-window assertions with
+a duration bound, accepting the flakiness the paragraphs above measure. The
+recorded numbers are unaffected either way, because they are a measurement and not
+a bound.
+
+## DECISION F256 D6 (2026-08-28, F256 R7) — a vitest red-proof runs the WORKTREE's mutated sources against the PRIMARY checkout's node_modules, because vitest cannot run inside a worktree
+
+CONTEXT. Guardrail G5 of docs/agents/self_drive_protocol.md requires destructive
+verification — mutation and red-proof checks — to run only inside a disposable
+`git worktree`, never in the primary checkout, so that `git status --porcelain` is
+empty at every verdict. Every red-proof in this feature so far has been a pytest
+run, which needs nothing but the repository. A vitest red-proof does not have that
+property, and F256 R7 is the first round in this feature whose new test is a
+vitest test.
+
+THE OBSTACLE, measured by the reviewer at `dff36f33`. A `git worktree` contains no
+`node_modules`, symlinking one in is denied in this environment, and installing
+one inside a throwaway worktree is neither fast nor guaranteed to have a network.
+Running `npx vitest run` from inside a worktree's `apps/ui` fails at startup with
+`Cannot find package 'vitest'`, because the only `node_modules` above it is the
+repository root's, which does not carry vitest. So the literal reading of G5 makes
+a vitest red-proof impossible, and the tempting repair — mutate the primary
+checkout and revert afterwards — is exactly what G5 exists to forbid.
+
+CHOSEN, and it satisfies G5 rather than excusing it. The mutation is applied to
+the WORKTREE's copy of the source, and vitest is invoked with its working
+directory set to the PRIMARY `apps/ui`, so module resolution finds the primary's
+`node_modules`, while the FILES under test are named by absolute path inside the
+worktree. Concretely: a scratch config under `.remedy-wt/` exports a plain object —
+it must NOT `import` from `vitest/config`, because a config outside the package
+cannot resolve that specifier — setting `root` to the primary `apps/ui`, `cacheDir`
+to a path under `.remedy-wt/`, and `test.include` to the absolute path of the
+worktree's test file. The primary checkout's sources are never written to.
+
+THE ROUTE WAS PROVED, NOT ASSUMED, and the proof is the part worth keeping. Simply
+observing that the suite runs would not show WHICH copy of the source it ran: the
+reviewer first mutated the worktree's `DIFF_HUNK_COLLAPSE_THRESHOLD_LINES` and saw
+90 tests still pass, which is consistent both with the route being a lie and with
+those particular tests deriving their expectation from the constant they import.
+The question was settled by gutting `buildDiffRowModels` in the WORKTREE copy so
+that it returns an empty array: 8 of the 90 tests went red, and reverting restored
+all 90. The worktree's source is therefore genuinely the one under test.
+
+`cacheDir` IS LOAD-BEARING AND NOT TIDINESS. Without it, running vitest with the
+primary as root writes an untracked `.vite/` directory into the repository root,
+which is not gitignored, so the red-proof would leave the primary checkout DIRTY —
+the precise condition G5 exists to prevent. With `cacheDir` pointed inside the
+gitignored `.remedy-wt/`, the reviewer measured `git status --porcelain` empty in
+the primary after a full run.
+
+CONSEQUENCE. A vitest test in this repository can now be red-proved to the same
+standard as a pytest one, and G5 is met literally rather than waived. The residual
+limit is stated plainly: the run borrows the primary's INSTALLED PACKAGES, so this
+route proves things about mutated SOURCE and never about a change to
+`package.json` or to a dependency version, which it cannot see.
+
+REVERSE by deleting this decision; a later session that finds `node_modules`
+reachable from inside a worktree should prefer the plain route and delete the
+scratch config with it.

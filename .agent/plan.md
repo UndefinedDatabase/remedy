@@ -1,32 +1,32 @@
-# Plan — amend0828-daily-driver
+# Plan — F256 Diff viewer completion
 
-Branch: feature/amend0828-daily-driver, cut from `main` at the merge of PR #218
-(which closed F037). Operator collective order amend0828-daily-driver, five
-points, carrying the operator's authorization for every decision it names.
+Branch: feature/f256-diff-viewer-completion, cut from `main` at `0e8ab5b4`.
+F256 was claimed by Rule A5 as the first unchecked line of Package 1 in
+`docs/roadmap/STATUS.md`.
 
 ## Goal
-Make Remedy fit as a daily driver. Two operator dogfooding findings become built
-behaviour (deliberate partial promotion on `do job-promote`; cost truth on the
-`do job-run` path), one blind test is repaired, and the two remaining pieces of
-planned-but-unregistered scope get honest STATUS lines.
+Finish the rendered diff viewer F037 shipped: highlighting actually rendered
+rather than only modelled, the 10k-line budget measured and recorded, and the
+file sidebar's visual treatment ruled by a named authority.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| 3 — repair the R-0714 tautology test | done | red-proved in both directions |
-| 1 — `--skip-blocked` partial promotion | done | red-proved; flag-shape pinned |
-| 2 — cost truth on the job-run path | done | stats cost shows 1 row |
-| 4 — register the split-off F037 rest | done | F256, Tier 5, before F033 |
-| 5 — register the self-use track | done | F257, registered not built |
+| T001 wire the highlighting | done | DECISIONS F256 D1 and D2 |
+| T002 measure and record both halves | done | D4, D5, D6, Built State |
+| T003 rule on the sidebar's treatment | done | DECISION F256 D3 |
+| the integration gate and the package | done | READY_FOR_REVIEW at `c6775b3c` |
+| resolve `R-0732` | done | this round |
+| the STATUS closure and the PR | done | this round |
 
 ## Next Steps
-1. Run the full battery: docs suite, canary, every touched test file, ruff.
-2. Push the branch and open the PR.
-3. Watch the hosted run to GREEN, repairing red as work rather than reporting it.
-4. Merge this branch's own PR. End state: 0 open PRs.
+1. The closure PR is NOT merged this session; it merges at the next feature's
+   start through the Open PR Gate, which is the operator's review window.
+2. The next feature by Rule A5 is F257 — Self-use track, the first unchecked
+   STATUS line after F256.
+3. `.agent/candidates.md` stays empty unless the closure gate raised one.
 
 ## Risks
-- The two registrations shift every downstream feature counter; STATUS and the
-  four README pins must land in ONE commit or `tests/docs/` goes red.
-- Point 2 makes `do job-run` write an evidence bundle it did not write before.
+- None open against F256. `R-0732` is resolved this round; the wider ledger's
+  251 open findings belong to earlier features.
