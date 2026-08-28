@@ -724,3 +724,78 @@ export function diffRowWindowForViewport(
     rowsAfterPx: rowWindow.rowsAfter * DIFF_VIRTUAL_ROW_HEIGHT_PX,
   };
 }
+
+/** The file extensions this viewer highlights, as a FROZEN mapping from a
+ *  lower-case extension WITHOUT its dot to the language id its bundle loads
+ *  under.
+ *
+ *  WHY THE SET IS DELIBERATELY SMALL, which is the Design section of
+ *  `docs/roadmap/features/T5_F037.md` in its own words — "a small supported set;
+ *  unknown languages render plain — honest, fast": every entry here is a bundle
+ *  somebody has to ship to a browser, so the list is not free and grows only for
+ *  a language this repository's own diffs really carry. For everything else the
+ *  honest answer is plain text rather than a guess, because highlighting a file
+ *  as the WRONG language is worse than not highlighting it at all — it colours
+ *  tokens that are not there, and a reader has no reason to distrust it.
+ *
+ *  FROZEN because it is shared module state that a caller could otherwise extend
+ *  at runtime, which would put a language id in the map with no bundle behind
+ *  it. TWO EXTENSIONS MAY SHARE ONE ID — `yml` and `yaml` are one language — and
+ *  that is why this is a mapping rather than a list of extensions. */
+export const DIFF_SUPPORTED_LANGUAGES: Readonly<Record<string, string>> = Object.freeze({
+  ts: "typescript",
+  tsx: "tsx",
+  js: "javascript",
+  jsx: "jsx",
+  py: "python",
+  json: "json",
+  css: "css",
+  md: "markdown",
+  sh: "shell",
+  yml: "yaml",
+  yaml: "yaml",
+  toml: "toml",
+});
+
+/** The language id to highlight `path` as, or `null` meaning "render it plain".
+ *  TOTAL: no input throws, and `null` is an ANSWER rather than an error — plain
+ *  is a legitimate way to render a file, which is what makes Acceptance's
+ *  "unknown language renders plain" a rule rather than a failure mode.
+ *
+ *  THE FOUR DECISIONS, each of them a case a one-liner gets wrong:
+ *
+ *  * the extension is read from the BASENAME, never from the whole path. The
+ *    server's diff paths are posix, so the last `/` ends the directory part, and
+ *    only what follows it is examined. `a/b.c/d` carries a dot and has no
+ *    extension at all; reading the last dot of the whole string would answer
+ *    `c/d`, and `a/b.c/d.ts` must still answer `ts`.
+ *  * the extension is what follows the LAST dot of that basename, LOWER-CASED,
+ *    so `App.TSX` resolves. Case is folded because a file name's case is its
+ *    author's habit and not a language.
+ *  * a basename whose last dot is its FIRST character has NO extension: it is a
+ *    dotfile. This is the case `split(".").pop()` gets wrong, and the
+ *    DISCRIMINATING example is a basename that is nothing BUT a supported
+ *    extension — a file named `.ts` is a hidden file called `ts`, not a
+ *    TypeScript file, and without this rule it would be highlighted as one. A
+ *    basename with no dot at all is plain for the same reason, and so is the
+ *    empty path.
+ *  * a basename ENDING in a dot has an EMPTY extension, which is in no supported
+ *    set and is therefore plain.
+ *
+ *  An extension that survives all four and is still not in
+ *  `DIFF_SUPPORTED_LANGUAGES` is plain. That is Acceptance's own sentence, and
+ *  `loadDiffLanguageBundle` is what makes it OBSERVABLE rather than merely true:
+ *  a plain answer is reached without asking for a bundle at all. */
+export function diffLanguageForPath(path: string): string | null {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  const dot = basename.lastIndexOf(".");
+  if (dot <= 0 || dot === basename.length - 1) {
+    return null;
+  }
+  const extension = basename.slice(dot + 1).toLowerCase();
+  // `Record<string, string>` claims every key resolves, which is exactly what an
+  // arbitrary extension does not do; the annotation restores the truth so the
+  // absent case can be compared for rather than read as a language id.
+  const language: string | undefined = DIFF_SUPPORTED_LANGUAGES[extension];
+  return language === undefined ? null : language;
+}

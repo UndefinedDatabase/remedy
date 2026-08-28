@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DIFF_HUNK_COLLAPSE_THRESHOLD_LINES,
+  DIFF_SUPPORTED_LANGUAGES,
   DIFF_VIRTUAL_DEFAULT_VIEWPORT_ROWS,
   DIFF_VIRTUAL_OVERSCAN_ROWS,
   DIFF_VIRTUAL_ROW_HEIGHT_PX,
@@ -9,6 +10,7 @@ import {
   buildDiffRowModels,
   computeDiffRowWindow,
   defaultCollapsedHunkIds,
+  diffLanguageForPath,
   diffRowWindowForViewport,
   readDiffEnvelope,
   splitLineIntoIntralineSegments,
@@ -839,5 +841,80 @@ describe("diffRowWindowForViewport", () => {
     expect(answer.rowsBeforePx + answer.rowsAfterPx).toBe(
       (SCALE_ROWS - answer.rowsInWindow) * DIFF_VIRTUAL_ROW_HEIGHT_PX,
     );
+  });
+});
+
+describe("diffLanguageForPath", () => {
+  it("resolves EVERY entry of the supported set from a path bearing its extension", () => {
+    // Iterated from the mapping rather than transcribed, so an entry added
+    // without a bundle cannot slip through untested.
+    const entries = Object.entries(DIFF_SUPPORTED_LANGUAGES);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const [extension, language] of entries) {
+      expect(diffLanguageForPath(`src/sample.${extension}`), extension).toBe(language);
+    }
+  });
+
+  it("names every language id it claims to support", () => {
+    // The one deliberate transcription in this suite, and it is the language
+    // IDS, never the extensions: an entry added under a new id turns this red,
+    // which is what stops a language shipping with no test naming it.
+    expect(new Set(Object.values(DIFF_SUPPORTED_LANGUAGES))).toEqual(
+      new Set([
+        "typescript",
+        "tsx",
+        "javascript",
+        "jsx",
+        "python",
+        "json",
+        "css",
+        "markdown",
+        "shell",
+        "yaml",
+        "toml",
+      ]),
+    );
+  });
+
+  it("folds an UPPER-CASE extension to the same language", () => {
+    expect(diffLanguageForPath("App.TSX")).toBe(DIFF_SUPPORTED_LANGUAGES.tsx);
+    expect(diffLanguageForPath("apps/ui/src/App.TSX")).toBe(DIFF_SUPPORTED_LANGUAGES.tsx);
+  });
+
+  it("reads the LAST dot, and reads it inside the BASENAME", () => {
+    expect(diffLanguageForPath("apps/ui/src/api/diffViewModel.test.ts")).toBe(
+      DIFF_SUPPORTED_LANGUAGES.ts,
+    );
+    expect(diffLanguageForPath("a/b.c/d.ts")).toBe(DIFF_SUPPORTED_LANGUAGES.ts);
+    expect(diffLanguageForPath("a/b.c/d")).toBeNull();
+  });
+
+  it("renders a DOTFILE plain, including one named after a supported extension", () => {
+    expect(diffLanguageForPath(".gitignore")).toBeNull();
+    expect(diffLanguageForPath("packages/.env")).toBeNull();
+    // The discriminating case: `ts` IS supported, so only the dotfile rule keeps
+    // a hidden file called `ts` from being highlighted as TypeScript.
+    expect(diffLanguageForPath(".ts")).toBeNull();
+    expect(diffLanguageForPath("apps/ui/.ts")).toBeNull();
+  });
+
+  it("renders a path with NO dot plain", () => {
+    expect(diffLanguageForPath("Makefile")).toBeNull();
+    expect(diffLanguageForPath("scripts/run")).toBeNull();
+  });
+
+  it("renders the EMPTY path plain", () => {
+    expect(diffLanguageForPath("")).toBeNull();
+  });
+
+  it("renders a path ENDING in a dot plain", () => {
+    expect(diffLanguageForPath("trailing.")).toBeNull();
+    expect(diffLanguageForPath("a/b/trailing.")).toBeNull();
+  });
+
+  it("renders an UNSUPPORTED extension plain", () => {
+    expect(DIFF_SUPPORTED_LANGUAGES.rs).toBeUndefined();
+    expect(diffLanguageForPath("crates/main.rs")).toBeNull();
+    expect(diffLanguageForPath("notes.unknownlanguage")).toBeNull();
   });
 });
