@@ -12,32 +12,33 @@ slicing, the binding CSS and the design amendments A1 through A6, the last of
 which records what this feature deliberately no longer ships.
 
 ## Current Step
-R24 is the SCOPE REPORT round. F037 has reached session 7 of a seven-session soft
-limit, so operator amendment amend0827-process-diet rule 6 makes a report the
-next obligation rather than more work. This round books the R23 verdict, resolves
-`R-0731`, records DECISION F037 D11 splitting the three unbuilt pieces out of the
-feature, amends the feature file to say so, and writes the report into the
-handback. Nothing under `apps/`, `packages/` or `tests/` is touched.
+R25 is the INTEGRATION-GATE round, the first of F037's closure sequence. It books
+the R24 verdict, resolves `R-0719` — whose counter-measure landed as amendment A4
+at `c60a7318`, two commits after the entry that registered it, and was never
+written up — and then runs the full suite twice: once on this branch and once in
+a throwaway worktree at the merge base `9dde5495`, comparing the two failure sets
+and attributing every branch-only id. The raw evidence lands under
+`.agent/gate_f037_r25/`. Nothing under `apps/`, `packages/`, `tests/` or `docs/`
+is touched.
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a/C0b save and mirror the block | ordered | |
 | C1 the plan | ordered | first substantive commit |
-| C2 the R23 verdict and one resolution | ordered | record first |
-| C3 DECISION F037 D11 | ordered | the ruling, not a question |
-| C4 the feature-file amendment A6 | ordered | after the decision it cites |
-| C5 the handback carrying the scope report | ordered | |
+| C2 the R24 verdict and one resolution | ordered | record first |
+| C3 the integration-gate evidence | ordered | the round's substance |
+| C4 the handback | ordered | |
 
 ## Next Steps
-1. The closure sequence for F037 as amended by A6: the integration-gate round,
-   then the evidence-and-zip round, then the STATUS round.
-2. The split-off scope — wiring `loadDiffLanguageBundle` into `DiffView`, the
-   10k-line perf measurement, and the sidebar visual ruling — wants its own
-   STATUS line. That is a PROPOSAL to the operator and is not executed here.
+1. The evidence-and-zip round: the feature file's Built State section, the
+   `create_manual_completion_bundle` evidence job, and a FRESH review zip whose
+   failure is a closure blocker.
+2. The STATUS round: the `[x]` line, the README capability sync in the SAME
+   commit, and the closure PR, which this session does not merge.
 
 ## Risks
 - A6 narrows what F037 ships. Reversing it is one paragraph in each of
   `.agent/decisions.md` and the feature file, both named in D11.
-- `loadDiffLanguageBundle` has NO production caller at `82d3d584`, measured by
-  the reviewer with `git grep -l`: the lazy-bundle model is complete and unwired,
-  and A6 exists so that gap is stated rather than silent.
+- The base worktree lacks `apps/ui/node_modules` and `apps/ui/dist`. Both are
+  restored with symlinks PRESERVED, or the base-only set fills with environment
+  failures that mask the real ones.
