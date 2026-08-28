@@ -140,15 +140,40 @@ class TestTheStripperIsNotVacuous:
                 f"{expected}; a reach test that found nothing would pass on an empty set"
             )
 
+    def test_the_function_scoper_returns_less_than_the_whole_module(self):
+        """The scoping finding `R-0725` removed must not come back through the helper.
+
+        Two assertions below moved from the whole module into a function body. A
+        `ts_function_body` that silently handed back the file would restore the very
+        defect the move repairs, and every one of them would still pass.
+        """
+        code = client_code()
+        body = ts_function_body(code, "diffEnvelopePath")
+        assert len(body) < len(code), (
+            f"ts_function_body returned {len(body)} characters for diffEnvelopePath out of "
+            f"{len(code)} in {CLIENT.name}, so it is not scoping at all and every assertion "
+            f"built on it is a whole-file search wearing a function's name (finding R-0725)"
+        )
+        assert "loadRemedyDashboard" not in body, (
+            f"the body ts_function_body returns for diffEnvelopePath reaches as far as "
+            f"loadRemedyDashboard, so it spans more than one function and a second "
+            f"occurrence elsewhere in {CLIENT.name} could satisfy the assertions below"
+        )
+
 
 class TestTheJobScopeRouteAgrees:
     """(a) The job scope is dispatched by the five-segment route's handler dictionary, keyed
     on a single `parts[4]`. The client's path and that key are one agreement written twice."""
 
     def test_the_client_addresses_the_diff_endpoint(self):
-        assert "/diff?" in client_code(), (
-            f"{CLIENT.name} builds no path ending in the diff endpoint, so nothing the viewer "
-            f"fetches would reach the handler {SERVER.name} registers for it"
+        # Scoped to diffEnvelopePath's body, and to the JOB template inside it, because
+        # `/diff?` alone occurs in BOTH templates: renaming the job one to `/diffs?` left
+        # this assertion satisfied by the task-run one (finding `R-0725`).
+        body = ts_function_body(client_code(), "diffEnvelopePath")
+        assert "/api/jobs/${job}/diff?" in body, (
+            f"diffEnvelopePath in {CLIENT.name} builds no job-scope path ending in the diff "
+            f"endpoint, so nothing the viewer fetches for a whole job would reach the handler "
+            f"{SERVER.name} registers for it"
         )
 
     def test_the_server_registers_the_diff_endpoint_in_its_handler_dictionary(self):
@@ -197,10 +222,22 @@ class TestTheDoorNormalizesThroughOneFunction:
     claiming it is exactly what this assertion must not be satisfied by."""
 
     def test_every_payload_leaves_the_door_through_the_reader(self):
-        assert "readDiffEnvelope" in client_code(), (
-            f"{CLIENT.name} never calls readDiffEnvelope, so a raw payload would reach the "
-            f"viewer and every component downstream would have to be defensive a second time"
+        # Scoped to loadDiffEnvelope's body, and then to EACH of its two exits, because the
+        # whole-module form was satisfied by the `import` line alone — and a body-wide form
+        # would still be satisfied by whichever exit survived (finding `R-0725`).
+        body = ts_function_body(client_code(), "loadDiffEnvelope")
+        returning, separator, degrading = body.partition("} catch")
+        assert separator, (
+            f"loadDiffEnvelope in {CLIENT.name} no longer has the try/catch shape this "
+            f"assertion reads, so its two exits cannot be told apart and the check below "
+            f"would run over one region rather than both"
         )
+        for exit_name, region in (("resolved", returning), ("rejected", degrading)):
+            assert "readDiffEnvelope" in region, (
+                f"the {exit_name} path of loadDiffEnvelope in {CLIENT.name} does not call "
+                f"readDiffEnvelope, so a payload leaves the door un-totalised and every "
+                f"component downstream would have to be defensive a second time"
+            )
 
     def test_the_loader_really_catches_a_rejection(self):
         body = ts_function_body(client_code(), "loadDiffEnvelope")
