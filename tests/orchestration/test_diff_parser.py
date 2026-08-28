@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import difflib
 import re
+import time
 
 from packages.orchestration.diff_parser import (
     DIFF_INTRALINE_MIN_RATIO,
@@ -761,3 +762,196 @@ def test_parse_unified_diff_to_view_reads_real_difflib_output():
         ("add", None, 2, "BETA"),
         ("ctx", 3, 3, "gamma"),
     ]
+
+
+# --------------------------------------------------------------------------- #
+# The huge shape — the last row of T001's task slicing, and Acceptance's budget.
+# --------------------------------------------------------------------------- #
+
+#: Acceptance in `docs/roadmap/features/T5_F037.md` names a "10k-line fixture within
+#: the perf budget (recorded)". This is that fixture's BODY-line count. It must be
+#: even: the body is written as alternating deletion/addition PAIRS.
+HUGE_DIFF_BODY_LINE_COUNT = 10_000
+
+#: The many-FILES dimension of the same shape, kept separate from the many-LINES one
+#: because the parser opens a region per file and a hunk per header, and a defect can
+#: live in either loop alone.
+MANY_FILE_DIFF_FILE_COUNT = 400
+
+#: The GENEROUS absolute ceiling the budget test below asserts against. The measured
+#: figure it is set against, and why it is deliberately NOT that figure, are recorded
+#: in `test_the_huge_diff_parses_inside_the_recorded_perf_budget`.
+HUGE_DIFF_PARSE_CEILING_SECONDS = 0.5
+
+
+def _generated_huge_single_file_diff(
+    body_line_count: int, path: str = "pkg/huge_module.py"
+) -> str:
+    """One file with `body_line_count` body lines, as alternating `-`/`+` pairs.
+
+    GENERATED rather than typed out — the one exception to this module's docstring
+    rule that every fixture carries its diff text INLINE — because ten thousand
+    literal body lines would bury every other fixture in the file and show a reader
+    nothing the fourth line does not already show.
+    """
+    pair_count = body_line_count // 2
+    lines = [
+        f"diff --git a/{path} b/{path}",
+        f"--- a/{path}",
+        f"+++ b/{path}",
+        f"@@ -1,{pair_count} +1,{pair_count} @@",
+    ]
+    for index in range(pair_count):
+        lines.append(f"-old body line {index}")
+        lines.append(f"+new body line {index}")
+    return "\n".join(lines) + "\n"
+
+
+def _generated_many_file_diff(file_count: int) -> str:
+    """`file_count` files, one one-line hunk each, in a single diff text.
+
+    Generated for the same reason as the single-file builder above: several hundred
+    header pairs written out inline are unreadable, and the shape they stand for —
+    many small files rather than one enormous one — is the other half of what a real
+    `workspace.diff` looks like.
+    """
+    lines: list[str] = []
+    for index in range(file_count):
+        path = f"pkg/module_{index:04d}.py"
+        lines.extend(
+            [
+                f"diff --git a/{path} b/{path}",
+                f"--- a/{path}",
+                f"+++ b/{path}",
+                "@@ -1,1 +1,1 @@",
+                f"-old line in {path}",
+                f"+new line in {path}",
+            ]
+        )
+    return "\n".join(lines) + "\n"
+
+
+def test_the_huge_single_file_diff_parses_to_one_complete_file():
+    """Every generated body line survives into exactly one file entry.
+
+    Asserted as a PROPERTY against the generated size, never against a transcribed
+    literal, the way `test_every_file_stats_equal_a_recount_of_its_own_parsed_lines`
+    does it. A parser that silently stopped appending after some internal cap would
+    pass every other test in this file, all of whose fixtures are a few dozen lines
+    at most; this is the only assertion in the corpus that can see such a cap.
+    """
+    diff_text = _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+
+    view = parse_unified_diff_to_view(diff_text)
+
+    assert view["truncated"] is False
+    assert len(view["files"]) == 1
+    entry = view["files"][0]
+    assert entry["path"] == "pkg/huge_module.py"
+    assert entry["status"] == DIFF_STATUS_MODIFIED
+    lines = [line for hunk in entry["hunks"] for line in hunk["lines"]]
+    assert len(lines) == HUGE_DIFF_BODY_LINE_COUNT
+    kinds = [line["kind"] for line in lines]
+    assert entry["stats"]["added"] == kinds.count("add")
+    assert entry["stats"]["deleted"] == kinds.count("del")
+    assert entry["stats"]["added"] == HUGE_DIFF_BODY_LINE_COUNT // 2
+    assert entry["stats"]["deleted"] == HUGE_DIFF_BODY_LINE_COUNT // 2
+    hunk_ids = [hunk["id"] for hunk in entry["hunks"]]
+    assert len(set(hunk_ids)) == len(hunk_ids)
+
+
+def test_line_numbering_survives_the_whole_huge_file():
+    """Both counters stay monotonic over ten thousand lines, and land where they must.
+
+    The shapes already in the corpus are three or four lines long, so a counter that
+    drifts only after thousands of lines — an off-by-one that compounds, a reset on
+    some interior condition — is invisible to all of them. Here the old-side numbers
+    of the deletions and the new-side numbers of the additions are each checked for
+    STRICT increase across the entire file, and the final line is checked against the
+    number its own position implies.
+    """
+    pair_count = HUGE_DIFF_BODY_LINE_COUNT // 2
+    diff_text = _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+
+    view = parse_unified_diff_to_view(diff_text)
+
+    lines = [line for hunk in view["files"][0]["hunks"] for line in hunk["lines"]]
+    old_numbers = [line["old_ln"] for line in lines if line["kind"] == "del"]
+    new_numbers = [line["new_ln"] for line in lines if line["kind"] == "add"]
+    assert len(old_numbers) == pair_count
+    assert len(new_numbers) == pair_count
+    assert all(later > earlier for earlier, later in zip(old_numbers, old_numbers[1:]))
+    assert all(later > earlier for earlier, later in zip(new_numbers, new_numbers[1:]))
+    assert (old_numbers[0], new_numbers[0]) == (1, 1)
+    assert (old_numbers[-1], new_numbers[-1]) == (pair_count, pair_count)
+    last = lines[-1]
+    assert (last["kind"], last["old_ln"], last["new_ln"]) == ("add", None, pair_count)
+    assert last["content"] == f"new body line {pair_count - 1}"
+
+
+def test_the_many_file_diff_keeps_every_file_distinct_and_in_input_order():
+    """Several hundred files stay several hundred file entries, in order, none empty.
+
+    Worth asserting at scale because of the doubled-header collapse `R-0716` added:
+    that fold walks the region list backwards and drops entries, so a mistake in it
+    costs FILES rather than lines, and the corpus's other multi-file fixtures hold
+    two or three.
+    """
+    diff_text = _generated_many_file_diff(MANY_FILE_DIFF_FILE_COUNT)
+    # Read the expectation back out of the generated TEXT rather than out of the
+    # builder's own formatting, so it is not true by construction.
+    expected_paths = [
+        line[len("+++ b/"):]
+        for line in diff_text.split("\n")
+        if line.startswith("+++ b/")
+    ]
+    assert len(expected_paths) == MANY_FILE_DIFF_FILE_COUNT
+    assert len(set(expected_paths)) == MANY_FILE_DIFF_FILE_COUNT
+
+    view = parse_unified_diff_to_view(diff_text)
+
+    assert len(view["files"]) == MANY_FILE_DIFF_FILE_COUNT
+    assert [entry["path"] for entry in view["files"]] == expected_paths
+    # No phantom entries: every file carries the one hunk it was generated with.
+    assert all(len(entry["hunks"]) == 1 for entry in view["files"])
+    assert all(entry["stats"] == {"added": 1, "deleted": 1} for entry in view["files"])
+    hunk_ids = [hunk["id"] for entry in view["files"] for hunk in entry["hunks"]]
+    assert len(set(hunk_ids)) == len(hunk_ids)
+
+
+def test_the_huge_diff_parses_inside_the_recorded_perf_budget():
+    """The perf figure Acceptance asks to have RECORDED, and a complexity guard on it.
+
+    MEASURED 2026-08-28 on the machine this feature is being built on — a Linux
+    x86-64 development workstation, CPython 3, unloaded — as the median of fifteen
+    parses of this exact fixture: 0.105 s for 10,000 body lines, against 0.010 s for
+    1,000 and 0.021 s for 2,000. The cost is LINEAR at roughly 10 microseconds per
+    body line, and a 400-file shape scales the same way.
+
+    THE CEILING IS NOT THAT FIGURE. `HUGE_DIFF_PARSE_CEILING_SECONDS` is 0.5 s, about
+    five times the measured median, so a runner five times slower than this one still
+    passes and this assertion never becomes a report on machine speed. What it is
+    for is a change of COMPLEXITY CLASS: a parser scaling as N squared while matching
+    today's cost at 1,000 body lines would need about 1.0 s at 10,000 — a hundred
+    times the 1,000-line figure — which is twice the ceiling. The ceiling therefore
+    sits BETWEEN the two cases rather than merely above the good one.
+
+    It is deliberately not a full order of magnitude above the measurement: 1.0 s is
+    exactly where the quadratic case lands, so a ten-times ceiling would pass both
+    and record nothing. Anyone tightening this below about 0.35 s is policing a
+    machine rather than a complexity class, and should not.
+    """
+    diff_text = _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+
+    started = time.perf_counter()
+    view = parse_unified_diff_to_view(diff_text)
+    elapsed = time.perf_counter() - started
+
+    # A budget met by parsing nothing is not a budget: pin the work first.
+    assert len(view["files"]) == 1
+    parsed_lines = sum(len(hunk["lines"]) for hunk in view["files"][0]["hunks"])
+    assert parsed_lines == HUGE_DIFF_BODY_LINE_COUNT
+    assert elapsed < HUGE_DIFF_PARSE_CEILING_SECONDS, (
+        f"parsing {HUGE_DIFF_BODY_LINE_COUNT} body lines took {elapsed:.3f}s, "
+        f"ceiling {HUGE_DIFF_PARSE_CEILING_SECONDS}s"
+    )
