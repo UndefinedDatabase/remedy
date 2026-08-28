@@ -14,21 +14,19 @@ file sidebar's visual treatment ruled by a named authority.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001 wire the highlighting | done | DECISIONS F256 D1 and D2 |
+| T002 measure and record both halves | done | D4, D5, D6, Built State |
 | T003 rule on the sidebar's treatment | done | DECISION F256 D3 |
-| T002 measure and record, both halves | done | `f6d5d064`, D4 D5 D6 |
-| the integration gate | done | this round, full suite |
-| the evidence bundle and the package | done | this round |
-| the STATUS closure commit | open | next round, with the README sync |
+| the integration gate and the package | done | READY_FOR_REVIEW at `c6775b3c` |
+| resolve `R-0732` | done | this round |
+| the STATUS closure and the PR | done | this round |
 
 ## Next Steps
-1. Author the STATUS line from the package name, SHA-256 and archived path this
-   round recorded, and apply it with the README capability sync in ONE commit.
-2. Open the closure PR per the AGENTS.md workflow; it is NOT merged this
-   session — the gap is the operator's manual-review window.
-3. Leave `.agent/candidates.md` empty unless the closure gate raises one.
+1. The closure PR is NOT merged this session; it merges at the next feature's
+   start through the Open PR Gate, which is the operator's review window.
+2. The next feature by Rule A5 is F257 — Self-use track, the first unchecked
+   STATUS line after F256.
+3. `.agent/candidates.md` stays empty unless the closure gate raised one.
 
 ## Risks
-- The STATUS `[x]` flip and the README sync must land in the SAME commit or the
-  ledger cross-check pin goes red.
-- The closure commit is the last on the branch (Rule A4), with the single
-  permitted successor DECISION amend0827 D2 names.
+- None open against F256. `R-0732` is resolved this round; the wider ledger's
+  251 open findings belong to earlier features.
