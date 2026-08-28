@@ -13,21 +13,22 @@ file sidebar's visual treatment ruled by a named authority.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 wire the highlighting | done | `678bc698`, `8bcff3db`, DECISIONS D1 D2 |
-| T003 rule on the sidebar's treatment | done | `1b70fb02`, DECISION F256 D3 |
-| T002 measure, server half | done | `4aea7ba2`, DECISION F256 D4 |
-| T002 measure, client half | done | `95ecaf14`, DECISIONS F256 D5 D6 |
-| T002 record the numbers | done | this round |
-| the integration gate | open | next round |
-| the closure sequence | open | needs two rounds |
+| T001 wire the highlighting | done | DECISIONS F256 D1 and D2 |
+| T003 rule on the sidebar's treatment | done | DECISION F256 D3 |
+| T002 measure and record, both halves | done | `f6d5d064`, D4 D5 D6 |
+| the integration gate | done | this round, full suite |
+| the evidence bundle and the package | done | this round |
+| the STATUS closure commit | open | next round, with the README sync |
 
 ## Next Steps
-1. Run the integration gate over the whole branch.
-2. Build the closure evidence and the review zip.
-3. Commit the STATUS closure in a round of its own, per the closure protocol.
+1. Author the STATUS line from the package name, SHA-256 and archived path this
+   round recorded, and apply it with the README capability sync in ONE commit.
+2. Open the closure PR per the AGENTS.md workflow; it is NOT merged this
+   session — the gap is the operator's manual-review window.
+3. Leave `.agent/candidates.md` empty unless the closure gate raises one.
 
 ## Risks
-- The closure sequence needs TWO rounds — evidence and zip, then the STATUS
-  commit — and a STATUS `[x]` flip needs its README and ledger pins in the same
-  commit or `tests/docs/` goes red.
-- `.agent/candidates.md` is empty and must stay empty through closure.
+- The STATUS `[x]` flip and the README sync must land in the SAME commit or the
+  ledger cross-check pin goes red.
+- The closure commit is the last on the branch (Rule A4), with the single
+  permitted successor DECISION amend0827 D2 names.
