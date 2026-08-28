@@ -1,33 +1,46 @@
-# Context — F037 Rendered diff viewer
+# Context — amend0828-daily-driver
 
 ## Active Branch
-feature/f037-rendered-diff-viewer, cut from `main` at `9dde5495`, the merge
-commit of pull request #217 which closed F032.
+feature/amend0828-daily-driver, cut from `main` at the merge commit of pull
+request #218, which closed F037.
 
 ## Scope
-Feature F037 per `docs/roadmap/features/T5_F037.md`: a versioned structured
-diff JSON served as a read endpoint per task and attempt, and a client viewer
-that renders files, hunks, lines and intraline spans with a file sidebar, hunk
-collapse, virtual scrolling beyond 2k lines and lazily loaded language bundles.
+Operator collective order amend0828-daily-driver: five numbered points, all
+authorized in the order itself, none of them a question back to the operator.
+
+1. Deliberate partial promotion on `remedy do job-promote` — a new
+   `--skip-blocked` promotes every non-blocked file and provably leaves the
+   blocked ones alone; blocked output always ends with an honest `Next:` line.
+2. Cost truth on the job path — `remedy stats cost` must show at least one
+   ledger row in the right project scope after a real `do job-run` with
+   measured provider usage. Settles the open design choice in T2_F103.
+3. Repair the R-0714 tautology test so the integration gate's one
+   neutralisation lever is genuinely discriminated, and book R-0714 resolved.
+4. Register the split-off F037 rest scope (DECISION F037 D11 / Amendment A6)
+   as ONE new Package 1 feature line placed directly before F033.
+5. Register the self-use track as a second new Package 1 line, directly after
+   the F037-rest line. Registration and feature file only — not built.
 
 ## Do not touch
-The feature file's own list: hunk-id stability, which is F033's contract; apply
-mechanics; evidence formats. No approval logic is added early — the viewer
-precedes hunk approval in STATUS deliberately. R1 additionally writes no file
-under `packages/`, `apps/` or `tests/` at all.
+The blocked-path guardrail itself. `_is_blocked_path`, `_BLOCKED_EXACT` and
+`_BLOCKED_PREFIXES` keep every entry they have, blocked files are never
+written, and without `--skip-blocked` the promotion behaves exactly as it does
+today. DECISION D16's per-finalized-task-run ledger granularity is not
+reopened. `docs/roadmap/ROADMAP.md` is not edited. The `.agent/STOP` sentinel
+is left exactly where it is: it halted the F033 self-drive loop, this order is
+not a self-drive round, and the operator's own words are that the loop stands.
 
 ## Assumptions
-- Rule A5 chose F037: `docs/roadmap/STATUS.md` carried no `[~]` and no `[!]`
-  line and F037 was the first `[ ]`, measured at `9dde5495`.
-- `.agent/candidates.md` is EMPTY at the claim, so no block condition stands.
-- The feature file's Design is a SUGGESTED shape, not a settled spec; the
-  inventory measures the real one before T001 is planned.
-- This is a UI feature, so `docs/ui/design_reference/` is binding from T002 on
-  and any visual deviation is documented with a technical reason.
+- The Open PR Gate passed with ZERO open pull requests, which AGENTS.md tells
+  the agent to continue normally from.
+- Point 2's shape is the operator's ruling for least wiring depth: reuse the
+  already-armed exporter rather than reopen D16 or add a second backfill source,
+  because a second backfill source leaves `stats cost` empty until someone asks,
+  which is not what the order requires to be visible after a run.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
-forward from the context this file replaced. They are not this feature's, and
+forward from the context this file replaced. They are not this order's, and
 deleting them with the rest of a rewrite is what cost an earlier round a red
 CI run.
 
@@ -49,7 +62,6 @@ CI run.
   `## Next Steps` and a feature id; `.agent/live_review.md` carries `Steps`.
 
 ## Steps
-The round map for this feature lives in the `## Steps` section of
-`.agent/live_review.md`, and the current round's items in the `## Current Step`
-table of `.agent/plan.md`. This file deliberately restates neither — a second
-copy of the map is what fell out of step and cost F022 a finding.
+The item-status table for this order lives in the `## Current Step` section of
+`.agent/plan.md`. This file deliberately does not restate it — a second copy of
+the map is what fell out of step and cost F022 a finding.

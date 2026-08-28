@@ -113,6 +113,59 @@ def _resolve_job_ledger_project_id(job: Any) -> str | None:
     return str(project.id) if project is not None else None
 
 
+def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
+    """Export a finished job's evidence so its cost reaches the F103 token ledger.
+
+    THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy do job-run` used to complete
+    a job, write ``task_jobs/<id>/job.json`` and its run log, and touch no ledger
+    at all, so `remedy stats cost` reported "No ledger on disk for this scope"
+    after a run that had spent real money. The mirror is armed in exactly one
+    place — ``_resolve_job_ledger_project_id``, reached only from
+    ``export_job_evidence`` — and only two commands used to reach it,
+    `do job-evidence` and `do job-flow`. A run that is never exported has no cost
+    row, and `remedy stats backfill-ledger` cannot help either, because it mirrors
+    an evidence DIRECTORY that was never written.
+
+    Rather than record from the loop, which would move DECISION D16's
+    per-finalized-task-run granularity, this reuses the seam that already exists:
+    the job's evidence is exported to its own default location, which arms the
+    live mirror exactly as `do job-evidence` does. One call, no second capture
+    path, and no new ledger writer to keep in step with the old one.
+
+    NEVER FATAL. A job that ran is a job that ran; a failure to mirror its cost
+    must not turn a completed run into a failed command. The evidence files stay
+    the source of truth and `remedy stats backfill-ledger` can still mirror them
+    later, so every failure is reported and swallowed.
+
+    Returns ``{"ledger_mirrored": bool, "out_dir": str, "error": str}``.
+    """
+    from packages.orchestration.data_paths import job_evidence_export_dir
+
+    try:
+        out_dir = str(job_evidence_export_dir(job_id))
+    except Exception as exc:
+        return {"ledger_mirrored": False, "out_dir": "",
+                "error": f"{type(exc).__name__}: {exc}"}
+
+    try:
+        result = export_job_evidence(job_id, out_dir)
+    except Exception as exc:
+        logger.warning(
+            "cost mirror failed for job %s; the run itself is unaffected and "
+            "remedy stats backfill-ledger can still mirror the evidence later",
+            job_id, exc_info=True,
+        )
+        return {"ledger_mirrored": False, "out_dir": out_dir,
+                "error": f"{type(exc).__name__}: {exc}"}
+
+    error = str(result.get("error") or "")
+    return {
+        "ledger_mirrored": not error,
+        "out_dir": str(result.get("out_dir", out_dir)),
+        "error": error,
+    }
+
+
 def export_job_evidence(
     job_id: str,
     out_dir: str,

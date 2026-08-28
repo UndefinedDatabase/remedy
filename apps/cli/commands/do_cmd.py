@@ -1499,11 +1499,28 @@ def _cmd_do_job_run(
         **invocation.as_run_job_kwargs(),
     )
 
+    # F103 cost truth on the job path: a run that spent money must leave a cost
+    # row, so the evidence export that arms the live ledger mirror runs here
+    # rather than waiting for someone to type `do job-evidence`. Never fatal.
+    from packages.orchestration.job_evidence import mirror_job_run_into_ledger
+    cost_mirror = mirror_job_run_into_ledger(job.job_id)
+
     if json_output:
-        print(json.dumps(export_job_report(job), indent=2))
+        report = export_job_report(job)
+        report["cost_mirror"] = cost_mirror
+        print(json.dumps(report, indent=2))
     else:
         from packages.orchestration.pingpong_job import format_job_report_text
         print(format_job_report_text(job))
+        if cost_mirror["ledger_mirrored"]:
+            print("Cost recorded to the ledger. See: remedy stats cost")
+        else:
+            print(
+                f"Cost NOT recorded to the ledger: {cost_mirror['error']}\n"
+                f"Next: run `remedy do job-evidence {job.job_id}` and then "
+                f"`remedy stats backfill-ledger` to reconcile it.",
+                file=sys.stderr,
+            )
 
 
 def _cmd_do_job_evidence(
@@ -1614,6 +1631,7 @@ def _cmd_do_job_promote(
     approve: bool = False,
     dry_run: bool = False,
     test_command: str = "",
+    skip_blocked: bool = False,
     json_output: bool = False,
 ) -> None:
     """Review and apply job workspace changes to target repo."""
@@ -1632,6 +1650,7 @@ def _cmd_do_job_promote(
         approve=approve,
         dry_run=dry_run,
         test_command=test_command,
+        skip_blocked=skip_blocked,
     )
 
     if json_output:
@@ -3148,6 +3167,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         approve=getattr(args, "approve", False),
         dry_run=getattr(args, "dry_run", False),
         test_command=getattr(args, "test_command", None) or "",
+        skip_blocked=getattr(args, "skip_blocked", False),
         json_output=getattr(args, "json", False),
     ),
     "do.job-evidence": lambda args: _cmd_do_job_evidence(

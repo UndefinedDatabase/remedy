@@ -325,6 +325,10 @@ class JobPromotionResult:
     files_applied: list[str] = field(default_factory=list)
     files_blocked: list[str] = field(default_factory=list)
     files_skipped: list[str] = field(default_factory=list)
+    #: True when the operator passed --skip-blocked, i.e. acknowledged the blocked
+    #: set and asked for the remainder anyway. ``files_blocked`` still names every
+    #: path that was withheld, so a promotion that skipped is never silent.
+    skip_blocked: bool = False
     file_readiness: list[FileReadiness] = field(default_factory=list)
     blocked_reason: str = ""
     blocked_reasons: list[str] = field(default_factory=list)
@@ -647,6 +651,7 @@ def promote_job(
     approve: bool = False,
     dry_run: bool = False,
     test_command: str = "",
+    skip_blocked: bool = False,
 ) -> JobPromotionResult:
     """Promote reviewed job workspace changes into target repo.
 
@@ -655,6 +660,11 @@ def promote_job(
 
     Every promoted file must come from a task apply manifest.
     No workspace fallback scanning. Baseline-aware target safety.
+
+    ``skip_blocked`` is the operator's SECOND, explicit decision, taken after
+    reading the blocked list — it does not weaken the fence. See
+    ``_promote_from_workspace`` for what it does and, more importantly, does not
+    change.
     """
     from packages.orchestration.pingpong_job import (
         JOB_COMPLETED,
@@ -669,6 +679,7 @@ def promote_job(
         dry_run=dry_run,
         target_repo=str(Path(target_repo).resolve()),
         post_test_command=test_command,
+        skip_blocked=skip_blocked,
         started_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -750,6 +761,7 @@ def promote_job(
                 out = _promote_from_workspace(
                     job, result, promo_source.path, target_repo,
                     approve=approve, dry_run=dry_run, test_command=test_command,
+                    skip_blocked=skip_blocked,
                     persist_final=False,
                 )
         else:
@@ -762,6 +774,7 @@ def promote_job(
             return _promote_from_workspace(
                 job, result, workspace, target_repo,
                 approve=approve, dry_run=dry_run, test_command=test_command,
+                skip_blocked=skip_blocked,
             )
     finally:
         if promo_source is not None:
@@ -855,6 +868,7 @@ def _promote_from_workspace(
     approve: bool,
     dry_run: bool,
     test_command: str,
+    skip_blocked: bool = False,
     persist_final: bool = True,
 ) -> JobPromotionResult:
     """The existing baseline-aware promotion, against a resolved source.
@@ -862,6 +876,17 @@ def _promote_from_workspace(
     ``persist_final=False`` means an outer owner (the temporary-worktree lifecycle)
     will write the ONE final record after cleanup, so this function must not write
     a record that would later disagree with the returned object.
+
+    ``skip_blocked`` CHANGES ONE DECISION AND NOTHING ELSE: whether a non-empty
+    blocked set aborts the whole promotion. It does not widen what may be written.
+    Every blocked path is still detected by the same ``_is_blocked_path``,
+    ``_validate_dest_containment`` and ``_validate_source_containment`` checks, is
+    still kept out of ``planned``, is still never opened for writing, and is still
+    named in ``files_blocked`` and in the summary. What it buys is the operator's
+    second explicit decision, taken AFTER reading that list: promote the remainder
+    as its own atomic change set. That is a different question from "apply
+    everything or nothing", and answering it does not make the fence weaker —
+    a silent skip would, and this is the opposite of silent.
     """
     job_id = job.job_id
 
@@ -935,10 +960,13 @@ def _promote_from_workspace(
     result.files_blocked = blocked
     result.files_skipped = skipped
 
-    if blocked:
+    if blocked and not skip_blocked:
         return _block(result, f"blocked_paths: {blocked}")
 
     if not planned:
+        # Reached with a non-empty blocked set only when --skip-blocked was passed
+        # and EVERY file was blocked: there is no remainder to promote, so the
+        # honest answer is still a block rather than an empty success.
         return _block(result, "no_promotable_files")
 
     # --- Baseline-aware readiness check ---
@@ -1166,6 +1194,7 @@ def export_job_promotion_json(result: JobPromotionResult) -> dict[str, Any]:
         "files_applied": result.files_applied,
         "files_blocked": result.files_blocked,
         "files_skipped": result.files_skipped,
+        "skip_blocked": result.skip_blocked,
         "file_readiness": [
             {
                 "path": fr.path,
@@ -1188,6 +1217,50 @@ def export_job_promotion_json(result: JobPromotionResult) -> dict[str, Any]:
         "finished_at": result.finished_at,
     }
     return _redact_json_value(raw)
+
+
+def _blocked_path_names(files_blocked: list[str]) -> list[str]:
+    """The bare paths out of ``files_blocked``, whose entries read ``path: reason``."""
+    return [entry.split(":", 1)[0].strip() for entry in files_blocked]
+
+
+def _next_step_for_promotion(result: JobPromotionResult) -> str:
+    """The honest ``Next:`` line a stalled promotion owes its operator.
+
+    Every other stalled surface in Remedy ends with one — `remedy do`,
+    `remedy status`, the orchestrator's ``next_safe_action``, the proof chain —
+    and a blocked promotion used to print its reason and stop, leaving the
+    operator's only remaining move to go and read the source.
+
+    The line names the route that ACTUALLY applies to the block in hand.
+    ``--skip-blocked`` lifts a protected-path block and nothing else, so it is
+    offered where it is true and explicitly ruled out where it is not.
+    """
+    reason = result.blocked_reason or ""
+
+    if reason.startswith("blocked_paths:"):
+        names = _blocked_path_names(result.files_blocked)
+        listed = ", ".join(names) if names else "the paths listed above"
+        remaining = len(result.files_planned)
+        return (
+            f"Next: remove {listed} from the job workspace and re-run, or re-run "
+            f"with --skip-blocked to promote the remaining {remaining} file(s) and "
+            f"deliberately leave {listed} unpromoted."
+        )
+
+    if reason == "no_promotable_files" and result.files_blocked:
+        names = _blocked_path_names(result.files_blocked)
+        listed = ", ".join(names) if names else "every file"
+        return (
+            f"Next: every file in this job is protected ({listed}), so there is no "
+            f"remainder for --skip-blocked to promote. Remove the protected path(s) "
+            f"from the job workspace and re-run."
+        )
+
+    return (
+        "Next: resolve the blocked reason above and re-run. --skip-blocked lifts a "
+        "protected-path block only and does not apply to this one."
+    )
 
 
 def summarize_job_promotion(result: JobPromotionResult) -> str:
@@ -1254,6 +1327,14 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         lines.append(f"Applied {len(result.files_applied)} file(s):")
         for f in result.files_applied:
             lines.append(f"  {f}")
+        if result.skip_blocked and result.files_blocked:
+            # Never let a partial promotion read as a whole one: say what was
+            # withheld, in the same breath as what was applied.
+            lines.append(
+                f"--skip-blocked deliberately left {len(result.files_blocked)} "
+                f"protected path(s) unpromoted; they were not written to the target "
+                f"and are listed below."
+            )
         if result.post_test_passed is not None:
             lines.append(
                 f"Post-test: {'passed' if result.post_test_passed else 'FAILED'}"
@@ -1292,5 +1373,11 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         lines.append("Skipped files:")
         for f in result.files_skipped:
             lines.append(f"  {f}")
+
+    # A blocked promotion ALWAYS ends with its next step, after the file lists so
+    # the operator reads the paths before the route through them.
+    if result.status == "blocked":
+        lines.append("")
+        lines.append(_next_step_for_promotion(result))
 
     return _redact_secrets("\n".join(lines) + "\n")
