@@ -2,9 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   DIFF_HIGHLIGHT_GRAMMARS,
   DIFF_HIGHLIGHT_TOKEN_KINDS,
+  composeHighlightedRuns,
   tokenizeDiffLine,
 } from "./diffHighlight";
-import type { DiffHighlightSegment, DiffHighlightTokenKind } from "./diffHighlight";
+import type {
+  DiffHighlightRun,
+  DiffHighlightSegment,
+  DiffHighlightTokenKind,
+  DiffMarkedSegment,
+} from "./diffHighlight";
 
 /** One row of the concatenation table: a language id and a line written to
  *  exercise that grammar's comment, string, number and keyword rules at once. */
@@ -115,5 +121,227 @@ describe("tokenizeDiffLine", () => {
     expect(tokenizeDiffLine('"', "typescript")).toEqual([{ text: '"', kind: "string" }]);
     expect(tokenizeDiffLine("'", "python")).toEqual([{ text: "'", kind: "string" }]);
     expect(tokenizeDiffLine("`", "markdown")).toEqual([{ text: "`", kind: "string" }]);
+  });
+});
+
+/** One row of the composition table: a language id and the intraline cut of one
+ *  line, in the shape `splitLineIntoIntralineSegments` returns it. The table
+ *  covers all three ways the two cuts can meet — a marked run INSIDE a token, a
+ *  token INSIDE a marked run, and boundaries crossing at an offset belonging to
+ *  neither cut — because those are the cases a merge of two run lists gets
+ *  wrong. */
+interface CompositionCase {
+  language: string | null;
+  segments: readonly DiffMarkedSegment[];
+}
+
+const COMPOSITION_CASES: readonly CompositionCase[] = [
+  // a marked run strictly inside one `string` token
+  {
+    language: "typescript",
+    segments: [
+      { text: 'const label = "hello ', marked: false },
+      { text: "world", marked: true },
+      { text: '";', marked: false },
+    ],
+  },
+  // the `number` and `keyword` tokens strictly inside one marked run
+  {
+    language: "typescript",
+    segments: [
+      { text: "let ", marked: false },
+      { text: "total = 42 + rest", marked: true },
+      { text: ";", marked: false },
+    ],
+  },
+  // both boundaries fall inside a token: the marked cut opens mid-`def` and
+  // closes inside the trailing comment, so neither cut owns either offset
+  {
+    language: "python",
+    segments: [
+      { text: "de", marked: true },
+      { text: "f run(x=3):  # ta", marked: false },
+      { text: "il", marked: true },
+    ],
+  },
+  { language: "json", segments: [{ text: '{"count": 12}', marked: true }] },
+  {
+    language: "css",
+    segments: [{ text: ".row { display: flex; }", marked: false }],
+  },
+  {
+    language: "shell",
+    segments: [
+      { text: "if [ ", marked: true },
+      { text: '-n "$1" ', marked: false },
+      { text: "];", marked: true },
+      { text: " then exit 0; fi # done", marked: false },
+    ],
+  },
+  {
+    language: "haskell",
+    segments: [
+      { text: "main = putStrLn ", marked: false },
+      { text: '"hi"', marked: true },
+      { text: " -- 5", marked: false },
+    ],
+  },
+  {
+    language: null,
+    segments: [
+      { text: "const x = ", marked: true },
+      { text: '"unhighlighted"; // whole', marked: false },
+    ],
+  },
+];
+
+/** The joined `text` of every run, which S6(a) requires to equal the joined
+ *  input. */
+function joinRuns(runs: readonly DiffHighlightRun[]): string {
+  return runs.map((run) => run.text).join("");
+}
+
+/** The whole line the intraline cut describes. */
+function joinMarkedSegments(segments: readonly DiffMarkedSegment[]): string {
+  return segments.map((segment) => segment.text).join("");
+}
+
+/** The `marked` flag per CHARACTER, read off the input segments — the reference
+ *  S6(b) compares the composed runs against. */
+function markedPerCharacter(segments: readonly DiffMarkedSegment[]): boolean[] {
+  const flags: boolean[] = [];
+  for (const segment of segments) {
+    for (let offset = 0; offset < segment.text.length; offset += 1) {
+      flags.push(segment.marked);
+    }
+  }
+  return flags;
+}
+
+/** The token `kind` per CHARACTER, read off `tokenizeDiffLine` itself — the
+ *  reference S6(c) compares the composed runs against, so the test cannot drift
+ *  from the tokenizer it is pinning against. */
+function kindPerCharacter(
+  line: string,
+  language: string | null,
+): DiffHighlightTokenKind[] {
+  const kinds: DiffHighlightTokenKind[] = [];
+  for (const segment of tokenizeDiffLine(line, language)) {
+    for (let offset = 0; offset < segment.text.length; offset += 1) {
+      kinds.push(segment.kind);
+    }
+  }
+  return kinds;
+}
+
+/** The composed runs expanded back to one entry per character, which is how both
+ *  per-position invariants are checked without assuming a run layout. */
+function runsPerCharacter(
+  runs: readonly DiffHighlightRun[],
+): { marked: boolean; kind: DiffHighlightTokenKind }[] {
+  const cells: { marked: boolean; kind: DiffHighlightTokenKind }[] = [];
+  for (const run of runs) {
+    for (let offset = 0; offset < run.text.length; offset += 1) {
+      cells.push({ marked: run.marked, kind: run.kind });
+    }
+  }
+  return cells;
+}
+
+describe("composeHighlightedRuns", () => {
+  it("reproduces the joined segments exactly when the returned runs are joined", () => {
+    for (const testCase of COMPOSITION_CASES) {
+      const line = joinMarkedSegments(testCase.segments);
+      const runs = composeHighlightedRuns(testCase.segments, testCase.language);
+      expect(joinRuns(runs)).toBe(line);
+    }
+  });
+
+  it("gives every character the marked flag of the input segment covering it", () => {
+    for (const testCase of COMPOSITION_CASES) {
+      const runs = composeHighlightedRuns(testCase.segments, testCase.language);
+      const cells = runsPerCharacter(runs);
+      const expected = markedPerCharacter(testCase.segments);
+      expect(cells.length).toBe(expected.length);
+      expect(cells.map((cell) => cell.marked)).toEqual(expected);
+    }
+  });
+
+  it("gives every character the kind tokenizeDiffLine gives that position for the same language", () => {
+    for (const testCase of COMPOSITION_CASES) {
+      const line = joinMarkedSegments(testCase.segments);
+      const runs = composeHighlightedRuns(testCase.segments, testCase.language);
+      const cells = runsPerCharacter(runs);
+      const expected = kindPerCharacter(line, testCase.language);
+      expect(cells.length).toBe(expected.length);
+      expect(cells.map((cell) => cell.kind)).toEqual(expected);
+    }
+  });
+
+  it("merges adjacent runs that agree on both marked and kind", () => {
+    for (const testCase of COMPOSITION_CASES) {
+      const runs = composeHighlightedRuns(testCase.segments, testCase.language);
+      for (let index = 1; index < runs.length; index += 1) {
+        expect(
+          runs[index].marked === runs[index - 1].marked &&
+            runs[index].kind === runs[index - 1].kind,
+        ).toBe(false);
+      }
+    }
+    expect(
+      composeHighlightedRuns(
+        [
+          { text: "aa ", marked: false },
+          { text: "bb", marked: false },
+        ],
+        "typescript",
+      ),
+    ).toEqual([{ text: "aa bb", marked: false, kind: "plain" }]);
+    expect(
+      composeHighlightedRuns(
+        [
+          { text: "let ", marked: false },
+          { text: "n = ", marked: true },
+          { text: "9", marked: true },
+        ],
+        "typescript",
+      ),
+    ).toEqual([
+      { text: "let", marked: false, kind: "keyword" },
+      { text: " ", marked: false, kind: "plain" },
+      { text: "n = ", marked: true, kind: "plain" },
+      { text: "9", marked: true, kind: "number" },
+    ]);
+  });
+
+  it("is total over an empty list and over segments whose texts are all empty", () => {
+    expect(composeHighlightedRuns([], "typescript")).toEqual([]);
+    expect(composeHighlightedRuns([], null)).toEqual([]);
+    expect(composeHighlightedRuns([{ text: "", marked: true }], "python")).toEqual([]);
+    expect(
+      composeHighlightedRuns(
+        [
+          { text: "", marked: false },
+          { text: "", marked: true },
+        ],
+        null,
+      ),
+    ).toEqual([]);
+  });
+
+  it("returns every run plain for an unknown language while the marked flags survive unchanged", () => {
+    const segments: readonly DiffMarkedSegment[] = [
+      { text: "fn main() { ", marked: false },
+      { text: 'println!("hi 42")', marked: true },
+      { text: " } // tail", marked: false },
+    ];
+    for (const language of ["rust", "constructor", "__proto__", ""]) {
+      const runs = composeHighlightedRuns(segments, language);
+      expect(joinRuns(runs)).toBe(joinMarkedSegments(segments));
+      expect(runs.every((run) => run.kind === "plain")).toBe(true);
+      expect(runsPerCharacter(runs).map((cell) => cell.marked)).toEqual(
+        markedPerCharacter(segments),
+      );
+    }
   });
 });

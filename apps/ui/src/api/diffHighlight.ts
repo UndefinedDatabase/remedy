@@ -277,3 +277,101 @@ export function tokenizeDiffLine(
   }
   return segments;
 }
+
+/** One run of a changed line that is uniform in BOTH dimensions at once: the
+ *  same intraline `marked` state and the same token `kind` over its whole
+ *  `text`. It is what a renderer draws one element for, and it exists because
+ *  neither cut alone describes a changed line — the word-level emphasis says
+ *  WHAT changed and the syntax colour says what the line IS. */
+export interface DiffHighlightRun {
+  text: string;
+  marked: boolean;
+  kind: DiffHighlightTokenKind;
+}
+
+/** The intraline cut this module composes with, declared STRUCTURALLY rather
+ *  than imported: it is the shape `splitLineIntoIntralineSegments` in
+ *  `./diffViewModel` returns, and repeating it here is what keeps the header's
+ *  ruling above true — this module imports nothing at runtime, so every rule in
+ *  it stays decidable from plain data alone. `composeHighlightedRuns` therefore
+ *  takes those segments as an ARGUMENT; the caller owns the dependency. */
+export interface DiffMarkedSegment {
+  text: string;
+  marked: boolean;
+}
+
+/** Composes the intraline cut with the token cut of the SAME line, so one line
+ *  carries word-level emphasis and syntax colour at once.
+ *
+ *  TOTAL: no input throws, for any segment list and any language id. An empty
+ *  list, and a list whose texts are all empty, both yield the EMPTY ARRAY —
+ *  there is no run to describe, and a run carrying the empty string would render
+ *  an element around nothing, which is the ruling
+ *  `splitLineIntoIntralineSegments` already makes for empty content.
+ *
+ *  TWO PER-CHARACTER MAPS, not a merge of two run lists, for the reason that
+ *  function gives for its own coverage map: each partition paints its own
+ *  characters, the runs are read off afterwards, and no character can be dropped
+ *  or emitted twice however the two cuts interleave — a marked run inside a
+ *  token, a token inside a marked run, or boundaries that cross at an offset
+ *  belonging to neither. The line is joined from the segments and tokenized
+ *  ONCE, because `tokenizeDiffLine` is decided per line and re-tokenizing a
+ *  fragment would score it out of context.
+ *
+ *  THE LOAD-BEARING INVARIANTS, each pinned separately by the vitest suite:
+ *  joining the returned runs' `text` reproduces the joined input exactly; every
+ *  character keeps the `marked` of the input segment covering it; and every
+ *  character keeps the `kind` `tokenizeDiffLine` gives that position for the
+ *  same language. Adjacent runs agreeing on BOTH are MERGED, so no two
+ *  consecutive runs share both and a renderer draws one element per visible
+ *  run. */
+export function composeHighlightedRuns(
+  segments: readonly DiffMarkedSegment[],
+  language: string | null,
+): readonly DiffHighlightRun[] {
+  const line = segments.map((segment) => segment.text).join("");
+  if (line.length === 0) {
+    return [];
+  }
+
+  const markedAt: boolean[] = new Array<boolean>(line.length).fill(false);
+  let cursor = 0;
+  for (const segment of segments) {
+    for (let offset = 0; offset < segment.text.length; offset += 1) {
+      markedAt[cursor] = segment.marked;
+      cursor += 1;
+    }
+  }
+
+  // `plain` is the fill rather than a hole, so a character no token claimed is
+  // still an ANSWER — the same reading `tokenizeDiffLine` gives an unknown
+  // language — instead of an `undefined` a renderer would have to guess at.
+  const kindAt: DiffHighlightTokenKind[] = new Array<DiffHighlightTokenKind>(
+    line.length,
+  ).fill("plain");
+  cursor = 0;
+  for (const token of tokenizeDiffLine(line, language)) {
+    for (let offset = 0; offset < token.text.length; offset += 1) {
+      kindAt[cursor] = token.kind;
+      cursor += 1;
+    }
+  }
+
+  const runs: DiffHighlightRun[] = [];
+  let runStart = 0;
+  for (let index = 1; index <= line.length; index += 1) {
+    if (
+      index === line.length ||
+      markedAt[index] !== markedAt[runStart] ||
+      kindAt[index] !== kindAt[runStart]
+    ) {
+      runs.push({
+        text: line.slice(runStart, index),
+        marked: markedAt[runStart],
+        kind: kindAt[runStart],
+      });
+      runStart = index;
+    }
+  }
+  return runs;
+}
