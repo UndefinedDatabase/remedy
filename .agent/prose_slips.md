@@ -50,3 +50,13 @@
   commit repairing it and declared the write-once breach itself. Nothing on
   disk under `packages/`, `apps/`, `tests/` or `docs/` was wrong, so no id was
   spent; the clause is quoted in the R16 block instead.
+
+- 2026-08-28 · F032 R17 · The block's BASE paragraph wrote the base commit as
+  `c1e208334cd8c7c0cef0a0ae3e5a1e63a4dc65d5` after measuring only the leading
+  eight characters, so thirty-two of the forty were invented and the string
+  names no git object; the real tip was
+  `c1e20833405fc3a5a8f3b50729046578dbc97329`. The worker resolved the intent
+  from the short form the gates quote, ran against the real tip and declared
+  the discrepancy. Nothing on disk under `packages/`, `apps/`, `tests/` or
+  `docs/` was wrong, so no id was spent. Measure a SHA in full or write only
+  the short form that was measured.
