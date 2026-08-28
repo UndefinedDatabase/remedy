@@ -27,6 +27,8 @@ COMPONENT = DIFF_DIR / "DiffView.tsx"
 COMPONENT_CSS = DIFF_DIR / "DiffView.module.css"
 
 MODEL = "apps/ui/src/api/diffViewModel.ts"
+MODEL_PATH = REPO_ROOT / "apps" / "ui" / "src" / "api" / "diffViewModel.ts"
+ROW_HEIGHT_NAME = "DIFF_VIRTUAL_ROW_HEIGHT_PX"
 VITEST_AUTHORITY = (
     "apps/ui/vitest.config.ts (environment: node, include: src/**/*.test.ts), "
     "DECISION F031 D5 and DECISION F037 D8"
@@ -35,11 +37,12 @@ CSS_AUTHORITY = (
     "docs/roadmap/features/T5_F037.md (Design section, binding CSS; amendments A4 and A5)"
 )
 
-# The four rules the component must CALL rather than carry. Each is a decidable rule that
+# The five rules the component must CALL rather than carry. Each is a decidable rule that
 # lives in the model module, where the node-environment vitest config really runs it.
 DELEGATED_RULES = (
     "buildDiffRowModels",
     "defaultCollapsedHunkIds",
+    "diffRowWindowForViewport",
     "toggleHunkCollapse",
     "splitLineIntoIntralineSegments",
 )
@@ -47,7 +50,20 @@ DELEGATED_RULES = (
 # Spellings of a rule REIMPLEMENTED in markup. The collapse threshold's literal is declared
 # exactly once, in the model module; a `.length` compared against anything is that rule
 # arriving under another name; a sort is the file order the parser already fixed.
-REIMPLEMENTED_RULE_SPELLINGS = ("200", ".length >", "sort(")
+#
+# The last four are VIRTUALIZATION arriving in the markup. The component receives pixels and
+# indices that are already computed, so naming the row height, dividing by it in either
+# direction, or slicing the row list from a hard zero would each be the viewport arithmetic
+# of `diffRowWindowForViewport` transcribed into the one layer no runner here can execute.
+REIMPLEMENTED_RULE_SPELLINGS = (
+    "200",
+    ".length >",
+    "sort(",
+    ROW_HEIGHT_NAME,
+    "Math.floor(",
+    "Math.ceil(",
+    ".slice(0,",
+)
 
 
 def strip_ts_comments(text: str) -> str:
@@ -126,6 +142,113 @@ def jsx_opening_tag_at(code: str, start: int) -> str:
     raise AssertionError(f"the tag opening at offset {start} never closes in {COMPONENT.name}")
 
 
+def _signature_end(code: str, after_name: int) -> int:
+    """The index just past the argument list's closing parenthesis."""
+    start = code.index("(", after_name)
+    depth = 0
+    for index in range(start, len(code)):
+        if code[index] == "(":
+            depth += 1
+        elif code[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return index + 1
+    raise AssertionError(f"the argument list opened at {start} never closes")
+
+
+def ts_function_body(code: str, name: str) -> str:
+    """The body of `export function <name>`, brace depth respected.
+
+    The signature's own braces — the destructured prop list and its inline type — are stepped
+    over by matching PARENTHESES first, so what comes back is the body and not the arguments.
+    """
+    match = re.search(rf"export function {name}\b", code)
+    assert match, f"no exported function named {name} was found in {COMPONENT.name}"
+    open_index = code.index("{", _signature_end(code, match.end()))
+    depth = 0
+    for index in range(open_index, len(code)):
+        if code[index] == "{":
+            depth += 1
+        elif code[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return code[open_index:index + 1]
+    raise AssertionError(f"the body of {name} never closes in {COMPONENT.name}")
+
+
+def diff_view_body(code: str) -> str:
+    """The component function's own body — never the import block above it."""
+    return ts_function_body(code, "DiffView")
+
+
+def scrolling_section_tag(code: str) -> str:
+    """The opening tag of the component's `<section data-ui="diff-view">`.
+
+    That element IS the scrolling panel — it is the one whose `scrollTop` and `clientHeight`
+    the handler reads — so the scroll assertions are scoped to its open tag rather than swept
+    over the file, where any element's props would answer them (finding `R-0725`).
+    """
+    for match in re.finditer(r"<section\b", code):
+        tag = jsx_opening_tag_at(code, match.start())
+        if 'data-ui="diff-view"' in tag:
+            return tag
+    raise AssertionError(f'no <section data-ui="diff-view"> open tag was found in {COMPONENT.name}')
+
+
+def inline_styled_div_tags(body: str) -> list[str]:
+    """Every `<div ...>` open tag in the component body carrying an inline `style`.
+
+    The spacers are the only such elements: every other div this component draws wears a
+    class from the CSS module instead. Scoped to the BODY so a styled element in some future
+    helper above the component cannot answer for them.
+    """
+    tags = [jsx_opening_tag_at(body, match.start()) for match in re.finditer(r"<div\b", body)]
+    return [tag for tag in tags if "style=" in tag]
+
+
+def css_declaration_block(css: str, selector: str) -> str:
+    """The declaration block of the rule whose selector is EXACTLY `selector`.
+
+    Exact rather than substring: `.diffLine`, `.diffLine.add` and `.diffLine .ln` are three
+    different rules and only the first one carries the line box this guard measures.
+    """
+    for chunk in strip_css_comments(css).split("}"):
+        head, brace, block = chunk.partition("{")
+        if not brace:
+            continue
+        if selector in [" ".join(part.split()) for part in head.split(",")]:
+            return block
+    raise AssertionError(f"{COMPONENT_CSS.name} carries no rule with the selector {selector!r}")
+
+
+def stylesheet_line_box_px(css: str) -> float:
+    """One `.diffLine`'s rendered height, PARSED out of the sheet's own `font` shorthand.
+
+    Both numbers are read from the file rather than transcribed here, which is the whole
+    point: a guard that carried its own copy of `12.5` and `1.6` would agree with itself
+    after the stylesheet changed.
+    """
+    block = css_declaration_block(css, ".diffLine")
+    match = re.search(r"font:\s*([\d.]+)px\s*/\s*([\d.]+)", block)
+    assert match, (
+        f"the `.diffLine` rule in {COMPONENT_CSS.name} carries no `font: <size>px/<height>` "
+        f"shorthand, so the row height {ROW_HEIGHT_NAME} fixes cannot be checked against the "
+        f"binding CSS at all ({CSS_AUTHORITY})"
+    )
+    return float(match.group(1)) * float(match.group(2))
+
+
+def declared_row_height_px(source: str) -> int:
+    """The literal `DIFF_VIRTUAL_ROW_HEIGHT_PX` is declared with in the model module."""
+    match = re.search(rf"^export const {ROW_HEIGHT_NAME} = (\d+);", source, re.MULTILINE)
+    assert match, (
+        f"{MODEL} does not declare {ROW_HEIGHT_NAME} as an exported numeric constant; the "
+        f"row every index and spacer of the virtualized window is measured in must be "
+        f"declared exactly once, by name"
+    )
+    return int(match.group(1))
+
+
 def hunk_head_tag(code: str) -> str:
     """The opening tag carrying `aria-expanded` — the hunk head and nothing else.
 
@@ -188,9 +311,10 @@ class TestTheComponentDerivesNothing:
             assert spelling not in code, (
                 f"{COMPONENT.name} contains {spelling!r}. The collapse threshold is declared "
                 f"exactly once, as DIFF_HUNK_COLLAPSE_THRESHOLD_LINES in {MODEL}, the row list "
-                f"and its hidden-line counts are buildDiffRowModels' answer, and the envelope's "
-                f"file order is the parser's — each of those transcribed here is a rule "
-                f"{VITEST_AUTHORITY} can no longer execute"
+                f"and its hidden-line counts are buildDiffRowModels' answer, the envelope's "
+                f"file order is the parser's, and every row index and spacer pixel of the "
+                f"virtualized window is diffRowWindowForViewport's — each of those transcribed "
+                f"here is a rule {VITEST_AUTHORITY} can no longer execute"
             )
 
 
@@ -304,4 +428,120 @@ class TestTheTruncationNoticeExists:
             f"{COMPONENT.name} never reads envelope.truncated, so a diff cut short by DECISION "
             f"F037 D5, D6 or D7 would render as a complete one and the operator would judge a "
             f"change against a prefix of it"
+        )
+
+
+class TestTheComponentReallyVirtualizes:
+    """(f) "virtual scrolling >2k lines" of the Design section of
+    `docs/roadmap/features/T5_F037.md`, expressed where it can fail.
+
+    `TestTheComponentDerivesNothing` above says the component must not do the arithmetic; this
+    class says it must do the DRAWING — ask the model for a window, slice by that window's own
+    two indices, measure the panel on scroll, and stand the undrawn rows up as spacers. A
+    component that merely IMPORTED `diffRowWindowForViewport` and rendered the whole row list
+    would satisfy the delegation check alone and still put ten thousand rows in the DOM.
+
+    EVERY ASSERTION IS SCOPED to a function body or a JSX open tag, never to the whole file:
+    finding `R-0725` is the defect a whole-file `in` check produces.
+    """
+
+    def test_every_new_scanner_returns_strictly_less_than_its_whole_file(self):
+        """The vacuity guard the scoped assertions below stand on.
+
+        A scoper that silently handed back its input would turn each of them into the
+        whole-file search this class exists to avoid, and all of them would still pass.
+        """
+        code = strip_ts_comments(COMPONENT.read_text())
+        css = COMPONENT_CSS.read_text()
+        scoped = (
+            ("DiffView body", diff_view_body(code), code),
+            ("diff-view section tag", scrolling_section_tag(code), code),
+            (".diffLine declaration block", css_declaration_block(css, ".diffLine"), css),
+        )
+        for label, region, whole in scoped:
+            assert region, f"the scanner for the {label} found nothing at all"
+            assert len(region) < len(whole), (
+                f"the scanner for the {label} returned {len(region)} characters out of "
+                f"{len(whole)}, so it is not scoping and every assertion built on it is a "
+                f"whole-file search (finding R-0725)"
+            )
+        spacers = inline_styled_div_tags(diff_view_body(code))
+        assert spacers, (
+            f"no inline-styled div was found in the body of {COMPONENT.name}, so the two "
+            f"spacer assertions below would be checking an empty list"
+        )
+        for tag in spacers:
+            assert len(tag) < len(code), (
+                f"an inline-styled div tag scanner returned {len(tag)} characters out of "
+                f"{len(code)}, so it is not scoping (finding R-0725)"
+            )
+
+    def test_the_component_asks_the_model_for_a_window(self):
+        body = diff_view_body(strip_ts_comments(COMPONENT.read_text()))
+        assert "diffRowWindowForViewport(" in body, (
+            f"{COMPONENT.name} never CALLS diffRowWindowForViewport in its own body, so the "
+            f"windowing rule of {MODEL} has no caller and every row of a ten-thousand-row "
+            f"diff reaches the DOM. Scoped to the body because the import list names it too "
+            f"(finding R-0725)"
+        )
+
+    def test_the_drawn_rows_are_sliced_by_the_windows_own_two_indices(self):
+        body = diff_view_body(strip_ts_comments(COMPONENT.read_text()))
+        assert re.search(r"\.slice\(\s*(\w+)\.startIndex\s*,\s*\1\.endIndex\s*\)", body), (
+            f"{COMPONENT.name} does not slice its row list with `<window>.startIndex` and "
+            f"`<window>.endIndex` of the SAME window value. Those two are the half-open pair "
+            f"diffRowWindowForViewport answers with, and a component that draws the whole "
+            f"list beside them has computed a window it then ignores"
+        )
+
+    def test_the_scrolling_panel_measures_itself_on_scroll(self):
+        tag = scrolling_section_tag(strip_ts_comments(COMPONENT.read_text()))
+        assert "onScroll" in tag, (
+            f"the scrolling panel of {COMPONENT.name} carries no onScroll handler, so the "
+            f"viewport is measured once at zero and the window never moves — the operator "
+            f"would scroll a document whose drawn rows never change"
+        )
+        for measurement in ("currentTarget.scrollTop", "currentTarget.clientHeight"):
+            assert measurement in tag, (
+                f"the onScroll handler on the panel of {COMPONENT.name} never reads "
+                f"{measurement}. Both numbers are needed: an offset without the height it "
+                f"was measured against names no range of rows, and the height is what "
+                f"resolves the unmeasured-viewport fallback in {MODEL}"
+            )
+
+    def test_both_spacer_heights_reach_an_inline_style(self):
+        body = diff_view_body(strip_ts_comments(COMPONENT.read_text()))
+        tags = inline_styled_div_tags(body)
+        for field in ("rowsBeforePx", "rowsAfterPx"):
+            carrying = [tag for tag in tags if field in tag]
+            assert len(carrying) == 1, (
+                f"{COMPONENT.name} has {len(carrying)} inline-styled div(s) naming {field}; "
+                f"exactly one spacer must be sized from it, or the scrollbar stops describing "
+                f"the whole document and a ten-thousand-row diff scrolls as if it were the "
+                f"length of its window"
+            )
+            assert "style=" in carrying[0], (
+                f"the {field} spacer in {COMPONENT.name} does not carry an inline style"
+            )
+            assert "className" not in carrying[0], (
+                f"the {field} spacer in {COMPONENT.name} asks the CSS module for a class. The "
+                f"stylesheet is a transcription of the binding CSS and defines a closed set of "
+                f"classes; a spacer is presentation that set does not cover ({CSS_AUTHORITY})"
+            )
+
+    def test_the_row_height_agrees_with_the_stylesheets_own_line_box(self):
+        """The one guard that stops the model and the stylesheet drifting apart in silence.
+
+        Both numbers are PARSED — the `font: <size>px/<height>` shorthand out of the sheet's
+        `.diffLine` rule, and the constant's literal out of the model module. Nothing here is
+        transcribed, so editing either file alone turns this red instead of leaving a viewer
+        whose spacers are sized in a row height the rows do not have.
+        """
+        measured = stylesheet_line_box_px(COMPONENT_CSS.read_text())
+        declared = declared_row_height_px(MODEL_PATH.read_text())
+        assert measured == declared, (
+            f"{COMPONENT_CSS.name} renders one .diffLine at {measured}px, while {MODEL} "
+            f"declares {ROW_HEIGHT_NAME} = {declared}. Every row index and both spacer heights "
+            f"of the virtualized window are computed from the constant, so a disagreement "
+            f"scrolls the viewer to the wrong rows and mis-sizes the document ({CSS_AUTHORITY})"
         )
