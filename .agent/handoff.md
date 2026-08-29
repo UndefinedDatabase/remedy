@@ -336,3 +336,17 @@ Written by C8, AFTER the push, so it records a fact rather than a promise. C8 is
 pushed by the round's FINAL push, which is recorded in no commit — the block states that
 deliberately and the reviewer verifies the final pushed state with `git rev-parse` against
 the remote.
+
+`git push -u origin feature/f033-hunk-approval-v2` -> REAL exit 0:
+
+    To github.com:UndefinedDatabase/remedy.git
+       2a938b5e..87ce4bac  feature/f033-hunk-approval-v2 -> feature/f033-hunk-approval-v2
+    Branch 'feature/f033-hunk-approval-v2' set up to track remote branch
+    'feature/f033-hunk-approval-v2' from 'origin'.
+
+A fast-forward, `2a938b5e..87ce4bac`; no force flag of any kind was used, no history was
+rewritten and no branch was deleted. `git rev-parse` immediately afterwards gave
+`87ce4bac9bf16ff142e3447cc7c1cdbca11d1e4a` for BOTH `HEAD` and
+`origin/feature/f033-hunk-approval-v2`, so the remote carries C0a through C7 exactly. This
+sentence describes only what has already happened and predicts nothing about the final
+push that carries C8.
