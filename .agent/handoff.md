@@ -177,3 +177,27 @@ session 6 plans with the count in front of it rather than discovering it.
    and the plan carries it as an explicit item so it is not discovered at
    closure. The integration gate runs before closure, per
    docs/agents/integration_gate.md.
+
+## Addendum — the two open-set numerals, and which range each spans
+
+The worker that applied this handoff read the round 20 verdict's "the open set
+259 to 257" against the session summary's "the open set went 258 to 257" and
+reported them as a contradiction with the second unsupported. BOTH ARE CORRECT
+and the fault is that neither sentence named the RANGE it spans. Measured by the
+reviewer at three commits, registered ids minus distinct resolved ids:
+
+    5f0273d8  session 5 start        306 registered, 48 resolved  ->  258
+    d4a21259  before the R20 append  307 registered, 48 resolved  ->  259
+    b5a29a74  session 5 end          307 registered, 50 resolved  ->  257
+
+So 259 to 257 is the ROUND 20 movement, and 258 to 257 is the SESSION 5
+movement; R-0746 was registered mid-session, which is what lifts 258 to 259
+before the two resolutions bring it to 257. The worker's reading was reasonable
+and its correction must NOT be booked: "258 has no reading behind it" is itself
+false, and putting that into `.agent/live_review.md` would land a wrong
+correction in the append-only record.
+
+SESSION 6 books the slip below beside the one this handoff already carries, in
+the first commits of its first round, per operator amendment amend0827 rule 1.
+
+2026-08-29 · F033 R20 · The session-close handoff stated the open set's movement twice — "259 to 257" for the round and "258 to 257" for the session — without either sentence naming the range it spanned, so the worker applying it reasonably read them as one quantity contradicting itself and proposed a correction that was itself false; both numerals were right, R-0746's mid-session registration is the difference between them, and a numeral about a MOVING quantity must name the two commits it is measured between or it invites a wrong repair.
