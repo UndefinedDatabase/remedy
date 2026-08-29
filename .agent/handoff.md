@@ -362,4 +362,20 @@ and the integration gate before closure.
 
 ## Push outcome
 
-Written by C7, AFTER the push, so it records a fact rather than a promise.
+Written by C7, AFTER the push, so it records a fact rather than a promise. C7 is itself
+pushed by the round's FINAL push, which is recorded in no commit — the block states that
+deliberately and the reviewer verifies the final pushed state itself.
+
+`git push -u origin feature/f033-hunk-approval-v2` -> REAL exit 0:
+
+    To github.com:UndefinedDatabase/remedy.git
+       d4a21259..870b4b35  feature/f033-hunk-approval-v2 -> feature/f033-hunk-approval-v2
+    Branch 'feature/f033-hunk-approval-v2' set up to track remote branch
+    'feature/f033-hunk-approval-v2' from 'origin'.
+
+A fast-forward, `d4a21259..870b4b35`; no force flag of any kind was used, no history was
+rewritten and no branch was deleted. `git rev-parse` immediately afterwards gave
+`870b4b35ea51505e0ee637144128e2f3bcb8d6dc` for BOTH `HEAD` and
+`origin/feature/f033-hunk-approval-v2`, so the remote carries C0a through C6 exactly. This
+sentence describes only what has already happened and predicts nothing about the final push
+that carries C7.
