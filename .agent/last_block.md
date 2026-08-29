@@ -1,188 +1,165 @@
-STEP T003c — F033 Hunk-level diff approval — ROUND 18 — SESSION 5
+STEP T003d — F033 Hunk-level diff approval — ROUND 19 — SESSION 5
 
-Goal: give the apply fold a home both readers may import and the APPLIED/TOTAL
-counts R-0738's fix asks for, without changing a single answer the cockpit gives
-today; and book the round 17 verdict and its two prose slips in the first
-commits.
+Goal: give the run report R-0738's THIRD surface — a task line that tells a
+mixed apply state from a complete one, with the counts behind it — fix R-0746 in
+the same round that gives the shared fold its second importer, and book the
+round 18 verdict and its two prose slips in the first commits.
 
-WHY THIS ROUND EXISTS. R-0738's third surface is the report line, and
-`packages/orchestration/run_report.py` cannot reach the fold today: the fold's
-body sits inside `_task_truth_maps` in `packages/orchestration/ui_server.py`, a
-private function in the HTTP server module. A report that imported the HTTP
-server to learn a task's apply state would be the wrong dependency in the wrong
-direction. So this round MOVES the decision logic to
-`packages/orchestration/proof_chain.py` — the module that DEFINES `ProofChange`
-and its `apply_state` field, and whose module-level imports are only
-`dataclasses`, `datetime`, `pathlib`, `typing` and `packages.core.models`,
-measured by the reviewer at `2a938b5e` — and gives it the counts. The report
-line itself is the NEXT round. R-0738 STAYS OPEN and no `Done:` line is written.
+WHY THIS ROUND EXISTS. R-0738 names three surfaces and two are built. The third
+is `packages/orchestration/run_report.py`, which holds NO reference to apply
+state at all, measured by the reviewer at `41b83021`: `TaskOutcome` carries a
+task id, a description, a status and an evidence ref, and `_task_lines` renders
+exactly those. Round 18 put the fold where this module may import it. This round
+is the consumer. After it, R-0738 is RESOLVABLE — but this block does NOT
+resolve it: the reviewer writes that resolution at the next gate, after gating
+this round's evidence, and this round writes no `Done:` line for it.
 
-THE TRAP THIS ROUND IS BUILT AROUND, and the reason the move and a test edit
-must land together. `tests/ui_contracts/test_apply_state_partial.py` learns the
-fold's four labels by WALKING THE AST of the function named in its own
-`FOLD_FUNCTION` constant, inside the file named in its `SERVER` constant, and
-collecting every string literal assigned to its `FOLD_MAP` subscript. Move the
-literals to another file and that walk finds NOTHING. Its
-`test_the_ast_derivation_finds_labels_at_all` would then fail — loudly, which is
-the good case — while every seam assertion beneath it would have been measuring
-the popover and the card against an EMPTY expected set. The guard must follow
-the code in the same round, and SPEC C is that move.
+THE CONSTRAINT THIS ROUND IS BUILT AROUND. `tests/orchestration/test_run_report.py`
+holds GOLDEN FULL-TEXT REPORTS — `GOLDEN_GREEN` and its neighbours are complete
+expected documents, and their `## Tasks` sections contain lines such as
+"- `aaaaaaaa` — Write the renderer — **completed** — [evidence](tasks/aaaaaaaa/output.md)"
+byte for byte. A task with NO recorded apply state must therefore render EXACTLY
+as it does today. That is not only a test-compatibility trick: it is this
+module's own P6 rule that an absent source renders "not recorded" and never an
+invented value. Build the new clause so the golden reports pass UNCHANGED and do
+not edit them; if you find you must, stop and declare it.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f033-r18.md`
+  C0a  save this block verbatim to `.agent/authored/f033-r19.md`
   C0b  mirror the same bytes into `.agent/last_block.md`
-  C1   `.agent/plan.md` <- PLAN18 (whole-file replacement)
-  C2   `.agent/live_review.md` <- append RECORD18
-  C3   `.agent/prose_slips.md` <- append SLIPS18
-  C4   the fold's new home and its counts (SPEC A), and the delegation (SPEC B)
-  C5   the fold's own unit tests (SPEC D)
-  C6   the re-pointed seam guard (SPEC C)
+  C1   `.agent/plan.md` <- PLAN19 (whole-file replacement)
+  C2   `.agent/live_review.md` <- append RECORD19
+  C3   `.agent/prose_slips.md` <- append SLIPS19
+  C4   the report's apply state, its attach and its line (SPEC A)
+  C5   the report's tests (SPEC B)
+  C6   R-0746: the public API list, and the guard that keeps it true (SPEC C)
   C7   `.agent/handoff.md` <- the handback
   C8   `.agent/handoff.md` <- the PUSH OUTCOME, recorded after the push
 
-WHERE THE PUSHES GO, stated in full because round 17 spent a declared deviation
-discovering that this block's predecessor left it open. Push after C7. Then
-write the REAL outcome of that push into `.agent/handoff.md` and commit it as
-C8. Then push AGAIN, so C8 itself reaches the remote. That LAST push is the
-round's final action and is recorded in NO commit, deliberately: a commit
-recording it would need a commit recording that one. The regress is cut here,
-and the REVIEWER verifies the final pushed state itself with `git rev-parse`
-against the remote. Do not write a sentence predicting what a later push will
-do; C7 and C8 describe only what has already happened.
+WHERE THE PUSHES GO. Push after C7. Then write the REAL outcome of that push
+into `.agent/handoff.md` and commit it as C8. Then push AGAIN so C8 reaches the
+remote. That last push is the round's final action and is recorded in NO commit,
+deliberately — a commit recording it would need a commit recording that one, and
+the regress is cut here. The REVIEWER verifies the final pushed state itself.
+Never write a sentence predicting what a later push will do.
 
 C1 is the FIRST substantive commit because this round touches the finding
 ledger, per docs/agents/planner_reviewer_prompt.md section 3 checklist item 23.
 
 Change set — exactly these paths, nothing else, in either direction:
-  `.agent/authored/f033-r18.md`
+  `.agent/authored/f033-r19.md`
   `.agent/last_block.md`
   `.agent/plan.md`
   `.agent/live_review.md`
   `.agent/prose_slips.md`
+  `packages/orchestration/run_report.py`
   `packages/orchestration/proof_chain.py`
-  `packages/orchestration/ui_server.py`
-  `tests/orchestration/test_proof_chain.py`
-  `tests/ui_contracts/test_apply_state_partial.py`
+  `tests/orchestration/test_run_report.py`
   `.agent/handoff.md`
 
 Constraints:
  1. Apply every authored slice BYTE FOR BYTE. If a slice is wrong, apply it as
     given and declare the disagreement. Never edit a slice.
- 2. The authored slices are WHOLE TEXTS, not FROM/TO pairs. PLAN18 REPLACES
-    `.agent/plan.md`. RECORD18 and SLIPS18 are APPENDS: each target ends in
+ 2. The authored slices are WHOLE TEXTS, not FROM/TO pairs. PLAN19 REPLACES
+    `.agent/plan.md`. RECORD19 and SLIPS19 are APPENDS: each target ends in
     exactly one newline today, so the applied form is the old bytes, then ONE
     newline, then the slice. No pair here is FROM/TO, so no containment test and
     no FROM-zero count is owed anywhere in this block.
- 3. NO ANSWER CHANGES THIS ROUND. For every input, the label
-    `_task_truth_maps` returns must be exactly what it returns at `2a938b5e`.
-    This is a move plus an addition, never a re-decision. The counts are NEW
-    information beside the label, not a new label.
- 4. `tests/ui_server/test_dashboard_cockpit_truth.py` is NOT in the change set
-    and must not be edited. It imports `_task_truth_maps` from
-    `packages.orchestration.ui_server` and asserts its answers directly;
-    leaving it untouched and GREEN is this round's proof that the delegation
-    preserved the contract. If you believe it must change, stop and declare it
-    rather than editing it.
- 5. `packages/orchestration/run_report.py` is NOT touched. The report line is
-    the next round; landing half of it here would leave a mechanism no test
-    reaches.
+ 3. RECORD19 registers finding R-0746 and this round FIXES it, at C6. Because a
+    resolution is the reviewer's text and never the worker's, write
+    `Landed: R-0746 — <one line: what changed, which commit>` into
+    `.agent/live_review.md` at C6 and NOTHING else about it. Do not write a
+    `Done:` line for R-0746 or for any other finding.
+ 4. R-0738 is NOT resolved here and no `Done:` or `Landed:` line is written for
+    it. This round builds its third surface; the reviewer gates that evidence
+    and writes the resolution at the next gate.
+ 5. `packages/orchestration/ui_server.py` is NOT touched. Its adapter already
+    consumes the fold and this round changes no cockpit answer.
  6. Destructive verification runs ONLY inside a disposable `git worktree`
     (docs/agents/self_drive_protocol.md G5). The primary checkout satisfies
     `git status --porcelain` empty at the handback.
  7. Every gate command is EXECUTED and its REAL exit code recorded. The word
     "green" is not a result.
- 8. This round registers NO finding and resolves NONE. No `Done:` line, no
-    `Landed:` line. The only growth of the record is RECORD18.
- 9. The bare `ruff` executable is denied to this session's shell; round 17
-    measured that. Run `python3 -m ruff check ...`, which is the same tool with
-    the repository's own configuration, and say which form you used.
+ 8. The bare `ruff` executable is denied to this session's shell. Run
+    `python3 -m ruff check ...` and say which form you used.
 
-SPEC A — `packages/orchestration/proof_chain.py`
+SPEC A — `packages/orchestration/run_report.py`
 
-Read the file first, at least `ProofChange`, `ProofChain` and the module's
-imports. Add, near the other truth rules and BELOW the dataclasses:
+Read the module first, at least `TaskOutcome`, `_task_lines`,
+`collect_report_sources`, `_evidence_sources` and `build_report_sources`, and
+note how every evidence-area read is guarded on its own so one unreadable source
+never costs the report the others.
 
- A1. A frozen dataclass — name it `TaskApplyState` — carrying three fields: the
-     `state` string, the `applied` count and the `total` count. Give it the
-     one-line WHY comment the Code Discoverability Conventions of AGENTS.md ask
-     for, directly above the definition.
- A2. A public function `fold_task_apply_states(chain)` returning
-     `dict[str, TaskApplyState]`, keyed by the FULL task id. It groups
-     `chain.changes` by `task_id`, skipping changes whose task id is empty,
-     exactly as `_task_truth_maps` does today, and folds each group by
-     AGREEMENT with the SAME four answers and in the SAME order the shipped
-     fold uses at `2a938b5e`: all `applied` -> `applied`; else all `reverted` ->
-     `reverted`; else none of them in `("applied", "reverted")` -> `not_applied`;
-     else `partial`. Read each change's state with
-     `getattr(c, "apply_state", "")`, so a change with no such attribute keeps
-     behaving exactly as it does now.
- A3. `applied` is the number of changes in that task's group whose state is
-     `applied`; `total` is the size of the group. These are the numbers R-0738's
-     fix calls "the count of applied changes against the total available", and
-     the report line consumes them next round.
- A4. `chain` may be None: return an empty dict, as the shipped fold does.
-     Guard the same exception classes the shipped fold guards
-     (`ImportError`, `AttributeError`, `TypeError`) and return an empty dict on
-     any of them, so a malformed chain degrades exactly as it does today.
- A5. Carry the WHY comment that currently sits above the apply fold in
-     `ui_server.py` — the paragraph naming finding R-0738 and the membership
-     test it replaced — over to the new function, adapting only what the move
-     makes untrue. That comment is why the fold looks the way it does, and it
-     must not be left behind in a file that no longer holds the fold.
+ A1. `TaskOutcome` gains three fields, all defaulted so every existing
+     construction site keeps working unchanged: the folded apply state as a
+     string defaulting to the EMPTY string, and the applied and total counts as
+     integers defaulting to 0. Empty means NOT RECORDED, which is this module's
+     standing rule for an absent source, and it is what keeps the golden reports
+     byte-identical.
+ A2. `build_report_sources` attaches the state. It already has the job and the
+     base sources, so it is the only place that can. Import
+     `fold_task_apply_states` from `packages/orchestration/proof_chain.py`,
+     build the chain the same way the rest of this module reaches evidence —
+     guarded on its own, any failure leaving the tasks exactly as they were —
+     and rewrite the `tasks` tuple with the state and counts attached.
+ A3. MATCH ON THE FULL TASK ID, NEVER ON `TaskOutcome.task_id`. Measured by the
+     reviewer at `41b83021`: `collect_report_sources` sets that field to
+     `str(getattr(t, "id", ""))[:8]`, a TRUNCATION, while the fold keys on the
+     full id. Two tasks whose ids share their first eight characters would
+     otherwise take each other's apply state. Re-read `job.tasks` — the same
+     iteration `collect_report_sources` used — and pair each full id with its
+     `TaskOutcome`, so the truncated value is never a lookup key. State that
+     reason in a WHY comment above the attach; it is the trap this round names
+     in its own plan.
+ A4. `_task_lines` renders the clause ONLY when the apply state is non-empty,
+     appended after the status and before the evidence link, so an unrecorded
+     state produces the line this module produces today, byte for byte. Use
+     these words, with the counts as applied-over-total:
+       partial      -> partially applied (5/8 changes)
+       applied      -> applied (8/8 changes)
+       reverted     -> reverted (0/8 changes)
+       not_applied  -> not applied (0/8 changes)
+     "partially applied" is the spelling the other two surfaces already use;
+     keep it. An apply state this table does not know renders NOTHING rather
+     than an invented phrase — the same fail-quiet rule as an absent source.
+ A5. Do not change the task-line cap, the evidence link, or any other section.
 
-SPEC B — `packages/orchestration/ui_server.py`
+SPEC B — `tests/orchestration/test_run_report.py`
 
- B1. `_task_truth_maps` KEEPS its name, its signature, its docstring's promise
-     and its return type `tuple[dict[str, str], dict[str, str]]`. Its PROOF half
-     is untouched, byte for byte.
- B2. Its APPLY half becomes a delegation: call
-     `fold_task_apply_states` and map each entry to its `state` string. Import it
-     inside the function, beside the existing local import of the proof
-     constants — the module's import surface is guarded elsewhere and this round
-     does not widen it.
- B3. Delete the apply fold's decision logic from this file. After this commit
-     the four apply labels are literals in `proof_chain.py` and in no other
-     production module — SPEC C's guard depends on exactly that.
+Add a class for the new behaviour. Do not edit the golden reports, and do not
+weaken any existing assertion.
 
-SPEC C — `tests/ui_contracts/test_apply_state_partial.py`
+ B1. Render a task with each of the four states and assert the exact clause,
+     including the counts. Build the mixed case EXPLICITLY — R-0738's resolution
+     asks for a test that constructs the mixed state rather than one that
+     observes whatever a fixture produced.
+ B2. Assert that a `TaskOutcome` with no apply state renders the line UNCHANGED:
+     compare against the same line rendered by a source built without the new
+     fields, so the assertion measures the property rather than restating the
+     string.
+ B3. Assert that an apply state the table does not know renders no clause.
+ B4. THE TRUNCATION TEST, which is the one that pins A3. Build a job with TWO
+     tasks whose ids agree in their first eight characters and differ after
+     them, give them DIFFERENT apply states, drive `build_report_sources`, and
+     assert each task line carries ITS OWN state. A lookup on the truncated id
+     passes every other test in this file and fails this one.
+ B5. Assert the counts survive the attach: a task whose applied and total differ
+     reports both, and they are the fold's numbers rather than recomputed here.
+ B6. Do not assert a COUNT of tests anywhere.
 
-Re-point the AST reader at the fold's new home, changing NOTHING else about what
-this file asserts. Every existing assertion must still run and still mean what
-it meant.
+SPEC C — R-0746, in `packages/orchestration/proof_chain.py` and its test
 
- C1. Point the constant that names the searched FILE at
-     `packages/orchestration/proof_chain.py`, and the constant that names the
-     searched FUNCTION at `fold_task_apply_states`. If the subscript name the
-     walk collects from also changes, change it with them.
- C2. `fold_apply_labels()` must return the same four strings after this round as
-     before it. `test_the_ast_derivation_finds_labels_at_all` is the guard that
-     this re-pointing worked at all; keep it and let it do its job.
- C3. The membership-test reader is written against the local list name the old
-     fold used. Keep an equivalent AST predicate over whatever the new fold
-     names that list, so the "no longer answers by membership" assertion still
-     discriminates rather than passing vacuously on a name that no longer exists.
- C4. Update the module docstring where it names `ui_server.py` as the fold's
-     home, so the file's own prose stays true.
- C5. Do not weaken, delete or skip any existing assertion, and do not assert a
-     COUNT of tests, branches or labels anywhere.
-
-SPEC D — `tests/orchestration/test_proof_chain.py`
-
-The fold has never had a direct unit test: today it is reachable only through
-the cockpit. Add a class that tests it AS A FUNCTION.
-
- D1. Build `ProofChange` values directly and assert all four states from
-     explicit inputs: every change applied; every change reverted; none applied
-     or reverted; and a MIXED group. Build the mixed case explicitly, which is
-     what R-0738's resolution clause asks for — never observe whatever a fixture
-     happens to produce.
- D2. Assert the COUNTS on each of those cases, including that `total` is the
-     group size and `applied` counts only the applied changes. Cover a mixed
-     group where the two numbers differ, since equal numbers would let a fold
-     that returned the same value twice pass.
- D3. Assert the None chain gives an empty dict, that a change with an empty task
-     id is skipped, and that two tasks in one chain are folded independently.
- D4. Do not assert a COUNT of tests anywhere.
+ C1. Add `fold_task_apply_states(chain) -> dict[str, TaskApplyState]` to the
+     `Public API::` block of the module docstring, in the same shape the four
+     entries already there use. That is the whole fix.
+ C2. Add ONE test — put it in `tests/orchestration/test_run_report.py` with the
+     rest of this round's tests, since that file is already in the change set —
+     that reads the two against each other rather than restating either: collect
+     every module-level function in `proof_chain.py` whose name does not begin
+     with an underscore, by walking the AST, and assert every one of them is
+     named in the `Public API::` block. A list that is checked only by being
+     re-typed is the defect R-0746 already is.
+ C3. At C6 write the `Landed: R-0746` line described in constraint 3.
 
 Done when — G1 through G8, the maximum operator amendment amend0827-process-diet
 rule 5 allows. Run every one. Report ONE LINE PER GATE in the handback with the
@@ -195,10 +172,10 @@ STRICTLY EARLIER than C7, which is what lets the handback quote it.
 
  G2 TRANSPORT. For each slice below, extract its applied region from its target
     and compare that region's sha256 to the digest in that slice's BEGIN marker:
-      PLAN18   2765 bytes  5214755bf41d758a22903a62b8d60b6df4c2ab4af7929f2c6d7779ad0b6a273a
-      RECORD18 5764 bytes  40df3d80c337ebf480b5638f14b8adb861d31df74436c6a067d1c7b047cb48bf
-      SLIPS18  1049 bytes  6372f2bbee6a23f437a09c342aa515ca7d81903e11b7da6311410826b77e4956
-    For PLAN18 the region is the WHOLE file; for the appends it is the LAST N
+      PLAN19   2740 bytes  8e33f449d67de9ab27f6d8f79f797fc4038b8ad176966aee40143abf2ad3baf4
+      RECORD19 8021 bytes  7f6d3ccb1526a4a731ac9ba4fdce26709327d6f0c55bbdfc0706cd2b8ac2ecc2
+      SLIPS19  1047 bytes  44aa61fab7ee3c5bbca05327fcb81d8609024922fc8a0e4254d0326d9a1e8601
+    For PLAN19 the region is the WHOLE file; for the appends it is the LAST N
     bytes, N being that slice's byte length above. Report one digest and one
     verdict per slice. This proves the saved copy, its mirror and the working
     copy agree; it is not a claim about the emitted bytes, and the handback says
@@ -206,81 +183,82 @@ STRICTLY EARLIER than C7, which is what lets the handback quote it.
 
  G3 THE RECORD APPEND at C2 — full byte forensics, `.agent/live_review.md` being
     the record. Three readings, all required:
-    (a) BYTES. The pre-commit blob is 1549707 bytes and must be a byte PREFIX of
-        the post-commit file; the post-commit file must be exactly 1555472 bytes
-        (1549707 + 1 + 5764); RECORD18 must be an exact SUFFIX of it.
+    (a) BYTES. The pre-commit blob is 1555472 bytes and must be a byte PREFIX of
+        the post-commit file; the post-commit file must be exactly 1563494 bytes
+        (1555472 + 1 + 8021); RECORD19 must be an exact SUFFIX of it.
     (b) STRUCTURE, an independent reader. Split the post-commit file on blank
         lines, COUNT the slice's paragraphs into N — your script counts N, this
         block does not assert it — and require the LAST N blank-line units to
         equal the slice's N paragraphs IN ORDER.
-    (c) NEGATIVE CONTROL. Flip one byte at offset 1552589 of the post-commit
+    (c) NEGATIVE CONTROL. Flip one byte at offset 1558370 of the post-commit
         file. That offset lies inside the FIRST appended paragraph, which spans
-        1549708 to 1555470; ASSERT that containment before flipping. Run readers
+        1555473 to 1561267; ASSERT that containment before flipping. Run readers
         (a) and (b) INDEPENDENTLY and require EACH to reject the flipped copy
-        and to accept the unflipped one — a reader that rejects everything
+        AND to accept the unflipped one — a reader that rejects everything
         proves nothing. Flip in memory or on a copy, never on the tracked file.
 
- G4 THE LEDGER after C2, every count as a before and an after:
-      `^- R-\d+ — `        306, UNMOVED  (this round registers nothing)
-      `^Done: R-\d+ — `    50 lines over 48 distinct, UNMOVED
-      `^Landed: R-\d+ — `  17, UNMOVED
-      `^Gate: F033 R17 — ` 0 before, exactly 1 after
+ G4 THE LEDGER after C2 and again after C6, every count as a before and an
+    after. This round is the first in a while to move the ledger, so read
+    carefully:
+      `^- R-\d+ — `        306 before, 307 after C2, the ADDED id exactly R-0746
+      `^Done: R-\d+ — `    50 lines over 48 distinct, UNMOVED at both
+      `^Landed: R-\d+ — `  17 before, 18 after C6, the ADDED id exactly R-0746
+      `^Gate: F033 R18 — ` 0 before, exactly 1 after C2
       distinct `DECISION F033 D<n>` ids: 5, UNMOVED — this round rules none
-      the open set, registered minus resolved: 258, UNMOVED
+      the open set, registered minus distinct resolved: 258 before, 259 after
       `^- R-0738 — ` still exactly 1, with NO `^Done: R-0738 — ` line
 
- G5 THE PROSE FILES. `.agent/plan.md` after C1 is byte-EQUAL to PLAN18 at 2765
-    bytes over 49 lines — under the 50-line cap AGENTS.md sets — and still holds
+ G5 THE PROSE FILES. `.agent/plan.md` after C1 is byte-EQUAL to PLAN19 at 2740
+    bytes over 48 lines — under the 50-line cap AGENTS.md sets — and still holds
     `## Goal` and `## Next Steps`. `.agent/prose_slips.md` after C3 is exactly
-    26992 bytes (25942 + 1 + 1049), old bytes a PREFIX, SLIPS18 an exact SUFFIX.
+    28040 bytes (26992 + 1 + 1047), old bytes a PREFIX, SLIPS19 an exact SUFFIX.
 
  G6 THE MUTATIONS, at the commit C6 creates, inside a disposable `git worktree`,
     restoring every mutated file byte-identically and PROVING it against the
     committed blob. Report the UNMUTATED CONTROL first with its real exit code
     and counts. Before each mutation assert its anchor occurs EXACTLY ONCE in
-    the file named, and report that count. Run all three suites named in G7's
-    first three lines for each mutation, because these mutations are meant to
-    reach different files:
-    (i)   In `packages/orchestration/proof_chain.py`, change the fold's
-          `partial` answer to `applied`. The seam assertions in
-          `tests/ui_contracts/test_apply_state_partial.py` AND the mixed-case
-          unit test in `tests/orchestration/test_proof_chain.py` must go RED.
-          This is the single most important reading of the round: it proves the
-          re-pointed guard reads the fold's REAL new home.
-    (ii)  In the same file, make the fold report `total` where it should report
-          `applied`. The COUNT assertions of SPEC D must go RED. If they do not,
-          the counts are pinned by nothing and say so plainly.
-    (iii) In `packages/orchestration/ui_server.py`, make `_task_truth_maps`
-          return an empty apply map instead of the delegated one.
-          `tests/ui_server/test_dashboard_cockpit_truth.py` — which this round
-          does NOT edit — must go RED. That is the proof the adapter is still
-          wired to the cockpit.
+    the file named, and report that count. Run
+    `tests/orchestration/test_run_report.py` for each:
+    (i)   In `packages/orchestration/run_report.py`, make `_task_lines` drop the
+          apply clause entirely. SPEC B1's four state assertions must go RED,
+          and B2's unchanged-line assertion must STAY GREEN — report both, since
+          a mutation that reddens everything would not distinguish the two.
+    (ii)  In the same file, make the attach look the apply state up by the
+          TRUNCATED `TaskOutcome.task_id` instead of the full id. ONLY SPEC B4's
+          truncation test may go red. If others go red as well, say so; if B4
+          stays GREEN, the truncation test is pinning nothing and you must say
+          that plainly.
+    (iii) In `packages/orchestration/proof_chain.py`, delete the
+          `fold_task_apply_states` line from the `Public API::` block. SPEC C2's
+          guard must go RED — that is the proof R-0746's fix is held by a test
+          rather than by having been typed once.
 
  G7 THE SUITES, SERIALLY, in the PRIMARY checkout at the commit C6 creates, each
     with its real exit code. Base readings measured by the reviewer at
-    `2a938b5e`, so a number that moves is a result rather than a surprise:
+    `41b83021`, so a number that moves is a result rather than a surprise:
+      `python3 -m pytest tests/orchestration/test_run_report.py -q`
+          base 71 passed; MUST be higher — report it
       `python3 -m pytest tests/orchestration/test_proof_chain.py -q`
-          base 90 passed; MUST be higher after SPEC D — report it
+          base 104 passed; SPEC C adds no test here, so 104 is expected
       `python3 -m pytest tests/ui_contracts/test_apply_state_partial.py -q`
-          base 20 passed; SPEC C adds no test, so 20 is the expected reading
+          base 20 passed; not edited, so 20 is expected
       `python3 -m pytest tests/ui_server/test_dashboard_cockpit_truth.py -q`
-          base 39 passed; this file is not edited, so 39 is expected
-      `python3 -m pytest tests/ui_contracts/ -q`  base 684 passed, 4 skipped
-      `python3 -m pytest tests/orchestration/test_run_report.py -q`  base 71 passed
+          base 39 passed; not edited, so 39 is expected
+      `python3 -m pytest tests/cli/test_job_report.py -q`
+          the CLI reader of this report; report the number you measure
       `python3 -m pytest tests/cli/test_golden_path.py -q`  base 42 — the canary
-      `python3 -m ruff check packages/orchestration/proof_chain.py packages/orchestration/ui_server.py tests/orchestration/test_proof_chain.py tests/ui_contracts/test_apply_state_partial.py`
+      `python3 -m ruff check packages/orchestration/run_report.py packages/orchestration/proof_chain.py tests/orchestration/test_run_report.py`
           must exit 0
 
- G8 THE STRUCTURE over `2a938b5e`..C6. Every commit single-parent. Report each
+ G8 THE STRUCTURE over `41b83021`..C6. Every commit single-parent. Report each
     commit's insertion count — the `+` column of `git diff --numstat`, which
     AGENTS.md DECISION F104 D1 caps at 500 — and confirm each is under 500. The
     path set over that range must EQUAL the change set above MINUS
     `.agent/handoff.md`, in BOTH directions; the handback is written at C7 and
-    C8, which this range deliberately does not reach, and that is the whole of
-    the difference. Read each path below at `2a938b5e` and at C6 with
-    `git rev-parse <commit>:<path>` — a read that writes nothing — and require
-    the two blob ids EQUAL:
-      `packages/orchestration/run_report.py`
+    C8, which this range deliberately does not reach. Read each path below at
+    `41b83021` and at C6 with `git rev-parse <commit>:<path>` — a read that
+    writes nothing — and require the two blob ids EQUAL:
+      `packages/orchestration/ui_server.py`
       `packages/orchestration/evidence_index.py`
       `packages/orchestration/diff_parser.py`
       `packages/orchestration/hunk_identity.py`
@@ -292,25 +270,24 @@ STRICTLY EARLIER than C7, which is what lets the handback quote it.
       `apps/ui/src/cockpitLogic.ts`
       `apps/ui/src/components/detail/DetailPopover.tsx`
       `apps/ui/src/components/panels/TaskChecklistCard.tsx`
-      `apps/ui/src/components/panels/RightLivePanel.module.css`
       `tests/ui_server/test_dashboard_cockpit_truth.py`
+      `tests/ui_contracts/test_apply_state_partial.py`
       `docs/roadmap/STATUS.md`
       `docs/roadmap/ROADMAP.md`
 
 Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It
-carries the SESSION NUMBER 5, the round number 18, the Fortschritt line, the
+carries the SESSION NUMBER 5, the round number 19, the Fortschritt line, the
 changed-files table, ONE LINE PER GATE with real exit codes, the open-findings
 count, every deviation with its reason, and the next expected action. It has NO
 length cap. The `## Commits` table takes its `+/-` cells from the SAME
-`git diff --numstat` run G8 reports — compare them cell by cell and say you did;
-never fill that column from a file's line counts. Then the two pushes and C8, in
-the order stated above.
+`git diff --numstat` run G8 reports — compare them cell by cell and say you did.
+Then the two pushes and C8, in the order stated above.
 
 The authored slices follow. Each marker line opens with three '<' and closes
 with three '>'. A slice begins on the line after its BEGIN marker and ends on
 the line before its END marker; the marker lines are never part of the slice.
 
-<<<BEGIN PLAN18 target=.agent/plan.md mode=replace bytes=2765 sha256=5214755bf41d758a22903a62b8d60b6df4c2ab4af7929f2c6d7779ad0b6a273a>>>
+<<<BEGIN PLAN19 target=.agent/plan.md mode=replace bytes=2740 sha256=8e33f449d67de9ab27f6d8f79f797fc4038b8ad176966aee40143abf2ad3baf4>>>
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
@@ -333,41 +310,42 @@ round — every partial state rendered truthfully in viewer, node and report.
 | one evidence-directory resolver, the CLI door, the write door | done | 13-15 |
 | T003 the fold's partial truth, the popover label | done | round 16 |
 | T003 the tasks-card partial tile and status text | done | round 17, D5 |
-| T003 the fold gets a shared home and counts | open | this round |
-| T003 the report line | open | next |
-| T003 rejection reasons quoted into the repair prompt | open | after that |
-| R-0738, resolvable once the report line lands | open | R-0738 |
+| T003 the fold's shared home and its counts | done | round 18 |
+| T003 the report line, R-0738's third surface | open | this round |
+| R-0746, the module's stale public API list | open | this round |
+| T003 rejection reasons quoted into the repair prompt | open | next |
+| R-0738, resolvable once the report line is gated | open | after that |
 | R-0745, the door's transitive import closure | open | next door work |
 | the operator docs for `patch approve-hunks` | open | closure sequence |
 
 ## Next Steps
-1. The apply fold moves out of `packages/orchestration/ui_server.py` into
-   `packages/orchestration/proof_chain.py`, where `ProofChange` and its
-   `apply_state` are defined, and gains the APPLIED and TOTAL counts R-0738's
-   fix asks for. `_task_truth_maps` keeps its name and signature and delegates,
-   so the cockpit's own tests stay untouched. The seam guard in
-   `tests/ui_contracts/test_apply_state_partial.py` follows the literals to
-   their new file: it walks them by AST, so leaving it behind would EMPTY its
-   expected set rather than redden it.
-2. Then the report line. `packages/orchestration/run_report.py` holds no apply
-   state at all, so `TaskOutcome` gains one and `_task_lines` renders the mixed
-   case with its counts. Only then is R-0738 resolvable on all three surfaces.
-3. Then rejection reasons quoted VERBATIM into the next repair prompt, with the
+1. The report line. `packages/orchestration/run_report.py` holds no apply state
+   at all, so `TaskOutcome` gains one with its counts, `build_report_sources`
+   attaches it from `fold_task_apply_states`, and `_task_lines` renders the
+   mixed case. A task with NO recorded apply state renders exactly as it does
+   today — the golden reports in `tests/orchestration/test_run_report.py` are
+   full-text fixtures and are the guard for that. R-0746 is fixed in the same
+   round, because this is the round that gives the fold its second importer.
+2. Then rejection reasons quoted VERBATIM into the next repair prompt, with the
    trace proof `docs/roadmap/features/T5_F033.md` calls acceptance material.
+3. Then R-0738 is resolvable: viewer badge, tasks-card row and report line all
+   tell a mixed apply state apart from a complete one.
 4. Then the closure sequence, which owes `docs/` an operator-facing description
    of `remedy patch approve-hunks` — no round has had a `docs/` path yet.
 
 ## Risks
-- The fold's labels are read by an AST walk in a test that names the file they
-  live in; the move and that test's re-pointing must land in one round.
-<<<END PLAN18>>>
+- The report's task ids are truncated to eight characters while the fold keys on
+  the full id, so the attach must not match on the truncated value.
+<<<END PLAN19>>>
 
-<<<BEGIN RECORD18 target=.agent/live_review.md mode=append bytes=5764 sha256=40df3d80c337ebf480b5638f14b8adb861d31df74436c6a067d1c7b047cb48bf>>>
-Gate: F033 R17 — THE TASKS-CARD ROW LEARNS THE PARTIAL APPLY STATE. THE ROUND PASSED. This entry books, under operator amendment amend0827 rule 1, the verdict the reviewer committed and pushed in `.agent/handoff.md` at `2a938b5e`; it is written by the first substantive commit of round 18 and buys no round of its own. Every gate was re-executed by the reviewer at `2a938b5e` from scripts of its own, and every ordered reading reproduced. TRANSPORT, and it is stronger this round than the shape docs/agents/planner_reviewer_prompt.md §3 item 37 describes as this workflow's limit: `cmp` of the committed `.agent/authored/f033-r17.md` against the reviewer's OWN scratchpad original, and `cmp` of `.agent/last_block.md` against that same original, both SILENT — one end of each comparison is the reviewer's file rather than the worker's, so this is a real receipt and not only a self-consistency chain; the three applied slice regions are byte-EQUAL to their originals at 2660, 6982 and 959 bytes. THE RECORD APPEND at `49052cf5` reconstructs 1542724 plus one newline plus 6982 to 1549707, the committed blob exactly, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 2 over 706 blank-line units, the last two units equal to the slice's paragraphs IN ORDER, and a negative control at byte 1544671 — proved to lie inside the FIRST appended paragraph, spanning 1542725 to 1546617, exactly the span the block stated — REJECTED by both readers run independently, each of which accepted the unflipped file. THE LEDGER: registered 306 UNMOVED, this round registering nothing; `Done:` 50 lines over 48 distinct UNMOVED; `Landed:` 17 UNMOVED; `^Gate: F033 R16 — ` 0 before and exactly 1 after; distinct `DECISION F033 D` ids 4 before and 5 after with the ADDED one exactly D5; the open set 258 at both ends; and `- R-0738` still registered with no `Done:` line, which is correct — this round advanced it to its SECOND surface and did not resolve it. THE PROSE FILES: `.agent/plan.md` byte-EQUAL to its slice at 2660 bytes over 47 lines, under the 50-line cap, carrying `## Goal` and `## Next Steps`; `.agent/prose_slips.md` reconstructs 24982 plus one newline plus 959 to 25942, prefix and suffix both proved. THE CODE is exactly what the SPEC ordered and nothing more: `iconFor` and `stateText` in `apps/ui/src/components/panels/TaskChecklistCard.tsx` now take the ROW and read `applyStatus` BEFORE the lifecycle state, so a finished task whose changes only half landed no longer reads "Done"; `.checkPartial` in `apps/ui/src/components/panels/RightLivePanel.module.css` is `.checkDone` with `background: var(--remedy-blue-strong)`, reusing the existing `TaskDoneGlyph`, and the reviewer measured that the file's DISTINCT hex colour values are unchanged by the round, so no new colour entered it. THE MUTATIONS were re-run by the reviewer in its own disposable worktree at `2a938b5e` with its OWN anchors, each asserted UNIQUE before mutating, every file restored and PROVED byte-identical against the committed blob afterwards: unmutated control 20 passed at REAL exit 0; deleting the `styles.checkPartial` tile branch is exit 1 at 1 failed, the tile assertion alone; deleting the `Partially applied` label branch is exit 1 at 3 failed, the two label assertions and the cross-component one; and replacing the fold's `partial` with `applied` in `packages/orchestration/ui_server.py` is exit 1 at 6 failed — the two popover assertions plus ALL FOUR card seam assertions — which proves the card guard derives its expected set from the SHIPPED fold's AST rather than restating it. THE REVIEWER ALSO RAN A MUTATION THE BLOCK NEVER ORDERED, to test the round's newest claim rather than take it on trust: changing the POPOVER's label so the two surfaces spell the state differently reddens EXACTLY ONE test, `test_the_card_and_the_popover_use_one_spelling`, so the one-spelling guard is an independent discriminator and not a side effect of its neighbours. The post-restore control is 20 passed at REAL exit 0 and the worktree was removed by exact path. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: the contract file 20 passed against a base of 13, `tests/ui_contracts/` 684 passed and 4 skipped against 677 and 4, the dashboard contract 74, the named-bug regressions 64 passed and 6 skipped, and the canary 42, with `ruff` exiting 0 over the changed test file. THE STRUCTURE: ten single-parent commits over `5f0273d8`..`2a938b5e` of 345, 345, 14, 4, 4, 23, 204, 262, 16 and 19 insertions, every one under 500; the path set over the WHOLE range EQUALS the declared change set in BOTH directions; and all sixteen do-not-touch paths blob-identical at both ends. SEVEN DEVIATIONS were declared and all seven are honest. Two are defects in the reviewer's own block and are recorded in `.agent/prose_slips.md` as this round's two slips, with no id and no round of their own, under operator amendment amend0827 rule 2: the block's SPEC B set "same white glyph colour" against "no raw hex colour is introduced" when the neighbour it ordered copied carries `color: #fff`, and the block named C7 as the push-outcome commit while saying nothing about whether C7 is itself pushed, which is round 16's slip reproduced one level down. The other five need no action: the sandbox denies the bare `ruff` executable so the identical check ran through `python3 -m ruff`; the block's stated paragraph span was CORRECT and the worker's first script used a different index convention, which it re-measured and declared; an `-x` run's partial count was withdrawn rather than reported as a measurement; the three ordered card-vacuity readings were written as three; and no `Done:` or `Landed:` line was written, which is what constraint 8 ordered.
-<<<END RECORD18>>>
+<<<BEGIN RECORD19 target=.agent/live_review.md mode=append bytes=8021 sha256=7f6d3ccb1526a4a731ac9ba4fdce26709327d6f0c55bbdfc0706cd2b8ac2ecc2>>>
+Gate: F033 R18 — THE APPLY FOLD GETS A SHARED HOME AND ITS COUNTS. THE ROUND PASSED. This entry books, under operator amendment amend0827 rule 1, the verdict the reviewer committed and pushed in `.agent/handoff.md` at `41b83021`; it is written by the first substantive commit of round 19 and buys no round of its own. Every gate was re-executed by the reviewer at `41b83021` from scripts of its own, and every ordered reading reproduced. TRANSPORT: `cmp` of the committed `.agent/authored/f033-r18.md` against the reviewer's OWN scratchpad original, and of `.agent/last_block.md` against that same original, both SILENT — one end of each comparison is the reviewer's file rather than the worker's — and the three applied slice regions are byte-EQUAL to their originals at 2765, 5764 and 1049 bytes. THE RECORD APPEND at `440de7ea` reconstructs 1549707 plus one newline plus 5764 to 1555472, the committed blob exactly, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 1 over 707 blank-line units, and a negative control at byte 1552589 — proved to lie inside the FIRST appended paragraph, spanning 1549708 to 1555470, exactly the span the block stated — REJECTED by both readers run INDEPENDENTLY, each of which accepted the unflipped file. THE LEDGER: registered 306 UNMOVED; `Done:` 50 lines over 48 distinct UNMOVED; `Landed:` 17 UNMOVED; `^Gate: F033 R17 — ` 0 before and exactly 1 after; distinct `DECISION F033 D` ids 5 at both ends, this round ruling none; the open set 258 at both ends; and `- R-0738` still registered with no `Done:` line. THE PROSE FILES: `.agent/plan.md` byte-EQUAL to its slice at 2765 bytes over 49 lines, under the 50-line cap; `.agent/prose_slips.md` reconstructs 25942 plus one newline plus 1049 to 26992. THE MOVE IS A MOVE: the fold's four branches sit in `packages/orchestration/proof_chain.py` in the same order and with the same comparisons they had in `packages/orchestration/ui_server.py`, the counts are added beside the answer rather than folded into it, and `_task_truth_maps` keeps its name, signature and return type and drops to an adapter over the folded entries' `state`. THE SEAM GUARD REALLY FOLLOWED THE CODE, which was this round's whole risk: `tests/ui_contracts/test_apply_state_partial.py` now names `packages/orchestration/proof_chain.py`, the function `fold_task_apply_states` and the subscript `state_by_task`, and its own non-vacuity assertion is what would catch a re-pointing that had silently emptied the expected set. THE MUTATIONS were re-run by the reviewer in its own disposable worktree at `41b83021` with its OWN anchors, each asserted UNIQUE before mutating, every file restored and PROVED byte-identical against the committed blob: unmutated control 163 passed at REAL exit 0; collapsing the fold's `partial` into `applied` is exit 1 at 12 failed ACROSS THREE FILES, including the cockpit file this round never edited; making the applied count report the group size is exit 1 at 4 failed, exactly the count assertions; and emptying the adapter is exit 1 at 8 failed, every one of them in that same unedited cockpit file, which is the proof the delegation is still wired. THE REVIEWER ALSO RAN A CHECK THE BLOCK NEVER ORDERED, and it is the one that actually settles this round's central claim. The block's constraint 3 required that NO ANSWER CHANGE, and the ordered gates only showed that the cockpit's tests stayed green, which is weaker. So the reviewer built the SAME synthetic chains in a worktree at `2a938b5e` and in one at `41b83021`, drove the SHIPPED `_task_truth_maps` in each, and compared: 157 task shapes — every combination of `applied`, `reverted`, `not_applied`, the empty string and an unrecognised value up to length three, plus the empty-task-id case and the None chain — with EQUAL key sets and ZERO differing answers. The move changed nothing, measured rather than argued. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: `test_proof_chain.py` 104 passed against a base of 90, the contract file 20, the cockpit truth 39, `tests/ui_contracts/` 684 passed and 4 skipped, `test_run_report.py` 71 and the canary 42, with `ruff` exiting 0 over all four changed files. THE STRUCTURE: ten single-parent commits over `2a938b5e`..`41b83021` of 373, 273, 19, 2, 4, 81, 170, 34, 269 and 14 insertions, every one under 500; the path set over the WHOLE range EQUALS the declared change set in BOTH directions; and all sixteen do-not-touch paths blob-identical at both ends, `packages/orchestration/run_report.py` and `tests/ui_server/test_dashboard_cockpit_truth.py` among them. NINE DEVIATIONS were declared and all nine are honest. One is promoted to the finding R-0746 registered below. Two are defects in the reviewer's own block and are recorded in `.agent/prose_slips.md` as this round's two slips: the block ordered an `ImportError` guard on a function that performs no import, and its SPEC B3 stated the sweep "the four apply labels are literals in `proof_chain.py` and in no other production module" widely enough to invite a literal string search that finds the unrelated proof-metrics `"partial"` still standing in `ui_server.py`. The remaining six need no action: the sandbox denies the bare `ruff` executable so the identical check ran through `python3 -m ruff`; the constant naming the searched file was renamed from a name that would have been false after the move, an identifier change that altered no assertion; the membership predicate's premise held already and was made explicit rather than rewritten; the restores went through a checkout of the exact path when a textual revert became ambiguous, with byte-identity proved against the committed blob; no `Done:` or `Landed:` line was written; and the ordered commit sequence was followed exactly.
 
-<<<BEGIN SLIPS18 target=.agent/prose_slips.md mode=append bytes=1049 sha256=6372f2bbee6a23f437a09c342aa515ca7d81903e11b7da6311410826b77e4956>>>
-2026-08-29 · F033 R17 · The block's SPEC B ordered `.checkPartial` to keep "the same white glyph colour" as `.checkDone` AND said "no raw hex colour is introduced", while the rule it ordered copied carries `color: #fff`, so the two clauses could not both be met literally; the worker applied the first, declared the disagreement, and the reviewer measured that the file's DISTINCT hex colour values are unchanged by the round, so the intended property held and only the wording was wrong — a clause about a VALUE SET should say so instead of saying "no raw hex".
+- R-0746 — Low, `packages/orchestration/proof_chain.py` DOCUMENTS A PUBLIC API LIST THAT NO LONGER NAMES ALL OF ITS PUBLIC API. Raised by the reviewer at the F033 R18 gate, from the worker's own declared deviation, and promoted to a finding rather than a prose slip because the wrong state is on disk under `packages/` and a reader meets it. The module docstring carries a `Public API::` block listing `build_proof_chain`, `export_proof_chain_json`, `summarize_proof_chain` and `derive_next_safe_action`. Round 18 added a fifth public function to the module, `fold_task_apply_states`, whose entire reason for existing is that MORE THAN ONE module must import it — the cockpit does today and the run report does next round — and the list does not name it. Measured by the reviewer at `41b83021`: the function is defined at module level, has no leading underscore, is imported by `packages/orchestration/ui_server.py`, and appears nowhere in the docstring. WHY THIS IS NOT A PROSE SLIP: the AGENTS.md Code Discoverability Conventions rule that this repository is navigated by text search and that "deliberate absences are documented where a reader would search for them"; an export list is exactly such a reader's landing point, and one that is silently incomplete is worse than none, because it reads as exhaustive. A later reader looking for the shared fold's public entry point finds a curated list that excludes it and concludes it is private. WHY LOW: no behaviour is wrong, no gate is blind, every test passes, and the function is reachable and correct — the defect is confined to a navigational aid. It is the reviewer's own omission that produced it: the R18 SPEC named the WHY comment the new function must carry and never named the docstring list, so the worker left it alone deliberately and said so, which was the correct thing to do. FIX: add `fold_task_apply_states(chain) -> dict[str, TaskApplyState]` to the `Public API::` block in the same round that gives the function its second importer, so the list and the fact become true together. Resolved when the module docstring names every public function the module defines, checked by reading the two against each other rather than by trusting the list.
+<<<END RECORD19>>>
 
-2026-08-29 · F033 R17 · The block named C7 as the commit the push outcome lands in, which repaired round 16's slip, and then said nothing about whether C7 is ITSELF pushed, so C7's text predicted it would stay local and AGENTS.md Push Discipline falsified that prediction the moment the worker obeyed it; the worker spent a declared C8 correcting one sentence, and a block that names a post-push commit must also say what happens to that commit — the same slip one level down.
-<<<END SLIPS18>>>
+<<<BEGIN SLIPS19 target=.agent/prose_slips.md mode=append bytes=1047 sha256=44aa61fab7ee3c5bbca05327fcb81d8609024922fc8a0e4254d0326d9a1e8601>>>
+2026-08-29 · F033 R18 · The block's SPEC A4 ordered the moved fold to guard `ImportError` beside `AttributeError` and `TypeError` "so a malformed chain degrades exactly as it does today", but the new function performs no import — the old one did, which is why the guard was there — so one member of the ordered tuple is unreachable by construction; the worker applied it as written and declared it, and a spec that carries a guard across a move should re-derive which of its clauses the move keeps alive.
+
+2026-08-29 · F033 R18 · The block's SPEC B3 claimed that after the move "the four apply labels are literals in `proof_chain.py` and in no other production module", which is true of the APPLY labels and false of a literal search for the string, because `_metrics_proof_from_chain` in `ui_server.py` sets a proof-metrics `state = "partial"` that has nothing to do with the fold; no gate ordered that count so nothing was unmeetable, and the lesson is the standing one that a sweep claim is only as wide as the search that measured it.
+<<<END SLIPS19>>>
