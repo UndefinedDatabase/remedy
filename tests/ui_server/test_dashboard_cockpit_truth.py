@@ -146,6 +146,84 @@ class TestTaskTruthMaps:
             assert t["proof_status"] != "verified"
             assert t["apply_status"] != "applied"
 
+    # Finding R-0738. The apply fold used to answer by MEMBERSHIP, so a task where
+    # ONE change of many had applied read "applied" — indistinguishable from a task
+    # where all of them had. It now agrees or says "partial", the shape the proof
+    # fold beside it has always had. These live in this class so they build their
+    # chains through the helpers above rather than through a second idiom.
+
+    def test_all_applied_still_reads_applied(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "applied", "verified"),
+            self._change("t1", "applied", "verified"),
+            self._change("t1", "applied", "verified"),
+        ])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "applied", (
+            "unanimous applies were right before the agreement fold and must stay "
+            "right after it; only the mixed case was ever allowed to move"
+        )
+
+    def test_all_reverted_still_reads_reverted(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "reverted", "incomplete"),
+            self._change("t1", "reverted", "incomplete"),
+        ])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "reverted"
+
+    def test_all_not_applied_still_reads_not_applied(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "not_applied", "not_applicable"),
+            self._change("t1", "not_applied", "not_applicable"),
+        ])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "not_applied"
+
+    def test_some_applied_and_some_not_reads_partial_and_never_applied(self):
+        # THE DISCRIMINATOR for the whole finding: this exact chain read "applied"
+        # before the fold changed shape, which is the state hunk-level approval
+        # produces most often of all.
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "applied", "verified"),
+            self._change("t1", "not_applied", "not_applicable"),
+            self._change("t1", "not_applied", "not_applicable"),
+        ])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "partial"
+        assert apply["t1"] != "applied", (
+            "a task with one applied change out of three must never claim the "
+            "label a fully applied task carries (finding R-0738)"
+        )
+
+    def test_one_applied_and_one_reverted_reads_partial(self):
+        from packages.orchestration.ui_server import _task_truth_maps
+        chain = self._chain([
+            self._change("t1", "applied", "verified"),
+            self._change("t1", "reverted", "incomplete"),
+        ])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "partial"
+
+    def test_a_missing_apply_state_never_by_itself_produces_applied(self):
+        # The getattr default is the empty string, and an absent attribute is not
+        # evidence that anything was applied — the reading the old `else` gave and
+        # the third arm of the new fold preserves.
+        from types import SimpleNamespace
+
+        from packages.orchestration.ui_server import _task_truth_maps
+        no_state = SimpleNamespace(task_id="t1", proof_status="verified")
+        chain = self._chain([no_state, self._change("t1", "applied", "verified")])
+        _, apply = _task_truth_maps(chain)
+        assert apply["t1"] == "partial"
+        alone = self._chain([SimpleNamespace(task_id="t2", proof_status="verified")])
+        _, apply_alone = _task_truth_maps(alone)
+        assert apply_alone["t2"] == "not_applied"
+
 
 class TestContinuationLastResult:
     def test_last_result_from_stopped_event(self, tmp_path: Path):
