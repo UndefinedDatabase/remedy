@@ -23,19 +23,17 @@ approval gate.
 | the integration gate | done | round 6, PASSED, 18186 passed 0 failed |
 | the feature file's Built State | done | round 7, precondition 4 |
 | plan SU-001 and stop at the approval gate | done | round 8, precondition 6 |
-| the evidence bundle and the review zip | superseded | round 9; the head moves |
-| three tests survive their own feature's close | done | this round, R-0737 |
-| rebuild the bundle and the zip at the new head | open | next |
-| the closure commit and the PR | open | after the rebuilt zip |
+| three tests survive their own feature's close | done | round 10, R-0737 |
+| the evidence bundle and the review zip | done | this round, at the repaired head |
+| the closure commit and the PR | open | next, and it is the last round |
 
 ## Next Steps
-1. Rebuild the evidence bundle and the review zip at the repaired head; the
-   package from round 9 recorded `506bbab5` as the accepted HEAD and a content
-   commit has landed since, so it no longer covers the head being closed.
-2. The closure commit, in ONE commit: the `[x]` flip on `docs/roadmap/STATUS.md`,
+1. The closure commit, in ONE commit: the `[x]` flip on `docs/roadmap/STATUS.md`,
    the README accepted count, its `Next:` clause, the tier-5 Done cell, the README
    capability paragraph, the `scripts/self_use_queue.json` `consumed_by` edit and
-   the final `.agent/` state. Then the PR, unmerged.
+   the final `.agent/` state.
+2. Open the pull request. It is NOT merged in this session — the gap is the
+   operator's manual-review window, and the next feature's Open PR Gate merges it.
 
 ## Risks
 - A job must never mark its own queue item consumed; neither shipped module owns
