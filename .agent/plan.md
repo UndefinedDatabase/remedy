@@ -1,39 +1,39 @@
-# Plan — F257 Self-use track (CLOSED)
+# Plan — F033 Hunk-level diff approval
 
-Branch: feature/f257-self-use-track, cut from `main` at the merge commit of pull
-request #220. F257 is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line and
-the pull request is open and UNMERGED.
+Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
+commit of pull request 221. SESSION 1 of this feature.
 
 ## Goal
-Remedy is used on Remedy on a schedule that cannot be skipped: a curated queue of
-small maintenance jobs, exactly one consumed per feature close, run through
-`do job-plan` and `do job-run` against this repository and taken to the normal
-approval gate. DONE.
+Surgical consent over changes: hunks carry STABLE content-hash ids, an
+`approve_hunks` command applies the approved set to the branch all-or-nothing,
+and rejected hunks become precise repair feedback quoted verbatim in the next
+round — every partial state rendered truthfully in viewer, node and report.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the queue, the loader, the job-path seam | done | rounds 2-5, 36 tests |
-| the integration gate | done | round 6, 18186 passed 0 failed |
-| the feature file's Built State | done | round 7, precondition 4 |
-| plan SU-001 and stop at the approval gate | done | round 8, precondition 6 |
-| three tests survive their own feature's close | done | round 10, R-0737 |
-| the evidence bundle and the review zip | done | round 11, READY_FOR_REVIEW |
-| the closure commit | done | this round, Rule A4's last commit |
-| the pull request | done | opened and NOT merged |
+| restart F033 from current main | done | round 1, DECISION F033 D1 |
+| book the F257 R12 closure verdict | done | round 1, amend0827 rule 1 |
+| register R-0738 | done | round 1 |
+| claim F033 in STATUS | done | round 1 |
+| survey the hunk-identity surface | done | round 1, in the handback |
+| T001 stable ids, JSON v2, shared helper | open | round 2 onward |
+| T002 approve_hunks, subset atomicity, ledger | open | |
+| T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Nothing further on this branch. The next feature's Open PR Gate merges this
-   pull request, or the operator merges it manually at any time.
-2. Rule A5 selects F033 — Hunk-level diff approval — as the next feature, in a
-   fresh session.
+1. Author T001 from the survey: the content-hash id function, its home, the
+   `DIFF_VIEW_VERSION` bump and the stability property tests.
+2. Consolidate the diff-repair hunk helper onto the shared identity, keeping
+   `tests/orchestration/test_diff_repair.py` green.
+3. T002's command, its validation and the all-or-nothing subset apply.
 
 ## Risks
-- THE SELF-USE QUEUE IS NOW EXHAUSTED. SU-001 is consumed by F257 and no pending
-  item remains, so the next feature's close records
-  `self-use NONE (queue exhausted)` until an operator curates more items into
-  `scripts/self_use_queue.json`. That is the track asking for curation, and
-  closure precondition 6 explicitly does not treat it as a blocker.
-- R-0734 and R-0736 stay registered and unrepaired, both outside F257's surface.
-  They are the documented Medium risks behind the PASS_WITH_RISKS verdict.
+- The shared-helper consolidation crosses two modules that ship today; their
+  regression suites are the safety net and are named in every order touching them.
+- `packages/orchestration/diff_parser.py` is PURE and TOTAL by its own docstring
+  and never raises on malformed input. Content-hash ids must not change that.
+- The parked branch `feature/f033-hunk-approval` at `ed040812` holds a 574-line
+  inventory taken at `32cde54e`, before F256 rewrote the diff surface. It is
+  INPUT to be re-derived, never a source of fact.
