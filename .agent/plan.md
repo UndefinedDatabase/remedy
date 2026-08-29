@@ -18,29 +18,28 @@ round — every partial state rendered truthfully in viewer, node and report.
 | failed-rollback truth · ledger · the door's effect | done | rounds 9-11, D4 |
 | the recorder takes the viewer's envelope | done | round 12 |
 | one evidence-directory resolver for viewer and doors | done | round 13 |
-| the CLI command and its handler | open | this round |
-| the write door's exposure and dispatch | open | next |
+| the CLI command and its handler | done | round 14 |
+| R-0744, the CLI door's job-id resolution | open | this round |
+| the write door's exposure and dispatch | open | this round |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
+| the operator docs for `patch approve-hunks` | open | closure sequence |
 
 ## Next Steps
-1. The CLI command `patch.approve-hunks` and its handler, in ONE commit, because
-   `apps/cli/grouped.py` answers `Error: no handler` for a catalog entry that has
-   none. The `patch` group's size and exact subcommand set are pinned by an
-   EQUALITY guard in `tests/test_command_catalog.py`, widened in that same commit.
-   The handler mints no refusal vocabulary: every refusal comes from
-   `hunk_approval` or `hunk_decision_record`. R-0743 is fixed here too — a test
-   pinning that the index record beats the CWD-relative fallback.
-2. Then the write door. `UI_EXPOSED_COMMANDS` is a SUBSET of the catalog pinned
-   at exactly two ids by `TestUiExposedCommands`, so exposure needs step 1 first.
-   `DOOR_METHODS` and `ALLOWED_IMPORTS` in
-   `tests/ui_server/test_command_channel.py` are EQUALITY guards widened in the
-   same commit as the dispatch, and `packages.orchestration.hunk_apply` joins
-   `FORBIDDEN_MODULES` so DECISION F033 D4's forbidden mistake cannot be made
-   silently later.
+1. R-0744: the CLI handler resolves the evidence directory from the RESOLVED job
+   id, so a short prefix or an uppercase UUID stops being reported as a missing
+   diff. The eleven existing tests are blind to it, so the fix ships with tests
+   that discriminate.
+2. The write door, in ONE commit with its guards. `UI_EXPOSED_COMMANDS` gains the
+   id; `DOOR_METHODS`, `ALLOWED_IMPORTS` and `FORBIDDEN_MODULES` in
+   `tests/ui_server/test_command_channel.py` are EQUALITY guards that must widen
+   with it, and `packages.orchestration.hunk_apply` joins the forbidden set so
+   DECISION F033 D4's mistake cannot be made silently later.
 3. Then T003: rejection reasons quoted verbatim into the next repair prompt, the
    report line derived from the ledger, and partial state rendered truthfully in
-   viewer, node and report.
+   viewer, node and report. R-0738 is T003's to repair.
+4. Then the closure sequence, which owes `docs/` an operator-facing description
+   of `remedy patch approve-hunks` — no round has been allowed a `docs/` path yet.
 
 ## Risks
 - The door's import guard is an EQUALITY guard: a new import reddens the branch
-  tip unless it is ruled in the same commit. R-0738 is T003's to repair.
+  tip unless it is ruled in the same commit.
