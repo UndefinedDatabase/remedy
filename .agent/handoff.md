@@ -1,371 +1,269 @@
-# Handback — F040 · SESSION 3 · round 11
+# Handback — F040 · SESSION 3 · round 12
 
-> Written by the WORKER as the round's final commit, C7. `.agent/STOP` was
-> re-read from disk before the first commit of this session's contribution and
-> again immediately before this commit; it was ABSENT both times. Every number
+> Written by the WORKER as the round's final commit, C6. `.agent/STOP` was
+> re-read from disk before the first commit of this round and again
+> immediately before this commit; it was ABSENT both times. Every number
 > below that IS a measurement was taken from `subprocess.run(...).returncode`,
 > `hashlib.sha256`, or a plain `open(...).read()` byte comparison inside
-> `.remedy-wt/f040-r11-gates.py`, whose full transcript is at
-> `.remedy-wt/f040-r11-gates.out`; not one was read through a pipe or from `$?`.
-
-THIS ROUND WAS EXECUTED ACROSS TWO WORKER INVOCATIONS, declared in full under
-Deviations below. A prior worker instance landed C0a through C5 (commits
-`492b0835`..`0919a0f0`) and was interrupted before C6 — not by `.agent/STOP`,
-which this session confirmed absent throughout, but by a process-level
-interruption external to the protocol. This session picked the round up,
-verified nothing in C0a-C5 needed repair, made C6 and this C7, and ran every
-gate the block orders. No commit of C0a-C5 was re-made or re-edited.
+> `.remedy-wt/f040-r12-gates.py`, whose full transcript is at
+> `.remedy-wt/r12_gates_out.txt`; not one was read through a pipe or from `$?`.
 
 ## Session
 
-SESSION 3 of feature F040 · round 11 · rounds so far 11.
+SESSION 3 of feature F040 · round 12 · rounds so far 12.
 
-The soft limit (25 rounds / 7 sessions, amend0827 rule 6) is not approached at
-11 rounds and 3 sessions, so no scope report is owed and no session-limit line
-is emitted.
+The soft limit (25 rounds / 7 sessions, amend0827 rule 6) is not approached.
 
 ## Range
 
-Review of `19ff6482`..`0f450560` on branch `feature/f040-completion-digest`.
-The base is round 10's stop-handback commit, the tip of the branch when this
-round's block was first delegated. `0f450560` (C6) is HEAD at the time this
-handback is written; this commit, C7, extends the range by one.
+Review of `d649c330..0b4b3d20` (C0a through C5); this commit (C6) rewrites
+this file on top of that range.
 
 ## Commits
 
-### 492b0835 docs(f040): save the round 11 block verbatim (C0a)
+### 32e86b76 docs(f040): save the round 12 block verbatim (C0a)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f040-r11.md` | 372/0 | new file — the reviewer's block, copied byte-for-byte with `shutil.copyfile`, never retyped (constraint 5) |
+| `.agent/authored/f040-r12.md` | 359/0 | new — verbatim copy of `.remedy-wt/f040-r12-block.md` via `shutil.copyfile` |
 
-### 58c29feb docs(f040): mirror the round 11 block into last_block (C0b)
+### b652ed24 docs(f040): mirror the round 12 block into last_block (C0b)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | 344/299 | mirrors the same bytes over the round-9 block it held, so `git worktree` reads the CURRENT block at any commit |
+| `.agent/last_block.md` | 290/303 | whole-file rewrite — mirrors the round 12 block, replacing round 11's |
 
-### 8964f7ad docs(f040): advance the plan to round 11 (C1)
+### a28c176e docs(f040): advance the plan to round 12 (C1)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | 15/13 | rewritten from the authored PLAN11 slice (constraint 3 — the plan moves before the ledger is touched) |
+| `.agent/plan.md` | 31/16 | rewritten byte-for-byte from the PLAN12 slice |
 
-### eb395ea2 docs(f040): append the R9 verdict and register R-0756 (C2)
+### edd1a691 docs(f040): append the R11 verdict and resolve R-0756 (C2)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 4/0 | RECORD11 appended verbatim: the R9 PASS verdict and the R-0756 registration (constraint 4 — append only, never inserted) |
+| `.agent/live_review.md` | 4/1 | RECORD12 slice appended (R11 verdict + `Done: R-0756`) |
 
-### 06ad58b3 feat(f040): export the estimate mark and phrase constants (C3)
+### 3a9d375a feat(f040): extend the digest visibility port with last-seen methods (C3)
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/ui/src/components/metrics/TopMetricsBar.tsx` | 2/2 | PAIR TMB-1 and TMB-2 applied: `const ESTIMATE_MARK = "~";` and `const ESTIMATE_PHRASE = ", estimated";` prefixed `export `, so the hero card can import them rather than restate them |
+| `apps/ui/src/api/digestVisibility.ts` | 4/1 | `DigestVisibilityPort` gains `readLastSeen`/`writeLastSeen`; header comment gains one sentence |
 
-### 318ebec6 test(f040): repair the blind prototype-chain probe (R-0756) (C4)
+### 278031e4 feat(f040): build the browser-local digest storage edge (C4)
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/ui/src/api/digestCardCopy.test.ts` | 12/2 | the R-0756 fix: the single blind `"toString"` probe replaced with two tests — one probing `"constructor"` (the discriminator that actually reaches `Object.prototype`), one keeping `"toString"`/`"TOSTRING"` with a comment naming why the fold defeats them. No production code touched. |
+| `apps/ui/src/api/browserDigestPort.ts` | 102/0 | new — the injectable storage-edge factory `browserDigestVisibilityPort` |
 
-### 0919a0f0 feat(f040): build the completion digest's hero card component (C5)
+### 0b4b3d20 test(f040): pin the browser digest storage edge with a red-proved guard (C5)
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/ui/src/components/digest/DigestHeroCard.tsx` | 125/0 | new file — the hero card component, per the block's SPEC: the dismissal port bound at its edge (DECISION F040 D8), every rule imported from its one home, no CSS of its own |
+| `apps/ui/src/api/browserDigestPort.test.ts` | 87/0 | new — 8 vitest cases, red-proved by G6 |
 
-### 0f450560 test(f040): pin the hero card component's shape (C6)
+### (this commit) docs(f040): write the round 12 handback (C6)
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/ui_contracts/test_digest_hero_card.py` | 396/0 | new file — the pytest text guard pinning the 6 SPEC items. Amended once, locally, before this handback: G6's own mutation red-proof (see Verification and Deviations below) found that the ownership-emptiness test could pass even with the JSX gate deleted, since `digest.ownership.length > 0` still occurs in the binding's own definition line; two tests were added that require the gate itself, `hasOwnership &&`, to be present. This is self-authored SPEC code, not a reviewer slice, so the fix was made directly rather than declared as an unrepaired objection. |
+| `.agent/handoff.md` | not orderable here (§3 item 14) | this file |
 
-### (this commit) docs(f040): write the round 11 handback (C7)
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | this file | C7 — a handoff cannot table the commit that writes it (R-0149 pattern); §3 item 14 does not order its own insertion count |
+All seven `+` figures above (359, 290, 31, 4, 4, 102, 87) are taken verbatim
+from G8's own `git diff --numstat` output, per the block's own instruction
+that this table's `+/-` column comes from that gate's output.
 
 ## External actions
 
-| Command | Outcome |
-|---|---|
-| `git worktree add --detach .remedy-wt/wt-r11 <C6 sha>` | created for G3's negative control, G6's mutation red-proof and G7's vitest route; run twice (once against `8d9cd257`, before the C6 amend; again against `0f450560`, after it) |
-| `git worktree remove --force .remedy-wt/wt-r11` | removed before this handback both times; `git worktree list` read back to exactly one line each time |
-| `git commit --amend` on C6 | one local amend, never pushed: fixed the gap `test_the_ownership_section_sits_behind_an_emptiness_check` had (see Deviations). AGENTS.md's git safety protocol prefers a new commit over an amend; this is the declared exception, made because the block's own constraint 2 fixes the bundle at exactly 9 commits in a fixed order, and the amended commit had never been pushed or reviewed. |
-| `git push -u origin feature/f040-completion-digest` | run after this commit |
-
-No `gh` command was run, no pull request was created, edited or merged, no
-branch was deleted, nothing was force-pushed and no history was rewritten
-beyond the one declared local amend above. The `remedy` script was not
-invoked.
+None yet — `git push -u origin feature/f040-completion-digest` runs
+immediately after this commit, per the block's Handback instruction. No PR
+created, nothing merged, no force-push, no other branch touched.
 
 ## Verification
 
-Full raw transcript at `.remedy-wt/f040-r11-gates.out` (produced by
-`.remedy-wt/f040-r11-gates.py`, re-run once after the C6 amend so every number
-below reflects the FINAL `test_digest_hero_card.py`); the decisive lines are
-reproduced here.
+**G1 TRANSPORT, at C0b.** All three of `.remedy-wt/f040-r12-block.md`,
+`.agent/authored/f040-r12.md` and `.agent/last_block.md` measured equal at
+sha256 `3f826f153d57113db1178b5f8e369d20819d0f46337e542dd21d011b47fe6882`,
+27397 bytes. REAL (direct byte comparison, no subprocess involved). PASS.
 
-### G1 TRANSPORT, at C0b — REAL comparison, disk to disk
+**G2 THE PLAN, at C1.** `.agent/plan.md` byte-equal to the PLAN12 slice
+(rstripped of the delimiter's own trailing newline): True. 3246 bytes, 58
+lines, holds `## Goal`, `## Next Steps` and `F040`. **58 lines is NOT under
+50** — see Deviations item 1; the slice was applied byte-for-byte per
+constraint 1 and not repaired.
 
-    sha256 5441e20e5da2ea72464b5e48a8bf2fe2a46efdb049e91754b082cb5342821a5f
-    bytes  31757
-    .remedy-wt/f040-r11-block.md == .agent/authored/f040-r11.md == .agent/last_block.md : True
+**G3 THE RECORD APPEND, at C2.** Base 1718984 bytes (re-measured from
+`git show a28c176e:.agent/live_review.md`), committed 1723955 bytes, slice
+4970 bytes. Reading (a): `base + "\n" + slice == committed` → True; base is a
+byte prefix of committed → True. Reading (b): N=2 paragraphs counted from the
+slice; the committed file's last 2 blank-line units match those 2 paragraphs
+in order → True. Negative control, inside a disposable worktree
+(`.remedy-wt/wt-r12`, removed after): one byte flipped at offset 1718990
+inside the first appended paragraph → both readings REJECT it; restored →
+both readings ACCEPT it. `git worktree list` returned to one line after
+removal.
 
-### G2 THE PLAN, at C1
+**G4 THE LEDGER, at C2**, computed by DIFFERENCE between `a28c176e` and
+`edd1a691`, never from the slice: registered ids ADDED `[]` REMOVED `[]`;
+resolved ids ADDED `['R-0756']` REMOVED `[]`; `DECISION F040` ids ADDED `[]`
+REMOVED `[]`; one `^Gate: F040 R11 — ` line. Open count (registered minus
+resolved) 263 before → **262 after**. `R-0756` present in registered both
+before and after; absent from resolved before, present after. No other id's
+resolved-status changed.
 
-    byte-equal to PLAN11 (slice's trailing delimiter newline stripped): True
-    bytes 2106 | lines 43 | under 50: True
-    holds ## Goal: True | ## Next Steps: True | \bF\d{3}\b: True
+**G5 THE PORT INTERFACE'S SHAPE, at C3.** `DigestVisibilityPort` parses to
+exactly four methods, in order: `readDismissal`, `writeDismissal`,
+`readLastSeen`, `writeLastSeen`. `readLastSeen(jobId: string): number | null`
+and `writeLastSeen(jobId: string, seenAtMs: number): void` both match modulo
+whitespace. `digestVisibility()`'s own function body (its full brace span) is
+byte-identical before (`3a9d375a^`) and after (`3a9d375a`). Exported types
+before and after are identical: `DigestDismissal`, `DigestVisibility`,
+`DigestVisibilityInput`, `DigestVisibilityPort`, `DigestVisibilityReason` —
+no addition, no removal. `DigestVisibilityInput`, `DigestVisibility` and
+`DigestVisibilityReason` are each unchanged (modulo comment-strip/whitespace)
+against `3a9d375a^`.
 
-### G3 THE RECORD APPEND, at C2 — base RE-MEASURED, not taken from the block
+**G6 THE STORAGE EDGE'S SHAPE, ITS GUARD AND ITS RED PROOF, at C5.**
+Static scan over `browserDigestPort.ts`, comments stripped, quoted literals
+blanked: `window` 0, `localStorage` 0, `Date.now` 0, `fetch` 0,
+`XMLHttpRequest` 0 — each paired with a salted positive control that DID see
+the token (all 5 controls True). Exported names: `['browserDigestVisibilityPort']`.
+Pytest text-guard route: not applicable (no `.py` guard over this `.ts`
+pair); colour comes from vitest, reported below. THE RED PROOF, via
+`subprocess.run` from a Python driver (never a bare `npx vitest` line, per
+constraint 14), worktree `.remedy-wt/wt-r12`, config
+`.remedy-wt/r12_vitest.config.mjs` (root at the PRIMARY `apps/ui`, `include`
+naming the worktree's mutated file by absolute path, `cacheDir` under
+`.remedy-wt/`):
+- UNMUTATED CONTROL: REAL EXIT 0, 8/8 passed.
+- (a) `readDismissal` reads `LAST_SEEN_SEGMENT` instead of its own (anchor
+  occurrences: 1; bytes differ: True; declaration differs after
+  comment-strip: True): REAL EXIT 1, 4 died — `a numeric string round-trips
+  through the same read path exactly (positive control)`, `a job's own
+  dismissal and its own last-seen do not collide`, `a written dismissal
+  reads back exactly, for one job`, `two different job ids' dismissals do
+  not collide`. Reverted byte-equal: True. Re-confirmed control: REAL EXIT 0,
+  8/8.
+- (b) `writeDismissal` drops the job id, writing every job under one key
+  (anchor occurrences: 1; bytes differ: True; declaration differs: True):
+  REAL EXIT 1, 3 died — `a job's own dismissal and its own last-seen do not
+  collide`, `a written dismissal reads back exactly, for one job`, `two
+  different job ids' dismissals do not collide`. Reverted: True. Re-confirmed
+  control: REAL EXIT 0, 8/8.
+- (c) the finite-number guard removed, a corrupt string reads as `NaN`
+  (anchor occurrences: 1; bytes differ: True; declaration differs: True):
+  REAL EXIT 1, 1 died — `reading a key whose stored value does not parse to
+  a finite number answers null`. Reverted: True. Re-confirmed control: REAL
+  EXIT 0, 8/8.
+- (d) `readLastSeen` reads `DISMISSAL_SEGMENT` instead of its own (anchor
+  occurrences: 1; bytes differ: True; declaration differs: True): REAL EXIT
+  1, 3 died — `a job's own dismissal and its own last-seen do not collide`,
+  `two different job ids' last-seen instants do not collide`, `a written
+  last-seen reads back exactly, for one job`. Reverted: True. Re-confirmed
+  control: REAL EXIT 0, 8/8.
 
-    base (pre-commit, remeasured) 1710202 bytes
-    committed                     1718984 bytes
-    RECORD11 slice (delimiter newline stripped) 8781 bytes
-    reading (a): 1710202 + 1 + 8781 = 1718984 == committed : True
-    base is a byte PREFIX of committed : True
-    reading (b): N paragraphs counted = 2; last 2 committed blank-line units
-      match the 2 slice paragraphs IN ORDER : True
-    NEGATIVE CONTROL, inside the disposable worktree, one byte flipped at
-      offset 1710208 (inside the first appended paragraph):
-        reading (a) REJECTS it : True
-        reading (b) REJECTS it : True
-      restored: reading (a) ACCEPTS it : True | reading (b) ACCEPTS it : True
+Worktree removed after; `git worktree list` back to one line.
 
-### G4 THE LEDGER, at C2 — by DIFFERENCE against the remeasured base
+**G7 VITEST AND THE TYPECHECK, at C5.**
+`python3 -m pytest "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" -q -rs`
+→ REAL EXIT 0, 4 passed; `test_vitest_passes` explicitly **PASSED** (verified
+with `-v`, not merely inferred from the aggregate).
+`python3 -m pytest tests/ui_server/test_dashboard_contract.py -k typescript -q -rs`
+→ REAL EXIT 0, 1 passed, 73 deselected; `test_typescript_compiles` explicitly
+**PASSED**. Neither node reported a SKIP.
+Vitest test-file/test count, re-measured at this round's own base `d649c330`
+(not trusted from any earlier round's figure): a disposable worktree
+`.remedy-wt/wt-r12-base` was built at `d649c330`; because a config with a
+relocated `root` breaks resolution of `react/jsx-dev-runtime` for one file
+(`promptTraceLens.test.ts`) whose bare-specifier lookup cannot walk out of
+`.remedy-wt/` into `apps/ui/node_modules`, the worktree's own
+`apps/ui/node_modules` was symlinked (disposable, removed with the worktree)
+at the PRIMARY checkout's real one, and `npx vitest run` was run unmodified,
+via `subprocess.run`, from that worktree's own `apps/ui` using that
+revision's own real `vitest.config.ts` — REAL EXIT 0, **36 files, 718
+tests**. Then measured again at HEAD (post C5) in the primary checkout: REAL
+EXIT 0, **37 files, 726 tests**. File count rose by exactly 1: True.
+`browserDigestPort.test.ts` declares 8 `it(` cases; test count rose by
+exactly 8: True.
 
-    registered ADDED ['R-0756'] | REMOVED []
-    resolved   ADDED []         | REMOVED []
-    DECISION F040 ADDED []      | REMOVED []
-    '^Gate: F040 R9 — ' lines: 1
-    open count before 262 -> after 263
+**G8 THE SUITES, THE TOOLCHAIN AND THE TREE, at C5.**
+- `python3 -m pytest tests/ui_contracts/ -q` → REAL EXIT 0, 783 passed, 4 skipped.
+- `python3 -m pytest tests/ui_server/ -q` → REAL EXIT 0, 515 passed.
+- `python3 -m pytest tests/docs/ -q` → REAL EXIT 0, 295 passed.
+- `python3 -m pytest tests/cli/test_golden_path.py -q` → REAL EXIT 0, 42 passed.
 
-### G5 THE COMPONENT'S SHAPE, at C5 — comments stripped, literals blanked
+`git status --porcelain`: `''` (empty). `git ls-files --others
+--exclude-standard`: 0 untracked. `git worktree list`: one line, the primary
+checkout only. `git diff --numstat` per commit C0a..C5:
+- C0a `32e86b76` → `359	0	.agent/authored/f040-r12.md`
+- C0b `b652ed24` → `290	303	.agent/last_block.md`
+- C1 `a28c176e` → `31	16	.agent/plan.md`
+- C2 `edd1a691` → `4	1	.agent/live_review.md`
+- C3 `3a9d375a` → `4	1	apps/ui/src/api/digestVisibility.ts`
+- C4 `278031e4` → `102	0	apps/ui/src/api/browserDigestPort.ts`
+- C5 `0b4b3d20` → `87	0	apps/ui/src/api/browserDigestPort.test.ts`
 
-    exported names: DigestHeroCardProps, DigestHeroCard
-    imports '../../api/jobDigest': JobDigest, digestCostLine
-    imports '../../api/digestVisibility': DigestVisibility, DigestVisibilityPort
-    imports '../../api/digestCardCopy': digestStateLabel, digestCtaText
-    imports '../metrics/TopMetricsBar': ESTIMATE_MARK, ESTIMATE_PHRASE
-    styles.<name> used: heroCard, heroCta, heroHeadline — all 3 declared in
-      DigestHeroCard.module.css (round 8's sheet, read-only this round)
-    localStorage 0 | sessionStorage 0 | fetch 0 | XMLHttpRequest 0 — each
-      paired with a salted positive control that DID see the token
-    Date.now count: 1
-    none of the 7 RunState phrases restated as a literal: True
-    neither '~' nor ', estimated' restated as a literal: True
-    TopMetricsBar.tsx still has 'const ESTIMATE_MARK = "~";' : True
-    TopMetricsBar.tsx still has 'const ESTIMATE_PHRASE = ", estimated";' : True
-      (both measured at C6's emission, so C3's export did not falsify a guard
-       this round does not own)
-
-### G6 THE GUARD AND ITS RED PROOF, at C6 (final, post-amend, sha `0f450560`)
-
-    primary checkout: python3 -m pytest tests/ui_contracts/test_digest_hero_card.py -q
-      REAL EXIT 0 | 25 passed in 0.20s
-    worktree control (unmutated, first): REAL EXIT 0 | 25 passed in 0.20s
-
-    MUTATION (a) primary_action.label rendered where digestCtaText(...) stands
-      anchor '{ctaText}' unique occurrences: 1
-      bytes differ from original: True | declaration differs after comment
-        stripping: True
-      REAL EXIT 1 | 1 failed, 24 passed
-      died: TestTheCtaGoesThroughTheRule::test_the_raw_label_never_appears_outside_that_call
-      reverted byte-equal: True
-
-    MUTATION (b) one RunState phrase restated as a literal
-      anchor '<p>{stateLabel}</p>' unique occurrences: 1
-      bytes differ: True | declaration differs: True
-      REAL EXIT 1 | 1 failed, 24 passed
-      died: TestNoRuleHasASecondHome::test_no_run_state_phrase_is_restated_as_a_literal
-      reverted byte-equal: True
-
-    MUTATION (c) port.writeDismissal replaced with localStorage.setItem
-      anchor 'port.writeDismissal(digest.job_id, Date.now());' unique occurrences: 1
-      bytes differ: True | declaration differs: True
-      REAL EXIT 1 | 3 failed, 22 passed
-      died: TestTheStrippersReallyStrip::test_the_comment_stripper_leaves_the_code_around_the_comment
-      died: TestTheCardIsTheEdgeAndNothingMore::test_the_component_calls_none_of_the_forbidden_capabilities
-      died: TestTheCardIsTheEdgeAndNothingMore::test_write_dismissal_is_called
-      reverted byte-equal: True
-
-    MUTATION (d) the ownership emptiness guard deleted
-      anchor '{hasOwnership && (' unique occurrences: 1
-      bytes differ: True | declaration differs: True
-      REAL EXIT 1 | 1 failed, 24 passed
-      died: TestOwnershipIsOmittedWhenEmpty::test_the_emptiness_check_actually_gates_the_ownership_section
-      reverted byte-equal: True
-
-    worktree restored, control again: REAL EXIT 0 | 25 passed in 0.20s
-
-All four mutations die. Mutation (d) is the one this round's own self-review
-caught and fixed: the FIRST version of `test_digest_hero_card.py` (committed
-as C6 before this amend, at sha `8d9cd257`) passed mutation (d) at REAL EXIT 0
-— `digest.ownership.length > 0` still occurs in the `hasOwnership` binding's
-own definition line even after the `&&` gate in front of the `<ul>` is
-deleted, so the original assertion (which only searched for that substring
-anywhere in the file) never noticed the gate itself was gone. That run is not
-reproduced above because C6 was amended before push; the full first-pass
-transcript that surfaced the gap is preserved in this session's tool history
-and is not re-run against the final tree.
-
-### G7 R-0756 REPAIRED, AND PROVED, at C4 — worktree route, DECISION F256 D6
-
-    UNMUTATED CONTROL:  REAL EXIT 0 | Test Files 1 passed (1) | Tests 39 passed (39)
-    own-property guard anchor unique occurrences: 1
-    bytes differ from original: True
-    MUTATED (guard replaced with `DIGEST_STATE_LABELS[key] ?? UNREADABLE_STATE_LABEL;`):
-      REAL EXIT 1 | Test Files 1 failed (1) | Tests 1 failed | 38 passed (39)
-      node id that DIED: digestStateLabel > does not read a state off the
-        prototype chain
-      mutation exit is non-zero (the whole point of the repair): True
-    restored byte-equal: True
-    RESTORED CONTROL:  REAL EXIT 0 | Test Files 1 passed (1) | Tests 39 passed (39)
-    primary checkout's production `digestCardCopy.ts` untouched throughout: True
-
-### G8 THE SUITES, THE TOOLCHAIN AND THE TREE, at C6 (final, post-amend)
-
-    python3 -m pytest tests/ui_contracts/ -q
-      REAL EXIT 0 | 783 passed, 4 skipped in 5.69s (rise of 25 over the R9
-      base of 758 — exactly the 25 tests the final C6 adds)
-    python3 -m pytest tests/ui_server/ -q
-      REAL EXIT 0 | 515 passed in 32.10s
-    python3 -m pytest tests/docs/ -q
-      REAL EXIT 0 | 295 passed in 0.43s
-    python3 -m pytest tests/cli/test_golden_path.py -q
-      REAL EXIT 0 | 42 passed in 20.37s
-    python3 -m pytest "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" -q -rs
-      REAL EXIT 0 | 4 passed in 1.19s
-      test_vitest_config_exists PASSED
-      test_test_unit_script_exists PASSED
-      test_vitest_test_file_exists PASSED
-      test_vitest_passes PASSED   <- explicit PASSED, not SKIPPED
-    python3 -m pytest tests/ui_server/test_dashboard_contract.py -k typescript -q -rs
-      REAL EXIT 0 | 1 passed, 73 deselected in 2.02s
-      test_typescript_compiles PASSED   <- explicit PASSED, not SKIPPED
-
-    git status --porcelain (measured DURING the gate run, before this commit)
-      : ' M .agent/handoff.md' — this file, mid-rewrite; expected, and clean
-        again once this commit lands
-    git ls-files --others --exclude-standard : 0 lines
-    git worktree list                 : 1 line — primary checkout only
-    git diff --numstat per commit, C0a..C6 (the `+` column this handback's
-      Commits tables above are taken from, per §3 item 28):
-        C0a 492b0835 372  0  .agent/authored/f040-r11.md
-        C0b 58c29feb 344 299 .agent/last_block.md
-        C1  8964f7ad  15  13 .agent/plan.md
-        C2  eb395ea2   4   0 .agent/live_review.md
-        C3  06ad58b3   2   2 apps/ui/src/components/metrics/TopMetricsBar.tsx
-        C4  318ebec6  12   2 apps/ui/src/api/digestCardCopy.test.ts
-        C5  0919a0f0 125   0 apps/ui/src/components/digest/DigestHeroCard.tsx
-        C6  0f450560 396   0 tests/ui_contracts/test_digest_hero_card.py
-    C7's own insertion count is not orderable here and is not ordered (§3 item 14).
-
-    git status --porcelain, RE-MEASURED after this commit lands, is reported
-    empty below under Item status; the tree is clean at every commit from C0a
-    through C7 once C7 itself is committed.
+Every insertion figure in the Commits table above is copied from this list.
+C6's own count is not orderable here and is not ordered (§3 item 14).
 
 ## Authored-text proofs
 
-Two reviewer-authored texts were applied this round, both verified by
-disk-to-disk / base-to-committed comparison rather than assumed:
-
-- PLAN11, applied at C1 — G2 confirms `.agent/plan.md` byte-equal to the
-  authored slice (delimiter's own trailing newline aside, the same convention
-  R9's PLAN9 comparison used).
-- RECORD11, applied at C2 — G3 confirms the pre-commit base is a byte PREFIX
-  of the committed file, that base + one newline + the slice reconstructs the
-  committed file exactly, and that a negative control (one byte flipped inside
-  the first appended paragraph, inside the disposable worktree) is REJECTED by
-  both the whole-file and the paragraph-order readings while the unflipped
-  bytes are ACCEPTED by both.
-
-The block itself (`.remedy-wt/f040-r11-block.md`) is the third authored text
-this round carries; G1 is its own disk-to-disk transport proof, covering the
-EMITTED bytes because the reviewer's own original survives on disk (constraint
-5) — unlike the R9 verdict's chain, which walked only the worker's own two
-outputs.
+`.remedy-wt/f040-r12-block.md` → `.agent/authored/f040-r12.md` and
+`.agent/last_block.md`: `cmp`-equivalent, sha256-equal (see G1). PLAN12 and
+RECORD12 slices applied byte-for-byte, verified structurally by G2 and G3.
+No other reviewer-authored text was applied this round (`browserDigestPort.ts`
+and its test are SPECs, not slices, per constraint 1).
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block to `.agent/authored/f040-r11.md` | done | landed by the prior worker instance; G1 verifies |
-| C0b mirror the block into `.agent/last_block.md` | done | landed by the prior worker instance; G1 verifies |
-| C1 rewrite `.agent/plan.md` from PLAN11 | done | landed by the prior worker instance; G2 verifies |
-| C2 append RECORD11 to `.agent/live_review.md` | done | landed by the prior worker instance; G3, G4 verify |
-| C3 export the two estimate constants (TMB-1, TMB-2) | done | landed by the prior worker instance; G5 verifies |
-| C4 repair R-0756 in `digestCardCopy.test.ts` | done | landed by the prior worker instance; G7 verifies |
-| C5 create `DigestHeroCard.tsx` | done | landed by the prior worker instance; G5 verifies |
-| C6 create `tests/ui_contracts/test_digest_hero_card.py` | done | this session; amended once locally (see Deviations); G6, G8 verify the final tree |
-| C7 rewrite `.agent/handoff.md` | done | this file |
+| C0a save the block to `.agent/authored/f040-r12.md` | done | G1 verifies |
+| C0b mirror the block into `.agent/last_block.md` | done | G1 verifies |
+| C1 rewrite `.agent/plan.md` from PLAN12 | done | G2 verifies; **58 lines exceeds the 50-line guideline — see Deviations 1** |
+| C2 append RECORD12 to `.agent/live_review.md` | done | G3, G4 verify; open count 263→262 |
+| C3 extend `DigestVisibilityPort` with `readLastSeen`/`writeLastSeen` | done | G5 verifies |
+| C4 build `browserDigestPort.ts` | done | G6 verifies |
+| C5 build `browserDigestPort.test.ts` | done | G6, G7 verify |
+| C6 rewrite `.agent/handoff.md` | done | this file |
 | G1 transport | PASS | at C0b |
-| G2 the plan | PASS | at C1 |
+| G2 the plan | PASS (with a noted objection) | at C1 — byte-equal but over the 50-line guideline |
 | G3 the record append | PASS | at C2 |
 | G4 the ledger | PASS | at C2 |
-| G5 the component's shape | PASS | at C5 |
-| G6 the guard and its red proof | PASS | at C6, final tree — all four mutations die |
-| G7 R-0756 repaired, and proved | PASS | at C4 |
-| G8 the suites, the toolchain and the tree | PASS | at C6, final tree |
+| G5 the port interface's shape | PASS | at C3 |
+| G6 the storage edge's shape, guard and red proof | PASS | at C5 — all four mutations die |
+| G7 vitest and the typecheck | PASS | at C5 |
+| G8 the suites, the toolchain and the tree | PASS | at C5 |
 
 ## Deviations & assumptions
 
-1. THIS ROUND SPANNED TWO WORKER INVOCATIONS, not two protocol sessions. A
-   prior worker instance made C0a through C5 and stopped before C6; this
-   session's own re-read of `.agent/STOP` before its first action found it
-   ABSENT, so the interruption was NOT the sentinel and is not attributed to
-   it. No handback closed the gap — `.agent/handoff.md` on disk when this
-   session began was still round 10's stop-handback — so this is read as ONE
-   continuous round rather than two, and the SESSION line above stays at 3
-   rather than advancing to 4. This session verified C0a-C5 on disk (byte and
-   shape checks under G1-G5, G7 above) rather than trusting the prior
-   instance's own account, and made no edit to any of their five files.
-2. THE ROUND-10→11 RENUMBERING is a REVIEWER decision, not a worker deviation
-   (constraint 14): this block is a verbatim renumbering of round 10's block,
-   which hit `.agent/STOP` before its first commit and closed with a
-   stop-handback at `19ff6482` without executing any of its bundle. Per the
-   F031 R10 precedent constraint 14 cites, the re-dispatch of that identical,
-   never-executed bundle is round 11, not a continuation of round 10.
-3. C6 WAS AMENDED ONCE, LOCALLY, BEFORE PUSH. Running G6's own mutation (d)
-   against the FIRST version of `test_digest_hero_card.py` (committed at sha
-   `8d9cd257`) surfaced a real gap in that self-authored test: deleting the
-   `hasOwnership &&` gate in front of the ownership section left
-   `test_the_ownership_section_sits_behind_an_emptiness_check` GREEN, because
-   that assertion only searched the whole file for the substring
-   `digest.ownership.length > 0`, which still occurs in the `hasOwnership`
-   binding's own definition line even after the JSX gate using it is deleted.
-   `tests/ui_contracts/test_digest_hero_card.py` is this round's SPEC-based
-   deliverable rather than a reviewer-authored slice (constraint 1's "never
-   repair a slice" governs PLAN11, RECORD11 and the two TMB pairs, not this
-   file), so the gap was closed directly: two tests were added requiring the
-   gate expression `hasOwnership &&` to be present in the comment-stripped
-   source, one asserting its presence and one proving the scan can see it
-   removed. `git commit --amend` was used rather than a new commit, as the
-   declared exception to AGENTS.md's "always create new commits" preference —
-   the commit had never been pushed or reviewed, and the block's constraint 2
-   fixes the bundle at exactly 9 commits in a fixed order, so an additional
-   "C6b" commit was not available as an option. The full gate suite was
-   re-run against the amended tree; every number in Verification above is
-   from that final run, and all four G6 mutations now die.
-4. NO OTHER DEVIATION. Every other gate, mutation and reading ran exactly as
-   the block specifies, with no substitution, and no slice's bytes were
-   altered from what `.remedy-wt/f040-r11-block.md` carries.
-
-## Open findings
-
-263 — computed at HEAD as 317 distinct registered ids (316 carried + R-0756,
-this round's one registration) minus 54 distinct resolved ids (unchanged).
-
-- R-0570 — OPEN, routed to the paydown branch. Not F040's to fix.
-- R-0752 — OPEN, routed to the paydown branch. Not F040's to fix.
-- R-0755 — OPEN, routed to the paydown branch. Not F040's to fix.
-- R-0753 — OPEN, carried as this feature's documented risk.
-- R-0756 — OPEN, newly registered this round (C2) and REPAIRED this round
-  (C4, proved by G7). Its ledger entry is not marked resolved here: the fix
-  landed in the same round that registered it, and marking `Done: R-0756`
-  is the record's to do at whichever round next appends to
-  `.agent/live_review.md`, consistent with constraint 4's append-only rule —
-  this handback states the fact and does not itself edit the record a second
-  time outside the block's change set.
+1. **G2's plan is 58 lines, not under 50.** Constraint 1 requires every
+   authored slice to be applied byte-for-byte even when it looks wrong, and
+   forbids repairing it; PLAN12 is such a slice. The applied `.agent/plan.md`
+   is byte-equal to PLAN12 and holds all three required strings, but its own
+   line count (58) exceeds AGENTS.md's "keep it short (<50 lines)" guideline
+   and G2's own "report... that it is under 50" clause reads False. This is
+   declared here rather than silently fixed, per constraint 1's own
+   instruction to "DECLARE the objection in the handback."
+2. **G7's base-count measurement needed a route not spelled out in the
+   block.** The block's own G6-style scratch config (root relocated into the
+   worktree, `include` an absolute path) works for a single named file but
+   breaks when re-measuring the WHOLE suite's baseline count at `d649c330`:
+   one unrelated file, `promptTraceLens.test.ts`, imports a `.tsx` component
+   needing `react/jsx-dev-runtime`, and Vite's bare-specifier resolution
+   cannot walk from a file under `.remedy-wt/` up into `apps/ui/node_modules`
+   once `root` points inside the worktree. The route used instead — leave the
+   worktree's own `apps/ui/vitest.config.ts` untouched and symlink
+   `apps/ui/node_modules` at the primary's real one before running `npx
+   vitest run` unmodified from the worktree's own `apps/ui`, via
+   `subprocess.run`, disposed of with the worktree — is not itself ordered by
+   the block; it is a plumbing choice made to satisfy G7's own requirement to
+   re-measure rather than trust an earlier figure. Both worktrees used this
+   round (`wt-r12` for G3/G6, `wt-r12-base` for G7) were removed before this
+   commit; `git worktree list` shows one line throughout every gate's
+   post-check.
+3. No commit was reordered, dropped or added relative to the block's fixed
+   C0a→C0b→C1→C2→C3→C4→C5→C6 sequence.
 
 ## Next
 
-T002's remaining step: MOUNT the card. Per PLAN11's `## Next Steps` item 2 —
-the shell placement, the digest load through `jobDigestPath`, the last-seen
-clock, and the layout CSS this round deliberately did not write (constraint
-6). Then T003: `remedy job digest`, the end-to-end, the integration gate and
-closure.
+Mount the card into `RemedyShell.tsx`: `loadJobDigest` (paired with
+`jobDigestPath`, following `loadDiffEnvelope`'s shape in `remedyApi.ts`),
+`latestActivityMs` read from the brain stream's `recent` ring buffer via
+`newestActionRow(...).receivedAtMs`, a real `window`-bound instance of this
+round's `browserDigestVisibilityPort`, and the card mounted as a sibling of
+the shell div (not inside `<main>`, which `test_main_layout_guard.py` pins to
+exactly four children). `onOpenDecisions` and `onPrimaryAction` stay inert
+that round too, per PLAN12 step 2.
