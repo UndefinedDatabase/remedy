@@ -1839,6 +1839,55 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             print(f'  Next:      {report["next_safe_action"]}')
 
 
+def _cmd_job_digest(job_id_str: str, *, json_output: bool = False) -> None:
+    """`remedy job digest <id>` — the completion digest's CLI parity (F040
+    T003), the HTTP route's little sibling. Reuses the SAME two calls
+    `_cmd_job_summary` already makes above — `resolve_job_id`/`load_job`
+    then `load_run_events` — and prints the SAME `build_job_digest`
+    envelope the route builds, so the CLI and the route can never disagree
+    about the same job.
+    """
+    import json as _json
+
+    job_id = resolve_job_id(job_id_str)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        # A clean error, never a traceback: an unknown id is a normal thing
+        # for a human to type (the same shape _cmd_job_report uses above).
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.timeline import load_run_events
+
+    data_dir = resolve_data_root()
+    events = load_run_events(data_dir, job.id)
+
+    from packages.orchestration.job_digest import build_job_digest
+
+    # The ONLY call that builds the envelope — no field is recomputed,
+    # renamed or filtered before being printed, so this can never drift
+    # from what `_build_digest_json` prints for the same job.
+    digest = build_job_digest(job, events)
+
+    if json_output:
+        print(_json.dumps(digest, indent=2))
+        return
+
+    print(f'Job digest: {job.id}')
+    print(f'  State:     {digest["state"]}')
+    print(f'  Headline:  {digest["headline"]}')
+    print(f'  Cost:      {digest["cost"]["value"]} ({digest["cost"]["basis"]})')
+    print(f'  Decisions: {digest["decisions"]["open_count"]} open, '
+          f'peak urgency {digest["decisions"]["peak_urgency"]}')
+    # No `ownership` line this round: the key is always empty (DECISION
+    # F040 D3) until F035 ships a producer, so there is no shape to render.
+    print(f'  Next:      {digest["primary_action"]["label"]}')
+
+
 def _cmd_job_dod(job_id_str: str, *, json_output: bool = False) -> None:
     """`remedy job dod <id>` — the Definition-of-Done matrix, live (F061 T004).
 
@@ -2438,6 +2487,8 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
             json_output=getattr(args, "json", False),
         )
     ),
+    "job.digest": lambda args: _cmd_job_digest(args.job_id,
+        json_output=getattr(args, "json", False)),
     "job.fences": lambda args: _cmd_job_fences(
         args.job_id,
         json_output=getattr(args, "json", False),
