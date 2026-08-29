@@ -1,6 +1,6 @@
-# F033 — Hunk-level diff approval · ROUND 3 · THE PARSER SEAM
+# F033 — Hunk-level diff approval · ROUND 4 · THE CLIENT SEAM
 
-SESSION 1 of feature F033. Round 3, rounds so far 3.
+SESSION 1 of feature F033. Round 4, rounds so far 4.
 
 You are the WORKER for this round. AGENTS.md is the highest authority and binds
 you in full. Do not review your own work and write no verdict on it.
@@ -9,157 +9,121 @@ you in full. Do not review your own work and write no verdict on it.
 
 1. A SLICE is the bytes BETWEEN its `<<<SLICE <NAME>` and `<<<END <NAME>` lines,
    exclusive. Apply slices BYTE FOR BYTE — never reflow, re-wrap or "fix" one. If
-   a slice looks wrong, apply it anyway and say so in the handback's deviations.
+   a slice looks wrong, apply it anyway and say so in the deviations.
 2. Delimiters are transport only. ANCHOR extraction to the NAMED delimiter at
-   line start — `<<<END RECORDF033R3` — because a slice body may quote the bare
-   tokens inline.
+   line start — `<<<END RECORDF033R4`.
 3. Every WHOLE-FILE slice ends with exactly one trailing newline.
 4. Extract every slice from the COMMITTED blob you save at C0a, never by retyping.
-5. THE PRODUCTION CODE IS A SPEC, NOT A SLICE. You write it from the description.
-   Names, signatures, constants and behaviours the SPEC fixes are binding;
-   internal structure and comment wording are yours. If the SPEC is impossible or
-   self-contradictory, STOP and say so rather than inventing past it.
+5. THE TYPESCRIPT IS A SPEC, NOT A SLICE. You write it from the description.
+   Names and behaviours the SPEC fixes are binding; structure and wording are
+   yours. If the SPEC is impossible, STOP and say so rather than inventing past it.
 6. Guard re-expressions: the shell rejects loops, `$( )`, `${arr[0]}` and `cp` by
    FORM. Copy with `shutil.copyfile`; route measurement through Python under the
-   gitignored `.remedy-wt/`, run with `python3 -B`. Python 3.10 forbids a
-   backslash inside an f-string expression — hoist regexes to module level.
+   gitignored `.remedy-wt/`, run with `python3 -B`. Invoke `npx` through Python's
+   `subprocess.run`, never through `npm run`. Python 3.10 forbids a backslash
+   inside an f-string expression — hoist regexes to module level.
 7. Capture REAL exit codes; piping to `tail` otherwise masks a red.
 
 ## Base
 
-BASE is `fa745748`, the round 2 handback commit, on branch
+BASE is `51e04c89`, the round 3 handback commit, on branch
 `feature/f033-hunk-approval-v2`. Confirm with `git rev-parse HEAD` before C0a and
 STOP if it differs.
 
-## Goal
+## Why this round exists
 
-Wire `hunk_identity` into the diff parser so hunk ids stop being positional, bump
-`DIFF_VIEW_VERSION` to 2 through the seam the parser's own docstring declares,
-and move the tests that pin the old shape — replacing two id LITERALS with the
-stability PROPERTY they were standing in for.
+Round 3 made the server's hunk ids content-derived and bumped
+`DIFF_VIEW_VERSION` to 2. The client did NOT go red, and that is the problem
+rather than the reassurance: `apps/ui/src/api/diffViewModel.test.ts` builds its
+own payloads, so its `version` and `id` expectations describe a FIXTURE and never
+the server. The client is a v1-shaped consumer being handed v2 data with no test
+covering the difference.
+
+Underneath that sits a real defect. `apps/ui/src/api/diffViewModel.ts` reads
+
+    id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}`,
+
+so when a payload carries no usable id the CLIENT INVENTS a positional one. Under
+version 1 that was harmless, because positional was the real shape. Under version
+2 it manufactures a string that sits in the same field as a content id, is
+indistinguishable from one to every consumer downstream, and can never match
+anything the server would recognise — so an approval keyed on it fails silently
+rather than loudly. DECISION F033 D2, in the record slice below, rules it.
 
 ## Bundle (in this order)
 
 - C0a save this block · C0b mirror it
 - C1 `.agent/plan.md`
-- C2 the round 2 verdict into `.agent/live_review.md`
-- C3 the parser, the version bump and the tests, together
+- C2 the round 3 verdict and DECISION F033 D2 into `.agent/live_review.md`
+- C3 the client model and its tests, together
 - C4 the handback
 
 ## Change set — these paths and nothing else
 
-    .agent/authored/f033-r3.md
+    .agent/authored/f033-r4.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    packages/orchestration/diff_parser.py
-    tests/orchestration/test_diff_parser.py
+    apps/ui/src/api/diffViewModel.ts
+    apps/ui/src/api/diffViewModel.test.ts
     .agent/handoff.md
 
-This round does NOT touch `packages/orchestration/hunk_identity.py`,
-`packages/orchestration/diff_view_source.py`,
-`packages/orchestration/diff_repair.py`, `packages/orchestration/ui_server.py`,
-anything under `apps/ui/`, or `docs/roadmap/STATUS.md`. The client-side fallback
-and the diff-repair consolidation are later rounds, deliberately.
+This round does NOT touch `packages/orchestration/diff_parser.py`,
+`packages/orchestration/hunk_identity.py`,
+`apps/ui/src/components/diff/DiffView.tsx`, or `docs/roadmap/STATUS.md`.
 
-## SPEC — `packages/orchestration/diff_parser.py`
+## SPEC — `apps/ui/src/api/diffViewModel.ts`
 
-### 1. The version
+### 1. A reserved prefix, exported
 
-`DIFF_VIEW_VERSION` becomes `2`. Its comment currently calls F033's content-hash
-ids "the first planned bump"; it now records that the bump HAS happened and what
-changed in it — hunk `id` values are content-derived rather than positional.
+Add an exported constant naming the prefix the client puts on an id it had to
+invent. Name it `UNIDENTIFIED_HUNK_ID_PREFIX` and give it the value
+`"unidentified:"`. A one-line WHY comment sits directly above it: a server hunk
+id is sixteen lowercase hex characters, so a prefixed string cannot be mistaken
+for one by any consumer, which is the whole point of the prefix.
 
-### 2. The id, computed in the flush loop
+### 2. The fallback stops manufacturing a plausible id
 
-Import `hunk_identity` from `packages.orchestration.hunk_identity`. In the
-per-file flush loop that today writes `"id": f"{file_index}:{hunk_index}"`,
-replace that value with a content id computed from:
+The expression that today reads
+``id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}` `` keeps its shape and
+its purpose — every hunk still gets a DISTINCT non-empty id, because
+`defaultCollapsedHunkIds` and `toggleHunkCollapse` key a `Set<string>` on it and
+two hunks sharing an id would collapse and expand as one — but the invented value
+now carries `UNIDENTIFIED_HUNK_ID_PREFIX` ahead of the position. The positional
+part stays: it is what makes the invented ids distinct from each other.
 
-- `path` — the value `region.resolve_path()` already yields for that file, the
-  same one written to the file's `"path"` key.
-- The hunk's OLD SIDE: the `"content"` value of each entry in `raw["lines"]`
-  whose `"kind"` is `DIFF_LINE_CONTEXT` or `DIFF_LINE_DELETED`, in order.
-  `DIFF_LINE_ADDED` entries are EXCLUDED. That exclusion is the point: the same
-  logical hunk re-emitted next round with a different fix keeps its id, which is
-  what the feature file's stability property requires, and the parser already
-  computes exactly this membership as `on_old` during the walk.
-- `occurrence` — how many EARLIER hunks IN THE SAME FILE have a byte-identical
-  normalised old side. Count it per file, resetting for each file: keep a mapping
-  from the normalised old-side text to a running count, pass the count BEFORE
-  incrementing, then increment. Do not key it on the finished id.
+A real id arriving from the server passes through UNTOUCHED. Do not validate it,
+do not reformat it, do not check its length: the client is not the authority on
+what a server id looks like, and a client that rejects ids it does not recognise
+would break the next version bump for no gain.
 
-`file_index` and `hunk_index` stop contributing to the id. `hunk_index` is still
-needed as the loop variable; if `file_index` becomes unused, stop enumerating.
+### 3. What must NOT change
 
-### 3. The docstring's contract note, which is now WRONG on two counts
+`readDiffEnvelope` NEVER throws, however broken the payload — the file's existing
+test says so and it stays true. No other field of the envelope moves, no
+signature changes, and nothing outside these two functions is edited.
 
-The module docstring's CONTRACT NOTES currently say hunk ids are PROVISIONAL and
-that "F033 replaces them with content-hash ids, and `DIFF_VIEW_VERSION` is the
-seam through which it does so". Rewrite that bullet to describe what the ids ARE
-now, naming `packages/orchestration/hunk_identity.py` as where the identity is
-computed and stating the stability property a reader can rely on.
+## SPEC — `apps/ui/src/api/diffViewModel.test.ts`
 
-It also says `intraline` did not force a bump "because version 1 has never been
-served to anything — there is no endpoint yet". THAT IS NO LONGER TRUE and it is
-the sentence a later reader would rely on to skip a bump. F256 added the endpoint:
-`packages/orchestration/ui_server.py` builds the envelope through
-`packages/orchestration/diff_view_source.py`'s `build_diff_view`, which carries
-`DIFF_VIEW_VERSION` straight out to a consumer. Correct the sentence rather than
-delete it — say that version 1 WAS served once the endpoint landed, and that this
-is why the id change takes a real bump instead of riding in unversioned. Do not
-restate the old claim anywhere.
-
-### 4. What must NOT change
-
-The parser stays PURE and TOTAL exactly as its docstring rules: no file system,
-no subprocess, no network, no logging, no global mutable state, and it NEVER
-raises on malformed input — including the non-`str` early return that already
-answers `{"version": DIFF_VIEW_VERSION, ...}`. `hunk_identity` is itself total,
-so this holds, but do not introduce a call that can raise around it. Line
-`"content"` values, `"header"`, `"old_start"`, `"new_start"`, the per-file
-`"stats"`, `"note"`, `"status"` and the ordering of files and hunks are all
-untouched: the ONLY key whose value this round changes is a hunk's `"id"`.
-
-## SPEC — `tests/orchestration/test_diff_parser.py`
-
-FOUR existing assertions pin the shape this round changes. Move them; do not
-delete a test.
-
-- `test_parse_unified_diff_to_view_reads_empty_input_as_no_files` and
-  `test_parse_unified_diff_to_view_reads_non_diff_text_as_no_files` both assert a
-  whole dict containing `"version": 1`. They become `2`. Prefer importing
-  `DIFF_VIEW_VERSION` and asserting against it, so the next bump moves them
-  itself; if you keep a literal, keep exactly one test that pins the literal so
-  the constant cannot drift silently, and say in the handback which you chose.
-- `test_parse_unified_diff_to_view_keeps_input_order_and_distinct_hunk_ids`
-  asserts `ids == ["0:0", "1:0"]` and
-  `test_parse_unified_diff_to_view_seeds_each_hunk_from_its_own_header` asserts
-  `[h["id"] for h in entry["hunks"]] == ["0:0", "0:1"]`. Those literals are the
-  positional shape and cannot survive. Replace each with the PROPERTY it was
-  standing in for — that the ids are distinct and well-formed — and keep every
-  other assertion in both tests untouched, including the path ordering and the
-  `old_start`/`new_start` pairs.
-
-ADD tests for the properties the change exists to create, named for the property:
-
-1. **The stability property, at the parser.** Parse a diff. Then parse a second
-   diff, identical except that an EARLIER hunk in the same file has one more
-   ADDED line, and assert the LATER hunk's id is UNCHANGED. Positional ids fail
-   this and content ids pass it; it is the single most important test in the file.
-2. **Added lines do not enter the id.** Two diffs whose hunks share an old side
-   but differ in their added lines produce the SAME id for that hunk.
-3. **Two identical hunks in one file get distinct ids**, via the occurrence rank.
-4. **The id's shape**: every hunk id in a multi-file diff is 16 lowercase hex
-   characters, and all ids in one view are distinct.
-5. **The same content at a different path gets a different id.**
-
-Use the fixtures already in the file where they fit; add new ones inline
-otherwise. Do not add a fixture file.
+- The test currently named `gives a hunk with no usable id the position the
+  parser would have given it` asserts `"0:0"`. Its NAME states the contract this
+  round replaces. Rewrite it to the new contract — an id-less hunk gets an id
+  carrying `UNIDENTIFIED_HUNK_ID_PREFIX` — and rename it to say that.
+- ADD: two id-less hunks in ONE file get DISTINCT ids, so the collapse set still
+  treats them as two hunks. This is the property the positional suffix exists for
+  and nothing currently pins it.
+- ADD: a well-formed server id passes through UNCHANGED — use a realistic
+  sixteen-character lowercase hex id and assert the envelope carries exactly it,
+  with no prefix added.
+- The fixture payload builders assert `version` 1 and a hunk id `"0:0"`. Those
+  are v1 shapes. Move the fixtures to v2: `version` 2 and a sixteen-hex id.
+  Report in the handback which fixture values you chose. Keep every other
+  assertion in those tests exactly as it is — the snake/camel equivalence, the
+  stats, the line counts, the `oldStart`, and the never-throws test.
 
 ## The slices
 
-<<<SLICE PLANF033R3
+<<<SLICE PLANF033R4
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
@@ -177,34 +141,36 @@ round — every partial state rendered truthfully in viewer, node and report.
 |------|--------|--------|
 | restart, claim, register R-0738 | done | round 1, DECISION F033 D1 |
 | the shared identity function and its tests | done | round 2, 10 tests |
-| wire the parser, bump DIFF_VIEW_VERSION to 2 | done | this round |
-| rule the client's fallback id synthesis | open | next round |
-| retire the diff-repair local hunk helper | open | |
+| wire the parser, bump DIFF_VIEW_VERSION to 2 | done | round 3, 50 tests |
+| rule the client's invented id | done | this round, DECISION F033 D2 |
+| retire the diff-repair local hunk helper | open | next round, T001's last item |
 | T002 approve_hunks, subset atomicity, ledger | open | |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Rule the client fallback at `apps/ui/src/api/diffViewModel.ts`, which
-   synthesises a positional id when the server sends an empty one, and move the
-   TypeScript pins on version 1 and on the `"<n>:<m>"` id form.
-2. Retire the local hunk helper in `packages/orchestration/diff_repair.py` onto
-   the shared identity, keeping its regression suite green.
-3. Then T002: the `approve_hunks` command, its validation and the
-   all-or-nothing subset apply.
+1. Retire the local hunk helper in `packages/orchestration/diff_repair.py` onto
+   `hunk_identity`, keeping `tests/orchestration/test_diff_repair.py` green.
+   That closes T001.
+2. Then T002: the `approve_hunks` command, its validation, and the
+   all-or-nothing subset apply built on
+   `packages/orchestration/source_apply.py`.
+3. `packages/orchestration/repo_applicator.py` applies nothing by design, so the
+   subset seam is new work rather than a parameter on something existing.
 
 ## Risks
-- The diff endpoint added by F256 SERVES this envelope, so the version bump is a
-  real consumer-visible change and not a private one.
-- The client fallback means an empty server id becomes a POSITIONAL id on screen
-  rather than an error, so a content-hash contract can still be violated
-  silently until the next round rules it.
-- `packages/orchestration/diff_parser.py` is PURE and TOTAL by its own docstring.
-  The identity call must not change that.
-<<<END PLANF033R3
+- The diff endpoint added by F256 serves this envelope, so a shape change is
+  consumer-visible. Version 2 is the declared seam and it has been taken.
+- The client tests build their own payloads, so a server shape change cannot
+  redden them. Keeping the fixtures realistic is the only guard against the
+  client drifting a version behind the server.
+- R-0738 stays open and is T003's to repair.
+<<<END PLANF033R4
 
-<<<SLICE RECORDF033R3
-Gate: F033 R2 — THE HUNK IDENTITY FUNCTION. THE ROUND PASSED. Every gate was re-executed by the reviewer at `fa745748` from a script of its own, and every reading reproduced. TRANSPORT EQUAL: `749316a2:.agent/authored/f033-r2.md` is 22433 bytes at sha256 `4ee838f6…7e9190`, byte-identical to the reviewer's own original `.remedy-wt/f033-r2-block.md`, which predates this worker; and the authored blob and `.agent/last_block.md` at `1198698c` are ONE blob id. THE TWO APPENDS: `.agent/live_review.md` reconstructs 1431859 plus one newline plus a 3900-byte slice to 1435760, the committed blob exactly, the base a byte PREFIX and the file ending in one newline, with the structural reader counting N at 1 and matching the last unit in order, and the NEGATIVE CONTROL placed at offset 1431900 INSIDE the first appended paragraph rejected by BOTH readers; `.agent/prose_slips.md` reconstructs 17728 plus one newline plus 952 to 18681, carries ZERO lines beginning `- R-`, and its two added lines both match `^2026-\d\d-\d\d · F033 R1 · `. THE LEDGER is UNMOVED where it must be — registered 299 all DISTINCT, `Done:` 44 over 42, `Landed:` 11 and the open set 257 all unchanged — with `Gate:` alone moving 118 to 119 and `^Gate: F033 R1 — ` reading 1. THE MODULE WAS READ, NOT SUMMARISED: it is pure and total as specified, `ruff check` exits 0 at "All checks passed!", the exported names are exactly `HUNK_ID_LENGTH`, `normalise_old_side` and `hunk_identity`, `HUNK_ID_LENGTH` is 16, the source contains ZERO occurrences of the builtin `hash` call and no `import os`, `import subprocess`, `import logging` or `open(`, and the reviewer exercised the shipped function directly: trailing whitespace stable True, leading whitespace significant True, path significant True, occurrence significant True, a lone-surrogate path with a non-`str` line and a non-numeric occurrence still returning a well-formed id, and `normalise_old_side(7)` answering `"7"` rather than raising. THE THREE MUTATION RED-PROOFS WERE REPRODUCED BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE, with its own anchors rather than the worker's, each anchor asserted UNIQUE before replacement and reverted after: the UNMUTATED CONTROL exits 0 at 10 passed — a colour with no baseline is not evidence — then dropping `path` from the digest exits 1 at 1 failed with `test_the_same_content_at_a_different_path_gets_a_different_id`, dropping `occurrence` exits 1 with `test_two_identical_hunks_in_one_file_are_separated_by_occurrence`, and removing the trailing strip exits 1 with `test_trailing_whitespace_does_not_change_the_id`. Each mutation reddened exactly the one test that names its property and no other, which is what makes the ten green tests mean something. THE STRUCTURE: seven SINGLE-PARENT commits of 331, 251, 16, 2, 4, 348 and 301 insertions, all under 500; the path set matches the change set in BOTH directions; residue 0 and 0 in the plan, the module and the test file against a 6/8 control in the saved block; `git ls-files .remedy-wt` reads 0; and the worktree list holds only the primary checkout, so the worker's own worktree was removed as ordered. THE SUITES were re-run SERIALLY by the reviewer in the primary checkout: the new `tests/orchestration/test_hunk_identity.py` 10 passed, `tests/docs/` 295, `tests/ui_server/` 497, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, `tests/orchestration/test_diff_parser.py` 43 and the canary `tests/cli/test_golden_path.py` 42, every REAL exit 0. THE WORKER SHIPPED A TENTH TEST BEYOND THE SPEC'S NINE and was right to: the SPEC called the `errors="replace"` clause load-bearing, and `test_a_lone_surrogate_cannot_be_encoded_strictly` pins the `UnicodeEncodeError` that makes it so, which converts a reviewer's claim into a guard. IT ALSO DECLARED A COLLISION IN THE REVIEWER'S OWN GATE — G5 forbade the substring `hash(` in a module the SPEC required to EXPLAIN why the builtin is unused, so a natural docstring would have reddened a gate over prose rather than over code — and it wrote around the collision in the prose instead of weakening either half, then reported it. That is a reviewer slip, it damaged nothing on disk, and under amend0827 rule 2 it spends no id and buys no correction round.
-<<<END RECORDF033R3
+<<<SLICE RECORDF033R4
+Gate: F033 R3 — THE PARSER SEAM. THE ROUND PASSED. Every gate was re-executed by the reviewer at `51e04c89` from a script of its own, and every reading reproduced. TRANSPORT EQUAL at 20035 bytes and sha256 `bb621ceb…a74b1` against the reviewer's own original, with ONE blob id at C0b. THE RECORD APPEND reconstructs 1435760 plus one newline plus 4340 to 1440101, the committed blob exactly, the base a byte PREFIX, N counted at 1, and the NEGATIVE CONTROL placed at offset 1435791 INSIDE the first appended paragraph rejected by BOTH readers. THE LEDGER is UNMOVED at 299 registered, `Done:` 44 over 42, `Landed:` 11 and the open set 257, with `Gate:` alone moving 119 to 120 and `^Gate: F033 R2 — ` reading 1. THE PARSER WAS READ AS A DIFF, LINE BY LINE, AND IT REMOVES NOTHING: `DIFF_VIEW_VERSION` is 2, the module imports `hunk_identity`, the stale claim `there is no endpoint yet` occurs ZERO times, `import os`, `import subprocess`, `import logging` and `open(` are all absent, and `ruff check` exits 0 at "All checks passed!". The id is computed from the file's resolved path, the hunk's `ctx` and `del` lines in order with `add` excluded, and an occurrence rank counted PER FILE and keyed on the normalised text rather than on the finished digest — and the round also corrected two neighbouring comments that still asserted the positional fact, which is the sweep R-0417's class asks for and which nothing gated. THE STABILITY PROPERTY WAS MEASURED BY THE REVIEWER AGAINST THE SHIPPED PARSER ON ITS OWN FIXTURES, not read out of the handback: with a two-hunk file, the second hunk's id survives an earlier hunk gaining an added line, survives a whole new hunk being inserted ahead of it, and survives its OWN added line changing — three perturbations, one unchanged id — while a newly inserted hunk takes a genuinely new id, two byte-identical old sides in one file take distinct ids, and every id is sixteen lowercase hex characters. THE THREE MUTATION RED-PROOFS WERE REPRODUCED BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE with its own anchors, each asserted unique before replacement: the UNMUTATED CONTROL exits 0 at 50 passed, then admitting `add` lines into the old side reddens exactly `test_added_lines_do_not_enter_the_hunk_id`, pinning the occurrence to 0 reddens exactly `test_two_identical_hunks_in_one_file_get_distinct_ids_by_occurrence`, and reverting the version reddens exactly `test_diff_view_version_is_two_for_the_content_derived_hunk_ids`. THE SUITES were re-run SERIALLY in the primary checkout: `tests/orchestration/test_diff_parser.py` 50 passed against 43 at the base, `tests/orchestration/test_diff_view_source.py` 15, `tests/orchestration/test_hunk_identity.py` 10, `tests/docs/` 295, `tests/ui_server/` 497, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 and the canary `tests/cli/test_golden_path.py` 42, every REAL exit 0. THE STRUCTURE: six SINGLE-PARENT commits of 286, 221, 18, 2, 339 and 313 insertions, all under 500, the path set matching the change set in BOTH directions, and `git ls-files .remedy-wt` reading 0. THE WORKER CORRECTED THE REVIEWER ON A LOAD-BEARING POINT AND WAS RIGHT. The block's test 1 ordered a stability check in which an EARLIER hunk gains an added line, and asserted that positional ids would fail it. They would not: adding a line INSIDE a hunk moves no hunk's index, so `0:1` survives that perturbation and the test discriminates nothing. The worker shipped the ordered test anyway, as convention 1 requires, and added `test_a_hunk_keeps_its_id_when_a_whole_new_hunk_is_inserted_before_it`, which moves the observed hunk from index 1 to index 2 and is the shape that actually separates a content id from a positional one. The reviewer confirmed both readings on its own fixtures before accepting them. A stability claim is only worth the perturbation that would break the thing it replaces, and this block did not check that its perturbation would. It damaged nothing on disk, so under amend0827 rule 2 it spends no id and buys no correction round; it is a dated line in `.agent/prose_slips.md` at the next round that writes one.
+
+DECISION F033 D2 — THE CLIENT MAY NOT INVENT AN ID THAT LOOKS LIKE A SERVER ID. THE SITUATION, read at `51e04c89`: `apps/ui/src/api/diffViewModel.ts` answers a hunk carrying no usable id with a synthesised positional one, ``id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}` ``. Under version 1 that was harmless, because positional WAS the shape the server sent. Round 3 made server ids content-derived, so the invented value now occupies the same field as a real id, is indistinguishable from one to every consumer downstream, and can never match anything the server would recognise. CHOSEN: keep inventing an id — the client needs one, because `defaultCollapsedHunkIds` and `toggleHunkCollapse` key a `Set<string>` on it and two hunks sharing an id would collapse as one — but prefix it with the reserved `UNIDENTIFIED_HUNK_ID_PREFIX`, so a degraded payload is LEGIBLE as degraded rather than silently plausible, and T002's approval path can refuse such an id instead of sending it to a server that will never match it. ALTERNATIVE 1, drop the fallback and let the id stay empty, REJECTED: every id-less hunk would then share the empty string, and the collapse set would fold them into one, which trades a silent wrong id for a visible wrong behaviour. ALTERNATIVE 2, have the client validate that an id is sixteen hex characters and reject others, REJECTED: the client is not the authority on the server's id shape, and a consumer that rejects what it does not recognise breaks the next version bump for no gain — the version field exists precisely so consumers do not have to sniff. WHY THIS IS NOT MERELY COSMETIC: F033 exists to attribute an operator's consent to a specific piece of content, and an id that cannot be traced to content is the one thing that attribution cannot survive. HOW TO REVERSE: delete the constant and restore the bare positional template; the tests naming the prefix are the ones that would then fail, and they name it explicitly.
+<<<END RECORDF033R4
 
 ## Done when — the gates
 
@@ -215,13 +181,13 @@ Run every one. Record the REAL exit code and the actual numbers, never the word
   `git status --porcelain` empty after EVERY commit. Branch
   `feature/f033-hunk-approval-v2` throughout. No force-push, no rewrite, no
   branch deletion; `git rev-parse feature/f033-hunk-approval` still `ed040812`.
-- **G2 TRANSPORT.** Report sha256 and byte length of `<C0a>:.agent/authored/f033-r3.md`
-  and of `.remedy-wt/f033-r3-block.md` and whether they are EQUAL; no expected
+- **G2 TRANSPORT.** Report sha256 and byte length of `<C0a>:.agent/authored/f033-r4.md`
+  and of `.remedy-wt/f033-r4-block.md` and whether they are EQUAL; no expected
   digest is stated here because a block cannot carry its own. Then
-  `git rev-parse <C0b>:.agent/authored/f033-r3.md` and
+  `git rev-parse <C0b>:.agent/authored/f033-r4.md` and
   `git rev-parse <C0b>:.agent/last_block.md` must print ONE blob id.
 - **G3 THE RECORD APPEND at C2.** Two readers. (a) the BASE blob, which must be
-  1435760 bytes, plus one newline plus RECORDF033R3 equals the C2 blob byte for
+  1440101 bytes, plus one newline plus RECORDF033R4 equals the C2 blob byte for
   byte; BASE a byte PREFIX; result ending in exactly one newline. (b) let N be
   the paragraph count your script COUNTS in the slice — report it — and compare
   the LAST N blank-line units against the slice's paragraphs IN ORDER. NEGATIVE
@@ -231,56 +197,53 @@ Run every one. Record the REAL exit code and the actual numbers, never the word
   `^Done: R-\d+ — ` lines with distinct ids, `^Landed: R-`, and
   `^Gate: F\d+ R\d+ — `; report the open set at both. This round registers and
   resolves nothing: registered must stay 299, `Done:` 44 over 42, `Landed:` 11
-  and the open set 257, all UNMOVED, with `Gate:` alone moving 119 to 120.
-  `^Gate: F033 R2 — ` at C2 must read exactly 1.
-- **G5 THE PARSER AGAINST THE SPEC.** At C3, report each as a measurement:
-  `python3 -m ruff check packages/orchestration/diff_parser.py tests/orchestration/test_diff_parser.py`
-  exits 0 with its real output; `DIFF_VIEW_VERSION` is `2`;
-  `parse_unified_diff_to_view` still contains no `import os`, `import subprocess`,
-  `import logging` or `open(`; the module imports `hunk_identity`; and the string
-  `there is no endpoint yet` occurs ZERO times in the module, which is the stale
-  claim §3 of the SPEC orders corrected. Then exercise the SHIPPED parser: parse
-  a multi-file diff and print every hunk id, confirming each is 16 lowercase hex
-  characters and all are distinct, and print `view["version"]`.
-- **G6 THE SUITES.** Serially, one pytest process at a time, in the PRIMARY
-  checkout, real exit codes, each exiting 0: `tests/orchestration/test_diff_parser.py`
-  (report the count; it was 43 at BASE and this round ADDS tests, so it must be
-  higher — report both numbers), `tests/orchestration/test_diff_view_source.py`,
-  `tests/orchestration/test_hunk_identity.py` (must still be 10),
-  `tests/ui_server/` (497 at BASE — the endpoint serves this envelope, so a
-  change here is this round's doing), and the canary
-  `tests/cli/test_golden_path.py` (42 at BASE).
-- **G7 THE MUTATION RED-PROOFS.** In a DISPOSABLE `git worktree` at C3, never in
-  the primary checkout, with `python3 -B`. FIRST the UNMUTATED control over
-  `tests/orchestration/test_diff_parser.py` — report its REAL exit code and
-  count. Then, one at a time, each reverted before the next:
-  (M1) include `DIFF_LINE_ADDED` entries in the old side as well — the
-  added-lines-do-not-enter-the-id test must FAIL;
-  (M2) pass a constant `0` as `occurrence` — the identical-hunks test must FAIL;
-  (M3) set `DIFF_VIEW_VERSION` back to `1` — the version test must FAIL.
-  For each, report the REAL exit code, the failed count and the NAME of each
-  failing test. Assert each mutation's anchor string is UNIQUE in the file before
-  replacing it, and say so. If a mutation comes back GREEN, report that plainly
-  and do NOT adjust the test or the code to force a red — a green mutation is
-  evidence about reachability and the reviewer owns what it means. Remove the
-  worktree BY EXACT PATH, then `git worktree prune`.
+  and the open set 257, all UNMOVED, with `Gate:` alone moving 120 to 121.
+  `^Gate: F033 R3 — ` at C2 must read exactly 1.
+- **G5 THE CLIENT AGAINST THE SPEC.** At C3, each as a measurement:
+  `UNIDENTIFIED_HUNK_ID_PREFIX` is EXPORTED from
+  `apps/ui/src/api/diffViewModel.ts` and its value is `unidentified:`; the bare
+  template ``` `${fileIndex}:${hunkIndex}` ``` occurs ZERO times in that file
+  — it occurs exactly ONCE at BASE, so this gate is not vacuous, and you should
+  report the BASE count too; and `npx tsc --noEmit` in `apps/ui` exits 0. Invoke
+  `npx` through Python, not `npm run`.
+- **G6 VITEST.** In the PRIMARY checkout, from `apps/ui`, through Python:
+  `npx vitest run --reporter=basic src/api/diffViewModel.test.ts` must exit 0.
+  Report the test count; it was 93 at BASE and this round ADDS tests, so report
+  both numbers. Then run the Python suites that read this seam, SERIALLY, one
+  pytest process at a time, each exiting 0: `tests/ui_server/` (497 at BASE) and
+  the canary `tests/cli/test_golden_path.py` (42 at BASE).
+- **G7 THE VITEST RED-PROOF.** In a DISPOSABLE `git worktree` at C3, never in the
+  primary checkout. A fresh worktree has NO `apps/ui/node_modules` — it is
+  gitignored — so run the runner from the PRIMARY checkout and point it at the
+  worktree's sources. The reviewer verified this exact route at `51e04c89`, with
+  cwd `apps/ui` of the PRIMARY checkout:
+
+      npx vitest run --reporter=basic \
+        --config <PRIMARY>/apps/ui/vitest.config.ts \
+        --root <WORKTREE>/apps/ui \
+        src/api/diffViewModel.test.ts
+
+  FIRST the UNMUTATED control — it must exit 0; report the count. Then mutate the
+  WORKTREE's `apps/ui/src/api/diffViewModel.ts` so the fallback returns the bare
+  positional id again, without the prefix, assert the anchor is UNIQUE before
+  replacing it, and report the REAL exit code, the failure count and the NAME of
+  each failing test. It must go RED. Revert, remove the worktree BY EXACT PATH,
+  then `git worktree prune`. If the mutation comes back GREEN, report that
+  plainly and do NOT adjust anything to force a red.
 - **G8 STRUCTURE.** Walk `git rev-list --reverse BASE..C3`: each commit exactly
   ONE parent, each under 500 INSERTIONS — the `+` column of `git diff --numstat`,
   never insertions plus deletions — and report the per-commit list. C4's own
   numbers are NOT ordered here; the reviewer measures C4 at the next gate. Report
   the range's path set against the change set in BOTH directions. Count
-  `<<<SLICE ` and `<<<END ` in `.agent/plan.md`,
-  `packages/orchestration/diff_parser.py` and
-  `tests/orchestration/test_diff_parser.py`: each 0, against
-  `.agent/authored/f033-r3.md` as a non-zero control whose count you report.
-  `git ls-files .remedy-wt` must read 0.
+  `<<<SLICE ` and `<<<END ` in `.agent/plan.md` and both `apps/ui` files: each 0,
+  against `.agent/authored/f033-r4.md` as a non-zero control whose count you
+  report. `git ls-files .remedy-wt` must read 0.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: SESSION 1,
-round 3, BASE, the changed-files table with real `+/-` from `git diff --numstat`,
+round 4, BASE, the changed-files table with real `+/-` from `git diff --numstat`,
 one line per gate with real numbers, the item-status table with every ordered
-item exactly once, and your deviations. Quote the FINAL text of the parser's
-corrected contract-note bullets and the list of test names you added or renamed,
-so the reviewer can read the shape without reconstructing it. No length cap.
-Write no verdict on your own work.
+item exactly once, and your deviations. Quote the final fallback expression and
+the fixture values you chose, and list the test names you added or renamed. No
+length cap. Write no verdict on your own work.
