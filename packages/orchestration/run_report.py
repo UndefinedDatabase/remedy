@@ -72,6 +72,18 @@ MAX_CYCLE_LINES = 20
 #: eventually dwarf the account of the run it is attached to.
 MAX_CAPABILITY_LINES = 10
 
+#: F033 (finding R-0738): how a task's FOLDED apply state reads in a task line.
+#: "partially applied" is the spelling the viewer badge and the tasks card
+#: already use — one spelling per concept, across all three surfaces.  A state
+#: this table does not know renders NOTHING rather than an invented phrase: the
+#: same fail-quiet rule an absent source gets (P6).
+APPLY_STATE_LABELS: dict[str, str] = {
+    "applied": "applied",
+    "reverted": "reverted",
+    "not_applied": "not applied",
+    "partial": "partially applied",
+}
+
 #: The final report's filename inside the job's evidence area (F053 T002).
 #: FIXED, and the writer overwrites it: the acceptance rule is exactly one
 #: report per terminal job, REGENERATED on resume-then-finish, never appended.
@@ -234,6 +246,17 @@ class TaskOutcome:
     #: Relative path into the evidence area, or "" when nothing was written.
     #: Relative on purpose: an absolute path is unusable in a moved bundle.
     evidence_ref: str = ""
+    #: The task's folded apply state (proof_chain.fold_task_apply_states), one of
+    #: APPLY_STATE_LABELS' keys.  EMPTY means NOT RECORDED — this module's
+    #: standing rule for an absent source (P6) — and renders no clause at all,
+    #: which is what keeps a report of a job with no proof chain byte-identical
+    #: to the one this module produced before hunk-level approval existed.
+    apply_state: str = ""
+    #: The two numbers behind that state, defaulted so every existing
+    #: construction site keeps working unchanged.  Both are the FOLD's counts;
+    #: this module re-derives neither (finding R-0738).
+    applied_changes: int = 0
+    total_changes: int = 0
 
 
 @dataclass(frozen=True)
@@ -421,6 +444,22 @@ def _header_lines(sources: ReportSources, mode: str, rendered_at: str) -> list[s
     return lines
 
 
+def _apply_clause(task: TaskOutcome) -> str:
+    """The task's apply clause, or "" when there is nothing recorded to say.
+
+    R-0738's third surface: a reader must be able to tell a MIXED apply state
+    from a complete one, with the two counts behind it, without opening the
+    evidence.  An empty state — and any state APPLY_STATE_LABELS does not know —
+    yields the empty string, so the task line is byte-identical to the one this
+    module rendered before the state existed.
+    """
+    label = APPLY_STATE_LABELS.get(task.apply_state, "")
+    if not label:
+        return ""
+    return (f" — {label} "
+            f"({_as_int(task.applied_changes)}/{_as_int(task.total_changes)} changes)")
+
+
 def _task_lines(sources: ReportSources) -> list[str]:
     lines = ["## Tasks", ""]
     if not sources.tasks:
@@ -428,6 +467,7 @@ def _task_lines(sources: ReportSources) -> list[str]:
         return lines
     body = [
         f"- `{t.task_id}` — {_text(t.description)} — **{_text(t.status)}**"
+        + _apply_clause(t)
         + (f" — {_link('evidence', t.evidence_ref)}" if t.evidence_ref else "")
         for t in sources.tasks
     ]
@@ -855,6 +895,75 @@ def _evidence_sources(job: Any) -> dict[str, Any]:
     return extra
 
 
+def _folded_apply_states(job: Any) -> dict[str, Any]:
+    """Each task's folded apply state, keyed by the FULL task id, or ``{}``.
+
+    Guarded on its own like every other evidence-area read in this module: an
+    unreadable timeline, an unbuildable chain or a missing proof module costs
+    the report this ONE clause and never the rest of it.  Absent renders as no
+    clause at all, which is the same P6 rule as every other missing source —
+    never an invented apply state.
+
+    The fold itself lives in ``packages.orchestration.proof_chain`` beside the
+    ``ProofChange.apply_state`` field it reads, so the report and the cockpit
+    give the same answer and neither imports the other (finding R-0738).
+    """
+    try:
+        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.proof_chain import (
+            build_proof_chain,
+            fold_task_apply_states,
+        )
+        from packages.orchestration.timeline import load_run_events
+
+        job_id = str(getattr(job, "id", "") or "")
+        if not job_id:
+            return {}
+        data_dir = resolve_data_root()
+        events = load_run_events(data_dir, job_id)
+        return fold_task_apply_states(
+            build_proof_chain(job, events, data_dir=data_dir))
+    except Exception:  # noqa: BLE001 — an account of the run, not a gate on it
+        return {}
+
+
+def _tasks_with_apply_state(job: Any, tasks: tuple[TaskOutcome, ...]
+                            ) -> tuple[TaskOutcome, ...] | None:
+    """*tasks* with each one's folded apply state attached, or None to change nothing.
+
+    WHY THIS RE-READS ``job.tasks`` INSTEAD OF USING ``TaskOutcome.task_id``:
+    ``collect_report_sources`` sets that field to ``str(t.id)[:8]``, a
+    TRUNCATION, while ``fold_task_apply_states`` keys on the FULL task id.  Two
+    tasks whose ids agree in their first eight characters would take each
+    other's apply state if the truncated value were used as a lookup key.  So
+    the full ids are re-read from the SAME iteration ``collect_report_sources``
+    used, and paired positionally with the outcomes it produced; the truncated
+    value is never a key.
+    """
+    folded = _folded_apply_states(job)
+    if not folded or not tasks:
+        return None
+    full_ids = [str(getattr(t, "id", "") or "")
+                for t in (getattr(job, "tasks", None) or ())]
+    if len(full_ids) != len(tasks):
+        # The two iterations disagree, so the pairing is not knowable.  Saying
+        # nothing is the honest answer; guessing an alignment is not.
+        return None
+    attached: list[TaskOutcome] = []
+    for full_id, outcome in zip(full_ids, tasks):
+        state = folded.get(full_id)
+        if state is None:
+            attached.append(outcome)
+            continue
+        attached.append(replace(
+            outcome,
+            apply_state=str(getattr(state, "state", "") or ""),
+            applied_changes=_as_int(getattr(state, "applied", 0)),
+            total_changes=_as_int(getattr(state, "total", 0)),
+        ))
+    return tuple(attached)
+
+
 def build_report_sources(job: Any) -> ReportSources:
     """The full source set: what lives on the job, plus its evidence area.
 
@@ -863,6 +972,9 @@ def build_report_sources(job: Any) -> ReportSources:
     """
     base = collect_report_sources(job)
     extra = _evidence_sources(job)
+    attached = _tasks_with_apply_state(job, base.tasks)
+    if attached is not None:
+        extra["tasks"] = attached
     if not extra:
         return base
     return replace(base, **extra)
