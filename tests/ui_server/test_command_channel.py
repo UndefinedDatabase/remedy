@@ -420,16 +420,22 @@ class TestCommandChannelDoor:
     # -- D.6: the UI-exposed subset (DECISION F009 D4 and D12) --------------
 
     def test_every_exposed_command_reaches_the_answer_its_effect_gives(self):
-        """The set itself is the contract, not the two literals above.
+        """The set itself is the contract, not the literals above.
 
-        BOTH exposed ids now dispatch. `job.stop` answers 200. A
-        `decision.resolve` built by `_valid_body` carries no `args`, so it names
-        no answerable decision and its effect RUNS and DECLINES: DECISION F009
-        D21's 409, whose body carries `error` and not `command` because every
-        refusal on this door goes out through the same safe-error shape.
+        EVERY exposed id now dispatches, and the 501 guard is unreachable while
+        that holds. `job.stop` answers 200. A `decision.resolve` built by
+        `_valid_body` carries no `args`, so it names no answerable decision, and a
+        `patch.approve-hunks` built the same way decides over a job with no
+        evidence directory at all: both effects RUN and DECLINE, so both take
+        DECISION F009 D21's 409, whose body carries `error` and not `command`
+        because every refusal on this door goes out through the same safe-error
+        shape. The two 409s carry DIFFERENT messages on purpose — the decision
+        one's wording names decisions — and this is where that is pinned.
         """
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
 
+        declined = {"decision.resolve": "decision is not open",
+                    "patch.approve-hunks": "hunk decision was refused"}
         port, token = self._start_server()
         for index, command_id in enumerate(sorted(UI_EXPOSED_COMMANDS)):
             status, body = self._request(
@@ -442,7 +448,7 @@ class TestCommandChannelDoor:
                 assert body["command"] == command_id
             else:
                 assert status == 409, command_id
-                assert body["error"] == "decision is not open", command_id
+                assert body["error"] == declined[command_id], command_id
 
     def test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved(self):
         """DECISION F009 D21's success path, read back off disk.
@@ -1416,6 +1422,7 @@ class TestCommandDoorImportGuard:
         "_handle_command_submission",
         "_dispatch_job_stop",
         "_dispatch_decision_resolve",
+        "_dispatch_approve_hunks",
         "_publish_command_result",
         "_emit_command_accepted_event",
         "_audit_attempt",
@@ -1439,11 +1446,21 @@ class TestCommandDoorImportGuard:
         ("packages.orchestration.config", "get_config"),            # D9's limit
         ("packages.orchestration.config", "get_key_spec"),          # D9's limit
         ("packages.orchestration.data_paths", "resolve_data_root"), # D23's root
+        ("packages.orchestration.diff_view_source", "DIFF_SCOPE_JOB"),  # F033 D4
+        ("packages.orchestration.diff_view_source", "build_diff_view"), # F033 D4
         ("packages.orchestration.escalation", "answer_task_decision"),     # D5
+        ("packages.orchestration.evidence_index",
+         "resolve_job_evidence_dir"),                               # F033 D4
         ("packages.orchestration.flight_plan",
          "open_clarification_questions"),                           # F031 D24
         ("packages.orchestration.flight_plan",
          "resolve_flight_plan_approval"),                           # F031 D24
+        ("packages.orchestration.hunk_approval", "HunkApprovalRefusal"),  # F033 D4
+        ("packages.orchestration.hunk_decision_record",
+         "record_hunk_decision_from_view"),                         # F033 D4
+        ("packages.orchestration.hunk_ledger", "HUNK_STATE_APPROVED"),  # F033 D4
+        ("packages.orchestration.hunk_ledger", "HUNK_STATE_PENDING"),   # F033 D4
+        ("packages.orchestration.hunk_ledger", "HUNK_STATE_REJECTED"),  # F033 D4
         ("packages.orchestration.safe_points", "request_stop"),            # D5
         ("packages.orchestration.storage", "save_job"),                    # D21
         ("packages.orchestration.timeline", "append_run_event"),           # D23
@@ -1452,9 +1469,15 @@ class TestCommandDoorImportGuard:
     #: Modules the door may NEVER import from, whatever the name. These are the
     #: applicators and the shell/filesystem writers the P3 contract exists to
     #: keep out of an HTTP handler. Every path here resolves on disk.
+    #: `packages.orchestration.hunk_apply` is here although NOTHING imports it, and that
+    #: is the point: `_door_imports` collects DIRECT imports only, so a later edit pulling
+    #: the hunk applier into a door method would otherwise pass a guard whose whole purpose
+    #: is to keep an applier out of an HTTP handler. DECISION F033 D4 is the rule — the
+    #: hunk door RECORDS and never applies — and this line is what enforces it by NAME.
     FORBIDDEN_MODULES = frozenset({
         "packages.orchestration.source_apply",
         "packages.orchestration.patch_apply",
+        "packages.orchestration.hunk_apply",
         "packages.orchestration.diff_repair_apply",
         "packages.orchestration.job_fulfillment",
         "packages.orchestration.exec_guard",
@@ -1557,9 +1580,12 @@ class TestCommandDoorImportGuard:
 class TestUiExposedCommands:
     """The exposed subset itself — DECISION F009 D4."""
 
-    def test_the_set_holds_exactly_the_two_ruled_ids(self):
+    def test_the_set_holds_exactly_the_ruled_ids_and_no_other(self):
+        """The name carries no numeral ON PURPOSE: the previous one stated the count, and
+        a name that must be re-read every time the set widens is the half nobody re-reads."""
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS
-        assert sorted(UI_EXPOSED_COMMANDS) == ["decision.resolve", "job.stop"]
+        assert sorted(UI_EXPOSED_COMMANDS) == [
+            "decision.resolve", "job.stop", "patch.approve-hunks"]
 
     def test_the_set_is_a_frozenset(self):
         from apps.cli.command_catalog import UI_EXPOSED_COMMANDS

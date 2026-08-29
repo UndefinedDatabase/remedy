@@ -4847,6 +4847,7 @@ CATALOG: tuple[CommandEntry, ...] = (
 UI_EXPOSED_COMMANDS: frozenset[str] = frozenset({
     "job.stop",
     "decision.resolve",
+    "patch.approve-hunks",
 })
 
 
