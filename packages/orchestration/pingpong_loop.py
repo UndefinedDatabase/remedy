@@ -896,12 +896,15 @@ def compose_builder_prompt(
     Remedy deliberately does NOT supply this parameter from the run loop yet.
     The call site in :func:`run_pingpong` that composes the builder prompt is
     unchanged, so in production ``hunk_ledger`` is always ``None`` and this
-    segment never registers. The reason is that
-    ``packages/orchestration/hunk_decision_record.py`` builds the ledger and
-    persists NOTHING, so there is as yet no route from a stored decision to the
-    loop; the round that locates the supply follows this one. Wiring a call site
-    to a value nothing writes would look like the feature working while proving
-    nothing at all.
+    segment never registers. The absence is in the WIRING and not in the data:
+    ``packages/orchestration/hunk_decision_record.py`` writes the exported
+    ledger onto ``job.metadata`` under the key ``hunk_decisions``, keyed by
+    attempt, and ``save_job`` at the write door makes that record durable. What
+    no round has built yet is the step between — reading that key for the
+    current attempt and rebuilding a ledger from its rows — and that is its own
+    round, because a call site wired without a test that follows a stored
+    decision through to the composed prompt would look like the feature working
+    while proving nothing at all.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
