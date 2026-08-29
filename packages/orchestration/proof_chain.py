@@ -196,6 +196,73 @@ def _derive_missing_links(
     return missing
 
 
+# WHY: one task's folded apply answer travels with the two numbers behind it, so a
+# reader can say "3 of 8 applied" instead of only "partial" (finding R-0738).
+@dataclass(frozen=True)
+class TaskApplyState:
+    """One task's apply state, folded from its changes, plus the counts behind it."""
+
+    state: str        # applied | reverted | not_applied | partial
+    applied: int      # changes in this task whose apply_state is "applied"
+    total: int        # changes in this task, the group size
+
+
+def fold_task_apply_states(chain: Any) -> dict[str, TaskApplyState]:
+    """Fold each task's changes to ONE apply state, keyed by the FULL task id.
+
+    Lives here, beside the `ProofChange.apply_state` field it reads, because more than
+    one reader needs the same answer: the cockpit's `_task_truth_maps` in
+    `packages/orchestration/ui_server.py` and the run report. A reader importing the
+    HTTP server module to learn a task's apply state would be the wrong dependency in
+    the wrong direction. When *chain* is None the result is empty, and the caller
+    reports "unknown".
+
+    Finding R-0738. The apply fold agrees or it says "partial": unanimity for each
+    confident answer, one distinct state reserved for the mixed case, the same shape
+    the PROOF fold in the cockpit has. The membership test this replaces —
+    `if "applied" in apply_states` — reported "applied" for a task where ONE change of
+    eight had applied, indistinguishable from a task where all eight had, and
+    hunk-level approval makes that mixed case the normal one. `grouped` is built by
+    setdefault(...).append(...), so a task's list is never empty and the all() below
+    cannot be vacuously true. ONLY the mixed case moved: the three unanimous inputs
+    read exactly what the fold returned for them before the partial state existed, and
+    the move out of `ui_server.py` changed no answer at all.
+    """
+    folded: dict[str, TaskApplyState] = {}
+    if chain is None:
+        return folded
+    try:
+        grouped: dict[str, list[Any]] = {}
+        for c in chain.changes:
+            tid = getattr(c, "task_id", "") or ""
+            if not tid:
+                continue
+            grouped.setdefault(tid, []).append(c)
+        state_by_task: dict[str, str] = {}
+        for tid, changes in grouped.items():
+            apply_states = [getattr(c, "apply_state", "") for c in changes]
+            if all(s == "applied" for s in apply_states):
+                state_by_task[tid] = "applied"
+            elif all(s == "reverted" for s in apply_states):
+                state_by_task[tid] = "reverted"
+            elif not any(s in ("applied", "reverted") for s in apply_states):
+                # Absorbs the getattr default "" exactly as the old `else` did: a
+                # change with no apply_state attribute is not evidence of an apply.
+                state_by_task[tid] = "not_applied"
+            else:
+                state_by_task[tid] = "partial"
+            folded[tid] = TaskApplyState(
+                state=state_by_task[tid],
+                applied=sum(1 for s in apply_states if s == "applied"),
+                total=len(apply_states),
+            )
+    except (ImportError, AttributeError, TypeError):
+        # The same three classes the cockpit fold guarded, so a malformed chain
+        # degrades to "unknown" here exactly as it did there.
+        return {}
+    return folded
+
+
 # ---------------------------------------------------------------------------
 # Test linking
 # ---------------------------------------------------------------------------
