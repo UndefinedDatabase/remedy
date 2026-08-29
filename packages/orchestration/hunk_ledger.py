@@ -57,6 +57,7 @@ Public API::
     HunkDecisionLedger — the ordered entries of one attempt
     build_hunk_ledger — known ids plus a decision plus what became of it, as a ledger
     export_hunk_ledger — that ledger as a JSON-safe dict
+    import_hunk_ledger — that dict back to a ledger, the inverse of the export
 """
 
 from __future__ import annotations
@@ -308,3 +309,50 @@ def export_hunk_ledger(ledger: HunkDecisionLedger) -> dict:
         )
         hunks.append(dict(zip(_EXPORT_ENTRY_KEYS, values)))
     return {_EXPORT_ROOT_KEY: hunks}
+
+
+def import_hunk_ledger(exported: Any) -> HunkDecisionLedger:
+    """The INVERSE of ``export_hunk_ledger``: an exported mapping read back as a ledger.
+
+    THE KEY RENAME IS THE WHOLE REASON THIS EXISTS. A stored row carries ``id``; a
+    ``HunkLedgerEntry`` carries ``hunk_id``. That single difference is why a caller cannot
+    hand stored rows straight to ``hunk_repair_findings.render_rejection_findings``, which
+    reads ``entry.hunk_id``, ``entry.state`` and ``entry.reason`` off OBJECTS while the
+    stored rows are MAPPINGS under a different spelling. Rebuilding them here is what makes
+    a decision already recorded on a job usable by the renderer.
+
+    ROUND TRIP: for any ledger ``build_hunk_ledger`` produces,
+    ``import_hunk_ledger(export_hunk_ledger(ledger))`` equals that ledger. Both dataclasses
+    are frozen, so that equality is structural rather than field by field.
+
+    Never raises, on any input at all. THE STRUCTURAL GUARD IS THE ONE ``try`` BELOW and
+    there is deliberately no second one inside it: a redundant inner layer would make this
+    one unobservable, and a guard no test can redden is a guard nobody knows is there.
+    Anything unreadable — ``None``, a non-mapping, a mapping with no rows key, a
+    non-iterable rows value, a row that is not a mapping, a row missing one of the four
+    keys — yields an EMPTY ledger and NEVER a partially built one, for the same reason
+    ``render_rejection_findings`` gives for returning the empty string: a half-built
+    result's missing half is invisible to whoever reads it next. ``_total_text`` is the
+    SEPARATE coercion guard and covers the four FIELD VALUES, exactly as
+    ``export_hunk_ledger`` already uses it. A red-proof aimed at the structural guard feeds
+    a malformed SHAPE; one aimed at the coercion guard feeds a malformed VALUE.
+
+    DELIBERATE ABSENCE — Remedy does NOT validate here that ``state`` is one of the three
+    ``HUNK_STATE_*`` values, nor that ``landing`` is one of the three ``HUNK_LANDING_*``
+    values. Importing is not the layer that decides whether a decision is coherent —
+    ``packages/orchestration/hunk_approval.py`` is — and a row carrying an unknown state is
+    reproduced exactly as it was stored, so the fault stays VISIBLE to whoever reads the
+    ledger next instead of being silently normalised into a valid-looking one."""
+    try:
+        entries: list[HunkLedgerEntry] = []
+        for row in exported[_EXPORT_ROOT_KEY]:
+            # The rename made explicit: the row's ``id`` becomes the entry's ``hunk_id``.
+            identifier, state, reason, landing = (
+                _total_text(row[key]) for key in _EXPORT_ENTRY_KEYS
+            )
+            entries.append(
+                HunkLedgerEntry(hunk_id=identifier, state=state, reason=reason, landing=landing)
+            )
+        return HunkDecisionLedger(tuple(entries))
+    except Exception:
+        return HunkDecisionLedger(())
