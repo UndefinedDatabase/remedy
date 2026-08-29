@@ -8,7 +8,8 @@ three decision states lands on the hunk that earned it; a rejection reason arriv
 and every other reason is empty; each of the three landing values in the case that produces
 it; the two axes coming APART, which is the whole reason this module exists; a failed apply
 refusing the ``landed_hunk_ids`` it was handed; an unattempted apply overriding every other
-landing argument; a decided id the attempt does not carry being dropped; the export carrying
+landing argument; a decided id the attempt does not carry being dropped; a ``None`` known set
+yielding NO rows where any OTHER unusable value yields one naming it; the export carrying
 four keys and nothing else; and TOTALITY — no input raises, in any argument position.
 
 Decisions are built by CALLING ``decide_hunk_approval`` wherever the case allows it, so the
@@ -203,6 +204,18 @@ def test_a_decided_id_the_attempt_does_not_carry_is_dropped() -> None:
         HUNK_STATE_APPROVED,
         HUNK_STATE_PENDING,
     ]
+
+
+def test_a_none_known_set_yields_no_rows_where_another_unusable_value_yields_one() -> None:
+    # ``_entries`` diverges from ``hunk_approval._entries`` here ON PURPOSE — its docstring
+    # calls it "ONE DELIBERATE DIVERGENCE" — and this is what pins it: a fabricated hunk
+    # called "None" in the operator's record is worse than an empty record that says nothing
+    # is known. The SECOND half is the discriminator: without it this passes under an
+    # ``_entries`` that returns ``[]`` for everything, which is not the shipped rule.
+    decision = _coherent_decision(["h1"], [{"id": "h2", "reason": REASON}])
+    assert build_hunk_ledger(None, decision).entries == ()
+    unusable = build_hunk_ledger(7, decision)
+    assert [entry.hunk_id for entry in unusable.entries] == ["7"]
 
 
 def test_the_export_carries_the_four_keys_and_nothing_else() -> None:
