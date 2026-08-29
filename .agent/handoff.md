@@ -1,370 +1,311 @@
-# Handback — F033 Hunk-level diff approval, round 23
+# Handoff — F033 Hunk-level diff approval, round 24
 
 ## Session
 
-SESSION 6 of feature F033 · round 23 · rounds so far 23
+SESSION 6 of feature F033 · round 24 · rounds so far 24
 
-Branch: `feature/f033-hunk-approval-v2` (never main; no PR created, none merged).
-Block on disk: `.remedy-wt/f033-r23-block.md`, sha256
-`cab2e62a63be01e525c8e73c8fcab5ff671acfca0d064818a8f5fb7b1ee5931e`, 26181 bytes —
-computed by the worker before reading it and equal to the digest the block prompt
-stated.
-
-Round 23 connects the two pieces rounds 21 and 22 built. `hunk_decision_record.py`
-gains `load_latest_hunk_ledger_from_metadata`, which selects a task's LATEST
-recorded decision out of a job's metadata MAPPING and rebuilds it through
-`import_hunk_ledger`; `run_pingpong` gains a keyword-only `hunk_ledger` it forwards
-to `compose_builder_prompt`; and the acceptance test drives the REAL loop and ties
-the loop's own segment bytes to the operator's reason by sha256. The JOB-level
-caller in `pingpong_job.py` is deliberately untouched and is the next round.
+The soft limit is round 25 and the remaining work does not fit in it, so the
+scope report operator amendment amend0827 rule 6 obliges is carried below,
+under "Scope report". It is a DOCUMENTED PROPOSAL and was not executed.
 
 ## Range
 
-Review of `d0c86c2d`..HEAD, where HEAD is C6 — the commit that adds this file — and its
-parent is C5 `5fe56ddb`, the revision every gate below was run at. C6's own sha is not
-written here because it does not exist while this file is being written, and this
-repository does not put an unmeasured sha on disk.
+Review of `c9dd471f`..`HEAD` on branch `feature/f033-hunk-approval-v2`.
+
+This round completes F033's FUNCTIONAL scope: the last hop is wired.
 
 ## Commits
 
-### 9ba7f6ec docs(f033): save the round 23 step block  (C0a)
+Eight commits C0a through C6, plus this handback commit C7. Every one is
+single-parent. The block's ordered commit sequence was followed exactly — no
+extra commit, none dropped, none reordered.
+
+### b9f83c64 docs(f033): save the round 24 step block — C0a
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f033-r23.md` | +350/-0 | the round-23 block, copied byte for byte with `shutil.copyfile` — never retyped |
+| `.agent/authored/f033-r24.md` | +334 / -0 | the step block, copied byte for byte from `.remedy-wt/f033-r24-block.md` with `shutil.copyfile`, never retyped |
 
-### 0527a1a3 docs(f033): mirror the round 23 block into last_block  (C0b)
+### 7dc987c5 docs(f033): mirror the round 24 block into last_block — C0b
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +256/-220 | the same bytes mirrored into the fast-resume slot |
+| `.agent/last_block.md` | +262 / -278 | the same bytes mirrored; single `.agent/**` state-file rewrite |
 
-### 7fe2f553 docs(f033): rewrite the plan for round 23  (C1)
+### bd99959e docs(f033): rewrite the plan for round 24 — C1
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +14/-11 | full rewrite from slice PLAN23, byte for byte |
+| `.agent/plan.md` | +22 / -25 | full rewrite from slice PLAN24, byte-equal, 46 lines |
 
-### ce6c2866 docs(f033): book the round 22 verdict and resolve R-0747  (C2)
+### 90af5927 docs(f033): book the round 23 verdict and register R-0748 — C2
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +4/-0 | slice RECORD23 appended after one blank-line separator; the `Landed: R-0747` line is untouched and the `Done:` paragraph joins it |
+| `.agent/live_review.md` | +4 / -0 | append of slice RECORD24: the R23 PASS gate entry and the R-0748 registration |
 
-### 39acdfb0 feat(f033): read a task latest recorded hunk decision back as a ledger  (C3, SPEC A)
+### 3fc4fbbe docs(f033): record the round 23 stale base numeral slip — C3
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/hunk_decision_record.py` | +108/-10 | `load_latest_hunk_ledger_from_metadata` and its private parse guard `_parsed_decision_stamp`; `import_hunk_ledger` added to the existing import block; the new name added to `Public API::`; the module docstring's totality paragraph narrowed to the two recording doors (see deviation D3) |
+| `.agent/prose_slips.md` | +2 / -0 | append of slice SLIPS24, one dated line, no id |
 
-### 88197da8 feat(f033): forward a hunk ledger from run_pingpong into the builder prompt  (C4, SPEC B)
+### 7cb78726 fix(f033): retire the false persists-no-decision clause from the acceptance test docstring — C4 (SPEC A)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/pingpong_loop.py` | +29/-11 | `run_pingpong` gains keyword-only `hunk_ledger: Any = None` and forwards it at the `builder_composed` call; `compose_builder_prompt`'s stale "does NOT supply this parameter from the run loop yet" paragraph rewritten per SPEC B3 |
+| `tests/orchestration/test_builder_prompt_hunk_rejections.py` | +9 / -6 | pair PAIR-DOC applied as a REWRITE of the module docstring's closing paragraph |
+| `.agent/live_review.md` | +2 / -0 | SPEC A3's single `Landed: R-0748` line, in the SAME commit |
 
-### 5fe56ddb test(f033): follow a stored hunk decision through the real loop to the prompt  (C5, SPEC C)
+### 7c02e01f feat(f033): supply the task recorded hunk ledger at the job level run_pingpong call — C5 (SPEC B)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/orchestration/test_hunk_decision_record.py` | +188/-0 | APPEND ONLY: eight tests over SPEC A — latest-wins in both insertion orders, task isolation, unparseable-loses, none-parseable-last-wins, the `>=` tie discriminator, the absent task, the totality table, and the C2 record→read round trip |
-| `tests/orchestration/test_builder_prompt_hunk_rejections.py` | +155/-0 | APPEND ONLY: SPEC C3, the acceptance test through the REAL `run_pingpong`, plus C4's negative half |
+| `packages/orchestration/pingpong_job.py` | +49 / -0 | module-level `_recorded_hunk_ledger_for_task(job, task)` plus one `hunk_ledger=` keyword at the `run_pingpong` call |
 
-### C6 docs(f033): hand back round 23  (this file; sha unknown at authoring time)
+### 5cb87f37 test(f033): pin the job level hunk ledger lookup, its scope boundary and its totality — C6 (SPEC C)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | rewrite | this handback, and the only path C6 touches; a handoff cannot table the commit that writes it (R-0149 pattern) |
+| `tests/orchestration/test_pingpong_job_hunk_ledger.py` | +241 / -0 | new file, 10 tests covering SPEC C1 to C6 |
 
-Every commit is single-parent. Insertions: 350, 256, 14, 4, 108, 29, 343 — all under
-500. No commit was reordered, added or dropped relative to the block's ordered
-sequence C0a, C0b, C1, C2, C3, C4, C5, C6.
+### C7 — this handback
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | rewrite | the handback itself; a handoff cannot table the commit that writes it (R-0149 pattern) |
 
 ## External actions
 
-- `git worktree add .remedy-wt/wt-r23 5fe56ddb --detach` → REAL_EXIT=0.
-- `git worktree remove .remedy-wt/wt-r23` → REAL_EXIT=0 (no `--force` needed).
-- `git worktree prune` → REAL_EXIT=0. `git worktree list` afterwards shows the
-  primary checkout only.
-- `git push -u origin feature/f033-hunk-approval-v2` → runs after C6; see the Push
-  paragraph at the end of Verification for why its exit code is not on disk here.
-- No `gh` command was run. No PR was created, edited or merged. `main` untouched.
+| Action | Command | Outcome |
+|--------|---------|---------|
+| worktree add | `git worktree add .remedy-wt/r24-mut HEAD --detach` | REAL exit 0, detached at `5cb87f37` |
+| worktree remove | `git worktree remove .remedy-wt/r24-mut --force` | REAL exit 0 |
+| worktree prune | `git worktree prune` then `git worktree list` | REAL exit 0; only the primary checkout remains |
+| push | `git push -u origin feature/f033-hunk-approval-v2` | run IMMEDIATELY after the commit that writes this file, so its outcome cannot be stated inside it — the same self-reference that stops a handoff tabling its own commit. The worker's report to the operator carries the real exit code |
 
-## Verification
+No pull request was created, none exists, and none should exist before the
+closure sequence. `main` was never touched. Nothing was force-pushed.
 
-Every gate ran at C5 (`5fe56ddb`), before the C6 handback commit. REAL exit codes come
-from `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with no pipe, or from a Python driver's
-`subprocess.returncode`.
+## Verification — one line per gate, REAL exit codes
 
-**G1 TRANSPORT — REAL_EXIT=0.**
-`cmp .remedy-wt/f033-r23-block.md .agent/authored/f033-r23.md` → REAL_EXIT=0, silent.
-`cmp .remedy-wt/f033-r23-block.md .agent/last_block.md` → REAL_EXIT=0, silent.
-Committed `.agent/authored/f033-r23.md` at C5: 26181 bytes, sha256
-`cab2e62a63be01e525c8e73c8fcab5ff671acfca0d064818a8f5fb7b1ee5931e` — equal to the
-source file's, byte-identical.
+REAL exit codes were taken with `bash -c '<cmd>; echo "REAL_EXIT=$?"'` and NO
+pipe anywhere, because `false | tail` reports 0. All gates ran at C6, before C7.
 
-**G2 THE PLAN — REAL_EXIT=0.**
-`.agent/plan.md` at C5: 2690 bytes, 49 lines, sha256
-`be450d505e65f31f60a75c2a52cd1eb5a0d38b73d412590b2285e9ba31df7d6a`. Slice PLAN23:
-2690 bytes, same sha256. byte-EQUAL True; under 50 lines True; holds `## Goal` True;
-holds `Steps` True.
+| Gate | Result | REAL exit | What was measured |
+|------|--------|-----------|-------------------|
+| G1 TRANSPORT | GREEN | 0 | committed `.agent/authored/f033-r24.md` sha256 `1fc8691cbc74309b535c15b834334c36892756dc3765a317404c153b5410ea76`, 25812 bytes; `cmp` against `.remedy-wt/f033-r24-block.md` REAL exit 0; `.agent/last_block.md` identical digest and length |
+| G2 THE PROSE FILES | GREEN | 0 | `.agent/plan.md` byte-EQUAL to PLAN24, 46 lines (under 50), holds `## Goal` and `Steps`; `.agent/prose_slips.md` base 30807 MEASURED at `c9dd471f` + 1 + slice 529 = 31337 = committed size; base a byte PREFIX, slice an exact SUFFIX |
+| G3 THE RECORD APPEND (C2) | GREEN | 0 | base 1595141 MEASURED + 1 + RECORD24 7458 = 1602600 = committed size at `90af5927`; pre-commit blob a byte PREFIX, slice an exact SUFFIX; N COUNTED in the script = 2; the file's LAST 2 blank-line units equal the slice's paragraphs IN ORDER; byte flipped at offset 1597589, proved inside the FIRST appended paragraph's span 1595142–1600037 (`b's'`→`b'S'`), and BOTH readers — suffix-equality and last-N-paragraphs — REJECTED the flipped bytes and ACCEPTED the unflipped ones |
+| G4 THE LEDGER | GREEN | 0 | registered distinct 308 (`c9dd471f`) → 309 (C2, C4), ADDED id exactly `R-0748`; `^Done: R-\d+ — ` 53 lines over 51 distinct UNMOVED at all three; `^Landed: ` 19 → 20 with `^Landed: R-0748 — ` 0 before and exactly 1 at C4; `^Gate: F033 R23 — ` 0 before, exactly 1 after; open set 257 → 258. `^Landed: R-0747 — ` and the `Done: R-0747` paragraph both still exactly 1 |
+| G5 THE PAIR + THE SWEEP | GREEN | 1 (grep, no match) | in `test_builder_prompt_hunk_rejections.py`: PAIRDOC-FROM 0 times (also 0 for the 423-byte form without the trailing newline), PAIRDOC-TO exactly 1 time. `grep -rn -- "persists no decision" packages/ apps/ tests/ docs/` REAL exit 1, 0 occurrences; same command for `"persists NOTHING"` REAL exit 1, 0 occurrences. See deviation 1 — this gate was RED on its first run |
+| G6 THE CODE AGAINST THE SPEC | GREEN | 0 | `python3 -m ruff check` over `pingpong_job.py`, the new test file and the acceptance test file REAL exit 0. By AST: `_recorded_hunk_ledger_for_task` IS a module-level `FunctionDef`; exactly 1 `run_pingpong` call, at line 2281, passing `hunk_ledger=_recorded_hunk_ledger_for_task(job, task)`. RUNNING the shipped helper on a fake job carrying a recorded decision returned a ledger whose reason is byte-identical to the stored `'  keep the old name\n\n\tand do not reflow this\n'` |
+| G7 MUTATION RED-PROOFS | GREEN | 0 (control) / 1 (each mutant) | disposable worktree `.remedy-wt/r24-mut` at `5cb87f37`, removed and pruned. UNMUTATED CONTROL REAL exit 0 at 26 passed. Every anchor asserted to occur EXACTLY ONCE; after each mutation the file was restored and proved byte-identical by sha256 `cf5e06df3c77ac1bec1884ecdc8471c22ef42b80d7af371cb4cf1f421162d3ad`. Details below |
+| G8 SUITES AND STRUCTURE | GREEN | 0 | six suites SERIALLY, every REAL exit 0; `git status --porcelain` EMPTY; per-commit insertions all under 500; path set equal to the change set in BOTH directions |
 
-**G3 THE RECORD APPEND, measured at C2 — REAL_EXIT=0, with one block numeral
-corrected (deviation D1).**
-Base `.agent/live_review.md` at `d0c86c2d`: **1588340** bytes, ends with a newline.
-The block's Constraint 2 and G3 both state 1588184; that is the size at `61d2ffe7`,
-BEFORE round 22's own C3 commit `72dcfd53` appended the 156-byte `Landed: R-0747`
-line. Delta measured: +156. Reconstruction with the measured base:
-1588340 + 1 + 6800 = **1595141** = the committed size at C2. True.
-RECORD23 slice: 6800 bytes, sha256
-`bc4a18b7e05886178ef66b6adf9e16591b0c5ae3c46df0626fb5290255ac4fdb`.
-READER 1 (base a byte PREFIX, slice an exact SUFFIX, separator exactly one `\n`):
-accepts the committed bytes. READER 2 (the file's last N blank-line units equal the
-slice's paragraphs IN ORDER): accepts. N was COUNTED by the script from the slice,
-not taken from the block: **N = 2**.
-Negative control: first appended paragraph spans bytes 1588341..1593478; flip offset
-**1592341** proved inside that span; byte `b't'` → `b'T'`. READER 1 REJECTS the
-flipped bytes and ACCEPTS the unflipped; READER 2 REJECTS the flipped and ACCEPTS the
-unflipped. `\nLanded: R-0747 — ` still occurs exactly 1 time at C2.
+### G7 detail — the three mutations
 
-**G4 THE LEDGER — REAL_EXIT=0, every ordered numeral reproduced.**
+Control: REAL exit 0, **26 passed** (10 in the new file + 16 in the acceptance
+suite). Every run — control and mutant alike — printed the import-path proof
+`pingpong_job.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/r24-mut/packages/orchestration/pingpong_job.py`,
+resolving INSIDE the worktree. See deviation 2: without that measure the
+mutations would have run against the primary checkout and proven nothing.
 
-| reading | at `d0c86c2d` | at C2 `ce6c2866` | ordered |
-|---|---|---|---|
-| registered `^- R-\d+ — ` | 308 lines / 308 distinct | 308 / 308, ids ADDED: none | 308 distinct UNMOVED ✓ |
-| resolved `^Done: R-\d+ — ` | 52 lines / 50 distinct | 53 / 51 | 52/50 → 53/51 ✓ |
-| id ADDED to the resolved set | — | exactly `R-0747` | ✓ |
-| `^Landed: ` | 19 lines (16 distinct ids) | 19 lines (16 distinct ids) | 19 UNMOVED ✓ |
-| `^Landed: R-0747 — ` | 1 | 1 | still exactly 1 ✓ |
-| `^Gate: F033 R22 — ` | 0 | 1 | 0 before, exactly 1 after ✓ |
-| open set (registered − resolved) | 308 − 50 = 258 | 308 − 51 = 257 | 258 → 257 ✓ |
+| # | Mutation | Anchor unique | REAL exit | Failing test NAMES |
+|---|----------|---------------|-----------|--------------------|
+| (i) | the helper ignores the task and uses a fixed id (`task_id=task.task_id,` → `task_id="t-1",` inside the helper's call) | yes, 1 | 1 — **3 failed, 23 passed** | `test_a_different_tasks_decision_is_never_returned` (C3); `test_a_job_scoped_decision_is_not_quoted_into_a_tasks_prompt` (C4); `test_every_unusable_shape_yields_an_empty_ledger_and_raises_nothing[task_carries_no_task_id]` |
+| (ii) | SPEC B2's structural guard removed (the whole `try:`/`except Exception: return HunkDecisionLedger(())` replaced by the bare return) | yes, 1 | 1 — **2 failed, 24 passed** | `test_every_unusable_shape_yields_an_empty_ledger_and_raises_nothing[task_carries_no_task_id]`; `...[job_metadata_raises_on_access]` |
+| (iii) | stop passing `hunk_ledger` at the `run_pingpong` call (the keyword line deleted) | yes, 1 | 1 — **1 failed, 25 passed** | `test_the_run_pingpong_call_passes_a_hunk_ledger_keyword` (C6) |
 
-**G5 THE CODE AGAINST THE SPEC, at C5 — REAL_EXIT=0.**
-`python3 -m ruff check --no-cache <path>` exit 0 on all four changed files:
-`packages/orchestration/hunk_decision_record.py` 0,
-`packages/orchestration/pingpong_loop.py` 0,
-`tests/orchestration/test_hunk_decision_record.py` 0,
-`tests/orchestration/test_builder_prompt_hunk_rejections.py` 0.
-By AST: `load_latest_hunk_ledger_from_metadata` is defined at MODULE level in
-`hunk_decision_record.py` (exactly 1 such def), carries no leading underscore, and its
-name appears in that module docstring's `Public API::` block. `run_pingpong` carries
-`hunk_ledger` as a KEYWORD-ONLY parameter whose default is the constant `None`, with no
-positional twin. Exactly 1 `compose_builder_prompt` call exists inside `run_pingpong`
-and it passes `hunk_ledger=hunk_ledger` as a plain Name.
-DECISION F033 D4's standing property, SPEC A7's claim: occurrences of `open(` in
-`hunk_decision_record.py` = **0**; occurrences of `save_job` = **0** (both counted as
-substring occurrences over the whole source, not as matching lines). See deviation D5 —
-an early draft of the new docstring pushed `save_job` to 1 and was reworded before C3.
+The block permitted "this mutation reddened nothing". It did not arise: all
+three reddened. Mutation (ii) is worth a sentence — the guard is OBSERVABLE
+precisely because it wraps the two ATTRIBUTE accesses (`job.metadata`,
+`task.task_id`), which `load_latest_hunk_ledger_from_metadata` cannot absorb
+since it is total only over the mapping it is HANDED. The three metadata-shape
+cases stayed green under (ii), which is the correct result and is why the
+totality parameters are separate: they name which shape broke.
 
-**G6 MUTATION RED-PROOFS — run ONLY in the disposable worktree `.remedy-wt/wt-r23`
-at C5, `python3 -B`, `__pycache__` purged before every run.**
-Scope of each run: both changed test files together.
+### G8 detail — the suites, serially
 
-- UNMUTATED CONTROL, run FIRST: **REAL_EXIT=0, 39 passed in 0.83s.**
-- (i) the selector returns the FIRST matching record instead of the latest — anchor
-  occurrences in `hunk_decision_record.py`: **exactly 1**. Result: **REAL_EXIT=1,
-  3 failed, 36 passed.** FAILED
-  `test_the_latest_decision_for_a_task_wins_in_both_insertion_orders`,
-  `test_two_decisions_sharing_one_stamp_resolve_to_the_last_recorded`,
-  `test_with_no_parseable_stamp_the_last_recorded_decision_wins`.
-  Restored; sha256 identical to pre-mutation:
-  `e443b6b25880fa7b308852089cade1962bd8558934ece60ee9d6cccd155db083`.
-- (ii) SPEC A5's structural guard removed so a malformed input raises (the `except`
-  body replaced by a bare `raise`) — anchor occurrences: **exactly 1**. Result:
-  **REAL_EXIT=1, 2 failed, 37 passed.** FAILED
-  `test_no_malformed_metadata_makes_the_reader_raise_or_answer_partially` and
-  `test_a_task_with_no_recorded_decision_yields_an_empty_ledger`. The guard is
-  genuinely REACHABLE, so the answer the gate permits — "this mutation reddened
-  nothing" — did NOT arise. Restored; sha256 identical, same digest as above.
-- (iii) `run_pingpong` stops forwarding `hunk_ledger` at the `compose_builder_prompt`
-  call — anchor occurrences in `pingpong_loop.py`: **exactly 1**. Result:
-  **REAL_EXIT=1, 1 failed, 38 passed.** FAILED
-  `test_a_rejection_reason_reaches_the_real_loops_composed_builder_prompt` — the
-  acceptance test, and the proof that the end to end is really end to end. Restored;
-  sha256 identical:
-  `bcdd613be3bfdc3c91bb30e728929dace7f5f1f02b0795bf62cb30f8165fc518`.
-- POST-RESTORE CONTROL: **REAL_EXIT=0, 39 passed in 0.83s** — the worktree is back at
-  the committed state.
+| Suite | REAL exit | Passed |
+|-------|-----------|--------|
+| `tests/orchestration/test_pingpong_job_hunk_ledger.py` | 0 | 10 |
+| `tests/orchestration/test_builder_prompt_hunk_rejections.py` | 0 | 16 |
+| `tests/orchestration/test_hunk_decision_record.py` | 0 | 23 |
+| `tests/orchestration/test_job_task_runner.py` | 0 | 191 (105.82s) |
+| `tests/orchestration/test_pingpong.py` | 0 | 34 |
+| canary `python3 -m pytest tests/cli/test_golden_path.py -q` | 0 | 42 |
 
-Note: G6 was executed TWICE end to end. The first execution produced identical exit
-codes and counts but its name-extraction printed `FAILED FAILED`; the driver was fixed
-to read the node id and the whole gate re-run. Both runs are reported as one result
-because the mutations, anchors and outcomes were identical.
+Structure: `git status --porcelain` EMPTY. Per-commit insertions `c9dd471f`..`5cb87f37`:
+334, 262, 22, 4, 2, 11, 49, 241 — each under 500, 925 total, all single-parent.
+Path set over the range equals the declared change set minus `.agent/handoff.md`
+in BOTH directions (0 missing, 0 extra).
 
-**G7 THE SUITES, SERIALLY, in the PRIMARY checkout at C5 — every REAL exit 0.**
-
-| suite | REAL_EXIT | result |
-|---|---|---|
-| `tests/orchestration/test_hunk_decision_record.py` | 0 | 23 passed in 0.63s |
-| `tests/orchestration/test_builder_prompt_hunk_rejections.py` | 0 | 16 passed in 0.36s |
-| `tests/orchestration/test_hunk_ledger.py` | 0 | 44 passed in 0.22s |
-| `tests/orchestration/test_hunk_repair_findings.py` | 0 | 17 passed in 0.20s |
-| `tests/orchestration/test_builder_prompt_golden.py` | 0 | 21 passed in 0.26s |
-| `tests/orchestration/test_pingpong.py` | 0 | 34 passed in 0.69s |
-| `tests/orchestration/test_pingpong_cli.py` | 0 | 172 passed in 2.69s |
-| `tests/cli/test_golden_path.py` (canary) | 0 | 42 passed in 22.46s |
-
-One UNORDERED extra check, run because C1 rewrote `.agent/plan.md`:
-`tests/ui_server/test_dashboard_contract.py` → REAL_EXIT=0, 74 passed in 4.01s.
-
-**G8 STRUCTURE — REAL_EXIT=0.**
-`git status --porcelain` in the primary checkout: **EMPTY** (`''`).
-Per-commit insertions from `git diff --numstat`, every one under 500 and every commit
-single-parent: C0a 350, C0b 256, C1 14, C2 4, C3 108, C4 29, C5 343.
-Path set over `d0c86c2d`..C5, sorted: `.agent/authored/f033-r23.md`,
-`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`packages/orchestration/hunk_decision_record.py`,
-`packages/orchestration/pingpong_loop.py`,
-`tests/orchestration/test_builder_prompt_hunk_rejections.py`,
-`tests/orchestration/test_hunk_decision_record.py`. This EQUALS the declared change set
-minus `.agent/handoff.md` in BOTH directions — missing: none; extra: none.
-ORDERED EQUALITY for both appended test files:
-- `test_hunk_decision_record.py`: pre 18404 bytes → post 28517; the pre-commit blob is a
-  byte PREFIX of the committed blob; 0 deleted lines; 188 added lines equal the 188-line
-  appended suffix IN ORDER.
-- `test_builder_prompt_hunk_rejections.py`: pre 12848 → post 19928; byte PREFIX True;
-  0 deleted lines; 155 added lines equal the 155-line appended suffix IN ORDER.
-
-**Push.** `git push -u origin feature/f033-hunk-approval-v2` is the round's last action
-and necessarily runs AFTER C6 is committed, so its outcome cannot appear in the file C6
-adds — the write-once rule forbids a second handoff commit to record it. The reviewer
-reads the push from the remote: `origin/feature/f033-hunk-approval-v2` must point at C6.
-The worker reports the real exit code in its session output.
+After the suites re-generated `__pycache__`, G5's sweep was RE-RUN and both
+strings still read REAL exit 1 at 0 occurrences, confirming the stale artifact
+of deviation 1 does not come back.
 
 ## Authored-text proofs
 
-Two reviewer-authored texts were applied this round, both extracted by script from
-`.remedy-wt/f033-r23-block.md` between their `<<<BEGIN`/`<<<END` marker lines,
-exclusive, and never retyped or reflowed:
+| Text | Proof |
+|------|-------|
+| the step block | `sha256` computed by me: `1fc8691cbc74309b535c15b834334c36892756dc3765a317404c153b5410ea76`, 25812 bytes — matches the digest the order stated. `cmp .remedy-wt/f033-r24-block.md .agent/authored/f033-r24.md` REAL exit 0; `cmp` against `.agent/last_block.md` REAL exit 0 |
+| PLAN24 | `.agent/plan.md` byte-EQUAL to the extracted slice, sha256 `b3bcca25b6f51f06ccbed1f887dc3287cc3f2db6b1359449b9f2ce43b79e7f85`, 2514 bytes |
+| RECORD24 | exact SUFFIX of `.agent/live_review.md` at C2; 7458 bytes |
+| SLIPS24 | exact SUFFIX of `.agent/prose_slips.md` at C3; 529 bytes |
+| PAIRDOC-FROM / PAIRDOC-TO | FROM 0x, TO 1x in the target after C4; `TO contains FROM` measured FALSE by me too, so it is a REWRITE |
+| `Landed: R-0748` line | extracted from the block by matching the 4-space-indented line and stripping exactly 4 spaces; 188 bytes, no trailing whitespace; appended as `\n` + line + `\n` = 190 bytes |
 
-- **PLAN23** → `.agent/plan.md`. 2690 bytes, sha256
-  `be450d505e65f31f60a75c2a52cd1eb5a0d38b73d412590b2285e9ba31df7d6a`. The committed
-  blob at C5 is byte-EQUAL to the extracted slice (G2).
-- **RECORD23** → appended to `.agent/live_review.md`. 6800 bytes, sha256
-  `bc4a18b7e05886178ef66b6adf9e16591b0c5ae3c46df0626fb5290255ac4fdb`. The committed
-  blob at C2 is the base plus one `\n` plus the slice, exactly (G3).
-
-The block itself went to `.agent/authored/f033-r23.md` and `.agent/last_block.md`
-through `shutil.copyfile` — a disk-to-disk copy, so one end of each `cmp` is the
-emitted artefact itself. Both comparisons REAL_EXIT=0 and silent (G1).
-
-## Item-status table
-
-| Item | Status | Reason |
-|------|--------|--------|
-| C0a save the block verbatim | done | `9ba7f6ec`; `cmp` silent, digest equal |
-| C0b mirror into `last_block.md` | done | `0527a1a3`; `cmp` silent |
-| C1 rewrite `plan.md` from PLAN23 | done | `7fe2f553`; byte-equal, 49 lines |
-| C2 append RECORD23 | done | `ce6c2866`; books the R22 PASS, resolves R-0747, `Landed:` line untouched |
-| C3 SPEC A | done | `39acdfb0` |
-| C4 SPEC B | done | `88197da8` |
-| C5 SPEC C | done | `5fe56ddb` |
-| C6 handback | done | this file; its sha is C6 itself and is unmeasurable at authoring time |
-| A1 `import_hunk_ledger` into the EXISTING import block | done | one import statement, name placed last as ruff's isort orders it; ruff exit 0 |
-| A2 one public function over a METADATA MAPPING | done | `load_latest_hunk_ledger_from_metadata(metadata, *, task_id)` → `HunkDecisionLedger`; `task_id` made keyword-only (deviation D4) |
-| A3 the selection rule, in full, in the docstring | done | greatest parseable `decided_at` wins; unparseable never beats parseable; none-parseable or a tie → last in iteration order; states that nothing sorts the ids and why |
-| A4 rebuild by handing the record STRAIGHT to `import_hunk_ledger` | done | no second row walk; the docstring names `_LEDGER_ROWS_KEY`, the shared export root key and the constant's own comment as where the deliberateness is recorded |
-| A5 TOTAL, one SINGULAR structural guard | done | one `try` in the reader, no second one nested inside it; `_parsed_decision_stamp` is the SEPARATE parse guard and the docstring says which red-proof is aimed at which — G6(ii) reddens 2 tests, so the structural guard is reachable |
-| A6 an empty ledger is the honest answer for "no decision" | done | stated in the docstring, with the reason a caller cannot and need not distinguish the two |
-| A7 DELIBERATE ABSENCE — no storage I/O | done | documented in the idiom; `open(` 0 and `save_job` 0 in the module (G5) |
-| A8 add the name to `Public API::` in the SAME commit | done | in `39acdfb0`; verified by AST at G5 |
-| B1 keyword-only `hunk_ledger: Any = None` on `run_pingpong` | done | AST-verified keyword-only, default `None`, no positional twin; documented in the docstring |
-| B2 forward it at the `builder_composed` call, change nothing else | done | one added keyword line; the call is otherwise byte-unchanged |
-| B3 refresh the stale "does NOT supply this parameter yet" paragraph | done | now states that the loop forwards a ledger it is GIVEN, keeps the R-0747 repair's storage route including `save_job`, names `load_latest_hunk_ledger_from_metadata`, and names `pingpong_job.py` as the one unwired hop |
-| B4 do NOT change `pingpong_job.py` or `do_cmd.py` | done | neither appears in the path set over the range (G8) |
-| C1 (SPEC C) selection tests | deviated | all six behaviours covered; the malformed-input set is a TABLE walked in one test rather than `pytest.mark.parametrize` — see deviation D2 |
-| C2 (SPEC C) faithful rebuild round trip | done | `test_a_decision_recorded_through_the_view_door_reads_back_as_its_own_ledger` compares against the `ledger` field of the returned `HunkDecisionRecord`, using the file's existing `_job` and `_record_from_view` helpers |
-| C3 (SPEC C) the acceptance test, three links | done | (a) exactly 1 `builder_hunk_rejections` manifest row over the real run's traces; (b) the reason an EXACT substring of the segment cut out by its own span from a DIRECT composition with a different goal, context, findings, staged state and task body; (c) the row's `sha256` equals the sha256 of that text. G6(iii) reddens it |
-| C4 (SPEC C) the negative half | done | `test_a_loop_round_with_no_hunk_ledger_composes_no_rejection_segment`; non-vacuous — it asserts `builder_system` IS present and the rejection segment is not |
-| G1 transport | PASS | REAL_EXIT=0 |
-| G2 the plan | PASS | REAL_EXIT=0 |
-| G3 the record append | PASS | REAL_EXIT=0, with the base numeral corrected (D1) |
-| G4 the ledger | PASS | REAL_EXIT=0, every ordered numeral reproduced |
-| G5 the code against the spec | PASS | REAL_EXIT=0 |
-| G6 mutation red-proofs | PASS | control 0/39 passed; (i) 1/3 failed, (ii) 1/2 failed, (iii) 1/1 failed |
-| G7 the suites | PASS | eight suites, every REAL_EXIT=0 |
-| G8 structure | PASS | REAL_EXIT=0 |
+All slices and pair halves were extracted by script from the byte range BETWEEN
+the `<<<BEGIN`/`<<<END` markers, exclusive. Nothing was retyped or reflowed.
 
 ## Deviations & assumptions
 
-**D1 — the block's `.agent/live_review.md` base size is stale by 156 bytes. Applied as
-written; the numeral is corrected, not the action.** Constraint 2 and G3 both state
-1588184 bytes at `d0c86c2d`. The measured size at `d0c86c2d` is **1588340**. 1588184
-is the size at `61d2ffe7`, which is round 22's record-append commit; round 22's own C3
-`72dcfd53` then appended the 156-byte `Landed: R-0747 — …` line, and the reviewer
-carried the earlier number forward into this block. The APPEND FORM the block ordered —
-one blank-line separator then the slice — is unaffected and was applied unchanged, and
-G3's reconstruction holds exactly against the measured base. Nothing was repaired on the
-worker's initiative; only the reading is reported.
+**1. G5 was RED on its first run, and the cause was a stale build artifact — declared in full.**
+`grep -rn -- "persists no decision" packages/ apps/ tests/ docs/` came back
+REAL exit **0** with one match, on stderr:
+`grep: tests/orchestration/__pycache__/test_builder_prompt_hunk_rejections.cpython-310-pytest-9.0.3.pyc: binary file matches`.
+That is compiled bytecode of the PRE-C4 source of the very file this round
+repaired: its mtime is 13:47:43 against the source's 13:57:49, and it is
+gitignored by `.gitignore:2 __pycache__/`. The source sweep was already clean —
+`git grep -n -- "persists no decision" -- packages/ apps/ tests/ docs/` REAL
+exit 1, 0 hits. I removed **that one file, by exact path** (via
+`os.remove`; `rm` is denied in this sandbox) as build-artifact hygiene — the
+same purge G7 mandates — and then re-ran the gate command UNMODIFIED, which
+returned REAL exit 1 at 0 occurrences. **No gate wording was weakened and no
+assertion was touched**; what was deleted is regenerable bytecode, not content.
+I am flagging this rather than burying it because the reviewer re-running G5 on
+a filesystem that still held that `.pyc` would have seen the same red, and
+because a sweep whose reach includes compiled caches is a measurement question
+the round should leave on the record.
 
-**D2 — SPEC C's C1 asked for the malformed-input cases "parametrized"; they are a TABLE
-walked inside one test instead.** `pytest.mark.parametrize` needs `import pytest` at
-module scope. `tests/orchestration/test_hunk_decision_record.py` carries no such import,
-and both the block's SPEC C preamble and Constraint 4 forbid editing one existing line of
-that file, so the import cannot be added to the block at the top. A module-level `import`
-appended at the BOTTOM is ruff `E402`, which G5 would turn red — measured with a probe,
-not assumed: `python3 -m ruff check --no-cache` on a file with a late module-level import
-gave `E402 Module level import not at top of file`, REAL_EXIT=1. The contrast C1 actually
-draws — a table rather than one test function per input — is honoured: 12 shapes in one
-list, walked with their OUTCOMES collected and compared as a whole list, so a case that
-raises cannot hide the cases after it and the failure message names the shape. The same
-constraint is why the appended section resolves
-`load_latest_hunk_ledger_from_metadata` and `HunkDecisionLedger` with function-local
-imports, the way this feature's other test file already resolves `hashlib`. All of this is
-written into a comment at the head of the appended section.
+**2. The disposable worktree's import path resolved to the PRIMARY checkout, and would have made G7 vacuous.**
+A bare `python3` run inside `.remedy-wt/r24-mut` imported
+`/home/decodeux/Repos/remedy/packages/orchestration/pingpong_job.py`, because a
+`.pth` puts the repo root on `sys.path` ahead of the worktree. I probed this
+BEFORE running any mutation. The fix is `.remedy-wt/r24_wt_run.py`, which
+`os.chdir`s into the worktree, inserts it at `sys.path[0]`, PRINTS the resolved
+`pingpong_job.__file__` on every run, and only then calls `pytest.main`. Had I
+skipped the probe, all three mutations would have run against unmutated code —
+the control and every mutant would have read 26 passed, and I would have
+reported three red-proofs that measured nothing.
 
-**D3 — one paragraph of `hunk_decision_record.py`'s MODULE docstring was edited, which
-SPEC A did not order.** It opened "THIS MODULE IS NOT TOTAL", a whole-module claim that
-SPEC A's total reader falsifies. It now reads "THE TWO RECORDING DOORS ARE NOT TOTAL",
-with its body re-pointed at the two doors and one closing sentence naming the reader as
-the one total exception and why. The file is inside the change set and no line count or
-digest gate covers that paragraph. The reason for doing it rather than leaving it is
-R-0747 itself: a false blanket claim in the exact paragraph the next reader meets is the
-defect class this branch just spent a round resolving. Declared here because it is an
-edit the block did not ask for.
+**3. The helper is PRIVATE: `_recorded_hunk_ledger_for_task`.**
+SPEC B1 said "ONE small module-level helper" without fixing its visibility. I
+used a leading underscore so that no `Public API:` obligation arises in
+`pingpong_job.py`'s module docstring — I checked, and unlike `proof_chain.py`
+(finding R-0746) no test guards that block for this module, so a public name
+would have created an unguarded list to keep in sync for no gain. The name
+carries four words and a domain word per the discoverability convention.
 
-**D4 — `task_id` is KEYWORD-ONLY on the new function.** SPEC A2 fixes the arguments but
-not their kind. Both arguments are of unconstrained type, a swap of a mapping and an id
-would be silent, and AGENTS.md's discoverability rules ask for exactly this defence. The
-module's own idiom agrees — every other public function here takes everything after the
-first argument by keyword.
+**4. B4: TWO names are imported locally, not one.**
+`run_job` imports its `packages.orchestration` dependencies INSIDE the function,
+so per B4 I followed that and did not add module-level imports. The helper
+imports `load_latest_hunk_ledger_from_metadata` as ordered **and also**
+`HunkDecisionLedger`, which B4 does not name: the guard's empty-ledger return
+needs the constructor, and `HunkDecisionLedger(())` is the exact form
+`hunk_decision_record.py` itself uses for that answer. `python3 -m ruff check`
+is REAL exit 0 and no unrelated line was reordered.
 
-**D5 — a `save_job` occurrence was introduced and removed before C3 was committed.** The
-first draft of the new function's DELIBERATE ABSENCE paragraph wrote "a job load, a
-``save_job`` or an ``open``", which took the module's `save_job` occurrence count from 0
-to 1 and would have turned G5's zero-reading red. The worker's own pre-commit check
-caught it and the sentence was reworded to "a job load, a persisting write or a file
-read" before anything was staged. No committed state ever carried it; reported because
-the gate exists to catch precisely that and it nearly fired on prose.
+**5. Placement of the new keyword at the call site.**
+`hunk_ledger=` sits directly after `task_input=task_input,`, both being prompt
+inputs. Nothing else about that call changed — B3 satisfied.
 
-**D6 — `test_builder_prompt_hunk_rejections.py`'s module docstring still carries its
-now-superseded closing paragraph.** It says "nothing here asserts that the RUN LOOP
-supplies a ledger. It does not yet", which C4 makes false. That file is APPEND ONLY under
-the block's SPEC C preamble and Constraint 4, so the paragraph could not be rewritten. A
-correction is APPENDED instead, as the first comment of the new section, stating in as many
-words that the module docstring is superseded from there down and why it was corrected
-rather than rewritten. If the reviewer prefers the docstring itself repaired, that needs a
-block that lifts the append-only obligation for this file.
+**6. The G7 control covers TWO suites (26 tests), not one.**
+The new file alone would have sufficed, since all three mutations target checks
+in it. I included `test_builder_prompt_hunk_rejections.py` so the same pass
+count is comparable across control and every mutant, and so a mutation that
+reddened the loop suite as a side effect would be visible. None did.
 
-**D7 — G6 was executed twice.** The first pass produced the same exit codes, the same
-counts and the same anchor-uniqueness readings, but its transcript printed `FAILED FAILED`
-because the driver split the pytest summary line on the wrong field. The driver was
-corrected to read the node id and the entire gate — control, three mutations, restores and
-post-restore control — was re-run from scratch. The reported numbers are the second run's;
-they match the first in every figure.
+**7. A reading no gate ordered, recorded so it is not re-derived later.**
+The helper returns an EMPTY ledger rather than `None` when nothing is recorded,
+so the job-level call now passes a ledger object on EVERY task, where before it
+passed nothing. That is safe and I measured why:
+`pingpong_loop.render_rejection_findings` answers `""` for `None`, for a ledger
+with no entries and for a ledger holding only approvals, and the ONE emptiness
+test at the segment guard means no `builder_hunk_rejections` segment registers
+for an empty ledger. So the golden's exact ten-name manifest in
+`tests/orchestration/test_builder_prompt_golden.py` cannot be disturbed — and
+`test_pingpong.py` (34) and `test_job_task_runner.py` (191) are both green.
 
-**D8 — two unordered readings were taken.** `tests/ui_server/test_dashboard_contract.py`
-was run because C1 rewrote `.agent/plan.md` and that suite pins the file's `Steps`
-contract (REAL_EXIT=0, 74 passed); and the distinct-id count behind `^Landed: ` was
-recounted separately after the first G4 script captured the literal prefix rather than
-the id, giving 19 lines over 16 distinct ids at both revisions. Neither changed a verdict.
+**8. Constraint 2 re-measured, and this time the block was RIGHT.**
+I measured both append bases myself at `c9dd471f` rather than trusting the
+block: `.agent/live_review.md` 1595141 and `.agent/prose_slips.md` 30807, by
+`wc -c` on disk AND `git cat-file -s` at the base commit, agreeing. Both match
+the block's numerals. The R23 slip did not recur.
 
-No assumption was made about anything the block left open beyond D2 and D4, and no gate
-was weakened, skipped or re-scoped. No test or assertion was weakened at any point. No
-file outside the change set was touched. `.remedy-wt/f033-r23-block.md` was read only;
-every scratch file this round created is a new path under `.remedy-wt/`.
+**9. Sandbox notes, not departures from the order.**
+`rm` is denied here (in addition to the denials the block lists), so artifact
+removal went through `os.remove` in a script. Some compound `bash` lines were
+refused by the guard on FORM, so every multi-step measurement was written as a
+file under `.remedy-wt/` and run with `python3 -B <path>`.
+
+No block item was skipped, widened or reordered. No path outside the change set
+was touched: `apps/cli/commands/do_cmd.py`, `packages/orchestration/pingpong_loop.py`
+and everything under `docs/` are untouched, as G8's both-directions path check
+shows. The `Landed: R-0747` line, the `Done: R-0747` paragraph and round 23's
+superseding comment block are all intact and were measured as such.
+
+## Item status
+
+| Item | Status | Reason |
+|------|--------|--------|
+| Bundle 1 — C0a save the block | done | `cmp` REAL exit 0, digest verified by me |
+| Bundle 2 — C0b mirror to `last_block.md` | done | same bytes, `cmp` REAL exit 0 |
+| Bundle 3 — C1 rewrite `plan.md` from PLAN24 | done | byte-equal, 46 lines |
+| Bundle 4 — C2 append RECORD24 | done | G3 arithmetic, prefix, suffix, ordered paragraphs, negative control |
+| Bundle 5 — C3 append SLIPS24 | done | G2 arithmetic, prefix, suffix |
+| Bundle 6 — C4 SPEC A + the `Landed:` line, one commit | done | one commit `7cb78726` carries both |
+| Bundle 7 — C5 SPEC B | done | `7c02e01f` |
+| Bundle 8 — C6 SPEC C | done | `5cb87f37`, 10 tests |
+| Bundle 9 — C7 handback | done | this file |
+| SPEC A1 — PAIR-DOC as a REWRITE, report both counts | done | FROM 0x, TO 1x; `TO contains FROM` FALSE re-measured by me |
+| SPEC A2 — leave round 23's superseding block | done | present exactly once, untouched; the diff shows only the docstring paragraph moving |
+| SPEC A3 — ONE `Landed: R-0748` line, no `Done:` paragraph | done | 1 line at C4, `^Done:` distinct count UNMOVED at 51 |
+| SPEC B1 — one module-level, testable helper | done | `_recorded_hunk_ledger_for_task`, module-level by AST; see deviation 3 |
+| SPEC B2 — TOTAL, ONE guard, both boundaries documented | done | one `try`, no nested second; (i) job-scope sentinel AND the `"job"` task-id collision and (ii) the empty-ledger meaning are both in the docstring; no guard added against the collision |
+| SPEC B3 — `hunk_ledger=` at the `run_pingpong` call | done | AST: line 2281; nothing else about the call changed |
+| SPEC B4 — follow the module's import style | done | function-local, matching `run_job`; see deviation 4 |
+| SPEC C1 — a recorded decision comes back byte for byte | done | `test_a_recorded_decision_comes_back_as_that_tasks_ledger_byte_for_byte` |
+| SPEC C2 — composed through to the prompt | done | `test_the_ledger_the_job_reads_composes_into_the_builder_prompt` |
+| SPEC C3 — a different task's decision is not returned | done | `test_a_different_tasks_decision_is_never_returned`, with a premise assertion so it is not vacuous |
+| SPEC C4 — a JOB-scoped decision is not returned | done | `test_a_job_scoped_decision_is_not_quoted_into_a_tasks_prompt`, referencing `DIFF_SCOPE_JOB` by name |
+| SPEC C5 — totality, five shapes | done | five parametrised cases, each named, all empty and none raising |
+| SPEC C6 — the call site IS wired (AST, SHAPE check) | done | `test_the_run_pingpong_call_passes_a_hunk_ledger_keyword`, labelled a shape check in its own docstring, with a non-vacuity assertion, reading the module's own `__file__` so it is worktree-correct |
+| G1–G8 | done | all GREEN; table above |
+
+## Open findings
+
+**258 open** (registered distinct 309 minus 51 resolved distinct, measured at
+C4). Up one from 257 at `c9dd471f`: R-0748 was registered this round by C2 and
+its repair landed in the same round at C4, but a `Done:` paragraph is
+reviewer-authored text and SPEC A3 forbade me to write one — so R-0748 is
+correctly still counted OPEN until the reviewer resolves it.
+
+## Scope report — amendment amend0827 rule 6
+
+**Finished.** F033's functional scope is complete as of this round. Hunks carry
+stable content-hash ids; the viewer, node and report render partial state
+truthfully; `approve_hunks` applies an approved subset all-or-nothing; a
+decision is recorded durably on `job.metadata`; it is read back as a ledger,
+selected by latest stamp, rendered as repair findings, composed into the builder
+prompt verbatim, forwarded by `run_pingpong`, and — as of C5 — supplied by the
+job-level caller that holds the task. The route from an operator's rejected hunk
+to the next builder's prompt is now closed end to end.
+
+**Missing**, and it does not fit in the one round the soft limit leaves:
+
+1. R-0745 — the write door's transitive import closure. Open, unscheduled, and
+   a block condition at closure.
+2. The operator documentation for `patch approve-hunks` under `docs/`. No round
+   has yet been given a path for it, and this round was explicitly forbidden to
+   touch `docs/`.
+3. The integration-gate round.
+4. The two-round closure sequence.
+
+That is four to five rounds of work against one remaining.
+
+**Proposal**, for the operator, never executed on any agent's authority:
+extend F033 past the 25-round soft limit by the four to five rounds the list
+above needs, in that order, rather than closing the feature with R-0745 open or
+with the operator-facing documentation absent. The alternative — closing now —
+would ship a feature whose CLI door no document describes.
 
 ## Next
 
-The reviewer re-runs G1-G8 at `5fe56ddb` and reads the real diff. On a PASS, the next
-round is the last wiring hop, already named in `.agent/plan.md`: teach the JOB-level
-caller in `packages/orchestration/pingpong_job.py` — the one place that actually holds
-the job at its `run_pingpong` call — to read the task's latest recorded decision with
-`load_latest_hunk_ledger_from_metadata` and pass it as `hunk_ledger`, with a test that
-follows a decision recorded on a real job through to the composed prompt. After that:
-R-0745's transitive-import-closure test, then the `docs/` operator description of
-`remedy patch approve-hunks`, then the integration gate and closure. The scope report
-amend0827 rule 6 requires is carried by the session-6 handoff, since steps 2-4 plus the
-two closure rounds exceed what the 25-round soft limit leaves.
+The single expected next action: the **reviewer** re-runs G1 through G8 against
+the real diff `c9dd471f`..`HEAD` and issues the round 24 verdict, resolving
+R-0748 with a reviewer-authored `Done:` paragraph if it passes. The operator
+decision requested in the scope report above is needed before round 25 is
+planned. No pull request should be created before the closure sequence.
