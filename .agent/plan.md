@@ -23,16 +23,19 @@ approval gate.
 | the integration gate | done | round 6, PASSED, 18186 passed 0 failed |
 | the feature file's Built State | done | round 7, precondition 4 |
 | plan SU-001 and stop at the approval gate | done | round 8, precondition 6 |
-| the evidence bundle and the review zip | done | this round, closure steps 1-2 |
-| the closure commit and the PR | open | next, and it is the last round |
+| the evidence bundle and the review zip | superseded | round 9; the head moves |
+| three tests survive their own feature's close | done | this round, R-0737 |
+| rebuild the bundle and the zip at the new head | open | next |
+| the closure commit and the PR | open | after the rebuilt zip |
 
 ## Next Steps
-1. The closure commit, in ONE commit: the `[x]` flip on line 85 of
-   `docs/roadmap/STATUS.md`, the README capability sync that may never disagree
-   with it, the `scripts/self_use_queue.json` `consumed_by` edit that marks SU-001
-   consumed by F257, and the final `.agent/` state.
-2. Open the pull request. It is NOT merged in this session — the gap is the
-   operator's manual-review window, and the next feature's Open PR Gate merges it.
+1. Rebuild the evidence bundle and the review zip at the repaired head; the
+   package from round 9 recorded `506bbab5` as the accepted HEAD and a content
+   commit has landed since, so it no longer covers the head being closed.
+2. The closure commit, in ONE commit: the `[x]` flip on `docs/roadmap/STATUS.md`,
+   the README accepted count, its `Next:` clause, the tier-5 Done cell, the README
+   capability paragraph, the `scripts/self_use_queue.json` `consumed_by` edit and
+   the final `.agent/` state. Then the PR, unmerged.
 
 ## Risks
 - A job must never mark its own queue item consumed; neither shipped module owns
@@ -40,3 +43,5 @@ approval gate.
 - `docs/roadmap/STATUS.md` is in `scope_fences.BUILTIN_DENY` and stays there.
 - R-0734 and R-0736 are registered and deliberately NOT repaired on this branch;
   both are outside F257's surface.
+- The queue holds ONE item, so F257's own close EXHAUSTS it. The next feature's
+  close records `self-use NONE (queue exhausted)` until an operator curates more.
