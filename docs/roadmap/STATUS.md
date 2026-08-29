@@ -84,7 +84,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 - [x] F256 — Diff viewer completion (T001–T003 complete; accepted 2026-08-28 · live review PASS — ACCEPTED · Evidence job f256-closure · package remedy-review-20260828-233819-READY_FOR_REVIEW.zip · SHA-256 5f18d7acdeab790b0f79181c7179023535b389ce0b76ec427f2765b20cda4ad5 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD c6775b3c41f1d1fa4b0f4bb7907307573855a61b)
 - [x] F257 — Self-use track (T001–T002 complete; accepted 2026-08-29 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f257-closure · package remedy-review-20260829-031830-READY_FOR_REVIEW.zip · SHA-256 0a4b5fc189ac7ed6b968f878b1186a23e2d5ac3425b6d1f46faad271b157acdd · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD fb10b3754978d9fc4112b2818eb9e7e31f4fdc78)
 - [x] F033 — Hunk-level diff approval (T001–T003 complete; accepted 2026-08-29 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f033-closure · package remedy-review-20260829-154912-READY_FOR_REVIEW.zip · SHA-256 3b646ca5a18f10ae21f3218a753be00970762ba0fe4513ef53a3f60a9f711ccc · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 8738c5f1643b2bd667bc796257a4ddc502f36191)
-- [ ] F040 — Completion/return digest
+- [~] F040 — Completion/return digest
 - [ ] F015 — Interactive plan editing
 - [ ] F019 — Live node materialization
 - [ ] F020 — Node lifecycle & glyph language
