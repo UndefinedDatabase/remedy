@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import type { RemedyDashboard } from "../../api/types";
 import type { DiffEnvelope } from "../../api/diffViewModel";
-import { loadDiffEnvelope } from "../../api/remedyApi";
+import type { JobDigest } from "../../api/jobDigest";
+import { loadDiffEnvelope, loadJobDigest } from "../../api/remedyApi";
+import { digestVisibility } from "../../api/digestVisibility";
+import type { DigestDismissal } from "../../api/digestVisibility";
+import { newestActionRow } from "../../api/actionClass";
+import { browserDigestVisibilityPort } from "../../api/browserDigestPort";
+import { DigestHeroCard } from "../digest/DigestHeroCard";
 import { DiffFileSidebar } from "../diff/DiffFileSidebar";
 import { DiffView } from "../diff/DiffView";
 import { LeftBrandRail } from "../rail/LeftBrandRail";
@@ -84,6 +90,59 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
     return () => { cancelled = true; };
   }, [openDiffTaskId, dashboard.jobId, serverToken]);
 
+  // THE DIGEST LOAD, once per mounted shell. UNLIKE THE DIFF-ENVELOPE EFFECT
+  // ABOVE, this effect does NOT clear `digest` to `null` on re-run: that
+  // effect clears because the diff panel re-opens DIFFERENT task ids
+  // repeatedly across one session, and a stale diff under a new task's name
+  // would be a wrong answer. `dashboard.jobId` and `serverToken` are
+  // effectively stable for the whole life of one mounted shell — a job's
+  // page does not swap jobs under the operator — so there is no repeated
+  // re-selection this effect needs to guard against. The `cancelled` guard is
+  // kept regardless: a slow first request racing a token refresh is still
+  // possible even if rare.
+  const [digest, setDigest] = useState<JobDigest | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void loadJobDigest({ jobId: dashboard.jobId, token: serverToken }).then((loaded) => {
+      if (!cancelled) setDigest(loaded);
+    });
+    return () => { cancelled = true; };
+  }, [dashboard.jobId, serverToken]);
+
+  // THE STORAGE EDGE, BOUND HERE because this is the edge: `digestVisibility.ts`
+  // DECLARES `DigestVisibilityPort` and implements nothing, exactly as
+  // `browserBrainStreamEnv(window)` above binds the stream's own globals at
+  // this same mount. `window.localStorage` occurs nowhere else in this file.
+  const digestPort = browserDigestVisibilityPort(window.localStorage);
+
+  // Read once, before the write below ever runs, so the digest visibility
+  // rule sees the instant the operator was last here rather than the one
+  // this very mount is about to record.
+  const [lastSeenMs] = useState<number | null>(() => digestPort.readLastSeen(dashboard.jobId));
+  useEffect(() => {
+    digestPort.writeLastSeen(dashboard.jobId, Date.now());
+  }, [dashboard.jobId]);
+
+  const [dismissedAtMs, setDismissedAtMs] = useState<DigestDismissal>(
+    () => digestPort.readDismissal(dashboard.jobId),
+  );
+
+  // The brain stream's own ring buffer already carries every action this
+  // session has seen; the digest trigger asks only for the newest of them.
+  const latestActivityMs = newestActionRow(stream.recent ?? [])?.receivedAtMs ?? null;
+
+  // THE MOUNT'S OWN CLOCK READ (DECISION F040 D8, R11 constraint 7) — the
+  // file's only `Date.now()` call outside `writeLastSeen`'s own argument
+  // above. A separate read from that one on purpose: one clock read per
+  // concern, never a value reused for both.
+  const visibility = digestVisibility({
+    digest,
+    lastSeenMs,
+    dismissedAtMs,
+    latestActivityMs,
+    nowMs: Date.now(),
+  });
+
   // Jump-to: case-insensitive match over real task labels; focus the first match's node.
   const handleJump = (query: string) => {
     const q = query.toLowerCase();
@@ -93,6 +152,14 @@ export function RemedyShell({ dashboard, serverToken, selectedNodeId, onSelectNo
   return (
     <div className={styles.viewport}>
       <DegradedBanner apiHealth={dashboard.apiHealth} />
+      {digest !== null && (
+        <DigestHeroCard
+          digest={digest}
+          visibility={visibility}
+          port={digestPort}
+          onDismissed={() => setDismissedAtMs(digestPort.readDismissal(dashboard.jobId))}
+        />
+      )}
       <div className={`${styles.shell} remedy-journey-shell`} data-ui="remedy-visual-v2">
         <LeftBrandRail dashboard={dashboard} />
         <main className={styles.main} data-testid="main-column">
