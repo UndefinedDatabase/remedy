@@ -230,7 +230,16 @@ def _entry_landing(state: str, applied: bool, landed: set[str], hunk_id: str) ->
 
     Only an approved hunk was ever submitted, so a rejected or pending one is
     ``unattempted`` even here — it was not tried, which is a different fact from "it was
-    tried and did not land"."""
+    tried and did not land".
+
+    A DELIBERATE REFUSAL, and this is its ONLY site: while ``applied`` is false, ``landed``
+    is not consulted at all. A caller passing ids alongside ``applied=False`` is
+    contradicting ``HunkApplyOutcome``'s own contract, which keeps ``landed`` empty whenever
+    ``applied`` is false, and this module will not mint a landing out of that contradiction
+    — it refuses the ids rather than trusting the caller, so the worst a confused caller
+    produces is an understated ledger. The refusal is stated HERE and nowhere else: a rule
+    enforced in two places is a rule whose two copies are free to drift apart, and a second
+    copy would also make this one unobservable to the test that pins it."""
     if state != HUNK_STATE_APPROVED:
         return HUNK_LANDING_UNATTEMPTED
     if not applied:
@@ -266,12 +275,10 @@ def build_hunk_ledger(
     attempted = _total_flag(apply_attempted)
     did_apply = _total_flag(applied)
 
-    # A DELIBERATE REFUSAL: ``landed_hunk_ids`` is read ONLY when the apply reported success.
-    # A caller passing ids alongside ``applied=False`` is contradicting ``HunkApplyOutcome``'s
-    # own contract, which keeps ``landed`` empty whenever ``applied`` is false. This module
-    # will not mint a landing out of that contradiction — it refuses the ids rather than
-    # trusting the caller, so the worst a confused caller produces is an understated ledger.
-    landed = set(_id_list(landed_hunk_ids)) if attempted and did_apply else set()
+    # ``landed_hunk_ids`` is coerced here and JUDGED in ``_entry_landing``, which is the one
+    # place that decides whether it may be consulted at all. Coercing it unconditionally is
+    # deliberate: the refusal belongs to the landing rule, not to this assignment.
+    landed = set(_id_list(landed_hunk_ids))
 
     entries: list[HunkLedgerEntry] = []
     for hunk_id in known_ids:
