@@ -35,6 +35,9 @@ from packages.orchestration.proof_chain import (
     TEST_LINK_SOLE_CHANGE,
     TEST_LINK_TASK,
     NextSafeAction,
+    ProofChain,
+    ProofChange,
+    TaskApplyState,
     _classify_proof_status,
     _derive_missing_links,
     _event_timestamp,
@@ -42,6 +45,7 @@ from packages.orchestration.proof_chain import (
     _link_test_to_change,
     build_proof_chain,
     export_proof_chain_json,
+    fold_task_apply_states,
     summarize_proof_chain,
 )
 
@@ -1134,3 +1138,169 @@ class TestProofChainDurableTruth:
         manifest.write_text(json.dumps(data, indent=2, sort_keys=True))
         chain = build_proof_chain(job, events, data_dir=data_dir)
         assert chain.changes[0].proof_status != PROOF_VERIFIED
+
+
+# ---------------------------------------------------------------------------
+# The task apply fold (finding R-0738)
+# ---------------------------------------------------------------------------
+
+
+def _apply_change(task_id: str, apply_state: str) -> ProofChange:
+    """One ProofChange carrying only the two fields the apply fold reads."""
+    return ProofChange(
+        target_path="a.py",
+        intent_id="i",
+        task_id=task_id,
+        task_title="t",
+        artifact_id="art",
+        patch_intent_id="pi",
+        approval_state="approved",
+        apply_state=apply_state,
+        test_state="passed",
+        test_link=TEST_LINK_TASK,
+        proof_status=PROOF_VERIFIED,
+        safe_summary="",
+        next_safe_action="",
+    )
+
+
+def _apply_chain(*changes: ProofChange) -> ProofChain:
+    """A ProofChain around the given changes and nothing else."""
+    return ProofChain(
+        job_id="j",
+        goal="g",
+        path_filter="",
+        changes=tuple(changes),
+        overall_status=PROOF_VERIFIED,
+        next_safe_action="",
+    )
+
+
+class TestFoldTaskApplyStates:
+    """The apply fold AS A FUNCTION, from explicit inputs.
+
+    Until this round the fold was reachable only through the cockpit, so every reading
+    of it was also a reading of `_task_truth_maps`. Each case below is BUILT rather
+    than observed: the mixed group in particular is constructed on purpose, which is
+    what finding R-0738's resolution clause asks for.
+    """
+
+    def test_all_applied_folds_to_applied(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "applied"),
+        ))
+        assert folded["t1"].state == "applied"
+
+    def test_all_reverted_folds_to_reverted(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "reverted"),
+            _apply_change("t1", "reverted"),
+        ))
+        assert folded["t1"].state == "reverted"
+
+    def test_none_applied_or_reverted_folds_to_not_applied(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "not_applied"),
+            _apply_change("t1", "not_applied"),
+            _apply_change("t1", "not_applied"),
+        ))
+        assert folded["t1"].state == "not_applied"
+
+    def test_a_mixed_group_folds_to_partial(self):
+        # THE DISCRIMINATOR: one change of three applied. The membership test this
+        # fold replaced answered "applied" here, indistinguishable from a task where
+        # every change had landed.
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "not_applied"),
+            _apply_change("t1", "not_applied"),
+        ))
+        assert folded["t1"].state == "partial"
+        assert folded["t1"].state != "applied"
+
+    def test_applied_and_reverted_together_fold_to_partial(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "reverted"),
+        ))
+        assert folded["t1"].state == "partial"
+
+    def test_the_counts_on_a_mixed_group_differ_from_each_other(self):
+        # Equal numbers would let a fold that returned the same value for both fields
+        # pass, so the mixed case is the one that pins them apart.
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "not_applied"),
+            _apply_change("t1", "reverted"),
+        ))
+        assert folded["t1"].applied == 2
+        assert folded["t1"].total == 4
+        assert folded["t1"].applied != folded["t1"].total
+
+    def test_the_total_is_the_group_size_when_nothing_applied(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "not_applied"),
+            _apply_change("t1", "not_applied"),
+            _apply_change("t1", "not_applied"),
+        ))
+        assert folded["t1"].applied == 0
+        assert folded["t1"].total == 3
+
+    def test_a_unanimous_apply_counts_every_change(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "applied"),
+        ))
+        assert folded["t1"].applied == 2
+        assert folded["t1"].total == 2
+
+    def test_a_reverted_change_is_not_counted_as_applied(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "reverted"),
+            _apply_change("t1", "reverted"),
+        ))
+        assert folded["t1"].applied == 0
+        assert folded["t1"].total == 2
+
+    def test_the_entry_is_a_task_apply_state(self):
+        folded = fold_task_apply_states(_apply_chain(_apply_change("t1", "applied")))
+        assert isinstance(folded["t1"], TaskApplyState)
+
+    def test_a_none_chain_folds_to_an_empty_dict(self):
+        assert fold_task_apply_states(None) == {}
+
+    def test_a_change_with_an_empty_task_id_is_skipped(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("", "applied"),
+            _apply_change("t1", "applied"),
+        ))
+        assert "" not in folded
+        assert folded["t1"].total == 1
+
+    def test_two_tasks_in_one_chain_are_folded_independently(self):
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change("t1", "applied"),
+            _apply_change("t1", "applied"),
+            _apply_change("t2", "applied"),
+            _apply_change("t2", "not_applied"),
+        ))
+        assert folded["t1"].state == "applied"
+        assert folded["t1"].applied == 2
+        assert folded["t1"].total == 2
+        assert folded["t2"].state == "partial"
+        assert folded["t2"].applied == 1
+        assert folded["t2"].total == 2
+
+    def test_the_full_task_id_is_the_key(self):
+        # Keyed by the FULL id, never a prefix: two tasks whose ids share a prefix
+        # must not collapse onto one entry.
+        long_id = "0123456789abcdef-task-one"
+        other_id = "0123456789abcdef-task-two"
+        folded = fold_task_apply_states(_apply_chain(
+            _apply_change(long_id, "applied"),
+            _apply_change(other_id, "not_applied"),
+        ))
+        assert folded[long_id].state == "applied"
+        assert folded[other_id].state == "not_applied"
