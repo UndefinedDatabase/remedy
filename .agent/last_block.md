@@ -1,306 +1,339 @@
-# STEP 29 — F033 Hunk-level diff approval (SESSION 7, round 29; THE CLOSURE COMMIT AND THE PULL REQUEST)
+# STEP R1/F040 — CLAIM THE FEATURE, DISCHARGE THE TWO CLOSURE CANDIDATES, MEASURE THE SEAMS
 
-Goal: book the round 28 PASS, then close the feature — the STATUS `[x]` line and
-the README capability sync in ONE commit, which is the LAST commit on this
-branch, followed by the pull request. That PR is NOT merged in this session: it
-merges at the next feature's start via the Open PR Gate, and the gap is the
-operator's manual-review window.
+Goal: open F040 on its own branch, settle the two candidates the F033 closure
+gate left in `.agent/candidates.md` so the block condition lifts, and MEASURE the
+four read paths the digest is a composition over — recording what is there, and
+what is not.
 
-## Bundle — the list that is executed
+Base: `f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1`, the merge commit of pull
+request 222 and the current tip of `main`. Cut the branch from it.
 
-1. C0a: save this block verbatim to `.agent/authored/f033-r29.md`.
-2. C0b: mirror the same bytes into `.agent/last_block.md`.
-3. C1: rewrite `.agent/plan.md` from slice PLAN29.
-4. C2: append slice RECORD29 to `.agent/live_review.md` — books the round 28
-   PASS. It registers and resolves nothing.
-5. C3: THE CLOSURE COMMIT. Apply pairs PAIR-STATUS, PAIR-COUNT and PAIR-TIER,
-   and rewrite `.agent/handoff.md` as the handback, ALL IN ONE COMMIT. This is
-   the last commit on the branch (Rule A4).
-6. Then create the pull request. That is not a commit.
+Branch: `feature/f040-completion-digest`
+
+## Bundle, in commit order
+
+- C0a save this block verbatim to `.agent/authored/f040-r1.md`
+- C0b mirror the same bytes into `.agent/last_block.md`
+- C1  rewrite `.agent/plan.md` from slice PLAN1
+- C2  append slice RECORD1 to `.agent/live_review.md`
+- C3  rewrite `.agent/candidates.md` from slice CAND1
+- C4  apply pair PAIR-STATUS to `docs/roadmap/STATUS.md`
+- C5  rewrite `.agent/context.md` from slice CONTEXT1
+- C6  write `.agent/f040_inventory.md` — YOUR measurement, per the SPEC below
+- C7  rewrite `.agent/handoff.md` — the handback
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f033-r29.md
+    .agent/authored/f040-r1.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
+    .agent/candidates.md
     docs/roadmap/STATUS.md
-    README.md
+    .agent/context.md
+    .agent/f040_inventory.md
     .agent/handoff.md
 
-## What the reviewer measured before writing this block, and where
+No file under `packages/`, `apps/`, `tests/`, `docs/guides/`, `docs/system/` or
+`docs/roadmap/features/` changes this round. This round writes NO production code
+and NO test.
 
-Every reading below was taken by the reviewer at `35481fc5`, this round's base.
+## Constraints
 
-- THE PACKAGE EXISTS AT THE PATH THE HANDBACK NAMES, and the reviewer opened it
-  rather than trusting the report.
-  `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260829-154912-READY_FOR_REVIEW.zip`
-  is 20486078 bytes at sha256
-  `3b646ca5a18f10ae21f3218a753be00970762ba0fe4513ef53a3f60a9f711ccc`, which is
-  the digest the round-28 handback states. Its `.review_zip_manifest.json` reads
-  `package_status` `READY_FOR_REVIEW`, `ready_gate_matrix.ok` true with an EMPTY
-  `blocking_reasons`, `packaging_warnings` empty, `external_paths_detected`
-  empty, `source_root_containment` PASS, `git_status_snapshot` OK,
-  `packaged_evidence_job_id` `f033-closure`, and a
-  `committed_review_subject` of base `bd8d952942d8ec1d243d787ccfe16e0ad04360d2`,
-  head `8738c5f1643b2bd667bc796257a4ddc502f36191`, `base_is_ancestor` true over
-  237 commits. All EIGHT gate documents are present with verdicts.
-- THE ACCEPTED HEAD IS `8738c5f1643b2bd667bc796257a4ddc502f36191`, which is C3
-  of round 28 — the last CONTENT commit, the head the zip actually covers. It is
-  NOT this round's head, and the STATUS line says so deliberately: the segment
-  names the reviewed head the verdict and the package cover.
-- `integrity check` PASSES, re-run by the reviewer through
-  `python3 -m apps.cli.grouped integrity check --json` at REAL exit 0:
-  `passed` true, `fail_count` 0 over 5 checks, and `high_blockers_open` reads
-  "no open blocker/high findings", which is closure precondition 3.
-- THE THREE ANCHORS ARE UNIQUE, and the second one is a WHOLE LINE rather than
-  the sentence the test regex matches. `- [~] F033 — Hunk-level diff approval`
-  occurs exactly once in `docs/roadmap/STATUS.md`; the README line
-  `62 of 257 registered items accepted. Next: F033 (Hunk-level diff approval).`
-  and the row `| 5 | Operator Cockpit | 10 | 31 |` each occur exactly once in
-  `README.md`.
-- THAT README LINE ALSO NAMES F033 AS THE NEXT FEATURE, and this closure is what
-  falsifies it. The reviewer's first draft of PAIR-COUNT spanned only the
-  sentence `tests/docs` pins and would have left "Next: F033" standing beside an
-  accepted F033 — the same shape as R-0747 through R-0750, caught before
-  emission by the pair's own containment measurement rather than after landing.
-  DECISION F033 D6 in RECORD29 rules what replaces it and why. No test pins the
-  `Next:` text: `git grep -n -F "Next: F"` over `tests`, `docs`, `scripts`,
-  `packages` and `apps` returns NOTHING, and the only pin on that line is the
-  regex `^(\d+) of (\d+) registered items accepted\.`, which PAIRCOUNT-TO still
-  satisfies because the sentence stays at the line's start.
-- THE TWO README NUMBERS ARE DERIVED THE WAY THE TESTS DERIVE THEM, not guessed.
-  `^- \[x\] F\d{3} — ` matches 62 lines in STATUS.md now, so the prose count
-  goes to 63. Resolving every accepted id through its feature file's tier prefix
-  gives Tier 5 exactly 10 now, and `docs/roadmap/features/T5_F033.md` puts F033
-  in Tier 5, so that row's Done cell goes to 11. Both pins are in
-  `tests/docs/test_docs_consistency.py` and both are ledger-count changes, so
-  they land in the SAME commit as the STATUS edit — the docs-round rule and the
-  R-0154 pin say the same thing from two directions.
-- THE STATUS GRAMMAR IS COPIED FROM THE LIVING PRECEDENT, the accepted F037,
-  F256 and F257 lines. Note the EN DASH in `T001–T003`: those lines use `–`,
-  not a hyphen, and PAIR-STATUS carries the same byte.
-- THE SELF-USE QUEUE IS EXHAUSTED — one item, zero pending — so no
-  `consumed_by` edit is owed and `scripts/self_use_queue.json` is NOT touched.
-  The closure records `self-use NONE (queue exhausted)`.
-- THIS ROUND'S OWN VERDICT WILL HAVE NO GATE ENTRY ON DISK, by construction:
-  docs/agents/planner_reviewer_prompt.md §4 item 13 rules that the last round of
-  a branch cannot record a gate on itself. That absence is the branch
-  TERMINATOR, not a missing gate. RECORD29 books round 28 and stops.
+1. Apply every slice BYTE FOR BYTE. Do not fix, rewrap, retitle or improve a
+   slice. If a slice looks wrong, apply it as given and DECLARE the problem in
+   the handback's deviations — that is the honest route and it costs nothing.
+2. C0a is a COPY, never a retype: the block is on disk at
+   `.remedy-wt/f040-r1-block.md`. Use `shutil.copyfile` for C0a and again for
+   C0b. Its sha256 is stated in gate G1; verify BEFORE saving.
+3. C1 is the FIRST substantive commit, ahead of C2, because this round touches
+   the finding ledger and AGENTS.md's Commit Gate requires `.agent/plan.md` to
+   match the current work before every commit.
+4. The record is APPEND-ONLY. C2 appends RECORD1 and revises NOTHING already in
+   `.agent/live_review.md`. R-0570's landed paragraph is NOT edited.
+5. NO NEW R-ID IS MINTED THIS ROUND. The count of distinct `^- R-\d+ — ` ids is
+   the same before and after C2. R-0570 stays OPEN — do not write a `Done:` or
+   `Landed:` line for it.
+6. `.agent/plan.md` stays under 50 lines (AGENTS.md). PLAN1 is authored to fit;
+   do not add to it.
+7. Every exit code you report is REAL, taken from `subprocess.run(...).returncode`
+   inside a script under the gitignored `.remedy-wt/`. Never read an exit code
+   through a pipe, and never report a colour you did not run.
+8. Destructive verification — the G3 byte flip — runs ONLY inside a disposable
+   `git worktree`, never in the primary checkout, which satisfies
+   `git status --porcelain` empty at every reading.
+9. The `remedy` console script is DENIED in this sandbox. Where you need it, use
+   `python3 -m apps.cli.grouped ...` and say so.
+10. Commit subjects carry no leading-slash token, no absolute path and no
+    secret-like string. Match the branch convention: no `Co-Authored-By` trailer.
+11. Push the branch after C7 and open NO pull request. This is round 1 of the
+    feature; the PR is created at closure.
+12. Pair shape, measured not asserted — PAIR-STATUS: `TO contains FROM: false`,
+    so it is a REWRITE, and the FROM-zero / TO-one count applies to it.
 
-## Slice PLAN29 — the FULL new bytes of `.agent/plan.md`
+## Slices
 
-The slice is every byte BETWEEN the two marker lines, exclusive. The markers are
-not part of any file.
+The authored units below are PLAN1, RECORD1, CAND1, CONTEXT1 and the two halves
+of PAIR-STATUS. Each is delimited by its own BEGIN and END marker line; the
+marker lines are NOT part of the slice, and the slice's own bytes start on the
+line after BEGIN and end with the newline before END.
 
-<<<BEGIN PLAN29
-# Plan — F033 Hunk-level diff approval
+<<<BEGIN PLAN1
+# Plan — F040 Completion/return digest
 
-Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 7, closing the feature.
+Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
+commit of pull request 222. SESSION 1, opening the feature.
 
 ## Goal
-Surgical consent over changes: hunks carry STABLE content-hash ids, an
-`approve_hunks` command applies the approved set to the branch all-or-nothing,
-and rejected hunks become precise repair feedback quoted verbatim in the next
-round — every partial state rendered truthfully in viewer, node and report.
+Coming back is calm: a digest endpoint condenses state, cost with its basis, top
+ownership entries, open decisions and ONE primary action into a hero card, shown
+at job end or on the first UI open after absence — the "what happened while I
+was gone" answer in one glance.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001, T002 and T003 | done | rounds 1-24 |
-| the operator guide and its index rows | done | round 26 |
-| the integration gate | done | round 27, PASS WITH RISKS |
-| the Built State, evidence job and review zip | done | round 28 |
-| the STATUS line, the README sync and the PR | done | this round |
-| R-0745 and R-0750, carried as documented risks | open | see Risks |
+| the two F033 closure candidates | done | this round; no id spent |
+| the F040 claim and the branch | done | this round |
+| the seam inventory | done | this round, `.agent/f040_inventory.md` |
+| T001 the endpoint composition | open | next round, ordered from the inventory |
+| T002 the hero card and its triggers | open | |
+| T003 CLI parity and the end-to-end | open | |
 
 ## Next Steps
-1. This round books the round 28 PASS, flips the STATUS line to `[x]` with the
-   README capability sync in the SAME commit, and opens the pull request.
-2. THE PR IS NOT MERGED IN THIS SESSION. It merges at the next feature's start
-   through the Open PR Gate, which is the operator's manual-review window; the
-   operator may also merge it by hand at any time.
-3. The next session starts a NEW feature: read `.agent/STOP` first, then run the
-   Open PR Gate, which will find this PR and merge it before any new branch.
-4. Nothing further is owed on this branch. Its last round has no on-disk gate
-   entry by construction, and that absence is the terminator rather than a
-   missing review.
+1. This round claims F040, discharges the two candidates the F033 closure gate
+   raised, and measures the four read paths the digest composes over.
+2. The round after it orders T001 — the endpoint, the next-action rule-table
+   import and the fixture goldens — from what the inventory measured.
+3. The ownership seam is unbuilt: F035 is `[ ]` in the ledger. The inventory
+   measures that directly, and the T001 order carries the decision that settles
+   what the digest does about it.
 
 ## Risks
-- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, which is why the STATUS
-  line reads PASS_WITH_RISKS. Neither is reachable from this feature's
-  Acceptance: the first hardens an import guard over the write door, the second
-  is a reviewer's gate wording that ordered a full run log where the canonical
-  integration-gate procedure asks for a tail.
-<<<END PLAN29
+- R-0570 (Low) stays OPEN and is deliberately NOT repaired here. Its fix edits
+  `README.md` and `tests/docs/test_docs_consistency.py`, neither of which F040
+  owns, and AGENTS.md forbids mixing an unrelated fix into a feature branch.
+- F040's Design section names an ownership source that does not exist on disk.
+  Building T001 against it verbatim would compose over nothing.
+<<<END PLAN1
 
-## Slice RECORD29 — appended to `.agent/live_review.md`
+<<<BEGIN RECORD1
+Note: F040 — THE TWO CLOSURE CANDIDATES F033 LEFT IN `.agent/candidates.md` ARE DISCHARGED IN THIS ROUND AND THE FILE IS EMPTIED, which lifts the block condition on the F040 claim. NO ID WAS SPENT ON EITHER, and the reasons differ. THE FIRST — the README's per-tier accepted list is guarded in one direction only and is now one feature short — IS NOT NEW: `R-0570` already registers exactly that defect, raised at the F085 R74 closure and OPEN ever since, and docs/agents/planner_reviewer_prompt.md §3 item 30 rules that a defect the open set already describes takes new evidence rather than a second id. THE NEW EVIDENCE, measured by the reviewer at `f5b1e6c5`: the Tier 5 block of `README.md` opens "Accepted in Tier 5 so far:" and its paragraphs name F255, F008, F009, F021, F022, F031, F032, F037, F256 and F257 — ten — while `docs/roadmap/STATUS.md` carries ELEVEN Tier 5 lines matching `^- \[x\] F\d{3} — `, the eleventh being F033 itself, and the README's own tier table reads `| 5 | Operator Cockpit | 11 | 31 |`. That is the R-0570 shape reproduced one tier over and one feature short instead of eight: `test_the_readme_reports_the_accepted_foundation_and_no_later_feature` in `tests/docs/test_docs_consistency.py` iterates the ids the README LISTS and asserts each is accepted in the ledger, which is the list-to-ledger direction only, so an accepted feature the README omits can never fail it. R-0570 STAYS OPEN and its routing is unchanged: the fix edits `README.md` and that test, neither of which F040 owns, so it belongs to the paydown branch R-0570's own text names and not to this feature.
 
-Two paragraphs, blank-line separated: the LAST gate entry this branch receives,
-and the DECISION that entry refers to. Neither begins with `- R-`, so no id
-moves this round.
+DECISION F040 D1 — THE SECOND F033 CLOSURE CANDIDATE IS SETTLED AS NO DEFECT, AND NOTHING IS EDITED FOR IT. THE CANDIDATE claimed that the README's Tier 5 block "names ELEVEN ids of which only TEN are distinct, because `F037` occurs twice", read that as a duplicate in a hand-maintained inventory, and prescribed a deletion. THE MEASUREMENT, taken by the reviewer at `f5b1e6c5` over the region from the line `Accepted in Tier 5 so far:` to the line `Full per-feature state:`: the arithmetic is right and the diagnosis is wrong. Eleven occurrences of `F\d{3}` and ten distinct ids is what the region holds, but the ids that begin a paragraph — the entries of the list — are exactly ten, one per accepted feature, with no repeat. The eleventh occurrence is at `README.md` line 96, INSIDE the F256 paragraph, in the clause "the highlighting F037 only modelled is now rendered": a prose cross-reference to the feature F256 completes, and true. CHOSEN: no edit. Deleting that occurrence, as the candidate prescribed, would remove a correct sentence and leave F256's paragraph unable to say what F256 did. ALTERNATIVES CONSIDERED: (a) register it as a finding anyway and resolve it as a non-defect, rejected because amend0827 rule 2 reserves an id for a defect with product effect and there is nothing on disk to repair; (b) rewrite the counting so paragraph-initial ids are the only ones the region holds, rejected because the cross-reference is the useful half and a list that may not name its neighbours is a worse list. HOW TO REVERSE: any later relay may delete the clause at `README.md` line 96; D1 binds no round and pins no text. WHAT IT COSTS TO BE WRONG HERE: nothing on disk, because the candidate's own remedy was a deletion and this decision declines it — the counting rule it leaned on is recorded above so a later reader re-measuring the region does not raise the same candidate a third time.
+<<<END RECORD1
 
-<<<BEGIN RECORD29
-Gate: F033 R28 — THE CLOSURE PREPARATION. THE ROUND PASSED. Every gate was re-executed by the reviewer at `35481fc5`. TRANSPORT: the reviewer's own pre-emission original, `.agent/authored/f033-r28.md` and `.agent/last_block.md` are all 25853 bytes at sha256 `49ac004e…17f275` and BYTE-EQUAL. THE PLAN is byte-EQUAL to PLAN28 at 2197 bytes over 42 lines. THE RECORD APPEND at `24ea131f` reconstructs 1625403 plus one newline plus 8596 to 1634000, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 3, the last three units equal to the slice's paragraphs IN ORDER, and a negative control at byte 1628405 — the reviewer's own offset, inside the FIRST appended paragraph — REJECTED by both readers, which accepted the unflipped bytes. THE LEDGER: registered 310 distinct going to 311 with the ADDED id exactly `R-0750`; `Done:` 55 lines over 53 distinct UNMOVED; `Landed:` 22 UNMOVED; `^Gate: F033 R27 — ` 0 before and exactly 1 after; `^R-0736 EXTENSION — ` exactly 1 with `^- R-0736 — ` still exactly 1, so the extension spent no id; and the open set 257 to 258. THE BUILT STATE satisfies ORDERED EQUALITY: `docs/roadmap/features/T5_F033.md` goes 6358 to 9936 bytes, the pre-commit blob is a byte PREFIX, the slice an exact SUFFIX, the reconstruction exact, and the 54 lines C3's diff ADDS are exactly one blank separator followed by the slice's 53 lines IN ORDER with ZERO deleted lines. `python3 -m pytest tests/docs/ -q` is a REAL exit 0 at 295 passed, equal to the figure this branch measured at round 26. THE INTEGRITY CHECK was re-run by the reviewer through `python3 -m apps.cli.grouped integrity check --json` at REAL exit 0: `passed` true, `fail_count` 0 over 5 checks, `high_blockers_open` reading "no open blocker/high findings". THE PACKAGE WAS OPENED, NOT TAKEN ON REPORT: the archived zip is 20486078 bytes at the sha256 the handback states, its `.review_zip_manifest.json` reads `package_status` READY_FOR_REVIEW with `ready_gate_matrix.ok` true and EMPTY `blocking_reasons`, no packaging warnings, no external paths, containment PASS, evidence job `f033-closure`, and a `committed_review_subject` whose head is `8738c5f1` — C3 of that round, the last CONTENT commit — over base `bd8d9529` with `base_is_ancestor` true across 237 commits. All eight gate documents are present. THE STRUCTURE: six single-parent commits over `f13134fe`..`35481fc5` of 302, 231, 22, 6, 54 and 336 insertions, every one under 500 — which is the number R-0750 exists about, and this round has no evidence log to commit and therefore no exception to declare; `git status --porcelain` EMPTY; zero untracked paths; and the path set to C3 EQUALS the declared change set minus `.agent/handoff.md` in BOTH directions. THE BUNDLE WAS SIX COMMITS RATHER THAN SEVEN and the block anticipated it: C4 produced nothing committable, because the evidence directory is gitignored by design and the package is written outside the repository, and the worker declared that rather than manufacturing a commit. THE WORKER'S BEST DEVIATION IS ITS THIRD: it observed that of the two readers G3 orders, a BASE-PREFIX reader is structurally incapable of rejecting a flip that lies beyond the base blob's last byte, and reported that reader's unmoved result rather than hiding it. The reviewer's own reading (a) — reconstructing base plus separator plus slice and comparing the whole to the committed file — DOES reject the flip, so the two-reader obligation is met in substance; but the worker was right that a prefix check alone cannot be the second reader, and a later block ordering this gate should say which reading it means.
+<<<BEGIN CAND1
+# Closure Candidates — carrier of record
 
-DECISION F033 D6 — THE README'S `Next:` FIELD NAMES THE LEDGER INSTEAD OF A FEATURE ID. Raised by the reviewer while writing the closure block, under docs/agents/planner_reviewer_prompt.md §4 item 7, because a silent re-plan is forbidden and this changes a field every closure has maintained by hand. CONTEXT, measured at `35481fc5`: `README.md` carries the single line `62 of 257 registered items accepted. Next: F033 (Hunk-level diff approval).`, and this closure accepts F033, so the second sentence becomes false in the same commit that makes the first one true. `tests/docs/test_docs_consistency.py` pins only the first sentence, through the regex `^(\d+) of (\d+) registered items accepted\.`; `git grep -n -F "Next: F"` over `tests`, `docs`, `scripts`, `packages` and `apps` returns nothing, so the `Next:` half is maintained by hand and guarded by no test at all. CHOSEN: the sentence becomes `Next: the first unchecked item in docs/roadmap/STATUS.md.` — it names the RULE that selects the next feature rather than the instance the rule currently returns, so it is true by construction at every commit and cannot go stale. ALTERNATIVES CONSIDERED: (a) name the next id, which STATUS order gives as F040, "Completion/return digest" — rejected because Rule A5 selects the next feature at the NEXT session's claim and "proposes, never starts", so a forecast written here is a claim this session has no authority to make and would be stale the moment the operator claims differently; (b) delete the sentence — rejected because a reader arriving at the README's Status section is asking exactly this question and deserves the pointer, and an empty field invites the next closure to reinvent the hand-maintained form. WHY IT IS RECORDED AS A DECISION rather than done quietly: it retires a convention every prior closure followed, and the operator's veto is any later relay. HOW TO REVERSE: restore the hand-maintained form by writing `Next: F<id> (<name>).` in that line and updating it at each closure, which is what `bd8d9529` and every closure before it did. THIS IS THE SAME DEFECT CLASS AS R-0747 THROUGH R-0750, arriving one last time at the closure itself: a sentence true when written, falsified by a later round that completed the thing it named. The difference is that this one was caught BEFORE emission, by the pair's own containment measurement rather than by a reader a round later, and the fix is structural rather than another instance repair.
-<<<END RECORD29
+> Written per docs/roadmap/STATUS_closure_protocol.md ("Closure-candidate
+> findings", disk-vehicle rule, operator ruling 2026-08-01). Read at Window-1
+> session bootstrap (docs/agents/planner_reviewer_prompt.md §1). One entry per
+> candidate: description · source feature · date. Any entry present at
+> feature-claim time is a block condition.
 
-## Pair PAIR-STATUS — `docs/roadmap/STATUS.md`
+EMPTY — no candidate is open.
 
-Containment test run by the reviewer at `35481fc5`: `TO contains FROM: false`.
-It is therefore a REWRITE, and the gate is PAIRSTATUS-FROM 0x and PAIRSTATUS-TO
-exactly 1x after the commit. The FROM occurs exactly once at this base. Touch no
-other line of that file.
+The two entries the F033 closure gate raised were discharged in F040 round 1 and
+the reasons are on the record in `.agent/live_review.md`: the first as new
+evidence on the OPEN finding `R-0570`, which already describes that defect and
+keeps its own routing, and the second as DECISION F040 D1, which measured it and
+found no defect to repair. No id was spent on either.
+<<<END CAND1
+
+<<<BEGIN CONTEXT1
+# Context — F040 Completion/return digest
+
+## Active Branch
+feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge commit
+of pull request 222, which is the commit that accepted F033 into the ledger.
+
+## Scope
+Feature F040, `docs/roadmap/features/T5_F040.md` — a digest endpoint that
+composes state, cost with its basis, ownership sentences, open decisions and ONE
+primary action, the hero card that renders it, and CLI parity through
+`remedy job digest`.
+
+## Do not touch
+Report content, notification channels and the home grid, per the feature file's
+own Do-not-touch. `docs/roadmap/ROADMAP.md` is not edited. The digest is a
+COMPOSITION: it reads finished sources and owns no new storage.
+
+## Assumptions
+- The next-action rule table is ONE source. The digest's primary action imports
+  `NEXT_ACTION_RULES` from `packages/orchestration/run_report.py` rather than
+  restating it, so the CTA and the report's recommendation cannot disagree.
+- The ownership source named in the feature file's Design is unbuilt — F035 is
+  `[ ]` in the ledger. What the digest does about it is decided from the round-1
+  inventory's measurement, not assumed here.
+
+## Constraints
+The bullets in this first group are STANDING project constraints, carried
+forward from the context this file replaced. They are not this feature's, and
+deleting them with the rest of a rewrite is what cost an earlier round a red
+CI run.
+
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree, never in
+  the primary checkout, which satisfies `git status --porcelain` empty at every
+  verdict.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The full contract those
+  readers hold over the three state files, so a rewrite is checked against it
+  directly rather than rediscovered from a red: this file carries
+  `## Active Branch`, a `feature/` branch name, a roadmap feature id matching
+  `\bF\d{3}\b` and the word `Steps`; `.agent/plan.md` carries `## Goal`,
+  `## Next Steps` and a feature id; `.agent/live_review.md` carries `Steps`.
+
+- A new module under `packages/orchestration/` is swept by repo-wide guards that
+  name no path: the `REMEDY_DATA_DIR` single-reader invariant, the path-utils
+  single-implementation invariant, the bare-`except: pass` ban, and the
+  development-artifact boundary.
+
+- This feature is UI work, so `docs/ui/design_reference/` is binding and any
+  visual deviation is documented in the assumption log with a technical reason.
+
+## Steps
+The item-status table for this feature lives in the `## Current Step` section
+of `.agent/plan.md`. This file deliberately does not restate it — a second copy
+of the map is what fell out of step and cost F022 a finding.
+<<<END CONTEXT1
 
 <<<BEGIN PAIRSTATUS-FROM
-- [~] F033 — Hunk-level diff approval
+- [ ] F040 — Completion/return digest
 <<<END PAIRSTATUS-FROM
 
 <<<BEGIN PAIRSTATUS-TO
-- [x] F033 — Hunk-level diff approval (T001–T003 complete; accepted 2026-08-29 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f033-closure · package remedy-review-20260829-154912-READY_FOR_REVIEW.zip · SHA-256 3b646ca5a18f10ae21f3218a753be00970762ba0fe4513ef53a3f60a9f711ccc · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 8738c5f1643b2bd667bc796257a4ddc502f36191)
+- [~] F040 — Completion/return digest
 <<<END PAIRSTATUS-TO
 
-## Pair PAIR-COUNT — the accepted-count line of `README.md`
+## SPEC for C6 — `.agent/f040_inventory.md`, YOUR measurement
 
-Containment test run by the reviewer at `35481fc5`: `TO contains FROM: false`.
-A REWRITE; the gate is PAIRCOUNT-FROM 0x and PAIRCOUNT-TO exactly 1x after the
-commit. The FROM occurs exactly once at this base.
+This file is NOT authored above and must not be invented. MEASURE the repository
+at C5 and write what you find, with a `file:line` for every claim and the exact
+command beside every count. Where something is ABSENT, say so and say how you
+searched — an absence is only as wide as the search that looked for it. Six
+sections, in this order:
 
-<<<BEGIN PAIRCOUNT-FROM
-62 of 257 registered items accepted. Next: F033 (Hunk-level diff approval).
-<<<END PAIRCOUNT-FROM
+1. THE NEXT-ACTION RULE TABLE. `NEXT_ACTION_RULES` and
+   `recommended_next_action` in `packages/orchestration/run_report.py`: the
+   exact type of the table, every rule id in it with its condition string, the
+   signature of the function, and the type it returns. Name what a caller must
+   construct to call it — the `ReportSources` fields and where each comes from.
+   This is the one-source seam the digest's CTA must import rather than restate.
+2. THE DECISION INBOX READ PATH. `build_decision_inbox` in
+   `packages/orchestration/decision_inbox.py`: signature, what it returns, the
+   per-card fields, and the ordering rule it applies. Report whether an
+   URGENCY or significance value is computed there and is importable, or
+   whether ordering is inlined — the feature file requires the digest's
+   significance to be ONE source with the inbox, so state which it is.
+3. THE COST LINE AND ITS BASIS. Where a job's cost and its ESTIMATED-versus-
+   MEASURED basis are read: name the module and function, the field that
+   carries the basis, and the exact vocabulary the live cost ticker renders for
+   an estimated basis. Say whether one function returns both value and basis or
+   whether a caller must join two sources.
+4. THE OWNERSHIP SEAM. The feature file's Design orders "top ownership sentences
+   (≤3)" from a phrase catalog. F035 — Ownership ledger is `[ ]` in
+   `docs/roadmap/STATUS.md`. SEARCH FOR IT AND REPORT THE RESULT: give the exact
+   commands you ran across `packages/` and `apps/`, what they matched, and
+   whether any importable ownership source exists. This is the section the next
+   round's decision rests on, so measure it rather than concluding it.
+5. THE SERVER SEAM. `packages/orchestration/ui_server.py`: how an existing
+   per-job read endpoint is registered and dispatched, the shape of its JSON
+   envelope, and whether a route carries an explicit version field. Name the
+   nearest existing endpoint the digest should be modelled on and quote its
+   registration line.
+6. THE UI AND CLI SEAMS. The design-reference files under
+   `docs/ui/design_reference/` that bind a card of this kind, and which of the
+   `--remedy-*` tokens named in the feature file's binding CSS already exist in
+   the shipped `tokens.css` — report any that do NOT. For the CLI, name the
+   module and the registration pattern a `remedy job digest <id>` subcommand
+   would follow, quoting a sibling subcommand's registration.
 
-<<<BEGIN PAIRCOUNT-TO
-63 of 257 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
-<<<END PAIRCOUNT-TO
+Report every ABSENCE explicitly. A section that says "not found, searched with
+<command>" is worth more than a confident guess, and this inventory is the
+evidence the T001 order is built from.
 
-## Pair PAIR-TIER — the Tier 5 row of the README status table
+## Done when — the gates
 
-Containment test run by the reviewer at `35481fc5`: `TO contains FROM: false`.
-A REWRITE; the gate is PAIRTIER-FROM 0x and PAIRTIER-TO exactly 1x after the
-commit. The FROM occurs exactly once at this base. Change no other row: the
-other seventeen rows are already equal to what the ledger derives for them.
+Run each gate and report ONE line per gate in the handback with its REAL exit
+code. Every gate below runs at a commit STRICTLY EARLIER than C7, which writes
+the handback; C7's own numbers are measured by the reviewer at the next gate and
+are not owed here.
 
-<<<BEGIN PAIRTIER-FROM
-| 5 | Operator Cockpit | 10 | 31 |
-<<<END PAIRTIER-FROM
+G1 TRANSPORT, at C0b. Compute sha256 over THREE files: the scratch original
+   `.remedy-wt/f040-r1-block.md`, the committed `.agent/authored/f040-r1.md`,
+   and the committed `.agent/last_block.md`. Report the one digest and the byte
+   length, and state that all three are equal. This block deliberately states no
+   expected digest — a file cannot carry its own sha256, and the reviewer holds
+   the original and checks your reported value against its own measurement at
+   the gate. ONE digest comparison, not a chain.
 
-<<<BEGIN PAIRTIER-TO
-| 5 | Operator Cockpit | 11 | 31 |
-<<<END PAIRTIER-TO
+G2 THE PLAN, at C1. `.agent/plan.md` is BYTE-EQUAL to slice PLAN1 (report both
+   sha256 values), its line count is under 50, and it holds `## Goal` and
+   `## Next Steps`.
 
-## Constraints
+G3 THE RECORD APPEND, at C2. The MEASURED pre-commit byte length of
+   `.agent/live_review.md` plus one separator newline plus RECORD1's byte length
+   equals the committed length — re-measure the base yourself at the commit you
+   append at; the reviewer read 1640101 at `f5b1e6c5`. Then TWO independent
+   readings: (a) WHOLE RECONSTRUCTION — base + separator + slice compared to the
+   entire committed file, not a prefix test; (b) PARAGRAPH ORDER — the last N
+   blank-line units of the committed file equal RECORD1's N paragraphs IN ORDER,
+   where N is COUNTED by your script and not taken from this block. NEGATIVE
+   CONTROL, inside a disposable worktree: flip one byte inside the FIRST
+   appended paragraph and report that BOTH readings reject the flipped file and
+   accept the unflipped one.
 
-1. Apply every slice and every pair BYTE FOR BYTE. If one looks wrong, apply it
-   as written and declare the problem; never silently repair it. PAIRSTATUS-TO
-   contains an EN DASH in `T001–T003` and MIDDLE DOTS between its segments,
-   matching the accepted F037, F256 and F257 lines; do not substitute ASCII.
-2. PLAN29 is a FULL REWRITE. RECORD29 is an APPEND. Measured by the reviewer at
-   `35481fc5`, `.agent/live_review.md` is 1634000 bytes and ends with a newline,
-   so the append is one blank-line separator then the slice. RE-MEASURE it
-   yourself at the commit you append at.
-3. Do NOT delete or edit any landed `Landed:`, `Done:` or `Gate:` text.
-4. C3 IS THE LAST COMMIT ON THIS BRANCH — Rule A4. Its path set is EXACTLY
-   `docs/roadmap/STATUS.md`, `README.md` and `.agent/handoff.md`. The STATUS
-   edit and the README sync land TOGETHER: the R-0154 pin is that README and
-   STATUS may never disagree in any committed state, and the two README numbers
-   are ledger counts whose test pins must move in the same commit as the ledger.
-5. Do NOT touch `scripts/self_use_queue.json`. Its queue is exhausted, so no
-   `consumed_by` edit is owed and an edit would be a false record.
-6. Do NOT rebuild the review zip, re-run the evidence job, or edit any manifest.
-   Round 28 built the package from a clean tree at the accepted head and this
-   round consumes those values verbatim.
-7. Touch no path outside the change set. This round changes NO file under
-   `packages/`, `apps/`, `tests/`, `docs/guides/` or `docs/roadmap/features/`.
-8. AFTER C3, create the pull request with `gh pr create`, base `main`, head
-   `feature/f033-hunk-approval-v2`, NOT a draft. DO NOT MERGE IT and do not
-   merge anything else. Never force-push. The description carries what changed
-   and why, the key decisions, how to review, the changed-files summary, the
-   latest verdict, the open-findings count and the runtime actuals — and it
-   states plainly that R-0745 and R-0750 are open and carried as documented
-   risks. Its subject and body contain no leading-slash token, no absolute path
-   outside the two the STATUS line already carries, and no secret-like string.
-9. The `remedy` console script is denied in this sandbox; use
-   `python3 -m apps.cli.grouped ...` and say so.
-10. The sandbox denies `VAR=x cmd`, `env`, `export`, `cp`, `$(...)` inside a
-    compound, process substitution, a heredoc nested in `bash -c`, and a shell
-    line containing a brace with a quote inside it. Write scripts under
-    `.remedy-wt/` and run them as `python3 -B <path>`. REAL exit codes come from
-    `subprocess.run(...).returncode`, never from a pipe.
-11. Re-read `.agent/STOP` before starting. If it exists, stop and hand off.
-12. G1 through G7 run at C3. G8 runs after the pull request exists. Remove any
-    scratch you wrote under `.remedy-wt/` BY EXACT PATH, never by glob.
+G4 THE LEDGER, at C1 and at C2. Report, for each of the two commits: distinct
+   `^- R-\d+ — ` ids, distinct `^Done: R-\d+ — ` ids, and the open count. The
+   ADDED registered ids and the ADDED resolved ids must BOTH be the empty list —
+   this round mints nothing and resolves nothing. Report the distinct
+   `^DECISION F040 D\d+ — ` ids before and after; ADDED must be exactly
+   `['D1']`. Report whether `R-0570` still has zero `^Done: R-0570` lines.
 
-## Done when — G1 through G8
+G5 THE CANDIDATES FILE, at C3. `.agent/candidates.md` is BYTE-EQUAL to slice
+   CAND1 (report both sha256 values), and the string `· F033 · 2026-08-29` occurs
+   0 times in it. Report its byte length before and after.
 
-G1 TRANSPORT. Report `sha256` and byte length of the committed
-`.agent/authored/f033-r29.md`, and the same two readings for
-`.agent/last_block.md`. One digest comparison.
+G6 THE CLAIM AND THE DOCS PINS, at C4. In `docs/roadmap/STATUS.md`:
+   PAIRSTATUS-FROM occurs 0 times and PAIRSTATUS-TO occurs exactly 1 time;
+   `git diff --numstat` for C4 alone reads exactly one insertion and one
+   deletion over that one path; and the count of lines matching
+   `^- \[~\] F\d{3} — ` in the whole file is 1. Then, at C4:
+   `python3 -m pytest tests/docs/ -q` and
+   `python3 -m pytest tests/orchestration/test_roadmap_index.py -q`, each its
+   own REAL exit code. The reviewer measured both green at the base, 295 passed
+   and 30 passed; report YOUR numbers.
 
-G2 THE PLAN. `.agent/plan.md` byte-EQUAL to PLAN29, under 50 lines, holding
-`## Goal` and the substring `Steps`. Report the byte length and the line count.
+G7 THE STATE READERS AND THE CANARY, at C6. Each its own REAL exit code:
+   `python3 -m pytest tests/ui_server/ -q`,
+   `python3 -m pytest tests/orchestration/test_test_runner.py -q`,
+   `python3 -m pytest tests/regression/test_resource_safety.py -q`,
+   `python3 -m pytest tests/orchestration/test_integrity_gate.py -q`, and the
+   canary `python3 -m pytest tests/cli/test_golden_path.py -q`. The reviewer
+   measured these at the base at 508, 52, 21, 16 and 42 passed; report YOURS.
 
-G3 THE RECORD APPEND, at C2. Reconstruct the MEASURED base plus one newline plus
-the byte length of RECORD29 to the committed size. Prove the pre-commit blob a
-byte PREFIX and the slice an exact SUFFIX. COUNT N in the script. Compare the
-file's LAST N blank-line units against the slice's paragraphs IN ORDER. Flip one
-byte inside the FIRST appended paragraph, report the offset, and show that BOTH
-of these reject it while accepting the unflipped bytes: reading (a) is the WHOLE
-reconstruction — base plus separator plus slice compared to the committed file,
-not a prefix test, which the round-28 handback correctly observed cannot see a
-flip past the base's last byte — and reading (b) is the paragraph comparison.
-
-G4 THE LEDGER, at `35481fc5` and at C2: `^- R-\d+ — ` 311 distinct UNMOVED;
-`^Done: R-\d+ — ` 55 lines over 53 distinct UNMOVED; `^Landed: ` 22 UNMOVED;
-`^Gate: F033 R28 — ` 0 before and exactly 1 after; and the open set 258 UNMOVED.
-This round registers and resolves nothing. Report also that distinct
-`^DECISION F033 D\d+ — ` ids go 5 to 6 with the ADDED one exactly `D6`.
-
-G5 THE CLOSURE COMMIT, at C3. In `docs/roadmap/STATUS.md`, PAIRSTATUS-FROM
-occurs 0 times and PAIRSTATUS-TO exactly 1 time. In `README.md`, PAIRCOUNT-FROM
-and PAIRTIER-FROM each occur 0 times and PAIRCOUNT-TO and PAIRTIER-TO each
-exactly 1 time. Report all six counts. Then report `git diff --name-only` for C3
-alone: it must be EXACTLY `docs/roadmap/STATUS.md`, `README.md` and
-`.agent/handoff.md`, in both directions. Confirm C3 is the branch tip.
-
-G6 THE PINS THE FLIP MOVES, at C3. `python3 -m pytest tests/docs/ -q` at a REAL
-exit 0, with its pass count reported. Then run these three by name and report
-each REAL exit code separately, because they are the pins the closure moves and
-a green suite total can hide which one ran:
-`tests/docs/test_docs_consistency.py::TestRoadmapLedgerIsConsistent::test_the_readme_accepted_count_equals_the_status_count`,
-`::TestRoadmapLedgerIsConsistent::test_the_readme_tier_table_done_column_matches_the_ledger`
-and
-`::TestRoadmapLedgerIsConsistent::test_the_readme_reports_the_accepted_foundation_and_no_later_feature`.
-If a node id does not resolve, report the resolution error and find the correct
-class name with `--collect-only` rather than skipping the pin.
-
-G7 THE STATE AT CLOSURE, at C3. `python3 -m pytest tests/cli/test_golden_path.py -q`
-at a REAL exit 0 with its pass count. `python3 -m apps.cli.grouped integrity
-check --json` at a REAL exit 0 with `passed` true. `git status --porcelain`
-EMPTY. Per-commit insertions from C0a through C3 each under 500. And
-`git ls-files --others --exclude-standard` reported as a count.
-
-G8 THE PULL REQUEST, after C3 is pushed.
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` must
-show EXACTLY ONE entry: head `feature/f033-hunk-approval-v2`, base `main`,
-`isDraft` false. Report the raw JSON and the PR number and URL. Report that you
-merged NOTHING and that `git log --oneline -n 1 main` is unchanged from its
-value at this round's base.
+G8 THE INVENTORY AND THE TREE, at C6. `.agent/f040_inventory.md` exists and
+   carries all six SPEC sections — report the heading line of each. Report the
+   `file:line` count it cites and confirm every cited path resolves with
+   `git ls-tree HEAD -- <path>`. Then `git status --porcelain` is EMPTY,
+   `git ls-files --others --exclude-standard` has count 0, and the per-commit
+   insertion counts for C0a through C6 from `git diff --numstat`, every one
+   under 500.
 
 ## Handback
 
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md, IN C3, as the
-feature's closing handback: feature and round, SESSION 7 of F033, branch, commit
-SHAs, changed-files table, one line per gate G1 through G7 with its REAL exit
-code, the open-findings count, an item-status table covering every Bundle item,
-every deviation, and the next expected action. No length cap. G8's readings go
-in your completion report rather than the handback, because the PR does not
-exist when C3 is written. Carry these as their own labelled lines: the accepted
-HEAD, the package filename, its SHA-256, its archived path, the evidence job id,
-`self-use NONE (queue exhausted)`, and the two open findings R-0745 and R-0750
-named as carried risks. Also carry the grep proof the closure protocol requires:
-that the applied STATUS line is byte-identical to PAIRSTATUS-TO. If any gate is
-RED, do not repair on your own initiative: report it and stop.
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries the
+state block, the `## Commits` table with a `+/-` column taken from
+`git diff --numstat` (not from file line counts — those differ on a full-file
+rewrite), the deviations, the item-status table with every bundle item and every
+gate appearing exactly once, and the next steps. It states `SESSION 1` of F040
+and round 1. It has NO length cap. Report the two candidates as discharged and
+name R-0570 as OPEN and routed away from this branch.
