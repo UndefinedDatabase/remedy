@@ -398,3 +398,191 @@ def test_a_nine_key_viewer_envelope_records_normally() -> None:
     assert [row["state"] for row in entry["hunks"]] == [HUNK_STATE_APPROVED, HUNK_STATE_REJECTED]
     assert [row["landing"] for row in entry["hunks"]] == [HUNK_LANDING_UNATTEMPTED] * 2
     assert [row["reason"] for row in entry["hunks"]] == ["", REASON]
+
+
+# ---------------------------------------------------------------------------
+# THE READ SIDE — ``load_latest_hunk_ledger_from_metadata``
+#
+# The properties, in the order they appear below: the LATEST decision for a task wins in BOTH
+# insertion orders, so neither "the first record" nor "the last record" passes by accident; a
+# DIFFERENT task's record is never returned; an unparseable ``decided_at`` LOSES to a parseable
+# one; with none parseable the LAST recorded decision wins; two decisions sharing one stamp
+# resolve to the LAST; a task with no recorded decision yields an EMPTY ledger; every malformed
+# input the function's docstring names yields an EMPTY ledger and raises nothing; and a decision
+# RECORDED through the shipped door reads back as the very ledger that recording returned.
+#
+# WHY THE IMPORTS BELOW ARE FUNCTION-LOCAL rather than in the block at the top of this file:
+# this section was APPENDED to an existing suite under an append-only obligation, so not one
+# line above it may move, and a module-level ``import`` placed down here is ruff ``E402`` —
+# measured with a probe, not assumed. The names are resolved where they are used instead,
+# exactly as ``tests/orchestration/test_builder_prompt_hunk_rejections.py`` already resolves
+# ``hashlib`` inside the single test that needs it.
+
+#: A stamp BEFORE ``DECIDED_AT`` and one AFTER it, so "latest" is an assertable ordering rather
+#: than a description, and so a test can insert them in either order.
+DECIDED_EARLIER = datetime(2026, 8, 29, 9, 0, 0)
+DECIDED_LATER = datetime(2026, 8, 29, 18, 45, 0)
+
+
+def _load_latest(metadata: object, task_id: object = "t-1"):
+    """The shipped reader over a METADATA MAPPING — the object a caller already holds."""
+    from packages.orchestration.hunk_decision_record import (
+        load_latest_hunk_ledger_from_metadata,
+    )
+    return load_latest_hunk_ledger_from_metadata(metadata, task_id=task_id)
+
+
+def _empty_ledger():
+    """The one answer every unreadable input and every absent task must produce."""
+    from packages.orchestration.hunk_ledger import HunkDecisionLedger
+    return HunkDecisionLedger(())
+
+
+def _states(ledger) -> list[str]:
+    return [entry.state for entry in ledger.entries]
+
+
+def _reasons(ledger) -> list[str]:
+    return [entry.reason for entry in ledger.entries]
+
+
+def test_the_latest_decision_for_a_task_wins_in_both_insertion_orders() -> None:
+    # BOTH orders, because either one alone is passed by an accident: with the later record
+    # written second, "return the first match" passes; with it written first, "return the last
+    # match" passes. Only the pair pins that the STAMP is what decides.
+    later_second = _job()
+    _record(later_second, attempt=1, now=DECIDED_EARLIER, approved=[HUNK_IDS[0]])
+    _record(later_second, attempt=2, now=DECIDED_LATER,
+            rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+
+    later_first = _job()
+    _record(later_first, attempt=2, now=DECIDED_LATER,
+            rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    _record(later_first, attempt=1, now=DECIDED_EARLIER, approved=[HUNK_IDS[0]])
+
+    for job in (later_second, later_first):
+        ledger = _load_latest(job.metadata)
+        # The LATER decision rejected the second hunk and approved nothing; the earlier one
+        # approved the first hunk. So the two are told apart by state, not by count.
+        assert _states(ledger) == ["pending", HUNK_STATE_REJECTED]
+        assert _reasons(ledger) == ["", REASON]
+
+
+def test_a_different_tasks_record_is_never_returned() -> None:
+    # The other task's decision is the NEWER one, so a reader that ignores ``task_id`` would
+    # answer with it.
+    job = _job()
+    _record(job, task_id="t-1", attempt=1, now=DECIDED_EARLIER, approved=[HUNK_IDS[0]])
+    _record(job, task_id="t-2", attempt=1, now=DECIDED_LATER,
+            rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    assert _states(_load_latest(job.metadata, "t-1")) == [HUNK_STATE_APPROVED, "pending"]
+    assert _states(_load_latest(job.metadata, "t-2")) == ["pending", HUNK_STATE_REJECTED]
+
+
+def test_an_unparseable_decided_at_loses_to_a_parseable_one() -> None:
+    # The BROKEN stamp is written LAST, so a reader that merely takes the final record — or one
+    # that treats an unreadable stamp as newer than every readable one — answers with it.
+    job = _job()
+    good = _record(job, attempt=1, now=DECIDED_EARLIER, approved=[HUNK_IDS[0]])
+    broken = _record(job, attempt=2, now=DECIDED_LATER,
+                     rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    records = job.metadata[HUNK_DECISIONS_METADATA_KEY]
+    records[broken.attempt_key]["decided_at"] = "the day before yesterday"
+    assert _load_latest(job.metadata) == good.ledger
+    assert _states(_load_latest(job.metadata)) == [HUNK_STATE_APPROVED, "pending"]
+
+
+def test_with_no_parseable_stamp_the_last_recorded_decision_wins() -> None:
+    # Nothing can be ordered by time, so insertion order is the only honest tie-break left, and
+    # for a record loaded from JSON that is the order it was written in.
+    job = _job()
+    first = _record(job, attempt=1, now=DECIDED_LATER, approved=[HUNK_IDS[0]])
+    last = _record(job, attempt=2, now=DECIDED_EARLIER,
+                   rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    records = job.metadata[HUNK_DECISIONS_METADATA_KEY]
+    for key in (first.attempt_key, last.attempt_key):
+        records[key]["decided_at"] = "not a time at all"
+    assert _load_latest(job.metadata) == last.ledger
+    assert _states(_load_latest(job.metadata)) == ["pending", HUNK_STATE_REJECTED]
+
+
+def test_two_decisions_sharing_one_stamp_resolve_to_the_last_recorded() -> None:
+    # THE DISCRIMINATOR BETWEEN ``>=`` AND ``>``: with equal stamps a strictly-greater
+    # comparison keeps the FIRST, and the documented rule says the last wins.
+    job = _job()
+    _record(job, attempt=1, now=DECIDED_AT, approved=[HUNK_IDS[0]])
+    last = _record(job, attempt=2, now=DECIDED_AT,
+                   rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    assert _load_latest(job.metadata) == last.ledger
+
+
+def test_a_task_with_no_recorded_decision_yields_an_empty_ledger() -> None:
+    # An absent decision is NOT an error and gets no vocabulary of its own: to a prompt it means
+    # what an unreadable record means — there is nothing of the operator's to quote.
+    job = _job()
+    _record(job, task_id="t-1", approved=[HUNK_IDS[0]])
+    assert _load_latest(job.metadata, "t-9") == _empty_ledger()
+    assert _load_latest(_job().metadata, "t-1") == _empty_ledger()
+
+
+def test_no_malformed_metadata_makes_the_reader_raise_or_answer_partially() -> None:
+    """TOTALITY, over every shape the docstring names. The table is walked and its OUTCOMES are
+    compared as a whole list, so one case that raises cannot hide the cases after it, and the
+    failure message names the shape rather than a line number.
+
+    A TABLE AND NOT ``pytest.mark.parametrize``: this file carries no ``import pytest`` and the
+    append-only obligation forbids adding one to the block at the top, while a module-level
+    import down here is ruff ``E402``. The contrast the order draws — a table rather than one
+    test function per input — is what is honoured."""
+    empty = _empty_ledger()
+    good_row = {"id": "h-1", "state": "rejected", "reason": "r", "landing": "unattempted"}
+    table: list[tuple[str, object]] = [
+        ("metadata is None", None),
+        ("metadata is an int", 7),
+        ("metadata is a string", "hunk_decisions"),
+        ("metadata is a list", []),
+        ("metadata has no decisions key", {}),
+        ("decisions value is an int", {HUNK_DECISIONS_METADATA_KEY: 5}),
+        ("decisions value is a list", {HUNK_DECISIONS_METADATA_KEY: []}),
+        ("a record is not a mapping", {HUNK_DECISIONS_METADATA_KEY: {"t-1:1": 5}}),
+        ("a record has no task_id", {HUNK_DECISIONS_METADATA_KEY: {
+            "t-1:1": {"attempt": "1", "decided_at": DECIDED_AT.isoformat(),
+                      "hunks": [good_row]}}}),
+        ("the matching record has no decided_at", {HUNK_DECISIONS_METADATA_KEY: {
+            "t-1:1": {"task_id": "t-1", "attempt": "1", "hunks": [good_row]}}}),
+        # The ONE case answered by ``import_hunk_ledger``'s own guard rather than by the
+        # structural guard here — the record is selectable and only its ROWS are missing.
+        ("the matching record has no hunks", {HUNK_DECISIONS_METADATA_KEY: {
+            "t-1:1": {"task_id": "t-1", "attempt": "1",
+                      "decided_at": DECIDED_AT.isoformat()}}}),
+        ("a row is missing its state", {HUNK_DECISIONS_METADATA_KEY: {
+            "t-1:1": {"task_id": "t-1", "attempt": "1",
+                      "decided_at": DECIDED_AT.isoformat(),
+                      "hunks": [{"id": "h-1", "reason": "", "landing": "unattempted"}]}}}),
+    ]
+    outcomes = []
+    for label, metadata in table:
+        try:
+            outcomes.append((label, _load_latest(metadata)))
+        except Exception as exc:
+            outcomes.append((label, f"RAISED {type(exc).__name__}: {exc}"))
+    assert outcomes == [(label, empty) for label, _ in table]
+
+
+def test_a_decision_recorded_through_the_view_door_reads_back_as_its_own_ledger() -> None:
+    # THE ROUND TRIP THAT MATTERS: recording returns a ``HunkDecisionRecord`` carrying the
+    # ledger it built, and reading that job's metadata back must produce the SAME ledger — not
+    # an equivalent-looking one. Both dataclasses are frozen, so the equality is structural.
+    job = _job()
+    recorded = _record_from_view(
+        job,
+        view=parse_unified_diff_to_view(TWO_HUNK_DIFF),
+        approved=[HUNK_IDS[0]],
+        rejected=[{"id": HUNK_IDS[1], "reason": REASON}],
+    )
+    assert isinstance(recorded, HunkDecisionRecord), recorded
+    rebuilt = _load_latest(job.metadata)
+    assert rebuilt == recorded.ledger
+    # And the operator's own words survived the whole way round, whitespace included.
+    assert _reasons(rebuilt) == ["", REASON]
+    assert export_hunk_ledger(rebuilt) == export_hunk_ledger(recorded.ledger)

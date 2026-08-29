@@ -336,3 +336,158 @@ def test_build_builder_prompt_forwards_the_parameter_unchanged():
     assert _build_builder_prompt(_GOAL, _CONTEXT) == _build_builder_prompt(
         _GOAL, _CONTEXT, hunk_ledger=None
     )
+
+
+# ---------------------------------------------------------------------------
+# THE ACCEPTANCE TEST — the REAL loop, end to end
+#
+# THE MODULE DOCSTRING ABOVE IS SUPERSEDED FROM HERE DOWN, and it is corrected here rather than
+# rewritten because this section was APPENDED under an append-only obligation and no line above
+# it may move. Its closing paragraph says "nothing here asserts that the RUN LOOP supplies a
+# ledger. It does not yet". As of this round it DOES: ``run_pingpong`` carries a ``hunk_ledger``
+# parameter and forwards it to ``compose_builder_prompt``, and the two tests below drive the
+# real loop over a demo repo to prove it.
+#
+# WHY THE CHAIN HAS THREE LINKS INSTEAD OF ONE ASSERTION. A prompt trace entry carries a
+# ``segment_manifest`` but NO prompt text — ``prompt_text_redacted`` is not the composed text
+# and no attribute on the entry holds it — so "the reason is in the loop's prompt" cannot be
+# asserted directly off the trace. Instead:
+#   (a) some ``result.prompt_traces`` entry has a manifest row named ``builder_hunk_rejections``
+#       — the REAL loop composed the segment, from the ledger it was handed;
+#   (b) composing DIRECTLY with the same ledger and cutting that segment back out by its own
+#       manifest span, the operator's reason is an EXACT SUBSTRING of it;
+#   (c) the ``sha256`` on the row from (a) EQUALS the sha256 of the text from (b).
+# Link (c) is what joins them: it is the loop's own bytes, not a second composition's, that (b)
+# inspected. It holds because the segment's digest depends ONLY on the ledger — every other
+# argument to ``compose_builder_prompt`` differs between the loop's call and (b)'s, including
+# the goal, the context, the round number and the staged state.
+#
+# The two fixtures below are LOCAL COPIES of ``tests/orchestration/test_pingpong.py``'s
+# ``isolate_data_root`` and ``demo_repo``, restated for the reason this suite's neighbours give
+# for restating recipes: a test file reaching into another test file's fixtures couples two
+# suites that have no reason to move together. ``REMEDY_DATA_DIR`` is set with
+# ``monkeypatch.setenv`` and could not be set any other way — the sandbox this repository is
+# built in denies every shell form of assigning it.
+
+#: A rejection reason for the LOOP test, hostile in the three ways a prompt pipeline is most
+#: likely to damage: two LEADING spaces, an INTERIOR BLANK LINE and a TAB indent.
+_LOOP_REASON = (
+    "  this hunk edits the wrong module\n"
+    "\n"
+    "\tput it beside the container in packages/widget.py instead\n"
+)
+
+
+@pytest.fixture
+def loop_data_root(tmp_path, monkeypatch):
+    """``REMEDY_DATA_DIR`` redirected into ``tmp_path`` so the loop writes to no real data root."""
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return data_dir
+
+
+@pytest.fixture
+def loop_demo_repo(tmp_path):
+    """A minimal demo repo, the shape the ping-pong suite's own ``demo_repo`` builds."""
+    (tmp_path / "README.md").write_text("# Demo\nA demo project.\n")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "README.md").write_text("# Docs\nDocumentation here.\n")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.py").write_text("def hello():\n    return 'hello'\n")
+    return tmp_path
+
+
+def _manifest_rows(result, name: str) -> list[dict]:
+    """Every manifest row called ``name``, over every prompt trace the run recorded."""
+    return [
+        row
+        for entry in result.prompt_traces
+        for row in entry.segment_manifest
+        if row["name"] == name
+    ]
+
+
+def _segment_text(composed, name: str) -> str:
+    """One segment cut back out of a composed prompt by its OWN manifest span."""
+    from packages.orchestration.prompt_segments import PROMPT_SEGMENT_DELIMITER
+
+    position = 0
+    for entry in composed.manifest:
+        if entry.name == name:
+            return composed.text[position:position + entry.chars]
+        position += entry.chars + len(PROMPT_SEGMENT_DELIMITER)
+    raise AssertionError(f"{name} is not in {[e.name for e in composed.manifest]}")
+
+
+def _run_loop(repo, **kwargs):
+    """The ping-pong suite's own invocation, with fake providers on both sides."""
+    from packages.orchestration.pingpong_loop import run_pingpong
+
+    return run_pingpong(
+        "Fix README", str(repo), builder_name="fake", reviewer_name="fake", **kwargs
+    )
+
+
+def test_a_rejection_reason_reaches_the_real_loops_composed_builder_prompt(
+    loop_demo_repo, loop_data_root
+) -> None:
+    """THE ACCEPTANCE PROPERTY OF THIS ROUND: an operator's words reach the REAL loop's prompt.
+
+    Not ``compose_builder_prompt`` called by a test, but ``run_pingpong`` — the function the
+    job runner calls — composing the segment from a ledger handed to it.
+    """
+    import hashlib
+
+    ledger = _ledger(_rejected("h-loop", _LOOP_REASON))
+    result = _run_loop(loop_demo_repo, hunk_ledger=ledger)
+
+    # The run really produced traces with manifests, so the assertions below cannot pass by
+    # being vacuous.
+    assert result.prompt_traces
+    assert any(entry.segment_manifest for entry in result.prompt_traces)
+
+    # (a) the REAL loop composed the segment.
+    rows = _manifest_rows(result, _SEGMENT)
+    assert len(rows) == 1, [
+        [row["name"] for row in entry.segment_manifest] for entry in result.prompt_traces
+    ]
+
+    # (b) the same ledger composed directly, with EVERY other argument different — a different
+    # goal, a different context, reviewer findings, a staged state and a task body — still
+    # carries the reason byte for byte.
+    composed = _compose(
+        findings=_FINDINGS,
+        staged_state="M packages/widget.py",
+        task_body="Resize the widget.",
+        hunk_ledger=ledger,
+    )
+    chunk = _segment_text(composed, _SEGMENT)
+    assert _LOOP_REASON in chunk
+    assert REJECTION_FINDINGS_HEADING in chunk
+    assert REJECTION_FINDINGS_ENTRY_PREFIX + "h-loop" in chunk
+    assert REJECTION_FINDINGS_REASON_INTRO in chunk
+
+    # (c) the LOOP's own bytes are the bytes (b) inspected. This is the link that makes the two
+    # halves one claim instead of two: the digest is the loop's, the text is (b)'s.
+    assert rows[0]["sha256"] == hashlib.sha256(chunk.encode("utf-8")).hexdigest()
+
+
+def test_a_loop_round_with_no_hunk_ledger_composes_no_rejection_segment(
+    loop_demo_repo, loop_data_root
+) -> None:
+    """THE NEGATIVE HALF, and what makes the test above discriminating.
+
+    Without the parameter the same run composes no ``builder_hunk_rejections`` row at all, so
+    the positive test cannot be passing on a segment the loop registers unconditionally.
+    """
+    result = _run_loop(loop_demo_repo)
+
+    assert result.prompt_traces
+    names = [
+        row["name"] for entry in result.prompt_traces for row in entry.segment_manifest
+    ]
+    # Non-vacuous: the plain run DOES compose a builder prompt with segments, just not this one.
+    assert "builder_system" in names
+    assert _SEGMENT not in names
+    assert _manifest_rows(result, _SEGMENT) == []
