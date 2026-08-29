@@ -21,20 +21,22 @@ round — every partial state rendered truthfully in viewer, node and report.
 | T003 partial truth on all three surfaces, R-0738 | done | rounds 16-19 |
 | rejections rendered verbatim as repair findings | done | round 20 |
 | that renderer reaches the builder prompt as a segment | done | round 21 |
-| R-0747, and the inverse of the ledger export | open | this round |
-| the loop SUPPLIES a stored ledger, and the two-round end-to-end | open | next |
+| R-0747, and the inverse of the ledger export | done | round 22 |
+| the stored decision is selected and reaches the real loop | open | this round |
+| the JOB-level caller in `pingpong_job.py` supplies it | open | next |
 | R-0745, the door's transitive import closure | open | next door work |
 | the operator docs for `patch approve-hunks` | open | closure sequence |
 | the integration gate round, then closure | open | after the above |
 
 ## Next Steps
-1. This round repairs R-0747 and ships `import_hunk_ledger`, the inverse of
-   `export_hunk_ledger`. A decision IS stored — on `job.metadata` under
-   `hunk_decisions`, persisted by `save_job` at the write door — but its rows
-   are mappings keyed `id`, so nothing could rebuild a ledger from them.
-2. Then the supply: read that key in the run loop and pass the rebuilt ledger to
-   `compose_builder_prompt`, which has taken the parameter since round 21. That
-   step also carries the two-round end-to-end the Acceptance asks for.
+1. This round adds the reader that selects a task's latest recorded decision
+   from `job.metadata`, gives `run_pingpong` the parameter it forwards, and
+   proves through the REAL loop that a rejection reason reaches the composed
+   prompt's segment manifest.
+2. Then the last wiring step: `packages/orchestration/pingpong_job.py` holds the
+   job at its `run_pingpong` call, so it reads the decision and passes it. That
+   is the only remaining hop, and it is deliberately its own round because it
+   touches the job runner.
 3. Then R-0745, whose fix clause recommends a transitive-closure test over the
    write door's imports.
 4. Then the closure sequence: `docs/` still owes an operator-facing description
@@ -42,5 +44,6 @@ round — every partial state rendered truthfully in viewer, node and report.
    integration gate runs before closure, per docs/agents/integration_gate.md.
 
 ## Risks
-- Steps 2, 3 and 4 are more rounds than the 25-round soft limit leaves. The
-  scope report operator amendment amend0827 rule 6 requires is now likely.
+- Steps 2, 3 and 4 plus the two closure rounds exceed what the 25-round soft
+  limit leaves. The scope report amend0827 rule 6 requires is now expected, and
+  the session-6 handoff carries the proposal.
