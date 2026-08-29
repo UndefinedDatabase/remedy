@@ -1,75 +1,94 @@
-# SESSION 6 CLOSE — F033 Hunk-level diff approval
+# STEP 25 — F033 Hunk-level diff approval (SESSION 7, round 25; the soft limit is reached at this round)
 
-This is NOT a numbered round. It is the session close: the reviewer's round 24
-verdict and the operator scope report operator amendment amend0827 rule 6
-requires, applied by a worker because the reviewer writes no work-tree file.
-It ships no production code and adds no test.
+Goal: book the round 24 PASS and the `Done: R-0748` resolution into the record,
+then retire the SAME false claim from the THIRD file it stands in — the
+`compose_builder_prompt` docstring in `packages/orchestration/pingpong_loop.py`,
+which still tells a reader that the job-level hop is unwired after round 24
+wired it. Registered below as R-0749.
 
 ## Bundle — the list that is executed
 
-1. C0a: save this block verbatim to `.agent/authored/f033-close6.md`.
+1. C0a: save this block verbatim to `.agent/authored/f033-r25.md`.
 2. C0b: mirror the same bytes into `.agent/last_block.md`.
-3. C1: rewrite `.agent/plan.md` from slice PLAN-CLOSE.
-4. C2: rewrite `.agent/handoff.md` from slice HANDOFF-CLOSE.
+3. C1: rewrite `.agent/plan.md` from slice PLAN25.
+4. C2: append slice RECORD25 to `.agent/live_review.md` — books the round 24
+   PASS, RESOLVES R-0748 and REGISTERS R-0749.
+5. C3: append slice SLIPS25 to `.agent/prose_slips.md`.
+6. C4: SPEC A — the R-0749 repair, pair PAIR-ROUTE, and in the SAME commit the
+   `Landed: R-0749` line of SPEC A3.
+7. C5: rewrite `.agent/handoff.md` as the handback.
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f033-close6.md
+    .agent/authored/f033-r25.md
     .agent/last_block.md
     .agent/plan.md
+    .agent/live_review.md
+    .agent/prose_slips.md
+    packages/orchestration/pingpong_loop.py
     .agent/handoff.md
 
-Both slices are FULL REWRITES. Nothing is appended, and `.agent/live_review.md`
-is deliberately NOT touched: the round 24 verdict below is carried by the
-committed handoff, which operator amendment amend0827 rule 1 makes a durable
-carrier, and session 7 books it into the record in the first commits of its
-first round rather than spending a round on it here.
+## What the reviewer measured before writing this block, and where
 
-## Constraints
+Every reading below was taken by the reviewer at `d81acca5`, this round's base.
 
-1. Apply both slices BYTE FOR BYTE. If one looks wrong, apply it as written and
-   say so; never silently repair it.
-2. Touch no path outside the change set. Do NOT touch `.agent/live_review.md`,
-   `.agent/prose_slips.md`, or anything under `packages/`, `apps/`, `tests/` or
-   `docs/`.
-3. The sandbox denies `VAR=x cmd`, `env`, `export`, `cp`, `$(...)` inside a
-   compound, process substitution, a heredoc nested in `bash -c`, and a shell
-   line containing a brace with a quote inside it. Write scripts under
-   `.remedy-wt/` and run them as `python3 -B <path>`. REAL exit codes come from
-   `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with NO PIPE.
-4. Re-read `.agent/STOP` before starting. If it exists, stop and say so.
-5. Do NOT create a pull request. F033 is not closed and §5 rules the PR into the
-   closure sequence.
+- THE DEFECT IS REAL AND IT IS EXACTLY ONE SPAN. `git grep -c -F` over the
+  tracked content of `packages`, `apps`, `tests` and `docs` answers 1 for each
+  of `no round has wired`, `ONE HOP STILL MISSING` and
+  `this segment never registers`, and every one of those three hits is
+  `packages/orchestration/pingpong_loop.py`. No other file carries the claim.
+- THE CLAIM IS FALSE AT THIS BASE. The paragraph says the job-level caller is
+  unwired and that production `hunk_ledger` is therefore `None`. Round 24
+  landed that wiring: `packages/orchestration/pingpong_job.py` defines
+  `_recorded_hunk_ledger_for_task` and its `run_pingpong` call passes
+  `hunk_ledger=_recorded_hunk_ledger_for_task(job, task)`.
+- R-0748's OWN PREDICATE STILL HOLDS, so resolving it is honest: over the same
+  four trees `persists no decision` occurs 0 times. That predicate was
+  STRING-scoped, this third instance carries the same claim in other words, and
+  that is precisely why it survived a green gate — which is what R-0749's fix
+  clause is written against.
+- NO TEST READS THIS DOCSTRING. `tests/orchestration/test_builder_prompt_golden.py`
+  pins RENDERS, not source bytes; `test_builder_prompt_hunk_rejections.py`
+  mentions the module by path in its own prose only; and no test in the
+  repository asserts any substring of `compose_builder_prompt.__doc__`.
+- THE FROM SPAN of PAIR-ROUTE occurs EXACTLY ONCE in its file at `d81acca5`:
+  1260 bytes over 17 lines.
+- THE AST GATE OF G5 DISCRIMINATES, dry-run by the reviewer at `d81acca5` with a
+  red control: comparing `ast.dump` of the module with every docstring constant
+  blanked, the repaired file answers True against the base and a control that
+  additionally renames the `builder_directive` segment literal answers False.
+- `python3 -m ruff check --stdin-filename packages/orchestration/pingpong_loop.py -`
+  over the repaired bytes exits 0.
 
-## Done when — G1 through G4
+## SPEC A — the R-0749 repair
 
-G1 TRANSPORT. Report `sha256` and byte length of the committed
-`.agent/authored/f033-close6.md`, and `cmp` it against
-`.remedy-wt/f033-close6-block.md`. One reading.
+A1. Apply PAIR-ROUTE below to `packages/orchestration/pingpong_loop.py`. The
+reviewer ran the containment test at `d81acca5` and the result is
+`TO contains FROM: false`, so it is a REWRITE and the obligation is
+PAIRROUTE-FROM 0x and PAIRROUTE-TO exactly 1x in the file after the commit.
+Report both counts.
 
-G2 THE PLAN. `.agent/plan.md` byte-EQUAL to PLAN-CLOSE, under 50 lines, holding
-`## Goal` and the substring `Steps`. Report bytes and lines.
+A2. Change NOTHING else in that file. This round alters a docstring and no
+executable statement, which is what G5's AST reading measures. If applying the
+pair seems to require any other edit, stop and declare it rather than making it.
 
-G3 THE HANDOFF. `.agent/handoff.md` byte-EQUAL to HANDOFF-CLOSE. Report bytes
-and lines. It has NO length cap; do not declare one.
+A3. In the SAME commit append to `.agent/live_review.md` exactly one line:
 
-G4 STRUCTURE. `git status --porcelain` EMPTY. Report each commit's insertions
-from `git diff --numstat` and show each under 500. Show the path set over
-`a54f943e`..C2 equals the four paths above in BOTH directions. Confirm
-`.agent/live_review.md` is byte-IDENTICAL at `a54f943e` and at C2.
+    Landed: R-0749 — the retired claim's third instance is removed from compose_builder_prompt's docstring, packages/orchestration/pingpong_loop.py, C4 of round 25.
 
-## Handback
+Write NO `Done:` paragraph. `Done:` is reviewer-authored text only.
 
-There is no separate handback: slice HANDOFF-CLOSE IS the handback. Report the
-four gate results to the reviewer in your reply.
+## Slice PLAN25 — the FULL new bytes of `.agent/plan.md`
 
-## Slice PLAN-CLOSE — the FULL new bytes of `.agent/plan.md`
+The slice is every byte BETWEEN the two marker lines, exclusive. The markers are
+not part of any file.
 
-<<<BEGIN PLAN-CLOSE
+<<<BEGIN PLAN25
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 6 closed at round 24; next is SESSION 7.
+commit of pull request 221. SESSION 7 of this feature, which is the last under
+the amend0827 rule 6 soft limit; the scope report it requires is written.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -86,232 +105,197 @@ round — every partial state rendered truthfully in viewer, node and report.
 | T003 partial truth on all three surfaces, R-0738 | done | rounds 16-19 |
 | T003 rejection to repair, rendered, wired, end to end | done | rounds 20-24 |
 | THE FEATURE'S FUNCTIONAL SCOPE | complete | at round 24 |
-| the operator docs for `patch approve-hunks` | open | session 7 |
-| the integration gate round | open | session 7 |
-| the closure sequence | open | session 7 |
-| R-0745, the door's transitive import closure | open | PROPOSED to split |
+| R-0749, the retired claim's third instance | open | this round |
+| the operator guide for `patch approve-hunks` | open | next round |
+| the integration gate round | open | after the guide |
+| the closure sequence and its pull request | open | after the gate |
+| R-0745, the door's transitive import closure | open | carried as a risk |
 
 ## Next Steps
-1. Session 7 books the round 24 PASS from `.agent/handoff.md` into
-   `.agent/live_review.md` in the first commits of its first round.
-2. THE SOFT LIMIT IS REACHED AT SESSION 7. The scope report operator amendment
-   amend0827 rule 6 requires is written in `.agent/handoff.md`, with a proposal
-   the operator decides on. Session 7 reads it BEFORE planning work.
-3. The remaining closure obligations, in order: the `docs/` operator-facing
-   description of `remedy patch approve-hunks`, which no round has yet been
-   allowed a path for; then the integration gate per
-   docs/agents/integration_gate.md; then the closure sequence and its PR.
-4. R-0745 is open and unscheduled. The handoff proposes splitting it onto its
-   own STATUS line so a feature that has met its Acceptance can close. That is a
-   PROPOSAL and is never executed on the reviewer's own authority.
+1. This round books the round 24 PASS and the `Done: R-0748` resolution, and
+   retires the same false claim from the third file it reached.
+2. Then the `docs/` round: an operator guide for `remedy patch approve-hunks`
+   under `docs/guides/`, registered in the `docs/README.md` index in the same
+   commit, gated with `python3 -m pytest tests/docs/ -q` beside the canary.
+3. Then the integration gate per docs/agents/integration_gate.md, then the
+   closure sequence and its pull request.
+4. R-0745 is Low and is not reachable from this feature's Acceptance. The
+   closure protocol's precondition 1 admits a documented Medium/Low risk, so it
+   is carried as one rather than blocking a feature that has met its Acceptance.
 
 ## Risks
-- If R-0745 must be fixed inside F033, session 7 cannot also close the feature
-  and the operator should expect an eighth session.
-<<<END PLAN-CLOSE
+- R-0745 stays OPEN at closure and the STATUS line therefore reads
+  PASS_WITH_RISKS. Its fix recommends a transitive-closure guard test, which is
+  a hardening task deserving its own round rather than a corner of a closure.
+<<<END PLAN25
 
-## Slice HANDOFF-CLOSE — the FULL new bytes of `.agent/handoff.md`
+## Slice RECORD25 — appended to `.agent/live_review.md`
 
-<<<BEGIN HANDOFF-CLOSE
-# Handback — F033 · SESSION 6 CLOSE · rounds 21 through 24
+Three paragraphs, blank-line separated.
 
-> Written by the REVIEWER at the close of session 6 and applied by a worker,
-> because the reviewer writes no work-tree file itself. It carries the round 24
-> verdict and the operator scope report. Operator amendment amend0827 rule 1: a
-> verdict committed and pushed HERE is persisted, and is booked into
-> `.agent/live_review.md` in the FIRST COMMITS of the next round that is
-> happening anyway — never in a round of its own.
+<<<BEGIN RECORD25
+Gate: F033 R24 — THE JOB-LEVEL CALLER SUPPLIES THE RECORDED LEDGER, AND THE FEATURE'S FUNCTIONAL SCOPE CLOSED. THE ROUND PASSED. This entry books, under operator amendment amend0827-process-diet rule 1, the verdict the SESSION-6 reviewer reached at `a54f943e` and committed and pushed in `.agent/handoff.md` at `d81acca5`; it is written into this record by the first commits of round 25 rather than by a round of its own, and every reading in this paragraph is that reviewer's, taken at `a54f943e`, not a re-run by the session-7 reviewer that writes it here. TRANSPORT: `cmp` of the committed `.agent/authored/f033-r24.md` against that reviewer's own pre-emission original was SILENT, as was the comparison against `.agent/last_block.md`; the worker copied the file with `shutil.copyfile` rather than retyping it. That chain walks the saved copy, its mirror and the working copy, so it establishes SELF-CONSISTENCY and is not a claim about the emitted bytes. THE PAIR: PAIRDOC-FROM occurs 0 times and PAIRDOC-TO exactly 1 time in the acceptance test file, and round 23's superseding comment block is preserved untouched, as ordered. THE SWEEP, which is R-0748's actual fix: `persists no decision` and `persists NOTHING` each occur ZERO times across `packages/`, `apps/`, `tests/` and `docs/`, confirmed in four independent forms — `git grep` over tracked content, a source-only grep, and a broad grep that also reads binaries — all at REAL exit 1. THE PROSE FILES: `.agent/plan.md` byte-EQUAL to PLAN24 at 46 lines; `.agent/prose_slips.md` reconstructs 30807 plus one newline plus 529 to 31337. THE RECORD APPEND at `90af5927` reconstructs 1595141 plus one newline plus 7458 to 1602600, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 2, and a negative control at byte 1596121 — that reviewer's own offset, inside the FIRST appended paragraph's span 1595142 to 1600036 — REJECTED by both readers, which accepted the unflipped bytes. THE LEDGER: registered 308 to 309 with the ADDED id exactly `R-0748`; `Done:` 53 lines over 51 distinct UNMOVED at all three revisions; `Landed:` 19 to 20 with `^Landed: R-0748 — ` 0 before C4 and exactly 1 at it; `^Gate: F033 R23 — ` 0 before and exactly 1 after; and the open set 257 to 258. THE CODE: `python3 -m ruff check` exits 0 over all three changed files; the helper is module-level; and the `run_pingpong` call passes `hunk_ledger=_recorded_hunk_ledger_for_task(job, task)`. THE MUTATIONS were re-run in that reviewer's own disposable worktree at C6 with its OWN anchors, each asserted UNIQUE and the file restored and proved byte-identical by sha256: control a REAL exit 0 at 10 passed; a fixed task id is exit 1 at 4 failed, naming the different-task test and the job-scope boundary test; removing the structural guard is exit 1 at exactly 2 failed, both attribute-access cases, which shows the outer guard and the reader's own guard are measured by DISJOINT tests; and removing the wiring is exit 1 at 1 failed. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: the five orchestration suites 274 together, and the canary 42. THE STRUCTURE: nine single-parent commits over `c9dd471f`..`a54f943e` of 334, 262, 22, 4, 2, 11, 49, 241 and 262 insertions, every one under 500, the last being the handback commit no gate of the block could reach; and the path set to C6 EQUALS the declared change set in BOTH directions. TWO DEVIATIONS WERE WORTH MORE THAN THE GATES AND BOTH ARE RECORDED HERE. The first: G5 went RED on its first run because a plain recursive grep matched a stale gitignored `__pycache__` artifact compiled from the pre-repair source while `git grep` over tracked content was already clean — the fault is the REVIEWER'S GATE, not the repository, and the counter-measure is to sweep TRACKED CONTENT. The second: the worker observed that a worktree mutation could import the PRIMARY checkout through a `.pth` on `sys.path` and therefore be vacuous, and the reviewer SETTLED it rather than accepting it — measured at `5cb87f37`, under `cwd=<worktree>` both a plain script run and a pytest run resolve `packages.orchestration.pingpong_job` to the WORKTREE's copy, because the working directory precedes the `.pth` entry, so the mutation proofs of rounds 21 through 24 were not vacuous and the reds corroborate it independently.
 
-## Session
+Done: R-0748 — THE FALSE CLAUSE IS GONE FROM THE ACCEPTANCE TEST AND THE FINDING'S OWN PREDICATE IS MET, WHILE THE CLAIM IT NAMED SURVIVES ELSEWHERE AND IS REGISTERED BELOW AS R-0749. The fix landed at `7cb78726` on `tests/orchestration/test_builder_prompt_hunk_rejections.py`: the module-docstring paragraph was rewritten so the retired reason is gone rather than annotated, and round 23's superseding comment block lower in the file was left untouched, exactly as the fix clause asked. THE PREDICATE THIS FINDING SET ITSELF IS MEASURED AND HOLDS: the session-7 reviewer re-ran the sweep at `d81acca5` with `git grep -c -F` over the tracked content of `packages`, `apps`, `tests` and `docs`, and `persists no decision` occurs 0 times there. R-0748 IS THEREFORE RESOLVED AND ITS SUCCESSOR IS NOT A REOPENING. What the predicate could not reach is stated plainly because it is the lesson: the clause was worded as a STRING sweep over a CLAIM-scoped defect, so a third instance carrying the same claim in different words passed the gate untouched. R-0749 below is that instance, and its own resolution is worded over the CLAIM rather than over any wording of it. This is the third file the one claim reached — `pingpong_loop.py` as R-0747, the acceptance test as R-0748, and `pingpong_loop.py`'s own docstring again as R-0749 — and the count is recorded here because it is the argument for gating a claim semantically the first time.
 
-SESSION 6 of feature F033 · rounds 21, 22, 23 and 24 delegated · rounds so far 24.
-The NEXT session is SESSION 7, which is the LAST under the amend0827 rule 6
-soft limit of 7 sessions, and its first round would be round 25, which is the
-other half of that limit. Both triggers arrive at once. See "Scope report".
+- R-0749 — Low, THE CLAIM R-0747 AND R-0748 RETIRED IS STILL STANDING IN A THIRD PLACE, AND ROUND 24 IS WHAT MADE IT FALSE. Raised by the reviewer at the F033 R24 gate, in the round that books that gate. MEASURED at `d81acca5`: `packages/orchestration/pingpong_loop.py` gives `compose_builder_prompt` a docstring paragraph headed "THE ROUTE FROM A STORED DECISION, AND THE ONE HOP STILL MISSING", which tells a reader that "What no round has wired yet is the JOB-level caller: `packages/orchestration/pingpong_job.py` ... and until it does, production `hunk_ledger` is `None` and this segment never registers." ROUND 24 WIRED EXACTLY THAT CALLER, at `7c02e01f`: `pingpong_job.py` defines `_recorded_hunk_ledger_for_task` and its `run_pingpong` call passes `hunk_ledger=_recorded_hunk_ledger_for_task(job, task)`, so production `hunk_ledger` is a real ledger whenever the task has a recorded decision and the segment does register. The paragraph was TRUE when it was written and round 24 falsified it without touching it — which is a different failure from R-0747 and R-0748, where the sentence was false on the day it landed, and it is why the finding is raised against the round that made it false rather than against the round that wrote it. WHY LOW: no behaviour is wrong, no test is weakened, and by AST the module's statements are untouched by the repair; the defect is a false explanatory paragraph in a production module, met by a reader trying to learn where the feature's last hop lives — and this paragraph is the one place in the source that documents that route end to end, so a reader who trusts it concludes the feature is unfinished. WHY IT ESCAPED TWICE OVER, which is the part worth keeping: R-0748's resolution predicate counted a STRING over four trees, and this instance carries the same claim in entirely different words, so the gate was green and the claim was alive; and no gate of round 24 asked what its OWN change had falsified elsewhere. A round that completes a route named in prose must sweep the prose that names it. FIX: rewrite that paragraph so it states the route as it now IS, naming the commit its reading was taken at, and leave every executable statement of the module unchanged. Resolved when no file under `packages/`, `apps/`, `tests/` or `docs/` asserts that the job-level `hunk_ledger` hop is unwired, unbuilt or missing — a reading taken over the CLAIM and not over any one wording of it.
+<<<END RECORD25
 
-## Fortschritt
+## Slice SLIPS25 — appended to `.agent/prose_slips.md`
 
-~97 % (T001, T002 and T003 complete. The feature's FUNCTIONAL scope closed at
-round 24: an operator's rejected hunks are recorded, selected, rebuilt and
-quoted verbatim into the next builder prompt, proved through the real loop.
-What remains is not feature work — the `docs/` obligation, the integration
-gate, and the closure sequence) — Schätzung.
+One paragraph.
 
-## Range
+<<<BEGIN SLIPS25
+2026-08-29 · F033 R24 · The block's G5 ordered an absence swept "across `packages/`, `apps/`, `tests/` and `docs/`" and a plain recursive grep run that way also reads gitignored build artifacts, so the gate went red against a stale `__pycache__` object compiled from the pre-repair source while `git grep` over tracked content was already clean; the worker removed that one file by exact path, re-ran the gate unmodified and declared it, and an absence gate must be worded and run over TRACKED CONTENT, because such a gate can be red while the source property holds and green while it does not.
+<<<END SLIPS25
 
-`98ce168e`..`a54f943e` on branch `feature/f033-hunk-approval-v2`, pushed;
-`origin/feature/f033-hunk-approval-v2` is at the same commit. Session 6 added 33
-commits. Every round was gated by the reviewer, which re-ran each round's own
-gates from scripts of its own, reproduced every ordered reading, and re-ran
-every mutation with its own anchors in its own disposable worktree before
-writing a verdict.
+## Pair PAIR-ROUTE — `packages/orchestration/pingpong_loop.py`
 
-## Verdicts
+Containment test run by the reviewer at `d81acca5`: `TO contains FROM: false`.
+It is therefore a REWRITE, and the gate is PAIRROUTE-FROM 0x and PAIRROUTE-TO
+exactly 1x after the commit. The FROM occurs exactly once in the file at that
+commit, at 1260 bytes over 17 lines. Both texts are indented four spaces,
+because both sit inside a function docstring; the indentation is part of the
+bytes.
 
-| Round | Subject | Verdict | Ledger entry |
-|-------|---------|---------|--------------|
-| 21 | rejected hunks as a builder-prompt steering segment | PASS | `Gate: F033 R21` at `61d2ffe7` |
-| 22 | R-0747 repaired; the ledger export gains its inverse | PASS | `Gate: F033 R22` at `ce6c2866` |
-| 23 | a stored decision reaches the real loop's prompt | PASS | `Gate: F033 R23` at `90af5927` |
-| 24 | R-0748 repaired; the job-level wiring | PASS | NOT YET BOOKED — below |
+<<<BEGIN PAIRROUTE-FROM
+    THE ROUTE FROM A STORED DECISION, AND THE ONE HOP STILL MISSING.
+    :func:`run_pingpong` now carries a ``hunk_ledger`` parameter of its own and
+    forwards it UNCHANGED to the call below, so the loop supplies whatever
+    ledger it is GIVEN. It does not go and find one: it holds no job.
+    ``packages/orchestration/hunk_decision_record.py`` writes each exported
+    ledger onto ``job.metadata`` under the key ``hunk_decisions``, keyed by
+    attempt, ``save_job`` at the write door makes that record durable, and the
+    same module reads the latest one back for a task with
+    ``load_latest_hunk_ledger_from_metadata`` — that reader takes the metadata
+    MAPPING, so it drags no storage behind it. What no round has wired yet is
+    the JOB-level caller: ``packages/orchestration/pingpong_job.py`` is where
+    the job is actually held at its :func:`run_pingpong` call, so it is the one
+    place that can read the decision and pass it, and until it does, production
+    ``hunk_ledger`` is ``None`` and this segment never registers. That hop is
+    deliberately its own round, because a call site wired without a test that
+    follows a decision through to the composed prompt would look like the
+    feature working while proving nothing at all.
+<<<END PAIRROUTE-FROM
 
-## Round 24 verdict — PASS, and it is not yet in the ledger
+<<<BEGIN PAIRROUTE-TO
+    THE ROUTE FROM A STORED DECISION, AND WHERE EACH HOP LIVES.
+    :func:`run_pingpong` carries a ``hunk_ledger`` parameter of its own and
+    forwards it UNCHANGED to the call below, so the loop supplies whatever
+    ledger it is GIVEN. It does not go and find one: it holds no job.
+    ``packages/orchestration/hunk_decision_record.py`` writes each exported
+    ledger onto ``job.metadata`` under the key ``hunk_decisions``, keyed by
+    attempt, ``save_job`` at the write door makes that record durable, and the
+    same module reads the latest one back for a task with
+    ``load_latest_hunk_ledger_from_metadata`` — that reader takes the metadata
+    MAPPING, so it drags no storage behind it. THE JOB-LEVEL CALLER IS WIRED:
+    measured at ``d81acca5``, ``packages/orchestration/pingpong_job.py`` holds
+    the job at its :func:`run_pingpong` call and passes
+    ``hunk_ledger=_recorded_hunk_ledger_for_task(job, task)``, so a decision an
+    operator recorded for a task reaches this segment in production. ``None``
+    stays the answer for a round with no recorded decision, and the segment
+    then registers not at all — which is the ordinary case, not a gap.
+<<<END PAIRROUTE-TO
 
-The next round books it. Every gate was re-executed by the reviewer at
-`a54f943e`. TRANSPORT: `cmp` of the committed `.agent/authored/f033-r24.md`
-against the reviewer's own pre-emission original was SILENT, as was the
-comparison against `.agent/last_block.md`; the worker copied the file with
-`shutil.copyfile` rather than retyping it. THE PAIR: PAIRDOC-FROM occurs 0 times
-and PAIRDOC-TO exactly 1 time in the acceptance test file, and round 23's
-superseding comment block is preserved untouched, as ordered. THE SWEEP, which
-is R-0748's actual fix: `persists no decision` and `persists NOTHING` each occur
-ZERO times across `packages/`, `apps/`, `tests/` and `docs/`, confirmed by the
-reviewer in four independent forms — `git grep` over tracked content, a
-source-only grep, and a broad grep that also reads binaries — all at REAL exit 1.
-THE PROSE FILES: `.agent/plan.md` byte-EQUAL to PLAN24 at 46 lines;
-`.agent/prose_slips.md` reconstructs 30807 plus one newline plus 529 to 31337.
-THE RECORD APPEND at `90af5927` reconstructs 1595141 plus one newline plus 7458
-to 1602600, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 2, and a
-negative control at byte 1596121 — the reviewer's own offset, inside the FIRST
-appended paragraph's span 1595142 to 1600036 — REJECTED by both readers, which
-accepted the unflipped bytes. THE LEDGER: registered 308 to 309 with the ADDED
-id exactly `R-0748`; `Done:` 53 lines over 51 distinct UNMOVED at all three
-revisions; `Landed:` 19 to 20 with `^Landed: R-0748 — ` 0 before C4 and exactly
-1 at it; `^Gate: F033 R23 — ` 0 before and exactly 1 after; and the open set 257
-to 258. THE CODE: `python3 -m ruff check` exits 0 over all three changed files;
-the helper is module-level; and the `run_pingpong` call passes
-`hunk_ledger=_recorded_hunk_ledger_for_task(job, task)`. THE MUTATIONS were
-re-run in the reviewer's own disposable worktree at C6 with its OWN anchors,
-each asserted UNIQUE and the file restored and proved byte-identical by sha256:
-control a REAL exit 0 at 10 passed; a fixed task id is exit 1 at 4 failed,
-naming the different-task test and the job-scope boundary test; removing the
-structural guard is exit 1 at exactly 2 failed, both attribute-access cases,
-which shows the outer guard and the reader's own guard are measured by DISJOINT
-tests; and removing the wiring is exit 1 at 1 failed. THE SUITES were re-run
-SERIALLY in the primary checkout, every REAL exit 0: the five orchestration
-suites 274 together, and the canary 42. THE STRUCTURE: nine single-parent
-commits over `c9dd471f`..`a54f943e` of 334, 262, 22, 4, 2, 11, 49, 241 and 262
-insertions, every one under 500, the last being the handback commit no gate of
-the block could reach; and the path set to C6 EQUALS the declared change set in
-BOTH directions.
+## Constraints
 
-## The two deviations that were worth more than the gates
+1. Apply every slice and the pair BYTE FOR BYTE. If one looks wrong, apply it as
+   written and declare the problem; never silently repair it.
+2. PLAN25 is a FULL REWRITE. RECORD25 and SLIPS25 are APPENDS. Measured by the
+   reviewer at `d81acca5`, `.agent/live_review.md` is 1602790 bytes and
+   `.agent/prose_slips.md` is 31337 bytes, and BOTH end with a newline, so each
+   append is one blank-line separator then the slice. RE-MEASURE both yourself
+   at the commit you append at rather than trusting these numbers: the R23 block
+   got one of them wrong by reading it at the wrong commit.
+3. `.agent/live_review.md` is written by TWO commits: C2 appends RECORD25, C4
+   appends the single `Landed:` line. G3's arithmetic is measured at C2 and
+   G4's ledger readings at `d81acca5`, at C2 and at C4.
+4. Do NOT delete or edit any landed `Landed:`, `Done:` or `Gate:` text. The
+   record is append-only.
+5. Touch no path outside the change set. In particular do NOT touch
+   `packages/orchestration/pingpong_job.py`,
+   `tests/orchestration/test_builder_prompt_hunk_rejections.py`,
+   `tests/orchestration/test_pingpong_job_hunk_ledger.py`, or anything under
+   `docs/`. The `docs/` guide is the NEXT round's work and is not this one's.
+6. The sandbox denies `VAR=x cmd`, `env`, `export`, `cp`, `$(...)` inside a
+   compound, process substitution, a heredoc nested in `bash -c`, and a shell
+   line containing a brace with a quote inside it. Write scripts under
+   `.remedy-wt/` and run them as `python3 -B <path>`; use `python3 -m ruff`.
+   REAL exit codes come from `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with NO PIPE.
+7. Every absence gate of this round is run over TRACKED CONTENT with
+   `git grep`, never with a plain recursive grep — that is the round 24 lesson
+   recorded in SLIPS25, and applying it here is the point of recording it.
+8. This round mutates no executable code, so it orders NO mutation red-proof and
+   needs no disposable worktree. G5's AST reading is what stands in its place,
+   and the reviewer dry-ran it with a red control before ordering it. The
+   primary checkout satisfies `git status --porcelain` empty at the handback.
+9. Re-read `.agent/STOP` before starting. If it exists, stop and hand off.
+10. G1 through G7 all run at C4, before the handback commit C5.
 
-D1 — G5 WENT RED ON ITS FIRST RUN AND THE WORKER WAS RIGHT ABOUT WHY. A broad
-`grep` matched a stale gitignored `__pycache__` `.pyc` compiled from the
-pre-repair source, while `git grep` over tracked content was already clean. The
-worker removed that ONE file BY EXACT PATH as build-artifact hygiene, re-ran the
-gate UNMODIFIED, and re-ran it again after the suites regenerated bytecode. The
-fault is the REVIEWER'S GATE, not the repository: a sweep worded "occurs 0 times
-across these trees" and run with a plain recursive grep reads compiled
-artifacts, so it can be red while the source property holds and green while it
-does not. The counter-measure is to sweep TRACKED CONTENT. Nothing on disk was
-wrong, so under amend0827 rule 2 this spends no id.
+## Done when — G1 through G7
 
-D2 — THE WORKER CAUGHT THAT ITS MUTATION GATE COULD HAVE BEEN VACUOUS, and the
-question reaches back across this whole session. `/home/decodeux/Repos/remedy`
-is on `sys.path` through a `.pth`, so a worktree run could import the PRIMARY
-checkout's copy and every mutation would then be a no-op that still reports a
-pass. The worker built a runner pinning the worktree at `sys.path[0]` and
-printing the resolved `__file__`. THE REVIEWER SETTLED IT RATHER THAN ACCEPTING
-IT: measured at `5cb87f37`, under `cwd=<worktree>` both a plain script run and a
-pytest run resolve `packages.orchestration.pingpong_job` to the WORKTREE's copy,
-because the working directory precedes the `.pth` entry. The mutation proofs of
-rounds 21 through 24 were therefore NOT vacuous, and the reds corroborate it
-independently — a vacuous run cannot go red at all, and every ordered mutation
-went red naming the expected tests. The reviewer's own round 24 mutation run
-additionally asserted `.remedy-wt/rv-r24` inside the module's `__file__` before
-mutating anything, so the claim is now measured rather than inferred.
+G1 TRANSPORT. Report `sha256` and byte length of the committed
+`.agent/authored/f033-r25.md`, and the same two readings for
+`.agent/last_block.md`. One digest comparison; the reviewer holds the
+pre-emission original and runs the other half itself.
 
-## What this session built
+G2 THE PROSE FILES. `.agent/plan.md` byte-EQUAL to PLAN25, under 50 lines,
+holding `## Goal` and the substring `Steps`. `.agent/prose_slips.md`
+reconstructs its MEASURED base plus one newline plus the byte length of SLIPS25
+to its committed size; report all three numbers, the base measured and not taken
+from this block.
 
-| Path | What it decides | Round |
-|------|-----------------|-------|
-| `packages/orchestration/pingpong_loop.py` | the `builder_hunk_rejections` steering segment, and the loop's forwarded ledger | 21, 23 |
-| `packages/orchestration/hunk_ledger.py` | `import_hunk_ledger`, the inverse of the export | 22 |
-| `packages/orchestration/hunk_decision_record.py` | `load_latest_hunk_ledger_from_metadata`, the read side | 23 |
-| `packages/orchestration/pingpong_job.py` | the last hop: the job's recorded decision reaches the loop | 24 |
+G3 THE RECORD APPEND, at C2. Reconstruct the MEASURED base plus one newline plus
+the byte length of RECORD25 to the committed size. Prove the pre-commit blob a
+byte PREFIX and the slice an exact SUFFIX. COUNT N in the script. Compare the
+file's LAST N blank-line units against the slice's paragraphs IN ORDER. Flip one
+byte inside the FIRST appended paragraph, report the offset, prove it lies in
+that paragraph's span, and show BOTH readers reject the flipped bytes and accept
+the unflipped ones.
 
-R-0747 was raised and RESOLVED; R-0748 was raised and its fix LANDED, awaiting
-the reviewer's resolution at the next gate. The open set went 257 to 258.
+G4 THE LEDGER, at `d81acca5`, at C2 and at C4: `^- R-\d+ — ` 309 distinct going
+to 310 with the ADDED id exactly `R-0749`; `^Done: R-\d+ — ` 53 lines over 51
+distinct going to 54 over 52 with the ADDED resolved id exactly `R-0748`;
+`^Landed: ` 20 going to 21 with `^Landed: R-0749 — ` 0 before C4 and exactly 1
+at it, and the landed `Landed: R-0748` line still standing; `^Gate: F033 R24 — `
+0 before and exactly 1 after; and the open set 258 going to 258 — one
+registration and one resolution in the same round, so report BOTH ends and the
+intermediate value at C2.
 
-## SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+G5 THE REPAIR IS A DOCSTRING AND NOTHING ELSE, at C4. Report each of these with
+its real reading. (a) `python3 -m ruff check
+packages/orchestration/pingpong_loop.py` exits 0. (b) In that file the
+PAIRROUTE-FROM text occurs 0 times and the PAIRROUTE-TO text exactly 1 time.
+(c) THE AST READING: parse the file at `d81acca5` and at C4, blank every
+docstring constant of every module, class and function node in both trees, and
+show `ast.dump` of the two is EQUAL — so not one executable statement moved.
+Print the two dumps' lengths and the boolean.
 
-## Scope report — required by operator amendment amend0827 rule 6
+G6 THE CLAIM IS GONE, SWEPT SEMANTICALLY. With `git grep` over TRACKED content
+of `packages`, `apps`, `tests` and `docs`, at C4: each of the three strings
+`no round has wired`, `ONE HOP STILL MISSING` and `this segment never registers`
+occurs 0 times, and `persists no decision` also occurs 0 times, which is
+R-0748's own predicate re-measured at the commit that resolves it. Report the
+command and all four counts. Then READ, and report in one sentence each, every
+remaining hit of `git grep -n -F "hunk_ledger" -- packages apps` that is a
+COMMENT or DOCSTRING rather than code, and say for each whether it asserts the
+hop is unwired. This half is a reading, not a count: R-0749's resolution is
+worded over the CLAIM, so a count of three strings cannot discharge it alone.
 
-WHY IT IS OWED NOW. The soft limit is 25 ROUNDS or 7 SESSIONS, whichever comes
-first. This feature stands at 24 rounds and 6 sessions, so session 7 reaches
-BOTH at once: it is the seventh session and its first round is the
-twenty-fifth. The report is written here, one round early, so session 7 opens
-with it instead of spending a round producing it.
+G7 SUITES AND STRUCTURE, at C4. SERIALLY, each with its REAL exit code and pass
+count: `python3 -m pytest tests/orchestration/test_builder_prompt_hunk_rejections.py -q`;
+`python3 -m pytest tests/orchestration/test_builder_prompt_golden.py -q`;
+`python3 -m pytest tests/orchestration/test_pingpong.py -q`; and the canary
+`python3 -m pytest tests/cli/test_golden_path.py -q`. Then `git status
+--porcelain` EMPTY; per-commit insertions from C0a through C4 each under 500;
+and the path set over `d81acca5`..C4 equal to the change set minus
+`.agent/handoff.md` in BOTH directions.
 
-WHAT IS FINISHED. The feature's Goal & Done is met on every clause the feature
-file states. Stable content-hash ids with their stability property (T001).
-The command, its validation, all-or-nothing subset apply, the hunk ledger and
-the write door (T002). Partial-state truth on all three surfaces — viewer, task
-node and report line (T003, R-0738). And the rejection-to-repair loop, complete
-end to end as of round 24: an operator's rejection is recorded on the job,
-selected back out by task, rebuilt into a ledger, rendered as repair findings
-with the reason held byte for byte, and composed into the next builder prompt —
-proved by driving the real loop and matching the composed segment's digest.
+## Handback
 
-WHAT IS MISSING, and none of it is feature work:
-  1. `docs/` owes an operator-facing description of `remedy patch approve-hunks`.
-     No round has been allowed a `docs/` path in this whole feature, so this is
-     a first — one round, and it carries the `tests/docs/` gate the docs-round
-     rule adds.
-  2. The integration-gate round, per docs/agents/integration_gate.md.
-  3. The closure sequence and its pull request, which by precedent on this
-     branch is two rounds.
-  4. R-0745 (Low, OPEN) — the write door's import guard reads DIRECT imports
-     only, and the door's transitive closure now reaches `subprocess` through
-     `evidence_index`. Its fix clause names two routes and recommends the
-     transitive-closure test.
-
-That is four to five rounds against the one the limit leaves.
-
-THE PROPOSAL, and it is a proposal only. SPLIT R-0745 OFF ONTO ITS OWN STATUS
-LINE and let F033 close on the Acceptance it has met. The reasoning: R-0745 is
-not part of F033's Goal & Done, is not reachable from any clause of its
-Acceptance, and was raised opportunistically by the reviewer at the R15 gate
-from a measurement no gate ordered. It is a hardening of a guard that protects
-the HTTP door — genuinely worth doing, and genuinely not this feature. Carrying
-it blocks a feature that is otherwise complete, and a Low finding blocking a
-finished feature is how a roadmap stops meaning anything. Items 1 through 3
-above are closure obligations proper and stay with F033; on that split, session
-7 closes the feature in three to four rounds, which fits if the operator accepts
-one round over the soft limit or grants an eighth session.
-
-THE ALTERNATIVE, recorded because rule 6 asks for one: keep R-0745 inside F033
-and expect an eighth session. This is the safer reading of "a feature closes
-with its findings resolved", and the reviewer does not recommend it only because
-the finding is Low, is not about this feature's behaviour, and has a fix whose
-better half — the transitive-closure test — is a guard-hardening task that
-deserves its own round rather than a corner of a closure round.
-
-NEITHER OPTION IS EXECUTED ON THE REVIEWER'S OWN AUTHORITY. Session 7 proceeds
-on the recommended option unless the operator says otherwise, and records
-whichever it takes as a DECISION with its reversal.
-
-## Next expected action — SESSION 7, in this order
-
-1. Read `.agent/STOP` from disk. If it exists, hand off and end — Phase 1 rule 1
-   before rule 2, finding R-0347.
-2. Run the Open PR Gate. There was no open PR at the close of session 6 and this
-   session created none.
-3. READ THE SCOPE REPORT ABOVE BEFORE PLANNING ANY WORK. The soft limit is
-   reached at this session's first round.
-4. That round's FIRST commits book, into `.agent/live_review.md`, the round 24
-   verdict above and the authored `Done: R-0748` resolution. Neither buys a
-   round of its own.
-5. Then the `docs/` round: the operator-facing description of
-   `remedy patch approve-hunks`. Its gate adds `python3 -m pytest tests/docs/ -q`
-   to the canary, per the docs-round rule, and a ledger-count change and its
-   test pin must land in the SAME commit.
-6. Then the integration gate, then closure.
-7. A standing lesson from this session, for whoever writes the next gates: a
-   sweep asserting a string is absent must search TRACKED CONTENT, because a
-   plain recursive grep also reads gitignored build artifacts; and a gate whose
-   fix clause names ONE FILE while the defect is a CLAIM will leave that claim
-   standing everywhere else, which is exactly how R-0747 became R-0748.
-<<<END HANDOFF-CLOSE
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
+round, SESSION 7 of F033, branch, commit SHAs, changed-files table, one line per
+gate G1 through G7 with its REAL exit code, the open-findings count, an
+item-status table covering every Bundle and SPEC item, every deviation, and the
+next expected action. No length cap. If any gate is RED, do not repair on your
+own initiative: report it and stop.
