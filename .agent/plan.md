@@ -15,27 +15,27 @@ round — every partial state rendered truthfully in viewer, node and report.
 |------|--------|--------|
 | T001 stable ids, viewer v2, consolidation | done | closed round 5, DECISION F033 D3 |
 | the approval decision core | done | round 6, 30 cases |
-| the approved subset diff | done | this round |
-| landing the subset all-or-nothing | open | next, through `source_apply.py` |
-| the write-door command and its exposure | open | needs the import guard widened |
+| the approved subset diff | done | round 7, 17 cases |
+| landing the subset all-or-nothing | done | this round, on `source_apply.py` |
+| the write-door command and its exposure | open | next, needs the import guard widened |
 | the hunk-decision ledger in evidence | open | |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Land the subset: feed the per-file diffs this round emits through
-   `apply_structured_patch`, all-or-nothing, so a conflict inside the approved
-   set leaves NOTHING applied and names the hunk that conflicted. The applier
-   already snapshots and reverts; the round proves the atomicity, it does not
-   build it.
-2. Then the write door: `approve_hunks` reaches the applier through a service
-   seam, never by importing it — `packages.orchestration.source_apply` is in
-   `FORBIDDEN_MODULES` in `tests/ui_server/test_command_channel.py`.
-3. Then the hunk-decision ledger in evidence, which T003's report line reads.
+1. The write door: expose `approve_hunks` and dispatch it. The door may NOT
+   import the applier — `packages.orchestration.source_apply` is in
+   `FORBIDDEN_MODULES` in `tests/ui_server/test_command_channel.py` — so the
+   command reaches `apply_approved_hunks` through a service seam, and
+   `TestCommandDoorImportGuard`'s ALLOWED_IMPORTS is widened in the SAME commit
+   that adds the import, with the decision that widens it.
+2. Then the hunk-decision ledger in evidence, which T003's report line reads.
+3. Then T003: rejection reasons quoted verbatim into the next repair prompt, and
+   partial state rendered truthfully in viewer, node and report.
 
 ## Risks
-- The door's import guard is an EQUALITY guard, so any new import is widened in
-  the SAME commit that adds it, or the branch tip ships red.
+- The door's import guard is an EQUALITY guard, so a new import reddens the
+  branch tip unless it is ruled in the same commit.
 - A truncated or binary view cannot be re-emitted faithfully; the subset builder
-  refuses rather than shrinking a diff silently, and the apply round must keep
-  that refusal rather than defaulting past it.
+  refuses rather than shrinking a diff silently, and every later caller must
+  keep that refusal rather than defaulting past it.
 - R-0738 stays open and is T003's to repair.
