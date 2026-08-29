@@ -15,26 +15,26 @@ round — every partial state rendered truthfully in viewer, node and report.
 |------|--------|--------|
 | restart, claim, register R-0738 | done | round 1, DECISION F033 D1 |
 | the shared identity function and its tests | done | round 2, 10 tests |
-| wire the parser, bump DIFF_VIEW_VERSION to 2 | done | this round |
-| rule the client's fallback id synthesis | open | next round |
-| retire the diff-repair local hunk helper | open | |
+| wire the parser, bump DIFF_VIEW_VERSION to 2 | done | round 3, 50 tests |
+| rule the client's invented id | done | this round, DECISION F033 D2 |
+| retire the diff-repair local hunk helper | open | next round, T001's last item |
 | T002 approve_hunks, subset atomicity, ledger | open | |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Rule the client fallback at `apps/ui/src/api/diffViewModel.ts`, which
-   synthesises a positional id when the server sends an empty one, and move the
-   TypeScript pins on version 1 and on the `"<n>:<m>"` id form.
-2. Retire the local hunk helper in `packages/orchestration/diff_repair.py` onto
-   the shared identity, keeping its regression suite green.
-3. Then T002: the `approve_hunks` command, its validation and the
-   all-or-nothing subset apply.
+1. Retire the local hunk helper in `packages/orchestration/diff_repair.py` onto
+   `hunk_identity`, keeping `tests/orchestration/test_diff_repair.py` green.
+   That closes T001.
+2. Then T002: the `approve_hunks` command, its validation, and the
+   all-or-nothing subset apply built on
+   `packages/orchestration/source_apply.py`.
+3. `packages/orchestration/repo_applicator.py` applies nothing by design, so the
+   subset seam is new work rather than a parameter on something existing.
 
 ## Risks
-- The diff endpoint added by F256 SERVES this envelope, so the version bump is a
-  real consumer-visible change and not a private one.
-- The client fallback means an empty server id becomes a POSITIONAL id on screen
-  rather than an error, so a content-hash contract can still be violated
-  silently until the next round rules it.
-- `packages/orchestration/diff_parser.py` is PURE and TOTAL by its own docstring.
-  The identity call must not change that.
+- The diff endpoint added by F256 serves this envelope, so a shape change is
+  consumer-visible. Version 2 is the declared seam and it has been taken.
+- The client tests build their own payloads, so a server shape change cannot
+  redden them. Keeping the fixtures realistic is the only guard against the
+  client drifting a version behind the server.
+- R-0738 stays open and is T003's to repair.
