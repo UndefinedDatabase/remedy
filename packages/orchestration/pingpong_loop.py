@@ -893,8 +893,8 @@ def compose_builder_prompt(
     all, and narrowing the annotation would suggest a validation this layer
     deliberately does not perform.
 
-    THE ROUTE FROM A STORED DECISION, AND THE ONE HOP STILL MISSING.
-    :func:`run_pingpong` now carries a ``hunk_ledger`` parameter of its own and
+    THE ROUTE FROM A STORED DECISION, AND WHERE EACH HOP LIVES.
+    :func:`run_pingpong` carries a ``hunk_ledger`` parameter of its own and
     forwards it UNCHANGED to the call below, so the loop supplies whatever
     ledger it is GIVEN. It does not go and find one: it holds no job.
     ``packages/orchestration/hunk_decision_record.py`` writes each exported
@@ -902,14 +902,13 @@ def compose_builder_prompt(
     attempt, ``save_job`` at the write door makes that record durable, and the
     same module reads the latest one back for a task with
     ``load_latest_hunk_ledger_from_metadata`` — that reader takes the metadata
-    MAPPING, so it drags no storage behind it. What no round has wired yet is
-    the JOB-level caller: ``packages/orchestration/pingpong_job.py`` is where
-    the job is actually held at its :func:`run_pingpong` call, so it is the one
-    place that can read the decision and pass it, and until it does, production
-    ``hunk_ledger`` is ``None`` and this segment never registers. That hop is
-    deliberately its own round, because a call site wired without a test that
-    follows a decision through to the composed prompt would look like the
-    feature working while proving nothing at all.
+    MAPPING, so it drags no storage behind it. THE JOB-LEVEL CALLER IS WIRED:
+    measured at ``d81acca5``, ``packages/orchestration/pingpong_job.py`` holds
+    the job at its :func:`run_pingpong` call and passes
+    ``hunk_ledger=_recorded_hunk_ledger_for_task(job, task)``, so a decision an
+    operator recorded for a task reaches this segment in production. ``None``
+    stays the answer for a round with no recorded decision, and the segment
+    then registers not at all — which is the ordinary case, not a gap.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
