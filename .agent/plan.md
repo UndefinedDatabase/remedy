@@ -1,7 +1,7 @@
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 1, round 4.
+commit of pull request 222. SESSION 2, round 5.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -17,13 +17,15 @@ was gone" answer in one glance.
 | the spec decisions D2 to D5 | done | rounds 2 and 3 |
 | the one-source urgency and R-0751 | done | round 2, PASS |
 | T001 the composition module and its tests | done | round 3, PASS |
-| T001 the endpoint and its route tests | done | this round |
-| T002 the hero card, triggers, the TS retirement | open | next session |
+| T001 the endpoint and its route tests | done | round 4, PASS |
+| T001 the envelope goldens and R-0754 | done | this round |
+| T002 the hero card, triggers, the TS retirement | open | next |
 | T003 CLI parity and the end-to-end | open | |
 
 ## Next Steps
-1. This round serves the composition: one handlers line, one builder, and the
-   route tests that pin the wiring. T001 is complete when it lands.
+1. This round meets T001's last acceptance clause: one stored envelope golden
+   per state shape, frozen and never self-blessed. T001 is complete when it
+   lands — the goldens were the clause round 4 left open.
 2. T002 builds the hero card against the design reference, wires the trigger,
    dismiss and last-seen mechanics, and retires the TypeScript urgency copy per
    DECISION F040 D2.
