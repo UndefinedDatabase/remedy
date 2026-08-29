@@ -1,175 +1,230 @@
-# Handback — F033 Hunk-level diff approval · ROUND 6 · OPENING T002
+# Handback — F033 Hunk-level diff approval · ROUND 7 · THE APPROVED SUBSET DIFF
 
 ## Session
 
-SESSION 2 of feature F033 · round 6 · rounds so far 6
+SESSION 2 of feature F033 · round 7 · rounds so far 7
 
 ## Range
 
-Review of `cb49a3ea39659dbc270dfd36ea296171cf6dc439`..`da81db5487d460b91b5e481f5c9b4eb5f7365bde`
-plus the C4 commit `410509253b4c028570f3273270693925cd1725ee` and this handback commit.
-BASE was confirmed with `git rev-parse HEAD` before C0a. Branch
-`feature/f033-hunk-approval-v2` throughout.
+Review of `1fdda40215da1f15c248df1ea46cf7b940781a74`..`<C5>` on branch
+`feature/f033-hunk-approval-v2`. BASE was confirmed with `git rev-parse HEAD` before C0a.
 
 ## Commits
 
-### 57889e78 chore(f033): save the round 6 step block
-
+### 6620a145 chore(f033): save the round 7 block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f033-r6.md | +337 / -0 | C0a — the block saved with `shutil.copyfile`, never retyped |
+| .agent/authored/f033-r7.md | +364/-0 | C0a, the block saved with `shutil.copyfile`, never retyped |
 
-### acafb28f chore(f033): mirror the round 6 block to last_block
-
+### d797e7d0 chore(f033): mirror the round 7 block to last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +249 / -252 | C0b — mirrored from the COMMITTED C0a blob via `git show` |
+| .agent/last_block.md | +227/-200 | C0b, mirrored from the committed C0a file |
 
-### 8e6183fd docs(f033): retarget the plan on the decision core
-
+### 6a7d935d docs(f033): retarget the plan on the approved subset diff
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +15 / -17 | C1 — whole-file PLANF033R6, applied byte for byte |
+| .agent/plan.md | +11/-8 | C1, whole-file slice PLANF033R7 |
 
-### f3a8b0ed docs(f033): book the round 5 verdict and resolve R-0739
-
+### d887643a docs(f033): book the round 6 verdict
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +4 / -0 | C2 — RECORDF033R6 appended: the R5 gate paragraph and `Done: R-0739` |
+| .agent/live_review.md | +2/-0 | C2, RECORDF033R7 appended after one newline |
 
-### da81db54 docs(f033): record the two round 5 reviewer prose slips
-
+### 42d0a76f docs(f033): record the round 6 reviewer prose slip
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/prose_slips.md | +4 / -0 | C3 — SLIPSF033R6 appended, no id spent (amend0827 rule 2) |
+| .agent/prose_slips.md | +2/-0 | C3, SLIPSF033R7 appended; the slice opens with its own blank line |
 
-### 41050925 feat(f033): add the hunk approval decision core
-
+### c4b11af5 feat(f033): build the approved subset diff
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/hunk_approval.py | +272 / -0 | C4 — NEW: the pure decision core, written from the block's SPEC |
-| tests/orchestration/test_hunk_approval.py | +220 / -0 | C4 — NEW: 17 test functions, 30 collected cases |
+| packages/orchestration/hunk_subset_diff.py | +278/-0 | C4, the NEW module written from the SPEC |
+| tests/orchestration/test_hunk_subset_diff.py | +219/-0 | C4, its 17 property tests |
 
-### C5 this handback (self-reference — a handoff cannot table the commit that writes it)
-
+### C5 — this handback (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/handoff.md | (this commit) | C5 — rewritten per docs/agents/handback_template.md |
+| .agent/handoff.md | rewritten | C5; a handoff cannot table the commit that writes it |
+
+C4 totals 497 insertions, under the 500 cap. No commit is oversize and none is declared.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f033-r6-wt 41050925` — created for G7; every
-  mutation ran there, never in the primary checkout.
-- `git worktree remove --force .remedy-wt/f033-r6-wt` then `git worktree prune` — removed
-  BY EXACT PATH, no glob. Exit 0 both.
-- `git push -u origin feature/f033-hunk-approval-v2` after C5.
-- No `gh` command was run. No PR created, no merge, no force-push, no history rewrite, no
+- `git worktree add --detach .remedy-wt/f033r7-wt c4b11af5` — created, G7 ran there only.
+- `git worktree remove --force .remedy-wt/f033r7-wt` then `git worktree prune` — removed BY
+  EXACT PATH; `git worktree list` afterwards shows only the primary checkout.
+- `git push -u origin feature/f033-hunk-approval-v2` — run immediately after C5, per Push
+  Discipline. No PR created, no `gh` command run, no force-push, no history rewrite, no
   branch deleted.
 
 ## Verification
 
 - **G1 HYGIENE — PASS.** `.agent/STOP` read from disk before C0a and again before C5:
-  `ls` exit 2, "No such file or directory" both times. `git status --porcelain` empty
-  after every one of the six commits. Branch `feature/f033-hunk-approval-v2` throughout.
-  `git rev-parse feature/f033-hunk-approval` = `ed04081283081f237d96147da39a07fca0b1ccad`,
-  unmoved.
-- **G2 TRANSPORT — PASS.** `.remedy-wt/f033-r6-block.md` = 24108 bytes, sha256
-  `a68745f0d20f4119b83927edeee3bee00ba63a1f3c2ede5140d60ebfd109ee19`. The C0a blob
-  `57889e78:.agent/authored/f033-r6.md` = 24108 bytes, same sha256 — EQUAL.
-  `git rev-parse acafb28f:.agent/authored/f033-r6.md` and
-  `git rev-parse acafb28f:.agent/last_block.md` both print ONE blob id,
-  `7f1228d5b26b2eca72b682192338677585a8b46b`.
-- **G3 THE RECORD APPEND at C2 — PASS.** (a) BASE blob 1456716 bytes as ordered; slice
-  5024; 1456716 + 1 + 5024 = 1461741 = the C2 blob, byte for byte EQUAL; BASE a byte
-  PREFIX; ends in exactly one newline. (b) N counted by the script = 2. The last 2
-  blank-line units of the C2 blob equal the slice's paragraphs IN ORDER (unit 0 = 3192
-  bytes, opens `Gate: F033 R5 —`; unit 1 = 1830 bytes, opens `Done: R-0739 —`). NEGATIVE
-  CONTROL: the first appended paragraph was PROVEN to span offsets 1456717–1459909, a byte
-  flipped at 1458313 (inside that span); the byte-formula reader rejected it and the
-  paragraph reader rejected it — BOTH.
-- **G4 THE LEDGER at C2 — PASS.** BASE: registered 300 distinct, `Done:` 44 lines over 42
-  distinct, `Landed:` 12, `Gate:` 122, open set 258. C2: registered 300 (UNMOVED — this
-  round registers nothing, ADDED registered ids = []), `Done:` 45 lines over 43 distinct
-  with the ADDED resolved id exactly `R-0739` and nothing else, `Landed:` 12 UNMOVED,
-  `Gate:` 122 to 123, open set 258 to 257. `^Gate: F033 R5 — ` at C2 reads exactly 1.
-  `Landed: R-0739` still reads 1 at C2 — it stays beside its `Done:` paragraph.
-- **G5 THE PROSE-SLIPS APPEND at C3 — PASS.** BASE blob 18681 bytes as ordered; the slice
-  OPENS with a blank line so no separator was added; 18681 + 897 = 19578 = the C3 blob,
-  byte for byte EQUAL; BASE a byte PREFIX; ends in exactly one newline. The lines the C3
-  diff ADDS are 4 and equal the slice's 4 lines IN ORDER.
-  `^2026-08-29 · F033 R5 · ` at C3 reads exactly 2. No contradiction this round between the
-  byte formula and the added-line clause — the slice's leading blank line makes them agree.
+  `ls` exit 2, "No such file or directory", absent both times. `git status --porcelain`
+  empty after every one of C0a, C0b, C1, C2, C3, C4. Branch `feature/f033-hunk-approval-v2`
+  throughout. `git rev-parse feature/f033-hunk-approval` = `ed04081283081f237d96147da39a07fca0b1ccad`,
+  unchanged. No force-push, no rewrite, no branch deletion.
+- **G2 TRANSPORT — PASS.** `6620a145:.agent/authored/f033-r7.md` = 24748 bytes, sha256
+  `8634f5526f8d8048b69e6837be71656f568083d1a10ef353b247958d233158a4`;
+  `.remedy-wt/f033-r7-block.md` = 24748 bytes, same sha256; EQUAL = True.
+  `git rev-parse d797e7d0:.agent/authored/f033-r7.md` and
+  `git rev-parse d797e7d0:.agent/last_block.md` both print ONE blob id,
+  `9d08302b43991069794a281b16db05b8631b6f36`.
+- **G3 THE RECORD APPEND at C2 — PASS.** (a) BASE blob 1461741 bytes (as ordered); BASE +
+  one newline + RECORDF033R7 (4515 bytes) = 1466257 = the C2 blob byte for byte, True; BASE
+  is a byte PREFIX, True; the result ends in exactly one newline, True. (b) N COUNTED in
+  RECORDF033R7 = **1**; the LAST 1 blank-line unit of the C2 blob equals the slice's
+  paragraph in order, True. NEGATIVE CONTROL: the first appended paragraph was proven to
+  span offsets 1461742..1466256, the flip was made at offset **1463999**, asserted inside
+  that span, and BOTH readers rejected it (whole-blob equality True, last-N-paragraph
+  comparison True).
+- **G4 THE LEDGER at C2 — PASS, every reading as ordered.** registered `^- R-\d+ — `
+  300 lines / 300 distinct at BASE and 300/300 at C2, UNMOVED. `^Done: R-\d+ — ` 45 lines
+  over 43 distinct at BASE and 45 over 43 at C2, UNMOVED. `^Landed: R-` 12 at BASE and 12 at
+  C2, UNMOVED. Open set (registered distinct − done distinct) 257 at BASE and 257 at C2,
+  UNMOVED — this round registered and resolved nothing. `^Gate: F\d+ R\d+ — ` 123 → **124**.
+  `^Gate: F033 R6 — ` at C2 reads exactly **1** (0 at BASE).
+- **G5 THE PROSE-SLIPS APPEND at C3 — PASS.** BASE blob 19578 bytes (as ordered); BASE +
+  SLIPSF033R7 (407 bytes, opening with its own blank line, no separator added) = 19985 = the
+  C3 blob byte for byte, True; BASE a byte PREFIX, True; ends in exactly one newline, True.
+  The lines that commit's diff ADDS are exactly the slice's 2 lines IN ORDER, True.
+  `^2026-08-29 · F033 R6 · ` at C3 = **1**.
 - **G6 THE MODULE AGAINST THE SPEC at C4 — PASS.** (a) `python3 -B -m ruff check` over both
-  new files: summary line `All checks passed!`, REAL EXIT 0. (b) By AST, the module's
-  import statements name exactly `['__future__', 'collections', 'collections.abc',
-  'dataclasses', 'typing']`; checked against `sys.stdlib_module_names`, non-stdlib = [] —
-  ONLY standard library, and no module of this package. (c) All five are module-level
-  `ast.Assign` of a string constant, exact: `REFUSAL_EMPTY_DECISION` = `empty_decision`,
-  `REFUSAL_DUPLICATE_HUNK` = `duplicate_hunk`, `REFUSAL_OVERLAPPING_SETS` =
-  `overlapping_sets`, `REFUSAL_UNKNOWN_HUNK` = `unknown_hunk`, `REFUSAL_MISSING_REASON` =
-  `missing_reason`. (d) TOTALITY run as a real probe, not asserted: `None`, `object()`, the
-  integer id `7`, and an object whose `__str__` raises, each in the `approved` and the
-  `rejected` position — 8 of 8 calls RETURNED, 0 raised, every return a
-  `HunkApprovalRefusal` with code `unknown_hunk`. (e) forbidden tokens in the module:
-  `open(` = 0, `import os` = 0, `import subprocess` = 0, `import logging` = 0, `Path` = 0.
-- **G7 THE MUTATION RED-PROOFS at C4 — PASS, all three RED.** Run in the disposable
-  worktree `.remedy-wt/f033-r6-wt` detached at `41050925`, with `python3 -B`, never in the
-  primary checkout. UNMUTATED CONTROL: `python3 -B -m pytest
-  tests/orchestration/test_hunk_approval.py -q` REAL EXIT 0, 30 passed. Each anchor was
-  asserted UNIQUE in the file before replacement, and the file was reverted fully between
-  mutations.
-  (i) OVERLAPPING_SETS never trips (`    if overlapping:` → `    if False and
-  overlapping:`, occurrences 1): REAL EXIT 1, 2 failed / 28 passed —
-  `test_an_id_in_both_sets_is_refused_as_overlapping`,
-  `test_the_earlier_refusal_wins_when_one_input_trips_two[overlapping-first]`.
-  (ii) a whitespace-only reason accepted as a reason (`if not r.reason.strip()` → `if not
-  r.reason`, occurrences 1): REAL EXIT 1, 2 failed / 28 passed —
-  `test_a_rejection_without_a_real_reason_is_refused[spaces]`,
-  `test_a_rejection_without_a_real_reason_is_refused[tab-newline]`.
-  (iii) UNKNOWN_HUNK never trips (`    if unknown:` → `    if False and unknown:`,
-  occurrences 1): REAL EXIT 1, 4 failed / 26 passed —
-  `test_an_id_the_diff_does_not_carry_is_refused_as_unknown`,
-  `test_the_earlier_refusal_wins_when_one_input_trips_two[unknown-first]`,
-  `test_every_offending_id_is_reported_at_once_rather_than_one_per_round_trip`,
-  `test_a_broken_object_is_named_by_its_repr_rather_than_crashing`.
-  REVERTED CONTROL after the third: REAL EXIT 0, 30 passed. No mutation came back green.
+  new files: REAL exit **0**, summary line `All checks passed!`. (b) By AST, the FULL import
+  list is `['__future__', 'collections.abc', 'dataclasses', 'packages.orchestration.diff_parser',
+  'typing']` — every entry standard library except exactly `packages.orchestration.diff_parser`;
+  `source_apply` occurs **0** times anywhere in the module's text. (c) All three constants are
+  module-level assignments, in the declared order:
+  `SUBSET_REFUSAL_NO_APPROVED_IDS = 'no_approved_ids'`,
+  `SUBSET_REFUSAL_UNTRUSTWORTHY_VIEW = 'untrustworthy_view'`,
+  `SUBSET_REFUSAL_ABSENT_HUNK = 'absent_hunk'`. (d) TOTALITY as a real probe: `None`,
+  `object()`, the integer 7 and a non-iterable id set whose `__iter__` RAISES were each
+  passed in BOTH argument positions — 8 calls, all 8 RETURNED, every one a `SubsetRefusal`
+  (`absent_hunk`), 0 raised. (e) `open(` 0, `import os` 0, `import subprocess` 0,
+  `import logging` 0; `Path` 0 as well, measured though not ordered this round.
+- **G7 THE MUTATION RED-PROOFS at C4 — PASS, all three RED.** In the disposable worktree
+  `.remedy-wt/f033r7-wt` at `c4b11af5`, under `python3 -B`, never in the primary checkout;
+  the gate's own command was proven to import
+  `.remedy-wt/f033r7-wt/packages/orchestration/hunk_subset_diff.py`. UNMUTATED CONTROL:
+  REAL exit **0**, 17 passed. Each anchor was asserted UNIQUE (count 1) before replacement
+  and the module was fully reverted between mutations, each revert re-measured at exit 0 /
+  17 passed.
+  - (i) swap the `add` and `del` prefixes → REAL exit **1**, 3 failed / 14 passed:
+    `test_a_subset_of_every_hunk_applies_exactly_as_the_raw_diff_does`,
+    `test_one_approved_hunk_changes_its_own_lines_and_leaves_the_others_alone`,
+    `test_the_line_prefix_map_is_load_bearing`.
+  - (ii) UNTRUSTWORTHY_VIEW never trips → REAL exit **1**, 4 failed / 13 passed:
+    `test_a_hunk_in_a_binary_file_is_refused`,
+    `test_a_hunk_in_a_file_the_parser_could_not_read_is_refused_by_name`,
+    `test_a_truncated_view_is_refused_and_blames_no_hunk`,
+    `test_an_untrustworthy_view_is_reported_before_an_absent_hunk`.
+  - (iii) ABSENT_HUNK never trips → REAL exit **1**, 2 failed / 15 passed:
+    `test_absent_ids_are_deduplicated_in_the_order_the_caller_gave_them`,
+    `test_an_id_the_diff_no_longer_carries_stops_the_apply`.
+  No mutation came back green. Worktree removed by exact path and pruned; the primary
+  checkout's `git status --porcelain` was empty throughout and after.
 - **G8 SUITES AND STRUCTURE — PASS.** Serially, one pytest process at a time, every REAL
-  exit 0: `tests/orchestration/test_hunk_approval.py` 30 passed (new this round);
-  `tests/orchestration/test_hunk_identity.py` 10 passed (10 at BASE, unmoved);
-  `tests/orchestration/test_diff_parser.py` 50 passed (50 at BASE, unmoved);
-  `tests/regression/test_resource_safety.py` 21 passed;
-  `tests/test_no_interactive_guard.py` 6 passed; canary `tests/cli/test_golden_path.py`
-  42 passed (42 at BASE, unmoved). Structure walk `git rev-list --reverse BASE..C4`, each
-  commit exactly ONE parent and insertions taken from the `+` column of
-  `git diff --numstat` alone: `57889e78` 337, `acafb28f` 249, `8e6183fd` 15, `f3a8b0ed` 4,
-  `da81db54` 4, `41050925` 492 — all six under 500. Range path set =
-  `.agent/authored/f033-r6.md`, `.agent/last_block.md`, `.agent/live_review.md`,
-  `.agent/plan.md`, `.agent/prose_slips.md`, `packages/orchestration/hunk_approval.py`,
-  `tests/orchestration/test_hunk_approval.py`; in range but not in the change set = none;
-  in the change set but not in the range = `.agent/handoff.md` only, the expected absence,
-  since C5 lands after the walk. Delimiter residue `<<<SLICE ` / `<<<END `: `.agent/plan.md`
-  0/0, `.agent/prose_slips.md` 0/0, `packages/orchestration/hunk_approval.py` 0/0,
-  `tests/orchestration/test_hunk_approval.py` 0/0, against the non-zero control
-  `.agent/authored/f033-r6.md` at 5/6. `git ls-files .remedy-wt` = 0.
+  exit **0**: `tests/orchestration/test_hunk_subset_diff.py` **17 passed** (new),
+  `tests/orchestration/test_hunk_approval.py` 30, `tests/orchestration/test_diff_parser.py`
+  50, `tests/orchestration/test_hunk_identity.py` 10,
+  `tests/orchestration/test_source_apply.py` 34, canary `tests/cli/test_golden_path.py` 42.
+  COMMIT WALK `git rev-list --reverse BASE..c4b11af5`, each exactly ONE parent, insertions
+  from the `+` column of `git diff --numstat`: 6620a145 364, d797e7d0 227, 6a7d935d 11,
+  d887643a 2, 42d0a76f 2, c4b11af5 497 — all under 500. PATH SET both directions: in the
+  range but not in the change set = none; in the change set but not in the range =
+  `.agent/handoff.md` only, the expected absence. DELIMITER RESIDUE `<<<SLICE ` / `<<<END `:
+  `.agent/plan.md` 0/0, `.agent/prose_slips.md` 0/0,
+  `packages/orchestration/hunk_subset_diff.py` 0/0,
+  `tests/orchestration/test_hunk_subset_diff.py` 0/0, against the non-zero control
+  `.agent/authored/f033-r7.md` at **5** and **6**. `git ls-files .remedy-wt` = **0**.
+
+### The four facts, re-derived rather than trusted
+
+All four hold at `1fdda402`, each with a real red control (script
+`.remedy-wt/f033r7/facts.py`):
+
+- The applier never reads a hunk header's NEW side: skewing both `+N,M` headers to `+999,M`
+  applies byte-identically (True); `m.group(3)` and `m.group(4)` occur 0 times in
+  `_apply_hunks`. RED CONTROL: skewing the OLD side instead changes the result (True) — the
+  control's anchor is asserted to match, so it cannot pass vacuously.
+- A context mismatch makes `_apply_hunks` return `None` (True); control on the unmodified
+  original returns not-None (True).
+- `parse_unified_diff_to_view` carries each hunk's `header` VERBATIM (equal to the source
+  headers, True), its `lines` with kinds exactly `{add, ctx, del}` and a `content` on every
+  entry, and an `id` beside them.
+- Re-emitting EVERY hunk from the view applies byte-identically to applying the raw diff
+  (True); swapping the `add`/`del` prefixes changes the result (the applier returns `None`).
+  Also measured: dropping either hunk applies correctly with NO renumbering.
+
+### `build_approved_subset_diff` — final signature
+
+    def build_approved_subset_diff(
+        diff_text: str,
+        approved_hunk_ids: Iterable[str],
+    ) -> ApprovedSubsetDiff | SubsetRefusal:
+
+### The 17 tests and the property each pins
+
+| Test | Property |
+|------|----------|
+| test_a_subset_of_every_hunk_applies_exactly_as_the_raw_diff_does | THE ROUND TRIP: selecting both hunks applies byte-identically to applying the raw diff |
+| test_one_approved_hunk_changes_its_own_lines_and_leaves_the_others_alone | each hunk alone changes exactly its own lines |
+| test_the_line_prefix_map_is_load_bearing | would fail if `add`/`del` were swapped; a swapped emission no longer applies |
+| test_a_header_is_re_emitted_character_for_character | headers VERBATIM, and dropping the first hunk does not renumber the second |
+| test_an_emitted_file_carries_only_hunks_and_one_trailing_newline | no `diff --git`/`---`/`+++`, exactly one trailing newline |
+| test_an_empty_approved_set_is_refused_rather_than_applying_nothing | NO_APPROVED_IDS, with no id blamed |
+| test_a_truncated_view_is_refused_and_blames_no_hunk | UNTRUSTWORTHY_VIEW from `truncated`, `hunk_ids` empty |
+| test_a_hunk_in_a_file_the_parser_could_not_read_is_refused_by_name | UNTRUSTWORTHY_VIEW from a file `note`, naming the approved id |
+| test_a_hunk_in_a_binary_file_is_refused | UNTRUSTWORTHY_VIEW from a `binary` status |
+| test_an_untouched_unreadable_file_does_not_refuse_a_clean_selection | the check is scoped to files the SELECTION touches |
+| test_an_id_the_diff_no_longer_carries_stops_the_apply | ABSENT_HUNK stops rather than shrinks the apply |
+| test_absent_ids_are_deduplicated_in_the_order_the_caller_gave_them | absent ids deduplicated, caller's order |
+| test_an_untrustworthy_view_is_reported_before_an_absent_hunk | THE ORDER, on one input tripping two codes |
+| test_only_files_with_a_kept_hunk_appear_and_in_the_diffs_own_order | multi-FILE: untouched files absent, diff order not caller order, `selected` spans files |
+| test_a_hunk_approved_twice_is_emitted_once_and_is_not_a_refusal | duplicate approval is harmless and emits once |
+| test_no_input_raises_in_either_argument_position | TOTALITY over 7 hostile values in both positions |
+| test_an_id_that_is_not_a_string_is_compared_as_text | a non-string id is coerced and matches |
 
 ## Authored-text proofs
 
-Three reviewer-authored slices were applied this round, each extracted from the COMMITTED
-C0a blob with `git show`, never retyped, and each anchored to its NAMED delimiter at line
-start. Slice byte lengths and sha256 as extracted:
+- PLANF033R7, RECORDF033R7, SLIPSF033R7 were all extracted from the COMMITTED C0a blob by
+  `git show 6620a145:.agent/authored/f033-r7.md`, anchored to the named delimiter at line
+  start, each delimiter asserted UNIQUE; none was retyped.
+- Disk-to-disk: `6620a145:.agent/authored/f033-r7.md` is byte-identical to
+  `.remedy-wt/f033-r7-block.md` — 24748 bytes, sha256
+  `8634f5526f8d8048b69e6837be71656f568083d1a10ef353b247958d233158a4` on both sides.
+- The Python module and its tests are a SPEC, not a slice, and were written from the
+  description as the block's convention 5 requires.
 
-- PLANF033R6 — 1936 bytes, `07756c37b6a062961efe5d1fa1c8aadb4760940e0c929802c90dcf0dc6da0552`.
-  Applied whole-file to `.agent/plan.md`; the committed blob is those bytes exactly, ending
-  in one newline (38 lines).
-- RECORDF033R6 — 5024 bytes, `44f9831f55764934b2b966aa99dde32d865d06ad4222539dc3fad591272cc1a7`.
-  Appended per G3(a); proved byte for byte against the C2 blob, with the negative control
-  rejected by both readers.
-- SLIPSF033R6 — 897 bytes, `c8d2fb0102706505d26d1d4cfcb0352f4a3bb482f1c1c8c953b8c37eee1ce3e9`.
-  Appended per G5; proved byte for byte against the C3 blob.
+## Deviations & assumptions
 
-The C0a disk-to-disk comparison is in G2: the file on disk at
-`.remedy-wt/f033-r6-block.md` and the committed `.agent/authored/f033-r6.md` blob are 24108
-bytes with an identical sha256.
+1. **A TENSION IN THE BLOCK, resolved rather than routed around, and declared.** SPEC §1
+   orders "Write both absences into the module docstring" while naming the applier as
+   `packages/orchestration/source_apply.py`; gate G6(b) orders `source_apply` to read ZERO
+   times "anywhere in the module's text". Both are satisfiable at once, so this is a
+   constraint rather than a contradiction: I treated G6(b) as the binding MEASUREMENT and
+   satisfied §1's intent by writing BOTH `DELIBERATE ABSENCE` paragraphs into the docstring
+   — it applies nothing, and it does not import the applier — naming the applier by its
+   public entry point `apply_structured_patch` and by `FORBIDDEN_MODULES` in
+   `tests/ui_server/test_command_channel.py`, so the absence still greps to something real
+   without the forbidden token. That G6(b) is scoped to the MODULE's text, while the test
+   SPEC positively orders the test file to import `_apply_hunks` from that same module, is
+   what makes the two clauses coherent: the gate is about what the module reaches, not about
+   what the round may mention. Nothing on disk is wrong either way.
+2. **A KNOWN COVERAGE GAP, stated rather than hidden.** The third untrustworthy limb — a
+   line `kind` that is none of `ctx`/`del`/`add` — is UNREACHABLE through the public entry
+   point, because `parse_unified_diff_to_view` emits only those three kinds. It is shipped
+   because without it `_emit` would `KeyError` if the view ever grew a fourth kind, which
+   would break the module's totality claim. No test exercises it: reaching it needs a
+   monkeypatched parser, and C4 closed at 497 of its 500 permitted insertions with no room
+   for one. Mutation (ii) still goes red on the other two limbs, so the gate is not blind,
+   but this limb specifically is guarded by construction rather than by a test.
+3. **No departure from the block's ordered commit sequence.** C0a, C0b, C1, C2, C3, C4, C5
+   were committed in exactly that order, one per ordered item, nothing added, dropped or
+   reordered. No path outside the declared change set was written.
+4. `G6(e)` was measured with the four tokens the block names plus `Path` (0), which the
+   round 6 record used; the extra reading is reported, not substituted.
 
 ## Item status
 
@@ -178,100 +233,23 @@ bytes with an identical sha256.
 | C0a save this block | done | |
 | C0b mirror it | done | |
 | C1 `.agent/plan.md` | done | |
-| C2 the R5 verdict and `Done: R-0739` into `.agent/live_review.md` | done | |
-| C3 the two reviewer prose slips into `.agent/prose_slips.md` | done | |
-| C4 the decision core and its tests, together | done | one commit, as ordered |
-| C5 the handback | done | this commit |
-| G1 HYGIENE | done | pass |
-| G2 TRANSPORT | done | pass |
-| G3 THE RECORD APPEND at C2 | done | pass |
-| G4 THE LEDGER at C2 | done | pass |
-| G5 THE PROSE-SLIPS APPEND at C3 | done | pass |
-| G6 THE MODULE AGAINST THE SPEC at C4 | done | pass, five parts |
-| G7 THE MUTATION RED-PROOFS at C4 | done | pass, three of three RED |
-| G8 SUITES AND STRUCTURE | done | pass |
-
-## The shipped signature
-
-    decide_hunk_approval(
-        known_hunk_ids: Iterable[str],
-        approved: Iterable[str],
-        rejected: Iterable[HunkRejection | tuple[str, str] | Mapping[str, str]],
-    ) -> HunkDecision | HunkApprovalRefusal
-
-17 test functions, 30 collected cases, each named for the property it pins:
-
-| Test | Property pinned |
-|------|-----------------|
-| `test_a_decision_naming_no_hunk_is_refused_as_absent` | EMPTY_DECISION, and its `hunk_ids` is empty because no single id is at fault |
-| `test_an_id_repeated_inside_one_set_is_refused_as_a_duplicate` (2 cases) | DUPLICATE_HUNK, within `approved` and within `rejected` separately |
-| `test_an_id_in_both_sets_is_refused_as_overlapping` | OVERLAPPING_SETS |
-| `test_an_id_the_diff_does_not_carry_is_refused_as_unknown` | UNKNOWN_HUNK |
-| `test_a_rejection_without_a_real_reason_is_refused` (6 cases) | MISSING_REASON for empty, spaces, tab+newline, a bare string, an explicit null reason and a missing reason key |
-| `test_the_earlier_refusal_wins_when_one_input_trips_two` (3 cases) | the ORDER: duplicate before overlapping, overlapping before unknown, unknown before missing-reason |
-| `test_a_mixed_decision_reports_approved_rejected_and_the_pending_remainder` | approved in the order given, rejected normalised, pending the remainder |
-| `test_pending_follows_the_order_the_known_set_gave` | pending is in the KNOWN set's order, not the approved set's |
-| `test_pending_is_empty_when_every_known_hunk_is_decided` | pending empty when nothing is undecided |
-| `test_rejecting_everything_is_a_valid_decision_with_an_empty_approved_set` | the feature file's full-rejection edge case is VALID, not a refusal |
-| `test_a_rejection_reason_is_kept_verbatim_including_its_whitespace` | reasons survive byte for byte, for T003's verbatim quote |
-| `test_the_three_rejection_spellings_produce_the_same_decision` | dataclass, tuple and wire mapping agree |
-| `test_offending_ids_are_deduplicated_in_first_appearance_order` | the offending list is deduplicated and ordered by first appearance |
-| `test_every_offending_id_is_reported_at_once_rather_than_one_per_round_trip` | offending ids from BOTH sets arrive together |
-| `test_no_hostile_input_raises_in_any_position` (6 cases) | TOTALITY in all three argument positions |
-| `test_a_broken_object_is_named_by_its_repr_rather_than_crashing` | a broken `__str__` degrades to `repr()` and is NAMED |
-| `test_a_non_string_id_is_compared_as_text` | an id is compared as text |
-
-## Deviations & assumptions
-
-No departure from the block's ordered commit sequence: the six bundle commits landed in
-the ordered order, none added, none dropped, none reordered. The following are authoring
-decisions the SPEC left to me, or readings of it that a reviewer should check.
-
-1. **C4's size forced the prose down, not the content.** The first complete draft of the
-   two files measured 558 insertions in one commit, over both the AGENTS.md 500-insertion
-   cap and G8's own "each under 500 INSERTIONS" clause, while the block orders the core and
-   its tests as ONE commit. Rather than split against the block or declare an oversize
-   commit, I tightened comment and docstring WORDING — which Convention 5 leaves to me — to
-   272 + 220 = 492. No SPEC-mandated behaviour, no refusal code, no test property and no
-   paragraph of the DELIBERATE ABSENCE or totality material was dropped; only reflowing and
-   the merging of some multi-paragraph docstrings into single ones.
-2. **A null or absent reason is an ABSENT reason.** `_reason_text` maps both a missing
-   `reason` key and an explicit `None` to `""`, so both trip MISSING_REASON. Coercing them
-   with the totality guard instead would produce the literal text `"None"`, which is not
-   empty and not whitespace and would therefore sail past the very check that code names.
-   Two of the six MISSING_REASON cases pin this.
-3. **A non-iterable argument is ONE entry, and so are a `str`, a bytes-like, a `Mapping`
-   and a `HunkRejection`.** This follows the shape `normalise_old_side` uses in
-   `hunk_identity.py` for the same situation. It matters most for `rejected`: a caller that
-   passes a single wire-form mapping without wrapping it in a list gets that one rejection
-   back rather than two strange ids named `id` and `reason`. It is also why
-   `approved="h1h2"` is reported as one unknown id and not as four.
-4. **`_total_text` is re-stated, not imported.** G6(b) requires the module's imports to name
-   ONLY standard-library modules, so importing `hunk_identity._total_text` was not
-   available; the name is private there in any case. The module docstring says so at the
-   point a reader would ask.
-5. **The §4 sentence about a malformed rejection entry is subordinate to the §3 ORDER.**
-   The block says an entry in none of the three spellings "is a REFUSAL_MISSING_REASON",
-   but §3 makes UNKNOWN_HUNK strictly earlier, so a malformed entry whose recovered id is
-   not in `known_hunk_ids` returns UNKNOWN_HUNK. I read the §4 sentence as naming the fault
-   CLASS rather than overriding the order it is stated beside, and the bare-string test
-   uses a KNOWN id so both readings give the same answer. Flagging it because it is the one
-   place the SPEC's two halves could be read against each other.
-6. **`known_hunk_ids` is deduplicated, preserving first appearance, before `pending` is
-   computed.** The block calls it "the known SET", and a set cannot hold a repeat; without
-   this a duplicated known id would appear twice in `pending` and desynchronise the "5/8
-   hunks" count the docstring explains `pending` exists to keep single-sourced.
-7. **`_ID_KEYS` accepts `hunk_id` as well as `id`.** The feature file's wire form is
-   `rejected[{id, reason}]` and that is the primary spelling; `hunk_id` is accepted so a
-   caller that dumps a `HunkRejection` to a dict round-trips. No test depends on any other
-   key existing.
-
-No verdict on this round's work is written here; the reviewer gates it.
+| C2 the round 6 verdict into `.agent/live_review.md` | done | |
+| C3 the reviewer prose slip into `.agent/prose_slips.md` | done | |
+| C4 the subset module and its tests | done | 497 insertions, one commit |
+| C5 the handback | done | this file |
+| G1 HYGIENE | done | PASS |
+| G2 TRANSPORT | done | PASS, one blob id |
+| G3 THE RECORD APPEND | done | PASS, N=1, control at 1463999 |
+| G4 THE LEDGER | done | PASS, Gate: 123 → 124, all else unmoved |
+| G5 THE PROSE-SLIPS APPEND | done | PASS, 19578 + 407 = 19985 |
+| G6 THE MODULE AGAINST THE SPEC | done | PASS, ruff exit 0, 8/8 totality calls returned |
+| G7 THE MUTATION RED-PROOFS | done | PASS, 3/3 red, control 17 passed |
+| G8 SUITES AND STRUCTURE | done | PASS, six suites exit 0, C4 at 497 |
+| Re-derive the four measured facts | done | all four hold, each with a real red control |
 
 ## Next
 
-The reviewer re-runs all eight gates over
-`cb49a3ea..<C5>` on `feature/f033-hunk-approval-v2`. The next build round is T002's second
-piece, the all-or-nothing SUBSET APPLY on `packages/orchestration/source_apply.py`, whose
-`apply_structured_patch` takes no subset today; it validates its input against
-`decide_hunk_approval` and still touches neither the write door nor its import guard.
+Round 8: land the subset. Feed each `ApprovedSubsetFile` through the applier as a
+`UnifiedDiff(path=..., diff=...)`, all-or-nothing, so a conflict inside the approved set
+leaves NOTHING applied and names the hunk that conflicted — the applier already snapshots
+and reverts, so the round proves the atomicity rather than building it.
