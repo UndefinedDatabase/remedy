@@ -1,6 +1,6 @@
-# F033 — Hunk-level diff approval · ROUND 15 · THE WRITE DOOR, AND R-0744
+# F033 — Hunk-level diff approval · ROUND 16 · PARTIAL APPLY STATE BECOMES TELLABLE
 
-SESSION 4 of feature F033. Round 15, rounds so far 15.
+SESSION 4 of feature F033. Round 16, rounds so far 16.
 
 You are the WORKER for this round. AGENTS.md is the highest authority and binds
 you in full. Do not review your own work and write no verdict on it.
@@ -11,17 +11,17 @@ you in full. Do not review your own work and write no verdict on it.
    exclusive. Apply slices BYTE FOR BYTE — never reflow, re-wrap or "fix" one. If
    a slice looks wrong, apply it anyway and say so in the deviations.
 2. Delimiters are transport only. ANCHOR extraction to the NAMED delimiter at
-   line start — `<<<END RECORDF033R15`.
+   line start — `<<<END RECORDF033R16`.
 3. Every WHOLE-FILE slice ends with exactly one trailing newline. Every APPEND
    slice is joined to its file as: the base blob, then one newline, then the
    slice, and the result ends in exactly one newline. Take a slice as the bytes
    from the end of its `<<<SLICE` marker line up to and INCLUDING the newline
    that ends its last content line.
 4. Extract every slice from the COMMITTED blob you save at C0a, never by retyping.
-5. THE PYTHON IS A SPEC, NOT A SLICE. You write the code and the tests from the
-   description. Names, signatures and the behaviours the SPEC fixes are binding;
-   structure, comment wording and test names are yours. If the SPEC is
-   impossible, STOP and say so rather than inventing past it.
+5. THE PYTHON AND THE TYPESCRIPT ARE A SPEC, NOT A SLICE. You write the code and
+   the tests from the description. Names, signatures and the behaviours the SPEC
+   fixes are binding; structure, comment wording and test names are yours. If the
+   SPEC is impossible, STOP and say so rather than inventing past it.
 6. Guard re-expressions: the shell rejects loops, `$( )`, `${arr[0]}` and `cp` by
    FORM. Copy with `shutil.copyfile`; route measurement through Python under the
    gitignored `.remedy-wt/`, run with `python3 -B`. Python 3.10 forbids a
@@ -33,247 +33,204 @@ you in full. Do not review your own work and write no verdict on it.
 10. Byte OFFSETS and byte SPANS are measured on BYTES, never on a decoded string.
 11. IF A GATE AND A SPEC PARAGRAPH DISAGREE, the GATE is load-bearing: satisfy it,
     satisfy the SPEC's INTENT around it, and declare the disagreement.
+12. NO `npm`, NO `npx`, NO vitest run is ordered this round, and none is needed:
+    the TypeScript change is pinned by a PYTHON contract test that reads the
+    source, which is this repository's own established way to guard `apps/ui/src`.
 
 ## Base
 
-BASE is `fa963c4e2fbe50a1d5cc2abb309b17dec764d99a`, the round 14 handback commit,
+BASE is `1329ef45fbd1f4e189991ffc2ce4a8b2853c1b6a`, the round 15 handback commit,
 on branch `feature/f033-hunk-approval-v2`. Confirm with `git rev-parse HEAD`
 before C0a and STOP if it differs.
 
 ## Why this round exists
 
-Round 14 PASSED WITH RISKS and C2 books that verdict, resolves R-0743 and
-registers R-0744.
+Round 15 PASSED and C2 books that verdict, resolves R-0744 and registers R-0745.
 
-R-0743 IS GENUINELY FIXED and the reviewer proved it by the COLOUR CHANGE rather
-than by reading the test: the precedence mutation that came back GREEN at
-`55c365d6` comes back RED at `eec2cd4a`, at exit 1 and 1 failed, naming
-`test_the_index_record_beats_the_cwd_relative_fallback`.
+R-0744 IS FIXED AND THE PROOF IS THE COLOUR CHANGE: reverting the fix to the raw
+argument inside the reviewer's own disposable worktree goes RED at 2 failed,
+naming the two tests that name a job by short prefix and by uppercase UUID —
+where at `fa963c4e` applying the same fix left all eleven tests GREEN. YOUR
+DEVIATION D1 WAS ALSO VERIFIED BY COLOUR rather than by reading it: making the
+hunk 409 reuse the decision wording goes RED at exactly
+`test_every_exposed_command_reaches_the_answer_its_effect_gives`, so the edit you
+were forced into really does pin the two 409s apart. The block claimed nothing
+else in that file would change and it was wrong; that is the reviewer's prose
+slip, recorded at C3, and your edit widened the guard rather than weakening it.
 
-R-0744 IS YOUR OWN DEVIATION D3, PROMOTED TO A FINDING BECAUSE IT HAS PRODUCT
-EFFECT, and you were right to declare it rather than fix it past the SPEC. The
-reviewer reproduced it end to end through the SHIPPED handler at `fa963c4e`: one
-job, one evidence directory, one index record, driven twice. With the FULL
-lowercase UUID the command exits 0 and records. With the SHORT HEX PREFIX — which
-`resolve_job_id` resolves to that same job, and which exists precisely so an
-operator need not type a UUID — the command exits 1 with `no_diff_available` and
-records nothing. An UPPERCASE full UUID fails the same way. The operator is told
-"The attempt's diff is not available to decide over" while the diff is sitting in
-the directory the index names. That is the misreport
-`HUNK_RECORD_REFUSAL_NO_DIFF` was minted to PREVENT, arriving through the id
-instead of through the artifact. THE REVIEWER ALSO MEASURED THAT THE SUITE IS
-BLIND TO IT: applying the one-line fix inside a disposable worktree left all
-eleven tests in `tests/cli/test_patch_cmd.py` GREEN, so the fix needs a test that
-DISCRIMINATES or the same defect returns silently.
+R-0745 IS NEW AND THE REVIEWER RAISED IT WITH A MEASUREMENT NO GATE ORDERED. The
+door's import guard reads DIRECT imports only, so the reviewer walked the
+TRANSITIVE closure of the door methods' own imports at BASE and at `1329ef45`. At
+BASE no member of `FORBIDDEN_MODULES` was reachable at all. At `1329ef45`
+`subprocess` is, through `packages/orchestration/evidence_index.py`, which imports
+it at module level for the `_git` and `_git_raw` helpers that
+`resolve_job_evidence_dir` never calls. THE REAL APPLIERS ARE ABSENT AT BOTH, so
+DECISION F033 D4's own claim holds and this is not a D4 violation; what moved is
+the P3 shell-capability boundary, and it moved because the door started importing
+that module. It is Low and the fix is small.
 
-NOW THE DOOR. Every piece behind it is built and pinned. What remains is exposure
-and dispatch, and it is the most guard-dense change in this feature, so the
-guards are named here rather than discovered. MEASURED AT BASE:
+NOW THIS ROUND'S WORK: R-0738, which T003 has owned since round 1.
 
-- `apps/cli/command_catalog.py` holds `UI_EXPOSED_COMMANDS` as a frozenset of
-  exactly `job.stop` and `decision.resolve`, and
-  `TestUiExposedCommands.test_the_set_holds_exactly_the_two_ruled_ids` in
-  `tests/ui_server/test_command_channel.py` asserts that list by EQUALITY. Its
-  NAME also states the count, so the name moves with the assertion.
-- `TestCommandDoorImportGuard` holds THREE equality-shaped guards over the door:
-  `DOOR_METHODS`, a tuple of the handler methods whose AST is walked;
-  `ALLOWED_IMPORTS`, a frozenset of every `(module, name)` those methods may
-  import; and `FORBIDDEN_MODULES`, which they may never import from. A new
-  dispatch method that is not in `DOOR_METHODS` is NOT SCANNED AT ALL, and a new
-  import not in `ALLOWED_IMPORTS` turns the branch tip RED. Both are widened in
-  the SAME commit as the code, C4.
-- `_door_imports` walks `_RemedyHandler`'s named methods and collects DIRECT
-  imports only. That is exactly why DECISION F033 D4 built the recorder to drag
-  no applicator behind it, and why `packages.orchestration.hunk_apply` joins
-  `FORBIDDEN_MODULES` in that same commit: the guard must forbid by NAME the one
-  import that would defeat it by SUBSTANCE.
-- `_handle_command_submission` dispatches by an `if payload["command"] == ...`
-  clause per id and ends in DECISION F009 D22's 501 guard for an exposed id no
-  clause matches. `payload["args"]` is an untyped object by DECISION F009 D14, so
-  every field is read with `.get` and degrades rather than raising.
-- `hunk_approval._normalise_rejection` ALREADY accepts a rejection as a mapping
-  with `id` or `hunk_id` plus `reason` — which is the wire form
-  `docs/roadmap/features/T5_F033.md` writes as `rejected[{id, reason}]`. So the
-  door passes `args.rejected` STRAIGHT THROUGH and validates nothing itself.
+WHAT IS WRONG, re-measured at BASE. `_task_truth_maps` in
+`packages/orchestration/ui_server.py` folds a task's changes to one apply label
+with a MEMBERSHIP test — `if "applied" in apply_states` — so a task holding eight
+changes of which ONE applied reports `applied`, indistinguishable from a task all
+eight of which applied. Three lines above it, in the same loop and over the same
+list, the PROOF fold uses an AGREEMENT test and reserves a distinct `incomplete`
+state for the mixed case. One fold models partial truth and the fold beside it
+does not.
+
+WHY IT IS F033's: hunk-level approval makes the mixed case the NORMAL case, so
+this fold moves from understating a rare state to misreporting the state this
+feature exists to produce.
+
+THE TWO HALVES MUST MOVE TOGETHER, and the reviewer measured why. The single
+consumer of that map is the dashboard task payload's `apply_status` at
+`ui_server.py`, and it reaches the UI as `RemedyTaskItem.applyStatus`.
+`apps/ui/src/components/detail/DetailPopover.tsx`'s `applyStatus` helper maps
+exactly `applied`, `reverted` and `not_applied` to labels and ENDS IN
+`return UNKNOWN;`. So a new value emitted by the fold ALONE would render as
+"Unknown" — replacing a confident wrong answer with an uninformative one, which
+is not a repair. The fold and the label land in ONE commit.
+
+R-0738 STAYS OPEN AT THE END OF THIS ROUND, and the block says so rather than
+letting a `Landed:` line imply otherwise. Its resolution condition names THREE
+surfaces — the viewer badge, the task-node glyph and the report line — and this
+round delivers the TRUTH plus the detail-popover label. Write NO `Landed:` line
+for it. The next round takes the remaining surfaces, and the plan says so.
 
 ## Bundle (in this order)
 
 - C0a save this block · C0b mirror it
 - C1 `.agent/plan.md`
-- C2 the round 14 verdict, the R-0743 resolution and the R-0744 registration
+- C2 the round 15 verdict, the R-0744 resolution and the R-0745 registration
   into `.agent/live_review.md`
-- C3 the R-0744 fix and the tests that DISCRIMINATE it
-- C4 the door: the exposed set, the three widened guards and the dispatch —
-  ONE commit, because each half without the other ships a red branch tip
-- C5 the door's behaviour tests
+- C3 one dated prose slip into `.agent/prose_slips.md`
+- C4 the agreement fold and the detail-popover label — ONE commit, because the
+  fold alone renders the new state as "Unknown"
+- C5 the tests for both halves
 - C6 the handback
 
-You write NO `Done:` paragraph — `Done:` is the reviewer's word. Mark the R-0744
-fix with a single line `Landed: R-0744 — <one line: what changed, which commit>`
-appended in C3, and nothing else.
+You write NO `Done:` paragraph — `Done:` is the reviewer's word — and NO
+`Landed:` line at all this round, for the reason stated above.
 
 ## Change set — these paths and nothing else
 
-    .agent/authored/f033-r15.md
+    .agent/authored/f033-r16.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    apps/cli/commands/patch.py
-    tests/cli/test_patch_cmd.py
-    apps/cli/command_catalog.py
+    .agent/prose_slips.md
     packages/orchestration/ui_server.py
-    tests/ui_server/test_command_channel.py
-    tests/ui_server/test_command_dispatch.py
+    apps/ui/src/components/detail/DetailPopover.tsx
+    tests/ui_server/test_dashboard_cockpit_truth.py
+    tests/ui_contracts/test_apply_state_partial.py
     .agent/handoff.md
 
-NEW FILES, named rather than counted: `.agent/authored/f033-r15.md`. This round
-does NOT touch `packages/orchestration/hunk_decision_record.py`,
+NEW FILES, named rather than counted: `.agent/authored/f033-r16.md` and
+`tests/ui_contracts/test_apply_state_partial.py`. This round does NOT touch
+`packages/orchestration/proof_chain.py`,
+`packages/orchestration/hunk_decision_record.py`,
 `packages/orchestration/hunk_ledger.py`,
-`packages/orchestration/hunk_approval.py`,
-`packages/orchestration/hunk_apply.py`,
-`packages/orchestration/hunk_subset_diff.py`,
-`packages/orchestration/diff_view_source.py`,
-`packages/orchestration/diff_parser.py`,
-`packages/orchestration/evidence_index.py`, `apps/cli/grouped.py`,
-`tests/orchestration/test_evidence_index.py`, `tests/test_command_catalog.py` or
-`docs/roadmap/STATUS.md`. THE WHOLE HUNK LAYER IS PROVABLY UNTOUCHED and G8
-measures it. `.agent/context.md` and `.agent/prose_slips.md` are deliberately NOT
-touched: this round has no reviewer prose slip to record.
+`packages/orchestration/evidence_index.py`, `apps/cli/command_catalog.py`,
+`apps/cli/commands/patch.py`, `apps/cli/grouped.py`,
+`tests/ui_server/test_command_channel.py`,
+`tests/ui_server/test_command_dispatch.py`, `apps/ui/src/api/types.ts`,
+`apps/ui/src/api/remedyApi.ts` or `docs/roadmap/STATUS.md`. `.agent/context.md`
+is deliberately NOT touched.
 
-## SPEC — `apps/cli/commands/patch.py`, the R-0744 fix
+## SPEC — `packages/orchestration/ui_server.py`
 
-ONE line changes. In `_cmd_approve_hunks`, the evidence directory is resolved
-from the RESOLVED job id and not from the operator's raw argument:
+An EDIT that REPLACES the apply fold inside `_task_truth_maps` and changes
+NOTHING else in the file. The proof fold three lines above it is UNTOUCHED and
+G6 measures that.
 
-    evidence_dir = evidence_index.resolve_job_evidence_dir(str(job_id))
+The apply fold becomes an AGREEMENT test with a distinct mixed state, taking the
+same shape as its proof-fold neighbour. Over
+`apply_states = [getattr(c, "apply_state", "") for c in changes]`:
 
-`job_id` is the `UUID` that `resolve_job_id(job_id_str)` returned on the line
-above, so `str(job_id)` is the canonical lowercase hyphenated form the index
-file is named with. This fixes BOTH halves of the defect at once — the short hex
-prefix and the uppercase UUID — because both differ from the canonical form only
-in ways `UUID` normalises. Put the one-line WHY directly above it, naming the
-finding: the operator's argument may be a prefix, and the index is keyed by the
-full id.
+1. every state equal to `"applied"` → `"applied"`;
+2. else every state equal to `"reverted"` → `"reverted"`;
+3. else NO state equal to `"applied"` and NONE equal to `"reverted"` →
+   `"not_applied"`. This arm deliberately also absorbs the empty string the
+   `getattr` default can produce, exactly as the old `else` did — a change whose
+   `apply_state` attribute is missing is not evidence that anything was applied.
+4. else → `"partial"`.
 
-Change NOTHING else in this file.
+THE THREE OLD ANSWERS ARE PRESERVED EXACTLY where they were right, and G6 proves
+it by exercise: all-applied still reads `applied`, all-reverted still reads
+`reverted`, all-not_applied still reads `not_applied`. ONLY the mixed case moves,
+from a membership-driven `applied` to `partial`. Say that in a comment, and name
+finding R-0738 and the proof fold beside it as the shape being copied.
 
-## SPEC — `tests/cli/test_patch_cmd.py`, the tests that discriminate it
+`grouped` never holds an empty list, because it is built by `setdefault(...).append(...)`,
+so arm 1 cannot be vacuously true. State that in the comment rather than adding a
+guard for a case the construction excludes.
 
-An EDIT that ADDS. Every existing test stays untouched.
+The `apply_status` default at the dashboard payload — `task_apply_map.get(tid, ...)`
+— is UNCHANGED. A task absent from the map is a different question from a task
+whose changes disagree.
 
-The reviewer measured that all eleven existing tests stay GREEN when the fix is
-applied, so they do not reach this defect at all. Add tests that DO, each
-building a job whose evidence directory really resolves under the FULL id and
-then naming that job the other way:
+## SPEC — `apps/ui/src/components/detail/DetailPopover.tsx`
 
-- by SHORT HEX PREFIX — the same prefix `resolve_job_id` resolves to that job —
-  records exactly as the full id does, and `save_job` really persisted it;
-- by UPPERCASE full UUID — likewise.
+An EDIT that ADDS ONE branch to the `applyStatus` helper and changes nothing
+else. `"partial"` maps to a label that reads as PARTIAL to an operator and is
+distinct from all three existing labels and from `UNKNOWN`. Keep the file's
+existing branch idiom exactly — one `if` per value, in the order the backend can
+emit them.
 
-Each must FAIL if the argument reverts to `job_id_str`, and G7 mutation (i)
-is the proof. Assert the RECORDED state, not merely the exit code: a test that
-only checks exit 0 would pass against a handler that recorded under the wrong
-key.
+Put the one-line WHY above the helper, in the file's own comment voice: a task
+whose changes disagree is a real state that this feature makes normal, and
+rendering it as "Applied" or as "Unknown" both tell the operator something untrue.
 
-## SPEC — `apps/cli/command_catalog.py`
+Do NOT touch `apps/ui/src/api/types.ts` or `apps/ui/src/api/remedyApi.ts`:
+`applyStatus` is already typed `string | undefined` and `remedyApi.ts` passes the
+backend value through unexamined, so no new field and no type change is needed.
+The reviewer measured that; if you find otherwise, STOP and say so.
 
-`UI_EXPOSED_COMMANDS` gains `"patch.approve-hunks"` and nothing else changes.
-Keep the frozenset literal's existing shape. The comment above it, if any, is
-updated only if it states a count.
+## SPEC — `tests/ui_server/test_dashboard_cockpit_truth.py`
 
-## SPEC — `tests/ui_server/test_command_channel.py`
+An EDIT that ADDS. Every existing test stays untouched and must still pass —
+that is the proof the three preserved answers really are preserved.
 
-An EDIT that WIDENS three guards and one test name, in the SAME commit as the
-door code. Nothing else in this file changes.
+Before writing, READ the existing `_task_truth_maps` tests in this file and
+follow their idiom for building a proof chain; do not invent a second one.
 
-1. `TestUiExposedCommands.test_the_set_holds_exactly_the_two_ruled_ids` asserts
-   the three ruled ids in sorted order. ITS NAME STATES THE COUNT, so rename it
-   so the name and the assertion cannot drift apart — a name carrying a stale
-   numeral is the half nobody re-reads.
-2. `DOOR_METHODS` gains `"_dispatch_approve_hunks"`. Without this the new method
-   is not scanned by the import guard AT ALL, which is the worst way for a guard
-   to fail.
-3. `ALLOWED_IMPORTS` gains one entry per `(module, name)` the new method really
-   imports, each with a trailing comment naming F033 D4 the way its neighbours
-   name their own decisions. Do not add an entry the code does not import: the
-   guard is an EQUALITY over what the AST finds.
-4. `FORBIDDEN_MODULES` gains `"packages.orchestration.hunk_apply"`. WHY it
-   belongs here even though nothing imports it: `_door_imports` collects DIRECT
-   imports only, so a later edit importing the applier into a door method would
-   otherwise pass a guard whose whole purpose is to keep the applier out of an
-   HTTP handler. DECISION F033 D4 is the rule; this line is what enforces it.
-   Its comment says so.
+Add tests, each pinning ONE property: a task whose changes are ALL `applied`
+still reads `applied`; ALL `reverted` still reads `reverted`; ALL `not_applied`
+still reads `not_applied`; a MIXED task — some `applied`, some `not_applied` —
+reads `partial` AND NOT `applied`, which is the discriminator for the whole
+finding; a task with one `applied` and one `reverted` also reads `partial`; and a
+change whose `apply_state` attribute is missing does not by itself produce
+`applied`. Assert the value that is EXPECTED, not merely that it differs.
 
-## SPEC — `packages/orchestration/ui_server.py`, the dispatch
+## SPEC — `tests/ui_contracts/test_apply_state_partial.py`
 
-An EDIT that ADDS one module-level constant, one dispatch clause and one method.
+A NEW FILE. Before writing it, READ two existing files under `tests/ui_contracts/`
+and follow their idiom for locating and reading a source file under
+`apps/ui/src`; do not invent a third.
 
-`HUNK_APPROVE_COMMAND_ID = "patch.approve-hunks"` sits beside
-`JOB_STOP_COMMAND_ID` and `DECISION_RESOLVE_COMMAND_ID`, in their idiom.
+It pins the TWO ENDS of the seam against each other, which is the only thing that
+makes the pair honest:
 
-`_dispatch_approve_hunks(self, job, payload) -> dict[str, Any] | None` records
-one hunk decision and PERSISTS it. In order:
+- `packages/orchestration/ui_server.py` really can emit `"partial"` from the apply
+  fold — assert against the source, not against a recollection;
+- `apps/ui/src/components/detail/DetailPopover.tsx` really maps `"partial"` to a
+  label, and that label is NOT the `UNKNOWN` fallback and is distinct from the
+  labels for `applied`, `reverted` and `not_applied`;
+- every apply value the backend fold can emit has a branch in that helper. Derive
+  the emitted set from the SOURCE of the fold rather than restating it, so the
+  test fails when a future value is added on one side only. If deriving it
+  mechanically is not possible, say so in a comment and pin the four values
+  explicitly — but try the derivation first.
 
-1. `args = payload.get("args")`, then `args if isinstance(args, dict) else {}` —
-   DECISION F009 D14 types `args` as an object and never types what is inside it,
-   so every field below degrades instead of raising.
-2. `task_run = args.get("task_run")`, kept only when it is a `str` and otherwise
-   None; None selects the job-level scope.
-3. `approved = args.get("approved")` and `rejected = args.get("rejected")`, each
-   kept only when it is a `list` and otherwise the empty list. They are passed
-   STRAIGHT THROUGH: `decide_hunk_approval` is total on any input at all and
-   already accepts the `{id, reason}` wire form, so a second validation here
-   would give one fault two names.
-4. Resolve the directory with `resolve_job_evidence_dir(str(job.id))` — the
-   CANONICAL id, for the reason R-0744 records — and build the envelope with
-   `build_diff_view(evidence_dir, task_id=task_run)`.
-5. `record_hunk_decision_from_view`, with `task_id` the envelope's `task_id` when
-   that is not None and `DIFF_SCOPE_JOB` otherwise, and `attempt` the envelope's
-   `source` — the same envelope-derived key the CLI door composes, so one
-   decision has ONE key whichever door records it. `now` is
-   `datetime.now(timezone.utc)`.
-6. A `HunkApprovalRefusal` returns None. The caller answers that 409 and audits
-   it `rejected_state`, exactly as `_dispatch_decision_resolve`'s None does.
-   THE REFUSAL'S CODE AND MESSAGE ARE DELIBERATELY NOT RETURNED THROUGH THIS
-   DOOR: every message this handler emits goes through `_safe_error`, and both
-   existing 409s answer with a fixed generic constant. The operator who needs the
-   detail has the CLI door, which is not a network boundary. This is DECISION
-   F009 D18 and D22 applied unchanged, not a new rule — say so in the docstring
-   and mint no new DECISION number.
-7. Otherwise `save_job(job)` and return the accepted body. BOTH are the effect,
-   exactly as DECISION F009 D21 rules for `decision.resolve`: the decision is
-   durable only once `save_job` returns, so a raise from either is D18 clause
-   four's `rejected_effect`. Build the body in the shape the two existing
-   dispatch methods build theirs, carrying the attempt key and the approved,
-   rejected and pending counts derived from the ledger. REPORT the body's final
-   key set in the handback.
-
-The dispatch clause in `_handle_command_submission` sits beside the other two and
-copies `decision.resolve`'s structure exactly, including its `except (OSError,
-RuntimeError, ValueError, TypeError)` arm auditing `rejected_effect` and
-answering 500, its None arm auditing `rejected_state` and answering 409, and its
-accepted arm's ORDER — the effect, then the `accepted` audit line, then the
-publication, then the event, then the 200. A new 409 message constant beside the
-existing ones is fine and preferred over reusing the decision one, whose wording
-names decisions.
-
-## SPEC — `tests/ui_server/test_command_dispatch.py`
-
-An EDIT that ADDS. Every existing test stays untouched.
-
-Add tests for: an exposed, well-formed submission records the decision on the job
-and `save_job` really persisted it, proved by loading the job back; the response
-is 200 and its body carries the attempt key and the three counts; a decision the
-core refuses answers 409, audits `rejected_state` and writes NOTHING to
-`job.metadata`; an attempt whose evidence directory does not resolve takes the
-same 409 path rather than a 500, because a named absence is not a failure; and
-the `rejected[{id, reason}]` wire form really reaches the recorder with its
-reason VERBATIM. Follow the file's existing idiom for standing the server up and
-posting a command; do not invent a second one.
+Strip comments before asserting a token is present, per this repository's
+existing contract-test practice: a token a comment MENTIONS is not a token the
+code USES.
 
 ## The slices
 
-<<<SLICE PLANF033R15
+<<<SLICE PLANF033R16
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
@@ -294,40 +251,43 @@ round — every partial state rendered truthfully in viewer, node and report.
 | failed-rollback truth · ledger · the door's effect | done | rounds 9-11, D4 |
 | the recorder takes the viewer's envelope | done | round 12 |
 | one evidence-directory resolver for viewer and doors | done | round 13 |
-| the CLI command and its handler | done | round 14 |
-| R-0744, the CLI door's job-id resolution | open | this round |
-| the write door's exposure and dispatch | open | this round |
-| T003 rejection to repair, partial-state truth | open | owns R-0738 |
+| the CLI command and its handler | done | rounds 14, 15 |
+| the write door's exposure and dispatch | done | round 15 |
+| T003 partial apply truth, and its first surface | open | this round, R-0738 |
+| T003 the node glyph and the report line | open | next |
+| T003 rejection reasons quoted into the repair prompt | open | after that |
+| R-0745, the door's transitive import closure | open | with the next door work |
 | the operator docs for `patch approve-hunks` | open | closure sequence |
 
 ## Next Steps
-1. R-0744: the CLI handler resolves the evidence directory from the RESOLVED job
-   id, so a short prefix or an uppercase UUID stops being reported as a missing
-   diff. The eleven existing tests are blind to it, so the fix ships with tests
-   that discriminate.
-2. The write door, in ONE commit with its guards. `UI_EXPOSED_COMMANDS` gains the
-   id; `DOOR_METHODS`, `ALLOWED_IMPORTS` and `FORBIDDEN_MODULES` in
-   `tests/ui_server/test_command_channel.py` are EQUALITY guards that must widen
-   with it, and `packages.orchestration.hunk_apply` joins the forbidden set so
-   DECISION F033 D4's mistake cannot be made silently later.
-3. Then T003: rejection reasons quoted verbatim into the next repair prompt, the
-   report line derived from the ledger, and partial state rendered truthfully in
-   viewer, node and report. R-0738 is T003's to repair.
+1. R-0738's truth half: the apply fold in `ui_server._task_truth_maps` becomes an
+   AGREEMENT test with a distinct `partial` state, taking the shape of the proof
+   fold three lines above it, and the detail popover gains the matching label in
+   the SAME commit — the fold alone would render the new state as "Unknown".
+   R-0738 STAYS OPEN: its resolution names three surfaces and this reaches one.
+2. Then the remaining two surfaces R-0738 names — the task-node glyph and the
+   report line — and only then is R-0738 resolvable.
+3. Then rejection reasons quoted VERBATIM into the next repair prompt, with the
+   trace proof the feature file calls acceptance material.
 4. Then the closure sequence, which owes `docs/` an operator-facing description
    of `remedy patch approve-hunks` — no round has been allowed a `docs/` path yet.
 
 ## Risks
-- The door's import guard is an EQUALITY guard: a new import reddens the branch
-  tip unless it is ruled in the same commit.
-<<<END PLANF033R15
+- The apply fold has one consumer but three downstream surfaces; a value added on
+  one side only renders as "Unknown", which is why the contract test pins both ends.
+<<<END PLANF033R16
 
-<<<SLICE RECORDF033R15
-Gate: F033 R14 — THE CLI COMMAND AND ITS HANDLER. THE ROUND PASSED WITH RISKS. Every gate was re-executed by the reviewer at `fa963c4e` from scripts of its own, and every ordered reading reproduced; the risk is R-0744 below, which is a REAL defect in the shipped handler and is registered rather than waived. TRANSPORT: the C0a blob is 33129 bytes at sha256 `9c373cd2…c322ca`, EQUAL to the reviewer's own scratchpad original, with ONE blob id across `.agent/authored/f033-r14.md` and `.agent/last_block.md` at C0b. THE RECORD APPEND at `096b8539` reconstructs 1517848 plus one newline plus 7219 to 1525068, the committed blob exactly, base a byte PREFIX, N COUNTED at 2, the last two blank-line units equal to the slice's paragraphs IN ORDER, and a negative control at byte 1520431 — proved to lie inside the FIRST appended paragraph, whose span the reviewer computed independently as 1517849 to 1523013 — rejected by BOTH readers. THE LEDGER walked at three commits: registered 303 to 304 with the ADDED id exactly `R-0743`; `Done:` 48 lines over 46 distinct UNMOVED throughout, correctly, because only the reviewer resolves; `Landed:` 15 at BASE and at C2 and 16 at C5, the added line matching `^Landed: R-0743 — ` exactly once and appearing at C5 rather than C2, which is where the fix landed; `Gate:` 130 to 131 with `^Gate: F033 R13 — ` exactly 1; `DECISION F033 D` 4 UNMOVED; and the open set 257 to 258. THE PROSE FILES: `.agent/plan.md` byte-EQUAL to its slice at 2479 bytes over 46 lines, under the 50-line cap; `.agent/prose_slips.md` reconstructs 23793 plus one newline plus 472 to 24266, with the round 13 slip line going 0 to 1 and `- R-` lines 0. THE CATALOG: `ruff` exits 0; the entry reads `patch`, `approve-hunks`, `approval_gate`, `supports_json` True, and `may_mutate_repo` and `requires_permission` BOTH False, which is DECISION F033 D4 stated in the one table the UI reads capability from; its args are `job_id`, `--task-run`, `--approve-hunk`, `--reject-hunk` and `--json`, with the two hunk options repeatable; the `patch` group goes 6 to 7 with the equality guard widened in the SAME commit; `CATALOG` and `collect_all_handlers()` go 340 and 340 to 341 and 341 with ZERO handler-less ids at both ends; and `sorted(UI_EXPOSED_COMMANDS)` is still exactly `decision.resolve` and `job.stop`, so the write door was NOT opened this round. R-0743 IS RESOLVED BY COLOUR CHANGE, not by reading the test: the reviewer re-ran the precedence mutation in its own disposable worktree with its own anchor, and where it came back GREEN at 32 passed when the finding was raised, it comes back RED at exit 1 and 1 failed at `eec2cd4a`, naming exactly `test_the_index_record_beats_the_cwd_relative_fallback`. THE SUITES were re-run SERIALLY by the reviewer in the primary checkout, every REAL exit 0: `test_patch_cmd.py` 11, `test_evidence_index.py` 33, `test_command_catalog.py` 18, `cli/test_command_catalog.py` 23, `test_command_channel.py` 106, `test_grouped_cli.py` 511 — UNMOVED, as predicted from its parametrizing over GROUPS rather than commands — and the canary 42. THE STRUCTURE: seven single-parent commits over the range ending at C5, of 449, 302, 16, 4, 2, 152 and 308 insertions, every one under 500; the path set EQUALS the declared change set in BOTH directions; `git ls-files .remedy-wt` 0; and ALL TWELVE do-not-touch paths byte-identical by blob id, including `packages/orchestration/evidence_index.py`, so the claim that R-0743's repair is a TEST and touches no production code is a measurement. THE WORKER DECLARED FIVE DEVIATIONS AND EVERY ONE IS HONEST; D3 is the one that became a finding, and declaring it rather than fixing past the SPEC is exactly the required behaviour.
+<<<SLICE RECORDF033R16
+Gate: F033 R15 — THE WRITE DOOR, AND R-0744. THE ROUND PASSED. Every gate was re-executed by the reviewer at `1329ef45` from scripts of its own, and every ordered reading reproduced. TRANSPORT: the C0a blob is 32348 bytes at sha256 `92c6e6c8…de170`, EQUAL to the reviewer's own scratchpad original, with ONE blob id across `.agent/authored/f033-r15.md` and `.agent/last_block.md` at C0b. THE RECORD APPEND at `bd83cedb` reconstructs 1526301 plus one newline plus 7431 to 1533733, the committed blob exactly, base a byte PREFIX, N COUNTED at 3, the last three blank-line units equal to the slice's paragraphs IN ORDER, and a negative control at byte 1528162 — proved to lie inside the FIRST appended paragraph, spanning 1526302 to 1530022 — rejected by BOTH readers. THE LEDGER walked at three commits: registered 304 to 305 with the ADDED id exactly `R-0744`; `Done:` 48 lines over 46 distinct to 49 over 47 with the ADDED resolved id exactly `R-0743` and the `Landed: R-0743` line STILL PRESENT beside its new `Done:` paragraph; `Landed:` 16 at BASE and C2 and 17 at C3 with `^Landed: R-0744 — ` exactly 1; `Gate:` 131 to 132 with `^Gate: F033 R14 — ` exactly 1; `DECISION F033 D` 4 UNMOVED; and the open set 258 at ALL THREE, one id added and one resolved. THE PLAN is byte-EQUAL to its slice at 2422 bytes over 45 lines. THE R-0744 FIX is on disk at `54b569cb`: `resolve_job_evidence_dir(str(job_id))` occurs once and the raw-argument form zero times. THE DOOR'S GUARDS: the reviewer re-ran `_door_imports` ITSELF over the C4 source with the C4 `DOOR_METHODS` and collected 23 pairs, the set difference against `ALLOWED_IMPORTS` EMPTY IN BOTH DIRECTIONS and the intersection with `FORBIDDEN_MODULES` empty; every name in `DOOR_METHODS` answers to a real `_RemedyHandler` method, so the guard scans what it claims to; `UI_EXPOSED_COMMANDS` gains exactly `patch.approve-hunks`; and `FORBIDDEN_MODULES` gains exactly `packages.orchestration.hunk_apply`, which nothing imports and which is the point. THE MUTATIONS were re-run by the reviewer in its own disposable worktree at `e24d3b44` with its OWN anchors, each asserted UNIQUE, the import proved to resolve inside the worktree and every file restored byte-identically: controls 13, 12 and 106 at REAL exit 0; reverting the R-0744 fix is exit 1 at 2 failed naming BOTH discriminating tests; dropping `save_job` from the door is exit 1 at 2 failed; and removing the id from the exposed set is exit 1 at 6 failed. THE REVIEWER ALSO RAN A MUTATION THE BLOCK NEVER ORDERED, to test the worker's own declared deviation D1 rather than take it on trust: making the hunk 409 reuse the decision message goes RED at exactly `test_every_exposed_command_reaches_the_answer_its_effect_gives`, so the widened test really does pin the two 409s apart and the edit STRENGTHENED the guard. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: `test_patch_cmd.py` 13, `test_command_dispatch.py` 12, `test_command_channel.py` 106, `test_command_catalog.py` 18, `test_evidence_index.py` 33, `test_hunk_decision_record.py` 15 and the canary 42, with `ruff` over all six touched files exiting 0. THE STRUCTURE: seven single-parent commits of 439, 291, 17, 6, 80, 157 and 189 insertions, every one under 500; the path set EQUALS the declared change set in BOTH directions; and ALL TWELVE do-not-touch paths byte-identical by blob id. THE WORKER DECLARED FOUR DEVIATIONS AND EVERY ONE IS HONEST; D1 is a defect in the REVIEWER's block, which enumerated four equality-shaped guards over the door where there are five, and it is recorded as a prose slip rather than an id because the worker's repair left nothing wrong on disk.
 
-Done: R-0743 — RESOLVED at `eec2cd4a`, verified by the reviewer re-running the mutation the finding's FIX clause asked for rather than by reading the assertion. `tests/orchestration/test_evidence_index.py` gains ONE test, `test_the_index_record_beats_the_cwd_relative_fallback`, taking the file from 32 to 33 with no existing test moved, and it is the first case in that suite to construct BOTH sources at once — an index record naming an existing directory AND a real `remedy-job-evidence-<job_id>` directory in the CWD — which is the only state in which precedence is observable at all. THE PROOF IS THE COLOUR CHANGE: moving the relative-fallback branch above the `try` in `packages/orchestration/evidence_index.py`, inside the reviewer's own disposable worktree and with the anchor asserted unique, came back GREEN at 32 passed when the finding was raised and comes back RED at exit 1 and 1 failed, naming exactly that test, at `eec2cd4a`. `packages/orchestration/evidence_index.py` is byte-identical at the round 14 base and at that commit, so the repair really is a test and the behaviour on disk was already correct, which is what the finding claimed. This resolution reaches the precedence rule of this ONE function; the R-0671 class it belongs to — an honesty rule a module states and no test pins — is not discharged by it anywhere else in the repository.
+Done: R-0744 — RESOLVED at `54b569cb`, verified by the reviewer running the mutation the finding's FIX clause asked for rather than by reading the diff. `_cmd_approve_hunks` now calls `evidence_index.resolve_job_evidence_dir(str(job_id))` with the `UUID` that `resolve_job_id` returned, so the canonical lowercase hyphenated form reaches the index whatever the operator typed; the raw-argument form occurs zero times in that file at that commit. THE PROOF IS THE COLOUR CHANGE, and it is sharper than a pass: at `fa963c4e` the reviewer APPLIED this fix inside a disposable worktree and all eleven tests stayed GREEN, so the suite was blind to the defect; at `e24d3b44` REVERTING it goes RED at exit 1 and 2 failed, naming `test_a_short_hex_prefix_records_exactly_as_the_full_id_does` and `test_an_uppercase_uuid_records_exactly_as_the_lowercase_one_does`. Two tests that did not exist now discriminate the two id forms, and they assert the RECORDED state rather than the exit code, so a handler that recorded under the wrong key would still fail them. The defect was the reviewer's own SPEC and the round 14 worker was right to apply it literally and declare the consequence; this resolution reaches that one call site and claims nothing about any other handler in the file.
 
-- R-0744 — Medium, THE CLI DOOR RESOLVES THE EVIDENCE DIRECTORY FROM THE OPERATOR'S RAW ARGUMENT, SO A SHORT JOB-ID PREFIX IS REPORTED AS A MISSING DIFF. Raised by the reviewer at the F033 R14 gate, from the worker's own declared deviation D3, and promoted to a finding rather than a prose slip because the defect is on disk under `apps/` and an operator meets it. `_cmd_approve_hunks` in `apps/cli/commands/patch.py` at `fa963c4e` resolves `job_id = resolve_job_id(job_id_str)` and then calls `evidence_index.resolve_job_evidence_dir(job_id_str)` — the RAW argument — while the index is keyed by the canonical full id. MEASURED end to end through the shipped handler, on one job with one evidence directory and one index record, driven twice: with the full lowercase UUID it exits 0 and records; with the short hex prefix that `resolve_job_id` resolves to THAT SAME JOB it exits 1, records nothing, and prints `no_diff_available` — "The attempt's diff is not available to decide over" — for a diff that is present in the directory the index names. An UPPERCASE full UUID, likewise accepted by `resolve_job_id`, fails identically. The prefix form is not exotic: `resolve_job_id` exists to support it and every other handler in this file takes it. This is the misreport `HUNK_RECORD_REFUSAL_NO_DIFF` was minted to prevent, arriving through the id rather than through the artifact — a fault in what the operator asked for coming back as a fault in what the system could show. It is Medium and not High because the command REFUSES rather than recording under a wrong key, so no bad state reaches the job and the failure is loud. THE SUITE IS BLIND TO IT: the reviewer applied the fix inside a disposable worktree at `eec2cd4a` and all eleven tests in `tests/cli/test_patch_cmd.py` stayed GREEN at exit 0, so no existing test discriminates the two forms. FIX: call `resolve_job_evidence_dir(str(job_id))` with the RESOLVED `UUID`, which normalises both the prefix and the case at once, and ship tests naming a job by short prefix and by uppercase UUID that assert the decision was RECORDED, not merely that the exit code was 0. The reviewer's SPEC for round 14 named the raw argument, so the worker applying it literally and declaring the consequence was correct; the error is the reviewer's and the repair is this finding.
-<<<END RECORDF033R15
+- R-0745 — Low, THE DOOR'S IMPORT GUARD READS DIRECT IMPORTS ONLY, AND THE DOOR'S TRANSITIVE CLOSURE NOW REACHES `subprocess` WHERE AT THE PREVIOUS COMMIT IT REACHED NO FORBIDDEN MODULE AT ALL. Raised by the reviewer at the F033 R15 gate by a measurement no gate ordered. `TestCommandDoorImportGuard._door_imports` in `tests/ui_server/test_command_channel.py` walks the door methods' own AST and collects DIRECT imports, which is what lets it be an equality guard at all; `FORBIDDEN_MODULES` then forbids a set that includes `subprocess` and `shutil` under the comment "the applicators and the shell/filesystem writers the P3 contract exists to keep out of an HTTP handler". MEASURED by walking the module-level import graph from the door methods' own imports, at `fa963c4e` and at `1329ef45`: at the first, NO member of `FORBIDDEN_MODULES` is reachable at all; at the second, `subprocess` is, through `packages/orchestration/evidence_index.py`, which imports it at module level for the `_git` and `_git_raw` helpers, and the door began importing that module this round for `resolve_job_evidence_dir` — which never calls either helper. THE REAL APPLIERS ARE ABSENT AT BOTH COMMITS — `hunk_apply`, `source_apply`, `patch_apply`, `diff_repair_apply`, `job_fulfillment`, `exec_guard`, `workspace` and `secure_fs` are all unreachable — so DECISION F033 D4's own claim that the door drags no applier behind it HOLDS, and this finding does not contradict it. What moved is the shell-capability half of the same boundary. WHY LOW: nothing is wrong on disk, no door method can shell out, and `resolve_job_evidence_dir` is a pure filesystem read; the defect is that a guard whose stated purpose is keeping shell writers out of an HTTP handler cannot see the reach it now has, so a later edit inside `evidence_index` could hand the door shell capability with no guard firing. FIX, either half of which discharges it: move the `subprocess` import in `packages/orchestration/evidence_index.py` from module level into the two helpers that use it, which restores the base property exactly; or add to `TestCommandDoorImportGuard` a test that walks the transitive module-level closure from the door's own imports and asserts the intersection with `FORBIDDEN_MODULES`, recording whatever set is then accepted. The second is the more durable of the two because it measures the property rather than one instance of it, and the reviewer recommends it; the first is a one-line change and may be taken as well.
+<<<END RECORDF033R16
+
+<<<SLICE SLIPSF033R16
+2026-08-29 · F033 R15 · The block's "Why this round exists" enumerated the equality-shaped guards over the write door as `UI_EXPOSED_COMMANDS`, `DOOR_METHODS`, `ALLOWED_IMPORTS` and `FORBIDDEN_MODULES`, and its SPEC then said nothing else in `tests/ui_server/test_command_channel.py` would change; a fifth guard, `TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives`, iterates the exposed set and hard-branched every non-`job.stop` id to one 409 message, so the worker had to widen it to a per-id map and declared the disagreement, which is the required behaviour — the reviewer confirmed by mutation that the widened form pins the two 409 messages apart and weakens nothing.
+<<<END SLIPSF033R16
 
 ## Done when — the gates
 
@@ -341,99 +301,100 @@ ordered here.
   `feature/f033-hunk-approval-v2` throughout. No force-push, no rewrite, no
   branch deletion; `git rev-parse feature/f033-hunk-approval` still `ed040812`.
 - **G2 TRANSPORT.** Report sha256 and byte length of
-  `<C0a>:.agent/authored/f033-r15.md` and of `.remedy-wt/f033-r15-block.md`, and
-  whether they are EQUAL. Then `git rev-parse <C0b>:.agent/authored/f033-r15.md`
+  `<C0a>:.agent/authored/f033-r16.md` and of `.remedy-wt/f033-r16-block.md`, and
+  whether they are EQUAL. Then `git rev-parse <C0b>:.agent/authored/f033-r16.md`
   and `git rev-parse <C0b>:.agent/last_block.md` must print ONE blob id.
 - **G3 THE RECORD APPEND at C2.** (a) the BASE blob of `.agent/live_review.md`,
-  which must be 1526301 bytes, plus one newline plus RECORDF033R15 equals the C2
+  which must be 1535259 bytes, plus one newline plus RECORDF033R16 equals the C2
   blob byte for byte; BASE a byte PREFIX; result ending in exactly one newline.
-  (b) let N be the paragraph count your script COUNTS in RECORDF033R15 — report
+  (b) let N be the paragraph count your script COUNTS in RECORDF033R16 — report
   it — and compare the LAST N blank-line units of the C2 blob against the
   slice's paragraphs IN ORDER. NEGATIVE CONTROL at a BYTE offset your script
   PROVES lies inside the FIRST appended paragraph, whose span you compute in
   BYTES per convention 10 and report; BOTH readers must reject it.
-- **G4 THE LEDGER at C2 and at C3.** At BASE, at C2 and at C3 count
-  `^- R-\d+ — ` with distinct ids, `^Done: R-\d+ — ` lines with distinct ids,
-  `^Landed: R-`, `^Gate: F\d+ R\d+ — ` and `^DECISION F033 D\d+ — `; report the
-  open set at all three. Ordered: registered 304 to 305 at C2 with the ADDED id
-  exactly `R-0744`; `Done:` 48 lines over 46 distinct to 49 over 47 with the
-  ADDED resolved id exactly `R-0743`, and the `Landed: R-0743` line STILL
-  PRESENT beside its new `Done:` paragraph, as this append-only record requires;
-  `Landed:` 16 at BASE and C2 and 17 at C3, the added line matching
-  `^Landed: R-0744 — `; `Gate:` 131 to 132 with `^Gate: F033 R14 — ` exactly 1;
-  `DECISION F033 D` 4 UNMOVED — this round mints no new DECISION; and the open
-  set 258 at BASE and 258 at C2, unchanged because one id is added and one is
-  resolved. Report that equality explicitly rather than inferring it.
-- **G5 THE PLAN.** `.agent/plan.md` at C1 is byte-EQUAL to PLANF033R15 — report
-  its byte length and its line count, which must be under the 50-line cap
-  AGENTS.md sets.
-- **G6 THE DOOR'S GUARDS at C4.** (a) `ruff check` over
-  `packages/orchestration/ui_server.py`, `apps/cli/command_catalog.py`,
-  `apps/cli/commands/patch.py` and the three touched test files exits 0 — report
-  the summary line. (b) Report `sorted(UI_EXPOSED_COMMANDS)` at BASE and at C4;
-  it must gain exactly `patch.approve-hunks` and nothing else, and every member
-  must resolve through `get_command`. (c) Report `DOOR_METHODS` at BASE and at
-  C4, and prove `_dispatch_approve_hunks` is a real method of `_RemedyHandler` at
-  C4 by AST — a name in that tuple that no method answers to makes the guard scan
-  nothing. (d) Run `_door_imports` YOURSELF over the C4 source with the C4
-  `DOOR_METHODS` and report the FULL set it collects, the set difference against
-  `ALLOWED_IMPORTS` in BOTH directions — which must be empty both ways — and the
-  intersection with `FORBIDDEN_MODULES`, which must be empty. (e) Report
-  `FORBIDDEN_MODULES` at BASE and at C4; it must gain exactly
-  `packages.orchestration.hunk_apply`. (f) Report the module-level command-id
-  constants and their values.
+- **G4 THE LEDGER at C2.** At BASE and at C2 count `^- R-\d+ — ` with distinct
+  ids, `^Done: R-\d+ — ` lines with distinct ids, `^Landed: R-`,
+  `^Gate: F\d+ R\d+ — ` and `^DECISION F033 D\d+ — `; report the open set at
+  both. Ordered: registered 305 to 306 with the ADDED id exactly `R-0745`;
+  `Done:` 49 lines over 47 distinct to 50 over 48 with the ADDED resolved id
+  exactly `R-0744`, and the `Landed: R-0744` line STILL PRESENT beside its new
+  `Done:` paragraph; `Landed:` 17 UNMOVED at BOTH — this round writes no
+  `Landed:` line at all; `Gate:` 132 to 133 with `^Gate: F033 R15 — ` exactly 1;
+  `DECISION F033 D` 4 UNMOVED; and the open set 258 at BOTH. Report that
+  equality explicitly rather than inferring it, and report that `^- R-0738 — `
+  is still 1 and `^Done: R-0738 — ` still 0 at C2 — this round does NOT resolve it.
+- **G5 THE PROSE FILES.** `.agent/plan.md` at C1 is byte-EQUAL to PLANF033R16 —
+  report its byte length and its line count, which must be under the 50-line cap
+  AGENTS.md sets. `.agent/prose_slips.md` at C3 is the BASE blob, which must be
+  24266 bytes, plus one newline plus SLIPSF033R16, byte for byte, with BASE a
+  byte PREFIX; report the count of lines matching
+  `^2026-\d\d-\d\d · F033 R15 · ` at BASE, which must be 0, and at C3, and the
+  count of lines beginning `- R-` in the whole file at C3, which must be 0.
+- **G6 THE FOLD AND THE LABEL at C4.** (a) `ruff check` over
+  `packages/orchestration/ui_server.py` and the two touched test paths exits 0 —
+  report the summary line. (b) EXERCISE the shipped `_task_truth_maps` DIRECTLY,
+  not through the tests, over hand-built change objects, and report the label it
+  returns for each of: all `applied`; all `reverted`; all `not_applied`; three
+  `applied` and five `not_applied`; one `applied` and one `reverted`; and one
+  whose `apply_state` attribute is ABSENT beside one `applied`. The first three
+  must read `applied`, `reverted` and `not_applied` — UNCHANGED from BASE, and
+  report the BASE reading for the same six inputs beside the C4 reading. The
+  fourth and fifth must read `partial`. (c) Report the PROOF fold's source lines
+  at BASE and at C4 and confirm they are byte-identical — only the apply fold
+  moves. (d) Report the set of literal apply labels the C4 fold can assign, and
+  the set of values `DetailPopover.tsx`'s `applyStatus` helper branches on at
+  C4, and their difference IN BOTH DIRECTIONS, which must be empty. (e) Report
+  the label the helper returns for `"partial"` and confirm it differs from the
+  `UNKNOWN` fallback and from the other three labels.
 - **G7 THE MUTATION RED-PROOFS at C5.** In a DISPOSABLE `git worktree` at C5,
   never in the primary checkout, with `python3 -B`, having first proved the
   import resolves to the WORKTREE's copy. FIRST the UNMUTATED CONTROLS — REAL
-  exit 0 with counts — over `tests/cli/test_patch_cmd.py` (11 at BASE),
-  `tests/ui_server/test_command_dispatch.py` (7 at BASE) and
-  `tests/ui_server/test_command_channel.py` (106 at BASE). Then, one at a time,
-  reverting fully between each, asserting the anchor is UNIQUE inside the named
-  FILE before replacing it, and reporting the REAL exit code, the failure count
-  and the NAME of each failing test:
-  (i) in `apps/cli/commands/patch.py`, revert the R-0744 fix to `job_id_str` —
-      this is R-0744's proof and it MUST go red, where at `fa963c4e` it was green;
-  (ii) in `packages/orchestration/ui_server.py`, drop `save_job` from
-      `_dispatch_approve_hunks`, so the effect is not persisted;
-  (iii) in `packages/orchestration/ui_server.py`, return the accepted body
-      instead of None when the recorder refuses;
-  (iv) in `apps/cli/command_catalog.py`, remove `patch.approve-hunks` from
-      `UI_EXPOSED_COMMANDS`.
-  Each MUST go RED. If any comes back GREEN, report that plainly and do NOT
-  adjust anything to force a red. Remove the worktree BY EXACT PATH, then
-  `git worktree prune`.
+  exit 0 with counts — over `tests/ui_server/test_dashboard_cockpit_truth.py`
+  (33 at BASE) and `tests/ui_contracts/test_apply_state_partial.py`. Then, one
+  at a time, reverting fully between each, asserting the anchor is UNIQUE inside
+  the named FILE before replacing it, and reporting the REAL exit code, the
+  failure count and the NAME of each failing test:
+  (i) in `packages/orchestration/ui_server.py`, restore the MEMBERSHIP test —
+      `if "applied" in apply_states` — as the first arm of the apply fold;
+  (ii) in `packages/orchestration/ui_server.py`, make the mixed arm return
+      `"applied"` instead of `"partial"`;
+  (iii) in `apps/ui/src/components/detail/DetailPopover.tsx`, delete the
+      `"partial"` branch so the helper falls through to `UNKNOWN`.
+  Each MUST go RED. Mutation (iii) proves the CONTRACT test really reads the
+  TypeScript; if it comes back GREEN the contract test is not doing its job —
+  report that plainly and do NOT adjust anything to force a red. Remove the
+  worktree BY EXACT PATH, then `git worktree prune`.
 - **G8 SUITES AND STRUCTURE.** Serially, one pytest process at a time, each a
-  REAL exit 0 with its count: `tests/cli/test_patch_cmd.py` (11 at BASE),
-  `tests/ui_server/test_command_dispatch.py` (7 at BASE),
-  `tests/ui_server/test_command_channel.py` (106 at BASE),
-  `tests/test_command_catalog.py` (18 at BASE),
-  `tests/orchestration/test_evidence_index.py` (33 at BASE),
-  `tests/orchestration/test_hunk_decision_record.py` (15 at BASE) and the canary
+  REAL exit 0 with its count: `tests/ui_server/test_dashboard_cockpit_truth.py`
+  (33 at BASE), `tests/ui_contracts/test_apply_state_partial.py`,
+  `tests/ui_contracts/` as a whole, `tests/ui_server/test_command_channel.py`
+  (106 at BASE), `tests/cli/test_patch_cmd.py` (13 at BASE) and the canary
   `tests/cli/test_golden_path.py` (42 at BASE). Then walk
   `git rev-list --reverse BASE..C5`: each commit exactly ONE parent, each under
   500 INSERTIONS — the `+` column of `git diff --numstat`, never insertions plus
   deletions — and report the per-commit list. Report the range's path set against
   the change set in BOTH directions. Count `<<<SLICE ` and `<<<END ` in
-  `.agent/plan.md`, `apps/cli/commands/patch.py`,
-  `packages/orchestration/ui_server.py` and `apps/cli/command_catalog.py`: each
-  0, against `.agent/authored/f033-r15.md` as a non-zero control whose count you
-  report. `git ls-files .remedy-wt` must read 0. Finally report that each of the
+  `.agent/plan.md`, `.agent/prose_slips.md`,
+  `packages/orchestration/ui_server.py` and
+  `apps/ui/src/components/detail/DetailPopover.tsx`: each 0, against
+  `.agent/authored/f033-r16.md` as a non-zero control whose count you report.
+  `git ls-files .remedy-wt` must read 0. Finally report that each of the
   do-not-touch paths named in the change-set section is byte-identical at BASE
   and at C5, by blob id — one line per path, with the count you measured.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: SESSION 4,
-round 15, BASE, the changed-files table with real `+/-` from `git diff --numstat`
+round 16, BASE, the changed-files table with real `+/-` from `git diff --numstat`
 — derive that column from the tool, not from the files' line counts, and compare
 it cell by cell against the numbers G8 produced — one line per gate with real
 numbers, the item-status table with every ordered item exactly once, and your
-deviations. Write external actions as command plus outcome. Quote
-`_dispatch_approve_hunks`'s final signature, the accepted body's key set, the
-full `_door_imports` set from G6(d), and the test names you wrote with the
-property each pins.
+deviations. Write external actions as command plus outcome. Quote the shipped
+apply fold in full, the six readings from G6(b) side by side with their BASE
+readings, the label the helper returns for `"partial"`, and the test names you
+wrote with the property each pins.
 
 Carry SESSION 4 forward and name the next session's first actions in this order:
 read `.agent/STOP` from disk, then run the Open PR Gate, then book this round's
-verdict and resolve R-0744, then the plan's step 3. No length cap. Write no
-verdict on your own work.
+verdict, then the plan's step 2 — the two surfaces R-0738 still names. No length
+cap. Write no verdict on your own work.
