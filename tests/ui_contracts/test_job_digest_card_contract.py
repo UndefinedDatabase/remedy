@@ -278,3 +278,268 @@ class TestTheSeamWritesNoPresentationCopy:
         assert 'const ESTIMATE_PHRASE = ", estimated";' in code, (
             "and so is the phrase's"
         )
+
+
+#: The TRIGGER rule's module (F040 T002 part 2).  It is a separate file from
+#: `jobDigest.ts` because the envelope and the trigger are two rules, so it gets
+#: its own Path rather than widening the one the seam above uses.  The Path is
+#: declared here, at the top of the appended region, because the round-7 block's
+#: constraint 14 makes the base file's bytes a PREFIX of this one: nothing above
+#: this line may move.
+VISIBILITY = API_DIR / "digestVisibility.ts"
+
+#: The storage port DECISION F040 D8 rules is DECLARED in the rule module and
+#: IMPLEMENTED at the card's edge, never here.
+PORT_TYPE_NAME = "DigestVisibilityPort"
+
+#: The exported reason type the card branches on.  It must be a closed union of
+#: string literals, so a typo in the card is a type error and not a dead branch.
+REASON_TYPE_NAME = "DigestVisibilityReason"
+
+#: The two sentences `docs/roadmap/features/T5_F040.md` Acceptance audits BY
+#: NAME.  Neither may appear anywhere in the rule module — the copy belongs to
+#: the card, and a phrase sitting in a rule's comment is a phrase waiting to be
+#: pasted into a render.
+AUDITED_PHRASES = (
+    "since you were last here",
+    "while you slept",
+)
+
+
+def quoted_literals(text: str) -> list[str]:
+    """Every single- and double-quoted literal's CONTENT, read out of source
+    whose comments have already been stripped.
+
+    This is the READER that `blank_quoted_literals` is the eraser for: the same
+    scan, keeping what the other one throws away, so a literal can be inspected
+    rather than only removed.  It is deliberately given comment-stripped input —
+    an apostrophe in prose would otherwise open a literal that never closes."""
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if ch in "\"'":
+            j = i + 1
+            while j < n and text[j] != ch:
+                j += 2 if text[j] == "\\" else 1
+            out.append(text[i + 1:j])
+            i = j + 1
+        else:
+            i += 1
+    return out
+
+
+def run_state_values() -> list[str]:
+    """The `RunState` member values, PARSED out of `packages/core/models.py`.
+
+    Read rather than retyped on purpose: a retyped list produces a guard that
+    keeps passing on the day someone adds an eighth state, which is precisely
+    the day `digestVisibility.ts` needs revisiting.  `ast` is imported here
+    rather than at module scope because the base file's import block is above
+    this appended region and may not be edited."""
+    import ast
+
+    source = (REPO_ROOT / "packages" / "core" / "models.py").read_text()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ClassDef) and node.name == "RunState":
+            return [
+                stmt.value.value
+                for stmt in node.body
+                if isinstance(stmt, ast.Assign)
+                and isinstance(stmt.value, ast.Constant)
+                and isinstance(stmt.value.value, str)
+            ]
+    return []
+
+
+class TestTheTriggerRuleIsPureAndPortless:
+    """`apps/ui/src/api/digestVisibility.ts`, read as TEXT the same way the seam
+    above is, and for the same reason: no renderer exists here, so the
+    properties no type-checker can see are pinned by reading the source.
+
+    WHAT EACH MECHANISM CAN AND CANNOT SEE is stated on the test that uses it,
+    because a guard whose reach is unstated is a guard whose green is
+    unreadable.  Every zero below is paired with a salted positive control, so a
+    zero is distinguishable from a search that could never have found anything.
+    """
+
+    def test_the_strippers_reach_this_module_as_well(self):
+        # The seam's strippers are REUSED, not copied; this is the proof they
+        # bite on the new file too, in both directions — the prose goes and the
+        # code stays.
+        raw = VISIBILITY.read_text()
+        promise = "IT KEEPS NO STORAGE"
+        assert promise in raw, "the module must keep its written-down absences"
+        assert promise not in strip_ts_comments(raw), "stripper must remove it"
+        code = code_of(VISIBILITY)
+        assert "export function digestVisibility(" in code, (
+            "a stripper that ate the code as well would make every assertion "
+            "below vacuous"
+        )
+        assert len(code) > 1000, f"only {len(code)} characters were read"
+
+    def test_the_rule_names_none_of_the_forbidden_capabilities(self):
+        # Constraint 8 of the round-7 block. A trigger that read a clock could
+        # not be tested without freezing one, and a trigger that reached for
+        # storage could not be tested without faking a global.
+        executable = executable_of(VISIBILITY)
+        for token in FORBIDDEN_CAPABILITIES:
+            assert token not in executable, (
+                f"{token!r} belongs at the card's edge, not in the rule: "
+                f"`nowMs` and the remembered instants arrive as arguments"
+            )
+
+    def test_the_capability_scan_can_see_a_capability_in_this_module_too(self):
+        for token in FORBIDDEN_CAPABILITIES:
+            salted = executable_of_text(f"const leak = {token};\n" + VISIBILITY.read_text())
+            assert token in salted, f"the scan cannot see {token!r} even when it is there"
+
+    def test_the_port_is_declared_and_never_implemented(self):
+        """The port is a TYPE and nothing more.
+
+        MECHANISM, and it reads the CODE rather than the prose: over
+        comment-stripped, literal-blanked source the identifier occurs EXACTLY
+        ONCE, and that once is its own `export interface` declaration.  A
+        variable annotated with it, a class implementing it, a function
+        returning it or a generic parameterised by it would each be a second
+        occurrence, so all four are caught by one count.
+
+        WHAT IT CANNOT SEE: TypeScript is STRUCTURALLY typed, so an object
+        literal carrying `readDismissal` and `writeDismissal` would satisfy the
+        port without ever naming it, and this count would not notice.  That
+        residual hole is closed from the other side rather than left open — such
+        a twin could not reach real storage without naming `localStorage` or
+        `sessionStorage`, and the purity assertion above pins both at zero, so a
+        structural twin in this file would be inert by construction."""
+        executable = executable_of(VISIBILITY)
+        assert re.search(rf"export interface {PORT_TYPE_NAME} \{{", executable), (
+            "the port must be DECLARED here, or the card has nothing to bind"
+        )
+        uses = re.findall(rf"\b{PORT_TYPE_NAME}\b", executable)
+        assert len(uses) == 1, (
+            f"the port is a type and nothing more; found {len(uses)} occurrences "
+            f"of {PORT_TYPE_NAME!r} where only the declaration may stand"
+        )
+        assert not re.search(r"\bclass\s", executable), (
+            "a class in this module would be state with a name on it"
+        )
+        assert not re.search(r"\bimplements\s", executable)
+
+    def test_the_port_scan_can_see_an_implementation(self):
+        # The discriminator for the count above: without it the assertion would
+        # pass just as happily over a file that never mentions the port at all.
+        implementation = (
+            "const livePort: DigestVisibilityPort = {\n"
+            "  readDismissal: () => null,\n"
+            "  writeDismissal: () => undefined,\n"
+            "};\n"
+        )
+        salted = executable_of_text(VISIBILITY.read_text() + implementation)
+        uses = re.findall(rf"\b{PORT_TYPE_NAME}\b", salted)
+        assert len(uses) == 2, (
+            f"the count cannot see a bound implementation; it read {len(uses)}"
+        )
+
+    def test_the_rule_carries_neither_audited_phrase(self):
+        # Asserted over RAW source, comments included: the Acceptance names
+        # these two sentences, and a rule module that carries one in a comment
+        # is one paste away from carrying it in a render.
+        raw = VISIBILITY.read_text()
+        for phrase in AUDITED_PHRASES:
+            assert phrase not in raw, (
+                f"{phrase!r} is the CARD's copy; the rule answers a boolean and "
+                f"a reason, and the copy audit belongs to the round that writes "
+                f"the sentences"
+            )
+
+    def test_the_rule_carries_no_user_facing_sentence_at_all(self):
+        """No presentation copy of ANY kind, not only the two audited phrases.
+
+        MECHANISM: every quoted literal in the comment-stripped source is a
+        TOKEN — a state word, a reason word, an import specifier — and no token
+        contains a space.  A user-facing sentence does.
+
+        WHAT IT CANNOT SEE: a sentence assembled from spaceless fragments, and a
+        template literal, which `executable_of_text` deliberately leaves intact
+        and this reader does not scan.  The module contains no template literal
+        today; the salted control below proves the reader sees a plain one."""
+        literals = quoted_literals(code_of(VISIBILITY))
+        assert literals, "the reader found no literal at all, so it found nothing"
+        sentences = [text for text in literals if " " in text]
+        assert sentences == [], (
+            f"a rule module holds tokens, not sentences; found {sentences}"
+        )
+
+    def test_the_sentence_scan_can_see_a_sentence(self):
+        salted = strip_ts_comments(
+            'const copy = "since you were last here";\n' + VISIBILITY.read_text()
+        )
+        assert "since you were last here" in quoted_literals(salted), (
+            "the reader cannot see a sentence even when one is there"
+        )
+
+    def test_the_reason_type_is_a_closed_union_of_string_literals(self):
+        code = code_of(VISIBILITY)
+        match = re.search(rf"export type {REASON_TYPE_NAME}\s*=([^;]+);", code)
+        assert match, f"{REASON_TYPE_NAME} must be exported as its own named type"
+        union = match.group(1)
+        members = quoted_literals(union)
+        assert len(members) >= 4, (
+            f"the reason set must at least name the four the block requires; "
+            f"found {members}"
+        )
+        assert "|" in union, "a closed set is a union, not a single alias"
+        assert not re.search(r"\bstring\b", union), (
+            "a bare `string` reopens the set and makes a typo in the card a "
+            "branch that silently never runs"
+        )
+
+    def test_the_closed_union_scan_can_see_a_widening(self):
+        widened = re.sub(
+            rf"export type {REASON_TYPE_NAME}\s*=[^;]+;",
+            f"export type {REASON_TYPE_NAME} = string;",
+            code_of(VISIBILITY),
+        )
+        match = re.search(rf"export type {REASON_TYPE_NAME}\s*=([^;]+);", widened)
+        assert match and re.search(r"\bstring\b", match.group(1)), (
+            "the reader cannot see a widened type even when it is there"
+        )
+
+    def test_every_answered_reason_is_a_member_of_the_closed_union(self):
+        # `tsc` would also catch this, but the node that runs it SKIPS when
+        # `apps/ui/node_modules/.bin/tsc` is absent, so the union is pinned here
+        # as well — this guard needs no toolchain at all.
+        code = code_of(VISIBILITY)
+        match = re.search(rf"export type {REASON_TYPE_NAME}\s*=([^;]+);", code)
+        assert match
+        members = set(quoted_literals(match.group(1)))
+        answered = set(re.findall(r'reason:\s*"([^"]+)"', code))
+        assert answered, "the rule must actually answer a reason somewhere"
+        assert answered <= members, (
+            f"the rule answers {sorted(answered - members)}, which the closed "
+            f"union does not contain"
+        )
+
+    def test_all_seven_run_states_are_accounted_for_in_the_rule(self):
+        """The three-way partition as a PINNED property rather than a paragraph.
+
+        The states are read FROM `packages/core/models.py`, so this fails
+        LOUDLY the day someone adds a state to the enum — which is exactly the
+        day `digestVisibility.ts` needs revisiting, because an unaccounted
+        state falls through to `unknown` and quietly stops showing."""
+        states = run_state_values()
+        assert len(states) >= 7, (
+            f"the parse found only {states}; a reader that returns nothing "
+            f"would make the loop below vacuous"
+        )
+        code = code_of(VISIBILITY)
+        missing = [state for state in states if f'"{state}"' not in code]
+        assert missing == [], (
+            f"{missing} appear in RunState but not in digestVisibility.ts, so "
+            f"the rule cannot classify them and would treat them as unknown"
+        )
+
+    def test_the_state_check_would_notice_a_state_the_rule_does_not_carry(self):
+        # The discriminator: a state the module has never accounted for must NOT
+        # be found, or the search above finds everything and pins nothing.
+        assert '"quantum-tunnelling"' not in code_of(VISIBILITY)
