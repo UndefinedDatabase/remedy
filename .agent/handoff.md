@@ -269,4 +269,19 @@ LAST of the three surfaces R-0738 names. Only after it is R-0738 resolvable.
 
 ## Push outcome
 
-Written by C7, after the push. See below.
+Written by C7, AFTER the push, so it records a fact rather than a promise. The block
+named this commit; round 16's worker had to invent it, which is the second of the two
+slips SLIPS17 carries.
+
+`git push -u origin feature/f033-hunk-approval-v2` -> REAL exit 0:
+
+    To github.com:UndefinedDatabase/remedy.git
+       5f0273d8..16bb7d62  feature/f033-hunk-approval-v2 -> feature/f033-hunk-approval-v2
+    Branch 'feature/f033-hunk-approval-v2' set up to track remote branch
+    'feature/f033-hunk-approval-v2' from 'origin'.
+
+Non-fast-forward it was not, and no force flag of any kind was used. `git rev-parse`
+afterwards gives `16bb7d628638aebbc00c1f773168ae5e64ecb9fd` for BOTH `HEAD` and
+`origin/feature/f033-hunk-approval-v2`, so the remote carries C0a through C6 exactly.
+This C7 commit is the only one the push above does not contain; it is pushed by the
+next round's first push, or by the reviewer, whichever comes first.
