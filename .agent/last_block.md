@@ -1,82 +1,80 @@
-# STEP 27 — F033 Hunk-level diff approval (SESSION 7, round 27; the INTEGRATION GATE round)
+# STEP 28 — F033 Hunk-level diff approval (SESSION 7, round 28; the CLOSURE PREPARATION round)
 
-Goal: run the integration gate of docs/agents/integration_gate.md — the full
-suite on this branch and at the merge base, compared and attributed id by id —
-and book the round 26 PASS and the `Done: R-0749` resolution alongside it. This
-is the round that earns the right to say "full suite green"; no other round in
-this feature may claim it.
+Goal: book the round 27 verdict, register the one rule violation that round
+landed, add its independent confirmation to an OPEN finding rather than minting
+a second id for it — then perform the closure preconditions that must be true
+BEFORE a STATUS line can be written: the feature file's Built State, the
+integrity check, the evidence job, and the review zip built from a clean tree.
+The STATUS flip and the pull request belong to the NEXT round and to no part of
+this one.
 
 ## Bundle — the list that is executed
 
-1. C0a: save this block verbatim to `.agent/authored/f033-r27.md`.
+1. C0a: save this block verbatim to `.agent/authored/f033-r28.md`.
 2. C0b: mirror the same bytes into `.agent/last_block.md`.
-3. C1: rewrite `.agent/plan.md` from slice PLAN27.
-4. C2: append slice RECORD27 to `.agent/live_review.md` — books the round 26
-   PASS and RESOLVES R-0749.
-5. C3: the integration gate itself. Run G5, G6 and G7 and commit the evidence
-   files they produce under `.agent/gate_f033_r27/`.
-6. C4: rewrite `.agent/handoff.md` as the handback.
+3. C1: rewrite `.agent/plan.md` from slice PLAN28.
+4. C2: append slice RECORD28 to `.agent/live_review.md` — books the round 27
+   PASS WITH RISKS, REGISTERS R-0750 and EXTENDS the OPEN finding R-0736.
+5. C3: append slice BUILTSTATE to `docs/roadmap/features/T5_F033.md`.
+6. C4: the closure artifacts — the integrity check, the evidence job and the
+   review zip, per G6 and G7. NOTHING from these is committed: the evidence dir
+   is gitignored by design and the zip is an artifact, not a tracked file. If
+   G6 or G7 produces no file to commit, C4 IS NOT A COMMIT and the Bundle is
+   six commits rather than seven. Say which in the handback.
+7. C5: rewrite `.agent/handoff.md` as the handback, carrying the evidence job
+   id, the package filename, its SHA-256 and its ARCHIVED PATH.
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f033-r27.md
+    .agent/authored/f033-r28.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    .agent/gate_f033_r27/branch_run.txt
-    .agent/gate_f033_r27/branch_failed.txt
-    .agent/gate_f033_r27/base_run.txt
-    .agent/gate_f033_r27/base_failed.txt
-    .agent/gate_f033_r27/parity.txt
-    .agent/gate_f033_r27/comparison.txt
+    docs/roadmap/features/T5_F033.md
     .agent/handoff.md
-
-An attribution file `.agent/gate_f033_r27/attribution.txt` is added to that set
-IF AND ONLY IF G7 produces any id to attribute; when both comparison sets are
-empty it is not created and the handback says so. No other file under
-`.agent/gate_f033_r27/` may be committed.
 
 ## What the reviewer measured before writing this block, and where
 
-Every reading below was taken by the reviewer at `7adee149`, this round's base.
+Every reading below was taken by the reviewer at `f13134fe`, this round's base.
 
-- THE MERGE BASE IS `bd8d9529`. `git merge-base main HEAD` and
-  `git rev-parse bd8d9529` answer the same full SHA
-  `bd8d952942d8ec1d243d787ccfe16e0ad04360d2`, which is also the commit
-  `.agent/plan.md` records this branch as cut from.
-- THE SUITE COLLECTS 18467 TESTS at this base, in 3.82 seconds. That number is
-  the collection, NOT a pass count, and G5 reports its own.
-- BOTH BUILD ARTIFACTS EXIST in the primary checkout: `apps/ui/node_modules` at
-  305M and `apps/ui/dist` at 432K.
-- `apps/ui/node_modules` CONTAINS SYMLINKS — 23 of them within three levels,
-  which are npm's bin shims. This is why G6 orders `symlinks=True` explicitly:
-  `shutil.copytree` DEFAULTS to `symlinks=False` and would dereference every one
-  of them, and finding R-0591 records that exact default causing 7 of 23
-  base-only failures in a previous gate. The mechanism's default is the hazard,
-  so the argument is ordered rather than assumed.
-- `.remedy-wt/` IS INVISIBLE TO THE RUN MANIFEST. `git ls-files --others
-  --exclude-standard` returns ZERO paths at this base, so a log growing there
-  during a run cannot change the worktree digest — which is the SUBSTANCE of
-  R-0176's "outside the repo worktree" rule, and the reason this block puts run
-  logs there rather than in a location this sandbox denies.
-- THE EVIDENCE DIRECTORY CONVENTION is the one `.agent/gate_f257_r6/` shows:
-  `branch_run.txt`, `branch_failed.txt`, `base_run.txt`, `base_failed.txt`,
-  `parity.txt`, `comparison.txt`. All `.txt`; never `.log`, which `.gitignore`
-  drops silently and the review-zip guard rejects.
-- THERE IS NO STALE WORKTREE. `git worktree list` shows the primary checkout
-  alone.
+- THE SELF-USE QUEUE IS EXHAUSTED, which satisfies closure precondition 6 by its
+  own words rather than by an exception. `scripts/self_use_queue.json` carries
+  one item and ZERO pending: every item's `consumed_by` is set. The closure
+  therefore records `self-use NONE (queue exhausted)` and closes normally.
+- THE FEATURE FILE HAS NO BUILT STATE SECTION. Its headings run `Goal & Done`,
+  `How it fits`, `Design`, `Task slicing`, `Acceptance`, `Edge cases &
+  assumption defaults (A9)`, `Orchestrator brief`, `Do not touch` and
+  `Amendments`. It is 6358 bytes over 117 lines and ends with a newline. The
+  convention to follow is `docs/roadmap/features/T5_F256.md`, whose closure
+  appended `## Built State (F256, 2026-08-28)` as the LAST section of the file.
+- THE STATUS LINE IS `- [~] F033 — Hunk-level diff approval`, at line 86 of
+  `docs/roadmap/STATUS.md`. It is NOT touched this round.
+- THE OPEN SET HOLDS R-0736 AND IT IS THIS ROUND'S ANSWER TO A QUESTION THE
+  GATE RAISED. R-0736 is Medium and OPEN, headed "THE INTEGRATION GATE'S OWN
+  PARITY RECIPE MANUFACTURES 114 FALSE BASE FAILURES ON EVERY RUN THAT FOLLOWS
+  IT LITERALLY", and it names the same mechanism and the same count of 114 that
+  round 27 measured. Under docs/agents/planner_reviewer_prompt.md §3 item 30
+  that evidence joins R-0736 and spends no new id.
+- THERE ARE EXACTLY TWO OVERSIZE COMMITS ON THIS BRANCH, walked mechanically
+  over all 232 commits of `bd8d9529`..`f13134fe`: `5f0273d8` at 647 insertions
+  across three `.agent/` files, and `e313c0c0` at 7561 insertions in one. The
+  first is not exempt — the AGENTS.md exemption covers a verbatim rewrite of a
+  SINGLE named `.agent/**` state file, and that commit touches three paths — so
+  `e313c0c0` is the SECOND, which is what R-0750 registers.
+- NO HIGH FINDING IS OPEN, so `integrity check` cannot be blocked by
+  `high_blockers_open`. The two findings this round adds to the record are a
+  Medium registration and an extension of an existing Medium.
 
-## Slice PLAN27 — the FULL new bytes of `.agent/plan.md`
+## Slice PLAN28 — the FULL new bytes of `.agent/plan.md`
 
 The slice is every byte BETWEEN the two marker lines, exclusive. The markers are
 not part of any file.
 
-<<<BEGIN PLAN27
+<<<BEGIN PLAN28
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 7 of this feature, running past the
-amend0827 rule 6 soft limit under the scope report that limit required.
+commit of pull request 221. SESSION 7 of this feature, in its closure sequence.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -89,185 +87,207 @@ round — every partial state rendered truthfully in viewer, node and report.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001, T002 and T003 | done | rounds 1-24 |
-| THE FEATURE'S FUNCTIONAL SCOPE | complete | at round 24 |
-| R-0749, both instances landed | done | rounds 25 and 26 |
+| R-0749, both instances | done | resolved round 27 |
 | the operator guide and its index rows | done | round 26 |
-| the integration gate | open | this round |
-| the closure sequence and its pull request | open | after the gate |
-| R-0745, the door's transitive import closure | open | carried as a risk |
+| the integration gate | done | round 27, PASS WITH RISKS |
+| the feature file's Built State | open | this round |
+| the evidence job and the review zip | open | this round |
+| the STATUS line, the README sync and the PR | open | next round |
+| R-0745 and R-0750, carried as documented risks | open | see Risks |
 
 ## Next Steps
-1. This round books the round 26 PASS and the `Done: R-0749` resolution, then
-   runs the integration gate of docs/agents/integration_gate.md: the full suite
-   on this branch and at the merge base `bd8d9529`, compared and attributed.
-2. Only this round's gate entry may carry a "full suite" claim. A reproducible
-   branch-only failure coupled to feature code is a BLOCKER and buys its own
-   reviewer-gated repair round rather than being fixed inside this one.
-3. Then the closure sequence per docs/roadmap/STATUS_closure_protocol.md: the
-   feature file's Built State, the evidence job, the review zip, the STATUS line
-   and the pull request, which is NOT merged in this session.
-4. R-0745 is Low and is not reachable from this feature's Acceptance. The
-   closure protocol's precondition 1 admits a documented Medium/Low risk, so it
-   is carried as one and the STATUS line reads PASS_WITH_RISKS.
+1. This round books the round 27 verdict, registers R-0750, extends R-0736, and
+   performs the closure preconditions that must hold BEFORE a STATUS line can be
+   authored: the Built State section, the integrity check, the evidence job and
+   a review zip built from a clean tree after the last content commit.
+2. The NEXT round is the closure commit itself — the STATUS `[x]` line and the
+   README capability sync in ONE commit, the final `.agent/` state, then the
+   pull request. That PR is NOT merged in this session; it merges at the next
+   feature's start via the Open PR Gate, which is the operator's review window.
+3. `self-use NONE (queue exhausted)` is recorded at closure: the queue holds no
+   pending item, which the closure protocol rules is exhausted rather than
+   blocked.
 
 ## Risks
-- The base worktree lacks build artifacts the suite needs. Parity is restored by
-  COPY with symlinks preserved, and every base-only failure is attributed by
-  direct evidence whether or not the parity claim holds.
-<<<END PLAN27
+- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, so the STATUS line
+  reads PASS_WITH_RISKS. Neither is reachable from this feature's Acceptance:
+  the first hardens a guard over the write door, the second is a reviewer's gate
+  wording that ordered a full log where the canonical procedure asks for a tail.
+<<<END PLAN28
 
-## Slice RECORD27 — appended to `.agent/live_review.md`
+## Slice RECORD28 — appended to `.agent/live_review.md`
 
-Two paragraphs, blank-line separated.
+Three paragraphs, blank-line separated. The middle one begins `- R-0750 — ` and
+is the round's only registration; the last begins `R-0736 EXTENSION — ` with no
+leading `- `, so it adds no id.
 
-<<<BEGIN RECORD27
-Gate: F033 R26 — THE OPERATOR GUIDE, ITS INDEX ROWS, AND THE CLAIM'S FOURTH INSTANCE. THE ROUND PASSED. Every gate was re-executed by the reviewer at `7adee149` from scripts of its own, and every ordered reading reproduced. TRANSPORT: the reviewer's OWN pre-emission original, the committed `.agent/authored/f033-r26.md` and `.agent/last_block.md` are all 30483 bytes at sha256 `41ff9a4b…08283e` and BYTE-EQUAL to each other; the worker used `shutil.copyfile` and retyped nothing, including the SPEC A2 `Landed:` line, which it extracted from the committed block by script. The chain walks the emitted artefact, the saved copy and its mirror, and claims nothing about bytes never written to disk. THE PLAN is byte-EQUAL to PLAN26 at 2394 bytes over 45 lines, under the 50-line cap, holding `## Goal` and the substring `Steps`. THE RECORD APPEND at `0efdcba2` reconstructs 1611170 plus one newline plus 7077 to 1618248, base a byte PREFIX, slice an exact SUFFIX, the separator byte a newline, N COUNTED at 2, and the file's LAST TWO blank-line units equal to the slice's two paragraphs IN ORDER; the NEGATIVE CONTROL was taken at byte 1612508, an offset the reviewer chose independently of the worker's 1615413 and proved to lie inside the FIRST appended paragraph's span 1611171 to 1615897, and BOTH readers reject the flipped bytes while BOTH accept the unflipped ones. THE LEDGER at three revisions: `^- R-\d+ — ` 310 distinct UNMOVED and `^Done: R-\d+ — ` 54 lines over 52 distinct UNMOVED at all three, this round registering and resolving nothing as ordered; `^Landed: ` 21 going to 22 with `^Landed: R-0749 — ` 1 at the base and at C2 and exactly 2 at C4, the first line left standing; `^Gate: F033 R25 — ` 0 before and exactly 1 after; and the open set 258 UNMOVED. THE GUIDE AND ITS INDEX landed as one commit, which is the property that matters here rather than any count: `docs/guides/hunk-approval-user-guide-v1.md` is byte-EQUAL to slice GUIDE at 5145 bytes, each of the two APPEND-shaped pairs has its FROM occurring exactly 1x in `docs/README.md` after the commit, `git show --numstat` reads `2 0` for that file and each of the two TO-only lines occurs exactly 1x among the 2 lines the commit ADDS — and the reviewer additionally ran the link predicate `tests/docs/test_docs_consistency.py::TestPrimaryDocLinksResolve` applies, over every relative link in `docs/README.md`, finding ZERO broken. NO `FROM 0x` COUNT WAS ORDERED OR REPORTED for either index pair, because both are append-shaped and that count is unattainable by construction. THE REPAIR IS A DOCSTRING AND NOTHING ELSE: PAIRCALLER-FROM occurs 0 times and PAIRCALLER-TO exactly 1 time, `python3 -m ruff check` is a REAL exit 0, the two `ast.dump` renderings with every docstring constant blanked are EQUAL, and substituting the TO text back to the FROM text reproduces the base blob of `packages/orchestration/hunk_repair_findings.py` BYTE FOR BYTE — the stronger reading round 25 discovered and this block adopted. THE SWEEP over TRACKED content of `packages`, `apps`, `tests` and `docs` answers REAL exit 1 for `NO CALLER YET`, with a POSITIVE CONTROL finding the replacement text exactly once, so the zero is the sweep reaching the file. THE SUITES were re-run SERIALLY by the reviewer in the primary checkout, every REAL exit 0: `test_hunk_repair_findings.py` 17, `test_builder_prompt_hunk_rejections.py` 16, `tests/docs/` 295 — equal to the 295 measured at the base, so two index rows changed no count — and the canary 42. THE STRUCTURE: seven single-parent commits over `de2dc16d`..`7adee149` of 437, 345, 16, 4, 107, 7 and 206 insertions, every one under 500, the last being the handback commit no gate of the block could reach and which the reviewer measures here; `git status --porcelain` EMPTY; and the path set over the range to C4 EQUALS the declared change set minus `.agent/handoff.md` in BOTH directions. THE WORKER DECLARED SIX DEVIATIONS AND EVERY ONE IS HONEST. Two deserve naming: it ran `tests/docs/` piped to `tail` first, recognised that constraint 7 forbids taking an exit code through a pipe, re-ran it unpiped and reported only the unpiped reading; and it stated the BOUND of its own G7 reading half — that the reading covered three of the feature's modules rather than all of them — instead of letting "no fifth instance found" stand as if it were a total search. Declaring the reach of a search is the behaviour this record exists to encourage.
+<<<BEGIN RECORD28
+Gate: F033 R27 — THE INTEGRATION GATE. THE ROUND PASSED WITH RISKS, AND THE RISK IS A RULE VIOLATION THE REVIEWER'S OWN GATE ORDERED, REGISTERED BELOW AS R-0750. Every gate was re-executed by the reviewer at `f13134fe`. TRANSPORT: the reviewer's own pre-emission original, `.agent/authored/f033-r27.md` and `.agent/last_block.md` are all 22358 bytes at sha256 `5b81aa42…1bbcf9` and BYTE-EQUAL. THE PLAN is byte-EQUAL to PLAN27 at 2211 bytes over 42 lines. THE RECORD APPEND at `0e0314dc` reconstructs 1618414 plus one newline plus 6988 to 1625403, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 2, the last two units equal to the slice's paragraphs IN ORDER, and a negative control at byte 1620637 — the reviewer's own offset, distinct from the worker's 1620651 and inside the FIRST appended paragraph — REJECTED by both readers. THE LEDGER: registered 310 distinct UNMOVED; `Done:` 54 lines over 52 distinct going to 55 over 53 with the ADDED resolved id exactly `R-0749`; `Landed:` 22 UNMOVED with `^Landed: R-0749 — ` still exactly 2; `^Gate: F033 R26 — ` 0 before and exactly 1 after; and the open set 258 to 257. THE BRANCH RUN is a REAL exit 1 at 2 failed, 18445 passed and 20 skipped in 187.66 seconds, under the five-minute budget. THE BASE RUN in a worktree on the throwaway branch `tmp/base-gate` at `bd8d9529` is a REAL exit 1 at 114 failed, 18072 passed and 20 skipped in 151.21 seconds. THE PARITY CLAIM HOLDS AND IS MEASURED BY THE EVENT, NOT THE OUTCOME: `shutil.copytree(src, dst, symlinks=True)` was written as ordered, 27 of 27 symlinks SURVIVED as symlinks, each destination is a real directory rather than a symlink, `REMEDY_UI_NO_AUTO_BUILD` was set in `os.environ` and never as a shell prefix, and ZERO `apps/ui/dist` mtimes fall inside the run window 1788009268.624 to 1788009420.420, with no file appearing, vanishing or changing. THE COMPARISON: `comm -13` — the BRANCH-ONLY set, and the only set that can hold a blocker — is EMPTY at 0 ids, so no branch-only failure exists to be coupled to feature code. `comm -23` holds 112. Two further ids failed on BOTH sides and therefore appear in NEITHER comm set, and the worker stated them explicitly rather than letting them fall between the two: branch 2 equals branch-only 0 plus shared 2, and base 114 equals base-only 112 plus shared 2, so every FAILED line of both runs is accounted for. THE TWO SHARED IDS ARE THE XDIST-FLAKE CLASS AND THE REVIEWER MEASURED IT INDEPENDENTLY: re-running `test_unresolvable_job_id_matches_the_get_door` and `test_dashboard_no_raw_leaks` SERIALLY in the primary checkout at `f13134fe` gives a REAL exit 0 at 1 passed each, which docs/agents/integration_gate.md step 4 rules "record, not a blocker". THE 112 BASE-ONLY IDS WERE ATTRIBUTED BY A MEASURED A/B RATHER THAN BY THE RAW LOG, which is exactly what finding R-0396 says the log alone cannot supply: in the SAME worktree at the SAME commit, changing ONLY the artifact, the stale state gives 112 of 112 FAILED with 112 occurrences of `ERROR: React UI not built.` and ZERO auto-build lines, and advancing four `apps/ui/dist` mtimes with `os.utime` — `dist/index.html` sha256 UNCHANGED — gives 112 of 112 PASSED. The reviewer confirmed the mechanism by reading `_frontend_is_stale` in `packages/orchestration/ui_server.py`, which returns True when ANY file under `apps/ui/src/` is newer than `dist/index.html`, and by confirming `dist/index.html` is BYTE-IDENTICAL in both trees. ZERO ids are unattributed. THE CLEANUP: the worktree is removed and pruned, `tmp/base-gate` is deleted, `git worktree list` shows the primary checkout alone, `git status --porcelain` is EMPTY and `git ls-files --others --exclude-standard` returns zero paths. G8's under-500 clause is the one that FAILED, honestly reported RED with its real number rather than repaired, and it is R-0750 below. THE WORKER'S JUDGEMENT WAS RIGHT TWICE OVER: it declared the oversize commit rather than truncating evidence to make a gate green, and it declined to make an unqualified "full suite green" claim over a run that exited 1. Both are the behaviour this record exists to encourage.
 
-Done: R-0749 — BOTH INSTANCES ARE LANDED AND THE WIDENED PREDICATE IS MET BY A READING, NOT BY A STRING COUNT. The first fix landed at `9e84514a` on `packages/orchestration/pingpong_loop.py`, restating `compose_builder_prompt`'s route paragraph as the wired route it now is; the second at `3fe5db02` on `packages/orchestration/hunk_repair_findings.py`, replacing the "has NO CALLER YET" clause with the caller measured at `de2dc16d`. Both are docstring-only: for each, substituting the applied text back to the retired text reproduces that file's pre-commit blob BYTE FOR BYTE, so no executable statement moved in either. THE PREDICATE THIS FINDING WAS WIDENED TO — that no module of this feature asserts that ANY hop of the route from a recorded hunk decision to the next builder prompt is unwired, uncalled or still to come — was discharged by the reviewer at `7adee149` as a READING over TWELVE modules, two more than the extension named: the ten of `hunk_approval`, `hunk_ledger`, `hunk_identity`, `hunk_repair_findings`, `hunk_decision_record`, `pingpong_loop`, `pingpong_job`, `diff_view_source`, `diff_parser` and `apps/cli/commands/patch.py`, plus `hunk_subset_diff` and `hunk_apply`. Twelve phrasings of the class were searched and FOUR hits survive, every one of them read in full and none of them the defect: `hunk_approval.py` line 180 says normalisation happens once "so no caller has to", which is about work a caller is spared rather than a caller's absence; `hunk_approval.py` line 86 says hunks appearing in a later round render PENDING, which is the feature's own behaviour; `diff_parser.py` line 696 says a run is "not yet complete" inside a walk, which is an algorithm's own tense; and `diff_view_source.py` line 11 says "F037 R7 wires the two GET routes onto `build_diff_view`; nothing calls it before then", which NAMES the round that wired it and is therefore a history rather than an absence — the shape this whole finding family would have had if the original paragraphs had been written that way. THE LESSON THE FOUR INSTANCES PAID FOR is stated once here and belongs to the reviewer rather than to any worker: a round that COMPLETES a hop named in prose must sweep the prose that names it, and a gate proving a sentence gone from the file the reviewer was thinking about proves nothing about the file the reviewer was not. R-0747 and R-0748 were each gated by a string over a path; R-0749 is closed by a reading over a class, and that is the difference between the two outcomes.
-<<<END RECORD27
+- R-0750 — Medium, A SECOND OVERSIZE COMMIT LANDED ON THIS FEATURE'S BRANCH, AND THE REVIEWER'S OWN GATE WORDING IS WHAT ORDERED IT. MEASURED by the reviewer at `f13134fe` by walking all 232 commits of `bd8d9529`..`f13134fe` mechanically: exactly TWO exceed the 500-insertion cap AGENTS.md sets — `5f0273d8` at 647 insertions across `.agent/authored/f033-close4.md`, `.agent/handoff.md` and `.agent/last_block.md`, and `e313c0c0` at 7561 insertions in `.agent/gate_f033_r27/base_run.txt` alone. The first is NOT covered by the AGENTS.md exemption, which reaches a commit whose diff is the verbatim rewrite of a SINGLE named `.agent/**` state file and that commit touches three paths. AGENTS.md states the consequence in as many words: an oversize commit is acceptable only when it is declared with its inseparability reason AND is the only such commit in its feature, and "a second one in the same feature, is a finding (Medium)". THE CAUSE IS THE BLOCK, NOT THE WORKER. The R27 block's G5 and G6 ordered "Write the full output to `branch_run.txt`" and `base_run.txt`, while `docs/agents/integration_gate.md` step 1 asks for the "raw tail, full FAILED list, exit code, wall time" — a tail, not the whole log. A base run with 114 failures writes 114 tracebacks, so the order made a commit over the cap unavoidable, and the worker met it, declared it with its inseparability reason and reported G8 RED rather than truncating the evidence to turn a gate green. That is the correct behaviour and it is recorded as such. WHY MEDIUM AND NOT LOW: the violation is durable and on disk, a later reader auditing this branch's commit discipline finds it without any prose to explain it, and the "accepted, not a precedent" allowance AGENTS.md grants once per feature was already spent by `5f0273d8`. FIX, AND IT IS FORWARD-LOOKING BY CONSTRUCTION: the history is NOT rewritten — this workflow forbids force-pushing outright, and deleting committed evidence to satisfy a size rule trades an auditable violation for an unauditable gap, which is the worse of the two. The repair is to the ORDER: an integration-gate block writes the run's RAW TAIL and its full FAILED list to the evidence file, as the canonical procedure already says, and never the whole log; where a full log is genuinely wanted it is an artifact of the review zip rather than a tracked commit. Resolved when a later integration-gate block in this repository orders the tail-plus-FAILED-list form and its evidence commit lands under the cap, and this finding's resolution names that block.
 
-## The integration gate — procedure
+R-0736 EXTENSION — INDEPENDENTLY CONFIRMED AT A SECOND FEATURE, WITH THE PER-ID A/B THE RAW LOG CANNOT GIVE, AND WHY THIS IS NOT A NEW ID. R-0736 is OPEN and already states the mechanism and the count; under docs/agents/planner_reviewer_prompt.md §3 item 30 a new id is minted only after the open set is searched for the DEFECT, and this is that defect, so the evidence joins it and R-0751 is not spent. THE CONFIRMATION, measured at the F033 R27 integration gate and re-read by the reviewer at `f13134fe`: the base run at `bd8d9529` produced 114 FAILED lines, the same figure R-0736 records, of which 112 are base-only and 2 are shared with the branch. `dist/index.html` is BYTE-IDENTICAL in the primary checkout and in the base worktree, and `_frontend_is_stale()` answers False in the first and True in the second — because `git worktree add` stamps every checked-out source file with the checkout time while `shutil.copytree` preserves the source mtimes, so the copied build is byte-correct and mtime-stale. WHAT THIS ROUND ADDS THAT R-0736 DID NOT HAVE is the discriminating experiment finding R-0396 asked for: in the same worktree at the same commit, with only the artifact's mtime changed by `os.utime` and its sha256 unchanged, the stale state fails 112 of 112 and the fresh state passes 112 of 112. That is direct per-id evidence rather than an inference from a log line, and it closes R-0396's objection that a present-but-stale `index.html` and an absent one produce byte-identical output. THE COUNTER-MEASURE R-0736's FIX SHOULD CARRY, stated here so the next gate need not rediscover it: after copying `apps/ui/dist` into a base worktree, advance its mtimes past the worktree's own checkout time — the copy is already byte-correct, so nothing is rebuilt and nothing is faked; what is corrected is a timestamp the copy mechanism cannot preserve meaningfully across a fresh checkout.
+<<<END RECORD28
 
-docs/agents/integration_gate.md is the canonical procedure and this block does
-not restate it. What follows are the four points where THIS environment differs
-from its plain wording, and each is an order rather than a suggestion.
+## Slice BUILTSTATE — appended to `docs/roadmap/features/T5_F033.md`
 
-P1. RUN LOGS GO UNDER `.remedy-wt/`, NOT OUTSIDE THE REPOSITORY. R-0176 requires
-a growing log to be invisible to the run manifest, whose untracked input is
-`git ls-files --others --exclude-standard`; `.remedy-wt/` is gitignored, so it
-is invisible by that measure, and this sandbox denies every path outside the
-repository. Copy each finished log into `.agent/gate_f033_r27/` only AFTER its
-run has exited. Declare this in the handback as a deviation from the file's
-literal wording, with `git ls-files --others --exclude-standard` counted for
-paths naming `remedy-wt` as its evidence.
+<<<BEGIN BUILTSTATE
+## Built State (F033, 2026-08-29)
 
-P2. THE ENVIRONMENT VARIABLE IS SET IN PYTHON, NEVER AS A SHELL PREFIX. The
-sandbox refuses `VAR=x cmd` and `env`. Set `REMEDY_UI_NO_AUTO_BUILD` to `1` in
-the runner script's own `os.environ` for the BASE run, and do NOT trust it
-alone: R-0169 records a spawned build path ignoring it and rewriting `dist/`
-mid-run.
+What exists on disk at the close of F033, so a later reader need not reconstruct
+it from this file's future tense.
 
-P3. PARITY IS RESTORED BY COPY WITH SYMLINKS PRESERVED. Copy the primary
-checkout's `apps/ui/node_modules` and `apps/ui/dist` into the base worktree with
-`shutil.copytree(src, dst, symlinks=True)`. The keyword is ordered explicitly
-because its DEFAULT is `False` and that default dereferences the 23 bin shims
-this tree carries — finding R-0591, where the same default caused 7 of 23
-base-only failures the parity existed to prevent. Never symlink the directories
-themselves: the UI auto-build writes THROUGH a symlink into the primary
-checkout.
+**T001 — stable content-hash hunk ids.** `packages/orchestration/hunk_identity.py`
+computes a hunk's public name as the first `HUNK_ID_LENGTH` — 16 — lowercase hex
+characters of a SHA-256 over the file's resolved path, the hunk's NORMALISED OLD
+side (its context and deleted lines in order, never its added lines) and the
+hunk's occurrence rank among byte-identical old sides within the same file. The
+stability property a reader may rely on is that a hunk keeps its id when anything
+else in its file moves and when its own ADDED lines change, because a second
+proposed fix for the same original text is the same hunk; it changes only when
+the path changes or when the hunk's own old side does. `diff_parser.py` carries
+that id out through `DIFF_VIEW_VERSION` 2 — a REAL bump, because version 1 had
+already been served to a consumer by the F256 diff endpoint.
 
-P4. THE PARITY CLAIM IS MEASURED BY THE EVENT, NOT THE OUTCOME. Record the mtime
-of every file under the base worktree's `apps/ui/dist` immediately before the
-base run and immediately after it, and report the run's own wall-clock window.
-Any mtime falling inside that window VOIDS the parity claim. A content hash may
-accompany that reading but never stands alone, because equal content is
-consistent both with no rebuild and with a byte-identical one — the case F009
-R29 actually hit.
+**T002 — the decision core, the ledger and the door.** `hunk_approval.py` decides
+whether a decision is coherent and returns one of five refusal codes in a pinned
+check order; `hunk_decision_record.py` records a decision onto `job.metadata`
+under `hunk_decisions`, keyed by `<task_id>:<attempt>`, and mints two refusal
+codes of its own for an absent and for a truncated diff; `hunk_ledger.py` holds
+the result on TWO independent axes — `state` in {approved, rejected, pending} and
+`landing` in {landed, not_landed, unattempted} — and exports and imports it as
+plain data. DECISION F033 D4 is the boundary the whole slice rests on: recording
+a decision is NOT applying it, so the command writes `job.metadata` and touches
+no repository, `may_mutate_repo` and `requires_permission` are both False in
+`apps/cli/command_catalog.py`, and every entry a recording writes lands
+`unattempted`. The operator door is `remedy patch approve-hunks`, handled in
+`apps/cli/commands/patch.py`; it is documented for operators in
+`docs/guides/hunk-approval-user-guide-v1.md`.
+
+**T003 — partial truth, and the rejection-to-repair loop end to end.** The
+partial apply state is rendered on all three surfaces the feature names, which is
+finding R-0738's resolution. The loop itself is complete and each hop is tested:
+`hunk_repair_findings.py` renders rejected entries as repair findings holding the
+operator's reason BYTE FOR BYTE; `pingpong_loop.py` composes that text as the
+`builder_hunk_rejections` segment ahead of the builder directive;
+`hunk_decision_record.load_latest_hunk_ledger_from_metadata` selects the latest
+record for a task from a metadata MAPPING, dragging no storage behind it; and
+`pingpong_job.py` — the one place that holds the job at its `run_pingpong` call —
+passes `hunk_ledger=_recorded_hunk_ledger_for_task(job, task)`. A decision
+recorded at JOB scope lands under the `DIFF_SCOPE_JOB` sentinel rather than a task
+id and is deliberately NOT quoted into any single task's prompt, because it was
+never attributed to one.
+
+**What is deliberately NOT here.** No hunk-level APPLY runs from this command;
+the apply seam is the job branch's, where an approved patch intent already
+exists. Remedy does not render what was APPROVED into a repair prompt — a prompt
+listing what the operator accepted is a different feature, and this one carries
+only what must change. And a rejection reason is never reformatted, wrapped,
+truncated or normalised anywhere along the route: it is the operator's own words,
+and the next round is told to act on them.
+<<<END BUILTSTATE
 
 ## Constraints
 
-1. Apply both slices BYTE FOR BYTE. If one looks wrong, apply it as written and
+1. Apply every slice BYTE FOR BYTE. If one looks wrong, apply it as written and
    declare the problem; never silently repair it.
-2. PLAN27 is a FULL REWRITE. RECORD27 is an APPEND to `.agent/live_review.md`.
-   Measured by the reviewer at `7adee149`, that file is 1618414 bytes and ends
-   with a newline, so the append is one blank-line separator then the slice.
-   RE-MEASURE it yourself at the commit you append at rather than trusting this
-   number.
-3. `.agent/live_review.md` is written by ONE commit this round, C2. G3's
-   arithmetic and G4's ledger readings are both taken there and at `7adee149`.
-4. Do NOT delete or edit any landed `Landed:`, `Done:` or `Gate:` text, and in
-   particular leave BOTH `Landed: R-0749` lines standing beside the new `Done:`
-   paragraph. The record is append-only.
+2. PLAN28 is a FULL REWRITE. RECORD28 and BUILTSTATE are APPENDS. Measured by
+   the reviewer at `f13134fe`, `.agent/live_review.md` is 1625403 bytes and
+   `docs/roadmap/features/T5_F033.md` is 6358 bytes over 117 lines, and BOTH end
+   with a newline, so each append is one blank-line separator then the slice.
+   RE-MEASURE both yourself at the commit you append at.
+3. Do NOT delete or edit any landed `Landed:`, `Done:` or `Gate:` text, and do
+   not edit any existing line of the feature file. The record and that file's
+   history are append-only this round.
+4. DO NOT TOUCH `docs/roadmap/STATUS.md`, `README.md` or
+   `scripts/self_use_queue.json`. The STATUS flip, the README capability sync
+   and the self-use edit belong to the NEXT round's single closure commit, and
+   splitting them is what the R-0154 pin forbids.
 5. Touch no path outside the change set. This round changes NO file under
-   `packages/`, `apps/`, `tests/` or `docs/` — not one. If the gate turns up a
-   failure that needs a code change, that change is its own reviewer-gated
-   round: report it and stop.
-6. The base worktree is created ON A THROWAWAY BRANCH —
-   `git worktree add -b tmp/base-gate .remedy-wt/base-gate bd8d9529` — because
-   the self-dogfood branch guard refuses a detached HEAD by design and a
-   detached base worktree fails the guard-dependent ids for the wrong reason.
-   Remove the worktree, prune it and delete `tmp/base-gate` before the handback.
-7. Destructive and environment-mutating work happens ONLY inside that worktree.
-   The primary checkout satisfies `git status --porcelain` empty at the
-   handback, and `git worktree list` shows the primary checkout alone.
-8. NEVER delete a test, weaken an assertion or raise a ceiling to make a check
-   green, and never edit a test file this round at all — constraint 5 already
-   forbids the path.
+   `packages/`, `apps/` or `tests/`.
+6. THE ZIP IS BUILT FROM A CLEAN TREE AFTER THE LAST CONTENT COMMIT, which is
+   C3. A package built from a dirty tree is invalid. Do not commit the evidence
+   directory: `.gitignore` excludes `remedy-job-evidence-*/` and a committed
+   evidence dir puts evidence files into the review subject and packages
+   BLOCKED_EVIDENCE.
+7. A FAILING ZIP BUILD IS A CLOSURE BLOCKER, not something to work around.
+   Record the raw error in the handback and stop; do not retry with different
+   arguments more than once, and never hand-edit a manifest.
+8. The `remedy` console script is denied in this sandbox. Use
+   `python3 -m apps.cli.grouped <group> <cmd> ...` and SAY in the handback which
+   form was used, so the evidence chain stays honest.
 9. The sandbox denies `VAR=x cmd`, `env`, `export`, `cp`, `$(...)` inside a
    compound, process substitution, a heredoc nested in `bash -c`, and a shell
    line containing a brace with a quote inside it. Write scripts under
    `.remedy-wt/` and run them as `python3 -B <path>`. REAL exit codes come from
-   `subprocess.run(...).returncode` inside those scripts, never from a pipe.
+   `subprocess.run(...).returncode`, never from a pipe.
 10. Re-read `.agent/STOP` before starting. If it exists, stop and hand off.
-11. G1 through G8 all run at or before C3; the handback commit C4 follows them.
-    Clean up `.remedy-wt/base-gate` and any script you wrote there BY EXACT
-    PATH, never by glob.
+11. G1 through G8 all run at or before C4; the handback commit C5 follows them.
+    Remove any scratch you wrote under `.remedy-wt/` BY EXACT PATH, never by
+    glob, and leave the evidence directory and the built package where they are.
 
 ## Done when — G1 through G8
 
 G1 TRANSPORT. Report `sha256` and byte length of the committed
-`.agent/authored/f033-r27.md`, and the same two readings for
-`.agent/last_block.md`. One digest comparison; the reviewer holds the
-pre-emission original and runs the other half itself.
+`.agent/authored/f033-r28.md`, and the same two readings for
+`.agent/last_block.md`. One digest comparison.
 
-G2 THE PLAN. `.agent/plan.md` byte-EQUAL to PLAN27, under 50 lines, holding
+G2 THE PLAN. `.agent/plan.md` byte-EQUAL to PLAN28, under 50 lines, holding
 `## Goal` and the substring `Steps`. Report the byte length and the line count.
 
 G3 THE RECORD APPEND, at C2. Reconstruct the MEASURED base plus one newline plus
-the byte length of RECORD27 to the committed size. Prove the pre-commit blob a
+the byte length of RECORD28 to the committed size. Prove the pre-commit blob a
 byte PREFIX and the slice an exact SUFFIX. COUNT N in the script. Compare the
 file's LAST N blank-line units against the slice's paragraphs IN ORDER. Flip one
 byte inside the FIRST appended paragraph, report the offset, prove it lies in
 that paragraph's span, and show BOTH readers reject the flipped bytes and accept
 the unflipped ones.
 
-G4 THE LEDGER, at `7adee149` and at C2: `^- R-\d+ — ` 310 distinct UNMOVED, this
-round registering nothing; `^Done: R-\d+ — ` 54 lines over 52 distinct going to
-55 over 53 with the ADDED resolved id exactly `R-0749`; `^Landed: ` 22 UNMOVED
-with `^Landed: R-0749 — ` still exactly 2; `^Gate: F033 R26 — ` 0 before and
-exactly 1 after; and the open set 258 going to 257.
+G4 THE LEDGER, at `f13134fe` and at C2: `^- R-\d+ — ` 310 distinct going to 311
+with the ADDED id exactly `R-0750`; `^Done: R-\d+ — ` 55 lines over 53 distinct
+UNMOVED, this round resolving nothing; `^Landed: ` 22 UNMOVED;
+`^Gate: F033 R27 — ` 0 before and exactly 1 after; and the open set 257 going to
+258. Report also that `^R-0736 EXTENSION — ` occurs exactly 1 time and that
+`^- R-0736 — ` still occurs exactly 1 time, so the extension added no id.
 
-G5 THE BRANCH RUN. From the repository root, `python3 -m pytest -n auto -q`.
-Report the REAL exit code, the raw tail, the wall clock in seconds, and the
-pass/fail/skip counts. Write the full output to `branch_run.txt` and the sorted
-`^FAILED` lines to `branch_failed.txt`, both under `.agent/gate_f033_r27/`, and
-report how many lines `branch_failed.txt` holds. If the wall clock exceeds five
-minutes, say so — that is a note for a perf pass, not a failure.
+G5 THE BUILT STATE, at C3. `docs/roadmap/features/T5_F033.md` satisfies ORDERED
+EQUALITY: the pre-commit blob is a byte PREFIX of the post-commit file, the slice
+is an exact SUFFIX of it, and the lines C3's diff ADDS are exactly the slice's
+lines IN ORDER with ZERO deleted lines. Report the before and after byte lengths
+and the added-line count. Then `python3 -m pytest tests/docs/ -q` at a REAL exit
+0, with its pass count reported against the 295 this branch measured at round 26.
 
-G6 THE BASE RUN AND ITS PARITY. Create the worktree per constraint 6 at
-`bd8d9529`. Restore parity per P3, then take the `apps/ui/dist` mtime reading
-per P4 BEFORE the run. Run the IDENTICAL command with `cwd` set to the worktree
-and `REMEDY_UI_NO_AUTO_BUILD` set per P2. Take the mtime reading again AFTER.
-Report: the copy call with its `symlinks` argument as written, the count of
-symlinks that survived as symlinks in the copy, the run's wall-clock window, how
-many `apps/ui/dist` mtimes fall inside it, and whether the parity claim HOLDS or
-is VOID. Write `base_run.txt`, `base_failed.txt` and `parity.txt`.
+G6 THE INTEGRITY CHECK AND THE EVIDENCE JOB, at C4 with a CLEAN tree.
+  (a) `python3 -m apps.cli.grouped integrity check --json` — report the REAL
+      exit code and the verdict field. A non-PASS is a closure BLOCKER: report
+      it and stop.
+  (b) Build the evidence bundle with
+      `packages.orchestration.job_evidence.create_manual_completion_bundle`
+      with `review_feature_id` set to `f033`. Report the JOB ID and the
+      evidence directory path. Then LIST the gate documents the bundle actually
+      wrote and name any of these eight that is ABSENT: final_verifier_report,
+      fresh_evidence, artifact_contract, change_provenance, manifest_integrity,
+      postmortem_integrity, commit_execution, runtime_integration.
+      `write_runtime_integration_gate` alone is NOT a bundle and packages as
+      BLOCKED_EVIDENCE.
 
-G7 COMPARE AND ATTRIBUTE, WITH NO CONDITION ON EITHER HALF.
-`comm -13 base_failed.txt branch_failed.txt` is the BRANCH-ONLY set and
-`comm -23` is the set the branch FIXED; write both to `comparison.txt` and
-report both counts. Then, whether or not parity held:
-  (i) attribute EVERY branch-only id. Re-run the exact node id SERIALLY. A
-      serial PASS is the xdist-flake class — record it, it is not a blocker. A
-      serial FAIL is reproduced at the merge base BEFORE the feature is blamed.
-      A reproducible branch-only failure coupled to feature code is a BLOCKER:
-      STOP and hand back.
-  (ii) attribute EVERY `comm -23` id to the environment class by DIRECT
-      evidence, naming the missing artifact per id. An unattributed id counts as
-      a genuine base failure and blocks the gate verdict. This obligation does
-      NOT depend on the parity claim: the two are independent, and a gate that
-      discharges itself when parity holds demands nothing of the ids that
-      exist — finding R-0703's class, and R-0590's instance exactly.
-If both sets are EMPTY, say so explicitly and create no attribution file.
+G7 THE REVIEW ZIP, at C4, from a CLEAN tree after C3.
+`bash scripts/make_review_zip.sh --evidence-dir <the dir G6 reported>`. Report
+the REAL exit code, the package FILENAME, its SHA-256, and its ARCHIVED PATH —
+the absolute directory it was moved to, or the literal `NOT ARCHIVED` when it
+was left where it was built, which DECISION amend0827 D1 requires. Then report
+the manifest's `committed_review_subject` base and head commits and confirm the
+head is C3, and report the zip import check's own result. If the build fails,
+record the RAW error verbatim and STOP — that is a closure blocker.
 
-G8 CLEANUP AND STRUCTURE, at C3. Remove and prune the worktree and delete
-`tmp/base-gate`; report `git worktree list` showing the primary checkout alone,
-and `git branch --list tmp/base-gate` empty. Then `git status --porcelain`
-EMPTY; `git ls-files --others --exclude-standard` counted for paths naming
-`remedy-wt`, reported as a number; per-commit insertions from C0a through C3
-each under 500; and the path set over `7adee149`..C3 equal to the change set
-minus `.agent/handoff.md` in BOTH directions, allowing for the conditional
-attribution file.
+G8 STRUCTURE, at C4. `git status --porcelain` EMPTY. Per-commit insertions from
+C0a through the last commit before the handback, each reported and each under
+500 — this round has no evidence log to commit, so a number over 500 here is a
+defect rather than a declared exception. The path set over `f13134fe`..C4 equal
+to the change set minus `.agent/handoff.md` in BOTH directions. And
+`git ls-files --others --exclude-standard` reported as a COUNT plus the list, so
+the evidence directory and the package are shown to be untracked rather than
+merely uncommitted.
 
 ## Handback
 
@@ -275,7 +295,8 @@ Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
 round, SESSION 7 of F033, branch, commit SHAs, changed-files table, one line per
 gate G1 through G8 with its REAL exit code, the open-findings count, an
 item-status table covering every Bundle item, every deviation, and the next
-expected action. No length cap. State the branch run's and the base run's REAL
-exit codes and counts in full — this is the one round whose numbers a closure
-may cite as "full suite". If any gate is RED, do not repair on your own
+expected action. No length cap. Carry, as their own labelled lines so the next
+round can quote them without re-deriving: the evidence JOB ID, the package
+FILENAME, its SHA-256, its ARCHIVED PATH, the accepted HEAD commit, and
+`self-use NONE (queue exhausted)`. If any gate is RED, do not repair on your own
 initiative: report it and stop.
