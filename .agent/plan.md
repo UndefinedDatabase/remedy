@@ -1,7 +1,7 @@
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 3, round 14.
+commit of pull request 222. SESSION 3, round 15.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -22,17 +22,17 @@ was gone" answer in one glance.
 | T002 the card component and its guard | done | round 11, PASS |
 | T002 the storage edge (dismissal + last-seen) | done | round 12, PASS |
 | T002 the fetch loader `loadJobDigest` | done | round 13, PASS |
-| T002 the mount into `RemedyShell.tsx` | done | this round |
-| T003 CLI parity and the end-to-end | open | next |
+| T002 the mount into `RemedyShell.tsx` | done | round 14, PASS |
+| T003 CLI parity — `remedy job digest <id>` | done | this round |
+| T003 the end-to-end, integration gate, closure | open | next |
 
 ## Next Steps
-1. This round mounts the card for real: the load, the storage edge bound to
-   `window.localStorage`, last-seen and dismissal wiring, and placement as
-   a sibling of the shell div — `<main>` stays at exactly four children.
-   `onOpenDecisions`/`onPrimaryAction` stay unwired.
-2. The next round is T003: `remedy job digest <id>` CLI parity, then the
-   end-to-end (finish a fake job while the UI is "away", reopen, hero shows
-   the right CTA, dismiss, no re-show), the integration gate and closure.
+1. This round adds `remedy job digest <id>` (bare text + `--json`), reusing
+   `build_job_digest`/`load_run_events` the same way `_cmd_job_summary`
+   already does, so the CLI and the HTTP route can never disagree.
+2. The next round is the end-to-end: finish a fake job while the UI is
+   "away", reopen, hero shows the right CTA, dismiss, no re-show — then the
+   integration gate and closure.
 3. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
    resolution design (D5's "in-page action") and is not yet scheduled.
 
