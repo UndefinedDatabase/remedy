@@ -1,7 +1,7 @@
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 6 of this feature.
+commit of pull request 221. SESSION 6 closed at round 24; next is SESSION 7.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -16,31 +16,27 @@ round — every partial state rendered truthfully in viewer, node and report.
 | T001 stable ids, viewer v2, consolidation | done | round 5 |
 | T002 decision core, subset apply, ledger, the door | done | rounds 6-15 |
 | T003 partial truth on all three surfaces, R-0738 | done | rounds 16-19 |
-| rejections rendered verbatim as repair findings | done | round 20 |
-| that renderer reaches the builder prompt as a segment | done | round 21 |
-| R-0747, and the inverse of the ledger export | done | round 22 |
-| the stored decision selected, and forwarded by the loop | done | round 23 |
-| R-0748, and the job-level caller supplies the ledger | open | this round |
-| R-0745, the door's transitive import closure | open | not scheduled |
-| the operator docs for `patch approve-hunks` | open | not scheduled |
-| the integration gate round, then closure | open | not scheduled |
+| T003 rejection to repair, rendered, wired, end to end | done | rounds 20-24 |
+| THE FEATURE'S FUNCTIONAL SCOPE | complete | at round 24 |
+| the operator docs for `patch approve-hunks` | open | session 7 |
+| the integration gate round | open | session 7 |
+| the closure sequence | open | session 7 |
+| R-0745, the door's transitive import closure | open | PROPOSED to split |
 
 ## Next Steps
-1. This round retires R-0747's false sentence from the second file it reached,
-   and wires `packages/orchestration/pingpong_job.py` — the one place holding
-   the job — to read the task's decision and hand it to the loop. That
-   completes the feature's FUNCTIONAL scope.
-2. THE SOFT LIMIT IS ROUND 25 AND THE REMAINING WORK DOES NOT FIT IN IT.
-   Outstanding: R-0745, the `docs/` operator description no round has yet been
-   allowed a path for, the integration-gate round, and the two-round closure
-   sequence. That is four to five rounds against one.
-3. The session-6 handoff therefore carries the operator scope report operator
-   amendment amend0827 rule 6 requires, with a proposal. It is a DOCUMENTED
+1. Session 7 books the round 24 PASS from `.agent/handoff.md` into
+   `.agent/live_review.md` in the first commits of its first round.
+2. THE SOFT LIMIT IS REACHED AT SESSION 7. The scope report operator amendment
+   amend0827 rule 6 requires is written in `.agent/handoff.md`, with a proposal
+   the operator decides on. Session 7 reads it BEFORE planning work.
+3. The remaining closure obligations, in order: the `docs/` operator-facing
+   description of `remedy patch approve-hunks`, which no round has yet been
+   allowed a path for; then the integration gate per
+   docs/agents/integration_gate.md; then the closure sequence and its PR.
+4. R-0745 is open and unscheduled. The handoff proposes splitting it onto its
+   own STATUS line so a feature that has met its Acceptance can close. That is a
    PROPOSAL and is never executed on the reviewer's own authority.
-4. No pull request exists and none should be created before the closure
-   sequence, which is where docs/agents/split_workflow.md rules it.
 
 ## Risks
-- R-0745 is open against the write door's import closure and is unscheduled. It
-  is not a blocker for the functional scope but it is a block condition at
-  closure, so the scope report must name it explicitly.
+- If R-0745 must be fixed inside F033, session 7 cannot also close the feature
+  and the operator should expect an eighth session.
