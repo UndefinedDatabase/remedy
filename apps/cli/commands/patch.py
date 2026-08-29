@@ -307,7 +307,9 @@ def _cmd_approve_hunks(
 
     # `task_run` is passed through UNCHANGED, None included: None is exactly what selects
     # the job-level scope, and substituting anything for it would decide over another diff.
-    evidence_dir = evidence_index.resolve_job_evidence_dir(job_id_str)
+    # R-0744: the RESOLVED id, never `job_id_str`. The operator's argument may be a short
+    # hex prefix or an uppercase UUID, and the index is keyed by the full canonical id.
+    evidence_dir = evidence_index.resolve_job_evidence_dir(str(job_id))
     view = diff_view_source.build_diff_view(evidence_dir, task_id=task_run)
 
     # BOTH halves of the attempt key come from the ENVELOPE and neither is asked of the

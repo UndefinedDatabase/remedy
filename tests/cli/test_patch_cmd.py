@@ -17,6 +17,8 @@ is the WIRING and nothing the three already pin for themselves:
   - a refusal exits 1, never calls `save_job`, and leaves `job.metadata` with no decisions
     key at all;
   - a job whose evidence directory does not resolve gets `no_diff_available`;
+  - the evidence directory is resolved from the RESOLVED job id, so a short hex prefix and
+    an uppercase UUID record exactly as the canonical lowercase id does (finding R-0744);
   - an unknown job id exits 1;
   - `--json` prints parseable JSON on BOTH the success and the refusal path.
 
@@ -32,7 +34,7 @@ from __future__ import annotations
 import difflib
 import json
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -40,7 +42,7 @@ from apps.cli.command_catalog import get_command
 from apps.cli.commands import collect_all_handlers
 from apps.cli.commands import patch as CMD
 from packages.core.models import Job
-from packages.orchestration.data_paths import job_evidence_index_dir
+from packages.orchestration.data_paths import job_evidence_index_dir, resolve_job_id
 from packages.orchestration.diff_parser import parse_unified_diff_to_view
 from packages.orchestration.diff_view_source import (
     DIFF_JOB_ARTIFACT_NAME,
@@ -48,6 +50,7 @@ from packages.orchestration.diff_view_source import (
     DIFF_TASK_RUN_ARTIFACT_NAME,
     DIFF_TASK_RUNS_DIR_NAME,
 )
+from packages.orchestration.evidence_index import resolve_job_evidence_dir
 from packages.orchestration.hunk_approval import REFUSAL_MISSING_REASON
 from packages.orchestration.hunk_decision_record import (
     HUNK_DECISIONS_METADATA_KEY,
@@ -104,8 +107,9 @@ def isolated(tmp_path, monkeypatch) -> Path:
     return root
 
 
-def _job() -> Job:
-    job = Job(id=uuid4(), name="hunk decision job", metadata={"unrelated": "kept"})
+def _job(job_id: UUID | None = None) -> Job:
+    job = Job(id=job_id or uuid4(), name="hunk decision job",
+              metadata={"unrelated": "kept"})
     save_job(job)
     return job
 
@@ -290,3 +294,70 @@ class TestItMintsNoRefusalVocabularyOfItsOwn:
 
         assert exc.value.code == 1
         assert "Error:" in capsys.readouterr().err
+
+
+class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
+    """Finding R-0744, as the two forms `resolve_job_id` exists to accept.
+
+    The index is keyed by the CANONICAL lowercase hyphenated id, so a handler that hands
+    `resolve_job_evidence_dir` the operator's RAW argument reports `no_diff_available` for
+    a diff sitting in the directory the index names — the misreport
+    `HUNK_RECORD_REFUSAL_NO_DIFF` was minted to prevent, arriving through the id instead of
+    through the artifact. The eleven tests above are BLIND to it: every one of them names
+    its job by the canonical form, where raw and resolved are the same string.
+
+    Each test below therefore asserts the RECORDED state rather than the exit code. A
+    handler that merely exited 0 while recording under another key would pass an
+    exit-code test and still have lost the operator's decision.
+    """
+
+    #: A job id carrying hex LETTERS, so its uppercase form is really a different string.
+    #: Fixed rather than drawn from `uuid4`, which can in principle mint an all-digit id.
+    CASED_JOB_ID = UUID("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d")
+
+    def _premise(self, tmp_path, job) -> None:
+        """The evidence directory really resolves under the job's FULL canonical id —
+        the premise that makes naming the job the OTHER way a test of the resolution."""
+        evidence_dir = _evidence(tmp_path, job)
+        assert resolve_job_evidence_dir(str(job.id)) == evidence_dir
+
+    def _decided(self, job) -> dict:
+        """The record as it is ON DISK, so `save_job` is part of what is asserted."""
+        records = load_job(job.id).metadata[HUNK_DECISIONS_METADATA_KEY]
+        assert list(records) == [f"job:{DIFF_JOB_ARTIFACT_NAME}"]
+        return records[f"job:{DIFF_JOB_ARTIFACT_NAME}"]
+
+    def test_a_short_hex_prefix_records_exactly_as_the_full_id_does(
+        self, isolated, tmp_path, capsys,
+    ):
+        """The prefix form is why `resolve_job_id` exists, and it must reach the index."""
+        job = _job()
+        self._premise(tmp_path, job)
+        prefix = job.id.hex[:8]
+        assert resolve_job_id(prefix) == job.id, "the fixture's prefix must name THIS job"
+
+        CMD._cmd_approve_hunks(
+            prefix, approve=[HUNK_IDS[0]], reject=[f"{HUNK_IDS[1]}={REASON}"])
+
+        record = self._decided(job)
+        assert record["task_id"] == "job" and record["attempt"] == DIFF_JOB_ARTIFACT_NAME
+        assert [row["state"] for row in record["hunks"]] == [
+            "approved", "rejected", "pending"]
+        assert "no_diff_available" not in capsys.readouterr().err
+
+    def test_an_uppercase_uuid_records_exactly_as_the_lowercase_one_does(
+        self, isolated, tmp_path, capsys,
+    ):
+        """`UUID` normalises case, the index file does not — so only the RESOLVED id finds it."""
+        job = _job(self.CASED_JOB_ID)
+        self._premise(tmp_path, job)
+        shouted = str(job.id).upper()
+        assert shouted != str(job.id), "the fixture must really change case"
+        assert resolve_job_id(shouted) == job.id
+
+        CMD._cmd_approve_hunks(shouted, approve=[HUNK_IDS[0]])
+
+        record = self._decided(job)
+        assert [row["state"] for row in record["hunks"]] == [
+            "approved", "pending", "pending"]
+        assert "no_diff_available" not in capsys.readouterr().err
