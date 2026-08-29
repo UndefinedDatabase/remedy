@@ -1,0 +1,69 @@
+F257 round 8 — C3, the self-use run transcript
+Every path below is written relative to the repository root.
+
+G1 STOP re-check before C3
+  os.path.exists('.agent/STOP') = False
+
+STEP 1 — the queue read through the SHIPPED loader, BEFORE the run
+  default_self_use_queue_path() relative to root = scripts/self_use_queue.json
+  pending_self_use_items() ids = ['SU-001']
+  next_self_use_item().id      = 'SU-001'
+
+STEP 2 — plan_next_self_use_item(dest_dir, repo_path=<repository root>)
+  dest_dir relative to root = .remedy-wt/f257-r8-selfuse
+  entry.id                  = 'SU-001'
+  entry.title               = 'Document the Markdown job-file format under docs'
+  entry.consumed_by         = ''  (empty: the item is PENDING)
+  rendered job file         = .remedy-wt/f257-r8-selfuse/SU-001.md
+
+G6(g) tree state immediately after the run and BEFORE anything is staged
+  git status --porcelain | wc -l = 0
+  entries                        = []
+
+G6(a) THE RENDERED BYTES ARE THE CURATED BYTES
+  curated job_markdown at ba28d224: bytes=1235 sha256=a26bf66250b9aedb58d9a30837aba8c4ca425ed1a26644ce11d79721ebbdaf51
+  rendered job file          : bytes=1235 sha256=a26bf66250b9aedb58d9a30837aba8c4ca425ed1a26644ce11d79721ebbdaf51
+  BYTE-IDENTICAL             : True
+
+G6(b) the plan's own digest of the job file
+  plan.job_file_sha256       = a26bf66250b9aedb58d9a30837aba8c4ca425ed1a26644ce11d79721ebbdaf51
+  EQUALS the curated digest  = True
+
+G6(c) the plan's shape
+  plan.status                = 'planned'
+  plan.job_title             = 'Document the Markdown job-file format'
+  [t.task_id for t in plan.tasks] = ['T001']
+  plan.repo_path resolves to the repository root = True
+  plan.repo_path relative to the root = .  ('.' is the root)
+
+G6(d) freshly minted per run — no expected value is stated for either
+  plan.job_id                = 124d7421965146bd
+  plan.created_at            = 2026-08-29T00:39:10.823190+00:00
+
+G6(e) THE RUN DID NOT CONSUME ITS OWN ITEM
+  BEFORE: next_self_use_item().id = 'SU-001'  pending ids = ['SU-001']
+  AFTER : next_self_use_item().id = 'SU-001'  pending ids = ['SU-001']
+  git status --porcelain scripts/self_use_queue.json = ''  (EMPTY)
+
+G6(f) NOTHING WAS PROMOTED
+  occurrences of the promotion-module name in this run script = 0
+  (the needle is assembled from two fragments, so the count is honest)
+  plan.status                = 'planned'  — planned, never promoted
+
+STEP 3 — copy the rendered job file into the committed evidence directory
+  .remedy-wt/f257-r8-selfuse/SU-001.md -> .agent/selfuse_f257/SU-001.md
+  copied bytes sha256        = a26bf66250b9aedb58d9a30837aba8c4ca425ed1a26644ce11d79721ebbdaf51
+  identical to the rendered file = True
+
+WHERE THIS STOPPED, AND WHY.
+The item was PLANNED and nothing else. The shipped module plans only — its
+own docstring says it deliberately does not run a job here and deliberately
+does not promote one — so taking SU-001 to the plan and stopping is the whole
+of what the shipped code offers. The approval gate this plan now waits at is
+the OPERATOR'S: promotion stays behind the --approve barrier and no shortcut
+was taken through it. The documentation page SU-001 asks for was NOT written;
+this round planned the job, it did not do the job. SU-001 is still PENDING —
+its consumed_by is empty, both queue readings above answer SU-001, and
+scripts/self_use_queue.json is unmodified in the working tree. Marking the
+item consumed belongs to the closure commit, because a run that can check
+itself off is not a gate.
