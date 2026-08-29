@@ -21,6 +21,7 @@ from packages.orchestration.self_use_job import (
 )
 from packages.orchestration.self_use_queue import (
     SelfUseQueueEntry,
+    load_self_use_queue,
     next_self_use_item,
 )
 
@@ -79,14 +80,16 @@ class TestWriteSelfUseJobFile:
         assert path.exists()
 
 
+# R-0737 — these two classes read the shipped queue's CONTENTS because closure precondition 6 is designed to exhaust its PENDING state.
 class TestPlanSelfUseItem:
     """A curated item reaches the EXISTING job parser, not a second one."""
 
     def test_the_shipped_item_plans_with_its_title_and_tasks(
         self, tmp_path: Path, isolate_data_root
     ):
-        entry = next_self_use_item()
-        assert entry is not None, "the shipped queue has no pending item"
+        queue = load_self_use_queue()
+        assert queue, "the shipped queue is empty"
+        entry = queue[0]
         path, plan = plan_self_use_item(entry, tmp_path / "jobs", str(tmp_path))
         assert path.exists()
         assert plan.error == ""
@@ -96,7 +99,7 @@ class TestPlanSelfUseItem:
     def test_the_shipped_item_plans_to_exactly_one_task_with_acceptance(
         self, tmp_path: Path, isolate_data_root
     ):
-        entry = next_self_use_item()
+        entry = load_self_use_queue()[0]
         _path, plan = plan_self_use_item(entry, tmp_path / "jobs", str(tmp_path))
         assert len(plan.tasks) == 1
         assert plan.tasks[0].task_id == "T001"
@@ -106,9 +109,16 @@ class TestPlanSelfUseItem:
 class TestPlanNextSelfUseItem:
     """The whole track in one call, and its one deliberate failure."""
 
-    def test_it_returns_the_shipped_pending_item(self, tmp_path: Path, isolate_data_root):
+    def test_it_plans_the_pending_item_or_raises_when_the_queue_is_exhausted(
+        self, tmp_path: Path, isolate_data_root
+    ):
+        pending = next_self_use_item()
+        if pending is None:
+            with pytest.raises(SelfUseJobError):
+                plan_next_self_use_item(tmp_path / "jobs", str(tmp_path))
+            return
         entry, path, plan = plan_next_self_use_item(tmp_path / "jobs", str(tmp_path))
-        assert entry.id == next_self_use_item().id
+        assert entry.id == pending.id
         assert entry.is_pending
         assert path.name == f"{entry.id}.md"
         assert plan.error == ""
