@@ -1,389 +1,349 @@
-# Handback — F033 Hunk-level diff approval · ROUND 13
+# Handback — F033 round 14 · THE CLI COMMAND AND ITS HANDLER
 
 ## Session
 
-SESSION 4 of feature F033 · round 13 · rounds so far 13
+SESSION 4 of feature F033 · round 14 · rounds so far 14
 
 ## Range
 
-Review of `d526dfb5bb89bf83c5a23ed506f3843b1278e496`..`55c365d6619e3b10d56b3f452b178b0db357bb91`
-(C6, the commit that writes this file, follows and is tabled below under the
-self-reference exception).
+Review of `34d5e4e48418536bfcd21fd9403403b96ea66220`..`eec2cd4ab4388c1d62195d22317b38222274f927`
+(BASE is the round 13 handback commit; C6, the commit carrying this file, is the tip).
 
-BASE = `d526dfb5bb89bf83c5a23ed506f3843b1278e496`, confirmed with
-`git rev-parse HEAD` before C0a.
+Branch `feature/f033-hunk-approval-v2` throughout. `+/-` cells below are `git diff --numstat`,
+read from the tool per commit, and they agree cell for cell with the walk G8 performed.
 
 ## Commits
 
-All `+/-` cells are the two columns of `git diff --numstat <sha>^ <sha>`, read
-off the tool, and were compared cell by cell against the insertion counts G8's
-commit walk produced (408, 259, 14, 2, 4, 46, 91) — they agree.
-
-### bcb3dd39 chore(f033): save the round 13 block
+### 54dbf6ce docs(f033): save the round 14 block — C0a
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f033-r13.md | +408/-0 | C0a — the reviewer's block copied byte for byte with `shutil.copyfile` (NEW FILE) |
+|---|---|---|
+| .agent/authored/f033-r14.md | +449 -0 | the reviewer's block, copied byte for byte with `shutil.copyfile` |
 
-### 1a529363 chore(f033): mirror the round 13 block
+### 1207790f docs(f033): mirror the round 14 block — C0b
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/last_block.md | +259/-258 | C0b — the same bytes mirrored, so both paths hold ONE blob id |
+|---|---|---|
+| .agent/last_block.md | +302 -261 | the same bytes, read back out of the C0a blob |
 
-### e2d813bc docs(f033): point the plan at the shared evidence-directory resolver
+### fffa6647 docs(f033): open round 14 in the plan — C1
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/plan.md | +14/-14 | C1 — whole-file PLANF033R13, SESSION 4, round 12 closed, this round's item opened |
+|---|---|---|
+| .agent/plan.md | +16 -19 | PLANF033R14, whole-file |
 
-### 2e521057 docs(f033): book the round 12 verdict into the record
+### 096b8539 docs(f033): book the round 13 verdict and register R-0743 — C2
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | +2/-0 | C2 — RECORDF033R13 appended under amend0827 rule 1; a verdict buys no round of its own |
+|---|---|---|
+| .agent/live_review.md | +4 -0 | RECORDF033R14 appended: the R13 `Gate:` entry and the R-0743 registration |
 
-### 4202cad9 docs(f033): record the round 12 prose slips
+### 0d2c98c0 docs(f033): record the round 13 prose slip — C3
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/prose_slips.md | +4/-0 | C3 — SLIPSF033R13, the two dated round-12 slips, under amend0827 rule 2 |
+|---|---|---|
+| .agent/prose_slips.md | +2 -0 | SLIPSF033R14 appended |
 
-### 8889ff60 refactor(f033): move the evidence-directory rule into evidence_index
+### ca938ff4 feat(f033): add the approve-hunks command and its handler — C4
 | Path | +/- | Reason |
-|------|-----|--------|
-| packages/orchestration/evidence_index.py | +38/-0 | C4 — the moved rule as the public `resolve_job_evidence_dir` |
-| packages/orchestration/ui_server.py | +8/-16 | C4 — `_resolve_evidence_dir` becomes a delegation; nothing outside that function moves |
+|---|---|---|
+| apps/cli/command_catalog.py | +37 -0 | three arg shorthands and the `patch.approve-hunks` entry |
+| apps/cli/commands/patch.py | +112 -0 | `_split_hunk_rejection`, `_cmd_approve_hunks`, the `COMMAND_HANDLERS` entry |
+| tests/test_command_catalog.py | +3 -2 | the equality guard widened from 6 to 7 in the SAME commit as the entry |
 
-### 55c365d6 test(f033): pin the shared evidence-directory rule and its delegation
+### eec2cd4a test(f033): pin the evidence-dir precedence and the approve-hunks handler — C5
 | Path | +/- | Reason |
-|------|-----|--------|
-| tests/orchestration/test_evidence_index.py | +91/-0 | C5 — seven added tests plus the module docstring's property list |
+|---|---|---|
+| tests/cli/test_patch_cmd.py | +292 -0 | NEW — 11 tests over the handler, named after `apps/cli/commands/patch.py` |
+| tests/orchestration/test_evidence_index.py | +14 -0 | the R-0743 precedence pin, one added test |
+| .agent/live_review.md | +2 -0 | the one ordered `Landed: R-0743 — …` line |
 
-### C6 (this commit) docs(f033): hand back the round 13 evidence-resolver move
+### C6 docs(f033): hand back the round 14 CLI command
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/handoff.md | this file | C6 — a handoff cannot table the commit that writes it (R-0149 pattern) |
+|---|---|---|
+| .agent/handoff.md | this file | the handback; a handoff cannot table the commit that writes it (R-0149) |
 
 ## External actions
 
-| Command | Outcome |
-|---------|---------|
-| `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/g7-r13 55c365d6 --detach` | exit 0 — "Preparing worktree (detached HEAD 55c365d6)"; every G7 mutation ran here, never in the primary checkout |
-| `git -C .remedy-wt/g7-r13 checkout -q d526dfb5` | exit 0 — used only to measure the BASE test count G7's control is compared against |
-| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g7-r13 --force` | exit 0 — removed BY EXACT PATH |
-| `git worktree prune` | exit 0 — `git worktree list` then shows the primary checkout only |
-| `git push -u origin feature/f033-hunk-approval-v2` | see the transcript recorded below this table |
-
-PUSH: `git push -u origin feature/f033-hunk-approval-v2` — exit 0, branch
-`feature/f033-hunk-approval-v2` updated on `origin` and tracking set. No PR was
-created, edited or merged this round; no `gh` command was run.
+- `git worktree add --detach .remedy-wt/base-g6 34d5e4e4` — created, used ONLY to read G6(d)'s
+  BASE catalog and handler counts.
+- `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/base-g6` then `git worktree prune`
+  — removed by exact path; `git worktree list` back to the primary checkout alone.
+- `git worktree add --detach .remedy-wt/g7-c5 eec2cd4a` — created for the G7 mutations.
+- `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g7-c5` then `git worktree prune`
+  — removed by exact path; `git worktree list` back to the primary checkout alone.
+- `git push -u origin feature/f033-hunk-approval-v2` — the round's FINAL action, run immediately
+  after C6. Its outcome cannot be recorded in the file it pushes (the write-once rule forbids a
+  second handoff commit), so it is reported in the round report instead; a reader auditing it
+  reads `git log origin/feature/f033-hunk-approval-v2 -1` and expects the C6 sha.
+- No PR created, none merged, no `gh` command run. No force-push, no history rewrite, no branch
+  deleted.
 
 ## Verification
 
-ONE LINE PER GATE, with real exit codes and real numbers.
+ONE LINE PER GATE, real exit codes and real numbers.
 
-- **G1 HYGIENE — PASS.** `.agent/STOP` read from disk before C0a and again
-  before C6: `ls: cannot access '.agent/STOP': No such file or directory` both
-  times, so ABSENT both times. `git status --porcelain` printed empty after
-  every one of the seven commits (C0a, C0b, C1, C2, C3, C4, C5). Branch
-  `feature/f033-hunk-approval-v2` throughout (`git rev-parse --abbrev-ref HEAD`).
-  No force-push, no history rewrite, no branch deletion; `git rev-parse
-  feature/f033-hunk-approval` = `ed04081283081f237d96147da39a07fca0b1ccad`,
-  unchanged.
-- **G2 TRANSPORT — PASS.** `<C0a>:.agent/authored/f033-r13.md` = 29026 bytes,
-  sha256 `7655c0b3310200d16921d6d83d82f708b389085117b637ac8ef8ee8474103a2f`;
-  `.remedy-wt/f033-r13-block.md` = 29026 bytes, same sha256; EQUAL True. `git
-  rev-parse <C0b>:.agent/authored/f033-r13.md` and `git rev-parse
-  <C0b>:.agent/last_block.md` both print ONE blob id,
-  `7499904122ed955ccac42f3f59872ae1df611bd2`.
-- **G3 THE RECORD APPEND at C2 — PASS.** (a) BASE blob 1512826 bytes (sha256
-  `dba6ffb8…6cb26`) + one newline + RECORDF033R13 (5021 bytes, sha256
-  `29192f8b…57818`) = 1517848 bytes, and the C2 blob is 1517848 bytes (sha256
-  `f23d379f…ecf61`) — RECONSTRUCTION EQUALS C2 BLOB True; BASE is a byte PREFIX
-  True; C2 ends in exactly one newline True. (b) N COUNTED by the script = 1;
-  the LAST 1 blank-line unit of the C2 blob equals the slice's single paragraph
-  (len 5020) IN ORDER, True. FIRST appended paragraph byte span computed on
-  BYTES: 1512827 to 1517847 (length 5020), and `c2[1512827:1517847]` equals that
-  paragraph. NEGATIVE CONTROL at byte offset 1515337, PROVED inside the span
-  (1512827 ≤ 1515337 < 1517847), flipping `r` → `X`: reader 1 (whole-blob
-  reconstruction equality) rejects True, reader 2 (last-N paragraph compare)
-  rejects True — BOTH readers reject.
-- **G4 THE LEDGER at C2 — PASS.** BASE: registered `^- R-\d+ — ` 303 lines /
-  303 distinct; `^Done: R-\d+ — ` 48 lines / 46 distinct; `^Landed: R-` 15;
-  `^Gate: F\d+ R\d+ — ` 129; `^Gate: F033 R12 — ` 0; `^DECISION F033 D\d+ — `
-  4; OPEN SET 257. C2: registered 303 / 303 UNMOVED; `Done:` 48 / 46 UNMOVED;
-  `Landed:` 15 UNMOVED; `Gate:` 130 (129 → 130); `^Gate: F033 R12 — ` exactly 1
-  (0 → 1); `DECISION F033 D` 4 UNMOVED; OPEN SET 257 at BOTH. Every ordered
-  reading reproduced.
-- **G5 THE PROSE FILES — PASS.** `.agent/plan.md` at C1: 2750 bytes, sha256
-  `be7c3cc5…56417`, BYTE-EQUAL to PLANF033R13 (same length, same sha256); 49
-  lines, under the 50-line cap AGENTS.md sets. `.agent/prose_slips.md`: BASE
-  blob 23007 bytes + one newline + SLIPSF033R13 (785 bytes, sha256
-  `4d4c4ce0…a9cfe`) = 23793 = the C3 blob, RECONSTRUCTION EQUALS C3 BLOB True,
-  BASE a byte PREFIX True. `^2026-\d\d-\d\d · F033 R12 · ` = 0 at BASE and 2 at
-  C3; lines beginning `- R-` in the whole file at C3 = 0.
-- **G6 THE CODE AGAINST THE SPEC at C4 — PASS.** (a) `python3 -m ruff check
-  packages/orchestration/evidence_index.py packages/orchestration/ui_server.py
-  tests/orchestration/test_evidence_index.py` — REAL exit 0, summary line "All
-  checks passed!" (run at C4 and again over the C5 tree; both exit 0, both the
-  same summary line). (b) THE MOVE IS A MOVE: AST-extracted
-  `resolve_job_evidence_dir`'s body from the C4 blob (quoted in full below); the
-  `except` clause's exception names read `['ImportError', 'OSError',
-  'ValueError', 'KeyError']` IN THAT ORDER; the text `remedy-job-evidence-`
-  occurs in the body True; the names `find_record` and `load_index_records` are
-  both absent (False, False). (c) THE DELEGATION: AST-extracted
-  `_resolve_evidence_dir`'s body from the C4 blob of `ui_server.py` (quoted in
-  full below); its call list is exactly `['resolve_job_evidence_dir']`; the
-  names `json`, `resolve_data_root` and `evidence_dir_local` are all absent
-  (False, False, False) and the text `remedy-job-evidence-` is absent (False).
-  Its extracted signature at C4 is `'def _resolve_evidence_dir(job_id: str) ->
-  Path | None:\n'` and at BASE is the same string — BYTE-IDENTICAL True.
-  (d) `git show --numstat 8889ff60 -- packages/orchestration/ui_server.py` →
-  `8	16	packages/orchestration/ui_server.py`, i.e. +8 / -16, and the diff hunk
-  is confined to lines 164-180, the one function; nothing outside it moved.
-  (e) Both functions run directly, in a `tempfile.TemporaryDirectory` with the
-  CWD moved into it and a hand-written index record naming a directory that
-  exists: `resolve_job_evidence_dir('jobG6')` → `/tmp/tmp8_1qpku7/ev_dir`,
-  `_resolve_evidence_dir('jobG6')` → `/tmp/tmp8_1qpku7/ev_dir`, SAME VALUE True,
-  NOT None True.
-- **G7 THE MUTATION RED-PROOFS at C5 — PASS, all three RED.** Disposable
-  worktree `/home/decodeux/Repos/remedy/.remedy-wt/g7-r13` at `55c365d6`,
-  `python3 -B` throughout, import first proved to resolve to the WORKTREE's copy
-  (`import packages.orchestration.evidence_index` → exit 0 →
-  `/home/decodeux/Repos/remedy/.remedy-wt/g7-r13/packages/orchestration/evidence_index.py`).
-  UNMUTATED CONTROL: REAL exit 0, `32 passed in 1.78s`, which exceeds the 25 the
-  same file gives at BASE (measured in the same worktree at `d526dfb5`: `25
-  tests collected`, then REAL exit 0 at `25 passed in 1.73s`). Each mutation's
-  anchor was asserted UNIQUE inside its named file (1 occurrence each) before
-  replacement, and the module was restored byte-identically after each (True
-  each time):
-  (i) drop the `is_dir()` check on the index branch of `evidence_index.py` —
-  REAL exit 1, `1 failed, 31 passed in 1.64s`, failing test
-  `tests/orchestration/test_evidence_index.py::TestResolveJobEvidenceDir::test_record_naming_an_absent_directory_answers_none`.
-  (ii) make the index branch additionally require the record's `job_id` key to
-  equal `job_id` (the `find_record` re-expression this round refuses) — REAL
-  exit 1, `1 failed, 31 passed in 1.69s`, failing test
-  `tests/orchestration/test_evidence_index.py::TestResolveJobEvidenceDir::test_record_without_a_job_id_key_still_resolves`.
-  (iii) make `ui_server._resolve_evidence_dir` return None unconditionally —
-  REAL exit 1, `1 failed, 31 passed in 1.73s`, failing test
-  `tests/orchestration/test_evidence_index.py::TestUiServerDelegatesToTheSameRule::test_ui_server_resolver_answers_the_same_directory`.
-  Post-restore control: REAL exit 0, `32 passed in 1.47s`, and `git status
-  --porcelain` inside the worktree printed empty. Worktree removed BY EXACT
-  PATH, then `git worktree prune`; `git worktree list` then shows the primary
-  checkout only.
-- **G8 SUITES AND STRUCTURE — PASS.** Serially, one pytest process at a time,
-  every REAL exit 0: `tests/orchestration/test_evidence_index.py` exit 0, `32
-  passed in 1.44s` (25 at BASE); `tests/orchestration/test_final_audit_evidence.py`
-  exit 0, `37 passed in 0.25s` (37 at BASE); `tests/ui_server/test_diff_endpoint.py`
-  exit 0, `8 passed in 2.51s` (8 at BASE);
-  `tests/orchestration/test_hunk_decision_record.py` exit 0, `15 passed in
-  0.60s` (15 at BASE); `tests/test_command_catalog.py` exit 0, `18 passed in
-  0.20s` (18 at BASE); canary `tests/cli/test_golden_path.py` exit 0, `42 passed
-  in 20.68s` (42 at BASE). `git rev-list --reverse BASE..C5` walks SEVEN
-  commits, each with exactly ONE parent, each under 500 INSERTIONS measured as
-  the `+` column of `git diff --numstat`: bcb3dd39 408, 1a529363 259, e2d813bc
-  14, 2e521057 2, 4202cad9 4, 8889ff60 46, 55c365d6 91. PATH SET both
-  directions: touched-but-not-in-the-change-set is EMPTY; in-the-change-set-but-
-  not-touched is `['.agent/handoff.md']` alone, which C6 writes and which G8
-  measures at C5 — see the deviations. Delimiter residue at C5, `<<<SLICE ` /
-  `<<<END `: `.agent/plan.md` 0/0, `.agent/prose_slips.md` 0/0,
-  `packages/orchestration/evidence_index.py` 0/0,
-  `packages/orchestration/ui_server.py` 0/0,
-  `tests/orchestration/test_evidence_index.py` 0/0, against the non-zero control
-  `.agent/authored/f033-r13.md` at 5/6 (5 `<<<SLICE ` = 3 real markers plus 2
-  prose mentions at block lines 10 and 384; 6 `<<<END ` = 3 real markers plus 3
-  prose mentions at block lines 10, 14 and 384). `git ls-files .remedy-wt` reads
-  0 (empty list). DO-NOT-TOUCH PATHS, blob id at BASE vs at C5, one line per
-  path — 13 of 13 identical:
-  `packages/orchestration/hunk_decision_record.py` `0563c5a00660` True;
-  `packages/orchestration/hunk_ledger.py` `57c00fcfde62` True;
-  `packages/orchestration/hunk_apply.py` `195f0d223210` True;
-  `packages/orchestration/hunk_approval.py` `25d1a8d0d08d` True;
-  `packages/orchestration/hunk_subset_diff.py` `6c47c2083795` True;
-  `packages/orchestration/diff_view_source.py` `30a86b1b977d` True;
-  `packages/orchestration/diff_parser.py` `b6632f657426` True;
-  `apps/cli/command_catalog.py` `2c71af53fae4` True;
-  `apps/cli/commands/patch.py` `051789258623` True;
-  `apps/cli/grouped.py` `c9c5265d0b87` True;
-  `tests/ui_server/test_command_channel.py` `7ff931e2f005` True;
-  `tests/test_command_catalog.py` `265c21de1d7d` True;
-  `docs/roadmap/STATUS.md` `a370be066b7a` True.
+- **G1 HYGIENE — PASS.** `.agent/STOP` read from disk before C0a: absent; read again before C6:
+  absent. `git status --porcelain` empty after every one of C0a, C0b, C1, C2, C3, C4, C5 and
+  after both worktree removals. Branch `feature/f033-hunk-approval-v2` throughout;
+  `git rev-parse feature/f033-hunk-approval` = `ed04081283081f237d96147da39a07fca0b1ccad`,
+  unchanged; the branch reflog shows seven plain `commit:` entries and no forced update.
+- **G2 TRANSPORT — PASS.** `54dbf6ce:.agent/authored/f033-r14.md` is 33129 bytes, sha256
+  `9c373cd2076dc69440904aa2beb925afd1b139255655feca01e56ca7aec322ca`;
+  `.remedy-wt/f033-r14-block.md` is 33129 bytes, same sha256; EQUAL = True.
+  `git rev-parse 1207790f:.agent/authored/f033-r14.md` and
+  `git rev-parse 1207790f:.agent/last_block.md` both print `9ef207de42099f7ceebaa64bf0bd084aa9943065`
+  — ONE blob id.
+- **G3 THE RECORD APPEND at C2 — PASS.** (a) BASE blob 1517848 bytes (== the ordered 1517848),
+  plus one newline plus RECORDF033R14 at 7219 bytes = 1525068, and the C2 blob is 1525068 bytes
+  and byte-EQUAL to that reconstruction; BASE is a byte PREFIX = True; ends in exactly one
+  newline = True. (b) N COUNTED by the script = 2; the LAST 2 blank-line units of the C2 blob
+  equal the slice's two paragraphs IN ORDER (unit 0 = 5164 bytes, `Gate: F033 R13 — …`; unit 1 =
+  2052 bytes, `- R-0743 — Low, …`). First appended paragraph's BYTE span computed as
+  [1517849, 1523013), length 5164 == len(first paragraph), and `C2[span] == first paragraph`.
+  NEGATIVE CONTROL at byte offset 1520431, proved inside that span; reader 1 (byte
+  reconstruction) rejects it and reader 2 (last-N paragraphs) rejects it — BOTH reject.
+- **G4 THE LEDGER at C2 and C5 — PASS.** BASE: registered 303 (303 distinct), `Done:` 48 lines
+  over 46 distinct, `Landed:` 15, `Gate:` 130, `^Gate: F033 R13 — ` 0, `DECISION F033 D` 4, open
+  set 257. C2: registered 304 with the ADDED id exactly `R-0743`, `Done:` 48/46, `Landed:` 15,
+  `Gate:` 131 with `^Gate: F033 R13 — ` exactly 1, `DECISION F033 D` 4, open set 258. C5:
+  registered 304 (no id added), `Done:` 48/46, `Landed:` 16 with `^Landed: R-0743 — ` exactly 1,
+  `Gate:` 131, `DECISION F033 D` 4, open set 258. Every ordered reading met.
+- **G5 THE PROSE FILES — PASS.** `.agent/plan.md` at C1 is 2479 bytes over 46 lines, byte-EQUAL
+  to PLANF033R14, and 46 < the 50-line cap AGENTS.md sets. `.agent/prose_slips.md`: BASE blob
+  23793 bytes (== the ordered 23793), plus one newline plus SLIPSF033R14 at 472 bytes = 24266,
+  and the C3 blob is 24266 bytes and byte-EQUAL; BASE a byte PREFIX = True; ends in exactly one
+  newline = True. `^2026-\d\d-\d\d · F033 R13 · ` lines: 0 at BASE, 1 at C3. Lines beginning
+  `- R-` in the whole file at C3: 0.
+- **G6 THE CATALOG AND ITS GUARD at C4 — PASS.** (a) `python3 -m ruff check
+  apps/cli/command_catalog.py apps/cli/commands/patch.py tests/test_command_catalog.py` — REAL
+  exit 0, summary line `All checks passed!`. (b) `get_command("patch.approve-hunks")`:
+  group_id `patch`, subcommand `approve-hunks`, action_class `approval_gate`, supports_json
+  True, may_mutate_repo **False**, requires_permission **False**; args NAMES in order
+  `['job_id', '--task-run', '--approve-hunk', '--reject-hunk', '--json']`; the args carrying
+  `is_repeatable` are `['--approve-hunk', '--reject-hunk']`. (c)
+  `len(get_commands_for_group("patch"))` = 7, sorted subcommand set
+  `['apply', 'approve', 'approve-hunks', 'list', 'reject', 'revert', 'show']`, and
+  `"patch.approve-hunks" in collect_all_handlers()` = True at THIS commit. (d) BASE:
+  `len(CATALOG)` 340, `len(collect_all_handlers())` 340, catalog ids with NO handler 0. C4:
+  `len(CATALOG)` 341, `len(collect_all_handlers())` 341, catalog ids with NO handler 0. (e)
+  `sorted(UI_EXPOSED_COMMANDS)` at C4 = `['decision.resolve', 'job.stop']` — the write door is
+  NOT opened this round.
+- **G7 THE MUTATION RED-PROOFS at C5 — PASS, all four RED.** In the disposable worktree
+  `.remedy-wt/g7-c5` at `eec2cd4a`, never in the primary checkout, every run `python3 -B` with
+  `PYTHONDONTWRITEBYTECODE=1`. IMPORT PATH PROOF (exit 0):
+  `apps.cli.commands.patch.__file__` = `…/.remedy-wt/g7-c5/apps/cli/commands/patch.py` and
+  `packages.orchestration.evidence_index.__file__` = `…/.remedy-wt/g7-c5/packages/orchestration/evidence_index.py`
+  — both under the worktree. UNMUTATED CONTROLS: `tests/cli/test_patch_cmd.py` REAL exit 0, 11
+  passed; `tests/orchestration/test_evidence_index.py` REAL exit 0, 33 passed — 33 EXCEEDS the
+  32 BASE gives. Each anchor asserted UNIQUE (count == 1) inside its named file before
+  replacement, and each file restored to its exact pre-mutation sha256 afterwards with the
+  control re-run returning to 11 / 33 passed.
+  - (i) `save_job` on the refusal path too, in `apps/cli/commands/patch.py` — REAL exit 1, 1
+    failed, 10 passed; failing test
+    `tests/cli/test_patch_cmd.py::TestItMintsNoRefusalVocabularyOfItsOwn::test_a_refusal_never_persists_the_job`.
+  - (ii) split each `--reject-hunk` value on its LAST `=` (`partition` → `rpartition`), in
+    `apps/cli/commands/patch.py` — REAL exit 1, 3 failed, 8 passed; failing tests
+    `TestTheHappyPath::test_a_mixed_decision_lands_under_the_envelope_derived_attempt_key`,
+    `TestTheHappyPath::test_a_rejection_reason_survives_verbatim`,
+    `TestItMintsNoRefusalVocabularyOfItsOwn::test_a_reject_value_with_no_equals_is_the_cores_missing_reason`.
+  - (iii) `task_id` and `attempt` passed to the recorder the other way round, in
+    `apps/cli/commands/patch.py` — REAL exit 1, 4 failed, 7 passed; failing tests
+    `TestTheHappyPath::test_a_mixed_decision_lands_under_the_envelope_derived_attempt_key`,
+    `TestTheHappyPath::test_a_rejection_reason_survives_verbatim`,
+    `TestTheHappyPath::test_a_task_run_scope_keys_on_that_runs_own_artifact`,
+    `TestTheHappyPath::test_json_output_is_the_exported_record`.
+  - (iv) the relative-fallback branch moved ABOVE the `try` in
+    `packages/orchestration/evidence_index.py`, so the CWD directory is consulted first — REAL
+    exit 1, 1 failed, 32 passed; failing test
+    `tests/orchestration/test_evidence_index.py::TestResolveJobEvidenceDir::test_the_index_record_beats_the_cwd_relative_fallback`.
+    This is R-0743's proof: GREEN at `55c365d6`, RED now, and it kills exactly the one added test.
+  Worktree removed BY EXACT PATH `/home/decodeux/Repos/remedy/.remedy-wt/g7-c5`, then
+  `git worktree prune`; `git worktree list` shows the primary checkout alone.
+- **G8 SUITES AND STRUCTURE — PASS.** Serially, one pytest process at a time, `-q -p no:randomly`,
+  every REAL exit 0: `tests/cli/test_patch_cmd.py` 11 passed (NEW file, 0 at BASE);
+  `tests/orchestration/test_evidence_index.py` 33 passed (32 at BASE, +1 = the R-0743 pin);
+  `tests/test_command_catalog.py` 18 passed (18 at BASE, unmoved — the guard was WIDENED, not
+  split); `tests/cli/test_command_catalog.py` 23 passed (23 at BASE, unmoved);
+  `tests/test_grouped_cli.py` 511 passed at C5 — 511 at BASE, so it did NOT move, exactly as the
+  block predicted from its parametrization over GROUPS rather than commands;
+  `tests/ui_server/test_command_channel.py` 106 passed (106 at BASE, unmoved — the write door is
+  untouched); canary `tests/cli/test_golden_path.py` 42 passed (42 at BASE, unmoved).
+  COMMIT WALK `git rev-list --reverse BASE..C5` — seven commits, each with exactly ONE parent,
+  each under 500 INSERTIONS counted from the `+` column of `git diff --numstat`:
+  `54dbf6ce` 449, `1207790f` 302, `fffa6647` 16, `096b8539` 4, `0d2c98c0` 2, `ca938ff4` 152,
+  `eec2cd4a` 308. PATH SET, both directions: touched-but-not-in-the-change-set = `[]`;
+  in-the-change-set-but-not-touched = `['.agent/handoff.md']`, which C6 writes and no gate at C5
+  can see (declared below). 10 paths touched. MARKER RESIDUE, `<<<SLICE ` / `<<<END `:
+  `.agent/plan.md` 0/0, `.agent/prose_slips.md` 0/0, `apps/cli/command_catalog.py` 0/0,
+  `apps/cli/commands/patch.py` 0/0, `tests/cli/test_patch_cmd.py` 0/0, against the non-zero
+  CONTROL `.agent/authored/f033-r14.md` at 5/6. `git ls-files .remedy-wt` = 0 entries.
+  DO-NOT-TOUCH, blob id at BASE vs C5, one line per path, all 13 of 13 identical:
+  `hunk_decision_record.py` `0563c5a00660`, `hunk_ledger.py` `57c00fcfde62`,
+  `hunk_approval.py` `25d1a8d0d08d`, `hunk_apply.py` `195f0d223210`,
+  `hunk_subset_diff.py` `6c47c2083795`, `diff_view_source.py` `30a86b1b977d`,
+  `diff_parser.py` `b6632f657426`, `ui_server.py` `068721f8adf0`,
+  `apps/cli/grouped.py` `c9c5265d0b87`, `tests/ui_server/test_command_channel.py` `7ff931e2f005`,
+  `docs/roadmap/STATUS.md` `a370be066b7a`, `packages/orchestration/evidence_index.py`
+  `4d797b53312a`, `.agent/context.md` `4e3a3f2d9c3f`.
 
-### What G6 extracted, quoted
+## What landed, in the block's own terms
 
-`resolve_job_evidence_dir`'s final signature, from the C4 blob of
-`packages/orchestration/evidence_index.py`:
+THE CATALOG ENTRY, fields quoted from G6(b): `command_id` `patch.approve-hunks`, `group_id`
+`patch`, `subcommand` `approve-hunks`, `description` "Record a hunk-level approve and reject
+decision over a job's diff.", `action_class` `approval_gate`, `args`
+`(_JOB_ID, _TASK_RUN_OPT, _APPROVE_HUNK_OPT, _REJECT_HUNK_OPT, _JSON_OPT)`, `supports_json`
+True, `may_mutate_repo` False, `requires_permission` False, `related`
+`("patch.approve", "patch.apply")`. `--task-run` is a valued option and NOT `_TASK_OPT`, with a
+comment saying why: `build_diff_view` requires exact membership in the real `task_runs/` listing
+and does no prefix resolution, so promising a prefix match would be worse than a second option
+name. `--approve-hunk` and `--reject-hunk` are `is_repeatable=True`, and `--reject-hunk`'s help
+states and SHOWS the shape `<hunk-id>=<reason>`. All five arg helps and the description were
+checked against the list `TestCatalogSensitivity` actually holds in
+`tests/test_command_catalog.py` — the eight `FORBIDDEN` terms and the three token-boundary
+`FORBIDDEN_PREFIXES` — and that class passes as part of the 18.
 
-    def resolve_job_evidence_dir(job_id: str, index_dir: Path | None = None) -> Path | None:
+THE HANDLER'S `COMMAND_HANDLERS` LINE, verbatim as shipped:
 
-Its AST-extracted body, from the same blob:
+    "patch.approve-hunks": lambda args: _cmd_approve_hunks(
+        args.job_id,
+        task_run=getattr(args, "task_run", None),
+        approve=getattr(args, "approve_hunk", None),
+        reject=getattr(args, "reject_hunk", None),
+        json_output=getattr(args, "json", False),
+    ),
 
-    """Resolve a job's evidence directory — index record first, then the local default.
+THE TESTS WRITTEN, with the property each pins:
 
-    This is what decides which directory the F037 diff viewer and the F033
-    decision doors read a diff out of, so both get ONE answer. A second rule
-    could disagree with this one, and a decision recorded over hunks nobody was
-    shown is exactly the harm the recorder's no-diff refusal exists to prevent.
+`tests/cli/test_patch_cmd.py` (11):
+- `TestItIsWiredIntoTheCli::test_the_command_id_resolves_in_the_catalog` — the entry exists under
+  `patch` with `supports_json` and neither capability flag set.
+- `TestItIsWiredIntoTheCli::test_the_handler_is_registered` — the discriminator for
+  `Error: no handler for patch.approve-hunks`.
+- `TestTheHappyPath::test_a_mixed_decision_lands_under_the_envelope_derived_attempt_key` — the
+  key is `job:workspace.diff`, BOTH halves from the envelope; the three hunks land
+  approved/rejected/pending; unrelated metadata survives; the record is read back with
+  `load_job`, so `save_job` really persisted it. Kills mutations (ii) and (iii).
+- `TestTheHappyPath::test_a_rejection_reason_survives_verbatim` — the split is on the FIRST `=`
+  and both halves are kept verbatim; the reason itself carries an `=` and leading/trailing
+  spaces. Kills mutations (ii) and (iii).
+- `TestTheHappyPath::test_a_task_run_scope_keys_on_that_runs_own_artifact` — `--task-run` passes
+  through UNCHANGED, so the key becomes `T001:task_runs/T001/safe.diff`. Kills mutation (iii).
+- `TestTheHappyPath::test_json_output_is_the_exported_record` — `--json` prints parseable JSON on
+  the SUCCESS path and it equals what is on the job. Kills mutation (iii).
+- `TestItMintsNoRefusalVocabularyOfItsOwn::test_a_reject_value_with_no_equals_is_the_cores_missing_reason`
+  — the refusal `code` is `hunk_approval.REFUSAL_MISSING_REASON`, not a handler-minted one; exit
+  1; nothing recorded. Kills mutation (ii).
+- `TestItMintsNoRefusalVocabularyOfItsOwn::test_an_unresolvable_evidence_directory_is_no_diff_available`
+  — `no_diff_available`, the envelope's own `evidence_dir_unavailable` quoted into the message,
+  and NOTHING written.
+- `TestItMintsNoRefusalVocabularyOfItsOwn::test_a_refusal_never_persists_the_job` — THE
+  discriminator for "a refused decision is not a decision": the on-disk record is unchanged
+  either way, so the test watches `save_job` itself. Kills mutation (i).
+- `TestItMintsNoRefusalVocabularyOfItsOwn::test_a_human_refusal_goes_to_stderr_with_the_offending_ids`
+  — `Error: <message>` on stderr plus the offending ids.
+- `TestItMintsNoRefusalVocabularyOfItsOwn::test_an_unknown_job_id_exits_1` — the
+  `JobNotFoundError` branch.
 
-    It reads ``<job_id>.json`` BY NAME and deliberately does NOT go through
-    ``find_record``, which matches on the ``job_id`` key INSIDE the file: a
-    record written without that key resolves here and would stop resolving
-    through ``find_record``.
-
-    ``packages/orchestration/ui_server.py``'s ``_resolve_evidence_dir`` is now a
-    delegation to this function, kept only because callers import that name.
-    """
-    try:
-        idx_file = (index_dir or job_evidence_index_dir()) / f"{job_id}.json"
-        if idx_file.exists():
-            record = json.loads(idx_file.read_text())
-            local_dir = record.get("evidence_dir_local", "")
-            if local_dir and Path(local_dir).is_dir():
-                return Path(local_dir)
-    # ``ImportError`` is retained from the moved original, where the data-paths
-    # import sat inside this try; here that import is module level, so the name
-    # is now unreachable. It is kept rather than dropped so the move stays
-    # behaviour-preserving in both directions.
-    except (ImportError, OSError, ValueError, KeyError):
-        pass
-    # RELATIVE on purpose: this resolves against the current working directory,
-    # exactly as it did before the move. It is not an absolute path.
-    default = Path(f"remedy-job-evidence-{job_id}")
-    if default.is_dir():
-        return default
-    return None
-
-`_resolve_evidence_dir`'s AST-extracted body, from the C4 blob of
-`packages/orchestration/ui_server.py`:
-
-    """Find evidence dir for a job — the implementation moved to
-    `packages.orchestration.evidence_index.resolve_job_evidence_dir`, so the
-    viewer here and the F033 decision doors resolve by ONE rule. The name
-    survives because callers import it, including
-    `tests/orchestration/test_final_audit_evidence.py`, which imports it from
-    `ui_server` directly."""
-    from packages.orchestration.evidence_index import resolve_job_evidence_dir
-    return resolve_job_evidence_dir(job_id)
-
-### The tests written at C5, and the property each pins
-
-| Test | Property it pins |
-|------|------------------|
-| `TestResolveJobEvidenceDir::test_record_naming_an_existing_directory_resolves_to_it` | An index record whose `evidence_dir_local` EXISTS resolves to exactly that directory, as a `Path`. |
-| `TestResolveJobEvidenceDir::test_record_naming_an_absent_directory_answers_none` | The discriminator for the `is_dir()` check: a NAMED but absent directory falls through to None rather than being handed back. Mutation (i) kills only this one. |
-| `TestResolveJobEvidenceDir::test_record_without_a_job_id_key_still_resolves` | THE DISCRIMINATOR FOR THE WHOLE MOVE: a record file carrying NO `job_id` key still resolves, because the read is BY NAME. It fails under any re-expression through `find_record`. Mutation (ii) kills only this one. |
-| `TestResolveJobEvidenceDir::test_malformed_record_falls_through_instead_of_raising` | Bytes that are not JSON fall through to None rather than raising — the `ValueError` arm of the preserved `except`. |
-| `TestResolveJobEvidenceDir::test_relative_fallback_resolves_against_the_cwd` | With no index record and the CWD at `tmp_path`, a real `remedy-job-evidence-<job_id>` directory there is returned, as a RELATIVE path. |
-| `TestResolveJobEvidenceDir::test_no_record_and_no_fallback_directory_answers_none` | With neither a record nor a fallback directory, the answer is None. |
-| `TestUiServerDelegatesToTheSameRule::test_ui_server_resolver_answers_the_same_directory` | THE DELEGATION PROOF: `ui_server._resolve_evidence_dir` and `resolve_job_evidence_dir` answer the SAME value for the same job id, over a case that is NOT None. Mutation (iii) kills only this one. |
-
-Every test in the first class passes `index_dir` explicitly and uses
-`monkeypatch.chdir(tmp_path)`, so the relative fallback of SPEC step 4 can never
-resolve against this repository's own working tree. The delegation test needs
-the DEFAULT index dir, so it reuses this file's existing `isolate_data_root`
-fixture, which sets `REMEDY_DATA_DIR` — no second mechanism was invented.
+`tests/orchestration/test_evidence_index.py` (+1, 32 → 33):
+- `TestResolveJobEvidenceDir::test_the_index_record_beats_the_cwd_relative_fallback` — with BOTH
+  an index record naming an existing directory AND a real `remedy-job-evidence-j7` directory in
+  the CWD, the INDEX record wins. It is the first case in that suite to construct both sources at
+  once, which is the only state in which precedence is observable. G7(iv) is its red-proof.
 
 ## Authored-text proofs
 
-Three reviewer-authored slices applied this round, every one extracted from the
-COMMITTED C0a blob (`git show <C0a>:.agent/authored/f033-r13.md`) per convention
-4, never retyped:
+Three reviewer-authored slices applied, every one extracted from the COMMITTED C0a blob per
+convention 4 and never retyped:
 
-| Slice | Applied to | Disk-to-disk result |
-|-------|-----------|---------------------|
-| PLANF033R13 | `.agent/plan.md` (whole file, C1) | BYTE-EQUAL: 2750 bytes, sha256 `be7c3cc5961232a45b2de055fde37972583338420d588185413ffdc1e3156417`, both sides |
-| RECORDF033R13 | `.agent/live_review.md` (append, C2) | 1512826 + 1 newline + 5021 = 1517848 = the C2 blob, byte for byte; BASE a byte PREFIX |
-| SLIPSF033R13 | `.agent/prose_slips.md` (append, C3) | 23007 + 1 newline + 785 = 23793 = the C3 blob, byte for byte; BASE a byte PREFIX |
+- PLANF033R14 → `.agent/plan.md` at C1: 2479 bytes, byte-EQUAL to the slice, disk-to-disk
+  comparison against `54dbf6ce:.agent/authored/f033-r14.md` = True.
+- RECORDF033R14 → `.agent/live_review.md` at C2: 7219 bytes, appended as base + one newline +
+  slice, reconstruction byte-EQUAL to the C2 blob at 1525068, BASE a byte PREFIX.
+- SLIPSF033R14 → `.agent/prose_slips.md` at C3: 472 bytes, reconstruction byte-EQUAL to the C3
+  blob at 24266, BASE a byte PREFIX.
 
-The block itself: `.remedy-wt/f033-r13-block.md` was verified at 29026 bytes /
-sha256 `7655c0b3310200d16921d6d83d82f708b389085117b637ac8ef8ee8474103a2f`
-BEFORE anything else was done, copied to `.agent/authored/f033-r13.md` with
-`shutil.copyfile`, and the committed C0a blob re-measured to the same length and
-digest.
+The block itself: `.remedy-wt/f033-r14-block.md` → `.agent/authored/f033-r14.md` by
+`shutil.copyfile`, 33129 bytes, sha256 unchanged, and mirrored to `.agent/last_block.md` under
+ONE blob id — see G2.
 
-## Item-status table
-
-Every ordered item appears exactly once.
+## Item status
 
 | Item | Status | Reason |
-|------|--------|--------|
-| C0a save this block | done | `.agent/authored/f033-r13.md`, `shutil.copyfile`, digest re-verified from the commit |
-| C0b mirror it | done | `.agent/last_block.md`; ONE blob id `7499904122ed955ccac42f3f59872ae1df611bd2` across both paths |
-| C1 `.agent/plan.md` | done | whole-file PLANF033R13, byte-equal |
-| C2 the round 12 verdict into `.agent/live_review.md` | done | RECORDF033R13 appended; reconstruction exact |
-| C3 the two dated prose slips into `.agent/prose_slips.md` | done | SLIPSF033R13 appended; reconstruction exact |
-| C4 `resolve_job_evidence_dir` + `ui_server` delegating to it, ONE commit | done | `8889ff60`, both files in the same commit, so no tree ever holds a delegation without its target |
-| C5 its tests in `tests/orchestration/test_evidence_index.py` | done | `55c365d6`, seven tests added, 25 → 32 |
+|---|---|---|
+| C0a save this block | done | |
+| C0b mirror it | done | |
+| C1 `.agent/plan.md` | done | |
+| C2 the R13 verdict AND the R-0743 registration | done | |
+| C3 one dated prose slip | done | |
+| C4 catalog entry + widened guard + handler, ONE commit | done | |
+| C5 the R-0743 precedence pin and the handler's tests | deviated | the ordered `Landed: R-0743` line cannot name C5's own sha; see D1 |
 | C6 the handback | done | this file |
-| SPEC — `packages/orchestration/evidence_index.py` | done | one public function ADDED beside `find_record`; every existing name, signature and behaviour untouched |
-| SPEC — `packages/orchestration/ui_server.py` | done | one function BODY replaced; signature byte-identical to BASE; the four call sites unchanged |
-| SPEC — `tests/orchestration/test_evidence_index.py` | done | every existing test untouched and still passing; module docstring's property list extended |
-| G1 HYGIENE | done | PASS |
-| G2 TRANSPORT | done | PASS |
-| G3 THE RECORD APPEND at C2 | done | PASS |
-| G4 THE LEDGER at C2 | done | PASS |
-| G5 THE PROSE FILES | done | PASS |
-| G6 THE CODE AGAINST THE SPEC at C4 | deviated | PASS on every reading; (a) ordered "at C4" over a file whose C4 content is its BASE content — see deviation 1 |
-| G7 THE MUTATION RED-PROOFS at C5 | done | PASS — all three RED, control green both before and after |
-| G8 SUITES AND STRUCTURE | deviated | PASS on every reading; the path-set direction reports `.agent/handoff.md` as untouched at C5 by construction — see deviation 2 |
-| Handback (`.agent/handoff.md` rewrite) | done | this file, written once |
-| Push the branch | done | `git push -u origin feature/f033-hunk-approval-v2`, exit 0 |
+| G1 HYGIENE | done | |
+| G2 TRANSPORT | done | |
+| G3 THE RECORD APPEND at C2 | done | |
+| G4 THE LEDGER at C2 and C5 | done | |
+| G5 THE PROSE FILES | done | |
+| G6 THE CATALOG AND ITS GUARD at C4 | done | |
+| G7 THE MUTATION RED-PROOFS at C5 | done | all four RED |
+| G8 SUITES AND STRUCTURE | deviated | `.agent/handoff.md` is in the change set but unreachable to a C5 path-set reading; see D2 |
+| R-0743 fix | done | one added test; `evidence_index.py` byte-identical BASE→C5 |
+| SPEC `apps/cli/command_catalog.py` | done | |
+| SPEC `tests/test_command_catalog.py` | done | |
+| SPEC `apps/cli/commands/patch.py` | deviated | the SPEC's step-3 argument; see D3 |
+| SPEC `tests/orchestration/test_evidence_index.py` | done | |
+| SPEC `tests/cli/test_patch_cmd.py` | done | 11 tests, idiom taken from `tests/cli/test_job_stop.py` and `tests/cli/test_decision_answers.py` |
 
 ## Deviations & assumptions
 
-The block's ordered commit sequence was followed EXACTLY: C0a, C0b, C1, C2, C3,
-C4, C5, C6 — seven commits in the measured range plus this handback commit. No
-extra commit, no dropped commit, no reordering.
+**D1 — the `Landed: R-0743` line cannot name its own commit.** The Bundle places that line IN
+C5, and every existing `Landed:` line in `.agent/live_review.md` names a SHA. A commit cannot
+carry its own id, so ordering one would be ordering an unknowable value. The line therefore names
+the commit BY ROLE — "at C5 of F033 round 14 — the commit this line lands in, whose sha the round
+14 handback names, because a commit cannot carry its own id" — and the sha is
+`eec2cd4ab4388c1d62195d22317b38222274f927`, stated here. The GATE is satisfied exactly:
+G4 orders `^Landed: R-0743 — ` and counts it at 1 at C5. The line also claims NO mutation result,
+because G7 runs after C5 and an unmeasured claim has no business in the append-only record; the
+mutation result is in this handback's G7 line instead.
 
-1. **G6(a) names a file whose C4 content is still its BASE content — declared,
-   not silently resolved.** G6 is headed "at C4" and its (a) clause orders
-   `ruff check` over three paths, one of which is
-   `tests/orchestration/test_evidence_index.py`; but the Bundle puts that file's
-   edit at C5, so at C4 it is byte-identical to BASE. The GATE is load-bearing,
-   so I satisfied it literally — `python3 -m ruff check` over all three paths at
-   C4, REAL exit 0, "All checks passed!" — and satisfied its INTENT by running
-   the identical command again over the C5 tree, where the file carries this
-   round's tests: also REAL exit 0, also "All checks passed!". Both readings are
-   reported under G6 above. Nothing was changed to reconcile the two.
-2. **G8's path set cannot see `.agent/handoff.md`, by construction.** The change
-   set names nine paths; G8 walks `BASE..C5` and therefore sees eight. The ninth,
-   `.agent/handoff.md`, is written by C6, which is after the range every gate is
-   scoped to, and the block itself says "C6's own numbers are NOT ordered here".
-   I report the direction honestly rather than widening the range: touched-but-
-   undeclared is EMPTY, and declared-but-untouched is exactly
-   `['.agent/handoff.md']`. No other path is missing and no undeclared path was
-   touched.
-3. **A JSON list in a record file still raises `AttributeError`, deliberately.**
-   SPEC step 3 orders the `except` clause preserved exactly as found, so
-   `record.get(...)` against a parsed JSON *list* still escapes this function
-   uncaught, exactly as it does at BASE. I wrote no test pinning that and no
-   code softening it: the SPEC calls changing it "a different change and not
-   this round's". Recorded here so the absence is a decision, not an oversight.
-4. **`ImportError` in the preserved `except` tuple is now unreachable.** The
-   moved original imported `resolve_data_root` INSIDE the `try`; here
-   `job_evidence_index_dir` is imported at module level, so no `ImportError` can
-   arise from the guarded region. SPEC step 3 orders the name retained rather
-   than dropped, with a comment saying so, and that is what the code carries.
-   The gate reads the four names in order and passes; the reachability note is
-   the code comment's.
-5. **Measurement route.** The shell in this environment rejects heredocs, `$( )`
-   and `$?` by FORM, so every measurement ran as a script file under the
-   gitignored `.remedy-wt/` with `python3 -B`, per convention 6. `git ls-files
-   .remedy-wt` reads 0, so none of it entered the tree.
+**D2 — G8's path-set reading cannot see `.agent/handoff.md`.** G8 orders the range's path set
+against the change set in BOTH directions, and it runs over `BASE..C5`. `.agent/handoff.md` is in
+the change set and is written by C6, so the "in the change set but NOT touched" side reports it
+and always will. Reported honestly in both directions rather than quietly excluded; nothing else
+is missing on either side. This is checklist item 14's shape and was declared the same way at
+round 13.
 
-No verdict is written on this round's own work, and no `Done:` paragraph was
-added to `.agent/live_review.md` — `Done:` is the reviewer's word. This round
-registered no finding and resolved none, so there is no `Landed:` line and no
-`Landed:` commit; G4 measures registered, `Done:` and `Landed:` all UNMOVED.
+**D3 — the SPEC's step 3 passes the operator's RAW argument, not the resolved job id.** The SPEC
+fixes `evidence_index.resolve_job_evidence_dir(job_id_str)`, and step 1 has by then already
+resolved that same string to a UUID with `resolve_job_id`. I implemented the SPEC literally,
+because names and signatures it fixes are binding and no gate reads this call. The CONSEQUENCE,
+recorded so the next round decides rather than discovers it: a SHORT PREFIX job id
+(`remedy patch approve-hunks abc123`) loads the job fine — `resolve_job_id` resolves prefixes —
+but `resolve_job_evidence_dir` looks for an index file literally named `abc123.json`, finds none,
+and the operator gets `no_diff_available` for a job whose diff exists. `str(job_id)` would resolve
+both. This is a SPEC observation, not a gate/SPEC disagreement, and it was NOT silently fixed.
+
+**D4 — no `docs/` update.** AGENTS.md's Documentation Updates rule fires on "a feature introduces
+new behavior that is not yet documented", and `remedy patch approve-hunks` is new operator-facing
+behaviour. The block's change set names eleven paths and no file under `docs/`, and scope control
+forbids touching a path the block did not name. No docs file was edited; the obligation is
+carried forward to the round that opens the write door or to F033's closure.
+
+**D5 — mutations (ii) and (iii) each kill more than one test.** The block asks for "the NAME of
+each failing test" and does not require a single-test kill, so this is reported as information
+rather than as a problem: (ii) kills 3, (iii) kills 4, while (i) and (iv) each kill exactly 1.
+Every listed name is a test whose property the mutation genuinely breaks.
+
+No other deviation. The block's ordered commit sequence was followed exactly — seven commits,
+C0a, C0b, C1, C2, C3, C4, C5, in that order, plus this C6 — with no extra commit, none dropped
+and no reordering. I wrote NO `Done:` paragraph and NO verdict on this round's work.
 
 ## Next
 
 SESSION 4 carries forward. The next session's first actions, in this order:
 
 1. Read `.agent/STOP` from disk.
-2. Run the Open PR Gate (`gh pr list --state open --json
-   number,headRefName,baseRefName,isDraft`) and act on what it reports.
-3. Book THIS round's verdict into `.agent/live_review.md` in the first commit of
-   the next round — under amend0827 rule 1 this committed, pushed handback is
-   the durable carrier, and a verdict buys no round of its own.
-4. Then the plan's step 2: the CLI command and its handler TOGETHER, in the
-   `patch` group, with `TestCatalogLookups.test_get_commands_for_group` in
-   `tests/test_command_catalog.py` widened in the SAME commit. It can now take
-   its evidence directory from `resolve_job_evidence_dir`, which is the one rule
-   the F037 viewer already resolves by.
+2. Run the Open PR Gate — `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
+3. Book this round's verdict into `.agent/live_review.md` and RESOLVE R-0743, replacing the
+   `Landed: R-0743 — …` line at `eec2cd4a` with the reviewer's authored `Done:` text.
+4. Then the plan's step 2 — the write door: expose `patch.approve-hunks` in
+   `UI_EXPOSED_COMMANDS` (still exactly `["decision.resolve", "job.stop"]` today, measured by
+   G6(e) at C4) and add its dispatch, widening the `DOOR_METHODS` and `ALLOWED_IMPORTS` equality
+   guards in `tests/ui_server/test_command_channel.py` in the SAME commit, and adding
+   `packages.orchestration.hunk_apply` to `FORBIDDEN_MODULES` so DECISION F033 D4's forbidden
+   mistake cannot be made silently later.
