@@ -1,19 +1,21 @@
 """The ONE stable, content-derived hunk identity F033's hunk-level approval turns on.
 
-WHY this module exists: approving a hunk is a promise about a piece of CONTENT, and
-``packages/orchestration/diff_parser.py`` currently names hunks
-``"<file_index>:<hunk_index>"`` — both zero-based, both POSITIONAL. Those ids are stable
-only within a single parse of a single diff text: insert one hunk near the top of a file
-and every hunk after it is renumbered, so an operator who approved hunk ``0:3`` in one
-round would be approving a different piece of content in the next. An id computed from
-the hunk's own old-side text does not move when something else in the file moves.
+WHY this module exists: approving a hunk is a promise about a piece of CONTENT, and a
+POSITIONAL name cannot keep that promise. An id spelled ``"<file_index>:<hunk_index>"`` —
+both zero-based — is stable only within a single parse of a single diff text: insert one
+hunk near the top of a file and every hunk after it is renumbered, so an operator who
+approved hunk ``0:3`` in one round would be approving a different piece of content in the
+next. An id computed from the hunk's own old-side text does not move when something else
+in the file moves, which is what lets an approval survive an edit above it.
 
-This IS the module ``diff_parser.py``'s docstring points at when it says its hunk ``id``
-values are PROVISIONAL, that "F033 replaces them with content-hash ids", and that
-``DIFF_VIEW_VERSION`` is the seam through which it does so. The parser is not wired to
-this module yet — that wiring and the version bump are their own change — and the
-identity is proved alone here first. The diff-repair side will share this same function
-rather than keep a local hunk helper, so that "the same hunk" means one thing repo-wide.
+``packages/orchestration/diff_parser.py`` CALLS this module for every hunk ``id`` it
+emits, and its own docstring says those ids "are CONTENT-DERIVED and carry no position at
+all"; ``DIFF_VIEW_VERSION`` is 2, the bump that carried the change out to consumers. The
+diff-repair side holds no hunk identity to share with it: ``RepairHunk`` in
+``packages/orchestration/diff_repair.py`` selects spans of CURRENT source for a repair
+prompt and never names a hunk, so this module has ONE caller by design. A reader who
+expected a second one should read amendment A1 of
+``docs/roadmap/features/T5_F033.md``.
 
 DELIBERATE ABSENCE — this module does NOT parse diffs and does not know what a diff is.
 There is no hunk header regex here, no ``@@`` handling, no file-status vocabulary and no

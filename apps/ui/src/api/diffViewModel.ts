@@ -380,12 +380,13 @@ export function toggleHunkCollapse(collapsed: ReadonlySet<string>, hunkId: strin
  *  KEYS. Every row carries a `key` that is unique across the whole array and
  *  STABLE under collapse — collapsing a hunk removes line rows but renumbers
  *  nothing, so React reuses the rows that did not change. The hunk-derived keys
- *  are built from the server's own hunk `id`, which `diff_parser.py` assigns as
- *  `"<fileIndex>:<hunkIndex>"`, both zero-based and unique within one parse.
- *  Those ids are PROVISIONAL: F033 replaces them with content-hash ids so a row
- *  survives a re-parse of a changed diff, and the envelope's `version` field is
- *  the seam through which that lands. Nothing here depends on the id's SHAPE,
- *  only on the server assigning distinct ones.
+ *  are built from the server's own hunk `id`, which `diff_parser.py` derives
+ *  from the hunk's CONTENT — its path and its normalised old side — so a row
+ *  survives a re-parse of a changed diff. Where a payload carries no usable id,
+ *  `readDiffHunk` above supplies one of the client's own bearing
+ *  `UNIDENTIFIED_HUNK_ID_PREFIX`, which is what keeps such an id out of the
+ *  server's id space. Nothing here depends on the id's SHAPE, only on the
+ *  server assigning distinct ones.
  *
  *  A COLLAPSED hunk emits its head row and none of its line rows, and the head
  *  says how many lines it is hiding so the renderer can label it in one pass.
