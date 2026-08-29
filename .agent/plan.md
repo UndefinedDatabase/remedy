@@ -14,26 +14,28 @@ round — every partial state rendered truthfully in viewer, node and report.
 | Item | Status | Reason |
 |------|--------|--------|
 | restart F033 from current main | done | round 1, DECISION F033 D1 |
-| book the F257 R12 closure verdict | done | round 1, amend0827 rule 1 |
-| register R-0738 | done | round 1 |
-| claim F033 in STATUS | done | round 1 |
+| claim F033, book the F257 verdict, register R-0738 | done | round 1 |
 | survey the hunk-identity surface | done | round 1, in the handback |
-| T001 stable ids, JSON v2, shared helper | open | round 2 onward |
+| the shared identity function and its tests | done | this round |
+| wire it into the parser, bump DIFF_VIEW_VERSION | open | round 3 |
+| rule the client's fallback id synthesis | open | round 3 |
+| retire the diff-repair local hunk helper | open | round 4 |
 | T002 approve_hunks, subset atomicity, ledger | open | |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Author T001 from the survey: the content-hash id function, its home, the
-   `DIFF_VIEW_VERSION` bump and the stability property tests.
-2. Consolidate the diff-repair hunk helper onto the shared identity, keeping
-   `tests/orchestration/test_diff_repair.py` green.
-3. T002's command, its validation and the all-or-nothing subset apply.
+1. Round 3 wires `hunk_identity` into `packages/orchestration/diff_parser.py`,
+   bumps `DIFF_VIEW_VERSION` to 2 and moves the tests that pin version 1.
+2. Round 3 also rules the client fallback at `apps/ui/src/api/diffViewModel.ts`,
+   which synthesises a positional id when the server sends an empty one.
+3. Round 4 retires the local hunk helper in
+   `packages/orchestration/diff_repair.py` onto the shared identity.
 
 ## Risks
-- The shared-helper consolidation crosses two modules that ship today; their
-  regression suites are the safety net and are named in every order touching them.
 - `packages/orchestration/diff_parser.py` is PURE and TOTAL by its own docstring
-  and never raises on malformed input. Content-hash ids must not change that.
+  and never raises on malformed input. The identity function must not change that.
+- The client fallback means an empty server id becomes a POSITIONAL id on screen
+  rather than an error, so a content-hash contract can be violated silently. It
+  is ruled in round 3, not worked around here.
 - The parked branch `feature/f033-hunk-approval` at `ed040812` holds a 574-line
-  inventory taken at `32cde54e`, before F256 rewrote the diff surface. It is
-  INPUT to be re-derived, never a source of fact.
+  inventory taken at `32cde54e`. It is INPUT to be re-derived, never fact.
