@@ -93,10 +93,13 @@ export type DigestDismissal = number | null;
  *  `AgentNowCard.tsx` binds the clock `recency.ts` refuses to read. A module
  *  that reached for real storage here could not be tested without faking a
  *  global, and keeping the port a type is what lets every rule below be a pure
- *  function of values. */
+ *  function of values. The last-seen instant that DECISION F040 D8 also assigns
+ *  to browser-local storage now flows through this same port. */
 export interface DigestVisibilityPort {
   readDismissal(jobId: string): DigestDismissal;
   writeDismissal(jobId: string, dismissedAtMs: number): void;
+  readLastSeen(jobId: string): number | null;
+  writeLastSeen(jobId: string, seenAtMs: number): void;
 }
 
 /** WHY the card is or is not showing, from a CLOSED set of string literals. The
