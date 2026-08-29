@@ -1,6 +1,6 @@
-# F033 — Hunk-level diff approval · ROUND 7 · THE APPROVED SUBSET DIFF
+# F033 — Hunk-level diff approval · ROUND 8 · LANDING THE SUBSET
 
-SESSION 2 of feature F033. Round 7, rounds so far 7.
+SESSION 2 of feature F033. Round 8, rounds so far 8.
 
 You are the WORKER for this round. AGENTS.md is the highest authority and binds
 you in full. Do not review your own work and write no verdict on it.
@@ -11,13 +11,13 @@ you in full. Do not review your own work and write no verdict on it.
    exclusive. Apply slices BYTE FOR BYTE — never reflow, re-wrap or "fix" one. If
    a slice looks wrong, apply it anyway and say so in the deviations.
 2. Delimiters are transport only. ANCHOR extraction to the NAMED delimiter at
-   line start — `<<<END RECORDF033R7`.
+   line start — `<<<END RECORDF033R8`.
 3. Every WHOLE-FILE slice ends with exactly one trailing newline.
 4. Extract every slice from the COMMITTED blob you save at C0a, never by retyping.
 5. THE PYTHON IS A SPEC, NOT A SLICE. You write the module and its tests from the
-   description. Names, signatures, refusal codes, the refusal ORDER and the
-   behaviours the SPEC fixes are binding; structure, comment wording and test
-   names are yours. If the SPEC is impossible, STOP and say so.
+   description. Names, signatures, codes and the behaviours the SPEC fixes are
+   binding; structure, comment wording and test names are yours. If the SPEC is
+   impossible, STOP and say so rather than inventing past it.
 6. Guard re-expressions: the shell rejects loops, `$( )`, `${arr[0]}` and `cp` by
    FORM. Copy with `shutil.copyfile`; route measurement through Python under the
    gitignored `.remedy-wt/`, run with `python3 -B`. Python 3.10 forbids a
@@ -29,200 +29,184 @@ you in full. Do not review your own work and write no verdict on it.
 
 ## Base
 
-BASE is `1fdda40215da1f15c248df1ea46cf7b940781a74`, the round 6 handback commit,
+BASE is `f0dc48f307acb092291ec9bd6763c9557352a1b7`, the round 7 handback commit,
 on branch `feature/f033-hunk-approval-v2`. Confirm with `git rev-parse HEAD`
 before C0a and STOP if it differs.
 
 ## Why this round exists
 
-Round 6 passed every gate; the reviewer re-ran all eight itself, reproduced every
-reading, and additionally ran a FOURTH mutation the block never ordered — making
-`pending` always empty — which also went red, so that remainder is genuinely
-pinned rather than merely computed. Its verdict is in the record slice below.
+Round 7 passed every gate; the reviewer re-ran all eight itself, stressed the
+module's totality with 28 hostile inputs of its own — none raised — and ran a
+FOURTH mutation the block never ordered, replacing every emitted header with a
+fixed one, which also went red. Its verdict is in the record slice below.
 
-Round 6 answered "is this selection coherent?". This round answers the next
-question: WHICH BYTES does an approved selection actually apply? The plan's step
-1 calls it the all-or-nothing subset apply, and it splits cleanly in two. The
-part that decides which hunks go in, and emits exactly them, is pure text and is
-this round. The part that lands them on a branch is the applier's, which already
-has snapshots and rollback, and is a later round.
+Rounds 6 and 7 decide WHETHER a selection is coherent and WHICH BYTES it means.
+This round LANDS those bytes, and it is the last piece of the plan's step 1.
 
-FOUR FACTS THE REVIEWER MEASURED AT `1fdda402` RATHER THAN ASSUMED, each with a
-red control, because the whole design rests on them:
+THE ATOMICITY IS INHERITED, NOT BUILT, and this round's real job is to prove it
+rather than to write it. `apply_structured_patch` in
+`packages/orchestration/source_apply.py` already takes a mandatory verified
+snapshot of exactly the paths a patch names, applies each unified diff in turn,
+and on ANY failure calls `_rollback_from_snapshot` and stops — the reviewer read
+that control flow at `f0dc48f3`. So a conflict inside the approved set already
+falls back to nothing-applied. What is missing is the seam that hands it the
+subset, and the tests that demonstrate the fallback on a real repository.
 
-- `packages/orchestration/source_apply.py`'s `_apply_hunks` positions every hunk
-  by its OLD-side start and validates context against the ORIGINAL file, keeping
-  its own running `offset` for the result. IT NEVER READS THE NEW-SIDE HEADER:
-  skewing `+10,3` to `+999,3` applies and gives a byte-identical result. So
-  DROPPING A HUNK NEEDS NO HEADER RENUMBERING AT ALL, and a subset is a pure
-  selection rather than an arithmetic.
-- A hunk whose context does not match the file makes `_apply_hunks` return
-  `None`, so a bad selection fails loudly rather than half-applying.
-- `parse_unified_diff_to_view` carries, per hunk, its `header` VERBATIM and its
-  `lines` as `{kind, content}` with `kind` in `ctx`/`del`/`add` — everything a
-  re-emission needs, and the hunk `id` beside it, so the subset is keyed on the
-  ONE identity DECISION F033 D3 established rather than on a second one.
-- Re-emitting EVERY hunk from that view, header verbatim and one line per view
-  line prefixed ` `/`-`/`+`, applies BYTE-IDENTICALLY to applying the raw diff;
-  swapping the `add` and `del` prefixes changes the result, so the prefix map is
-  load-bearing and a test must pin it.
+TWO CONSTRAINTS THE REVIEWER READ AT `f0dc48f3` AND THE SPEC BELOW DEPENDS ON:
+
+- `validate_structured_patch` rejects a `unified_diff` patch whose any entry has
+  an empty `path` or an empty `diff`, and additionally runs
+  `unsafe_path_issues(patch.target_paths)`. So the synthesised patch must set
+  `target_paths`, not only `unified_diffs`, or it fails validation for a reason
+  that has nothing to do with hunks.
+- `build_snapshot_path_set` derives the snapshot set from the `file_ops` and
+  `unified_diffs` paths. Setting the diffs correctly is therefore what makes the
+  snapshot cover exactly the files the subset touches, which is what makes the
+  rollback total.
 
 ## Bundle (in this order)
 
 - C0a save this block · C0b mirror it
 - C1 `.agent/plan.md`
-- C2 the round 6 verdict into `.agent/live_review.md`
-- C3 the reviewer prose slip into `.agent/prose_slips.md`
-- C4 the subset module and its tests, together
+- C2 the round 7 verdict into `.agent/live_review.md`
+- C3 the apply seam module
+- C4 its tests
 - C5 the handback
+
+C3 and C4 are SEPARATE COMMITS on purpose. The tests need a real repository, a
+permissioned job and an approved intent, so module-plus-tests in one commit would
+run at or over the 500-insertion cap — round 7's equivalent commit landed at 497.
+Splitting them is the cap forcing the design, and it is declared here rather than
+discovered by you at commit time.
 
 ## Change set — these paths and nothing else
 
-    .agent/authored/f033-r7.md
+    .agent/authored/f033-r8.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    .agent/prose_slips.md
-    packages/orchestration/hunk_subset_diff.py
-    tests/orchestration/test_hunk_subset_diff.py
+    packages/orchestration/hunk_apply.py
+    tests/orchestration/test_hunk_apply.py
     .agent/handoff.md
 
 The last two are NEW FILES. This round does NOT touch
-`packages/orchestration/source_apply.py`, `packages/orchestration/diff_parser.py`,
+`packages/orchestration/source_apply.py`,
+`packages/orchestration/hunk_subset_diff.py`,
 `packages/orchestration/hunk_approval.py`,
-`packages/orchestration/hunk_identity.py`,
+`packages/orchestration/diff_parser.py`,
 `packages/orchestration/ui_server.py`, `apps/cli/command_catalog.py` or
-`docs/roadmap/STATUS.md`.
+`docs/roadmap/STATUS.md`. No existing module is edited: this round only ADDS.
 
-## SPEC — `packages/orchestration/hunk_subset_diff.py`
+## SPEC — `packages/orchestration/hunk_apply.py`
 
-A NEW module.
+A NEW module: the seam between an approved hunk selection and the applier.
 
 ### 1. What it is, and what it deliberately is not
 
-Given a unified diff and the hunk ids an operator approved, it produces the
-unified diff holding EXACTLY those hunks and nothing else, ready to hand to the
-applier one file at a time. It APPLIES NOTHING, opens no file, and never learns
-whether the subset would land cleanly — a conflict is the applier's answer.
+It turns an approved selection into an `apply_structured_patch` call and reports
+what happened in the vocabulary of HUNKS rather than of files. It does NOT
+re-implement atomicity, does not snapshot, does not roll back, and does not
+decide whether a selection is coherent — `decide_hunk_approval` did that. Write
+those absences into the module docstring in the idiom the three sibling modules
+use, and name all three as the places a reader is looking for.
 
-It imports `packages/orchestration/diff_parser.py` and the standard library, and
-NOTHING ELSE. That import is the point of the module rather than an accident: the
-hunk ids it selects on are the ones `diff_parser` already computes through
-`hunk_identity`, so there is still exactly ONE hunk identity in this repository —
-DECISION F033 D3. It MUST NOT import `packages/orchestration/source_apply.py`:
-this module decides WHICH bytes, the applier decides whether they land, and
-`tests/ui_server/test_command_channel.py` already names the applier a module the
-write door may never reach. Write both absences into the module docstring, in the
-idiom `hunk_identity.py` and `hunk_approval.py` use.
+Unlike `hunk_approval.py` and `hunk_subset_diff.py`, THIS MODULE IS NOT TOTAL and
+must not pretend to be: it performs I/O through the applier, and an OSError from
+a disappearing repository is a real failure that must not be flattened into a
+polite value. Say so explicitly in the docstring, and say why the other two are
+different. It catches nothing it cannot name.
 
-Every public name is TOTAL: it NEVER raises, on any input at all — a non-string
-diff, `None`, a non-iterable id set, an id that is not a string. Same reason as
-`hunk_approval.py`: this runs behind an approval screen.
+### 2. The result type
 
-### 2. The types
+`HunkApplyOutcome`, a frozen dataclass:
 
-- `ApprovedSubsetFile`, a frozen dataclass: `path: str`, `diff: str`,
-  `hunk_ids: tuple[str, ...]`. `diff` is the hunk text for ONE file, which is
-  exactly what `UnifiedDiff(path=..., diff=...)` in
-  `packages/orchestration/structured_patch.py` carries; `hunk_ids` are the ids
-  emitted into it, in the diff's own order.
-- `ApprovedSubsetDiff`, a frozen dataclass: `files: tuple[ApprovedSubsetFile, ...]`
-  in the diff's own file order, and `selected: tuple[str, ...]` — every id
-  emitted across all files, in the diff's own order.
-- `SubsetRefusal`, a frozen dataclass: `code: str`, `message: str`,
-  `hunk_ids: tuple[str, ...]`. Same shape as `HunkApprovalRefusal` on purpose —
-  a caller handles both the same way — but a DISTINCT type, because these codes
-  are about the DIFF and those are about the SELECTION.
+- `applied: bool` — true only when every approved hunk landed.
+- `apply_id: str` — the applier's own id, or `""` when no apply was attempted.
+- `landed: tuple[str, ...]` — the hunk ids that landed, in the subset's order.
+  EMPTY whenever `applied` is false; there is no partial landing, and a caller
+  must not have to check two fields to learn that.
+- `blocked: tuple[str, ...]` — on failure, the hunk ids the failure is
+  attributable to; empty on success.
+- `code: str` — `""` on success, otherwise a named code.
+- `message: str` — one human sentence, never parsed.
 
-### 3. The refusal codes, and the ORDER they are checked in
+Codes, as module-level constants: `HUNK_APPLY_REFUSED` (`"subset_refused"`) when
+`build_approved_subset_diff` refused, `HUNK_APPLY_CONFLICT` (`"conflict"`) when
+the applier reported failure, and `HUNK_APPLY_NOTHING_TO_APPLY`
+(`"nothing_to_apply"`) when the subset came back with no files at all. When the
+subset refuses, carry ITS code and message through in `message` and put its
+offending ids in `blocked`, so no information is lost by the wrapping.
 
-Module-level constants: `SUBSET_REFUSAL_NO_APPROVED_IDS` (`"no_approved_ids"`),
-`SUBSET_REFUSAL_UNTRUSTWORTHY_VIEW` (`"untrustworthy_view"`),
-`SUBSET_REFUSAL_ABSENT_HUNK` (`"absent_hunk"`).
+### 3. The entry point
 
-Checked in exactly that order; the FIRST that trips is returned, and a test pins
-the order with an input that trips two at once.
-
-WHY UNTRUSTWORTHY BEFORE ABSENT, and this is the subtle one: a truncated view is
-missing hunks it never showed, so "this approved id is not in the diff" is
-UNKNOWABLE while the view is untrustworthy. Reporting absence first would blame
-the operator's selection for the parser's ceiling.
-
-- NO_APPROVED_IDS when the approved set is empty. Landing nothing is not an
-  all-or-nothing apply of nothing, it is a caller mistake;
-  `decide_hunk_approval` already refuses an empty DECISION, and a full-rejection
-  round reaches the repair loop rather than the applier.
-- UNTRUSTWORTHY_VIEW when the parsed view's top-level `truncated` is true, or
-  when any file the selection touches carries a `note` or a `status` of
-  `binary`. Those are the states in which re-emitting from the view would
-  silently produce a diff that is not the diff. `hunk_ids` carries the approved
-  ids that fall in such files, and is empty when `truncated` alone tripped it.
-- ABSENT_HUNK when an approved id is not among the ids the view carries.
-  `hunk_ids` carries every such id, DEDUPLICATED and in the order the caller
-  gave them. This is a real integrity check rather than a repeat of round 6's
-  `unknown_hunk`: the diff can be re-parsed between the decision and the apply,
-  and an id that has since vanished must stop the apply rather than shrink it.
-
-### 4. The entry point
-
-    build_approved_subset_diff(
+    apply_approved_hunks(
         diff_text: str,
         approved_hunk_ids: Iterable[str],
-    ) -> ApprovedSubsetDiff | SubsetRefusal
+        repo_path: Path,
+        *,
+        job: Any,
+        intent_id: str,
+        data_dir: str | None = None,
+        job_id: UUID | None = None,
+    ) -> HunkApplyOutcome
 
-Parse `diff_text` with `parse_unified_diff_to_view`. Then, for each file in the
-view's order, keep the hunks whose `id` is approved, and emit for that file:
+Steps, in order:
 
-- each kept hunk's `header` VERBATIM, unchanged — the reviewer's measurement
-  above is why no renumbering happens, and inventing one would be a defect;
-- then one line per entry of that hunk's `lines`, as the prefix for its `kind`
-  followed by its `content`: `ctx` takes a single SPACE, `del` a `-`, `add` a
-  `+`. A `kind` that is none of those three is an untrustworthy view, not a line
-  to guess at.
+1. Call `build_approved_subset_diff`. A `SubsetRefusal` returns immediately as
+   `HUNK_APPLY_REFUSED` with its code and message carried in `message` and its
+   `hunk_ids` in `blocked`. NOTHING IS WRITTEN in that case — the applier is not
+   called at all, and a test pins that by hashing the repository before and
+   after.
+2. An `ApprovedSubsetDiff` with no files is `HUNK_APPLY_NOTHING_TO_APPLY`, again
+   without calling the applier.
+3. Otherwise build `StructuredPatch(intent_kind="unified_diff", unified_diffs=...,
+   target_paths=...)` — one `UnifiedDiff(path=file.path, diff=file.diff)` per
+   subset file, in the subset's order, and `target_paths` the same paths in the
+   same order, because `validate_structured_patch` checks them separately.
+4. Call `apply_structured_patch` with the job, intent and data dir it was given,
+   passing them through UNCHANGED. This module adds no permission check of its
+   own: the applier owns that boundary and a second copy would drift from it.
+5. On `result.success`, return `applied=True` with `landed` the subset's
+   `selected` tuple and `code` empty.
+6. On failure, return `applied=False`, `landed=()` and `code=HUNK_APPLY_CONFLICT`.
+   ATTRIBUTION: for each subset file, if any string in `result.errors` STARTS
+   WITH that file's path followed by `": "`, that file's `hunk_ids` join
+   `blocked`. This is a membership test against paths the module already knows
+   exactly, never a parse of an error message. If no path matches — a permission
+   refusal, a snapshot refusal, a fence refusal, all of which fail before any
+   file is touched — `blocked` is EVERY selected id, because the whole selection
+   was stopped. Say in a comment which case is which.
 
-A file with no kept hunk does not appear at all. Each `ApprovedSubsetFile.diff`
-ends with exactly one trailing newline, and carries no `diff --git`, `---` or
-`+++` header: `_apply_unified_diff` takes the path from `UnifiedDiff.path` and
-`_apply_hunks` reads only `@@` lines, so a header there would be noise the
-applier skips.
+## SPEC — `tests/orchestration/test_hunk_apply.py`
 
-Duplicate approved ids are harmless and are NOT a refusal — the operator asked
-for a hunk twice, which is the same request. Each hunk is emitted ONCE.
+A NEW file. `tests/orchestration/test_source_apply.py` already builds a
+permissioned job with an approved intent — read its helper near line 166 and
+follow the same recipe rather than inventing one; do not import across test
+files.
 
-Coerce ids to text with the same totality guard `hunk_approval.py` uses. A
-`diff_text` that is not a string is coerced the same way before parsing, so a
-wrong-typed call becomes a refusal rather than an exception.
+Cover, at least:
 
-## SPEC — `tests/orchestration/test_hunk_subset_diff.py`
+- A CLEAN SUBSET LANDS EXACTLY THE APPROVED HUNKS: a two-hunk diff over a real
+  file in a temporary repository, one hunk approved, and the file afterwards
+  equals the original with ONLY that hunk's change made. Assert the file's bytes,
+  not a line count.
+- THE ALL-OR-NOTHING PROOF, which is this round's reason to exist: a subset in
+  which one approved hunk cannot apply — build it by editing the file on disk so
+  a context line no longer matches — leaves EVERY file BYTE-IDENTICAL to before
+  the call. Hash before and after and compare the hashes; `applied` is false and
+  `landed` is empty.
+- The blocked ids on that failure are the conflicting FILE's hunk ids.
+- A refusal from the subset builder returns `HUNK_APPLY_REFUSED`, carries the
+  subset code in the message, and writes NOTHING — hashed before and after.
+- A job WITHOUT `repo_generated_write`, and an intent that is not approved, each
+  fail with nothing written, and `blocked` names every selected id.
+- A multi-file subset lands both files.
 
-A NEW file. Cover, at least:
-
-- THE ROUND-TRIP PROPERTY, which is the one that matters: build a fixture file
-  and a two-hunk diff over it; assert that selecting BOTH hunks produces a diff
-  which, applied, gives byte-identically what applying the RAW diff gives; and
-  that selecting each hunk ALONE changes exactly that hunk's lines and leaves
-  the other's alone. Import `_apply_hunks` from
-  `packages/orchestration/source_apply.py` for this, and say in a comment why a
-  private name is the right import here: the property is about the applier's
-  real behaviour, and the public `apply_structured_patch` needs a repository, a
-  job and a data directory that this pure test has no business building.
-- THE PREFIX MAP is load-bearing: a test that would fail if `add` and `del` were
-  swapped.
-- Headers come through VERBATIM — assert the emitted header string equals the
-  one in the source diff, character for character.
-- Each of the three refusal codes on its own, and the ORDER, with one input that
-  trips two.
-- A multi-FILE diff: only files with a kept hunk appear, in the diff's order,
-  and `selected` spans files in the diff's order.
-- Duplicate approved ids emit the hunk once and do not refuse.
-- TOTALITY: `None`, a non-string diff, a non-iterable id set and a non-string id
-  each return a value rather than raising.
-
-Name each test for the property it pins, not for the function it calls.
+Name each test for the property it pins.
 
 ## The slices
 
-<<<SLICE PLANF033R7
+<<<SLICE PLANF033R8
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
@@ -240,40 +224,35 @@ round — every partial state rendered truthfully in viewer, node and report.
 |------|--------|--------|
 | T001 stable ids, viewer v2, consolidation | done | closed round 5, DECISION F033 D3 |
 | the approval decision core | done | round 6, 30 cases |
-| the approved subset diff | done | this round |
-| landing the subset all-or-nothing | open | next, through `source_apply.py` |
-| the write-door command and its exposure | open | needs the import guard widened |
+| the approved subset diff | done | round 7, 17 cases |
+| landing the subset all-or-nothing | done | this round, on `source_apply.py` |
+| the write-door command and its exposure | open | next, needs the import guard widened |
 | the hunk-decision ledger in evidence | open | |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Land the subset: feed the per-file diffs this round emits through
-   `apply_structured_patch`, all-or-nothing, so a conflict inside the approved
-   set leaves NOTHING applied and names the hunk that conflicted. The applier
-   already snapshots and reverts; the round proves the atomicity, it does not
-   build it.
-2. Then the write door: `approve_hunks` reaches the applier through a service
-   seam, never by importing it — `packages.orchestration.source_apply` is in
-   `FORBIDDEN_MODULES` in `tests/ui_server/test_command_channel.py`.
-3. Then the hunk-decision ledger in evidence, which T003's report line reads.
+1. The write door: expose `approve_hunks` and dispatch it. The door may NOT
+   import the applier — `packages.orchestration.source_apply` is in
+   `FORBIDDEN_MODULES` in `tests/ui_server/test_command_channel.py` — so the
+   command reaches `apply_approved_hunks` through a service seam, and
+   `TestCommandDoorImportGuard`'s ALLOWED_IMPORTS is widened in the SAME commit
+   that adds the import, with the decision that widens it.
+2. Then the hunk-decision ledger in evidence, which T003's report line reads.
+3. Then T003: rejection reasons quoted verbatim into the next repair prompt, and
+   partial state rendered truthfully in viewer, node and report.
 
 ## Risks
-- The door's import guard is an EQUALITY guard, so any new import is widened in
-  the SAME commit that adds it, or the branch tip ships red.
+- The door's import guard is an EQUALITY guard, so a new import reddens the
+  branch tip unless it is ruled in the same commit.
 - A truncated or binary view cannot be re-emitted faithfully; the subset builder
-  refuses rather than shrinking a diff silently, and the apply round must keep
-  that refusal rather than defaulting past it.
+  refuses rather than shrinking a diff silently, and every later caller must
+  keep that refusal rather than defaulting past it.
 - R-0738 stays open and is T003's to repair.
-<<<END PLANF033R7
+<<<END PLANF033R8
 
-<<<SLICE RECORDF033R7
-Gate: F033 R6 — THE DECISION CORE. THE ROUND PASSED. All eight gates were re-executed by the reviewer at `1fdda402` from scripts of its own, and every ordered reading reproduced. TRANSPORT: the C0a blob is 24108 bytes at sha256 `a68745f0…09ee19`, byte-identical to the reviewer's own pre-emission original, with ONE blob id at C0b. THE RECORD APPEND at `f3a8b0ed` reconstructs 1456716 plus one newline plus 5024 to 1461741, the committed blob exactly, base a byte PREFIX, N counted at 2, the last two blank-line units equal to the slice's paragraphs IN ORDER, and a byte flipped at offset 1457017 — inside the FIRST appended paragraph, spanning 1456717 to 1459909 — rejected by BOTH readers. THE LEDGER moved exactly where the block allowed: registered 300 UNMOVED with NO id added, `Done:` 44 to 45 over 42 to 43 with the added resolved id exactly `R-0739`, `Landed:` 12 UNMOVED with the `Landed: R-0739` line still present beside its new `Done:` paragraph as this append-only record requires, `Gate:` 122 to 123, the open set 258 to 257, and `^Gate: F033 R5 — ` exactly 1. THE PROSE-SLIPS APPEND at `da81db54` is 18681 plus 897 equals 19578 byte for byte with the base a prefix and both dated lines present. THE MODULE AGAINST THE SPEC: `ruff check` over both new files exits 0 at "All checks passed!"; the AST import set is `__future__`, `collections`, `collections.abc`, `dataclasses` and `typing`, with NO non-standard-library entry, so the module's own claim to import nothing of this package is measured rather than asserted; the five refusal constants are module-level with exactly the ordered values; and `open(`, `import os`, `import subprocess`, `import logging` and `Path` all read 0. THE MUTATION RED-PROOFS WERE REPRODUCED BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE at `41050925`, with its own anchors, each asserted unique before replacement, under `python3 -B`: the UNMUTATED CONTROL is a real exit 0 at 30 passed, disabling the overlap check is exit 1 at 2 failed, accepting a whitespace-only reason is exit 1 at 2 failed, and disabling the unknown-id check is exit 1 at 4 failed. THE REVIEWER THEN RAN A FOURTH MUTATION THE BLOCK NEVER ORDERED — returning an empty `pending` tuple unconditionally — and it went RED at 3 failed, naming `test_a_mixed_decision_reports_approved_rejected_and_the_pending_remainder`, `test_pending_follows_the_order_the_known_set_gave` and `test_a_non_string_id_is_compared_as_text`, so the PENDING remainder is genuinely pinned and not merely computed. The reverted control returned to exit 0 at 30 passed, the worktree was removed by exact path and pruned, and the primary checkout's `git status --porcelain` was empty throughout. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: the new `tests/orchestration/test_hunk_approval.py` 30, `tests/orchestration/test_hunk_identity.py` 10, `tests/orchestration/test_diff_parser.py` 50, `tests/regression/test_resource_safety.py` 21, `tests/test_no_interactive_guard.py` 6 and the canary `tests/cli/test_golden_path.py` 42. THE STRUCTURE: six single-parent commits of 337, 249, 15, 4, 4 and 492 insertions, every one under 500, the path set matching the change set in BOTH directions with `.agent/handoff.md` the sole expected absence, residue 0 in every target against a control of 5 and 6, `git ls-files .remedy-wt` 0, and `ui_server.py`, `command_catalog.py`, `source_apply.py`, `hunk_identity.py`, `diff_parser.py` and `docs/roadmap/STATUS.md` all byte-identical across the round. THE WORKER DECLARED A TENSION IN THE REVIEWER'S OWN SPEC AND RESOLVED IT CORRECTLY: §4 called a malformed rejection entry a `REFUSAL_MISSING_REASON` while §3 fixed `UNKNOWN_HUNK` strictly earlier, and it read §4 as naming the fault CLASS rather than overriding the order stated beside it — which is the reading the shipped order makes true, and which the reviewer confirmed by reading the code rather than the handback. It damaged nothing on disk, so under operator amendment amend0827 rule 2 it spends no id and buys no correction round; it is the dated line this round's C3 puts in `.agent/prose_slips.md`. The reviewer also read the module in full for defects the gates could not see and found none: the totality guards sit at the BOUNDARY so the rules below them need no catch-all that would swallow a real defect, and treating an absent reason and an explicit `None` alike is right, because coercing `None` to the literal text would sail past the very emptiness check the code names.
-<<<END RECORDF033R7
-
-<<<SLICE SLIPSF033R7
-
-2026-08-29 · F033 R6 · The block's SPEC §4 said a rejection entry in none of the three accepted spellings "is a `REFUSAL_MISSING_REASON`" while its own §3 fixed `UNKNOWN_HUNK` strictly earlier in the refusal order, so the two clauses are readable against each other; the worker took §4 as naming the fault class rather than overriding the order, shipped the order §3 fixed, and declared the tension.
-<<<END SLIPSF033R7
+<<<SLICE RECORDF033R8
+Gate: F033 R7 — THE APPROVED SUBSET DIFF. THE ROUND PASSED. All eight gates were re-executed by the reviewer at `f0dc48f3` from scripts of its own, and every ordered reading reproduced. TRANSPORT: the C0a blob is 24748 bytes at sha256 `8634f552…33158a4`, byte-identical to the reviewer's own pre-emission original, with ONE blob id at C0b. THE RECORD APPEND at `d887643a` reconstructs 1461741 plus one newline plus 4515 to 1466257, the committed blob exactly, base a byte PREFIX, N counted at 1, the last unit equal to the slice's paragraph, and a byte flipped at offset 1462142 inside that appended paragraph rejected by BOTH readers. THE LEDGER moved only where allowed: registered 300, `Done:` 45 over 43, `Landed:` 12 and the open set 257 ALL UNMOVED, `Gate:` 123 to 124, and `^Gate: F033 R6 — ` exactly 1. THE PROSE-SLIPS APPEND at `42d0a76f` is 19578 plus 407 equals 19985 byte for byte. THE MODULE AGAINST THE SPEC: `ruff check` exits 0; the AST import set is `__future__`, `collections.abc`, `dataclasses`, `typing` and `packages.orchestration.diff_parser` and NOTHING else, so the module's claim to hold the ONE identity is measured rather than asserted; `source_apply` occurs 0 times in its text; the three refusal constants carry exactly the ordered values; and `open(`, `import os`, `import subprocess`, `import logging` and `Path` all read 0. THE REVIEWER STRESSED TOTALITY BEYOND WHAT THE BLOCK ORDERED, because the module's totality rests on a DEPENDENCY — `parse_unified_diff_to_view` — and the ordered probe coerced its inputs to text before that parser ever saw them, so it never tested the thing that could break. Twenty-eight hostile values were pushed through both argument positions, among them an empty string, a bare `@@`, a header with a non-numeric old start, a hunk count of fourteen digits, a hundred-thousand-character body, a lone surrogate, CRLF bodies, a no-newline-at-end marker and objects whose `__str__` and `__repr__` both raise: ZERO raised, every call returned an `ApprovedSubsetDiff` or a `SubsetRefusal`. THE ROUND-TRIP PROPERTY WAS RE-DERIVED BY THE REVIEWER, not read out of the handback: selecting both hunks of a two-hunk diff and applying the result through `_apply_hunks` is byte-identical to applying the raw diff, the emitted headers match the source character for character, the second hunk alone changes only its own line, a duplicated id emits its hunk exactly once, and an id the diff does not carry refuses as `absent_hunk` naming that id. THE MUTATION RED-PROOFS WERE REPRODUCED IN THE REVIEWER'S OWN DISPOSABLE WORKTREE at `c4b11af5`, the import path first proved to resolve to the worktree copy: the UNMUTATED CONTROL is a real exit 0 at 17 passed, swapping the add and del prefixes is exit 1 at 3 failed, disabling the untrustworthy check is exit 1 at 4 failed, and disabling the absent check is exit 1 at 2 failed. THE REVIEWER THEN RAN A FOURTH MUTATION THE BLOCK NEVER ORDERED — replacing every emitted header with a fixed `@@ -1,1 +1,1 @@` — and it went RED at 3 failed, naming the round-trip test, the single-hunk test and `test_a_header_is_re_emitted_character_for_character`, so the VERBATIM-HEADER property is genuinely pinned rather than merely true. The reverted control returned to exit 0 at 17, the worktree was removed by exact path and pruned, and the primary checkout was clean throughout. THE SUITES were re-run SERIALLY, every REAL exit 0: the new file 17, `test_hunk_approval.py` 30, `test_diff_parser.py` 50, `test_hunk_identity.py` 10, `test_source_apply.py` 34 and the canary 42. THE STRUCTURE: six single-parent commits of 364, 227, 11, 2, 2 and 497 insertions, every one under 500, the path set matching in BOTH directions with `.agent/handoff.md` the sole expected absence, residue 0 in every target, `git ls-files .remedy-wt` 0, and all seven do-not-touch paths byte-identical across the round. TWO THINGS THE WORKER DECLARED AND THE REVIEWER CONFIRMED. First, the block's SPEC §1 ordered the docstring to name `packages/orchestration/source_apply.py` as the place an apply-seeking reader should go, while G6(b) ordered that same string to read ZERO in the module; the worker satisfied both by naming the applier as `apply_structured_patch` and pointing at the `FORBIDDEN_MODULES` entry instead of spelling the path, which keeps the reader's pointer and the measurement. That is a reviewer-prose defect that damaged nothing on disk and spends no id under operator amendment amend0827 rule 2. Second, the untrustworthy check's third limb — a line kind the prefix map has no entry for — is UNREACHABLE through the public entry point, because the parser emits only the three kinds it knows; it ships as a guard against a future kind and no test exercises it, which the worker declared rather than hid, and which the reviewer confirmed also means `_emit` has no `KeyError` path.
+<<<END RECORDF033R8
 
 ## Done when — the gates
 
@@ -286,13 +265,13 @@ C4, so the handback at C5 can quote all of them.
   `feature/f033-hunk-approval-v2` throughout. No force-push, no rewrite, no
   branch deletion; `git rev-parse feature/f033-hunk-approval` still `ed040812`.
 - **G2 TRANSPORT.** Report sha256 and byte length of
-  `<C0a>:.agent/authored/f033-r7.md` and of `.remedy-wt/f033-r7-block.md`, and
-  whether they are EQUAL. Then `git rev-parse <C0b>:.agent/authored/f033-r7.md`
+  `<C0a>:.agent/authored/f033-r8.md` and of `.remedy-wt/f033-r8-block.md`, and
+  whether they are EQUAL. Then `git rev-parse <C0b>:.agent/authored/f033-r8.md`
   and `git rev-parse <C0b>:.agent/last_block.md` must print ONE blob id.
 - **G3 THE RECORD APPEND at C2.** (a) the BASE blob of `.agent/live_review.md`,
-  which must be 1461741 bytes, plus one newline plus RECORDF033R7 equals the C2
+  which must be 1466257 bytes, plus one newline plus RECORDF033R8 equals the C2
   blob byte for byte; BASE a byte PREFIX; result ending in exactly one newline.
-  (b) let N be the paragraph count your script COUNTS in RECORDF033R7 — report it
+  (b) let N be the paragraph count your script COUNTS in RECORDF033R8 — report it
   — and compare the LAST N blank-line units of the C2 blob against the slice's
   paragraphs IN ORDER. NEGATIVE CONTROL at an offset your script PROVES lies
   inside the FIRST appended paragraph; BOTH readers must reject it.
@@ -300,65 +279,63 @@ C4, so the handback at C5 can quote all of them.
   ids, `^Done: R-\d+ — ` lines with distinct ids, `^Landed: R-`, and
   `^Gate: F\d+ R\d+ — `; report the open set at both. Ordered: registered 300
   UNMOVED, `Done:` 45 over 43 UNMOVED, `Landed:` 12 UNMOVED, the open set 257
-  UNMOVED — this round registers and resolves NOTHING — and `Gate:` 123 to 124.
-  `^Gate: F033 R6 — ` at C2 must read exactly 1.
-- **G5 THE PROSE-SLIPS APPEND at C3.** The BASE blob of `.agent/prose_slips.md`,
-  which must be 19578 bytes, plus SLIPSF033R7 equals the C3 blob byte for byte —
-  the slice OPENS with a blank line, so no separator is added. BASE a byte
-  PREFIX; result ending in exactly one newline; the lines that commit's diff ADDS
-  are exactly the slice's lines IN ORDER. Report `^2026-08-29 · F033 R6 · ` at C3
-  as exactly 1.
-- **G6 THE MODULE AGAINST THE SPEC at C4.** Each as a measurement over
-  `packages/orchestration/hunk_subset_diff.py`. (a) `ruff check` over both new
-  files exits 0 — report its summary line. (b) By AST, not by grep: report the
-  FULL import list; every entry must be either standard library or exactly
-  `packages.orchestration.diff_parser`, and `source_apply` must appear ZERO
-  times anywhere in the module's text. (c) The three refusal constants are
-  module-level assignments with exactly the values `no_approved_ids`,
-  `untrustworthy_view` and `absent_hunk` — report each name with its value.
-  (d) TOTALITY, as a real probe rather than an assertion: call
-  `build_approved_subset_diff` with each of `None`, `object()`, an integer and a
-  non-iterable id set, in both argument positions, and report that every call
-  RETURNED and what type came back. (e) `open(`, `import os`,
-  `import subprocess` and `import logging` each read 0.
+  UNMOVED — this round registers and resolves NOTHING — and `Gate:` 124 to 125.
+  `^Gate: F033 R7 — ` at C2 must read exactly 1.
+- **G5 THE MODULE AGAINST THE SPEC at C3.** Each as a measurement over
+  `packages/orchestration/hunk_apply.py`. (a) `ruff check` over it exits 0 —
+  report the summary line. (b) By AST, report the FULL import list; it must
+  include `packages.orchestration.hunk_subset_diff` and
+  `packages.orchestration.source_apply` and must NOT include
+  `packages.orchestration.permissions` or
+  `packages.orchestration.approval_queue`, because step 4 forbids a second
+  permission boundary. (c) The three codes are module-level assignments with
+  exactly the values `subset_refused`, `conflict` and `nothing_to_apply` —
+  report each name with its value. (d) `apply_approved_hunks` and
+  `HunkApplyOutcome` are both module-level and their signature and field names
+  match §2 and §3 — report the extracted signature and field list.
+- **G6 THE ALL-OR-NOTHING PROOF at C4, reported as its own reading.** Run
+  `python3 -B -m pytest tests/orchestration/test_hunk_apply.py -q` — REAL exit 0,
+  report the count. Then report, for the conflict test SPECIFICALLY and by name:
+  the sha256 of the target file BEFORE the call and AFTER it, and that they are
+  EQUAL. Print those two digests in the handback. A rollback claimed without two
+  equal digests beside it is not a proof.
 - **G7 THE MUTATION RED-PROOFS at C4.** In a DISPOSABLE `git worktree` at C4,
-  never in the primary checkout, with `python3 -B`. FIRST the UNMUTATED CONTROL:
-  `python3 -B -m pytest tests/orchestration/test_hunk_subset_diff.py -q` must be
-  a REAL exit 0 — report the count. Then, one at a time, reverting fully between
-  each, asserting the anchor is UNIQUE before replacing it, and reporting the
-  REAL exit code, the failure count and the NAME of each failing test:
-  (i) swap the `add` and `del` prefixes in the emission;
-  (ii) make the UNTRUSTWORTHY_VIEW check never trip;
-  (iii) make the ABSENT_HUNK check never trip.
+  never in the primary checkout, with `python3 -B`, having first proved the
+  import resolves to the WORKTREE's copy of the module. FIRST the UNMUTATED
+  CONTROL — REAL exit 0, report the count. Then, one at a time, reverting fully
+  between each, asserting the anchor is UNIQUE before replacing it, and
+  reporting the REAL exit code, the failure count and the NAME of each failing
+  test:
+  (i) return `applied=True` with the subset's ids even when the applier failed;
+  (ii) call the applier even when the subset REFUSED;
+  (iii) make the blocked-id attribution always return every selected id.
   Each MUST go RED. If any comes back GREEN, report that plainly and do NOT
   adjust anything to force a red — a green mutation is a real finding about the
   tests and the reviewer wants it. Remove the worktree BY EXACT PATH, then
   `git worktree prune`.
 - **G8 SUITES AND STRUCTURE.** Serially, one pytest process at a time, each a
-  REAL exit 0 with its count: `tests/orchestration/test_hunk_subset_diff.py` (new
-  — report the count), `tests/orchestration/test_hunk_approval.py` (30 at BASE),
-  `tests/orchestration/test_diff_parser.py` (50 at BASE),
-  `tests/orchestration/test_hunk_identity.py` (10 at BASE),
-  `tests/orchestration/test_source_apply.py` (34 at BASE — the reviewer resolved
-  this path and ran it, so it is ordered outright rather than conditionally) and
-  the canary `tests/cli/test_golden_path.py` (42 at BASE). Then
-  walk `git rev-list --reverse BASE..C4`: each commit exactly ONE parent, each
-  under 500 INSERTIONS — the `+` column of `git diff --numstat`, never insertions
-  plus deletions — and report the per-commit list. C5's own numbers are NOT
-  ordered here; the reviewer measures C5 at the next gate. Report the range's
-  path set against the change set in BOTH directions. Count `<<<SLICE ` and
-  `<<<END ` in `.agent/plan.md`, `.agent/prose_slips.md`,
-  `packages/orchestration/hunk_subset_diff.py` and
-  `tests/orchestration/test_hunk_subset_diff.py`: each 0, against
-  `.agent/authored/f033-r7.md` as a non-zero control whose count you report.
+  REAL exit 0 with its count: `tests/orchestration/test_hunk_apply.py`,
+  `tests/orchestration/test_source_apply.py` (34 at BASE),
+  `tests/orchestration/test_hunk_subset_diff.py` (17 at BASE),
+  `tests/orchestration/test_hunk_approval.py` (30 at BASE),
+  `tests/regression/test_resource_safety.py` (21 at BASE) and the canary
+  `tests/cli/test_golden_path.py` (42 at BASE). Then walk
+  `git rev-list --reverse BASE..C4`: each commit exactly ONE parent, each under
+  500 INSERTIONS — the `+` column of `git diff --numstat`, never insertions plus
+  deletions — and report the per-commit list. C5's own numbers are NOT ordered
+  here; the reviewer measures C5 at the next gate. Report the range's path set
+  against the change set in BOTH directions. Count `<<<SLICE ` and `<<<END ` in
+  `.agent/plan.md`, `packages/orchestration/hunk_apply.py` and
+  `tests/orchestration/test_hunk_apply.py`: each 0, against
+  `.agent/authored/f033-r8.md` as a non-zero control whose count you report.
   `git ls-files .remedy-wt` must read 0.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: SESSION 2,
-round 7, BASE, the changed-files table with real `+/-` from `git diff --numstat`
+round 8, BASE, the changed-files table with real `+/-` from `git diff --numstat`
 — derive that column from the tool, not from the files' line counts — one line
 per gate with real numbers, the item-status table with every ordered item exactly
-once, and your deviations. Quote `build_approved_subset_diff`'s final signature,
-and list the test names you wrote with the property each pins. No length cap.
-Write no verdict on your own work.
+once, and your deviations. Quote `apply_approved_hunks`'s final signature, the
+two sha256 digests G6 asks for, and the test names you wrote with the property
+each pins. No length cap. Write no verdict on your own work.
