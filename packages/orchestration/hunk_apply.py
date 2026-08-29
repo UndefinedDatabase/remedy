@@ -11,10 +11,16 @@ call, and turns one ``ApplyResult`` into one ``HunkApplyOutcome``.
 THE ATOMICITY IS INHERITED, NOT BUILT HERE, and that is deliberate. ``apply_structured_patch``
 already takes a mandatory verified snapshot of exactly the paths its patch names, applies each
 unified diff in turn, and on ANY failure restores from that snapshot and stops — so a conflict
-inside the approved set already falls back to nothing-applied. A second rollback written here
-would be a second answer to one question, free to drift from the first. This module therefore
-snapshots nothing, restores nothing and writes no file itself, and ``landed`` is EMPTY whenever
-``applied`` is false, because there is no partial landing for a caller to report.
+inside the approved set falls back to nothing-applied WHENEVER THAT RESTORE FINISHES. A second
+rollback written here would be a second answer to one question, free to drift from the first, so
+this module snapshots nothing, restores nothing and writes no file itself. There is one exception
+and it is the reason ``_failure_lead_sentence`` exists: when the applier reports that its OWN
+rollback did not finish, the fallback did not complete either and files written before the failure
+may still be on disk. This module's job is then to SAY so, for exactly the reason it builds no
+rollback of its own — repairing the applier's half-restored tree from here would be that second
+answer. ``landed`` is EMPTY whenever ``applied`` is false, because this module learns WHICH hunks
+landed only from a SUCCESSFUL apply and so has no per-hunk answer to give on failure; a partial
+state on disk is reported in the MESSAGE, never by half-filling ``landed``.
 
 DELIBERATE ABSENCE — it also runs NO permission check and NO approval check of its own. The
 applier owns that boundary, refusing without the ``repo_generated_write`` capability and
@@ -73,6 +79,17 @@ HUNK_APPLY_CONFLICT = "conflict"
 #: apply id for a mutation that never existed.
 HUNK_APPLY_NOTHING_TO_APPLY = "nothing_to_apply"
 
+# THE APPLIER'S ROLLBACK VOCABULARY, RESTATED RATHER THAN IMPORTED. ``_rollback_from_snapshot`` in
+# ``packages/orchestration/source_apply.py`` appends an error starting with one of these prefixes
+# when the restore it attempted did not finish — the snapshot would not load, or a file could not
+# be put back — and those errors arrive here in the same ``ApplyResult.errors`` list as every
+# other failure. They are RESTATED rather than imported on purpose: they are that function's
+# PRIVATE message vocabulary, and importing a private name to read a message would couple this
+# seam to the applier's WORDING instead of to its BEHAVIOUR, which is the coupling this whole
+# module exists to avoid. The trailing space on the second is load-bearing — it keeps the prefix
+# off any longer word that merely starts the same way.
+_ROLLBACK_UNFINISHED_PREFIXES = ("rollback_failed:", "rollback_incomplete ")
+
 
 @dataclass(frozen=True)
 class HunkApplyOutcome:
@@ -113,6 +130,43 @@ def _blocked_ids(subset: ApprovedSubsetDiff, errors: list[str]) -> tuple[str, ..
     if attributed:
         return tuple(attributed)
     return subset.selected
+
+
+def _rollback_did_not_finish(errors: list[str]) -> bool:
+    """Whether the applier reported that its OWN rollback did not complete.
+
+    A MEMBERSHIP test against the prefixes above, never a parse of the message that follows one:
+    the count of files and their names belong to the applier and may change without notice."""
+    return any(
+        error.startswith(prefix)
+        for error in errors
+        for prefix in _ROLLBACK_UNFINISHED_PREFIXES
+    )
+
+
+def _failure_lead_sentence(errors: list[str]) -> str:
+    """The leading sentence of a failure message, DERIVED from the errors rather than asserted.
+
+    The applier's rollback is what makes "nothing was applied" true on disk, so this module may
+    only claim it when that rollback finished. When it did not, files written before the failure
+    may still be there, and the sentence says so rather than denying it with the contradicting
+    evidence concatenated after the claim.
+
+    DELIBERATE ABSENCE — no fourth failure code is minted for this state. ``code`` stays
+    ``HUNK_APPLY_CONFLICT``, because nothing machine-readable is wrong here and a new code would
+    make every existing caller's match incomplete for a state that is a strictly worse version of
+    the one it already handles. The difference is in the MESSAGE, which is what an operator reads
+    when deciding whether to re-diff or to inspect the tree by hand.
+
+    DELIBERATE ABSENCE — the affected files are NOT re-named in this sentence. The applier's own
+    ``rollback_incomplete (N file(s)): a; b`` already names them and is concatenated directly
+    after it, so a second naming here would only be a second list free to drift from the first."""
+    if _rollback_did_not_finish(errors):
+        return (
+            "No approved hunk was applied, and the rollback did not finish, so the repository "
+            "may still hold part of the change — inspect it before re-diffing. "
+        )
+    return "No approved hunk was applied; the repository is unchanged. "
 
 
 # The one entry point: land exactly the approved hunks, all of them or none of them.
@@ -202,6 +256,6 @@ def apply_approved_hunks(
         landed=(),
         blocked=blocked,
         code=HUNK_APPLY_CONFLICT,
-        message="No approved hunk was applied; the repository is unchanged. "
+        message=_failure_lead_sentence(result.errors)
                 + ("; ".join(result.errors) if result.errors else "The applier reported failure."),
     )
