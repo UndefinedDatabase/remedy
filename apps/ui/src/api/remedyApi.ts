@@ -2,6 +2,8 @@ import { humanLabel, isDiagnosticsOnly, scrubUiText } from "../copy/humanCopy";
 import { decisionCardModels } from "./decisionCard";
 import { readDiffEnvelope } from "./diffViewModel";
 import type { DiffEnvelope } from "./diffViewModel";
+import { decodeJobDigest, jobDigestPath } from "./jobDigest";
+import type { JobDigest } from "./jobDigest";
 import type { PipelineStep, PipelineStepState, RemedyActivityItem, RemedyContinuationSummary, RemedyDashboard, RemedyGraphEdge, RemedyGraphNode, RemedyJourneyItem, RemedyMetric, RemedyNextAction, RemedyPhase, RemedyPipeline, RemedyPromptKind, RemedyPromptRole, RemedyPromptTraceItem, RemedyPromptTraceSummary, RemedySnapshotSummary, RemedyState, RemedyTaskItem, RemedyTimelineEvent, RemedyTimelineEventKind, RemedyTimelinePhase } from "./types";
 
 interface ApiClientOptions { jobId: string; token: string; baseUrl?: string; }
@@ -731,5 +733,48 @@ export async function loadDiffEnvelope(
     return readDiffEnvelope(payload);
   } catch {
     return readDiffEnvelope(null);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The job digest door (F040 T002). Paired with `jobDigestPath` and
+// `decodeJobDigest` in `./jobDigest`, the way `loadDiffEnvelope` above pairs
+// with `diffEnvelopePath`. Tested with a plain injected fetcher and no
+// mocked global, exactly like the diff envelope door's own tests.
+// ---------------------------------------------------------------------------
+
+/** How the digest door reaches the network, injected exactly like
+ *  `DiffEnvelopeFetcher` above: a test hands `loadJobDigest` a fake of this
+ *  shape rather than patching a global. */
+export type JobDigestFetcher = (path: string) => Promise<unknown>;
+
+/** Read one job's completion digest through the single door.
+ *
+ *  THIS FUNCTION NEVER THROWS. A stale token, a dead socket and a payload
+ *  from a version this client does not understand all arrive at the caller
+ *  the same way, through the return value rather than a catch block a caller
+ *  could forget to write.
+ *
+ *  ITS CATCH RETURNS `null` DIRECTLY, unlike `loadDiffEnvelope` above, whose
+ *  catch calls `readDiffEnvelope(null)` to produce a total `DiffEnvelope`
+ *  with `available: false` — that wrapper exists because an unavailable diff
+ *  is still a whole envelope a caller can render without branching.
+ *  `decodeJobDigest` has no such "unavailable" shape to build: it already
+ *  answers `JobDigest | null`, and `null` already IS its own total-absence
+ *  answer for a payload it could not read. Inventing a second wrapper here,
+ *  on top of that one, would be a shape neither `jobDigest.ts` nor its own
+ *  test file uses.
+ *
+ *  `fetchPayload` defaults to the module's private `fetchJson`, so production
+ *  callers pass nothing and the tests pass a fake. */
+export async function loadJobDigest(
+  request: { jobId: string; token: string; baseUrl?: string },
+  fetchPayload: JobDigestFetcher = fetchJson,
+): Promise<JobDigest | null> {
+  try {
+    const payload = await fetchPayload(jobDigestPath(request));
+    return decodeJobDigest(payload);
+  } catch {
+    return null;
   }
 }
