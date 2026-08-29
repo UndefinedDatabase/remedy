@@ -296,3 +296,149 @@ def test_no_hostile_ledger_makes_the_export_raise(ledger) -> None:
     assert list(exported) == ["hunks"]
     assert isinstance(exported["hunks"], list)
     assert json.loads(json.dumps(exported)) == exported
+
+
+#: A rejection reason carrying every character class that a careless round trip loses:
+#: leading spaces, an interior BLANK line, a tab and a trailing newline. "Verbatim" is a
+#: testable claim only against text like this.
+VERBATIM_REASON = "  the regex is too greedy\n\n\tuse a lazy quantifier instead\n"
+
+#: One attempt's decision in the shape ``hunk_decision_record`` STORES it — the rows
+#: ``export_hunk_ledger`` produces, under the single root key, keyed ``id`` and not
+#: ``hunk_id``. Written as a literal rather than exported from a ledger, so what these pin
+#: is the stored shape a job actually carries and not merely the inverse of the function
+#: above it.
+STORED_ROWS = {
+    "hunks": [
+        {"id": "h1", "state": "approved", "reason": "", "landing": "landed"},
+        {"id": "h2", "state": "rejected", "reason": VERBATIM_REASON, "landing": "unattempted"},
+        {"id": "h3", "state": "pending", "reason": "", "landing": "unattempted"},
+    ]
+}
+
+
+def test_the_export_and_the_import_are_inverses_over_all_three_states() -> None:
+    # ``import_hunk_ledger`` is imported HERE, and in every test below, rather than in the
+    # block at the top of this file: round 22 APPENDS to this file and may not edit one
+    # existing line of it.
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+
+    decision = _coherent_decision(["h1"], [{"id": "h2", "reason": REASON}])
+    ledger = build_hunk_ledger(
+        KNOWN,
+        decision,
+        applied=True,
+        landed_hunk_ids=["h1"],
+        apply_attempted=True,
+    )
+    assert {entry.state for entry in ledger.entries} == {
+        HUNK_STATE_APPROVED,
+        HUNK_STATE_REJECTED,
+        HUNK_STATE_PENDING,
+    }
+    # Both dataclasses are frozen, so equality is STRUCTURAL: this one ``==`` covers every
+    # field of every entry, and a field dropped on the way back reddens it.
+    assert import_hunk_ledger(export_hunk_ledger(ledger)) == ledger
+
+
+def test_a_rejection_reason_survives_the_round_trip_byte_for_byte() -> None:
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+
+    decision = _coherent_decision(["h1"], [{"id": "h2", "reason": VERBATIM_REASON}])
+    ledger = build_hunk_ledger(KNOWN, decision)
+    rebuilt = import_hunk_ledger(export_hunk_ledger(ledger))
+    assert rebuilt.entries[1].reason == VERBATIM_REASON
+    # Spelled out per character class so a failure names WHICH one was lost.
+    assert rebuilt.entries[1].reason.startswith("  ")
+    assert "\n\n" in rebuilt.entries[1].reason
+    assert "\t" in rebuilt.entries[1].reason
+    assert rebuilt.entries[1].reason.endswith("\n")
+
+
+def test_a_stored_rejection_reaches_the_repair_renderer_verbatim() -> None:
+    # THE PROPERTY THAT MAKES THE STORED FORM USABLE AT ALL: rows recorded on a job,
+    # rebuilt into a ledger, and quoted into repair text without one byte changing. The
+    # renderer reads ``entry.hunk_id`` off objects, which stored mappings keyed ``id``
+    # cannot satisfy — the import is the step that closes exactly that gap.
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+    from packages.orchestration.hunk_repair_findings import render_rejection_findings
+
+    rendered = render_rejection_findings(import_hunk_ledger(STORED_ROWS))
+    assert VERBATIM_REASON in rendered
+    assert "h2" in rendered
+
+
+def test_the_import_preserves_the_order_the_export_wrote() -> None:
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+
+    decision = _coherent_decision(["h3"], [{"id": "h1", "reason": REASON}])
+    # Deliberately NOT lexicographic order, so a sort on either side of the trip reddens.
+    ledger = build_hunk_ledger(["h3", "h1", "h2"], decision)
+    exported = export_hunk_ledger(ledger)
+    assert [row["id"] for row in exported["hunks"]] == ["h3", "h1", "h2"]
+    rebuilt = import_hunk_ledger(exported)
+    assert [entry.hunk_id for entry in rebuilt.entries] == ["h3", "h1", "h2"]
+
+
+def test_an_unknown_state_imports_intact_rather_than_being_normalised() -> None:
+    # THE DELIBERATE ABSENCE, pinned: importing does not validate either vocabulary.
+    # ``hunk_approval`` is the layer that decides whether a decision is coherent, and a
+    # stored fault stays VISIBLE here instead of being normalised into a valid-looking
+    # ``pending`` that no reader would ever question.
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+
+    rebuilt = import_hunk_ledger(
+        {"hunks": [{"id": "h1", "state": "banana", "reason": "", "landing": "sideways"}]}
+    )
+    assert len(rebuilt.entries) == 1
+    assert rebuilt.entries[0].state == "banana"
+    assert rebuilt.entries[0].landing == "sideways"
+
+
+def test_a_broken_field_value_is_coerced_rather_than_emptying_the_ledger() -> None:
+    # The STRUCTURAL guard and the COERCION guard are separate, and this is what tells
+    # them apart: a malformed SHAPE empties the ledger, while a malformed VALUE is coerced
+    # by ``_total_text`` and its row survives. Without this, either guard could stand in
+    # for the other unnoticed.
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+
+    rebuilt = import_hunk_ledger(
+        {"hunks": [{"id": _BrokenText(), "state": "approved", "reason": "", "landing": "landed"}]}
+    )
+    assert [entry.hunk_id for entry in rebuilt.entries] == ["<BrokenText>"]
+
+
+@pytest.mark.parametrize(
+    "exported",
+    [
+        None,
+        7,
+        "hunks",
+        {},
+        {"hunks": 7},
+        {"hunks": [7]},
+        {"hunks": [{"id": "h1", "state": "approved", "reason": ""}]},
+        [{"id": "h1", "state": "approved", "reason": "", "landing": "landed"}],
+        _NotIterable(),
+    ],
+    ids=[
+        "none",
+        "non-mapping",
+        "bare-string",
+        "no-rows-key",
+        "non-iterable-rows",
+        "row-not-a-mapping",
+        "row-missing-a-key",
+        "list-instead-of-mapping",
+        "non-subscriptable",
+    ],
+)
+def test_no_malformed_input_makes_the_import_raise(exported) -> None:
+    # SPEC B4's structural guard: anything unreadable yields an EMPTY ledger and NEVER a
+    # partially built one, for the reason ``render_rejection_findings`` gives for its own
+    # empty string — a half-built result's missing half is invisible to the next reader.
+    from packages.orchestration.hunk_ledger import import_hunk_ledger
+
+    rebuilt = import_hunk_ledger(exported)
+    assert isinstance(rebuilt, HunkDecisionLedger)
+    assert rebuilt.entries == ()
