@@ -1,8 +1,7 @@
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 7 of this feature, running past the
-amend0827 rule 6 soft limit under the scope report that limit required.
+commit of pull request 221. SESSION 7 of this feature, in its closure sequence.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -15,28 +14,29 @@ round — every partial state rendered truthfully in viewer, node and report.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001, T002 and T003 | done | rounds 1-24 |
-| THE FEATURE'S FUNCTIONAL SCOPE | complete | at round 24 |
-| R-0749, both instances landed | done | rounds 25 and 26 |
+| R-0749, both instances | done | resolved round 27 |
 | the operator guide and its index rows | done | round 26 |
-| the integration gate | open | this round |
-| the closure sequence and its pull request | open | after the gate |
-| R-0745, the door's transitive import closure | open | carried as a risk |
+| the integration gate | done | round 27, PASS WITH RISKS |
+| the feature file's Built State | open | this round |
+| the evidence job and the review zip | open | this round |
+| the STATUS line, the README sync and the PR | open | next round |
+| R-0745 and R-0750, carried as documented risks | open | see Risks |
 
 ## Next Steps
-1. This round books the round 26 PASS and the `Done: R-0749` resolution, then
-   runs the integration gate of docs/agents/integration_gate.md: the full suite
-   on this branch and at the merge base `bd8d9529`, compared and attributed.
-2. Only this round's gate entry may carry a "full suite" claim. A reproducible
-   branch-only failure coupled to feature code is a BLOCKER and buys its own
-   reviewer-gated repair round rather than being fixed inside this one.
-3. Then the closure sequence per docs/roadmap/STATUS_closure_protocol.md: the
-   feature file's Built State, the evidence job, the review zip, the STATUS line
-   and the pull request, which is NOT merged in this session.
-4. R-0745 is Low and is not reachable from this feature's Acceptance. The
-   closure protocol's precondition 1 admits a documented Medium/Low risk, so it
-   is carried as one and the STATUS line reads PASS_WITH_RISKS.
+1. This round books the round 27 verdict, registers R-0750, extends R-0736, and
+   performs the closure preconditions that must hold BEFORE a STATUS line can be
+   authored: the Built State section, the integrity check, the evidence job and
+   a review zip built from a clean tree after the last content commit.
+2. The NEXT round is the closure commit itself — the STATUS `[x]` line and the
+   README capability sync in ONE commit, the final `.agent/` state, then the
+   pull request. That PR is NOT merged in this session; it merges at the next
+   feature's start via the Open PR Gate, which is the operator's review window.
+3. `self-use NONE (queue exhausted)` is recorded at closure: the queue holds no
+   pending item, which the closure protocol rules is exhausted rather than
+   blocked.
 
 ## Risks
-- The base worktree lacks build artifacts the suite needs. Parity is restored by
-  COPY with symlinks preserved, and every base-only failure is attributed by
-  direct evidence whether or not the parity claim holds.
+- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, so the STATUS line
+  reads PASS_WITH_RISKS. Neither is reachable from this feature's Acceptance:
+  the first hardens a guard over the write door, the second is a reviewer's gate
+  wording that ordered a full log where the canonical procedure asks for a tail.
