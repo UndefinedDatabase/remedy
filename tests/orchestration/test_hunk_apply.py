@@ -3,11 +3,16 @@
 One test per PROPERTY the seam turns on, named for the property rather than for the function
 that implements it. The properties, in the order below: a clean subset lands EXACTLY the
 approved hunks and nothing else; a subset one of whose hunks cannot apply leaves every file
-BYTE-IDENTICAL, which is this round's reason to exist; the blocked ids of such a failure are
-the conflicting FILE's hunks and not the whole selection; a refusal from the subset builder
-writes nothing and carries the builder's own code; a missing capability and an unapproved
-intent each land nothing and block every selected id; a multi-file subset lands both files;
-and an empty subset never reaches the applier at all.
+BYTE-IDENTICAL WHENEVER THE APPLIER'S ROLLBACK COMPLETED, which was the landing round's reason
+to exist; the blocked ids of such a failure are the conflicting FILE's hunks and not the whole
+selection; a refusal from the subset builder writes nothing and carries the builder's own code;
+a missing capability and an unapproved intent each land nothing and block every selected id; a
+multi-file subset lands both files; an empty subset never reaches the applier at all; a rollback
+that could NOT run is never reported as an unchanged repository, and the DIGESTS rather than the
+wording are what say so; a rollback that DID finish still reports one; and a failure that never
+reached a file at all still reports one too. The last three are this round's reason to exist,
+and the last two are discriminators — without them the first passes under a lead sentence that
+simply cries partial state for every failure.
 
 WHY the repository is real rather than mocked: the claim under test is that NOTHING IS WRITTEN
 when part of an approved selection fails, and only a real file tree can witness that. Every
@@ -292,3 +297,74 @@ def test_a_subset_with_no_file_never_reaches_the_applier(tmp_path, monkeypatch):
     assert outcome.landed == ()
     assert outcome.blocked == ()
     assert outcome.apply_id == ""
+
+
+def test_a_rollback_that_could_not_run_is_not_reported_as_an_unchanged_repository(
+    tmp_path, monkeypatch
+):
+    """This round's reason to exist. The applier writes ``f.txt``, fails on ``g.txt``, and then
+    cannot restore — so the repository really does hold part of the change and the seam must not
+    tell the operator otherwise. The DIGEST assertions are what make this a test about the world:
+    a message assertion on its own would pass just as well if the sentence were still a lie."""
+    repo, data, approved = _conflict_scenario(tmp_path)
+    job, intent_id = _approved_job()
+    before = _tree_digests(repo)
+
+    # This substitution reaches the ROLLBACK and nothing else. ``load_snapshot``'s only other
+    # caller in ``source_apply`` sits in the durable apply-record block under ``if
+    # result.success``, which a failing apply never reaches; ``create_snapshot`` and
+    # ``verify_snapshot`` are separate names and are untouched, so the snapshot is still really
+    # taken and really verified before any file is written.
+    monkeypatch.setattr("packages.orchestration.source_apply.load_snapshot", lambda *a, **k: None)
+
+    outcome = apply_approved_hunks(
+        BOTH_FILES_DIFF, approved, repo, job=job, intent_id=intent_id, data_dir=str(data)
+    )
+
+    after = _tree_digests(repo)
+    assert outcome.applied is False
+    assert outcome.code == HUNK_APPLY_CONFLICT
+    assert "the repository is unchanged" not in outcome.message, outcome.message
+    # The applier's own evidence is carried through rather than swallowed by the new sentence.
+    assert "rollback_failed:snapshot_not_found" in outcome.message, outcome.message
+    # And the world agrees with the message: the tree really did move, in exactly one file.
+    assert after != before, f"the repository did not move: {before}"
+    assert after["f.txt"] != before["f.txt"], "the written file was restored after all"
+    assert after["g.txt"] == before["g.txt"], "the conflicting file was never written"
+
+
+def test_a_rollback_that_finished_still_reports_an_unchanged_repository(tmp_path):
+    """The first discriminator. With the snapshot intact the old sentence is still the true one,
+    so the new one must not fire for every failure that happens to touch a file."""
+    repo, data, approved = _conflict_scenario(tmp_path)
+    job, intent_id = _approved_job()
+    before = _tree_digests(repo)
+
+    outcome = apply_approved_hunks(
+        BOTH_FILES_DIFF, approved, repo, job=job, intent_id=intent_id, data_dir=str(data)
+    )
+
+    assert outcome.applied is False
+    assert outcome.code == HUNK_APPLY_CONFLICT
+    assert "the repository is unchanged" in outcome.message, outcome.message
+    assert _tree_digests(repo) == before
+
+
+def test_a_failure_that_never_reached_a_file_still_reports_an_unchanged_repository(tmp_path):
+    """The second discriminator. The applier refuses on the capability before touching anything,
+    so no rollback was ever attempted and none of its vocabulary appears — the lead sentence must
+    stay the plain one even though the same conflicting fixture is underneath."""
+    repo, data, approved = _conflict_scenario(tmp_path)
+    job, intent_id = _approved_job(allow_write=False)
+    before = _tree_digests(repo)
+
+    outcome = apply_approved_hunks(
+        BOTH_FILES_DIFF, approved, repo, job=job, intent_id=intent_id, data_dir=str(data)
+    )
+
+    assert outcome.applied is False
+    assert outcome.code == HUNK_APPLY_CONFLICT
+    assert "rollback_failed" not in outcome.message, outcome.message
+    assert "rollback_incomplete" not in outcome.message, outcome.message
+    assert "the repository is unchanged" in outcome.message, outcome.message
+    assert _tree_digests(repo) == before
