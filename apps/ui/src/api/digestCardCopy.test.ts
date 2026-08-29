@@ -122,9 +122,19 @@ describe("digestStateLabel", () => {
   });
 
   it("does not read a state off the prototype chain", () => {
-    // `DIGEST_STATE_LABELS` is a plain object, so an unguarded index would
-    // answer a FUNCTION here rather than a sentence.
+    // "constructor" is already lowercase, so it survives the key fold and
+    // really reaches `Object.prototype`. Without the own-property guard this
+    // would answer the `Object` constructor function, not a sentence.
+    expect(digestStateLabel("constructor")).toBe("State not recorded");
+  });
+
+  it("folds the key first, so a bare \"toString\" probe proves nothing", () => {
+    // The key is folded to lowercase before it is compared, so "toString" and
+    // "TOSTRING" both become "tostring", which `Object.prototype` does not
+    // carry -- they would answer the fallback with or without the guard.
+    // That is exactly why the probe above uses "constructor" instead.
     expect(digestStateLabel("toString")).toBe("State not recorded");
+    expect(digestStateLabel("TOSTRING")).toBe("State not recorded");
   });
 });
 
