@@ -1,7 +1,7 @@
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 3, round 13.
+commit of pull request 222. SESSION 3, round 14.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -21,21 +21,20 @@ was gone" answer in one glance.
 | T002 the card's copy rules and the §17 screen | done | round 9, PASS |
 | T002 the card component and its guard | done | round 11, PASS |
 | T002 the storage edge (dismissal + last-seen) | done | round 12, PASS |
-| T002 the fetch loader `loadJobDigest` | done | this round |
-| T002 the mount into `RemedyShell.tsx` | open | next |
-| T003 CLI parity and the end-to-end | open | |
+| T002 the fetch loader `loadJobDigest` | done | round 13, PASS |
+| T002 the mount into `RemedyShell.tsx` | done | this round |
+| T003 CLI parity and the end-to-end | open | next |
 
 ## Next Steps
-1. This round builds `loadJobDigest` in `remedyApi.ts`, paired with
-   `jobDigestPath`/`decodeJobDigest`, the way `loadDiffEnvelope` pairs with
-   `diffEnvelopePath` — real vitest colour, no new decision.
-2. The next round MOUNTS the card into `RemedyShell.tsx` (state, last-seen,
-   the storage edge bound for real, `latestActivityMs` from the brain
-   stream, a sibling of the shell div rather than a fifth `<main>` child,
-   its own pytest text guard). `onOpenDecisions`/`onPrimaryAction` stay
-   inert — no task/decision id exists yet to focus.
-3. Then T003's `remedy job digest`, the end-to-end, the integration gate and
-   closure.
+1. This round mounts the card for real: the load, the storage edge bound to
+   `window.localStorage`, last-seen and dismissal wiring, and placement as
+   a sibling of the shell div — `<main>` stays at exactly four children.
+   `onOpenDecisions`/`onPrimaryAction` stay unwired.
+2. The next round is T003: `remedy job digest <id>` CLI parity, then the
+   end-to-end (finish a fake job while the UI is "away", reopen, hero shows
+   the right CTA, dismiss, no re-show), the integration gate and closure.
+3. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
+   resolution design (D5's "in-page action") and is not yet scheduled.
 
 ## Risks
 - R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch;
