@@ -3,9 +3,18 @@
 Covers: hidden default export location, explicit --out, index updates, no repo
 root pollution, index-driven selection (never by mtime), explicit --job-id,
 NO_EVIDENCE honesty, history separation, and the deprecated root-style fallback.
+
+Also covers `resolve_job_evidence_dir`, the ONE rule that decides which
+directory a job's diff is read out of: the by-name index read, the `is_dir()`
+check that stops a named-but-absent directory being returned, resolution of a
+record written WITHOUT a `job_id` key, a malformed record falling through
+rather than raising, the CWD-relative `remedy-job-evidence-<job_id>` fallback in
+both directions, and that `ui_server._resolve_evidence_dir` now answers exactly
+the same value.
 """
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -21,6 +30,7 @@ from packages.orchestration.evidence_index import (
     find_record,
     load_index_records,
     record_aligns_with_worktree,
+    resolve_job_evidence_dir,
     select_evidence,
     write_index_record,
 )
@@ -406,3 +416,84 @@ class TestPorcelainParsing:
         root = pathlib.Path(__file__).resolve().parents[2]
         for rel in dirty_source_test_files(root):
             assert (root / rel).exists(), f"enumerated a nonexistent path: {rel}"
+
+
+# ---------------------------------------------------------------------------
+# resolve_job_evidence_dir — the ONE evidence-directory rule (F033 R13)
+# ---------------------------------------------------------------------------
+
+def _index_file(index_dir: Path, job_id: str, body: str) -> Path:
+    index_dir.mkdir(parents=True, exist_ok=True)
+    f = index_dir / f"{job_id}.json"
+    f.write_text(body, encoding="utf-8")
+    return f
+
+
+class TestResolveJobEvidenceDir:
+    """Every test here passes ``index_dir`` explicitly and chdirs into
+    ``tmp_path``, so the CWD-relative fallback can never resolve against this
+    repository's own working tree."""
+
+    def test_record_naming_an_existing_directory_resolves_to_it(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        ev = _evidence(tmp_path / "ev_here")
+        _index_file(idx, "j1", json.dumps({"job_id": "j1", "evidence_dir_local": str(ev)}))
+        assert resolve_job_evidence_dir("j1", index_dir=idx) == Path(str(ev))
+
+    def test_record_naming_an_absent_directory_answers_none(self, tmp_path, monkeypatch):
+        """The discriminator for the ``is_dir()`` check: a NAMED but absent
+        directory must fall through, never be handed back."""
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        gone = tmp_path / "never_created"
+        _index_file(idx, "j2", json.dumps({"job_id": "j2", "evidence_dir_local": str(gone)}))
+        assert resolve_job_evidence_dir("j2", index_dir=idx) is None
+
+    def test_record_without_a_job_id_key_still_resolves(self, tmp_path, monkeypatch):
+        """THE DISCRIMINATOR FOR THE WHOLE MOVE: this passes under the by-name
+        read of ``<job_id>.json`` and fails under any re-expression through
+        ``find_record``, which matches the ``job_id`` key INSIDE the file."""
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        ev = _evidence(tmp_path / "ev_nokey")
+        _index_file(idx, "j3", json.dumps({"evidence_dir_local": str(ev)}))
+        assert resolve_job_evidence_dir("j3", index_dir=idx) == Path(str(ev))
+
+    def test_malformed_record_falls_through_instead_of_raising(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        _index_file(idx, "j4", "this is not json {{{")
+        assert resolve_job_evidence_dir("j4", index_dir=idx) is None
+
+    def test_relative_fallback_resolves_against_the_cwd(self, tmp_path, monkeypatch):
+        """No index record at all: the fallback is RELATIVE and resolves against
+        the current working directory."""
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        _evidence(tmp_path / "remedy-job-evidence-j5")
+        assert resolve_job_evidence_dir("j5", index_dir=idx) == Path("remedy-job-evidence-j5")
+
+    def test_no_record_and_no_fallback_directory_answers_none(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        assert resolve_job_evidence_dir("j6", index_dir=idx) is None
+
+
+class TestUiServerDelegatesToTheSameRule:
+    def test_ui_server_resolver_answers_the_same_directory(
+        self, isolate_data_root, tmp_path, monkeypatch,
+    ):
+        """The F037 viewer's resolver and the shared rule must agree over a case
+        that is NOT None — one answer, not two."""
+        from packages.orchestration.ui_server import _resolve_evidence_dir
+
+        monkeypatch.chdir(tmp_path)
+        ev = _evidence(tmp_path / "ev_shared")
+        _index_file(job_evidence_index_dir(), "jdel",
+                    json.dumps({"job_id": "jdel", "evidence_dir_local": str(ev)}))
+
+        shared = resolve_job_evidence_dir("jdel")
+        via_ui = _resolve_evidence_dir("jdel")
+        assert shared is not None
+        assert via_ui == shared == Path(str(ev))
