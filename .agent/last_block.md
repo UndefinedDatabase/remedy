@@ -1,194 +1,147 @@
-# STEP 23 — F033 Hunk-level diff approval (SESSION 6, round 23 of a 25-round soft limit)
+# STEP 24 — F033 Hunk-level diff approval (SESSION 6, round 24; the soft limit is round 25)
 
-Goal: close the gap between a decision ALREADY RECORDED on a job and the next
-builder prompt. A reader selects the task's latest decision from `job.metadata`,
-`run_pingpong` forwards the rebuilt ledger, and the operator's rejection reason
-is proved to reach the REAL loop's composed prompt.
+Goal: retire R-0747's false sentence from the SECOND file it landed in, and wire
+the last hop — `pingpong_job.py` holds the job, so it reads the task's recorded
+decision and hands it to the loop. After this round the feature's functional
+scope is complete.
 
 ## Bundle — the list that is executed
 
-1. C0a: save this block verbatim to `.agent/authored/f033-r23.md`.
+1. C0a: save this block verbatim to `.agent/authored/f033-r24.md`.
 2. C0b: mirror the same bytes into `.agent/last_block.md`.
-3. C1: rewrite `.agent/plan.md` from slice PLAN23.
-4. C2: append slice RECORD23 to `.agent/live_review.md`. It books the round 22
-   PASS and RESOLVES R-0747. Per amend0827 rule 1 neither buys a round of its
-   own; this round is happening anyway.
-5. C3: SPEC A — `load_hunk_ledger_for_task` in
-   `packages/orchestration/hunk_decision_record.py`.
-6. C4: SPEC B — `run_pingpong` takes and forwards `hunk_ledger`, in
-   `packages/orchestration/pingpong_loop.py`.
-7. C5: SPEC C — the tests, appended to two existing files.
-8. C6: rewrite `.agent/handoff.md` as the handback.
+3. C1: rewrite `.agent/plan.md` from slice PLAN24.
+4. C2: append slice RECORD24 to `.agent/live_review.md` — books the round 23
+   PASS and REGISTERS R-0748.
+5. C3: append slice SLIPS24 to `.agent/prose_slips.md`.
+6. C4: SPEC A — the R-0748 repair, pair PAIR-DOC, and in the SAME commit the
+   `Landed: R-0748` line of SPEC A3.
+7. C5: SPEC B — the job-level wiring in `packages/orchestration/pingpong_job.py`.
+8. C6: SPEC C — the new test file.
+9. C7: rewrite `.agent/handoff.md` as the handback.
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f033-r23.md
+    .agent/authored/f033-r24.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    packages/orchestration/hunk_decision_record.py
-    packages/orchestration/pingpong_loop.py
-    tests/orchestration/test_hunk_decision_record.py
+    .agent/prose_slips.md
     tests/orchestration/test_builder_prompt_hunk_rejections.py
+    packages/orchestration/pingpong_job.py
+    tests/orchestration/test_pingpong_job_hunk_ledger.py
     .agent/handoff.md
 
 ## What the reviewer measured before writing this block, and where
 
-Every reading below was taken by the reviewer at `d0c86c2d`, this round's base.
+Every reading below was taken by the reviewer at `c9dd471f`, this round's base.
 
-- `hunk_decision_record.py` writes one record per attempt under
-  `job.metadata["hunk_decisions"]`, keyed `f"{task_id}:{attempt}"` by the
-  private `_attempt_key`. Each record carries exactly `task_id`, `attempt`,
-  `decided_at` and `hunks`.
-- `_LEDGER_ROWS_KEY` in that module is the literal `"hunks"`, and its own
-  comment says it is deliberately the SAME name `export_hunk_ledger` writes
-  under, re-stated because the name is private in `hunk_ledger`. A stored
-  record therefore ALREADY has the shape `import_hunk_ledger` reads, and SPEC A
-  passes the record straight in rather than re-wrapping its rows.
-- That module imports `HunkDecisionLedger`, `build_hunk_ledger` and
-  `export_hunk_ledger` from `hunk_ledger` in ONE block, so SPEC A's import adds
-  a name to an existing block and no new module dependency at all.
-- `open(` and `save_job` both occur ZERO times in that module. The F033 R11
-  gate entry records that as the property DECISION F033 D4 leans on, and SPEC A
-  must preserve it — which is why it takes a METADATA MAPPING and never a job
-  id or a path.
-- `run_pingpong` is defined at line 2556 and composes the builder prompt at
-  line 2939 into a local named `builder_composed`. `datetime` is already
-  imported in `hunk_decision_record.py`.
-- `result.prompt_traces` is a list on the loop's result, appended at line 2975
-  with `build_trace_entry(..., composed_prompt=builder_composed, ...)`, and
-  `prompt_trace.py` derives `segment_manifest` from that composed prompt as a
-  list of dicts each carrying a `name`. So a test CAN observe which segments the
-  real loop composed, and that is how SPEC C3 proves the end to end.
-- `run_pingpong` is driven in `tests/orchestration/test_pingpong.py` as
-  `run_pingpong("Fix README", str(demo_repo), builder_name="fake",
-  reviewer_name="fake")`. SPEC C3 reuses that shape and that fixture rather than
-  inventing a harness.
+- THE IDENTIFIERS ALIGN, and this is the fact the whole round rests on.
+  `pingpong_job.py` line 2250 passes `_task_stream_dir(job.job_id, task.task_id)`,
+  and that helper returns `.../evidence/task_runs/<task_id>/`. `build_diff_view`
+  accepts a `task_id` only when it is a member of `list_task_run_ids(root)` —
+  the real directory listing under `task_runs/` — and records it into the view
+  envelope. So the `task_id` on a recorded decision IS `task.task_id`, and a
+  lookup keyed by `task.task_id` can match. Had it not matched, this wiring
+  would have been a call that always returned an empty ledger while looking
+  correct, which is why the reading was taken before the round was written.
+- `DIFF_SCOPE_JOB` is the literal `"job"`. When the operator decides at JOB
+  scope rather than on one task run, `_dispatch_approve_hunks` records under
+  that sentinel instead of a task id, so a per-task lookup will not find it.
+  SPEC B2 documents that boundary rather than papering over it.
+- `job.metadata` is the mapping both doors write into, and
+  `load_latest_hunk_ledger_from_metadata` takes exactly that mapping.
+- There is NO `tests/orchestration/test_pingpong_job.py`. The nearest neighbour
+  is `test_job_task_runner.py`. SPEC C therefore adds a focused new file, the
+  way `test_builder_prompt_hunk_rejections.py` sits beside
+  `test_builder_prompt_golden.py`.
+- The FROM span of PAIR-DOC occurs EXACTLY ONCE in its file, measured at
+  `c9dd471f`: 423 bytes over 6 lines.
 
-## SPEC A — `packages/orchestration/hunk_decision_record.py`
+## SPEC A — the R-0748 repair
 
-Described, not sliced.
+A1. Apply PAIR-DOC below to
+`tests/orchestration/test_builder_prompt_hunk_rejections.py`. It is a REWRITE,
+not an append: the reviewer ran the containment test at `c9dd471f` and the
+result is `TO contains FROM: false`, so the obligation is FROM 0x and TO 1x in
+the file after the commit. Report both counts.
 
-A1. Add `import_hunk_ledger` to the EXISTING
-`from packages.orchestration.hunk_ledger import (...)` block, in the order ruff's
-isort rules want. Do not add a second import statement.
+A2. Do NOT touch the superseding comment block the previous round appended lower
+in that file. It corrected the FIRST half of this paragraph honestly and under an
+append-only obligation; PAIR-DOC retires the SECOND half, which is the false one,
+and the two do not conflict. Leaving that block is not a defect and removing it
+would delete an honest record of how the file got here.
 
-A2. Add one public function taking a METADATA MAPPING and a task id and
-returning a `HunkDecisionLedger`: the decision most recently recorded for that
-task, rebuilt. Name it so it greps to itself and says what it reads.
+A3. In the SAME commit append to `.agent/live_review.md` exactly one line:
 
-A3. SELECTION, stated as ONE rule the docstring gives in full: among the records
-whose `task_id` equals the given task id coerced to text, the winner is the one
-with the greatest `decided_at` that `datetime.fromisoformat` parses; a record
-whose `decided_at` does not parse can never beat one that does; and if none
-parses, or several tie, the LAST in the mapping's iteration order wins, which
-for a record loaded from JSON is insertion order. Nothing here sorts the ids.
+    Landed: R-0748 — the false persists-no-decision clause is retired from the acceptance test's module docstring, tests/orchestration/test_builder_prompt_hunk_rejections.py, C4 of round 24.
 
-A4. Rebuild by handing the winning record STRAIGHT to `import_hunk_ledger`. Say
-in the docstring that this works because `_LEDGER_ROWS_KEY` and the export root
-key are deliberately the same name, and that the module's existing comment on
-that constant is where the deliberateness is recorded. Do NOT re-implement the
-row walk — one inverse, not two.
+Write NO `Done:` paragraph.
 
-A5. TOTAL: never raises on any input at all — `None` metadata, a non-mapping,
-no decisions key, a non-mapping decisions value, a record that is not a mapping,
-a record missing any key. Anything unreadable yields an EMPTY ledger, never a
-partial one. THE STRUCTURAL GUARD IS SINGULAR; do not nest a second one inside
-it, or the red-proof aimed at it reddens nothing. Say which guard each red-proof
-is aimed at, as `import_hunk_ledger` already does.
+## SPEC B — the job-level wiring in `packages/orchestration/pingpong_job.py`
 
-A6. An EMPTY ledger is also the honest answer for "this task has no recorded
-decision", and that is NOT an error. Say so: the caller cannot distinguish the
-two, deliberately, because both mean the same thing to a prompt — there is
-nothing to quote.
+B1. Add ONE small module-level helper taking the job and the task and returning
+the ledger of that task's latest recorded hunk decision, by delegating to
+`load_latest_hunk_ledger_from_metadata` with `job.metadata` and `task.task_id`.
+It exists as a named function rather than an inline expression so it can be
+TESTED — an inline call at a site only a full job run reaches would be provable
+only by its shape, and a gate over a call's shape is not a gate over its truth.
 
-A7. DELIBERATE ABSENCE, documented in the idiom: this function performs NO
-storage I/O. It takes the mapping a caller already holds, so DECISION F033 D4's
-property — this module drags no storage write behind it — is preserved, and a
-reader looking for a job load here should stop at that paragraph.
+B2. It is TOTAL: a job without usable `metadata`, or a task without a usable
+`task_id`, yields an EMPTY ledger and raises nothing. ONE structural guard; do
+not nest a second inside it. Document in the idiom BOTH deliberate boundaries:
+  (i) it looks up TASK-SCOPED decisions only. A decision recorded at JOB scope
+      lands under the `DIFF_SCOPE_JOB` sentinel `"job"` rather than a task id,
+      and is deliberately NOT quoted into any one task's prompt, because it was
+      never attributed to one. The reviewer measured at `c9dd471f` that this
+      holds by the id comparison alone, and with it the one collision it admits:
+      a task whose own `task_id` were literally `"job"` WOULD match a job-scoped
+      record. Say so in the same paragraph rather than leaving it for a reader
+      to find. Do not add a guard against it — the sentinel and the task-id
+      space are the write door's to separate, not this helper's, and a guard
+      here would put that decision in two places.
+  (ii) an empty ledger is the honest answer for "no decision recorded", is not
+      an error, and is indistinguishable from an unreadable job on purpose —
+      both mean there is nothing of the operator's to quote.
 
-A8. Add the new name to the module docstring's `Public API::` block in the SAME
-commit. R-0746 is on this branch's record because that was once forgotten.
+B3. Pass its result as `hunk_ledger=` at the `run_pingpong` call in this module.
+Change nothing else about that call.
 
-## SPEC B — `packages/orchestration/pingpong_loop.py`
+B4. Import `load_latest_hunk_ledger_from_metadata` the way this module already
+imports its `packages.orchestration` dependencies at that site. If the
+surrounding code imports inside the function, follow that; do not convert an
+existing local-import style to module level, and do not add a module-level
+import that ruff will then reorder across unrelated lines.
 
-B1. `run_pingpong` gains a KEYWORD-ONLY parameter `hunk_ledger: Any = None`,
-documented as one attempt's ledger for the task about to be built, or `None`.
+## SPEC C — `tests/orchestration/test_pingpong_job_hunk_ledger.py`
 
-B2. Forward it at the `compose_builder_prompt` call that assigns
-`builder_composed`. Change nothing else about that call.
+New file. It tests the HELPER's truth, not the call site's shape.
 
-B3. REFRESH the paragraph in `compose_builder_prompt`'s docstring that begins
-"Remedy deliberately does NOT supply this parameter from the run loop yet". As
-of C4 that sentence is stale: `run_pingpong` DOES take and forward the value.
-Rewrite it to state what is then true — the loop forwards a ledger it is GIVEN,
-`packages/orchestration/hunk_decision_record.py` is where a stored decision is
-read from `job.metadata`, and what no round has wired yet is the JOB-level
-caller in `packages/orchestration/pingpong_job.py`, which holds the job. Keep
-naming modules rather than line numbers.
+C1. A job whose `metadata` carries a decision recorded for a task yields that
+task's ledger, and a rejection reason with leading spaces, an interior blank
+line and a tab survives into it BYTE FOR BYTE. Use a simple fake job and task —
+two small objects with the attributes the helper reads — rather than
+constructing a real job.
+C2. Composed through: feeding that ledger to `compose_builder_prompt` puts the
+same reason in the prompt as an exact substring. This is the link from the job
+to the prompt, and it is the round's point.
+C3. A decision recorded for a DIFFERENT task is not returned.
+C4. A decision recorded at JOB scope — `task_id` the literal `"job"` — is NOT
+returned for a task whose own id differs. This is B2(i) measured rather than
+merely documented.
+C5. Totality: a job with no metadata, metadata that is not a mapping, no
+decisions key, a task with no `task_id`, and a job whose `metadata` attribute
+raises on access — each yields an empty ledger and raises nothing.
+C6. The call site IS wired: by AST over `packages/orchestration/pingpong_job.py`,
+the `run_pingpong` call passes a `hunk_ledger` keyword. This is a SHAPE check and
+the block says so plainly — C1 to C5 are what prove the behaviour; this one only
+prevents the helper being shipped unreferenced.
 
-B4. Do NOT change `pingpong_job.py` or `do_cmd.py`. Both are outside the change
-set. Wiring the job-level caller is the next round, and this round exists to
-make that round's data route already proved.
-
-## SPEC C — the tests
-
-APPEND ONLY to both files. Do not edit, reorder or reflow one existing line: in
-each, the pre-commit blob must be a byte-exact PREFIX of the post-commit file.
-The obligation for a code append is ORDERED EQUALITY, never a per-line count.
-
-C1. In `tests/orchestration/test_hunk_decision_record.py`, cover SPEC A: the
-latest decision wins over an earlier one for the same task; a different task's
-record is not returned; an unparseable `decided_at` loses to a parseable one;
-with none parseable the last in insertion order wins; an absent task yields an
-empty ledger; and every malformed input A5 names yields an empty ledger and
-raises nothing, parametrized rather than written out one test per input.
-
-C2. In the same file, prove the rebuild is faithful: a decision RECORDED through
-`record_hunk_decision_from_view` and then read back by the new function yields a
-ledger equal to the `ledger` field of the `HunkDecisionRecord` that recording
-returned. Build the job with whatever fake or fixture that file already uses for
-its existing recording tests; do not invent a second one.
-
-C3. In `tests/orchestration/test_builder_prompt_hunk_rejections.py`, THE
-ACCEPTANCE TEST, and it is the point of this round. Drive the REAL loop:
-`run_pingpong` with `builder_name="fake"`, `reviewer_name="fake"` and a demo
-repo built the way `tests/orchestration/test_pingpong.py`'s `demo_repo` fixture
-builds one, with `REMEDY_DATA_DIR` redirected to `tmp_path` by `monkeypatch` the
-way its `isolate_data_root` fixture does — the sandbox denies every shell form
-of setting that variable, so it is set in-process or not at all. Pass a
-`hunk_ledger` holding one rejection whose reason carries leading spaces, an
-interior blank line and a tab.
-
-The chain has THREE links and the block states all three, because the reviewer
-measured at `d0c86c2d` that the trace carries a segment manifest but NO prompt
-text, so a test asserting the reason directly off the trace cannot be written:
-  (a) some `result.prompt_traces` entry has a `segment_manifest` row whose
-      `name` is `builder_hunk_rejections` — the real loop composed the segment;
-  (b) composing directly with the SAME ledger and recovering that segment's text
-      by its manifest span, the reason is an EXACT SUBSTRING of it;
-  (c) the sha256 on the row from (a) EQUALS the sha256 of the text from (b),
-      which is what ties the loop's actual bytes to the text (b) inspected.
-Link (c) is what makes this an end to end rather than two separate claims. The
-reviewer measured that it holds: that segment's digest depends ONLY on the
-ledger and not on any other argument to `compose_builder_prompt`, confirmed at
-`d0c86c2d` across two compositions differing in goal, context, round number,
-staged state, scope contract, task body, test result and findings, which both
-produced the identical 123-character segment. Do not assert the 123; it is the
-reviewer's reading of one fixture, and yours will differ with your reason.
-
-C4. A round with NO hunk ledger composes no such segment: the same
-`run_pingpong` call without the parameter yields traces whose manifests hold no
-`builder_hunk_rejections` row. This is the negative half of C3 and it is what
-makes C3 discriminating.
-
-## Slice PLAN23 — the FULL new bytes of `.agent/plan.md`
+## Slice PLAN24 — the FULL new bytes of `.agent/plan.md`
 
 The slice is every byte BETWEEN the two marker lines, exclusive. The markers are
-not part of any file. PLAN23's own body contains `##` headings, which is why the
-markers exist.
+not part of any file.
 
-<<<BEGIN PLAN23
+<<<BEGIN PLAN24
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
@@ -205,140 +158,171 @@ round — every partial state rendered truthfully in viewer, node and report.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001 stable ids, viewer v2, consolidation | done | round 5 |
-| decision core · subset diff · all-or-nothing apply | done | rounds 6, 7, 8 |
-| failed-rollback truth · ledger · the door's effect | done | rounds 9-11, D4 |
-| the recorder takes the viewer's envelope | done | round 12 |
-| one evidence-directory resolver, the CLI door, the write door | done | 13-15 |
+| T002 decision core, subset apply, ledger, the door | done | rounds 6-15 |
 | T003 partial truth on all three surfaces, R-0738 | done | rounds 16-19 |
 | rejections rendered verbatim as repair findings | done | round 20 |
 | that renderer reaches the builder prompt as a segment | done | round 21 |
 | R-0747, and the inverse of the ledger export | done | round 22 |
-| the stored decision is selected and reaches the real loop | open | this round |
-| the JOB-level caller in `pingpong_job.py` supplies it | open | next |
-| R-0745, the door's transitive import closure | open | next door work |
-| the operator docs for `patch approve-hunks` | open | closure sequence |
-| the integration gate round, then closure | open | after the above |
+| the stored decision selected, and forwarded by the loop | done | round 23 |
+| R-0748, and the job-level caller supplies the ledger | open | this round |
+| R-0745, the door's transitive import closure | open | not scheduled |
+| the operator docs for `patch approve-hunks` | open | not scheduled |
+| the integration gate round, then closure | open | not scheduled |
 
 ## Next Steps
-1. This round adds the reader that selects a task's latest recorded decision
-   from `job.metadata`, gives `run_pingpong` the parameter it forwards, and
-   proves through the REAL loop that a rejection reason reaches the composed
-   prompt's segment manifest.
-2. Then the last wiring step: `packages/orchestration/pingpong_job.py` holds the
-   job at its `run_pingpong` call, so it reads the decision and passes it. That
-   is the only remaining hop, and it is deliberately its own round because it
-   touches the job runner.
-3. Then R-0745, whose fix clause recommends a transitive-closure test over the
-   write door's imports.
-4. Then the closure sequence: `docs/` still owes an operator-facing description
-   of `remedy patch approve-hunks`, and no round has had a `docs/` path yet. The
-   integration gate runs before closure, per docs/agents/integration_gate.md.
+1. This round retires R-0747's false sentence from the second file it reached,
+   and wires `packages/orchestration/pingpong_job.py` — the one place holding
+   the job — to read the task's decision and hand it to the loop. That
+   completes the feature's FUNCTIONAL scope.
+2. THE SOFT LIMIT IS ROUND 25 AND THE REMAINING WORK DOES NOT FIT IN IT.
+   Outstanding: R-0745, the `docs/` operator description no round has yet been
+   allowed a path for, the integration-gate round, and the two-round closure
+   sequence. That is four to five rounds against one.
+3. The session-6 handoff therefore carries the operator scope report operator
+   amendment amend0827 rule 6 requires, with a proposal. It is a DOCUMENTED
+   PROPOSAL and is never executed on the reviewer's own authority.
+4. No pull request exists and none should be created before the closure
+   sequence, which is where docs/agents/split_workflow.md rules it.
 
 ## Risks
-- Steps 2, 3 and 4 plus the two closure rounds exceed what the 25-round soft
-  limit leaves. The scope report amend0827 rule 6 requires is now expected, and
-  the session-6 handoff carries the proposal.
-<<<END PLAN23
+- R-0745 is open against the write door's import closure and is unscheduled. It
+  is not a blocker for the functional scope but it is a block condition at
+  closure, so the scope report must name it explicitly.
+<<<END PLAN24
 
-## Slice RECORD23 — appended to `.agent/live_review.md`
+## Slice RECORD24 — appended to `.agent/live_review.md`
 
-Two paragraphs, blank-line separated. The slice is every byte between the
-markers, exclusive.
+Two paragraphs, blank-line separated.
 
-<<<BEGIN RECORD23
-Gate: F033 R22 — THE REVIEWER'S OWN FALSE CLAUSE REPAIRED, AND THE LEDGER EXPORT GAINS ITS INVERSE. THE ROUND PASSED. This entry books, under operator amendment amend0827-process-diet rule 1, the verdict the reviewer reached at `d0c86c2d`. All eight gates were re-executed by the reviewer from scripts of its own and every ordered reading reproduced. TRANSPORT: `cmp` of the committed `.agent/authored/f033-r22.md` against the reviewer's own pre-emission original was SILENT, as was the same comparison against `.agent/last_block.md`; the worker copied the file with `shutil.copyfile` rather than retyping it, so one end of that comparison is the emitted artefact itself. THE PLAN is byte-EQUAL to slice PLAN22 at 2577 bytes over 46 lines, under the 50-line cap, holding `## Goal` and the substring `Steps`. THE RECORD APPEND at `61d2ffe7` reconstructs 1580194 plus one newline plus 7989 to 1588184, base a byte PREFIX, slice an exact SUFFIX, the separator a newline, N COUNTED at 2 by the reviewer's own script, the last two blank-line units equal to the slice's paragraphs IN ORDER, and a negative control at byte 1581426 — an offset the reviewer chose independently of the worker's 1582658, both inside the FIRST appended paragraph's span 1580195 to 1585120 — REJECTED by both readers, each of which accepted the unflipped bytes. THE LEDGER walked at three revisions: registered 307 to 308 with the ADDED id exactly `R-0747`; `Done:` 52 lines over 50 distinct UNMOVED at all three; `Landed:` 18 to 19 with `^Landed: R-0747 — ` exactly 1 at C3 and 0 before it; `^Gate: F033 R21 — ` 0 before and exactly 1 after; and the open set 257 to 258. THE ZERO-GATE HELD: `persists NOTHING` occurs 0 times in `packages/orchestration/pingpong_loop.py` at C5, and the reviewer confirmed the gate was not self-satisfying — the string appears in slice RECORD22, which lands in `.agent/live_review.md` and never in the file the gate counts. THE REPAIR IS TRUE, checked clause by clause against the source rather than against the block: the module writes the exported ledger to `job.metadata` under `hunk_decisions` keyed by attempt, `save_job` at the write door makes it durable, and what is missing is the wiring — every one of those verified at `d0c86c2d`. THE NEW FUNCTION MATCHES ITS SPEC: `import_hunk_ledger` is module-level and unprefixed, sits directly after `export_hunk_ledger`, is named in the `Public API::` block, reuses `_EXPORT_ROOT_KEY` and `_EXPORT_ENTRY_KEYS` rather than restating either spelling, documents the `id`-to-`hunk_id` rename as its whole reason for existing, and names which of its two guards each red-proof is aimed at — the counter-measure the R20 prose slip asked for, applied. THE MUTATIONS were re-run by the reviewer in its own disposable worktree at C5 with its OWN anchors, each asserted UNIQUE, the file restored and proved byte-identical by sha256 after each: the unmutated control is a REAL exit 0 at 44 passed; dropping the reason on rebuild is exit 1 at exactly 3 failed, naming the round-trip, the byte-for-byte reason and the renderer tests; removing the structural guard entirely is exit 1 at 9 failed, every one a case of `test_no_malformed_input_makes_the_import_raise`, so the guard is genuinely reachable and the gate's permitted answer of "this reddened nothing" did not arise; and normalising an unknown state to pending is exit 1 at exactly 1 failed. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: the four hunk suites 106 together, the two builder-prompt suites 35 together, and the canary 42, with `python3 -m ruff check` exiting 0 over all three changed files. THE STRUCTURE: eight single-parent commits over `0bcae480`..`d0c86c2d` of 314, 234, 12, 4, 11, 48, 146 and 200 insertions, every one under 500, the last being the handback commit the block could not gate and which the reviewer measured here; the path set to C5 EQUALS the declared change set in BOTH directions; and the append to `tests/orchestration/test_hunk_ledger.py` satisfies ORDERED EQUALITY — the pre-commit blob is a byte PREFIX and the 146 lines that commit's diff ADDS are exactly the appended suffix IN ORDER. THE WORKER DECLARED SEVEN DEVIATIONS AND EVERY ONE IS HONEST, two of them improving on the order: it added a seventh test the block never asked for, which discriminates the structural guard from the coercion guard where nothing else did, and it declined to name `import_hunk_ledger` in SPEC A's repaired paragraph because C3 lands before C4 and the reference would have dangled — a correct reading of its own commit sequence. ONE OBSERVATION THAT IS NOT A FINDING: after C4 that repaired paragraph says the unbuilt step is "reading that key for the current attempt and rebuilding a ledger from its rows", and round 22 shipped a function that does the second half. The sentence remains TRUE as written, because the STEP is an action no code path performs and a function nobody calls is a tool rather than a step; but it is one round from becoming misleading, so the R23 block orders that paragraph refreshed as part of the round that gives the loop its parameter.
+<<<BEGIN RECORD24
+Gate: F033 R23 — A STORED DECISION REACHES THE REAL LOOP'S COMPOSED PROMPT. THE ROUND PASSED. This entry books, under operator amendment amend0827-process-diet rule 1, the verdict the reviewer reached at `c9dd471f`. All eight gates were re-executed by the reviewer from scripts of its own. TRANSPORT: `cmp` of the committed `.agent/authored/f033-r23.md` against the reviewer's own pre-emission original was SILENT, as was the comparison against `.agent/last_block.md`; the worker copied the file rather than retyping it. THE PLAN is byte-EQUAL to slice PLAN23 at 2690 bytes over 49 lines, under the 50-line cap. THE RECORD APPEND at `ce6c2866` reconstructs 1588340 plus one newline plus 6800 to 1595141, base a byte PREFIX, slice an exact SUFFIX, N COUNTED at 2, and a negative control at byte 1590053 — the reviewer's own offset, inside the FIRST appended paragraph's span 1588341 to 1593477 — REJECTED by both readers, which accepted the unflipped bytes. THE BLOCK'S OWN G3 BASE NUMERAL WAS WRONG AND THE WORKER CAUGHT IT: the block asserted 1588340's predecessor 1588184, which is the size at round 22's C2, not at `d0c86c2d`; round 22's own C3 appended the 156-byte `Landed: R-0747` line after that reading. The append FORM was applied unchanged and nothing on disk is wrong, so under amend0827 rule 2 this spends no id and is a dated line in `.agent/prose_slips.md`. THE LEDGER: registered 308 distinct UNMOVED; `Done:` 52 lines over 50 distinct to 53 over 51 with the ADDED resolved id exactly `R-0747`; `Landed:` 19 UNMOVED with `^Landed: R-0747 — ` still exactly 1 beside its new `Done:` paragraph; `^Gate: F033 R22 — ` 0 before and exactly 1 after; and the open set 258 to 257. THE CODE AGAINST THE SPEC: `python3 -m ruff check` exits 0 over all four changed files; by AST the reader is module-level and unprefixed, is named in the module's `Public API::` block, `run_pingpong` carries `hunk_ledger` keyword-only defaulting to `None`, and the ONE `compose_builder_prompt` call inside it forwards that name; and `open(` and `save_job` both still read 0 in `hunk_decision_record.py`, so DECISION F033 D4's standing property survives the round that gave that module a reader. THE SELECTION RULE WAS TRACED BY THE REVIEWER BRANCH BY BRANCH against SPEC A3 and is correct on every case: a first match takes the slot; any later record displaces an incumbent carrying no parseable stamp, which is how "if none parses the LAST wins" is spelled; an unparseable stamp never displaces a parseable one; and `>=` rather than `>` is what makes a tie resolve to the last recorded. THE MUTATIONS were re-run in the reviewer's own disposable worktree at C5 with its OWN anchors, each asserted UNIQUE and every file restored and proved byte-identical by sha256: control a REAL exit 0 at 39 passed; disabling the displacement comparison is exit 1 at 2 failed naming the latest-wins and the tie-resolves-to-last tests; removing the structural guard is exit 1 at 2 failed; and REMOVING THE FORWARDING from `run_pingpong` is exit 1 at exactly 1 failed, naming `test_a_rejection_reason_reaches_the_real_loops_composed_builder_prompt` — which is the mutation that proves the acceptance test is a genuine end to end and not a composer test in disguise. THE SUITES were re-run SERIALLY in the primary checkout, every REAL exit 0: the six orchestration suites 155 together, and `test_pingpong_cli.py` with the canary 214 together. THE STRUCTURE: eight single-parent commits over `d0c86c2d`..`c9dd471f` of 350, 256, 14, 4, 108, 29, 343 and 320 insertions, every one under 500; the path set to C5 EQUALS the declared change set in BOTH directions; and BOTH test appends satisfy ORDERED EQUALITY with ZERO deleted lines, at 188 and 155 added lines exactly equal to the appended suffix IN ORDER. THE WORKER DECLARED EIGHT DEVIATIONS AND EVERY ONE IS HONEST, THREE OF THEM IMPROVING ON THE ORDER: it caught the reviewer's stale base numeral, it reworded a draft docstring that had pushed `save_job` from 0 to 1 in a module whose zero count is a standing property, and it corrected `hunk_decision_record.py`'s module docstring where the round's own change had falsified it — that file said "THIS MODULE IS NOT TOTAL" and now says "THE TWO RECORDING DOORS ARE NOT TOTAL", naming the new reader as the exception. That edit was not itemised in the SPEC, and making it was right: leaving it would have landed exactly the class of false claim R-0747 registers. ONE READING THE REVIEWER TOOK THAT NO GATE ORDERED, recorded so a later reader knows the boundary: the selector compares two `datetime` values, so a record carrying a NAIVE stamp beside one carrying an AWARE stamp raises `TypeError` inside the structural guard and the answer is an EMPTY ledger rather than the aware record. It cannot arise from either door, which stamp with `datetime.now(timezone.utc)`, and totality holds, so it is not a finding.
 
-Done: R-0747 — RESOLVED at `72dcfd53`. The false clause is gone and the replacement is true. VERIFIED by the reviewer at `d0c86c2d`, reading each of its claims against the source rather than against the block that ordered it: `packages/orchestration/hunk_decision_record.py` line 226 writes `job.metadata.setdefault(HUNK_DECISIONS_METADATA_KEY, {})` and line 227 assigns the exported record under the attempt key, the constant is the literal `hunk_decisions`, and `packages/orchestration/ui_server.py` line 3940 calls `save_job(job)` inside `_dispatch_approve_hunks`. The paragraph now says the absence is in the WIRING and not in the data, which is the measured truth. The zero-gate confirms the retired wording is gone: `persists NOTHING` occurs 0 times in `packages/orchestration/pingpong_loop.py` at C5. `.agent/plan.md` no longer tells the next round to locate storage; PLAN22 replaced that step with reading the key, which the finding's own fix clause required for resolution. The `Landed: R-0747` line the worker wrote at C3 STANDS beside this paragraph and is not deleted — this record is append-only and that line is the honest trace of a fix that landed before its resolution was authored. THE LESSON IS THE REVIEWER'S AND IT IS RECORDED HERE RATHER THAN IN A SLIP, because it is the finding's own root cause: the reviewer read a module docstring saying it "imports no storage", inferred that nothing was stored, and wrote that inference into a block as a measurement without opening the function body or either door. A docstring is a claim about a file, not a measurement of it, and the distinction is exactly the one this record exists to keep.
-<<<END RECORD23
+- R-0748 — Low, THE FALSE SENTENCE R-0747 RETIRED FROM ONE FILE WAS STILL STANDING IN A SECOND, BECAUSE THE FIX AND ITS GATE WERE BOTH SCOPED TO ONE PATH. Raised by the reviewer at the F033 R23 gate. `tests/orchestration/test_builder_prompt_hunk_rejections.py`, landed at round 21 and measured at `c9dd471f`, carries a module-docstring paragraph reading "nothing here asserts that the RUN LOOP supplies a ledger. It does not yet: ... because `packages/orchestration/hunk_decision_record.py` persists no decision, so there is no route from a stored decision to the loop to test." The second half is the SAME false claim R-0747 registered, in the same words, and it is false for the same measured reason: that module writes each exported ledger onto `job.metadata` under `hunk_decisions` and `save_job` at the write door makes it durable. THIS IS A SECOND ID RATHER THAN EVIDENCE ADDED TO R-0747 because R-0747 was RESOLVED in the same round this instance was found, and reopening a resolved finding in an append-only record is worse than registering the instance that escaped it; the two are the same defect in two files and each resolution says so. WHY IT ESCAPED, which is the part worth keeping: R-0747's FIX clause named one file and its zero-gate counted the retired wording in that one file, so both were PATH-scoped while the defect was CLAIM-scoped. A sweep is only as wide as its search, and a gate that proves a sentence gone from the file you were thinking about proves nothing about the file you were not. The reviewer had the means to catch it — the same grep over `packages/`, `apps/`, `tests/` and `docs/` that found this instance would have found it a round earlier. WHY LOW: no behaviour is wrong and no test is weakened; the defect is a false explanatory paragraph in a test file, which a reader meets while trying to understand what the suite guarantees. THE FIRST HALF OF THAT PARAGRAPH IS ALREADY HONESTLY CORRECTED and must not be double-repaired: round 23 appended a superseding comment block saying the loop now DOES supply a ledger, under an append-only obligation the R23 block imposed, and that block is a correct record of how the file got here. FIX: rewrite the paragraph so the retired reason is gone rather than annotated, leaving the round-23 comment block untouched, and gate the retirement with a search over every path this repository keeps rather than over the one file being edited. Resolved when the wording "persists no decision" and the claim it carries appear nowhere under `packages/`, `apps/`, `tests/` or `docs/`.
+<<<END RECORD24
+
+## Slice SLIPS24 — appended to `.agent/prose_slips.md`
+
+One paragraph.
+
+<<<BEGIN SLIPS24
+2026-08-29 · F033 R23 · The block's G3 ordered the record append reconstructed from a base of 1588184 bytes, which is `.agent/live_review.md` at round 22's C2 and not at `d0c86c2d`, because that round's own C3 appended a 156-byte `Landed:` line AFTER the reading was taken; the worker measured the true 1588340, applied the append form unchanged and declared it, and a base numeral for a file the PREVIOUS round wrote TWICE must be read at the round's actual base commit rather than at the commit whose gate first measured it.
+<<<END SLIPS24
+
+## Pair PAIR-DOC — `tests/orchestration/test_builder_prompt_hunk_rejections.py`
+
+Containment test run by the reviewer at `c9dd471f`: `TO contains FROM: false`.
+It is therefore a REWRITE, and the gate is FROM 0x and TO 1x after the commit.
+The FROM occurs exactly once in the file, at 423 bytes over 6 lines.
+
+<<<BEGIN PAIRDOC-FROM
+DELIBERATE ABSENCE — nothing here asserts that the RUN LOOP supplies a ledger.
+It does not yet: ``compose_builder_prompt``'s call site in ``run_pingpong`` is
+unchanged this round because ``packages/orchestration/hunk_decision_record.py``
+persists no decision, so there is no route from a stored decision to the loop to
+test. A test asserting an end-to-end that does not exist would be a green gate
+over a missing feature.
+<<<END PAIRDOC-FROM
+
+<<<BEGIN PAIRDOC-TO
+THE RUN LOOP DOES SUPPLY A LEDGER, and the appended section below drives the real
+loop to prove it. This paragraph once said the opposite and gave a reason that
+was false when it was written: it claimed
+``packages/orchestration/hunk_decision_record.py`` leaves no durable record,
+when that module writes each exported ledger onto ``job.metadata`` under
+``hunk_decisions`` and ``save_job`` at the write door makes the record durable.
+That claim was finding R-0747 where it stood in ``pingpong_loop.py``, and
+R-0748 here — one defect in two files, because the first fix and its gate were
+both scoped to a path while the claim was not.
+<<<END PAIRDOC-TO
 
 ## Constraints
 
-1. Apply every slice BYTE FOR BYTE. If a slice looks wrong, apply it as written
-   and declare the problem in the handback; never silently repair it.
-2. PLAN23 is a FULL REWRITE. RECORD23 is an APPEND: measured by the reviewer at
-   `d0c86c2d`, `.agent/live_review.md` is 1588184 bytes and ends with a newline,
-   so the append is one blank-line separator then the slice.
-3. Do NOT delete or edit the `Landed: R-0747` line. This record is append-only;
-   the `Done:` paragraph joins it rather than replacing it, which is this
-   branch's established precedent.
-4. Both test edits are CODE APPENDS. The obligation is ORDERED EQUALITY — the
-   pre-commit blob a byte-exact PREFIX, the commit's added lines exactly the
-   appended lines IN ORDER — and never a per-line uniqueness count, which is
-   unattainable for code by construction.
+1. Apply every slice and the pair BYTE FOR BYTE. If one looks wrong, apply it as
+   written and declare the problem; never silently repair it.
+2. PLAN24 is a FULL REWRITE. RECORD24 and SLIPS24 are APPENDS: measured at
+   `c9dd471f`, `.agent/live_review.md` is 1595141 bytes and
+   `.agent/prose_slips.md` is 30807 bytes, and BOTH end with a newline, so each
+   append is one blank-line separator then the slice. Re-measure both yourself
+   before appending — the R23 block got one of these numbers wrong by taking it
+   at the wrong commit, and the slip above is that lesson.
+3. `.agent/live_review.md` is written by TWO commits: C2 appends RECORD24, C4
+   appends the single `Landed:` line. G3's arithmetic is measured at C2 and
+   G4's ledger readings at C4.
+4. Do NOT delete or edit the `Landed: R-0747` line, the `Done: R-0747`
+   paragraph, or the superseding comment block round 23 appended to the
+   acceptance test file. The record and that file's history are append-only
+   except for PAIR-DOC's own paragraph.
 5. Touch no path outside the change set. In particular do NOT touch
-   `packages/orchestration/pingpong_job.py`, `apps/cli/commands/do_cmd.py`,
-   `.agent/prose_slips.md` or anything under `docs/`.
+   `apps/cli/commands/do_cmd.py`, `packages/orchestration/pingpong_loop.py` or
+   anything under `docs/`.
 6. The sandbox denies `VAR=x cmd`, `env`, `export`, `cp`, `$(...)` inside a
    compound, process substitution, a heredoc nested in `bash -c`, and a shell
    line containing a brace with a quote inside it. Write scripts under
    `.remedy-wt/` and run them as `python3 -B <path>`; use `python3 -m ruff`.
-   REAL exit codes come from `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with NO
-   PIPE — a piped form reports the last stage's exit and cannot fail.
+   REAL exit codes come from `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with NO PIPE.
 7. Destructive verification runs ONLY in a disposable `git worktree`, purged of
    `__pycache__`, under `python3 -B`. The primary checkout satisfies
    `git status --porcelain` empty at the handback.
 8. Re-read `.agent/STOP` before starting. If it exists, stop and hand off.
-9. G1 through G8 all run at C5, before the handback commit C6.
+9. G1 through G8 all run at C6, before the handback commit C7.
 
 ## Done when — G1 through G8
 
 G1 TRANSPORT. Report `sha256` and byte length of the committed
-`.agent/authored/f033-r23.md` and `cmp` it against
-`.remedy-wt/f033-r23-block.md`. One reading.
+`.agent/authored/f033-r24.md` and `cmp` it against
+`.remedy-wt/f033-r24-block.md`. One reading.
 
-G2 THE PLAN. `.agent/plan.md` byte-EQUAL to PLAN23, under 50 lines, holding
-`## Goal` and the substring `Steps`. Report bytes and lines.
+G2 THE PROSE FILES. `.agent/plan.md` byte-EQUAL to PLAN24, under 50 lines,
+holding `## Goal` and `Steps`. `.agent/prose_slips.md` reconstructs its measured
+base plus one newline plus the byte length of SLIPS24 to its committed size;
+report all three numbers, the base MEASURED and not taken from this block.
 
-G3 THE RECORD APPEND, measured AT C2. Reconstruct 1588184 plus one newline plus
-the byte length of RECORD23 to the committed size. Prove the pre-commit blob a
-byte PREFIX and the slice an exact SUFFIX. COUNT N in the script rather than
-taking it from this block, and compare the file's LAST N blank-line units
-against the slice's paragraphs IN ORDER. Flip one byte inside the FIRST appended
-paragraph, report the offset, prove it lies in that paragraph's span, and show
-BOTH readers reject the flipped bytes and accept the unflipped ones.
+G3 THE RECORD APPEND, at C2. Reconstruct the MEASURED base plus one newline plus
+the byte length of RECORD24 to the committed size. Prove the pre-commit blob a
+byte PREFIX and the slice an exact SUFFIX. COUNT N in the script. Compare the
+file's LAST N blank-line units against the slice's paragraphs IN ORDER. Flip one
+byte inside the FIRST appended paragraph, report the offset, prove it in span,
+and show BOTH readers reject the flipped bytes and accept the unflipped ones.
 
-G4 THE LEDGER, at `d0c86c2d` and at C2: registered `^- R-\d+ — ` 308 distinct
-UNMOVED; `^Done: R-\d+ — ` 52 lines over 50 distinct going to 53 over 51 with
-the ADDED resolved id exactly `R-0747`; `^Landed: ` 19 UNMOVED with
-`^Landed: R-0747 — ` still exactly 1; `^Gate: F033 R22 — ` 0 before and exactly
-1 after; and the open set 258 going to 257.
+G4 THE LEDGER, at `c9dd471f`, at C2 and at C4: registered 308 distinct going to
+309 with the ADDED id exactly `R-0748`; `^Done: R-\d+ — ` 53 lines over 51
+distinct UNMOVED at all three; `^Landed: ` 19 going to 20 with
+`^Landed: R-0748 — ` exactly 1 at C4 and 0 before; `^Gate: F033 R23 — ` 0 before
+and exactly 1 after; and the open set 257 going to 258.
 
-G5 THE CODE AGAINST THE SPEC, at C5. `python3 -m ruff check` exits 0 over all
-four changed files. By AST: the new reader is defined at module level in
-`hunk_decision_record.py` with no leading underscore and its name appears in
-that module's `Public API::` block; `run_pingpong` carries `hunk_ledger` as a
-keyword-only parameter defaulting to `None`; and `hunk_ledger` is passed at the
-`compose_builder_prompt` call inside `run_pingpong`. Report `open(` and
-`save_job` occurrence counts in `hunk_decision_record.py` — both must still be
-0, which is DECISION F033 D4's standing property and SPEC A7's claim.
+G5 THE PAIR. After C4, in
+`tests/orchestration/test_builder_prompt_hunk_rejections.py`: the PAIRDOC-FROM
+text occurs 0 times and the PAIRDOC-TO text exactly 1 time. Report both counts.
+THE SWEEP, and it is the point of R-0748's fix: over ALL of `packages/`,
+`apps/`, `tests/` and `docs/`, the string `persists no decision` occurs 0 times
+and the string `persists NOTHING` occurs 0 times. Report the command and both
+counts. Search those four trees, not one file.
 
-G6 MUTATION RED-PROOFS, in a disposable worktree at C5. Run the UNMUTATED
-CONTROL FIRST over both changed test files and report its REAL exit code and
-pass count beside every mutation. Each anchor is a byte string shown to occur
-EXACTLY ONCE in the file it edits; report that count; restore and prove
-byte-identical by sha256 after each.
-  (i) make the selector return the FIRST matching record instead of the latest
-      — C1's latest-wins test must go RED.
-  (ii) remove SPEC A5's structural guard so a malformed input raises — the
-      totality tests must go RED. If this reddens nothing, SAY SO: that is a
-      real result about a guard no test reaches.
-  (iii) stop forwarding `hunk_ledger` at the `compose_builder_prompt` call
-      inside `run_pingpong` — the C3 acceptance test must go RED. This is the
-      mutation that proves the end to end is really end to end.
-Report the failing test NAMES, not only counts.
+G6 THE CODE AGAINST THE SPEC, at C6. `python3 -m ruff check` exits 0 over both
+changed production and test files. By AST over
+`packages/orchestration/pingpong_job.py`: the new helper is defined at module
+level, and the `run_pingpong` call passes a `hunk_ledger` keyword. Show by
+RUNNING the shipped helper that a fake job carrying a recorded decision for a
+task yields a ledger whose rejection reason is byte-identical to what was stored.
 
-G7 THE SUITES, SERIALLY, in the PRIMARY checkout at C5, each with REAL exit code
-and pass count: `test_hunk_decision_record.py`;
-`test_builder_prompt_hunk_rejections.py`; `test_hunk_ledger.py`;
-`test_hunk_repair_findings.py`; `test_builder_prompt_golden.py`;
-`test_pingpong.py`; `test_pingpong_cli.py`; and the canary
-`python3 -m pytest tests/cli/test_golden_path.py -q`.
+G7 MUTATION RED-PROOFS, in a disposable worktree at C6. UNMUTATED CONTROL FIRST,
+its REAL exit code and pass count reported beside every mutation. Each anchor
+shown to occur EXACTLY ONCE; restore and prove byte-identical by sha256 after
+each.
+  (i) make the helper ignore the task and use a fixed id — C3 or C4 must go RED.
+  (ii) remove SPEC B2's structural guard — the totality tests must go RED. If it
+       reddens nothing, SAY SO.
+  (iii) stop passing `hunk_ledger` at the `run_pingpong` call — C6's wiring
+       check must go RED.
+Report the failing test NAMES.
 
-G8 STRUCTURE. `git status --porcelain` EMPTY. For every commit from C0a through
-C5 report insertions from `git diff --numstat` and show each under 500. Show the
-path set over `d0c86c2d`..C5 equals the change set minus `.agent/handoff.md` in
-BOTH directions. For BOTH appended test files show the pre-commit blob is a byte
-PREFIX and the added lines are exactly the appended suffix IN ORDER.
+G8 SUITES AND STRUCTURE, at C6. SERIALLY, each with REAL exit code and pass
+count: the new test file; `test_builder_prompt_hunk_rejections.py`;
+`test_hunk_decision_record.py`; `test_job_task_runner.py`; `test_pingpong.py`;
+and the canary `python3 -m pytest tests/cli/test_golden_path.py -q`. Then
+`git status --porcelain` EMPTY; per-commit insertions from C0a through C6 each
+under 500; and the path set over `c9dd471f`..C6 equal to the change set minus
+`.agent/handoff.md` in BOTH directions.
 
 ## Handback
 
