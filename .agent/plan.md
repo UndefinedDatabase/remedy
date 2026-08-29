@@ -1,40 +1,37 @@
-# Plan — F033 Hunk-level diff approval
+# Plan — F040 Completion/return digest
 
-Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 7, closing the feature.
+Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
+commit of pull request 222. SESSION 1, opening the feature.
 
 ## Goal
-Surgical consent over changes: hunks carry STABLE content-hash ids, an
-`approve_hunks` command applies the approved set to the branch all-or-nothing,
-and rejected hunks become precise repair feedback quoted verbatim in the next
-round — every partial state rendered truthfully in viewer, node and report.
+Coming back is calm: a digest endpoint condenses state, cost with its basis, top
+ownership entries, open decisions and ONE primary action into a hero card, shown
+at job end or on the first UI open after absence — the "what happened while I
+was gone" answer in one glance.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001, T002 and T003 | done | rounds 1-24 |
-| the operator guide and its index rows | done | round 26 |
-| the integration gate | done | round 27, PASS WITH RISKS |
-| the Built State, evidence job and review zip | done | round 28 |
-| the STATUS line, the README sync and the PR | done | this round |
-| R-0745 and R-0750, carried as documented risks | open | see Risks |
+| the two F033 closure candidates | done | this round; no id spent |
+| the F040 claim and the branch | done | this round |
+| the seam inventory | done | this round, `.agent/f040_inventory.md` |
+| T001 the endpoint composition | open | next round, ordered from the inventory |
+| T002 the hero card and its triggers | open | |
+| T003 CLI parity and the end-to-end | open | |
 
 ## Next Steps
-1. This round books the round 28 PASS, flips the STATUS line to `[x]` with the
-   README capability sync in the SAME commit, and opens the pull request.
-2. THE PR IS NOT MERGED IN THIS SESSION. It merges at the next feature's start
-   through the Open PR Gate, which is the operator's manual-review window; the
-   operator may also merge it by hand at any time.
-3. The next session starts a NEW feature: read `.agent/STOP` first, then run the
-   Open PR Gate, which will find this PR and merge it before any new branch.
-4. Nothing further is owed on this branch. Its last round has no on-disk gate
-   entry by construction, and that absence is the terminator rather than a
-   missing review.
+1. This round claims F040, discharges the two candidates the F033 closure gate
+   raised, and measures the four read paths the digest composes over.
+2. The round after it orders T001 — the endpoint, the next-action rule-table
+   import and the fixture goldens — from what the inventory measured.
+3. The ownership seam is unbuilt: F035 is `[ ]` in the ledger. The inventory
+   measures that directly, and the T001 order carries the decision that settles
+   what the digest does about it.
 
 ## Risks
-- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, which is why the STATUS
-  line reads PASS_WITH_RISKS. Neither is reachable from this feature's
-  Acceptance: the first hardens an import guard over the write door, the second
-  is a reviewer's gate wording that ordered a full run log where the canonical
-  integration-gate procedure asks for a tail.
+- R-0570 (Low) stays OPEN and is deliberately NOT repaired here. Its fix edits
+  `README.md` and `tests/docs/test_docs_consistency.py`, neither of which F040
+  owns, and AGENTS.md forbids mixing an unrelated fix into a feature branch.
+- F040's Design section names an ownership source that does not exist on disk.
+  Building T001 against it verbatim would compose over nothing.
