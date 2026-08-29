@@ -1,392 +1,411 @@
-# Handoff — F033 Hunk-level diff approval · round 15
+# Handback — F033 Hunk-level diff approval · ROUND 16
 
 ## Session
 
-SESSION 4 of feature F033 · round 15 · rounds so far 15
+SESSION 4 of feature F033 · round 16 · rounds so far 16
 
 ## Range
 
-Review of `fa963c4e2fbe50a1d5cc2abb309b17dec764d99a`..`HEAD` (BASE is the round 14
-handback commit, on branch `feature/f033-hunk-approval-v2`).
+Review of `1329ef45fbd1f4e189991ffc2ce4a8b2853c1b6a`..`c924eb418b87dd41ffb87a4eb8f6477ff54a162a`
+(BASE is the round 15 handback commit; branch `feature/f033-hunk-approval-v2` throughout).
+
+The `+/-` column of every table below is the `git diff --numstat` output for that
+commit, read from the tool, and it agrees cell for cell with the per-commit
+insertion counts G8 produced.
 
 ## Commits
 
-### 46beed78 docs(f033): save the round 15 block
+### 3ff36883 docs(f033): save the round 16 block — C0a
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f033-r15.md | +439 / -0 | C0a — the reviewer's block, copied byte for byte with `shutil.copyfile`. NEW FILE. |
+| .agent/authored/f033-r16.md | +400 / -0 | the reviewer's block, copied byte for byte with `shutil.copyfile`, never retyped |
 
-### 31bdb60d docs(f033): mirror the round 15 block
+### b7d07efc docs(f033): mirror the round 16 block — C0b
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +291 / -301 | C0b — the same bytes, so both paths hold ONE blob id (G2). |
+| .agent/last_block.md | +272 / -311 | the same bytes, written from the C0a COMMITTED blob so both paths hold one blob id |
 
-### 5e5ba592 docs(f033): open round 15 in the plan
+### 0007cf10 docs(f033): point the plan at the partial apply state — C1
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +17 / -18 | C1 — byte-equal to slice PLANF033R15. |
+| .agent/plan.md | +17 / -18 | PLANF033R16, byte-equal |
 
-### bd83cedb docs(f033): book the round 14 verdict, resolve R-0743 and register R-0744
+### 807f6f25 docs(f033): book the round 15 verdict and its two findings — C2
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +6 / -0 | C2 — slice RECORDF033R15 appended: the R14 gate paragraph, the `Done: R-0743` resolution and the `- R-0744` registration. |
+| .agent/live_review.md | +6 / -0 | RECORDF033R16 appended: the R15 gate verdict, `Done: R-0744`, and the R-0745 registration |
 
-### 54b569cb fix(f033): resolve the evidence dir from the resolved job id
+### 64546b53 docs(f033): record the round 15 prose slip — C3
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/cli/commands/patch.py | +3 / -1 | C3 — R-0744's one-line fix, `resolve_job_evidence_dir(str(job_id))`, plus the WHY comment naming the finding. |
-| tests/cli/test_patch_cmd.py | +75 / -4 | C3 — the two tests that DISCRIMINATE the prefix and uppercase forms, one docstring bullet, and `_job()`'s optional id (deviation D2). |
-| .agent/live_review.md | +2 / -0 | C3 — the single `Landed: R-0744 — …` line the block orders, and nothing else. |
+| .agent/prose_slips.md | +2 / -0 | SLIPSF033R16 appended: the block's four-guard enumeration where there were five |
 
-### ff9e8e35 feat(f033): open the write door for hunk approval
+### eb4c697d fix(f033): fold a task's apply states by agreement, not membership — C4
 | Path | +/- | Reason |
 |------|-----|--------|
-| apps/cli/command_catalog.py | +1 / -0 | C4 — `UI_EXPOSED_COMMANDS` gains `patch.approve-hunks`. |
-| packages/orchestration/ui_server.py | +120 / -2 | C4 — `HUNK_APPROVE_COMMAND_ID`, `COMMAND_HUNK_DECISION_STATE_MESSAGE`, the dispatch clause and `_dispatch_approve_hunks`. |
-| tests/ui_server/test_command_channel.py | +36 / -10 | C4 — the three widened guards, the renamed exposed-set test, and the fifth widening deviation D1 names. |
+| packages/orchestration/ui_server.py | +17 / -3 | the apply fold in `_task_truth_maps` becomes an agreement test with a distinct `partial` state |
+| apps/ui/src/components/detail/DetailPopover.tsx | +4 / -0 | `applyStatus` gains the `"partial"` branch, in the SAME commit, because the fold alone would render it as "Unknown" |
 
-### e24d3b44 test(f033): pin the write door's hunk decision effects
+### c924eb41 test(f033): pin the partial apply state at both ends of the seam — C5
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/ui_server/test_command_dispatch.py | +189 / -0 | C5 — `TestApproveHunksDispatchEffects`, five tests. |
+| tests/ui_contracts/test_apply_state_partial.py | +318 / -0 | NEW: derives the fold's emitted label set from the AST and pins it against the popover's branch set |
+| tests/ui_server/test_dashboard_cockpit_truth.py | +78 / -0 | six added tests: three preserved answers, two partial cases, one absent attribute |
 
-### C6 docs(f033): hand back the round 15 write door
+### C6 (this file) — grouped, per the R-0149 self-reference exception
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/handoff.md | rewrite | C6 — this file. A handoff cannot table the commit that writes it (R-0149 pattern). |
+| .agent/handoff.md | (this commit) | a handback cannot table the commit that writes it |
 
 ## External actions
 
-- `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/g7-f033-r15 e24d3b44`
-  — exit 0, "Preparing worktree (detached HEAD e24d3b44)". Created for the G7 mutations
-  and used for nothing else.
-- `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/g7-f033-r15` then
-  `git worktree prune` — removed BY EXACT PATH; `git worktree list` is back to the
-  primary checkout alone and `git status --porcelain` is empty.
-- `git push -u origin feature/f033-hunk-approval-v2` — the round's FINAL action, run
-  immediately after C6. Its outcome cannot be recorded in the file it pushes (the
-  write-once rule forbids a second handoff commit), so it is reported in the round
-  report instead; a reader auditing it runs
-  `git log origin/feature/f033-hunk-approval-v2 -1` and expects the C6 sha.
-- No `gh` command, no PR create/edit/merge, no force-push, no history rewrite, no branch
-  deletion.
+| Command | Outcome |
+|---------|---------|
+| `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/g7-r16 c924eb41 --detach` | created, detached at `c924eb41` — the ONLY place any mutation ran |
+| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g7-r16` | removed by exact path, exit 0 |
+| `git worktree prune` | exit 0; `git worktree list` then shows the primary checkout alone |
+| `git push -u origin feature/f033-hunk-approval-v2` | see the line recorded under Next; run after C6 |
 
-## Verification
+No PR was created, edited or merged. No force-push, no history rewrite, no branch
+deletion. No `npm`, no `npx`, no vitest run — none was ordered and none was needed.
 
-**G1 HYGIENE — PASS.** `.agent/STOP` read from disk before C0a (`No such file or
-directory`) and again before C6 (same) — absent both times. `git status --porcelain`
-empty after every one of the seven commits before C6. Branch
-`feature/f033-hunk-approval-v2` throughout (`git rev-parse --abbrev-ref HEAD`). No
-force-push, no rewrite, no branch deletion; `git rev-parse feature/f033-hunk-approval`
-is still `ed04081283081f237d96147da39a07fca0b1ccad`.
+## Verification — one line per gate, real numbers, real exit codes
 
-**G2 TRANSPORT — PASS.** `46beed78:.agent/authored/f033-r15.md` is 32348 bytes at sha256
-`92c6e6c8fb819492e05020373597f833d68729e3d30f9bf7965a83ca809de170`;
-`.remedy-wt/f033-r15-block.md` is 32348 bytes at the same sha256; EQUAL, compared as
-bytes. `git rev-parse 31bdb60d:.agent/authored/f033-r15.md` and
-`git rev-parse 31bdb60d:.agent/last_block.md` both print
-`9ef8597a4a5a0ad38622ee804b71cdc7b64db615` — ONE blob id.
+**G1 HYGIENE — PASS.** `.agent/STOP` read from disk before C0a: absent
+(`ls: cannot access '.agent/STOP': No such file or directory`); read again before
+C6: absent. `git status --porcelain` empty after every one of C0a, C0b, C1, C2, C3,
+C4, C5 and after the worktree removal. Branch `feature/f033-hunk-approval-v2`
+throughout (`git rev-parse --abbrev-ref HEAD`). No force-push, no rewrite, no branch
+deletion; `git rev-parse feature/f033-hunk-approval` still `ed04081283081f237d96147da39a07fca0b1ccad`.
 
-**G3 THE RECORD APPEND at C2 — PASS.** (a) BASE blob 1526301 bytes (the ordered value);
-slice 7431 bytes; C2 blob 1533733; 1526301 + 1 + 7431 = 1533733 and
-`base + b"\n" + slice == C2` byte for byte; BASE is a byte PREFIX of C2; C2 ends in
-exactly one newline. (b) N COUNTED by the script = 3. The LAST 3 blank-line units of the
-C2 blob equal the slice's three paragraphs IN ORDER: 3720 vs 3720 (`Gate: F033 R14 —`),
-1375 vs 1375 (`Done: R-0743 —`), 2331 vs 2331 (`- R-0744 —`). NEGATIVE CONTROL: the
-first appended paragraph's BYTE span, computed on bytes, is 1526302 to 1530022 and
-`C2[1526302:1530022]` really is that paragraph; the control offset 1528162 is proved to
-lie inside it (1526302 ≤ 1528162 < 1530022). The reconstruction reader rejects it (the
-slice does not start there) and the paragraph reader rejects it (it is not a paragraph
-boundary) — BOTH readers reject.
+**G2 TRANSPORT — PASS.** `.remedy-wt/f033-r16-block.md` is 30868 bytes, sha256
+`8fcdfcd2416e2410541d8b4b16b63815bcbde30af71c73625f70066c66df874d`; the C0a blob
+`3ff36883:.agent/authored/f033-r16.md` is 30868 bytes, sha256
+`8fcdfcd2416e2410541d8b4b16b63815bcbde30af71c73625f70066c66df874d` — EQUAL in both
+length and digest. At C0b, `git rev-parse b7d07efc:.agent/authored/f033-r16.md` and
+`git rev-parse b7d07efc:.agent/last_block.md` both print
+`9e5db1fb84ad6f72446b7fb5c4474684391854ce` — ONE blob id.
 
-**G4 THE LEDGER at C2 and C3 — PASS.**
+**G3 THE RECORD APPEND at C2 — PASS.** (a) BASE blob of `.agent/live_review.md` is
+1535259 bytes (as ordered); 1535259 + 1 newline + 7464 (RECORDF033R16) = 1542724,
+which is the C2 blob byte for byte (`recon == C2: True`); BASE is a byte PREFIX of
+C2 (`True`); C2 ends in exactly one newline (`True`); C2 sha256
+`3d75875f027ff16a1a42cecbdb7bea8037274e1dffba5db7aa51ba1e2be9907d`. (b) N COUNTED by
+the script at 3; the LAST 3 blank-line units of the C2 blob equal the slice's three
+paragraphs IN ORDER — 3687 bytes (`Gate: F033 R15 …`), 1276 bytes (`Done: R-0744 …`),
+2497 bytes (`- R-0745 …`), each `equal=True`. NEGATIVE CONTROL: the first appended
+paragraph's BYTE span in C2 is [1535260, 1538947), length 3687, and
+`c2[1535260:1538947] == paras[0]` is `True`; the control offset 1537103 is PROVEN
+inside that span (`start <= off < end: True`, byte `b'_'`), and flipping it to `b'Z'`
+is REJECTED by BOTH readers — reconstruction reader `True`, paragraph reader `True`.
 
-| reading | BASE `fa963c4e` | C2 `bd83cedb` | C3 `54b569cb` |
-|---|---|---|---|
-| `^- R-\d+ — ` lines / distinct ids | 304 / 304 | 305 / 305 | 305 / 305 |
-| `^Done: R-\d+ — ` lines / distinct ids | 48 / 46 | 49 / 47 | 49 / 47 |
-| `^Landed: R-` | 16 | 16 | 17 |
-| `^Gate: F\d+ R\d+ — ` | 131 | 132 | 132 |
-| `^DECISION F033 D\d+ — ` | 4 | 4 | 4 |
-| open set (registered − resolved) | 258 | 258 | 258 |
+**G4 THE LEDGER at C2 — PASS, every ordered reading reproduced.**
+`^- R-\d+ — ` 305 lines over 305 distinct at BASE → 306 over 306 at C2, ADDED id set
+exactly `['R-0745']`, removed `[]`. `^Done: R-\d+ — ` 49 lines over 47 distinct at
+BASE → 50 over 48 at C2, ADDED resolved id exactly `['R-0744']`. `^Landed: R-` 17 at
+BASE and 17 at C2 — UNMOVED, this round writes no `Landed:` line at all; and
+`^Landed: R-0744 — ` is 1 at BASE and 1 at C2, so that line is STILL PRESENT beside
+its new `Done:` paragraph. `^Gate: F\d+ R\d+ — ` 132 → 133, with `^Gate: F033 R15 — `
+0 at BASE and exactly 1 at C2. `^DECISION F033 D\d+ — ` 4 at BASE and 4 at C2 —
+UNMOVED. OPEN SET (registered distinct − resolved distinct) 258 at BASE and 258 at
+C2 — stated explicitly, not inferred: one id added and one resolved. R-0738:
+`^- R-0738 — ` is 1 at C2 and `^Done: R-0738 — ` is 0 at C2 — this round does NOT
+resolve it.
 
-Registered 304 → 305 at C2 with the ADDED id exactly `R-0744`. `Done:` 48 lines over 46
-distinct → 49 over 47 with the ADDED resolved id exactly `R-0743`, and the
-`Landed: R-0743` line is STILL PRESENT beside its new `Done:` paragraph
-(`^Landed: R-0743 — ` counts 1 at BASE, at C2 and at C3). `Landed:` 16 at BASE and 16 at
-C2 and 17 at C3, the added line matching `^Landed: R-0744 — ` exactly once. `Gate:`
-131 → 132 with `^Gate: F033 R14 — ` exactly 1. `DECISION F033 D` 4 UNMOVED at all three —
-this round minted no DECISION. THE OPEN SET IS 258 AT BASE AND 258 AT C2, stated as an
-explicit equality rather than inferred: one id was added and one was resolved.
+**G5 THE PROSE FILES — PASS.** `.agent/plan.md` at C1 is 2453 bytes over 44 lines
+(under the 50-line cap AGENTS.md sets) and is byte-EQUAL to PLANF033R16 (`True`).
+`.agent/prose_slips.md`: BASE blob 24266 bytes (as ordered); BASE + one newline +
+SLIPSF033R16 (715 bytes) == the C3 blob of 24982 bytes, byte for byte (`True`), with
+BASE a byte PREFIX (`True`). `^2026-\d\d-\d\d · F033 R15 · ` is 0 at BASE and 1 at
+C3. Lines beginning `- R-` in the whole file at C3: 0.
 
-**G5 THE PLAN — PASS.** `.agent/plan.md` at C1 is 2422 bytes over 45 lines — under the
-50-line cap AGENTS.md sets — and byte-EQUAL to slice PLANF033R15 (`c1 == slice` is True).
+**G6 THE FOLD AND THE LABEL at C4 — PASS.**
+(a) `python3 -m ruff check packages/orchestration/ui_server.py tests/ui_server/test_dashboard_cockpit_truth.py tests/ui_contracts/test_apply_state_partial.py`
+— REAL exit 0, summary line `All checks passed!`.
+(b) The SHIPPED `_task_truth_maps` exercised DIRECTLY over hand-built change objects,
+not through the tests. BASE reading measured first, on the same six inputs:
 
-**G6 THE DOOR'S GUARDS at C4 — PASS.**
-(a) `python3 -m ruff check` over `packages/orchestration/ui_server.py`,
-`apps/cli/command_catalog.py`, `apps/cli/commands/patch.py`,
-`tests/ui_server/test_command_channel.py`, `tests/ui_server/test_command_dispatch.py`
-and `tests/cli/test_patch_cmd.py` — REAL EXIT CODE 0, summary line `All checks passed!`.
-(b) `sorted(UI_EXPOSED_COMMANDS)` at BASE `['decision.resolve', 'job.stop']`; at C4
-`['decision.resolve', 'job.stop', 'patch.approve-hunks']`; ADDED exactly
-`['patch.approve-hunks']`, REMOVED `[]`. Every member resolves through `get_command`:
-`decision.resolve → decision.resolve`, `job.stop → job.stop`,
-`patch.approve-hunks → patch.approve-hunks`.
-(c) `DOOR_METHODS` at BASE is the ten names
-(`_handle_command_submission`, `_dispatch_job_stop`, `_dispatch_decision_resolve`,
-`_publish_command_result`, `_emit_command_accepted_event`, `_audit_attempt`,
-`_command_is_ui_exposed`, `_replayed_command_result`, `_rate_limit_admits_command`,
-`_read_command_payload`); at C4 the same eleven with `_dispatch_approve_hunks` inserted
-after `_dispatch_decision_resolve`; ADDED exactly `['_dispatch_approve_hunks']`. By AST
-over the C4 source: exactly 1 `_RemedyHandler` ClassDef, `_dispatch_approve_hunks` IS a
-real `FunctionDef` member of it, and the set of `DOOR_METHODS` names no method answers
-to is `[]` — so nothing in that tuple scans nothing.
-(d) `_door_imports` run by this worker over the C4 `ui_server.py` with the C4
-`DOOR_METHODS` collects 23 pairs:
+| input | BASE reading | C4 reading |
+|-------|--------------|------------|
+| all `applied` (3) | `'applied'` | `'applied'` — UNCHANGED |
+| all `reverted` (3) | `'reverted'` | `'reverted'` — UNCHANGED |
+| all `not_applied` (3) | `'not_applied'` | `'not_applied'` — UNCHANGED |
+| 3 `applied` + 5 `not_applied` | `'applied'` | `'partial'` |
+| 1 `applied` + 1 `reverted` | `'applied'` | `'partial'` |
+| 1 with `apply_state` ABSENT + 1 `applied` | `'applied'` | `'partial'` |
 
-    ('apps.cli.command_catalog', 'UI_EXPOSED_COMMANDS')
-    ('datetime', 'datetime')
-    ('datetime', 'timezone')
-    ('packages.orchestration.command_audit', 'audit_command_attempt')
-    ('packages.orchestration.command_nonce', 'lookup_nonce_result')
-    ('packages.orchestration.command_nonce', 'publish_nonce_result')
-    ('packages.orchestration.config', 'get_config')
-    ('packages.orchestration.config', 'get_key_spec')
-    ('packages.orchestration.data_paths', 'resolve_data_root')
-    ('packages.orchestration.diff_view_source', 'DIFF_SCOPE_JOB')
-    ('packages.orchestration.diff_view_source', 'build_diff_view')
-    ('packages.orchestration.escalation', 'answer_task_decision')
-    ('packages.orchestration.evidence_index', 'resolve_job_evidence_dir')
-    ('packages.orchestration.flight_plan', 'open_clarification_questions')
-    ('packages.orchestration.flight_plan', 'resolve_flight_plan_approval')
-    ('packages.orchestration.hunk_approval', 'HunkApprovalRefusal')
-    ('packages.orchestration.hunk_decision_record', 'record_hunk_decision_from_view')
-    ('packages.orchestration.hunk_ledger', 'HUNK_STATE_APPROVED')
-    ('packages.orchestration.hunk_ledger', 'HUNK_STATE_PENDING')
-    ('packages.orchestration.hunk_ledger', 'HUNK_STATE_REJECTED')
-    ('packages.orchestration.safe_points', 'request_stop')
-    ('packages.orchestration.storage', 'save_job')
-    ('packages.orchestration.timeline', 'append_run_event')
+The three confident answers are preserved exactly; only the mixed cases move.
+(c) The PROOF fold's source region is 554 bytes over 11 lines at BASE and 554 bytes
+over 11 lines at C4, and `byte-identical: True` — only the apply fold moved.
+(d) Labels the C4 fold can assign, derived from its AST:
+`['applied', 'not_applied', 'partial', 'reverted']` (BASE:
+`['applied', 'not_applied', 'reverted']`). Values `DetailPopover.tsx`'s `applyStatus`
+branches on at C4, read off comment-stripped source:
+`['applied', 'not_applied', 'partial', 'reverted']`. `fold - helper: []`,
+`helper - fold: []` — the difference is EMPTY IN BOTH DIRECTIONS.
+(e) The helper returns `'Partially applied'` for `"partial"`. The `UNKNOWN` constant
+is `'Unknown'`, so the label differs from the fallback (`True`); it differs from
+`'Applied'`, `'Reverted'` and `'Not applied'` (`True`); and all four branch labels
+are distinct (`True`). The helper still ends in `return UNKNOWN;`.
 
-`found − ALLOWED_IMPORTS` is `[]` and `ALLOWED_IMPORTS − found` is `[]` — empty BOTH
-ways. The intersection with `FORBIDDEN_MODULES` is `[]`.
-(e) `FORBIDDEN_MODULES` at BASE is nine modules (`packages.common.secure_fs`,
-`packages.orchestration.diff_repair_apply`, `packages.orchestration.exec_guard`,
-`packages.orchestration.job_fulfillment`, `packages.orchestration.patch_apply`,
-`packages.orchestration.source_apply`, `packages.orchestration.workspace`, `shutil`,
-`subprocess`); at C4 the same nine plus `packages.orchestration.hunk_apply`. ADDED
-exactly `['packages.orchestration.hunk_apply']`, REMOVED `[]`.
-(f) The module-level command-id constants at C4:
-`JOB_STOP_COMMAND_ID = "job.stop"`,
-`DECISION_RESOLVE_COMMAND_ID = "decision.resolve"`,
-`HUNK_APPROVE_COMMAND_ID = "patch.approve-hunks"`.
+**G7 THE MUTATION RED-PROOFS at C5 — PASS, all three RED.** Run with `python3 -B`
+inside the disposable worktree `/home/decodeux/Repos/remedy/.remedy-wt/g7-r16` only,
+never in the primary checkout. IMPORT PROOF first, REAL exit 0:
+`packages.orchestration.ui_server` resolves to
+`/home/decodeux/Repos/remedy/.remedy-wt/g7-r16/packages/orchestration/ui_server.py`
+(`inside worktree: True`). UNMUTATED CONTROLS, each REAL exit 0:
+`tests/ui_server/test_dashboard_cockpit_truth.py` `39 passed in 0.55s` (33 at BASE,
+plus the 6 this round adds), `tests/ui_contracts/test_apply_state_partial.py`
+`13 passed in 0.28s`. Then, one mutation at a time, each anchor asserted UNIQUE (`1`
+occurrence) inside the named file before replacing it, and each fully reverted before
+the next — `git status --porcelain` inside the worktree read empty (`''`) after every
+restore and at the end.
 
-**G7 THE MUTATION RED-PROOFS at C5 — PASS, all four RED.** In the disposable worktree
-`/home/decodeux/Repos/remedy/.remedy-wt/g7-f033-r15` at `e24d3b44`, never in the primary
-checkout, every run `python3 -B` with `-p no:cacheprovider`. IMPORT PATH PROVED FIRST:
-`packages.orchestration.ui_server.__file__`, `apps.cli.commands.patch.__file__` and
-`apps.cli.command_catalog.__file__` all resolve under
-`.remedy-wt/g7-f033-r15/`. Each mutation's anchor was asserted UNIQUE (count 1) inside
-the named file before replacement, and each was reverted fully before the next.
+- (i) restore the MEMBERSHIP test `if "applied" in apply_states` as the first arm of
+  the apply fold, in `packages/orchestration/ui_server.py` — REAL exit **1**,
+  `4 failed, 48 passed in 0.71s`. Failing:
+  `test_apply_state_partial.py::TestTheBackendCanReallyEmitPartial::test_the_fold_no_longer_answers_by_membership`,
+  `test_dashboard_cockpit_truth.py::TestTaskTruthMaps::test_a_missing_apply_state_never_by_itself_produces_applied`,
+  `…::test_one_applied_and_one_reverted_reads_partial`,
+  `…::test_some_applied_and_some_not_reads_partial_and_never_applied`.
+- (ii) make the mixed arm return `"applied"` instead of `"partial"`, in
+  `packages/orchestration/ui_server.py` — REAL exit **1**,
+  `5 failed, 47 passed in 0.70s`. Failing:
+  `test_apply_state_partial.py::TestEveryEmittedValueHasALabel::test_the_two_sets_agree_in_both_directions`,
+  `test_apply_state_partial.py::TestTheBackendCanReallyEmitPartial::test_the_fold_assigns_the_partial_label`,
+  `test_dashboard_cockpit_truth.py::TestTaskTruthMaps::test_a_missing_apply_state_never_by_itself_produces_applied`,
+  `…::test_one_applied_and_one_reverted_reads_partial`,
+  `…::test_some_applied_and_some_not_reads_partial_and_never_applied`.
+- (iii) delete the `"partial"` branch from
+  `apps/ui/src/components/detail/DetailPopover.tsx` so the helper falls through to
+  `UNKNOWN` — REAL exit **1**, `4 failed, 48 passed in 0.71s`. Failing:
+  `test_apply_state_partial.py::TestEveryEmittedValueHasALabel::test_the_two_sets_agree_in_both_directions`,
+  `…::TestThePartialLabelSaysSomething::test_the_helper_returns_a_label_for_partial`,
+  `…::test_the_partial_label_is_distinct_from_the_other_three`,
+  `…::test_the_partial_label_is_not_the_unknown_fallback`.
+  This is the one the block singled out: the PYTHON contract test really does read
+  the TypeScript, and it goes RED with no vitest run anywhere in the round.
 
-UNMUTATED CONTROLS — `tests/cli/test_patch_cmd.py` REAL exit 0, 13 passed (11 at BASE,
-+2 this round); `tests/ui_server/test_command_dispatch.py` REAL exit 0, 12 passed (7 at
-BASE, +5 this round); `tests/ui_server/test_command_channel.py` REAL exit 0, 106 passed
-(106 at BASE, unmoved).
-
-- **(i) `apps/cli/commands/patch.py`, the R-0744 fix reverted to `job_id_str`** — RED.
-  `test_patch_cmd.py` REAL exit 1, 2 failed 11 passed, naming
-  `TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId::test_a_short_hex_prefix_records_exactly_as_the_full_id_does`
-  and
-  `TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId::test_an_uppercase_uuid_records_exactly_as_the_lowercase_one_does`.
-  The other two suites stayed exit 0. THE 11 PASSED IS THE REVIEWER'S OWN MEASUREMENT
-  REPRODUCED: the eleven pre-existing tests are blind to the defect, and the two new ones
-  are the whole discrimination.
-- **(ii) `packages/orchestration/ui_server.py`, `save_job` dropped from
-  `_dispatch_approve_hunks`** — RED. `test_command_dispatch.py` REAL exit 1, 2 failed 10
-  passed, naming
-  `TestApproveHunksDispatchEffects::test_an_accepted_submission_records_the_decision_and_persists_it`
-  and
-  `TestApproveHunksDispatchEffects::test_the_rejected_wire_form_reaches_the_recorder_with_its_reason_verbatim`.
-  The other two suites stayed exit 0.
-- **(iii) `packages/orchestration/ui_server.py`, the accepted body returned where the
-  recorder refuses** — RED, in TWO suites. `test_command_dispatch.py` REAL exit 1, 2
-  failed 10 passed, naming
-  `TestApproveHunksDispatchEffects::test_a_refused_decision_is_409_audited_rejected_state_and_writes_nothing`
-  and
-  `TestApproveHunksDispatchEffects::test_an_unresolvable_evidence_directory_takes_the_same_409_path`;
-  `test_command_channel.py` REAL exit 1, 1 failed 105 passed, naming
-  `TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives`.
-- **(iv) `apps/cli/command_catalog.py`, `patch.approve-hunks` removed from
-  `UI_EXPOSED_COMMANDS`** — RED, in TWO suites. `test_command_dispatch.py` REAL exit 1, 5
-  failed 7 passed, naming all five `TestApproveHunksDispatchEffects` tests;
-  `test_command_channel.py` REAL exit 1, 1 failed 105 passed, naming
-  `TestUiExposedCommands::test_the_set_holds_exactly_the_ruled_ids_and_no_other`.
-
-REVERTED CONTROL — 13 / 12 / 106, all REAL exit 0, back to the unmutated readings. The
-worktree was then removed by exact path and `git worktree prune` run; `git worktree list`
-shows the primary checkout alone.
+Worktree then removed by exact path and pruned; `git worktree list` shows the primary
+checkout alone and `git status --porcelain` in it is empty.
 
 **G8 SUITES AND STRUCTURE — PASS.** Serially, one pytest process at a time, in the
-primary checkout, each `python3 -B -m pytest -q`:
+primary checkout, each a REAL exit 0:
 
-| suite | REAL exit | passed | at BASE |
-|---|---|---|---|
-| tests/cli/test_patch_cmd.py | 0 | 13 | 11 |
-| tests/ui_server/test_command_dispatch.py | 0 | 12 | 7 |
-| tests/ui_server/test_command_channel.py | 0 | 106 | 106 |
-| tests/test_command_catalog.py | 0 | 18 | 18 |
-| tests/orchestration/test_evidence_index.py | 0 | 33 | 33 |
-| tests/orchestration/test_hunk_decision_record.py | 0 | 15 | 15 |
-| tests/cli/test_golden_path.py (canary) | 0 | 42 | 42 |
+| Suite | REAL exit | Result |
+|-------|-----------|--------|
+| `tests/ui_server/test_dashboard_cockpit_truth.py` | 0 | `39 passed in 6.13s` (33 at BASE + 6 added) |
+| `tests/ui_contracts/test_apply_state_partial.py` | 0 | `13 passed in 0.28s` (new file) |
+| `tests/ui_contracts/` | 0 | `677 passed, 4 skipped in 5.60s` |
+| `tests/ui_server/test_command_channel.py` | 0 | `106 passed in 12.80s` (106 at BASE) |
+| `tests/cli/test_patch_cmd.py` | 0 | `13 passed in 0.24s` (13 at BASE) |
+| `tests/cli/test_golden_path.py` (canary) | 0 | `42 passed in 20.56s` (42 at BASE) |
 
-`git rev-list --reverse BASE..C5` walks SEVEN commits, each with exactly ONE parent, each
-under 500 INSERTIONS (the `+` column of `git diff --numstat`, never insertions plus
-deletions): `46beed78` +439, `31bdb60d` +291, `5e5ba592` +17, `bd83cedb` +6, `54b569cb`
-+80, `ff9e8e35` +157, `e24d3b44` +189.
+STRUCTURE, over `git rev-list --reverse BASE..C5` — 7 commits, each with exactly ONE
+parent, each under 500 INSERTIONS (the `+` column of `git diff --numstat`, never
+insertions plus deletions):
 
-PATH SET IN BOTH DIRECTIONS: the range touches 10 paths; "in range, NOT in the change
-set" is `[]`; "in the change set, NOT in range" is `['.agent/handoff.md']`, which is C6
-and therefore outside `BASE..C5` by construction.
+| Commit | Parents | Insertions | Deletions | Under 500 |
+|--------|---------|-----------|-----------|-----------|
+| 3ff36883 | 1 | 400 | 0 | yes |
+| b7d07efc | 1 | 272 | 311 | yes |
+| 0007cf10 | 1 | 17 | 18 | yes |
+| 807f6f25 | 1 | 6 | 0 | yes |
+| 64546b53 | 1 | 2 | 0 | yes |
+| eb4c697d | 1 | 21 | 3 | yes |
+| c924eb41 | 1 | 396 | 0 | yes |
 
-DELIMITER COUNTS at C5 — `.agent/plan.md` 0/0, `apps/cli/commands/patch.py` 0/0,
-`packages/orchestration/ui_server.py` 0/0, `apps/cli/command_catalog.py` 0/0 for
-`<<<SLICE ` and `<<<END `; the non-zero CONTROL `.agent/authored/f033-r15.md` reads 4 and
-5 (the fifth `<<<END ` is convention 2's own prose quoting `<<<END RECORDF033R15`).
-`git ls-files .remedy-wt` reads 0 lines.
+PATH SET, both directions: 9 paths touched in `BASE..C5`;
+`touched - declared: []`; `declared - touched: ['.agent/handoff.md']`, which C6
+writes after this range — declared below as D4 rather than left to be read as a match.
+DELIMITER LEAKAGE at C5, `<<<SLICE ` / `<<<END `: `.agent/plan.md` 0/0,
+`.agent/prose_slips.md` 0/0, `packages/orchestration/ui_server.py` 0/0,
+`apps/ui/src/components/detail/DetailPopover.tsx` 0/0; NON-ZERO CONTROL
+`.agent/authored/f033-r16.md` 5/6. `git ls-files .remedy-wt` reads 0 tracked files.
+DO-NOT-TOUCH PATHS, blob id at BASE vs C5 — 12 of 12 byte-identical, one line each:
 
-DO-NOT-TOUCH PATHS, byte-identical at BASE and at C5 by blob id — 14 of 14:
-`packages/orchestration/hunk_decision_record.py` `0563c5a00660`;
-`packages/orchestration/hunk_ledger.py` `57c00fcfde62`;
-`packages/orchestration/hunk_approval.py` `25d1a8d0d08d`;
-`packages/orchestration/hunk_apply.py` `195f0d223210`;
-`packages/orchestration/hunk_subset_diff.py` `6c47c2083795`;
-`packages/orchestration/diff_view_source.py` `30a86b1b977d`;
-`packages/orchestration/diff_parser.py` `b6632f657426`;
-`packages/orchestration/evidence_index.py` `4d797b53312a`;
-`apps/cli/grouped.py` `c9c5265d0b87`;
-`tests/orchestration/test_evidence_index.py` `4c96243ad30e`;
-`tests/test_command_catalog.py` `df1e11e6946a`;
-`docs/roadmap/STATUS.md` `a370be066b7a`;
-`.agent/context.md` `4e3a3f2d9c3f`;
-`.agent/prose_slips.md` `bcbce4fa932f`.
-THE WHOLE HUNK LAYER IS PROVABLY UNTOUCHED.
+| Path | blob BASE → C5 | identical |
+|------|----------------|-----------|
+| packages/orchestration/proof_chain.py | a3a29d630523 → a3a29d630523 | yes |
+| packages/orchestration/hunk_decision_record.py | 0563c5a00660 → 0563c5a00660 | yes |
+| packages/orchestration/hunk_ledger.py | 57c00fcfde62 → 57c00fcfde62 | yes |
+| packages/orchestration/evidence_index.py | 4d797b53312a → 4d797b53312a | yes |
+| apps/cli/command_catalog.py | 7946dd67c459 → 7946dd67c459 | yes |
+| apps/cli/commands/patch.py | e7257b680f08 → e7257b680f08 | yes |
+| apps/cli/grouped.py | c9c5265d0b87 → c9c5265d0b87 | yes |
+| tests/ui_server/test_command_channel.py | f4dc2d915703 → f4dc2d915703 | yes |
+| tests/ui_server/test_command_dispatch.py | e9a8bd08f110 → e9a8bd08f110 | yes |
+| apps/ui/src/api/types.ts | 9e40bb480e55 → 9e40bb480e55 | yes |
+| apps/ui/src/api/remedyApi.ts | 293e1f5ce844 → 293e1f5ce844 | yes |
+| docs/roadmap/STATUS.md | a370be066b7a → a370be066b7a | yes |
 
-## What the round shipped, in the terms the block asked to be quoted
+`.agent/context.md` was deliberately not touched, as the change set orders.
 
-`_dispatch_approve_hunks`'s final signature:
+## The shipped apply fold, in full (at `eb4c697d`)
 
-    def _dispatch_approve_hunks(self, job: Any,
-                                payload: Any) -> dict[str, Any] | None:
+    # Finding R-0738. The apply fold agrees or it says "partial", taking the
+    # shape of the PROOF fold three lines above: unanimity for each confident
+    # answer, one distinct state reserved for the mixed case. The membership
+    # test this replaces — `if "applied" in apply_states` — reported "applied"
+    # for a task where ONE change of eight had applied, indistinguishable from
+    # a task where all eight had, and hunk-level approval makes that mixed case
+    # the normal one. `grouped` is built by setdefault(...).append(...), so a
+    # task's list is never empty and the all() below cannot be vacuously true.
+    # ONLY the mixed case moves: the three unanimous inputs still read exactly
+    # what the old fold returned for them.
+    apply_states = [getattr(c, "apply_state", "") for c in changes]
+    if all(s == "applied" for s in apply_states):
+        apply_by_task[tid] = "applied"
+    elif all(s == "reverted" for s in apply_states):
+        apply_by_task[tid] = "reverted"
+    elif not any(s in ("applied", "reverted") for s in apply_states):
+        # Absorbs the getattr default "" exactly as the old `else` did: a
+        # change with no apply_state attribute is not evidence of an apply.
+        apply_by_task[tid] = "not_applied"
+    else:
+        apply_by_task[tid] = "partial"
 
-The accepted body's key set is exactly six keys —
-`{"command", "outcome", "attempt_key", "approved", "rejected", "pending"}` — measured by
-the equality assertion in
-`test_the_accepted_body_carries_the_attempt_key_and_the_three_counts`, which pins the
-whole dict: `{"command": "patch.approve-hunks", "outcome": "accepted", "attempt_key":
-"job:workspace.diff", "approved": 1, "rejected": 1, "pending": 1}`. The three counts come
-from the LEDGER's entry states, not from the request.
+(Indentation above is reduced by 12 columns for readability; the shipped block sits
+inside the `for tid, changes in grouped.items():` loop.) The `apply_status` default
+at the dashboard payload — `task_apply_map.get(tid, …)` — is UNCHANGED.
 
-The full `_door_imports` set is the 23-pair listing in G6(d) above.
+The label the popover helper returns for `"partial"` is **`"Partially applied"`**.
 
-Tests written, with the property each pins:
+## The tests written, and the property each pins
 
-| test | property |
-|---|---|
-| `test_patch_cmd.py::TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId::test_a_short_hex_prefix_records_exactly_as_the_full_id_does` | R-0744, half one: a job named by the short hex prefix `resolve_job_id` resolves to THAT job records the mixed decision under `job:workspace.diff` with states `approved, rejected, pending`, read back off disk. Premise asserted first: `resolve_job_evidence_dir(str(job.id))` really is the fixture's directory and `resolve_job_id(prefix) == job.id`. |
-| `…::test_an_uppercase_uuid_records_exactly_as_the_lowercase_one_does` | R-0744, half two: an UPPERCASE full UUID records identically. The job id is FIXED (`0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d`) so "the uppercase form is a different string" is a fact rather than a probability. |
-| `test_command_dispatch.py::TestApproveHunksDispatchEffects::test_an_accepted_submission_records_the_decision_and_persists_it` | The effect RAN and `save_job` RETURNED — the decision is on a job RELOADED from storage, and the audit line is `accepted`. |
-| `…::test_the_accepted_body_carries_the_attempt_key_and_the_three_counts` | The 200 body EQUALS the six-key dict above; a pending hunk is reported as pending. |
-| `…::test_the_rejected_wire_form_reaches_the_recorder_with_its_reason_verbatim` | `rejected[{id, reason}]` — the wire form `docs/roadmap/features/T5_F033.md` writes — passes STRAIGHT THROUGH, and the reason `"  DSN=postgres://x is out of scope  "` arrives on the job with its surrounding whitespace and its own `=` intact. |
-| `…::test_a_refused_decision_is_409_audited_rejected_state_and_writes_nothing` | A refusal from the core is 409 with the generic message, audited `rejected_state`, and `job.metadata` carries NO decisions key at all. The offending id does not reach the wire. |
-| `…::test_an_unresolvable_evidence_directory_takes_the_same_409_path` | A NAMED ABSENCE IS NOT A FAILURE: no index record and no CWD-relative directory takes the 409 path, never 500. |
-| `test_command_channel.py::TestUiExposedCommands::test_the_set_holds_exactly_the_ruled_ids_and_no_other` (renamed) | The exposed subset is exactly the three ruled ids, and the NAME no longer carries a numeral that can go stale. |
-| `test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives` (widened, deviation D1) | Every exposed id dispatches, and the two 409s carry DIFFERENT messages on purpose. |
+`tests/ui_server/test_dashboard_cockpit_truth.py`, added as methods of the existing
+`TestTaskTruthMaps` so they build their chains through that class's own `_change` /
+`_chain` helpers rather than through a second idiom:
+
+| Test | Property pinned |
+|------|-----------------|
+| `test_all_applied_still_reads_applied` | a task whose changes are ALL `applied` still reads `applied` |
+| `test_all_reverted_still_reads_reverted` | ALL `reverted` still reads `reverted` |
+| `test_all_not_applied_still_reads_not_applied` | ALL `not_applied` still reads `not_applied` |
+| `test_some_applied_and_some_not_reads_partial_and_never_applied` | THE DISCRIMINATOR: one `applied` and two `not_applied` reads `partial` AND NOT `applied` |
+| `test_one_applied_and_one_reverted_reads_partial` | one `applied` beside one `reverted` also reads `partial` |
+| `test_a_missing_apply_state_never_by_itself_produces_applied` | a change with no `apply_state` attribute reads `partial` beside an `applied` one, and `not_applied` on its own — never `applied` |
+
+`tests/ui_contracts/test_apply_state_partial.py` (new, 13 tests):
+
+| Test | Property pinned |
+|------|-----------------|
+| `TestTheReadersAreNotVacuous::test_the_stripper_removes_both_comment_forms` | the `//` and `/* */` stripper really strips |
+| `…::test_the_popover_really_loses_text_to_the_stripper` | the popover carries comments, so stripping is not a no-op |
+| `…::test_the_helper_scoper_returns_less_than_the_whole_module` | `helper_body` scopes to `applyStatus` and does not reach `testStatusLabel` |
+| `…::test_the_ast_derivation_finds_labels_at_all` | the AST walk over the fold returns a non-empty set |
+| `…::test_the_branch_scan_finds_branches_at_all` | the popover branch scan returns a non-empty set |
+| `TestTheBackendCanReallyEmitPartial::test_the_fold_assigns_the_partial_label` | the SOURCE of the fold really can emit `"partial"` |
+| `…::test_the_three_confident_labels_survive_beside_it` | `applied` / `reverted` / `not_applied` are still emitted |
+| `…::test_the_fold_no_longer_answers_by_membership` | no AST membership test of `apply_states` against a string literal survives |
+| `TestEveryEmittedValueHasALabel::test_the_two_sets_agree_in_both_directions` | every value the fold emits has a popover branch, and every branch is reachable |
+| `TestThePartialLabelSaysSomething::test_the_helper_returns_a_label_for_partial` | the `"partial"` branch exists and returns a label |
+| `…::test_the_partial_label_is_not_the_unknown_fallback` | that label is not the `UNKNOWN` string |
+| `…::test_the_partial_label_is_distinct_from_the_other_three` | and is distinct from all three existing labels |
+| `…::test_the_helper_still_ends_in_the_fallback` | the helper still ends in `return UNKNOWN;` for a value it has never heard of |
 
 ## Authored-text proofs
 
-| authored text | applied to | result |
-|---|---|---|
-| the whole block | `.agent/authored/f033-r15.md` (C0a) and `.agent/last_block.md` (C0b) | disk-to-disk EQUAL to `.remedy-wt/f033-r15-block.md`: 32348 bytes, sha256 `92c6e6c8…de170`, both paths ONE blob id `9ef8597a…b615`. |
-| `PLANF033R15` | `.agent/plan.md` (C1) | extracted from the COMMITTED C0a blob, byte-EQUAL, 2422 bytes / 45 lines. |
-| `RECORDF033R15` | `.agent/live_review.md` (C2) | extracted from the COMMITTED C0a blob; `base + newline + slice == C2` byte for byte, 1526301 + 1 + 7431 = 1533733. |
+| Slice | Applied to | Result |
+|-------|-----------|--------|
+| the whole block | `.agent/authored/f033-r16.md` (C0a) | 30868 bytes, sha256 `8fcdfcd2…df874d` — EQUAL to `.remedy-wt/f033-r16-block.md` in length and digest |
+| the whole block | `.agent/last_block.md` (C0b) | same blob id `9e5db1fb84ad6f72446b7fb5c4474684391854ce` as the C0a path |
+| PLANF033R16 | `.agent/plan.md` (C1) | 2453 bytes, byte-EQUAL |
+| RECORDF033R16 | `.agent/live_review.md` (C2) | 7464 bytes appended; BASE + `\n` + slice == C2 blob byte for byte; BASE a byte prefix; 3 paragraphs matched in order |
+| SLIPSF033R16 | `.agent/prose_slips.md` (C3) | 715 bytes appended; BASE + `\n` + slice == C3 blob byte for byte; BASE a byte prefix |
 
-## Item status
-
-| Item | Status | Reason |
-|--------|----------|------------------------------|
-| C0a save the block | done | |
-| C0b mirror the block | done | |
-| C1 `.agent/plan.md` | done | |
-| C2 the R14 verdict, the R-0743 resolution, the R-0744 registration | done | |
-| C3 the R-0744 fix and the discriminating tests | done | with the `Landed: R-0744` line and nothing else |
-| C4 the door — exposure, three widened guards, dispatch | done | ONE commit, plus the fourth guard deviation D1 names |
-| C5 the door's behaviour tests | done | five tests |
-| C6 the handback | done | this file |
-| R-0744 fix | done | `54b569cb`; red-proved by G7 mutation (i) |
-| G1 HYGIENE | done | PASS |
-| G2 TRANSPORT | done | PASS |
-| G3 THE RECORD APPEND | done | PASS, N = 3, both readers reject the control |
-| G4 THE LEDGER | done | PASS, every ordered number met |
-| G5 THE PLAN | done | PASS, 2422 bytes / 45 lines |
-| G6 THE DOOR'S GUARDS | done | PASS, (a)–(f) |
-| G7 THE MUTATION RED-PROOFS | done | PASS, all four RED |
-| G8 SUITES AND STRUCTURE | done | PASS, seven suites exit 0 |
+Every slice was extracted from the COMMITTED C0a blob with `git show`, per convention
+4 — none was retyped from the delegation prompt.
 
 ## Deviations & assumptions
 
-**D1 — a FIFTH edit to `tests/ui_server/test_command_channel.py`, which the SPEC said
-would not change.** The SPEC names four edits and closes with "Nothing else in this file
-changes". A fifth guard the block did not name reddens on the widened set:
-`TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives`
-iterates `sorted(UI_EXPOSED_COMMANDS)` and branches TWO ways — `job.stop` answers 200,
-"else" must answer 409 with the literal `decision is not open`. Measured with the door
-code in place and that test untouched: REAL exit 1, 1 failed 105 passed,
-`assert 'hunk decision was refused' == 'decision is not open'`. G8 orders that suite at a
-REAL exit 0, so per convention 11 the GATE is load-bearing: the "else" arm now reads its
-expected message from a per-id map `{"decision.resolve": "decision is not open",
-"patch.approve-hunks": "hunk decision was refused"}`, and the docstring moves from "BOTH
-exposed ids now dispatch" to "EVERY exposed id now dispatches". The change WIDENS the
-guard and weakens nothing — the two 409 messages are now asserted apart, which is the
-property the SPEC's own "a new 409 message constant … is preferred over reusing the
-decision one, whose wording names decisions" asks for and which nothing else pinned. The
-disagreement between the SPEC paragraph and the gate is DECLARED here rather than
-silently resolved.
+**D1 — the contract test's membership assertion is an AST PREDICATE, not a token
+search, and the block's SPEC asked for the token form.** The SPEC's last paragraph
+for `tests/ui_contracts/test_apply_state_partial.py` says to "strip comments before
+asserting a token is present". I applied that literally to the TypeScript. On the
+PYTHON side it is not enough, and I found this by colour rather than by reading: my
+first draft asserted `'if "applied" in apply_states' not in SERVER.read_text()`, and
+it went RED against the SHIPPED code, because the fold's own WHY comment QUOTES the
+membership test it replaced — which is what the SPEC for `ui_server.py` explicitly
+orders it to do ("name finding R-0738 and the proof fold beside it as the shape being
+copied"). The two SPEC paragraphs cannot both be satisfied by a text search. I
+replaced that one assertion with `fold_membership_tests_over_apply_states()`, an AST
+walk that collects every literal compared with `ast.In` against the `apply_states`
+NAME, and asserts the set is empty. It is strictly stronger than the token form (it
+sees a membership test however it is spelled and cannot be answered by prose), and
+mutation (i) proves it discriminates: REAL exit 1, that test named among the four
+failures. The other Python-side reads in this file were AST or scoped-region reads
+already and needed no comment stripping.
 
-**D2 — two non-test edits to `tests/cli/test_patch_cmd.py`, whose SPEC says "An EDIT that
-ADDS. Every existing test stays untouched".** No existing test's body moved — G7 mutation
-(i) measures 11 passed beside the 2 new failures, which is the eleven intact. Two
-supporting edits were made besides the added class: (a) the module docstring's ordered
-property list gains ONE bullet for the new property, in the file's existing style and in
-the position the new class occupies, because that list is what a reader trusts to
-enumerate what the file pins; (b) the shared `_job()` helper gains an optional `job_id`
-parameter defaulting to `uuid4()`. Reason for (b): the uppercase test asserts
-`str(job.id).upper() != str(job.id)` as its premise, and `uuid4` can in principle mint an
-id whose 31 free nibbles are all digits, which would make that premise a rare flake; a
-FIXED id carrying hex letters makes it a fact. Both edits are additive and backward
-compatible.
+**D2 — the six cockpit tests were added as METHODS of the existing
+`TestTaskTruthMaps` class rather than in a new class.** The SPEC ordered "READ the
+existing `_task_truth_maps` tests in this file and follow their idiom for building a
+proof chain; do not invent a second one". That idiom is two INSTANCE helpers,
+`self._change(...)` and `self._chain(...)`. A new sibling class could only have
+duplicated them (a second idiom, forbidden) or subclassed `TestTaskTruthMaps` (which
+would re-collect and re-run all five of its existing tests under a second name). I
+took the third route and appended to the class, behind a comment naming R-0738. Every
+pre-existing test in the file is untouched and all 39 pass.
 
-**D3 — the `Landed: R-0744` line names its own commit by ROLE, not by sha.** It reads "at
-C3 of F033 round 15 — the commit this line lands in, whose sha the round 15 handback
-names, because a commit cannot carry its own id", which is the idiom the round 14
-`Landed: R-0743` line established for the same unknowable. The sha is `54b569cb`, named
-here and in the commit table above.
+**D3 — G7's and G8's control count for `tests/ui_server/test_dashboard_cockpit_truth.py`
+reads 39, not the 33 the block states.** The block annotates that path "(33 at BASE)"
+in both gates, and 33 is correct AT BASE; this round adds six tests to that file, so
+the control at C5 is 39. I state it rather than let the reviewer meet an unexplained
+number: 33 + 6 = 39, and no pre-existing test was removed or renamed (the path set
+and the additive `+78 / -0` numstat both show it).
 
-**D4 — the G7 controls are 13 / 12 / 106, not the 11 / 7 / 106 the block quotes.** Not a
-disagreement: the block's parenthesised numbers are the BASE readings, and G7 runs at C5,
-where C3 has added 2 tests to `test_patch_cmd.py` and C5 has added 5 to
-`test_command_dispatch.py`. Both readings are reported side by side above so neither has
-to be inferred.
+**D4 — G8's path-set comparison is non-empty in one direction, by construction.**
+`declared - touched` is `['.agent/handoff.md']`. The change set names that path, but
+C6 — the commit writing this file — falls OUTSIDE the `BASE..C5` range G8 orders
+walked, so it cannot appear in it. `touched - declared` is empty, which is the
+direction that would show scope drift.
 
-**Assumptions.** None beyond the block. Nothing was adjusted to force a colour: every
-mutation went red on its own, and no gate came back red and was then repaired by
-weakening a test — D1's widening was applied to the DOOR CODE's new behaviour, which the
-SPEC ordered, not to an assertion about it.
+**D5 — no `Landed:` line and no `Done:` paragraph of my own were written**, as the
+block orders. R-0738 is ADVANCED, not resolved: its resolution condition names three
+surfaces (viewer badge, task-node glyph, report line) and this round delivers the
+TRUTH plus the detail-popover label only. `^- R-0738 — ` is still 1 and
+`^Done: R-0738 — ` is still 0 at C2. I reviewed none of my own work and wrote no
+verdict on it; the `Done: R-0744` paragraph in `.agent/live_review.md` is the
+reviewer's authored text, applied verbatim from the RECORDF033R16 slice.
+
+No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5,
+C6 were committed in that order, one commit each, with no extra, dropped or reordered
+commit.
+
+## Item-status table
+
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a save the block to `.agent/authored/f033-r16.md` | done | |
+| C0b mirror it to `.agent/last_block.md` | done | |
+| C1 `.agent/plan.md` = PLANF033R16 | done | |
+| C2 RECORDF033R16 into `.agent/live_review.md` | done | |
+| C3 SLIPSF033R16 into `.agent/prose_slips.md` | done | |
+| C4 the agreement fold + the popover label, ONE commit | done | |
+| C5 the tests for both halves | done | |
+| C6 the handback | done | this file |
+| SPEC `packages/orchestration/ui_server.py` | done | proof fold byte-identical; `apply_status` default unchanged |
+| SPEC `apps/ui/src/components/detail/DetailPopover.tsx` | done | one branch added; `types.ts` and `remedyApi.ts` untouched, as measured |
+| SPEC `tests/ui_server/test_dashboard_cockpit_truth.py` | deviated | D2 — added as methods of the existing class to reuse its chain helpers |
+| SPEC `tests/ui_contracts/test_apply_state_partial.py` | deviated | D1 — the membership assertion is an AST predicate, not a token search |
+| G1 HYGIENE | done | |
+| G2 TRANSPORT | done | |
+| G3 THE RECORD APPEND at C2 | done | |
+| G4 THE LEDGER at C2 | done | |
+| G5 THE PROSE FILES | done | |
+| G6 THE FOLD AND THE LABEL at C4 | done | |
+| G7 THE MUTATION RED-PROOFS at C5 | done | all three RED, real exit 1 |
+| G8 SUITES AND STRUCTURE | deviated | D3 (39 not 33), D4 (`declared - touched` holds `.agent/handoff.md`) |
+| Write NO `Landed:` line, NO `Done:` paragraph of my own | done | D5 |
+| Push the branch | done | recorded under External actions and Next |
 
 ## Next
 
-The next session's first actions, in this order: read `.agent/STOP` from disk; run the
-Open PR Gate; book this round's verdict and resolve R-0744; then the plan's step 3 —
-T003, rejection reasons quoted verbatim into the next repair prompt, the report line
-derived from the ledger, and partial state rendered truthfully in viewer, node and
-report, with R-0738 as T003's to repair. SESSION 4 carries forward.
+SESSION 4 carries forward. The next session's first actions, in this order:
+
+1. Read `.agent/STOP` from disk.
+2. Run the Open PR Gate (`gh pr list --state open --json number,headRefName,baseRefName,isDraft`).
+3. Book this round's verdict — no verdict on round 16 exists anywhere; this worker
+   wrote none and is not permitted to.
+4. Then the plan's step 2: the two surfaces R-0738 still names — the task-node glyph
+   and the report line. Only after both is R-0738 resolvable.
