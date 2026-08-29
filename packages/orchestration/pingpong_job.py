@@ -1593,6 +1593,54 @@ def select_next_predictable_task(job) -> tuple[object | None, list]:
 
 
 # ---------------------------------------------------------------------------
+# F033: the operator's recorded hunk decision, on its way to the next prompt
+# ---------------------------------------------------------------------------
+
+def _recorded_hunk_ledger_for_task(job: Any, task: Any):
+    """The ledger of ``task``'s LATEST recorded hunk decision, read off ``job.metadata``.
+
+    THIS IS THE LAST HOP of F033's rejected-hunks route. ``hunk_decision_record.py`` writes
+    each decision onto ``job.metadata`` and ``run_pingpong`` forwards a ``hunk_ledger`` into
+    ``compose_builder_prompt``, but this module is the only place that holds BOTH the job and
+    the task, so the lookup that joins them belongs here. It is a NAMED function rather than an
+    inline expression at the call site so that it can be TESTED: that call site is reached only
+    by a full job run, so an inline form would be provable only by its shape, and a gate over a
+    call's shape is not a gate over its truth.
+
+    IT LOOKS UP TASK-SCOPED DECISIONS ONLY, deliberately. A decision the operator takes at JOB
+    scope is recorded under ``diff_view_source.DIFF_SCOPE_JOB`` — the literal ``"job"`` — rather
+    than under a task id, and is therefore NOT quoted into any one task's prompt, because it was
+    never attributed to one. That separation rests on the id comparison alone, so it admits
+    exactly one collision, said here rather than left for a reader to find: a task whose own
+    ``task_id`` were literally ``"job"`` WOULD match a job-scoped record. No guard against it is
+    added here — keeping the sentinel and the task-id space apart is the RECORDING door's to do,
+    and a guard here would put that one decision in two places.
+
+    TOTAL — a job with no usable ``metadata``, or a task with no usable ``task_id``, yields an
+    EMPTY ledger and raises nothing. THE ONE ``try`` BELOW IS THE WHOLE STRUCTURAL GUARD and
+    there is deliberately no second one nested inside it, for the reason
+    ``load_latest_hunk_ledger_from_metadata`` gives about its own: a redundant inner layer makes
+    the outer one unobservable, and a guard no test can redden is a guard nobody knows is there.
+
+    AN EMPTY LEDGER IS THE HONEST ANSWER to "this task recorded no decision at all". It is not
+    an error, and it is indistinguishable from an unreadable job ON PURPOSE: to a prompt the two
+    mean the same thing — there is nothing of the operator's to quote.
+    """
+    from packages.orchestration.hunk_decision_record import (
+        load_latest_hunk_ledger_from_metadata,
+    )
+    from packages.orchestration.hunk_ledger import HunkDecisionLedger
+
+    try:
+        return load_latest_hunk_ledger_from_metadata(
+            job.metadata,
+            task_id=task.task_id,
+        )
+    except Exception:
+        return HunkDecisionLedger(())
+
+
+# ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------
 
@@ -2251,6 +2299,7 @@ def run_job(
                         if stream_evidence else None
                     ),
                     task_input=task_input,
+                    hunk_ledger=_recorded_hunk_ledger_for_task(job, task),
                     repair_rounds=repair_rounds,
                     repair_rounds_source=rr_src,
                     keep_staging=True,

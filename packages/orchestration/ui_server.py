@@ -162,22 +162,14 @@ def _load_events(job: Any) -> list[dict[str, Any]]:
 
 
 def _resolve_evidence_dir(job_id: str) -> Path | None:
-    """Find evidence dir for a job — checks index first, then default path."""
-    try:
-        from packages.orchestration.data_paths import resolve_data_root
-        idx_file = resolve_data_root() / "job_evidence_index" / f"{job_id}.json"
-        if idx_file.exists():
-            import json as _json
-            record = _json.loads(idx_file.read_text())
-            local_dir = record.get("evidence_dir_local", "")
-            if local_dir and Path(local_dir).is_dir():
-                return Path(local_dir)
-    except (ImportError, OSError, ValueError, KeyError):
-        pass
-    default = Path(f"remedy-job-evidence-{job_id}")
-    if default.is_dir():
-        return default
-    return None
+    """Find evidence dir for a job — the implementation moved to
+    `packages.orchestration.evidence_index.resolve_job_evidence_dir`, so the
+    viewer here and the F033 decision doors resolve by ONE rule. The name
+    survives because callers import it, including
+    `tests/orchestration/test_final_audit_evidence.py`, which imports it from
+    `ui_server` directly."""
+    from packages.orchestration.evidence_index import resolve_job_evidence_dir
+    return resolve_job_evidence_dir(job_id)
 
 
 def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:
@@ -518,7 +510,12 @@ def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
     if chain is None:
         return proof_by_task, apply_by_task
     try:
-        from packages.orchestration.proof_chain import PROOF_FAILED, PROOF_NOT_APPLICABLE, PROOF_VERIFIED
+        from packages.orchestration.proof_chain import (
+            PROOF_FAILED,
+            PROOF_NOT_APPLICABLE,
+            PROOF_VERIFIED,
+            fold_task_apply_states,
+        )
         grouped: dict[str, list[Any]] = {}
         for c in chain.changes:
             tid = getattr(c, "task_id", "") or ""
@@ -537,13 +534,14 @@ def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
                     proof_by_task[tid] = "not_applicable"
                 else:
                     proof_by_task[tid] = "incomplete"
-            apply_states = [getattr(c, "apply_state", "") for c in changes]
-            if "applied" in apply_states:
-                apply_by_task[tid] = "applied"
-            elif "reverted" in apply_states:
-                apply_by_task[tid] = "reverted"
-            else:
-                apply_by_task[tid] = "not_applied"
+        # Finding R-0738. The apply fold itself now lives in `proof_chain.py`, beside
+        # the `ProofChange.apply_state` field it reads, because the run report needs
+        # the same answer and must not import the HTTP server to get it. This half is
+        # the adapter: it keeps the cockpit's `dict[str, str]` shape by taking each
+        # folded entry's state and dropping the APPLIED/TOTAL counts the cockpit has
+        # no field for. No answer changed in the move.
+        for tid, folded in fold_task_apply_states(chain).items():
+            apply_by_task[tid] = folded.state
     except (ImportError, AttributeError, TypeError):
         return {}, {}
     return proof_by_task, apply_by_task
@@ -3265,10 +3263,19 @@ COMMAND_NOT_DISPATCHED_MESSAGE = "command is exposed but not dispatched"
 #: to the F008 SSE stream (DECISION F009 D23). The spelling is the feature file's.
 COMMAND_ACCEPTED_EVENT = "command.accepted"
 
-#: The two ids this door dispatches. Named rather than inlined so that each
+#: What a `patch.approve-hunks` the recorder REFUSED returns. The effect RAN and
+#: DECLINED — an unavailable diff, a truncated view, an unknown hunk id — so it is
+#: neither a shape error nor a server fault, exactly as `decision.resolve`'s own 409.
+#: The refusal's OWN code and message are deliberately not on the wire (DECISION F009
+#: D18 and D22): every message this door emits goes through `_safe_error`, and the
+#: operator who needs the detail has the CLI door, which is not a network boundary.
+COMMAND_HUNK_DECISION_STATE_MESSAGE = "hunk decision was refused"
+
+#: The three ids this door dispatches. Named rather than inlined so that each
 #: second call site greps to this line.
 JOB_STOP_COMMAND_ID = "job.stop"
 DECISION_RESOLVE_COMMAND_ID = "decision.resolve"
+HUNK_APPROVE_COMMAND_ID = "patch.approve-hunks"
 
 _COMMAND_RATE_LOCK = threading.Lock()
 #: (token fingerprint, job id) -> (window start, commands accepted in it).
@@ -3714,9 +3721,42 @@ class _RemedyHandler(BaseHTTPRequestHandler):
             self._emit_command_accepted_event(str(job.id), accepted_body)
             self._send_json(200, accepted_body)
             return
+        # DECISION F033 D4 maps `patch.approve-hunks` to `record_hunk_decision_from_view`
+        # followed by `save_job`, and it RECORDS rather than applies. DECISION F009 D21's
+        # rule is unchanged: BOTH are the effect, because the decision is durable only
+        # once `save_job` returns. D18's write order above is unchanged too.
+        if payload["command"] == HUNK_APPROVE_COMMAND_ID:
+            try:
+                accepted_body = self._dispatch_approve_hunks(job, payload)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                # D18, clause four: an effect that RAISED is neither `accepted`,
+                # which would be false, nor unaudited, which would break D6.
+                self._audit_attempt(str(job.id), "rejected_effect", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(500, COMMAND_EFFECT_FAILED_MESSAGE))
+                return
+            if accepted_body is None:
+                # D21, clause three, applied unchanged: the effect RAN and DECLINED.
+                # `record_hunk_decision_from_view` writes NOTHING to `job.metadata` on
+                # a refusal, so nothing changed on disk, nothing is published, and a
+                # retry of the same decision cannot answer it differently.
+                self._audit_attempt(str(job.id), "rejected_state", create=True,
+                                    payload=payload)
+                self._send_json(*_safe_error(
+                    409, COMMAND_HUNK_DECISION_STATE_MESSAGE))
+                return
+            # D18, clause three: both writes below fail SOFT. The decision is already
+            # persisted, so refusing after the fact would report a decision that
+            # really was recorded as one that was not.
+            self._audit_attempt(str(job.id), "accepted", create=True, payload=payload)
+            self._publish_command_result(str(job.id), payload["client_nonce"],
+                                         accepted_body)
+            self._emit_command_accepted_event(str(job.id), accepted_body)
+            self._send_json(200, accepted_body)
+            return
         # An id `_command_is_ui_exposed` admitted that no clause above dispatches.
         # DECISION F009 D22: this is a GUARD, not a placeholder — unreachable
-        # while the exposed subset holds exactly the two ids named above, and the
+        # while the exposed subset holds exactly the three ids named above, and the
         # alternative is a request that gets no response at all.
         self._audit_attempt(str(job.id), "not_implemented", create=True, payload=payload)
         self._send_json(*_safe_error(501, COMMAND_NOT_DISPATCHED_MESSAGE))
@@ -3828,6 +3868,82 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         save_job(job)
         return {"command": payload["command"], "outcome": "accepted",
                 "decision_id": str(record.get("decision_id", ""))}
+
+    def _dispatch_approve_hunks(self, job: Any,
+                                payload: Any) -> dict[str, Any] | None:
+        """Record one hunk decision and PERSIST it. None means the effect declined.
+
+        DECISION F033 D4: this door RECORDS and never applies, so it writes
+        `job.metadata` and touches no repository — which is why
+        `packages.orchestration.hunk_apply` is in the import guard's
+        `FORBIDDEN_MODULES` although nothing here imports it.
+
+        DECISION F009 D21, applied unchanged: `record_hunk_decision_from_view` and
+        `save_job` are BOTH the effect, because the decision is durable only once
+        `save_job` returns, so a raise from either is D18 clause four's
+        `rejected_effect`. A None return is NOT a failure — the recorder refused —
+        and the caller answers it 409 and audits it `rejected_state`, exactly as
+        `_dispatch_decision_resolve`'s None does.
+
+        THE REFUSAL'S CODE AND MESSAGE ARE DELIBERATELY NOT RETURNED THROUGH THIS
+        DOOR, and a reader who came looking for them should stop here. Every
+        message this handler emits goes through `_safe_error`, and both existing
+        409s answer with a fixed generic constant; the operator who needs to know
+        WHICH refusal it was has the CLI door at `apps/cli/commands/patch.py`,
+        which is not a network boundary. That is DECISION F009 D18 and D22 applied
+        unchanged, not a new rule, and it mints no DECISION number of its own.
+
+        `task_run`, `approved` and `rejected` degrade instead of raising, for the
+        reason DECISION F009 D20 gave for `reason`: D14 types `args` as an object
+        and never types what is inside it. `approved` and `rejected` are then
+        passed STRAIGHT THROUGH — `decide_hunk_approval` is total on any input at
+        all and already accepts the `{id, reason}` wire form
+        `docs/roadmap/features/T5_F033.md` writes, so a second validation here
+        would give one fault two names.
+        """
+        from datetime import datetime, timezone
+
+        from packages.orchestration.diff_view_source import DIFF_SCOPE_JOB, build_diff_view
+        from packages.orchestration.evidence_index import resolve_job_evidence_dir
+        from packages.orchestration.hunk_approval import HunkApprovalRefusal
+        from packages.orchestration.hunk_decision_record import record_hunk_decision_from_view
+        from packages.orchestration.hunk_ledger import (
+            HUNK_STATE_APPROVED,
+            HUNK_STATE_PENDING,
+            HUNK_STATE_REJECTED,
+        )
+        from packages.orchestration.storage import save_job
+        args = payload.get("args")
+        args = args if isinstance(args, dict) else {}
+        task_run = args.get("task_run")
+        task_run = task_run if isinstance(task_run, str) else None
+        approved = args.get("approved")
+        rejected = args.get("rejected")
+        # The CANONICAL id, for the reason finding R-0744 records: the evidence index
+        # is keyed by the full lowercase hyphenated form and nothing else resolves it.
+        evidence_dir = resolve_job_evidence_dir(str(job.id))
+        view = build_diff_view(evidence_dir, task_id=task_run)
+        # BOTH halves of the attempt key come from the ENVELOPE, which is the same key
+        # the CLI door composes — so one decision has ONE key whichever door records it.
+        view_task_id = view["task_id"]
+        result = record_hunk_decision_from_view(
+            job,
+            task_id=view_task_id if view_task_id is not None else DIFF_SCOPE_JOB,
+            attempt=view["source"],
+            attempt_view=view,
+            approved=approved if isinstance(approved, list) else [],
+            rejected=rejected if isinstance(rejected, list) else [],
+            now=datetime.now(timezone.utc),
+        )
+        if isinstance(result, HunkApprovalRefusal):
+            return None
+        save_job(job)
+        states = [entry.state for entry in result.ledger.entries]
+        return {"command": payload["command"], "outcome": "accepted",
+                "attempt_key": result.attempt_key,
+                "approved": states.count(HUNK_STATE_APPROVED),
+                "rejected": states.count(HUNK_STATE_REJECTED),
+                "pending": states.count(HUNK_STATE_PENDING)}
 
     def _publish_command_result(self, job_id: str, client_nonce: str,
                                 body: dict[str, Any]) -> None:

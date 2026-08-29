@@ -1,0 +1,178 @@
+== G7(i) THE BRANCH-ONLY SET (comm -13) ==
+count = 0
+EMPTY. There is no branch-only id to re-run serially and therefore no
+candidate for the BLOCKER class. Both failures of the branch run also
+failed at the merge base, so they are SHARED rather than branch-only.
+
+== THE SHARED SET (failed on BOTH sides; in NEITHER comm set) ==
+count = 2
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_matches_the_get_door
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+Stated explicitly so no id of either run is left unaccounted for:
+  branch run FAILED lines = 2 = branch-only 0 + shared 2
+  base   run FAILED lines = 114 = base-only   112 + shared 2
+
+== G7(ii) THE MISSING ARTIFACT, MEASURED IN BOTH TREES ==
+worktree dist mtimes restored to the copytree state for 4 files
+PRIMARY  dist/index.html mtime=1788009103.917 sha256=6f53e73d38422dbb bytes=414
+PRIMARY  newest apps/ui/src mtime=1787993872.580  (apps/ui/src/components/panels/RightLivePanel.module.css)
+PRIMARY  _frontend_is_stale() = False
+BASE WT  dist/index.html mtime=1788009103.917 sha256=6f53e73d38422dbb bytes=414
+BASE WT  newest apps/ui/src mtime=1788009266.881  (apps/ui/src/types/react-force-graph-2d.d.ts)
+BASE WT  _frontend_is_stale() = True
+dist/index.html BYTE-IDENTICAL in both trees = True
+So what the base worktree lacks is not the BYTES of the build but a build
+whose mtime is not older than its own checked-out sources.
+
+== A. ARTIFACT STALE — the state the base run actually had ==
+COMMAND : python3 -m pytest -v --no-header -p no:cacheprovider <the 112 base-only ids>
+CWD     : /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+ENV     : REMEDY_UI_NO_AUTO_BUILD=1
+REAL EXIT CODE = 1   wall 567.4 s
+summary: ======================= 112 failed in 567.16s (0:09:27) ========================
+occurrences of 'ERROR: React UI not built.' in the run output = 112
+occurrences of '[remedy-ui] auto-build' (must be 0, P2 suppression) = 0
+ids FAILED under the stale artifact = 112 of 112
+
+== B. ARTIFACT FRESH — the only thing changed is the build's mtime ==
+os.utime advanced 4 files under the worktree's apps/ui/dist; nothing else touched
+BASE WT _frontend_is_stale() now = False
+BASE WT dist/index.html sha256 UNCHANGED by the touch = True
+REAL EXIT CODE = 0   wall 15.5 s
+summary: ============================= 112 passed in 15.24s =============================
+occurrences of 'ERROR: React UI not built.' = 0
+ids PASSED under the fresh artifact = 112 of 112
+
+== PER-ID ATTRIBUTION — every one of the 112 base-only ids ==
+ARTIFACT NAMED FOR EVERY ID BELOW: apps/ui/dist — a build fresh relative to
+the base worktree's own apps/ui/src. Class: ENVIRONMENT (missing artifact).
+
+#      STALE    FRESH    node id
+1      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved
+2      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_dispatched_command_is_audited_as_accepted
+3      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_mistyped_limit_falls_back_to_the_default_and_still_limits
+4      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_near_miss_of_the_commands_path_is_405
+5      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape]
+6      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+7      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space]
+8      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash]
+9      FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_rate_limited_attempt_is_audited_as_rejected_rate
+10     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_refused_command_announces_nothing
+11     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_announces_nothing_a_second_time
+12     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats
+13     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_spends_no_rate_budget
+14     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replayed_nonce_answers_from_the_store_byte_for_byte
+15     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget
+16     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_does_not_spend_budget
+17     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_is_audited_as_rejected_shape
+18     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token
+19     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+20     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf
+21     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_args_is_valid_and_reaches_the_effect
+22     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_body_is_400_on_field_body
+23     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces
+24     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_audit_writer_that_raises_changes_neither_status_nor_body
+25     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_event_writer_that_raises_changes_neither_status_nor_body
+26     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard
+27     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_approve_is_accepted
+28     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_reject_is_accepted
+29     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_with_a_next_action_string_is_409
+30     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answering_an_unknown_question_id_is_409
+31     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_on_a_plan_that_is_not_pending_is_409
+32     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_whose_answers_are_not_a_map_is_409
+33     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_does_not_spend_budget
+34     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_is_audited_as_rejected_command
+35     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method
+36     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unresolvable_job_is_audited_as_rejected_job
+37     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unseeded_nonce_is_dispatched_rather_than_replayed
+38     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_bearer_without_a_token_is_403
+39     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_command_in_no_catalog_is_400_on_field_command
+40     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_csrf_is_checked_after_the_bearer
+41     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_delete_is_405_even_on_the_commands_path
+42     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_client_nonce_is_400_on_field_client_nonce
+43     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command
+44     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error
+45     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives
+46     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary
+47     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_route_the_server_serves_refuses_post_put_and_delete
+48     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+49     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_200_for_the_correct_token
+50     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_403_for_a_wrong_token
+51     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body
+52     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials
+53     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_malformed_bearer_is_403
+54     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_bearer_is_403
+55     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_client_nonce_is_400_on_field_client_nonce
+56     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_command_is_400_on_field_command
+57     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_csrf_header_is_403
+58     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_ascii_bearer_is_403_and_does_not_raise
+59     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args
+60     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_body_is_400_on_field_body
+61     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_string_command_is_400_on_field_command
+62     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_oversize_body_is_400_on_field_body
+63     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405
+64     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405
+65     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_present_args_object_is_valid_and_is_accepted
+66     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_put_is_405_even_on_the_commands_path
+67     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405
+68     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429
+69     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_raw_token_never_reaches_the_audit_file
+70     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable
+71     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command
+72     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_on_an_unresolvable_job_is_404
+73     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_with_a_bad_bearer_is_403_and_never_400
+74     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_is_404
+75     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_well_formed_command_is_dispatched_and_accepted
+76     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_bearer_is_403
+77     FAILED   PASSED   tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403
+78     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_a_supplied_clarification_answer_is_recorded_as_human
+79     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_an_accepted_fp_approval_really_resolved_the_plan
+80     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once
+81     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_a_retry_of_the_same_nonce_is_audited_replayed
+82     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect
+83     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names
+84     FAILED   PASSED   tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received
+85     FAILED   PASSED   tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decision_card_carries_age_and_blocked_count
+86     FAILED   PASSED   tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_answers_404_for_an_unknown_job
+87     FAILED   PASSED   tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_refuses_an_invalid_token
+88     FAILED   PASSED   tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document
+89     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token
+90     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff
+91     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200
+92     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token
+93     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff
+94     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200
+95     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net
+96     FAILED   PASSED   tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_route_stays_linear_in_body_lines
+97     FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+98     FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+99     FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+100    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+101    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+102    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+103    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+104    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+105    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+106    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+107    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+108    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+109    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+110    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+111    FAILED   PASSED   tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+112    FAILED   PASSED   tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
+
+ids whose A/B is FAILED-then-PASSED = 112 of 112
+UNATTRIBUTED ids = 0
+
+== CORROBORATION FROM THE BASE RUN'S OWN OUTPUT ==
+'Failed: Server did not start in time' occurrences = 114
+'ERROR: React UI not built.' occurrences            = 114
+'[remedy-ui] auto-build' occurrences (P2 suppression) = 0
+base run FAILED lines                                = 114
+every base-run failure is under tests/ui_server/     = True
+
+== G7 VERDICT ==
+BRANCH-ONLY set EMPTY, so no BLOCKER class exists this round = True
+EVERY base-only id attributed by direct A/B evidence         = True
+Both comparison sets fully accounted for                     = True
+G7 ATTRIBUTION COMPLETE = True

@@ -8,11 +8,13 @@ a number that was never measured is never printed.
 
 from __future__ import annotations
 
+import ast
 import re
+from pathlib import Path
 
 import pytest
 
-from packages.orchestration import loop_run
+from packages.orchestration import loop_run, proof_chain
 from packages.orchestration.run_report import (
     CIRCLING_ESCALATION,
     MODE_FINAL,
@@ -29,6 +31,7 @@ from packages.orchestration.run_report import (
     ReportSources,
     StatusMirror,
     TaskOutcome,
+    build_report_sources,
     momentum_flag,
     recommended_next_action,
     render_report,
@@ -895,9 +898,206 @@ class TestLoopProvenanceLine:
         assert "- Loop: nightly-tidy" in render_report(renamed).splitlines()
 
 
+class TestTheTaskLineTellsAMixedApplyStateApart:
+    """F033, finding R-0738's THIRD surface: the run report's own task line.
+
+    The viewer badge and the tasks card already tell a MIXED apply state from a
+    complete one. This pins the report doing the same, with the two counts
+    behind the word, and — just as loudly — pins that a task with NOTHING
+    recorded still renders the line the three goldens above contain.
+    """
+
+    def test_a_partial_apply_reads_as_partially_applied_with_its_counts(self):
+        """The MIXED case, built explicitly rather than observed off a fixture."""
+        assert _one_task_line(TaskOutcome(
+            "aaaaaaaa", "Apply the hunks", "completed",
+            apply_state="partial", applied_changes=5, total_changes=8)) == (
+            "- `aaaaaaaa` — Apply the hunks — **completed**"
+            " — partially applied (5/8 changes)")
+
+    def test_a_complete_apply_reads_as_applied_with_its_counts(self):
+        assert _one_task_line(TaskOutcome(
+            "aaaaaaaa", "Apply the hunks", "completed",
+            apply_state="applied", applied_changes=8, total_changes=8)) == (
+            "- `aaaaaaaa` — Apply the hunks — **completed** — applied (8/8 changes)")
+
+    def test_a_reverted_task_reads_as_reverted_with_zero_applied(self):
+        assert _one_task_line(TaskOutcome(
+            "aaaaaaaa", "Apply the hunks", "completed",
+            apply_state="reverted", applied_changes=0, total_changes=8)) == (
+            "- `aaaaaaaa` — Apply the hunks — **completed** — reverted (0/8 changes)")
+
+    def test_an_unapplied_task_reads_as_not_applied_with_zero_applied(self):
+        assert _one_task_line(TaskOutcome(
+            "aaaaaaaa", "Apply the hunks", "completed",
+            apply_state="not_applied", applied_changes=0, total_changes=8)) == (
+            "- `aaaaaaaa` — Apply the hunks — **completed** — not applied (0/8 changes)")
+
+    def test_an_unrecorded_apply_state_renders_the_line_unchanged(self):
+        """The property the three golden full-text reports depend on.
+
+        Measured rather than restated: the line is compared against the SAME
+        line rendered from an outcome built WITHOUT naming any of the three
+        fields this round added.
+        """
+        without_the_new_fields = TaskOutcome(
+            "aaaaaaaa", "Write the renderer", "completed",
+            evidence_ref="tasks/aaaaaaaa/output.md")
+        at_their_not_recorded_defaults = TaskOutcome(
+            "aaaaaaaa", "Write the renderer", "completed",
+            evidence_ref="tasks/aaaaaaaa/output.md",
+            apply_state="", applied_changes=0, total_changes=0)
+        assert (_one_task_line(at_their_not_recorded_defaults)
+                == _one_task_line(without_the_new_fields))
+        assert "changes)" not in _one_task_line(without_the_new_fields)
+
+    def test_counts_without_a_state_still_render_no_clause(self):
+        """Counts are never evidence of an apply on their own (P6)."""
+        assert _one_task_line(TaskOutcome(
+            "aaaaaaaa", "Write the renderer", "completed",
+            apply_state="", applied_changes=5, total_changes=8)) == _one_task_line(
+            TaskOutcome("aaaaaaaa", "Write the renderer", "completed"))
+
+    def test_an_apply_state_the_table_does_not_know_renders_no_clause(self):
+        """Fail quiet, exactly as an absent source does — never an invented phrase."""
+        unknown = _one_task_line(TaskOutcome(
+            "aaaaaaaa", "Apply the hunks", "completed",
+            apply_state="half_applied", applied_changes=5, total_changes=8))
+        assert unknown == _one_task_line(
+            TaskOutcome("aaaaaaaa", "Apply the hunks", "completed"))
+        assert "half_applied" not in unknown
+        assert "changes)" not in unknown
+
+
+class TestTheApplyStateIsAttachedByTheFullTaskId:
+    """The attach in ``build_report_sources``, and the trap it must not fall into."""
+
+    def test_two_tasks_sharing_eight_id_characters_keep_their_own_state(
+            self, monkeypatch):
+        """``TaskOutcome.task_id`` is ``str(t.id)[:8]`` — a TRUNCATION.
+
+        The fold keys on the FULL id. An attach that looked the state up by the
+        truncated value would give these two tasks each other's answer (or, with
+        a full-id-keyed fold, no answer at all) and would still pass every other
+        test in this file. This is the one that fails.
+        """
+        first = "abcdef01-1111-4111-8111-111111111111"
+        second = "abcdef01-2222-4222-8222-222222222222"
+        assert first[:8] == second[:8]
+        assert first != second
+        job = _FakeJob()
+        job.tasks = [_FakeTask(first, "Apply the first hunks", "completed"),
+                     _FakeTask(second, "Apply the second hunks", "completed")]
+        chain = _FakeProofChain([
+            _FakeProofChange(first, "applied"),
+            _FakeProofChange(first, "applied"),
+            _FakeProofChange(second, "applied"),
+            _FakeProofChange(second, "not_applied"),
+        ])
+        monkeypatch.setattr(proof_chain, "build_proof_chain", lambda *a, **k: chain)
+
+        lines = _section(
+            render_report_from_sources(build_report_sources(job)), "Tasks"
+        ).strip().splitlines()
+        assert [line.split(" — ")[0] for line in lines] == ["- `abcdef01`"] * 2
+        by_description = {line.split(" — ")[1]: line for line in lines}
+        assert by_description["Apply the first hunks"].endswith(
+            "**completed** — applied (2/2 changes)")
+        assert by_description["Apply the second hunks"].endswith(
+            "**completed** — partially applied (1/2 changes)")
+
+    def test_the_attached_counts_are_the_folds_own_numbers(self, monkeypatch):
+        """The counts survive the attach, and they are not recomputed here."""
+        task_id = "cccccccc"  # eight characters: the truncation is the identity
+        job = _FakeJob()
+        job.tasks = [_FakeTask(task_id, "Apply the hunks", "completed")]
+        chain = _FakeProofChain([
+            _FakeProofChange(task_id, "applied"),
+            _FakeProofChange(task_id, "applied"),
+            _FakeProofChange(task_id, "applied"),
+            _FakeProofChange(task_id, "reverted"),
+            _FakeProofChange(task_id, "not_applied"),
+        ])
+        monkeypatch.setattr(proof_chain, "build_proof_chain", lambda *a, **k: chain)
+
+        outcome = build_report_sources(job).tasks[0]
+        folded = proof_chain.fold_task_apply_states(chain)[task_id]
+        assert (outcome.apply_state, outcome.applied_changes, outcome.total_changes) == (
+            folded.state, folded.applied, folded.total)
+        assert (outcome.applied_changes, outcome.total_changes) == (3, 5)
+        assert _one_task_line(outcome).endswith("partially applied (3/5 changes)")
+
+
+class TestTheProofChainModuleDocumentsItsWholePublicApi:
+    """R-0746 — the export list and the module are read AGAINST each other.
+
+    A curated list that is only ever checked by being re-typed is the defect
+    R-0746 already is: round 18 gave ``proof_chain.py`` a fifth public function
+    and its ``Public API::`` block went on naming four. This walks the module's
+    own AST, so the list cannot go stale again without a red test.
+
+    It lives here, beside this round's other tests, because this is the round
+    that gives the shared apply fold its second importer.
+    """
+
+    def test_every_public_module_level_function_is_named_in_the_public_api_block(self):
+        tree = ast.parse(Path(proof_chain.__file__).read_text(encoding="utf-8"))
+        public = [node.name for node in tree.body
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  and not node.name.startswith("_")]
+        assert public, "the AST walk found no public function — the guard is vacuous"
+        assert "fold_task_apply_states" in public, (
+            "the shared apply fold is no longer a public module-level function of "
+            f"proof_chain.py; the walk found {public}")
+        block = _public_api_block(ast.get_docstring(tree) or "")
+        assert block.strip(), "proof_chain.py's docstring carries no `Public API::` block"
+        missing = [name for name in public
+                   if not re.search(rf"^\s*{re.escape(name)}\(", block, re.M)]
+        assert missing == [], (
+            "public in proof_chain.py but absent from its own `Public API::` block: "
+            f"{missing}")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+class _FakeProofChange:
+    """The two attributes ``fold_task_apply_states`` reads off a ProofChange."""
+
+    def __init__(self, task_id: str, apply_state: str):
+        self.task_id = task_id
+        self.apply_state = apply_state
+
+
+class _FakeProofChain:
+    def __init__(self, changes):
+        self.changes = list(changes)
+
+
+def _one_task_line(task: TaskOutcome) -> str:
+    """The single rendered body line of a report whose only task is *task*."""
+    body = _section(
+        render_report_from_sources(ReportSources(tasks=(task,))), "Tasks"
+    ).strip().splitlines()
+    assert len(body) == 1, body
+    return body[0]
+
+
+def _public_api_block(docstring: str) -> str:
+    """The indented block under ``Public API::`` in a module docstring."""
+    lines = docstring.splitlines()
+    start = next((i for i, line in enumerate(lines)
+                  if line.strip() == "Public API::"), None)
+    if start is None:
+        return ""
+    body: list[str] = []
+    for line in lines[start + 1:]:
+        if line.strip() and not line.startswith((" ", "\t")):
+            break
+        body.append(line)
+    return "\n".join(body)
 
 
 class _FakeTask:

@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-62 of 257 registered items accepted. Next: F033 (Hunk-level diff approval).
+63 of 257 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 10 | 31 |
+| 5 | Operator Cockpit | 11 | 31 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |

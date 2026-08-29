@@ -31,6 +31,7 @@ from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.exec_guard import run_guarded_test_command
+from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     BuilderOutput,
@@ -871,6 +872,7 @@ def compose_builder_prompt(
     task_body: str = "",
     scope_contract: str = "",
     test_result: str = "",
+    hunk_ledger: Any = None,
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
 
@@ -878,6 +880,35 @@ def compose_builder_prompt(
     the two gated on ``findings`` as well as their own value — a repair-only
     diff and a repair-only test result are not the same thing as a diff and a
     test result, and simplifying that would change which bytes are sent.
+
+    ``hunk_ledger`` is ONE ATTEMPT's
+    :class:`packages.orchestration.hunk_ledger.HunkDecisionLedger`, or ``None``
+    when the round has no recorded hunk decision. Its REJECTED entries become
+    the ``builder_hunk_rejections`` segment, which carries each operator's
+    reason VERBATIM — that is F033's acceptance property, and
+    ``tests/orchestration/test_builder_prompt_hunk_rejections.py`` asserts the
+    reason as an exact SUBSTRING of the composed text rather than in any
+    normalised form. It is typed ``Any`` rather than the ledger class because
+    the renderer is total on every input, including one that is not a ledger at
+    all, and narrowing the annotation would suggest a validation this layer
+    deliberately does not perform.
+
+    THE ROUTE FROM A STORED DECISION, AND WHERE EACH HOP LIVES.
+    :func:`run_pingpong` carries a ``hunk_ledger`` parameter of its own and
+    forwards it UNCHANGED to the call below, so the loop supplies whatever
+    ledger it is GIVEN. It does not go and find one: it holds no job.
+    ``packages/orchestration/hunk_decision_record.py`` writes each exported
+    ledger onto ``job.metadata`` under the key ``hunk_decisions``, keyed by
+    attempt, ``save_job`` at the write door makes that record durable, and the
+    same module reads the latest one back for a task with
+    ``load_latest_hunk_ledger_from_metadata`` — that reader takes the metadata
+    MAPPING, so it drags no storage behind it. THE JOB-LEVEL CALLER IS WIRED:
+    measured at ``d81acca5``, ``packages/orchestration/pingpong_job.py`` holds
+    the job at its :func:`run_pingpong` call and passes
+    ``hunk_ledger=_recorded_hunk_ledger_for_task(job, task)``, so a decision an
+    operator recorded for a task reaches this segment in production. ``None``
+    stays the answer for a round with no recorded decision, and the segment
+    then registers not at all — which is the ordinary case, not a gap.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
@@ -937,6 +968,33 @@ def compose_builder_prompt(
                 repair_parts.append(f"  Fix: {f.required_fix}")
             repair_parts.append("")
         specs.append(("builder_repair", SegmentStabilityRank.STEERING, repair_parts))
+    # F033: the operator's REJECTED hunks, as the next round's repair findings.
+    # Rendered ONCE, before any test on it. ``render_rejection_findings`` is
+    # TOTAL — it answers "" for ``None``, for a ledger with no ``entries``, and
+    # for a ledger holding only approvals — so this call is safe on every value
+    # the parameter can carry, and calling it twice would render the operator's
+    # words twice to ask one question about them.
+    rejection_text = render_rejection_findings(hunk_ledger)
+    # THIS EMPTINESS TEST IS THE ONE GUARD, and deliberately the only one. A
+    # second ``hunk_ledger is not None`` test beside it would make this one
+    # UNOBSERVABLE — the renderer already answers "" on ``None`` — and a guard
+    # no mutation can redden is a guard nobody knows is there. It is also
+    # load-bearing for the golden: a segment registered unconditionally would
+    # appear in all four shapes of
+    # ``tests/orchestration/test_builder_prompt_golden.py``, whose full-shape
+    # test pins an EXACT ten-name manifest tuple, and turn that suite RED.
+    #
+    # Remedy deliberately does NOT cap this text, unlike ``safe_diff`` at
+    # ``_REPAIR_DIFF_CAP`` a few lines above. A cap truncates, and truncating an
+    # operator's own words is precisely what F033's verbatim rule forbids: the
+    # feature file requires the rejection reasons to appear "verbatim in the
+    # next trace", and a reason that is half-quoted has been rewritten. The diff
+    # is machine output and may be cut; a reason is not.
+    if rejection_text:
+        specs.append((
+            "builder_hunk_rejections", SegmentStabilityRank.STEERING,
+            [rejection_text],
+        ))
     specs.append((
         "builder_directive", SegmentStabilityRank.STEERING,
         ["\nProvide your changes and a summary of what you did."],
@@ -962,12 +1020,14 @@ def _build_builder_prompt(
     task_body: str = "",
     scope_contract: str = "",
     test_result: str = "",
+    hunk_ledger: Any = None,
 ) -> str:
     """The builder prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_builder_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string.
+    this string. ``hunk_ledger`` is forwarded UNCHANGED and means exactly what
+    it means there.
     """
     return compose_builder_prompt(
         goal,
@@ -979,6 +1039,7 @@ def _build_builder_prompt(
         task_body=task_body,
         scope_contract=scope_contract,
         test_result=test_result,
+        hunk_ledger=hunk_ledger,
     ).text
 
 
@@ -2537,6 +2598,7 @@ def run_pingpong(
     episode_id: str = "",
     on_provider_call: Callable[[ProviderAttempt], None] | None = None,
     rate_governor: ProviderRateGovernor | None = None,
+    hunk_ledger: Any = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2552,6 +2614,17 @@ def run_pingpong(
     repair_rounds: max additional repair attempts after initial review
     finds issues. 0 means no repair (original behavior). The total
     max_rounds is still the outer bound.
+
+    ``hunk_ledger`` (F033) is ONE ATTEMPT's
+    :class:`packages.orchestration.hunk_ledger.HunkDecisionLedger` — the hunk
+    decision the operator already recorded for the task about to be built — or
+    ``None`` when there is none. It is FORWARDED UNCHANGED to
+    :func:`compose_builder_prompt`, whose docstring holds the whole meaning; the
+    loop neither reads a job nor inspects the value, so a caller holding the job
+    is what turns a stored decision into this argument. It is typed ``Any`` for
+    the reason stated there: the renderer downstream is total on every input,
+    and narrowing the annotation would advertise a validation this layer
+    deliberately does not perform.
     """
     # If task_input provided, use it to enrich the goal
     effective_goal = goal
@@ -2891,6 +2964,7 @@ def run_pingpong(
                 task_body=task_input.body if task_input and round_num == 1 else "",
                 scope_contract=scope_contract_text,
                 test_result=prev_test_result,
+                hunk_ledger=hunk_ledger,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed

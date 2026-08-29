@@ -169,6 +169,14 @@
   color: #fff;
 }
 .checkDone svg { width: 10px; height: 10px; }
+.checkPartial {
+  width: 16px; height: 16px;
+  border-radius: 5px;
+  background: var(--remedy-blue-strong);
+  display: grid; place-items: center;
+  color: #fff;
+}
+.checkPartial svg { width: 10px; height: 10px; }
 .dotCurrent { width: 9px; height: 9px; border-radius: 50%; background: var(--remedy-blue-strong); box-shadow: 0 0 0 3px rgba(76,131,255,.18); }
 
 .taskLabel {

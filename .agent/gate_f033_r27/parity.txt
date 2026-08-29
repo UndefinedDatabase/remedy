@@ -1,0 +1,27 @@
+worktree add REAL exit = 0
+  stdout: Preparing worktree (new branch 'tmp/base-gate')
+HEAD is now at bd8d9529 Merge pull request #221 from UndefinedDatabase/feature/f257-self-use-track
+  stderr: 
+worktree HEAD   = bd8d952942d8ec1d243d787ccfe16e0ad04360d2
+worktree branch = tmp/base-gate (NOT detached, per constraint 6)
+HEAD equals the merge base = True
+SOURCE apps/ui/node_modules exists=True symlinks=27
+  CALL AS WRITTEN: shutil.copytree(src, dst, symlinks=True)
+  COPY apps/ui/node_modules -> worktree done; symlinks that SURVIVED as symlinks = 27
+  destination is a real directory, not a symlink: True
+SOURCE apps/ui/dist exists=True symlinks=0
+  CALL AS WRITTEN: shutil.copytree(src, dst, symlinks=True)
+  COPY apps/ui/dist -> worktree done; symlinks that SURVIVED as symlinks = 0
+  destination is a real directory, not a symlink: True
+apps/ui/dist files in the worktree BEFORE = 4
+REMEDY_UI_NO_AUTO_BUILD set in os.environ (never a shell prefix) = '1'
+COMMAND : /usr/bin/python3 -m pytest -n auto -q
+CWD     : /home/decodeux/Repos/remedy/.remedy-wt/base-gate
+apps/ui/dist files in the worktree AFTER  = 4
+RUN WALL-CLOCK WINDOW  start=1788009268.624 end=1788009420.420 (151.8 s)
+apps/ui/dist mtimes INSIDE the run window = 0
+files that APPEARED during the run  = 0 []
+files that VANISHED during the run  = 0 []
+files whose mtime CHANGED           = 0 []
+PARITY CLAIM = HOLDS
+  (measured by the EVENT per P4: no dist mtime falls inside the run window)

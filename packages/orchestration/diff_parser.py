@@ -40,13 +40,25 @@ CONTRACT NOTES a reader will otherwise have to guess at:
   the feature file states it. They are exactly what ``DIFF_VIEW_VERSION`` exists to
   carry: the version field is authoritative over the prose contract, and a consumer
   pinning version 1 gets these two keys.
-* ``intraline`` joined the per-line shape after version 1 was first written and
-  ``DIFF_VIEW_VERSION`` STAYS 1, because version 1 has never been served to anything —
-  there is no endpoint yet — so this completes v1 rather than changing a shipped shape.
-* Hunk ``id`` values are PROVISIONAL — ``"<file_index>:<hunk_index>"``, both
-  zero-based, stable only within a single parse of a single diff text. F033
-  replaces them with content-hash ids, and ``DIFF_VIEW_VERSION`` is the seam
-  through which it does so.
+* ``intraline`` joined the per-line shape while version 1 was still PRIVATE — nothing
+  outside this repository could observe it — so it completed v1 rather than changing a
+  shipped shape. Version 1 stopped being private when F256 landed the diff endpoint:
+  ``packages/orchestration/ui_server.py`` builds the envelope through
+  ``packages/orchestration/diff_view_source.py``'s ``build_diff_view``, which carries
+  ``DIFF_VIEW_VERSION`` straight out to a consumer. Version 1 WAS served. That is why
+  F033's id change took a real bump to 2 rather than riding in unversioned, and any
+  later shape change must take one too — the private-shape argument is spent.
+* Hunk ``id`` values are CONTENT-DERIVED and carry no position at all. The identity is
+  computed by ``hunk_identity`` in ``packages/orchestration/hunk_identity.py`` over the
+  file's resolved ``path``, the hunk's normalised OLD side — its ``ctx`` and ``del``
+  lines in order, never its ``add`` lines — and the hunk's occurrence rank among
+  byte-identical old sides within the SAME file. An id is ``HUNK_ID_LENGTH`` lowercase
+  hex characters. THE STABILITY PROPERTY a reader may rely on: a hunk keeps its id when
+  anything else in its file moves — another hunk gains, loses or rewrites lines, or
+  hunks appear before it — and when its OWN added lines change, because a second
+  proposed fix for the same original text is the same hunk. It changes only when the
+  path changes or when the hunk's own old side does. This shape arrived with
+  ``DIFF_VIEW_VERSION`` 2.
 
 The parser is PURE and TOTAL: text in, plain data out. No file system, no
 subprocess, no network, no logging, no global mutable state, and it NEVER raises on
@@ -62,9 +74,13 @@ import difflib
 import re
 from typing import Any
 
-#: Bumped whenever the returned shape changes; F033's content-hash hunk ids are the
-#: first planned bump, and consumers gate on this rather than on key sniffing.
-DIFF_VIEW_VERSION = 1
+from packages.orchestration.hunk_identity import hunk_identity, normalise_old_side
+
+#: Bumped whenever the returned shape changes; consumers gate on this rather than on key
+#: sniffing. Version 2 IS F033's bump, and it happened: a hunk's ``id`` is now derived
+#: from that hunk's own content by ``packages/orchestration/hunk_identity.py`` instead of
+#: from its position in the diff. No other key of the view moved with it.
+DIFF_VIEW_VERSION = 2
 
 #: The five viewer statuses. F037's own vocabulary — see the deliberate-absence note
 #: in the module docstring and amendment A1 of docs/roadmap/features/T5_F037.md.
@@ -623,7 +639,7 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
             new_start = int(match.group(3))
             new_count = 1 if match.group(4) is None else int(match.group(4))
             hunk = {
-                "id": "",  # assigned on flush, when the file index is known
+                "id": "",  # assigned on flush, from this hunk's own old side
                 "header": line,  # VERBATIM, section heading included; the viewer renders it
                 "old_start": old_start,
                 "new_start": new_start,
@@ -649,8 +665,8 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
         # Everything else outside a hunk (`index `, `new file mode `, `similarity
         # index `, ordinary prose) carries nothing the viewer renders.
 
-    # R-0716: fold the `workspace.diff` header echo away BEFORE regions become files,
-    # so file indices — and therefore hunk ids — are numbered over the real files.
+    # R-0716: fold the `workspace.diff` header echo away BEFORE regions become files, so
+    # the view carries one entry per real file rather than a phantom beside each of them.
     regions = _collapse_doubled_header_regions(regions)
 
     # WHY the file ceiling is applied HERE, after the collapse rather than during the
@@ -664,16 +680,26 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
         truncated = True
         regions = regions[:DIFF_VIEW_MAX_FILES]
 
-    for file_index, region in enumerate(regions):
+    for region in regions:
         path, old_path = region.resolve_path()
         status = region.derive_status()
         hunks_out: list[dict[str, Any]] = []
         added = 0
         deleted = 0
-        for hunk_index, raw in enumerate(region.hunks):
+        # The occurrence rank `hunk_identity` takes, counted PER FILE and reset with it:
+        # two hunks of one file whose normalised old sides are byte-identical would
+        # otherwise share a name. Keyed on that normalised text rather than on the
+        # finished id, so the rank is a property of the content and not of the digest.
+        old_side_ranks: dict[str, int] = {}
+        for raw in region.hunks:
             # Intraline pairing is a WITHIN-HUNK relation, so it runs here, once per
             # hunk, rather than during the walk where a run is not yet complete.
             _apply_intraline_spans(raw["lines"])
+            # The hunk's OLD side, in order — exactly the membership the walk calls
+            # `on_old`. Added lines are EXCLUDED so that re-proposing a different fix
+            # for the same original text keeps the hunk's id, which is the stability
+            # property the module docstring's contract note promises.
+            old_side_lines: list[str] = []
             for entry in raw["lines"]:
                 # Counted from the PARSED entries, never from a second walk of the
                 # text, so stats can never disagree with the rendered lines.
@@ -681,9 +707,14 @@ def parse_unified_diff_to_view(diff_text: str) -> dict:
                     added += 1
                 elif entry["kind"] == DIFF_LINE_DELETED:
                     deleted += 1
+                if entry["kind"] in (DIFF_LINE_CONTEXT, DIFF_LINE_DELETED):
+                    old_side_lines.append(entry["content"])
+            normalised_old_side = normalise_old_side(old_side_lines)
+            occurrence = old_side_ranks.get(normalised_old_side, 0)
+            old_side_ranks[normalised_old_side] = occurrence + 1
             hunks_out.append(
                 {
-                    "id": f"{file_index}:{hunk_index}",
+                    "id": hunk_identity(path, old_side_lines, occurrence),
                     "header": raw["header"],
                     "old_start": raw["old_start"],
                     "new_start": raw["new_start"],

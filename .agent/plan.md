@@ -1,39 +1,40 @@
-# Plan — F257 Self-use track (CLOSED)
+# Plan — F033 Hunk-level diff approval
 
-Branch: feature/f257-self-use-track, cut from `main` at the merge commit of pull
-request #220. F257 is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line and
-the pull request is open and UNMERGED.
+Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
+commit of pull request 221. SESSION 7, closing the feature.
 
 ## Goal
-Remedy is used on Remedy on a schedule that cannot be skipped: a curated queue of
-small maintenance jobs, exactly one consumed per feature close, run through
-`do job-plan` and `do job-run` against this repository and taken to the normal
-approval gate. DONE.
+Surgical consent over changes: hunks carry STABLE content-hash ids, an
+`approve_hunks` command applies the approved set to the branch all-or-nothing,
+and rejected hunks become precise repair feedback quoted verbatim in the next
+round — every partial state rendered truthfully in viewer, node and report.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the queue, the loader, the job-path seam | done | rounds 2-5, 36 tests |
-| the integration gate | done | round 6, 18186 passed 0 failed |
-| the feature file's Built State | done | round 7, precondition 4 |
-| plan SU-001 and stop at the approval gate | done | round 8, precondition 6 |
-| three tests survive their own feature's close | done | round 10, R-0737 |
-| the evidence bundle and the review zip | done | round 11, READY_FOR_REVIEW |
-| the closure commit | done | this round, Rule A4's last commit |
-| the pull request | done | opened and NOT merged |
+| T001, T002 and T003 | done | rounds 1-24 |
+| the operator guide and its index rows | done | round 26 |
+| the integration gate | done | round 27, PASS WITH RISKS |
+| the Built State, evidence job and review zip | done | round 28 |
+| the STATUS line, the README sync and the PR | done | this round |
+| R-0745 and R-0750, carried as documented risks | open | see Risks |
 
 ## Next Steps
-1. Nothing further on this branch. The next feature's Open PR Gate merges this
-   pull request, or the operator merges it manually at any time.
-2. Rule A5 selects F033 — Hunk-level diff approval — as the next feature, in a
-   fresh session.
+1. This round books the round 28 PASS, flips the STATUS line to `[x]` with the
+   README capability sync in the SAME commit, and opens the pull request.
+2. THE PR IS NOT MERGED IN THIS SESSION. It merges at the next feature's start
+   through the Open PR Gate, which is the operator's manual-review window; the
+   operator may also merge it by hand at any time.
+3. The next session starts a NEW feature: read `.agent/STOP` first, then run the
+   Open PR Gate, which will find this PR and merge it before any new branch.
+4. Nothing further is owed on this branch. Its last round has no on-disk gate
+   entry by construction, and that absence is the terminator rather than a
+   missing review.
 
 ## Risks
-- THE SELF-USE QUEUE IS NOW EXHAUSTED. SU-001 is consumed by F257 and no pending
-  item remains, so the next feature's close records
-  `self-use NONE (queue exhausted)` until an operator curates more items into
-  `scripts/self_use_queue.json`. That is the track asking for curation, and
-  closure precondition 6 explicitly does not treat it as a blocker.
-- R-0734 and R-0736 stay registered and unrepaired, both outside F257's surface.
-  They are the documented Medium risks behind the PASS_WITH_RISKS verdict.
+- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, which is why the STATUS
+  line reads PASS_WITH_RISKS. Neither is reachable from this feature's
+  Acceptance: the first hardens an import guard over the write door, the second
+  is a reviewer's gate wording that ordered a full run log where the canonical
+  integration-gate procedure asks for a tail.
