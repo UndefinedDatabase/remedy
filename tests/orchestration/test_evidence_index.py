@@ -479,6 +479,20 @@ class TestResolveJobEvidenceDir:
         idx = tmp_path / "index"
         assert resolve_job_evidence_dir("j6", index_dir=idx) is None
 
+    def test_the_index_record_beats_the_cwd_relative_fallback(self, tmp_path, monkeypatch):
+        """The ORDER is load-bearing: the index record names the EXPORTED bundle
+        while `remedy-job-evidence-<job_id>` is the deprecated root-style
+        fallback, so an inverted order lets a stale leftover in an operator's
+        repository root shadow the real bundle and hand a decision door the
+        wrong diff. Both sources exist here, which is the only state in which
+        precedence is observable at all."""
+        monkeypatch.chdir(tmp_path)
+        idx = tmp_path / "index"
+        indexed = _evidence(tmp_path / "ev_indexed")
+        _evidence(tmp_path / "remedy-job-evidence-j7")
+        _index_file(idx, "j7", json.dumps({"job_id": "j7", "evidence_dir_local": str(indexed)}))
+        assert resolve_job_evidence_dir("j7", index_dir=idx) == Path(str(indexed))
+
 
 class TestUiServerDelegatesToTheSameRule:
     def test_ui_server_resolver_answers_the_same_directory(
