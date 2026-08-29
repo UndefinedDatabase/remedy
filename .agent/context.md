@@ -1,29 +1,31 @@
-# Context — F257 Self-use track
+# Context — F033 Hunk-level diff approval
 
 ## Active Branch
-feature/f257-self-use-track, cut from `main` at the merge commit of pull
-request #220.
+feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge commit
+of pull request 221. The parked branch `feature/f033-hunk-approval` at
+`ed040812` is a previous attempt, retained as history under DECISION F033 D1 and
+never checked out, merged or deleted by this feature.
 
 ## Scope
-Feature F257, `docs/roadmap/features/T5_F257.md` — the standing self-use track
-operator order amend0828-daily-driver registered. The pieces: a curated queue
-file, exactly one item consumed per feature close, the run taken to the normal
-approval gate, and findings recorded as operator findings in the feature file
-that owns the surface.
+Feature F033, `docs/roadmap/features/T5_F033.md` — stable content-hash hunk ids,
+the `approve_hunks` command with an all-or-nothing subset apply, and the
+rejection-to-repair loop with truthful partial-state rendering.
 
 ## Do not touch
-STATUS semantics — a job must never check itself off. The approval gate: the
-`--approve` barrier in `packages/orchestration/job_promote.py` is unchanged. The
-scope-fence builtin deny list in `packages/orchestration/scope_fences.py`.
+Applicator internals, fence rules and review verdict semantics, per the feature
+file's own Do-not-touch. `packages/orchestration/diff_parser.py` stays PURE and
+TOTAL as its docstring rules: text in, plain data out, no file system, no
+subprocess, no network, and it NEVER raises on malformed input.
 `docs/roadmap/ROADMAP.md` is not edited.
 
 ## Assumptions
-- The queue will store job-file TEXT in the format
-  `packages/orchestration/pingpong_job.py:parse_job_file` accepts, so it cannot
-  drift into a second task format.
-- Shipped curated data lives in `scripts/` with one named loader under
-  `packages/orchestration/`, the convention `scripts/dead_models.json` and
-  `packages/orchestration/dead_model_list.py` already set.
+- The hunk id is a hash of the path plus the old-side context normalised for
+  whitespace, so an edit elsewhere in a file leaves other hunks' ids unchanged.
+- `DIFF_VIEW_VERSION` is the declared seam for that change: the feature file and
+  `packages/orchestration/diff_parser.py` both say so, and version 1 has never
+  been served to an endpoint.
+- One hunk identity spans repair and approval; the v1-local helper in
+  `packages/orchestration/diff_repair.py` retires onto it.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -38,9 +40,9 @@ CI run.
   `tests/regression/test_resource_safety.py` and
   `tests/orchestration/test_integrity_gate.py`.
 - Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
-- Destructive verification runs only inside a disposable git worktree under
-  `.remedy-wt/`, never in the primary checkout, which satisfies
-  `git status --porcelain` empty at every verdict.
+- Destructive verification runs only inside a disposable git worktree, never in
+  the primary checkout, which satisfies `git status --porcelain` empty at every
+  verdict.
 - THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The full contract those
   readers hold over the three state files, so a rewrite is checked against it
   directly rather than rediscovered from a red: this file carries
