@@ -16,30 +16,27 @@ round — every partial state rendered truthfully in viewer, node and report.
 |------|--------|--------|
 | T001, T002 and T003 | done | rounds 1-24 |
 | THE FEATURE'S FUNCTIONAL SCOPE | complete | at round 24 |
-| R-0749 first instance, the loop docstring | landed | round 25 |
-| the operator guide and its index rows | open | this round |
-| R-0749 fourth instance, the renderer docstring | open | this round |
-| the integration gate round | open | next |
+| R-0749, both instances landed | done | rounds 25 and 26 |
+| the operator guide and its index rows | done | round 26 |
+| the integration gate | open | this round |
 | the closure sequence and its pull request | open | after the gate |
 | R-0745, the door's transitive import closure | open | carried as a risk |
 
 ## Next Steps
-1. This round books the round 25 PASS, ships the operator guide for
-   `remedy patch approve-hunks` with its two `docs/README.md` index rows in the
-   same commit, and retires the claim's fourth instance.
-2. R-0749 stays OPEN until both of its instances are landed and the reviewer
-   resolves it; the round after this one books that resolution alongside its own
-   first commits, never in a round of its own.
-3. Then the integration gate per docs/agents/integration_gate.md, then the
-   closure sequence and its pull request.
+1. This round books the round 26 PASS and the `Done: R-0749` resolution, then
+   runs the integration gate of docs/agents/integration_gate.md: the full suite
+   on this branch and at the merge base `bd8d9529`, compared and attributed.
+2. Only this round's gate entry may carry a "full suite" claim. A reproducible
+   branch-only failure coupled to feature code is a BLOCKER and buys its own
+   reviewer-gated repair round rather than being fixed inside this one.
+3. Then the closure sequence per docs/roadmap/STATUS_closure_protocol.md: the
+   feature file's Built State, the evidence job, the review zip, the STATUS line
+   and the pull request, which is NOT merged in this session.
 4. R-0745 is Low and is not reachable from this feature's Acceptance. The
    closure protocol's precondition 1 admits a documented Medium/Low risk, so it
-   is carried as one rather than blocking a feature that has met its Acceptance.
+   is carried as one and the STATUS line reads PASS_WITH_RISKS.
 
 ## Risks
-- R-0745 stays OPEN at closure and the STATUS line therefore reads
-  PASS_WITH_RISKS. Its fix recommends a transitive-closure guard test, which is
-  a hardening task deserving its own round rather than a corner of a closure.
-- The claim R-0747 opened has now been found in four files across five rounds.
-  Its resolution predicate is worded over the CLAIM, so the reviewer resolves it
-  only after reading the feature's modules rather than counting a string.
+- The base worktree lacks build artifacts the suite needs. Parity is restored by
+  COPY with symlinks preserved, and every base-only failure is attributed by
+  direct evidence whether or not the parity claim holds.
