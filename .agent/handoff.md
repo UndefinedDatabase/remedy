@@ -1,20 +1,20 @@
-# Handback — F033 · SESSION 7 · round 25
+# Handback — F033 · SESSION 7 · round 26
 
-> Written by the WORKER at the close of the round-25 delegation. The reviewer
+> Written by the WORKER at the close of the round-26 delegation. The reviewer
 > holds the pre-emission original of the step block and runs the other half of
 > the transport comparison itself.
 
 ## Session
 
-SESSION 7 of feature F033 · round 25 · rounds so far 25.
+SESSION 7 of feature F033 · round 26 · rounds so far 26.
 
 SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE.
 
-BOTH triggers of the amend0827 rule 6 soft limit are now reached at once: this
-is the SEVENTH session and this is the TWENTY-FIFTH round. The scope report the
-rule obliges was written one round early by the session-6 reviewer, is carried
-forward verbatim in substance below, and is unchanged by this round — this round
-produced no feature work, so nothing in it moves the report's arithmetic.
+Both triggers of the amend0827 rule 6 soft limit remain reached: this is the
+SEVENTH session and the TWENTY-SIXTH round. The scope report is carried forward
+below with ONE line of its arithmetic moved — item 1 of "what is missing" is
+delivered by this round. Nothing else in the report changes: this round altered
+one docstring paragraph and no executable statement, proved by AST.
 
 ### Scope report — required by operator amendment amend0827 rule 6
 
@@ -26,14 +26,16 @@ and report line (T003, R-0738). And the rejection-to-repair loop, complete end t
 end as of round 24: an operator's rejection is recorded on the job, selected back
 out by task, rebuilt into a ledger, rendered as repair findings with the reason
 held byte for byte, and composed into the next builder prompt. THE FEATURE'S
-FUNCTIONAL SCOPE CLOSED AT ROUND 24 and this round did not touch it: round 25
-altered one docstring paragraph and no executable statement, proved by AST.
+FUNCTIONAL SCOPE CLOSED AT ROUND 24 and this round did not touch it.
+
+NEWLY FINISHED THIS ROUND: the `docs/` description of `remedy patch
+approve-hunks`. `docs/guides/hunk-approval-user-guide-v1.md` ships at 5145 bytes
+with both `docs/README.md` index rows in the same commit, and `tests/docs/` is a
+REAL exit 0 at 295 passed — the same count as at the base, because that suite
+reads feature filenames rather than guide rows.
 
 WHAT IS MISSING, and none of it is feature work:
-  1. `docs/` owes an operator-facing description of `remedy patch approve-hunks`.
-     No round has been allowed a `docs/` path in this whole feature, so this is
-     a first — one round, carrying the `tests/docs/` gate the docs-round rule
-     adds.
+  1. ~~the `docs/` operator guide~~ — DELIVERED at C3 of this round.
   2. The integration-gate round, per docs/agents/integration_gate.md.
   3. The closure sequence and its pull request, which by precedent on this
      branch is two rounds.
@@ -51,381 +53,228 @@ reading and states it as a Risk, so a reversal costs one plan rewrite.
 
 ## Range
 
-`d81acca5`..`9e84514a` on branch `feature/f033-hunk-approval-v2`, pushed.
-Six commits, C0a through C5.
+Review of `de2dc16d`..`3fe5db02` on branch `feature/f033-hunk-approval-v2`,
+pushed. Seven commits, C0a through C5; the range is named to C4 because C5 is
+the commit that writes this file and cannot name its own SHA (R-0149 pattern).
 
 ## Commits
 
-### ea71aeb4 docs(f033): save the round 25 block
+### e47370ef docs(f033): save the round 26 step block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/f033-r25.md | +301/-0 | C0a — the block saved verbatim, copied with `shutil.copyfile`, never retyped |
+| .agent/authored/f033-r26.md | +437/-0 | C0a — the block saved verbatim, copied with `shutil.copyfile`, never retyped |
 
-### 2956aede docs(f033): mirror the round 25 block into last_block
+### 0bbffec5 docs(f033): mirror the round 26 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/last_block.md | +266/-282 | C0b — the same bytes mirrored, copied from the saved file |
+| .agent/last_block.md | +345/-209 | C0b — the same bytes mirrored, copied from the saved file |
 
-### 620a0343 docs(f033): rewrite the plan for round 25
+### 8f2cfe7d docs(f033): retarget the plan at round 26
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/plan.md | +20/-19 | C1 — full rewrite from slice PLAN25 |
+| .agent/plan.md | +16/-14 | C1 — full rewrite from slice PLAN26 |
 
-### 8c5ecfdb docs(f033): book the round 24 verdict, resolve R-0748 and register R-0749
+### 0efdcba2 docs(f033): book the round 25 pass and extend R-0749
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/live_review.md | +6/-0 | C2 — slice RECORD25 appended: the R24 `Gate:`, the `Done: R-0748` and the R-0749 registration |
+| .agent/live_review.md | +4/-0 | C2 — slice RECORD26 appended: the R25 `Gate:` paragraph and the R-0749 fourth-instance extension. No id registered, none resolved |
 
-### 18428f07 docs(f033): record the round 24 untracked artifact sweep slip
+### 500ef378 docs(f033): add the hunk approval operator guide and index it
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/prose_slips.md | +2/-0 | C3 — slice SLIPS25 appended |
+| docs/guides/hunk-approval-user-guide-v1.md | +105/-0 | C3 — the new file, byte-equal to slice GUIDE |
+| docs/README.md | +2/-0 | C3 — pairs PAIR-QUICKFIND and PAIR-GUIDES, both append-shaped, in the SAME commit as the file |
 
-### 9e84514a fix(f033): state the wired job level hop in the compose_builder_prompt docstring
+### 3fe5db02 fix(f033): state the wired builder prompt caller in the renderer docstring
 | Path | +/- | Reason |
 |------|-----|--------|
-| packages/orchestration/pingpong_loop.py | +9/-10 | C4 — SPEC A, pair PAIR-ROUTE applied to the `compose_builder_prompt` docstring; no executable statement touched |
-| .agent/live_review.md | +2/-0 | C4 — the single `Landed: R-0749` line, in the SAME commit as the repair |
+| packages/orchestration/hunk_repair_findings.py | +5/-3 | C4 — SPEC A1, pair PAIR-CALLER, a module-docstring rewrite and no executable statement |
+| .agent/live_review.md | +2/-0 | C4 — SPEC A2, the SECOND `Landed: R-0749` line; the first one stands untouched |
 
-### C5 — the handback commit (self-reference, R-0149 pattern)
+### C5 — the handback (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/handoff.md | rewrite | C5 — this file; a handoff cannot table the commit that writes it |
-
-Per-commit insertions C0a..C4: 301, 266, 20, 6, 2, 11. Every one under 500.
+| .agent/handoff.md | rewrite | C5 — this file; a handback cannot table the commit that writes it |
 
 ## External actions
 
-`git push` on `feature/f033-hunk-approval-v2` — succeeded. No PR created, no PR
-edited, no merge, no worktree add or remove. This round ordered no disposable
-worktree because it mutates no executable code (Constraint 8).
+- `git push` on `feature/f033-hunk-approval-v2` after C5. No PR created, none
+  edited, none merged — the closure sequence owns the pull request.
+- No `gh` command run. No worktree added or removed: constraint 9 orders no
+  mutation red-proof this round, so no disposable worktree was needed.
 
-## Verification — G1 through G7, at C4 `9e84514a`
+## Verification
 
-Every exit code below is a REAL one, taken from
-`bash -c '<cmd>; echo "REAL_EXIT=$?"'` with no pipe.
+Every exit code below is REAL, taken from `bash -c '<cmd>; echo "REAL_EXIT=$?"'`
+with NO PIPE, per constraint 7. All eight gates are GREEN.
 
-### G1 TRANSPORT — REAL_EXIT=0
+G1 TRANSPORT — exit 0.
+    committed .agent/authored/f033-r26.md : 30483 bytes,
+      sha256 41ff9a4b366190730c528bb81f4b71131a1f68cf04f9e3797ec963e24208283e
+    committed .agent/last_block.md        : 30483 bytes, same sha256
+    committed authored == committed last_block: True
+    The digest EQUALS the one the reviewer stated for its pre-emission original,
+    and the file was moved with `shutil.copyfile` in both hops. Nothing retyped.
 
-    .agent/authored/f033-r25.md  bytes 25113  sha256 88dd0980bf9486954e14eee00fbc64851b1e424e24f92a5086448cb8833323ab
-    .agent/last_block.md         bytes 25113  sha256 88dd0980bf9486954e14eee00fbc64851b1e424e24f92a5086448cb8833323ab
-    THE ONE DIGEST COMPARISON, authored == last_block: True
+G2 THE PLAN, at C4 — exit 0.
+    byte length 2394 · line count 45 · under 50 lines True
+    byte-EQUAL to slice PLAN26 True · holds `## Goal` True · holds `Steps` True
 
-Both digests equal the sha256 the delegation declared for the pre-emission
-original. The reviewer holds that original and runs the other half.
+G3 THE RECORD APPEND, at C2 — exit 0.
+    MEASURED base 1611170 + 1 + RECORD26 7077 = 1618248 = committed. RECONSTRUCTS True.
+      (the base re-measured by this worker matches the 1611170 the block stated)
+    pre-commit blob is byte PREFIX True · slice is exact SUFFIX True
+    separator byte is a newline True
+    N COUNTED by the script: 2. File blank-line units: 728.
+    LAST 2 units EQUAL the slice's paragraphs IN ORDER True
+      unit 0 len 4726 == 4726, `Gate: F033 R25 —`
+      unit 1 len 2348 == 2348, `R-0749 EXTENSION —`
+    NEGATIVE CONTROL: FIRST appended paragraph spans 1611171..1615897; flip
+      offset 1615413, inside that span True; byte flipped from b' ', file changed True.
+      reader SUFFIX     accepts unflipped True / rejects flipped True
+      reader PARAGRAPHS accepts unflipped True / rejects flipped True
 
-### G2 THE PROSE FILES — REAL_EXIT=0
+G4 THE LEDGER, at `de2dc16d`, C2 and C4 — exit 0.
+    | rev      | `^- R-\d+ — ` | distinct | `^Done: R-\d+ — ` | distinct | `^Landed: ` | `^Landed: R-0749 — ` | `^Gate: F033 R25 — ` | open |
+    |----------|---------------|----------|-------------------|----------|-------------|----------------------|----------------------|------|
+    | de2dc16d | 310           | 310      | 54                | 52       | 21          | 1                    | 0                    | 258  |
+    | 0efdcba2 | 310           | 310      | 54                | 52       | 21          | 1                    | 1                    | 258  |
+    | 3fe5db02 | 310           | 310      | 54                | 52       | 22          | 2                    | 1                    | 258  |
+    Every ordered reading reproduced: 310 distinct UNMOVED (nothing registered),
+    54 over 52 UNMOVED (nothing resolved), `Landed:` 21→22, `Landed: R-0749 — `
+    1/1/2, `Gate: F033 R25 — ` 0 before and exactly 1 after, open set 258 UNMOVED.
 
-    plan.md bytes 2329 | PLAN25 slice 2328 + trailing nl
-    BYTE-EQUAL to PLAN25: True
-    lines 43 | under 50: True
-    holds '## Goal': True
-    holds 'Steps': True
+G5 THE GUIDE AND ITS INDEX, at C3 — exit 0.
+    (a) docs/guides/hunk-approval-user-guide-v1.md is 5145 bytes;
+        committed blob byte-EQUAL to slice GUIDE True (on-disk too).
+    (b) In docs/README.md at C3: PAIRQUICK-FROM occurs 1 time,
+        PAIRGUIDES-FROM occurs 1 time.
+        `git show --numstat` for docs/README.md: `2  0  docs/README.md` — TOTAL
+        added lines 2; added lines parsed from the diff 2.
+        Among those ADDED lines the quick-find TO-only line occurs 1 time and the
+        guides TO-only line occurs 1 time.
+        No `FROM 0x` count is reported: both pairs are APPEND-shaped
+        (TO contains FROM True for each), exactly as the block states.
+    (c) `python3 -m pytest tests/docs/ -q` REAL_EXIT=0 — 295 passed.
+        Base was 295 passed. UNMOVED; the suite reads feature filenames, so a new
+        guide row does not add a case.
 
-    prose_slips MEASURED base bytes: 31337     (measured at C1 620a0343, not taken from the block)
-    one newline separator          : 1
-    SLIPS25 append unit bytes      : 597       (slice 596 + nl)
-    sum                            : 31935
-    committed bytes                : 31935
-    RECONSTRUCTS, base PREFIX, unit SUFFIX: True
-    unchanged at C4: True
+G6 THE REPAIR IS A DOCSTRING AND NOTHING ELSE, at C4 — exit 0.
+    (a) `python3 -m ruff check packages/orchestration/hunk_repair_findings.py`
+        REAL_EXIT=0 — "All checks passed!"
+    (b) PAIRCALLER-FROM occurs 0 times, PAIRCALLER-TO occurs exactly 1 time.
+        (TO contains FROM False at base, so the pair is a REWRITE and the 0x
+        count is attainable — measured, not assumed.)
+    (c) AST READING: 3 docstring constants blanked in each tree; `ast.dump`
+        lengths 3753 and 3753; the two dumps EQUAL True.
+    (d) STRONGER READING: substituting PAIRCALLER-TO back to PAIRCALLER-FROM in
+        the committed file reproduces the `de2dc16d` blob BYTE FOR BYTE — True.
+        That proves the pair is the ONLY change to the file, not merely that no
+        statement moved.
 
-### G3 THE RECORD APPEND, at C2 — REAL_EXIT=0
+G7 THE CLAIM IS GONE, READ RATHER THAN COUNTED, at C4 — exits 1 and 0.
+    Command: `git grep -c -F -e 'NO CALLER YET' HEAD -- packages apps tests docs`
+      REAL_EXIT=1, no output — 0 matching lines over tracked content.
+    POSITIVE CONTROL:
+      `git grep -c -F -e 'ITS CALLER IS THE BUILDER PROMPT' HEAD -- packages apps tests docs`
+      REAL_EXIT=0 — `HEAD:packages/orchestration/hunk_repair_findings.py:1`,
+      exactly one hit. The sweep therefore REACHES the repaired file, so the zero
+      above is an absence and not a miss.
+    THE READING HALF — all three files read in full:
+      `packages/orchestration/hunk_repair_findings.py` — NO. Its caller clause now
+        names `pingpong_loop.py`, `render_rejection_findings` and
+        `compose_builder_prompt`; its one remaining DELIBERATE ABSENCE ("it never
+        renders what was APPROVED") scopes a different feature and asserts nothing
+        about an unwired hop.
+      `packages/orchestration/hunk_ledger.py` — NO. Its two DELIBERATE ABSENCE
+        paragraphs state a present-tense import constraint (it must not drag
+        `hunk_apply.py` behind the write door) and a purity claim; line 108's "T003
+        quotes it into the next repair prompt" describes a route that now EXISTS
+        and is not an absence claim.
+      `packages/orchestration/hunk_approval.py` — NO. Its DELIBERATE ABSENCE
+        paragraph says this module applies nothing and decides only coherence,
+        which is a scope statement about itself; nothing in it calls any hop of the
+        decision-to-prompt route unwired, uncalled or still to come.
 
-    MEASURED base bytes      : 1602790        (measured at C1 620a0343)
-    one newline separator    : 1
-    RECORD25 append unit     : 8215
-    sum                      : 1611006
-    committed bytes          : 1611006
-    ARITHMETIC RECONSTRUCTS  : True
-
-    base is a byte PREFIX    : True
-    unit is an exact SUFFIX  : True
-    the joint is exactly one newline: True
-    tail after base+1 == unit: True
-
-    N COUNTED from the slice : 3
-    unit 0 len 4333 == slice para 0 len 4333 : True | head: Gate: F033 R24 — THE JOB-LEVEL CALLER SUPP
-    unit 1 len 1437 == slice para 1 len 1437 : True | head: Done: R-0748 — THE FALSE CLAUSE IS GONE FR
-    unit 2 len 2440 == slice para 2 len 2440 : True | head: - R-0749 — Low, THE CLAIM R-0747 AND R-074
-    ALL N UNITS EQUAL IN ORDER: True
-
-    FIRST appended paragraph span: [ 1602791 , 1607124 )
-    flip offset                  : 1604957
-    offset lies INSIDE that span : True
-    byte before flip / after flip: b' ' -> b'\x00'
-    reader A accepts unflipped   : True
-    reader B accepts unflipped   : True
-    reader A REJECTS flipped     : True
-    reader B REJECTS flipped     : True
-
-Reader A is the arithmetic + prefix + exact-suffix reader; reader B compares the
-file's last N blank-line units against the slice's paragraphs in order. They are
-independent and both reject the flipped bytes.
-
-### G4 THE LEDGER — REAL_EXIT=0
-
-    base d81acca5 | registered lines 309 distinct 309 | Done lines 53 distinct 51 | Landed 20 | Landed R-0749 0 | Landed R-0748 1 | Gate F033 R24 0 | OPEN 258
-    C2   8c5ecfdb | registered lines 310 distinct 310 | Done lines 54 distinct 52 | Landed 20 | Landed R-0749 0 | Landed R-0748 1 | Gate F033 R24 1 | OPEN 258
-    C4   9e84514a | registered lines 310 distinct 310 | Done lines 54 distinct 52 | Landed 21 | Landed R-0749 1 | Landed R-0748 1 | Gate F033 R24 1 | OPEN 258
-
-    ADDED registered id at C2 : ['R-0749']
-    ADDED resolved id at C2   : ['R-0748']
-    Landed R-0748 still standing: True
-
-The open set is 258 at all three revisions, which is what the block predicted:
-the registration of R-0749 and the resolution of R-0748 both land in C2, so the
-+1 and the -1 cancel inside one commit and the intermediate value at C2 is 258
-rather than 259. Registered distinct 309 -> 310; `Done:` 53 lines over 51
-distinct -> 54 over 52; `Landed:` 20 -> 21; `Gate: F033 R24 — ` 0 before C2 and
-exactly 1 after.
-
-### G5 THE REPAIR IS A DOCSTRING AND NOTHING ELSE, at C4
-
-(a) `python3 -m ruff check packages/orchestration/pingpong_loop.py` — REAL_EXIT=0
-
-    All checks passed!
-
-(b) and (c) — REAL_EXIT=0
-
-    PAIRROUTE-FROM occurrences: 0 (required 0)
-    PAIRROUTE-TO   occurrences: 1 (required exactly 1)
-
-    docstrings blanked, base: 82 | C4: 82
-    ast.dump length base: 477810
-    ast.dump length C4  : 477810
-    DUMPS EQUAL         : True
-
-    red control, literal renamed in 1 place(s)
-    CONTROL dump equals base (must be False): False
-
-The red control renames the `builder_directive` segment literal and the reading
-flips to False, so the AST gate discriminates rather than passing on everything.
-
-SPEC A1 containment, re-measured here: `TO contains FROM: False`, so it is a
-REWRITE. FROM occurred exactly ONCE in the target before the edit (1259 slice
-bytes, 1260 in the file with its terminating newline, 17 lines) and 0 times
-after; TO occurs exactly 1 time after. Target 198871 -> 198786 bytes.
-
-### G6 THE CLAIM IS GONE, SWEPT SEMANTICALLY, at C4
-
-The command form, run once per string over TRACKED content:
-
-    git grep -c -F "<string>" -- packages apps tests docs
-
-    "no round has wired"            -> no match, REAL_EXIT=1, count 0
-    "ONE HOP STILL MISSING"         -> no match, REAL_EXIT=1, count 0
-    "this segment never registers"  -> no match, REAL_EXIT=1, count 0
-    "persists no decision"          -> no match, REAL_EXIT=1, count 0   (R-0748's own predicate, re-measured at the commit that resolves it)
-
-POSITIVE CONTROL, so the sweep is not vacuous — the same command at the base
-commit finds all three of the retired strings, each once, in the repaired file:
-
-    git grep -c -F "no round has wired" d81acca5 -- packages apps tests docs
-      d81acca5:packages/orchestration/pingpong_loop.py:1        REAL_EXIT=0
-    git grep -c -F "ONE HOP STILL MISSING" d81acca5 -- packages apps tests docs
-      d81acca5:packages/orchestration/pingpong_loop.py:1
-    git grep -c -F "this segment never registers" d81acca5 -- packages apps tests docs
-      d81acca5:packages/orchestration/pingpong_loop.py:1        REAL_EXIT=0
-
-THE READING HALF. `git grep -n -F "hunk_ledger" -- packages apps` (REAL_EXIT=0)
-returns 63 hits across 7 files. Every hit that is a COMMENT or DOCSTRING rather
-than code, read and reported, with whether it asserts the hop is unwired:
-
-- `hunk_decision_record.py:28,31,36` — the module docstring's dependency and
-  routing paragraphs; they name `hunk_ledger` as a MODULE a reader should go to
-  for the record's shape. Does NOT assert the hop is unwired.
-- `hunk_decision_record.py:45` — states that
-  `load_latest_hunk_ledger_from_metadata` is the one TOTAL reader and answers an
-  empty ledger for unreadable input. Does NOT assert the hop is unwired; it
-  describes the reader that the now-wired job-level caller uses.
-- `hunk_decision_record.py:68` — the Public API list line for that reader.
-  Does NOT assert the hop is unwired.
-- `hunk_decision_record.py:109,111` — the comment on `_LEDGER_ROWS_KEY`,
-  explaining why the key name is re-stated rather than imported. Does NOT assert
-  the hop is unwired.
-- `hunk_decision_record.py:143` — `_known_hunk_ids`' docstring, on the order
-  `build_hunk_ledger` walks. Does NOT assert the hop is unwired.
-- `hunk_decision_record.py:275` — `_parsed_decision_stamp`'s docstring, on
-  keeping the structural and parse guards separate. Does NOT assert it.
-- `hunk_decision_record.py:308,318` — `load_latest_hunk_ledger_from_metadata`'s
-  docstring, on the rebuild being `import_hunk_ledger`'s and on totality. Does
-  NOT assert it.
-- `hunk_ledger.py:58,59,60,95` — Public API list lines and the comment on the
-  four exported keys. Do NOT assert it.
-- `hunk_ledger.py:315,324,325,337` — `import_hunk_ledger`'s docstring, on the
-  key rename, the round trip and the two separate guards. Does NOT assert it;
-  it says the rebuild is "what makes a decision already recorded on a job usable
-  by the renderer", which is now true end to end.
-- `hunk_repair_findings.py:6` — the module docstring's WHY paragraph, pointing
-  at where the verbatim rule comes from. Does NOT assert it.
-- `hunk_repair_findings.py:22,24` — SEE THE FLAG BELOW. The DELIBERATE ABSENCE
-  paragraph these two hits sit inside ends, at lines 25-26, with "and has NO
-  CALLER YET — the round that wires its output into the next builder prompt
-  follows this one." That IS an assertion that a hop is unwired, and it is FALSE
-  at C4.
-- `hunk_repair_findings.py:33` — the totality rule, cross-referencing siblings.
-  Does NOT assert it.
-- `hunk_repair_findings.py:55` — the naming convention comment. Does NOT.
-- `hunk_repair_findings.py:70,72` — `_total_text`'s docstring, on re-stating a
-  private guard. Does NOT.
-- `hunk_repair_findings.py:122` — the VERBATIM LINE comment. Does NOT.
-- `pingpong_loop.py:884,885` — `compose_builder_prompt`'s parameter paragraph,
-  on what `hunk_ledger` is and why it is typed `Any`. Does NOT assert it.
-- `pingpong_loop.py:897,904,908` — the REPAIRED paragraph. It now states the
-  route as it is and names `d81acca5` as the commit its reading was taken at.
-  Does NOT assert it; it asserts the opposite, correctly.
-- `pingpong_loop.py:972-985` (the comment block above and below line 977) — why
-  the render happens once and why the emptiness test is the one guard. Does NOT.
-- `pingpong_loop.py:1029` — `build_builder_prompt`'s docstring, that
-  `hunk_ledger` is forwarded unchanged. Does NOT.
-- `pingpong_loop.py:2618` — `run_pingpong`'s docstring, that the loop forwards
-  the value unchanged and "a caller holding the job is what turns a stored
-  decision into this argument". Does NOT assert the hop is unwired — it names
-  the caller's role without claiming the caller is absent.
-- `pingpong_job.py:1603,1622` — `_recorded_hunk_ledger_for_task`'s docstring,
-  which opens "THIS IS THE LAST HOP of F033's rejected-hunks route". Does NOT
-  assert it; it is the wiring itself, documented.
-
-NOTE, for completeness rather than as a defect: the R-0749 registration and the
-`Done: R-0748` paragraph written this round QUOTE the three retired strings, but
-they live in `.agent/live_review.md`, which is outside the four swept trees. The
-sweep's scope and the record's append-only rule do not collide.
-
-### G7 SUITES AND STRUCTURE, at C4
-
-Serially, in the primary checkout:
-
-    python3 -m pytest tests/orchestration/test_builder_prompt_hunk_rejections.py -q   16 passed   REAL_EXIT=0
-    python3 -m pytest tests/orchestration/test_builder_prompt_golden.py -q            21 passed   REAL_EXIT=0
-    python3 -m pytest tests/orchestration/test_pingpong.py -q                         34 passed   REAL_EXIT=0
-    python3 -m pytest tests/cli/test_golden_path.py -q            (canary)            42 passed   REAL_EXIT=0
-
-    git status --porcelain        -> EMPTY, REAL_EXIT=0
-
-    per-commit insertions C0a..C4 -> 301, 266, 20, 6, 2, 11; every one under 500
-
-    git diff --name-only d81acca5..9e84514a   REAL_EXIT=0
-      .agent/authored/f033-r25.md
-      .agent/last_block.md
-      .agent/live_review.md
-      .agent/plan.md
-      .agent/prose_slips.md
-      packages/orchestration/pingpong_loop.py
-
-    Path set == change set minus `.agent/handoff.md`, in BOTH directions: 6 paths
-    measured, 6 paths declared, no path in one and not the other.
+G8 SUITES AND STRUCTURE, at C4 — all exit 0. Run SERIALLY, one command each.
+    `python3 -m pytest tests/orchestration/test_hunk_repair_findings.py -q`
+        REAL_EXIT=0 — 17 passed
+    `python3 -m pytest tests/orchestration/test_builder_prompt_hunk_rejections.py -q`
+        REAL_EXIT=0 — 16 passed
+    `python3 -m pytest tests/docs/ -q`
+        REAL_EXIT=0 — 295 passed
+    `python3 -m pytest tests/cli/test_golden_path.py -q`  (canary)
+        REAL_EXIT=0 — 42 passed
+    `git status --porcelain` — output `''`, EMPTY True.
+    PER-COMMIT INSERTIONS, C0a through C4, every one single-parent:
+        e47370ef 437 · 0bbffec5 345 · 8f2cfe7d 16 · 0efdcba2 4 · 500ef378 107 ·
+        3fe5db02 7. Every commit under 500 True.
+    PATH SET over `de2dc16d`..C4 EQUALS the change set minus `.agent/handoff.md`
+    in BOTH directions: `measured - declared` [] and `declared - measured` [].
 
 ## Authored-text proofs
 
-Applied this round, all lifted from the COMMITTED `.agent/authored/f033-r25.md`
-by marker extraction rather than retyped, so each is byte-identical to the block
-by construction:
+Nine slices were applied and each was EXTRACTED from the committed
+`.agent/authored/f033-r26.md` by script — no slice was retyped at any point.
+Extraction asserted exactly one `<<<BEGIN` and one `<<<END` marker per name.
 
-| Text | Bytes | sha256 | Result |
-|------|-------|--------|--------|
-| PLAN25 | 2328 | bb2145f08957f8388e51c9aad44fa7662ffd8dc569ca980e091dd21b93233f1a | `.agent/plan.md` == slice + one newline, True |
-| RECORD25 | 8214 | 6f1071442c8c215faf73aa8866e180a13f06d71f1362efd708dbf792eee41354 | exact SUFFIX of `.agent/live_review.md` at C2, True |
-| SLIPS25 | 596 | ae9d411373cf677e1f2e9944abf43682f10aeeaaceb6c5dba688e47e5158c460 | exact SUFFIX of `.agent/prose_slips.md` at C3, True |
-| PAIRROUTE-FROM | 1259 | 8c49ef10555033cc241380b75f4784cb24445fcd09134fcc8c6f14ab1db1735c | 1 occurrence before C4, 0 after |
-| PAIRROUTE-TO | 1174 | 52f79e69e2270876f77423a8deb880fd5d3454cf7923df91991c622664d81544 | 0 occurrences before C4, exactly 1 after |
-| `Landed: R-0749` line | 162 | — | lifted from the block's indented code span, 4-space indent stripped; marker asserted unique |
+| Slice | bytes | lines | disk-to-disk result |
+|-------|-------|-------|---------------------|
+| PLAN26 | 2394 | 45 | `.agent/plan.md` byte-EQUAL, G2 |
+| RECORD26 | 7077 | 3 (2 paragraphs) | exact SUFFIX of `.agent/live_review.md` at C2, G3 |
+| GUIDE | 5145 | 105 | new file byte-EQUAL, G5(a) |
+| PAIRQUICK-FROM | 94 | 1 | 1x in `docs/README.md` at C3, G5(b) |
+| PAIRQUICK-TO | 194 | 2 | TO-only line 1x among C3's added lines, G5(b) |
+| PAIRGUIDES-FROM | 146 | 1 | 1x in `docs/README.md` at C3, G5(b) |
+| PAIRGUIDES-TO | 293 | 2 | TO-only line 1x among C3's added lines, G5(b) |
+| PAIRCALLER-FROM | 585 | 7 | 0x at C4, G6(b) — matches the block's stated 585 bytes over 7 lines |
+| PAIRCALLER-TO | 746 | 9 | 1x at C4, G6(b) |
 
-Transport: `.agent/authored/f033-r25.md` and `.agent/last_block.md` both carry
-sha256 `88dd0980…3323ab` at 25113 bytes, equal to each other and equal to the
-digest the delegation declared. `.remedy-wt/f033-r25-block.md` was readable, so
-nothing was retyped.
+The SPEC A2 `Landed:` line was likewise extracted from the committed block by
+matching its indented line and stripping exactly the 4-space code-block indent,
+asserting a unique candidate and that no indent remained — 165 bytes.
 
-## Item status
-
-| Item | Status | Reason |
-|------|--------|--------|
-| C0a save the block to `.agent/authored/f033-r25.md` | done | `shutil.copyfile`; digest matches the declared original |
-| C0b mirror the same bytes into `.agent/last_block.md` | done | copied from the saved file, not from the source |
-| C1 rewrite `.agent/plan.md` from PLAN25 | done | byte-equal, 43 lines |
-| C2 append RECORD25 to `.agent/live_review.md` | done | G3 green, N=3 |
-| C3 append SLIPS25 to `.agent/prose_slips.md` | done | reconstructs 31337 + 1 + 597 = 31935 |
-| C4 SPEC A repair + PAIR-ROUTE + the `Landed: R-0749` line | done | one commit, both paths |
-| SPEC A1 apply PAIR-ROUTE, report both counts | done | FROM 0, TO 1 |
-| SPEC A2 change nothing else in that file | done | AST dumps equal at 477810 bytes each |
-| SPEC A3 the single `Landed:` line, no `Done:` paragraph | done | no `Done:` written by this worker |
-| C5 rewrite `.agent/handoff.md` | done | this file |
-| G1 TRANSPORT | done | REAL_EXIT=0 |
-| G2 THE PROSE FILES | done | REAL_EXIT=0 |
-| G3 THE RECORD APPEND | done | REAL_EXIT=0 |
-| G4 THE LEDGER | done | REAL_EXIT=0 |
-| G5 DOCSTRING AND NOTHING ELSE | done | REAL_EXIT=0 both halves |
-| G6 THE CLAIM IS GONE | done | four counts 0; the READING half surfaced one stale claim, flagged below |
-| G7 SUITES AND STRUCTURE | done | four suites REAL_EXIT=0, tree clean, path set equal |
-| R-0749 | landed | the repair is in, its `Landed:` line is in |
-| Push | done | branch pushed, no PR |
+Transport comparison for the block itself: `.remedy-wt/f033-r26-block.md`,
+`.agent/authored/f033-r26.md` and `.agent/last_block.md` are all 30483 bytes at
+sha256 `41ff9a4b…08283e`, byte-equal to each other and to the digest the reviewer
+stated. Reading `.remedy-wt/` was NOT denied to this worker, so the typed-block
+fallback was not used.
 
 ## Deviations & assumptions
 
-1. NO DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE. Six commits, C0a, C0b,
-   C1, C2, C3, C4, C5 — exactly the Bundle, in order, with C4 carrying both of
-   its ordered paths in one commit. No extra commit, none dropped, none
-   reordered. No path outside the change set was written.
-
-2. FLAG, NOT A REPAIR — A SECOND STALE "IT IS NOT WIRED YET" CLAIM, FOUND BY
-   G6's READING HALF AND LEFT IN PLACE ON PURPOSE.
-   `packages/orchestration/hunk_repair_findings.py`, lines 20-26, ends its
-   DELIBERATE ABSENCE paragraph with: "and has NO CALLER YET — the round that
-   wires its output into the next builder prompt follows this one." That is
-   FALSE at C4 and has been false since round 21:
-   `packages/orchestration/pingpong_loop.py:34` imports
-   `render_rejection_findings` and line 977 calls it, measured with
-   `git grep -n "hunk_repair_findings\|render_rejection_findings" -- packages apps`
-   at REAL_EXIT=0.
-   WHY IT WAS NOT FIXED: `hunk_repair_findings.py` is NOT in this round's change
-   set, Constraint 5 forbids touching any path outside it, and the delegation
-   forbids repairing on the worker's own initiative. It is reported instead.
-   WHY IT MATTERS BEYOND ITSELF: it is the SAME defect class as R-0749 — a
-   paragraph that was true when written and was falsified by a later round that
-   never swept the prose naming the hop it completed. R-0749's resolution
-   predicate is worded over "the job-level `hunk_ledger` hop", and this claim is
-   about a DIFFERENT hop (the loop-level one, `hunk_repair_findings` into
-   `compose_builder_prompt`), so on a literal reading the predicate still holds
-   and this is a fourth instance rather than a miss. The reviewer owns that call;
-   the worker's job was to read and report, which is what G6's reading half asked
-   for. If it is to be a finding, the fix is one paragraph in one file.
-
-3. `.agent/context.md` and `.agent/decisions.md` were NOT updated. Neither is in
-   the change set, and this round changed no scope, no assumption, no constraint
-   and made no technical decision — it applied a reviewer-authored docstring
-   repair and three reviewer-authored prose slices. Declared here because the
-   Commit Gate asks the question at every commit.
-
-4. `docs/` was NOT touched, as Constraint 5 orders. This round changed no built
-   behaviour — one docstring paragraph moved and the AST is byte-identical — so
-   the AGENTS.md documentation triggers do not fire on it. The `docs/` guide for
-   `remedy patch approve-hunks` remains the NEXT round's work.
-
-5. The sandbox denials named in Constraint 6 held as described. Every proof was
-   run as `python3 -B <path>` over a script under `.remedy-wt/`, and every REAL
-   exit code came from `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with no pipe. One
-   `Bash` call was refused outright by the harness before any of that — a
-   compound `ls ... 2>&1; echo ...; ls ...; git log ...` line — and was replaced
-   by separate simple calls. Nothing was worked around; the denial was respected.
-
-6. Constraint 7 was applied throughout: every absence reading of this round was
-   taken with `git grep` over TRACKED content, never with a plain recursive grep.
-   That is the round-24 lesson recorded in SLIPS25, and it is also why the
-   positive control at `d81acca5` was added — a tracked-content sweep that finds
-   nothing proves nothing until it is shown to reach the file.
-
-7. Constraint 2's warning was heeded: the bases for both appends were
-   RE-MEASURED at the commit they were appended at (`.agent/live_review.md`
-   1602790 and `.agent/prose_slips.md` 31337, both at C1 `620a0343`), not taken
-   from the block. Both matched the block's numbers, so there is no discrepancy
-   to declare — only the measurement.
+1. NO DEPARTURE FROM THE ORDERED COMMIT SEQUENCE. The bundle's seven items were
+   executed in order as seven single-parent commits — C0a, C0b, C1, C2, C3, C4,
+   C5. Nothing added, nothing dropped, nothing reordered.
+2. ONE COMMAND WAS RE-RUN FOR A CLEAN EXIT CODE. `tests/docs/` was first run at
+   C3 through a pipe to `tail`, which constraint 7 forbids for a REAL exit code.
+   It was immediately re-run unpiped, redirecting to a file, and only the unpiped
+   REAL_EXIT=0 is reported. No result changed; the piped run is disclosed because
+   it happened.
+3. `tail -1` ON FOUR FILES AT ONCE was refused by the harness ("option used in
+   invalid context"). The four suite result lines were read with a short
+   `python3 -B -c` instead. No workaround of the guard was attempted.
+4. THE POSITIVE CONTROL IN G7 WAS RUN AGAINST `HEAD` RATHER THAN THE WORKING
+   TREE — `git grep ... HEAD -- packages apps tests docs`. This is strictly
+   stronger for the gate's purpose: it reads COMMITTED tracked content at C4
+   rather than whatever is on disk. `git status --porcelain` is empty, so the two
+   agree anyway.
+5. NO DEFECT WAS FOUND OUTSIDE THE CHANGE SET this round. The round-25 worker's
+   escapee — the fourth instance of the R-0747 claim — is the one this round
+   repaired, and G7's reading half over the three named modules found no fifth.
+   Reported as an assumption rather than a proof: the reading covered the three
+   files the block named, not all ten modules of the feature; the reviewer swept
+   the class across all ten at `de2dc16d` and this round changed only one of them.
+6. NO GATE WAS RED, so the "report it and stop" branch was not taken and no
+   repair was made on this worker's own initiative.
+7. Scratch scripts were written under the gitignored `.remedy-wt/` and run as
+   `python3 -B <path>`, per constraint 7 and the self-drive scratch rule. None is
+   tracked; `git status --porcelain` is empty.
 
 ## Next
 
-The `docs/` round: write the operator-facing guide for
-`remedy patch approve-hunks` under `docs/guides/`, register it in the
-`docs/README.md` index in the SAME commit, and gate it with
-`python3 -m pytest tests/docs/ -q` beside the canary. Before planning it, the
-reviewer should settle deviation 2 above — whether the stale "NO CALLER YET"
-paragraph in `packages/orchestration/hunk_repair_findings.py` earns an id or is
-folded into the docs round as a one-paragraph repair.
+The reviewer books the round-26 verdict. R-0749 is now landed in BOTH of its
+instances — the loop docstring at round 25 and the renderer docstring at C4 of
+this round — so the next round's FIRST commits should carry the reviewer's
+`Done: R-0749` resolution alongside their own work, never as a round of its own.
+After that: the integration-gate round per docs/agents/integration_gate.md, then
+the closure sequence and its pull request.
