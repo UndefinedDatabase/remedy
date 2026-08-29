@@ -1,177 +1,272 @@
-# Handback — F033 · SESSION 4 CLOSE · rounds 13 through 16
+# Handback — F033 · ROUND 17 · the tasks-card row learns the partial apply state
 
-> Written by the REVIEWER at the close of session 4 and applied by a worker,
-> because the reviewer writes no work-tree file itself. It carries the round 16
-> verdict and two reviewer prose slips. Operator amendment amend0827 rule 1: a
-> verdict committed and pushed HERE is persisted, and is booked into
-> `.agent/live_review.md` in the FIRST COMMIT of the next round that is happening
-> anyway — never in a round of its own.
+> Written by the WORKER of round 17. The reviewer writes the verdict; this file
+> reports what was run and what it printed. This round registered NO finding and
+> resolved NONE: it wrote no `Done:` and no `Landed:` line.
 
 ## Session
 
-SESSION 4 of feature F033 · rounds 13, 14, 15 and 16 delegated · rounds so far 16.
-The NEXT session is SESSION 5 of 7 against the amend0827 rule 6 soft limit.
-The soft limit is NOT reached: 16 rounds of 25, 4 sessions of 7.
+SESSION 5 of feature F033 · round 17 · rounds so far 17.
+The soft limit is NOT reached: 17 rounds of 25, 5 sessions of 7.
 
 ## Fortschritt
 
-~88 % (T001 and T002 complete: identity · decision · subset · apply ·
-failed-rollback truth · ledger · recorder · envelope seam · one evidence-directory
-rule · the CLI command · the write door. T003 open: the partial apply truth landed
-with its first surface; the node glyph, the report line and the rejection-to-repair
-injection remain) — Schätzung.
+~90 % (T001 and T002 complete. T003: the apply fold's partial truth and the popover
+label landed in round 16; THIS round landed the second of the three surfaces R-0738
+names — the tasks-card row's tile and status text. The report line and the
+rejection-to-repair injection remain, so R-0738 STAYS OPEN) — Schätzung.
 
 ## Range
 
-`d526dfb5`..`c7dc3cc07ffb000da337cba2390c6bcb85b36ee7` on branch
-`feature/f033-hunk-approval-v2`, pushed; `origin/feature/f033-hunk-approval-v2`
-is at the same commit. 21 files, 3876 insertions and 509 deletions over the
-session. Every round was gated by the reviewer, which re-ran each round's own
-gates from scripts of its own, reproduced every ordered reading, and re-ran every
-mutation with its own anchors in its own disposable worktree before writing a
-verdict.
+Review of `5f0273d8`..`e0e2d12f` for the gated work — every gate below ran at a
+commit no later than C5 — plus the two commits that cannot be inside it: C6, which
+writes this file, and C7, which records the real push outcome after the push.
+Branch `feature/f033-hunk-approval-v2`.
 
-## Verdicts
+## Bundle item status
 
-| Round | Subject | Verdict | Ledger entry |
-|-------|---------|---------|--------------|
-| 13 | the shared evidence-directory resolver | PASS | `Gate: F033 R13` at `096b8539` |
-| 14 | the CLI command and its handler | PASS WITH RISKS | `Gate: F033 R14` at `bd83cedb` |
-| 15 | the write door, and R-0744 | PASS | `Gate: F033 R15` at `807f6f25` |
-| 16 | partial apply state becomes tellable | PASS | NOT YET BOOKED — see below |
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a save the block to `.agent/authored/f033-r17.md` | done | |
+| C0b mirror it into `.agent/last_block.md` | done | |
+| C1 `.agent/plan.md` <- PLAN17 | done | |
+| C2 `.agent/live_review.md` <- RECORD17 | done | |
+| C3 `.agent/prose_slips.md` <- SLIPS17 | done | |
+| C4 the tasks-card tile and status text (SPEC A, SPEC B) | done | |
+| C5 the contract test (SPEC C) | done | |
+| C6 `.agent/handoff.md` <- this handback | done | |
+| C7 `.agent/handoff.md` <- the push outcome | done | recorded after the push |
 
-## Round 16 verdict — PASS, and it is not yet in the ledger
+## Commits
 
-The next round books it. All eight gates were re-executed by the reviewer at
-`c7dc3cc0` and every ordered reading reproduced. TRANSPORT: the C0a blob is 30868
-bytes at sha256 `8fcdfcd2…df874d`, EQUAL to the reviewer's own scratchpad
-original, with ONE blob id at C0b — a chain walking the saved copy, its mirror and
-the working copy, which is what this workflow can measure and is not a claim about
-the emitted bytes. THE RECORD APPEND at `807f6f25` reconstructs 1535259 plus one
-newline plus 7464 to 1542724, the committed blob exactly, base a byte PREFIX, N
-COUNTED at 3, the last three blank-line units equal to the slice's paragraphs IN
-ORDER, and a negative control at byte 1537103 — proved to lie inside the FIRST
-appended paragraph, spanning 1535260 to 1538947 — rejected by BOTH readers. THE
-LEDGER: registered 305 to 306 with the ADDED id exactly `R-0745`; `Done:` 49 lines
-over 47 distinct to 50 over 48 with the ADDED resolved id exactly `R-0744` and the
-`Landed: R-0744` line still standing beside its new `Done:` paragraph; `Landed:`
-17 UNMOVED, this round writing none; `Gate:` 132 to 133 with `^Gate: F033 R15 — `
-exactly 1; `DECISION F033 D` 4 UNMOVED; the open set 258 at BOTH; and `- R-0738`
-still registered with no `Done:` line, which is correct — this round ADVANCED that
-finding and did not resolve it. THE PROSE FILES: `.agent/plan.md` byte-EQUAL to
-its slice at 2453 bytes over 44 lines, under the 50-line cap; `.agent/prose_slips.md`
-reconstructs 24266 plus one newline plus 715 to 24982. THE FOLD: the shipped apply
-fold agrees or says `partial`, and the reviewer traced every branch by hand,
-including the two the SPEC did not name — a task whose every change carries the
-`getattr` default reads `not_applied` exactly as before, and a task mixing
-`reverted` with that default now reads `partial` where the old membership test said
-`reverted`, which is the same defect and the same repair. The PROOF fold three
-lines above is byte-identical. THE MUTATIONS were re-run by the reviewer in its own
-disposable worktree at `c924eb41` with its OWN anchors, each asserted UNIQUE, the
-import proved to resolve inside the worktree and every file restored
-byte-identically: controls 39 and 13 at REAL exit 0; restoring the membership test
-is exit 1 at 4 failed; making the mixed arm return `applied` is exit 1 at 5 failed;
-and deleting the TSX `partial` branch is exit 1 at 4 failed — which proves the
-PYTHON contract test really reads the TypeScript, with no vitest anywhere. THE
-REVIEWER ALSO RAN A MUTATION THE BLOCK NEVER ORDERED, to test the contract test's
-own headline claim rather than take it on trust: adding a FIFTH backend label the
-popover cannot render reddens `test_the_two_sets_agree_in_both_directions`, so the
-seam guard really is derived from the fold's AST and not restated. THE SUITES were
-re-run SERIALLY in the primary checkout, every REAL exit 0: the cockpit 39, the new
-contract 13, `tests/ui_contracts/` 677 passed and 4 skipped, `test_command_channel.py`
-106, `test_patch_cmd.py` 13 and the canary 42, with `ruff` exiting 0. THE
-STRUCTURE: seven single-parent commits over the range ending at C5, of 400, 272,
-17, 6, 2, 21 and 396 insertions, every one under 500; the path set EQUALS the
-declared change set in BOTH directions; and ALL TWELVE do-not-touch paths
-byte-identical by blob id.
+Every `+/-` cell below was taken from the SAME `git diff --numstat` run G8 reports
+and compared to it cell by cell; they agree. No cell was filled from a file's own
+line count.
 
-## The worker's six deviations — all honest, and two are the reviewer's own errors
+### f0f744ba docs(f033): save the round 17 block verbatim
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f033-r17.md` | +345 -0 | C0a — the reviewer's block, byte for byte |
 
-D1 is a DEFECT IN THE REVIEWER'S BLOCK and the worker was right to declare it. The
-`ui_server.py` SPEC ordered the fold's WHY comment to QUOTE the membership test it
-replaced, and the contract-test SPEC ordered an assertion that the membership test
-is absent — a "must be absent" gate over a string the same block ordered written
-into the file it reads, which is pre-emission checklist item 2's shape arriving
-through a TEST rather than through a done-when. The worker's AST predicate is
-strictly stronger than the ordered text search and mutation (i) proves it
-discriminates. Recorded as a prose slip below.
+### ce26560a docs(f033): mirror the round 17 block into last_block
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/last_block.md` | +345 -243 | C0b — same bytes, one blob id with C0a |
 
-D6 is the second. The block's bundle ended at C6, the handback commit, while the
-push outcome can only exist after it; the worker added a C7 to record the real
-outcome rather than commit a promise. Nothing on disk is wrong and the change set
-was not exceeded — `.agent/handoff.md` is in it — but the block should have said
-where the push outcome goes. Recorded as a prose slip below.
+### 799dc2d0 docs(f033): advance the plan to round 17
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/plan.md` | +14 -11 | C1 — PLAN17 replaces the file whole (checklist item 23) |
 
-D2, D3, D4 and D5 are correct and need no action: the cockpit tests were added to
-the existing class because its chain idiom is instance helpers; the control reads
-39 because this round adds 6 to the 33 the block annotated AS A BASE reading; G8's
-path comparison cannot see `.agent/handoff.md` from a range ending at C5, which is
-checklist item 14's known shape; and no `Landed:` line was written because R-0738
-is advanced rather than resolved, which is what the block ordered.
+### 49052cf5 docs(f033): book the round 16 verdict and decision D5
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | +4 -0 | C2 — RECORD17 appended; amend0827 rule 1 |
 
-## Reviewer prose slips — for `.agent/prose_slips.md`, no id, no round of their own
+### 99e0efed docs(f033): append the two round 16 prose slips
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/prose_slips.md` | +4 -0 | C3 — SLIPS17 appended; amend0827 rule 2 |
 
-2026-08-29 · F033 R16 · The block's `ui_server.py` SPEC ordered the fold's WHY
-comment to QUOTE the membership test `if "applied" in apply_states` while its
-contract-test SPEC ordered an assertion that no membership test remains, so a text
-search would have been answered by the reviewer's own ordered comment — pre-emission
-checklist item 2's shape reaching a TEST rather than a done-when; the worker
-resolved it with an AST predicate that is strictly stronger, declared the
-disagreement, and the reviewer's mutation (i) confirms the predicate discriminates.
+### 81817cb8 feat(f033): show the partial apply state on the tasks-card row
+| Path | +/- | Reason |
+|------|-----|--------|
+| `apps/ui/src/components/panels/RightLivePanel.module.css` | +8 -0 | SPEC B — one `.checkPartial` rule and its `svg` sizing |
+| `apps/ui/src/components/panels/TaskChecklistCard.tsx` | +15 -9 | SPEC A — `iconFor` and `stateText` take the ROW and read `applyStatus` first |
 
-2026-08-29 · F033 R16 · The block's bundle ended at C6, the handback commit, and
-said nothing about where the PUSH outcome is recorded, so the worker added a C7 to
-carry the real outcome instead of committing a promise; nothing on disk is wrong
-and the change set was not exceeded, and a future block should name the commit the
-push outcome lands in rather than leaving the worker to invent one.
+### e0e2d12f test(f033): pin the tasks-card row at the partial apply seam
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/ui_contracts/test_apply_state_partial.py` | +204 -13 | SPEC C — `helper_body` generalised, two new classes, the cross-component assertion |
 
-## What this session built
+### C6 and C7 (this file)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | see below | C6 writes this handback; C7 appends the real push outcome. A handoff cannot table the commit that writes it (R-0149 pattern). |
 
-| Path | What it decides | Tests |
-|------|-----------------|-------|
-| `packages/orchestration/evidence_index.py` | WHICH directory a job's diff is read out of — one rule for the viewer and both doors | 33 |
-| `apps/cli/commands/patch.py` | the operator's CLI door: `remedy patch approve-hunks` | 13 |
-| `apps/cli/command_catalog.py` | the command's catalog entry and its UI exposure | 18 |
-| `packages/orchestration/ui_server.py` | the write door's dispatch, and the apply fold's partial truth | 12 + 39 |
-| `apps/ui/src/components/detail/DetailPopover.tsx` | the partial state's operator label | 13 |
+## External actions
 
-Findings R-0743 (Low) and R-0744 (Medium) were raised, repaired and resolved
-within this session, each proved by a COLOUR CHANGE rather than by reading the
-test. R-0745 (Low) was raised and is open. R-0738 (Medium) was ADVANCED and is
-open. The open set is 258, exactly where this session opened, because two ids were
-added and two resolved.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` -> exit 0,
+  output `[]`. No open PR; the Open PR Gate is satisfied and nothing was merged.
+- `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/r17/wt e0e2d12f`
+  -> exit 0, "HEAD is now at e0e2d12f".
+- `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/r17/wt` -> exit 0.
+  `git worktree list` afterwards shows only `/home/decodeux/Repos/remedy`.
+- `git push` — see the PUSH OUTCOME section at the bottom, written by C7.
+- No PR was created. F033 is not closed and §5 rules the PR into the closure sequence.
 
-## Verification of THIS commit
+## Verification — one line per gate, real exit codes
 
-The gates the closing block ordered: hygiene, transport, the handoff's byte
-equality, the ledger's three files byte-identical, the canary, and the structure.
+G1 HYGIENE AND THE STOP FILE — `ls -la .agent/STOP` exit 2, printing exactly
+`ls: cannot access '.agent/STOP': No such file or directory`, so the sentinel does
+not exist; `git status --porcelain` before C0a exit 0 printing NOTHING, and again
+after C5 exit 0 printing NOTHING.
 
-## Next expected action — SESSION 5, in this order
+G2 TRANSPORT — exit 0. Applied region vs the digest in each slice's own BEGIN
+marker: PLAN17 region 2660 bytes sha256 `0171904031cd5176…dac566c0a` MATCHES;
+RECORD17 last-6982-byte region sha256 `31cbb3f3a1270180…72419e30c` MATCHES;
+SLIPS17 last-959-byte region sha256 `a0a8aefa37aa9328…2b401d429` MATCHES. The C0a
+and C0b blobs are ONE id, `7258622877dfc17a9cdc8110f88c81f60647010a`, and the
+committed `.agent/authored/f033-r17.md` has sha256
+`3b932062979ba726e0f4c99a4b419f2bbf0a1d07a2634a4224cbc56fc070650c`, equal to the
+block on disk. THIS PROVES THE SAVED COPY, ITS MIRROR AND THE WORKING COPY AGREE;
+IT IS NOT A CLAIM ABOUT THE BYTES THAT WERE EMITTED.
 
-1. Read `.agent/STOP` from disk. If it exists, hand off and end (Phase 1 rule 1
-   before rule 2 — finding R-0347).
-2. Run the Open PR Gate. There was no open PR at the close of session 4, and this
-   session created none: F033 is not closed, and §5 rules the PR into the closure
-   sequence.
-3. The next round's FIRST commits book, into `.agent/live_review.md`, the round 16
-   verdict above, and append the two prose slips. Neither buys a round of its own.
-4. Then the round's real work, which is the plan's step 2: THE TWO SURFACES R-0738
-   STILL NAMES. THIS ROUND NEEDS ITS OWN GROUND-READING BUDGET, which is why
-   session 4 ended here rather than starting it. Measured by the reviewer at
-   `c7dc3cc0`: `applyStatus` is consumed by `DetailPopover.tsx` ALONE, so no node
-   glyph reads apply state today at all; the task node's glyph is driven by
-   `RemedyState` in `apps/ui/src/api/types.ts`, a CLOSED union of `done`,
-   `current`, `pending`, `blocked` and `suggested` with no partial member, so a
-   partial glyph means widening that union AND conforming to the design reference
-   this feature file's banner makes binding, including `assets_spec.md` for any
-   glyph treatment; and `packages/orchestration/run_report.py` holds NO reference
-   to apply state whatsoever, so the report line is a new read rather than a
-   changed one. Do not assume any of the three is a small edit.
-5. Only AFTER R-0738 is resolvable on all three surfaces, T003's remaining half:
-   rejection reasons quoted VERBATIM into the next repair prompt, with the trace
-   proof `docs/roadmap/features/T5_F033.md` calls acceptance material.
-6. R-0745 is open and belongs with the next work that touches the door's imports;
-   its FIX clause names two routes and recommends the transitive-closure test.
-7. The closure sequence still owes `docs/` an operator-facing description of
-   `remedy patch approve-hunks`. No round has been allowed a `docs/` path yet, and
-   the plan carries it as an explicit item so it is not discovered at closure.
+G3 THE RECORD APPEND at C2 — exit 0, all three readings. (a) BYTES: pre-commit
+blob 1542724 bytes as the block states; post-commit blob 1549707 bytes
+(1542724 + 1 + 6982) as the block states; pre is a byte PREFIX of post True;
+RECORD17 is an exact SUFFIX True; the working copy equals the committed blob True.
+(b) STRUCTURE: N COUNTED at 2 by the script; the post-commit file splits into 706
+blank-line units; the LAST 2 units equal the slice's 2 paragraphs IN ORDER True.
+(c) NEGATIVE CONTROL: the FIRST appended paragraph was measured, before flipping,
+at 0-based content span 1542725 to 1546617 — an EXACT match for the block's stated
+span — and containment was ASSERTED as 1542725 <= 1544671 <= 1546617; the byte at
+1544671 was flipped in memory from `h` to `H`; reading (a) REJECTS the flipped copy
+True and reading (b) REJECTS it True. `.agent/live_review.md` on disk was verified
+unchanged after the flip.
+
+G4 THE LEDGER after C2 — exit 0, every count as a before and an after.
+`^- R-\d+ — ` 306 before, 306 after, UNMOVED. `^Done: R-\d+ — ` 50 lines over 48
+distinct before, 50 over 48 after, UNMOVED. `^Landed: R-\d+ — ` 17 before, 17
+after, UNMOVED. `^Gate: F033 R16 — ` 0 before, exactly 1 after. Distinct
+`DECISION F033 D<n>` ids D1 D2 D3 D4 (4) before, D1 D2 D3 D4 D5 (5) after, the
+ADDED one D5. The open set, registered minus resolved, 258 before and 258 after,
+UNMOVED. `^- R-0738 — ` exactly 1 at both ends, with `^Done: R-0738 — ` 0 at both
+ends — the finding is ADVANCED, not resolved.
+
+G5 THE PROSE FILES — exit 0. `.agent/plan.md` after C1 is 2660 bytes over 47 lines,
+byte-EQUAL to PLAN17 True, under the 50-line cap AGENTS.md sets, and holds
+`## Goal` (line 6) and `## Next Steps` (line 30). `.agent/prose_slips.md` 24982
+bytes before C3 and exactly 25942 after (24982 + 1 + 959), the old bytes a PREFIX
+True and SLIPS17 an exact SUFFIX True.
+
+G6 THE MUTATIONS at `e0e2d12f`, inside the disposable worktree
+`/home/decodeux/Repos/remedy/.remedy-wt/r17/wt`, every command
+`python3 -B -m pytest tests/ui_contracts/test_apply_state_partial.py -q` run from
+the worktree root with every `__pycache__` under it purged before each run.
+UNMUTATED CONTROL FIRST: REAL exit 0, 20 passed. (i) anchor `styles.checkPartial`
+asserted to occur EXACTLY 1 time; the `iconFor` line returning that tile deleted;
+REAL exit 1, 1 failed and 19 passed, the failure being
+`test_the_card_tile_for_partial_is_not_the_done_tile` — the card TILE assertion.
+(ii) anchor `Partially applied` asserted EXACTLY 1 time; the `stateText` line
+returning it deleted; REAL exit 1, 3 failed and 17 passed —
+`test_the_card_labels_the_state_the_fold_emits`,
+`test_the_card_partial_label_is_distinct_from_every_other_state_text` and the
+cross-component `test_the_card_and_the_popover_use_one_spelling`, exactly the LABEL
+assertions and SPEC C5. (iii) anchor `apply_by_task[tid] = "partial"` in
+`packages/orchestration/ui_server.py` asserted EXACTLY 1 time and replaced by
+`apply_by_task[tid] = "applied"`; REAL exit 1, 6 failed and 14 passed — the block
+predicted MORE than its base of 2 and the measured number is 6: the two popover
+failures plus ALL FOUR card SEAM assertions, which is what proves SPEC C derives
+the emitted set from the shipped fold's AST rather than restating it. Every mutated
+file was restored and PROVED byte-identical by sha256 —
+`TaskChecklistCard.tsx` back to `9ce409621cb78969ff2fd356bbe499626150ab7056b6edc67daf17b488b36ba4`
+and `ui_server.py` back to `802856ff756d25b5c0568900aa012d1bf68f439373d1b8277a3e92d4aec9e900`;
+`git -C <worktree> status --porcelain` then printed NOTHING and the post-restore
+control re-ran at REAL exit 0, 20 passed. The worktree was removed BY ITS EXACT
+PATH and `git worktree list` shows only the primary checkout.
+
+G7 THE SUITES, run SERIALLY in the PRIMARY checkout at `e0e2d12f`, every REAL exit 0.
+`python3 -m pytest tests/ui_contracts/test_apply_state_partial.py -q` -> 20 passed,
+above its base of 13, the seven added being the three card-vacuity and four
+card-seam tests. `python3 -m pytest tests/ui_contracts/ -q` -> 684 passed, 4
+skipped, against a base of 677 passed and 4 skipped — the same seven.
+`python3 -m pytest tests/ui_server/test_dashboard_contract.py -q` -> 74 passed.
+`python3 -m pytest tests/regression/test_named_bugs.py -q` -> 64 passed, 6 skipped.
+`python3 -m pytest tests/cli/test_golden_path.py -q` -> 42 passed, the canary.
+The ruff gate exited 0 — see deviation D1 for how it was invoked.
+
+G8 THE STRUCTURE over `5f0273d8`..`e0e2d12f` — exit 0. Seven commits, every one
+SINGLE-PARENT, with insertion counts from the `+` column of `git diff --numstat`:
+345, 345, 14, 4, 4, 23 and 204, every one UNDER the 500 AGENTS.md DECISION F104 D1
+caps. The path set over the range EQUALS the block's change set MINUS
+`.agent/handoff.md` in BOTH directions: nothing in the range outside the expected
+set, nothing expected and missing. All SIXTEEN do-not-touch paths were read at both
+ends with `git rev-parse <commit>:<path>` and every pair of blob ids is EQUAL,
+including `packages/orchestration/ui_server.py` at `de8bfabb62bb…`,
+`apps/ui/src/api/types.ts` at `9e40bb480e55…` and
+`docs/ui/design_reference/assets_spec.md` at `dd37500da3c5…`.
+
+## Authored-text proofs
+
+Three slices applied, all disk-to-disk.
+- PLAN17 -> `.agent/plan.md`, whole-file replacement. The committed file is
+  byte-EQUAL to the slice extracted from `.agent/authored/f033-r17.md`: 2660 bytes,
+  sha256 `0171904031cd5176d01880c956399dfc22cea4d33a18960d3590641dac566c0a`.
+- RECORD17 -> `.agent/live_review.md`, append. The last 6982 bytes of the committed
+  file hash to `31cbb3f3a1270180fafceead40b63aa90d41ad231ac698c43c149a072419e30c`.
+- SLIPS17 -> `.agent/prose_slips.md`, append. The last 959 bytes hash to
+  `a0a8aefa37aa93283d920b8e8ab6e27bdd5c9cdfbf374b3459b6fe52b401d429`.
+- The block itself: `cmp` of `.agent/authored/f033-r17.md` against the block on disk
+  returned exit 0 with no output, at 28396 bytes and sha256
+  `3b932062979ba726e0f4c99a4b419f2bbf0a1d07a2634a4224cbc56fc070650c`, the digest the
+  round order named.
+No slice was edited. Every one was applied byte for byte.
+
+## Deviations & assumptions
+
+D1 — G7's ruff line. The block orders
+`ruff check tests/ui_contracts/test_apply_state_partial.py`. The bare `ruff`
+executable is DENIED to this session by the sandbox, so the byte-identical check was
+run through the interpreter as
+`python3 -m ruff check tests/ui_contracts/test_apply_state_partial.py`, REAL exit 0,
+printing `All checks passed!`. Same tool, same arguments, same configuration; only
+the entry point differs. Declared because it is not the literal command string.
+
+D2 — SPEC B carries two clauses that pull against each other. It orders
+`.checkPartial` to be "`.checkDone` with a blue fill … same white glyph colour" and
+in the same paragraph says "no raw hex colour is introduced". `.checkDone`'s white
+glyph colour IS the literal `#fff`. The first clause was applied literally, so
+`.checkPartial` carries `color: #fff` exactly as `.checkDone` does; the BACKGROUND is
+`var(--remedy-blue-strong)` as ordered. Measured at `5f0273d8`: `#fff` already
+occurs twice in this file (lines 122 and 169), so no colour VALUE new to the file
+enters it, and no new design token was added. If the reviewer meant the stricter
+reading, the repair is a one-line token substitution and I did not make it on my own
+authority.
+
+D3 — G3(c)'s span convention, recorded so the reviewer's re-run is not surprised
+rather than as a fault. The block states the first appended paragraph as spanning
+1542725 to 1546617. My first script measured a 1-BASED span that also counted the
+separator newline and the paragraph's own terminating newline, and printed
+1542725 to 1546619. Re-measured under the block's own convention — 0-BASED indices
+over the paragraph's CONTENT — the span is EXACTLY 1542725 to 1546617. The block is
+correct; only my first reading's convention differed, and the containment assertion
+holds under both, so the control is proved to sit where it must either way.
+
+D4 — G6 mutation (ii) was first run with `-x`, which stops after the first failure
+and printed `1 failed, 16 passed`. That number is NOT a measurement of the mutation
+and is not reported as one. The run was repeated without `-x` and the complete
+reading, `3 failed, 17 passed` at REAL exit 1, is what G6 above reports.
+
+D5 — SPEC C3 names three vacuity readings for the card and exactly three were
+written. The "the scan finds branches at all" test the popover class also carries was
+NOT added for the card, because the card's seam assertions raise by construction when
+their branch is missing — mutations (i) and (ii) show it — so a separate emptiness
+test would have been a fourth reading the block did not order.
+
+D6 — No `Done:` and no `Landed:` line was written, and no id was minted. That is
+what constraint 8 orders; it is recorded here because a reader auditing the round
+against its block should see the absence was deliberate. R-0738 stays open: the
+report line, the third surface its resolution names, is untouched.
+
+Assumption: none beyond the above. Where SPEC A, B and C were ambiguous the block's
+literal wording was applied and the disagreement declared rather than corrected.
+
+## Open findings
+
+258, UNMOVED across this round. Registered 306, resolved 48 distinct. R-0738
+(Medium) was ADVANCED to its second surface and remains open. R-0745 (Low) remains
+open and belongs with the next work that touches the door's imports.
+
+## Next
+
+The reviewer gates round 17 and writes the verdict. If it PASSES, the next round is
+the plan's step 2: THE REPORT LINE. Measured at `5f0273d8` and unchanged at
+`e0e2d12f` by G8's blob-id reading, `packages/orchestration/run_report.py` holds NO
+reference to apply state at all, so its `TaskOutcome` gains one and the fold needs a
+home both readers may import — this is a new read, not a changed one, and it is the
+LAST of the three surfaces R-0738 names. Only after it is R-0738 resolvable.
+
+## Push outcome
+
+Written by C7, after the push. See below.
