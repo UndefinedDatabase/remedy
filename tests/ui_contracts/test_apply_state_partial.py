@@ -19,6 +19,16 @@ shipped `_task_truth_maps` and collects every string literal it assigns to
 `apply_by_task[...]`, so adding a fifth state on the Python side alone fails a test
 here rather than shipping as "Unknown".
 
+THE POPOVER IS NOT THE ONLY SURFACE. `apps/ui/src/components/panels/TaskChecklistCard.tsx`
+is the tasks-card row an operator watches while a job runs, and it renders the same
+`RemedyTaskItem`. Its `stateText` used to answer "Done" for a task whose changes only
+partly applied, and its `iconFor` used to paint the done tile for it. DECISION F033 D5
+rules that row the task node's partial treatment, so this module pins the card at the
+same seam as the popover: the card labels the state the fold emits, that label is
+distinct from every other state text the card can produce, its tile differs from the
+done tile, and it is the SAME STRING the popover uses — one spelling per concept, made
+mechanical so the two surfaces cannot drift apart.
+
 Every assertion over the TSX runs on COMMENT-STRIPPED source. The helper now carries a
 WHY comment that names the very state asserted below — "Unknown", "Applied", the
 disagreement it describes — so an unstripped guard would be satisfied by the prose
@@ -33,10 +43,18 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SERVER = REPO_ROOT / "packages" / "orchestration" / "ui_server.py"
 POPOVER = REPO_ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx"
+CARD = REPO_ROOT / "apps" / "ui" / "src" / "components" / "panels" / "TaskChecklistCard.tsx"
 
 FOLD_FUNCTION = "_task_truth_maps"
 FOLD_MAP = "apply_by_task"
 HELPER = "applyStatus"
+
+# The card's two helpers, and the field they read beside the lifecycle state.
+CARD_TILE_HELPER = "iconFor"
+CARD_STATE_HELPER = "stateText"
+APPLY_FIELD = "applyStatus"
+PARTIAL = "partial"
+DONE = "done"
 
 # `if (task?.applyStatus === "<value>") return "<label>";` — the file's one branch
 # idiom, read off comment-stripped source.
@@ -44,6 +62,15 @@ RE_BRANCH = re.compile(r'task\?\.' + HELPER + r' === "([^"]+)"\)\s*return "([^"]
 RE_BRANCH_VALUE = re.compile(r'task\?\.' + HELPER + r' === "([^"]+)"')
 RE_FALLBACK = re.compile(r"return\s+(\w+);\s*\}\s*$")
 RE_UNKNOWN_CONST = re.compile(r'const UNKNOWN = "([^"]+)";')
+
+# `if (task.<field> === "<value>") return "<label>";` — the card's status-text idiom.
+RE_CARD_STATE_BRANCH = re.compile(r'if \(task\.(\w+) === "([^"]+)"\) return "([^"]+)";')
+# The unguarded label the card's status text ends in.
+RE_CARD_STATE_FALLBACK = re.compile(r'return "([^"]+)";\s*\}\s*$')
+# `if (task.<field> === "<value>") return <span className={styles.<tile>}` — its tile idiom.
+RE_CARD_TILE_BRANCH = re.compile(
+    r'if \(task\.(\w+) === "([^"]+)"\) return <span className=\{styles\.(\w+)\}'
+)
 
 
 def strip_ts_comments(text: str) -> str:
@@ -139,16 +166,18 @@ def popover_code() -> str:
     return strip_ts_comments(POPOVER.read_text())
 
 
-def helper_body(code: str) -> str:
-    """The body of `function applyStatus(...)`, brace depth respected.
+def helper_body(code: str, name: str) -> str:
+    """The body of `function <name>(...)` in `code`, brace depth respected.
 
-    Scoped rather than swept: `UNKNOWN` is returned by `testStatusLabel` and
-    `proofStatusLabel` directly below and is rendered by four `Field` call sites, so a
-    whole-file reading of the fallback would be answered by any of them and would stay
-    green with this helper's own fallback gone.
+    Scoped rather than swept: in the popover `UNKNOWN` is returned by `testStatusLabel`
+    and `proofStatusLabel` directly below `applyStatus` and is rendered by four `Field`
+    call sites, so a whole-file reading of the fallback would be answered by any of them
+    and would stay green with this helper's own fallback gone. The card has the same
+    shape — `iconFor`, `stateText` and `outcomeHint` sit one after another — which is
+    why this walker takes the function name rather than assuming one.
     """
-    match = re.search(rf"function {HELPER}\(", code)
-    assert match, f"{POPOVER.name} declares no function named {HELPER}"
+    match = re.search(rf"function {name}\(", code)
+    assert match, f"the scanned source declares no function named {name}"
     start = code.index("{", match.end())
     depth = 0
     for index in range(start, len(code)):
@@ -158,12 +187,81 @@ def helper_body(code: str) -> str:
             depth -= 1
             if depth == 0:
                 return code[start:index + 1]
-    raise AssertionError(f"the body of {HELPER} never closes in {POPOVER.name}")
+    raise AssertionError(f"the body of {name} never closes in the scanned source")
 
 
 def helper_branches() -> dict[str, str]:
     """The helper's `<backend value> -> <operator label>` map, read off its own body."""
-    return dict(RE_BRANCH.findall(helper_body(popover_code())))
+    return dict(RE_BRANCH.findall(helper_body(popover_code(), HELPER)))
+
+
+def card_code() -> str:
+    """The tasks card with its prose removed — the only form the card assertions read."""
+    return strip_ts_comments(CARD.read_text())
+
+
+def card_state_branches() -> list[tuple[str, str, str]]:
+    """`(field, value, label)` for every guarded string return in the card's stateText.
+
+    The card's branch idiom is `if (task.<field> === "<value>") return "<label>";`, and
+    the field is part of the reading on purpose: a branch on the LIFECYCLE state and a
+    branch on the APPLY state are different answers and must not be conflated here.
+    """
+    return RE_CARD_STATE_BRANCH.findall(helper_body(card_code(), CARD_STATE_HELPER))
+
+
+def card_state_fallback() -> str:
+    """The unguarded label the card's stateText ends in."""
+    body = helper_body(card_code(), CARD_STATE_HELPER).strip()
+    match = RE_CARD_STATE_FALLBACK.search(body)
+    assert match, (
+        f"{CARD.name}'s {CARD_STATE_HELPER} no longer ends in an unguarded string "
+        f"return, so the labels it can produce cannot be read off it"
+    )
+    return match.group(1)
+
+
+def card_tile_branches() -> list[tuple[str, str, str]]:
+    """`(field, value, tile class)` for every guarded tile the card's iconFor returns."""
+    return RE_CARD_TILE_BRANCH.findall(helper_body(card_code(), CARD_TILE_HELPER))
+
+
+def emitted_partial_state() -> str:
+    """The disagreement state, taken from the SHIPPED fold rather than restated here.
+
+    Every card assertion below asks the fold's own AST whether the state it pins can
+    still be produced. Rename or remove it on the Python side and these go RED rather
+    than pinning a card branch no backend value reaches.
+    """
+    emitted = fold_apply_labels()
+    assert PARTIAL in emitted, (
+        f"{FOLD_FUNCTION} in {SERVER.name} emits {sorted(emitted)} and not {PARTIAL!r}; "
+        f"the card assertions below would pin a state the backend can no longer produce"
+    )
+    return PARTIAL
+
+
+def card_label_for(state: str) -> str:
+    """The card's status text for an APPLY state, or an assertion naming what is missing."""
+    for field, value, label in card_state_branches():
+        if field == APPLY_FIELD and value == state:
+            return label
+    raise AssertionError(
+        f"{CARD_STATE_HELPER} in {CARD.name} has no branch on {APPLY_FIELD} === "
+        f"{state!r}; a task in that state keeps whatever its lifecycle state says, "
+        f"which for a finished task is 'Done' about changes that only half landed"
+    )
+
+
+def card_tile_for(field: str, value: str) -> str:
+    """The tile class the card's iconFor returns for one `<field> === <value>` branch."""
+    for found_field, found_value, tile in card_tile_branches():
+        if found_field == field and found_value == value:
+            return tile
+    raise AssertionError(
+        f"{CARD_TILE_HELPER} in {CARD.name} has no branch on {field} === {value!r} "
+        f"returning a tile; the branches it does have are {card_tile_branches()}"
+    )
 
 
 class TestTheReadersAreNotVacuous:
@@ -191,7 +289,7 @@ class TestTheReadersAreNotVacuous:
 
     def test_the_helper_scoper_returns_less_than_the_whole_module(self):
         code = popover_code()
-        body = helper_body(code)
+        body = helper_body(code, HELPER)
         assert len(body) < len(code), (
             f"helper_body returned {len(body)} characters out of {len(code)} in "
             f"{POPOVER.name}, so it is not scoping at all and the fallback reading "
@@ -257,7 +355,7 @@ class TestEveryEmittedValueHasALabel:
 
     def test_the_two_sets_agree_in_both_directions(self):
         emitted = fold_apply_labels()
-        branched = set(RE_BRANCH_VALUE.findall(helper_body(popover_code())))
+        branched = set(RE_BRANCH_VALUE.findall(helper_body(popover_code(), HELPER)))
         unlabelled = sorted(emitted - branched)
         assert not unlabelled, (
             f"{FOLD_FUNCTION} in {SERVER.name} can emit {unlabelled}, which {HELPER} in "
@@ -308,11 +406,104 @@ class TestThePartialLabelSaysSomething:
         )
 
     def test_the_helper_still_ends_in_the_fallback(self):
-        body = helper_body(popover_code())
+        body = helper_body(popover_code(), HELPER)
         fallback = RE_FALLBACK.search(body.strip())
         assert fallback and fallback.group(1) == "UNKNOWN", (
             f"{HELPER} in {POPOVER.name} must still end in `return UNKNOWN;`: an "
             f"applyStatus this component has never heard of is exactly what the "
             f"fallback is for, and the agreement test above is what keeps a value the "
             f"backend really emits out of it"
+        )
+
+
+class TestTheCardReadersAreNotVacuous:
+    """The same obligation the popover readers carry, for the second surface: without
+    these, every card assertion below could pass on prose or on a scoper that silently
+    handed back the whole module."""
+
+    def test_the_card_really_loses_text_to_the_stripper(self):
+        raw = CARD.read_text()
+        assert "//" in raw, (
+            f"{CARD.name} must keep the WHY comment the Code Discoverability "
+            f"Conventions of AGENTS.md require above {CARD_TILE_HELPER}; with no "
+            f"comment in the file the stripper proves nothing"
+        )
+        assert len(strip_ts_comments(raw)) < len(raw), (
+            f"the stripper returned {CARD.name} unchanged, so every card assertion in "
+            f"this module would be satisfied by prose rather than by code (R-0584)"
+        )
+
+    def test_the_card_tile_scoper_returns_less_than_the_whole_module(self):
+        code = card_code()
+        body = helper_body(code, CARD_TILE_HELPER)
+        assert len(body) < len(code), (
+            f"helper_body returned {len(body)} characters out of {len(code)} for "
+            f"{CARD_TILE_HELPER} in {CARD.name}, so it is not scoping at all and the "
+            f"tile reading below is a whole-file search wearing a function's name"
+        )
+        assert CARD_STATE_HELPER not in body, (
+            f"the body returned for {CARD_TILE_HELPER} reaches as far as "
+            f"{CARD_STATE_HELPER}, so it spans more than one helper and the "
+            f"neighbouring helper's returns would answer for this one"
+        )
+
+    def test_the_card_state_scoper_returns_less_than_the_whole_module(self):
+        code = card_code()
+        body = helper_body(code, CARD_STATE_HELPER)
+        assert len(body) < len(code), (
+            f"helper_body returned {len(body)} characters out of {len(code)} for "
+            f"{CARD_STATE_HELPER} in {CARD.name}, so it is not scoping at all and the "
+            f"label reading below is a whole-file search wearing a function's name"
+        )
+        assert "outcomeHint" not in body, (
+            f"the body returned for {CARD_STATE_HELPER} reaches as far as outcomeHint, "
+            f"so it spans more than one helper and the neighbouring helper's returns "
+            f"would answer for this one"
+        )
+
+
+class TestTheCardTellsThePartialStateApart:
+    """The tasks-card row is the surface an operator watches while a job runs. A task
+    whose changes disagree must not read 'Done' there, and its tile must not be the
+    done tile — DECISION F033 D5, the second of the three surfaces R-0738 names."""
+
+    def test_the_card_labels_the_state_the_fold_emits(self):
+        state = emitted_partial_state()
+        assert card_label_for(state), (
+            f"{CARD_STATE_HELPER} in {CARD.name} branches on {APPLY_FIELD} === "
+            f"{state!r} but returns an empty label for it"
+        )
+
+    def test_the_card_partial_label_is_distinct_from_every_other_state_text(self):
+        state = emitted_partial_state()
+        label = card_label_for(state)
+        others = {
+            found_label
+            for field, value, found_label in card_state_branches()
+            if not (field == APPLY_FIELD and value == state)
+        }
+        others.add(card_state_fallback())
+        assert label not in others, (
+            f"{CARD_STATE_HELPER} in {CARD.name} returns {label!r} for {state!r} and "
+            f"for another state as well, so an operator cannot tell a partially applied "
+            f"task from {sorted(others)} on the row"
+        )
+
+    def test_the_card_tile_for_partial_is_not_the_done_tile(self):
+        state = emitted_partial_state()
+        partial_tile = card_tile_for(APPLY_FIELD, state)
+        done_tile = card_tile_for("state", DONE)
+        assert partial_tile != done_tile, (
+            f"{CARD_TILE_HELPER} in {CARD.name} paints {partial_tile!r} for both "
+            f"{state!r} and the finished lifecycle state, so the row looks finished "
+            f"while only part of its changes landed — the whole of finding R-0738"
+        )
+
+    def test_the_card_and_the_popover_use_one_spelling(self):
+        state = emitted_partial_state()
+        assert card_label_for(state) == helper_branches()[state], (
+            f"{CARD.name} says {card_label_for(state)!r} where {POPOVER.name} says "
+            f"{helper_branches()[state]!r} for the same backend value; two spellings of "
+            f"one concept is exactly the drift the Code Discoverability Conventions of "
+            f"AGENTS.md forbid, and it reads to an operator as two different states"
         )
