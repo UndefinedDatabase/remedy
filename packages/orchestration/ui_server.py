@@ -529,13 +529,27 @@ def _task_truth_maps(chain: Any) -> tuple[dict[str, str], dict[str, str]]:
                     proof_by_task[tid] = "not_applicable"
                 else:
                     proof_by_task[tid] = "incomplete"
+            # Finding R-0738. The apply fold agrees or it says "partial", taking the
+            # shape of the PROOF fold three lines above: unanimity for each confident
+            # answer, one distinct state reserved for the mixed case. The membership
+            # test this replaces — `if "applied" in apply_states` — reported "applied"
+            # for a task where ONE change of eight had applied, indistinguishable from
+            # a task where all eight had, and hunk-level approval makes that mixed case
+            # the normal one. `grouped` is built by setdefault(...).append(...), so a
+            # task's list is never empty and the all() below cannot be vacuously true.
+            # ONLY the mixed case moves: the three unanimous inputs still read exactly
+            # what the old fold returned for them.
             apply_states = [getattr(c, "apply_state", "") for c in changes]
-            if "applied" in apply_states:
+            if all(s == "applied" for s in apply_states):
                 apply_by_task[tid] = "applied"
-            elif "reverted" in apply_states:
+            elif all(s == "reverted" for s in apply_states):
                 apply_by_task[tid] = "reverted"
-            else:
+            elif not any(s in ("applied", "reverted") for s in apply_states):
+                # Absorbs the getattr default "" exactly as the old `else` did: a
+                # change with no apply_state attribute is not evidence of an apply.
                 apply_by_task[tid] = "not_applied"
+            else:
+                apply_by_task[tid] = "partial"
     except (ImportError, AttributeError, TypeError):
         return {}, {}
     return proof_by_task, apply_by_task

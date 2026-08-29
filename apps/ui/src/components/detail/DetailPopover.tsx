@@ -32,10 +32,14 @@ function formatTime(iso?: string): string | null {
 // Per-task status fields. Every field falls back to "Unknown" when there is no
 // evidence — never omitted, never invented. Apply/Proof come from authoritative
 // backend truth (durable apply record + proof chain), not inferred from counts.
+// A task whose changes DISAGREE is a real state that hunk-level approval makes
+// normal, so it gets a label of its own: rendering it as "Applied" or falling
+// through to "Unknown" would both tell the operator something untrue.
 function applyStatus(task?: RemedyTaskItem): string {
   if (task?.applyStatus === "applied") return "Applied";
   if (task?.applyStatus === "reverted") return "Reverted";
   if (task?.applyStatus === "not_applied") return "Not applied";
+  if (task?.applyStatus === "partial") return "Partially applied";
   return UNKNOWN;
 }
 function testStatusLabel(task?: RemedyTaskItem): string {
