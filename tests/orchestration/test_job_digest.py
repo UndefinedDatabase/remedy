@@ -9,15 +9,21 @@ composition would prove nothing about the composition.
 
 THE ONE-SOURCE PROPERTY is the reason this module exists and it is asserted
 against ``recommended_next_action``'s own return value for the same job, never
-against a hard-coded string.  A golden would keep passing while the digest and
-the report drifted apart, which is precisely the failure F040 is built to
-prevent.
+against a hard-coded string.  A golden ALONE would keep passing while the digest
+and the report drifted apart, which is precisely the failure F040 is built to
+prevent — so the golden section at the bottom stands BESIDE that assertion and
+never in place of it (DECISION F040 D6, finding R-0754): the goldens pin the
+rendered envelope, the one-source test pins its agreement with the report, and a
+label change reddens both.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import json
+import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -490,3 +496,104 @@ def test_events_default_to_none_and_are_passed_through():
     job, _ = SHAPE_FIXTURES[BLOCKED]()
     assert build_job_digest(job) == build_job_digest(job, [])
     assert build_job_digest(job, None) == build_job_digest(job, [])
+
+
+# ---------------------------------------------------------------------------
+# (g) The stored envelope goldens — T001's "Fixture goldens exact" clause
+# ---------------------------------------------------------------------------
+#
+# DECISION F040 D6 (finding R-0754): the acceptance clause is met by ENVELOPE
+# goldens — one stored JSON per state shape, compared WHOLE against the envelope
+# the SAME fixture above builds.  They live in this module because the
+# determinism the comparison rests on comes from its two autouse fixtures, and a
+# golden that depended on a fixture it did not inherit would be a flake waiting
+# for a slow machine.
+#
+# GENERATED ONCE AND THEN FROZEN.  Nothing in this section writes into
+# GOLDEN_DIR: no write mode, no ``write_text``, no ``json.dump``, no regenerate
+# flag and no environment switch, because a golden a test re-blesses on mismatch
+# checks nothing — the rule ``test_cost_report.py`` already states for its own
+# pair.  Re-generating one is deliberately a manual act.
+
+
+GOLDEN_DIR = Path(__file__).parent / "fixtures" / "job_digest" / "golden"
+
+#: The three IDENTITIES ``_normalize`` replaces, and the placeholders they
+#: become.  An identity names WHICH job or WHICH decision; it never says
+#: anything the digest is asserting.  NOTHING MAY BE ADDED TO THIS LIST — a
+#: normalized headline, CTA word, rule id, count or urgency would make every
+#: golden below vacuous, which is the exact failure DECISION F040 D6 exists to
+#: prevent, and ``test_the_normalization_leaves_the_ctas_own_words`` is the
+#: guard that reddens when someone tries.
+JOB_ID_PLACEHOLDER = "<job-id>"
+JOB_PREFIX_PLACEHOLDER = "<job-prefix>"
+DECISION_ID_PLACEHOLDER = "td:<decision-id>"
+
+#: ``escalation.enqueue_task_decision`` mints ``td:`` followed by a hex digest,
+#: and the open-decision CTA embeds one verbatim inside its answer command.
+DECISION_ID_PATTERN = re.compile(r"td:[0-9a-f]+")
+
+
+def _normalize(envelope, job):
+    """*envelope* with its three per-build identities replaced, recursively.
+
+    RECURSIVELY, and inside strings, because the interesting text is exactly
+    where the identities hide: the blocked shape's CTA label embeds both the
+    job's first-eight prefix and a ``td:`` decision id in the answer command it
+    quotes.  A substitution that only reached top-level values would leave the
+    goldens flaky precisely at the field the acceptance criterion is about.
+
+    The full UUID is replaced BEFORE its prefix, so the prefix substitution
+    cannot eat the first eight characters of the id and leave a tail behind.
+    """
+    job_id = str(getattr(job, "id", "") or "")
+    prefix = job_id[:8]
+
+    def _replace(value):
+        if isinstance(value, str):
+            text = value.replace(job_id, JOB_ID_PLACEHOLDER) if job_id else value
+            if prefix:
+                text = text.replace(prefix, JOB_PREFIX_PLACEHOLDER)
+            return DECISION_ID_PATTERN.sub(DECISION_ID_PLACEHOLDER, text)
+        if isinstance(value, dict):
+            return {key: _replace(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [_replace(item) for item in value]
+        return value
+
+    return _replace(envelope)
+
+
+def _read_golden(shape):
+    """The stored envelope for *shape*.  READ ONLY, by construction."""
+    return json.loads((GOLDEN_DIR / f"{shape}.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("shape", SHAPES)
+def test_the_normalized_envelope_equals_its_stored_golden(shape):
+    """A golden re-blessed on every change checks nothing, so this one never is."""
+    job, events = SHAPE_FIXTURES[shape]()
+    assert _normalize(build_job_digest(job, events), job) == _read_golden(shape)
+
+
+def test_the_golden_directory_holds_exactly_one_file_per_shape():
+    """A shape added later without a golden reddens HERE, not silently nowhere."""
+    names = sorted(path.name for path in GOLDEN_DIR.iterdir())
+    assert len(names) == len(SHAPES)
+    assert names == sorted(f"{shape}.json" for shape in SHAPES)
+
+
+def test_the_normalization_leaves_the_ctas_own_words():
+    """The NARROWNESS guard: widen ``_normalize`` past the identities and this dies.
+
+    The blocked shape's label is the only published copy that carries an
+    identity, so a substitution that swallowed the CTA's wording along with the
+    ids would still satisfy the comparison above — both sides would move
+    together.  This one reads the WORDS, and asserts the placeholder is present
+    so it cannot pass on a label that was never normalized at all.
+    """
+    job, events = SHAPE_FIXTURES[BLOCKED]()
+    label = _normalize(build_job_digest(job, events), job)["primary_action"]["label"]
+    assert "Answer the open decision" in label
+    assert "remedy decision resolve" in label
+    assert DECISION_ID_PLACEHOLDER in label

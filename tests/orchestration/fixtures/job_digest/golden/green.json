@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "job_id": "<job-id>",
+  "state": "completed",
+  "headline": "The run is completed and its terminal status is all_green.",
+  "cost": {
+    "value": "not-measured",
+    "basis": "absent"
+  },
+  "ownership": [],
+  "decisions": {
+    "open_count": 0,
+    "peak_urgency": 0
+  },
+  "primary_action": {
+    "label": "Review and merge the branch",
+    "rule_id": "all-green"
+  }
+}
