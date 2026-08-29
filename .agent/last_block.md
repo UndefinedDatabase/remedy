@@ -1,6 +1,6 @@
-# F033 — Hunk-level diff approval · ROUND 4 · THE CLIENT SEAM
+# F033 — Hunk-level diff approval · ROUND 5 · CLOSING T001
 
-SESSION 1 of feature F033. Round 4, rounds so far 4.
+SESSION 2 of feature F033. Round 5, rounds so far 5.
 
 You are the WORKER for this round. AGENTS.md is the highest authority and binds
 you in full. Do not review your own work and write no verdict on it.
@@ -11,123 +11,169 @@ you in full. Do not review your own work and write no verdict on it.
    exclusive. Apply slices BYTE FOR BYTE — never reflow, re-wrap or "fix" one. If
    a slice looks wrong, apply it anyway and say so in the deviations.
 2. Delimiters are transport only. ANCHOR extraction to the NAMED delimiter at
-   line start — `<<<END RECORDF033R4`.
+   line start — `<<<END RECORDF033R5`.
 3. Every WHOLE-FILE slice ends with exactly one trailing newline.
 4. Extract every slice from the COMMITTED blob you save at C0a, never by retyping.
-5. THE TYPESCRIPT IS A SPEC, NOT A SLICE. You write it from the description.
-   Names and behaviours the SPEC fixes are binding; structure and wording are
-   yours. If the SPEC is impossible, STOP and say so rather than inventing past it.
+5. PRODUCTION TEXT IS A SPEC, NOT A SLICE. The comment repairs in §SPEC are
+   written by you from the description. The FACTS each comment must state, and
+   the false claims it must no longer state, are binding; wording and line
+   wrapping are yours. If the SPEC is impossible, STOP and say so.
 6. Guard re-expressions: the shell rejects loops, `$( )`, `${arr[0]}` and `cp` by
    FORM. Copy with `shutil.copyfile`; route measurement through Python under the
    gitignored `.remedy-wt/`, run with `python3 -B`. Invoke `npx` through Python's
    `subprocess.run`, never through `npm run`. Python 3.10 forbids a backslash
    inside an f-string expression — hoist regexes to module level.
 7. Capture REAL exit codes; piping to `tail` otherwise masks a red.
+8. Read a NON-CURRENT revision with `git show <sha>:<path>` into memory or into a
+   scratch file under `.remedy-wt/`. NEVER write a base blob over a tracked file.
 
 ## Base
 
-BASE is `51e04c89`, the round 3 handback commit, on branch
-`feature/f033-hunk-approval-v2`. Confirm with `git rev-parse HEAD` before C0a and
-STOP if it differs.
+BASE is `7434f54632e75e9d1e86044d8edc7f96c0ef0ae6`, the round 4 handback commit,
+on branch `feature/f033-hunk-approval-v2`. Confirm with `git rev-parse HEAD`
+before C0a and STOP if it differs.
 
 ## Why this round exists
 
-Round 3 made the server's hunk ids content-derived and bumped
-`DIFF_VIEW_VERSION` to 2. The client did NOT go red, and that is the problem
-rather than the reassurance: `apps/ui/src/api/diffViewModel.test.ts` builds its
-own payloads, so its `version` and `id` expectations describe a FIXTURE and never
-the server. The client is a v1-shaped consumer being handed v2 data with no test
-covering the difference.
+Round 4 passed every gate; the reviewer re-ran all eight itself and every reading
+reproduced. Its verdict is in the record slice below.
 
-Underneath that sits a real defect. `apps/ui/src/api/diffViewModel.ts` reads
+Two things it surfaced are this round's work.
 
-    id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}`,
+FIRST, round 4's deviation 3 reported a stale comment in
+`apps/ui/src/api/diffViewModel.ts` and correctly did not repair it, because that
+block's SPEC forbade touching anything outside two functions. The reviewer then
+swept the rest of the seam and found the same class in a SECOND production file:
+`packages/orchestration/hunk_identity.py`. Both still describe the world as it
+was BEFORE round 3 wired the parser. Registered below as R-0739.
 
-so when a payload carries no usable id the CLIENT INVENTS a positional one. Under
-version 1 that was harmless, because positional was the real shape. Under version
-2 it manufactures a string that sits in the same field as a content id, is
-indistinguishable from one to every consumer downstream, and can never match
-anything the server would recognise — so an approval keyed on it fails silently
-rather than loudly. DECISION F033 D2, in the record slice below, rules it.
+SECOND, and larger: T001's last item does not exist. Both
+`docs/roadmap/features/T5_F033.md` and `.agent/plan.md` order the "v1-local hunk
+lib" in the diff-repair side to retire onto `hunk_identity`. Measured at
+`7434f546`, `packages/orchestration/diff_repair.py` contains no hunk identity, no
+id field, no digest and no import of `hunk_identity`: its `RepairHunk` is
+`(path, start_line, end_line, text)` — a span of CURRENT source selected for a
+repair prompt, which has no old side to hash. `review_scope.parse_diff_line_ranges`
+turns hunk headers into line ranges and names nothing;
+`source_apply._hash_content` digests a whole FILE for an apply proof, not a hunk.
+The only importer of `hunk_identity` in the repository is `diff_parser.py`.
+There is no second hunk identity to consolidate, so the clause is discharged as
+VACUOUS rather than performed. DECISION F033 D3, in the record slice, rules it
+and the feature file records it as amendment A1.
+
+With R-0739 repaired and D3 recorded, T001 is COMPLETE and T002 opens.
 
 ## Bundle (in this order)
 
 - C0a save this block · C0b mirror it
 - C1 `.agent/plan.md`
-- C2 the round 3 verdict and DECISION F033 D2 into `.agent/live_review.md`
-- C3 the client model and its tests, together
-- C4 the handback
+- C2 the round 4 verdict, R-0739 and DECISION F033 D3 into `.agent/live_review.md`
+- C3 the staleness repair, both production files together
+- C4 the feature-file amendment
+- C5 the `Landed: R-0739` line
+- C6 the handback
 
 ## Change set — these paths and nothing else
 
-    .agent/authored/f033-r4.md
+    .agent/authored/f033-r5.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
+    packages/orchestration/hunk_identity.py
     apps/ui/src/api/diffViewModel.ts
-    apps/ui/src/api/diffViewModel.test.ts
+    docs/roadmap/features/T5_F033.md
     .agent/handoff.md
 
 This round does NOT touch `packages/orchestration/diff_parser.py`,
-`packages/orchestration/hunk_identity.py`,
-`apps/ui/src/components/diff/DiffView.tsx`, or `docs/roadmap/STATUS.md`.
+`packages/orchestration/diff_repair.py`, `apps/ui/src/api/diffViewModel.test.ts`,
+or `docs/roadmap/STATUS.md`. No behaviour changes anywhere: C3 edits COMMENT text
+only, and not one executable line.
 
-## SPEC — `apps/ui/src/api/diffViewModel.ts`
+## SPEC — the staleness repair at C3
 
-### 1. A reserved prefix, exported
+Both files below carry sentences that were true when written and were falsified
+by round 3, which wired `diff_parser.py` to `hunk_identity` and bumped
+`DIFF_VIEW_VERSION` to 2. Repair the FACTS; keep each comment's voice, its
+reading order and its surrounding structure. Change no executable line.
 
-Add an exported constant naming the prefix the client puts on an id it had to
-invent. Name it `UNIDENTIFIED_HUNK_ID_PREFIX` and give it the value
-`"unidentified:"`. A one-line WHY comment sits directly above it: a server hunk
-id is sixteen lowercase hex characters, so a prefixed string cannot be mistaken
-for one by any consumer, which is the whole point of the prefix.
+### 1. `packages/orchestration/hunk_identity.py` — the module docstring
 
-### 2. The fallback stops manufacturing a plausible id
+Three claims in the opening paragraphs are false at `7434f546`:
 
-The expression that today reads
-``id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}` `` keeps its shape and
-its purpose — every hunk still gets a DISTINCT non-empty id, because
-`defaultCollapsedHunkIds` and `toggleHunkCollapse` key a `Set<string>` on it and
-two hunks sharing an id would collapse and expand as one — but the invented value
-now carries `UNIDENTIFIED_HUNK_ID_PREFIX` ahead of the position. The positional
-part stays: it is what makes the invented ids distinct from each other.
+- that `diff_parser.py` "currently names hunks" positionally. It does not: at
+  `7434f546` that module imports `hunk_identity` and calls it for every hunk's
+  `id`.
+- that this module "IS the module `diff_parser.py`'s docstring points at when it
+  says its hunk `id` values are PROVISIONAL". `diff_parser.py`'s docstring no
+  longer says that; at `7434f546` it says hunk `id` values "are CONTENT-DERIVED
+  and carry no position at all".
+- that "The parser is not wired to this module yet — that wiring and the version
+  bump are their own change". Both landed in round 3.
 
-A real id arriving from the server passes through UNTOUCHED. Do not validate it,
-do not reformat it, do not check its length: the client is not the authority on
-what a server id looks like, and a client that rejects ids it does not recognise
-would break the next version bump for no gain.
+Rewrite those paragraphs so they state, in the present tense, that
+`diff_parser.py` calls this module for every hunk id and that `DIFF_VIEW_VERSION`
+is 2. KEEP the reason the module exists — positional ids move when a file is
+edited above them, and an operator's approval must survive that — as the WHY,
+stated as the motivation it is rather than as a description of current
+behaviour. KEEP the DELIBERATE ABSENCE paragraph, the totality paragraph and
+every sentence about purity, and keep the pointers to `diff_parser.py` and
+`diff_repair.py` that tell a searching reader where to go.
 
-### 3. What must NOT change
+The sentence "The diff-repair side will share this same function rather than
+keep a local hunk helper" is the one DECISION F033 D3 retires. Replace it with
+the measured fact: the diff-repair side holds no hunk identity to share —
+`RepairHunk` selects spans of current source and never names a hunk — so this
+module has ONE caller by design, and a reader who expected a second one should
+read amendment A1 of `docs/roadmap/features/T5_F033.md`.
 
-`readDiffEnvelope` NEVER throws, however broken the payload — the file's existing
-test says so and it stays true. No other field of the envelope moves, no
-signature changes, and nothing outside these two functions is edited.
+### 2. `apps/ui/src/api/diffViewModel.ts` — the `buildDiffRowModels` KEYS note
 
-## SPEC — `apps/ui/src/api/diffViewModel.test.ts`
+Its KEYS paragraph says the hunk-derived keys are built from an id
+`diff_parser.py` assigns as `"<fileIndex>:<hunkIndex>"`, "both zero-based and
+unique within one parse", and that "Those ids are PROVISIONAL: F033 replaces them
+with content-hash ids". Round 3 did that replacing.
 
-- The test currently named `gives a hunk with no usable id the position the
-  parser would have given it` asserts `"0:0"`. Its NAME states the contract this
-  round replaces. Rewrite it to the new contract — an id-less hunk gets an id
-  carrying `UNIDENTIFIED_HUNK_ID_PREFIX` — and rename it to say that.
-- ADD: two id-less hunks in ONE file get DISTINCT ids, so the collapse set still
-  treats them as two hunks. This is the property the positional suffix exists for
-  and nothing currently pins it.
-- ADD: a well-formed server id passes through UNCHANGED — use a realistic
-  sixteen-character lowercase hex id and assert the envelope carries exactly it,
-  with no prefix added.
-- The fixture payload builders assert `version` 1 and a hunk id `"0:0"`. Those
-  are v1 shapes. Move the fixtures to v2: `version` 2 and a sixteen-hex id.
-  Report in the handback which fixture values you chose. Keep every other
-  assertion in those tests exactly as it is — the snake/camel equivalence, the
-  stats, the line counts, the `oldStart`, and the never-throws test.
+State instead that the server's hunk `id` is content-derived, and KEEP the
+sentence that already carries the load here: nothing in this function depends on
+the id's SHAPE, only on the server assigning distinct ones. Note that the client
+supplies its own id when a payload carries none, and that
+`UNIDENTIFIED_HUNK_ID_PREFIX` is what keeps such an id out of the server's id
+space. Change nothing else in the file — the constant, the fallback expression
+and `readDiffHunk`'s contract note are round 4's work and are correct.
+
+CONSTRAINT, and it is a real guard rather than a caution:
+`tests/ui_contracts/test_diff_view_model.py` counts the collapse threshold
+literal over the RAW text of `diffViewModel.ts` and its test file, comments
+INCLUDED, and requires exactly one occurrence. Do not write that number in any
+comment you touch. The same file's other guards read comment-STRIPPED source, so
+a comment-only edit is invisible to them.
+
+## SPEC — the T002 inventory at C6
+
+The handback carries a section headed `## T002 seam inventory`. It is a READING,
+not a design: report what you found, and propose nothing. Cover, each with a
+`path:line` that resolves at your own HEAD:
+
+- where the write door dispatches a command in `packages/orchestration/ui_server.py`
+  — the constants naming the two commands it dispatches today, and the line that
+  answers an exposed-but-undispatched command.
+- how a command becomes UI-exposed: the set `ui_server.py` imports from
+  `apps/cli/command_catalog.py`, and where that set is declared.
+- `TestCommandDoorImportGuard` in `tests/ui_server/test_command_channel.py`:
+  quote what it pins, because it is an equality guard over the write door's
+  imports and T002 will need to widen it.
+- the public entry point of `packages/orchestration/source_apply.py` that lands a
+  patch, its signature, and whether it already takes a SUBSET of anything.
+- whether any module today reads an approved/rejected hunk set — say "none found"
+  and give the search you ran if that is the answer.
 
 ## The slices
 
-<<<SLICE PLANF033R4
+<<<SLICE PLANF033R5
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 1 of this feature.
+commit of pull request 221. SESSION 2 of this feature.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -142,108 +188,153 @@ round — every partial state rendered truthfully in viewer, node and report.
 | restart, claim, register R-0738 | done | round 1, DECISION F033 D1 |
 | the shared identity function and its tests | done | round 2, 10 tests |
 | wire the parser, bump DIFF_VIEW_VERSION to 2 | done | round 3, 50 tests |
-| rule the client's invented id | done | this round, DECISION F033 D2 |
-| retire the diff-repair local hunk helper | open | next round, T001's last item |
-| T002 approve_hunks, subset atomicity, ledger | open | |
+| rule the client's invented id | done | round 4, DECISION F033 D2 |
+| repair the two stale production comments | done | this round, R-0739 |
+| retire the diff-repair local hunk helper | dropped | this round, DECISION F033 D3 — no such helper exists |
+| T001 stable ids, viewer v2, consolidation | done | closed by this round |
+| T002 approve_hunks, subset atomicity, ledger | open | next |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Retire the local hunk helper in `packages/orchestration/diff_repair.py` onto
-   `hunk_identity`, keeping `tests/orchestration/test_diff_repair.py` green.
-   That closes T001.
-2. Then T002: the `approve_hunks` command, its validation, and the
-   all-or-nothing subset apply built on
+1. Open T002 on the seam this round's handback inventories: the validation core
+   for `approve_hunks` — ids exist in that attempt's diff, approved and rejected
+   are disjoint, a rejection carries a reason — as a pure function with tests,
+   before any write door or applicator work.
+2. Then the subset apply itself, all-or-nothing over the approved set, built on
    `packages/orchestration/source_apply.py`.
-3. `packages/orchestration/repo_applicator.py` applies nothing by design, so the
-   subset seam is new work rather than a parameter on something existing.
+3. Then the write-door command and the hunk-decision ledger in evidence.
 
 ## Risks
-- The diff endpoint added by F256 serves this envelope, so a shape change is
-  consumer-visible. Version 2 is the declared seam and it has been taken.
-- The client tests build their own payloads, so a server shape change cannot
-  redden them. Keeping the fixtures realistic is the only guard against the
-  client drifting a version behind the server.
+- `packages/orchestration/repo_applicator.py` applies nothing by design, so the
+  subset seam is new work rather than a parameter on something existing.
+- The write door's import guard is an EQUALITY guard, so T002 widens it in the
+  same commit that adds an import, or the branch tip ships red.
 - R-0738 stays open and is T003's to repair.
-<<<END PLANF033R4
+<<<END PLANF033R5
 
-<<<SLICE RECORDF033R4
-Gate: F033 R3 — THE PARSER SEAM. THE ROUND PASSED. Every gate was re-executed by the reviewer at `51e04c89` from a script of its own, and every reading reproduced. TRANSPORT EQUAL at 20035 bytes and sha256 `bb621ceb…a74b1` against the reviewer's own original, with ONE blob id at C0b. THE RECORD APPEND reconstructs 1435760 plus one newline plus 4340 to 1440101, the committed blob exactly, the base a byte PREFIX, N counted at 1, and the NEGATIVE CONTROL placed at offset 1435791 INSIDE the first appended paragraph rejected by BOTH readers. THE LEDGER is UNMOVED at 299 registered, `Done:` 44 over 42, `Landed:` 11 and the open set 257, with `Gate:` alone moving 119 to 120 and `^Gate: F033 R2 — ` reading 1. THE PARSER WAS READ AS A DIFF, LINE BY LINE, AND IT REMOVES NOTHING: `DIFF_VIEW_VERSION` is 2, the module imports `hunk_identity`, the stale claim `there is no endpoint yet` occurs ZERO times, `import os`, `import subprocess`, `import logging` and `open(` are all absent, and `ruff check` exits 0 at "All checks passed!". The id is computed from the file's resolved path, the hunk's `ctx` and `del` lines in order with `add` excluded, and an occurrence rank counted PER FILE and keyed on the normalised text rather than on the finished digest — and the round also corrected two neighbouring comments that still asserted the positional fact, which is the sweep R-0417's class asks for and which nothing gated. THE STABILITY PROPERTY WAS MEASURED BY THE REVIEWER AGAINST THE SHIPPED PARSER ON ITS OWN FIXTURES, not read out of the handback: with a two-hunk file, the second hunk's id survives an earlier hunk gaining an added line, survives a whole new hunk being inserted ahead of it, and survives its OWN added line changing — three perturbations, one unchanged id — while a newly inserted hunk takes a genuinely new id, two byte-identical old sides in one file take distinct ids, and every id is sixteen lowercase hex characters. THE THREE MUTATION RED-PROOFS WERE REPRODUCED BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE with its own anchors, each asserted unique before replacement: the UNMUTATED CONTROL exits 0 at 50 passed, then admitting `add` lines into the old side reddens exactly `test_added_lines_do_not_enter_the_hunk_id`, pinning the occurrence to 0 reddens exactly `test_two_identical_hunks_in_one_file_get_distinct_ids_by_occurrence`, and reverting the version reddens exactly `test_diff_view_version_is_two_for_the_content_derived_hunk_ids`. THE SUITES were re-run SERIALLY in the primary checkout: `tests/orchestration/test_diff_parser.py` 50 passed against 43 at the base, `tests/orchestration/test_diff_view_source.py` 15, `tests/orchestration/test_hunk_identity.py` 10, `tests/docs/` 295, `tests/ui_server/` 497, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16 and the canary `tests/cli/test_golden_path.py` 42, every REAL exit 0. THE STRUCTURE: six SINGLE-PARENT commits of 286, 221, 18, 2, 339 and 313 insertions, all under 500, the path set matching the change set in BOTH directions, and `git ls-files .remedy-wt` reading 0. THE WORKER CORRECTED THE REVIEWER ON A LOAD-BEARING POINT AND WAS RIGHT. The block's test 1 ordered a stability check in which an EARLIER hunk gains an added line, and asserted that positional ids would fail it. They would not: adding a line INSIDE a hunk moves no hunk's index, so `0:1` survives that perturbation and the test discriminates nothing. The worker shipped the ordered test anyway, as convention 1 requires, and added `test_a_hunk_keeps_its_id_when_a_whole_new_hunk_is_inserted_before_it`, which moves the observed hunk from index 1 to index 2 and is the shape that actually separates a content id from a positional one. The reviewer confirmed both readings on its own fixtures before accepting them. A stability claim is only worth the perturbation that would break the thing it replaces, and this block did not check that its perturbation would. It damaged nothing on disk, so under amend0827 rule 2 it spends no id and buys no correction round; it is a dated line in `.agent/prose_slips.md` at the next round that writes one.
+<<<SLICE RECORDF033R5
+Gate: F033 R4 — THE CLIENT SEAM. THE ROUND PASSED. All eight gates were re-executed by the reviewer at `7434f546` from scripts of its own, and every ordered reading reproduced. TRANSPORT: the C0a blob is 19163 bytes at sha256 `f92ac6a1…18aff` and the C0b `.agent/last_block.md` blob is byte-identical to it. This workflow has no paste relay, so that chain proves the worker's own copies agree and makes no claim about the bytes the reviewer emitted. THE RECORD APPEND at `201823cf` reconstructs 1440101 plus one newline plus 6185 to 1446287, the committed blob exactly, with the base a byte PREFIX, N counted at 2 by the reviewer's own script, the last two blank-line units equal to the slice's paragraphs IN ORDER, and a byte flipped at offset 1440202 — proved by span arithmetic to lie inside the FIRST appended paragraph, which spans 1440102 to 1444310 — REJECTED by both readers. THE LEDGER is UNMOVED at 299 registered over 299 distinct, `Done:` 44 over 42, `Landed:` 11 and the open set 257, with `Gate:` alone moving 120 to 121 and `^Gate: F033 R3 — ` reading 0 at the base and exactly 1 after. THE PLAN slice landed byte-EQUAL at 1975 bytes over 40 lines, under the 50-line cap. THE CLIENT AGAINST THE SPEC: `UNIDENTIFIED_HUNK_ID_PREFIX` is exported at `unidentified:`, and the bare positional template reads 1 at the base and 0 after under BOTH readings the gate's wording admits — with backticks and as the bare substring — which is the reading the worker's deviation 1 chose the spelling `file<i>:hunk<j>` to make unambiguous, correctly. `npx tsc --noEmit` in `apps/ui` exits 0. THE SUITES, re-run by the reviewer in the primary checkout with pytest SERIAL: vitest 95 passed at exit 0 against 93 at the base, `tests/ui_server/` 497, the canary `tests/cli/test_golden_path.py` 42, and `tests/ui_contracts/` 664 passed with 4 skipped — that last one unordered but run because it reads both edited files as TEXT. THE MUTATION RED-PROOF WAS REPRODUCED BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE at `76b6448b`, with the runner invoked from the primary checkout against `--config <primary>/apps/ui/vitest.config.ts` and `--root <worktree>/apps/ui`, scoped to the one test file: the UNMUTATED CONTROL is a real exit 0 at 95 passed, and restoring the bare positional fallback is exit 1 at 2 failed over 93 passed, reddening `marks a hunk with no usable id UNIDENTIFIED instead of inventing a server-shaped one` and `gives two id-less hunks in ONE file DISTINCT ids, so the collapse set still sees two` — the same two names the handback reports. The worktree was removed by exact path and pruned, and `git status --porcelain` in the primary checkout was empty before, during and after. THE STRUCTURE: five single-parent commits of 249, 155, 17, 4 and 107 insertions over the range ending at `76b6448b`, every one under 500, the path set matching the change set in BOTH directions with `.agent/handoff.md` the sole expected absence, delimiter residue 0 in every target against a non-zero control of 4 and 5 in the saved block, and `git ls-files .remedy-wt` reading 0. The handback commit `7434f546` itself is 270 insertions over one parent, which the block correctly declined to order of a commit that cannot measure itself. THE WORKER FOUND WHAT THE BLOCK COULD NOT: its deviation 3 reported a stale comment two functions away from its change set and correctly left it, because that block's SPEC §3 forbade the edit. That report is why R-0739 below exists and why the reviewer swept the rest of the seam, which turned up the same class in a second file the round never touched.
 
-DECISION F033 D2 — THE CLIENT MAY NOT INVENT AN ID THAT LOOKS LIKE A SERVER ID. THE SITUATION, read at `51e04c89`: `apps/ui/src/api/diffViewModel.ts` answers a hunk carrying no usable id with a synthesised positional one, ``id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}` ``. Under version 1 that was harmless, because positional WAS the shape the server sent. Round 3 made server ids content-derived, so the invented value now occupies the same field as a real id, is indistinguishable from one to every consumer downstream, and can never match anything the server would recognise. CHOSEN: keep inventing an id — the client needs one, because `defaultCollapsedHunkIds` and `toggleHunkCollapse` key a `Set<string>` on it and two hunks sharing an id would collapse as one — but prefix it with the reserved `UNIDENTIFIED_HUNK_ID_PREFIX`, so a degraded payload is LEGIBLE as degraded rather than silently plausible, and T002's approval path can refuse such an id instead of sending it to a server that will never match it. ALTERNATIVE 1, drop the fallback and let the id stay empty, REJECTED: every id-less hunk would then share the empty string, and the collapse set would fold them into one, which trades a silent wrong id for a visible wrong behaviour. ALTERNATIVE 2, have the client validate that an id is sixteen hex characters and reject others, REJECTED: the client is not the authority on the server's id shape, and a consumer that rejects what it does not recognise breaks the next version bump for no gain — the version field exists precisely so consumers do not have to sniff. WHY THIS IS NOT MERELY COSMETIC: F033 exists to attribute an operator's consent to a specific piece of content, and an id that cannot be traced to content is the one thing that attribution cannot survive. HOW TO REVERSE: delete the constant and restore the bare positional template; the tests naming the prefix are the ones that would then fail, and they name it explicitly.
-<<<END RECORDF033R4
+- R-0739 — Low, TWO PRODUCTION FILES STILL DESCRIBE THE WORLD ROUND 3 REPLACED, AND ONE OF THEM MISQUOTES A SIBLING MODULE'S DOCSTRING AS EVIDENCE FOR IT. Raised by the reviewer at the F033 R4 gate, from the worker's own deviation 3, and measured at `7434f546`. THE STATE ON DISK. `packages/orchestration/hunk_identity.py`'s module docstring says `diff_parser.py` "currently names hunks" positionally, that this module "IS the module `diff_parser.py`'s docstring points at when it says its hunk `id` values are PROVISIONAL", and that "The parser is not wired to this module yet — that wiring and the version bump are their own change". `apps/ui/src/api/diffViewModel.ts`'s `buildDiffRowModels` KEYS paragraph says the keys derive from an id `diff_parser.py` assigns as `"<fileIndex>:<hunkIndex>"` and that "Those ids are PROVISIONAL: F033 replaces them with content-hash ids". Round 3 wired the parser and bumped `DIFF_VIEW_VERSION` to 2, so every one of those sentences is false, and the second cross-module claim is false in a way a reader cannot catch locally: `diff_parser.py`'s docstring at `7434f546` says hunk `id` values "are CONTENT-DERIVED and carry no position at all", which is the opposite of what it is cited as saying. WHY LOW AND NOT LOWER: no behaviour is wrong and no test can see this, so it costs nothing today; but `hunk_identity.py` is the module a reader arrives at to learn what a hunk id IS, and it currently tells them the parser does not use it — which invites re-doing round 3. The same class was resolved twice already on adjacent code, at R-0727 and R-0730, so the sweep is the thing that keeps failing rather than any one comment. WHY IT SURVIVED ROUND 3: that round's own ledger entry records that it "corrected two neighbouring comments that still asserted the positional fact"; the sweep reached the comments beside the code it changed and not the module whose whole purpose the change completed, nor the client. A staleness sweep is scoped to the CLAIM, never to the diff. FIX: repair both, stating the wiring in the present tense and keeping each comment's WHY intact; the retired sentence about a shared diff-repair helper is DECISION F033 D3's, not this finding's. BINDING ON THE NEXT BLOCK THAT LANDS A SEAM CHANGE: name, in the block, the files whose COMMENTS assert the fact the change falsifies, and grep for the claim rather than reading the diff.
+
+DECISION F033 D3 — T001'S "SHARED-HELPER CONSOLIDATION WITH DIFF-REPAIR" IS DISCHARGED AS VACUOUS, BECAUSE THERE IS NO SECOND HUNK IDENTITY IN THIS REPOSITORY. THE SITUATION. `docs/roadmap/features/T5_F033.md` gives T001 "the shared-helper consolidation with diff-repair (its tests stay green)" and its How-it-fits paragraph promises "the v1-local hunk lib retires — one hunk identity across repair and approval". THE MEASUREMENT, taken by the reviewer at `7434f546` by reading each module in full, not by grep alone: `packages/orchestration/diff_repair.py` holds no id field, no digest, no hashing and no import of `hunk_identity`; its `RepairHunk` is `(path, start_line, end_line, text)`, a span of CURRENT source lines selected for a repair prompt, which has no old side and therefore nothing `hunk_identity` could be called on. `review_scope.parse_diff_line_ranges` turns hunk headers into line ranges and names no hunk. `source_apply._hash_content` digests a whole FILE for an apply proof. The only importer of `hunk_identity` anywhere under `packages/`, `apps/` or `tests/` is `diff_parser.py`. CHOSEN: record the clause as discharged-vacuous, close T001 on its three real deliverables — the content-derived identity with its property tests, the parser wiring with `DIFF_VIEW_VERSION` 2, and the client seam — and amend the feature file so the next reader is not sent looking for a module that never existed. ALTERNATIVE 1, give `RepairHunk` a `hunk_identity`-derived id anyway, REJECTED: that is new scope wearing a consolidation's clothes, it would require synthesising an old side the repair path does not have, and F033's Do-not-touch list names applicator internals. ALTERNATIVE 2, leave the clause open and let T001 stay unclosable, REJECTED: an item no round can perform blocks the feature's own completion test forever, and the feature file would keep asserting a module that is not there. WHY THIS IS THE REVIEWER'S CALL AND NOT A QUESTION: docs/agents/planner_reviewer_prompt.md §4 item 7 routes a wrong spec to planning as a loud, persisted, reversible DECISION carried in the block, never as a question to the operator. HOW TO REVERSE: delete amendment A1 from `docs/roadmap/features/T5_F033.md` and restore the T001 clause; nothing in code depends on this decision, because its whole content is that no code was ever there.
+<<<END RECORDF033R5
+
+<<<SLICE FEATUREF033A1
+
+## Amendments
+
+**A1 (DECISION F033 D3) — T001's diff-repair consolidation is discharged as
+vacuous.** The Task-slicing line for T001 and the How-it-fits paragraph both
+promise that a "v1-local hunk lib" on the diff-repair side retires onto the
+shared identity. No such library exists. Measured while closing T001:
+`packages/orchestration/diff_repair.py` holds no hunk id, no digest and no
+import of `packages/orchestration/hunk_identity.py`; its `RepairHunk` is a span
+of current source lines selected for a repair prompt, with no old side to hash.
+`review_scope.parse_diff_line_ranges` yields line ranges and names no hunk, and
+`source_apply` digests whole files for apply proofs. `diff_parser.py` is the
+only caller of the shared identity, and one caller is the design.
+
+T001 is therefore complete on its three real deliverables — the stable
+content-derived identity with its stability property tests, the parser wiring
+with the `DIFF_VIEW_VERSION` bump to 2, and the client seam that stops the
+viewer inventing a server-shaped id. Acceptance's "Diff-repair's suite green on
+the shared helper" is read as "diff-repair's suite stays green", which it does,
+untouched.
+
+Reverse this amendment by deleting this section; the T001 clause above is
+unchanged and would then read as originally written.
+<<<END FEATUREF033A1
+
+## The `Landed:` line at C5 — you write it, not a slice
+
+`docs/agents/planner_reviewer_prompt.md` §4 item 4 reserves `Done:` for
+reviewer-authored text and gives the WORKER the `Landed:` line, so this one is
+not a slice and must not be extracted from the block. Append to
+`.agent/live_review.md`, after one newline, exactly ONE line matching
+`^Landed: R-0739 — ` and ending in a newline. It states what changed and names
+the REAL SHA of C3 — a value that does not exist while this block is being
+written, which is why the line is yours. Nothing else goes in that commit.
 
 ## Done when — the gates
 
 Run every one. Record the REAL exit code and the actual numbers, never the word
-"green". One line per gate in the handback.
+"green". One line per gate in the handback. Every gate below runs at or before
+C5, so the handback at C6 can quote all of them.
 
-- **G1 HYGIENE.** `.agent/STOP` read before C0a and before C4, absent both times.
-  `git status --porcelain` empty after EVERY commit. Branch
+- **G1 HYGIENE.** `.agent/STOP` read from disk before C0a and again before C6,
+  absent both times. `git status --porcelain` empty after EVERY commit. Branch
   `feature/f033-hunk-approval-v2` throughout. No force-push, no rewrite, no
   branch deletion; `git rev-parse feature/f033-hunk-approval` still `ed040812`.
-- **G2 TRANSPORT.** Report sha256 and byte length of `<C0a>:.agent/authored/f033-r4.md`
-  and of `.remedy-wt/f033-r4-block.md` and whether they are EQUAL; no expected
-  digest is stated here because a block cannot carry its own. Then
-  `git rev-parse <C0b>:.agent/authored/f033-r4.md` and
-  `git rev-parse <C0b>:.agent/last_block.md` must print ONE blob id.
-- **G3 THE RECORD APPEND at C2.** Two readers. (a) the BASE blob, which must be
-  1440101 bytes, plus one newline plus RECORDF033R4 equals the C2 blob byte for
-  byte; BASE a byte PREFIX; result ending in exactly one newline. (b) let N be
-  the paragraph count your script COUNTS in the slice — report it — and compare
-  the LAST N blank-line units against the slice's paragraphs IN ORDER. NEGATIVE
-  CONTROL at an offset your script PROVES lies inside the FIRST appended
-  paragraph; BOTH readers must reject it.
-- **G4 THE LEDGER at C2.** At BASE and C2 count `^- R-\d+ — ` with distinct ids,
-  `^Done: R-\d+ — ` lines with distinct ids, `^Landed: R-`, and
-  `^Gate: F\d+ R\d+ — `; report the open set at both. This round registers and
-  resolves nothing: registered must stay 299, `Done:` 44 over 42, `Landed:` 11
-  and the open set 257, all UNMOVED, with `Gate:` alone moving 120 to 121.
-  `^Gate: F033 R3 — ` at C2 must read exactly 1.
-- **G5 THE CLIENT AGAINST THE SPEC.** At C3, each as a measurement:
-  `UNIDENTIFIED_HUNK_ID_PREFIX` is EXPORTED from
-  `apps/ui/src/api/diffViewModel.ts` and its value is `unidentified:`; the bare
-  template ``` `${fileIndex}:${hunkIndex}` ``` occurs ZERO times in that file
-  — it occurs exactly ONCE at BASE, so this gate is not vacuous, and you should
-  report the BASE count too; and `npx tsc --noEmit` in `apps/ui` exits 0. Invoke
-  `npx` through Python, not `npm run`.
-- **G6 VITEST.** In the PRIMARY checkout, from `apps/ui`, through Python:
-  `npx vitest run --reporter=basic src/api/diffViewModel.test.ts` must exit 0.
-  Report the test count; it was 93 at BASE and this round ADDS tests, so report
-  both numbers. Then run the Python suites that read this seam, SERIALLY, one
-  pytest process at a time, each exiting 0: `tests/ui_server/` (497 at BASE) and
-  the canary `tests/cli/test_golden_path.py` (42 at BASE).
-- **G7 THE VITEST RED-PROOF.** In a DISPOSABLE `git worktree` at C3, never in the
-  primary checkout. A fresh worktree has NO `apps/ui/node_modules` — it is
-  gitignored — so run the runner from the PRIMARY checkout and point it at the
-  worktree's sources. The reviewer verified this exact route at `51e04c89`, with
-  cwd `apps/ui` of the PRIMARY checkout:
-
-      npx vitest run --reporter=basic \
-        --config <PRIMARY>/apps/ui/vitest.config.ts \
-        --root <WORKTREE>/apps/ui \
-        src/api/diffViewModel.test.ts
-
-  FIRST the UNMUTATED control — it must exit 0; report the count. Then mutate the
-  WORKTREE's `apps/ui/src/api/diffViewModel.ts` so the fallback returns the bare
-  positional id again, without the prefix, assert the anchor is UNIQUE before
-  replacing it, and report the REAL exit code, the failure count and the NAME of
-  each failing test. It must go RED. Revert, remove the worktree BY EXACT PATH,
-  then `git worktree prune`. If the mutation comes back GREEN, report that
-  plainly and do NOT adjust anything to force a red.
-- **G8 STRUCTURE.** Walk `git rev-list --reverse BASE..C3`: each commit exactly
+- **G2 TRANSPORT.** Report sha256 and byte length of
+  `<C0a>:.agent/authored/f033-r5.md` and of `.remedy-wt/f033-r5-block.md`, and
+  whether they are EQUAL. Then `git rev-parse <C0b>:.agent/authored/f033-r5.md`
+  and `git rev-parse <C0b>:.agent/last_block.md` must print ONE blob id.
+- **G3 THE RECORD APPENDS.** (a) At C2: the BASE blob of `.agent/live_review.md`,
+  which must be 1446287 bytes, plus one newline plus RECORDF033R5 equals the C2
+  blob byte for byte; BASE a byte PREFIX; result ending in exactly one newline.
+  (b) let N be the paragraph count your script COUNTS in RECORDF033R5 — report it
+  — and compare the LAST N blank-line units of the C2 blob against the slice's
+  paragraphs IN ORDER. NEGATIVE CONTROL at an offset your script PROVES lies
+  inside the FIRST appended paragraph; BOTH readers must reject it. (c) At C5:
+  the C2 blob plus one newline plus LANDEDF033R5 equals the C5 blob byte for
+  byte, where that line is the one you wrote per the section above; that
+  commit's diff must ADD exactly one line, and it must match `^Landed: R-0739 — `.
+- **G4 THE LEDGER at C5.** At BASE and at C5 count `^- R-\d+ — ` with distinct
+  ids, `^Done: R-\d+ — ` lines with distinct ids, `^Landed: R-`, and
+  `^Gate: F\d+ R\d+ — `; report the open set at both. Ordered: registered 299 to
+  300 with the ADDED id exactly `R-0739`, `Done:` 44 over 42 UNMOVED, `Landed:`
+  11 to 12, `Gate:` 121 to 122, and the open set 257 to 258. `^Gate: F033 R4 — `
+  at C5 must read exactly 1, and every registered id must still be DISTINCT.
+- **G5 THE STALENESS REPAIR at C3.** Each as a measurement, over the RAW text of
+  both files, at BASE via `git show <BASE>:<path>` and at C3. Report both
+  numbers for every string, because the BASE count is what proves the gate is not
+  vacuous. In `packages/orchestration/hunk_identity.py`: `currently names hunks`,
+  `The parser is not wired to`, `values are PROVISIONAL` and
+  `will share this same function` must each read at least 1 at BASE and exactly 0
+  at C3. Each of those is a SINGLE-LINE substring of the file as it stands at
+  BASE — the reviewer measured all four rather than reading them off the page,
+  because the sentence they come from wraps and a needle spanning the wrap would
+  forbid nothing. In `apps/ui/src/api/diffViewModel.ts`: `Those ids are PROVISIONAL` and
+  `<fileIndex>:<hunkIndex>` must each read at least 1 at BASE and exactly 0 at
+  C3. Still at C3, these must SURVIVE: `Nothing here depends on the id's SHAPE`
+  exactly 1 in the client, and `DELIBERATE ABSENCE` exactly 1 in
+  `hunk_identity.py`. Finally `git diff <BASE> <C3>` must show ZERO changed lines
+  that are not inside a comment or docstring — report how you determined that,
+  and report the `+`/`-` counts per file.
+- **G6 THE SUITES.** Serially, one pytest process at a time, each a REAL exit 0,
+  with the count: `tests/orchestration/test_hunk_identity.py` (10 at BASE),
+  `tests/orchestration/test_diff_parser.py` (50 at BASE), `tests/ui_contracts/`
+  (664 passed and 4 skipped at BASE), `tests/docs/` (295 at BASE) — ordered
+  because this round changes a `docs/roadmap/**` path — and the canary
+  `tests/cli/test_golden_path.py` (42 at BASE). Then, through Python from
+  `apps/ui`: `npx tsc --noEmit` exit 0, and
+  `npx vitest run --reporter=basic src/api/diffViewModel.test.ts` exit 0 at 95.
+  NO MUTATION RED-PROOF IS ORDERED THIS ROUND, deliberately: C3 changes comment
+  text only, so no mutated branch is reachable by any test and a colour ordered
+  here could only be green. Say so in the handback rather than inventing one.
+- **G7 THE FEATURE-FILE APPEND at C4.** The BASE blob of
+  `docs/roadmap/features/T5_F033.md`, which must be 5057 bytes, plus
+  FEATUREF033A1 equals the C4 blob byte for byte — note the slice OPENS with a
+  blank line, so no separator is added. BASE a byte PREFIX; result ending in
+  exactly one newline; the lines that commit's diff ADDS are exactly the slice's
+  lines IN ORDER. Report `^## Amendments$` at C4 as exactly 1.
+- **G8 STRUCTURE.** Walk `git rev-list --reverse BASE..C5`: each commit exactly
   ONE parent, each under 500 INSERTIONS — the `+` column of `git diff --numstat`,
-  never insertions plus deletions — and report the per-commit list. C4's own
-  numbers are NOT ordered here; the reviewer measures C4 at the next gate. Report
+  never insertions plus deletions — and report the per-commit list. C6's own
+  numbers are NOT ordered here; the reviewer measures C6 at the next gate. Report
   the range's path set against the change set in BOTH directions. Count
-  `<<<SLICE ` and `<<<END ` in `.agent/plan.md` and both `apps/ui` files: each 0,
-  against `.agent/authored/f033-r4.md` as a non-zero control whose count you
-  report. `git ls-files .remedy-wt` must read 0.
+  `<<<SLICE ` and `<<<END ` in `.agent/plan.md`,
+  `docs/roadmap/features/T5_F033.md`, `packages/orchestration/hunk_identity.py`
+  and `apps/ui/src/api/diffViewModel.ts`: each 0, against
+  `.agent/authored/f033-r5.md` as a non-zero control whose count you report. `git ls-files .remedy-wt` must read 0.
 
 ## Handback
 
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: SESSION 1,
-round 4, BASE, the changed-files table with real `+/-` from `git diff --numstat`,
-one line per gate with real numbers, the item-status table with every ordered
-item exactly once, and your deviations. Quote the final fallback expression and
-the fixture values you chose, and list the test names you added or renamed. No
-length cap. Write no verdict on your own work.
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: SESSION 2,
+round 5, BASE, the changed-files table with real `+/-` from `git diff --numstat`
+— derive that column from the tool, not from the files' line counts — one line
+per gate with real numbers, the `## T002 seam inventory` section, the
+item-status table with every ordered item exactly once, and your deviations.
+Quote the repaired comment regions in full so the reviewer can read them without
+the diff. No length cap. Write no verdict on your own work.
