@@ -154,9 +154,10 @@ class TestCatalogLookups:
 
     def test_get_commands_for_group(self) -> None:
         cmds = get_commands_for_group("patch")
-        assert len(cmds) == 6
+        assert len(cmds) == 7
         subs = {c.subcommand for c in cmds}
-        assert subs == {"list", "show", "approve", "reject", "apply", "revert"}
+        assert subs == {
+            "list", "show", "approve", "reject", "apply", "revert", "approve-hunks"}
 
 
 # ---------------------------------------------------------------------------

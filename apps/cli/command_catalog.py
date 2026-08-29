@@ -177,6 +177,27 @@ _ANSWER_OPT = ArgDef(
     'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
     required=False, is_option=True, is_repeatable=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
+#: F033: names ONE task run whose diff to decide hunks over. Deliberately NOT
+#: `_TASK_OPT`, which promises "planned id (T001) or task-id prefix":
+#: `diff_view_source.build_diff_view` does no prefix resolution at all — it
+#: requires exact membership in the real `task_runs/` listing — and promising a
+#: prefix match the code does not perform is worse than a second option name.
+_TASK_RUN_OPT = ArgDef(
+    "--task-run",
+    "Task run to decide over, exactly as it is named under task_runs/ (T001); "
+    "omit it to decide over the job-level diff",
+    required=False, is_option=True)
+#: F033: repeatable, one hunk id per occurrence.
+_APPROVE_HUNK_OPT = ArgDef(
+    "--approve-hunk", "Approve one hunk by id (repeatable)",
+    required=False, is_option=True, is_repeatable=True)
+#: F033: repeatable. The reason is kept VERBATIM — T003 quotes it into the next
+#: repair prompt — so the shape is shown rather than described away.
+_REJECT_HUNK_OPT = ArgDef(
+    "--reject-hunk",
+    'Reject one hunk with a reason: --reject-hunk <hunk-id>=<reason>, '
+    'e.g. --reject-hunk h3="renames a public name" (repeatable)',
+    required=False, is_option=True, is_repeatable=True)
 #: F056: the plan-approval opt-in. Its ABSENCE is the default — approving
 #: without it creates no mission, which is the whole point of the opt-in.
 _AS_MISSION_FLAG = ArgDef(
@@ -799,6 +820,22 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=True,
         requires_permission=True,
         related=("patch.apply", "snapshot.list-applies"),
+    ),
+
+    CommandEntry(
+        command_id="patch.approve-hunks",
+        group_id="patch",
+        subcommand="approve-hunks",
+        description="Record a hunk-level approve and reject decision over a job's diff.",
+        action_class="approval_gate",
+        args=(_JOB_ID, _TASK_RUN_OPT, _APPROVE_HUNK_OPT, _REJECT_HUNK_OPT, _JSON_OPT),
+        supports_json=True,
+        # `may_mutate_repo` and `requires_permission` are LEFT AT False on
+        # purpose: DECISION F033 D4 rules that recording a decision is not
+        # applying it. This command writes `job.metadata` and touches no
+        # repository, and this table is the one place the UI reads capability
+        # from, so claiming otherwise would misdescribe the decision.
+        related=("patch.approve", "patch.apply"),
     ),
 
     # ── test ─────────────────────────────────────────────────────────────
