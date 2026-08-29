@@ -23,12 +23,15 @@ imported and never retyped — the convention ``hunk_repair_findings.py``'s own
 docstring states, because a test that retypes a heading passes for the wrong
 reason the day the wording is improved.
 
-DELIBERATE ABSENCE — nothing here asserts that the RUN LOOP supplies a ledger.
-It does not yet: ``compose_builder_prompt``'s call site in ``run_pingpong`` is
-unchanged this round because ``packages/orchestration/hunk_decision_record.py``
-persists no decision, so there is no route from a stored decision to the loop to
-test. A test asserting an end-to-end that does not exist would be a green gate
-over a missing feature.
+THE RUN LOOP DOES SUPPLY A LEDGER, and the appended section below drives the real
+loop to prove it. This paragraph once said the opposite and gave a reason that
+was false when it was written: it claimed
+``packages/orchestration/hunk_decision_record.py`` leaves no durable record,
+when that module writes each exported ledger onto ``job.metadata`` under
+``hunk_decisions`` and ``save_job`` at the write door makes the record durable.
+That claim was finding R-0747 where it stood in ``pingpong_loop.py``, and
+R-0748 here — one defect in two files, because the first fix and its gate were
+both scoped to a path while the claim was not.
 """
 from __future__ import annotations
 
