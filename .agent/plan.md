@@ -21,16 +21,18 @@ approval gate.
 | refuse an id that is not one file name | done | round 5, R-0735 |
 | document the format where a reader looks | done | round 5 |
 | the integration gate | done | round 6, PASSED, 18186 passed 0 failed |
-| the feature file's Built State | done | this round, precondition 4 |
-| the closure sequence | open | next, and it must satisfy precondition 6 |
+| the feature file's Built State | done | round 7, precondition 4 |
+| plan SU-001 and stop at the approval gate | done | this round, precondition 6 |
+| the evidence bundle and the review zip | open | next |
+| the closure commit and the PR | open | after the zip |
 
 ## Next Steps
-1. Satisfy closure precondition 6 for F257 itself: plan the pending self-use item
-   through `packages.orchestration.self_use_job` and take it to the approval gate.
-   F257 is the FIRST feature that must consume an item at its own close.
-2. Build the evidence bundle and the review zip from a clean tree.
-3. The closure commit — STATUS, README, `scripts/self_use_queue.json`
-   `consumed_by`, and the final `.agent/` state — then the PR.
+1. Build the evidence bundle with
+   `job_evidence.create_manual_completion_bundle(review_feature_id="f257")` and
+   the review zip from a clean tree; record package, SHA-256 and archived path.
+2. The closure commit — STATUS, README, the `scripts/self_use_queue.json`
+   `consumed_by` edit that marks SU-001 consumed by F257, and the final `.agent/`
+   state — then the PR. It is NOT merged in this session.
 
 ## Risks
 - A job must never mark its own queue item consumed; neither shipped module owns
