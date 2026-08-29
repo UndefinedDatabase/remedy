@@ -162,22 +162,14 @@ def _load_events(job: Any) -> list[dict[str, Any]]:
 
 
 def _resolve_evidence_dir(job_id: str) -> Path | None:
-    """Find evidence dir for a job — checks index first, then default path."""
-    try:
-        from packages.orchestration.data_paths import resolve_data_root
-        idx_file = resolve_data_root() / "job_evidence_index" / f"{job_id}.json"
-        if idx_file.exists():
-            import json as _json
-            record = _json.loads(idx_file.read_text())
-            local_dir = record.get("evidence_dir_local", "")
-            if local_dir and Path(local_dir).is_dir():
-                return Path(local_dir)
-    except (ImportError, OSError, ValueError, KeyError):
-        pass
-    default = Path(f"remedy-job-evidence-{job_id}")
-    if default.is_dir():
-        return default
-    return None
+    """Find evidence dir for a job — the implementation moved to
+    `packages.orchestration.evidence_index.resolve_job_evidence_dir`, so the
+    viewer here and the F033 decision doors resolve by ONE rule. The name
+    survives because callers import it, including
+    `tests/orchestration/test_final_audit_evidence.py`, which imports it from
+    `ui_server` directly."""
+    from packages.orchestration.evidence_index import resolve_job_evidence_dir
+    return resolve_job_evidence_dir(job_id)
 
 
 def _load_job_plan_events(job: Any) -> list[dict[str, Any]]:

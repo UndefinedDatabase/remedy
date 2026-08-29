@@ -190,6 +190,44 @@ def find_record(job_id: str, index_dir: Path | None = None) -> dict[str, Any] | 
     return None
 
 
+# Decides WHICH directory a job's diff is read out of, for every reader of it.
+def resolve_job_evidence_dir(job_id: str, index_dir: Path | None = None) -> Path | None:
+    """Resolve a job's evidence directory — index record first, then the local default.
+
+    This is what decides which directory the F037 diff viewer and the F033
+    decision doors read a diff out of, so both get ONE answer. A second rule
+    could disagree with this one, and a decision recorded over hunks nobody was
+    shown is exactly the harm the recorder's no-diff refusal exists to prevent.
+
+    It reads ``<job_id>.json`` BY NAME and deliberately does NOT go through
+    ``find_record``, which matches on the ``job_id`` key INSIDE the file: a
+    record written without that key resolves here and would stop resolving
+    through ``find_record``.
+
+    ``packages/orchestration/ui_server.py``'s ``_resolve_evidence_dir`` is now a
+    delegation to this function, kept only because callers import that name.
+    """
+    try:
+        idx_file = (index_dir or job_evidence_index_dir()) / f"{job_id}.json"
+        if idx_file.exists():
+            record = json.loads(idx_file.read_text())
+            local_dir = record.get("evidence_dir_local", "")
+            if local_dir and Path(local_dir).is_dir():
+                return Path(local_dir)
+    # ``ImportError`` is retained from the moved original, where the data-paths
+    # import sat inside this try; here that import is module level, so the name
+    # is now unreachable. It is kept rather than dropped so the move stays
+    # behaviour-preserving in both directions.
+    except (ImportError, OSError, ValueError, KeyError):
+        pass
+    # RELATIVE on purpose: this resolves against the current working directory,
+    # exactly as it did before the move. It is not an absolute path.
+    default = Path(f"remedy-job-evidence-{job_id}")
+    if default.is_dir():
+        return default
+    return None
+
+
 def _evidence_present(record: dict[str, Any]) -> bool:
     p = record.get("evidence_export_path") or record.get("evidence_dir_local") or ""
     return bool(p) and Path(p).is_dir()
