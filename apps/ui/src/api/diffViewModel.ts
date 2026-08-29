@@ -225,10 +225,20 @@ function readDiffLine(value: unknown): DiffLine | null {
   };
 }
 
-/** One hunk, with the id the parser assigned. A hunk whose `id` is absent or
- *  not a string is given the `"<fileIndex>:<hunkIndex>"` the parser would have
- *  assigned, because every row key below is derived from it and a blank id
- *  would collapse two hunks onto one key. */
+/** WHY THE PREFIX: a server hunk id is sixteen lowercase hex characters, so a
+ *  string carrying this prefix cannot be mistaken for one by any consumer, which
+ *  is the whole point of it (DECISION F033 D2). */
+export const UNIDENTIFIED_HUNK_ID_PREFIX = "unidentified:";
+
+/** One hunk, with the id the parser assigned. A hunk whose `id` is absent or not
+ *  a string is given an id the client INVENTS, carrying
+ *  `UNIDENTIFIED_HUNK_ID_PREFIX` ahead of the hunk's position: every row key
+ *  below is derived from the id and a blank one would collapse two hunks onto a
+ *  single key, so an id there must be, but it must not be one a consumer could
+ *  read as the server's own. The position is what keeps the invented ids
+ *  DISTINCT from each other; the prefix is what keeps them out of the server's
+ *  id space. A real id passes through UNTOUCHED and unvalidated — this client is
+ *  not the authority on what a server id looks like. */
 function readDiffHunk(value: unknown, fileIndex: number, hunkIndex: number): DiffHunk {
   const raw = asRecord(value) ?? {};
   const rawId = asString(raw.id);
@@ -241,7 +251,7 @@ function readDiffHunk(value: unknown, fileIndex: number, hunkIndex: number): Dif
     }
   }
   return {
-    id: rawId !== "" ? rawId : `${fileIndex}:${hunkIndex}`,
+    id: rawId !== "" ? rawId : `${UNIDENTIFIED_HUNK_ID_PREFIX}file${fileIndex}:hunk${hunkIndex}`,
     header: asString(raw.header),
     oldStart: asInt(pick(raw, "oldStart", "old_start")),
     newStart: asInt(pick(raw, "newStart", "new_start")),

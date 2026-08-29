@@ -6,6 +6,7 @@ import {
   DIFF_VIRTUAL_OVERSCAN_ROWS,
   DIFF_VIRTUAL_ROW_HEIGHT_PX,
   DIFF_VIRTUAL_SCROLL_THRESHOLD_ROWS,
+  UNIDENTIFIED_HUNK_ID_PREFIX,
   buildDiffFileSummaries,
   buildDiffRowModels,
   computeDiffRowWindow,
@@ -28,6 +29,22 @@ import type {
   DiffRowViewportWindow,
   DiffRowWindow,
 } from "./diffViewModel";
+
+/** The envelope version the SERVER really sends. F033 R3 derived the hunk ids
+ *  from content and bumped `DIFF_VIEW_VERSION` to 2, so a fixture still claiming
+ *  1 would describe a server that no longer exists — and these fixtures are the
+ *  only thing standing between this client and a version's worth of drift,
+ *  because every payload below is built here rather than fetched. */
+const WIRE_DIFF_VIEW_VERSION = 2;
+
+/** Hunk ids in the shape `packages/orchestration/hunk_identity.py` really
+ *  assigns at that version: SIXTEEN LOWERCASE HEX characters, distinct per hunk.
+ *  Written out rather than recomputed here, because what a client fixture owes
+ *  the server is the SHAPE of an id and never the hash behind it — the client
+ *  reads ids and derives none. */
+const SERVER_HUNK_ID = "3f5a9c1e0b7d2481";
+const SECOND_SERVER_HUNK_ID = "a41d0c7e93b6f582";
+const THIRD_SERVER_HUNK_ID = "b0e27d4a1c9f6835";
 
 /** A hunk in the SNAKE_CASE form the endpoint really sends, carrying `count`
  *  context lines. The id is passed in because every row key derives from it. */
@@ -60,7 +77,7 @@ function wireFile(path: string, hunks: unknown[]) {
 
 function wireEnvelope(files: unknown[]) {
   return {
-    version: 1,
+    version: WIRE_DIFF_VIEW_VERSION,
     scope: "task",
     task_id: "t-1",
     source: "runs/r-1/workspace.diff",
@@ -77,7 +94,7 @@ function wireEnvelope(files: unknown[]) {
  *  field rather than trusted separately. */
 function camelPayload() {
   return {
-    version: 1,
+    version: WIRE_DIFF_VIEW_VERSION,
     scope: "task",
     taskId: "t-1",
     source: "runs/r-1/workspace.diff",
@@ -94,7 +111,7 @@ function camelPayload() {
         note: null,
         hunks: [
           {
-            id: "0:0",
+            id: SERVER_HUNK_ID,
             header: "@@ -1,2 +1,2 @@",
             oldStart: 1,
             newStart: 1,
@@ -111,7 +128,7 @@ function camelPayload() {
 
 function snakePayload() {
   return {
-    version: 1,
+    version: WIRE_DIFF_VIEW_VERSION,
     scope: "task",
     task_id: "t-1",
     source: "runs/r-1/workspace.diff",
@@ -119,13 +136,13 @@ function snakePayload() {
     reason: null,
     truncated: false,
     task_run_ids: ["r-1", "r-2"],
-    files: [wireFile("a.py", [wireHunk("0:0", 2)])],
+    files: [wireFile("a.py", [wireHunk(SERVER_HUNK_ID, 2)])],
   };
 }
 
 /** An envelope with one file and one hunk of `count` lines, already read. */
 function envelopeWithHunkOf(count: number): DiffEnvelope {
-  return readDiffEnvelope(wireEnvelope([wireFile("a.py", [wireHunk("0:0", count)])]));
+  return readDiffEnvelope(wireEnvelope([wireFile("a.py", [wireHunk(SERVER_HUNK_ID, count)])]));
 }
 
 describe("readDiffEnvelope", () => {
@@ -136,7 +153,7 @@ describe("readDiffEnvelope", () => {
   it("carries every field of a well-formed payload through unchanged", () => {
     const envelope = readDiffEnvelope(snakePayload());
     expect(envelope.available).toBe(true);
-    expect(envelope.version).toBe(1);
+    expect(envelope.version).toBe(WIRE_DIFF_VIEW_VERSION);
     expect(envelope.scope).toBe("task");
     expect(envelope.taskId).toBe("t-1");
     expect(envelope.source).toBe("runs/r-1/workspace.diff");
@@ -144,7 +161,7 @@ describe("readDiffEnvelope", () => {
     expect(envelope.files).toHaveLength(1);
     expect(envelope.files[0].path).toBe("a.py");
     expect(envelope.files[0].stats).toEqual({ added: 2, deleted: 1 });
-    expect(envelope.files[0].hunks[0].id).toBe("0:0");
+    expect(envelope.files[0].hunks[0].id).toBe(SERVER_HUNK_ID);
     expect(envelope.files[0].hunks[0].oldStart).toBe(1);
     expect(envelope.files[0].hunks[0].lines).toHaveLength(2);
     expect(envelope.files[0].hunks[0].lines[0].newLn).toBe(1);
@@ -176,7 +193,7 @@ describe("readDiffEnvelope", () => {
     const broken = wireEnvelope([
       wireFile("a.py", [
         {
-          id: "0:0",
+          id: SERVER_HUNK_ID,
           header: "@@ -1,3 +1,3 @@",
           old_start: 1,
           new_start: 1,
@@ -196,7 +213,7 @@ describe("readDiffEnvelope", () => {
     const noSpans = wireEnvelope([
       wireFile("a.py", [
         {
-          id: "0:0",
+          id: SERVER_HUNK_ID,
           header: "@@ -1,1 +1,1 @@",
           old_start: 1,
           new_start: 1,
@@ -213,9 +230,49 @@ describe("readDiffEnvelope", () => {
     expect(readDiffEnvelope({ ...snakePayload(), truncated: 1 }).truncated).toBe(false);
   });
 
-  it("gives a hunk with no usable id the position the parser would have given it", () => {
+  it("marks a hunk with no usable id UNIDENTIFIED instead of inventing a server-shaped one", () => {
+    // DECISION F033 D2. The client still needs an id — every row key derives
+    // from one — but the value it invents must be LEGIBLE as invented. A bare
+    // `"0:0"` sits in the same field as a content id, reads as one to every
+    // consumer downstream, and matches nothing the server would recognise.
     const noId = wireEnvelope([wireFile("a.py", [{ header: "@@ @@", lines: [] }])]);
-    expect(readDiffEnvelope(noId).files[0].hunks[0].id).toBe("0:0");
+    const id = readDiffEnvelope(noId).files[0].hunks[0].id;
+    expect(id.startsWith(UNIDENTIFIED_HUNK_ID_PREFIX)).toBe(true);
+    expect(id).not.toBe("0:0");
+    expect(id.length).toBeGreaterThan(UNIDENTIFIED_HUNK_ID_PREFIX.length);
+  });
+
+  it("gives two id-less hunks in ONE file DISTINCT ids, so the collapse set still sees two", () => {
+    // The property the position inside the invented id exists for: a shared id
+    // would make `defaultCollapsedHunkIds` and `toggleHunkCollapse` fold the two
+    // hunks into one entry of their `Set<string>` and collapse them together.
+    const noIds = wireEnvelope([
+      wireFile("a.py", [
+        { header: "@@ -1,1 +1,1 @@", lines: [] },
+        { header: "@@ -9,1 +9,1 @@", lines: [] },
+      ]),
+    ]);
+    const hunks = readDiffEnvelope(noIds).files[0].hunks;
+    expect(hunks).toHaveLength(2);
+    for (const hunk of hunks) {
+      expect(hunk.id.startsWith(UNIDENTIFIED_HUNK_ID_PREFIX), hunk.id).toBe(true);
+    }
+    expect(new Set(hunks.map((hunk) => hunk.id)).size).toBe(2);
+    expect(toggleHunkCollapse(new Set([hunks[0].id]), hunks[1].id).size).toBe(2);
+  });
+
+  it("passes a well-formed SERVER hunk id through unchanged, prefixing nothing", () => {
+    // The other half of DECISION F033 D2: the client is not the authority on
+    // what a server id looks like, so a real one is neither validated nor
+    // reshaped — a consumer that rejected ids it did not recognise would break
+    // the next version bump for no gain.
+    const envelope = readDiffEnvelope(
+      wireEnvelope([wireFile("a.py", [wireHunk(SERVER_HUNK_ID, 1)])]),
+    );
+    const id = envelope.files[0].hunks[0].id;
+    expect(id).toBe(SERVER_HUNK_ID);
+    expect(id.startsWith(UNIDENTIFIED_HUNK_ID_PREFIX)).toBe(false);
+    expect(id).toMatch(/^[0-9a-f]{16}$/);
   });
 
   it("never throws, however broken the payload it is handed", () => {
@@ -229,12 +286,12 @@ describe("readDiffEnvelope", () => {
 describe("defaultCollapsedHunkIds", () => {
   it("leaves a hunk of exactly the threshold open, because the boundary is inclusive", () => {
     const envelope = envelopeWithHunkOf(DIFF_HUNK_COLLAPSE_THRESHOLD_LINES);
-    expect(defaultCollapsedHunkIds(envelope).has("0:0")).toBe(false);
+    expect(defaultCollapsedHunkIds(envelope).has(SERVER_HUNK_ID)).toBe(false);
   });
 
   it("collapses a hunk one line past the threshold", () => {
     const envelope = envelopeWithHunkOf(DIFF_HUNK_COLLAPSE_THRESHOLD_LINES + 1);
-    expect(defaultCollapsedHunkIds(envelope).has("0:0")).toBe(true);
+    expect(defaultCollapsedHunkIds(envelope).has(SERVER_HUNK_ID)).toBe(true);
   });
 
   it("collapses nothing in an envelope of small hunks", () => {
@@ -248,24 +305,25 @@ describe("defaultCollapsedHunkIds", () => {
 
 describe("toggleHunkCollapse", () => {
   it("returns the opposite membership without touching the set it was given", () => {
-    const before = new Set(["0:0"]);
-    const opened = toggleHunkCollapse(before, "0:0");
-    expect(opened.has("0:0")).toBe(false);
-    expect(before.has("0:0")).toBe(true);
+    const before = new Set([SERVER_HUNK_ID]);
+    const opened = toggleHunkCollapse(before, SERVER_HUNK_ID);
+    expect(opened.has(SERVER_HUNK_ID)).toBe(false);
+    expect(before.has(SERVER_HUNK_ID)).toBe(true);
     expect(opened).not.toBe(before);
   });
 
   it("adds a hunk that was not collapsed and leaves the others alone", () => {
-    const before = new Set(["0:0"]);
-    const next = toggleHunkCollapse(before, "1:0");
-    expect(next.has("1:0")).toBe(true);
-    expect(next.has("0:0")).toBe(true);
+    const before = new Set([SERVER_HUNK_ID]);
+    const next = toggleHunkCollapse(before, THIRD_SERVER_HUNK_ID);
+    expect(next.has(THIRD_SERVER_HUNK_ID)).toBe(true);
+    expect(next.has(SERVER_HUNK_ID)).toBe(true);
     expect(before.size).toBe(1);
   });
 
   it("round-trips a hunk back to where it started", () => {
     const before = new Set<string>();
-    expect(toggleHunkCollapse(toggleHunkCollapse(before, "0:0"), "0:0").size).toBe(0);
+    const there = toggleHunkCollapse(before, SERVER_HUNK_ID);
+    expect(toggleHunkCollapse(there, SERVER_HUNK_ID).size).toBe(0);
   });
 });
 
@@ -278,13 +336,13 @@ describe("buildDiffRowModels", () => {
 
   it("emits the head of a collapsed hunk and none of its lines", () => {
     const envelope = readDiffEnvelope(snakePayload());
-    const rows = buildDiffRowModels(envelope, new Set(["0:0"]));
+    const rows = buildDiffRowModels(envelope, new Set([SERVER_HUNK_ID]));
     expect(rows.map((row) => row.kind)).toEqual(["file", "hunkHead"]);
   });
 
   it("says on the head row how many lines a collapsed hunk is hiding", () => {
     const envelope = readDiffEnvelope(snakePayload());
-    const [, head] = buildDiffRowModels(envelope, new Set(["0:0"]));
+    const [, head] = buildDiffRowModels(envelope, new Set([SERVER_HUNK_ID]));
     expect(head.kind).toBe("hunkHead");
     if (head.kind === "hunkHead") {
       expect(head.collapsed).toBe(true);
@@ -304,8 +362,8 @@ describe("buildDiffRowModels", () => {
   it("keeps every key unique across a two-file envelope", () => {
     const envelope = readDiffEnvelope(
       wireEnvelope([
-        wireFile("a.py", [wireHunk("0:0", 3), wireHunk("0:1", 2)]),
-        wireFile("b.py", [wireHunk("1:0", 4)]),
+        wireFile("a.py", [wireHunk(SERVER_HUNK_ID, 3), wireHunk(SECOND_SERVER_HUNK_ID, 2)]),
+        wireFile("b.py", [wireHunk(THIRD_SERVER_HUNK_ID, 4)]),
       ]),
     );
     const rows = buildDiffRowModels(envelope, new Set<string>());
@@ -315,10 +373,12 @@ describe("buildDiffRowModels", () => {
 
   it("keeps the keys of the rows that survive a collapse unchanged", () => {
     const envelope = readDiffEnvelope(
-      wireEnvelope([wireFile("a.py", [wireHunk("0:0", 2), wireHunk("0:1", 2)])]),
+      wireEnvelope([
+        wireFile("a.py", [wireHunk(SERVER_HUNK_ID, 2), wireHunk(SECOND_SERVER_HUNK_ID, 2)]),
+      ]),
     );
     const open = buildDiffRowModels(envelope, new Set<string>());
-    const half = buildDiffRowModels(envelope, new Set(["0:1"]));
+    const half = buildDiffRowModels(envelope, new Set([SECOND_SERVER_HUNK_ID]));
     const survivors = new Set(half.map((row) => row.key));
     const openKeys = open.filter((row) => survivors.has(row.key)).map((row) => row.key);
     expect(openKeys).toEqual(half.map((row) => row.key));
@@ -333,7 +393,7 @@ describe("buildDiffRowModels", () => {
 
   it("reads the envelope's own order rather than sorting it", () => {
     const envelope = readDiffEnvelope(
-      wireEnvelope([wireFile("z.py", [wireHunk("0:0", 1)]), wireFile("a.py", [])]),
+      wireEnvelope([wireFile("z.py", [wireHunk(SERVER_HUNK_ID, 1)]), wireFile("a.py", [])]),
     );
     const rows = buildDiffRowModels(envelope, new Set<string>());
     const paths = rows.flatMap((row) => (row.kind === "file" ? [row.file.path] : []));
@@ -359,7 +419,7 @@ describe("buildDiffFileSummaries", () => {
   it("reports one entry per file with the stats the envelope carries", () => {
     const envelope = readDiffEnvelope(
       wireEnvelope([
-        wireFile("a.py", [wireHunk("0:0", 3), wireHunk("0:1", 2)]),
+        wireFile("a.py", [wireHunk(SERVER_HUNK_ID, 3), wireHunk(SECOND_SERVER_HUNK_ID, 2)]),
         wireFile("b.py", []),
       ]),
     );
@@ -375,7 +435,7 @@ describe("buildDiffFileSummaries", () => {
 
   it("gives every summary the row key of that file's own row", () => {
     const envelope = readDiffEnvelope(
-      wireEnvelope([wireFile("a.py", [wireHunk("0:0", 1)]), wireFile("b.py", [])]),
+      wireEnvelope([wireFile("a.py", [wireHunk(SERVER_HUNK_ID, 1)]), wireFile("b.py", [])]),
     );
     const rowKeys = buildDiffRowModels(envelope, new Set<string>())
       .filter((row) => row.kind === "file")
