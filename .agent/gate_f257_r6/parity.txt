@@ -1,0 +1,77 @@
+PARITY — A4, VERIFIED BY MEASURING THE EVENT AND NOT THE OUTCOME
+==============================================================================
+
+A4 requires the mtime of EVERY file under the base worktree's apps/ui/dist
+recorded immediately before and immediately after each base run, against that
+run's own window. ANY mtime falling inside the window voids the parity claim.
+A content hash is deliberately NOT offered in its place: equal content is
+consistent both with no rebuild and with a byte-identical one.
+
+Base worktree: .remedy-wt/f257-r6-base, on branch tmp/f257-base-gate, at
+f17b1d0d03e4042df8452b2019b719cbe4704b21. Files under apps/ui/dist: 4.
+
+------------------------------------------------------------------------------
+BASE RUN 1 — run window (epoch): 1787961662.303325 .. 1787961836.5702927
+------------------------------------------------------------------------------
+  apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js
+      BEFORE 1787956096.2299385
+      AFTER  1787956096.2299385   changed: False   inside run window: False
+  apps/ui/dist/assets/index-CDy0oOHV.css
+      BEFORE 1787956096.2279384
+      AFTER  1787956096.2279384   changed: False   inside run window: False
+  apps/ui/dist/assets/index-CXHPTv-Z.js
+      BEFORE 1787956096.2299385
+      AFTER  1787956096.2299385   changed: False   inside run window: False
+  apps/ui/dist/index.html
+      BEFORE 1787956096.2279384
+      AFTER  1787956096.2279384   changed: False   inside run window: False
+
+  files present before: 4 | after: 4 | added or removed: []
+  mtimes falling INSIDE the run window: 0 []
+  VERDICT: the parity claim HOLDS for this run — no dist file was written
+           while the suite ran, so REMEDY_UI_NO_AUTO_BUILD=1 was not
+           bypassed by a spawned build path (the R-0169 failure mode).
+
+------------------------------------------------------------------------------
+BASE RUN 2 — run window (epoch): 1787961955.2458422 .. 1787962061.0373728
+------------------------------------------------------------------------------
+  apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js
+      BEFORE 1787961952.3196137
+      AFTER  1787961952.3196137   changed: False   inside run window: False
+  apps/ui/dist/assets/index-CDy0oOHV.css
+      BEFORE 1787961952.3196137
+      AFTER  1787961952.3196137   changed: False   inside run window: False
+  apps/ui/dist/assets/index-CXHPTv-Z.js
+      BEFORE 1787961952.3196137
+      AFTER  1787961952.3196137   changed: False   inside run window: False
+  apps/ui/dist/index.html
+      BEFORE 1787961952.3196137
+      AFTER  1787961952.3196137   changed: False   inside run window: False
+
+  files present before: 4 | after: 4 | added or removed: []
+  mtimes falling INSIDE the run window: 0 []
+  VERDICT: the parity claim HOLDS for this run — no dist file was written
+           while the suite ran, so REMEDY_UI_NO_AUTO_BUILD=1 was not
+           bypassed by a spawned build path (the R-0169 failure mode).
+
+------------------------------------------------------------------------------
+WHAT THE PARITY MEASUREMENT DOES NOT COVER, STATED PLAINLY
+------------------------------------------------------------------------------
+
+A4 answers 'was dist rewritten during the run?' — no, in both runs. It does
+NOT answer 'was dist USABLE by the run?', and in base run 1 it was not: the
+copied dist was byte-correct but mtime-older than the freshly checked-out
+source, so `_frontend_is_stale()` returned True and the server refused to
+start. A3's 'restore parity by COPY' is incomplete on its own, because
+shutil.copytree preserves mtimes while `git worktree add` stamps the source
+with the checkout time. Base run 2 completed the restoration by bumping the
+copied dist's mtimes past the checkout time; nothing in the repository was
+edited to achieve it, only files inside the throwaway worktree.
+
+Measured staleness readings:
+  base worktree BEFORE run 1: newest apps/ui/src 1787961647.324847 >
+                              dist/index.html 1787956096.2279384  => STALE
+  base worktree BEFORE run 2: newest apps/ui/src 1787961647.324847 <
+                              dist/index.html 1787961952.3196137  => NOT STALE
+  primary checkout, same moment: newest apps/ui/src 1787955940.2276886 <
+                              dist/index.html 1787956096.2279384  => NOT STALE

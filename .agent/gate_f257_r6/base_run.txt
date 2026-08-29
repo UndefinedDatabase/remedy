@@ -1,0 +1,488 @@
+==============================================================================
+BASE RUN 1 — f17b1d0d in worktree on branch tmp/f257-base-gate
+==============================================================================
+command            : python3 -m pytest -n auto -q
+cwd                : /home/decodeux/Repos/remedy/.remedy-wt/f257-r6-base
+environment        : REMEDY_UI_NO_AUTO_BUILD=1
+REAL exit code     : 1
+wall time (seconds): 174.27
+run window (epoch) : 1787961662.303325 .. 1787961836.5702927
+log written OUTSIDE the repo at (A1): /tmp/f257r6-base-d5c9_jt1/base_run.txt
+
+NOTE: build parity was restored by COPY per A3, but shutil.copytree PRESERVES
+mtimes, so the copied apps/ui/dist stayed OLDER than the source files that
+`git worktree add` had just written. `_frontend_is_stale()` therefore returned
+True, the auto-build was disabled by REMEDY_UI_NO_AUTO_BUILD=1, and the UI
+server exited with 'ERROR: React UI not built.' See comparison.txt.
+
+RAW TAIL (last 40 lines of a 7629-line log)
+
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape]
+FAILED tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect
+FAILED tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_403_for_a_wrong_token
+FAILED tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_answers_404_for_an_unknown_job
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_route_stays_linear_in_body_lines
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+FAILED tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash]
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+FAILED tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decision_card_carries_age_and_blocked_count
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token
+FAILED tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space]
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+FAILED tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_refuses_an_invalid_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+FAILED tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net
+116 failed, 18034 passed, 20 skipped in 173.72s (0:02:53)
+
+COMPLETE FAILED LIST — 116 ids
+
+tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_dispatched_command_is_audited_as_accepted
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_mistyped_limit_falls_back_to_the_default_and_still_limits
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_near_miss_of_the_commands_path_is_405
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape]
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space]
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash]
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_rate_limited_attempt_is_audited_as_rejected_rate
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_refused_command_announces_nothing
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_announces_nothing_a_second_time
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_spends_no_rate_budget
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replayed_nonce_answers_from_the_store_byte_for_byte
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_does_not_spend_budget
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_is_audited_as_rejected_shape
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_args_is_valid_and_reaches_the_effect
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_body_is_400_on_field_body
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_audit_writer_that_raises_changes_neither_status_nor_body
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_event_writer_that_raises_changes_neither_status_nor_body
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_approve_is_accepted
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_reject_is_accepted
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_with_a_next_action_string_is_409
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answering_an_unknown_question_id_is_409
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_on_a_plan_that_is_not_pending_is_409
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_whose_answers_are_not_a_map_is_409
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_does_not_spend_budget
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_is_audited_as_rejected_command
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unresolvable_job_is_audited_as_rejected_job
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unseeded_nonce_is_dispatched_rather_than_replayed
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_bearer_without_a_token_is_403
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_command_in_no_catalog_is_400_on_field_command
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_csrf_is_checked_after_the_bearer
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_delete_is_405_even_on_the_commands_path
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_client_nonce_is_400_on_field_client_nonce
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_route_the_server_serves_refuses_post_put_and_delete
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_200_for_the_correct_token
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_403_for_a_wrong_token
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_malformed_bearer_is_403
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_bearer_is_403
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_client_nonce_is_400_on_field_client_nonce
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_command_is_400_on_field_command
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_csrf_header_is_403
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_ascii_bearer_is_403_and_does_not_raise
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_body_is_400_on_field_body
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_string_command_is_400_on_field_command
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_oversize_body_is_400_on_field_body
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_present_args_object_is_valid_and_is_accepted
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_put_is_405_even_on_the_commands_path
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_raw_token_never_reaches_the_audit_file
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_on_an_unresolvable_job_is_404
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_with_a_bad_bearer_is_403_and_never_400
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_is_404
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_matches_the_get_door
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_well_formed_command_is_dispatched_and_accepted
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_bearer_is_403
+tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403
+tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_a_supplied_clarification_answer_is_recorded_as_human
+tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_an_accepted_fp_approval_really_resolved_the_plan
+tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once
+tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_a_retry_of_the_same_nonce_is_audited_replayed
+tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect
+tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names
+tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received
+tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decision_card_carries_age_and_blocked_count
+tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_answers_404_for_an_unknown_job
+tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_refuses_an_invalid_token
+tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net
+tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_route_stays_linear_in_body_lines
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
+
+==============================================================================
+BASE RUN 2 — same worktree, same revision, parity COMPLETED (dist mtimes bumped)
+==============================================================================
+command            : python3 -m pytest -n auto -q
+cwd                : /home/decodeux/Repos/remedy/.remedy-wt/f257-r6-base
+environment        : REMEDY_UI_NO_AUTO_BUILD=1
+REAL exit code     : 1
+wall time (seconds): 105.79
+run window (epoch) : 1787961955.2458422 .. 1787962061.0373728
+log written OUTSIDE the repo at (A1): /tmp/f257r6-base2-v61bb3kr/base2_run.txt
+
+COMPLETE RAW LOG (292 lines; the raw tail is its final lines)
+
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [  0%]
+........................................................................ [  0%]
+........................................................................ [  1%]
+........................................................................ [  1%]
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  3%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  5%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  7%]
+.....................s............................s..................... [  7%]
+........................................................................ [  8%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [  9%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 11%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 13%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 15%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 17%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 19%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 21%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 22%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 26%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 28%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 30%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 32%]
+..........................s.s.................................sss....... [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 34%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 36%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 38%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 40%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 42%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 43%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 45%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 47%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 49%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 51%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 53%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+.............................F.......................................... [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 55%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 57%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 59%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 61%]
+.....................................................................s.. [ 61%]
+.ss..........sss........................................................ [ 62%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 63%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 64%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........s............................................................... [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 68%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 70%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 72%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 74%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 76%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+.............................................................s.......... [ 78%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 80%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 82%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 84%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 85%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 87%]
+.............................s.......................................... [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 89%]
+........................................................................ [ 89%]
+......................................s................s................ [ 90%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 91%]
+.............................................s....s..................... [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+..........................                                               [100%]
+=================================== FAILURES ===================================
+____________ TestRetryAndPortConflict.test_retry_is_bounded_to_one _____________
+[gw13] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_product_smoke.TestRetryAndPortConflict object at 0x79388cccce50>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-1288/popen-gw13/test_retry_is_bounded_to_one0')
+
+    def test_retry_is_bounded_to_one(self, tmp_path):
+        """A permanently broken app is attempted twice, never more."""
+        root = tmp_path / "always-broken"
+        root.mkdir()
+        marker = root / "attempts.txt"
+        app = root / "dead_app.py"
+        app.write_text(
+            "import os, sys\n"
+            f"m = {str(marker)!r}\n"
+            "n = int(open(m).read()) if os.path.exists(m) else 0\n"
+            "open(m, 'w').write(str(n + 1))\n"
+            "sys.stdout.write('dead-app: never starts\\n'); sys.stdout.flush()\n"
+            "raise SystemExit(3)\n",
+            encoding="utf-8")
+        write_runtime_config(root, cmd=[sys.executable, "dead_app.py"],
+                             ready_timeout_s=4.0)
+    
+        ev = run_check(smoke_check(retry=True), root, timeout_sec=120)
+    
+>       assert ev.status == STATUS_FAILED
+E       AssertionError: assert 'passed' == 'failed'
+E         
+E         - failed
+E         + passed
+
+tests/orchestration/test_product_smoke.py:424: AssertionError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_retry_is_bounded_to_one
+1 failed, 18149 passed, 20 skipped in 105.22s (0:01:45)
+
+COMPLETE FAILED LIST — 1 ids
+
+tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_retry_is_bounded_to_one

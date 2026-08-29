@@ -207,3 +207,19 @@
 2026-08-28 · F256 R3 · The block's G9 marker sweep expected 0 in "every non-authored target", which cannot hold for `.agent/last_block.md` because C0b and G2 require that file to be the identical blob to the authored control; the worker reported 4 and declared it.
 
 2026-08-28 · F256 R7 · The block's G7 mutation (ii) quoted its anchor inside a four-space-indented code block, so the line it displayed carried eight leading spaces where `apps/ui/src/api/diffViewModel.ts` carries four; the worker asserted uniqueness on the correct four-space form, applied it and declared the difference, so nothing on disk was affected.
+
+2026-08-28 · F257 R1 · The block's G4 reconstruction formula read "base + newline + DECF257D1 + newline + DECF257D2" while the same block's slice-convention paragraph required one BLANK LINE before each appended slice and a trailing newline; the two clauses disagreed, the worker followed the convention, and `.agent/decisions.md` is byte-correct on disk.
+
+2026-08-28 · F257 R1 · The block's G7 structure gate ran over a range ending at C2 while its change set named `.agent/handoff.md`, which C3 writes, so the changeset-minus-range residue could never be empty; the worker reported the residue and declared it rather than dropping the path.
+
+2026-08-28 · F257 R2 · The block's G5 ordered the open set as "the registrations minus the resolutions" without saying whether resolutions are counted by line or by distinct id; the two differ by two because `R-0721` and `R-0725` each carry a partial and a remainder `Done:` paragraph, so the worker honestly reported 249 where the correct figure is 251.
+
+2026-08-29 · F257 R3 · The handback's G3 reported `.agent/plan.md` at C1 as 1591 bytes where the blob is 1593, and its G4 gave the first appended paragraph's span as 1378358..1378622 where the reviewer's script measures 1378358..1378625; both equality claims the two numbers decorate are correct and reproduced, so nothing on disk is wrong.
+
+2026-08-29 · F257 R4 · The block's PLANF257R5 predecessor marked the consumption-point item `done` in the plan applied at C1, three commits before C4 made it true; the worker applied it verbatim under constraint 1 and declared it, which is the required behaviour.
+2026-08-29 · F257 R4 · The block's FINDF257R4 called the R-0733 fix "four lines long" where the shipped guard is an `if` and a three-line `raise`; the estimate was written before the code existed and nothing on disk depended on it.
+
+2026-08-29 · F257 R5 · The block's S2 asserted that `Path("..").name` is the empty string and that a single-component comparison would therefore refuse `..` unaided; it is `".."`, the worker measured it, and the explicit `entry.id in (".", "..")` arm it added is what makes the shipped check correct.
+2026-08-29 · F257 R5 · Constraint 8's own summarising sentence — "one newline, then the slice, then one newline" — would leave every appended file ending in two newlines; the clauses around it are right, the worker followed those, and every append since round 3 has reconstructed byte-exactly.
+
+2026-08-29 · F257 R10 · The block's G6(D) asked for the three ids from the negative control to appear "among the passing ones" while its own C3 step 3 ordered the third of those tests renamed, so the two clauses could not both hold literally; the worker reported that id under its post-rename name and declared the disagreement, which is the required behaviour.

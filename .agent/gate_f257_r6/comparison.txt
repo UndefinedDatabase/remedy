@@ -1,0 +1,372 @@
+COMPARISON — F257 R6 integration gate
+branch tip c3f8d5fe (run at fd8b84b6) vs merge base f17b1d0d03e4042df8452b2019b719cbe4704b21
+==============================================================================
+
+METHOD (A5). The two set differences below were computed IN PYTHON as
+set(branch) - set(base) and set(base) - set(branch) over the two FAILED id
+lists. `comm -13` / `comm -23` were NOT run: this session's command guard
+rejects the pipelines that feed them by FORM, so the PROPERTY was ordered
+rather than the tool. Both lists are sorted and complete; nothing is elided.
+
+RUN TOTALS
+  branch run   : 18186 passed, 20 skipped, 0 failed  — exit 0  — 113.13 s
+  base run 1   :   116 failed, 18034 passed, 20 skipped — exit 1 — 174.27 s  (parity incomplete)
+  base run 2   :     1 failed, 18149 passed, 20 skipped — exit 1 — 105.79 s  (parity completed)
+  collected    : 18206 on the branch, matching the count the block states
+
+------------------------------------------------------------------------------
+(d) THE SET DIFFERENCES
+------------------------------------------------------------------------------
+
+BRANCH-ONLY = set(branch) - set(base), against base run 1 : 0 ids
+  (empty — the branch run had no FAILED id at all)
+
+BRANCH-ONLY = set(branch) - set(base), against base run 2 : 0 ids
+  (empty — the branch run had no FAILED id at all)
+
+BASE-ONLY = set(base) - set(branch), against base run 1 : 116 ids
+  tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+  tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_dispatched_command_is_audited_as_accepted
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_mistyped_limit_falls_back_to_the_default_and_still_limits
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_near_miss_of_the_commands_path_is_405
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape]
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space]
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash]
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_rate_limited_attempt_is_audited_as_rejected_rate
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_refused_command_announces_nothing
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_announces_nothing_a_second_time
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_spends_no_rate_budget
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replayed_nonce_answers_from_the_store_byte_for_byte
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_does_not_spend_budget
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_is_audited_as_rejected_shape
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_args_is_valid_and_reaches_the_effect
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_body_is_400_on_field_body
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_audit_writer_that_raises_changes_neither_status_nor_body
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_event_writer_that_raises_changes_neither_status_nor_body
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_approve_is_accepted
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_reject_is_accepted
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_with_a_next_action_string_is_409
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answering_an_unknown_question_id_is_409
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_on_a_plan_that_is_not_pending_is_409
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_whose_answers_are_not_a_map_is_409
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_does_not_spend_budget
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_is_audited_as_rejected_command
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unresolvable_job_is_audited_as_rejected_job
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unseeded_nonce_is_dispatched_rather_than_replayed
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_bearer_without_a_token_is_403
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_command_in_no_catalog_is_400_on_field_command
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_csrf_is_checked_after_the_bearer
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_delete_is_405_even_on_the_commands_path
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_client_nonce_is_400_on_field_client_nonce
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_route_the_server_serves_refuses_post_put_and_delete
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_200_for_the_correct_token
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_403_for_a_wrong_token
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_malformed_bearer_is_403
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_bearer_is_403
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_client_nonce_is_400_on_field_client_nonce
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_command_is_400_on_field_command
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_csrf_header_is_403
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_ascii_bearer_is_403_and_does_not_raise
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_body_is_400_on_field_body
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_string_command_is_400_on_field_command
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_oversize_body_is_400_on_field_body
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_present_args_object_is_valid_and_is_accepted
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_put_is_405_even_on_the_commands_path
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_raw_token_never_reaches_the_audit_file
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_on_an_unresolvable_job_is_404
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_with_a_bad_bearer_is_403_and_never_400
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_is_404
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_matches_the_get_door
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_well_formed_command_is_dispatched_and_accepted
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_bearer_is_403
+  tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403
+  tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_a_supplied_clarification_answer_is_recorded_as_human
+  tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_an_accepted_fp_approval_really_resolved_the_plan
+  tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once
+  tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_a_retry_of_the_same_nonce_is_audited_replayed
+  tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect
+  tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names
+  tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received
+  tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decision_card_carries_age_and_blocked_count
+  tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_answers_404_for_an_unknown_job
+  tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_refuses_an_invalid_token
+  tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net
+  tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_route_stays_linear_in_body_lines
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+  tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
+
+BASE-ONLY = set(base) - set(branch), against base run 2 : 1 ids
+  tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_retry_is_bounded_to_one
+
+------------------------------------------------------------------------------
+(e) THE NEW-TEST CLASS (A6)
+------------------------------------------------------------------------------
+
+A6 exists because a test whose FILE is absent at the base revision cannot
+fail there, so its id could surface as branch-only without being a
+regression. This round has NO branch-only id, so the class is EMPTY IN
+EFFECT — no branch-only id had to be excused by it. The two files are
+nevertheless absent at the base, and that is proved rather than asserted:
+
+  $ git cat-file -e f17b1d0d:tests/orchestration/test_self_use_job.py
+    fatal: Not a valid object name f17b1d0d:tests/orchestration/test_self_use_job.py
+    REAL_EXIT=128   (non-zero => absent at the base revision)
+  $ git cat-file -e f17b1d0d:tests/orchestration/test_self_use_queue.py
+    fatal: Not a valid object name f17b1d0d:tests/orchestration/test_self_use_queue.py
+    REAL_EXIT=128   (non-zero => absent at the base revision)
+  Positive control, the same two paths at the branch tip:
+  $ git cat-file -e c3f8d5fe:tests/orchestration/test_self_use_job.py    REAL_EXIT=0
+  $ git cat-file -e c3f8d5fe:tests/orchestration/test_self_use_queue.py  REAL_EXIT=0
+
+Both files' tests PASSED in the branch run; neither appears in any FAILED list.
+
+------------------------------------------------------------------------------
+(f) ATTRIBUTION
+------------------------------------------------------------------------------
+
+BRANCH-ONLY IDS: NONE. Step 4 of docs/agents/integration_gate.md asks for one
+serial re-run per branch-only id; there are zero branch-only ids, so the
+obligation is discharged vacuously and no BLOCKER condition can arise from it.
+
+BASE-ONLY IDS still require attribution: step 3 says an unattributed base-only
+id counts as a genuine base failure and blocks the gate verdict. All 116 are
+attributed below, in two classes, by direct evidence.
+
+CLASS 1 — THE STALE-DIST ENVIRONMENT CLASS: 114 ids, all under tests/ui_server/.
+
+  Direct evidence, measured rather than inferred:
+  * packages/orchestration/ui_server.py is BYTE-IDENTICAL at f17b1d0d and
+    c3f8d5fe — `git diff --stat f17b1d0d c3f8d5fe -- packages/orchestration/
+    ui_server.py` printed nothing. The UI-build gate is therefore not a
+    branch-vs-base code difference.
+  * apps/ui is untouched by this branch: `git diff --name-only f17b1d0d
+    c3f8d5fe` lists no path under apps/, so the copied dist is the correct
+    build artifact for the base revision, not a foreign one.
+  * `_frontend_is_stale()` returns True when any file under apps/ui/src is
+    newer than apps/ui/dist/index.html. MEASURED in the base worktree before
+    run 1: newest apps/ui/src mtime 1787961647.324847, dist/index.html mtime
+    1787956096.2279384 => STALE. MEASURED in the primary checkout at the same
+    moment: newest src 1787955940.2276886, dist 1787956096.2279384 => NOT
+    stale. The cause is the fresh `git worktree add` checkout, which stamps
+    every source file with the checkout time, while shutil.copytree PRESERVES
+    the copied dist's older mtimes.
+  * With REMEDY_UI_NO_AUTO_BUILD=1 the auto-build is suppressed, so the stale
+    branch fails loudly. The base run 1 log contains the marker
+    'ERROR: React UI not built.' exactly 114 times — one per id in this class,
+    a 1:1 match with no id left over and no marker left unused. The branch run
+    log contains it 0 times.
+  * DECISIVE CONTROL: parity was then COMPLETED in the same worktree at the
+    same revision by bumping the copied dist's mtimes past the checkout time
+    (newest src 1787961647.324847 < dist 1787961952.3196137 => NOT stale), and
+    the suite was re-run in full. All 114 ids PASSED. The class is therefore
+    attributed by experiment, not only by inference.
+
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_dispatched_command_is_audited_as_accepted
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_mistyped_limit_falls_back_to_the_default_and_still_limits
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_near_miss_of_the_commands_path_is_405
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape]
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space]
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash]
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_rate_limited_attempt_is_audited_as_rejected_rate
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_refused_command_announces_nothing
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_announces_nothing_a_second_time
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_spends_no_rate_budget
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replayed_nonce_answers_from_the_store_byte_for_byte
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_does_not_spend_budget
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_is_audited_as_rejected_shape
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_args_is_valid_and_reaches_the_effect
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_body_is_400_on_field_body
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_audit_writer_that_raises_changes_neither_status_nor_body
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_event_writer_that_raises_changes_neither_status_nor_body
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_approve_is_accepted
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_reject_is_accepted
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_with_a_next_action_string_is_409
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answering_an_unknown_question_id_is_409
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_on_a_plan_that_is_not_pending_is_409
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_whose_answers_are_not_a_map_is_409
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_does_not_spend_budget
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_is_audited_as_rejected_command
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unresolvable_job_is_audited_as_rejected_job
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unseeded_nonce_is_dispatched_rather_than_replayed
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_bearer_without_a_token_is_403
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_command_in_no_catalog_is_400_on_field_command
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_csrf_is_checked_after_the_bearer
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_delete_is_405_even_on_the_commands_path
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_client_nonce_is_400_on_field_client_nonce
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_route_the_server_serves_refuses_post_put_and_delete
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_200_for_the_correct_token
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_403_for_a_wrong_token
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_malformed_bearer_is_403
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_bearer_is_403
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_client_nonce_is_400_on_field_client_nonce
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_command_is_400_on_field_command
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_csrf_header_is_403
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_ascii_bearer_is_403_and_does_not_raise
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_body_is_400_on_field_body
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_string_command_is_400_on_field_command
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_oversize_body_is_400_on_field_body
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_present_args_object_is_valid_and_is_accepted
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_put_is_405_even_on_the_commands_path
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_raw_token_never_reaches_the_audit_file
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_on_an_unresolvable_job_is_404
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_with_a_bad_bearer_is_403_and_never_400
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_is_404
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_matches_the_get_door
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_well_formed_command_is_dispatched_and_accepted
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_bearer_is_403
+    tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403
+    tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_a_supplied_clarification_answer_is_recorded_as_human
+    tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_an_accepted_fp_approval_really_resolved_the_plan
+    tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once
+    tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_a_retry_of_the_same_nonce_is_audited_replayed
+    tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect
+    tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names
+    tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received
+    tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decision_card_carries_age_and_blocked_count
+    tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_answers_404_for_an_unknown_job
+    tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_refuses_an_invalid_token
+    tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net
+    tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_route_stays_linear_in_body_lines
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+    tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+    tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once
+
+CLASS 2 — THE XDIST/PORT FLAKE CLASS: 3 ids across the two base runs.
+
+  Each was re-run SERIALLY at f17b1d0d, in the same worktree, by exact node id.
+  All three serial-passed, which is the xdist-flake class of step 4: recorded,
+  not blocking. None of the three failed on the branch.
+
+  base run 1, 'OSError: [Errno 98] Address already in use' under -n auto:
+    tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes
+      serial re-run @f17b1d0d: 1 passed in 0.42s, REAL_EXIT=0
+  base run 1, 'AssertionError: Orphan process found after timeout cleanup':
+    tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+      serial re-run @f17b1d0d: 1 passed in 0.32s, REAL_EXIT=0
+  base run 2, a 4.0 s readiness budget that passed where a failure was expected
+  ('AssertionError: assert \'passed\' == \'failed\'') under -n auto load:
+    tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_retry_is_bounded_to_one
+      serial re-run @f17b1d0d: 1 passed in 1.56s, REAL_EXIT=0
+
+  Note that these three do not overlap between the two base runs, which is
+  itself the signature of a load-dependent flake rather than a fixed defect.
+
+------------------------------------------------------------------------------
+R-0734, THE KNOWN FLAKE
+------------------------------------------------------------------------------
+
+R-0734 is the registered server-start race in tests/ui_server/
+test_command_channel.py. It DID NOT FIRE as itself in either run: its
+signature is json.decoder.JSONDecodeError from a zero-byte server_info.json,
+and that string appears in neither log. The tests/ui_server/ failures in base
+run 1 are the stale-dist class above — the server never started at all, so the
+helper timed out at 'Server did not start in time' rather than parsing a
+partial file. No repair was attempted; this round's change set forbids
+touching tests/.
+
+------------------------------------------------------------------------------
+(g) THE BUDGET
+------------------------------------------------------------------------------
+
+  branch run : 113.13 s
+  base run 1 : 174.27 s
+  base run 2 : 105.79 s
+  total wall clock over the runs: 393.19 s (6 min 33 s)
+
+Step 5 notes wall clock over ~5 min for a perf pass. Each INDIVIDUAL run is
+under 3 minutes; the total is over 5 only because the base was run twice.
+
+THE GATE VERDICT IS THE REVIEWER'S. docs/agents/integration_gate.md step 5
+reserves it, and this worker does not issue it. The readings are above.

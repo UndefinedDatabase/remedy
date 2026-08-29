@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-61 of 257 registered items accepted. Next: F257 (Self-use track).
+62 of 257 registered items accepted. Next: F033 (Hunk-level diff approval).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 9 | 31 |
+| 5 | Operator Cockpit | 10 | 31 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -99,6 +99,13 @@ the main bundle; the 10k-line fixture measured end to end and its numbers
 recorded — the route answers a 1,045,960-byte envelope in 0.1331 s, and the
 client draws 48 rows of 10,002 however far the document grows — and the file
 sidebar's visual treatment ruled by a named design authority and applied).
+F257 self-use track (Remedy now runs a curated maintenance job on its own
+repository at every feature close, on a schedule that cannot be skipped: a
+shipped queue of operator-curated jobs whose read side owns no writer at all, a
+seam that renders one item verbatim onto the job path Remedy already has and
+plans it, and a closure precondition that consumes exactly one item per close —
+no job may mark its own item consumed, because a run that can check itself off is
+not a gate).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
