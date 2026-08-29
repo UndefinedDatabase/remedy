@@ -8,7 +8,9 @@ a number that was never measured is never printed.
 
 from __future__ import annotations
 
+import ast
 import re
+from pathlib import Path
 
 import pytest
 
@@ -1026,6 +1028,36 @@ class TestTheApplyStateIsAttachedByTheFullTaskId:
         assert _one_task_line(outcome).endswith("partially applied (3/5 changes)")
 
 
+class TestTheProofChainModuleDocumentsItsWholePublicApi:
+    """R-0746 — the export list and the module are read AGAINST each other.
+
+    A curated list that is only ever checked by being re-typed is the defect
+    R-0746 already is: round 18 gave ``proof_chain.py`` a fifth public function
+    and its ``Public API::`` block went on naming four. This walks the module's
+    own AST, so the list cannot go stale again without a red test.
+
+    It lives here, beside this round's other tests, because this is the round
+    that gives the shared apply fold its second importer.
+    """
+
+    def test_every_public_module_level_function_is_named_in_the_public_api_block(self):
+        tree = ast.parse(Path(proof_chain.__file__).read_text(encoding="utf-8"))
+        public = [node.name for node in tree.body
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  and not node.name.startswith("_")]
+        assert public, "the AST walk found no public function — the guard is vacuous"
+        assert "fold_task_apply_states" in public, (
+            "the shared apply fold is no longer a public module-level function of "
+            f"proof_chain.py; the walk found {public}")
+        block = _public_api_block(ast.get_docstring(tree) or "")
+        assert block.strip(), "proof_chain.py's docstring carries no `Public API::` block"
+        missing = [name for name in public
+                   if not re.search(rf"^\s*{re.escape(name)}\(", block, re.M)]
+        assert missing == [], (
+            "public in proof_chain.py but absent from its own `Public API::` block: "
+            f"{missing}")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -1051,6 +1083,21 @@ def _one_task_line(task: TaskOutcome) -> str:
     ).strip().splitlines()
     assert len(body) == 1, body
     return body[0]
+
+
+def _public_api_block(docstring: str) -> str:
+    """The indented block under ``Public API::`` in a module docstring."""
+    lines = docstring.splitlines()
+    start = next((i for i, line in enumerate(lines)
+                  if line.strip() == "Public API::"), None)
+    if start is None:
+        return ""
+    body: list[str] = []
+    for line in lines[start + 1:]:
+        if line.strip() and not line.startswith((" ", "\t")):
+            break
+        body.append(line)
+    return "\n".join(body)
 
 
 class _FakeTask:

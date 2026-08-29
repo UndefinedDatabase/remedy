@@ -16,6 +16,8 @@ Public API::
     export_proof_chain_json(chain) -> dict
     summarize_proof_chain(chain) -> str
     derive_next_safe_action(chain) -> str
+    derive_next_safe_action_from_changes(changes, job_id) -> tuple[str, NextSafeAction]
+    fold_task_apply_states(chain) -> dict[str, TaskApplyState]
 """
 
 from __future__ import annotations
