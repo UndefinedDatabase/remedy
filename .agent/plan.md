@@ -13,35 +13,37 @@ round — every partial state rendered truthfully in viewer, node and report.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 stable ids, viewer v2, consolidation | done | closed round 5 |
-| the approval decision core | done | round 6 |
-| the approved subset diff | done | round 7 |
-| landing the subset all-or-nothing | done | round 8 |
-| the failed-rollback truth | done | round 9, R-0740 |
-| the hunk-decision ledger | done | round 10, R-0741 |
-| what the door's effect IS, and the recorder | open | this round, DECISION F033 D4 |
-| the write door itself | open | next, needs three guards widened together |
+| T001 stable ids, viewer v2, consolidation | done | round 5 |
+| decision core · subset diff · all-or-nothing apply | done | rounds 6, 7, 8 |
+| failed-rollback truth · ledger · the door's effect | done | rounds 9-11, D4 |
+| the recorder takes the viewer's envelope | open | this round |
+| the CLI command and its handler | open | next |
+| the write door's exposure and dispatch | open | after the CLI command |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. Rule the door's effect and build what it calls. DECISION F033 D4: the door
-   RECORDS a hunk decision and never applies it, because `hunk_apply` imports
-   `source_apply` and a door importing the seam would defeat the P3 import guard
-   by name rather than by substance. `record_hunk_decision` is that effect, and
-   R-0742 pins the ledger divergence round 10 declared but left untested.
-2. Then the door itself, in ONE commit per widened guard plus its dispatch:
-   `UI_EXPOSED_COMMANDS` in `apps/cli/command_catalog.py` is pinned at exactly
-   two ids by `TestUiExposedCommands`; `DOOR_METHODS` and `ALLOWED_IMPORTS` in
-   `tests/ui_server/test_command_channel.py` are EQUALITY guards; and
-   `packages.orchestration.hunk_apply` joins `FORBIDDEN_MODULES` so the mistake
-   D4 forbids cannot be made silently later.
-3. Then T003: rejection reasons quoted verbatim into the next repair prompt, the
-   report's "partially approved (5/8 hunks)" line derived from the ledger, and
-   partial state rendered truthfully in viewer, node and report.
+1. The recorder takes the VIEWER'S ENVELOPE, not only diff text.
+   `diff_view_source.build_diff_view` holds an attempt's diff already parsed and
+   already read under its own byte ceiling; re-parsing text a caller has as an
+   envelope would put a second copy of that ceiling beside the first. One
+   implementation, two doors, plus the refusal an ABSENT artifact needs so the
+   operator is not told their ids are wrong.
+2. Then the CLI command and its handler TOGETHER. Measured at `624818e6`:
+   `CATALOG` holds 340 entries and `collect_all_handlers()` 340 handlers, so
+   entries without a handler number ZERO — no test asserts it, nothing has broken
+   it, and `apps/cli/grouped.py` builds its parsers from the catalog, so a
+   handlerless entry is reachable in help and answers `Error: no handler`. It
+   lands in the `patch` group beside `patch.approve` and `patch.apply`.
+3. Then the write door. `UI_EXPOSED_COMMANDS` is a SUBSET of the catalog pinned
+   at exactly two ids by `TestUiExposedCommands`, so exposure needs step 2 first.
+   `DOOR_METHODS` and `ALLOWED_IMPORTS` are EQUALITY guards widened in the same
+   commit as the dispatch, and `packages.orchestration.hunk_apply` joins
+   `FORBIDDEN_MODULES` so DECISION F033 D4's forbidden mistake cannot be made
+   silently later.
+4. Then T003: rejection reasons quoted verbatim into the next repair prompt, the
+   report line derived from the ledger, and partial state rendered truthfully in
+   viewer, node and report.
 
 ## Risks
-- The door's import guard is an EQUALITY guard, so a new import reddens the
-  branch tip unless it is ruled in the same commit.
-- Exposure without dispatch answers 501, so the catalog entry and the dispatch
-  belong to one round.
-- R-0738 stays open and is T003's to repair.
+- The door's import guard is an EQUALITY guard: a new import reddens the branch
+  tip unless it is ruled in the same commit. R-0738 is T003's to repair.
