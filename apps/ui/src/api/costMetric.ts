@@ -54,8 +54,12 @@ export interface CostMetricView {
 const WARN_FILL = 0.85;
 const EXCEEDED_FILL = 1;
 
-/** The only basis string that means the figure is not an estimate. */
-const ACTUAL_BASIS = "actual";
+/** The only basis string that means the figure is not an estimate.
+ *  EXPORTED because the completion digest's cost line reads the same string
+ *  (DECISION F040 D7): the bar and the hero card must agree about what
+ *  "exact" is, and a second copy of this literal is the drift DECISION F040 D2
+ *  already spent a round preventing for the urgency formula. */
+export const ACTUAL_BASIS = "actual";
 
 /** What `display` shows when the figure itself is missing. */
 const NO_FIGURE = "—";
