@@ -1,45 +1,39 @@
-# Plan — F257 Self-use track
+# Plan — F257 Self-use track (CLOSED)
 
 Branch: feature/f257-self-use-track, cut from `main` at the merge commit of pull
-request #220. F257 was claimed by Rule A5 as the first unchecked line in
-`docs/roadmap/STATUS.md` after F256.
+request #220. F257 is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line and
+the pull request is open and UNMERGED.
 
 ## Goal
-Remedy is used on Remedy on a schedule that cannot be skipped: a curated queue
-of small maintenance jobs, exactly one consumed per feature close, run through
+Remedy is used on Remedy on a schedule that cannot be skipped: a curated queue of
+small maintenance jobs, exactly one consumed per feature close, run through
 `do job-plan` and `do job-run` against this repository and taken to the normal
-approval gate.
+approval gate. DONE.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the queue file and its read-only loader | done | round 2, 18 tests |
-| render a queue item and plan it on the real job path | done | round 3 |
-| refuse a job file written outside its destination | done | round 4, R-0733 |
-| consume exactly one item per feature close | done | round 4, precondition 6 |
-| refuse an id that is not one file name | done | round 5, R-0735 |
-| document the format where a reader looks | done | round 5 |
-| the integration gate | done | round 6, PASSED, 18186 passed 0 failed |
+| the queue, the loader, the job-path seam | done | rounds 2-5, 36 tests |
+| the integration gate | done | round 6, 18186 passed 0 failed |
 | the feature file's Built State | done | round 7, precondition 4 |
 | plan SU-001 and stop at the approval gate | done | round 8, precondition 6 |
 | three tests survive their own feature's close | done | round 10, R-0737 |
-| the evidence bundle and the review zip | done | this round, at the repaired head |
-| the closure commit and the PR | open | next, and it is the last round |
+| the evidence bundle and the review zip | done | round 11, READY_FOR_REVIEW |
+| the closure commit | done | this round, Rule A4's last commit |
+| the pull request | done | opened and NOT merged |
 
 ## Next Steps
-1. The closure commit, in ONE commit: the `[x]` flip on `docs/roadmap/STATUS.md`,
-   the README accepted count, its `Next:` clause, the tier-5 Done cell, the README
-   capability paragraph, the `scripts/self_use_queue.json` `consumed_by` edit and
-   the final `.agent/` state.
-2. Open the pull request. It is NOT merged in this session — the gap is the
-   operator's manual-review window, and the next feature's Open PR Gate merges it.
+1. Nothing further on this branch. The next feature's Open PR Gate merges this
+   pull request, or the operator merges it manually at any time.
+2. Rule A5 selects F033 — Hunk-level diff approval — as the next feature, in a
+   fresh session.
 
 ## Risks
-- A job must never mark its own queue item consumed; neither shipped module owns
-  a queue writer, and DECISION F257 D2 rules the consumption point.
-- `docs/roadmap/STATUS.md` is in `scope_fences.BUILTIN_DENY` and stays there.
-- R-0734 and R-0736 are registered and deliberately NOT repaired on this branch;
-  both are outside F257's surface.
-- The queue holds ONE item, so F257's own close EXHAUSTS it. The next feature's
-  close records `self-use NONE (queue exhausted)` until an operator curates more.
+- THE SELF-USE QUEUE IS NOW EXHAUSTED. SU-001 is consumed by F257 and no pending
+  item remains, so the next feature's close records
+  `self-use NONE (queue exhausted)` until an operator curates more items into
+  `scripts/self_use_queue.json`. That is the track asking for curation, and
+  closure precondition 6 explicitly does not treat it as a blocker.
+- R-0734 and R-0736 stay registered and unrepaired, both outside F257's surface.
+  They are the documented Medium risks behind the PASS_WITH_RISKS verdict.
