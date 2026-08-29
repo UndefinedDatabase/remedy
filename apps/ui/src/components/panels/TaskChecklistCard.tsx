@@ -3,16 +3,22 @@ import { selectChecklistRows } from "../../cockpitLogic";
 import { TaskDoneGlyph, TaskPlannedGlyph } from "../icons/RemedyGlyphs";
 import styles from "./RightLivePanel.module.css";
 
-function iconFor(state: string) {
-  if (state === "done") return <span className={styles.checkDone}><TaskDoneGlyph /></span>;
-  if (state === "current") return <span className={styles.dotCurrent} />;
+// Finding R-0738: a task can be finished AND only partly applied, so apply state is
+// read BEFORE the lifecycle state here — otherwise the row says "Done" about changes
+// that only half landed. The blue filled check tile is the treatment
+// docs/ui/design_reference/ux_spec.md section 11 item 4 binds for that case.
+function iconFor(task: RemedyTaskItem) {
+  if (task.applyStatus === "partial") return <span className={styles.checkPartial}><TaskDoneGlyph /></span>;
+  if (task.state === "done") return <span className={styles.checkDone}><TaskDoneGlyph /></span>;
+  if (task.state === "current") return <span className={styles.dotCurrent} />;
   return <TaskPlannedGlyph style={{ width: 16, height: 16, color: "var(--remedy-faint)" }} />;
 }
 
-function stateText(state: string): string {
-  if (state === "done") return "Done";
-  if (state === "current") return "In Progress";
-  if (state === "blocked") return "Blocked";
+function stateText(task: RemedyTaskItem): string {
+  if (task.applyStatus === "partial") return "Partially applied";
+  if (task.state === "done") return "Done";
+  if (task.state === "current") return "In Progress";
+  if (task.state === "blocked") return "Blocked";
   return "Planned";
 }
 
@@ -56,12 +62,12 @@ export function TaskChecklistCard({ tasks, jobId, onSelectNode }: {
           return (
             <button key={row.id} type="button" className={`${styles.taskRow} ${styles[row.state] || ""}`}
               onClick={() => { if (row.nodeId) onSelectNode(row.nodeId); }}>
-              <span className={styles.taskIcon}>{iconFor(row.state)}</span>
+              <span className={styles.taskIcon}>{iconFor(row)}</span>
               <span className={styles.taskLabel}>
                 {row.label}
                 {hint && <span className={styles.taskHint}>{hint}</span>}
               </span>
-              <span className={styles.taskState}>{stateText(row.state)}</span>
+              <span className={styles.taskState}>{stateText(row)}</span>
             </button>
           );
         })}
