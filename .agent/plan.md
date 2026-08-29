@@ -13,27 +13,28 @@ round — every partial state rendered truthfully in viewer, node and report.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 stable ids, viewer v2, consolidation | done | closed round 5, DECISION F033 D3 |
-| the approval decision core | done | round 6, 30 cases |
-| the approved subset diff | done | round 7, 17 cases |
+| T001 stable ids, viewer v2, consolidation | done | closed round 5 |
+| the approval decision core | done | round 6 |
+| the approved subset diff | done | round 7 |
 | landing the subset all-or-nothing | done | round 8 |
-| the seam tells the truth about a failed rollback | done | round 9, R-0740 |
-| the hunk-decision ledger | open | this round, plus R-0741 |
-| the write-door command and its exposure | open | needs the door's effect ruled |
+| the failed-rollback truth | done | round 9, R-0740 |
+| the hunk-decision ledger | done | round 10, R-0741 |
+| what the door's effect IS, and the recorder | open | this round, DECISION F033 D4 |
+| the write door itself | open | next, needs three guards widened together |
 | T003 rejection to repair, partial-state truth | open | owns R-0738 |
 
 ## Next Steps
-1. The hunk-decision ledger: the ordered record of every hunk in an attempt on
-   TWO axes — the operator's decision and whether those bytes landed — kept
-   apart because an approved hunk whose apply failed is neither landed nor
-   rejected. Pure, and deliberately unable to import the applier. R-0741 repairs
-   the last comment still asserting the absolute round 9 retired.
-2. Then the write door, opened by a DECISION that first rules what its effect IS.
-   `packages.orchestration.hunk_apply` imports `source_apply`, the first entry of
-   `FORBIDDEN_MODULES` in `tests/ui_server/test_command_channel.py`, so a door
-   importing the seam runs the applicator inside the HTTP handler and defeats the
-   P3 contract by naming a module the list has not caught up to. The ledger is
-   built to be what the door writes instead.
+1. Rule the door's effect and build what it calls. DECISION F033 D4: the door
+   RECORDS a hunk decision and never applies it, because `hunk_apply` imports
+   `source_apply` and a door importing the seam would defeat the P3 import guard
+   by name rather than by substance. `record_hunk_decision` is that effect, and
+   R-0742 pins the ledger divergence round 10 declared but left untested.
+2. Then the door itself, in ONE commit per widened guard plus its dispatch:
+   `UI_EXPOSED_COMMANDS` in `apps/cli/command_catalog.py` is pinned at exactly
+   two ids by `TestUiExposedCommands`; `DOOR_METHODS` and `ALLOWED_IMPORTS` in
+   `tests/ui_server/test_command_channel.py` are EQUALITY guards; and
+   `packages.orchestration.hunk_apply` joins `FORBIDDEN_MODULES` so the mistake
+   D4 forbids cannot be made silently later.
 3. Then T003: rejection reasons quoted verbatim into the next repair prompt, the
    report's "partially approved (5/8 hunks)" line derived from the ledger, and
    partial state rendered truthfully in viewer, node and report.
@@ -41,6 +42,6 @@ round — every partial state rendered truthfully in viewer, node and report.
 ## Risks
 - The door's import guard is an EQUALITY guard, so a new import reddens the
   branch tip unless it is ruled in the same commit.
-- `UI_EXPOSED_COMMANDS` is pinned at exactly two ids by `TestUiExposedCommands`,
-  and exposure without dispatch answers 501.
+- Exposure without dispatch answers 501, so the catalog entry and the dispatch
+  belong to one round.
 - R-0738 stays open and is T003's to repair.
