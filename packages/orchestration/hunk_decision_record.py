@@ -32,16 +32,19 @@ else. A reader who wants whether a decision is coherent at all wants
 wants ``packages/orchestration/hunk_subset_diff.py``; one who wants the apply seam itself wants
 ``packages/orchestration/hunk_apply.py``.
 
-THIS MODULE IS NOT TOTAL, and unlike its two pure dependencies it must not pretend to be.
-``hunk_approval`` and ``hunk_ledger`` are text-in, text-out and run while the approval screen
-renders, so a raise there takes down the very screen that exists to show the operator what is
-strange, and totality there costs nothing because there is nothing that can legitimately fail.
-Here there is: this module READS AND MUTATES ``job.metadata``, and a job whose metadata is not a
-dict, or whose attribute access raises, is a REAL programming error the caller must see.
-Flattening that into a polite refusal would report "the diff was untrustworthy" for a broken
-caller. So it catches nothing it cannot name. A non-string ``task_id`` or ``attempt`` is NOT that
-class — those are identifiers a caller may legitimately hand over as a ``UUID`` or an ``int`` — and
-they are coerced to text.
+THE TWO RECORDING DOORS ARE NOT TOTAL, and unlike this module's two pure dependencies they must
+not pretend to be. ``hunk_approval`` and ``hunk_ledger`` are text-in, text-out and run while the
+approval screen renders, so a raise there takes down the very screen that exists to show the
+operator what is strange, and totality there costs nothing because there is nothing that can
+legitimately fail. Here there is: the two doors READ AND MUTATE ``job.metadata``, and a job whose
+metadata is not a dict, or whose attribute access raises, is a REAL programming error the caller
+must see. Flattening that into a polite refusal would report "the diff was untrustworthy" for a
+broken caller. So they catch nothing they cannot name. A non-string ``task_id`` or ``attempt`` is
+NOT that class — those are identifiers a caller may legitimately hand over as a ``UUID`` or an
+``int`` — and they are coerced to text. THE READER BELOW IS THE ONE EXCEPTION AND IT IS TOTAL:
+``load_latest_hunk_ledger_from_metadata`` mutates nothing and answers an EMPTY ledger for every
+input it cannot read, because it runs while the next builder prompt is being composed, where a
+raise would take down the ROUND rather than surface a caller's mistake to an operator.
 
 THERE ARE TWO DOORS AND ONE IMPLEMENTATION, and the second door is why this shape exists.
 ``packages/orchestration/diff_view_source.py``'s ``build_diff_view`` already resolved an
@@ -62,6 +65,7 @@ Public API::
     HunkDecisionRecord — the attempt key, the ledger, and the exported record written to the job
     record_hunk_decision_from_view — the ONE implementation, over an ALREADY PARSED view
     record_hunk_decision — the TEXT door: parse a diff, then delegate to the one above
+    load_latest_hunk_ledger_from_metadata — the READ side: a task's LATEST decision, as a ledger
 """
 
 from __future__ import annotations
@@ -77,6 +81,7 @@ from packages.orchestration.hunk_ledger import (
     HunkDecisionLedger,
     build_hunk_ledger,
     export_hunk_ledger,
+    import_hunk_ledger,
 )
 
 #: The key on ``job.metadata`` under which every hunk decision is recorded.
@@ -255,3 +260,96 @@ def record_hunk_decision(
         rejected=rejected,
         now=now,
     )
+
+
+# One record's ``decided_at`` read as a time, or nothing — the ranking key of the reader below.
+def _parsed_decision_stamp(value: Any) -> datetime | None:
+    """``value`` as a ``datetime``, or ``None`` when ``datetime.fromisoformat`` will not parse it.
+
+    THE SEPARATE PARSE GUARD, deliberately NOT folded into the structural guard below. A stamp
+    that does not parse belongs to an ORDINARY record the reader must still rank — it simply
+    loses to every record that carries a readable one — while a SHAPE the reader cannot read at
+    all is a different fault with a different answer, an empty ledger. Keeping the two apart is
+    what makes each of them observable: a red-proof aimed at the structural guard feeds a
+    malformed shape, one aimed at this guard feeds a malformed stamp, exactly as
+    ``hunk_ledger.import_hunk_ledger`` separates its own structural guard from ``_total_text``.
+
+    Never raises: ``datetime.fromisoformat`` refuses a non-string with a ``TypeError`` and an
+    unreadable string with a ``ValueError``, and both mean one thing here — this record carries
+    no time to order it by."""
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+# The READ side of this module, and the inverse of what the two doors above write: the LATEST
+# decision one task has recorded, rebuilt into the ledger a repair prompt can quote.
+def load_latest_hunk_ledger_from_metadata(
+    metadata: Any,
+    *,
+    task_id: Any,
+) -> HunkDecisionLedger:
+    """The ledger of the decision most recently RECORDED for ``task_id`` in ``metadata``.
+
+    ``metadata`` is a job's ``metadata`` MAPPING — the very object the two doors above write
+    into — and never a job, a job id or a path. ``task_id`` is coerced to text, exactly as the
+    doors coerce it before composing an attempt key.
+
+    SELECTION, the whole rule in one sentence: among the records under
+    ``HUNK_DECISIONS_METADATA_KEY`` whose ``task_id`` equals ``str(task_id)``, the winner is the
+    one carrying the GREATEST ``decided_at`` that ``datetime.fromisoformat`` parses; a record
+    whose ``decided_at`` does not parse can NEVER beat one that does; and if none parses, or
+    several tie, the LAST in the mapping's iteration order wins — which for a record loaded from
+    JSON is insertion order, so the most recently written of them. Nothing here sorts the KEYS.
+    An attempt key is ``task:attempt`` and ``"t-1:10"`` sorts before ``"t-1:9"``, so ranking by
+    id would start answering with the wrong attempt the moment a task reaches ten.
+
+    THE REBUILD IS ``hunk_ledger.import_hunk_ledger``'s, handed the winning record WHOLE. That
+    works because ``_LEDGER_ROWS_KEY`` above and the export root key the importer reads are
+    deliberately the SAME name, and the comment on that constant is where the deliberateness is
+    recorded. A stored record therefore ALREADY has the shape the importer reads, so this module
+    walks no rows of its own: there is ONE inverse of the export in this repository rather than
+    two, and two would drift apart the day either shape moves.
+
+    TOTAL — it never raises, on any input at all: ``None`` metadata, a non-mapping, no decisions
+    key, a decisions value that is not a mapping, a record that is not a mapping, a record
+    missing a key. Every one of them yields an EMPTY ledger and never a PARTIAL one, for the
+    reason ``import_hunk_ledger`` gives — a half-built result's missing half is invisible to
+    whoever reads it next. THE STRUCTURAL GUARD IS THE ONE ``try`` BELOW and there is
+    deliberately no second one inside it, because a redundant inner layer would make this one
+    unobservable and a guard no test can redden is a guard nobody knows is there;
+    ``_parsed_decision_stamp`` above is the SEPARATE parse guard.
+
+    AN EMPTY LEDGER IS ALSO THE HONEST ANSWER FOR "this task recorded no decision at all", and
+    that is NOT an error. A caller cannot tell the two apart, deliberately: to a prompt they mean
+    the same thing — there is nothing of the operator's to quote — so a refusal object here would
+    buy nothing but the same branch written twice at every call site.
+
+    DELIBERATE ABSENCE — THIS PERFORMS NO STORAGE I/O, and taking a MAPPING rather than a job id
+    or a path is how that is enforced rather than merely promised. A reader who came here looking
+    for a job load, a persisting write or a file read should stop at this paragraph: there is
+    none, and the CALLER that already holds the job supplies the mapping. DECISION F033 D4's
+    standing property — nothing the write door imports drags a storage write or an applier behind
+    it — is stated in the module docstring above, and this function is bound by it too."""
+    try:
+        wanted = str(task_id)
+        winner: Any = None
+        best: datetime | None = None
+        for record in metadata[HUNK_DECISIONS_METADATA_KEY].values():
+            if record["task_id"] != wanted:
+                continue
+            stamp = _parsed_decision_stamp(record["decided_at"])
+            # An unparseable stamp NEVER displaces a parseable one. Everything else displaces:
+            # the first match, a later record while the incumbent has no stamp at all, a greater
+            # stamp, and an EQUAL stamp — that last one is how "several tie, the last wins" is
+            # spelled, and it is why the comparison is ``>=`` rather than ``>``.
+            if winner is None or best is None:
+                winner, best = record, stamp
+            elif stamp is not None and stamp >= best:
+                winner, best = record, stamp
+        if winner is None:
+            return HunkDecisionLedger(())
+        return import_hunk_ledger(winner)
+    except Exception:
+        return HunkDecisionLedger(())
