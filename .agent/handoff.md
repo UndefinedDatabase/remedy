@@ -36,6 +36,7 @@ Branch `feature/f033-hunk-approval-v2`.
 | C5 the contract test (SPEC C) | done | |
 | C6 `.agent/handoff.md` <- this handback | done | |
 | C7 `.agent/handoff.md` <- the push outcome | done | recorded after the push |
+| C8 `.agent/handoff.md` <- one-sentence correction | deviated | not in the block; see deviation D7 |
 
 ## Commits
 
@@ -249,6 +250,16 @@ what constraint 8 orders; it is recorded here because a reader auditing the roun
 against its block should see the absence was deliberate. R-0738 stays open: the
 report line, the third surface its resolution names, is untouched.
 
+D7 — ONE COMMIT BEYOND THE BLOCK'S ORDERED SEQUENCE. The bundle ends at C7. C7's
+own text predicted that C7 would stay local until the next round pushed it; AGENTS.md
+Push Discipline ("After committing: git push") and the Task Completion Protocol ("Do
+not treat local-only committed work as finished") both order otherwise, so C7 was
+pushed at once and its prediction landed false on disk. C8 corrects that one sentence
+and carries the wording it replaces. It touches only `.agent/handoff.md`, which is in
+the change set; no other path was written. The correction is capped at one — there is
+no C9. A future block that names C7 should also say whether C7 is pushed, which would
+have removed the guess entirely.
+
 Assumption: none beyond the above. Where SPEC A, B and C were ambiguous the block's
 literal wording was applied and the disagreement declared rather than corrected.
 
@@ -283,5 +294,11 @@ slips SLIPS17 carries.
 Non-fast-forward it was not, and no force flag of any kind was used. `git rev-parse`
 afterwards gives `16bb7d628638aebbc00c1f773168ae5e64ecb9fd` for BOTH `HEAD` and
 `origin/feature/f033-hunk-approval-v2`, so the remote carries C0a through C6 exactly.
-This C7 commit is the only one the push above does not contain; it is pushed by the
-next round's first push, or by the reviewer, whichever comes first.
+CORRECTION, carried in C8 and carrying the fact it replaces. C7 as committed said
+"This C7 commit is the only one the push above does not contain; it is pushed by the
+next round's first push, or by the reviewer, whichever comes first." That was a
+PREDICTION written before the second push and it turned out false: AGENTS.md Push
+Discipline and the Task Completion Protocol both order a push after every commit, so
+C7 was pushed immediately —
+`git push` -> REAL exit 0, `16bb7d62..350c069e`. C8 is this correction and is the
+only commit the branch holds beyond the block's ordered bundle; see deviation D7.
