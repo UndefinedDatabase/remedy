@@ -1,53 +1,56 @@
-### STEP T002 — F257 Self-use track, round 10 (THE CLOSURE BLOCKER)
+### STEP T002 — F257 Self-use track, round 11 (THE PACKAGE, REBUILT AT THE REPAIRED HEAD)
 
-Goal: book the round 9 verdict, register R-0737, and REPAIR IT. The reviewer
-dry-ran the closure commit's own edits in a throwaway worktree and found that
-three tests on F257's own surface go RED the moment F257 closes: they require the
-shipped queue to hold a PENDING item, and closure precondition 6 consumes exactly
-that item. The feature cannot satisfy its own closure rule without turning its own
-suite red. This round makes those three tests state-independent so the closure
-commit can land green.
+Goal: book the round 10 verdict, record one reviewer-prose slip, and rebuild the
+evidence bundle and the review zip at the repaired head. Round 9's package
+recorded `506bbab5` as the accepted HEAD; round 10 landed a commit under `tests/`,
+so that package no longer covers the head being closed and a fresh one is built
+here. This round does NOT close the feature: no `[x]`, no README sync, no
+`consumed_by` edit, no pull request.
 
-THIS ROUND SUPERSEDES ROUND 9'S PACKAGE. The zip built at `506bbab5` recorded
-that commit as the accepted HEAD; a repair under `tests/` is a CONTENT commit, so
-the accepted HEAD moves and the package must be rebuilt at the new head. That
-rebuild is the NEXT round. Do not close anything here.
-
-Base: `5cb48adc`, the tip of `feature/f257-self-use-track` and the handback this
+Base: `260b42c4`, the tip of `feature/f257-self-use-track` and the handback this
 round starts from.
 
 Bundle, in commit order:
 
-- C0a save this block verbatim to `.agent/authored/f257-r10.md`
+- C0a save this block verbatim to `.agent/authored/f257-r11.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
 - C1 advance `.agent/plan.md`
-- C2 book the F257 R9 verdict AND register R-0737 into `.agent/live_review.md`
-- C3 repair `tests/orchestration/test_self_use_job.py`
+- C2 book the F257 R10 verdict into `.agent/live_review.md`
+- C3 append one line to `.agent/prose_slips.md`
+- then PUSH, and build the bundle and the zip from the clean tree at C3
 - C4 rewrite `.agent/handoff.md`
 
 Change set — these paths and nothing else:
 
-- `.agent/authored/f257-r10.md`
+- `.agent/authored/f257-r11.md`
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
-- `tests/orchestration/test_self_use_job.py`
+- `.agent/prose_slips.md`
 - `.agent/handoff.md`
 
-`scripts/self_use_queue.json` IS NOT EDITED IN THE PRIMARY CHECKOUT. The
-`consumed_by` edit belongs to the closure commit, and this round only SIMULATES it
-inside a disposable worktree to prove the repair. No file under `packages/`,
-`apps/`, `docs/` or `scripts/` is edited, and no test is deleted, skipped or
-weakened: the three tests keep every assertion they carry and change only WHERE
-they get their entry from. `docs/roadmap/STATUS.md` and `README.md` are NOT
-touched.
+THE EVIDENCE DIRECTORY IS NEVER COMMITTED and neither is the zip; both are
+gitignored, and a committed evidence dir puts evidence files into the review
+subject and packages BLOCKED_EVIDENCE. NO file under `packages/`, `apps/`,
+`tests/`, `scripts/` or `docs/` is edited. `docs/roadmap/STATUS.md`, `README.md`
+and `scripts/self_use_queue.json` are NOT touched.
+
+ACCEPTED HEAD IS C3. The zip is built after C3 is committed and pushed, so the
+manifest's `committed_review_subject.head_commit` is C3's full sha. C4 writes only
+`.agent/handoff.md` and follows the READY package. Report C3's full sha as the
+accepted HEAD; the next round's STATUS line carries it.
+
+THE SUPERSEDED PACKAGE IS LEFT ALONE. `remedy-review-20260829-025133-READY_FOR_REVIEW.zip`
+already sits in `/home/decodeux/Repos/remedy-history/zips`. DELETE NOTHING there —
+it is the operator's archive, and nothing in this round needs the space. State in
+the handback, by exact filename, which package is SUPERSEDED and which is LIVE.
 
 ### Constraints
 
 0. BEFORE ANYTHING: report `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
    — it was `[]` when this block was written, and if it is not `[]` now, STOP and
    hand back without committing. Report `git rev-parse HEAD`, which must equal
-   `5cb48adc`'s full sha, and `git branch --show-current`, which must be
+   `260b42c4`'s full sha, and `git branch --show-current`, which must be
    `feature/f257-self-use-track`. Create no branch and no pull request. Never
    force-push and never rewrite history.
 1. Apply every authored slice BYTE FOR BYTE — no reflow, rewording, retitling,
@@ -56,10 +59,12 @@ touched.
 2. The delimiter lines `<<<SLICE …` and `<<<END …` are transport only and never
    reach a target file.
 3. Extract every slice from the COMMITTED blob with
-   `git show <C0a>:.agent/authored/f257-r10.md`, never from this prompt's text.
+   `git show <C0a>:.agent/authored/f257-r11.md`, never from this prompt's text.
 4. AGENTS.md binds in full: the self-review loop before every commit, one
    logical step per commit, `.agent/plan.md` current before every commit, a
-   clean tree, and the push.
+   clean tree, and the push. AGENTS.md also requires that EVERY artifact-build
+   attempt — bundle, zip, and the deliberate red control below — appears in the
+   handback with its status, failed attempts included with the blocking reason.
 5. Shell forms rejected by this session's guard are RE-EXPRESSED, never skipped
    and never weakened. Loops, `$( )`, `${arr[0]}`, `cp`, brace literals
    containing quotes, and every form of environment-variable assignment are
@@ -76,19 +81,19 @@ touched.
    This constraint is the authority on separators; if a gate formula below
    disagrees, follow this constraint and declare the disagreement.
 7. THE OPEN SET IS COUNTED BY DISTINCT ID, as
-   `len(set(registered ids) - set(resolved ids))`. It reads 255 at `5cb48adc`.
-   This round registers ONE id and resolves none, so it must read 256 at C2 and
-   the registered count must read 298.
-8. DESTRUCTIVE VERIFICATION IS ISOLATED. Every measurement that needs the queue
-   EXHAUSTED happens inside a `git worktree add --detach` worktree under
-   `.remedy-wt/`, never in the primary checkout, which satisfies
-   `git status --porcelain` empty at every commit. Remove that worktree by its
-   EXACT PATH when done — never by glob — and report `git worktree list`
-   afterwards.
+   `len(set(registered ids) - set(resolved ids))`. It reads 256 at `260b42c4`.
+   THIS ROUND REGISTERS NO ID AND RESOLVES NONE, so it must still read 256 at C2
+   and the registered count must be UNMOVED at 298. A `Gate:` paragraph is not a
+   registration, and `.agent/prose_slips.md` never carries an id at all.
+8. EXIT CODE 0 IS NEVER THE READING FOR THE ZIP. `scripts/make_review_zip.sh`
+   exits 0 for a BLOCKED_EVIDENCE package as readily as for a READY one. The
+   reading is `PACKAGE_STATUS` in the printed output and `package_status` in
+   `.review_zip_manifest.json`. A handback that reports the zip green on an exit
+   code is a finding.
 
 ### The authored slices
 
-<<<SLICE PLANF257R10
+<<<SLICE PLANF257R11
 # Plan — F257 Self-use track
 
 Branch: feature/f257-self-use-track, cut from `main` at the merge commit of pull
@@ -114,19 +119,17 @@ approval gate.
 | the integration gate | done | round 6, PASSED, 18186 passed 0 failed |
 | the feature file's Built State | done | round 7, precondition 4 |
 | plan SU-001 and stop at the approval gate | done | round 8, precondition 6 |
-| the evidence bundle and the review zip | superseded | round 9; the head moves |
-| three tests survive their own feature's close | done | this round, R-0737 |
-| rebuild the bundle and the zip at the new head | open | next |
-| the closure commit and the PR | open | after the rebuilt zip |
+| three tests survive their own feature's close | done | round 10, R-0737 |
+| the evidence bundle and the review zip | done | this round, at the repaired head |
+| the closure commit and the PR | open | next, and it is the last round |
 
 ## Next Steps
-1. Rebuild the evidence bundle and the review zip at the repaired head; the
-   package from round 9 recorded `506bbab5` as the accepted HEAD and a content
-   commit has landed since, so it no longer covers the head being closed.
-2. The closure commit, in ONE commit: the `[x]` flip on `docs/roadmap/STATUS.md`,
+1. The closure commit, in ONE commit: the `[x]` flip on `docs/roadmap/STATUS.md`,
    the README accepted count, its `Next:` clause, the tier-5 Done cell, the README
    capability paragraph, the `scripts/self_use_queue.json` `consumed_by` edit and
-   the final `.agent/` state. Then the PR, unmerged.
+   the final `.agent/` state.
+2. Open the pull request. It is NOT merged in this session — the gap is the
+   operator's manual-review window, and the next feature's Open PR Gate merges it.
 
 ## Risks
 - A job must never mark its own queue item consumed; neither shipped module owns
@@ -136,169 +139,200 @@ approval gate.
   both are outside F257's surface.
 - The queue holds ONE item, so F257's own close EXHAUSTS it. The next feature's
   close records `self-use NONE (queue exhausted)` until an operator curates more.
-<<<END PLANF257R10
+<<<END PLANF257R11
 
-<<<SLICE GATEF257R9
-Gate: F257 R9 — THE PACKAGE ROUND, closure-protocol algorithm steps 1 and 2. THE ROUND PASSED AND THE PACKAGE BUILT READY_FOR_REVIEW. Every gate was re-executed by the reviewer at `5cb48adc` from a script of its own. Transport EQUAL at sha256 `4d995a0a…8e9d133` over 22597 bytes with ONE blob id `3305242c…6562` at C0b; the plan byte-equal at 2177 bytes over 42 lines; the record reconstructing 1405901 → 1409456 from GATEF257R8 alone, the negative control failing at an offset proved inside the appended text; the ledger registered UNMOVED at 297 all DISTINCT, `Done:` 44 over 42 and `Landed:` 11 UNMOVED, `Gate:` 113 → 114, the open set UNMOVED at 255; both residues empty over four SINGLE-PARENT commits of 331, 198, 9 and 10 insertions; delimiters 0 and 0 in both targets against a 2/2 control; `.remedy-wt` untracked at 0; `git ls-files` carrying ZERO `remedy-job-evidence` paths, so the evidence directory really is uncommitted; and STATUS.md, README.md, the queue file and the feature file all ABSENT from the range.
+<<<SLICE GATEF257R10
+Gate: F257 R10 — THE CLOSURE BLOCKER, found by dry-running the closure commit before authoring it. THE ROUND PASSED AND R-0737 IS REPAIRED. THE RED-PROOF WAS REPRODUCED BY THE REVIEWER IN ITS OWN DISPOSABLE WORKTREE, not read out of the handback, and it is the reading this round turns on: `python3 -B -m pytest tests/orchestration/test_self_use_queue.py tests/orchestration/test_self_use_job.py -q`, the same command against the same two suites, four times — (A) at `5cb48adc` with the queue PENDING, REAL exit 0, `36 passed`; (B) at `5cb48adc` with SU-001's `consumed_by` set to `F257` in the WORKTREE ONLY, REAL exit 1, `3 failed, 33 passed`, the three being `TestPlanSelfUseItem::test_the_shipped_item_plans_with_its_title_and_tasks`, `TestPlanSelfUseItem::test_the_shipped_item_plans_to_exactly_one_task_with_acceptance` and `TestPlanNextSelfUseItem::test_it_returns_the_shipped_pending_item`; (C) at C3 `ceac0e3a` with the queue PENDING, REAL exit 0, `36 passed`; (D) at C3 with the queue EXHAUSTED, REAL exit 0, `36 passed`. The ONLY difference between (B) and (D) is the commit. A gate that cannot show the red proves nothing, and this one showed it.
 
-THE BUNDLE WAS READ OFF DISK, NOT OFF THE HANDBACK. All eight closed-schema gate documents are present in the evidence directory — `final_verifier_report`, `fresh_evidence`, `artifact_contract`, `change_provenance`, `manifest_integrity`, `postmortem_integrity`, `commit_execution` and `runtime_integration`. All four verification runs satisfy `len(node_ids) == selected` at 18, 18, 295 and 42 with zero failed and zero skipped, every `test_files` list SORTED — the unsorted-list trap that packaged BLOCKED_EVIDENCE at F082 — and every `output_hash` equal to sha256 of its `stdout_summary` exactly, which is the preimage rule that blocked the F083 closure. The adapted evidence script differs from the committed `EVIDENCESCRIPT` template in ONLY the values the block named: `EVIDENCE_DIR`, `BASE`, the four `mkrun` rows and the seven producer keyword arguments. Nothing load-bearing was touched.
+THE REPAIR WAS READ AS A DIFF, LINE BY LINE, AND IT REMOVES NOTHING. `load_self_use_queue` was added to the existing import block in alphabetical position. The first two tests take `load_self_use_queue()[0]` — the shipped queue's first item in file order, which `consumed_by` does not affect — and keep every assertion they carried: `path.exists()`, `plan.error == ""`, the job title, the task count, the task id `T001` and the non-empty acceptance. The one assertion whose MESSAGE changed is the one the block ordered changed, from "the shipped queue has no pending item" to an emptiness claim, because the test no longer asks about pending-ness. The third test is renamed to `test_it_plans_the_pending_item_or_raises_when_the_queue_is_exhausted` and asserts the invariant in BOTH directions — an exhausted queue must RAISE `SelfUseJobError` rather than answer `None`, and a pending queue plans that exact item under all four of its original assertions. No test was deleted, skipped or weakened, no `xfail` was added, and the file collects 18 tests before and after.
 
-THE PACKAGE WAS VERIFIED BY THE REVIEWER'S OWN HASH OVER THE ARCHIVED FILE. `remedy-review-20260829-025133-READY_FOR_REVIEW.zip` at `/home/decodeux/Repos/remedy-history/zips`, 18146705 bytes, sha256 `c2cf586f…a078fc` recomputed independently and identical to the reported value; 3349 members; `package_status` `READY_FOR_REVIEW`; `ready_gate_matrix.ok` True with `blocking_reasons` `[]`; `committed_review_subject.head_commit` `506bbab5d719974f69593087f8d4fa31f45edfb1`, EQUAL to C2's full sha; `base_commit` `f17b1d0d03e4042df8452b2019b719cbe4704b21`, the merge base with `main`. The worker's two deviations were both correct and both verified: the zip is written straight into the archive directory by the script, so no move was needed, and `blocking_reasons` genuinely has no top-level key — it lives under `ready_gate_matrix` and was reported from where it actually lives.
+THE STRUCTURE REPRODUCED EXACTLY. Transport EQUAL at sha256 `a46995eb…797640` over 23379 bytes with ONE blob id at C0b; the plan byte-equal at 2559 bytes over 47 lines; the record reconstructing 1409456 → 1415933 from GATEF257R9 then FINDF257R10 applied in that order, the negative control failing as it must and the pre-round blob a byte PREFIX; the ledger registered 297 → 298 all DISTINCT, `Done:` 44 over 42 and `Landed:` 11 UNMOVED, `Gate:` 114 → 115, the open set 255 → 256 — exactly the one id this round registers; both residues empty over five SINGLE-PARENT commits of 305, 195, 13, 14 and 15 insertions; `.remedy-wt` untracked at 0; and `scripts/self_use_queue.json`, `docs/roadmap/STATUS.md`, `README.md` and `packages/orchestration/self_use_job.py` all ABSENT from the range — in particular the queue file, whose edit belongs to the closure commit and which the red-proof touched only inside a worktree that was removed by exact path.
 
-THE RED CONTROL IS THE READING THAT MAKES THE GREEN ONE MEAN ANYTHING. The tampered copy built `remedy-review-20260829-025231-BLOCKED_EVIDENCE.zip`, and the reviewer opened it: `package_status` `BLOCKED_EVIDENCE`, `ready_gate_matrix.ok` False, and three specific blocking reasons — the injected node id carrying a local absolute path, the resulting `node_ids` count of 19 against `selected` 18, and the unconfirmable VerificationTests total. Both builds exited 0. The exit code did not distinguish them; the status did, which is exactly why this block forbade reading the zip by its exit code.
+THE SUITES AND THE LINTER WERE RUN BY THE REVIEWER IN THE PRIMARY CHECKOUT: `test_self_use_job.py` 18 passed, `test_self_use_queue.py` 18 passed, `test_docs_consistency.py` 295 passed, the canary `test_golden_path.py` 42 passed, and `python3 -m ruff check` on the repaired file printed `All checks passed!` — every REAL exit 0, one process at a time.
 
-PRECONDITIONS 2 AND 3 RE-CONFIRMED. `run_integrity_checks()` answers `passed=True`, `fail_count=0`. The full-suite proof still covers this tip and the reviewer measured why rather than assuming it: `git diff --name-only 2bb2db2c..HEAD` — from the integration-gate tip to here — lists TEN paths, of which ZERO lie under `packages/`, `apps/`, `tests/` or `scripts/`, so nothing the round 6 gate ran over has moved.
+THE WORKER FOUND A CONTRADICTION IN THE BLOCK'S OWN CLAUSES AND HANDLED IT CORRECTLY. G6(D) asked for the three failing ids "among the passing ones" while C3 step 3 ordered the third of them renamed; both could not hold literally. It reported the id under its post-rename name and declared the disagreement instead of silently picking one. That is the reviewer's slip, not the worker's, and it is recorded in `.agent/prose_slips.md` this round under amend0827 rule 2 — no id is spent on it, because nothing on disk is wrong.
+<<<END GATEF257R10
 
-THE PACKAGE IS NEVERTHELESS SUPERSEDED, AND THIS IS NOT A FAULT OF THE ROUND. Round 10's repair of R-0737 lands a commit under `tests/`, which moves the head being closed away from `506bbab5`. A package records the head it covers, so a new one is built at the repaired head before the closure commit. Round 9 is accepted as executed correctly; its artifact is simply about to be out of date.
-<<<END GATEF257R9
+<<<SLICE SLIPF257R11
+2026-08-29 · F257 R10 · The block's G6(D) asked for the three ids from the negative control to appear "among the passing ones" while its own C3 step 3 ordered the third of those tests renamed, so the two clauses could not both hold literally; the worker reported that id under its post-rename name and declared the disagreement, which is the required behaviour.
+<<<END SLIPF257R11
 
-<<<SLICE FINDF257R10
-- R-0737 — Medium, THREE TESTS ON F257'S OWN SURFACE GO RED THE MOMENT F257 CLOSES, BECAUSE THEY READ THE SHIPPED QUEUE'S PENDING STATE INSTEAD OF ITS CONTENTS. THE MEASUREMENT, taken by the reviewer at `5cb48adc` by applying the closure commit's own edits in a throwaway worktree and running the suite there: with SU-001's `consumed_by` set to `F257`, `python3 -m pytest tests/orchestration/test_self_use_queue.py tests/orchestration/test_self_use_job.py -q` reports `3 failed, 33 passed`, against `36 passed` in the pending state at the same commit. The three are `TestPlanSelfUseItem::test_the_shipped_item_plans_with_its_title_and_tasks`, `TestPlanSelfUseItem::test_the_shipped_item_plans_to_exactly_one_task_with_acceptance` and `TestPlanNextSelfUseItem::test_it_returns_the_shipped_pending_item`. The first two call `next_self_use_item()` and plan whatever it answers; the third calls `plan_next_self_use_item` against the shipped queue. All three therefore require the shipped queue to hold a PENDING item, and closure precondition 6 removes exactly that by setting `consumed_by` on the first pending item — which, for a one-item queue, exhausts it. WHY THIS IS THE FEATURE'S OWN DEFECT RATHER THAN THE PROTOCOL'S: F257 wrote both the precondition and these tests, and the two contradict each other, so the feature cannot satisfy its own closure rule without turning its own suite red. WHY MEDIUM AND NOT HIGH: no shipped behaviour is wrong — `plan_self_use_item` plans a consumed entry perfectly well, `plan_next_self_use_item` raises on exhaustion exactly as designed, and that exhaustion path already has its own state-independent test in `test_exhausted_queue_raises_rather_than_answering_none`. What is wrong is that three gates are coupled to a state the product is designed to leave behind. THE FIX is to make all three read the shipped queue's CONTENTS rather than its pending-ness: the first two take the first entry of `load_self_use_queue()`, which `consumed_by` does not affect, and the third asserts the invariant in BOTH directions — a pending item is planned, an exhausted queue raises. Resolved when that suite is green at one commit in BOTH ledger states, measured with the queue pending and again with it exhausted.
-<<<END FINDF257R10
+`PLANF257R11` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF257R10` is a
+SINGLE APPEND to `.agent/live_review.md` at C2 under constraint 6. `SLIPF257R11`
+is a SINGLE APPEND to `.agent/prose_slips.md` at C3 under constraint 6. This round
+registers nothing and resolves nothing.
 
-`PLANF257R10` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF257R9` and
-`FINDF257R10` are TWO SEPARATE APPENDS to `.agent/live_review.md`, in that order,
-each under constraint 6 — `GATEF257R9` first. This round registers R-0737 and
-resolves nothing.
+### The evidence script — ADAPTED FROM THE COMMITTED TEMPLATE, NOT WRITTEN FRESH
 
-### C3 — the repair, DESCRIBED rather than pasted
+Extract the slice named `EVIDENCESCRIPT` from the COMMITTED blob
+`git show HEAD:.agent/authored/f009-r33.md` by its `<<<SLICE EVIDENCESCRIPT` and
+`<<<END EVIDENCESCRIPT` marker lines, save it to `.remedy-wt/f257_evidence_r11.py`,
+and change ONLY the values below. Every other line stays BYTE FOR BYTE — the
+double path scrub in `_tail`, node ids from `--collect-only`, the
+`len(node_ids) == selected` assert, the sorted `test_files`, the `_unsafe_text`
+pre-scan with its red control and the `OUTPUT_HASH` re-derivation are all
+load-bearing, each paid for by a closure that was blocked without it.
 
-This is production code, so the block specifies the CHANGE and you write it. Read
-`tests/orchestration/test_self_use_job.py` in full first. Change only what is
-listed; keep every existing assertion; delete no test; skip no test; weaken no
-assertion; add no `xfail`.
+- `EVIDENCE_DIR` → `<REPO>/.remedy-wt/f257_closure_evidence_r11/remedy-job-evidence-f257-closure`.
+  It is a FRESH directory, deliberately not round 9's, so no stale artifact from
+  the superseded bundle can be packaged.
+- `BASE` → `f17b1d0d03e4042df8452b2019b719cbe4704b21`, the merge base with `main`,
+  unchanged from round 9 and 40 characters, which the template asserts.
+- the `runs = [...]` list → exactly these four, in this order, no `-k` and no
+  deselection:
+  - `mkrun("vr-0001", "tests/orchestration/test_self_use_queue.py", 18)`
+  - `mkrun("vr-0002", "tests/orchestration/test_self_use_job.py", 18)`
+  - `mkrun("vr-0003", "tests/docs/test_docs_consistency.py", 295)`
+  - `mkrun("vr-0004", "tests/cli/test_golden_path.py", 42)`
+- the `create_manual_completion_bundle(...)` keyword arguments:
+  `job_id="f257-closure"`, `job_title="F257 Self-use track - closure"`,
+  `step_range="T001-T002"`, `prior_job_ids=["f256-closure"]`, `num_tasks=2`,
+  `note_prefix="operator-attested manual completion - F257 closure"`,
+  `review_feature_id="f257"`.
 
-1. Add `load_self_use_queue` to the existing import block from
-   `packages.orchestration.self_use_queue`, keeping that block alphabetically
-   ordered as it already is. `load_self_use_queue(path=None)` answers a
-   `tuple[SelfUseQueueEntry, ...]` and is unaffected by `consumed_by`.
-2. In `TestPlanSelfUseItem.test_the_shipped_item_plans_with_its_title_and_tasks`
-   and `TestPlanSelfUseItem.test_the_shipped_item_plans_to_exactly_one_task_with_acceptance`,
-   replace the `next_self_use_item()` call that obtains `entry` with the FIRST
-   entry of `load_self_use_queue()` — the shipped queue's first item in file
-   order, which is the curated order. In the first test, the existing
-   `assert entry is not None, "the shipped queue has no pending item"` becomes an
-   assertion that the shipped queue is NOT EMPTY, with a message saying so; the
-   remaining assertions in both tests stay exactly as they are.
-3. Rewrite `TestPlanNextSelfUseItem.test_it_returns_the_shipped_pending_item` so
-   it holds in BOTH ledger states, and rename it to say so — a name containing
-   `pending` alone will read false once the queue is exhausted. It reads
-   `next_self_use_item()` once. If that answers `None`, the whole-track call
-   `plan_next_self_use_item` must RAISE `SelfUseJobError` and the test asserts
-   that and returns. Otherwise it keeps the four assertions it has today: the
-   planned entry's id equals the pending id, the entry is pending, the file is
-   named `<id>.md`, and `plan.error` is empty.
-4. Above the two changed classes, put a one-line WHY comment in the repo's idiom,
-   naming R-0737 and saying that these tests read the shipped queue's CONTENTS
-   because closure precondition 6 is designed to exhaust its PENDING state. That
-   comment is what stops the next reader re-coupling them.
-5. Update the module docstring's list of load-bearing tests if and only if it
-   names a test you renamed; leave it otherwise untouched.
+`HEAD` is computed by the template at run time and must come out as C3's full sha;
+report it. A verification record may NEVER carry a full-suite node-id list —
+`len(node_ids) == selected` forbids filtering and the metadata scan rejects this
+repository's redaction-torture ids by design (the F080 R4 lesson). The full-suite
+proof rides in `.agent/gate_f257_r6/` and the reviewer's own re-runs.
+
+### The zip, the red control and the archive
+
+1. Confirm the tree is clean and the branch is pushed, then build with
+   `bash scripts/make_review_zip.sh --evidence-dir <the EVIDENCE_DIR above>`.
+   Report `PACKAGE_STATUS`, the zip filename and its SHA-256, computed by you over
+   the file on disk and not merely copied from the script's output.
+2. THE RED CONTROL. Copy the evidence directory to a SECOND directory under
+   `.remedy-wt/`, append ONE node id containing an absolute path to the first run
+   of that copy's `verification_tests.json`, and build a zip from the COPY. It
+   must report `PACKAGE_STATUS=BLOCKED_EVIDENCE` at REAL exit code 0 — report the
+   exit code beside the status to make the point that the status is the reading,
+   and report the `ready_gate_matrix.blocking_reasons` list from the control's
+   manifest, untruncated. Declare this attempt in the handback as a DELIBERATE
+   CONTROL. The real bundle is not touched by it.
+3. The script writes into `/home/decodeux/Repos/remedy-history/zips` directly. If
+   the READY zip is already there when the build finishes, no move is needed — say
+   so; if it is not, move it there with `shutil.move`. Either way report the
+   absolute path the live package occupies and confirm the file exists there.
+4. DELETE NOTHING in that archive directory. Name, by exact filename, the
+   SUPERSEDED package from round 9 and the LIVE package from this round.
 
 ### Done when
 
 G1 HYGIENE. Read `.agent/STOP` from disk with `os.path.exists` before C0a and
-again before C3; report both answers. If it exists at either reading, finish the
-commit in hand, write the handback and stop. Report constraint 0's three readings
-and `git status --porcelain | wc -l` after each of C0a, C0b, C1, C2 and C3.
+again before the zip build; report both answers. If it exists at either reading,
+finish the commit in hand, write the handback and stop. Report constraint 0's
+three readings and `git status --porcelain | wc -l` after each of C0a, C0b, C1, C2
+and C3, and again immediately BEFORE the zip build, where it must be 0.
 
 G2 TRANSPORT. One digest comparison. Report sha256 and the byte length of the
-committed blob `git show <C0a>:.agent/authored/f257-r10.md` and of the reviewer's
-own original at `.remedy-wt/f257-r10-block.md`, and whether they are EQUAL. That
+committed blob `git show <C0a>:.agent/authored/f257-r11.md` and of the reviewer's
+own original at `.remedy-wt/f257-r11-block.md`, and whether they are EQUAL. That
 original was written before this worker existed, so the reading covers more than
 self-consistency; it covers no emission, because this workflow has none — say
 both in the handback. Then report that
-`git rev-parse <C0b>:.agent/authored/f257-r10.md` and
+`git rev-parse <C0b>:.agent/authored/f257-r11.md` and
 `git rev-parse <C0b>:.agent/last_block.md` print ONE blob id.
 
-G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF257R10 including the
+G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF257R11 including the
 trailing newline — report `True` or `False`, with the byte length of each side.
 Report `wc -l`, under 50, and the count of lines exactly `## Goal` and exactly
 `## Next Steps`.
 
-G4 THE RECORD APPENDS AT C2. Reconstruct the C2 blob of `.agent/live_review.md`
-from the `5cb48adc` blob plus GATEF257R9 plus FINDF257R10, applied IN THAT ORDER
-each under constraint 6, and report `True` or `False` with all lengths. NEGATIVE
-CONTROL: flip one byte at an offset your script CONFIRMS lies inside the FIRST
-appended paragraph, recompute, and report the equality is now `False`. Report that
-the pre-round blob is a byte PREFIX, with both lengths, and that the C2 blob ends
-in exactly ONE newline.
+G4 THE TWO RECORD APPENDS, each reconstructed separately and each with its own
+negative control. (a) Reconstruct the C2 blob of `.agent/live_review.md` from the
+`260b42c4` blob plus GATEF257R10 under constraint 6 — report `True` or `False`
+with all three lengths, flip one byte at an offset your script CONFIRMS lies
+inside the appended text and report the equality is now `False`, and report that
+the pre-round blob is a byte PREFIX and that the C2 blob ends in exactly ONE
+newline. (b) Do the same for `.agent/prose_slips.md` at C3 against its `260b42c4`
+blob plus SLIPF257R11. Report the count of lines in the C3 blob of
+`.agent/prose_slips.md` matching `^2026-\d\d-\d\d · F257 R10 · `, which must be 1,
+and the count matching `^- R-`, which must be 0 — that file never carries an id.
 
 G5 THE LEDGER AT C2, counted under constraint 7. Report over
-`.agent/live_review.md` at `5cb48adc` and again at C2: the count of lines matching
+`.agent/live_review.md` at `260b42c4` and again at C2: the count of lines matching
 `^- R-\d+ — ` and whether all are DISTINCT; the count of `^Done: R-\d+ — ` lines
 AND the count of DISTINCT ids among them, as two separate numbers; the count of
 `^Landed: R-`; the count of `^Gate: F\d+ R\d+ — `; and the OPEN SET as
-`len(set(registered) - set(resolved))`. Expected: registered 297 → 298 all
-distinct, the `Done:` numbers and `Landed:` UNMOVED, `Gate:` 114 → 115, and the
-open set 255 → 256. Report the count of `^Gate: F257 R9 — ` at C2, which must be
-1, and of `^- R-0737 — `, which must be 1.
+`len(set(registered) - set(resolved))`. Expected: registered UNMOVED at 298 and
+all distinct, the `Done:` numbers and `Landed:` UNMOVED, `Gate:` 115 → 116, and
+the open set UNMOVED at 256. Report the count of `^Gate: F257 R10 — ` at C2, which
+must be 1.
 
-G6 THE REPAIR PROVED IN BOTH LEDGER STATES — the red-proof, and the reason this
-round exists. Under constraint 8, in a `git worktree add --detach` worktree under
-`.remedy-wt/`, run `python3 -B -m pytest tests/orchestration/test_self_use_queue.py
-tests/orchestration/test_self_use_job.py -q` FOUR times and report all four with
-their REAL exit codes and full counts:
-  (A) at `5cb48adc`, queue PENDING (untouched) — expected all passed;
-  (B) at `5cb48adc`, queue EXHAUSTED (SU-001's `consumed_by` set to `F257` in the
-      WORKTREE ONLY) — expected exactly 3 failed, and report the three failing
-      node ids IN FULL and untruncated. THIS IS THE NEGATIVE CONTROL: it is the
-      defect reproduced, and a gate that cannot show the red proves nothing;
-  (C) at C3, queue PENDING — expected all passed;
-  (D) at C3, queue EXHAUSTED — expected all passed, and the three ids from (B)
-      among the passing ones.
-Report that the ONLY difference between (B) and (D) is the commit, and that the
-queue edit was made in the worktree and never in the primary checkout — show
-`git status --porcelain` EMPTY in the primary checkout at the same moment. Then
-remove the worktree BY ITS EXACT PATH and report `git worktree list`.
+G6 THE EVIDENCE BUNDLE. (a) Report the unified diff between the template slice
+`EVIDENCESCRIPT` and your adapted `.remedy-wt/f257_evidence_r11.py`, and the count
+of changed lines: ONLY the values the section above lists may differ, and the
+handback names each changed line. (b) Report, per verification run, `run_id`,
+`selected`, `len(node_ids)`, whether `len(node_ids) == selected`, `passed`,
+`failed`, `skipped`, `deselected`, and `test_files` with whether that list is
+SORTED. Expected passes: 18, 18, 295, 42, with failed, skipped and deselected 0
+everywhere. (c) Report the `_unsafe_text` pre-scan result over every node id and
+every command — expected 0 rejected — BESIDE its red control on a fabricated
+absolute-path id, which must read True. (d) Report the full list of files the
+producer wrote into the evidence directory and confirm all eight closed-schema
+gates are present: `final_verifier_report`, `fresh_evidence`, `artifact_contract`,
+`change_provenance`, `manifest_integrity`, `postmortem_integrity`,
+`commit_execution` and `runtime_integration`. (e) Report, per run, whether
+`output_hash` equals sha256 of `stdout_summary` EXACTLY. (f) Report the `HEAD` the
+template computed and confirm it equals C3's full sha.
 
-G7 THE SUITES AT C3, in the PRIMARY checkout, one pytest process at a time, each
-with its REAL exit code and its own passed/failed line. CONFIRM FIRST that every
-path resolves on disk and report the empty list:
-`tests/orchestration/test_self_use_job.py` — expected 18 passed;
-`tests/orchestration/test_self_use_queue.py` — expected 18;
-`tests/docs/test_docs_consistency.py` — expected 295; and the canary
-`tests/cli/test_golden_path.py` — expected 42. Every one must be exit 0. If any is
-red, STOP and write the handback with the full untruncated failure list.
+G7 THE REVIEW ZIP, read under constraint 8. (a) Report the zip filename, its
+SHA-256 computed by you over the file on disk, the REAL exit code of the build,
+and `PACKAGE_STATUS`, which must be `READY_FOR_REVIEW`. (b) From
+`.review_zip_manifest.json` INSIDE the zip report `package_status`,
+`ready_gate_matrix.ok`, `ready_gate_matrix.blocking_reasons` — expected empty —
+`committed_review_subject.head_commit`, which must equal C3's FULL sha, and
+`committed_review_subject.base_commit`, which must equal
+`f17b1d0d03e4042df8452b2019b719cbe4704b21`; report C3's full sha beside it.
+(c) THE RED CONTROL: report the control build's `PACKAGE_STATUS`, which must be
+`BLOCKED_EVIDENCE`, its REAL exit code, expected 0, and its untruncated
+`ready_gate_matrix.blocking_reasons` — then state plainly that the exit code did
+not distinguish the two builds and the status did. (d) Report the absolute path
+the LIVE package occupies, that the file exists there, its size in bytes, and the
+exact filename of the SUPERSEDED round 9 package, which is left in place.
+(e) Report `git status --porcelain | wc -l` after all of it, which must be 0.
 
-G8 STRUCTURE, over `5cb48adc..<C3>` — the range that ends BEFORE the handback
-commit. The change set lists `.agent/handoff.md`, which C4 writes, so compute the
+G8 STRUCTURE AND THE REMAINING PRECONDITIONS, over `260b42c4..<C3>`. The change
+set lists `.agent/handoff.md`, which C4 writes, so compute the
 changeset-minus-range residue over the change set WITHOUT that ONE path and name
 the path you excluded; the range-minus-changeset residue is computed against the
 FULL change set and must be empty. Report each commit's insertions from
 `git diff --numstat`, each under 500, and that each of C0a, C0b, C1, C2 and C3 is
 single-parent. Report the number of lines beginning `<<<SLICE ` and `<<<END ` in
-`.agent/plan.md`, `.agent/live_review.md` and
-`tests/orchestration/test_self_use_job.py` at C3 — each expected 0 — beside the
-same counts over `.agent/authored/f257-r10.md` as the non-zero control. Report
-`git ls-files .remedy-wt | wc -l`, expected 0. Report the `git diff --numstat`
-line over the range for `scripts/self_use_queue.json`, `docs/roadmap/STATUS.md`,
-`README.md` and `packages/orchestration/self_use_job.py`, all four expected
-ABSENT — in particular the queue file, whose edit belongs to the closure commit.
-Finally report `python3 -m ruff check tests/orchestration/test_self_use_job.py`
-with its REAL exit code, or, if ruff is unavailable, `python3 -m py_compile` on
-the same file with its real exit code; say which one you ran.
+`.agent/plan.md`, `.agent/live_review.md` and `.agent/prose_slips.md` at C3 — each
+expected 0 — beside the same counts over `.agent/authored/f257-r11.md` as the
+non-zero control. Report `git ls-files .remedy-wt | wc -l`, expected 0, and the
+count of tracked paths matching `remedy-job-evidence`, expected 0. Report the
+`git diff --numstat` line over the range for `docs/roadmap/STATUS.md`,
+`README.md`, `scripts/self_use_queue.json` and
+`tests/orchestration/test_self_use_job.py`, all four expected ABSENT. Finally,
+PRECONDITION 3: run
+`from packages.orchestration.integrity_gate import run_integrity_checks` and
+report `result.passed` and `result.fail_count` — it answers an
+`IntegrityGateResult` OBJECT with attributes, not a dict, so `.get(...)` raises.
 
 ### Handback
 
 Rewrite `.agent/handoff.md` in C4 per docs/agents/handback_template.md. It
-carries: `SESSION 3 of feature F257 · round 10`; the roster of this session's
-rounds, this round included; the range `5cb48adc..HEAD`; a per-commit
+carries: `SESSION 3 of feature F257 · round 11`; the roster of this session's
+rounds, this round included; the range `260b42c4..HEAD`; a per-commit
 changed-files table whose `+/-` cells are taken from `git diff --numstat`; ONE
 LINE PER GATE G1 through G8 with its real result; the deviations, including every
 guard re-expression constraint 5 required; the item-status table with every
 C-item and every gate appearing exactly once; the open-findings count, which must
-be 256; and the next expected action — rebuild the evidence bundle and the review
-zip at the repaired head, then the closure commit and the PR.
+be 256; and the next expected action — the closure commit and the pull request.
 
-Quote in the handback the FULL final text of each of the three repaired tests, so
-the reviewer can read what landed without reconstructing it from a diff, and state
-plainly that no assertion was removed.
+It ALSO carries, as the values the next round needs and cannot re-derive, written
+as a short labelled list: `Evidence job f257-closure`, the LIVE package filename,
+its SHA-256, the absolute archived path, the ACCEPTED HEAD which is C3's full sha,
+and the exact filename of the SUPERSEDED round 9 package. The next round's STATUS
+line is authored from those values and `.agent/handoff.md` is the only carrier
+between the two rounds.
 
-Do not write a `Done:` or `Gate:` paragraph of your own anywhere — GATEF257R9 and
-FINDF257R10 are reviewer-authored text you apply verbatim, and any OTHER such
-paragraph is a finding however hedged. Do not flip any checkbox to `[x]`. Do not
-edit `scripts/self_use_queue.json` in the primary checkout. Do not create a pull
+Do not write a `Done:` or `Gate:` paragraph of your own anywhere — GATEF257R10 is
+reviewer-authored text you apply verbatim, and any OTHER such paragraph is a
+finding however hedged. Do not flip any checkbox to `[x]`. Do not create a pull
 request and do not merge anything.
 
 After C4: push with `git push origin feature/f257-self-use-track` and report the
