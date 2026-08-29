@@ -221,3 +221,5 @@
 
 2026-08-29 · F257 R5 · The block's S2 asserted that `Path("..").name` is the empty string and that a single-component comparison would therefore refuse `..` unaided; it is `".."`, the worker measured it, and the explicit `entry.id in (".", "..")` arm it added is what makes the shipped check correct.
 2026-08-29 · F257 R5 · Constraint 8's own summarising sentence — "one newline, then the slice, then one newline" — would leave every appended file ending in two newlines; the clauses around it are right, the worker followed those, and every append since round 3 has reconstructed byte-exactly.
+
+2026-08-29 · F257 R10 · The block's G6(D) asked for the three ids from the negative control to appear "among the passing ones" while its own C3 step 3 ordered the third of those tests renamed, so the two clauses could not both hold literally; the worker reported that id under its post-rename name and declared the disagreement, which is the required behaviour.
