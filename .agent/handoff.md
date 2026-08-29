@@ -388,3 +388,17 @@ the closure sequence, which still owes `docs/` an operator-facing description of
 Written by C8, AFTER the push, so it records a fact rather than a promise. C8 is itself
 pushed by the round's FINAL push, which is recorded in no commit — the block states that
 deliberately and the reviewer verifies the final pushed state itself.
+
+`git push -u origin feature/f033-hunk-approval-v2` -> REAL exit 0:
+
+    To github.com:UndefinedDatabase/remedy.git
+       41b83021..985d9ef6  feature/f033-hunk-approval-v2 -> feature/f033-hunk-approval-v2
+    Branch 'feature/f033-hunk-approval-v2' set up to track remote branch
+    'feature/f033-hunk-approval-v2' from 'origin'.
+
+A fast-forward, `41b83021..985d9ef6`; no force flag of any kind was used, no history was
+rewritten and no branch was deleted. `git rev-parse` immediately afterwards gave
+`985d9ef62a718e9ffbdf77075a27527415ebdc54` for BOTH `HEAD` and
+`origin/feature/f033-hunk-approval-v2`, so the remote carries C0a through C7 exactly.
+This sentence describes only what has already happened and predicts nothing about the
+final push that carries C8.
