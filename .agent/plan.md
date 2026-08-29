@@ -1,7 +1,7 @@
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 4 of this feature.
+commit of pull request 221. SESSION 5 of this feature.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -20,22 +20,25 @@ round — every partial state rendered truthfully in viewer, node and report.
 | one evidence-directory resolver for viewer and doors | done | round 13 |
 | the CLI command and its handler | done | rounds 14, 15 |
 | the write door's exposure and dispatch | done | round 15 |
-| T003 partial apply truth, and its first surface | open | this round, R-0738 |
-| T003 the node glyph and the report line | open | next |
+| T003 the apply fold's partial truth, and the popover label | done | round 16 |
+| T003 the task row's partial tile and status text | open | this round, R-0738 |
+| T003 the report line | open | next |
 | T003 rejection reasons quoted into the repair prompt | open | after that |
 | R-0745, the door's transitive import closure | open | with the next door work |
 | the operator docs for `patch approve-hunks` | open | closure sequence |
 
 ## Next Steps
-1. R-0738's truth half: the apply fold in `ui_server._task_truth_maps` becomes an
-   AGREEMENT test with a distinct `partial` state, taking the shape of the proof
-   fold three lines above it, and the detail popover gains the matching label in
-   the SAME commit — the fold alone would render the new state as "Unknown".
-   R-0738 STAYS OPEN: its resolution names three surfaces and this reaches one.
-2. Then the remaining two surfaces R-0738 names — the task-node glyph and the
-   report line — and only then is R-0738 resolvable.
+1. R-0738's second surface: `apps/ui/src/components/panels/TaskChecklistCard.tsx`
+   reads `applyStatus` beside the lifecycle state, so a partially applied task
+   shows the blue filled check tile and a distinct status text instead of
+   reading "Done". DECISION F033 D5 rules this the task node's partial
+   treatment and `RemedyState` is NOT widened. R-0738 STAYS OPEN: one of the
+   three surfaces its resolution names is still untouched.
+2. Then the report line. `packages/orchestration/run_report.py` holds no apply
+   state at all, so its `TaskOutcome` gains one and the fold moves to a home
+   both readers may import. Only after that is R-0738 resolvable.
 3. Then rejection reasons quoted VERBATIM into the next repair prompt, with the
-   trace proof the feature file calls acceptance material.
+   trace proof `docs/roadmap/features/T5_F033.md` calls acceptance material.
 4. Then the closure sequence, which owes `docs/` an operator-facing description
    of `remedy patch approve-hunks` — no round has been allowed a `docs/` path yet.
 
