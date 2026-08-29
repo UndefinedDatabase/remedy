@@ -18,31 +18,29 @@ round — every partial state rendered truthfully in viewer, node and report.
 | failed-rollback truth · ledger · the door's effect | done | rounds 9-11, D4 |
 | the recorder takes the viewer's envelope | done | round 12 |
 | one evidence-directory resolver, the CLI door, the write door | done | 13-15 |
-| T003 the fold's partial truth, the popover label | done | round 16 |
-| T003 the tasks-card partial tile and status text | done | round 17, D5 |
-| T003 the fold's shared home and its counts | done | round 18 |
-| T003 the report line, R-0738's third surface | open | this round |
-| R-0746, the module's stale public API list | open | this round |
-| T003 rejection reasons quoted into the repair prompt | open | next |
-| R-0738, resolvable once the report line is gated | open | after that |
+| T003 partial truth on all three surfaces, R-0738 | done | rounds 16-19 |
+| R-0746, the module's public API list | done | round 19 |
+| T003 rejection reasons rendered verbatim as repair findings | open | this round |
+| T003 that renderer wired into the next builder round | open | next |
 | R-0745, the door's transitive import closure | open | next door work |
 | the operator docs for `patch approve-hunks` | open | closure sequence |
+| the integration gate round, then closure | open | after the above |
 
 ## Next Steps
-1. The report line. `packages/orchestration/run_report.py` holds no apply state
-   at all, so `TaskOutcome` gains one with its counts, `build_report_sources`
-   attaches it from `fold_task_apply_states`, and `_task_lines` renders the
-   mixed case. A task with NO recorded apply state renders exactly as it does
-   today — the golden reports in `tests/orchestration/test_run_report.py` are
-   full-text fixtures and are the guard for that. R-0746 is fixed in the same
-   round, because this is the round that gives the fold its second importer.
-2. Then rejection reasons quoted VERBATIM into the next repair prompt, with the
-   trace proof `docs/roadmap/features/T5_F033.md` calls acceptance material.
-3. Then R-0738 is resolvable: viewer badge, tasks-card row and report line all
-   tell a mixed apply state apart from a complete one.
-4. Then the closure sequence, which owes `docs/` an operator-facing description
-   of `remedy patch approve-hunks` — no round has had a `docs/` path yet.
+1. The rejection half of T003's loop, as a PURE renderer with no caller yet:
+   `packages/orchestration/hunk_ledger.py` already holds each rejected hunk's
+   reason VERBATIM and says in its own docstring that T003 quotes it into the
+   next repair prompt. This round ships the function that does the quoting and
+   the trace proof the feature file calls acceptance material — a reason with
+   awkward bytes in it survives into the rendered text unchanged.
+2. Then wiring: the renderer's output reaches the next builder round's prompt,
+   and the two-round end-to-end the feature's Acceptance asks for.
+3. Then R-0745, whose fix clause recommends a transitive-closure test over the
+   write door's imports.
+4. Then the closure sequence: `docs/` still owes an operator-facing description
+   of `remedy patch approve-hunks`, and no round has had a `docs/` path yet. The
+   integration gate runs before closure, per docs/agents/integration_gate.md.
 
 ## Risks
-- The report's task ids are truncated to eight characters while the fold keys on
-  the full id, so the attach must not match on the truncated value.
+- A new module under `packages/orchestration/` is swept by repo-wide guards that
+  name no path, so this round gates the two sweeps as well as its own tests.
