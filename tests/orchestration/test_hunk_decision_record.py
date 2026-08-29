@@ -11,6 +11,17 @@ NOTHING; a refusal from the decision core comes back UNCHANGED and writes NOTHIN
 metadata keys survive; and the whole document round-trips through ``json.dumps`` with no custom
 encoder.
 
+THE VIEW DOOR'S OWN PROPERTIES, added when the recorder learned the viewer's envelope: an
+envelope whose ``available`` is False refuses with ``HUNK_RECORD_REFUSAL_NO_DIFF``, QUOTES the
+envelope's own ``reason`` so the operator learns which absence it was, and writes NOTHING; an
+envelope that is BOTH unavailable and truncated answers the NO_DIFF code rather than the
+untrustworthy one, because availability is decided first and an absent artifact was never cut
+short; a view carrying NO ``available`` key at all is treated as available and records normally,
+which is the RAW PARSER case and the discriminator that stops the ``True`` default being flipped;
+a truncated but available envelope still refuses as untrustworthy; the two doors record the same
+document for the same diff, built on two jobs and compared whole; and a nine-key envelope of the
+shape ``diff_view_source.build_diff_view`` really returns records normally.
+
 WHY the two write-nothing tests compare the metadata BEFORE and AFTER rather than merely
 checking the return: the claim is that a refused decision leaves the operator's record untouched,
 and only a before/after comparison witnesses that. They are also the discriminators for the
@@ -41,9 +52,11 @@ from packages.orchestration.hunk_approval import (
 )
 from packages.orchestration.hunk_decision_record import (
     HUNK_DECISIONS_METADATA_KEY,
+    HUNK_RECORD_REFUSAL_NO_DIFF,
     HUNK_RECORD_REFUSAL_UNTRUSTWORTHY_VIEW,
     HunkDecisionRecord,
     record_hunk_decision,
+    record_hunk_decision_from_view,
 )
 from packages.orchestration.hunk_ledger import (
     HUNK_LANDING_UNATTEMPTED,
@@ -116,7 +129,7 @@ def _job(**metadata: object) -> Job:
 def _record(job: Job, *, task_id: object = "t-1", attempt: object = 2,
             diff_text: str = TWO_HUNK_DIFF, approved=(), rejected=(),
             now: datetime = DECIDED_AT):
-    """One call to the shipped entry point, with this suite's defaults."""
+    """One call to the shipped TEXT entry point, with this suite's defaults."""
     return record_hunk_decision(
         job,
         task_id=task_id,
@@ -126,6 +139,53 @@ def _record(job: Job, *, task_id: object = "t-1", attempt: object = 2,
         rejected=rejected,
         now=now,
     )
+
+
+def _record_from_view(job: Job, *, view, task_id: object = "t-1", attempt: object = 2,
+                      approved=(), rejected=(), now: datetime = DECIDED_AT):
+    """One call to the shipped VIEW entry point, with this suite's defaults."""
+    return record_hunk_decision_from_view(
+        job,
+        task_id=task_id,
+        attempt=attempt,
+        attempt_view=view,
+        approved=approved,
+        rejected=rejected,
+        now=now,
+    )
+
+
+#: The nine keys ``diff_view_source.build_diff_view`` really returns, measured at `624818e6`.
+#: RESTATED here rather than imported for the same reason the diff and job recipes are: this
+#: suite tests what the recorder accepts, and importing the producer would make the fixture move
+#: whenever that module does, hiding exactly the drift this test exists to catch.
+ENVELOPE_KEYS = [
+    "available", "files", "reason", "scope", "source",
+    "task_id", "task_run_ids", "truncated", "version",
+]
+
+#: Two of the three ``DIFF_REASON_*`` values, spelled out so the "quotes the envelope's own
+#: reason" claim is checked against a real absence name rather than a placeholder.
+REASON_NO_EVIDENCE_DIR = "evidence_dir_unavailable"
+REASON_ARTIFACT_MISSING = "diff_artifact_missing"
+
+
+def _envelope(diff_text: str = TWO_HUNK_DIFF, **overrides: object) -> dict:
+    """A viewer envelope of ``build_diff_view``'s shape, built BY HAND over a real parse."""
+    parsed = parse_unified_diff_to_view(diff_text)
+    envelope = {
+        "available": True,
+        "files": parsed["files"],
+        "reason": None,
+        "scope": "job",
+        "source": "workspace.diff",
+        "task_id": None,
+        "task_run_ids": [],
+        "truncated": parsed["truncated"],
+        "version": parsed["version"],
+    }
+    envelope.update(overrides)
+    return envelope
 
 
 def test_a_clean_decision_writes_one_record_under_the_composed_attempt_key_unattempted() -> None:
@@ -246,3 +306,95 @@ def test_the_whole_recorded_document_survives_json_dumps_without_a_custom_encode
     document = job.metadata[HUNK_DECISIONS_METADATA_KEY]
     assert json.loads(json.dumps(document)) == document
     assert result.exported is document[result.attempt_key]
+
+
+def test_an_unavailable_envelope_refuses_with_no_diff_quoting_its_reason_and_writes_nothing(
+) -> None:
+    # An unavailable envelope has an EMPTY ``files`` list, so without this refusal every approved
+    # id would be unknown and the operator would be told their IDS are wrong when the truth is
+    # that the ARTIFACT is missing.
+    job = _job(existing="value")
+    before = copy.deepcopy(job.metadata)
+    view = _envelope(available=False, reason=REASON_NO_EVIDENCE_DIR, files=[], source=None)
+    result = _record_from_view(job, view=view, approved=[HUNK_IDS[0]])
+    assert isinstance(result, HunkApprovalRefusal), result
+    assert result.code == HUNK_RECORD_REFUSAL_NO_DIFF
+    assert result.hunk_ids == ()
+    # The envelope's OWN reason, so the operator learns WHICH absence it was.
+    assert REASON_NO_EVIDENCE_DIR in result.message
+    assert job.metadata == before
+    assert HUNK_DECISIONS_METADATA_KEY not in job.metadata
+
+
+def test_an_unavailable_and_truncated_envelope_answers_no_diff_not_untrustworthy() -> None:
+    # Availability is decided FIRST: an absent artifact was never cut short, so "there is no
+    # diff" is the true answer and "the diff we showed you was incomplete" is not.
+    view = _envelope(TRUNCATED_DIFF, available=False, reason=REASON_ARTIFACT_MISSING, files=[])
+    assert view["available"] is False
+    assert view["truncated"] is True
+    job = _job()
+    result = _record_from_view(job, view=view, approved=[HUNK_IDS[0]])
+    assert isinstance(result, HunkApprovalRefusal), result
+    assert result.code == HUNK_RECORD_REFUSAL_NO_DIFF
+    assert result.code != HUNK_RECORD_REFUSAL_UNTRUSTWORTHY_VIEW
+    assert REASON_ARTIFACT_MISSING in result.message
+    assert HUNK_DECISIONS_METADATA_KEY not in job.metadata
+
+
+def test_a_view_with_no_available_key_is_treated_as_available_and_records_normally() -> None:
+    # THE RAW PARSER CASE, and the discriminator that stops the ``True`` default being flipped:
+    # ``parse_unified_diff_to_view`` emits no ``available`` key at all, because text that exists
+    # IS available, so a caller handing over a bare parse must not be refused for a key that
+    # parser never emits.
+    view = parse_unified_diff_to_view(TWO_HUNK_DIFF)
+    assert "available" not in view
+    job = _job()
+    result = _record_from_view(job, view=view, approved=[HUNK_IDS[0]])
+    assert isinstance(result, HunkDecisionRecord), result
+    entry = job.metadata[HUNK_DECISIONS_METADATA_KEY][result.attempt_key]
+    assert [row["id"] for row in entry["hunks"]] == HUNK_IDS
+    assert [row["state"] for row in entry["hunks"]] == [HUNK_STATE_APPROVED, "pending"]
+
+
+def test_a_truncated_but_available_envelope_still_refuses_as_untrustworthy() -> None:
+    view = _envelope(TRUNCATED_DIFF)
+    assert view["available"] is True
+    assert view["truncated"] is True
+    job = _job(existing="value")
+    before = copy.deepcopy(job.metadata)
+    result = _record_from_view(job, view=view, approved=[HUNK_IDS[0]])
+    assert isinstance(result, HunkApprovalRefusal), result
+    assert result.code == HUNK_RECORD_REFUSAL_UNTRUSTWORTHY_VIEW
+    assert result.hunk_ids == ()
+    assert job.metadata == before
+
+
+def test_both_doors_record_the_same_document_for_the_same_diff() -> None:
+    # ONE implementation, two doors — which is the whole reason the view entry point exists. Two
+    # jobs so neither call can see the other's record.
+    text_job, view_job = _job(), _job()
+    via_text = _record(text_job, approved=[HUNK_IDS[0]],
+                       rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    via_view = _record_from_view(view_job, view=parse_unified_diff_to_view(TWO_HUNK_DIFF),
+                                 approved=[HUNK_IDS[0]],
+                                 rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    assert isinstance(via_text, HunkDecisionRecord), via_text
+    assert isinstance(via_view, HunkDecisionRecord), via_view
+    assert via_text.attempt_key == via_view.attempt_key
+    assert via_text.exported == via_view.exported
+    assert (text_job.metadata[HUNK_DECISIONS_METADATA_KEY]
+            == view_job.metadata[HUNK_DECISIONS_METADATA_KEY])
+
+
+def test_a_nine_key_viewer_envelope_records_normally() -> None:
+    view = _envelope()
+    assert sorted(view) == ENVELOPE_KEYS
+    job = _job()
+    result = _record_from_view(job, view=view, approved=[HUNK_IDS[0]],
+                               rejected=[{"id": HUNK_IDS[1], "reason": REASON}])
+    assert isinstance(result, HunkDecisionRecord), result
+    entry = job.metadata[HUNK_DECISIONS_METADATA_KEY][result.attempt_key]
+    assert [row["id"] for row in entry["hunks"]] == HUNK_IDS
+    assert [row["state"] for row in entry["hunks"]] == [HUNK_STATE_APPROVED, HUNK_STATE_REJECTED]
+    assert [row["landing"] for row in entry["hunks"]] == [HUNK_LANDING_UNATTEMPTED] * 2
+    assert [row["reason"] for row in entry["hunks"]] == ["", REASON]
