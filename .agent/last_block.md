@@ -1,116 +1,129 @@
-# STEP R5/F040 — T001'S LAST ACCEPTANCE CLAUSE: THE ENVELOPE GOLDENS
+# STEP R6/F040 — T002 PART 1: THE CLIENT'S DIGEST SEAM
 
-Goal: meet the acceptance criterion T001 has carried unmet since it was
-sliced — "Fixture goldens exact" — with one stored envelope per state shape,
-and book the round 4 verdict, finding R-0754 and DECISION F040 D6.
+Goal: give the browser a pure module that decodes the digest envelope, builds
+the card's cost line from the SAME string the metrics bar reads, and names the
+endpoint's path — plus the Python guard that pins its purity. Book the round 5
+verdict, resolve R-0754 and rule DECISION F040 D7.
 
-Base: `458e8d51`, the round-4 handback commit and the tip of
+Base: `4e5e9bf8`, the round-5 handback commit and the tip of
 `feature/f040-completion-digest`. Stay on that branch. Open no pull request.
 
-WHY THIS ROUND EXISTS, so the worker knows what it is repairing. Round 4's
-gates were all green and its work was correct, but `docs/roadmap/features/
-T5_F040.md:76-78` slices T001 as "the endpoint composition + rule-table import
-+ fixtures per state shape ... + goldens", and its Acceptance at :86 opens
-"Fixture goldens exact". The fixtures exist and the composition is pinned
-field by field; NO GOLDEN EXISTS. Round 4's plan slice quietly narrowed the
-item from "the endpoint, its route tests and goldens" to "the endpoint and its
-route tests" and declared T001 complete. That narrowing is the REVIEWER's, not
-any worker's — the round-4 worker applied the slice byte for byte, as its
-constraint 1 required, and declared no departure because none was asked of it.
-This round closes the clause instead of arguing it away.
+WHY THIS SHAPE, measured rather than assumed. This repository CANNOT render a
+React component in a test: `apps/ui/vitest.config.ts` sets
+`environment: "node"`, there is no jsdom and no testing library, and every one
+of the `.test.ts` files under `apps/ui/src/api/` tests pure logic. The feature
+file's T002 line asks for "component tests"; here that resolves to pure-logic
+vitest over `src/api/` plus a Python guard under `tests/ui_contracts/` reading
+the source as TEXT — the shape `test_cost_metric_render.py` and
+`test_design_drift.py` already use. DECISION F040 D7 in slice RECORD6 rules it.
+This round therefore builds the decidable half FIRST; the `.tsx` card and its
+CSS conformance come later, and the trigger/dismiss/last-seen rule is its own
+round after this one.
+
+NO TYPESCRIPT COLOUR IS ORDERED THIS ROUND, and the reason is measured, not
+assumed. The reviewer probed `npx vitest run --root apps/ui --config ...` at the
+base and it was REFUSED before execution with `This command requires approval`,
+so no exit code exists for it; the disposable-worktree red-proof route needs
+that same command and `apps/ui/node_modules` is gitignored and absent in a
+worktree, so a mutation there would be red for every possible module and prove
+nothing. What IS available and what this block orders instead: the vitest suite
+through the pytest node that spawns it, which a broken module genuinely turns
+red, and a Python guard that needs no `node_modules` and IS red-proved normally.
+Do not try to route around the refusal — a permission boundary is a finding, not
+an obstacle.
 
 ## Bundle, in commit order
 
-- C0a save this block verbatim to `.agent/authored/f040-r5.md`
+- C0a save this block verbatim to `.agent/authored/f040-r6.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
-- C1  rewrite `.agent/plan.md` from slice PLAN5
-- C2  append slice RECORD5 to `.agent/live_review.md`
-- C3  add the four goldens AND the golden section of
-      `tests/orchestration/test_job_digest.py`, per the SPEC below
-- C4  apply pair PAIRACCEPT to `docs/roadmap/features/T5_F040.md`
-- C5  rewrite `.agent/handoff.md` — the handback
+- C1  rewrite `.agent/plan.md` from slice PLAN6
+- C2  append slice RECORD6 to `.agent/live_review.md`
+- C3  apply pair PAIRACTUAL to `apps/ui/src/api/costMetric.ts` AND add
+      `apps/ui/src/api/jobDigest.ts` per the SPEC below
+- C4  create `apps/ui/src/api/jobDigest.test.ts` per the SPEC below
+- C5  create `tests/ui_contracts/test_job_digest_card_contract.py` per the SPEC
+- C6  rewrite `.agent/handoff.md` — the handback
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f040-r5.md
+    .agent/authored/f040-r6.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    tests/orchestration/fixtures/job_digest/golden/green.json
-    tests/orchestration/fixtures/job_digest/golden/blocked_with_decisions.json
-    tests/orchestration/fixtures/job_digest/golden/budget_stopped.json
-    tests/orchestration/fixtures/job_digest/golden/mid_run.json
-    tests/orchestration/test_job_digest.py
-    docs/roadmap/features/T5_F040.md
+    apps/ui/src/api/costMetric.ts
+    apps/ui/src/api/jobDigest.ts
+    apps/ui/src/api/jobDigest.test.ts
+    tests/ui_contracts/test_job_digest_card_contract.py
     .agent/handoff.md
 
-NO PRODUCTION CODE CHANGES THIS ROUND. `packages/orchestration/job_digest.py`
-and `packages/orchestration/ui_server.py` are NOT edited: the goldens record
-what the composition already produces. If a golden cannot be made to match
-without editing production code, STOP and say so in the handback — that would
-mean the composition is wrong, which is a finding and not a thing to paper over
-by editing the module until the golden agrees.
+NO PYTHON PRODUCTION CODE CHANGES. `packages/orchestration/job_digest.py`,
+`packages/orchestration/ui_server.py` and everything else under `packages/` and
+`apps/cli/` are NOT edited. No `.tsx` file is created or edited this round — the
+card itself is a later round, and a component with no test harness is exactly
+what this round is deliberately not building.
 
 ## Constraints
 
 1. Apply every slice and pair BYTE FOR BYTE. If one looks wrong, apply it as
    given and DECLARE the problem in the handback's deviations.
-2. C0a is a COPY: the block is at `.remedy-wt/f040-r5-block.md`. Use
+2. C0a is a COPY: the block is at `.remedy-wt/f040-r6-block.md`. Use
    `shutil.copyfile` for C0a and again for C0b.
 3. C1 is the FIRST substantive commit, ahead of the ledger append.
 4. `.agent/live_review.md` is APPEND-ONLY.
 5. `.agent/plan.md` stays under 50 lines.
 6. Every exit code is REAL, from `subprocess.run(...).returncode` in a script
    under the gitignored `.remedy-wt/`. Never through a pipe.
-7. Mutation and red-proof checks run ONLY in a disposable `git worktree`;
-   purge `__pycache__` and use `python3 -B`. The primary checkout is
-   `git status --porcelain` empty at every reading.
-8. C3 IS ONE COMMIT holding the four goldens and their reader. A golden with no
-   reader is dead data and a reader with no goldens is a red commit on the
-   branch.
-9. THE GOLDENS ARE GENERATED ONCE AND THEN FROZEN. The test that reads them
-   NEVER writes them — no write mode, no `write_text`, no `json.dump` to the
-   golden directory, no "regenerate" flag or environment switch. A golden a
-   test re-blesses on mismatch checks nothing; `tests/orchestration/
-   test_cost_report.py:13` states that rule and this round inherits it.
-10. THE NORMALIZATION IS THE NARROWEST THAT MAKES THE COMPARISON STABLE, and
-    every normalized value is an IDENTITY, never content. Exactly three
-    substitutions are permitted, and each is measured below. Normalizing a
-    headline, a label's WORDS, a rule id, a count or an urgency number would
-    make the golden vacuous and is forbidden.
+7. Mutation and red-proof checks run ONLY in a disposable `git worktree`. The
+   ONLY red proof this round is the PYTHON guard's, which needs no
+   `node_modules`; see the no-colour paragraph above.
+8. C3 IS ONE COMMIT holding the pair and the new module. They are not separable:
+   `jobDigest.ts` imports the symbol the pair exports, so landing the import
+   before the export is a module that does not resolve.
+9. THE ONE STRING THAT MEANS EXACT HAS EXACTLY ONE HOME. `costMetric.ts:58`
+   defines `const ACTUAL_BASIS = "actual"` and the pair exports it unchanged.
+   `jobDigest.ts` IMPORTS it and NEVER writes the literal `"actual"` — a second
+   copy is the drift DECISION F040 D2 already spent a round preventing for the
+   urgency formula, and the digest's basis is the same class of shared value.
+10. `jobDigest.ts` READS NO CLOCK, OPENS NO SOCKET AND KEEPS NO STORAGE. It
+    takes what it needs as arguments, in the manner `recency.ts` documents at
+    its head. Nothing in it calls `fetch`, `Date.now`, `new Date`,
+    `localStorage`, `sessionStorage` or `crypto`. The trigger rule that WILL
+    need a clock is a later round and takes `nowMs` as a parameter when it
+    arrives.
 11. The `remedy` console script is DENIED to this session; use
     `python3 -m apps.cli.main ...` if needed and say so.
 12. Commit subjects carry no leading-slash token, no absolute path, no
     secret-like string, and no `Co-Authored-By` trailer.
-13. Push after C5. No pull request, no merge, no force-push.
-14. Pair shape, measured: PAIRACCEPT `TO contains FROM: true` — APPEND-shaped,
-    so its obligation is FROM exactly 1x plus the TO-only lines exactly 1x
-    among the lines C4's diff ADDS, and NEVER a FROM-zero count.
+13. Push after C6. No pull request, no merge, no force-push.
+14. Pair shape, measured: PAIRACTUAL `TO contains FROM: false` — it is a
+    REPLACEMENT, not an append, so its obligation is FROM occurring exactly 1x
+    BEFORE the edit and exactly 0x AFTER, with TO occurring exactly 1x after.
 
-## SANDBOX NOTES — read these before writing a script, they cost earlier
-## workers whole rounds
+## SANDBOX NOTES — read before writing a script
 
 - Env-var assignment is DENIED in all three shell forms (`VAR=x cmd`,
   `env VAR=x cmd`, `export VAR=x; cmd`). Set it in-process with
-  `os.environ[...]` or with `monkeypatch.setenv` inside a test.
+  `os.environ[...]` or `monkeypatch.setenv`.
 - `cp` is denied; copy with `shutil.copyfile`.
-- `$(...)` inside a compound, `;`/`&&` chains, and process substitution are
+- `$(...)` inside a compound, `;`/`&&` chains and process substitution are
   rejected by FORM. One command per call, or a driver script run as a single
   `bash script.sh`, or `python3 - <<'PY'`.
 - The Bash tool does not surface non-zero exits; capture them as
-  `subprocess.run(...).returncode` inside a Python driver.
+  `subprocess.run(...).returncode`.
+- `npx vitest` and `npm run test:unit` are REFUSED to this session class. Reach
+  vitest and tsc through the pytest nodes named in G7.
 
 ## Slices
 
-The authored units are PLAN5, RECORD5 and the two halves of PAIRACCEPT, each
+The authored units are PLAN6, RECORD6 and the two halves of PAIRACTUAL, each
 between its own BEGIN and END marker line. The markers are NOT part of the
 unit; the newline ENDING the last content line IS.
 
-<<<BEGIN PLAN5
+<<<BEGIN PLAN6
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 2, round 5.
+commit of pull request 222. SESSION 2, round 6.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -123,199 +136,228 @@ was gone" answer in one glance.
 | Item | Status | Reason |
 |------|--------|--------|
 | the F040 claim and the seam inventory | done | round 1, PASS |
-| the spec decisions D2 to D5 | done | rounds 2 and 3 |
-| the one-source urgency and R-0751 | done | round 2, PASS |
+| the spec decisions D2 to D6 | done | rounds 2, 3 and 5 |
 | T001 the composition module and its tests | done | round 3, PASS |
 | T001 the endpoint and its route tests | done | round 4, PASS |
-| T001 the envelope goldens and R-0754 | done | this round |
-| T002 the hero card, triggers, the TS retirement | open | next |
+| T001 the envelope goldens, R-0754 closed | done | round 5, PASS |
+| T002 the client digest seam and its guard | done | this round |
+| T002 the trigger, dismiss and last-seen rule | open | next |
+| T002 the hero card and its CSS conformance | open | |
 | T003 CLI parity and the end-to-end | open | |
 
 ## Next Steps
-1. This round meets T001's last acceptance clause: one stored envelope golden
-   per state shape, frozen and never self-blessed. T001 is complete when it
-   lands — the goldens were the clause round 4 left open.
-2. T002 builds the hero card against the design reference, wires the trigger,
-   dismiss and last-seen mechanics, and retires the TypeScript urgency copy per
-   DECISION F040 D2.
-3. T003 adds `remedy job digest` and the end-to-end, then the integration gate
-   and closure.
+1. This round gives the browser a pure `jobDigest.ts` — decode, path, cost line
+   — reading the exactness string from `costMetric.ts` rather than restating it,
+   plus the Python guard that pins the module's purity.
+2. The next round rules where a dismissal persists and builds the show/dismiss/
+   last-seen rule as a pure function over an injected seam, the shape
+   `decisionNonce.ts` established.
+3. Then the hero card itself with its CSS conformance guard, and T003's
+   `remedy job digest` plus the end-to-end, the integration gate and closure.
 
 ## Risks
-- R-0570, R-0752 and R-0753 stay OPEN. The first two are routed to the paydown
-  branch; R-0753 is a documented risk this feature carries, because the persisted
-  actuals record has no money field for the digest's cost basis to read.
-- Two homes for the urgency formula exist until T002, pinned equal by
-  `tests/ui_contracts/test_decision_urgency_parity.py` rather than trusted.
-<<<END PLAN5
+- R-0570 and R-0752 stay OPEN, routed to the paydown branch. R-0753 stays OPEN
+  as this feature's documented risk: the persisted actuals record has no money
+  field, so the digest's cost basis can only answer `absent` in production.
+- Two homes for the urgency formula exist until the TypeScript copy is retired,
+  pinned equal by `tests/ui_contracts/test_decision_urgency_parity.py`.
+<<<END PLAN6
 
-<<<BEGIN RECORD5
-Gate: F040 R4 — T001 PART 2, THE DIGEST ENDPOINT. VERDICT PASS. Reviewed by re-running every gate in the reviewer's own driver rather than reading the handback's numbers, and every figure the worker reported reproduced exactly. TRANSPORT is REAL: all three copies equal at sha256 `0fbcdaa55a4219804489248f5c3d45a4f5114ae9d3e518838ba1d1440eb374e4` over 18243 bytes. THE PLAN is byte-equal to PLAN4 at 1786 bytes and 38 lines. THE RECORD APPEND reconstructs whole at 1662667 + 1 + 5385 = 1668053 with N counted as 2 and paragraph order holding, and the base is a prefix of the committed file, so the append is append-only by construction. THE LEDGER moved as ordered — registered 313 to 314 with ADDED `['R-0753']`, resolved ADDED `[]` and REMOVED `[]`, exactly one `^Gate: F040 R3 — ` line, `^Done:` zero for R-0570, R-0752 and R-0753, open count 261. THE WIRING is measured at BOTH ends, which the block asked for and which matters here: at the base `2b063387` the `handlers` dict literal sits at line 3452 with FIFTEEN keys and `_build_digest_json` occurs ZERO times, and at HEAD the same literal sits at 3459 with SIXTEEN distinct keys and the builder name occurs exactly twice, its definition and its registration; the exact string `"digest": _build_digest_json,` occurs once; `ruff check` and `compileall` are both REAL exit 0. THE REVIEWER RE-PROVED THE RED PROOF IN ITS OWN WORKTREE AND ADDED A SECOND MUTATION THE BLOCK DID NOT ORDER, control first in both cases. M1, deleting the 46-byte registration line the worker deleted: unmutated 7 passed at REAL exit 0, mutated REAL exit 1 at 4 failed and 3 passed, restored 7 passed — reproducing the worker's split exactly, and the three survivors are the ones that must survive, since the unknown-job 404, the neighbour 404 and the invalid-token 403 are all answered before dispatch reaches the handlers dict. M2, the reviewer's own, aimed at the property the round actually claims: adding one key to the builder's returned payload gave REAL exit 1 at 2 failed and 5 passed, and the two that died are `test_digest_endpoint_is_a_pass_through_of_the_composition` and `test_digest_body_carries_exactly_the_envelope_key_set` — so the pass-through assertion BITES, and block constraint 9 is enforceable rather than aspirational, which is the whole point of the round. THE REQUIRED RISE was measured at both ends by the reviewer rather than taken from the record: `tests/ui_server/` collects 508 at the base and 515 at HEAD, a difference of exactly the 7 tests C4 adds. Six suites re-run serially, every one REAL exit 0: 515, 40, 699 passed with 4 skipped, 16, 21 and 42. The tree is clean, untracked count 0, seven commits with one path each at insertions 257, 177, 16, 4, 8, 161 and 288, every one under 500, no subject carrying a leading-slash token, an absolute path or a secret-like string, and no `Co-Authored-By` trailer anywhere. THE WORKER'S ELEVEN DEVIATIONS WERE ALL CORRECTLY DECLARED and two were checked at their source: the merge-base IS `f5b1e6c5` with the subject `Merge pull request #222`, and the block's own "the dict at line 3467" IS the imprecision the worker named — 3467 was the pair's FROM anchor and the last entry of the dict, while the dict's assignment was at 3452 — declared rather than silently corrected, which is the right handling of a block that is slightly wrong about its own target. ONE THING THE ROUND DID NOT DO, and it is the reviewer's fault rather than the worker's: see R-0754 below. The verdict is PASS because the round built what it was ordered to build and built it correctly; the missing clause was never ordered.
+<<<BEGIN RECORD6
+Gate: F040 R5 — T001'S LAST ACCEPTANCE CLAUSE, THE ENVELOPE GOLDENS. VERDICT PASS. Reviewed by re-running every gate in the reviewer's own driver; every figure the worker reported reproduced. TRANSPORT is REAL at sha256 `4e3bcefd476e46e33540e3d1216b31360cefcb84f69b7468bd3eee55cd07821c` over 27067 bytes, equal on all three copies. THE PLAN is byte-equal to PLAN5 at 1910 bytes and 40 lines. THE RECORD APPEND reconstructs whole at 1668053 + 1 + 10079 = 1678133, N counted as 3, paragraph order holding, base a prefix. THE LEDGER moved as ordered — registered 314 to 315 with ADDED `['R-0754']` and REMOVED `[]`, resolved ADDED `[]`, `DECISION F040` ADDED `['D6']`, one `^Gate: F040 R4 — ` line, open count 262. THE FOUR GOLDENS WERE READ BY THE REVIEWER AS STORED BYTES and match the envelope probe taken independently at `458e8d51` before the round was authored: eight keys each, `all-green`, `open-decision`, `blocked-failed` and `indeterminate` as the four rules, `job_id` normalized in every one, the blocked shape's `peak_urgency` the deterministic 2400 that (3+1)x600 gives under the module's frozen clock, and the em dash stored literally rather than as a `—` escape. THE REVIEWER RAN THREE MUTATIONS IN ITS OWN WORKTREE, control first in each, and all three bit exactly where they should. M1, changing the `all-green` label in PRODUCTION code at `packages/orchestration/run_report.py:411`: REAL exit 1, and the single dead test is `test_the_normalized_envelope_equals_its_stored_golden[green]` — so the goldens pin CONTENT and not merely shape. M2, the one that matters most and the one the block was written to make possible, WIDENING `_normalize` so it swallows any label containing the word `decision`: REAL exit 1 with TWO dead tests, the `blocked_with_decisions` golden AND `test_the_normalization_leaves_the_ctas_own_words` — so the narrowness guard is a real discriminator and not decoration, which is the difference between a golden that pins the CTA's words and one that has quietly normalized them away. M3, a LENGTH-PRESERVING perturbation of one stored golden's headline: REAL exit 1 on that shape alone, so the comparison is over content rather than size. Each restored run returned to 46 passed at REAL exit 0. NO SELF-BLESSING, re-measured by the reviewer over the committed bytes with `ast`: `GOLDEN_DIR` is bound exactly once, and a write-verb sweep WIDER than the block ordered — `write_text`, `write_bytes`, `dump`, `mkdir`, `touch`, `unlink`, `rmdir`, `rename`, `writelines`, `write` and `open` with a write mode — finds ZERO across the whole module, not merely across the new section. THE FEATURE FILE took an APPEND-shaped edit: FROM 1x, eleven TO-only lines each exactly 1x among eleven added lines and ZERO removed, `AMENDMENT A1`, `A2` and `A3` each exactly 1x, and T001's Task-slicing entry unchanged — the amendment records how the clause is MET and does not delete the clause, which is the distinction that keeps the acceptance list honest. DETERMINISM WAS MEASURED RATHER THAN ASSUMED, because a golden's characteristic failure is the flake: twelve consecutive runs of the module, all REAL exit 0. Six suites serially all REAL exit 0 — 46, 515, 699 with 4 skipped, `tests/docs/` 295, 16 and the canary 42 — `ruff` clean on the edited module, tree clean, zero untracked, seven commits at insertions 321, 229, 7, 6, 186, 11 and 365, every one under 500. THE WORKER'S TEN DEVIATIONS WERE ALL CORRECTLY DECLARED, and deviation 2 deserves naming because it repairs the REVIEWER's omission: the block ordered the golden section appended and said nothing about the module docstring, which until this round argued "A golden would keep passing while the digest and the report drifted apart" — a sentence that, left standing above the section it now precedes, would have been the R-0417 stale-prose class landing in the very file the round was extending. The worker rewrote it to "A golden ALONE would keep passing … so the golden section at the bottom stands BESIDE that assertion and never in place of it", declared it as unordered, and was right on both counts. The block should have ordered that pair; it did not, and the worker caught it.
 
-- R-0754 — Medium, T001 WAS DECLARED COMPLETE WITH ONE OF ITS ACCEPTANCE CLAUSES NEVER BUILT AND NEVER DISCHARGED, AND THE PLAN TEXT WAS NARROWED IN THE SAME ROUND THAT DECLARED IT DONE. Raised by the reviewer at the F040 R4 gate, against its own earlier authoring. THE MEASUREMENT at `458e8d51`: `docs/roadmap/features/T5_F040.md:76-78` slices T001 as "the endpoint composition + rule-table import + fixtures per state shape (green, blocked-with-decisions, budget-stopped, mid-run) + goldens", and its Acceptance at :86 opens "Fixture goldens exact". The four fixtures exist and are parametrized over in `tests/orchestration/test_job_digest.py`; NO GOLDEN EXISTS — `find tests -ipath "*digest*golden*"` returns nothing, and the only occurrence of the word in that file is line 12, a docstring sentence arguing against one. The narrowing is on the record and is precise: round 3's plan carried the item "T001 the endpoint, its route tests and goldens | open | next round", and round 4's PLAN4 slice rewrote it to "T001 the endpoint and its route tests | done | this round". No DECISION discharged the clause between those two rounds — D1 through D5 settle the F033 candidates, the urgency home, ownership, the cost basis and the deep link, and not one of them mentions goldens. THIS IS THE REVIEWER'S DEFECT AND NOT ANY WORKER'S: the R4 block ordered no golden and its fourteen constraints named none, and the R4 worker applied PLAN4 byte for byte exactly as constraint 1 required. WHY MEDIUM: nothing on disk is wrong-valued and no test is false, so no running code misbehaves — but a feature file under `docs/` carries an acceptance criterion the feature had stopped intending to meet, and closure reads that list, so the gap would have surfaced as a closure blocker several rounds later with the cheap moment to fix it long past. It is also a gate-blindness of the kind §3 exists to catch: seven green gates in R4 and eight in R3, and not one of them measured T001 against its own acceptance text. WHY IT IS NOT ARGUED AWAY: the docstring sentence at `test_job_digest.py:12` — "A golden would keep passing while the digest and the report drifted apart" — is a correct argument about ONE field, the CTA label, and it is answered by keeping the one-source test rather than by dropping the goldens; it is not an argument against pinning the envelope, and this repository already runs exactly that convention for this surface's sibling at `tests/orchestration/fixtures/cost_report/golden/`. The open set was searched for the defect before this id was minted, per §3 item 30: `R-0411` is the nearest shape — a feature file naming five frozen orders where three were built, registered against the plan and discharged by a DECISION — but it names F082 and its bench orders, so the evidence does not join it. FIXED IN THE SAME ROUND THAT REGISTERS IT, by DECISION F040 D6 below and the goldens it specifies. The counter-measure, binding the reviewer from R6 on: a block whose plan slice marks a T-slice `done` states, in the block itself, the feature file's acceptance clauses for that slice and where each one is met — a T-slice is complete against its acceptance text, never against a plan row the same block rewrote.
+Done: R-0754 — RESOLVED at `1f31b4dc` and `38dd0117`, and resolved by BUILDING the clause rather than by arguing it away. The finding was that T001 had been declared complete with its acceptance clause "Fixture goldens exact" never built and never discharged, and that the plan text had been narrowed in the same round that declared it done. BOTH HALVES ARE NOW ANSWERED. The clause is MET: four stored envelope goldens, one per state shape, live under `tests/orchestration/fixtures/job_digest/golden/` and are compared WHOLE against the envelope the same fixture builds, with exactly three identities normalized first. The narrowing is REVERSED rather than papered over: `.agent/plan.md` now carries the item "T001 the envelope goldens and R-0754" and the feature file carries AMENDMENT A3 stating how the clause is met, so a closure reading the acceptance list finds the answer beside the question instead of finding neither. VERIFIED BY THE REVIEWER, not taken from the handback: the goldens were read as stored bytes and matched an envelope probe taken independently before the round was authored, and three mutations — a production label change, an over-broad normalizer and a length-preserving byte perturbation — each reddened exactly the tests they should, with the unmutated control reported first in every case. THE COUNTER-MEASURE THE FINDING CARRIED IS IN FORCE FROM THIS BLOCK ON and is not merely promised: a block whose plan slice marks a T-slice `done` states, in the block itself, that slice's acceptance clauses and where each one is met. This block does that for T002 in the paragraph its Goal opens with, which is the first exercise of the rule. THE LESSON IS THE REVIEWER'S AND IS RECORDED HERE RATHER THAN IN A SLIP, because it is the finding's root cause: seven green gates in R4 and eight in R3 measured everything the block ordered and nothing the FEATURE FILE required, so a T-slice was declared complete against a plan row the same block had rewritten. A gate list is a claim about what was checked, never about what was owed.
 
-DECISION F040 D6 — "FIXTURE GOLDENS EXACT" IS MET BY ENVELOPE GOLDENS WITH THREE NORMALIZED IDENTITIES AND NOTHING ELSE NORMALIZED. THE PROBLEM: T001's acceptance clause asks for exact fixture goldens over a composition whose envelope carries values that differ on every build, so a naive golden would be flaky and an over-normalized one would be vacuous. MEASURED by the reviewer at `458e8d51`, by building all four shapes twice in one process: the ONLY unstable top-level key for `green`, `budget_stopped` and `mid_run` is `job_id`, and for `blocked_with_decisions` it is `job_id` and `primary_action`, because that shape's label embeds both the job id's first eight characters and a `td:` decision id — `Answer the open decision: ` followed by a `remedy decision resolve <prefix> td:<hex>` command. Everything else — the headline sentences, the state strings, the cost value and basis, the empty ownership list, the open counts, the peak urgency and the rule ids — is byte-stable under the module's own autouse `_frozen_inbox_clock` and `_isolated_data_root` fixtures. CHOSEN: one stored JSON per shape under `tests/orchestration/fixtures/job_digest/golden/`, compared WHOLE against the freshly built envelope after exactly three substitutions — the job's full UUID, the job's first-eight-character prefix, and each `td:<hex>` decision id — each replaced by a fixed placeholder everywhere it occurs, including inside strings. Nothing else is substituted, and the goldens live beside the shape fixtures in the module that owns the frozen clock, because the determinism the comparison depends on comes from that module's autouse fixtures and would not follow the test into a new file. The one-source CTA test STAYS exactly as it is: the golden pins the rendered envelope and the one-source test pins the agreement with the report, and a label change reddens both — which is the answer to the `test_job_digest.py:12` objection, since that sentence argues against a golden REPLACING the one-source assertion and not against one standing beside it. ALTERNATIVES CONSIDERED: (a) discharge the clause by decision and build no golden, on the strength of the field-by-field assertions already in place — rejected, because those assertions were written from the same reading of the code that produces the values and share its blind spots, and because the blocked shape's label leaking a job-id prefix and a decision id into published copy is exactly the class a whole-envelope comparison catches and a field-wise one does not; (b) normalize the entire `primary_action.label` — rejected as vacuous, since the label's WORDS are the CTA the acceptance criterion is about; (c) store the goldens under a new test module — rejected, the frozen clock is autouse in `test_job_digest.py` and a golden that depends on a fixture it does not inherit is a flake waiting for a slow machine. HOW TO REVERSE: delete the four files and the golden section; nothing imports them. WHAT IT COSTS TO BE WRONG: four small JSON files to re-generate by hand, and the re-generation is deliberately manual — no flag, no environment switch, no self-blessing path — because a golden a test can rewrite on mismatch is not a golden.
-<<<END RECORD5
+DECISION F040 D7 — "COMPONENT TESTS" IN THIS REPOSITORY MEANS PURE-LOGIC VITEST PLUS A PYTHON SOURCE GUARD, BECAUSE NOTHING HERE CAN RENDER A COMPONENT. THE PROBLEM: `docs/roadmap/features/T5_F040.md:79-80` slices T002 as "hero card + CSS conformance + trigger/dismiss/last-seen mechanics + component tests", and a builder reading "component tests" will reach for a renderer. MEASURED by the reviewer at `4e5e9bf8`: `apps/ui/vitest.config.ts` sets `environment: "node"`, the repository ships NEITHER jsdom NOR a testing library, and every `.test.ts` under `apps/ui/src/api/` tests pure logic — no React component is rendered anywhere in this repository's tests. A second measurement bounds what a round may even attempt: direct `npx vitest` and `npm run test:unit` are REFUSED to this session class before execution, and because `apps/ui/node_modules` is gitignored it is absent from any disposable worktree, so the mutation red-proof guardrail G5 requires is unreachable for TypeScript — a mutation there is red for every possible module, which is the vacuous-probe shape R-0703 registered. CHOSEN, and it is a three-part reading of the clause rather than a refusal of it: (a) every DECIDABLE rule of the card goes into `apps/ui/src/api/*.ts` as a pure function and is covered by vitest, which the pytest node `tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes` runs and which a broken module genuinely turns red; (b) the `.tsx` file keeps only wiring, and its structure and CSS conformance are pinned by a Python guard under `tests/ui_contracts/` reading the source as TEXT, the shape `test_cost_metric_render.py`, `test_design_drift.py` and `test_main_layout_guard.py` already establish, which needs no `node_modules` and IS red-proved normally; (c) types are checked by `tests/ui_server/test_dashboard_contract.py -k typescript`, whose result must be read as passed-or-SKIPPED because that node skips when the toolchain is absent and a skip is not a type check. ALTERNATIVES CONSIDERED: (i) add jsdom and a testing library to get real render tests — rejected on scope, that is a toolchain change affecting every UI feature and it is not F040's to make on its own authority; (ii) write render tests anyway and let them skip — rejected, a permanently skipped test is a false green and this repository's honesty rule prefers an absent test to a sleeping one; (iii) claim the clause unmeetable and drop it — rejected, the decidable half is most of the card's behaviour and it is fully testable, so dropping it would trade real coverage for a wording problem. HOW TO REVERSE: if a renderer is ever added, the `.tsx` guards become render tests and (b) retires; nothing in (a) changes, because a pure rule is worth testing purely either way. WHAT IT COSTS TO BE WRONG: the wiring inside the `.tsx` is pinned as TEXT rather than as behaviour, which is weaker, and the block that builds the card must therefore keep that file as thin as the guard can see.
+<<<END RECORD6
 
-<<<BEGIN PAIRACCEPT-FROM
-## Acceptance
-- Fixture goldens exact; the CTA equals the report's recommended
-  action per fixture (the one-source test). Cost basis treatment
-  matches the ticker's. Dismissal persists; new activity re-arms.
-  Absence detection never claims more than last-seen truth (copy
-  audit: "since you were last here" not "while you slept").
-<<<END PAIRACCEPT-FROM
+<<<BEGIN PAIRACTUAL-FROM
+/** The only basis string that means the figure is not an estimate. */
+const ACTUAL_BASIS = "actual";
+<<<END PAIRACTUAL-FROM
 
-<<<BEGIN PAIRACCEPT-TO
-## Acceptance
-- Fixture goldens exact; the CTA equals the report's recommended
-  action per fixture (the one-source test). Cost basis treatment
-  matches the ticker's. Dismissal persists; new activity re-arms.
-  Absence detection never claims more than last-seen truth (copy
-  audit: "since you were last here" not "while you slept").
-  AMENDMENT A3 (DECISION F040 D6, 2026-08-29): "fixture goldens
-  exact" is met by ENVELOPE goldens — one stored JSON per state
-  shape under `tests/orchestration/fixtures/job_digest/golden/`,
-  compared WHOLE against the envelope the same fixture builds.
-  Exactly three identities are normalized first, because they
-  differ on every build: the job's UUID, the job's first-eight
-  prefix, and each `td:` decision id, each replaced by a fixed
-  placeholder everywhere it occurs including inside strings.
-  Nothing else is normalized — headlines, labels, rule ids, counts
-  and urgencies are compared as they are — and the test never
-  writes a golden.
-<<<END PAIRACCEPT-TO
+<<<BEGIN PAIRACTUAL-TO
+/** The only basis string that means the figure is not an estimate.
+ *  EXPORTED because the completion digest's cost line reads the same string
+ *  (DECISION F040 D7): the bar and the hero card must agree about what
+ *  "exact" is, and a second copy of this literal is the drift DECISION F040 D2
+ *  already spent a round preventing for the urgency formula. */
+export const ACTUAL_BASIS = "actual";
+<<<END PAIRACTUAL-TO
 
-## SPEC for C3 — the four goldens and their reader
+## SPEC for C3 — `apps/ui/src/api/jobDigest.ts`
 
-Read `tests/orchestration/test_cost_report.py` around lines 453-470 first for
-the convention this repository already uses for a stored golden, and
-`tests/orchestration/test_job_digest.py` end to end for the module you are
-extending. Follow both; invent no new harness.
+Read `apps/ui/src/api/recency.ts` for the house voice of a pure rule module,
+`apps/ui/src/api/costMetric.ts` for the cost vocabulary, and
+`apps/ui/src/api/remedyApi.ts:702-760` for `diffEnvelopePath` / `loadDiffEnvelope`
+— the path-builder-plus-loader pattern F037 established for a per-job endpoint.
+Follow them; invent no new pattern.
 
-THE FILES. Four JSON goldens under
-`tests/orchestration/fixtures/job_digest/golden/`, named for the shape
-constants the module already defines: `green.json`,
-`blocked_with_decisions.json`, `budget_stopped.json`, `mid_run.json`. Each
-holds the NORMALIZED envelope its shape builds, pretty-printed with a trailing
-newline so a diff is readable. GENERATE them by running the composition — never
-by typing them — then read the generated files back and check them by eye
-against the shape fixture before committing.
+Open the module with a comment block in the house style: what it is, and the
+DELIBERATE ABSENCES written where a reader will search for them (no clock, no
+storage, no socket — per constraint 10), the way `decisionNonce.ts` does.
 
-THE READER, appended as a new section at the END of
-`tests/orchestration/test_job_digest.py`, under a section comment in the
-style the module already uses for its other sections:
+Export, with a one-line WHY comment above each definition:
 
-- a module-level `GOLDEN_DIR` pointing at the directory, in the manner
-  `test_cost_report.py` defines its own;
-- a `_normalize(envelope, job)` helper performing EXACTLY the three
-  substitutions DECISION F040 D6 names — the job's full UUID, the job's
-  first-eight-character prefix, and every `td:<hex>` decision id — each to a
-  fixed placeholder, applied recursively so occurrences INSIDE strings are
-  reached. Give it a one-line WHY comment saying that these are identities and
-  that nothing else may be added to the list;
-- one test parametrized over `SHAPES` asserting the normalized envelope EQUALS
-  the parsed golden for that shape;
-- one test asserting the golden DIRECTORY holds exactly four files and that
-  their names are exactly the four shape names — so a shape added later without
-  a golden fails here rather than being silently unpinned;
-- one test asserting the normalization is NARROW: for the
-  `blocked_with_decisions` shape, the normalized label still contains the words
-  `Answer the open decision` and the token `remedy decision resolve`, so a
-  future widening of `_normalize` that swallowed the CTA's wording reddens.
+- `JobDigestCost`, `JobDigestDecisions`, `JobDigestPrimaryAction` and
+  `JobDigest` — the envelope's shape as TypeScript types, the eight top-level
+  keys the goldens under `tests/orchestration/fixtures/job_digest/golden/` pin.
+  Read one of those files for the exact shape rather than inferring it.
+- `decodeJobDigest(raw: unknown): JobDigest | null` — the defensive decode, in
+  the manner `normalizePipeline` and `normalizePromptTrace` answer `null` for a
+  payload they cannot use. It answers `null` for a non-object, for a missing or
+  non-string `job_id`, and for a `version` that is not the number the module
+  expects; it never throws. Unknown EXTRA keys are ignored rather than rejected
+  — the server may add a field before this client learns it, and D5's own
+  reasoning is that an additive field needs no version bump.
+- `JOB_DIGEST_VERSION` — the version this client understands, as a number.
+- `digestCostLine(cost: JobDigestCost): { value: string; estimated: boolean }` —
+  the card's cost line as a RULE, not as copy. `estimated` is
+  `cost.basis !== ACTUAL_BASIS`, with `ACTUAL_BASIS` IMPORTED from
+  `./costMetric` per constraint 9; `value` is the figure's own text.
+  THIS MODULE WRITES NO PRESENTATION COPY. It does NOT contain the `~` marker
+  and does NOT contain the words `, estimated`: `costMetric.ts` returns an
+  `estimated` BOOLEAN and `apps/ui/src/components/metrics/TopMetricsBar.tsx`
+  owns the strings as `ESTIMATE_MARK` and `ESTIMATE_PHRASE`, so the card renders
+  them from there and the phrase keeps the one home it already has. Putting the
+  copy here would be a second home for it — the same defect constraint 9 forbids
+  for the basis string, one layer up.
+- `jobDigestPath(request: { jobId: string; token: string; baseUrl?: string }): string`
+  — the endpoint's path, built exactly the way `diffEnvelopePath` builds the
+  diff's, INCLUDING its encoding of the token and its handling of `baseUrl`.
+  The route the server serves is `GET /api/jobs/<job_id>/digest`; that is
+  measured at `packages/orchestration/ui_server.py`, where `"digest"` is
+  registered in the per-job handlers dict.
 
-Per constraint 9 the section contains no write path of any kind.
+Do NOT add a loader that calls `fetch` this round — constraint 10 forbids the
+socket, and the path builder is the half that is decidable and worth pinning.
 
-## SPEC for C4 — the feature file
+## SPEC for C4 — `apps/ui/src/api/jobDigest.test.ts`
 
-Apply pair PAIRACCEPT. It appends AMENDMENT A3 to the Acceptance bullet,
-following the shape amendments A1 and A2 already use at :44 and :52 — the
-amendment sits inside the bullet it amends, wrapped to the file's column width.
-Nothing else in that file changes.
+Read `apps/ui/src/api/recency.test.ts` and the `diffEnvelopePath` cases in
+`apps/ui/src/api/remedyApi.test.ts:585-610` first, and follow their conventions.
+
+Cover, at least: a well-formed envelope decoding to every field; `null` for a
+non-object, for a missing `job_id` and for a wrong `version`; an unknown extra
+key IGNORED rather than rejected; `digestCostLine` marking `absent` and
+`lower_bound` as estimated and `actual` as not; and `jobDigestPath` over a plain
+case, a token needing encoding and an explicit `baseUrl`.
+
+ONE OF THESE IS THE POINT AND MUST BE WRITTEN AS SUCH: a test asserting
+`digestCostLine` treats the string `"actual"` as exact THROUGH THE IMPORTED
+`ACTUAL_BASIS`, not through a literal retyped in the test — so the day the
+server renames that value, this test moves with it instead of pinning the old
+name.
+
+## SPEC for C5 — `tests/ui_contracts/test_job_digest_card_contract.py`
+
+Read `tests/ui_contracts/test_cost_metric_render.py` for the convention: a
+Python test that reads TypeScript source as TEXT and pins properties no
+type-checker can see. Follow it.
+
+STRIP COMMENTS AND STRING LITERALS BEFORE ASSERTING AN ABSENCE. A guard that
+greps raw source reports its own prose: this module's header will NAME the
+absences it promises, so a naive search for `localStorage` finds the comment
+that says there is none. State in the module docstring that the stripping is
+why the guard is honest.
+
+Pin, over `apps/ui/src/api/jobDigest.ts`:
+
+- THE PURITY, per constraint 10: over comment- and string-stripped source,
+  `fetch`, `Date.now`, `new Date`, `localStorage`, `sessionStorage`, `crypto`
+  and `XMLHttpRequest` each occur ZERO times.
+- THE ONE-SOURCE COST STRING: the literal `"actual"` occurs ZERO times in
+  `jobDigest.ts`, and `ACTUAL_BASIS` is IMPORTED there from `./costMetric`.
+  Pair that zero with a POSITIVE CONTROL proving the search reaches the file at
+  all — assert some string the module certainly contains — so a zero is
+  distinguishable from a blind search.
+- THE SINGLE HOME, measured across the directory: over comment-stripped,
+  NON-TEST `.ts` sources under `apps/ui/src/api/`, the literal `"actual"`
+  occurs exactly ONCE, and that occurrence is in `costMetric.ts`. The reviewer
+  measured exactly this at the base and it held.
+- NO PRESENTATION COPY: over comment-stripped source, `jobDigest.ts` contains
+  neither the phrase `, estimated` nor a `~` marker, because
+  `TopMetricsBar.tsx` owns both as `ESTIMATE_PHRASE` and `ESTIMATE_MARK` and a
+  second copy is the drift this feature keeps paying to avoid. Assert against
+  THAT component that the two constants still live there, so the guard fails if
+  the copy moves rather than silently passing once it is gone.
 
 ## Done when — the gates
 
 Report ONE line per gate with its REAL exit code. Every gate runs at a commit
-STRICTLY EARLIER than C5, which writes the handback.
+STRICTLY EARLIER than C6, which writes the handback.
 
-G1 TRANSPORT, at C0b. One sha256 over three files — `.remedy-wt/f040-r5-block.md`,
-   the committed `.agent/authored/f040-r5.md` and `.agent/last_block.md` — with
+G1 TRANSPORT, at C0b. One sha256 over three files — `.remedy-wt/f040-r6-block.md`,
+   the committed `.agent/authored/f040-r6.md` and `.agent/last_block.md` — with
    the byte length, all three EQUAL. This block states no expected digest.
 
-G2 THE PLAN, at C1. `.agent/plan.md` byte-EQUAL to PLAN5 (report both sha256),
+G2 THE PLAN, at C1. `.agent/plan.md` byte-EQUAL to PLAN6 (report both sha256),
    under 50 lines, holding `## Goal` and `## Next Steps`.
 
 G3 THE RECORD APPEND, at C2. Re-measure the pre-commit length yourself; the
-   reviewer read 1668053 at `458e8d51`. Base + one separator newline + RECORD5
+   reviewer read 1678133 at `4e5e9bf8`. Base + one separator newline + RECORD6
    equals the committed length. TWO readings: (a) WHOLE RECONSTRUCTION against
    the entire committed file; (b) PARAGRAPH ORDER — the last N blank-line units
-   equal RECORD5's N paragraphs IN ORDER, N COUNTED by your script. Also report
-   that the base bytes are a PREFIX of the committed file. NEGATIVE CONTROL in a
+   equal RECORD6's N paragraphs IN ORDER, N COUNTED by your script. Report that
+   the base bytes are a PREFIX of the committed file. NEGATIVE CONTROL in a
    disposable worktree: flip one byte inside the FIRST appended paragraph and
    report that BOTH readings reject it and accept the unflipped bytes.
 
 G4 THE LEDGER, at C2. Distinct `^- R-\d+ — ` ids before and after with ADDED
-   exactly `['R-0754']` and REMOVED `[]`; ADDED resolved `[]`; exactly one
-   `^Gate: F040 R4 — ` line; distinct `DECISION F040 D\d+` ids with ADDED
-   exactly `['D6']`; `^Done: R-0753` and `^Done: R-0754` both 0. Report the open
-   count.
+   `[]` and REMOVED `[]` — this round registers NO new finding. Distinct
+   `^Done: R-\d+` ids with ADDED exactly `['R-0754']`. Distinct
+   `DECISION F040 D\d+` with ADDED exactly `['D7']`. Exactly one
+   `^Gate: F040 R5 — ` line. Report the open count and the fall from 262.
 
-G5 THE GOLDENS BITE, at C3. First
-   `python3 -m pytest tests/orchestration/test_job_digest.py -q` — REAL exit 0
-   with the passed count, and report the RISE from the 40 the reviewer measured
-   at the base. Then, INSIDE A DISPOSABLE WORKTREE, control FIRST: report the
-   unmutated exit code over that file, then MUTATE PRODUCTION CODE — change the
-   text of ONE rule label in the next-action rule table that `green` resolves to
-   (find it yourself; `primary_action.rule_id` for that shape is `all-green`) —
-   and report the exit code and which tests died. At least the `green` golden
-   test MUST die; report honestly whether the one-source CTA test died with it.
-   Restore, re-run, report the restored exit code and that the bytes equal the
-   original. Name the worktree, remove it, report `git worktree list` no longer
-   holds it. This proves the goldens pin CONTENT and not merely shape.
+G5 THE PAIR AND THE SINGLE HOME, at C3. PAIRACTUAL is a REPLACEMENT, not an
+   append: report FROM occurring exactly 1x in `costMetric.ts` BEFORE the edit
+   and exactly 0x AFTER, and TO exactly 1x after. Then, over comment-stripped
+   NON-TEST `.ts` sources under `apps/ui/src/api/`: the literal `"actual"`
+   occurs exactly ONCE and it is in `costMetric.ts`; `jobDigest.ts` contains the
+   string `ACTUAL_BASIS` and imports it from `./costMetric`. Name the files the
+   sweep actually read and their count, so the absence is as wide as the search.
 
-G6 THE GOLDENS CANNOT SELF-BLESS AND THE NORMALIZATION IS NARROW, at C3. Two
-   readings, both over the COMMITTED tree. (a) Parse
-   `tests/orchestration/test_job_digest.py` with `ast` and report that the
-   golden section contains NO call to `open` with a write mode, no `write_text`,
-   no `write_bytes` and no `json.dump`, and that the string `GOLDEN_DIR` appears
-   in no assignment target other than its own definition — quote the mechanism,
-   not a claim. (b) In a disposable worktree, perturb ONE byte inside ONE stored
-   golden — report which file and which byte — and report the REAL exit code
-   with it perturbed and again after restoring. A golden the suite accepts when
-   perturbed is not pinning anything.
+G6 THE GUARD AND ITS RED PROOF, at C5. First
+   `python3 -m pytest tests/ui_contracts/test_job_digest_card_contract.py -q` —
+   REAL exit 0 with the passed count. Then, INSIDE A DISPOSABLE WORKTREE, the
+   UNMUTATED control FIRST, then TWO mutations of `jobDigest.ts`, each reverted
+   before the next: (a) insert a real `Date.now()` call into a function body —
+   the purity assertion must die; (b) replace the imported `ACTUAL_BASIS`
+   comparison with the literal `"actual"` — the one-source assertion must die.
+   Report each REAL exit code and WHICH tests died, never only a count. Restore,
+   re-run, report the restored exit code and that the bytes equal the original.
+   Name the worktree, remove it, report `git worktree list` no longer holds it.
 
-G7 THE FEATURE FILE, at C4. PAIRACCEPT is APPEND-shaped: report FROM occurring
-   exactly 1x in the committed file and each TO-only line occurring exactly 1x
-   AMONG THE LINES C4's DIFF ADDS — do NOT count FROM to zero. Then report that
-   `AMENDMENT A3` occurs exactly once in the file, that `AMENDMENT A1` and
-   `AMENDMENT A2` each still occur exactly once, and that the file's Task
-   slicing line for T001 is UNCHANGED by this round — the amendment records how
-   the clause is met and does not delete the clause.
+G7 VITEST AND THE TYPECHECK, at C5, through the pytest nodes and NOT through a
+   direct `npx` call, which is refused to this session:
+   `python3 -m pytest "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" -q -rs`
+   and `python3 -m pytest tests/ui_server/test_dashboard_contract.py -k typescript -q -rs`.
+   For EACH, report the REAL exit code AND whether the node PASSED or SKIPPED —
+   a skip is not a type check and must not be reported as one. The reviewer
+   measured 4 passed and 1 passed at the base, neither skipped. NO TypeScript
+   mutation colour is ordered; say in the handback that none was run and why.
 
-G8 THE SUITES AND THE TREE, at C4. Each its own REAL exit code:
+G8 THE SUITES AND THE TREE, at C5. Each its own REAL exit code:
+   `python3 -m pytest tests/ui_contracts/ -q`,
    `python3 -m pytest tests/orchestration/test_job_digest.py -q`,
    `python3 -m pytest tests/ui_server/ -q`,
-   `python3 -m pytest tests/ui_contracts/ -q`,
-   `python3 -m pytest tests/docs/ -q`,
-   `python3 -m pytest tests/orchestration/test_integrity_gate.py -q`, and the
-   canary `python3 -m pytest tests/cli/test_golden_path.py -q`. The reviewer
-   measured 40, 515, 699 passed with 4 skipped, 16 and 42 at the base and did
-   not measure `tests/docs/` this round — report what you find and, if it is not
-   green, say so plainly rather than repairing it, since `tests/docs/` reads the
-   feature file C4 edits and a red there is this round's business to REPORT.
-   Then `git status --porcelain` EMPTY, `git ls-files --others
+   `python3 -m pytest tests/docs/ -q`, and the canary
+   `python3 -m pytest tests/cli/test_golden_path.py -q`. The reviewer measured
+   699 passed with 4 skipped, 46, 515, 295 and 42 at the base; `tests/ui_contracts/`
+   MUST rise by the number of tests C5 adds, so report both numbers and the
+   difference. Then `git status --porcelain` EMPTY, `git ls-files --others
    --exclude-standard` count 0, and the per-commit insertion counts for C0a
-   through C4, every one under 500.
+   through C5, every one under 500.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: the state
 block, the `## Commits` table with a `+/-` column taken from
-`git diff --numstat` and never from file line counts, the deviations, the
-item-status table with every bundle item and every gate appearing exactly once,
-and the next steps. State `SESSION 2` of F040 and round 5. No length cap. Record
-that T001 is COMPLETE INCLUDING ITS GOLDENS CLAUSE with this round, name R-0570,
-R-0752 and R-0753 as OPEN and R-0754 as registered-and-fixed in this same round,
-and name the next action as T002 — the hero card, its trigger, dismiss and
-last-seen mechanics, and the retirement of the TypeScript urgency copy per
-DECISION F040 D2.
+`git diff --numstat`, the deviations, the item-status table with every bundle
+item and every gate appearing exactly once, and the next steps. State
+`SESSION 2` of F040 and round 6. No length cap. Record that T002's DECIDABLE
+half is built and that no `.tsx` and no CSS landed this round, name R-0570,
+R-0752 and R-0753 as OPEN and R-0754 as RESOLVED by C2, and name the next
+action as T002 part 2 — the trigger, dismiss and last-seen rule as a pure
+function over an injected seam, with the DECISION that rules where a dismissal
+persists.
