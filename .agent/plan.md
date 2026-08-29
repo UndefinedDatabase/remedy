@@ -18,28 +18,27 @@ round — every partial state rendered truthfully in viewer, node and report.
 | failed-rollback truth · ledger · the door's effect | done | rounds 9-11, D4 |
 | the recorder takes the viewer's envelope | done | round 12 |
 | one evidence-directory resolver for viewer and doors | done | round 13 |
-| the CLI command and its handler | done | round 14 |
-| R-0744, the CLI door's job-id resolution | open | this round |
-| the write door's exposure and dispatch | open | this round |
-| T003 rejection to repair, partial-state truth | open | owns R-0738 |
+| the CLI command and its handler | done | rounds 14, 15 |
+| the write door's exposure and dispatch | done | round 15 |
+| T003 partial apply truth, and its first surface | open | this round, R-0738 |
+| T003 the node glyph and the report line | open | next |
+| T003 rejection reasons quoted into the repair prompt | open | after that |
+| R-0745, the door's transitive import closure | open | with the next door work |
 | the operator docs for `patch approve-hunks` | open | closure sequence |
 
 ## Next Steps
-1. R-0744: the CLI handler resolves the evidence directory from the RESOLVED job
-   id, so a short prefix or an uppercase UUID stops being reported as a missing
-   diff. The eleven existing tests are blind to it, so the fix ships with tests
-   that discriminate.
-2. The write door, in ONE commit with its guards. `UI_EXPOSED_COMMANDS` gains the
-   id; `DOOR_METHODS`, `ALLOWED_IMPORTS` and `FORBIDDEN_MODULES` in
-   `tests/ui_server/test_command_channel.py` are EQUALITY guards that must widen
-   with it, and `packages.orchestration.hunk_apply` joins the forbidden set so
-   DECISION F033 D4's mistake cannot be made silently later.
-3. Then T003: rejection reasons quoted verbatim into the next repair prompt, the
-   report line derived from the ledger, and partial state rendered truthfully in
-   viewer, node and report. R-0738 is T003's to repair.
+1. R-0738's truth half: the apply fold in `ui_server._task_truth_maps` becomes an
+   AGREEMENT test with a distinct `partial` state, taking the shape of the proof
+   fold three lines above it, and the detail popover gains the matching label in
+   the SAME commit — the fold alone would render the new state as "Unknown".
+   R-0738 STAYS OPEN: its resolution names three surfaces and this reaches one.
+2. Then the remaining two surfaces R-0738 names — the task-node glyph and the
+   report line — and only then is R-0738 resolvable.
+3. Then rejection reasons quoted VERBATIM into the next repair prompt, with the
+   trace proof the feature file calls acceptance material.
 4. Then the closure sequence, which owes `docs/` an operator-facing description
    of `remedy patch approve-hunks` — no round has been allowed a `docs/` path yet.
 
 ## Risks
-- The door's import guard is an EQUALITY guard: a new import reddens the branch
-  tip unless it is ruled in the same commit.
+- The apply fold has one consumer but three downstream surfaces; a value added on
+  one side only renders as "Unknown", which is why the contract test pins both ends.
