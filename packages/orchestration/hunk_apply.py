@@ -95,10 +95,12 @@ _ROLLBACK_UNFINISHED_PREFIXES = ("rollback_failed:", "rollback_incomplete ")
 class HunkApplyOutcome:
     """What happened to an approved selection, in HUNK ids rather than in file counts.
 
-    ``landed`` is EMPTY whenever ``applied`` is false — a caller must not have to check two
-    fields to learn that nothing landed, because there is no partial landing to distinguish it
-    from. ``blocked`` is the mirror: empty on success, and on failure the ids the failure is
-    attributable to. ``apply_id`` is the applier's own id, or ``""`` when no apply was attempted
+    ``landed`` is EMPTY whenever ``applied`` is false — not because a partial state on disk is
+    impossible, but because this module learns WHICH hunks landed only from a SUCCESSFUL apply
+    and so has no per-hunk answer to give on failure. Where a partial state IS reported is
+    ``_failure_lead_sentence``, in ``message``, never by half-filling this field. ``blocked`` is
+    the mirror: empty on success, and on failure the ids the failure is attributable to.
+    ``apply_id`` is the applier's own id, or ``""`` when no apply was attempted
     at all, which is how a caller tells "the applier refused" from "the applier was never
     called". ``message`` is one human sentence and is never parsed; ``code`` is what a caller
     matches on."""
