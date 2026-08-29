@@ -1,7 +1,7 @@
 # Plan — F033 Hunk-level diff approval
 
 Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 7 of this feature, in its closure sequence.
+commit of pull request 221. SESSION 7, closing the feature.
 
 ## Goal
 Surgical consent over changes: hunks carry STABLE content-hash ids, an
@@ -14,29 +14,27 @@ round — every partial state rendered truthfully in viewer, node and report.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001, T002 and T003 | done | rounds 1-24 |
-| R-0749, both instances | done | resolved round 27 |
 | the operator guide and its index rows | done | round 26 |
 | the integration gate | done | round 27, PASS WITH RISKS |
-| the feature file's Built State | open | this round |
-| the evidence job and the review zip | open | this round |
-| the STATUS line, the README sync and the PR | open | next round |
+| the Built State, evidence job and review zip | done | round 28 |
+| the STATUS line, the README sync and the PR | done | this round |
 | R-0745 and R-0750, carried as documented risks | open | see Risks |
 
 ## Next Steps
-1. This round books the round 27 verdict, registers R-0750, extends R-0736, and
-   performs the closure preconditions that must hold BEFORE a STATUS line can be
-   authored: the Built State section, the integrity check, the evidence job and
-   a review zip built from a clean tree after the last content commit.
-2. The NEXT round is the closure commit itself — the STATUS `[x]` line and the
-   README capability sync in ONE commit, the final `.agent/` state, then the
-   pull request. That PR is NOT merged in this session; it merges at the next
-   feature's start via the Open PR Gate, which is the operator's review window.
-3. `self-use NONE (queue exhausted)` is recorded at closure: the queue holds no
-   pending item, which the closure protocol rules is exhausted rather than
-   blocked.
+1. This round books the round 28 PASS, flips the STATUS line to `[x]` with the
+   README capability sync in the SAME commit, and opens the pull request.
+2. THE PR IS NOT MERGED IN THIS SESSION. It merges at the next feature's start
+   through the Open PR Gate, which is the operator's manual-review window; the
+   operator may also merge it by hand at any time.
+3. The next session starts a NEW feature: read `.agent/STOP` first, then run the
+   Open PR Gate, which will find this PR and merge it before any new branch.
+4. Nothing further is owed on this branch. Its last round has no on-disk gate
+   entry by construction, and that absence is the terminator rather than a
+   missing review.
 
 ## Risks
-- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, so the STATUS line
-  reads PASS_WITH_RISKS. Neither is reachable from this feature's Acceptance:
-  the first hardens a guard over the write door, the second is a reviewer's gate
-  wording that ordered a full log where the canonical procedure asks for a tail.
+- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, which is why the STATUS
+  line reads PASS_WITH_RISKS. Neither is reachable from this feature's
+  Acceptance: the first hardens an import guard over the write door, the second
+  is a reviewer's gate wording that ordered a full run log where the canonical
+  integration-gate procedure asks for a tail.
