@@ -893,18 +893,23 @@ def compose_builder_prompt(
     all, and narrowing the annotation would suggest a validation this layer
     deliberately does not perform.
 
-    Remedy deliberately does NOT supply this parameter from the run loop yet.
-    The call site in :func:`run_pingpong` that composes the builder prompt is
-    unchanged, so in production ``hunk_ledger`` is always ``None`` and this
-    segment never registers. The absence is in the WIRING and not in the data:
-    ``packages/orchestration/hunk_decision_record.py`` writes the exported
+    THE ROUTE FROM A STORED DECISION, AND THE ONE HOP STILL MISSING.
+    :func:`run_pingpong` now carries a ``hunk_ledger`` parameter of its own and
+    forwards it UNCHANGED to the call below, so the loop supplies whatever
+    ledger it is GIVEN. It does not go and find one: it holds no job.
+    ``packages/orchestration/hunk_decision_record.py`` writes each exported
     ledger onto ``job.metadata`` under the key ``hunk_decisions``, keyed by
-    attempt, and ``save_job`` at the write door makes that record durable. What
-    no round has built yet is the step between — reading that key for the
-    current attempt and rebuilding a ledger from its rows — and that is its own
-    round, because a call site wired without a test that follows a stored
-    decision through to the composed prompt would look like the feature working
-    while proving nothing at all.
+    attempt, ``save_job`` at the write door makes that record durable, and the
+    same module reads the latest one back for a task with
+    ``load_latest_hunk_ledger_from_metadata`` — that reader takes the metadata
+    MAPPING, so it drags no storage behind it. What no round has wired yet is
+    the JOB-level caller: ``packages/orchestration/pingpong_job.py`` is where
+    the job is actually held at its :func:`run_pingpong` call, so it is the one
+    place that can read the decision and pass it, and until it does, production
+    ``hunk_ledger`` is ``None`` and this segment never registers. That hop is
+    deliberately its own round, because a call site wired without a test that
+    follows a decision through to the composed prompt would look like the
+    feature working while proving nothing at all.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
@@ -2594,6 +2599,7 @@ def run_pingpong(
     episode_id: str = "",
     on_provider_call: Callable[[ProviderAttempt], None] | None = None,
     rate_governor: ProviderRateGovernor | None = None,
+    hunk_ledger: Any = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2609,6 +2615,17 @@ def run_pingpong(
     repair_rounds: max additional repair attempts after initial review
     finds issues. 0 means no repair (original behavior). The total
     max_rounds is still the outer bound.
+
+    ``hunk_ledger`` (F033) is ONE ATTEMPT's
+    :class:`packages.orchestration.hunk_ledger.HunkDecisionLedger` — the hunk
+    decision the operator already recorded for the task about to be built — or
+    ``None`` when there is none. It is FORWARDED UNCHANGED to
+    :func:`compose_builder_prompt`, whose docstring holds the whole meaning; the
+    loop neither reads a job nor inspects the value, so a caller holding the job
+    is what turns a stored decision into this argument. It is typed ``Any`` for
+    the reason stated there: the renderer downstream is total on every input,
+    and narrowing the annotation would advertise a validation this layer
+    deliberately does not perform.
     """
     # If task_input provided, use it to enrich the goal
     effective_goal = goal
@@ -2948,6 +2965,7 @@ def run_pingpong(
                 task_body=task_input.body if task_input and round_num == 1 else "",
                 scope_contract=scope_contract_text,
                 test_result=prev_test_result,
+                hunk_ledger=hunk_ledger,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
