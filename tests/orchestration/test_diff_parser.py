@@ -303,6 +303,34 @@ def _tuples(hunk: dict) -> list[tuple]:
     return [(ln["kind"], ln["old_ln"], ln["new_ln"], ln["content"]) for ln in hunk["lines"]]
 
 
+#: The shape of a content-derived hunk id: sixteen LOWERCASE hex characters and nothing
+#: else. Written out here rather than built from `HUNK_ID_LENGTH`, because a test that
+#: derived the length from the module it checks would agree with it by construction and
+#: could never notice it drifting — the same reason `_significant_tokens` below is
+#: written out rather than imported.
+_HUNK_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def _hunk_ids(view: dict) -> list[str]:
+    """Every hunk id in one view, in file order and then hunk order."""
+    return [hunk["id"] for entry in view["files"] for hunk in entry["hunks"]]
+
+
+def _old_side(hunk: dict) -> list[str]:
+    """A hunk's OLD-side contents in order: its `ctx` and `del` lines, never its `add`.
+
+    Spelled out here rather than taken from the parser for the same reason
+    `_significant_tokens` below is written out — a test that borrowed its notion of "old
+    side" from the module under test would agree with it by construction.
+    """
+    return [line["content"] for line in hunk["lines"] if line["kind"] in ("ctx", "del")]
+
+
+def _added_side(hunk: dict) -> list[str]:
+    """A hunk's ADDED contents in order — the half that is deliberately NOT in its id."""
+    return [line["content"] for line in hunk["lines"] if line["kind"] == "add"]
+
+
 # --------------------------------------------------------------------------- #
 # One test per shape.
 # --------------------------------------------------------------------------- #
@@ -388,8 +416,11 @@ def test_parse_unified_diff_to_view_reads_the_binary_sentinel():
 
 
 def test_parse_unified_diff_to_view_reads_empty_input_as_no_files():
+    # Asserted against the CONSTANT, so the next bump moves this test itself. The
+    # literal is pinned in exactly one place —
+    # `test_diff_view_version_is_two_for_the_content_derived_hunk_ids`.
     assert parse_unified_diff_to_view("") == {
-        "version": 1,
+        "version": DIFF_VIEW_VERSION,
         "truncated": False,
         "files": [],
     }
@@ -398,7 +429,7 @@ def test_parse_unified_diff_to_view_reads_empty_input_as_no_files():
 def test_parse_unified_diff_to_view_reads_non_diff_text_as_no_files():
     view = parse_unified_diff_to_view("hello world\nthis is not a diff at all\n")
 
-    assert view == {"version": 1, "truncated": False, "files": []}
+    assert view == {"version": DIFF_VIEW_VERSION, "truncated": False, "files": []}
 
 
 def test_parse_unified_diff_to_view_keeps_input_order_and_distinct_hunk_ids():
@@ -406,7 +437,11 @@ def test_parse_unified_diff_to_view_keeps_input_order_and_distinct_hunk_ids():
 
     assert [f["path"] for f in view["files"]] == ["first.txt", "second.txt"]
     ids = [h["id"] for f in view["files"] for h in f["hunks"]]
-    assert ids == ["0:0", "1:0"]
+    # The PROPERTY the old `["0:0", "1:0"]` literal was standing in for: one id per
+    # hunk, each well-formed, all distinct. The literal itself was the positional
+    # shape F033 removed, so it could not survive the content-derived ids.
+    assert len(ids) == 2
+    assert all(_HUNK_ID_RE.match(hunk_id) for hunk_id in ids), ids
     assert len(set(ids)) == len(ids)
 
 
@@ -414,7 +449,12 @@ def test_parse_unified_diff_to_view_seeds_each_hunk_from_its_own_header():
     view = parse_unified_diff_to_view(MULTI_HUNK_DIFF)
 
     entry = view["files"][0]
-    assert [h["id"] for h in entry["hunks"]] == ["0:0", "0:1"]
+    ids = [h["id"] for h in entry["hunks"]]
+    # Was `["0:0", "0:1"]`; see the note in
+    # `test_parse_unified_diff_to_view_keeps_input_order_and_distinct_hunk_ids`.
+    assert len(ids) == 2
+    assert all(_HUNK_ID_RE.match(hunk_id) for hunk_id in ids), ids
+    assert len(set(ids)) == len(ids)
     first, second = entry["hunks"]
     assert (first["old_start"], first["new_start"]) == (1, 1)
     assert (second["old_start"], second["new_start"]) == (40, 40)
@@ -431,6 +471,254 @@ def test_parse_unified_diff_to_view_seeds_each_hunk_from_its_own_header():
         ("add", None, 41, "far-new"),
         ("add", None, 42, "far-extra"),
     ]
+
+
+# --------------------------------------------------------------------------- #
+# F033: the content-derived hunk id, and `DIFF_VIEW_VERSION` 2 that carries it.
+#
+# Every fixture below exists to move ONE input of the identity while holding the
+# others still: the neighbourhood, the added lines, the duplicate old side, the path.
+# --------------------------------------------------------------------------- #
+
+#: Two hunks far apart in one file. The `late` hunk is the one every stability
+#: assertion below reads; the `early` hunk is what gets disturbed around it.
+STABLE_ID_BASE_DIFF = (
+    "--- a/pkg/stable.py\n"
+    "+++ b/pkg/stable.py\n"
+    "@@ -10,2 +10,2 @@ def early():\n"
+    " early-context\n"
+    "-early-old\n"
+    "+early-new\n"
+    "@@ -60,2 +60,2 @@ def late():\n"
+    " late-context\n"
+    "-late-old\n"
+    "+late-new\n"
+)
+
+#: `STABLE_ID_BASE_DIFF` with ONE more ADDED line in the EARLIER hunk. The `late`
+#: hunk's own old side is untouched; only its new-side start slides down by one.
+STABLE_ID_EARLIER_HUNK_GREW_DIFF = (
+    "--- a/pkg/stable.py\n"
+    "+++ b/pkg/stable.py\n"
+    "@@ -10,2 +10,3 @@ def early():\n"
+    " early-context\n"
+    "-early-old\n"
+    "+early-new\n"
+    "+early-extra\n"
+    "@@ -60,2 +61,2 @@ def late():\n"
+    " late-context\n"
+    "-late-old\n"
+    "+late-new\n"
+)
+
+#: `STABLE_ID_BASE_DIFF` with a WHOLE NEW HUNK ahead of both of the others, which is the
+#: shape a positional id cannot survive: the `late` hunk moves from hunk index 1 to hunk
+#: index 2 while nothing about its own content moves at all.
+STABLE_ID_NEW_FIRST_HUNK_DIFF = (
+    "--- a/pkg/stable.py\n"
+    "+++ b/pkg/stable.py\n"
+    "@@ -1,2 +1,3 @@ def first():\n"
+    " first-context\n"
+    "-first-old\n"
+    "+first-new\n"
+    "+first-extra\n"
+    "@@ -10,2 +11,2 @@ def early():\n"
+    " early-context\n"
+    "-early-old\n"
+    "+early-new\n"
+    "@@ -60,2 +61,2 @@ def late():\n"
+    " late-context\n"
+    "-late-old\n"
+    "+late-new\n"
+)
+
+#: One hunk, one proposed repair of it.
+REPAIR_FIRST_ATTEMPT_DIFF = (
+    "--- a/pkg/repair.py\n"
+    "+++ b/pkg/repair.py\n"
+    "@@ -3,2 +3,2 @@ def broken():\n"
+    " guard\n"
+    "-return None\n"
+    "+return 1\n"
+)
+
+#: The SAME hunk with a DIFFERENT repair: the old side is byte-identical to
+#: `REPAIR_FIRST_ATTEMPT_DIFF`'s and the added lines are not. This is the round-to-round
+#: shape the whole feature turns on — a rejected fix comes back re-proposed, and the
+#: operator's approval must still be about the same piece of original text.
+REPAIR_SECOND_ATTEMPT_DIFF = (
+    "--- a/pkg/repair.py\n"
+    "+++ b/pkg/repair.py\n"
+    "@@ -3,2 +3,3 @@ def broken():\n"
+    " guard\n"
+    "-return None\n"
+    "+return 2\n"
+    "+log('fixed')\n"
+)
+
+#: Two hunks of ONE file whose old sides are byte-identical — the only case the
+#: occurrence rank exists for. Their added lines differ, and added lines do not enter the
+#: id, so without that rank these two would share one name.
+TWIN_HUNKS_IN_ONE_FILE_DIFF = (
+    "--- a/pkg/twins.py\n"
+    "+++ b/pkg/twins.py\n"
+    "@@ -5,2 +5,2 @@\n"
+    " same-context\n"
+    "-same-old\n"
+    "+first-new\n"
+    "@@ -50,2 +50,2 @@\n"
+    " same-context\n"
+    "-same-old\n"
+    "+second-new\n"
+)
+
+#: The same hunk body at one path...
+SHARED_BODY_AT_ONE_PATH_DIFF = (
+    "--- a/pkg/alpha.py\n"
+    "+++ b/pkg/alpha.py\n"
+    "@@ -1,2 +1,2 @@\n"
+    " shared-context\n"
+    "-shared-old\n"
+    "+shared-new\n"
+)
+
+#: ...and byte for byte the same body at another. Approving a hunk of `alpha.py` must
+#: never carry over to `beta.py`, so the path is part of the digest.
+SHARED_BODY_AT_ANOTHER_PATH_DIFF = (
+    "--- a/pkg/beta.py\n"
+    "+++ b/pkg/beta.py\n"
+    "@@ -1,2 +1,2 @@\n"
+    " shared-context\n"
+    "-shared-old\n"
+    "+shared-new\n"
+)
+
+
+def test_diff_view_version_is_two_for_the_content_derived_hunk_ids():
+    """The ONE test that pins the version LITERAL, so the constant cannot drift silently.
+
+    Every other version assertion in this file reads `DIFF_VIEW_VERSION` and therefore
+    follows it wherever it is moved. That is what a consumer wants and what makes the
+    next bump cheap, but it also means a version quietly reverted or never bumped would
+    leave the whole file green. This assertion is the discriminator: version 2 IS the
+    content-derived hunk id, and the two travel together or the seam meant nothing.
+    """
+    assert DIFF_VIEW_VERSION == 2
+    assert parse_unified_diff_to_view(MODIFIED_DIFF)["version"] == 2
+
+
+def test_a_hunk_keeps_its_id_when_an_earlier_hunk_gains_an_added_line():
+    """The stability property, at the parser — the reason this feature exists.
+
+    An operator approves a hunk in one round; the next round re-emits the file with a
+    bigger fix somewhere ABOVE it. Nothing about the approved hunk's own original text
+    changed, so its name must not change either.
+    """
+    base = parse_unified_diff_to_view(STABLE_ID_BASE_DIFF)
+    grown = parse_unified_diff_to_view(STABLE_ID_EARLIER_HUNK_GREW_DIFF)
+
+    # Pin the shape first: an assertion comparing two absent hunks proves nothing.
+    assert len(base["files"]) == 1
+    assert len(base["files"][0]["hunks"]) == 2
+    assert len(grown["files"][0]["hunks"]) == 2
+    # The earlier hunk really did grow, and the later hunk really did slide.
+    assert len(grown["files"][0]["hunks"][0]["lines"]) == 4
+    assert base["files"][0]["hunks"][1]["new_start"] == 60
+    assert grown["files"][0]["hunks"][1]["new_start"] == 61
+
+    assert base["files"][0]["hunks"][1]["id"] == grown["files"][0]["hunks"][1]["id"]
+
+
+def test_a_hunk_keeps_its_id_when_a_whole_new_hunk_is_inserted_before_it():
+    """The same property against the shape a POSITIONAL id provably cannot survive.
+
+    The test above disturbs an earlier hunk's SIZE, which a `"<file>:<hunk>"` id would
+    also have survived, because that id counts hunks rather than lines. Here the `late`
+    hunk moves from hunk index 1 to hunk index 2: the old ids would have read `0:1` and
+    `0:2`, so this is the assertion that shows ids stopped being positional.
+    """
+    base = parse_unified_diff_to_view(STABLE_ID_BASE_DIFF)
+    with_insert = parse_unified_diff_to_view(STABLE_ID_NEW_FIRST_HUNK_DIFF)
+
+    assert len(base["files"][0]["hunks"]) == 2
+    assert len(with_insert["files"][0]["hunks"]) == 3
+    late_before = base["files"][0]["hunks"][1]
+    late_after = with_insert["files"][0]["hunks"][2]
+    # It is the same hunk: identical old side, at the same old-side start. Its NEW-side
+    # numbering has slid, which is precisely the movement the id must ignore.
+    assert _old_side(late_before) == _old_side(late_after) == ["late-context", "late-old"]
+    assert late_before["old_start"] == late_after["old_start"] == 60
+    assert late_before["new_start"] != late_after["new_start"]
+
+    assert late_before["id"] == late_after["id"]
+
+
+def test_added_lines_do_not_enter_the_hunk_id():
+    """Two different fixes for the same original text are the SAME hunk.
+
+    The old side — the `ctx` and `del` lines — is byte-identical across the two diffs
+    and only the `add` lines differ. Digesting the added lines as well would give the
+    re-proposed hunk a new name, which is exactly the round-to-round instability
+    content ids exist to remove.
+    """
+    first = parse_unified_diff_to_view(REPAIR_FIRST_ATTEMPT_DIFF)
+    second = parse_unified_diff_to_view(REPAIR_SECOND_ATTEMPT_DIFF)
+
+    first_hunk = first["files"][0]["hunks"][0]
+    second_hunk = second["files"][0]["hunks"][0]
+    # The discriminator: the added lines genuinely differ, the old sides do not.
+    assert _old_side(first_hunk) == _old_side(second_hunk) == ["guard", "return None"]
+    assert _added_side(first_hunk) == ["return 1"]
+    assert _added_side(second_hunk) == ["return 2", "log('fixed')"]
+
+    assert first_hunk["id"] == second_hunk["id"]
+
+
+def test_two_identical_hunks_in_one_file_get_distinct_ids_by_occurrence():
+    """Byte-identical old sides in one file are separated by their occurrence rank.
+
+    Nothing else can separate them: the path is the same, the old side is the same, and
+    the added lines are deliberately outside the digest. A parser passing a constant
+    rank would hand the viewer two hunks under one name, and approving either would be
+    approving both.
+    """
+    view = parse_unified_diff_to_view(TWIN_HUNKS_IN_ONE_FILE_DIFF)
+
+    hunks = view["files"][0]["hunks"]
+    assert len(hunks) == 2
+    # The old sides really are identical — otherwise this test would pass for the
+    # wrong reason and say nothing about the rank.
+    assert _old_side(hunks[0]) == _old_side(hunks[1]) == ["same-context", "same-old"]
+    assert _added_side(hunks[0]) != _added_side(hunks[1])
+
+    assert hunks[0]["id"] != hunks[1]["id"]
+
+
+def test_every_hunk_id_is_sixteen_lowercase_hex_characters_and_distinct():
+    """The id's SHAPE across a multi-file diff, and no collisions inside one view."""
+    ids = _hunk_ids(parse_unified_diff_to_view(MULTI_FILE_DIFF))
+
+    assert len(ids) == 2
+    for hunk_id in ids:
+        assert _HUNK_ID_RE.match(hunk_id), hunk_id
+        assert len(hunk_id) == 16
+        assert hunk_id == hunk_id.lower()
+    assert len(set(ids)) == len(ids)
+
+
+def test_the_same_hunk_content_at_a_different_path_gets_a_different_id():
+    """One hunk body at two paths is two hunks, because the path is in the digest."""
+    alpha = parse_unified_diff_to_view(SHARED_BODY_AT_ONE_PATH_DIFF)
+    beta = parse_unified_diff_to_view(SHARED_BODY_AT_ANOTHER_PATH_DIFF)
+
+    alpha_hunk = alpha["files"][0]["hunks"][0]
+    beta_hunk = beta["files"][0]["hunks"][0]
+    assert alpha["files"][0]["path"] == "pkg/alpha.py"
+    assert beta["files"][0]["path"] == "pkg/beta.py"
+    # Same body, so only the path can be doing the work.
+    assert _tuples(alpha_hunk) == _tuples(beta_hunk)
+
+    assert alpha_hunk["id"] != beta_hunk["id"]
 
 
 # --------------------------------------------------------------------------- #
