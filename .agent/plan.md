@@ -20,18 +20,21 @@ approval gate.
 | consume exactly one item per feature close | done | round 4, precondition 6 |
 | refuse an id that is not one file name | done | round 5, R-0735 |
 | document the format where a reader looks | done | round 5 |
-| the integration gate | in progress | this round |
-| the closure package and the STATUS line | open | needs the gate to PASS first |
+| the integration gate | done | round 6, PASSED, 18186 passed 0 failed |
+| the feature file's Built State | done | this round, precondition 4 |
+| the closure sequence | open | next, and it must satisfy precondition 6 |
 
 ## Next Steps
-1. Build the closure package once the reviewer passes the integration gate.
-2. Close F257 through docs/roadmap/STATUS_closure_protocol.md, satisfying its
-   new precondition 6 — this feature is the first that must consume a self-use
-   item at its own close.
+1. Satisfy closure precondition 6 for F257 itself: plan the pending self-use item
+   through `packages.orchestration.self_use_job` and take it to the approval gate.
+   F257 is the FIRST feature that must consume an item at its own close.
+2. Build the evidence bundle and the review zip from a clean tree.
+3. The closure commit — STATUS, README, `scripts/self_use_queue.json`
+   `consumed_by`, and the final `.agent/` state — then the PR.
 
 ## Risks
 - A job must never mark its own queue item consumed; neither shipped module owns
   a queue writer, and DECISION F257 D2 rules the consumption point.
 - `docs/roadmap/STATUS.md` is in `scope_fences.BUILTIN_DENY` and stays there.
-- R-0734 is a registered ui_server flake that may fire in a full-suite run; it is
-  classified, never repaired on this branch.
+- R-0734 and R-0736 are registered and deliberately NOT repaired on this branch;
+  both are outside F257's surface.
