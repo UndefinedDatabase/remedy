@@ -36,6 +36,7 @@
 | external builder | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | system |
 | external builder | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | system |
 | external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
+| hunk approval | [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | guide |
 | job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
 | job context | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | guide |
 | model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
@@ -152,6 +153,7 @@ User-facing guides, quickstarts, and usage documentation.
 | [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |
 | [dogfood-run-user-guide.md](guides/dogfood-run-user-guide.md) | Running dogfood jobs *(overnight superseded)* |
+| [hunk-approval-user-guide-v1.md](guides/hunk-approval-user-guide-v1.md) | Recording a hunk-level approve and reject decision over a job's diff |
 | [job-context-view-user-guide-v0.md](guides/job-context-view-user-guide-v0.md) | What one task's compiled context carries and what was omitted |
 | [main-builder-adapter-user-guide-v0.md](guides/main-builder-adapter-user-guide-v0.md) | Main builder adapter usage |
 | [managed-external-builder-execution-user-guide-v1.md](guides/managed-external-builder-execution-user-guide-v1.md) | Managed external builder usage |
