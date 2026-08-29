@@ -1,129 +1,142 @@
-# STEP R8/F040 — T002 PART 3: THE HERO CARD'S STYLESHEET
+# STEP R9/F040 — T002 PART 4: TURNING REPORT MARKUP INTO CARD COPY
 
-Goal: transcribe the feature file's binding CSS into a real stylesheet and pin
-that transcription with a Python conformance guard, so the card the next round
-mounts has a surface that cannot drift from its authority unnoticed. Book the
-round 7 verdict, register R-0755 and rule DECISION F040 D9.
+Goal: the last decidable half of the hero card. The digest's `primary_action.label`
+is written for a MARKDOWN REPORT and the cockpit may not render it raw; this
+round rules that collision as DECISION F040 D10 and builds the pure copy rules
+that resolve it, so the round that mounts the card has nothing left to decide.
+Book the round 8 verdict.
 
-Base: `709dc5d9`, the round-7 handback commit and the tip of
+Base: `b2cef8cb`, the round-8 handback commit and the tip of
 `feature/f040-completion-digest`. Stay on that branch. Open no pull request.
 
-WHY THE STYLESHEET AND NOT THE CARD. This repository cannot render a component
-in a test (DECISION F040 D7), so a `.tsx` landing together with its stylesheet
-would arrive with the stylesheet unverifiable underneath it. Splitting on this
-line is the precedent F037 set at its own R9 — stylesheet plus Python guard
-first, component after — and it is the split that gives this round a real red
-proof instead of a green word. The `.tsx`, its mount and the copy audit are the
-next round.
+THE COLLISION, MEASURED AT THE BASE — this is the whole reason for the round.
+`docs/ui/design_reference/ux_spec.md` §17 forbids the default UI showing raw
+UUIDs or raw JSON, and requires human phrasing. But `primary_action.label` comes
+verbatim from `recommended_next_action` in `packages/orchestration/run_report.py`,
+which builds it for a Markdown artifact, and TWO of its five rules emit markup or
+identifiers:
 
-THE ACCEPTANCE CLAUSES THIS ROUND ANSWERS, per the counter-measure R-0754 left
-behind. `docs/roadmap/features/T5_F040.md` Design carries a binding CSS block at
-:58-64 and the layout sentence at :65-67. THIS ROUND MEETS the binding CSS and
-the token discipline. IT DOES NOT MEET, and must not claim: the copy audit
-("since you were last here"), the CTA's behaviour, the trigger wiring, or
-anything requiring markup. Say so in the handback.
+- `open-decision` (:385-394) emits ``Answer the open decision: `<command>` ``
+  where the command is a copy-pasteable CLI line carrying a job-id prefix and a
+  `td:` decision id — visible in the R5 golden
+  `blocked_with_decisions.json`. It degrades to the bare sentence when no
+  command exists, so the id is CONDITIONAL, not guaranteed.
+- `blocked-failed` (:403-407) emits `Inspect {target} and repair the blocked
+  task`, where `target` is `_link("the postmortem", ref)` and `_link` (:358-363)
+  returns `[the postmortem](ref)` — MARKDOWN LINK SYNTAX — whenever an evidence
+  ref exists, and the bare label when it does not.
 
-WHAT IS ALREADY MEASURED, so no gate rests on a guess.
-- All SEVEN `--remedy-*` tokens the binding CSS names are defined in the shipped
-  `apps/ui/src/styles/tokens.css`: `--remedy-radius-lg`, `--remedy-card`,
-  `--remedy-shadow-soft`, `--remedy-font-ui`, `--remedy-ink`,
-  `--remedy-radius-pill` and `--remedy-blue`. None is missing.
-- REDUCED MOTION needs nothing from this sheet. `ux_spec.md` §16 records that
-  `prefers-reduced-motion` is "already global-killed in globals.css + Provider",
-  and the binding CSS declares no animation, no transition and no transform, so
-  the obligation is met by carrying none. Do not add a motion block to satisfy a
-  rule that is already satisfied.
-- RESPONSIVE: `ux_spec.md` §15 requires only that a region not hard-code the
-  frame and that it read `--remedy-left-width` / `--remedy-right-width`. This
-  card is centred with `max-width` and `margin:auto` and belongs to neither side
-  region, so it hard-codes no frame. Add NO breakpoint this round; a breakpoint
-  with no rendered card to measure is a guess.
+The other three — `stopped-by-operator` (:397-401), `all-green` (:411) and
+`indeterminate` (:413) — carry neither. NOTE that the four goldens exercise only
+`open-decision`, `blocked-failed`, `all-green` and `indeterminate`: the rule
+table has FIVE rules and `stopped-by-operator` is reached by no fixture, so the
+goldens are a sample and the RULE TABLE is the vocabulary. Read the table.
+
+THIS IS NOT A DEFECT AND MINTS NO FINDING. The label is CORRECT for the report
+and for the CLI, where a copy-pasteable command is the useful thing. The
+collision is only at the cockpit's render boundary, and nothing on disk is
+wrong-valued, so it is ruled as DECISION F040 D10 in the manner D3 and D5
+already handled "the feature file asks for something this surface cannot give" —
+not registered as an R-id, per amend0827 rule 2.
+
+TWO TRAPS IN THE EXISTING COPY MODULE, both measured, both of which a builder
+would otherwise walk into:
+- `apps/ui/src/copy/humanCopy.ts` exports `stateLabel(state)`, and its vocabulary
+  is the CHECKLIST's — `done`, `current`, `blocked`, `suggested`, else
+  `"Planned"`. `RunState` shares NONE of those spellings, so `stateLabel` answers
+  `"Planned"` for `completed`, `paused`, `running` and every other digest state.
+  It is the wrong function and must not be used here.
+- `scrubUiText(value, fallback)` in the same file rejects a value that is
+  ENTIRELY hex-ish (`/^[0-9a-f]{6,}(-[0-9a-f]+)*$/i`), so it cannot see an id
+  EMBEDDED in a sentence. It is still the right final screen — it owns §17's
+  forbidden-word list — but it is not sufficient alone.
 
 ## Bundle, in commit order
 
-- C0a save this block verbatim to `.agent/authored/f040-r8.md`
+- C0a save this block verbatim to `.agent/authored/f040-r9.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
-- C1  rewrite `.agent/plan.md` from slice PLAN8
-- C2  append slice RECORD8 to `.agent/live_review.md`
-- C3  create `apps/ui/src/components/digest/DigestHeroCard.module.css` per SPEC
-- C4  create `tests/ui_contracts/test_digest_hero_css.py` per the SPEC below
-- C5  rewrite `.agent/handoff.md` — the handback
+- C1  rewrite `.agent/plan.md` from slice PLAN9
+- C2  append slice RECORD9 to `.agent/live_review.md`
+- C3  add `apps/ui/src/api/digestCardCopy.ts` per the SPEC below
+- C4  create `apps/ui/src/api/digestCardCopy.test.ts` per the SPEC below
+- C5  create `tests/ui_contracts/test_digest_card_copy.py` per the SPEC below
+- C6  rewrite `.agent/handoff.md` — the handback
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f040-r8.md
+    .agent/authored/f040-r9.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    apps/ui/src/components/digest/DigestHeroCard.module.css
-    tests/ui_contracts/test_digest_hero_css.py
+    apps/ui/src/api/digestCardCopy.ts
+    apps/ui/src/api/digestCardCopy.test.ts
+    tests/ui_contracts/test_digest_card_copy.py
     .agent/handoff.md
 
-NO `.tsx` IS CREATED OR EDITED. `apps/ui/src/api/jobDigest.ts` and
-`apps/ui/src/api/digestVisibility.ts` are NOT edited — rounds 6 and 7 built them
-and their guards pin them. No Python production code changes. NOTHING under
-`docs/ui/design_reference/` is edited: it is the authority this round transcribes
-FROM, and a round that edits its own authority proves nothing.
+NOTHING ELSE IS EDITED. Not `apps/ui/src/copy/humanCopy.ts` — it is imported,
+not changed. Not `jobDigest.ts`, not `digestVisibility.ts`, not the stylesheet,
+not `run_report.py`: the server's label is RIGHT for the report and this round
+does not touch it. No `.tsx`. No Python production code.
 
 ## Constraints
 
 1. Apply every slice BYTE FOR BYTE. If one looks wrong, apply it as given and
    DECLARE the problem in the handback's deviations.
-2. C0a is a COPY: the block is at `.remedy-wt/f040-r8-block.md`. Use
+2. C0a is a COPY: the block is at `.remedy-wt/f040-r9-block.md`. Use
    `shutil.copyfile` for C0a and again for C0b.
 3. C1 is the FIRST substantive commit, ahead of the ledger append.
 4. `.agent/live_review.md` is APPEND-ONLY.
 5. `.agent/plan.md` stays under 50 lines.
 6. Every exit code is REAL, from `subprocess.run(...).returncode` in a script
    under the gitignored `.remedy-wt/`. Never through a pipe.
-7. Mutation and red-proof checks run ONLY in a disposable `git worktree`.
-8. THE BINDING VALUES ARE TRANSCRIBED, NOT REDESIGNED. Every number, token and
-   keyword in the feature file's block at :58-64 appears in the stylesheet with
-   the SAME value. You may adapt SELECTOR FORM to CSS-module idiom — a module
-   has no global `.digest`, so the class names are local — but you may not
-   change a value, drop a declaration or add a visual one. If a value looks
-   wrong, transcribe it and declare the doubt.
-9. `color:#fff` IS TRANSCRIBED AS WRITTEN, per DECISION F040 D9 in RECORD8 and
-   finding R-0755. Do not substitute a token: no token for it exists, the
-   nearest shipped sibling writes exactly `background: var(--remedy-blue);
-   color: #fff;`, and the prohibition in `tokens_rules.md` is measured as
-   unenforced with 217 pre-existing violations. Deviating here would put F040
-   out of step with its own feature file AND with the component beside it.
-10. EVERY OTHER COLOUR IS A TOKEN. Apart from that one `#fff`, the sheet
-    contains no hex and no `rgb(`/`rgba(` literal; every colour is
-    `var(--remedy-…)`, and every token it names is one `tokens.css` defines.
-11. The `remedy` console script is DENIED to this session; use
-    `python3 -m apps.cli.main ...` if needed and say so.
+7. Mutation and red-proof checks run ONLY in a disposable `git worktree`; the
+   only red proof available is the PYTHON guard's (constraint 13).
+8. THE MODULE IS PURE: no clock, no storage, no socket, nothing minted. Same
+   absences the two sibling api modules document in their headers, written down
+   the same way.
+9. ONE SOURCE FOR THE §17 SCREEN. The forbidden-word list and the whole-value id
+   test live in `humanCopy.ts`; this module IMPORTS `scrubUiText` and applies it
+   as the FINAL pass. It does not restate that list, does not restate the
+   fallback string and does not re-implement the truncation.
+10. `stateLabel` FROM `humanCopy.ts` IS NOT USED — it answers the checklist's
+    vocabulary, not `RunState`'s. Say so in a comment where a reader would reach
+    for it.
+11. THE WORDS STAY THE SERVER'S. This module REMOVES markup and identifiers; it
+    does not rewrite the sentence, does not add a verb and does not substitute a
+    phrase of its own. DECISION F040 D5 keeps the digest's CTA equal to the
+    report's recommendation, and a client that reworded it would break that
+    equality as surely as a second rule table would.
 12. Commit subjects carry no leading-slash token, no absolute path, no
-    secret-like string, and no `Co-Authored-By` trailer.
-13. Push after C5. No pull request, no merge, no force-push.
-14. NO TYPESCRIPT COLOUR IS ORDERED (DECISION F040 D7). Nothing this round is
-    TypeScript; the stylesheet is pinned from Python, which IS red-proved.
+    secret-like string, and no `Co-Authored-By` trailer. Push after C6. No pull
+    request, no merge, no force-push. The `remedy` script is DENIED; use
+    `python3 -m apps.cli.main ...` if needed and say so.
+13. NO TYPESCRIPT COLOUR IS ORDERED (DECISION F040 D7): `npx vitest` is refused
+    to this session class and `apps/ui/node_modules` is absent from a worktree,
+    so a mutation there is red for every module. Do not attempt one; say in the
+    handback that none was run.
 
-## SANDBOX NOTES — read before writing a script
+## SANDBOX NOTES
 
-- Env-var assignment is DENIED in all three shell forms. Set it in-process with
-  `os.environ[...]` or `monkeypatch.setenv`.
+- Env-var assignment is DENIED in all three shell forms; set it in-process.
 - `cp` is denied; copy with `shutil.copyfile`.
-- `$(...)` inside a compound, `;`/`&&` chains and process substitution are
-  rejected by FORM. One command per call, or a driver script run as a single
-  `bash script.sh`, or `python3 - <<'PY'`.
+- `$(...)` in a compound, `;`/`&&` chains and process substitution are rejected
+  by FORM. One command per call, or a driver script run as one `bash script.sh`.
 - A `python3 -c` script containing a newline followed by `#` is rejected; use a
-  script FILE for anything with comments.
+  script FILE for anything carrying comments.
 - The Bash tool does not surface non-zero exits; capture
   `subprocess.run(...).returncode`.
 
 ## Slices
 
-The authored units are PLAN8 and RECORD8, each between its own BEGIN and END
+The authored units are PLAN9 and RECORD9, each between its own BEGIN and END
 marker line. The markers are NOT part of the unit; the newline ENDING the last
 content line IS.
 
-<<<BEGIN PLAN8
+<<<BEGIN PLAN9
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 2, round 8.
+commit of pull request 222. SESSION 2, round 9.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -135,170 +148,170 @@ was gone" answer in one glance.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the spec decisions D2 to D9 | done | rounds 2-8 |
+| the spec decisions D2 to D10 | done | rounds 2-9 |
 | T001 the composition, endpoint, goldens | done | rounds 3-5, all PASS |
 | T002 the client digest seam and its guard | done | round 6, PASS |
 | T002 the trigger, dismiss and last-seen rule | done | round 7, PASS |
-| T002 the hero card stylesheet and its guard | done | this round |
-| T002 the card, its mount and the copy audit | open | next |
+| T002 the hero card stylesheet and its guard | done | round 8, PASS |
+| T002 the card's copy rules and the §17 screen | done | this round |
+| T002 the card itself, its mount and wiring | open | next session |
 | T003 CLI parity and the end-to-end | open | |
 
 ## Next Steps
-1. This round transcribes the feature file's binding CSS into
-   `DigestHeroCard.module.css` and pins it with a conformance guard, the split
-   F037 used when a component could not be render-tested.
-2. The next round mounts the card: the `.tsx`, the trigger wiring onto
-   `digestVisibility`, the dismissal port bound at the edge per DECISION F040
-   D8, and the copy audit the Acceptance names.
+1. This round rules DECISION F040 D10 and builds `digestCardCopy.ts`: the state
+   label the digest needs, and the rule turning the report's markup into copy
+   the cockpit may show, with `scrubUiText` as the final §17 screen.
+2. The next round mounts the card — the `.tsx`, the trigger wiring onto
+   `digestVisibility`, the dismissal port bound at the edge per D8, and the
+   stylesheet from round 8. Every rule it needs is now built and pinned.
 3. Then T003's `remedy job digest`, the end-to-end, the integration gate and
    closure.
 
 ## Risks
 - R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch; none
   is F040's to fix. R-0753 stays OPEN as this feature's documented risk.
-- THE CARD ROUND MUST SETTLE A COPY COLLISION: `ux_spec.md` §17 forbids the UI
-  showing raw UUIDs, and the digest's own `primary_action.label` embeds a job-id
-  prefix and a `td:` decision id — visible in the R5 goldens. The card either
-  humanises that label or the envelope stops carrying it; a DECISION, not a
-  silent choice.
-<<<END PLAN8
+- The card round is the first this feature cannot red-prove: a `.tsx` has no
+  pure logic left to test and this repository renders no component. Every
+  decidable rule has been pushed out of it on purpose, so what remains is
+  wiring, pinned as TEXT by a guard.
+<<<END PLAN9
 
-<<<BEGIN RECORD8
-Gate: F040 R7 — T002 PART 2, THE TRIGGER RULE. VERDICT PASS. Reviewed by re-running every gate in the reviewer's own driver; every figure reproduced. TRANSPORT is REAL at sha256 `12384650aeeec89da2c801535aaf7038df0670ead010e2dfb22baaaff7bf3e9a` over 29484 bytes, equal on all three copies. THE PLAN is byte-equal to PLAN7 at 1882 bytes and 39 lines. THE RECORD APPEND reconstructs whole at 1687401 + 1 + 7054 = 1694456, N counted as 2, order holding, base a prefix. THE LEDGER is EXACTLY what a round that neither registers nor resolves should show: registered ADDED `[]` and REMOVED `[]`, resolved ADDED `[]`, `DECISION F040` ADDED `['D8']`, one `^Gate: F040 R6 — ` line, open count UNCHANGED at 261. THE GUARD'S APPEND IS PREFIX-SHAPED, measured against the base blob: 12094 bytes to 25035, the base bytes a literal prefix of the committed file, its own sixteen tests still green among the twenty-nine. THE RULE'S PURITY was re-measured over comment- and literal-stripped source with a SALTED POSITIVE CONTROL per token: `Date.now`, `new Date`, `localStorage`, `sessionStorage`, `fetch`, `crypto` and `XMLHttpRequest` each occur ZERO times, and each salted copy proves the scan can see that token when it is there. `jobDigest.ts` is BYTE-IDENTICAL to its base blob, so the round touched nothing it said it would not. THE SEVEN-STATE PARTITION IS PINNED AT ITS SOURCE, which is the round's best idea: the guard PARSES `RunState` out of `packages/core/models.py` rather than retyping it, so `pending`, `planned`, `running`, `paused`, `completed`, `failed` and `cancelled` are read from the enum and every one is required to appear in `digestVisibility.ts` — a state added to the enum reddens this guard until the module accounts for it. THE REVIEWER RED-PROVED THE GUARD IN ITS OWN WORKTREE WITH FIVE MUTATIONS, control first in each and each reverted before the next, all REAL exit 1: a consumed `Date.now()` killed the purity assertion alone; an implementation bound to the port killed both port assertions; the audited phrase placed in the module killed both copy assertions; deleting `"pending"` killed the seven-state assertion; and a FIFTH the block did not order — collapsing `NOT_YET_STARTED_STATES` to the empty list, which is precisely the two-way partition the block was written to forbid — also killed the seven-state assertion. That fifth is the one worth recording: the defect the round exists to prevent is caught by the gate the round shipped, proved rather than argued. Each restored run returned to 29 passed at REAL exit 0 with byte equality. THE RULE ITSELF WAS READ AND IS CORRECT: the six questions are asked in an order that makes the Acceptance clause "Dismissal persists; new activity re-arms" a single strict comparison, a not-yet-started run VETOES the card ahead of the absence route, and an unrecognised state is NOT treated as settled. VITEST AND THE TYPECHECK both PASSED rather than skipped, 4 and 1 at REAL exit 0, and the vitest file was read to confirm the partition is asserted dynamically as well — it carries a seven-row state table and two cases pinning that `pending` and `planned` do not show "not even with activity since last-seen", which is the veto. FIVE SUITES all REAL exit 0: `tests/ui_contracts/` 715 to 728, a rise of exactly the THIRTEEN tests C5 adds with the four pre-existing skips unmoved, plus 46, 515, 295 and the canary 42. Tree clean, zero untracked, eight commits at insertions 389, 293, 15, 4, 185, 268, 265 and 387, every one under 500. THE WORKER'S TEN DEVIATIONS WERE ALL CORRECTLY DECLARED, and two are the reviewer's to own rather than the worker's. Deviation 2 reports that the C5 SPEC's "add a module-level `Path` beside the existing ones" and constraint 14's byte-prefix requirement CANNOT BOTH BE MET, because placing anything beside the existing constants edits the middle of the file; the worker kept the constraint, put the new `Path` at the top of the appended region, and declared it. That is the R-0636 class — a block whose two clauses cannot both be satisfied — and it is an authoring defect, caught and correctly resolved by the worker. Deviation 4 reports that `nowMs` is taken and NO branch reads it. The block anticipated exactly that and asked for it to be declared rather than papered over, and the module's answer is honest and reasoned in its own docstring — "CLOCK SKEW IS ANSWERED BY NOT ASKING", every comparison being between two stamps the same host took — with a vitest case pinning the invariance. An unused parameter is a real smell and it is accepted here on a stated argument, not overlooked.
+<<<BEGIN RECORD9
+Gate: F040 R8 — T002 PART 3, THE HERO CARD'S STYLESHEET. VERDICT PASS. Reviewed by re-running every gate in the reviewer's own driver. TRANSPORT is REAL at sha256 `faa78f87e238e94ca7aea52c2a009d155dcfed083ab5e3ac70550deed30d321c` over 26546 bytes, equal on all three copies. THE PLAN is byte-equal to PLAN8 at 1969 bytes and 41 lines. THE RECORD APPEND reconstructs whole at 1694456 + 1 + 9514 = 1703971, N counted as 3, order holding, base a prefix. THE LEDGER moved as ordered — registered ADDED `['R-0755']` and REMOVED `[]`, resolved ADDED `[]`, `DECISION F040` ADDED `['D9']`, one `^Gate: F040 R7 — ` line, open count 261 to 262. THE TRANSCRIPTION IS FAITHFUL, parsed rather than eyeballed: all SIXTEEN binding values of the three rules are present, the seven `--remedy-*` tokens the sheet names are all defined in `apps/ui/src/styles/tokens.css`, `#fff` occurs exactly once, every other hex and every `rgb(`/`rgba(` occurs zero times, and `animation`, `transition`, `transform` and `@media` are each zero — so `ux_spec.md` §16 is satisfied by carrying no motion at all rather than by a motion block nobody checked. Nothing under `docs/ui/design_reference/` was touched and no `.tsx` entered the change set, so the round did not edit its own authority. THE REVIEWER RED-PROVED THE GUARD IN ITS OWN WORKTREE WITH FIVE MUTATIONS, control first in each: `max-width` 720px to 640px killed the card rule's binding-value test; an UNDEFINED token killed both the CTA's binding-value test and the token sweep; a second raw colour killed the single-literal pin; a `transition` killed the no-motion pin; and a FIFTH the block did not order — swapping the CTA's `color:#fff` for `var(--remedy-ink)`, which is precisely the alternative DECISION F040 D9 REJECTED — killed the CTA binding test and the single-literal pin together. That fifth matters because it proves the guard can tell D9's chosen option from the option D9 turned down, which is the property that makes a decision enforceable rather than merely recorded. A NOTE ON THAT MUTATION, recorded because the reviewer got it wrong first and the lesson is general: the initial spelling replaced the FIRST `color: #fff;` in the file, which is inside the header comment quoting the sibling stylesheet, so the declaration was untouched and the guard stayed green — a green that looked like a gate blind spot and was in fact a mutation that never reached the code. It was caught by checking that the mutated text differed from the original in the DECLARATION rather than merely differing, and re-run against the declaration it reddened immediately. A mutation must be shown to reach the thing under test before its colour means anything. FIVE SUITES all REAL exit 0: `tests/ui_contracts/` 728 to 735, a rise of exactly the SEVEN tests C4 adds with the four pre-existing skips unmoved, plus 515, 295 and the canary 42; both frontend nodes PASSED rather than skipped and are unmoved at 4 and 1, as a round adding no TypeScript requires. Tree clean, zero untracked, seven commits at insertions 314, 219, 18, 6, 60, 256 and 402, every one under 500. THE WORKER'S DEVIATIONS WERE ALL CORRECTLY DECLARED and one is worth keeping: it reports that `git commit` printed 314 insertions for C0b while `git diff --numstat` reads 219 for the same commit, a rewrite-detection difference, and it tabled the `--numstat` figure — which is the right choice, since AGENTS.md's counting rule names the `+` column of the diff and both readings are far under the cap either way.
 
-- R-0755 — Low, A DESIGN RULE DECLARES ITS OWN ENFORCEMENT AND THAT ENFORCEMENT DOES NOT EXIST, WHILE 217 SHIPPED DECLARATIONS BREAK THE RULE. Raised by the reviewer at the F040 R7 gate, from reading `docs/ui/design_reference/tokens_rules.md` before authoring the round that transcribes F040's binding CSS. THE RULE, at that file's `## Forbidden` section: "Raw hex/rgba in component CSS or TSX (except inside `tokens.css` and the palette bridge). Enforce via stylelint `declaration-property-value-allowed-list` (colors must be `var(--remedy-…)`) + an ESLint no-color-literal rule for the graph renderer files. CI gate lands in Stage 1." THE MEASUREMENT, taken at `709dc5d9` with that exemption applied and comments stripped: component CSS holds 68 raw hex and 102 `rgb`/`rgba` literals across 17 of its 18 files, and `.tsx` sources hold 33 hex and 14 `rgba` across 7 of 37 — 217 raw colour values in the scope the rule names. THE ENFORCEMENT IS ABSENT ENTIRELY: there is no `.stylelintrc` in any of its five spellings under `apps/ui/`, the string `stylelint` does not occur in `apps/ui/package.json` at all, and the only lint script is `eslint src --ext .ts,.tsx`, so no CI stage can be running the check the rule says lands in Stage 1. LOW, and deliberately not higher: nothing renders wrongly, no test is false, and the rule's INTENT is broadly honoured — the violations are concentrated in the graph and pipeline renderers where a canvas takes literal colours, and the ordinary card CSS is token-driven. What it costs is precision: a reviewer reading `tokens_rules.md` believes a gate is standing where none is, which is how a feature comes to think it must deviate from its own binding CSS to stay legal. That is exactly what almost happened here, and DECISION F040 D9 below records the opposite conclusion. NOT F040's TO FIX: the repair either adds a toolchain dependency and a CI stage or amends the design reference, it touches 24 files this feature does not own, and AGENTS.md's Scope Control forbids mixing it into a feature branch. It routes to the same paydown branch as `R-0570` and `R-0752`. The open set was searched for the defect before this id was minted, per §3 item 30: the string `stylelint` occurs ZERO times in the whole of `.agent/live_review.md`, and no finding describes an unenforced design-reference rule. THE CHEAP HALF, for whoever takes the paydown: decide FIRST whether the rule or the code is wrong — 217 violations across two renderer families suggest the rule needs a documented carve-out for canvas colours more than the code needs 217 edits — and only then write the gate, because a gate written against a rule nobody intends to keep is a gate that will be disabled.
+DECISION F040 D10 — THE CARD SHOWS THE SERVER'S WORDS WITH THE REPORT'S MARKUP TAKEN OUT, AND REWRITES NOTHING. THE PROBLEM: `docs/ui/design_reference/ux_spec.md` §17 forbids the default UI showing raw UUIDs or raw JSON and requires human phrasing, while `primary_action.label` is carried verbatim from `recommended_next_action` in `packages/orchestration/run_report.py`, which composes it for a MARKDOWN artifact. MEASURED at `b2cef8cb` over the rule table rather than over the fixtures, because the four goldens reach only four of its five rules: `open-decision` (:385-394) emits a backticked, copy-pasteable CLI command carrying a job-id prefix and a `td:` decision id whenever a blocked item has an answer command, and degrades to the bare sentence when none does; `blocked-failed` (:403-407) builds its target through `_link` (:358-363), which returns MARKDOWN LINK SYNTAX `[the postmortem](ref)` whenever an evidence ref exists; `stopped-by-operator`, `all-green` and `indeterminate` carry neither, and `stopped-by-operator` is reached by no golden at all. So the label is report markup, and rendering it raw in the cockpit would show both a URL-ish ref in brackets and a command containing identifiers. CHOSEN: the CLIENT strips MARKUP AND IDENTIFIERS from the server's label and changes nothing else — a markdown link becomes its own link text, a trailing backticked command is dropped, and the result goes through `scrubUiText` from `humanCopy.ts`, which owns §17's forbidden-word list, as the final screen. The words that survive are the server's own, so DECISION F040 D5's equality between the digest's CTA and the report's recommendation is preserved; what is removed is exactly what the Markdown surface added. ALTERNATIVES CONSIDERED: (a) change `run_report.py` so the label carries no markup — rejected, the label is RIGHT for the report and for the CLI, where a copy-pasteable command is the useful artifact, and F040 may not degrade two shipped surfaces to suit a third; (b) have the client compose its own phrasing per `rule_id` — rejected, it is a second home for the CTA's wording and the digest could then drift from the report, which is the drift D2 spent a round preventing for the urgency formula; (c) render the label raw and accept the ids — rejected, §17 is binding and an id in a hero card is precisely the overclaiming-by-noise this feature exists to remove. HOW TO REVERSE: delete the copy module and render `label` directly; nothing else depends on it. WHAT IT COSTS TO BE WRONG: the card shows a slightly shorter sentence than the report does, and the in-page affordance that replaces the dropped command is what `rule_id` was kept for in the first place, per D5.
+<<<END RECORD9
 
-DECISION F040 D9 — THE BINDING CSS IS TRANSCRIBED VERBATIM, `color:#fff` INCLUDED, AND F040 DOES NOT DEVIATE FROM ITS OWN FEATURE FILE TO SATISFY AN UNENFORCED RULE. THE PROBLEM: `docs/roadmap/features/T5_F040.md:62-63` binds the hero card's CTA to `background:var(--remedy-blue);color:#fff`, and `docs/ui/design_reference/tokens_rules.md` forbids raw hex in component CSS — so the feature file and the design reference disagree about one declaration, and the round that transcribes the block has to choose. MEASURED at `709dc5d9`, and this is what settles it: the nearest shipped sibling writes the SAME PAIR, `background: var(--remedy-blue); color: #fff;` at `apps/ui/src/components/panels/RightLivePanel.module.css:122`; there is no `--remedy-on-blue` or equivalent foreground token in `apps/ui/src/styles/tokens.css` to substitute; and the prohibition is unenforced with 217 standing violations (finding R-0755). CHOSEN: transcribe the binding block verbatim, `#fff` included, and pin it — the guard asserts that this ONE literal is the sheet's only raw colour and that every other colour is a `var(--remedy-…)` naming a token `tokens.css` actually defines, which is a STRICTER property than the sheet would have had if the literal had been quietly swapped. ALTERNATIVES CONSIDERED: (a) substitute a token — rejected, none exists, so this means inventing one, and `tokens_rules.md` itself requires new tokens to arrive by their own PR rather than as a side effect of a card; (b) write `var(--remedy-ink-inverse, #fff)` against a token that does not exist — rejected as worse than either honest option, since it reads as though a token governs the value while the fallback is doing all the work; (c) amend the feature file's binding CSS — rejected, F040 may not edit its authority to make its own transcription conform, and the disagreement is the design reference's to resolve, not this feature's. HOW TO REVERSE: when the paydown adds a foreground token, the swap is one declaration in one file and one constant in the guard. WHAT IT COSTS TO BE WRONG: one literal in one stylesheet, in step with the component beside it rather than out of step with both authorities.
-<<<END RECORD8
+## SPEC for C3 — `apps/ui/src/api/digestCardCopy.ts`
 
-## SPEC for C3 — `apps/ui/src/components/digest/DigestHeroCard.module.css`
+Read `apps/ui/src/copy/humanCopy.ts` in full, then `apps/ui/src/api/jobDigest.ts`
+for this feature's header voice. Open with the house header: what the module is,
+and the DELIBERATE ABSENCES (no clock, no storage, no socket, nothing minted).
 
-Read `apps/ui/src/components/diff/DiffView.module.css` for how this repository
-writes a feature stylesheet transcribed from a binding block, and
-`apps/ui/src/components/panels/RightLivePanel.module.css` for the card and CTA
-idiom next door. A new directory `components/digest/` is correct: `components/`
-is organised by area and this is the digest's.
+Export, each with a one-line WHY comment:
 
-Open with a comment naming the AUTHORITY — the feature file, its Design section,
-its binding CSS block — so a reader editing a value knows what they are
-contradicting, exactly as `DiffView.module.css`'s guard names its own.
+- `digestStateLabel(state: string): string` — the digest's own state vocabulary
+  rendered for a human. It covers the SEVEN `RunState` values in
+  `packages/core/models.py` and answers a safe phrase for anything else. Put a
+  comment where a reader would reach for `humanCopy.stateLabel` saying why that
+  one is wrong here: its vocabulary is the checklist's and it would answer
+  "Planned" for every digest state.
+- `digestCtaText(label: string): string` — the label with the REPORT'S MARKUP
+  removed and nothing rewritten (constraint 11). It must, in this order:
+  unwrap a markdown link `[text](ref)` to its `text`; drop a trailing backticked
+  command together with the `: ` that introduces it, leaving the human sentence
+  that precedes it; then hand the result to `scrubUiText` IMPORTED from
+  `../copy/humanCopy` as the final §17 screen. A label with neither markup nor a
+  command passes through unchanged except for that screen.
+  DECIDE AND DOCUMENT the empty case: what a label that reduces to nothing
+  becomes. `scrubUiText` already takes a fallback — use it rather than inventing
+  a second one, and say in the comment which fallback you passed and why.
+- `DIGEST_CTA_RULE_IDS` — the five `rule_id` values `recommended_next_action` can
+  return, as a closed readonly tuple, with a comment naming the file and the
+  function they come from. This is what lets the guard notice a sixth rule.
 
-TRANSCRIBE the block at `docs/roadmap/features/T5_F040.md:58-64`. It binds three
-rules, and the values are not yours to change (constraint 8):
+## SPEC for C4 — `apps/ui/src/api/digestCardCopy.test.ts`
 
-- the card itself — `max-width:720px`, `margin:32px auto`, `padding:28px`,
-  `border-radius:var(--remedy-radius-lg)`, `background:var(--remedy-card)`,
-  `backdrop-filter:blur(14px)`, `box-shadow:var(--remedy-shadow-soft)`;
-- the headline — `font:700 22px/1.2 var(--remedy-font-ui)`,
-  `color:var(--remedy-ink)`;
-- the CTA — `display:inline-flex`, `padding:10px 18px`,
-  `border-radius:var(--remedy-radius-pill)`, `background:var(--remedy-blue)`,
-  `color:#fff`, `font-weight:600`.
+Read `apps/ui/src/api/recency.test.ts` for conventions. Cover: all seven
+`RunState` values through `digestStateLabel`, written as a table, plus an
+unknown string; `digestCtaText` over each of the FIVE rules' real label shapes,
+built from the shapes `run_report.py` actually emits and not invented ones —
+including the `open-decision` label BOTH with and without a command, and the
+`blocked-failed` label BOTH with and without an evidence ref, since each of
+those two rules has two forms; and the assertion that matters most, that no
+output of `digestCtaText` contains a backtick, a `[`, a `](` or a `td:` id.
 
-SELECTOR FORM IS YOURS, VALUES ARE NOT. A CSS module has no global `.digest`, so
-name the local classes in this repository's idiom and say in a comment which
-binding selector each one transcribes. The feature file writes the headline as
-`.digest h2`; a module may prefer a class. Either is fine; the mapping must be
-stated.
+## SPEC for C5 — `tests/ui_contracts/test_digest_card_copy.py`
 
-Add NO animation, NO transition, NO breakpoint and NO colour beyond the block —
-see the measured notes at the top of this document for why each is already
-satisfied or already out of scope.
+Read `tests/ui_contracts/test_job_digest_card_contract.py` for the stripper and
+positive-control conventions this repository now uses, and follow them; strip
+comments and string literals before every absence assertion, and pair every zero
+with a salted positive control.
 
-## SPEC for C4 — `tests/ui_contracts/test_digest_hero_css.py`
+Pin, over `apps/ui/src/api/digestCardCopy.ts`:
 
-Read `tests/ui_contracts/test_diff_surface_css.py` end to end and follow it
-closely: it is the same job for F037's stylesheet and it already solves the
-problems this guard has. In particular reuse its shape of naming the AUTHORITY in
-every failure message, of stripping `/* */` before reading a rule, and of failing
-LOUDLY when a required selector is absent rather than passing over its absence.
-
-Pin, over `apps/ui/src/components/digest/DigestHeroCard.module.css`:
-
-- EVERY BINDING VALUE from the three rules above is present in the rule that
-  transcribes it. Assert the values, not the selector names, since the selector
-  form is the transcription's to choose: a test that asserted `.digest` would
-  fail on a faithful module rename while a card that lost its `max-width` passed.
-- EVERY `var(--remedy-…)` THE SHEET NAMES IS A TOKEN `apps/ui/src/styles/tokens.css`
-  ACTUALLY DEFINES. Read the token names OUT of `tokens.css` by parsing
-  declaration sites rather than retyping a list, so a token renamed upstream
-  reddens here. Report the names found.
-- THE ONE LITERAL, per DECISION F040 D9: `#fff` occurs EXACTLY ONCE in the sheet
-  and it is the CTA's `color`; no other hex and no `rgb(`/`rgba(` literal occurs
-  anywhere in it. This is the assertion that makes D9's "stricter than a quiet
-  swap" claim true rather than rhetorical, so write it as the point it is.
-- NO ANIMATION AND NO BREAKPOINT: the sheet declares no `animation`,
-  `transition` or `@media`, which is what makes `ux_spec.md` §16 satisfied by
-  construction rather than by a motion block nobody checked.
-- A POSITIVE CONTROL proving the reader reaches the file at all, so every
-  absence above is distinguishable from a blind read.
+- THE PURITY: the forbidden capabilities occur zero times, each with a salted
+  control.
+- THE ONE SOURCE FOR THE §17 SCREEN: the module IMPORTS `scrubUiText` from
+  `../copy/humanCopy`, and it does NOT restate that list — assert that no more
+  than one of `humanCopy`'s forbidden words appears as a literal here, and that
+  the module does not define its own array of them.
+- `stateLabel` IS NOT IMPORTED from `humanCopy` — the wrong-vocabulary trap,
+  asserted so a later edit cannot quietly reach for it.
+- THE FIVE RULE IDS ARE ALL ACCOUNTED FOR, parsed from the SOURCE rather than
+  retyped: read every `NextAction("<id>"` literal out of
+  `packages/orchestration/run_report.py` and assert each id appears in
+  `DIGEST_CTA_RULE_IDS`. A sixth rule added to the report reddens this test,
+  which is the point — this is the same mechanism the seven-state assertion uses
+  for `RunState`, and it is the reason that assertion was worth writing.
+- THE SEVEN RUN STATES ARE ALL ACCOUNTED FOR in `digestStateLabel`, parsed from
+  `packages/core/models.py` exactly as the sibling guard does.
 
 ## Done when — the gates
 
 Report ONE line per gate with its REAL exit code. Every gate runs at a commit
-STRICTLY EARLIER than C5, which writes the handback.
+STRICTLY EARLIER than C6.
 
-G1 TRANSPORT, at C0b. One sha256 over three files — `.remedy-wt/f040-r8-block.md`,
-   the committed `.agent/authored/f040-r8.md` and `.agent/last_block.md` — with
-   the byte length, all three EQUAL. This block states no expected digest.
+G1 TRANSPORT, at C0b. One sha256 over `.remedy-wt/f040-r9-block.md`, the
+   committed `.agent/authored/f040-r9.md` and `.agent/last_block.md`, with byte
+   lengths, all three EQUAL. This block states no expected digest.
 
-G2 THE PLAN, at C1. `.agent/plan.md` byte-EQUAL to PLAN8 (report both sha256),
+G2 THE PLAN, at C1. `.agent/plan.md` byte-EQUAL to PLAN9 (report both sha256),
    under 50 lines, holding `## Goal` and `## Next Steps`.
 
 G3 THE RECORD APPEND, at C2. Re-measure the pre-commit length yourself; the
-   reviewer read 1694456 at `709dc5d9`. Base + one separator newline + RECORD8
+   reviewer read 1703971 at `b2cef8cb`. Base + one separator newline + RECORD9
    equals the committed length. TWO readings: (a) WHOLE RECONSTRUCTION; (b)
-   PARAGRAPH ORDER — the last N blank-line units equal RECORD8's N paragraphs IN
-   ORDER, N COUNTED by your script. Report that the base bytes are a PREFIX.
-   NEGATIVE CONTROL in a disposable worktree: flip one byte inside the FIRST
-   appended paragraph and report that BOTH readings reject it and accept the
+   PARAGRAPH ORDER, N COUNTED by your script. Report that the base bytes are a
+   PREFIX. NEGATIVE CONTROL in a disposable worktree: flip one byte inside the
+   FIRST appended paragraph, report that BOTH readings reject it and accept the
    unflipped bytes.
 
-G4 THE LEDGER, at C2. Distinct `^- R-\d+ — ` ids with ADDED exactly `['R-0755']`
-   and REMOVED `[]`; distinct `^Done: R-\d+` with ADDED `[]`; distinct
-   `DECISION F040 D\d+` with ADDED exactly `['D9']`; exactly one
-   `^Gate: F040 R7 — ` line. Report the open count and the rise from 261.
+G4 THE LEDGER, at C2. Distinct `^- R-\d+ — ` ids with ADDED `[]` and REMOVED
+   `[]` — this round registers NO finding, by design, and D10 explains why.
+   Distinct `^Done: R-\d+` with ADDED `[]`. Distinct `DECISION F040 D\d+` with
+   ADDED exactly `['D10']`. Exactly one `^Gate: F040 R8 — ` line. Report the open
+   count, UNCHANGED at 262.
 
-G5 THE TRANSCRIPTION, at C3. Report, by parsing the stylesheet rather than by
-   eye: every binding value from the three rules and which rule carries it; the
-   full list of `--remedy-*` tokens the sheet names, each shown to be defined in
-   `apps/ui/src/styles/tokens.css` with the line it is defined on; the count of
-   `#fff` (exactly 1) and of every other hex and `rgb(`/`rgba(` literal (exactly
-   0); and the counts of `animation`, `transition` and `@media` (each 0). Then
-   confirm nothing under `docs/ui/design_reference/` and no `.tsx` is in this
-   round's changed-path set.
+G5 THE MODULE'S SHAPE, at C3. Report the exported names by parsing; that
+   `scrubUiText` is imported from `../copy/humanCopy` and `stateLabel` is NOT;
+   the seven `RunState` values and the five `NextAction` rule ids your script
+   PARSES from the Python sources, and that each appears where the SPEC requires;
+   and the forbidden-capability sweep with a salted control per token.
 
-G6 THE GUARD AND ITS RED PROOF, at C4. First
-   `python3 -m pytest tests/ui_contracts/test_digest_hero_css.py -q` — REAL exit
+G6 THE GUARD AND ITS RED PROOF, at C5. First
+   `python3 -m pytest tests/ui_contracts/test_digest_card_copy.py -q` — REAL exit
    0 with the passed count. Then, INSIDE A DISPOSABLE WORKTREE, the UNMUTATED
-   control FIRST, then FOUR mutations of the STYLESHEET, each reverted before the
-   next: (a) change `max-width` from `720px` to `640px`; (b) replace
-   `var(--remedy-radius-pill)` with `var(--remedy-radius-nope)`, a token
-   `tokens.css` does not define; (c) add a second raw colour, say
-   `border:1px solid #abc`; (d) add a `transition: all .2s ease` declaration.
-   EACH must redden, and each for its OWN assertion — report the REAL exit code
-   and WHICH tests died by node id, never only a count. Restore, re-run, report
-   the restored exit code and byte equality. Name the worktree, remove it, and
-   report `git worktree list` no longer holds it.
+   control FIRST, then FOUR mutations of `digestCardCopy.ts`, each reverted
+   before the next: (a) a consumed `Date.now()`; (b) `scrubUiText`'s import
+   removed and the call replaced by the raw string; (c) one rule id deleted from
+   `DIGEST_CTA_RULE_IDS`; (d) one `RunState` value dropped from
+   `digestStateLabel`. EACH must redden, and report WHICH tests died by node id,
+   never only a count. BEFORE reporting any colour, prove each mutation REACHED
+   THE CODE: show that the changed bytes are in a declaration and not in a
+   comment — the R8 lesson, where a mutation landed in a header comment and the
+   green that followed meant nothing. Restore, re-run, report the restored exit
+   code and byte equality. Name the worktree, remove it, report `git worktree
+   list` no longer holds it.
 
-G7 THE FRONTEND NODES ARE UNMOVED, at C4. This round adds no TypeScript and the
-   stylesheet is imported by nothing yet, so both nodes must be exactly as the
-   reviewer measured them at the base — 4 passed and 1 passed, neither skipped:
+G7 VITEST AND THE TYPECHECK, at C5, through the pytest nodes and NOT a direct
+   `npx` call:
    `python3 -m pytest "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" -q -rs`
    and `python3 -m pytest tests/ui_server/test_dashboard_contract.py -k typescript -q -rs`.
-   Report the REAL exit code AND passed-or-SKIPPED for each. Per constraint 14 no
-   TypeScript colour is ordered.
+   Report the REAL exit code AND passed-or-SKIPPED for each; the reviewer
+   measured 4 passed and 1 passed at the base, neither skipped. Per constraint 13
+   no TypeScript colour is ordered.
 
-G8 THE SUITES AND THE TREE, at C4. Each its own REAL exit code:
+G8 THE SUITES AND THE TREE, at C5. Each its own REAL exit code:
    `python3 -m pytest tests/ui_contracts/ -q`,
    `python3 -m pytest tests/ui_server/ -q`,
    `python3 -m pytest tests/docs/ -q`, and the canary
    `python3 -m pytest tests/cli/test_golden_path.py -q`. The reviewer measured
-   728 passed with 4 skipped, 515, 295 and 42 at the base; `tests/ui_contracts/`
-   MUST rise by the number of tests C4 adds, so report both numbers and the
+   735 passed with 4 skipped, 515, 295 and 42 at the base; `tests/ui_contracts/`
+   MUST rise by the number of tests C5 adds — report both numbers and the
    difference. Then `git status --porcelain` EMPTY, `git ls-files --others
    --exclude-standard` count 0, and the per-commit insertion counts for C0a
-   through C4, every one under 500.
+   through C5, every one under 500.
 
 ## Handback
 
@@ -306,9 +319,9 @@ Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: the state
 block, the `## Commits` table with a `+/-` column from `git diff --numstat`, the
 deviations, the item-status table with every bundle item and every gate
 appearing exactly once, and the next steps. State `SESSION 2` of F040 and round
-8. No length cap. Record that the stylesheet is transcribed and pinned, that NO
-card, NO mount and NO copy audit landed, and that the Acceptance's copy clause is
-NOT discharged. Name R-0570, R-0752 and R-0755 as OPEN and routed to paydown,
-R-0753 as OPEN and carried, and name the next action as T002 part 4: the hero
-card `.tsx`, its mount, the trigger wiring, and the DECISION settling the raw-id
-collision PLAN8's Risks names.
+9. No length cap. Record that every DECIDABLE rule of the hero card is now built
+and pinned and that NO card, NO mount and NO markup landed; name R-0570, R-0752
+and R-0755 as OPEN and routed to paydown and R-0753 as OPEN and carried; and
+name the next action as T002 part 5 — the `.tsx`, its mount, the trigger wiring
+and the dismissal port bound at the edge, which is the first round of this
+feature that cannot be red-proved and should be scoped accordingly.
