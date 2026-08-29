@@ -245,3 +245,192 @@ class TestFlightPlanApprovalDispatchEffects:
 
         assert status == 200, body
         assert saves == [self.job_id], saves
+
+
+#: A three-hunk diff, built with the `difflib` recipe `tests/cli/test_patch_cmd.py` and
+#: `tests/orchestration/test_hunk_decision_record.py` both use. The three edits are spaced
+#: further apart than twice `difflib`'s context, so they really arrive as three hunks and a
+#: decision can leave one of them PENDING — which is what makes the body's three counts
+#: distinguishable from one another.
+_ORIGINAL = "\n".join(f"line {number:02d}" for number in range(1, 31)) + "\n"
+_EDITED = (_ORIGINAL
+           .replace("line 03\n", "line 03 CHANGED\n")
+           .replace("line 15\n", "line 15 CHANGED\n")
+           .replace("line 27\n", "line 27 CHANGED\n"))
+
+
+def _three_hunk_diff() -> str:
+    import difflib
+
+    return "".join(difflib.unified_diff(
+        _ORIGINAL.splitlines(True), _EDITED.splitlines(True),
+        fromfile="a/f.txt", tofile="b/f.txt"))
+
+
+def _hunk_ids(diff_text: str) -> list[str]:
+    from packages.orchestration.diff_parser import parse_unified_diff_to_view
+
+    view = parse_unified_diff_to_view(diff_text)
+    return [h["id"] for h in view["files"][0]["hunks"]]
+
+
+class TestApproveHunksDispatchEffects:
+    """What an accepted `patch.approve-hunks` DID, read off disk (DECISION F033 D4).
+
+    Its sibling `test_command_channel.py` pins what the door ANSWERS. This class
+    exists for the reason the two classes above exist: a 200 proves only that the
+    door chose a status, and whether the decision reached `job.metadata` and
+    survived a `save_job` is visible nowhere on the wire.
+
+    The door RECORDS and never applies, so every assertion below is about
+    `job.metadata` and none is about the repository.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _setup_job_with_a_diff(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.storage import save_job
+        self.job = _make_job()
+        save_job(self.job)
+        self.job_id = str(self.job.id)
+        self.tmp_path = tmp_path
+        self.control = tmp_path / "control"
+        self.diff_text = _three_hunk_diff()
+        self.hunk_ids = _hunk_ids(self.diff_text)
+        assert len(self.hunk_ids) == 3, self.hunk_ids
+
+    def _with_evidence(self):
+        """An evidence directory holding the job-level diff, named by an INDEX record.
+
+        The index is keyed by the job's CANONICAL id, which is what the door resolves
+        with (finding R-0744), so this fixture is also the premise of that fix.
+        """
+        from packages.orchestration.data_paths import job_evidence_index_dir
+        from packages.orchestration.diff_view_source import DIFF_JOB_ARTIFACT_NAME
+
+        evidence_dir = self.tmp_path / "evidence"
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        (evidence_dir / DIFF_JOB_ARTIFACT_NAME).write_text(
+            self.diff_text, encoding="utf-8")
+        index_dir = job_evidence_index_dir()
+        index_dir.mkdir(parents=True, exist_ok=True)
+        (index_dir / f"{self.job_id}.json").write_text(
+            json.dumps({"job_id": self.job_id,
+                        "evidence_dir_local": str(evidence_dir)}),
+            encoding="utf-8")
+        return evidence_dir
+
+    def _approve(self, port, token, nonce, **args):
+        payload = {"command": "patch.approve-hunks", "client_nonce": nonce,
+                   "args": args}
+        conn = HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", f"/api/jobs/{self.job_id}/commands",
+                         body=json.dumps(payload),
+                         headers={"Authorization": f"Bearer {token}",
+                                  CSRF_HEADER: token,
+                                  "Content-Type": "application/json"})
+            resp = conn.getresponse()
+            return resp.status, json.loads(resp.read())
+        finally:
+            conn.close()
+
+    def _audit_outcomes(self):
+        from packages.orchestration.command_audit import AUDIT_FILENAME
+        path = self.control / "jobs" / self.job_id / AUDIT_FILENAME
+        return [json.loads(line)["outcome"] for line in path.read_bytes().splitlines()]
+
+    def _recorded(self):
+        """Every recorded decision on a job RELOADED from storage, so `save_job` is
+        part of what each assertion below is testing."""
+        from packages.orchestration.hunk_decision_record import (
+            HUNK_DECISIONS_METADATA_KEY,
+        )
+        from packages.orchestration.storage import load_job
+
+        return load_job(self.job.id).metadata.get(HUNK_DECISIONS_METADATA_KEY)
+
+    def test_an_accepted_submission_records_the_decision_and_persists_it(self):
+        """The effect ran AND `save_job` returned — proved by loading the job back."""
+        from packages.orchestration.diff_view_source import DIFF_JOB_ARTIFACT_NAME
+
+        self._with_evidence()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._approve(
+            port, token, "nonce-hunks-effect",
+            approved=[self.hunk_ids[0]],
+            rejected=[{"id": self.hunk_ids[1], "reason": "out of scope"}])
+
+        assert status == 200, body
+        attempt_key = f"job:{DIFF_JOB_ARTIFACT_NAME}"
+        records = self._recorded()
+        assert list(records) == [attempt_key], records
+        assert [row["state"] for row in records[attempt_key]["hunks"]] == [
+            "approved", "rejected", "pending"]
+        assert self._audit_outcomes() == ["accepted"]
+
+    def test_the_accepted_body_carries_the_attempt_key_and_the_three_counts(self):
+        """The counts come from the LEDGER, so a pending hunk is reported as pending."""
+        from packages.orchestration.diff_view_source import DIFF_JOB_ARTIFACT_NAME
+
+        self._with_evidence()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._approve(
+            port, token, "nonce-hunks-body",
+            approved=[self.hunk_ids[0]],
+            rejected=[{"id": self.hunk_ids[1], "reason": "out of scope"}])
+
+        assert status == 200, body
+        assert body == {"command": "patch.approve-hunks", "outcome": "accepted",
+                        "attempt_key": f"job:{DIFF_JOB_ARTIFACT_NAME}",
+                        "approved": 1, "rejected": 1, "pending": 1}, body
+
+    def test_the_rejected_wire_form_reaches_the_recorder_with_its_reason_verbatim(self):
+        """`rejected[{id, reason}]` is the form `docs/roadmap/features/T5_F033.md` writes,
+        and the door passes it STRAIGHT THROUGH — so the operator's words, whitespace and
+        any `=` of their own included, arrive on the job unaltered."""
+        from packages.orchestration.diff_view_source import DIFF_JOB_ARTIFACT_NAME
+
+        reason = "  DSN=postgres://x is out of scope  "
+        self._with_evidence()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._approve(
+            port, token, "nonce-hunks-reason",
+            rejected=[{"id": self.hunk_ids[2], "reason": reason}])
+
+        assert status == 200, body
+        rows = self._recorded()[f"job:{DIFF_JOB_ARTIFACT_NAME}"]["hunks"]
+        rejected = [row for row in rows if row["state"] == "rejected"]
+        assert [row["id"] for row in rejected] == [self.hunk_ids[2]], rows
+        assert rejected[0]["reason"] == reason, rejected
+
+    def test_a_refused_decision_is_409_audited_rejected_state_and_writes_nothing(self):
+        """DECISION F009 D21 clause three: the effect RAN and DECLINED. An id no hunk
+        answers to is the core's `unknown_hunk`, and a refused decision is not a
+        decision — nothing at all reaches `job.metadata`."""
+        self._with_evidence()
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._approve(port, token, "nonce-hunks-refused",
+                                     approved=["not-a-hunk-id"])
+
+        assert status == 409, body
+        assert body["error"] == "hunk decision was refused", body
+        assert "not-a-hunk-id" not in json.dumps(body), body
+        assert self._recorded() is None, self._recorded()
+        assert self._audit_outcomes() == ["rejected_state"]
+
+    def test_an_unresolvable_evidence_directory_takes_the_same_409_path(self):
+        """A NAMED ABSENCE IS NOT A FAILURE, which is why this is 409 and not 500: no
+        index record and no CWD-relative directory means the envelope reports the diff
+        missing, the recorder refuses over it, and the effect declined rather than
+        raised. THE DISCRIMINATOR is the status — a door that let the absence reach
+        `_safe_error(500, ...)` would report the operator's own missing evidence as a
+        server fault."""
+        port, token = _start_ui_server_for_job(self.job_id, self.tmp_path)
+        status, body = self._approve(port, token, "nonce-hunks-no-diff",
+                                     approved=["h1"])
+
+        assert status == 409, body
+        assert body["error"] == "hunk decision was refused", body
+        assert self._recorded() is None
+        assert self._audit_outcomes() == ["rejected_state"]
