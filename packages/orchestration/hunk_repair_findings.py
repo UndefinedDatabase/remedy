@@ -21,9 +21,11 @@ DELIBERATE ABSENCE — this module is PURE: text and data in, text out. It reads
 runs no subprocess, opens no socket, reads no environment variable, keeps no state and logs
 nothing, and it imports the standard library and ``packages.orchestration.hunk_ledger`` and
 nothing else. It also does NOT build the ledger it renders (that is
-``packages/orchestration/hunk_ledger.py``), does not decide whether a decision is coherent
-(``packages/orchestration/hunk_approval.py``), and has NO CALLER YET — the round that wires
-its output into the next builder prompt follows this one.
+``packages/orchestration/hunk_ledger.py``) and does not decide whether a decision is coherent
+(``packages/orchestration/hunk_approval.py``). ITS CALLER IS THE BUILDER PROMPT: measured at
+``de2dc16d``, ``packages/orchestration/pingpong_loop.py`` imports ``render_rejection_findings``
+and calls it inside ``compose_builder_prompt``, where the rendered text becomes the
+``builder_hunk_rejections`` segment.
 
 DELIBERATE ABSENCE — it never renders what was APPROVED. A repair prompt listing what the
 operator accepted is a different feature; this one carries only what must change.
