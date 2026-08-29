@@ -1,142 +1,211 @@
-# STEP R9/F040 — T002 PART 4: TURNING REPORT MARKUP INTO CARD COPY
+── STEP T002 PART 5A / F040 — ROUND 11 ────────────────────────
+Goal:        Build the completion digest's HERO CARD COMPONENT — the first
+             `.tsx` of this feature — with the dismissal port bound at its edge
+             per DECISION F040 D8, pin it with a pytest text guard that is red
+             proved, and repair finding R-0756 in the vitest file that round 9
+             shipped blind.
+Bundle:      C0a save this block verbatim · C0b mirror it · C1 the plan ·
+             C2 the record (the R9 verdict and R-0756) · C3 export the two
+             estimate constants · C4 repair R-0756 · C5 the component ·
+             C6 the guard · C7 the handback.
+Change:      EXACTLY these paths and nothing else.
+               `.agent/authored/f040-r11.md`                       (C0a, new)
+               `.agent/last_block.md`                              (C0b)
+               `.agent/plan.md`                                    (C1)
+               `.agent/live_review.md`                             (C2)
+               `apps/ui/src/components/metrics/TopMetricsBar.tsx`  (C3)
+               `apps/ui/src/api/digestCardCopy.test.ts`            (C4)
+               `apps/ui/src/components/digest/DigestHeroCard.tsx`  (C5, new)
+               `tests/ui_contracts/test_digest_hero_card.py`       (C6, new)
+               `.agent/handoff.md`                                 (C7)
+             NOTHING ELSE IS EDITED. `digestCardCopy.ts`, `jobDigest.ts`,
+             `digestVisibility.ts`, `DigestHeroCard.module.css`, `humanCopy.ts`,
+             `run_report.py`, `job_digest.py`, every file under
+             `docs/roadmap/` and every other test file are READ ONLY.
 
-Goal: the last decidable half of the hero card. The digest's `primary_action.label`
-is written for a MARKDOWN REPORT and the cockpit may not render it raw; this
-round rules that collision as DECISION F040 D10 and builds the pure copy rules
-that resolve it, so the round that mounts the card has nothing left to decide.
-Book the round 8 verdict.
+Constraints:
+ 1. APPLY EVERY AUTHORED SLICE BYTE FOR BYTE. If a slice looks wrong, apply it
+    anyway and DECLARE the objection in the handback. Never repair a slice.
+ 2. THE COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4, C5, C6, C7 and it is fixed.
+    Every claim any slice makes about this round's own landed change rests on
+    this ordering constraint and on nothing else (§3 item 20, R-0524 carve-out).
+ 3. C1 IS THE FIRST SUBSTANTIVE COMMIT (§3 item 23): the round moves the finding
+    ledger, so `.agent/plan.md` is current before the ledger is touched.
+ 4. RECORD11 IS APPENDED, never inserted. `.agent/live_review.md` ends with a
+    single newline and no trailing blank line at the branch tip this round
+    opens on; the append is one newline followed by the slice's bytes.
+ 5. THE BLOCK ARRIVES AS A FILE, NOT AS TYPED TEXT. It is on disk at
+    `.remedy-wt/f040-r11-block.md`, written there by the reviewer. Copy it to
+    both destinations with `shutil.copyfile` and never retype it. Because that
+    original survives, G1 is a `cmp` against it rather than a chain of the
+    worker's own outputs, and the transport proof this round therefore does
+    cover the emitted bytes (§3 item 37). Two lines of the frame are runs of the
+    single character `─`: the STEP line's trailing run is 24 characters and the
+    closing line is 62. Their lengths are stated because a run has none a reader
+    recovers by eye; nothing appliable lives in the frame either way.
+ 6. THE CARD ADDS NO CSS. `DigestHeroCard.module.css` is not in the change set.
+    The component uses the three classes the round-8 sheet defines and plain
+    semantic elements for everything else. The layout rules belong with the
+    mount, where the card is first seen in context, and that is step 2 of the
+    plan.
+ 7. THE CARD READS NO CLOCK EXCEPT AT THE DISMISSAL, AND IT READS NO STORAGE AT
+    ALL. `Date.now()` is called in exactly one place — the dismiss handler, which
+    is the edge DECISION F040 D8 names — and every persisted read or write goes
+    through the injected `DigestVisibilityPort`. `localStorage`,
+    `sessionStorage`, `fetch` and `XMLHttpRequest` do not occur in the
+    component's executable source.
+ 8. NO RULE GETS A SECOND HOME. The card imports every decided value and
+    restates none: the state phrase from `digestStateLabel`, the call to action
+    from `digestCtaText`, the exactness flag from `digestCostLine`, and the two
+    estimate constants from `TopMetricsBar.tsx`. None of the seven `RunState`
+    phrases, neither `"~"` nor `", estimated"`, and no forbidden-word list may
+    appear as a literal in `DigestHeroCard.tsx`.
+ 9. THE HEADLINE IS RENDERED AS THE SERVER WROTE IT, with no §17 screen, and the
+    component says why where a reader would search: `_headline` in
+    `packages/orchestration/job_digest.py` composes the digest's OWN prose as one
+    plain sentence and never borrows the report's Markdown, so unlike
+    `primary_action.label` it carries no markup and no identifier to remove. That
+    reading was taken at `5778fccb`.
+10. NO TYPESCRIPT MUTATION OF THE COMPONENT. `apps/ui/vitest.config.ts` at
+    `5778fccb` sets `environment: "node"` and `include: ["src/**/*.test.ts"]`,
+    and `apps/ui/package.json` ships no jsdom, happy-dom or testing library — so
+    a `.tsx` is neither collected by the runner nor renderable by it. The
+    component's colour is the pytest guard of C6, which IS red proved, plus
+    `tsc`. G7's vitest colour is ordered over `digestCardCopy.test.ts`, a `.ts`
+    file the runner does collect, and over nothing else.
+11. DESTRUCTIVE VERIFICATION ONLY INSIDE A DISPOSABLE `git worktree`, removed
+    before the handback, with `git worktree list` showing one line. The primary
+    checkout satisfies `git status --porcelain` empty at every commit.
+12. RE-READ `.agent/STOP` FROM DISK BEFORE THE FIRST COMMIT AND AGAIN BEFORE
+    C7. If it appears, finish the commit in hand, write the handback and stop.
+13. THE FIX FOR R-0756 IS EXACTLY THE PROBE VALUE AND ITS DISCRIMINATOR. C4
+    touches no other test in that file and changes no production code: the module
+    is already correct and this round proves that the guard over it now bites.
+14. THIS BLOCK IS A VERBATIM RENUMBERING OF ROUND 10's BLOCK, dated
+    2026-08-29, decided by the reviewer per the round-10 handback's own
+    deferral. Round 10 already completed one full delegate-review cycle — it
+    hit `.agent/STOP` before its first commit and closed with a stop-handback
+    at commit `19ff6482` — so this re-dispatch of the identical, never-executed
+    bundle is round 11, not a continuation of round 10, per the F031 R10
+    precedent the round-10 handback cites twice. No other content changed:
+    every constraint, gate, spec and pair below is identical in substance to
+    round 10's block, with only the round number, the two slice labels
+    (PLAN10→PLAN11, RECORD10→RECORD11) and the `f040-r10.md`→`f040-r11.md`
+    filename updated for consistency. Declare this renumbering in the handback
+    as a reviewer decision, not a worker deviation.
 
-Base: `b2cef8cb`, the round-8 handback commit and the tip of
-`feature/f040-completion-digest`. Stay on that branch. Open no pull request.
+Done when: every gate below is executed, each with its REAL exit code taken from
+`subprocess.run(...).returncode`. All of them run at commits strictly earlier
+than C7 (§3 item 31), and the commit each runs at is named below.
 
-THE COLLISION, MEASURED AT THE BASE — this is the whole reason for the round.
-`docs/ui/design_reference/ux_spec.md` §17 forbids the default UI showing raw
-UUIDs or raw JSON, and requires human phrasing. But `primary_action.label` comes
-verbatim from `recommended_next_action` in `packages/orchestration/run_report.py`,
-which builds it for a Markdown artifact, and TWO of its five rules emit markup or
-identifiers:
+ G1 TRANSPORT, at C0b. ONE comparison, disk to disk, against the reviewer's own
+    surviving original: report the sha256 and byte length of
+    `.remedy-wt/f040-r11-block.md`, of `.agent/authored/f040-r11.md` and of
+    `.agent/last_block.md`, and that all three are equal. Report the digest you
+    MEASURED; this block asserts no digest of itself, which it could not do.
+ G2 THE PLAN, at C1. `.agent/plan.md` byte-equal to the PLAN11 slice; report its
+    line count and that it is under 50; report that it holds `## Goal`,
+    `## Next Steps` and a string matching `\bF\d{3}\b`.
+ G3 THE RECORD APPEND, at C2. Re-measure the pre-commit length rather than
+    taking it from this block. Reading (a): the base blob is a byte PREFIX of the
+    committed file and base + one newline + slice reconstructs it whole.
+    Reading (b), independent and structural: split the slice on blank lines,
+    COUNT the paragraphs into N, and compare the committed file's LAST N
+    blank-line units against those N paragraphs IN ORDER. Negative control:
+    inside the disposable worktree, flip one byte in the FIRST appended
+    paragraph and report that both readings REJECT it and both ACCEPT the
+    unflipped bytes. N is counted by the script and never asserted.
+ G4 THE LEDGER, at C2. Compute by DIFFERENCE between the pre-commit base and the
+    committed file, never by reading the slice: the distinct ids matching
+    `^- R-\d+ — `, those matching `^Done: R-\d+`, those matching
+    `DECISION F040 D\d+`, and the count of lines matching `^Gate: F040 R9 — `.
+    Report ADDED and REMOVED for each set and the open count before and after.
+ G5 THE COMPONENT'S SHAPE, at C5. Over `DigestHeroCard.tsx` with comments
+    stripped and quoted literals blanked for the absence half:
+      - the exported names, parsed from the source;
+      - every module it imports from, and the names taken from each;
+      - every `styles.<name>` it references, and that each such name is a class
+        the round-8 sheet declares — parse the class names out of
+        `DigestHeroCard.module.css` rather than retyping them;
+      - occurrences of `localStorage`, `sessionStorage`, `fetch` and
+        `XMLHttpRequest`, each of which must be 0, and each paired with a salted
+        positive control proving the scan can see it when it is there;
+      - occurrences of `Date.now`, which must be exactly 1;
+      - that none of the seven `RunState` phrases of `DIGEST_STATE_LABELS`, and
+        neither `~` nor `, estimated`, occurs as a quoted literal in the card —
+        parse those phrases out of `digestCardCopy.ts` and out of
+        `TopMetricsBar.tsx` rather than retyping them;
+      - and that `TopMetricsBar.tsx` still contains the byte strings
+        `const ESTIMATE_MARK = "~";` and `const ESTIMATE_PHRASE = ", estimated";`,
+        which `tests/ui_contracts/test_job_digest_card_contract.py` and
+        `tests/ui_contracts/test_cost_metric_render.py` assert at `5778fccb` —
+        BOTH of them, measured at emission — so C3's export cannot falsify a
+        guard this round does not own.
+ G6 THE GUARD AND ITS RED PROOF, at C6. First
+    `python3 -m pytest tests/ui_contracts/test_digest_hero_card.py -q` in the
+    primary checkout. Then, inside a disposable worktree at that commit, the
+    UNMUTATED CONTROL first and each mutation reverted before the next, run the
+    same node id and report the REAL exit code and the node ids that DIED for
+    each of these four mutations of `DigestHeroCard.tsx`:
+      (a) render `digest.primary_action.label` where `digestCtaText(...)` stands;
+      (b) restate one `RunState` phrase as a literal in the card;
+      (c) replace the port's `writeDismissal` call with `localStorage.setItem`;
+      (d) delete the emptiness guard in front of the ownership section.
+    Assert each anchor is UNIQUE in the file before replacing it, and report the
+    count. For each, report that the bytes on disk differ from the original AND
+    that the DECLARATION differs after comment stripping — a mutation that lands
+    in a comment proves nothing, which is the R8 lesson. Restore and report byte
+    equality to the committed file and the control's colour again.
+ G7 R-0756 REPAIRED, AND PROVED, at C4. By the worktree route DECISION F256 D6
+    fixes: put the mutation in the worktree, run vitest from the PRIMARY
+    `apps/ui` so resolution finds the primary's `node_modules`, and name the
+    worktree's test file by ABSOLUTE path in a scratch config under
+    `.remedy-wt/` whose `cacheDir` also points inside `.remedy-wt/` so the
+    primary checkout stays clean. The config must export a PLAIN OBJECT.
+    Report, in this order: the UNMUTATED CONTROL's real exit code and test
+    count; then, with the own-property guard in `digestStateLabel` replaced by
+    `return DIGEST_STATE_LABELS[key] ?? UNREADABLE_STATE_LABEL;` in the
+    WORKTREE'S COPY OF `digestCardCopy.ts`, the real exit code and the node ids
+    that died — which must be non-zero, and that is the whole point of the
+    repair; then the restored control. The production module is NOT edited in
+    the primary checkout at any point.
+ G8 THE SUITES, THE TOOLCHAIN AND THE TREE, at C6:
+      python3 -m pytest tests/ui_contracts/ -q
+      python3 -m pytest tests/ui_server/ -q
+      python3 -m pytest tests/docs/ -q
+      python3 -m pytest tests/cli/test_golden_path.py -q
+      python3 -m pytest "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" -q -rs
+      python3 -m pytest tests/ui_server/test_dashboard_contract.py -k typescript -q -rs
+    Report each REAL exit code, and for the last two report PASSED or SKIPPED
+    explicitly — a skip is not a type check and is not vitest. Then report
+    `git status --porcelain`, the count from
+    `git ls-files --others --exclude-standard`, `git worktree list`, and the `+`
+    column of `git diff --numstat` for each commit from C0a through C6. C7's own
+    insertion count is not orderable here and is not ordered (§3 item 14).
+    Those insertion numbers are ALSO required by
+    docs/agents/handback_template.md in the `+/-` column of the handback's
+    `## Commits` table, which makes C7 their second writer: when you write that
+    table, take every cell from THIS gate's `git diff --numstat` output and from
+    nothing else, and say in the handback that you did (§3 item 28). A full-file
+    rewrite is where the two readings diverge — `git commit`'s own summary and
+    the file's before/after line counts are neither of them the `+` column
+    AGENTS.md's counting rule names.
 
-- `open-decision` (:385-394) emits ``Answer the open decision: `<command>` ``
-  where the command is a copy-pasteable CLI line carrying a job-id prefix and a
-  `td:` decision id — visible in the R5 golden
-  `blocked_with_decisions.json`. It degrades to the bare sentence when no
-  command exists, so the id is CONDITIONAL, not guaranteed.
-- `blocked-failed` (:403-407) emits `Inspect {target} and repair the blocked
-  task`, where `target` is `_link("the postmortem", ref)` and `_link` (:358-363)
-  returns `[the postmortem](ref)` — MARKDOWN LINK SYNTAX — whenever an evidence
-  ref exists, and the bare label when it does not.
+Handback:    rewrite `.agent/handoff.md` per docs/agents/handback_template.md.
+             Carry the SESSION NUMBER — this is SESSION 3 of F040 — the round
+             (11), the range, the per-commit table with the `+/-` column from
+             `git diff --numstat`, one line per gate with its REAL exit code,
+             the item-status table, the deviations (including the round-10→11
+             renumbering, cited as constraint 14), and the open-findings count.
+             Then `git push -u origin feature/f040-completion-digest`. Create no
+             pull request, merge nothing, force-push nothing, touch no branch.
+──────────────────────────────────────────────────────────────
 
-The other three — `stopped-by-operator` (:397-401), `all-green` (:411) and
-`indeterminate` (:413) — carry neither. NOTE that the four goldens exercise only
-`open-decision`, `blocked-failed`, `all-green` and `indeterminate`: the rule
-table has FIVE rules and `stopped-by-operator` is reached by no fixture, so the
-goldens are a sample and the RULE TABLE is the vocabulary. Read the table.
-
-THIS IS NOT A DEFECT AND MINTS NO FINDING. The label is CORRECT for the report
-and for the CLI, where a copy-pasteable command is the useful thing. The
-collision is only at the cockpit's render boundary, and nothing on disk is
-wrong-valued, so it is ruled as DECISION F040 D10 in the manner D3 and D5
-already handled "the feature file asks for something this surface cannot give" —
-not registered as an R-id, per amend0827 rule 2.
-
-TWO TRAPS IN THE EXISTING COPY MODULE, both measured, both of which a builder
-would otherwise walk into:
-- `apps/ui/src/copy/humanCopy.ts` exports `stateLabel(state)`, and its vocabulary
-  is the CHECKLIST's — `done`, `current`, `blocked`, `suggested`, else
-  `"Planned"`. `RunState` shares NONE of those spellings, so `stateLabel` answers
-  `"Planned"` for `completed`, `paused`, `running` and every other digest state.
-  It is the wrong function and must not be used here.
-- `scrubUiText(value, fallback)` in the same file rejects a value that is
-  ENTIRELY hex-ish (`/^[0-9a-f]{6,}(-[0-9a-f]+)*$/i`), so it cannot see an id
-  EMBEDDED in a sentence. It is still the right final screen — it owns §17's
-  forbidden-word list — but it is not sufficient alone.
-
-## Bundle, in commit order
-
-- C0a save this block verbatim to `.agent/authored/f040-r9.md`
-- C0b mirror the same bytes into `.agent/last_block.md`
-- C1  rewrite `.agent/plan.md` from slice PLAN9
-- C2  append slice RECORD9 to `.agent/live_review.md`
-- C3  add `apps/ui/src/api/digestCardCopy.ts` per the SPEC below
-- C4  create `apps/ui/src/api/digestCardCopy.test.ts` per the SPEC below
-- C5  create `tests/ui_contracts/test_digest_card_copy.py` per the SPEC below
-- C6  rewrite `.agent/handoff.md` — the handback
-
-## Change set — exactly these paths, nothing else
-
-    .agent/authored/f040-r9.md
-    .agent/last_block.md
-    .agent/plan.md
-    .agent/live_review.md
-    apps/ui/src/api/digestCardCopy.ts
-    apps/ui/src/api/digestCardCopy.test.ts
-    tests/ui_contracts/test_digest_card_copy.py
-    .agent/handoff.md
-
-NOTHING ELSE IS EDITED. Not `apps/ui/src/copy/humanCopy.ts` — it is imported,
-not changed. Not `jobDigest.ts`, not `digestVisibility.ts`, not the stylesheet,
-not `run_report.py`: the server's label is RIGHT for the report and this round
-does not touch it. No `.tsx`. No Python production code.
-
-## Constraints
-
-1. Apply every slice BYTE FOR BYTE. If one looks wrong, apply it as given and
-   DECLARE the problem in the handback's deviations.
-2. C0a is a COPY: the block is at `.remedy-wt/f040-r9-block.md`. Use
-   `shutil.copyfile` for C0a and again for C0b.
-3. C1 is the FIRST substantive commit, ahead of the ledger append.
-4. `.agent/live_review.md` is APPEND-ONLY.
-5. `.agent/plan.md` stays under 50 lines.
-6. Every exit code is REAL, from `subprocess.run(...).returncode` in a script
-   under the gitignored `.remedy-wt/`. Never through a pipe.
-7. Mutation and red-proof checks run ONLY in a disposable `git worktree`; the
-   only red proof available is the PYTHON guard's (constraint 13).
-8. THE MODULE IS PURE: no clock, no storage, no socket, nothing minted. Same
-   absences the two sibling api modules document in their headers, written down
-   the same way.
-9. ONE SOURCE FOR THE §17 SCREEN. The forbidden-word list and the whole-value id
-   test live in `humanCopy.ts`; this module IMPORTS `scrubUiText` and applies it
-   as the FINAL pass. It does not restate that list, does not restate the
-   fallback string and does not re-implement the truncation.
-10. `stateLabel` FROM `humanCopy.ts` IS NOT USED — it answers the checklist's
-    vocabulary, not `RunState`'s. Say so in a comment where a reader would reach
-    for it.
-11. THE WORDS STAY THE SERVER'S. This module REMOVES markup and identifiers; it
-    does not rewrite the sentence, does not add a verb and does not substitute a
-    phrase of its own. DECISION F040 D5 keeps the digest's CTA equal to the
-    report's recommendation, and a client that reworded it would break that
-    equality as surely as a second rule table would.
-12. Commit subjects carry no leading-slash token, no absolute path, no
-    secret-like string, and no `Co-Authored-By` trailer. Push after C6. No pull
-    request, no merge, no force-push. The `remedy` script is DENIED; use
-    `python3 -m apps.cli.main ...` if needed and say so.
-13. NO TYPESCRIPT COLOUR IS ORDERED (DECISION F040 D7): `npx vitest` is refused
-    to this session class and `apps/ui/node_modules` is absent from a worktree,
-    so a mutation there is red for every module. Do not attempt one; say in the
-    handback that none was run.
-
-## SANDBOX NOTES
-
-- Env-var assignment is DENIED in all three shell forms; set it in-process.
-- `cp` is denied; copy with `shutil.copyfile`.
-- `$(...)` in a compound, `;`/`&&` chains and process substitution are rejected
-  by FORM. One command per call, or a driver script run as one `bash script.sh`.
-- A `python3 -c` script containing a newline followed by `#` is rejected; use a
-  script FILE for anything carrying comments.
-- The Bash tool does not surface non-zero exits; capture
-  `subprocess.run(...).returncode`.
-
-## Slices
-
-The authored units are PLAN9 and RECORD9, each between its own BEGIN and END
-marker line. The markers are NOT part of the unit; the newline ENDING the last
-content line IS.
-
-<<<BEGIN PLAN9
+<<<BEGIN PLAN11
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 2, round 9.
+commit of pull request 222. SESSION 3, round 11.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -153,175 +222,151 @@ was gone" answer in one glance.
 | T002 the client digest seam and its guard | done | round 6, PASS |
 | T002 the trigger, dismiss and last-seen rule | done | round 7, PASS |
 | T002 the hero card stylesheet and its guard | done | round 8, PASS |
-| T002 the card's copy rules and the §17 screen | done | this round |
-| T002 the card itself, its mount and wiring | open | next session |
+| T002 the card's copy rules and the §17 screen | done | round 9, PASS |
+| T002 the card component and its guard | done | this round |
+| T002 the mount, the data load and the layout CSS | open | next |
 | T003 CLI parity and the end-to-end | open | |
 
 ## Next Steps
-1. This round rules DECISION F040 D10 and builds `digestCardCopy.ts`: the state
-   label the digest needs, and the rule turning the report's markup into copy
-   the cockpit may show, with `scrubUiText` as the final §17 screen.
-2. The next round mounts the card — the `.tsx`, the trigger wiring onto
-   `digestVisibility`, the dismissal port bound at the edge per D8, and the
-   stylesheet from round 8. Every rule it needs is now built and pinned.
+1. This round builds `DigestHeroCard.tsx` with the dismissal port bound at its
+   edge, pins it with a pytest text guard, and repairs R-0756 — the prototype
+   test round 9 shipped blind.
+2. The next round MOUNTS the card: the shell placement, the digest load through
+   `jobDigestPath`, the last-seen clock, and the layout CSS this round
+   deliberately did not write.
 3. Then T003's `remedy job digest`, the end-to-end, the integration gate and
    closure.
 
 ## Risks
 - R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch; none
   is F040's to fix. R-0753 stays OPEN as this feature's documented risk.
-- The card round is the first this feature cannot red-prove: a `.tsx` has no
-  pure logic left to test and this repository renders no component. Every
-  decidable rule has been pushed out of it on purpose, so what remains is
-  wiring, pinned as TEXT by a guard.
-<<<END PLAN9
+- The card gets no vitest colour at all, and the reason is the runner rather than
+  the session: `apps/ui/vitest.config.ts` sets `environment: "node"` and includes
+  `src/**/*.test.ts` only, and the package ships no DOM library, so a `.tsx` is
+  neither collected nor renderable. Its colour is a pytest text guard, which IS
+  red proved, plus `tsc`.
+<<<END PLAN11
 
-<<<BEGIN RECORD9
-Gate: F040 R8 — T002 PART 3, THE HERO CARD'S STYLESHEET. VERDICT PASS. Reviewed by re-running every gate in the reviewer's own driver. TRANSPORT is REAL at sha256 `faa78f87e238e94ca7aea52c2a009d155dcfed083ab5e3ac70550deed30d321c` over 26546 bytes, equal on all three copies. THE PLAN is byte-equal to PLAN8 at 1969 bytes and 41 lines. THE RECORD APPEND reconstructs whole at 1694456 + 1 + 9514 = 1703971, N counted as 3, order holding, base a prefix. THE LEDGER moved as ordered — registered ADDED `['R-0755']` and REMOVED `[]`, resolved ADDED `[]`, `DECISION F040` ADDED `['D9']`, one `^Gate: F040 R7 — ` line, open count 261 to 262. THE TRANSCRIPTION IS FAITHFUL, parsed rather than eyeballed: all SIXTEEN binding values of the three rules are present, the seven `--remedy-*` tokens the sheet names are all defined in `apps/ui/src/styles/tokens.css`, `#fff` occurs exactly once, every other hex and every `rgb(`/`rgba(` occurs zero times, and `animation`, `transition`, `transform` and `@media` are each zero — so `ux_spec.md` §16 is satisfied by carrying no motion at all rather than by a motion block nobody checked. Nothing under `docs/ui/design_reference/` was touched and no `.tsx` entered the change set, so the round did not edit its own authority. THE REVIEWER RED-PROVED THE GUARD IN ITS OWN WORKTREE WITH FIVE MUTATIONS, control first in each: `max-width` 720px to 640px killed the card rule's binding-value test; an UNDEFINED token killed both the CTA's binding-value test and the token sweep; a second raw colour killed the single-literal pin; a `transition` killed the no-motion pin; and a FIFTH the block did not order — swapping the CTA's `color:#fff` for `var(--remedy-ink)`, which is precisely the alternative DECISION F040 D9 REJECTED — killed the CTA binding test and the single-literal pin together. That fifth matters because it proves the guard can tell D9's chosen option from the option D9 turned down, which is the property that makes a decision enforceable rather than merely recorded. A NOTE ON THAT MUTATION, recorded because the reviewer got it wrong first and the lesson is general: the initial spelling replaced the FIRST `color: #fff;` in the file, which is inside the header comment quoting the sibling stylesheet, so the declaration was untouched and the guard stayed green — a green that looked like a gate blind spot and was in fact a mutation that never reached the code. It was caught by checking that the mutated text differed from the original in the DECLARATION rather than merely differing, and re-run against the declaration it reddened immediately. A mutation must be shown to reach the thing under test before its colour means anything. FIVE SUITES all REAL exit 0: `tests/ui_contracts/` 728 to 735, a rise of exactly the SEVEN tests C4 adds with the four pre-existing skips unmoved, plus 515, 295 and the canary 42; both frontend nodes PASSED rather than skipped and are unmoved at 4 and 1, as a round adding no TypeScript requires. Tree clean, zero untracked, seven commits at insertions 314, 219, 18, 6, 60, 256 and 402, every one under 500. THE WORKER'S DEVIATIONS WERE ALL CORRECTLY DECLARED and one is worth keeping: it reports that `git commit` printed 314 insertions for C0b while `git diff --numstat` reads 219 for the same commit, a rewrite-detection difference, and it tabled the `--numstat` figure — which is the right choice, since AGENTS.md's counting rule names the `+` column of the diff and both readings are far under the cap either way.
+<<<BEGIN RECORD11
+Gate: F040 R9 — T002 PART 4, THE HERO CARD'S COPY RULES. VERDICT PASS. Reviewed by re-running every gate in the reviewer's own drivers under the gitignored `.remedy-wt/`, and by running colours the block did not order. TRANSPORT: `.agent/authored/f040-r9.md` and `.agent/last_block.md` are equal at sha256 `fcfd0b131dec41599c12e9b67453c14a2170b0d541a3a79aec545ca1b40cc723` over 24159 bytes; per §3 item 37 that chain walks the worker's own two outputs, no scratchpad original of the R9 block survived its session, and the EMITTED bytes are therefore NOT covered and are not claimed. THE PLAN is byte-equal to PLAN9 at sha256 `257ed7df0420f852d9aa23d880db1c6c227f5db45fa0a448a6d770899de30adb`, 2034 bytes, 41 lines, carrying `## Goal`, `## Next Steps` and the feature id. THE RECORD APPEND reconstructs whole at 1703971 + 1 + 6230 = 1710202, the base a byte PREFIX, N COUNTED at 2 rather than asserted, paragraph order holding over the WHOLE appended region, and a negative control flipped at byte 1704031 INSIDE the FIRST appended paragraph rejected by both readings while the unflipped bytes are accepted by both. THE LEDGER moved exactly as ordered, computed by DIFFERENCE against the base and never from the slice: registered 316 to 316 with ADDED `[]` and REMOVED `[]`, resolved 54 to 54, `DECISION F040` ADDED `['D10']`, one `^Gate: F040 R8 — ` line, open count 262 to 262. THE MODULE READS CORRECTLY AGAINST ALL FOUR OF ITS SOURCES, each parsed rather than grepped: the seven `RunState` members of `packages/core/models.py` are all keys of `DIGEST_STATE_LABELS`; the five `NextAction` ids of `recommended_next_action` are `DIGEST_CTA_RULE_IDS` in that function's own first-match order and the tuple invents none; `scrubUiText` is imported from `../copy/humanCopy` and used, `stateLabel` is not imported, and the empty case is carried by `scrubUiText`'s OWN `fallback` parameter rather than by a second mechanism. FIVE SUITES REPRODUCED TO THE TEST, all REAL exit 0: `tests/ui_contracts/` 758 passed and 4 skipped, the rise of 23 over the base being exactly the tests C5 adds; `tests/ui_server/` 515; `tests/docs/` 295; the canary 42; and both frontend nodes PASSED rather than skipped, unmoved at 4 and 1. Seven commits at insertions 327, 232, 15, 4, 155, 233 and 454 by `git diff --numstat`, every one under 500, with the handback commit at 404. Tree clean, zero untracked, `git worktree list` one line. THE REVIEWER RAN THE TYPESCRIPT COLOUR THE BLOCK FORBADE, AND TWO SENTENCES THE HANDBACK CARRIES ABOUT THAT PROHIBITION ARE FALSE ON DISK. FIRST, deviation 4 states that `apps/ui/src/api/digestCardCopy.test.ts` "has never been executed by a test runner in this round" and that the G7 nodes report only that the foundation is in place. Measured at `5778fccb`: `test_vitest_passes` in `tests/orchestration/test_test_runner.py` runs `npx vitest run` with `cwd` at `apps/ui` and NO scope, so it collects that file with every other — the run reports 36 test files and 717 tests at REAL exit 0, and 38 of its verbose lines name `digestCardCopy.test.ts`. The file WAS executed and WAS green, so the worker understated its own evidence. SECOND, the "Next" section grounds its prohibition partly on "`npx vitest` is refused to this session class", and that is the R-0724 confusion: the direct shell spelling is refused, a `subprocess.run` from a Python driver is not, and a refusal binds the CALLER rather than the environment. Neither sentence damaged anything on disk, so under amend0827 rule 2 they spend no id and buy no correction round; they are dated lines in `.agent/prose_slips.md` at the next round that writes one. THE OTHER TWO GROUNDS OF THAT PROHIBITION ARE TRUE, AND ITS CONCLUSION SURVIVES INTACT: every decidable rule really has been pushed out of the component, this repository really renders no component in any test, and the card round really does get no vitest colour — for a reason about the RUNNER rather than about the session, which is the version the next block must carry. At `5778fccb` `apps/ui/vitest.config.ts` sets `environment: "node"` and `include: ["src/**/*.test.ts"]`, and `apps/ui/package.json` names no jsdom, no happy-dom and no testing library, so a `.tsx` is neither collected by that glob nor renderable in that environment. THE REVIEWER THEREFORE RED-PROVED THE R9 MODULE ITSELF, by the worktree route DECISION F256 D6 fixes, with the unmutated control first and each mutation reverted before the next: control REAL exit 0 at 38 passed; removing the markdown-link unwrap exit 1 at 3 failed; removing the trailing-command strip exit 1 at 5 failed; bypassing `scrubUiText` exit 1 at 2 failed; changing one `RunState` phrase exit 1 at 1 failed; and the restored module exit 0 at 38 passed again, byte-equal to the committed blob. Four of five mutations are red and the module's rules are real. THE FIFTH CAME BACK GREEN AND IS REGISTERED BELOW AS R-0756. The round PASSES: every ordered command is green under the reviewer's own hand, the diff is clean, no block condition of §4 item 5 is met, and the one defect found is a blind test rather than a wrong value — the production module is correct today and the guard over one of its properties is not.
 
-DECISION F040 D10 — THE CARD SHOWS THE SERVER'S WORDS WITH THE REPORT'S MARKUP TAKEN OUT, AND REWRITES NOTHING. THE PROBLEM: `docs/ui/design_reference/ux_spec.md` §17 forbids the default UI showing raw UUIDs or raw JSON and requires human phrasing, while `primary_action.label` is carried verbatim from `recommended_next_action` in `packages/orchestration/run_report.py`, which composes it for a MARKDOWN artifact. MEASURED at `b2cef8cb` over the rule table rather than over the fixtures, because the four goldens reach only four of its five rules: `open-decision` (:385-394) emits a backticked, copy-pasteable CLI command carrying a job-id prefix and a `td:` decision id whenever a blocked item has an answer command, and degrades to the bare sentence when none does; `blocked-failed` (:403-407) builds its target through `_link` (:358-363), which returns MARKDOWN LINK SYNTAX `[the postmortem](ref)` whenever an evidence ref exists; `stopped-by-operator`, `all-green` and `indeterminate` carry neither, and `stopped-by-operator` is reached by no golden at all. So the label is report markup, and rendering it raw in the cockpit would show both a URL-ish ref in brackets and a command containing identifiers. CHOSEN: the CLIENT strips MARKUP AND IDENTIFIERS from the server's label and changes nothing else — a markdown link becomes its own link text, a trailing backticked command is dropped, and the result goes through `scrubUiText` from `humanCopy.ts`, which owns §17's forbidden-word list, as the final screen. The words that survive are the server's own, so DECISION F040 D5's equality between the digest's CTA and the report's recommendation is preserved; what is removed is exactly what the Markdown surface added. ALTERNATIVES CONSIDERED: (a) change `run_report.py` so the label carries no markup — rejected, the label is RIGHT for the report and for the CLI, where a copy-pasteable command is the useful artifact, and F040 may not degrade two shipped surfaces to suit a third; (b) have the client compose its own phrasing per `rule_id` — rejected, it is a second home for the CTA's wording and the digest could then drift from the report, which is the drift D2 spent a round preventing for the urgency formula; (c) render the label raw and accept the ids — rejected, §17 is binding and an id in a hero card is precisely the overclaiming-by-noise this feature exists to remove. HOW TO REVERSE: delete the copy module and render `label` directly; nothing else depends on it. WHAT IT COSTS TO BE WRONG: the card shows a slightly shorter sentence than the report does, and the in-page affordance that replaces the dropped command is what `rule_id` was kept for in the first place, per D5.
-<<<END RECORD9
+- R-0756 — Medium, A VITEST TEST NAMES THE PROTOTYPE-CHAIN HAZARD AND CANNOT SEE IT, SO A GUARD OVER PRODUCTION CODE IS BLIND WHILE READING ON THE PAGE EXACTLY LIKE A GUARD. Raised by the reviewer at the F040 R9 gate, from a mutation the R9 block did not order. THE TEST, at `apps/ui/src/api/digestCardCopy.test.ts` in the `digestStateLabel` describe block: `it("does not read a state off the prototype chain")` asserts `digestStateLabel("toString")` is `"State not recorded"`, under a comment reading "`DIGEST_STATE_LABELS` is a plain object, so an unguarded index would answer a FUNCTION here rather than a sentence". THE DEFECT: `digestStateLabel` folds its key — `String(state ?? "").trim().toLowerCase()` — so `"toString"` becomes `"tostring"`, which `Object.prototype` does not carry, and the lookup misses the prototype entirely and reaches the fallback for the wrong reason. MEASURED at `5778fccb`, inside a disposable worktree, by the F256 D6 route: replacing the whole `Object.prototype.hasOwnProperty.call(DIGEST_STATE_LABELS, key) ? DIGEST_STATE_LABELS[key] : UNREADABLE_STATE_LABEL` expression with `DIGEST_STATE_LABELS[key] ?? UNREADABLE_STATE_LABEL` leaves ALL 38 vitest tests GREEN at REAL exit 0, and all 23 tests of `tests/ui_contracts/test_digest_card_copy.py` green as well, so nothing anywhere would notice the guard being deleted. The mutation was shown to reach a declaration rather than a comment, its bytes differing after comment stripping. THE DISCRIMINATOR THAT DOES WORK, measured by the same route with a probe spec written into the worktree only: `"constructor"` is already lowercase, so it survives the fold, and with the guard present `digestStateLabel("constructor")` answers `"State not recorded"` while with the guard removed it answers `"function Object() { [native code] }"` — a raw JavaScript function, rendered into a hero card, which is the most literal `ux_spec.md` §17 violation this feature could produce. SHIPPED BEHAVIOUR IS CORRECT TODAY and this is not a wrong value on screen; what is wrong is that the property is unpinned, and the natural simplification of that expression to `??` is exactly the edit no test would catch. THE OPEN SET WAS SEARCHED FOR THE DEFECT BEFORE THIS ID WAS MINTED, per §3 item 30: `hasOwnProperty` occurs five times in `.agent/live_review.md` and `toLowerCase` zero times, and no OPEN finding concerns a blind prototype test. The nearest neighbour is `R-0731`, which is the same hazard SHIPPED in `diffViewModel.ts` and RESOLVED at F037 R23 — a different module and a different fault, since there the behaviour was wrong and here only the gate is, so this takes its own id rather than reopening that one. R-0731's resolution is nonetheless the precedent that makes this Medium rather than Low: it landed BOTH halves of its fix on purpose, "because either one alone is undone silently by a later refactor", and this repository has therefore already paid once for exactly the class of drift an unpinned own-property guard invites. FIX, binding on F040 round 10: change the probe value in that test to `"constructor"`, and keep `"toString"` beside it in a SECOND test that states in its own words that the key is folded and that `"toString"` alone would therefore prove nothing — a probe and its discriminator, the shape the rest of that file already uses. Prove the repair by re-running the guard-removal mutation and showing it now goes RED, naming the node ids that died. Touch no production code: the module needs no change, and a fix that edited it would be repairing the wrong half.
+<<<END RECORD11
 
-## SPEC for C3 — `apps/ui/src/api/digestCardCopy.ts`
+SPEC — `apps/ui/src/components/digest/DigestHeroCard.tsx` (C5, new file)
 
-Read `apps/ui/src/copy/humanCopy.ts` in full, then `apps/ui/src/api/jobDigest.ts`
-for this feature's header voice. Open with the house header: what the module is,
-and the DELIBERATE ABSENCES (no clock, no storage, no socket, nothing minted).
+Write the component; this is a description, not a slice, and the words are
+yours. It must satisfy every constraint above and the guard of C6.
 
-Export, each with a one-line WHY comment:
+EXPORT one function component, `DigestHeroCard`.
 
-- `digestStateLabel(state: string): string` — the digest's own state vocabulary
-  rendered for a human. It covers the SEVEN `RunState` values in
-  `packages/core/models.py` and answers a safe phrase for anything else. Put a
-  comment where a reader would reach for `humanCopy.stateLabel` saying why that
-  one is wrong here: its vocabulary is the checklist's and it would answer
-  "Planned" for every digest state.
-- `digestCtaText(label: string): string` — the label with the REPORT'S MARKUP
-  removed and nothing rewritten (constraint 11). It must, in this order:
-  unwrap a markdown link `[text](ref)` to its `text`; drop a trailing backticked
-  command together with the `: ` that introduces it, leaving the human sentence
-  that precedes it; then hand the result to `scrubUiText` IMPORTED from
-  `../copy/humanCopy` as the final §17 screen. A label with neither markup nor a
-  command passes through unchanged except for that screen.
-  DECIDE AND DOCUMENT the empty case: what a label that reduces to nothing
-  becomes. `scrubUiText` already takes a fallback — use it rather than inventing
-  a second one, and say in the comment which fallback you passed and why.
-- `DIGEST_CTA_RULE_IDS` — the five `rule_id` values `recommended_next_action` can
-  return, as a closed readonly tuple, with a comment naming the file and the
-  function they come from. This is what lets the guard notice a sixth rule.
+PROPS, one object, every one of them a VALUE or a callback so the component
+binds nothing it is not the edge for:
+  digest: JobDigest                      — from `../../api/jobDigest`
+  visibility: DigestVisibility           — from `../../api/digestVisibility`
+  port: DigestVisibilityPort             — from `../../api/digestVisibility`
+  onDismissed?: () => void
+  onOpenDecisions?: () => void
+  onPrimaryAction?: (ruleId: string) => void
 
-## SPEC for C4 — `apps/ui/src/api/digestCardCopy.test.ts`
+BEHAVIOUR:
+  - When `visibility.show` is false the component renders `null`. The RULE is
+    `digestVisibility`'s and this component re-derives none of it; it is handed
+    the answer and branches on it.
+  - The dismiss control calls `port.writeDismissal(digest.job_id, Date.now())`
+    and then `onDismissed?.()`. That `Date.now()` is the ONE clock read in the
+    file and it is here because this is the edge — the same split
+    `AgentNowCard.tsx` makes for `recency.ts`.
 
-Read `apps/ui/src/api/recency.test.ts` for conventions. Cover: all seven
-`RunState` values through `digestStateLabel`, written as a table, plus an
-unknown string; `digestCtaText` over each of the FIVE rules' real label shapes,
-built from the shapes `run_report.py` actually emits and not invented ones —
-including the `open-decision` label BOTH with and without a command, and the
-`blocked-failed` label BOTH with and without an evidence ref, since each of
-those two rules has two forms; and the assertion that matters most, that no
-output of `digestCtaText` contains a backtick, a `[`, a `](` or a `td:` id.
+MARKUP, inside `<section className={styles.heroCard} data-state={digest.state}>`:
+  - the headline in `<h2 className={styles.heroHeadline}>`, rendered as the
+    server wrote it, with the constraint-9 reason in a WHY comment above it;
+  - the state phrase from `digestStateLabel(digest.state)`;
+  - the cost line: `digestCostLine(digest.cost)` gives `{ value, estimated }`,
+    and when `estimated` is true the line carries `ESTIMATE_MARK` before the
+    value and `ESTIMATE_PHRASE` after it, the treatment `TopMetricsBar.tsx`
+    already uses;
+  - the ownership sentences ONLY when `digest.ownership.length > 0` — DECISION
+    F040 D3 rules that an empty list is OMITTED rather than rendered empty, and
+    the guard reads that emptiness check;
+  - the decisions control ONLY when `digest.decisions.open_count > 0`, calling
+    `onOpenDecisions`, naming the count and the peak urgency;
+  - the single call to action in `<button className={styles.heroCta}>` whose
+    text is `digestCtaText(digest.primary_action.label)` — never the raw label —
+    calling `onPrimaryAction?.(digest.primary_action.rule_id)`.
 
-## SPEC for C5 — `tests/ui_contracts/test_digest_card_copy.py`
+`data-state` carries the raw state for a LATER round to colour the headline
+from, which is why the state phrase and the attribute are separate: the sheet
+gains its state colours with the mount, and the component needs no edit then.
 
-Read `tests/ui_contracts/test_job_digest_card_contract.py` for the stripper and
-positive-control conventions this repository now uses, and follow them; strip
-comments and string literals before every absence assertion, and pair every zero
-with a salted positive control.
+Write the header comment the way the three sibling digest modules write theirs:
+what the file is, why it exists, and its deliberate absences named where a
+reader would search for them.
 
-Pin, over `apps/ui/src/api/digestCardCopy.ts`:
+SPEC — `tests/ui_contracts/test_digest_hero_card.py` (C6, new file)
 
-- THE PURITY: the forbidden capabilities occur zero times, each with a salted
-  control.
-- THE ONE SOURCE FOR THE §17 SCREEN: the module IMPORTS `scrubUiText` from
-  `../copy/humanCopy`, and it does NOT restate that list — assert that no more
-  than one of `humanCopy`'s forbidden words appears as a literal here, and that
-  the module does not define its own array of them.
-- `stateLabel` IS NOT IMPORTED from `humanCopy` — the wrong-vocabulary trap,
-  asserted so a later edit cannot quietly reach for it.
-- THE FIVE RULE IDS ARE ALL ACCOUNTED FOR, parsed from the SOURCE rather than
-  retyped: read every `NextAction("<id>"` literal out of
-  `packages/orchestration/run_report.py` and assert each id appears in
-  `DIGEST_CTA_RULE_IDS`. A sixth rule added to the report reddens this test,
-  which is the point — this is the same mechanism the seven-state assertion uses
-  for `RunState`, and it is the reason that assertion was worth writing.
-- THE SEVEN RUN STATES ARE ALL ACCOUNTED FOR in `digestStateLabel`, parsed from
-  `packages/core/models.py` exactly as the sibling guard does.
+Follow the shape of `tests/ui_contracts/test_digest_card_copy.py` at `5778fccb`
+— comment stripping, literal blanking, a salted positive control beside every
+absence, and a `TestTheStrippersReallyStrip` class proving the strippers strip.
+Import nothing from that file; the helpers are short and a shared import would
+couple two guards. Pin, each with its own discriminator:
 
-## Done when — the gates
+  1. THE COMPONENT IS THE EDGE AND NOTHING MORE. `localStorage`,
+     `sessionStorage`, `fetch` and `XMLHttpRequest` occur zero times in the
+     executable source; `Date.now` occurs exactly once; `writeDismissal` occurs.
+  2. NO RULE HAS A SECOND HOME. None of the seven `RunState` phrases — parsed
+     out of `DIGEST_STATE_LABELS` in `digestCardCopy.ts`, not retyped — occurs
+     as a quoted literal here, and neither does `~` nor `, estimated`, both
+     parsed out of `TopMetricsBar.tsx`.
+  3. EVERY DECIDED VALUE IS IMPORTED: `digestStateLabel` and `digestCtaText`
+     from the copy module, `digestCostLine` from the envelope module,
+     `ESTIMATE_MARK` and `ESTIMATE_PHRASE` from `TopMetricsBar`.
+  4. THE CTA GOES THROUGH THE RULE. `digestCtaText(` occurs in the source and
+     the raw `primary_action.label` is never placed in markup — assert on the
+     shape you can actually read, and say in the test's own docstring what the
+     reader can and cannot see.
+  5. DECISION F040 D3 IS ON DISK: the ownership section sits behind an
+     emptiness check on `ownership`.
+  6. EVERY `styles.<name>` the component names is a class
+     `DigestHeroCard.module.css` declares — parse the class names out of the
+     sheet rather than retyping them, so a renamed class fails here.
 
-Report ONE line per gate with its REAL exit code. Every gate runs at a commit
-STRICTLY EARLIER than C6.
+PAIR TMB-1 — `apps/ui/src/components/metrics/TopMetricsBar.tsx` (C3)
+TO contains FROM: true — this is an APPEND-shaped pair, so the obligation is
+the §4.9 ordered-equality reading and NEVER a FROM-zero count.
+FROM:
+const ESTIMATE_MARK = "~";
+TO:
+export const ESTIMATE_MARK = "~";
 
-G1 TRANSPORT, at C0b. One sha256 over `.remedy-wt/f040-r9-block.md`, the
-   committed `.agent/authored/f040-r9.md` and `.agent/last_block.md`, with byte
-   lengths, all three EQUAL. This block states no expected digest.
+PAIR TMB-2 — same file (C3)
+TO contains FROM: true — APPEND-shaped, same obligation.
+FROM:
+const ESTIMATE_PHRASE = ", estimated";
+TO:
+export const ESTIMATE_PHRASE = ", estimated";
 
-G2 THE PLAN, at C1. `.agent/plan.md` byte-EQUAL to PLAN9 (report both sha256),
-   under 50 lines, holding `## Goal` and `## Next Steps`.
+WHY THESE TWO PAIRS EXIST: `tests/ui_contracts/test_job_digest_card_contract.py`
+asserts at `5778fccb` that those two byte strings are present in that file and
+that `jobDigest.ts` contains neither — the "one home" property. The hero card
+needs the same two words, and importing them keeps that home single, where
+retyping them would give the phrase the second home the guard exists to
+prevent. Prefixing `export ` leaves both asserted substrings intact, which G5
+re-measures rather than assumes.
 
-G3 THE RECORD APPEND, at C2. Re-measure the pre-commit length yourself; the
-   reviewer read 1703971 at `b2cef8cb`. Base + one separator newline + RECORD9
-   equals the committed length. TWO readings: (a) WHOLE RECONSTRUCTION; (b)
-   PARAGRAPH ORDER, N COUNTED by your script. Report that the base bytes are a
-   PREFIX. NEGATIVE CONTROL in a disposable worktree: flip one byte inside the
-   FIRST appended paragraph, report that BOTH readings reject it and accept the
-   unflipped bytes.
+SPEC — `apps/ui/src/api/digestCardCopy.test.ts` (C4, the R-0756 repair)
 
-G4 THE LEDGER, at C2. Distinct `^- R-\d+ — ` ids with ADDED `[]` and REMOVED
-   `[]` — this round registers NO finding, by design, and D10 explains why.
-   Distinct `^Done: R-\d+` with ADDED `[]`. Distinct `DECISION F040 D\d+` with
-   ADDED exactly `['D10']`. Exactly one `^Gate: F040 R8 — ` line. Report the open
-   count, UNCHANGED at 262.
+In the `digestStateLabel` describe block, replace the existing
+`"does not read a state off the prototype chain"` test with two:
 
-G5 THE MODULE'S SHAPE, at C3. Report the exported names by parsing; that
-   `scrubUiText` is imported from `../copy/humanCopy` and `stateLabel` is NOT;
-   the seven `RunState` values and the five `NextAction` rule ids your script
-   PARSES from the Python sources, and that each appears where the SPEC requires;
-   and the forbidden-capability sweep with a salted control per token.
+  - the same name, now probing `"constructor"`, whose comment states that
+    `"constructor"` is already lowercase and therefore survives the key fold and
+    really reaches `Object.prototype`, and that without the own-property guard
+    it answers the `Object` constructor function;
+  - a second test stating that the key is FOLDED, probing `"toString"` and
+    `"TOSTRING"`, whose comment says these fold to `"tostring"`, which
+    `Object.prototype` does not carry, so they would answer the fallback with or
+    without the guard — which is why the probe above uses `"constructor"`.
 
-G6 THE GUARD AND ITS RED PROOF, at C5. First
-   `python3 -m pytest tests/ui_contracts/test_digest_card_copy.py -q` — REAL exit
-   0 with the passed count. Then, INSIDE A DISPOSABLE WORKTREE, the UNMUTATED
-   control FIRST, then FOUR mutations of `digestCardCopy.ts`, each reverted
-   before the next: (a) a consumed `Date.now()`; (b) `scrubUiText`'s import
-   removed and the call replaced by the raw string; (c) one rule id deleted from
-   `DIGEST_CTA_RULE_IDS`; (d) one `RunState` value dropped from
-   `digestStateLabel`. EACH must redden, and report WHICH tests died by node id,
-   never only a count. BEFORE reporting any colour, prove each mutation REACHED
-   THE CODE: show that the changed bytes are in a declaration and not in a
-   comment — the R8 lesson, where a mutation landed in a header comment and the
-   green that followed meant nothing. Restore, re-run, report the restored exit
-   code and byte equality. Name the worktree, remove it, report `git worktree
-   list` no longer holds it.
-
-G7 VITEST AND THE TYPECHECK, at C5, through the pytest nodes and NOT a direct
-   `npx` call:
-   `python3 -m pytest "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation" -q -rs`
-   and `python3 -m pytest tests/ui_server/test_dashboard_contract.py -k typescript -q -rs`.
-   Report the REAL exit code AND passed-or-SKIPPED for each; the reviewer
-   measured 4 passed and 1 passed at the base, neither skipped. Per constraint 13
-   no TypeScript colour is ordered.
-
-G8 THE SUITES AND THE TREE, at C5. Each its own REAL exit code:
-   `python3 -m pytest tests/ui_contracts/ -q`,
-   `python3 -m pytest tests/ui_server/ -q`,
-   `python3 -m pytest tests/docs/ -q`, and the canary
-   `python3 -m pytest tests/cli/test_golden_path.py -q`. The reviewer measured
-   735 passed with 4 skipped, 515, 295 and 42 at the base; `tests/ui_contracts/`
-   MUST rise by the number of tests C5 adds — report both numbers and the
-   difference. Then `git status --porcelain` EMPTY, `git ls-files --others
-   --exclude-standard` count 0, and the per-commit insertion counts for C0a
-   through C5, every one under 500.
-
-## Handback
-
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: the state
-block, the `## Commits` table with a `+/-` column from `git diff --numstat`, the
-deviations, the item-status table with every bundle item and every gate
-appearing exactly once, and the next steps. State `SESSION 2` of F040 and round
-9. No length cap. Record that every DECIDABLE rule of the hero card is now built
-and pinned and that NO card, NO mount and NO markup landed; name R-0570, R-0752
-and R-0755 as OPEN and routed to paydown and R-0753 as OPEN and carried; and
-name the next action as T002 part 5 — the `.tsx`, its mount, the trigger wiring
-and the dismissal port bound at the edge, which is the first round of this
-feature that cannot be red-proved and should be scoped accordingly.
+Change nothing else in that file. The production module is correct and is not
+edited.
