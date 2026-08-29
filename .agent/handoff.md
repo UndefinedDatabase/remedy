@@ -64,7 +64,7 @@ insertion counts G8 produced.
 | `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/g7-r16 c924eb41 --detach` | created, detached at `c924eb41` — the ONLY place any mutation ran |
 | `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g7-r16` | removed by exact path, exit 0 |
 | `git worktree prune` | exit 0; `git worktree list` then shows the primary checkout alone |
-| `git push -u origin feature/f033-hunk-approval-v2` | see the line recorded under Next; run after C6 |
+| `git push -u origin feature/f033-hunk-approval-v2` | exit 0 — `1329ef45..b511f625  feature/f033-hunk-approval-v2 -> feature/f033-hunk-approval-v2`, upstream set to `origin/feature/f033-hunk-approval-v2`. Recorded by C7; see D6 |
 
 No PR was created, edited or merged. No force-push, no history rewrite, no branch
 deletion. No `npm`, no `npx`, no vitest run — none was ordered and none was needed.
@@ -368,9 +368,21 @@ TRUTH plus the detail-popover label only. `^- R-0738 — ` is still 1 and
 verdict on it; the `Done: R-0744` paragraph in `.agent/live_review.md` is the
 reviewer's authored text, applied verbatim from the RECORDF033R16 slice.
 
-No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4, C5,
-C6 were committed in that order, one commit each, with no extra, dropped or reordered
-commit.
+**D6 — ONE EXTRA COMMIT beyond the block's ordered sequence: C7, which fills the real
+push outcome into External actions.** The block's Bundle ends at C6 and the
+handback template carries a write-once rule for `.agent/handoff.md`, so this is a
+departure and is declared here rather than left to the commit table. The reason is
+that the same template mandates "Every push … command + outcome", and the push of
+the handback commit necessarily happens AFTER that commit exists: C6 could only
+carry the command with a promise where the outcome belongs. C7 changes exactly one
+table row — the push line — plus this paragraph, and nothing else in this file. It
+is not a trim (nothing was shortened; the handback has no length cap), and the
+recursion is bounded at one: C7's own push is the last action of the round and is
+reported in the delegation response rather than by a C8.
+
+Departure from the block's ordered commit sequence, stated in full: C0a, C0b, C1,
+C2, C3, C4, C5, C6 were committed in that order, one commit each, with no dropped
+and no reordered commit; C7 is the single EXTRA commit, for the reason in D6 above.
 
 ## Item-status table
 
@@ -397,7 +409,7 @@ commit.
 | G7 THE MUTATION RED-PROOFS at C5 | done | all three RED, real exit 1 |
 | G8 SUITES AND STRUCTURE | deviated | D3 (39 not 33), D4 (`declared - touched` holds `.agent/handoff.md`) |
 | Write NO `Landed:` line, NO `Done:` paragraph of my own | done | D5 |
-| Push the branch | done | recorded under External actions and Next |
+| Push the branch | done | exit 0, `1329ef45..b511f625`; outcome recorded by C7, declared as D6 |
 
 ## Next
 
