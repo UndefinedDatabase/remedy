@@ -1,11 +1,13 @@
 """Guard: every apply label the backend fold can emit has a label in the popover.
 
-Finding R-0738. `_task_truth_maps` in `packages/orchestration/ui_server.py` folds a
-task's changes to ONE apply label, and that label reaches the UI as
-`RemedyTaskItem.applyStatus` and is rendered by the `applyStatus` helper in
-`apps/ui/src/components/detail/DetailPopover.tsx`. That helper ends in
-`return UNKNOWN;`, so a value the fold emits and the helper does not branch on
-renders as "Unknown" — a silent, uninformative answer rather than a broken build.
+Finding R-0738. `fold_task_apply_states` in `packages/orchestration/proof_chain.py`
+folds a task's changes to ONE apply label. The cockpit's `_task_truth_maps` in
+`packages/orchestration/ui_server.py` is now only an adapter over that fold, so the
+label reaches the UI as `RemedyTaskItem.applyStatus` and is rendered by the
+`applyStatus` helper in `apps/ui/src/components/detail/DetailPopover.tsx`. That
+helper ends in `return UNKNOWN;`, so a value the fold emits and the helper does not
+branch on renders as "Unknown" — a silent, uninformative answer rather than a broken
+build.
 
 NOTHING ELSE IN THIS REPOSITORY READS THE TWO ENDS TOGETHER. The Python suite cannot
 see the TSX, and the shipped vitest config (`apps/ui/vitest.config.ts`, environment
@@ -15,9 +17,12 @@ imports nothing from `apps/`, exactly as `tests/ui_contracts/test_diff_envelope_
 and `tests/ui_contracts/test_decision_answer_wiring.py` do.
 
 THE EMITTED SET IS DERIVED, NOT RESTATED. `fold_apply_labels` walks the AST of the
-shipped `_task_truth_maps` and collects every string literal it assigns to
-`apply_by_task[...]`, so adding a fifth state on the Python side alone fails a test
-here rather than shipping as "Unknown".
+shipped `fold_task_apply_states` and collects every string literal it assigns to
+`state_by_task[...]`, so adding a fifth state on the Python side alone fails a test
+here rather than shipping as "Unknown". THE WALK NAMES ITS OWN FILE AND FUNCTION in
+the constants below: move the fold to another module without moving these with it and
+the walk finds NOTHING, which `test_the_ast_derivation_finds_labels_at_all` exists to
+catch before an empty expected set silently passes every seam assertion beneath it.
 
 THE POPOVER IS NOT THE ONLY SURFACE. `apps/ui/src/components/panels/TaskChecklistCard.tsx`
 is the tasks-card row an operator watches while a job runs, and it renders the same
@@ -41,12 +46,18 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SERVER = REPO_ROOT / "packages" / "orchestration" / "ui_server.py"
+# The fold's home, which is NOT the HTTP server: it lives beside the
+# `ProofChange.apply_state` field it reads so the run report can import it too.
+FOLD_MODULE = REPO_ROOT / "packages" / "orchestration" / "proof_chain.py"
 POPOVER = REPO_ROOT / "apps" / "ui" / "src" / "components" / "detail" / "DetailPopover.tsx"
 CARD = REPO_ROOT / "apps" / "ui" / "src" / "components" / "panels" / "TaskChecklistCard.tsx"
 
-FOLD_FUNCTION = "_task_truth_maps"
-FOLD_MAP = "apply_by_task"
+FOLD_FUNCTION = "fold_task_apply_states"
+FOLD_MAP = "state_by_task"
+# The local list of per-change apply states the fold decides from. Named here so the
+# membership predicate below binds to the fold's real local rather than to a name that
+# survived only in this file.
+FOLD_STATE_LIST = "apply_states"
 HELPER = "applyStatus"
 
 # The card's two helpers, and the field they read beside the lifecycle state.
@@ -97,7 +108,7 @@ def strip_ts_comments(text: str) -> str:
 
 def fold_apply_function() -> ast.FunctionDef:
     """The AST of the shipped fold, or an assertion naming what is missing."""
-    tree = ast.parse(SERVER.read_text())
+    tree = ast.parse(FOLD_MODULE.read_text())
     fold = next(
         (
             node for node in ast.walk(tree)
@@ -106,14 +117,14 @@ def fold_apply_function() -> ast.FunctionDef:
         None,
     )
     assert fold is not None, (
-        f"{SERVER.name} defines no function named {FOLD_FUNCTION}; this guard would "
+        f"{FOLD_MODULE.name} defines no function named {FOLD_FUNCTION}; this guard would "
         f"measure the popover against an empty backend set and could not fail"
     )
     return fold
 
 
 def fold_apply_labels() -> set[str]:
-    """Every string literal the SHIPPED fold can assign to `apply_by_task[...]`.
+    """Every string literal the SHIPPED fold can assign to `state_by_task[...]`.
 
     Derived from the AST rather than listed, so a fifth state added on the Python side
     alone widens this set and reddens the agreement test below instead of reaching an
@@ -136,7 +147,7 @@ def fold_apply_labels() -> set[str]:
 
 
 def fold_membership_tests_over_apply_states() -> set[str]:
-    """Every literal the fold tests for MEMBERSHIP of the `apply_states` list.
+    """Every literal the fold tests for MEMBERSHIP of its `FOLD_STATE_LIST` local.
 
     An AST predicate, not a text search: the fold's WHY comment quotes the membership
     test it replaced, so a grep over the source would be answered by the prose that
@@ -153,7 +164,7 @@ def fold_membership_tests_over_apply_states() -> set[str]:
             if (
                 isinstance(op, ast.In)
                 and isinstance(comparator, ast.Name)
-                and comparator.id == "apply_states"
+                and comparator.id == FOLD_STATE_LIST
                 and isinstance(node.left, ast.Constant)
                 and isinstance(node.left.value, str)
             ):
@@ -235,7 +246,7 @@ def emitted_partial_state() -> str:
     """
     emitted = fold_apply_labels()
     assert PARTIAL in emitted, (
-        f"{FOLD_FUNCTION} in {SERVER.name} emits {sorted(emitted)} and not {PARTIAL!r}; "
+        f"{FOLD_FUNCTION} in {FOLD_MODULE.name} emits {sorted(emitted)} and not {PARTIAL!r}; "
         f"the card assertions below would pin a state the backend can no longer produce"
     )
     return PARTIAL
@@ -304,7 +315,7 @@ class TestTheReadersAreNotVacuous:
     def test_the_ast_derivation_finds_labels_at_all(self):
         labels = fold_apply_labels()
         assert labels, (
-            f"the AST walk over {FOLD_FUNCTION} in {SERVER.name} found no literal "
+            f"the AST walk over {FOLD_FUNCTION} in {FOLD_MODULE.name} found no literal "
             f"assigned to {FOLD_MAP}; an agreement measured against an empty backend "
             f"set passes on any popover at all"
         )
@@ -322,7 +333,7 @@ class TestTheBackendCanReallyEmitPartial:
     def test_the_fold_assigns_the_partial_label(self):
         labels = fold_apply_labels()
         assert "partial" in labels, (
-            f"{FOLD_FUNCTION} in {SERVER.name} assigns {sorted(labels)} to {FOLD_MAP} "
+            f"{FOLD_FUNCTION} in {FOLD_MODULE.name} assigns {sorted(labels)} to {FOLD_MAP} "
             f"and never 'partial', so a task whose changes disagree is folded to one of "
             f"the confident answers again — the whole of finding R-0738"
         )
@@ -343,7 +354,7 @@ class TestTheBackendCanReallyEmitPartial:
         # apply_states' not in source` fails on the prose that explains the repair.
         offenders = sorted(fold_membership_tests_over_apply_states())
         assert not offenders, (
-            f"{FOLD_FUNCTION} in {SERVER.name} still tests {offenders} for MEMBERSHIP "
+            f"{FOLD_FUNCTION} in {FOLD_MODULE.name} still tests {offenders} for MEMBERSHIP "
             f"of apply_states; that reports 'applied' when a single change of many "
             f"applied, which is the exact reading the agreement fold replaced"
         )
@@ -358,14 +369,14 @@ class TestEveryEmittedValueHasALabel:
         branched = set(RE_BRANCH_VALUE.findall(helper_body(popover_code(), HELPER)))
         unlabelled = sorted(emitted - branched)
         assert not unlabelled, (
-            f"{FOLD_FUNCTION} in {SERVER.name} can emit {unlabelled}, which {HELPER} in "
+            f"{FOLD_FUNCTION} in {FOLD_MODULE.name} can emit {unlabelled}, which {HELPER} in "
             f"{POPOVER.name} does not branch on; every one of them renders as the "
             f"UNKNOWN fallback, so the operator is told nothing rather than told wrong"
         )
         unreachable = sorted(branched - emitted)
         assert not unreachable, (
             f"{HELPER} in {POPOVER.name} branches on {unreachable}, which "
-            f"{FOLD_FUNCTION} in {SERVER.name} can never emit; a branch no backend "
+            f"{FOLD_FUNCTION} in {FOLD_MODULE.name} can never emit; a branch no backend "
             f"value reaches is dead markup that reads as a supported state"
         )
 
