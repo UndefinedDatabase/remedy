@@ -1,321 +1,349 @@
-# Handback — F040 · SESSION 1 · round 1 — THE CLAIM, THE TWO CANDIDATES, THE SEAM INVENTORY
+# Handback — F040 · SESSION 1 · round 2 — THE THREE SPEC DECISIONS AND THE ONE-SOURCE URGENCY
 
-> Written by the WORKER in C7, the last commit of the bundle. Every exit code
+> Written by the WORKER in C9, the last commit of the bundle. Every exit code
 > below is REAL, taken from `subprocess.run(...).returncode` inside a script
 > under the gitignored `.remedy-wt/`; not one was read through a pipe.
 
 ## Session
 
-SESSION 1 of feature F040 · round 1 · rounds so far 1.
+SESSION 1 of feature F040 · round 2 · rounds so far 2.
 
 The soft limit (25 rounds / 7 sessions, amend0827 rule 6) is not approached, so
 no scope report is owed.
 
 ## Range
 
-Review of `f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1`..`HEAD` on branch
-`feature/f040-completion-digest`, cut from `main` at that base — the merge commit
-of pull request 222.
+Review of `6664bf5e5e88b11708e5f350f2da90222072a558`..`HEAD` on branch
+`feature/f040-completion-digest`. The base is round 1's handback commit and was
+the tip of the branch when this round opened.
 
 ## Commits
 
-### ed8fb753 docs(f040): save the round 1 step block verbatim
+### fa008282 docs(f040): save the round 2 step block as authored
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f040-r1.md` | +339 / -0 | C0a. The round's step block, copied with `shutil.copyfile` from `.remedy-wt/f040-r1-block.md`. Never retyped. |
+| `.agent/authored/f040-r2.md` | +349 −0 | C0a — the block, copied with `shutil.copyfile` from `.remedy-wt/f040-r2-block.md`, never retyped |
 
-### 0392be34 docs(f040): mirror the round 1 block into last_block
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/last_block.md` | +308 / -275 | C0b. The same bytes again, by a second `shutil.copyfile` from the same scratch original. |
-
-### 05dca153 docs(f040): retarget the plan at the F040 claim round
+### b681213c docs(f040): mirror the round 2 block into last_block
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +25 / -28 | C1. Full rewrite from slice PLAN1. FIRST substantive commit, ahead of the ledger append, so the Commit Gate reads a plan that matches the work. |
+| `.agent/last_block.md` | +299 −289 | C0b — the same bytes, the same `shutil.copyfile` call |
 
-### 249e648f docs(f040): record the two discharged closure candidates and decision D1
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/live_review.md` | +4 / -0 | C2. APPEND-ONLY: one blank separator line plus RECORD1's two paragraphs. Zero deletions. No id minted, none resolved. |
-
-### 7616a884 docs(f040): empty the closure candidates carrier
+### 3ecf5b16 docs(f040): retarget the plan at the round 2 decisions
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/candidates.md` | +6 / -35 | C3. Full rewrite from slice CAND1. The block condition on the F040 claim lifts here. |
+| `.agent/plan.md` | +19 −18 | C1 — rewritten from slice PLAN2; first substantive commit, ahead of the ledger append, per constraint 3 |
 
-### 2ed1ba3d docs(f040): claim F040 in the roadmap ledger
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `docs/roadmap/STATUS.md` | +1 / -1 | C4. Pair PAIR-STATUS, a REWRITE (`TO contains FROM: false`), applied once. `- [ ] F040` becomes `- [~] F040`. |
-
-### 3ef0b5a0 docs(f040): retarget the context at the digest feature
+### 72cffd6c docs(f040): book the round 1 verdict, R-0751 and decisions D2 to D4
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/context.md` | +19 / -20 | C5. Full rewrite from slice CONTEXT1, standing project constraints carried forward inside the slice. |
+| `.agent/live_review.md` | +10 −0 | C2 — slice RECORD2 appended: the R1 PASS, finding R-0751, and DECISIONS F040 D2, D3 and D4 |
 
-### 6149c7ac docs(f040): measure the four digest seams into the round 1 inventory
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/f040_inventory.md` | +499 / -0 | C6. THE WORKER'S OWN MEASUREMENT per the block's SPEC. 499 lines, 67 `file:line` citations over 28 distinct paths, every one resolving under `git ls-tree HEAD`. |
-
-### C7 — this commit (self-reference, R-0149 pattern)
+### bbf4ded2 docs(f040): record the round 1 plan-table slip
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | not tabled | A handback cannot table the commit that writes it. Full rewrite per docs/agents/handback_template.md. |
+| `.agent/prose_slips.md` | +1 −0 | C3 — slice SLIP2, the one-line append-only slip |
+
+### bcd96133 docs(f040): amend the feature file with A1, A2 and the plural test dir
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/roadmap/features/T5_F040.md` | +16 −1 | C4 — PAIR-OWNERSHIP (append-shaped, amendments A1 and A2) and PAIR-TESTPATH (rewrite, the plural `tests/ui_contracts/`) |
+
+### c832c898 fix(f040): correct the next-action rule table comment arity (R-0751)
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `packages/orchestration/run_report.py` | +1 −1 | C5 — PAIR-COMMENT; the comment now names the arity the value has |
+
+### f49d42b7 feat(f040): add decision_urgency as the single home of the formula
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `packages/orchestration/decision_inbox.py` | +51 −0 | C6 — the SPEC'd public `decision_urgency`, written by the worker, placed after `_answerable_by_decision_resolve` |
+
+### db29cfa4 test(f040): pin every property of the urgency formula
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/orchestration/test_decision_inbox.py` | +72 −0 | C7 — section (h), class `TestDecisionUrgency`, one test per property the SPEC lists |
+
+### c9fbdc6e test(f040): pin the python and typescript urgency homes equal
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/ui_contracts/test_decision_urgency_parity.py` | +185 −0 | C8 — the parity pin, reading `decisionOrder.ts` as comment-stripped TEXT |
+
+### C9 — this file (self-reference)
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | rewritten | C9 — the handback; a handoff cannot table the commit that writes it (R-0149 pattern). The push that follows it is likewise unrecordable by it. |
+
+Every `+/-` cell above is taken from `git diff --numstat <sha>^ <sha>`, not from a
+file line count. Every commit touches exactly one path. The largest insertion count
+is 349 (C0a); none reaches the 500 cap.
 
 ## External actions
 
-| Command | Outcome |
-|---------|---------|
-| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — Open PR Gate passes, no open PR. PR 222 was already merged into `main` before this round began. |
-| `git checkout -b feature/f040-completion-digest f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1` | `Switched to a new branch 'feature/f040-completion-digest'`; `git rev-parse HEAD` = `f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1`; `git status --porcelain` empty. |
-| `git worktree add --detach .remedy-wt/g3wt HEAD` (inside the G3 script) | returncode 0. The disposable worktree for the G3 negative control. |
-| `git worktree remove --force .remedy-wt/g3wt` + `git worktree prune` | Removed; the script re-read `WT.exists()` as `False` and the PRIMARY checkout's `git status --porcelain` as `''`. |
-| `git reset --mixed HEAD~1` once and `git commit --amend` three times, all on C6 | Local only, never pushed, no history rewrite of any published commit. Reason in Deviations, item 1. |
-| `git push -u origin feature/f040-completion-digest` | Issued immediately after this commit. NO pull request is opened — the block forbids it; the PR is created at closure. |
+| Action | Outcome |
+|--------|---------|
+| `git worktree add .remedy-wt/f040r2-wt-g3 --detach HEAD` | created at `bbf4ded2` — G3's negative control |
+| `git worktree remove --force .remedy-wt/f040r2-wt-g3` | removed; `git worktree list` then held the primary checkout alone |
+| `git worktree add .remedy-wt/f040r2-wt-g7 --detach HEAD` | created at `c9fbdc6e` — G7's mutation red proof |
+| `git worktree remove --force .remedy-wt/f040r2-wt-g7` | removed; `git worktree list` then held the primary checkout alone |
+| `git push -u origin feature/f040-completion-digest` | run once, after C9, per constraint 11 |
 
-`python3 -m apps.cli.grouped` was NOT needed this round: no CLI invocation was
-required by any gate. The `remedy` console script is denied in this sandbox and
-was not called.
+No pull request was created, edited or merged. No `gh` command was run. No branch
+was cut. Nothing was force-pushed. The `remedy` console script is denied in this
+sandbox and was not needed: no gate ordered it.
 
 ## Verification
 
-One line per gate, each with its REAL exit code.
+One line per gate, with the REAL exit code.
 
-    G1  TRANSPORT, at C0b .................................... REAL exit 0
-        sha256 9c0c71913863c6f9c15bc648cc94ecf9aefed84fd55d474732a63e9e5ad3e276
-        byte length 21083, and ALL THREE FILES ARE EQUAL:
-          .remedy-wt/f040-r1-block.md   (the scratch original)
-          .agent/authored/f040-r1.md    (committed at C0a)
-          .agent/last_block.md          (committed at C0b)
-        ONE digest comparison, not a chain.
+| Gate | Command / reading | Exit |
+|------|-------------------|------|
+| G1 | sha256 over the scratch original, `.agent/authored/f040-r2.md` and `.agent/last_block.md` | 0 |
+| G2 | `.agent/plan.md` byte-equal to PLAN2, 38 lines, `## Goal` and `## Next Steps` present | 0 |
+| G3a | whole reconstruction + paragraph order, accepted in the primary checkout | 0 |
+| G3b | the same two readings, accepted in the disposable worktree BEFORE the flip | 0 |
+| G3c | the same two readings, both REJECTING the one-byte flip in the worktree | 0 |
+| G4 | the ledger and `.agent/prose_slips.md` set readings | 0 |
+| G5a | PAIR-OWNERSHIP, PAIR-TESTPATH and the `tests/ui_contract/` sweep | 0 |
+| G5b | `python3 -m pytest tests/docs/ -q` — 295 passed | 0 |
+| G5c | `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` — 30 passed | 0 |
+| G6a | PAIR-COMMENT counts, `DECISION_INBOX_VERSION`, `build_decision_inbox`'s key set by CALLING it | 0 |
+| G6b | `python3 -c "…NEXT_ACTION_RULES…"` — printed `5 {2}` | 0 |
+| G6c | `ruff check packages/orchestration/run_report.py packages/orchestration/decision_inbox.py` | 0 |
+| G6d | `python3 -m compileall -q packages/orchestration/decision_inbox.py` | 0 |
+| G7a | `pytest tests/orchestration/test_decision_inbox.py tests/ui_contracts/test_decision_urgency_parity.py -q` — 58 passed | 0 |
+| G7b | the UNMUTATED CONTROL, same two files, inside the worktree — 58 passed | 0 |
+| G7c | the MUTANT, `(blocked + 1) * age` → `blocked * age` — 9 failed, 49 passed | 1 |
+| G8a | `python3 -m pytest tests/ui_server/ -q` — 508 passed | 0 |
+| G8b | `python3 -m pytest tests/orchestration/test_test_runner.py -q` — 52 passed | 0 |
+| G8c | `python3 -m pytest tests/regression/test_resource_safety.py -q` — 21 passed | 0 |
+| G8d | `python3 -m pytest tests/orchestration/test_integrity_gate.py -q` — 16 passed | 0 |
+| G8e | `python3 -m pytest tests/orchestration/test_run_report.py -q` — 81 passed | 0 |
+| G8f | `python3 -m pytest tests/cli/test_golden_path.py -q` — 42 passed (canary) | 0 |
+| G8g | clean tree, no untracked files, per-commit insertion counts | 0 |
 
-    G2  THE PLAN, at C1 ...................................... REAL exit 0
-        .agent/plan.md   sha256 7271c247fc0583dd41b71e65273e81efbe3392c2123f7e9731733c78e42d363c, 1805 bytes
-        slice PLAN1      sha256 7271c247fc0583dd41b71e65273e81efbe3392c2123f7e9731733c78e42d363c, 1805 bytes
-        BYTE-EQUAL True · 37 lines (< 50 True) · holds `## Goal` True · holds `## Next Steps` True
+The decisive readings, in the order the block ordered them.
 
-    G3  THE RECORD APPEND, at C2 ............................. REAL exit 0
-        ARITHMETIC, base re-measured by this worker at the commit it appended at:
-          1640101 + 1 + 3531 = 1643633 = the committed byte length. OK.
-          (The reviewer's stated 1640101 at `f5b1e6c5` is confirmed, not assumed.)
-        N COUNTED by the script from RECORD1's blank-line units = 2.
-        UNFLIPPED committed file, sha256 709af495bff76fa5015ff57d9510976ebf2f2a7aec926f63fa76748f8f4021b1:
-          (a) WHOLE RECONSTRUCTION — base + separator + slice compared to the ENTIRE
-              committed file, not a prefix test .............. True
-          (b) PARAGRAPH ORDER — last 2 blank-line units equal RECORD1's 2
-              paragraphs IN ORDER ........................... True
-        NEGATIVE CONTROL, inside the disposable worktree `.remedy-wt/g3wt`:
-          absolute byte 1640202 flipped, b' ' -> b'\x00', INSIDE the FIRST appended
-          paragraph (which spans bytes 1640102..1641721).
-          flipped file sha256 5bba18c4461291184b375686fe432abb3d01bf05f2d1c2f6a3005cbb06fc9a7b
-          (a) rejects the flip: True   (b) rejects the flip: True
-          restored file: (a) accepts True, (b) accepts True
-        Worktree removed; PRIMARY `git status --porcelain` = '' at the reading.
+**G1 TRANSPORT.** All three files 29954 bytes at sha256
+`d05f9c085aa6227ae2de7a8dc666901900e2404b3aa657a480711ccf4ad39e1c` — the scratch
+original `.remedy-wt/f040-r2-block.md`, the committed `.agent/authored/f040-r2.md`
+and the committed `.agent/last_block.md`. ALL THREE EQUAL.
 
-    G4  THE LEDGER, at C1 and at C2 .......................... REAL exit 0
-        at C1 05dca153:  `^- R-\d+ — ` distinct 311 · `^Done: R-\d+ — ` distinct 53 · open 258
-                         `^DECISION F040 D\d+ — ` ids []
-        at C2 249e648f:  `^- R-\d+ — ` distinct 311 · `^Done: R-\d+ — ` distinct 53 · open 258
-                         `^DECISION F040 D\d+ — ` ids ['D1']
-        ADDED registered ids C1->C2 = []      (must be [], and is)
-        ADDED resolved   ids C1->C2 = []      (must be [], and is)
-        ADDED F040 DECISION ids     = ['D1']  (must be ['D1'], and is)
-        `^Done: R-0570` line count at C2 = 0 — R-0570 STAYS OPEN.
+**G2 THE PLAN.** `.agent/plan.md` and slice PLAN2 are both 1783 bytes at sha256
+`0411c9f63ddacd0bcbc6dc358f16c0feae7519823d2a9487c50ab32e5a35c4dd`; BYTE-EQUAL
+is True. 38 lines, under 50. `## Goal` and `## Next Steps` both present.
 
-    G5  THE CANDIDATES FILE, at C3 ........................... REAL exit 0
-        byte length BEFORE (at C2 249e648f) 3024 · AFTER (at C3 7616a884) 796
-        .agent/candidates.md sha256 bae384d32dfac4880dac561d9323dee202630288958053b22f815957271b2d89
-        slice CAND1          sha256 bae384d32dfac4880dac561d9323dee202630288958053b22f815957271b2d89
-        BYTE-EQUAL True, for BOTH the working tree and the committed blob.
-        occurrences of `· F033 · 2026-08-29`: before 1, after 0.
+**G3 THE RECORD APPEND.** The pre-commit length was re-measured here, not taken
+from the block: 1643633 bytes, which agrees with the reviewer's reading at
+`6664bf5e`. RECORD2 is 12099 bytes; 1643633 + 1 separator newline + 12099 =
+1655733, and the committed file is 1655733. Reading (a), WHOLE RECONSTRUCTION
+against the ENTIRE committed file rather than a prefix test: True. N, counted by
+the script and not assumed, is 5. Reading (b), the last 5 blank-line units equal
+RECORD2's 5 paragraphs IN ORDER: True. NEGATIVE CONTROL, in the disposable
+worktree `.remedy-wt/f040r2-wt-g3` and never in the primary checkout: byte offset
+1643674, inside the FIRST appended paragraph, flipped `b'C'` → `b'c'`
+(`VERDICT PASS` → `VERDIcT PASS`). Both readings ACCEPT the unflipped bytes there
+(exit 0) and both REJECT the flipped ones (exit 0 for the expected rejection).
+The worktree was removed and `git worktree list` then named the primary checkout
+alone.
 
-    G6  THE CLAIM AND THE DOCS PINS, at C4 — four readings, four exit codes:
-        G6 structural ........................................ REAL exit 0
-          PAIRSTATUS-FROM occurs 0 · PAIRSTATUS-TO occurs 1
-          `git diff --numstat 2ed1ba3d^ 2ed1ba3d` = exactly `1  1  docs/roadmap/STATUS.md`
-          lines matching `^- \[~\] F\d{3} — ` in the whole file = 1
-        G6 `python3 -m pytest tests/docs/ -q` ................ REAL exit 0 — 295 passed in 0.44s
-        G6 `python3 -m pytest tests/orchestration/test_roadmap_index.py -q`
-                                                  ........... REAL exit 0 — 30 passed in 0.35s
-        Both figures EQUAL the reviewer's base measurement (295 and 30).
+**G4 THE LEDGER.** Distinct `^- R-\d+ — ` ids 311 → 312; ADDED registered
+`['R-0751']`. Distinct `^Done: R-\d+` 53 → 53; ADDED resolved `[]`. Distinct
+`^DECISION F040 D\d+ — ` `['D1']` → `['D1', 'D2', 'D3', 'D4']`; ADDED exactly
+`['D2', 'D3', 'D4']`. `^Gate: F040 R1 — ` occurs exactly 1 time.
+`^Done: R-0570` still counts 0. `.agent/prose_slips.md` 283 → 284 lines,
+difference 1, and the old bytes are a byte-exact PREFIX of the new file.
 
-    G7  THE STATE READERS AND THE CANARY, at C6 — five readings, five exit codes:
-        `python3 -m pytest tests/ui_server/ -q` .............. REAL exit 0 — 508 passed in 31.22s
-        `python3 -m pytest tests/orchestration/test_test_runner.py -q`
-                                                  ........... REAL exit 0 —  52 passed in  5.35s
-        `python3 -m pytest tests/regression/test_resource_safety.py -q`
-                                                  ........... REAL exit 0 —  21 passed in 11.56s
-        `python3 -m pytest tests/orchestration/test_integrity_gate.py -q`
-                                                  ........... REAL exit 0 —  16 passed in  0.28s
-        `python3 -m pytest tests/cli/test_golden_path.py -q` . REAL exit 0 —  42 passed in 20.72s
-        All five EQUAL the reviewer's base measurement (508, 52, 21, 16, 42).
-        THE FOUR STATE READERS WERE RUN AS FOUR, NOT AS THREE.
+**G5 THE FEATURE FILE.** PAIR-OWNERSHIP is APPEND-shaped — `TO contains FROM` is
+True — so it is measured that way: PAIROWNERSHIP-FROM occurs exactly 1x in the
+committed file (NOT counted to zero), and each of the 13 TO-ONLY lines occurs
+exactly 1x among the 16 lines C4's diff ADDS. PAIR-TESTPATH is a REWRITE —
+`TO contains FROM` is False — so FROM 0x and TO 1x after C4.
+`git grep -n "tests/ui_contract/"` over the whole repository returns 35 hits,
+every one of them printed in the round's transcript: 22 in the append-only
+records and inventories under `.agent/` (including this round's own block, which
+quotes the retired spelling on purpose) and 13 in OTHER feature files under
+`docs/roadmap/features/` — T4_F119, T4_F126, T5_F008, T5_F009, T5_F019, T5_F022,
+T5_F023, T5_F024, T5_F031, T5_F038, T5_F041, T5_F042 and T7_F142. Hits in
+`docs/roadmap/features/T5_F040.md`: 0. The count was REPORTED, not driven to
+zero, which is the item-2 trap the block names.
 
-    G8  THE INVENTORY AND THE TREE, at C6 .................... REAL exit 0
-        `.agent/f040_inventory.md` exists, 27101 bytes over 499 lines.
-        All six SPEC section headings present, in order:
-          ## 1. The next-action rule table — the one-source seam for the digest's CTA
-          ## 2. The decision inbox read path
-          ## 3. The cost line and its basis
-          ## 4. The ownership seam — ABSENT, and here is how it was searched
-          ## 5. The server seam
-          ## 6. The UI and CLI seams
-        67 `file:line` citations over 28 distinct paths; EVERY path resolves under
-        `git ls-tree HEAD -- <path>`; the not-resolving list is [].
-        `git status --porcelain` EMPTY.
-        `git ls-files --others --exclude-standard` count 0.
-        Per-commit insertions, from `git diff --numstat <sha>^ <sha>`, every one
-        under 500: C0a 339 · C0b 308 · C1 25 · C2 4 · C3 6 · C4 1 · C5 19 · C6 499.
+**G6 THE PRODUCTION EDITS.** PAIRCOMMENT-FROM 0x and PAIRCOMMENT-TO 1x in
+`packages/orchestration/run_report.py`.
+`python3 -c "from packages.orchestration.run_report import NEXT_ACTION_RULES as R; print(len(R), {len(r) for r in R})"`
+printed `5 {2}` — the value the repaired comment now describes.
+`ruff check` on both edited modules: `All checks passed!`.
+`python3 -m compileall -q packages/orchestration/decision_inbox.py`: silent, exit 0.
+`DECISION_INBOX_VERSION` is still 1. `build_decision_inbox` was CALLED on a real
+two-task job with an enqueued task decision: its top-level keys are still
+`['decisions', 'job_id', 'version']` and its cards still carry `age_seconds`,
+`blocked_count` and `answerable_by_decision_resolve` beside the queue's export
+keys. The round added a function and changed nothing else in that module's
+behaviour.
+
+**G7 THE NEW BEHAVIOUR AND ITS RED PROOF.** In the primary checkout,
+`python3 -m pytest tests/orchestration/test_decision_inbox.py tests/ui_contracts/test_decision_urgency_parity.py -q`
+is exit 0 at 58 passed (43 in the inbox file, 15 in the pin). The red proof ran
+ONLY inside the disposable worktree `.remedy-wt/f040r2-wt-g7`, created at
+`c9fbdc6e`, with `__pycache__` purged before each run and `python3 -B` used
+throughout. THE UNMUTATED CONTROL RAN AND IS REPORTED FIRST: exit 0, 58 passed.
+Then ONE mutation, in
+`.remedy-wt/f040r2-wt-g7/packages/orchestration/decision_inbox.py`, the single
+occurrence of `(blocked + 1) * age` replaced by `blocked * age`: exit 1, 9 failed
+and 49 passed. Failures reached BOTH files, the inbox tests and the parity pin —
+for example
+`test_the_python_home_scores_the_shared_table[0-42-42-product]`, the row that
+exists because a card blocking nothing must still score its age. The worktree was
+removed and `git worktree list` then named the primary checkout alone.
+
+An EXTRA red proof, not ordered by the block but taken because the pin claims to
+fail loudly: in the same worktree, with the Python mutation restored, renaming
+`function decisionUrgency(` to `function scoreCard(` in `decisionOrder.ts` made
+the pin exit 1 at 6 failed / 9 passed, and
+`test_the_typescript_function_is_found_at_all` was among the failures. An empty
+extraction therefore cannot pass silently.
+
+**G8 THE SUITES AND THE TREE.** `tests/ui_server/` 508 passed (base 508),
+`tests/orchestration/test_test_runner.py` 52 (base 52),
+`tests/regression/test_resource_safety.py` 21 (base 21),
+`tests/orchestration/test_integrity_gate.py` 16 (base 16),
+`tests/orchestration/test_run_report.py` 81 — no base comparison, the reviewer did
+not run it — and the canary `tests/cli/test_golden_path.py` 42 (base 42). Every
+one a REAL exit 0. `git status --porcelain` is EMPTY,
+`git ls-files --others --exclude-standard` counts 0, and the per-commit insertion
+counts for C0a through C8 are 349, 299, 19, 10, 1, 16, 1, 51, 72 and 185 — every
+one under 500.
 
 ## Authored-text proofs
 
-Every authored unit was extracted MECHANICALLY from `.remedy-wt/f040-r1-block.md`
-by `.remedy-wt/f040r1_extract.py`, which asserts that each `<<<BEGIN <NAME>` and
-`<<<END <NAME>` marker line occurs exactly once and takes the bytes between them.
-Nothing was retyped. The block original is committed byte-identical at
-`.agent/authored/f040-r1.md` (G1), so each disk-to-disk comparison below is
-against the committed authored file's own content.
+Nine reviewer-authored units were applied this round. Each was extracted
+MECHANICALLY from the committed `.agent/authored/f040-r2.md`'s own delimiters by a
+script under `.remedy-wt/`, never retyped, and each was applied byte for byte.
 
-| Slice | bytes | sha256 | applied to | result |
-|-------|-------|--------|------------|--------|
-| PLAN1 | 1805 | `7271c247…d363c` | `.agent/plan.md` (C1) | BYTE-EQUAL (G2) |
-| RECORD1 | 3531 | `3217492364…c470c` | appended to `.agent/live_review.md` (C2) | WHOLE RECONSTRUCTION exact + PARAGRAPH ORDER exact (G3) |
-| CAND1 | 796 | `bae384d32d…b2d89` | `.agent/candidates.md` (C3) | BYTE-EQUAL (G5) |
-| CONTEXT1 | 3118 | `1e15d042e7…e1989` | `.agent/context.md` (C5) | BYTE-EQUAL, verified at write time by `.remedy-wt/apply_slice.py` |
-| PAIRSTATUS-FROM | 40 | `915fc36c79…fddf` | `docs/roadmap/STATUS.md` | occurred exactly 1 before, 0 after (G6) |
-| PAIRSTATUS-TO | 40 | `566c3c4728…fe8f` | `docs/roadmap/STATUS.md` | occurs exactly 1 after (G6) |
+| Unit | Bytes | sha256 (full) | Applied to | Proof |
+|------|-------|---------------|------------|-------|
+| PLAN2 | 1783 | `0411c9f63ddacd0bcbc6dc358f16c0feae7519823d2a9487c50ab32e5a35c4dd` | `.agent/plan.md` | file byte-equal to the unit (G2) |
+| RECORD2 | 12099 | `5dc02e45314a6d17d1cb3fa65bad9e61efdc9d65666e1655b72a32cd6d567c9f` | `.agent/live_review.md` | whole-file reconstruction + paragraph order (G3) |
+| SLIP2 | 377 | `c1c6a444050295a5c48b72577931ac7924cc1d50c80d56cb5a5c69fbcee1df3c` | `.agent/prose_slips.md` | old file a byte-exact prefix, +1 line (G4) |
+| PAIROWNERSHIP-FROM | 221 | `c2a3056d8dd677cabcafbe51a0072a6818236b15b68bb9ab6d6d7ce962718bed` | `docs/roadmap/features/T5_F040.md` | 1x in the committed file (append shape) |
+| PAIROWNERSHIP-TO | 1040 | `6f737c6fae4558c4bd640d97dfe9ec4c2fabdeeb25fe420f5e2d7e174be9779a` | same | each of 13 TO-ONLY lines 1x among C4's added lines |
+| PAIRTESTPATH-FROM | 77 | `05b186ad6ae1083f27ac5c1b8a458e7fe66bf35133ea7226acb4d754c5a6be55` | same | 0x after C4 |
+| PAIRTESTPATH-TO | 237 | `35f22d2b143fb05fc716ce96ee0484cffcf4a25cbba0fc2cb32693ec16c19c8c` | same | 1x after C4 |
+| PAIRCOMMENT-FROM | 43 | `b9c6e48ba7a51e6711bfd850e22ac44c716724a796eca4b87cec2aa10e2b0533` | `packages/orchestration/run_report.py` | 0x after C5 |
+| PAIRCOMMENT-TO | 26 | `b4c583d23244a35a869f3375933e04d727514782dcb2639f4af748bdb0ab7cef` | same | 1x after C5 |
 
-`TO contains FROM` measured as `false`, so PAIR-STATUS is a REWRITE and the
-FROM-zero / TO-one count is the right reading of it, exactly as constraint 12
-states.
-
-## Item status
-
-Every bundle item and every gate, each exactly once.
-
-| Item | Status | Reason |
-|------|--------|--------|
-| C0a save the block to `.agent/authored/f040-r1.md` | done | `shutil.copyfile`, ed8fb753 |
-| C0b mirror the same bytes into `.agent/last_block.md` | done | second `shutil.copyfile`, 0392be34 |
-| C1 rewrite `.agent/plan.md` from PLAN1 | done | 05dca153 |
-| C2 append RECORD1 to `.agent/live_review.md` | done | 249e648f, append-only, 0 deletions |
-| C3 rewrite `.agent/candidates.md` from CAND1 | done | 7616a884 |
-| C4 apply PAIR-STATUS to `docs/roadmap/STATUS.md` | done | 2ed1ba3d |
-| C5 rewrite `.agent/context.md` from CONTEXT1 | done | 3ef0b5a0 |
-| C6 write `.agent/f040_inventory.md` per the SPEC | deviated | 6149c7ac. Written and measured in full; the commit was RESET once and AMENDED three times before push, see Deviations 1. |
-| C7 rewrite `.agent/handoff.md` | done | this commit |
-| G1 TRANSPORT at C0b | done | REAL exit 0 |
-| G2 THE PLAN at C1 | done | REAL exit 0 |
-| G3 THE RECORD APPEND at C2 | done | REAL exit 0 |
-| G4 THE LEDGER at C1 and C2 | done | REAL exit 0 |
-| G5 THE CANDIDATES FILE at C3 | done | REAL exit 0 |
-| G6 THE CLAIM AND THE DOCS PINS at C4 | done | REAL exit 0 structural, 0 `tests/docs/`, 0 `test_roadmap_index.py` |
-| G7 THE STATE READERS AND THE CANARY at C6 | done | REAL exit 0 × 5 |
-| G8 THE INVENTORY AND THE TREE at C6 | done | REAL exit 0 |
+The block itself is 29954 bytes at
+`d05f9c085aa6227ae2de7a8dc666901900e2404b3aa657a480711ccf4ad39e1c`, equal on disk
+in all three places (G1), so the units above were extracted from the same bytes the
+reviewer holds.
 
 ## Deviations & assumptions
 
-**1. C6 TOOK FOUR ATTEMPTS — ONE RESET AND THREE AMENDS — BEFORE IT WAS RIGHT.
-DECLARED HERE BECAUSE A COMMIT-SEQUENCE DEPARTURE BELONGS IN THIS SECTION EVEN
-WHEN IT IS CORRECT.** The FIRST C6 measured `+504` insertions on
-`git diff --numstat` — over the AGENTS.md 500-line insertion cap, and over G8's
-own "every one under 500". `.agent/f040_inventory.md` is NOT one of the five
-state files the DECISION F104 D1 exemption names (`last_block.md`, `handoff.md`,
-`live_review.md`, `plan.md`, `context.md`), so no exemption applied and the
-oversize-with-declaration route was the wrong answer for a file I could simply
-tighten. I reset it (`git reset --mixed HEAD~1`), condensed prose without
-dropping a single measurement, and recommitted at 499. The SECOND attempt fell to
-G8, which reported two cited paths that did NOT resolve — `decisionOrder.ts` and
-`decision_inbox.py`, bare-filename shorthands in prose where the full path stood
-a few lines above; I expanded both to full repository paths, which is what the
-SPEC's "a `file:line` for every claim" actually asks for. The THIRD attempt
-briefly went back to 500 insertions and was tightened again. The FOURTH fixed a
-citation G8 could not catch and my own self-review did: the inventory cited
-`.agent/plan.md:118-119` for the plan's second Risk, which are the line numbers
-of that text IN THE BLOCK FILE, not in the 37-line `.agent/plan.md` it names. The
-correct citation is `.agent/plan.md:36-37`. G8's path-resolution reading passes a
-line number that does not exist, so I wrote `.remedy-wt/spotcheck.py`, which
-opens 53 sampled citations and asserts the cited LINE contains what the inventory
-says it does: 52 confirmed exactly, and the 53rd
-(`docs/roadmap/features/T5_F040.md:57-58`) is a two-line quote my one-line probe
-could not match and which I then read by hand and confirmed. Nothing was pushed
-at any point, so no published history was rewritten. FINAL C6 IS `6149c7ac`; the
-abandoned objects `8b62d172`, `a60a4448` and `34f74cc0` are unreferenced.
+The block's ordered commit sequence was followed EXACTLY: C0a, C0b, C1 through C9,
+ten commits, no extra commit, none dropped, none reordered, one path each. The
+change set is exactly the eleven declared paths and nothing under `apps/` was
+touched — `apps/ui/src/api/decisionOrder.ts` is READ by C8's pin and is not edited.
+No commit was amended, reset or rebased.
 
-**2. THE BLOCK'S SLICE `PLAN1` CARRIES A CLAIM I APPLIED VERBATIM AND WOULD
-OTHERWISE HAVE QUESTIONED.** `.agent/plan.md` line 99 marks "the seam inventory"
-as `done` in the C1 commit, one commit BEFORE C6 writes the inventory. It is
-false at C1 and true at C6, which is the ordinary shape of a plan that describes
-the round rather than the commit — but it means a reader at `05dca153` reads a
-`done` for a file that does not yet exist. Constraint 1 orders slices applied
-byte for byte, so it is applied byte for byte and declared here instead of
-improved.
+1. **C6 edited one line the block arguably froze, and it is declared here rather
+   than left to be found.** Constraint 8 reads "This round ADDS a function and
+   nothing else in that file." I added `decision_urgency(card) -> int` to the
+   module docstring's `Public API::` list — one line, +1 insertion inside the 51.
+   Reason: the same constraint calls `decision_urgency` "NEW PUBLIC API", the
+   module maintains an explicit public-API list, and a stale one is a live defect
+   class in this repository (open finding R-0746 is exactly that reading of
+   `proof_chain.py`). Leaving it out would have shipped a known defect to satisfy
+   a sentence whose subject is the module's BEHAVIOUR — `build_decision_inbox`'s
+   return shape, its three card keys and `DECISION_INBOX_VERSION`, all three of
+   which are unchanged and were re-measured by calling the function (G6). If the
+   reviewer reads constraint 8 literally, this line is the one to revert.
+2. **C7 introduces the file's first test CLASS.** The SPEC says "APPEND a new test
+   class"; `tests/orchestration/test_decision_inbox.py` holds twenty module-level
+   test functions and no class at all, and the same SPEC says to follow the file's
+   conventions. The two cannot both be satisfied. I followed the explicit
+   instruction and added `class TestDecisionUrgency`, keeping every other
+   convention of the file — the section banner comment, the property-named tests,
+   the WHY docstrings. Declared because it makes section (h) shaped unlike
+   sections (a) through (g) above it.
+3. **SLIP2 was appended with NO blank-line separator, unlike every other entry in
+   `.agent/prose_slips.md`.** Every existing entry in that file is separated from
+   its neighbour by a blank line. G4 requires the line-count difference to be
+   exactly 1, which a separator would make 2. I applied the slice as given, so the
+   new entry abuts the F033 R24 line directly. Applied as ordered, declared here.
+4. **A factual overstatement inside slice RECORD2, applied byte for byte.**
+   DECISION F040 D3 states "THIS IS THE THIRD FEATURE FILE CARRYING THAT TYPO". The
+   round's own G5 sweep measures 13 OTHER feature files under
+   `docs/roadmap/features/` still carrying `tests/ui_contract/` after C4, listed in
+   the Verification section above; F040 was the fourteenth, not the third. The
+   slice was applied unchanged per constraint 1 and the correction is recorded
+   here. Nothing rests on the numeral: the amendment's authority is AGENTS.md's
+   "one spelling per concept repo-wide" and the F009 precedent, both of which hold
+   at any count, and the gate the block wrote reports the hits rather than
+   requiring them to fall.
+5. **The three DECISIONS were recorded in `.agent/live_review.md`, not in
+   `.agent/decisions.md`.** The block's change set names the former and not the
+   latter, and RECORD2 carries D2, D3 and D4 in full. Noted because AGENTS.md's
+   Commit Gate item 7 asks whether `.agent/decisions.md` needs an update; it does
+   by the general rule, and the block's change set overrides it for this round.
+6. **`.agent/context.md` was not updated.** It is not in the change set. Its round
+   1 content — the digest feature, this branch, the scope boundaries — is still
+   accurate; nothing this round changed the scope it describes.
+7. **Assumption in C8, stated so the reviewer can reject it.** The parity pin
+   cannot EXECUTE the TypeScript (no vitest reachable from pytest, and the pin
+   deliberately imports nothing from `apps/`). It therefore asserts the shared
+   table's numbers against the shipped Python, and asserts against the shipped,
+   comment-stripped TypeScript that all four rules those numbers depend on are
+   still present — the finiteness test and the clamp on `blockedCount`, the null /
+   non-finite / non-positive guard on the age, and the product with its `+ 1` —
+   plus that the rejected form `blockedCount * ageSeconds` is absent from the
+   comment-stripped body. `test_the_table_exercises_every_typescript_rule` stops a
+   rule being asserted present without a row that depends on it. This is a
+   structural pin over one implementation and a behavioural pin over the other,
+   not an execution of both.
+8. **The `remedy` console script was not run.** It is denied in this sandbox and no
+   gate ordered it; `python3 -m apps.cli.grouped` was therefore not needed either.
 
-**3. THE INVENTORY REPORTS A STALE COMMENT IN SHIPPED CODE, AND THE STALENESS IS
-THE FINDING-SHAPED THING I DID NOT REGISTER.** `packages/orchestration/run_report.py:170`
-documents `NEXT_ACTION_RULES` as `(rule id, condition, action template)` — three
-elements — while the value at :175 is annotated `tuple[tuple[str, str], ...]` and
-holds PAIRS. I did not mint an R-id for it: constraint 5 forbids minting one this
-round, and it is recorded in the inventory (section 1) where the T001 order will
-read it. Whoever writes that order decides whether it earns an id.
+## Item status
 
-**4. THE OWNERSHIP SEAM IS ABSENT AND THE ABSENCE IS AS WIDE AS THE SEARCH.** Six
-commands over all of `packages/` and all of `apps/` are quoted verbatim in
-inventory section 4 with their exact results. The widest of them,
-`git grep -l -i -E 'ownership' -- packages/ apps/`, matched 9 files; every one was
-opened and classified, and all nine are PROCESS, FILE or REPO ownership, not the
-human-attribution ledger F035 describes. `git grep` reads tracked files only, so
-the claim does not reach untracked or ignored paths — stated so it is not read
-wider than it was measured.
-
-**5. THE URGENCY FORMULA IS NOT IMPORTABLE FROM PYTHON, WHICH THE FEATURE FILE
-ASSUMES IT IS.** `docs/roadmap/features/T5_F040.md:57-58` orders digest
-significance to be "one source with the inbox". The formula is
-`apps/ui/src/api/decisionOrder.ts:21-39` — browser-side TypeScript, whose own
-header comment at :3-5 says the rule "is written down nowhere else".
-`git grep -i -E "urgency|significance" -- packages/ apps/` matches ZERO lines
-under `packages/`. I recorded the three routes in inventory section 2 and chose
-none: choosing is the T001 order's job, not this round's.
-
-**6. NO OTHER DEPARTURE.** The bundle ran in the block's order, the change set is
-exactly the nine declared paths and nothing else, no file under `packages/`,
-`apps/`, `tests/`, `docs/guides/`, `docs/system/` or `docs/roadmap/features/` was
-touched, no production code and no test was written, no R-id was minted or
-resolved, and no pull request was opened.
-
-## The two candidates, as discharged
-
-Both entries the F033 closure gate left in `.agent/candidates.md` are settled and
-the file now reads `EMPTY — no candidate is open.`, which lifts the block
-condition on the F040 claim. NO ID WAS SPENT ON EITHER.
-
-- The FIRST — the README's per-tier accepted list guarded in one direction only,
-  now one feature short — went on the record as NEW EVIDENCE on the ALREADY-OPEN
-  finding **`R-0570`**, per planner_reviewer_prompt.md §3 item 30. **R-0570 STAYS
-  OPEN** and is **ROUTED AWAY FROM THIS BRANCH**: its fix edits `README.md` and
-  `tests/docs/test_docs_consistency.py`, neither of which F040 owns, and AGENTS.md
-  forbids mixing an unrelated fix into a feature branch. G4 confirms zero
-  `^Done: R-0570` lines at C2. It is also carried as the first Risk in
-  `.agent/plan.md`.
-- The SECOND was settled as **DECISION F040 D1 — no defect, nothing edited**. G4
-  confirms the added `^DECISION F040 D\d+ — ` id set is exactly `['D1']`.
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a save the block to `.agent/authored/f040-r2.md` | done | `shutil.copyfile`, byte-equal |
+| C0b mirror it into `.agent/last_block.md` | done | `shutil.copyfile`, byte-equal |
+| C1 rewrite `.agent/plan.md` from PLAN2 | done | byte-equal, 38 lines |
+| C2 append RECORD2 to `.agent/live_review.md` | done | reconstruction and paragraph order both hold |
+| C3 append SLIP2 to `.agent/prose_slips.md` | deviated | applied byte for byte; no blank separator — deviation 3 |
+| C4 apply PAIR-OWNERSHIP and PAIR-TESTPATH | done | append shape and rewrite shape measured separately |
+| C5 apply PAIR-COMMENT | done | FROM 0x, TO 1x |
+| C6 add `decision_urgency` per the SPEC | deviated | one extra line in the module's Public API list — deviation 1 |
+| C7 add the unit tests | deviated | the file's first test class — deviation 2 |
+| C8 add the parity pin | done | 15 tests, all green; loud-failure test proved to fail loudly |
+| C9 rewrite `.agent/handoff.md` | done | this file |
+| G1 TRANSPORT | done | exit 0 |
+| G2 THE PLAN | done | exit 0 |
+| G3 THE RECORD APPEND | done | exit 0 accepted, exit 0 on the rejection control |
+| G4 THE LEDGER | done | exit 0 |
+| G5 THE FEATURE FILE | done | exit 0, 0, 0 |
+| G6 THE PRODUCTION EDITS | done | exit 0, 0, 0, 0 |
+| G7 THE RED PROOF | done | control 0, mutant 1 at 9 failed |
+| G8 THE SUITES AND THE TREE | done | six suites exit 0, clean tree |
+| R-0751 the stale rule-table comment | fixed | C5; the comment now names the arity `NEXT_ACTION_RULES` has |
+| R-0570 the docs-consistency finding | open | routed OFF this branch: its fix edits `README.md` and `tests/docs/test_docs_consistency.py`, which F040 does not own |
 
 ## Next
 
-The single expected next action: the reviewer re-runs G1 through G8 at
-`f5b1e6c5..6149c7ac` plus this commit, reads `.agent/f040_inventory.md`, and
-writes the T001 order — the endpoint composition, the `NEXT_ACTION_RULES` import
-and the fixture goldens — WITH the decision inventory section 2 forces about the
-urgency formula and the decision inventory section 4 forces about the unbuilt
-ownership seam. No pull request is opened until closure.
+The reviewer re-runs G1 through G8 against its own copy of the block and reads the
+committed diff, then orders T001: the digest composition module over
+`build_report_sources` and the inbox read path, with the four state fixtures
+(green, blocked-with-decisions, budget-stopped, mid-run), `ownership` fixed as an
+empty list per D3 and `cost.basis` re-derived as exactness per D4.
