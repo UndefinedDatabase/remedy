@@ -75,6 +75,9 @@ class BuilderOutput:
     # actually resumed a prior session; the ref it resumed, "" otherwise.
     resume_used: bool = False
     resume_session_ref: str = ""
+    # F106 T002c: true only when a resume attempt on this round's call
+    # errored and a same-round fallback to full context was taken.
+    resume_fallback: bool = False
     incomplete: bool = False
     stream_cap_reached: bool = False
     stream_call_id: str = ""
@@ -190,10 +193,12 @@ class FakeProvider:
         malformed_review_recoverable: bool = False,
         supports_resume: bool = False,
         fake_session_id: str = "",
+        resume_fails: bool = False,
     ) -> None:
         self._builder_files = builder_files or ["docs/README.md"]
         self._supports_resume = supports_resume
         self._fake_session_id = fake_session_id
+        self._resume_fails = resume_fails
         self._fail_round = fail_on_round
         self._pass_round = pass_on_round
         self._max_block = max_rounds_before_block
@@ -224,6 +229,16 @@ class FakeProvider:
         if self._builder_error:
             return BuilderOutput(
                 error=self._builder_error,
+                provider="fake",
+            )
+        # F106 T002c: a test-only way to simulate a resume attempt that
+        # errors, so the fallback-once path in pingpong_loop.py has
+        # something real to fall back FROM. Only fires when a resume was
+        # actually requested on a provider that claims to support it —
+        # never on a plain (non-resume) call.
+        if resume and self._supports_resume and self._resume_fails:
+            return BuilderOutput(
+                error="resume_lost: session context unavailable",
                 provider="fake",
             )
         is_repair = self._build_count > 1
