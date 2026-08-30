@@ -71,6 +71,10 @@ class BuilderOutput:
     # when the CLI exposed a JSON usage block; None when only estimates exist.
     usage_actuals: dict[str, Any] | None = None
     actual_missing_reason: str = ""
+    # F106 T001: honest resume bookkeeping — true only when this call
+    # actually resumed a prior session; the ref it resumed, "" otherwise.
+    resume_used: bool = False
+    resume_session_ref: str = ""
     incomplete: bool = False
     stream_cap_reached: bool = False
     stream_call_id: str = ""
@@ -118,6 +122,10 @@ class ReviewerOutput:
     # only character-heuristic estimates are available.
     usage_actuals: dict[str, Any] | None = None
     actual_missing_reason: str = ""
+    # F106 T001: honest resume bookkeeping — true only when this call
+    # actually resumed a prior session; the ref it resumed, "" otherwise.
+    resume_used: bool = False
+    resume_session_ref: str = ""
     incomplete: bool = False
     stream_cap_reached: bool = False
     stream_call_id: str = ""
@@ -135,12 +143,16 @@ class PingPongProvider(Protocol):
     @property
     def name(self) -> str: ...
 
+    @property
+    def supports_resume(self) -> bool: ...
+
     def build(
         self,
         prompt: str,
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput: ...
 
     def review(
@@ -149,6 +161,7 @@ class PingPongProvider(Protocol):
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput: ...
 
 
@@ -175,8 +188,10 @@ class FakeProvider:
         reviewer_error: str = "",
         malformed_review: bool = False,
         malformed_review_recoverable: bool = False,
+        supports_resume: bool = False,
     ) -> None:
         self._builder_files = builder_files or ["docs/README.md"]
+        self._supports_resume = supports_resume
         self._fail_round = fail_on_round
         self._pass_round = pass_on_round
         self._max_block = max_rounds_before_block
@@ -191,12 +206,17 @@ class FakeProvider:
     def name(self) -> str:
         return "fake"
 
+    @property
+    def supports_resume(self) -> bool:
+        return self._supports_resume
+
     def build(
         self,
         prompt: str,
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         self._build_count += 1
         if self._builder_error:
@@ -224,6 +244,7 @@ class FakeProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
         out = self._review_impl(prompt, timeout_sec=timeout_sec,
                                 max_output_chars=max_output_chars)
