@@ -8,6 +8,16 @@
 
 The tier-block order below is the operator-decided Self-Use sequence of 2026-08-10; it intentionally no longer mirrors the numeric tier order of ROADMAP.md Part F. Rule A5 reads this file top to bottom, so this order IS the strategy.
 
+<!-- operator ruling amend0830-cost-first (2026-08-30): the six lines below are pulled forward from their Tier 3 block (originally directly after F113 — see the "## Tier 3 — Full Token Economy & Autonomy Extension" heading further down, where F113 now sits alone) so that, once no feature is in progress, Rule A5 proposes F106 first and consumes F106/F108/F109/F110/F112/F114 in this order before any other unchecked feature. Reversible by moving these six lines back to immediately before F113's line and deleting this heading and comment. -->
+## Tier 3 — Cost-First Pull-Forward (operator ruling amend0830)
+
+- [ ] F106 — Session resume instead of rebuild
+- [ ] F108 — Tiered artifact summaries
+- [ ] F109 — Semantic dedupe
+- [ ] F110 — Model routing by task class
+- [ ] F112 — Prompt budget per task class
+- [ ] F114 — Cost preview per command
+
 ## Tier 0 — Foundation & Trust Core
 
 - [x] F001 — Adaptive provider timeouts + retry (PR #123 · commit 4856006 · external transition PASS)
@@ -119,13 +129,7 @@ Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-ins
 
 ## Tier 3 — Full Token Economy & Autonomy Extension
 
-- [ ] F106 — Session resume instead of rebuild
-- [ ] F108 — Tiered artifact summaries
-- [ ] F109 — Semantic dedupe
-- [ ] F110 — Model routing by task class
-- [ ] F112 — Prompt budget per task class
 - [ ] F113 — Local models for side roles
-- [ ] F114 — Cost preview per command
 - [ ] F116 — Cost anomaly alarm
 - [ ] F049 — Parallelism
 - [ ] F054 — Auto-revert proposal
