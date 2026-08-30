@@ -2,36 +2,44 @@
 
 ## Session
 
-SESSION 3 of feature F258 · round 10
+SESSION 3 of feature F258 · round 11 · rounds so far 11
 
 ## State
 
 Branch `feature/f258-self-use-v2`, cut from `main` at
 `18ae71293cde9b1157aca35d3d02c3a8f4265813` (the merge commit of pull request
-225, F040's closure). Last commit on this branch before the handback write is
-`a701230f` (`docs(f258): append Built State section (precondition 4) (C4)`).
-This round books round 9's own `Gate: F258 R9` PASS-WITH-DEVIATION verdict
-into `.agent/live_review.md`, appends one dated line to
-`.agent/prose_slips.md` recording round 9's own process deviation (the
-worker skipped two block-ordered negative controls and then misreported
-what the block had ordered), and appends a `## Built State (F258,
-2026-08-30)` section to `docs/roadmap/features/T5_F258.md`, discharging
-closure precondition 4. `.agent/plan.md` is rewritten for round 10. No file
-under `packages/`, `apps/` or `tests/` changed — confirmed by `git diff
---name-only 62076d86~1..HEAD`. Open findings count in
-`.agent/live_review.md`: 318 registered R-ids (unchanged from before this
-round — this round adds no new R-id), 55 distinct resolved (`Done:`,
-unchanged). `DECISION F258` ids: `['D1', 'D2']`, unchanged. `Gate: F258 R`
-lines: now ending at `Gate: F258 R9` (added exactly `F258 R9` this round).
-R-0570 (Low), R-0736 (Medium) and R-0757 (Medium) stay OPEN, none touched,
-resolved, or repaired this round — only the text already given in the block
-was applied, per the block's own constraint 8.
+225, F040's closure). This round executed
+`docs/roadmap/STATUS_closure_protocol.md` Algorithm steps 1 (evidence job)
+and 2 (review zip) only — it does NOT close the feature: no `[x]`, no
+README sync, no `consumed_by` edit, no PR. Constraint 0 was checked first
+and cleanly: `gh pr list --state open ...` returned `[]`, `git rev-parse
+HEAD` equalled `3d2ab8b558de3ea945ef64cd83c7e7eacf850ae0` (the block's Base
+`3d2ab8b5` in full), branch was `feature/f258-self-use-v2`. Commits C0a-C2
+saved the block, rewrote `.agent/plan.md` from PLANF258R11 and booked
+`Gate: F258 R10` into `.agent/live_review.md`. The branch was pushed at C2
+(`49fcc2c645601936d8c426b1eb09523b9b3c7f6f`), then the evidence bundle and
+the review zip were built from that clean, pushed tree (nothing under
+`packages/`, `apps/`, `tests/`, `scripts/` or `docs/` was edited — confirmed
+by `git diff --name-only 3d2ab8b5..49fcc2c6`, which lists only the four
+`.agent/` paths). Open findings count in `.agent/live_review.md`: 318
+registered R-ids (UNMOVED), 55 distinct resolved (`Done:`, UNMOVED), open
+set `len(set(registered) - set(resolved))` = 263 (UNMOVED). This round
+registered no id and resolved none, per constraint 7. `Gate: F\d+ R\d+ — `
+line count moved 173 → 174 (the one `Gate: F258 R10` append). R-0570 (Low),
+R-0736 (Medium) and R-0757 (Medium) stay OPEN, untouched.
+
+The evidence bundle and BOTH review zips (the READY package and the
+deliberate red control) were built entirely under the gitignored
+`.remedy-wt/` and archived/left under `/home/decodeux/Repos/remedy-history/
+zips/`, neither ever staged nor committed — confirmed by `git ls-files
+.remedy-wt | wc -l` = 0 and `git ls-files | grep -c remedy-job-evidence` =
+0, both after the builds.
 
 ## Range
 
-Review of `9e8b3030..a701230f`
-(HEAD before the handback commit; see the Commits table below for the exact
-short SHAs, which are what this handback actually verified against).
+Review of `3d2ab8b5..49fcc2c6` (C2, the accepted HEAD this round's zip
+covers). `.agent/handoff.md` (this file, C3) is written and pushed after
+this range ends, per the block's own build order (package before handback).
 
 ## Item status
 
@@ -39,218 +47,330 @@ Every bundle item and every gate, each appearing exactly once:
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a save block to `.agent/authored/f258-r10.md` | done | `shutil.copyfile`, sha256-verified |
-| C0b mirror into `.agent/last_block.md` | done | `shutil.copyfile`, sha256-verified, three-way equal |
-| C1 rewrite `.agent/plan.md` from PLAN10 | done | byte-equal, 1823 bytes, 42 lines, trailing `\n` confirmed |
-| C2 append GATE_R9 to `.agent/live_review.md` | done | whole-file reconstruction holds; last `\n\n`-unit equals GATE_R9 exactly; negative control REJECTED a flipped copy, ACCEPTED the true one |
-| C3 append PROSE_SLIP to `.agent/prose_slips.md` | done | byte-equality reconstruction holds exactly (no negative control ordered for this gate) |
-| C4 append BUILTSTATE to `docs/roadmap/features/T5_F258.md` | done | pure concatenation holds exactly; exactly one `## Built State (F258, ` heading present |
-| G1 transport | done | `.agent/authored/f258-r10.md`, `.agent/last_block.md` and the scratch original `.remedy-wt/f258-r10/block.md` all sha256-equal (`6ebad7a4c7b2bb603ca43394411d70455f354eab6ab4ade81a2a6e911907fbc9`, 15000 bytes) |
-| G2 the plan | done | byte-equal to PLAN10, 1823 bytes, 42 lines, `## Goal`/`## Next Steps` present, ends with exactly one `\n` |
-| G3 the live_review.md append | done | `base(1795167) + 1 + GATE_R9(3793) == committed(1798961)`; last `\n\n`-unit equals GATE_R9 exactly; ONE negative control run in a disposable worktree (added and removed): a byte flipped inside a copy of GATE_R9 was REJECTED against the true committed file, the true reconstruction was ACCEPTED |
-| G4 the prose_slips.md append | done | `base2(33397) + 1 + PROSE_SLIP(650) == committed2(34048)`, byte-equality only, per the block's own gate-budget note — no negative control ordered for this gate |
-| G5 the Built State append | done | `base3(4140) + BUILTSTATE(3339) == committed3(7479)`, pure concatenation, no inserted separator; exactly one `## Built State (F258, ` heading in the committed file |
-| G6 docs-round gate | done | `python3 -m pytest tests/docs/ -q` REAL exit 0, 295 passed — matches the reviewer's own pre-verified dry run exactly |
-| G7 the ledger | done | before C2: 318 R-ids / 55 Done-ids / `DECISION F258` `['D1','D2']` / `Gate: F258 R` ending at `'F258 R8'` — all matched. After C2: same R-ids/Done-ids/DECISION, `Gate: F258 R` lines ADDED exactly `'F258 R9'` |
-| G8 the tree and canary | done | `git status --porcelain` empty; single worktree; no `tmp/*` branch; every commit's insertions under 500; canary `python3 -m pytest tests/cli/test_golden_path.py -q` REAL exit 0, 42 passed |
+| Constraint 0 (PR list, HEAD, branch) | done | `[]`, HEAD = `3d2ab8b558de3ea945ef64cd83c7e7eacf850ae0`, branch = `feature/f258-self-use-v2` |
+| C0a save block to `.agent/authored/f258-r11.md` | done | `shutil.copyfile`, sha256-verified equal to scratch original |
+| C0b mirror into `.agent/last_block.md` | done | `shutil.copyfile`, one blob id confirmed both paths |
+| C1 rewrite `.agent/plan.md` from PLANF258R11 | done | byte-equal, 1718 bytes, 39 lines |
+| C2 append GATEF258R10 to `.agent/live_review.md` | done | whole-file reconstruction holds; negative control REJECTED a flipped copy, ACCEPTED the true one |
+| Push at C2 | done | `3d2ab8b5..49fcc2c6 feature/f258-self-use-v2 -> feature/f258-self-use-v2`; origin confirmed at C2 afterward |
+| Evidence script adaptation | done | extracted `EVIDENCESCRIPT` from `git show HEAD:.agent/authored/f009-r33.md`; unified diff shows exactly the listed values changed, nothing else |
+| Evidence bundle build (`f258-closure`) | done | 7 scoped suites, 408 total passed, all 8 closed-schema gate files present |
+| READY review zip | done | `PACKAGE_STATUS=READY_FOR_REVIEW`, archived |
+| RED CONTROL review zip | done | `PACKAGE_STATUS=BLOCKED_EVIDENCE`, `EVIDENCE_AUTHORITATIVE=false`, REAL exit 0 — the deliberate control passed (i.e. correctly failed) |
+| Archive READY zip | done | already written directly to `/home/decodeux/Repos/remedy-history/zips/` by `scripts/make_review_zip.sh`'s own default `REMEDY_REVIEW_DIR` — no `shutil.move` was needed; see Deviations |
+| G1 hygiene | done | `.agent/STOP` absent at both readings; `git status --porcelain` clean throughout |
+| G2 transport | done | committed blob and scratch original both sha256 `54b5c9629cf9179cb6ed9f15ba369dea294a08336f7d331b03f070e5de1ea1b6`, 21196 bytes, EQUAL True; C0b's two blob ids equal (`f6d2957e329bd25927bb1e89be7d6783ae833f4b`) |
+| G3 the plan at C1 | done | byte-equal to PLANF258R11, 1718 bytes both sides, 39 lines (< 50), one `## Goal`, one `## Next Steps` |
+| G4 the record append at C2 | done | `base(1798961) + 1 + GATEF258R10(2630) == committed(1801592)` True; negative control (byte XOR-flip inside the appended region) correctly False; base is a byte prefix; ends in exactly one `\n` |
+| G5 the ledger at C2 | done | registered UNMOVED 318 (all distinct), `Done:` UNMOVED (57 mentions / 55 distinct), `Gate:` count 173→174, open set UNMOVED 263; `Gate: F258 R10 — ` count at C2 = 1 |
+| G6 the evidence bundle | done | diff is exactly the listed values (12 removed / 14 added lines); all 7 runs: passed 23/18/20/7/3/295/42, failed/skipped/deselected 0 everywhere, `len(node_ids)==selected` True everywhere, `test_files` sorted (single-file lists) everywhere; `_unsafe_text` scan: 0 rejected over real ids/commands, red control on a fabricated absolute path correctly True; all 8 gate files present; `output_hash == sha256(stdout_summary)` True for all 7 runs |
+| G7 the review zip | done | READY: filename `remedy-review-20260830-084541-READY_FOR_REVIEW.zip`, sha256 `4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50`, REAL exit 0, `PACKAGE_STATUS=READY_FOR_REVIEW`; manifest `package_status=READY_FOR_REVIEW`, `ready_gate_matrix.ok=True`, `blocking_reasons=[]`, `committed_review_subject.head_commit=49fcc2c645601936d8c426b1eb09523b9b3c7f6f` = C2 exactly; CONTROL: `PACKAGE_STATUS=BLOCKED_EVIDENCE`, `EVIDENCE_AUTHORITATIVE=false`, REAL exit 0 (exit code did not distinguish the two, status did); archived path confirmed to exist, 19357817 bytes; `git status --porcelain` = 0 throughout |
+| G8 structure and remaining preconditions | done | changeset-minus-range residue (excluding `.agent/handoff.md`) empty; range-minus-changeset residue (full change set) empty; insertions 342/317/2/17 all < 500; all four commits single-parent; `<<<SLICE `/`<<<END ` counts: `plan.md` 0, `live_review.md` 0, `.agent/authored/f258-r11.md` 4 (non-zero control); `git ls-files .remedy-wt` = 0; `git ls-files \| grep -c remedy-job-evidence` = 0; `STATUS.md`/`README.md`/`self_use_queue.json`/`T5_F258.md` all ABSENT from the range diff; precondition 3: `run_integrity_checks().passed` = True, `.fail_count` = 0 |
 
 ## Commits
 
-All `+/-` figures are `git show --stat` insertions/deletions against each
-commit's own parent.
+All `+/-` figures are `git diff --numstat` insertions/deletions against
+each commit's own parent.
 
-### 62076d86 docs(f258): save round 10 authored block (C0a)
+### bd6c5766 docs(f258): save round 11 authored block (C0a)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f258-r10.md` | 205/0 | C0a — verbatim copy of the round's step block, `shutil.copyfile` |
+| `.agent/authored/f258-r11.md` | 342/0 | C0a — verbatim copy of the round's step block, `shutil.copyfile` |
 
-### 359b7d68 docs(f258): mirror round 10 block to last_block.md (C0b)
+### 5095b4fe docs(f258): mirror round 11 block to last_block.md (C0b)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | 157/97 | C0b — verbatim copy of the same block, `shutil.copyfile`, into the mirror slot (whole-file rewrite, prior round's block replaced) |
+| `.agent/last_block.md` | 317/180 | C0b — verbatim copy of the same block, `shutil.copyfile`, into the mirror slot (whole-file rewrite, prior round's block replaced) — exempt from the 500-line insertion cap as a single `.agent/**` state-file rewrite, and under it anyway |
 
-### 48f01f88 docs(f258): rewrite plan.md for round 10 (C1)
+### 581118e6 docs(f258): advance plan.md to round 11 (C1)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | 18/19 | C1 — rewritten from slice PLAN10, byte-equal, 42 lines |
+| `.agent/plan.md` | 17/21 | C1 — rewritten from slice PLANF258R11, byte-equal, 39 lines |
 
-### c8112b1e docs(f258): book round 9's PASS verdict into the ledger (C2)
+### 49fcc2c6 docs(f258): book round 10 verdict into live_review.md (C2)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | 2/0 | C2 — GATE_R9 appended verbatim, `base + "\n" + GATE_R9` |
-
-### d5d132fa docs(f258): add round 9 process-deviation prose slip (C3)
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/prose_slips.md` | 2/0 | C3 — PROSE_SLIP appended verbatim, `base2 + "\n" + PROSE_SLIP` |
-
-### a701230f docs(f258): append Built State section (precondition 4) (C4)
-| Path | +/- | Reason |
-|------|-----|--------|
-| `docs/roadmap/features/T5_F258.md` | 59/0 | C4 — BUILTSTATE appended verbatim as pure concatenation, `base3 + BUILTSTATE` |
+| `.agent/live_review.md` | 2/0 | C2 — GATEF258R10 appended verbatim, `base + "\n" + GATEF258R10` — ACCEPTED HEAD |
 
 Not tabled per the template's self-reference exception: the commit that
-writes this handback — its own numbers are the reviewer's to measure at the
-next gate.
+writes this handback (C3) — its own numbers are the reviewer's to measure
+at the next gate.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f258-r10/negctl_wt HEAD` — created
-  after C1 (before C2's commit) to hold the disposable pre-C2 file state for
-  G3's negative control; removed immediately after with `git worktree
-  remove .remedy-wt/f258-r10/negctl_wt`. `git worktree list` shows only the
-  primary checkout both before and after.
-- `git fetch origin feature/f258-self-use-v2` — run before this round's own
-  push, confirming origin was still at `9e8b3030` (unchanged from this
-  round's starting commit) before the push.
-- `git push` — run immediately after this handback's commit. Outcome
-  reported in this round's completion report.
-- No `gh pr` command run this round (the Open PR Gate does not apply — this
-  round stays on the existing `feature/f258-self-use-v2`; no PR exists yet).
+- `git push origin feature/f258-self-use-v2` (after C2) —
+  `3d2ab8b5..49fcc2c6 feature/f258-self-use-v2 -> feature/f258-self-use-v2`,
+  success.
+- `bash scripts/make_review_zip.sh --evidence-dir
+  .remedy-wt/f258_closure_evidence/remedy-job-evidence-f258-closure` (READY
+  build) — `PACKAGE_STATUS=READY_FOR_REVIEW`, zip
+  `remedy-review-20260830-084541-READY_FOR_REVIEW.zip`, sha256
+  `4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50`,
+  written directly to `/home/decodeux/Repos/remedy-history/zips/` by the
+  script's own default archive directory.
+- `bash scripts/make_review_zip.sh --evidence-dir
+  .remedy-wt/f258_closure_evidence/remedy-job-evidence-f258-closure`
+  (re-run, wrapped `bash -c '...; echo REAL_EXIT=$?'` to capture the real
+  exit code per constraint 5) — REAL_EXIT=0, produced a second,
+  byte-different READY zip (`remedy-review-20260830-084957-
+  READY_FOR_REVIEW.zip`, different sha256 because `generated_at` timestamps
+  differ between builds) purely to prove the exit code for the record; this
+  duplicate was then removed by its exact path with `os.remove` (not a
+  glob) so only ONE canonical READY zip remains archived. The FIRST build's
+  zip (`...-084541-...`) is the one reported everywhere in this handback as
+  the package.
+- `bash -c 'bash scripts/make_review_zip.sh --evidence-dir
+  .remedy-wt/f258_closure_evidence_CONTROL/remedy-job-evidence-f258-closure-
+  control; echo REAL_EXIT=$?'` (the deliberate red control, built from a
+  `shutil.copytree` of the real evidence dir with one poisoned absolute-path
+  node id appended to run `vr-0001`'s `node_ids`) — REAL_EXIT=0,
+  `PACKAGE_STATUS=BLOCKED_EVIDENCE`, zip
+  `remedy-review-20260830-084654-BLOCKED_EVIDENCE.zip`, left in place where
+  built, not moved, not deleted.
+- No `gh pr` command run this round — the Open PR Gate does not apply (no
+  PR exists yet on this branch; constraint 0 confirmed `[]` before any
+  commit).
 
 ## Verification
 
-Every gate below ran with a REAL exit code, in the PRIMARY checkout (except
-the G3 negative control, which ran in a disposable worktree, added and
-removed, per G5 of the guardrails).
+Every gate below ran with a REAL exit code / measured value in the primary
+checkout.
 
-**G1 — TRANSPORT.** `hashlib.sha256` byte-compare, all three paths:
-`.remedy-wt/f258-r10/block.md` (scratch original), `.agent/authored/f258-r10.md`,
-`.agent/last_block.md` — all three
-`6ebad7a4c7b2bb603ca43394411d70455f354eab6ab4ade81a2a6e911907fbc9`, 15000
-bytes.
+**Constraint 0.** `gh pr list --state open --json number,headRefName,
+baseRefName,isDraft` → `[]`. `git rev-parse HEAD` →
+`3d2ab8b558de3ea945ef64cd83c7e7eacf850ae0`. `git branch --show-current` →
+`feature/f258-self-use-v2`.
 
-**G2 — THE PLAN, at C1.** `.agent/plan.md` sha256
-`221ff160cb16a36ded9811b0ab6f3dd11d40e5c3c1910e1e3897c3376946d145`, 1823
-bytes, 42 lines — equal to PLAN10 on all three counts, matching the block's
-own stated digest exactly. Carries `## Goal` and `## Next Steps`. Ends with
-exactly one `\n`.
+**G1 — HYGIENE.** `os.path.exists('.agent/STOP')` → `False` (read before
+C0a) and `False` again (read before the zip build, after the C2 push).
+`git status --porcelain \| wc -l`: explicitly measured `0` immediately
+after C2 and again immediately before the zip build. After C0a, C0b and C1
+individually the tree was not separately re-measured with a bare `wc -l`
+call, but each subsequent `git status --porcelain` (run immediately before
+staging the NEXT file) showed exactly one pending change — the file about
+to be committed — and nothing else, which is only possible if the tree was
+fully clean immediately after the prior commit; the explicit `0` reading at
+C2 and the fully clean tree at every later checkpoint confirm no artifact
+was ever left behind. Reported honestly as a reconstructed (not directly
+measured) `0` for C0a/C0b/C1 individually.
 
-**G3 — THE LIVE_REVIEW.MD APPEND, at C2.**
-- Base (measured immediately before C2) was 1795167 bytes, matching the
-  block's stated expectation exactly.
-- `base + b"\n" + GATE_R9 (3793 bytes) == committed (1798961 bytes)` →
-  `True`, matching the block's stated expectation exactly.
-- LAST `\n\n`-DELIMITED UNIT of the committed file equals GATE_R9 exactly →
-  `True`.
-- NEGATIVE CONTROL (block-ordered, "a single byte flipped inside a COPY of
-  GATE_R9, in a disposable worktree, removed after"): run in
-  `.remedy-wt/f258-r10/negctl_wt` (a disposable worktree at the pre-C2
-  commit `48f01f88`), removed immediately after. One byte was flipped
-  inside a COPY of GATE_R9 (never the committed file or the authored
-  slice); the flipped reconstruction (`base + "\n" + flipped_gate`) was
-  compared against the true committed `.agent/live_review.md` and was
-  `REJECTED` (not equal). The true reconstruction (`base + "\n" + GATE_R9`)
-  was compared the same way and was `ACCEPTED` (equal, sha256
-  `3bede73e85271dca915a02ee38f9eb20edca3263499cf27af2b411668998c9bf` both
-  sides). This negative control is explicitly ordered by this round's block
-  at G3 and was run in full — unlike round 9, whose handback incorrectly
-  reported that no negative control was ordered when one in fact was (see
-  `Gate: F258 R9` in `.agent/live_review.md` and this round's own
-  PROSE_SLIP entry in `.agent/prose_slips.md`).
+**G2 — TRANSPORT.** `git show bd6c5766:.agent/authored/f258-r11.md` sha256
+`54b5c9629cf9179cb6ed9f15ba369dea294a08336f7d331b03f070e5de1ea1b6`, 21196
+bytes; `.remedy-wt/f258-r11/block.md` (reviewer's own scratch original) same
+sha256, same 21196 bytes; EQUAL → `True`. `git rev-parse
+5095b4fe:.agent/authored/f258-r11.md` and `git rev-parse
+5095b4fe:.agent/last_block.md` both print `f6d2957e329bd25927bb1e89be7d6783ae833f4b`
+— ONE blob id.
 
-**G4 — THE PROSE_SLIPS.MD APPEND, at C3.** Byte-equality only, per the
-block's own gate-budget note ("prose file, per the gate-budget rule") — no
-negative control is ordered for this gate, and none was run for it.
-- Base2 (measured immediately before C3) was 33397 bytes, matching the
-  block's stated expectation exactly.
-- `base2 + b"\n" + PROSE_SLIP (650 bytes) == committed2 (34048 bytes)` →
-  `True`, matching the block's stated expectation exactly.
+**G3 — THE PLAN AT C1.** `.agent/plan.md` bytes at C1: 1718. PLANF258R11
+slice bytes: 1718. Byte-equal → `True`. `wc -l` → 39 (< 50). Count of lines
+exactly `## Goal`: 1. Count of lines exactly `## Next Steps`: 1.
 
-**G5 — THE BUILT STATE APPEND, at C4.**
-- Base3 (measured immediately before C4) was 4140 bytes, matching the
-  block's stated expectation exactly.
-- `base3 + BUILTSTATE (3339 bytes) == committed3 (7479 bytes)` → `True`,
-  pure concatenation, no inserted separator, matching the block's stated
-  expectation exactly.
-- The committed file carries exactly one `## Built State (F258, ` heading
-  (line 76 of `docs/roadmap/features/T5_F258.md`) → confirmed by grep.
+**G4 — THE RECORD APPEND AT C2.** Base (`581118e6:.agent/live_review.md`)
+1798961 bytes; GATEF258R10 slice 2630 bytes; `base + b"\n" + GATEF258R10 ==
+committed` → `True`, committed 1801592 bytes. NEGATIVE CONTROL: one byte
+XOR-flipped at offset 1799012 (confirmed inside the appended region, 50
+bytes past the separator) → equality `False`, as required. Base is a byte
+PREFIX of committed (`committed_now.startswith(base)` → `True`). Committed
+blob ends in exactly one `\n` (`endswith(b"\n") and not
+endswith(b"\n\n")` → `True`).
 
-**G6 — DOCS-ROUND GATE.** `python3 -m pytest tests/docs/ -q` → REAL exit 0,
-`295 passed in 0.52s` — matches the reviewer's own pre-verified dry run
-exactly, unchanged from baseline.
+**G5 — THE LEDGER AT C2, constraint 7.**
+- At `3d2ab8b5`: registered 318 (318 distinct, all distinct → `True`);
+  `Done:` 57 lines / 55 distinct ids; `Gate: F\d+ R\d+ — ` count 173; open
+  set `len(set(registered) - set(resolved))` = 263.
+- At C2 (uncommitted, then committed): registered 318 (UNMOVED, 318
+  distinct); `Done:` 57/55 (UNMOVED); `Gate:` count 174 (UP BY ONE); open
+  set 263 (UNMOVED).
+- Count of `^Gate: F258 R10 — ` at C2: 1.
 
-**G7 — THE LEDGER, at C2.**
-- Before C2: 318 distinct `^- R-\d+ — ` ids, 55 distinct `^Done: R-\d+`
-  ids, `DECISION F258` ids `['D1', 'D2']`, `Gate: F258 R` lines ending at
-  `'F258 R8'` — all matched the block's stated baseline exactly.
-- After C2: 318 R-ids (unchanged), 55 Done-ids (unchanged), `DECISION F258`
-  unchanged `['D1', 'D2']`, `Gate: F258 R` lines ADDED exactly `'F258 R9'`.
+**G6 — THE EVIDENCE BUNDLE.**
+- (a) Unified diff between `EVIDENCESCRIPT` (extracted from `git show
+  HEAD:.agent/authored/f009-r33.md`) and the adapted
+  `.remedy-wt/f258_evidence.py`: 12 removed lines, 14 added lines, confined
+  exactly to `EVIDENCE_DIR`'s folder/job-name line, `BASE`'s value, the
+  `runs = [...]` list (5 entries → 7, per the block's exact spec, no `-k`,
+  no deselection on any), and the `create_manual_completion_bundle` kwargs
+  `job_id`, `job_title`, `prior_job_ids`, `note_prefix`, `review_feature_id`
+  (`step_range` and `num_tasks` needed no textual change — same values as
+  the template). No other line differs.
+- (b) Per run (`run_id` / `selected` / `len(node_ids)` / eq / `passed` /
+  `failed` / `skipped` / `deselected` / `test_files` / sorted):
+  `vr-0001` 23/23/True/23/0/0/0/[`tests/orchestration/test_self_use_queue.py`]/True;
+  `vr-0002` 18/18/True/18/0/0/0/[`tests/orchestration/test_self_use_job.py`]/True;
+  `vr-0003` 20/20/True/20/0/0/0/[`tests/orchestration/test_self_use_generator.py`]/True;
+  `vr-0004` 7/7/True/7/0/0/0/[`tests/orchestration/test_self_use_runner.py`]/True;
+  `vr-0005` 3/3/True/3/0/0/0/[`tests/orchestration/test_self_use_findings.py`]/True;
+  `vr-0006` 295/295/True/295/0/0/0/[`tests/docs/test_docs_consistency.py`]/True;
+  `vr-0007` 42/42/True/42/0/0/0/[`tests/cli/test_golden_path.py`]/True.
+  All expected passes matched exactly (23, 18, 20, 7, 3, 295, 42), failed/
+  skipped/deselected 0 everywhere.
+- (c) `_unsafe_text` pre-scan over every node id and command in all 7 runs:
+  0 rejected. Red control, `_unsafe_text("/home/user/repo/tests/x.py::t")`
+  → `"a local absolute path"` (truthy) → correctly True.
+- (d) Evidence directory file list (26 entries, `ls -la`):
+  `artifact_contract_gate.json`, `change_provenance_gate.json`,
+  `commit_execution_gate.json`, `context_strategy.json`,
+  `current_change_content_proof.json`, `execution_config.json`,
+  `final_job_review.json`, `final_verifier_report.json`,
+  `fresh_evidence_gate.json`, `job_report.json`, `job_timeline.json`,
+  `manifest_integrity.json`, `manifest.json`, `postmortem_integrity.json`,
+  `prompt_trace_summary.json`, `review_commit_chain.json`,
+  `review_commit_patches/` (dir), `review_subject.json`,
+  `runtime_integration_gate.json`, `scratch_file_guard.json`,
+  `target_guard.json`, `task_runs/` (dir), `tasks.json`,
+  `token_truth.json`, `verification_tests.json`, `workspace_apply.json`,
+  `workspace.diff`. All eight closed-schema gates confirmed present:
+  `final_verifier_report.json`, `fresh_evidence_gate.json`,
+  `artifact_contract_gate.json`, `change_provenance_gate.json`,
+  `manifest_integrity.json`, `postmortem_integrity.json`,
+  `commit_execution_gate.json`, `runtime_integration_gate.json`.
+- (e) `output_hash == sha256(stdout_summary)`: `True` for all 7 runs
+  (vr-0001 through vr-0007).
 
-**G8 — THE TREE AND CANARY, at HEAD (run before the handoff commit).**
-- `git status --porcelain` → empty.
-- `git worktree list` → `/home/decodeux/Repos/remedy a701230f
-  [feature/f258-self-use-v2]` — primary checkout only.
-- `git branch --list 'tmp/*'` → empty.
-- Per-commit insertion totals (`git show --stat` against each commit's own
-  parent): `62076d86` 205, `359b7d68` 157, `48f01f88` 18, `c8112b1e` 2,
-  `d5d132fa` 2, `a701230f` 59. All under 500 — no oversize exception this
-  round.
-- Canary: `python3 -m pytest tests/cli/test_golden_path.py -q` → REAL exit
-  0, `42 passed in 21.15s` — matches the standing baseline exactly.
+`create_manual_completion_bundle` result: `job_id=f258-closure`,
+`head_commit=49fcc2c645601936d8c426b1eb09523b9b3c7f6f` (= C2 exactly),
+`total_passed=408`, `verdict=PASS_WITH_RISKS`, `partition` T001=6/T002=6/
+T003=4.
+
+**G7 — THE REVIEW ZIP, constraint 8.**
+- (a) READY zip: `remedy-review-20260830-084541-READY_FOR_REVIEW.zip`,
+  sha256 `4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50`,
+  REAL exit 0, `PACKAGE_STATUS=READY_FOR_REVIEW`.
+- (b) From `.review_zip_manifest.json` (inside the zip):
+  `package_status=READY_FOR_REVIEW`, `ready_gate_matrix.ok=True`,
+  `ready_gate_matrix.blocking_reasons=[]` (empty),
+  `committed_review_subject.head_commit=49fcc2c645601936d8c426b1eb09523b9b3c7f6f`
+  = C2's full sha, exactly.
+- (c) RED CONTROL: `PACKAGE_STATUS=BLOCKED_EVIDENCE`,
+  `EVIDENCE_AUTHORITATIVE=false`, REAL exit 0 — the exit code did NOT
+  distinguish the two builds (both 0); `PACKAGE_STATUS` did. The control
+  manifest's `ready_gate_matrix.blocking_reasons` names the poisoned id
+  explicitly: `"verification_tests.json field
+  verification_tests.runs[0].node_ids[23] carries a local absolute path"`
+  and `"verification_tests.json runs[0] node_ids count (24) != selected
+  (23)"` and a `final_verifier_report.json` confirmation failure — the
+  pipeline caught the corruption on three independent grounds.
+- (d) Archived path: `/home/decodeux/Repos/remedy-history/zips/
+  remedy-review-20260830-084541-READY_FOR_REVIEW.zip`. Confirmed to exist
+  afterward, size 19357817 bytes.
+- (e) `git status --porcelain \| wc -l` after all of it: `0`.
+
+**G8 — STRUCTURE AND REMAINING PRECONDITIONS, over `3d2ab8b5..49fcc2c6`.**
+- Changeset-minus-range residue, change set WITHOUT `.agent/handoff.md`
+  (excluded — C3 writes it after this range ends): `set()` (empty).
+- Range-minus-changeset residue, against the FULL 5-path change set:
+  `set()` (empty).
+- Per-commit insertions (`git diff --numstat` against each commit's own
+  parent): `bd6c5766` 342, `5095b4fe` 317, `581118e6` 17, `49fcc2c6` 2. All
+  < 500.
+- All four commits single-parent (`git log --format='%H %P'
+  3d2ab8b5..49fcc2c6`; each line shows exactly one parent hash).
+- `<<<SLICE `/`<<<END ` line counts: `.agent/plan.md` at C2: 0;
+  `.agent/live_review.md` at C2: 0; `.agent/authored/f258-r11.md` (the
+  non-zero control): 4.
+- `git ls-files .remedy-wt \| wc -l`: 0. `git ls-files \| grep -c
+  remedy-job-evidence`: 0.
+- `git diff --numstat 3d2ab8b5..49fcc2c6 -- docs/roadmap/STATUS.md
+  README.md scripts/self_use_queue.json
+  docs/roadmap/features/T5_F258.md`: no output — all four ABSENT.
+- PRECONDITION 3: `from packages.orchestration.integrity_gate import
+  run_integrity_checks; result = run_integrity_checks()` →
+  `result.passed = True`, `result.fail_count = 0`.
 
 ## Authored-text proofs
 
-Four authored slices (PLAN10, GATE_R9, PROSE_SLIP, BUILTSTATE) and one whole
-block (C0a/C0b) were applied this round, all via disk-to-disk
-`shutil.copyfile` or exact byte-reconstruction against the scratch original
-under `.remedy-wt/f258-r10/`, never retyped. Each slice's own stated
-sha256/byte digest in the block was independently re-measured against the
-extracted slice bytes BEFORE it was applied, and matched in all four cases.
+Two authored slices (PLANF258R11, GATEF258R10) and one whole block
+(C0a/C0b) were applied this round, all via disk-to-disk `shutil.copyfile`
+or exact byte-reconstruction against the scratch original at
+`.remedy-wt/f258-r11/block.md`, never retyped. Both slices were extracted
+programmatically by marker-line indexing, never hand-retyped, and (per
+constraint 3) re-extracted from the COMMITTED blob `git show
+bd6c5766:.agent/authored/f258-r11.md` for every check after C0a.
 
 - C0a/C0b: the whole block, sha256
-  `6ebad7a4c7b2bb603ca43394411d70455f354eab6ab4ade81a2a6e911907fbc9` —
-  three-way equal (scratch original `.remedy-wt/f258-r10/block.md`,
-  `.agent/authored/f258-r10.md`, `.agent/last_block.md`), 15000 bytes.
-- PLAN10 → `.agent/plan.md`: sha256
-  `221ff160cb16a36ded9811b0ab6f3dd11d40e5c3c1910e1e3897c3376946d145` both
-  sides, 1823 bytes, 42 lines.
-- GATE_R9 → appended to `.agent/live_review.md`: sha256
-  `c2189d191803eef3c578f1d15d69fc50853bed01c8431caccb4da9fd3b8a81c2`, 3793
-  bytes, proved by whole-file reconstruction, the split-unit identity check,
-  AND the negative control.
-- PROSE_SLIP → appended to `.agent/prose_slips.md`: sha256
-  `8c875fd89a16197c4ab3eb0f7137b744dbd254e75061459cec7a7e1c072d092a`, 650
-  bytes, proved by whole-file reconstruction (byte-equality only, per the
-  gate-budget rule).
-- BUILTSTATE → appended to `docs/roadmap/features/T5_F258.md`: sha256
-  `c7e5b6995e0c51e4812d2c7611997b1f70ea3c910c3350ed550228459ca49992`, 3339
-  bytes, proved by pure-concatenation reconstruction and the single-heading
-  check.
+  `54b5c9629cf9179cb6ed9f15ba369dea294a08336f7d331b03f070e5de1ea1b6`, 21196
+  bytes — equal on both the scratch original and the committed blob; C0b's
+  two committed blob ids equal (`f6d2957e329bd25927bb1e89be7d6783ae833f4b`).
+- PLANF258R11 → `.agent/plan.md`: sha256
+  `d1de0b2f02c356a4924224128592cc894db40ec8a160324465ace93dce81fce3`, 1718
+  bytes, both sides equal.
+- GATEF258R10 → appended to `.agent/live_review.md`: sha256
+  `df2688f689627a153d07bf271c926323cedc3c9982e39fd093f2363ed7219396`, 2630
+  bytes, proved by whole-file reconstruction AND the negative control.
+
+This block carries no per-slice hash stamped in its own markers (unlike
+some prior rounds' blocks) — G2 is the ONE whole-block digest comparison
+the block itself orders (its own text: "One digest comparison"), which is
+what was run.
 
 ## Deviations & assumptions
 
-1. None from the block's ordered commit sequence. Order matched the
-   block's constraint 6 exactly: C0a → C0b → C1 (plan.md) → C2 (GATE_R9) →
-   C3 (PROSE_SLIP) → C4 (BUILTSTATE) → handback, with no reordering, extra
-   commit, or dropped commit.
-2. This round's own Done-when text (constraint/G3) explicitly orders ONE
-   negative control, for the `live_review.md` append (G3) only; G4 (the
-   `prose_slips.md` append) is explicitly scoped to "byte-equality only ...
-   per the gate-budget rule" with no negative control ordered for it. Both
-   were read literally against the block's own text before this handback
-   was written, rather than recalled from memory — this round's own opening
-   brief specifically warned against mischaracterizing what the block
-   ordered, after round 9's handback did exactly that (see this round's
-   PROSE_SLIP entry). The G3 negative control was run in full; no negative
-   control was owed or skipped for G4.
-3. No file under `packages/`, `apps/` or `tests/` was touched, and R-0570,
-   R-0736 and R-0757 were not resolved, repaired, or otherwise acted upon —
-   only the text already given in the block (BUILTSTATE, which itself names
-   R-0757 as a documented open risk) was applied, per the block's own
-   constraint 8.
-4. Nothing else in the block looked wrong. Every stated sha256/byte-count
-   digest (PLAN10, GATE_R9, PROSE_SLIP, BUILTSTATE) matched this worker's
-   own independent measurement exactly, as did every base byte-length
-   (`base`, `base2`, `base3`) and every ledger baseline count in G7.
+1. None from the block's ordered commit sequence. Order matched exactly:
+   C0a → C0b → C1 (plan.md) → C2 (live_review.md) → push → evidence bundle
+   → READY zip → red control → C3 (this handback) → push, with no
+   reordering, extra commit, or dropped commit.
+2. Guard re-expressions (constraint 5): this session's Bash tool rejected
+   several multi-line / multi-statement command forms outright (a
+   permission-layer denial, distinct from AGENTS.md's own bash-guard
+   validator) — not loops, `$( )`, `${arr[0]}`, `cp`, or env-var assignment
+   specifically, but compound single-invocation commands in general. Every
+   piece of logic requiring more than one shell statement (slice
+   extraction, digest comparison, the append-and-reconstruct arithmetic,
+   the negative control, the ledger counts, the residue sets, the red
+   control's node-id poisoning) was routed through a standalone Python
+   script under the gitignored `.remedy-wt/f258-r11/`, exactly as
+   constraint 5 prescribes, and copies used `shutil.copyfile`/
+   `shutil.copytree`, never `cp`. Real exit codes were captured with
+   `bash -c '<cmd>; echo "REAL_EXIT=$?"'` for both zip builds where the
+   exit code itself was part of what had to be reported (the READY
+   re-build and the red control); this form was accepted by the guard.
+3. `EVIDENCE_DIR` archiving: the block's step 3 assumed the READY zip might
+   need `shutil.move`-ing to `/home/decodeux/Repos/remedy-history/zips`.
+   In this checkout, `scripts/make_review_zip.sh` already defaults
+   `REMEDY_REVIEW_DIR="$HOME/Repos/remedy-history/zips"` (confirmed by
+   reading the script) and writes the final zip there directly — there was
+   never anywhere else to move it FROM. No `shutil.move` was run; the
+   reported archived path is simply where the build placed the file,
+   confirmed to exist there afterward. This is recorded here because it is
+   a real departure from the step as literally written, even though the
+   outcome (a READY zip sitting at that exact absolute path) is identical
+   to what the step intended.
+4. To obtain a rigorously measured REAL exit code for the READY build (the
+   first build was run as a plain, unwrapped Bash invocation and only
+   inferred success from its printed success banner), the READY build was
+   re-run once, wrapped for exit-code capture, confirming REAL_EXIT=0. This
+   produced a second, byte-different zip (`generated_at` timestamps differ
+   between builds) which was then deleted by its exact filename via
+   `os.remove` — not a glob — so the archive holds exactly one READY
+   package. The FIRST build's zip and sha256 are what this handback reports
+   throughout; the second build only supplied the exit-code reading.
+5. No file under `packages/`, `apps/`, `tests/` or `docs/` was touched, and
+   R-0570, R-0736 and R-0757 were not resolved, repaired, or otherwise
+   acted upon this round.
+6. Nothing else in the block looked wrong. Every stated expectation this
+   round's Done-when section named (byte lengths, run counts, gate names,
+   `PACKAGE_STATUS` values, the open-set/registered/Done counts) matched
+   this worker's own independent measurement exactly.
+
+## Values the next round needs (per the block's Handback section)
+
+- **Evidence job**: `f258-closure`
+- **Evidence directory**: `/home/decodeux/Repos/remedy/.remedy-wt/
+  f258_closure_evidence/remedy-job-evidence-f258-closure` (gitignored
+  scratch, not committed)
+- **Package filename**: `remedy-review-20260830-084541-READY_FOR_REVIEW.zip`
+- **Package SHA-256**: `4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50`
+- **Archived path**: `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260830-084541-READY_FOR_REVIEW.zip`
+- **Accepted HEAD (C2, full sha)**: `49fcc2c645601936d8c426b1eb09523b9b3c7f6f`
 
 ## Next
 
-This round discharges STATUS_closure_protocol.md precondition 4 (the Built
-State section) for F258's closure, joining preconditions 1, 3, 5 and 6
-already met as of round 9. The evidence job, the fresh review zip and the
-final STATUS/README/PR commit remain — per `.agent/plan.md`'s Next Steps,
-these are the following rounds, not this one. The next expected action is
-the reviewer's own independent re-verification of this round (G1-G8,
-re-run at or after `a701230f`), followed by designing the evidence-job
-round.
+The next round is the closure commit and the pull request, per
+`.agent/plan.md`'s Next Steps: ONE commit flipping F258's `[x]` on
+`docs/roadmap/STATUS.md` (using the six values above for the STATUS line's
+Evidence-job/package/SHA-256/package-path/accepted-HEAD segments), the
+README capability sync, the `scripts/self_use_queue.json` `consumed_by`
+edit marking SU-002 consumed by F258, and the final `.agent/` state — then
+opening the pull request (not merged this session). This is expected to be
+the last round of F258.
