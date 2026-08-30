@@ -2,7 +2,11 @@
 
 > **Status (2026-08-29):** built by F257. The queue, its loader, the job-path
 > seam and the closure-protocol precondition are in place; consumption happens
-> at feature close.
+> at feature close. **Update (2026-08-30, F258 round 2):** the queue's schema
+> moved to v2, adding a required `provenance` field naming each item's source;
+> every shipped item was migrated. F258's self-replenishing generator is not
+> yet built — this page still describes v1's discovery-free behaviour, which
+> remains true until that round ships.
 
 Remedy is used on Remedy on a schedule that cannot be skipped. This page is
 where to look for the two file formats involved and for the rule that makes the
@@ -22,7 +26,7 @@ other shipped campaign data rather than under `docs/`, because a data file that
 code reads is not a doc.
 
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "description": "<what this queue is for>",
       "items": [
         {
@@ -30,7 +34,8 @@ code reads is not a doc.
           "title": "<one line>",
           "why": "<why this job is worth a feature close>",
           "job_markdown": "# Job: ...\n\n## Task 1\n...\n\nAcceptance:\n- ...\n",
-          "consumed_by": ""
+          "consumed_by": "",
+          "provenance": "<what found this item — a human curator, or a generator source>"
         }
       ]
     }
@@ -39,10 +44,10 @@ Rules the loader enforces, every one of them a refusal rather than a guess:
 
 | Rule | Detail |
 |------|--------|
-| `schema_version` | must equal 1; a file from the future is refused, not half-read |
-| item keys | exactly the five above — no more, no fewer |
+| `schema_version` | must equal 2 (v1 files, without `provenance`, are refused, not half-read) |
+| item keys | exactly the six above — no more, no fewer |
 | `id` | must match `^SU-\d{3}$`, and must be unique across the file |
-| `title`, `why`, `job_markdown` | non-empty strings |
+| `title`, `why`, `job_markdown`, `provenance` | non-empty strings |
 | `consumed_by` | a string; empty means the item is still PENDING |
 
 An item is PENDING while `consumed_by` is blank. `next_self_use_item` answers
