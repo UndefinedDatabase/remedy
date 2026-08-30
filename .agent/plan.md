@@ -1,7 +1,7 @@
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 2, round 6.
+commit of pull request 225. SESSION 2, round 7.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -15,24 +15,23 @@ standard finding ledger.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the F040 closure candidate | done | round 1 |
-| the F258 claim and the seam inventory | done | round 1 |
-| T001 part 1 — schema v2, the provenance field | done | round 2 |
-| T001 part 2 — the generator module, tier 1 | done | round 3 |
-| T001 part 3 — wiring the closure protocol doc | done | round 4 |
+| T001 self-replenishing queue | done | rounds 2-4 |
 | T002 consumed means executed | done | round 5 |
-| T003 findings flow back | done | this round |
+| T003 findings flow back | done | round 6 |
+| the dedicated integration-gate round | done | this round |
+| closure sequence | open | next round |
 
 ## Next Steps
-1. This round books round 5's own verdict (`Gate: F258 R5`) into
+1. This round books round 6's own verdict (`Gate: F258 R6`) into
    `.agent/live_review.md` first, per amend0827 rule 1.
-2. `packages/orchestration/self_use_findings.py` reads a run's own `JobPlan`
-   and answers every defect verbatim (job- and task-level `error` fields),
-   never inventing wording, never registering anything itself. Wired into
-   `STATUS_closure_protocol.md` precondition 6 and `self-use-track-v1.md`.
-3. All three of F258's T-slices are now built against the feature file's own
-   text. Next: the closure sequence — evidence job, fresh review zip, the
-   STATUS line, the PR.
+2. The dedicated integration-gate round (planner_reviewer_prompt.md §3 tier
+   3) runs the full suite twice — branch and base, per
+   docs/agents/integration_gate.md — and records raw evidence under
+   `.agent/gate_f258_r7/`. The reviewer's own verdict on this round's
+   readings decides whether closure preconditions are met.
+3. Closure (docs/roadmap/STATUS_closure_protocol.md): preconditions 1-6,
+   evidence job, fresh review zip, the STATUS line, the PR — the reviewer's
+   own next design, not more T-slice work.
 
 ## Risks
 - R-0570 (Low) stays OPEN, routed away, unrelated to this branch.
