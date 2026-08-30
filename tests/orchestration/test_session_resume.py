@@ -1,5 +1,5 @@
 """Tests for the F106 session-resume capability surface (T001) and its
-repair-path wiring (T002a, T002b-i).
+repair-path wiring (T002a, T002b-i, T002c-i).
 
 T001 covers: every concrete provider (`FakeProvider`, `ClaudeProvider`,
 `ClaudeCliProvider`) exposes `supports_resume` and reads `False` by
@@ -27,8 +27,15 @@ round's captured Reviewer session id, under the same three-way guard
 (supported, is-repair, prior session id known). The bounded parse retry
 (a separate call within the same round) is explicitly NOT threaded this
 round — it always sends full context. `ReviewerOutput.resume_used`/
-`resume_session_ref` land the same way `BuilderOutput`'s do; the
-delta-prompt shrink (F111 hunk selection) is T002b-ii, still open.
+`resume_session_ref` land the same way `BuilderOutput`'s do.
+
+T002c-i covers the Builder-side fallback-once rule: a resume attempt that
+errors falls back ONCE, same round, to `resume=None`, recorded on the new
+`BuilderOutput.resume_fallback` field — gated strictly on a resume having
+actually been attempted, so a plain call failure is unaffected.
+`FakeProvider`'s test-only `resume_fails` override makes this failure
+mode reproducible without a real provider. The Reviewer-side mirror
+(T002c-ii) and the delta-prompt shrink (T002b-ii) remain open.
 """
 
 from __future__ import annotations
@@ -250,3 +257,45 @@ class TestT002bReviewerResumeThreading:
             builder_provider=provider, reviewer_provider=provider,
         )
         assert result.rounds[0].reviewer_output.resume_used is False
+
+
+class TestT002cBuilderFallbackOnce:
+    """A resume attempt that errors falls back once to full context, same round."""
+
+    def test_resume_error_falls_back_and_round_completes(self, demo_repo: Path):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=True, fake_session_id="sess-1", resume_fails=True,
+        )
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2,
+        )
+        assert len(result.rounds) >= 2
+        assert result.rounds[1].builder_output.error == ""
+        assert result.rounds[1].builder_output.resume_used is False
+        assert result.rounds[1].builder_output.resume_fallback is True
+        assert result.final_status == "staged_review_passed"
+
+    def test_no_fallback_when_no_resume_attempted(self, demo_repo: Path):
+        provider = FakeProvider(supports_resume=True, fake_session_id="sess-1", resume_fails=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+        )
+        assert result.rounds[0].builder_output.error == ""
+        assert result.rounds[0].builder_output.resume_fallback is False
+
+    def test_no_fallback_when_provider_unsupported(self, demo_repo: Path):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=False, fake_session_id="sess-1", resume_fails=True,
+        )
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2,
+        )
+        assert len(result.rounds) >= 2
+        assert all(rd.builder_output.resume_fallback is False for rd in result.rounds)
