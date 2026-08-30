@@ -1,284 +1,344 @@
-### STEP CLOSURE — F258 Self-use track v2, round 12 (THE CLOSURE COMMIT AND THE PULL REQUEST)
+--- STEP R1/F106 — Session resume instead of rebuild ---
 
-Goal: book the round 11 verdict, then execute the remainder of
-`docs/roadmap/STATUS_closure_protocol.md`'s Algorithm: the STATUS `[x]` flip,
-the README capability sync (same commit, R-0154), the `scripts/self_use_queue.json`
-`consumed_by` edit precondition 6 requires, the final `.agent/` state, and the
-pull request. This is the LAST round of this branch.
+Goal: open F106 on its own branch and measure the exact provider call-entry
+and evidence shape T001 builds on, writing that measurement to disk. No
+code this round — T001 (adapter capability + resume parameter + evidence
+fields + tests) is the next round, kept small per the feature file's own
+Orchestrator brief ("T001 first and small").
 
-Base: `530bd3d8`, the tip of `feature/f258-self-use-v2` and the handback this
-round starts from.
+Base: `811c2d7e96b4719b8c76e6fc59ec6d926847a026`, the current tip of `main`
+(top commit: "fix(ci): sort self_use_runner test import, restore lint
+ceiling"). Cut the branch from it.
 
-Bundle, in commit order:
+Branch: `feature/f106-session-resume`
 
-- C0a save this block verbatim to `.agent/authored/f258-r12.md`
+## Bundle, in commit order
+
+- C0a save this block verbatim to `.agent/authored/f106-r1.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
-- C1 book the F258 R11 verdict into `.agent/live_review.md`
-- C2 THE CLOSURE COMMIT: `docs/roadmap/STATUS.md`, `README.md`,
-  `scripts/self_use_queue.json`, `.agent/plan.md` and `.agent/handoff.md` —
-  nothing else
-- then `gh pr create`
+- C1  rewrite `.agent/plan.md` from slice PLAN1
+- C2  append slice RECORD1 to `.agent/live_review.md`
+- C3  apply pair PAIR-STATUS to `docs/roadmap/STATUS.md`
+- C4  rewrite `.agent/context.md` from slice CONTEXT1
+- C5  write `.agent/f106_inventory.md` — YOUR measurement, per the SPEC below
+- C6  rewrite `.agent/handoff.md` — the handback
 
-Change set — these paths and nothing else:
+## Change set — exactly these paths, nothing else
 
-- `.agent/authored/f258-r12.md`
-- `.agent/last_block.md`
-- `.agent/live_review.md`
-- `docs/roadmap/STATUS.md`
-- `README.md`
-- `scripts/self_use_queue.json`
-- `.agent/plan.md`
-- `.agent/handoff.md`
+    .agent/authored/f106-r1.md
+    .agent/last_block.md
+    .agent/plan.md
+    .agent/live_review.md
+    docs/roadmap/STATUS.md
+    .agent/context.md
+    .agent/f106_inventory.md
+    .agent/handoff.md
 
-No file under `packages/`, `apps/`, `tests/`, `scripts/make_review_zip.sh` or
-`docs/roadmap/features/T5_F258.md` is edited this round — the feature file's
-Built State is already current from round 10.
+No file under `packages/`, `apps/`, `tests/` or `docs/roadmap/features/`
+changes this round. This round writes NO production code and NO test.
 
-### Constraints
+## Constraints
 
-0. BEFORE ANYTHING: report
-   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-   — expected `[]`; if it is not `[]` now, STOP and hand back without
-   committing. Report `git rev-parse HEAD`, which must equal `530bd3d8`'s
-   full sha, and `git branch --show-current`, which must be
-   `feature/f258-self-use-v2`. Never force-push and never rewrite history.
-1. Apply every authored slice BYTE FOR BYTE — no reflow, rewording,
-   retitling, correction or shortening. If a slice looks wrong, apply it as
-   written and say so in the handback's deviations.
-2. The delimiter lines `<<<SLICE …` and `<<<END …` are transport only and
-   never reach a target file.
-3. Extract every slice from the COMMITTED blob with
-   `git show <C0a>:.agent/authored/f258-r12.md`, never from this prompt's
-   text.
-4. AGENTS.md binds in full: the self-review loop before every commit, a
-   clean tree, and the push. EVERY edit attempt — the STATUS pair, the
-   three README edits, the queue.json field mutation — appears in the
-   handback with its verified before/after byte counts.
-5. Shell forms rejected by this session's guard are RE-EXPRESSED, never
-   skipped and never weakened (loops, `$( )`, `${arr[0]}`, `cp`, brace
-   literals containing quotes, every form of environment-variable
-   assignment). Route such work through a scratch script under the
-   gitignored `.remedy-wt/`. Capture real exit codes with
-   `bash -c '<cmd>; echo "REAL_EXIT=$?"'` or from `subprocess`.
-6. THE APPEND CONVENTION for C1: `.agent/live_review.md` gets ONE append,
-   GATEF258R11 below, as `base + b"\n" + GATEF258R11`, base being the
-   file's own current bytes immediately before C1.
-7. THE OPEN SET IS COUNTED BY DISTINCT ID as
-   `len(set(registered ids) - set(resolved ids))`. It reads 263 at
-   `530bd3d8`. THIS ROUND REGISTERS NO ID AND RESOLVES NONE, so it must
-   still read 263 at C1 and at C2.
-8. THE QUEUE.JSON EDIT IS A SCRIPT, NEVER A HAND-WRITTEN FROM/TO PAIR: load
-   the file with `json.loads`, find the item whose `"id"` is `"SU-002"`,
-   assert its `"consumed_by"` is currently `""`, set it to `"F258"`, and
-   re-serialize the WHOLE document with
-   `json.dumps(data, indent=2, ensure_ascii=False) + "\n"` —
-   `ensure_ascii=False` IS LOAD-BEARING: the default `ensure_ascii=True`
-   escapes every non-ASCII byte (the file's own em dashes and curly quotes)
-   into `\uXXXX` sequences, which would silently rewrite hundreds of bytes
-   the module's own docstring calls "the curated bytes" and forbids
-   reformatting. Diff the old and new bytes with `difflib` and confirm the
-   unified diff touches EXACTLY ONE LINE (`"consumed_by": ""` →
-   `"consumed_by": "F258"`) before writing the file. Expected: 10834 bytes
-   before, 10838 after, delta exactly +4.
-9. THE STATUS.MD AND README.MD EDITS ARE FROM/TO REWRITES (FROM does not
-   survive as a prefix of TO in any of the four pairs below — verified by
-   the reviewer before authoring this block). Apply each FROM exactly once;
-   confirm each FROM is absent and each TO present exactly once after.
+1. Apply every slice BYTE FOR BYTE. Do not fix, rewrap, retitle or improve a
+   slice. If a slice looks wrong, apply it as given and DECLARE the problem
+   in the handback's deviations.
+2. There is no paste relay this session (docs/agents/self_drive_protocol.md).
+   The reviewer's scratch original of this exact block is on disk at
+   `.remedy-wt/f106-r1-block.md` — for C0a, use `shutil.copyfile` to copy
+   THAT file to `.agent/authored/f106-r1.md`, never a retype. For C0b,
+   `shutil.copyfile` the committed `.agent/authored/f106-r1.md` into
+   `.agent/last_block.md`. Never use `cp`. Apply every slice below by
+   extracting it from the COMMITTED `.agent/authored/f106-r1.md` by its
+   marker lines. This block states no expected byte count for itself (a
+   file cannot carry its own length without invalidating it on the next
+   edit) — G1 is where you report what you measured and the reviewer checks
+   it independently.
+3. C1 is the FIRST substantive commit, ahead of C2, because this round
+   touches the finding ledger and AGENTS.md's Commit Gate requires
+   `.agent/plan.md` to match the current work before every commit.
+4. The record is APPEND-ONLY. C2 appends RECORD1 and revises nothing already
+   in `.agent/live_review.md`.
+5. NO NEW R-ID IS MINTED THIS ROUND and NO DECISION ID IS MINTED THIS ROUND.
+   The count of distinct `^- R-\d+ — ` ids is the same before and after C2,
+   the count of distinct `^Done: R-\d+ — ` ids is the same before and after,
+   and the count of distinct `^DECISION F\d+ D\d+ — ` ids is the same before
+   and after (19 at the base, measured by the reviewer at `811c2d7e`).
+6. `.agent/plan.md` stays under 50 lines (AGENTS.md). PLAN1 is authored to
+   fit; do not add to it.
+7. Every exit code you report is REAL, taken from
+   `subprocess.run(...).returncode` inside a script under the gitignored
+   `.remedy-wt/`. Never read an exit code through a pipe, and never report a
+   colour you did not run.
+8. No destructive verification is ordered this round (no code lands). If you
+   run one anyway, it runs ONLY inside a disposable `git worktree`, never in
+   the primary checkout, which satisfies `git status --porcelain` empty at
+   every reading.
+9. The `remedy` console script is DENIED in this sandbox. Where you need it,
+   use `python3 -m apps.cli.main ...` and say so.
+10. Commit subjects carry no leading-slash token, no absolute path and no
+    secret-like string. No `Co-Authored-By` trailer.
+11. Push the branch after C6 and open NO pull request. This is round 1 of
+    the feature; the PR is created at closure.
+12. Pair shape, measured not asserted — PAIR-STATUS: `TO contains FROM:
+    false`, so it is a REWRITE, and the FROM 1x→0x / TO 0x→1x count applies
+    to it. The reviewer measured, at `811c2d7e`: PAIRSTATUS-FROM occurs 1x
+    in `docs/roadmap/STATUS.md`, PAIRSTATUS-TO occurs 0x, and the whole file
+    holds 0 lines matching `^- \[~\] F\d{3} — `.
+13. The inventory (C5) is a MEASUREMENT, and every citation below is a
+    HYPOTHESIS you VERIFY independently, not a fact you transcribe. Where a
+    citation resolves exactly as stated, quote the current exact text at the
+    given path/line. Where it does not — wrong line number, drifted text, or
+    absent — say so plainly and give the corrected citation. Where something
+    is ABSENT, say so and say how you searched (the exact command). Cite
+    every claim with a `file:line` and the command that produced it.
 
-### The authored slices
+## Slices
 
-<<<SLICE GATEF258R11
-Gate: F258 R11 — THE PACKAGE ROUND, CLOSURE-PROTOCOL ALGORITHM STEPS 1 AND 2. THE ROUND PASSED AND THE PACKAGE BUILT READY_FOR_REVIEW. The reviewer re-ran every gate independently against the real diff `3d2ab8b5..530bd3d8`. G1/G2 TRANSPORT: the block, `.agent/authored/f258-r11.md` and `.agent/last_block.md` all sha256 `54b5c9629cf9179cb6ed9f15ba369dea294a08336f7d331b03f070e5de1ea1b6`, 21196 bytes — equal to the reviewer's own scratch original. G3 THE PLAN AT C1: `.agent/plan.md` byte-equal to the authored PLANF258R11 slice extracted from the committed block, 1718 bytes, 38 lines, `## Goal`/`## Next Steps` present. G4 THE RECORD APPEND AT C2: base 1798961 bytes; `base + b"\n" + GATEF258R10 (2630 bytes) == committed (1801592 bytes)` True; the last `\n\n`-unit equals GATEF258R10 exactly; a negative control (byte flip, disposable worktree, removed after) independently reproduced by the reviewer, correctly rejected, the true original correctly accepted. G5 THE LEDGER: before C2, 318 distinct `R-` ids / 55 distinct `Done:` ids / open set 263 / `Gate: F258 R` lines ending at R9; after, same R-ids/Done-ids/open-set, `Gate: F258 R` lines ADDED exactly `F258 R10` — the round registered nothing and resolved nothing, as required. G6 THE EVIDENCE BUNDLE, independently spot-checked by the reviewer against the real files on disk at `.remedy-wt/f258_closure_evidence/remedy-job-evidence-f258-closure/`: `verification_tests.json` carries exactly the seven ordered runs — `vr-0001`..`vr-0007` at 23/18/20/7/3/295/42 passed, 0 failed/skipped/deselected each, `len(node_ids) == selected` for every one — matching the reviewer's own fresh run of all five self-use suites together (71 passed) plus the independently-confirmed `tests/docs/` (295) and canary (42) baselines. `final_verifier_report.json` reads `"verdict": "PASS_WITH_RISKS"`. All eight closed-schema gate files are present in the bundle directory. G7 THE REVIEW ZIP, read under constraint 8 (PACKAGE_STATUS is the reading, never the exit code): the READY package `remedy-review-20260830-084541-READY_FOR_REVIEW.zip` was independently confirmed by the reviewer, via a fresh read-only check, to exist at the archived path `/home/decodeux/Repos/remedy-history/zips/` with size 19,357,817 bytes and sha256 `4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50` — matching the worker's own reported digest exactly, byte for byte. The manifest's `committed_review_subject.head_commit` equals C2's full sha `49fcc2c645601936d8c426b1eb09523b9b3c7f6f`, which is the ACCEPTED HEAD. THE RED CONTROL was independently confirmed present: `remedy-review-20260830-084654-BLOCKED_EVIDENCE.zip` exists at the same archived directory, proving the pipeline reports `PACKAGE_STATUS=BLOCKED_EVIDENCE` at REAL exit 0 for a deliberately poisoned copy — the status distinguishes the two builds, the exit code does not. ONE DISCLOSED DEVIATION IS ACCEPTED, NON-BLOCKING: the worker rebuilt the READY zip once to capture a rigorous exit-code reading and removed the resulting duplicate by its exact filename via `os.remove`, never a glob — the canonical package's own filename, size and sha256 are unaffected and independently reconfirmed above. G8 THE TREE: `git status --porcelain` empty; `git worktree list` shows only the primary checkout; `git branch --list 'tmp/*'` empty; `git ls-files | grep -c remedy-job-evidence` and `git ls-files .remedy-wt | wc -l` both 0 — neither the evidence directory nor the zip ever entered the tree; per-commit insertions 342/317/17/2 from `git show --numstat`, all under 500; `python3 -m apps.cli.main integrity check --json` independently re-run by the reviewer at this HEAD: `"passed": true`, `"fail_count": 0`, `"high_blockers_open"` `"pass"`. THE ROUND PASSES: the branch is pushed and matches `origin` exactly at `530bd3d8`. Closure precondition 3 is re-confirmed MET. Algorithm steps 1 and 2 are complete; the next and final round is the closure commit (STATUS line, README sync, the `consumed_by` edit, final `.agent/` state) and the pull request.
-<<<END GATEF258R11
+The authored units below are PLAN1, RECORD1, CONTEXT1 and the two halves of
+PAIR-STATUS. Each is delimited by its own BEGIN and END marker line; the
+marker lines are NOT part of the slice, and the slice's own bytes start on
+the line after BEGIN and end with the newline before END.
 
-<<<SLICE PLANF258R12CLOSED
-# Plan — F258 Self-use track v2 (CLOSED)
+<<<BEGIN PLAN1
+# Plan — F106 Session resume instead of rebuild
 
-Branch: feature/f258-self-use-v2, cut from `main` at the merge commit of pull
-request 225. F258 is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line
-and the pull request is open and UNMERGED.
+Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`. SESSION 1,
+opening the feature.
 
 ## Goal
-"Remedy is used on Remedy" keeps running with zero operator input: a generator
-replenishes the self-use queue with exactly one dated, provenanced item
-whenever it is empty at close, the consumed item is actually RUN through the
-real job path under a small budget and stopped at the normal approval gate
-rather than only planned, and any defect the run surfaces flows back into the
-standard finding ledger. DONE.
+Repair rounds stop resending the world: where the provider supports resuming
+a session, a repair call resumes the original session and sends only the
+findings delta, with an honest automatic fallback to full context when the
+session is gone, flagged in evidence. Correctness never depends on resume
+working.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001/T002/T003, integration gate | done | rounds 2-7 |
-| all six closure preconditions | done | rounds 8-10 |
-| the evidence bundle and the review zip | done | round 11, READY_FOR_REVIEW |
-| the closure commit | done | this round, Rule A4's last commit |
-| the pull request | done | opened and NOT merged |
+| the F106 claim and the branch | done | this round |
+| the shape inventory | done | this round, `.agent/f106_inventory.md` |
+| T001 capability + resume param + evidence fields + tests | open | next round |
+| T002 repair-path integration + delta shrink + expired fallback | open | gated on T001; F111 already accepted |
+| T003 measured fixture comparison + docs | open | |
 
 ## Next Steps
-1. Nothing further on this branch. The next feature's Open PR Gate merges
-   this pull request, or the operator merges it manually at any time.
-2. Rule A5 selects the next feature in a fresh session.
+1. This round claims F106 and measures the exact call-entry/evidence shape
+   T001 builds on, into `.agent/f106_inventory.md` — no code this round.
+2. The next round orders T001: `supports_resume` on the provider protocol
+   and its three adapters, an additive `resume` kwarg on `build`/`review`,
+   `resume_used`/`resume_session_ref` on `BuilderOutput`/`ReviewerOutput`,
+   all False/"" by construction — zero behavior change — plus
+   `tests/orchestration/test_session_resume.py`.
+3. T002 is gated on diff-repair (F111, "Diff-only repair"); F111 is already
+   accepted (STATUS.md, 2026-08-13), so that gate is satisfied.
 
 ## Risks
-- THE SELF-USE QUEUE HOLDS TWO PENDING ITEMS after this close (SU-003,
-  SU-004) — not exhausted, unlike F257's close. No generator action is
-  needed at the next feature's close.
-- R-0570 (Low) and R-0736 (Medium) stay registered and unrepaired, both
-  outside F258's own surface. R-0757 (Medium) IS F258's own defect (the
-  self-use runner's silent fake-provider default) and is deliberately not
-  repaired on this branch — a follow-up round, not a closure blocker.
-  Together these are the documented risks behind the PASS_WITH_RISKS
-  verdict.
-<<<END PLANF258R12CLOSED
+- The orchestrator brief demands the fallback-once rule verbatim in the T002
+  order — carry it forward, do not soften it.
+- Only `ClaudeCliProvider` reports a session id today; T001 keeps
+  `supports_resume` False on all three adapters regardless — turning one
+  True is T002's call once resume is actually wired to CLI behavior.
+<<<END PLAN1
 
-`GATEF258R11` is a SINGLE APPEND to `.agent/live_review.md` under
-constraint 6, applied at C1. `PLANF258R12CLOSED` is a WHOLE-FILE
-replacement of `.agent/plan.md`, applied at C2.
+<<<BEGIN RECORD1
+Note: F106 — CLAIMED. `docs/roadmap/STATUS.md`'s amend0830-cost-first pull-forward (operator ruling 2026-08-30) put F106 first in Rule A5 order; `python3 -m apps.cli.main plan next` confirmed it at claim time. `.agent/candidates.md` is EMPTY and no `.agent/STOP` exists, so nothing blocks the claim. F106's own orchestrator brief gates T002 on diff-repair being merged: that is F111 "Diff-only repair" (`docs/roadmap/features/T2_F111.md`), accepted 2026-08-13 with T001-T003 complete, so the gate is satisfied and only T001's own "first, small" ordering governs round 2. This round's measured shape, written in full to `.agent/f106_inventory.md`: the provider call entry is `PingPongProvider` (`packages/orchestration/pingpong_provider.py:132`), with three concrete adapters (`FakeProvider`, `ClaudeProvider`, `ClaudeCliProvider`); `UsageActuals.session_id` (`packages/orchestration/token_actuals.py:37`) is already populated by `ClaudeCliProvider` alone; no `supports_resume`-shaped capability flag exists on that protocol today, the nearest repo precedent being `WorkerSpec.supports_external_builder_package` (`packages/orchestration/worker_registry.py:167`).
+<<<END RECORD1
 
-### The closure commit's four content edits
+<<<BEGIN CONTEXT1
+# Context — F106 Session resume instead of rebuild
 
-**Edit 1 — `docs/roadmap/STATUS.md`, a REWRITE.**
-FROM (occurs exactly 1x):
-`- [~] F258 — Self-use track v2 (self-replenishing queue & executed items)`
-TO (occurs exactly 1x after; FROM 0x after):
-`- [x] F258 — Self-use track v2 (T001–T003 complete; accepted 2026-08-30 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f258-closure · package remedy-review-20260830-084541-READY_FOR_REVIEW.zip · SHA-256 4b4153ad33f01e4d7014e853663f76ac1f36f61ba06687ed0b3c9c5411f12c50 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 49fcc2c645601936d8c426b1eb09523b9b3c7f6f)`
-Touch no other line. Expected: 32950 bytes before, 33277 after, delta +327.
+## Active Branch
+feature/f106-session-resume, cut from `main` at `811c2d7e`.
 
-**Edit 2 — `README.md`, the accepted-count line, a REWRITE.**
-FROM (occurs exactly 1x): `64 of 258 registered items accepted.`
-TO (occurs exactly 1x after; FROM 0x after): `65 of 258 registered items accepted.`
+## Scope
+Feature F106, `docs/roadmap/features/T3_F106.md` — Tier 3, session resume
+for repair rounds. T001 (this feature's first code round) adds an additive
+`supports_resume` capability flag and `resume` parameter to the provider
+call entry, plus `resume_used`/`resume_session_ref` evidence fields, with
+zero behavior change on every adapter. T002 wires it into the repair path
+with a fallback-once rule; T003 measures resume vs full-context tokens.
+F106 also covers job/mission resume-from-persisted-state per the feature
+file's own Scope note (F075 candidate routing, R-0201) — in scope, not
+sliced into T001-T003 yet.
 
-**Edit 3 — `README.md`, the Tier 5 table row, a REWRITE.**
-FROM (occurs exactly 1x): `| 5 | Operator Cockpit | 12 | 32 |`
-TO (occurs exactly 1x after; FROM 0x after): `| 5 | Operator Cockpit | 13 | 32 |`
+## Do not touch
+Failover policy, provider adapter internals beyond the additive surface,
+prompt content rules — the feature file's own Do-not-touch. No orchestrator
+move schema `resume` kind exists; that is out of T001-T003's own slicing.
 
-**Edit 4 — `README.md`, the Tier 5 capability list, a REWRITE (FROM does
-NOT survive as a prefix of TO — the new paragraph is inserted between the
-two halves of FROM).**
-FROM (occurs exactly 1x), exact bytes including the two newlines:
-```
-re-arms it).
+## Assumptions
+- `ClaudeCliProvider` is the only adapter that populates `session_id` today
+  (`UsageActuals.session_id`, `packages/orchestration/token_actuals.py:37`).
+  T001 does not turn any adapter's `supports_resume` True — that is T002's
+  call once real resume behavior is wired.
+- Diff-only repair (F111) is accepted and merged; T002's gate on it is
+  satisfied.
 
-Full per-feature state:
-```
-TO (occurs exactly 1x after; FROM 0x after), exact bytes:
-```
-re-arms it).
+## Constraints
+The bullets in this first group are STANDING project constraints, carried
+forward from the context this file replaced.
 
-F258 self-use track v2 (the queue now replenishes itself: a generator appends
-exactly one dated, provenanced item whenever the track runs dry, sourced first
-from the oldest self-contained open finding in the reviewer's own ledger; the
-consumed item is RUN through the real job path to the normal approval gate,
-not merely planned; and any defect the run surfaces flows back into that same
-ledger as a normal finding).
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree, never
+  in the primary checkout, which satisfies `git status --porcelain` empty at
+  every verdict.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The full contract
+  those readers hold over the three state files, so a rewrite is checked
+  against it directly: this file carries `## Active Branch`, a `feature/`
+  branch name, a roadmap feature id matching `\bF\d{3}\b` and the word
+  `Steps`; `.agent/plan.md` carries `## Goal`, `## Next Steps` and a feature
+  id; `.agent/live_review.md` carries `Steps`.
+- A new module under `packages/orchestration/` is swept by repo-wide guards
+  that name no path: the `REMEDY_DATA_DIR` single-reader invariant, the
+  path-utils single-implementation invariant, the bare-`except: pass` ban,
+  and the development-artifact boundary.
 
-Full per-feature state:
-```
-README.md expected: 9206 bytes before, 9625 after (all three edits
-combined), delta +419.
+This feature is NOT UI work — no design-reference binding applies.
 
-**Edit 5 — `scripts/self_use_queue.json`, per constraint 8 (a script, never
-a hand-written pair).** Expected: 10834 bytes before, 10838 after, delta
-+4, unified diff touching exactly one line.
+## Steps
+The item-status table for this feature lives in the `## Current Step`
+section of `.agent/plan.md`. This file deliberately does not restate it.
+<<<END CONTEXT1
 
-All five edits, plus the `.agent/plan.md` rewrite and the `.agent/handoff.md`
-rewrite, land in ONE commit, C2 — the closure commit, per
-`STATUS_closure_protocol.md` Algorithm item 5's ordering rule (README syncs
-in the SAME commit as the STATUS flip; nothing else may separate them).
+<<<BEGIN PAIRSTATUS-FROM
+- [ ] F106 — Session resume instead of rebuild
+<<<END PAIRSTATUS-FROM
 
-### Done when
+<<<BEGIN PAIRSTATUS-TO
+- [~] F106 — Session resume instead of rebuild
+<<<END PAIRSTATUS-TO
 
-G1 HYGIENE. Read `.agent/STOP` from disk before C0a and again before C2;
-report both answers. Report constraint 0's three readings.
-`git status --porcelain | wc -l` after each of C0a, C0b and C1 must be 0.
+## SPEC for C5 — `.agent/f106_inventory.md`, YOUR measurement
 
-G2 TRANSPORT. Report sha256 and byte length of the committed blob
-`git show <C0a>:.agent/authored/f258-r12.md` and of the reviewer's own
-original at `.remedy-wt/f258-r12/block.md`, and whether they are EQUAL.
-Report that `git rev-parse <C0b>:.agent/authored/f258-r12.md` and
-`git rev-parse <C0b>:.agent/last_block.md` print ONE blob id.
+This file is NOT authored above and must not be invented. VERIFY the
+citations below against the repository at C4 and write what you find, with
+a `file:line` for every claim and the exact command beside every count.
+Where something is ABSENT, say so and say how you searched. Seven sections,
+in this order:
 
-G3 THE RECORD APPEND AT C1. Reconstruct the C1 blob of
-`.agent/live_review.md` from the `530bd3d8` blob plus GATEF258R11 under
-constraint 6; report `True`/`False` with all three lengths (expected
-1805654 committed). NEGATIVE CONTROL: flip one byte at a confirmed offset
-inside the appended text, in a disposable worktree removed after; report
-the equality is now `False`, then that the true original is `True`.
+1. THE PROVIDER PROTOCOL AND ITS CONCRETE ADAPTERS. Verify
+   `packages/orchestration/pingpong_provider.py:132` defines
+   `class PingPongProvider(Protocol)` with a `name` property and `build`/
+   `review` methods taking `timeout_sec`/`max_output_chars` keyword params —
+   quote the exact current signatures. List the three concrete adapters
+   (`FakeProvider`, `ClaudeProvider`, `ClaudeCliProvider`) with their class
+   line numbers, and quote each one's `build`/`review` method signature
+   exactly as it stands today.
 
-G4 THE LEDGER AT C1, under constraint 7. Report over
-`.agent/live_review.md` at `530bd3d8` and again at C1: registered/resolved
-distinct counts, the open set, and `Gate: F\d+ R\d+ — ` count. Expected:
-registered UNMOVED at 318, resolved UNMOVED at 55, open set UNMOVED at
-263, `Gate:` count up by exactly one. Report the count of
-`^Gate: F258 R11 — ` at C1, which must be 1.
+2. THE SESSION-ID FIELD IN CALL EVIDENCE. Verify
+   `packages/orchestration/token_actuals.py:37` (`UsageActuals.session_id:
+   str`) and quote the docstring describing it. Grep
+   `packages/orchestration/pingpong_provider.py` for `session_id` and report
+   every match with its line number and which class's method it sits in —
+   confirm or correct the claim that only `ClaudeCliProvider` populates it.
 
-G5 THE FIVE C2 EDITS. For EACH of the five edits above, report: the exact
-before/after byte length of its target file, the before/after occurrence
-count of its FROM string (or, for the queue.json script, the unified diff
-line count and the exact one changed line), and the after occurrence
-count of its TO string. All five must match the expected numbers stated
-above exactly.
+3. THE CALL-ENTRY SIGNATURE — the additive target for `resume`. Quote the
+   `Protocol.build`/`Protocol.review` signatures exactly (already covered in
+   section 1; cross-reference rather than repeat verbatim).
 
-G6 THE PLAN AND HANDOFF AT C2. `.agent/plan.md` byte-equal to
-PLANF258R12CLOSED including the trailing newline. `.agent/handoff.md`
-exists and is non-empty (its own content is not gated here — see
-Handback below for what it must carry).
+4. CAPABILITY-FLAG PRECEDENT ELSEWHERE IN THE REPO. Verify
+   `packages/orchestration/worker_registry.py:167`
+   (`supports_external_builder_package: bool = False`) and quote the two
+   neighboring `supports_*` fields. Grep the repo for `supports_[a-z_]*:
+   bool` and report every distinct file it appears in.
 
-G7 THE REMAINING PRECONDITIONS, over `530bd3d8..<C2>` for the range. The
-change set lists `.agent/handoff.md`, written by C2 itself, so this range
-IS the change set (no residue to compute against a later handback commit
-— C2 is both the content commit and the last commit before the round
-report). Report each commit's insertions from `git diff --numstat`, each
-under 500 except a declared exception. Report `git ls-files .remedy-wt |
-wc -l`, expected 0, and `git ls-files | grep -c remedy-job-evidence`,
-expected 0. Report `python3 -m apps.cli.main integrity check --json`
-`result["passed"]` and `result["fail_count"]` at C2 — expected `true`/`0`.
-Report `git diff --numstat` for `docs/roadmap/features/T5_F258.md` over
-the range, expected ABSENT (its Built State is already current from round
-10).
+5. THE REPAIR LOOP'S CALL SITES — LOCATE ONLY. Confirm
+   `packages/orchestration/pingpong_loop.py` calls
+   `builder_provider.build(...)` and `reviewer_provider.review(...)`; report
+   the line numbers of those call sites as they stand today (they may have
+   moved since a prior reading).
 
-G8 THE STATUS/README CROSS-CHECK. Report
-`python3 -m pytest tests/docs/ -q` at C2, REAL exit 0, expected 295
-passed unchanged — the pinned README↔STATUS cross-checks
-(`test_the_readme_accepted_count_equals_the_status_count`,
-`test_the_readme_tier_table_done_column_matches_the_ledger`) are IN this
-suite and must be green with the new numbers, not merely asserted by this
-block. Report the canary `python3 -m pytest tests/cli/test_golden_path.py
--q`, REAL exit 0, expected 42 passed.
+6. THE DIFF-REPAIR / DELTA MECHANISM. Confirm F111 "Diff-only repair" is
+   `[x]` (accepted) in `docs/roadmap/STATUS.md` and quote that exact line.
+   Confirm `packages/orchestration/diff_repair.py` exists and quote its
+   module docstring's first line.
 
-### The pull request
+7. TEST CONVENTIONS FOR PROVIDER-ADAPTER TESTS. List every file under
+   `tests/orchestration/` whose name contains `provider` or `pingpong`.
+   Confirm, by directory listing, that
+   `tests/orchestration/test_session_resume.py` does NOT exist yet.
 
-After C2 is committed and pushed, open the PR with `gh pr create`:
+Report every ABSENCE explicitly. A section that says "not found, searched
+with <command>" is worth more than a confident guess, and this inventory is
+the evidence the T001 order is built from.
 
-- Title: `F258 — Self-use track v2: self-replenishing queue, real
-  execution, findings flow back`
-- Base: `main`. Head: `feature/f258-self-use-v2`.
-- Body: what/why (T001-T003, the acceptance criteria met), key decisions
-  (DECISION F258 D1 the schema v2 break), how to review (the review zip
-  at the archived path), the changed-files table for the WHOLE branch
-  (`git diff --stat main...HEAD`), the latest verdict (PASS_WITH_RISKS),
-  open-findings count (263), and runtime actuals where measured
-  (session/round counts from the handoff — `not-measured` beats a guess
-  for anything not actually timed).
-- Do NOT merge it. Report the PR URL and number.
+## Done when — the gates
 
-### Handback
+Run each gate and report ONE line per gate in the handback with its REAL
+exit code. Every gate below runs at a commit STRICTLY EARLIER than C6, which
+writes the handback; C6's own numbers are measured by the reviewer at the
+next gate and are not owed here.
 
-Rewrite `.agent/handoff.md` in C2 (the same commit that writes it) per
-docs/agents/handback_template.md. It carries: `SESSION 3 of feature F258 ·
-round 12 (FINAL)`; the roster of every round this session (8 through 12);
-the range `530bd3d8..HEAD`; a changed-files table for C2 whose `+/-` cells
-are taken from `git diff --numstat`; ONE LINE PER GATE G1 through G8 with
-its real result; any deviations; the open-findings count, 263; the PR
-number and URL; and the next expected action — nothing further on this
-branch, the next feature's Open PR Gate merges this PR.
+G1 TRANSPORT, at C0b. Report the byte length of the committed
+   `.agent/authored/f106-r1.md` and of the committed `.agent/last_block.md`,
+   and state whether they are byte-equal. This block deliberately states no
+   expected length — the reviewer holds the original and checks your
+   reported value independently.
 
-Do not write a `Done:` or `Gate:` paragraph of your own anywhere —
-GATEF258R11 is reviewer-authored text you apply verbatim, and any OTHER
-such paragraph is a finding however hedged. Do not merge the PR. Do not
-touch `main`. Do not force-push.
+G2 THE PLAN, at C1. `.agent/plan.md` is BYTE-EQUAL to slice PLAN1 (report
+   sha256 of both), its line count is under 50, and it holds `## Goal` and
+   `## Next Steps`.
 
-After C2: push with `git push origin feature/f258-self-use-v2` and report
-the outcome, THEN create the PR as above.
+G3 THE RECORD APPEND, at C2. The MEASURED pre-commit byte length of
+   `.agent/live_review.md` plus one separator newline plus RECORD1's byte
+   length equals the committed length — re-measure the base yourself at the
+   commit you append at; the reviewer read 1809603 at `811c2d7e`. Then TWO
+   independent readings: (a) WHOLE RECONSTRUCTION — base + separator + slice
+   compared to the entire committed file; (b) PARAGRAPH ORDER — the last
+   blank-line unit of the committed file equals RECORD1 exactly (N=1, one
+   dense paragraph). NEGATIVE CONTROL, inside a disposable worktree removed
+   after: flip one printable byte inside the appended paragraph and report
+   that BOTH readings reject the flipped file and accept the unflipped one.
+
+G4 THE LEDGER, at C1 and at C2. Report, for each of the two commits:
+   distinct `^- R-\d+ — ` ids, distinct `^Done: R-\d+ — ` ids, and the open
+   count. The ADDED registered ids and the ADDED resolved ids must BOTH be
+   the empty list — the reviewer measured 318 registered / 55 resolved / 263
+   open at `811c2d7e`. Report the distinct `^DECISION F\d+ D\d+ — ` ids
+   before and after C2; both counts equal 19 (the reviewer's base reading).
+
+G5 THE CLAIM AND THE DOCS PINS, at C3. In `docs/roadmap/STATUS.md`:
+   PAIRSTATUS-FROM occurs 0 times and PAIRSTATUS-TO occurs exactly 1 time;
+   `git diff --numstat` for C3 alone reads exactly one insertion and one
+   deletion over that one path; the whole file holds exactly 1 line matching
+   `^- \[~\] F\d{3} — `. Then, at C3: `python3 -m pytest tests/docs/ -q` and
+   `python3 -m pytest tests/orchestration/test_roadmap_index.py -q`, each
+   its own REAL exit code. The reviewer measured both green at the base,
+   295 passed and 30 passed; report YOUR numbers.
+
+G6 THE CONTEXT FILE, at C4. `.agent/context.md` is BYTE-EQUAL to slice
+   CONTEXT1 (report sha256 of both), and it holds `## Active Branch`, the
+   branch name `feature/f106-session-resume`, `F106` and the word `Steps`.
+
+G7 THE STATE READERS AND THE CANARY, at C5. Each its own REAL exit code:
+   `python3 -m pytest tests/ui_server/ -q`,
+   `python3 -m pytest tests/orchestration/test_test_runner.py -q`,
+   `python3 -m pytest tests/regression/test_resource_safety.py -q`,
+   `python3 -m pytest tests/orchestration/test_integrity_gate.py -q`, and
+   the canary `python3 -m pytest tests/cli/test_golden_path.py -q`. The
+   reviewer measured these at the base at 515, 52, 21, 16 and 42 passed;
+   report YOURS.
+
+G8 THE INVENTORY AND THE TREE, at C5. `.agent/f106_inventory.md` exists and
+   carries all seven SPEC sections — report the heading line of each.
+   Report the `file:line` count it cites and confirm every cited path
+   resolves with `git ls-tree HEAD -- <path>`. Then `git status --porcelain`
+   is EMPTY, `git ls-files --others --exclude-standard` has count 0, and the
+   per-commit insertion counts for C0a through C5 from `git diff --numstat`,
+   every one under 500.
+
+## Handback
+
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries
+the state block, the `## Commits` table with a `+/-` column taken from
+`git diff --numstat` (not from file line counts), the deviations, the
+item-status table with every bundle item and every gate appearing exactly
+once, and the next steps. It states `SESSION 1` of F106 and round 1. It has
+NO length cap.
