@@ -3295,6 +3295,38 @@ def run_pingpong(
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
             )
+            # F106 T002c: a resume attempt that errors falls back ONCE to the
+            # full-context path within the same round — an honest, evidenced
+            # event, never a task failure by itself (Orchestrator brief,
+            # verbatim). Only fires when a resume was actually attempted
+            # (``reviewer_resume_ref`` set); a plain call failure with no
+            # resume in play is unaffected and falls straight through to the
+            # existing terminal-error / parse-retry handling below,
+            # unchanged.
+            if reviewer_resume_ref and reviewer_out.error:
+                _begin_stream_call(reviewer_provider, round_num, "attempt")
+                reviewer_call_reasons = []
+                reviewer_out = _call_with_retry(
+                    lambda ts=reviewer_timeout: reviewer_provider.review(
+                        reviewer_effective,
+                        timeout_sec=ts,
+                        max_output_chars=max_output_chars,
+                        resume=None,
+                    ),
+                    result=result,
+                    role="reviewer",
+                    provider=reviewer_name,
+                    on_call=_rev_trace(
+                        reviewer_effective,
+                        "review",
+                        "re-review" if is_repair else "review",
+                    ),
+                    on_provider_attempt=on_provider_call,
+                    call_reasons=reviewer_call_reasons,
+                    stop_check=_stopped,
+                    rate_governor=_rate_governor,
+                )
+                reviewer_out.resume_fallback = True
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
             # terminal reviewer failure records F010 against it (F10).
