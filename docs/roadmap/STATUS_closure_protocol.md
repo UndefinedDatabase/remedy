@@ -20,8 +20,10 @@
 6. EXACTLY ONE SELF-USE ITEM IS CONSUMED BY THIS CLOSE (F257). The first
    pending item in `scripts/self_use_queue.json` — the one
    `packages.orchestration.self_use_queue.next_self_use_item` answers — has
-   been planned through `packages.orchestration.self_use_job`, taken to the
-   normal approval gate like any other job, and its `consumed_by` set to this
+   been planned through `packages.orchestration.self_use_job` and RUN
+   through `packages.orchestration.self_use_runner.run_next_self_use_item`
+   (F258 T002) to the normal approval gate like any other job — never
+   promoted — and its `consumed_by` set to this
    feature's id in the closure commit. If the queue holds NO pending item,
    the session calls
    `packages.orchestration.self_use_generator.generate_and_append_if_empty`
