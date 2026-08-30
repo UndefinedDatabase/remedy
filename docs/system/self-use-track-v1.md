@@ -13,7 +13,11 @@
 > planned item through the real job path (builder/reviewer loop, isolated
 > worktree) under a small budget, stopping at the normal approval gate
 > (T002); this page's job-path and consumption sections are updated to
-> match.
+> match. **Update (2026-08-30, F258 round 6):**
+> `packages/orchestration/self_use_findings.py` now reads a run's own
+> `JobPlan` and answers its defects verbatim, for the closing session to
+> register as normal findings (T003); F258's three T-slices are now all
+> built.
 
 Remedy is used on Remedy on a schedule that cannot be skipped. This page is
 where to look for the two file formats involved and for the rule that makes the
@@ -82,6 +86,7 @@ text that runs.
 | `packages/orchestration/self_use_queue.py` | the READ side — loads, validates, answers the next pending item. Owns no writer. |
 | `packages/orchestration/self_use_job.py` | renders one item to `<dest_dir>/<id>.md` and plans it via `plan_job_from_file`. Plans only; never runs, never promotes. |
 | `packages/orchestration/self_use_runner.py` | runs the planned item via `run_job` under a small budget, in the isolated worktree the target repo gives it. Stops at the approval gate; never promotes, never marks consumed (F258 T002). |
+| `packages/orchestration/self_use_findings.py` | reads the run's own `JobPlan` and answers each defect verbatim (job- and task-level `error` fields). Registers nothing itself — the closing session mints the finding (F258 T003). |
 
 ## Consumption — exactly one per feature close
 
@@ -91,9 +96,13 @@ that exactly one self-use item is consumed by each close: the first pending item
 is planned, RUN through
 `packages.orchestration.self_use_runner.run_next_self_use_item` (F258 T002) to
 the approval gate, and its `consumed_by` set to the feature's id in the
-closure commit. An EXHAUSTED queue never blocks a feature —
-the close records `self-use NONE (queue exhausted)` and proceeds, which is the
-track asking for curation rather than stopping work.
+closure commit. Any defect the run surfaced —
+`packages.orchestration.self_use_findings.describe_self_use_run_defects`
+read against the run's own `JobPlan` — is registered as a normal finding
+under the standard ledger rules before the close (F258 T003). An EXHAUSTED
+queue never blocks a feature — the close records
+`self-use NONE (queue exhausted)` and proceeds, which is the track asking
+for curation rather than stopping work.
 
 ## Deliberate absences
 
