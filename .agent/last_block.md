@@ -1,237 +1,175 @@
-── STEP T003/3 — F258 Self-use track v2 ────────────────────────
-Goal: Book round 5's reviewer verdict into the ledger, then build T003
-("findings flow back"): a module that reads a self-use run's own `JobPlan`
-and answers its defects verbatim, for the closing session to register.
+── STEP INTEGRATION-GATE/3 — F258 Self-use track v2 ────────────────────────
+Goal: Book round 6's reviewer verdict into the ledger, then run the
+dedicated integration-gate round (planner_reviewer_prompt.md §3 tier 3) —
+the full suite runs TWICE, branch and base, before F258 can close.
 
 Bundle:
-1. Book `Gate: F258 R5` into `.agent/live_review.md` (round 5's own verdict
+1. Book `Gate: F258 R6` into `.agent/live_review.md` (round 6's own verdict
    was already written by the reviewer into `.agent/handoff.md` last round;
    this round is the "first commit of the next round" amend0827 rule 1
    names to persist it into the ledger).
-2. Build `packages/orchestration/self_use_findings.py` (T003): reads the
-   `JobPlan` `packages.orchestration.self_use_runner.run_next_self_use_item`
-   returns and answers a tuple of plain strings, one per defect, quoting the
-   job's and each task's own `error` field verbatim — never inventing or
-   summarizing. Ships with `tests/orchestration/test_self_use_findings.py`.
-3. Wire the new module's existence into the same two docs T001 and T002
-   already wired into: `docs/roadmap/STATUS_closure_protocol.md`
-   precondition 6, and `docs/system/self-use-track-v1.md`.
+2. Run the canonical integration-gate procedure in
+   `docs/agents/integration_gate.md` in full — branch run, base run
+   (disposable worktree on a throwaway branch at the merge-base, node
+   parity restored, compared, both worktree and throwaway branch removed
+   after), attribution of any base-only failure, and write the evidence
+   files listed below under `.agent/gate_f258_r7/`.
+3. All three of F258's T-slices (T001, T002, T003) are already built and
+   independently reviewer-verified (rounds 5 and 6). This round adds
+   nothing to `packages/`, `apps/` or `tests/` — it only measures and
+   records.
 
-Change: exactly these eight paths, nothing else —
-  .agent/authored/f258-r6.md (new)
+Change: exactly these paths, nothing else —
+  .agent/authored/f258-r7.md (new)
   .agent/last_block.md
   .agent/plan.md
   .agent/live_review.md
-  docs/roadmap/STATUS_closure_protocol.md
-  docs/system/self-use-track-v1.md
-  packages/orchestration/self_use_findings.py (new)
-  tests/orchestration/test_self_use_findings.py (new)
+  .agent/gate_f258_r7/branch_run.txt (new)
+  .agent/gate_f258_r7/base_run.txt (new)
+  .agent/gate_f258_r7/branch_failed.txt (new)
+  .agent/gate_f258_r7/base_failed.txt (new)
+  .agent/gate_f258_r7/comparison.txt (new)
+  .agent/gate_f258_r7/parity.txt (new)
   .agent/handoff.md
 
 Constraints:
 1. If anything below looks wrong, apply it as given and DECLARE the
    problem in the handoff rather than silently fixing it — the reviewer
-   corrects it at the next gate.
-2. Every authored artifact below has already been prepared and verified by
-   the reviewer as a scratch file under the gitignored
-   `.remedy-wt/f258-r6/` directory, which is part of THIS SAME checkout
-   (not a separate machine — there is no paste relay this session). Copy
-   each with `shutil.copyfile`, byte for byte, from the scratch path named
-   below to the target path. Never retype, never re-derive.
-3. `packages/orchestration/self_use_findings.py` and
-   `tests/orchestration/test_self_use_findings.py` were built and verified
-   by the reviewer end to end BEFORE this block was written: full test
-   suite green, ruff clean, and a mutation red-proof (removing the
-   `if result.error:` block) confirmed to redden EXACTLY
-   `test_a_blocked_run_surfaces_the_jobs_own_error_text` and
-   `test_task_order_is_preserved`, and nothing else, run inside a
-   disposable worktree that has since been removed. Re-run this mutation
-   red-proof yourself, in your OWN disposable worktree (never the primary
-   checkout — self_drive_protocol.md G5), purging `__pycache__` first and
-   running `python3 -B`, before applying the real files — it is G7 below.
-4. This module reads a `JobPlan` only — it must not call `run_job`,
-   `plan_next_self_use_item`, or any function that mutates a target repo
-   or persists a job. It must not write to `.agent/live_review.md` or
-   anything else; registering the finding stays a human/session act.
-5. `.agent/plan.md` must stay under 50 lines and carry `## Goal` and
-   `## Next Steps` — the copied PLAN6 slice already satisfies this;
-   verify, do not re-derive.
-6. Single worktree only outside your own disposable red-proof scratch
-   worktree, which you create and remove within this same round. Never
-   force-push. Never touch `main`. Push at the end.
-7. `.agent/authored/f258-r6.md` (C0a) is a byte-exact save of THIS ENTIRE
-   BLOCK (from `── STEP T003/3` down to the closing line of dashes at the
-   very end) — copy it with a plain file write from what you were given,
-   not a retype, and mirror it into `.agent/last_block.md` (C0b).
+   corrects it at the next gate. This constraint does NOT excuse a real
+   test failure you observe — if either run shows a failure, record it
+   exactly as it happened; do not retry until it disappears.
+2. `.agent/authored/f258-r7.md` (C0a) is a byte-exact save of THIS ENTIRE
+   BLOCK (from `── STEP INTEGRATION-GATE/3` down to the closing line of
+   dashes at the very end) — copy it with a plain file write from what you
+   were given, not a retype, and mirror it into `.agent/last_block.md`
+   (C0b).
+3. RECORD7 (below) is copied byte-for-byte with `shutil.copyfile` from the
+   scratch original named — never retyped.
+4. THE KNOWN PARITY GOTCHA (finding R-0736, OPEN, not yet fixed in
+   `docs/agents/integration_gate.md`'s own text): that doc's step 3 tells
+   you to COPY `apps/ui/node_modules` and `apps/ui/dist` into the base
+   worktree, but `shutil.copytree` PRESERVES source mtimes while
+   `git worktree add` stamps every checked-out file with the checkout
+   time — so the copied `dist` is byte-correct but mtime-STALE, which
+   makes `ui_server._frontend_is_stale()` return True and every
+   `tests/ui_server/` test in the base run fails with
+   'ERROR: React UI not built.' (roughly 114 ids, all under
+   `tests/ui_server/`, on this repository's current test count). FIX IT
+   BEFORE the base run, not after discovering the failure class: after
+   `shutil.copytree(..., symlinks=True)` on `apps/ui/dist` (symlinks=True
+   is also required for `node_modules`, or npm's bin shims get
+   dereferenced — finding R-0591), advance every file under the copied
+   `apps/ui/dist`'s mtime past the worktree's own checkout time with
+   `os.utime(path, (now, now))`, where `now = time.time()`. Record every
+   `apps/ui/dist` file's mtime immediately before and immediately after
+   the base run itself (not just before/after the copy) and confirm none
+   falls inside the run's own wall-clock window — that is what
+   `parity.txt` reports, proving the parity claim by the EVENT (nothing
+   rewrote `dist` mid-run) and not merely by content-hash equality (which
+   cannot distinguish "no rebuild" from "an identical rebuild"). See
+   `.agent/gate_f257_r6/parity.txt` and `.agent/gate_f257_r6/comparison.txt`
+   for the exact worked precedent this constraint describes (that gate hit
+   the staleness class on ITS first base run, fixed it, and reran; you are
+   told the fix up front so you do not have to rediscover it).
+5. Model every evidence file's SHAPE on the precedent under
+   `.agent/gate_f257_r6/` (same six file names, same sections). Do not
+   invent a different shape.
+6. Every disposable worktree (base run, and any other scratch) is removed
+   and its throwaway branch deleted before the round's own gates are
+   declared met; `git worktree list` in the primary checkout shows only
+   the primary checkout at every commit.
+7. Never force-push. Never touch `main`. Push at the end. No pull request
+   this round — closure readiness is the reviewer's own decision at the
+   next round.
 
-Authored artifacts (all under `.remedy-wt/f258-r6/`, all already on disk in
-this checkout):
+Authored artifacts (all under `.remedy-wt/f258-r7/`, all already on disk in
+this checkout — this path is part of THIS SAME checkout, no paste relay
+this session):
 
-  PLAN6 — `.remedy-wt/f258-r6/plan6.md`
-    sha256 9ae922a0910d455df0d5dba31e5e81806f9edf40262ec78a962081743d550852
-    1812 bytes, 39 lines, ends with a single `\n`.
+  PLAN7 — `.remedy-wt/f258-r7/plan7.md`
+    sha256 8bff7f63194c5c4d0701f8570f554e6a0d0d4985b3c91a3ac5b055584f0badb1
+    1702 bytes, 38 lines, ends with a single `\n`.
     Rewrite `.agent/plan.md` from this file (shutil.copyfile).
 
-  RECORD6 — `.remedy-wt/f258-r6/record6.txt`
-    sha256 ffec3d9dc0464eb9e410570a0abc5e7df07e13b6925ae0f3579d937b015ba1d8
-    3782 bytes, one paragraph, ends with a single `\n`.
+  RECORD7 — `.remedy-wt/f258-r7/record7.txt`
+    sha256 16228e064c990fa60c3413cf293dfc7379e15983b5870a405e7f98f864bda418
+    3909 bytes, one paragraph, ends with a single `\n`.
     Append to `.agent/live_review.md`: read the CURRENT file, confirm it is
-    1775310 bytes and ends with exactly one `\n` (not `\n\n`) — if either
+    1779093 bytes and ends with exactly one `\n` (not `\n\n`) — if either
     reading differs, STOP and declare it rather than appending — then write
-    `base + b"\n" + record6_bytes`.
-
-  MODULE — `.remedy-wt/f258-r6/self_use_findings.py`
-    sha256 a6cc5f502031fbd032bf0891cefb1c45af11d8e8b006ad955992041cb83b60e2
-    2677 bytes. Copy to `packages/orchestration/self_use_findings.py`.
-
-  TEST — `.remedy-wt/f258-r6/test_self_use_findings.py`
-    sha256 54681ccdfaad31477820d400de85a41621a8bc955878db8d3bdfbef915203322
-    3122 bytes. Copy to `tests/orchestration/test_self_use_findings.py`.
-
-  PAIR-STATUSPROTO3 (REWRITE — TO does not contain FROM verbatim), applied
-  to `docs/roadmap/STATUS_closure_protocol.md`. FROM occurs exactly once
-  today; TO occurs zero times today.
-    FROM:
-    "feature's id in the closure commit. If the queue holds NO pending item,"
-    TO:
-    "feature's id in the closure commit. Before that: every string
-   `packages.orchestration.self_use_findings.describe_self_use_run_defects`
-   returns for the run's own `JobPlan` (F258 T003) is registered as a normal
-   R-id finding in `.agent/live_review.md` under the standard rules (red-proof
-   required for a repair) before the close, and the closure paragraph names
-   every finding raised and whether it was repaired; an empty tuple means
-   nothing to register, not that nothing was checked. If the queue holds NO
-   pending item,"
-
-  Three pairs applied to `docs/system/self-use-track-v1.md`, in this order:
-
-  PAIR-BANNER3 (APPEND — TO contains FROM verbatim as its prefix). FROM
-  occurs exactly once today; TO occurs zero times today; after applying,
-  FROM still occurs once (it is now a prefix of the new sentence) and TO
-  occurs exactly once.
-    FROM:
-    "(T002); this page's job-path and consumption sections are updated to
-> match."
-    TO:
-    "(T002); this page's job-path and consumption sections are updated to
-> match. **Update (2026-08-30, F258 round 6):**
-> `packages/orchestration/self_use_findings.py` now reads a run's own
-> `JobPlan` and answers its defects verbatim, for the closing session to
-> register as normal findings (T003); F258's three T-slices are now all
-> built."
-
-  PAIR-MODULES2 (APPEND — TO contains FROM verbatim as its prefix). FROM
-  occurs exactly once today; TO occurs zero times today; after applying,
-  FROM still occurs once and TO occurs exactly once.
-    FROM:
-    "| `packages/orchestration/self_use_runner.py` | runs the planned item via `run_job` under a small budget, in the isolated worktree the target repo gives it. Stops at the approval gate; never promotes, never marks consumed (F258 T002). |"
-    TO:
-    "| `packages/orchestration/self_use_runner.py` | runs the planned item via `run_job` under a small budget, in the isolated worktree the target repo gives it. Stops at the approval gate; never promotes, never marks consumed (F258 T002). |
-| `packages/orchestration/self_use_findings.py` | reads the run's own `JobPlan` and answers each defect verbatim (job- and task-level `error` fields). Registers nothing itself — the closing session mints the finding (F258 T003). |"
-
-  PAIR-CONSUMPTION2 (REWRITE). FROM occurs exactly once today; TO occurs
-  zero times today.
-    FROM:
-    "closure commit. An EXHAUSTED queue never blocks a feature —
-the close records `self-use NONE (queue exhausted)` and proceeds, which is the
-track asking for curation rather than stopping work."
-    TO:
-    "closure commit. Any defect the run surfaced —
-`packages.orchestration.self_use_findings.describe_self_use_run_defects`
-read against the run's own `JobPlan` — is registered as a normal finding
-under the standard ledger rules before the close (F258 T003). An EXHAUSTED
-queue never blocks a feature — the close records
-`self-use NONE (queue exhausted)` and proceeds, which is the track asking
-for curation rather than stopping work."
+    `base + b"\n" + record7_bytes`.
 
 Done when (every gate below runs for real, exit codes captured, at most
 eight gates per amend0827 rule 5):
 
-G1 TRANSPORT. sha256 of the committed `packages/orchestration/self_use_findings.py`
-   equals a6cc5f502031fbd032bf0891cefb1c45af11d8e8b006ad955992041cb83b60e2
-   (2677 bytes); sha256 of the committed `tests/orchestration/test_self_use_findings.py`
-   equals 54681ccdfaad31477820d400de85a41621a8bc955878db8d3bdfbef915203322
-   (3122 bytes); both equal their `.remedy-wt/f258-r6/` originals.
+G1 TRANSPORT. `.agent/authored/f258-r7.md` and `.agent/last_block.md` are
+   byte-equal to each other and to the scratch original
+   `.remedy-wt/f258-r7/block.md` (sha256, all three).
 
 G2 THE PLAN. Committed `.agent/plan.md` sha256 equals
-   9ae922a0910d455df0d5dba31e5e81806f9edf40262ec78a962081743d550852, 1812
-   bytes, 39 lines, carries `## Goal` and `## Next Steps`, ends with `\n`.
+   8bff7f63194c5c4d0701f8570f554e6a0d0d4985b3c91a3ac5b055584f0badb1, 1702
+   bytes, 38 lines, carries `## Goal` and `## Next Steps`, ends with `\n`.
 
 G3 THE RECORD APPEND. Re-measure `.agent/live_review.md` immediately before
    C2 (do not trust the number above if the file has changed): confirm
-   `base_bytes + 1 + 3782 == committed_bytes` where `base_bytes` is the
-   freshly-measured pre-C2 size; confirm the committed file's last
-   `\n\n`-delimited unit equals RECORD6's own bytes (paragraph-order
-   reading); confirm the committed file ends with exactly one `\n`. Run a
-   negative control in your own disposable worktree: flip one printable
-   byte inside a copy of RECORD6 and confirm the reconstruction reading
-   rejects it while accepting the true original.
+   `base_bytes + 1 + len(record7_bytes) == committed_bytes`; confirm the
+   committed file's last `\n\n`-delimited unit equals RECORD7's own bytes
+   (RECORD7 is a single paragraph, so this is the N=1 case); confirm the
+   committed file ends with exactly one `\n`. Run a negative control in
+   your own disposable worktree: flip one printable byte inside a copy of
+   RECORD7 and confirm the reconstruction reading rejects it while
+   accepting the true original.
 
 G4 THE LEDGER. Before C2 and after C2, count `^- R-\d+ — ` distinct ids
    (expect 317 both times, ADDED `[]`), `^Done: R-\d+` distinct ids (expect
    55 both times, ADDED `[]`), `DECISION F258 D\d+` distinct ids (expect
    `['D1','D2']` both times, ADDED `[]`), and `^Gate: F258 R\d+` lines
-   (expect `['F258 R1','F258 R2','F258 R3','F258 R4']` before,
-   `[...,'F258 R5']` after — ADDED exactly `['F258 R5']`).
+   (expect `['F258 R1',...,'F258 R5']` before, `[...,'F258 R6']` after —
+   ADDED exactly `['F258 R6']`).
 
-G5 THE FOUR PROSE PAIRS. For PAIR-STATUSPROTO3 and PAIR-CONSUMPTION2: FROM
-   count 1 before / 0 after, TO count 0 before / 1 after. For PAIR-BANNER3
-   and PAIR-MODULES2 (both append-shaped): FROM count 1 before / 1 after
-   (survives as prefix), TO count 0 before / 1 after. `python3 -m pytest
-   tests/docs/ -q` REAL exit 0, expect 295 passed. `python3 -m pytest
-   tests/orchestration/test_roadmap_index.py -q` REAL exit 0, expect 30
-   passed.
+G5 THE BRANCH RUN, at the primary checkout, HEAD before this round's own
+   commits (i.e. at `be848035`). `python3 -m pytest -n auto -q`. REAL exit
+   code, full raw tail, wall time, `FAILED` list (expect EMPTY — the
+   reviewer's own prior run at this exact commit measured 18677 passed, 20
+   skipped, 0 failed, ~126s; your own run is the one that counts, report
+   whatever it actually shows).
 
-G6 THE NEW MODULE, ITS TEST, AND THE SUITES. `python3 -m ruff check
-   packages/orchestration/self_use_findings.py
-   tests/orchestration/test_self_use_findings.py` REAL exit 0, "All checks
-   passed!". `python3 -m pytest tests/orchestration/test_self_use_findings.py
-   tests/orchestration/test_self_use_runner.py
-   tests/orchestration/test_self_use_generator.py
-   tests/orchestration/test_self_use_queue.py
-   tests/orchestration/test_self_use_job.py -q` REAL exit 0, expect 71
-   passed (3 new). `python3 -m pytest tests/test_data_paths.py
-   tests/orchestration/test_development_artifact_boundary.py
-   tests/test_path_utils.py -q` REAL exit 0, expect 69 passed (this new
-   module touches none of their guarded paths, so this is a sanity check,
-   not an expected change).
+G6 THE BASE RUN, in a disposable worktree on a throwaway branch at the
+   merge-base `18ae71293cde9b1157aca35d3d02c3a8f4265813` (verify with
+   `git merge-base HEAD main` first), with constraint 4's parity fix
+   applied BEFORE running. `python3 -m pytest -n auto -q`. REAL exit code,
+   full raw tail, wall time, `FAILED` list (the reviewer's own prior run
+   with the same fix measured 18642 passed, 20 skipped, 0 failed, ~201s;
+   report whatever your own run actually shows). Remove the worktree and
+   delete the throwaway branch after.
 
-G7 THE MUTATION RED-PROOF, inside your own disposable worktree, `__pycache__`
-   purged, `python3 -B`. Remove the two-line block `    if result.error:`
-   through its `defects.append(...)` line in
-   `packages/orchestration/self_use_findings.py`; re-run
-   `tests/orchestration/test_self_use_findings.py`; expect REAL exit 1,
-   EXACTLY TWO failures
-   (`test_a_blocked_run_surfaces_the_jobs_own_error_text`,
-   `test_task_order_is_preserved`), 1 passed. Restore the file from the
-   scratch original (`shutil.copyfile` from
-   `.remedy-wt/f258-r6/self_use_findings.py`); re-run; expect REAL exit 0,
-   3 passed again. Remove the disposable worktree afterward; `git worktree
-   list` in the primary checkout shows only the primary checkout.
+G7 THE COMPARISON. Compute `set(branch_failed) - set(base_failed)`
+   (branch-only) and `set(base_failed) - set(branch_failed)` (base-only) IN
+   PYTHON (this session's command guard rejects `comm` pipelines by form —
+   order the property, not the tool). Attribute every base-only id by
+   direct evidence per `docs/agents/integration_gate.md` step 3 (never
+   leave one unattributed); attribute every branch-only id with one serial
+   re-run per step 4. If both sets are empty, say so plainly and cite the
+   two RUN TOTALS lines as the whole proof — no attribution section is
+   owed for an empty set.
 
-G8 THE STATE READERS AND CANARY. `python3 -m pytest tests/ui_server/ -q`
-   REAL exit 0, 515 passed. `python3 -m pytest
-   tests/orchestration/test_test_runner.py -q` REAL exit 0, 52 passed.
-   `python3 -m pytest tests/regression/test_resource_safety.py -q` REAL
-   exit 0, 21 passed. `python3 -m pytest
-   tests/orchestration/test_integrity_gate.py -q` REAL exit 0, 16 passed.
-   Canary `python3 -m pytest tests/cli/test_golden_path.py -q` REAL exit 0,
-   42 passed. `git status --porcelain` empty at the end; `git worktree
-   list` shows only the primary checkout; every commit's `git diff
-   --numstat` insertion total under 500.
+G8 THE TREE. `git status --porcelain` empty at the end; `git worktree
+   list` shows only the primary checkout; no `tmp/*` branch survives
+   (`git branch --list 'tmp/*'` empty); every commit's `git diff --numstat`
+   insertion total under 500.
 
 Handback: completion report + rewrite `.agent/handoff.md` per
 docs/agents/handback_template.md and self_drive_protocol.md's "Ending a
-session" section — feature and round (SESSION 2 of F258, round 6), branch,
+session" section — feature and round (SESSION 2 of F258, round 7), branch,
 commit SHAs, the changed-files table, every gate's REAL result (one line
 per gate, per checklist item 31, run each at a commit strictly before the
 handoff commit), open-findings count (unchanged: 317 registered / 55
-resolved / 262 open), the DECISION F258 id list (unchanged `['D1','D2']`),
-and next expected action: F258's closure sequence — all three T-slices
-(T001, T002, T003) are now built against the feature file's own text, so
-the next round is the reviewer's own design of the closure round (evidence
-job, fresh review zip, STATUS line, PR), not more T-slice work. Push
-`feature/f258-self-use-v2` at the end (no force push). No PR is opened this
-round — the reviewer decides closure readiness at the next round, not this
-worker.
+resolved / 262 open unless the comparison surfaces a genuine new defect —
+if it does, STOP, declare it, and do not proceed to write it up as a
+finding yourself; that is the reviewer's own act), the DECISION F258 id
+list (unchanged `['D1','D2']`), and next expected action: the reviewer's
+own verdict on this round decides whether F258's closure sequence
+(docs/roadmap/STATUS_closure_protocol.md) can begin. Push
+`feature/f258-self-use-v2` at the end (no force push). No PR is opened
+this round.
 ──────────────────────────────────────────────────────────────
