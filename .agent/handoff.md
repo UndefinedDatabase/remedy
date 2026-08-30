@@ -2,56 +2,57 @@
 
 ## Session
 
-SESSION 3 of feature F106 · round 10 · rounds so far 10
+SESSION 4 of feature F106 · round 11 · rounds so far 11
 
 ## Range
 
-Review of `2a0e08e13ccc5e4c9aaa138e96cf440f09e08a06..HEAD`.
+Review of `6f7d51fcb47dca52866d713f4f75d86423f8e532..HEAD`.
 
 ## Commits
 
-### 8682856f F106 R10 C0a: save round 10 step block verbatim
+### 78724613 F106 R11 C0a: save round 11 step block verbatim
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f106-r10.md` | +367/-0 | C0a: `shutil.copyfile` of the round's step block from `.remedy-wt/f106-r10-block.md` (new file, never `cp`, never retyped). 25052 bytes, byte-equal to the source (sha256 `9ee2005eae0d44189e7a33a2253c862197445e76708ad801e78ce606fd16ae93` both). Exempt from the 500-line cap as a verbatim single-`.agent/**`-state-file save (AGENTS.md Commit Discipline carve-out). |
+| `.agent/authored/f106-r11.md` | +217/-0 | C0a: `shutil.copyfile` of the round's step block from `.remedy-wt/f106-r11-block.md` (new file, never `cp`, never retyped). 14597 bytes, byte-equal to the source (sha256 `06f977314cee48408e248dfd7a1cab2bd1e6772fc2be3129bb2069a103117bb0` both). Exempt from the 500-line cap as a verbatim single-`.agent/**`-state-file save (AGENTS.md Commit Discipline carve-out). |
 
-### 60073ff0 F106 R10 C0b: mirror step block into last_block.md
+### eb8ffce4 F106 R11 C0b: mirror step block into last_block.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +265/-293 (`git diff --numstat`) | C0b: `shutil.copyfile` of the committed `.agent/authored/f106-r10.md` into `.agent/last_block.md`. Byte-equal to the source, 25052 bytes each, sha256 `9ee2005eae0d44189e7a33a2253c862197445e76708ad801e78ce606fd16ae93` both. Exempt from the 500-line cap (verbatim single-state-file rewrite). |
+| `.agent/last_block.md` | +184/-334 (`git diff --numstat`) | C0b: `shutil.copyfile` of `.remedy-wt/f106-r11-block.md` into `.agent/last_block.md`. Byte-equal to the source, 14597 bytes each, sha256 `06f977314cee48408e248dfd7a1cab2bd1e6772fc2be3129bb2069a103117bb0` both. Exempt from the 500-line cap (verbatim single-state-file rewrite). |
 
-### 3e500b4f F106 R10 C1: rewrite plan.md for round 10 (R-0758 resolved)
+### 5498cdc3 F106 R11 C1: rewrite plan.md for round 11
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +6/-5 | C1: rewritten from slice PLAN10 extracted from the committed `.agent/authored/f106-r10.md` using the marker convention (content starts the line after `<<<BEGIN`, ends WITH the newline before `<<<END`). Byte/sha256-equal to PLAN10 (`b2c066e061599d559aaf24ac2f89e2e2d21410030d1efe1e35e9480337a88b79` both), 42 lines (`wc -l`, under 50), holds `## Goal` and `## Next Steps`. States SESSION 3, round 10, and marks R-0758 `done`. |
+| `.agent/plan.md` | +17/-13 | C1: rewritten via `shutil.copyfile` from PLAN11 held at `.remedy-wt/f106-r11-plan.md`. Byte/sha256-equal to PLAN11 (`9f1beaf937d480053ba7c86d873109322310d1e92862af8ce837d254728efb29` both), 46 lines (`wc -l`, under 50), holds `## Goal` and `## Next Steps`. States SESSION 4, round 11, marks T002b-ii step 2a `done` and splits the old step 2 into 2a (this round, done) / 2b (open, next). |
 
-### d5c7390e F106 R10 C2: append RECORD10 verdict and R-0758 resolution to live_review.md
+### bed184f9 F106 R11 C2: append RECORD11 (round 10 verdict) to live_review.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +4/-0 | C2: append-only, TWO paragraphs in order. Base 1847519 bytes + separator `\n` + RECORD10 (6401 bytes) + `\n` + DONER0758 (945 bytes) = 1854867 bytes, matching the committed file exactly. Books the round 9 PASS verdict (T002b-ii step 1 CLOSED) and resolves finding R-0758 (four `test_provider_retry.py` failures, fixed by this round's own C4). Exempt from the 500-line cap (verbatim single-state-file append). |
+| `.agent/live_review.md` | +2/-0 | C2: append-only, ONE paragraph. Base re-measured 1854867 bytes + separator `\n` (1) + RECORD11 (2487) = 1857355 bytes, matching the committed file exactly. Books round 10's own PASS verdict (R-0758 CLOSED) per amend0827-process-diet rule 1 — a verdict does not buy its own round. Exempt from the 500-line cap (verbatim single-state-file append). |
 
-### f856b6cb F106 R10 C3: append round 9 gate-wording prose slips
+### f1e6eeae F106 R11 C3: add render_repair_hunks to diff_repair.py
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/prose_slips.md` | +4/-0 | C3: append-only, TWO paragraphs in order. Base 35047 bytes + separator `\n` + PROSESLIPG4 (815 bytes) + `\n` + PROSESLIPC14 (507 bytes) = 36371 bytes, matching the committed file exactly. Books round 9's own two reviewer-prose imprecisions (a self-quoting-record gate undercount; "line" used for a 3-line comment) as dated lines, no R-id, per amend0827-process-diet rule 2. Exempt from the 500-line cap (verbatim single-state-file append). |
+| `packages/orchestration/diff_repair.py` | +36/-0 | C3: pure code append via `shutil.copyfile` of the fully-assembled `.remedy-wt/f106-r11-diff_repair.py`. Adds two module-level constants (`REPAIR_HUNKS_HEADING`, `REPAIR_HUNKS_OMITTED_INTRO`) and `render_repair_hunks(selection: RepairHunkSelection) -> str`, freezing the hunk-rendering convention DECISION F106 D1(b) requires. Returns the empty string for an empty selection; otherwise a heading, each hunk as a `###`-titled fenced block in selection order, and a trailing bulleted omissions list when `selection.omitted` is non-empty. No existing line touched — the pre-commit file (8190 bytes) is a byte-exact prefix of the post-commit file (9804 bytes); the 1614-byte tail is byte-identical to the standalone suffix scratch file. No caller wired in this round; zero behavior change to any existing consumer, held by construction (no import of `render_repair_hunks` added anywhere outside the new test file). |
 
-### feb493fa F106 R10 C4: accept resume kwarg in four test-only provider subclasses (R-0758)
+### 57b11650 F106 R11 C4: add TestRenderRepairHunks to test_diff_repair.py
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/orchestration/test_provider_retry.py` | +7/-3 | C4: applied all four pairs (TIMEOUTONCE-BUILD, REVIEWERTIMEOUTONCE-REVIEW, NONZEROEXIT-BUILD, PARSERETRY-REVIEW). `resume: str | None = None` added to `TimeoutOnceFakeProvider.build`, `ReviewerTimeoutOnceFakeProvider.review`, `NonzeroExitOnceFakeProvider.build` (each forwarding `resume=resume` to its own `super()` call — an honest no-op, since none of the three overrides `supports_resume`) and to the locally-defined `ParseRetryRateLimitedProvider.review` (accepted and unused; that method never calls `super()`, confirmed by reading its body, and always returns one of three hardcoded `ReviewerOutput`s). Fixes the `TypeError: ...() got an unexpected keyword argument 'resume'` that `pingpong_loop.py`'s Builder/Reviewer call sites have triggered against these four test providers since round 5/6. No production file under `packages/` or `apps/` touched. |
+| `tests/orchestration/test_diff_repair.py` | +85/-0 | C4: two-part change applied via `shutil.copyfile` of the fully-assembled `.remedy-wt/f106-r11-test_diff_repair.py`. Part (a), a REWRITE measured by containment: the top import block's FROM span (5 lines, no new names) occurs 1x pre-commit and 0x post-commit; the TO span (7 lines, adding `REPAIR_HUNKS_HEADING`, `REPAIR_HUNKS_OMITTED_INTRO`, `render_repair_hunks`) occurs 0x pre-commit and 1x post-commit; TO does not contain FROM as a substring. Because the swap only inserts new names into the same parenthesized block without altering any existing line's text, `git diff` renders it as pure insertion (0 deletions) — expected under the containment framing, not a discrepancy. Part (b), a pure append directly after: 7 new tests under `TestRenderRepairHunks` (empty selection, empty selection with only omissions, single-hunk frozen render, two-hunk order/blank-line, omitted-paths trailing bulleted list, heading-constant prefix, end-to-end with `select_repair_hunks`) — bringing the file from 30 to 37 tests. `(orig-with-part-a-applied) + suffix == post-commit file` verified byte-exact against the real committed diff. |
 
-### (this commit) F106 R10 C5: rewrite handoff for round 10 handback
+### (this commit) F106 R11 C5: rewrite handoff for round 11 handback
 | Path | +/- | Reason |
 |------|-----|--------|
 | `.agent/handoff.md` | (self-reference, not tabled per template exception) | C5: this handback, written once |
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/r10-negctrl HEAD` (at commit `d5c7390e`, after C2) — created a disposable worktree to run the G3 negative control (constraint 8's one named exception). Outcome: worktree created cleanly, detached HEAD `d5c7390e`.
-- One byte flipped inside the worktree copy's `.agent/live_review.md`, inside RECORD10 (the first appended paragraph, not the last), via a targeted script — never `cp`, no destructive action against the primary checkout.
-- `git worktree remove .remedy-wt/r10-negctrl --force` — removed cleanly; `git worktree list` afterward shows only the primary checkout at `d5c7390e [feature/f106-session-resume]`; primary tree confirmed `git status --porcelain` empty immediately after.
-- `git push` (after C5) — outcome reported in this round's completion message to the operator, per the write-once-handback convention; not re-run here.
-- No PR created this round, per constraint 11 — T002b-ii step 2 (the actual delta-prompt shrink) and T003 both remain open on this feature.
+- `git worktree add --detach .remedy-wt/r11-mutproof HEAD` (at commit `57b11650`, after C4) — created a disposable worktree for the mandatory G7 mutation red-proof (self_drive_protocol.md G5: mutation testing never runs in the primary checkout).
+- `__pycache__` purged in the worktree (python `os.walk` + `shutil.rmtree`, never `find -exec`) before each of the two pytest runs; 0 directories found either time (fresh worktree, nothing to purge).
+- Inside the worktree: `render_repair_hunks`'s `parts.append(REPAIR_HUNKS_OMITTED_INTRO)` line replaced with `pass  # MUTATED` via `Edit`, confirmed RED, then reverted via a second `Edit` back to the exact original line, confirmed GREEN again and `git status --porcelain` empty in the worktree (the revert restored the file byte-for-byte).
+- `git worktree remove .remedy-wt/r11-mutproof` — removed cleanly; `git worktree list` afterward shows only the primary checkout at `57b11650 [feature/f106-session-resume]`; primary tree confirmed `git status --porcelain` empty immediately after and throughout (never touched by the mutation proof).
+- `git push` (after C5) — outcome reported in this round's completion message to the operator, per the write-once-handback convention.
+- No PR created this round — T002b-ii step 2b (wiring the shrink into `compose_*_prompt`) and T003 both remain open on this feature.
 - No `gh pr list` Open PR Gate check re-run this round — this round continues the existing `feature/f106-session-resume` branch with no branch switch.
 
 ## Verification
@@ -62,72 +63,59 @@ Every bundle item and every gate, exactly once, with its real measured result:
 
 | Item | Status | Real result |
 |------|--------|-------------|
-| C0a save block verbatim | done | 25052 bytes, sha256 `9ee2005e...16ae93` |
-| C0b mirror into last_block.md | done | 25052 bytes, sha256 equal to C0a's file |
-| C1 rewrite plan.md (PLAN10) | done | sha256-equal to PLAN10, 42 lines, holds `## Goal`/`## Next Steps` |
-| C2 append RECORD10 + DONER0758 | done | 1847519 + 1 + 6401 + 1 + 945 = 1854867 bytes, matches committed file exactly |
-| C3 append PROSESLIPG4 + PROSESLIPC14 | done | 35047 + 1 + 815 + 1 + 507 = 36371 bytes, matches committed file exactly |
-| C4 test_provider_retry.py four pairs | done | all four FROM 1x→0x, TO 0x→1x; containment both-ways `False` for all four |
+| C0a save block verbatim | done | 14597 bytes, sha256 `06f97731...117bb0` |
+| C0b mirror into last_block.md | done | 14597 bytes, sha256 equal to C0a's file |
+| C1 rewrite plan.md (PLAN11) | done | sha256-equal to PLAN11, 46 lines, holds `## Goal`/`## Next Steps` |
+| C2 append RECORD11 | done | 1854867 + 1 + 2487 = 1857355 bytes, matches committed file exactly |
+| C3 append render_repair_hunks + 2 constants | done | prefix property holds (8190-byte prefix), 1614-byte suffix byte-identical to scratch suffix file |
+| C4 rewrite import block + append TestRenderRepairHunks | done | FROM 1x→0x, TO 0x→1x, TO-contains-FROM `False`; part(b) suffix concatenation byte-exact |
 | C5 rewrite handoff | done | this file, written once |
-| G1 transport | PASS | 25052 = 25052, equal, sha256 equal |
-| G2 the plan | PASS | sha256-equal to PLAN10, 42 lines (<50), both headers present |
-| G3 the record append | PASS | reading (a) whole reconstruction `True`; reading (b) last-2-paragraph-units `True`; reading (c) negative control in disposable worktree correctly REJECTED |
-| G4 the ledger | PASS | registered unmoved at 319; resolved 55→56 (`Done: R-0758 — ` added); `DECISION F\d+ D\d+ — ` unmoved at 20; `Gate: F106 R9 — ` 0x before C2, 1x after (no discrepancy — matches constraint 5's "at least 1x" reading exactly) |
-| G5 pair shape + ordered application | PASS | all four pairs match constraint 12's expected REWRITE shape exactly; `ast.parse` exit 0; `ruff check` exit 0 |
-| G6 the fix itself, zero behavior change | PASS | exit 0, `34 passed` (the 30 pre-existing plus the 4 R-0758 named), matches the block's dry-run reading exactly |
-| G7 the prose slip append | PASS | 36371 bytes matches; last two blank-line units byte-equal to PROSESLIPG4 then PROSESLIPC14, in that order |
-| G8 the tree | PASS | `git status --porcelain` empty, 0 untracked, all commits well under 500 (367/265/6/4/4/7) |
+| G1 TRANSPORT | PASS | 14597 = 14597, sha256 `06f97731...117bb0` for both files and the source block |
+| G2 THE PLAN | PASS | sha256 `9f1beaf9...728efb29` matches, 46 lines (<50), both headers present |
+| G3 THE RECORD APPEND | PASS | length 1857355 = 1854867+1+2487; last `\n\n`-unit byte-equal to RECORD11 |
+| G4 THE LEDGER | PASS | registered 319→319, resolved 58→58, DECISION 20→20, all unmoved |
+| G5 THE CODE | PASS | `ast.parse` exit 0 both files; `ruff check` exit 0, "All checks passed!" both files; C3/C4 proofs re-measured against the real committed diff, all hold |
+| G6 THE TESTS | PASS (with one numeric discrepancy declared) | `test_diff_repair.py`: real exit 0, 37 passed. Consumer suite (4 named files): real exit 0, **161 passed** — not the 198 the block's G6 states; see Deviations below |
+| G7 THE MUTATION RED-PROOF | PASS | unmutated exit 0 / 37 passed; mutated exit 1 / 1 failed (`TestRenderRepairHunks::test_omitted_paths_render_as_a_trailing_bulleted_list`) / 36 passed; reverted exit 0 / 37 passed; worktree removed, `git worktree list` shows only the primary checkout |
+| G8 THE TREE | PASS | `git status --porcelain` empty, 0 untracked, all commits' `+/-` recorded via `git diff --numstat <sha>^..<sha>` |
 
 ### Detailed transcripts
 
-G1 TRANSPORT, at C0b — `.agent/authored/f106-r10.md` 25052 bytes, `.agent/last_block.md` 25052 bytes (`len(open(path,'rb').read())` both). Equal. sha256 `9ee2005eae0d44189e7a33a2253c862197445e76708ad801e78ce606fd16ae93` for both.
+G1 TRANSPORT, at C0b — `.agent/authored/f106-r11.md` 14597 bytes, `.agent/last_block.md` 14597 bytes, `.remedy-wt/f106-r11-block.md` (the source, as received) 14597 bytes — all three (`len(open(path,'rb').read())`). Equal. sha256 `06f977314cee48408e248dfd7a1cab2bd1e6772fc2be3129bb2069a103117bb0` for all three.
 
-G2 THE PLAN, at C1 — `.agent/plan.md` sha256-equal to slice PLAN10 (`b2c066e061599d559aaf24ac2f89e2e2d21410030d1efe1e35e9480337a88b79` both), 42 lines, holds `## Goal` and `## Next Steps`.
+G2 THE PLAN, at C1 — `.agent/plan.md` sha256-equal to `.remedy-wt/f106-r11-plan.md` (`9f1beaf937d480053ba7c86d873109322310d1e92862af8ce837d254728efb29` both), 46 lines (`wc -l`), holds `## Goal` (line 6) and `## Next Steps` (line 26 pre-append reading / line 27 post — confirmed via `grep -n '^## '`).
 
-G3 THE RECORD APPEND, at C2 — base re-measured 1847519 bytes at `2a0e08e1` (matches the block's own stated base exactly; C0a/C0b/C1 never touch `live_review.md`). Two readings plus a negative control:
-- (a) Whole reconstruction: base (1847519) + `\n` (1) + RECORD10 (6401) + `\n` (1) + DONER0758 (945) = 1854867, matching `len(open(path,'rb').read())` on the committed file exactly. `True`.
-- (b) Structural reader over the WHOLE two-paragraph region: splitting the committed file on `\n\n` (blank-line units) and reading the last two units confirms unit[-2] == RECORD10, unit[-1] == DONER0758, each byte-equal (accounting for the trailing newline convention: each unit plus its consumed `\n` reconstructs the slice exactly). `True`.
-- (c) Negative control, in a disposable worktree (`git worktree add --detach .remedy-wt/r10-negctrl HEAD` at `d5c7390e`): one byte flipped inside RECORD10 (offset 1847540, 20 bytes past the region's start, well inside the first appended paragraph, not touching the marker line) — reading (b) applied to the mutated copy correctly reports unit[-2] != RECORD10 (`False`), while unit[-1] still matches DONER0758 (isolating the mutation to exactly the intended paragraph). REJECTED as required. `True`. Worktree removed afterward (`git worktree remove --force`), primary tree unaffected throughout.
+G3 THE RECORD APPEND, at C2 — base re-measured 1854867 bytes immediately before C2 (matches the block's own stated base exactly; C0a/C0b/C1 never touch `live_review.md`). Reading: base (1854867) + `\n` (1) + RECORD11 (2487) = 1857355, matching `len(open(path,'rb').read())` on the committed file exactly. `True`. Structural reader: splitting the committed file on `\n\n` (blank-line units), the last unit is 2487 bytes and byte-equal to the RECORD11 scratch text. `True`.
 
-G4 THE LEDGER, at C1 and C2 — line-anchored regexes: registration lines `^- (R-\d+) — `, resolution lines `Done: (R-\d+) — `, decisions `^DECISION (F\d+ D\d+) — `. Registered: 319 distinct ids before AND after C2 (unmoved, as expected — R-0758 was already registered in round 9). Resolved: 55 distinct `Done:` ids before C2, 56 after (`Done: R-0758 — ` added). DECISION: 20 before AND after C2 (unmoved, as expected — no new DECISION minted this round, per constraint 5). `Gate: F106 R9 — ` substring count: 0x before C2 (confirmed against the pre-C2 committed state at `3e500b4f`), 1x after (RECORD10's own header line) — no discrepancy to declare; the block's constraint 5 anticipated this exact possibility ("AT LEAST 1x... do not treat a count above 1 alone as a discrepancy") and the actual measured count landed at exactly 1x.
+G4 THE LEDGER, at C1 and C2 — line-anchored regexes: registration lines `^- (R-\d+) — `, resolution lines `^Done: (R-\d+) — `, decisions `^DECISION (F\d+ D\d+) — `, all `re.M`. Measured on `git show HEAD(pre-C2):.agent/live_review.md` vs the post-C2 working file: registered 319 both, resolved 58 both, DECISION 20 both — all UNMOVED, exactly as constraint 8 states (this round registers and resolves nothing new; RECORD11 only books round 10's already-resolved verdict).
 
-G5 THE CODE — PAIR SHAPE AND ORDERED APPLICATION, at C4. Own containment test (both ways) and occurrence counts for each of the four pairs, run independently before/after the commit:
-- TIMEOUTONCE-BUILD: `TO in FROM` = `False`, `FROM in TO` = `False`. FROM 1x→0x, TO 0x→1x.
-- REVIEWERTIMEOUTONCE-REVIEW: `TO in FROM` = `False`, `FROM in TO` = `False`. FROM 1x→0x, TO 0x→1x.
-- NONZEROEXIT-BUILD: `TO in FROM` = `False`, `FROM in TO` = `False`. FROM 1x→0x, TO 0x→1x.
-- PARSERETRY-REVIEW: `TO in FROM` = `False`, `FROM in TO` = `False`. FROM 1x→0x, TO 0x→1x.
+G5 THE CODE, at C3/C4 — `python3 -B -c "import ast; ast.parse(...)"`: exit 0 for both `packages/orchestration/diff_repair.py` and `tests/orchestration/test_diff_repair.py`. `python3 -m ruff check packages/orchestration/diff_repair.py tests/orchestration/test_diff_repair.py`: exit 0, "All checks passed!". Ordered-equality/prefix proof for C3 re-measured against the REAL committed diff (`git show f1e6eeae^:...` vs `git show f1e6eeae:...`): pre-commit bytes (8190) are an exact prefix of post-commit bytes (9804); the 1614-byte tail is byte-identical to `.remedy-wt/f106-r11-diffrepair-suffix.txt`; `git show --numstat f1e6eeae` reports `36 0`, and `git show f1e6eeae -- packages/orchestration/diff_repair.py | grep '^+' | grep -v '^+++' | wc -l` independently counts 36 added lines. REWRITE+APPEND proof for C4 re-measured against the REAL committed diff (`git show 57b11650^:...` vs `git show 57b11650:...`): FROM (5-line import block, no new names) 1x pre-commit → 0x post-commit; TO (7-line import block, three new names) 0x pre-commit → 1x post-commit; `(pre.replace(FROM, TO)) + suffix == post` is `True` byte-for-byte, where `suffix` is `.remedy-wt/f106-r11-testdiffrepair-suffix.txt`.
 
-All four match constraint 12's stated expectations exactly; no discrepancy to declare.
+G6 THE TESTS, at C4 — `python3 -m pytest tests/orchestration/test_diff_repair.py -q`: real exit 0, `37 passed in 0.26s` (30 pre-existing + 7 new, matching the block's stated split exactly). `python3 -m pytest tests/orchestration/test_diff_repair_apply.py tests/orchestration/test_diff_repair_response.py tests/orchestration/test_builder_repair_loop.py tests/ui_server/test_command_channel.py -q`: real exit 0, **161 passed in ~15.5s** (measured three times, consistently 161; per-file breakdown: `test_diff_repair_apply.py` 9, `test_diff_repair_response.py` 32, `test_builder_repair_loop.py` 14, `test_command_channel.py` 106 — sums to 161). This does not match the block's own G6 wording of "198 passed". `grep -rl "diff_repair" tests/ --include="*.py"` confirms these four files plus `test_diff_repair.py` itself are the complete consumer set — no fifth file was missed. Declared as a numeric discrepancy in the block's own text, not a scope or correctness problem: exit 0 and zero failures across all four files independently and together, which is the substantive property the gate exists to check ("every existing consumer of diff_repair.py, unchanged"). See Deviations & assumptions.
 
-After C4: `python3 -c "import ast; ast.parse(open('tests/orchestration/test_provider_retry.py').read())"` real exit `0`. `python3 -m ruff check tests/orchestration/test_provider_retry.py` real exit `0`, `All checks passed!`.
+G7 THE MUTATION RED-PROOF, at C3/C4, inside `.remedy-wt/r11-mutproof` (disposable worktree, `git worktree add --detach .remedy-wt/r11-mutproof HEAD` at `57b11650`) — unmutated: `python3 -B -m pytest tests/orchestration/test_diff_repair.py -q` run with `cwd` set to the worktree, real exit 0, `37 passed in 0.25s`. Mutated (`parts.append(REPAIR_HUNKS_OMITTED_INTRO)` → `pass  # MUTATED`, inside the `if selection.omitted:` block of `render_repair_hunks`): real exit 1, `1 failed, 36 passed in 0.27s`, failing test `tests/orchestration/test_diff_repair.py::TestRenderRepairHunks::test_omitted_paths_render_as_a_trailing_bulleted_list` — reproduces the reviewer's own pre-delegation dry-run exactly (1 failed / 36 passed). Reverted (line restored verbatim): real exit 0, `37 passed in 0.25s`; `git status --porcelain` inside the worktree empty (revert was byte-exact). `git worktree remove .remedy-wt/r11-mutproof`: clean; `git worktree list` afterward shows only `/home/decodeux/Repos/remedy  57b11650 [feature/f106-session-resume]`. Primary checkout's `git status --porcelain` confirmed empty before, during (not applicable — mutation only ever touched the worktree's copy), and after.
 
-Constraint 15's confirmation, done before applying the PARSERETRY-REVIEW pair: read the ~25 lines following the pair's own TO span in the committed source (the `ParseRetryRateLimitedProvider.review` method body, lines 730-756 in the pre-C4 file) — confirmed it never calls `super().review(...)` at all; it branches on `self.review_calls` and returns one of three hardcoded `ReviewerOutput` literals in every branch. The pair therefore only adds an accepted, unused parameter, exactly as constraint 15 stated.
-
-G6 THE FIX ITSELF AND ZERO BEHAVIOR CHANGE, at C4 — `python3 -m pytest tests/orchestration/test_provider_retry.py -q`: real exit `0`, `34 passed in 0.43s`, matching the block's own dry-run reading exactly (the 30 that already passed, unchanged, plus the 4 R-0758 named: `test_timeout_once_provider_retries`, `test_nonzero_exit_once_retries`, `test_reviewer_timeout_once_retries`, `test_parse_retry_rate_limit_is_paced_end_to_end`).
-
-G7 THE PROSE SLIP APPEND, at C3 — base re-measured 35047 bytes (matches the block's implicit base, unchanged since round 9's own C3). Two readings:
-- (a) Whole reconstruction: base (35047) + `\n` (1) + PROSESLIPG4 (815) + `\n` (1) + PROSESLIPC14 (507) = 36371, matching `len(open(path,'rb').read())` on the committed file exactly. `True`.
-- (b) Structural reader: committed file's last two blank-line units, split on `\n\n`, byte-equal to PROSESLIPG4 then PROSESLIPC14, in that order. `True`.
-
-G8 THE TREE, at C4 (rechecked before writing this handback, since C5 necessarily dirties the tree until its own commit) — `git status --porcelain`: empty. `git ls-files --others --exclude-standard`: 0 untracked files. Every commit's insertions via `git diff --numstat <sha>^..<sha>`: `8682856f` 367, `60073ff0` 265, `3e500b4f` 6, `d5c7390e` 4, `f856b6cb` 4, `feb493fa` 7 — the first two are exempt from the 500-line cap as verbatim single-`.agent/**`-state-file saves/rewrites (AGENTS.md Commit Discipline carve-out); the latter four are ordinary code/state commits, all well under 500. `git diff --stat` against `packages/` and `apps/` for the whole round: empty — confirmed no production file was touched, consistent with the change set's own statement.
+G8 THE TREE, at C4 (rechecked before writing this handback, since C5 necessarily dirties the tree until its own commit) — `git status --porcelain`: empty. `git ls-files --others --exclude-standard`: 0 untracked files. Every commit's `+/-` via `git diff --numstat <sha>^..<sha>`: `78724613` 217/0, `eb8ffce4` 184/334, `5498cdc3` 17/13, `bed184f9` 2/0, `f1e6eeae` 36/0, `57b11650` 85/0 — the first two are exempt from the 500-line cap as verbatim single-`.agent/**`-state-file saves/rewrites (AGENTS.md Commit Discipline carve-out); the latter four are ordinary code/state commits, all well under 500. `git diff --name-only 6f7d51fc..HEAD` confirms exactly the six paths named in the block's Change clause (plus `.agent/handoff.md`, touched by this commit): no `pingpong_loop.py`, no `prompt_segments.py`, no `test_builder_prompt_*.py`, no `test_reviewer_prompt_golden.py`.
 
 ## Authored-text proofs
 
-- The step block itself (`.agent/authored/f106-r10.md`) ← `.remedy-wt/f106-r10-block.md`: byte-equal, 25052 bytes both, sha256-equal (`9ee2005eae0d44189e7a33a2253c862197445e76708ad801e78ce606fd16ae93`), C0a. `.agent/last_block.md` mirror: byte-equal to the committed `.agent/authored/f106-r10.md`, sha256-equal, C0b.
-- PLAN10 → `.agent/plan.md`: sha256-equal (`b2c066e061599d559aaf24ac2f89e2e2d21410030d1efe1e35e9480337a88b79` both), disk-to-disk, C1.
-- RECORD10, DONER0758 → appended to `.agent/live_review.md`: byte-exact append arithmetic (1847519 + 1 + 6401 + 1 + 945 = 1854867) and both G3 readings `True` (including the disposable-worktree negative control), C2.
-- PROSESLIPG4, PROSESLIPC14 → appended to `.agent/prose_slips.md`: byte-exact append arithmetic (35047 + 1 + 815 + 1 + 507 = 36371) and the G7 last-two-units reading `True`, C3.
-- TIMEOUTONCE-BUILD-TO, REVIEWERTIMEOUTONCE-REVIEW-TO, NONZEROEXIT-BUILD-TO, PARSERETRY-REVIEW-TO → `tests/orchestration/test_provider_retry.py`: each TO occurs exactly 1x after the commit, each corresponding FROM 0x, C4.
+- The step block itself (`.agent/authored/f106-r11.md`) ← `.remedy-wt/f106-r11-block.md`: byte-equal, 14597 bytes both, sha256-equal (`06f977314cee48408e248dfd7a1cab2bd1e6772fc2be3129bb2069a103117bb0`), C0a. `.agent/last_block.md` mirror: byte-equal to the same source, sha256-equal, C0b.
+- PLAN11 → `.agent/plan.md`: sha256-equal (`9f1beaf937d480053ba7c86d873109322310d1e92862af8ce837d254728efb29` both), disk-to-disk, C1.
+- RECORD11 → appended to `.agent/live_review.md`: byte-exact append arithmetic (1854867 + 1 + 2487 = 1857355) and the last-`\n\n`-unit reading `True`, C2.
+- `.remedy-wt/f106-r11-diff_repair.py` → `packages/orchestration/diff_repair.py`: pre-commit bytes are an exact 8190-byte prefix of the 9804-byte post-commit file; the 1614-byte tail matches `.remedy-wt/f106-r11-diffrepair-suffix.txt` byte-for-byte, C3.
+- `.remedy-wt/f106-r11-test_diff_repair.py` → `tests/orchestration/test_diff_repair.py`: import-block FROM/TO occurrence swap (1x→0x / 0x→1x) and `(pre.replace(FROM,TO)) + suffix == post` both hold against the real committed diff, C4.
 
 ## Deviations & assumptions
 
-None. The bundle landed exactly as ordered — C0a, C0b, C1, C2, C3, C4, C5 — one commit per bundle item, no extra commit, no dropped commit, no reordering. Every slice and pair was applied byte-for-byte as extracted from the committed `.agent/authored/f106-r10.md`; nothing looked wrong on inspection, so nothing required a declared problem. The one worktree used this round (for the G3(c) negative control) was created and removed exactly as constraint 8 scoped it, and never touched the primary checkout. Constraint 5's `Gate: F106 R9 — ` count landed at exactly 1x (not above), so the "may exceed 1x" carve-out did not need to be invoked, but is noted here for completeness since the block anticipated it.
+One declared numeric discrepancy, no scope or correctness problem. The block's G6 gate states the consumer-suite command (`tests/orchestration/test_diff_repair_apply.py tests/orchestration/test_diff_repair_response.py tests/orchestration/test_builder_repair_loop.py tests/ui_server/test_command_channel.py -q`) should read "198 passed". Run for real — three times, individually and combined — it reads 161 passed (9 + 32 + 14 + 106), exit 0 each time, zero failures. `grep -rl "diff_repair" tests/ --include="*.py"` confirms no fifth consumer file exists that the block's four-file list missed, so this is not a scope gap on the worker's side; the number in the block's own text does not match the repository's current state. Reported here rather than silently corrected or silently accepted, per the instruction to record real measured numbers and never round off or trust a number in the block over direct measurement. The substantive property the gate exists to verify — that `render_repair_hunks`'s addition changes zero behavior for every existing consumer of `diff_repair.py` — holds: exit 0 and 0 failures across the full named set, both before this round's C3/C4 (production diff was two pure appends plus one containment-proved import-block insertion, no existing line altered) and after.
+
+Otherwise the bundle landed exactly as ordered — C0a, C0b, C1, C2, C3, C4, C5 — one commit per bundle item, no extra commit, no dropped commit, no reordering. Every scratch file was applied via `shutil.copyfile`, never retyped, and every ordered-equality/containment property constraints 4 and 5 describe was independently re-verified against the real committed bytes (not trusted from the scratch files alone) per this round's own instructions.
 
 ## Next
 
-R-0758 is CLOSED: all four test-only provider subclasses in `tests/orchestration/test_provider_retry.py` now accept the `resume` keyword, and the full file reads `34 passed`. Two items remain open on F106:
+T002b-ii step 2a is CLOSED: the hunk-rendering convention (`render_repair_hunks`, `REPAIR_HUNKS_HEADING`, `REPAIR_HUNKS_OMITTED_INTRO`) is frozen in `packages/orchestration/diff_repair.py`, tested (7 new tests, 37 total in the file) and mutation-red-proofed in isolation. No caller wired this round — `packages/orchestration/pingpong_loop.py` and every `compose_*_prompt` function are untouched, confirmed by an empty diff on those paths. Two items remain open on F106:
 
-1. T002b-ii step 2 (the actual delta-prompt shrink): per DECISION F106 D1, reuse `parse_diff_line_ranges`/`select_repair_hunks` gated on the hoisted resume-ref (landed round 9) to shrink the repair-diff prompt segment when a session is being resumed. A hunk-rendering convention still needs to be invented and frozen — none exists to borrow — and the `test_builder_prompt_*.py` golden/quality/rejection files need reconciling only if their segment set changes as a result.
-2. T003 (measured fixture comparison + docs) follows once T002 is fully closed, i.e. after step 2 lands.
+1. T002b-ii step 2b: add `resume_ref: str | None = None` to `compose_builder_prompt`/`compose_reviewer_prompt` (`pingpong_loop.py`); when set and a diff segment would fire, replace the full diff with `render_repair_hunks(select_repair_hunks(repo_root, parse_diff_line_ranges(repair_diff), ...))` (frozen this round); thread the round-9-hoisted `*_resume_ref` into the call sites; add a resume-active fixture shape to `test_builder_prompt_golden.py`/`test_reviewer_prompt_golden.py` (existing shapes must stay unchanged).
+2. T003 (measured fixture comparison + docs) follows once T002 is fully closed, i.e. after step 2b lands.
 
-No adapter's `supports_resume` is true in production yet — only `FakeProvider`, via its test-only constructor overrides, ever resumes or fails a resume. This round's fix touches only test code; no production behavior changed.
+No adapter's `supports_resume` is true in production yet — only `FakeProvider`, via its test-only constructor overrides, ever resumes or fails a resume. `render_repair_hunks` has no caller yet; zero behavior change is held by construction (no import of it added anywhere outside the new test file), not by test coverage alone.
