@@ -1,7 +1,7 @@
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 1, opening the feature.
+commit of pull request 225. SESSION 1, round 2.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -15,30 +15,26 @@ standard finding ledger.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the F040 closure candidate | done | this round; no id spent |
-| the F258 claim and the branch | done | this round |
-| the seam inventory | done | this round, `.agent/f258_inventory.md` |
-| T001 the self-replenishing generator | open | next round, ordered from the inventory |
+| the F040 closure candidate | done | round 1 |
+| the F258 claim and the seam inventory | done | round 1 |
+| T001 part 1 — schema v2, the provenance field | done | this round |
+| T001 part 2 — the generator module | open | next round |
 | T002 consumed means executed | open | |
 | T003 findings flow back | open | |
 
 ## Next Steps
-1. This round claims F258, discharges the one candidate F040's closure gate
-   raised (new evidence on the already-open R-0570, no new id), and measures
-   the queue/planner/job-execution/budget/approval seams T001-T003 compose
-   over.
-2. The round after it orders T001 — the generator's source-priority logic and
-   its `provenance` field — from what the inventory measured; there is
-   currently NO code caller of `plan_next_self_use_item` at any closure point,
-   so the inventory names exactly what today's manual precondition-6 step
-   does instead.
-3. T002 depends on T001 producing a real item to run against; T003 is largely
-   wiring existing finding-ledger machinery once T002 exists.
+1. This round bumps the self-use queue schema to v2 (DECISION F258 D1): a
+   required `provenance` field joins the five existing keys, the shipped
+   queue's four items are migrated in the same commit range, and both test
+   files plus the two describing docs are kept in step.
+2. The round after it builds `packages/orchestration/self_use_generator.py`,
+   the source-priority search itself, using round 1's inventory finding that
+   no code caller of `plan_next_self_use_item` exists today.
+3. T002 depends on T001 producing a real item to run against; T003 wires
+   existing finding-ledger machinery once T002 exists.
 
 ## Risks
-- R-0570 (Low) stays OPEN and is deliberately NOT repaired here — same reason
-  as F040's own round 1: the fix edits `README.md` and a test neither F258
-  owns, and AGENTS.md forbids mixing an unrelated fix into a feature branch.
-- The queue's `consumed_by`-is-closure-only invariant (DECISION F257 D2) binds
-  T001: the generator may APPEND a new pending item but must never be the
-  thing that marks one consumed.
+- R-0570 (Low) stays OPEN, routed away, unrelated to this branch.
+- The version check stays an EXACT match, not a range (DECISION F258 D1): a
+  v1-shaped file is refused after this round, by design, symmetric with the
+  existing "a file from the future is refused" rule.
