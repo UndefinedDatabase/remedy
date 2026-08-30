@@ -267,3 +267,36 @@ Three carried risks travel with the merge: R-0570, R-0752 and R-0755
 risk). None is reachable from F040's Acceptance.
 
 **F040 — Completion/return digest: DONE.**
+
+## Addendum (round 21) — the two facts round 20's own C3 could not yet know
+
+Round 20's handback (this file, as committed at `0ec9bb37`) named C4 and the
+pull request as "pending," deferred to "the round report" — the worker's
+chat reply to the reviewer, which is not a disk artifact and does not
+survive a context reset. Both facts are now confirmed and recorded here,
+independently, by the reviewer:
+
+**C4** is commit `5ec85b07` — `docs(f040): record the F033 closure
+candidate`. Its changed-path set is exactly `.agent/candidates.md`, matching
+round 20's own constraint 8 and DECISION amend0827 D2 (a candidates-only
+commit is the one permitted successor to the closure commit). G7 (the
+candidate) reads PASS: `.agent/candidates.md` was empty at this round's
+base and the committed file names the F033 README-paragraph gap, F040 as
+the source feature, and 2026-08-30 as the date, with no `R-` id spent.
+
+**The pull request** is **#225** —
+`https://github.com/UndefinedDatabase/remedy/pull/225` — head
+`feature/f040-completion-digest`, base `main`, `isDraft: false`,
+`mergedAt: null`, state `OPEN`. G8 (the tree and the PR) reads PASS: the
+tree is clean, `git worktree list` shows one line, the branch is pushed and
+matches `origin`, and the PR is open, non-draft, and unmerged, exactly as
+self_drive_protocol.md's G1 guardrail requires of a PR opened in the
+session that opened it.
+
+F040's own build is complete on disk. The merge itself is deferred to the
+Open PR Gate (AGENTS.md; STATUS_closure_protocol.md algorithm step 6): the
+next session that runs Phase 0's state probe finds PR #225 via
+`gh pr list --state open` independently of this addendum, and merges it
+before claiming any new feature, per self_drive_protocol.md Phase 1 rule 2.
+This addendum exists so that fact is also readable from this file alone,
+without depending on any chat transcript surviving.
