@@ -2227,3 +2227,55 @@ from `git log --numstat`, every one under 500 — no oversize exception needed.
 THE ROUND PASSES, WITH THE ONE STRUCTURAL QUIRK ABOVE RECORDED, NOT HIDDEN:
 the change set matches the block's fixed eight paths exactly, the tree was
 clean and pushed, no `tmp/*` branch or extra worktree survived.
+
+Gate: F258 R5 — T002 CONSUMED MEANS EXECUTED — SELF_USE_RUNNER.PY, GENERATE-THEN-RUN PROVED END TO END. VERDICT PASS. The reviewer re-ran every gate independently against the real
+diff `453d1beb..11c006b8`, not against the worker's own report, and additionally
+re-derived every FROM/TO pair and every sha256 from the reviewer's own
+pre-verified `.remedy-wt/f258-r5/` scratch originals (prepared and dry-run
+tested, including a full end-to-end integration run in a disposable worktree,
+BEFORE the block was authored). G1 TRANSPORT: `packages/orchestration/self_use_runner.py`
+sha256 `77036196d3e31fdd22320b95174395c70d05d455fcfd8f6ddbeeca06dddcb0cb`
+(5079 bytes) and `tests/orchestration/test_self_use_runner.py` sha256
+`1172f6cae620f6dba4266d3b0ec1e03c6ae08993e272f6ada4de55c64d6e288d` (7110
+bytes), both equal to the scratch originals and to the block's stated
+digests. G2 THE PLAN: `.agent/plan.md` sha256
+`2bee9077ba14d65ce3f19fc1872b16e1054dbd2c8101dd98a6a4d96f2acb350e`, 1935
+bytes, 41 lines, `## Goal` and `## Next Steps` present, ends with `\n`. G3
+THE RECORD APPEND: base re-measured at 1771908 bytes ending in exactly one
+`\n`; `base + b"\n" + RECORD5 (3401 bytes) == committed (1775310 bytes)` is
+TRUE; the last `\n\n`-delimited unit of the committed file equals RECORD5
+exactly — unlike round 4, this round's base already ended cleanly, so no
+inherited dropped-newline quirk recurred and both the whole-file and the
+paragraph-order readings agree. A negative control in a disposable worktree
+(byte flipped at index 100 of a RECORD5 copy) was correctly rejected while
+the true original was accepted. G4 THE LEDGER: `DECISION F258` unchanged at
+`['D1','D2']` (ADDED `[]`); `Gate: F258 R` lines ADDED exactly `['F258 R4']`;
+317 distinct `R-` ids and 55 distinct `Done:` ids unchanged before and after
+C2; `Done: R-0570` stays 0. G5 THE FIVE PROSE PAIRS: PAIR-STATUSPROTO2,
+PAIR-WHYEXISTS, PAIR-MODULES and PAIR-CONSUMPTION each measured FROM 1→0,
+TO 0→1; PAIR-BANNER2 (append-shaped) measured FROM 1→1 (survives as the new
+sentence's prefix) and TO 0→1 — all five independently re-measured against
+the committed files, matching the block exactly. `python3 -m pytest
+tests/docs/ -q` (295) and `tests/orchestration/test_roadmap_index.py` (30)
+both independently re-run, REAL exit 0, matching the worker's reported
+counts. G6 THE NEW MODULE, ITS TEST, AND THE SUITES: `ruff check` on both
+new files REAL exit 0, all checks passed; the four self-use suites together
+REAL exit 0, 68 passed (7 new); the three repo-wide sanity guards
+(`test_data_paths.py`, `test_development_artifact_boundary.py`,
+`test_path_utils.py`) REAL exit 0, 69 passed — this module touches none of
+their guarded paths, confirmed by reading the diff directly. G7 THE
+MUTATION RED-PROOF, independently reproduced by the reviewer in the
+reviewer's OWN disposable worktree, `__pycache__` purged, `python3 -B`:
+removing the `JOB_BLOCKED` guard block gave REAL exit 1, exactly one
+failure (`test_a_blocked_plan_raises_rather_than_running`), 6 passed;
+restoring from the scratch original gave REAL exit 0, 7 passed again. G8
+THE STATE READERS AND CANARY, all REAL exit 0, matching every prior round's
+base exactly: 515, 52, 21, 16, 42. THE TREE: clean, single worktree,
+per-commit insertions 248/248/15/45/4/15/290 from `git log --numstat`,
+every one under 500 — no oversize exception needed. THE ROUND PASSES: the
+change set matches the block's fixed eight paths exactly (plus the handback
+commit), the branch is pushed and matches `origin` exactly at `cc373ca3`,
+the tree was clean, no `tmp/*` branch or extra worktree survived. No new
+finding is raised by this review; the worker's own report matched the
+reviewer's independent re-measurement in every particular, with zero
+discrepancies.
