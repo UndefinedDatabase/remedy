@@ -1,7 +1,7 @@
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 4, round 13.
+SESSION 4, round 14.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -15,26 +15,24 @@ working.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001, T002a, T002b-i, T002c, T002b-ii step 1, R-0758 | done | rounds 2-10 |
-| T002b-ii step 2a/2b (Builder side) | done | rounds 11-12 |
-| R-0759: `resume`-kwarg gap in `test_repair_loop.py` (4 classes) | done | this round |
-| T002b-ii step 2b (Reviewer side): wire the shrink in | open | next |
-| T003: measured fixture comparison + docs | open | |
+| T002b-ii step 2a/2b (Builder side), R-0759 | done | rounds 11-13 |
+| T002b-ii step 2b (Reviewer side): wire the shrink in | done | this round |
+| T003: measured fixture comparison + docs | open | next |
 
 ## Next Steps
-1. T002b-ii step 2b, Reviewer side: mirror round 12's Builder-side design
-   in `compose_reviewer_prompt` — a `resume_hunks_text` param replacing
-   whichever of `reviewer_focused_diff`/`reviewer_staged_diff` would
-   otherwise fire, fed from `reviewer_resume_ref` (round 9) at the call
-   site; state which of the four diff-shaped segment variants the shrink
-   applies to (almost certainly only the two `safe_diff`-backed ones);
-   add a resume-active fixture to `test_reviewer_prompt_golden.py`.
-2. T003 follows once step 2b is closed on both sides.
+1. T003: a fixture repair chain showing MEASURED token reduction with
+   resume versus without (Goal & Done's own acceptance criterion,
+   docs/roadmap/features/T3_F106.md). Needs a `FakeProvider` chain with
+   `supports_resume=True` across two repair rounds, comparing prompt
+   char counts (or a token estimate) with and without a resumed session,
+   plus docs recording the measured numbers. T002 (both sides of
+   T002b-ii step 2b) is now fully closed, so T003 is unblocked.
+2. Once T003 lands, F106 moves to closure per
+   docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
 - No adapter's `supports_resume` is true in production yet — only
-  `FakeProvider` ever resumes or fails a resume.
-- The Reviewer side has FOUR diff-shaped segment variants
-  (scoped/unscoped × safe_diff/diff_summary) versus the Builder's one;
-  `reviewer_resume_ref` is non-None only `if is_repair`, which already
-  excludes the initial-round variants from ever seeing a resume.
-- DECISION F106 D1's D1-compatibility reading still governs both sides.
+  `FakeProvider` ever resumes or fails a resume; T003's fixture chain is
+  necessarily `FakeProvider`-driven for the same reason T001-T002 were.
+- DECISION F106 D1's D1-compatibility reading governed both sides of the
+  shrink; T003 measures the OUTCOME of that decision, not a new one.
