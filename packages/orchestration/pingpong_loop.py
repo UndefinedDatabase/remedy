@@ -873,6 +873,7 @@ def compose_builder_prompt(
     scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
+    resume_hunks_text: str = "",
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
 
@@ -924,7 +925,18 @@ def compose_builder_prompt(
             "builder_staged_state", SegmentStabilityRank.JOB_CONTEXT,
             [f"## Current Staged State\n{staged_state}\n"],
         ))
-    if safe_diff and findings:
+    if resume_hunks_text:
+        # F106 T002b-ii step 2b (DECISION F106 D1(b)): a resumed session
+        # gets the shrunk render instead of the full diff, for the SAME
+        # segment name and rank — the manifest shape is unchanged, only
+        # which text fills it. The caller supplies this pre-rendered
+        # (compose_builder_prompt does no filesystem I/O of its own); an
+        # empty string here always falls through to the branch below.
+        specs.append((
+            "builder_staged_diff", SegmentStabilityRank.JOB_CONTEXT,
+            [resume_hunks_text],
+        ))
+    elif safe_diff and findings:
         capped = safe_diff[:_REPAIR_DIFF_CAP]
         if len(safe_diff) > _REPAIR_DIFF_CAP:
             capped += "\n[DIFF TRUNCATED]"
@@ -1021,13 +1033,14 @@ def _build_builder_prompt(
     scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
+    resume_hunks_text: str = "",
 ) -> str:
     """The builder prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_builder_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string. ``hunk_ledger`` is forwarded UNCHANGED and means exactly what
-    it means there.
+    this string. ``hunk_ledger`` and ``resume_hunks_text`` are forwarded
+    UNCHANGED and mean exactly what they mean there.
     """
     return compose_builder_prompt(
         goal,
@@ -1040,6 +1053,7 @@ def _build_builder_prompt(
         scope_contract=scope_contract,
         test_result=test_result,
         hunk_ledger=hunk_ledger,
+        resume_hunks_text=resume_hunks_text,
     ).text
 
 
@@ -2971,6 +2985,23 @@ def run_pingpong(
             # F115 D1: compose instead of calling `_build_builder_prompt`, so the
             # trace entry below carries a real segment manifest. The sent bytes are
             # unchanged — `_build_builder_prompt` returns this same `.text`.
+            # F106 T002b-ii step 2b (DECISION F106 D1(b)): when this round is
+            # actually resuming (``builder_resume_ref`` set) and there is a
+            # repair diff to shrink, render only the changed regions —
+            # ``render_repair_hunks`` was frozen in round 11 for exactly this.
+            # An empty render (nothing survived selection) falls back to the
+            # unconditional full-diff path inside compose_builder_prompt.
+            builder_resume_hunks_text = ""
+            if builder_resume_ref and repair_diff:
+                from packages.orchestration.diff_repair import (
+                    render_repair_hunks,
+                    select_repair_hunks,
+                )
+                from packages.orchestration.review_scope import parse_diff_line_ranges
+                builder_resume_hunks_text = render_repair_hunks(select_repair_hunks(
+                    staging, parse_diff_line_ranges(repair_diff),
+                    max_total_chars=_REPAIR_DIFF_CAP,
+                ))
             builder_composed = compose_builder_prompt(
                 effective_goal, context,
                 round_number=round_num,
@@ -2981,6 +3012,7 @@ def run_pingpong(
                 scope_contract=scope_contract_text,
                 test_result=prev_test_result,
                 hunk_ledger=hunk_ledger,
+                resume_hunks_text=builder_resume_hunks_text,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
