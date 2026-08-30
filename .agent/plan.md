@@ -1,7 +1,8 @@
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 4, round 20 — CLOSURE.
+commit of pull request 222. SESSION 5, round 22 — OPEN PR GATE CONFLICT
+RESOLUTION.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -20,20 +21,24 @@ was gone" answer in one glance.
 | the integration gate | done | round 17, PASS |
 | closure preconditions + Built State | done | round 18, all six CLEAR/NONE |
 | closure evidence job + review zip | done | round 19, READY_FOR_REVIEW |
-| STATUS line + README sync + PR | in progress | this round |
+| STATUS line + README sync + PR | done | round 20, PR #225 opened |
+| PR #225 vs main drift (F258 landed via #223/#224) | resolved | round 22, merge commit `f69f1785` |
+
+F040's build is DONE. Nothing in this feature's own content changed this
+round — round 22 only resolved a merge conflict caused by F258's
+registration (PRs #223/#224) landing on `main` after PR #225 opened,
+touching the same shared count lines in README.md and
+docs/roadmap/STATUS.md.
 
 ## Next Steps
-1. This round flips F040 to `[x]` in STATUS.md, syncs README (accepted
-   count, Tier 5 Done cell, F040's capability paragraph) in the SAME
-   commit, records one closure-candidate finding (F033's own missing
-   README paragraph, found during this round's audit — not F040's to
-   fix), and opens the PR.
-2. The PR is NOT merged this session (self_drive_protocol.md G1;
-   STATUS_closure_protocol.md algorithm step 6) — it merges at the next
-   feature's Open PR Gate, or the operator merges it manually at any time.
-3. End Window 1 with the feature-done banner once the PR is open and the
-   handback is written.
-4. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
+1. PR #225 is still OPEN and UNMERGED. It must be merged at the next
+   session's Open PR Gate (self_drive_protocol.md G1) before any new
+   feature work is claimed on this repo — never in the same
+   round/session that touches this branch.
+2. No further edits to this branch are expected before that merge. If
+   `main` drifts again before the merge, re-run this same conflict
+   resolution process against the newly conflicting lines only.
+3. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
    resolution design (D5's "in-page action") and is not yet scheduled —
    documented in the Built State section, carried forward as a known
    post-closure item, not a blocker.
