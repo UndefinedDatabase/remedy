@@ -329,3 +329,116 @@ housekeeping apply as usual; no PR is open on this branch yet (none is
 created before closure, per constraint 11). Round 5 also owes the ledger
 this round's own `Gate: F258 R4` verdict, per amend0827 rule 1 (booked in
 round 5's first commit, not this round's).
+
+
+## Reviewer verdict on round 4 (independent re-verification, 2026-08-30)
+
+VERDICT PASS. The reviewer re-ran every gate independently against the real
+diff `4c1a1495..399c2939`, not against the worker's own report. THE
+TRANSPORT: sha256 `446c57f6f741fef768e048a95d3ba1d9943767723643952508f97354499faf03`,
+20164 bytes, all three copies (`.remedy-wt/f258-r4-block.md`,
+`.agent/authored/f258-r4.md`, `.agent/last_block.md`) equal. THE PLAN:
+byte-equal to PLAN4, sha256 `c2788c09f6f2804e424844d33a6af3c12d4f99c13ec811b063c26f20f6ec60e9`,
+41 lines, ends with `\n` — round 3's dropped-trailing-newline defect was NOT
+repeated. THE RECORD APPEND: whole-file reconstruction (`base + "\n" +
+RECORD4 == committed`) is TRUE and byte-exact — the load-bearing proof.
+THE PARAGRAPH-ORDER READING, taken literally, is FALSE for this one round
+only, for a fully understood and non-blocking reason: round 3's own dropped
+trailing newline (already recorded as an accepted deviation in that round's
+own booked verdict) left `.agent/live_review.md` ending in `...it.` rather
+than `...it.\n`, so THIS round's standard `base + "\n" + slice` append
+produced a single `\n` at that join instead of the `\n\n` a paragraph
+boundary needs — merging round 3's DECISION F258 D2 paragraph and this
+round's own RECORD4 into one `\n\n`-delimited unit instead of two. The
+reviewer independently reproduced this exact merge and confirmed: (a) every
+byte of both paragraphs is intact and unchanged, findable by grep on
+`^Gate: F258 R3 — ` or `^DECISION F258 D2 — ` regardless of the paragraph
+boundary; (b) the merge is now PERMANENT in this append-only file (a past
+byte is never rewritten to insert a blank line after the fact), but (c) it
+recurs no further — the file now correctly ends in `\n`, so every future
+append restores normal `\n\n` separation from here on. A negative control in
+a disposable worktree confirmed the reconstruction reading still correctly
+rejects a real content byte flip, so this is not a weakened proof, only a
+historical quirk in one specific join. THE LEDGER: `DECISION F258` unchanged
+at `['D1', 'D2']` (none minted, none expected); `Gate: F258 R` lines ADDED
+exactly `['F258 R3']`; `Done: R-0570` stays 0. THE FOUR PROSE PAIRS
+(PAIR-STATUSPROTO, PAIR-BANNER, PAIR-ABSENCESDOC, PAIR-ABSENCESMODULE):
+every FROM occurs 0 times and every TO occurs exactly 1 time, independently
+re-measured. `packages/orchestration/self_use_queue.py`'s diff is confirmed,
+by reading it directly, confined to its module docstring — zero
+non-docstring lines changed. `python3 -m pytest tests/docs/ -q` (295),
+`tests/orchestration/test_roadmap_index.py` (30), and the three self-use
+suites together (`test_self_use_generator.py`, `test_self_use_queue.py`,
+`test_self_use_job.py`, 61) all independently re-run, REAL exit 0, matching
+the worker's reported counts exactly. THE STATE READERS AND CANARY, all REAL
+exit 0, matching every prior round's base exactly: 515, 52, 21, 16, 42. THE
+TREE: clean, single worktree, per-commit insertions 285/200/15/2/10/15/7/219
+from `git log --numstat`, every one under 500 — no oversize exception needed.
+THE ROUND PASSES, WITH THE ONE STRUCTURAL QUIRK ABOVE RECORDED, NOT HIDDEN:
+the change set matches the block's fixed eight paths exactly, the tree was
+clean and pushed, no `tmp/*` branch or extra worktree survived.
+
+This verdict (`Gate: F258 R4`) is PENDING — per amend0827 rule 1 it is booked
+into `.agent/live_review.md` in the FIRST COMMIT of the next round that is
+happening anyway, which is round 5, in the NEXT SESSION (this session ends
+here). It is persisted now by being written into this pushed, committed
+handoff, which is the durable carrier amend0827 rule 1 names for exactly this
+gap.
+
+## Session close (SESSION 1 of F258, ending after round 4)
+
+FOUR delegated rounds ran this session, matching self_drive_protocol.md G7's
+default of four to five: round 1 (claim F258, discharge F040's closure
+candidate as new evidence on `R-0570`, measure the T001-T003 seams), round 2
+(the queue schema moved to v2, a required `provenance` field, 25 pairs across
+six files, a mutation red-proof), round 3 (the generator module itself, Tier
+1 real and tested end to end, Tiers 2-3 honest placeholders per DECISION
+F258 D2, a mutation red-proof, two real defects caught and fixed during the
+reviewer's own pre-delegation dry run — an end-of-file regex edge case and a
+development-artifact-boundary guard violation), and round 4 (wiring the
+generator into `STATUS_closure_protocol.md` precondition 6's own text and
+correcting two stale "never generates" claims). Every round was independently
+re-verified by the reviewer against the real committed diff, never against a
+worker's report alone; two real defects were caught this way (round 3's dry
+run, before delegation) and one more (round 3's dropped trailing newline,
+after delegation, described above and in round 3's own booked verdict).
+
+T001 (the self-replenishing generator) is now COMPLETE against the feature
+file's own text: it exists, fires when the queue is empty, is tested end to
+end with a real mutation red-proof, and the protocol's own words now say to
+call it. T002 (consumed means executed — running a generated or curated item
+through the real job path under a small budget to the normal approval gate,
+not merely planning it) and T003 (findings flow back) remain OPEN. Round 1's
+inventory (`.agent/f258_inventory.md` §4-5) already measured the job-run and
+budget seams T002 will compose over; no design decision has been made yet
+about which entry point (`job.run`, `job.run-loop` or `job.run-next`) T002
+uses, or the exact budget flags — that is round 5's own first decision.
+
+Branch `feature/f258-self-use-v2` is pushed and matches `origin` exactly at
+`399c2939`. `git status --porcelain` is empty, `git worktree list` shows only
+the primary checkout. NO PULL REQUEST is open on this branch — none is
+created before closure, per this branch's own round-1 constraint, unchanged
+since. `gh pr list --state open` for this repository was last checked at this
+session's Phase 0 and found exactly PR #225 (F040's), which THIS session
+merged before claiming F258; no other PR exists.
+
+Open findings in `.agent/live_review.md`: 317 registered, 55 distinct
+resolved, 262 open, unchanged since round 1 — this session minted zero new
+R-ids and exactly two DECISION ids (`D1`, `D2`), both F258's own. `R-0570`
+(Low) stays OPEN throughout, routed to the paydown branch, never F258's to
+fix. `.agent/candidates.md` is EMPTY (round 1 discharged the one entry
+present at claim time).
+
+NEXT SESSION'S FIRST ACTIONS, in order: (1) read `.agent/STOP` from disk —
+absent as of this session's own start and not expected to appear, but always
+checked first regardless. (2) Run the Open PR Gate (AGENTS.md /
+self_drive_protocol.md Phase 1 rule 2): `gh pr list --state open` is expected
+to find NOTHING on this repository, since this branch carries no PR yet —
+if that changes, handle it before any new round. (3) `.agent/candidates.md`
+is expected empty — if a candidate has appeared since, discharge or register
+it in round 5's own first commit before any other work (Phase 1 rule 3).
+(4) Resume F258 at round 5: book `Gate: F258 R4` (the verdict above) into
+`.agent/live_review.md` in round 5's own first substantive commit, then
+design and build T002. This is a mid-feature resume, not a new feature claim
+— Rule A5 does not re-select; F258 is already `[~]` in `docs/roadmap/STATUS.md`
+and stays the active line until its own closure.
