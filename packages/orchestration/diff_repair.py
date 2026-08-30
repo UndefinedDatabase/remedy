@@ -200,3 +200,39 @@ def changed_line_ranges_from_patch(patch: StructuredPatch) -> dict[str, list[lis
     for file_op in patch.file_ops:
         ranges.setdefault(file_op.path, [])
     return ranges
+
+
+# The rendering convention T002b-ii step 2 needs: turning a selection into
+# prompt text. No caller wires this in yet — that lands in a later round,
+# gated on F106's hoisted resume-ref (DECISION F106 D1(b)) — this function
+# exists on its own so the convention is frozen and tested in isolation
+# before anything depends on it.
+REPAIR_HUNKS_HEADING = "## Resumed Session — Changed Regions Only"
+REPAIR_HUNKS_OMITTED_INTRO = "Omitted from this selection:"
+
+
+def render_repair_hunks(selection: RepairHunkSelection) -> str:
+    """Render a hunk selection as repair-prompt text.
+
+    Returns the EMPTY STRING when ``selection.hunks`` is empty — a heading
+    with no hunk beneath it would tell a repair round it has scoped source
+    when it has none. Hunks render in ``selection.hunks``' own order
+    (already ``(path, start_line)``-sorted by ``select_repair_hunks``);
+    nothing here sorts or deduplicates. Omissions render as a trailing
+    bulleted list, stated only when ``selection.omitted`` is non-empty, so a
+    caller can see what the budget left out without reading a second
+    artifact.
+    """
+    if not selection.hunks:
+        return ""
+    parts = [REPAIR_HUNKS_HEADING, ""]
+    for hunk in selection.hunks:
+        parts.append(f"### {hunk.path} (lines {hunk.start_line}-{hunk.end_line})")
+        parts.append(f"```\n{hunk.text}\n```")
+        parts.append("")
+    if selection.omitted:
+        parts.append(REPAIR_HUNKS_OMITTED_INTRO)
+        for path, reason in selection.omitted:
+            parts.append(f"- {path} ({reason})")
+        parts.append("")
+    return "\n".join(parts)
