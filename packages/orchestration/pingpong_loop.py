@@ -3010,11 +3010,24 @@ def run_pingpong(
 
             _begin_stream_call(builder_provider, round_num, "attempt")
             builder_call_reasons: list[str] = []
+            # F106 T002a: a repair round resumes the prior round's provider
+            # session only when the provider honestly advertises support AND
+            # a session id was actually captured last round — every other
+            # path (initial round, unsupported provider, no prior session
+            # id) passes resume=None, an honest no-op, never guessed.
+            builder_resume_ref: str | None = None
+            if is_repair and getattr(builder_provider, "supports_resume", False) and result.rounds:
+                prev_builder_out = result.rounds[-1].builder_output
+                prev_actuals = getattr(prev_builder_out, "usage_actuals", None) or {}
+                prev_session_id = str(prev_actuals.get("session_id") or "")
+                if prev_session_id:
+                    builder_resume_ref = prev_session_id
             builder_out = _call_with_retry(
                 lambda ts=builder_timeout: builder_provider.build(
                     builder_prompt,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
+                    resume=builder_resume_ref,
                 ),
                 result=result,
                 role="builder",
