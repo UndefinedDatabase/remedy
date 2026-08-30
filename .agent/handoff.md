@@ -390,3 +390,98 @@ booked into `.agent/live_review.md` in the FIRST COMMIT of the next round
 that is happening anyway, which is the closure round. It is persisted now
 by being written into this pushed, committed handoff, which is the durable
 carrier amend0827 rule 1 names for exactly this gap.
+
+## Session close (SESSION 2 of F258, ending after round 7)
+
+THREE delegated rounds ran this session (round 5, round 6, round 7),
+matching self_drive_protocol.md G7's default of four to five, plus two
+tiny verdict-append continuations after rounds 5 and 6 (per amend0827 rule
+1, a pushed handoff is the durable carrier for a pending verdict; each is
+booked into the ledger at the next round's own first commit, never as a
+round of its own).
+
+Round 5 built T002 (consumed means executed):
+`packages/orchestration/self_use_runner.py` composes
+`self_use_job.plan_next_self_use_item` with `pingpong_job.run_job` under a
+small `JobBudgets`, stopping at whatever status `run_job` returns —
+`JOB_COMPLETED` or `JOB_BLOCKED` — and never calling
+`job_promote.promote_job`. Seven tests, including one that generates a
+queue item from a real ledger fixture via T001's generator and then runs
+it end to end (the feature file's own "one full generate → plan → run
+cycle" acceptance criterion). A mutation red-proof (removing the
+`JOB_BLOCKED` guard) reddened exactly the one test guarding it.
+
+Round 6 built T003 (findings flow back):
+`packages/orchestration/self_use_findings.py` reads a run's own `JobPlan`
+and answers a tuple of plain strings — one per defect, quoting the job's
+and each task's own `error` field verbatim, inventing nothing — for a
+closing session to register as normal ledger findings. Three tests. A
+mutation red-proof (removing the job-level `error` check) reddened exactly
+the two tests that depended on it.
+
+Round 7 was the dedicated integration-gate round
+(planner_reviewer_prompt.md §3 tier 3), required before F258 can close: the
+full suite ran twice, branch and base, with finding R-0736's mtime-parity
+fix (`shutil.copytree(..., symlinks=True)` then `os.utime` the copied
+`apps/ui/dist` past the worktree's checkout time) applied PROACTIVELY
+rather than discovered through a failed run, unlike the F257 R6 precedent
+that first hit the 114-id stale-dist class before fixing it. Branch: 18677
+passed, 20 skipped, 0 failed. Base: one failure on the worker's own run,
+zero on the reviewer's independent re-run of the same suite at the same
+revision — both outcomes consistent with the already-registered
+machine-wide `pgrep -f` flake class (F032 R16/R17, the F033 integration
+gate), never a regression coupled to F258's own code. THE INTEGRATION GATE
+PASSES: STATUS_closure_protocol.md precondition 2 is now met.
+
+Every round was independently re-verified by the reviewer against the real
+committed diff, never against a worker's report alone — including, for
+round 7, re-executing BOTH the branch and the base suite from scratch in
+the reviewer's own disposable worktree rather than trusting the worker's
+logs alone. Zero discrepancies were found between any worker's report and
+the reviewer's own independent measurement across all three rounds.
+
+ALL THREE OF F258's T-SLICES (T001, T002, T003) ARE NOW BUILT AND VERIFIED
+against the feature file's own text, and the dedicated integration-gate
+round has PASSED. F258 is ready for its closure sequence
+(`docs/roadmap/STATUS_closure_protocol.md`): preconditions 1, 3, 4, 5 and 6
+are the reviewer's own next checks (precondition 2 is now satisfied by
+this session's round 7), then the Algorithm — evidence job, fresh review
+zip (MANDATORY, a failing build is a closure blocker), the STATUS line, the
+README sync in the SAME commit, and the PR (not merged this session; it
+merges at the next feature's start via the Open PR Gate).
+
+Branch `feature/f258-self-use-v2` is pushed and matches `origin` exactly at
+`69bc74d0`. `git status --porcelain` is empty, `git worktree list` shows
+only the primary checkout, and `git branch --list 'tmp/*'` is empty — no
+throwaway worktree or branch survives from any round this session.
+
+Open findings in `.agent/live_review.md`: 317 registered, 55 distinct
+resolved, 262 open — unchanged since session 1's own round 1, this session
+minted zero new R-ids and zero new DECISION ids. `R-0570` (Low) stays OPEN,
+routed to the paydown branch, never F258's to fix. `R-0736` (Medium, the
+integration-gate mtime-parity gotcha) also stays OPEN, unrelated to F258's
+own code — this session's rounds APPLIED its known fix rather than
+resolving the finding itself, which would mean editing
+`docs/agents/integration_gate.md`, a shared cross-feature doc outside
+F258's own change-set discipline. `.agent/candidates.md` is EMPTY.
+
+NEXT SESSION'S FIRST ACTIONS, in order: (1) read `.agent/STOP` from disk —
+absent as of this session's own start and not expected to appear, but
+always checked first regardless. (2) Run the Open PR Gate (AGENTS.md /
+self_drive_protocol.md Phase 1 rule 2): `gh pr list --state open` is
+expected to find NOTHING on this repository, since this branch carries no
+PR yet — if that changes, handle it before any new round. (3)
+`.agent/candidates.md` is expected empty — if a candidate has appeared
+since, discharge or register it in the closure round's own first commit
+before any other work (Phase 1 rule 3). (4) Resume F258 at its closure
+sequence: book `Gate: F258 R7` (the verdict above) into
+`.agent/live_review.md` in the closure round's own first substantive
+commit, then work through `docs/roadmap/STATUS_closure_protocol.md`'s
+remaining preconditions (1, 3, 4, 5) and its Algorithm (evidence job,
+review zip, STATUS line + README sync, final PR). This is a mid-feature
+resume, not a new feature claim — Rule A5 does not re-select; F258 is
+already `[~]` in `docs/roadmap/STATUS.md` and stays the active line until
+its own closure. Per amend0827-process-diet rule 1, the closure sequence
+is the ONE exception to the ban on pure-bookkeeping rounds, so a round
+whose whole change set is the evidence job, the zip, or the STATUS/README
+commit is expected and permitted here.
