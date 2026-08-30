@@ -42,6 +42,7 @@ def _entry(**overrides) -> SelfUseQueueEntry:
         "why": "Because the track must run on something.",
         "job_markdown": "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n",
         "consumed_by": "",
+        "provenance": "operator-curated (fixture)",
     }
     fields.update(overrides)
     return SelfUseQueueEntry(**fields)
@@ -50,7 +51,7 @@ def _entry(**overrides) -> SelfUseQueueEntry:
 def _write_queue(tmp_path: Path, items: list[dict]) -> Path:
     path = tmp_path / "self_use_queue.json"
     body = {
-        "schema_version": 1,
+        "schema_version": 2,
         "description": "fixture queue",
         "items": items,
     }
@@ -132,6 +133,7 @@ class TestPlanNextSelfUseItem:
             why="Every item here carries a consumer.",
             job_markdown="# Job: Demo\n\n## Task 1\nDo it.\n\nAcceptance:\n- done\n",
             consumed_by="F256",
+            provenance="operator-curated (fixture)",
         )
         queue_path = _write_queue(tmp_path, [consumed])
         with pytest.raises(SelfUseJobError) as excinfo:
