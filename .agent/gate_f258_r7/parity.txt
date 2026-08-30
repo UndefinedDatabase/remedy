@@ -1,0 +1,91 @@
+PARITY — R-0736 FIXED PROACTIVELY, VERIFIED BY MEASURING THE EVENT AND NOT
+THE OUTCOME
+==============================================================================
+
+Constraint 4 of the round's block requires the mtime of EVERY file under the
+base worktree's apps/ui/dist recorded immediately before and immediately
+after the base run, against that run's own window. ANY mtime falling inside
+the window voids the parity claim. A content hash is deliberately NOT offered
+in its place: equal content is consistent both with no rebuild and with a
+byte-identical one.
+
+Base worktree: .remedy-wt/f258-r7-base, on branch tmp/f258-r7-base-gate, at
+18ae71293cde9b1157aca35d3d02c3a8f4265813 (the merge-base). Files under
+apps/ui/dist: 4.
+
+------------------------------------------------------------------------------
+STEP 1 — THE COPY, BEFORE ANY BUMP (as `git worktree add` left it)
+------------------------------------------------------------------------------
+`shutil.copytree(apps/ui/node_modules, ..., symlinks=True)` and
+`shutil.copytree(apps/ui/dist, ..., symlinks=True)` were run from the primary
+checkout into the base worktree BEFORE the suite ran at all — this round
+applies the known fix up front (finding R-0736) rather than discovering the
+114-id `tests/ui_server/` stale-dist failure class through a first failed
+run, as the F257 R6 precedent had to.
+
+  apps/ui/dist/index.html
+      as copied (inherited from the primary checkout's own mtime): 1788057215.8536215
+  apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js
+      as copied: 1788057215.8556216
+  apps/ui/dist/assets/index-D_qZGOuo.css
+      as copied: 1788057215.8556216
+  apps/ui/dist/assets/index-Bh0mkYBD.js
+      as copied: 1788057215.8556216
+
+These four mtimes are OLDER than the `git worktree add` checkout time (the
+copy PRESERVES source mtimes; the checkout STAMPS every source file with the
+fresh checkout time) — exactly the mismatch R-0736 describes, left
+unattended here would have made `_frontend_is_stale()` return True.
+
+------------------------------------------------------------------------------
+STEP 2 — THE BUMP (constraint 4's fix, applied immediately after the copy)
+------------------------------------------------------------------------------
+Every file under the copied apps/ui/dist had its mtime advanced with
+`os.utime(path, (now, now))`, `now = time.time()` = 1788067823.5959625,
+which is AFTER the worktree's own checkout time (the worktree was created
+moments earlier in this same round). All four files landed on the identical
+bump timestamp:
+
+  apps/ui/dist/index.html                                 -> 1788067823.5959625
+  apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js    -> 1788067823.5959625
+  apps/ui/dist/assets/index-D_qZGOuo.css                   -> 1788067823.5959625
+  apps/ui/dist/assets/index-Bh0mkYBD.js                    -> 1788067823.5959625
+
+------------------------------------------------------------------------------
+STEP 3 — THE BASE RUN'S OWN WINDOW (A4: measured immediately before/after
+the run itself, not just before/after the copy)
+------------------------------------------------------------------------------
+Run window (epoch): 1788067834.3271685 .. 1788068036.7239053
+
+  apps/ui/dist/index.html
+      BEFORE 1788067823.5959625
+      AFTER  1788067823.5959625   changed: False   inside run window: False
+  apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js
+      BEFORE 1788067823.5959625
+      AFTER  1788067823.5959625   changed: False   inside run window: False
+  apps/ui/dist/assets/index-D_qZGOuo.css
+      BEFORE 1788067823.5959625
+      AFTER  1788067823.5959625   changed: False   inside run window: False
+  apps/ui/dist/assets/index-Bh0mkYBD.js
+      BEFORE 1788067823.5959625
+      AFTER  1788067823.5959625   changed: False   inside run window: False
+
+  files present before: 4 | after: 4 | added or removed: []
+  mtimes falling INSIDE the run window: 0 []
+  VERDICT: the parity claim HOLDS — no dist file was written while the suite
+           ran, so REMEDY_UI_NO_AUTO_BUILD=1 was not bypassed by a spawned
+           build path (the R-0169 failure mode), and the bump in STEP 2 was
+           the only mutation ever made to these four files this round.
+
+------------------------------------------------------------------------------
+WHAT THIS MEASUREMENT DOES NOT COVER, STATED PLAINLY
+------------------------------------------------------------------------------
+A4 answers "was dist rewritten during the run?" — no. It does not by itself
+prove "was dist USABLE by the run?"; that is answered separately by the
+run's own outcome: the base run's single FAILED id
+(tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::
+test_timeout_raises_with_cleanup) carries no 'ERROR: React UI not built.'
+marker and is not under tests/ui_server/ at all — the 114-id stale-dist
+failure signature the block warns about did not occur, consistent with the
+bump in STEP 2 having actually worked (see comparison.txt for the full
+attribution of the one id that did fail).

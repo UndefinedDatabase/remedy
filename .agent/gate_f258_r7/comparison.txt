@@ -1,0 +1,92 @@
+COMPARISON — F258 R7 integration gate
+branch (round 7 own commits) 846fdef8, suite run at that commit,
+vs merge base 18ae71293cde9b1157aca35d3d02c3a8f4265813
+==============================================================================
+
+METHOD (per the block's own instruction). The two set differences below were
+computed IN PYTHON as set(branch) - set(base) and set(base) - set(branch)
+over the two FAILED id lists. `comm -13` / `comm -23` were NOT run: this
+session's command guard rejects the pipelines that feed them by FORM, so the
+PROPERTY was ordered rather than the tool. Both lists are sorted and
+complete; nothing is elided.
+
+RUN TOTALS
+  branch run : 18677 passed, 20 skipped, 0 failed — exit 0 — 127.07 s
+  base run   :     1 failed, 18641 passed, 20 skipped — exit 1 — 202.40 s
+  (single base run: constraint 4's parity fix was applied BEFORE this run,
+  not discovered afterward, so no second base run was needed this round)
+
+------------------------------------------------------------------------------
+(d) THE SET DIFFERENCES
+------------------------------------------------------------------------------
+
+BRANCH-ONLY = set(branch) - set(base) : 0 ids
+  (empty — the branch run had no FAILED id at all)
+
+BASE-ONLY = set(base) - set(branch) : 1 id
+  tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+
+------------------------------------------------------------------------------
+(e) ATTRIBUTION
+------------------------------------------------------------------------------
+
+BRANCH-ONLY IDS: NONE. Step 4 of docs/agents/integration_gate.md asks for one
+serial re-run per branch-only id; there are zero branch-only ids, so the
+obligation is discharged vacuously and no BLOCKER condition can arise from it.
+
+BASE-ONLY ID, attributed by direct evidence per step 3 (an unattributed
+base-only id counts as a genuine base failure and blocks the gate verdict —
+this one is not left unattributed):
+
+  tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+
+  Failure text: 'AssertionError: Orphan process found after timeout cleanup'
+  / 'assert 0 != 0' where the 0 is `pgrep -f
+  apps.cli.grouped.*--help`'s own returncode.
+
+  Serial re-run of the exact node id, same worktree, same revision:
+  `python3 -m pytest -q tests/cli/test_review_bundle_runtime.py::
+  TestSubprocessCleanup::test_timeout_raises_with_cleanup` -> REAL exit 0,
+  `1 passed in 0.33s`. Serial-pass ⇒ xdist-flake class (step 4 of
+  docs/agents/integration_gate.md): recorded, not a blocker.
+
+  This is not a novel class: the test's own `pgrep -f
+  apps.cli.grouped.*--help` predicate is MACHINE-WIDE, not scoped to the
+  test's own subprocess, so it can see an unrelated process elsewhere on the
+  host under `-n auto` parallel load. This exact id, with this exact
+  attribution, is already on record twice in `.agent/live_review.md`:
+  the F032 R16/R17 gate entry ("whose `pgrep -f` predicate is machine-wide,
+  which recorded `returncode=0, stdout='2351843'` under parallel load and
+  which also re-ran serially to exit 0 in both checkouts") and the F033
+  integration-gate entry ("the base-only id is
+  `tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::
+  test_timeout_raises_with_cleanup`; the worker re-ran each SERIALLY ten
+  times and each passed 10 out of 10"). Neither the failing test's own file
+  nor the code path it exercises is touched anywhere on this branch:
+  `git diff --stat 18ae7129 846fdef8 -- tests/cli/test_review_bundle_runtime.py
+  apps/cli/` is EMPTY across the WHOLE feature (merge base to branch tip,
+  all of T001-T003 included), so this base-only failure cannot be coupled to
+  F258's own code by construction. Separately, round 7 itself (this round's
+  own commits, `be848035..846fdef8`) changes only four `.agent/**` state
+  files — `git diff --name-only be848035 846fdef8 -- packages/ apps/ tests/
+  docs/` is EMPTY — so nothing this round did could have introduced the
+  failure either.
+
+R-0734, THE KNOWN SERVER-START RACE, DID NOT FIRE: its signature is
+`json.decoder.JSONDecodeError` from a zero-byte `server_info.json`, and that
+string appears in neither the branch nor the base log this round.
+
+------------------------------------------------------------------------------
+(f) THE BUDGET
+------------------------------------------------------------------------------
+
+  branch run : 127.07 s
+  base run   : 202.40 s
+  total wall clock over the runs: 329.47 s (5 min 29 s)
+
+Step 5 notes wall clock over ~5 min for a perf pass. Each INDIVIDUAL run is
+under 3.5 minutes; the total exceeds 5 minutes only because both a branch
+and a base run are required by design.
+
+THE GATE VERDICT IS THE REVIEWER'S. docs/agents/integration_gate.md step 5
+reserves it, and this worker does not issue it. The readings are above.
