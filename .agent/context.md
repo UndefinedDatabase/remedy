@@ -1,27 +1,35 @@
-# Context — F040 Completion/return digest
+# Context — F258 Self-use track v2
 
 ## Active Branch
-feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge commit
-of pull request 222, which is the commit that accepted F033 into the ledger.
+feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge commit of
+pull request 225, which is the commit that accepted F040 into the ledger.
 
 ## Scope
-Feature F040, `docs/roadmap/features/T5_F040.md` — a digest endpoint that
-composes state, cost with its basis, ownership sentences, open decisions and ONE
-primary action, the hero card that renders it, and CLI parity through
-`remedy job digest`.
+Feature F258, `docs/roadmap/features/T5_F258.md` — a self-replenishing queue
+generator that fires at the closure consumption point whenever the queue is
+empty (T001), executing the consumed item through the real job path under a
+small dedicated budget to the normal approval gate rather than only planning
+it (T002), and routing any defect a run surfaces into the standard finding
+ledger (T003).
 
 ## Do not touch
-Report content, notification channels and the home grid, per the feature file's
-own Do-not-touch. `docs/roadmap/ROADMAP.md` is not edited. The digest is a
-COMPOSITION: it reads finished sources and owns no new storage.
+The scope-fence builtin deny list (F017), the normal approval gate, and STATUS
+semantics — a job must never check itself off — per the feature file's own
+Do-not-touch. The v1 queue schema's existing fields (`id`, `title`, `why`,
+`job_markdown`, `consumed_by`) are extended, never replaced, so
+`packages/orchestration/self_use_queue.py`'s existing readers keep working
+against a v2 queue file.
 
 ## Assumptions
-- The next-action rule table is ONE source. The digest's primary action imports
-  `NEXT_ACTION_RULES` from `packages/orchestration/run_report.py` rather than
-  restating it, so the CTA and the report's recommendation cannot disagree.
-- The ownership source named in the feature file's Design is unbuilt — F035 is
-  `[ ]` in the ledger. What the digest does about it is decided from the round-1
-  inventory's measurement, not assumed here.
+- `next_self_use_item`/`plan_next_self_use_item` currently have NO production
+  caller anywhere in `packages/` or `apps/`: precondition 6
+  (`docs/roadmap/STATUS_closure_protocol.md`) today is a manual step a session
+  performs by hand at every closure. What T001's generator hooks INTO is
+  decided from the round-1 inventory's measurement, not assumed here.
+- Consumption stays closure-only (DECISION F257 D2): T001 may append a new
+  pending item to the queue but must never be the thing that sets
+  `consumed_by`, and T002's execution must never auto-promote past the
+  existing `--approve` barrier.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -45,14 +53,14 @@ CI run.
   `## Active Branch`, a `feature/` branch name, a roadmap feature id matching
   `\bF\d{3}\b` and the word `Steps`; `.agent/plan.md` carries `## Goal`,
   `## Next Steps` and a feature id; `.agent/live_review.md` carries `Steps`.
-
 - A new module under `packages/orchestration/` is swept by repo-wide guards that
   name no path: the `REMEDY_DATA_DIR` single-reader invariant, the path-utils
   single-implementation invariant, the bare-`except: pass` ban, and the
   development-artifact boundary.
 
-- This feature is UI work, so `docs/ui/design_reference/` is binding and any
-  visual deviation is documented in the assumption log with a technical reason.
+This feature is NOT UI work — no design-reference binding applies. The
+Do-not-touch above carries the two constraints specific to F258 itself: no
+self-consumption-marking, no auto-promotion past `--approve`.
 
 ## Steps
 The item-status table for this feature lives in the `## Current Step` section
