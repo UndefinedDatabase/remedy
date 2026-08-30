@@ -189,9 +189,11 @@ class FakeProvider:
         malformed_review: bool = False,
         malformed_review_recoverable: bool = False,
         supports_resume: bool = False,
+        fake_session_id: str = "",
     ) -> None:
         self._builder_files = builder_files or ["docs/README.md"]
         self._supports_resume = supports_resume
+        self._fake_session_id = fake_session_id
         self._fail_round = fail_on_round
         self._pass_round = pass_on_round
         self._max_block = max_rounds_before_block
@@ -225,6 +227,13 @@ class FakeProvider:
                 provider="fake",
             )
         is_repair = self._build_count > 1
+        # F106 T002a: honor an incoming resume request only when this fake was
+        # constructed to support it — an unsupported provider's output is
+        # byte-identical whether or not a caller passes ``resume``.
+        resume_used = bool(resume) and self._supports_resume
+        usage_actuals = (
+            {"session_id": self._fake_session_id} if self._fake_session_id else None
+        )
         return BuilderOutput(
             summary=f"{'Repair' if is_repair else 'Initial'} changes (round {self._build_count})",
             files_changed=list(self._builder_files),
@@ -233,6 +242,9 @@ class FakeProvider:
             provider="fake",
             duration_ms=50,
             tokens_used=100,
+            usage_actuals=usage_actuals,
+            resume_used=resume_used,
+            resume_session_ref=resume if resume_used else "",
             prepared_input=prepare_call_input(
                 prompt=prompt, model="fake", mode="fake",
                 options={"max_output_chars": max_output_chars}),
