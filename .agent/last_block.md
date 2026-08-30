@@ -1,171 +1,183 @@
-── STEP T002b-ii/2a — F106 ────────────────────────────────────────────────
-Goal: Freeze the hunk-rendering convention DECISION F106 D1(b) requires
-before T002b-ii step 2's actual prompt-shrink wiring can land: a pure
-function turning a `RepairHunkSelection` (packages/orchestration/
-diff_repair.py) into repair-prompt text, tested and mutation-red-proofed
-in isolation. No caller is wired this round — nothing under
-packages/orchestration/pingpong_loop.py or any compose_*_prompt function
-changes. Zero behavior change to any existing consumer.
+── STEP T002b-ii/2b(Builder) — F106 ──────────────────────────────────────
+Goal: Wire T002b-ii step 2b's prompt shrink into the Builder side only
+(the Reviewer side is a later round): `compose_builder_prompt` gains a
+`resume_hunks_text` parameter that, when non-empty, replaces the full
+capped diff in the SAME `builder_staged_diff` segment (same name, same
+rank); the call site in `run_pingpong` computes it via round 11's frozen
+`render_repair_hunks(select_repair_hunks(...))`, gated on the round-9
+hoisted `builder_resume_ref`. An empty render always falls back to the
+unconditional full-diff path — never to no diff at all. Also register
+R-0759 (new, unrelated defect discovered this round's own diligence).
 
 Bundle:
-  C0a — save this step block verbatim to .agent/authored/f106-r11.md
+  C0a — save this step block verbatim to .agent/authored/f106-r12.md
   C0b — mirror it into .agent/last_block.md
-  C1  — rewrite .agent/plan.md for round 11 (PLAN11 below)
-  C2  — append RECORD11 below to .agent/live_review.md, booking round 10's
-        PASS verdict (round 10 itself already ran its own full review
-        before its handback; this books it per amend0827-process-diet
-        rule 1 — a verdict does not buy its own round)
-  C3  — append render_repair_hunks (+ 2 constants) to
-        packages/orchestration/diff_repair.py
-  C4  — rewrite the top import block and append TestRenderRepairHunks to
-        tests/orchestration/test_diff_repair.py
-  C5  — rewrite .agent/handoff.md for round 11 handback
+  C1  — rewrite .agent/plan.md for round 12 (PLAN12 below)
+  C2  — append RECORD12 (booking round 11's PASS) and R-0759 (new
+        registration) to .agent/live_review.md, two paragraphs in order
+  C3  — apply the four pairs below to packages/orchestration/pingpong_loop.py
+  C4  — apply the golden-test changes to
+        tests/orchestration/test_builder_prompt_golden.py
+  C5  — rewrite .agent/handoff.md for round 12 handback
 
-Change: exactly the four paths named in C1-C4 plus .agent/last_block.md
-(C0b) and .agent/handoff.md (C5); nothing else. No path under
-packages/orchestration/pingpong_loop.py, no prompt_segments.py, no
-test_builder_prompt_*.py, no test_reviewer_prompt_golden.py.
+Change: exactly packages/orchestration/pingpong_loop.py and
+tests/orchestration/test_builder_prompt_golden.py, plus the five
+.agent/** paths named in C0a/C0b/C1/C2/C5. No path under
+packages/orchestration/diff_repair.py (frozen last round, untouched),
+no test_reviewer_prompt_golden.py, no test_repair_loop.py (R-0759 is
+registered, not fixed, this round).
 
 Constraints:
-1. C0a/C0b are verbatim single-.agent-state-file saves (shutil.copyfile,
-   never cp, never retyped) — exempt from the 500-line cap per AGENTS.md
-   Commit Discipline.
-2. C1 — PLAN11 is a REWRITE (full-file replacement) of .agent/plan.md,
-   applied byte-for-byte via shutil.copyfile from the scratch original at
-   .remedy-wt/f106-r11-plan.md. That file is 46 lines (< 50, AGENTS.md
-   cap), holds `## Goal` and `## Next Steps`, sha256
-   9f1beaf937d480053ba7c86d873109322310d1e92862af8ce837d254728efb29,
-   2301 bytes.
-3. C2 — RECORD11 is an APPEND to .agent/live_review.md: the scratch
-   original at .remedy-wt/f106-r11-record11.txt (2487 bytes, sha256
-   991238fbb6fc01ee4102adbb7daa53af47efcf339cf66df991d4c9abff88b9bf) is
-   ONE paragraph (N=1). Apply as: read the current file (measure its own
-   base length first — do not trust any number in this block over your
-   own reading), append one "\n" separator plus the RECORD11 text
-   verbatim. Base is expected at 1854867 bytes (re-measure it yourself;
-   if it disagrees, stop and report rather than proceeding); expected
-   post-C2 total is base + 1 + 2487.
-4. C3 — the diff_repair.py change is a pure CODE APPEND, nothing existing
-   rewritten. Apply via: read the current file, confirm it ends with
-   `    return ranges\n` (the last line of changed_line_ranges_from_patch),
-   then append exactly the bytes held at
-   .remedy-wt/f106-r11-diffrepair-suffix.txt (1614 bytes, sha256
-   1ac3775ea4adcb6c1da48a370f1dfecfc7c2ad9d96013046bd363fa8c91ef27f) —
-   or, equivalently and preferably, shutil.copyfile the already-assembled
-   whole file at .remedy-wt/f106-r11-diff_repair.py onto
-   packages/orchestration/diff_repair.py (that scratch file's sha256 is
-   unstated here on purpose — verify it yourself as
-   orig-bytes-are-exact-prefix-of-new-bytes, which is the property that
-   matters, not a third number to trust). Ordered-equality proof: the
-   pre-commit file is a byte-exact PREFIX of the post-commit file, and
-   the diff's ADDED lines are exactly the appended lines in order
-   (`git show --numstat <C3 sha> -- packages/orchestration/diff_repair.py`
-   for the total; the new file's tail for the order).
-5. C4 has TWO parts, proved differently. Part (a) is a REWRITE: the
-   existing top-of-file import block
-       from packages.orchestration.diff_repair import (
-           RepairHunk,
-           RepairHunkSelection,
-           changed_line_ranges_from_patch,
-           select_repair_hunks,
-       )
-   becomes
-       from packages.orchestration.diff_repair import (
-           REPAIR_HUNKS_HEADING,
-           REPAIR_HUNKS_OMITTED_INTRO,
-           RepairHunk,
-           RepairHunkSelection,
-           changed_line_ranges_from_patch,
-           render_repair_hunks,
-           select_repair_hunks,
-       )
-   Measured (containment test, not asserted): TO does NOT contain FROM
-   (`TO contains FROM: false`) — genuine REWRITE, not an append-shaped
-   pair. Prove FROM 1x pre-commit -> 0x post-commit, TO 0x pre-commit ->
-   1x post-commit. Part (b) is a CODE APPEND directly after part (a)'s
-   edit lands: the whole scratch file at
-   .remedy-wt/f106-r11-test_diff_repair.py is byte-identical to
-   (orig-with-part-a-applied) + a suffix; that suffix is held separately
-   at .remedy-wt/f106-r11-testdiffrepair-suffix.txt (3663 bytes, sha256
-   02c5e1f6824cd25a6b765547bd59e2896f17d8e7b07ba9ea918c4b94b5988f8f).
+1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile,
+   never cp, never retyped), exempt from the 500-line cap.
+2. C1 — PLAN12 is a REWRITE of .agent/plan.md, applied via
+   shutil.copyfile from .remedy-wt/f106-r12-plan.md (44 lines, < 50,
+   holds `## Goal`/`## Next Steps`, sha256
+   dca0031fd5f17e77b41207955ffe510557179c6285ffacfc9d7effc365372274,
+   2210 bytes).
+3. C2 — TWO paragraphs appended in order to .agent/live_review.md, never
+   retyped: RECORD12 (.remedy-wt/f106-r12-record12.txt, 4516 bytes, sha256
+   b4f1fa378e05a69d4eb857076dc1f38af8061319827fd9d6244b94c3300c8cca) then
+   R-0759 (.remedy-wt/f106-r12-r0759.txt, 2591 bytes, sha256
+   c8917e3a818a72cf757eb9efef6ed443a73d2c14cd76432cb30c6491ce811878).
+   Re-measure the file's OWN base length before appending (do not trust
+   any number in this block over your own reading); if it disagrees with
+   1857355, stop and report rather than proceeding. Expected total:
+   base + 1 + 4516 + 1 + 2591.
+4. C3 — FOUR REWRITE pairs against packages/orchestration/pingpong_loop.py,
+   applied IN ORDER (each one changes the file the next one reads), each
+   independently verified: FROM exactly 1x pre-commit, 0x post; TO exactly
+   0x pre-commit, 1x post; `TO contains FROM: false` for every one (a
+   genuine rewrite, not an append). The four pairs, exactly as validated
+   by the reviewer in a disposable worktree before this block was
+   authored (ast.parse clean, ruff clean, full test suite green — you are
+   REPRODUCING this, not discovering it fresh):
+     PAIR1-SIGNATURE — `compose_builder_prompt`'s keyword-only parameter
+       list gains `resume_hunks_text: str = "",` as the new last entry,
+       immediately before `) -> ComposedPrompt:`, right after
+       `hunk_ledger: Any = None,`.
+     PAIR2-BODY-BRANCH — the existing `if safe_diff and findings:` block
+       that builds the `builder_staged_diff` segment becomes an
+       `elif safe_diff and findings:` on an UNCHANGED body, with a NEW
+       `if resume_hunks_text:` branch immediately above it that appends
+       the SAME segment name/rank with `[resume_hunks_text]` as its only
+       part — no diff-fence wrapper, no cap, the caller's pre-rendered
+       text used exactly as given. A six-line comment above the new
+       branch names this round, DECISION F106 D1(b), and states the
+       empty-string fallback explicitly.
+     PAIR3-CALLSITE — immediately before the existing
+       `builder_composed = compose_builder_prompt(...)` call (which
+       already exists, unchanged in its own body except gaining
+       `resume_hunks_text=builder_resume_hunks_text,` as its new last
+       kwarg), insert an eight-line comment plus the
+       `builder_resume_hunks_text` computation: empty string by default;
+       when `builder_resume_ref and repair_diff` are both truthy, import
+       `render_repair_hunks`/`select_repair_hunks` from
+       `packages.orchestration.diff_repair` and `parse_diff_line_ranges`
+       from `packages.orchestration.review_scope`, then set it to
+       `render_repair_hunks(select_repair_hunks(staging,
+       parse_diff_line_ranges(repair_diff), max_total_chars=_REPAIR_DIFF_CAP))`.
+     PAIR4-BUILD-BUILDER-PROMPT-SHIM — `_build_builder_prompt` (the
+       test-only passthrough wrapper) gains the identical
+       `resume_hunks_text: str = "",` parameter and forwards it
+       unchanged into its own `compose_builder_prompt(...)` call, plus a
+       one-clause docstring update naming it alongside `hunk_ledger`.
    Simplest correct application: shutil.copyfile the whole scratch file
-   .remedy-wt/f106-r11-test_diff_repair.py onto
-   tests/orchestration/test_diff_repair.py directly (it already carries
-   both part (a) and part (b) correctly composed and was validated
-   end-to-end — ast.parse, ruff, and a live mutation red-proof — before
-   this block was authored); verify the containment/ordered-equality
-   properties above AFTER the copy, against the real committed diff, not
-   before.
-6. Mutation red-proof for C3/C4 is MANDATORY (production code) and runs
-   ONLY inside a disposable git worktree, never the primary checkout
-   (self_drive_protocol.md G5). Recipe: in the worktree, replace
-   `parts.append(REPAIR_HUNKS_OMITTED_INTRO)` inside render_repair_hunks
-   with `pass  # MUTATED` and confirm
-   `python3 -B -m pytest tests/orchestration/test_diff_repair.py -q`
-   goes RED (this reviewer already ran this exact recipe pre-delegation
-   at base and got 1 failed / 36 passed; you are reproducing it, not
-   discovering it fresh) — then revert and confirm 37 passed again before
-   removing the worktree.
-7. No `.agent/**` file other than plan.md, live_review.md, last_block.md,
-   handoff.md and the one new authored/f106-r11.md is touched.
-8. This round mints no new R-id and no new DECISION: it is executing an
-   obligation DECISION F106 D1(b) already named ("invent and freeze a
-   hunk-rendering convention"), not making a new architectural call.
+   at .remedy-wt/f106-r12-pingpong_loop.py onto
+   packages/orchestration/pingpong_loop.py directly (already validated
+   end to end — the four pairs above are its exact, complete diff against
+   the file's state at this round's base); verify the four pairs' own
+   properties AFTER the copy, against the real committed diff, never
+   before. sha256 of the target file after copying (re-measure, do not
+   trust this number over your own sha256sum):
+   4fe8d409f79f84264020c1efeeaf426e3024cf761dcf78e9f9eacfcf07b2bbed,
+   205939 bytes.
+5. C4 — shutil.copyfile the whole scratch file at
+   .remedy-wt/f106-r12-test_builder_prompt_golden.py onto
+   tests/orchestration/test_builder_prompt_golden.py. It adds a fifth
+   fixture shape ("resumed", mirroring "full" but with
+   `resume_hunks_text` set), one new frozen render entry (captured by
+   RUNNING the current branch's own `compose_builder_prompt` once and
+   writing `repr()` of the reconstructed pre-migration-order render — not
+   retyped, and its own provenance is stated inline, distinct from the
+   other four which came from commit 54049e6b), and a new
+   `TestResumeHunksTextReplacesTheFullDiff` class (4 tests). No existing
+   `_FROZEN_RENDERS` entry, `_SHAPES` entry, or test function is edited or
+   removed — confirm by diffing the four pre-existing dict values
+   byte-for-byte against the pre-commit file. sha256 of the target file
+   after copying:
+   36180fdd252c0446f8477d153a44cf15355464e38fbbbd8c98f324ea4c3ebbe0.
+6. Mutation red-proof for C3 is MANDATORY (production code), disposable
+   worktree only (self_drive_protocol.md G5). Recipe: replace
+   `if resume_hunks_text:` with `if False:  # MUTATED` inside
+   `compose_builder_prompt` and confirm
+   `python3 -B -m pytest tests/orchestration/test_builder_prompt_golden.py -q`
+   goes RED at exactly 2 failures
+   (`test_segments_reassemble_into_the_frozen_render[resumed]`,
+   `TestResumeHunksTextReplacesTheFullDiff::test_the_resumed_shapes_diff_segment_is_the_raw_render_unfenced_again`),
+   26 passed — the reviewer already ran this exact recipe pre-delegation
+   and got this exact split; reproduce it, then revert and confirm 28
+   passed again before removing the worktree.
+7. R-0759 is REGISTERED this round, not fixed. `tests/orchestration/
+   test_repair_loop.py` is named nowhere in this round's Change set and
+   stays untouched — confirm with `git diff --stat` after C3/C4, empty
+   for that path.
+8. No `.agent/**` file other than plan.md, live_review.md, last_block.md,
+   handoff.md and the one new authored/f106-r12.md is touched.
 
 Done when (8 gates, exact commands):
-  G1 TRANSPORT — `.agent/authored/f106-r11.md` and `.agent/last_block.md`
-     byte-equal (sha256 comparison), and both equal to this block's own
-     bytes as the worker received them.
+  G1 TRANSPORT — `.agent/authored/f106-r12.md` and `.agent/last_block.md`
+     byte-equal (sha256), both equal to this block's own bytes as
+     received.
   G2 THE PLAN — `.agent/plan.md` sha256 equals
-     9f1beaf937d480053ba7c86d873109322310d1e92862af8ce837d254728efb29,
-     `wc -l < .agent/plan.md` < 50, holds `## Goal` and `## Next Steps`.
+     dca0031fd5f17e77b41207955ffe510557179c6285ffacfc9d7effc365372274,
+     `wc -l` < 50, holds `## Goal`/`## Next Steps`.
   G3 THE RECORD APPEND — re-measure `.agent/live_review.md`'s length
-     immediately before C2 (call it BASE), then after C2 confirm the
-     file's length equals BASE + 1 + 2487 AND the file's last blank-line
-     unit (split on "\n\n") equals the RECORD11 text exactly.
-  G4 THE LEDGER — line-anchored regex counts (`^- (R-\d+) — `,
-     `^Done: (R-\d+) — `, `^DECISION (F\d+ D\d+) — `) over the whole file,
-     before C2 and after C2: registered, resolved and DECISION counts all
-     UNMOVED (this round registers nothing new).
-  G5 THE CODE — `python3 -B -c "import ast; ast.parse(open(p).read())"`
-     for both touched files, exit 0; `python3 -m ruff check
-     packages/orchestration/diff_repair.py
-     tests/orchestration/test_diff_repair.py`, exit 0, "All checks
-     passed!"; the C3 ordered-equality and C4 REWRITE+APPEND proofs from
-     constraints 4-5, independently re-measured against the real
-     committed files.
-  G6 THE TESTS — `python3 -m pytest tests/orchestration/test_diff_repair.py
-     -q`, REAL exit 0, 37 passed (30 pre-existing + 7 new). Additionally
-     `python3 -m pytest tests/orchestration/test_diff_repair_apply.py
-     tests/orchestration/test_diff_repair_response.py
-     tests/orchestration/test_builder_repair_loop.py
-     tests/ui_server/test_command_channel.py -q`, REAL exit 0, 198 passed
-     — every existing consumer of diff_repair.py, unchanged.
-  G7 THE MUTATION RED-PROOF — constraint 6's recipe, run for real inside
-     a disposable worktree, reported as: unmutated exit code + count,
-     mutated exit code + count + failing test name, reverted exit code +
-     count again, worktree removed, `git worktree list` afterward shows
-     only the primary checkout.
+     immediately before C2 (BASE), confirm post-C2 length equals
+     BASE + 1 + 4516 + 1 + 2591 AND the file's last TWO `\n\n`-delimited
+     units equal RECORD12 then R-0759 exactly, in that order.
+  G4 THE LEDGER — line-anchored regex counts before C2 and after: `^-
+     (R-\d+) — ` registered moves 319→320 (R-0759 added); `^Done: (R-\d+)
+     — ` (distinct ids) unmoved at 56; `^DECISION (F\d+ D\d+) — ` unmoved
+     at 20.
+  G5 THE CODE — `ast.parse` on both touched files, exit 0; `ruff check
+     packages/orchestration/pingpong_loop.py
+     tests/orchestration/test_builder_prompt_golden.py`, exit 0, "All
+     checks passed!"; the four C3 pairs and the C4 whole-file sha256,
+     independently re-measured against the real committed files.
+  G6 THE TESTS — `python3 -m pytest
+     tests/orchestration/test_builder_prompt_golden.py -q`, REAL exit 0,
+     28 passed. Then the broadened zero-behavior-change suite:
+     `python3 -m pytest tests/orchestration/test_pingpong.py
+     tests/orchestration/test_provider_mode.py
+     tests/orchestration/test_provider_evidence_integration.py
+     tests/orchestration/test_session_resume.py
+     tests/orchestration/test_builder_prompt_quality.py
+     tests/orchestration/test_builder_prompt_hunk_rejections.py
+     tests/orchestration/test_provider_retry.py -q`, REAL exit 0, 240
+     passed. `git diff --stat` for `packages/orchestration/diff_repair.py`
+     and `tests/orchestration/test_repair_loop.py`: both EMPTY.
+  G7 THE MUTATION RED-PROOF — constraint 6's recipe, reported as:
+     unmutated exit+count, mutated exit+count+failing-test-names,
+     reverted exit+count, worktree removed, `git worktree list`
+     afterward shows only the primary checkout.
   G8 THE TREE — `git status --porcelain` empty, `git ls-files --others
-     --exclude-standard` empty, every commit's insertions reported via
-     `git diff --numstat <sha>^..<sha>` (C0a/C0b exempt from the 500-line
-     cap as verbatim `.agent/**` state-file saves).
+     --exclude-standard` empty, every commit's insertions via `git diff
+     --numstat <sha>^..<sha>` (C0a/C0b exempt as verbatim `.agent/**`
+     state-file saves).
 
-Handback: completion report (every gate above, one line each, with the
-REAL numbers you measured — never a word like "green" on its own) +
-rewrite .agent/handoff.md with the standard sections (Session, Range,
-Commits table with +/- per path, External actions, Verification,
-Authored-text proofs, Deviations & assumptions, Next).
+Handback: completion report (every gate above, one line each, REAL
+numbers only) + rewrite .agent/handoff.md with the standard sections.
 ─────────────────────────────────────────────────────────────────────────
 
 
-PLAN11 (the exact byte-for-byte content of .remedy-wt/f106-r11-plan.md;
-apply via shutil.copyfile from that path, never retype):
+PLAN12 (exact byte-for-byte content of .remedy-wt/f106-r12-plan.md;
+apply via shutil.copyfile, never retype):
 
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 4, round 11.
+SESSION 4, round 12.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -178,40 +190,31 @@ working.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 (a/b/c): capability surface, all 3 adapters, tests | done | rounds 2-4 |
-| T002a: Builder repair call resumes when earned | done | round 5 |
-| T002b-i: Reviewer repair call resumes when earned | done | round 6 |
-| T002c (i+ii): fallback-once, both sides | done | rounds 7-8 |
-| T002b-ii step 1: hoist resume-ref before prompt build | done | round 9 |
-| R-0758: fix `test_provider_retry.py`'s `resume`-kwarg gap | done | round 10 |
-| T002b-ii step 2a: freeze the hunk-rendering convention | done | this round |
-| T002b-ii step 2b: wire the shrink into compose_*_prompt | open | next |
+| T001, T002a, T002b-i, T002c, T002b-ii step 1, R-0758 | done | rounds 2-10 |
+| T002b-ii step 2a: freeze the hunk-rendering convention | done | round 11 |
+| T002b-ii step 2b (Builder side): wire the shrink in | done | this round |
+| R-0759: `resume`-kwarg gap in `test_repair_loop.py` (4 classes) | open | next |
+| T002b-ii step 2b (Reviewer side): wire the shrink in | open | after R-0759 |
 | T003: measured fixture comparison + docs | open | |
 
 ## Next Steps
-1. T002b-ii step 2b: add `resume_ref: str | None = None` to
-   `compose_builder_prompt`/`compose_reviewer_prompt` (pingpong_loop.py);
-   when set and a diff segment would fire, replace the full diff with
-   `render_repair_hunks(select_repair_hunks(repo_root,
-   parse_diff_line_ranges(repair_diff), ...))` (frozen this round);
-   thread the round-9 hoisted `*_resume_ref` into the call sites; add a
-   resume-active fixture shape to `test_builder_prompt_golden.py`/
-   `test_reviewer_prompt_golden.py` (existing shapes stay unchanged).
-2. T003 follows once T002 is fully closed (after step 2b lands).
+1. R-0759: add `resume: str | None = None` to the four affected
+   `.review()` signatures in `tests/orchestration/test_repair_loop.py`
+   (two separate `IncoherentReviewer` locals, `BadReviewer`,
+   `FailNothingReviewer`), an honest ignored no-op, mirroring R-0758's fix.
+2. T002b-ii step 2b, Reviewer side: mirror this round's Builder-side design
+   in `compose_reviewer_prompt` — a `resume_hunks_text` param replacing
+   whichever of `reviewer_focused_diff`/`reviewer_staged_diff` would
+   otherwise fire, fed from `reviewer_resume_ref` (round 9) at the call
+   site; add a resume-active fixture to `test_reviewer_prompt_golden.py`.
+3. T003 follows once step 2b is closed on both sides.
 
 ## Risks
 - No adapter's `supports_resume` is true in production yet — only
-  `FakeProvider`, via its test-only constructor overrides, ever resumes
-  or fails a resume. `render_repair_hunks` (this round) has no caller
-  yet; zero behavior change held by construction, not test coverage.
-- DECISION F106 D1's D1-compatibility reading (reusing F111's pure hunk
-  functions for prompt content, never the diff-apply channel) governs
-  step 2b's design; step 2b must not widen it further without a new
-  DECISION.
-
-
-RECORD11 (the exact byte-for-byte content of
-.remedy-wt/f106-r11-record11.txt; apply as ONE paragraph appended to
-.agent/live_review.md, never retype):
-
-Gate: F106 R10 — R-0758 FIX: RESUME KWARG ACCEPTED BY FOUR TEST-ONLY PROVIDER SUBCLASSES. VERDICT PASS. The reviewer (a fresh session, no memory of round 10's own work) independently re-verified round 10's committed diff `2a0e08e13ccc5e4c9aaa138e96cf440f09e08a06..6f7d51fcb47dca52866d713f4f75d86423f8e532` against the real files and the round's own handback, not against the worker's summary alone. G1 TRANSPORT: `.agent/authored/f106-r10.md` and `.agent/last_block.md` independently sha256'd at `9ee2005eae0d44189e7a33a2253c862197445e76708ad801e78ce606fd16ae93`, both 25052 bytes, matching the handback's claim exactly and each other. G2 THE PLAN: `.agent/plan.md` independently confirmed to hold `## Goal` and `## Next Steps`, matching the handback's stated 42-line count; not re-extracted against a held PLAN10 scratch original, since this session holds none — accepted on the handback's own byte arithmetic. G3 THE RECORD APPEND: independently re-measured — `.agent/live_review.md` at HEAD is 1854867 bytes exactly, matching the handback's own arithmetic (1847519 + 1 + 6401 + 1 + 945); not re-run structurally a second time, since the byte total alone settles it and the appended region is untouched by this round's own work. G4 THE LEDGER: independently re-measured with line-anchored regexes over the whole file — registered 319 distinct `R-` ids, resolved 56 distinct `Done:` ids (`R-0758` now carries one), `DECISION` 20, all matching the handback exactly. G5 THE CODE: independently re-ran `python3 -m pytest tests/orchestration/test_provider_retry.py -q`, REAL exit 0, 34 passed, matching the handback's stated count exactly; independently confirmed `git diff --stat 2a0e08e1..HEAD -- packages/ apps/` is EMPTY — no production file was touched this round, exactly as the handback declares. G6/G7/G8 (the four pairs' own containment/occurrence forensics, the prose-slip append arithmetic, and the tree/lint readings): not independently re-run this round — the two checks above (a real pytest re-run and an empty production-path diff) already settle the round's one substantive claim, and the handback's own detailed readings (all four pairs FROM 1x→0x/TO 0x→1x, `ast.parse`/`ruff check` exit 0, `git status --porcelain` empty, every commit under 500 lines) are accepted rather than re-derived. THE ROUND PASSES: R-0758 CLOSED — all four test-only provider subclasses in `test_provider_retry.py` honestly forward `resume`, and zero production behavior changed.
+  `FakeProvider` ever resumes or fails a resume.
+- The Reviewer side (step 2b) has FOUR diff-shaped segment variants
+  (scoped/unscoped × safe_diff/diff_summary) versus the Builder's one;
+  round 13's design must state which variants the shrink applies to
+  (almost certainly only the two `safe_diff`-backed ones, since
+  `reviewer_resume_ref` is non-None only `if is_repair`).
+- DECISION F106 D1's D1-compatibility reading still governs both sides.
