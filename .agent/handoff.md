@@ -1,233 +1,278 @@
-# Handoff — F258 Self-use track v2
+# Handoff — F106 Session resume instead of rebuild
 
 ## Session
 
-SESSION 3 of feature F258 · round 12 (FINAL) · rounds so far 12
-
-## State
-
-Branch `feature/f258-self-use-v2`, cut from `main` at the merge commit of
-pull request 225 (F040's closure). This is the LAST round of the branch: it
-executes the remainder of `docs/roadmap/STATUS_closure_protocol.md`'s
-Algorithm — the STATUS `[x]` flip (item 4), the README capability sync in
-the SAME commit (item 5, R-0154 ordering), the `scripts/self_use_queue.json`
-`consumed_by` edit precondition 6 requires, the final `.agent/` state, and
-the pull request (item 5 continued). Constraint 0 was checked first and
-cleanly: `gh pr list --state open --json number,headRefName,baseRefName,
-isDraft` returned `[]`, `git rev-parse HEAD` equalled
-`530bd3d828af1f112db306c178f99af310f2e6cf` (the block's Base `530bd3d8` in
-full), branch was `feature/f258-self-use-v2`, `.agent/STOP` absent, tree
-clean.
-
-Commits C0a/C0b saved and mirrored the round's block. C1 booked
-`Gate: F258 R11 —` into `.agent/live_review.md` as a single append (base +
-`\n` + GATEF258R11), reconstruction and negative control both verified. C2
-is THE CLOSURE COMMIT: `docs/roadmap/STATUS.md`'s F258 line flips `[~]` to
-`[x]` with the full accepted-state segment; `README.md` gets all three
-edits (accepted count 64→65, Tier 5 table 12→13, the new F258 capability
-paragraph inserted between "re-arms it)." and "Full per-feature state:");
-`scripts/self_use_queue.json`'s SU-002 `consumed_by` field moves from `""`
-to `"F258"` via a `json.loads`/`json.dumps(..., ensure_ascii=False)` script,
-never a hand-written pair — confirmed no `\uXXXX` escapes were introduced;
-`.agent/plan.md` is rewritten from PLANF258R12CLOSED; `.agent/handoff.md`
-(this file) is rewritten in the same commit. Nothing under `packages/`,
-`apps/`, `tests/`, `scripts/make_review_zip.sh` or
-`docs/roadmap/features/T5_F258.md` was touched — the feature file's Built
-State is already current from round 10.
-
-Open findings count in `.agent/live_review.md`: 318 registered R-ids
-(UNMOVED), 55 distinct resolved (`Done:`, UNMOVED), open set
-`len(set(registered) - set(resolved))` = 263 (UNMOVED, per constraint 7 —
-this round registers nothing and resolves nothing). `Gate: F\d+ R\d+ — `
-line count moved 174 → 175 at C1 (the one `Gate: F258 R11` append); C2 adds
-none. R-0570 (Low), R-0736 (Medium) and R-0757 (Medium) stay OPEN,
-untouched — R-0757 is F258's own defect (the self-use runner's silent
-fake-provider default), deliberately left unrepaired on this branch per
-`.agent/plan.md`'s Risks.
+SESSION 1 of feature F106 · round 1 · rounds so far 1
 
 ## Range
 
-Review of `530bd3d8..HEAD` (C2, the accepted HEAD this round's closure
-commit and PR cover).
+Review of `811c2d7e..HEAD`.
+
+## State
+
+Branch `feature/f106-session-resume`, cut from `main` at `811c2d7e`
+(current tip at round start, top commit "fix(ci): sort self_use_runner
+test import, restore lint ceiling"). Phase-0 checks before branching:
+`git status --porcelain` empty, `gh pr list --state open --json number,
+headRefName,baseRefName,isDraft` returned `[]`, `.agent/STOP` absent,
+`.agent/candidates.md` EMPTY. This is round 1 of a fresh feature claim — no
+code changes ordered or made; only `.agent/` state, `docs/roadmap/
+STATUS.md`, and the new measurement file `.agent/f106_inventory.md`.
+Nothing under `packages/`, `apps/`, `tests/` or `docs/roadmap/features/`
+was touched, matching the block's Change set exactly (8 named paths).
+
+C0a/C0b saved and mirrored the round's block via `shutil.copyfile` (never
+`cp`), byte-equal (18597 bytes each, `cmp` confirmed). C1 rewrote
+`.agent/plan.md` from slice PLAN1 (sha256-equal, 39 lines, under the
+50-line cap). C2 appended slice RECORD1 to `.agent/live_review.md` — base
+measured at 1809603 bytes (matching the reviewer's own base reading),
+append arithmetic and both G3 readings (whole reconstruction, paragraph
+order) confirmed, negative control run inside a disposable `git worktree`
+(removed after) rejected a one-byte-flipped copy on both readings and
+accepted the unflipped one. C3 applied PAIR-STATUS to
+`docs/roadmap/STATUS.md`: `[ ] F106` → `[~] F106`, exactly one insertion
+and one deletion, FROM now occurs 0×, TO occurs 1×, and the whole file
+holds exactly 1 line matching `^- \[~\] F\d{3} — `. C4 rewrote
+`.agent/context.md` from slice CONTEXT1 (sha256-equal). C5 wrote
+`.agent/f106_inventory.md`, the SPEC-driven measurement (not a slice) —
+every citation in it was independently verified against the repository
+(grep/read), not transcribed from the block's hypotheses; section 5 (the
+repair loop's call sites) DRIFTED from a naive one-site reading —
+`reviewer_provider.review(` actually has two call sites
+(`pingpong_loop.py:3227` and `:3284`), not one — and is reported corrected
+in the file itself. An unordered extra commit (`44c6847c`, declared under
+Deviations) then corrected that file's own closing citation-count section
+from a partial hand-count (19) to a complete, mechanically-extracted
+enumeration (30 `file:line` pairs across 9 files) after I noticed the
+hand-count had silently dropped several citations mentioned in the prose
+(worker_registry.py:168/169, pingpong_loop.py:3284, etc.). This file (C6)
+rewrites `.agent/handoff.md`.
+
+Open findings count in `.agent/live_review.md`, measured before and after
+C2: 318 registered `R-` ids (UNMOVED), 55 distinct resolved (`Done:`,
+UNMOVED), open set = 263 (UNMOVED). No id was minted — constraint 5 held.
+`DECISION F\d+ D\d+ — ` count: 19 before and after C2 (UNMOVED).
 
 ## Commits
 
-All `+/-` figures are `git diff --numstat` insertions/deletions against
-each commit's own parent.
+All `+/-` figures are `git diff --numstat` against each commit's own
+parent — NOT the number `git commit`'s own terminal summary prints (see
+Deviations: that summary uses a rewrite-detection heuristic and printed
+different, larger numbers for two of these commits).
 
-### 6dda0657 docs(f258): save round 12 authored block (C0a)
+### 3f712642 chore(f106): save round 1 authored block verbatim (C0a)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f258-r12.md` | 284/0 | C0a — verbatim copy of the round's step block, `shutil.copyfile` |
+| .agent/authored/f106-r1.md | +344/-0 | `shutil.copyfile` from `.remedy-wt/f106-r1-block.md`, never retyped |
 
-### 5720e0bf docs(f258): mirror round 12 block to last_block.md (C0b)
+### 30960577 chore(f106): mirror round 1 block into last_block (C0b)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | 222/280 | C0b — verbatim copy of the same block, `shutil.copyfile`, into the mirror slot (whole-file rewrite) — exempt from the 500-line insertion cap as a single `.agent/**` state-file rewrite, and under it anyway |
+| .agent/last_block.md | +328/-268 | `shutil.copyfile` from the committed `.agent/authored/f106-r1.md`; byte-equal to it (18597 bytes both, G1) |
 
-### d817d331 docs(f258): book round 11 verdict into live_review.md (C1)
+### 4f5eec7a chore(f106): rewrite plan.md for round 1 (C1)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | 2/0 | C1 — GATEF258R11 appended verbatim, `base + "\n" + GATEF258R11` |
+| .agent/plan.md | +27/-22 | rewritten byte-for-byte from slice PLAN1 (sha256-equal, G2) |
 
-### THE CLOSURE COMMIT (C2) — writes this handback, grouped per the template's self-reference exception
+### 335c2282 docs(f106): record F106 claim shape measurement in live review (C2)
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/roadmap/STATUS.md` | 1/1 | Edit 1 — the F258 line, `[~]` → `[x]`, full accepted-state segment |
-| `README.md` | 9/2 | Edits 2-4 — accepted count, Tier 5 table cell, new F258 capability paragraph |
-| `scripts/self_use_queue.json` | 1/1 | Edit 5 — SU-002 `consumed_by` `""` → `"F258"`, script-mutated |
-| `.agent/plan.md` | 20/19 | rewritten whole-file from PLANF258R12CLOSED |
-| `.agent/handoff.md` | new file | this file — self-reference exception, numbers not tallied against itself |
+| .agent/live_review.md | +2/-0 | RECORD1 appended (base 1809603B + `\n` + 1164B slice = 1810768B, G3) |
+
+### b603c9e3 docs(f106): claim F106 in STATUS.md (C3)
+| Path | +/- | Reason |
+|------|-----|--------|
+| docs/roadmap/STATUS.md | +1/-1 | PAIR-STATUS applied: F106's line `[ ]` → `[~]` (G5) |
+
+### b33f5c4d chore(f106): rewrite context.md for round 1 (C4)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/context.md | +38/-47 | rewritten byte-for-byte from slice CONTEXT1 (sha256-equal, G6) |
+
+### 11ccdb32 docs(f106): write round 1 shape inventory measurement (C5)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/f106_inventory.md | +206/-0 | new file, the SPEC-driven measurement, all 7 sections (G8) |
+
+### 44c6847c docs(f106): correct inventory citation count to a mechanical enumeration (deviation — not in the block's bundle, see Deviations)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/f106_inventory.md | +37/-10 | replaced a hand-counted, incomplete 19-citation closing list with a mechanically-extracted, complete 30-citation one |
+
+C6 (this commit, rewriting `.agent/handoff.md`) is not self-tabled, per
+the handback template's self-reference exception.
 
 ## External actions
 
-- `git worktree add --detach .remedy-wt/f258-r12-negctl d817d331` then
-  `git worktree remove .remedy-wt/f258-r12-negctl --force` — used only for
-  G3's negative control (one byte XOR-flipped inside the appended region,
-  confirmed False, restored, confirmed True); `git worktree list` afterward
-  shows only the primary checkout.
-- `git push origin feature/f258-self-use-v2` (after C2) — outcome reported
-  below in Verification once run.
-- `gh pr create` (after the push) — PR number and URL reported below in
-  Verification once run.
+- `git checkout main && git pull --ff-only && git checkout -b
+  feature/f106-session-resume` — branch created cleanly from `811c2d7e`.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+  → `[]` (Open PR Gate satisfied, run before branching).
+- `git worktree add .remedy-wt/negctl-wt HEAD` then `git worktree remove
+  .remedy-wt/negctl-wt --force` — used only for G3's negative control (one
+  printable byte flipped inside the appended RECORD1 region: space →
+  `!`); both readings rejected the flipped copy and accepted the unflipped
+  one; `git worktree list` afterward shows only the primary checkout.
+- `git push -u origin feature/f106-session-resume` (after C6) — outcome
+  reported to the operator in the round's completion report; not re-run
+  here to respect the handback's write-once rule.
+- No PR created this round, per constraint 11 (round 1 of the feature; PR
+  at closure).
 
 ## Verification
 
-Every gate below ran with a REAL exit code / measured value in the primary
-checkout.
+Every exit code below is a real `subprocess.run(...).returncode` from a
+script under `.remedy-wt/`, or a directly-observed shell exit from a
+single Bash invocation — never inferred from piped output.
 
-**Constraint 0.** `gh pr list --state open --json number,headRefName,
-baseRefName,isDraft` → `[]`. `git rev-parse HEAD` →
-`530bd3d828af1f112db306c178f99af310f2e6cf`. `git branch --show-current` →
-`feature/f258-self-use-v2`.
+**G1** (at C0b) — `.agent/authored/f106-r1.md` and `.agent/last_block.md`
+both 18597 bytes; `cmp` exits 0 (byte-equal). PASS.
 
-**G1 — HYGIENE.** `os.path.exists('.agent/STOP')` → `False` (read before
-C0a) and `False` again (read before C2). `git status --porcelain | wc -l`
-after C0a: `0`. After C0b: `0`. After C1: `0`.
+**G2** (at C1) — sha256 of `.remedy-wt/PLAN1.txt` and `.agent/plan.md`:
+both `9bf3e19d7613ed9d7557be6b65cca3e4c55fe3c37591fccc8dafb815da9f3251`.
+Line count 39 (< 50). Contains `## Goal` and `## Next Steps`. PASS.
 
-**G2 — TRANSPORT.** `git show 6dda0657:.agent/authored/f258-r12.md` sha256
-`c8f2e56a1ee96e9af500b1ebf151716e1fc7ca4f3e7faf245fc38c5c1aedecff`, 18162
-bytes; `.remedy-wt/f258-r12/block.md` (reviewer's own scratch original) same
-sha256, same 18162 bytes; EQUAL → `True`. `git rev-parse
-5720e0bf:.agent/authored/f258-r12.md` and `git rev-parse
-5720e0bf:.agent/last_block.md` both print
-`ffcee999f1c4607ecb541ad67fbb52b8c3cb62d2` — ONE blob id.
+**G3** (at C2) — base pre-commit `.agent/live_review.md` measured
+1809603 bytes (matches the reviewer's own `811c2d7e` reading exactly).
+1809603 + 1 (separator `\n`) + 1164 (RECORD1) = 1810768 = the committed
+file's actual size. (a) Whole reconstruction: `base + "\n" + RECORD1 ==
+committed` → `True`. (b) Paragraph order: `committed.split(b"\n\n")[-1]
+== RECORD1` → `True` (786 total paragraphs, N=1 dense paragraph appended).
+Negative control inside a disposable worktree: unflipped copy accepted by
+both readings (`True`, `True`); one printable byte flipped inside the
+appended region (offset 10 into RECORD1, a space → `!`) — both readings
+rejected it (`False`, `False`). Worktree removed after; `git status
+--porcelain` empty throughout. PASS.
 
-**G3 — THE RECORD APPEND AT C1.** Base (`530bd3d8:.agent/live_review.md`)
-1801592 bytes; GATEF258R11 slice 4061 bytes; `base + b"\n" + GATEF258R11 ==
-committed` → `True`, committed 1805654 bytes (matches the block's stated
-expectation exactly). NEGATIVE CONTROL, in disposable worktree
-`.remedy-wt/f258-r12-negctl` (removed after): one byte XOR-flipped at
-offset 1801602 (10 bytes inside the appended region) → equality `False`;
-restored to the original byte → equality `True` again.
+**G4** (at C1 and C2) — registered `R-` ids: 318 at both. Resolved
+(`Done:`) ids: 55 at both. Open: 263 at both. Added registered: `set()`.
+Added resolved: `set()`. `DECISION F\d+ D\d+ — ` ids: 19 at both. PASS.
 
-**G4 — THE LEDGER AT C1, constraint 7.**
-- At `530bd3d8`: registered 318 distinct; `Done:` 55 distinct resolved;
-  `Gate: F\d+ R\d+ — ` count 174; open set 263.
-- At C1: registered 318 (UNMOVED); resolved 55 (UNMOVED); `Gate:` count 175
-  (UP BY ONE, the GATEF258R11 append); open set 263 (UNMOVED).
-- Count of `^Gate: F258 R11 — ` at C1: 1.
+**G5** (at C3) — PAIRSTATUS-FROM occurs 0×, PAIRSTATUS-TO occurs 1× in
+`docs/roadmap/STATUS.md`. `git diff --numstat` for C3 alone: `1  1
+docs/roadmap/STATUS.md`. Whole file holds exactly 1 line matching
+`^- \[~\] F\d{3} — `.
+`python3 -m pytest tests/docs/ -q` → 295 passed, exit 0.
+`python3 -m pytest tests/orchestration/test_roadmap_index.py -q` → 30
+passed, exit 0. Both match the reviewer's base reading exactly. PASS.
 
-**G5 — THE FIVE C2 EDITS.**
-- Edit 1, `docs/roadmap/STATUS.md`: before 32950 bytes, after 33277 bytes
-  (delta +327, matches block exactly). FROM string count: before 1, after
-  0. TO string (ending `...accepted HEAD
-  49fcc2c645601936d8c426b1eb09523b9b3c7f6f)`) count after: 1.
-- Edit 2, `README.md` accepted count: FROM `64 of 258 registered items
-  accepted.` count before 1 / after 0. TO `65 of 258 registered items
-  accepted.` count after: 1.
-- Edit 3, `README.md` Tier 5 row: FROM `| 5 | Operator Cockpit | 12 | 32 |`
-  count before 1 / after 0. TO `| 5 | Operator Cockpit | 13 | 32 |` count
-  after: 1.
-- Edit 4, `README.md` capability paragraph: FROM (the two-newline pair
-  `re-arms it).\n\nFull per-feature state:`) count before 1 / after 0 (the
-  new paragraph is now between the halves). TO (new paragraph starting
-  `F258 self-use track v2 (the queue now replenishes itself...`) count
-  after: 1. `README.md` combined: before 9206 bytes, after 9625 bytes,
-  delta +419 (matches block exactly).
-- Edit 5, `scripts/self_use_queue.json`: before 10834 bytes, after 10838
-  bytes, delta +4 (matches block exactly). Unified diff via `difflib`:
-  exactly 1 changed line each side — `-      "consumed_by": "",` /
-  `+      "consumed_by": "F258",`. Re-parsed with `json.loads` afterward:
-  valid, SU-002's `consumed_by` reads `"F258"`. Byte scan for `\u` escape
-  sequences in the written file: none found — `ensure_ascii=False` held.
+**G6** (at C4) — sha256 of `.remedy-wt/CONTEXT1.txt` and
+`.agent/context.md`: both
+`a35653587f2bd603f8007b76143028f8f5cbd894253d315ea8505146ea3f5107`.
+Contains `## Active Branch`, `feature/f106-session-resume`, `F106`,
+`Steps`. PASS.
 
-All five edits' measured numbers match the block's stated expectations
-exactly.
+**G7** (at C5) — each its own real exit code:
+`python3 -m pytest tests/ui_server/ -q` → 515 passed, exit 0.
+`python3 -m pytest tests/orchestration/test_test_runner.py -q` → 52
+passed, exit 0.
+`python3 -m pytest tests/regression/test_resource_safety.py -q` → 21
+passed, exit 0.
+`python3 -m pytest tests/orchestration/test_integrity_gate.py -q` → 16
+passed, exit 0.
+`python3 -m pytest tests/cli/test_golden_path.py -q` (canary) → 42 passed,
+exit 0.
+All five match the reviewer's base readings (515, 52, 21, 16, 42) exactly.
+PASS.
 
-**G6 — THE PLAN AND HANDOFF AT C2.** `.agent/plan.md` byte-equal to
-PLANF258R12CLOSED, both 1821 bytes, including the trailing newline —
-`True`. `.agent/handoff.md` (this file) exists and is non-empty.
-
-**G7 — THE REMAINING PRECONDITIONS, over `530bd3d8..HEAD`.** Reported once
-C2 is committed and this file's own commit is included in the range (see
-Deviations — this section is filled with real post-commit numbers before
-push, per the write-once rule, since C2 both writes and closes this file).
-
-**G8 — THE STATUS/README CROSS-CHECK.** `python3 -m pytest tests/docs/ -q`,
-run against the working tree carrying all of C2's edits (byte-identical to
-what C2 commits): REAL exit 0, 295 passed — unchanged from the pre-round
-baseline, with the pinned cross-checks
-(`test_the_readme_accepted_count_equals_the_status_count`,
-`test_the_readme_tier_table_done_column_matches_the_ledger`) green against
-the NEW numbers. Canary `python3 -m pytest tests/cli/test_golden_path.py
--q`: REAL exit 0, 42 passed. `python3 -m apps.cli.main integrity check
---json`: `passed=true`, `fail_count=0`, `high_blockers_open=pass`.
+**G8** (at C5) — `.agent/f106_inventory.md` exists and carries all 7 SPEC
+section headings: "1. THE PROVIDER PROTOCOL AND ITS CONCRETE ADAPTERS",
+"2. THE SESSION-ID FIELD IN CALL EVIDENCE", "3. THE CALL-ENTRY SIGNATURE —
+THE ADDITIVE TARGET FOR `resume`", "4. CAPABILITY-FLAG PRECEDENT ELSEWHERE
+IN THE REPO", "5. THE REPAIR LOOP'S CALL SITES — LOCATE ONLY", "6. THE
+DIFF-REPAIR / DELTA MECHANISM", "7. TEST CONVENTIONS FOR PROVIDER-ADAPTER
+TESTS" (rendered as `## 1. ...` through `## 7. ...` — the literal case in
+the file is sentence case with the section topic capitalized, matching
+the SPEC's own numbering exactly). After the `44c6847c` correction, the
+file cites 30 distinct `file:line` locations plus 2 file-level (no single
+line) existence checks; every `.py`/`.md` path resolves with
+`git ls-tree HEAD -- <path>` (verified across all 9 distinct files the 30
+lines sit in — every one returned a `100644 blob <sha>` line). `git status
+--porcelain` empty. `git ls-files --others --exclude-standard` empty
+(count 0). Per-commit insertion counts, `git diff --numstat`, C0a through
+the `44c6847c` correction: 344, 328, 27, 2, 1, 38, 206, 37 — every one
+under 500. PASS.
 
 ## Authored-text proofs
 
-Two authored slices (GATEF258R11, PLANF258R12CLOSED) and one whole block
-(C0a/C0b) were applied this round, all via disk-to-disk `shutil.copyfile`,
-`bytes` concatenation, or exact byte-reconstruction against the scratch
-original at `.remedy-wt/f258-r12/block.md`, never retyped. Both slices were
-extracted programmatically by marker-line indexing from the COMMITTED blob
-`git show 6dda0657:.agent/authored/f258-r12.md` (constraint 3), never from
-this prompt's text.
-
-- C0a/C0b: the whole block, sha256
-  `c8f2e56a1ee96e9af500b1ebf151716e1fc7ca4f3e7faf245fc38c5c1aedecff`, 18162
-  bytes — equal on both the scratch original and the committed blob; C0b's
-  two committed blob ids equal (`ffcee999f1c4607ecb541ad67fbb52b8c3cb62d2`).
-- GATEF258R11 → appended to `.agent/live_review.md`: 4061 bytes, proved by
-  whole-file reconstruction AND the negative control (G3 above).
-- PLANF258R12CLOSED → `.agent/plan.md`: 1821 bytes, byte-equal both sides.
-
-This block carries no per-slice hash stamped in its own markers (only the
-whole-block transport hash G2 checks) — consistent with recent rounds.
+- PLAN1 → `.agent/plan.md`: sha256-equal
+  (`9bf3e19d7613ed9d7557be6b65cca3e4c55fe3c37591fccc8dafb815da9f3251` both
+  sides).
+- RECORD1 → appended to `.agent/live_review.md`: whole-reconstruction and
+  paragraph-order readings both `True` against the committed file;
+  negative control (disposable worktree, one byte flipped) rejected by
+  both readings, restored/removed after.
+- CONTEXT1 → `.agent/context.md`: sha256-equal
+  (`a35653587f2bd603f8007b76143028f8f5cbd894253d315ea8505146ea3f5107` both
+  sides).
+- PAIRSTATUS-FROM/PAIRSTATUS-TO → `docs/roadmap/STATUS.md`: measured, not
+  asserted — FROM 0× / TO 1× post-C3, exactly 1 insertion + 1 deletion in
+  `git diff --numstat`, matching constraint 12's stated pair shape
+  (`TO contains FROM: false`, a REWRITE).
+- C0a/C0b transport (`.agent/authored/f106-r1.md` /
+  `.agent/last_block.md`): byte-equal, 18597 bytes each (G1).
 
 ## Deviations & assumptions
 
-1. None from the block's ordered commit sequence. Order matched exactly:
-   C0a → C0b → C1 (live_review.md append) → C2 (the five-file closure
-   commit) → push → `gh pr create`, with no reordering, extra commit, or
-   dropped commit.
-2. Guard re-expressions (constraint 5): this session's Bash tool rejected a
-   chained multi-statement single-invocation command (several `&&`-joined
-   steps with inline `echo` headers) issued as the very first constraint-0
-   probe — a permission-layer denial, distinct from AGENTS.md's own
-   bash-guard validator. The same checks re-issued as separate
-   single-purpose invocations succeeded immediately after. Every piece of
-   logic requiring more than a couple of shell statements (slice
-   extraction, digest comparison, the append-and-reconstruct arithmetic,
-   the negative control, the ledger counts, the queue.json script edit) was
-   routed through a standalone Python script under the gitignored
-   `.remedy-wt/f258-r12/`, exactly as constraint 5 prescribes; copies used
-   `shutil.copyfile`, never `cp` (one bare `cp` was tried once for the
-   plan.md write, succeeded, but was IMMEDIATELY redone via
-   `shutil.copyfile` to stay strictly inside constraint 5's letter, and the
-   byte-equality check ran against the `shutil.copyfile` result).
-3. G7's per-commit insertions and remaining-preconditions numbers are
-   necessarily reported after C2 is committed (the numstat needs the
-   commit to exist); this file states them as measured, not assumed, and
-   the reviewer can re-derive every one independently.
-4. Nothing else in the block looked wrong. Every stated expectation the
-   block's Done-when section named (byte lengths, deltas, occurrence
-   counts, ledger counts) matched this worker's own independent
-   measurement exactly, including all five C2 edits' before/after byte
-   counts.
+1. **Extra commit beyond the block's C0a-C6 bundle.** After committing C5
+   (`11ccdb32`), I noticed its own closing "Citation count" section had
+   hand-counted only 19 `file:line` pairs while the body prose actually
+   cited more (e.g. `worker_registry.py:168`/`:169`,
+   `pingpong_loop.py:3284`, `pingpong_provider.py:138`/`146`/`235`,
+   `model_route_tournament.py:145`) — an undercount, not a fabrication,
+   but sloppy self-auditing against the SPEC's own "cite every claim"
+   instruction. I committed a follow-up fix (`44c6847c`) rather than
+   amending C5, per AGENTS.md's "always create NEW commits rather than
+   amending." This is a real deviation from the block's exact bundle shape
+   (C0a-C6, 8 named commits) — the branch now carries 9 commits before C6,
+   i.e. C5 plus one correction. I judged this preferable to shipping a
+   self-reported measurement I knew to be an undercount, but it is not
+   what constraint 3's implicit "one commit per bundle item" shape orders,
+   so it is declared here rather than silently folded into the C5 entry.
+2. **`git commit`'s terminal summary disagreed with `git diff --numstat`
+   for two commits.** For C0b, the auto-printed summary read "344
+   insertions(+), 284 deletions(-)"; `git diff --numstat 3f712642
+   30960577` reads `328  268`. For C1, the auto-printed summary read "39
+   insertions(+), 34 deletions(-)"; `git diff --numstat 30960577
+   4f5eec7a` reads `27  22`. Both commits are `.agent/`-file rewrites that
+   git's commit-summary path detects as "rewrite" (>50% changed) and
+   diffstats with a different heuristic (whole-file replace) than a plain
+   `git diff`/`git diff --numstat`, which do a real line-level diff and
+   agree with each other and with `git show --numstat`. I used
+   `git diff --numstat` throughout this handback because (a) AGENTS.md's
+   Commit Discipline section states the cap counts "the `+` column of
+   `git diff --stat`" by name, and (b) the block's own Handback section
+   says the `+/-` column is "taken from `git diff --numstat`." A reviewer
+   who reads only the terminal transcript of the `git commit` calls will
+   see different, larger numbers than this table reports; both are
+   internally consistent (verified via `git diff --stat` too), the
+   discrepancy is git's own dual diffstat code paths, not an error in
+   either reading.
+3. Two `grep` invocations (checking `## Goal`/`## Next Steps` line counts
+   in `.agent/plan.md`, and later a `for` loop over `git ls-tree` calls)
+   were denied by the sandbox's Bash permission layer without an obvious
+   single-cause pattern. Worked around by using the `Read` tool or a
+   single non-looping `git ls-tree HEAD -- <path1> <path2> ...` call, and
+   by moving repeated logic into one-shot `python3` scripts under
+   `.remedy-wt/`, consistent with constraint 7 anyway (every reported exit
+   code is a real `subprocess.run(...).returncode`).
+4. `remedy` the console binary was not needed this round — no gate or SPEC
+   item in this block calls the orchestrator or `plan next`; constraint 9
+   is noted for completeness but not triggered.
+5. No production code, test, or `docs/roadmap/features/` file was touched,
+   matching the block's Change set exactly (verified: `git diff
+   --stat main...HEAD` touches only the 8 named paths plus the one
+   undeclared-in-advance but same-file `44c6847c` correction to
+   `.agent/f106_inventory.md`, already covered by deviation 1).
 
 ## Next
 
-Nothing further on this branch. The next feature's Open PR Gate merges this
-pull request, or the operator merges it manually at any time. This session
-does NOT merge the PR, does not touch `main`, and does not force-push.
+Round 2 orders T001: add `supports_resume: bool = False` to the
+`PingPongProvider` protocol and all three adapters (`FakeProvider`,
+`ClaudeProvider`, `ClaudeCliProvider`), an additive `resume` keyword
+parameter on `build`/`review` (default `None`, unused this round), and
+`resume_used`/`resume_session_ref` fields on `BuilderOutput`/
+`ReviewerOutput` (both False/"" by construction — zero behavior change),
+plus `tests/orchestration/test_session_resume.py`. `.agent/f106_inventory.
+md` (this round's measurement) is the shape T001 builds directly on.
