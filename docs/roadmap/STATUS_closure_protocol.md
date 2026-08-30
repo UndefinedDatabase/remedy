@@ -24,7 +24,14 @@
    through `packages.orchestration.self_use_runner.run_next_self_use_item`
    (F258 T002) to the normal approval gate like any other job — never
    promoted — and its `consumed_by` set to this
-   feature's id in the closure commit. If the queue holds NO pending item,
+   feature's id in the closure commit. Before that: every string
+   `packages.orchestration.self_use_findings.describe_self_use_run_defects`
+   returns for the run's own `JobPlan` (F258 T003) is registered as a normal
+   R-id finding in `.agent/live_review.md` under the standard rules (red-proof
+   required for a repair) before the close, and the closure paragraph names
+   every finding raised and whether it was repaired; an empty tuple means
+   nothing to register, not that nothing was checked. If the queue holds NO
+   pending item,
    the session calls
    `packages.orchestration.self_use_generator.generate_and_append_if_empty`
    FIRST (F258 T001) — its Tier 1 (the oldest open Low/Medium finding in
