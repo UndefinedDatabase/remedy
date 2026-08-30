@@ -3236,11 +3236,25 @@ def run_pingpong(
             # ONE logical reviewer call: its attempt AND its single parse retry share this
             # sink, and nothing from the builder or an earlier round is in it.
             reviewer_call_reasons: list[str] = []
+            # F106 T002b-i: the repair round's PRIMARY Reviewer attempt
+            # resumes the prior round's Reviewer session only when the
+            # provider honestly advertises support AND a session id was
+            # actually captured last round — same rule as the Builder side
+            # (T002a). The bounded parse retry below is a DIFFERENT call and
+            # is NOT threaded this round; it stays full-context.
+            reviewer_resume_ref: str | None = None
+            if is_repair and getattr(reviewer_provider, "supports_resume", False) and result.rounds:
+                prev_reviewer_out = result.rounds[-1].reviewer_output
+                prev_actuals = getattr(prev_reviewer_out, "usage_actuals", None) or {}
+                prev_session_id = str(prev_actuals.get("session_id") or "")
+                if prev_session_id:
+                    reviewer_resume_ref = prev_session_id
             reviewer_out = _call_with_retry(
                 lambda ts=reviewer_timeout: reviewer_provider.review(
                     reviewer_effective,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
+                    resume=reviewer_resume_ref,
                 ),
                 result=result,
                 role="reviewer",
