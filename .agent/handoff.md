@@ -2,93 +2,105 @@
 
 ## Session
 
-SESSION 1 of feature F106 · round 2 · rounds so far 2
+SESSION 1 of feature F106 · round 3 · rounds so far 3
 
 ## Range
 
-Review of `481565a8..HEAD`.
+Review of `f05c3d61..HEAD`.
 
 ## Commits
 
-### c01d29f9 docs(f106): save round 2 step block verbatim
+### 2d2e7aa9 docs(f106): save round 3 authored block verbatim
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f106-r2.md` | +400/-0 | C0a: `shutil.copyfile` of the round's step block from the reviewer's scratch original `.remedy-wt/f106-r2-block.md` (new file, never `cp`, never retyped) |
+| `.agent/authored/f106-r3.md` | +338/-0 | C0a: `shutil.copyfile` of the round's step block from the reviewer's scratch original `.remedy-wt/f106-r3-block.md` (new file, never `cp`, never retyped). 17246 bytes, byte-equal to the source (`cmp` returncode 0) |
 
-### c866891e chore(f106): mirror round 2 block into last_block
+### af2b52a7 chore(f106): mirror round 3 block into last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +350/-294 | C0b: `shutil.copyfile` of the committed `.agent/authored/f106-r2.md` into `.agent/last_block.md` (byte-equal to the source, 18877 bytes each, sha256-confirmed) |
+| `.agent/last_block.md` | +191/-253 (numstat; `git commit`'s own terminal summary printed +338/-400 due to git's rewrite-detection heuristic on a full-file replace — a presentation difference, not a measurement error, matching the same note RECORD3 itself carries) | C0b: `shutil.copyfile` of the committed `.agent/authored/f106-r3.md` into `.agent/last_block.md`. Byte-equal to the source, 17246 bytes each, sha256 `8a0584a0...31a5fc86e` both |
 
-### 77777d98 docs(f106): rewrite plan for round 2 T001a slice
+### a5f64d61 docs(f106): rewrite plan for round 3 T001b slice
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +15/-19 | C1: rewritten from slice PLAN2 extracted from the committed `.agent/authored/f106-r2.md` by marker lines (sha256-equal to the extracted slice, 35 content lines, under the 50-line cap) |
+| `.agent/plan.md` | +11/-13 | C1: rewritten from slice PLAN3 extracted from the committed `.agent/authored/f106-r3.md` by marker lines. **This commit used a buggy extraction that excluded PLAN3's trailing newline; superseded by the next commit — see Deviations.** |
 
-### 8ce037af docs(f106): append round 1 PASS verdict to live_review ledger
+### 7e35635a fix(f106): restore trailing newline in round 3 plan rewrite
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +2/-0 | C2: append-only. Base 1810768 bytes + separator `\n` + RECORD2 (2665 bytes, extracted from the committed block by marker lines) = 1813434 bytes, matching the committed file exactly. Books the round 1 PASS verdict; mints no new R-id or DECISION id |
+| `.agent/plan.md` | +1/-1 | UNPLANNED follow-up to C1, before C2. Corrects the marker-extraction convention (content INCLUDES the newline immediately before `<<<END`, not excludes it — re-derived from round 2's own committed bytes, see Deviations) and rewrites `.agent/plan.md` to be byte/sha256-equal to the CORRECTLY extracted PLAN3 (`141c1624...59d2d8ba0`, 1467 bytes, 33 lines, ends with `\n` — matching round 2's `plan.md` trailing-newline convention exactly) |
 
-### cf3c65e6 feat(f106): add supports_resume shape to Protocol and FakeProvider
+### de848433 docs(f106): append round 2 PASS verdict to live_review ledger
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/pingpong_provider.py` | +21/-0 | C3: applied all five authored pairs (PAIR-A, PAIR-B, FAKEPROVIDER-INIT, FAKEPROVIDER-NAME-BUILD, FAKEPROVIDER-REVIEW) byte-for-byte in order, extracted from the committed block. Adds `supports_resume` to the Protocol and `FakeProvider`, plus `resume_used`/`resume_session_ref` on `BuilderOutput`/`ReviewerOutput`. `ClaudeProvider`/`ClaudeCliProvider` untouched |
+| `.agent/live_review.md` | +2/-0 | C2: append-only. Base 1813434 bytes + separator `\n` + RECORD3 (2759 bytes, extracted inclusive-of-trailing-newline) = 1816194 bytes, matching the committed file exactly. Books the round 2 PASS verdict; mints no new R-id or DECISION id |
 
-### (this commit) chore(f106): rewrite handoff for round 2 handback
+### 12476730 feat(f106): add supports_resume shape to ClaudeProvider and ClaudeCliProvider
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | (self-reference, not tabled per template exception) | C4: this handback, written once |
+| `packages/orchestration/pingpong_provider.py` | +12/-0 | C3: applied all six authored pairs (CLAUDEPROVIDER-NAME, CLAUDEPROVIDER-BUILD, CLAUDEPROVIDER-REVIEW, CLICLIPROVIDER-NAME, CLICLIPROVIDER-BUILD, CLICLIPROVIDER-REVIEW) byte-for-byte in order, extracted from the committed block. Adds `supports_resume` (returning `False`) and the optional `resume` kwarg to `ClaudeProvider.build`/`.review` and `ClaudeCliProvider.build`/`.review`. Protocol, dataclasses and `FakeProvider` untouched — all three adapters now conform to the Protocol surface |
+
+### 56257022 docs(f106): record round 2 prose slip on prepared_input claim
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/prose_slips.md` | +2/-0 | C4: append-only. Base 34048 bytes, delta 489 bytes = PROSESLIP3 (488 bytes) + 1 separator, matching exactly. One dated line, no R-id, records that round 2's G6 prose wrongly expected `prepared_input` to differ under `resume=` |
+
+### (this commit) docs(f106): rewrite handoff for round 3 handback
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | (self-reference, not tabled per template exception) | C5: this handback, written once |
 
 ## External actions
 
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` at round start → `[]` (Open PR Gate satisfied; no branch switch was needed, this round continues the existing `feature/f106-session-resume`).
-- `git worktree add .remedy-wt/f106r2-wt HEAD` then `git worktree remove .remedy-wt/f106r2-wt --force` — used only for G3's negative control (one byte XOR-flipped 10 bytes into the appended RECORD2 region); both readings rejected the flipped copy and accepted the restored one; `git worktree list` afterward shows only the primary checkout.
-- `git push -u origin feature/f106-session-resume` (after C4) — outcome reported to the operator in the round's completion report; not re-run here to respect the handback's write-once rule.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]` (Open PR Gate satisfied; no branch switch needed, this round continues the existing `feature/f106-session-resume`).
+- `git worktree add .remedy-wt/g3-negctrl HEAD --detach` then `git worktree remove .remedy-wt/g3-negctrl --force` — used only for G3's negative control (one byte XOR-flipped 10 bytes into the appended RECORD3 region, inside the disposable worktree's own copy of `.agent/live_review.md`, never the primary checkout); both readings rejected the flipped copy and accepted the restored one; `git worktree list` afterward shows only the primary checkout.
+- `git push -u origin feature/f106-session-resume` (after C5) — outcome: **reported in this round's completion message to the operator**, per the R-0371/R-0679 family rule that a value produced after the handback commit is never written into the handback file itself; not re-run here to respect the write-once rule.
 - No PR created this round, per constraint 11 (T001 is not done until round 4 lands the test file).
 
 ## Verification
 
-G1 TRANSPORT, at C0b — `.agent/authored/f106-r2.md` 18877 bytes, `.agent/last_block.md` 18877 bytes, byte-equal (sha256 `b62927dc...53d5aff6` both). Real Python read+compare, no piped command.
+G1 TRANSPORT, at C0b — `.agent/authored/f106-r3.md` 17246 bytes, `.agent/last_block.md` 17246 bytes, byte-equal (sha256 `8a0584a0...31a5fc86e` both; `cmp` returncode 0 against `.remedy-wt/f106-r3-block.md` for C0a).
 
-G2 THE PLAN, at C1 — `.agent/plan.md` sha256-equal to extracted slice PLAN2 (`e3e682aa...af57b43b`), 35 content lines (under 50), contains `## Goal` and `## Next Steps`. True/True/35/True/True.
+G2 THE PLAN, at C1 (after the C1-fix commit) — `.agent/plan.md` sha256-equal to the correctly extracted slice PLAN3 (`141c1624...59d2d8ba0`), 33 lines (under 50, `wc -l`-equivalent newline count), contains `## Goal` and `## Next Steps`, ends with `\n` matching the file's standing convention.
 
-G3 THE RECORD APPEND, at C2 — base measured 1810768 bytes (matches the reviewer's `481565a8` reading exactly). Base + `\n` + RECORD2 (2665 bytes) = 1813434 bytes = committed file's actual length. Reading (a) whole reconstruction: `True`. Reading (b) last blank-line-separated unit equals RECORD2 exactly: `True`. NEGATIVE CONTROL, run in disposable worktree `git worktree add .remedy-wt/f106r2-wt HEAD` (removed after via `git worktree remove --force`): one byte flipped (XOR 0xFF) 10 bytes into the appended RECORD2 region — reading (a) `False`, reading (b) `False`, both correctly rejecting. Byte restored — reading (a) `True`, reading (b) `True`, both correctly accepting; `restored == original` bytes `True`.
+G3 THE RECORD APPEND, at C2 — base measured 1813434 bytes (matches `f05c3d61`'s state exactly, unchanged by C1/C1-fix which never touch `live_review.md`). Base + `\n` + RECORD3 (2759 bytes) = 1816194 bytes = committed file's actual length. Reading (a) whole reconstruction (`after[:before_len] == before` and `after[before_len:] == "\n"+RECORD3`): `True`. Reading (b) last blank-line-separated (`\n\n`) unit equals RECORD3 exactly (sha256 `9c4f188f...80afb89e705a39dd` both): `True`. NEGATIVE CONTROL, in disposable worktree `.remedy-wt/g3-negctrl` (removed after): one byte XOR 0xFF-flipped 10 bytes into the appended RECORD3 region — reading (a) `False`, reading (b) `False`, both correctly rejecting. Byte restored — reading (a) `True`, reading (b) `True`, both correctly accepting.
 
-G4 THE LEDGER, at C1 and C2 — measured directly from `git show <sha>:.agent/live_review.md` for BASE(`481565a8`), C1(`77777d98`), C2(`8ce037af`): registered 318 / resolved 55 / open 263 at all three, unmoved. `DECISION F\d+ D\d+ — ` count 19 at all three, unmoved. `Gate: F106 R1 — ` occurs 0x at BASE and C1, exactly 1x at C2 (RECORD2's own header). NOTE: my first pass at this count used a Python `set()` keyed only on the captured `D\d+` group, which silently collapsed distinct ids like `F085 D1` and `F033 D1` into one set entry and read DECISION=10; the corrected script counts full-line regex matches (not distinct ids) and reads 19, matching the block's stated value. Self-caught before reporting; no wrong number was ever the final answer, but recorded here since it happened.
+G4 THE LEDGER, at C1 and C2 — my own methodology, independently derived (not copied from RECORD3's prose) and reproduced exactly against F106 R1's stated 318/55/263/19 baseline where possible: `registered = {m.group(1) for m in re.finditer(r"^- (R-\d{4}) —", text, re.M)}` → **318**, matching exactly. `resolved = {m.group(1) for m in re.finditer(r"^Done: (R-\d{4}) —", text, re.M)}` → **55**, matching exactly (open = 318-55 = **263**, matching exactly). Both counts measured identically before C1's edits and after C2 — **unmoved**, as required. `Gate: F106 R2 — ` line-anchored count: **0x** at C1 (before C2), **1x** after C2 (RECORD3's own header) — confirmed via `git show a5f64d61:.agent/live_review.md` vs `git show HEAD:.agent/live_review.md`.
+**DECLARED DISCREPANCY (not a defect):** constraint 5 and G4 state `DECISION` count as **19**; my own line-anchored measurement (`^DECISION (\S+ D\d+)`) reads **20** distinct decisions at every point checked (F085 D5, F021 D7, F033 D1-D6, F040 D1-D10, F258 D1-D2 — all independently spot-checked as genuine decision headers, none a duplicate or stray prose match). This is unchanged across C1/C2 either way, so the invariant the gate actually protects (unmoved by this round) holds regardless of which of the two numbers is the reviewer's intended baseline; reported per constraint 1's instruction to apply/measure as given and declare the mismatch rather than silently reconcile it.
+`.agent/prose_slips.md` byte length before C4: 34048; after C4: 34537; delta 489 = PROSESLIP3 (488 bytes) + 1 separator, exactly as required.
 
-G5 THE CODE — PAIR SHAPE AND ORDERED APPLICATION, at C3. Own containment test + occurrence counts for all five pairs, run independently before and after C3:
-- PAIR-A: `TO contains FROM` = `False`. FROM 1x→0x, TO 0x→1x.
-- PAIR-B: `TO contains FROM` = `False`. FROM 1x→0x, TO 0x→1x.
-- FAKEPROVIDER-INIT: `TO contains FROM` = `False`. FROM 1x→0x, TO 0x→1x.
-- FAKEPROVIDER-NAME-BUILD: `TO contains FROM` = `False`. FROM 1x→0x, TO 0x→1x.
-- FAKEPROVIDER-REVIEW: `TO contains FROM` = `False`. FROM 1x→0x, TO 0x→1x.
+G5 THE CODE, at C3. Own containment test + occurrence counts for all six pairs, run independently before and after C3:
+- CLAUDEPROVIDER-NAME: `TO contains FROM` = `True` (APPEND-shaped). FROM 1x→0x is N/A by design (FROM is a prefix of TO, not replaced-away); FROM/TO occurrence counts before: FROM 1x, TO 0x. POSITIONAL check (constraint 12/G5): `content.find("class ClaudeProvider:")` = 12349 < `content.find(CLAUDEPROVIDER-NAME-TO)` = 12763 < `content.find("class ClaudeCliProvider:")` = 33154 → `True`.
+- CLAUDEPROVIDER-BUILD: `TO contains FROM` = `False` (REWRITE). FROM 1x→0x, TO 0x→1x.
+- CLAUDEPROVIDER-REVIEW: `TO contains FROM` = `False` (REWRITE). FROM 1x→0x, TO 0x→1x.
+- CLICLIPROVIDER-NAME: `TO contains FROM` = `True` (APPEND-shaped). FROM/TO occurrence counts before: FROM 1x, TO 0x. POSITIONAL check: `content.find(CLICLIPROVIDER-NAME-TO)` = 38580, strictly after `content.find("class ClaudeCliProvider:")` = 33154, with **no** intervening line starting `class ` between them (checked line-by-line over the intervening span) → `True`.
+- CLICLIPROVIDER-BUILD: `TO contains FROM` = `False` (REWRITE). FROM 1x→0x, TO 0x→1x.
+- CLICLIPROVIDER-REVIEW: `TO contains FROM` = `False` (REWRITE). FROM 1x→0x, TO 0x→1x.
 
-All five readings agree with the block's own pre-measured claim (constraint 12) — no discrepancy to declare here. `python3 -c "import ast; ast.parse(open('packages/orchestration/pingpong_provider.py').read())"` real `subprocess.run(...).returncode` = `0`. The four-class + two-dataclass import line from constraint 13 real returncode = `0`, stdout `''`, stderr `''`.
+Additionally independently confirmed constraint 12's claim that the two NAME pairs' TO-side APPENDED DELTA (not the whole TO slice, which differs by `-cli`) is byte-identical between the two: both equal `'\n    @property\n    def supports_resume(self) -> bool:\n        return False\n'`. `python3 -c "import ast; ast.parse(open('packages/orchestration/pingpong_provider.py').read())"` real `subprocess.run(...).returncode` = `0`. The four-class import line (`BuilderOutput, ReviewerOutput, ClaudeProvider, ClaudeCliProvider`) real returncode = `0`, stdout `''`, stderr `''`.
 
-G6 ZERO BEHAVIOR CHANGE — THE PROBE, at C3.
-(a) `python3 -m pytest tests/orchestration/test_pingpong.py tests/orchestration/test_provider_mode.py tests/orchestration/test_provider_evidence_integration.py -q` — real returncode `0`, `122 passed in 1.81s`.
-(b) A/B probe (`.remedy-wt/f106r2/g6b_ab_probe.py`, read-only, no worktree): two `FakeProvider()` instances built with identical constructor kwargs (`builder_files`, `fail_on_round`, `pass_on_round`, `max_rounds_before_block`). `.supports_resume` is `False` on both instances. `.build("x")` vs `.build("x", resume="some-ref")`: **every** `BuilderOutput` field, including `prepared_input`, compared equal (`build_mismatches = []`). Same for `.review("x")` vs `.review("x", resume="some-ref")`: **every** `ReviewerOutput` field, including `prepared_input`, compared equal (`review_mismatches = []`). `resume_used` reads `False` and `resume_session_ref` reads `""` on both results, both calls, as ordered.
+G6 THE FULL SURFACE, at C3.
+(a) `python3 -m pytest tests/orchestration/test_pingpong.py tests/orchestration/test_provider_mode.py tests/orchestration/test_provider_evidence_integration.py -q` — real returncode `0`, `122 passed in 1.79s`, matching the base exactly (behavior unchanged).
+(b) Read-only probe (`.remedy-wt/f106_r3_g6b.py`, subprocess to a `python3 -c` child, no worktree, never calls `.build()`/`.review()`): `ClaudeProvider()` and `ClaudeCliProvider()` each instantiated with no arguments. `.supports_resume` reads `False` on both. `inspect.signature(cls.build).parameters` and `inspect.signature(cls.review).parameters` both include a `resume` parameter with default `None`, for both classes. Real returncode `0`.
 
-**DECLARED DISCREPANCY (not a defect):** the block's G6(b) text states "every field... is equal EXCEPT `prepared_input` (which legitimately differs...)". Measured, `prepared_input` does NOT differ — it is equal too, because `FakeProvider.build`/`review` accept the new `resume` keyword but never pass it into `prepare_call_input`'s `options`. This is correct given this round's own Goal line 8 — "Zero behavior change: every new parameter is optional with a default" — if `prepared_input` HAD differed by `resume` alone at this stage, that would itself be a behavior change contradicting the round's stated goal, since `resume` is not yet wired into any real transport (that's T002, gated on T001 finishing across all three adapters). Applied nothing differently because of this — the pairs are exactly as authored; this is a mismeasured expectation in the block's gate prose, not a code defect, and is reported per constraint 1/12's spirit rather than silently reclassified.
+G7 THE STATE READERS AND CANARY, run after C2 (measured after C3, well within the "after C2" window since C3 touches nothing under `.agent/`): `tests/ui_server/` returncode `0`, `515 passed in 32.01s`. `test_test_runner.py` returncode `0`, `52 passed in 5.76s`. `test_resource_safety.py` returncode `0`, `21 passed in 11.69s`. `test_integrity_gate.py` returncode `0`, `16 passed in 0.27s`. Canary `test_golden_path.py` returncode `0`, `42 passed in 23.21s`. All five match the reviewer's stated base measurements (515/52/21/16/42) exactly.
 
-G7 THE STATE READERS AND CANARY, run after C3 (C4's parent, before C4 itself): `tests/ui_server/` returncode `0`, `515 passed in 31.72s`. `test_test_runner.py` returncode `0`, `52 passed in 5.35s`. `test_resource_safety.py` returncode `0`, `21 passed in 11.51s`. `test_integrity_gate.py` returncode `0`, `16 passed in 0.27s`. Canary `test_golden_path.py` returncode `0`, `42 passed in 20.68s`. All five match the reviewer's stated base measurements (515/52/21/16/42) exactly.
-
-G8 THE TREE AND LINT, at C3 — `python3 -m ruff check packages/orchestration/pingpong_provider.py` returncode `0`, stdout `All checks passed!`, stderr empty. `git status --porcelain` empty. `git ls-files --others --exclude-standard` count `0`. Every commit's insertions (via `git show --numstat`): 400, 350, 15, 2, 21 — all well under the 500-line cap (and `.agent/plan.md`/`.agent/last_block.md`/`.agent/live_review.md` are additionally exempt as verbatim single-state-file rewrites/appends per AGENTS.md's Commit Discipline carve-out).
+G8 THE TREE AND LINT, at C3 (re-confirmed at the tree's current state) — `python3 -m ruff check packages/orchestration/pingpong_provider.py` returncode `0`, stdout `All checks passed!`, stderr empty. `git status --porcelain` empty. `git ls-files --others --exclude-standard` count `0`. Every commit's insertions via `git diff --numstat <sha>^ <sha>`: C0a 338, C0b 191, C1 11, C1-fix 1, C2 2, C3 12, C4 2 — all well under the 500-line cap. `.agent/last_block.md`, `.agent/plan.md` (both edits), `.agent/live_review.md` and `.agent/prose_slips.md` are additionally exempt as verbatim single-state-file rewrites/appends per AGENTS.md's Commit Discipline carve-out.
 
 ## Authored-text proofs
 
-- PLAN2 → `.agent/plan.md`: sha256-equal (`e3e682aa...af57b43b` both), disk-to-disk, C1.
-- RECORD2 → appended to `.agent/live_review.md`: byte-exact append arithmetic and both G3 readings True, negative control confirmed rejecting/accepting correctly, C2.
-- PAIR-A, PAIR-B, FAKEPROVIDER-INIT, FAKEPROVIDER-NAME-BUILD, FAKEPROVIDER-REVIEW → `packages/orchestration/pingpong_provider.py`: each FROM/TO occurrence-count pair (1x→0x / 0x→1x) confirmed for all five, C3. The step block itself (`.agent/authored/f106-r2.md`) → `.remedy-wt/f106-r2-block.md`: byte-equal, 18877 bytes both, sha256-equal, C0a. `.agent/last_block.md` mirror: byte-equal to the committed `.agent/authored/f106-r2.md`, C0b.
+- PLAN3 → `.agent/plan.md`: sha256-equal (`141c1624...59d2d8ba0` both), disk-to-disk, C1 (after the C1-fix correction).
+- RECORD3 → appended to `.agent/live_review.md`: byte-exact append arithmetic and both G3 readings `True`, negative control confirmed rejecting/accepting correctly, C2.
+- PROSESLIP3 → appended to `.agent/prose_slips.md`: byte-exact append arithmetic (delta 489 = 488+1), C4.
+- CLAUDEPROVIDER-NAME, CLAUDEPROVIDER-BUILD, CLAUDEPROVIDER-REVIEW, CLICLIPROVIDER-NAME, CLICLIPROVIDER-BUILD, CLICLIPROVIDER-REVIEW → `packages/orchestration/pingpong_provider.py`: each pair's containment shape and occurrence-count/positional check confirmed for all six, C3.
+- The step block itself (`.agent/authored/f106-r3.md`) ← `.remedy-wt/f106-r3-block.md`: byte-equal, 17246 bytes both, `cmp` returncode 0, C0a. `.agent/last_block.md` mirror: byte-equal to the committed `.agent/authored/f106-r3.md`, sha256-equal, C0b.
 
 ## Deviations & assumptions
 
-1. G6(b) prepared_input expectation — see the DECLARED DISCREPANCY paragraph under G6 above. The block's gate prose expected `prepared_input` to differ between a resumed and non-resumed `FakeProvider` call; measured, it does not, because `resume` is accepted but unused this round (by the round's own zero-behavior-change design). No code was changed to force a difference — that would have been an unordered behavior change. Not a product defect; a mismeasured/premature gate expectation, declared here per the reviewer's own instruction to declare rather than silently reclassify.
-2. Self-caught arithmetic slip in my own G4 measurement script (deduplicating `DECISION` ids by capture group alone instead of full-line match, misreading 19 as 10) — caught and corrected before this report was written; the corrected script and its 19/19/19 reading are what is reported above. No wrong number reached the ledger or this handback as a final claim.
-
-No other departure from the block's ordered C0a→C0b→C1→C2→C3→C4 bundle shape: six commits total (C0a, C0b, C1, C2, C3, and this handback as C4), matching the block's six-item Change set and six-step Bundle exactly.
+1. **Extraction-convention bug, self-caught, corrected before C2.** My first implementation of the marker-slice extractor read the block's rule ("content starts the line after `<<<BEGIN` and ends with the newline before `<<<END`") as EXCLUDING that final newline. Applied to C1, this produced a `.agent/plan.md` missing its trailing newline — a byte-level deviation from PLAN3 and from round 2's own `plan.md` convention (which does end in `\n`, confirmed by reading `77777d98`'s committed blob directly). I caught this by cross-checking the SAME rule against round 2's actual committed append arithmetic (`8ce037af`'s diff: appended bytes = `"\n" + RECORD2_content` where RECORD2_content's own last byte is `\n`, and RECORD2's length matches G3's stated 2665 bytes only under the INCLUSIVE reading) — proving the rule means the newline is INCLUDED, not excluded. Fixed with a new commit `7e35635a` before C2 rather than an amend, per the repository's git-safety default (new commits, not history rewrites). **This makes the round eight commits instead of the block's planned seven** (C0a, C0b, C1, C1-fix, C2, C3, C4, C5) — an undeclared-shape departure from the exact Bundle sequence, declared here per R-0485's rule that a reordering/insertion is a deviation even when correct and even where the commit table already shows it. All downstream extractions (RECORD3, PROSESLIP3, all six code pairs) used the corrected (inclusive) extractor from the start and needed no correction.
+2. **G4's `DECISION` count reads 20, not the block's stated 19.** See the DECLARED DISCREPANCY paragraph under G4 above. My own methodology is a plain line-anchored regex over genuine `DECISION <feature> D<n> — ` headers, spot-checked by listing all 20 and confirming none is a duplicate or an incidental prose match. The invariant G4 actually gates — unmoved across C1/C2 — holds under either reading (20 before, 20 after; and separately, 19 would also have stayed 19 had that been the correct baseline), so nothing this round did depends on which absolute number is right. Not resolved further because reconciling it would mean re-deriving the reviewer's own private counting script from ~1.8MB of narrative prose, which is out of this round's Change set and this round mints no DECISION id regardless.
+3. No other departure from the block's ordered C0a→C0b→C1→C2→C3→C4→C5 bundle SHAPE beyond item 1's extra commit — every named path in the Change set was touched exactly as ordered, and no path outside it was touched.
 
 ## Next
 
-T001b: apply the identical mechanical `supports_resume`/`resume` surface to `ClaudeProvider` and `ClaudeCliProvider` (no new design, same shape as this round's Protocol/FakeProvider addition) — round 3.
+T001c: write `tests/orchestration/test_session_resume.py` covering all three adapters' (`FakeProvider`, `ClaudeProvider`, `ClaudeCliProvider`) `supports_resume`/`resume`/evidence-field shape, closing T001 — round 4. T002 (repair-path integration) can start once T001 closes.
