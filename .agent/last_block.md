@@ -1,95 +1,103 @@
-# STEP R1/F258 — CLAIM THE FEATURE, DISCHARGE THE F040 CLOSURE CANDIDATE, MEASURE THE SEAMS
+# STEP R2/F258 — T001 PART 1: THE QUEUE SCHEMA MOVES TO V2 (THE PROVENANCE FIELD)
 
-Goal: open F258 on its own branch, settle the one candidate F040's closure gate
-left in `.agent/candidates.md` so the block condition lifts, and MEASURE the
-queue/planner/execution/budget/ledger seams T001-T003 compose over — recording
-what is there, and what is not.
+Goal: bump the self-use queue schema to v2, adding a required `provenance`
+field naming each item's source, migrate the four shipped items to carry one,
+and keep both existing test files and the two docs that describe the format
+in step — all in this one round, so the shipped file and its loader never
+disagree at any commit. The generator itself (the source-priority search that
+WRITES a generated item) is the NEXT round, not this one.
 
-Base: `18ae71293cde9b1157aca35d3d02c3a8f4265813`, the merge commit of pull
-request 225 and the current tip of `main`. Cut the branch from it.
-
-Branch: `feature/f258-self-use-v2`
+Base: `d3913f60`, round 1's handback commit and the tip of
+`feature/f258-self-use-v2`. Stay on that branch. Open no pull request.
 
 ## Bundle, in commit order
 
-- C0a save this block verbatim to `.agent/authored/f258-r1.md`
+- C0a save this block verbatim to `.agent/authored/f258-r2.md`
 - C0b mirror the same bytes into `.agent/last_block.md`
-- C1  rewrite `.agent/plan.md` from slice PLAN1
-- C2  append slice RECORD1 to `.agent/live_review.md`
-- C3  rewrite `.agent/candidates.md` from slice CAND1
-- C4  apply pair PAIR-STATUS to `docs/roadmap/STATUS.md`
-- C5  rewrite `.agent/context.md` from slice CONTEXT1
-- C6  write `.agent/f258_inventory.md` — YOUR measurement, per the SPEC below
-- C7  rewrite `.agent/handoff.md` — the handback
+- C1  rewrite `.agent/plan.md` from slice PLAN2
+- C2  append slice RECORD2 to `.agent/live_review.md`
+- C3  apply the six PAIR-Q* pairs to `packages/orchestration/self_use_queue.py`
+- C4  apply the PAIR-TQ* pairs to `tests/orchestration/test_self_use_queue.py`
+- C5  apply the three PAIR-TJ* pairs to `tests/orchestration/test_self_use_job.py`
+- C6  apply the six PAIR-JSON* pairs to `scripts/self_use_queue.json`
+- C7  apply the three PAIR-DOC* pairs to `docs/system/self-use-track-v1.md`
+- C8  apply pair PAIR-F257AMEND to `docs/roadmap/features/T5_F257.md`
+- C9  rewrite `.agent/handoff.md` — the handback
 
 ## Change set — exactly these paths, nothing else
 
-    .agent/authored/f258-r1.md
+    .agent/authored/f258-r2.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    .agent/candidates.md
-    docs/roadmap/STATUS.md
-    .agent/context.md
-    .agent/f258_inventory.md
+    packages/orchestration/self_use_queue.py
+    tests/orchestration/test_self_use_queue.py
+    tests/orchestration/test_self_use_job.py
+    scripts/self_use_queue.json
+    docs/system/self-use-track-v1.md
+    docs/roadmap/features/T5_F257.md
     .agent/handoff.md
 
-No file under `packages/`, `apps/`, `tests/`, `docs/guides/`, `docs/system/` or
-`docs/roadmap/features/` changes this round. This round writes NO production code
-and NO test.
+`.agent/context.md` is NOT touched this round — nothing in it (Active Branch,
+Scope, Do-not-touch, Assumptions, Constraints) changed by this round's work;
+both of its Assumptions from round 1 are still exactly true after this round.
+No file under `apps/` changes. No NEW module is created this round —
+`packages/orchestration/self_use_generator.py` is the next round's work.
 
 ## Constraints
 
-1. Apply every slice BYTE FOR BYTE. Do not fix, rewrap, retitle or improve a
-   slice. If a slice looks wrong, apply it as given and DECLARE the problem in
-   the handback's deviations — that is the honest route and it costs nothing.
-2. C0a is a COPY, never a retype: the block is on disk at
-   `.remedy-wt/f258-r1-block.md`. Use `shutil.copyfile` for C0a and again for
+1. Apply every slice and every pair BYTE FOR BYTE. Do not fix, rewrap, retitle
+   or improve one. If something looks wrong, apply it as given and DECLARE the
+   problem in the handback's deviations.
+2. C0a is a COPY, never a retype: the block is at
+   `.remedy-wt/f258-r2-block.md`. Use `shutil.copyfile` for C0a and again for
    C0b. Its sha256 is stated in gate G1; verify BEFORE saving.
-3. C1 is the FIRST substantive commit, ahead of C2, because this round touches
-   the finding ledger and AGENTS.md's Commit Gate requires `.agent/plan.md` to
-   match the current work before every commit.
-4. The record is APPEND-ONLY. C2 appends RECORD1 and revises NOTHING already in
-   `.agent/live_review.md`. R-0570's landed paragraph is NOT edited.
-5. NO NEW R-ID IS MINTED THIS ROUND and NO DECISION ID IS MINTED THIS ROUND. The
-   count of distinct `^- R-\d+ — ` ids is the same before and after C2, and the
-   count of distinct `^DECISION F258 D\d+ — ` ids is zero before and after.
-   R-0570 stays OPEN — do not write a `Done:` or `Landed:` line for it.
-6. `.agent/plan.md` stays under 50 lines (AGENTS.md). PLAN1 is authored to fit;
-   do not add to it.
-7. Every exit code you report is REAL, taken from `subprocess.run(...).returncode`
-   inside a script under the gitignored `.remedy-wt/`. Never read an exit code
-   through a pipe, and never report a colour you did not run.
-8. Destructive verification — if any — runs ONLY inside a disposable
-   `git worktree`, never in the primary checkout, which satisfies
-   `git status --porcelain` empty at every reading. This round mints no G3
-   negative control byte-flip requirement beyond the standard record-append
-   readings below; if you choose to run one anyway, isolate it the same way.
-9. The `remedy` console script is DENIED in this sandbox. Where you need it, use
-   `python3 -m apps.cli.grouped ...` and say so.
-10. Commit subjects carry no leading-slash token, no absolute path and no
-    secret-like string. Match the branch convention: no `Co-Authored-By` trailer.
-11. Push the branch after C7 and open NO pull request. This is round 1 of the
-    feature; the PR is created at closure.
-12. Pair shape, measured not asserted — PAIR-STATUS: `TO contains FROM: false`,
-    so it is a REWRITE, and the FROM-zero / TO-one count applies to it.
-13. The inventory (C6) is a MEASUREMENT, not a design. Where something is
-    ABSENT, say so and say how you searched — an absence is only as wide as the
-    search that looked for it. Cite every claim with a `file:line` and the exact
-    command that produced it.
+3. C1 is the FIRST substantive commit, ahead of C2, per AGENTS.md's Commit Gate.
+4. `.agent/live_review.md` is APPEND-ONLY. C2 appends RECORD2 and revises
+   NOTHING already there.
+5. Every PAIR below is applied with the SAME method: read the file as text,
+   assert `text.count(FROM) == 1` (refuse and declare a deviation if it is not
+   exactly 1 — never apply a pair that is not uniquely anchored), then
+   `text.replace(FROM, TO, 1)`, then write the file back. Do this in a small
+   script under `.remedy-wt/`, one script per target file is fine, and report
+   each pair's before/after occurrence counts in the handback.
+6. `.agent/plan.md` stays under 50 lines.
+7. Every exit code you report is REAL, from `subprocess.run(...).returncode` in
+   a script under the gitignored `.remedy-wt/`, never through a pipe.
+8. The mutation red-proof (G5) runs ONLY inside a disposable `git worktree`,
+   never in the primary checkout: purge every `__pycache__` under
+   `packages/orchestration/` and `tests/orchestration/` inside that worktree
+   and run with `python3 -B`. The primary checkout is `git status --porcelain`
+   empty at every reading.
+9. `packages/orchestration/self_use_queue.py` is an EXISTING module already
+   swept by repo-wide guards (the `REMEDY_DATA_DIR` single-reader invariant,
+   the path-utils single-implementation invariant, the bare-`except: pass`
+   ban, the development-artifact boundary) — none of this round's six pairs
+   introduces a new import, a new path reference, or a new exception handler,
+   so no new guard surface is created, but confirm this by reading the diff
+   yourself before committing rather than assuming it from this sentence.
+10. `scripts/self_use_queue.json` must be valid JSON after C6 — parse it with
+    `json.loads` immediately after writing and before committing; if it does
+    not parse, STOP and declare rather than committing broken JSON.
+11. The `remedy` console script is DENIED in this sandbox; use
+    `python3 -m apps.cli.grouped ...` if needed and say so.
+12. Commit subjects carry no leading-slash token, no absolute path, no
+    secret-like string, and no `Co-Authored-By` trailer.
+13. Push after C9. No pull request, no merge, no force-push.
+14. NO NEW R-ID IS MINTED THIS ROUND. Exactly one new `^DECISION F258 D\d+ — `
+    id is minted: `D1`. `R-0570` stays OPEN.
 
 ## Slices
 
-The authored units below are PLAN1, RECORD1, CAND1, CONTEXT1 and the two halves
-of PAIR-STATUS. Each is delimited by its own BEGIN and END marker line; the
-marker lines are NOT part of the slice, and the slice's own bytes start on the
-line after BEGIN and end with the newline before END.
+The authored units are PLAN2 and RECORD2, each between its own BEGIN/END
+marker line. The markers are NOT part of the unit; the unit starts on the line
+after BEGIN and ends with the newline before END.
 
-<<<BEGIN PLAN1
+<<<BEGIN PLAN2
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 1, opening the feature.
+commit of pull request 225. SESSION 1, round 2.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -103,242 +111,553 @@ standard finding ledger.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the F040 closure candidate | done | this round; no id spent |
-| the F258 claim and the branch | done | this round |
-| the seam inventory | done | this round, `.agent/f258_inventory.md` |
-| T001 the self-replenishing generator | open | next round, ordered from the inventory |
+| the F040 closure candidate | done | round 1 |
+| the F258 claim and the seam inventory | done | round 1 |
+| T001 part 1 — schema v2, the provenance field | done | this round |
+| T001 part 2 — the generator module | open | next round |
 | T002 consumed means executed | open | |
 | T003 findings flow back | open | |
 
 ## Next Steps
-1. This round claims F258, discharges the one candidate F040's closure gate
-   raised (new evidence on the already-open R-0570, no new id), and measures
-   the queue/planner/job-execution/budget/approval seams T001-T003 compose
-   over.
-2. The round after it orders T001 — the generator's source-priority logic and
-   its `provenance` field — from what the inventory measured; there is
-   currently NO code caller of `plan_next_self_use_item` at any closure point,
-   so the inventory names exactly what today's manual precondition-6 step
-   does instead.
-3. T002 depends on T001 producing a real item to run against; T003 is largely
-   wiring existing finding-ledger machinery once T002 exists.
+1. This round bumps the self-use queue schema to v2 (DECISION F258 D1): a
+   required `provenance` field joins the five existing keys, the shipped
+   queue's four items are migrated in the same commit range, and both test
+   files plus the two describing docs are kept in step.
+2. The round after it builds `packages/orchestration/self_use_generator.py`,
+   the source-priority search itself, using round 1's inventory finding that
+   no code caller of `plan_next_self_use_item` exists today.
+3. T002 depends on T001 producing a real item to run against; T003 wires
+   existing finding-ledger machinery once T002 exists.
 
 ## Risks
-- R-0570 (Low) stays OPEN and is deliberately NOT repaired here — same reason
-  as F040's own round 1: the fix edits `README.md` and a test neither F258
-  owns, and AGENTS.md forbids mixing an unrelated fix into a feature branch.
-- The queue's `consumed_by`-is-closure-only invariant (DECISION F257 D2) binds
-  T001: the generator may APPEND a new pending item but must never be the
-  thing that marks one consumed.
-<<<END PLAN1
+- R-0570 (Low) stays OPEN, routed away, unrelated to this branch.
+- The version check stays an EXACT match, not a range (DECISION F258 D1): a
+  v1-shaped file is refused after this round, by design, symmetric with the
+  existing "a file from the future is refused" rule.
+<<<END PLAN2
 
-<<<BEGIN RECORD1
-Note: F258 — A THIRD OCCURRENCE OF THE SAME OPEN DEFECT, R-0570, IS DISCHARGED AS NEW EVIDENCE AND THE CANDIDATE FILE THAT CARRIED IT IS EMPTIED; NO ID IS SPENT. F040's own closure round (C3, commit `0ec9bb37`) recorded exactly one candidate: the README's "Accepted in Tier 5 so far:" prose list was one paragraph short of the ledger's Tier 5 accepted count, F033 named in neither. THE NEW EVIDENCE, measured by the reviewer at `18ae7129` (the merged tip of `main`, pull request 225): the Tier 5 prose block still names exactly eleven ids — F255, F008, F009, F021, F022, F031, F032, F037, F256, F257 and now F040 — while `docs/roadmap/STATUS.md`'s Tier 5 block carries TWELVE lines matching `^- \[x\] F\d{3} — `, F033 still the omitted twelfth, and the tier table at `README.md` line 28 reads `| 5 | Operator Cockpit | 12 | 32 |`. This is the same shape R-0570 already describes — a list pinned in the list→ledger direction only, per `test_the_readme_reports_the_accepted_foundation_and_no_later_feature` in `tests/docs/test_docs_consistency.py`, which iterates the ids the README LISTS and asserts each is accepted, so an accepted feature the README omits stays invisible to it. R-0570 STAYS OPEN and its routing is unchanged: the fix edits `README.md` and that test, neither of which F258 owns, so it belongs to the same paydown branch R-0570's own text names.
-<<<END RECORD1
+<<<BEGIN RECORD2
+DECISION F258 D1 — THE QUEUE SCHEMA MOVES TO V2 BY EXACT-MATCH BREAK, ADDING A REQUIRED `provenance` FIELD; THE GENERATOR ITSELF IS THE NEXT ROUND, NOT THIS ONE. THE PROBLEM: F258's T001 needs a `provenance` field naming each item's source, but round 1's inventory measured that `_ITEM_KEYS` at `packages/orchestration/self_use_queue.py:69` validates an item's key set for EQUALITY against a fixed five-tuple, refusing anything else, and `load_self_use_queue`'s version check at `packages/orchestration/self_use_queue.py:134-136` is an EXACT match against `SELF_USE_QUEUE_SCHEMA_VERSION`, not a range — so a sixth key on any item is refused today regardless of `schema_version`. CHOSEN: bump `SELF_USE_QUEUE_SCHEMA_VERSION` 1 to 2; extend `_ITEM_KEYS` to six, adding `provenance`; require it as a non-blank string alongside `id`/`title`/`why`/`job_markdown` in the same validation loop; migrate all four shipped items (SU-001 through SU-004) to carry one in the SAME commit range that ships the code, so the shipped file and its loader never disagree at any commit. This is a HARD break, not a soft extension: a v1-shaped file (schema_version 1, five keys) is REFUSED after this round, exactly as `load_self_use_queue`'s own docstring already promises for "a file from the future" — here it is a file from the PAST that is refused, symmetric with that same exact-match discipline. `provenance` for the four existing items reads "operator-curated (F257, 2026-08-29)" for SU-001 (consumed, curated at F257's own session) and "operator-curated (amend0829-selfuse-v2, 2026-08-29)" for SU-002 through SU-004 (curated at the amend0829-selfuse-v2 session, already named in the file's own description), both dated, both naming the actual curating session rather than a placeholder. ALTERNATIVES CONSIDERED: (a) make `provenance` OPTIONAL, defaulting to `""` when absent, so `SELF_USE_QUEUE_SCHEMA_VERSION` would not need to move — rejected, because an optional field a human-curated item is free to skip is exactly the shape that lets a FUTURE generated item's provenance go missing silently too, and this module's own "deliberate absences" convention already treats a required field's absence as a raise, never a default; (b) accept BOTH schema_version 1 and 2 during a transition window — rejected as unnecessary complexity for a shipped file this feature branch itself controls and migrates atomically, with no external consumer of the v1 shape to support; (c) build the generator module in the SAME round as the schema bump — rejected on round-size grounds (AGENTS.md small-commits discipline): the schema change and its four-file ripple (the module, both test files, the shipped JSON) is a complete, independently reviewable unit on its own, and the generator's own source-priority logic deserves a round where it is the only new decision under review. HOW TO REVERSE: revert `SELF_USE_QUEUE_SCHEMA_VERSION` to 1, drop `provenance` from `_ITEM_KEYS` and the required-fields loop, drop the field from `SelfUseQueueEntry`, and revert the four migrated items and the two test files to their pre-round shape — independent, mechanical reversions, none of which touches any OTHER feature's code, since `self_use_job.py` constructs no `SelfUseQueueEntry` itself and needs no change either way. WHAT IT COSTS TO BE WRONG HERE: if `provenance`'s chosen wording convention turns out not to fit what the round-3 generator needs to write, only the STRING CONTENT changes — the field, the schema version and every validation rule stay exactly as this round ships them.
+<<<END RECORD2
 
-<<<BEGIN CAND1
-# Closure Candidates — carrier of record
+## PAIR-Q* — `packages/orchestration/self_use_queue.py` (six pairs)
 
-> Written per docs/roadmap/STATUS_closure_protocol.md ("Closure-candidate
-> findings", disk-vehicle rule, operator ruling 2026-08-01). Read at Window-1
-> session bootstrap (docs/agents/planner_reviewer_prompt.md §1). One entry per
-> candidate: description · source feature · date. Any entry present at
-> feature-claim time is a block condition.
+Apply all six. Each FROM occurs exactly once in the file before C3; verify
+that yourself and report it.
 
-EMPTY — no candidate is open.
+<<<BEGIN PAIRQ1-FROM
+SELF_USE_QUEUE_SCHEMA_VERSION = 1
+<<<END PAIRQ1-FROM
+<<<BEGIN PAIRQ1-TO
+SELF_USE_QUEUE_SCHEMA_VERSION = 2
+<<<END PAIRQ1-TO
 
-The one entry F040's closure gate raised was discharged in F258 round 1 as new
-evidence on the already-open finding `R-0570` in `.agent/live_review.md`; no id
-was spent. The two entries F033's closure gate raised before it were discharged
-the same way in F040 round 1.
-<<<END CAND1
+<<<BEGIN PAIRQ2-FROM
+#: The five keys an item carries — no more, no fewer.  An unexpected key is a
+#: curation mistake or a format drift, and either way it is refused.
+_ITEM_KEYS: tuple[str, ...] = ("id", "title", "why", "job_markdown", "consumed_by")
+<<<END PAIRQ2-FROM
+<<<BEGIN PAIRQ2-TO
+#: The six keys an item carries — no more, no fewer.  An unexpected key is a
+#: curation mistake or a format drift, and either way it is refused.  Schema v2
+#: (F258) added ``provenance``; every v1 item was migrated to carry one.
+_ITEM_KEYS: tuple[str, ...] = ("id", "title", "why", "job_markdown", "consumed_by", "provenance")
+<<<END PAIRQ2-TO
 
-<<<BEGIN CONTEXT1
-# Context — F258 Self-use track v2
+<<<BEGIN PAIRQ3-FROM
+            object or whose keys are not exactly the five this module names,
+<<<END PAIRQ3-FROM
+<<<BEGIN PAIRQ3-TO
+            object or whose keys are not exactly the six this module names,
+<<<END PAIRQ3-TO
 
-## Active Branch
-feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge commit of
-pull request 225, which is the commit that accepted F040 into the ledger.
+<<<BEGIN PAIRQ4-FROM
+    id: str
+    title: str
+    why: str
+    job_markdown: str
+    consumed_by: str
 
-## Scope
-Feature F258, `docs/roadmap/features/T5_F258.md` — a self-replenishing queue
-generator that fires at the closure consumption point whenever the queue is
-empty (T001), executing the consumed item through the real job path under a
-small dedicated budget to the normal approval gate rather than only planning
-it (T002), and routing any defect a run surfaces into the standard finding
-ledger (T003).
+    @property
+<<<END PAIRQ4-FROM
+<<<BEGIN PAIRQ4-TO
+    id: str
+    title: str
+    why: str
+    job_markdown: str
+    consumed_by: str
+    provenance: str
 
-## Do not touch
-The scope-fence builtin deny list (F017), the normal approval gate, and STATUS
-semantics — a job must never check itself off — per the feature file's own
-Do-not-touch. The v1 queue schema's existing fields (`id`, `title`, `why`,
-`job_markdown`, `consumed_by`) are extended, never replaced, so
-`packages/orchestration/self_use_queue.py`'s existing readers keep working
-against a v2 queue file.
+    @property
+<<<END PAIRQ4-TO
 
-## Assumptions
-- `next_self_use_item`/`plan_next_self_use_item` currently have NO production
-  caller anywhere in `packages/` or `apps/`: precondition 6
-  (`docs/roadmap/STATUS_closure_protocol.md`) today is a manual step a session
-  performs by hand at every closure. What T001's generator hooks INTO is
-  decided from the round-1 inventory's measurement, not assumed here.
-- Consumption stays closure-only (DECISION F257 D2): T001 may append a new
-  pending item to the queue but must never be the thing that sets
-  `consumed_by`, and T002's execution must never auto-promote past the
-  existing `--approve` barrier.
+<<<BEGIN PAIRQ5-FROM
+        for field_name in ("id", "title", "why", "job_markdown"):
+<<<END PAIRQ5-FROM
+<<<BEGIN PAIRQ5-TO
+        for field_name in ("id", "title", "why", "job_markdown", "provenance"):
+<<<END PAIRQ5-TO
 
-## Constraints
-The bullets in this first group are STANDING project constraints, carried
-forward from the context this file replaced. They are not this feature's, and
-deleting them with the rest of a rewrite is what cost an earlier round a red
-CI run.
+<<<BEGIN PAIRQ6-FROM
+        entries.append(SelfUseQueueEntry(
+            id=item_id,
+            title=raw["title"],
+            why=raw["why"],
+            job_markdown=raw["job_markdown"],
+            consumed_by=consumed_by,
+        ))
+<<<END PAIRQ6-FROM
+<<<BEGIN PAIRQ6-TO
+        entries.append(SelfUseQueueEntry(
+            id=item_id,
+            title=raw["title"],
+            why=raw["why"],
+            job_markdown=raw["job_markdown"],
+            consumed_by=consumed_by,
+            provenance=raw["provenance"],
+        ))
+<<<END PAIRQ6-TO
 
-- A round touching `docs/roadmap/**` also gates
-  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
-- A round rewriting `.agent/` state gates the four state readers:
-  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
-  `tests/regression/test_resource_safety.py` and
-  `tests/orchestration/test_integrity_gate.py`.
-- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
-- Destructive verification runs only inside a disposable git worktree, never in
-  the primary checkout, which satisfies `git status --porcelain` empty at every
-  verdict.
-- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The full contract those
-  readers hold over the three state files, so a rewrite is checked against it
-  directly rather than rediscovered from a red: this file carries
-  `## Active Branch`, a `feature/` branch name, a roadmap feature id matching
-  `\bF\d{3}\b` and the word `Steps`; `.agent/plan.md` carries `## Goal`,
-  `## Next Steps` and a feature id; `.agent/live_review.md` carries `Steps`.
-- A new module under `packages/orchestration/` is swept by repo-wide guards that
-  name no path: the `REMEDY_DATA_DIR` single-reader invariant, the path-utils
-  single-implementation invariant, the bare-`except: pass` ban, and the
-  development-artifact boundary.
+## PAIR-TQ* — `tests/orchestration/test_self_use_queue.py`
 
-This feature is NOT UI work — no design-reference binding applies. The
-Do-not-touch above carries the two constraints specific to F258 itself: no
-self-consumption-marking, no auto-promotion past `--approve`.
+<<<BEGIN PAIRTQ1-FROM
+_ONE_ITEM = {
+    "id": "SU-001",
+    "title": "A curated item",
+    "why": "Because a reader would look here and find nothing.",
+    "job_markdown": "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n",
+    "consumed_by": "",
+}
+<<<END PAIRTQ1-FROM
+<<<BEGIN PAIRTQ1-TO
+_ONE_ITEM = {
+    "id": "SU-001",
+    "title": "A curated item",
+    "why": "Because a reader would look here and find nothing.",
+    "job_markdown": "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n",
+    "consumed_by": "",
+    "provenance": "operator-curated (fixture)",
+}
+<<<END PAIRTQ1-TO
 
-## Steps
-The item-status table for this feature lives in the `## Current Step` section
-of `.agent/plan.md`. This file deliberately does not restate it — a second copy
-of the map is what fell out of step and cost F022 a finding.
-<<<END CONTEXT1
+<<<BEGIN PAIRTQ2-FROM
+def _queue_body(items: list[dict], schema_version: int = 1) -> dict:
+<<<END PAIRTQ2-FROM
+<<<BEGIN PAIRTQ2-TO
+def _queue_body(items: list[dict], schema_version: int = 2) -> dict:
+<<<END PAIRTQ2-TO
 
-<<<BEGIN PAIRSTATUS-FROM
-- [ ] F258 — Self-use track v2 (self-replenishing queue & executed items)
-<<<END PAIRSTATUS-FROM
+<<<BEGIN PAIRTQ3-FROM
+    def test_shipped_ids_are_unique_and_match_the_pattern(self):
+        import re
 
-<<<BEGIN PAIRSTATUS-TO
-- [~] F258 — Self-use track v2 (self-replenishing queue & executed items)
-<<<END PAIRSTATUS-TO
+        ids = [entry.id for entry in load_self_use_queue()]
+        assert len(set(ids)) == len(ids), f"duplicate ids: {sorted(ids)}"
+        for item_id in ids:
+            assert re.match(r"^SU-\d{3}$", item_id), item_id
 
-## SPEC for C6 — `.agent/f258_inventory.md`, YOUR measurement
 
-This file is NOT authored above and must not be invented. MEASURE the repository
-at C5 and write what you find, with a `file:line` for every claim and the exact
-command beside every count. Where something is ABSENT, say so and say how you
-searched. Six sections, in this order:
+class TestShippedQueueParsesAsJobs:
+<<<END PAIRTQ3-FROM
+<<<BEGIN PAIRTQ3-TO
+    def test_shipped_ids_are_unique_and_match_the_pattern(self):
+        import re
 
-1. THE QUEUE SCHEMA AND ITS V1 CONTRACT. `packages/orchestration/self_use_queue.py`:
-   the exact fields of `SelfUseQueueEntry` and `_ITEM_KEYS`, `SELF_USE_QUEUE_SCHEMA_VERSION`,
-   the id regex, and the signatures and return types of `load_self_use_queue`,
-   `pending_self_use_items` and `next_self_use_item`. Quote the exact validation
-   code that would reject an unknown key (e.g. a new `provenance` field) today,
-   and state what a schema-version bump would need to touch for v2 to add one.
+        ids = [entry.id for entry in load_self_use_queue()]
+        assert len(set(ids)) == len(ids), f"duplicate ids: {sorted(ids)}"
+        for item_id in ids:
+            assert re.match(r"^SU-\d{3}$", item_id), item_id
 
-2. THE PLANNER SEAM. `packages/orchestration/self_use_job.py`: the signatures of
-   `write_self_use_job_file`, `plan_self_use_item` and `plan_next_self_use_item`.
-   `packages/orchestration/pingpong_job.py`'s `plan_job_from_file`: what it
-   requires as input and the exact shape of the `JobPlan` (or equivalent) it
-   returns.
+    def test_every_shipped_item_carries_a_non_blank_provenance(self):
+        for entry in load_self_use_queue():
+            assert entry.provenance.strip(), f"{entry.id}: blank provenance"
 
-3. THE CLOSURE CONSUMPTION POINT TODAY — SEARCH FOR IT AND REPORT THE RESULT.
-   Grep `plan_next_self_use_item` and `next_self_use_item` across `packages/`
-   and `apps/`, excluding test files, and report every call site your own
-   commands find. Quote `docs/roadmap/STATUS_closure_protocol.md` precondition
-   6's exact text and state plainly whether it names a code hook or a manual,
-   by-hand step performed once per session at closure.
 
-4. THE JOB EXECUTION PATH TO "A REAL RUN". `apps/cli/commands/job.py`: name
-   every subcommand between job creation and the approval gate a self-use
-   item's execution would pass through — creation, repo-attach, permission
-   setting, the run-loop/run-cycles entry point — and quote each one's
-   registration line in `apps/cli/command_catalog.py`. Name where
-   `packages/orchestration/job_promote.py`'s `promote_job` sits as the manual
-   `--approve` barrier, and name the worktree-isolation seam (F006) a self-use
-   run would need for "an isolated worktree".
+class TestEntryCarriesProvenance:
+    """The loaded entry's provenance is the JSON value, verbatim."""
 
-5. THE BUDGET MACHINERY FOR "A SMALL DEDICATED BUDGET". Name the module and
-   CLI surface (`_cmd_job_budget` and whatever it calls) that sets a per-job
-   budget limit, and the F104 hard-enforcement module. State the exact
-   flag/field a caller sets to keep a self-use run small.
+    def test_provenance_round_trips_from_the_file(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item(provenance="a generator run")]))
+        entry = next_self_use_item(path)
+        assert entry is not None
+        assert entry.provenance == "a generator run"
 
-6. THE FINDING LEDGER'S OWN SHAPE, for T003. Count, with the exact commands you
-   ran, the current distinct `^- R-\d+ — ` and `^Done: R-\d+` lines in
-   `.agent/live_review.md`, and quote one OPEN Medium or Low finding's exact
-   severity-and-status text so a future "self-contained, repo-scoped,
-   repairable as one small job" filter has a real string shape to grep for.
-   Name `tests/orchestration/test_self_use_queue.py` and
-   `tests/orchestration/test_self_use_job.py` as the fixture style T001-T003's
-   own tests should follow, quoting one existing test function's name from
-   each.
 
-Report every ABSENCE explicitly. A section that says "not found, searched with
-<command>" is worth more than a confident guess, and this inventory is the
-evidence the T001 order is built from.
+class TestShippedQueueParsesAsJobs:
+<<<END PAIRTQ3-TO
+
+<<<BEGIN PAIRTQ4-FROM
+    def test_shipped_queue_declares_schema_version_one(self):
+        body = json.loads(default_self_use_queue_path().read_text(encoding="utf-8"))
+        assert body["schema_version"] == SELF_USE_QUEUE_SCHEMA_VERSION == 1
+<<<END PAIRTQ4-FROM
+<<<BEGIN PAIRTQ4-TO
+    def test_shipped_queue_declares_schema_version_two(self):
+        body = json.loads(default_self_use_queue_path().read_text(encoding="utf-8"))
+        assert body["schema_version"] == SELF_USE_QUEUE_SCHEMA_VERSION == 2
+<<<END PAIRTQ4-TO
+
+<<<BEGIN PAIRTQ5-FROM
+    def test_wrong_schema_version_raises(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item()], schema_version=2))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+<<<END PAIRTQ5-FROM
+<<<BEGIN PAIRTQ5-TO
+    def test_wrong_schema_version_raises(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item()], schema_version=3))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_old_v1_shaped_file_is_refused(self, tmp_path: Path):
+        v1_item = _item()
+        del v1_item["provenance"]
+        path = _write_queue(tmp_path, {
+            "schema_version": 1,
+            "description": "fixture queue",
+            "items": [v1_item],
+        })
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+<<<END PAIRTQ5-TO
+
+<<<BEGIN PAIRTQ6-FROM
+    def test_id_not_matching_the_pattern_raises(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item(id="SU-1")]))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_empty_queue_is_not_an_error(self, tmp_path: Path):
+<<<END PAIRTQ6-FROM
+<<<BEGIN PAIRTQ6-TO
+    def test_id_not_matching_the_pattern_raises(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item(id="SU-1")]))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_missing_provenance_raises(self, tmp_path: Path):
+        broken = _item()
+        del broken["provenance"]
+        path = _write_queue(tmp_path, _queue_body([broken]))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_blank_provenance_raises(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item(provenance="   ")]))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_empty_queue_is_not_an_error(self, tmp_path: Path):
+<<<END PAIRTQ6-TO
+
+## PAIR-TJ* — `tests/orchestration/test_self_use_job.py`
+
+<<<BEGIN PAIRTJ1-FROM
+def _entry(**overrides) -> SelfUseQueueEntry:
+    fields = {
+        "id": "SU-042",
+        "title": "A curated item",
+        "why": "Because the track must run on something.",
+        "job_markdown": "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n",
+        "consumed_by": "",
+    }
+    fields.update(overrides)
+    return SelfUseQueueEntry(**fields)
+<<<END PAIRTJ1-FROM
+<<<BEGIN PAIRTJ1-TO
+def _entry(**overrides) -> SelfUseQueueEntry:
+    fields = {
+        "id": "SU-042",
+        "title": "A curated item",
+        "why": "Because the track must run on something.",
+        "job_markdown": "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n",
+        "consumed_by": "",
+        "provenance": "operator-curated (fixture)",
+    }
+    fields.update(overrides)
+    return SelfUseQueueEntry(**fields)
+<<<END PAIRTJ1-TO
+
+<<<BEGIN PAIRTJ2-FROM
+def _write_queue(tmp_path: Path, items: list[dict]) -> Path:
+    path = tmp_path / "self_use_queue.json"
+    body = {
+        "schema_version": 1,
+        "description": "fixture queue",
+        "items": items,
+    }
+    path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    return path
+<<<END PAIRTJ2-FROM
+<<<BEGIN PAIRTJ2-TO
+def _write_queue(tmp_path: Path, items: list[dict]) -> Path:
+    path = tmp_path / "self_use_queue.json"
+    body = {
+        "schema_version": 2,
+        "description": "fixture queue",
+        "items": items,
+    }
+    path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    return path
+<<<END PAIRTJ2-TO
+
+<<<BEGIN PAIRTJ3-FROM
+        consumed = dict(
+            id="SU-001",
+            title="Already done",
+            why="Every item here carries a consumer.",
+            job_markdown="# Job: Demo\n\n## Task 1\nDo it.\n\nAcceptance:\n- done\n",
+            consumed_by="F256",
+        )
+<<<END PAIRTJ3-FROM
+<<<BEGIN PAIRTJ3-TO
+        consumed = dict(
+            id="SU-001",
+            title="Already done",
+            why="Every item here carries a consumer.",
+            job_markdown="# Job: Demo\n\n## Task 1\nDo it.\n\nAcceptance:\n- done\n",
+            consumed_by="F256",
+            provenance="operator-curated (fixture)",
+        )
+<<<END PAIRTJ3-TO
+
+## PAIR-JSON* — `scripts/self_use_queue.json` (six pairs, applied in this order)
+
+<<<BEGIN PAIRJSON1-FROM
+  "schema_version": 1,
+<<<END PAIRJSON1-FROM
+<<<BEGIN PAIRJSON1-TO
+  "schema_version": 2,
+<<<END PAIRJSON1-TO
+
+<<<BEGIN PAIRJSON2-FROM
+  "description": "F257 — the self-use queue Remedy runs against its own repository. Operator-curated DATA, not discovery: Remedy never invents an item and never appends one. Exactly one item is consumed per feature close, and an item is marked consumed by the closure round and NEVER by a job, because a run that can check itself off is not a gate. Mark an item consumed by setting its consumed_by to the feature id that consumed it; the loader packages/orchestration/self_use_queue.py reads this file and ships no writer. Dated note, 2026-08-29 (amend0829-selfuse-v2): items SU-002, SU-003 and SU-004 were curated in this session on operator authority — grepping the reviewer ledger for open self-contained Medium findings (SU-003, SU-004) and grepping docs/ for a page contradicting shipped code (SU-002) — exactly the research the future F258 generator will automate.",
+<<<END PAIRJSON2-FROM
+<<<BEGIN PAIRJSON2-TO
+  "description": "F257 — the self-use queue Remedy runs against its own repository. Operator-curated DATA, not discovery: Remedy never invents an item and never appends one. Exactly one item is consumed per feature close, and an item is marked consumed by the closure round and NEVER by a job, because a run that can check itself off is not a gate. Mark an item consumed by setting its consumed_by to the feature id that consumed it; the loader packages/orchestration/self_use_queue.py reads this file and ships no writer. Dated note, 2026-08-29 (amend0829-selfuse-v2): items SU-002, SU-003 and SU-004 were curated in this session on operator authority — grepping the reviewer ledger for open self-contained Medium findings (SU-003, SU-004) and grepping docs/ for a page contradicting shipped code (SU-002) — exactly the research the future F258 generator will automate. Dated note, 2026-08-30 (F258 round 2): schema_version moved to 2, adding a required provenance field naming each item's source; every existing item below was migrated to carry one, each 'operator-curated' since none was yet generated by code.",
+<<<END PAIRJSON2-TO
+
+<<<BEGIN PAIRJSON3-FROM
+      "consumed_by": "F257"
+    },
+<<<END PAIRJSON3-FROM
+<<<BEGIN PAIRJSON3-TO
+      "consumed_by": "F257",
+      "provenance": "operator-curated (F257, 2026-08-29)"
+    },
+<<<END PAIRJSON3-TO
+
+<<<BEGIN PAIRJSON4-FROM
+- `python3 -m pytest tests/docs/ -q` stays green.\n",
+      "consumed_by": ""
+    },
+<<<END PAIRJSON4-FROM
+<<<BEGIN PAIRJSON4-TO
+- `python3 -m pytest tests/docs/ -q` stays green.\n",
+      "consumed_by": "",
+      "provenance": "operator-curated (amend0829-selfuse-v2, 2026-08-29)"
+    },
+<<<END PAIRJSON4-TO
+
+<<<BEGIN PAIRJSON5-FROM
+- `npm run typecheck` and `npx vitest run` in `apps/ui` both still exit 0 (this job changes lint tooling only, not source).\n",
+      "consumed_by": ""
+    },
+<<<END PAIRJSON5-FROM
+<<<BEGIN PAIRJSON5-TO
+- `npm run typecheck` and `npx vitest run` in `apps/ui` both still exit 0 (this job changes lint tooling only, not source).\n",
+      "consumed_by": "",
+      "provenance": "operator-curated (amend0829-selfuse-v2, 2026-08-29)"
+    },
+<<<END PAIRJSON5-TO
+
+<<<BEGIN PAIRJSON6-FROM
+- Existing failure-classification tests stay green.\n",
+      "consumed_by": ""
+    }
+  ]
+}
+<<<END PAIRJSON6-FROM
+<<<BEGIN PAIRJSON6-TO
+- Existing failure-classification tests stay green.\n",
+      "consumed_by": "",
+      "provenance": "operator-curated (amend0829-selfuse-v2, 2026-08-29)"
+    }
+  ]
+}
+<<<END PAIRJSON6-TO
+
+## PAIR-DOC* — `docs/system/self-use-track-v1.md` (three pairs)
+
+<<<BEGIN PAIRDOC1-FROM
+> **Status (2026-08-29):** built by F257. The queue, its loader, the job-path
+> seam and the closure-protocol precondition are in place; consumption happens
+> at feature close.
+<<<END PAIRDOC1-FROM
+<<<BEGIN PAIRDOC1-TO
+> **Status (2026-08-29):** built by F257. The queue, its loader, the job-path
+> seam and the closure-protocol precondition are in place; consumption happens
+> at feature close. **Update (2026-08-30, F258 round 2):** the queue's schema
+> moved to v2, adding a required `provenance` field naming each item's source;
+> every shipped item was migrated. F258's self-replenishing generator is not
+> yet built — this page still describes v1's discovery-free behaviour, which
+> remains true until that round ships.
+<<<END PAIRDOC1-TO
+
+<<<BEGIN PAIRDOC2-FROM
+    {
+      "schema_version": 1,
+      "description": "<what this queue is for>",
+      "items": [
+        {
+          "id": "SU-001",
+          "title": "<one line>",
+          "why": "<why this job is worth a feature close>",
+          "job_markdown": "# Job: ...\n\n## Task 1\n...\n\nAcceptance:\n- ...\n",
+          "consumed_by": ""
+        }
+      ]
+    }
+<<<END PAIRDOC2-FROM
+<<<BEGIN PAIRDOC2-TO
+    {
+      "schema_version": 2,
+      "description": "<what this queue is for>",
+      "items": [
+        {
+          "id": "SU-001",
+          "title": "<one line>",
+          "why": "<why this job is worth a feature close>",
+          "job_markdown": "# Job: ...\n\n## Task 1\n...\n\nAcceptance:\n- ...\n",
+          "consumed_by": "",
+          "provenance": "<what found this item — a human curator, or a generator source>"
+        }
+      ]
+    }
+<<<END PAIRDOC2-TO
+
+<<<BEGIN PAIRDOC3-FROM
+| Rule | Detail |
+|------|--------|
+| `schema_version` | must equal 1; a file from the future is refused, not half-read |
+| item keys | exactly the five above — no more, no fewer |
+| `id` | must match `^SU-\d{3}$`, and must be unique across the file |
+| `title`, `why`, `job_markdown` | non-empty strings |
+| `consumed_by` | a string; empty means the item is still PENDING |
+<<<END PAIRDOC3-FROM
+<<<BEGIN PAIRDOC3-TO
+| Rule | Detail |
+|------|--------|
+| `schema_version` | must equal 2 (v1 files, without `provenance`, are refused, not half-read) |
+| item keys | exactly the six above — no more, no fewer |
+| `id` | must match `^SU-\d{3}$`, and must be unique across the file |
+| `title`, `why`, `job_markdown`, `provenance` | non-empty strings |
+| `consumed_by` | a string; empty means the item is still PENDING |
+<<<END PAIRDOC3-TO
+
+## PAIR-F257AMEND — `docs/roadmap/features/T5_F257.md`
+
+<<<BEGIN PAIRF257-FROM
+registered in `.agent/live_review.md` as `R-0733`, `R-0734`, `R-0735` and
+`R-0736`, of which `R-0734` and `R-0736` are deliberately left for branches of
+their own.
+
+**The integration gate.** Full suite at `2bb2db2c`: `18186 passed, 20 skipped`,
+<<<END PAIRF257-FROM
+<<<BEGIN PAIRF257-TO
+registered in `.agent/live_review.md` as `R-0733`, `R-0734`, `R-0735` and
+`R-0736`, of which `R-0734` and `R-0736` are deliberately left for branches of
+their own.
+
+**Amendment (2026-08-30, F258 round 2).** The queue's schema moved to v2: a
+required `provenance` field was added naming each item's source, and every
+item this feature shipped (`SU-001`) was migrated to carry one. This is a
+data-shape extension only — F258's own self-replenishing generator, which will
+be the first thing to populate `provenance` with something other than a human
+curator's name, has not been built yet; this feature's "operator-curated DATA
+— curation is where this feature's risk sits" property is unchanged until it
+is.
+
+**The integration gate.** Full suite at `2bb2db2c`: `18186 passed, 20 skipped`,
+<<<END PAIRF257-TO
 
 ## Done when — the gates
 
 Run each gate and report ONE line per gate in the handback with its REAL exit
-code. Every gate below runs at a commit STRICTLY EARLIER than C7, which writes
-the handback; C7's own numbers are measured by the reviewer at the next gate and
-are not owed here.
+code. Every gate below runs at a commit STRICTLY EARLIER than C9, which writes
+the handback.
 
-G1 TRANSPORT, at C0b. Compute sha256 over THREE files: the scratch original
-   `.remedy-wt/f258-r1-block.md`, the committed `.agent/authored/f258-r1.md`,
-   and the committed `.agent/last_block.md`. Report the one digest and the byte
-   length, and state that all three are equal. This block deliberately states no
-   expected digest — a file cannot carry its own sha256, and the reviewer holds
-   the original and checks your reported value against its own measurement at
-   the gate.
+G1 TRANSPORT, at C0b. sha256 over THREE files — `.remedy-wt/f258-r2-block.md`,
+   the committed `.agent/authored/f258-r2.md`, and the committed
+   `.agent/last_block.md` — report the one digest and byte length, state all
+   three equal.
 
-G2 THE PLAN, at C1. `.agent/plan.md` is BYTE-EQUAL to slice PLAN1 (report both
-   sha256 values), its line count is under 50, and it holds `## Goal` and
-   `## Next Steps`.
+G2 THE PLAN, at C1. `.agent/plan.md` BYTE-EQUAL to PLAN2 (report both sha256),
+   under 50 lines, holds `## Goal` and `## Next Steps`.
 
-G3 THE RECORD APPEND, at C2. The MEASURED pre-commit byte length of
-   `.agent/live_review.md` plus one separator newline plus RECORD1's byte length
-   equals the committed length — re-measure the base yourself at the commit you
-   append at; the reviewer read 1751668 at `18ae7129`. Then TWO independent
-   readings: (a) WHOLE RECONSTRUCTION — base + separator + slice compared to the
-   entire committed file; (b) PARAGRAPH ORDER — the last blank-line unit of the
-   committed file equals RECORD1 exactly (N=1, one dense paragraph). NEGATIVE
-   CONTROL, inside a disposable worktree: flip one printable byte inside the
-   appended paragraph and report that BOTH readings reject the flipped file and
-   accept the unflipped one; remove the worktree after.
+G3 THE RECORD APPEND, at C2. Re-measure `.agent/live_review.md`'s byte length
+   yourself immediately before C2 (do not trust a number from an earlier
+   round). TWO readings: (a) WHOLE RECONSTRUCTION — base + `\n` + RECORD2
+   equals the committed file exactly; (b) PARAGRAPH ORDER — the committed
+   file's last `\n\n`-delimited unit equals RECORD2 exactly (N=1). NEGATIVE
+   CONTROL inside a disposable worktree: flip one printable byte inside
+   RECORD2 and show both readings reject the flip and accept the original;
+   remove the worktree after.
 
-G4 THE LEDGER, at C1 and at C2. Report, for each of the two commits: distinct
-   `^- R-\d+ — ` ids, distinct `^Done: R-\d+ — ` ids, and the open count. The
-   ADDED registered ids and the ADDED resolved ids must BOTH be the empty list.
-   Report the distinct `^DECISION F258 D\d+ — ` ids before and after; both must
-   be empty — this round mints no decision. Report whether `R-0570` still has
-   zero `^Done: R-0570` lines.
+G4 THE LEDGER, at C1 and at C2. Distinct `^- R-\d+ — ` ids and `^Done: R-\d+`
+   ids, ADDED/REMOVED both empty for each. Distinct `^DECISION F258 D\d+ — `
+   ids before and after: `[]` then `['D1']` — ADDED is exactly `['D1']`.
+   `^Done: R-0570` stays 0.
 
-G5 THE CANDIDATES FILE, at C3. `.agent/candidates.md` is BYTE-EQUAL to slice
-   CAND1 (report both sha256 values), and the string `· F040 · 2026-08-30`
-   occurs 0 times in it. Report its byte length before and after.
+G5 THE PRODUCTION CODE, THE TESTS AND THE DATA, at C6 (after the JSON
+   migration lands, so the shipped-queue integration tests run against a
+   consistent file). For EVERY PAIR in PAIR-Q*, PAIR-TQ*, PAIR-TJ* and
+   PAIR-JSON* (twenty-one pairs total): report the FROM occurrence count
+   immediately before its own commit (must be 1) and the TO occurrence count
+   immediately after (must be 1), and confirm `scripts/self_use_queue.json`
+   parses with `json.loads` after C6. Then, at C6, in the PRIMARY checkout:
+   `python3 -m pytest tests/orchestration/test_self_use_queue.py
+   tests/orchestration/test_self_use_job.py -q`, REAL exit code, all passing.
+   The reviewer measured the base (round 1's tip, before this round's pairs)
+   at 18 collected in each file, 36 combined; this round adds FIVE new tests
+   to `test_self_use_queue.py` (`test_every_shipped_item_carries_a_non_blank_provenance`,
+   `TestEntryCarriesProvenance::test_provenance_round_trips_from_the_file`,
+   `test_old_v1_shaped_file_is_refused`, `test_missing_provenance_raises`,
+   `test_blank_provenance_raises`) and renames one existing test
+   (`test_shipped_queue_declares_schema_version_one` to `_two`, net zero),
+   so `test_self_use_queue.py` goes to 23 and `test_self_use_job.py` stays at
+   18 — 41 combined. Report YOUR collected counts for both files and confirm
+   they match.
+   THEN the mutation red-proof, in a disposable git worktree branched from
+   C6, `__pycache__` purged, `python3 -B`: revert PAIRQ5 alone (the
+   `field_name` tuple loses `"provenance"` again, so a PRESENT-but-blank
+   `provenance` is no longer refused — PAIRQ2's `_ITEM_KEYS` still names the
+   key, so a MISSING key is still caught by the separate key-set-equality
+   check regardless of this one mutation) and re-run the same two test
+   files. The reviewer verified this exact mutation directly before
+   delegating: exactly ONE test goes RED,
+   `test_blank_provenance_raises` (`Failed: DID NOT RAISE
+   <class 'packages.orchestration.self_use_queue.SelfUseQueueError'>`);
+   `test_missing_provenance_raises` and
+   `test_every_shipped_item_carries_a_non_blank_provenance` stay GREEN under
+   this specific mutation, for the reasons just given — they are not blind
+   to every defect this round could ship, only to this ONE reverted pair.
+   Report REAL exit code and the FAILED test name(s); if your own run shows a
+   DIFFERENT set of failures than this one test, STOP and declare it as a
+   deviation rather than silently reporting your own number as if it were
+   expected — that mismatch would mean the round's code differs from what
+   the reviewer verified. Then restore PAIRQ5's TO bytes and re-run once
+   more: REAL exit 0, 41 passing again. Remove the worktree after;
+   `git worktree list` shows the primary checkout alone.
 
-G6 THE CLAIM AND THE DOCS PINS, at C4. In `docs/roadmap/STATUS.md`:
-   PAIRSTATUS-FROM occurs 0 times and PAIRSTATUS-TO occurs exactly 1 time;
-   `git diff --numstat` for C4 alone reads exactly one insertion and one
-   deletion over that one path; and the count of lines matching
-   `^- \[~\] F\d{3} — ` in the whole file is 1. Then, at C4:
-   `python3 -m pytest tests/docs/ -q` and
-   `python3 -m pytest tests/orchestration/test_roadmap_index.py -q`, each its
-   own REAL exit code. The reviewer measured both green at the base, 295 passed
-   and 30 passed; report YOUR numbers.
+G6 THE DOCS, at C8. For PAIR-DOC1/2/3 and PAIR-F257AMEND (four pairs): FROM/TO
+   occurrence counts as in G5. Then, at C8: `python3 -m pytest tests/docs/ -q`
+   and `python3 -m pytest tests/orchestration/test_roadmap_index.py -q`
+   (`docs/roadmap/features/T5_F257.md` is under `docs/roadmap/**`), each its
+   own REAL exit code. The reviewer measured both green at the base, 295 and
+   30 passed; report YOUR numbers.
 
-G7 THE STATE READERS AND THE CANARY, at C6. Each its own REAL exit code:
+G7 THE STATE READERS AND THE CANARY, at C9. Each its own REAL exit code:
    `python3 -m pytest tests/ui_server/ -q`,
    `python3 -m pytest tests/orchestration/test_test_runner.py -q`,
    `python3 -m pytest tests/regression/test_resource_safety.py -q`,
@@ -346,20 +665,18 @@ G7 THE STATE READERS AND THE CANARY, at C6. Each its own REAL exit code:
    canary `python3 -m pytest tests/cli/test_golden_path.py -q`. The reviewer
    measured these at the base at 515, 52, 21, 16 and 42 passed; report YOURS.
 
-G8 THE INVENTORY AND THE TREE, at C6. `.agent/f258_inventory.md` exists and
-   carries all six SPEC sections — report the heading line of each. Report the
-   `file:line` count it cites and confirm every cited path resolves with
-   `git ls-tree HEAD -- <path>`. Then `git status --porcelain` is EMPTY,
-   `git ls-files --others --exclude-standard` has count 0, and the per-commit
-   insertion counts for C0a through C6 from `git diff --numstat`, every one
-   under 500.
+G8 THE TREE, at C9. `git status --porcelain` EMPTY, `git ls-files --others
+   --exclude-standard` count 0, `git worktree list` shows the primary checkout
+   alone, and the per-commit insertion counts for C0a through C8 from
+   `git diff --numstat`, every one under 500.
 
 ## Handback
 
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries the
-state block, the `## Commits` table with a `+/-` column taken from
-`git diff --numstat` (not from file line counts — those differ on a full-file
-rewrite), the deviations, the item-status table with every bundle item and every
-gate appearing exactly once, and the next steps. It states `SESSION 1` of F258
-and round 1. It has NO length cap. Report the one candidate as discharged and
-name R-0570 as OPEN and routed away from this branch.
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It carries
+the state block, the `## Commits` table with `+/-` from `git diff --numstat`,
+the deviations, the item-status table with every bundle item and every gate
+appearing exactly once, and the next steps. It states `SESSION 1` of F258 and
+round 2. It has NO length cap. Report every one of the twenty-five pairs by
+name with its before/after occurrence count; a table is fine for this. Name
+`R-0570` as OPEN and routed away, and `DECISION F258 D1` as the one id minted
+this round.
