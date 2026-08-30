@@ -1,50 +1,44 @@
-# Plan — F040 Completion/return digest
+# Plan — F258 Self-use track v2
 
-Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 5, round 22 — OPEN PR GATE CONFLICT
-RESOLUTION.
+Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
+commit of pull request 225. SESSION 1, opening the feature.
 
 ## Goal
-Coming back is calm: a digest endpoint condenses state, cost with its basis, top
-ownership entries, open decisions and ONE primary action into a hero card, shown
-at job end or on the first UI open after absence — the "what happened while I
-was gone" answer in one glance.
+"Remedy is used on Remedy" keeps running with zero operator input: a generator
+replenishes the self-use queue with exactly one dated, provenanced item
+whenever it is empty at close, the consumed item is actually RUN through the
+real job path under a small budget and stopped at the normal approval gate
+rather than only planned, and any defect the run surfaces flows back into the
+standard finding ledger.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the spec decisions D2 to D10 | done | rounds 2-9 |
-| T001 the composition, endpoint, goldens | done | rounds 3-5, all PASS |
-| T002 the client digest seam through the mount | done | rounds 6-14, all PASS |
-| T003 CLI parity + the client end-to-end | done | rounds 15-16, all PASS |
-| the integration gate | done | round 17, PASS |
-| closure preconditions + Built State | done | round 18, all six CLEAR/NONE |
-| closure evidence job + review zip | done | round 19, READY_FOR_REVIEW |
-| STATUS line + README sync + PR | done | round 20, PR #225 opened |
-| PR #225 vs main drift (F258 landed via #223/#224) | resolved | round 22, merge commit `f69f1785` |
-
-F040's build is DONE. Nothing in this feature's own content changed this
-round — round 22 only resolved a merge conflict caused by F258's
-registration (PRs #223/#224) landing on `main` after PR #225 opened,
-touching the same shared count lines in README.md and
-docs/roadmap/STATUS.md.
+| the F040 closure candidate | done | this round; no id spent |
+| the F258 claim and the branch | done | this round |
+| the seam inventory | done | this round, `.agent/f258_inventory.md` |
+| T001 the self-replenishing generator | open | next round, ordered from the inventory |
+| T002 consumed means executed | open | |
+| T003 findings flow back | open | |
 
 ## Next Steps
-1. PR #225 is still OPEN and UNMERGED. It must be merged at the next
-   session's Open PR Gate (self_drive_protocol.md G1) before any new
-   feature work is claimed on this repo — never in the same
-   round/session that touches this branch.
-2. No further edits to this branch are expected before that merge. If
-   `main` drifts again before the merge, re-run this same conflict
-   resolution process against the newly conflicting lines only.
-3. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
-   resolution design (D5's "in-page action") and is not yet scheduled —
-   documented in the Built State section, carried forward as a known
-   post-closure item, not a blocker.
+1. This round claims F258, discharges the one candidate F040's closure gate
+   raised (new evidence on the already-open R-0570, no new id), and measures
+   the queue/planner/job-execution/budget/approval seams T001-T003 compose
+   over.
+2. The round after it orders T001 — the generator's source-priority logic and
+   its `provenance` field — from what the inventory measured; there is
+   currently NO code caller of `plan_next_self_use_item` at any closure point,
+   so the inventory names exactly what today's manual precondition-6 step
+   does instead.
+3. T002 depends on T001 producing a real item to run against; T003 is largely
+   wiring existing finding-ledger machinery once T002 exists.
 
 ## Risks
-- R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch;
-  none is F040's to fix. R-0753 stays OPEN as this feature's documented risk.
-- `browserDigestPort.ts`'s open risk (a real browser refusing a write) is
-  still unaddressed and still deferred to whichever round first meets it.
+- R-0570 (Low) stays OPEN and is deliberately NOT repaired here — same reason
+  as F040's own round 1: the fix edits `README.md` and a test neither F258
+  owns, and AGENTS.md forbids mixing an unrelated fix into a feature branch.
+- The queue's `consumed_by`-is-closure-only invariant (DECISION F257 D2) binds
+  T001: the generator may APPEND a new pending item but must never be the
+  thing that marks one consumed.
