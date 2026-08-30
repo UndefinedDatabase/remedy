@@ -2,11 +2,13 @@
 
 > **Status (2026-08-29):** built by F257. The queue, its loader, the job-path
 > seam and the closure-protocol precondition are in place; consumption happens
-> at feature close. **Update (2026-08-30, F258 round 2):** the queue's schema
-> moved to v2, adding a required `provenance` field naming each item's source;
-> every shipped item was migrated. F258's self-replenishing generator is not
-> yet built — this page still describes v1's discovery-free behaviour, which
-> remains true until that round ships.
+> at feature close. **Update (2026-08-30, F258 rounds 2-3):** the queue's
+> schema moved to v2, adding a required `provenance` field naming each item's
+> source, and `packages/orchestration/self_use_generator.py` now supplies one
+> when the queue is empty (Tier 1: the oldest open Low/Medium finding; Tiers
+> 2-3 are documented placeholders, DECISION F258 D2). This page's "Deliberate
+> absences" below is corrected accordingly — the LOADER stays read-only, but
+> the track as a whole is no longer discovery-free.
 
 Remedy is used on Remedy on a schedule that cannot be skipped. This page is
 where to look for the two file formats involved and for the rule that makes the
@@ -91,6 +93,11 @@ A run that can check itself off is not a gate — the same reason
 `docs/roadmap/STATUS.md` sits in `packages.orchestration.scope_fences`'s
 built-in deny list.
 
-Remedy deliberately does not discover, generate or infer queue items. The list
-is operator-curated data; curation is where this feature's risk sits, and the
-queue is exactly as useful as the human who wrote it.
+Remedy deliberately does not discover, generate or infer queue items IN THE
+LOADER ABOVE — that module stays read-only by construction (DECISION F257
+D2). `packages/orchestration/self_use_generator.py` (F258, built round 3) is
+the separate module that now does: it searches, in a fixed priority order,
+for a source to append as a new PENDING item when the queue is empty, and
+never marks anything consumed. The list a human curates and the list a
+generator can extend now share one file and one loader; only the WRITER
+changed, and it is still not this module.
