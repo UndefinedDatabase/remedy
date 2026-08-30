@@ -2933,6 +2933,22 @@ def run_pingpong(
                 started_at=datetime.now(timezone.utc).isoformat(),
             )
 
+            # F106 T002a: a repair round resumes the prior round's provider
+            # session only when the provider honestly advertises support AND
+            # a session id was actually captured last round — every other
+            # path (initial round, unsupported provider, no prior session
+            # id) passes resume=None, an honest no-op, never guessed.
+            # F106 T002b-ii step 1 (DECISION F106 D1): hoisted here, before
+            # prompt composition, so a later round can gate the repair-diff
+            # segment on this same value without recomputing it.
+            builder_resume_ref: str | None = None
+            if is_repair and getattr(builder_provider, "supports_resume", False) and result.rounds:
+                prev_builder_out = result.rounds[-1].builder_output
+                prev_actuals = getattr(prev_builder_out, "usage_actuals", None) or {}
+                prev_session_id = str(prev_actuals.get("session_id") or "")
+                if prev_session_id:
+                    builder_resume_ref = prev_session_id
+
             # --- Builder phase ---
             # Compute repair diff for builder (from previous round)
             repair_diff = ""
@@ -3010,18 +3026,6 @@ def run_pingpong(
 
             _begin_stream_call(builder_provider, round_num, "attempt")
             builder_call_reasons: list[str] = []
-            # F106 T002a: a repair round resumes the prior round's provider
-            # session only when the provider honestly advertises support AND
-            # a session id was actually captured last round — every other
-            # path (initial round, unsupported provider, no prior session
-            # id) passes resume=None, an honest no-op, never guessed.
-            builder_resume_ref: str | None = None
-            if is_repair and getattr(builder_provider, "supports_resume", False) and result.rounds:
-                prev_builder_out = result.rounds[-1].builder_output
-                prev_actuals = getattr(prev_builder_out, "usage_actuals", None) or {}
-                prev_session_id = str(prev_actuals.get("session_id") or "")
-                if prev_session_id:
-                    builder_resume_ref = prev_session_id
             builder_out = _call_with_retry(
                 lambda ts=builder_timeout: builder_provider.build(
                     builder_prompt,
@@ -3188,6 +3192,23 @@ def run_pingpong(
                 repair_rounds=result.repair_rounds_used,
             )
 
+            # F106 T002b-i: the repair round's PRIMARY Reviewer attempt
+            # resumes the prior round's Reviewer session only when the
+            # provider honestly advertises support AND a session id was
+            # actually captured last round — same rule as the Builder side
+            # (T002a). The bounded parse retry below is a DIFFERENT call and
+            # is NOT threaded this round; it stays full-context.
+            # F106 T002b-ii step 1 (DECISION F106 D1): hoisted here, before
+            # prompt composition, so a later round can gate the safe-diff
+            # segment on this same value without recomputing it.
+            reviewer_resume_ref: str | None = None
+            if is_repair and getattr(reviewer_provider, "supports_resume", False) and result.rounds:
+                prev_reviewer_out = result.rounds[-1].reviewer_output
+                prev_actuals = getattr(prev_reviewer_out, "usage_actuals", None) or {}
+                prev_session_id = str(prev_actuals.get("session_id") or "")
+                if prev_session_id:
+                    reviewer_resume_ref = prev_session_id
+
             # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
             # trace entries below carry a real segment manifest. The sent bytes are
             # unchanged — `_build_reviewer_prompt` returns this same `.text`.
@@ -3262,19 +3283,6 @@ def run_pingpong(
             # ONE logical reviewer call: its attempt AND its single parse retry share this
             # sink, and nothing from the builder or an earlier round is in it.
             reviewer_call_reasons: list[str] = []
-            # F106 T002b-i: the repair round's PRIMARY Reviewer attempt
-            # resumes the prior round's Reviewer session only when the
-            # provider honestly advertises support AND a session id was
-            # actually captured last round — same rule as the Builder side
-            # (T002a). The bounded parse retry below is a DIFFERENT call and
-            # is NOT threaded this round; it stays full-context.
-            reviewer_resume_ref: str | None = None
-            if is_repair and getattr(reviewer_provider, "supports_resume", False) and result.rounds:
-                prev_reviewer_out = result.rounds[-1].reviewer_output
-                prev_actuals = getattr(prev_reviewer_out, "usage_actuals", None) or {}
-                prev_session_id = str(prev_actuals.get("session_id") or "")
-                if prev_session_id:
-                    reviewer_resume_ref = prev_session_id
             reviewer_out = _call_with_retry(
                 lambda ts=reviewer_timeout: reviewer_provider.review(
                     reviewer_effective,
