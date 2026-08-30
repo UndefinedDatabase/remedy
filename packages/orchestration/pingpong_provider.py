@@ -129,6 +129,10 @@ class ReviewerOutput:
     # actually resumed a prior session; the ref it resumed, "" otherwise.
     resume_used: bool = False
     resume_session_ref: str = ""
+    # F106 T002c: true only when a resume attempt on this round's call
+    # errored and a same-round fallback to full context was taken (mirrors
+    # BuilderOutput.resume_fallback).
+    resume_fallback: bool = False
     incomplete: bool = False
     stream_cap_reached: bool = False
     stream_call_id: str = ""
@@ -273,6 +277,16 @@ class FakeProvider:
         max_output_chars: int = 50000,
         resume: str | None = None,
     ) -> ReviewerOutput:
+        # F106 T002c: a test-only way to simulate a resume attempt that
+        # errors, so the fallback-once path in pingpong_loop.py has
+        # something real to fall back FROM. Only fires when a resume was
+        # actually requested on a provider that claims to support it —
+        # never on a plain (non-resume) call.
+        if resume and self._supports_resume and self._resume_fails:
+            return ReviewerOutput(
+                error="resume_lost: session context unavailable",
+                provider="fake",
+            )
         out = self._review_impl(prompt, timeout_sec=timeout_sec,
                                 max_output_chars=max_output_chars)
         # F106 T002b: honor an incoming resume request only when this fake
