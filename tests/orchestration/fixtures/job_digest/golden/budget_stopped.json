@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "job_id": "<job-id>",
+  "state": "paused",
+  "headline": "The run is paused and its terminal status is budget_exhausted.",
+  "cost": {
+    "value": "not-measured",
+    "basis": "absent"
+  },
+  "ownership": [],
+  "decisions": {
+    "open_count": 0,
+    "peak_urgency": 0
+  },
+  "primary_action": {
+    "label": "Inspect the postmortem and repair the blocked task",
+    "rule_id": "blocked-failed"
+  }
+}

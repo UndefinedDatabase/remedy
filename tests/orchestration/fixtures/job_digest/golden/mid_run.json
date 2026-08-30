@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "job_id": "<job-id>",
+  "state": "running",
+  "headline": "The run is running.",
+  "cost": {
+    "value": "not-measured",
+    "basis": "absent"
+  },
+  "ownership": [],
+  "decisions": {
+    "open_count": 0,
+    "peak_urgency": 0
+  },
+  "primary_action": {
+    "label": "No recommendation — the run state is not recorded",
+    "rule_id": "indeterminate"
+  }
+}

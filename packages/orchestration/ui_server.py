@@ -2775,6 +2775,13 @@ def _build_decisions_json(job: Any) -> dict[str, Any]:
     return build_decision_inbox(job, events)
 
 
+def _build_digest_json(job: Any) -> dict[str, Any]:
+    """Build the completion digest payload — one job in one glance."""
+    from packages.orchestration.job_digest import build_job_digest
+    events = _load_events(job)
+    return build_job_digest(job, events)
+
+
 def _build_next_action_json(job: Any) -> dict[str, Any]:
     """Build next-action suggestion."""
     from packages.orchestration.ui_view_model import build_next_action
@@ -3465,6 +3472,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "checklist": _build_checklist_json,
                 "diagnostics": _build_diagnostics_json,
                 "diff": _build_diff_json,
+                "digest": _build_digest_json,
             }
             handler = handlers.get(endpoint)
             if handler:

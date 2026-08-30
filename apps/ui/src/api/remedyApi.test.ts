@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope } from "./remedyApi";
+import { normalizeDashboardPayload, normalizeApiFailure, normalizeLiveState, normalizePipeline, diffEnvelopePath, loadDiffEnvelope, loadJobDigest } from "./remedyApi";
 import type { DiffEnvelopeRequest } from "./remedyApi";
+import { JOB_DIGEST_VERSION, jobDigestPath } from "./jobDigest";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -641,5 +642,51 @@ describe("the diff envelope door", () => {
     const fromArray = await loadDiffEnvelope(request, async () => [1, 2, 3]);
     expect(fromArray.available).toBe(false);
     expect(fromArray.files).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The job digest door (T5_F040 T002). No global is patched and no fetch is
+// mocked: `loadJobDigest` takes its fetcher as an argument, exactly like the
+// diff envelope door above, so a plain arrow function is the whole test
+// double here too.
+// ---------------------------------------------------------------------------
+
+describe("the job digest door", () => {
+  const request = { jobId: "abc-123", token: "t0k" };
+
+  it("returns the decoded digest and reads its own path exactly once", async () => {
+    const seen: string[] = [];
+    const digest = await loadJobDigest(request, async (path) => {
+      seen.push(path);
+      return {
+        version: JOB_DIGEST_VERSION,
+        job_id: "abc-123",
+        state: "completed",
+        headline: "The run is completed and its terminal status is all_green.",
+        cost: { value: "$1.20", basis: "actual" },
+        ownership: [],
+        decisions: { open_count: 0, peak_urgency: 0 },
+        primary_action: { label: "Review and merge the branch", rule_id: "all-green" },
+      };
+    });
+    expect(seen).toEqual([jobDigestPath(request)]);
+    expect(digest).not.toBeNull();
+    // A couple of the decoded digest's own fields, not just non-null, so this
+    // proves decodeJobDigest really ran rather than being bypassed.
+    expect(digest!.state).toBe("completed");
+    expect(digest!.primary_action).toEqual({ label: "Review and merge the branch", rule_id: "all-green" });
+  });
+
+  it("degrades a rejected fetch to null rather than throwing", async () => {
+    const digest = await loadJobDigest(request, () => Promise.reject(new Error("403")));
+    expect(digest).toBeNull();
+  });
+
+  it("degrades a junk body to null, decodeJobDigest's own two documented failure shapes", async () => {
+    const fromString = await loadJobDigest(request, async () => "not a digest");
+    expect(fromString).toBeNull();
+    const fromArray = await loadJobDigest(request, async () => [1, 2, 3]);
+    expect(fromArray).toBeNull();
   });
 });

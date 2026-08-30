@@ -18,6 +18,7 @@ from packages.orchestration.dag_schedule import blocked_downstream
 from packages.orchestration.decision_inbox import (
     DECISION_INBOX_VERSION,
     build_decision_inbox,
+    decision_urgency,
 )
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
 from packages.orchestration.escalation import (
@@ -372,3 +373,74 @@ def test_an_approved_flight_plan_card_is_not_answerable():
     assert card["id"] == "fp:approval"
     assert card["status"] == "resolved"
     assert card["answerable_by_decision_resolve"] is False
+
+
+# ---------------------------------------------------------------------------
+# (h) The urgency formula — the SINGLE home of DECISION F031 D6's rule, moved
+#     to Python by DECISION F040 D2.  Its agreement with the TypeScript copy in
+#     `apps/ui/src/api/decisionOrder.ts` is a separate contract and lives in
+#     `tests/ui_contracts/test_decision_urgency_parity.py`; what is pinned here
+#     is the formula's own behaviour over the two card keys it reads.
+# ---------------------------------------------------------------------------
+
+
+class TestDecisionUrgency:
+    """Every property `decision_urgency` promises, one test each."""
+
+    def test_urgency_is_the_blocked_size_plus_one_times_the_age(self):
+        assert decision_urgency({"blocked_count": 3, "age_seconds": 3600}) == 14400
+
+    def test_a_card_that_blocks_nothing_scores_its_age(self):
+        """The `+ 1` is what keeps age the total order among these cards."""
+        assert decision_urgency({"blocked_count": 0, "age_seconds": 42}) == 42
+
+    def test_an_unreadable_age_scores_zero_whatever_the_blocked_count(self):
+        """A None age is the endpoint's answer for an unreadable `created_at`.
+
+        Asserted at two different blocked counts, because a formula that read
+        the None as 0 seconds and one that ignored the age entirely would agree
+        on a single reading.
+        """
+        assert decision_urgency({"blocked_count": 0, "age_seconds": None}) == 0
+        assert decision_urgency({"blocked_count": 9, "age_seconds": None}) == 0
+
+    def test_a_negative_age_scores_zero(self):
+        """Clocks that disagree are not evidence of urgency."""
+        assert decision_urgency({"blocked_count": 2, "age_seconds": -3600}) == 0
+
+    def test_a_negative_blocked_count_is_clamped_to_blocking_nothing(self):
+        card = {"blocked_count": -4, "age_seconds": 60}
+        assert decision_urgency(card) == decision_urgency(
+            {"blocked_count": 0, "age_seconds": 60}
+        )
+        assert decision_urgency(card) == 60
+
+    def test_missing_keys_score_zero_rather_than_raising(self):
+        assert decision_urgency({}) == 0
+        assert decision_urgency({"blocked_count": 5}) == 0
+        assert decision_urgency({"age_seconds": 90}) == 90
+
+    def test_a_value_that_is_not_a_real_number_scores_zero_rather_than_raising(self):
+        """A string, a bool, a NaN and an infinity are each read as nothing.
+
+        The bool case is the non-obvious one: `True` is an `int` in Python and
+        would otherwise score as one blocked task by accident.
+        """
+        assert decision_urgency({"blocked_count": "three", "age_seconds": 60}) == 60
+        assert decision_urgency({"blocked_count": 1, "age_seconds": "an hour"}) == 0
+        assert decision_urgency({"blocked_count": True, "age_seconds": 60}) == 60
+        assert decision_urgency({"blocked_count": float("nan"), "age_seconds": 60}) == 60
+        assert decision_urgency({"blocked_count": 1, "age_seconds": float("nan")}) == 0
+        assert decision_urgency({"blocked_count": 1, "age_seconds": float("inf")}) == 0
+
+    def test_sorting_by_urgency_puts_a_blocking_card_ahead_of_an_equally_aged_one(self):
+        """The ordering property the formula exists for, over a real list.
+
+        Both cards are the same age, so only the blocked size can separate
+        them — which is exactly the tie a literal `blocked * age` would lose.
+        """
+        blocks_one = {"id": "b", "blocked_count": 1, "age_seconds": 120}
+        blocks_none = {"id": "a", "blocked_count": 0, "age_seconds": 120}
+        ordered = sorted([blocks_none, blocks_one],
+                         key=decision_urgency, reverse=True)
+        assert [card["id"] for card in ordered] == ["b", "a"]

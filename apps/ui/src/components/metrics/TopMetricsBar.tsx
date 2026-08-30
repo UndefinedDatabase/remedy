@@ -43,11 +43,11 @@ const costLevelPhrase: Record<string, string> = {
 /** The estimate marker, which is the BASIS channel and never the threshold
  *  channel: a mark shown at a threshold would be a false claim about where the
  *  figure came from. */
-const ESTIMATE_MARK = "~";
+export const ESTIMATE_MARK = "~";
 
 /** Said in words beside the mark, because the mark alone is punctuation a
  *  screen reader does not narrate. */
-const ESTIMATE_PHRASE = ", estimated";
+export const ESTIMATE_PHRASE = ", estimated";
 
 const EM_DASH = "—";
 

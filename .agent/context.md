@@ -1,31 +1,27 @@
-# Context — F033 Hunk-level diff approval
+# Context — F040 Completion/return digest
 
 ## Active Branch
-feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge commit
-of pull request 221. The parked branch `feature/f033-hunk-approval` at
-`ed040812` is a previous attempt, retained as history under DECISION F033 D1 and
-never checked out, merged or deleted by this feature.
+feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge commit
+of pull request 222, which is the commit that accepted F033 into the ledger.
 
 ## Scope
-Feature F033, `docs/roadmap/features/T5_F033.md` — stable content-hash hunk ids,
-the `approve_hunks` command with an all-or-nothing subset apply, and the
-rejection-to-repair loop with truthful partial-state rendering.
+Feature F040, `docs/roadmap/features/T5_F040.md` — a digest endpoint that
+composes state, cost with its basis, ownership sentences, open decisions and ONE
+primary action, the hero card that renders it, and CLI parity through
+`remedy job digest`.
 
 ## Do not touch
-Applicator internals, fence rules and review verdict semantics, per the feature
-file's own Do-not-touch. `packages/orchestration/diff_parser.py` stays PURE and
-TOTAL as its docstring rules: text in, plain data out, no file system, no
-subprocess, no network, and it NEVER raises on malformed input.
-`docs/roadmap/ROADMAP.md` is not edited.
+Report content, notification channels and the home grid, per the feature file's
+own Do-not-touch. `docs/roadmap/ROADMAP.md` is not edited. The digest is a
+COMPOSITION: it reads finished sources and owns no new storage.
 
 ## Assumptions
-- The hunk id is a hash of the path plus the old-side context normalised for
-  whitespace, so an edit elsewhere in a file leaves other hunks' ids unchanged.
-- `DIFF_VIEW_VERSION` is the declared seam for that change: the feature file and
-  `packages/orchestration/diff_parser.py` both say so, and version 1 has never
-  been served to an endpoint.
-- One hunk identity spans repair and approval; the v1-local helper in
-  `packages/orchestration/diff_repair.py` retires onto it.
+- The next-action rule table is ONE source. The digest's primary action imports
+  `NEXT_ACTION_RULES` from `packages/orchestration/run_report.py` rather than
+  restating it, so the CTA and the report's recommendation cannot disagree.
+- The ownership source named in the feature file's Design is unbuilt — F035 is
+  `[ ]` in the ledger. What the digest does about it is decided from the round-1
+  inventory's measurement, not assumed here.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -54,6 +50,9 @@ CI run.
   name no path: the `REMEDY_DATA_DIR` single-reader invariant, the path-utils
   single-implementation invariant, the bare-`except: pass` ban, and the
   development-artifact boundary.
+
+- This feature is UI work, so `docs/ui/design_reference/` is binding and any
+  visual deviation is documented in the assumption log with a technical reason.
 
 ## Steps
 The item-status table for this feature lives in the `## Current Step` section

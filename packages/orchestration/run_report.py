@@ -167,7 +167,7 @@ def momentum_flag(cycle_records: list[dict[str, Any]] | None) -> str:
 #: named in the report itself — a recommendation whose reason is invisible is
 #: not reviewable.
 #:
-#:   (rule id, condition, action template)
+#:   (rule id, condition)
 #:
 #: Order is the priority order from T1_F053.md: an open decision outranks a
 #: failure, because the run cannot proceed past a question no matter what

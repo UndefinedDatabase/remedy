@@ -1,0 +1,60 @@
+/* BINDING completion-digest hero-card declarations. Every number, token and
+   keyword below is transcribed from the binding CSS block in the Design section
+   of `docs/roadmap/features/T5_F040.md` (the "Hero card, binding CSS core"
+   block). That block, not this file, is the authority: a value changed here is
+   a contradiction of the feature file, not a restyle, and
+   `tests/ui_contracts/test_digest_hero_css.py` fails when the two disagree.
+
+   SELECTOR MAPPING. A CSS module has no global `.digest`, so the binding
+   block's three selectors are transcribed as local camelCase classes, this
+   package's convention (the same mapping `DiffView.module.css` documents):
+
+     binding `.digest`      ->  `.heroCard`
+     binding `.digest h2`   ->  `.heroHeadline`
+     binding `.digest .cta` ->  `.heroCta`
+
+   Only the SELECTOR FORM is adapted. No declaration is added, dropped or
+   retuned; the guard asserts the VALUES rather than the class names precisely
+   so that a faithful rename stays green and a lost declaration does not.
+
+   THE ONE RAW COLOUR IS DELIBERATE, per DECISION F040 D9. `color: #fff` on the
+   CTA is the feature file's own value; `apps/ui/src/styles/tokens.css` defines
+   no foreground token to put in its place, and the nearest shipped sibling,
+   `apps/ui/src/components/panels/RightLivePanel.module.css`, writes the same
+   `background: var(--remedy-blue); color: #fff;` pair. The guard pins it as the
+   sheet's ONLY raw colour: every other colour here is a `var(--remedy-…)` and
+   every token named is one `tokens.css` actually defines.
+
+   NO MOTION AND NO BREAKPOINT ON PURPOSE. `docs/ui/design_reference/ux_spec.md`
+   §16 is satisfied by carrying no animation, transition or transform at all —
+   `prefers-reduced-motion` is already global-killed in `globals.css` and the
+   Provider, so a motion block here would only be a second place to get it
+   wrong. §15's responsive rule reaches regions that read
+   `--remedy-left-width` / `--remedy-right-width`; this card is centred with
+   `max-width` and `margin: auto`, belongs to neither side region and hard-codes
+   no frame, so it needs no breakpoint. Remedy deliberately does not declare one
+   here: a breakpoint written before the card renders would be a guess. */
+
+.heroCard {
+  max-width: 720px;
+  margin: 32px auto;
+  padding: 28px;
+  border-radius: var(--remedy-radius-lg);
+  background: var(--remedy-card);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--remedy-shadow-soft);
+}
+
+.heroHeadline {
+  font: 700 22px/1.2 var(--remedy-font-ui);
+  color: var(--remedy-ink);
+}
+
+.heroCta {
+  display: inline-flex;
+  padding: 10px 18px;
+  border-radius: var(--remedy-radius-pill);
+  background: var(--remedy-blue);
+  color: #fff;
+  font-weight: 600;
+}

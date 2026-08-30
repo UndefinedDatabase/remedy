@@ -16,6 +16,7 @@ Public API::
 
     DECISION_INBOX_VERSION — int, payload version of the inbox document
     build_decision_inbox(job, events, now=None) -> dict
+    decision_urgency(card) -> int
 """
 
 from __future__ import annotations
@@ -126,6 +127,56 @@ def _answerable_by_decision_resolve(job: Any, decision_id: Any) -> bool:
                 and flight_plan.get("_approval") == "pending")
     record = find_task_decision(job, str(decision_id))
     return record is not None and record.get("status") == ESCALATION_STATUS_OPEN
+
+
+def decision_urgency(card: dict[str, Any]) -> int:
+    """How urgent one card is, as the single number a reader sorts the inbox by.
+
+    THE SINGLE HOME of the rule, per DECISION F040 D2.  The browser carries a
+    second copy today — ``decisionUrgency`` in
+    ``apps/ui/src/api/decisionOrder.ts`` — and the two are PINNED equal by
+    ``tests/ui_contracts/test_decision_urgency_parity.py`` rather than trusted,
+    so a reader who changes one is sent to the other.  F040 T002 retires the
+    TypeScript copy and leaves this function as the only one.
+
+    Reads exactly the two keys ``build_decision_inbox`` already sets on every
+    card, ``blocked_count`` and ``age_seconds``, and TOTAL by construction: no
+    input makes this raise.  An age or a blocked size this module cannot trust
+    — a missing key, a None, a bool, a string, a NaN or an infinity — scores as
+    nothing rather than sorting ahead of a real one.
+    """
+
+    def _real_number(value: Any) -> float | None:
+        """The value as a real number, or None when it is not a measurement.
+
+        A bool is an ``int`` in Python and would otherwise score as 0 or 1 by
+        accident; a NaN compares unequal to itself and would make the order
+        depend on which pair happened to be compared; an infinity would
+        dominate every card at every age.  None of the three is a measurement.
+        """
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        if value != value or value in (float("inf"), float("-inf")):
+            return None
+        return float(value)
+
+    # A None age is the endpoint's own answer for an unreadable ``created_at``
+    # (see ``_decision_age_seconds`` above), which is not evidence of urgency;
+    # a negative age means the clocks disagree.  Both score 0.
+    raw_age = _real_number(card.get("age_seconds"))
+    age = raw_age if raw_age is not None and raw_age > 0 else 0.0
+    # A card that blocks NOTHING must SCORE as blocking nothing, so a negative
+    # count is clamped here rather than eating into the age beside it.
+    raw_blocked = _real_number(card.get("blocked_count"))
+    blocked = max(0.0, raw_blocked) if raw_blocked is not None else 0.0
+    # WHY THE ``+ 1``, which a reader standing at this expression will not have:
+    # DECISION F031 D6 records that a literal ``blocked * age`` collapses every
+    # card that blocks NOTHING to exactly 0 whatever its age, so a question
+    # asked a week ago and one asked a second ago tie and their order becomes
+    # whatever the endpoint happened to send.  Adding one keeps blocked size
+    # dominant — one blocked task doubles a card's score — and leaves age as the
+    # total order among the cards that block nothing.
+    return int((blocked + 1) * age)
 
 
 def build_decision_inbox(

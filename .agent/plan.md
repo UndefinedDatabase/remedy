@@ -1,40 +1,50 @@
-# Plan — F033 Hunk-level diff approval
+# Plan — F040 Completion/return digest
 
-Branch: feature/f033-hunk-approval-v2, cut from `main` at `bd8d9529`, the merge
-commit of pull request 221. SESSION 7, closing the feature.
+Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
+commit of pull request 222. SESSION 5, round 22 — OPEN PR GATE CONFLICT
+RESOLUTION.
 
 ## Goal
-Surgical consent over changes: hunks carry STABLE content-hash ids, an
-`approve_hunks` command applies the approved set to the branch all-or-nothing,
-and rejected hunks become precise repair feedback quoted verbatim in the next
-round — every partial state rendered truthfully in viewer, node and report.
+Coming back is calm: a digest endpoint condenses state, cost with its basis, top
+ownership entries, open decisions and ONE primary action into a hero card, shown
+at job end or on the first UI open after absence — the "what happened while I
+was gone" answer in one glance.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001, T002 and T003 | done | rounds 1-24 |
-| the operator guide and its index rows | done | round 26 |
-| the integration gate | done | round 27, PASS WITH RISKS |
-| the Built State, evidence job and review zip | done | round 28 |
-| the STATUS line, the README sync and the PR | done | this round |
-| R-0745 and R-0750, carried as documented risks | open | see Risks |
+| the spec decisions D2 to D10 | done | rounds 2-9 |
+| T001 the composition, endpoint, goldens | done | rounds 3-5, all PASS |
+| T002 the client digest seam through the mount | done | rounds 6-14, all PASS |
+| T003 CLI parity + the client end-to-end | done | rounds 15-16, all PASS |
+| the integration gate | done | round 17, PASS |
+| closure preconditions + Built State | done | round 18, all six CLEAR/NONE |
+| closure evidence job + review zip | done | round 19, READY_FOR_REVIEW |
+| STATUS line + README sync + PR | done | round 20, PR #225 opened |
+| PR #225 vs main drift (F258 landed via #223/#224) | resolved | round 22, merge commit `f69f1785` |
+
+F040's build is DONE. Nothing in this feature's own content changed this
+round — round 22 only resolved a merge conflict caused by F258's
+registration (PRs #223/#224) landing on `main` after PR #225 opened,
+touching the same shared count lines in README.md and
+docs/roadmap/STATUS.md.
 
 ## Next Steps
-1. This round books the round 28 PASS, flips the STATUS line to `[x]` with the
-   README capability sync in the SAME commit, and opens the pull request.
-2. THE PR IS NOT MERGED IN THIS SESSION. It merges at the next feature's start
-   through the Open PR Gate, which is the operator's manual-review window; the
-   operator may also merge it by hand at any time.
-3. The next session starts a NEW feature: read `.agent/STOP` first, then run the
-   Open PR Gate, which will find this PR and merge it before any new branch.
-4. Nothing further is owed on this branch. Its last round has no on-disk gate
-   entry by construction, and that absence is the terminator rather than a
-   missing review.
+1. PR #225 is still OPEN and UNMERGED. It must be merged at the next
+   session's Open PR Gate (self_drive_protocol.md G1) before any new
+   feature work is claimed on this repo — never in the same
+   round/session that touches this branch.
+2. No further edits to this branch are expected before that merge. If
+   `main` drifts again before the merge, re-run this same conflict
+   resolution process against the newly conflicting lines only.
+3. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
+   resolution design (D5's "in-page action") and is not yet scheduled —
+   documented in the Built State section, carried forward as a known
+   post-closure item, not a blocker.
 
 ## Risks
-- R-0745 (Low) and R-0750 (Medium) stay OPEN at closure, which is why the STATUS
-  line reads PASS_WITH_RISKS. Neither is reachable from this feature's
-  Acceptance: the first hardens an import guard over the write door, the second
-  is a reviewer's gate wording that ordered a full run log where the canonical
-  integration-gate procedure asks for a tail.
+- R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch;
+  none is F040's to fix. R-0753 stays OPEN as this feature's documented risk.
+- `browserDigestPort.ts`'s open risk (a real browser refusing a write) is
+  still unaddressed and still deferred to whichever round first meets it.
