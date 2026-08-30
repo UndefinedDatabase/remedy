@@ -373,6 +373,10 @@ class ClaudeProvider:
     def name(self) -> str:
         return "claude"
 
+    @property
+    def supports_resume(self) -> bool:
+        return False
+
     def _get_client(self) -> Any:
         if self._client is not None:
             return self._client
@@ -419,6 +423,7 @@ class ClaudeProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         # F012: the builder prompt is sent verbatim — fingerprint the exact bytes.
         _pi = prepare_call_input(
@@ -460,6 +465,7 @@ class ClaudeProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
         structured = _reviewer_structured_enabled()
         full_prompt = (
@@ -1016,6 +1022,10 @@ class ClaudeCliProvider:
         return "claude-cli"
 
     @property
+    def supports_resume(self) -> bool:
+        return False
+
+    @property
     def write_mode(self) -> str:
         return self._write_mode
 
@@ -1350,6 +1360,7 @@ class ClaudeCliProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         # F012: the CLI sends the builder prompt verbatim (no out-of-band schema).
         _pi = prepare_call_input(
@@ -1415,6 +1426,7 @@ class ClaudeCliProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
         structured = _reviewer_structured_enabled()
         # F012: fingerprint exactly what the transport receives — the prompt bytes plus, in
