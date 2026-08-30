@@ -53,6 +53,7 @@ class TimeoutOnceFakeProvider(FakeProvider):
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         self._build_attempts += 1
         if self._build_attempts == 1:
@@ -60,7 +61,7 @@ class TimeoutOnceFakeProvider(FakeProvider):
                 error="provider_error: TimeoutExpired: timed out after 120s",
                 provider="fake",
             )
-        return super().build(prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
+        return super().build(prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume)
 
 
 class ReviewerTimeoutOnceFakeProvider(FakeProvider):
@@ -76,6 +77,7 @@ class ReviewerTimeoutOnceFakeProvider(FakeProvider):
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
         self._review_attempts += 1
         if self._review_attempts == 1:
@@ -83,7 +85,7 @@ class ReviewerTimeoutOnceFakeProvider(FakeProvider):
                 error="provider_error: TimeoutExpired: reviewer timed out",
                 provider="fake",
             )
-        return super().review(prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
+        return super().review(prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume)
 
 
 class NonzeroExitOnceFakeProvider(FakeProvider):
@@ -99,6 +101,7 @@ class NonzeroExitOnceFakeProvider(FakeProvider):
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         self._build_attempts += 1
         if self._build_attempts == 1:
@@ -106,7 +109,7 @@ class NonzeroExitOnceFakeProvider(FakeProvider):
                 error="provider_error: RuntimeError: claude CLI exited 1: internal error",
                 provider="fake",
             )
-        return super().build(prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars)
+        return super().build(prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars, resume=resume)
 
 
 # ---------------------------------------------------------------------------
@@ -733,6 +736,7 @@ class TestRateGovernorSeam:
                 *,
                 timeout_sec: int = 120,
                 max_output_chars: int = 50000,
+                resume: str | None = None,
             ) -> ReviewerOutput:
                 self.review_calls += 1
                 if self.review_calls == 1:
