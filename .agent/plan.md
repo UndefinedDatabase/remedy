@@ -1,7 +1,7 @@
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 3, round 10.
+commit of pull request 225. SESSION 3, round 11.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -16,27 +16,23 @@ standard finding ledger.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001/T002/T003, integration gate | done | rounds 2-7 |
-| preconditions 1, 3, 5, 6 | done | rounds 8-9 |
-| precondition 4 — Built State section | open | this round |
-| evidence job + review zip | open | next round |
-| STATUS + README + final PR | open | final round |
+| all six closure preconditions | done | rounds 8-10 |
+| the evidence bundle and the review zip | done | this round, closure steps 1-2 |
+| the closure commit and the PR | open | next, and it is the last round |
 
 ## Next Steps
-1. Book round 9's own verdict (`Gate: F258 R9`) into
-   `.agent/live_review.md`, per amend0827 rule 1.
-2. Add one dated line to `.agent/prose_slips.md` recording round 9's
-   skipped negative controls (no R-id — process-only, no product
-   effect, amend0827 rule 2).
-3. Append a `## Built State (F258, 2026-08-30)` section to
-   `docs/roadmap/features/T5_F258.md` (precondition 4), summarizing
-   T001/T002/T003 as shipped and naming R-0757 as the one open,
-   documented risk.
-4. `tests/docs/` gates this round (docs/roadmap/** in the change set).
-5. The evidence job, the review zip and the final STATUS/README/PR
-   commit are the next rounds, not this one.
+1. The closure commit, in ONE commit: the `[x]` flip on F258's line of
+   `docs/roadmap/STATUS.md`, the README capability sync that may never
+   disagree with it, the `scripts/self_use_queue.json` `consumed_by` edit
+   that marks SU-002 consumed by F258, and the final `.agent/` state.
+2. Open the pull request. It is NOT merged in this session — the gap is
+   the operator's manual-review window, and the next feature's Open PR
+   Gate merges it.
 
 ## Risks
-- R-0570 (Low), R-0736 (Medium): OPEN, unrelated to F258's own code.
-- R-0757 (Medium): OPEN, this branch's own defect, documented, not
-  fixed here.
-- No closure candidate is open; `.agent/candidates.md` stays empty.
+- R-0570 (Low), R-0736 (Medium), R-0757 (Medium): all OPEN, all
+  documented, none block a PASS WITH RISKS closure.
+- `docs/roadmap/STATUS.md` is in `scope_fences.BUILTIN_DENY` and stays
+  there.
+- A job must never mark its own queue item consumed; DECISION F257 D2
+  rules the consumption point stays the closure commit's edit.
