@@ -14,11 +14,11 @@ from pathlib import Path
 
 import pytest
 
+import packages.orchestration.self_use_runner as self_use_runner
 from packages.orchestration.pingpong_job import JOB_COMPLETED
 from packages.orchestration.pingpong_provider import FakeProvider
 from packages.orchestration.role_config import RoleConfig
 from packages.orchestration.self_use_runner import SelfUseRunError, run_next_self_use_item
-import packages.orchestration.self_use_runner as self_use_runner
 
 _PENDING_ITEM = {
     "id": "SU-042",
