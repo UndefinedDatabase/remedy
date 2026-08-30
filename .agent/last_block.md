@@ -1,167 +1,173 @@
-── STEP CLOSURE PART 1 / F040 — ROUND 18 ─────────────────────
-Goal:        Book the R17 verdict (PASS, the integration gate is clean — see
-             RECORD18 below), author F040's missing "Built State" section
-             (STATUS_closure_protocol.md precondition 4 — the section does
-             not exist yet on disk, `grep -c '^## Built State'
-             docs/roadmap/features/T5_F040.md` at this round's base is 0),
-             and DECLARE the status of every closure precondition (1-6)
-             against a real measurement, not a guess. This round does NOT
-             build the evidence job or the review zip — that is round 19,
-             per the "closure needs two rounds" split (the STATUS line
-             needs values only the zip build can produce, so mixing them
-             into one round forces a fabricated value). If every
-             precondition reads clear, round 19 is the evidence+zip round;
-             if one does not, this round's handback says which and why,
-             and the next round repairs it instead.
+── STEP CLOSURE PART 2 / F040 — ROUND 19 ─────────────────────
+Goal:        STATUS_closure_protocol.md algorithm steps 1-2: build the
+             closure evidence bundle (`create_manual_completion_bundle`)
+             and the review zip (`scripts/make_review_zip.sh`), and report
+             the four values a later round needs to author the STATUS
+             line — evidence job id, package filename, SHA-256, accepted
+             HEAD — spelled exactly as the tools print them. This round
+             does NOT author the STATUS line itself (R-0371: a value
+             cannot be quoted before the tool that produces it runs — see
+             [[feedback_closure_needs_two_rounds]] in spirit, restated
+             here as the reason the split exists). Neither the evidence
+             dir nor the zip is committed to git (DECISION 2026-08-01,
+             STATUS_closure_protocol.md "Evidence dir is not committed");
+             both are reported in the handback instead.
 
 Bundle:      C0a save this block verbatim · C0b mirror it · C1 the plan ·
-             C2 the record (the R17 verdict) · C3 the Built State section +
-             the precondition declarations · C4 the handback.
+             C2 the record (the R18 verdict) · C3 the evidence bundle and
+             the review zip · C4 the handback.
 Change:      EXACTLY these paths and nothing else.
-               `.agent/authored/f040-r18.md`               (C0a, new)
+               `.agent/authored/f040-r19.md`               (C0a, new)
                `.agent/last_block.md`                       (C0b)
                `.agent/plan.md`                             (C1)
                `.agent/live_review.md`                      (C2)
-               `docs/roadmap/features/T5_F040.md`           (C3)
                `.agent/handoff.md`                          (C4)
-             NOTHING UNDER `packages/`, `apps/` or `tests/` IS EDITED THIS
-             ROUND. The precondition declarations in C3/the handback are
-             READ-ONLY measurements (an integrity-check call, a queue read,
-             `git` status/log calls) — none of them write a file.
+             C3 WRITES NO TRACKED PATH — its outputs (the evidence dir and
+             the zip) are both gitignored (`remedy-job-evidence-*/`,
+             `remedy-review-*.zip` under `REMEDY_REVIEW_DIR`) and are
+             reported in the handback, not committed. NOTHING UNDER
+             `packages/`, `apps/` or `tests/` IS EDITED THIS ROUND — this
+             round only READS them to run verification.
 
 Constraints:
- 1. APPLY EVERY AUTHORED SLICE BYTE FOR BYTE. If a slice looks wrong, apply
-    it anyway and DECLARE the objection in the handback. Never repair a
-    slice.
- 2. THE COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4 and it is fixed.
- 3. C1 IS THE FIRST SUBSTANTIVE COMMIT (§3 item 23): the round moves the
-    finding ledger, so `.agent/plan.md` is current before the ledger is
-    touched.
- 4. RECORD18 IS APPENDED to `.agent/live_review.md`, never inserted, under
-    the SAME generalized reading round 17's own constraint 3 already
-    established (read `.agent/last_block.md` at this round's base if the
-    exact wording is needed — it is unchanged and not restated here to
-    keep this block short). Measure the pre-commit byte length and
-    trailing-newline state directly; do not assume them.
- 5. THE BUILT STATE APPEND, to `docs/roadmap/features/T5_F040.md`. Confirm
-    FIRST that no `^## Built State` heading exists in the file at this
-    round's base (grep, anchored). The append is pure concatenation: base
-    + one newline + BUILTSTATE's own bytes (the leading blank line before
-    the new `## ` heading is INSIDE the slice, per the EOF-append
-    convention — do not additionally prepend one). Reading (a): the base
-    blob is a byte PREFIX of the committed file and the concatenation
-    above reconstructs it whole. Reading (b): split BUILTSTATE on blank
-    lines into N paragraphs (counted by the script, never asserted);
-    paragraph 1 is checked by asking whether SOME blank-line unit of the
-    committed file ENDS WITH it (it fuses with the base file's own last
-    paragraph across the one-newline join); paragraphs 2..N, N>1 this
-    time, are checked by RAW EQUALITY against the committed file's own
-    blank-line units in order. Negative control, inside a disposable
-    worktree: flip one byte inside BUILTSTATE's own first paragraph and
-    report that both readings REJECT it and both ACCEPT the true bytes.
- 6. THE CLOSURE PRECONDITIONS (STATUS_closure_protocol.md, all six) are
-    measured fresh this round, never assumed from an earlier round's
-    prose, and every one of the six gets a stated verdict in the handback:
-      (1) every step has a PASS round; every R-id is Resolved or a
-          documented Medium/Low risk; latest live_review verdict is PASS
-          or PASS_WITH_RISKS. Re-derive this from the ledger itself
-          (the same registered/resolved/open-count reading G4 already
-          uses) plus a grep for `^Gate: F040 R` lines, rather than citing
-          a prior round's claim about it.
-      (2) full relevant suite green, verified by the reviewer running it.
-          This is ALREADY SATISFIED by round 17's own dedicated
-          integration-gate PASS (RECORD18 below) — cite the round number
-          and the two exit codes rather than re-running the ~2-minute
-          full suite a third time this session for the same commit range.
-      (3) `remedy integrity check --json` → PASS. The `remedy` CLI is
-          denied session-wide in this sandbox: call
-          `packages.orchestration.integrity_gate.run_integrity_checks`
-          directly instead and read its `.passed` / `.fail_count`
-          attributes (it is a dataclass-like object, not a dict — `.get`
-          raises). Report both, plus whether any FAIL is feature-coupled.
-      (4) the feature file's Built State section is current — this is
-          what C3 makes true; confirm the committed section is present
-          and non-empty.
-      (5) working tree clean, branch pushed, worker idle — `git status
-          --porcelain` empty and `git log
-          feature/f040-completion-digest..origin/feature/f040-completion-digest`
-          empty (nothing local unpushed) at the gate.
-      (6) exactly one self-use item is consumed by this close (F257).
-          Read `scripts/self_use_queue.json` fresh: report every item's
-          `id` and `consumed_by`. If every item already carries a
-          non-null `consumed_by`, the queue is EXHAUSTED for this close —
-          record `self-use NONE (queue exhausted)` per the protocol's own
-          words, not a fabricated consumption. Do not edit the file this
-          round regardless of the reading (consuming an item is a
-          write action the round's own Change set above does not permit
-          — a real pending item would be a reason to STOP and hand back
-          for a dedicated precondition round, not to consume it inline).
- 7. RE-READ `.agent/STOP` FROM DISK BEFORE THE FIRST COMMIT AND AGAIN
+ 1. THE COMMIT ORDER IS C0a, C0b, C1, C2, C3, C4 and it is fixed.
+ 2. C1 IS THE FIRST SUBSTANTIVE COMMIT (§3 item 23).
+ 3. RECORD19 IS APPENDED to `.agent/live_review.md`, never inserted, under
+    the same generalized reading round 18's own constraint 4 already
+    established (read `.agent/last_block.md` at this round's base — i.e.
+    round 18's committed block — before you overwrite it at C0b, if the
+    exact wording is needed).
+ 4. THE EVIDENCE SCRIPT IS AN ADAPTATION, NOT AN INVENTION. Start from
+    `.agent/authored/f009-r33.md`'s `EVIDENCESCRIPT` slice (read it in
+    full) and change ONLY the following — everything else in that script
+    (the double path scrub in `_tail`, node ids taken from
+    `--collect-only` rather than a `-v` log, the `len(node_ids) ==
+    selected` assert, the `build_review_manifest._unsafe_text` pre-scan
+    with its own red control, the `OUTPUT_HASH` re-derivation against
+    `sha256(stdout_summary)`) is load-bearing and stays exactly as
+    written:
+      EVIDENCE_DIR = os.path.join(REPO, ".remedy-wt", "f040_closure_evidence",
+                                   "remedy-job-evidence-f040-closure")
+      BASE = "f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1"
+        (re-confirm with `git merge-base feature/f040-completion-digest
+        main` before using it; declare in the handback if it differs)
+      job_id = "f040-closure"
+      job_title = "F040 Completion/return digest - closure"
+      step_range = "T001-T003"
+      prior_job_ids = ["f033-closure"]
+      num_tasks = 3
+      note_prefix = "operator-attested manual completion - F040 closure"
+      review_feature_id = "f040"
+      The `mkrun(...)` list — 9 runs, in this order, none omitted:
+        mkrun("vr-0001", "tests/orchestration/test_job_digest.py", 46)
+        mkrun("vr-0002", "tests/ui_server/test_digest_route.py", 7)
+        mkrun("vr-0003", "tests/cli/test_job_digest_cli.py", 9)
+        mkrun("vr-0004", "tests/ui_contracts/test_digest_card_copy.py", 23)
+        mkrun("vr-0005", "tests/ui_contracts/test_digest_hero_card.py", 25)
+        mkrun("vr-0006", "tests/ui_contracts/test_digest_hero_css.py", 7)
+        mkrun("vr-0007", "tests/ui_contracts/test_digest_mount.py", 26)
+        mkrun("vr-0008", "tests/ui_contracts/test_job_digest_card_contract.py", 29)
+        mkrun("vr-0009",
+              "tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes",
+              1)
+      Every one of these 9 expected counts was measured fresh by the
+      reviewer via `--collect-only` immediately before this block was
+      authored and all 9 files together passed 172 (the first 8) plus 1
+      (the 9th) with ZERO skips, ZERO failures — if a re-run under this
+      script disagrees with any of these 9 numbers, that is a STOP
+      condition (constraint 8), not a number to silently update.
+ 5. IF ANY NODE ID OR COMMAND STRING IS REJECTED by
+    `build_review_manifest._unsafe_text` (the pre-scan the adapted script
+    runs before ever calling `create_manual_completion_bundle`, per the
+    template's own assert), that is expected to be RARE for this feature
+    (no path-traversal-torture parametrization is known to exist in any
+    of the 9 files above) but if it happens, follow the template's own
+    `-k`-deselect pattern exactly as `mkrun`'s own docstring describes
+    rather than deleting the id from the count, and declare the
+    discovery in the handback.
+ 6. THE ZIP BUILD is the canonical sequence from
+    STATUS_closure_protocol.md's "Canonical zip build sequence": confirm
+    the tree is clean and pushed (it will be, from C0a-C2 of THIS round,
+    committed and pushed before C3 begins — do not build the zip from a
+    dirty tree), then
+      bash scripts/make_review_zip.sh --evidence-dir <EVIDENCE_DIR above>
+    Record the exact printed zip filename and its SHA-256. `REMEDY_REVIEW_DIR`
+    is unset in this shell, so the script's own default
+    (`$HOME/Repos/remedy-history/zips`) is where the package lands; record
+    that absolute path as the package's ARCHIVED PATH (DECISION amend0827
+    D1) rather than assuming it.
+ 7. AFTER THE ZIP BUILDS, verify from the package itself, never from a
+    script's own printed claim alone: open the zip, read
+    `committed_review_subject.head_commit` out of its manifest, and
+    confirm it equals the `HEAD` this round's own C2 commit produced
+    (the accepted HEAD). Confirm `PACKAGE_STATUS` in the filename (or the
+    manifest) reads `READY_FOR_REVIEW` — any other status is a closure
+    BLOCKER per the protocol's own "Packaging-deadlock rule": STOP, do
+    not repair the underlying cause in this round, and report the exact
+    rejection in the handback instead (constraint 8).
+ 8. RE-READ `.agent/STOP` FROM DISK BEFORE THE FIRST COMMIT AND AGAIN
     BEFORE C4. If it appears, finish the commit in hand, write the
-    handback and stop.
- 8. DESTRUCTIVE VERIFICATION ONLY INSIDE A DISPOSABLE `git worktree`,
-    removed before the handback. The primary checkout satisfies `git
-    status --porcelain` empty at every commit boundary.
+    handback and stop. Likewise, if constraint 6's manifest check or
+    constraint 7's status check fails, STOP after finishing the commit in
+    hand (do not attempt a fix this round) and hand back with the exact
+    failure.
+ 9. DESTRUCTIVE / LONG-RUNNING VERIFICATION (the evidence script's own
+    test runs, the zip build) may run in the primary checkout — none of
+    it mutates a tracked file, per the Change set above, and every
+    tracked-file write this round is one of C0a-C2/C4. The primary
+    checkout satisfies `git status --porcelain` empty at every commit
+    boundary.
 
 Done when: every gate below is executed, each with its REAL exit code or
 REAL measured value taken directly from `subprocess.run(...).returncode`,
-`hashlib.sha256`, or a plain `open(...).read()` byte comparison — never
-from a pipe, never from `$?`. All of them run at commits strictly earlier
-than C4, and the commit each runs at is named below.
+`hashlib.sha256`, or a plain `open(...).read()` byte comparison.
 
- G1 TRANSPORT, at C0b. ONE comparison, disk to disk: report the sha256 and
-    byte length of `.remedy-wt/f040-r18-block.md`, of
-    `.agent/authored/f040-r18.md` and of `.agent/last_block.md`, and that
-    all three are equal.
- G2 THE PLAN, at C1. `.agent/plan.md` byte-equal to the PLAN18 slice;
-    report its line count and that it is under 50; report that it holds
-    `## Goal`, `## Next Steps` and a string matching `\bF\d{3}\b`.
- G3 THE RECORD APPEND, at C2. Re-measure the pre-commit length rather than
-    taking it from this block. Reading (a) and reading (b) per constraint
-    4. Negative control, inside a disposable worktree: flip one byte
-    inside RECORD18's first paragraph and report that both readings
-    REJECT it and both ACCEPT the unflipped bytes.
- G4 THE LEDGER, at C2. Compute by DIFFERENCE between the pre-commit base
-    and the committed file, never by reading the slice: the distinct ids
-    matching `^- R-\d+ — `, those matching `^Done: R-\d+`, those matching
-    `DECISION F040 D\d+`, and the count of lines matching
-    `^Gate: F040 R17 — `. Report ADDED and REMOVED for each set and the
-    open count (registered minus resolved, both distinct) before and
-    after; report that no id's status changes this round.
- G5 THE BUILT STATE APPEND, at C3. Per constraint 5: report the pre-commit
-    absence of `^## Built State`, the sha256/byte length of BUILTSTATE
-    itself, readings (a) and (b) with the negative control, and that the
-    committed file's `^## Built State (F040, ` heading appears exactly
-    once.
- G6 THE CLOSURE PRECONDITIONS, at C3 or immediately after (read-only,
-    no commit of its own). Report the stated verdict for each of the six
-    preconditions per constraint 6, with the real command/call and its
-    real output for (2), (3), (5) and (6); a ledger-derived reading for
-    (1); and the commit reference for (4).
+ G1 TRANSPORT, at C0b. sha256 and byte length of
+    `.remedy-wt/f040-r19-block.md`, `.agent/authored/f040-r19.md` and
+    `.agent/last_block.md`; all three equal.
+ G2 THE PLAN, at C1. `.agent/plan.md` byte-equal to PLAN19; line count
+    under 50; holds `## Goal`, `## Next Steps`, `\bF\d{3}\b`.
+ G3 THE RECORD APPEND, at C2. Reading (a) and (b) per constraint 3, with
+    the negative control inside a disposable worktree.
+ G4 THE LEDGER, at C2. Distinct registered/resolved/`DECISION F040 D`
+    ADDED and REMOVED (report none of either), `^Gate: F040 R18 — ` lines
+    0 before 1 after, open count unchanged.
+ G5 THE VERIFICATION RUNS, at C3. For each of the 9 `mkrun` calls: real
+    exit code (must be 0), passed/failed/skipped counts matching
+    constraint 4's stated expectations exactly, `len(node_ids) ==
+    selected`, and the pre-bundle `_unsafe_text` scan rejecting zero
+    strings across every run's node ids and command.
+ G6 THE BUNDLE AND THE ZIP, at C3. `create_manual_completion_bundle`'s own
+    returned result (job id, paths); the zip build's real exit code;
+    the printed filename and SHA-256; the manifest's own
+    `committed_review_subject.head_commit` read back OUT OF THE PACKAGE
+    equal to this round's C2 commit SHA; `PACKAGE_STATUS` reading
+    `READY_FOR_REVIEW`; the OUTPUT_HASH re-derivation from the template
+    matching for every run.
  G7 THE TREE, at C3/C4. `git status --porcelain` empty; `git worktree
-    list` one line (primary checkout only); `git branch --list 'tmp/*'`
-    empty of any name this round created.
+    list` one line; no path under `.remedy-wt/f040_closure_evidence/` or
+    the zip's own directory is tracked by git (`git check-ignore` on
+    each, or `git status --porcelain` staying empty after they exist,
+    is sufficient proof).
 
 Handback:    rewrite `.agent/handoff.md` per docs/agents/handback_template.md.
-             Carry the SESSION NUMBER — SESSION 4 of F040 — the round (18),
-             the range, one line per gate with its REAL exit code or
-             measured value, the item-status table, the six precondition
-             verdicts as their own table, the deviations, the open-findings
-             count, and the next expected action (round 19: the evidence
-             job + review zip, IF every precondition reads clear; otherwise
-             a named repair). Then
-             `git push -u origin feature/f040-completion-digest`. Create no
-             pull request, merge nothing, force-push nothing, touch no
-             branch other than any disposable one this round's own
-             negative-control worktrees created, all deleted before this
-             commit.
+             Carry SESSION 4, round 19, the range, one line per gate with
+             its real exit code or value, the item-status table, the
+             FOUR VALUES this round exists to produce (evidence job id,
+             package filename, SHA-256, accepted HEAD) spelled exactly as
+             the tools printed them, deviations, open-findings count, and
+             the next expected action (round 20: the STATUS line, README
+             sync and the final closure commit + PR — reviewer-authored,
+             worker-applied verbatim, per algorithm steps 3-5). Then
+             `git push -u origin feature/f040-completion-digest`. Create
+             no pull request, merge nothing, force-push nothing.
 ──────────────────────────────────────────────────────────────
 
-<<<BEGIN PLAN18
+<<<BEGIN PLAN19
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 4, round 18.
+commit of pull request 222. SESSION 4, round 19.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -178,95 +184,35 @@ was gone" answer in one glance.
 | T002 the client digest seam through the mount | done | rounds 6-14, all PASS |
 | T003 CLI parity + the client end-to-end | done | rounds 15-16, all PASS |
 | the integration gate | done | round 17, PASS |
-| closure sequence | in progress | this round: Built State + preconditions |
+| closure preconditions + Built State | done | round 18, all six CLEAR/NONE |
+| closure evidence job + review zip | in progress | this round |
+| STATUS line + README sync + PR | open | next, if the zip is READY |
 
 ## Next Steps
-1. This round appends the R17 verdict to the ledger, writes F040's missing
-   Built State section into its feature file, and declares the status of
-   all six STATUS_closure_protocol.md preconditions against a fresh
-   measurement.
-2. If every precondition reads clear, round 19 builds the closure evidence
-   job and the review zip (algorithm steps 1-2), reporting the four values
-   (job id, package filename, SHA-256, accepted HEAD) a later round needs
-   to author the STATUS line — never in the same round that authors it
-   (R-0371: a value cannot be quoted before the tool that produces it
-   runs).
-3. Round 20 (or later) authors the STATUS line and README sync in the
-   final closure commit, then opens the PR. The PR is not merged this
-   session (G1 of self_drive_protocol.md; STATUS_closure_protocol.md
-   algorithm step 6 defers the merge to the next feature's Open PR Gate).
+1. This round builds the closure evidence bundle and the review zip
+   (STATUS_closure_protocol.md algorithm steps 1-2) and reports the four
+   values a later round needs: evidence job id, package filename,
+   SHA-256, accepted HEAD.
+2. If the package reads READY_FOR_REVIEW, round 20 authors the STATUS
+   line and syncs README in the same final closure commit (R-0154: they
+   may never disagree in any committed state), then opens the PR. The PR
+   merges at the next feature's Open PR Gate, not this session
+   (STATUS_closure_protocol.md algorithm step 6).
+3. If the zip build fails or packages BLOCKED_EVIDENCE, that is a closure
+   BLOCKER: STOP and hand back with the exact rejection rather than
+   repairing it in the same round.
 4. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
    resolution design (D5's "in-page action") and is not yet scheduled —
-   this is documented in the Built State section this round adds, not a
-   blocker to closure.
+   documented in the Built State section, not a blocker to closure.
 
 ## Risks
 - R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch;
   none is F040's to fix. R-0753 stays OPEN as this feature's documented risk.
 - `browserDigestPort.ts`'s open risk (a real browser refusing a write) is
   still unaddressed and still deferred to whichever round first meets it.
-<<<END PLAN18
+<<<END PLAN19
 
-<<<BEGIN RECORD18
-Gate: F040 R17 — THE INTEGRATION GATE (verification tier 3, docs/agents/planner_reviewer_prompt.md §3; docs/agents/integration_gate.md steps 1-4). VERDICT PASS. THE REVIEWER RE-RAN THE ROUND'S OWN VERIFICATION INDEPENDENTLY RATHER THAN TAKING THE HANDBACK'S NUMBERS, per docs/agents/self_drive_protocol.md Phase 2 step 3, reading the diff `564bb945..403d8087` in full — C0a-C2 were committed by a stalled prior attempt this session inherited and are reviewed here for the first time alongside C3-C4. THE TRANSPORT, independently re-measured: `.agent/authored/f040-r17.md` and `.agent/last_block.md` sha256-equal at `f28a71ff0df2061cd2c7b7a74db1678ba42bd39d6c66952d331fc287159534c0`, 15198 bytes, both. THE PLAN, independently re-derived from the block's own PLAN17 slice against the committed `.agent/plan.md`: byte-equal (True), 2303 bytes both sides, 44 lines, holding `## Goal`, `## Next Steps` and `F040`. THE RECORD APPEND, independently reconstructed: `.agent/live_review.md` at `564bb945^` is 1738793 bytes ending in a trailing newline; `base + "\n" + RECORD17` (3131 bytes) equals the committed 1741925-byte file, exactly. THE LEDGER, independently recomputed by difference between `564bb945^` and `564bb945`: registered ids ADDED `[]` REMOVED `[]` (317 distinct both sides), resolved ids ADDED `[]` REMOVED `[]` (55 distinct both sides), `DECISION F040 D` ids ADDED `[]` REMOVED `[]`, `Gate: F040 R16 —` lines 0 before → 1 after, open count 262 before and after. THE BRANCH RUN WAS INDEPENDENTLY REPRODUCED, not merely re-read: `python3 -m pytest -n auto -q` at branch tip `564bb945` in the primary checkout, REAL EXIT 0, 18642 passed, 20 skipped — matching the handback's own figure exactly. THE BASE RUN WAS INDEPENDENTLY REPRODUCED IN A FRESH DISPOSABLE WORKTREE THE REVIEWER BUILT ITSELF (`git worktree add -b tmp/review-gate-r17 .remedy-wt/wt-review-r17-base f5b1e6c5`, matching the freshly recomputed merge base `f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1`; removed, with its branch, after): `apps/ui/node_modules` and `apps/ui/dist` copied from the primary checkout with `symlinks=True`, the R-0736 mtime-parity fix applied proactively (dist mtimes advanced past the worktree's own max source mtime, content untouched), `REMEDY_UI_NO_AUTO_BUILD=1` set. The reviewer's FIRST invocation of the base run (pytest launched from the primary checkout's own process cwd with the worktree given as a path argument) produced 5 unrelated failures inside `tests/test_grouped_cli.py` — a review-side artifact of the wrong process cwd/rootdir affecting which installed package the CLI subprocess resolved, not a real base-branch defect; corrected by re-invoking with the subprocess's own `cwd` set to the worktree root and no path argument, which reproduced the handback's own reported figure exactly: REAL EXIT 0, 18447 passed, 20 skipped, 0 FAILED. Both `comm -13`/`comm -23` against the reviewer's own captured FAILED lists (both empty on both sides) confirm `branch_only.txt`/`base_only.txt` as committed: empty, empty. R-0736 (Medium, OPEN) is confirmed the correct, already-registered attribution for the mtime-staleness class the handback names — no id is minted this round. THE ROUND PASSES: every path in the change set matches the block's fixed order, no constraint is violated, the reused leftover worktree/branch from the stalled prior attempt were independently re-verified against constraints 4-5 before reuse (freshly recomputed merge base match, clean `git status --porcelain` inside it), the primary checkout's tree is clean and pushed. Per docs/agents/integration_gate.md step 5 this verdict is the reviewer's alone to give: THE GATE IS CLEAN. F040 is READY for the closure sequence (STATUS_closure_protocol.md precondition 2 is satisfied by this round). No new finding is raised by this review.
-<<<END RECORD18
-
-<<<BEGIN BUILTSTATE
-
-## Built State (F040, 2026-08-30)
-
-What exists on disk at the close of F040, so a later reader need not reconstruct
-it from this file's future tense.
-
-**T001 — the envelope composition and endpoint.**
-`packages/orchestration/job_digest.py:build_job_digest(job, events=None)`
-returns a TOTAL eight-key envelope — `version`, `job_id`, `state`, `headline`,
-`cost`, `ownership`, `decisions`, `primary_action` — that never raises on any
-input. `ownership` is always `[]` (DECISION F040 D3: F035 owns the ownership
-sentences and is unbuilt, so there is no source to read; no version bump is
-needed when F035 fills the key). `primary_action` is read straight off
-`recommended_next_action(sources)`, the ONE-SOURCE property: the same
-`ReportSources` object the digest describes is the one the rule table is asked
-about, so the two halves of the answer can never drift apart.
-`packages/orchestration/ui_server.py:_build_digest_json` serves this envelope at
-`GET /api/jobs/<job_id>/digest`. Goldens live under
-`tests/orchestration/fixtures/job_digest/golden/`, one stored JSON per state
-shape, compared whole after normalizing exactly three identities that differ on
-every build — the job's UUID, its first-eight prefix, and each `td:` decision
-id.
-
-**T002 — the client trigger, the card and the storage edge.**
-`apps/ui/src/api/jobDigest.ts` decodes the envelope on the client.
-`apps/ui/src/api/digestVisibility.ts:digestVisibility` is a PURE total rule
-deciding whether the hero card shows: it reads no clock (`nowMs` arrives as a
-parameter), keeps no storage, opens no socket, mints nothing, and writes no
-presentation copy — `apps/ui/src/api/digestCardCopy.ts:digestCtaText` owns the
-CTA phrasing instead, the same split `TopMetricsBar.tsx` already makes one
-layer down. `apps/ui/src/api/browserDigestPort.ts:browserDigestVisibilityPort`
-is the one storage edge — per-job last-seen and dismissal, keyed in
-`window.localStorage` (DECISION F040 D8).
-`apps/ui/src/components/digest/DigestHeroCard.tsx` renders the card;
-`apps/ui/src/components/shell/RemedyShell.tsx` mounts it as the first child of
-the viewport div immediately after `<DegradedBanner>`, conditioned on
-`digest !== null`, wired to `loadJobDigest`, `digestVisibility`, and the
-storage port's lazy reads for `lastSeenMs` and `dismissedAtMs`.
-
-**T003 — CLI parity and the end-to-end.**
-`apps/cli/commands/job.py:_cmd_job_digest` (`remedy job digest <id>`) makes the
-SAME two calls `_cmd_job_summary` already makes — `resolve_job_id`/`load_job`,
-then `load_run_events` — and prints the SAME `build_job_digest` envelope the
-route builds, so the CLI and the route can never disagree about the same job.
-`apps/ui/src/api/digestEndToEnd.test.ts` chains `decodeJobDigest` to
-`digestVisibility` to `browserDigestVisibilityPort` to `digestCtaText` over one
-frozen golden shape, proving the feature file's own script on the client:
-finish while away, reopen, correct CTA, dismiss, no re-show, re-arm on new
-activity.
-
-**What is deliberately NOT here.** `onOpenDecisions`/`onPrimaryAction` are not
-wired to a real action — DECISION F040 D5's "in-page action" needs its own
-resolution design and is not yet scheduled; the card renders without them.
-`browserDigestPort.ts`'s open risk — a real browser refusing a write (private
-mode, quota, disabled storage) — is unaddressed and deferred to whichever round
-first meets it, a documented risk rather than a defect.
-<<<END BUILTSTATE
+<<<BEGIN RECORD19
+Gate: F040 R18 — THE CLOSURE PRECONDITION ROUND (STATUS_closure_protocol.md preconditions 1-6; the closure-round bookkeeping exception of amend0827-process-diet rule 1). VERDICT PASS. THE REVIEWER RE-RAN THE ROUND'S OWN VERIFICATION INDEPENDENTLY RATHER THAN TAKING THE HANDBACK'S NUMBERS, reading the diff `403d8087..4db6c088` in full. THE TRANSPORT: `.remedy-wt/f040-r18-block.md`, `.agent/authored/f040-r18.md` and `.agent/last_block.md` sha256-equal at `de6ad99cd996c3125f209f18b70ac20b598aecc6c05a946554489d92e10ddfae`, 20312 bytes, all three, against the reviewer's OWN scratch original rather than a copy taken on faith. THE PLAN: byte-equal to PLAN18, 2394 bytes, 47 lines, holding `## Goal`, `## Next Steps`, `F040`. THE RECORD APPEND: base 1741925 bytes trailing-newline-terminated; `base + "\n" + RECORD18` equals the committed 1745755-byte file exactly. THE LEDGER, recomputed by difference between `135bb0bc^` and `135bb0bc`: registered/resolved ADDED `[]` REMOVED `[]` (317/55 distinct both sides), `DECISION F040 D` ADDED `[]` REMOVED `[]`, `Gate: F040 R17 —` lines 0 before → 1 after, open count 262 unchanged. THE BUILT STATE APPEND, independently reconstructed: base (`docs/roadmap/features/T5_F040.md` at `9ff9dac5^`) 6647 bytes with no `## Built State` heading; `base + "\n" + BUILTSTATE` equals the committed 10081-byte file exactly; the committed file carries exactly one `## Built State (F040, ` heading. ONE DEVIATION IS CONFIRMED AND ACCEPTED, NON-BLOCKING: the committed file carries TWO blank lines before the new heading rather than one — the reviewer's OWN authored BUILTSTATE slice began with its own leading blank line while the block's constraint 5 also specified a one-newline join on top of the base file's own trailing newline, so the double blank is an authoring slip in the REVIEWER's block text, not a worker error; the worker applied it byte for byte per constraint 1 ("never repair a slice") and declared it. Pure whitespace, no effect on any heading anchor or rendered structure beyond one extra blank line; no id is minted. THE SIX CLOSURE PRECONDITIONS were independently re-measured by the reviewer, not read back from the handback: (1) CLEAR — 16 distinct `^Gate: F040 R` lines on record (R1-R9, R11-R17; R10 folded into R11's own text), every F040-scoped open id is a documented Low/Medium risk, latest verdict PASS. (2) CLEAR — satisfied by round 17's own integration gate, re-cited rather than re-run a third time this session. (3) CLEAR — `packages.orchestration.integrity_gate.run_integrity_checks()` called directly by the reviewer: `.passed=True`, `.fail_count=0`. (4) CLEAR — the Built State section is present and non-empty, confirmed above. (5) CLEAR — `git status --porcelain` empty, `git worktree list` one line, `git branch --list 'tmp/*'` empty, both push directions confirmed empty by the reviewer's own `git fetch`. (6) NONE (queue exhausted) — `git diff 403d8087..4db6c088 -- scripts/self_use_queue.json` is EMPTY (confirmed unedited by the reviewer directly), and its one item `SU-001` already carries `consumed_by: "F257"` — no pending item exists for F040 to consume. THE ROUND PASSES: every path in the change set matches the block's fixed order, the tree is clean and pushed, no `tmp/*` branch or extra worktree survives. F040 is CLEAR on every closure precondition; round 19 is the evidence job and review zip build (STATUS_closure_protocol.md algorithm steps 1-2). No new finding is raised by this review.
+<<<END RECORD19
 ──────────────────────────────────────────────────────────────
