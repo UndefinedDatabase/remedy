@@ -13,9 +13,12 @@ matching tests/orchestration/test_fences.py.
 from __future__ import annotations
 
 from packages.orchestration.diff_repair import (
+    REPAIR_HUNKS_HEADING,
+    REPAIR_HUNKS_OMITTED_INTRO,
     RepairHunk,
     RepairHunkSelection,
     changed_line_ranges_from_patch,
+    render_repair_hunks,
     select_repair_hunks,
 )
 from packages.orchestration.structured_patch import FileOp, StructuredPatch, UnifiedDiff
@@ -402,3 +405,85 @@ class TestChangedLineRangesFromPatch:
         result = select_repair_hunks(tmp_path, changed_line_ranges_from_patch(patch))
         assert result.hunks == ()
         assert result.omitted == (("a.txt", "no_ranges"),)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Rendering — a selection becomes repair-prompt text (T002b-ii step 2 prep,
+# DECISION F106 D1(b)'s rendering-convention obligation). No production
+# caller wires this in yet; that is a later round's own work.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRenderRepairHunks:
+    """The frozen prompt-text convention for a RepairHunkSelection."""
+
+    def test_empty_selection_renders_nothing(self):
+        selection = RepairHunkSelection(hunks=(), omitted=(), total_chars=0)
+        assert render_repair_hunks(selection) == ""
+
+    def test_empty_selection_with_only_omissions_still_renders_nothing(self):
+        selection = RepairHunkSelection(
+            hunks=(), omitted=(("a.py", "missing"),), total_chars=0
+        )
+        assert render_repair_hunks(selection) == ""
+
+    def test_single_hunk_frozen_render(self):
+        hunk = RepairHunk(path="a.py", start_line=1, end_line=3, text="one\ntwo\nthree")
+        selection = RepairHunkSelection(hunks=(hunk,), omitted=(), total_chars=13)
+        assert render_repair_hunks(selection) == (
+            "## Resumed Session — Changed Regions Only\n"
+            "\n"
+            "### a.py (lines 1-3)\n"
+            "```\n"
+            "one\ntwo\nthree\n"
+            "```\n"
+        )
+
+    def test_two_hunks_render_in_selection_order_with_a_blank_line_between(self):
+        hunk_a = RepairHunk(path="a.py", start_line=1, end_line=1, text="one")
+        hunk_b = RepairHunk(path="b.py", start_line=9, end_line=9, text="nine")
+        selection = RepairHunkSelection(
+            hunks=(hunk_a, hunk_b), omitted=(), total_chars=7
+        )
+        rendered = render_repair_hunks(selection)
+        assert rendered == (
+            "## Resumed Session — Changed Regions Only\n"
+            "\n"
+            "### a.py (lines 1-1)\n"
+            "```\n"
+            "one\n"
+            "```\n"
+            "\n"
+            "### b.py (lines 9-9)\n"
+            "```\n"
+            "nine\n"
+            "```\n"
+        )
+        assert rendered.index("a.py") < rendered.index("b.py")
+
+    def test_omitted_paths_render_as_a_trailing_bulleted_list(self):
+        hunk = RepairHunk(path="a.py", start_line=1, end_line=1, text="one")
+        selection = RepairHunkSelection(
+            hunks=(hunk,),
+            omitted=(("b.py", "budget"), ("c.py", "missing")),
+            total_chars=3,
+        )
+        rendered = render_repair_hunks(selection)
+        assert rendered.endswith(
+            "Omitted from this selection:\n"
+            "- b.py (budget)\n"
+            "- c.py (missing)\n"
+        )
+        assert REPAIR_HUNKS_OMITTED_INTRO in rendered
+
+    def test_rendered_text_starts_with_the_heading_constant(self):
+        hunk = RepairHunk(path="a.py", start_line=1, end_line=1, text="one")
+        selection = RepairHunkSelection(hunks=(hunk,), omitted=(), total_chars=3)
+        assert render_repair_hunks(selection).startswith(REPAIR_HUNKS_HEADING)
+
+    def test_end_to_end_with_select_repair_hunks(self, tmp_path):
+        _write(tmp_path, "a.txt", 5)
+        result = select_repair_hunks(tmp_path, {"a.txt": [[2, 2]]}, margin_lines=0)
+        rendered = render_repair_hunks(result)
+        assert "a.txt" in rendered
+        assert result.hunks[0].text in rendered
