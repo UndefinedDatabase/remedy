@@ -1,5 +1,5 @@
-"""Tests for the F106 session-resume capability surface (T001) and its first
-repair-path wiring (T002a).
+"""Tests for the F106 session-resume capability surface (T001) and its
+repair-path wiring (T002a, T002b-i).
 
 T001 covers: every concrete provider (`FakeProvider`, `ClaudeProvider`,
 `ClaudeCliProvider`) exposes `supports_resume` and reads `False` by
@@ -19,8 +19,16 @@ only — surfacing them into the trust-bearing, closed-schema
 `provider_evidence.json` is explicitly out of scope this round (see the
 round's own step block). Real network/CLI providers are unaffected — this
 round's production change lives only in the Builder call site of
-`packages/orchestration/pingpong_loop.py`; the Reviewer call and the
-delta-prompt shrink are T002b.
+`packages/orchestration/pingpong_loop.py`.
+
+T002b-i covers the identical rule on the Reviewer side: the repair
+round's PRIMARY `review()` attempt passes `resume=` built from the PRIOR
+round's captured Reviewer session id, under the same three-way guard
+(supported, is-repair, prior session id known). The bounded parse retry
+(a separate call within the same round) is explicitly NOT threaded this
+round — it always sends full context. `ReviewerOutput.resume_used`/
+`resume_session_ref` land the same way `BuilderOutput`'s do; the
+delta-prompt shrink (F111 hunk selection) is T002b-ii, still open.
 """
 
 from __future__ import annotations
@@ -191,3 +199,54 @@ class TestT002aBuilderResumeThreading:
             builder_provider=provider, reviewer_provider=provider,
         )
         assert result.rounds[0].builder_output.resume_used is False
+
+
+class TestT002bReviewerResumeThreading:
+    """The repair round's PRIMARY Reviewer attempt resumes only when earned."""
+
+    def test_repair_round_resumes_when_supported_and_session_known(self, demo_repo: Path):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=True, fake_session_id="sess-1",
+        )
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2,
+        )
+        assert len(result.rounds) >= 2
+        assert result.rounds[0].reviewer_output.resume_used is False
+        assert result.rounds[0].reviewer_output.resume_session_ref == ""
+        assert result.rounds[1].reviewer_output.resume_used is True
+        assert result.rounds[1].reviewer_output.resume_session_ref == "sess-1"
+
+    def test_repair_round_does_not_resume_when_provider_unsupported(self, demo_repo: Path):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=False, fake_session_id="sess-1",
+        )
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2,
+        )
+        assert len(result.rounds) >= 2
+        assert all(rd.reviewer_output.resume_used is False for rd in result.rounds)
+
+    def test_repair_round_does_not_resume_without_a_prior_session_id(self, demo_repo: Path):
+        provider = FakeProvider(fail_on_round=1, pass_on_round=2, supports_resume=True)
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2,
+        )
+        assert len(result.rounds) >= 2
+        assert all(rd.reviewer_output.resume_used is False for rd in result.rounds)
+
+    def test_initial_round_never_resumes(self, demo_repo: Path):
+        provider = FakeProvider(supports_resume=True, fake_session_id="sess-1")
+        result = run_pingpong(
+            "Fix README", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+        )
+        assert result.rounds[0].reviewer_output.resume_used is False
