@@ -3037,6 +3037,32 @@ def run_pingpong(
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
             )
+            # F106 T002c: a resume attempt that errors falls back ONCE to the
+            # full-context path within the same round — an honest, evidenced
+            # event, never a task failure by itself (Orchestrator brief,
+            # verbatim). Only fires when a resume was actually attempted
+            # (``builder_resume_ref`` set); a plain call failure with no
+            # resume in play is unaffected and falls straight through to the
+            # existing terminal-error handling below, unchanged.
+            if builder_resume_ref and builder_out.error:
+                _begin_stream_call(builder_provider, round_num, "attempt")
+                builder_call_reasons = []
+                builder_out = _call_with_retry(
+                    lambda ts=builder_timeout: builder_provider.build(
+                        builder_prompt,
+                        timeout_sec=ts,
+                        max_output_chars=max_output_chars,
+                        resume=None,
+                    ),
+                    result=result,
+                    role="builder",
+                    provider=builder_name,
+                    on_provider_attempt=on_provider_call,
+                    call_reasons=builder_call_reasons,
+                    stop_check=_stopped,
+                    rate_governor=_rate_governor,
+                )
+                builder_out.resume_fallback = True
             rd.builder_output = builder_out
 
             # F012: the Builder call is finalized — record its input through the single seam.
