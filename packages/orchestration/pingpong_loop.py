@@ -1357,6 +1357,7 @@ def compose_reviewer_prompt(
     scope_packet: dict[str, Any] | None = None,
     evidence_dir: str | Path | None = None,
     task_id: str = "",
+    resume_hunks_text: str = "",
 ) -> ComposedPrompt:
     """Compose the reviewer prompt from registered segments, with its manifest.
 
@@ -1434,7 +1435,17 @@ def compose_reviewer_prompt(
              + "\n".join(f"- {f}" for f in files_changed) + "\n"],
         ))
     if scoped:
-        if safe_diff:
+        if resume_hunks_text:
+            # F106 T002b-ii step 2b, Reviewer side (DECISION F106 D1(b)):
+            # mirrors the Builder side (round 12) exactly — the SAME
+            # segment name/rank this branch already uses, only the text
+            # differs. The caller supplies this pre-rendered; an empty
+            # string always falls through to the branches below.
+            specs.append((
+                "reviewer_focused_diff", SegmentStabilityRank.STEERING,
+                [resume_hunks_text],
+            ))
+        elif safe_diff:
             capped = safe_diff[:_REVIEWER_SCOPED_DIFF_CAP]
             if len(safe_diff) > _REVIEWER_SCOPED_DIFF_CAP:
                 capped += "\n[FOCUSED DIFF TRUNCATED]"
@@ -1447,6 +1458,11 @@ def compose_reviewer_prompt(
                 "reviewer_focused_diff", SegmentStabilityRank.STEERING,
                 [f"## Focused Staged Diff\n```\n{diff_summary}\n```\n"],
             ))
+    elif resume_hunks_text:
+        specs.append((
+            "reviewer_staged_diff", SegmentStabilityRank.STEERING,
+            [resume_hunks_text],
+        ))
     elif safe_diff:
         capped = safe_diff[:_REVIEWER_DIFF_CAP]
         if len(safe_diff) > _REVIEWER_DIFF_CAP:
@@ -1492,12 +1508,14 @@ def _build_reviewer_prompt(
     scope_packet: dict[str, Any] | None = None,
     evidence_dir: str | Path | None = None,
     task_id: str = "",
+    resume_hunks_text: str = "",
 ) -> str:
     """The reviewer prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_reviewer_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string.
+    this string. ``resume_hunks_text`` is forwarded UNCHANGED and means
+    exactly what it means there.
     """
     return compose_reviewer_prompt(
         goal,
@@ -1515,6 +1533,7 @@ def _build_reviewer_prompt(
         scope_packet=scope_packet,
         evidence_dir=evidence_dir,
         task_id=task_id,
+        resume_hunks_text=resume_hunks_text,
     ).text
 
 
@@ -3244,6 +3263,22 @@ def run_pingpong(
             # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
             # trace entries below carry a real segment manifest. The sent bytes are
             # unchanged — `_build_reviewer_prompt` returns this same `.text`.
+            # F106 T002b-ii step 2b, Reviewer side (DECISION F106 D1(b)):
+            # mirrors round 12's Builder side exactly — render only the
+            # changed regions when this round is actually resuming and
+            # there is a safe diff to shrink; an empty render falls back
+            # to the unconditional path inside compose_reviewer_prompt.
+            reviewer_resume_hunks_text = ""
+            if reviewer_resume_ref and reviewer_safe_diff:
+                from packages.orchestration.diff_repair import (
+                    render_repair_hunks,
+                    select_repair_hunks,
+                )
+                from packages.orchestration.review_scope import parse_diff_line_ranges
+                reviewer_resume_hunks_text = render_repair_hunks(select_repair_hunks(
+                    staging, parse_diff_line_ranges(reviewer_safe_diff),
+                    max_total_chars=_REVIEWER_DIFF_CAP,
+                ))
             reviewer_composed = compose_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
@@ -3258,6 +3293,7 @@ def run_pingpong(
                 prior_findings=findings if is_repair else None,
                 repair_round=result.repair_rounds_used if is_repair else 0,
                 scope_packet=runtime_scope_packet,
+                resume_hunks_text=reviewer_resume_hunks_text,
             )
 
             reviewer_prompt = reviewer_composed.text
