@@ -115,7 +115,7 @@ class TestReviewerCoherenceE2E:
 
         class IncoherentReviewer:
             name = "incoherent_reviewer"
-            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
                 return ReviewerOutput(
                     verdict="pass",
                     findings=[ReviewFinding(id="R-0001", severity="high", summary="Bug")],
@@ -581,7 +581,7 @@ class TestRepairTextReport:
         builder = FakeProvider()
         class IncoherentReviewer:
             name = "incoherent_reviewer"
-            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
                 return ReviewerOutput(
                     verdict="pass",
                     findings=[ReviewFinding(id="R-0001", severity="high", summary="Bug")],
@@ -772,7 +772,7 @@ class TestSmartStopContinueE2E:
         builder = FakeProvider()
         class BadReviewer:
             name = "bad_reviewer"
-            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
                 return ReviewerOutput(
                     verdict="pass",
                     findings=[ReviewFinding(id="X", severity="high", summary="bug")],
@@ -791,7 +791,7 @@ class TestSmartStopContinueE2E:
         builder = FakeProvider()
         class FailNothingReviewer:
             name = "failnothing_reviewer"
-            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
                 return ReviewerOutput(
                     verdict="fail", findings=[], summary="bad",
                     provider="failnothing",
