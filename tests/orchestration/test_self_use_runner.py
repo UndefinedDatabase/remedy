@@ -16,7 +16,9 @@ import pytest
 
 from packages.orchestration.pingpong_job import JOB_COMPLETED
 from packages.orchestration.pingpong_provider import FakeProvider
+from packages.orchestration.role_config import RoleConfig
 from packages.orchestration.self_use_runner import SelfUseRunError, run_next_self_use_item
+import packages.orchestration.self_use_runner as self_use_runner
 
 _PENDING_ITEM = {
     "id": "SU-042",
@@ -150,6 +152,102 @@ class TestRunNextSelfUseItem:
 
         with pytest.raises(SelfUseJobError):
             run_next_self_use_item(tmp_path / "jobs", str(demo_repo), queue_path=queue_path)
+
+
+class TestUnflaggedProviderResolution:
+    """R-0757: an unflagged run must resolve the product's REAL default
+    provider (role_config.DEFAULT_PROVIDER), never silently inherit
+    run_job's own raw "fake" fallback."""
+
+    def test_it_resolves_the_real_default_provider_when_unflagged(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+        captured: dict = {}
+
+        def _stub_run_job(job_id, **kwargs):
+            captured.update(kwargs)
+            return "STUB_RESULT"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+
+        _entry, _path, result = run_next_self_use_item(
+            tmp_path / "jobs", str(demo_repo), queue_path=queue_path
+        )
+
+        assert result == "STUB_RESULT"
+        assert captured["builder_name"] == "ollama"
+        assert captured["reviewer_name"] == "ollama"
+
+    def test_it_refuses_rather_than_run_fake_when_resolution_names_fake(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+
+        def _fake_resolve(role, *args, **kwargs):
+            return RoleConfig(role=role, provider="fake", model="m", effort="medium")
+
+        monkeypatch.setattr(self_use_runner, "resolve_role_config", _fake_resolve)
+
+        called = {"run_job": False}
+
+        def _stub_run_job(job_id, **kwargs):
+            called["run_job"] = True
+            return "SHOULD_NOT_RUN"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+
+        with pytest.raises(SelfUseRunError, match="no usable real provider"):
+            run_next_self_use_item(tmp_path / "jobs", str(demo_repo), queue_path=queue_path)
+
+        assert called["run_job"] is False
+
+    def test_explicit_fake_name_bypasses_resolution(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+        captured: dict = {}
+
+        def _stub_run_job(job_id, **kwargs):
+            captured.update(kwargs)
+            return "STUB_RESULT"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+
+        run_next_self_use_item(
+            tmp_path / "jobs",
+            str(demo_repo),
+            queue_path=queue_path,
+            builder_name="fake",
+            reviewer_name="fake",
+        )
+
+        assert captured["builder_name"] == "fake"
+        assert captured["reviewer_name"] == "fake"
+
+    def test_explicit_provider_object_bypasses_resolution(
+        self, tmp_path, isolate_data_root, demo_repo, monkeypatch
+    ):
+        queue_path = _write_queue(tmp_path, [dict(_PENDING_ITEM)])
+        captured: dict = {}
+
+        def _stub_run_job(job_id, **kwargs):
+            captured.update(kwargs)
+            return "STUB_RESULT"
+
+        monkeypatch.setattr(self_use_runner, "run_job", _stub_run_job)
+
+        run_next_self_use_item(
+            tmp_path / "jobs",
+            str(demo_repo),
+            queue_path=queue_path,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+        )
+
+        assert "builder_name" not in captured
+        assert "reviewer_name" not in captured
+        assert isinstance(captured["builder_provider"], FakeProvider)
 
 
 class TestGenerateThenRunEndToEnd:
