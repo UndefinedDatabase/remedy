@@ -1,409 +1,272 @@
-# Handback — F040 · SESSION 4 · round 20 · THE CLOSURE COMMIT AND THE PULL REQUEST
-
-> Written by the WORKER inside C3, the closure commit itself. This is the
-> FEATURE'S CLOSING HANDBACK: F040 is accepted on disk as of this commit.
-
-## THE CLOSURE FACTS, as their own labelled lines
-
-Carried verbatim from round 19. Nothing here was re-derived, re-run or
-rebuilt this round: the package was built from a clean tree at the accepted
-head and this round consumes those values as they stand.
-
-    Evidence job    f040-closure
-    package         remedy-review-20260830-033225-READY_FOR_REVIEW.zip
-    SHA-256         26bacc72356bea20d765736996cb353033d087c328e7af0156548a533d164be1
-    package path    /home/decodeux/Repos/remedy-history/zips
-    accepted HEAD   5281987a142b97f222256c987d36c009ae7ab3ae
-    self-use        NONE (queue exhausted, per round 18's own reading)
-    open findings   262 (R-0570, R-0752, R-0755 routed to the paydown branch;
-                     R-0753 carried as this feature's own documented risk)
-
-THE ACCEPTED HEAD IS NOT THIS ROUND'S HEAD, deliberately. `5281987a` is C2 of
-round 19, the commit the closure evidence job and package actually cover.
-The STATUS line names that head for exactly this reason.
-
-`self-use NONE (queue exhausted)` is the closure protocol's precondition-6
-"exhausted, not blocked" branch, read at round 18 and unchanged since;
-`scripts/self_use_queue.json` was NOT touched this round — editing it would
-have been a false record.
+# Handoff — F258 Self-use track v2
 
 ## Session
 
-SESSION 4 of feature F040 · round 20 · rounds so far 20.
+SESSION 1 of feature F258 · round 1 · rounds so far 1.
 
-This is the LAST round of F040's build. The functional scope closed at round
-16 (T001-T003 all PASS); round 17 ran the integration gate; round 18 wrote
-the Built State and cleared all six closure preconditions; round 19 built
-the READY_FOR_REVIEW evidence package. This round flips the STATUS `[x]`
-line and both README ledger numbers in ONE commit (R-0154: README and
-STATUS may never disagree in any committed state), records one
-closure-candidate finding this round's own README audit surfaced, and opens
-the pull request.
+## State
 
-WHAT IS MISSING: nothing on this branch. Wiring `onOpenDecisions` and
-`onPrimaryAction` to a real in-page action (D5) needs its own resolution
-design and is documented in the Built State section as a known post-closure
-item, not a blocker to Acceptance.
-
-THIS BRANCH'S LAST CONTENT ROUND HAS NO ON-DISK GATE ENTRY, by
-construction — docs/agents/planner_reviewer_prompt.md §4 item 13 rules that
-the last round of a branch cannot record a gate on itself. That absence is
-the branch TERMINATOR, not a missing review.
+Branch `feature/f258-self-use-v2`, cut from `main` at `18ae71293cde9b1157aca35d3d02c3a8f4265813`
+(the merge commit of pull request 225, F040's closure). Last commit on this
+branch before the handback write is `b7da7f3db6589c80bdff02207b1b3a76a701ccb2`
+("measure F258 queue/planner/execution/budget/ledger seams"). This round
+opens the feature: it discharges the one closure candidate F040's closure
+gate left, claims F258 `[~]` in progress on the STATUS ledger, and measures
+the queue/planner/job-execution/budget/approval seams T001-T003 will compose
+over, in `.agent/f258_inventory.md`. No production code and no test changed —
+the change set is `.agent/**` plus one line of `docs/roadmap/STATUS.md`.
+Open findings count in `.agent/live_review.md`: 317 registered, 55 distinct
+resolved (`Done:`), 262 open. R-0570 stays OPEN (0 `Done: R-0570` lines) and
+is routed to the paydown branch, not to this feature.
 
 ## Range
 
-Review of `bdf78bb7`..HEAD on branch `feature/f040-completion-digest`. FIVE
-commits, C0a through C3 (C4, the candidates-only commit, follows separately
-per DECISION amend0827 D2). The range is not named to a terminal SHA because
-C3 is the commit that writes this file and cannot name its own SHA (R-0149
-pattern).
-
-## Commits
-
-### cc54d2e4 docs(f040): save the round 20 step block verbatim (C0a)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f040-r20.md | +228/-0 | C0a — the block saved verbatim via `cp`, never retyped |
-
-### 15e96531 docs(f040): mirror the round 20 block to last_block.md (C0b)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/last_block.md | +177/-167 | C0b — the same bytes mirrored, copied from the saved file |
-
-### 4e5f8c3e docs(f040): update plan.md for round 20, session 4 (C1)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/plan.md | +15/-16 | C1 — full rewrite from slice PLAN20 |
-
-### 1c914098 docs(f040): append the R19 verdict to the ledger (C2)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | +2/-0 | C2 — slice RECORD20 appended: the R19 `Gate:` paragraph. Registers and resolves NOTHING |
-
-### C3 — THE CLOSURE COMMIT (self-reference, R-0149 pattern)
-| Path | +/- | Reason |
-|------|-----|--------|
-| docs/roadmap/STATUS.md | +1/-1 | pair — F040 flipped `[~]` to `[x]`, line 87 |
-| README.md | +8/-2 | two pairs (accepted count 63→64, Tier 5 Done 11→12) plus one insertion (F040's capability paragraph, between F257's paragraph and "Full per-feature state:") |
-| .agent/handoff.md | rewrite | this file; a handback cannot table the commit that writes it |
-
-C3's path set is EXACTLY those three paths, which is Rule A4's rendering and
-the R-0154 pin in one: README and STATUS never disagree in any committed
-state, because the flip and the sync are the same commit. C3 IS THE LAST
-CONTENT COMMIT ON THIS BRANCH (C4, candidates-only, follows).
-
-## External actions
-
-- `git push origin feature/f040-completion-digest` after C3 — the closure
-  push.
-- `gh pr create --base main --head feature/f040-completion-digest` — NOT a
-  draft. The resulting PR number is recorded in the round report, because
-  the PR does not exist at the moment this file is written (constraint 11
-  says so explicitly; R-0371's resolution: never fabricate a number before
-  its tool runs).
-- NO MERGE OF ANY KIND. The PR is deliberately left OPEN: it merges at the
-  next feature's start through the Open PR Gate, and that gap is the
-  operator's manual-review window. No force-push. No worktree left behind
-  (the G3 negative-control worktree `.remedy-wt/wt-negctrl-r20` was created
-  and removed within C2's own verification, before C2 was committed).
-- No zip rebuilt, no evidence job re-run, no manifest edited or hand-touched.
-
-## Verification
-
-Every exit code below is REAL, taken from `subprocess.run(...).returncode`
-inside a script under the gitignored `.remedy-wt/`, never through a pipe.
-
-G1 TRANSPORT, at C0b — REAL, sha256-equal.
-    `.remedy-wt/f040-r20-block.md`         16315 bytes
-    `.agent/authored/f040-r20.md` (C0a)    16315 bytes
-    `.agent/last_block.md`        (C0b)    16315 bytes
-    ALL THREE share sha256
-      22db3becb6a21fa414165089c09375874efc07ab3163bc4f1816085d3ad90670
-    matching the reviewer-stated digest, byte length and 228 lines exactly.
-
-G2 THE PLAN, at C1 — REAL, byte-equal.
-    `.agent/plan.md`: 2280 bytes, 45 lines, under 50 True.
-    byte-EQUAL to slice PLAN20: True (`diff` exit 0, both 2280 bytes).
-    holds `## Goal` True · holds `## Next Steps` True ·
-    matches `\bF\d{3}\b` → `F040` True.
-
-G3 THE RECORD APPEND, at C2 — REAL, both readings True.
-    base (re-measured at `4e5f8c3e`) 1749253 bytes, trailing-newline
-    terminated. RECORD20 slice: sha256
-    26a67f437a0b4ccbaaeabc6671513801727fdb7d80987ca2c6c110820ed0e6e1,
-    2414 bytes, single dense paragraph (N=1), itself trailing-newline
-    terminated. Committed file: 1751668 bytes.
-    Reading (a) `base + b"\n" + slice == committed`: True.
-    Reading (b) split committed on `\n\n`, 770 units, last unit equals the
-    slice exactly: True.
-    NEGATIVE CONTROL, inside a disposable worktree
-    (`.remedy-wt/wt-negctrl-r20`, branched at `4e5f8c3e`, removed after):
-    one printable byte flipped inside the slice (offset 10, a space
-    flipped to `_`, length unchanged) → reading (a) False, reading (b)
-    False; the unflipped bytes checked the same way → reading (a) True,
-    reading (b) True.
-
-G4 THE LEDGER, at C2 — computed by DIFFERENCE between `4e5f8c3e` (base) and
-    `1c914098` (committed) `.agent/live_review.md`: registered ids
-    (`^- R-\d+ — `) ADDED `[]` REMOVED `[]` (317 distinct both sides);
-    resolved ids (`^Done: R-\d+`) ADDED `[]` REMOVED `[]` (55 distinct both
-    sides); `DECISION F040 D\d+` ids ADDED `[]` REMOVED `[]` (none this
-    round); `^Gate: F040 R19 — ` lines 0 before → 1 after. Open count
-    (registered minus resolved) 262 before → 262 after (unchanged).
-
-G5 THE STATUS AND README PAIRS, at C3 — every occurrence count measured
-    fresh, before and after:
-      STATUS.md `- [~] F040 — Completion/return digest`  before 1, after 0
-      STATUS.md STATUSLINE text                            before 0, after 1
-      README.md `63 of 257 registered items accepted`      before 1, after 0
-      README.md `64 of 257 registered items accepted`      before 0, after 1
-      README.md `| 5 | Operator Cockpit | 11 | 31 |`        before 1, after 0
-      README.md `| 5 | Operator Cockpit | 12 | 31 |`        before 0, after 1
-      README.md anchor `not a gate).\n\nFull per-feature state:` before 1
-        (confirmed exactly once at base)
-    Ordering confirmed by direct substring search on the committed file:
-    the composed string `not a gate).\n\n` + README_PARAGRAPH +
-    `\n\nFull per-feature state:` occurs exactly once, and F257's own
-    paragraph precedes it — the F040 paragraph sits after F257's and
-    before the "Full per-feature state:" line, exactly as ordered.
-
-G6 `tests/docs/` GREEN, at C3 — REAL exit 0, run against the working tree
-    with STATUS.md and README.md already carrying this round's edits
-    (identical content to what C3 commits): `python3 -m pytest tests/docs/
-    -q` — **295 passed** in 0.43s, matching the 295 this branch measured at
-    prior rounds; the two moved ledger numbers did not move the pin count.
-    THE THREE NAMED PINS, each run individually, each its own REAL exit
-    code:
-      REAL exit 0  TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count
-      REAL exit 0  TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger
-      REAL exit 0  TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
-
-G7 THE CANDIDATE, at C4 — reported in C4's own commit, not here (C4 is a
-    separate commit that follows this one; see the round report for its
-    SHA and verification).
-
-G8 THE TREE AND THE PR, at C4/after — reported in the round report: the
-    push, the PR creation, and the final `git status --porcelain` /
-    `git worktree list` readings all happen after this commit exists and
-    therefore cannot be tabled inside it.
-
-## Deviations & assumptions
-
-1. THE README'S TIER 5 PROSE LIST DOES NOT LIST F033's PARAGRAPH, AND THIS
-   IS DECLARED RATHER THAN REPAIRED. `README.md`'s "Accepted in Tier 5 so
-   far:" list carries F255, F008, F009, F021, F022, F031, F032, F037, F256,
-   F257 and now F040 — eleven paragraphs — while the tier table reads 12
-   Done. F033 is counted in both pins but has no paragraph of its own. This
-   round's block (constraint 8) identifies this as a PRE-EXISTING gap from
-   F033's own closure round, not F040's defect to fix inline, and orders it
-   recorded as a closure candidate in C4 instead. NO TEST FAILS: the pin
-   `test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
-   checks ONE direction only — every feature the README lists as accepted
-   IS accepted in the ledger — so an unlisted accepted feature is invisible
-   to it. NOT touched inline; recorded as a candidate in C4.
-2. COMMIT SUBJECTS CARRY NO `Co-Authored-By` TRAILER, matching this
-   branch's prior rounds. AGENTS.md's "prefer repository state over session
-   memory" governs the session default. No subject contains a leading-slash
-   token, an absolute path or a secret-like string.
-3. THE `remedy` CONSOLE SCRIPT WAS NOT USED (denied session-wide, per
-   memory `remedy_cli_sandbox_split.md`); no step in this round needed it.
-4. A `cmd; echo $?` FORM WAS DENIED BY THE SANDBOX on first use this round.
-   Every exit code in this file therefore comes from
-   `subprocess.run(...).returncode` inside a small runner under
-   `.remedy-wt/`; no reading was taken through a pipe.
-5. NOTHING OUTSIDE THE CHANGE SET WAS TOUCHED. `scripts/self_use_queue.json`
-   was NOT edited (queue exhausted — an edit would be a false record); no
-   zip was rebuilt, no evidence job re-run, no manifest edited; and no file
-   under `packages/`, `apps/` or `tests/` changed this round.
+Review of `18ae71293cde9b1157aca35d3d02c3a8f4265813..b7da7f3db6589c80bdff02207b1b3a76a701ccb2`.
 
 ## Item status
 
+Every bundle item and every gate, each appearing exactly once:
+
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a — save block to `.agent/authored/f040-r20.md` | done | `cc54d2e4`; G1 sha256-equal, three readings |
-| C0b — mirror into `.agent/last_block.md` | done | `15e96531`; byte-equal |
-| C1 — rewrite `.agent/plan.md` from PLAN20 | done | `4e5f8c3e`; G2 byte-equal, 45 lines |
-| C2 — append RECORD20 to `.agent/live_review.md` | done | `1c914098`; G3 both readings True, negative control rejects the flip; G4 registers and resolves nothing |
-| C3 — THE CLOSURE COMMIT (STATUS + README + handoff) | done | this commit; G5 six counts, G6 green |
-| C4 — the candidates-only commit | pending | follows this commit; see the round report for its SHA |
-| the pull request | pending | created after C3 is pushed, NOT merged, NOT a draft; number in the round report |
-| G1 transport | done | sha256-equal, three readings |
-| G2 the plan | done | byte-equal, 45 lines |
-| G3 the record append | done | both readings True, negative control rejects the flip |
-| G4 the ledger | done | nothing registered or resolved, `Gate: F040 R19 —` 0→1 |
-| G5 the STATUS/README pairs | done | every occurrence count as ordered |
-| G6 `tests/docs/` green | done | REAL exit 0, 295 passed |
-| G7 the candidate | pending | booked in C4, see the round report |
-| G8 the tree and the PR | pending | reported in the round report, after push and `gh pr create` |
+| C0a save block to `.agent/authored/f258-r1.md` | done | `shutil.copyfile`, sha256-verified |
+| C0b mirror into `.agent/last_block.md` | done | `shutil.copyfile`, sha256-verified |
+| C1 rewrite `.agent/plan.md` from PLAN1 | done | byte-equal, 44 lines |
+| C2 append RECORD1 to `.agent/live_review.md` | done | append-only, proved by reconstruction |
+| C3 rewrite `.agent/candidates.md` from CAND1 | done | byte-equal, candidate discharged |
+| C4 apply PAIR-STATUS to `docs/roadmap/STATUS.md` | done | exactly one FROM→TO |
+| C5 rewrite `.agent/context.md` from CONTEXT1 | done | byte-equal |
+| C6 write `.agent/f258_inventory.md` | done | measurement, six SPEC sections, 60 citations |
+| C7 rewrite `.agent/handoff.md` | done | this file |
+| G1 transport | done | exit n/a (sha256 comparison), all three equal |
+| G2 the plan | done | byte-equal, 44 lines |
+| G3 the record append | done | reconstruction + paragraph order + negative control, all as expected |
+| G4 the ledger | done | added registered/resolved both empty, DECISION F258 empty, R-0570 Done count 0 |
+| G5 the candidates file | done | byte-equal, stale marker count 0 |
+| G6 the claim and the docs pins | done | numstat 1/1, two suites exit 0 (295, 30 passed) |
+| G7 the state readers and the canary | done | five suites exit 0 (515, 52, 21, 16, 42 passed) |
+| G8 the inventory and the tree | done | six headings present, 60 citations, tree clean, all commits under 500 |
 
-Open findings after this round: **262** (317 registered distinct, 55
-resolved distinct, both UNMOVED). R-0570, R-0752 and R-0755 stay OPEN and
-routed to the paydown branch; R-0753 stays OPEN as this feature's own
-documented risk — none is reachable from F040's Acceptance, which is why
-the STATUS line reads PASS_WITH_RISKS.
+## Commits
 
-## Runtime actuals
+All `+/-` figures are `git diff --numstat` against each commit's own parent,
+per this round's own re-measurement (see Deviations — the message `git commit`
+echoed at commit time for C1 read differently and the numstat reading below is
+the one this handback uses, per the block's own instruction to source the
+Commits table from `git diff --numstat`).
 
-Rounds: 20 (SESSION 4 alone: rounds 17-20). Wall clock: not-measured (no
-per-round timer was kept on this branch). Models/tokens: not-measured (no
-per-round token ledger export exists for this branch) — `not-measured`
-beats a guess.
+### e2e9724c add authored block for F258 round 1
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f258-r1.md` | 365/0 | C0a — verbatim copy of the round's step block, `shutil.copyfile` |
+
+### a81cbe43 mirror F258 round 1 block into last_block
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/last_block.md` | 365/127 | C0b — verbatim copy of the same block, `shutil.copyfile`, into the mirror slot |
+
+### 03e73a28 open F258 self-use track v2 plan
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/plan.md` | 32/38 | C1 — rewritten from slice PLAN1, byte-equal, 44 lines |
+
+### 1d57ee0b append F258 record on R-0570 third occurrence
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | 2/0 | C2 — RECORD1 appended verbatim; nothing earlier revised |
+
+### 13e6fc24 discharge F040 closure candidate as R-0570 evidence
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/candidates.md` | 5/21 | C3 — rewritten from slice CAND1, byte-equal, candidate file emptied |
+
+### 7b188ae0 claim F258 in progress on STATUS ledger
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/roadmap/STATUS.md` | 1/1 | C4 — PAIR-STATUS applied, F258's line `[ ]` → `[~]` |
+
+### fdb74bc2 rewrite context for F258 self-use track v2
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/context.md` | 27/19 | C5 — rewritten from slice CONTEXT1, byte-equal |
+
+### b7da7f3d measure F258 queue/planner/execution/budget/ledger seams
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/f258_inventory.md` | 250/0 | C6 — new file, the round's own six-section measurement (SPEC), not an authored slice |
+
+Not tabled per the template's self-reference exception: the commit that writes
+this handback (C7, `.agent/handoff.md`) — its own numbers are the reviewer's
+to measure at the next gate.
+
+## External actions
+
+- `git checkout -b feature/f258-self-use-v2` at `18ae71293cde9b1157aca35d3d02c3a8f4265813` — branch created.
+- `git worktree add .remedy-wt/g3-check HEAD` — disposable worktree for the G3 negative control, detached at `b7da7f3d`.
+- `git worktree remove .remedy-wt/g3-check --force` — removed after the negative control ran; `git worktree list` afterward shows only the primary checkout.
+- `git push -u origin feature/f258-self-use-v2` — pushed after this handback's commit (see below). No pull request opened, per constraint 11 (round 1 of the feature; the PR is created at closure).
+- No `gh pr` command run this round beyond the Open PR Gate check (`gh pr list --state open ...` → `[]`, empty, before branch creation).
+
+## Verification
+
+Every gate below ran with a REAL exit code captured via `subprocess.run(...).returncode`
+inside `.remedy-wt/run_gates.py`, `.remedy-wt/g4_ledger.py`, `.remedy-wt/g6_check.py`,
+`.remedy-wt/g3_negative_control.py` and `.remedy-wt/check_paths.py` on disk under
+the gitignored `.remedy-wt/`. `remedy` the console script was not needed this
+round (no CLI invocation was required by any gate); where a CLI surface was
+cited it was read as source, not run.
+
+**G1 — TRANSPORT, at C0b.** sha256
+`4285092d765124f143b48f3ec791eaa7eac8cf4e266c4c31fcfc72e424c5f11c` over 20439
+bytes, computed identically over all three files: the scratch original
+`.remedy-wt/f258-r1-block.md`, the committed `.agent/authored/f258-r1.md`, and
+the committed `.agent/last_block.md`. All three equal.
+
+**G2 — THE PLAN, at C1.** `.agent/plan.md` sha256
+`86dad5fe0fa993cb96ca60b9a195562849ef20579837b7cbf12393ef7fc49265` and the
+scratch slice `.remedy-wt/slice_PLAN1.txt` sha256
+`86dad5fe0fa993cb96ca60b9a195562849ef20579837b7cbf12393ef7fc49265` — equal.
+Line count 44 (< 50). Carries `## Goal` and `## Next Steps`.
+
+**G3 — THE RECORD APPEND, at C2.** Base (measured at commit `03e73a28`, i.e.
+C1) is 1751668 bytes — matches the reviewer's stated reading at `18ae7129`.
+RECORD1 is 1375 bytes. 1751668 + 1 + 1375 = 1753044, and the committed
+`.agent/live_review.md` after C2 is 1753044 bytes — equal.
+(a) WHOLE RECONSTRUCTION: `base + b'\n' + record == committed` → `True`.
+(b) PARAGRAPH ORDER: the committed file's last `\n\n`-delimited unit equals
+RECORD1 exactly (both 1363 chars after removing the shared trailing newline
+convention) → `True`, N=1, one dense paragraph.
+NEGATIVE CONTROL, run inside the disposable worktree `.remedy-wt/g3-check`
+(detached at `b7da7f3d`): flipped the `T` in "THIRD" inside the appended
+paragraph to `X`. Both readings on the UNFLIPPED committed file: `True`,
+`True`. Both readings on the FLIPPED file: `False`, `False` — both readings
+correctly reject the flip and accept the original. Worktree removed after;
+`git worktree list` now shows only the primary checkout.
+
+**G4 — THE LEDGER, at C1 and at C2.**
+- At C1 (`03e73a28`): 317 distinct `^- R-\d+ — ` ids, 55 distinct `^Done: R-\d+ — ` ids, open count 262.
+- At C2 (`1d57ee0b`): 317 distinct `^- R-\d+ — ` ids, 55 distinct `^Done: R-\d+ — ` ids, open count 262.
+- ADDED registered (C2 − C1): `[]`. ADDED resolved (C2 − C1): `[]`.
+- Distinct `^DECISION F258 D\d+ — ` ids before and after: `[]`, `[]` — both empty.
+- `^Done: R-0570` count: 0 before, 0 after.
+
+**G5 — THE CANDIDATES FILE, at C3.** `.agent/candidates.md` sha256
+`454ac5f45f58bb1662523e77a95b902704b3d2662bec80a2c30d53f0172579ed`, matching
+the scratch slice `.remedy-wt/slice_CAND1.txt`'s sha256
+`454ac5f45f58bb1662523e77a95b902704b3d2662bec80a2c30d53f0172579ed` — equal.
+The string `· F040 · 2026-08-30` occurs 0 times in the committed file. Byte
+length before C3: 1960. Byte length after C3: 695.
+
+**G6 — THE CLAIM AND THE DOCS PINS, at C4.** In `docs/roadmap/STATUS.md`:
+PAIRSTATUS-FROM (`- [ ] F258 — Self-use track v2 (self-replenishing queue &
+executed items)`) occurs 0 times after C4; PAIRSTATUS-TO occurs exactly 1
+time. `git diff --numstat` for C4 alone: `1  1  docs/roadmap/STATUS.md` —
+exactly one insertion, one deletion. Count of lines matching
+`^- \[~\] F\d{3} — ` in the whole file: 1.
+- `python3 -m pytest tests/docs/ -q` → exit 0, `295 passed`.
+- `python3 -m pytest tests/orchestration/test_roadmap_index.py -q` → exit 0, `30 passed`.
+Both match the reviewer's stated base reading (295, 30).
+
+**G7 — THE STATE READERS AND THE CANARY, at C6.** All re-run at HEAD = `b7da7f3d` (C6):
+- `python3 -m pytest tests/ui_server/ -q` → exit 0, `515 passed`.
+- `python3 -m pytest tests/orchestration/test_test_runner.py -q` → exit 0, `52 passed`.
+- `python3 -m pytest tests/regression/test_resource_safety.py -q` → exit 0, `21 passed`.
+- `python3 -m pytest tests/orchestration/test_integrity_gate.py -q` → exit 0, `16 passed`.
+- Canary `python3 -m pytest tests/cli/test_golden_path.py -q` → exit 0, `42 passed`.
+All five match the reviewer's stated base readings (515, 52, 21, 16, 42) exactly.
+
+**G8 — THE INVENTORY AND THE TREE, at C6.** `.agent/f258_inventory.md` exists
+and carries all six SPEC sections, headings in order: `## 1. The queue schema
+and its v1 contract`, `## 2. The planner seam`, `## 3. The closure consumption
+point today — search for it and report the result`, `## 4. The job execution
+path to "a real run"`, `## 5. The budget machinery for "a small dedicated
+budget"`, `## 6. The finding ledger's own shape, for T003` (plus one extra,
+non-mandated `## Absences, summarized` section). It cites 60 `file:line`
+tokens (counted mechanically with a regex over backtick-quoted
+`path:line[-line]` tokens); every one of the twelve distinct source paths it
+cites resolves with `git ls-tree HEAD -- <path>`, checked individually for
+each. `git status --porcelain` is empty; `git ls-files --others
+--exclude-standard` has count 0. Per-commit insertion counts for C0a-C6 from
+`git diff --numstat`: 365, 365, 32, 2, 5, 1, 27, 250 — every one under 500.
+
+## Authored-text proofs
+
+Five slices were applied this round, all via disk-to-disk `shutil`/exact-slice
+copy rather than retyping, each verified byte-equal against the scratch
+original at `.remedy-wt/f258-r1-block.md` before commit:
+
+- C0a/C0b: the whole block, sha256
+  `4285092d765124f143b48f3ec791eaa7eac8cf4e266c4c31fcfc72e424c5f11c`,
+  20439 bytes — three-way equal (scratch original, `.agent/authored/f258-r1.md`,
+  `.agent/last_block.md`).
+- PLAN1 → `.agent/plan.md`: sha256
+  `86dad5fe0fa993cb96ca60b9a195562849ef20579837b7cbf12393ef7fc49265` both sides.
+- CAND1 → `.agent/candidates.md`: sha256
+  `454ac5f45f58bb1662523e77a95b902704b3d2662bec80a2c30d53f0172579ed` both sides.
+- CONTEXT1 → `.agent/context.md`: sha256
+  `facf378f2ecb946e402baffbf440bd6082a71259a736ecf1dd4d6759bfa788ef` both sides.
+- RECORD1 → appended to `.agent/live_review.md`: proved by reconstruction and
+  paragraph-order equality, not by whole-file sha256 (it is an append, not a
+  rewrite) — see G3 above.
+- PAIR-STATUS (FROM/TO) → `docs/roadmap/STATUS.md`: proved by exact-string
+  occurrence counts, not sha256 (a one-line pair inside a large file) — see G6
+  above.
+
+`.agent/f258_inventory.md` (C6) is NOT an authored slice — it is this round's
+own measurement per the block's SPEC, so no fidelity comparison applies to it.
+
+## Deviations & assumptions
+
+1. **Commit-time diffstat vs. `git diff --numstat` for C1.** The text `git
+   commit` echoed at the moment of the C1 commit read "44 insertions(+), 50
+   deletions(-)" for `.agent/plan.md`. A fresh, independent `git diff
+   --numstat 03e73a28~1 03e73a28` (and `git diff --stat` over the same range)
+   both read `32  38` instead. I could not identify the cause — no
+   `diff.algorithm` or `core.autocrlf` override is set in this repo's git
+   config — and did not investigate further since the block's own gates (G8)
+   specify `git diff --numstat` as the authoritative source for the Commits
+   table, which is what this handback reports. Flagging it rather than
+   silently picking one number, per §3's "recount on FINAL bytes" and "count
+   mechanically" lessons. Not a finding against the content of `.agent/plan.md`
+   itself — the file is confirmed byte-equal to PLAN1 by sha256 (G2), so the
+   RESULT is not in question, only which of two diffstat readings for the
+   same commit is trustworthy for the Commits table's `+/-` column.
+2. **The `remedy` console script was not exercised this round.** No gate in
+   this round's block required running it — every G6/G7 gate is a `pytest`
+   invocation, and the C6 inventory's CLI citations were read as source
+   (`apps/cli/command_catalog.py`, `apps/cli/commands/job.py`), not executed.
+   Recording this per the task brief's standing instruction to declare the
+   `remedy` sandbox-denial workaround whenever it would otherwise matter; this
+   round never needed to invoke it either way.
+3. **Slice content applied as given, not fixed.** Per constraint 1, several
+   authored slices were applied byte-for-byte without correction even where
+   something could be read as slightly odd — e.g. RECORD1's prose repeats
+   "R-0570" and its own routing rationale at length, and CONTEXT1 restates
+   standing constraints verbatim from a template comment about "an earlier
+   round['s] red CI run" that is not this round's own history. Neither was
+   altered; both are exactly the authored bytes.
+4. **`.agent/f258_inventory.md`'s two Absences beyond the SPEC's six
+   sections.** The SPEC asked for six sections and I added one extra
+   "Absences, summarized" section at the end, restating the three most
+   load-bearing absences already stated inline in sections 1, 3 and 4. This
+   is additive, not a substitution for anything the SPEC required, and every
+   one of the six mandated headings is present and in order (checked
+   mechanically, reported in G8 above) — flagging the extra section so it
+   is not mistaken for a missing one.
+5. **Two ids in `.agent/live_review.md` carry a second `Done:` line.** G4's
+   measurement noticed 57 raw `^Done: R-\d+` lines against only 55 DISTINCT
+   ids — i.e., two ids already had a correction-round `Done:` line duplicated
+   before this round started. This round did not touch `Done:` lines at all
+   (ADDED resolved is `[]` both times measured), so it is pre-existing state,
+   not something this round introduced; noted in `.agent/f258_inventory.md`
+   §6 and here so it is not silently absorbed into "55" without the caveat.
 
 ## Next
 
-NOTHING IS OWED ON THIS BRANCH after C4 and the pull request. F040 is
-accepted on disk as of this commit.
-
-The NEXT SESSION starts a NEW feature (or resumes `amend0829` per the
-queued self-use registration) and begins by reading `.agent/STOP`, then
-runs the AGENTS.md Open PR Gate — which will find exactly this PR, from
-`feature/f040-completion-digest` into `main`, non-draft, and MERGE it
-before any new branch is cut. The gap between now and that merge is the
-operator's manual-review window, and the operator may merge by hand at any
-time instead.
-
-Three carried risks travel with the merge: R-0570, R-0752 and R-0755
-(routed to the paydown branch), and R-0753 (this feature's own documented
-risk). None is reachable from F040's Acceptance.
-
-**F040 — Completion/return digest: DONE.**
-
-## Addendum (round 21) — the two facts round 20's own C3 could not yet know
-
-Round 20's handback (this file, as committed at `0ec9bb37`) named C4 and the
-pull request as "pending," deferred to "the round report" — the worker's
-chat reply to the reviewer, which is not a disk artifact and does not
-survive a context reset. Both facts are now confirmed and recorded here,
-independently, by the reviewer:
-
-**C4** is commit `5ec85b07` — `docs(f040): record the F033 closure
-candidate`. Its changed-path set is exactly `.agent/candidates.md`, matching
-round 20's own constraint 8 and DECISION amend0827 D2 (a candidates-only
-commit is the one permitted successor to the closure commit). G7 (the
-candidate) reads PASS: `.agent/candidates.md` was empty at this round's
-base and the committed file names the F033 README-paragraph gap, F040 as
-the source feature, and 2026-08-30 as the date, with no `R-` id spent.
-
-**The pull request** is **#225** —
-`https://github.com/UndefinedDatabase/remedy/pull/225` — head
-`feature/f040-completion-digest`, base `main`, `isDraft: false`,
-`mergedAt: null`, state `OPEN`. G8 (the tree and the PR) reads PASS: the
-tree is clean, `git worktree list` shows one line, the branch is pushed and
-matches `origin`, and the PR is open, non-draft, and unmerged, exactly as
-self_drive_protocol.md's G1 guardrail requires of a PR opened in the
-session that opened it.
-
-F040's own build is complete on disk. The merge itself is deferred to the
-Open PR Gate (AGENTS.md; STATUS_closure_protocol.md algorithm step 6): the
-next session that runs Phase 0's state probe finds PR #225 via
-`gh pr list --state open` independently of this addendum, and merges it
-before claiming any new feature, per self_drive_protocol.md Phase 1 rule 2.
-This addendum exists so that fact is also readable from this file alone,
-without depending on any chat transcript surviving.
-
-## Session 5 — Phase 0 blocked at the Open PR Gate (2026-08-30)
-
-Phase 0's state probe found exactly one open PR, #225
-(`feature/f040-completion-digest` → `main`, not a draft), which is the
-AGENTS.md Open PR Gate's merge case. `gh pr view 225
---json mergeable,mergeStateStatus` returned `"mergeStateStatus":"DIRTY"`,
-`"mergeable":"CONFLICTING"`. AGENTS.md: "If the PR cannot be merged
-(conflicts, failing checks, missing approvals, or policy restrictions):
-1. stop 2. report the blocker 3. do not proceed with new work." A git merge
-conflict is named explicitly in that list; the amend0820-gate-autonomy
-exception covers only a CI check that is RUNNING or ended RED, not a merge
-conflict, so it does not apply here. This session therefore stopped at
-Phase 0/Phase 1 rule 2, before opening any round, before touching
-`.agent/candidates.md`'s one open entry (Phase 1 rule 2 precedes rule 3),
-and before claiming any new feature.
-
-Root cause, measured via `git merge-tree
-f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1 HEAD origin/main` (merge-base
-`f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1`, `origin/main` tip
-`0fd3b7716021dee9037295acd89b315fc0af9e19`): PRs #223
-(`feature/amend0829-selfuse-v2`) and #224 (`fix/amend0829-f258-order`)
-merged into `main` after this branch was cut, registering F258 and
-reordering it in `docs/roadmap/STATUS.md`. Both land on the same lines this
-branch's own closure commit `0ec9bb37` touched. Conflict markers appear in
-exactly two files:
-
-- `README.md` — the accepted-count line (`64 of 257 registered items
-  accepted` on this branch vs `63 of 258 registered items accepted` on
-  `origin/main`) and the Tier 5 table row (`| 5 | Operator Cockpit | 12 |
-  31 |` vs `| 5 | Operator Cockpit | 11 | 32 |`).
-- `docs/roadmap/STATUS.md` — the F040 line: this branch flipped it to
-  `- [x] F040 — Completion/return digest (... accepted HEAD
-  5281987a142b97f222256c987d36c009ae7ab3ae)`; `origin/main` still has
-  `- [ ] F040 — Completion/return digest` immediately followed by a new
-  `- [ ] F258 — Self-use track v2 (self-replenishing queue & executed
-  items)` line.
-
-`docs/README.md` (the "257-feature" vs "258-feature" plan wording) and
-`scripts/self_use_queue.json` merge cleanly with no conflict markers in the
-same `git merge-tree` output; `docs/roadmap/features/T5_F258.md` is
-add-only on `origin/main`'s side.
-
-This is a genuine content conflict, not a spurious one: `origin/main`'s
-ledger now counts 258 registered items total (F258 added) while this
-branch's closure commit still assumes 257, so a correct resolution needs to
-re-derive the accepted-count and Tier 5 numbers against the true
-post-#223/#224 baseline of 258 — a docs-ledger arithmetic problem, not a
-mechanical per-side pick — which is why this session did not attempt the
-resolution itself.
-
-No code changed this session. No branch created. No PR merged. Git status
-was clean at Phase 0 and remains clean after this handoff append (verified
-before and after this section's own two commits).
-
-Next expected action: a session resolves PR #225 against current `main`
-(merge-base `f5b1e6c5b815a276f45fcb4cbd0cdf2cfa75f4e1`, main tip
-`0fd3b7716021dee9037295acd89b315fc0af9e19`) — merging or rebasing `main`
-into `feature/f040-completion-digest`, re-deriving the STATUS.md/README.md
-accepted-count and Tier 5 numbers against the post-#223/#224 total of 258,
-and re-running `python3 -m pytest tests/docs/ -q` — before the Open PR Gate
-can merge #225 and before any new feature (including the one entry still
-sitting in `.agent/candidates.md`, or the queued `amend0829` self-use
-registration) can be claimed.
-
-## 2026-08-30 — session 5, round 22 — merge conflict resolved
-
-Resolved the exact conflict described in the prior section: fetched
-`origin/main` and ran `git merge --no-ff origin/main` on
-`feature/f040-completion-digest`. Conflicts occurred in exactly two files,
-matching the earlier scratch-worktree finding — `README.md` and
-`docs/roadmap/STATUS.md`. All other files (`docs/README.md`,
-`scripts/self_use_queue.json`, `tests/docs/test_docs_consistency.py`,
-`docs/roadmap/features/T5_F258.md`) merged cleanly with no conflict
-markers and were carried in unedited.
-
-Resolution applied (both sides' facts kept; only the shared count lines
-re-derived against the new total of 258 features):
-- `docs/roadmap/STATUS.md` (around line 87): kept F040 as
-  `- [x] F040 — Completion/return digest (... accepted HEAD
-  5281987a142b97f222256c987d36c009ae7ab3ae)` unchanged from this branch,
-  followed immediately by `- [ ] F258 — Self-use track v2
-  (self-replenishing queue & executed items)` from `origin/main`.
-- `README.md` accepted-count line: `64 of 258 registered items accepted.
-  Next: the first unchecked item in docs/roadmap/STATUS.md.`
-- `README.md` Tier 5 table row: `| 5 | Operator Cockpit | 12 | 32 |`.
-
-Verified zero conflict markers remained anywhere in the tree
-(`grep -rnE "^(<{7} |>{7} )"` over the whole repo, excluding `.git`) before
-staging. `git status --porcelain` showed no `U` entries and no changes
-beyond what the merge itself brought in plus the two resolved files.
-
-Gates run for real on the merge commit:
-- `python3 -m pytest tests/docs/ -q` → `295 passed`.
-- `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed`.
-
-Merge commit: `f69f1785` — "merge origin/main into
-feature/f040-completion-digest (resolve F040/F258 STATUS+README
-conflict)". `.agent/plan.md` rewritten in place (same round) to record
-round 22 and that F040's own content is unchanged. This handoff section
-and the plan.md update are committed separately per normal small-commit
-discipline.
-
-F040's own build content was not touched this round. No new branch, no
-new feature work, no rebase, no force-push. PR #225 is still OPEN and
-UNMERGED on GitHub — it must be merged at the next session's Open PR Gate
-before any new feature work is claimed on this repo.
+Order T001 — the self-replenishing generator's source-priority logic and its
+`provenance` field — from what `.agent/f258_inventory.md` measured this round:
+there is no code caller of `plan_next_self_use_item` at any closure point
+today, so T001's design starts from what precondition 6's manual step
+currently does by hand (§3 of the inventory) rather than from an existing
+hook. Push and Open PR Gate housekeeping for round 2 apply as usual; no PR is
+open on this branch yet (none is created before closure, per constraint 11).
