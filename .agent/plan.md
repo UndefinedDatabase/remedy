@@ -1,7 +1,7 @@
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 1, round 4.
+SESSION 2, round 5.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -14,23 +14,29 @@ working.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the F106 claim, branch, shape inventory | done | round 1 |
-| T001a: Protocol + evidence fields + FakeProvider | done | round 2 |
-| T001b: ClaudeProvider + ClaudeCliProvider, same surface | done | round 3 |
-| T001c: `tests/orchestration/test_session_resume.py` | done | this round — T001 CLOSED |
-| T002 repair-path integration + delta shrink + expired fallback | open | next session; gated on T001 (done) and F111 (accepted) |
-| T003 measured fixture comparison + docs | open | |
+| T001 (a/b/c): capability surface, all 3 adapters, tests | done | rounds 2-4 |
+| T002a: Builder repair call resumes when earned | done | this round |
+| T002b: Reviewer resume + F111 delta prompt shrink | open | next |
+| T002c: expired-session fallback-once rule (verbatim) | open | |
+| T003: measured fixture comparison + docs | open | |
 
 ## Next Steps
-1. T001 is complete: all three adapters share the `supports_resume`/
-   `resume`/evidence-field surface, dedicated tests exist and pass, zero
-   behavior change proved by property test and by the existing suite.
-2. Next session opens T002: thread `resume`/session-id through the repair
-   path in `packages/orchestration/pingpong_loop.py`, shrink the repair
-   prompt via the existing diff-repair (F111) hunk selection, and
-   implement the fallback-once rule verbatim per the Orchestrator brief.
-3. T003 (measured fixture comparison + docs) follows T002.
+1. T002a wires the Builder side only: a repair round's `build()` call now
+   passes `resume=<prior round's captured session id>` exactly when the
+   Builder provider's `supports_resume` is true and a prior session id was
+   actually captured — never guessed, never sent otherwise. `resume_used`/
+   `resume_session_ref` land on the per-round `BuilderOutput` only;
+   surfacing them into the closed-schema `provider_evidence.json` is
+   deliberately deferred, not part of this slice.
+2. T002b: the same threading on the Reviewer's `review()` call, plus the
+   delta-prompt shrink via F111's existing diff-repair hunk selection.
+3. T002c: the fallback-once rule verbatim (Orchestrator brief) — a resume
+   attempt that errors or loses context falls back ONCE to full context
+   within the same round, evidenced, never a task failure by itself.
+4. T003 follows once T002 is fully closed.
 
 ## Risks
-- None new. No adapter's `supports_resume` turns True until T002 actually
-  wires resume behavior end to end — T001 only builds the honest surface.
+- No adapter's `supports_resume` is true in production yet — only
+  `FakeProvider`, via its test-only constructor override, ever resumes.
+  T002a changes no observable behavior for `ClaudeProvider`/
+  `ClaudeCliProvider`, and none for a default-constructed `FakeProvider`.
