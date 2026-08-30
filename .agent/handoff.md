@@ -311,3 +311,82 @@ Open PR Gate housekeeping apply as usual; no PR is open on this branch yet
 (none is created before closure). This round's own `Gate: F258 R7` verdict,
 once the reviewer writes it, is booked into the ledger at the FIRST commit
 of the round that follows, per amend0827 rule 1 — not by this round itself.
+
+## Reviewer verdict on round 7 (independent re-verification, 2026-08-30)
+
+VERDICT PASS — THE INTEGRATION GATE PASSES. The reviewer re-ran every gate
+independently against the real diff `be848035..176ec7fc`, not against the
+worker's own report, including re-executing BOTH the branch suite and the
+base suite from scratch in the reviewer's own disposable worktree, rather
+than trusting the worker's raw logs alone. G1 TRANSPORT: the block, its
+`.agent/authored/f258-r7.md` copy and `.agent/last_block.md` all sha256
+`51fb13f461b633c737272859ca3ba5330a8957d0198310b5048a69ff49eb9bdd`, 10097
+bytes, 175 lines — equal. G2 THE PLAN: `.agent/plan.md` sha256
+`8bff7f63194c5c4d0701f8570f554e6a0d0d4985b3c91a3ac5b055584f0badb1`, 1702
+bytes, 38 lines, `## Goal`/`## Next Steps` present, ends `\n`. G3 THE
+RECORD APPEND: base 1779093 bytes ending in one `\n`;
+`base + b"\n" + RECORD7 (3909 bytes) == committed (1783003 bytes)` True;
+the last `\n\n`-delimited unit equals RECORD7 exactly (RECORD7 is a
+single paragraph by construction, joining what the source verdict text
+originally carried as two paragraphs, to keep every ledger entry's own
+shape at N=1 — reworded, not merely reformatted, and reads cleanly). A
+negative control (byte-flip) was independently reproduced and correctly
+rejected. G4 THE LEDGER: `DECISION F258` unchanged at `['D1','D2']`;
+`Gate: F258 R` lines ADDED exactly `['F258 R6']`; 317 distinct `R-` ids
+and 55 distinct `Done:` ids unchanged. G5 THE BRANCH RUN: independently
+re-run by the reviewer at the current HEAD (`176ec7fc`) rather than at
+`846fdef8` — confirmed equivalent first, since `git diff --name-only
+be848035 176ec7fc -- packages/ apps/ tests/ docs/` is EMPTY across the
+round's ENTIRE range, not merely the four commits the worker's own
+deviation covered. REAL exit 0, `18677 passed, 20 skipped in 141.93s` —
+matching the worker's reading (18677/20/0, ~127s) exactly. THE WORKER'S
+DEVIATION (running at `846fdef8` instead of literally `be848035` to avoid
+detaching the primary checkout's HEAD, which would falsely fail every
+`self_dogfood_execution`-gated test) is accepted: sound reasoning, proven
+equivalent by an empty diff, not merely asserted. G6 THE BASE RUN:
+independently reproduced by the reviewer in a FRESH disposable worktree at
+the same merge-base (`18ae7129`), with the SAME parity fix
+(`shutil.copytree(..., symlinks=True)` then `os.utime` every `apps/ui/dist`
+file past the checkout time) applied proactively. The reviewer's own run
+gave REAL exit 0, `18642 passed, 20 skipped, 0 failed` — the ONE failure
+the worker's run showed
+(`tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::
+test_timeout_raises_with_cleanup`) did NOT reproduce in the reviewer's own
+run, which is itself corroborating evidence for the worker's own
+attribution: this id's `pgrep -f apps.cli.grouped.*--help` predicate is
+machine-wide and known flaky under `-n auto` parallel load (already on
+record twice, F032 R16/R17 and the F033 integration gate, both times
+serial-passing) — two independent runs disagreeing on this ONE id while
+agreeing on every other of 18677+ ids is exactly the signature of a
+load-dependent flake, not a regression. R-0736's proactive fix worked in
+BOTH the worker's run and the reviewer's own: zero `tests/ui_server/`
+stale-dist failures in either. G7 THE COMPARISON: branch-only 0 ids in
+both runs; base-only 1 id in the worker's run, 0 in the reviewer's — both
+outcomes are consistent with the flake attribution and neither shows a
+branch-vs-base regression coupled to F258's own code
+(`git diff --stat 18ae7129 176ec7fc -- tests/cli/test_review_bundle_runtime.py
+apps/cli/` independently re-confirmed EMPTY by the reviewer). No new
+finding is raised. G8 THE TREE: clean, single worktree, no `tmp/*` branch,
+per-commit insertions 175/137/14/2/593/(handoff) — the reviewer confirms
+C3's declared 593-insertion oversize exception is exact
+(1+104+0+305+92+91=593) and accepts it on the same grounds as the accepted
+F257 R6 precedent (`ddfc2dca`): the six evidence files are one indivisible
+measurement, and the reviewer independently verified their raw contents
+are genuine pytest output, not fabricated summaries. THE ROUND PASSES:
+the branch is pushed and matches `origin` exactly at `176ec7fc`, no
+throwaway worktree or branch survives, and the reviewer's own from-scratch
+re-execution of both suites corroborates every reading the worker
+reported.
+
+STATUS_closure_protocol.md precondition 2 ("Full relevant suite green...
+A dedicated integration-gate round... must have PASSed before closure")
+is now MET for F258. All three T-slices (T001, T002, T003) are built and
+independently verified (rounds 5, 6), and the integration gate is green
+(this round). The next round is the reviewer's own design of F258's
+closure sequence.
+
+This verdict (`Gate: F258 R7`) is PENDING — per amend0827 rule 1 it is
+booked into `.agent/live_review.md` in the FIRST COMMIT of the next round
+that is happening anyway, which is the closure round. It is persisted now
+by being written into this pushed, committed handoff, which is the durable
+carrier amend0827 rule 1 names for exactly this gap.
