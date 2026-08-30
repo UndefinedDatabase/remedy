@@ -364,3 +364,46 @@ and re-running `python3 -m pytest tests/docs/ -q` — before the Open PR Gate
 can merge #225 and before any new feature (including the one entry still
 sitting in `.agent/candidates.md`, or the queued `amend0829` self-use
 registration) can be claimed.
+
+## 2026-08-30 — session 5, round 22 — merge conflict resolved
+
+Resolved the exact conflict described in the prior section: fetched
+`origin/main` and ran `git merge --no-ff origin/main` on
+`feature/f040-completion-digest`. Conflicts occurred in exactly two files,
+matching the earlier scratch-worktree finding — `README.md` and
+`docs/roadmap/STATUS.md`. All other files (`docs/README.md`,
+`scripts/self_use_queue.json`, `tests/docs/test_docs_consistency.py`,
+`docs/roadmap/features/T5_F258.md`) merged cleanly with no conflict
+markers and were carried in unedited.
+
+Resolution applied (both sides' facts kept; only the shared count lines
+re-derived against the new total of 258 features):
+- `docs/roadmap/STATUS.md` (around line 87): kept F040 as
+  `- [x] F040 — Completion/return digest (... accepted HEAD
+  5281987a142b97f222256c987d36c009ae7ab3ae)` unchanged from this branch,
+  followed immediately by `- [ ] F258 — Self-use track v2
+  (self-replenishing queue & executed items)` from `origin/main`.
+- `README.md` accepted-count line: `64 of 258 registered items accepted.
+  Next: the first unchecked item in docs/roadmap/STATUS.md.`
+- `README.md` Tier 5 table row: `| 5 | Operator Cockpit | 12 | 32 |`.
+
+Verified zero conflict markers remained anywhere in the tree
+(`grep -rnE "^(<{7} |>{7} )"` over the whole repo, excluding `.git`) before
+staging. `git status --porcelain` showed no `U` entries and no changes
+beyond what the merge itself brought in plus the two resolved files.
+
+Gates run for real on the merge commit:
+- `python3 -m pytest tests/docs/ -q` → `295 passed`.
+- `python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed`.
+
+Merge commit: `f69f1785` — "merge origin/main into
+feature/f040-completion-digest (resolve F040/F258 STATUS+README
+conflict)". `.agent/plan.md` rewritten in place (same round) to record
+round 22 and that F040's own content is unchanged. This handoff section
+and the plan.md update are committed separately per normal small-commit
+discipline.
+
+F040's own build content was not touched this round. No new branch, no
+new feature work, no rebase, no force-push. PR #225 is still OPEN and
+UNMERGED on GitHub — it must be merged at the next session's Open PR Gate
+before any new feature work is claimed on this repo.
