@@ -11,7 +11,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 <!-- operator ruling amend0830-cost-first (2026-08-30): the six lines below are pulled forward from their Tier 3 block (originally directly after F113 — see the "## Tier 3 — Full Token Economy & Autonomy Extension" heading further down, where F113 now sits alone) so that, once no feature is in progress, Rule A5 proposes F106 first and consumes F106/F108/F109/F110/F112/F114 in this order before any other unchecked feature. Reversible by moving these six lines back to immediately before F113's line and deleting this heading and comment. -->
 ## Tier 3 — Cost-First Pull-Forward (operator ruling amend0830)
 
-- [ ] F106 — Session resume instead of rebuild
+- [~] F106 — Session resume instead of rebuild
 - [ ] F108 — Tiered artifact summaries
 - [ ] F109 — Semantic dedupe
 - [ ] F110 — Model routing by task class
