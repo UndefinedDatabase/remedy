@@ -180,27 +180,54 @@ above independently shows no file of that name.
 
 ## Citation count and tree resolution
 
-This file cites 19 distinct `file:line` locations (or `file` where no
-single line applies to an existence check):
+This file cites 30 distinct `file:line` locations, extracted mechanically
+(`grep -oE '[A-Za-z0-9_./]+\.py:[0-9]+'` over this file plus one manual
+non-`.py` addition for the STATUS.md line, deduplicated and sorted), plus
+two file-level (no single line) existence checks:
+
+`apps/cli/command_catalog.py:83`,
+`docs/roadmap/STATUS.md:71`,
+`packages/orchestration/diff_repair.py:1`,
+`packages/orchestration/model_route_tournament.py:144`,
+`packages/orchestration/model_route_tournament.py:145`,
+`packages/orchestration/pingpong_loop.py:3014`,
+`packages/orchestration/pingpong_loop.py:3227`,
+`packages/orchestration/pingpong_loop.py:3284`,
 `packages/orchestration/pingpong_provider.py:132`,
+`packages/orchestration/pingpong_provider.py:138`,
+`packages/orchestration/pingpong_provider.py:146`,
 `packages/orchestration/pingpong_provider.py:159`,
 `packages/orchestration/pingpong_provider.py:194`,
 `packages/orchestration/pingpong_provider.py:221`,
+`packages/orchestration/pingpong_provider.py:235`,
 `packages/orchestration/pingpong_provider.py:334`,
 `packages/orchestration/pingpong_provider.py:395`,
 `packages/orchestration/pingpong_provider.py:436`,
+`packages/orchestration/pingpong_provider.py:702`,
 `packages/orchestration/pingpong_provider.py:865`,
+`packages/orchestration/pingpong_provider.py:1179`,
 `packages/orchestration/pingpong_provider.py:1326`,
 `packages/orchestration/pingpong_provider.py:1391`,
-`packages/orchestration/pingpong_provider.py:702`,
-`packages/orchestration/pingpong_provider.py:1179`,
+`packages/orchestration/repair_request_builder.py:86`,
 `packages/orchestration/token_actuals.py:16`,
 `packages/orchestration/token_actuals.py:37`,
 `packages/orchestration/worker_registry.py:148`,
 `packages/orchestration/worker_registry.py:167`,
-`packages/orchestration/pingpong_loop.py:3014`,
-`packages/orchestration/pingpong_loop.py:3227`,
-`packages/orchestration/diff_repair.py:1`.
-Every one resolves with `git ls-tree HEAD -- <path>` (the containing
-file's blob is present at HEAD; the round adds no code so every cited path
-predates this branch).
+`packages/orchestration/worker_registry.py:168`,
+`packages/orchestration/worker_registry.py:169`.
+File-level only (existence/absence, no single line governs): the
+`tests/orchestration/` directory listing (section 7) and the confirmed
+absence of `tests/orchestration/test_session_resume.py`.
+
+Every `.py`/`.md` path above resolves with `git ls-tree HEAD -- <path>` —
+verified by running it over all nine distinct FILES the 30 lines sit in
+(`apps/cli/command_catalog.py`, `docs/roadmap/STATUS.md`,
+`packages/orchestration/diff_repair.py`,
+`packages/orchestration/model_route_tournament.py`,
+`packages/orchestration/pingpong_loop.py`,
+`packages/orchestration/pingpong_provider.py`,
+`packages/orchestration/repair_request_builder.py`,
+`packages/orchestration/token_actuals.py`,
+`packages/orchestration/worker_registry.py`) — every one returned a
+`100644 blob <sha>` line; none was absent. The round adds no code, so every
+cited path predates this branch.
