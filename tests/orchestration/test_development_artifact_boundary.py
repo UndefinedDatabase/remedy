@@ -37,6 +37,11 @@ _ALLOWED_LEGACY = {
     # .agent/live_review.md and reports a mismatch. Development-only by
     # construction — it is the gate over development state.
     "packages/orchestration/fresh_evidence_gate.py",
+    # F258's self-use generator reads the SAME development ledger to pick its
+    # next self-maintenance item — it is Remedy's own dogfooding machinery,
+    # the same category as self_dogfood.py and integrity_gate.py above, never
+    # a runtime dependency of an end-user's job.
+    "packages/orchestration/self_use_generator.py",
 }
 
 _LIVE_REVIEW_PATTERN = re.compile(
