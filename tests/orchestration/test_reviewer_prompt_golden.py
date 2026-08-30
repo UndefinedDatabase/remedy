@@ -47,13 +47,20 @@ from packages.orchestration.prompt_segments import (
     ComposedPrompt,
 )
 
-#: The frozen renders, captured mechanically at 554d9521. NEVER edited to
-#: make a failing test pass — see the module docstring.
+#: The frozen renders. The first four were captured mechanically at 554d9521
+#: (see the module docstring); "scoped_resumed" and "fallback_resumed" did
+#: not exist at that commit and were captured the same way against THIS
+#: branch instead — running `compose_reviewer_prompt` once per shape with
+#: `resume_hunks_text` set and writing `repr()` of the pre-migration-order
+#: reconstruction straight into this file (F106 round 14). NEVER edited to
+#: make a failing test pass, the same rule as the other four.
 _FROZEN_RENDERS = {
     'scoped_minimal': "You are a code Reviewer.\nReview the builder's changes against the original goal.\nBe strict but fair. Only flag real issues.\nReturn ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.\n\n\n\n## Original Goal\nMake the widget resize with its container.\n\n## Review Scope Packet\nTask: Resize the widget\n\n### Changed Files\n- packages/widget.py | lines: 10-24 | symbols: resize | risk: public_api\n\n### Recommended Scope: hunk_only\nReason: Only two hunks changed.\nRecommended scope is `hunk_only`: focus only on the listed hunks (changed line ranges) and the related tests.\n\n### Related Tests\n- tests/test_widget.py\n\n### Evidence Refs\n- task_runs/T001/safe.diff\n\n### Prompt Hashes\nabc123\n\n### Estimated Review Tokens: 512\n\nFiles listed in changed_files and related_tests are within review scope unless the original goal explicitly forbids them. Do not flag those files as out-of-scope merely because they are tests or support files.\nFocus on the listed files/hunks unless risk tags or the scope reason require escalation.\nYou may escalate scope if you find evidence of broader issues, but state why.\n\n## Builder Summary\nRewrote resize() to read the container width first.\n",
     'scoped_full': "You are a code Reviewer.\nReview the builder's changes against the original goal.\nBe strict but fair. Only flag real issues.\nReturn ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.\n\n\n\n## Original Goal\nMake the widget resize with its container.\n\n## Review Scope Packet\nTask: Resize the widget\n\n### Changed Files\n- packages/widget.py | lines: 10-24 | symbols: resize | risk: public_api\n\n### Recommended Scope: hunk_only\nReason: Only two hunks changed.\nRecommended scope is `hunk_only`: focus only on the listed hunks (changed line ranges) and the related tests.\n\n### Related Tests\n- tests/test_widget.py\n\n### Evidence Refs\n- task_runs/T001/safe.diff\n\n### Prompt Hashes\nabc123\n\n### Estimated Review Tokens: 512\n\nFiles listed in changed_files and related_tests are within review scope unless the original goal explicitly forbids them. Do not flag those files as out-of-scope merely because they are tests or support files.\nFocus on the listed files/hunks unless risk tags or the scope reason require escalation.\nYou may escalate scope if you find evidence of broader issues, but state why.\n\n## Scope Contract\nTouch only packages/widget.py.\n\n\n## RE-REVIEW — Repair Round 2\nThe Builder was asked to fix the findings below.\nFor each prior finding:\n1. Check if the fix is present in the diff and confirmed by tests.\n2. If fixed, do NOT re-report it.\n3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n4. Report any NEW issues introduced by the repair as new findings.\n5. If tests fail, treat test failure as evidence of unfixed issues.\n6. Do NOT return pass if any prior finding is unfixed.\n7. Do NOT return pass if the repair introduced new problems.\n\n### Prior Findings\n\n- [high] R-0001: resize ignores the container width\n- [low] R-0002: stale comment above resize\n\n## Builder Summary\nRewrote resize() to read the container width first.\n\n## Focused Staged Diff\n```diff\n--- a/widget.py\n+++ b/widget.py\n+    resize()\n```\n\n## Test Result\n3 passed in 0.10s\n",
     'fallback_minimal': "You are a code Reviewer.\nReview the builder's changes against the original goal.\nBe strict but fair. Only flag real issues.\nReturn ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.\n\n\n\n## Original Goal\nMake the widget resize with its container.\n\n## Builder Summary\nRewrote resize() to read the container width first.\n",
     'fallback_full': "You are a code Reviewer.\nReview the builder's changes against the original goal.\nBe strict but fair. Only flag real issues.\nReturn ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.\n\n\n\n## Original Goal\nMake the widget resize with its container.\n\n## Scope Contract\nTouch only packages/widget.py.\n\n\n## RE-REVIEW — Repair Round 2\nThe Builder was asked to fix the findings below.\nFor each prior finding:\n1. Check if the fix is present in the diff and confirmed by tests.\n2. If fixed, do NOT re-report it.\n3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n4. Report any NEW issues introduced by the repair as new findings.\n5. If tests fail, treat test failure as evidence of unfixed issues.\n6. Do NOT return pass if any prior finding is unfixed.\n7. Do NOT return pass if the repair introduced new problems.\n\n### Prior Findings\n\n- [high] R-0001: resize ignores the container width\n- [low] R-0002: stale comment above resize\n\n## Task Input Summary\nTask hash: 9f2b1c4d\nTask size: ~128 tokens\n\nResize the widget, keep the aspect ratio.\n\n## Builder Summary\nRewrote resize() to read the container width first.\n\n## Files Changed\n- packages/widget.py\n- tests/test_widget.py\n\n## Staged Unified Diff\n```diff\n--- a/widget.py\n+++ b/widget.py\n+    resize()\n```\n\n## Test Result\n3 passed in 0.10s\n",
+    "scoped_resumed": "You are a code Reviewer.\nReview the builder's changes against the original goal.\nBe strict but fair. Only flag real issues.\nReturn ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.\n\n\n\n## Original Goal\nMake the widget resize with its container.\n\n## Review Scope Packet\nTask: Resize the widget\n\n### Changed Files\n- packages/widget.py | lines: 10-24 | symbols: resize | risk: public_api\n\n### Recommended Scope: hunk_only\nReason: Only two hunks changed.\nRecommended scope is `hunk_only`: focus only on the listed hunks (changed line ranges) and the related tests.\n\n### Related Tests\n- tests/test_widget.py\n\n### Evidence Refs\n- task_runs/T001/safe.diff\n\n### Prompt Hashes\nabc123\n\n### Estimated Review Tokens: 512\n\nFiles listed in changed_files and related_tests are within review scope unless the original goal explicitly forbids them. Do not flag those files as out-of-scope merely because they are tests or support files.\nFocus on the listed files/hunks unless risk tags or the scope reason require escalation.\nYou may escalate scope if you find evidence of broader issues, but state why.\n\n## Scope Contract\nTouch only packages/widget.py.\n\n\n## RE-REVIEW — Repair Round 2\nThe Builder was asked to fix the findings below.\nFor each prior finding:\n1. Check if the fix is present in the diff and confirmed by tests.\n2. If fixed, do NOT re-report it.\n3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n4. Report any NEW issues introduced by the repair as new findings.\n5. If tests fail, treat test failure as evidence of unfixed issues.\n6. Do NOT return pass if any prior finding is unfixed.\n7. Do NOT return pass if the repair introduced new problems.\n\n### Prior Findings\n\n- [high] R-0001: resize ignores the container width\n- [low] R-0002: stale comment above resize\n\n## Builder Summary\nRewrote resize() to read the container width first.\n\n## Resumed Session — Changed Regions Only\n\n### widget.py (lines 1-1)\n```\n    resize()\n```\n\n## Test Result\n3 passed in 0.10s\n",
+    "fallback_resumed": "You are a code Reviewer.\nReview the builder's changes against the original goal.\nBe strict but fair. Only flag real issues.\nReturn ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.\n\n\n\n## Original Goal\nMake the widget resize with its container.\n\n## Scope Contract\nTouch only packages/widget.py.\n\n\n## RE-REVIEW — Repair Round 2\nThe Builder was asked to fix the findings below.\nFor each prior finding:\n1. Check if the fix is present in the diff and confirmed by tests.\n2. If fixed, do NOT re-report it.\n3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n4. Report any NEW issues introduced by the repair as new findings.\n5. If tests fail, treat test failure as evidence of unfixed issues.\n6. Do NOT return pass if any prior finding is unfixed.\n7. Do NOT return pass if the repair introduced new problems.\n\n### Prior Findings\n\n- [high] R-0001: resize ignores the container width\n- [low] R-0002: stale comment above resize\n\n## Task Input Summary\nTask hash: 9f2b1c4d\nTask size: ~128 tokens\n\nResize the widget, keep the aspect ratio.\n\n## Builder Summary\nRewrote resize() to read the container width first.\n\n## Files Changed\n- packages/widget.py\n- tests/test_widget.py\n\n## Resumed Session — Changed Regions Only\n\n### widget.py (lines 1-1)\n```\n    resize()\n```\n\n## Test Result\n3 passed in 0.10s\n",
 }
 
 #: Short, literal fixture values — the same ones the frozen renders were
@@ -62,6 +69,18 @@ _GOAL = "Make the widget resize with its container."
 _BUILDER_SUMMARY = "Rewrote resize() to read the container width first."
 _SCOPE_CONTRACT = "## Scope Contract\nTouch only packages/widget.py."
 _SAFE_DIFF = "--- a/widget.py\n+++ b/widget.py\n+    resize()"
+#: F106 T002b-ii step 2b, Reviewer side — the same pre-rendered hunk
+#: selection fixture round 12 used for the Builder side, fed straight to
+#: `compose_reviewer_prompt` as `resume_hunks_text`; that function performs
+#: no rendering of its own.
+_RESUME_HUNKS_TEXT = (
+    "## Resumed Session — Changed Regions Only\n"
+    "\n"
+    "### widget.py (lines 1-1)\n"
+    "```\n"
+    "    resize()\n"
+    "```\n"
+)
 _TEST_RESULT = "3 passed in 0.10s"
 _FILES_CHANGED = ["packages/widget.py", "tests/test_widget.py"]
 _TASK_EXCERPT = "Resize the widget, keep the aspect ratio."
@@ -104,9 +123,10 @@ _SCOPE_PACKET = {
     "scope_reason": "Only two hunks changed.",
 }
 
-#: The four shapes the golden covers, two per mutually exclusive branch: the
-#: scoped branch with nothing but its packet and with everything, and the
-#: fallback branch with no optional argument at all and with everything.
+#: The shapes the golden covers, two per mutually exclusive branch: the
+#: scoped branch with nothing but its packet, with everything, and (F106
+#: T002b-ii step 2b) with everything plus a resumed session's shrunk diff;
+#: the fallback branch the same three ways.
 _SHAPES: dict[str, dict] = {
     "scoped_minimal": dict(scope_packet=_SCOPE_PACKET),
     "scoped_full": dict(
@@ -116,6 +136,15 @@ _SHAPES: dict[str, dict] = {
         repair_round=_REPAIR_ROUND,
         safe_diff=_SAFE_DIFF,
         test_result=_TEST_RESULT,
+    ),
+    "scoped_resumed": dict(
+        scope_packet=_SCOPE_PACKET,
+        scope_contract=_SCOPE_CONTRACT,
+        prior_findings=_PRIOR_FINDINGS,
+        repair_round=_REPAIR_ROUND,
+        safe_diff=_SAFE_DIFF,
+        test_result=_TEST_RESULT,
+        resume_hunks_text=_RESUME_HUNKS_TEXT,
     ),
     "fallback_minimal": {},
     "fallback_full": dict(
@@ -128,6 +157,18 @@ _SHAPES: dict[str, dict] = {
         files_changed=_FILES_CHANGED,
         safe_diff=_SAFE_DIFF,
         test_result=_TEST_RESULT,
+    ),
+    "fallback_resumed": dict(
+        scope_contract=_SCOPE_CONTRACT,
+        prior_findings=_PRIOR_FINDINGS,
+        repair_round=_REPAIR_ROUND,
+        task_excerpt=_TASK_EXCERPT,
+        task_sha256=_TASK_SHA256,
+        task_tokens_estimated=_TASK_TOKENS,
+        files_changed=_FILES_CHANGED,
+        safe_diff=_SAFE_DIFF,
+        test_result=_TEST_RESULT,
+        resume_hunks_text=_RESUME_HUNKS_TEXT,
     ),
 }
 
@@ -277,3 +318,70 @@ def test_build_reviewer_prompt_returns_the_composed_text(shape):
     built = _build_reviewer_prompt(_GOAL, _BUILDER_SUMMARY, **_SHAPES[shape])
     assert isinstance(built, str)
     assert built == _composed(shape).text
+
+
+class TestResumeHunksTextReplacesTheDiffOnEitherBranch:
+    """F106 T002b-ii step 2b, Reviewer side (DECISION F106 D1(b)) — a resumed
+    session's diff segment carries the pre-rendered hunk selection instead of
+    the capped diff, on BOTH the scoped and fallback branches, in the SAME
+    segment name/rank each branch already uses."""
+
+    def test_scoped_resumed_keeps_scoped_fulls_segment_order_and_ranks(self):
+        scoped_full = _composed("scoped_full")
+        scoped_resumed = _composed("scoped_resumed")
+        assert (tuple(e.name for e in scoped_resumed.manifest)
+                == tuple(e.name for e in scoped_full.manifest))
+        assert (tuple(e.rank for e in scoped_resumed.manifest)
+                == tuple(e.rank for e in scoped_full.manifest))
+
+    def test_fallback_resumed_keeps_fallback_fulls_segment_order_and_ranks(self):
+        fallback_full = _composed("fallback_full")
+        fallback_resumed = _composed("fallback_resumed")
+        assert (tuple(e.name for e in fallback_resumed.manifest)
+                == tuple(e.name for e in fallback_full.manifest))
+        assert (tuple(e.rank for e in fallback_resumed.manifest)
+                == tuple(e.rank for e in fallback_full.manifest))
+
+    def test_scoped_resumeds_diff_segment_is_the_raw_render(self):
+        texts = _segment_texts(_composed("scoped_resumed"))
+        assert texts["reviewer_focused_diff"] == _RESUME_HUNKS_TEXT.rstrip("\n")
+
+    def test_fallback_resumeds_diff_segment_is_the_raw_render(self):
+        texts = _segment_texts(_composed("fallback_resumed"))
+        assert texts["reviewer_staged_diff"] == _RESUME_HUNKS_TEXT.rstrip("\n")
+
+    def test_scoped_fulls_diff_segment_is_unchanged_by_resumed_existing(self):
+        texts = _segment_texts(_composed("scoped_full"))
+        assert texts["reviewer_focused_diff"] == (
+            "## Focused Staged Diff\n```diff\n" + _SAFE_DIFF + "\n```"
+        )
+
+    def test_fallback_fulls_diff_segment_is_unchanged_by_resumed_existing(self):
+        texts = _segment_texts(_composed("fallback_full"))
+        assert texts["reviewer_staged_diff"] == (
+            "## Staged Unified Diff\n```diff\n" + _SAFE_DIFF + "\n```"
+        )
+
+    def test_an_empty_resume_hunks_text_falls_back_to_the_full_diff_scoped(self):
+        """No `test_result` follows here, so this diff segment is the LAST
+        rank-5 segment and keeps its own trailing newline — unlike
+        `scoped_full`'s same segment above, which `test_result` follows."""
+        composed = compose_reviewer_prompt(
+            _GOAL, _BUILDER_SUMMARY, scope_packet=_SCOPE_PACKET,
+            safe_diff=_SAFE_DIFF, resume_hunks_text="",
+        )
+        texts = _segment_texts(composed)
+        assert texts["reviewer_focused_diff"] == (
+            "## Focused Staged Diff\n```diff\n" + _SAFE_DIFF + "\n```\n"
+        )
+
+    def test_an_empty_resume_hunks_text_falls_back_to_the_full_diff_fallback(self):
+        """No `test_result` follows here either, same last-segment reasoning
+        as the scoped case above."""
+        composed = compose_reviewer_prompt(
+            _GOAL, _BUILDER_SUMMARY, safe_diff=_SAFE_DIFF, resume_hunks_text="",
+        )
+        texts = _segment_texts(composed)
+        assert texts["reviewer_staged_diff"] == (
+            "## Staged Unified Diff\n```diff\n" + _SAFE_DIFF + "\n```\n"
+        )
