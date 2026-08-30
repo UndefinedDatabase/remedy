@@ -54,7 +54,7 @@ from pathlib import Path
 #: The one schema version this loader accepts.  A file from the future is
 #: refused rather than half-read: a field this code does not understand is
 #: exactly the field that would have said "this item is already consumed".
-SELF_USE_QUEUE_SCHEMA_VERSION = 1
+SELF_USE_QUEUE_SCHEMA_VERSION = 2
 
 #: The file name shipped under ``scripts/``.  One spelling, so nothing loads a
 #: copy of the queue.
@@ -64,9 +64,10 @@ SELF_USE_QUEUE_FILENAME = "self_use_queue.json"
 #: typo is refused at load time rather than silently becoming a new item.
 _ITEM_ID_RE = re.compile(r"^SU-\d{3}$")
 
-#: The five keys an item carries — no more, no fewer.  An unexpected key is a
-#: curation mistake or a format drift, and either way it is refused.
-_ITEM_KEYS: tuple[str, ...] = ("id", "title", "why", "job_markdown", "consumed_by")
+#: The six keys an item carries — no more, no fewer.  An unexpected key is a
+#: curation mistake or a format drift, and either way it is refused.  Schema v2
+#: (F258) added ``provenance``; every v1 item was migrated to carry one.
+_ITEM_KEYS: tuple[str, ...] = ("id", "title", "why", "job_markdown", "consumed_by", "provenance")
 
 
 class SelfUseQueueError(RuntimeError):
@@ -88,6 +89,7 @@ class SelfUseQueueEntry:
     why: str
     job_markdown: str
     consumed_by: str
+    provenance: str
 
     @property
     def is_pending(self) -> bool:
@@ -117,7 +119,7 @@ def load_self_use_queue(path: Path | None = None) -> tuple[SelfUseQueueEntry, ..
         SelfUseQueueError: the file is missing or unreadable, is not a JSON
             object, carries an unsupported ``schema_version``, holds an
             ``items`` value that is not a list, holds an item that is not an
-            object or whose keys are not exactly the five this module names,
+            object or whose keys are not exactly the six this module names,
             holds a non-string or blank field where a string is required,
             holds an ``id`` that does not match ``^SU-\\d{3}$``, or holds a
             duplicate ``id``.
@@ -148,7 +150,7 @@ def load_self_use_queue(path: Path | None = None) -> tuple[SelfUseQueueEntry, ..
         _require(tuple(sorted(raw)) == tuple(sorted(_ITEM_KEYS)),
                  f"{queue_path}: items[{position}] must carry exactly the keys "
                  f"{sorted(_ITEM_KEYS)}, found {sorted(raw)}")
-        for field_name in ("id", "title", "why", "job_markdown"):
+        for field_name in ("id", "title", "why", "job_markdown", "provenance"):
             value = raw.get(field_name)
             _require(isinstance(value, str) and value.strip(),
                      f"{queue_path}: items[{position}] has a missing or blank "
@@ -167,6 +169,7 @@ def load_self_use_queue(path: Path | None = None) -> tuple[SelfUseQueueEntry, ..
             why=raw["why"],
             job_markdown=raw["job_markdown"],
             consumed_by=consumed_by,
+            provenance=raw["provenance"],
         ))
 
     ids = [entry.id for entry in entries]
