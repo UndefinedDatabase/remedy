@@ -1,7 +1,7 @@
 # Plan — F040 Completion/return digest
 
 Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 4, round 16.
+commit of pull request 222. SESSION 4, round 17.
 
 ## Goal
 Coming back is calm: a digest endpoint condenses state, cost with its basis, top
@@ -16,21 +16,24 @@ was gone" answer in one glance.
 | the spec decisions D2 to D10 | done | rounds 2-9 |
 | T001 the composition, endpoint, goldens | done | rounds 3-5, all PASS |
 | T002 the client digest seam through the mount | done | rounds 6-14, all PASS |
-| T003 CLI parity — `remedy job digest <id>` | done | round 15, PASS |
-| T003 the end-to-end (away, reopen, dismiss, re-arm) | done | this round |
-| the integration gate | open | next |
-| closure sequence | open | after the gate |
+| T003 CLI parity + the client end-to-end | done | rounds 15-16, all PASS |
+| the integration gate | in progress | this round |
+| closure sequence | open | next, if the gate is clean |
 
 ## Next Steps
-1. This round adds `apps/ui/src/api/digestEndToEnd.test.ts`, chaining
-   `decodeJobDigest` to `digestVisibility` to `digestCtaText` over one of the
-   frozen golden shapes, proving the feature file's own script on the client:
-   finish while away, reopen, correct CTA, dismiss, no re-show, re-arm.
-2. The next round is the dedicated integration-gate round
-   (docs/agents/integration_gate.md); a regression there is a normal repair
-   round.
-3. Then the closure sequence (STATUS_closure_protocol.md): evidence job, a
-   fresh review zip, the STATUS line, the PR.
+1. This round runs docs/agents/integration_gate.md steps 1-4: branch run,
+   base run at the merge base `f5b1e6c5` in a throwaway worktree, the
+   `comm` comparison, and per-id attribution for every branch-only failure.
+   Evidence lands under `.agent/gate_f040_r17/`. Per the gate's own rule,
+   ONLY THE REVIEWER ISSUES THE VERDICT — this round reports raw evidence
+   and classifications, and the next round's review carries the verdict.
+2. If the gate is clean (or every branch-only id is attributed to the known
+   xdist-flake or environment-parity classes), the next round starts the
+   closure sequence (STATUS_closure_protocol.md): evidence job, a fresh
+   review zip, the STATUS line, the PR.
+3. If a branch-only failure is coupled to feature code, that is a BLOCKER
+   per the gate's own rule: STOP and hand back rather than repairing it in
+   the same round, per docs/agents/integration_gate.md step 4.
 4. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
    resolution design (D5's "in-page action") and is not yet scheduled.
 
