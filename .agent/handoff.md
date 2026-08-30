@@ -311,3 +311,67 @@ sequence, also owes the ledger this round's own `Gate: F258 R6` verdict, per
 amend0827 rule 1 (booked in the next round's first commit, not this round's).
 Push and Open PR Gate housekeeping apply as usual; no PR is open on this
 branch yet (none is created before closure).
+
+## Reviewer verdict on round 6 (independent re-verification, 2026-08-30)
+
+VERDICT PASS. The reviewer re-ran every gate independently against the real
+diff `c92d715d..a51ae2f8`, not against the worker's own report, and additionally
+re-derived every FROM/TO pair and every sha256 from the reviewer's own
+pre-verified `.remedy-wt/f258-r6/` scratch originals (prepared and dry-run
+tested, including the mutation red-proof, BEFORE the block was authored).
+G1 TRANSPORT: `packages/orchestration/self_use_findings.py` sha256
+`a6cc5f502031fbd032bf0891cefb1c45af11d8e8b006ad955992041cb83b60e2` (2677
+bytes) and `tests/orchestration/test_self_use_findings.py` sha256
+`54681ccdfaad31477820d400de85a41621a8bc955878db8d3bdfbef915203322` (3122
+bytes), both equal to the scratch originals and to the block's stated
+digests. G2 THE PLAN: `.agent/plan.md` sha256
+`9ae922a0910d455df0d5dba31e5e81806f9edf40262ec78a962081743d550852`, 1812
+bytes, 39 lines, `## Goal` and `## Next Steps` present, ends with `\n`. G3
+THE RECORD APPEND: base re-measured at 1775310 bytes ending in exactly one
+`\n`; `base + b"\n" + RECORD6 (3782 bytes) == committed (1779093 bytes)` is
+TRUE; the last `\n\n`-delimited unit of the committed file equals RECORD6
+exactly. A negative control in a disposable worktree (byte flipped at index
+100 of a RECORD6 copy) was correctly rejected while the true original was
+accepted. G4 THE LEDGER: `DECISION F258` unchanged at `['D1','D2']` (ADDED
+`[]`); `Gate: F258 R` lines ADDED exactly `['F258 R5']`; 317 distinct `R-`
+ids and 55 distinct `Done:` ids unchanged before and after C2. G5 THE FOUR
+PROSE PAIRS: PAIR-STATUSPROTO3 and PAIR-CONSUMPTION2 each measured FROM
+1→0, TO 0→1; PAIR-BANNER3 and PAIR-MODULES2 (both append-shaped) measured
+FROM 1→1 (survive as prefix) and TO 0→1 — all four independently
+re-measured against the committed files, matching the block exactly.
+`python3 -m pytest tests/docs/ -q` (295) and
+`tests/orchestration/test_roadmap_index.py` (30) both independently re-run,
+REAL exit 0, matching the worker's reported counts. G6 THE NEW MODULE, ITS
+TEST, AND THE SUITES: `ruff check` on both new files REAL exit 0, all
+checks passed; the five self-use suites together REAL exit 0, 71 passed (3
+new); the three repo-wide sanity guards REAL exit 0, 69 passed — this
+module touches none of their guarded paths, confirmed by reading the diff
+directly (it imports only `packages.orchestration.pingpong_job.JobPlan` for
+typing and reads no `.agent/**` path). G7 THE MUTATION RED-PROOF,
+independently reproduced by the reviewer in the reviewer's OWN disposable
+worktree, `__pycache__` purged, `python3 -B`: removing the `if
+result.error:` block gave REAL exit 1, exactly the two predicted failures
+(`test_a_blocked_run_surfaces_the_jobs_own_error_text`,
+`test_task_order_is_preserved`), 1 passed; restoring from the scratch
+original gave REAL exit 0, 3 passed again. G8 THE STATE READERS AND
+CANARY, all REAL exit 0, matching every prior round's base exactly: 515,
+52, 21, 16, 42. THE TREE: clean, single worktree, per-commit insertions
+237/136/12/52/8/13/133 from `git log --numstat`, every one under 500 — no
+oversize exception needed. THE ROUND PASSES: the change set matches the
+block's fixed eight paths exactly (plus the handback commit), the branch is
+pushed and matches `origin` exactly at `277695dc`, the tree was clean, no
+`tmp/*` branch or extra worktree survived. No new finding is raised by this
+review; the worker's own report matched the reviewer's independent
+re-measurement in every particular, with zero discrepancies.
+
+All three of F258's T-slices (T001, T002, T003) are now built against the
+feature file's own text. The next round is the reviewer's own design of
+F258's closure sequence per `docs/roadmap/STATUS_closure_protocol.md`
+(preconditions 1-6, evidence job, fresh review zip, the STATUS line, the
+PR) — not more T-slice work.
+
+This verdict (`Gate: F258 R6`) is PENDING — per amend0827 rule 1 it is
+booked into `.agent/live_review.md` in the FIRST COMMIT of the next round
+that is happening anyway, which is round 7. It is persisted now by being
+written into this pushed, committed handoff, which is the durable carrier
+amend0827 rule 1 names for exactly this gap.
