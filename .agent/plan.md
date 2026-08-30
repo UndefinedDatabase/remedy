@@ -1,50 +1,39 @@
-# Plan — F040 Completion/return digest
+# Plan — F258 Self-use track v2 (CLOSED)
 
-Branch: feature/f040-completion-digest, cut from `main` at `f5b1e6c5`, the merge
-commit of pull request 222. SESSION 5, round 22 — OPEN PR GATE CONFLICT
-RESOLUTION.
+Branch: feature/f258-self-use-v2, cut from `main` at the merge commit of pull
+request 225. F258 is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line
+and the pull request is open and UNMERGED.
 
 ## Goal
-Coming back is calm: a digest endpoint condenses state, cost with its basis, top
-ownership entries, open decisions and ONE primary action into a hero card, shown
-at job end or on the first UI open after absence — the "what happened while I
-was gone" answer in one glance.
+"Remedy is used on Remedy" keeps running with zero operator input: a generator
+replenishes the self-use queue with exactly one dated, provenanced item
+whenever it is empty at close, the consumed item is actually RUN through the
+real job path under a small budget and stopped at the normal approval gate
+rather than only planned, and any defect the run surfaces flows back into the
+standard finding ledger. DONE.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| the spec decisions D2 to D10 | done | rounds 2-9 |
-| T001 the composition, endpoint, goldens | done | rounds 3-5, all PASS |
-| T002 the client digest seam through the mount | done | rounds 6-14, all PASS |
-| T003 CLI parity + the client end-to-end | done | rounds 15-16, all PASS |
-| the integration gate | done | round 17, PASS |
-| closure preconditions + Built State | done | round 18, all six CLEAR/NONE |
-| closure evidence job + review zip | done | round 19, READY_FOR_REVIEW |
-| STATUS line + README sync + PR | done | round 20, PR #225 opened |
-| PR #225 vs main drift (F258 landed via #223/#224) | resolved | round 22, merge commit `f69f1785` |
-
-F040's build is DONE. Nothing in this feature's own content changed this
-round — round 22 only resolved a merge conflict caused by F258's
-registration (PRs #223/#224) landing on `main` after PR #225 opened,
-touching the same shared count lines in README.md and
-docs/roadmap/STATUS.md.
+| T001/T002/T003, integration gate | done | rounds 2-7 |
+| all six closure preconditions | done | rounds 8-10 |
+| the evidence bundle and the review zip | done | round 11, READY_FOR_REVIEW |
+| the closure commit | done | this round, Rule A4's last commit |
+| the pull request | done | opened and NOT merged |
 
 ## Next Steps
-1. PR #225 is still OPEN and UNMERGED. It must be merged at the next
-   session's Open PR Gate (self_drive_protocol.md G1) before any new
-   feature work is claimed on this repo — never in the same
-   round/session that touches this branch.
-2. No further edits to this branch are expected before that merge. If
-   `main` drifts again before the merge, re-run this same conflict
-   resolution process against the newly conflicting lines only.
-3. Wiring `onOpenDecisions`/`onPrimaryAction` for real needs its own
-   resolution design (D5's "in-page action") and is not yet scheduled —
-   documented in the Built State section, carried forward as a known
-   post-closure item, not a blocker.
+1. Nothing further on this branch. The next feature's Open PR Gate merges
+   this pull request, or the operator merges it manually at any time.
+2. Rule A5 selects the next feature in a fresh session.
 
 ## Risks
-- R-0570, R-0752 and R-0755 stay OPEN and are routed to the paydown branch;
-  none is F040's to fix. R-0753 stays OPEN as this feature's documented risk.
-- `browserDigestPort.ts`'s open risk (a real browser refusing a write) is
-  still unaddressed and still deferred to whichever round first meets it.
+- THE SELF-USE QUEUE HOLDS TWO PENDING ITEMS after this close (SU-003,
+  SU-004) — not exhausted, unlike F257's close. No generator action is
+  needed at the next feature's close.
+- R-0570 (Low) and R-0736 (Medium) stay registered and unrepaired, both
+  outside F258's own surface. R-0757 (Medium) IS F258's own defect (the
+  self-use runner's silent fake-provider default) and is deliberately not
+  repaired on this branch — a follow-up round, not a closure blocker.
+  Together these are the documented risks behind the PASS_WITH_RISKS
+  verdict.

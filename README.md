@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-64 of 258 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+65 of 258 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 12 | 32 |
+| 5 | Operator Cockpit | 13 | 32 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -112,6 +112,13 @@ basis, open decisions and one recommended action into a single glance, shown
 at job end or on the first UI open after an absence; the same envelope is
 served to `remedy job digest <id>` so the CLI and the route can never
 disagree; a dismissal persists per job and new activity re-arms it).
+
+F258 self-use track v2 (the queue now replenishes itself: a generator appends
+exactly one dated, provenanced item whenever the track runs dry, sourced first
+from the oldest self-contained open finding in the reviewer's own ledger; the
+consumed item is RUN through the real job path to the normal approval gate,
+not merely planned; and any defect the run surfaces flows back into that same
+ledger as a normal finding).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

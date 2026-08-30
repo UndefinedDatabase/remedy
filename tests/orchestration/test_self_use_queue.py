@@ -28,10 +28,11 @@ _ONE_ITEM = {
     "why": "Because a reader would look here and find nothing.",
     "job_markdown": "# Job: Demo\n\n## Task 1\nDo the thing.\n\nAcceptance:\n- it is done\n",
     "consumed_by": "",
+    "provenance": "operator-curated (fixture)",
 }
 
 
-def _queue_body(items: list[dict], schema_version: int = 1) -> dict:
+def _queue_body(items: list[dict], schema_version: int = 2) -> dict:
     return {
         "schema_version": schema_version,
         "description": "fixture queue",
@@ -71,9 +72,9 @@ class TestShippedQueueLoads:
         entries = load_self_use_queue()
         assert len(entries) >= 1
 
-    def test_shipped_queue_declares_schema_version_one(self):
+    def test_shipped_queue_declares_schema_version_two(self):
         body = json.loads(default_self_use_queue_path().read_text(encoding="utf-8"))
-        assert body["schema_version"] == SELF_USE_QUEUE_SCHEMA_VERSION == 1
+        assert body["schema_version"] == SELF_USE_QUEUE_SCHEMA_VERSION == 2
 
     def test_shipped_ids_are_unique_and_match_the_pattern(self):
         import re
@@ -82,6 +83,20 @@ class TestShippedQueueLoads:
         assert len(set(ids)) == len(ids), f"duplicate ids: {sorted(ids)}"
         for item_id in ids:
             assert re.match(r"^SU-\d{3}$", item_id), item_id
+
+    def test_every_shipped_item_carries_a_non_blank_provenance(self):
+        for entry in load_self_use_queue():
+            assert entry.provenance.strip(), f"{entry.id}: blank provenance"
+
+
+class TestEntryCarriesProvenance:
+    """The loaded entry's provenance is the JSON value, verbatim."""
+
+    def test_provenance_round_trips_from_the_file(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item(provenance="a generator run")]))
+        entry = next_self_use_item(path)
+        assert entry is not None
+        assert entry.provenance == "a generator run"
 
 
 class TestShippedQueueParsesAsJobs:
@@ -109,7 +124,18 @@ class TestLoaderRaisesRatherThanReturningEmpty:
             load_self_use_queue(path)
 
     def test_wrong_schema_version_raises(self, tmp_path: Path):
-        path = _write_queue(tmp_path, _queue_body([_item()], schema_version=2))
+        path = _write_queue(tmp_path, _queue_body([_item()], schema_version=3))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_old_v1_shaped_file_is_refused(self, tmp_path: Path):
+        v1_item = _item()
+        del v1_item["provenance"]
+        path = _write_queue(tmp_path, {
+            "schema_version": 1,
+            "description": "fixture queue",
+            "items": [v1_item],
+        })
         with pytest.raises(SelfUseQueueError):
             load_self_use_queue(path)
 
@@ -137,6 +163,18 @@ class TestLoaderRaisesRatherThanReturningEmpty:
 
     def test_id_not_matching_the_pattern_raises(self, tmp_path: Path):
         path = _write_queue(tmp_path, _queue_body([_item(id="SU-1")]))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_missing_provenance_raises(self, tmp_path: Path):
+        broken = _item()
+        del broken["provenance"]
+        path = _write_queue(tmp_path, _queue_body([broken]))
+        with pytest.raises(SelfUseQueueError):
+            load_self_use_queue(path)
+
+    def test_blank_provenance_raises(self, tmp_path: Path):
+        path = _write_queue(tmp_path, _queue_body([_item(provenance="   ")]))
         with pytest.raises(SelfUseQueueError):
             load_self_use_queue(path)
 

@@ -20,12 +20,27 @@
 6. EXACTLY ONE SELF-USE ITEM IS CONSUMED BY THIS CLOSE (F257). The first
    pending item in `scripts/self_use_queue.json` — the one
    `packages.orchestration.self_use_queue.next_self_use_item` answers — has
-   been planned through `packages.orchestration.self_use_job`, taken to the
-   normal approval gate like any other job, and its `consumed_by` set to this
-   feature's id in the closure commit. If the queue holds NO pending item the
-   track is exhausted, not blocked: record `self-use NONE (queue exhausted)`
-   in the handback and close normally, because an empty queue asks the
-   operator to curate more rather than stopping a feature. Why this is a
+   been planned through `packages.orchestration.self_use_job` and RUN
+   through `packages.orchestration.self_use_runner.run_next_self_use_item`
+   (F258 T002) to the normal approval gate like any other job — never
+   promoted — and its `consumed_by` set to this
+   feature's id in the closure commit. Before that: every string
+   `packages.orchestration.self_use_findings.describe_self_use_run_defects`
+   returns for the run's own `JobPlan` (F258 T003) is registered as a normal
+   R-id finding in `.agent/live_review.md` under the standard rules (red-proof
+   required for a repair) before the close, and the closure paragraph names
+   every finding raised and whether it was repaired; an empty tuple means
+   nothing to register, not that nothing was checked. If the queue holds NO
+   pending item,
+   the session calls
+   `packages.orchestration.self_use_generator.generate_and_append_if_empty`
+   FIRST (F258 T001) — its Tier 1 (the oldest open Low/Medium finding in
+   `.agent/live_review.md`) supplies one in practice, since the ledger rarely
+   runs dry. Only once THAT also answers `None` is the track truly
+   exhausted, not blocked: record `self-use NONE (queue exhausted)` in the
+   handback and close normally, because a genuinely empty queue with no
+   eligible source asks the operator to curate more rather than stopping a
+   feature. Why this is a
    precondition and not an intention: "Remedy is used on Remedy" rots the
    moment it depends on someone remembering to do it, which is DECISION F257
    D2's CONSEQUENCE clause in as many words.

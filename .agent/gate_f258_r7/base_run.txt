@@ -1,0 +1,104 @@
+==============================================================================
+BASE RUN — 18ae7129 (merge base) in worktree on branch tmp/f258-r7-base-gate
+==============================================================================
+command            : python3 -m pytest -n auto -q
+cwd                : /home/decodeux/Repos/remedy/.remedy-wt/f258-r7-base
+environment        : REMEDY_UI_NO_AUTO_BUILD=1
+REAL exit code     : 1
+wall time (seconds): 202.3967
+run window (epoch) : 1788067834.3271685 .. 1788068036.7239053
+
+PARITY FIX APPLIED BEFORE THIS RUN (constraint 4 / finding R-0736), not
+discovered by a failed run: `apps/ui/node_modules` and `apps/ui/dist` were
+copied from the primary checkout with `shutil.copytree(..., symlinks=True)`,
+then every file under the copied `apps/ui/dist` had its mtime advanced past
+the worktree's own checkout time with `os.utime(path, (now, now))`. See
+`parity.txt` for the full before/after/run-window reading. This run therefore
+shows NO stale-dist failures (the 114-id `tests/ui_server/` class the block
+warns about did not occur).
+
+RAW TAIL (last ~90 lines of a 297-line log)
+
+...................................s..........................s........... [ 91%]
+........................................................................ [ 91%]
+.....................................................s.......s.......... [ 92%]
+........................................................................ [ 92%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+..............                                                           [100%]
+=================================== FAILURES ===================================
+____________ TestSubprocessCleanup.test_timeout_raises_with_cleanup ____________
+[gw3] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.cli.test_review_bundle_runtime.TestSubprocessCleanup object at 0x7e4c080c30a0>
+
+    def test_timeout_raises_with_cleanup(self):
+        """A very short timeout raises TimeoutExpired after cleanup."""
+        import subprocess as sp
+        try:
+            # Run a sleep command with 1-second timeout
+            _run_grouped_cli(
+                ["--help"],  # fast command, but use tiny timeout
+                timeout=0,  # immediate timeout
+            )
+            # If it didn't timeout (fast enough), that's OK too
+        except sp.TimeoutExpired:
+            pass  # Expected — process group was cleaned up
+        # Verify no orphan process from this test
+        import time
+        time.sleep(0.1)
+        result = subprocess.run(
+            ["pgrep", "-f", "apps.cli.grouped.*--help"],
+            capture_output=True, text=True,
+        )
+>       assert result.returncode != 0, "Orphan process found after timeout cleanup"
+E       AssertionError: Orphan process found after timeout cleanup
+E       assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['pgrep', '-f', 'apps.cli.grouped.*--help'], returncode=0, stdout='1807546\n', stderr='').returncode
+
+tests/cli/test_review_bundle_runtime.py:327: AssertionError
+=========================== short test summary info ============================
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+1 failed, 18641 passed, 20 skipped in 201.85s (0:03:21)
+
+COMPLETE FAILED LIST — 1 ids
+
+tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+
+==============================================================================
+SERIAL RE-RUN OF THE ABOVE ID (integration_gate.md step 4 / step 3 attribution)
+==============================================================================
+command : python3 -m pytest -q tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+cwd     : /home/decodeux/Repos/remedy/.remedy-wt/f258-r7-base (same worktree, same revision)
+environment : REMEDY_UI_NO_AUTO_BUILD=1
+REAL exit code : 0
+wall time (seconds) : 0.5600
+
+1 passed in 0.33s
+
+Serial-pass ⇒ xdist-flake class (integration_gate.md step 4): recorded, not a
+blocker. See comparison.txt for the full attribution, including the prior
+registration of this exact test's machine-wide `pgrep -f` predicate as a
+known flake class (the F032 R16/R17 gate entry in `.agent/live_review.md`
+names the identical id and cause).
+
+Worktree and throwaway branch removed after this evidence was captured:
+`git worktree remove .remedy-wt/f258-r7-base --force` and
+`git branch -D tmp/f258-r7-base-gate`.
