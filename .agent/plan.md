@@ -1,7 +1,7 @@
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 3, round 8.
+commit of pull request 225. SESSION 3, round 9.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -15,27 +15,29 @@ standard finding ledger.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 self-replenishing queue | done | rounds 2-4 |
-| T002 consumed means executed | done | round 5 |
-| T003 findings flow back | done | round 6 |
-| the dedicated integration-gate round | done | round 7 |
-| precondition 6 — plan + run the queue's next item for real | open | this round |
-| closure sequence (preconditions 1,3,4,5; evidence job; zip; STATUS+README; PR) | open | next round |
+| T001/T002/T003 | done | rounds 2-6 |
+| integration-gate round | done | round 7 |
+| precondition 6 — plan + run for real | done | round 8 |
+| preconditions 1, 3, 5 | open | this round |
+| precondition 4 — Built State section | open | next round |
+| evidence job + review zip | open | next round |
+| STATUS + README + final PR | open | final round |
 
 ## Next Steps
-1. This round books round 7's own verdict (`Gate: F258 R7`) into
-   `.agent/live_review.md` first, per amend0827 rule 1.
-2. Run `packages.orchestration.self_use_runner.run_next_self_use_item` for
-   real against the shipped queue's next pending item, in an isolated
-   `REMEDY_DATA_DIR`, recording the raw `JobPlan` and
-   `packages.orchestration.self_use_findings.describe_self_use_run_defects`
-   output under `.agent/gate_f258_closure/`. No finding is registered this
-   round — the reviewer authors any `- R-XXXX` text next round from the
-   real recorded output (STATUS_closure_protocol.md precondition 6;
-   T5_F258.md T003).
-3. `scripts/self_use_queue.json` stays byte-unchanged this round —
-   `consumed_by` is set only in the final closure commit (Algorithm step 5).
+1. Register R-0757 (Medium — self-use runner silently resolves a fake
+   provider by default) in `.agent/live_review.md`, own commit, before
+   any verdict text — the finding round 8's real run surfaced.
+2. Book round 8's own verdict (`Gate: F258 R8`) into the same file, per
+   amend0827 rule 1.
+3. Re-confirm preconditions 3 and 5 after this round's own edits
+   (integrity check, tree/push state); precondition 1's closure-scoped
+   reading: every F258-scoped open finding is Medium/Low (R-0570,
+   R-0736, R-0757) — none Blocker/High.
+4. Precondition 4, the evidence job, the review zip and the final
+   STATUS/README/PR commit are the next rounds, not this one.
 
 ## Risks
-- R-0570 (Low) stays OPEN, routed away, unrelated to this branch.
+- R-0570 (Low), R-0736 (Medium): OPEN, unrelated to F258's own code.
+- R-0757 (Medium): OPEN, this branch's own defect, documented under
+  this closure's PASS WITH RISKS reading, not fixed here.
 - No closure candidate is open; `.agent/candidates.md` stays empty.
