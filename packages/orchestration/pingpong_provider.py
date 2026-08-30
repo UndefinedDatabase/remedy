@@ -260,6 +260,12 @@ class FakeProvider:
     ) -> ReviewerOutput:
         out = self._review_impl(prompt, timeout_sec=timeout_sec,
                                 max_output_chars=max_output_chars)
+        # F106 T002b: honor an incoming resume request only when this fake
+        # was constructed to support it — mirrors FakeProvider.build (T002a).
+        out.resume_used = bool(resume) and self._supports_resume
+        out.resume_session_ref = resume if out.resume_used else ""
+        if self._fake_session_id:
+            out.usage_actuals = {"session_id": self._fake_session_id}
         out.prepared_input = prepare_call_input(
             prompt=prompt, model="fake", mode="fake",
             options={"max_output_chars": max_output_chars})
