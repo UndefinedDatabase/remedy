@@ -1,7 +1,7 @@
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 2, round 8.
+SESSION 3, round 9.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -17,20 +17,25 @@ working.
 | T001 (a/b/c): capability surface, all 3 adapters, tests | done | rounds 2-4 |
 | T002a: Builder repair call resumes when earned | done | round 5 |
 | T002b-i: Reviewer repair call resumes when earned | done | round 6 |
-| T002c-i: Builder fallback-once on a failed resume | done | round 7 |
-| T002c-ii: Reviewer fallback-once mirror | done | this round |
-| T002b-ii: F111 delta prompt shrink | open | next |
+| T002c (i+ii): fallback-once, both sides | done | rounds 7-8 |
+| T002b-ii step 1: hoist resume-ref before prompt build | done | this round |
+| T002b-ii step 2: the actual delta-prompt shrink | open | next |
 | T003: measured fixture comparison + docs | open | |
 
 ## Next Steps
-1. T002b-ii: the delta-prompt shrink via F111's existing diff-repair hunk
-   selection. Needs its own research pass into the hunk-selection code
-   before design — not started.
-2. T003 follows once T002 is fully closed (after T002b-ii lands).
+1. T002b-ii step 2: per DECISION F106 D1, reuse `parse_diff_line_ranges`/
+   `select_repair_hunks` gated on the hoisted resume-ref to shrink the
+   repair-diff prompt segment when a session is being resumed; invent and
+   freeze a hunk-rendering convention (none exists to borrow); reconcile
+   against the prompt-golden test files only if their segment set changes.
+2. T003 follows once T002 is fully closed (after T002b-ii step 2 lands).
 
 ## Risks
 - No adapter's `supports_resume` is true in production yet — only
   `FakeProvider`, via its test-only constructor overrides, ever resumes
-  or fails a resume. None of T002a/b-i/c-i/c-ii changes observable
-  behavior for `ClaudeProvider`/`ClaudeCliProvider`, or for a
-  default-constructed `FakeProvider`.
+  or fails a resume. This round's hoist changes no observable behavior on
+  any path: the resume-ref value, its inputs and the commit order they
+  are read in are unchanged, only computed earlier in the same function.
+- DECISION F106 D1's D1-compatibility reading (reusing F111's pure hunk
+  functions for prompt content, never the diff-apply channel) governs
+  step 2's design; step 2 must not widen it further without a new DECISION.
