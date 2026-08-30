@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-63 of 257 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+64 of 257 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
@@ -25,7 +25,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
-| 5 | Operator Cockpit | 11 | 31 |
+| 5 | Operator Cockpit | 12 | 31 |
 | 6 | Design-to-Code | 0 | 16 |
 | 7 | Quality & Trust | 0 | 15 |
 | 8 | Worker Ecosystem & Neutrality | 0 | 12 |
@@ -106,6 +106,12 @@ seam that renders one item verbatim onto the job path Remedy already has and
 plans it, and a closure precondition that consumes exactly one item per close —
 no job may mark its own item consumed, because a run that can check itself off is
 not a gate).
+
+F040 completion/return digest (a hero card condensing state, cost with its
+basis, open decisions and one recommended action into a single glance, shown
+at job end or on the first UI open after an absence; the same envelope is
+served to `remedy job digest <id>` so the CLI and the route can never
+disagree; a dismissal persists per job and new activity re-arms it).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
