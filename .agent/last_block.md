@@ -1,99 +1,103 @@
-── STEP closure-precondition-4/2 — F258 ────────────────────────
-Goal: Book round 9's PASS verdict, record round 9's own process
-deviation as a dated prose-slip line, and discharge closure
-precondition 4 by appending the feature file's Built State section.
+### STEP T001-T003 — F258 Self-use track v2, round 11 (THE EVIDENCE BUNDLE AND THE REVIEW ZIP)
 
-Bundle:
-1. Book `Gate: F258 R9` into `.agent/live_review.md`.
-2. Append one dated line to `.agent/prose_slips.md`.
-3. Append `## Built State (F258, 2026-08-30)` to
-   `docs/roadmap/features/T5_F258.md`.
-4. Rewrite `.agent/plan.md` from PLAN10.
+Goal: book the round 10 verdict — all six closure preconditions are satisfied
+— and then execute steps 1 and 2 of `docs/roadmap/STATUS_closure_protocol.md`:
+the final evidence bundle and a FRESH review zip, built from a clean tree at
+the reviewed head. This round does NOT close the feature. No `[x]`, no README
+sync, no `consumed_by` edit and no pull request: those are the closure
+commit's, which is the NEXT round, and building the package first is what the
+protocol's step order requires.
 
-Change set (exactly these paths, plus the handback commit):
-- `.agent/authored/f258-r10.md`
+Base: `3d2ab8b5`, the tip of `feature/f258-self-use-v2` and the handback this
+round starts from.
+
+Bundle, in commit order:
+
+- C0a save this block verbatim to `.agent/authored/f258-r11.md`
+- C0b mirror the same bytes into `.agent/last_block.md`
+- C1 advance `.agent/plan.md`
+- C2 book the F258 R10 verdict into `.agent/live_review.md`
+- then PUSH, and build the bundle and the zip from the clean tree at C2
+- C3 rewrite `.agent/handoff.md`
+
+Change set — these paths and nothing else:
+
+- `.agent/authored/f258-r11.md`
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
-- `.agent/prose_slips.md`
-- `docs/roadmap/features/T5_F258.md`
 - `.agent/handoff.md`
-No file under `packages/`, `apps/` or `tests/` changes this round.
 
-Constraints:
-1. Never retype an authored slice — copy the bytes
-   (`shutil.copyfile` for whole files; for the two EOF-appends, read
-   the target's current bytes and write `target_bytes + slice_bytes`
-   — pure concatenation, the slice already carries its own leading
-   separator where one is needed).
-2. `.agent/plan.md` is a full rewrite from PLAN10, byte for byte —
-   the FIRST substantive commit (checklist item 23).
-3. `.agent/live_review.md` gets ONE append: GATE_R9 below, as
-   `base + b"\n" + GATE_R9`.
-4. `.agent/prose_slips.md` gets ONE append: PROSE_SLIP below, as
-   `base + b"\n" + PROSE_SLIP`.
-5. `docs/roadmap/features/T5_F258.md` gets ONE append: BUILTSTATE
-   below. BUILTSTATE already begins with its own leading `\n`, so the
-   append is PURE CONCATENATION — `base + BUILTSTATE`, no extra `\n`
-   inserted (the base's own trailing `\n` plus BUILTSTATE's own
-   leading `\n` together form the blank-line separator before the new
-   heading).
-6. Order: C0a (save block) → C0b (mirror) → C1 (plan.md) → C2 (append
-   GATE_R9 to live_review.md) → C3 (append PROSE_SLIP to
-   prose_slips.md) → C4 (append BUILTSTATE to T5_F258.md) → handback.
-7. `tests/docs/ -q` gates this round because the change set includes
-   `docs/roadmap/**` (planner_reviewer_prompt.md §3, docs-round gate).
-   Reviewer dry-ran this exact append in a disposable worktree before
-   authoring this block: REAL exit 0, 295 passed, unchanged from
-   baseline.
-8. Do not resolve, repair, or otherwise act on R-0570, R-0736, or
-   R-0757 this round — only the text given.
+THE EVIDENCE DIRECTORY IS NEVER COMMITTED and neither is the zip. Both are
+gitignored by construction — a committed evidence dir puts evidence files
+into the `base..HEAD` review subject, which packages BLOCKED_EVIDENCE (the
+F147 attempt-2 lesson; this round does not repeat it). NO file under
+`packages/`, `apps/`, `tests/`, `scripts/` or `docs/` is edited.
+`docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` are
+NOT touched this round.
 
-Done when (exact verification commands, run by the WORKER before
-handback and independently RE-RUN by the reviewer):
-- G1 transport: `.agent/authored/f258-r10.md`, `.agent/last_block.md`
-  and this file's own bytes are sha256-equal (digest stated below).
-- G2 the plan: `.agent/plan.md` sha256-equals PLAN10 (digest below),
-  1823 bytes, 42 lines, carries `## Goal` and `## Next Steps`, ends
-  with exactly one `\n`.
-- G3 the live_review.md append: measure the file's byte length
-  immediately before C2 (`base`, expected 1795167);
-  `base + b"\n" + GATE_R9 == committed` (expected 1798961) must hold;
-  the committed file's last `\n\n`-delimited unit must equal GATE_R9
-  exactly. One negative control (a single byte flipped inside a COPY
-  of GATE_R9, in a disposable worktree, removed after): the flipped
-  reconstruction REJECTED, the true one ACCEPTED.
-- G4 the prose_slips.md append: byte-equality only (prose file, per
-  the gate-budget rule) — measure the file's byte length immediately
-  before C3 (`base2`, expected 33397);
-  `base2 + b"\n" + PROSE_SLIP == committed2` (expected 34048) must
-  hold.
-- G5 the Built State append: measure `docs/roadmap/features/T5_F258.md`'s
-  byte length immediately before C4 (`base3`, expected 4140);
-  `base3 + BUILTSTATE == committed3` (expected 7479) must hold — PURE
-  CONCATENATION, no inserted separator. The committed file must carry
-  exactly one `## Built State (F258, ` heading.
-- G6 docs-round gate: `python3 -m pytest tests/docs/ -q` REAL exit 0,
-  295 passed, matching the reviewer's own pre-verified dry run.
-- G7 the ledger: before C2, `Gate: F258 R` lines end at `'F258 R8'`,
-  318 distinct `^- R-\d+ — ` ids, 55 distinct `^Done: R-\d+` ids,
-  `DECISION F258` `['D1','D2']`. After C2: same R-ids/Done-ids/
-  DECISION, `Gate: F258 R` lines ADDED exactly `'F258 R9'`.
-- G8 the tree and canary: `git status --porcelain` empty; `git
-  worktree list` shows only the primary checkout; `git branch --list
-  'tmp/*'` empty; every commit's insertions under 500; canary
-  `python3 -m pytest tests/cli/test_golden_path.py -q` REAL exit 0,
-  42 passed.
+ACCEPTED HEAD IS C2. The zip is built after C2 is committed and pushed, so
+the manifest's `committed_review_subject.head_commit` is C2's full sha. C3
+writes only `.agent/handoff.md` and follows the READY package, exactly as
+the protocol's build order states. Report C2's full sha as the accepted
+HEAD; the next round's STATUS line will carry it.
 
-Handback: completion report + rewrite `.agent/handoff.md`. Session
-header exactly `SESSION 3 of feature F258 · round 10`.
-──────────────────────────────────────────────────────────────
+### Constraints
 
---- BEGIN PLAN10 sha256=221ff160cb16a36ded9811b0ab6f3dd11d40e5c3c1910e1e3897c3376946d145 bytes=1823 lines=42 ---
+0. BEFORE ANYTHING: report
+   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+   — expected `[]`; if it is not `[]` now, STOP and hand back without
+   committing. Report `git rev-parse HEAD`, which must equal `3d2ab8b5`'s
+   full sha, and `git branch --show-current`, which must be
+   `feature/f258-self-use-v2`. Create no branch and no pull request. Never
+   force-push and never rewrite history.
+1. Apply every authored slice BYTE FOR BYTE — no reflow, rewording,
+   retitling, correction or shortening. If a slice looks wrong, apply it as
+   written and say so in the handback's deviations; the record is repaired
+   by a later append.
+2. The delimiter lines `<<<SLICE …` and `<<<END …` are transport only and
+   never reach a target file.
+3. Extract every slice from the COMMITTED blob with
+   `git show <C0a>:.agent/authored/f258-r11.md`, never from this prompt's
+   text.
+4. AGENTS.md binds in full: the self-review loop before every commit, one
+   logical step per commit, `.agent/plan.md` current before every commit, a
+   clean tree, and the push. AGENTS.md also requires that EVERY
+   artifact-build attempt — bundle, zip, and the deliberate red control
+   below — appears in the handback with its status, failed attempts
+   included with the blocking reason.
+5. Shell forms rejected by this session's guard are RE-EXPRESSED, never
+   skipped and never weakened. Loops, `$( )`, `${arr[0]}`, `cp`, brace
+   literals containing quotes, and every form of environment-variable
+   assignment are rejected by FORM; route such work through a scratch
+   script under the gitignored `.remedy-wt/`, and copy with
+   `shutil.copyfile`. Capture real exit codes with
+   `bash -c '<cmd>; echo "REAL_EXIT=$?"'` or from `subprocess`. This Python
+   is 3.10: an f-string expression may not contain a backslash, so hoist
+   any regex into a named variable. Report every re-expression.
+6. THE APPEND CONVENTION: an appended slice is separated from the text
+   before it by exactly ONE BLANK LINE and the file ends with exactly one
+   trailing newline. Concretely, for a target whose last byte is already a
+   newline, write one newline then the slice, the slice carrying its own
+   single terminator.
+7. THE OPEN SET IS COUNTED BY DISTINCT ID, as
+   `len(set(registered ids) - set(resolved ids))`. It reads 263 at
+   `3d2ab8b5`. THIS ROUND REGISTERS NO ID AND RESOLVES NONE, so it must
+   still read 263 at C2 and the registered count must be UNMOVED at 318. A
+   `Gate:` paragraph is not a registration.
+8. EXIT CODE 0 IS NEVER THE READING FOR THE ZIP.
+   `scripts/make_review_zip.sh` exits 0 for a BLOCKED_EVIDENCE package as
+   readily as for a READY one. The reading is `PACKAGE_STATUS` in the
+   printed output and `package_status` in `.review_zip_manifest.json`. A
+   handback that reports the zip green on an exit code is a finding.
+
+### The authored slices
+
+<<<SLICE PLANF258R11
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 3, round 10.
+commit of pull request 225. SESSION 3, round 11.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -108,98 +112,231 @@ standard finding ledger.
 | Item | Status | Reason |
 |------|--------|--------|
 | T001/T002/T003, integration gate | done | rounds 2-7 |
-| preconditions 1, 3, 5, 6 | done | rounds 8-9 |
-| precondition 4 — Built State section | open | this round |
-| evidence job + review zip | open | next round |
-| STATUS + README + final PR | open | final round |
+| all six closure preconditions | done | rounds 8-10 |
+| the evidence bundle and the review zip | done | this round, closure steps 1-2 |
+| the closure commit and the PR | open | next, and it is the last round |
 
 ## Next Steps
-1. Book round 9's own verdict (`Gate: F258 R9`) into
-   `.agent/live_review.md`, per amend0827 rule 1.
-2. Add one dated line to `.agent/prose_slips.md` recording round 9's
-   skipped negative controls (no R-id — process-only, no product
-   effect, amend0827 rule 2).
-3. Append a `## Built State (F258, 2026-08-30)` section to
-   `docs/roadmap/features/T5_F258.md` (precondition 4), summarizing
-   T001/T002/T003 as shipped and naming R-0757 as the one open,
-   documented risk.
-4. `tests/docs/` gates this round (docs/roadmap/** in the change set).
-5. The evidence job, the review zip and the final STATUS/README/PR
-   commit are the next rounds, not this one.
+1. The closure commit, in ONE commit: the `[x]` flip on F258's line of
+   `docs/roadmap/STATUS.md`, the README capability sync that may never
+   disagree with it, the `scripts/self_use_queue.json` `consumed_by` edit
+   that marks SU-002 consumed by F258, and the final `.agent/` state.
+2. Open the pull request. It is NOT merged in this session — the gap is
+   the operator's manual-review window, and the next feature's Open PR
+   Gate merges it.
 
 ## Risks
-- R-0570 (Low), R-0736 (Medium): OPEN, unrelated to F258's own code.
-- R-0757 (Medium): OPEN, this branch's own defect, documented, not
-  fixed here.
-- No closure candidate is open; `.agent/candidates.md` stays empty.
---- END PLAN10 ---
+- R-0570 (Low), R-0736 (Medium), R-0757 (Medium): all OPEN, all
+  documented, none block a PASS WITH RISKS closure.
+- `docs/roadmap/STATUS.md` is in `scope_fences.BUILTIN_DENY` and stays
+  there.
+- A job must never mark its own queue item consumed; DECISION F257 D2
+  rules the consumption point stays the closure commit's edit.
+<<<END PLANF258R11
 
---- BEGIN GATE_R9 sha256=c2189d191803eef3c578f1d15d69fc50853bed01c8431caccb4da9fd3b8a81c2 bytes=3793 ---
-Gate: F258 R9 — R-0757 REGISTERED, ROUND 8's VERDICT BOOKED, PRECONDITIONS 1/3/5 CONFIRMED. VERDICT PASS, WITH ONE DEVIATION RECORDED. The reviewer re-ran every gate independently against the real diff `ab622afd..9e8b3030`, not against the worker's own report. G1 TRANSPORT: the block, `.agent/authored/f258-r9.md` and `.agent/last_block.md` all sha256 `c1de24d87258d7268616e1e74550735334e87f80e4941152eb64a652534f2346`, 14634 bytes — equal to the reviewer's own scratch original. G2 THE PLAN: `.agent/plan.md` sha256 `6a2d11e62d9285043c4c601f935b97fef34d53f318dc62117d9797b31265a174`, 1960 bytes, 43 lines, `## Goal`/`## Next Steps` present, ends `\n`. G3 THE TWO RECORD APPENDS: base0 1787894 bytes; `base0 + b"\n" + FINDING_R0757 (4047 bytes) == mid (1791942 bytes)` True; `mid + b"\n" + GATE_R8 (3224 bytes) == committed (1795167 bytes)` True; the committed file's last `\n\n`-unit equals GATE_R8 exactly, and that same split's second-to-last unit, with one `\n` appended back, equals FINDING_R0757 exactly. THE WORKER SKIPPED THE TWO NEGATIVE CONTROLS THE BLOCK EXPLICITLY ORDERED (line 62 of the block: "TWO negative controls ... each in a disposable worktree") and its own handback INCORRECTLY CLAIMED the block "orders only the two positive reconstruction/split-unit checks" — that claim is FALSE, re-confirmed by the reviewer re-reading the committed `.agent/authored/f258-r9.md` directly. The reviewer supplied both negative controls independently, in a disposable worktree removed after: a byte flipped inside a copy of FINDING_R0757 was correctly REJECTED against the true committed file, a byte flipped inside a copy of GATE_R8 was correctly REJECTED, and the true unflipped reconstruction was correctly ACCEPTED. THIS IS A CONFIRMED, NON-BLOCKING DEVIATION: the landed bytes are proven correct by the reviewer's own from-scratch verification, so nothing on disk is wrong — only the worker's own verification report understated what it had checked, which is process-only and carries no product effect (amend0827 rule 2), so no R-id is minted; a dated line is added to `.agent/prose_slips.md` instead, in this same round. G4 THE LEDGER: before C1, 317 R-ids / 55 Done-ids / `DECISION F258` `['D1','D2']` / `Gate: F258 R` ending at R7; after C2 (finding), 318 R-ids (added exactly `R-0757`) with everything else unchanged; after C3 (verdict), 318 R-ids / 55 Done-ids / `DECISION F258` unchanged / `Gate: F258 R` lines ADDED exactly `['F258 R8']` — all independently re-measured and matching the block exactly. G5 PRECONDITION 3: `python3 -m apps.cli.main integrity check --json`, run by the worker AFTER C3 and independently re-run by the reviewer moments later: both `"passed": true`, `"fail_count": 0`, `"high_blockers_open"` `"pass"` ("no open blocker/high findings") — R-0757 being Medium does not trip it. G6 PRECONDITION 5: `git status --porcelain` empty; `git fetch` plus `git rev-parse HEAD origin/feature/f258-self-use-v2` both equal `9e8b30307ee6be860c985ddbb827f550fb270136`. G7 PRECONDITION 1 (closure-scoped): `R-0570` (Low), `R-0736` (Medium) and `R-0757` (Medium) independently grepped and confirmed OPEN (zero `Done:` lines for any of the three) and none Blocker/High — F258 may close as PASS WITH RISKS on this reading. G8 THE TREE AND CANARY: `git worktree list` shows only the primary checkout, `git branch --list 'tmp/*'` empty, per-commit insertions 145/102/22/2/2/33/(handback) all under 500, canary REAL exit 0, 42 passed, matching baseline. THE ROUND PASSES: the branch is pushed and matches `origin` exactly at `9e8b3030`. Closure preconditions 1, 3, 5 and 6 are now MET; precondition 4 (the feature file's Built State section) is this session's next round, followed by the evidence job, the review zip, and the final STATUS/README/PR commit.
---- END GATE_R9 ---
+<<<SLICE GATEF258R10
+Gate: F258 R10 — PRECONDITION 4 DISCHARGED: THE FEATURE FILE'S BUILT STATE SECTION IS NOW CURRENT. VERDICT PASS, NO DEVIATION. The reviewer re-ran every gate independently against the real diff `9e8b3030..3d2ab8b5`. G1 TRANSPORT: the block, `.agent/authored/f258-r10.md` and `.agent/last_block.md` all sha256 `6ebad7a4c7b2bb603ca43394411d70455f354eab6ab4ade81a2a6e911907fbc9`, 15000 bytes — equal to the reviewer's own scratch original. G2 THE PLAN: `.agent/plan.md` sha256 `221ff160cb16a36ded9811b0ab6f3dd11d40e5c3c1910e1e3897c3376946d145`, 1823 bytes, 42 lines, `## Goal`/`## Next Steps` present, ends `\n`. G3 THE LIVE_REVIEW.MD APPEND: base 1795167 bytes; `base + b"\n" + GATE_R9 (3793 bytes) == committed (1798961 bytes)` True; the last `\n\n`-unit equals GATE_R9 exactly; a negative control (byte flip, disposable worktree, removed after) was independently reproduced by the reviewer and correctly rejected, the true original correctly accepted — the worker ran this same control itself this round and reported it honestly, correcting round 9's process gap. G4 THE PROSE_SLIPS.MD APPEND: base 33397 bytes; `base + b"\n" + PROSE_SLIP (650 bytes) == committed (34048 bytes)` True — byte-equality only, per the gate-budget rule for a prose file. G5 THE BUILT STATE APPEND: base 4140 bytes; `base + BUILTSTATE (3339 bytes) == committed (7479 bytes)` True, pure concatenation, exactly one `## Built State (F258, ` heading in the committed file. G6 DOCS-ROUND GATE: `python3 -m pytest tests/docs/ -q` REAL exit 0, 295 passed, unchanged from baseline. G7 THE LEDGER: before C2, 318 R-ids / 55 Done-ids / `DECISION F258` `['D1','D2']` / `Gate: F258 R` lines ending at R8; after, same R-ids/Done-ids/DECISION, `Gate: F258 R` lines ADDED exactly `['F258 R9']`. G8 THE TREE AND CANARY: `git status --porcelain` empty, single worktree, no `tmp/*` branch, per-commit insertions 205/157/18/2/2/59 all under 500, canary REAL exit 0, 42 passed. THE ROUND PASSES CLEANLY: the branch is pushed and matches `origin` exactly at `3d2ab8b5`. ALL SIX CLOSURE PRECONDITIONS OF STATUS_closure_protocol.md ARE NOW MET FOR F258: precondition 1 (every F258-scoped finding Medium/Low, latest verdicts PASS), precondition 2 (round 7's integration gate PASSED), precondition 3 (integrity check PASSED, re-confirmed round 9), precondition 4 (this round's Built State section), precondition 5 (tree clean, pushed), precondition 6 (round 8's real plan+run of SU-002, findings — R-0757 — registered round 9). The next round is the Algorithm: the evidence job, the fresh review zip, and (the round after) the STATUS line, README sync and final PR.
+<<<END GATEF258R10
 
---- BEGIN PROSE_SLIP sha256=8c875fd89a16197c4ab3eb0f7137b744dbd254e75061459cec7a7e1c072d092a bytes=650 ---
-2026-08-30 · F258 R9 · The round's own block explicitly ordered two negative controls for its G3 append check (a byte flip inside each of two appended slices, in a disposable worktree), and the worker's handback skipped both while incorrectly stating the block ordered only the positive checks; the reviewer supplied both negative controls independently at the next gate and both behaved correctly, so the landed bytes were never wrong — only the worker's own account of what it had verified was, and a handback's claim about what a block ordered is exactly the kind of claim that should be read against the block's own text rather than trusted.
---- END PROSE_SLIP ---
+`PLANF258R11` is a WHOLE-FILE replacement of `.agent/plan.md`. `GATEF258R10`
+is a SINGLE APPEND to `.agent/live_review.md` under constraint 6. This round
+registers nothing and resolves nothing.
 
---- BEGIN BUILTSTATE sha256=c7e5b6995e0c51e4812d2c7611997b1f70ea3c910c3350ed550228459ca49992 bytes=3339 ---
+### The evidence script — ADAPTED FROM THE COMMITTED TEMPLATE, NOT WRITTEN FRESH
 
-## Built State (F258, 2026-08-30)
+Do NOT invent an evidence script. Extract the slice named `EVIDENCESCRIPT`
+from the COMMITTED blob `git show HEAD:.agent/authored/f009-r33.md` by its
+`<<<SLICE EVIDENCESCRIPT` and `<<<END EVIDENCESCRIPT` marker lines, save it
+to `.remedy-wt/f258_evidence.py`, and change ONLY the values listed below.
+Every other line stays BYTE FOR BYTE as the template has it — the double
+path scrub in `_tail`, node ids from `--collect-only`, the
+`len(node_ids) == selected` assert, the sorted `test_files`, the
+`_unsafe_text` pre-scan with its red control, and the `OUTPUT_HASH`
+re-derivation are all load-bearing, each one paid for by a closure that was
+blocked without it.
 
-What exists on disk at the close of F258, so a later reader need not
-reconstruct it from this file's future tense.
+The values to change, and nothing else:
 
-**T001 — the self-replenishing queue.**
-`packages/orchestration/self_use_generator.py:generate_and_append_if_empty(queue_path=None, ledger_path=None)`
-(line 254) fires only when `packages.orchestration.self_use_queue.pending_self_use_items`
-answers empty, and produces at most ONE new item per call, dated and
-carrying a `provenance` field naming its source. Source priority, in
-order: Tier 1 (`_ledger_tier`, line 153) reads the oldest OPEN
-Medium/Low finding in `.agent/live_review.md` that is self-contained
-and repo-scoped; Tier 2 (`_doc_staleness_tier`, line 198) and Tier 3
-(`_doctor_warning_tier`, line 203) are honest placeholders that always
-answer `None` — the feature file's own acceptance criterion ("If NO
-source qualifies, record `self-use NONE`") is met by falling through
-all three rather than inventing work. `scripts/self_use_queue.json`'s
-`schema_version` moved to 2 (DECISION F258 D1) to carry the required
-`provenance` field; `packages/orchestration/self_use_queue.py`'s
-six-key `_ITEM_KEYS` and its loader validate it on every read.
+- `EVIDENCE_DIR` → `<REPO>/.remedy-wt/f258_closure_evidence/remedy-job-evidence-f258-closure`
+- `BASE` → `18ae71293cde9b1157aca35d3d02c3a8f4265813` — the merge base of
+  this branch with `main`, the merge commit of pull request #225 (F040's
+  closure), measured with `git merge-base main HEAD`. It is 40 characters;
+  the template asserts that.
+- the `runs = [...]` list → exactly these seven, in this order, with no
+  `-k` expression and no deselection on any of them:
+  - `mkrun("vr-0001", "tests/orchestration/test_self_use_queue.py", 23)`
+  - `mkrun("vr-0002", "tests/orchestration/test_self_use_job.py", 18)`
+  - `mkrun("vr-0003", "tests/orchestration/test_self_use_generator.py", 20)`
+  - `mkrun("vr-0004", "tests/orchestration/test_self_use_runner.py", 7)`
+  - `mkrun("vr-0005", "tests/orchestration/test_self_use_findings.py", 3)`
+  - `mkrun("vr-0006", "tests/docs/test_docs_consistency.py", 295)`
+  - `mkrun("vr-0007", "tests/cli/test_golden_path.py", 42)`
+- the `create_manual_completion_bundle(...)` keyword arguments:
+  `job_id="f258-closure"`,
+  `job_title="F258 Self-use track v2 - closure"`,
+  `step_range="T001-T003"`, `prior_job_ids=["f040-closure"]`,
+  `num_tasks=3`,
+  `note_prefix="operator-attested manual completion - F258 closure"`,
+  `review_feature_id="f258"`.
 
-**T002 — consumed means executed.**
-`packages/orchestration/self_use_runner.py:run_next_self_use_item(dest_dir, repo_path=".", queue_path=None, ...)`
-composes `self_use_job.plan_next_self_use_item` with
-`pingpong_job.run_job` under a small `JobBudgets`
-(`max_provider_calls=6`, `max_cost_usd=0.50`, `max_tasks=1`), stopping
-at whatever status `run_job` returns — `JOB_COMPLETED` or
-`JOB_BLOCKED` — and never calling `job_promote.promote_job`. Run in an
-isolated worktree (`isolation_mode="worktree"` for any git target),
-never mutating the caller's own checkout. Round 8 discharged this for
-real against the shipped queue's first pending item (SU-002), reaching
-the approval gate with a genuine `JobPlan` on disk.
+WHY THESE SEVEN SUITES AND NOT THE FULL SUITE: a verification record may
+NEVER carry a full-suite node-id list. `len(node_ids) == selected` forbids
+filtering the list, and the packaging metadata scan correctly rejects the
+redaction-torture parametrizations elsewhere in this repository whose ids
+embed fake secrets and absolute paths by design (the F080 R4 lesson (d)).
+The full-suite proof rides in the round 7 integration-gate evidence at
+`.agent/gate_f258_r7/` and in the reviewer's own re-run, and nothing green
+is claimed here that was not run. The reviewer has already run all seven
+suites fresh (`python3 -m pytest <path> -q` and, together,
+`python3 -m pytest tests/orchestration/test_self_use_*.py -q`) and measured
+71 passed over the five self-use suites, matching the per-file counts
+above exactly; if `--collect-only` over any of them surfaces a rejected
+node id under `_unsafe_text`, STOP and hand back with the rejected
+strings.
 
-**T003 — findings flow back.**
-`packages/orchestration/self_use_findings.py:describe_self_use_run_defects(result)`
-reads a run's own `JobPlan` and answers a tuple of plain strings — one
-per defect, quoting the job's and each task's own `error` field
-verbatim, inventing nothing and judging no severity. Registering an
-`- R-XXXX` line from that tuple is deliberately left to the closing
-session (never automated), per `planner_reviewer_prompt.md` §3 item
-30's search-before-minting discipline.
+### The zip, the red control and the archive
 
-**What round 8's real run surfaced.** The one call path this feature
-ships (`run_next_self_use_item` with no explicit provider) resolves
-`pingpong_job.run_job`'s own literal `"fake"` default rather than
-`role_config.DEFAULT_PROVIDER`'s `"ollama"`, so an unflagged self-use
-run is currently a synthetic, zero-real-provider-call simulation —
-registered as R-0757 (Medium, OPEN), NOT repaired on this branch
-(AGENTS.md forbids mixing an unrelated fix into a feature branch; the
-fix touches `self_use_runner.py`'s own provider resolution or its
-docstring, a normal follow-up round, not a closure blocker for a
-Medium finding).
+1. Confirm the tree is clean and the branch is pushed, then build with
+   `bash scripts/make_review_zip.sh --evidence-dir <the EVIDENCE_DIR
+   above>`. Report `PACKAGE_STATUS`, the zip filename and its SHA-256.
+2. THE RED CONTROL, which proves the pipeline can still fail honestly.
+   Copy the evidence directory to a SECOND directory under `.remedy-wt/`,
+   append ONE node id containing an absolute path to the first run of
+   that copy's `verification_tests.json`, and build a zip from the COPY.
+   It must report `PACKAGE_STATUS=BLOCKED_EVIDENCE` and
+   `EVIDENCE_AUTHORITATIVE` false, AT EXIT CODE 0 — report the exit code
+   beside the status to make the point that the status is the reading.
+   Declare this attempt in the handback as a DELIBERATE CONTROL, per
+   constraint 4. The real bundle is not touched by it.
+3. Move the READY zip — not the control zip — to
+   `/home/decodeux/Repos/remedy-history/zips`, which exists and holds
+   previous closures' packages. Use `shutil.move`. Report the absolute
+   destination path: DECISION amend0827 D1 makes it a recorded value,
+   because the round that builds the package is the only actor that
+   knows where it went. If that directory is unreachable from this
+   sandbox, say so explicitly and record `NOT ARCHIVED` instead of
+   guessing.
+4. Leave the control zip where it was built and say so; do not delete
+   anything by glob, and name any path you do remove exactly.
 
-**What is deliberately NOT here.** No generator Tier 2/3 source is
-real yet — both are honest placeholders. `self_use_runner.py` does
-not resolve a real default provider (R-0757). Landing any diff a
-self-use run produces stays a normal reviewed round; F258 never
-auto-lands one.
---- END BUILTSTATE ---
+### Done when
+
+G1 HYGIENE. Read `.agent/STOP` from disk with `os.path.exists` before C0a
+and again before the zip build; report both answers. If it exists at
+either reading, finish the commit in hand, write the handback and stop.
+Report constraint 0's three readings and `git status --porcelain | wc -l`
+after each of C0a, C0b, C1 and C2, and again immediately BEFORE the zip
+build, where it must be 0.
+
+G2 TRANSPORT. One digest comparison. Report sha256 and the byte length of
+the committed blob `git show <C0a>:.agent/authored/f258-r11.md` and of the
+reviewer's own original at `.remedy-wt/f258-r11/block.md`, and whether
+they are EQUAL. Then report that
+`git rev-parse <C0b>:.agent/authored/f258-r11.md` and
+`git rev-parse <C0b>:.agent/last_block.md` print ONE blob id.
+
+G3 THE PLAN AT C1. `.agent/plan.md` at C1 equals PLANF258R11 including the
+trailing newline — report `True` or `False`, with the byte length of each
+side. Report `wc -l`, under 50, and the count of lines exactly `## Goal`
+and exactly `## Next Steps`.
+
+G4 THE RECORD APPEND AT C2. Reconstruct the C2 blob of
+`.agent/live_review.md` from the `3d2ab8b5` blob plus GATEF258R10 under
+constraint 6, and report `True` or `False` with all three lengths.
+NEGATIVE CONTROL: flip one byte at an offset your script CONFIRMS lies
+inside the appended text, recompute, and report the equality is now
+`False`. Report that the pre-round blob is a byte PREFIX, with both
+lengths, and that the C2 blob ends in exactly ONE newline.
+
+G5 THE LEDGER AT C2, counted under constraint 7. Report over
+`.agent/live_review.md` at `3d2ab8b5` and again at C2: the count of lines
+matching `^- R-\d+ — ` and whether all are DISTINCT; the count of
+`^Done: R-\d+` lines AND the count of DISTINCT ids among them, as two
+separate numbers; the count of `^Gate: F\d+ R\d+ — `; and the OPEN SET as
+`len(set(registered) - set(resolved))`. Expected: registered UNMOVED at
+318 and all distinct, the `Done:` numbers UNMOVED, `Gate:` count up by
+one, and the open set UNMOVED at 263. Report the count of
+`^Gate: F258 R10 — ` at C2, which must be 1.
+
+G6 THE EVIDENCE BUNDLE. (a) Report the unified diff between the template
+slice `EVIDENCESCRIPT` and your adapted `.remedy-wt/f258_evidence.py`, and
+the count of changed lines: ONLY the values the section above lists may
+differ, and the handback names each changed line. (b) Report, per
+verification run, `run_id`, `selected`, `len(node_ids)`, whether
+`len(node_ids) == selected`, `passed`, `failed`, `skipped`, `deselected`,
+and `test_files` with whether that list is SORTED — an unsorted list is
+rejected by `_vt_safe_files` and packages BLOCKED_EVIDENCE. Expected
+passes: 23, 18, 20, 7, 3, 295, 42, with failed and skipped 0 and
+deselected 0 everywhere. (c) Report the `_unsafe_text` pre-scan result
+over every node id and every command — expected 0 rejected — BESIDE its
+red control on a fabricated absolute-path id, which must read True; a
+scanner that rejects nothing proves nothing. (d) Report the full list of
+gate files the producer wrote into the evidence directory, and confirm
+all eight closed-schema gates are present: `final_verifier_report`,
+`fresh_evidence`, `artifact_contract`, `change_provenance`,
+`manifest_integrity`, `postmortem_integrity`, `commit_execution` and
+`runtime_integration`. (e) Report, per run, whether `output_hash` equals
+sha256 of `stdout_summary` EXACTLY.
+
+G7 THE REVIEW ZIP, read under constraint 8. (a) Report the zip filename,
+its SHA-256, the REAL exit code of the build, and `PACKAGE_STATUS`, which
+must be `READY_FOR_REVIEW`. (b) From `.review_zip_manifest.json` report
+`package_status`, `ready_gate_matrix.ok`, `blocking_reasons` — expected
+empty — and `committed_review_subject.head_commit`, which must equal C2's
+FULL sha; report C2's full sha beside it. (c) THE RED CONTROL: report the
+control build's `PACKAGE_STATUS`, which must be `BLOCKED_EVIDENCE`, its
+`EVIDENCE_AUTHORITATIVE` value, which must be false, and its REAL exit
+code, which is expected to be 0 — state plainly that the exit code did not
+distinguish the two builds and the status did. (d) Report the absolute
+path the READY zip was moved to (or `NOT ARCHIVED` per the fallback above)
+and confirm the file exists there afterwards, with its size in bytes. (e)
+Report `git status --porcelain | wc -l` after all of it, which must be 0
+— both artifacts are gitignored and neither may dirty the tree.
+
+G8 STRUCTURE AND THE REMAINING PRECONDITIONS, over `3d2ab8b5..<C2>` for
+the range readings. The change set lists `.agent/handoff.md`, which C3
+writes AFTER this range ends, so compute the changeset-minus-range
+residue over the change set WITHOUT that ONE path and name the path you
+excluded; the range-minus-changeset residue is computed against the FULL
+change set and must be empty. Report each commit's insertions from
+`git diff --numstat`, each under 500, and that each of C0a, C0b, C1 and C2
+is single-parent. Report the number of lines beginning `<<<SLICE ` and
+`<<<END ` in `.agent/plan.md` and `.agent/live_review.md` at C2 — each
+expected 0 — beside the same counts over `.agent/authored/f258-r11.md` as
+the non-zero control. Report `git ls-files .remedy-wt | wc -l`, expected
+0, and `git ls-files | grep -c remedy-job-evidence`, expected 0 — the
+evidence dir is not committed. Report the `git diff --numstat` line over
+the range for `docs/roadmap/STATUS.md`, `README.md`,
+`scripts/self_use_queue.json` and `docs/roadmap/features/T5_F258.md`, all
+four expected ABSENT. Finally, PRECONDITION 3: run
+`from packages.orchestration.integrity_gate import run_integrity_checks`
+and report `result.passed` and `result.fail_count` — it answers an
+`IntegrityGateResult` OBJECT with attributes, not a dict.
+
+### Handback
+
+Rewrite `.agent/handoff.md` in C3 per docs/agents/handback_template.md.
+It carries: `SESSION 3 of feature F258 · round 11`; the roster of this
+session's rounds, this round included; the range `3d2ab8b5..HEAD`; a
+per-commit changed-files table whose `+/-` cells are taken from
+`git diff --numstat`; ONE LINE PER GATE G1 through G8 with its real
+result; the deviations, including every guard re-expression constraint 5
+required; the item-status table with every C-item and every gate
+appearing exactly once; the open-findings count, which must be 263; and
+the next expected action — the closure commit and the pull request.
+
+It ALSO carries, as the values the next round needs and cannot re-derive:
+`Evidence job f258-closure`, the package filename, its SHA-256, the
+absolute archived path (or `NOT ARCHIVED`), and the ACCEPTED HEAD, which
+is C2's full sha. Write them as a short labelled list, because the next
+round's STATUS line is authored from them and `.agent/handoff.md` is the
+only carrier between the two.
+
+Do not write a `Done:` or `Gate:` paragraph of your own anywhere —
+GATEF258R10 is reviewer-authored text you apply verbatim, and any OTHER
+such paragraph is a finding however hedged. Do not flip any `[ ]` or
+`[~]` to `[x]` anywhere. Do not create a pull request and do not merge
+anything.
+
+After C3: push with `git push origin feature/f258-self-use-v2` and report
+the outcome.
