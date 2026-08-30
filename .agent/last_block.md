@@ -1,131 +1,100 @@
-── STEP closure-precondition-6/2 — F258 ────────────────────────
-Goal: Book round 7's PASS verdict into the ledger, then execute
-STATUS_closure_protocol.md precondition 6's REAL plan+run half (no
-finding registration yet — that is the reviewer's own next-round act).
+── STEP closure-precondition-1,3,5/2 — F258 ────────────────────────
+Goal: Register the finding round 8's real self-use run surfaced, book
+round 8's own PASS verdict, then re-confirm closure preconditions 1,
+3 and 5 after those edits.
 
 Bundle:
-1. Book `Gate: F258 R7` (RECORD8) into `.agent/live_review.md`.
-2. Rewrite `.agent/plan.md` from PLAN8.
-3. Run `packages.orchestration.self_use_runner.run_next_self_use_item`
-   FOR REAL against the shipped queue (`scripts/self_use_queue.json`,
-   no `queue_path` override), in an isolated `REMEDY_DATA_DIR`, and
-   record the raw outcome under `.agent/gate_f258_closure/`.
+1. Register R-0757 (Medium) into `.agent/live_review.md`.
+2. Book `Gate: F258 R8` (a second, separate append to the same file)
+   into `.agent/live_review.md`.
+3. Rewrite `.agent/plan.md` from PLAN9.
+4. Re-run `remedy integrity check --json` (fallback
+   `python3 -m apps.cli.main integrity check --json` if the bare
+   binary is denied) AFTER the above edits and record the raw JSON.
+5. Confirm `git status --porcelain` empty and the branch still
+   matches `origin` after a `git fetch`.
 
 Change set (exactly these paths, plus the handback commit):
-- `.agent/authored/f258-r8.md`
+- `.agent/authored/f258-r9.md`
 - `.agent/last_block.md`
 - `.agent/plan.md`
 - `.agent/live_review.md`
-- `.agent/gate_f258_closure/self_use_run.txt`
-- `.agent/gate_f258_closure/self_use_defects.txt`
 - `.agent/handoff.md`
-No file under `packages/`, `apps/`, `tests/` or `docs/` changes this round.
-`scripts/self_use_queue.json` is READ, never written, this round —
-`consumed_by` is set only in F258's final closure commit
-(STATUS_closure_protocol.md Algorithm step 5), never here.
+No file under `packages/`, `apps/`, `tests/` or `docs/` changes this
+round.
 
 Constraints:
 1. Never retype an authored slice — copy the bytes
    (`shutil.copyfile`), never hand-retype.
-2. `.agent/plan.md` is a full rewrite from PLAN8 below, byte for byte.
-3. `.agent/live_review.md` gets ONE append this round: RECORD8 below,
-   as `base + b"\n" + RECORD8` where `base` is the file's own current
-   bytes immediately before this commit. RECORD8 is a single paragraph
-   (one line, one trailing `\n`) — no internal blank line.
+2. `.agent/plan.md` is a full rewrite from PLAN9 below, byte for byte.
+3. `.agent/live_review.md` gets TWO appends this round, in order:
+   FIRST FINDING_R0757 below (`base + b"\n" + FINDING_R0757`), THEN
+   GATE_R8 below, appended to THAT result
+   (`mid + b"\n" + GATE_R8`). Findings persist FIRST, per
+   `planner_reviewer_prompt.md` §4 item 4 — this is why the finding is
+   C2 and the verdict quoting it is C3, never the reverse.
 4. Order: C0a (save block) → C0b (mirror) → C1 (plan.md, the FIRST
-   substantive commit, per checklist item 23, since this round also
-   touches the finding ledger) → C2 (append RECORD8) → C3 (the real
-   self-use run + its two evidence files) → handback commit.
-5. For C3, isolate `REMEDY_DATA_DIR` IN-PROCESS (never a shell `VAR=x`
-   prefix — denied in this sandbox) to
-   `<repo_root>/.remedy-wt/f258-r8-selfuse/data`, and use
-   `<repo_root>/.remedy-wt/f258-r8-selfuse/jobs` as `dest_dir`. Pass NO
-   `builder_provider`/`reviewer_provider`/`builder_name`/`reviewer_name`
-   override — let the call resolve the real product default exactly as
-   `packages/orchestration/self_use_runner.py`'s own docstring commits
-   to ("the same product default any other unflagged job resolves").
-   Do NOT delete `<repo_root>/.remedy-wt/f258-r8-selfuse/` afterward —
-   the reviewer re-loads the persisted `JobPlan` from it at review time.
-6. Wrap the C3 call so EVERY outcome is recorded honestly: a completed
-   or blocked `JobPlan`, a `SelfUseRunError`/`SelfUseJobError` raised by
-   planning, or any other exception — whichever happens is written to
-   `self_use_run.txt` verbatim, never hidden, never retried into a
-   different-looking outcome. An environment-caused failure (e.g. the
-   resolved provider being unreachable in this sandbox) is an HONEST,
-   ACCEPTABLE outcome for this round — it still discharges "run to the
-   approval gate", and it mints NO finding, because amend0827
-   rule 2 spends an R-id only on a defect with PRODUCT effect, and an
-   unreachable local provider in this sandbox is not one.
-7. `self_use_defects.txt` carries the VERBATIM output of
-   `packages.orchestration.self_use_findings.describe_self_use_run_defects`
-   called on the SAME `result` — one string per line — or the literal
-   line `EMPTY TUPLE — nothing to register` when the tuple is empty, or
-   `N/A — ...` when planning itself raised before any `result` existed.
-   Do NOT write an `- R-XXXX` line into `.agent/live_review.md` for any
-   of this — that stays the reviewer's own next-round act, per
-   `packages/orchestration/self_use_findings.py`'s own docstring and
-   checklist item 30 (grep the open set before minting).
-8. Confirm and report `scripts/self_use_queue.json`'s sha256 before and
-   after C3 in `self_use_run.txt` — they must be equal.
-9. Canary: `python3 -m pytest tests/cli/test_golden_path.py -q` after
-   the round's own commits, REAL exit 0, matching the standing baseline
-   (42 passed) — report it in the handback, not asserted about itself
-   in `.agent/live_review.md`.
-10. Handback per `docs/agents/handback_template.md`: changed-files
-    table, every gate's REAL result, deviations section (if any),
-    `git status --porcelain` empty, `git worktree list` showing only
-    the primary checkout, `git branch --list 'tmp/*'` empty, push
-    confirmed. Session header: `SESSION 3 of feature F258 · round 8`.
+   substantive commit, per checklist item 23) → C2 (append
+   FINDING_R0757) → C3 (append GATE_R8) → C4 (re-run the integrity
+   check and record its raw JSON output to
+   `.agent/gate_f258_closure/precondition_check_r9.txt`, which is
+   IN the already-fixed change set as part of `.agent/**`) →
+   handback commit.
+5. Do NOT resolve, repair or touch R-0570, R-0736 or R-0757's code
+   this round — only register/book text. No file under `packages/`
+   changes.
 
 Done when (exact verification commands, run by the WORKER before
 handback and independently RE-RUN by the reviewer):
-- G1 transport: `.agent/authored/f258-r8.md`, `.agent/last_block.md`
+- G1 transport: `.agent/authored/f258-r9.md`, `.agent/last_block.md`
   and this file's own bytes are sha256-equal (digest stated below).
-- G2 the plan: `.agent/plan.md` sha256-equals PLAN8 (digest below),
-  1978 bytes, 41 lines, carries `## Goal` and `## Next Steps`, ends
+- G2 the plan: `.agent/plan.md` sha256-equals PLAN9 (digest below),
+  1960 bytes, 43 lines, carries `## Goal` and `## Next Steps`, ends
   with exactly one `\n`.
-- G3 the record append: measure `.agent/live_review.md`'s byte length
-  immediately before C2 (`base`); `base + b"\n" + RECORD8 == committed`
-  must hold, and the committed file's LAST `\n\n`-delimited unit must
-  equal RECORD8 exactly. Negative control (a single byte flipped
-  inside a COPY of RECORD8, in a disposable worktree, removed after):
-  the flipped reconstruction must be REJECTED, the true one ACCEPTED.
-- G4 the ledger, before C1/after C2: 317 distinct `^- R-\d+ — ` ids
-  and 55 distinct `^Done: R-\d+` ids UNCHANGED; `DECISION F258` ids
-  unchanged at `['D1','D2']`; `Gate: F258 R` lines go from
-  `['F258 R1','F258 R2','F258 R3','F258 R4','F258 R5','F258 R6']` to
-  the same six PLUS exactly `'F258 R7'`.
-- G5 the self-use run: `self_use_run.txt` names a real `job_id`;
-  independently re-loading that same job id via
-  `packages.orchestration.pingpong_job.load_job_plan(job_id)` (with
-  `REMEDY_DATA_DIR` pointed at the SAME
-  `.remedy-wt/f258-r8-selfuse/data`) reproduces the SAME status, error
-  and per-task fields the evidence file states — OR, if planning
-  itself raised before any job existed, the same exception type and
-  message is reproducible by calling
-  `packages.orchestration.self_use_job.plan_next_self_use_item` again
-  read-only (it is provably read-only; re-calling it is safe).
-- G6 the defects: independently calling
-  `describe_self_use_run_defects` on the SAME reloaded `JobPlan`
-  reproduces `self_use_defects.txt` byte for byte.
-- G7 the queue: `scripts/self_use_queue.json` is byte-identical before
-  and after this round's entire commit range (`git diff --stat
-  <base>..HEAD -- scripts/self_use_queue.json` is EMPTY), and its
-  `consumed_by` fields are unchanged.
-- G8 the tree and canary: `git status --porcelain` empty; `git
-  worktree list` shows only the primary checkout; `git branch --list
-  'tmp/*'` empty; every commit's insertions under 500 except a
-  declared exception with its inseparability reason; canary REAL
-  exit 0, 42 passed.
+- G3 the two record appends: measure `.agent/live_review.md`'s byte
+  length immediately before C2 (`base0`, expected 1787894);
+  `base0 + b"\n" + FINDING_R0757 == mid` (expected 1791942) must
+  hold; then `mid + b"\n" + GATE_R8 == committed` (expected 1795167)
+  must hold. The committed file's last `\n\n`-delimited unit must
+  equal GATE_R8 exactly, and that same split's second-to-last unit,
+  with ONE `\n` appended back (the split consumes FINDING_R0757's own
+  trailing newline as half of the delimiter separating it from
+  GATE_R8), must equal FINDING_R0757 exactly. TWO negative controls (a single byte
+  flipped inside a COPY of each of FINDING_R0757 and GATE_R8, each in
+  a disposable worktree, removed after): each flipped reconstruction
+  must be REJECTED, each true one ACCEPTED.
+- G4 the ledger: before C1, 317 distinct `^- R-\d+ — ` ids, 55
+  distinct `^Done: R-\d+` ids, `DECISION F258` ids `['D1','D2']`,
+  `Gate: F258 R` lines ending at `'F258 R7'`. After C2: 318 distinct
+  `^- R-\d+ — ` ids (added exactly `R-0757`), everything else
+  unchanged. After C3: 318 R-ids, 55 Done-ids, `DECISION F258`
+  unchanged, `Gate: F258 R` lines ADDED exactly `'F258 R8'`.
+- G5 precondition 3: the integrity check's JSON, run AFTER C3, shows
+  `"passed": true`, `"fail_count": 0`, and its `high_blockers_open`
+  check status `"pass"` — R-0757 being Medium must not trip it.
+- G6 precondition 5: `git status --porcelain` empty at C4 and at the
+  handback; `git fetch` then `git rev-parse HEAD
+  origin/feature/f258-self-use-v2` equal, both before this round's own
+  push and (separately, in the handback) after it.
+- G7 precondition 1 (closure-scoped): recompute the set of F258-scoped
+  open findings by grepping `.agent/live_review.md` for `R-0570`,
+  `R-0736` and `R-0757` and confirming each is still OPEN (no `Done:`
+  line for it) and each is Medium or Low — never Blocker or High.
+- G8 the tree and canary: `git worktree list` shows only the primary
+  checkout; `git branch --list 'tmp/*'` empty; every commit's
+  insertions under 500; canary
+  `python3 -m pytest tests/cli/test_golden_path.py -q` REAL exit 0,
+  42 passed.
 
-Handback: completion report + rewrite `.agent/handoff.md`.
+Handback: completion report + rewrite `.agent/handoff.md`. Session
+header exactly `SESSION 3 of feature F258 · round 9`.
 ──────────────────────────────────────────────────────────────
 
---- BEGIN PLAN8 sha256=a9c4cec349ad58183a4ca956de12caded2509140c983a70049dfac818ceac73f bytes=1978 lines=41 ---
+--- BEGIN PLAN9 sha256=6a2d11e62d9285043c4c601f935b97fef34d53f318dc62117d9797b31265a174 bytes=1960 lines=43 ---
 # Plan — F258 Self-use track v2
 
 Branch: feature/f258-self-use-v2, cut from `main` at `18ae7129`, the merge
-commit of pull request 225. SESSION 3, round 8.
+commit of pull request 225. SESSION 3, round 9.
 
 ## Goal
 "Remedy is used on Remedy" keeps running with zero operator input: a generator
@@ -139,32 +108,38 @@ standard finding ledger.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001 self-replenishing queue | done | rounds 2-4 |
-| T002 consumed means executed | done | round 5 |
-| T003 findings flow back | done | round 6 |
-| the dedicated integration-gate round | done | round 7 |
-| precondition 6 — plan + run the queue's next item for real | open | this round |
-| closure sequence (preconditions 1,3,4,5; evidence job; zip; STATUS+README; PR) | open | next round |
+| T001/T002/T003 | done | rounds 2-6 |
+| integration-gate round | done | round 7 |
+| precondition 6 — plan + run for real | done | round 8 |
+| preconditions 1, 3, 5 | open | this round |
+| precondition 4 — Built State section | open | next round |
+| evidence job + review zip | open | next round |
+| STATUS + README + final PR | open | final round |
 
 ## Next Steps
-1. This round books round 7's own verdict (`Gate: F258 R7`) into
-   `.agent/live_review.md` first, per amend0827 rule 1.
-2. Run `packages.orchestration.self_use_runner.run_next_self_use_item` for
-   real against the shipped queue's next pending item, in an isolated
-   `REMEDY_DATA_DIR`, recording the raw `JobPlan` and
-   `packages.orchestration.self_use_findings.describe_self_use_run_defects`
-   output under `.agent/gate_f258_closure/`. No finding is registered this
-   round — the reviewer authors any `- R-XXXX` text next round from the
-   real recorded output (STATUS_closure_protocol.md precondition 6;
-   T5_F258.md T003).
-3. `scripts/self_use_queue.json` stays byte-unchanged this round —
-   `consumed_by` is set only in the final closure commit (Algorithm step 5).
+1. Register R-0757 (Medium — self-use runner silently resolves a fake
+   provider by default) in `.agent/live_review.md`, own commit, before
+   any verdict text — the finding round 8's real run surfaced.
+2. Book round 8's own verdict (`Gate: F258 R8`) into the same file, per
+   amend0827 rule 1.
+3. Re-confirm preconditions 3 and 5 after this round's own edits
+   (integrity check, tree/push state); precondition 1's closure-scoped
+   reading: every F258-scoped open finding is Medium/Low (R-0570,
+   R-0736, R-0757) — none Blocker/High.
+4. Precondition 4, the evidence job, the review zip and the final
+   STATUS/README/PR commit are the next rounds, not this one.
 
 ## Risks
-- R-0570 (Low) stays OPEN, routed away, unrelated to this branch.
+- R-0570 (Low), R-0736 (Medium): OPEN, unrelated to F258's own code.
+- R-0757 (Medium): OPEN, this branch's own defect, documented under
+  this closure's PASS WITH RISKS reading, not fixed here.
 - No closure candidate is open; `.agent/candidates.md` stays empty.
---- END PLAN8 ---
+--- END PLAN9 ---
 
---- BEGIN RECORD8 sha256=fa945cf77ca7380f7253a5f8d341d1f5af1e4ea19a6a30019b32dd34bc63ec5d bytes=4890 ---
-Gate: F258 R7 — THE DEDICATED INTEGRATION-GATE ROUND (TIER 3): FULL SUITE RUN TWICE, BRANCH AND BASE, BOTH INDEPENDENTLY REPRODUCED BY THE REVIEWER FROM SCRATCH. VERDICT PASS. THE INTEGRATION GATE PASSES. The reviewer re-ran every gate independently against the real diff `be848035..176ec7fc`, not against the worker's own report, including re-executing BOTH the branch suite and the base suite from scratch in the reviewer's own disposable worktree, rather than trusting the worker's raw logs alone. G1 TRANSPORT: the block, its `.agent/authored/f258-r7.md` copy and `.agent/last_block.md` all sha256 `51fb13f461b633c737272859ca3ba5330a8957d0198310b5048a69ff49eb9bdd`, 10097 bytes, 175 lines — equal. G2 THE PLAN: `.agent/plan.md` sha256 `8bff7f63194c5c4d0701f8570f554e6a0d0d4985b3c91a3ac5b055584f0badb1`, 1702 bytes, 38 lines, `## Goal`/`## Next Steps` present, ends `\n`. G3 THE RECORD APPEND: base 1779093 bytes ending in one `\n`; `base + b"\n" + RECORD7 (3909 bytes) == committed (1783003 bytes)` True; the last `\n\n`-delimited unit equals RECORD7 exactly (RECORD7 is a single paragraph by construction, joining what the source verdict text originally carried as two paragraphs, to keep every ledger entry's own shape at N=1 — reworded, not merely reformatted, and reads cleanly). A negative control (byte-flip) was independently reproduced and correctly rejected. G4 THE LEDGER: `DECISION F258` unchanged at `['D1','D2']`; `Gate: F258 R` lines ADDED exactly `['F258 R6']`; 317 distinct `R-` ids and 55 distinct `Done:` ids unchanged. G5 THE BRANCH RUN: independently re-run by the reviewer at the current HEAD (`176ec7fc`) rather than at `846fdef8` — confirmed equivalent first, since `git diff --name-only be848035 176ec7fc -- packages/ apps/ tests/ docs/` is EMPTY across the round's ENTIRE range, not merely the four commits the worker's own deviation covered. REAL exit 0, `18677 passed, 20 skipped in 141.93s` — matching the worker's reading (18677/20/0, ~127s) exactly. THE WORKER'S DEVIATION (running at `846fdef8` instead of literally `be848035` to avoid detaching the primary checkout's HEAD, which would falsely fail every `self_dogfood_execution`-gated test) is accepted: sound reasoning, proven equivalent by an empty diff, not merely asserted. G6 THE BASE RUN: independently reproduced by the reviewer in a FRESH disposable worktree at the same merge-base (`18ae7129`), with the SAME parity fix (`shutil.copytree(..., symlinks=True)` then `os.utime` every `apps/ui/dist` file past the checkout time) applied proactively. The reviewer's own run gave REAL exit 0, `18642 passed, 20 skipped, 0 failed` — the ONE failure the worker's run showed (`tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup`) did NOT reproduce in the reviewer's own run, which is itself corroborating evidence for the worker's own attribution: this id's `pgrep -f apps.cli.grouped.*--help` predicate is machine-wide and known flaky under `-n auto` parallel load (already on record twice, F032 R16/R17 and the F033 integration gate, both times serial-passing) — two independent runs disagreeing on this ONE id while agreeing on every other of 18677+ ids is exactly the signature of a load-dependent flake, not a regression. R-0736's proactive fix worked in BOTH the worker's run and the reviewer's own: zero `tests/ui_server/` stale-dist failures in either. G7 THE COMPARISON: branch-only 0 ids in both runs; base-only 1 id in the worker's run, 0 in the reviewer's — both outcomes are consistent with the flake attribution and neither shows a branch-vs-base regression coupled to F258's own code (`git diff --stat 18ae7129 176ec7fc -- tests/cli/test_review_bundle_runtime.py apps/cli/` independently re-confirmed EMPTY by the reviewer). No new finding is raised. G8 THE TREE: clean, single worktree, no `tmp/*` branch, per-commit insertions 175/137/14/2/593/(handoff) — the reviewer confirms C3's declared 593-insertion oversize exception is exact (1+104+0+305+92+91=593) and accepts it on the same grounds as the accepted F257 R6 precedent (`ddfc2dca`): the six evidence files are one indivisible measurement, and the reviewer independently verified their raw contents are genuine pytest output, not fabricated summaries. THE ROUND PASSES: the branch is pushed and matches `origin` exactly at `176ec7fc`, no throwaway worktree or branch survives, and the reviewer's own from-scratch re-execution of both suites corroborates every reading the worker reported. STATUS_closure_protocol.md precondition 2 ("Full relevant suite green... A dedicated integration-gate round... must have PASSed before closure") is now MET for F258. All three T-slices (T001, T002, T003) are built and independently verified (rounds 5, 6), and the integration gate is green (this round). The next round is the reviewer's own design of F258's closure sequence.
---- END RECORD8 ---
+--- BEGIN FINDING_R0757 sha256=0f23574b5d676fb03e04a070906485c64b37a617947737da4c5b0434248cfb08 bytes=4047 ---
+- R-0757 — Medium, THE SELF-USE RUNNER'S UNFLAGGED CALL SILENTLY RUNS UNDER A FAKE PROVIDER, NOT THE PRODUCT'S REAL DEFAULT, CONTRADICTING ITS OWN DOCSTRING'S PROMISE. THE MEASUREMENT, taken at `ab622afd` by running the shipped function for real (F258 round 8's own precondition-6 discharge): calling `packages.orchestration.self_use_runner.run_next_self_use_item` with no `builder_provider`/`reviewer_provider`/`builder_name`/`reviewer_name` override, exactly as `docs/roadmap/features/T5_F258.md` T002 and `STATUS_closure_protocol.md` precondition 6 both describe the mechanism, against the REAL shipped queue produced job `8c90a6d1ba5b4d6c` with `execution_config` recording `builder='fake' (source='default')`, `reviewer='fake' (source='default')`, and `budget_actuals.provider_call_count == 0` — zero real provider calls were made, verified in `.agent/gate_f258_closure/self_use_run.txt` and independently reproduced by the reviewer reloading the same job id. `packages/orchestration/pingpong_job.py:1740-1743` resolves `builder_name`/`reviewer_name` via `_resolve_cfg(explicit, persisted, "fake")` and `packages/orchestration/pingpong_loop.py:2569-2570`'s own `run_pingpong(..., builder_name: str = "fake", reviewer_name: str = "fake", ...)` confirms `"fake"` is the shipped default at this layer; `FakeProvider` (`packages/orchestration/pingpong_provider.py:159`) is documented as a "Deterministic fake provider for automated testing" that fabricates canned output (`files_changed=['docs/README.md']` by default) rather than doing real work. `packages/orchestration/role_config.py:32`'s `DEFAULT_PROVIDER = "ollama"` is wired into an unflagged job only via `apps/cli/commands/do_cmd.py` — grepped and confirmed absent from `self_use_runner.py`, `self_use_job.py` and `pingpong_job.py`'s own module scope — so `remedy do job-run` resolves a real local provider by default while `self_use_runner.run_next_self_use_item`'s direct call into `run_job()` does not: the two "unflagged" paths this repository ships do not resolve to the same default, contradicting `self_use_runner.py`'s own docstring claim that "a real self-use run resolves the same product default any other unflagged job resolves." WHY MEDIUM: no data is corrupted and no security boundary is crossed — the isolated worktree, the approval gate and the JobPlan bookkeeping all execute genuinely, so the defect is confined to WHICH provider fires, not whether the machinery around it works — but it is silent and load-bearing: `job.status == 'completed'` and every gate this round ran read as a clean pass, with nothing on disk or in the JobPlan flagging that no real attempt was made at the task, which is the same "false live indicator" shape this repository's own review culture treats seriously elsewhere. Every future automatic self-use consumption that does not explicitly thread a real provider through — which is every invocation the feature's own documentation describes — will silently repeat this: a synthetic, no-op "success" standing in for genuine maintenance work, defeating T5_F258's own stated purpose ("Remedy is used on Remedy... zero operator input") for the one call path this feature ships. THE FIX is to have `run_next_self_use_item` resolve real builder/reviewer configuration via `packages.orchestration.role_config.resolve_role_config` for the `builder`/`reviewer` roles — mirroring what `apps/cli/commands/do_cmd.py` already does — before calling `run_job`, so an unflagged self-use run genuinely resolves `role_config.DEFAULT_PROVIDER` (`"ollama"`) rather than `run_job`'s own raw `"fake"` fallback; or, if a synthetic default is intentional for self-use specifically (e.g. to avoid unattended cost), correct `self_use_runner.py`'s own docstring to state the TRUE default plainly rather than claim parity with "any other unflagged job." Resolved when `run_next_self_use_item`, called with no provider override, either resolves a real, non-`FakeProvider` builder/reviewer by default, or its docstring no longer claims that it does.
+--- END FINDING_R0757 ---
+
+--- BEGIN GATE_R8 sha256=1061a15af9c76ddf5ed02a53ccbe2b8bf8e36a694f20a87fba02f7dff6e4afda bytes=3224 ---
+Gate: F258 R8 — STATUS_CLOSURE_PROTOCOL.MD PRECONDITION 6, DISCHARGED FOR REAL: SU-002 PLANNED AND RUN THROUGH THE ACTUAL JOB PATH, REACHING THE NORMAL APPROVAL GATE. VERDICT PASS. The reviewer re-ran every gate independently against the real diff `69bc74d0..ab622afd`, not against the worker's own report. G1 TRANSPORT: the block, `.agent/authored/f258-r8.md` and `.agent/last_block.md` all sha256 `bd79dc5af5107faea994a30adc25300dcf14902a358e6737ebecb0a6dbac9ce4`, 14450 bytes — equal to the reviewer's own pre-verified scratch original at `.remedy-wt/f258-r8/block.md`. G2 THE PLAN: `.agent/plan.md` sha256 `a9c4cec349ad58183a4ca956de12caded2509140c983a70049dfac818ceac73f`, 1978 bytes, 41 lines, `## Goal`/`## Next Steps` present, ends `\n`. G3 THE RECORD APPEND: base 1783003 bytes ending in one `\n`; `base + b"\n" + RECORD8 (4890 bytes) == committed (1787894 bytes)` True; the last `\n\n`-delimited unit equals RECORD8 exactly; a negative control (byte flip at index 100, in a disposable worktree, removed after) was correctly rejected while the true original was accepted. G4 THE LEDGER: `DECISION F258` unchanged at `['D1','D2']`; `Gate: F258 R` lines ADDED exactly `['F258 R7']`; 317 distinct `R-` ids and 55 distinct `Done:` ids unchanged before and after C2. G5/G6 THE SELF-USE RUN: the reviewer independently reloaded job `8c90a6d1ba5b4d6c` via `packages.orchestration.pingpong_job.load_job_plan` under the SAME isolated `REMEDY_DATA_DIR` (`.remedy-wt/f258-r8-selfuse/data`) and reproduced `status='completed'`, `error=''`, `isolation_mode='worktree'`, one task `T001` at `final_status='staged_review_passed'`, `reviewer_verdict='pass'`, matching `.agent/gate_f258_closure/self_use_run.txt` exactly; independently re-calling `describe_self_use_run_defects` on the same reloaded `JobPlan` reproduced the empty tuple `self_use_defects.txt` records. STATUS_closure_protocol.md precondition 6 is MET: SU-002 was planned via `self_use_job.plan_next_self_use_item` and RUN via `self_use_runner.run_next_self_use_item` to the normal approval gate, never promoted, and the empty defects tuple means nothing from `describe_self_use_run_defects` needed registering — but the reviewer's OWN reading of the real evidence surfaced a SEPARATE defect the module itself does not detect, registered as R-0757 (Medium) above this entry: the unflagged call silently resolved to `FakeProvider` rather than a real product default, zero real provider calls made. G7 THE QUEUE: `scripts/self_use_queue.json` byte-identical across the round's whole range (`git diff --stat 69bc74d0..ab622afd -- scripts/self_use_queue.json` empty); `consumed_by` fields untouched, correctly deferred to the final closure commit. G8 THE TREE AND CANARY: `git status --porcelain` empty, single worktree, no `tmp/*` branch, per-commit insertions 170/165/15/2/35/193 from `git show --numstat` against each commit's own parent, every one under 500; canary REAL exit 0, 42 passed, matching baseline. THE ROUND PASSES: the branch is pushed and matches `origin` exactly at `ab622afd`. R-0757 is Medium and does not block F258's closure verdict, which may proceed as PASS WITH RISKS once the remaining closure preconditions (1, 3, 4, 5) are also checked.
+--- END GATE_R8 ---
