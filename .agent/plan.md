@@ -1,34 +1,39 @@
-# Plan — amend0830-cost-first
+# Plan — F106 Session resume instead of rebuild
 
-Branch: feature/amend0830-cost-first, cut from `main` at the merge commit of
-pull request #226 (F258). Operator-authored task, not a self-drive round.
+Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`. SESSION 1,
+opening the feature.
 
 ## Goal
-Pull the token-economy features forward in the roadmap execution order, fix
-R-0757 (self-use runner silently ran under the fake provider on an unflagged
-call instead of the product's real default), and move unreferenced/superseded
-zips in the package archive into `superseded/`.
+Repair rounds stop resending the world: where the provider supports resuming
+a session, a repair call resumes the original session and sends only the
+findings delta, with an honest automatic fallback to full context when the
+session is gone, flagged in evidence. Correctness never depends on resume
+working.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| Part 0 — preconditions, PR #226 merge | done | green CI, merged + branch cut |
-| Part 1 — roadmap pull-forward | done | F106/F108/F109/F110/F112/F114 moved to a new Tier 3 heading ahead of Tier 0; `plan next` now proposes F106 |
-| Part 2 — R-0757 fix | done | `self_use_runner.run_next_self_use_item` resolves role config, refuses on no real provider; ledger `Landed:` marker written |
-| Part 3 — archive hygiene | done | 15 unreferenced zips moved to `remedy-history/zips/superseded/`, hashes recorded |
-| Part 4 — verify, PR, merge | in progress | full verification green; committing now |
+| the F106 claim and the branch | done | this round |
+| the shape inventory | done | this round, `.agent/f106_inventory.md` |
+| T001 capability + resume param + evidence fields + tests | open | next round |
+| T002 repair-path integration + delta shrink + expired fallback | open | gated on T001; F111 already accepted |
+| T003 measured fixture comparison + docs | open | |
 
 ## Next Steps
-1. Commit in small logical steps (roadmap+decisions, self_use_runner fix+tests, ledger note).
-2. Push, open PR titled "amend0830: cost-first execution order + honest self-use provider".
-3. Watch hosted CI; merge on green.
-4. Restore ORIG_BRANCH (feature/f258-self-use-v2 — already merged/deleted, so land on `main`).
+1. This round claims F106 and measures the exact call-entry/evidence shape
+   T001 builds on, into `.agent/f106_inventory.md` — no code this round.
+2. The next round orders T001: `supports_resume` on the provider protocol
+   and its three adapters, an additive `resume` kwarg on `build`/`review`,
+   `resume_used`/`resume_session_ref` on `BuilderOutput`/`ReviewerOutput`,
+   all False/"" by construction — zero behavior change — plus
+   `tests/orchestration/test_session_resume.py`.
+3. T002 is gated on diff-repair (F111, "Diff-only repair"); F111 is already
+   accepted (STATUS.md, 2026-08-13), so that gate is satisfied.
 
 ## Risks
-- R-0757's own text claims `remedy do job-run` resolves a real provider by
-  default; reading `do_cmd.py` shows the resolved role config is not actually
-  threaded into its `run_job()` call either. Flagged in the ledger addition
-  as an unverified deviation, not re-litigated — the self_use_runner fix does
-  not depend on that claim either way.
-- R-0570 (Low) and R-0736 (Medium) remain open, out of this task's scope.
+- The orchestrator brief demands the fallback-once rule verbatim in the T002
+  order — carry it forward, do not soften it.
+- Only `ClaudeCliProvider` reports a session id today; T001 keeps
+  `supports_resume` False on all three adapters regardless — turning one
+  True is T002's call once resume is actually wired to CLI behavior.
