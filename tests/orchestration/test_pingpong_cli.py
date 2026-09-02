@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_loop import (
+    _OVERSIZED_DIFF_THRESHOLD_CHARS,
+    _OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
     _STAGING_NOISE_DIRS,
     _build_builder_prompt,
     _build_reviewer_prompt,
@@ -24,6 +26,7 @@ from packages.orchestration.pingpong_loop import (
     _is_safe_repo_path,
     _is_safe_staged_path,
     _is_target_noise,
+    _pingpong_runs_dir,
     _snapshot_target,
     build_repo_context,
     export_pingpong_json,
@@ -32,6 +35,7 @@ from packages.orchestration.pingpong_loop import (
     run_pingpong,
     summarize_pingpong,
 )
+import packages.orchestration.pingpong_loop as pingpong_loop
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     ClaudeCliProvider,
@@ -2680,3 +2684,64 @@ class TestRunPingpongPromptNoLeak:
         )
         prompt = _build_builder_prompt("goal", context)
         assert "normal safe code 12345" in prompt
+
+
+# ---------------------------------------------------------------------------
+# F108 T003d: end-to-end tiered summaries reduce composed prompt size
+# ---------------------------------------------------------------------------
+
+class TestTieredSummariesReduceComposedPromptSize:
+    def test_both_call_sites_tiered_and_prompt_shrinks_an_order_of_magnitude(
+        self, demo_repo, monkeypatch,
+    ):
+        big_content = "\n".join(f"# line {i:05d}: " + "x" * 70 for i in range(1000))
+
+        def fake_apply(staging, builder_output, goal):
+            for rel_path in builder_output.files_changed:
+                fp = staging / rel_path
+                fp.parent.mkdir(parents=True, exist_ok=True)
+                fp.write_text(big_content)
+
+        monkeypatch.setattr(pingpong_loop, "_apply_fake_builder_changes", fake_apply)
+
+        fake_response = json.dumps({
+            "l1": "x" * 100,
+            "l2": [
+                {"section": "big.py", "span_ref": "file:big.py", "summary": "SECTION SUMMARY"},
+            ],
+        })
+
+        def fake_call_fn(prompt: str, attempt: int) -> str:
+            return fake_response
+
+        monkeypatch.setattr(pingpong_loop, "summary_call_fn", lambda: fake_call_fn)
+
+        provider = FakeProvider(builder_files=["big.py"], fail_on_round=1, pass_on_round=2)
+        result = run_pingpong(
+            "Fix big file", str(demo_repo),
+            builder_provider=provider, reviewer_provider=provider,
+            max_rounds=2, repair_rounds=2,
+        )
+        assert len(result.rounds) == 2
+
+        reviewer_trace = next(
+            t for t in result.prompt_traces if t.role == "reviewer" and t.round == 1)
+        builder_trace = next(
+            t for t in result.prompt_traces if t.role == "builder" and t.round == 2)
+
+        reviewer_artifact = (
+            _pingpong_runs_dir() / result.run_id / "calls" / "reviewer"
+            / "round-01" / "tiered_diff.diff")
+        builder_artifact = (
+            _pingpong_runs_dir() / result.run_id / "calls" / "builder"
+            / "round-02" / "tiered_diff.diff")
+        assert reviewer_artifact.exists()
+        assert builder_artifact.exists()
+
+        raw_reviewer_len = len(reviewer_artifact.read_text())
+        raw_builder_len = len(builder_artifact.read_text())
+        assert raw_reviewer_len > _OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS
+        assert raw_builder_len > _OVERSIZED_DIFF_THRESHOLD_CHARS
+
+        assert reviewer_trace.prompt_chars < raw_reviewer_len / 10
+        assert builder_trace.prompt_chars < raw_builder_len / 10
