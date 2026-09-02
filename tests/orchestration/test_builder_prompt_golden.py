@@ -30,8 +30,11 @@ import hashlib
 
 import pytest
 
+from packages.orchestration.artifact_summary import FALLBACK_MARKER
 from packages.orchestration.pingpong_loop import (
+    _OVERSIZED_DIFF_THRESHOLD_CHARS,
     _build_builder_prompt,
+    _builder_tiered_diff_text,
     _drop_one_newline_per_segment_boundary,
     compose_builder_prompt,
 )
@@ -319,6 +322,116 @@ class TestResumeHunksTextReplacesTheFullDiff:
         assert texts["builder_staged_diff"] == (
             "## Current Staged Diff\n```diff\n" + _SAFE_DIFF + "\n```"
         )
+
+
+class TestTieredDiffTextReplacesTheFlatCap:
+    """F108 T003b-i (DECISION F108 D3) -- mirrors
+    ``TestResumeHunksTextReplacesTheFullDiff`` exactly, for the new
+    ``tiered_diff_text`` parameter."""
+
+    _TIERED_DIFF_TEXT = (
+        "## Current Staged Diff (summarized)\n"
+        "a tiered two-file diff summary\n"
+        "\n"
+        "### widget.py (file:widget.py)\n"
+        "widget.py's resize now reads the container width\n"
+        "\n"
+        "Full diff: repair diff, round 7 (F108: not yet persisted to evidence) "
+        "(12345 characters)\n"
+    )
+
+    def test_tiered_diff_text_replaces_the_flat_capped_diff(self):
+        composed = compose_builder_prompt(
+            _GOAL, _CONTEXT, round_number=_ROUND, findings=_FINDINGS,
+            safe_diff=_SAFE_DIFF, tiered_diff_text=self._TIERED_DIFF_TEXT,
+        )
+        texts = _segment_texts(composed)
+        assert texts["builder_staged_diff"] == self._TIERED_DIFF_TEXT.rstrip("\n")
+
+    def test_resume_hunks_text_still_takes_precedence_over_tiered_diff_text(self):
+        composed = compose_builder_prompt(
+            _GOAL, _CONTEXT, round_number=_ROUND, findings=_FINDINGS,
+            safe_diff=_SAFE_DIFF, tiered_diff_text=self._TIERED_DIFF_TEXT,
+            resume_hunks_text=_RESUME_HUNKS_TEXT,
+        )
+        texts = _segment_texts(composed)
+        assert texts["builder_staged_diff"] == _RESUME_HUNKS_TEXT.rstrip("\n")
+
+    def test_an_empty_tiered_diff_text_falls_back_to_the_flat_capped_diff(self):
+        composed = compose_builder_prompt(
+            _GOAL, _CONTEXT, round_number=_ROUND, findings=_FINDINGS,
+            safe_diff=_SAFE_DIFF, tiered_diff_text="",
+        )
+        texts = _segment_texts(composed)
+        assert texts["builder_staged_diff"] == (
+            "## Current Staged Diff\n```diff\n" + _SAFE_DIFF + "\n```"
+        )
+
+
+class TestBuilderTieredDiffTextHelper:
+    """Direct unit tests of ``_builder_tiered_diff_text``, the pure gating
+    helper `run_pingpong` uses to compute `tiered_diff_text` (F108 DECISION
+    F108 D3)."""
+
+    def test_returns_empty_when_resumed(self):
+        def call_fn_factory():
+            raise AssertionError("call_fn_factory must not be called")
+
+        result = _builder_tiered_diff_text(
+            _SAFE_DIFF, _FINDINGS, True, call_fn_factory,
+            threshold_chars=10, full_ref="test-ref",
+        )
+        assert result == ""
+
+    def test_returns_empty_when_no_findings(self):
+        def call_fn_factory():
+            raise AssertionError("call_fn_factory must not be called")
+
+        result = _builder_tiered_diff_text(
+            "x" * 100, None, False, call_fn_factory,
+            threshold_chars=10, full_ref="test-ref",
+        )
+        assert result == ""
+
+    def test_returns_empty_when_under_threshold(self):
+        def call_fn_factory():
+            raise AssertionError("call_fn_factory must not be called")
+
+        result = _builder_tiered_diff_text(
+            _SAFE_DIFF, _FINDINGS, False, call_fn_factory,
+            threshold_chars=len(_SAFE_DIFF) + 1, full_ref="test-ref",
+        )
+        assert result == ""
+
+    def test_over_threshold_calls_render_tiered_diff_text_and_call_fn_factory_only_then(self):
+        calls = {"count": 0}
+
+        def call_fn_factory():
+            calls["count"] += 1
+            return None
+
+        repair_diff = "x" * (_OVERSIZED_DIFF_THRESHOLD_CHARS + 100)
+        result = _builder_tiered_diff_text(
+            repair_diff, _FINDINGS, False, call_fn_factory,
+            threshold_chars=_OVERSIZED_DIFF_THRESHOLD_CHARS, full_ref="test-ref",
+        )
+        assert calls["count"] == 1
+        assert result != ""
+        assert FALLBACK_MARKER in result
+
+    def test_forwards_artifact_path_to_render_tiered_diff_text(self, tmp_path):
+        artifact_path = tmp_path / "builder_repair.diff"
+        repair_diff = "x" * (_OVERSIZED_DIFF_THRESHOLD_CHARS + 100)
+
+        result = _builder_tiered_diff_text(
+            repair_diff, _FINDINGS, False, lambda: None,
+            threshold_chars=_OVERSIZED_DIFF_THRESHOLD_CHARS, full_ref=str(artifact_path),
+            artifact_path=artifact_path,
+        )
+
+        assert artifact_path.exists()
+        assert artifact_path.read_text() == repair_diff
+        assert result != ""
 
 
 class TestDropOneNewlinePerSegmentBoundary:

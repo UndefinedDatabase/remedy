@@ -57,6 +57,16 @@ DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
 #: It is listed here so its calls resolve without the unknown-role warning. It is
 #: read-only by construction and never influences a run, which is why it carries
 #: no CLI override flags and no per-role budget limit (DECISION F255 D1 and D3).
+#: ``summary`` (F108 T002) is the schema-validated generation-call role behind
+#: ``generate_artifact_summary`` (packages/orchestration/artifact_summary.py). It
+#: is registered here so F110 (model routing by task class) has a named target
+#: for its routing table, per docs/roadmap/features/T3_F108.md's Orchestrator
+#: brief. It carries no CLI override flags or per-role budget limit of its
+#: own. ``summary_call_fn`` (packages/orchestration/artifact_summary.py,
+#: F108 T003a) is the one production caller of ``resolve_role_config`` for
+#: this role, feeding the resolved model into ``make_structured_call_fn``;
+#: ``generate_artifact_summary`` itself still takes ``call_fn`` as a direct
+#: parameter and never resolves through this module directly.
 KNOWN_ROLES: tuple[str, ...] = (
     "builder",
     "reviewer",
@@ -66,6 +76,7 @@ KNOWN_ROLES: tuple[str, ...] = (
     "final_verifier",
     "orchestrator",
     "teacher",
+    "summary",
 )
 
 #: Resolvable fields on a RoleConfig, in declaration order.

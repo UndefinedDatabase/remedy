@@ -37,8 +37,11 @@ import hashlib
 
 import pytest
 
+from packages.orchestration.artifact_summary import FALLBACK_MARKER
 from packages.orchestration.pingpong_loop import (
+    _OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
     _build_reviewer_prompt,
+    _reviewer_tiered_diff_text,
     compose_reviewer_prompt,
 )
 from packages.orchestration.pingpong_provider import ReviewFinding
@@ -385,3 +388,128 @@ class TestResumeHunksTextReplacesTheDiffOnEitherBranch:
         assert texts["reviewer_staged_diff"] == (
             "## Staged Unified Diff\n```diff\n" + _SAFE_DIFF + "\n```\n"
         )
+
+
+class TestTieredDiffTextReplacesTheScopedFlatCap:
+    """F108 T003b-ii (DECISION F108 D4) -- mirrors the builder side's
+    ``TestTieredDiffTextReplacesTheFlatCap`` exactly, for the new
+    ``tiered_diff_text`` parameter, but on the SCOPED branch only: the
+    fallback branch never sees ``tiered_diff_text`` (test 4 below)."""
+
+    _TIERED_DIFF_TEXT = (
+        "## Current Staged Diff (summarized)\n"
+        "a tiered two-file diff summary\n"
+        "\n"
+        "### widget.py (file:widget.py)\n"
+        "widget.py's resize now reads the container width\n"
+        "\n"
+        "Full diff: reviewer diff, round 8 (F108: not yet persisted to evidence) "
+        "(12345 characters)\n"
+    )
+
+    def test_tiered_diff_text_replaces_the_scoped_flat_capped_diff(self):
+        composed = compose_reviewer_prompt(
+            _GOAL, _BUILDER_SUMMARY, scope_packet=_SCOPE_PACKET,
+            safe_diff=_SAFE_DIFF, test_result=_TEST_RESULT,
+            tiered_diff_text=self._TIERED_DIFF_TEXT,
+        )
+        texts = _segment_texts(composed)
+        assert texts["reviewer_focused_diff"] == self._TIERED_DIFF_TEXT.rstrip("\n")
+
+    def test_resume_hunks_text_still_takes_precedence_over_tiered_diff_text_on_scoped(self):
+        composed = compose_reviewer_prompt(
+            _GOAL, _BUILDER_SUMMARY, scope_packet=_SCOPE_PACKET,
+            safe_diff=_SAFE_DIFF, test_result=_TEST_RESULT,
+            tiered_diff_text=self._TIERED_DIFF_TEXT,
+            resume_hunks_text=_RESUME_HUNKS_TEXT,
+        )
+        texts = _segment_texts(composed)
+        assert texts["reviewer_focused_diff"] == _RESUME_HUNKS_TEXT.rstrip("\n")
+
+    def test_an_empty_tiered_diff_text_falls_back_to_the_scoped_flat_capped_diff(self):
+        composed = compose_reviewer_prompt(
+            _GOAL, _BUILDER_SUMMARY, scope_packet=_SCOPE_PACKET,
+            safe_diff=_SAFE_DIFF, test_result=_TEST_RESULT, tiered_diff_text="",
+        )
+        texts = _segment_texts(composed)
+        assert texts["reviewer_focused_diff"] == (
+            "## Focused Staged Diff\n```diff\n" + _SAFE_DIFF + "\n```"
+        )
+
+    def test_tiered_diff_text_is_inert_on_the_fallback_branch(self):
+        composed = compose_reviewer_prompt(
+            _GOAL, _BUILDER_SUMMARY, safe_diff=_SAFE_DIFF, test_result=_TEST_RESULT,
+            tiered_diff_text=self._TIERED_DIFF_TEXT,
+        )
+        texts = _segment_texts(composed)
+        assert texts["reviewer_staged_diff"] == (
+            "## Staged Unified Diff\n```diff\n" + _SAFE_DIFF + "\n```"
+        )
+        assert "reviewer_focused_diff" not in texts
+
+
+class TestReviewerTieredDiffTextHelper:
+    """Direct unit tests of ``_reviewer_tiered_diff_text``, the pure gating
+    helper `run_pingpong` uses to compute `tiered_diff_text` on the SCOPED
+    branch (F108 DECISION F108 D4)."""
+
+    def test_returns_empty_when_resumed(self):
+        def call_fn_factory():
+            raise AssertionError("call_fn_factory must not be called")
+
+        result = _reviewer_tiered_diff_text(
+            _SAFE_DIFF, _SCOPE_PACKET, True, call_fn_factory,
+            threshold_chars=10, full_ref="test-ref",
+        )
+        assert result == ""
+
+    def test_returns_empty_when_no_scope_packet(self):
+        def call_fn_factory():
+            raise AssertionError("call_fn_factory must not be called")
+
+        result = _reviewer_tiered_diff_text(
+            "x" * 100, None, False, call_fn_factory,
+            threshold_chars=10, full_ref="test-ref",
+        )
+        assert result == ""
+
+    def test_returns_empty_when_under_threshold(self):
+        def call_fn_factory():
+            raise AssertionError("call_fn_factory must not be called")
+
+        result = _reviewer_tiered_diff_text(
+            _SAFE_DIFF, _SCOPE_PACKET, False, call_fn_factory,
+            threshold_chars=len(_SAFE_DIFF) + 1, full_ref="test-ref",
+        )
+        assert result == ""
+
+    def test_over_threshold_calls_render_tiered_diff_text_and_call_fn_factory_only_then(self):
+        calls = {"count": 0}
+
+        def call_fn_factory():
+            calls["count"] += 1
+            return None
+
+        safe_diff = "x" * (_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS + 100)
+        result = _reviewer_tiered_diff_text(
+            safe_diff, _SCOPE_PACKET, False, call_fn_factory,
+            threshold_chars=_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
+            full_ref="test-ref",
+        )
+        assert calls["count"] == 1
+        assert result != ""
+        assert FALLBACK_MARKER in result
+
+    def test_forwards_artifact_path_to_render_tiered_diff_text(self, tmp_path):
+        artifact_path = tmp_path / "reviewer_scoped.diff"
+        safe_diff = "x" * (_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS + 100)
+
+        result = _reviewer_tiered_diff_text(
+            safe_diff, _SCOPE_PACKET, False, lambda: None,
+            threshold_chars=_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
+            full_ref=str(artifact_path), artifact_path=artifact_path,
+        )
+
+        assert artifact_path.exists()
+        assert artifact_path.read_text() == safe_diff
+        assert result != ""

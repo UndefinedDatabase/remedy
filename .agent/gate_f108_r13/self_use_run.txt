@@ -1,0 +1,59 @@
+REMEDY_DATA_DIR = /home/decodeux/Repos/remedy/.remedy-wt/f108-r13-selfuse/data
+dest_dir = /home/decodeux/Repos/remedy/.remedy-wt/f108-r13-selfuse/jobs
+repo_path = .
+queue_path = None (real shipped scripts/self_use_queue.json)
+queue sha256 before = 3d0bd587680c3021f7cd999e4f0389934f1be98ea9b30e5f2e2b4117d30585c0
+queue sha256 after  = 3d0bd587680c3021f7cd999e4f0389934f1be98ea9b30e5f2e2b4117d30585c0
+queue sha256 equal  = True
+entry_id = SU-004
+job_file_path = /home/decodeux/Repos/remedy/.remedy-wt/f108-r13-selfuse/jobs/SU-004.md
+job_id = 98e9364a83a34872
+status = blocked
+error = task_T001_gate_failed: final_status=provider_unavailable; no_rounds
+isolation_mode = worktree
+budgets = {'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
+budget_actuals = None
+execution_config = builder='ollama' (source='cli'), reviewer='ollama' (source='cli'), builder_model='' (source='default'), reviewer_model='' (source='default')
+num_tasks = 2
+  task T001: status='blocked' final_status='provider_unavailable' error='completion_gate_failed: final_status=provider_unavailable; no_rounds' test_passed=None reviewer_verdict=''
+  task T002: status='skipped' final_status='' error='' test_passed=None reviewer_verdict=''
+
+INDEPENDENT RELOAD (fresh `python3 .remedy-wt/f108_r13_step3_reload.py 98e9364a83a34872`
+process, same REMEDY_DATA_DIR, via `packages.orchestration.pingpong_job.load_job_plan`):
+job_id, status, error, isolation_mode, execution_config, budgets and both tasks'
+status/final_status/error/test_passed/reviewer_verdict all reproduced BYTE-IDENTICAL
+to the in-memory run result above (programmatic field-by-field comparison run,
+`ALL MATCH: True`) — not merely restated from the in-memory `run_next_self_use_item`
+return value.
+
+describe_self_use_run_defects(reloaded JobPlan) = (
+  "job 98e9364a83a34872 (blocked): task_T001_gate_failed: final_status=provider_unavailable; no_rounds",
+  "T001 (blocked): completion_gate_failed: final_status=provider_unavailable; no_rounds",
+)
+(non-empty: 2 entries, quoted verbatim from the reloaded JobPlan's own `error`
+fields — the job's own error, then T001's own error, in that order; T002 has a
+blank `error` and contributes nothing per the function's own documented
+behaviour.)
+
+NOTE (worker observation, not a finding — registration is deferred to the
+reviewer's own decision on this round per this round's own block text, which
+also directs the reviewer to check whether this shape duplicates an
+already-open finding, e.g. R-0757/R-0761-shaped): the resolved builder/reviewer
+provider was 'ollama', not 'fake' — `packages.orchestration.role_config.
+resolve_role_config` genuinely returned the product default (DEFAULT_PROVIDER =
+"ollama"; both `resolve_role_config("builder")` and `resolve_role_config
+("reviewer")` independently re-run this round return
+`RoleConfig(role=..., provider='ollama', model='muse-glimmer:latest',
+effort='medium')`). But the run still blocked before any provider call reached
+ollama at all: T001's `final_status` is `provider_unavailable` with ZERO rounds
+recorded ("no_rounds") — the identical shape observed on SU-003 at F106 R20.
+Independently reproduced fresh in this environment, outside any job, by calling
+`packages.orchestration.pingpong_provider.create_provider('ollama')` directly:
+it raises `RuntimeError: Unknown provider: 'ollama'. Available: fake, claude,
+claude-cli` — `packages/orchestration/pingpong_provider.py`'s `create_provider`
+still recognises only `"fake"`, `"claude"`, `"claude-cli"` on this branch tip
+(`4733812a`+this round's own commits, none of which touch that file). This
+worker does NOT decide here whether this is the same open finding as the one
+F106 R20 recorded (registration deferred there to R21) or a fresh one; per
+this round's own step block, that call belongs to the reviewer at the next
+gate (checklist item 30).

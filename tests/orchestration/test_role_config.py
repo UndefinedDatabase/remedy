@@ -120,7 +120,7 @@ class TestAllRoles:
         assert cfg.model == DEFAULT_MODEL
         assert cfg.effort == DEFAULT_EFFORT
 
-    def test_all_eight_roles_present(self):
+    def test_all_nine_roles_present(self):
         assert KNOWN_ROLES == (
             "builder",
             "reviewer",
@@ -135,6 +135,10 @@ class TestAllRoles:
             # F255: the teacher role. A read-only narrator and tutor;
             # same built-in defaults as every other role.
             "teacher",
+            # F108 T002: the artifact-summary generation-call role, registered
+            # so F110 (model routing by task class) has a named routing
+            # target; same built-in defaults as every other role.
+            "summary",
         )
 
     def test_per_role_config_is_independent(self):
