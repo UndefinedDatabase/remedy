@@ -12,22 +12,23 @@ F113 and stay out.
 
 ## Current Step
 
-C4 — Part 4 battery, PR, hosted CI, merge.
+C6 — Part 4 battery, PR, hosted CI, merge. Parts 1-3 are done: the fix and
+its 17 tests landed (C1-C3), the real-path proof ran (job `48a379ab5ca44ec5`,
+six real ollama provider calls, past `provider_unavailable`), and the record
+carries `Done: R-0761` plus the two adjacent gaps it surfaced.
 
 ## Next Steps
 
-- C1: extract the builder file-list parser into one named helper (pure
-  refactor, no behaviour change).
-- C2: add `OllamaPingPongProvider` + the `"ollama"` factory branch; update the
-  factory's error string.
-- C3: hermetic tests (factory, default model, build + review round trip over a
-  mocked ollama boundary, `provider_error:` prefix on transport failure) and
-  the disposable-worktree red proof.
-- C4: append `Done: R-0761` to `.agent/live_review.md`; run SU-004 through the
-  real job path; operator note in `docs/roadmap/features/T3_F113.md`; battery,
-  PR, hosted CI, merge.
+- C6: run the Part 4 battery (tests/docs/ 295, golden path 42, the provider
+  and ping-pong suites, ruff on every changed file), open the PR, wait for the
+  HOSTED run to go green, merge it, confirm zero open PRs.
 
 ## Risks
 
-- The real SU-004 run may block on a NEW defect behind the old one. That is
-  registered honestly as the next finding, never forced green.
+- The shipped queue is EXHAUSTED — every item is `consumed_by` a closed
+  feature, SU-004 by the F108 closure this session merged at Part 0 — so the
+  real-path run pointed `queue_path` at a scratch copy of the real queue with
+  SU-004's `consumed_by` cleared. Declared in the `Done: R-0761` text; the real
+  queue's sha256 is recorded unchanged before and after.
+- R-0767 and R-0768 are registered, not fixed: both sit in the CLI layer,
+  outside this amendment's stated scope.
