@@ -14,28 +14,29 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 4 — book round 3's PASS verdict, register `R-0770` (the chain tests
-proved the four loop call sites only as a GROUP, because one shared
-`fake_session_id` collapsed them to a single observable), and repair it by
-giving the chain tests two DISTINCT provider session ids so the Builder
-and Reviewer record seams are each pinned alone. No production code
-changes this round: the wiring is correct and the defect is in the tests
-that failed to prove it.
+Round 5, the last of session 1 — book round 4's PASS verdict, correct a
+false load-bearing clause in `R-0770` and resolve that finding, and land
+T002a: the pure dedupe DECISION in
+`packages/orchestration/session_sent_index.py` —
+`DEDUPE_MIN_SEGMENT_CHARS`, `should_dedupe_segment` and
+`dedupe_marker_for_segment`. No prompt is rewritten yet and the loop is
+not touched.
 
 ## Next Steps
 
-- T002: the composition hook — a segment whose hash the session already
-  holds becomes a one-line marker, with non-resume calls bypassing the
-  hook entirely, asserted by a byte-equality golden. T002 is also where
-  the resume-fallback invalidation finally becomes observable, which is
-  the half `R-0770` records as still unproven.
-- T003: the measurement fixture, the disable flag, and the docs.
+- T002b: the composition hook in `packages/orchestration/pingpong_loop.py`
+  that calls the decision, replaces a deduped segment's text with its
+  marker while leaving rank and order untouched, and bypasses non-resume
+  calls entirely under a byte-equality golden.
+- T002c: record the deduped segments in the manifest so evidence shows
+  what the model did NOT receive again, and plumb the config kill switch.
+- T003: the measurement fixture and the docs.
 - The integration gate, then the closure sequence.
 
 ## Risks
 
-- The parse-retry and post-mortem provider calls are still deliberately
-  NOT wired into the index. That records strictly less than was sent,
-  which errs in the safe direction; T002 must not assume completeness.
+- The parse-retry and post-mortem provider calls are still NOT wired into
+  the index. That records strictly less than was sent, which errs in the
+  safe direction; T002b must not assume the index is complete.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
