@@ -1113,6 +1113,11 @@ def _build_builder_prompt(
 _REVIEWER_DIFF_CAP = 30000
 _REVIEWER_SCOPED_DIFF_CAP = 12000
 
+#: F108 DECISION D4 — deliberately equal to `_REVIEWER_SCOPED_DIFF_CAP`:
+#: tiering activates exactly where the scoped flat truncation used to,
+#: mirroring DECISION D3's own pattern on the builder side.
+_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS = _REVIEWER_SCOPED_DIFF_CAP
+
 # Per-scope guidance text injected into the reviewer prompt when a scope packet
 # is available. Keys match the ``recommended_scope`` values produced by
 # ``packages.orchestration.review_scope._recommend_scope``.
@@ -1411,6 +1416,7 @@ def compose_reviewer_prompt(
     evidence_dir: str | Path | None = None,
     task_id: str = "",
     resume_hunks_text: str = "",
+    tiered_diff_text: str = "",
 ) -> ComposedPrompt:
     """Compose the reviewer prompt from registered segments, with its manifest.
 
@@ -1498,6 +1504,20 @@ def compose_reviewer_prompt(
                 "reviewer_focused_diff", SegmentStabilityRank.STEERING,
                 [resume_hunks_text],
             ))
+        elif tiered_diff_text:
+            # F108 DECISION D4: a pre-rendered L1+relevant-L2 replacement
+            # for an oversized scoped diff, for the SAME segment name/rank
+            # the flat-cap branch below uses -- the caller (run_pingpong's
+            # `_reviewer_tiered_diff_text`) supplies this pre-rendered,
+            # exactly like `resume_hunks_text` above; this function performs
+            # no summarization of its own. An empty string always falls
+            # through to the flat-cap branch below. Only the SCOPED branch
+            # gets tiering this round (DECISION F108 D4) -- the fallback
+            # branch below never sees `tiered_diff_text`.
+            specs.append((
+                "reviewer_focused_diff", SegmentStabilityRank.STEERING,
+                [tiered_diff_text],
+            ))
         elif safe_diff:
             capped = safe_diff[:_REVIEWER_SCOPED_DIFF_CAP]
             if len(safe_diff) > _REVIEWER_SCOPED_DIFF_CAP:
@@ -1544,6 +1564,44 @@ def compose_reviewer_prompt(
     return compose_prompt_segments(registry.registered_segments())
 
 
+def _reviewer_tiered_diff_text(
+    safe_diff: str,
+    scope_packet: dict[str, Any] | None,
+    is_resumed: bool,
+    call_fn_factory: Callable[[], Callable[[str, int], str] | None],
+    *,
+    threshold_chars: int,
+    full_ref: str,
+) -> str:
+    """Compute the reviewer's tiered-summary replacement for an oversized
+    scoped diff, or "" when tiering does not apply -- the caller's existing
+    flat-cap fallback (`compose_reviewer_prompt`'s scoped `elif safe_diff:`
+    branch) then applies unchanged (F108 DECISION D4).
+
+    Only the SCOPED branch is covered this round: `scope_packet` is `None`
+    on the fallback branch, and this function returns "" whenever it is,
+    leaving the fallback's own diff branches entirely untouched (DECISION
+    F108 D4's own scope). `file_refs` is `scope_packet["changed_files"]` --
+    every file the diff touches, never a narrower subset, since the
+    reviewer's job on this branch is to see the WHOLE diff, only compressed
+    when it is oversized (unlike the builder's findings-narrowed repair
+    diff). `is_resumed` mirrors the caller's own precedence, matching
+    `_builder_tiered_diff_text`'s own reasoning: a resumed session's shrunk
+    hunk render already takes priority (DECISION F106 D1(b), Reviewer
+    side), so `call_fn_factory` (`summary_call_fn` itself, unapplied) is
+    invoked only inside the branch that needs its result.
+    """
+    if is_resumed or not safe_diff or not scope_packet:
+        return ""
+    if len(safe_diff) <= threshold_chars:
+        return ""
+    file_refs = scope_packet.get("changed_files") or []
+    return render_tiered_diff_text(
+        safe_diff, file_refs, call_fn_factory(),
+        threshold_chars=threshold_chars, full_ref=full_ref,
+    )
+
+
 def _build_reviewer_prompt(
     goal: str,
     builder_summary: str,
@@ -1562,13 +1620,14 @@ def _build_reviewer_prompt(
     evidence_dir: str | Path | None = None,
     task_id: str = "",
     resume_hunks_text: str = "",
+    tiered_diff_text: str = "",
 ) -> str:
     """The reviewer prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_reviewer_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string. ``resume_hunks_text`` is forwarded UNCHANGED and means
-    exactly what it means there.
+    this string. ``resume_hunks_text`` and ``tiered_diff_text`` are forwarded
+    UNCHANGED and mean exactly what they mean there.
     """
     return compose_reviewer_prompt(
         goal,
@@ -1587,6 +1646,7 @@ def _build_reviewer_prompt(
         evidence_dir=evidence_dir,
         task_id=task_id,
         resume_hunks_text=resume_hunks_text,
+        tiered_diff_text=tiered_diff_text,
     ).text
 
 
@@ -3339,6 +3399,12 @@ def run_pingpong(
                     staging, parse_diff_line_ranges(reviewer_safe_diff),
                     max_total_chars=_REVIEWER_DIFF_CAP,
                 ))
+            reviewer_tiered_diff_text = _reviewer_tiered_diff_text(
+                reviewer_safe_diff, runtime_scope_packet,
+                bool(reviewer_resume_ref and reviewer_safe_diff), summary_call_fn,
+                threshold_chars=_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
+                full_ref=f"reviewer diff, round {round_num} (F108: not yet persisted to evidence)",
+            )
             reviewer_composed = compose_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
@@ -3354,6 +3420,7 @@ def run_pingpong(
                 repair_round=result.repair_rounds_used if is_repair else 0,
                 scope_packet=runtime_scope_packet,
                 resume_hunks_text=reviewer_resume_hunks_text,
+                tiered_diff_text=reviewer_tiered_diff_text,
             )
 
             reviewer_prompt = reviewer_composed.text
