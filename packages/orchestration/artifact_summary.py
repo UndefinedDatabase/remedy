@@ -1,4 +1,4 @@
-"""Tiered artifact summary schema and mechanical sectioners (F108 T001).
+"""Tiered artifact summary schema, sectioners, generation, and the T003a call bridge (F108 T001/T002/T003a).
 
 An oversized job artifact (a diff, a log, a report) gets a tiered
 representation instead of being included in full: a short L1 summary, a
@@ -25,13 +25,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import ClassVar
 
 from pydantic import BaseModel, ValidationError
 
 from packages.orchestration.failure_postmortem import FailureSignals, classify, utc_now_iso
+from packages.orchestration.intake import make_structured_call_fn
+from packages.orchestration.role_config import resolve_role_config
 from packages.orchestration.structured_outputs import run_structured_call
 
 #: Boundary every git unified diff in this repository uses between files.
@@ -333,3 +335,39 @@ def generate_artifact_summary(
         generated_at=utc_now_iso(),
         artifact_hash=artifact_hash,
     )
+
+
+# ---------------------------------------------------------------------------
+# F108 T003a — bridging role_config to a call_fn, and the relevant-section rule
+# ---------------------------------------------------------------------------
+
+
+def summary_call_fn() -> Callable[[str, int], str] | None:
+    """Build a call_fn for the `summary` role, or None.
+
+    Bridges DECISION F108 D1's KNOWN_ROLES registration to an actual
+    callable: resolve_role_config("summary") supplies the model,
+    make_structured_call_fn (the only existing call_fn factory of this
+    shape in the repo) does the rest. Honest None under the same
+    conditions make_structured_call_fn already returns None for (no
+    ollama package importable, no reachable server) — never raises.
+    """
+    role_cfg = resolve_role_config("summary")
+    return make_structured_call_fn(GeneratedSummaryContent, model=role_cfg.model)
+
+
+def select_relevant_sections(
+    summary: ArtifactSummary, file_refs: Iterable[str]
+) -> list[ArtifactSummarySection]:
+    """Return summary.l2 entries whose `section` exactly matches a file_ref.
+
+    F108 T003's relevant-L2-section matching rule (DECISION F108 D2): diff
+    sections and ReviewFinding.file share the same repo-relative-path
+    convention, so exact string equality is the match. No match returns
+    [] -- "L1 plus ONLY the relevant L2 sections" reads as zero relevant
+    sections meaning zero L2, never a silent fallback to the whole list.
+    Never raises, for any input including an empty summary.l2 or an empty
+    file_refs.
+    """
+    refs = set(file_refs)
+    return [section for section in summary.l2 if section.section in refs]
