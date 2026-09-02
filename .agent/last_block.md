@@ -1,166 +1,166 @@
-── STEP CLOSURE-COMMIT/1 — F106 ─────────────────────────────────────────
-Goal: Book round 22's own pending verdict, then execute the remainder of
-STATUS_closure_protocol.md's closure Algorithm: the STATUS line, the
-README capability sync, the self-use queue's `consumed_by` edit, and the
-closure commit itself (Rule A4 — STATUS is the last substantive commit on
-the branch) — then the one permitted `.agent/candidates.md`-only
-follow-up commit (DECISION amend0827 D2) — then the pull request.
+Goal: Claim F108 (Tiered artifact summaries) in the roadmap ledger, cut its feature branch, discharge the one open `.agent/candidates.md` entry (carried from F106's closure) as a newly registered finding, and put F108's source inventory on disk. This is a claim+inventory round, not a build round — no production code changes.
 
-Bundle:
-  C0a — save this step block verbatim to .agent/authored/f106-r23.md
-  C0b — mirror it into .agent/last_block.md
-  C1  — append GATE22 (one paragraph) to .agent/live_review.md
-  C2  — THE CLOSURE COMMIT, five files together: docs/roadmap/STATUS.md,
-        README.md, scripts/self_use_queue.json, .agent/plan.md and
-        .agent/handoff.md
-  C3  — rewrite .agent/candidates.md (DECISION amend0827 D2 follow-up)
-  Then: `gh pr create` (not a commit).
+Pre-flight (run before creating any branch; STOP and write `.agent/handoff.md` reporting the mismatch instead of proceeding if either check fails):
+1. `gh pr list --state open --json number,headRefName,baseRefName,isDraft` must print `[]`. It was `[]` when the reviewer checked; re-confirm.
+2. `grep -oE "R-[0-9]{4}" .agent/live_review.md | sort -u | tail -1` must print `R-0761`. This block was authored on that assumption (next free id `R-0762`); if a higher id already exists, the round's finding-id assignment is stale and must not be applied as written.
 
-Change: C0a/C0b's own .agent/** paths, .agent/live_review.md (C1),
-docs/roadmap/STATUS.md, README.md, scripts/self_use_queue.json,
-.agent/plan.md, .agent/handoff.md (all C2), .agent/candidates.md (C3). No
-path under packages/, apps/, tests/.
+Branch setup:
+    git status
+    git checkout main
+    git pull --ff-only
+    git rev-parse HEAD    # must equal ec81e697bf498a6753d82d7e6a8d3c72467cd5d7
+    git checkout -b feature/f108-tiered-artifact-summaries
 
-Implementation note for the three C2 REWRITE-via-substring-replace edits
-(STATUS.md, README.md, self_use_queue.json — constraints 3-5): for each,
-read the whole file as bytes, assert the given FROM occurs exactly once
-(`data.count(frm) == 1`), replace it with the given TO via
-`data.replace(frm, to, 1)`, and write the whole file back — never a
-line-oriented sed-style edit, since the given FROM/TO byte strings are
-the unit of truth here, not any particular line number.
+Bundle (commits, in this exact order — only C0a/C0b may precede the plan.md commit, per the pre-emission checklist item requiring a round that touches the finding ledger to advance `.agent/plan.md` as its first substantive commit):
+- C0a: write `.agent/authored/f108-r1.md` (this block, verbatim, as instructed above).
+- C0b: mirror `.agent/last_block.md` to the same bytes (`.agent/authored/f108-r1.md` and `.agent/last_block.md` byte-identical after this commit).
+- C1: rewrite `.agent/plan.md` to SLICE PLAN's bytes exactly (below). Nothing else in this commit.
+- C2: apply SLICE STATUS_PAIR to `docs/roadmap/STATUS.md` (single-line replacement) AND rewrite `.agent/context.md` to SLICE CONTEXT's bytes exactly. Both files, one commit — "claim the feature" is one action.
+- C3: append SLICE R0762 to `.agent/live_review.md` (see append instructions below) AND rewrite `.agent/candidates.md` to SLICE CANDIDATES' bytes exactly. Both files, one commit — "discharge the carried candidate" is one action.
+- C4: write `.agent/f108_inventory.md` (new file) with the inventory described below. This content is YOURS to write (research, not a reviewer-authored slice) — no byte-exact gate applies to it, but the Done-when below names what it must cover.
+- C5 (handback): rewrite `.agent/handoff.md` per docs/agents/handback_template.md, all mandated sections, in order.
 
-Constraints:
-1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile, never
-   cp, never retyped), exempt from the 500-line cap.
-2. C1 — a ONE-PARAGRAPH append to .agent/live_review.md, never retyped,
-   applied via shutil.copyfile from .remedy-wt/f106-r23-gate22.txt (3536
-   bytes, sha256
-   6e5e393c2a7d1830ed1ac1a3632ea3e76d5e977e925b32a794f7036beba6c602, zero
-   internal newlines, no trailing newline). At this round's base the file
-   is 1913990 bytes, no trailing newline, so the separator is "\n\n".
-   Expected total: base + 2 + 3536 = 1917528 bytes, sha256
-   4e25a67b42f547a7271ba6e9b6fa296d3e7dfab25cedfb2baf53ce1e990bacca.
-   Recompute yourself rather than trusting either number blindly.
-3. C2, file 1/5 — docs/roadmap/STATUS.md, a REWRITE (containment test run
-   at emission: false — `[~]` becomes `[x]`). FROM (48 bytes, sha256
-   a2c809d4238db350217bca65f60114e2622440e8bf4757cd4826de4db1acfcc5,
-   occurring exactly 1x): `- [~] F106 — Session resume instead of
-   rebuild`. TO (418 bytes, sha256
-   03cf3d234fc7085ab4422c0992e2f1fb79370c2de4481e2e2b85cc4b8dfde085): `-
-   [x] F106 — Session resume instead of rebuild (T001–T003 complete;
-   accepted 2026-09-02 · live review PASS_WITH_RISKS — ACCEPTED ·
-   Evidence job f106-closure · package
-   remedy-review-20260902-115928-READY_FOR_REVIEW.zip · SHA-256
-   939f841e486a4361ec503f21bc697fc18dd9834b3312f34024339f7a865b2a65 ·
-   package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD
-   82278107ecea9e291d668caa9180f3d847d13e88)` — note the en-dash (U+2013,
-   not a hyphen) inside `T001–T003`, matching every other STATUS.md entry.
-   Base file 33894 bytes; expected post-edit 34264 bytes, sha256
-   b61cac64993c9d214ca7d4c758280cf707107b0aa037a6e76675d1e70f896a15. Touch
-   no other line in this file.
-4. C2, file 2/5 — README.md, a REWRITE (containment test run at emission:
-   false — the new paragraph is inserted between two halves of what was
-   one contiguous span). FROM (53 bytes, sha256
-   1d279c0a84393e53b583aa4aff9c44eadf96067b94d811ec9fd3676b0604aaf0,
-   occurring exactly 1x): `ledger as a normal finding).` + two newlines +
-   `Full per-feature state:`. TO (495 bytes, sha256
-   b894a870c4fa7fea9f0531ceef8c6a936128dd9602f2a8bb1249e6bb7677e95f):
-   the same FROM text with the verbatim contents of
-   .remedy-wt/f106-r23-readme-para.txt (440 bytes, no trailing newline,
-   applied via shutil.copyfile, never retyped) inserted between the two
-   newlines and `Full per-feature state:`, itself followed by two more
-   newlines before that phrase. Base file 9625 bytes; expected post-edit
-   10067 bytes, sha256
-   d81fe77c72c725c84c4c124013553215c9e634bfa5482161170f69364e51e98d.
-5. C2, file 3/5 — scripts/self_use_queue.json, a REWRITE (containment
-   test: false). FROM (77 bytes, sha256
-   23415c83a51bcedf5c1eefe07d1fa3dda7ff8ed9f0c336ec968c6313576553b7,
-   occurring exactly 1x, inside SU-003's own object): the JSON substring
-   ending `...only, not source).\n",` followed by `      "consumed_by":
-   "",` on the next line. TO (81 bytes, sha256
-   58b4e8fcd7f30d61e79b655c7725b81ade0093ab10c6e1b2acc17bc054fd7fcd): the
-   same text with `"consumed_by": ""` changed to `"consumed_by": "F106"`.
-   Base file 10838 bytes; expected post-edit 10842 bytes, sha256
-   3d0bd587680c3021f7cd999e4f0389934f1be98ea9b30e5f2e2b4117d30585c0. The
-   file must still parse as valid JSON after the edit (`json.loads`); no
-   other field changes.
-6. C2, file 4/5 — .agent/plan.md, a WHOLE-FILE REWRITE, applied via
-   shutil.copyfile from .remedy-wt/f106-r23-plan.md (37 lines, sha256
-   00c412f88b68e0168cb961aa0318a1dadb895395d6df05559fe331f4eeb1fb70, 1747
-   bytes) — this file is CLOSED-state text and is exempt from the
-   under-50-line AGENTS.md cap's normal reasoning only in the sense that
-   37 < 50 anyway, so no exemption is actually needed; holds `## Goal`/
-   `## Next Steps`.
-7. C2, file 5/5 — .agent/handoff.md, a WHOLE-FILE REWRITE, applied via
-   shutil.copyfile from .remedy-wt/f106-r23-handoff.md (124 lines, sha256
-   89ea04023582244350d5f82f4dd66629c5fe5a62b85d1fd148ad2e4329dba9f8, 6083
-   bytes) — no length cap applies (amend0827 rule 3).
-8. C2 is ONE commit touching exactly these five files (STATUS_closure_
-   protocol.md Algorithm step 5's own rule) — do not split it.
-9. C3 — .agent/candidates.md, applied via shutil.copyfile from
-   .remedy-wt/f106-r23-candidates-final.md (whole-file rewrite, 1596
-   bytes, sha256
-   5efb2505cfbb20e5d23b9883f65420f2a2a91cef008c4a81440028f5b24a8265) —
-   DECISION amend0827 D2's own carve-out permits this ONE
-   candidates.md-only commit after the closure commit; its path set is
-   exactly that one file.
-10. After C3 is pushed, run the AGENTS.md PR workflow: `gh pr create`
-    from `feature/f106-session-resume` into `main`, title under 70 chars,
-    body carrying what/why, key decisions (DECISION F106 D1, D1(b), D2),
-    how to review, changed-files table, latest verdict (PASS WITH RISKS),
-    open-findings count (322/60/21, R-0761 the one open Medium risk), and
-    runtime actuals where measured. Do NOT merge it
-    (STATUS_closure_protocol.md Algorithm step 6 — merge is deferred).
+Change set — exactly these paths, nothing else:
+`.agent/authored/f108-r1.md` (new), `.agent/last_block.md` (rewrite), `.agent/plan.md` (rewrite), `docs/roadmap/STATUS.md` (single-line rewrite), `.agent/context.md` (rewrite), `.agent/live_review.md` (append), `.agent/candidates.md` (rewrite), `.agent/f108_inventory.md` (new), `.agent/handoff.md` (rewrite).
 
-Done when (run every command yourself; record REAL exit codes and REAL
-values, never the word "green" or an assumed number):
-G1 TRANSPORT — .agent/authored/f106-r23.md and .agent/last_block.md both
-   sha256-equal to this block as saved (single digest comparison).
-G2 THE LEDGER APPEND (C1) — .agent/live_review.md's real post-commit
-   bytes and sha256 (compute and report; constraint 2 gives the expected
-   arithmetic but you verify it, not assume it); the file's last `\n\n`-
-   unit byte-equal to GATE22; negative control — flip one byte inside a
-   SCRATCH copy of GATE22 and confirm it no longer byte-equals the file's
-   own last unit (never mutate the tracked file itself).
-G3 THE STATUS LINE (C2) — docs/roadmap/STATUS.md's real post-commit bytes
-   and sha256 (compute and report; constraint 3 gives the expected
-   arithmetic but you verify it); `grep -c '\[x\] F106'` reads exactly 1;
-   `grep -c '\[~\] F106'` reads exactly 0; every OTHER line in the file
-   byte-identical to before (diff the file against its own pre-C2 blob
-   with only that one line differing).
-G4 THE README SYNC (C2) — README.md's real post-commit bytes and sha256
-   (compute and report; constraint 4 gives the expected arithmetic but
-   you verify it); `grep -c 'F106 session resume'` reads exactly 1; the
-   paragraph sits between the F258 paragraph and `Full per-feature
-   state:`.
-G5 THE QUEUE (C2) — scripts/self_use_queue.json's real post-commit bytes
-   and sha256 (compute and report; constraint 5 gives the expected
-   arithmetic but you verify it); `python3 -c "import json;
-   json.load(open('scripts/self_use_queue.json'))"` exits 0; the parsed
-   SU-003 entry's `consumed_by` reads exactly `"F106"`; every other
-   item's `consumed_by` unchanged (SU-001 `"F257"`, SU-002 `"F258"`,
-   SU-004 `""`).
-G6 THE PLAN AND HANDOFF (C2) — .agent/plan.md sha256
-   00c412f88b68e0168cb961aa0318a1dadb895395d6df05559fe331f4eeb1fb70, 37
-   lines; .agent/handoff.md sha256
-   89ea04023582244350d5f82f4dd66629c5fe5a62b85d1fd148ad2e4329dba9f8, 124
-   lines — both byte-equal to their scratch originals.
-G7 THE CANDIDATES COMMIT (C3) — .agent/candidates.md sha256
-   5efb2505cfbb20e5d23b9883f65420f2a2a91cef008c4a81440028f5b24a8265, 1596
-   bytes, byte-equal to its scratch original; `git diff --stat
-   <C2>..<C3>` touches exactly that one path.
-G8 THE TREE, PR — `git status --porcelain` empty; every commit's
-   insertions under 500 (C0a/C0b exempt; C2 is a 5-file rewrite bundle —
-   report its real total insertions, expect well under 500 since every
-   file change here is small); canary
-   (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0; HEAD pushed
-   and equal to `origin/feature/f106-session-resume`; `gh pr create`
-   succeeded, report the real PR number and URL; the PR is NOT merged.
+SLICE STATUS_PAIR (REWRITE — TO does not contain FROM verbatim, confirmed by the reviewer's own containment test: false):
+FROM (occurs exactly once in `docs/roadmap/STATUS.md`, confirmed by the reviewer with `grep -c "F108 — Tiered artifact summaries" docs/roadmap/STATUS.md` = 1, at line 15):
+    - [ ] F108 — Tiered artifact summaries
+TO:
+    - [~] F108 — Tiered artifact summaries
 
-Handback: the .agent/handoff.md rewrite is C2 itself (constraint 7 above)
-— per Rule A4 and the F104/F258 closure precedent, no further handoff
-commit follows a closure's own candidates.md-only commit or its PR
-creation. Report the PR number/URL and all real gate results in your
-completion report to the reviewer directly. Name every deviation, however
-small.
-─────────────────────────────────────────────────────────────────────────
+BEGIN SLICE PLAN
+# Plan — F108 Tiered artifact summaries
+
+Branch: feature/f108-tiered-artifact-summaries, cut from `main` at
+`ec81e697bf498a6753d82d7e6a8d3c72467cd5d7`.
+
+## Goal
+Oversized artifacts (diffs, logs, reports) get a tiered representation — an
+L1 summary, sectioned L2 summaries, and the full reference path — so a
+follow-up prompt consumes L1 plus only the relevant L2 sections instead of
+the whole artifact. DONE when a fixture long log enters a follow-up prompt
+at a fraction of its size with the reference path present, summaries are
+generated by the configured cheap route and labeled, and a missing/failed
+summary never blocks the run.
+
+## Current Step
+
+| Item | Status | Reason |
+|------|--------|--------|
+| Claim F108 in STATUS.md | done | this round |
+| Discharge the F106 closure candidate as R-0762 | done | this round |
+| F108 source inventory | done | `.agent/f108_inventory.md` |
+| T001 (schema + mechanical sectioners + storage/caching) | pending | next round |
+
+## Next Steps
+1. Round 2: plan T001 against the inventory — schema for
+   `artifact.summary.json`, the diff/log sectioners, hash-invalidated
+   storage next to the artifact in evidence.
+2. T001 build + unit tests (hash invalidation; section spans correct).
+3. T002 generation call with the summary role, validation, fallback,
+   fake-provider tests.
+4. T003 compiler integration, end-to-end fixture, size comparison recorded.
+
+## Risks
+- Depends on F107 (context compiler v2, done) for the selection/budget seam
+  T003 integrates with; not yet inspected this round beyond the inventory.
+END SLICE PLAN
+(sha256 of the slice content above, exactly as it must land in `.agent/plan.md` with no trailing blank line beyond the file's own final newline: 0dd6bff3e40299db3825b5839a1a117d44eafa5758d36b0fb8b4175bce4283e5 — 1567 bytes, 35 lines)
+
+BEGIN SLICE CONTEXT
+# Context — F108 Tiered artifact summaries
+
+## Active Branch
+feature/f108-tiered-artifact-summaries, cut from `main` at
+`ec81e697bf498a6753d82d7e6a8d3c72467cd5d7`.
+
+## Scope
+F108 (Tier 3, depends on F107 — done): any oversized artifact gets a tiered
+representation (L1 summary, sectioned L2 summaries, full reference path);
+prompt assembly consumes L1 plus only the relevant L2 sections. Task
+slicing: T001 schema + mechanical sectioners + storage/caching; T002
+generation call with the summary role + fallback; T003 compiler
+integration + end-to-end fixture.
+
+## Do not touch
+Routing decisions, local-model setup, dossier compression — all explicitly
+out of scope per `docs/roadmap/features/T3_F108.md` Do not touch. No
+provider-routing feature is modified; this feature only DECLARES the
+summary role for T002.
+
+## Assumptions
+- F107 (context compiler v2) is `[x]` done and owns selection/budgets; T003
+  integrates with it rather than replacing it.
+- The summary role is a new provider-call role beside the existing evidence
+  and actuals roles, not yet inspected this round beyond the feature file.
+
+## Constraints
+The bullets in this first group are STANDING project constraints, carried
+forward from the context this file replaced.
+
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree,
+  never in the primary checkout, which satisfies `git status --porcelain`
+  empty at every verdict.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
+
+This round is NOT UI work — no design-reference binding applies.
+
+## Steps
+The item-status table for this round lives in the `## Current Step` section
+of `.agent/plan.md`. This file deliberately does not restate it.
+END SLICE CONTEXT
+(sha256 of the slice content above, exactly as it must land in `.agent/context.md`: 64f3b87229fd3adb974da27ccb00d83e8cb518edb9a72fa4da30c34f5f5a6b6c — 2108 bytes, 47 lines)
+
+BEGIN SLICE CANDIDATES
+# Closure Candidates — carrier of record
+
+> Written per docs/roadmap/STATUS_closure_protocol.md ("Closure-candidate
+> findings", disk-vehicle rule, operator ruling 2026-08-01). Read at Window-1
+> session bootstrap (docs/agents/planner_reviewer_prompt.md §1). One entry per
+> candidate: description · source feature · date. Any entry present at
+> feature-claim time is a block condition.
+
+EMPTY — no candidate is open.
+
+The one entry recorded after F106's closure (job/mission resume-from-persisted-
+state, DECISION F106 D2) was registered in F108 round 1 as finding `R-0762` in
+`.agent/live_review.md`; the reason and full detail are on that record. No
+further entries are open.
+END SLICE CANDIDATES
+(sha256 of the slice content above, exactly as it must land in `.agent/candidates.md`: 3edd7f964bd2da624eafefef8713710567ab52ba1b11c3584ec1ab6ddaa415c0 — 686 bytes, 14 lines)
+
+BEGIN SLICE R0762
+- R-0762 — Medium, JOB/MISSION RESUME-FROM-PERSISTED-STATE IS NOT BUILT: NO ORCHESTRATOR MOVE-SCHEMA `resume` KIND EXISTS, SO A PAUSED JOB OR ONE THAT ENDED `max_cycles_reached` CAN ONLY BE RE-DISPATCHED, NEVER CONTINUED. Raised by F075 R5/R6's evidence, routed via F079 R1 as R-0201, scope-noted onto F106 on 2026-08-06 as in-scope territory alongside provider-session resume, and carried forward at F106's closure (2026-09-02) as a closure candidate per DECISION F106 D2 (`.agent/live_review.md`) rather than built or dropped, because F106 closed on its own T001-T003 Task slicing (provider-session resume only) and no Design, Task or Acceptance text in `docs/roadmap/features/T3_F106.md` ever named an orchestrator move-schema change as work that feature would build. Registered here with the next free id because this is F108's first reviewed round, per docs/roadmap/STATUS_closure_protocol.md's disk-vehicle rule and Phase 1 rule 3 of docs/agents/self_drive_protocol.md. THE GAP: a job's orchestrator move schema currently supports only dispatch/re-dispatch moves; a job paused or ended `max_cycles_reached` has no move that resumes it from its own persisted state, so "an interruption is not a restart" holds for provider-session continuity (F106's own scope) but not yet for job/mission continuity. Not F108's own scope — F108 is tiered artifact summaries, gated on the context compiler, and touches no orchestrator move schema — so this finding routes to whichever future feature next claims orchestrator move-schema work (the same routing F075/F079 already gave it once). OPEN.
+END SLICE R0762
+(sha256 of the slice content above, with NO trailing newline: 47b2fb33a2f37379cd42f404550a165c8bb4c1744d41e70a5da3b18c61e6d37f — 1592 bytes, single paragraph)
+
+Append instructions for SLICE R0762 into `.agent/live_review.md`: the file currently ends (at base `ec81e697`) with the bytes `e PR.` and no trailing newline, is 1917528 bytes, sha256 `4e25a67b42f547a7271ba6e9b6fa296d3e7dfab25cedfb2baf53ce1e990bacca`. Append exactly `\n\n` then SLICE R0762's bytes, producing no trailing newline after the slice (pure concatenation: base + `\n\n` + slice). Verify your own result independently: new file must be 1919122 bytes, sha256 `7e31a16b69b99faf7ae671410eac695f8cd61082a03ba57f8f43de92db04f16c`. If your independent byte-count or hash does not match, STOP and declare the mismatch rather than committing.
+
+F108 source inventory (`.agent/f108_inventory.md`, C4, your own research — write it, no reviewer-authored bytes to match). Read `docs/roadmap/features/T3_F108.md` completely first (Goal & Done, Design, Task slicing, Acceptance, Orchestrator brief, Do not touch — all addressed to the reviewer's planning, but you are gathering the facts a future round's plan will need). Then inspect and report, each with `file:line` or `function name` citations:
+1. `packages/orchestration/context_compiler.py` — how it currently selects and budgets content for a prompt (function names, the selection/budget mechanism), since T003 is "a NEW REPRESENTATION it can select instead of full content when an artifact exceeds a size threshold."
+2. `packages/orchestration/role_config.py` — the existing pattern for declaring a provider-call role (how an existing role, e.g. builder/reviewer, is declared), since T002 "declares the summary role" the same way.
+3. Any existing schema-validated JSON artifact pattern already in the repo (e.g. how evidence or actuals documents are schema-validated today) that `artifact.summary.json` could reuse — cite what you find, or state plainly that none was found.
+4. Any existing unified-diff reader or log-parsing code already in the repo that a mechanical sectioner (diff per file, logs per time/marker blocks) could reuse — cite what you find, or state plainly that none was found.
+5. Where evidence/artifacts are stored today (directory layout), since the Design section says "tiers live next to the artifact in evidence."
+6. Confirm `tests/orchestration/test_artifact_summaries.py` (the feature file's suggested test path) does not yet exist.
+Do not write or modify any production code, test file, or the context compiler / role_config source in this round — this is read-only research; the file you write is `.agent/f108_inventory.md` only.
+
+Done when (run every command for real and record the real exit code; never report "green" as a word):
+G1 TRANSPORT — for each of the four whole-slice files (`.agent/plan.md`, `.agent/context.md`, `.agent/candidates.md`) and the STATUS_PAIR replacement, plus the R0762 append: sha256 the file as committed at C1/C2/C3 and confirm it equals the digest stated beside that slice above (or, for STATUS_PAIR and R0762, confirm the resulting `docs/roadmap/STATUS.md` line / `.agent/live_review.md` tail matches as specified). Also sha256 `.agent/authored/f108-r1.md` and `.agent/last_block.md` (C0a vs C0b) and confirm they are equal to each other.
+G2 STATUS LINE — `grep -c "F108 — Tiered artifact summaries" docs/roadmap/STATUS.md` = 1; the matched line reads exactly `- [~] F108 — Tiered artifact summaries`; `git diff <base>..HEAD -- docs/roadmap/STATUS.md` touches exactly one line.
+G3 CANDIDATES — `.agent/candidates.md` sha256 equals the SLICE CANDIDATES digest above.
+G4 CONTEXT — `.agent/context.md` sha256 equals the SLICE CONTEXT digest above.
+G5 PLAN — `.agent/plan.md` sha256 equals the SLICE PLAN digest above; line count 35 (under the 50-line cap AGENTS.md sets).
+G6 LEDGER APPEND — `.agent/live_review.md` sha256 equals `7e31a16b69b99faf7ae671410eac695f8cd61082a03ba57f8f43de92db04f16c` at 1919122 bytes; `grep -c "^- R-[0-9]\{4\} — "` reads 323 (up from 322); `grep -c "^Done: R-[0-9]\{4\} — "` reads 60 (unmoved); `grep -c "^DECISION F[0-9]\+ D[0-9]\+ — "` reads 21 (unmoved); `grep -c "R-0762"` reads exactly 1.
+G7 SUITES — real exit 0 and real pass counts for: (a) `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q` (reviewer's own base reading: 604 passed); (b) `python3 -m pytest tests/orchestration/test_roadmap_index.py tests/docs/ -q` (reviewer's own base reading: 325 passed); (c) `pytest tests/cli/test_golden_path.py -q` (reviewer's own base reading: 42 passed).
+G8 TREE + INVENTORY — `git status --porcelain` empty; `git rev-parse HEAD` equals `git rev-parse origin/feature/f108-tiered-artifact-summaries` after push; `.agent/f108_inventory.md` exists, is non-empty, and (`grep -c context_compiler.py .agent/f108_inventory.md` >= 1 and `grep -c role_config.py .agent/f108_inventory.md` >= 1); every commit's insertions under 500 lines (`git diff --stat` per commit).
+
+Handback: write the completion report inline in your final message AND rewrite `.agent/handoff.md` per docs/agents/handback_template.md (Session, Range, Commits per-commit table, External actions, Verification with real transcripts, Authored-text proofs, Deviations & assumptions, Next). The Session line reads `SESSION 1 of feature F108 · round 1 · rounds so far 1`. Do not create a pull request this round — this is a claim+inventory round, not a reviewable bundle yet; state that explicitly under Next ("Round 2: plan T001 against the inventory").
