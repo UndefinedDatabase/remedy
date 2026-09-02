@@ -20,24 +20,28 @@ summary never blocks the run.
 | T001 schema + sectioners + storage/caching | done | round 2 |
 | T002 generation call + fallback | done | round 3 |
 | T002 `summary` role registration | done | round 5, DECISION F108 D1 |
-| T003 re-scoped: real hook is `pingpong_loop.py`, not `context_compiler.py` | done | round 6, R-0765/DECISION F108 D2 |
+| T003 re-scoped: real hook is `pingpong_loop.py` | done | round 6, R-0765/D2 |
 | T003a generation-call bridge + relevant-section matching | done | round 6 |
-| T003b wiring into `pingpong_loop.py` + fixture + size comparison | pending | next round |
+| T003b-i builder repair-diff wiring + tests | done | round 7, DECISION F108 D3 |
+| T003b-ii reviewer-side wiring (3 cap sites) | pending | next round |
+| T003c real persisted `full_ref` + disk caching | pending | after T003b-ii |
+| T003d long-artifact fixture + size comparison (DONE evidence) | pending | after T003c |
 
 ## Next Steps
-1. Round 7: T003b — wire `summary_call_fn`/`select_relevant_sections` into
-   `pingpong_loop.py`'s `compose_builder_prompt`/`compose_reviewer_prompt`
-   diff-inclusion branches (per DECISION F108 D2), replacing
-   `_REPAIR_DIFF_CAP`'s flat truncation only past a new oversized-artifact
-   threshold constant, the flat cap staying underneath as a backstop; the
-   long-log fixture; the size comparison recorded — the round that proves
-   the feature's DONE condition.
-2. Integration gate (full suite, both required runs) before closure.
-3. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
+1. Round 8: T003b-ii — wire the same `render_tiered_diff_text` shape into
+   `compose_reviewer_prompt`'s three diff branches (`_REVIEWER_DIFF_CAP`,
+   `_REVIEWER_SCOPED_DIFF_CAP`, and the resume/scoped precedence already
+   there), per DECISION F108 D3's deferral.
+2. T003c: persist the diff to evidence, pass a real `full_ref` path, wire
+   T001's `load_cached_summary`/`save_summary` at both call sites.
+3. T003d: the long-artifact fixture and size-comparison recording — the
+   feature's own DONE-condition evidence.
+4. Integration gate (full suite, both required runs) before closure.
+5. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
    package.
 
 ## Risks
-- T003b touches `pingpong_loop.py`, a large, sensitive, multi-round-tested
-  module (`compose_builder_prompt`/`compose_reviewer_prompt`, see
-  DECISION F108 D2); the round inspects the exact call-site precedence
-  (`resume_hunks_text` vs `safe_diff`) before extending it.
+- T003b-ii repeats T003b-i's own risk one branch over: `compose_reviewer_prompt`'s
+  scoped/unscoped/resume precedence is a four-way branch (DECISION F108 D3's
+  builder-side helper only covers three), so that round re-derives it from
+  the real code rather than assuming symmetry with the builder side.
