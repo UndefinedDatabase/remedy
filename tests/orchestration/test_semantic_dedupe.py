@@ -29,12 +29,15 @@ from packages.orchestration.prompt_segments import (
     compose_prompt_segments,
 )
 from packages.orchestration.session_sent_index import (
+    DEDUPE_MIN_SEGMENT_CHARS,
     SessionSentIndex,
     SessionSentIndexError,
+    dedupe_marker_for_segment,
     invalidate_on_resume_fallback,
     record_finalized_call,
     session_id_of_finalized_call,
     session_sent_index_from_evidence,
+    should_dedupe_segment,
 )
 
 
@@ -773,3 +776,125 @@ class TestChainAgainstTheRealLoop:
 
         assert result.final_status == "staged_review_passed"
         assert len(result.rounds) == 2
+
+
+# ---------------------------------------------------------------------------
+# T002a: the pure dedupe DECISION and the MARKER TEXT
+#
+# PURE AGAIN, deliberately: no tmp_path, no provider and no loop below this
+# line. These cases pin every rule about WHEN a segment may be replaced before
+# any of it can reach a prompt, so the composition hook that follows (T002b) is
+# mechanical and carries no decision of its own.
+
+
+SENT_HASH = "a" * 64
+LONG_ENOUGH = "x" * DEDUPE_MIN_SEGMENT_CHARS
+
+
+class TestShouldDedupeSegment:
+    def test_a_long_already_sent_segment_is_deduped(self):
+        assert should_dedupe_segment(LONG_ENOUGH, SENT_HASH, frozenset({SENT_HASH})) is True
+
+    def test_the_kill_switch_refuses_though_every_other_condition_holds(self):
+        # THE CASE THAT MUST NEVER ROT. Disabling dedupe has to be total, not
+        # mostly: this is the only assertion that says so.
+        assert (
+            should_dedupe_segment(
+                LONG_ENOUGH, SENT_HASH, frozenset({SENT_HASH}), enabled=False
+            )
+            is False
+        )
+
+    def test_a_hash_the_session_never_received_is_not_deduped(self):
+        assert should_dedupe_segment(LONG_ENOUGH, "b" * 64, frozenset({SENT_HASH})) is False
+
+    def test_an_empty_sent_set_dedupes_nothing(self):
+        assert should_dedupe_segment(LONG_ENOUGH, SENT_HASH, frozenset()) is False
+
+    def test_a_segment_of_exactly_the_minimum_length_is_deduped(self):
+        # THE BOUNDARY, INCLUSIVE SIDE. The comparison is >=, so exactly the
+        # minimum qualifies.
+        text = "x" * DEDUPE_MIN_SEGMENT_CHARS
+        assert len(text) == DEDUPE_MIN_SEGMENT_CHARS
+
+        assert should_dedupe_segment(text, SENT_HASH, frozenset({SENT_HASH})) is True
+
+    def test_a_segment_one_character_below_the_minimum_is_not_deduped(self):
+        # THE BOUNDARY, EXCLUSIVE SIDE. One character fewer is refused, which is
+        # what makes the >= above a decision rather than an accident.
+        text = "x" * (DEDUPE_MIN_SEGMENT_CHARS - 1)
+        assert len(text) == DEDUPE_MIN_SEGMENT_CHARS - 1
+
+        assert should_dedupe_segment(text, SENT_HASH, frozenset({SENT_HASH})) is False
+
+    def test_a_custom_min_chars_override_is_honoured(self):
+        short = "x" * 12
+        sent = frozenset({SENT_HASH})
+
+        assert should_dedupe_segment(short, SENT_HASH, sent) is False
+        assert should_dedupe_segment(short, SENT_HASH, sent, min_chars=10) is True
+
+    @pytest.mark.parametrize("text", [None, 7, b"x" * 300, ["x" * 300], object()])
+    def test_a_non_string_text_returns_false_and_raises_nothing(self, text):
+        assert should_dedupe_segment(text, SENT_HASH, frozenset({SENT_HASH})) is False
+
+    @pytest.mark.parametrize("sha256", [None, 7, "", "   ", b"a" * 64, ["a" * 64]])
+    def test_a_malformed_sha256_returns_false_and_raises_nothing(self, sha256):
+        assert should_dedupe_segment(LONG_ENOUGH, sha256, frozenset({SENT_HASH})) is False
+
+
+class TestDedupeMarkerForSegment:
+    def test_the_marker_is_exactly_the_expected_string(self):
+        # THE WHOLE STRING, not a substring: the marker is what the model reads,
+        # so its exact wording is the contract.
+        assert dedupe_marker_for_segment("dossier") == "[unchanged: dossier, previously provided]"
+
+    @pytest.mark.parametrize("name", ["", "   ", "\t\n"])
+    def test_a_nameless_marker_raises(self, name):
+        # A marker naming nothing would tell the model that something it cannot
+        # identify was withheld — worse than sending the segment again.
+        with pytest.raises(SessionSentIndexError):
+            dedupe_marker_for_segment(name)
+
+    def test_the_marker_is_shorter_than_the_threshold_that_justifies_it(self):
+        # THE THRESHOLD ACTUALLY GUARANTEES A SAVING. This pins the constant
+        # against the marker it exists to justify: change either so that the
+        # replacement stops saving anything and this case fails.
+        marker = dedupe_marker_for_segment("dossier")
+
+        assert len(marker) < DEDUPE_MIN_SEGMENT_CHARS
+
+
+class TestTheDecisionAgainstARecordedIndex:
+    """The decision read against a REAL index built from a REAL manifest.
+
+    No loop and no provider — just the two halves of the feature meeting: what
+    ``record_call`` remembered, and what ``should_dedupe_segment`` will do with
+    it. The hashes are genuine segment hashes from the shipped producer, never
+    hand-made, so a change to the hashing scheme cannot leave this passing.
+    """
+
+    LONG_TEXT = "the dossier body, repeated to earn its replacement. " * 8
+    SHORT_TEXT = "implement the index"
+
+    def _recorded(self) -> tuple[frozenset[str], dict[str, str]]:
+        rows = _real_manifest_rows(
+            ("dossier", SegmentStabilityRank.DOSSIER, self.LONG_TEXT),
+            ("task", SegmentStabilityRank.TASK, self.SHORT_TEXT),
+        )
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        by_name = {str(row["name"]): str(row["sha256"]) for row in rows}
+        return index.sent_hashes("session-a"), by_name
+
+    def test_a_long_recorded_segment_is_deduped_and_a_short_one_is_not(self):
+        sent, by_name = self._recorded()
+        assert len(self.LONG_TEXT) >= DEDUPE_MIN_SEGMENT_CHARS
+        assert len(self.SHORT_TEXT) < DEDUPE_MIN_SEGMENT_CHARS
+        assert set(by_name) == {"dossier", "task"}
+
+        assert should_dedupe_segment(self.LONG_TEXT, by_name["dossier"], sent) is True
+        # SAME SESSION, SAME MANIFEST, PROVEN SENT — and still refused, purely
+        # because replacing it would not pay for the marker.
+        assert by_name["task"] in sent
+        assert should_dedupe_segment(self.SHORT_TEXT, by_name["task"], sent) is False
