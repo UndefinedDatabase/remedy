@@ -16,20 +16,24 @@ summary never blocks the run.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| Claim F108 in STATUS.md | done | this round |
-| Discharge the F106 closure candidate as R-0762 | done | this round |
-| F108 source inventory | done | `.agent/f108_inventory.md` |
-| T001 (schema + mechanical sectioners + storage/caching) | pending | next round |
+| Claim F108, discharge R-0762, inventory | done | round 1 |
+| T001 schema + mechanical sectioners + storage/caching + unit tests | done | round 2, `packages/orchestration/artifact_summary.py` |
+| T002 generation call + summary role + fallback | pending | next round |
+| T003 compiler integration + fixture | pending | later round |
 
 ## Next Steps
-1. Round 2: plan T001 against the inventory — schema for
-   `artifact.summary.json`, the diff/log sectioners, hash-invalidated
-   storage next to the artifact in evidence.
-2. T001 build + unit tests (hash invalidation; section spans correct).
-3. T002 generation call with the summary role, validation, fallback,
-   fake-provider tests.
-4. T003 compiler integration, end-to-end fixture, size comparison recorded.
+1. Round 3: declare the `summary` role in `role_config.py`'s `KNOWN_ROLES`,
+   wire a provider call using T001's sections as input, validate the
+   response with `packages/orchestration/schemas/validation.py`'s
+   `validate_response`, and add the fallback (truncated head+tail with the
+   "[summary unavailable — truncated view]" marker) for a failed
+   generation.
+2. T003: hook the new representation into
+   `packages/orchestration/context_compiler.py`'s selection/rendering (a
+   third `rendering` value beside `"full"`/`"signatures"`), build the
+   long-log fixture, and record the size comparison.
+3. Integration gate (full suite, both required runs) before closure.
 
 ## Risks
-- Depends on F107 (context compiler v2, done) for the selection/budget seam
-  T003 integrates with; not yet inspected this round beyond the inventory.
+- T002's fallback rule ("never silent, never blocking") is the one Design
+  requirement T001 does not touch at all; round 3 owns it fully.
