@@ -1,4 +1,4 @@
-"""F108 T001/T002 — ArtifactSummary schema/sectioners/cache and summary generation."""
+"""F108 T001/T002/T003a — ArtifactSummary schema/sectioners/cache, summary generation, and the T003a call bridge."""
 from __future__ import annotations
 
 import json
@@ -7,12 +7,15 @@ from pathlib import Path
 from packages.orchestration.artifact_summary import (
     FALLBACK_MARKER,
     ArtifactSummary,
+    ArtifactSummarySection,
     compute_artifact_hash,
     generate_artifact_summary,
     load_cached_summary,
     save_summary,
     section_diff,
     section_log,
+    select_relevant_sections,
+    summary_call_fn,
 )
 from packages.orchestration.artifact_summary import (
     _FALLBACK_HEAD_CHARS,
@@ -265,3 +268,72 @@ def test_fallback_summary_no_truncation_when_under_budget():
 
     assert result.l2[0].summary == "a short section"
     assert "..." not in result.l2[0].summary
+
+
+# ---------------------------------------------------------------------------
+# F108 T003a — select_relevant_sections / summary_call_fn
+# ---------------------------------------------------------------------------
+
+
+def test_select_relevant_sections_returns_matching_sections_only():
+    summary = _make_summary("abc123")
+    summary.l2 = [
+        ArtifactSummarySection(section="foo.py", span_ref="file:foo.py", summary="s1"),
+        ArtifactSummarySection(section="bar.py", span_ref="file:bar.py", summary="s2"),
+    ]
+
+    result = select_relevant_sections(summary, ["foo.py"])
+
+    assert result == [summary.l2[0]]
+
+
+def test_select_relevant_sections_no_match_returns_empty_list():
+    summary = _make_summary("abc123")
+    summary.l2 = [
+        ArtifactSummarySection(section="foo.py", span_ref="file:foo.py", summary="s1"),
+        ArtifactSummarySection(section="bar.py", span_ref="file:bar.py", summary="s2"),
+    ]
+
+    assert select_relevant_sections(summary, ["baz.py"]) == []
+
+
+def test_select_relevant_sections_empty_file_refs_returns_empty_list():
+    summary = _make_summary("abc123")
+    summary.l2 = [
+        ArtifactSummarySection(section="foo.py", span_ref="file:foo.py", summary="s1"),
+        ArtifactSummarySection(section="bar.py", span_ref="file:bar.py", summary="s2"),
+    ]
+
+    assert select_relevant_sections(summary, []) == []
+
+
+def test_summary_call_fn_returns_none_without_ollama():
+    # tests/conftest.py::_no_live_ollama_reach (autouse) already refuses a
+    # live Ollama connection for every unmarked test.
+    assert summary_call_fn() is None
+
+
+def test_summary_call_fn_returns_callable_with_ollama(monkeypatch):
+    import sys
+    import types
+
+    fake_ollama = types.ModuleType("ollama")
+
+    class FakeClient:
+        def __init__(self, host=None):
+            pass
+
+        def list(self):
+            return []
+
+        def chat(self, **kwargs):
+            msg = types.SimpleNamespace(content=json.dumps({"l1": "x", "l2": []}))
+            return types.SimpleNamespace(message=msg)
+
+    fake_ollama.Client = FakeClient
+    monkeypatch.setitem(sys.modules, "ollama", fake_ollama)
+
+    fn = summary_call_fn()
+    assert fn is not None
+    result = fn("test prompt", 0)
+    assert "l1" in result
