@@ -20,20 +20,24 @@ summary never blocks the run.
 | T001 schema + sectioners + storage/caching | done | round 2 |
 | T002 generation call + fallback | done | round 3 |
 | T002 `summary` role registration | done | round 5, DECISION F108 D1 |
-| T003 compiler integration + fixture | pending | next round |
+| T003 re-scoped: real hook is `pingpong_loop.py`, not `context_compiler.py` | done | round 6, R-0765/DECISION F108 D2 |
+| T003a generation-call bridge + relevant-section matching | done | round 6 |
+| T003b wiring into `pingpong_loop.py` + fixture + size comparison | pending | next round |
 
 ## Next Steps
-1. Round 6: T003 — hook the new representation into
-   `packages/orchestration/context_compiler.py`'s selection/rendering (a
-   third `rendering` value beside `"full"`/`"signatures"`), the
-   relevant-L2-section matching rule, the long-log fixture, and the size
-   comparison recorded — the round that proves the feature's DONE
-   condition.
+1. Round 7: T003b — wire `summary_call_fn`/`select_relevant_sections` into
+   `pingpong_loop.py`'s `compose_builder_prompt`/`compose_reviewer_prompt`
+   diff-inclusion branches (per DECISION F108 D2), replacing
+   `_REPAIR_DIFF_CAP`'s flat truncation only past a new oversized-artifact
+   threshold constant, the flat cap staying underneath as a backstop; the
+   long-log fixture; the size comparison recorded — the round that proves
+   the feature's DONE condition.
 2. Integration gate (full suite, both required runs) before closure.
 3. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
    package.
 
 ## Risks
-- T003 touches `context_compiler.py`, an existing 1133-line module with its
-  own tier/budget/omission-reason conventions (see `.agent/f108_inventory.md`
-  §1); the round inspects before extending.
+- T003b touches `pingpong_loop.py`, a large, sensitive, multi-round-tested
+  module (`compose_builder_prompt`/`compose_reviewer_prompt`, see
+  DECISION F108 D2); the round inspects the exact call-site precedence
+  (`resume_hunks_text` vs `safe_diff`) before extending it.
