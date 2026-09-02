@@ -385,6 +385,7 @@ def render_tiered_diff_text(
     *,
     threshold_chars: int,
     full_ref: str,
+    artifact_path: Path | None = None,
 ) -> str:
     """Render a tiered L1+relevant-L2 replacement for an oversized diff, or "".
 
@@ -398,12 +399,34 @@ def render_tiered_diff_text(
     (``select_relevant_sections``), and renders the L1 summary plus each
     selected L2 section plus a ``full_ref`` line so the model knows more
     exists.
+
+    F108 T003c: ``artifact_path``, when given, is where ``diff_text`` is
+    persisted (parent directories created as needed) and where T001's
+    hash-invalidated cache (``load_cached_summary``/``save_summary``) is
+    checked before, and written after, the provider call -- a cache hit
+    skips ``generate_artifact_summary`` entirely. ``None`` (the default)
+    keeps this function's ORIGINAL stateless contract exactly -- no file
+    written, no cache consulted, every call generates fresh, which is what
+    every round-7-landed test still exercises; the caller decides
+    ``full_ref``'s text independently, and passing ``str(artifact_path)``
+    for both keeps them in agreement, which this function never invents on
+    its own.
     """
     if len(diff_text) <= threshold_chars:
         return ""
     sections = section_diff(diff_text)
     artifact_hash = compute_artifact_hash(diff_text.encode("utf-8"))
-    summary = generate_artifact_summary(sections, full_ref, artifact_hash, call_fn)
+
+    summary: ArtifactSummary | None = None
+    if artifact_path is not None:
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text(diff_text)
+        summary = load_cached_summary(artifact_path)
+    if summary is None:
+        summary = generate_artifact_summary(sections, full_ref, artifact_hash, call_fn)
+        if artifact_path is not None:
+            save_summary(artifact_path, summary)
+
     relevant = select_relevant_sections(summary, file_refs)
     lines = [f"## Current Staged Diff (summarized)\n{summary.l1}\n"]
     for entry in relevant:

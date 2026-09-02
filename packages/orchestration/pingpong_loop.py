@@ -1047,6 +1047,7 @@ def _builder_tiered_diff_text(
     *,
     threshold_chars: int,
     full_ref: str,
+    artifact_path: Path | None = None,
 ) -> str:
     """Compute the builder's tiered-summary replacement for an oversized
     repair diff, or "" when tiering does not apply -- the caller's existing
@@ -1058,7 +1059,8 @@ def _builder_tiered_diff_text(
     F106 D1(b)), so this function must not spend a provider-availability
     resolve computing a value the caller would discard -- `call_fn_factory`
     (`summary_call_fn` itself, unapplied) is invoked only inside the branch
-    that needs its result.
+    that needs its result. `artifact_path` (F108 T003c) is forwarded
+    unchanged into `render_tiered_diff_text`.
     """
     if is_resumed or not repair_diff or not findings:
         return ""
@@ -1068,6 +1070,7 @@ def _builder_tiered_diff_text(
     return render_tiered_diff_text(
         repair_diff, file_refs, call_fn_factory(),
         threshold_chars=threshold_chars, full_ref=full_ref,
+        artifact_path=artifact_path,
     )
 
 
@@ -1572,6 +1575,7 @@ def _reviewer_tiered_diff_text(
     *,
     threshold_chars: int,
     full_ref: str,
+    artifact_path: Path | None = None,
 ) -> str:
     """Compute the reviewer's tiered-summary replacement for an oversized
     scoped diff, or "" when tiering does not apply -- the caller's existing
@@ -1589,7 +1593,8 @@ def _reviewer_tiered_diff_text(
     `_builder_tiered_diff_text`'s own reasoning: a resumed session's shrunk
     hunk render already takes priority (DECISION F106 D1(b), Reviewer
     side), so `call_fn_factory` (`summary_call_fn` itself, unapplied) is
-    invoked only inside the branch that needs its result.
+    invoked only inside the branch that needs its result. `artifact_path`
+    (F108 T003c) is forwarded unchanged into `render_tiered_diff_text`.
     """
     if is_resumed or not safe_diff or not scope_packet:
         return ""
@@ -1599,6 +1604,7 @@ def _reviewer_tiered_diff_text(
     return render_tiered_diff_text(
         safe_diff, file_refs, call_fn_factory(),
         threshold_chars=threshold_chars, full_ref=full_ref,
+        artifact_path=artifact_path,
     )
 
 
@@ -3134,11 +3140,16 @@ def run_pingpong(
                     staging, parse_diff_line_ranges(repair_diff),
                     max_total_chars=_REPAIR_DIFF_CAP,
                 ))
+            builder_tiered_artifact_path = (
+                _pingpong_runs_dir() / result.run_id / "calls" / "builder"
+                / f"round-{round_num:02d}" / "tiered_diff.diff"
+            )
             builder_tiered_diff_text = _builder_tiered_diff_text(
                 repair_diff, findings if is_repair else None,
                 bool(builder_resume_ref and repair_diff), summary_call_fn,
                 threshold_chars=_OVERSIZED_DIFF_THRESHOLD_CHARS,
-                full_ref=f"repair diff, round {round_num} (F108: not yet persisted to evidence)",
+                full_ref=str(builder_tiered_artifact_path),
+                artifact_path=builder_tiered_artifact_path,
             )
             builder_composed = compose_builder_prompt(
                 effective_goal, context,
@@ -3399,11 +3410,16 @@ def run_pingpong(
                     staging, parse_diff_line_ranges(reviewer_safe_diff),
                     max_total_chars=_REVIEWER_DIFF_CAP,
                 ))
+            reviewer_tiered_artifact_path = (
+                _pingpong_runs_dir() / result.run_id / "calls" / "reviewer"
+                / f"round-{round_num:02d}" / "tiered_diff.diff"
+            )
             reviewer_tiered_diff_text = _reviewer_tiered_diff_text(
                 reviewer_safe_diff, runtime_scope_packet,
                 bool(reviewer_resume_ref and reviewer_safe_diff), summary_call_fn,
                 threshold_chars=_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
-                full_ref=f"reviewer diff, round {round_num} (F108: not yet persisted to evidence)",
+                full_ref=str(reviewer_tiered_artifact_path),
+                artifact_path=reviewer_tiered_artifact_path,
             )
             reviewer_composed = compose_reviewer_prompt(
                 effective_goal,
