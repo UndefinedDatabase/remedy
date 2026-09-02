@@ -16,34 +16,27 @@ summary never blocks the run.
 
 | Item | Status | Reason |
 |------|--------|--------|
-| Claim F108, discharge R-0762, inventory | done | round 1 |
-| T001 schema + sectioners + storage/caching | done | round 2 |
-| T002 generation call + fallback | done | round 3 |
-| T002 `summary` role registration | done | round 5, DECISION F108 D1 |
-| T003 re-scoped: real hook is `pingpong_loop.py` | done | round 6, R-0765/D2 |
+| T001-T002 schema, sectioners, generation, `summary` role | done | rounds 2-5 |
+| T003 re-scoped to `pingpong_loop.py` | done | round 6, R-0765/D2 |
 | T003a generation-call bridge + relevant-section matching | done | round 6 |
-| T003b-i builder repair-diff wiring + tests | done | round 7, DECISION F108 D3 |
-| T003b-ii reviewer scoped-diff wiring + tests | done | round 8, DECISION F108 D4 |
-| T003b-iii reviewer fallback-branch wiring | pending | deferred, DECISION F108 D4 |
-| T003c real persisted `full_ref` + disk caching | pending | after T003b-iii |
-| T003d long-artifact fixture + size comparison (DONE evidence) | pending | after T003c |
+| T003b-i/ii builder+reviewer scoped-diff wiring + tests | done | rounds 7-8, D3/D4 |
+| T003c real persisted `full_ref` + disk caching, both call sites | done | round 9, DECISION F108 D5 |
+| T003b-iii reviewer fallback-branch wiring | pending | deferred, D4 |
+| T003d long-artifact fixture + size comparison (DONE evidence) | pending | next round |
 
 ## Next Steps
-1. Round 9: decide whether T003b-iii (findings-scoped fallback-branch
-   tiering) is worth building given how rarely that branch is reached in
-   production, or proceed to T003c with it deferred — a DECISION either
-   way, per DECISION F108 D4's own note.
-2. T003c: persist the diff to evidence, pass a real `full_ref` path, wire
-   T001's `load_cached_summary`/`save_summary` at both call sites.
-3. T003d: the long-artifact fixture and size-comparison recording — the
-   feature's own DONE-condition evidence.
-4. Integration gate (full suite, both required runs) before closure.
-5. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
+1. Round 10: T003d — a fixture diff/log large enough to trigger tiering at
+   BOTH call sites, an end-to-end assertion that the composed prompt's
+   character count is an order of magnitude smaller than the raw diff
+   (mirroring `test_artifact_summaries.py`'s own fixture test from round
+   7), and the size-comparison numbers recorded — the feature's own
+   DONE-condition evidence.
+2. Integration gate (full suite, both required runs) before closure.
+3. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
    package.
 
 ## Risks
-- T003c persists real diffs to evidence for the first time under F108 —
-  the round names the exact evidence path convention (mirroring an
-  existing evidence writer rather than inventing one) before writing to
-  disk, and confirms cache invalidation (T001's hash check) actually
-  fires across two different rounds of the SAME job.
+- T003d's fixture must exercise the REAL call sites (`run_pingpong`'s
+  builder/reviewer phases), not just `render_tiered_diff_text` in
+  isolation, or the DONE condition's "enters a follow-up prompt" clause is
+  unmet by the test that claims to prove it.
