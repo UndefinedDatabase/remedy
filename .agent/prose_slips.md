@@ -308,3 +308,6 @@
 2026-08-30 · F106 R14 · The round's own block (constraint 5) described PAIR2's and PAIR4's inline comments in `packages/orchestration/pingpong_loop.py` as "six-line" and "eight-line" respectively; both are independently measured at exactly 5 physical lines each in the real committed file. Reviewer-prose wording imprecision, nothing wrong on disk; no R-id spent (amend0827-process-diet rule 2).
 
 2026-08-30 · F106 R14 · The worker's own completion report stated the C6 handoff commit's insertions as 131/116; independently re-measured via `git diff --numstat c740b8f8^..c740b8f8` as 65/50 — the file itself was correct, only the worker's stated number was off. Worker completion-report slip, nothing wrong on disk; no R-id spent (amend0827-process-diet rule 2).
+
+
+2026-09-02 · F108 R7 · The reviewer's own step block's G8 clause quoted a stale base SHA (`76982f2f`, round 5's tip, carried over from round 6's own G8 text) instead of round 7's actual base (`e7ef578f`); the worker ran both the literal and the semantically-correct command and declared the discrepancy, confirming the change set was exactly the 8 declared paths. Reviewer-prose citation drift, nothing wrong on disk; no R-id spent (amend0827-process-diet rule 2).
