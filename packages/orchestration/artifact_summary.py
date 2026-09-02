@@ -25,9 +25,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
+
+from packages.orchestration.failure_postmortem import FailureSignals, classify, utc_now_iso
+from packages.orchestration.structured_outputs import run_structured_call
 
 #: Boundary every git unified diff in this repository uses between files.
 _GIT_HEADER_RE = re.compile(r"^diff --git a/(\S+) b/(\S+)$")
@@ -193,3 +197,131 @@ def _chunk_lines(lines: list[str], chunk_lines: int) -> list[dict[str, str]]:
             }
         )
     return entries
+
+
+# ---------------------------------------------------------------------------
+# Generation (F108 T002) — the provider call that fills l1/l2[].summary
+# ---------------------------------------------------------------------------
+
+
+class GeneratedSummaryContent(BaseModel):
+    """The NARROW schema the ``summary`` role is actually asked to fill.
+
+    Deliberately excludes ``full_ref``/``artifact_hash``/``generator``/
+    ``generated_at`` — this module derives those itself and never trusts a
+    provider response for them, so a provider hallucinating a path or a hash
+    can never corrupt the cache key or the reference path.
+    """
+
+    l1: str
+    l2: list[ArtifactSummarySection]
+
+
+#: Shown to the caller instead of silently returning an empty/stale summary.
+FALLBACK_MARKER = "[summary unavailable — truncated view]"
+#: How many leading characters of the combined section text the fallback keeps.
+_FALLBACK_HEAD_CHARS = 2000
+#: How many trailing characters of the combined section text the fallback keeps.
+_FALLBACK_TAIL_CHARS = 2000
+
+
+def _build_summary_prompt(sections: list[dict[str, str]]) -> str:
+    """Mechanically build a summary-generation prompt from T001's section list.
+
+    Never raises, including for ``sections == []``.
+    """
+    blocks = [
+        f"## {entry.get('section', '')} ({entry.get('span_ref', '')})\n{entry.get('text', '')}"
+        for entry in sections
+    ]
+    rendered = "\n\n".join(blocks) if blocks else "(no sections)"
+    instruction = (
+        "Write an L1 summary of about 200 tokens covering all sections above, "
+        "and one L2 entry per section given above. Each L2 entry's `section` "
+        "and `span_ref` MUST echo the corresponding input section's own "
+        "`section`/`span_ref` values exactly — do not invent, rename, split, "
+        "or merge section names."
+    )
+    return f"{rendered}\n\n{instruction}"
+
+
+def _fallback_summary(
+    sections: list[dict[str, str]],
+    full_ref: str,
+    artifact_hash: str,
+    reason: str,
+) -> ArtifactSummary:
+    """The "never silent, never blocking" fallback. NEVER raises, for any input."""
+    combined = "\n\n".join(entry.get("text", "") for entry in sections)
+
+    if len(combined) <= _FALLBACK_HEAD_CHARS + _FALLBACK_TAIL_CHARS:
+        # Nothing to truncate — do not fabricate a head/tail split.
+        fallback_text = combined
+    else:
+        head = combined[:_FALLBACK_HEAD_CHARS]
+        tail = combined[-_FALLBACK_TAIL_CHARS:]
+        fallback_text = f"{head}\n...\n{tail}"
+
+    return ArtifactSummary(
+        l1=FALLBACK_MARKER,
+        l2=[ArtifactSummarySection(section="fallback", span_ref="fallback", summary=fallback_text)],
+        full_ref=full_ref,
+        generator=f"fallback:{reason}",
+        generated_at=utc_now_iso(),
+        artifact_hash=artifact_hash,
+    )
+
+
+def generate_artifact_summary(
+    sections: list[dict[str, str]],
+    full_ref: str,
+    artifact_hash: str,
+    call_fn: Callable[[str, int], str] | None = None,
+    *,
+    on_call: Callable[[int, str, bool, str], None] | None = None,
+    generator_label: str = "summary-role",
+) -> ArtifactSummary:
+    """Generate an :class:`ArtifactSummary` via the ``summary`` role, or fall back.
+
+    NEVER raises: the fallback IS the error path, not an exception. Mirrors the
+    three-way shape of :func:`packages.orchestration.dod_compiler.compile_dod`
+    (``call_fn is None`` / try-except-Exception around the structured call /
+    ``not outcome.ok``).
+
+    ``full_ref``/``artifact_hash``/``generator``/``generated_at`` ALWAYS come
+    from this function's own parameters/clock, never from the provider's
+    response — see :class:`GeneratedSummaryContent`.
+    """
+    if call_fn is None:
+        return _fallback_summary(sections, full_ref, artifact_hash, reason="no provider")
+
+    prompt = _build_summary_prompt(sections)
+
+    try:
+        outcome = run_structured_call(
+            GeneratedSummaryContent,
+            prompt,
+            call_fn,
+            on_call=on_call,
+            allow_parse_retry=True,
+        )
+    except Exception as exc:
+        classification = classify(FailureSignals(exception=exc))
+        return _fallback_summary(
+            sections, full_ref, artifact_hash, reason=classification.failure_class.value)
+
+    if not outcome.ok:
+        classification = classify(
+            FailureSignals(error_class=outcome.error_class, error_text=outcome.hint))
+        return _fallback_summary(
+            sections, full_ref, artifact_hash, reason=classification.failure_class.value)
+
+    assert isinstance(outcome.value, GeneratedSummaryContent)
+    return ArtifactSummary(
+        l1=outcome.value.l1,
+        l2=outcome.value.l2,
+        full_ref=full_ref,
+        generator=generator_label,
+        generated_at=utc_now_iso(),
+        artifact_hash=artifact_hash,
+    )
