@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
 from packages.orchestration.exec_guard import run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_provider import (
@@ -828,6 +829,11 @@ Return ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.
 
 _REPAIR_DIFF_CAP = 20000
 
+#: F108 DECISION D3 — deliberately equal to `_REPAIR_DIFF_CAP`: tiering now
+#: activates exactly where flat truncation used to, replacing it rather than
+#: adding a second, disconnected size boundary.
+_OVERSIZED_DIFF_THRESHOLD_CHARS = _REPAIR_DIFF_CAP
+
 
 # Pre-migration the builder's parts were joined with "\n"; segments join with
 # PROMPT_SEGMENT_DELIMITER ("\n\n"), so every boundary would gain one newline it
@@ -874,6 +880,7 @@ def compose_builder_prompt(
     test_result: str = "",
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
+    tiered_diff_text: str = "",
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
 
@@ -935,6 +942,17 @@ def compose_builder_prompt(
         specs.append((
             "builder_staged_diff", SegmentStabilityRank.JOB_CONTEXT,
             [resume_hunks_text],
+        ))
+    elif tiered_diff_text:
+        # F108 DECISION D3: a pre-rendered L1+relevant-L2 replacement for an
+        # oversized diff, for the SAME segment name/rank the flat-cap branch
+        # below uses -- the caller (run_pingpong's `_builder_tiered_diff_text`)
+        # supplies this pre-rendered, exactly like `resume_hunks_text` above;
+        # this function performs no summarization of its own. An empty
+        # string always falls through to the flat-cap branch below.
+        specs.append((
+            "builder_staged_diff", SegmentStabilityRank.JOB_CONTEXT,
+            [tiered_diff_text],
         ))
     elif safe_diff and findings:
         capped = safe_diff[:_REPAIR_DIFF_CAP]
@@ -1021,6 +1039,38 @@ def compose_builder_prompt(
     return compose_prompt_segments(registry.registered_segments())
 
 
+def _builder_tiered_diff_text(
+    repair_diff: str,
+    findings: list[ReviewFinding] | None,
+    is_resumed: bool,
+    call_fn_factory: Callable[[], Callable[[str, int], str] | None],
+    *,
+    threshold_chars: int,
+    full_ref: str,
+) -> str:
+    """Compute the builder's tiered-summary replacement for an oversized
+    repair diff, or "" when tiering does not apply -- the caller's existing
+    flat-cap fallback (`compose_builder_prompt`'s `elif safe_diff and
+    findings:` branch) then applies unchanged (F108 DECISION D3).
+
+    `is_resumed` mirrors the caller's own precedence: a resumed session's
+    shrunk hunk render already takes priority over the flat diff (DECISION
+    F106 D1(b)), so this function must not spend a provider-availability
+    resolve computing a value the caller would discard -- `call_fn_factory`
+    (`summary_call_fn` itself, unapplied) is invoked only inside the branch
+    that needs its result.
+    """
+    if is_resumed or not repair_diff or not findings:
+        return ""
+    if len(repair_diff) <= threshold_chars:
+        return ""
+    file_refs = {f.file for f in findings}
+    return render_tiered_diff_text(
+        repair_diff, file_refs, call_fn_factory(),
+        threshold_chars=threshold_chars, full_ref=full_ref,
+    )
+
+
 def _build_builder_prompt(
     goal: str,
     context: str,
@@ -1034,13 +1084,15 @@ def _build_builder_prompt(
     test_result: str = "",
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
+    tiered_diff_text: str = "",
 ) -> str:
     """The builder prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_builder_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string. ``hunk_ledger`` and ``resume_hunks_text`` are forwarded
-    UNCHANGED and mean exactly what they mean there.
+    this string. ``hunk_ledger``, ``resume_hunks_text``, and
+    ``tiered_diff_text`` are forwarded UNCHANGED and mean exactly what they
+    mean there.
     """
     return compose_builder_prompt(
         goal,
@@ -1054,6 +1106,7 @@ def _build_builder_prompt(
         test_result=test_result,
         hunk_ledger=hunk_ledger,
         resume_hunks_text=resume_hunks_text,
+        tiered_diff_text=tiered_diff_text,
     ).text
 
 
@@ -3021,6 +3074,12 @@ def run_pingpong(
                     staging, parse_diff_line_ranges(repair_diff),
                     max_total_chars=_REPAIR_DIFF_CAP,
                 ))
+            builder_tiered_diff_text = _builder_tiered_diff_text(
+                repair_diff, findings if is_repair else None,
+                bool(builder_resume_ref and repair_diff), summary_call_fn,
+                threshold_chars=_OVERSIZED_DIFF_THRESHOLD_CHARS,
+                full_ref=f"repair diff, round {round_num} (F108: not yet persisted to evidence)",
+            )
             builder_composed = compose_builder_prompt(
                 effective_goal, context,
                 round_number=round_num,
@@ -3032,6 +3091,7 @@ def run_pingpong(
                 test_result=prev_test_result,
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,
+                tiered_diff_text=builder_tiered_diff_text,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed

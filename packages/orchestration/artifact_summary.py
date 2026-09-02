@@ -1,4 +1,4 @@
-"""Tiered artifact summary schema, sectioners, generation, and the T003a call bridge (F108 T001/T002/T003a).
+"""Tiered artifact summary schema, sectioners, generation, the T003a call bridge, and T003b diff-tiering rendering (F108 T001/T002/T003a/T003b).
 
 An oversized job artifact (a diff, a log, a report) gets a tiered
 representation instead of being included in full: a short L1 summary, a
@@ -371,3 +371,42 @@ def select_relevant_sections(
     """
     refs = set(file_refs)
     return [section for section in summary.l2 if section.section in refs]
+
+
+# ---------------------------------------------------------------------------
+# F108 T003b — rendering the tiered diff-inclusion text
+# ---------------------------------------------------------------------------
+
+
+def render_tiered_diff_text(
+    diff_text: str,
+    file_refs: Iterable[str],
+    call_fn: Callable[[str, int], str] | None,
+    *,
+    threshold_chars: int,
+    full_ref: str,
+) -> str:
+    """Render a tiered L1+relevant-L2 replacement for an oversized diff, or "".
+
+    F108 T003b: the pre-rendered text a caller (``pingpong_loop.py``'s
+    ``_builder_tiered_diff_text``) substitutes for its own flat-capped diff
+    segment. Returns "" when ``diff_text`` is at or under ``threshold_chars``
+    -- the caller's signal to keep its own flat-cap behavior unchanged.
+    Above threshold: sections the diff (``section_diff``), generates via
+    ``generate_artifact_summary`` (never raises -- the fallback IS the error
+    path), selects only the sections matching ``file_refs``
+    (``select_relevant_sections``), and renders the L1 summary plus each
+    selected L2 section plus a ``full_ref`` line so the model knows more
+    exists.
+    """
+    if len(diff_text) <= threshold_chars:
+        return ""
+    sections = section_diff(diff_text)
+    artifact_hash = compute_artifact_hash(diff_text.encode("utf-8"))
+    summary = generate_artifact_summary(sections, full_ref, artifact_hash, call_fn)
+    relevant = select_relevant_sections(summary, file_refs)
+    lines = [f"## Current Staged Diff (summarized)\n{summary.l1}\n"]
+    for entry in relevant:
+        lines.append(f"### {entry.section} ({entry.span_ref})\n{entry.summary}\n")
+    lines.append(f"Full diff: {full_ref} ({len(diff_text)} characters)\n")
+    return "\n".join(lines)
