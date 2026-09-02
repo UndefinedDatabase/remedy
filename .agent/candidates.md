@@ -6,18 +6,12 @@
 > candidate: description · source feature · date. Any entry present at
 > feature-claim time is a block condition.
 
-One candidate is currently open (below). The prior entry recorded after
-F106's closure (job/mission resume-from-persisted-state, DECISION F106 D2)
-was registered in F108 round 1 as finding `R-0762` in
-`.agent/live_review.md`; the reason and full detail are on that record.
+EMPTY — no candidate is open.
 
-## Open candidates
-
-- description: README.md duplicates F106's capability paragraph — a
-  correct version sits under "Accepted in Tier 3 so far" and a second,
-  differently-worded version is misplaced under "Accepted in Tier 5 so
-  far" (the wrong tier for a Tier-3 feature). Fix: remove the misplaced
-  duplicate, or merge its wording into the canonical entry, in a future
-  docs round.
-  source feature: F108
-  date: 2026-09-02
+The entry F108's closure round recorded on 2026-09-02 — `README.md` carries
+F106's capability paragraph twice, the second copy misplaced under "Accepted
+in Tier 5 so far" — was registered in F109 round 1 as finding `R-0769` in
+`.agent/live_review.md`; the reason, the measurement and the routing are on
+that record. The entry recorded after F106's closure (job/mission
+resume-from-persisted-state, DECISION F106 D2) was registered in F108 round 1
+as finding `R-0762` on the same record.
