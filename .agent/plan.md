@@ -1,7 +1,7 @@
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 5, round 17.
+SESSION 5, round 18.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -13,21 +13,25 @@ working.
 ## Current Step
 
 T001, T002 (both sides) and T003 are ALL DONE. The round 16 integration
-gate found R-0760 (Medium, OPEN): 5 fake provider/reviewer classes across
-3 test files never got the additive `resume` no-op parameter. This round
-REPAIRS R-0760 — the same additive fix shape already used twice
-(R-0758, R-0759 — both CLOSED).
+gate found R-0760; round 17 repaired it (independently confirmed, full
+suite 18736 passed / 0 failed at both the worker's and the reviewer's own
+from-scratch runs). This round books both pending verdicts (RECORD16,
+RECORD17) and the `Done: R-0760` resolution — pure ledger bookkeeping,
+permitted during the closure sequence (amend0827-process-diet rule 1).
+Closure precondition 2 (a PASSING dedicated integration gate) is now MET:
+round 16's base-side comparison is still valid (zero production change
+since, confirmed by round 17's own G7) and round 17's branch-side re-run
+is clean.
 
 ## Next Steps
-1. This round: apply the additive `resume: str | None = None` parameter to
-   the 7 named signatures (5 classes, 2 of them carrying both `build` and
-   `review`) across `test_structured_outputs.py`, `test_worktree_isolation.py`
-   and `test_worktree_persistence.py`; confirm 0 failures.
-2. Next: re-run the FULL integration gate (branch only — the base side is
-   unaffected by a test-only fix) to confirm the gate is clean; only then
-   does F106 move on to the feature file's Built State section
-   (precondition 4) and the rest of the closure sequence.
+1. Feature file Built State section (precondition 4) — describe what
+   T001-T003 actually built, citing real files/functions/measured numbers.
+2. Resolve the feature file's own job/mission-resume scope note (F075
+   candidate routing, R-0201, also carried in `.agent/context.md`) against
+   Task slicing — a DECISION, since Acceptance never required it and no
+   round ever sliced it in.
+3. Self-use track consumption (precondition 6), evidence job, review zip,
+   STATUS line, PR — the closure algorithm's remaining steps.
 
 ## Risks
-- This is a test-only fix (zero behavior change to any production code) —
-  confirm via `git diff --stat -- packages/` staying empty this round.
+- None new this round — pure ledger bookkeeping, zero code/doc change.
