@@ -399,6 +399,25 @@ No markdown. No code fence. No explanation. ONLY the JSON object.
 """
 
 
+def extract_builder_files_from_text(text: str) -> list[str]:
+    """Read a prompt-only builder's changed-file list out of its free text.
+
+    A provider that cannot write to the workspace (the direct-API and local
+    Ollama paths) reports its changes as prose. The repo's builder prompt asks
+    for them as a bullet list, so a bullet whose first token looks like a path
+    with an extension is taken as one changed file. Shared by every prompt-only
+    builder so the two paths cannot drift into two readings of the same output.
+    """
+    files: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- ") and "/" in stripped:
+            candidate = stripped[2:].split()[0].strip("`")
+            if "." in candidate:
+                files.append(candidate)
+    return files
+
+
 class ClaudeProvider:
     """Real Claude API provider via anthropic SDK.
 
@@ -480,14 +499,7 @@ class ClaudeProvider:
             text, dur, tokens = self._call(
                 prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
-            # Parse builder output — look for structured sections
-            files = []
-            for line in text.splitlines():
-                stripped = line.strip()
-                if stripped.startswith("- ") and "/" in stripped:
-                    candidate = stripped[2:].split()[0].strip("`")
-                    if "." in candidate:
-                        files.append(candidate)
+            files = extract_builder_files_from_text(text)
             return BuilderOutput(
                 summary=text[:500],
                 files_changed=files,
