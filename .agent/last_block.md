@@ -1,244 +1,193 @@
-── STEP T002b-ii/2b(Reviewer) — F106 ─────────────────────────────────────
-Goal: Mirror round 12's Builder-side design onto the Reviewer side of
-T002b-ii step 2b: `compose_reviewer_prompt` gains a `resume_hunks_text`
-parameter that, when non-empty, replaces the diff-shaped segment on
-WHICHEVER of its two mutually exclusive branches (scoped ->
-`reviewer_focused_diff`, unscoped -> `reviewer_staged_diff`) would
-otherwise fire — same segment name/rank each branch already uses. The
-call site computes it via round 11's frozen `render_repair_hunks(
-select_repair_hunks(...))`, gated on the round-9 hoisted
-`reviewer_resume_ref`. An empty render always falls back to the
-unconditional path. With this round, T002 is fully closed on both sides.
+── STEP T003/1 — F106 ──────────────────────────────────────────────────
+Goal: Close T003, the last open item on F106: a fixture repair chain that
+shows a MEASURED prompt-byte reduction when a repair round resumes versus
+when it resends full context (the feature's own Goal & Done acceptance
+criterion, docs/roadmap/features/T3_F106.md), plus a built-state doc
+recording the measured numbers. Zero production code changes — T001 and
+T002 (both sides, closed rounds 2-14) already wired the mechanism this
+round measures and documents. Also books round 14's already-produced
+verdict (RECORD14) and its two prose-only notes into the permanent record,
+per amend0827-process-diet rule 1 (a pushed handoff is a durable carrier;
+its verdict is booked in the first round that is happening anyway, not a
+round of its own).
 
 Bundle:
-  C0a — save this step block verbatim to .agent/authored/f106-r14.md
+  C0a — save this step block verbatim to .agent/authored/f106-r15.md
   C0b — mirror it into .agent/last_block.md
-  C1  — rewrite .agent/plan.md for round 14 (PLAN14 below)
-  C2  — append RECORD14 (booking round 13's PASS) to
-        .agent/live_review.md, ONE paragraph
-  C3  — append PROSESLIPR13 to .agent/prose_slips.md, ONE paragraph
-  C4  — apply the four pairs below to packages/orchestration/pingpong_loop.py
-  C5  — apply the golden-test changes to
-        tests/orchestration/test_reviewer_prompt_golden.py
-  C6  — rewrite .agent/handoff.md for round 14 handback
+  C1  — rewrite .agent/plan.md for round 15 (PLAN15 below)
+  C2  — append RECORD14 (booking round 14's PASS) to .agent/live_review.md,
+        ONE paragraph
+  C3  — append two dated lines (PROSESLIPR14A, PROSESLIPR14B) to
+        .agent/prose_slips.md, in that order
+  C4  — append the new test class below to
+        tests/orchestration/test_session_resume.py
+  C5  — add docs/system/session-resume-v1.md (SESSIONRESUMEDOC below,
+        with <PIN> replaced by C4's real commit SHA before writing),
+        register it in docs/README.md (two rows: PAIR-QUICKFIND,
+        PAIR-SYSTABLE below), and append PAIR-BACKLINK below to
+        docs/system/diff-only-repair-v1.md's "## Related" section
+  C6  — rewrite .agent/handoff.md for round 15 handback
 
-Change: exactly packages/orchestration/pingpong_loop.py and
-tests/orchestration/test_reviewer_prompt_golden.py, plus the six
-.agent/** paths named in C0a/C0b/C1/C2/C3/C6. No path under
-packages/orchestration/diff_repair.py (frozen round 11, untouched), no
-test_builder_prompt_golden.py (round 12's own shape, untouched), no
-test_repair_loop.py (R-0759 already closed round 13, untouched).
+Change: exactly tests/orchestration/test_session_resume.py,
+docs/system/session-resume-v1.md (new file), docs/README.md,
+docs/system/diff-only-repair-v1.md, plus the six .agent/** paths named in
+C0a/C0b/C1/C2/C3/C6. No path under packages/ — this round is tests + docs
+only, zero production code.
 
 Constraints:
-1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile,
-   never cp, never retyped), exempt from the 500-line cap.
-2. C1 — PLAN14 is a REWRITE of .agent/plan.md, applied via
-   shutil.copyfile from .remedy-wt/f106-r14-plan.md (38 lines, < 50,
-   holds `## Goal`/`## Next Steps`, sha256
-   516ba9577d45cdd146a8ee21c49b5317850abe4f564ab953c688efac9dd29ef2,
-   1761 bytes).
+1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile, never
+   cp, never retyped), exempt from the 500-line cap.
+2. C1 — PLAN15 is a REWRITE of .agent/plan.md, applied via
+   shutil.copyfile from .remedy-wt/f106-r15-plan.md (30 lines, < 50, holds
+   `## Goal`/`## Next Steps`, sha256
+   838177464fd521896c771661e074221aa1dcfb96a3277ea3a5fbf5838564a97f, 1235
+   bytes).
 3. C2 — ONE paragraph appended to .agent/live_review.md, never retyped:
-   RECORD14 (.remedy-wt/f106-r14-record14.txt, 3499 bytes, sha256
-   37c86639c47af99a655255799a95c934285a8896d0b00659d4525cdee4c70b22). Re-
-   measure the file's own base length and trailing-newline state before
-   appending. At this round's base the file is 1870717 bytes and does
-   NOT end in a trailing newline, so the separator is "\n\n" (matching
-   round 13's own corrected reading, not round 12's original mistake).
-   Expected total: base + 2 + 3499 = base + 3501.
-4. C3 — ONE paragraph appended to .agent/prose_slips.md, never retyped:
-   PROSESLIPR13 (.remedy-wt/f106-r14-prose1.txt, 631 bytes, sha256
-   edf3b1418ea3de3ad0db2e4a418581afaf78886d020792f57a1ff5d44e62d0ab).
-   THIS FILE'S OWN CONVENTION: every entry, including this one, already
-   carries its own trailing newline (re-verify: the file's current last
-   byte is `\n`), so the append is base + "\n" + PROSESLIPR13 — a SINGLE
-   newline separator here, not "\n\n" (constraint 3's file and this one
-   use DIFFERENT conventions; do not copy one constraint's arithmetic
-   into the other). Expected total at this round's base (37812 bytes):
-   37812 + 1 + 631 = 38444.
-5. C4 — FOUR REWRITE pairs against packages/orchestration/pingpong_loop.py,
-   applied IN ORDER, each independently verified: FROM exactly 1x
-   pre-commit/0x post; TO exactly 0x pre-commit/1x post;
-   `TO contains FROM: false` for every one. Exactly as validated by the
-   reviewer in a disposable worktree before this block was authored
-   (ast.parse clean, ruff clean, full suite green, mutation red-proofed
-   — you are REPRODUCING this, not discovering it fresh):
-     PAIR1-SIGNATURE — `compose_reviewer_prompt`'s keyword-only parameter
-       list gains `resume_hunks_text: str = "",` as the new last entry,
-       immediately before `) -> ComposedPrompt:`, right after
-       `task_id: str = "",`.
-     PAIR2-BODY-BRANCH — the diff-segment selection block (`if scoped:
-       if safe_diff: ... elif diff_summary: ... elif safe_diff: ... elif
-       diff_summary: ...`) gains a NEW `if resume_hunks_text:` check as
-       the FIRST branch inside the `if scoped:` leg (appending
-       `[resume_hunks_text]` to `reviewer_focused_diff`, no fence, no
-       cap) and a NEW `elif resume_hunks_text:` check as the FIRST leg
-       of the outer `if scoped: ... elif ...` chain (appending
-       `[resume_hunks_text]` to `reviewer_staged_diff`). Every existing
-       `elif safe_diff`/`elif diff_summary` branch is otherwise BYTE
-       UNCHANGED — only re-flowed under the two new checks. A six-line
-       comment above the scoped-branch check names this round, DECISION
-       F106 D1(b), and states the empty-string fallback.
-     PAIR3-BUILD-REVIEWER-PROMPT-SHIM — `_build_reviewer_prompt` (the
-       test-only passthrough wrapper) gains the identical
-       `resume_hunks_text: str = "",` parameter and forwards it
-       unchanged into its own `compose_reviewer_prompt(...)` call, plus
-       a one-clause docstring update.
-     PAIR4-CALLSITE — immediately before the existing
-       `reviewer_composed = compose_reviewer_prompt(...)` call (which
-       already exists, unchanged in its own body except gaining
-       `resume_hunks_text=reviewer_resume_hunks_text,` as its new last
-       kwarg), insert an eight-line comment plus the
-       `reviewer_resume_hunks_text` computation: empty string by
-       default; when `reviewer_resume_ref and reviewer_safe_diff` are
-       both truthy, import `render_repair_hunks`/`select_repair_hunks`
-       from `packages.orchestration.diff_repair` and
-       `parse_diff_line_ranges` from
-       `packages.orchestration.review_scope`, then set it to
-       `render_repair_hunks(select_repair_hunks(staging,
-       parse_diff_line_ranges(reviewer_safe_diff),
-       max_total_chars=_REVIEWER_DIFF_CAP))` — note `_REVIEWER_DIFF_CAP`
-       (30000, the UNSCOPED cap) is used for BOTH branches' render
-       budget; the scoped branch's own smaller `_REVIEWER_SCOPED_DIFF_CAP`
-       is a full-diff cap and is deliberately NOT reused here, since the
-       shrink render is a new, independent budget rather than a
-       substitute for either existing cap.
-   Simplest correct application: shutil.copyfile the whole scratch file
-   at .remedy-wt/f106-r14-pingpong_loop.py onto
-   packages/orchestration/pingpong_loop.py directly (already validated
-   end to end); verify the four pairs' own properties AFTER the copy,
-   against the real committed diff, never before. sha256 of the target
-   file after copying (re-measure, do not trust this number over your
-   own sha256sum):
-   16540f25c16c1bd3a48165ba8863594dec365d922d449306f3e714b847a47262,
-   207851 bytes.
-6. C5 — shutil.copyfile the whole scratch file at
-   .remedy-wt/f106-r14-test_reviewer_prompt_golden.py onto
-   tests/orchestration/test_reviewer_prompt_golden.py. It adds TWO new
-   fixture shapes ("scoped_resumed" and "fallback_resumed", one per
-   mutually exclusive branch, each mirroring its own "_full" sibling
-   with `resume_hunks_text` set), two new frozen render entries
-   (captured by RUNNING the current branch's own `compose_reviewer_prompt`
-   twice and writing `repr()` of each reconstructed pre-migration-order
-   render — not retyped, provenance stated inline), and a new
-   `TestResumeHunksTextReplacesTheDiffOnEitherBranch` class (8 tests,
-   covering both branches' segment order/rank, both branches' raw-render
-   content, both "_full" shapes staying byte-unchanged, and both
-   branches' empty-string fallback). No existing `_FROZEN_RENDERS` entry,
-   `_SHAPES` entry, or test function is edited or removed — confirm by
-   diffing the four pre-existing dict values byte-for-byte against the
-   pre-commit file. sha256 of the target file after copying:
-   87f17dd5afd279d836d72a37774d8a458fb909ef6450fb899e08629625b27132,
-   24483 bytes.
-7. Mutation red-proof for C4 is MANDATORY (production code), disposable
-   worktree only (self_drive_protocol.md G5). Recipe: replace BOTH
-   `if resume_hunks_text:` (inside the `if scoped:` leg) and
-   `elif resume_hunks_text:` (the outer chain's first leg) with
-   `if False:  # MUTATED` / `elif False:  # MUTATED` respectively, and
-   confirm `python3 -B -m pytest
-   tests/orchestration/test_reviewer_prompt_golden.py -q` goes RED at
-   exactly 4 failures
-   (`test_segments_reassemble_into_the_frozen_render[fallback_resumed]`,
-   `test_segments_reassemble_into_the_frozen_render[scoped_resumed]`,
-   `TestResumeHunksTextReplacesTheDiffOnEitherBranch::test_scoped_resumeds_diff_segment_is_the_raw_render`,
-   `TestResumeHunksTextReplacesTheDiffOnEitherBranch::test_fallback_resumeds_diff_segment_is_the_raw_render`),
-   26 passed — the reviewer already ran this exact recipe pre-delegation
-   and got this exact split; reproduce it, then revert BOTH lines and
-   confirm 30 passed again before removing the worktree.
-8. No `.agent/**` file other than plan.md, live_review.md,
-   prose_slips.md, last_block.md, handoff.md and the one new
-   authored/f106-r14.md is touched.
+   RECORD14 (.remedy-wt/f106-r15-record14.txt, 4350 bytes, sha256
+   d8f6d0bc7c3b3133024f52d07d6a8c4588ad8bdd550458263511e03dedf9e5b7).
+   Re-measure the file's own base length and trailing-newline state before
+   appending. At this round's base the file is 1874218 bytes and does NOT
+   end in a trailing newline, so the separator is "\n\n". Expected total:
+   base + 2 + 4350 = base + 4352 = 1878570 bytes, sha256
+   cf49bcaf444168e6f0890a09aa6ef746ecf9f27e06e5b05c05f8d0ab849ab2b1.
+4. C3 — TWO paragraphs appended to .agent/prose_slips.md, never retyped,
+   IN ORDER: PROSESLIPR14A (.remedy-wt/f106-r15-prose1.txt, 398 bytes,
+   sha256 3858b346007ba262edac9a1da178dd0d74f860996c739b9545c7deb1161b18a4)
+   then PROSESLIPR14B (.remedy-wt/f106-r15-prose2.txt, 370 bytes, sha256
+   5dd71bfb281070c1bf024363a2351ef39130f83f50ed8c1a1f52ef12c1a20bfd). THIS
+   FILE'S OWN CONVENTION: every entry, including these two, already carries
+   its own trailing newline (re-verify: the file's current last byte is
+   `\n`), so the append is base + "\n" + PROSESLIPR14A + "\n" +
+   PROSESLIPR14B — single-newline separators, not "\n\n" (this file's
+   convention differs from live_review.md's; do not copy constraint 3's
+   arithmetic here). Expected total at this round's base (38444 bytes):
+   38444 + 1 + 398 + 1 + 370 = 39214 bytes, sha256
+   aa2627345eb174400e9e32e15446121c79270aee22378cb916666f7e47ffff22.
+5. C4 — APPEND-shaped pair against tests/orchestration/test_session_resume.py:
+   FROM is the file's real current EOF (the file has no lines after
+   `assert all(rd.reviewer_output.resume_fallback is False for rd in
+   result.rounds)\n` — 15293 bytes, sha256
+   c90746200c1613821bb5f1de789028057a3f62fb52647e90ef129f7e5e7e5681); TO is
+   FROM plus the exact text of .remedy-wt/f106-r15-test-append.txt (3645
+   bytes, sha256 1ed3d46b20abfa6c93c34ba60601f4a12a74d1630c626cb9198ed841da33b402)
+   appended verbatim, never retyped (shutil.copyfile the base, then a
+   single open(...,'ab').write() of the scratch bytes, or equivalent).
+   Expected post-commit file: 18938 bytes, sha256
+   b0eb31478b0ed1c2fd6f96ae2537ed391b8f7ebecac49c215fa938009c83d008. This
+   was dry-run verified by the reviewer before this block was authored, in
+   a disposable scratch copy, never the tracked file: `ast.parse` clean,
+   `ruff check` clean (repo's own pyproject config, not --isolated), and
+   `pytest <scratch copy> -q` 27 passed (26 pre-existing + 1 new) — you are
+   REPRODUCING this against the real tracked file, not discovering it
+   fresh. Do not alter the test's logic, fixtures, or assertions; the two
+   `print(...)` lines inside the new test are DELIBERATE evidence output
+   (docs/system/session-resume-v1.md's measured table cites them), not
+   debug leftovers — keep them.
+6. C5a — docs/system/session-resume-v1.md is a NEW file: copy
+   .remedy-wt/f106-r15-doc.md (5699 bytes, sha256
+   c27ea0a2600cefd419a5b59baab13ea3dba697cc1c83bb7f341e286484c5e30d)
+   verbatim via shutil.copyfile, THEN replace the single literal token
+   `<PIN>` (appears exactly once, in the "Measured at commit" sentence)
+   with C4's real commit SHA (a plain string replace on the one token —
+   this is the ONLY edit permitted to the copied text; every other byte
+   stays exactly as scratch). The measured-numbers table (Builder
+   1331/1384, Reviewer 2208/2270) is not a projection — it is the real
+   output of running the C4 test (`pytest
+   tests/orchestration/test_session_resume.py -k T003MeasuredTokenReduction
+   -s`, printed lines) after C4 lands; re-run it and confirm the four
+   numbers match before C5, and if they do not, STOP and report rather
+   than editing the doc's numbers to match a different reading — a
+   mismatch means either the dry-run above was not reproduced faithfully
+   or something in this environment differs, and either way is a finding,
+   not a rounding error to paper over.
+7. C5b — PAIR-QUICKFIND, a REWRITE against docs/README.md's Quick-Find
+   Table (mechanically verified by the reviewer: FROM occurs exactly 1x
+   pre-commit, TO 0x pre-commit, `TO contains FROM: false`):
+     FROM (2 lines, exact, currently lines 63-64):
+       "| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |\n| snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |\n"
+     TO:
+       "| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |\n| session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |\n| snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |\n"
+   Re-grep both anchor lines' exact current byte content before applying —
+   this branch has not touched docs/README.md before, so they should be
+   unmoved from what is quoted here, but verify rather than assume.
+8. C5c — PAIR-SYSTABLE, a REWRITE against docs/README.md's System
+   Documentation table (mechanically verified, same shape as C5b),
+   currently lines 137-138:
+     FROM (2 lines, exact):
+       "| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |\n| [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |\n"
+     TO:
+       "| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |\n| [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |\n| [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |\n"
+9. C5d — PAIR-BACKLINK, an APPEND-shaped pair against
+   docs/system/diff-only-repair-v1.md (mechanically verified: TO contains
+   FROM):
+     FROM = the file's real current WHOLE-FILE bytes, 5246 bytes, sha256
+     6bcb06cb68ea081a54f85ce9b53db20844e7d3a2b9995b169003c968ee5b4a08
+     (ends "...never applies code and never calls a provider.\n-
+     `docs/roadmap/features/T2_F111.md` — the target spec and its
+     decisions.\n" — re-read the WHOLE file yourself before applying; the
+     pair is the full-file byte-exact prefix, not the tail excerpt shown
+     here for anchoring).
+     TO = FROM plus, appended at EOF:
+       "- [session-resume-v1.md](session-resume-v1.md) — reuses `select_repair_hunks`/`render_repair_hunks` for a different purpose: shrinking a REPAIR PROMPT under an active resumed session, never applying a patch; DECISION F111 D1 (no diff-apply seam in `pingpong_loop.py`) is unchanged.\n"
+     Expected post-commit file: 5530 bytes, sha256
+     243f7d692c331a7e71e3742b3aa86e62f8ca6fd10573ea85da218edc702634ee.
+10. C5 touches no path outside docs/system/session-resume-v1.md,
+    docs/README.md, docs/system/diff-only-repair-v1.md. No packages/ path,
+    no test path, in C5.
+11. C6 — .agent/handoff.md rewrite: state and F106's SESSION NUMBER (still
+    5, this is the session's only round), branch, commit SHAs, a
+    changed-files table, this round's real verification results (all 8
+    gates below with real numbers, not "green"), open-findings count
+    (unchanged at this round — no new R-id), and next expected action:
+    F106 moves to CLOSURE next round, per
+    docs/roadmap/STATUS_closure_protocol.md (evidence job + fresh review
+    zip, the authored STATUS line, PR creation) — T001, T002 (both sides)
+    and T003 are now ALL closed.
 
-Done when (8 gates, exact commands):
-  G1 TRANSPORT — `.agent/authored/f106-r14.md` and `.agent/last_block.md`
-     byte-equal (sha256), both equal to this block's own bytes as
-     received.
-  G2 THE PLAN — `.agent/plan.md` sha256 equals
-     516ba9577d45cdd146a8ee21c49b5317850abe4f564ab953c688efac9dd29ef2,
-     `wc -l` < 50, holds `## Goal`/`## Next Steps`.
-  G3 THE LIVE_REVIEW APPEND — re-measure `.agent/live_review.md`'s
-     length and trailing-byte state immediately before C2 (BASE);
-     confirm post-C2 length equals BASE + 3501 AND the file's last
-     `\n\n`-delimited unit equals RECORD14 exactly.
-  G4 THE PROSE_SLIPS APPEND — re-measure `.agent/prose_slips.md`'s
-     length immediately before C3 (BASE2); confirm post-C3 length
-     equals BASE2 + 632 AND the file's last `\n\n`-delimited unit equals
-     PROSESLIPR13 exactly.
-  G5 THE LEDGER — line-anchored regex counts before and after C2: `^-
-     (R-\d+) — ` unmoved at 320; `^Done: (R-\d+) — ` (distinct ids)
-     unmoved at 57; `^DECISION (F\d+ D\d+) — ` unmoved at 20 (this round
-     books no new finding or decision).
-  G6 THE CODE — `ast.parse` on both touched files, exit 0; `ruff check
-     packages/orchestration/pingpong_loop.py
-     tests/orchestration/test_reviewer_prompt_golden.py`, exit 0, "All
-     checks passed!"; the four C4 pairs and the C5 whole-file sha256,
-     independently re-measured against the real committed files.
-     `git diff --stat` for `packages/orchestration/diff_repair.py`,
-     `tests/orchestration/test_builder_prompt_golden.py` and
-     `tests/orchestration/test_repair_loop.py`: all three EMPTY.
-  G7 THE TESTS AND MUTATION — `python3 -m pytest
-     tests/orchestration/test_reviewer_prompt_golden.py -q`, REAL exit
-     0, 30 passed. Then the broadened zero-behavior-change suite:
-     `python3 -m pytest tests/orchestration/test_reviewer_prompt_golden.py
-     tests/orchestration/test_builder_prompt_golden.py
-     tests/orchestration/test_pingpong.py
-     tests/orchestration/test_provider_mode.py
-     tests/orchestration/test_provider_evidence_integration.py
-     tests/orchestration/test_session_resume.py
-     tests/orchestration/test_builder_prompt_quality.py
-     tests/orchestration/test_builder_prompt_hunk_rejections.py
-     tests/orchestration/test_provider_retry.py -q`, REAL exit 0, 270
-     passed. Then constraint 7's mutation red-proof, reported as:
-     unmutated exit+count, mutated exit+count+failing-test-names,
-     reverted exit+count, worktree removed, `git worktree list`
-     afterward shows only the primary checkout.
-  G8 THE TREE — `git status --porcelain` empty, `git ls-files --others
-     --exclude-standard` empty, every commit's insertions via `git diff
-     --numstat <sha>^..<sha>` (C0a/C0b exempt as verbatim `.agent/**`
-     state-file saves).
+Done when (run every command yourself; record REAL exit codes, never the
+word "green"):
+G1 TRANSPORT — .agent/authored/f106-r15.md and .agent/last_block.md both
+   sha256-equal to this block as saved (single digest comparison).
+G2 THE PLAN — .agent/plan.md sha256 838177464fd521896c771661e074221aa1dcfb96a3277ea3a5fbf5838564a97f,
+   30 lines (`wc -l`), holds `## Goal` and `## Next Steps`.
+G3 LIVE_REVIEW APPEND — .agent/live_review.md is 1878570 bytes, sha256
+   cf49bcaf444168e6f0890a09aa6ef746ecf9f27e06e5b05c05f8d0ab849ab2b1; its
+   last `\n\n`-delimited unit is byte-equal to RECORD14
+   (.remedy-wt/f106-r15-record14.txt); negative control — flip one byte
+   inside that last unit in a SCRATCH copy and confirm the flipped copy no
+   longer byte-equals RECORD14 (never mutate the tracked file itself).
+G4 PROSE_SLIPS APPEND — .agent/prose_slips.md is 39214 bytes, sha256
+   aa2627345eb174400e9e32e15446121c79270aee22378cb916666f7e47ffff22.
+G5 THE LEDGER — `grep -cE '^- R-[0-9]{4} — '`,
+   `grep -cE '^Done: R-[0-9]{4} — '` and
+   `grep -cE '^DECISION F[0-9]+ D[0-9]+ — '` over .agent/live_review.md
+   read 320, 59 and 20 respectively, IDENTICAL before (base) and after
+   (HEAD) this round's C2 — this round adds no new finding.
+G6 THE CODE — zero production change: `git diff --stat` for every path
+   under `packages/` over the whole round is EMPTY.
+G7 TESTS AND DOCS — `python3 -m pytest tests/orchestration/test_session_resume.py -q`
+   REAL exit 0, 27 passed (26 pre-existing + 1 new); the new test's two
+   `print(...)` lines, re-run with `-s -k T003MeasuredTokenReduction`,
+   read `resumed=1331 full=1384` (builder) and `resumed=2208 full=2270`
+   (reviewer) and both inequalities hold; `ast.parse`/`ruff check` on
+   tests/orchestration/test_session_resume.py exit 0; `python3 -m pytest
+   tests/docs/ -q` REAL exit 0, 295 passed (this round's own base reading,
+   re-confirmed by the reviewer before this block was authored; docs/README.md
+   is in `PRIMARY_DOCS` and its markdown links are swept by
+   `TestPrimaryDocLinksResolve`, so this gate is meaningful for C5, not
+   vacuous); docs/README.md contains exactly one
+   occurrence each of `session-resume-v1.md` in the Quick-Find Table and
+   in the System Documentation table (2 total, `grep -c` over the whole
+   file); docs/system/session-resume-v1.md exists and contains the
+   substrings `supports_resume`, `resume_hunks_text`, `T002b-ii`, and the
+   four measured numbers `1331`, `1384`, `2208`, `2270`.
+G8 THE TREE — `git status --porcelain` empty; every commit's insertions
+   via `git diff --numstat <sha>^..<sha>` under 500 (C0a/C0b exempt as
+   verbatim `.agent/**` state-file saves); the canary
+   (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0; HEAD pushed
+   and equal to `origin/feature/f106-session-resume`.
 
-Handback: completion report (every gate above, one line each, REAL
-numbers only) + rewrite .agent/handoff.md with the standard sections.
-─────────────────────────────────────────────────────────────────────────
-
-
-PLAN14 (exact byte-for-byte content of .remedy-wt/f106-r14-plan.md;
-apply via shutil.copyfile, never retype):
-
-# Plan — F106 Session resume instead of rebuild
-
-Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 4, round 14.
-
-## Goal
-Repair rounds stop resending the world: where the provider supports resuming
-a session, a repair call resumes the original session and sends only the
-findings delta, with an honest automatic fallback to full context when the
-session is gone, flagged in evidence. Correctness never depends on resume
-working.
-
-## Current Step
-
-| Item | Status | Reason |
-|------|--------|--------|
-| T001, T002a, T002b-i, T002c, T002b-ii step 1, R-0758 | done | rounds 2-10 |
-| T002b-ii step 2a/2b (Builder side), R-0759 | done | rounds 11-13 |
-| T002b-ii step 2b (Reviewer side): wire the shrink in | done | this round |
-| T003: measured fixture comparison + docs | open | next |
-
-## Next Steps
-1. T003: a fixture repair chain showing MEASURED token reduction with
-   resume versus without (Goal & Done's own acceptance criterion,
-   docs/roadmap/features/T3_F106.md). Needs a `FakeProvider` chain with
-   `supports_resume=True` across two repair rounds, comparing prompt
-   char counts (or a token estimate) with and without a resumed session,
-   plus docs recording the measured numbers. T002 (both sides of
-   T002b-ii step 2b) is now fully closed, so T003 is unblocked.
-2. Once T003 lands, F106 moves to closure per
-   docs/roadmap/STATUS_closure_protocol.md.
-
-## Risks
-- No adapter's `supports_resume` is true in production yet — only
-  `FakeProvider` ever resumes or fails a resume; T003's fixture chain is
-  necessarily `FakeProvider`-driven for the same reason T001-T002 were.
-- DECISION F106 D1's D1-compatibility reading governed both sides of the
-  shrink; T003 measures the OUTCOME of that decision, not a new one.
+Handback: completion report + rewrite .agent/handoff.md (C6 above). State
+the real numbers for every gate above, not the word "green". Name every
+deviation, however small.
+──────────────────────────────────────────────────────────────────────────
