@@ -20,23 +20,16 @@ summary never blocks the run.
 | T003 re-scoped to `pingpong_loop.py` | done | round 6, R-0765/D2 |
 | T003a generation-call bridge + relevant-section matching | done | round 6 |
 | T003b-i/ii builder+reviewer scoped-diff wiring + tests | done | rounds 7-8, D3/D4 |
-| T003c real persisted `full_ref` + disk caching, both call sites | done | round 9, DECISION F108 D5 |
+| T003c real persisted `full_ref` + disk caching, both call sites | done | round 9, D5 |
+| T003d long-artifact fixture + size comparison (DONE evidence) | done | round 10, D6 |
 | T003b-iii reviewer fallback-branch wiring | pending | deferred, D4 |
-| T003d long-artifact fixture + size comparison (DONE evidence) | pending | next round |
 
 ## Next Steps
-1. Round 10: T003d — a fixture diff/log large enough to trigger tiering at
-   BOTH call sites, an end-to-end assertion that the composed prompt's
-   character count is an order of magnitude smaller than the raw diff
-   (mirroring `test_artifact_summaries.py`'s own fixture test from round
-   7), and the size-comparison numbers recorded — the feature's own
-   DONE-condition evidence.
-2. Integration gate (full suite, both required runs) before closure.
-3. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
+1. Integration gate (full suite, both required runs) before closure.
+2. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
    package.
 
 ## Risks
-- T003d's fixture must exercise the REAL call sites (`run_pingpong`'s
-  builder/reviewer phases), not just `render_tiered_diff_text` in
-  isolation, or the DONE condition's "enters a follow-up prompt" clause is
-  unmet by the test that claims to prove it.
+- None open. T003d's fixture exercised the REAL call sites (`run_pingpong`'s
+  builder/reviewer phases) per DECISION F108 D6, discharging the prior
+  round's Risk note.
