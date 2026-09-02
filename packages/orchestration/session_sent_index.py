@@ -28,8 +28,12 @@ rather than conclude the wiring was forgotten):
     ``invalidate_on_resume_fallback`` decides which session a fallen-back resume
     must forget. What is still absent is only the CALL SITES — nothing in
     ``pingpong_loop.py`` invokes it yet, and wiring those seams is T001b-ii.
-  - No prompt is rewritten here. Replacing an already-sent segment with a short
-    reference marker is the composition hook, F109 T002.
+  - The dedupe DECISION and the MARKER TEXT now live here (T002a):
+    ``should_dedupe_segment`` decides whether a segment may be replaced, and
+    ``dedupe_marker_for_segment`` says what the replacement reads. What is still
+    absent is the COMPOSITION HOOK that calls them — no prompt is rewritten here,
+    and nothing in ``pingpong_loop.py`` invokes either function yet — together
+    with the config plumbing that supplies ``enabled``; both are F109 T002b.
 
 Public API::
 
@@ -39,11 +43,14 @@ Public API::
     session_id_of_finalized_call(output) -> str
     record_finalized_call(index, output, manifest_rows) -> int
     invalidate_on_resume_fallback(index, output, resumed_ref="") -> bool
+    DEDUPE_MIN_SEGMENT_CHARS        — default minimum length worth replacing
+    dedupe_marker_for_segment(name) -> str
+    should_dedupe_segment(text, sha256, sent_hashes, *, enabled, min_chars) -> bool
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Container, Iterable, Mapping, Sequence
 
 
 class SessionSentIndexError(Exception):
@@ -255,6 +262,68 @@ def invalidate_on_resume_fallback(
         return False
     index.invalidate_session(ref)
     return True
+
+
+# The minimum segment length worth replacing at all. A marker has its OWN length,
+# so replacing a tiny segment can cost more than it saves: the marker for a
+# typical segment name runs to roughly forty characters, so a floor of 200 keeps
+# the replacement worth making by a factor of several. This is a DEFAULT, not a
+# law — both functions below take an override.
+DEDUPE_MIN_SEGMENT_CHARS = 200
+
+
+def dedupe_marker_for_segment(name: str) -> str:
+    """The short reference marker that REPLACES an already-sent segment's text.
+
+    The NAME stays inside the marker deliberately: the model must still be able to
+    refer to the segment it is no longer being shown, so the marker withholds the
+    content without withholding the means of asking for it back.
+
+    Raises ``SessionSentIndexError`` when ``name`` is not a non-empty string after
+    stripping. A nameless marker would tell the model that something it cannot
+    identify was withheld, which is worse than simply sending the segment again.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise SessionSentIndexError(
+            f"a dedupe marker needs a non-empty segment name: {name!r}"
+        )
+    return f"[unchanged: {name}, previously provided]"
+
+
+def should_dedupe_segment(
+    text: str,
+    sha256: str,
+    sent_hashes: Container[str],
+    *,
+    enabled: bool = True,
+    min_chars: int = DEDUPE_MIN_SEGMENT_CHARS,
+) -> bool:
+    """Whether this segment may be replaced by its marker; the WHOLE decision.
+
+    True only when every condition holds: dedupe is ``enabled``, ``sha256`` is a
+    non-empty string that ``sent_hashes`` already contains, and ``text`` is a
+    string of at least ``min_chars`` characters. ``sent_hashes`` is any container
+    supporting ``in`` — the frozenset ``SessionSentIndex.sent_hashes()`` returns is
+    the intended caller. The length comparison is ``>=``, so a segment of exactly
+    ``min_chars`` IS deduped and one character fewer is not.
+
+    ``enabled`` is consulted FIRST and alone, so the config kill switch disables
+    dedupe provably and totally rather than mostly.
+    """
+    if not enabled:
+        return False
+    # MALFORMED INPUT RETURNS FALSE RATHER THAN RAISING, and the contrast with
+    # record_call is deliberate rather than an inconsistency: a bad manifest
+    # corrupts the index silently and so must be loud, whereas a bad dedupe input
+    # has an obviously correct safe answer — send the full content. Correctness
+    # before savings.
+    if not isinstance(sha256, str) or not sha256.strip():
+        return False
+    if sha256 not in sent_hashes:
+        return False
+    if not isinstance(text, str):
+        return False
+    return len(text) >= min_chars
 
 
 def _segment_hashes_from_manifest(
