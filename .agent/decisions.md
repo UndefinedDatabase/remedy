@@ -9904,3 +9904,57 @@ pinned to the new truth by making the README true, not by editing the test.
 
 REVERSE by restoring the three README hunks to their pre-`fcaf8c69` values; the
 two assertions then go red again exactly as they were.
+## 2026-09-02: amend0831-vocab-registrations — registration of F259-F266
+
+Operator order `amend0831-vocab-registrations` (2026-08-31) registers eight
+features — F259 vocabulary & concept model, F260 job/execution marriage, F261
+CLI vocabulary v2, F262 list commands v2, F263 human-change absorption, F264
+steering channel, F265 teacher learning UI v1, F266 `remedy study`. REGISTRATION
+ONLY: nothing in the eight files is implemented on this branch.
+
+EXECUTION ORDER (operator decision of 2026-08-31, recorded here rather than in
+`docs/roadmap/STATUS.md` because the order says so): the eight lines are
+inserted directly after the amend0830 cost-first block in the sequence F262,
+F259, F260, F261, F263, F264, F265, F266 — lists first, then the vocabulary
+block, then absorb and chat, then the learning UI and study. Rule A5 still
+answers F108, because all six cost-first lines stand above these eight.
+
+DISCRETIONARY DECISION 1 — three tier headings, not a bare insertion.
+Order 2b says to insert the eight lines directly after the anchor line (F114).
+A bare insertion there would place all eight under the enclosing
+`## Tier 3 — Cost-First Pull-Forward` heading, and
+`tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier`
+derives each line's tier FROM that heading and pins it against the
+`T<tier>_F<id>.md` filename — so all eight would have been read as Tier 3 and
+the pin would have gone red for every one of them. The operator's sequence
+happens to fall into three CONTIGUOUS tier runs (F262/F259/F260/F261/F263 are
+all Tier 2; F264/F265 are Tier 5; F266 is Tier 4), so three tier headings carry
+the eight lines in the operator's exact order with no reordering whatsoever.
+Duplicate tier headings are already this file's house shape — amend0830 used a
+second `## Tier 3` heading for the same reason, and Tiers 8, 9, 12, 13, 16 and
+17 each appear in both packages. REVERSE by moving the eight lines into their
+tier blocks further down and deleting the three headings and the HTML comment
+above them.
+
+DISCRETIONARY DECISION 2 — the operator's DECISION paragraphs are rendered in
+English. Order 1 says to anchor D-A, D-B, D-C, D-D and D-E "wörtlich" (verbatim)
+as dated DECISION paragraphs; the operator's own wording is German, and this
+repository's standing documentation rule is that all new documentation is
+written in English (D-B itself rules that CLI words stay English). Each DECISION
+is therefore a faithful English rendering that preserves every clause, including
+each one's scope limits and its reversal instruction, and each is labelled with
+its letter, its date and the ordering order's name so the source is traceable.
+REVERSE by replacing the five paragraphs with the German originals.
+
+LEDGER ATOMICITY. The STATUS insertion, the `TOTAL_FEATURES` pin (258 -> 266,
+`tests/docs/test_docs_consistency.py`) and the README figures (the accepted line
+`66 of 258` -> `66 of 266`; Tier 2 Total 14 -> 19, Tier 4 Total 16 -> 17, Tier 5
+Total 32 -> 34, the tier totals still summing to 266) land in ONE commit, as the
+order requires. The README's ACCEPTED count is untouched at 66 — registering a
+feature accepts nothing. No assertion was weakened; only pinned expected values
+were raised to the new truth.
+
+MEASURED: `tests/docs/` 295 passed, `tests/orchestration/test_roadmap_index.py`
+30 passed, `tests/cli/test_golden_path.py` 42 passed;
+`remedy plan status --json` reports feature_count 266, scheduled_count 266, no
+inconsistencies, and still proposes F108.

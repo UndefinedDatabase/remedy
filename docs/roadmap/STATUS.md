@@ -18,6 +18,24 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [ ] F112 — Prompt budget per task class
 - [ ] F114 — Cost preview per command
 
+<!-- operator order amend0831-vocab-registrations (2026-08-31): the eight lines below are the registrations of that order, inserted directly after the amend0830 cost-first block in the operator-decided execution order F262, F259, F260, F261, F263, F264, F265, F266. They carry three tier headings because that order happens to fall into three contiguous tier runs (five Tier 2, two Tier 5, one Tier 4) and tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier pins each line's STATUS-derived tier — the enclosing '## Tier <n>' heading — against its T<tier>_F<id>.md filename. Reversible by moving these eight lines into their tier blocks further down and deleting these three headings and this comment. -->
+## Tier 2 — Vocabulary & Concept Block (operator order amend0831)
+
+- [ ] F262 — List commands v2 (dates, sort, filter)
+- [ ] F259 — Vocabulary & concept model v1
+- [ ] F260 — Job/execution marriage (one job model)
+- [ ] F261 — CLI vocabulary v2 (rename & prune)
+- [ ] F263 — Human-change absorption (working name: absorb)
+
+## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
+
+- [ ] F264 — Steering channel (remedy chat)
+- [ ] F265 — Teacher learning UI v1 (post-task lessons)
+
+## Tier 4 — Repo Comprehension (operator order amend0831)
+
+- [ ] F266 — remedy study (repo comprehension pass)
+
 ## Tier 0 — Foundation & Trust Core
 
 - [x] F001 — Adaptive provider timeouts + retry (PR #123 · commit 4856006 · external transition PASS)
