@@ -120,6 +120,13 @@ consumed item is RUN through the real job path to the normal approval gate,
 not merely planned; and any defect the run surfaces flows back into that same
 ledger as a normal finding).
 
+F106 session resume instead of rebuild (a repair round resumes the prior
+round's own provider session — gated on the provider honestly advertising
+support and a captured prior session id, never guessed — and sends only a
+hunk-selected findings delta in place of the full diff, with an honest,
+automatic fallback to full context the instant a resume attempt errors;
+the reduction is measured against a fixture repair chain, not assumed).
+
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
 ## Install
