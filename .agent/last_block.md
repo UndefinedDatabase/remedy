@@ -1,100 +1,111 @@
-── STEP CLOSURE-BOOKKEEPING/1 — F106 ──────────────────────────────────────
-Goal: Book round 16's and round 17's already-produced verdicts (RECORD16,
-RECORD17) and the `Done: R-0760` resolution into the permanent record, per
-amend0827-process-diet rule 1 (a pushed handoff is a durable carrier) and
-STATUS_closure_protocol.md's own exception permitting pure bookkeeping
-rounds inside the closure sequence. Conclude that closure precondition 2
-(a PASSING dedicated integration gate) is now MET.
+── STEP CLOSURE-BUILTSTATE/1 — F106 ──────────────────────────────────────
+Goal: Satisfy closure precondition 4 (feature file's Built State section is
+current) by appending a Built State section to
+docs/roadmap/features/T3_F106.md describing what T001-T003 actually built,
+with real file/function citations and the T003 measured byte-reduction
+numbers. Register DECISION F106 D2, resolving the feature file's own Scope
+note (job/mission resume-from-persisted-state, F075 candidate routing
+R-0201) against Task slicing: close F106 on T001-T003 alone, carrying the
+job/mission-resume half forward as a closure-commit candidate rather than
+building it now or dropping it silently.
 
 Bundle:
-  C0a — save this step block verbatim to .agent/authored/f106-r18.md
+  C0a — save this step block verbatim to .agent/authored/f106-r19.md
   C0b — mirror it into .agent/last_block.md
-  C1  — rewrite .agent/plan.md for round 18 (PLAN18 below)
-  C2  — append THREE paragraphs to .agent/live_review.md, IN ORDER:
-        RECORD16, RECORD17, then the `Done: R-0760` resolution
-  C3  — rewrite .agent/handoff.md for round 18 handback
+  C1  — rewrite .agent/plan.md for round 19 (PLAN19 below)
+  C2  — append the Built State section to
+        docs/roadmap/features/T3_F106.md (APPEND pair, below)
+  C3  — append DECISION F106 D2 (one paragraph) to .agent/live_review.md
+  C4  — rewrite .agent/handoff.md for round 19 handback
 
-Change: exactly the three .agent/** paths named in C0a/C0b/C1/C2/C3. No
-path under packages/, apps/, tests/, docs/.
+Change: exactly the .agent/** paths of C0a/C0b, .agent/plan.md,
+docs/roadmap/features/T3_F106.md, .agent/live_review.md and
+.agent/handoff.md. No path under packages/, apps/, tests/.
 
 Constraints:
 1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile, never
    cp, never retyped), exempt from the 500-line cap.
-2. C1 — PLAN18 is a REWRITE of .agent/plan.md, applied via shutil.copyfile
-   from .remedy-wt/f106-r18-plan.md (37 lines, < 50, holds `## Goal`/
+2. C1 — PLAN19 is a REWRITE of .agent/plan.md, applied via shutil.copyfile
+   from .remedy-wt/f106-r19-plan.md (33 lines, < 50, holds `## Goal`/
    `## Next Steps`, sha256
-   602601e18dbf2f57b3109e1a8ab5e65b25f3a0eecbf13ba065d92176c0b94031, 1763
+   084510784d8b9df15dd31223d7ea44df4736c813cfab87a63f62ac24b4b22609, 1536
    bytes).
-3. C2 — a THREE-PARAGRAPH append to .agent/live_review.md, never retyped,
-   IN ORDER: RECORD16 (.remedy-wt/f106-r18-record16.txt, 4333 bytes,
-   sha256 8b43f92bb06facf9f841e8a1a83b24eb86e71e80e1146fcd5e8c0669536ceaa9),
-   RECORD17 (.remedy-wt/f106-r18-record17.txt, 3462 bytes, sha256
-   5f3189f4c1c66cf657df330a2543ef41ecaf911ec0560c4d7e170c5d40b50a01), then
-   the `Done: R-0760` resolution (.remedy-wt/f106-r18-done0760.txt, 609
-   bytes, sha256 f7390447773140e9932bc8f9c28d7d8eb20b3b26c424552d9f42f2d8289513d0).
-   Re-measure the file's own base length and trailing-newline state before
-   appending: at this round's base the file is 1886871 bytes and does NOT
-   end in a trailing newline, so EVERY separator is "\n\n" (this file's
-   own convention — do not use the single-newline convention
-   `.agent/prose_slips.md` uses). Expected total: base + 2 + 4333 + 2 +
-   3462 + 2 + 609 = base + 8410 = 1895281 bytes, sha256
-   f67351cc48b93ec4bfdc9906013ef78abd803234448d413faddffa65b5b0daf0. (If
+3. C2 — an APPEND pair on docs/roadmap/features/T3_F106.md. TO contains
+   FROM verbatim as a prefix (containment test run at emission: true).
+   FROM is the file's own trailing paragraph starting `## Scope note
+   (F075 candidate routing, 2026-08-06)` through end of file — 501 bytes,
+   sha256 07532a048612db00c45b405e7b9f3b593a6b66a16f724306e45ca31e551dbc5f,
+   occurring exactly 1x in the base file. TO is FROM + one `\n` + the
+   verbatim contents of .remedy-wt/f106-r19-builtstate.txt (1950 bytes,
+   sha256 0fb23b0b804c00ca359d93071f5ba68ec43cb48fa0f9770f8ff27f438942719a,
+   itself never retyped, applied via shutil.copyfile) — TO totals 2452
+   bytes, sha256
+   e88c497fd5739a4841180a4daa6f0a7a155b613b50bc5a7c642404347652e842. The
+   base file is 4025 bytes before this commit; the post-commit file is
+   base + 1 + 1950 = 5976 bytes, sha256
+   1c4abe34db9508e1113b31ce90bb498fd89b419ad6d64cac779b9f849a5df5c7, 113
+   lines (`wc -l`).
+4. C3 — a ONE-PARAGRAPH append to .agent/live_review.md, never retyped,
+   applied via shutil.copyfile from .remedy-wt/f106-r19-decision2.txt
+   (4485 bytes, sha256
+   779fdc9148fc654a1e28ec7e087b162af2f95a59ad2cfa72450154ef89ae050d, zero
+   internal newlines, no trailing newline). Re-measure the file's own base
+   length before appending: at this round's base the file is 1895281 bytes
+   and does NOT end in a trailing newline, so the separator is "\n\n" (this
+   file's own convention). Expected total: base + 2 + 4485 = 1899768
+   bytes, sha256
+   03f4719e80889a685c22fc0c6eb41f69155ba1a9cd5329478f7c746a5c499757. (If
    your own measured total differs from this arithmetic, recompute the sum
-   yourself rather than trusting either number blindly — this is prose the
-   reviewer wrote under the same rules that produced the R13
-   arithmetic-slip class this repository's own record already carries two
-   examples of; state which number you land on and why.)
-4. C3 — .agent/handoff.md rewrite per AGENTS.md's handoff contract: state,
-   SESSION 5, branch, commit SHAs, a changed-files table, this round's
-   real gates (below), open-findings count (321 registered, 60 resolved —
-   R-0760 now Done — 20 decisions), and next expected action: closure
-   precondition 2 is MET; the next round is the feature file's Built State
-   section (precondition 4) plus a DECISION resolving the feature file's
-   own job/mission-resume scope note against Task slicing (named in
-   PLAN18's own Next Steps).
+   yourself rather than trusting either number blindly, and state which
+   number you land on and why.)
+5. C4 — .agent/handoff.md rewrite per AGENTS.md's handoff contract: state,
+   SESSION 6, branch, commit SHAs, a changed-files table, this round's
+   real gates (below), open-findings count (321 registered, 60 resolved,
+   21 decisions — up from 20), and next expected action: closure
+   precondition 4 is MET and DECISION F106 D2 is registered; the next
+   round addresses closure precondition 3
+   (`remedy integrity check --json` / no relevant untracked files) and
+   precondition 6 (self-use track consumption), naming that DECISION F106
+   D2 obliges the eventual closure commit to add ONE entry to
+   .agent/candidates.md (the exact text is in DECISION F106 D2 itself).
 
 Done when (run every command yourself; record REAL exit codes, never the
 word "green"):
-G1 TRANSPORT — .agent/authored/f106-r18.md and .agent/last_block.md both
+G1 TRANSPORT — .agent/authored/f106-r19.md and .agent/last_block.md both
    sha256-equal to this block as saved (single digest comparison).
 G2 THE PLAN — .agent/plan.md sha256
-   602601e18dbf2f57b3109e1a8ab5e65b25f3a0eecbf13ba065d92176c0b94031, 37
+   084510784d8b9df15dd31223d7ea44df4736c813cfab87a63f62ac24b4b22609, 33
    lines (`wc -l`), holds `## Goal` and `## Next Steps`.
-G3 THE THREE-PARAGRAPH APPEND — .agent/live_review.md's real post-commit
-   bytes and sha256 (compute and report; constraint 3 gives the expected
-   arithmetic but you verify it, not assume it); the file's last THREE
-   `\n\n`-delimited units, in order, are byte-equal to RECORD16, RECORD17
-   and the `Done: R-0760` text respectively; negative control — flip one
-   byte inside a SCRATCH copy of RECORD16 (the FIRST appended paragraph)
-   and confirm the flipped copy no longer byte-equals the file's own
-   third-from-last unit (never mutate the tracked file itself).
-G4 THE LEDGER — `grep -cE '^- R-[0-9]{4} — '` reads 321 (unmoved — no new
-   id this round); `grep -cE '^Done: R-[0-9]{4} — '` reads 60 (up from 59
-   — exactly `Done: R-0760` added, confirmed by `grep -c '^Done: R-0760 — '`
-   reading exactly 1); `grep -cE '^DECISION F[0-9]+ D[0-9]+ — '` reads 20
-   (unmoved) — all over .agent/live_review.md at HEAD.
-G5 CLOSURE PRECONDITION 2 — state explicitly, citing the real evidence:
-   the BASE side is `.agent/gate_f106_r16/base_run.txt` (base worktree at
-   merge-base `811c2d7e96b4719b8c76e6fc59ec6d926847a026`, exit 0, 18681
-   passed, 0 failed, measured at round 16's own tip `029376be`) — still
-   valid because `git diff --stat 029376be..HEAD -- packages/ apps/`
-   (round 16's tip, the commit the base measurement was actually taken
-   AT, to THIS round's own HEAD — NOT the merge-base itself, which of
-   course differs from HEAD across this whole branch's work) independently
-   confirmed EMPTY (re-run this yourself; do not assume it) proves no
-   production file has moved since that base measurement was taken, so
-   re-running the disposable base worktree would reproduce the identical
-   result at real cost for no new information. The BRANCH side is a fresh
-   run at THIS round's own HEAD: `python3 -m pytest -n auto -q` — record
-   the real exit code, passed/failed/skipped counts. Precondition 2 is MET
-   only if this fresh branch run is exit 0 with 0 failed; if it is not,
-   STOP before C3 and report instead of concluding MET.
-G6 THE TREE — `git status --porcelain` empty; every commit's insertions
-   under 500 (C0a/C0b exempt as verbatim `.agent/**` state-file saves);
-   canary (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0; HEAD
-   pushed and equal to `origin/feature/f106-session-resume`.
+G3 THE FEATURE FILE APPEND — docs/roadmap/features/T3_F106.md's real
+   post-commit bytes and sha256 (compute and report; constraint 3 gives
+   the expected arithmetic but you verify it, not assume it); the file's
+   tail is byte-equal to the TO text of constraint 3; `grep -c '^## Built
+   State' docs/roadmap/features/T3_F106.md` reads exactly 1, and
+   `grep -n '^## '` shows it is the LAST such heading in the file.
+G4 THE LEDGER APPEND — .agent/live_review.md's real post-commit bytes and
+   sha256 (compute and report; constraint 4 gives the expected arithmetic
+   but you verify it, not assume it); the file's last `\n\n`-delimited
+   unit is byte-equal to the DECISION F106 D2 text; negative control —
+   flip one byte inside a SCRATCH copy of that text and confirm the
+   flipped copy no longer byte-equals the file's own last unit (never
+   mutate the tracked file itself).
+G5 THE LEDGER COUNTS — over .agent/live_review.md at HEAD:
+   `grep -cE '^- R-[0-9]{4} — '` reads 321 (unmoved — no new finding id
+   this round); `grep -cE '^Done: R-[0-9]{4} — '` reads 60 (unmoved);
+   `grep -cE '^DECISION F[0-9]+ D[0-9]+ — '` reads 21 (up from 20 —
+   exactly `DECISION F106 D2` added, confirmed by
+   `grep -c '^DECISION F106 D2 — '` reading exactly 1).
+G6 THE DOCS GATE — `python3 -m pytest tests/orchestration/test_roadmap_index.py
+   tests/docs/ -q`: REAL exit 0; report the passed count (325 at this
+   round's base — confirm it is unchanged or explain any difference).
+G7 THE TREE — `git status --porcelain` empty; every commit THROUGH C3's
+   insertions under 500 (C0a/C0b exempt as verbatim `.agent/**`
+   state-file saves; C4's own insertions are reported in the handback,
+   not gated here, since C4 is the handback commit itself); canary
+   (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0; HEAD pushed
+   and equal to `origin/feature/f106-session-resume`.
 
-Handback: completion report + rewrite .agent/handoff.md (C3 above). State
+Handback: completion report + rewrite .agent/handoff.md (C4 above). State
 the real numbers for every gate above, not the word "green". Name every
 deviation, however small.
 ─────────────────────────────────────────────────────────────────────────
