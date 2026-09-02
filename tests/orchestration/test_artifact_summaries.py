@@ -11,6 +11,7 @@ from packages.orchestration.artifact_summary import (
     compute_artifact_hash,
     generate_artifact_summary,
     load_cached_summary,
+    render_tiered_diff_text,
     save_summary,
     section_diff,
     section_log,
@@ -337,3 +338,91 @@ def test_summary_call_fn_returns_callable_with_ollama(monkeypatch):
     assert fn is not None
     result = fn("test prompt", 0)
     assert "l1" in result
+
+
+# ---------------------------------------------------------------------------
+# F108 T003b — render_tiered_diff_text
+# ---------------------------------------------------------------------------
+
+
+def _synthetic_diff_fixture(file_count: int = 50, pad_lines: int = 15) -> str:
+    """Build a long synthetic diff of >=25000 chars from many small file sections."""
+    parts = []
+    for i in range(file_count):
+        name = f"synthetic_{i}.py"
+        body = "\n".join(f"+padding line {j} for {name}" for j in range(pad_lines))
+        parts.append(
+            f"diff --git a/{name} b/{name}\n"
+            f"index 1111111..2222222 100644\n"
+            f"--- a/{name}\n"
+            f"+++ b/{name}\n"
+            f"@@ -1,1 +1,{pad_lines} @@\n"
+            f"{body}\n"
+        )
+    return "".join(parts)
+
+
+def test_render_tiered_diff_text_under_threshold_returns_empty_string():
+    diff_text = "y" * 20
+
+    result = render_tiered_diff_text(
+        diff_text, ["foo.py"], None, threshold_chars=100, full_ref="whatever.diff")
+
+    assert result == ""
+
+
+def test_render_tiered_diff_text_over_threshold_selects_only_relevant_sections():
+    fake_response = json.dumps({
+        "l1": "a two-file summary",
+        "l2": [
+            {"section": "foo.py", "span_ref": "file:foo.py", "summary": "FOO_SUMMARY_TEXT"},
+            {"section": "bar.py", "span_ref": "file:bar.py", "summary": "BAR_SUMMARY_TEXT"},
+        ],
+    })
+
+    def fake_call_fn(prompt: str, attempt: int) -> str:
+        return fake_response
+
+    result = render_tiered_diff_text(
+        _TWO_FILE_DIFF, ["foo.py"], fake_call_fn,
+        threshold_chars=50, full_ref="test-ref.diff")
+
+    assert "FOO_SUMMARY_TEXT" in result
+    assert "BAR_SUMMARY_TEXT" not in result
+    assert "Full diff:" in result
+    assert "test-ref.diff" in result
+
+
+def test_render_tiered_diff_text_over_threshold_no_call_fn_uses_fallback():
+    result = render_tiered_diff_text(
+        _TWO_FILE_DIFF, ["foo.py"], None,
+        threshold_chars=50, full_ref="test-ref.diff")
+
+    assert FALLBACK_MARKER in result
+    assert "Full diff:" in result
+
+
+def test_render_tiered_diff_text_reduces_size_by_an_order_of_magnitude_on_a_long_diff_fixture():
+    diff_text = _synthetic_diff_fixture()
+    assert len(diff_text) >= 25000
+
+    fake_response = json.dumps({
+        "l1": "x" * 100,
+        "l2": [
+            {
+                "section": "synthetic_0.py",
+                "span_ref": "file:synthetic_0.py",
+                "summary": "only section summary",
+            },
+        ],
+    })
+
+    def fake_call_fn(prompt: str, attempt: int) -> str:
+        return fake_response
+
+    result = render_tiered_diff_text(
+        diff_text, ["synthetic_0.py"], fake_call_fn,
+        threshold_chars=20000, full_ref="long-fixture.diff")
+
+    assert len(result) < len(diff_text) / 10
+    assert "Full diff:" in result
