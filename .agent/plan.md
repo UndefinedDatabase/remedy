@@ -1,7 +1,7 @@
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 6, round 21.
+SESSION 6, round 22.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -11,28 +11,26 @@ session is gone, flagged in evidence. Correctness never depends on resume
 working.
 
 ## Current Step
-Round 20 ran SU-003 for real (precondition 6) and found a genuine defect:
-`create_provider()` (`packages/orchestration/pingpong_provider.py:1591`)
-has no `"ollama"` branch, so `role_config.DEFAULT_PROVIDER` can never reach
-a real provider through the ping-pong job path, blocking the run with
-`provider_unavailable`. This round registers that defect as R-0761
-(Medium) in `.agent/live_review.md`, discharging precondition 6's own
-"every string `describe_self_use_run_defects` returns is registered"
-requirement. R-0761 is NOT fixed this round — fixing it is out of F106's
-own scope (a new provider adapter, or a DEFAULT_PROVIDER change, neither
-named in T3_F106.md's Task slicing) — it is registered OPEN, exactly as
-precondition 6 requires, and left for a future feature or self-use item.
+All six closure preconditions are MET (round 21). This round executes
+STATUS_closure_protocol.md Algorithm steps 1 (evidence job) and 2 (review
+zip) only — it does NOT close the feature: no STATUS `[x]` edit, no README
+sync, no `consumed_by` edit, no PR. The evidence bundle is built via
+`packages.orchestration.job_evidence.create_manual_completion_bundle`
+(`job_id=f106-closure`) over 8 scoped verification suites (244 tests, all
+passing), then the review zip via `scripts/make_review_zip.sh`. Neither
+the evidence dir nor the zip is committed (STATUS_closure_protocol.md
+convention) — only this round's `.agent/` bookkeeping is.
 
 ## Next Steps
-1. Precondition 6 is MET once R-0761 is registered (this round).
-2. Precondition 1 requires every finding be Resolved or a documented
-   Medium/Low risk — R-0761 stays OPEN as a documented Medium risk; the
-   closure verdict will read PASS WITH RISKS, not PASS, for this reason.
-3. Evidence job, review zip, STATUS line, PR — the closure algorithm's
-   remaining steps. The closure commit also owes DECISION F106 D2's
-   `.agent/candidates.md` entry (job/mission resume deferral).
+1. Round 23: reviewer authors the STATUS line from this round's real
+   package filename/SHA-256/path, and the closure commit (STATUS.md,
+   README.md, `scripts/self_use_queue.json` SU-003 `consumed_by=F106`,
+   final `.agent/` state) plus the DECISION F106 D2 candidates.md-only
+   follow-up commit.
+2. Then: the AGENTS.md PR workflow.
+3. Merge is deferred to the next feature's Open PR Gate, per the closure
+   algorithm's own rule.
 
 ## Risks
-- R-0761 (Medium, OPEN): the self-use track's product-default provider
-  path is unreachable for the ping-pong job path. Documented, not fixed,
-  per Task-slicing scope.
+- R-0761 (Medium, OPEN) carries into the closure verdict as PASS WITH
+  RISKS, documented, not a blocker.
