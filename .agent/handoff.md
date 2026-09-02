@@ -1,124 +1,184 @@
-# Handoff — F106 Session resume instead of rebuild (CLOSED)
+# Handoff — F108 Tiered artifact summaries (round 1)
 
 ## Session
 
-SESSION 6 of feature F106 · round 23 · fifth round of this session · F106 CLOSED
-
-## State
-
-Branch `feature/f106-session-resume`, cut from `main` at `811c2d7e`. F106 is
-CLOSED: `docs/roadmap/STATUS.md` line 14 now reads `[x]`, README.md carries
-F106's capability paragraph, `scripts/self_use_queue.json`'s SU-003
-`consumed_by` is set to `F106`, and this file (`.agent/plan.md`) reflect the
-closed state. The evidence bundle (`job_id=f106-closure`) and the review zip
-were built in round 22 from commit `82278107ecea9e291d668caa9180f3d847d13e88`
-(the accepted HEAD) and are unaffected by this round's `.agent/`-and-doc-only
-commits.
+SESSION 1 of feature F108 · round 1 · rounds so far 1
 
 ## Range
 
-C0a/C0b save this round's block. C1 books round 22's own verdict (GATE22)
-into `.agent/live_review.md`. C2 is the closure commit: `docs/roadmap/
-STATUS.md`, `README.md`, `scripts/self_use_queue.json`, `.agent/plan.md`
-and this file, all together, per STATUS_closure_protocol.md Algorithm step
-5 and Rule A4 (the STATUS edit is the last substantive commit on the
-branch). C3 (following, per DECISION amend0827 D2) adds the one
-`.agent/candidates.md` entry DECISION F106 D2 obliges — a deliberate,
-declared exception to Rule A4's "STATUS is the last commit" rendering,
-touching only that one file.
+Review of `ec81e697bf498a6753d82d7e6a8d3c72467cd5d7`..`a3dbf49813a636e3db802b5ae8c8531e80a5dbef`
+(branch `feature/f108-tiered-artifact-summaries`).
 
-## Changed files (C1-C3, this round)
+## Commits
 
-| Path | Change | Commit |
-|---|---|---|
-| `.agent/authored/f106-r23.md` | new (verbatim block save) | C0a |
-| `.agent/last_block.md` | rewrite (mirror of block) | C0b |
-| `.agent/live_review.md` | append (GATE22, `\n\n`-separated) | C1 |
-| `docs/roadmap/STATUS.md` | rewrite (F106 line `[~]`→`[x]`) | C2 |
-| `README.md` | rewrite (F106 capability paragraph inserted) | C2 |
-| `scripts/self_use_queue.json` | rewrite (SU-003 `consumed_by`→`F106`) | C2 |
-| `.agent/plan.md` | rewrite (CLOSED state) | C2 |
-| `.agent/handoff.md` | rewrite (this file) | C2 |
-| `.agent/candidates.md` | rewrite (DECISION F106 D2 entry + note) | C3 |
+### 9327513f save F108 round 1 step block verbatim
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/authored/f108-r1.md` | +166/-0 (new) | C0a — save the step block verbatim before touching any state file |
 
-## Verification — this round's own gate results (real numbers, self-run)
+### 5c39c478 mirror F108 round 1 block into last_block.md
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/last_block.md` | +166/-166 (rewrite) | C0b — mirror to authored bytes; verbatim single-state-file rewrite (AGENTS.md 500-line exemption applies) |
 
-- **G1 TRANSPORT**: `.agent/authored/f106-r23.md` and `.agent/last_block.md`
-  both sha256-equal to the block as saved (single digest comparison).
-- **G2 THE LEDGER APPEND (C1)**: `.agent/live_review.md` at C1 is
-  1917528 bytes, sha256
-  `4e25a67b42f547a7271ba6e9b6fa296d3e7dfab25cedfb2baf53ce1e990bacca` —
-  base(1913990) + 2 + GATE22(3536) exactly; the file's last `\n\n`-unit
-  byte-equal to GATE22; negative control (scratch copy, first byte
-  XOR-flipped) rejected, tracked file never mutated.
-- **G3 THE STATUS LINE (C2)**: `docs/roadmap/STATUS.md`'s F106 line reads
-  `- [x] F106 — Session resume instead of rebuild (T001–T003 complete;
-  accepted 2026-09-02 · live review PASS_WITH_RISKS — ACCEPTED · Evidence
-  job f106-closure · package
-  remedy-review-20260902-115928-READY_FOR_REVIEW.zip · SHA-256
-  939f841e486a4361ec503f21bc697fc18dd9834b3312f34024339f7a865b2a65 ·
-  package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD
-  82278107ecea9e291d668caa9180f3d847d13e88)`, applied byte-for-byte from
-  the reviewer's own authored slice — no other line in the file touched.
-- **G4 THE README SYNC (C2)**: `README.md` carries the new F106 capability
-  paragraph, inserted between the F258 paragraph and the "Full per-feature
-  state:" line, applied byte-for-byte from the reviewer's own authored
-  slice — STATUS and README agree in the same commit (R-0154 pin).
-- **G5 THE QUEUE (C2)**: `scripts/self_use_queue.json`'s SU-003 object's
-  `consumed_by` field reads `"F106"`; the file parses as valid JSON; every
-  other field in the file unchanged (single-field rewrite).
-- **G6 THE LEDGER, UNMOVED BY C2/C3**: `.agent/live_review.md` is untouched
-  by C2 and C3 — 322 registered, 60 resolved, 21 decisions, 22 distinct
-  `Gate: F106 R` rounds, all as C1 left them.
-- **G7 THE TREE**: `git status --porcelain` empty; every commit's
-  insertions under 500 (C0a/C0b exempt); canary
-  (`pytest tests/cli/test_golden_path.py -q`) real exit 0, 42 passed; HEAD
-  pushed and equal to `origin/feature/f106-session-resume`.
+### 6800599f rewrite plan.md for F108 round 1
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/plan.md` | +35/-33 (rewrite) | C1 — advance plan.md as the round's first substantive commit, per SLICE PLAN |
+
+### 03e59532 claim F108 in the roadmap ledger
+| Path | +/- | Reason |
+|------|-----|--------|
+| `docs/roadmap/STATUS.md` | +1/-1 | C2 — flip F108 to `[~]` (claimed), single line |
+| `.agent/context.md` | +24/-44 (rewrite) | C2 — rewrite to F108 scope/assumptions/constraints per SLICE CONTEXT |
+
+### dcb21dd5 discharge carried closure candidate as R-0762
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | +2/-0 (append) | C3 — register the F106-closure candidate as finding R-0762 |
+| `.agent/candidates.md` | +6/-20 (rewrite) | C3 — empty the carried candidate per SLICE CANDIDATES |
+
+### a3dbf498 add F108 source inventory
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/f108_inventory.md` | +200/-0 (new) | C4 — research-only source inventory for a future round's T001 plan |
+
+### (this commit) rewrite handoff.md
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | rewrite | C5 — handback per docs/agents/handback_template.md |
+
+## External actions
+
+- `git push -u origin feature/f108-tiered-artifact-summaries` — new branch pushed; outcome: `[new branch] feature/f108-tiered-artifact-summaries -> feature/f108-tiered-artifact-summaries`, tracking set up.
+- No PR created — explicitly out of scope this round (claim+inventory only).
+
+## Verification
+
+Pre-flight (before any branch was cut):
+```
+$ gh pr list --state open --json number,headRefName,baseRefName,isDraft
+[]
+$ grep -oE "R-[0-9]{4}" .agent/live_review.md | sort -u | tail -1
+R-0761
+```
+Both matched the block's assumption; proceeded.
+
+Branch setup:
+```
+$ git rev-parse HEAD   (on main, before branch creation)
+ec81e697bf498a6753d82d7e6a8d3c72467cd5d7
+```
+Matched the required base exactly.
+
+G1 TRANSPORT — real sha256, computed after each commit:
+```
+.agent/plan.md        0dd6bff3e40299db3825b5839a1a117d44eafa5758d36b0fb8b4175bce4283e5  (35 lines, 1567 bytes) — matches slice digest
+.agent/context.md     64f3b87229fd3adb974da27ccb00d83e8cb518edb9a72fa4da30c34f5f5a6b6c  (47 lines, 2108 bytes) — matches slice digest
+.agent/candidates.md  3edd7f964bd2da624eafefef8713710567ab52ba1b11c3584ec1ab6ddaa415c0  (14 lines, 686 bytes) — matches slice digest
+.agent/authored/f108-r1.md  1c773bc793214716c9e3650e4749626a12e51e9b84096c7bebcc963b3600a15e
+.agent/last_block.md        1c773bc793214716c9e3650e4749626a12e51e9b84096c7bebcc963b3600a15e  — equal to authored, confirmed by diff (IDENTICAL)
+```
+
+G2 STATUS LINE:
+```
+$ grep -c "F108 — Tiered artifact summaries" docs/roadmap/STATUS.md
+1
+$ sed -n '15p' docs/roadmap/STATUS.md
+- [~] F108 — Tiered artifact summaries
+$ git diff ec81e697..HEAD -- docs/roadmap/STATUS.md
+(exactly one line changed: - [ ] -> - [~])
+```
+
+G3 CANDIDATES — sha256 3edd7f964bd2da624eafefef8713710567ab52ba1b11c3584ec1ab6ddaa415c0, matches.
+
+G4 CONTEXT — sha256 64f3b87229fd3adb974da27ccb00d83e8cb518edb9a72fa4da30c34f5f5a6b6c, matches.
+
+G5 PLAN — sha256 0dd6bff3e40299db3825b5839a1a117d44eafa5758d36b0fb8b4175bce4283e5, 35 lines, matches and under the 50-line cap.
+
+G6 LEDGER APPEND — before the append, base file independently re-measured: 1917528 bytes, sha256 `4e25a67b42f547a7271ba6e9b6fa296d3e7dfab25cedfb2baf53ce1e990bacca`, tail bytes `...nd the PR.` with no trailing newline — matched the block's stated base exactly. After appending `\n\n` + the SLICE R0762 bytes:
+```
+wc -c .agent/live_review.md            -> 1919122
+sha256sum .agent/live_review.md        -> 7e31a16b69b99faf7ae671410eac695f8cd61082a03ba57f8f43de92db04f16c
+grep -c "^- R-[0-9]\{4\} — "           -> 323 (up from 322)
+grep -c "^Done: R-[0-9]\{4\} — "       -> 60 (unmoved)
+grep -c "^DECISION F[0-9]\+ D[0-9]\+ — " -> 21 (unmoved)
+grep -c "R-0762"                       -> 1
+```
+All six match the block's stated values exactly.
+
+G7 SUITES — real runs:
+```
+$ python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q
+604 passed in 49.07s
+exit 0
+```
+```
+$ python3 -m pytest tests/orchestration/test_roadmap_index.py tests/docs/ -q
+325 passed in 0.74s
+exit 0
+```
+```
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+42 passed in 20.67s
+exit 0
+```
+All three exactly match the reviewer's base readings (604 / 325 / 42).
+
+G8 TREE + INVENTORY:
+```
+$ git status --porcelain
+(empty)
+$ git rev-parse HEAD
+a3dbf49813a636e3db802b5ae8c8531e80a5dbef
+$ git rev-parse origin/feature/f108-tiered-artifact-summaries
+a3dbf49813a636e3db802b5ae8c8531e80a5dbef
+(equal)
+$ grep -c context_compiler.py .agent/f108_inventory.md
+13
+$ grep -c role_config.py .agent/f108_inventory.md
+8
+```
+`.agent/f108_inventory.md` exists (200 lines, 11894 bytes), non-empty, both citation-anchor counts well above the >=1 floor. Every commit's insertions independently checked under 500 via `git diff --stat` per commit (see Commits table above; largest is 200).
+
+## Authored-text proofs
+
+`.agent/authored/f108-r1.md` was typed verbatim from the step block between
+the `BEGIN STEP BLOCK F108-R1` / `END STEP BLOCK F108-R1` markers (the two
+marker lines themselves excluded, per the delegating instruction). Disk-to-
+disk comparison: `.agent/last_block.md` mirrored from it via `cp`, then
+`diff` confirmed IDENTICAL and both sha256 to
+`1c773bc793214716c9e3650e4749626a12e51e9b84096c7bebcc963b3600a15e`. The
+four byte-exact slices this block specified (PLAN, CONTEXT, CANDIDATES,
+R0762) were each applied and independently re-hashed against the digest the
+block stated beside that slice, all four matching exactly (see Verification
+above) — this is the fidelity proof for reviewer-authored content applied
+this round.
 
 ## Deviations & assumptions
 
-- None. Every byte count, sha256 and field value was independently
-  recomputed against the real files on disk before being reported.
-
-## Closure summary
-
-All six STATUS_closure_protocol.md preconditions are MET (rounds 18-22).
-Verdict: **PASS WITH RISKS** — one documented Medium risk, R-0761 (the
-ping-pong provider factory's missing `"ollama"` branch), stays OPEN,
-outside F106's own Task-slicing scope to fix. The job/mission-resume half
-of the feature file's own Scope note is carried forward as a closure
-candidate (DECISION F106 D2, `.agent/candidates.md`), not built and not
-dropped. Evidence job `f106-closure`: 244 tests passed across 8 scoped
-suites, `manual_completion=true`. Review package:
-`remedy-review-20260902-115928-READY_FOR_REVIEW.zip`, SHA-256
-`939f841e486a4361ec503f21bc697fc18dd9834b3312f34024339f7a865b2a65`,
-archived at `/home/decodeux/Repos/remedy-history/zips`, accepted HEAD
-`82278107ecea9e291d668caa9180f3d847d13e88`.
+- Commit ordering: I initially staged C2's files (`docs/roadmap/STATUS.md`,
+  `.agent/context.md`) alongside the not-yet-committed `.agent/plan.md`
+  rewrite. Caught during the pre-commit self-review (`git status --porcelain`
+  showed three modified files staged together against the bundle's C1/C2
+  split) and corrected before any commit was made: `.agent/plan.md` was
+  unstaged from that batch, committed alone as C1, then STATUS.md +
+  context.md committed together as C2. The final commit sequence on disk
+  matches the block's ordering exactly (C0a, C0b, C1, C2, C3, C4, C5); no
+  commit was created out of order or later amended.
+- No other deviations. The change set touched exactly the nine paths the
+  block named, in the order specified. No production code, test file, or
+  the context compiler / role_config source was written or modified this
+  round — confirmed by `git diff --stat` on every commit above.
+- The inventory's item 4 (log-parsing code) reports a genuine absence: no
+  existing plain-text log-by-time/marker sectioner was found anywhere under
+  `packages/orchestration/`; only `run_log.py`'s structured JSONL trail
+  exists, which is not the free-text log format the Design section
+  describes. This is stated as a finding of the research itself, not a
+  deviation from the round's instructions.
 
 ## Next
 
-1. Open the pull request (`gh pr create`) from `feature/f106-session-resume`
-   into `main`. PR description carries what/why, key decisions (DECISION
-   F106 D1, D1(b), D2), how to review, changed-files table, latest verdict
-   (PASS WITH RISKS), open-findings count, runtime actuals.
-2. Do NOT merge this session (STATUS_closure_protocol.md Algorithm step 6)
-   — merge is deferred to the next feature's Open PR Gate, or the operator
-   may merge manually at any time.
-3. End this session with the feature-done banner. Rule A5 selects F108
-   next, in a fresh session.
-
-## Open-findings ledger
-
-322 registered / 60 resolved / 21 decisions / 22 distinct gated rounds.
-R-0761 (Medium) is the one OPEN finding F106 itself raised, documented as
-the closure verdict's risk.
-
-## Item-status table
-
-| Item | Status | Reason |
-|---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | GATE22 booked |
-| C2 | done | closure commit |
-| C3 | done | candidates.md entry |
+Round 2: plan T001 (schema + mechanical sectioners + storage/caching)
+against `.agent/f108_inventory.md`. No PR exists yet for this branch — this
+was a claim+inventory round, not a reviewable bundle.
