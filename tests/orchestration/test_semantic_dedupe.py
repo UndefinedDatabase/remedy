@@ -6,17 +6,23 @@ remember — an unsuccessful call, a call with no session id — because a hash 
 index holds without proof is a segment the composition hook would later replace
 with a marker the model never received.
 
-Hermetic and pure: no tmp_path, no network, no provider, no sleep. The manifest
-in the first case is built through the REAL producer in ``prompt_segments`` so
+Hermetic throughout: no network and no sleep anywhere. The unit tests are also
+PURE — no tmp_path, no provider — while the final class deliberately drives the
+real ping-pong loop against ``FakeProvider`` in a tmp_path (F109 T001b-ii). The
+manifest in the first case is built through the REAL producer in
+``prompt_segments`` so
 the index is pinned against the manifest shape that actually ships rather than
 against a hand-made dictionary.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from packages.orchestration.pingpong_loop import run_pingpong
+from packages.orchestration.pingpong_provider import FakeProvider
 from packages.orchestration.prompt_segments import (
     PromptSegmentRegistry,
     SegmentStabilityRank,
@@ -529,3 +535,149 @@ class TestAdapterLifecycle:
 
         assert record_finalized_call(index, success, rows) == len(rows)
         assert index.sent_hashes("s1") == frozenset(_digests(rows))
+
+
+class TestChainAgainstTheRealLoop:
+    """F109 T001b-ii: THESE CASES RUN THE REAL LOOP.
+
+    Every test above is a pure unit test of the index. Every test here drives
+    ``run_pingpong`` end to end against ``FakeProvider`` and then reads
+    ``PingPongResult.session_sent_evidence`` — they are the first cases in this
+    feature proving the index is fed by ACTUAL provider calls rather than by a
+    hand-built manifest. Both fixtures are declared inside this class on
+    purpose, so the pure tests above keep touching no tmp_path and no provider.
+    """
+
+    @staticmethod
+    def _make_repo(base: Path) -> Path:
+        """Minimal demo repo, matching tests/orchestration/test_session_resume.py."""
+        base.mkdir(parents=True)
+        (base / "README.md").write_text("# Demo\nA demo project.\n")
+        (base / "docs").mkdir()
+        (base / "docs" / "README.md").write_text("# Docs\nDocumentation here.\n")
+        (base / "src").mkdir()
+        (base / "src" / "main.py").write_text("def hello():\n    return 'hello'\n")
+        (base / ".env").write_text("API_KEY=secret123\n")
+        (base / ".env.local").write_text("DB_PASSWORD=hunter2\n")
+        return base
+
+    @staticmethod
+    def _run(repo: Path, provider: FakeProvider, **kwargs):
+        return run_pingpong(
+            "Fix README", str(repo),
+            builder_provider=provider, reviewer_provider=provider,
+            **kwargs,
+        )
+
+    @pytest.fixture(autouse=True)
+    def isolate_data_root(self, tmp_path: Path, monkeypatch):
+        """Redirect REMEDY_DATA_DIR to tmp so no case here writes the real data root."""
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return data_dir
+
+    @pytest.fixture
+    def demo_repo(self, tmp_path: Path) -> Path:
+        return self._make_repo(tmp_path / "demo_repo")
+
+    def test_a_resumed_two_round_chain_populates_the_evidence(self, demo_repo: Path):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=True, fake_session_id="sess-1",
+        )
+        result = self._run(demo_repo, provider, repair_rounds=2)
+
+        assert result.session_sent_evidence != []
+        assert len(result.session_sent_evidence) == 1
+        row = result.session_sent_evidence[0]
+        assert row["session_id"] == "sess-1"
+        assert row["sent_sha256"] != []
+        assert row["sent_sha256"] == sorted(row["sent_sha256"])
+
+    def test_every_recorded_hash_is_a_real_segment_hash(self, demo_repo: Path):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=True, fake_session_id="sess-1",
+        )
+        result = self._run(demo_repo, provider, repair_rounds=2)
+
+        hashes = result.session_sent_evidence[0]["sent_sha256"]
+        assert hashes
+        for digest in hashes:
+            assert len(digest) == 64, digest
+            assert set(digest) <= set("0123456789abcdef"), digest
+
+    def test_a_provider_that_reports_no_session_id_records_nothing(self, demo_repo: Path):
+        # The proven-sends-only rule surviving contact with the loop: with no
+        # session named, there is no session to remember anything against.
+        provider = FakeProvider(fail_on_round=1, pass_on_round=2, supports_resume=True)
+        result = self._run(demo_repo, provider, repair_rounds=2)
+
+        assert result.session_sent_evidence == []
+
+    def test_a_single_round_run_records_its_session_even_though_it_never_resumed(
+        self, demo_repo: Path, tmp_path: Path,
+    ):
+        # PINNED FROM REAL RUNS, not from expectation. Recording is keyed on a
+        # PROVEN send that names a session, and a first round proves exactly
+        # that; "resumed session only" governs the composition hook (T002), not
+        # what the index is permitted to remember.
+        sessionless = self._run(demo_repo, FakeProvider())
+        assert len(sessionless.rounds) == 1
+        assert sessionless.session_sent_evidence == []
+
+        named = self._run(
+            self._make_repo(tmp_path / "repo_named"),
+            FakeProvider(supports_resume=True, fake_session_id="sess-1"),
+        )
+        assert len(named.rounds) == 1
+        assert [row["session_id"] for row in named.session_sent_evidence] == ["sess-1"]
+        assert named.session_sent_evidence[0]["sent_sha256"]
+
+    def test_a_fallen_back_resume_leaves_post_fallback_evidence_not_a_stale_set(
+        self, demo_repo: Path, tmp_path: Path,
+    ):
+        fallback = self._run(
+            demo_repo,
+            FakeProvider(
+                fail_on_round=1, pass_on_round=2, supports_resume=True,
+                fake_session_id="sess-1", resume_fails=True,
+            ),
+            repair_rounds=2,
+        )
+        assert fallback.final_status == "staged_review_passed"
+        assert fallback.rounds[1].builder_output.resume_fallback is True
+
+        clean = self._run(
+            self._make_repo(tmp_path / "repo_clean"),
+            FakeProvider(
+                fail_on_round=1, pass_on_round=2, supports_resume=True,
+                fake_session_id="sess-1",
+            ),
+            repair_rounds=2,
+        )
+        assert clean.rounds[1].builder_output.resume_fallback is False
+
+        assert [row["session_id"] for row in fallback.session_sent_evidence] == ["sess-1"]
+        fallback_hashes = fallback.session_sent_evidence[0]["sent_sha256"]
+        clean_hashes = clean.session_sent_evidence[0]["sent_sha256"]
+        # THE DISCRIMINATOR. The fallback dropped what the failed resume made
+        # unprovable, so the surviving set is strictly SMALLER than the same
+        # chain that never fell back. Without the invalidation the fallback run
+        # would ACCUMULATE round 1's hashes and this comparison would not hold.
+        assert len(fallback_hashes) < len(clean_hashes), (
+            len(fallback_hashes), len(clean_hashes),
+        )
+
+    def test_the_loop_is_otherwise_unchanged_for_a_non_resuming_provider(self, demo_repo: Path):
+        # Both expected values were MEASURED on a real run at this round's base
+        # commit before the wiring landed, and again after it — not recalled.
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=False, fake_session_id="sess-1",
+        )
+        result = self._run(demo_repo, provider, repair_rounds=2)
+
+        assert result.final_status == "staged_review_passed"
+        assert len(result.rounds) == 2
