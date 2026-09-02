@@ -61,6 +61,7 @@
 | routing | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | system |
 | self-dogfood | [self-dogfood-v0.md](system/self-dogfood-v0.md) | system |
 | self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |
+| session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
 | snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |
 | test execution | [real-test-execution-v1.md](system/real-test-execution-v1.md) | system |
 | test lanes | [test-lanes-v0.md](system/test-lanes-v0.md) | system |
@@ -135,6 +136,7 @@ Specifications and design documents for the built system.
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |
 | [self-dogfood-v0.md](system/self-dogfood-v0.md) | Self-dogfood readiness + improvement planner |
 | [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
+| [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |
 | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-aware-repair-loop-v1-v2.md](system/token-aware-repair-loop-v1-v2.md) | Token-aware repair loop architecture |

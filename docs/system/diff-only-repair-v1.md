@@ -106,3 +106,4 @@ number can disagree with its own inputs, and the reader can subtract.
 - [repair-loop-v1.md](repair-loop-v1.md) — the approval-gated repair PROPOSAL
   path. A different loop: it never applies code and never calls a provider.
 - `docs/roadmap/features/T2_F111.md` — the target spec and its decisions.
+- [session-resume-v1.md](session-resume-v1.md) — reuses `select_repair_hunks`/`render_repair_hunks` for a different purpose: shrinking a REPAIR PROMPT under an active resumed session, never applying a patch; DECISION F111 D1 (no diff-apply seam in `pingpong_loop.py`) is unchanged.
