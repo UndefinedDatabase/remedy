@@ -2,153 +2,202 @@
 
 ## Session
 
-SESSION 6 of feature F106 · round 19 · first round of this session
+SESSION 6 of feature F106 · round 20 · second round of this session
 
 ## Range
 
-Branch `feature/f106-session-resume`, base `f9b5c578` (round 18's own C3
-handoff, closure precondition 2 MET) through `HEAD` at commit time (round
-19, 4 content commits: C0a, C0b, C1, C2, C3; this handoff is C4/the 6th
-commit of the round).
+Branch `feature/f106-session-resume`, base `6a64c1c4` (round 19's own C4
+handoff, closure precondition 4 MET) through `HEAD` at commit time (round
+20, 3 content commits: C0a/C0b, C1, C2; this handoff is C3/the 4th commit
+of the round).
 
-## Round 19 summary — closure precondition 4 MET, DECISION F106 D2 registered
+## Round 20 summary — closure precondition 6 advanced (NOT yet MET): SU-003 RUN for real, blocked on a provider-dispatch gap
 
-Round 19 added the feature file's **Built State** section (closure
-precondition 4) and registered **DECISION F106 D2**, resolving the
-feature file's own Scope note (job/mission resume-from-persisted-state,
-F075 candidate routing R-0201) against Task slicing: F106 closes on
-T001-T003 alone (provider-session resume for repair rounds only), with
-the job/mission-resume half carried forward as a closure-commit
-candidate rather than built now or dropped silently. Zero code/test
-change — every path touched is `.agent/**` or a single roadmap feature
-file.
+Round 20 planned and RAN the self-use queue's next pending item, **SU-003**
+("Give apps/ui's ESLint config a TypeScript parser"), through the real job
+path (`self_use_job.plan_next_self_use_item` then
+`self_use_runner.run_next_self_use_item`) to the normal approval gate,
+inside an isolated worktree with an isolated `REMEDY_DATA_DIR`
+(`.remedy-wt/f106-r20-selfuse/data`, gitignored scratch). The run was
+never promoted and `scripts/self_use_queue.json` was READ only, never
+written — confirmed byte-identical before/after.
 
-- The Built State section cites real files/functions
-  (`packages/orchestration/pingpong_provider.py`'s `supports_resume` /
-  `resume_used` / `resume_session_ref`, `packages/orchestration/
-  pingpong_loop.py`'s `resume_fallback` / `resume_hunks_text`,
-  `packages/orchestration/call_identity.py`'s `prompt_len_bytes`,
-  `tests/orchestration/test_session_resume.py`'s
-  `TestT003MeasuredTokenReduction`) — every one independently grepped
-  and confirmed present on disk before commit, not merely copied from
-  the block's prose.
-- The T003 measured byte-reduction numbers (Builder round 2: 1331 vs
-  1384 bytes; Reviewer round 2: 2208 vs 2270 bytes) were independently
-  **reproduced** by running
-  `pytest tests/orchestration/test_session_resume.py -k
-  T003MeasuredTokenReduction -s -q`, not just trusted from the block —
-  the printed output matched exactly. The cited commit `177dada4`
-  (F106 R15 C4) exists in this branch's own history. The cited test
-  count (27 tests, all three T-slices) was independently confirmed via
-  `pytest --collect-only`.
-- DECISION F106 D2 was appended to `.agent/live_review.md` as one
-  `\n\n`-delimited paragraph, obliging the eventual closure commit to
-  add one entry to `.agent/candidates.md` for the deferred
-  job/mission-resume half (text is in the DECISION itself).
+**The run resolved the real product default provider (`ollama`, via
+`role_config.resolve_role_config`, confirming DECISION-driving fix
+`cfd72734`/R-0757 behaves as designed on this branch) but then BLOCKED
+before any provider call was made.** Root cause, independently
+reproduced by this worker outside the job entirely:
+`packages/orchestration/pingpong_provider.py:1591-1599`'s
+`create_provider(name, *, model="")` recognises only three provider
+names — `"fake"`, `"claude"`, `"claude-cli"` — and raises
+`RuntimeError: Unknown provider: 'ollama'. Available: fake, claude,
+claude-cli"` for anything else. `_create_provider_with_cwd` in
+`pingpong_loop.py` routes any non-`"claude-cli"` name straight into
+`create_provider()`, so a genuinely-resolved
+`role_config.DEFAULT_PROVIDER = "ollama"` can never reach a real
+provider through this path — regardless of ollama actually being
+reachable (confirmed at `http://localhost:11434`, `muse-glimmer:latest`
+pulled, and recorded as such in the job's own persisted
+`run_manifest.input_snapshot`). T001 ended `final_status=
+provider_unavailable` with zero rounds recorded ("no_rounds": the
+provider object is never even constructed). Per this round's own step
+block, **finding registration for this is explicitly DEFERRED to round
+21** — no R-id is minted this round; the raw evidence is recorded
+honestly in `.agent/gate_f106_r20/self_use_run.txt` instead.
 
-## Changed files (C0a-C3, this round)
+- `scripts/self_use_queue.json` sha256 before = after =
+  `a72e6be87432e0fa90aa334d41010f3512ef3fca790ba903d28d3582ea1abfa2`
+  (matches the block's own expected value; confirmed BEFORE running, per
+  constraint 3a, and again after).
+- The persisted `JobPlan` (`job_id f76686b8435640e9`,
+  `.remedy-wt/f106-r20-selfuse/data/task_jobs/f76686b8435640e9/job.json`)
+  was independently RELOADED in a fresh `python3` process via
+  `pingpong_job.load_job_plan` under the same `REMEDY_DATA_DIR` — every
+  field (`job_id`, `status`, `error`, `isolation_mode`,
+  `execution_config`, `budgets`, both tasks' `status`/`final_status`/
+  `error`/`test_passed`/`reviewer_verdict`) reproduced byte-identical to
+  the in-memory run result, confirmed by a programmatic field-by-field
+  comparison (`ALL MATCH: True`), not merely restated.
+- `describe_self_use_run_defects()` on the reloaded `JobPlan` was
+  independently recomputed and is **NON-EMPTY, 2 entries** — full text
+  below, quoted verbatim from the evidence file.
+- No path under `packages/`, `apps/`, `tests/`, `docs/`, `scripts/`
+  changed this round. `scripts/self_use_queue.json`'s `consumed_by` edit
+  remains a closure-commit act (DECISION F257 D2), not this round's.
+
+## Changed files (C0a-C2, this round)
 
 | Path | Change | Commit |
 |---|---|---|
-| `.agent/authored/f106-r19.md` | new (verbatim block save) | `6a5aec9c` |
-| `.agent/last_block.md` | rewrite (mirror of block) | `dc35fd8a` |
-| `.agent/plan.md` | rewrite (PLAN19) | `57a93e53` |
-| `docs/roadmap/features/T3_F106.md` | append (Built State section) | `7bebef3a` |
-| `.agent/live_review.md` | append (DECISION F106 D2, `\n\n`-separated) | `21bb32d8` |
-| `.agent/handoff.md` | rewrite (this file) | (C4, this commit) |
+| `.agent/authored/f106-r20.md` | new (verbatim block save) | `9d11c316` |
+| `.agent/last_block.md` | rewrite (mirror of block) | `9d11c316` |
+| `.agent/plan.md` | rewrite (PLAN20) | `4b49af98` |
+| `.agent/gate_f106_r20/self_use_run.txt` | new (real self-use run evidence) | `6e1f4fe0` |
+| `.agent/handoff.md` | rewrite (this file) | (C3, this commit) |
 
-No path under `packages/`, `apps/`, `tests/` changed this round.
+No path under `packages/`, `apps/`, `tests/`, `docs/`, `scripts/` changed
+this round.
+
+## The full `describe_self_use_run_defects` answer (quoted verbatim)
+
+```
+(
+  "job f76686b8435640e9 (blocked): task_T001_gate_failed: final_status=provider_unavailable; no_rounds",
+  "T001 (blocked): completion_gate_failed: final_status=provider_unavailable; no_rounds",
+)
+```
+
+Two entries: the job's own `error` field, then T001's own `error` field
+(T002 never ran — `status='skipped'`, blank `error`, contributes nothing
+per the function's own documented behaviour of one string per task with a
+non-blank `error`, in task order).
+
+## Full `execution_config` and per-task outcome (real values, both from the in-memory run AND the independent reload — identical)
+
+```
+execution_config: builder='ollama' (source='cli'), reviewer='ollama' (source='cli'),
+                   builder_model='' (source='default'), reviewer_model='' (source='default')
+num_tasks = 2
+  task T001: status='blocked' final_status='provider_unavailable'
+             error='completion_gate_failed: final_status=provider_unavailable; no_rounds'
+             test_passed=None reviewer_verdict=''
+  task T002: status='skipped' final_status='' error='' test_passed=None reviewer_verdict=''
+```
+
+`isolation_mode = worktree`. `budgets = {'max_total_tokens': None,
+'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd':
+0.5, 'deadline': None}`. `budget_actuals = None` (zero provider calls were
+ever made — the block before any call). `job.status = blocked`, `job.error
+= task_T001_gate_failed: final_status=provider_unavailable; no_rounds`.
 
 ## Verification — this round's own gate results (real numbers, self-run)
 
-- **G1 TRANSPORT**: `.agent/authored/f106-r19.md` and `.agent/last_block.md`
+- **G1 TRANSPORT**: `.agent/authored/f106-r20.md` and `.agent/last_block.md`
   both sha256
-  `f2447d299f9e17329ba8b201779494b50fe10b7fdb0278273e28c390774d2c6e`,
-  equal to `.remedy-wt/f106-r19-block.md` as saved (three-way comparison,
-  single digest).
+  `5527a7a5e5bfc23d8f1e449af5c0ccfecc1dd62120bd97e5783d815af3f63918`,
+  equal to `.remedy-wt/f106-r20-block.md` as saved (three-way sha256sum
+  comparison, single digest, all three equal).
 - **G2 THE PLAN**: `.agent/plan.md` sha256
-  `084510784d8b9df15dd31223d7ea44df4736c813cfab87a63f62ac24b4b22609`, 33
-  lines (`wc -l`), holds `## Goal` (line 1 grep hit) and `## Next Steps`
-  (1 grep hit each), matching the block's stated digest/line-count
-  exactly.
-- **G3 THE FEATURE FILE APPEND**: `docs/roadmap/features/T3_F106.md`
-  post-commit is **5976 bytes**, sha256
-  `1c4abe34db9508e1113b31ce90bb498fd89b419ad6d64cac779b9f849a5df5c7` —
-  independently recomputed as base(4025) + 1 (`\n`) + 1950
-  (`.remedy-wt/f106-r19-builtstate.txt`) = 5976, matching the block's
-  arithmetic exactly (not assumed — reconstructed byte-for-byte with
-  Python and compared before writing). The file's last 2452 bytes
-  (FROM's 501 + 1 + 1950) are byte-equal to the block's stated TO text,
-  sha256 `e88c497fd5739a4841180a4daa6f0a7a155b613b50bc5a7c642404347652e842`
-  — confirmed by direct slice+hash. `grep -c '^## Built State'` reads
-  **1**; `grep -n '^## '` shows 10 headings total, with `## Built State
-  — what F106 delivered` at line 81, the LAST of them.
-- **G4 THE LEDGER APPEND**: `.agent/live_review.md` post-commit is
-  **1899768 bytes**, sha256
-  `03f4719e80889a685c22fc0c6eb41f69155ba1a9cd5329478f7c746a5c499757` —
-  independently recomputed as base(1895281, confirmed does NOT end in a
-  trailing newline) + 2 (`\n\n`) + 4485
-  (`.remedy-wt/f106-r19-decision2.txt`) = 1899768, matching the block's
-  own arithmetic exactly — no deviation found, both numbers agree. The
-  file's last `\n\n`-delimited unit (4485 bytes) is byte-equal to the
-  DECISION F106 D2 source text. Negative control: a scratch copy of that
-  text with its first byte XOR-flipped (`0xFF`) no longer byte-equals
-  the file's own last unit, while the unmodified original still does;
-  the tracked file itself was never mutated for this check, and the
-  scratch mutation file was deleted afterward.
-- **G5 THE LEDGER COUNTS**: over `.agent/live_review.md` at HEAD —
-  `grep -cE '^- R-[0-9]{4} — '` reads **321** (unmoved), `grep -cE
-  '^Done: R-[0-9]{4} — '` reads **60** (unmoved), `grep -cE '^DECISION
-  F[0-9]+ D[0-9]+ — '` reads **21** (up from 20), `grep -c '^DECISION
-  F106 D2 — '` reads exactly **1**.
-- **G6 THE DOCS GATE**: `python3 -m pytest
-  tests/orchestration/test_roadmap_index.py tests/docs/ -q`: real exit
-  **0**, **325 passed** — unchanged from this round's own base measurement
-  (also 325 passed, run before any edits), so no difference to explain.
-- **G7 THE TREE**: `git status --porcelain` empty (after this handoff
-  commit). Per-commit insertions (`git diff --numstat <c>^..<c>`): C0a
-  111/0, C0b 90/79, C1 17/21, C2 34/0, C3 3/1 — all well under 500 (C0a/C0b
-  exempt anyway as verbatim `.agent/**` state-file saves; C4/this handoff's
-  own insertions are not gated per the block's own text). Canary
-  `python3 -m pytest tests/cli/test_golden_path.py -q` real exit **0**,
-  **42 passed**. HEAD to be pushed and confirmed equal to
+  `b33239536b736b4b89d164fe2159ec2bf824ae35bf5b2f2c1b4848c5fb761a1e`, **41
+  lines** (`wc -l`), **2122 bytes** (`wc -c`), holds `## Goal` (line 6) and
+  `## Next Steps` (line 27) — matches the block's stated digest/line
+  count/byte count exactly.
+- **G3 THE SELF-USE RUN**: `.agent/gate_f106_r20/self_use_run.txt` exists;
+  its `job_id` (`f76686b8435640e9`), `status` (`blocked`), `error`
+  (`task_T001_gate_failed: final_status=provider_unavailable; no_rounds`),
+  `isolation_mode` (`worktree`), `execution_config` and both tasks'
+  fields all REPRODUCED exactly from an independent reload of the
+  persisted `JobPlan` in a fresh `python3` process (programmatic
+  comparison, `ALL MATCH: True`) — not merely restated from the in-memory
+  run. Queue sha256 before = after =
+  `a72e6be87432e0fa90aa334d41010f3512ef3fca790ba903d28d3582ea1abfa2`, all
+  three values equal.
+- **G4 THE DEFECTS TUPLE**: `describe_self_use_run_defects()` on the
+  independently reloaded `JobPlan`, recomputed directly by this worker (not
+  trusted from the evidence file's own text), answers the exact 2-entry
+  tuple quoted above — matching the evidence file's recorded text exactly.
+- **G5 THE QUEUE UNTOUCHED**: `git status --porcelain -- scripts/` → empty
+  (real, re-run at handoff time). `git diff --stat 6a64c1c4..HEAD --
+  scripts/` → empty (real, re-run at handoff time; `6a64c1c4` is round 19's
+  own HEAD / this round's base).
+- **G6 THE TREE**: `git status --porcelain` → empty (after this handoff
+  commit). Per-commit insertions (`git diff --numstat <c>^..<c>`): C0a/C0b
+  120+103=223 (exempt: verbatim `.agent/**` state-file saves), C1 24, C2
+  69 — all well under 500 regardless of exemption. Canary
+  `python3 -m pytest tests/cli/test_golden_path.py -q`: real exit **0**,
+  **42 passed** in 20.47s. HEAD to be pushed and confirmed equal to
   `origin/feature/f106-session-resume` immediately after this commit.
 
 ## Deviations & assumptions
 
-- None. Every byte count, sha256 and count in the block was independently
-  recomputed against the real files on disk (never assumed from the
-  block's own prose), and every one matched exactly — including the two
-  places the block explicitly asked for independent arithmetic (C2's
-  base+1+1950 sum and C3's base+2+4485 sum). The Built State section's
-  factual claims (file paths, function/field names, the T003 measured
-  numbers, the 27-test count, commit `177dada4`) were independently
-  verified against the real codebase rather than trusted as prose,
-  including re-running the T003 test to reproduce its printed numbers.
+- None from the block's own procedure. One genuine, unexpected RUN OUTCOME
+  (not a deviation from instructions): the resolved provider was the real
+  `ollama` product default exactly as the block anticipated as the likely
+  path, but the run still blocked pre-provider-call on the
+  `create_provider()` name-dispatch gap described above — this is evidence
+  the block explicitly asked to be recorded honestly rather than treated
+  as a failure of this round, and it was recorded, not smoothed over or
+  retried under `builder_name="fake"` (the block explicitly forbids that
+  substitution).
+- `execution_config.builder_source` / `reviewer_source` read `'cli'`
+  rather than `'default'`, even though nothing on the CLI supplied an
+  override this round: `self_use_runner.run_next_self_use_item` resolves
+  the role config itself and then forwards the resolved provider name as
+  an explicit `builder_name=`/`reviewer_name=` keyword into `run_job()`,
+  and `run_job()`'s own bookkeeping cannot distinguish "explicitly passed
+  by a human via a CLI flag" from "explicitly passed by
+  `self_use_runner`'s own composition" — both look like an explicit
+  keyword to `run_job()`, so both get labelled `'cli'`. Noted here as a
+  labelling quirk observed while reading the evidence, not registered as
+  a finding this round (finding registration is deferred to round 21 for
+  everything this run surfaced).
 
 ## Next
 
-1. **Closure precondition 4 is MET** (Built State section landed,
-   verified against real files) and **DECISION F106 D2 is registered**
-   (see Verification, G3/G4/G5 above).
-2. The next round addresses **closure precondition 3** (`remedy
-   integrity check --json` / no relevant untracked files) and
-   **precondition 6** (self-use track consumption). It must also carry
-   forward that **DECISION F106 D2 obliges the eventual closure commit**
-   to add ONE entry to `.agent/candidates.md` — the exact text for that
-   entry is written out in full inside DECISION F106 D2 itself
-   (`.agent/live_review.md`, last paragraph), reading (in short): "job/
-   mission resume-from-persisted-state — a new orchestrator move-schema
-   `resume` kind so a paused job, or one that ended `max_cycles_reached`,
-   can continue rather than only re-dispatch (F075 R5/R6, routed via F079
-   R1 as R-0201, scope-noted onto F106 2026-08-06, deferred at F106
-   closure by DECISION F106 D2)." Do not lose this obligation between now
-   and the closure commit.
-3. After that: evidence job, review zip, STATUS line, PR — the closure
-   algorithm's remaining steps.
+1. **Closure precondition 6 is NOT YET MET.** Round 21 must read this
+   round's real evidence (`.agent/gate_f106_r20/self_use_run.txt`, and the
+   full `describe_self_use_run_defects` answer quoted above) and either:
+   (a) register a finding for the `create_provider()` "ollama" name-gap
+   this round surfaced (root cause independently reproduced above:
+   `packages/orchestration/pingpong_provider.py:1591-1599`'s
+   `create_provider()` has no `"ollama"` branch, so
+   `role_config.DEFAULT_PROVIDER = "ollama"` can never reach a real
+   provider through the self-use/job-run path), searching the open ledger
+   first per checklist item 30 before minting a new R-id; or (b) state
+   explicitly that, on reflection, nothing here warrants a new finding
+   (unlikely given the evidence, but the round's own call to make). Only
+   after that step is precondition 6 fully MET.
+2. `scripts/self_use_queue.json`'s `consumed_by` edit for SU-003 itself
+   still waits for the closure commit, per DECISION F257 D2 — SU-003 was
+   RUN this round, not marked consumed, exactly as instructed.
+3. After precondition 6 closes: evidence job, review zip, STATUS line,
+   PR — the closure algorithm's remaining steps. The closure commit also
+   still owes DECISION F106 D2's `.agent/candidates.md` entry (job/mission
+   resume deferral, text given in full inside DECISION F106 D2 in
+   `.agent/live_review.md`).
 4. Open-findings ledger: **321 registered / 60 resolved / 21 decisions**
-   (up from 20) — DECISION F106 D2 is the new entry, no R-id finding
-   moved this round.
+   (UNCHANGED this round — this round mints no R-id, per its own explicit
+   instruction to defer registration to round 21).
 
 ## Item-status table
 
@@ -157,6 +206,5 @@ No path under `packages/`, `apps/`, `tests/` changed this round.
 | C0a | done | |
 | C0b | done | |
 | C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this handoff |
+| C2 | done | SU-003 run for real; blocked pre-provider-call on `create_provider()`'s missing `"ollama"` branch; evidence committed; finding registration deferred to round 21 per block instruction |
+| C3 | done | this handoff |
