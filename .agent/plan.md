@@ -18,29 +18,22 @@ summary never blocks the run.
 |------|--------|--------|
 | Claim F108, discharge R-0762, inventory | done | round 1 |
 | T001 schema + sectioners + storage/caching | done | round 2 |
-| T002 generation call + fallback | done | round 3, `generate_artifact_summary` |
-| Round 4 authored text (f108-r4.md) + last_block mirror | done | round 4, C0a/C0b |
-| Ledger append (R-0763 + DECISION F108 D1) | BLOCKED | round 4's own G2 gate is internally contradictory — see `.agent/handoff.md` Deviations |
-| T002 `summary` role registration | BLOCKED | depends on the ledger append above landing first, per this round's own bundle order |
+| T002 generation call + fallback | done | round 3 |
+| T002 `summary` role registration | done | round 5, DECISION F108 D1 |
 | T003 compiler integration + fixture | pending | next round |
 
 ## Next Steps
-1. Round 5 FIRST resolves round 4's own gate contradiction (full detail in
-   `.agent/handoff.md` Deviations): `grep -c "R-0763"` /
-   `grep -c "DECISION F108 D1"` were required to read 1 after the append, but
-   read 3, since SLICE LEDGER_R4's own text cross-references both ids across
-   its three paragraphs by design; sha256/byte transport passed exactly.
-   Fix: narrower grep pattern, or a ruling the sub-counts don't gate. Then
-   land SLICE LEDGER_R4 and DECISION F108 D1 (register `"summary"` in
-   `role_config.py`'s `KNOWN_ROLES`, update `test_role_config.py`'s
-   closed-set test, same commit).
-2. Then T003: hook the new representation into
-   `packages/orchestration/context_compiler.py`'s selection/rendering, the
-   relevant-L2-section matching rule, the long-log fixture, size comparison.
-3. Integration gate (full suite, both required runs) before closure.
+1. Round 6: T003 — hook the new representation into
+   `packages/orchestration/context_compiler.py`'s selection/rendering (a
+   third `rendering` value beside `"full"`/`"signatures"`), the
+   relevant-L2-section matching rule, the long-log fixture, and the size
+   comparison recorded — the round that proves the feature's DONE
+   condition.
+2. Integration gate (full suite, both required runs) before closure.
+3. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
+   package.
 
 ## Risks
-- T003 is the round that proves the whole feature's DONE condition.
-- Blocks recurred twice in a row on this registration (R3: false "empty
-  grep" premise; R4: self-contradicting count gate) — treat every stated
-  grep-count assertion as unverified until re-run.
+- T003 touches `context_compiler.py`, an existing 1133-line module with its
+  own tier/budget/omission-reason conventions (see `.agent/f108_inventory.md`
+  §1); the round inspects before extending.
