@@ -1,193 +1,183 @@
-── STEP T003/1 — F106 ──────────────────────────────────────────────────
-Goal: Close T003, the last open item on F106: a fixture repair chain that
-shows a MEASURED prompt-byte reduction when a repair round resumes versus
-when it resends full context (the feature's own Goal & Done acceptance
-criterion, docs/roadmap/features/T3_F106.md), plus a built-state doc
-recording the measured numbers. Zero production code changes — T001 and
-T002 (both sides, closed rounds 2-14) already wired the mechanism this
-round measures and documents. Also books round 14's already-produced
-verdict (RECORD14) and its two prose-only notes into the permanent record,
-per amend0827-process-diet rule 1 (a pushed handoff is a durable carrier;
-its verdict is booked in the first round that is happening anyway, not a
-round of its own).
+── STEP INTEGRATION-GATE/1 — F106 ─────────────────────────────────────────
+Goal: Run the dedicated integration gate F106 has never had (STATUS_closure_
+protocol.md precondition 2; docs/agents/integration_gate.md steps 1-5): the
+full suite, TWICE — once on the branch tip, once in a disposable worktree at
+the merge-base — compared and attributed. This is precondition-gathering
+work for closure, not closure itself: no STATUS edit, no PR, this round.
+Also books round 15's already-produced verdict (RECORD15) into the
+permanent record, per amend0827-process-diet rule 1.
 
 Bundle:
-  C0a — save this step block verbatim to .agent/authored/f106-r15.md
+  C0a — save this step block verbatim to .agent/authored/f106-r16.md
   C0b — mirror it into .agent/last_block.md
-  C1  — rewrite .agent/plan.md for round 15 (PLAN15 below)
-  C2  — append RECORD14 (booking round 14's PASS) to .agent/live_review.md,
+  C1  — rewrite .agent/plan.md for round 16 (PLAN16 below)
+  C2  — append RECORD15 (booking round 15's PASS) to .agent/live_review.md,
         ONE paragraph
-  C3  — append two dated lines (PROSESLIPR14A, PROSESLIPR14B) to
-        .agent/prose_slips.md, in that order
-  C4  — append the new test class below to
-        tests/orchestration/test_session_resume.py
-  C5  — add docs/system/session-resume-v1.md (SESSIONRESUMEDOC below,
-        with <PIN> replaced by C4's real commit SHA before writing),
-        register it in docs/README.md (two rows: PAIR-QUICKFIND,
-        PAIR-SYSTABLE below), and append PAIR-BACKLINK below to
-        docs/system/diff-only-repair-v1.md's "## Related" section
-  C6  — rewrite .agent/handoff.md for round 15 handback
+  C3  — run the branch suite, run the base suite in a disposable worktree
+        with the R-0736 parity fix applied proactively, compare, attribute
+        every branch-only id, commit the evidence under
+        .agent/gate_f106_r16/ (see procedure below)
+  C4  — rewrite .agent/handoff.md for round 16 handback
 
-Change: exactly tests/orchestration/test_session_resume.py,
-docs/system/session-resume-v1.md (new file), docs/README.md,
-docs/system/diff-only-repair-v1.md, plus the six .agent/** paths named in
-C0a/C0b/C1/C2/C3/C6. No path under packages/ — this round is tests + docs
-only, zero production code.
+Change: exactly .agent/gate_f106_r16/ (new directory, several files), plus
+the four .agent/** paths named in C0a/C0b/C1/C2/C4. No path under packages/,
+apps/, tests/, docs/ — this round measures, it does not modify the product.
 
 Constraints:
 1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile, never
    cp, never retyped), exempt from the 500-line cap.
-2. C1 — PLAN15 is a REWRITE of .agent/plan.md, applied via
-   shutil.copyfile from .remedy-wt/f106-r15-plan.md (30 lines, < 50, holds
-   `## Goal`/`## Next Steps`, sha256
-   838177464fd521896c771661e074221aa1dcfb96a3277ea3a5fbf5838564a97f, 1235
+2. C1 — PLAN16 is a REWRITE of .agent/plan.md, applied via shutil.copyfile
+   from .remedy-wt/f106-r16-plan.md (34 lines, < 50, holds `## Goal`/
+   `## Next Steps`, sha256
+   7152a746c1c2ccc40fa0710c9859ed1cbef505d7f18630d852cd6593f3d00bb1, 1620
    bytes).
 3. C2 — ONE paragraph appended to .agent/live_review.md, never retyped:
-   RECORD14 (.remedy-wt/f106-r15-record14.txt, 4350 bytes, sha256
-   d8f6d0bc7c3b3133024f52d07d6a8c4588ad8bdd550458263511e03dedf9e5b7).
+   RECORD15 (.remedy-wt/f106-r16-record15.txt, 4688 bytes, sha256
+   c2cb7de564024c72ecbfe67435a490a476139323b4390d98aa540ee308f0cc31).
    Re-measure the file's own base length and trailing-newline state before
-   appending. At this round's base the file is 1874218 bytes and does NOT
+   appending. At this round's base the file is 1878570 bytes and does NOT
    end in a trailing newline, so the separator is "\n\n". Expected total:
-   base + 2 + 4350 = base + 4352 = 1878570 bytes, sha256
-   cf49bcaf444168e6f0890a09aa6ef746ecf9f27e06e5b05c05f8d0ab849ab2b1.
-4. C3 — TWO paragraphs appended to .agent/prose_slips.md, never retyped,
-   IN ORDER: PROSESLIPR14A (.remedy-wt/f106-r15-prose1.txt, 398 bytes,
-   sha256 3858b346007ba262edac9a1da178dd0d74f860996c739b9545c7deb1161b18a4)
-   then PROSESLIPR14B (.remedy-wt/f106-r15-prose2.txt, 370 bytes, sha256
-   5dd71bfb281070c1bf024363a2351ef39130f83f50ed8c1a1f52ef12c1a20bfd). THIS
-   FILE'S OWN CONVENTION: every entry, including these two, already carries
-   its own trailing newline (re-verify: the file's current last byte is
-   `\n`), so the append is base + "\n" + PROSESLIPR14A + "\n" +
-   PROSESLIPR14B — single-newline separators, not "\n\n" (this file's
-   convention differs from live_review.md's; do not copy constraint 3's
-   arithmetic here). Expected total at this round's base (38444 bytes):
-   38444 + 1 + 398 + 1 + 370 = 39214 bytes, sha256
-   aa2627345eb174400e9e32e15446121c79270aee22378cb916666f7e47ffff22.
-5. C4 — APPEND-shaped pair against tests/orchestration/test_session_resume.py:
-   FROM is the file's real current EOF (the file has no lines after
-   `assert all(rd.reviewer_output.resume_fallback is False for rd in
-   result.rounds)\n` — 15293 bytes, sha256
-   c90746200c1613821bb5f1de789028057a3f62fb52647e90ef129f7e5e7e5681); TO is
-   FROM plus the exact text of .remedy-wt/f106-r15-test-append.txt (3645
-   bytes, sha256 1ed3d46b20abfa6c93c34ba60601f4a12a74d1630c626cb9198ed841da33b402)
-   appended verbatim, never retyped (shutil.copyfile the base, then a
-   single open(...,'ab').write() of the scratch bytes, or equivalent).
-   Expected post-commit file: 18938 bytes, sha256
-   b0eb31478b0ed1c2fd6f96ae2537ed391b8f7ebecac49c215fa938009c83d008. This
-   was dry-run verified by the reviewer before this block was authored, in
-   a disposable scratch copy, never the tracked file: `ast.parse` clean,
-   `ruff check` clean (repo's own pyproject config, not --isolated), and
-   `pytest <scratch copy> -q` 27 passed (26 pre-existing + 1 new) — you are
-   REPRODUCING this against the real tracked file, not discovering it
-   fresh. Do not alter the test's logic, fixtures, or assertions; the two
-   `print(...)` lines inside the new test are DELIBERATE evidence output
-   (docs/system/session-resume-v1.md's measured table cites them), not
-   debug leftovers — keep them.
-6. C5a — docs/system/session-resume-v1.md is a NEW file: copy
-   .remedy-wt/f106-r15-doc.md (5699 bytes, sha256
-   c27ea0a2600cefd419a5b59baab13ea3dba697cc1c83bb7f341e286484c5e30d)
-   verbatim via shutil.copyfile, THEN replace the single literal token
-   `<PIN>` (appears exactly once, in the "Measured at commit" sentence)
-   with C4's real commit SHA (a plain string replace on the one token —
-   this is the ONLY edit permitted to the copied text; every other byte
-   stays exactly as scratch). The measured-numbers table (Builder
-   1331/1384, Reviewer 2208/2270) is not a projection — it is the real
-   output of running the C4 test (`pytest
-   tests/orchestration/test_session_resume.py -k T003MeasuredTokenReduction
-   -s`, printed lines) after C4 lands; re-run it and confirm the four
-   numbers match before C5, and if they do not, STOP and report rather
-   than editing the doc's numbers to match a different reading — a
-   mismatch means either the dry-run above was not reproduced faithfully
-   or something in this environment differs, and either way is a finding,
-   not a rounding error to paper over.
-7. C5b — PAIR-QUICKFIND, a REWRITE against docs/README.md's Quick-Find
-   Table (mechanically verified by the reviewer: FROM occurs exactly 1x
-   pre-commit, TO 0x pre-commit, `TO contains FROM: false`):
-     FROM (2 lines, exact, currently lines 63-64):
-       "| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |\n| snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |\n"
-     TO:
-       "| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |\n| session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |\n| snapshot | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | system |\n"
-   Re-grep both anchor lines' exact current byte content before applying —
-   this branch has not touched docs/README.md before, so they should be
-   unmoved from what is quoted here, but verify rather than assume.
-8. C5c — PAIR-SYSTABLE, a REWRITE against docs/README.md's System
-   Documentation table (mechanically verified, same shape as C5b),
-   currently lines 137-138:
-     FROM (2 lines, exact):
-       "| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |\n| [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |\n"
-     TO:
-       "| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |\n| [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |\n| [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |\n"
-9. C5d — PAIR-BACKLINK, an APPEND-shaped pair against
-   docs/system/diff-only-repair-v1.md (mechanically verified: TO contains
-   FROM):
-     FROM = the file's real current WHOLE-FILE bytes, 5246 bytes, sha256
-     6bcb06cb68ea081a54f85ce9b53db20844e7d3a2b9995b169003c968ee5b4a08
-     (ends "...never applies code and never calls a provider.\n-
-     `docs/roadmap/features/T2_F111.md` — the target spec and its
-     decisions.\n" — re-read the WHOLE file yourself before applying; the
-     pair is the full-file byte-exact prefix, not the tail excerpt shown
-     here for anchoring).
-     TO = FROM plus, appended at EOF:
-       "- [session-resume-v1.md](session-resume-v1.md) — reuses `select_repair_hunks`/`render_repair_hunks` for a different purpose: shrinking a REPAIR PROMPT under an active resumed session, never applying a patch; DECISION F111 D1 (no diff-apply seam in `pingpong_loop.py`) is unchanged.\n"
-     Expected post-commit file: 5530 bytes, sha256
-     243f7d692c331a7e71e3742b3aa86e62f8ca6fd10573ea85da218edc702634ee.
-10. C5 touches no path outside docs/system/session-resume-v1.md,
-    docs/README.md, docs/system/diff-only-repair-v1.md. No packages/ path,
-    no test path, in C5.
-11. C6 — .agent/handoff.md rewrite: state and F106's SESSION NUMBER (still
-    5, this is the session's only round), branch, commit SHAs, a
-    changed-files table, this round's real verification results (all 8
-    gates below with real numbers, not "green"), open-findings count
-    (unchanged at this round — no new R-id), and next expected action:
-    F106 moves to CLOSURE next round, per
-    docs/roadmap/STATUS_closure_protocol.md (evidence job + fresh review
-    zip, the authored STATUS line, PR creation) — T001, T002 (both sides)
-    and T003 are now ALL closed.
+   base + 2 + 4688 = base + 4690 = 1883260 bytes, sha256
+   04d9753c642953998cfe6a6ccab77fa6acefab1e9091b6dcf62e8f401965fc8b.
+4. C3 procedure — follow docs/agents/integration_gate.md steps 1-4 exactly;
+   this constraint states the F106-specific parameters, not a substitute
+   for that file.
+   a. BRANCH RUN, from the repo root, primary checkout, at the current
+      branch tip: `python3 -m pytest -n auto -q`. Record wall time (wrap as
+      `bash -c 'time python3 -m pytest -n auto -q > <scratch>/branch_run.txt 2>&1; echo EXIT=$?'`
+      or equivalent, run OUTSIDE the repo — write the log to a scratch
+      path first, per integration_gate.md step 2's own reasoning applied
+      here too: a log growing inside the repo mid-run risks the same class
+      of false positive that step 2 documents for the base run). Extract
+      `grep '^FAILED' <log> | sort > branch_failed.txt`.
+   b. BASE RUN — merge-base is `811c2d7e96b4719b8c76e6fc59ec6d926847a026`
+      (re-verify with `git merge-base feature/f106-session-resume main`
+      before creating the worktree; do not trust this number blindly).
+      Create it ON A THROWAWAY BRANCH:
+      `git worktree add -b tmp/base-gate-r16 <scratch-path> 811c2d7e96b4719b8c76e6fc59ec6d926847a026`
+      (a detached HEAD fails the self-dogfood branch guard by design —
+      DECISION D3, integration_gate.md step 2). Apply the R-0736 parity fix
+      PROACTIVELY, before the first base run attempt (F040 R17 / F258 R7
+      precedent — do not wait to rediscover the 114-failure signature):
+      `shutil.copytree` the primary checkout's `apps/ui/node_modules` and
+      `apps/ui/dist` into the worktree with `symlinks=True` EXPLICITLY (a
+      default `symlinks=False` dereferences npm's bin shims — finding
+      R-0591), THEN `os.utime` every file under the worktree's copied
+      `apps/ui/dist/` to a timestamp strictly AFTER the max mtime under the
+      worktree's own `apps/ui/src/` (content untouched, sha256 unchanged —
+      record both max-mtime readings, before and after the `os.utime`
+      call, as the EVENT proof R-0736's fix requires, not merely the
+      outcome). Set `REMEDY_UI_NO_AUTO_BUILD=1` for this run (in-process,
+      e.g. `os.environ['REMEDY_UI_NO_AUTO_BUILD']='1'` before invoking
+      pytest, or `env` if your shell allows it — NOT `VAR=x cmd` form,
+      which this sandbox has denied before). Run the IDENTICAL suite
+      command with the subprocess's own `cwd` set to the worktree root (no
+      path argument to pytest — a path argument run from the primary
+      checkout's cwd resolves the wrong installed package for CLI
+      subprocess tests, an unrelated artifact F040 R17 hit and diagnosed).
+      Record wall time the same way as the branch run; extract
+      `branch_failed.txt`'s sibling `base_failed.txt` the same way.
+   c. COMPARE: `comm -13 base_failed.txt branch_failed.txt` >
+      `branch_only.txt` (failures only on the branch); `comm -23
+      base_failed.txt branch_failed.txt` > `base_only.txt` (failures the
+      base has that the branch does not — expected empty if the parity fix
+      worked; if non-empty, attribute EVERY id to the environment class by
+      direct evidence — the R-0736 signature specifically, `React UI not
+      built.` in captured output — or count it as a genuine base failure
+      per integration_gate.md step 3's unconditional-attribution rule).
+   d. ATTRIBUTE every id in `branch_only.txt` (integration_gate.md step 4):
+      serial re-run of the exact node id (`pytest <node_id> -q`, no
+      `-n auto`). serial-pass ⇒ xdist-flake class, record it, not a
+      blocker. serial-fail ⇒ reproduce it at the base (serially, same
+      worktree) before concluding it is feature-coupled. A reproducible
+      branch-only failure that does NOT reproduce at the base and is
+      coupled to F106's own code (packages/orchestration/pingpong_loop.py,
+      pingpong_provider.py, diff_repair.py, call_identity.py, or their
+      tests) is a BLOCKER: STOP before C4, do not write a handoff claiming
+      the gate passed, and report the failure in full instead — that
+      becomes the next round's REPAIR target, never something this round
+      papers over or a later round silently absorbs.
+   e. Write `.agent/gate_f106_r16/attribution.md` — a prose account of the
+      comparison result and every attribution made (mirror the shape of
+      `.agent/gate_f040_r17/attribution.md`, a real committed precedent in
+      this repository's own history at `c94dec74`; read it before writing
+      yours). Commit `.agent/gate_f106_r16/{branch_run.txt, base_run.txt,
+      branch_failed.txt, base_failed.txt, branch_only.txt, base_only.txt,
+      attribution.md}` — the raw logs verbatim, never summarized or
+      truncated (a `.txt` extension, never `.log` — `.gitignore` drops
+      `*.log` silently and the review-zip guard rejects any `\.log$`
+      member, R-0169).
+   f. Remove the worktree and its throwaway branch after: `git worktree
+      remove <scratch-path>` then `git branch -D tmp/base-gate-r16`; prove
+      it with `git worktree list` (primary checkout only) and `git branch
+      --list 'tmp/*'` (empty) in your completion report.
+5. C3's commit is a SINGLE oversize exception, declared here in advance per
+   AGENTS.md's insertion-cap exception clause: the raw pytest output for
+   ~18000+ collected tests plus the attribution prose is one indivisible
+   measurement (accepted precedent: F040 R17's own `.agent/gate_f040_r17/`
+   commit, 596 insertions, `c94dec74`) — state the real insertion count in
+   your completion report rather than splitting the evidence dir across
+   commits, which would corrupt the record it exists to preserve.
+6. C4 — .agent/handoff.md rewrite per AGENTS.md's handoff contract: state,
+   SESSION 5, branch, commit SHAs, a changed-files table, this round's real
+   G1-G8 results (numbers, never "green"), open-findings count (unchanged —
+   no new R-id this round unless a genuine blocker was found in C3.d, in
+   which case that finding IS registered here as a new R-id, in ITS OWN
+   commit before C4, per §4 item 4's "findings persist FIRST" rule — if
+   this happens, name the extra commit and its R-id explicitly in your
+   completion report), and next expected action: IF the gate is clean
+   (empty branch_only.txt after attribution, or every id classified as
+   flake/environment, none feature-coupled), F106's closure precondition 2
+   is MET and the next round is the feature file's Built State section
+   (precondition 4) plus resolving the feature file's own job/mission-
+   resume scope note against Task slicing. IF C3.d found a genuine
+   feature-coupled blocker, say so plainly and name it as the next round's
+   repair target instead.
 
-Done when (run every command yourself; record REAL exit codes, never the
-word "green"):
-G1 TRANSPORT — .agent/authored/f106-r15.md and .agent/last_block.md both
+Done when (run every command yourself; record REAL exit codes, wall times
+and FAILED counts, never the word "green"):
+G1 TRANSPORT — .agent/authored/f106-r16.md and .agent/last_block.md both
    sha256-equal to this block as saved (single digest comparison).
-G2 THE PLAN — .agent/plan.md sha256 838177464fd521896c771661e074221aa1dcfb96a3277ea3a5fbf5838564a97f,
-   30 lines (`wc -l`), holds `## Goal` and `## Next Steps`.
-G3 LIVE_REVIEW APPEND — .agent/live_review.md is 1878570 bytes, sha256
-   cf49bcaf444168e6f0890a09aa6ef746ecf9f27e06e5b05c05f8d0ab849ab2b1; its
-   last `\n\n`-delimited unit is byte-equal to RECORD14
-   (.remedy-wt/f106-r15-record14.txt); negative control — flip one byte
+G2 THE PLAN — .agent/plan.md sha256
+   7152a746c1c2ccc40fa0710c9859ed1cbef505d7f18630d852cd6593f3d00bb1, 34
+   lines (`wc -l`), holds `## Goal` and `## Next Steps`.
+G3 LIVE_REVIEW APPEND — .agent/live_review.md is 1883260 bytes, sha256
+   04d9753c642953998cfe6a6ccab77fa6acefab1e9091b6dcf62e8f401965fc8b; its
+   last `\n\n`-delimited unit is byte-equal to RECORD15
+   (.remedy-wt/f106-r16-record15.txt); negative control — flip one byte
    inside that last unit in a SCRATCH copy and confirm the flipped copy no
-   longer byte-equals RECORD14 (never mutate the tracked file itself).
-G4 PROSE_SLIPS APPEND — .agent/prose_slips.md is 39214 bytes, sha256
-   aa2627345eb174400e9e32e15446121c79270aee22378cb916666f7e47ffff22.
-G5 THE LEDGER — `grep -cE '^- R-[0-9]{4} — '`,
+   longer byte-equals RECORD15 (never mutate the tracked file itself).
+G4 THE LEDGER — `grep -cE '^- R-[0-9]{4} — '`,
    `grep -cE '^Done: R-[0-9]{4} — '` and
    `grep -cE '^DECISION F[0-9]+ D[0-9]+ — '` over .agent/live_review.md
    read 320, 59 and 20 respectively, IDENTICAL before (base) and after
-   (HEAD) this round's C2 — this round adds no new finding.
-G6 THE CODE — zero production change: `git diff --stat` for every path
-   under `packages/` over the whole round is EMPTY.
-G7 TESTS AND DOCS — `python3 -m pytest tests/orchestration/test_session_resume.py -q`
-   REAL exit 0, 27 passed (26 pre-existing + 1 new); the new test's two
-   `print(...)` lines, re-run with `-s -k T003MeasuredTokenReduction`,
-   read `resumed=1331 full=1384` (builder) and `resumed=2208 full=2270`
-   (reviewer) and both inequalities hold; `ast.parse`/`ruff check` on
-   tests/orchestration/test_session_resume.py exit 0; `python3 -m pytest
-   tests/docs/ -q` REAL exit 0, 295 passed (this round's own base reading,
-   re-confirmed by the reviewer before this block was authored; docs/README.md
-   is in `PRIMARY_DOCS` and its markdown links are swept by
-   `TestPrimaryDocLinksResolve`, so this gate is meaningful for C5, not
-   vacuous); docs/README.md contains exactly one
-   occurrence each of `session-resume-v1.md` in the Quick-Find Table and
-   in the System Documentation table (2 total, `grep -c` over the whole
-   file); docs/system/session-resume-v1.md exists and contains the
-   substrings `supports_resume`, `resume_hunks_text`, `T002b-ii`, and the
-   four measured numbers `1331`, `1384`, `2208`, `2270`.
-G8 THE TREE — `git status --porcelain` empty; every commit's insertions
-   via `git diff --numstat <sha>^..<sha>` under 500 (C0a/C0b exempt as
-   verbatim `.agent/**` state-file saves); the canary
-   (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0; HEAD pushed
-   and equal to `origin/feature/f106-session-resume`.
+   (HEAD) this round's C2 — UNLESS C3.d found a genuine feature-coupled
+   blocker, in which case the registered count is exactly one higher and
+   the new id is named.
+G5 THE BRANCH RUN — real exit code, real `passed`/`skipped`/`FAILED`
+   counts and real wall time, all read from the committed
+   `.agent/gate_f106_r16/branch_run.txt`, not from memory or a summary.
+G6 THE BASE RUN — same, from `.agent/gate_f106_r16/base_run.txt`, PLUS the
+   mtime-window proof (max `apps/ui/src/` mtime and `apps/ui/dist/`
+   mtime, before and after the `os.utime` call) confirmed present in
+   `.agent/gate_f106_r16/attribution.md`.
+G7 THE COMPARISON AND ATTRIBUTION — `.agent/gate_f106_r16/branch_only.txt`
+   and `base_only.txt` both re-derived from `.agent/gate_f106_r16/
+   branch_failed.txt` and `base_failed.txt` via `comm -13`/`comm -23`
+   yourself (never trust the committed files without recomputing); every
+   line of `branch_only.txt` has an explicit classification in
+   `attribution.md` (flake / base-reproduces / feature-coupled-blocker);
+   zero feature-coupled blockers survive into this round's own verdict —
+   if one exists, this gate is RED and the round's own conclusion says so.
+G8 THE TREE — `git status --porcelain` empty; `git worktree list` shows
+   only the primary checkout; `git branch --list 'tmp/*'` empty; C3's
+   insertion count stated and matched against the declared oversize
+   exception (constraint 5); every OTHER commit's insertions under 500;
+   the canary (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0;
+   HEAD pushed and equal to `origin/feature/f106-session-resume`.
 
-Handback: completion report + rewrite .agent/handoff.md (C6 above). State
+Handback: completion report + rewrite .agent/handoff.md (C4 above). State
 the real numbers for every gate above, not the word "green". Name every
-deviation, however small.
-──────────────────────────────────────────────────────────────────────────
+deviation, however small. If C3 finds no blocker, say so as plainly as you
+would report one — a clean gate is not a lesser finding.
+─────────────────────────────────────────────────────────────────────────
