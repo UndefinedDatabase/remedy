@@ -1,120 +1,88 @@
-── STEP CLOSURE-SELFUSE/1 — F106 ─────────────────────────────────────────
-Goal: Advance closure precondition 6 (self-use track consumption) by
-planning and RUNNING the queue's next pending item, SU-003 ("Give
-apps/ui's ESLint config a TypeScript parser"), through the real job path
-(`self_use_job.plan_next_self_use_item` then
-`self_use_runner.run_next_self_use_item`) to the normal approval gate,
-inside an isolated worktree with an isolated data root, never promoted,
-never marking the queue item consumed. Commit the run's real evidence.
-Finding registration for anything `describe_self_use_run_defects` (or your
-own reading of the evidence) surfaces is DEFERRED to round 21 — do not
-author finding text this round; record the raw evidence honestly instead.
+── STEP CLOSURE-REGISTERFINDING/1 — F106 ────────────────────────────────
+Goal: Register round 20's real discovery — `create_provider()` has no
+`"ollama"` branch, so the resolved product-default provider can never
+reach a real call through the ping-pong job path — as finding R-0761
+(Medium) in `.agent/live_review.md`, discharging closure precondition 6's
+requirement that every string `describe_self_use_run_defects` surfaced be
+registered before F106 closes.
 
 Bundle:
-  C0a — save this step block verbatim to .agent/authored/f106-r20.md
+  C0a — save this step block verbatim to .agent/authored/f106-r21.md
   C0b — mirror it into .agent/last_block.md
-  C1  — rewrite .agent/plan.md for round 20 (PLAN20 below)
-  C2  — run SU-003 for real (procedure below); commit the evidence file
-        .agent/gate_f106_r20/self_use_run.txt
-  C3  — rewrite .agent/handoff.md for round 20 handback
+  C1  — rewrite .agent/plan.md for round 21 (PLAN21 below)
+  C2  — append R-0761 (one paragraph) to .agent/live_review.md
+  C3  — rewrite .agent/handoff.md for round 21 handback
 
 Change: exactly the .agent/** paths of C0a/C0b, .agent/plan.md,
-.agent/gate_f106_r20/self_use_run.txt and .agent/handoff.md. No path under
-packages/, apps/, tests/, docs/, scripts/ — `scripts/self_use_queue.json`
-in particular is READ, never written, this round (its `consumed_by` edit
-is a closure-commit act per DECISION F257 D2, not this round's).
+.agent/live_review.md and .agent/handoff.md. No path under packages/,
+apps/, tests/, docs/, scripts/ — this round registers a finding about
+production code, it does not fix it.
 
 Constraints:
 1. C0a/C0b verbatim single-.agent-state-file saves (shutil.copyfile, never
    cp, never retyped), exempt from the 500-line cap.
-2. C1 — PLAN20 is a REWRITE of .agent/plan.md, applied via shutil.copyfile
-   from .remedy-wt/f106-r20-plan.md (41 lines, < 50, holds `## Goal`/
+2. C1 — PLAN21 is a REWRITE of .agent/plan.md, applied via shutil.copyfile
+   from .remedy-wt/f106-r21-plan.md (38 lines, < 50, holds `## Goal`/
    `## Next Steps`, sha256
-   b33239536b736b4b89d164fe2159ec2bf824ae35bf5b2f2c1b4848c5fb761a1e, 2122
+   88950ca67241acbb0f1c835c7bac82ea56e872edf0ffa9608bf4dadf0bcc6052, 1948
    bytes).
-3. C2 procedure (mirrors the F258 R8 precedent at
-   `.agent/gate_f258_closure/self_use_run.txt`, adjusted for this branch):
-   a. Record `scripts/self_use_queue.json`'s sha256 BEFORE running:
-      expected `a72e6be87432e0fa90aa334d41010f3512ef3fca790ba903d28d3582ea1abfa2`
-      (verify this yourself; if it differs, STOP and report rather than
-      proceeding — the queue moved out from under this round).
-   b. Set `REMEDY_DATA_DIR = <repo>/.remedy-wt/f106-r20-selfuse/data` and a
-      `dest_dir` of `<repo>/.remedy-wt/f106-r20-selfuse/jobs`, both fresh
-      scratch paths under the gitignored `.remedy-wt/`. Set the env var
-      IN-PROCESS (`os.environ['REMEDY_DATA_DIR'] = ...` inside the same
-      Python process that then imports and calls the runner) — inline
-      shell env assignment (`VAR=x cmd`, `export`) is denied in this
-      sandbox.
-   c. Call `packages.orchestration.self_use_runner.run_next_self_use_item(
-      dest_dir, repo_path=".", queue_path=None)` with all other arguments
-      at their defaults (`max_provider_calls=6`, `max_cost_usd=0.50`,
-      `max_tasks=1`) — do NOT pass `builder_name`/`reviewer_name`/
-      `builder_provider`/`reviewer_provider`; let it resolve the product
-      default for real (DECISION-driving fix `cfd72734`, R-0757, means an
-      unflagged run now resolves via `role_config.resolve_role_config`,
-      not the raw "fake" fallback). `ollama` is confirmed reachable in
-      this environment with `muse-glimmer:latest` pulled; if role-config
-      resolution instead raises `SelfUseRunError` or resolves to something
-      unexpected, record that verbatim as the outcome — do not retry with
-      `builder_name="fake"` to force a result.
-   d. Record to `.agent/gate_f106_r20/self_use_run.txt`, in the same shape
-      as the F258 R8 precedent file: `REMEDY_DATA_DIR`, `dest_dir`,
-      `repo_path`, `queue_path`, queue sha256 before/after and their
-      equality, `entry_id`, `job_file_path`, `job_id`, `status`, `error`,
-      `isolation_mode`, `budgets`, `budget_actuals`, `execution_config`
-      (which provider/model actually ran), `num_tasks`, and one line per
-      task (`task_id`, `status`, `final_status`, `error`, `test_passed`,
-      `reviewer_verdict`).
-   e. Independently RELOAD the persisted result a second time, in a FRESH
-      Python process, via `packages.orchestration.pingpong_job.load_job_plan`
-      under the SAME `REMEDY_DATA_DIR` and the recorded `job_id` — confirm
-      every field in (d) reproduces identically from the reload, not just
-      from the in-memory object the run itself returned.
-   f. Call `packages.orchestration.self_use_findings.describe_self_use_run_defects`
-      on the reloaded `JobPlan`; record the resulting tuple verbatim in the
-      same evidence file (`()` if empty — state that explicitly, never
-      silence).
-   g. Confirm `scripts/self_use_queue.json` is untouched: sha256 after
-      equals sha256 before, and `git status --porcelain` shows no change
-      to that path (it should show none at all, since this round writes no
-      tracked file the queue read could have touched).
+3. C2 — a ONE-PARAGRAPH append to .agent/live_review.md, never retyped,
+   applied via shutil.copyfile from .remedy-wt/f106-r21-finding.txt (5025
+   bytes, sha256
+   d4e3403b5ef11e11293aa49df9b28fda9ac49d7f03e2e1295c36057e4d7a7bf5, zero
+   internal newlines, no trailing newline). Re-measure the file's own base
+   length before
+   appending: at this round's base the file is 1899768 bytes and does NOT
+   end in a trailing newline (confirmed unchanged since round 19 — round
+   20 touched no ledger path), so the separator is "\n\n" (this file's own
+   convention). Expected total: base + 2 + 5025 = 1904795 bytes, sha256
+   a26a404d25da52bb2df11e7709cb6206757361046014e5c79f56c8f6e67730cc. (If
+   your own measured total differs from this arithmetic, recompute the sum
+   yourself rather than trusting either number blindly, and state which
+   number you land on and why.)
 4. C3 — .agent/handoff.md rewrite per AGENTS.md's handoff contract: state,
-   SESSION 6, branch, commit SHAs, a changed-files table, this round's real
-   gates (below), the FULL contents of `describe_self_use_run_defects`'s
-   answer (quoted verbatim, however long), open-findings count (unchanged
-   at 321 registered / 60 resolved / 21 decisions — this round mints no
-   R-id), and next expected action: round 21 reads this round's real
-   evidence and either registers finding(s) for what
-   `describe_self_use_run_defects` (or your own reading) surfaced, or
-   states none were found; only after that is precondition 6 fully MET.
+   SESSION 6, branch, commit SHAs, a changed-files table, this round's
+   real gates (below), open-findings count (322 registered — up from 321
+   — 60 resolved, 21 decisions), and next expected action: closure
+   precondition 6 is MET (R-0761 registered, documented OPEN per
+   precondition 1's Medium/Low-risk allowance); the eventual closure
+   verdict is PASS WITH RISKS, not PASS, because of R-0761. Name that the
+   closure commit still owes TWO things: DECISION F106 D2's
+   `.agent/candidates.md` entry, and setting
+   `scripts/self_use_queue.json`'s SU-003 `consumed_by` to `F106`.
 
-Done when (run every command yourself; record REAL exit codes and REAL
-values, never the word "green" or an assumed number):
-G1 TRANSPORT — .agent/authored/f106-r20.md and .agent/last_block.md both
+Done when (run every command yourself; record REAL exit codes, never the
+word "green"):
+G1 TRANSPORT — .agent/authored/f106-r21.md and .agent/last_block.md both
    sha256-equal to this block as saved (single digest comparison).
 G2 THE PLAN — .agent/plan.md sha256
-   b33239536b736b4b89d164fe2159ec2bf824ae35bf5b2f2c1b4848c5fb761a1e, 41
+   88950ca67241acbb0f1c835c7bac82ea56e872edf0ffa9608bf4dadf0bcc6052, 38
    lines (`wc -l`), holds `## Goal` and `## Next Steps`.
-G3 THE SELF-USE RUN — `.agent/gate_f106_r20/self_use_run.txt` exists and
-   its `job_id`, `status`, `error`, `isolation_mode`, `execution_config`
-   and per-task fields REPRODUCE exactly from an INDEPENDENT reload of the
-   persisted `JobPlan` (constraint 3e) — not merely restated from the
-   in-memory run. Queue sha256 before/after are equal to each other and to
-   `a72e6be87432e0fa90aa334d41010f3512ef3fca790ba903d28d3582ea1abfa2`.
-G4 THE DEFECTS TUPLE — `describe_self_use_run_defects` on the independently
-   reloaded `JobPlan` reproduces the exact same tuple recorded in the
-   evidence file (empty or not) — recompute it yourself, do not trust the
-   file's own text.
-G5 THE QUEUE UNTOUCHED — `git status --porcelain -- scripts/` empty;
-   `git diff --stat 6a64c1c4..HEAD -- scripts/` (`6a64c1c4` is this
-   round's own base, round 19's HEAD) empty.
+G3 THE LEDGER APPEND — .agent/live_review.md's real post-commit bytes and
+   sha256 (compute and report; constraint 3 gives the expected arithmetic
+   but you verify it, not assume it); the file's last `\n\n`-delimited
+   unit is byte-equal to the R-0761 source text; negative control — flip
+   one byte inside a SCRATCH copy of that text and confirm the flipped
+   copy no longer byte-equals the file's own last unit (never mutate the
+   tracked file itself).
+G4 THE LEDGER COUNTS — over .agent/live_review.md at HEAD:
+   `grep -cE '^- R-[0-9]{4} — '` reads 322 (up from 321 — exactly `R-0761`
+   added, confirmed by `grep -c '^- R-0761 — '` reading exactly 1);
+   `grep -cE '^Done: R-[0-9]{4} — '` reads 60 (unmoved); `grep -cE
+   '^DECISION F[0-9]+ D[0-9]+ — '` reads 21 (unmoved).
+G5 THE CODE CITATION HOLDS — re-grep, at this round's own HEAD, that
+   `packages/orchestration/pingpong_provider.py:1591` is still
+   `def create_provider(name: str, *, model: str = "") -> PingPongProvider:`
+   and line 1599 still raises the quoted `RuntimeError` naming exactly
+   `fake, claude, claude-cli` — this round touches no production file, so
+   these must be byte-identical to round 20's own citations; report the
+   real current line numbers and text, do not assume they held.
 G6 THE TREE — `git status --porcelain` empty; every commit's insertions
    under 500 (C0a/C0b exempt as verbatim `.agent/**` state-file saves);
    canary (`pytest tests/cli/test_golden_path.py -q`) REAL exit 0; HEAD
    pushed and equal to `origin/feature/f106-session-resume`.
 
 Handback: completion report + rewrite .agent/handoff.md (C3 above). State
-the real numbers/values for every gate above, not the word "green". Name
-every deviation, however small — including an unexpected job outcome,
-which is evidence, not a failure of this round.
+the real numbers for every gate above, not the word "green". Name every
+deviation, however small.
 ─────────────────────────────────────────────────────────────────────────
