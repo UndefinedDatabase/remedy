@@ -12,7 +12,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 ## Tier 3 — Cost-First Pull-Forward (operator ruling amend0830)
 
 - [x] F106 — Session resume instead of rebuild (T001–T003 complete; accepted 2026-09-02 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f106-closure · package remedy-review-20260902-115928-READY_FOR_REVIEW.zip · SHA-256 939f841e486a4361ec503f21bc697fc18dd9834b3312f34024339f7a865b2a65 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 82278107ecea9e291d668caa9180f3d847d13e88)
-- [ ] F108 — Tiered artifact summaries
+- [~] F108 — Tiered artifact summaries
 - [ ] F109 — Semantic dedupe
 - [ ] F110 — Model routing by task class
 - [ ] F112 — Prompt budget per task class
