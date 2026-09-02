@@ -1,28 +1,33 @@
-# Context — F108 Tiered artifact summaries
+# Context — F109 Semantic dedupe
 
 ## Active Branch
-feature/f108-tiered-artifact-summaries, cut from `main` at
-`ec81e697bf498a6753d82d7e6a8d3c72467cd5d7`.
+feature/f109-semantic-dedupe, cut from `main` at
+`5e18a8536afa086b591b5a2e13009d68d6227432`.
 
 ## Scope
-F108 (Tier 3, depends on F107 — done): any oversized artifact gets a tiered
-representation (L1 summary, sectioned L2 summaries, full reference path);
-prompt assembly consumes L1 plus only the relevant L2 sections. Task
-slicing: T001 schema + mechanical sectioners + storage/caching; T002
-generation call with the summary role + fallback; T003 compiler
-integration + end-to-end fixture.
+F109 (Tier 3, depends on F105 and F106 — both done): within a RESUMED
+session, segments whose hash already went to that exact session are
+replaced by short reference markers, and only there. The scope rule binds
+every round: resumed session only, proven sends only. Task slicing: T001
+the sent-index (record at finalization, persist, invalidate on fallback)
+plus unit tests; T002 the composition hook, the markers and the scope
+guards plus fake-provider chain tests; T003 the measurement fixture, the
+disable flag and the docs.
 
 ## Do not touch
-Routing decisions, local-model setup, dossier compression — all explicitly
-out of scope per `docs/roadmap/features/T3_F108.md` Do not touch. No
-provider-routing feature is modified; this feature only DECLARES the
-summary role for T002.
+Cross-session caching, provider-side cache mechanics, and prompt CONTENT —
+all explicitly out of scope per `docs/roadmap/features/T3_F109.md` Do not
+touch. Segment ranks and composition ORDER stay exactly as F105 set them:
+dedupe replaces a segment's text, never its position, because the ordering
+is what the provider cache hits.
 
 ## Assumptions
-- F107 (context compiler v2) is `[x]` done and owns selection/budgets; T003
-  integrates with it rather than replacing it.
-- The summary role is a new provider-call role beside the existing evidence
-  and actuals roles, not yet inspected this round beyond the feature file.
+- F105 owns `packages/orchestration/prompt_segments.py` and already hashes
+  every composed segment into a manifest row, so F109 is bookkeeping over
+  those hashes and introduces no second hashing scheme.
+- F106 owns the provider resume surface — `supports_resume`,
+  `resume_used`, `resume_session_ref` — and F109 reads that session
+  reference without widening it.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -39,9 +44,12 @@ forward from the context this file replaced.
   never in the primary checkout, which satisfies `git status --porcelain`
   empty at every verdict.
 - THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
+- No round of F109 gates on `ruff`: this session's reviewer cannot execute
+  it, so such a gate would rest on the worker's word alone. The new files
+  follow the repository's ruff configuration by construction instead.
 
 This round is NOT UI work — no design-reference binding applies.
 
 ## Steps
-The item-status table for this round lives in the `## Current Step` section
-of `.agent/plan.md`. This file deliberately does not restate it.
+The item-status table for this round lives in the `## Current Step`
+section of `.agent/plan.md`. This file deliberately does not restate it.
