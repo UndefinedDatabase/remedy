@@ -50,7 +50,7 @@ class _WritingBuilder:
         self._cwd = cwd_holder
         self._content = content
 
-    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
         target = self._cwd.get("path") or ""
         # Never write outside the run's worktree: an empty path would land in the
         # operator's cwd, which is exactly the leak this feature prevents.
@@ -59,7 +59,7 @@ class _WritingBuilder:
         return BuilderOutput(summary="wrote shared.txt",
                              files_changed=["shared.txt"], provider="fake")
 
-    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
         return ReviewerOutput(verdict="pass", confidence="high", summary="ok",
                               provider="fake")
 
@@ -163,7 +163,7 @@ class TestTwoJobsDoNotCollide:
         assert Path(r_kept.staging_path).is_dir()
 
         class _FailingBuilder(_WritingBuilder):
-            def build(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+            def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
                 return BuilderOutput(error="provider_error: boom", provider="fake")
 
         run_pingpong("goal", str(repo),
