@@ -1,0 +1,69 @@
+REMEDY_DATA_DIR = /home/decodeux/Repos/remedy/.remedy-wt/f106-r20-selfuse/data
+dest_dir = /home/decodeux/Repos/remedy/.remedy-wt/f106-r20-selfuse/jobs
+repo_path = .
+queue_path = None (real shipped scripts/self_use_queue.json)
+queue sha256 before = a72e6be87432e0fa90aa334d41010f3512ef3fca790ba903d28d3582ea1abfa2
+queue sha256 after  = a72e6be87432e0fa90aa334d41010f3512ef3fca790ba903d28d3582ea1abfa2
+queue sha256 equal  = True
+entry_id = SU-003
+job_file_path = /home/decodeux/Repos/remedy/.remedy-wt/f106-r20-selfuse/jobs/SU-003.md
+job_id = f76686b8435640e9
+status = blocked
+error = task_T001_gate_failed: final_status=provider_unavailable; no_rounds
+isolation_mode = worktree
+budgets = {'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
+budget_actuals = None
+execution_config = builder='ollama' (source='cli'), reviewer='ollama' (source='cli'), builder_model='' (source='default'), reviewer_model='' (source='default')
+num_tasks = 2
+  task T001: status='blocked' final_status='provider_unavailable' error='completion_gate_failed: final_status=provider_unavailable; no_rounds' test_passed=None reviewer_verdict=''
+  task T002: status='skipped' final_status='' error='' test_passed=None reviewer_verdict=''
+
+INDEPENDENT RELOAD (fresh `python3 .remedy-wt/f106_r20_step2_reload.py f76686b8435640e9`
+process, same REMEDY_DATA_DIR, via `packages.orchestration.pingpong_job.load_job_plan`):
+job_id, status, error, isolation_mode, execution_config, budgets and both tasks'
+status/final_status/error/test_passed/reviewer_verdict all reproduced BYTE-IDENTICAL
+to the in-memory run result above (programmatic field-by-field comparison run,
+`ALL MATCH: True`) — not merely restated from the in-memory `run_next_self_use_item`
+return value.
+
+describe_self_use_run_defects(reloaded JobPlan) = (
+  "job f76686b8435640e9 (blocked): task_T001_gate_failed: final_status=provider_unavailable; no_rounds",
+  "T001 (blocked): completion_gate_failed: final_status=provider_unavailable; no_rounds",
+)
+(non-empty: 2 entries, quoted verbatim from the reloaded JobPlan's own `error`
+fields — the job's own error, then T001's own error, in that order; T002 has a
+blank `error` and contributes nothing per the function's own documented
+behaviour.)
+
+NOTE (worker observation, not a finding — registration is deferred to round 21
+per this round's own block text): the resolved builder/reviewer provider was
+'ollama', not 'fake' — `packages.orchestration.role_config.resolve_role_config`
+genuinely returned the product default (DEFAULT_PROVIDER = "ollama"), confirming
+DECISION-driving fix `cfd72734` / R-0757 behaves as designed on THIS branch. But
+the run still blocked before any provider call reached ollama at all: T001's
+`final_status` is `provider_unavailable` with ZERO rounds recorded
+("no_rounds"), which `packages/orchestration/pingpong_loop.py`'s own
+`_create_provider_with_cwd` -> `create_provider()` path explains directly.
+`packages/orchestration/pingpong_provider.py:1591-1599`'s `create_provider(name,
+*, model="")` recognises exactly three provider names — `"fake"`, `"claude"`,
+`"claude-cli"` — and raises `RuntimeError(f"Unknown provider: {name!r}.
+Available: fake, claude, claude-cli")` for anything else, including `"ollama"`.
+Independently reproduced in this same environment, outside any job, by calling
+`packages.orchestration.pingpong_provider.create_provider('ollama')` directly:
+it raises `RuntimeError: Unknown provider: 'ollama'. Available: fake, claude,
+claude-cli` — the exact shape of text `_create_provider_with_cwd`'s caught
+`RuntimeError` would carry into `_fail_early`, matching the observed
+`final_status='provider_unavailable'` with `no_rounds` (the provider is never
+even constructed, so no `PingPongRound` is ever appended). This is despite
+ollama itself being reachable in this environment at `http://localhost:11434`
+with `muse-glimmer:latest` already pulled, and despite the job's own persisted
+`run_manifest.input_snapshot.input.provider_versions` recording `ollama:
+"ollama version is 0.32.9"` and `config` recording `ollama.host =
+http://localhost:11434` / `ollama.model = muse-glimmer:latest` — i.e. the
+environment and configuration were both ready; the failure is that
+`create_provider()`'s own name dispatch has never included an `"ollama"`
+branch, so a genuinely-resolved `role_config.DEFAULT_PROVIDER = "ollama"` can
+never reach a real provider through this path. `job.json`'s own persisted
+fields carry no lower-level exception text beyond the two `error` strings
+quoted above; the `RuntimeError` text itself was reproduced by this worker's
+own direct call, not read from the job's own persisted state.
