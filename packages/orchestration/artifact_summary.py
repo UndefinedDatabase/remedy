@@ -27,6 +27,7 @@ import json
 import re
 from collections.abc import Callable
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -204,6 +205,11 @@ def _chunk_lines(lines: list[str], chunk_lines: int) -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 
+#: Compact schema version, per the SCHEMA_V convention run_structured_call
+#: requires (packages/orchestration/schemas/models.py:schema_v_of).
+GENERATED_SUMMARY_SCHEMA_V = "generated_summary_v1"
+
+
 class GeneratedSummaryContent(BaseModel):
     """The NARROW schema the ``summary`` role is actually asked to fill.
 
@@ -212,6 +218,8 @@ class GeneratedSummaryContent(BaseModel):
     provider response for them, so a provider hallucinating a path or a hash
     can never corrupt the cache key or the reference path.
     """
+
+    SCHEMA_V: ClassVar[str] = GENERATED_SUMMARY_SCHEMA_V
 
     l1: str
     l2: list[ArtifactSummarySection]
