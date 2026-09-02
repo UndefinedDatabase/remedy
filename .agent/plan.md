@@ -14,29 +14,28 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 3 — book round 2's PASS verdict and one reviewer prose slip, then
-land T001b-ii: wire the finalized-call adapters into
-`packages/orchestration/pingpong_loop.py` at the builder and reviewer
-finalized-call seams and at both resume-fallback sites, carry the result
-on `PingPongResult.session_sent_evidence`, and prove it with the first
-chain tests in this feature that drive the real loop. Every loop edit is
-additive; no existing statement moves.
+Round 4 — book round 3's PASS verdict, register `R-0770` (the chain tests
+proved the four loop call sites only as a GROUP, because one shared
+`fake_session_id` collapsed them to a single observable), and repair it by
+giving the chain tests two DISTINCT provider session ids so the Builder
+and Reviewer record seams are each pinned alone. No production code
+changes this round: the wiring is correct and the defect is in the tests
+that failed to prove it.
 
 ## Next Steps
 
 - T002: the composition hook — a segment whose hash the session already
   holds becomes a one-line marker, with non-resume calls bypassing the
-  hook entirely, asserted by a byte-equality golden.
+  hook entirely, asserted by a byte-equality golden. T002 is also where
+  the resume-fallback invalidation finally becomes observable, which is
+  the half `R-0770` records as still unproven.
 - T003: the measurement fixture, the disable flag, and the docs.
 - The integration gate, then the closure sequence.
 
 ## Risks
 
-- The loop is production code every job runs. The wiring is additive and
-  the round gates the three suites that cover it, but a regression here
-  would reach real runs rather than only this feature.
-- The parse-retry and post-mortem provider calls are deliberately NOT
-  wired. That records strictly less than was sent, which errs in the safe
-  direction; T002 must not assume the index is complete.
+- The parse-retry and post-mortem provider calls are still deliberately
+  NOT wired into the index. That records strictly less than was sent,
+  which errs in the safe direction; T002 must not assume completeness.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
