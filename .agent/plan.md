@@ -17,23 +17,29 @@ summary never blocks the run.
 | Item | Status | Reason |
 |------|--------|--------|
 | Claim F108, discharge R-0762, inventory | done | round 1 |
-| T001 schema + mechanical sectioners + storage/caching + unit tests | done | round 2, `packages/orchestration/artifact_summary.py` |
-| T002 generation call + summary role + fallback | pending | next round |
-| T003 compiler integration + fixture | pending | later round |
+| T001 schema + sectioners + storage/caching | done | round 2 |
+| T002 generation call + fallback | done | round 3, `generate_artifact_summary` |
+| T002 `summary` role registration | BLOCKED | round 3 found the block's own premise false: `KNOWN_ROLES` DOES have a closed-set test guard — see `.agent/handoff.md` Deviations |
+| T003 compiler integration + fixture | pending | next round |
 
 ## Next Steps
-1. Round 3: declare the `summary` role in `role_config.py`'s `KNOWN_ROLES`,
-   wire a provider call using T001's sections as input, validate the
-   response with `packages/orchestration/schemas/validation.py`'s
-   `validate_response`, and add the fallback (truncated head+tail with the
-   "[summary unavailable — truncated view]" marker) for a failed
-   generation.
-2. T003: hook the new representation into
+1. Round 4 FIRST resolves the `summary`-role registration block: either
+   register `"summary"` in `role_config.py`'s `KNOWN_ROLES` AND update
+   `tests/orchestration/test_role_config.py::TestAllRoles.test_all_eight_roles_present`
+   in the same round (both paths touched, both declared), or a DECISION that
+   `generate_artifact_summary` does not need `KNOWN_ROLES` membership at all
+   (it takes `call_fn` directly; nothing found this round wires it through
+   `resolve_role_config`).
+2. Then T003: hook the new representation into
    `packages/orchestration/context_compiler.py`'s selection/rendering (a
-   third `rendering` value beside `"full"`/`"signatures"`), build the
-   long-log fixture, and record the size comparison.
+   third `rendering` value beside `"full"`/`"signatures"`), the
+   relevant-L2-section matching rule, the long-log fixture, and the size
+   comparison recorded.
 3. Integration gate (full suite, both required runs) before closure.
 
 ## Risks
-- T002's fallback rule ("never silent, never blocking") is the one Design
-  requirement T001 does not touch at all; round 3 owns it fully.
+- T003 is the round that proves the whole feature's DONE condition; T001/T002
+  are necessary but not sufficient on their own.
+- The role-config block above recurred once already (F108 R3): a block's
+  "confirmed empty grep" claim must be re-run, not trusted, before the
+  worker acts on it.
