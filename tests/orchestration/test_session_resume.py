@@ -346,3 +346,74 @@ class TestT002cReviewerFallbackOnce:
         )
         assert len(result.rounds) >= 2
         assert all(rd.reviewer_output.resume_fallback is False for rd in result.rounds)
+
+
+class TestT003MeasuredTokenReduction:
+    """T003: a fixture repair chain shows a MEASURED prompt-byte reduction when
+    a repair round resumes versus when it resends full context — the feature's
+    own Goal & Done acceptance criterion (docs/roadmap/features/T3_F106.md).
+    Builder and Reviewer are checked independently since each has its own
+    resume-hunks call site (T002b-ii step 2a/2b). The comparison is
+    `PreparedCallInput.prompt_len_bytes` (packages/orchestration/call_identity.py)
+    — the exact UTF-8 byte count of the prompt actually sent, already recorded
+    on every `BuilderOutput`/`ReviewerOutput` via `prepared_input`; no new
+    measurement surface is added. No production code changes with T003 — T001
+    and T002 (both sides) already wired the mechanism this test measures.
+    """
+
+    _BUILDER_FILES = ["README.md", "docs/README.md", "src/main.py"]
+
+    def _make_repo(self, base: Path) -> Path:
+        base.mkdir()
+        (base / "README.md").write_text("# Demo\nA demo project.\n")
+        (base / "docs").mkdir()
+        (base / "docs" / "README.md").write_text("# Docs\nDocumentation here.\n")
+        (base / "src").mkdir()
+        (base / "src" / "main.py").write_text("def hello():\n    return 'hello'\n")
+        (base / ".env").write_text("API_KEY=secret123\n")
+        (base / ".env.local").write_text("DB_PASSWORD=hunter2\n")
+        return base
+
+    def _run_repair(self, repo: Path, *, supports_resume: bool):
+        provider = FakeProvider(
+            fail_on_round=1, pass_on_round=2,
+            supports_resume=supports_resume, fake_session_id="sess-1",
+            builder_files=self._BUILDER_FILES,
+        )
+        result = run_pingpong(
+            "Fix README", str(repo),
+            builder_provider=provider, reviewer_provider=provider,
+            repair_rounds=2,
+        )
+        assert len(result.rounds) >= 2
+        return result.rounds[1]
+
+    def test_resumed_repair_round_sends_fewer_prompt_bytes_than_full_context(
+        self, demo_repo: Path, tmp_path: Path,
+    ):
+        resumed_round = self._run_repair(demo_repo, supports_resume=True)
+        full_repo = self._make_repo(tmp_path / "repo_full")
+        full_round = self._run_repair(full_repo, supports_resume=False)
+
+        assert resumed_round.builder_output.resume_used is True
+        assert full_round.builder_output.resume_used is False
+        assert resumed_round.reviewer_output.resume_used is True
+        assert full_round.reviewer_output.resume_used is False
+
+        resumed_builder_bytes = resumed_round.builder_output.prepared_input.prompt_len_bytes
+        full_builder_bytes = full_round.builder_output.prepared_input.prompt_len_bytes
+        resumed_reviewer_bytes = resumed_round.reviewer_output.prepared_input.prompt_len_bytes
+        full_reviewer_bytes = full_round.reviewer_output.prepared_input.prompt_len_bytes
+
+        # Deliberate evidence output (not a debug leftover): these four numbers
+        # are what docs/system/session-resume-v1.md's measured-reduction table
+        # cites, reproducible with `pytest tests/orchestration/test_session_resume.py -k T003MeasuredTokenReduction -s`.
+        print(f"F106 T003 builder:  resumed={resumed_builder_bytes} full={full_builder_bytes}")
+        print(f"F106 T003 reviewer: resumed={resumed_reviewer_bytes} full={full_reviewer_bytes}")
+
+        assert resumed_builder_bytes < full_builder_bytes, (
+            f"resumed={resumed_builder_bytes} full={full_builder_bytes}"
+        )
+        assert resumed_reviewer_bytes < full_reviewer_bytes, (
+            f"resumed={resumed_reviewer_bytes} full={full_reviewer_bytes}"
+        )
