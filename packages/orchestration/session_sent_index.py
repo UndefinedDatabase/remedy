@@ -1,0 +1,211 @@
+"""
+Session sent-hash index — semantic dedupe bookkeeping (F109 T001a).
+
+Remembers which prompt segments have PROVABLY been delivered to a given provider
+session, so that a later call which RESUMES that same session can skip resending
+them. This module is the bookkeeping half of F109 and nothing else.
+
+The scope rule of the whole feature, verbatim, and it binds every line below:
+RESUMED SESSION ONLY, PROVEN SENDS ONLY. "Proven" is the load-bearing word: a
+call that did not succeed did not reach the session, and a call with no session
+id has no session to remember, so neither is ever recorded. An index that
+guesses what the model holds is worse than no index at all, because the
+composition hook downstream would then replace content the model never saw.
+
+This module is PURE. It reads no file, writes no file, touches no network, calls
+no provider, and imports nothing from ``packages.orchestration`` — the segment
+hashes it stores are produced by ``prompt_segments.ComposedPrompt`` and handed
+in by the caller, so there is no second hashing scheme here.
+
+Scope boundary — deliberate absences (a reader searching here should find this
+rather than conclude the wiring was forgotten):
+  - The index is NOT persisted into the job's evidence here, and nothing here
+    reads it back at process start. Writing ``as_evidence_dicts()`` into the run
+    evidence at the ``on_call_finalized`` seam is F109 T001b; this module only
+    provides the two seams that round trip (``as_evidence_dicts`` and
+    ``session_sent_index_from_evidence``).
+  - Nothing here invalidates a session on its own. The resume-fallback caller
+    must call ``invalidate_session``; wiring that to the fallback is T001b.
+  - No prompt is rewritten here. Replacing an already-sent segment with a short
+    reference marker is the composition hook, F109 T002.
+
+Public API::
+
+    SessionSentIndexError           — the one error type of this module
+    SessionSentIndex                — the per-session sent-hash index
+    session_sent_index_from_evidence(rows) -> SessionSentIndex
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping, Sequence
+
+
+class SessionSentIndexError(Exception):
+    """Raised on a malformed manifest row or a malformed evidence row."""
+
+
+class SessionSentIndex:
+    """Which segment hashes are PROVEN to have reached which provider session.
+
+    Construct with no arguments for an empty index. Every session's hashes live
+    in their own set, keyed by session id, so two sessions can never read each
+    other's sends — the cross-session leak this feature exists to prevent.
+    """
+
+    def __init__(self) -> None:
+        self._sent_by_session: dict[str, set[str]] = {}
+
+    def record_call(
+        self,
+        session_id: str,
+        manifest_rows: Iterable[Mapping[str, object]],
+        *,
+        ok: bool,
+    ) -> int:
+        """Record the segment hashes of ONE finalized call; return how many were new.
+
+        ``manifest_rows`` is what ``ComposedPrompt.manifest_as_dicts()`` returns:
+        a sequence of mappings, each carrying a ``"sha256"`` key whose value is the
+        hex digest of that segment's text. The return value counts only the hashes
+        this call added that the session did not already hold.
+
+        Records NOTHING, and returns 0, when ``ok`` is false: an unsuccessful call
+        did not reach the session. Records NOTHING, and returns 0, when
+        ``session_id`` is not a non-empty string after stripping: an empty key would
+        become one bucket that every sessionless call shares, which is a
+        cross-session leak by construction. Neither case is an error; both are
+        ordinary and both are silent.
+
+        Raises ``SessionSentIndexError`` on a malformed manifest — a row that is not
+        a mapping, a row with no ``"sha256"``, or a ``"sha256"`` that is not a
+        non-empty string. That is a programming error, and it must not be allowed to
+        degrade into a silently smaller index.
+        """
+        if not ok:
+            return 0
+        if not isinstance(session_id, str) or not session_id.strip():
+            return 0
+
+        # Validate the WHOLE manifest before touching the index, so a malformed
+        # row leaves the index exactly as it was rather than half-updated.
+        hashes = _segment_hashes_from_manifest(manifest_rows)
+        if not hashes:
+            return 0
+
+        already_sent = self._sent_by_session.setdefault(session_id, set())
+        added = {digest for digest in hashes if digest not in already_sent}
+        already_sent.update(added)
+        return len(added)
+
+    def sent_hashes(self, session_id: str) -> frozenset[str]:
+        """Every hash proven sent to that session; the empty frozenset if none.
+
+        There is deliberately no second guard for a blank session id here: the
+        emptiness of an empty id is a CONSEQUENCE of ``record_call`` refusing to
+        create such a key, so the rule lives in exactly one place and a regression
+        in it stays visible instead of being masked here.
+        """
+        return frozenset(self._sent_by_session.get(session_id, frozenset()))
+
+    def was_sent(self, session_id: str, sha256: str) -> bool:
+        """True only when that exact session already holds that exact hash."""
+        return sha256 in self._sent_by_session.get(session_id, frozenset())
+
+    def invalidate_session(self, session_id: str) -> None:
+        """Drop that session's set entirely; an unknown session id is a no-op.
+
+        This is the resume-fallback safety valve. Once a resume attempt has fallen
+        back to full context, nothing about what the model still holds is proven any
+        more, so the honest state is "nothing sent". A fallback can fire before any
+        call to that session ever succeeded, which is why an unknown id is silent
+        rather than an error.
+        """
+        self._sent_by_session.pop(session_id, None)
+
+    def session_ids(self) -> tuple[str, ...]:
+        """Every session id the index holds, SORTED, never dict-ordered."""
+        return tuple(sorted(self._sent_by_session))
+
+    def as_evidence_dicts(self) -> list[dict]:
+        """JSON-ready rows, one per session, sorted by session id.
+
+        Both levels are sorted — the rows by session id, the hashes within a row —
+        so two runs that made the same sends produce byte-identical evidence.
+        """
+        return [
+            {
+                "session_id": session_id,
+                "sent_sha256": sorted(self._sent_by_session[session_id]),
+            }
+            for session_id in self.session_ids()
+        ]
+
+
+def session_sent_index_from_evidence(
+    rows: Iterable[Mapping[str, object]],
+) -> SessionSentIndex:
+    """Rebuild an index from what ``as_evidence_dicts()`` produced.
+
+    This is the restart honesty seam: an index rebuilt after a process restart
+    contains exactly what the evidence proves and never more. Raises
+    ``SessionSentIndexError`` on a row that is not a mapping, a row whose
+    ``"session_id"`` is not a non-empty string, or a ``"sent_sha256"`` that is not
+    a sequence of non-empty strings.
+    """
+    index = SessionSentIndex()
+    for position, row in enumerate(rows):
+        if not isinstance(row, Mapping):
+            raise SessionSentIndexError(
+                f"evidence row {position} is not a mapping: {type(row).__name__}"
+            )
+        session_id = row.get("session_id")
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise SessionSentIndexError(
+                f"evidence row {position} has no non-empty string 'session_id': {session_id!r}"
+            )
+        hashes = _evidence_hashes(row.get("sent_sha256"), position)
+        index._sent_by_session.setdefault(session_id, set()).update(hashes)
+    return index
+
+
+def _segment_hashes_from_manifest(
+    manifest_rows: Iterable[Mapping[str, object]],
+) -> list[str]:
+    """The ``"sha256"`` of every manifest row, in order; raises on a malformed row."""
+    hashes: list[str] = []
+    for position, row in enumerate(manifest_rows):
+        if not isinstance(row, Mapping):
+            raise SessionSentIndexError(
+                f"manifest row {position} is not a mapping: {type(row).__name__}"
+            )
+        if "sha256" not in row:
+            raise SessionSentIndexError(f"manifest row {position} has no 'sha256' key")
+        digest = row["sha256"]
+        if not isinstance(digest, str) or not digest.strip():
+            raise SessionSentIndexError(
+                f"manifest row {position} has no non-empty string 'sha256': {digest!r}"
+            )
+        hashes.append(digest)
+    return hashes
+
+
+def _evidence_hashes(value: object, position: int) -> list[str]:
+    """The hashes of one evidence row; raises unless a sequence of non-empty strings.
+
+    ``str`` and ``bytes`` are rejected explicitly even though both are sequences:
+    iterating a bare string would silently accept its CHARACTERS as hashes, which
+    is precisely the kind of quiet corruption this seam exists to refuse.
+    """
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise SessionSentIndexError(
+            f"evidence row {position} has no 'sent_sha256' sequence: {value!r}"
+        )
+    hashes: list[str] = []
+    for digest in value:
+        if not isinstance(digest, str) or not digest.strip():
+            raise SessionSentIndexError(
+                f"evidence row {position} has a bad 'sent_sha256' entry: {digest!r}"
+            )
+        hashes.append(digest)
+    return hashes
