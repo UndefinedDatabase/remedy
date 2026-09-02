@@ -538,7 +538,7 @@ class TestAdapterLifecycle:
 
 
 class TestChainAgainstTheRealLoop:
-    """F109 T001b-ii: THESE CASES RUN THE REAL LOOP.
+    """F109 T001b-ii: THESE CASES RUN THE REAL LOOP, WITH ONE PROVIDER PER ROLE.
 
     Every test above is a pure unit test of the index. Every test here drives
     ``run_pingpong`` end to end against ``FakeProvider`` and then reads
@@ -546,7 +546,23 @@ class TestChainAgainstTheRealLoop:
     feature proving the index is fed by ACTUAL provider calls rather than by a
     hand-built manifest. Both fixtures are declared inside this class on
     purpose, so the pure tests above keep touching no tmp_path and no provider.
+
+    WHY THE TWO PROVIDERS CARRY DISTINCT SESSION IDS — read this before changing
+    anything here (finding R-0770, repaired in F109 round 4). These cases used to
+    pass ONE ``FakeProvider`` instance as both ``builder_provider`` and
+    ``reviewer_provider``. A ``FakeProvider`` reports a single
+    ``fake_session_id``, so the Builder and Reviewer seams recorded into the SAME
+    evidence row and the loop's four call sites collapsed into a single
+    observable: deleting either ``record_finalized_call`` left the row populated
+    by the other seam, so no mutation of an individual seam could be caught and
+    the suite stayed green on a broken loop. Two subjects sharing one observable
+    cannot fail on either. Giving the roles DISTINCT ids — ``sess-builder`` and
+    ``sess-reviewer`` — gives each seam a row of its own, so a case can name the
+    seam it pins. Never collapse the two ids back into one.
     """
+
+    BUILDER_SESSION = "sess-builder"
+    REVIEWER_SESSION = "sess-reviewer"
 
     @staticmethod
     def _make_repo(base: Path) -> Path:
@@ -562,12 +578,48 @@ class TestChainAgainstTheRealLoop:
         return base
 
     @staticmethod
-    def _run(repo: Path, provider: FakeProvider, **kwargs):
+    def _provider_pair(
+        *,
+        with_session_ids: bool = True,
+        supports_resume: bool = True,
+        builder_resume_fails: bool = False,
+    ) -> tuple[FakeProvider, FakeProvider]:
+        """THE PAIR EVERY CASE HERE DRIVES: one provider per role, distinct ids.
+
+        Built in exactly one place so no case restates it and no case can quietly
+        go back to sharing a single instance between the two roles — which is the
+        collapse the class docstring describes. ``FakeProvider`` counts builds and
+        reviews on separate counters, so splitting one instance into two changes
+        no round outcome; it only splits the observable.
+        """
+        builder_id = TestChainAgainstTheRealLoop.BUILDER_SESSION if with_session_ids else ""
+        reviewer_id = TestChainAgainstTheRealLoop.REVIEWER_SESSION if with_session_ids else ""
+        builder = FakeProvider(
+            fail_on_round=1, pass_on_round=2, supports_resume=supports_resume,
+            fake_session_id=builder_id, resume_fails=builder_resume_fails,
+        )
+        reviewer = FakeProvider(
+            fail_on_round=1, pass_on_round=2, supports_resume=supports_resume,
+            fake_session_id=reviewer_id,
+        )
+        return builder, reviewer
+
+    @staticmethod
+    def _run(repo: Path, providers: tuple[FakeProvider, FakeProvider], **kwargs):
+        builder_provider, reviewer_provider = providers
         return run_pingpong(
             "Fix README", str(repo),
-            builder_provider=provider, reviewer_provider=provider,
+            builder_provider=builder_provider, reviewer_provider=reviewer_provider,
             **kwargs,
         )
+
+    @staticmethod
+    def _rows_by_session(result) -> dict[str, list[str]]:
+        """The evidence keyed by session id, so a case can name the seam it reads."""
+        return {
+            str(row["session_id"]): list(row["sent_sha256"])
+            for row in result.session_sent_evidence
+        }
 
     @pytest.fixture(autouse=True)
     def isolate_data_root(self, tmp_path: Path, monkeypatch):
@@ -581,103 +633,143 @@ class TestChainAgainstTheRealLoop:
     def demo_repo(self, tmp_path: Path) -> Path:
         return self._make_repo(tmp_path / "demo_repo")
 
-    def test_a_resumed_two_round_chain_populates_the_evidence(self, demo_repo: Path):
-        provider = FakeProvider(
-            fail_on_round=1, pass_on_round=2,
-            supports_resume=True, fake_session_id="sess-1",
-        )
-        result = self._run(demo_repo, provider, repair_rounds=2)
+    def test_the_builder_seam_records_a_row_of_its_own(self, demo_repo: Path):
+        # THE BUILDER SEAM, PINNED ALONE. Deleting the Builder
+        # record_finalized_call from pingpong_loop.py makes this row disappear
+        # entirely, so this case is the one that mutation breaks. No exact hash
+        # COUNT is asserted: the count follows from prompt composition and would
+        # pin this test to unrelated prompt changes.
+        result = self._run(demo_repo, self._provider_pair(), repair_rounds=2)
 
-        assert result.session_sent_evidence != []
-        assert len(result.session_sent_evidence) == 1
-        row = result.session_sent_evidence[0]
-        assert row["session_id"] == "sess-1"
-        assert row["sent_sha256"] != []
-        assert row["sent_sha256"] == sorted(row["sent_sha256"])
+        rows = self._rows_by_session(result)
+        assert self.BUILDER_SESSION in rows, sorted(rows)
+        assert rows[self.BUILDER_SESSION] != []
+
+    def test_the_reviewer_seam_records_a_row_of_its_own(self, demo_repo: Path):
+        # The mirror of the case above, for the Reviewer seam: deleting the
+        # Reviewer record_finalized_call removes exactly this row.
+        result = self._run(demo_repo, self._provider_pair(), repair_rounds=2)
+
+        rows = self._rows_by_session(result)
+        assert self.REVIEWER_SESSION in rows, sorted(rows)
+        assert rows[self.REVIEWER_SESSION] != []
+
+    def test_both_seams_appear_exactly_once_and_the_rows_are_sorted(self, demo_repo: Path):
+        result = self._run(demo_repo, self._provider_pair(), repair_rounds=2)
+
+        session_ids = [str(row["session_id"]) for row in result.session_sent_evidence]
+        assert set(session_ids) == {self.BUILDER_SESSION, self.REVIEWER_SESSION}
+        assert len(session_ids) == 2
+        # The determinism as_evidence_dicts promises: rows sorted by session id.
+        assert session_ids == sorted(session_ids)
 
     def test_every_recorded_hash_is_a_real_segment_hash(self, demo_repo: Path):
-        provider = FakeProvider(
-            fail_on_round=1, pass_on_round=2,
-            supports_resume=True, fake_session_id="sess-1",
-        )
-        result = self._run(demo_repo, provider, repair_rounds=2)
+        result = self._run(demo_repo, self._provider_pair(), repair_rounds=2)
 
-        hashes = result.session_sent_evidence[0]["sent_sha256"]
-        assert hashes
-        for digest in hashes:
-            assert len(digest) == 64, digest
-            assert set(digest) <= set("0123456789abcdef"), digest
+        assert result.session_sent_evidence != []
+        for row in result.session_sent_evidence:
+            hashes = row["sent_sha256"]
+            assert hashes
+            assert hashes == sorted(hashes)
+            for digest in hashes:
+                assert len(digest) == 64, digest
+                assert set(digest) <= set("0123456789abcdef"), digest
 
-    def test_a_provider_that_reports_no_session_id_records_nothing(self, demo_repo: Path):
+    def test_a_provider_pair_that_reports_no_session_id_records_nothing(self, demo_repo: Path):
         # The proven-sends-only rule surviving contact with the loop: with no
-        # session named, there is no session to remember anything against.
-        provider = FakeProvider(fail_on_round=1, pass_on_round=2, supports_resume=True)
-        result = self._run(demo_repo, provider, repair_rounds=2)
+        # session named by either role, there is no session to remember against.
+        result = self._run(
+            demo_repo, self._provider_pair(with_session_ids=False), repair_rounds=2,
+        )
 
         assert result.session_sent_evidence == []
 
-    def test_a_single_round_run_records_its_session_even_though_it_never_resumed(
+    def test_the_two_seams_do_not_share_one_observable(self, demo_repo: Path):
+        # THE COUNTER-MEASURE TO R-0770, ASSERTED RATHER THAN ONLY DOCUMENTED.
+        # Builder and Reviewer compose different prompts, so their recorded hash
+        # sets differ. This assertion fails the moment the two seams are wired to
+        # one index key again — which is exactly the collapse the repair prevents.
+        result = self._run(demo_repo, self._provider_pair(), repair_rounds=2)
+
+        rows = self._rows_by_session(result)
+        assert set(rows[self.BUILDER_SESSION]) != set(rows[self.REVIEWER_SESSION])
+
+    def test_a_single_round_run_records_the_sessions_it_proved(
         self, demo_repo: Path, tmp_path: Path,
     ):
         # PINNED FROM REAL RUNS, not from expectation. Recording is keyed on a
         # PROVEN send that names a session, and a first round proves exactly
         # that; "resumed session only" governs the composition hook (T002), not
         # what the index is permitted to remember.
-        sessionless = self._run(demo_repo, FakeProvider())
+        sessionless = self._run(
+            demo_repo, self._provider_pair(with_session_ids=False, supports_resume=False),
+        )
         assert len(sessionless.rounds) == 1
         assert sessionless.session_sent_evidence == []
 
-        named = self._run(
-            self._make_repo(tmp_path / "repo_named"),
-            FakeProvider(supports_resume=True, fake_session_id="sess-1"),
-        )
+        named = self._run(self._make_repo(tmp_path / "repo_named"), self._provider_pair())
         assert len(named.rounds) == 1
-        assert [row["session_id"] for row in named.session_sent_evidence] == ["sess-1"]
-        assert named.session_sent_evidence[0]["sent_sha256"]
+        assert [str(row["session_id"]) for row in named.session_sent_evidence] == [
+            self.BUILDER_SESSION,
+            self.REVIEWER_SESSION,
+        ]
+        for row in named.session_sent_evidence:
+            assert row["sent_sha256"]
 
-    def test_a_fallen_back_resume_leaves_post_fallback_evidence_not_a_stale_set(
+    def test_a_failed_builder_resume_falls_back_within_the_same_round(self, demo_repo: Path):
+        # THIS CASE PINS THE FALLBACK PATH AND NOTHING MORE. It asserts the run
+        # completes and that round 2's builder really did fall back. A SINGLE run
+        # cannot discriminate the Builder invalidate_on_resume_fallback call,
+        # because the record_finalized_call that follows it refills the very
+        # session just cleared. The case below discriminates it, by comparing two
+        # runs; R-0770 records that a within-run discriminator waits for T002.
+        result = self._run(
+            demo_repo, self._provider_pair(builder_resume_fails=True), repair_rounds=2,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert result.rounds[1].builder_output.resume_fallback is True
+        assert [str(row["session_id"]) for row in result.session_sent_evidence] == [
+            self.BUILDER_SESSION,
+            self.REVIEWER_SESSION,
+        ]
+
+    def test_the_fallback_invalidation_shrinks_exactly_the_builder_row(
         self, demo_repo: Path, tmp_path: Path,
     ):
+        # ROUND 3'S DISCRIMINATOR, KEPT AND NARROWED TO THE SEAM THAT FELL BACK.
+        # Only the builder's resume fails here, so only the builder's row may
+        # move; naming the row is what the two distinct session ids buy.
         fallback = self._run(
-            demo_repo,
-            FakeProvider(
-                fail_on_round=1, pass_on_round=2, supports_resume=True,
-                fake_session_id="sess-1", resume_fails=True,
-            ),
-            repair_rounds=2,
+            demo_repo, self._provider_pair(builder_resume_fails=True), repair_rounds=2,
         )
         assert fallback.final_status == "staged_review_passed"
         assert fallback.rounds[1].builder_output.resume_fallback is True
 
         clean = self._run(
-            self._make_repo(tmp_path / "repo_clean"),
-            FakeProvider(
-                fail_on_round=1, pass_on_round=2, supports_resume=True,
-                fake_session_id="sess-1",
-            ),
-            repair_rounds=2,
+            self._make_repo(tmp_path / "repo_clean"), self._provider_pair(), repair_rounds=2,
         )
         assert clean.rounds[1].builder_output.resume_fallback is False
 
-        assert [row["session_id"] for row in fallback.session_sent_evidence] == ["sess-1"]
-        fallback_hashes = fallback.session_sent_evidence[0]["sent_sha256"]
-        clean_hashes = clean.session_sent_evidence[0]["sent_sha256"]
+        fallback_rows = self._rows_by_session(fallback)
+        clean_rows = self._rows_by_session(clean)
         # THE DISCRIMINATOR. The fallback dropped what the failed resume made
-        # unprovable, so the surviving set is strictly SMALLER than the same
-        # chain that never fell back. Without the invalidation the fallback run
-        # would ACCUMULATE round 1's hashes and this comparison would not hold.
-        assert len(fallback_hashes) < len(clean_hashes), (
-            len(fallback_hashes), len(clean_hashes),
+        # unprovable, so the surviving BUILDER set is strictly SMALLER than the
+        # same chain that never fell back. Without the invalidation the fallback
+        # run would ACCUMULATE round 1's hashes and the two rows would be equal.
+        assert len(fallback_rows[self.BUILDER_SESSION]) < len(clean_rows[self.BUILDER_SESSION]), (
+            len(fallback_rows[self.BUILDER_SESSION]),
+            len(clean_rows[self.BUILDER_SESSION]),
         )
+        # The Reviewer never fell back, so its row is untouched by the fallback.
+        assert len(fallback_rows[self.REVIEWER_SESSION]) == len(clean_rows[self.REVIEWER_SESSION])
 
-    def test_the_loop_is_otherwise_unchanged_for_a_non_resuming_provider(self, demo_repo: Path):
+    def test_the_loop_is_otherwise_unchanged_for_a_non_resuming_provider_pair(self, demo_repo: Path):
         # Both expected values were MEASURED on a real run at this round's base
         # commit before the wiring landed, and again after it — not recalled.
-        provider = FakeProvider(
-            fail_on_round=1, pass_on_round=2,
-            supports_resume=False, fake_session_id="sess-1",
+        result = self._run(
+            demo_repo, self._provider_pair(supports_resume=False), repair_rounds=2,
         )
-        result = self._run(demo_repo, provider, repair_rounds=2)
 
         assert result.final_status == "staged_review_passed"
         assert len(result.rounds) == 2
