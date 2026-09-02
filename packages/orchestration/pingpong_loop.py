@@ -68,6 +68,11 @@ from packages.orchestration.rate_governor import (
     is_rate_limit_error,
     normalize_rate_limit_signal,
 )
+from packages.orchestration.session_sent_index import (
+    SessionSentIndex,
+    invalidate_on_resume_fallback,
+    record_finalized_call,
+)
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -221,6 +226,11 @@ class PingPongResult:
     builder_no_changes: bool = False
     # F003: per-call provider usage accounting
     provider_attempts: list[ProviderAttempt] = field(default_factory=list)
+    #: F109 T001b: per-session sent-segment bookkeeping for semantic
+    #: dedupe — one row per provider session, each carrying the segment
+    #: hashes PROVEN delivered to it. Empty for every run that never
+    #: resumed and for every provider that reports no session id.
+    session_sent_evidence: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -3067,6 +3077,9 @@ def run_pingpong(
         findings: list[ReviewFinding] = []
         reviewer_out: ReviewerOutput | None = None
         repair_triggered = False  # set when repair decision = "repair"
+        # F109 T001b-ii: one index per RUN, not per round — the whole point is what a
+        # LATER round may skip resending to a session an earlier round already fed.
+        session_sent_index = SessionSentIndex()
 
         for round_num in range(1, max_rounds + 1):
             # SAFE POINT 1 — a new round (initial or repair) is new work. Nothing is in
@@ -3249,12 +3262,21 @@ def run_pingpong(
                     rate_governor=_rate_governor,
                 )
                 builder_out.resume_fallback = True
+                # F109 T001b-ii: the resume failed, so nothing is proven about what that
+                # session still holds. ``builder_out`` was just REPLACED by the resume=None
+                # retry and reports no session, so the failed session's id survives only in
+                # ``builder_resume_ref`` — which is why it is passed explicitly.
+                invalidate_on_resume_fallback(session_sent_index, builder_out, builder_resume_ref or "")
             rd.builder_output = builder_out
 
             # F012: the Builder call is finalized — record its input through the single seam.
             builder_ctx = _finalize_call(
                 result, builder_out, role="builder", round_num=round_num, kind="attempt",
                 fallback_prompt=builder_prompt, ok=not bool(builder_out.error))
+            # F109 T001b-ii: this call really did deliver these segments to whatever session
+            # it reports. Recording after any invalidation above is the correct order.
+            record_finalized_call(session_sent_index, builder_out, builder_composed.manifest_as_dicts())
+            result.session_sent_evidence = session_sent_index.as_evidence_dicts()
 
             if builder_out.error:
                 # The logical builder call is over: F001 retried what was retryable and
@@ -3546,12 +3568,18 @@ def run_pingpong(
                     rate_governor=_rate_governor,
                 )
                 reviewer_out.resume_fallback = True
+                # F109 T001b-ii: mirrors the Builder fallback — the replaced output reports
+                # no session, so the failed session's id comes from ``reviewer_resume_ref``.
+                invalidate_on_resume_fallback(session_sent_index, reviewer_out, reviewer_resume_ref or "")
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
             # terminal reviewer failure records F010 against it (F10).
             reviewer_final_ctx = _finalize_call(
                 result, reviewer_out, role="reviewer", round_num=round_num, kind="attempt",
                 fallback_prompt=reviewer_effective, ok=not bool(reviewer_out.error))
+            # F109 T001b-ii: invalidate-then-record, same order as the Builder seam.
+            record_finalized_call(session_sent_index, reviewer_out, reviewer_composed.manifest_as_dicts())
+            result.session_sent_evidence = session_sent_index.as_evidence_dicts()
 
             # --- Bounded parse retry (one attempt) ---
             # SAFE POINT 4 — the parse retry is another provider call. A stop observed here
