@@ -9873,3 +9873,34 @@ builds the queue file and its loader against it.
 The operator prioritises construction-level token economy before further cockpit work. `docs/roadmap/STATUS.md`'s Package 1 execution order is amended so that, once no feature is in progress, Rule A5 proposes F106 (session resume instead of rebuild) first, and F106/F108 (tiered artifact summaries)/F109 (semantic dedupe)/F110 (model routing by task class)/F112 (prompt budget per task class)/F114 (cost preview per command) are consumed in that order before any other unchecked feature. Mechanism used: `packages/orchestration/roadmap_index.py`'s Rule A5 (`proposed_feature`) reads `docs/roadmap/STATUS.md` purely top to bottom — an in-progress `[~]` line wins over any `[ ]` line, otherwise the first `[ ]` line wins — with no tier-priority logic, so the six lines were physically moved (byte-identical) into a new `## Tier 3 — Cost-First Pull-Forward (operator ruling amend0830)` heading placed immediately ahead of `## Tier 0`; a duplicate `Tier 3` heading was used (rather than reassigning them under Tier 0) because `tests/docs/test_docs_consistency.py::TestFeatureLedger.test_the_filename_tier_matches_the_status_tier` pins each feature's STATUS-derived tier against its `T<tier>_F<id>.md` filename, and all six are named `T3_F*.md`. Measured: `remedy plan next --json` now answers F106 with `"reason": "next_unchecked"`; `tests/docs/`, `tests/orchestration/test_roadmap_index.py`, `tests/cli/test_plan_cli.py` (346 tests) and the canary (`tests/cli/test_golden_path.py`, 42 tests) all pass unchanged. No `[x]` line was touched; the README tier table needed no edit since its pin tests stayed green (tier COUNTS are unchanged — only two features' physical line position moved within the same tier number).
 
 REVERSE by moving the six lines back to immediately before F113's line under the original `## Tier 3 — Full Token Economy & Autonomy Extension` heading, and deleting the `## Tier 3 — Cost-First Pull-Forward` heading and its preceding HTML comment.
+## 2026-09-02: amend0831 precondition 0c — repair the red closure PR instead of ending
+
+Operator order `amend0831-vocab-registrations` precondition 0c says a RED closure
+PR means "report and end". The Open PR Gate found exactly one open PR — #228,
+`feature/f106-session-resume` into `main`, not a draft — with its hosted CI run
+33618925168 ended RED on two assertions in
+`tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest`:
+`README claims 65 accepted; STATUS.md has 66` and
+`README Tier 3 Done=0; the ledger derives 1`.
+
+DECIDED: repair that branch first, then merge it, then proceed with amend0831.
+REASON: `AGENTS.md` has stated priority over any other file, and its standing
+operator amendment amend0820-gate-autonomy says in as many words that a check
+which ended RED "is WORK, not a blocker", that "Repairing that branch IS this
+session's work order", and that commits on the open PR's branch are explicitly
+allowed for it; only an UNREADABLE state ends the session. The red here is
+readable and is a defect of PR #228 itself: the F106 closure commit `fc93caa3`
+wrote the `[x]` line into `docs/roadmap/STATUS.md` without syncing the two
+README ledger pins that derive from it. Both readings of the two orders agree
+that the amend0831 registration work must not start on top of an unclosed F106;
+they differ only in whether the red is repaired first, and repairing it is the
+smaller, reversible action that also discharges 0c's own intent.
+
+CHANGE MADE: `README.md` only — the accepted count 65 -> 66, the Tier 3 `Done`
+cell 0 -> 1, and an "Accepted in Tier 3 so far:" prose block for F106 in the
+house style of the Tier 1/2/5 blocks. No test was weakened; both assertions were
+pinned to the new truth by making the README true, not by editing the test.
+`tests/docs/` 295 passed, `tests/orchestration/test_roadmap_index.py` 30 passed.
+
+REVERSE by restoring the three README hunks to their pre-`fcaf8c69` values; the
+two assertions then go red again exactly as they were.

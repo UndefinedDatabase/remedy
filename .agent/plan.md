@@ -19,13 +19,13 @@ working. DONE.
 | the evidence bundle and the review zip | done | round 22, READY_FOR_REVIEW |
 | the closure commit | done | this round, Rule A4's last commit |
 | the candidates.md entry (DECISION F106 D2) | done | this round, DECISION amend0827 D2 carve-out |
-| the pull request | pending | opened immediately following this commit |
+| the pull request | done | #228, open into `main` |
+| the red hosted CI run 33618925168 | repaired | README ledger pins were not synced by the closure commit; fixed under amend0820-gate-autonomy |
 
 ## Next Steps
-1. Open the pull request.
-2. Nothing further on this branch after that. The next feature's Open PR
-   Gate merges this pull request, or the operator merges it manually.
-3. Rule A5 selects the next feature (F108) in a fresh session.
+1. Watch the re-run of the hosted CI on #228 to the end.
+2. Read the check status, and only on green merge #228 into `main`.
+3. Nothing further on this branch after that.
 
 ## Risks
 - R-0761 (Medium, OPEN): the ping-pong provider factory has no `"ollama"`
