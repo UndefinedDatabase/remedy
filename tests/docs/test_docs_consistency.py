@@ -31,8 +31,14 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: self-replenishing queue & executed items), added by operator order
 #: amend0829-selfuse-v2 of 2026-08-29. See docs/roadmap/features/
 #: T1_F251.md, T1_F252.md, T12_F253.md, T2_F254.md, T5_F255.md,
-#: T5_F256.md, T5_F257.md and T5_F258.md.
-TOTAL_FEATURES = 258
+#: T5_F256.md, T5_F257.md and T5_F258.md. Eight more — F259 (vocabulary &
+#: concept model), F260 (job/execution marriage), F261 (CLI vocabulary v2),
+#: F262 (list commands v2), F263 (human-change absorption), F264 (steering
+#: channel), F265 (teacher learning UI v1) and F266 (`remedy study`) — were
+#: added by operator order amend0831-vocab-registrations of 2026-08-31; see
+#: T2_F259.md, T2_F260.md, T2_F261.md, T2_F262.md, T2_F263.md, T5_F264.md,
+#: T5_F265.md and T4_F266.md.
+TOTAL_FEATURES = 266
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

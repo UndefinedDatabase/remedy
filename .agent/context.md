@@ -1,31 +1,31 @@
-# Context — F106 Session resume instead of rebuild
+# Context — amend0831-vocab-registrations (registration of F259-F266)
 
 ## Active Branch
-feature/f106-session-resume, cut from `main` at `811c2d7e`.
+feature/amend0831-vocab-registrations, cut from `origin/main` at `de8a58b1`
+(the merge of PR #228, whose red CI this session repaired first).
 
 ## Scope
-Feature F106, `docs/roadmap/features/T3_F106.md` — Tier 3, session resume
-for repair rounds. T001 (this feature's first code round) adds an additive
-`supports_resume` capability flag and `resume` parameter to the provider
-call entry, plus `resume_used`/`resume_session_ref` evidence fields, with
-zero behavior change on every adapter. T002 wires it into the repair path
-with a fallback-once rule; T003 measures resume vs full-context tokens.
-F106 also covers job/mission resume-from-persisted-state per the feature
-file's own Scope note (F075 candidate routing, R-0201) — in scope, not
-sliced into T001-T003 yet.
+Registration only, per operator order amend0831-vocab-registrations of
+2026-08-31. Eight feature detail files under `docs/roadmap/features/` —
+`T2_F259.md` vocabulary & concept model, `T2_F260.md` job/execution marriage,
+`T2_F261.md` CLI vocabulary v2, `T2_F262.md` list commands v2, `T2_F263.md`
+human-change absorption, `T5_F264.md` steering channel, `T5_F265.md` teacher
+learning UI v1, `T4_F266.md` `remedy study` — eight `- [ ]` lines in
+`docs/roadmap/STATUS.md` Package 1, and the ledger counters moved 258 -> 266.
 
 ## Do not touch
-Failover policy, provider adapter internals beyond the additive surface,
-prompt content rules — the feature file's own Do-not-touch. No orchestrator
-move schema `resume` kind exists; that is out of T001-T003's own slicing.
+Implementing anything the eight files describe. No command is renamed, no job
+store is merged, no list gains a flag, no memory card is written. The README's
+ACCEPTED count stays 66 — registering a feature accepts nothing. `.agent/STOP`
+(untracked, empty) is left exactly where it is. STATUS grammar is unchanged:
+every new line is `- [ ] Fxxx — Title`, and no `[~]` was created or altered.
 
 ## Assumptions
-- `ClaudeCliProvider` is the only adapter that populates `session_id` today
-  (`UsageActuals.session_id`, `packages/orchestration/token_actuals.py:37`).
-  T001 does not turn any adapter's `supports_resume` True — that is T002's
-  call once real resume behavior is wired.
-- Diff-only repair (F111) is accepted and merged; T002's gate on it is
-  satisfied.
+- The eight ids F259-F266 were unused before this round; verified by grep over
+  `docs/roadmap/STATUS.md` and by `remedy plan status --json` reporting
+  feature_count 258 with no inconsistencies at the base commit.
+- Rule A5 keeps proposing F108: all six amend0830 cost-first lines stand above
+  the eight new ones, and the new lines are all `[ ]`.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -44,16 +44,24 @@ forward from the context this file replaced.
 - THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE. The full contract
   those readers hold over the three state files, so a rewrite is checked
   against it directly: this file carries `## Active Branch`, a `feature/`
-  branch name, a roadmap feature id matching `\bF\d{3}\b` and the word
-  `Steps`; `.agent/plan.md` carries `## Goal`, `## Next Steps` and a feature
-  id; `.agent/live_review.md` carries `Steps`.
+  branch name, a roadmap feature id matching `\bF\d{3}\b`, the word `Steps`
+  and the word `pytest` (the resource-safety reader); `.agent/plan.md` carries
+  `## Goal`, `## Next Steps` and a feature id; `.agent/live_review.md` carries
+  `Steps`.
 - A new module under `packages/orchestration/` is swept by repo-wide guards
   that name no path: the `REMEDY_DATA_DIR` single-reader invariant, the
   path-utils single-implementation invariant, the bare-`except: pass` ban,
   and the development-artifact boundary.
 
-This feature is NOT UI work — no design-reference binding applies.
+Constraint specific to this round: a STATUS line's tier is derived from its
+enclosing `## Tier <n>` heading, and
+`tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier`
+pins it against the `T<tier>_F<id>.md` filename — which is why the eight lines
+carry three tier headings rather than sitting bare under the amend0830
+cost-first block's `Tier 3` heading.
+
+This round is NOT UI work — no design-reference binding applies.
 
 ## Steps
-The item-status table for this feature lives in the `## Current Step`
-section of `.agent/plan.md`. This file deliberately does not restate it.
+The item-status table for this round lives in the `## Current Step` section of
+`.agent/plan.md`. This file deliberately does not restate it.

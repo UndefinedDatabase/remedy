@@ -1,37 +1,33 @@
-# Plan — F106 Session resume instead of rebuild (CLOSED)
+# Plan — amend0831-vocab-registrations (registration round)
 
-Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`. F106
-is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line.
+Branch: feature/amend0831-vocab-registrations, cut from `origin/main` at
+`de8a58b1`. REGISTRATION ONLY — no feature in this order is implemented here.
 
 ## Goal
-Repair rounds stop resending the world: where the provider supports resuming
-a session, a repair call resumes the original session and sends only the
-findings delta, with an honest automatic fallback to full context when the
-session is gone, flagged in evidence. Correctness never depends on resume
-working. DONE.
+Register eight features (F259 vocabulary & concept model, F260 job/execution
+marriage, F261 CLI vocabulary v2, F262 list commands v2, F263 human-change
+absorption, F264 steering channel, F265 teacher learning UI v1, F266
+`remedy study`): eight feature detail files, eight STATUS lines in Package 1 in
+the operator's order, and the ledger counters moved 258 -> 266.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| T001/T002/T003, integration gate | done | rounds 1-17 |
-| all six closure preconditions | done | rounds 18-21 |
-| the evidence bundle and the review zip | done | round 22, READY_FOR_REVIEW |
-| the closure commit | done | this round, Rule A4's last commit |
-| the candidates.md entry (DECISION F106 D2) | done | this round, DECISION amend0827 D2 carve-out |
-| the pull request | done | #228, open into `main` |
-| the red hosted CI run 33618925168 | repaired | README ledger pins were not synced by the closure commit; fixed under amend0820-gate-autonomy |
+| Open PR Gate: PR #228 repaired and merged | done | its red CI was a README ledger drift; merged as `de8a58b1` |
+| eight feature detail files | done | two commits, split under the 500-insertion cap |
+| eight STATUS lines + TOTAL_FEATURES + README counters | done | one commit, ledger atomicity |
+| tests/docs, test_roadmap_index, test_golden_path | green | 295 / 30 / 42 passed |
+| push, PR, hosted CI, merge | pending | this round's remaining work |
 
 ## Next Steps
-1. Watch the re-run of the hosted CI on #228 to the end.
-2. Read the check status, and only on green merge #228 into `main`.
-3. Nothing further on this branch after that.
+1. Push the branch and open the PR.
+2. Watch the hosted CI run to the end; read the check status and merge only on
+   green. A red run is this branch's work order, not a blocker.
+3. Verify 0 open PRs, delete the remote branch, return to `main`.
 
 ## Risks
-- R-0761 (Medium, OPEN): the ping-pong provider factory has no `"ollama"`
-  branch, so the resolved product-default provider can never reach a real
-  call through the self-use/job-run path. Documented, not F106's own scope
-  to fix. This is the sole reason the closure verdict is PASS WITH RISKS.
-- The job/mission-resume half of the feature file's own Scope note is
-  deferred, not built — carried forward as a closure candidate per
-  DECISION F106 D2, not dropped.
+- The three tier headings added to `docs/roadmap/STATUS.md` are the only
+  structural change to that file; a reviewer who expects a bare insertion after
+  F114 should read the decision recorded in `.agent/decisions.md` for why a bare
+  insertion would have reddened the filename/tier pin for all eight lines.
