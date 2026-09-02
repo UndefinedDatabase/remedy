@@ -5,9 +5,12 @@ import json
 from pathlib import Path
 
 from packages.orchestration.artifact_summary import (
+    _FALLBACK_HEAD_CHARS,
+    _FALLBACK_TAIL_CHARS,
     FALLBACK_MARKER,
     ArtifactSummary,
     ArtifactSummarySection,
+    _fallback_summary,
     compute_artifact_hash,
     generate_artifact_summary,
     load_cached_summary,
@@ -17,11 +20,6 @@ from packages.orchestration.artifact_summary import (
     section_log,
     select_relevant_sections,
     summary_call_fn,
-)
-from packages.orchestration.artifact_summary import (
-    _FALLBACK_HEAD_CHARS,
-    _FALLBACK_TAIL_CHARS,
-    _fallback_summary,
 )
 
 _TWO_FILE_DIFF = """diff --git a/foo.py b/foo.py

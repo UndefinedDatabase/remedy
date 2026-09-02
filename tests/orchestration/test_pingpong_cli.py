@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+import packages.orchestration.pingpong_loop as pingpong_loop
 from packages.orchestration.pingpong_loop import (
     _OVERSIZED_DIFF_THRESHOLD_CHARS,
     _OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
@@ -35,7 +36,6 @@ from packages.orchestration.pingpong_loop import (
     run_pingpong,
     summarize_pingpong,
 )
-import packages.orchestration.pingpong_loop as pingpong_loop
 from packages.orchestration.pingpong_provider import (
     _REVIEWER_RETRY_PROMPT,
     ClaudeCliProvider,
