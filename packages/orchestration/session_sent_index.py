@@ -24,8 +24,10 @@ rather than conclude the wiring was forgotten):
     evidence at the ``on_call_finalized`` seam is F109 T001b; this module only
     provides the two seams that round trip (``as_evidence_dicts`` and
     ``session_sent_index_from_evidence``).
-  - Nothing here invalidates a session on its own. The resume-fallback caller
-    must call ``invalidate_session``; wiring that to the fallback is T001b.
+  - The resume-fallback DECISION now lives here (T001b-i):
+    ``invalidate_on_resume_fallback`` decides which session a fallen-back resume
+    must forget. What is still absent is only the CALL SITES — nothing in
+    ``pingpong_loop.py`` invokes it yet, and wiring those seams is T001b-ii.
   - No prompt is rewritten here. Replacing an already-sent segment with a short
     reference marker is the composition hook, F109 T002.
 
@@ -34,6 +36,9 @@ Public API::
     SessionSentIndexError           — the one error type of this module
     SessionSentIndex                — the per-session sent-hash index
     session_sent_index_from_evidence(rows) -> SessionSentIndex
+    session_id_of_finalized_call(output) -> str
+    record_finalized_call(index, output, manifest_rows) -> int
+    invalidate_on_resume_fallback(index, output, resumed_ref="") -> bool
 """
 
 from __future__ import annotations
@@ -167,6 +172,89 @@ def session_sent_index_from_evidence(
         hashes = _evidence_hashes(row.get("sent_sha256"), position)
         index._sent_by_session.setdefault(session_id, set()).update(hashes)
     return index
+
+
+def session_id_of_finalized_call(output: object) -> str:
+    """The provider session a finalized call belongs to, or ``""`` when it has none.
+
+    ``output`` is read DUCK-TYPED on purpose. This module deliberately does not
+    import ``BuilderOutput`` or ``ReviewerOutput`` from ``pingpong_provider``,
+    because that import would make the bookkeeping depend on the provider layer it
+    exists to stay independent of. Both roles carry the same fields over exactly
+    what is read here, so one reader serves both and no role argument is needed.
+
+    The reading reproduces ``pingpong_loop.py`` exactly — ``str(actuals.get(
+    "session_id") or "")`` over ``usage_actuals or {}`` — so the loop and the index
+    can never disagree about which string names a session. A missing or None
+    ``usage_actuals`` reads as an empty mapping, and None, 0 and ``""`` all become
+    ``""``.
+
+    A ``usage_actuals`` that is present but is NOT a mapping returns ``""`` rather
+    than raising: this function reads foreign evidence, and an unusable reading
+    means "no session", never a crash in the loop.
+    """
+    actuals = getattr(output, "usage_actuals", None)
+    if not isinstance(actuals, Mapping):
+        return ""
+    return str(actuals.get("session_id") or "")
+
+
+def record_finalized_call(
+    index: SessionSentIndex,
+    output: object,
+    manifest_rows: Iterable[Mapping[str, object]],
+) -> int:
+    """Record ONE finalized call into ``index``; return what ``record_call`` returned.
+
+    This is the scope rule reaching the adapter: PROVEN SENDS ONLY. The call counts
+    as proven only when the output carries no ``error``, and that is what travels
+    into ``record_call`` as ``ok``.
+
+    Neither guard is re-implemented here. A call with no session id records nothing
+    by the rule already inside ``record_call``, not by a second rule at this level,
+    so each rule keeps exactly one site at which it can regress. This function only
+    translates an output object into the three arguments ``record_call`` already
+    understands.
+    """
+    return index.record_call(
+        session_id_of_finalized_call(output),
+        manifest_rows,
+        ok=not getattr(output, "error", ""),
+    )
+
+
+def invalidate_on_resume_fallback(
+    index: SessionSentIndex,
+    output: object,
+    resumed_ref: str = "",
+) -> bool:
+    """Forget the RESUMED session when a resume attempt fell back; True if it did.
+
+    Does nothing and returns False unless the output carries ``resume_fallback``.
+    Once a resume has fallen back to full context, nothing about what the model
+    still holds is proven, so the honest state for that session is "nothing sent".
+
+    WHY THE THIRD ARGUMENT IS LOAD-BEARING and not decorative: on the fallback path
+    ``pingpong_loop.py`` REPLACES the output object — it calls the provider again
+    with ``resume=None`` and only then sets ``resume_fallback`` on the NEW output.
+    That second output resumed nothing, so its own ``resume_session_ref`` is ``""``
+    and the id of the session that failed survives only in the loop's own
+    ``builder_resume_ref`` / ``reviewer_resume_ref`` variable. An adapter reading
+    only the output object would therefore invalidate NOTHING on exactly the path
+    invalidation exists for. ``resumed_ref`` is how a caller passes the id it still
+    holds; the output-object reading is kept for callers that have no such variable.
+
+    A ref that is empty after stripping invalidates nothing and returns False:
+    invalidating an unnamed session would be a guess, and guessing is the one thing
+    this module refuses to do.
+    """
+    if not getattr(output, "resume_fallback", False):
+        return False
+    ref = (resumed_ref or getattr(output, "resume_session_ref", "")).strip()
+    if not ref:
+        return False
+    index.invalidate_session(ref)
+    return True
 
 
 def _segment_hashes_from_manifest(
