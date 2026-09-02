@@ -23,15 +23,16 @@ summary never blocks the run.
 | T003 re-scoped: real hook is `pingpong_loop.py` | done | round 6, R-0765/D2 |
 | T003a generation-call bridge + relevant-section matching | done | round 6 |
 | T003b-i builder repair-diff wiring + tests | done | round 7, DECISION F108 D3 |
-| T003b-ii reviewer-side wiring (3 cap sites) | pending | next round |
-| T003c real persisted `full_ref` + disk caching | pending | after T003b-ii |
+| T003b-ii reviewer scoped-diff wiring + tests | done | round 8, DECISION F108 D4 |
+| T003b-iii reviewer fallback-branch wiring | pending | deferred, DECISION F108 D4 |
+| T003c real persisted `full_ref` + disk caching | pending | after T003b-iii |
 | T003d long-artifact fixture + size comparison (DONE evidence) | pending | after T003c |
 
 ## Next Steps
-1. Round 8: T003b-ii — wire the same `render_tiered_diff_text` shape into
-   `compose_reviewer_prompt`'s three diff branches (`_REVIEWER_DIFF_CAP`,
-   `_REVIEWER_SCOPED_DIFF_CAP`, and the resume/scoped precedence already
-   there), per DECISION F108 D3's deferral.
+1. Round 9: decide whether T003b-iii (findings-scoped fallback-branch
+   tiering) is worth building given how rarely that branch is reached in
+   production, or proceed to T003c with it deferred — a DECISION either
+   way, per DECISION F108 D4's own note.
 2. T003c: persist the diff to evidence, pass a real `full_ref` path, wire
    T001's `load_cached_summary`/`save_summary` at both call sites.
 3. T003d: the long-artifact fixture and size-comparison recording — the
@@ -41,7 +42,8 @@ summary never blocks the run.
    package.
 
 ## Risks
-- T003b-ii repeats T003b-i's own risk one branch over: `compose_reviewer_prompt`'s
-  scoped/unscoped/resume precedence is a four-way branch (DECISION F108 D3's
-  builder-side helper only covers three), so that round re-derives it from
-  the real code rather than assuming symmetry with the builder side.
+- T003c persists real diffs to evidence for the first time under F108 —
+  the round names the exact evidence path convention (mirroring an
+  existing evidence writer rather than inventing one) before writing to
+  disk, and confirms cache invalidation (T001's hash check) actually
+  fires across two different rounds of the SAME job.
