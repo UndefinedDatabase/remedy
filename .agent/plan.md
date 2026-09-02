@@ -1,7 +1,7 @@
 # Plan — F106 Session resume instead of rebuild
 
 Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`.
-SESSION 5, round 16.
+SESSION 5, round 17.
 
 ## Goal
 Repair rounds stop resending the world: where the provider supports resuming
@@ -12,23 +12,22 @@ working.
 
 ## Current Step
 
-T001, T002 (both sides) and T003 are ALL DONE (rounds 2-15) — F106's own
-Task slicing has no open item. Work has moved to the closure sequence
-(docs/roadmap/STATUS_closure_protocol.md); this round is precondition 2,
-the dedicated integration gate (docs/agents/integration_gate.md).
+T001, T002 (both sides) and T003 are ALL DONE. The round 16 integration
+gate found R-0760 (Medium, OPEN): 5 fake provider/reviewer classes across
+3 test files never got the additive `resume` no-op parameter. This round
+REPAIRS R-0760 — the same additive fix shape already used twice
+(R-0758, R-0759 — both CLOSED).
 
 ## Next Steps
-1. This round: integration gate (full suite, branch + base, `pytest -n
-   auto`), per docs/agents/integration_gate.md steps 1-5.
-2. Next: feature file Built State section (precondition 4) + resolve the
-   feature file's own job/mission-resume scope note against Task slicing
-   (a DECISION, since Acceptance never required it).
-3. Then: self-use track consumption (precondition 6), evidence job, review
-   zip, STATUS line, PR — the closure algorithm's remaining steps.
+1. This round: apply the additive `resume: str | None = None` parameter to
+   the 7 named signatures (5 classes, 2 of them carrying both `build` and
+   `review`) across `test_structured_outputs.py`, `test_worktree_isolation.py`
+   and `test_worktree_persistence.py`; confirm 0 failures.
+2. Next: re-run the FULL integration gate (branch only — the base side is
+   unaffected by a test-only fix) to confirm the gate is clean; only then
+   does F106 move on to the feature file's Built State section
+   (precondition 4) and the rest of the closure sequence.
 
 ## Risks
-- R-0736 (Medium, OPEN): the integration gate's own base-worktree parity
-  recipe manufactures ~114 false `tests/ui_server/` failures unless the
-  proactive mtime fix (advance `apps/ui/dist` mtimes past the worktree's
-  checkout time, after a `symlinks=True` copy) is applied before the base
-  run. Apply it proactively this round, per F040 R17/F258 R7 precedent.
+- This is a test-only fix (zero behavior change to any production code) —
+  confirm via `git diff --stat -- packages/` staying empty this round.
