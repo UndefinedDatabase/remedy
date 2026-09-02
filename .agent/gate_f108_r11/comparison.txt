@@ -1,0 +1,112 @@
+COMPARISON — F108 R11 integration gate
+branch (round 11 primary checkout, up to commit d488bb6f) suite run,
+vs merge base ec81e697bf498a6753d82d7e6a8d3c72467cd5d7
+==============================================================================
+
+METHOD (per the block's own instruction). The two set differences below were
+computed IN PYTHON as set(branch_failed) - set(base_failed) and
+set(base_failed) - set(branch_failed) over the two FAILED id lists read from
+branch_failed.txt and base_failed.txt. `comm -13` / `comm -23` were NOT run:
+this session's command guard rejects the pipelines that feed them by FORM,
+so the PROPERTY was ordered rather than the tool. Both lists are sorted and
+complete; nothing is elided.
+
+RUN TOTALS
+  branch run : 1 failed, 18781 passed, 20 skipped — exit 1 — 142.62s (wall
+               143.22s including process spawn/collect overhead)
+  base run   : 0 failed, 18736 passed, 20 skipped — exit 0 — 196.38s (wall
+               196.95s including process spawn/collect overhead)
+  (single base run: constraint 4's parity fix was applied BEFORE this run,
+  not discovered afterward, so no second base run was needed this round)
+
+------------------------------------------------------------------------------
+(d) THE SET DIFFERENCES
+------------------------------------------------------------------------------
+
+BRANCH-ONLY = set(branch_failed) - set(base_failed) : 1 id
+  tests/orchestration/test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_lint_ceiling
+
+BASE-ONLY = set(base_failed) - set(branch_failed) : 0 ids
+  (empty — the base run had no FAILED id at all)
+
+------------------------------------------------------------------------------
+(e) ATTRIBUTION
+------------------------------------------------------------------------------
+
+BASE-ONLY IDS: NONE. Step 3 of docs/agents/integration_gate.md's obligation
+to attribute every base-only id is discharged vacuously; there are zero
+base-only ids, so no environment-coupled base failure needs attribution this
+round.
+
+BRANCH-ONLY ID, attributed by direct evidence per step 4 (serial re-run,
+then reproduce-at-base check, before blaming the feature):
+
+  tests/orchestration/test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_lint_ceiling
+
+  Failure text: 'AssertionError: 28 ruff errors, ABOVE the ceiling of 26: 2
+  more than this repository froze. Fix the new errors; do not raise the
+  ceiling (DECISION F083 D5).'
+
+  Serial re-run of the exact node id, same worktree (primary checkout), same
+  revision:
+  `python3 -m pytest -q tests/orchestration/test_ci_budgets.py::
+  test_this_repository_really_is_at_or_below_the_lint_ceiling` -> REAL exit
+  1, `1 failed in 0.26s`, same 28/26 assertion. Serial-FAIL (deterministic,
+  not an xdist artifact) -- step 4's second branch applies: reproduce at the
+  merge base before blaming the feature.
+
+  Reproduce-at-base check: this same node id did NOT appear in base_failed.txt
+  at all -- the base run (0 failed, 18736 passed, 20 skipped, exit 0) shows
+  the lint-ceiling test PASSED at the merge base. So the failure does NOT
+  reproduce at the merge base: it is genuinely new on the branch.
+
+  Direct evidence coupling it to F108's OWN code, not an unrelated repo-wide
+  drift: `python3 -m ruff check . --output-format=concise` on the branch
+  lists exactly 28 errors, of which exactly 2 are inside files this feature
+  itself created (confirmed via `git diff --stat
+  ec81e697bf498a6753d82d7e6a8d3c72467cd5d7..d488bb6f -- packages/ apps/
+  tests/ docs/`, which lists tests/orchestration/test_artifact_summaries.py
+  and tests/orchestration/test_pingpong_cli.py as wholly new files, 481 and
+  65 insertions respectively, 0 deletions -- i.e. these files exist ONLY on
+  this branch):
+
+    tests/orchestration/test_artifact_summaries.py:2:1: I001 Import block is
+      un-sorted or un-formatted
+    tests/orchestration/test_pingpong_cli.py:7:1: I001 Import block is
+      un-sorted or un-formatted
+
+  LINT_ERROR_CEILING is confirmed unchanged at 26 (grep in
+  tests/orchestration/test_ci_budgets.py, line 29: `assert
+  LINT_ERROR_CEILING == 26`) -- the branch did not touch the ceiling itself,
+  it only added the two files that push the observed count 2 over it. This
+  is an exact match: ceiling 26, ceiling + these-2-new-errors = 28, the
+  branch's own observed count.
+
+  VERDICT OF THIS ATTRIBUTION: reproducible branch-only failure, coupled to
+  feature code by direct evidence (the two new I001 findings sit inside two
+  files this feature itself introduced, and their count exactly accounts for
+  the ceiling breach). Per step 4's third bullet and this round's own G5,
+  this is a BLOCKER. Per the round's own scope ("This round adds NOTHING to
+  packages/, apps/, or tests/ -- it only measures and records; if the runs
+  surface a real failure, that failure is reported, not fixed, this round"),
+  the worker does NOT run `ruff --fix` or otherwise edit either test file
+  this round. The fix (reordering the two files' own import blocks) is a
+  future reviewer-gated round's own work, not this one's.
+
+------------------------------------------------------------------------------
+(f) THE BUDGET
+------------------------------------------------------------------------------
+
+  branch run : 143.22s
+  base run   : 196.95s
+  total wall clock over the runs: 340.17s (5 min 40 s)
+
+Step 5 notes wall clock over ~5 min for a perf pass. Each INDIVIDUAL run is
+under 3.5 minutes; the total exceeds 5 minutes only because both a branch
+and a base run are required by design.
+
+THE GATE VERDICT IS THE REVIEWER'S. docs/agents/integration_gate.md step 5
+reserves it, and this worker does not issue it. The readings above show ONE
+branch-only failure, directly attributed to feature code, which by this
+round's own G5 wording is a BLOCKER -- the worker declares it here rather
+than assuming a verdict.
