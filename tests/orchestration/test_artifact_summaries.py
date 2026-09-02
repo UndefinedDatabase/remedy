@@ -426,3 +426,56 @@ def test_render_tiered_diff_text_reduces_size_by_an_order_of_magnitude_on_a_long
 
     assert len(result) < len(diff_text) / 10
     assert "Full diff:" in result
+
+
+# ---------------------------------------------------------------------------
+# F108 T003c — render_tiered_diff_text with artifact_path (disk persistence + cache)
+# ---------------------------------------------------------------------------
+
+
+def test_render_tiered_diff_text_with_artifact_path_persists_and_caches(tmp_path: Path):
+    artifact_path = tmp_path / "repair.diff"
+    fake_response = json.dumps({
+        "l1": "a two-file summary",
+        "l2": [
+            {"section": "foo.py", "span_ref": "file:foo.py", "summary": "FOO_SUMMARY_TEXT"},
+        ],
+    })
+
+    def fake_call_fn(prompt: str, attempt: int) -> str:
+        return fake_response
+
+    result = render_tiered_diff_text(
+        _TWO_FILE_DIFF, ["foo.py"], fake_call_fn,
+        threshold_chars=50, full_ref=str(artifact_path), artifact_path=artifact_path)
+
+    assert "FOO_SUMMARY_TEXT" in result
+    assert artifact_path.read_text() == _TWO_FILE_DIFF
+
+    cached = load_cached_summary(artifact_path)
+    assert cached is not None
+    assert cached.l1 == "a two-file summary"
+
+
+def test_render_tiered_diff_text_with_artifact_path_cache_hit_skips_generation(tmp_path: Path):
+    artifact_path = tmp_path / "repair.diff"
+    artifact_path.write_text(_TWO_FILE_DIFF)
+    artifact_hash = compute_artifact_hash(_TWO_FILE_DIFF.encode("utf-8"))
+    cached_summary = ArtifactSummary(
+        l1="cached summary, never regenerated",
+        l2=[],
+        full_ref=str(artifact_path),
+        generator="test-fixture",
+        generated_at="2026-09-02T00:00:00Z",
+        artifact_hash=artifact_hash,
+    )
+    save_summary(artifact_path, cached_summary)
+
+    def call_fn_that_raises_if_called(prompt: str, attempt: int) -> str:
+        raise AssertionError("generation must not run on a cache hit")
+
+    result = render_tiered_diff_text(
+        _TWO_FILE_DIFF, ["foo.py"], call_fn_that_raises_if_called,
+        threshold_chars=50, full_ref=str(artifact_path), artifact_path=artifact_path)
+
+    assert "cached summary, never regenerated" in result
