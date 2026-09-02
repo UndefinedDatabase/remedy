@@ -1,0 +1,53 @@
+REMEDY_DATA_DIR      = /home/decodeux/Repos/remedy/.remedy-wt/amend0902-selfuse/data
+real queue           = /home/decodeux/Repos/remedy/scripts/self_use_queue.json
+real queue sha256 before = f2c307b9a93f6f4f4c7372fa28f97e27db94b21e9330c2c918489d04c1249dfd
+scratch queue        = /home/decodeux/Repos/remedy/.remedy-wt/amend0902-selfuse/self_use_queue_scratch.json
+SU-004 content equal to shipped except consumed_by: True
+resolve_role_config('builder') = RoleConfig(role='builder', provider='ollama', model='muse-glimmer:latest', effort='medium')
+resolve_role_config('reviewer') = RoleConfig(role='reviewer', provider='ollama', model='muse-glimmer:latest', effort='medium')
+
+entry_id = SU-004
+job_file_path = /home/decodeux/Repos/remedy/.remedy-wt/amend0902-selfuse/jobs/SU-004.md
+job_id = 48a379ab5ca44ec5
+status = blocked
+error  = 'task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+isolation_mode = worktree
+execution_config = builder='ollama' (source='cli'), reviewer='ollama' (source='cli'), builder_model='' (source='default'), reviewer_model='' (source='default')
+num_tasks = 2
+  task T001: status='blocked' final_status='repair_exhausted' error='completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail' test_passed=None reviewer_verdict='fail'
+  task T002: status='skipped' final_status='' error='' test_passed=None reviewer_verdict=''
+
+INDEPENDENT RELOAD via load_job_plan:
+  status = blocked  error = 'task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+  execution_config = builder='ollama' (source='cli'), reviewer='ollama' (source='cli')
+  task T001: status='blocked' final_status='repair_exhausted' error='completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail' reviewer_verdict='fail'
+  task T002: status='skipped' final_status='' error='' reviewer_verdict=''
+
+describe_self_use_run_defects(reloaded) =
+[
+  "job 48a379ab5ca44ec5 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail",
+  "T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+]
+
+real queue sha256 after = f2c307b9a93f6f4f4c7372fa28f97e27db94b21e9330c2c918489d04c1249dfd
+real queue unchanged    = True
+
+PROVIDER EVIDENCE (read from the persisted run 85469670596f4100 at
+.remedy-wt/amend0902-selfuse/data/pingpong_runs/85469670596f4100/result.json):
+  execution_mode          = provider_backed
+  builder_provider        = ollama
+  reviewer_provider       = ollama
+  provider_call_count     = 6
+  rounds recorded         = 3
+  repair_rounds_used      = 2 of 2 allowed
+  provider_attempts       = 6 attempts, every one provider='ollama'
+  attempts carrying error = 0
+
+SUCCESS CRITERION (amend0902 Part 3): the run got PAST the old
+`provider_unavailable` failure. Six real provider calls reached the local
+Ollama server under the resolved product default, none of them errored, and
+three ping-pong rounds ran. The job's final `blocked` status is an ordinary
+review outcome (`repair_exhausted`, `reviewer_verdict='fail'`) from the local
+model's own judgement of the builder's work, NOT a transport or construction
+failure. Nothing was forced green: the task is genuinely unfinished, and the
+run stopped at the normal approval gate, unpromoted.
