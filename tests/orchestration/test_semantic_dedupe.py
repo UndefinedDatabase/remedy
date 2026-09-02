@@ -13,6 +13,8 @@ against a hand-made dictionary.
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from packages.orchestration.prompt_segments import (
@@ -23,6 +25,9 @@ from packages.orchestration.prompt_segments import (
 from packages.orchestration.session_sent_index import (
     SessionSentIndex,
     SessionSentIndexError,
+    invalidate_on_resume_fallback,
+    record_finalized_call,
+    session_id_of_finalized_call,
     session_sent_index_from_evidence,
 )
 
@@ -327,3 +332,200 @@ class TestMalformedInputRaises:
     def test_from_evidence_raises_for_a_row_that_is_not_a_mapping(self):
         with pytest.raises(SessionSentIndexError):
             session_sent_index_from_evidence(["not-a-mapping"])
+
+
+# ---------------------------------------------------------------------------
+# T001b-i: the finalized-call adapters
+
+
+def _finalized_output(
+    *,
+    error: str = "",
+    usage_actuals: object = None,
+    resume_used: bool = False,
+    resume_session_ref: str = "",
+    resume_fallback: bool = False,
+) -> SimpleNamespace:
+    """A stand-in for a finalized provider call, over the fields adapters read.
+
+    DUCK-TYPED ON PURPOSE, mirroring the adapters themselves: they reach these
+    attributes with ``getattr`` and import nothing from ``pingpong_provider``, so
+    these tests import nothing from it either. A test that constructed a real
+    ``BuilderOutput`` would quietly re-introduce the provider-layer dependency the
+    index exists to stay free of, and the test suite would stop being able to
+    detect its return.
+    """
+    return SimpleNamespace(
+        error=error,
+        usage_actuals=usage_actuals,
+        resume_used=resume_used,
+        resume_session_ref=resume_session_ref,
+        resume_fallback=resume_fallback,
+    )
+
+
+class TestSessionIdOfFinalizedCall:
+    def test_it_returns_the_session_id_the_provider_reported(self):
+        output = _finalized_output(usage_actuals={"session_id": "session-a"})
+
+        assert session_id_of_finalized_call(output) == "session-a"
+
+    @pytest.mark.parametrize(
+        "usage_actuals",
+        [
+            None,
+            {},
+            {"cost_usd": 0.01},
+            {"session_id": None},
+            {"session_id": ""},
+            {"session_id": 0},
+        ],
+    )
+    def test_it_returns_empty_when_no_session_id_was_reported(self, usage_actuals):
+        output = _finalized_output(usage_actuals=usage_actuals)
+
+        assert session_id_of_finalized_call(output) == ""
+
+    @pytest.mark.parametrize("usage_actuals", [["session-a"], 7])
+    def test_a_non_mapping_usage_actuals_reads_as_no_session_and_never_raises(
+        self, usage_actuals
+    ):
+        output = _finalized_output(usage_actuals=usage_actuals)
+
+        assert session_id_of_finalized_call(output) == ""
+
+
+class TestRecordFinalizedCall:
+    def test_a_proven_call_records_every_hash_and_returns_record_calls_count(self):
+        rows = _sample_rows()
+        output = _finalized_output(usage_actuals={"session_id": "session-a"})
+        index = SessionSentIndex()
+
+        added = record_finalized_call(index, output, rows)
+
+        reference = SessionSentIndex()
+        assert added == reference.record_call("session-a", rows, ok=True)
+        assert added == len(rows)
+        assert index.sent_hashes("session-a") == frozenset(_digests(rows))
+
+    def test_an_errored_call_records_nothing_and_leaves_the_session_empty(self):
+        rows = _sample_rows()
+        output = _finalized_output(
+            error="provider_error: TimeoutError",
+            usage_actuals={"session_id": "session-a"},
+        )
+        index = SessionSentIndex()
+
+        added = record_finalized_call(index, output, rows)
+
+        assert added == 0
+        assert index.sent_hashes("session-a") == frozenset()
+        assert index.session_ids() == ()
+
+    def test_a_call_with_no_session_id_records_nothing_though_it_succeeded(self):
+        rows = _sample_rows()
+        output = _finalized_output(usage_actuals=None)
+        index = SessionSentIndex()
+
+        added = record_finalized_call(index, output, rows)
+
+        assert added == 0
+        assert index.session_ids() == ()
+
+
+class TestInvalidateOnResumeFallback:
+    def test_no_fallback_flag_means_no_invalidation_even_with_a_resumed_ref(self):
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        output = _finalized_output(resume_used=True, resume_session_ref="session-a")
+
+        assert invalidate_on_resume_fallback(index, output, "session-a") is False
+
+        assert index.sent_hashes("session-a") == frozenset(_digests(rows))
+        assert index.session_ids() == ("session-a",)
+
+    def test_a_fallback_empties_exactly_the_resumed_session(self):
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        index.record_call("session-b", rows, ok=True)
+        output = _finalized_output(resume_fallback=True)
+
+        assert invalidate_on_resume_fallback(index, output, "session-a") is True
+
+        assert index.sent_hashes("session-a") == frozenset()
+        assert index.sent_hashes("session-b") == frozenset(_digests(rows))
+        assert index.session_ids() == ("session-b",)
+
+    def test_the_loops_replaced_output_invalidates_when_resumed_ref_is_passed(self):
+        # THE LOOP'S REAL SHAPE: on the fallback path pingpong_loop.py calls the
+        # provider again with resume=None and sets resume_fallback on the NEW
+        # output, so that output's own resume_session_ref is "".
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        replaced = _finalized_output(
+            resume_fallback=True, resume_used=False, resume_session_ref=""
+        )
+
+        assert invalidate_on_resume_fallback(index, replaced, "session-a") is True
+
+        assert index.sent_hashes("session-a") == frozenset()
+
+    def test_the_loops_replaced_output_alone_invalidates_nothing(self):
+        # THIS IS THE FAILURE THE THIRD ARGUMENT PREVENTS. Reading only the
+        # output object, the adapter has no id to act on and the stale session
+        # survives a fallback — silently, on exactly the path invalidation
+        # exists for.
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        replaced = _finalized_output(
+            resume_fallback=True, resume_used=False, resume_session_ref=""
+        )
+
+        assert invalidate_on_resume_fallback(index, replaced) is False
+
+        assert index.sent_hashes("session-a") == frozenset(_digests(rows))
+
+    def test_the_output_ref_is_used_when_the_caller_holds_no_variable(self):
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        output = _finalized_output(
+            resume_fallback=True, resume_used=True, resume_session_ref="session-a"
+        )
+
+        assert invalidate_on_resume_fallback(index, output) is True
+
+        assert index.sent_hashes("session-a") == frozenset()
+
+    @pytest.mark.parametrize("resumed_ref", ["   ", "\t"])
+    def test_a_whitespace_only_ref_invalidates_nothing(self, resumed_ref):
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        index.record_call("session-a", rows, ok=True)
+        output = _finalized_output(resume_fallback=True)
+
+        assert invalidate_on_resume_fallback(index, output, resumed_ref) is False
+
+        assert index.sent_hashes("session-a") == frozenset(_digests(rows))
+
+
+class TestAdapterLifecycle:
+    def test_record_then_fallback_then_record_again(self):
+        rows = _sample_rows()
+        index = SessionSentIndex()
+        success = _finalized_output(usage_actuals={"session_id": "s1"})
+
+        assert record_finalized_call(index, success, rows) == len(rows)
+        assert index.sent_hashes("s1") == frozenset(_digests(rows))
+
+        fallback = _finalized_output(resume_fallback=True, resume_session_ref="")
+        assert invalidate_on_resume_fallback(index, fallback, "s1") is True
+        assert index.sent_hashes("s1") == frozenset()
+        assert index.session_ids() == ()
+
+        assert record_finalized_call(index, success, rows) == len(rows)
+        assert index.sent_hashes("s1") == frozenset(_digests(rows))
