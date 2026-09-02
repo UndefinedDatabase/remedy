@@ -22,14 +22,25 @@ summary never blocks the run.
 | T003b-i/ii builder+reviewer scoped-diff wiring + tests | done | rounds 7-8, D3/D4 |
 | T003c real persisted `full_ref` + disk caching, both call sites | done | round 9, D5 |
 | T003d long-artifact fixture + size comparison (DONE evidence) | done | round 10, D6 |
+| Integration gate (branch + base run) | BLOCKED | round 11, see below |
 | T003b-iii reviewer fallback-branch wiring | pending | deferred, D4 |
 
+## Round 11 outcome
+Integration gate ran (`.agent/gate_f108_r11/*`). Base: 0 failed, 18736
+passed, exit 0. Branch: 1 failed, 18781 passed, exit 1 —
+`test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_
+lint_ceiling` (28 ruff errors vs frozen ceiling 26). Branch-only,
+serial-fail, no repro at merge-base; directly attributed: exactly 2 of
+the 28 are `I001` inside `test_artifact_summaries.py` and
+`test_pingpong_cli.py`, both wholly new F108 files. Not fixed this round
+(scope excludes `tests/`) — see comparison.txt.
+
 ## Next Steps
-1. Integration gate (full suite, both required runs) before closure.
-2. Closure sequence: README sync, STATUS `[x]`, evidence bundle, review
-   package.
+1. Reviewer verdict on round 11's gate (BLOCKER declared, not resolved).
+2. Follow-up round: fix the two files' import order, re-run branch suite.
+3. Only then: closure sequence (README sync, STATUS `[x]`, evidence
+   bundle, review package).
 
 ## Risks
-- None open. T003d's fixture exercised the REAL call sites (`run_pingpong`'s
-  builder/reviewer phases) per DECISION F108 D6, discharging the prior
-  round's Risk note.
+- Lint-ceiling breach open (round 11): 2 new I001 errors push the repo
+  to 28/26. Not a design defect; blocks gate PASS until fixed.
