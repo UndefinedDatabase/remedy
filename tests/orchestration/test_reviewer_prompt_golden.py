@@ -499,3 +499,17 @@ class TestReviewerTieredDiffTextHelper:
         assert calls["count"] == 1
         assert result != ""
         assert FALLBACK_MARKER in result
+
+    def test_forwards_artifact_path_to_render_tiered_diff_text(self, tmp_path):
+        artifact_path = tmp_path / "reviewer_scoped.diff"
+        safe_diff = "x" * (_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS + 100)
+
+        result = _reviewer_tiered_diff_text(
+            safe_diff, _SCOPE_PACKET, False, lambda: None,
+            threshold_chars=_OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
+            full_ref=str(artifact_path), artifact_path=artifact_path,
+        )
+
+        assert artifact_path.exists()
+        assert artifact_path.read_text() == safe_diff
+        assert result != ""
