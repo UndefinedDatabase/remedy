@@ -1,0 +1,1439 @@
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [  0%]
+........................................................................ [  0%]
+........................................................................ [  1%]
+........................................................................ [  1%]
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  3%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  4%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  6%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  8%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [  9%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 11%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 13%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 14%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 16%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 18%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 19%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 21%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 23%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 26%]
+........................................................................ [ 26%]
+.......................s............................s................... [ 27%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 28%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 29%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 31%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 33%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 34%]
+.....................................................................s.s [ 34%]
+........................................................................ [ 35%]
+.....................................s.ss............................... [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 36%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 38%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 39%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 41%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 42%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 44%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 46%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 47%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 49%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 51%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 52%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 54%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 56%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+...................F.................................................... [ 57%]
+................F......................................F.............F.. [ 57%]
+...................................F...................F...F............ [ 58%]
+...............F........F...........F................................... [ 58%]
+........................................................................ [ 59%]
+......F............F................F................................... [ 59%]
+...............................................F........................ [ 59%]
+.........................................F.............................. [ 60%]
+.............................................F..F....................... [ 60%]
+.F......F...F.......F...............F................................... [ 61%]
+F....................................................................... [ 61%]
+...............................s...ss....................sss............ [ 61%]
+........................................................................ [ 62%]
+...................................................................F.... [ 62%]
+.......................................................F................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 64%]
+........................................................................ [ 64%]
+........s............................................................... [ 65%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 67%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 69%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 71%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 72%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 74%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 76%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 77%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 78%]
+...............................................................s........ [ 79%]
+........................................................................ [ 79%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 80%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 82%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 84%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+.......................................................................s [ 85%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 87%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 88%]
+...................................s.................................... [ 89%]
+...s.................................................................... [ 89%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+............................s......s.................................... [ 90%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 92%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+....................................                                     [100%]
+=================================== FAILURES ===================================
+_ TestReviewerParseRetryTraces.test_recoverable_reviewer_parse_failure_makes_two_traces _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerParseRetryTraces object at 0x7d4e34216800>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_recoverable_reviewer_pars0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3040c880>
+
+    def test_recoverable_reviewer_parse_failure_makes_two_traces(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        from packages.orchestration.pingpong_loop import run_pingpong
+        from packages.orchestration.pingpong_provider import ReviewerOutput
+    
+        class _FlakyReviewer:
+            """Returns a classified parse failure once, then a valid verdict."""
+            def __init__(self):
+                self.calls = 0
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+                self.calls += 1
+                if self.calls == 1:
+                    return ReviewerOutput(
+                        verdict="blocked",
+                        error="malformed_output: verdict: Field required",
+                        error_class="parse",
+                        parse_hint="verdict: Field required",
+                        schema_v="rv1",
+                        raw_text="not json",
+                        provider="fake",
+                    )
+                return ReviewerOutput(
+                    verdict="pass", confidence="high", summary="ok",
+                    schema_v="rv1", provider="fake",
+                )
+    
+        reviewer = _FlakyReviewer()
+>       result = run_pingpong(
+            "test goal", str(tmp_path),
+            builder_name="fake", reviewer_name="fake",
+            reviewer_provider=reviewer,
+            max_rounds=1,
+        )
+
+tests/orchestration/test_structured_outputs.py:360: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: TestReviewerParseRetryTraces.test_recoverable_reviewer_parse_failure_makes_two_traces.<locals>._FlakyReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_ TestReviewerPromptTraceHashEquality.test_initial_and_retry_traces_hash_match_sent_prompts _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerPromptTraceHashEquality object at 0x7d4e34215c90>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_initial_and_retry_traces_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3c8ee920>
+
+    def test_initial_and_retry_traces_hash_match_sent_prompts(self, tmp_path, monkeypatch):
+        import hashlib
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        from packages.orchestration.pingpong_loop import run_pingpong
+        from packages.orchestration.pingpong_provider import ReviewerOutput
+    
+        outputs = [
+            ReviewerOutput(verdict="blocked", error="malformed_output: verdict: Field required",
+                           error_class="parse", parse_hint="verdict: Field required",
+                           schema_v="rv1", raw_text="bad", provider="fake",
+                           usage_actuals={"input_tokens": 40, "output_tokens": 4,
+                                          "total_cost_usd": 0.001, "parse_source": "claude_cli_json"}),
+            ReviewerOutput(verdict="pass", confidence="high", summary="ok", schema_v="rv1",
+                           provider="fake",
+                           usage_actuals={"input_tokens": 42, "output_tokens": 5,
+                                          "total_cost_usd": 0.0011, "parse_source": "claude_cli_json"}),
+        ]
+        reviewer = _RecordingReviewer(outputs)
+>       result = run_pingpong("goal", str(tmp_path), builder_name="fake",
+                              reviewer_name="fake", reviewer_provider=reviewer, max_rounds=1)
+
+tests/orchestration/test_structured_outputs.py:415: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+______ TestReviewerPromptTraceHashEquality.test_two_call_usage_reconciles ______
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerPromptTraceHashEquality object at 0x7d4e342155d0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_two_call_usage_reconciles0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3c8efe80>
+
+    def test_two_call_usage_reconciles(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        from packages.orchestration.pingpong_loop import run_pingpong
+        from packages.orchestration.pingpong_provider import ReviewerOutput
+    
+        outputs = [
+            ReviewerOutput(verdict="blocked", error="malformed_output: exhausted",
+                           error_class="parse", parse_hint="exhausted", schema_v="rv1",
+                           provider="fake",
+                           usage_actuals={"input_tokens": 50, "output_tokens": 5,
+                                          "total_cost_usd": 0.001, "parse_source": "claude_cli_json"}),
+            ReviewerOutput(verdict="pass", confidence="high", summary="ok", schema_v="rv1",
+                           provider="fake",
+                           usage_actuals={"input_tokens": 60, "output_tokens": 6,
+                                          "total_cost_usd": 0.002, "parse_source": "claude_cli_json"}),
+        ]
+        reviewer = _RecordingReviewer(outputs)
+>       result = run_pingpong("goal", str(tmp_path), builder_name="fake",
+                              reviewer_name="fake", reviewer_provider=reviewer, max_rounds=1)
+
+tests/orchestration/test_structured_outputs.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_____ TestReviewerTraceEqualsAttempts.test_1_transport_retry_then_success ______
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e34214850>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_1_transport_retry_then_su0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3c8a7dc0>
+
+    def test_1_transport_retry_then_success(self, tmp_path, monkeypatch):
+>       result, rev, traces, attempts = _run_loop(
+            tmp_path, [_timeout_out(), _good_out()], monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:500: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_______ TestReviewerTraceEqualsAttempts.test_2_parse_retry_then_success ________
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e342168f0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_2_parse_retry_then_succes0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e316b2800>
+
+    def test_2_parse_retry_then_success(self, tmp_path, monkeypatch):
+>       result, rev, traces, attempts = _run_loop(
+            tmp_path, [_bad_parse_out(), _good_out()], monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:512: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_ TestReviewerTraceEqualsAttempts.test_3_parse_retry_times_out_once_then_succeeds _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e34216ce0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_3_parse_retry_times_out_o0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e316887c0>
+
+    def test_3_parse_retry_times_out_once_then_succeeds(self, tmp_path, monkeypatch):
+>       result, rev, traces, attempts = _run_loop(
+            tmp_path, [_bad_parse_out(), _timeout_out(), _good_out()], monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:520: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_ TestReviewerTraceEqualsAttempts.test_4_no_retry_single_attempt_single_trace __
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e342170d0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_4_no_retry_single_attempt0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e30401510>
+
+    def test_4_no_retry_single_attempt_single_trace(self, tmp_path, monkeypatch):
+>       result, rev, traces, attempts = _run_loop(tmp_path, [_good_out()], monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:532: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_ TestReviewerTraceEqualsAttempts.test_5_every_trace_hash_matches_the_sent_prompt _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e342174c0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_5_every_trace_hash_matche0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3166fee0>
+
+    def test_5_every_trace_hash_matches_the_sent_prompt(self, tmp_path, monkeypatch):
+        import hashlib
+>       _result, rev, traces, attempts = _run_loop(
+            tmp_path, [_bad_parse_out(), _timeout_out(), _good_out()], monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:539: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+________ TestReviewerTraceEqualsAttempts.test_all_traces_carry_schema_v ________
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e342178b0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_all_traces_carry_schema_v0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e317a6f80>
+
+    def test_all_traces_carry_schema_v(self, tmp_path, monkeypatch):
+>       _r, _rev, traces, _a = _run_loop(
+            tmp_path, [_bad_parse_out(), _timeout_out(), _good_out()], monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:547: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_ TestReviewerTraceEqualsAttempts.test_provider_error_does_not_consume_the_parse_retry _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_structured_outputs.TestReviewerTraceEqualsAttempts object at 0x7d4e34217ca0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_provider_error_does_not_c0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e316b1f30>
+
+    def test_provider_error_does_not_consume_the_parse_retry(self, tmp_path, monkeypatch):
+        # An ordinary provider error is retried as transport, never as a parse retry.
+>       result, _rev, traces, attempts = _run_loop(
+            tmp_path, [_provider_err_out(), _provider_err_out(), _provider_err_out()],
+            monkeypatch)
+
+tests/orchestration/test_structured_outputs.py:553: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_structured_outputs.py:490: in _run_loop
+    result = pl.run_pingpong("goal", str(tmp_path), builder_name="fake",
+packages/orchestration/pingpong_loop.py:3354: in run_pingpong
+    reviewer_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=reviewer_timeout: reviewer_provider.review(
+            reviewer_effective,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=reviewer_resume_ref,
+        ),
+        result=result,
+        role="reviewer",
+        provider=reviewer_name,
+        on_call=_rev_trace(
+            reviewer_effective,
+            "review",
+            "re-review" if is_repair else "review",
+        ),
+        on_provider_attempt=on_provider_call,
+        call_reasons=reviewer_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _RecordingReviewer.review() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3355: TypeError
+_ TestPersistedRunRecord.test_result_diff_reference_resolves_and_hash_and_size_match _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestPersistedRunRecord object at 0x7d4e33c2c550>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_result_diff_reference_res0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3c8618a0>
+
+    def test_result_diff_reference_resolves_and_hash_and_size_match(self, repo, monkeypatch):
+>       res = _run(monkeypatch, repo)
+
+tests/orchestration/test_worktree_persistence.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_persistence.py:84: in _run
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+___ TestPersistedRunRecord.test_cleanup_status_is_never_clean_before_cleanup ___
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestPersistedRunRecord object at 0x7d4e33c2cdf0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_cleanup_status_is_never_c0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3c93e2c0>
+
+    def test_cleanup_status_is_never_clean_before_cleanup(self, repo, monkeypatch):
+        # A retained run still owns its worktree: it must NOT claim a clean cleanup.
+        holder: dict = {}
+        real_create = W.create
+    
+        def spy(job, r):
+            h = real_create(job, r)
+            holder["path"] = h.path
+            return h
+    
+        monkeypatch.setattr(W, "create", spy)
+        prov = _WritingProvider(holder)
+>       res = run_pingpong("goal", str(repo), builder_provider=prov,
+                           reviewer_provider=prov, builder_name="fake",
+                           reviewer_name="fake", max_rounds=1, keep_staging=True)
+
+tests/orchestration/test_worktree_persistence.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_ TestPersistedRunRecord.test_diff_persistence_error_retains_the_worktree_and_the_work _
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestPersistedRunRecord object at 0x7d4e33c0e500>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_diff_persistence_error_re0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e305f2170>
+
+    def test_diff_persistence_error_retains_the_worktree_and_the_work(
+        self, repo, monkeypatch,
+    ):
+        # Replaces the earlier assertion that a diff-write failure still ended in a
+        # "clean" cleanup: the run's changes are UNCOMMITTED, so removing the
+        # worktree with no persisted diff would destroy the only copy of the work.
+        holder: dict = {}
+        real_create = W.create
+    
+        def spy(job, r):
+            h = real_create(job, r)
+            holder["path"] = h.path
+            return h
+    
+        monkeypatch.setattr(W, "create", spy)
+    
+        def boom(handle, out_path):
+            raise OSError("disk full")
+    
+        monkeypatch.setattr(W, "write_result_diff", boom)
+        prov = _WritingProvider(holder, "work worth keeping\n")
+>       res = run_pingpong("goal", str(repo), builder_provider=prov,
+                           reviewer_provider=prov, builder_name="fake",
+                           reviewer_name="fake", max_rounds=1)
+
+tests/orchestration/test_worktree_persistence.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_______ TestEvidenceExport.test_job_evidence_export_contains_result_diff _______
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestEvidenceExport object at 0x7d4e33c64c40>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_job_evidence_export_conta0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e318a7850>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_job_evidence_export_conta0')
+
+    def test_job_evidence_export_contains_result_diff(self, repo, monkeypatch, tmp_path):
+        from packages.orchestration.job_evidence import _write_task_run_evidence
+    
+>       res = _run(monkeypatch, repo)
+
+tests/orchestration/test_worktree_persistence.py:283: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_persistence.py:84: in _run
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_________ TestEvidenceExport.test_review_zip_carries_the_exported_diff _________
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestEvidenceExport object at 0x7d4e33c654b0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_review_zip_carries_the_ex0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4e3c86a1a0>
+tmp_path = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw12/test_review_zip_carries_the_ex0')
+
+    def test_review_zip_carries_the_exported_diff(self, repo, monkeypatch, tmp_path):
+        # The review ZIP packs the evidence export verbatim; prove the diff is in
+        # the file list that gets packed (no ZIP tooling needed to prove inclusion).
+        import zipfile
+    
+        from packages.orchestration.job_evidence import _write_task_run_evidence
+    
+>       res = _run(monkeypatch, repo)
+
+tests/orchestration/test_worktree_persistence.py:324: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_persistence.py:84: in _run
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+____ TestTwoJobsDoNotCollide.test_each_run_gets_its_own_worktree_and_branch ____
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e42fb0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_each_run_gets_its_own_wor0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b6c7c0>
+
+    def test_each_run_gets_its_own_worktree_and_branch(self, repo, monkeypatch):
+        seen: list = []
+>       r1 = _run_with_content(monkeypatch, repo, "job one\n", seen=seen)
+
+tests/orchestration/test_worktree_isolation.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_ TestTwoJobsDoNotCollide.test_main_checkout_identical_before_and_after_both_runs _
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e43400>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_main_checkout_identical_b0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b76c20>
+
+    def test_main_checkout_identical_before_and_after_both_runs(self, repo, monkeypatch):
+        before_status = _status(repo)
+        before_head = _git(repo, "rev-parse", "HEAD").strip()
+        before_content = (repo / "shared.txt").read_text()
+    
+>       _run_with_content(monkeypatch, repo, "job one\n")
+
+tests/orchestration/test_worktree_isolation.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_ TestTwoJobsDoNotCollide.test_both_jobs_may_write_the_same_filename_independently _
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e43850>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_both_jobs_may_write_the_s0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779054d6b6d0>
+
+    def test_both_jobs_may_write_the_same_filename_independently(self, repo, monkeypatch):
+>       r1 = _run_with_content(monkeypatch, repo, "job one\n", keep=True)
+
+tests/orchestration/test_worktree_isolation.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+__ TestTwoJobsDoNotCollide.test_each_result_diff_contains_only_its_own_change __
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e43ca0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_each_result_diff_contains0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77905dc9cca0>
+
+    def test_each_result_diff_contains_only_its_own_change(self, repo, monkeypatch):
+>       r1 = _run_with_content(monkeypatch, repo, "job one\n")
+
+tests/orchestration/test_worktree_isolation.py:130: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_____ TestTwoJobsDoNotCollide.test_no_automatic_merge_and_branches_remain ______
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e64070>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_no_automatic_merge_and_br0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b6c280>
+
+    def test_no_automatic_merge_and_branches_remain(self, repo, monkeypatch):
+        main_before = _git(repo, "rev-parse", "HEAD").strip()
+>       r1 = _run_with_content(monkeypatch, repo, "job one\n")
+
+tests/orchestration/test_worktree_isolation.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_______ TestTwoJobsDoNotCollide.test_cleanup_leaves_no_mounted_worktrees _______
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e644c0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_cleanup_leaves_no_mounted0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b3ebf0>
+
+    def test_cleanup_leaves_no_mounted_worktrees(self, repo, monkeypatch):
+>       _run_with_content(monkeypatch, repo, "job one\n")
+
+tests/orchestration/test_worktree_isolation.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_ TestTwoJobsDoNotCollide.test_a_failed_job_does_not_remove_the_other_jobs_worktree _
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e64910>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_a_failed_job_does_not_rem0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b5b7c0>
+
+    def test_a_failed_job_does_not_remove_the_other_jobs_worktree(self, repo, monkeypatch):
+        # Job A is kept (simulating a run still in flight / retained on failure).
+>       r_kept = _run_with_content(monkeypatch, repo, "job kept\n", keep=True)
+
+tests/orchestration/test_worktree_isolation.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+_____ TestTwoJobsDoNotCollide.test_a_retained_run_leaves_no_orphaned_lock ______
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_isolation.TestTwoJobsDoNotCollide object at 0x779058e43760>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_a_retained_run_leaves_no_0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b97580>
+
+    def test_a_retained_run_leaves_no_orphaned_lock(self, repo, monkeypatch):
+        # keep_staging retains the WORKTREE but must NOT retain the lock: once
+        # run_pingpong has returned, the handle is unreachable, so a held fcntl
+        # lock would make the run id permanently unclaimable by recovery.
+>       r = _run_with_content(monkeypatch, repo, "held\n", keep=True)
+
+tests/orchestration/test_worktree_isolation.py:191: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_isolation.py:86: in _run_with_content
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingBuilder.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+______ TestPersistedRunRecord.test_load_run_contains_every_worktree_field ______
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestPersistedRunRecord object at 0x779058e839a0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_load_run_contains_every_w0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056d0b4c0>
+
+    def test_load_run_contains_every_worktree_field(self, repo, monkeypatch):
+>       res = _run(monkeypatch, repo)
+
+tests/orchestration/test_worktree_persistence.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_persistence.py:84: in _run
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+______ TestPersistedRunRecord.test_no_private_absolute_path_is_persisted _______
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.orchestration.test_worktree_persistence.TestPersistedRunRecord object at 0x779058e808b0>
+repo = PosixPath('/tmp/pytest-of-decodeux/pytest-9/popen-gw14/test_no_private_absolute_path_0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x779056b4dd80>
+
+    def test_no_private_absolute_path_is_persisted(self, repo, monkeypatch):
+>       res = _run(monkeypatch, repo)
+
+tests/orchestration/test_worktree_persistence.py:115: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/orchestration/test_worktree_persistence.py:84: in _run
+    return run_pingpong(
+packages/orchestration/pingpong_loop.py:3080: in run_pingpong
+    builder_out = _call_with_retry(
+packages/orchestration/pingpong_loop.py:2320: in _call_with_retry
+    out = call_fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ts = 120
+
+>       lambda ts=builder_timeout: builder_provider.build(
+            builder_prompt,
+            timeout_sec=ts,
+            max_output_chars=max_output_chars,
+            resume=builder_resume_ref,
+        ),
+        result=result,
+        role="builder",
+        provider=builder_name,
+        on_provider_attempt=on_provider_call,
+        call_reasons=builder_call_reasons,
+        stop_check=_stopped,
+        rate_governor=_rate_governor,
+    )
+E   TypeError: _WritingProvider.build() got an unexpected keyword argument 'resume'
+
+packages/orchestration/pingpong_loop.py:3081: TypeError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerParseRetryTraces::test_recoverable_reviewer_parse_failure_makes_two_traces
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerPromptTraceHashEquality::test_initial_and_retry_traces_hash_match_sent_prompts
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerPromptTraceHashEquality::test_two_call_usage_reconciles
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_1_transport_retry_then_success
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_2_parse_retry_then_success
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_3_parse_retry_times_out_once_then_succeeds
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_4_no_retry_single_attempt_single_trace
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_5_every_trace_hash_matches_the_sent_prompt
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_all_traces_carry_schema_v
+FAILED tests/orchestration/test_structured_outputs.py::TestReviewerTraceEqualsAttempts::test_provider_error_does_not_consume_the_parse_retry
+FAILED tests/orchestration/test_worktree_persistence.py::TestPersistedRunRecord::test_result_diff_reference_resolves_and_hash_and_size_match
+FAILED tests/orchestration/test_worktree_persistence.py::TestPersistedRunRecord::test_cleanup_status_is_never_clean_before_cleanup
+FAILED tests/orchestration/test_worktree_persistence.py::TestPersistedRunRecord::test_diff_persistence_error_retains_the_worktree_and_the_work
+FAILED tests/orchestration/test_worktree_persistence.py::TestEvidenceExport::test_job_evidence_export_contains_result_diff
+FAILED tests/orchestration/test_worktree_persistence.py::TestEvidenceExport::test_review_zip_carries_the_exported_diff
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_each_run_gets_its_own_worktree_and_branch
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_main_checkout_identical_before_and_after_both_runs
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_both_jobs_may_write_the_same_filename_independently
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_each_result_diff_contains_only_its_own_change
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_no_automatic_merge_and_branches_remain
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_cleanup_leaves_no_mounted_worktrees
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_a_failed_job_does_not_remove_the_other_jobs_worktree
+FAILED tests/orchestration/test_worktree_isolation.py::TestTwoJobsDoNotCollide::test_a_retained_run_leaves_no_orphaned_lock
+FAILED tests/orchestration/test_worktree_persistence.py::TestPersistedRunRecord::test_load_run_contains_every_worktree_field
+FAILED tests/orchestration/test_worktree_persistence.py::TestPersistedRunRecord::test_no_private_absolute_path_is_persisted
+25 failed, 18711 passed, 20 skipped in 129.66s (0:02:09)
+EXIT=1
+WALL_SECONDS=130.25

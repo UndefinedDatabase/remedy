@@ -873,6 +873,7 @@ def compose_builder_prompt(
     scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
+    resume_hunks_text: str = "",
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
 
@@ -924,7 +925,18 @@ def compose_builder_prompt(
             "builder_staged_state", SegmentStabilityRank.JOB_CONTEXT,
             [f"## Current Staged State\n{staged_state}\n"],
         ))
-    if safe_diff and findings:
+    if resume_hunks_text:
+        # F106 T002b-ii step 2b (DECISION F106 D1(b)): a resumed session
+        # gets the shrunk render instead of the full diff, for the SAME
+        # segment name and rank — the manifest shape is unchanged, only
+        # which text fills it. The caller supplies this pre-rendered
+        # (compose_builder_prompt does no filesystem I/O of its own); an
+        # empty string here always falls through to the branch below.
+        specs.append((
+            "builder_staged_diff", SegmentStabilityRank.JOB_CONTEXT,
+            [resume_hunks_text],
+        ))
+    elif safe_diff and findings:
         capped = safe_diff[:_REPAIR_DIFF_CAP]
         if len(safe_diff) > _REPAIR_DIFF_CAP:
             capped += "\n[DIFF TRUNCATED]"
@@ -1021,13 +1033,14 @@ def _build_builder_prompt(
     scope_contract: str = "",
     test_result: str = "",
     hunk_ledger: Any = None,
+    resume_hunks_text: str = "",
 ) -> str:
     """The builder prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_builder_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string. ``hunk_ledger`` is forwarded UNCHANGED and means exactly what
-    it means there.
+    this string. ``hunk_ledger`` and ``resume_hunks_text`` are forwarded
+    UNCHANGED and mean exactly what they mean there.
     """
     return compose_builder_prompt(
         goal,
@@ -1040,6 +1053,7 @@ def _build_builder_prompt(
         scope_contract=scope_contract,
         test_result=test_result,
         hunk_ledger=hunk_ledger,
+        resume_hunks_text=resume_hunks_text,
     ).text
 
 
@@ -1343,6 +1357,7 @@ def compose_reviewer_prompt(
     scope_packet: dict[str, Any] | None = None,
     evidence_dir: str | Path | None = None,
     task_id: str = "",
+    resume_hunks_text: str = "",
 ) -> ComposedPrompt:
     """Compose the reviewer prompt from registered segments, with its manifest.
 
@@ -1420,7 +1435,17 @@ def compose_reviewer_prompt(
              + "\n".join(f"- {f}" for f in files_changed) + "\n"],
         ))
     if scoped:
-        if safe_diff:
+        if resume_hunks_text:
+            # F106 T002b-ii step 2b, Reviewer side (DECISION F106 D1(b)):
+            # mirrors the Builder side (round 12) exactly — the SAME
+            # segment name/rank this branch already uses, only the text
+            # differs. The caller supplies this pre-rendered; an empty
+            # string always falls through to the branches below.
+            specs.append((
+                "reviewer_focused_diff", SegmentStabilityRank.STEERING,
+                [resume_hunks_text],
+            ))
+        elif safe_diff:
             capped = safe_diff[:_REVIEWER_SCOPED_DIFF_CAP]
             if len(safe_diff) > _REVIEWER_SCOPED_DIFF_CAP:
                 capped += "\n[FOCUSED DIFF TRUNCATED]"
@@ -1433,6 +1458,11 @@ def compose_reviewer_prompt(
                 "reviewer_focused_diff", SegmentStabilityRank.STEERING,
                 [f"## Focused Staged Diff\n```\n{diff_summary}\n```\n"],
             ))
+    elif resume_hunks_text:
+        specs.append((
+            "reviewer_staged_diff", SegmentStabilityRank.STEERING,
+            [resume_hunks_text],
+        ))
     elif safe_diff:
         capped = safe_diff[:_REVIEWER_DIFF_CAP]
         if len(safe_diff) > _REVIEWER_DIFF_CAP:
@@ -1478,12 +1508,14 @@ def _build_reviewer_prompt(
     scope_packet: dict[str, Any] | None = None,
     evidence_dir: str | Path | None = None,
     task_id: str = "",
+    resume_hunks_text: str = "",
 ) -> str:
     """The reviewer prompt's text.
 
     COMPOSED from the registered segments of :func:`compose_reviewer_prompt`; a
     caller that needs the segment manifest calls that instead of re-splitting
-    this string.
+    this string. ``resume_hunks_text`` is forwarded UNCHANGED and means
+    exactly what it means there.
     """
     return compose_reviewer_prompt(
         goal,
@@ -1501,6 +1533,7 @@ def _build_reviewer_prompt(
         scope_packet=scope_packet,
         evidence_dir=evidence_dir,
         task_id=task_id,
+        resume_hunks_text=resume_hunks_text,
     ).text
 
 
@@ -2933,6 +2966,22 @@ def run_pingpong(
                 started_at=datetime.now(timezone.utc).isoformat(),
             )
 
+            # F106 T002a: a repair round resumes the prior round's provider
+            # session only when the provider honestly advertises support AND
+            # a session id was actually captured last round — every other
+            # path (initial round, unsupported provider, no prior session
+            # id) passes resume=None, an honest no-op, never guessed.
+            # F106 T002b-ii step 1 (DECISION F106 D1): hoisted here, before
+            # prompt composition, so a later round can gate the repair-diff
+            # segment on this same value without recomputing it.
+            builder_resume_ref: str | None = None
+            if is_repair and getattr(builder_provider, "supports_resume", False) and result.rounds:
+                prev_builder_out = result.rounds[-1].builder_output
+                prev_actuals = getattr(prev_builder_out, "usage_actuals", None) or {}
+                prev_session_id = str(prev_actuals.get("session_id") or "")
+                if prev_session_id:
+                    builder_resume_ref = prev_session_id
+
             # --- Builder phase ---
             # Compute repair diff for builder (from previous round)
             repair_diff = ""
@@ -2955,6 +3004,23 @@ def run_pingpong(
             # F115 D1: compose instead of calling `_build_builder_prompt`, so the
             # trace entry below carries a real segment manifest. The sent bytes are
             # unchanged — `_build_builder_prompt` returns this same `.text`.
+            # F106 T002b-ii step 2b (DECISION F106 D1(b)): when this round is
+            # actually resuming (``builder_resume_ref`` set) and there is a
+            # repair diff to shrink, render only the changed regions —
+            # ``render_repair_hunks`` was frozen in round 11 for exactly this.
+            # An empty render (nothing survived selection) falls back to the
+            # unconditional full-diff path inside compose_builder_prompt.
+            builder_resume_hunks_text = ""
+            if builder_resume_ref and repair_diff:
+                from packages.orchestration.diff_repair import (
+                    render_repair_hunks,
+                    select_repair_hunks,
+                )
+                from packages.orchestration.review_scope import parse_diff_line_ranges
+                builder_resume_hunks_text = render_repair_hunks(select_repair_hunks(
+                    staging, parse_diff_line_ranges(repair_diff),
+                    max_total_chars=_REPAIR_DIFF_CAP,
+                ))
             builder_composed = compose_builder_prompt(
                 effective_goal, context,
                 round_number=round_num,
@@ -2965,6 +3031,7 @@ def run_pingpong(
                 scope_contract=scope_contract_text,
                 test_result=prev_test_result,
                 hunk_ledger=hunk_ledger,
+                resume_hunks_text=builder_resume_hunks_text,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
@@ -3015,6 +3082,7 @@ def run_pingpong(
                     builder_prompt,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
+                    resume=builder_resume_ref,
                 ),
                 result=result,
                 role="builder",
@@ -3024,6 +3092,32 @@ def run_pingpong(
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
             )
+            # F106 T002c: a resume attempt that errors falls back ONCE to the
+            # full-context path within the same round — an honest, evidenced
+            # event, never a task failure by itself (Orchestrator brief,
+            # verbatim). Only fires when a resume was actually attempted
+            # (``builder_resume_ref`` set); a plain call failure with no
+            # resume in play is unaffected and falls straight through to the
+            # existing terminal-error handling below, unchanged.
+            if builder_resume_ref and builder_out.error:
+                _begin_stream_call(builder_provider, round_num, "attempt")
+                builder_call_reasons = []
+                builder_out = _call_with_retry(
+                    lambda ts=builder_timeout: builder_provider.build(
+                        builder_prompt,
+                        timeout_sec=ts,
+                        max_output_chars=max_output_chars,
+                        resume=None,
+                    ),
+                    result=result,
+                    role="builder",
+                    provider=builder_name,
+                    on_provider_attempt=on_provider_call,
+                    call_reasons=builder_call_reasons,
+                    stop_check=_stopped,
+                    rate_governor=_rate_governor,
+                )
+                builder_out.resume_fallback = True
             rd.builder_output = builder_out
 
             # F012: the Builder call is finalized — record its input through the single seam.
@@ -3149,9 +3243,42 @@ def run_pingpong(
                 repair_rounds=result.repair_rounds_used,
             )
 
+            # F106 T002b-i: the repair round's PRIMARY Reviewer attempt
+            # resumes the prior round's Reviewer session only when the
+            # provider honestly advertises support AND a session id was
+            # actually captured last round — same rule as the Builder side
+            # (T002a). The bounded parse retry below is a DIFFERENT call and
+            # is NOT threaded this round; it stays full-context.
+            # F106 T002b-ii step 1 (DECISION F106 D1): hoisted here, before
+            # prompt composition, so a later round can gate the safe-diff
+            # segment on this same value without recomputing it.
+            reviewer_resume_ref: str | None = None
+            if is_repair and getattr(reviewer_provider, "supports_resume", False) and result.rounds:
+                prev_reviewer_out = result.rounds[-1].reviewer_output
+                prev_actuals = getattr(prev_reviewer_out, "usage_actuals", None) or {}
+                prev_session_id = str(prev_actuals.get("session_id") or "")
+                if prev_session_id:
+                    reviewer_resume_ref = prev_session_id
+
             # F115 D1: compose instead of calling `_build_reviewer_prompt`, so the
             # trace entries below carry a real segment manifest. The sent bytes are
             # unchanged — `_build_reviewer_prompt` returns this same `.text`.
+            # F106 T002b-ii step 2b, Reviewer side (DECISION F106 D1(b)):
+            # mirrors round 12's Builder side exactly — render only the
+            # changed regions when this round is actually resuming and
+            # there is a safe diff to shrink; an empty render falls back
+            # to the unconditional path inside compose_reviewer_prompt.
+            reviewer_resume_hunks_text = ""
+            if reviewer_resume_ref and reviewer_safe_diff:
+                from packages.orchestration.diff_repair import (
+                    render_repair_hunks,
+                    select_repair_hunks,
+                )
+                from packages.orchestration.review_scope import parse_diff_line_ranges
+                reviewer_resume_hunks_text = render_repair_hunks(select_repair_hunks(
+                    staging, parse_diff_line_ranges(reviewer_safe_diff),
+                    max_total_chars=_REVIEWER_DIFF_CAP,
+                ))
             reviewer_composed = compose_reviewer_prompt(
                 effective_goal,
                 builder_out.summary,
@@ -3166,6 +3293,7 @@ def run_pingpong(
                 prior_findings=findings if is_repair else None,
                 repair_round=result.repair_rounds_used if is_repair else 0,
                 scope_packet=runtime_scope_packet,
+                resume_hunks_text=reviewer_resume_hunks_text,
             )
 
             reviewer_prompt = reviewer_composed.text
@@ -3228,6 +3356,7 @@ def run_pingpong(
                     reviewer_effective,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
+                    resume=reviewer_resume_ref,
                 ),
                 result=result,
                 role="reviewer",
@@ -3242,6 +3371,38 @@ def run_pingpong(
                 stop_check=_stopped,
                 rate_governor=_rate_governor,
             )
+            # F106 T002c: a resume attempt that errors falls back ONCE to the
+            # full-context path within the same round — an honest, evidenced
+            # event, never a task failure by itself (Orchestrator brief,
+            # verbatim). Only fires when a resume was actually attempted
+            # (``reviewer_resume_ref`` set); a plain call failure with no
+            # resume in play is unaffected and falls straight through to the
+            # existing terminal-error / parse-retry handling below,
+            # unchanged.
+            if reviewer_resume_ref and reviewer_out.error:
+                _begin_stream_call(reviewer_provider, round_num, "attempt")
+                reviewer_call_reasons = []
+                reviewer_out = _call_with_retry(
+                    lambda ts=reviewer_timeout: reviewer_provider.review(
+                        reviewer_effective,
+                        timeout_sec=ts,
+                        max_output_chars=max_output_chars,
+                        resume=None,
+                    ),
+                    result=result,
+                    role="reviewer",
+                    provider=reviewer_name,
+                    on_call=_rev_trace(
+                        reviewer_effective,
+                        "review",
+                        "re-review" if is_repair else "review",
+                    ),
+                    on_provider_attempt=on_provider_call,
+                    call_reasons=reviewer_call_reasons,
+                    stop_check=_stopped,
+                    rate_governor=_rate_governor,
+                )
+                reviewer_out.resume_fallback = True
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
             # terminal reviewer failure records F010 against it (F10).

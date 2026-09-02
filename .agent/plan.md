@@ -1,34 +1,37 @@
-# Plan — amend0830-cost-first
+# Plan — F106 Session resume instead of rebuild (CLOSED)
 
-Branch: feature/amend0830-cost-first, cut from `main` at the merge commit of
-pull request #226 (F258). Operator-authored task, not a self-drive round.
+Branch: feature/f106-session-resume, cut from `main` at `811c2d7e`. F106
+is CLOSED: `docs/roadmap/STATUS.md` carries its `[x]` line.
 
 ## Goal
-Pull the token-economy features forward in the roadmap execution order, fix
-R-0757 (self-use runner silently ran under the fake provider on an unflagged
-call instead of the product's real default), and move unreferenced/superseded
-zips in the package archive into `superseded/`.
+Repair rounds stop resending the world: where the provider supports resuming
+a session, a repair call resumes the original session and sends only the
+findings delta, with an honest automatic fallback to full context when the
+session is gone, flagged in evidence. Correctness never depends on resume
+working. DONE.
 
 ## Current Step
 
 | Item | Status | Reason |
 |------|--------|--------|
-| Part 0 — preconditions, PR #226 merge | done | green CI, merged + branch cut |
-| Part 1 — roadmap pull-forward | done | F106/F108/F109/F110/F112/F114 moved to a new Tier 3 heading ahead of Tier 0; `plan next` now proposes F106 |
-| Part 2 — R-0757 fix | done | `self_use_runner.run_next_self_use_item` resolves role config, refuses on no real provider; ledger `Landed:` marker written |
-| Part 3 — archive hygiene | done | 15 unreferenced zips moved to `remedy-history/zips/superseded/`, hashes recorded |
-| Part 4 — verify, PR, merge | in progress | full verification green; committing now |
+| T001/T002/T003, integration gate | done | rounds 1-17 |
+| all six closure preconditions | done | rounds 18-21 |
+| the evidence bundle and the review zip | done | round 22, READY_FOR_REVIEW |
+| the closure commit | done | this round, Rule A4's last commit |
+| the candidates.md entry (DECISION F106 D2) | done | this round, DECISION amend0827 D2 carve-out |
+| the pull request | done | #228, open into `main` |
+| the red hosted CI run 33618925168 | repaired | README ledger pins were not synced by the closure commit; fixed under amend0820-gate-autonomy |
 
 ## Next Steps
-1. Commit in small logical steps (roadmap+decisions, self_use_runner fix+tests, ledger note).
-2. Push, open PR titled "amend0830: cost-first execution order + honest self-use provider".
-3. Watch hosted CI; merge on green.
-4. Restore ORIG_BRANCH (feature/f258-self-use-v2 — already merged/deleted, so land on `main`).
+1. Watch the re-run of the hosted CI on #228 to the end.
+2. Read the check status, and only on green merge #228 into `main`.
+3. Nothing further on this branch after that.
 
 ## Risks
-- R-0757's own text claims `remedy do job-run` resolves a real provider by
-  default; reading `do_cmd.py` shows the resolved role config is not actually
-  threaded into its `run_job()` call either. Flagged in the ledger addition
-  as an unverified deviation, not re-litigated — the self_use_runner fix does
-  not depend on that claim either way.
-- R-0570 (Low) and R-0736 (Medium) remain open, out of this task's scope.
+- R-0761 (Medium, OPEN): the ping-pong provider factory has no `"ollama"`
+  branch, so the resolved product-default provider can never reach a real
+  call through the self-use/job-run path. Documented, not F106's own scope
+  to fix. This is the sole reason the closure verdict is PASS WITH RISKS.
+- The job/mission-resume half of the feature file's own Scope note is
+  deferred, not built — carried forward as a closure candidate per
+  DECISION F106 D2, not dropped.

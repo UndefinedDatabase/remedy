@@ -58,14 +58,14 @@ class _WritingProvider:
         self._holder = holder
         self._content = content
 
-    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+    def build(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
         target = self._holder.get("path") or ""
         assert target, "fake builder has no worktree to write into"
         (Path(target) / "a.txt").write_text(self._content)
         return BuilderOutput(summary="edited a.txt", files_changed=["a.txt"],
                              provider="fake")
 
-    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
         return ReviewerOutput(verdict="pass", confidence="high", summary="ok",
                               provider="fake")
 

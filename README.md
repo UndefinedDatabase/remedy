@@ -16,14 +16,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-65 of 258 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+66 of 258 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 14 | 14 |
-| 3 | Full Token Economy & Autonomy | 0 | 26 |
+| 3 | Full Token Economy & Autonomy | 1 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
 | 5 | Operator Cockpit | 13 | 32 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -60,6 +60,11 @@ F254 model alias table & dead-model doctor check,
 F103 token ledger (SQLite), F104 hard budget enforcement,
 F105 cache-optimal prompt ordering, F107 context compiler v2,
 F086 release capability (wheel, `remedy --version`, release gate).
+
+Accepted in Tier 3 so far:
+F106 session resume instead of rebuild (repair rounds resume the original
+provider session and send only the findings delta, with an honest automatic
+fallback to full context and resume_used recorded in the call evidence).
 
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend
@@ -119,6 +124,13 @@ from the oldest self-contained open finding in the reviewer's own ledger; the
 consumed item is RUN through the real job path to the normal approval gate,
 not merely planned; and any defect the run surfaces flows back into that same
 ledger as a normal finding).
+
+F106 session resume instead of rebuild (a repair round resumes the prior
+round's own provider session — gated on the provider honestly advertising
+support and a captured prior session id, never guessed — and sends only a
+hunk-selected findings delta in place of the full diff, with an honest,
+automatic fallback to full context the instant a resume attempt errors;
+the reduction is measured against a fixture repair chain, not assumed).
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

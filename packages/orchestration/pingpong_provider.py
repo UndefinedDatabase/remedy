@@ -71,6 +71,13 @@ class BuilderOutput:
     # when the CLI exposed a JSON usage block; None when only estimates exist.
     usage_actuals: dict[str, Any] | None = None
     actual_missing_reason: str = ""
+    # F106 T001: honest resume bookkeeping — true only when this call
+    # actually resumed a prior session; the ref it resumed, "" otherwise.
+    resume_used: bool = False
+    resume_session_ref: str = ""
+    # F106 T002c: true only when a resume attempt on this round's call
+    # errored and a same-round fallback to full context was taken.
+    resume_fallback: bool = False
     incomplete: bool = False
     stream_cap_reached: bool = False
     stream_call_id: str = ""
@@ -118,6 +125,14 @@ class ReviewerOutput:
     # only character-heuristic estimates are available.
     usage_actuals: dict[str, Any] | None = None
     actual_missing_reason: str = ""
+    # F106 T001: honest resume bookkeeping — true only when this call
+    # actually resumed a prior session; the ref it resumed, "" otherwise.
+    resume_used: bool = False
+    resume_session_ref: str = ""
+    # F106 T002c: true only when a resume attempt on this round's call
+    # errored and a same-round fallback to full context was taken (mirrors
+    # BuilderOutput.resume_fallback).
+    resume_fallback: bool = False
     incomplete: bool = False
     stream_cap_reached: bool = False
     stream_call_id: str = ""
@@ -135,12 +150,16 @@ class PingPongProvider(Protocol):
     @property
     def name(self) -> str: ...
 
+    @property
+    def supports_resume(self) -> bool: ...
+
     def build(
         self,
         prompt: str,
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput: ...
 
     def review(
@@ -149,6 +168,7 @@ class PingPongProvider(Protocol):
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput: ...
 
 
@@ -175,8 +195,14 @@ class FakeProvider:
         reviewer_error: str = "",
         malformed_review: bool = False,
         malformed_review_recoverable: bool = False,
+        supports_resume: bool = False,
+        fake_session_id: str = "",
+        resume_fails: bool = False,
     ) -> None:
         self._builder_files = builder_files or ["docs/README.md"]
+        self._supports_resume = supports_resume
+        self._fake_session_id = fake_session_id
+        self._resume_fails = resume_fails
         self._fail_round = fail_on_round
         self._pass_round = pass_on_round
         self._max_block = max_rounds_before_block
@@ -191,12 +217,17 @@ class FakeProvider:
     def name(self) -> str:
         return "fake"
 
+    @property
+    def supports_resume(self) -> bool:
+        return self._supports_resume
+
     def build(
         self,
         prompt: str,
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         self._build_count += 1
         if self._builder_error:
@@ -204,7 +235,24 @@ class FakeProvider:
                 error=self._builder_error,
                 provider="fake",
             )
+        # F106 T002c: a test-only way to simulate a resume attempt that
+        # errors, so the fallback-once path in pingpong_loop.py has
+        # something real to fall back FROM. Only fires when a resume was
+        # actually requested on a provider that claims to support it —
+        # never on a plain (non-resume) call.
+        if resume and self._supports_resume and self._resume_fails:
+            return BuilderOutput(
+                error="resume_lost: session context unavailable",
+                provider="fake",
+            )
         is_repair = self._build_count > 1
+        # F106 T002a: honor an incoming resume request only when this fake was
+        # constructed to support it — an unsupported provider's output is
+        # byte-identical whether or not a caller passes ``resume``.
+        resume_used = bool(resume) and self._supports_resume
+        usage_actuals = (
+            {"session_id": self._fake_session_id} if self._fake_session_id else None
+        )
         return BuilderOutput(
             summary=f"{'Repair' if is_repair else 'Initial'} changes (round {self._build_count})",
             files_changed=list(self._builder_files),
@@ -213,6 +261,9 @@ class FakeProvider:
             provider="fake",
             duration_ms=50,
             tokens_used=100,
+            usage_actuals=usage_actuals,
+            resume_used=resume_used,
+            resume_session_ref=resume if resume_used else "",
             prepared_input=prepare_call_input(
                 prompt=prompt, model="fake", mode="fake",
                 options={"max_output_chars": max_output_chars}),
@@ -224,9 +275,26 @@ class FakeProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
+        # F106 T002c: a test-only way to simulate a resume attempt that
+        # errors, so the fallback-once path in pingpong_loop.py has
+        # something real to fall back FROM. Only fires when a resume was
+        # actually requested on a provider that claims to support it —
+        # never on a plain (non-resume) call.
+        if resume and self._supports_resume and self._resume_fails:
+            return ReviewerOutput(
+                error="resume_lost: session context unavailable",
+                provider="fake",
+            )
         out = self._review_impl(prompt, timeout_sec=timeout_sec,
                                 max_output_chars=max_output_chars)
+        # F106 T002b: honor an incoming resume request only when this fake
+        # was constructed to support it — mirrors FakeProvider.build (T002a).
+        out.resume_used = bool(resume) and self._supports_resume
+        out.resume_session_ref = resume if out.resume_used else ""
+        if self._fake_session_id:
+            out.usage_actuals = {"session_id": self._fake_session_id}
         out.prepared_input = prepare_call_input(
             prompt=prompt, model="fake", mode="fake",
             options={"max_output_chars": max_output_chars})
@@ -352,6 +420,10 @@ class ClaudeProvider:
     def name(self) -> str:
         return "claude"
 
+    @property
+    def supports_resume(self) -> bool:
+        return False
+
     def _get_client(self) -> Any:
         if self._client is not None:
             return self._client
@@ -398,6 +470,7 @@ class ClaudeProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         # F012: the builder prompt is sent verbatim — fingerprint the exact bytes.
         _pi = prepare_call_input(
@@ -439,6 +512,7 @@ class ClaudeProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
         structured = _reviewer_structured_enabled()
         full_prompt = (
@@ -995,6 +1069,10 @@ class ClaudeCliProvider:
         return "claude-cli"
 
     @property
+    def supports_resume(self) -> bool:
+        return False
+
+    @property
     def write_mode(self) -> str:
         return self._write_mode
 
@@ -1329,6 +1407,7 @@ class ClaudeCliProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> BuilderOutput:
         # F012: the CLI sends the builder prompt verbatim (no out-of-band schema).
         _pi = prepare_call_input(
@@ -1394,6 +1473,7 @@ class ClaudeCliProvider:
         *,
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
+        resume: str | None = None,
     ) -> ReviewerOutput:
         structured = _reviewer_structured_enabled()
         # F012: fingerprint exactly what the transport receives — the prompt bytes plus, in

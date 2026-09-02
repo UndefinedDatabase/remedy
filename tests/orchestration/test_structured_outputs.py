@@ -339,7 +339,7 @@ class TestReviewerParseRetryTraces:
             """Returns a classified parse failure once, then a valid verdict."""
             def __init__(self):
                 self.calls = 0
-            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+            def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
                 self.calls += 1
                 if self.calls == 1:
                     return ReviewerOutput(
@@ -386,7 +386,7 @@ class _RecordingReviewer:
         self.prompts = []
         self._outputs = outputs
         self._i = 0
-    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000):
+    def review(self, prompt, *, timeout_sec=120, max_output_chars=50000, resume: str | None = None):
         self.prompts.append(prompt)
         out = self._outputs[min(self._i, len(self._outputs) - 1)]
         self._i += 1
