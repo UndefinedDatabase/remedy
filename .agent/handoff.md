@@ -7,18 +7,17 @@ same live session as rounds 10-11, per the block's own instruction).
 
 ## Range
 
-`d5ee130c`..`HEAD` (branch `feature/f108-tiered-artifact-summaries`).
+`6e97f852`..`HEAD` (branch `feature/f108-tiered-artifact-summaries`).
 Pre-flight confirmed HEAD at exactly the branch tip round 11 left it at
-(`6e97f852`), `git status --porcelain` empty. **This round is BLOCKED
-before C3: C2's ledger append (SLICE_LEDGER_R12) was mechanically
-extracted and structurally verified correct, but its independently
-measured byte count/sha256 do not match the block's own stated
-verification target. Per the block's own constraint 3 ("If it does not
-match, STOP, do not commit, and report the mismatch"), C2 was not
-committed, and C3-C6 (the fix itself, R-0766's resolution, and the final
-plan rewrite) were not attempted. This handback is the "declare the exact
-failure, leave the tree at the last clean commit" branch of the block's
-own closing instruction.**
+(`6e97f852`), `git status --porcelain` empty. **Round 12 registers AND
+resolves R-0766 (the lint-ceiling breach round 11's gate declared
+BLOCKED): a mid-round G2 stop (the block's own stated ledger
+byte-count/sha256 target did not match this worker's independent
+measurement) was correctly reported without forcing a match; the
+coordinator confirmed the discrepancy was the block's own precomputation
+error, not a transcription slip, supplied the corrected numbers — which
+matched this worker's first-attempt measurement exactly — and directed
+resumption. C2-C6 then landed as originally specified.**
 
 ## Commits
 
@@ -32,26 +31,63 @@ own closing instruction.**
 ### df0b7485 F108 R12: update plan.md — round BLOCKED at G2 ledger transport mismatch
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +26/-24 (rewrite) | Per AGENTS.md's "If Blocked" section — record the exact blocker (G2 mismatch), what remains unfinished (C2-C6), and the next expected action |
+| `.agent/plan.md` | +26/-24 (rewrite) | Mid-round: per AGENTS.md's "If Blocked" section — recorded the exact blocker (G2 byte/hash mismatch) before stopping |
+
+### 21ff3e39 F108 R12: rewrite handoff.md for round 12 (blocked at G2 ledger transport mismatch)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | rewrite | Mid-round interim handback declaring the G2 mismatch; superseded by this final rewrite |
+
+### 3666cef4 F108 R12: append SLICE_LEDGER_R12 (Gate F108 R11 + R-0766 registration) (C2)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | +5/-1 | C2, resumed with coordinator-corrected target — the same mechanically-extracted paragraphs, re-verified against 1999120 bytes / sha256 `8d8f91f7...19605`, all match |
+
+### 1faeed0c F108 R12: fix R-0766 — scoped ruff --fix on import order (C3)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/orchestration/test_artifact_summaries.py` | +5/-3 | C3 — SPEC S1: second `from ... import (...)` block merged into the first, alphabetically re-sorted; no name added/dropped |
+| `tests/orchestration/test_pingpong_cli.py` | +1/-1 | C3 — SPEC S1: standalone `import ... as pingpong_loop` moved before the `from ... import (...)` block; no name added/dropped |
+
+### 1d293ca0 F108 R12: append Done: R-0766 resolution paragraph (C4)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | +3/-1 | C4 — `Done: R-0766 — ` paragraph, real C3 SHA + real, independently-observed gate results |
+
+### 9382fd86 F108 R12: rewrite plan.md — R-0766 resolved, integration gate branch side green (C5)
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/plan.md` | +22/-27 (rewrite) | C5 — round's real final outcome: R-0766 resolved, gate green, ready for reviewer's closure decision |
 
 ### (pending, this handback's own commit) handoff.md
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | rewrite | this handback |
+| `.agent/handoff.md` | rewrite | C6 — this handback |
 
-Only 3 of the 7 declared change-set paths were touched
-(`.agent/authored/f108-r12.md`, `.agent/last_block.md`, `.agent/plan.md`,
-plus this handoff commit — 4 total). `.agent/live_review.md`,
-`tests/orchestration/test_artifact_summaries.py`, and
-`tests/orchestration/test_pingpong_cli.py` were NOT touched (C2's edit to
-`live_review.md` was made, measured, found mismatched, and reverted with
-`git checkout --` before any commit — `git status --porcelain` confirms
-it is not part of the committed diff).
+All 7 declared change-set paths land across this round's 8 commits (2
+mid-round commits — `df0b7485`, `21ff3e39` — recorded the blocker per
+AGENTS.md's "If Blocked" section before the coordinator's correction
+arrived; `.agent/plan.md` was consequently rewritten 3 times total this
+round: C1's intent, the mid-round blocker record, and C5's real final
+outcome — every rewrite stayed under 50 lines). Nothing outside the
+declared Change set was touched.
 
 ## External actions
 
-None. No worktree created, no scratch driver scripts, no push attempted
-until this handback's own instruction below.
+- `python3 -m ruff check tests/orchestration/test_artifact_summaries.py
+  tests/orchestration/test_pingpong_cli.py --diff` run BEFORE `--fix`, to
+  confirm the preview matched SPEC S1's described changes exactly, per
+  the block's own instruction.
+- Full branch suite (`python3 -m pytest -n auto -q`) exceeded the 120s
+  foreground timeout and ran to completion in the background (157.93s
+  total); its real output was read back from the background task's
+  output file before being recorded in the `Done: R-0766 —` paragraph
+  and this handback.
+- `git push -u origin feature/f108-tiered-artifact-summaries` — pushes
+  this round's commits after this handback commit lands; real result
+  reported below.
+- No PR created this round — explicit per constraint 5 ("No pull request
+  this round").
 
 ## Verification
 
@@ -64,7 +100,7 @@ $ git log --oneline -1
 ```
 Matches the block's expected branch tip (`6e97f852`) exactly.
 
-G1 TRANSPORT, re-run at `df0b7485` (strictly before this handoff commit):
+G1 TRANSPORT:
 ```
 $ sha256sum .agent/authored/f108-r12.md .agent/last_block.md
 5c3ea0f05b47adb4556648e28e6fc7adde30a6d3bf37017e0787900b6f4c0b1e  .agent/authored/f108-r12.md
@@ -72,16 +108,20 @@ $ sha256sum .agent/authored/f108-r12.md .agent/last_block.md
 ```
 IDENTICAL. **PASS.**
 
-G2 LEDGER REGISTRATION — **RED, this is the round's blocker.** The two
-SLICE_LEDGER_R12 paragraphs (`Gate: F108 R11 —` and `- R-0766 —`) were
-extracted mechanically in Python (`text.index(start_marker)` ..
-`text.index(end_marker)`, sliced from the just-written
-`.agent/authored/f108-r12.md` itself — never hand-retyped), confirmed to
-be exactly 2 paragraphs via `\n\n`-split, and appended to a scratch copy
-of `.agent/live_review.md` (`current + "\n\n" + slice`, no trailing
-newline). Independent re-measurement of that result:
+G2 LEDGER REGISTRATION — mid-round episode, then confirmed and resumed.
+First attempt: independently measured byte count/sha256 (1999120 bytes,
+`8d8f91f767049bfc29379c331c6176cc33d388a82ca88f04b8aad7fe52919605`) did
+not match the block's originally-stated target (1999124 bytes,
+`149b0452...b8eb4c`), while all four grep-based checks already matched
+exactly (Gate=228, DECISION=27, R-count=327, `^- R-0766 — `=1). Per
+constraint 3, this was not forced: C2 was not committed, the uncommitted
+edit was reverted with `git checkout --`, and the mismatch was reported.
+The coordinator independently re-derived the same text via the `Write`
+tool, reproduced this worker's exact numbers, confirmed the block's own
+precomputation (not the worker's extraction) was in error, and supplied
+the corrected target. Resumed and re-verified:
 ```
-$ wc -c .agent/live_review.md   # (after the uncommitted C2 edit)
+$ wc -c .agent/live_review.md
 1999120
 $ sha256sum .agent/live_review.md
 8d8f91f767049bfc29379c331c6176cc33d388a82ca88f04b8aad7fe52919605
@@ -94,67 +134,77 @@ $ grep -cE "^- R-[0-9]{4} — " .agent/live_review.md
 $ grep -c "^- R-0766 — " .agent/live_review.md
 1
 ```
-Four of the five stated targets match EXACTLY: Gate=228 ✓, DECISION
-unchanged 27 ✓, R- count 327 ✓, `^- R-0766 — ` count 1 ✓. The remaining
-two (byte count and sha256, which are mechanically coupled) do **NOT**
-match the block's stated target:
+All five numbers now match the corrected target exactly. **PASS.**
 
-| Check | Block's stated target | Independently measured (Python + `wc -c`/`sha256sum`, agree) |
-|-------|------------------------|----------------------------------------------------------------|
-| byte count | 1999124 | 1999120 (4 bytes short) |
-| sha256 | `149b0452dfaf8ce4a3873bab2bf74d1f5b74179fad624c6a43de69abccb8eb4c` | `8d8f91f767049bfc29379c331c6176cc33d388a82ca88f04b8aad7fe52919605` |
+G3 THE FIX + SCOPED REGRESSION, at commit `1faeed0c`:
+```
+$ python3 -m ruff check tests/orchestration/test_artifact_summaries.py tests/orchestration/test_pingpong_cli.py
+All checks passed!
+$ python3 -m ruff check .
+[... 26 errors, none inside either F108 file ...]
+Found 26 errors.
+$ grep -n "LINT_ERROR_CEILING = " packages/orchestration/*.py tests/orchestration/test_ci_budgets.py
+packages/orchestration/ci_budgets.py:35:LINT_ERROR_CEILING = 26
+$ python3 -m pytest tests/orchestration/test_artifact_summaries.py tests/orchestration/test_pingpong_cli.py -q
+200 passed in 2.81s
+```
+Real exit 0 for the scoped check; real exit 1 for the whole-repo check
+(26 errors, back at the frozen ceiling, exactly the pre-existing baseline
+— confirmed none fall inside the two F108 files). `LINT_ERROR_CEILING`
+unchanged at 26, only one declaration site. 200 passed (173 + 27),
+unchanged from before the fix. **PASS.**
 
-Due diligence performed before declaring this a block-authoring
-discrepancy rather than a transcription slip (per round 10's own
-precedent, where an initial mismatch WAS a worker transcription error
-found via diffing):
-1. The pre-append `.agent/live_review.md` state was independently
-   verified to already be exactly 1993882 bytes / sha256
-   `5a70f65b271f09e6d84ac8b8c5cbd3a2b00f8f18f9cf4d2178aa5e0b53fd6fe8`
-   before any edit — matching round 11's own committed, reviewer-verified
-   numbers exactly, so the baseline is not the source of the discrepancy.
-2. The two sliced paragraphs were manually re-compared, word-for-word,
-   against the block's own text (both visible in the same context) —
-   no discrepancy found in either paragraph.
-3. Checked for common transcription pitfalls specifically: no double
-   spaces introduced/dropped in the slice; no curly-quote/straight-quote
-   substitution (the file uses only `—` U+2014 and `─` U+2500, no
-   typographic apostrophes anywhere, confirmed by scanning every
-   non-ASCII character in the authored file); the stylistic `--`
-   (two ASCII hyphens) occurrences all check out against the source.
-4. Independently cross-validated the byte count and hash via two
-   different tools (Python's own `len()`/`hashlib.sha256` and the shell's
-   `wc -c`/`sha256sum`) — both agree with each other (1999120,
-   `8d8f91f7...`), ruling out a measurement bug on this end.
+G4 THE LINT-CEILING TEST ITSELF:
+```
+$ python3 -m pytest tests/orchestration/test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_lint_ceiling -q
+1 passed in 0.25s
+```
+Real exit 0, 1 passed — was FAILED before this round's C3. **PASS.**
 
-Given all four grep-based structural checks pass exactly and no content
-discrepancy was found under manual re-comparison, this looks like an
-error in the block's own pre-stated verification numbers rather than a
-transcription defect in this round's extraction — but per constraint 3's
-explicit instruction, this was **not forced**: C2 was not committed, the
-uncommitted edit to `.agent/live_review.md` was reverted with
-`git checkout --`, and the mismatch is reported here for the reviewer to
-adjudicate (as round 10's own analogous episode was resolved: the
-reviewer independently re-derived the block's own text and confirmed
-which side was correct). **G2 is RED.**
+G5 THE FULL BRANCH RE-RUN:
+```
+$ python3 -m pytest -n auto -q
+[...]
+18782 passed, 20 skipped in 157.93s (0:02:37)
+```
+Real exit 0. 0 failed, 18782 passed (one more than round 11's 18781 — the
+lint-ceiling test itself flipped from FAILED to passed), 20 skipped
+(unchanged). This closes the integration gate's branch side. Base side
+not re-run, per the block's own instruction (nothing at the merge-base
+changed; round 11's base result — 0 failed, 18736 passed — stands).
+**PASS.**
 
-G3-G6 (the fix, the lint-ceiling test, the full branch re-run, and the
-ledger resolution paragraph): **NOT ATTEMPTED.** Each depends on C2
-having landed; since C2 did not land, applying SPEC S1 or writing the
-`Done: R-0766 —` paragraph would leave the ledger's own registration
-paragraph either absent or mismatched with what's actually on disk,
-which is a worse defect than an incomplete round.
+G6 LEDGER RESOLUTION:
+```
+$ grep -c "^Done: R-0766 — " .agent/live_review.md
+1
+$ grep -n "^- R-0766 — \|^Done: R-0766 — " .agent/live_review.md | cut -d: -f1
+2407
+2409
+```
+Exactly 1 occurrence, appearing after (line 2409 > line 2407) R-0766's own
+registration paragraph, in file order. Final re-measurement:
+```
+$ wc -c .agent/live_review.md
+2000829
+$ sha256sum .agent/live_review.md
+4b4aa1fc7f736cd250389bb5411725af55d4aaac78d5afdc6fee7030a10d9bcc
+```
+Both Python and shell (`wc -c`/`sha256sum`) agree. **PASS** (no target
+number was given ahead of time for this check, per the block's own
+wording; this is the real, independently-measured result).
 
 G7 THE TREE:
 ```
 $ git status --porcelain
 (empty, apart from this handback commit in progress)
 ```
-`.agent/plan.md`: 45 lines both times it was written this round (well
-under 50). Per-commit insertions: 409 (`d5ee130c`, `.agent/**`
-verbatim-save/mirror/plan-rewrite bundle — each individual file is a
-single `.agent/**` state-file rewrite, exemption applies), 26
-(`df0b7485`) — both under 500 regardless. **PASS.**
+`.agent/plan.md`: 43, 45, then 40 lines across its three rewrites this
+round (all under 50). Per-commit insertions: 409 (`d5ee130c`, `.agent/**`
+verbatim-save/mirror/plan-rewrite bundle, exemption applies), 26
+(`df0b7485`), 169 (`21ff3e39`, single `.agent/**` state-file rewrite,
+exemption applies), 5 (`3666cef4`), 6 (`1faeed0c`), 3 (`1d293ca0`), 22
+(`9382fd86`) — every commit well under 500. **PASS.**
 
 ## Authored-text proofs
 
@@ -165,61 +215,53 @@ then mirrored via `cp`, and both independently confirmed byte-identical
 via `sha256sum` (identical digest `5c3ea0f0...c0b1e`, both files). The
 SLICE_LEDGER_R12 paragraphs were extracted mechanically in Python
 (`text.index(start_marker)` .. `text.index(end_marker)`, sliced from the
-just-written `.agent/authored/f108-r12.md` itself — never hand-retyped) —
-but the resulting append's own byte count/sha256 did not match the
-block's stated target (see G2 above), so per the block's own instruction
-the append was not committed.
+just-written `.agent/authored/f108-r12.md` itself — never hand-retyped);
+the first append attempt's independently-measured result did not match
+the block's originally-stated target, was reported rather than forced,
+and the coordinator subsequently confirmed the extraction itself was
+correct and the stated target was the error — the SAME already-correct
+extraction was then committed unmodified. The `Done: R-0766 —` paragraph
+(C4) is this worker's own composed prose, appended the same mechanical
+way (`current + "\n\n" + paragraph`, no trailing newline), independently
+re-measured and confirmed via both Python and shell tools before
+committing.
 
 ## Deviations & assumptions
 
-- **The G2 mismatch (see above) is the round's headline finding, not a
-  scope deviation.** The block's own constraint 3 explicitly anticipates
-  and requires this exact stop-and-report behavior; this handback follows
-  it precisely.
-- `.agent/plan.md` was rewritten a SECOND time this round (beyond the
-  block's own C1/C5 pair) to record the blocker, per AGENTS.md's "If
-  Blocked" section ("Update `.agent/plan.md` with the exact blocker").
-  The block's own C5 (rewrite plan.md to the round's REAL final outcome
-  — R-0766 resolved) was not reached; this second rewrite instead records
-  the round's real outcome as BLOCKED, which is the honest final state.
-- SPEC S1 (the ruff `--fix` on the two test files) was never applied —
-  the working tree's `tests/orchestration/test_artifact_summaries.py` and
-  `tests/orchestration/test_pingpong_cli.py` are byte-identical to what
-  round 11 left them at. R-0766 is therefore NOT registered in
-  `.agent/live_review.md` this round (the append was reverted) and NOT
-  resolved — both remain for the next round.
+- **Mid-round G2 stop-and-resume (see G2 above) is the round's headline
+  episode, not a scope deviation.** The block's own constraint 3
+  explicitly anticipates and requires the stop-and-report behavior taken;
+  the coordinator's subsequent correction and this worker's resumption
+  from exactly that point (no re-derivation needed, since the already-
+  extracted text was already correct) follow the coordinator's explicit
+  instruction precisely.
+- `.agent/plan.md` was rewritten a THIRD time this round beyond the
+  block's own C1/C5 pair (the mid-round blocker record), per AGENTS.md's
+  "If Blocked" section. This extra rewrite was necessary because the stop
+  was real at the time it happened; it does not reflect a defect in the
+  block's own C1/C5 instructions.
 - Otherwise none. Only the paths listed in the Commits section above were
   touched; no unscoped `ruff --fix` was run; `main` was not touched; no
-  force-push occurred.
+  force-push occurred; SPEC S1 was previewed with `--diff` and confirmed
+  to match exactly before `--fix` was applied for real.
 
 ## Next
 
-**F108 does NOT close this round, and this round's own declared work
-(R-0766's registration and fix) also did NOT land.** Before any further
-progress:
-1. Reviewer adjudicates the G2 mismatch: either (a) independently
-   re-derive SLICE_LEDGER_R12's own correct byte count/sha256 from the
-   block's source text and confirm the worker's mechanical extraction
-   (1999120 bytes, `8d8f91f7...19605`) is correct, in which case the
-   block's stated target was itself in error and the next round can
-   simply retry C2 with those confirmed numbers; or (b) locate an actual
-   content discrepancy this worker's manual review missed, in which case
-   the next round's block should state the correction directly.
-2. Once C2's target is confirmed, resume the round: commit the ledger
-   append, apply SPEC S1 (`ruff check --fix` scoped to exactly the two
-   named test files), re-run the lint-ceiling test and a full branch
-   suite, append the `Done: R-0766 —` paragraph, rewrite plan.md to the
-   real final (resolved) outcome, and rewrite this handoff again.
-3. Only then: reviewer verdict on the completed round decides whether
-   F108's closure sequence (`docs/roadmap/STATUS_closure_protocol.md`)
+**F108 does NOT close this round — that decision belongs to the
+reviewer — but this round's own declared work (R-0766's registration and
+fix) is fully landed and gate-verified.** Remaining before closure:
+1. Reviewer verdict on this round (registration + fix + re-verified gate,
+   plus the mid-round stop-and-resume episode).
+2. If PASS: F108's closure sequence (README sync, STATUS `[x]`, evidence
+   bundle, review package) per `docs/roadmap/STATUS_closure_protocol.md`
    can begin.
 
-Open findings count: unchanged this round — R-0766 was NOT registered
-(the append was reverted before commit), so the ledger still shows 326
-open `R-` findings exactly as round 11 left it (0 carry a `Done:` line
-for R-0766, since it does not yet exist in the file). T003b-iii (the
+Open findings count: 327 total `R-` registrations in
+`.agent/live_review.md`; 59 unique ids carry at least one `Done:` line
+(mechanical count: `grep -oE "^Done: R-[0-9]{4} " .agent/live_review.md |
+sort -u | wc -l` = 59; two ids — R-0721, R-0725 — each carry 2 `Done:`
+lines from correction rounds, so the raw `grep -c "^Done: "` count is 61,
+not 59). True open count: 327 − 59 = **268**, one fewer than before this
+round now that R-0766 carries its own `Done:` line. T003b-iii (the
 reviewer's fallback-branch tiering) stays deferred per DECISION F108 D4,
-unchanged. No PR this round. **Not pushed yet** — will push
-`origin feature/f108-tiered-artifact-summaries` immediately after this
-handback commit lands, real exit code and remote tip SHA reported in the
-next message to the caller.
+unchanged. No PR this round.
