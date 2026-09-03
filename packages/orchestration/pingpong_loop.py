@@ -2856,6 +2856,7 @@ def run_pingpong(
     context_record_dir: str | Path | None = None,
     test_command: str = "",
     keep_staging: bool = False,
+    semantic_dedupe_enabled: bool = True,
     claude_cli_write_mode: str = "none",
     stream_evidence: bool = False,
     stream_evidence_dir: str | None = None,
@@ -2901,6 +2902,15 @@ def run_pingpong(
     the reason stated there: the renderer downstream is total on every input,
     and narrowing the annotation would advertise a validation this layer
     deliberately does not perform.
+
+    ``semantic_dedupe_enabled`` (F109) is the CONFIG KILL SWITCH for semantic
+    dedupe. ``False`` disables it for the WHOLE run, whatever the session index
+    holds, so an operator can rule the feature out while diagnosing something
+    else without editing code. ``True`` is the default because dedupe is the
+    feature's point — the switch exists to be turned OFF, not on. It reaches the
+    two primary compositions as ``dedupe_enabled`` and nowhere else: the
+    resume-fallback recompositions pass no dedupe arguments at all, so they send
+    full content at either value.
     """
     # If task_input provided, use it to enrich the goal
     effective_goal = goal
@@ -3306,6 +3316,15 @@ def run_pingpong(
                 dedupe_sent_hashes=(
                     session_sent_index.sent_hashes(builder_resume_ref) if builder_resume_ref else None
                 ),
+                # F109 T002c: THE CONFIG KILL SWITCH, forwarded whole. False
+                # disables semantic dedupe for this entire run, so an operator
+                # can rule the feature out while diagnosing something else
+                # without editing code. THE RESUME FALLBACK IS DELIBERATELY
+                # UNAFFECTED: the recomposition below passes no dedupe argument
+                # at all and so sends full content at either value — a fallback
+                # is not a resumed session (R-0771), and the flag does not enter
+                # into it.
+                dedupe_enabled=semantic_dedupe_enabled,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
@@ -3616,6 +3635,10 @@ def run_pingpong(
                 dedupe_sent_hashes=(
                     session_sent_index.sent_hashes(reviewer_resume_ref) if reviewer_resume_ref else None
                 ),
+                # F109 T002c: the Builder call site's kill switch, mirrored. The
+                # comment there carries the whole meaning, including why the
+                # resume fallback below stays outside it.
+                dedupe_enabled=semantic_dedupe_enabled,
             )
 
             reviewer_prompt = reviewer_composed.text
