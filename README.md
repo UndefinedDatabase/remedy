@@ -16,14 +16,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-67 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+68 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 14 | 19 |
-| 3 | Full Token Economy & Autonomy | 2 | 26 |
+| 3 | Full Token Economy & Autonomy | 3 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -73,6 +73,15 @@ reviewer's scoped-diff branch each narrow to their own relevant sections,
 a fixture measures the composed prompt at under a tenth of the raw diff at
 both call sites, and a missing or failed summary falls back to a labelled
 truncated view rather than blocking the run).
+
+F109 semantic dedupe (inside a RESUMED provider session, a prompt segment whose
+exact content already provably reached that session is replaced by a one-line
+"[unchanged: ...]" marker instead of being sent again; the sent-hash index
+records only proven sends, a resume fallback forgets the session entirely, a
+config kill switch disables the path completely, and a run's own prompt traces
+measure what it withheld — 556 characters avoided against 97 spent on markers on
+the fixture chain. No concrete adapter resumes in production yet, so the
+mechanism is exercised by the suite and inert on real runs today).
 
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend

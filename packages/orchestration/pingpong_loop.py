@@ -23,8 +23,8 @@ import shlex
 import shutil
 import subprocess
 import time as _time
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Container, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -45,6 +45,7 @@ from packages.orchestration.pingpong_provider import (
 )
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
+    PromptSegment,
     PromptSegmentError,
     PromptSegmentRegistry,
     SegmentStabilityRank,
@@ -67,6 +68,14 @@ from packages.orchestration.rate_governor import (
     RateLimitWaitEvent,
     is_rate_limit_error,
     normalize_rate_limit_signal,
+)
+from packages.orchestration.session_sent_index import (
+    DEDUPE_MIN_SEGMENT_CHARS,
+    SessionSentIndex,
+    dedupe_marker_for_segment,
+    invalidate_on_resume_fallback,
+    record_finalized_call,
+    should_dedupe_segment,
 )
 
 # ---------------------------------------------------------------------------
@@ -221,6 +230,11 @@ class PingPongResult:
     builder_no_changes: bool = False
     # F003: per-call provider usage accounting
     provider_attempts: list[ProviderAttempt] = field(default_factory=list)
+    #: F109 T001b: per-session sent-segment bookkeeping for semantic
+    #: dedupe — one row per provider session, each carrying the segment
+    #: hashes PROVEN delivered to it. Empty for every run that never
+    #: resumed and for every provider that reports no session id.
+    session_sent_evidence: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -862,6 +876,73 @@ def _drop_one_newline_per_segment_boundary(texts: list[str]) -> list[str]:
     return adjusted
 
 
+# F109 T002b, first half: the composition-side transform of semantic dedupe. It
+# sits here, between the boundary helper and the first compose_* function,
+# because the two compose_* functions below are its only future callers.
+def _dedupe_resumed_segments(
+    segments: Sequence[PromptSegment],
+    sent_hashes: Container[str],
+    *,
+    enabled: bool = True,
+    min_chars: int = DEDUPE_MIN_SEGMENT_CHARS,
+) -> tuple[tuple[PromptSegment, ...], tuple[str, ...]]:
+    """Rewrite already-sent segments to their markers; report which names were replaced.
+
+    This is F109 T002b's DECISION STEP applied to a segment list. It returns two
+    things: the segments to compose, and the names it replaced in the order it
+    replaced them. The second element exists so that T002c can record what the
+    model did NOT receive again WITHOUT re-deciding it — a second decision site
+    is a second thing that can disagree with the first.
+
+    NAMES AND RANKS SURVIVE BY CONSTRUCTION: only ``text`` is rewritten, and the
+    returned order is the INPUT order, never a rank sort.
+    ``compose_prompt_segments`` does its own (rank, registration index) sort
+    afterwards, so re-ordering here would change the tie-break between equal
+    ranks and move segments the cache discipline requires to stay put.
+
+    THE SHA256 COMES FROM THE SHIPPED PRODUCER, one segment at a time via
+    ``compose_prompt_segments((segment,))``, and is deliberately NOT recomputed
+    with ``hashlib`` here. The index remembers manifest hashes, so the decision
+    has to ask the same producer that made them; a second hashing expression in
+    this file would be a drift that makes the feature fail silently and safely,
+    which is the worst way for it to fail. Composing one segment at a time is
+    also what keeps this correct for a duplicate segment NAME, which a
+    name-keyed lookup over a whole manifest would collapse.
+
+    ``enabled`` is consulted first and alone, matching
+    ``should_dedupe_segment``'s own kill-switch rule: false returns the segments
+    untouched and an empty name tuple, and consults nothing else.
+
+    Scope boundary — a deliberate absence, so a reader finds it here rather than
+    concluding the wiring was forgotten: BOTH CALLERS EXIST, and have since
+    ``60343048``. ``compose_builder_prompt`` and ``compose_reviewer_prompt``
+    each call this function behind a ``dedupe_sent_hashes`` parameter that
+    BYPASSES DEDUPE BY DEFAULT, so the transform runs only for a caller that
+    supplies a real set. THE CONFIG PLUMBING NOW EXISTS: ``run_pingpong``
+    carries ``semantic_dedupe_enabled`` and forwards it to both primary
+    compositions as ``dedupe_enabled`` (F109 T002c, landed at
+    ``b245e1c9``), so ``enabled`` is supplied on every production
+    composition. The remaining bypass is ``dedupe_sent_hashes`` being
+    ``None`` off a call that is not resuming, which is the scope rule
+    rather than a gap.
+    """
+    if not enabled:
+        return tuple(segments), ()
+
+    kept: list[PromptSegment] = []
+    replaced_names: list[str] = []
+    for segment in segments:
+        sha256 = compose_prompt_segments((segment,)).manifest[0].sha256
+        if should_dedupe_segment(
+            segment.text, sha256, sent_hashes, enabled=True, min_chars=min_chars
+        ):
+            kept.append(replace(segment, text=dedupe_marker_for_segment(segment.name)))
+            replaced_names.append(segment.name)
+        else:
+            kept.append(segment)
+    return tuple(kept), tuple(replaced_names)
+
+
 # F105 T003 migration site 5. Rank order fixes two inversions the ad-hoc
 # concatenation had — `builder_scope_contract` (rank 2 DOSSIER) now precedes
 # `builder_context`, and the three rank-3 job-context segments now precede the
@@ -881,6 +962,8 @@ def compose_builder_prompt(
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
     tiered_diff_text: str = "",
+    dedupe_sent_hashes: Container[str] | None = None,
+    dedupe_enabled: bool = True,
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
 
@@ -917,6 +1000,18 @@ def compose_builder_prompt(
     operator recorded for a task reaches this segment in production. ``None``
     stays the answer for a round with no recorded decision, and the segment
     then registers not at all — which is the ordinary case, not a gap.
+
+    ``dedupe_sent_hashes`` is the set of segment hashes THIS SESSION HAS
+    PROVABLY ALREADY RECEIVED — F109's "resumed session only, proven sends
+    only" rule in the only form this function can enforce it. ``None`` is the
+    BYPASS and it is the DEFAULT: the transform is not called at all and the
+    composed bytes are exactly what a caller got before F109 existed, which is
+    what makes the byte-equality golden PROVABLE rather than merely likely.
+    ``dedupe_enabled`` is the kill switch, forwarded straight to
+    :func:`_dedupe_resumed_segments`. ``run_pingpong`` supplies it from its
+    own ``semantic_dedupe_enabled`` parameter (F109 T002c, landed at
+    ``b245e1c9``), which reaches this composition and the other role's and
+    nothing else.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
@@ -1036,7 +1131,19 @@ def compose_builder_prompt(
     registry = PromptSegmentRegistry()
     for (name, rank, _), text in zip(specs, texts):
         registry.register(name, rank, text)
-    return compose_prompt_segments(registry.registered_segments())
+    segments = registry.registered_segments()
+    deduped_names: tuple[str, ...] = ()
+    if dedupe_sent_hashes is not None:
+        # F109 T002c: the replaced NAMES are REPORTED on the composed prompt,
+        # so a later reader can see what the model was not sent again instead
+        # of having to infer it. The manifest ROW shape is deliberately left
+        # untouched: the ``call_segments`` table in ``token_ledger.py`` mirrors
+        # those keys column for column, so widening them is a token-ledger
+        # change and not this one.
+        segments, deduped_names = _dedupe_resumed_segments(
+            segments, dedupe_sent_hashes, enabled=dedupe_enabled
+        )
+    return replace(compose_prompt_segments(segments), deduped_names=deduped_names)
 
 
 def _builder_tiered_diff_text(
@@ -1420,6 +1527,8 @@ def compose_reviewer_prompt(
     task_id: str = "",
     resume_hunks_text: str = "",
     tiered_diff_text: str = "",
+    dedupe_sent_hashes: Container[str] | None = None,
+    dedupe_enabled: bool = True,
 ) -> ComposedPrompt:
     """Compose the reviewer prompt from registered segments, with its manifest.
 
@@ -1428,6 +1537,18 @@ def compose_reviewer_prompt(
     shapes at once, and that is a CONTENT change rather than a reordering —
     which is exactly what the content-equality golden exists to forbid. The two
     diff caps stay distinct for the same reason.
+
+    ``dedupe_sent_hashes`` is the set of segment hashes THIS SESSION HAS
+    PROVABLY ALREADY RECEIVED — F109's "resumed session only, proven sends
+    only" rule in the only form this function can enforce it. ``None`` is the
+    BYPASS and it is the DEFAULT: the transform is not called at all and the
+    composed bytes are exactly what a caller got before F109 existed, which is
+    what makes the byte-equality golden PROVABLE rather than merely likely.
+    ``dedupe_enabled`` is the kill switch, forwarded straight to
+    :func:`_dedupe_resumed_segments`. ``run_pingpong`` supplies it from its
+    own ``semantic_dedupe_enabled`` parameter (F109 T002c, landed at
+    ``b245e1c9``), which reaches this composition and the other role's and
+    nothing else.
     """
     spec_summary = _render_spec_compliance_summary(evidence_dir, task_id)
     if scope_packet is None:
@@ -1564,7 +1685,19 @@ def compose_reviewer_prompt(
     registry = PromptSegmentRegistry()
     for (name, rank, _), text in zip(specs, texts):
         registry.register(name, rank, text)
-    return compose_prompt_segments(registry.registered_segments())
+    segments = registry.registered_segments()
+    deduped_names: tuple[str, ...] = ()
+    if dedupe_sent_hashes is not None:
+        # F109 T002c: the replaced NAMES are REPORTED on the composed prompt,
+        # so a later reader can see what the model was not sent again instead
+        # of having to infer it. The manifest ROW shape is deliberately left
+        # untouched: the ``call_segments`` table in ``token_ledger.py`` mirrors
+        # those keys column for column, so widening them is a token-ledger
+        # change and not this one.
+        segments, deduped_names = _dedupe_resumed_segments(
+            segments, dedupe_sent_hashes, enabled=dedupe_enabled
+        )
+    return replace(compose_prompt_segments(segments), deduped_names=deduped_names)
 
 
 def _reviewer_tiered_diff_text(
@@ -2732,6 +2865,7 @@ def run_pingpong(
     context_record_dir: str | Path | None = None,
     test_command: str = "",
     keep_staging: bool = False,
+    semantic_dedupe_enabled: bool = True,
     claude_cli_write_mode: str = "none",
     stream_evidence: bool = False,
     stream_evidence_dir: str | None = None,
@@ -2777,6 +2911,15 @@ def run_pingpong(
     the reason stated there: the renderer downstream is total on every input,
     and narrowing the annotation would advertise a validation this layer
     deliberately does not perform.
+
+    ``semantic_dedupe_enabled`` (F109) is the CONFIG KILL SWITCH for semantic
+    dedupe. ``False`` disables it for the WHOLE run, whatever the session index
+    holds, so an operator can rule the feature out while diagnosing something
+    else without editing code. ``True`` is the default because dedupe is the
+    feature's point — the switch exists to be turned OFF, not on. It reaches the
+    two primary compositions as ``dedupe_enabled`` and nowhere else: the
+    resume-fallback recompositions pass no dedupe arguments at all, so they send
+    full content at either value.
     """
     # If task_input provided, use it to enrich the goal
     effective_goal = goal
@@ -3067,6 +3210,9 @@ def run_pingpong(
         findings: list[ReviewFinding] = []
         reviewer_out: ReviewerOutput | None = None
         repair_triggered = False  # set when repair decision = "repair"
+        # F109 T001b-ii: one index per RUN, not per round — the whole point is what a
+        # LATER round may skip resending to a session an earlier round already fed.
+        session_sent_index = SessionSentIndex()
 
         for round_num in range(1, max_rounds + 1):
             # SAFE POINT 1 — a new round (initial or repair) is new work. Nothing is in
@@ -3151,8 +3297,13 @@ def run_pingpong(
                 full_ref=str(builder_tiered_artifact_path),
                 artifact_path=builder_tiered_artifact_path,
             )
-            builder_composed = compose_builder_prompt(
-                effective_goal, context,
+            # F109 T002b (R-0771): the keyword arguments live in ONE dict so the
+            # resume fallback below can recompose this very prompt at full
+            # content without restating them. ``dedupe_sent_hashes`` is
+            # deliberately NOT in here: it is the one argument the resumed
+            # composition and the fallback composition must differ in, so it
+            # stays at each call site where its condition is visible.
+            builder_compose_args = dict(
                 round_number=round_num,
                 findings=findings if is_repair else None,
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
@@ -3163,6 +3314,26 @@ def run_pingpong(
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,
                 tiered_diff_text=builder_tiered_diff_text,
+            )
+            builder_composed = compose_builder_prompt(
+                effective_goal, context, **builder_compose_args,
+                # F109 T002b: THE CONDITION IS THE SCOPE RULE — "resumed session
+                # only, proven sends only" — in the only form that cannot drift.
+                # A round that is not resuming passes None and therefore cannot
+                # dedupe, and it is structurally impossible for it to do
+                # otherwise because there is no other value to pass here.
+                dedupe_sent_hashes=(
+                    session_sent_index.sent_hashes(builder_resume_ref) if builder_resume_ref else None
+                ),
+                # F109 T002c: THE CONFIG KILL SWITCH, forwarded whole. False
+                # disables semantic dedupe for this entire run, so an operator
+                # can rule the feature out while diagnosing something else
+                # without editing code. THE RESUME FALLBACK IS DELIBERATELY
+                # UNAFFECTED: the recomposition below passes no dedupe argument
+                # at all and so sends full content at either value — a fallback
+                # is not a resumed session (R-0771), and the flag does not enter
+                # into it.
+                dedupe_enabled=semantic_dedupe_enabled,
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
@@ -3231,6 +3402,48 @@ def run_pingpong(
             # resume in play is unaffected and falls straight through to the
             # existing terminal-error handling below, unchanged.
             if builder_resume_ref and builder_out.error:
+                # F109 T002b, R-0771: A FALLBACK IS NOT A RESUMED SESSION, so the
+                # feature's scope rule — "resumed session only, proven sends only"
+                # — forbids dedupe here. The prompt is RECOMPOSED AT FULL CONTENT
+                # because the fresh session the retry below opens never received
+                # the originals, and a marker would name content it has not seen.
+                # ``builder_composed`` is rebound TOO, not only ``builder_prompt``:
+                # ``record_finalized_call`` further down reads its manifest, so
+                # rebinding both is what makes the bytes sent, the
+                # ``fallback_prompt`` stored by ``_finalize_call`` and the recorded
+                # evidence describe one and the same call.
+                builder_composed = compose_builder_prompt(effective_goal, context, **builder_compose_args)
+                builder_prompt = builder_composed.text
+                # F109 R-0774: A SECOND TRACE, NOT A REWRITE OF THE FIRST. The
+                # entry's contract is ONE TRACE PER ACTUAL PROVIDER INVOCATION,
+                # and this fallback is a second invocation, so it earns a second
+                # entry rather than overwriting the one above. The resumed
+                # attempt really did reach the provider and keeps its own honest
+                # record; without this append the only Builder trace of the round
+                # describes the composition the rebinding just ABANDONED, so
+                # ``prompt_sha256``, ``prompt_chars``, ``segment_manifest`` and
+                # ``prompt_text_redacted`` would all report bytes that were never
+                # delivered. Mirrors the primary append argument for argument;
+                # only ``prompt_text`` and ``composed_prompt`` differ, and they
+                # differ only by being the REBOUND full-content pair.
+                result.prompt_traces.append(build_trace_entry(
+                    prompt_text=builder_prompt,
+                    role="builder",
+                    run_id=result.run_id,
+                    job_id=result.job_id,
+                    task_id=result.task_id,
+                    round_num=round_num,
+                    provider=builder_name or "",
+                    provider_kind=_provider_kind(builder_name or ""),
+                    cwd=str(staging),
+                    write_mode=claude_cli_write_mode or "",
+                    prompt_kind="repair" if is_repair else "initial",
+                    context_categories=categories,
+                    changed_files=list(result.staged_files),
+                    task_excerpt_sha256=task_input.sha256 if task_input else "",
+                    configured_model=builder_model,
+                    composed_prompt=builder_composed,
+                ))
                 _begin_stream_call(builder_provider, round_num, "attempt")
                 builder_call_reasons = []
                 builder_out = _call_with_retry(
@@ -3249,12 +3462,21 @@ def run_pingpong(
                     rate_governor=_rate_governor,
                 )
                 builder_out.resume_fallback = True
+                # F109 T001b-ii: the resume failed, so nothing is proven about what that
+                # session still holds. ``builder_out`` was just REPLACED by the resume=None
+                # retry and reports no session, so the failed session's id survives only in
+                # ``builder_resume_ref`` — which is why it is passed explicitly.
+                invalidate_on_resume_fallback(session_sent_index, builder_out, builder_resume_ref or "")
             rd.builder_output = builder_out
 
             # F012: the Builder call is finalized — record its input through the single seam.
             builder_ctx = _finalize_call(
                 result, builder_out, role="builder", round_num=round_num, kind="attempt",
                 fallback_prompt=builder_prompt, ok=not bool(builder_out.error))
+            # F109 T001b-ii: this call really did deliver these segments to whatever session
+            # it reports. Recording after any invalidation above is the correct order.
+            record_finalized_call(session_sent_index, builder_out, builder_composed.manifest_as_dicts())
+            result.session_sent_evidence = session_sent_index.as_evidence_dicts()
 
             if builder_out.error:
                 # The logical builder call is over: F001 retried what was retryable and
@@ -3421,9 +3643,11 @@ def run_pingpong(
                 full_ref=str(reviewer_tiered_artifact_path),
                 artifact_path=reviewer_tiered_artifact_path,
             )
-            reviewer_composed = compose_reviewer_prompt(
-                effective_goal,
-                builder_out.summary,
+            # F109 T002b (R-0771): the Builder's dict, mirrored. The two
+            # POSITIONAL arguments this call site spells on their own lines —
+            # ``effective_goal`` and ``builder_out.summary`` — stay positional and
+            # stay out of the dict; only the keyword arguments are hoisted.
+            reviewer_compose_args = dict(
                 diff_summary=diff_summary,
                 safe_diff=reviewer_safe_diff,
                 test_result=rd.test_summary,
@@ -3437,6 +3661,23 @@ def run_pingpong(
                 scope_packet=runtime_scope_packet,
                 resume_hunks_text=reviewer_resume_hunks_text,
                 tiered_diff_text=reviewer_tiered_diff_text,
+            )
+            reviewer_composed = compose_reviewer_prompt(
+                effective_goal,
+                builder_out.summary,
+                **reviewer_compose_args,
+                # F109 T002b: THE CONDITION IS THE SCOPE RULE — "resumed session
+                # only, proven sends only" — in the only form that cannot drift.
+                # A round that is not resuming passes None and therefore cannot
+                # dedupe, and it is structurally impossible for it to do
+                # otherwise because there is no other value to pass here.
+                dedupe_sent_hashes=(
+                    session_sent_index.sent_hashes(reviewer_resume_ref) if reviewer_resume_ref else None
+                ),
+                # F109 T002c: the Builder call site's kill switch, mirrored. The
+                # comment there carries the whole meaning, including why the
+                # resume fallback below stays outside it.
+                dedupe_enabled=semantic_dedupe_enabled,
             )
 
             reviewer_prompt = reviewer_composed.text
@@ -3523,6 +3764,32 @@ def run_pingpong(
             # existing terminal-error / parse-retry handling below,
             # unchanged.
             if reviewer_resume_ref and reviewer_out.error:
+                # F109 T002b, R-0771: the Builder fallback's repair, mirrored. A
+                # fallback is not a resumed session, so the prompt is RECOMPOSED
+                # AT FULL CONTENT for the fresh session the retry below opens, and
+                # ``reviewer_composed`` is rebound TOO so the manifest
+                # ``record_finalized_call`` reads describes the bytes actually
+                # sent. ``reviewer_effective`` is rebound as well because on THIS
+                # role it — not ``reviewer_prompt`` — is the string the provider
+                # receives and the one ``_finalize_call`` stores as
+                # ``fallback_prompt``; rebinding only the other two would leave
+                # the marker in the bytes and repair nothing here.
+                reviewer_composed = compose_reviewer_prompt(
+                    effective_goal, builder_out.summary, **reviewer_compose_args,
+                )
+                reviewer_prompt = reviewer_composed.text
+                reviewer_effective = _reviewer_effective_prompt(reviewer_prompt)
+                # F109 R-0774, A DELIBERATE ABSENCE — DO NOT ADD THE BUILDER'S
+                # SECOND APPEND HERE. This role needs none: its traces are written
+                # by the ``on_call=_rev_trace(...)`` callback below, which
+                # ``_call_with_retry`` fires once per ACTUAL provider invocation,
+                # and ``_rev_trace`` reads ``reviewer_composed`` at call time — so
+                # it already picks up the rebinding two lines above and records a
+                # second, full-content entry on its own. Measured on the real loop
+                # at ``c22818f5``: a Reviewer resume fallback already records TWO
+                # traces for its round (the abandoned resumed one carrying the
+                # dedupe marker, then the full-content one without it). An eager
+                # append here would make a THIRD and double-count one call.
                 _begin_stream_call(reviewer_provider, round_num, "attempt")
                 reviewer_call_reasons = []
                 reviewer_out = _call_with_retry(
@@ -3546,12 +3813,18 @@ def run_pingpong(
                     rate_governor=_rate_governor,
                 )
                 reviewer_out.resume_fallback = True
+                # F109 T001b-ii: mirrors the Builder fallback — the replaced output reports
+                # no session, so the failed session's id comes from ``reviewer_resume_ref``.
+                invalidate_on_resume_fallback(session_sent_index, reviewer_out, reviewer_resume_ref or "")
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
             # terminal reviewer failure records F010 against it (F10).
             reviewer_final_ctx = _finalize_call(
                 result, reviewer_out, role="reviewer", round_num=round_num, kind="attempt",
                 fallback_prompt=reviewer_effective, ok=not bool(reviewer_out.error))
+            # F109 T001b-ii: invalidate-then-record, same order as the Builder seam.
+            record_finalized_call(session_sent_index, reviewer_out, reviewer_composed.manifest_as_dicts())
+            result.session_sent_evidence = session_sent_index.as_evidence_dicts()
 
             # --- Bounded parse retry (one attempt) ---
             # SAFE POINT 4 — the parse retry is another provider call. A stop observed here

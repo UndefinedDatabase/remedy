@@ -1,0 +1,63 @@
+F109 — INTEGRATION GATE, round 17, session 4
+=============================================
+
+Procedure: docs/agents/integration_gate.md, steps 1-5.
+Branch : feature/f109-semantic-dedupe at cce5f9d7 (C3's tree)
+Base   : 5e18a8536afa086b591b5a2e13009d68d6227432, checked out on the
+         throwaway branch tmp/base-gate at .remedy-wt/base-gate
+         (a DETACHED base worktree fails the self-dogfood branch guard by
+         design — DECISION D3, F053 R2)
+
+STEP 1 — BRANCH RUN
+    command : pytest.main(["-n", "auto", "-q"]) from /home/decodeux/Repos/remedy
+              (shell ENV assignment is denied in this sandbox, so pytest is
+              invoked as a library; NO env var is set for the branch run,
+              because integration_gate.md step 1 asks for a plain run)
+    result  : 18937 passed, 20 skipped, 0 failed
+    exit    : 0
+    wall    : 133.20s (reported by pytest) / 133.48s measured around the call
+    matches the reviewer's own reading at 35c0b03f (18937 / 20 / 0 / 133.30s)
+
+STEP 2 — BASE RUN
+    parity restored BEFORE the run:
+      - apps/ui/node_modules copied with shutil.copytree(symlinks=True)
+        44839 entries, 27 of them symlinks PRESERVED (`cp` is denied here;
+        copytree defaults to symlinks=False, which dereferences npm's bin
+        shims and itself caused 7 base-only failures on a previous gate,
+        R-0591)
+      - apps/ui/dist copied the same way, 5 entries
+      - dist mtimes re-stamped to now: `git worktree add` stamps the checkout
+        with the CURRENT time while copytree PRESERVES source mtimes, so
+        _frontend_is_stale() saw all 142 files under apps/ui/src as newer
+        than dist/index.html and the UI server refused to start (R-0736)
+    command : REMEDY_UI_NO_AUTO_BUILD set in-process, then
+              pytest.main(["-n", "auto", "-q"]) from .remedy-wt/base-gate
+    result  : 18799 passed, 20 skipped, 0 failed
+    exit    : 0
+    wall    : 159.88s (reported) / 160.11s measured around the call
+    parity verified as an EVENT, not an outcome — see parity_mtime.txt:
+      no mtime under apps/ui/dist falls inside the run window; PARITY HOLDS
+
+STEP 3 — COMPARISON
+    branch_failed.txt      0 lines
+    base_failed.txt        0 lines
+    branch_only.txt        0 lines   (comm -13 base branch)
+    fixed_by_branch.txt    0 lines   (comm -23 base branch)
+
+STEP 4 — ATTRIBUTION
+    the branch-only set is EMPTY; see attribution.txt, which also classifies
+    the five ids seen red in two earlier, method-flawed branch invocations —
+    all five pass serially, so all five are the xdist-flake class, and none
+    of them touches F109 code.
+
+STEP 5 — BUDGET
+    Both runs are under the ~5 min note threshold (133.20s and 159.88s), so
+    no perf pass is indicated. The verdict itself belongs to the reviewer.
+
+TEST-COUNT DELTA
+    18937 (branch) - 18799 (base) = 138 cases added by this branch, and the
+    dedupe suite alone collects 130 of them.
+
+CLEANUP
+    the base worktree was removed by its exact path, `git worktree prune` run,
+    and the tmp/base-gate branch deleted; see the round's handback.

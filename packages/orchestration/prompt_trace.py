@@ -81,6 +81,14 @@ class PromptTraceEntry:
     #: deliberately does NOT register (DECISION F105 D3); recording both numbers
     #: makes that coverage gap visible instead of implied.
     segment_manifest_chars: int = 0
+    #: F109: the names of the segments whose TEXT this composition replaced with
+    #: a dedupe reference marker, in replacement order — what the model was
+    #: deliberately NOT sent again. EMPTY means nothing was deduped, which is the
+    #: NORMAL case: dedupe fires only for a call that RESUMES a session that
+    #: provably already received the segment. Empty here does NOT mean the prompt
+    #: was uncomposed — that is what an empty ``segment_manifest`` means, and the
+    #: two empties sit next to each other, so do not read one for the other.
+    deduped_segment_names: list[str] = field(default_factory=list)
     context_categories: list[str] = field(default_factory=list)
     changed_files: list[str] = field(default_factory=list)
     safe_diff_files: list[str] = field(default_factory=list)
@@ -132,6 +140,9 @@ def build_trace_entry(
     character count it covers can never disagree. Passing the two separately is
     deliberately NOT offered — a caller that could set them independently could
     describe one prompt with another prompt's manifest.
+    ``deduped_segment_names`` (F109) joins those two on the same seam and is
+    derived from the same object for the same reason: a caller that could pass
+    its own list could name segments the prompt never replaced.
     """
     raw_sha = hashlib.sha256(prompt_text.encode()).hexdigest()
     redacted = redact_prompt_text(prompt_text)
@@ -156,6 +167,9 @@ def build_trace_entry(
         ),
         segment_manifest_chars=(
             len(composed_prompt.text) if composed_prompt is not None else 0
+        ),
+        deduped_segment_names=(
+            list(composed_prompt.deduped_names) if composed_prompt is not None else []
         ),
         context_categories=list(context_categories or []),
         changed_files=list(changed_files or []),
@@ -244,3 +258,107 @@ def build_trace_summary(entries: list[PromptTraceEntry]) -> dict[str, Any]:
         "rounds": max((e.round for e in entries), default=0),
         "per_role_model_summary": per_role,
     }
+
+
+# F109 T003d: the MEASURED counterpart to the ESTIMATED savings that live in
+# packages/orchestration/token_economy.py. A reader asking "how much did semantic
+# dedupe actually save?" lands here; a reader asking "how much might it save?"
+# lands there. The two are deliberately not one function.
+@dataclass(frozen=True)
+class DedupeSavingsMeasurement:
+    """What a run did NOT resend, counted from that run's own prompt traces.
+
+    ``unmeasured_segment_names`` is the load-bearing field. A segment reported as
+    deduped whose full-content size never appeared in the entries handed over is
+    named HERE and excluded from every total, so "nothing was saved" and "the
+    saving is not measurable from what you gave me" can never be read as the same
+    answer. Each name appears once, in first-seen order.
+    """
+
+    chars_avoided: int = 0
+    chars_spent_on_markers: int = 0
+    net_chars_saved: int = 0
+    deduped_occurrences_counted: int = 0
+    unmeasured_segment_names: tuple[str, ...] = ()
+
+
+def measure_dedupe_savings_from_traces(
+    entries: list[PromptTraceEntry],
+) -> DedupeSavingsMeasurement:
+    """MEASURE the characters F109 dedupe withheld, from a run's own trace entries.
+
+    Every number returned is MEASURED from recorded evidence — the manifest rows
+    and the ``deduped_segment_names`` the run itself wrote — and none of it is
+    estimated. ``estimate_token_savings`` in
+    ``packages/orchestration/token_economy.py`` is the DIFFERENT, estimate-shaped
+    concept and is deliberately NOT reused here: that function compares two
+    ESTIMATES and its own docstring says it never claims verified savings, while
+    this one reports only what the record proves. One name over both concepts
+    would make a measured number indistinguishable from a guess, which is the one
+    thing a savings figure must never be.
+
+    HOW IT COUNTS. The entries are walked IN ORDER. For each ``(role, segment
+    name)`` the most recent FULL-CONTENT size is remembered — the ``chars`` of a
+    manifest row in an entry that does NOT report that name as deduped. When a
+    later entry of the SAME role does report the name, that entry's manifest row
+    for it carries the MARKER's ``chars`` instead: the characters avoided are the
+    remembered full size, the characters spent are the marker's own, and the net
+    saving is the first minus the second. Roles never supply each other's sizes —
+    the scope rule of this feature is about what one SESSION provably received,
+    and a per-role reading is the nearest honest thing the trace alone supports.
+
+    THE HONESTY BRANCH, which is the point of the function. A name can be
+    reported as deduped with nothing to measure it against: a caller may hand
+    over a partial trace, and a resumed session's first recorded call may already
+    be deduping against a session opened before the record begins. Such an
+    occurrence is NOT counted as a zero saving and is NOT guessed. It is named in
+    ``unmeasured_segment_names`` and left out of every total, including
+    ``deduped_occurrences_counted``, so an absent measurement can never read as a
+    zero.
+
+    PURITY IS PART OF THE CONTRACT: this function opens nothing, writes nothing,
+    reads no global and calls no provider. It takes entries and returns a value.
+    """
+    latest_full_chars: dict[tuple[str, str], int] = {}
+    unmeasured: list[str] = []
+    chars_avoided = 0
+    chars_spent = 0
+    occurrences = 0
+
+    for entry in entries:
+        reported = list(entry.deduped_segment_names)
+        reported_set = set(reported)
+        marker_chars: dict[str, int] = {}
+        for row in entry.segment_manifest:
+            name = str(row.get("name", ""))
+            chars = int(row.get("chars", 0))
+            if name in reported_set:
+                # This row IS the marker that replaced the text, not the text.
+                marker_chars[name] = chars
+            else:
+                # A full-content send. The last one wins, which is what "most
+                # recent" means for a name a run composes more than once.
+                latest_full_chars[(entry.role, name)] = chars
+        for name in reported:
+            full = latest_full_chars.get((entry.role, name))
+            spent = marker_chars.get(name)
+            if full is None or spent is None:
+                # THE HONESTY BRANCH: either no full-content size was ever
+                # observed for this role and name, or this entry carries no
+                # manifest row for it at all. Either way the saving is
+                # unobservable, and an unobservable saving is NAMED, never
+                # rounded down to zero.
+                if name not in unmeasured:
+                    unmeasured.append(name)
+                continue
+            chars_avoided += full
+            chars_spent += spent
+            occurrences += 1
+
+    return DedupeSavingsMeasurement(
+        chars_avoided=chars_avoided,
+        chars_spent_on_markers=chars_spent,
+        net_chars_saved=chars_avoided - chars_spent,
+        deduped_occurrences_counted=occurrences,
+        unmeasured_segment_names=tuple(unmeasured),
+    )

@@ -1,0 +1,18 @@
+F109 R17 integration gate - base-worktree UI parity, measured as an EVENT
+(R-0444: a content hash may accompany this reading, never replace it).
+
+Base run window (epoch): START 1788410860.264  END 1788411020.379
+                  (ISO): START 2026-09-03 06:47:40  END 2026-09-03 06:50:20
+
+Every file under .remedy-wt/base-gate/apps/ui/dist, mtime before and after:
+  assets/diffHighlightGrammars-o9XqnLhb.js before=1788410854.675 after=1788410854.675 in_window=False
+  assets/index-Bh0mkYBD.js     before=1788410854.675 after=1788410854.675 in_window=False
+  assets/index-D_qZGOuo.css    before=1788410854.675 after=1788410854.675 in_window=False
+  index.html                   before=1788410854.675 after=1788410854.675 in_window=False
+
+Files: 4. Any mtime inside the window would VOID the parity claim.
+None is inside it, and the before/after mtime maps are identical.
+Accompanying content digest, before and after, identical:
+  846b7f62fa3c13a8fd3ecd7c54dfd89771af272843530a59bd318d7e006f7a51
+
+PARITY HOLDS: apps/ui/dist was not rebuilt during the base run.

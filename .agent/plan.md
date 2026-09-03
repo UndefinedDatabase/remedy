@@ -1,34 +1,39 @@
-# Plan — amend0902-ollama-pingpong
+# Plan — F109 Semantic dedupe
 
-Branch: feature/amend0902-ollama-pingpong, cut from `main` at
-`269b5b84` (F108 merge). Operator amendment, boundary-agnostic.
+Branch: feature/f109-semantic-dedupe, cut from `main` at
+`5e18a8536afa086b591b5a2e13009d68d6227432` (pull request 231 merged).
 
 ## Goal
 
-Make `role_config.DEFAULT_PROVIDER = "ollama"` constructible and callable on
-the ping-pong job path, resolving finding R-0761. Scope is the factory branch
-plus the adapter it returns — quality fallback and per-role local routing are
-F113 and stay out.
+Within a RESUMED session only, stop resending context the model has
+already provably received: segments whose hash already went to that exact
+session are replaced by short reference markers. Everywhere else full
+content wins, because only a resumed session guarantees the model still
+holds the prior content. The scope rule of the whole feature is "resumed
+session only, proven sends only".
 
 ## Current Step
 
-C6 — Part 4 battery, PR, hosted CI, merge. Parts 1-3 are done: the fix and
-its 17 tests landed (C1-C3), the real-path proof ran (job `48a379ab5ca44ec5`,
-six real ollama provider calls, past `provider_unavailable`), and the record
-carries `Done: R-0761` plus the two adjacent gaps it surfaced.
+Round 21, session 4 — THE CLOSURE ROUND, and the last on this branch.
+The authored STATUS line flips F109 to accepted with the README
+capability sync in the SAME commit, `consumed_by` is set to `F109` on
+`SU-005`, and the PR is created but NOT merged: it merges at the next
+feature's start through the Open PR Gate, and that gap is the operator's
+manual-review window.
 
 ## Next Steps
 
-- C6: run the Part 4 battery (tests/docs/ 295, golden path 42, the provider
-  and ping-pong suites, ruff on every changed file), open the PR, wait for the
-  HOSTED run to go green, merge it, confirm zero open PRs.
+- The operator merges the PR, or the next feature's first session merges
+  it at the Open PR Gate.
+- Nothing else is owed by this branch.
 
 ## Risks
 
-- The shipped queue is EXHAUSTED — every item is `consumed_by` a closed
-  feature, SU-004 by the F108 closure this session merged at Part 0 — so the
-  real-path run pointed `queue_path` at a scratch copy of the real queue with
-  SU-004's `consumed_by` cleared. Declared in the `Done: R-0761` text; the real
-  queue's sha256 is recorded unchanged before and after.
-- R-0767 and R-0768 are registered, not fixed: both sit in the CLI layer,
-  outside this amendment's stated scope.
+- Three findings from the self-use run are carried as documented Low
+  risks, not repaired: `R-0784`, `R-0785` and `R-0786`. Two of them are
+  F258's generator and one is F257's queue file, so none is F109's code.
+- Nothing dedupes in production: every concrete adapter returns
+  `supports_resume = False`, so the mechanism is suite-only today.
+  `docs/system/semantic-dedupe-v1.md` states this as its first limit.
+- The open finding set is a SET DIFFERENCE, not a subtraction: two ids
+  carry two `Done:` lines each. That is `R-0778`.

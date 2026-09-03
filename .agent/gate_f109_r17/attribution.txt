@@ -1,0 +1,77 @@
+F109 R17 — integration gate, step 4 attribution
+================================================
+
+THE BRANCH-ONLY SET IS EMPTY.
+
+Produced by:
+
+    grep '^FAILED' <branch log> | sort > branch_failed.txt   -> 0 lines
+    grep '^FAILED' <base log>   | sort > base_failed.txt     -> 0 lines (grep exit 1)
+    comm -13 base_failed.txt branch_failed.txt > branch_only.txt      -> 0 lines
+    comm -23 base_failed.txt branch_failed.txt > fixed_by_branch.txt  -> 0 lines
+
+Both suites exited 0, so there is no id to attribute. An empty set is a
+reading, not a skipped step: the four files above are committed at zero
+bytes precisely so that the emptiness is on the record.
+
+    branch (feature/f109-semantic-dedupe @ cce5f9d7)
+        18937 passed, 20 skipped, 0 failed, exit 0, 133.20s
+    base   (5e18a8536afa086b591b5a2e13009d68d6227432, tmp/base-gate)
+        18799 passed, 20 skipped, 0 failed, exit 0, 159.88s
+
+    branch-only failures : 0
+    base-only failures   : 0
+    BLOCKER              : none
+
+APPENDIX — ids observed red in two EARLIER branch invocations of this round
+whose METHOD was flawed. They are recorded and classified here rather than
+dropped, because the round really did see them go red on this branch.
+
+Invocation 1 (transcript written INSIDE the repo while the suite ran, and
+REMEDY_UI_NO_AUTO_BUILD=1 set on a BRANCH run that integration_gate.md step 1
+does not ask for it on) — 1 failed, 18936 passed:
+
+    tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_an_unchanged_stopped_workspace_shows_no_drift
+
+Invocation 2 (transcript buffered in memory, REMEDY_UI_NO_AUTO_BUILD=1 still
+set) — 4 failed, 18933 passed:
+
+    tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes
+    tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_the_app_is_always_stopped
+    tests/orchestration/test_product_smoke.py::TestBrokenStartHoldsTheJob::test_the_app_is_stopped_even_on_the_red_path
+    tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift
+
+The two invocations share no product_smoke id and disagree on WHICH
+workspace-identity case fails, which is already a non-determinism reading.
+
+SERIAL RE-RUN of all five ids at cce5f9d7, xdist disabled:
+
+    python3 -m pytest <the five node ids> -p no:xdist -q
+    5 passed in 3.35s, exit 0
+
+CLASSIFICATION, per integration_gate.md step 4: serial-pass => XDIST-FLAKE
+class (F135/F052). Recorded, not a blocker. Direct evidence for each:
+
+  * the three test_product_smoke ids died on
+        OSError: [Errno 98] Address already in use
+    binding port 5273, all three on worker gw5 — two parallel workers
+    contending for one port. `ss -ltnp` and `pgrep -af good_app.py` after
+    the run showed no listener and no surviving process, so nothing leaked.
+
+  * the two test_job_rerun_workspace_identity ids died on a
+        remedy_worktree_digest
+    mismatch between the reference and the candidate manifest. The digest is
+    built by worktree_identity() in packages/orchestration/run_manifest.py,
+    which enumerates untracked entries with
+        git ls-files --others --exclude-standard
+    so a GITIGNORED scratch file cannot enter it — .remedy-wt/ is ignored and
+    is therefore NOT the cause, and the R-0176 reading first reached for here
+    was wrong. What the digest does fold in is the outcome of four git
+    subprocesses (rev-parse, two diffs, ls-files, submodule status), each of
+    which contributes a FAILED marker to the hash on timeout; under 16 xdist
+    workers those calls are load-coupled. Serial, with no load, both pass.
+
+NEITHER CLASS TOUCHES F109 CODE. F109 changes
+packages/orchestration/session_sent_index.py, prompt_composer.py,
+pingpong_loop.py, prompt_trace.py and tests/orchestration/test_semantic_dedupe.py;
+none of the five ids reaches any of them.
