@@ -1,39 +1,43 @@
-# Plan — F109 Semantic dedupe
+# Plan — F110 Model routing by task class
 
-Branch: feature/f109-semantic-dedupe, cut from `main` at
-`5e18a8536afa086b591b5a2e13009d68d6227432` (pull request 231 merged).
+Branch: feature/f110-model-routing-by-task-class, cut from `main` after
+pull request 232 was merged at the Open PR Gate.
 
 ## Goal
 
-Within a RESUMED session only, stop resending context the model has
-already provably received: segments whose hash already went to that exact
-session are replaced by short reference markers. Everywhere else full
-content wins, because only a resumed session guarantees the model still
-holds the prior content. The scope rule of the whole feature is "resumed
-session only, proven sends only".
+End one-model-for-everything: every provider call declares a TASK CLASS, a
+router maps classes to model tiers, and each routed call records the routed
+model WITH its reason. The hard rules of
+`docs/agents/model_routing_policy.md` are ENFORCED IN CODE, and moving a
+class to a cheaper tier is possible only against documented benchmark
+evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 21, session 4 — THE CLOSURE ROUND, and the last on this branch.
-The authored STATUS line flips F109 to accepted with the README
-capability sync in the SAME commit, `consumed_by` is set to `F109` on
-`SU-005`, and the PR is created but NOT merged: it merges at the next
-feature's start through the Open PR Gate, and that gap is the operator's
-manual-review window.
+Round 1, session 1 — merge F109's pull request at the Open PR Gate, claim
+F110 in the ledger, discharge the four closure candidates F109 left open,
+and land T001a: the call-site and role inventory that
+`docs/roadmap/features/T3_F110.md`'s Orchestrator brief requires as a
+deliverable BEFORE T002. The inventory is MEASURED from the code, never
+recalled.
 
 ## Next Steps
 
-- The operator merges the PR, or the next feature's first session merges
-  it at the Open PR Gate.
-- Nothing else is owed by this branch.
+- T001b: the single resolver seam. The inventory decides whether model
+  selection is already consolidated in
+  `packages/orchestration/role_config.py` or must be consolidated first.
+- T002: the resolver, the config schema, the hard-rule checks, and one
+  violating fixture per rule, refused with the rule named.
+- T003: the promotion-evidence discipline, the evidence fields and the
+  goldens — a promotion without evidence refused, with evidence logged.
+- The integration gate, then the closure sequence, which also runs the one
+  checklist consolidation pass DECISION F110 D1 carries into it.
 
 ## Risks
 
-- Three findings from the self-use run are carried as documented Low
-  risks, not repaired: `R-0784`, `R-0785` and `R-0786`. Two of them are
-  F258's generator and one is F257's queue file, so none is F109's code.
-- Nothing dedupes in production: every concrete adapter returns
-  `supports_resume = False`, so the mechanism is suite-only today.
-  `docs/system/semantic-dedupe-v1.md` states this as its first limit.
-- The open finding set is a SET DIFFERENCE, not a subtraction: two ids
-  carry two `Done:` lines each. That is `R-0778`.
+- Model selection is scattered today: `resolve_role_config` has production
+  callers in several modules while `make_structured_call_fn` is called at
+  sites that pass no resolved model at all. Consolidation is the first
+  order and it touches live call paths.
+- `R-0768` is OPEN over exactly this seam. F110 must not silently absorb
+  its repair; the inventory records the overlap and leaves it registered.
