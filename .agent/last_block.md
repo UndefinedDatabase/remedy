@@ -1,130 +1,127 @@
-── STEP F110 R18 — CLOSURE ROUND 3: THE BUILT STATE SECTION ──
-Round 18 · SESSION 7 of F110 · base `2fe36572` (F110 R17 C3)
+── STEP F110 R19 — THE CLOSURE COMMIT (final round of this feature) ──
+Round 19 · SESSION 7 of F110 · base `acd89a6f` (F110 R18 C4)
 
 Goal:
-  Book round 17's PASS verdict (the evidence job and review zip) as the
-  `Gate: F110 R17` ledger entry, then give
-  `docs/roadmap/features/T3_F110.md` its Built State section plus two
-  small "AS BUILT" corrections to the Design section — appended after
-  the original intent text, never a silent rewrite — closing closure
-  precondition 4. No STATUS line, no README edit, no pull request happen
-  here — that is round 19.
+  Book round 18's PASS verdict as the `Gate: F110 R18` ledger entry, then
+  perform the closure commit per docs/roadmap/STATUS_closure_protocol.md:
+  the authored STATUS `[x]` line and the README capability paragraph in
+  ONE commit, `SU-006`'s `consumed_by` set to `F110`, then open the pull
+  request. This is the LAST round of F110 — do not create a round 20.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f110-r18.md`
+  C0a  save this block verbatim to `.agent/authored/f110-r19.md`
   C0b  mirror the committed authored file to `.agent/last_block.md`
-  C1   apply PLAN18 to `.agent/plan.md` (whole-file replacement)
-  C2   append RECORD18 to `.agent/live_review.md`
-  C3   apply the two FROM/TO pairs and append BUILTSTATE to
-       `docs/roadmap/features/T3_F110.md`
-  C4   the handback: rewrite `.agent/handoff.md`
+  C1   apply PLAN19 to `.agent/plan.md` (whole-file replacement)
+  C2   append RECORD19 to `.agent/live_review.md`
+  C3   apply STATUS_PAIR to `docs/roadmap/STATUS.md` AND README_PAIR to
+       `README.md` — BOTH in this ONE commit (R-0154 precedent: STATUS
+       line and README sync land together)
+  C4   apply QUEUE_PAIR to `scripts/self_use_queue.json`
+  C5   the handback: rewrite `.agent/handoff.md`
 
 Change set — NOTHING outside these paths:
-  `.agent/authored/f110-r18.md`
+  `.agent/authored/f110-r19.md`
   `.agent/last_block.md`
   `.agent/plan.md`
   `.agent/live_review.md`
-  `docs/roadmap/features/T3_F110.md`
+  `docs/roadmap/STATUS.md`
+  `README.md`
+  `scripts/self_use_queue.json`
   `.agent/handoff.md`
-  NO file under `packages/`, `apps/`, `tests/`, `.agent/decisions.md`,
-  `.agent/prose_slips.md`, `.agent/candidates.md` or
-  `scripts/self_use_queue.json` is touched by this round's own commits.
-  This round mints NO finding id, writes no `- R-` entry and no `Done:`
-  line.
+  NO file under `packages/`, `apps/`, `tests/`, `docs/roadmap/features/`,
+  `.agent/decisions.md`, `.agent/prose_slips.md` or `.agent/candidates.md`
+  is touched by this round's own commits. This round mints NO finding id.
 
 Constraints:
   1. `.agent/STOP` is read FROM DISK before the first commit and again
-     before C4. If it exists at either reading: finish the commit in
-     hand, write the handback, push, and stop.
-  2. Transport is PROMPT-EMBEDDED, not a scratch file (the reviewer is
-     100% read-only and holds no separate scratch original). Copy the
-     bytes between BEGIN BLOCK / END BLOCK (excluding those sentinel
-     lines) verbatim into `.agent/authored/f110-r18.md`.
-  3. Extract every slice from the COMMITTED `.agent/authored/f110-r18.md`
-     by locating its `<<<BEGIN X>>>` / `<<<END X>>>` marker lines and
-     taking the lines strictly between them — never from this prompt
-     directly, never retyped.
-  4. `.agent/plan.md` at C1 is REPLACED IN FULL by PLAN18. Report `wc -l`
-     (must be under 50) and sha256.
-  5. `.agent/live_review.md` at C2: the reviewer measured the base at
-     `2fe36572` as exactly 2238252 bytes, ending WITHOUT a trailing
-     newline. RECORD18 is 3221 bytes, one paragraph, zero internal
-     newlines. The append is TWO newlines followed by RECORD18 verbatim,
-     so the committed file must be EXACTLY 2238252 + 2 + 3221 = 2241475
-     bytes, and the base bytes must be an exact PREFIX. Report the
-     arithmetic and the prefix confirmation directly (compare the first
-     2238252 bytes of the new file against the old file).
-  6. Do NOT author any `- R-` entry, any `Done:` line, any
-     `.agent/decisions.md` DECISION, or any `.agent/prose_slips.md` line
-     this round.
-  7. `docs/roadmap/features/T3_F110.md` at C3: apply PAIR1 (PAIR1_FROM
-     replaced by PAIR1_TO — an APPEND-shaped pair, PAIR1_TO CONTAINS
-     PAIR1_FROM verbatim as its own prefix, verified by the reviewer
-     before this block was emitted: `PAIR1_FROM` occurs exactly ONCE in
-     the base file), then PAIR2 the same way (`PAIR2_FROM` also occurs
-     exactly ONCE, `PAIR2_TO` also CONTAINS `PAIR2_FROM` as its prefix).
-     Apply both pairs as ONE commit (C3). Then APPEND BUILTSTATE to the
-     end of the file: the reviewer measured the base (after both pairs
-     are applied, before the append) as 3818 + (712 added by PAIR1) +
-     (529 added by PAIR2) bytes, ending WITH exactly one trailing
-     newline. The append is ONE newline (a blank line separator, matching
-     every other `##`-heading boundary in this file) followed by
-     BUILTSTATE verbatim (BUILTSTATE itself already ends with its own
-     trailing newline, so no extra newline is added after it). Report the
-     file's final byte count, confirm it ends with exactly one trailing
-     newline, and confirm `grep -c '^## Built State'` reads 1.
-  8. Do NOT run `ruff`, `npm`, or any formatter — this round touches no
-     `.py` file.
+     before C5. If it exists at either reading: finish the commit in
+     hand, write the handback, push, and stop — do NOT create the PR.
+  2. Transport is PROMPT-EMBEDDED (the reviewer is 100% read-only and
+     holds no scratch original). Copy the bytes between BEGIN BLOCK / END
+     BLOCK (excluding sentinels) verbatim into `.agent/authored/f110-r19.md`.
+  3. Extract every slice from the COMMITTED `.agent/authored/f110-r19.md`
+     by its markers — never from this prompt directly, never retyped.
+  4. `.agent/plan.md` at C1 is REPLACED IN FULL by PLAN19. Report `wc -l`
+     (under 50) and sha256.
+  5. `.agent/live_review.md` at C2: base at `acd89a6f` measured 2241475
+     bytes ending WITHOUT a trailing newline. RECORD19 is 2974 bytes, one
+     paragraph, zero internal newlines. The committed file must be
+     EXACTLY 2241475 + 2 + 2974 = 2244451 bytes, base an exact PREFIX.
+     Report the arithmetic and prefix confirmation directly.
+  6. `docs/roadmap/STATUS.md` at C3: STATUS_PAIR is a REWRITE (not an
+     append — the reviewer verified TO does NOT simply contain FROM as a
+     substring, since new text is inserted mid-line). STATUS_PAIR_FROM
+     occurs exactly ONCE in the base file (the `- [~] F110` line);
+     replace it with STATUS_PAIR_TO. Report the FROM count in the base
+     (must be 1) and confirm the applied line matches STATUS_PAIR_TO
+     byte-for-byte.
+  7. `README.md` at C3 (same commit as STATUS.md): README_PAIR is also a
+     REWRITE for the same reason. README_PAIR_FROM occurs exactly ONCE in
+     the base file; replace it with README_PAIR_TO, which inserts the new
+     F110 capability paragraph between the F109 paragraph and "Accepted
+     in Tier 5 so far:". Report the FROM count (must be 1).
+  8. `scripts/self_use_queue.json` at C4: QUEUE_PAIR_FROM
+     (`"consumed_by": "",`) occurs exactly ONCE in the entire file — this
+     is SU-006's own field, since every other item's `consumed_by` is
+     already non-empty. Report the FROM count (must be 1) and confirm the
+     file is still valid JSON after the edit (`json.load` it).
+  9. Do NOT run `ruff`, `npm`, or any formatter — no `.py` file under
+     `packages/`/`apps/`/`tests/` is touched this round.
+ 10. After C5, push, THEN create the pull request with `gh pr create`
+     (base `main`, head `feature/f110-model-routing-by-task-class`) using
+     the title and body given below under PR_CONTENT. Do NOT merge it —
+     report only the PR number and URL `gh pr create` returns. Do NOT run
+     `gh pr merge` under any circumstance this round.
 
 Done when — each gate run and reported as ONE LINE in the handback with
-its real exit code, at a commit STRICTLY EARLIER than C4:
+its real exit code, at a commit STRICTLY EARLIER than C5:
 
-G1 TRANSPORT — sha256sum of `.agent/authored/f110-r18.md` and
+G1 TRANSPORT — sha256sum of `.agent/authored/f110-r19.md` and
    `.agent/last_block.md` — must match. Report `wc -l`.
 
 G2 THE PLAN — `wc -l .agent/plan.md` under 50; sha256; `grep -c '^## Goal$'`
    and `grep -c '^## Next Steps$'` each 1.
 
 G3 THE LEDGER APPEND — the arithmetic from constraint 5, reproduced
-   directly against the committed file; `grep -c '^Gate: F110 R17'` 0
-   before C2, 1 after; confirm no new `^- R-` or `^Done: R-` line
-   anywhere in the file (identical counts before/after C2).
+   directly; `grep -c '^Gate: F110 R18'` 0 before C2, 1 after; confirm no
+   new `^- R-` or `^Done: R-` line (identical counts before/after).
 
-G4 THE FEATURE FILE — for each pair, report the containment check
-   (`TO.startswith(FROM)` — true/false) and the FROM count in the base
-   file (must be 1 for each). Report the file's byte count after C3 and
-   confirm it ends with exactly one trailing newline. Report
-   `grep -c '^## Built State'` = 1, `grep -c '^## Design'` = 1 (unchanged
-   heading count), `grep -c 'AS BUILT'` = 2 (one per pair).
+G4 STATUS AND README — the values from constraints 6 and 7: FROM counts,
+   applied-text confirmation for STATUS.md, FROM count for README.md.
+   Report `git diff --stat` for C3 shows exactly these two paths.
 
-G5 THE TREE, THE COMMITS AND THE SWEEP.
-   `git status --porcelain` immediately before C4 — EMPTY.
-   `git diff --stat 2fe36572..<C3-sha> -- packages/ apps/ tests/
-   .agent/decisions.md .agent/prose_slips.md .agent/candidates.md
-   scripts/self_use_queue.json` — must be EMPTY.
-   PER-COMMIT INSERTIONS, the `+` column only, for C0a, C0b, C1, C2 and
-   C3, reported cell by cell against the handback's own `## Commits`
-   table and each confirmed under 500 (C0b may be a whole-file rewrite;
-   report the real `git diff --numstat` cells).
+G5 THE QUEUE — the value from constraint 8: FROM count, JSON validity
+   after edit, and confirm `json.load(...)["items"]` still has the SAME
+   number of items as before (no item added or removed, only one field
+   changed on one item).
+
+G6 THE TREE, THE COMMITS AND THE SWEEP.
+   `git status --porcelain` immediately before C5 — EMPTY.
+   `git diff --stat acd89a6f..<C4-sha> -- packages/ apps/ tests/
+   docs/roadmap/features/ .agent/decisions.md .agent/prose_slips.md
+   .agent/candidates.md` — must be EMPTY.
+   PER-COMMIT INSERTIONS, the `+` column only, for C0a, C0b, C1, C2, C3
+   and C4, reported cell by cell against the handback's own `## Commits`
+   table and each confirmed under 500 (C0b may be a whole-file rewrite).
+
+G7 THE PR — report the PR number, URL, base and head branch as `gh pr
+   create` actually printed, and confirm with `gh pr view <n> --json
+   state,isDraft,baseRefName,headRefName` that it is OPEN, NOT a draft,
+   base `main`, head `feature/f110-model-routing-by-task-class`. Confirm
+   `gh pr merge` was NEVER invoked this round.
 
 Handback: rewrite `.agent/handoff.md` in full per
    docs/agents/handback_template.md — feature and round, SESSION 7 of
    F110, branch, base and head SHAs, the per-commit changed-files table
    with its `+/-` column, ONE line per gate above with its real exit
    code, the item-status table AGENTS.md mandates, the deviations, the
-   open-findings count (278, UNCHANGED — no new id minted). Its `## Next`
-   section names round 19 (the closure commit: STATUS line, README sync,
-   `SU-006` `consumed_by=F110`, pull request) as the next expected
-   action, and states plainly that round 17 already built the review zip
-   (package `remedy-review-20260903-181544-READY_FOR_REVIEW.zip`,
-   SHA-256
-   `767304077110354d0005b2f6c70cd53502b831c4161be6a5f6a65a31c136457b`,
-   accepted HEAD `953cade0`) so round 19 does not need to rebuild it. It
-   has NO length cap. Then `git push -u origin
-   feature/f110-model-routing-by-task-class` after C4; create NO pull
-   request, merge nothing.
+   open-findings count (278, UNCHANGED — no new id minted this round),
+   the PR number and URL. State explicitly that this is F110's LAST
+   round and the PR is UNMERGED, awaiting the Open PR Gate. It has NO
+   length cap. Then push again after C5 if anything changed (the PR
+   itself does not require a further push).
 
-<<<BEGIN PLAN18>>>
+<<<BEGIN PLAN19>>>
 # Plan — F110 Model routing by task class
 
 Branch: feature/f110-model-routing-by-task-class, cut from `main` after
@@ -141,164 +138,86 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 18 — CLOSURE ROUND 3: THE BUILT STATE SECTION. Round 17's evidence
-job and review zip are booked (`Gate: F110 R17`, PASS): package
-`remedy-review-20260903-181544-READY_FOR_REVIEW.zip`, SHA-256
-`767304077110354d0005b2f6c70cd53502b831c4161be6a5f6a65a31c136457b`,
-accepted HEAD `953cade0`. This round gives
-`docs/roadmap/features/T3_F110.md` its Built State section and corrects
-two Design bullets against what actually shipped (the module is
-`model_routing.py`, not `routing.py`; a violating override WARNS per
-DECISION F110 D5, it does not fail validation) — both as APPENDED "AS
-BUILT" corrections, never a silent rewrite of the original intent text.
+Round 19 — THE CLOSURE COMMIT (final round of this feature). Round 18's
+Built State section is booked (`Gate: F110 R18`, PASS); closure
+precondition 4 is satisfied. This round books the authored STATUS `[x]`
+line and the README capability paragraph in ONE commit, sets `SU-006`'s
+`consumed_by` to `F110` in `scripts/self_use_queue.json`, and opens the
+pull request. The PR is NOT merged this session — it merges at the next
+feature's Open PR Gate, the operator's manual-review window.
 
 ## Next Steps
 
-- Round 19: the closure commit — the authored STATUS `[x]` line and the
-  README capability sync in the SAME commit, `SU-006`'s `consumed_by` set
-  to `F110`, and the pull request.
+None — this is the feature's last round. The next session's Phase 0
+finds an open, non-draft PR from this branch into `main` and merges it
+at the Open PR Gate before claiming a new feature.
 
 ## Risks
 
-- The zip already built at round 17 is the one closure references; round
-  19 does not rebuild it.
-- `R-0767` stays OPEN on the same seam and must not be absorbed.
-- `R-0784` stays OPEN; its fix belongs to F258's generator, not to F110.
-<<<END PLAN18>>>
+- `R-0767` and `R-0784` stay OPEN; both predate F110 and are documented,
+  not F110 defects — see the Built State section's own citations.
+<<<END PLAN19>>>
 
-<<<BEGIN RECORD18>>>
-Gate: F110 R17 — the round 17 entry. VERDICT PASS, over the range `e9e319e2..2fe36572`. THE ROUND BOOKED ROUND 16'S VERDICT AND BUILT THE CLOSURE EVIDENCE BUNDLE AND ZIP, AND THE REVIEWER RE-DERIVED EVERY VALUE FROM DISK RATHER THAN FROM THE HANDBACK. TRANSPORT, digest-fallback per docs/agents/self_drive_protocol.md: `.agent/authored/f110-r17.md` and `.agent/last_block.md` are byte-identical, sha256 `562a1f00c6b29d9fc645c6649fc37fe386e47bc55092a7822038ae629ec8523f` over 364 lines, reproduced by the reviewer directly against the committed blob and against the prompt bytes it emitted. THE PLAN IS BYTE-CORRECT: `.agent/plan.md` at C1 is 42 lines with `## Goal` and `## Next Steps` each occurring once. THE LEDGER APPEND HOLDS UNDER THE REVIEWER'S OWN ARITHMETIC: base at `e9e319e2` measured 2232554 bytes ending without a trailing newline, RECORD17 measured 5696 bytes with zero internal newlines, and the committed file is exactly 2232554 + 2 + 5696 = 2238252 bytes, its first 2232554 bytes an exact byte-for-byte PREFIX of the base — the reviewer re-read both files off disk and confirmed the prefix and the arithmetic independently rather than trusting the reported sum. NO NEW `- R-` OR `Done:` LINE WAS ADDED: `R-0784` is referenced by number inside RECORD17's own prose as new evidence rather than as a fresh registration, per §3 item 30 — the reviewer had already searched the open set before authoring the round and found `R-0784` open since F109 R19 describing the identical defect class. THE EVIDENCE JOB WAS RE-RUN BY THE REVIEWER, NOT READ: `run_integrity_checks()` answers `passed=True`, `fail_count=0`, five checks all PASS, reproducing the round's own G5 reading exactly. THE ZIP WAS VERIFIED AGAINST THE ARCHIVED ARTEFACT ITSELF: `sha256sum`-equivalent hashing of `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260903-181544-READY_FOR_REVIEW.zip` on disk reproduces `767304077110354d0005b2f6c70cd53502b831c4161be6a5f6a65a31c136457b` exactly, and `.review_zip_manifest.json` read directly out of that zip shows `base_commit=6f2230cea29af36a75fea253afc10f4dfe5a79f0`, `head_commit=953cade0f62b2687d7dafb5cf1e0b9631849b532` (C2's real SHA), `base_is_ancestor=true`, `commit_count=129`, `ready_gate_matrix.ok=true` and `3785` zip members — every one reproduced by the reviewer from the file on disk, not copied from the handback. THE TREE AND THE SWEEP HELD: `git diff --stat e9e319e2..2fe36572` over `packages/`, `apps/`, `tests/`, `docs/`, `.agent/decisions.md`, `.agent/prose_slips.md`, `.agent/candidates.md` and `scripts/self_use_queue.json` is EMPTY, reproduced directly; the branch is pushed at `2fe36572` with no pull request open. THE OUTCOME IS THE CLOSURE PROTOCOL'S ALGORITHM STEPS 1-2 DISCHARGED HONESTLY: `PACKAGE_STATUS=READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE=true`, `REVIEW_SUBJECT_ALIGNMENT=PASS` — nothing green is claimed that was not run, and the two throwaway dry-run artefacts the reviewer built to verify this round's own script BEFORE authoring it (a `-dryrun`-suffixed evidence dir and zip, at the same base) were deleted before the block was emitted, so the bundle directory this round's own G4 names did not pre-exist. NO FINDING IS OWED BY THIS ROUND.
-<<<END RECORD18>>>
+<<<BEGIN RECORD19>>>
+Gate: F110 R18 — the round 18 entry. VERDICT PASS, over the range `2fe36572..acd89a6f`. THE ROUND BOOKED ROUND 17'S VERDICT AND GAVE THE FEATURE FILE ITS BUILT STATE SECTION, AND THE REVIEWER RE-DERIVED EVERY VALUE FROM DISK. TRANSPORT, digest-fallback per docs/agents/self_drive_protocol.md: `.agent/authored/f110-r18.md` and `.agent/last_block.md` are byte-identical, sha256 `52eb4f51244388d798b2f5fb4cee2c7afad3baf7610b9f402fa043b3d5c24eef` over 304 lines, reproduced by the reviewer directly against the committed blob. THE LEDGER APPEND HOLDS UNDER THE REVIEWER'S OWN ARITHMETIC: base at `2fe36572` measured 2238252 bytes ending without a trailing newline, RECORD18 measured 3221 bytes with zero internal newlines, and the committed file is exactly 2238252 + 2 + 3221 = 2241475 bytes, its first 2238252 bytes an exact PREFIX of the base, reproduced directly off disk. NO NEW `- R-` OR `Done:` LINE WAS ADDED this round either. THE FEATURE FILE HOLDS UNDER THE REVIEWER'S OWN CONTAINMENT AND BYTE CHECKS: both AS-BUILT correction pairs' FROM strings occurred exactly once in the base `docs/roadmap/features/T3_F110.md`, both TO strings were confirmed by the reviewer to literally CONTAIN their FROM as a prefix (a genuine APPEND at the paragraph level, correctly labelled), and the committed file ends with exactly one trailing newline at 10653 bytes, carrying exactly one `## Built State` heading, one `## Design` heading (unchanged) and two `AS BUILT` markers — all reproduced by the reviewer directly from the committed bytes, not from the handback's count. CLOSURE PRECONDITION 4 (the feature file's Built State section is current) IS THEREFORE SATISFIED. THE TREE AND THE SWEEP HELD: `git diff --stat 2fe36572..acd89a6f` over `packages/`, `apps/`, `tests/`, `.agent/decisions.md`, `.agent/prose_slips.md`, `.agent/candidates.md` and `scripts/self_use_queue.json` is EMPTY, reproduced directly; the branch is pushed at `acd89a6f` with no pull request open. ONE DEVIATION WAS DECLARED, CORRECTLY: the worker created seven transient scratch files under `.agent/` to perform byte-exact marker extraction from the committed authored block, deleted every one by exact path before staging C3, and the reviewer confirmed `git status --porcelain` was EMPTY immediately before C4 was staged and that none of the seven appears in any commit's changed-files list — the deviation cost nothing on disk and was declared rather than hidden. THE REVIEWER ALSO RE-CONFIRMED THIS ROUND, INDEPENDENTLY OF EITHER HANDBACK, THAT F110's OWN THREE SELF-RAISED FINDINGS ARE ALL RESOLVED — `Done: R-0787` (F110 R12, `cc32f16b`), `Done: R-0788` (F110 R12, `fdfc7e2c`), `Done: R-0789` (F110 R14, `d8a66340`) — and that the two open items this branch's own plan.md names as risks, `R-0767` and `R-0784`, both predate F110 (inherited from earlier features, documented, not F110 defects), which is the precondition-1 reading closure round 19 relies on. NO FINDING IS OWED BY THIS ROUND.
+<<<END RECORD19>>>
 
-<<<BEGIN PAIR1_FROM>>>
-- `routing.py`: resolve(task_class, context) → {model, tier, reason};
-  class table from config seeded by the policy document; per-project
-  overrides allowed but hard rules always win.
-<<<END PAIR1_FROM>>>
+<<<BEGIN STATUS_PAIR_FROM>>>
+- [~] F110 — Model routing by task class
+<<<END STATUS_PAIR_FROM>>>
 
-<<<BEGIN PAIR1_TO>>>
-- `routing.py`: resolve(task_class, context) → {model, tier, reason};
-  class table from config seeded by the policy document; per-project
-  overrides allowed but hard rules always win.
-  AS BUILT: the module is `packages/orchestration/model_routing.py`, not
-  `routing.py`. `resolve_task_class_tier(task_class) -> (tier, reason)`
-  returns a tuple, not a `{model, tier, reason}` dict — MODEL selection is
-  `role_config.resolve_role_config`'s job, which now also carries
-  `RoleConfig.routed_call` (the four `ROUTED_CALL_EVIDENCE_FIELDS`) so a
-  caller reads model and routing evidence from the SAME resolved config
-  rather than two return values. The class table `TASK_CLASS_TIERS` is
-  SEEDED FROM the policy document (parsed and synced by a test), not read
-  FROM CONFIG — config only carries the PER-PROJECT OVERRIDE on top of it,
-  exactly as this bullet's own next clause already says.
-<<<END PAIR1_TO>>>
+<<<BEGIN STATUS_PAIR_TO>>>
+- [x] F110 — Model routing by task class (T001–T003 complete; accepted 2026-09-03 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f110-closure · package remedy-review-20260903-181544-READY_FOR_REVIEW.zip · SHA-256 767304077110354d0005b2f6c70cd53502b831c4161be6a5f6a65a31c136457b · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 953cade0f62b2687d7dafb5cf1e0b9631849b532)
+<<<END STATUS_PAIR_TO>>>
 
-<<<BEGIN PAIR2_FROM>>>
-- Hard rules enforced in code (each a named check with a test):
-  reviewer never routed weaker than its paired worker; orchestrator and
-  mission-compile calls always top tier; safety-relevant classes
-  (fence/DoD evaluation prompts, if any become LLM calls) never below
-  mid. Violating overrides fail config validation with the rule named.
-<<<END PAIR2_FROM>>>
+<<<BEGIN README_PAIR_FROM>>>
+mechanism is exercised by the suite and inert on real runs today).
 
-<<<BEGIN PAIR2_TO>>>
-- Hard rules enforced in code (each a named check with a test):
-  reviewer never routed weaker than its paired worker; orchestrator and
-  mission-compile calls always top tier; safety-relevant classes
-  (fence/DoD evaluation prompts, if any become LLM calls) never below
-  mid. Violating overrides fail config validation with the rule named.
-  AS BUILT (DECISION F110 D5): a violating override WARNS rather than
-  failing validation, naming every violated rule, and routes against the
-  SHIPPED table instead of the requested one — raising would turn one
-  `remedy.toml` typo into an outage across every one of the seven call
-  sites `resolve_role_config` now serves. `SAFETY_RELEVANT_CLASSES` ships
-  EMPTY in production: the fence and DoD evaluation are deterministic
-  Python today, not LLM calls, so that rule is wired and tested but inert
-  until one becomes one.
-<<<END PAIR2_TO>>>
+Accepted in Tier 5 so far:
+<<<END README_PAIR_FROM>>>
 
-<<<BEGIN BUILTSTATE>>>
-## Built State — what F110 delivered
+<<<BEGIN README_PAIR_TO>>>
+mechanism is exercised by the suite and inert on real runs today).
 
-T001-T003 built model routing by task class end to end: every role Remedy
-resolves a runtime configuration for now carries a DECLARED task class, one
-resolver seam routes it to a model tier with a reason, and moving a class to
-a cheaper tier requires documented benchmark evidence recorded alongside the
-override.
+F110 model routing by task class (every role Remedy resolves a runtime
+configuration for now carries a declared task class; a single resolver
+seam routes builder/reviewer/orchestrator/teacher/summary/test-worker/
+design-worker calls to a cost tier — cheap, mid or top — with the
+reason recorded alongside the routed call; the three policy hard rules
+(reviewer never weaker than its paired worker, orchestrator/mission
+calls always top tier, safety-relevant classes never below mid) are
+enforced in code and refuse a violating override by name rather than
+silently applying it; moving a class to a cheaper tier requires a
+documented benchmark run, never a bare config edit).
 
-- `packages/orchestration/model_routing.py` — `TASK_CLASS_TIERS` (10 classes:
-  `format`/`extract`/`summarize`/`boilerplate` -> `cheap`; `standard_build`/
-  `standard_review` -> `mid`; `architecture`/`mission`/`vision`/
-  `prompt_authoring_for_other_agents` -> `top`), seeded from and synced against
-  `docs/agents/model_routing_policy.md`'s "Seed mapping" section by a parser
-  test in `tests/orchestration/test_model_routing.py`, so the document and
-  the table cannot drift apart silently. `resolve_task_class_tier` returns
-  `(tier, reason)`, defaulting an undeclared class to `TOP_TIER` with reason
-  `unknown_class_conservative` rather than guessing. The three hard rules of
-  the policy document are named checks — `RULE_REVIEWER_WEAKER_THAN_WORKER`,
-  `RULE_ORCHESTRATION_BELOW_TOP_TIER`, `RULE_SAFETY_CLASS_BELOW_MID_TIER` —
-  each returning its own token rather than a prose sentence, collected in
-  order by `validate_routing_choice`. `ORCHESTRATION_TASK_CLASSES` is
-  `{orchestrator, mission_compile, mission}` — wider than the feature file's
-  two literal call kinds by DECISION F110 D2, so the seed table's own
-  `mission -> top` entry is a CHECKED rule an override cannot silently
-  demote, not just a table default. `SAFETY_RELEVANT_CLASSES` ships EMPTY by
-  design: no fence/DoD evaluation prompt is an LLM call today, so the rule
-  has nothing to bind yet and is wired to fire the moment one becomes one.
-- Promotion discipline: `PROMOTION_MINIMUM_RUNS_PER_FIXTURE=3`,
-  `PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE=90`,
-  `PROMOTION_MINIMUM_OVERALL_PASS_RATE=75` and the seven-field
-  `PROMOTION_EVIDENCE_DOCUMENT_FIELDS` are all seeded from and synced against
-  the policy document's "Promotion rule" section the same way the tier table
-  is. `promotion_evidence_from_mapping` is a pure, fail-closed parser (a
-  malformed entry is skipped, never raised past); its one production caller
-  is `role_config.resolve_promotion_evidence`, reading config key
-  `model_routing.promotion_evidence`. `check_promotion_backed_by_evidence`
-  refuses a move to a cheaper tier below the documented bars, naming which
-  bar failed; WITH evidence and a real benchmark run, `architecture` —
-  seeded at `top` — routes `cheap` with `promoted_by` naming the run
-  (measured at `f0bbdc5c`, F110 R13).
-- `packages/orchestration/role_config.py` — `RoleConfig.routed_call` (a
-  `compare=False` field so the frozen dataclass stays hashable) carries the
-  four `ROUTED_CALL_EVIDENCE_FIELDS` (`task_class`, `tier`, `reason`,
-  `promoted_by`) for every resolved role, populated by
-  `resolve_routed_call_evidence` and wired into `resolve_role_config` itself
-  — the ONE shared resolver every inventoried call site already used before
-  this feature. Seven call expressions across six files now route through
-  it: `teacher_model.py` (x2), `artifact_summary.py`, `self_use_runner.py`,
-  `pingpong_job.py`'s `default_role_provider_name` (F110 R2, commit
-  `5bbb0cde`, replacing a literal `"fake"` fallback), and
-  `apps/cli/commands/do_cmd.py`. `resolve_role_task_class(role,
-  originating_task_class=None)` maps a role to its declared class via
-  `ROLE_TASK_CLASSES` (builder -> `standard_build`, reviewer ->
-  `standard_review`, design_worker -> `architecture`, orchestrator ->
-  `mission` — DECISION F110 D3); a role in `TASK_CLASS_INHERITING_ROLES`
-  (`repair`) inherits the originating call's class instead, raising
-  `OriginatingTaskClassRequired` if none is supplied, rather than guessing
-  one.
-- `packages/orchestration/config.py` — TABLE-VALUED KEYS: a
-  `ConfigKeySpec.entry_type` declares that a key's TOML entries are
-  themselves tables, and `_TABLE_VALUED_KEYS` (derived from the registry,
-  not hand-listed) tells `_flatten_toml` to stop recursing at such a key
-  rather than flattening a routing table into scalar-shaped leaves.
-  `model_routing.task_class_tiers` (`entry_type=str`, a class->tier override
-  map) and `model_routing.promotion_evidence` (`entry_type=dict`, a table of
-  per-class evidence tables) are both registered this way.
-- A refused override WARNS rather than raises (DECISION F110 D5): a
-  malformed or rule-violating `remedy.toml` entry names every violated rule
-  and routes against the SHIPPED table instead, because raising would turn
-  one operator typo into an outage across all seven call sites.
-- Measured on the fixture chain at commit `f0bbdc5c` (F110 R13): with both
-  tables configured, `architecture` routes `cheap` with `promoted_by` naming
-  the run and no warning; with tiers alone the same promotion is REFUSED
-  with one `promotion_without_evidence` warning and the class stays `top`;
-  with evidence alone and no promotion asked, the table is unchanged and
-  `promoted_by` is correctly `None`; with nothing configured every answer
-  matches the seed table; and a bare string where the evidence table
-  belongs is read as "expected table, got str" with no crash.
-- SCOPE LIMIT, stated because it is the first thing a reader should know:
-  `SAFETY_RELEVANT_CLASSES` is empty in production — the fence and DoD
-  evaluation are deterministic Python today, not LLM calls — so hard rule 2
-  is wired and tested but inert on every real run until one becomes an LLM
-  call.
-<<<END BUILTSTATE>>>
+Accepted in Tier 5 so far:
+<<<END README_PAIR_TO>>>
+
+<<<BEGIN QUEUE_PAIR_FROM>>>
+"consumed_by": "",
+<<<END QUEUE_PAIR_FROM>>>
+
+<<<BEGIN QUEUE_PAIR_TO>>>
+"consumed_by": "F110",
+<<<END QUEUE_PAIR_TO>>>
+
+<<<BEGIN PR_CONTENT>>>
+TITLE: F110 — Model routing by task class
+
+BODY:
+## Summary
+- Every role Remedy resolves a runtime configuration for now carries a declared task class (`packages/orchestration/model_routing.py`'s `TASK_CLASS_TIERS`, seeded from and synced against `docs/agents/model_routing_policy.md`).
+- One shared resolver seam (`role_config.resolve_role_config`, via `RoleConfig.routed_call`) routes every one of the seven inventoried call sites to a cost tier (cheap/mid/top) with the reason recorded alongside the routed call.
+- The three policy hard rules (reviewer never weaker than paired worker; orchestrator/mission calls always top tier; safety-relevant classes never below mid) are enforced in code as named checks and refuse a violating `remedy.toml` override by naming every rule it breaks (DECISION F110 D5), rather than raising and turning one typo into an outage.
+- Moving a task class to a cheaper tier requires a documented benchmark run (`promotion_evidence_from_mapping`, `role_config.resolve_promotion_evidence`) — never a bare config edit.
+
+## Test plan
+- [x] `tests/orchestration/test_model_routing.py`, `test_role_config.py`, `test_orchestrator_model_routing.py`, `test_config.py`, `test_job_role_routing.py`, `test_job_task_runner.py` — 838 passed, 3 skipped (reviewer-verified independently, not just worker-reported)
+- [x] Tier-3 integration gate (round 15) — PASS, both base-only failures attributed to the pre-existing XDIST-FLAKE class
+- [x] `remedy integrity check` — PASS, 0 failures (reviewer re-ran independently)
+- [x] Review zip — `PACKAGE_STATUS=READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE=true`, `REVIEW_SUBJECT_ALIGNMENT=PASS` (package `remedy-review-20260903-181544-READY_FOR_REVIEW.zip`, SHA-256 `767304077110354d0005b2f6c70cd53502b831c4161be6a5f6a65a31c136457b`)
+- [x] F257 self-use precondition — `SU-006` run for real against a local `ollama` provider through the shipped generator/runner, reached a normal approval-gate `blocked` outcome (not promoted); its defects added as evidence to the already-open `R-0784` rather than a new id
+
+Built via docs/agents/self_drive_protocol.md (one-session planner/reviewer, no paste relay). NOT merged by this session — awaiting the Open PR Gate.
+<<<END PR_CONTENT>>>
 ──────────────────────────────────────────────────────────────
