@@ -10040,3 +10040,52 @@ membership stays pinned — a pin on a wider set, not a weaker pin.
 REVERSE by deleting this DECISION, removing `mission` from
 `ORCHESTRATION_TASK_CLASSES`, and restoring that membership test to the
 two-class form git history holds at `78071a87`.
+
+## DECISION F110 D3 (2026-09-03, F110 R7) — the orchestrator ROLE declares the `mission` task class, and the policy document is not edited to seed a new one
+
+CONTEXT. Round 8 maps every role Remedy resolves a runtime configuration for to
+a task class. All but one map onto a class the policy document's seed mapping
+already names; the `orchestrator` role does not, and the choice has to be made
+before the map can be written.
+
+MEASURED by the reviewer at `4cfcb464`, from the shipped constants rather than
+the prose. `TASK_CLASS_TIERS` does not name `orchestrator`.
+`ORCHESTRATION_TASK_CLASSES` names `orchestrator`, `mission_compile` and
+`mission`, and round 6's own `OVERRIDABLE_ORCHESTRATION_CLASSES` computes the
+intersection of those two sets and finds `mission` alone — so `orchestrator` and
+`mission_compile` are CALL KINDS the hard rule guards, not classes the seed
+table routes.
+
+CHOSEN. The `orchestrator` role declares the `mission` class. That class is
+seeded at the top tier, it is in `ORCHESTRATION_TASK_CLASSES` after DECISION
+F110 D2, and it is therefore already guarded by hard rule 2 against any override
+that would demote it — so the orchestrator's call is pinned to the top tier by a
+CHECKED rule and not merely by a table entry. The reading is honest as well as
+convenient: the orchestrator's call is the mission-level decision every later
+call obeys, which is what the policy document's top tier exists for.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Add `orchestrator` to the seed mapping in
+`docs/agents/model_routing_policy.md` and to `TASK_CLASS_TIERS` together, keeping
+round 4's sync test green. Rejected on two grounds. It edits the human-readable
+POLICY to make a code mapping convenient, which inverts the direction this
+feature exists to enforce — the document seeds the code, never the reverse. And
+it would put a CALL KIND into a vocabulary of WORK KINDS, so the seed mapping
+would then answer two different questions with one list.
+
+ALSO REJECTED. Let the role fall through to the conservative unknown-class path,
+which routes to the top tier anyway. Rejected because evidence would then record
+`unknown_class_conservative` for a role Remedy knows perfectly well, and a reason
+saying "nobody declared this" about a declared role makes the evidence base less
+trustworthy exactly where it is most read.
+
+CONSEQUENCE. `mission_compile` and `orchestrator` stay in
+`ORCHESTRATION_TASK_CLASSES` while being unreachable through an override map,
+because neither is a seed-table key — round 6's tests already measure that. They
+are kept because the hard rule judges a candidate CHOICE and a later round may
+route one directly. The module carries a deliberate-absence note saying
+`mission_compile` has no role and no call site.
+
+REVERSE by deleting this DECISION and repointing the orchestrator role at
+whatever class a later relay rules, or by seeding `orchestrator` into the policy
+document and the table together, which is the rejected alternative above and
+needs its own decision.
