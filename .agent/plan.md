@@ -14,32 +14,30 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 16, session 5 — CLOSURE ROUND 1: THE SELF-USE PRECONDITION AND THE
-CHECKLIST-CONSOLIDATION RULING. Round 15's PASS verdict (the integration
-gate: branch clean, both base-only failures attributed to the XDIST-FLAKE
-class, no blocker) is booked. Closure precondition 6's self-use item is
-generated (the queue is exhausted at 0 pending), planned and RUN for real
-through the shipped generator and runner, mirroring F109 R19's own
-precedent exactly — never promoted, never faked. DECISION F110 D6 rules on
-the section-3 consolidation pass DECISION F110 D1 committed to: it ran,
-found two real merge candidates, and performed neither, because
-renumbering would falsify roughly 2,013 existing by-number citations the
-append-only ledger forbids correcting; the checklist stays at 37 items,
-amend0827 rule 4's "same length" branch.
+Round 17 — CLOSURE ROUND 2: THE EVIDENCE JOB AND THE REVIEW ZIP. Round 16
+is CLOSED: the self-use precondition ran to a real terminal state
+(`SU-006`, job `6f74dd7367704fd5`, `status='blocked'` at the normal
+approval gate after a cross-session resume), its two defect strings are
+recorded as new evidence on the already-OPEN `R-0784` rather than as a
+fresh id, and DECISION F110 D6 already ruled the checklist-consolidation
+obligation discharged. This round builds the closure evidence bundle
+(`f110-closure`, covering `T001`-`T003`) and a FRESH review zip over the
+accepted HEAD this round creates. No STATUS line, no README edit, no
+Built State section and no pull request happen here.
 
 ## Next Steps
 
-- Round 17: register the self-use run's defects (if any) as findings, run
-  the evidence job and build a FRESH review zip, and give
-  `docs/roadmap/features/T3_F110.md` its Built State section plus the
-  Design/Task-slicing bullet updates.
-- Round 18: the closure commit — the authored STATUS line, the README
-  capability sync in the same commit, the self-use item's `consumed_by`
-  set to `F110`, and the PR.
+- Round 18: give `docs/roadmap/features/T3_F110.md` its Built State
+  section and its Design/Task-slicing bullet updates — split out of what
+  round 16's own plan called "round 17" because bundling it with the
+  evidence job and zip would put this round over the 490-line block cap.
+- Round 19: the closure commit — the authored STATUS `[x]` line and the
+  README capability sync in the SAME commit, `SU-006`'s `consumed_by`
+  set to `F110`, and the pull request.
 
 ## Risks
 
-- The self-use run may land `blocked` at its own approval gate (F109's
-  SU-005 did) — a normal outcome per `self_use_runner`'s own docstring,
-  not a failure of this round; its defects route to round 17's findings.
+- The zip is a closure BLOCKER, not a formality: a `PACKAGE_STATUS` other
+  than `READY_FOR_REVIEW` stops closure rather than being worked around.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
+- `R-0784` stays OPEN; its fix belongs to F258's generator, not to F110.
