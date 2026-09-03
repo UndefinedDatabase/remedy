@@ -1,0 +1,62 @@
+F112 R19 — integration gate, step 4 attribution
+================================================
+
+THE BRANCH-ONLY SET IS EMPTY.
+
+Produced by:
+
+    grep '^FAILED' <branch log> | sort > branch_failed.txt   -> 0 lines
+    grep '^FAILED' <base log>   | sort > base_failed.txt     -> 1 line
+    branch_only     = sorted(set(branch_failed) - set(base_failed))     -> 0 lines
+    fixed_by_branch = sorted(set(base_failed) - set(branch_failed))     -> 1 line
+(comm is unavailable through this session's guard for piped forms, per R-0590;
+computed as a Python set difference instead.)
+
+branch_only.txt is empty, so there is no branch-only id to attribute and no
+BLOCKER is possible from that set: nothing failed on the branch that did not
+also fail at the base. The branch run itself was 0 failed / 19546 passed / 23
+skipped, exit 0. No branch-only id required the NEW-TESTS split (absent-at-base
+classification) because there is no branch-only id to split.
+
+fixed_by_branch.txt — 1 id failed at the base and did NOT fail on the branch.
+Attributed below by DIRECT evidence, per integration_gate.md step 4's method
+extended to this base-only set as R-0590 requires (both sets attributed
+unconditionally, not only when parity is void):
+
+1. tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+   Base failure: "Orphan process found after timeout cleanup" — a
+   `pgrep -f apps.cli.grouped.*--help` check found a matching PID (954599)
+   after this test's own subprocess should have been cleaned up.
+   SERIAL RE-RUN at the base worktree, xdist disabled (`-p no:xdist`), 5
+   independent invocations of the exact node id: 5 passed / 5 (see
+   serial_rerun_base_report.txt in the round's scratch; reproduced here as
+   5/5 PASSED, no failure in any run).
+   CLASSIFICATION: XDIST-FLAKE class (F135/F052) — the pgrep pattern
+   `apps.cli.grouped.*--help` is not scoped to this test's own PID or process
+   group, so under parallel xdist workers it can match a short-lived
+   `--help` subprocess spawned by a DIFFERENT worker's own concurrent
+   instance of this same test (test_review_bundle_runtime.py exercises the
+   grouped CLI's `--help` path repeatedly). Serial, with only one such
+   subprocess in flight at a time, there is nothing else for the pattern to
+   match against.
+   PRIOR OCCURRENCE: this exact node id was already seen and classified
+   identically at `.agent/gate_f110_r15/attribution.txt` item 2 (base-only,
+   XDIST-FLAKE, serial-pass) — an independent recurrence of the same known
+   class on unrelated feature branches, consistent with a load-coupled
+   artifact of the gate's own parallel invocation rather than a defect
+   carried by either commit.
+   COUPLING: F112 changes packages/orchestration/config.py,
+   context_compiler.py, decision_queue.py, escalation.py, pingpong_job.py,
+   pingpong_loop.py, prompt_budget.py and task_granularity.py (plus their
+   test files) — `git diff --name-only 5c28c674..HEAD -- packages/` lists
+   exactly these eight files. None is tests/cli/test_review_bundle_runtime.py
+   or any file that test imports (subprocess cleanup / grouped-CLI --help
+   path only). NOT fixed by branch code — the branch simply did not hit the
+   same contention window in this invocation.
+
+NEITHER THE BRANCH-ONLY SET NOR THE ATTRIBUTED BASE-ONLY ID TOUCHES F112 CODE.
+
+    branch-only failures : 0
+    base-only failures   : 1 (attributed to the XDIST-FLAKE class, not
+                              coupled to F112 code)
+    BLOCKER              : none

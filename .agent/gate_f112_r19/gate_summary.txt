@@ -1,0 +1,98 @@
+F112 — INTEGRATION GATE, round 19, session 6
+=============================================
+
+Procedure: docs/agents/integration_gate.md, steps 1-5.
+Branch : feature/f112-prompt-budget-per-task-class at d217bab0 (C2's tree)
+Base   : 5c28c6741db2d9073fc75cd159d91037e0757fb0, checked out on the
+         throwaway branch tmp/f112-base-gate at
+         .remedy-wt/f112-r19-base (a DETACHED base worktree fails the
+         self-dogfood branch guard by design — DECISION D3, F053 R2)
+
+STEP 1 — BRANCH RUN
+    command : pytest.main(["-n", "auto", "-q"]) from /home/decodeux/Repos/remedy
+              (shell ENV assignment is denied in this sandbox, so pytest is
+              invoked as a library; NO env var is set for the branch run,
+              because integration_gate.md step 1 asks for a plain run)
+    result  : 19546 passed, 23 skipped, 0 failed
+    exit    : 0
+    wall    : 139.61s (reported by pytest) / 139.875s measured around the call
+    collection cross-check: `pytest --collect-only -q` on the branch answers
+    19569 tests, matching 19546 + 23 exactly and matching this round's own
+    pinned COLLECTION parameter.
+
+STEP 2 — BASE RUN
+    parity restored BEFORE the run:
+      - apps/ui/node_modules copied with shutil.copytree(symlinks=True)
+        44839 entries, 27 of them symlinks PRESERVED (23 of the 27 are the
+        apps/ui/node_modules/.bin shims named in this round's own UI SHIMS
+        parameter; `cp` is denied here and copytree defaults to
+        symlinks=False, which would dereference them — R-0591)
+      - apps/ui/dist copied the same way, 5 entries (4 files, 1 directory)
+      - dist mtimes re-stamped to now (1788479066.574): `git worktree add`
+        stamps the checkout with the CURRENT time while copytree PRESERVES
+        source mtimes, so _frontend_is_stale() would otherwise read True
+        inside the base worktree — R-0736. Re-measured from inside the base
+        worktree immediately after the re-stamp: _frontend_is_stale() = False.
+    command : REMEDY_UI_NO_AUTO_BUILD set in-process, then
+              pytest.main(["-n", "auto", "-q", "--rootdir", BASE_WT]) with
+              cwd pinned to .remedy-wt/f112-r19-base
+    result  : 1 failed, 19486 passed, 23 skipped
+    exit    : 1
+    wall    : 168.29s (reported) / 168.561s measured around the call
+    collection cross-check: `pytest --collect-only -q` at the base worktree
+    answers 19510 tests, matching 19486 + 23 + 1 exactly.
+    parity verified as an EVENT, not an outcome — see parity_mtime.txt:
+      no mtime under apps/ui/dist falls inside the run window; PARITY HOLDS
+      (content digest before/after also identical, accompanying only, per
+      R-0444)
+
+STEP 3 — COMPARISON
+    branch_failed.txt      0 lines
+    base_failed.txt         1 line
+    branch_only.txt         0 lines   (set(branch_failed) - set(base_failed))
+    fixed_by_branch.txt     1 line   (set(base_failed) - set(branch_failed))
+    (comm is unavailable through this session's guard for piped forms —
+    R-0590 — computed as a Python set difference instead)
+
+STEP 4 — ATTRIBUTION
+    the branch-only set is EMPTY: no attribution target, no BLOCKER possible
+    from that side.
+    fixed_by_branch.txt carries ONE id —
+      tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+    — attributed by direct evidence in attribution.txt: serial re-run at the
+    base worktree (xdist disabled) passed 5/5; the failure mode (`pgrep -f
+    apps.cli.grouped.*--help` matching a concurrent worker's own subprocess)
+    is the XDIST-FLAKE class (F135/F052), an EXACT recurrence of the same
+    node id already classified identically at
+    `.agent/gate_f110_r15/attribution.txt` item 2; and F112's own changed
+    files (`git diff --name-only 5c28c674..HEAD -- packages/`: config.py,
+    context_compiler.py, decision_queue.py, escalation.py, pingpong_job.py,
+    pingpong_loop.py, prompt_budget.py, task_granularity.py) do not include
+    tests/cli/test_review_bundle_runtime.py or anything it imports. NOT
+    fixed by branch code, NOT coupled to F112 code, NOT a BLOCKER — recorded
+    per R-0590's unconditional-attribution requirement.
+
+STEP 5 — BUDGET
+    Both runs are under the ~5 min note threshold (139.61s and 168.29s), so
+    no perf pass is indicated. The verdict itself belongs to the reviewer.
+
+TEST-COUNT DELTA
+    19569 (branch) - 19510 (base) = 59 cases added by this branch. The wholly
+    new file tests/orchestration/test_class_prompt_budget.py alone collects
+    24 of them (git cat-file -e 5c28c674:tests/orchestration/test_class_prompt_budget.py
+    returns non-zero — absent at the base, confirming it as a NEW TEST file
+    rather than a regression target); the remaining 35 are additional cases
+    folded into existing test files this branch modified across its 18 prior
+    rounds. No branch-only id required this NEW-TESTS classification, because
+    branch_only.txt is empty.
+
+CLEANUP
+    the base worktree was removed by its exact path, `git worktree prune` run,
+    and the tmp/f112-base-gate branch deleted; see the round's handback.
+
+GATE OUTCOME (measured, not a verdict)
+    branch-only failures : 0
+    base-only failures   : 1, attributed to the XDIST-FLAKE class, not
+                            coupled to F112 code
+    BLOCKER              : none found by this worker's own measurement
+    The VERDICT on this gate belongs to the reviewer, not to this file.
