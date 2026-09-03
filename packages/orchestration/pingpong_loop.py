@@ -918,8 +918,13 @@ def _dedupe_resumed_segments(
     ``60343048``. ``compose_builder_prompt`` and ``compose_reviewer_prompt``
     each call this function behind a ``dedupe_sent_hashes`` parameter that
     BYPASSES DEDUPE BY DEFAULT, so the transform runs only for a caller that
-    supplies a real set. What remains absent is the config plumbing that
-    supplies ``enabled``, which is T002c.
+    supplies a real set. THE CONFIG PLUMBING NOW EXISTS: ``run_pingpong``
+    carries ``semantic_dedupe_enabled`` and forwards it to both primary
+    compositions as ``dedupe_enabled`` (F109 T002c, landed at
+    ``b245e1c9``), so ``enabled`` is supplied on every production
+    composition. The remaining bypass is ``dedupe_sent_hashes`` being
+    ``None`` off a call that is not resuming, which is the scope rule
+    rather than a gap.
     """
     if not enabled:
         return tuple(segments), ()
@@ -1003,8 +1008,10 @@ def compose_builder_prompt(
     composed bytes are exactly what a caller got before F109 existed, which is
     what makes the byte-equality golden PROVABLE rather than merely likely.
     ``dedupe_enabled`` is the kill switch, forwarded straight to
-    :func:`_dedupe_resumed_segments`; the config plumbing that supplies it is
-    T002c.
+    :func:`_dedupe_resumed_segments`. ``run_pingpong`` supplies it from its
+    own ``semantic_dedupe_enabled`` parameter (F109 T002c, landed at
+    ``b245e1c9``), which reaches this composition and the other role's and
+    nothing else.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
@@ -1538,8 +1545,10 @@ def compose_reviewer_prompt(
     composed bytes are exactly what a caller got before F109 existed, which is
     what makes the byte-equality golden PROVABLE rather than merely likely.
     ``dedupe_enabled`` is the kill switch, forwarded straight to
-    :func:`_dedupe_resumed_segments`; the config plumbing that supplies it is
-    T002c.
+    :func:`_dedupe_resumed_segments`. ``run_pingpong`` supplies it from its
+    own ``semantic_dedupe_enabled`` parameter (F109 T002c, landed at
+    ``b245e1c9``), which reaches this composition and the other role's and
+    nothing else.
     """
     spec_summary = _render_spec_compliance_summary(evidence_dir, task_id)
     if scope_packet is None:
