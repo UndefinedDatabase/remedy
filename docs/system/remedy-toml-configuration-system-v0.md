@@ -57,6 +57,7 @@ env var  >  project config  >  user config  >  built-in default
 | `cycles.max_cycles` | int | `REMEDY_CYCLES_MAX_CYCLES` | `1` | no |
 | `cycles.batch_size` | int | `REMEDY_CYCLES_BATCH_SIZE` | `1` | no |
 | `cycles.verify_command` | string | `REMEDY_CYCLES_VERIFY_COMMAND` | (none) | no |
+| `model_routing.task_class_tiers` | table | (TOML only) | (none) | no |
 
 The table above is not exhaustive — later features added their own keys
 (`scope.*`, `budget.*`, `postmortem.*`). The key registry
@@ -79,6 +80,32 @@ from 1 to 8 (ADR-0001, applied 2026-08-07), so the config value and the
 command reports a trimmed number instead of silently honoring it. `cycles.verify_command` is
 recorded on every cycle evidence record; a cycle that ran no verification
 records `not_run` and never claims a pass.
+
+### Table-valued keys: `model_routing.task_class_tiers`
+
+Most keys carry a scalar. `model_routing.task_class_tiers` (F110) carries a
+whole TOML sub-table, resolved as **one value** through the same precedence
+chain. It maps a task class to the model tier this project wants that class
+routed to, laid over the shipped seed mapping:
+
+```toml
+[remedy.model_routing.task_class_tiers]
+summarize = "mid"
+extract = "cheap"
+```
+
+**TOML only.** An environment variable cannot carry a table, so this key has no
+usable env override; a string arriving on that path is reported as a shape
+fault by `remedy config validate` rather than read as a table.
+
+**The hard rules win.** The rules in `docs/agents/model_routing_policy.md` are
+enforced in code, so a map that breaks one — demoting an orchestration class
+below the top tier, routing a reviewer weaker than the worker it reviews, or
+promoting a class to a cheaper tier without benchmark evidence — is **refused
+whole**, with the violated rule named in a warning, and the shipped table is
+used instead. Nothing is silently dropped and nothing is partially applied. The
+seed mapping itself lives in `docs/agents/model_routing_policy.md` and in
+`packages/orchestration/model_routing.py`; it is deliberately not restated here.
 
 ### TOML file format
 
