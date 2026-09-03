@@ -1,653 +1,494 @@
-# Handoff — F110 Model routing by task class, round 10
+# Handoff — F110 Model routing by task class, round 11
 
 ## Session
 
-SESSION 3 of feature F110 · round 10 · rounds so far 10
+SESSION 3 of feature F110 · round 11 · rounds so far 11
 
 ## State
 
 - Branch: `feature/f110-model-routing-by-task-class`, pushed, NO pull request open.
-- Base of this round: `a1368633` (F110 R9 C5). HEAD before the handback: `e1da68d8`.
-- Fortschritt: THE CONFIGURATION ROUND LANDED, and one BLOCKED ITEM came with it.
-  `config.py` now understands TABLE-VALUED keys — a spec whose `value_type is dict`
-  resolves to the WHOLE TOML sub-table as one value through the precedence chain it
-  already had, and the stop-set `_flatten_toml` consults is DERIVED FROM THE
-  REGISTRY (`_TABLE_VALUED_KEYS`), never hand-listed. F110 registers
-  `model_routing.task_class_tiers` as the first such key, default `None` and not
-  `{}`. `role_config.resolve_effective_task_class_tiers` reads that table and lays
-  it over the seed mapping through round 6's `build_effective_task_class_tiers`, and
-  `resolve_routed_call_evidence` passes the result to `route_role_call` as
-  `effective_tiers`, so a per-project override reaches every routed call through one
-  argument and no second path. A REFUSED map warns once, names the config key and
-  every violated rule, and routes against the SHIPPED table — DECISION F110 D5,
-  recorded this round. Round 9's PASS verdict and its two prose slips are booked.
-  THE BLOCKED ITEM: one EXISTING test, untouched per constraint 8, is now RED —
-  see "Blocked item" below and deviation D1.
-- Open findings: 278 open over 347 registered and 69 resolved — UNCHANGED, carried
-  from the round-9 verdict booked this round; this round minted no id and resolved
-  none. `R-0767` stays OPEN on the same seam and was not absorbed.
-- `.agent/STOP` read TWICE, per constraint 10: before the first commit (`ls -la
-  .agent/STOP` reported "No such file or directory") and again before C7 (same).
-  ABSENT both times.
-
-## Blocked item — one existing test is RED and was NOT edited
-
-`tests/orchestration/test_orchestrator_model_routing.py::TestTheAnswerIsAlwaysUsable::test_the_fall_through_answer_is_a_non_empty_string`
-FAILS at `e1da68d8`. It is GREEN at the block's base `a1368633` — measured in a
-disposable worktree, 19 passed — so this round causes it.
-
-CAUSE, read from the traceback and not guessed. That module's `_FakeConfig` stub
-asserts the ONLY key `resolve_orchestrator_model` ever asks the config for:
-
-    def get(self, key):
-        assert key == "orchestrator.model", f"unexpected config key {key!r}"
-
-SPEC (e) and (g) make `resolve_routed_call_evidence` read
-`model_routing.task_class_tiers` from the config on every routed call, and
-`resolve_orchestrator_model`'s FALL-THROUGH branch calls the real
-`resolve_role_config("orchestrator")`. The stub therefore receives a second key and
-raises. The failing assertion is:
-
-    AssertionError: unexpected config key 'model_routing.task_class_tiers'
-
-WHY IT WAS NOT REPAIRED. Constraint 8 is explicit: "If you find an existing test
-that must change, STOP, do not change it, and report it as a blocked item in the
-handback." The test was not edited, renamed, deleted or skipped, and the production
-code was not bent to keep a stub's assumption true. THE STUB'S ASSUMPTION IS NOW
-FALSE ABOUT PRODUCTION, which is what the test is reporting; the shipped behaviour
-is the one SPEC (e), (g) and DECISION F110 D5 ordered, and the G5 probe shows it
-answering correctly.
-
-WHY THE BLOCK'S CONSTRAINT-8 MEASUREMENT DID NOT CATCH IT: constraint 8 records
-that the reviewer applied "this round's `config.py` change" and ran
-`test_config.py`, `test_role_config.py` and `test_model_routing.py`. The break is
-caused by the `role_config.py` change (C4), not the `config.py` one, and
-`test_orchestrator_model_routing.py` is in NEITHER the measured file set nor the
-measured suite set. The block's own G7 list DOES reach it, in the 87-test unmoved
-group, which is where it surfaced.
-
-THE ONE-LINE REPAIR A FUTURE ROUND SHOULD ORDER (not applied here): widen
-`_FakeConfig.get` to answer `None` for any key other than `orchestrator.model`
-instead of asserting — the fake would then model a config object rather than a
-single-key oracle. That is a change to an existing test and needs an explicit order.
+- Base of this round: `0d025469` (F110 R10 C7). HEAD before the handback: `4d61041e`.
+- Fortschritt: THE REPAIR ROUND LANDED AND THE TIP IS GREEN AGAIN. Round 10's
+  verdict was FAIL over two defects, both in TEST files; both are now registered
+  and both are fixed, and NO file under `packages/` or `apps/` was edited — the
+  change-set constraint is MEASURED at G8, not asserted. `R-0787` (High): the
+  `_FakeConfig` double in `tests/orchestration/test_orchestrator_model_routing.py`
+  asserted `key == "orchestrator.model"` and so refused
+  `model_routing.task_class_tiers`, the SECOND legitimate reader round 10's wiring
+  put on the fall-through path. The refusal is gone and the PROOF IT CARRIED IS
+  KEPT: the stub now records every key it is asked for and answers `None` for
+  everything but the operator override — `None` being the correct "no per-project
+  overrides" answer — `_patch_config` builds ONE instance and returns it, and a new
+  test, `TestTheOperatorOverrideKeyIsTheOneRead::test_the_operator_override_key_is_among_the_keys_read`,
+  asserts positively that the override key was read. That test is RED-PROOFED at
+  G6. `R-0788` (Low): `_TABLE_VALUED_KEYS` moved to the top of the config import
+  list in `tests/orchestration/test_config.py`, the single change `ruff check --fix`
+  produces; one insertion, one deletion, nothing else in the file touched.
+  Round 10's production code is UNCHANGED — the block's constraint 7 was honoured
+  and no reader was "fixed" on the production side.
+- Open findings: 278 open over 349 registered and 71 resolved. Derived mechanically
+  from `.agent/live_review.md`: 349 paragraphs match `^- R-\d+ — `, 71 lines match
+  `^Done: R-\d+ — `, 349 − 71 = 278; zero duplicate registered ids. The count is
+  UNCHANGED from round 10's 278 over 347/69 because this round registered two new
+  ids AND the reviewer's round-10 verdict booked two `Done:` lines with them.
+  BOTH `R-0787` AND `R-0788` STAY OPEN: C5 wrote `Landed:` lines only, and only
+  reviewer-authored `Done:` text at the next gate resolves them (block constraint 6,
+  measured at G4). `R-0767` stays OPEN on the same seam and was not absorbed.
+- `.agent/STOP` read TWICE, per constraint 8: before the first commit
+  (`test -e .agent/STOP` reported ABSENT) and again before C6
+  (`ls -la .agent/STOP` reported "No such file or directory"). ABSENT both times.
 
 ## Range
 
-Review of `a1368633..HEAD`.
+Review of `0d025469`..`HEAD`.
 
 ## Commits
 
-### 9eb79b10 F110 R10 C0a: save the round 10 step block
+### 46262bf2 F110 R11 C0a: save the round 11 step block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f110-r10.md` | +395 / -0 | the block saved by `shutil.copyfile`, byte-identical by construction |
+| `.agent/authored/f110-r11.md` | +262 / -0 | the block saved verbatim with `shutil.copyfile` from the reviewer's scratch original |
 
-### b9d32e3d F110 R10 C0b: mirror the block to last_block
+### 87adb34e F110 R11 C0b: mirror the block to last_block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +315 / -399 | the mirror, copied from the COMMITTED authored file by `shutil.copyfile` |
+| `.agent/last_block.md` | +195 / -328 | mirrored from the COMMITTED authored copy with `shutil.copyfile` |
 
-### 54574326 F110 R10 C1: the plan for the configuration round
+### bf683096 F110 R11 C1: the round 11 plan
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +15 / -17 | PLAN10 applied; first substantive commit, item 23 |
+| `.agent/plan.md` | +10 / -12 | PLAN11 applied byte for byte; first substantive commit (item 23) |
 
-### 36ac459f F110 R10 C2: book round 9 - the verdict, two prose slips and DECISION D5
+### 9c86b988 F110 R11 C2: book round 10 - the verdict, two findings and the authoring slip
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +3 / -1 | RECORD9 appended — the round 9 PASS verdict |
-| `.agent/prose_slips.md` | +5 / -1 | SLIPS10 appended — the two round 9 prose slips |
-| `.agent/decisions.md` | +55 / -0 | DECISION5 appended — DECISION F110 D5 |
+| `.agent/live_review.md` | +7 / -1 | RECORD10, FINDING787, FINDING788 as ONE append in ONE commit, in that order |
+| `.agent/prose_slips.md` | +3 / -1 | SLIPS11 appended |
 
-### 9f609b21 F110 R10 C3: config.py learns table-valued keys and registers F110's
+### cc32f16b F110 R11 C3: fix R-0787 - the config double records keys instead of refusing them
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/config.py` | +85 / -5 | SPEC (a)-(d): the flatten stop-set derived from the registry, the F110 key, the `dict` validate branch, the docstring paragraph |
+| `tests/orchestration/test_orchestrator_model_routing.py` | +49 / -6 | SPEC (a)–(e): named key constant, permissive recording stub, `_patch_config` returns one instance, the WHY docstring, the new positive test |
 
-### 76658375 F110 R10 C4: route against the configured effective task-class table
+### fdfc7e2c F110 R11 C4: fix R-0788 - sort the config test import block
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/role_config.py` | +85 / -3 | SPEC (e)-(h): `resolve_effective_task_class_tiers`, the `OverrideRefused` catch, the seam's `effective_tiers` argument |
+| `tests/orchestration/test_config.py` | +1 / -1 | SPEC (f): `_TABLE_VALUED_KEYS` moved above `ConfigKeySpec`; the ONE move, applied by hand, no formatter run |
 
-### e004848f F110 R10 C5: the config surface and the configured routing layer
+### 4d61041e F110 R11 C5: land R-0787 and R-0788
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_config.py` | +159 / -0 | SPEC (i)-(k): the table resolves as one dict, precedence on a table, shape-only validation |
-| `tests/orchestration/test_role_config.py` | +209 / -0 | SPEC (l)-(n): a legal override reaches a routed call, an illegal one is refused and routes seeded, config resolution survives |
+| `.agent/live_review.md` | +5 / -1 | LANDED787 and LANDED788 appended — second append to this file this round |
 
-### e1da68d8 F110 R10 C6: document the table-valued model routing key
+### C6 (this commit) F110 R11 C6: the round 11 handback
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/remedy-toml-configuration-system-v0.md` | +27 / -0 | SPEC (o): the new key's row, the TOML example, hard rules win, TOML-only |
+| `.agent/handoff.md` | rewrite | this handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
 
-### <this commit> F110 R10 C7: the round 10 handback
-| Path | +/- | Reason |
+## External actions
+
+| Command | Outcome |
+|---|---|
+| `git worktree add --detach /home/decodeux/Repos/remedy/remedy-review-r11-base 0d025469` | created, detached at `0d025469` |
+| `git worktree remove --force /home/decodeux/Repos/remedy/remedy-review-r11-base` + `git worktree prune` | removed by exact path, pruned |
+| `git worktree add --detach /home/decodeux/Repos/remedy/remedy-review-r11-red fdfc7e2c` | created, detached at `fdfc7e2c` (C4) |
+| `git worktree remove --force /home/decodeux/Repos/remedy/remedy-review-r11-red` + `git worktree prune` | removed by exact path, pruned; `test -e <path>` reports PATH GONE |
+| `git push -u origin feature/f110-model-routing-by-task-class` | after C6 — see Verification |
+
+No PR was created, none exists, nothing was merged, no `gh` command was run, the
+`remedy` CLI was not invoked, and no `remedy.toml` was created.
+
+## Verification
+
+### G1 TRANSPORT — PASS
+
+    $ sha256sum .agent/authored/f110-r11.md .agent/last_block.md
+    46c7e1c308bac396e4690b2c4418d7820f5333fd33400863b20b726273a943d2  .agent/authored/f110-r11.md
+    46c7e1c308bac396e4690b2c4418d7820f5333fd33400863b20b726273a943d2  .agent/last_block.md
+    exit 0
+    $ wc -l .agent/authored/f110-r11.md
+    262 .agent/authored/f110-r11.md
+
+ONE digest twice. The same digest also equals the delegating prompt's stated
+sha256 for the scratch original, and `shutil.copyfile` was the only transport at
+both hops. Per item 37 this proves the saved copy and its mirror agree; it claims
+nothing about emitted bytes, because none were emitted.
+
+### G2 THE PLAN — PASS
+
+    $ cmp <PLAN11 extracted by delimiter index from .agent/authored/f110-r11.md> .agent/plan.md
+    exit 0 — identical
+    $ wc -l .agent/plan.md
+    42 .agent/plan.md            (under 50)
+    $ grep -c '^## Goal' .agent/plan.md        -> 1
+    $ grep -c '^## Next Steps' .agent/plan.md  -> 1
+
+PLAN11 is 1875 bytes and already ends with one newline, so the target's
+"ends WITH a newline" convention needed no adjustment; `.agent/plan.md` is 1875
+bytes.
+
+### G3 THE C2 LEDGER APPEND — PASS
+
+Slice sizes, re-derived by delimiter index from the COMMITTED authored file:
+RECORD10 4382 bytes, FINDING787 2246, FINDING788 1161, each ZERO internal
+newlines. Joined by the file's own paragraph separator `\n\n` in that order:
+7793 bytes.
+
+    ARITHMETIC: 2196008 + 2 + 7793 = 2203803
+    ACTUAL SIZE AFTER C2:            2203803      MATCH
+    PRE-C2 CONTENT IS AN EXACT BYTE PREFIX: True
+    ends with a newline AFTER the append: False   (target convention held)
+    sha256 before C2: dd8ff0425280203b467fc35e44874dbc496b01bd84c31306e478d2e234297f7b
+    sha256 after  C2: d313ae162fc2118333932286bbd5b10533a5e16a15722f7844d5f7004c327dfd
+
+SECOND READER — N is COUNTED from the appended text (3), then the LAST 3
+blank-line units of the WHOLE file are compared against its 3 paragraphs IN ORDER:
+
+    unit[-3] vs paragraph 1: MATCH (len 4365 vs 4365)
+    unit[-2] vs paragraph 2: MATCH (len 2232 vs 2232)
+    unit[-1] vs paragraph 3: MATCH (len 1155 vs 1155)
+    SECOND READER on the real file: ACCEPT
+
+(The unit lengths are character counts; the byte counts above are the UTF-8
+encodings of the same three paragraphs.)
+
+NEGATIVE CONTROL — one byte flipped INSIDE THE FIRST appended paragraph, in
+memory only, the on-disk file never written:
+
+    byte at offset 2196020 was ' ' -> 'Z'
+    unit[-3] vs paragraph 1: MISMATCH
+    unit[-2] vs paragraph 2: MATCH
+    unit[-1] vs paragraph 3: MATCH
+    SECOND READER on the mutated bytes: REJECT
+    on-disk file untouched, bytes: 2203803
+
+RECORD10 HEADER COUNT. The header string was COPIED from the extracted slice, not
+retyped: `Gate: F110 R10 — the round 10 entry.` — the separator after "R10" is
+U+2014 EM DASH, verified `'—' in header -> True`.
+
+    before C2: grep -c -F -f <header file> .agent/live_review.md  ->  0
+    after  C2: grep -c -F -f <header file> .agent/live_review.md  ->  1
+
+### G4 THE C5 LEDGER APPEND AND prose_slips — PASS
+
+Second append to `.agent/live_review.md` in one round; both sizes stated so the
+second is shown building on the first:
+
+    SIZE AFTER C2 (the C5 base): 2203803, ends with newline: False
+    LANDED787 276 bytes, LANDED788 191 bytes, joined by '\n\n': 469 bytes
+    ARITHMETIC: 2203803 + 2 + 469 = 2204274
+    ACTUAL SIZE AFTER C5:           2204274      MATCH
+    THE C2 CONTENT IS AN EXACT BYTE PREFIX: True
+    still ends without a newline: True
+    sha256 after C5: 829d4793a8e6394dfca9dc1906e28cefd09bfb6cb861c53ab92c00832b6a1e4e
+
+`.agent/prose_slips.md`, byte-equality only per the gate budget:
+
+    58680 + 2 + 1262 = 59944   ACTUAL 59944   MATCH
+    base is an exact byte PREFIX: True   ends without a newline: True
+
+Constraint 6 MEASURED rather than asserted:
+
+    $ grep -c '^Landed: R-0787 — ' .agent/live_review.md  -> 1
+    $ grep -c '^Landed: R-0788 — ' .agent/live_review.md  -> 1
+    $ grep -c '^Done: R-0787' .agent/live_review.md       -> 0
+    $ grep -c '^Done: R-0788' .agent/live_review.md       -> 0
+
+### G5 THE FIX, MEASURED AND RUN — PASS
+
+    $ git show --numstat --format= cc32f16b
+    49      6       tests/orchestration/test_orchestrator_model_routing.py
+    $ git show --numstat --format= fdfc7e2c
+    1       1       tests/orchestration/test_config.py
+    $ python3 -c "import ast; ..."   over both real files
+    ast.parse OK: tests/orchestration/test_orchestrator_model_routing.py
+    ast.parse OK: tests/orchestration/test_config.py
+    exit 0
+
+EVERY DELETED LINE, VERBATIM, WITH ITS REGION.
+
+C3, `tests/orchestration/test_orchestrator_model_routing.py` — 6 deletions:
+
+  region `_FakeConfig` class docstring:
+
+        """The one method ``resolve_orchestrator_model`` calls on a config object."""
+
+  region `_FakeConfig.get` body (the refusal R-0787 names, and its return):
+
+            assert key == "orchestrator.model", f"unexpected config key {key!r}"
+            return self._value
+
+  region `_patch_config` signature and its docstring summary line:
+
+    def _patch_config(monkeypatch, value) -> None:
+        """Make ``orchestrator.model`` answer ``value``.
+
+  region `_patch_config` body, the per-call construction (c) forbids:
+
+            lambda: _FakeConfig(value),
+
+C4, `tests/orchestration/test_config.py` — 1 deletion, region: the
+`from packages.orchestration.config import (...)` list, the old position of the
+moved name:
+
+        _TABLE_VALUED_KEYS,
+
+THE PREVIOUSLY-RED SUITE, at C4 (primary checkout, `__pycache__` purged, `-B`):
+
+    $ python3 -B -m pytest tests/orchestration/test_orchestrator_model_routing.py -q
+    ....................                                                     [100%]
+    20 passed in 0.28s
+    EXIT CODE: 0
+
+THE SAME COMMAND AT THE BASE `0d025469`, in the disposable worktree
+`remedy-review-r11-base`, `role_config` module `__file__` printed from inside it as
+`/home/decodeux/Repos/remedy/remedy-review-r11-base/packages/orchestration/role_config.py`:
+
+    $ python3 -B -m pytest tests/orchestration/test_orchestrator_model_routing.py -q
+    E       AssertionError: unexpected config key 'model_routing.task_class_tiers'
+    tests/orchestration/test_orchestrator_model_routing.py:38: AssertionError
+    FAILED tests/orchestration/test_orchestrator_model_routing.py::TestTheAnswerIsAlwaysUsable::test_the_fall_through_answer_is_a_non_empty_string
+    1 failed, 18 passed in 0.23s
+    EXIT CODE: 1
+
+So the repair is shown against the failure it repairs: 1 failed / 18 passed / exit 1
+at the base, exactly the reviewer's reading, becomes 20 passed / exit 0 at C4.
+
+THE STUB'S RECORDING, SHOWN WORKING RATHER THAN ASSERTED — one fall-through call
+(operator override unset, `resolve_role_config` NOT patched, so the real
+fall-through path runs):
+
+    returned: 'muse-glimmer:latest'
+    keys the stub RECORDED: ['orchestrator.model', 'model_routing.task_class_tiers']
+    override key present: True
+
+Both keys, in that order — the exact mechanism `R-0787` describes, now recorded
+instead of refused.
+
+### G6 THE RED PROOF — PASS
+
+Disposable worktree `/home/decodeux/Repos/remedy/remedy-review-r11-red`, detached
+at C4 `fdfc7e2c`, NEVER cd-ed into (every command ran with `cwd=` set),
+`__pycache__` purged before every run, `python3 -B` throughout. Module identity
+printed from INSIDE the worktree:
+
+    role_config __file__:  /home/decodeux/Repos/remedy/remedy-review-r11-red/packages/orchestration/role_config.py
+    test module __file__:  /home/decodeux/Repos/remedy/remedy-review-r11-red/tests/orchestration/test_orchestrator_model_routing.py
+
+CONTROL:
+
+    $ python3 -B -m pytest tests/orchestration/test_orchestrator_model_routing.py -q
+    ....................                                                     [100%]
+    20 passed in 0.26s
+    EXIT CODE: 0
+
+ONE MUTATION — `resolve_orchestrator_model` stops reading the operator override
+key; the `get_config().get(...)` call's result is replaced with `None`
+(occurrence count asserted == 1 before the write):
+
+    -     configured = get_config().get("orchestrator.model")
+    +     configured = None  # MUTATION: stop reading the operator override key
+
+MUTANT RUN:
+
+    $ python3 -B -m pytest tests/orchestration/test_orchestrator_model_routing.py -q
+    3 failed, 17 passed in 0.28s
+    EXIT CODE: 1
+
+ONE RAW pytest line, verbatim, beside the parsed set — the node id is the SECOND
+whitespace-separated token, which is how it was parsed here:
+
+    RAW:    FAILED tests/orchestration/test_orchestrator_model_routing.py::TestConfiguredKeyWins::test_configured_value_is_returned
+    TOKEN2: tests/orchestration/test_orchestrator_model_routing.py::TestConfiguredKeyWins::test_configured_value_is_returned
+    raw FAILED lines: 3   parsed ids: 3   AGREEMENT: True
+
+FULL LIST OF RED TEST IDS:
+
+    tests/orchestration/test_orchestrator_model_routing.py::TestConfiguredKeyWins::test_configured_value_is_returned
+    tests/orchestration/test_orchestrator_model_routing.py::TestConfiguredKeyWins::test_configured_value_wins_over_the_role_config_answer
+    tests/orchestration/test_orchestrator_model_routing.py::TestTheOperatorOverrideKeyIsTheOneRead::test_the_operator_override_key_is_among_the_keys_read
+
+THE NEW DISCRIMINATOR IS AMONG THEM — `True`. The mutation reaches it: with the
+override key never asked for, `keys_read` no longer contains it and the positive
+assertion fails, which is exactly the proof the deleted refusal used to carry.
+
+PRIMARY CHECKOUT, read immediately after the mutation:
+
+    $ git -C /home/decodeux/Repos/remedy status --porcelain
+    (empty)
+
+REVERT, by exact path, INSIDE the worktree:
+
+    $ git -C .../remedy-review-r11-red checkout -- packages/orchestration/role_config.py
+    $ git -C .../remedy-review-r11-red status --porcelain
+    (empty)
+    $ python3 -B -m pytest tests/orchestration/test_orchestrator_model_routing.py -q
+    20 passed in 0.26s
+    EXIT CODE: 0        — back to the control's count
+
+### G7 THE SUITES — PASS, seven invocations, serial, all exit 0
+
+| Command | Reviewer's reading at `0d025469` | Measured here | Exit |
+|---|---|---|---|
+| `python3 -B -m pytest tests/orchestration/test_orchestrator_model_routing.py -q` | 1 failed / 18 passed | **20 passed** | 0 |
+| `python3 -B -m pytest tests/orchestration/test_config.py -q` | 74 | 74 passed | 0 |
+| `python3 -B -m pytest tests/orchestration/test_role_config.py -q` | 92 | 92 passed | 0 |
+| `python3 -B -m pytest tests/orchestration/test_model_routing.py -q` | 391 passed, 3 skipped | 391 passed, 3 skipped, 1 warning | 0 |
+| `python3 -B -m pytest tests/orchestration/test_teacher_model.py tests/orchestration/test_self_use_runner.py tests/orchestration/test_job_role_routing.py tests/cli/test_teach_cmd.py -q` | 68 | 68 passed | 0 |
+| `python3 -B -m pytest tests/docs/ -q` | 295 | 295 passed | 0 |
+| `python3 -B -m pytest tests/cli/test_golden_path.py -q` | 42 (canary) | 42 passed | 0 |
+
+DIFFERENCES EXPLAINED. Only the first row moved, and it moved by design:
+1 failed / 18 passed / exit 1 becomes 20 passed / exit 0 — the repaired test plus
+the ONE new test SPEC (c) adds, 19 → 20, and nothing else. The 1 warning on
+`test_model_routing.py` is the `UserWarning` that suite raises on purpose for the
+refused-override case and is present at the base too; the reviewer's bracket
+recorded pass/skip counts only. Every other row matches the reviewer's bracket
+exactly.
+
+### G8 THE TREE, THE COMMITS AND THE SWEEP — PASS
+
+    $ git status --porcelain      (immediately before C6 was staged)
+    (empty)
+    $ git ls-files .remedy-wt
+    (empty)
+    $ git worktree list
+    /home/decodeux/Repos/remedy                                  4d61041e [feature/f110-model-routing-by-task-class]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-5e91e080219342d9  9fdb3b4b [remedy/job-5e91e080219342d9]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
+
+No worktree of THIS round's making survives; the five `.remedy-wt/job-*` entries are
+unrelated pre-existing job worktrees and were never touched.
+
+THE CHANGE-SET CONSTRAINT, MEASURED:
+
+    $ git diff --stat 0d025469..4d61041e -- packages/ apps/ docs/
+    (EMPTY — no file under packages/, apps/ or docs/ changed)
+
+    $ git diff --name-only 0d025469..4d61041e
+    .agent/authored/f110-r11.md
+    .agent/last_block.md
+    .agent/live_review.md
+    .agent/plan.md
+    .agent/prose_slips.md
+    tests/orchestration/test_config.py
+    tests/orchestration/test_orchestrator_model_routing.py
+
+Exactly the block's change set, minus `.agent/handoff.md` which C6 adds.
+
+PER-COMMIT INSERTIONS, the `+` column only, cell by cell against the Commits table
+above, for every commit BEFORE the handback commit:
+
+| Commit | Insertions | Commits-table cells | Under the 500 cap |
+|---|---|---|---|
+| `46262bf2` C0a | 262 | +262 | yes |
+| `87adb34e` C0b | 195 | +195 | yes |
+| `bf683096` C1 | 10 | +10 | yes |
+| `9c86b988` C2 | 10 | +7 and +3 | yes |
+| `cc32f16b` C3 | 49 | +49 | yes |
+| `fdfc7e2c` C4 | 1 | +1 | yes |
+| `4d61041e` C5 | 5 | +5 | yes |
+
+Every cell agrees and every commit is under the AGENTS.md 500-insertion cap. The
+handback commit's own numbers appear in neither place, per the gate. No commit in
+this round is oversize, so no inseparability declaration is owed.
+
+## Authored-text proofs
+
+| Slice | Target | Result |
 |---|---|---|
-| `.agent/handoff.md` | rewrite | this file; a handoff cannot table the commit that writes it |
+| the whole block | `.agent/authored/f110-r11.md` | `shutil.copyfile` from the reviewer's scratch original; sha256 `46c7e1c3…a943d2` equals the prompt's stated digest |
+| the whole block | `.agent/last_block.md` | `shutil.copyfile` from the COMMITTED authored file; same sha256, G1 |
+| PLAN11 | `.agent/plan.md` | `cmp` against the delimiter-index extraction, exit 0 (G2) |
+| RECORD10 | `.agent/live_review.md` | byte arithmetic + prefix + second reader with negative control (G3) |
+| FINDING787 | `.agent/live_review.md` | same append, paragraph 2 of 3, second reader MATCH (G3) |
+| FINDING788 | `.agent/live_review.md` | same append, paragraph 3 of 3, second reader MATCH (G3) |
+| SLIPS11 | `.agent/prose_slips.md` | byte equality 58680 + 2 + 1262 = 59944, base an exact prefix (G4) |
+| LANDED787 | `.agent/live_review.md` | byte arithmetic + C2 content an exact prefix (G4) |
+| LANDED788 | `.agent/live_review.md` | same append (G4) |
+
+Every slice was extracted BY DELIMITER INDEX from the COMMITTED
+`.agent/authored/f110-r11.md`, marker lines excluded, with a script; none was
+retyped and none was taken from the delegating prompt.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save block | done | |
-| C0b mirror block | done | |
-| C1 PLAN10 | done | |
-| C2 RECORD9 / SLIPS10 / DECISION5 | done | |
-| C3 production config.py | done | |
-| C4 production role_config.py | done | |
-| C5 tests | done | |
-| C6 docs | done | |
-| C7 handback | done | this commit |
-| SPEC (a) table keys are a KIND | done | stop-set derived from the registry, not hand-listed |
-| SPEC (b) F110's key registered | done | `dict`, default `None`, env var declared |
-| SPEC (c) `validate_config` dict branch | done | shape only; no `model_routing` import added |
-| SPEC (d) module docstring paragraph | done | Public API list unchanged in config.py |
-| SPEC (e) effective table read | deviated | non-`Mapping` value treated as nothing configured — deviation D2 |
-| SPEC (f) refusal warns, routes seeded | done | one `UserWarning` per resolution, key + every rule named |
-| SPEC (g) seam routes against it | done | `effective_tiers` passed; still swallows exactly one exception |
-| SPEC (h) provider/model/effort untouched | done | measured by G8's empty `packages/`+`apps/` sweep and by test (n) |
-| SPEC (i) table resolves as ONE dict | done | |
-| SPEC (j) unset -> None, PROJECT over USER | done | |
-| SPEC (k) non-string entry reported | done | |
-| SPEC (l) legal override reaches a routed call | done | class/role/tier DERIVED from `ROLE_TASK_CLASSES` + `TASK_CLASS_TIERS` |
-| SPEC (m) illegal override refused, rule named | done | rule asserted by READING the constant |
-| SPEC (n) config faults do not break resolution | done | |
-| SPEC (o) documentation | done | |
-| G1 transport | done | ONE digest twice |
-| G2 the plan | done | `cmp` exit 0, 44 lines |
-| G3 ledger append forensics | done | five readings, negative control REJECTS |
-| G4 decisions append forensics | done | five readings + prose_slips byte equality |
-| G5 production files measured and run | done | |
-| G6 the red proof | done | control green, 4 mutations all red, all reverts back to control |
-| G7 the suites | deviated | 6 of 7 exit 0; the 87-group is 1 failed / 86 passed — the blocked item |
-| G8 tree, commits, sweep | done | |
-
-## External actions
-
-- `git worktree add --detach /home/decodeux/Repos/remedy/remedy-review-r10-wt e004848f`
-  — created for G6. `git worktree remove <same exact path>` then `git worktree
-  prune`; `ls -d` on that exact path afterwards: "No such file or directory".
-- `git worktree add --detach /home/decodeux/Repos/remedy/remedy-review-r10-base a1368633`
-  — created to measure the blocked item at BASE. `git worktree remove <same exact
-  path>` then `git worktree prune`; `git worktree list | grep -c remedy-review-r10`
-  afterwards: `0`.
-- `git push -u origin feature/f110-model-routing-by-task-class` — see the
-  Verification transcript.
-- No pull request created, edited or merged. No `gh` command run.
-- `remedy` CLI: NOT run (refused in this sandbox). `ruff`: NOT run — constraint 5
-  orders no lint gate and the reviewer lints instead.
-
-## Verification
-
-Eight gates, each with its real command and its real exit code.
-
-### G1 TRANSPORT — PASS
-
-    $ sha256sum .agent/authored/f110-r10.md .agent/last_block.md
-    9af2d6cef398ae7fe766cf0a23ee1c4d9901b190c67508620740ec229bed1dae  .agent/authored/f110-r10.md
-    9af2d6cef398ae7fe766cf0a23ee1c4d9901b190c67508620740ec229bed1dae  .agent/last_block.md
-    $ wc -l .agent/authored/f110-r10.md
-    395 .agent/authored/f110-r10.md
-
-ONE digest twice, 395 lines. Per `docs/agents/planner_reviewer_prompt.md` item 37
-this proves the saved copy and its mirror agree and claims NOTHING about the
-emitted bytes. The delegation prompt's stated sha256 for the scratch original is
-the same digest, and `shutil.copyfile` produced both files from it.
-
-### G2 THE PLAN — PASS
-
-    $ cmp remedy-review-r10-scratch/plan10.txt .agent/plan.md && echo "CMP EXIT 0"
-    CMP EXIT 0
-    $ wc -l .agent/plan.md
-    44 .agent/plan.md          (under 50)
-    $ grep -c '^## Goal' .agent/plan.md
-    1
-    $ grep -c '^## Next Steps' .agent/plan.md
-    1
-
-The compared file is PLAN10 extracted by delimiter index from the COMMITTED
-`.agent/authored/f110-r10.md` plus the one trailing newline the target's own
-convention takes.
-
-### G3 THE LEDGER APPEND, `.agent/live_review.md` — PASS
-
-    $ python3 -B remedy-review-r10-scratch/append_forensics.py
-    .agent/live_review.md
-      (1) arithmetic  2190200 + 2 + 5806 + 0 = 2196008   real = 2196008   AGREE=True
-      (2) base is an exact byte PREFIX: True
-      (3) ends with newline: False (convention: False)  trailing bytes=b'en.'
-      (4) SECOND READER: N counted from the slice = 1; last 1 blank-line units of
-          the file match IN ORDER: True
-      (5) NEGATIVE CONTROL: flipped byte at offset 2180361 of the file (' ' -> 'Z'),
-          inside the FIRST appended paragraph; second reader accepts: False
-          (must be False)
-
-    RECORD9 header, taken from the slice: 'Gate: F110 R9 —'
-      lines matching it in .agent/live_review.md AFTER C2: 1
-      lines matching it BEFORE C2 (at a1368633): 0
-
-The header string is SLICED OUT of the extracted RECORD9 (`record9[:record9.index(
-"—") + 1]`), never retyped, so the U+2014 EM DASH after "R9" is the slice's own
-byte. Exit code 0.
-
-### G4 THE DECISIONS APPEND, `.agent/decisions.md` — PASS
-
-    .agent/decisions.md
-      (1) arithmetic  734845 + 1 + 3157 + 1 = 738004   real = 738004   AGREE=True
-      (2) base is an exact byte PREFIX: True
-      (3) ends with newline: True (convention: True)  trailing bytes=b'h.\n'
-          exactly ONE trailing newline: True
-      (4) SECOND READER: N counted from the slice = 7; last 7 blank-line units of
-          the file match IN ORDER: True
-      (5) NEGATIVE CONTROL: flipped byte at offset 731628 of the file ('C' -> 'Z'),
-          inside the FIRST appended paragraph; second reader accepts: False
-          (must be False)
-
-    DECISION5 header prefix, taken from the slice: '## DECISION F110 D5 '
-      grep -c '^## DECISION F110 D5 ' AFTER C2: 1
-      grep -c '^## DECISION F110 D5 ' BEFORE C2 (at a1368633): 0
-
-    .agent/prose_slips.md
-      BYTE EQUALITY final == before + 2 newlines + SLIPS10: True
-      base is an exact byte PREFIX: True
-      final bytes = 58680
-
-READING (4) FAILED ON ITS FIRST RUN AND THE FIRST READING IS DECLARED RATHER THAN
-QUIETLY REPLACED — this is the round 9 lesson (SLIPS10 entry 2) applied to my own
-harness. The first version compared the file's last 7 blank-line units against the
-slice's 7 and reported False. The raw bytes were printed before any conclusion was
-drawn: file tail `'pagate,\nand by deleting this paragraph.\n'` against slice tail
-`'opagate,\nand by deleting this paragraph.'`. The ONLY difference is the TARGET's
-own trailing newline, which constraint 4 assigns to the target and not to the
-slice. The reader now strips that one byte before splitting, and the arithmetic in
-(1) — which counts the newline explicitly — was correct throughout.
-
-### G5 THE PRODUCTION FILES, MEASURED AND RUN — PASS
-
-    $ git show --numstat --format="%H %s" 9f609b21
-    9f609b211fe25eaa7e544dc5d40c1bda62c79662 F110 R10 C3: ...
-    85      5       packages/orchestration/config.py
-    $ git show --numstat --format="%H %s" 76658375
-    7665837551c8f269ec5117e596b50b7c49cf0b7b F110 R10 C4: ...
-    85      3       packages/orchestration/role_config.py
-
-    $ python3 -c "ast.parse over the REAL files"
-    packages/orchestration/config.py ast.parse OK, top-level nodes 37
-    packages/orchestration/role_config.py ast.parse OK, top-level nodes 21
-
-EVERY DELETED LINE, VERBATIM, WITH ITS REGION — 8 in total, 5 + 3.
-
-C3, `packages/orchestration/config.py`:
-
-    -    value_type supports: str, int, float, bool, list.
-        region: the ConfigKeySpec docstring; replaced by the same list plus `dict`.
-    -def _flatten_toml(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
-        region: the _flatten_toml signature; replaced by a 3-parameter signature.
-    -        if isinstance(v, dict):
-    -            result.update(_flatten_toml(v, f"{full_key}."))
-        region: the _flatten_toml recursion; the stop-set condition is added and the
-        set is threaded into the recursive call.
-    -    """Validate config values against key specs. Returns list of warnings."""
-        region: the validate_config docstring; replaced by the same sentence plus
-        the shape-only paragraph.
-
-C4, `packages/orchestration/role_config.py`:
-
-    -tier into a model id will not find it, and that absence is deliberate.
-        region: the module docstring's "recording, not selecting" paragraph; the
-        sentence is kept WORD FOR WORD and two sentences are added after it.
-    -    promoted it come from that ONE seam and cannot disagree with it.
-        region: the resolve_routed_call_evidence docstring; sentence kept, the
-        effective-table sentence added after it.
-    -        return route_role_call(role, originating_task_class)
-        region: the seam call; replaced by the 3-argument form.
-
-NO LINE OF SHIPPED LOGIC WAS REMOVED. Seven of the eight deletions are prose lines
-that reappear with text added; the eighth is the seam call gaining its argument.
-
-THE SHIPPED CODE RUN, against TOML written to `tempfile.mkdtemp()` — OUTSIDE the
-repository root, and no `remedy.toml` created in it:
-
-    $ python3 -B remedy-review-r10-scratch/g5_probe.py
-    scratch dir: /tmp/f110-r10-g5-3zpljkpu
-    scratch is OUTSIDE the repository root: True
-    no remedy.toml in the repository root: True
-
-    1. A CONFIGURED TABLE
-       toml written: [remedy.model_routing.task_class_tiers] | summarize = "mid"
-       RETURNED value : {'summarize': 'mid'}
-       RETURNED source: ConfigSource.PROJECT
-       load_report.warnings: []
-
-    2. validate_config warnings list
-       well-formed table -> []   (must be empty)
-       non-string entry {'summarize': 3} ->
-         ["model_routing.task_class_tiers: expected string entries, got 'summarize' = 3"]
-
-    3. THE EFFECTIVE TABLE in three states, and the routed_call a declared role gets
-       [NO CONFIG]
-         effective table  : {'format': 'cheap', 'extract': 'cheap', 'summarize':
-           'cheap', 'boilerplate': 'cheap', 'standard_build': 'mid',
-           'standard_review': 'mid', 'architecture': 'top', 'mission': 'top',
-           'vision': 'top', 'prompt_authoring_for_other_agents': 'top'}
-         is the SHIPPED table object: True
-         routed_call('summary') : {'task_class': 'summarize', 'tier': 'cheap',
-           'reason': 'seed_mapping', 'promoted_by': None}
-         warnings emitted : 0
-       [LEGAL OVERRIDE summarize=mid]
-         effective table  : ... 'summarize': 'mid' ...  (every other class unmoved)
-         is the SHIPPED table object: False
-         routed_call('summary') : {'task_class': 'summarize', 'tier': 'mid',
-           'reason': 'per_project_override', 'promoted_by': None}
-         warnings emitted : 0
-       [ILLEGAL OVERRIDE mission=cheap]
-         effective table  : ... 'mission': 'top' ...   (the SHIPPED table)
-         is the SHIPPED table object: True
-         routed_call('orchestrator') : {'task_class': 'mission', 'tier': 'top',
-           'reason': 'seed_mapping', 'promoted_by': None}
-         warnings emitted : 2   (one per resolve_* call the probe makes; see below)
-
-    4. FULL TEXT of the warning the illegal map produces
-       category: UserWarning
-       text    : model_routing.task_class_tiers: per-project model-routing overrides
-                 REFUSED; routing against the shipped table instead. Violated rules:
-                 orchestration_below_top_tier, promotion_without_evidence.
-       contains RULE_ORCHESTRATION_BELOW_TOP_TIER ('orchestration_below_top_tier'): True
-       contains the config key ('model_routing.task_class_tiers'): True
-
-    scratch removed by exact path: /tmp/f110-r10-g5-3zpljkpu exists: False
-    no remedy.toml in the repository root: True
-
-ON "warnings emitted : 2". SPEC (f) orders ONE warning per refusal, and that is
-what the code does: each call to `resolve_effective_task_class_tiers` emits exactly
-one. The probe calls it TWICE in that state (once directly, once through
-`resolve_role_config`), so two are RECORDED by a `catch_warnings(record=True)` with
-`simplefilter("always")`. Under Python's DEFAULT filters an operator sees it once —
-MEASURED, not assumed:
-
-    $ python3 -B  (five resolve_role_config('orchestrator') calls, default filters)
-    stderr lines emitted for 5 resolutions under DEFAULT filters: 1
-
-The map also violates `promotion_without_evidence`: demoting `mission` from `top`
-to `cheap` IS a promotion in this module's vocabulary (cheaper), so the builder
-reports both names and the warning carries both. That is the shipped behaviour of
-round 6's validator, unchanged this round.
-
-### G6 THE RED PROOF — PASS
-
-Disposable worktree `/home/decodeux/Repos/remedy/remedy-review-r10-wt` at `e004848f`
-(C5), NEVER cd-ed into: pytest was given ABSOLUTE paths inside it and no `cwd` was
-set. `__pycache__` purged before every run (0 found each time — `python3 -B` writes
-none), `python3 -B` throughout.
-
-    $ python3 -B -c "sys.path.insert(0, <worktree>); import ..."
-    config.py     __file__: /home/decodeux/Repos/remedy/remedy-review-r10-wt/packages/orchestration/config.py
-    role_config   __file__: /home/decodeux/Repos/remedy/remedy-review-r10-wt/packages/orchestration/role_config.py
-    model_routing __file__: /home/decodeux/Repos/remedy/remedy-review-r10-wt/packages/orchestration/model_routing.py
-
-CONTROL, UNMUTATED, RUN FIRST:
-
-    exit code: 0    summary: 166 passed in 0.58s    failures: 0
-    PRIMARY CHECKOUT git status --porcelain: EMPTY (clean)
-
-Then one mutation at a time, reverting between each. The primary checkout's
-`git status --porcelain` was read IMMEDIATELY AFTER every mutation, in the same
-step, and was EMPTY (clean) EVERY TIME — 4 of 4. Every revert is
-`git -C <worktree> checkout -- <exact path>`, exit 0, and every one returned the
-worktree to the control's 166 passed / exit 0.
-
-(i) `_flatten_toml` recurses into table-valued keys again — `config.py`
-    exit 1, 8 failed, 158 passed.
-    RAW: `FAILED remedy-review-r10-wt/tests/orchestration/test_config.py::TestTableValuedKeys::test_flatten_stops_at_a_table_valued_key`
-    parsed node id (the SECOND whitespace-separated token): identical. AGREE: True.
-    FULL LIST (8, not truncated) — paths relative to the worktree:
-      tests/orchestration/test_config.py::TestTableValuedKeys::test_flatten_stops_at_a_table_valued_key
-      tests/orchestration/test_config.py::TestTableValuedKeys::test_a_project_table_resolves_as_one_dict_with_no_warning
-      tests/orchestration/test_config.py::TestTableValuedKeys::test_a_project_table_replaces_a_user_table_whole
-      tests/orchestration/test_config.py::TestTableValuedKeys::test_a_user_table_resolves_when_no_project_file_has_one
-      tests/orchestration/test_config.py::TestTableValuedKeyShapeValidation::test_a_non_string_entry_is_reported
-      tests/orchestration/test_role_config.py::TestEffectiveTaskClassTiers::test_a_legal_table_is_laid_over_the_shipped_one
-      tests/orchestration/test_role_config.py::TestConfiguredOverrideReachesARoutedCall::test_a_legal_override_reaches_a_routed_call
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_an_illegal_override_warns_with_the_rule_named
-    revert exit 0; back to control: True.
-
-(ii) the `OverrideRefused` catch is removed — `role_config.py`
-    exit 1, 4 failed, 162 passed.
-    RAW: `FAILED remedy-review-r10-wt/tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_an_illegal_override_warns_with_the_rule_named`
-    parsed node id: identical. AGREE: True.
-    FULL LIST (4, not truncated):
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_an_illegal_override_warns_with_the_rule_named
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_an_illegal_override_routes_against_the_shipped_table
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_a_refused_table_does_not_break_config_resolution
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_every_declared_role_still_resolves_under_a_refused_table
-    revert exit 0; back to control: True.
-
-(iii) the refusal path returns the CONFIGURED map — the silent-downgrade mutation
-    exit 1, 2 failed, 164 passed.
-    RAW: `FAILED remedy-review-r10-wt/tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_an_illegal_override_routes_against_the_shipped_table`
-    parsed node id: identical. AGREE: True.
-    FULL LIST (2, not truncated):
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_an_illegal_override_routes_against_the_shipped_table
-      tests/orchestration/test_role_config.py::TestRefusedOverrideWarnsAndRoutesSeeded::test_every_declared_role_still_resolves_under_a_refused_table
-    revert exit 0; back to control: True.
-
-(iv) the effective table is ignored; `route_role_call` called without it
-    exit 1, 1 failed, 165 passed.
-    RAW: `FAILED remedy-review-r10-wt/tests/orchestration/test_role_config.py::TestConfiguredOverrideReachesARoutedCall::test_a_legal_override_reaches_a_routed_call`
-    parsed node id: identical. AGREE: True.
-    FULL LIST (1, not truncated):
-      tests/orchestration/test_role_config.py::TestConfiguredOverrideReachesARoutedCall::test_a_legal_override_reaches_a_routed_call
-    revert exit 0; back to control: True.
-
-THE PARSE WAS CHECKED AGAINST THE BYTES IT CAME FROM. For each mutation the harness
-printed ONE RAW `FAILED ...` line beside its parsed node id and confirmed
-`raw.split()[1] == parsed[0]` — True in all four. That is the round 9 slip
-(SLIPS10 entry 2) closed by construction rather than by care.
-
-PAIRWISE DISJOINTNESS — MEASURED, NOT ASSUMED. The red sets are NOT pairwise
-disjoint, which the block names a REPORTABLE RESULT rather than a fault:
-
-      (i)  vs (ii)  -> 1 shared: test_an_illegal_override_warns_with_the_rule_named
-      (i)  vs (iii) -> 0 shared
-      (i)  vs (iv)  -> 1 shared: test_a_legal_override_reaches_a_routed_call
-      (ii) vs (iii) -> 2 shared (set (iii) is a strict SUBSET of set (ii))
-      (ii) vs (iv)  -> 0 shared
-      (iii) vs (iv) -> 0 shared
-      ALL PAIRS DISJOINT: False
-      (i) owns 6 ids no other mutation reddens
-      (ii) owns 1 id no other mutation reddens
-      (iii) owns 0 — its 2 ids are both in (ii)'s set
-      (iv) owns 0 — its 1 id is also in (i)'s set
-
-EVERY MUTATION IS STILL DETECTED, which is what the gate asks. The overlap is
-structural and readable: (i) breaks the CONFIG READ, so every test that needs a
-configured table fails, which necessarily includes the tests (iv) and part of those
-(ii) exercise; and (iii) is a weaker mutation than (ii) — returning the wrong table
-is a subset of not catching the exception at all. Neither (iii) nor (iv) is
-therefore redundant: (iii) is the ONLY mutation that distinguishes "refused and
-downgraded silently" from "refused and routed seeded" while the catch is present,
-and (iv) is the only one that isolates the seam's argument from the config read.
-
-    $ git -C <worktree> status --porcelain      (empty)
-    $ git worktree remove /home/decodeux/Repos/remedy/remedy-review-r10-wt
-    $ git worktree prune
-    $ ls -d /home/decodeux/Repos/remedy/remedy-review-r10-wt
-    ls: cannot access '.../remedy-review-r10-wt': No such file or directory
-
-### G7 THE SUITES — 6 of 7 exit 0; ONE FAILURE, the blocked item
-
-Each its own invocation, run serially. Bracketed numbers are the block's
-measurements at `a1368633`.
-
-    $ python3 -m pytest tests/orchestration/test_config.py -q
-    74 passed in 0.35s                                            exit 0
-      [63 at base, +11 new] — the number I MEASURE is 74; the block names no target.
-
-    $ python3 -m pytest tests/orchestration/test_role_config.py -q
-    92 passed in 0.34s                                            exit 0
-      [82 at base, +10 new] — the number I MEASURE is 92; the block names no target.
-
-    $ python3 -m pytest tests/orchestration/test_model_routing.py -q
-    391 passed, 3 skipped, 1 warning in 3.25s                     exit 0
-      [391 passed, 3 skipped — UNMOVED] — MATCHES. `model_routing.py` was not edited.
-
-    $ python3 -m pytest tests/docs/ -q
-    295 passed in 0.54s                                           exit 0
-      [295] — MATCHES, with a file under `docs/` edited this round.
-
-    $ python3 -m pytest tests/orchestration/test_teacher_model.py \
-        tests/orchestration/test_self_use_runner.py \
-        tests/orchestration/test_orchestrator_model_routing.py \
-        tests/orchestration/test_job_role_routing.py tests/cli/test_teach_cmd.py -q
-    FAILED tests/orchestration/test_orchestrator_model_routing.py::TestTheAnswerIsAlwaysUsable::test_the_fall_through_answer_is_a_non_empty_string
-    1 failed, 86 passed in 4.62s                                  exit 1
-      [87 — UNMOVED] — the COLLECTION is unmoved at 87; one of them is now RED.
-      This is the blocked item. Its cause, its base-green measurement and the reason
-      it was NOT repaired are in the "Blocked item" section above.
-
-    $ python3 -m pytest tests/test_do_job_flow.py \
-        tests/orchestration/test_job_evidence.py \
-        tests/orchestration/test_execution_config_evidence.py \
-        tests/orchestration/test_task_plan_evidence.py \
-        tests/orchestration/test_token_cost_policy.py \
-        tests/orchestration/test_model_aliases.py -q
-    333 passed in 47.62s                                          exit 0
-      [333 — UNMOVED] — MATCHES.
-
-    $ python3 -m pytest tests/cli/test_golden_path.py -q
-    42 passed in 20.66s                                           exit 0
-      [42 — the canary] — MATCHES.
-
-THE CONFIRMATION THE UNMOVED SUITES WERE ORDERED TO GIVE: `config.py` is imported
-almost everywhere, and the flatten change surfaced NO fault in any of them. 333, 42,
-295 and 391/3 all match the block's numbers exactly. The single red is caused by the
-`role_config.py` change and by a test stub's single-key assumption, not by the
-flatten change.
-
-### G8 THE TREE, THE COMMITS AND THE SWEEP — PASS
-
-    $ git status --porcelain          (immediately before C7 is staged)
-    (empty)
-    $ git ls-files .remedy-wt
-    (empty)
-    $ git worktree list
-    (only the primary checkout and five pre-existing .remedy-wt job worktrees; no
-     worktree of this round's making survives)
-    $ ls remedy.toml
-    ls: cannot access 'remedy.toml': No such file or directory
-    $ git ls-files remedy.toml
-    (empty)                           — constraint 12 held
-
-    $ git diff --stat a1368633..e1da68d8 -- packages/ apps/ \
-        ':(exclude)packages/orchestration/config.py' \
-        ':(exclude)packages/orchestration/role_config.py'
-    (empty)                           — constraint 7 MEASURED: no call site edited,
-                                        model_routing.py untouched
-    $ git diff --stat a1368633..e1da68d8 -- packages/orchestration/model_routing.py
-    (empty)
-    $ git diff --stat a1368633..e1da68d8 -- docs/
-     docs/system/remedy-toml-configuration-system-v0.md | 27 ++++++++++++++++++++++
-     1 file changed, 27 insertions(+)
-    $ git diff --stat a1368633..e1da68d8 -- docs/roadmap/
-    (empty)                           — constraint 6 MEASURED
-
-PER-COMMIT INSERTIONS, the `+` column only, cell by cell against the Commits table
-above, for every commit BEFORE the handback commit:
-
-    9eb79b10  395  under 500  (table: +395)
-    b9d32e3d  315  under 500  (table: +315)
-    54574326   15  under 500  (table: +15)
-    36ac459f   63  under 500  (table: +3 +5 +55 = 63)
-    9f609b21   85  under 500  (table: +85)
-    76658375   85  under 500  (table: +85)
-    e004848f  368  under 500  (table: +159 +209 = 368)
-    e1da68d8   27  under 500  (table: +27)
-
-Every one under the AGENTS.md 500-insertion cap (DECISION F104 D1: insertions only).
-The handback commit's own numbers appear in neither place — the reviewer measures
-them at the next gate.
-
-## Authored-text proofs
-
-Four reviewer-authored slices, all extracted BY DELIMITER INDEX from the COMMITTED
-`.agent/authored/f110-r10.md` with `remedy-review-r10-scratch/extract.py` (marker
-lines EXCLUDED), never retyped and never taken from the delegation prompt.
-
-| Slice | bytes | applied to | proof |
-|---|---|---|---|
-| PLAN10 | 2010 | `.agent/plan.md` | `cmp` against the extraction + the target's one trailing newline, exit 0 |
-| RECORD9 | 5806 | `.agent/live_review.md` | 2190200 + 2 + 5806 = 2196008 real; base an exact byte prefix; second reader over its 1 paragraph; negative control REJECTS |
-| SLIPS10 | 1885 | `.agent/prose_slips.md` | byte equality: final == base + 2 newlines + SLIPS10, base an exact prefix, 58680 bytes |
-| DECISION5 | 3157 | `.agent/decisions.md` | 734845 + 1 + 3157 + 1 = 738004 real; base an exact byte prefix; second reader over its 7 paragraphs; negative control REJECTS |
-
-The block file itself reached disk by `shutil.copyfile` twice — scratch original to
-`.agent/authored/f110-r10.md` (C0a), then that COMMITTED file to
-`.agent/last_block.md` (C0b) — so both are byte-identical to the source by
-construction and not by transcription. Its sha256 on disk equals the digest the
-delegation prompt stated, and `wc -l` is 395.
+| C0a save the block | done | |
+| C0b mirror the block | done | |
+| C1 PLAN11 | done | |
+| C2 findings persist first | done | RECORD10 + FINDING787 + FINDING788 + SLIPS11, one commit, before any fix |
+| C3 fix R-0787 | done | |
+| C4 fix R-0788 | done | |
+| C5 Landed lines | done | `Landed:` only; no `Done:` written (constraint 6) |
+| C6 handback | done | this file |
+| R-0787 | done | fixed in C3, landed in C5; stays OPEN in the ledger until the reviewer writes `Done:` |
+| R-0788 | done | fixed in C4, landed in C5; stays OPEN in the ledger until the reviewer writes `Done:` |
+| SPEC (a) named key constant | done | `ORCHESTRATOR_MODEL_CONFIG_KEY = "orchestrator.model"`, module level, used in the stub |
+| SPEC (b) stub answers instead of refusing | done | configured value for the override key, `None` for every other, `keys_read` records all |
+| SPEC (c) proof kept as a positive test | done | `TestTheOperatorOverrideKeyIsTheOneRead`; `_patch_config` builds ONE instance and returns it |
+| SPEC (d) docstring says WHY | done | `_FakeConfig` docstring names the refusal, the second legitimate reader and where the proof moved |
+| SPEC (e) no other test edited | done | 6 deletions, all inside `_FakeConfig`/`_patch_config`, none in a test body; count rose 19 → 20 |
+| SPEC (f) the one import move | done | `_TABLE_VALUED_KEYS` above `ConfigKeySpec`; +1/−1, no import added or removed, no formatter run |
+| G1 transport | done | one digest twice, 262 lines |
+| G2 the plan | done | `cmp` exit 0, 42 lines, 1 and 1 |
+| G3 C2 ledger append | done | arithmetic, prefix, no trailing newline, second reader ACCEPT, negative control REJECT, header 0 → 1 |
+| G4 C5 append and prose_slips | done | both sizes, prefix, byte equality, `Landed:` 1/1 and `Done:` 0/0 |
+| G5 the fix measured and run | done | numstat, `ast.parse`, all 7 deleted lines quoted, 20 passed at C4 vs 1 failed/18 at base, recorded keys printed |
+| G6 red proof | done | control 20/exit 0, mutant 3 failed/exit 1, discriminator among the red ids, revert restores 20 |
+| G7 the suites | done | seven invocations, serial, all exit 0 |
+| G8 tree, commits, sweep | done | status empty, `ls-files .remedy-wt` empty, `packages/ apps/ docs/` diff EMPTY, every commit under the cap |
 
 ## Deviations & assumptions
 
-D1. THE BLOCKED ITEM IS A DEVIATION FROM G7's ORDERED OUTCOME. G7 orders "all exit
-0"; the 87-test unmoved group exits 1 with one failure. I did NOT edit, rename,
-delete or skip the failing test, and I did NOT bend production code to satisfy its
-stub — constraint 8 orders exactly this handling. Full cause and the un-applied
-repair are in the "Blocked item" section. THE ROUND'S OWN WORK IS COMPLETE; what is
-open is a one-line widening of an existing test's fake, which needs an explicit
-order.
+The block's ordered commit sequence was followed EXACTLY: C0a, C0b, C1, C2, C3, C4,
+C5, C6 — no extra commit, none dropped, no reordering. C3 precedes C4 precedes C5
+(constraint 3) and C2 is the first commit touching the ledger, before any fix
+(constraint 2).
 
-D2. SPEC (e) DEVIATION, DECLARED: a NON-MAPPING configured value is treated as
-"nothing configured" and returns the shipped table. SPEC (e) names only "missing or
-empty". The guard is required for correctness, not for tidiness:
-`build_effective_task_class_tiers` calls `.items()` on its argument, so handing it
-the string an env var would produce raises `AttributeError` INSIDE
-`resolve_role_config` — the config-resolution fault DECISION F110 D5's rejected
-alternative (1) exists to prevent, arriving through a different door. `config.py`'s
-`validate_config` already reports that shape fault, so nothing is hidden. The
-behaviour is stated in the function's docstring and exercised by
-`test_a_scalar_where_a_table_belongs_is_reported`.
-
-D3. THE G3/G4 SECOND READER FAILED ON ITS FIRST RUN AND THE FIRST READING IS
-DECLARED, NOT REPLACED. See the G4 transcript. The reader compared the file's last
-7 blank-line units against DECISION5's 7 and reported False; the raw bytes were
-printed before any conclusion, and the only difference was the TARGET's own
-trailing newline, which constraint 4 assigns to the target. The reader now removes
-that one byte before splitting. Declaring the wrong first reading instead of quietly
-correcting it is the behaviour round 9's D4 established.
-
-D4. SPEC (f)'s WARNING TEXT lists every violated rule NAME in the order
-`OverrideRefused` carries them, without the class each is attributed to. For
-`mission = "cheap"` that reads "orchestration_below_top_tier,
-promotion_without_evidence". The exception's own message already carries the
-class-to-rule pairing for anyone who sees a traceback; the warning names the CONFIG
-KEY plus the rules, which is what SPEC (f) ordered. Naming duplicates is possible if
-two classes break the same rule — it is not deduplicated, because "EVERY violated
-rule name it carries" is what the block asked for.
-
-D5. STALE SENTENCE OUTSIDE THE CHANGE SET, DECLARED AND NOT REPAIRED, per
-constraint 9: `docs/roadmap/features/T3_F110.md`'s T001/T003 bullets still describe
-the per-project override map as unbuilt configuration. It is now read from
-`remedy.toml`. `docs/roadmap/` is outside this round's change set and constraint 6
-forbids touching it; the closure sequence already owns that file's Design bullet.
-
-D6. `docs/system/remedy-toml-configuration-system-v0.md`'s own sentence "The table
-above is not exhaustive — later features added their own keys" remains true and was
-not edited; the new key was added as a row because that IS the file's convention,
-and the seed mapping is deliberately NOT restated, per SPEC (o).
-
-D7. No lint was run (constraint 5 orders none and forbids adding the gate); the
-`remedy` CLI was not run (refused in this sandbox); no `remedy.toml` was created in
-the repository root (constraint 12, measured twice).
-
-No departure from the block's ordered commit sequence: C0a, C0b, C1, C2, C3, C4,
-C5, C6, C7 were committed in exactly that order, no commit was added, dropped,
-split or reordered.
+- **D1 — the G3 negative control ran IN MEMORY, not in a worktree.** Constraint 9
+  confines DESTRUCTIVE verification to a disposable worktree. The byte flip was
+  performed on a `bytearray` copy of the file's bytes and never written to disk;
+  the on-disk size was re-read afterwards and is unchanged at 2203803. No worktree
+  was created for it because nothing on disk was ever at risk. Declared rather than
+  silently done.
+- **D2 — the G7 commands were run as `python3 -B -m pytest …`.** The block spells
+  them `pytest …`. The `-B` form is what this environment's rules require
+  (`__pycache__` purged, no bytecode written); the module set, the node selection
+  and the `-q` flag are identical. Same for the G5 and G6 runs.
+- **D3 — two throwaway helper files were written under the gitignored
+  `remedy-review-r9-scratch/`** — `header.txt`, holding the RECORD10 header copied
+  from the extracted slice so `grep -F` could match the U+2014 em dash without any
+  retyping, and `plan11.extract`, the PLAN11 extraction `cmp` read. Both were
+  removed afterwards BY EXACT PATH. Neither is in the repository's index; the tree
+  was clean before C6.
+- **D4 — no ruff gate was added and ruff was never run** (constraint 5). SPEC (f)
+  was applied as a hand edit of the one import line. The reviewer's own ruff run is
+  what confirms `I001` is cleared; nothing in this handback claims it.
+- **D5 — no discrepancy was found between the block and reality.** Every measured
+  constant matched: `.agent/live_review.md` 2196008 bytes without a trailing
+  newline, `.agent/prose_slips.md` 58680 the same, `.agent/plan.md` 2011 bytes with
+  one; the base reading 1 failed / 18 passed at `0d025469`; the sole change
+  `ruff check --fix` produces; and the "exactly one test is red, because the other
+  fall-through cases patch `resolve_role_config` itself" claim, confirmed by the
+  base run's single FAILED line. Recorded because a silent "no deviations" cannot
+  be told apart from a check not made.
+- Assumption, stated because it is load-bearing for G6: the mutation the block
+  orders — "replace the `get_config().get(...)` call's result with `None`" — was
+  implemented as `configured = None`, which removes the call entirely and so
+  genuinely stops the override key from being read. Had it been implemented as
+  `get_config().get(...) and None`, the key would still have been recorded and the
+  new test would have stayed green, proving nothing.
+- `.agent/decisions.md` was NOT touched (constraint 4). `.agent/candidates.md` was
+  not touched and is unchanged. `.agent/context.md` needed no update: the branch,
+  scope and constraints it records are the same feature and the same branch.
 
 ## Next
 
-The reviewer's round 10 verdict, which must ALSO rule on the blocked item: whether
-to order the one-line widening of `_FakeConfig.get` in
-`tests/orchestration/test_orchestrator_model_routing.py` (answer `None` for any key
-other than `orchestrator.model` instead of asserting), or a different repair. No
-further F110 build round should start until that test is green again, because it is
-the only red in the suite and it sits on the same seam this feature is wiring.
+The promotion-evidence round: read the evidence map from configuration so a
+documented benchmark run can license a cheaper tier — the last unbuilt clause of
+T003 — on a tip that is now green at every gate this round ran.
