@@ -1,235 +1,229 @@
-# Handoff — F109 Semantic dedupe, SESSION 2, round 7
+# Handoff — F109 Semantic dedupe, SESSION 2, round 8
 
 Branch: `feature/f109-semantic-dedupe`
-Base commit: `7ab865280a44e1078feb320f5508cd1901cbb27d` (round 6 close, already
+Base commit: `81a00635d1498dbb5eb9869bb5d2a6e3e836a9f9` (round 7 close, already
 pushed). No branch created, no branch switched, no PR created, nothing merged.
 
 Scope rule, quoted verbatim as every F109 order requires: RESUMED SESSION
 ONLY, PROVEN SENDS ONLY.
 
-THIS ROUND BOOKED ROUND 6'S PASS VERDICT and its one reviewer-prose slip, then
-landed the SECOND HALF of T002b: `compose_builder_prompt` and
-`compose_reviewer_prompt` each gained the keyword-only pair
-`dedupe_sent_hashes` / `dedupe_enabled`, and the two `run_pingpong` call sites
-supply the session's sent hashes ONLY when a resume ref is actually set. THE
-SAFETY PROPERTY IS THAT THE DEFAULT BYPASSES: `dedupe_sent_hashes=None` does not
-call the transform at all, so every existing caller composes byte-identical
-bytes. `test_builder_prompt_golden.py` (36) and `test_reviewer_prompt_golden.py`
-(39) both sit EXACTLY at their base counts, which is the evidence for that claim
-rather than decoration beside it.
+THIS ROUND BOOKED ROUND 7'S PASS VERDICT, REGISTERED `R-0771` BEFORE THE FIX
+EXISTED, AND THEN FIXED IT. A resume FALLBACK is not a resumed session, yet the
+loop re-sent the prompt composed FOR the resumed session — `[unchanged: …]`
+markers and all — into the brand-new session the retry opens, and then recorded
+that deduped manifest as what was sent. Both roles now recompose at full content
+as the FIRST statements of their fallback branch and rebind the composed prompt,
+so the bytes sent, the `fallback_prompt` stored by `_finalize_call` and the
+manifest read by `record_finalized_call` describe one and the same call. The
+stale "NO CALLER EXISTS YET" paragraph in `_dedupe_resumed_segments`'s docstring
+is retired in the same commit.
 
-READ DEVIATION 1 FIRST: the ordered G5 MUTATION B is an EQUIVALENT MUTANT and
-came back GREEN. It is reported as green, a substitute discriminator was run in
-addition, and SPEC L case 6 was NOT weakened to manufacture a colour.
+READ DEVIATION 1 FIRST: on the REVIEWER side the two names SPEC M lists are not
+enough. The reviewer sends `reviewer_effective`, not `reviewer_prompt`, so I
+rebound a THIRD name inside that branch. Without it the reviewer half of the fix
+does nothing, and SPEC O case 2 fails. Declared, not smuggled.
 
 ## Commits this round
 
-| Item | SHA        | Commit subject                                                                        |   +   |   -   |
-|------|------------|---------------------------------------------------------------------------------------|-------|-------|
-| C0a  | `b8407db4` | F109 R7 C0a: save the round 7 step block verbatim                                     |  357  |   0   |
-| C0b  | `9ef933d7` | F109 R7 C0b: mirror the round 7 block to last_block                                   |  261  |  259  |
-| C1   | `502a8ffd` | F109 R7 C1: plan for round 7 — book round 6, wire the dedupe into both compose functions |   16  |   20  |
-| C2   | `637628a5` | F109 R7 C2: book the round 6 gate and its one reviewer-prose slip                     |    6  |    2  |
-| C3   | `60343048` | F109 R7 C3: both compose functions take the dedupe hashes, bypassing by default        |   46  |    2  |
-| C4   | `2e0398fd` | F109 R7 C4: the loop supplies the sent hashes only when a resume ref is set             |   16  |    0  |
-| C5   | `bb694018` | F109 R7 C5: pin the bypass golden and the scope rule at both call sites                |  267  |    1  |
+| Item | SHA        | Commit subject                                                                            |   +   |   -   |
+|------|------------|-------------------------------------------------------------------------------------------|-------|-------|
+| C0a  | `3d032c1e` | F109 R8 C0a: save the round 8 step block verbatim                                         |  381  |   0   |
+| C0b  | `6033eef4` | F109 R8 C0b: mirror the round 8 block to last_block                                       |  249  |  225  |
+| C1   | `9df0ff17` | F109 R8 C1: plan for round 8 — book round 7, register R-0771 and repair the resume fallback |   14  |  11   |
+| C2   | `c842ec41` | F109 R8 C2: book the round 7 gate, register R-0771 and its reviewer-prose slip            |    8  |   2   |
+| C3   | `1b7759b7` | F109 R8 C3: a resume fallback recomposes at full content and rebinds what it sends        |   53  |  10   |
+| C4   | `54f8ffa9` | F109 R8 C4: pin that a resume fallback sends full content on both roles                   |  204  |   2   |
 
 Every `+` and `-` cell above was read from `git show --numstat` for that exact
 SHA and COMPARED CELL BY CELL against the numstat output quoted under G7 — I
-state plainly that I did that comparison. The `+` column only, per AGENTS.md
-DECISION F104 D1, never insertions plus deletions, and never a before/after line
-count of a rewritten file. C2 touches two files (3+1 and 3+1), so its cells are
-the file-summed 6 and 2.
+state plainly that I did that comparison, and the cells agree. The `+` column
+only, per AGENTS.md DECISION F104 D1, never insertions plus deletions, and never
+a before/after line count of a rewritten file. C2 touches two files (5+1 and
+3+1), so its cells are the file-summed 8 and 2; C4 touches two files (3+1 and
+201+1), so its cells are the file-summed 204 and 2.
 
-C6 is this handoff rewrite, committed on top of `bb694018`. Every gate G1–G7 ran
-at C5 or earlier, so every reading quoted below already existed when this file
-was written; C6's own insertion count is deliberately NOT quoted anywhere here,
-because the reviewer measures that one. Seven single-parent commits in the range
-before C6, no merge commit. The push happens AFTER C6, so the remote tip is not
-quoted either.
+C5 is this handoff rewrite, committed on top of `54f8ffa9`. Every gate G1–G7 ran
+at C4 or earlier, per constraint 9, so every reading quoted below already existed
+when this file was written; C5's own insertion count is deliberately NOT quoted
+anywhere here, because the reviewer measures that one. Six single-parent commits
+in the range before C5, no merge commit. The push happens AFTER C5, so the remote
+tip is not quoted either.
 
 ## Changed files (this round)
 
-| Path                                           | Change                                                       |
-|------------------------------------------------|--------------------------------------------------------------|
-| `.agent/authored/f109-r7.md`                   | new — step block, `cp` not retyped                           |
-| `.agent/last_block.md`                         | rewritten — byte mirror of the authored block                |
-| `.agent/plan.md`                               | rewritten — SLICE PLAN, whole file, 44 lines                 |
-| `.agent/live_review.md`                        | appended ONCE — SLICE RECORD, one paragraph, at C2           |
-| `.agent/prose_slips.md`                        | appended ONCE — SLICE SLIP, one paragraph, at C2             |
-| `packages/orchestration/pingpong_loop.py`      | 2 signatures extended, 2 returns replaced, 2 call sites      |
-| `tests/orchestration/test_semantic_dedupe.py`  | 1 import extended, 1 new class appended, no test changed     |
-| `.agent/handoff.md`                            | rewritten — this file (C6)                                   |
+| Path                                           | Change                                                          |
+|------------------------------------------------|-----------------------------------------------------------------|
+| `.agent/authored/f109-r8.md`                   | new — step block, `cp` not retyped                              |
+| `.agent/last_block.md`                         | rewritten — byte mirror of the authored block                   |
+| `.agent/plan.md`                               | rewritten — SLICE PLAN, whole file, 47 lines                    |
+| `.agent/live_review.md`                        | appended TWICE — RECORD+FINDING at C2, SLICE P at C4            |
+| `.agent/prose_slips.md`                        | appended ONCE — SLICE SLIP, one paragraph, at C2                |
+| `packages/orchestration/pingpong_loop.py`      | 1 docstring paragraph, 2 arg dicts hoisted, 2 fallback repairs  |
+| `tests/orchestration/test_semantic_dedupe.py`  | `_provider_pair` extended, 1 new class appended, no case changed |
+| `.agent/handoff.md`                            | rewritten — this file (C5)                                      |
 
 No path outside the ordered change set was touched. `git diff --numstat` over
-`7ab86528..bb694018` lists exactly those seven paths (C6 adds the eighth).
+`81a00635..54f8ffa9` lists exactly seven of those paths (C5 adds the eighth,
+`.agent/handoff.md`).
 
 ## Gates — one line per gate, real results
 
-- **G1 TRANSPORT — PASS.** `sha256sum .agent/authored/f109-r7.md
+- **G1 TRANSPORT — PASS.** `sha256sum .agent/authored/f109-r8.md
   .agent/last_block.md` printed ONE digest twice:
-  **`711f3a135f35671111975c4ec48456258156811389c6b7364e9e2db574573954`**, equal
+  **`d4fecd3d21b3a10e573e66fb5a84b20869a1d6fa98f9d207685c371ccdcdb1d8`**, equal
   to each other AND to the `SHA256_OF_THIS_BLOCK` the delegation wrapper stated.
-  The scratch original `.remedy-wt/f109-r7.md` was verified against that digest
-  as this round's FIRST action, before anything else was read or written, and it
-  printed the same digest a third time; C0a and C0b were both `cp` from it, never
-  a retype. STATED PLAINLY, AS THE BLOCK REQUIRES: this chain compares THE SAVED
+  The scratch original `.remedy-wt/f109-r8.md` was verified against that digest as
+  this round's FIRST action, before anything else was read or written, and printed
+  the same digest a third time; C0a and C0b were both `cp` from it, never a
+  retype. STATED PLAINLY, AS THE BLOCK REQUIRES: this chain compares THE SAVED
   COPY AGAINST ITS MIRROR and claims nothing about the bytes that were emitted.
 - **G2 THE PLAN — PASS.** The SLICE PLAN was extracted MECHANICALLY from
-  `.agent/authored/f109-r7.md` by a script that locates the `<<<SLICE PLAN` and
-  `SLICE PLAN` delimiter lines and takes the lines strictly between them; `cmp
-  .agent/plan.md .remedy-wt/f109-r7-plan-verify.txt` produced NO OUTPUT and exit
-  0, re-run against a freshly re-extracted copy AFTER the commit. `wc -l
-  .agent/plan.md` = **44**, strictly under 50. `grep -c '^## Goal'` = **1** and
-  `grep -c '^## Next Steps'` = **1**. The verify copy was deleted BY EXACT PATH.
-- **G3 THE TWO APPENDS — PASS, all five parts.**
-  (a) `.agent/live_review.md` BYTE ARITHMETIC: base **2045983** bytes, base
-  sha256 `866a63baab2d7fe6d12319a37111a588d477c7756cbd7a1e26f2a54d206cbe92`,
-  confirmed BY BYTE TEST to end WITHOUT a trailing newline. S = **4797** after
-  stripping the extracted slice's trailing newline. Expected 2045983 + 2 + 4797 =
-  **2050782**; actual new size **2050782** — MATCH. The file still ends WITHOUT a
-  trailing newline. New sha256
-  `4720fe79346a513edd6854b5e8325b4ba665754b1b1aa0a27e1df37be5c43b6a`.
-  (b) A SECOND, STRUCTURALLY DIFFERENT READER: the whole file was split on
-  blank-line boundaries into units. The script COUNTED the units of the SLICE
-  RECORD itself rather than taking the number from the block — **N = 1**, because
-  the record is one paragraph — and asserted the LAST 1 unit equals the slice's
-  paragraph IN ORDER: **True**.
-  (c) NEGATIVE CONTROL on a scratch copy `.remedy-wt/f109-r7-lr-scratch.md`,
-  never on the tracked file: the byte at offset **2048383**, which the script
-  located as the MIDPOINT of the first appended paragraph rather than by
-  arithmetic on the block's own numbers, was XOR-flipped with 0x20; reader (b)
-  **REJECTED** the result (`accepts=False`). The tracked file's sha256 was
-  `4720fe79346a513edd6854b5e8325b4ba665754b1b1aa0a27e1df37be5c43b6a` BEFORE and
-  `4720fe79346a513edd6854b5e8325b4ba665754b1b1aa0a27e1df37be5c43b6a` AFTER —
+  `.agent/authored/f109-r8.md` by a script that locates the `<<<SLICE PLAN` and
+  `SLICE PLAN` delimiter lines by exact line equality and takes the lines strictly
+  between them; `cmp .agent/plan.md .remedy-wt/slice_plan.txt` produced NO OUTPUT
+  and exit 0. `wc -l .agent/plan.md` = **47**, strictly under 50.
+  `grep -c '^## Goal'` = **1** and `grep -c '^## Next Steps'` = **1**. The
+  extraction copy was deleted BY EXACT PATH.
+- **G3 THE APPENDS — PASS, all five parts.**
+  (a) `.agent/live_review.md` BYTE ARITHMETIC at C2: base **2050782** bytes, base
+  sha256 `4720fe79346a513edd6854b5e8325b4ba665754b1b1aa0a27e1df37be5c43b6a`,
+  confirmed BY BYTE TEST to end WITHOUT a trailing newline. Two paragraphs were
+  appended in that commit, S(RECORD) = **3825** and S(FINDING) = **2198** after
+  stripping each extracted slice's trailing newline, total S = **6023**. Expected
+  2050782 + 2 + 3825 + 2 + 2198 = **2056809**; actual new size **2056809** —
+  MATCH. The file still ends WITHOUT a trailing newline. C2 sha256
+  `e54873cbbdcac39c1534eb7bfb39f78ef292644d1fcbea068904a35ead4e166c`. SLICE P at
+  C4 adds 2 + **241** = 243 more: 2056809 + 243 = **2057052**, actual **2057052**
+  — MATCH, still no trailing newline, final sha256
+  `6bc249a596c0b4234533159dd3c28f0279acf750e086a86c296466f25167aa3a`.
+  (b) A SECOND, STRUCTURALLY DIFFERENT READER, run at C2: the whole file was
+  split on blank-line boundaries into units (**858** of them). The script COUNTED
+  the units the C2 append itself contains rather than taking the number from the
+  block — **N = 2** — and asserted the LAST 2 units equal the appended paragraphs
+  IN ORDER: **True**, exit 0. Re-run after C4 over all three of this round's
+  paragraphs (**N = 3**, 859 units): **True**, exit 0.
+  (c) NEGATIVE CONTROL on a scratch copy `.remedy-wt/live_review_negctl.md`, never
+  on the tracked file: the byte at offset **2050884**, which lies inside the FIRST
+  appended paragraph, was XOR-flipped with 0x01 (`R` → `S`); reader (b) **REJECTED
+  it — exit 1**, reporting unit 0 mismatched while unit 1 still matched. The
+  tracked file's sha256 was
+  `e54873cbbdcac39c1534eb7bfb39f78ef292644d1fcbea068904a35ead4e166c` BEFORE and
+  `e54873cbbdcac39c1534eb7bfb39f78ef292644d1fcbea068904a35ead4e166c` AFTER —
   identical, so the tracked file did not move. The scratch copy was deleted BY
   EXACT PATH.
-  (d) COUNTS in `.agent/live_review.md`, each measured at the base commit through
-  `git show 7ab86528:.agent/live_review.md` and again on the working file:
-  `grep -c '^Gate: F109 R6 — '` is **1** (it was **0** at the base commit).
-  `grep -c '^- R-[0-9]\{4\} — '` is **331**, UNCHANGED from 331.
-  `grep -c '^Done: R-[0-9]\{4\} — '` is **63**, UNCHANGED from 63.
-  `grep -c '^Landed: R-'` is **25**, UNCHANGED from 25. NO FINDING WAS REGISTERED
-  OR RESOLVED THIS ROUND.
-  (e) `.agent/prose_slips.md`: base **42621** bytes, new **43860**; the base bytes
+  (d) COUNTS in `.agent/live_review.md` AFTER C4, each base number measured
+  against `git show 81a00635:.agent/live_review.md`:
+  `grep -c '^Gate: F109 R7 — '` is **1** (**0** at the base commit).
+  `grep -c '^- R-[0-9]\{4\} — '` is **332**, up from **331** — a rise of exactly
+  **1** — and `grep -c '^- R-0771 — '` is **1**.
+  `grep -c '^Landed: R-'` is **26**, up from **25** — a rise of exactly **1** —
+  and `grep -c '^Landed: R-0771 — '` is **1**.
+  `grep -c '^Done: R-[0-9]\{4\} — '` is **63**, UNCHANGED from **63**: this round
+  resolves nothing and writes no `Done:` paragraph, per constraint 4.
+  (e) `.agent/prose_slips.md`: base **43860** bytes, new **45129**; the base bytes
   are a BYTE-EXACT PREFIX of the new file (**True**); the new file still ends
-  WITHOUT a trailing newline (**True**); lines matching `^2026-` went **64 → 65**,
-  a rise of exactly **1**. Reader (b) also passed over this file with N = 1.
-- **G4 THE EDIT SHAPE IS THE ORDERED ONE — RUN IN FULL; EVERY NON-EQUAL OPCODE
-  IS ACCOUNTED FOR, WITH ONE DECLARED READING (deviation 2).** Both revisions of
-  every file were read as BLOBS with `git show <sha>:<path>` — neither revision
-  was ever written over the tracked file — split into lines and compared with
-  `difflib.SequenceMatcher(None, pre, post, autojunk=False)`.
-  **C3, `637628a5 -> 60343048`, `packages/orchestration/pingpong_loop.py`, 5078 →
-  5122 lines: 6 non-equal opcodes, DELETE COUNT 0.** Opcode by opcode:
-  (1) `insert` a[958:958] → b[958:960], 2 lines — the BUILDER parameter addition,
-  constraint 4(a);
-  (2) `insert` a[994:994] → b[996:1006], 10 lines — the BUILDER docstring
-  paragraph documenting those two parameters, which SPEC J orders in the same
-  breath as the parameters themselves ("Document both parameters in each
-  function's docstring"); I account it to constraint 4(a), see deviation 2;
-  (3) `replace` a[1113:1114] → b[1125:1136], 1 line for 11 — the BUILDER return
-  replacement, constraint 4(b), and the removed line is exactly
-  `    return compose_prompt_segments(registry.registered_segments())`;
-  (4) `insert` a[1497:1497] → b[1519:1521], 2 lines — the REVIEWER parameter
-  addition, constraint 4(a);
-  (5) `insert` a[1505:1505] → b[1529:1539], 10 lines — the REVIEWER docstring
-  paragraph, same reading as (2);
-  (6) `replace` a[1641:1642] → b[1675:1686], 1 line for 11 — the REVIEWER return
-  replacement, constraint 4(b), removing the same one line.
-  **C4, `60343048 -> 2e0398fd`, same file, 5122 → 5138 lines: 2 non-equal
-  opcodes, DELETE COUNT 0.** (1) `insert` a[3287:3287] → b[3287:3295], 8 lines —
-  the BUILDER call-site keyword plus its scope-rule comment, constraint 4(c);
-  (2) `insert` a[3570:3570] → b[3578:3586], 8 lines — the REVIEWER call-site
-  keyword plus its comment, constraint 4(c). NOTHING ELSE.
-  **C5, `2e0398fd -> bb694018`, `tests/orchestration/test_semantic_dedupe.py`,
-  1091 → 1357 lines: 2 non-equal opcodes, DELETE COUNT 0.** (1) `replace`
-  a[23:24] → b[23:30], 1 line for 7 — EXACTLY the import extension constraint 6
-  names, `from packages.orchestration.pingpong_loop import
-  _dedupe_resumed_segments, run_pingpong` becoming the parenthesised list
-  `ReviewFinding, _dedupe_resumed_segments, compose_builder_prompt,
-  compose_reviewer_prompt, run_pingpong`; (2) `insert` a[1091:1091] →
-  b[1097:1357], 260 lines appended as ONE contiguous suffix after the last
-  existing class — the test append constraint 6 names. So NO existing function,
-  test, assertion, constant or comment in either file was edited, reordered or
-  deleted, and the aggregate DELETE COUNT across all three comparisons is **0**.
-- **G5 THE COLOUR OF THE WIRING — CONTROL GREEN, MUTATIONS A AND C RED ON THEIR
-  NAMED CASES, MUTATION B GREEN AND SHOWN TO BE AN EQUIVALENT MUTANT (deviation
-  1); a substitute discriminator B′ reddens SPEC L case 6 alone.** Run in a
-  disposable worktree added at the C5 commit `bb694018` BY EXACT PATH
-  `/home/decodeux/Repos/remedy/.remedy-wt/f109-r7-g5-wt`, never in the primary
+  WITHOUT a trailing newline (**True**); lines matching `^2026-` went **65 → 66**,
+  a rise of exactly **1**.
+- **G4 THE EDIT SHAPE IS THE ORDERED ONE — PASS; EVERY NON-EQUAL OPCODE IS
+  ACCOUNTED FOR.** Both revisions of both files were read as BLOBS with `git show
+  <sha>:<path>` — neither revision was ever written over the tracked file — split
+  into lines and compared with `difflib.SequenceMatcher(None, pre, post,
+  autojunk=False)`.
+  **C3, `c842ec41 -> 1b7759b7`, `packages/orchestration/pingpong_loop.py`, 5138 →
+  5181 lines: 7 non-equal opcodes (3 `replace`, 4 `insert`), DELETE COUNT 0.**
+  Opcode by opcode:
+  (1) `replace` a[916:921] → b[916:922], 5 lines for 6 — SPEC N, the docstring
+  paragraph that claimed NO CALLER EXISTS YET, replaced by the truth. Nothing else
+  in that docstring moved.
+  (2) `replace` a[3275:3277] → b[3276:3283], 2 lines for 7 — SPEC M step 1,
+  BUILDER: the two lines that opened `compose_builder_prompt(` become the hoist
+  comment plus `builder_compose_args = dict(`. A `replace` here is expected: step 1
+  is a hoist.
+  (3) `insert` a[3287:3287] → b[3293:3296], 3 lines — SPEC M step 1, BUILDER: the
+  dict's closing paren, then the call re-opened as `compose_builder_prompt(` with
+  `effective_goal, context, **builder_compose_args,` exactly as the block spells
+  it. The `dedupe_sent_hashes=(...)` expression and its five-line scope-rule
+  comment sit in an `equal` opcode — they were NOT touched.
+  (4) `insert` a[3363:3363] → b[3372:3384], 12 lines — SPEC M step 2, BUILDER: the
+  ten-line comment plus the two recomposition statements, as the FIRST statements
+  inside `if builder_resume_ref and builder_out.error:` and before
+  `_begin_stream_call`.
+  (5) `replace` a[3562:3565] → b[3583:3588], 3 lines for 5 — SPEC M step 1,
+  REVIEWER: the three lines that opened `compose_reviewer_prompt(` (its two
+  POSITIONAL arguments are on their own lines, unlike the builder's) become the
+  comment plus `reviewer_compose_args = dict(`.
+  (6) `insert` a[3578:3578] → b[3601:3606], 5 lines — SPEC M step 1, REVIEWER: the
+  dict close, the call re-opened, the two positionals restored on their own lines,
+  and `**reviewer_compose_args,`.
+  (7) `insert` a[3672:3672] → b[3700:3715], 15 lines — SPEC M step 2, REVIEWER:
+  the comment plus the recomposition and THREE rebindings (see deviation 1).
+  **C4, `1b7759b7 -> 54f8ffa9`, `tests/orchestration/test_semantic_dedupe.py`,
+  1357 → 1557 lines: 3 non-equal opcodes (2 `insert`, 1 `replace`), DELETE COUNT
+  0.** (1) `insert` a[594:594] → b[594:595], 1 line — the
+  `reviewer_resume_fails: bool = False,` parameter that SPEC O case 2 explicitly
+  authorises adding to `_provider_pair`; (2) `replace` a[611:612] → b[612:613], 1
+  line for 1 — forwarding `resume_fails=reviewer_resume_fails` to the reviewer
+  `FakeProvider`, the other half of that same authorised extension (see deviation
+  2); (3) `insert` a[1357:1357] → b[1358:1557], 199 lines — SPEC O cases 1–4
+  appended as ONE contiguous suffix at the END of the file. NO import statement
+  needed extending this round, and no existing test, assertion, constant, fixture
+  or comment was edited, reordered or deleted. Aggregate DELETE COUNT across both
+  comparisons: **0**.
+- **G5 THE COLOUR OF THE REPAIR — PASS. Control green; MUTATION A red WITH SPEC O
+  case 1 in the failure set; MUTATION B red WITH SPEC O case 1's assertion (c) as
+  the failing assertion.** Run in a disposable worktree added at the C4 commit
+  `54f8ffa9` BY EXACT PATH
+  `/home/decodeux/Repos/remedy/.remedy-wt/g5-f109-r8`, never in the primary
   checkout. FIRST, BEFORE ANY MUTATION WAS TRUSTED, with the worktree as cwd:
   `python3 -B -c "import packages.orchestration.pingpong_loop as m;
   print(m.__file__)"` printed
-  `/home/decodeux/Repos/remedy/.remedy-wt/f109-r7-g5-wt/packages/orchestration/pingpong_loop.py`
+  `/home/decodeux/Repos/remedy/.remedy-wt/g5-f109-r8/packages/orchestration/pingpong_loop.py`
   — INSIDE the worktree, so no editable install shadowed it. `__pycache__` was
-  purged before EVERY run (**0** directories found each time — a fresh worktree
-  carries none and `python3 -B` writes none) and the command each time was the
-  block's exact one, `python3 -B -m pytest
+  checked before EVERY run and **0** directories existed each time (a fresh
+  worktree carries none and `python3 -B` writes none). The command each time was
+  the block's exact one, `python3 -B -m pytest
   tests/orchestration/test_semantic_dedupe.py -q`.
-  (a) CONTROL, unmutated: **exit 0, 105 passed**. Re-run after the last restore:
-  **exit 0, 105 passed** again.
-  (b) MUTATION A — the `is not None` guard removed so the transform runs
-  unconditionally (`if dedupe_sent_hashes is not None:` → `if True:`). The short
-  ordered text occurs **2** times, so I quoted a LONGER UNIQUE ANCHOR — the block
-  running from `["\nProvide your changes and a summary of what you did."],`
-  through `registry.register(name, rank, text)` down to the `if` line, which
-  occurs **1** time — and took the **BUILDER** one. Result: **exit 1, 21 failed,
-  84 passed — RED.** The failure set INCLUDES SPEC L golden cases 1 and 3:
-  `test_the_builder_default_and_an_explicit_none_compose_the_same_bytes[0]`,
-  `[1]`, `[2]` and
-  `test_an_empty_sent_set_runs_the_transform_and_still_composes_the_same_bytes[0]`,
-  `[1]`, `[2]`. So the golden CAN fail. The red is wide because the unguarded
-  call passes `None` into `should_dedupe_segment`, which raises `TypeError` at
-  `session_sent_index.py:322`, taking the ten pre-existing
-  `TestChainAgainstTheRealLoop` loop cases with it — reported, not hidden.
-  (c) MUTATION B — restored, then the BUILDER call site's conditional dropped for
-  `session_sent_index.sent_hashes(builder_resume_ref or "")`. Anchor occurrences:
-  the short text `dedupe_sent_hashes=(` occurs **2** times, so I took the longer
-  unique three-line anchor naming `builder_resume_ref`, which occurs **1** time.
-  Result: **exit 0, 105 passed — GREEN, i.e. the gate's ordered mutation did NOT
-  redden SPEC L case 6.** This is an EQUIVALENT MUTANT and I measured why rather
-  than arguing it: run inside the mutated worktree,
-  `SessionSentIndex.record_call("", rows, ok=True)` returns **0** (a named session
-  returns 1), so `sent_hashes("")` is **`frozenset()`** for every possible run;
-  and `compose_builder_prompt(..., dedupe_sent_hashes=None).text ==
-  compose_builder_prompt(..., dedupe_sent_hashes=frozenset()).text` is **True**.
-  The mutant therefore substitutes exactly `frozenset()` for `None` on every
-  non-resuming round and changes no composed byte anywhere; on a resuming round
-  `builder_resume_ref or ""` IS `builder_resume_ref`, so it is unchanged there
-  too. SPEC L case 6 was NOT weakened and no pass was fabricated.
-  (c′) SUBSTITUTE DISCRIMINATOR B′, run in addition so case 6 is not left
-  unproved — the SAME edit's intent (conditional dropped, scope rule gone)
-  expressed with a session key the index can actually hold:
-  `dedupe_sent_hashes=session_sent_index.sent_hashes(next(iter(session_sent_index.session_ids()),
-  ""))`, same unique anchor, occurrences **1**. Result: **exit 1, 1 failed, 104
-  passed — RED, and the single failure IS SPEC L case 6**,
-  `test_a_chain_that_never_resumes_composes_no_marker_anywhere`, failing on a
-  round-2 builder prompt that now carries `[unchanged: builder_system, previously
-  provided]`. Exactly one case, no collateral.
-  (d) MUTATION C — restored, then the BUILDER `dedupe_enabled` default flipped to
-  `False`. The short text `    dedupe_enabled: bool = True,` occurs **2** times,
-  so I took the longer unique anchor spanning `tiered_diff_text` through the
-  builder docstring's first line, which occurs **1** time. Result: **exit 1, 2
-  failed, 103 passed — RED.** The failure set INCLUDES SPEC L case 4,
-  `test_a_second_composition_against_its_own_recorded_manifest_carries_markers`.
-  The second failure is SPEC L case 5's own POSITIVE CONTROL — the kill-switch
-  case asserts the same input IS deduped under the default before flipping the
-  flag, so nothing but the flag differs — which is a discriminator doing its job,
-  not collateral.
+  (a) CONTROL, unmutated: **exit 0, 109 passed**.
+  (b) MUTATION A — the two recomposition statements SPEC M step 2 adds to the
+  BUILDER fallback branch, deleted, restoring exactly the behaviour `R-0771`
+  describes. UNIQUENESS: the sub-string `builder_prompt = builder_composed.text`
+  occurs **2** times and `builder_composed = compose_builder_prompt(` occurs **2**
+  times, so I took the LONGER unique text — both statements together with their
+  16-space fallback indentation — which occurs **1** time; the script refuses to
+  edit unless that count is exactly 1. Result: **exit 1, 2 failed, 107 passed —
+  RED.** The failure set INCLUDES SPEC O case 1,
+  `test_a_builder_resume_fallback_sends_full_content`, failing at assertion (b) on
+  a `resume=None` call carrying `[unchanged: `. The second failure is SPEC O case
+  3, `test_the_recorded_builder_row_describes_the_bytes_that_were_sent`, failing on
+  `_sha256_of_marker('builder_system')` being present in the recorded evidence row
+  — the manifest half of the same defect. Wider than ordered, and reported.
+  (c) MUTATION B — file restored from the C4 blob by exact path
+  (`git -C … checkout 54f8ffa9 -- packages/orchestration/pingpong_loop.py`,
+  `git status --porcelain` EMPTY afterwards), then the `dedupe_sent_hashes` keyword
+  deleted from the BUILDER `compose_builder_prompt(` call. UNIQUENESS: the short
+  text `dedupe_sent_hashes=(` occurs **2** times (builder and reviewer), so I took
+  the longer unique three-line block naming `builder_resume_ref`, occurrences
+  **1**, and took the BUILDER one. Result: **exit 1, 3 failed, 106 passed — RED.**
+  The failure set INCLUDES SPEC O case 1, and I confirmed WHICH assertion by
+  re-running that node alone: it fails at **assertion (c)**,
+  `assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != []`, with the
+  resumed prompt list `[1110]` and no marker in any of them — which is exactly
+  what proves case 1 cannot pass by dedupe simply being switched off. The two
+  extra failures are SPEC O case 3 and SPEC O case 4, both of which also require
+  dedupe to fire; wider than ordered, and reported.
   No test was edited in any direction to produce a colour. CLEANUP: after the
   final restore `git -C … status --porcelain` was EMPTY inside the worktree, then
-  `git worktree remove --force
-  /home/decodeux/Repos/remedy/.remedy-wt/f109-r7-g5-wt` and `git worktree prune`.
-  `git worktree list` afterwards shows the primary checkout plus exactly the four
-  pre-existing `.remedy-wt/job-*` worktrees (`job-48a379ab5ca44ec5`,
-  `job-7d1c93e2dc98415a`, `job-98e9364a83a34872`, `job-f76686b8435640e9`), which
-  predate this branch and were left untouched.
+  `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g5-f109-r8` and
+  `git worktree prune`. `git worktree list` afterwards shows the primary checkout
+  plus exactly the four pre-existing `.remedy-wt/job-*` worktrees
+  (`job-48a379ab5ca44ec5`, `job-7d1c93e2dc98415a`, `job-98e9364a83a34872`,
+  `job-f76686b8435640e9`), which predate this branch and were left untouched. My
+  shell was never left inside the removed worktree.
 - **G6 THE SUITES — PASS.** Run SERIALLY, never two pytest processes alive at
-  once, in the primary checkout at the C5 commit, every one exit 0 (mine, then
-  the block's base count in brackets):
-  `tests/orchestration/test_semantic_dedupe.py` **105** [90] — the only one that
-  moved, and only upward, by the 15 new cases;
+  once, in the primary checkout at the C4 commit, every one exit 0 (mine first,
+  then the block's base count in brackets):
+  `tests/orchestration/test_semantic_dedupe.py` **109** [105] — the only one that
+  moved, and only upward, by the 4 new SPEC O cases;
   `tests/orchestration/test_prompt_segments.py` **25** [25];
   `tests/orchestration/test_builder_prompt_golden.py` **36** [36];
   `tests/orchestration/test_reviewer_prompt_golden.py` **39** [39];
@@ -237,256 +231,247 @@ No path outside the ordered change set was touched. `git diff --numstat` over
   `tests/orchestration/test_pingpong.py` **34** [34];
   `tests/orchestration/test_session_resume.py` **27** [27];
   `tests/cli/test_golden_path.py` **42** [42]. EVERY OTHER COUNT IS IDENTICAL to
-  the base. The two prompt goldens are what prove the default really bypasses:
-  `test_builder_prompt_golden.py` pins frozen renders and an exact ten-name
-  manifest tuple, and it is green at its base count, so no existing caller's
-  bytes moved.
+  the base. The two prompt goldens matter most this round, because SPEC M step 1
+  is a pure refactor of the very call they cover: both sit EXACTLY at 36 and 39,
+  so the composed bytes did not move.
 - **G7 THE TREE — PASS.** `git status --porcelain` is EMPTY (no output).
-  `git ls-files .remedy-wt` returns NOTHING. Insertion counts before C6, the `+`
-  column only, taken from `git show --numstat` and from nothing else: C0a **357**,
-  C0b **261**, C1 **16**, C2 **3 + 3 = 6**, C3 **46**, C4 **16**, C5 **267**.
-  Every one is under 500. I COMPARED those numbers CELL BY CELL against the `+`
-  column of the `## Commits this round` table above and they agree; no
-  before/after line count of a rewritten file was substituted for a numstat
-  column anywhere. The full `git diff --numstat
-  7ab865280a44e1078feb320f5508cd1901cbb27d..bb694018` lists exactly seven paths
-  and nothing else: `.agent/authored/f109-r7.md` 357/0, `.agent/last_block.md`
-  261/259, `.agent/live_review.md` 3/1, `.agent/plan.md` 16/20,
-  `.agent/prose_slips.md` 3/1, `packages/orchestration/pingpong_loop.py` 62/2 and
-  `tests/orchestration/test_semantic_dedupe.py` 267/1.
+  `git ls-files .remedy-wt` returns NOTHING. Insertion counts before C5, the `+`
+  column only, taken from `git show --numstat` and from nothing else: C0a **381**,
+  C0b **249**, C1 **14**, C2 **5 + 3 = 8**, C3 **53**, C4 **3 + 201 = 204**. Every
+  one is under 500. I COMPARED those numbers CELL BY CELL against the `+` column
+  of the `## Commits this round` table above and they agree; no before/after line
+  count of a rewritten file was substituted for a numstat column anywhere. The
+  full `git diff --numstat
+  81a00635d1498dbb5eb9869bb5d2a6e3e836a9f9..54f8ffa9` lists exactly seven paths
+  and nothing else: `.agent/authored/f109-r8.md` 381/0, `.agent/last_block.md`
+  249/225, `.agent/live_review.md` 7/1, `.agent/plan.md` 14/11,
+  `.agent/prose_slips.md` 3/1, `packages/orchestration/pingpong_loop.py` 53/10 and
+  `tests/orchestration/test_semantic_dedupe.py` 201/1. Constraint 9 puts every
+  gate at C4 or earlier, so this range stops at C4; C5 adds the eighth ordered
+  path, `.agent/handoff.md`, whose count the reviewer measures.
 
 ## Item status
 
-| Item | Status | Reason                                                          |
-|------|--------|-----------------------------------------------------------------|
-| C0a  | done   |                                                                 |
-| C0b  | done   |                                                                 |
-| C1   | done   |                                                                 |
-| C2   | done   |                                                                 |
-| C3   | done   | docstring paragraphs added per SPEC J; see deviation 2          |
-| C4   | done   |                                                                 |
-| C5   | done   | all seven SPEC L cases implemented, including case 7            |
-| C6   | done   | this file                                                       |
+| Item | Status | Reason                                                                |
+|------|--------|-----------------------------------------------------------------------|
+| C0a  | done   |                                                                       |
+| C0b  | done   |                                                                       |
+| C1   | done   |                                                                       |
+| C2   | done   | registered `R-0771` BEFORE the fix existed, per constraint 3          |
+| C3   | done   | SPEC M both roles + SPEC N; reviewer needed a third rebinding, dev. 1 |
+| C4   | done   | all four SPEC O cases landed; `_provider_pair` extended, dev. 2       |
+| C5   | done   | this file                                                             |
 
-## What C3 and C4 actually landed
+## What C3 actually landed
 
-Both compose functions gained, as the LAST two entries of their signature and
-immediately before the closing `) -> ComposedPrompt:`, exactly:
+SPEC M STEP 1, BOTH ROLES — a pure refactor, and the prompt goldens are what
+prove the composed bytes did not move. `builder_compose_args` holds the ten
+keyword arguments of the builder call; `reviewer_compose_args` holds the thirteen
+of the reviewer call. `dedupe_sent_hashes` stayed at BOTH call sites, unchanged,
+with its five-line scope-rule comment untouched — it is the one argument the two
+compositions must differ in.
 
-    dedupe_sent_hashes: Container[str] | None = None,
-    dedupe_enabled: bool = True,
+THE HAZARD THE BLOCK WARNED ABOUT WAS REAL AND WAS AVOIDED. The two call sites do
+NOT lay out their positional arguments the same way: the builder passes
+`effective_goal, context,` on ONE line, the reviewer passes `effective_goal,` and
+`builder_out.summary,` on TWO. I read each call site to find its own
+positional/keyword boundary rather than applying one textual operation twice, so
+`builder_out.summary,` never entered a `dict(...)`. The `ValueError: dictionary
+update sequence element #0 has length 1; 2 is required` the block predicts never
+occurred, and the four suites that drive the real loop
+(`test_semantic_dedupe`, `test_pingpong`, `test_session_resume`,
+`tests/cli/test_golden_path`) would have caught it at run time if it had.
 
-Both are KEYWORD-ONLY by construction — each signature has a bare `*` well
-before them — and both carry defaults, so NO SIGNATURE BREAKS: every existing
-caller keeps working unchanged. `_build_builder_prompt` and
-`_build_reviewer_prompt` were NOT touched, so they pass neither parameter and
-therefore bypass, which is the intended behaviour rather than an omission.
+SPEC M STEP 2, BOTH ROLES — as the FIRST statements inside `if <role>_resume_ref
+and <role>_out.error:`, before `_begin_stream_call` and before the retry, the
+prompt is recomposed with NO dedupe argument and the composed object is rebound.
+Each carries a comment naming F109 T002b and `R-0771` and saying the three things
+the block requires: a fallback is not a resumed session so the scope rule forbids
+dedupe on it; the prompt is recomposed at full content because the fresh session
+never received the originals; and `<role>_composed` is rebound too so the manifest
+recorded below describes what was actually sent.
 
-Constraint 4's import claim was CONFIRMED BEFORE ANY EDIT and it holds: at the
-base commit `Container` is already imported at line 26 (`from collections.abc
-import Callable, Container, Sequence`) and `_dedupe_resumed_segments` is defined
-in the same module at line 882, above both compose functions. NO IMPORT WAS
-ADDED OR CHANGED in `pingpong_loop.py` this round.
+SPEC N — the `_dedupe_resumed_segments` docstring paragraph now reads "BOTH
+CALLERS EXIST, and have since `60343048`", names both compose functions, says
+each calls it behind a `dedupe_sent_hashes` parameter that BYPASSES DEDUPE BY
+DEFAULT, and states that what remains absent is the config plumbing that supplies
+`enabled`, which is T002c. Nothing else in that docstring changed — G4 opcode (1)
+is the whole of it.
 
-The line `return compose_prompt_segments(registry.registered_segments())`
-occurred EXACTLY TWICE before the edit — counted with `grep -c`, which printed
-**2** — and occurs **0** times after it. Both became the eleven-line block SPEC J
-dictates, verbatim including its five-line comment about discarding the replaced
-names until T002c needs them.
+I DID NOT TOUCH `invalidate_on_resume_fallback`, `record_finalized_call`,
+`_finalize_call`, the retry machinery, or either compose function's body, exactly
+as constraint 5 requires; G4's opcode list is the evidence, and every opcode sits
+either in the docstring at line 916 or inside the two call sites and the two
+fallback branches.
 
-C4 added ONE keyword argument to each of the two `run_pingpong` call sites,
-`builder_composed = compose_builder_prompt(` and `reviewer_composed =
-compose_reviewer_prompt(`, each under 120 characters (102 and 104), each with a
-comment above it naming F109 T002b and the scope rule. `record_finalized_call`,
-`invalidate_on_resume_fallback` and `result.session_sent_evidence` were NOT
-touched.
+I RAN THE SHIPPED CODE, NOT JUST READ IT. Before writing a single test I drove
+the real loop three times against `FakeProvider` and captured every provider call
+with its `resume` argument. Builder-resume-fails: three builder calls —
+`resume=None` clean (561 chars), `resume='sess-builder'` WITH a marker (808), and
+`resume=None` again at **1110 chars and NO marker**, which is the repair.
+Reviewer-resume-fails: three reviewer calls, the third `resume=None` at 1898
+chars with no marker. Clean resumed chain: two calls per role, the resumed one
+marked, the fresh one not. All three runs ended `staged_review_passed`.
 
-I RAN THE SHIPPED FUNCTIONS, not just read them: a probe drove the real loop
-against `FakeProvider` twice before the tests were written. A resumed pair
-produced round-2 prompts carrying `[unchanged: builder_system, previously
-provided]` and `[unchanged: reviewer_system, previously provided]`; a
-`supports_resume=False` pair produced none. Both runs ended
-`staged_review_passed`.
+## What C4 actually landed
 
-## What C5 actually landed
+201 insertions, 1 deletion. One new module-level constant
+(`DEDUPE_MARKER_PREFIX`), one module-level helper (`_capture_role_calls`), one
+module-level fixture (`fallback_repo`) and one new class
+(`TestAResumeFallbackSendsFullContent`) with four cases, at the END of the file.
+109 tests total, up from 105.
 
-267 insertions, 1 deletion — the deletion is the one import line that was
-extended. One new class,
-`TestTheComposeSeamBypassesUntilAResumedSessionSaysOtherwise`, at the END of the
-file, plus four module-level constants and two module-level helpers. 15 new test
-functions, 105 total. Nothing already present was edited, reordered or deleted.
+SPEC O CASE 1 — `test_a_builder_resume_fallback_sends_full_content`. Drives the
+real loop with `_provider_pair(builder_resume_fails=True)` and `repair_rounds=2`,
+exactly as `test_a_failed_builder_resume_falls_back_within_the_same_round` does.
+`_capture_role_calls` WRAPS `provider.build` and delegates to the bound original,
+so the real call still happens and the real run completes; each entry is
+`(resume, prompt)`. (a) `final_status == "staged_review_passed"` and
+`rounds[1].builder_output.resume_fallback is True`, so the case is known to have
+exercised the fallback. (b) no `resume=None` call carries `[unchanged: `.
+(c) at least one non-None-`resume` call DOES carry it. G5 mutation B is what
+shows (c) is load-bearing rather than decoration.
 
-ALL SEVEN SPEC L CASES ARE IMPLEMENTED, INCLUDING CASE 7. The case-7 escape
-hatch was NOT used and case 6 was NOT weakened. Mapping:
+SPEC O CASE 2 — `test_a_reviewer_resume_fallback_sends_full_content`, the same
+three assertions on the reviewer side. `_provider_pair` did NOT expose a reviewer
+equivalent of `builder_resume_fails`, so I EXTENDED it with
+`reviewer_resume_fails: bool = False` exactly as SPEC O case 2 authorises — an
+addition that breaks no existing caller; every existing call site omits it and
+`FakeProvider.review` already honoured `resume_fails`. The case-2 escape hatch
+("leave this case out") was NOT used and case 1 was NOT weakened.
 
-1. `test_the_builder_default_and_an_explicit_none_compose_the_same_bytes[0..2]`
-   over THREE shapes that vary `findings`, `safe_diff`, `round_number`,
-   `test_result`, `task_body` and `scope_contract`. It asserts `.text` equality
-   AND `.manifest` equality, as ordered. Its discriminator
-   `test_the_three_builder_shapes_are_not_the_same_prompt` proves the three
-   shapes really compose different prompts, so the golden is not vacuous.
-2. `test_the_reviewer_default_and_an_explicit_none_compose_the_same_bytes[0..1]`
-   over TWO shapes, with the same manifest assertion and the same discriminator
-   (`test_the_two_reviewer_shapes_are_not_the_same_prompt`).
-3. `test_an_empty_sent_set_runs_the_transform_and_still_composes_the_same_bytes[0..2]`
-   plus `test_an_empty_sent_set_composes_the_same_reviewer_bytes_too` —
-   `frozenset()` is not None, so the transform really runs and must still produce
-   identical bytes. This is the case that proves the bypass is about the DATA.
-4. `test_a_second_composition_against_its_own_recorded_manifest_carries_markers`
-   — the sent set is built from the FIRST composition's own
-   `manifest_as_dicts()` through a real `SessionSentIndex.record_call(...,
-   ok=True)` and `sent_hashes(...)`. It asserts at least one segment's text is
-   EXACTLY that segment's marker (via `_sha256_of_marker`, which takes the marker
-   digest from the SHIPPED manifest producer rather than adding a second hashing
-   expression), that the second composition is STRICTLY shorter, and that the
-   manifest's NAMES and RANKS are unchanged between the two compositions.
-5. `test_the_kill_switch_composes_the_no_dedupe_bytes_from_the_same_full_set` —
-   the positive control runs FIRST on the same full sent set, so nothing but the
-   flag differs.
-6. `test_a_chain_that_never_resumes_composes_no_marker_anywhere` — drives the
-   REAL loop with `TestChainAgainstTheRealLoop._provider_pair(supports_resume=False)`
-   and `._run`, reusing that class's provider construction rather than inventing
-   another, and asserts over `result.prompt_traces` — THE RUN'S OWN RECORDED
-   PROMPTS, not a re-composition. It asserts `prompt_text_truncated is False`
-   FIRST, so the absence is only as wide as the recorded text and a 50 000-char
-   cap cannot hide a marker.
-7. `test_a_resumed_repair_chain_composes_a_marker_and_still_completes` — the same
-   helpers with a resuming pair; the run still ends `staged_review_passed`, at
-   least one recorded prompt carries `[unchanged: `, and EVERY marked prompt is
-   from a round > 1, which pins "resumed session only" from the positive side.
+SPEC O CASE 3 — `test_the_recorded_builder_row_describes_the_bytes_that_were_sent`.
+HOW THE CORRESPONDENCE WAS ESTABLISHED, stated in the case's own comment and
+repeated here because the block asks for it plainly: the evidence row carries
+sha256 values ALONE — no names, no text — and a hash cannot be inverted back into
+a substring of the prompt, so "every recorded sha256 corresponds to a segment of
+the prompt that was actually sent last" is NOT decidable from outside the loop
+and the case does not claim it. THE WEAKER, HONEST FORM I WROTE INSTEAD: a
+marker's text follows from its name alone, so its hash is computable via the
+shipped producer (`_sha256_of_marker`); the round-2 builder TRACE records the
+manifest of the composition the fallback ABANDONED, so the names it replaced are
+readable; and the round-1 trace records those same names at FULL content. The
+case asserts, for every name the abandoned composition replaced, that the
+recorded row holds the FULL-content hash and NOT the marker hash — plus that the
+last call this session received opened a fresh session and carried no marker.
+That is a statement about the segments the defect touched, which is narrower than
+the sentence SPEC O uses, and it is written that way on purpose. It is not
+vacuous: it carries its own positive control (`assert replaced`) and it is one of
+the two cases G5 mutation A reddens.
+
+SPEC O CASE 4 — `test_a_resumed_chain_that_never_falls_back_still_dedupes`. Round
+7's property, re-read off the CALLS rather than the traces: neither role falls
+back, every role still carries a marker on its resumed call, and no call that
+opened a session carries one. It reuses `TestChainAgainstTheRealLoop._make_repo`,
+`._provider_pair`, `._run` and `._rows_by_session` rather than building a second
+fixture stack, per constraint 6.
 
 Ruff followed BY CONSTRUCTION per constraint 7, which forbids gating on it and on
-`npm run lint`: the longest line in the WHOLE of `pingpong_loop.py` after C4 is
-**119** and in `test_semantic_dedupe.py` after C5 is **102**, both under the
-configured 120; both files parse with `ast`; the extended import list is in the
-repo's `order-by-type` isort order — the class `ReviewFinding` first, then the
-four functions alphabetically, `_dedupe_resumed_segments` before
-`compose_builder_prompt` before `compose_reviewer_prompt` before `run_pingpong`.
+`npm run lint`: the longest line in the WHOLE of `pingpong_loop.py` after C3 is
+**119** and in `test_semantic_dedupe.py` after C4 is **102**, both under the
+configured 120; no line in either file has trailing whitespace; both files parse
+with `ast`. NO import statement was added or changed in EITHER file this round,
+so the isort clause of constraint 7 had nothing to bind.
 
 ## Deviations
 
-1. **THE ORDERED G5 MUTATION B IS AN EQUIVALENT MUTANT AND CAME BACK GREEN — 105
-   passed, exit 0.** It cannot redden SPEC L case 6, or anything else, under any
-   construction of that case. Measured, not argued: `SessionSentIndex.record_call`
-   refuses an empty session id (`return 0`), so `sent_hashes("")` is ALWAYS
-   `frozenset()`; and an empty frozenset composes byte-identical bytes to `None`
-   because nothing in an empty container can match a hash. So `sent_hashes(ref or
-   "")` differs from `... if ref else None` only in substituting `frozenset()` for
-   `None` on non-resuming rounds, which is unobservable. I did NOT weaken case 6,
-   did NOT rewrite it to pass a different mutant, and did NOT report a colour I
-   did not see. I ran a SUBSTITUTE DISCRIMINATOR B′ in addition — the same edit's
-   intent with a session key the index can actually hold — and it reddens SPEC L
-   case 6 and ONLY case 6 (1 failed, 104 passed), so case 6 is demonstrably not
-   vacuous. If the reviewer wants the ordered mutation to bite, the code would
-   have to make an empty set behave differently from None, which is precisely the
-   distinction SPEC L case 3 forbids.
-2. **SPEC J AND CONSTRAINT 4 DISAGREE ABOUT THE DOCSTRINGS, AND I FOLLOWED SPEC
-   J.** Constraint 4 says only three edit kinds are permitted in
-   `pingpong_loop.py` and "no other line of that file changes"; SPEC J, in the
-   same block, orders "Document both parameters in each function's docstring in
-   that file's own style". I read constraint 4(a) as delegating its own definition
-   to SPEC J — it says "the two parameter additions OF SPEC J" — so a parameter
-   addition includes the docstring entry SPEC J orders for it. The result is
-   opcodes (2) and (5) under G4, ten lines each, both pure `insert`, both
-   adjacent to the function they document, neither touching an existing line.
-   Reversible in one edit if the reviewer prefers the literal reading of
-   constraint 4.
-3. **A CLAIM IN SHIPPED CODE WENT STALE THIS ROUND AND CONSTRAINT 4 FORBIDS ME TO
-   REPAIR IT.** `_dedupe_resumed_segments`'s docstring still carries, at
-   `packages/orchestration/pingpong_loop.py`, the paragraph "Scope boundary — a
-   deliberate absence … NO CALLER EXISTS YET. Nothing in this module calls this
-   function. Wiring it into ``compose_builder_prompt`` and
-   ``compose_reviewer_prompt`` behind a parameter that bypasses dedupe by default
-   is the next slice of T002b". As of C3 that is FALSE: this round is that slice
-   and both functions now call it. Constraint 4 permits no other line of the file
-   to change and G4 measures exactly that, so I left it and declare it instead of
-   routing around the constraint. IT SHOULD BE RETIRED IN THE NEXT ROUND'S CHANGE
-   SET. The parallel claim in the test file — "no tmp_path, no provider and no
-   loop below this line" above the T002a block — I could not edit either
-   (constraint 6), so the new section header I appended says explicitly that the
-   note stops there and that the last two cases drive the real loop.
-4. **A REAL PRODUCT RISK THE WIRING INTRODUCES, OUT OF THIS ROUND'S SCOPE,
-   REPORTED FOR REGISTRATION.** In `run_pingpong` the builder prompt is composed
-   ONCE, with dedupe applied whenever `builder_resume_ref` is set. If that resume
-   attempt then ERRORS, the loop's F106 T002c fallback re-sends THE SAME
-   `builder_prompt` with `resume=None`, i.e. a prompt whose segments were replaced
-   by `[unchanged: …]` markers into a session that never received the originals.
-   `invalidate_on_resume_fallback` correctly clears the index AFTER the fact, but
-   the already-composed prompt is not recomposed. The reviewer's own C4 path has
-   the identical shape at `reviewer_resume_ref`. SPEC K explicitly forbids me to
-   touch `record_finalized_call` or `invalidate_on_resume_fallback`, and
-   recomposing on fallback is a change to neither this round's change set nor its
-   SPECs, so I did not make it. Existing coverage:
-   `test_a_failed_builder_resume_falls_back_within_the_same_round` and
-   `test_the_fallback_invalidation_shrinks_exactly_the_builder_row` both stay
-   green, so nothing regressed — but neither of them looks at the fallback
-   prompt's TEXT, which is why this is a gap and not a red gate. I recommend an
-   R-id.
-5. **The sandbox bash guard refused several command FORMS**, not contents: `find
-   … -exec rm`, `git checkout -- <path>`, `git restore <path>`, and some compound
-   commands. `__pycache__` was therefore purged by a script that walks ONE
-   allowed root — it refuses any root other than this round's worktree — and
-   prints every directory it removes, so the removal set is a readable list and
-   never a glob. The between-mutation restore was done by writing the file's own
-   committed blob (`git show bb694018:<path>`) back into the worktree, which is
-   exactly what `git checkout --` does; each restore was verified by `git -C …
-   status --porcelain` printing EMPTY. Every `grep -c`, `wc -l`, `cmp`,
-   `sha256sum`, `git show --numstat`, `git status --porcelain`, `git ls-files`
-   and `git worktree` command the block names was run VERBATIM. No gate was
-   weakened, reworded or narrowed to fit the guard.
-6. **`ReviewFinding` is imported FROM `packages.orchestration.pingpong_loop`**,
-   which re-exports it, rather than from its defining module
-   `packages.orchestration.pingpong_provider`. Constraint 6 permits extending
-   exactly ONE import statement in the test file — the `pingpong_loop` one — and
-   SPEC L case 1 orders the shapes to vary `findings`, which needs the class.
-   Extending the `pingpong_provider` import instead would have been a second
-   edited statement and a second G4 opcode the block does not name. Trivially
-   changed if the reviewer prefers the defining module.
-7. **The new class carries its own `loop_repo` fixture** rather than reusing
-   `TestChainAgainstTheRealLoop`'s `isolate_data_root` and `demo_repo`, because
-   those are declared INSIDE that class and are not visible to another one. The
-   fixture is deliberately NOT autouse, so the ten pure golden cases stay free of
-   `tmp_path`; the repo itself comes from `TestChainAgainstTheRealLoop._make_repo`
-   and the providers from its `_provider_pair`, so no construction was duplicated.
-8. **MUTATION A FAILED WIDER THAN THE ONE NAMED CASE** — 21 failures. The block
-   permits a wider red and asks that it be reported. Ten of the extras are the
-   pre-existing `TestChainAgainstTheRealLoop` cases, which die on the `TypeError`
-   the unguarded call raises inside `should_dedupe_segment`; that is genuine
-   collateral of an unguarded `None`, not a second subject. MUTATION C's one
-   extra is principled rather than collateral: it is case 5's own positive
-   control.
-9. **Scratch artefacts live under `.remedy-wt/` and are gitignored**, never
-   committed and never in the change set: `f109-r7-extract.py`,
-   `f109-r7-plan.txt`, `f109-r7-g3.py`, `f109-r7-g3c.py`, `f109-r7-g3e.py`,
-   `f109-r7-g4.py`, `f109-r7-linelen.py`, `f109-r7-probe.py`,
-   `f109-r7-purge.py`, `f109-r7-mutate.py`, `f109-r7-restore.py`,
-   `f109-r7-mutb-evidence.py`, `f109-r7-lr-base.md`. Two were deleted BY EXACT
-   PATH the moment they had served: `f109-r7-lr-scratch.md` (the G3(c) negative
-   control) and `f109-r7-plan-verify.txt` (the G2 re-extraction). `git ls-files
-   .remedy-wt` returns nothing, as G7 records.
-10. **Four `.remedy-wt/job-*` worktrees predate this branch** and were left
-    alone. Exactly one worktree was created this round,
-    `.remedy-wt/f109-r7-g5-wt`, and it was removed by exact path and then pruned.
-11. **No `docs/` file was touched.** The change set forbids it and T003 owns the
-    docs for this feature. The deliberate absences are recorded where a reader
-    would search for them — in both compose functions' docstrings and in the new
-    test section's header — per AGENTS.md's discoverability convention.
+1. **SPEC M NAMES TWO REBINDINGS; THE REVIEWER SIDE NEEDS THREE, AND I MADE THE
+   THIRD.** SPEC M step 2 orders `<role>_composed` and `<role>_prompt` rebound.
+   That is complete for the builder, whose retry sends `builder_prompt`. It is
+   NOT complete for the reviewer: at
+   `packages/orchestration/pingpong_loop.py` the reviewer computes
+   `reviewer_effective = _reviewer_effective_prompt(reviewer_prompt)` BEFORE the
+   call, and both the retry (`reviewer_provider.review(reviewer_effective, …)`)
+   and `_finalize_call(…, fallback_prompt=reviewer_effective)` use that name, not
+   `reviewer_prompt`. Rebinding only the two named names would have left the
+   marker in the bytes the reviewer actually receives and repaired nothing on that
+   role. I therefore added `reviewer_effective = _reviewer_effective_prompt(
+   reviewer_prompt)` as the third statement of that branch, on the authority of
+   SPEC M's own stated purpose — "one rebinding each makes the sent bytes, the
+   stored prompt and the recorded evidence agree". MEASURED, not argued: with the
+   third rebinding the reviewer's `resume=None` fallback call is 1898 chars and
+   marker-free; SPEC O case 2 is what pins it. This is G4 opcode (7) on the C3
+   comparison and it is the only line in this round that goes beyond SPEC M's
+   literal wording. Trivially reversible if the reviewer disagrees — at the cost
+   of case 2 going red.
+2. **SPEC O CASE 2 AND CONSTRAINT 6 DISAGREE ABOUT `_provider_pair`, AND I
+   FOLLOWED SPEC O.** Constraint 6 says nothing already present in the test file
+   is edited "with ONE named exception: the existing import statements may be
+   EXTENDED". SPEC O case 2, in the same block, orders exactly the edit constraint
+   6 does not list: "EXTEND that helper with a `reviewer_resume_fails` parameter
+   defaulting to False, which is an addition and breaks no existing caller." I
+   took the specific instruction over the general one, because it names the
+   helper, names the parameter, names its default and states the safety argument.
+   The cost is two G4 opcodes on the test file — one `insert` of the parameter
+   line, one `replace` of the `FakeProvider(` reviewer construction to forward it
+   — and no import statement needed extending, so the exception constraint 6 DOES
+   grant went unused. No existing caller passes the new parameter; every existing
+   case behaves identically, which G6's `109 [105]` with 105 unchanged cases
+   confirms.
+3. **BOTH G5 MUTATIONS FAILED WIDER THAN THE ONE NAMED CASE.** Mutation A: 2
+   failures where 1 was named (case 1 named, case 3 extra). Mutation B: 3 where 1
+   was named (case 1 named, cases 3 and 4 extra). The block permits a wider red
+   and asks that it be reported. Neither extra is collateral in the bad sense:
+   case 3 reads the recorded manifest, which is the second half of the same
+   defect, and case 4 requires dedupe to fire at all, which mutation B removes.
+   No case was weakened and no colour was manufactured.
+4. **NO `Done:` PARAGRAPH WAS WRITTEN, though the finding and its fix landed in
+   the same round.** Constraint 4 and
+   docs/agents/planner_reviewer_prompt.md §4 item 4 reserve that text for the
+   reviewer at the next gate. SLICE P's `Landed:` line is the only resolution
+   marker this round carries, and G3(d) measures `grep -c '^Done: R-[0-9]\{4\} —
+   '` UNCHANGED at 63 to prove it.
+5. **The sandbox bash guard refused several command FORMS**, not contents: a
+   compound command ending in `echo "exit=$?"`, and an `awk` one-liner over the
+   source file. Neither was a gate; the exit codes were read from the tool's own
+   non-zero reporting instead (which is how G3(c)'s `exit 1` and G5's `exit 1`
+   were recorded), and the line-length scan was done in Python. Every `cmp`,
+   `wc -l`, `grep -c`, `sha256sum`, `git show --numstat`, `git status
+   --porcelain`, `git ls-files`, `git worktree` and `python3 -B -m pytest` command
+   the block names was run VERBATIM. No gate was weakened, reworded or narrowed
+   to fit the guard.
+6. **Scratch artefacts lived under `.remedy-wt/` and are gitignored**, never
+   committed and never in the change set. Every one I created was deleted BY
+   EXACT PATH after it had served: `extract_slice.py`, `append_slices.py`,
+   `g3b_reader.py`, `g3c_negctl.py`, `g3_prefix.py`, `g4_opcodes.py`,
+   `g5_mutate.py`, `probe_r8.py`, `slice_plan.txt`, `slice_record.txt`,
+   `slice_finding.txt`, `slice_slip.txt`, `slice_p.txt` and, earlier,
+   `live_review_negctl.md`. Nothing was removed by glob. The block file
+   `.remedy-wt/f109-r8.md` supplied by the delegation was left in place.
+   `git ls-files .remedy-wt` returns nothing, as G7 records.
+7. **Four `.remedy-wt/job-*` worktrees predate this branch** and were left alone.
+   Exactly one worktree was created this round, `.remedy-wt/g5-f109-r8`, and it
+   was removed by exact path and then pruned.
+8. **No `docs/` file was touched.** The change set forbids it and T003 owns the
+   docs for this feature.
+9. **The prompt TRACE ordering is still wrong on a builder fallback and I did NOT
+   fix it.** `build_trace_entry` is called BEFORE the provider call, so the
+   builder's round-2 trace still describes the abandoned resumed composition
+   rather than the full one that was sent. The reviewer's traces do not have this
+   problem, because `_rev_trace` fires per actual call and I rebound
+   `reviewer_effective` before it. Out of scope — it changes neither the bytes
+   sent nor the recorded manifest, both of which this round repaired — and it is
+   already written into `.agent/plan.md`'s Risks section for T002c. SPEC O case 1
+   is deliberately written against the CALLS, not the traces, for exactly this
+   reason.
 
 ## Open findings
 
-The ledger stands at **331** findings registered and **63** resolved, so the open
-set is **268** — every one of those three numbers UNCHANGED by this round, which
-registered no finding and resolved none. `.agent/candidates.md` is unchanged and
-states "EMPTY — no candidate is open.", so no block condition stands against
-F109. `R-0769` remains registered and unfixed; its repair edits `README.md` and a
-docs test, neither of which F109 owns. `.agent/prose_slips.md` gained round 6's
-one line and now holds **65** dated lines. `.agent/STOP` was checked before the
-first action of the round and again before this handback, and does not exist.
+The ledger stands at **332** findings registered and **63** resolved, so the open
+set is **269** — registered up by exactly 1 (`R-0771`), resolved UNCHANGED,
+because this round writes a `Landed:` line and no `Done:` paragraph.
+`.agent/candidates.md` is unchanged and states "EMPTY — no candidate is open.",
+so no block condition stands against F109. `R-0769` remains registered and
+unfixed; its repair edits `README.md` and a docs test, neither of which F109
+owns. `R-0771` is registered AND repaired in this same round, and its
+`Landed:` line is booked; the `Done:` text is the reviewer's to author at the next
+gate. `.agent/prose_slips.md` gained round 7's one line and now holds **66**
+dated lines. `.agent/STOP` was checked before the first action of the round and
+again before this handback, and does not exist.
 
-TWO ITEMS ABOVE ARE CANDIDATES FOR AN R-ID AND ONLY THE REVIEWER MAY MINT ONE:
-deviation 4 (a resume-fallback re-sends an already-deduped prompt into a session
-that never received the originals — wrong behaviour reachable in production) and
-deviation 3 (a shipped docstring now says it has no caller when it has two).
+ONE ITEM ABOVE IS A CANDIDATE FOR AN R-ID AND ONLY THE REVIEWER MAY MINT ONE:
+deviation 9, the prompt-trace ordering on a builder fallback. It is recorded in
+`.agent/plan.md` as a Risk, not as a finding, because I may not mint ids.
 
 ## Next expected action
 
@@ -494,10 +479,11 @@ deviation 3 (a shipped docstring now says it has no caller when it has two).
 not quoted here by design, so the reviewer measures the remote tip itself. No PR
 was created and nothing was merged.
 
-Then the reviewer's round-7 verdict, booked into `.agent/live_review.md` in the
-FIRST commit of round 8 (amend0827 rule 1: a verdict never buys a round of its
-own). The build then continues with T002c: record the deduped segments in the
-manifest so evidence shows what the model did NOT receive again, and plumb the
-config kill switch through to `dedupe_enabled`. Deviation 3's stale docstring
-should be retired in that round's change set, and deviation 4 decided on before
-T003's measurement fixture runs against a resumed chain.
+Then the reviewer's round-8 verdict, booked into `.agent/live_review.md` in the
+FIRST commit of round 9 (amend0827 rule 1: a verdict never buys a round of its
+own), together with the `Done:` paragraph for `R-0771` that constraint 4 reserves
+for the reviewer. Before authoring round 9 the reviewer re-reads `.agent/STOP`
+from disk (Phase 1 rule 1 before rule 2). The build then continues with T002c:
+record the deduped segments in the manifest so evidence shows what the model did
+NOT receive again, and plumb the config kill switch through to `dedupe_enabled`;
+deviation 9's trace ordering belongs with that evidence work.
