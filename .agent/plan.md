@@ -14,31 +14,33 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 8, session 2 — T001, the CALL-SITE AND ROLE INVENTORY and the
-ROUTING SEAM. Every role Remedy resolves a runtime config for declares a
-task class; the policy document's own repair-prompt rule, pinned as a
-string since round 4, becomes executable; and the set of provider-call
-sites is checked by an AST sweep against a declared constant, so a new
-call site cannot land undeclared. Round 7's PASS verdict, its prose slip
-and DECISION F110 D3 are booked in the same round.
+Round 9, session 3 — THE WIRING ROUND, the third and last clause of T001.
+All seven inventoried call sites route through the seam in one change,
+because all seven already funnel through `resolve_role_config`: that
+function now calls `route_role_call` and carries the routed-call evidence
+on the `RoleConfig` it already returns. DECISION F110 D4 rules where that
+evidence lands. Round 8's PASS verdict and its prose slip are booked in
+the same round.
 
 ## Next Steps
 
-- The wiring round: the existing call sites route through the seam, and
-  the override map and evidence map are READ from configuration instead
-  of being passed in.
+- The configuration round: the per-project override map and the promotion
+  evidence map are READ from configuration rather than defaulting to the
+  shipped table — consolidation order E.d.
+- The acceptance round: a fixture run whose every call's evidence shows
+  class, tier and reason, per the feature file's Acceptance section.
 - The integration gate round, before closure.
 - The closure sequence, which also runs the one checklist consolidation
   pass DECISION F110 D1 carries into it, and which updates the Design
-  bullet of `docs/roadmap/features/T3_F110.md` so the roadmap names the
-  orchestration class set DECISION F110 D2 widened.
+  bullet of `docs/roadmap/features/T3_F110.md`.
 
 ## Risks
 
-- Five of the seven call sites pass the role as a variable, so the
-  inventory pins the call SITES rather than the role strings; a role
-  reaching the resolver dynamically is still caught by that module's own
-  unknown-role warning.
-- Nothing is wired yet and no config file is read: the declaration lands
-  before the wiring, deliberately.
+- `resolve_role_config` now calls into the policy layer, so a routing fault
+  could become a config-resolution fault. `repair` is the live case: it
+  raises when no originating class is supplied, which is why the wiring
+  answers `None` there rather than breaking a resolution that worked.
+- Recording is not selecting: the seam answers a TIER and F110 maps no tier
+  to a model id, so this round changes what is RECORDED and nothing about
+  which model runs.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
