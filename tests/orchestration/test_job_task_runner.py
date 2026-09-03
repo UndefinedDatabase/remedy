@@ -851,6 +851,30 @@ class TestPersistence:
         assert loaded is not None
         assert loaded.metadata == {}
 
+    def test_task_class_defaults_to_standard_build(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        assert job.tasks[0].task_class == "standard_build"
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].task_class == "standard_build"
+
+    def test_task_class_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        job.tasks[0].task_class = "architecture"
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].task_class == "architecture"
+
+    def test_default_task_class_is_a_seeded_model_routing_class(self):
+        from packages.orchestration.model_routing import TASK_CLASS_TIERS
+        from packages.orchestration.pingpong_job import TASK_CLASS_DEFAULT
+        assert TASK_CLASS_DEFAULT in TASK_CLASS_TIERS
+
     def test_persist_with_manifests(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         loaded = load_job_plan(result.job_id)
