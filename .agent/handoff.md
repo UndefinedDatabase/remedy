@@ -1,338 +1,231 @@
-# Handoff — F109 Semantic dedupe, SESSION 3, round 13
+# Handoff — F109 Semantic dedupe, SESSION 3, round 14
 
 ## Session
 
-`SESSION 3 of feature F109 · round 13 · rounds so far 13`
+`SESSION 3 of feature F109 · round 14 · rounds so far 14`
 
 Soft limit is 25 rounds / 7 sessions (self-drive protocol G7, amend0827 rule 6).
-At 13 rounds and 3 sessions the limit is NOT reached, so no scope report is due.
+At 14 rounds and 3 sessions the limit is NOT reached, so no scope report is due.
 
 Scope rule, quoted verbatim as every F109 order requires: RESUMED SESSION
 ONLY, PROVEN SENDS ONLY.
 
 ## THE ROUND ENDS GREEN
 
-`PromptTraceEntry` now carries `deduped_segment_names`, derived from
-`composed_prompt` at the same seam `segment_manifest` already uses, so the
-evidence records what the model did NOT receive again. All fifteen suites the
-block names are exit 0; only the two that gain cases moved, and only upward
-(125 → 128, 46 → 49). The production edit is THREE INSERT OPCODES AND ZERO
-DELETED LINES: nothing already in `prompt_trace.py` was edited or removed.
-`packages/orchestration/pingpong_loop.py` was NOT touched — all three
-`build_trace_entry` call sites already pass `composed_prompt=`, which was
-verified rather than assumed (constraint 6).
+`packages/orchestration/prompt_trace.py` gains ONE PURE FUNCTION,
+`measure_dedupe_savings_from_traces`, which reads a run's own trace entries and
+reports what the run did NOT resend. It is landed UNWIRED, as constraint 4
+ordered. All fifteen suites the block names are exit 0; only the two that gain
+cases moved, and only upward (128 → 130, 49 → 54). The production edit is ONE
+INSERT OPCODE AND ZERO DELETED LINES. Both red-proofs went red on the intended
+case and green again on restore, each beside its unmutated control.
+
+The honesty branch is load-bearing and was PROVED so, not asserted: dropping it
+(`latest_full_chars.get((entry.role, name))` →
+`latest_full_chars.get((entry.role, name), 0)`) reddens SPEC H case 4 with
+`Right contains one more item: 'builder_context'`, i.e. the segment stops being
+NAMED as unmeasured and starts being counted as a zero saving. That is exactly
+the confusion the function exists to prevent.
 
 ## Range
 
-Review of `7b423b1a`..`899eeefd` (the handoff commit C6 follows).
+Review of `5fe32449..069f1c02` (production + tests), plus the handoff commit
+below.
 
 ## Item status
 
-Every ordered item of the bundle, exactly once.
-
 | Item | Status | Reason |
-|---|---|---|
-| C0a save the block verbatim to `.agent/authored/f109-r13.md` | done | `cp`, never retyped; digest verified in G1 |
-| C0b mirror it to `.agent/last_block.md` | done | `cp` of the saved copy; same digest |
-| C1 apply SLICE PLAN to `.agent/plan.md` | done | `cmp` exit 0 against the mechanically extracted slice |
-| C2 append SLICE RECORD to `.agent/live_review.md` | done | four readings in G3, including a negative control |
-| C3 apply SPEC C to `tests/orchestration/test_semantic_dedupe.py` | done | FROM 1→0, TO 0→1; test count unchanged at 99 |
-| C4 apply SPEC D to `packages/orchestration/prompt_trace.py` | deviated | all three ordered changes landed; SPEC D's header says "two insertions" while its own item (2) orders a third region — declaration 2 |
-| C5 apply SPEC E to the two test files | done | six cases added, +3 in each file; both red-proofs order a failing node from these cases |
-| C6 rewrite `.agent/handoff.md` | done | this file |
+|------|--------|--------|
+| C0a save the block to `.agent/authored/f109-r14.md` | done | |
+| C0b mirror to `.agent/last_block.md` | done | |
+| C1 SLICE PLAN → `.agent/plan.md` | done | |
+| C2 SLICE RECORD → `.agent/live_review.md` | done | |
+| C3 SPEC F → `tests/orchestration/test_semantic_dedupe.py` | done | |
+| C4 SPEC G → `packages/orchestration/prompt_trace.py` | done | |
+| C5 SPEC H → the two test files | done | |
+| C6 rewrite `.agent/handoff.md` | done | this commit |
 
 ## Commits
 
-### 0825e9ad F109 R13 C0a: save the round 13 block verbatim
+### 07b53fa1 F109 R14 C0a: save the round 14 block verbatim under .agent/authored
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f109-r13.md` | +369 / -0 | the block, `cp`-ed byte for byte from `.remedy-wt/f109-r13.md`, never retyped |
+| `.agent/authored/f109-r14.md` | +378 / -0 | the block, `cp`'d from `.remedy-wt/f109-r14.md`, never retyped |
 
-### fb19e2bb F109 R13 C0b: mirror the round 13 block to last_block
+### 7ed7e82e F109 R14 C0b: mirror the round 14 block into .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +239 / -189 | mirror of the saved copy; exempt from the 500 cap as a single `.agent/**` state-file rewrite (AGENTS.md DECISION F104 D1) |
+| `.agent/last_block.md` | +209 / -200 | `cp` of the authored copy; a whole-file replacement of round 13's block |
 
-### c3f89131 F109 R13 C1: plan for round 13 — the trace carries the deduped names
+### 231e764b F109 R14 C1: plan for round 14 - measure the savings from the trace record
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +12 / -14 | SLICE PLAN applied byte for byte; the finding ledger moves this round, so the plan advances first |
+| `.agent/plan.md` | +14 / -15 | SLICE PLAN, extracted mechanically by delimiter index |
 
-### 8ee5936c F109 R13 C2: book the round 12 PASS and register R-0777 and R-0778
+### b1ea60a8 F109 R14 C2: book the round 13 gate and register R-0779
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +7 / -1 | SLICE RECORD appended; the `-1` is the old final line re-emitted because the file ends WITHOUT a trailing newline |
+| `.agent/live_review.md` | +5 / -1 | SLICE RECORD appended: the R13 gate paragraph and the `R-0779` registration |
 
-### bf3e7d93 F109 R13 C3: restate the stale fallback-trace comment (R-0777)
+### 79edbcbf F109 R14 C3: repair R-0779 - the dedupe suite module docstring names what the file covers
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_semantic_dedupe.py` | +6 / -3 | SPEC C PAIR C1, applied byte for byte; one comment, no assertion, no name, no case |
+| `tests/orchestration/test_semantic_dedupe.py` | +6 / -3 | SPEC F pairs F1 and F2, applied byte for byte; no case touched |
 
-`Landed: R-0777 — the fallback-round comment now says TWO Builder traces are
-recorded, and why reading the CALLS avoids choosing between them.`
-
-### 78d2b7b5 F109 R13 C4: the prompt trace carries the names it did not resend
+### 71897c7c F109 R14 C4: a pure measurement of what a run did not resend, read from its own traces
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/prompt_trace.py` | +14 / -0 | SPEC D: the `deduped_segment_names` field with its `#:` comment, the derivation in `build_trace_entry`, and the docstring extension SPEC D item (2) orders |
+| `packages/orchestration/prompt_trace.py` | +104 / -0 | SPEC G: `DedupeSavingsMeasurement` + `measure_dedupe_savings_from_traces`, appended |
 
-### 899eeefd F109 R13 C5: pin the deduped names on the trace, unit and real loop
+### 069f1c02 F109 R14 C5: pin the measurement - exact arithmetic on entries, the claim on the real loop
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_prompt_trace.py` | +54 / -0 | SPEC E cases 1-3 as a new `TestDedupedSegmentNames` class, plus `import dataclasses` |
-| `tests/orchestration/test_semantic_dedupe.py` | +144 / -0 | SPEC E cases 4-6 as one new class at the very end, driving the REAL loop through `fallback_repo`, `_provider_pair` and `_run` |
+| `tests/orchestration/test_prompt_trace.py` | +138 / -0 | SPEC H cases 1-5 + the two imports they need |
+| `tests/orchestration/test_semantic_dedupe.py` | +98 / -0 | SPEC H cases 6-7 as one new class at the file's end + one import |
 
-### C6 — this handoff (self-reference, R-0149 pattern)
+### C6 — the handoff commit
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | rewrite | the round's only return channel; a handoff cannot table the commit that writes it, and per block constraint 7 its own insertion count is not quoted here |
+| `.agent/handoff.md` | rewrite | this file; a handoff cannot table the commit that writes it (R-0149 pattern) |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/f109-r13-redproof 899eeefd` | created, detached at `899eeefd` |
-| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f109-r13-redproof` | removed |
-| `git worktree prune` | exit 0; `git worktree list` then holds only the primary checkout and the four pre-existing `remedy/job-*` worktrees |
-| `git push -u origin feature/f109-semantic-dedupe` | see the push line at the end of this section |
+| `git worktree add --detach .remedy-wt/g5-r14 069f1c02` | created, detached at `069f1c02` |
+| `git worktree remove .remedy-wt/g5-r14` | removed; `git -C .remedy-wt/g5-r14 status --porcelain` was EMPTY first |
+| `git worktree prune` | exit 0 |
+| `git push -u origin feature/f109-semantic-dedupe` | run after this commit; result below |
 
-No PR was created. Nothing was merged. No `gh` command was run. No force-push.
+No PR created, nothing merged, no force-push, branch never left
+`feature/f109-semantic-dedupe`.
 
-Push: `git push -u origin feature/f109-semantic-dedupe` — run after this
-handoff was committed; result recorded in `## Next` below.
+## Verification — the eight gates, real readings
 
-## Verification
+**G1 TRANSPORT — PASS.** `sha256sum .remedy-wt/f109-r14.md
+.agent/authored/f109-r14.md .agent/last_block.md` printed ONE digest three
+times:
+`d391081163058c104207886d8beb09eac0a42eec24cc8321d395f2523487e558`.
 
-Eight gates, every one EXECUTED, real exit codes and real readings. One line per
-gate first, then the transcript each one is read from.
+**G2 THE PLAN — PASS.** SLICE PLAN extracted by delimiter index (opening line
+index 204, closing 244, 39 lines between). `cmp` against `.agent/plan.md`:
+exit 0, no output. `wc -l .agent/plan.md` = 39 (< 50). `grep -c '^## Goal'` = 1,
+`grep -c '^## Next Steps'` = 1.
 
-| Gate | One line |
-|---|---|
-| G1 | PASS — `sha256sum` printed `778630ae…9204f` three times, once per copy |
-| G2 | PASS — `cmp` exit 0 no output; `wc -l` 40 (<50); `^## Goal` 1; `^## Next Steps` 1 |
-| G3 | PASS — 2090460 + 6079 == 2096539 exactly, new sha `c68325ca…d32cee`, no trailing newline; reader (b) N=3 True; control REJECTED at exit 1 with the tracked digest unmoved; 339 / 339 / 65 / 63 / **276 by set difference** |
-| G4 | PASS — C4 opcodes all `insert` (3 of them), TOTAL LINES DELETED 0; test counts 99→99, 46→46 across C3 and 99→102, 46→49 across C5; the field appears 0 times in `prompt_segments.py` and 0 times in `token_ledger.py` |
-| G5 | PASS — import probe resolved inside the worktree; control 2 passed exit 0; mutation (a) 2 failed exit 1; mutation (b) 2 failed exit 1; worktree removed, `git worktree list` back to primary + four `remedy/job-*` |
-| G6 | PASS — all fifteen suites exit 0; only the two gaining cases moved, upward: 125→128 and 46→49 |
-| G7 | PASS — `git status --porcelain` empty, `git ls-files .remedy-wt` empty, insertions 369/239/12/7/6/14/198 all under 500, every commit single-parent, cell-by-cell comparison run |
-| G8 | PASS — sweep run over all eight touched files; one stale sentence repaired (`R-0777`, C3), one NEW stale sentence found and declared unrepaired, two narrow-but-true headers declared |
+**G3 THE RECORD APPEND — PASS, four readings.**
+(a) ARITHMETIC. base size 2096539, base sha
+`c68325ca44ef99742b412988a4a0b508f9eefb0a32a4c01532b5c65c51d32cee`; appended
+length S = 4745 after stripping trailing newlines; new size 2101284;
+`2096539 + 4745 == 2101284` → True. New sha
+`1d2111bcf7ef35cd291bbfaf33aeabf4625f023f0f05410b0a30ee29651e3d70`. The file
+still ends WITHOUT a trailing newline (last bytes `the file does not cover.`).
+(b) SECOND READER, counts no byte. Split the WHOLE file on blank-line
+boundaries: 877 units. N = 2, taken from the PAYLOAD itself. The LAST 2 units
+equal the appended paragraphs in order — unit -2 opens
+`'Gate: F109 R13 — the round 13 entry. VERDICT PASS, over the '`, unit -1 opens
+`"- R-0779 — Low, THE DEDUPE SUITE'S MODULE DOCSTRING DESCRIBE"`. ACCEPTED,
+exit 0.
+(c) NEGATIVE CONTROL, on the scratch copy
+`.remedy-wt/live_review_negative_control.md` and never on the tracked file.
+Flipped offset 2096551 (byte `' '` → `'X'`), which is INSIDE the first appended
+paragraph. Reader (b) REJECTED it, exit 1, showing
+`'Gate: F109XR13 — the round 13 entry. …'`, having ACCEPTED the tracked file at
+exit 0. Tracked sha BEFORE `1d2111bc…651e3d70`, AFTER `1d2111bc…651e3d70` — it
+did not move. Scratch deleted by exact path; `os.path.exists` on that exact path
+is False.
+(d) COUNTS, AS A SET DIFFERENCE and never a subtraction (`R-0778`). Base read
+from `git show 5fe32449:.agent/live_review.md`, never by rewinding the tracked
+file:
 
-### G1 TRANSPORT — PASS
+| Reading | base `5fe32449` | after this round |
+|---|---|---|
+| registered ids | 339 | 340 |
+| DISTINCT registered ids | 339 | 340 |
+| `Done:` lines | 65 | 65 |
+| DISTINCT resolved ids | 63 | 63 |
+| open set — `set(registered) - set(resolved)` | 276 | **277** |
 
-    $ sha256sum .remedy-wt/f109-r13.md .agent/authored/f109-r13.md .agent/last_block.md
-    exit 0
-    778630aea3508b332ef4f3adaa0530cbe91590b0fdf2132ec678a22a1979204f  .remedy-wt/f109-r13.md
-    778630aea3508b332ef4f3adaa0530cbe91590b0fdf2132ec678a22a1979204f  .agent/authored/f109-r13.md
-    778630aea3508b332ef4f3adaa0530cbe91590b0fdf2132ec678a22a1979204f  .agent/last_block.md
+Every base figure matches the block's stated 339 / 339 / 65 / 63 / 276, and the
+after-figures match its stated 340 and 277, with `Done:` lines and distinct
+resolved ids UNCHANGED because this round resolves nothing.
+`grep -c '^Gate: F109 R13 — '` = 1. `grep -c '^- R-0779 — '` = 1.
 
-ONE digest three times:
-`778630aea3508b332ef4f3adaa0530cbe91590b0fdf2132ec678a22a1979204f`. This chain
-compares the scratch original against the saved copy against its mirror and
-claims nothing about any earlier bytes.
+**G4 THE EDIT SHAPE — PASS, read from `git show <sha>:<path>` blobs only.**
+(a) ACROSS C4 (`79edbcbf` → `71897c7c`) on
+`packages/orchestration/prompt_trace.py`, via
+`difflib.SequenceMatcher(None, before, after, autojunk=False)`:
+`('equal', 0, 261, 0, 261)` and `('insert', 261, 261, 261, 365)`. Non-equal
+tags = `['insert']`; no `replace`, no `delete`. **TOTAL LINES DELETED = 0.**
+(b) ACROSS C3 (`b1ea60a8` → `79edbcbf`): `grep -c '    def test_'` on
+`tests/orchestration/test_semantic_dedupe.py` is **102 before and 102 after** —
+UNCHANGED, because C3 touches no case.
+(c) ACROSS C5 (`71897c7c` → `069f1c02`): `test_semantic_dedupe.py` 102 → 104
+(**rose by 2**); `test_prompt_trace.py` 49 → 54 (**rose by 5**). Seven added
+cases, matching SPEC H's seven.
+(d) THE FUNCTION IS PURE, proved on the SOURCE with `ast`. Located
+`measure_dedupe_savings_from_traces` at line 285; walked 251 AST nodes in its
+body. `Import` / `ImportFrom` / `Global` / `Nonlocal` nodes found: `[]`. Every
+call name in the body: `['DedupeSavingsMeasurement', 'append', 'get', 'int',
+'list', 'set', 'str', 'tuple']`. Every attribute read: `['append',
+'deduped_segment_names', 'get', 'role', 'segment_manifest']`. WHAT WAS SEARCHED
+FOR, so the absence is only as wide as the search: `Path`, `__import__`,
+`append_trace_jsonl`, `compile`, `eval`, `exec`, `input`, `mkdir`, `open`,
+`print`, `read`, `read_text`, `unlink`, `write`, `write_text`,
+`write_trace_jsonl`, `writelines`. Intersection with the calls actually made:
+`[]`. Probe exit 0.
 
-### G2 THE PLAN — PASS
+**G5 THE COLOUR — PASS, two red-proofs, each with its unmutated control.**
+Worktree added BY EXACT PATH at `/home/decodeux/Repos/remedy/.remedy-wt/g5-r14`,
+detached at C5 `069f1c02`. IMPORT PROBE FIRST: `python3 -B -c "import
+packages.orchestration.prompt_trace as m; print(m.__file__)"` with the worktree
+as cwd resolved to
+`/home/decodeux/Repos/remedy/.remedy-wt/g5-r14/packages/orchestration/prompt_trace.py`
+— INSIDE the worktree, so no editable install shadows it and the gate stands.
+`__pycache__` purged before every run (0 dirs found each time); every child was
+`python3 -B -m pytest -q -p no:cacheprovider`.
 
-SLICE PLAN was extracted MECHANICALLY from `.agent/authored/f109-r13.md`:
-opening `<<<SLICE PLAN` at line 207, closing `SLICE PLAN` at line 248, 40 lines
-between them, 1742 bytes.
+| Run | exit | decisive line |
+|---|---|---|
+| UNMUTATED CONTROL, both cases | **0** | `2 passed in 0.27s` |
+| (a) mutated, SPEC H case 4 | **1** | `E Right contains one more item: 'builder_context'` |
+| (a) control after restore | **0** | `1 passed in 0.27s` |
+| (b) mutated, SPEC H case 3 | **1** | `E assert 1200 == 1160` |
+| (b) control after restore | **0** | `1 passed in 0.27s` |
 
-    $ cmp .agent/plan.md .remedy-wt/slice_plan.txt
-    exit 0   (no output)
-    $ wc -l .agent/plan.md
-    40 .agent/plan.md          -> strictly under 50
-    $ grep -c '^## Goal' .agent/plan.md
-    1
-    $ grep -c '^## Next Steps' .agent/plan.md
-    1
+(a) DROP THE HONESTY BRANCH. Bytes about to change, counted in that file before
+writing: the string `full = latest_full_chars.get((entry.role, name))` occurs
+**exactly 1** time. Replaced with
+`full = latest_full_chars.get((entry.role, name), 0)`, so an unobserved full
+size becomes a zero saving that is COUNTED instead of an occurrence that is
+NAMED. FAILING NODE:
+`tests/orchestration/test_prompt_trace.py::TestMeasureDedupeSavingsFromTraces::test_a_deduped_name_with_no_observed_full_size_is_unmeasured_not_zero`.
+(b) COUNT THE MARKER AS FREE. The string
+`net_chars_saved=chars_avoided - chars_spent,` occurs **exactly 1** time.
+Replaced with `net_chars_saved=chars_avoided,` — gross instead of net. FAILING
+NODE:
+`tests/orchestration/test_prompt_trace.py::TestMeasureDedupeSavingsFromTraces::test_the_saving_is_the_full_size_minus_the_marker_it_paid_for`,
+reading `assert 1200 == 1160`, which is the proof that the case pins a NUMBER
+and not merely a direction.
+Restored from the C5 blob by exact path between the mutations and after the
+last (15326 bytes each time);
+`git -C .remedy-wt/g5-r14 status --porcelain` was EMPTY before removal. After
+`git worktree remove` + `git worktree prune`, `git worktree list` holds the
+primary checkout and the four pre-existing `remedy/job-*` worktrees and nothing
+else:
 
-### G3 THE RECORD APPEND — PASS, four readings
+    /home/decodeux/Repos/remedy                                  069f1c02 [feature/f109-semantic-dedupe]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
 
-(a) ARITHMETIC.
-
-    base size            2090460
-    base sha256          c03e51ff891b68b9adb6290ca1754b52d7b28a468f6ee768aea1822069992a7a
-    appended length S    6079      (the '\n\n' separator plus the payload, trailing newlines stripped)
-    base + S             2096539
-    new size             2096539   -> equal
-    new sha256           c68325ca44ef99742b412988a4a0b508f9eefb0a32a4c01532b5c65c51d32cee
-    ends with newline    False     -> the file still ends WITHOUT a trailing newline
-
-(b) A SECOND, STRUCTURALLY DIFFERENT READER, counting no byte. The WHOLE file
-is split on blank-line boundaries into units; N is counted FROM THE PAYLOAD
-ITSELF, not taken from the block; the LAST N units are compared to the appended
-paragraphs in order.
-
-    $ python3 .remedy-wt/reader_b.py .agent/live_review.md
-    exit 0
-    N (from payload) = 3
-      paragraph 1 first 60 chars: 'Gate: F109 R12 — the round 12 entry. VERDICT PASS, AND THE B'
-      paragraph 2 first 60 chars: '- R-0777 — Low, A TEST COMMENT IN `tests/orchestration/test_'
-      paragraph 3 first 60 chars: '- R-0778 — Low, THE OPEN FINDING SET HAS BEEN REPORTED AS A '
-    LAST N units equal the appended paragraphs IN ORDER: True
-
-(c) NEGATIVE CONTROL, on a scratch copy at the exact path
-`/home/decodeux/Repos/remedy/.remedy-wt/lr-negative-control.md`, never on the
-tracked file. Byte 2090462 — the first byte of the FIRST appended paragraph,
-`'G'` of `Gate:` — was flipped to `'X'`.
-
-    $ python3 .remedy-wt/reader_b.py /home/decodeux/Repos/remedy/.remedy-wt/lr-negative-control.md
-    exit 1
-    LAST N units equal the appended paragraphs IN ORDER: False
-
-    tracked sha256 BEFORE the control: c68325ca44ef99742b412988a4a0b508f9eefb0a32a4c01532b5c65c51d32cee
-    tracked sha256 AFTER  the control: c68325ca44ef99742b412988a4a0b508f9eefb0a32a4c01532b5c65c51d32cee
-    -> identical; the tracked file did not move.
-
-    $ rm /home/decodeux/Repos/remedy/.remedy-wt/lr-negative-control.md
-    $ ls /home/decodeux/Repos/remedy/.remedy-wt/lr-negative-control.md
-    ls: cannot access '...': No such file or directory   (exit 2 — absence confirmed)
-
-Reader (b) therefore REJECTED the mutated copy while ACCEPTING the tracked file.
-
-(d) COUNTS. THE OPEN SET IS A SET DIFFERENCE, NEVER A SUBTRACTION — this is
-`R-0778`, discharged in the same round that registers it. All base readings come
-from `git show 7b423b1a:.agent/live_review.md`, never from rewinding the tracked
-file.
-
-| Reading | base `7b423b1a` | after C2 | block said |
-|---|---|---|---|
-| ids matched by `^- (R-\d{4}) — ` | 337 | 339 | 337 / 339 |
-| DISTINCT registered ids | 337 | 339 | 337 |
-| `Done:` LINES matched by `^Done: (R-\d{4}) — ` | 65 | 65 | 65, UNCHANGED |
-| DISTINCT resolved ids | 63 | 63 | 63, UNCHANGED |
-| SIZE OF THE SET DIFFERENCE (registered − resolved, as SETS) | 274 | 276 | 274 / 276 |
-
-    $ grep -c '^Gate: F109 R12 — ' .agent/live_review.md   ->  1
-    $ grep -c '^- R-077[78] — '   .agent/live_review.md   ->  2
-
-The duplicate resolved ids are `R-0721` and `R-0725`, one extra `Done:` line
-each. The forbidden reading — the subtraction 339 − 65 — gives 274 and is two
-too low; it is recorded here only to name what is NOT being reported.
-
-### G4 THE EDIT SHAPE — PASS
-
-Read from `git show <sha>:<path>` blobs, never by writing a revision over the
-tracked file. Blobs compared as SEQUENCES OF LINES with
-`difflib.SequenceMatcher(None, before, after, autojunk=False)`.
-
-(a) ACROSS C4 (`bf3e7d93` → `78d2b7b5`) on `packages/orchestration/prompt_trace.py`:
-
-    ('insert', 83, 83, 83, 91)      the field and its 7-line '#:' comment
-    ('insert', 134, 134, 142, 145)  the build_trace_entry docstring extension
-    ('insert', 158, 158, 169, 172)  the derivation in the return
-    tags = ['insert']               -> no 'replace', no 'delete'
-    TOTAL LINES DELETED = 0
-
-(b) ACROSS C3 AND C5 — a non-zero deletion count is expected there and is not a
-defect; the property is that NO TEST WAS LOST.
-
-| Commit | File | `grep -c '    def test_'` before | after | delta | lines deleted |
-|---|---|---|---|---|---|
-| C3 `8ee5936c`→`bf3e7d93` | `test_semantic_dedupe.py` | 99 | 99 | 0 | 3 |
-| C3 `8ee5936c`→`bf3e7d93` | `test_prompt_trace.py` | 46 | 46 | 0 | 0 |
-| C5 `78d2b7b5`→`899eeefd` | `test_semantic_dedupe.py` | 99 | 102 | **+3** | 0 |
-| C5 `78d2b7b5`→`899eeefd` | `test_prompt_trace.py` | 46 | 49 | **+3** | 0 |
-
-C3 changes no test count, as SPEC C requires. C5 ADDS cases: the count RISES by
-3 in each file, six new cases in total.
-
-(c) THE FIELD IS NOT A ROW KEY. After C4 (`78d2b7b5`):
-
-    grep -c 'deduped_segment_names' packages/orchestration/prompt_segments.py  ->  0
-    grep -c 'deduped_segment_names' packages/orchestration/token_ledger.py     ->  0
-
-### G5 THE COLOUR — PASS, two red-proofs, each beside its unmutated control
-
-Worktree added BY EXACT PATH at
-`/home/decodeux/Repos/remedy/.remedy-wt/f109-r13-redproof`, detached at C5
-(`899eeefd`).
-
-IMPORT PROBE FIRST, with the worktree as cwd:
-
-    $ python3 -B -c "import packages.orchestration.prompt_trace as m; print(m.__file__)"
-    exit 0
-    /home/decodeux/Repos/remedy/.remedy-wt/f109-r13-redproof/packages/orchestration/prompt_trace.py
-
-The path resolves INSIDE the worktree, so no editable install is shadowing it
-and the gate is not void. `__pycache__` was purged before every run (0 found
-each time — the worktree was fresh and every process ran `python3 -B`); every
-pytest process ran `python3 -B -m pytest -q -p no:cacheprovider`.
-
-THE UNMUTATED CONTROL, the same two nodes both proofs use:
-
-    $ python3 -B -m pytest -q -p no:cacheprovider \
-        tests/orchestration/test_prompt_trace.py::TestDedupedSegmentNames::test_the_names_arrive_in_order_and_as_a_list_not_the_source_tuple \
-        tests/orchestration/test_semantic_dedupe.py::TestTheTraceNamesWhatWasNotResent::test_a_resumed_chain_records_the_names_it_did_not_resend
-    exit 0
-    2 passed in 0.47s
-
-(a) NEUTER THE DERIVATION — the expression SPEC D adds is replaced by `[]`.
-Bytes about to change, counted in that file BEFORE the write: the target string
-
-    "        deduped_segment_names=(\n            list(composed_prompt.deduped_names) if composed_prompt is not None else []\n        ),\n"
-
-occurs EXACTLY 1 time (130 bytes), so no longer string was needed and no
-occurrence had to be chosen. Written as `        deduped_segment_names=[],`.
-
-    exit 1
-    2 failed in 0.55s
-    FAILED tests/orchestration/test_prompt_trace.py::TestDedupedSegmentNames::test_the_names_arrive_in_order_and_as_a_list_not_the_source_tuple
-    FAILED tests/orchestration/test_semantic_dedupe.py::TestTheTraceNamesWhatWasNotResent::test_a_resumed_chain_records_the_names_it_did_not_resend
-    decisive line (semantic_dedupe, line 2135):
-      >  assert second[0].deduped_segment_names != []
-      E  AssertionError: assert [] != []
-
-Named SPEC E cases that FAIL: SPEC E case 3
-(`test_the_names_arrive_in_order_and_as_a_list_not_the_source_tuple`) and SPEC E
-case 4 (`test_a_resumed_chain_records_the_names_it_did_not_resend`).
-
-Restored between mutations from the C5 blob by exact path:
-`git -C .remedy-wt/f109-r13-redproof checkout 899eeefd -- packages/orchestration/prompt_trace.py`
-→ `git status --porcelain` in the worktree EMPTY.
-
-(b) FEED IT THE WRONG SOURCE — the field is derived from the manifest's names,
-i.e. EVERY segment rather than the replaced ones. Bytes about to change: the
-target string `list(composed_prompt.deduped_names)` occurs EXACTLY 1 time (35
-bytes); replaced by `[entry.name for entry in composed_prompt.manifest]`.
-
-    exit 1
-    2 failed in 0.56s
-    FAILED tests/orchestration/test_prompt_trace.py::TestDedupedSegmentNames::test_the_names_arrive_in_order_and_as_a_list_not_the_source_tuple
-    FAILED tests/orchestration/test_semantic_dedupe.py::TestTheTraceNamesWhatWasNotResent::test_a_resumed_chain_records_the_names_it_did_not_resend
-    decisive line (semantic_dedupe, line 2133):
-      >  assert first[0].deduped_segment_names == []
-      E  AssertionError: assert ['builder_sys...er_directive'] == []
-      E  Left contains 4 more items, first extra item: 'builder_system'
-
-This is the proof the cases pin WHICH names rather than merely that a list is
-non-empty: under (b) the field is a NON-EMPTY list of real segment names and
-both cases still go red — case 3 on the order and membership, case 4 because
-round 1, which opened the session and withheld nothing, would suddenly name
-the manifest's own segments (`builder_system` first).
-
-Restored again from the C5 blob by the same exact path; worktree
-`git status --porcelain` EMPTY.
-
-    $ git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f109-r13-redproof
-    $ git worktree prune
-    $ git worktree list
-    /home/decodeux/Repos/remedy                                  [feature/f109-semantic-dedupe]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  [remedy/job-48a379ab5ca44ec5]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  [remedy/job-7d1c93e2dc98415a]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  [remedy/job-98e9364a83a34872]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  [remedy/job-f76686b8435640e9]
-
-Only the primary checkout and the four pre-existing `remedy/job-*` worktrees.
-
-### G6 THE SUITES — PASS, ALL FIFTEEN EXIT 0
-
-Run SERIALLY: one `python3 -B -m pytest -q -p no:cacheprovider <file>` process
+**G6 THE SUITES — PASS. ALL FIFTEEN EXIT 0**, run SERIALLY: one process
 started, finished, and only then the next.
 
-| Suite | base `7b423b1a` | this round | exit |
+| Suite | base | mine | exit |
 |---|---|---|---|
-| `tests/orchestration/test_semantic_dedupe.py` | 125 | **128** MOVED (+3) | 0 |
-| `tests/orchestration/test_prompt_trace.py` | 46 | **49** MOVED (+3) | 0 |
+| `tests/orchestration/test_semantic_dedupe.py` | 128 | **130** (MOVED +2) | 0 |
+| `tests/orchestration/test_prompt_trace.py` | 49 | **54** (MOVED +5) | 0 |
 | `tests/orchestration/test_pingpong_cli.py` | 173 | 173 | 0 |
 | `tests/orchestration/test_pingpong.py` | 34 | 34 | 0 |
 | `tests/orchestration/test_session_resume.py` | 27 | 27 | 0 |
@@ -347,215 +240,185 @@ started, finished, and only then the next.
 | `tests/test_observability_index.py` | 14 | 14 | 0 |
 | `tests/cli/test_golden_path.py` | 42 | 42 | 0 |
 
-The two that MOVED are exactly the two that gain cases, and both moved UPWARD
-by 3. The other thirteen are identical to base — which matters because
-`build_trace_entry` serialises through `asdict`, so a new field reaches every
-reader of `prompt_trace.jsonl`, and those thirteen are how that reach was
-measured rather than assumed.
+THE TWO THAT MOVED are the two the block permits to move, and both moved
+UPWARD: `test_semantic_dedupe.py` 128 → 130 (SPEC H cases 6-7) and
+`test_prompt_trace.py` 49 → 54 (SPEC H cases 1-5). The other thirteen are
+identical to their base.
 
-### G7 THE TREE — PASS
+**G7 THE TREE — PASS.** `git status --porcelain` is EMPTY (no output).
+`git ls-files .remedy-wt` returns nothing. Insertion counts from
+`git show --numstat`, the `+` column only, per AGENTS.md DECISION F104 D1:
 
-    $ git status --porcelain
-    exit 0   (no output — EMPTY)
-    $ git ls-files .remedy-wt
-    exit 0   (no output — nothing tracked under .remedy-wt)
+| Commit | insertions | under 500 |
+|---|---|---|
+| 07b53fa1 C0a | 378 | yes |
+| 7ed7e82e C0b | 209 | yes |
+| 231e764b C1 | 14 | yes |
+| b1ea60a8 C2 | 5 | yes |
+| 79edbcbf C3 | 6 | yes |
+| 71897c7c C4 | 104 | yes |
+| 069f1c02 C5 | 236 (138 + 98) | yes |
 
-Insertion counts, the `+` column only, per AGENTS.md DECISION F104 D1:
+Every commit is single-parent — `git log --format="%h parents=%p" 5fe32449..HEAD`
+gives `069f1c02←71897c7c←79edbcbf←b1ea60a8←231e764b←7ed7e82e←07b53fa1←5fe32449`,
+one parent each. I RAN THE CELL-BY-CELL COMPARISON of these `--numstat` figures
+against my own `## Commits` table above, path by path and number by number, and
+every cell agrees; C5's two rows (138 and 98) sum to the 236 quoted here. The
+handback commit's own insertion count is not quoted, per constraint 7.
 
-| Commit | insertions | deletions | under 500 | parents |
-|---|---|---|---|---|
-| C0a `0825e9ad` | 369 | 0 | yes | 1 (`7b423b1a`) |
-| C0b `fb19e2bb` | 239 | 189 | yes | 1 (`0825e9ad`) |
-| C1 `c3f89131` | 12 | 14 | yes | 1 (`fb19e2bb`) |
-| C2 `8ee5936c` | 7 | 1 | yes | 1 (`c3f89131`) |
-| C3 `bf3e7d93` | 6 | 3 | yes | 1 (`8ee5936c`) |
-| C4 `78d2b7b5` | 14 | 0 | yes | 1 (`bf3e7d93`) |
-| C5 `899eeefd` | 198 | 0 | yes | 1 (`78d2b7b5`) |
+**G8 THE STALENESS SWEEP — RUN, and it found four things.** Each file this
+round touched was re-read end to end.
 
-Every commit is SINGLE-PARENT, read from `git log --format="%h parents=%p"`.
+*`.agent/authored/f109-r14.md` and `.agent/last_block.md`* — verbatim copies of
+the reviewer's block, never edited. Their count-bearing sentences were all
+checked and all HOLD: the change set names 8 paths and 8 were touched; "EIGHT
+GATES" and G1-G8 agree; ten numbered constraints are present; G6 lists fifteen
+suites and fifteen ran; the 339/339/65/63/276 base and the predicted 340/277
+were measured and match; "the four pre-existing `remedy/job-*` worktrees" is 4.
 
-I RAN THE CELL-BY-CELL COMPARISON of these numbers against my own `## Commits`
-table above, and I am stating that plainly as the gate requires: every `+/-`
-cell in `## Commits` was read against the `git show --numstat` output for the
-same commit, and all seven commits agree in both columns. C5's two per-file rows
-(+54 and +144) sum to the 198 recorded here.
+*`.agent/plan.md`* — "Round 14, session 3" HOLDS. "two ids carry two `Done:`
+lines each" HOLDS (65 lines over 63 distinct ids). "`R-0769` is registered, not
+fixed" HOLDS (`grep -c '^Done: R-0769\b'` = 0).
 
-### G8 THE STALENESS SWEEP — PASS, with three declarations
+*`.agent/live_review.md`* — the appended R13 gate paragraph's numerals
+(128/49 up from 125/46, and 339/65/63/276) are a DATED record of `5fe32449` and
+were verified true there; this round moving those suites to 130/54 does not
+falsify a dated reading. `R-0779`'s own text quotes the docstring line
+`"""Tests for the per-session sent-hash index (F109 T001a).` — that quotation is
+NO LONGER TRUE OF DISK, because C3 repaired it three commits later. That is by
+design and is what "resolved" will mean; the reviewer owns the resolution.
+Its "the third instance of it on this branch" was re-derived: `R-0749`,
+`R-0773` and `R-0779` are each registered exactly once, so 3 HOLDS.
 
-`R-0417`'s standing counter-measure. Every file this round touched was re-read
-end to end. Sentences stating a count, a module list, a round map or a
-completion:
+*`packages/orchestration/prompt_trace.py`* — TWO STALE SENTENCES FOUND, both
+PRE-EXISTING and neither caused by this round. (1) The module docstring says
+"Each trace entry captures what Remedy actually sent to a Builder or Reviewer
+provider" and (2) `PromptTraceEntry.role` carries the inline comment
+`# "builder" or "reviewer"`. Both state a TWO-ITEM list of roles that is now
+INCOMPLETE: `build_trace_entry` ships with `role="intake"`
+(`packages/orchestration/intake.py:137`), `role="mission_plan"`
+(`mission_compiler.py:282`), `role="flight_plan"` (`flight_plan.py:183`),
+`role="orchestrator"` (`orchestrator_loop.py:922`) and `role="planner"`
+(`apps/cli/commands/job.py:242`) as well. A third, same shape: `prompt_kind`'s
+comment `# "initial", "repair", "review", "re-review"` omits at least `"plan"`
+and `"plan-retry"` (`apps/cli/commands/job.py:246`). NOT REPAIRED — SPEC G says
+"Nothing already in the file is edited or deleted" and G4(a) demands zero
+deleted lines across C4, so repairing them would have broken the round's own
+gate; declared here instead. `build_trace_entry`'s docstring, which round 13
+widened, was re-read and STILL HOLDS: it names `segment_manifest` and
+`segment_manifest_chars` as "BOTH" derived from `composed_prompt` and then adds
+`deduped_segment_names` as joining them, which quantifies over the two it names
+rather than over everything derived. The "Two writers" comment above
+`append_trace_jsonl` HOLDS — there are still exactly two writers, and this
+round's addition writes nothing. THE NEW TEXT makes no count claim that can go
+stale: it names `estimate_token_savings` and its file by path (both resolve) and
+PARAPHRASES rather than quotes that function's "never claims verified savings".
 
-**`packages/orchestration/prompt_trace.py`** — the docstrings this round widens.
+*`tests/orchestration/test_semantic_dedupe.py`* — the two known staleness
+defects are REPAIRED, not new: SPEC F pair F1 replaced the opening line, which
+now names T001a, T002, T002c and T003c; SPEC F pair F2 removed the "final class"
+singular and states no numeral, deliberately. ONE MORE FOUND, and it is a
+POSITIONAL claim of the `R-0775` class: the same module docstring still says
+"The manifest in the first case is built through the REAL producer in
+``prompt_segments``", where `_real_manifest_rows` is in fact called from ELEVEN
+sites in this file. NOT REPAIRED — SPEC F gave two literal pairs and this
+sentence is in neither; widening the byte-for-byte pairs would have been a
+silent correction of the reviewer.
 
-| Sentence | Still holds? |
-|---|---|
-| Module docstring: "Each trace entry captures what Remedy actually sent to a Builder or Reviewer provider, with secrets redacted and prompt text capped." | TRUE but NOW NARROWER THAN THE ENTRY — see declaration 2 |
-| `#: F105:` "one row per registered segment with name, rank, sha256, chars and tokens_estimated" (a five-item list) | HOLDS — `ComposedPrompt.manifest_as_dicts` still emits exactly those five keys, re-read this round |
-| `#: F105:` "Empty means this prompt was NOT composed through the prompt-segment registry" | HOLDS, and the new `#:` comment states explicitly that the neighbouring empty means something else |
-| `build_trace_entry` docstring: "BOTH `segment_manifest` and `segment_manifest_chars` are derived from it" | REPAIRED IN PLACE by the sentence SPEC D item (2) orders; see declaration 3 |
-| "Two writers, because the trace file is per JOB and not per run … (F105 R28)" | HOLDS — the module still defines exactly two writers, `write_trace_jsonl` and `append_trace_jsonl` |
+*`tests/orchestration/test_prompt_trace.py`* — ONE FOUND, pre-existing: the
+module docstring reads "Steps 5085-5086: Verifies that prompt traces redact
+secrets and capture complete builder/reviewer metadata." The file now also
+covers the F105 segment manifest (`TestSegmentManifest`), F109
+`deduped_segment_names` (`TestDedupedSegmentNames`), this round's F109 T003d
+measurement (`TestMeasureDedupeSavingsFromTraces`), and Steps 5088/5089's
+`do_cmd` helpers — so the step map is incomplete in both directions. NOT
+REPAIRED: SPEC H orders added cases only and the block forbids repairing
+outside the change set without declaring it. Declared.
 
-**`tests/orchestration/test_semantic_dedupe.py`**
-
-| Sentence | Still holds? |
-|---|---|
-| The comment opening `test_a_builder_resume_fallback_sends_full_content_at_either_flag_value` — "the round 2 Builder trace describes the composition the fallback ABANDONED" (singular) | **REPAIRED THIS ROUND**, not new: this is `R-0777` and SPEC C replaced it in C3 |
-| Module docstring: "the final class deliberately drives the real ping-pong loop against `FakeProvider` in a tmp_path (F109 T001b-ii)" | **STALE** — see declaration 1 |
-| Module docstring: "Tests for the per-session sent-hash index (F109 T001a)" | NARROW — the file now also covers T001b, T002, T002b, T002c and T003c; part of declaration 1 |
-| `test_the_recorded_builder_row_describes_the_bytes_that_were_sent`: "round 2 now records TWO Builder traces" | HOLDS — asserted live by `TestATraceIsRecordedForEveryProviderInvocation` case 1 and again by SPEC E case 5 |
-| Kill-switch section comment: "The flag is tested in exactly one place — `should_dedupe_segment` consults `enabled` first and alone" | HOLDS |
-| `R-0774` section comment: "Until this round the Builder wrote its trace two statements BEFORE that recomposition" | HOLDS as history |
-
-**`tests/orchestration/test_prompt_trace.py`**
-
-| Sentence | Still holds? |
-|---|---|
-| Module docstring: "Steps 5085-5086: Verifies that prompt traces redact secrets and capture complete builder/reviewer metadata." | NARROW, PRE-EXISTING — the file already covered F105 manifests, `next_approve_command` and timeout hints before this round, and now the F109 field too; part of declaration 1 |
-| `test_the_reviewer_call_site_hands_its_composition_down`: "The count is 2 because F109 `R-0771` added a SECOND composition" | HOLDS — the case asserts it live and is exit 0 |
-| "exactly ONE `build_trace_entry` append declares `role=\"reviewer\",`" | HOLDS — asserted live; C4 added no append |
-
-**`.agent/plan.md`** — "Round 13, session 3" HOLDS. "`R-0769` is registered, not
-fixed" HOLDS: `^Done: R-0769 — ` matches 0 lines in the record. "two ids carry
-two `Done:` lines each" HOLDS, measured in G3(d).
-
-**`.agent/live_review.md`** — every numeral in the paragraphs appended this
-round was re-measured rather than trusted: base 337 / 337 / 65 / 63 / 274 all
-confirmed; `^Gate: F109 R11 — ` 1, `^Note: R-0774 — ` 1, `^- R-0775 — ` 1,
-`^- R-0776 — ` 1; the fifteen suite totals quoted for `7b423b1a` (125, 46, then
-173, 34, 27, 120, 37, 101, 93, 64, 22, 20, 13, 14, 42) all match my own G6 base
-column; and `git diff --name-only 906532ef..7b423b1a -- packages apps` is indeed
-EMPTY. Every one HOLDS.
-
-**`.agent/authored/f109-r13.md` and `.agent/last_block.md`** — verbatim copies
-of the block; their claims about the base are the five readings G3(d) and G6
-confirm above.
-
-Nothing was repaired outside the change set. What the sweep found and did NOT
-repair is declaration 1 in `## Deviations & assumptions` below; the docstring
-count the sweep flags inside `prompt_trace.py` is declaration 2 there.
+Repaired nothing outside the change set.
 
 ## Authored-text proofs
 
-| Text | Proof | Result |
+| Authored text | Proof | Result |
 |---|---|---|
-| the block | `sha256sum` over `.remedy-wt/f109-r13.md`, `.agent/authored/f109-r13.md`, `.agent/last_block.md` | ONE digest three times (G1) |
-| SLICE PLAN | mechanical extraction by opening/closing line index, then `cmp` against `.agent/plan.md` | exit 0, no output (G2) |
-| SLICE RECORD | mechanical extraction, then byte arithmetic AND an independent paragraph reader with a negative control | base + S == new size exactly; last 3 units equal in order; control REJECTED (G3) |
-| SPEC C FROM/TO | applied byte for byte; FROM occurred exactly 1 time before, 0 after; TO 0 before, 1 after; `TO contains FROM` is false, so the REWRITE obligation is the one that applies | met |
+| the block | `sha256sum` of `.remedy-wt/f109-r14.md`, `.agent/authored/f109-r14.md`, `.agent/last_block.md` | one digest three times, `d3910811…3487e558` |
+| SLICE PLAN | `cmp` of the delimiter-extracted slice against `.agent/plan.md` | exit 0, no output |
+| SLICE RECORD | G3(a) byte arithmetic + G3(b) paragraph reader + G3(c) negative control | 2096539 + 4745 = 2101284; last 2 units equal, in order; mutated copy REJECTED |
+| SPEC F pairs F1, F2 | extracted by delimiter index and applied with `str.replace`; each FROM counted **exactly 1** occurrence before the commit, and `TO contains FROM` was **False** for both | applied byte for byte |
+
+SPEC G and SPEC H are specifications, not slices, and were implemented in the
+repository's idiom; no byte-fidelity claim is made for them.
 
 ## Deviations & assumptions
 
-Four declarations. None of them is a silent correction; each is a place where I
-applied the block as written and am saying loudly what I think is wrong or
-missing.
-
-**1. NEW STALENESS I FOUND AND DELIBERATELY DID NOT REPAIR (G8).** The module
-docstring of `tests/orchestration/test_semantic_dedupe.py` says "the final class
-deliberately drives the real ping-pong loop against `FakeProvider` in a
-tmp_path (F109 T001b-ii)". Measured with `ast` over the file at `899eeefd`:
-SEVEN classes now drive the real loop — `TestChainAgainstTheRealLoop`,
-`TestTheComposeSeamBypassesUntilAResumedSessionSaysOtherwise`,
-`TestAResumeFallbackSendsFullContent`,
-`TestTheComposedPromptReportsTheNamesItReplaced`,
-`TestTheSemanticDedupeKillSwitch`,
-`TestATraceIsRecordedForEveryProviderInvocation` and the one this round adds —
-and the FINAL class is now `TestTheTraceNamesWhatWasNotResent`, which is T003c,
-not T001b-ii. The sentence was ALREADY false before this round (the final class
-was the `R-0774` one) and this round makes it false again. The same docstring's
-header, "Tests for the per-session sent-hash index (F109 T001a)", is likewise
-narrower than the file. I did NOT repair either: SPEC C scopes C3 to ONE comment
-with "no assertion, no name and no case is touched", and SPEC E scopes C5 to
-"every case below is ADDED". Widening either to a module docstring would be the
-scope creep the `R-0773`/`R-0777` precedent says to declare instead. THIS IS A
-CANDIDATE FINDING for the reviewer, in the same class as `R-0777`, and it wants
-a fix that does not name a "final class" at all.
-
-**2. SPEC D's "Two insertions and no third" IS FALSE AGAINST SPEC D's OWN ITEM
-(2), AND I APPLIED THE SPEC RATHER THAN THE HEADER.** SPEC D opens "Two
-insertions and no third. Nothing already in the file is edited or deleted", and
-then item (2) orders "Extend that docstring paragraph to say so, naming the new
-field beside the two it joins". That docstring sits ABOVE the function body,
-separated from the return statement by the hashing lines, so it is necessarily a
-THIRD insertion region — there is no way to both extend it and leave only two.
-G4(a) confirms the arithmetic: three `insert` opcodes at lines 83, 134 and 158.
-I judged that the GATED property is the one G4(a) actually measures — every
-non-equal opcode is an `insert` and TOTAL LINES DELETED is 0 — and that the
-header's "two" is a miscount of the spec's own items, not a prohibition on the
-docstring. So all three ordered changes landed and NOTHING was edited or
-deleted. If the reviewer meant the header literally, the docstring extension is
-the insertion to drop, and that is a one-line revert of the second opcode.
-Related, and the reason I did not simply reword the existing sentence: the
-docstring's "BOTH `segment_manifest` and `segment_manifest_chars` are derived
-from it" is a count of TWO where THREE fields are now derived from
-`composed_prompt`. Editing that word would have violated "Nothing already in the
-file is edited", so I extended the paragraph instead — the appended sentence
-names `deduped_segment_names` immediately after, which repairs the paragraph
-without touching a byte of it. A reader who stops at the word "BOTH" can still
-be misled; declaring it rather than editing it is the choice constraint 5 forced.
-
-**3. THE TRUNCATION GUARD SPEC E ORDERS DOES NOT PROTECT THE FIELD IT IS
-ORDERED FOR, AND MY COMMENT SAYS SO.** SPEC E's last line orders
-`prompt_text_truncated is False` on every trace before reading it, "the same
-guard `_marked_traces` already applies, for the same reason". I applied it
-exactly. But the reason is NOT the same: `_marked_traces` searches
-`prompt_text_redacted`, where an absence really is only as wide as the bytes
-that survived the 50 000-char cap, whereas `deduped_segment_names` is a list
-field the cap never touches. The guard is still worth having in these cases —
-SPEC E case 5 reads `prompt_text_redacted` beside the new field — so I kept it
-and wrote a helper docstring that states the honest reason instead of copying
-the borrowed one. No behaviour differs; the claim in the comment does.
-
-**4. "ONE LINE PER GATE" IS UNMEETABLE AS WRITTEN, SO I GAVE BOTH.** The block's
-done-when preamble asks for "one line per gate in the handback", while G3(d)
-orders five separate readings, G5 orders two mutations each beside its control
-plus a named failing node, G6 orders fifteen suite readings beside their bases,
-and `docs/agents/handback_template.md` — mandatory, and AGENTS.md wins on
-conflict — requires raw transcripts with command, exit code and real output, and
-withdrew every length cap. A single line per gate cannot carry those readings
-without dropping evidence, which G4 of the self-drive protocol forbids. So
-`## Verification` opens with an eight-row one-line-per-gate index carrying the
-decisive numbers, and each gate's transcript follows it. Nothing is summarized
-as "green".
-
-**No departure from the block's ordered commit sequence.** C0a, C0b, C1, C2, C3,
-C4, C5, C6 landed in exactly that order, one commit each, nothing extra, nothing
-dropped, nothing reordered.
-
-`.agent/context.md` and `.agent/decisions.md` were checked and need no update:
-the scope, assumptions and constraints of the branch are unchanged, and this
-round made no non-obvious implementation tradeoff beyond the three declarations
-above, which live here because the handback is where a reader auditing the round
-against its block looks. No `docs/` update is due — F109's docs are T003, which
-the plan names as the next build slice.
+1. **SPEC G's honesty branch was WIDENED by one condition, deliberately, and
+   this is the round's one real design deviation.** SPEC G defines "unmeasured"
+   as a deduped name with no earlier FULL-CONTENT observation. The shipped
+   predicate is `if full is None or spent is None:` — it ALSO reports a name as
+   unmeasured when the entry carries no manifest row for it at all, so the
+   MARKER's own cost was never observed either. The spec's alternative is
+   `marker_chars.get(name, 0)`, which would silently claim a marker cost zero
+   characters and therefore OVER-report the saving — the exact dishonesty the
+   branch exists to prevent. I applied the widening rather than the literal
+   text; G5(a) is unaffected, because SPEC H case 4 builds its entry WITH a
+   marker row, so only the "no earlier full size" limb can fire there and the
+   ordered mutation still reddens exactly that case. Reviewer: if you want the
+   literal spec, the one-line revert is stated above.
+2. **SPEC H's five arithmetic cases were inserted after `TestDedupedSegmentNames`
+   rather than at the end of `tests/orchestration/test_prompt_trace.py`.** The
+   file's last two classes are unrelated `do_cmd` helpers from Steps 5088/5089;
+   appending F109 material after them would have split the F109 section in two.
+   No existing case was edited, renamed or deleted. SPEC H's "at the very END"
+   applies to `test_semantic_dedupe.py`, and there the new class IS the last
+   thing in the file.
+3. **Two module-level import statements were added** — `PromptTraceEntry` and
+   `measure_dedupe_savings_from_traces` into `test_prompt_trace.py`'s existing
+   `from packages.orchestration.prompt_trace import (…)` block, and a new
+   one-line `from packages.orchestration.prompt_trace import
+   measure_dedupe_savings_from_traces` into `test_semantic_dedupe.py`. The first
+   edits three existing lines of an import block; SPEC H's "no existing case is
+   edited" is untouched by it, but the block did not name it, so it is declared.
+4. **The function takes `list[PromptTraceEntry]`, not a `Sequence`.** SPEC G says
+   "an ordered sequence". Typing it as `Sequence` would have required editing the
+   existing `from typing import Any` line, which G4(a) forbids by demanding an
+   insert-only diff across C4 — and `build_trace_summary` directly above already
+   takes `list[PromptTraceEntry]`, so this is the file's own idiom rather than a
+   compromise.
+5. **Three stale sentences in `packages/orchestration/prompt_trace.py` and one
+   in each test file were found and NOT repaired** — see G8. Repairing the two
+   in `prompt_trace.py` would have put deletions into C4 and broken G4(a);
+   repairing the test-file ones would have widened SPEC F beyond its two literal
+   pairs. All five are declared instead, which is what guardrail G8 asks for.
+6. **No commit was added, dropped or reordered.** The bundle ran C0a, C0b, C1,
+   C2, C3, C4, C5, C6 in exactly the block's order.
+7. **`.agent/plan.md` described round 13 during C0a and C0b**, because the block
+   fixes C1 as the first substantive commit and C1 is what advances it. This is
+   the block's order, not a departure from it.
+8. `.agent/context.md` and `.agent/decisions.md` needed no update: scope,
+   assumptions and constraints are unchanged from round 13, and the one
+   non-obvious choice (deviation 1) is recorded here and in the code's own
+   comment. `docs/` is untouched — the T003 docs are the NEXT slice, and this
+   round's function is landed unwired, so nothing in the built-state docs is yet
+   false.
 
 ## Open findings
 
-STATED AS A SET DIFFERENCE, never as a subtraction (`R-0778`, discharged in the
-round that registers it):
+**277**, and it is a SET DIFFERENCE, never a subtraction (`R-0778`):
+`len(set(registered_ids) - set(resolved_ids))` = `len(340 distinct registered −
+63 distinct resolved)` = 277. The `Done:` LINE count is 65, which is two more
+than the 63 distinct ids it resolves; subtracting 65 from 340 would give 275 and
+would be wrong. `R-0779` was REPAIRED this round (C3) but is NOT marked
+resolved — only the reviewer writes that, and this round writes no `Done:` line.
 
-    registered ids            339
-    DISTINCT registered ids   339
-    'Done:' LINES              65
-    DISTINCT resolved ids      63   (R-0721 and R-0725 each carry two lines)
-    OPEN SET = |registered − resolved| as SETS = 276
-
-276 open. The subtraction 339 − 65 = 274 is the WRONG number and is named here
-only so it cannot be mistaken for the right one.
-
-Of those, this round touched two: `R-0777` is REPAIRED IN PLACE by C3 —
-`Landed: R-0777`, and only the reviewer marks it resolved — and `R-0778` is
-registered and DISCHARGED as a method by G3(d) and by this section, though its
-own resolution condition reaches the frozen checklist and therefore the closure
-consolidation pass. Neither is written as resolved: no `Done:` line was added
-this round, which is why the `Done:` readings are unchanged at 65 and 63.
+Landed: R-0779 — the dedupe suite's module docstring now names the slices the
+file covers and states no numeral for the real-loop classes.
 
 ## Next
 
-Review round 13 over `7b423b1a`..`899eeefd` (plus this handoff commit), then
-the next build slice: the measurement fixture on a resumed fixture chain with
-the savings recorded, plus the T003 docs — the last build slice of F109, after
-which the integration gate and the closure sequence follow. Before authoring
-that round, re-read `.agent/STOP` from disk (Phase 1 rule 1) BEFORE the Open PR
-Gate (rule 2); `.agent/STOP` was absent at the start of this round and absent
-again immediately before this handback was written.
+Review `5fe32449..HEAD`: read the C4 diff and the seven added cases, re-run the
+fifteen suites, and — before anything else — re-read `.agent/STOP` from disk
+(Phase 1 rule 1) before Phase 1 rule 2. On PASS, mark `R-0779` resolved and
+order the T003 DOCS slice: describe the built state and register the doc in
+`docs/README.md` in the same commit. The savings function is landed UNWIRED, so
+that round must also either wire it into `run_pingpong` or say plainly why it
+stays a library.
