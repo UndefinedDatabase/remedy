@@ -14,18 +14,17 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 15, session 4. The T003 DOCS: `docs/system/semantic-dedupe-v1.md`
-describes the built state — the sent-hash index, the composition hook,
-the kill switch, the trace record and the measured savings — and is
-registered in `docs/README.md` in the same commit. Also book round 14's
-PASS and resolve `R-0779`, and REGISTER `R-0780`: two deliberate absence
-bullets in `session_sent_index.py` still tell a reader the loop invokes
-nothing, three wiring commits after it did. This round does not touch
-that file.
+Round 16, session 4. Clear the branch's stale prose before the
+integration gate, so that gate runs over a tree whose comments are true.
+Repair `R-0780`, the two deliberate absence bullets in
+`session_sent_index.py` that still deny the loop wiring; register and
+repair `R-0781`, the dedupe suite's module docstring, which omits the
+T003d slice its own file carries and calls eleven call sites "the first
+case". Also book round 15's PASS. Comments and docstrings only: no
+executable line moves this round.
 
 ## Next Steps
 
-- Repair `R-0780` in `packages/orchestration/session_sent_index.py`.
 - The integration gate (docs/agents/integration_gate.md).
 - The closure sequence (docs/roadmap/STATUS_closure_protocol.md), which
   also runs the single consolidation pass on the checklist of
@@ -34,8 +33,8 @@ that file.
 ## Risks
 
 - Nothing dedupes in production: every concrete adapter returns
-  `supports_resume = False`, so the mechanism is suite-only today. The
-  doc states this plainly rather than leaving it to be discovered.
+  `supports_resume = False`, so the mechanism is suite-only today.
+  `docs/system/semantic-dedupe-v1.md` states this plainly.
 - The measurement function is a library, consumed by the T003 fixture
   and by no production caller. The doc states that too.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
