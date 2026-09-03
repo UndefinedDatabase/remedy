@@ -395,11 +395,18 @@ class TestSegmentManifest:
         The behaviour test above passes even when this call site is unwired,
         because it never touches `pingpong_loop` — which is why this guard
         exists. Same `inspect.getsource` pattern as the CLI guards above.
+
+        The count is 2 because F109 `R-0771` added a SECOND composition inside
+        the resume-fallback branch — a fallback is not a resumed session, so it
+        recomposes at full content — and the second assertion below pins that
+        site rather than leaving a bare number any duplication would satisfy.
         """
         import packages.orchestration.pingpong_loop as pingpong_loop
 
         source = inspect.getsource(pingpong_loop)
-        assert source.count("builder_composed = compose_builder_prompt(") == 1
+        assert source.count("builder_composed = compose_builder_prompt(") == 2
+        fallback = source.split("if builder_resume_ref and builder_out.error:")[1]
+        assert "builder_composed = compose_builder_prompt(" in fallback
         assert "builder_prompt = builder_composed.text" in source
         site = source.split("result.prompt_traces.append(build_trace_entry(")[1]
         site = site.split("))")[0]
@@ -470,11 +477,18 @@ class TestSegmentManifest:
         because it never touches `pingpong_loop` — which is why this guard
         exists. Index [2] is the reviewer's `build_trace_entry` append; [1] is
         the builder's, guarded by the test above it.
+
+        The count is 2 because F109 `R-0771` added a SECOND composition inside
+        the resume-fallback branch — a fallback is not a resumed session, so it
+        recomposes at full content — and the second assertion below pins that
+        site rather than leaving a bare number any duplication would satisfy.
         """
         import packages.orchestration.pingpong_loop as pingpong_loop
 
         source = inspect.getsource(pingpong_loop)
-        assert source.count("reviewer_composed = compose_reviewer_prompt(") == 1
+        assert source.count("reviewer_composed = compose_reviewer_prompt(") == 2
+        fallback = source.split("if reviewer_resume_ref and reviewer_out.error:")[1]
+        assert "reviewer_composed = compose_reviewer_prompt(" in fallback
         assert "reviewer_prompt = reviewer_composed.text" in source
         site = source.split("result.prompt_traces.append(build_trace_entry(")[2]
         site = site.split("))")[0]
