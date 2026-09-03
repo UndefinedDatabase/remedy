@@ -1,0 +1,98 @@
+F109 round 19 — C3, the self-use run transcript
+Every path below is written relative to the repository root. Nothing here was
+hand-written: every value is the real return of the shipped code, captured as it
+was produced.
+
+STOP re-check before C3
+  os.path.exists('.agent/STOP') = False
+
+=== C3 STEP 1 — BEFORE ===
+queue path: /home/decodeux/Repos/remedy/scripts/self_use_queue.json
+schema_version: 2
+items in file: 4
+load_self_use_queue() -> 4 entries
+  SU-001 consumed_by='F257' title='Document the Markdown job-file format under docs'
+  SU-002 consumed_by='F258' title="Fix architecture.md's stale 12-group CLI claim (60 groups shipped)"
+  SU-003 consumed_by='F106' title="Give apps/ui's ESLint config a TypeScript parser (R-0622)"
+  SU-004 consumed_by='F108' title='Give FailureClass a RESOURCE_LIMIT member (R-0568)'
+pending_self_use_items() -> 0 pending of 4 items
+next_self_use_item() -> None
+
+=== C3 STEP 2 — GENERATE ===
+call: packages.orchestration.self_use_generator.generate_and_append_if_empty()
+returned: SelfUseQueueEntry(id='SU-005', title='Address ledger finding R-0418', why='- R-0418 — Low, REVIEWER-BLOCK DEFECT, found by the worker and confirmed by the reviewer. The R10 block\'s Handback paragraph ordered the handoff to "repeat the Fortschritt line verbatim", but no Fortschritt line exists anywhere in the R10 block: its only occurrence of the word is that instruction itself. This is the R-0371 class — ordering a value that cannot exist at the moment the text is written — and it arises specifically from self-drive. Under the split workflow the Fortschritt line lives in the operator brief that the paste relay carries alongside the block, so a worker reading the relay sees it; under docs/agents/self_drive_protocol.md there IS no relay, the worker is a delegated subagent that never sees the reviewer\'s brief, and any instruction to repeat something from that brief is unsatisfiable by construction. The worker did the right thing: it declared the deviation and invented nothing, which is exactly the behaviour planner_reviewer_prompt.md §3 item 8 predicts of an honest worker facing an unmeetable gate. The fix binds the REVIEWER, not the worker: in self-drive every block that requires the handoff to carry the Fortschritt line must CONTAIN that line as authored text, or must not order it. R11 carries it as an authored slice, which is the standing form from here.', job_markdown='# Job: Address ledger finding R-0418\n\n## Task 1\n- R-0418 — Low, REVIEWER-BLOCK DEFECT, found by the worker and confirmed by the reviewer. The R10 block\'s Handback paragraph ordered the handoff to "repeat the Fortschritt line verbatim", but no Fortschritt line exists anywhere in the R10 block: its only occurrence of the word is that instruction itself. This is the R-0371 class — ordering a value that cannot exist at the moment the text is written — and it arises specifically from self-drive. Under the split workflow the Fortschritt line lives in the operator brief that the paste relay carries alongside the block, so a worker reading the relay sees it; under docs/agents/self_drive_protocol.md there IS no relay, the worker is a delegated subagent that never sees the reviewer\'s brief, and any instruction to repeat something from that brief is unsatisfiable by construction. The worker did the right thing: it declared the deviation and invented nothing, which is exactly the behaviour planner_reviewer_prompt.md §3 item 8 predicts of an honest worker facing an unmeetable gate. The fix binds the REVIEWER, not the worker: in self-drive every block that requires the handoff to carry the Fortschritt line must CONTAIN that line as authored text, or must not order it. R11 carries it as an authored slice, which is the standing form from here.\n\nAcceptance:\n- R-0418 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done: R-0418` line.\n', consumed_by='', provenance='generated (self-use-generator tier 1, ledger scan, R-0418)')
+  id:          SU-005
+  title:       Address ledger finding R-0418
+  consumed_by: ''
+  provenance:  generated (self-use-generator tier 1, ledger scan, R-0418)
+items in file AFTER generate: 5
+schema_version AFTER generate: 2
+pending_self_use_items() AFTER -> 1
+next_self_use_item() AFTER -> SU-005
+
+
+=== C3 STEP 3 — RUN ===
+call: packages.orchestration.self_use_runner.run_next_self_use_item(
+          dest_dir=Path('.remedy-wt/selfuse-f109-run'), repo_path='.')
+budgets: DEFAULT max_provider_calls=6, max_cost_usd=0.50, max_tasks=1
+NO builder_name / reviewer_name override was passed.
+resolve_role_config('builder') -> RoleConfig(role='builder', provider='ollama', model='muse-glimmer:latest', effort='medium')
+resolve_role_config('reviewer') -> RoleConfig(role='reviewer', provider='ollama', model='muse-glimmer:latest', effort='medium')
+elapsed seconds: 184.3
+returned entry.id:      SU-005
+returned entry.title:   Address ledger finding R-0418
+returned job_file_path: .remedy-wt/selfuse-f109-run/SU-005.md
+JobPlan.job_id:         5e91e080219342d9
+JobPlan.status:         blocked
+JobPlan.error:          'task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+JobPlan.execution_config: "ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama', reviewer_source='cli', builder_model='', builder_model_source='default', builder_effort='', builder_effort_source='default', reviewer_model='', reviewer_model_source='default', reviewer_effort='', reviewer_effort_source='default', repair_provider='', repair_provider_source='default', repair_model='', repair_model_source='default', repair_effort='', repair_effort_source='default', max_rounds=3, max_rounds_source='default', repair_rounds_allowed=2, repair_rounds_source='default', test_command='', test_command_source='default', claude_cli_write_mode='none', claude_cli_write_mode_source='default', context_strategy='task_bounded_sequential_job', timeout_sec=120, timeout_sec_source='default', timeout_profile='', timeout_profile_source='default', max_output_chars=50000, max_output_chars_source='default', stream_evidence=False, stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')"
+JobPlan.isolation_mode: 'worktree'
+JobPlan.worktree_path: '.remedy-wt/job-5e91e080219342d9'
+JobPlan.worktree_cleanup_status: 'retained'
+JobPlan.worktree_cleanup_error: ''
+JobPlan.tasks: [TaskEntry(task_id='T001', source_heading_number=1, title='Task 1', body='- R-0418 — Low, REVIEWER-BLOCK DEFECT, found by the worker and confirmed by the reviewer. The R10 block\'s Handback paragraph ordered the handoff to "repeat the Fortschritt line verbatim", but no Fortschritt line exists anywhere in the R10 block: its only occurrence of the word is that instruction itself. This is the R-0371 class — ordering a value that cannot exist at the moment the text is written — and it arises specifically from self-drive. Under the split workflow the Fortschritt line lives in the operator brief that the paste relay carries alongside the block, so a worker reading the relay sees it; under docs/agents/self_drive_protocol.md there IS no relay, the worker is a delegated subagent that never sees the reviewer\'s brief, and any instruction to repeat something from that brief is unsatisfiable by construction. The worker did the right thing: it declared the deviation and invented nothing, which is exactly the behaviour planner_reviewer_prompt.md §3 item 8 predicts of an honest worker facing an unmeetable gate. The fix binds the REVIEWER, not the worker: in self-drive every block that requires the handoff to carry the Fortschritt line must CONTAIN that line as authored text, or must not order it. R11 carries it as an authored slice, which is the standing form from here.', acceptance='- R-0418 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done: R-0418` line.', status='blocked', run_id='9732825be40a4207', final_status='repair_exhausted', safe_diff_files=[], test_passed=None, reviewer_verdict='fail', repair_rounds_used=2, repair_rounds_allowed=2, error='completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail', apply_manifest=None, proof_summary=None, task_start_tree='36b447aec24ddb253804159db4da7d3b706508b6', task_start_tree_ref='refs/remedy/checkpoints/job-5e91e080219342d9/tasks/T001-start', task_start_recorded_at='2026-09-03T05:18:14.028334+00:00', task_attempt_state='active')]
+JobPlan.repo_path: '/home/decodeux/Repos/remedy'
+
+=== C3 STEP 4 — DEFECTS ===
+call: packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)
+tuple length: 2
+--- DEFECT 1 BEGIN ---
+job 5e91e080219342d9 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+--- DEFECT 1 END ---
+--- DEFECT 2 BEGIN ---
+T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+--- DEFECT 2 END ---
+
+job file exists on disk: True
+
+=== C3 STEP 5 — LAND THE EVIDENCE ===
+  .remedy-wt/selfuse-f109-run/SU-005.md -> .agent/selfuse_f109/SU-005.md
+  source sha256 = 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd
+  copied sha256 = 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd
+  BYTE-IDENTICAL = True
+
+WHERE THIS STOPPED, AND WHY.
+The item was GENERATED by the shipped generator, PLANNED by the shipped planner
+and RUN by the shipped runner, under the product's own resolved provider
+(ollama / muse-glimmer:latest for both roles) and the default budgets
+(max_provider_calls=6, max_cost_usd=0.50, max_tasks=1). No builder_name or
+reviewer_name override was passed, so the fake provider was never reachable; the
+ExecutionConfig above records builder='ollama' and reviewer='ollama' with source
+'cli'. The run took 184.3 seconds of real local-model time.
+
+The job STOPPED AT THE NORMAL APPROVAL GATE with status 'blocked': its single
+task T001 exhausted its two repair rounds and the reviewer role's verdict was
+'fail'. That is a run OUTCOME, not an exception — SelfUseRunError was not
+raised, and the runner's own docstring names a mid-run block as "an ordinary,
+expected outcome of the normal approval gate". Nothing was promoted: the runner
+calls run_job and nothing past it, and status 'blocked' is not a promotion.
+
+SU-005 is still PENDING — its consumed_by is the empty string in
+scripts/self_use_queue.json. Marking the item consumed belongs to the CLOSURE
+commit (closure precondition 6, DECISION F257 D2), not to this round.
+
+The job's isolated worktree at .remedy-wt/job-5e91e080219342d9 was RETAINED by
+the product itself (worktree_cleanup_status='retained'); it was not created or
+removed by hand, and four such worktrees from earlier rounds were already
+present. The run's dest_dir .remedy-wt/selfuse-f109-run was deleted by its exact
+path after this copy.
