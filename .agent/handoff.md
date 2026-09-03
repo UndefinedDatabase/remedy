@@ -1,159 +1,178 @@
-# Handoff — F112 Prompt budget per task class, round 14 (T003b2b2a: fit_task_context_to_class_cap + compiled_context_* wiring at the job-dispatch call site)
+# Handoff — F112 Prompt budget per task class, round 15 (T003b2b2b1: planned_task_to_task_entry, the reverse of task_entry_to_planned_task)
 
 ## Session
 
-SESSION 4 of feature F112 · round 14 · rounds so far 14.
+SESSION 5 of feature F112 · round 15 · rounds so far 15.
 
-This round books round 13's already-independently-reviewed PASS verdict
-into `.agent/live_review.md` (RECORD13, amend0827 rule 1 — a pending
+Note: `.agent/handoff.md` inherited from round 14 said "SESSION 4" — a
+labeling bug the reviewer found in its own prior block (this round's
+prose_slips entry, appended in C4). This is a fresh `/build-remedy-self`
+bootstrap, not a continuation of the session that produced rounds 1-14,
+so the session number increments: **this is SESSION 5**, not a
+continuation of session 4.
+
+This round books round 14's already-independently-reviewed PASS verdict
+into `.agent/live_review.md` (RECORD14, amend0827 rule 1 — a pending
 verdict books in the FIRST COMMIT of the next round that is happening
-anyway, i.e. round N's verdict books in round N+1's first commit), then
-ships **T003b2b2a** exactly as DECISION F112 D6's CHOSEN clause
-specified: the job-dispatch call site (`pingpong_job.py`'s `run_job`,
-its one `run_pingpong(` call) gains a `fit_task_context_to_class_cap`
-check and three new `run_pingpong` kwargs
-(`compiled_context_paths`, `compiled_context_candidates` set to the
-same list, `compiled_context_token_budget`). When `task.files_hint` is
-empty or the fit reports `fits=False`, all three stay `None` — today's
-exact `build_repo_context` fallback, unchanged. No escalation on
-`cannot_fit` this round (that is T003b2b2b, deferred, per D6).
+anyway), registers DECISION F112 D7 (the T003b2b2b → T003b2b2b1/T003b2b2b2
+split, following fresh investigation that found five separate unknowns
+D6 did not have visibility into), then ships **T003b2b2b1** exactly as
+D7's CHOSEN clause specified: `planned_task_to_task_entry`, the reverse
+of the already-shipped `task_entry_to_planned_task` — turns one
+`split_one_task` child `PlannedTask` back into a dispatchable
+`TaskEntry`. Not called from `run_job` this round — a prerequisite
+building block only, same "unwired" shape T003c used before T003b2b2a
+consumed it.
 
 This round ships production code: two files touched
 (`packages/orchestration/pingpong_job.py`,
-`tests/orchestration/test_job_task_runner.py`), 126 insertions total —
-well under the 500-line cap. A DECISION (F112 D6) was pre-authored and
-registered this round (C3), since it settles a genuinely new scope
-split (T003b2b2 → T003b2b2a/T003b2b2b) the reviewer found before
-delegating.
+`tests/orchestration/test_job_task_runner.py`), 102 insertions total —
+well under the 500-line cap. DECISION F112 D7 was pre-authored and
+registered this round (C3), settling the T003b2b2b scope split the
+reviewer's fresh investigation found before delegating.
 
 ## Range
 
-Review of `5c05e0cb..HEAD` (commits C0a, C0b, C1, C2, C3, C4, plus this
-handback commit C5 itself — six commits total this round). **This
-range is UNREVIEWED by construction** — round 14 has not yet been
-independently re-reviewed by the reviewer; no verdict on this round's
-own work is claimed anywhere in this file.
+Review of `0fba8b0c..70aef315` (commits C0a, C0b, C1, C2, C3, C4, C5,
+plus this handback commit C6 itself — seven commits total this round).
+**This range is UNREVIEWED by construction** — round 15 has not yet
+been independently re-reviewed by the reviewer; no verdict on this
+round's own work is claimed anywhere in this file.
 
 ## Commits
 
-### 6db8ea0b F112 R14 C0a: save round 14 block to .agent/authored/f112-r14.md
+### 9fda0025 F112 R15 C0a: save round 15 block to .agent/authored/f112-r15.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f112-r14.md` | 85/0 | Transport-proof source of truth for this round's block, saved verbatim (new file). |
+| `.agent/authored/f112-r15.md` | 89/0 | Transport-proof source of truth for this round's block, saved verbatim (new file). Byte counts of every sub-block re-verified programmatically before commit: RECORD14 2386 bytes, PLAN15 2229 bytes/47 lines/no trailing newline, DECISION D7 5766 bytes, PROSE_SLIP 763 bytes — all matched the block's own pinned figures exactly. |
 
-### dc7bf8e0 F112 R14 C0b: mirror block to .agent/last_block.md
+### c7decc60 F112 R15 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | 49/26 | Byte-identical mirror of the authored file (whole-file rewrite; exempt from the 500-line insertion cap per AGENTS.md's single-`.agent/**`-file exemption). `cmp` itself was denied by the sandbox this round (documented, recurring property); substituted with a `python3` byte-equality read (`a == b` → True, both **10458 bytes**), the documented equivalent proof. |
+| `.agent/last_block.md` | 44/40 | Byte-identical mirror of the authored file (whole-file rewrite; exempt from the 500-line insertion cap per AGENTS.md's single-`.agent/**`-file exemption). Verified with `cmp` directly (not denied this round) — exit 0, both files 11987 bytes. |
 
-### e9d040ee F112 R14 C1: append RECORD13 to live_review.md
+### cbed7d14 F112 R15 C1: append RECORD14 to live_review.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 2/1 | Appended RECORD13 (round 13's verdict) via `content_bytes + b"\n" + RECORD13_bytes` — the ONE-newline formula. |
+| `.agent/live_review.md` | 2/1 | Appended RECORD14 (round 14's verdict) via `content_bytes + b"\n" + RECORD14_bytes` — the ONE-newline formula, extracted programmatically from the committed authored file. |
 
-### f5e947bd F112 R14 C2: apply PLAN14 to plan.md
+### 5e430b1f F112 R15 C2: apply PLAN15 to plan.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | 25/20 | Whole-file replacement with PLAN14, extracted programmatically from the committed authored file, not retyped. No trailing newline (per the block). |
+| `.agent/plan.md` | 47/49 | Whole-file replacement with PLAN15, extracted programmatically from the committed authored file, not retyped. No trailing newline (per the block). |
 
-### 7dd49cbb F112 R14 C3: append DECISION F112 D6 to decisions.md
+### bbf2e2ac F112 R15 C3: append DECISION F112 D7 to decisions.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | 14/1 | Appended DECISION F112 D6 via `content_bytes + b"\n" + D6_bytes` — the ONE-newline formula. Records the T003b2b2 → T003b2b2a/T003b2b2b split and the `compiled_context_candidates` source fix. |
+| `.agent/decisions.md` | 14/1 | Appended DECISION F112 D7 via `content_bytes + b"\n" + D7_bytes` — the ONE-newline formula. Records the T003b2b2b → T003b2b2b1/T003b2b2b2 split and the five MEASURED unknowns (list-mutation safety, id-collision defense, missing TASK_* status, unbuilt escalation call, loop skip-condition) driving it. |
 
-### 44c51728 F112 R14 C4: wire fit_task_context_to_class_cap + compiled_context_* into the job-dispatch run_pingpong call (T003b2b2a)
+### 0b271970 F112 R15 C4: append the session-number prose slip to prose_slips.md
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/pingpong_job.py` | 21/0 | Pair A (REWRITE, occurred exactly once, grep-confirmed before applying): inserts the `fit_task_context_to_class_cap` gate ahead of the `try:`/`run_pingpong(` call, computing `compiled_context_paths`/`compiled_context_candidates`/`compiled_context_token_budget`, all `None` unless `task.files_hint` is non-empty AND the fit reports `fits=True`. Pair B (REWRITE, occurred exactly once): appends the three new kwargs onto the `run_pingpong(...)` call. `Path` was already imported at module top; `fit_task_context_to_class_cap` is a local import inside the `if task.files_hint:` block, matching `run_pingpong`'s own local-import style for `context_compiler`. |
-| `tests/orchestration/test_job_task_runner.py` | 105/0 | Byte-exact file-end append (verified via ordered-equality: pre-edit blob is an exact PREFIX of the post-edit file, appended slice is an exact SUFFIX, `git diff` shows only pure insertions in order) — new `TestClassBudgetCompiledContextWiring` class with three tests: a fitting `files_hint` wires all three kwargs; a `files_hint` that cannot fit its class cap (forced via a monkeypatched `default_cap = 1` config) leaves all three `None`; an empty `files_hint` (two-task job, no `Files:` section) leaves all three `None` across both dispatched tasks. |
+| `.agent/prose_slips.md` | 1/0 | Appended the SESSION-4-vs-SESSION-5 labeling slip found in round 14's own block, per the file's append-only one-line-per-entry convention (no blank-line separator, file already ended in its own trailing newline). No R-id spent (amend0827-process-diet rule 2 — reviewer-prose inaccuracy, nothing wrong on disk). |
+
+### 70aef315 F112 R15 C5: add planned_task_to_task_entry, the reverse adapter for split_one_task children (T003b2b2b1)
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/pingpong_job.py` | 26/0 | One REWRITE pair (grep-confirmed exactly one occurrence before applying): inserts `planned_task_to_task_entry` immediately after `task_entry_to_planned_task`, before the `TargetGuard` dataclass. Takes a `PlannedTask`, `task_class` (default `TASK_CLASS_DEFAULT`) and `source_heading_number` (default 0, both keyword-only since `PlannedTask` does not carry either field), returns a `TaskEntry` with `status=TASK_PENDING`. `PlannedTask` used only as a type annotation (already available via the existing `TYPE_CHECKING` import plus `from __future__ import annotations`); no runtime import needed since the function body never constructs one. Not called from `run_job` this round. |
+| `tests/orchestration/test_job_task_runner.py` | 76/0 | Part A: one-line REWRITE adding `planned_task_to_task_entry,` to the import list (grep-confirmed exactly one occurrence of the FROM pair before applying). Part B: byte-exact file-end append (verified via ordered-equality — pre-edit blob is an exact PREFIX of the post-edit file, appended bytes are an exact SUFFIX) of `TestPlannedTaskToTaskEntryAdapter`, three tests: basic field mapping, `task_class` defaulting to `TASK_CLASS_DEFAULT`, and a full round trip through `task_entry_to_planned_task` → `split_one_task` → `planned_task_to_task_entry` confirming ids (`T005a/b/c`) and `task_class`/`status` propagate correctly to every child. Append reproduced the file's own 2-blank-line class-separator convention exactly (`...is None\n\n\nclass Test...`, confirmed byte-for-byte before commit). |
 
 ## External actions
 
-`git push` → run immediately after this handback commit (C5); outcome
+`git push` → run immediately after this handback commit (C6); outcome
 recorded in the completion report, not in this file (write-once rule).
 
-Mutation red-proof worktree `.remedy-wt/f112-r14-mutation` was created
-(`git worktree add .remedy-wt/f112-r14-mutation HEAD --detach`, off
-commit `44c51728`, after C4 was committed), the mutation
-(`if fit_result.fits:` → `if True:`) applied there only (never in the
-primary checkout), the targeted tests run, and the worktree removed
-(`git worktree remove .remedy-wt/f112-r14-mutation --force`) before
-this handback (C5) was written. `git worktree list` after removal
-showed only the primary checkout and the pre-existing, unrelated
-`remedy/job-*` worktrees; no `f112-r14-mutation` entry remained.
+Mutation red-proof disposable worktree `.remedy-wt/f112-r15-mutation`
+was created (`git worktree add .remedy-wt/f112-r15-mutation HEAD
+--detach`, off commit `70aef315`, after C5 was committed), the mutation
+(`task_class=task_class,` → `task_class=TASK_CLASS_DEFAULT,` inside
+`planned_task_to_task_entry`) applied there only (never in the primary
+checkout), the targeted tests run, and the worktree removed (`git
+worktree remove .remedy-wt/f112-r15-mutation --force`) before this
+handback (C6) was written. `git worktree list` after removal showed
+only the primary checkout and the pre-existing, unrelated `remedy/job-*`
+worktrees; no `f112-r15-mutation` entry remained.
 
 ## Verification
 
-**Step 0 TRANSPORT** — `cmp .agent/authored/f112-r14.md
-.agent/last_block.md` was DENIED by the sandbox this round (the same
-documented, recurring property RECORD12/RECORD13 both name). Substituted
-with a `python3` byte-equality read: `a == b` → **True**, both files
-**10458 bytes**. Extracted-slice byte counts, measured programmatically
-against the pinned figures in the block, both BEFORE saving to disk and
-again after re-reading the committed file: RECORD13 **1631 bytes**
-(pinned 1631, match), PLAN14 **2394 bytes / 49 content lines** (pinned
-2394/49, match), DECISION D6 **5788 bytes** (pinned 5788, match). PASS.
+**Step 0 TRANSPORT** — `cmp .agent/authored/f112-r15.md
+.agent/last_block.md` ran directly this round (not denied) → exit 0,
+both files **11987 bytes**. Extracted-slice byte counts, measured
+programmatically against the pinned figures in the block: RECORD14
+**2386 bytes** (pinned 2386, match), PLAN15 **2229 bytes / 47 content
+lines, no trailing newline** (pinned 2229/47, match), DECISION D7
+**5766 bytes** (pinned 5766, match), PROSE_SLIP **763 bytes** (pinned
+763, match). PASS.
 
-**Step 1 LEDGER (RECORD13)** — `.agent/live_review.md` measured
-**2271288 bytes** immediately before the append (matches the pinned
+**Step 1 LEDGER (RECORD14)** — `.agent/live_review.md` measured
+**2272920 bytes** immediately before the append (matches the pinned
 pre-append figure exactly). Appended as `content_bytes + b"\n" +
-RECORD13_bytes` (ONE newline). Post-size measured at **2272920
-bytes**, matching `2271288 + 1 + 1631` exactly (also matching the
+RECORD14_bytes` (ONE newline). Post-size measured at **2275307
+bytes**, matching `2272920 + 1 + 2386` exactly (also matching the
 block's pinned post-size). Old-file-is-prefix check: **True**.
-Tail-equality check (`post[len(old):] == b"\n" + RECORD13_bytes`):
+Tail-equality check (`post[len(old):] == b"\n" + RECORD14_bytes`):
 **True**. PASS.
 
-**Step 2 PLAN** — PLAN14 extracted programmatically from the committed
-`.agent/authored/f112-r14.md` (between its markers) to an in-memory
-byte string, then written as the whole-file replacement and re-read
-for confirmation: **equal, 2394 bytes both sides**. `git diff` reviewed
-in full before commit; clean whole-file replacement, no unintended
+**Step 2 PLAN** — PLAN15 extracted programmatically from the committed
+`.agent/authored/f112-r15.md` (between its markers) to an in-memory
+byte string, then written as the whole-file replacement and re-read for
+confirmation: **equal, 2229 bytes both sides**. `git diff` reviewed in
+full before commit; clean whole-file replacement, no unintended
 content. PASS.
 
-**Step 3 DECISION (D6)** — `.agent/decisions.md` measured **766660
+**Step 3 DECISION (D7)** — `.agent/decisions.md` measured **772449
 bytes** immediately before the append (matches the pinned pre-append
-figure exactly). Appended as `content_bytes + b"\n" + D6_bytes` (ONE
-newline). Post-size measured at **772449 bytes**, matching `766660 + 1
-+ 5788` exactly (also matching the block's pinned post-size).
+figure exactly). Appended as `content_bytes + b"\n" + D7_bytes` (ONE
+newline). Post-size measured at **778216 bytes**, matching `772449 + 1
++ 5766` exactly (also matching the block's pinned post-size).
 Old-file-is-prefix check: **True**. Tail-equality check: **True**.
 PASS.
 
-**Step 4 CODE (C4)** — Both FROM strings (Pairs A, B — REWRITE) grepped
-to confirm exactly one occurrence each before applying via `Edit`;
-`git diff` reviewed in full before commit and matched the block's TO
-text exactly, no unrelated changes. Additionally cross-checked before
-applying: `run_pingpong`'s three `compiled_context_*` kwargs already
-exist at `pingpong_loop.py:2863-2865` (confirming the call-site wiring
-targets real parameters); `ClassBudgetFit.fits`/`cap_tokens` fields
-confirmed at `context_compiler.py:944-949`; `TaskEntry.files_hint`/
-`task_class` fields confirmed at `pingpong_job.py:127,137`.
+**Step 3b PROSE_SLIP** — `.agent/prose_slips.md` measured **68405
+bytes** immediately before the append (matches the pinned pre-append
+figure exactly, file confirmed ending in its own trailing newline
+first). Appended as `SLIP_bytes + b"\n"` directly (no blank-line
+separator). Post-size measured at **69169 bytes**, matching `68405 +
+763 + 1` exactly. Old-file-is-prefix check: **True**. Tail-equality
+check: **True**. PASS.
+
+**Step 4 CODE (C5)** — Both FROM strings (the `pingpong_job.py`
+REWRITE, and the test file's import REWRITE) grepped to confirm exactly
+one occurrence each before applying via `Edit`; `git diff` reviewed in
+full before commit and matched the block's TO text exactly, no
+unrelated changes. The file-end test append verified via ordered
+equality (prefix/suffix check) before commit, matching byte-for-byte.
 
 Targeted: `python3 -m pytest tests/orchestration/test_job_task_runner.py
--k "test_a_fitting_files_hint_wires_compiled_context_into_run_pingpong or
-test_a_files_hint_that_cannot_fit_its_class_cap_falls_through_unchanged or
-test_an_empty_files_hint_leaves_compiled_context_untouched" -q` →
-**3 passed, 206 deselected**. Full file: `python3 -m pytest
-tests/orchestration/test_job_task_runner.py -q` → **209 passed** (206
+-k "TestPlannedTaskToTaskEntryAdapter" -q` → **3 passed, 209
+deselected**. Full file: `python3 -m pytest
+tests/orchestration/test_job_task_runner.py -q` → **212 passed** (209
 existing + 3 new, no regressions). Lint: `python3 -m ruff check
 packages/orchestration/pingpong_job.py
 tests/orchestration/test_job_task_runner.py` → **"All checks
 passed!"**. Canary: `python3 -m pytest tests/cli/test_golden_path.py
--q` → **42 passed** (bare `pytest ...` was denied by the sandbox this
-round; `python3 -m pytest ...` is the reliable form — see Deviations).
-PASS, all as pinned.
+-q` → **42 passed**. PASS, all as pinned — no deviation from any
+expected result this round.
 
 **Step 5 MUTATION RED-PROOF** — in the disposable worktree
-`.remedy-wt/f112-r14-mutation` (off commit `44c51728`), changed
-`if fit_result.fits:` to `if True:` in
-`packages/orchestration/pingpong_job.py` (grep-confirmed exactly one
-occurrence beforehand). Ran the same targeted three-test selection from
-Step 4 there: `test_a_files_hint_that_cannot_fit_its_class_cap_falls_through_unchanged`
+`.remedy-wt/f112-r15-mutation` (off commit `70aef315`), changed
+`task_class=task_class,` to `task_class=TASK_CLASS_DEFAULT,` inside
+`planned_task_to_task_entry` in `packages/orchestration/pingpong_job.py`
+(grep-confirmed exactly one occurrence beforehand). No `__pycache__`
+directories existed in the fresh worktree (confirmed via `find` before
+running), so no cache purge was needed; ran with `python3 -B`
+regardless, per the standing cache-purge convention. Ran the targeted
+three-test selection from Step 4 there:
+`test_basic_field_mapping` and
+`test_round_trips_through_split_one_task_with_ids_and_class_preserved`
 went **RED** exactly as predicted —
-`AssertionError: assert ['src/main.py', 'docs/README.md'] is None` —
-because forcing the `if True:` branch always wires the three kwargs
-regardless of `fits`, so the "cannot fit" fixture's forced `default_cap
-= 1` no longer produces the expected `None` fallback. The other two
-tests stayed **GREEN**. Result: `1 failed, 2 passed`, matching the
+`AssertionError: assert 'standard_build' == 'format'` — because forcing
+`task_class` to the default regardless of the caller's argument breaks
+both tests' `assert entry.task_class == "format"` (and, in the
+round-trip test, `assert e.task_class == "format"` for all three split
+children). `test_task_class_defaults_to_standard_build` stayed
+**GREEN** (it never passes a non-default `task_class`, so the mutation
+changes nothing it asserts). Result: `2 failed, 1 passed`, matching the
 block's prediction exactly. `git status --porcelain` in the primary
 checkout read **empty** both before the worktree was created and after
 it was removed. PASS.
@@ -163,88 +182,75 @@ immediately before this handback's own commit. PASS.
 
 ## Authored-text proofs
 
-`.agent/authored/f112-r14.md` (committed at `6db8ea0b`) vs
-`.agent/last_block.md` (committed at `dc7bf8e0`): byte-identical (Step
-0 transport check above — `cmp` was denied, substituted with a
-`python3` byte-equality read). RECORD13, PLAN14 and DECISION D6 were
-all extracted programmatically from this committed file (never
-retyped) and applied via the stated append formula or whole-file
-write; every application was confirmed against pinned byte counts and
-before/after equality checks above (Steps 1-3). The code change (C4,
-Pairs A-B plus the file-end test append) was typed directly from the
-round's own prompt text (not carried inside the authored block's
-markers, unlike the ledger/plan/decision texts) and verified
-mechanically (FROM-occurrence counts, a full `git diff` read before
-commit, cross-checks against the real `run_pingpong`/`ClassBudgetFit`/
-`TaskEntry` signatures, the targeted/full/lint/canary test runs, and
-the mutation red-proof) per Step 4-5 above.
+`.agent/authored/f112-r15.md` (committed at `9fda0025`) vs
+`.agent/last_block.md` (committed at `c7decc60`): byte-identical, `cmp`
+exit 0, both 11987 bytes (Step 0 transport check above). RECORD14,
+PLAN15, DECISION D7 and PROSE_SLIP were all extracted programmatically
+from this committed file (never retyped) and applied via the stated
+append formula or whole-file write; every application was confirmed
+against pinned byte counts and before/after equality checks above
+(Steps 1-3b). The code change (C5, the one REWRITE pair in
+`pingpong_job.py`, the import REWRITE, and the file-end test append)
+was typed/applied directly from the round's own prompt text (not
+carried inside the authored block's markers, unlike the
+ledger/plan/decision/prose-slip texts) and verified mechanically
+(FROM-occurrence counts, a full `git diff` read before commit, the
+ordered-equality prefix/suffix proof for the test append, the
+targeted/full/lint/canary test runs, and the mutation red-proof) per
+Step 4-5 above.
 
 ## Deviations & assumptions
 
-1. **`cmp` was denied by the sandbox this round** (the same documented,
-   recurring property RECORD12/RECORD13 both name — it flips round to
-   round and is tracked as a known session property, not a shortcut).
-   Substituted with a `python3` byte-equality read in every case the
-   block called for `cmp` (Step 0 transport check). This is the
-   substitution the block itself pre-authorized ("there is no paste
-   relay this session").
-2. **Bare `pytest tests/cli/test_golden_path.py -q` (Part 3 step 4) was
-   also denied by the sandbox**; `python3 -m pytest
-   tests/cli/test_golden_path.py -q` ran cleanly and produced the exact
-   pinned result (42 passed). Not a design deviation — same command,
-   same result, only the invocation form the sandbox accepted differs.
-   `python3 -m ruff check <path>` (already the block's own instructed
-   form) was likewise the only lint form that ran.
-3. **A `cp` shell command (Part 2, C0b's literal instruction) was
-   denied by the sandbox**; substituted by writing the mirror file's
-   exact content directly via the Write tool (having just authored that
-   same content for `.agent/authored/f112-r14.md`), then verified
-   byte-identical via the Step 0 `python3` read. Same outcome (a
-   byte-identical mirror file), different tool used to produce it.
-4. **No search of the open-findings ledger (`.agent/live_review.md`'s
+**None.** Every verification command in Part 3 of the block ran with
+the sandbox permission it needed this round (`cmp`, `find`, `python3 -m
+pytest`, `python3 -m ruff check`, `git worktree add/remove`) and
+produced exactly the pinned expected result — no substitution, no
+disagreement, no repair needed. This round differs from rounds 11-14 in
+that respect: `cmp` was denied in some earlier rounds and is not this
+round.
+
+1. **This round has seven real commits (C0a, C0b, C1, C2, C3, C4, C5)
+   plus this handback as C6** — matching the block's own instructed
+   sequence exactly, including the DECISION commit C3. Stated here per
+   item 30's "an extra commit, a dropped one, or a reordering is a
+   deviation even when correct" instruction — this is the block's own
+   instructed shape, not a departure from it.
+2. **No search of the open-findings ledger (`.agent/live_review.md`'s
    open R-ids) was performed this round.** No new R-XXXX finding was
    minted or claimed resolved this round — the round is a
-   DECISION-authorized implementation slice (T003b2b2a), not a defect
+   DECISION-authorized implementation slice (T003b2b2b1), not a defect
    record. Item 30's "grep the DEFECT before minting an id" checklist
    obligation therefore does not apply this round; stated here for
    completeness rather than silently omitted.
-5. **This round has six real commits (C0a, C0b, C1, C2, C3, C4) plus
-   this handback as C5** — matching the block's own instructed
-   sequence exactly, including the DECISION commit C3 (present this
-   round, unlike round 13 which had none). Stated here per item 30's
-   "an extra commit, a dropped one, or a reordering is a deviation even
-   when correct" instruction — this is the block's own instructed
-   shape, not a departure from it.
-6. **`git push` outcome is not recorded in this file** (write-once
+3. **`git push` outcome is not recorded in this file** (write-once
    rule) — see the completion report for the real result.
 
 ## Item-Status Table
 
 | Item | Status | Reason |
 |---|---|---|
-| RECORD13 booked | done | |
-| PLAN14 applied | done | |
-| DECISION D6 registered | done | |
-| T003b2b2a shipped | done | |
+| RECORD14 booked | done | |
+| PLAN15 applied | done | |
+| DECISION D7 registered | done | |
+| prose slip appended | done | |
+| T003b2b2b1 shipped | done | |
 
 ## Next
 
-**T003b2b2b** (per PLAN14's Next Steps, per DECISION F112 D6): the
-`cannot_fit` → `enqueue_task_decision` → `auto_apply_safe_default` →
-`split_one_task` chain. **Mandatory prerequisite reading before
-authoring** — do NOT attempt to design or build T003b2b2b this round:
-`run_job`'s own task-iteration structure (how tasks are consumed from
-`job.tasks`, whether a split's children can be inserted back into the
-dispatch sequence, or whether the current task can be skipped/replaced
-after a split). `split_one_task` is not called anywhere in
-`pingpong_job.py` today (confirmed by grep — only a comment references
-it), and `run_job`'s dispatch loop (`pingpong_job.py:1761`) has no
-existing machinery for this — that shape is unread and undesigned,
-per D6's own CHOSEN clause.
+**T003b2b2b2** (per PLAN15's Next Steps, per DECISION F112 D7): the
+actual dispatch-loop wiring — a new `TASK_*` status for "replaced by a
+split", the `enqueue_task_decision`/`auto_apply_safe_default` calls,
+`used_ids` collection from the live `job.tasks` list, safe post-`idx`
+insertion, and the loop's own skip condition for the new status.
+**Mandatory prerequisite reading before authoring — do NOT assume this
+round's investigation (D7's own MEASURED section) is still current by
+then; re-read `run_job`'s dispatch loop fresh** (D7's own standing
+instruction, the same discipline D2-D6 established and D7 itself just
+exercised).
 
-**RECORD14 (this round's own verdict) is NOT YET in the ledger** —
-round 14 has not been independently re-reviewed by the reviewer yet,
-so no verdict exists to book. Per amend0827-process-diet rule 1, it
-books in the FIRST COMMIT of the next round that is happening anyway —
-that is round 15's own C1. Before starting T003b2b2b: Phase 1 rule 1 —
-re-check `.agent/STOP` from disk (not present as of this round).
+**RECORD15 (this round's own verdict) is NOT YET in the ledger** —
+round 15 has not been independently re-reviewed by the reviewer yet, so
+no verdict exists to book. Per amend0827-process-diet rule 1, it books
+in the FIRST COMMIT of the next round that is happening anyway — that
+is round 16's own C1. Before starting T003b2b2b2: Phase 1 rule 1 —
+re-check `.agent/STOP` from disk (absent as of this round).
