@@ -1,0 +1,67 @@
+F110 R15 integration gate, step 4 attribution
+================================================
+
+THE BRANCH-ONLY SET IS EMPTY.
+
+    branch_failed.txt  0 lines
+    base_failed.txt    2 lines
+    comm -13 base_failed.txt branch_failed.txt -> branch_only.txt      0 lines
+    comm -23 base_failed.txt branch_failed.txt -> fixed_by_branch.txt  2 lines
+
+R-0590 requires BOTH sets attributed unconditionally, not only when parity is
+void. branch_only.txt is empty, so there is no branch-only id to attribute and
+no BLOCKER is possible from that set: nothing failed on the branch that did
+not also fail at the base, and the branch run itself was 0 failed / 19487
+passed / 23 skipped, exit 0.
+
+fixed_by_branch.txt (comm -23) — 2 ids failed at the base and did NOT fail on
+the branch. Each is attributed below by DIRECT evidence, per integration_gate.md
+step 4's method extended to this base-only set as R-0590 requires:
+
+1. tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget
+   Base failure: "parsing 10000 body lines took 0.573s, ceiling 0.5s" — a
+   hard-coded wall-clock performance ceiling assertion.
+   SERIAL RE-RUN at the base worktree, xdist disabled (`-p no:xdist`):
+   PASSED in a session totalling 0.60s for both ids (see
+   base_serial_rerun.txt). The base run that produced the failure ran under
+   `-n auto` with 16 concurrent xdist workers; the serial re-run at the same
+   commit and same worktree, with no parallel load, clears the identical
+   0.5s ceiling by a wide margin.
+   CLASSIFICATION: XDIST-FLAKE class (F135/F052) — a fixed wall-clock perf
+   budget is not safe under 16-way parallel CPU contention, and this is a
+   resource-contention artifact of the gate's own parallel invocation, not a
+   defect the base commit carries.
+   COUPLING: `grep -n 'model_routing\|role_config\|task_class'` over
+   tests/orchestration/test_diff_parser.py returns no match (exit 1) — the
+   test exercises the diff parser only and does not reach any file this
+   feature (or any other in-flight branch code) touches. NOT fixed by branch
+   code; the branch simply did not hit the same contention window.
+
+2. tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+   Base failure: "Orphan process found after timeout cleanup" — a `pgrep -f
+   apps.cli.grouped.*--help` check found a matching PID (3828860) after this
+   test's own subprocess should have been cleaned up.
+   SERIAL RE-RUN at the base worktree, xdist disabled: PASSED (see
+   base_serial_rerun.txt, same session as above).
+   CLASSIFICATION: XDIST-FLAKE class (F135/F052) — the pgrep pattern
+   `apps.cli.grouped.*--help` is not scoped to this test's own PID or process
+   group, so under 16 concurrent xdist workers it can match a short-lived
+   `--help` subprocess spawned by a DIFFERENT worker's own instance of this
+   same test (test_review_bundle_runtime.py exercises the grouped CLI's
+   `--help` path repeatedly across its suite). Serial, with only one such
+   subprocess in flight at a time, there is nothing else for the pattern to
+   match.
+   COUPLING: `grep -n 'model_routing\|role_config\|task_class'` over
+   tests/cli/test_review_bundle_runtime.py returns no match (exit 1) — the
+   test exercises CLI subprocess cleanup only. NOT fixed by branch code.
+
+NEITHER CLASS TOUCHES F110 CODE. F110 changes
+packages/orchestration/model_routing.py, packages/orchestration/config.py
+and packages/orchestration/role_config.py (plus their test files); neither
+attributed id reaches any of them, confirmed by the grep above returning no
+match in either test file.
+
+    branch-only failures : 0
+    base-only failures   : 2 (both attributed to the XDIST-FLAKE class,
+                              neither coupled to F110 code)
+    BLOCKER               : none
