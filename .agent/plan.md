@@ -1,7 +1,7 @@
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1; T001 part 1 landed round 2.
+F112 claimed in STATUS.md round 1; T001 complete as of round 3.
 
 ## Goal
 
@@ -13,17 +13,15 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 3, session 1 — fix `R-0791` (two ruff-confirmed defects in
-`packages/orchestration/prompt_budget.py`: a redundant-quotes type hint
-and a missing trailing newline), then ship
-`tests/orchestration/test_class_prompt_budget.py`, completing T001. Still
-no compiler wiring — T002.
+Round 4, session 2 — T002: `ClassBudgetFit` + `fit_task_context_to_class_cap`
+in `packages/orchestration/context_compiler.py`, wiring T001's
+`resolve_task_class_cap` onto the existing `compile_task_context` demotion
+cascade with no change to that cascade itself. Two fixtures: an oversized
+context demoted under its cap (`fits=True`), and an unfittable one
+reporting `cannot_fit` arithmetic (`fits=False`, `tier1_tokens` carried).
 
 ## Next Steps
 
-- T002: compiler cap enforcement in `context_compiler.py` — `fit(context,
-  cap)` over the existing demotion order, the `cannot_fit` outcome with
-  tier-1/cap/class arithmetic, and oversized/unfittable fixtures.
 - T003: decision wiring (`escalation.enqueue_task_decision`, type
   `task_decision`), unattended default split, granularity-machinery seam.
 - Acceptance fixtures, the integration gate, then the closure sequence.
@@ -37,6 +35,6 @@ no compiler wiring — T002.
 - `R-0767` stays OPEN on the model-routing seam this feature's config
   registration pattern borrows from; unrelated to F112, not absorbed.
 - ruff availability is INCONSISTENT within this session: the bare `ruff`
-  binary is denied but `python3 -m ruff` resolves (measured R2); use the
-  module form and re-measure each round rather than trusting a prior
+  binary is denied but `python3 -m ruff` resolves (measured every round so
+  far); use the module form and re-measure rather than trusting a prior
   round's claim.
