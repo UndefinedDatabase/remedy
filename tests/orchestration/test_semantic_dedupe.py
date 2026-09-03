@@ -1,6 +1,8 @@
 """Tests for F109 semantic dedupe — the per-session sent-hash index
 (T001a), the composition hook and its markers (T002), the config kill
-switch (T002c) and the trace's record of what was not resent (T003c).
+switch (T002c), the trace's record of what was not resent (T003c) and
+the measurement of what a run withheld, read back from that record
+(T003d).
 
 The scope rule of the feature binds every case below: RESUMED SESSION ONLY,
 PROVEN SENDS ONLY. So the tests are mostly about what the index REFUSES to
@@ -12,10 +14,10 @@ Hermetic throughout: no network and no sleep anywhere. The unit tests are also
 PURE — no tmp_path, no provider — while the later classes deliberately drive
 the real ping-pong loop against ``FakeProvider`` in a tmp_path, beginning at
 F109 T001b-ii and continuing through every slice that followed it. The
-manifest in the first case is built through the REAL producer in
-``prompt_segments`` so
-the index is pinned against the manifest shape that actually ships rather than
-against a hand-made dictionary.
+manifests these cases hand to the index are built through the REAL producer in
+``prompt_segments`` wherever the case is about manifest SHAPE, so the index is
+pinned against the manifest that actually ships rather than against a hand-made
+dictionary.
 """
 from __future__ import annotations
 
