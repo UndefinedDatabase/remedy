@@ -1834,8 +1834,10 @@ class TestTheSemanticDedupeKillSwitch:
         self, fallback_repo: Path, monkeypatch,
     ):
         # THE COMPOSED OBJECTS ARE READ THE WAY SPEC T CASE 5 READS THEM, through
-        # that class's own capture helper, because the report never reaches
-        # ``PingPongResult``. The positive half already lives there:
+        # that class's own capture helper, because the composed OBJECT is what
+        # these cases assert on and only that helper yields it — the prompt trace
+        # carries the deduped NAMES onto ``PingPongResult`` but never the
+        # ``ComposedPrompt`` itself. The positive half already lives there:
         # ``test_a_resumed_chain_reports_the_names_it_replaced`` runs this very
         # chain at the default flag and finds names, so this case mirrors a
         # measured run rather than an assumption.
