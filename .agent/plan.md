@@ -14,33 +14,33 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 3, session 1 — T001c, consolidation order E.b. The orchestrator's
-model is read today straight from the `orchestrator.model` config key at
-two call sites, bypassing `role_config` entirely, so it is a third
-independent answer to "which model". This round routes it through
-`role_config` while keeping the config key exactly as the operator-facing
-surface it already is. Round 2's PASS verdict is booked in the same round.
+Round 4, session 1 — T002a, the class table itself. A new module
+`packages/orchestration/model_routing.py` maps each task class the policy
+document names to a model tier, and a SYNC TEST parses that document and
+asserts the two agree — the acceptance line
+`docs/roadmap/features/T3_F110.md` calls out by name. An unknown class
+routes to the top tier with the reason `unknown_class_conservative`.
+Round 3's PASS verdict is booked in the same round.
 
 ## Next Steps
 
-- T002: the resolver proper — the class table seeded from
-  `docs/agents/model_routing_policy.md`, the config schema, the hard-rule
-  checks, and one violating fixture per rule refused with the rule named.
-  Consolidation order E.d puts the per-call-site class declarations here,
-  AFTER the seam work, so a declared class cannot record a routing reason
-  that a rival mechanism then overrode.
+- T002b: the three hard rules, each a named check with a violating fixture
+  that is refused with the rule named — reviewer never weaker than its
+  paired worker, orchestrator and mission-compile always top tier,
+  safety-relevant classes never below mid. Deliberately NOT in round 4:
+  an unenforced rule on disk is a claim its round cannot prove.
+- T002c: the config schema and per-project overrides, where hard rules
+  always win and a violating override fails validation naming the rule.
 - T003: the promotion-evidence discipline, the evidence fields and the
   goldens — a promotion without evidence refused, with evidence logged.
-- The integration gate, then the closure sequence, which also runs the one
+- Then the per-call-site class declarations (consolidation order E.d),
+  the integration gate, and the closure sequence, which also runs the one
   checklist consolidation pass DECISION F110 D1 carries into it.
 
 ## Risks
 
-- E.b is behaviour-neutral at today's configuration: the two sources
-  already answer the same model id. That is measured, not assumed, and it
-  is why the round's tests use a patched discriminator rather than
-  comparing the two sources.
-- E.c is deliberately NOT done. Rebinding `make_structured_call_fn`'s
-  Ollama planner is failover work and the feature file puts it out of
-  scope; the inventory's section G records the distinction.
+- The table is not wired to any call site yet, by design: E.d puts the
+  declarations after the seam work. Nothing routes in production today.
+- `apps/cli/commands/mission_cmd.py`'s `_orchestrator_call_fn` docstring
+  went half-stale in round 3 and needs a later round's change set.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
