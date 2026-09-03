@@ -1,244 +1,240 @@
-# Handoff — F112 Prompt budget per task class, round 8 (housekeeping: book R7, fix R-0794)
+# Handoff — F112 Prompt budget per task class, round 9 (T003b1: task_class field on TaskEntry)
 
 ## Session
 
-SESSION 2 of feature F112 · round 8 · rounds so far 8.
+SESSION 3 of feature F112 · round 9 · rounds so far 9.
 
-This round books round 7's already-independently-reviewed PASS verdict
-into `.agent/live_review.md` (RECORD7, amend0827 rule 1 — a verdict
-never buys a round of its own), including R-0794's registration AND
-resolution in the same booking, and fixes R-0794 (Medium): round 7's own
-worker found `test_jobplan_no_metadata_attr_safe` in
-`tests/orchestration/test_f018_authority_integration.py` RED on the
-branch tip — its own premise (`not hasattr(job, "metadata")` on a bare
-`JobPlan()`) went permanently false when round 6's own `JobPlan.metadata`
-field addition landed. Fixed by reconstructing the metadata-absent state
-explicitly via `del job.metadata`, preserving the test's original intent
-(list_decisions must not crash when metadata is absent) exactly. Ships NO
-new behavior in `packages/`; T003b remains deferred to its own future
-round per DECISION F112 D1.
-
-**SESSION-END CANDIDATE FLAGGED — see "Next" below.** This is round 8 of
-session 2; the branch tip is now fully green across every suite this
-session has touched, with no open findings owed. T003b needs a full
-fresh re-read of the dispatch loop per its own "fresh investigation
-first" requirement in `.agent/plan.md`, so this is a strong candidate
-point to end the session rather than start T003b on round-8 fatigue.
+This round books round 8's already-independently-reviewed PASS verdict
+into `.agent/live_review.md` (RECORD8, amend0827 rule 1 — a verdict
+never buys a round of its own), appends DECISION F112 D2 (the reviewer's
+fresh investigation this round found the granularity-split seam
+`split_one_task` takes `schemas/models.py`'s `PlannedTask`, not
+`pingpong_job.py`'s own `TaskEntry` — no existing precedent connects
+them), and ships T003b1: adds a `task_class: str = TASK_CLASS_DEFAULT`
+field to `TaskEntry`, exported/imported like T003a's `metadata` field,
+defaulted to the seeded `model_routing.TASK_CLASS_TIERS` key
+`"standard_build"`. Per DECISION F112 D2, T003b splits into T003b1 (this
+round, done) and T003b2 (the adapter, call-site wiring and decision
+enqueue — deferred to its own round(s)).
 
 ## Range
 
-Review of `e5add7cd1de51b5ebabc7a550e6606d98c269388..HEAD` (commits C0a
-through C3; C4 is this handback commit itself, not yet made at the time
-this file was written).
+Review of `66401f61abd4aca7e410634019647274ce8ebd08..HEAD` (commits C0a
+through C5; C6 is this handback commit itself, not yet made at the time
+this file was written). **This range is UNREVIEWED by construction** —
+round 9 has not yet been independently re-reviewed by the reviewer; no
+verdict on this round's own work is claimed anywhere in this file.
 
 ## Commits
 
-### 7e58b1d4 F112 R8 C0a: save round 8 block to .agent/authored/f112-r8.md
+### d4eea8b1 F112 R9 C0a: save round 9 block to .agent/authored/f112-r9.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f112-r8.md` | 206/0 | Transport-proof source of truth for this round's block, saved verbatim (new file). |
+| `.agent/authored/f112-r9.md` | 81/0 | Transport-proof source of truth for this round's block, saved verbatim (new file). |
 
-### 0888f593 F112 R8 C0b: mirror block to .agent/last_block.md
+### a0b3f6cd F112 R9 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | 133/111 | Byte-identical mirror of the authored file (whole-file rewrite; exempt from the 500-line insertion cap per AGENTS.md's single-`.agent/**`-file exemption). |
+| `.agent/last_block.md` | 57/182 | Byte-identical mirror of the authored file (whole-file rewrite; exempt from the 500-line insertion cap per AGENTS.md's single-`.agent/**`-file exemption). |
 
-### a55e546b F112 R8 C1: apply PLAN8 to plan.md
+### 739d08a7 F112 R9 C1: append RECORD8 to live_review.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | 23/22 | Whole-file replacement with PLAN8, extracted programmatically from the committed authored file, not retyped. |
+| `.agent/live_review.md` | 2/0 | Appended RECORD8 (round 8's verdict) via `content_bytes + b"\n" + RECORD8_bytes` — the ONE-newline formula. |
 
-### 1e8dfabf F112 R8 C2: fix R-0794 (stale metadata-absence premise in test_jobplan_no_metadata_attr_safe)
+### 374b4631 F112 R9 C2: apply PLAN9 to plan.md
 | Path | +/- | Reason |
 |---|---|---|
-| `tests/orchestration/test_f018_authority_integration.py` | 6/1 | Applied TEST_FIX_FROM→TEST_FIX_TO via `content.replace(FROM, TO, 1)`, extracted programmatically from the committed authored file. Rewrites the docstring and adds an explicit `del job.metadata` to reconstruct the absent-metadata state a real `JobPlan()` can no longer naturally be in. |
+| `.agent/plan.md` | 21/23 | Whole-file replacement with PLAN9, extracted programmatically from the committed authored file, not retyped. |
 
-### 00b02a4d F112 R8 C3: append RECORD7 to live_review.md
+### 0346d142 F112 R9 C3: append DECISION F112 D2 to decisions.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 2/0 | Appended RECORD7 (round 7's verdict, including R-0794's registration and resolution) via `content_bytes + b"\n" + RECORD7_bytes` — the ONE-newline formula. |
+| `.agent/decisions.md` | 14/0 | Appended DECISION F112 D2 (T003b split rationale) via the same ONE-newline formula. |
+
+### 60aa2f19 F112 R9 C4: add task_class field to TaskEntry (export/import round-trip)
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/pingpong_job.py` | 8/0 | Applied TC_CONST, TC_FIELD, TC_EXPORT, TC_IMPORT (all four REWRITE pairs, each verified TO-does-not-contain-FROM and each FROM confirmed to occur exactly once before applying): new `TASK_CLASS_DEFAULT = "standard_build"` module constant, new `task_class` field on `TaskEntry`, and its export/import round-trip in `_export_job`/`_import_job`. |
+
+### 9d41d14b F112 R9 C5: add task_class persistence tests
+| Path | +/- | Reason |
+|---|---|---|
+| `tests/orchestration/test_job_task_runner.py` | 24/0 | Applied TC_TEST (append-shaped pair, TO verified to contain FROM as a verbatim prefix): three new tests in `TestPersistence` — default value, round-trip through persist/load, and default-is-a-seeded-model-routing-class. |
 
 ## External actions
 
-`git push` → run immediately after this handback commit (C4); outcome
+`git push` → run immediately after this handback commit (C6); outcome
 recorded in the completion report, not in this file (write-once rule).
 
 ## Verification
 
-**G1 TRANSPORT** — Python byte-equality read (via `hashlib.sha256`) of
-`.agent/authored/f112-r8.md` and `.agent/last_block.md`. Result:
-**equal, both 12928 bytes, identical SHA256.** PASS.
+**Step 0 TRANSPORT** — Python byte-equality of `.agent/authored/f112-r9.md`
+and `.agent/last_block.md`: **identical, True**. Extracted-slice byte
+counts, measured programmatically against the pinned figures in the
+block: RECORD8 **1786 bytes** (pinned 1786, match), PLAN9 **2053 bytes**
+(pinned 2053, match), DECISION F112 D2 **4916 bytes** (pinned 4916,
+match). PASS.
 
-**G2 PLAN** — PLAN8 extracted programmatically from the committed
-`.agent/authored/f112-r8.md` (between its markers) to an in-memory
+**Step 1 LEDGER (RECORD8)** — `.agent/live_review.md` measured
+**2261720 bytes** immediately before the append, matching the pinned
+figure exactly (no STOP triggered), and its tail (last 200 bytes) ended
+with `...NO OTHER FINDING IS OWED BY THIS ROUND.\n` (RECORD7),
+confirmed before appending. Appended as `content_bytes + b"\n" +
+RECORD8_bytes` (ONE newline). Post-size measured at **2263507 bytes**,
+matching `2261720 + 1 + 1786` exactly. Second reader: split the whole
+post-append file on `\n\n`, last unit == RECORD8 exactly (**True** —
+RECORD8 is one paragraph with no internal blank lines, so this check is
+meaningful for it). Negative control: flipped one byte inside RECORD8's
+own text in memory, re-ran the same comparison — mismatch confirmed
+(**False**, correctly rejected). PASS.
+
+**Step 2 PLAN** — PLAN9 extracted programmatically from the committed
+`.agent/authored/f112-r9.md` (between its markers) to an in-memory
 string, then Python byte-equality against `.agent/plan.md`: **equal,
-2155 bytes both sides.** `wc -l .agent/plan.md` → **46** (< 50, file has
-no trailing newline so the 47th line is uncounted by `wc -l`).
+2053 bytes both sides**. `wc -l .agent/plan.md` → **44** (matches the
+block's own stated expectation — the file has 44 embedded newlines, the
+45th/last line has no trailing newline so `wc -l` does not count it).
 `grep -c '^## Goal' .agent/plan.md` → **1**. `grep -c '^## Next Steps'
 .agent/plan.md` → **1**. PASS.
 
-**G3 FIX (R-0794)** — BEFORE the fix commit:
-`python3 -m pytest tests/orchestration/test_f018_authority_integration.py -q`
-→ **1 failed, 113 passed**, failure named exactly
-`TestRealJobPlanDecision::test_jobplan_no_metadata_attr_safe`
-(`AssertionError: assert not True`) — reproduces the regression exactly
-as the block predicted. Reconstructed the file from
-`git show e5add7cd...:tests/orchestration/test_f018_authority_integration.py`
-applying TEST_FIX_FROM→TEST_FIX_TO (both extracted programmatically,
-never retyped) via `content.replace(FROM, TO, 1)`; byte-compared against
-the committed post-fix file: **equal, 71587 bytes both sides.** AFTER
-the fix commit, same pytest command → **114 passed, 0 failed.**
-`ruff check tests/orchestration/test_f018_authority_integration.py`:
-bare `ruff` binary denied as a direct Bash invocation (first tier);
-fell back to `python3 -m ruff check <path>` (second tier), which
-**worked directly this round** (no third-tier `subprocess.run` fallback
-needed) → **`All checks passed!`**. PASS.
+**Step 3 DECISION (D2)** — `.agent/decisions.md` measured **746106
+bytes** immediately before the append, matching the pinned figure
+exactly (no STOP triggered). Appended as `content_bytes + b"\n" +
+D2_bytes` (ONE newline). Post-size measured at **751023 bytes**, matching
+`746106 + 1 + 4916` exactly. Second reader (as literally specified —
+split the WHOLE FILE on `\n\n`, compare the last unit to D2): reads
+**False**, NOT True — see Deviations & assumptions item 1 for why this
+is a structural property of D2's own shape (it has 6 internal blank-line
+paragraph breaks, unlike RECORD8/RECORD7/RECORD6 which are single
+paragraphs), not an append error. A whole-block equality check that is
+actually meaningful for a multi-paragraph entry — `post[-len(d2):] ==
+d2` and `post[746106:] == b"\n" + d2` — both read **True**, confirming
+the append landed byte-exact. Negative control on that meaningful check:
+flipped one byte inside D2's own CONTEXT paragraph (its first
+paragraph, not its last), re-ran — mismatch confirmed (**False**,
+correctly rejected). PASS on substance; the literal split-`\n\n` check
+as worded in the block does not apply cleanly to a multi-paragraph
+DECISION text (declared, not silently corrected).
 
-**G4 LEDGER (RECORD7)** — `.agent/live_review.md` measured **2259008
-bytes** immediately before the append, matching the block's pinned
-figure exactly (no STOP triggered). RECORD7 extracted from the
-committed authored file using the end-marker-without-leading-newline
-form (so the trailing `\n` separating the Gate line from the
-`<<<END RECORD7>>>` marker is captured as part of RECORD7 itself, not
-stripped): **2711 bytes, 0 internal newlines, last byte a newline** —
-matches the block's stated shape and pinned length exactly, with no
-manual adjustment needed this round. Appended as `content_bytes +
-b"\n" + RECORD7_bytes` (ONE newline). Post-size measured at **2261720
-bytes**, matching `2259008 + 1 + 2711` exactly. Second reader: split
-the whole post-append file on `\n\n`, last unit == RECORD7 exactly
-(**True**). Negative control: flipped one byte inside RECORD7's own
-text in memory, re-ran the same comparison against the file's actual
-last unit — mismatch confirmed (**False**, correctly rejected). PASS.
+**Step 4 TASK_CLASS FIELD** — Before applying, grepped the file for each
+of the four FROM strings: TC_CONST **1**, TC_FIELD **1**, TC_EXPORT
+**1**, TC_IMPORT **1** — all exactly once. Confirmed mechanically that
+TO does NOT contain FROM as a substring for all four (`TO contains FROM:
+False` × 4) — all four are REWRITE pairs, applied via `Edit`. After
+applying: `TASK_CLASS_DEFAULT` occurs **3** times (definition + field
+default + import fallback), `task_class` occurs **3** times (field +
+export + import) — both as expected for a field wired into one dataclass
+declaration plus its two round-trip sites.
+`python3 -m ruff check packages/orchestration/pingpong_job.py` →
+**`All checks passed!`**.
+`python3 -m pytest tests/orchestration/test_job_task_runner.py -q` →
+**193 passed** (code-only commit, no new tests yet — matches the block's
+expectation exactly). PASS.
 
-**G5 STATE READERS AND CANARY** (five separate invocations):
-- `python3 -m pytest tests/ui_server/ -q` → **515 passed**
-- `python3 -m pytest tests/orchestration/test_test_runner.py -q` → **52 passed**
-- `python3 -m pytest tests/regression/test_resource_safety.py -q` → **21 passed**
-- `python3 -m pytest tests/orchestration/test_integrity_gate.py -q` → **16 passed**
+**Step 5 TESTS** — Confirmed `TC_TEST`'s FROM occurs exactly **1** time
+in `tests/orchestration/test_job_task_runner.py` (the
+`test_metadata_defaults_to_an_empty_dict` method body) before applying,
+and that TO contains FROM as a verbatim prefix (**True**). Applied via
+`content.replace(FROM, TO, 1)`.
+`python3 -m ruff check tests/orchestration/test_job_task_runner.py` →
+**`All checks passed!`**.
+`python3 -m pytest tests/orchestration/test_job_task_runner.py -q` →
+**196 passed** (193 + 3 new, exactly as expected). PASS.
+
+**Step 6 MUTATION RED-PROOF** (disposable worktree only) — `git status
+--porcelain` in the primary checkout read **empty** immediately before
+creating the worktree. Created `git worktree add .remedy-wt/f112-r9-mutation
+HEAD` (detached at `9d41d14b`). Inside the worktree ONLY, mutated
+`_export_job`'s `"task_class": t.task_class,` line to `"task_class":
+"",`. `python3 -m pytest tests/orchestration/test_job_task_runner.py -q`
+in the worktree → **2 failed, 194 passed**, exactly as expected. The two
+failing test ids exactly as pytest reported them:
+`tests/orchestration/test_job_task_runner.py::TestPersistence::test_task_class_defaults_to_standard_build`
+and
+`tests/orchestration/test_job_task_runner.py::TestPersistence::test_task_class_round_trips_through_persist_and_load`
+(both read a value back through `_export_job`, as predicted). Reverted
+the mutation in the worktree (`"task_class": t.task_class,` restored,
+`git status --porcelain` in the worktree read empty after revert),
+re-ran the same command → **196 passed, 0 failed**. Removed the worktree
+via `git worktree remove .remedy-wt/f112-r9-mutation`; `git worktree
+list` no longer shows it (confirmed). `git status --porcelain` in the
+primary checkout read **empty** both before creating and after removing
+the worktree. No commit was made for this step (verification only). PASS.
+
+**Step 7 CANARY AND FULL-FEATURE SPOT CHECK**:
 - `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) → **42 passed**
+- `python3 -m pytest tests/orchestration/test_class_prompt_budget.py tests/orchestration/test_context_compiler.py tests/orchestration/test_task_granularity.py tests/orchestration/test_f018_authority_integration.py -q` → **237 passed** (24+69+30+114 = 237, exactly as expected)
 
-All PASS.
-
-**G6 FULL-FEATURE SPOT CHECK** (five separate invocations, every file
-this feature has touched across all rounds):
-- `python3 -m pytest tests/orchestration/test_class_prompt_budget.py -q` → **24 passed**
-- `python3 -m pytest tests/orchestration/test_context_compiler.py -q` → **69 passed**
-- `python3 -m pytest tests/orchestration/test_task_granularity.py -q` → **30 passed**
-- `python3 -m pytest tests/orchestration/test_job_task_runner.py -q` → **193 passed**
-- `python3 -m pytest tests/orchestration/test_f018_authority_integration.py -q` → **114 passed**
-
-All fully green. PASS.
-
-**G7 TREE, COMMITS, SWEEP** — `git status --porcelain` read **empty**
-immediately before staging the handback commit. `git ls-files
-.remedy-wt` read **empty**. Per-commit `git show --numstat` `+` column,
-cross-checked against the Commits table above:
-- C0a `7e58b1d4`: `+206/-0` `.agent/authored/f112-r8.md` — matches.
-- C0b `0888f593`: `+133/-111` `.agent/last_block.md` — matches.
-- C1 `a55e546b`: `+23/-22` `.agent/plan.md` — matches.
-- C2 `1e8dfabf`: `+6/-1` `tests/orchestration/test_f018_authority_integration.py` — matches.
-- C3 `00b02a4d`: `+2/-0` `.agent/live_review.md` — matches.
-
-All commits well under the 500-line insertion cap (C0a/C0b exempt
-regardless, as whole-file `.agent/**` rewrites, DECISION F104 D1).
-
-**Staleness sweep, one line per file this round touched:**
-- `.agent/authored/f112-r8.md` — new file this round; nothing prior
-  referenced it, so nothing else needed updating.
-- `.agent/last_block.md` — whole-file mirror of the authored file every
-  round; no other file depends on its prior content.
-- `.agent/plan.md` — whole-file replacement every round by design; no
-  other file quotes its prior text.
-- `tests/orchestration/test_f018_authority_integration.py` — repo-wide
-  search (`grep -rln`, scoped to `packages tests docs`) for the retired
-  phrase "JobPlan has no" turned up only the two OTHER, unrelated,
-  correctly-untouched hits already identified in round 7
-  (`decision_inbox.py:74` re `.tasks`, `decision_queue.py:94` re
-  `.artifacts`) and no further instance of the "no `.metadata`" claim
-  outside `.agent/live_review.md`'s append-only historical record (left
-  untouched by design). A second search for the test's own name
-  (`test_jobplan_no_metadata_attr_safe`) found it referenced, as
-  expected, only inside this file itself, various `.agent/` state files
-  (updated as part of this and prior rounds' normal bookkeeping), and
-  archival `.agent/Evidence/f018_repro_closure/**` snapshots from a past
-  closure evidence bundle — immutable historical artifacts, correctly
-  left untouched.
-- `.agent/live_review.md` — append-only; the appended RECORD7 text does
-  not reference or invalidate any earlier entry's content.
+`git status --porcelain` in the primary checkout read **empty**. PASS.
 
 ## Authored-text proofs
 
-`.agent/authored/f112-r8.md` (committed at `7e58b1d4`) vs
-`.agent/last_block.md` (committed at `0888f593`): byte-identical, 12928
-bytes both sides (G1, Python `hashlib.sha256` comparison). PLAN8,
-TEST_FIX_FROM/TEST_FIX_TO and RECORD7 were all extracted programmatically
-from this committed file (never retyped) and applied via
-`content.replace(FROM, TO, 1)` or the stated append formula; every
-application was confirmed against before/after occurrence counts or
-byte-equality above (G2, G3, G4).
+`.agent/authored/f112-r9.md` (committed at `d4eea8b1`) vs
+`.agent/last_block.md` (committed at `a0b3f6cd`): byte-identical (Step 0
+transport check above). RECORD8, PLAN9 and DECISION F112 D2 were all
+extracted programmatically from this committed file (never retyped) and
+applied via the stated append formulas or whole-file write; every
+application was confirmed against pinned byte counts and before/after
+equality checks above (Steps 1-3). TC_CONST/TC_FIELD/TC_EXPORT/TC_IMPORT
+and TC_TEST were typed directly from the round's own prompt text (not
+carried inside the authored block's markers, unlike the ledger/plan/
+decision texts) and verified mechanically (occurrence counts,
+FROM/TO containment checks) before and after application, per Steps 4-5
+above.
 
 ## Deviations & assumptions
 
-1. **The sandboxed shell denied several individual Bash invocations
-   mid-round** (bare `ruff` binary; a `for`-loop-shaped multi-command
-   Bash call gathering several `git show --numstat` outputs at once;
-   two parallel `grep -rn ... .` calls scanning from the repo root; one
-   `python3 -c` append-write to `.agent/live_review.md`; one
-   `python3 -c` read computing the G4 second-reader/negative-control
-   checks) and accepted the identical command on retry, or an
-   equivalent single-command / narrower-scoped form, every time (per
-   this round's explicit accepted-equivalent guidance). No gate result
-   in this handback rests on a denied invocation; every reported number
-   comes from a command that actually ran and printed the quoted
-   output. `grep -rln` denied at repo-root scope (`.`) succeeded when
-   scoped to specific directories (`packages tests docs`) instead —
-   consistent with the environment guidance to search from a specific
-   path rather than `/` or an unscoped root.
-2. **`git commit`'s own inline insertion/deletion summary disagreed
-   with `git show --numstat`/`git show --stat` read after the fact**
-   for the C0b whole-file rewrite of `.agent/last_block.md` (commit-time
-   summary read `206 insertions(+), 184 deletions(-)`; `git show
-   --numstat` and `git show --stat` both read `133 insertions(+), 111
-   deletions(-)` post-commit) — same class round 7 declared for its own
-   C0b. The Commits table and G7 cross-check above both use the `git
-   show --numstat` reading throughout, per the block's own G7 wording.
-3. **RECORD7's extraction needed no manual trailing-newline adjustment
-   this round**, unlike round 7's RECORD6 (which needed one `\n`
-   appended after extraction to reach its pinned byte count): matching
-   the end marker WITHOUT a leading `\n` (i.e. `b"<<<END RECORD7>>>"`
-   rather than `b"\n<<<END RECORD7>>>"`) captured the block's own
-   trailing newline as part of RECORD7 directly, landing on the pinned
-   2711-byte figure on the first attempt. Declared for transparency,
-   since the two rounds' extraction code differs in this one respect
-   and a future round should not assume either form is uniformly
-   correct — it depends on whether the block's own trailing newline
-   before its END marker is meant to belong to the extracted slice.
-4. **`ruff` fell back only one tier this round** (bare binary denied,
-   `python3 -m ruff check <path>` worked directly), unlike round 7 where
-   both the first two tiers were denied and the third
-   (`subprocess.run(...)` inside `python3 -c`) was needed. Declared
-   since the block anticipated all three tiers as possibly necessary;
-   this round only needed two.
-5. **`git push` outcome is not recorded in this file** (write-once
+1. **Step 3's literal second-reader instruction ("split on `\n\n`,
+   confirm the last unit equals D2 exactly") reads False, not True, for
+   the correctly-appended D2** — reported honestly rather than silently
+   reinterpreted or papered over. Root cause: D2, unlike every RECORD
+   entry booked into `live_review.md` so far, is a multi-paragraph
+   DECISION text with 6 internal blank-line breaks (CONTEXT / MEASURED /
+   CHOSEN / ALTERNATIVE CONSIDERED AND REJECTED / CONSEQUENCE / REVERSE).
+   Splitting the WHOLE FILE on `\n\n` and taking the last unit yields
+   only D2's own final REVERSE paragraph (`"REVERSE by deleting this
+   DECISION and treating T003b as a single unsplit round again."`), not
+   the whole 4916-byte D2 block — this is a structural fact about D2's
+   own shape, not an append defect. The append's correctness is fully
+   established by the exact byte arithmetic (`746106 + 1 + 4916 ==
+   751023`, measured and matched) and by two whole-block equality checks
+   that ARE meaningful for a multi-paragraph text: `post[-len(d2):] ==
+   d2` and `post[746106:] == b"\n" + d2`, both **True**, with a negative
+   control (one byte flipped inside D2's own CONTEXT paragraph) correctly
+   reading **False**. Did not adjust the pinned byte-count arithmetic to
+   compensate — that arithmetic was correct and is unaffected by this
+   finding, which concerns only which post-hoc equality check is
+   meaningful for a multi-paragraph append.
+2. **`git commit`'s own inline insertion/deletion summary disagreed with
+   `git show --numstat` read after the fact for C0b's whole-file rewrite
+   of `.agent/last_block.md`** (commit-time summary read `81 insertions,
+   206 deletions`; `git show --numstat` read `57 insertions, 182
+   deletions`) — the same class of discrepancy rounds 7 and 8 both
+   declared for their own C0b commits. The Commits table above uses the
+   `git show --numstat` reading throughout.
+3. **`git push` outcome is not recorded in this file** (write-once
    rule) — see the completion report for the real result.
 
 ## Next
 
-**T003b** — derive a `task_class` for a live `TaskEntry`, wire
-`compiled_context_paths`/`compiled_context_candidates` into
-`pingpong_job.py`'s `run_pingpong(...)` call, then call
-`fit_task_context_to_class_cap` and `enqueue_task_decision` between
-`_build_task_prompt` and `task.status = TASK_RUNNING` in the per-task
-loop — per `.agent/plan.md` Next Steps and DECISION F112 D1. No open
-findings are owed going into this step: R-0794 was registered and
-resolved within this same round, and the branch tip is fully green
-across every suite this feature has touched (G5/G6 above).
+**T003b2** (per DECISION F112 D2 and the rewritten `.agent/plan.md` Next
+Steps): a `TaskEntry`→`PlannedTask` adapter (`acceptance.splitlines()`,
+empty `files_hint` — safe per D2's MEASURED paragraph), the
+`fit_task_context_to_class_cap` call between `_build_task_prompt` and
+`task.status = TASK_RUNNING`, wiring its compiled paths into this loop's
+`run_pingpong(compiled_context_paths=..., compiled_context_candidates=...)`
+call, and on `cannot_fit` calling `enqueue_task_decision`
+(`options=["split task"]` only when `split_one_task` via the adapter
+returns non-`None`) then `auto_apply_safe_default` under `--yes`. Five
+still-untested, first-time-wired pieces against the live dispatch loop —
+its own dedicated round(s), fresh investigation already done in D2 but
+re-read the call site fresh again before authoring, per `.agent/plan.md`
+Risks.
 
-**Strong recommendation: end this session here and start T003b in a NEW
-session.** This is round 8 of session 2 — inside the 4-5-round-per-
-session default but on the higher side for one session, and T003b
-itself demands a "fresh investigation first" per its own plan.md entry
-and DECISION F112 D1, which a session boundary serves better than a
-9th round tacked onto this one. Before either continuing or ending:
-Phase 1 rule 1 — re-check `.agent/STOP` from disk before authoring the
-next round (not present as of this round).
+**RECORD9 (this round's own verdict) is NOT YET in the ledger** — round 9
+has not been independently re-reviewed by the reviewer yet, so no
+verdict exists to book. Per amend0827-process-diet rule 1, it must be
+booked by the round after next (i.e. not T003b2's own round, but the one
+following it). Before starting T003b2: Phase 1 rule 1 — re-check
+`.agent/STOP` from disk (not present as of this round).
