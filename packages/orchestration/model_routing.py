@@ -5,9 +5,12 @@ Owns the CLASS TABLE — which model TIER a declared task class is routed to —
 THREE HARD RULES of docs/agents/model_routing_policy.md as named checks, each
 returning ITS OWN rule name when a routing choice violates it, the PER-PROJECT
 OVERRIDE SCHEMA that validates a whole override map against those rules BEFORE it
-is applied, and the PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a
-CHEAPER tier unless a documented benchmark run backs it. Nothing else yet: no
-config file is read, no model id is named and no call site routes through it.
+is applied, the PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a
+CHEAPER tier unless a documented benchmark run backs it, and — new in T001 — the
+ROLE-TO-CLASS INVENTORY that gives every role Remedy resolves a runtime
+configuration for a DECLARED task class, together with the SINGLE ROUTING SEAM
+every provider call site will invoke. Nothing else yet: no config file is read,
+no model id is named and no call site routes through the seam.
 The table is SEEDED from the "Seed mapping" section of
 docs/agents/model_routing_policy.md, which remains the human-readable policy.
 tests/orchestration/test_model_routing.py parses that section and asserts the
@@ -41,9 +44,31 @@ configured to break it. packages/orchestration/config.py is deliberately NOT
 imported — every function below stays a pure function of its arguments, which is
 what lets the override rules be tested without a config file existing at all.
 
-Nothing in production imports this module yet: the per-call-site task-class
-declarations come after the resolver seam work, so the table lands and is
-pinned before anything routes through it.
+Remedy deliberately does not WIRE THE SEAM INTO ANY CALL SITE YET.
+:func:`route_role_call` is the one function every provider call site will invoke,
+and AT THIS COMMIT NOTHING CALLS IT — no file under ``packages/`` or ``apps/``
+other than this one imports this module. A reader searching for the place a call
+site routes through the seam must land HERE: that wiring is the NEXT round, and
+it is deliberately separate so the role declarations and the CALL-SITE INVENTORY
+(:data:`ROLE_CONFIG_CALL_SITES`) land — and start going red on a new, undeclared
+call site — BEFORE any routing behaviour moves.
+
+Remedy deliberately does not IMPORT packages/orchestration/role_config.py here,
+even though this module now declares a task class for every role that module
+knows. model_routing is the POLICY layer and role_config the CONFIG layer, and
+this docstring already forbids that same inversion for config.py. The coupling is
+enforced BY A TEST instead (tests/orchestration/test_model_routing.py), which is
+STRONGER than an import would be: an import fails only when something is MISSING,
+while the test fails when the two role sets DISAGREE IN EITHER DIRECTION — a role
+added to ``KNOWN_ROLES`` with no declared class, or a class declared here for a
+role nobody configures.
+
+Remedy deliberately does not give ``mission_compile`` a role or a call site.
+It is a declared member of :data:`ORCHESTRATION_TASK_CLASSES`, so a reader who
+searches for the call site that declares it will find none: missions are compiled
+OUTSIDE the role-config surface, so there is no role to map and no
+``resolve_role_config`` call to inventory. That absence is deliberate and stated
+here rather than left to be rediscovered.
 
 THE WORD "TIER" MEANS SOMETHING ELSE ONE MODULE OVER, and nothing is renamed:
 packages/orchestration/orchestrator_brain.py's ``OrchestratorModelRoutingPlan``
@@ -116,10 +141,21 @@ Public API::
     ROUTED_CALL_EVIDENCE_FIELDS: the keys a routed call records
     routed_call_evidence_fields(task_class, effective_tiers, promotion_evidence)
         -> dict[str, str | None], the mapping a routed call records
+    ROLE_TASK_CLASSES: the T001 inventory — role -> the class its calls declare
+    TASK_CLASS_INHERITING_ROLES: the roles that INHERIT the originating class
+    UNDECLARED_ROLE_TASK_CLASS: the class a role nobody declared answers with
+    OriginatingTaskClassRequired: raised when an inheriting role is given none
+    resolve_role_task_class(role, originating_task_class) -> str
+    route_role_call(role, originating_task_class, effective_tiers,
+        promotion_evidence) -> dict[str, str | None] — THE SEAM
+    ROLE_CONFIG_RESOLVER_NAME: the role_config function the inventory swept for
+    DYNAMIC_ROLE_MARKER: stands where a call site passes a role VARIABLE
+    ROLE_CONFIG_CALL_SITES: the (path, role-or-marker) call-site inventory
 """
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
@@ -1013,3 +1049,214 @@ def routed_call_evidence_fields(
         "reason": reason,
         "promoted_by": promoted_by,
     }
+
+
+# ---------------------------------------------------------------------------
+# The role inventory and the routing seam — F110 T001
+# ---------------------------------------------------------------------------
+# docs/roadmap/features/T3_F110.md, T001: the call-site and role inventory, and
+# ONE seam every provider call routes through. Everything below is a pure
+# function of its arguments for the reason the module docstring gives — this
+# module reads no config file and imports neither config.py nor role_config.py.
+
+#: THE T001 INVENTORY IN EXECUTABLE FORM: every orchestration ROLE Remedy
+#: resolves a runtime configuration for, mapped to the TASK CLASS that role's
+#: calls DECLARE. Until this constant existed the inventory was a list in a
+#: feature file, and a list in a feature file rots; here it is read by
+#: :func:`resolve_role_task_class` on every routed call, so a wrong entry is a
+#: wrong route rather than a stale sentence.
+#:
+#: EVERY VALUE IS A KEY OF :data:`TASK_CLASS_TIERS`, pinned by its own test — a
+#: role declaring a class the seed table does not name would route conservatively
+#: while LOOKING declared, which is the worst of both answers.
+#:
+#: ``orchestrator`` maps to ``mission`` per DECISION F110 D3 (.agent/decisions.md,
+#: 2026-09-03), which measured that ``orchestrator`` is a CALL KIND the hard rule
+#: guards rather than a seed-table key, and rejected both seeding a new class into
+#: the policy document and letting the role fall through to the conservative
+#: unknown-class path. ``mission`` is seeded at :data:`TOP_TIER` AND is in
+#: :data:`ORCHESTRATION_TASK_CLASSES`, so this role's tier is held by a CHECKED
+#: hard rule and not merely by a table entry.
+#:
+#: ``repair`` IS DELIBERATELY ABSENT from this map: it INHERITS, and is declared in
+#: :data:`TASK_CLASS_INHERITING_ROLES` instead. A role in NEITHER is a role nobody
+#: declared a task class for — it answers :data:`UNDECLARED_ROLE_TASK_CLASS` with a
+#: warning, and the inventory test in tests/orchestration/test_model_routing.py
+#: asserts this map and that set together cover EVERY member of
+#: ``role_config.KNOWN_ROLES``, so a new role cannot be added quietly.
+ROLE_TASK_CLASSES: dict[str, str] = {
+    "builder": "standard_build",
+    "reviewer": "standard_review",
+    "design_worker": "architecture",
+    "test_worker": "standard_build",
+    "final_verifier": "standard_review",
+    "teacher": "summarize",
+    "summary": "summarize",
+    "orchestrator": "mission",
+}
+
+#: THE INHERITING ROLES — roles whose task class is not their own but the class of
+#: the work that PROVOKED the call. Exactly one today: ``repair``.
+#:
+#: THIS IS THE POLICY DOCUMENT'S OWN RULE BULLET, "Repair prompts follow the tier
+#: of the original task class.", turned from a CHECKED STRING into a CHECKED
+#: BEHAVIOUR. Round 4's policy-document sync test has PINNED that sentence
+#: VERBATIM since it landed — ``REPAIR_RULE_BULLET`` in
+#: tests/orchestration/test_model_routing.py — and until this constant nothing
+#: EXECUTED it: the wording was guarded while the rule itself was inert.
+#:
+#: THE TWO GUARDS ARE BOTH LOAD-BEARING AND NEITHER REPLACES THE OTHER. The sync
+#: test stops the DOCUMENT and the code drifting apart — reword the bullet and it
+#: reddens; :func:`resolve_role_task_class` stops the BEHAVIOUR drifting away from
+#: the wording — return a fixed class instead of the originating one and the
+#: inheritance tests redden. A reworded rule with an unchanged implementation and
+#: an unchanged rule with a broken implementation are different failures, so they
+#: get different guards.
+TASK_CLASS_INHERITING_ROLES: frozenset[str] = frozenset({"repair"})
+
+#: The task class answered for a role neither :data:`ROLE_TASK_CLASSES` nor
+#: :data:`TASK_CLASS_INHERITING_ROLES` names. It is deliberately NOT a key of
+#: :data:`TASK_CLASS_TIERS`, so it flows through the existing resolver to
+#: :data:`TOP_TIER` with :data:`UNKNOWN_CLASS_REASON` — the conservative answer
+#: this module already gives an undeclared class, reached by the same code path
+#: rather than by a second, rival one.
+UNDECLARED_ROLE_TASK_CLASS: str = "undeclared_role"
+
+
+# WHY AN EXCEPTION AND NOT A DEFAULT: an inheriting role with no originating class
+# is a CALLER BUG, not a routing decision. Guessing a class would route a repair
+# prompt to a tier nobody chose, which is exactly the silent downgrade
+# docs/agents/model_routing_policy.md forbids — and it would be invisible, because
+# the evidence line would name a class that was never declared.
+class OriginatingTaskClassRequired(Exception):
+    """Raised when a role in :data:`TASK_CLASS_INHERITING_ROLES` is given none.
+
+    Carries the role on ``.role`` so a caller reads STRUCTURE rather than
+    re-parsing the message; the message names the role and the rule, for the
+    operator who only ever sees a traceback.
+    """
+
+    def __init__(self, role: str) -> None:
+        self.role = role
+        super().__init__(
+            f"role {role!r} inherits its task class and no originating task class "
+            f"was supplied; docs/agents/model_routing_policy.md: "
+            f"'Repair prompts follow the tier of the original task class.'"
+        )
+
+
+# WHY THE ORIGINATING CLASS IS IGNORED FOR A DECLARED ROLE: a declared class IS
+# the declaration. Letting a caller-supplied class win would make the inventory
+# above advisory, and an inventory a caller can override silently is a comment.
+def resolve_role_task_class(
+    role: str,
+    originating_task_class: str | None = None,
+) -> str:
+    """Return the TASK CLASS a call by ``role`` declares.
+
+    A role in :data:`ROLE_TASK_CLASSES` returns its DECLARED class and
+    ``originating_task_class`` is IGNORED — not merged, not preferred, ignored.
+
+    A role in :data:`TASK_CLASS_INHERITING_ROLES` returns
+    ``originating_task_class``, normalized through
+    :func:`normalize_task_class`, and RAISES :class:`OriginatingTaskClassRequired`
+    when none is supplied.
+
+    A role in NEITHER emits a :class:`UserWarning` and returns
+    :data:`UNDECLARED_ROLE_TASK_CLASS`, which routes conservatively to
+    :data:`TOP_TIER` with :data:`UNKNOWN_CLASS_REASON`.
+
+    WHICH BEHAVIOUR THE UNKNOWN-ROLE PATH MATCHED, AND WHY: it WARNS AND
+    CONTINUES, exactly as ``packages/orchestration/role_config.resolve_role_config``
+    does for a role its ``KNOWN_ROLES`` does not name. That module warns rather
+    than raising, and TWO LAYERS DISAGREEING ABOUT ONE UNKNOWN ROLE — one
+    resolving it, the other refusing to route it — would be worse than either
+    choice alone: the same call would half-succeed. The disagreement is the
+    problem, so this layer follows the layer that already made the choice.
+    """
+    if role in ROLE_TASK_CLASSES:
+        return ROLE_TASK_CLASSES[role]
+    if role in TASK_CLASS_INHERITING_ROLES:
+        if originating_task_class is None:
+            raise OriginatingTaskClassRequired(role)
+        return normalize_task_class(originating_task_class)
+    warnings.warn(
+        f"Role {role!r} declares no task class; routing conservatively as "
+        f"{UNDECLARED_ROLE_TASK_CLASS!r}. Declared roles: "
+        f"{', '.join(sorted(ROLE_TASK_CLASSES))}; inheriting roles: "
+        f"{', '.join(sorted(TASK_CLASS_INHERITING_ROLES))}.",
+        stacklevel=2,
+    )
+    return UNDECLARED_ROLE_TASK_CLASS
+
+
+# WHY: this is THE SINGLE SEAM docs/roadmap/features/T3_F110.md asks for — every
+# provider call site routes through it once the wiring round lands, so the class,
+# the tier, the reason and what promoted it come from ONE place and cannot
+# disagree.
+def route_role_call(
+    role: str,
+    originating_task_class: str | None = None,
+    effective_tiers: dict[str, str] | None = None,
+    promotion_evidence: dict[str, PromotionEvidence] | None = None,
+) -> dict[str, str | None]:
+    """Return the routed-call evidence mapping for a call made by ``role``.
+
+    ``originating_task_class`` is supplied ONLY for a role in
+    :data:`TASK_CLASS_INHERITING_ROLES`, and is ignored for every other role.
+
+    ``effective_tiers`` is what :func:`build_effective_task_class_tiers` returned,
+    and DEFAULTS to :data:`TASK_CLASS_TIERS` — a call site with no per-project
+    overrides configured routes against the shipped policy without having to build
+    a table first. ``promotion_evidence`` is passed straight through.
+
+    The keys are exactly :data:`ROUTED_CALL_EVIDENCE_FIELDS`. THIS FUNCTION
+    RECOMPUTES NOTHING: it resolves the class through
+    :func:`resolve_role_task_class` and then DELEGATES to
+    :func:`routed_call_evidence_fields`, so the tier a role's call is routed to and
+    the tier its evidence claims are the same value read once.
+    """
+    task_class = resolve_role_task_class(role, originating_task_class)
+    table = TASK_CLASS_TIERS if effective_tiers is None else effective_tiers
+    return routed_call_evidence_fields(task_class, table, promotion_evidence)
+
+
+#: The ``role_config`` function whose calls ARE the call-site inventory below.
+#: Named as a constant so the AST sweep in tests/orchestration/test_model_routing.py
+#: does not retype it: renaming that function must move the sweep and this
+#: constant together, not leave a sweep quietly matching nothing.
+ROLE_CONFIG_RESOLVER_NAME: str = "resolve_role_config"
+
+#: Stands in :data:`ROLE_CONFIG_CALL_SITES` where a call site passes a role
+#: VARIABLE rather than a literal. Angle brackets because no role name can contain
+#: them, so the marker can never be mistaken for a role.
+DYNAMIC_ROLE_MARKER: str = "<dynamic>"
+
+#: THE CALL-SITE INVENTORY: every production call that resolves a role's runtime
+#: configuration, as a MULTISET of ``(repository path, role-or-marker)`` pairs.
+#: A tuple and not a set because ``teacher_model.py`` calls the resolver TWICE and
+#: a set would silently collapse the two into one.
+#:
+#: NO LINE NUMBERS, DELIBERATELY. A line number moves under any edit ABOVE the
+#: call, so an inventory keyed on them would go red for edits that changed no call
+#: site at all — and a gate that cries wolf gets widened until it stops meaning
+#: anything. The pair identifies the call; the sweep finds where it is.
+#:
+#: WHY THE INVENTORY PINS CALL SITES AND NOT ROLE STRINGS: only TWO of these seven
+#: calls pass a role LITERAL. The other five pass a variable, so a sweep keyed on
+#: literal roles would reach two of seven and report a clean bill for the five it
+#: never looked at. Pinning the SITES makes the missing five visible as
+#: :data:`DYNAMIC_ROLE_MARKER` entries — declared unknowns rather than absences.
+#:
+#: CHECKED, NOT DECLARED: tests/orchestration/test_model_routing.py re-runs the AST
+#: sweep over ``packages/`` and ``apps/`` and asserts the multiset EQUALS this
+#: constant, so a new provider call site cannot land without that test going red.
+ROLE_CONFIG_CALL_SITES: tuple[tuple[str, str], ...] = (
+    ("apps/cli/commands/do_cmd.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/artifact_summary.py", "summary"),
+    ("packages/orchestration/pingpong_job.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/role_config.py", "orchestrator"),
+    ("packages/orchestration/self_use_runner.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
+    ("packages/orchestration/teacher_model.py", DYNAMIC_ROLE_MARKER),
+)
