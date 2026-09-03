@@ -27,6 +27,7 @@ from packages.orchestration.model_routing import (
     ROUTED_CALL_EVIDENCE_FIELDS,
     RULE_ORCHESTRATION_BELOW_TOP_TIER,
     RULE_PROMOTION_WITHOUT_EVIDENCE,
+    RULE_REVIEWER_WEAKER_THAN_WORKER,
     SAFETY_RELEVANT_CLASSES,
     TASK_CLASS_INHERITING_ROLES,
     TASK_CLASS_TIERS,
@@ -917,3 +918,207 @@ class TestMalformedPromotionEvidenceIsNotACrash:
         assert cfg.routed_call is not None
         assert cfg.routed_call["tier"] == TASK_CLASS_TIERS[task_class]
         assert cfg.routed_call["promoted_by"] is None
+
+
+# ---------------------------------------------------------------------------
+# F110 ACCEPTANCE — the reviewer/worker pairing asserted on a REAL fixture round
+# ---------------------------------------------------------------------------
+# WHY THIS IS NOT THE SAME TEST AS test_model_routing.py's. Every existing guard
+# for policy hard rule 1 judges an OVERRIDE MAP through
+# validate_task_class_tier_overrides. A map the validator refuses and a ROUND
+# that nevertheless routes the refused table are different failures, and only
+# the second reaches a provider call. So the round below is resolved through the
+# PRODUCTION resolve_role_config for BOTH halves, and the tier under test is the
+# one the SEAM RECORDED on cfg.routed_call — never a tier this file computed for
+# itself and then asserted against its own arithmetic.
+
+
+def _declared_reviewer_worker_rounds() -> list[tuple[str, str, str, str]]:
+    """Return every ``(worker_role, reviewer_role, worker_class, reviewer_class)``.
+
+    DERIVED, never spelled: :data:`REVIEWER_WORKER_CLASS_PAIRS` supplies the
+    declared class pairs and :data:`ROLE_TASK_CLASSES` supplies every role that
+    declares each half, so a re-seeding or a rename moves these rounds with it.
+    Several roles may declare one class — the cross product is taken, because
+    the rule binds the ROUND and not the pair of names.
+    """
+    rounds: list[tuple[str, str, str, str]] = []
+    for worker_class, reviewer_class in REVIEWER_WORKER_CLASS_PAIRS:
+        workers = [r for r in sorted(ROLE_TASK_CLASSES) if ROLE_TASK_CLASSES[r] == worker_class]
+        reviewers = [r for r in sorted(ROLE_TASK_CLASSES) if ROLE_TASK_CLASSES[r] == reviewer_class]
+        for worker_role in workers:
+            for reviewer_role in reviewers:
+                rounds.append((worker_role, reviewer_role, worker_class, reviewer_class))
+    return rounds
+
+
+#: The fixture rounds every acceptance test below is parametrized over. Built at
+#: import so an emptied pair table shows up as a collection of zero rounds, which
+#: the first test below then reports as a FAILURE rather than as a green run.
+DECLARED_REVIEWER_WORKER_ROUNDS = _declared_reviewer_worker_rounds()
+
+#: pytest ids that name the round rather than its index.
+_ROUND_IDS = [f"{worker}-reviewed-by-{reviewer}" for worker, reviewer, _, _ in DECLARED_REVIEWER_WORKER_ROUNDS]
+
+
+def _resolve_one_fixture_round(worker_role: str, reviewer_role: str):
+    """Resolve BOTH halves of one round and return ``(worker, reviewer, messages)``.
+
+    Both halves go through the production :func:`resolve_role_config`, so what is
+    under test is the routing a real run would get. Warnings are RECORDED rather
+    than silenced: a refusal this feature makes is carried on a warning, and a
+    test that ignored them could not tell a refused table from an accepted one.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        worker = resolve_role_config(worker_role)
+        reviewer = resolve_role_config(reviewer_role)
+    return worker, reviewer, [str(w.message) for w in caught]
+
+
+def _recorded_tier(cfg: RoleConfig) -> str:
+    """Return the tier the SEAM RECORDED for *cfg*, not one recomputed here."""
+    assert cfg.routed_call is not None, cfg.role
+    return cfg.routed_call["tier"]
+
+
+def _round_pairing_holds(worker: RoleConfig, reviewer: RoleConfig) -> bool:
+    """Policy hard rule 1 over ONE resolved round, RANKED and never compared as text."""
+    return model_tier_rank(_recorded_tier(reviewer)) >= model_tier_rank(_recorded_tier(worker))
+
+
+class TestDeclaredReviewerWorkerRoundsAreDerived:
+    """The rounds under test come from the shipped tables, and there is at least one."""
+
+    def test_at_least_one_round_is_declared(self):
+        # AN EMPTIED PAIR TABLE IS A FAILURE, not a vacuous pass: every test
+        # below is parametrized over this list, so a zero-length list would
+        # silently retire the whole acceptance clause.
+        assert DECLARED_REVIEWER_WORKER_ROUNDS
+
+    @pytest.mark.parametrize(
+        "worker_role,reviewer_role,worker_class,reviewer_class",
+        DECLARED_REVIEWER_WORKER_ROUNDS,
+        ids=_ROUND_IDS,
+    )
+    def test_both_halves_declare_the_classes_of_a_declared_pair(
+        self, worker_role, reviewer_role, worker_class, reviewer_class
+    ):
+        assert ROLE_TASK_CLASSES[worker_role] == worker_class
+        assert ROLE_TASK_CLASSES[reviewer_role] == reviewer_class
+        assert (worker_class, reviewer_class) in REVIEWER_WORKER_CLASS_PAIRS
+
+
+class TestFixtureRoundEvidenceIsComplete:
+    """The Acceptance line 'every call's evidence shows class, routed model, reason'."""
+
+    @pytest.mark.parametrize(
+        "worker_role,reviewer_role,worker_class,reviewer_class",
+        DECLARED_REVIEWER_WORKER_ROUNDS,
+        ids=_ROUND_IDS,
+    )
+    def test_an_unconfigured_round_records_complete_evidence_on_both_halves(
+        self, worker_role, reviewer_role, worker_class, reviewer_class
+    ):
+        worker, reviewer, messages = _resolve_one_fixture_round(worker_role, reviewer_role)
+        assert messages == [], messages
+        for cfg, task_class in ((worker, worker_class), (reviewer, reviewer_class)):
+            assert cfg.model, cfg.role
+            assert cfg.routed_call is not None, cfg.role
+            assert tuple(cfg.routed_call) == ROUTED_CALL_EVIDENCE_FIELDS, cfg.role
+            assert cfg.routed_call["task_class"] == task_class, cfg.role
+            assert cfg.routed_call["tier"] == TASK_CLASS_TIERS[task_class], cfg.role
+            assert cfg.routed_call["reason"] is not None, cfg.role
+
+    @pytest.mark.parametrize(
+        "worker_role,reviewer_role,worker_class,reviewer_class",
+        DECLARED_REVIEWER_WORKER_ROUNDS,
+        ids=_ROUND_IDS,
+    )
+    def test_the_seeded_round_pairs_correctly(
+        self, worker_role, reviewer_role, worker_class, reviewer_class
+    ):
+        worker, reviewer, messages = _resolve_one_fixture_round(worker_role, reviewer_role)
+        assert messages == [], messages
+        assert _round_pairing_holds(worker, reviewer)
+
+
+class TestDocumentedRunCheapensTheWorkerHalf:
+    """A benchmark run may buy a cheaper WORKER and the round still pairs correctly."""
+
+    @pytest.mark.parametrize(
+        "worker_role,reviewer_role,worker_class,reviewer_class",
+        DECLARED_REVIEWER_WORKER_ROUNDS,
+        ids=_ROUND_IDS,
+    )
+    def test_an_evidenced_worker_promotion_is_routed_and_still_pairs(
+        self, monkeypatch, tmp_path, worker_role, reviewer_role, worker_class, reviewer_class
+    ):
+        cheapest = MODEL_TIERS[0]
+        # THE DISCRIMINATOR: without a real move the assertions below would be
+        # satisfied by the seed table and would prove nothing about promotion.
+        assert model_tier_rank(cheapest) < model_tier_rank(TASK_CLASS_TIERS[worker_class])
+        _configure_promotion_tables(
+            monkeypatch,
+            tmp_path,
+            {worker_class: cheapest},
+            {worker_class: _well_formed_evidence_entry(worker_class)},
+        )
+        worker, reviewer, messages = _resolve_one_fixture_round(worker_role, reviewer_role)
+        assert messages == [], messages
+        assert _recorded_tier(worker) == cheapest
+        assert worker.routed_call["reason"] == OVERRIDE_REASON
+        assert worker.routed_call["promoted_by"]
+        assert _round_pairing_holds(worker, reviewer)
+
+
+class TestDemotingTheReviewerHalfIsRefusedByName:
+    """Policy hard rule 1 over a ROUND, and evidence does NOT discharge it."""
+
+    @pytest.mark.parametrize(
+        "worker_role,reviewer_role,worker_class,reviewer_class",
+        DECLARED_REVIEWER_WORKER_ROUNDS,
+        ids=_ROUND_IDS,
+    )
+    def test_an_unevidenced_reviewer_demotion_is_refused_and_does_not_route(
+        self, monkeypatch, tmp_path, worker_role, reviewer_role, worker_class, reviewer_class
+    ):
+        cheapest = MODEL_TIERS[0]
+        assert model_tier_rank(cheapest) < model_tier_rank(TASK_CLASS_TIERS[reviewer_class])
+        _configure_promotion_tables(monkeypatch, tmp_path, {reviewer_class: cheapest})
+        worker, reviewer, messages = _resolve_one_fixture_round(worker_role, reviewer_role)
+        assert messages
+        assert all(RULE_REVIEWER_WEAKER_THAN_WORKER in m for m in messages), messages
+        assert _round_pairing_holds(worker, reviewer)
+        # THE REFUSED TABLE DID NOT ROUTE: the reviewer keeps its SEEDED tier.
+        assert _recorded_tier(reviewer) == TASK_CLASS_TIERS[reviewer_class]
+
+    @pytest.mark.parametrize(
+        "worker_role,reviewer_role,worker_class,reviewer_class",
+        DECLARED_REVIEWER_WORKER_ROUNDS,
+        ids=_ROUND_IDS,
+    )
+    def test_evidence_discharges_the_promotion_rule_but_never_the_pairing_rule(
+        self, monkeypatch, tmp_path, worker_role, reviewer_role, worker_class, reviewer_class
+    ):
+        # WITHOUT THIS CASE the whole class of test above passes while a
+        # documented benchmark run is allowed to buy a WEAKER REVIEWER — which is
+        # the one thing policy hard rule 1 exists to forbid. The demotion is the
+        # same as the case above; only the evidence is added.
+        cheapest = MODEL_TIERS[0]
+        assert model_tier_rank(cheapest) < model_tier_rank(TASK_CLASS_TIERS[reviewer_class])
+        _configure_promotion_tables(
+            monkeypatch,
+            tmp_path,
+            {reviewer_class: cheapest},
+            {reviewer_class: _well_formed_evidence_entry(reviewer_class)},
+        )
+        worker, reviewer, messages = _resolve_one_fixture_round(worker_role, reviewer_role)
+        assert messages
+        assert all(RULE_REVIEWER_WEAKER_THAN_WORKER in m for m in messages), messages
+        # The benchmark discharged the PROMOTION rule and ONLY that one, so its
+        # name is gone from every message while the hard rule's name remains.
+        assert all(RULE_PROMOTION_WITHOUT_EVIDENCE not in m for m in messages), messages
+        assert _round_pairing_holds(worker, reviewer)
+        assert _recorded_tier(reviewer) == TASK_CLASS_TIERS[reviewer_class]
+        assert reviewer.routed_call["promoted_by"] is None
