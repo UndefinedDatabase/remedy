@@ -1,7 +1,7 @@
 # Plan — F112 Prompt budget per task class
 
-Branch: feature/f112-prompt-budget-per-task-class, cut from `main` after
-pull request 233 was merged at the Open PR Gate.
+Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
+F112 claimed in STATUS.md round 1.
 
 ## Goal
 
@@ -13,29 +13,27 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 1, session 1 — claim F112 in the STATUS ledger and set this file and
-`.agent/context.md`. Branch already cut. T001 lands over the next two
-rounds, split for the 400-line block cap (section 3 item 1): round 2 ships
-the config schema (`prompt_budget.task_class_caps` +
-`prompt_budget.default_cap`) and the new module
-`packages/orchestration/prompt_budget.py` (resolver
-`resolve_task_class_cap`, validator `validate_prompt_budget_config`,
-reusing `model_routing.TASK_CLASS_TIERS` as the one shared class
-vocabulary); round 3 ships that module's tests. No compiler wiring yet —
-that is T002.
+Round 2, session 1 — T001 part 1: register `prompt_budget.task_class_caps`
+and `prompt_budget.default_cap` in `packages/orchestration/config.py`
+(mirroring the `model_routing.*` table-key pattern), and ship the new
+module `packages/orchestration/prompt_budget.py` — resolver
+`resolve_task_class_cap` (configured class cap > configured global default
+> shipped fallback, all basis `class_default`) and floor + vocabulary
+validator `validate_prompt_budget_config`, both reusing
+`model_routing.TASK_CLASS_TIERS` as the one shared class vocabulary. No
+tests land this round (round 3, for the 400-line block cap); no compiler
+wiring (T002).
 
 ## Next Steps
 
-- Round 2: `prompt_budget.py` + its config registration.
 - Round 3: `tests/orchestration/test_class_prompt_budget.py`, gating
-  round 2's module.
+  round 2's module, plus the mutation red-proof item 5 forbids ordering
+  before a reachable test exists.
 - T002: compiler cap enforcement in `context_compiler.py` — `fit(context,
-  cap)` over the existing demotion order, plus the `cannot_fit` outcome
-  with the tier-1-size/cap/class arithmetic, and oversized/unfittable
-  fixtures.
-- T003: the decision wiring (`escalation.enqueue_task_decision`, type
-  `task_decision`) for "task context exceeds its class cap", unattended
-  default split, and the granularity-machinery seam (see Risks).
+  cap)`, the `cannot_fit` outcome with tier-1/cap/class arithmetic, and
+  oversized/unfittable fixtures.
+- T003: decision wiring (`escalation.enqueue_task_decision`, type
+  `task_decision`), unattended default split, granularity-machinery seam.
 - Acceptance fixtures, the integration gate, then the closure sequence.
 
 ## Risks
