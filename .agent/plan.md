@@ -14,23 +14,20 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 4, session 1 — T002a, the class table itself. A new module
-`packages/orchestration/model_routing.py` maps each task class the policy
-document names to a model tier, and a SYNC TEST parses that document and
-asserts the two agree — the acceptance line
-`docs/roadmap/features/T3_F110.md` calls out by name. An unknown class
-routes to the top tier with the reason `unknown_class_conservative`.
-Round 3's PASS verdict is booked in the same round.
+Round 5, session 1 — T002b, the THREE HARD RULES the policy document and
+`docs/roadmap/features/T3_F110.md` both name, each shipped as its own
+named check that returns the rule's name when violated: a reviewer never
+routed weaker than its paired worker, orchestrator and mission-compile
+calls always top tier, and a safety-relevant class never below mid. Each
+rule gets a violating fixture that is refused with the rule named, which
+is the feature file's own acceptance wording. Round 4's PASS verdict is
+booked in the same round.
 
 ## Next Steps
 
-- T002b: the three hard rules, each a named check with a violating fixture
-  that is refused with the rule named — reviewer never weaker than its
-  paired worker, orchestrator and mission-compile always top tier,
-  safety-relevant classes never below mid. Deliberately NOT in round 4:
-  an unenforced rule on disk is a claim its round cannot prove.
-- T002c: the config schema and per-project overrides, where hard rules
-  always win and a violating override fails validation naming the rule.
+- T002c: the config schema and per-project overrides, where the hard
+  rules always win and a violating override fails validation naming the
+  rule — the checks this round ships are what that validation calls.
 - T003: the promotion-evidence discipline, the evidence fields and the
   goldens — a promotion without evidence refused, with evidence logged.
 - Then the per-call-site class declarations (consolidation order E.d),
@@ -39,8 +36,10 @@ Round 3's PASS verdict is booked in the same round.
 
 ## Risks
 
-- The table is not wired to any call site yet, by design: E.d puts the
-  declarations after the seam work. Nothing routes in production today.
-- `apps/cli/commands/mission_cmd.py`'s `_orchestrator_call_fn` docstring
-  went half-stale in round 3 and needs a later round's change set.
+- The safety-relevant class set is EMPTY in production today, because the
+  policy document scopes it to "fence/DoD evaluation prompts, if any
+  become LLM calls" and none is one yet. The check is therefore proven
+  against a fixture set so it is not a rule that can never fire.
+- Nothing routes in production yet: the table and its rules are pinned
+  before any call site declares a class (order E.d).
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
