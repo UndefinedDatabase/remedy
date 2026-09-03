@@ -1,8 +1,18 @@
-"""Tests for packages/orchestration/model_routing.py — F110 T002a/T002b/T002c.
+"""Tests for packages/orchestration/model_routing.py — F110 T002a/T002b/T002c/T003.
 
-The three rounds this file covers are the class TABLE (T002a), the three HARD
-RULES as named checks (T002b), and the PER-PROJECT OVERRIDE SCHEMA that validates
-a whole override map against those rules before it is applied (T002c).
+The four rounds this file covers are the class TABLE (T002a), the three HARD
+RULES as named checks (T002b), the PER-PROJECT OVERRIDE SCHEMA that validates
+a whole override map against those rules before it is applied (T002c), and the
+PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a CHEAPER tier unless a
+documented benchmark run backs it (T003).
+
+THERE IS A SECOND SYNC TEST NOW, AND IT IS T003's DELIVERABLE.
+:class:`TestPromotionRuleSyncTest` parses the "Promotion rule" section of the
+same document and asserts the parsed runs count, the two parsed percentages and
+the parsed logged-per-run field list EQUAL the module's constants, so the
+promotion BARS are pinned to the policy exactly as the class TABLE is. Lowering a
+bar in the code without lowering it in the document is a red test rather than a
+quiet saving.
 
 THE SYNC TEST IS THE ACCEPTANCE LINE. docs/roadmap/features/T3_F110.md's
 Acceptance section requires that "the class table matches the policy document (a
@@ -42,6 +52,8 @@ nobody would notice changing.
 
 from __future__ import annotations
 
+import dataclasses
+import re
 from pathlib import Path
 
 import pytest
@@ -54,10 +66,20 @@ from packages.orchestration.model_routing import (
     OVERRIDE_REASON,
     OVERRIDE_SCHEMA_RULE_NAMES,
     OVERRIDE_VIOLATION_RULE_NAMES,
+    PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR,
+    PROMOTION_EVIDENCE_DOCUMENT_FIELDS,
+    PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+    PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+    PROMOTION_MINIMUM_RUNS_PER_FIXTURE,
+    PROMOTION_RULE_NAMES,
     REVIEWER_WORKER_CLASS_PAIRS,
+    ROUTED_CALL_EVIDENCE_FIELDS,
     RULE_ORCHESTRATION_BELOW_TOP_TIER,
     RULE_OVERRIDE_UNKNOWN_TASK_CLASS,
     RULE_OVERRIDE_UNKNOWN_TIER,
+    RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD,
+    RULE_PROMOTION_EVIDENCE_INCOMPLETE,
+    RULE_PROMOTION_WITHOUT_EVIDENCE,
     RULE_REVIEWER_WEAKER_THAN_WORKER,
     RULE_SAFETY_CLASS_BELOW_MID_TIER,
     SAFETY_RELEVANT_CLASSES,
@@ -66,14 +88,19 @@ from packages.orchestration.model_routing import (
     TOP_TIER,
     UNKNOWN_CLASS_REASON,
     OverrideRefused,
+    PromotionAssertionResults,
+    PromotionEvidence,
     build_effective_task_class_tiers,
     check_orchestration_class_routed_to_top_tier,
+    check_promotion_backed_by_evidence,
     check_reviewer_not_weaker_than_worker,
     check_safety_relevant_class_not_below_mid_tier,
+    is_task_class_promotion,
     model_tier_rank,
     normalize_task_class,
     resolve_task_class_tier,
     resolve_task_class_tier_with_overrides,
+    routed_call_evidence_fields,
     validate_routing_choice,
     validate_task_class_tier_overrides,
 )
@@ -544,6 +571,59 @@ def _rule_names(violations) -> list[str]:
     return [violation.rule_name for violation in violations]
 
 
+# ---------------------------------------------------------------------------
+# F110 T003 — the promotion-evidence fixtures
+# ---------------------------------------------------------------------------
+
+#: A seeded class that is PROMOTABLE (its seed tier is above the cheapest) and
+#: that NO hard rule speaks about: it is not an orchestration class, it is not in
+#: ``OVERRIDE_SAFETY_CLASSES``, and it is in no reviewer/worker pair. Demoting it
+#: therefore isolates the promotion discipline from every other rule, which is what
+#: makes the pairs below discriminate.
+PROMOTABLE_CLASS = "vision"
+
+#: The tier those fixtures promote to — the cheapest, so every promotable class is
+#: strictly below its seed tier.
+PROMOTED_TIER = MODEL_TIERS[0]
+
+
+def _promotion_evidence(**overrides) -> PromotionEvidence:
+    """Return a COMPLETE benchmark record sitting EXACTLY AT every bar.
+
+    Every bar value is read from the module's own constant rather than retyped,
+    so the boundary cases below stay at the boundary when a bar moves. Keyword
+    ``overrides`` produce the incomplete and below-threshold variants.
+    """
+    fields = {
+        "model_id": "qwen3-8b-instruct",
+        "quantization": "q4_k_m",
+        "prompt_hash": "0f1e2d3c4b5a6978",
+        "tokens": 1200,
+        "cost": 0.0,
+        "assertion_results": PromotionAssertionResults(
+            block_level_pass_rate=PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+            overall_pass_rate=PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+        ),
+        "reviewer_verdict": "pass",
+        "runs_per_fixture": PROMOTION_MINIMUM_RUNS_PER_FIXTURE,
+        "corpus": "F082",
+    }
+    fields.update(overrides)
+    return PromotionEvidence(**fields)
+
+
+#: A run that meets every bar exactly.
+SUFFICIENT_EVIDENCE = _promotion_evidence()
+
+#: A run that was measured but not fully logged — one document field unset.
+INCOMPLETE_EVIDENCE = _promotion_evidence(prompt_hash=None)
+
+#: A run that was fully logged but fell one below the runs bar.
+BELOW_THRESHOLD_EVIDENCE = _promotion_evidence(
+    runs_per_fixture=PROMOTION_MINIMUM_RUNS_PER_FIXTURE - 1
+)
+
+
 class TestOverrideSchemaFaults:
     """A malformed override is REPORTED with its own name, not crashed on."""
 
@@ -582,9 +662,30 @@ class TestOverrideRefusedPerHardRule:
     def test_an_orchestration_class_demoted_below_top_is_refused_with_the_rule_named(
         self, task_class, tier
     ):
+        # WIDENED IN T003, NOT WEAKENED. Every orchestration class the seed table
+        # names is seeded at the TOP tier, so demoting it is necessarily ALSO a
+        # promotion; with no evidence supplied the map now reports both names. The
+        # assertion stays an EXACT list and simply names the second one.
         violations = validate_task_class_tier_overrides({task_class: tier})
-        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
+        assert _rule_names(violations) == [
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_PROMOTION_WITHOUT_EVIDENCE,
+        ]
         assert violations[0].task_class == task_class
+
+    @pytest.mark.parametrize("task_class", OVERRIDABLE_ORCHESTRATION_CLASSES)
+    @pytest.mark.parametrize("tier", TIERS_BELOW_TOP)
+    def test_evidence_clears_the_promotion_name_and_never_the_orchestration_rule(
+        self, task_class, tier
+    ):
+        # The discriminator for the case above: the SAME map with a sufficient
+        # benchmark run loses the promotion name and keeps the hard-rule name.
+        violations = validate_task_class_tier_overrides(
+            {task_class: tier},
+            SAFETY_RELEVANT_CLASSES,
+            {task_class: SUFFICIENT_EVIDENCE},
+        )
+        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
 
     @pytest.mark.parametrize("task_class", OVERRIDABLE_ORCHESTRATION_CLASSES)
     def test_the_same_orchestration_class_restated_at_the_top_tier_is_not_refused(
@@ -597,8 +698,13 @@ class TestOverrideRefusedPerHardRule:
         # outside ORCHESTRATION_TASK_CLASSES and this override was accepted in
         # silence, because the policy-document sync test guards the TABLE against
         # the DOCUMENT and cannot reach an override at all.
+        # WIDENED IN T003: ``mission`` is seeded at the top tier, so this demotion
+        # is also an unevidenced promotion and both names are now reported.
         violations = validate_task_class_tier_overrides({"mission": MODEL_TIERS[0]})
-        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
+        assert _rule_names(violations) == [
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_PROMOTION_WITHOUT_EVIDENCE,
+        ]
         assert violations[0].task_class == "mission"
 
     def test_mission_left_at_the_top_tier_is_not_refused(self):
@@ -606,17 +712,31 @@ class TestOverrideRefusedPerHardRule:
 
     @pytest.mark.parametrize("tier", TIERS_BELOW_MID)
     def test_a_safety_relevant_class_demoted_below_mid_is_refused_with_the_rule_named(self, tier):
+        # WIDENED IN T003: ``architecture`` is seeded at the top tier, so dropping
+        # it below mid is also an unevidenced promotion. Both names, exact list.
         task_class = sorted(OVERRIDE_SAFETY_CLASSES)[0]
         violations = validate_task_class_tier_overrides(
             {task_class: tier}, OVERRIDE_SAFETY_CLASSES
         )
-        assert _rule_names(violations) == [RULE_SAFETY_CLASS_BELOW_MID_TIER]
+        assert _rule_names(violations) == [
+            RULE_SAFETY_CLASS_BELOW_MID_TIER,
+            RULE_PROMOTION_WITHOUT_EVIDENCE,
+        ]
         assert violations[0].task_class == task_class
 
     @pytest.mark.parametrize("tier", TIERS_AT_OR_ABOVE_MID)
     def test_the_same_safety_class_at_or_above_mid_is_not_refused(self, tier):
+        # WIDENED IN T003, NOT WEAKENED: the assertion is still EXACTLY EMPTY, and
+        # it is now made against a supplied benchmark run, so it says the stronger
+        # thing — at or above mid, with the promotion discharged, NOTHING is
+        # refused. ``architecture`` is seeded at the top tier, so the mid case is a
+        # promotion and only evidence can keep the result empty.
         task_class = sorted(OVERRIDE_SAFETY_CLASSES)[0]
-        assert validate_task_class_tier_overrides({task_class: tier}, OVERRIDE_SAFETY_CLASSES) == ()
+        assert validate_task_class_tier_overrides(
+            {task_class: tier},
+            OVERRIDE_SAFETY_CLASSES,
+            {task_class: SUFFICIENT_EVIDENCE},
+        ) == ()
 
     def test_the_seed_table_alone_conforms_under_the_fixture_safety_set(self):
         # The discriminator for the pair above: with NO override at all the same
@@ -658,42 +778,91 @@ class TestOverrideRefusedPerHardRule:
 class TestOverrideValidatorCollectsEveryViolation:
     """One map breaking every rule reports every rule, once, in the declared order."""
 
-    #: One override map that breaks ALL FIVE rules at once: a dead key, a typo'd
-    #: tier, a demoted orchestration class, a demoted safety class and a reviewer
-    #: dropped below its paired worker.
+    #: One override map that breaks ALL EIGHT rules at once, exactly once each: a
+    #: dead key, a typo'd tier, a reviewer dropped below its paired worker, a
+    #: demoted orchestration class, a demoted safety class, and three promotions
+    #: whose evidence fails in the three different ways.
+    #:
+    #: WIDENED IN T003, NOT WEAKENED. Round 6's map broke five rules; every entry
+    #: that demotes a seeded class is ALSO a promotion, so without the evidence
+    #: argument below the same map would report ``promotion_without_evidence``
+    #: three times and the "exactly once" property could not be stated at all.
+    #: The evidence map is what makes each of the eight names appear once — and it
+    #: doubles as the proof that EVIDENCE NEVER DISCHARGES A HARD RULE: ``mission``,
+    #: ``architecture`` and the reviewer half all carry evidence here and all three
+    #: still report their hard-rule name.
     BREAKS_EVERY_RULE = {
         UNKNOWN_OVERRIDE_CLASS: TOP_TIER,
         "format": UNKNOWN_TIER,
+        REVIEWER_WORKER_CLASS_PAIRS[0][1]: MODEL_TIERS[0],
         "mission": MODEL_TIERS[0],
         sorted(OVERRIDE_SAFETY_CLASSES)[0]: MODEL_TIERS[0],
-        REVIEWER_WORKER_CLASS_PAIRS[0][1]: MODEL_TIERS[0],
+        PROMOTABLE_CLASS: MODEL_TIERS[0],
+    }
+
+    #: The evidence that leaves exactly one violation of each promotion rule: the
+    #: reviewer half is fully discharged, ``mission`` fails a bar, ``architecture``
+    #: is under-logged, and ``PROMOTABLE_CLASS`` has no entry at all.
+    EVERY_RULE_EVIDENCE = {
+        REVIEWER_WORKER_CLASS_PAIRS[0][1]: SUFFICIENT_EVIDENCE,
+        "mission": BELOW_THRESHOLD_EVIDENCE,
+        sorted(OVERRIDE_SAFETY_CLASSES)[0]: INCOMPLETE_EVIDENCE,
     }
 
     def test_every_rule_is_reported_exactly_once(self):
         names = _rule_names(
-            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+            validate_task_class_tier_overrides(
+                self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES, self.EVERY_RULE_EVIDENCE
+            )
         )
         assert sorted(names) == sorted(OVERRIDE_VIOLATION_RULE_NAMES)
 
     def test_the_result_follows_the_declared_order(self):
         names = _rule_names(
-            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+            validate_task_class_tier_overrides(
+                self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES, self.EVERY_RULE_EVIDENCE
+            )
         )
         assert names == list(OVERRIDE_VIOLATION_RULE_NAMES)
 
     def test_the_declared_order_is_provably_not_the_alphabet(self):
         names = _rule_names(
-            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+            validate_task_class_tier_overrides(
+                self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES, self.EVERY_RULE_EVIDENCE
+            )
         )
         assert names != sorted(names)
 
     def test_the_schema_names_are_reported_before_the_hard_rule_names(self):
         names = _rule_names(
-            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+            validate_task_class_tier_overrides(
+                self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES, self.EVERY_RULE_EVIDENCE
+            )
         )
         last_schema = max(names.index(n) for n in OVERRIDE_SCHEMA_RULE_NAMES)
         first_hard = min(names.index(n) for n in HARD_RULE_NAMES)
         assert last_schema < first_hard
+
+    def test_the_hard_rule_names_are_reported_before_the_promotion_rule_names(self):
+        names = _rule_names(
+            validate_task_class_tier_overrides(
+                self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES, self.EVERY_RULE_EVIDENCE
+            )
+        )
+        last_hard = max(names.index(n) for n in HARD_RULE_NAMES)
+        first_promotion = min(names.index(n) for n in PROMOTION_RULE_NAMES)
+        assert last_hard < first_promotion
+
+    def test_evidence_never_discharges_a_hard_rule(self):
+        # The three entries carrying evidence above still report their hard-rule
+        # name: no benchmark buys a reviewer weaker than its worker, a cheap
+        # orchestration call, or a downgraded safety class.
+        names = _rule_names(
+            validate_task_class_tier_overrides(
+                self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES, self.EVERY_RULE_EVIDENCE
+            )
+        )
+        assert set(HARD_RULE_NAMES) <= set(names)
 
     def test_a_conforming_map_returns_an_empty_result(self):
         assert validate_task_class_tier_overrides({"format": TOP_TIER, "mission": TOP_TIER}) == ()
@@ -702,9 +871,21 @@ class TestOverrideValidatorCollectsEveryViolation:
         assert validate_task_class_tier_overrides({}) == ()
 
     def test_an_override_key_may_be_spelled_as_the_document_words_it(self):
+        # WIDENED IN T003: same demotion, and it is also an unevidenced promotion.
         violations = validate_task_class_tier_overrides({"Mission": MODEL_TIERS[0]})
-        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
+        assert _rule_names(violations) == [
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_PROMOTION_WITHOUT_EVIDENCE,
+        ]
         assert violations[0].task_class == normalize_task_class("Mission")
+
+    def test_an_evidence_key_may_be_spelled_as_the_document_words_it(self):
+        # The evidence map's keys normalize exactly as the override map's do.
+        assert validate_task_class_tier_overrides(
+            {"Vision": PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {"Vision": SUFFICIENT_EVIDENCE},
+        ) == ()
 
 
 class TestOverrideRuleNamesAreNotHardRuleNames:
@@ -722,7 +903,30 @@ class TestOverrideRuleNamesAreNotHardRuleNames:
         assert rule_name not in HARD_RULE_NAMES
 
     def test_the_report_order_is_the_schema_names_then_the_hard_rule_names(self):
-        assert OVERRIDE_VIOLATION_RULE_NAMES == OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES
+        # WIDENED IN T003, NOT WEAKENED. The report order gained a THIRD segment,
+        # the promotion-rule names, so the equality is rewritten to the exact new
+        # concatenation rather than loosened to a containment check: a fourth
+        # segment appearing silently must still turn this file red.
+        assert OVERRIDE_VIOLATION_RULE_NAMES == (
+            OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES + PROMOTION_RULE_NAMES
+        )
+
+    @pytest.mark.parametrize("rule_name", PROMOTION_RULE_NAMES)
+    def test_no_promotion_rule_name_is_in_hard_rule_names(self, rule_name):
+        # A hard rule is NEVER satisfiable by evidence; a promotion rule is
+        # precisely a rule evidence discharges. Merging the vocabularies would let
+        # a measured, documented promotion read as a policy breach.
+        assert rule_name not in HARD_RULE_NAMES
+
+    @pytest.mark.parametrize("rule_name", PROMOTION_RULE_NAMES)
+    def test_no_promotion_rule_name_is_in_the_schema_tuple(self, rule_name):
+        assert rule_name not in OVERRIDE_SCHEMA_RULE_NAMES
+
+    def test_the_schema_tuple_still_holds_exactly_what_round_six_shipped(self):
+        assert OVERRIDE_SCHEMA_RULE_NAMES == (
+            RULE_OVERRIDE_UNKNOWN_TASK_CLASS,
+            RULE_OVERRIDE_UNKNOWN_TIER,
+        )
 
 
 class TestReviewerWorkerClassPairs:
@@ -775,19 +979,26 @@ class TestEffectiveTableBuilder:
             build_effective_task_class_tiers({"mission": MODEL_TIERS[0]})
 
     def test_the_raised_object_carries_the_violations(self):
+        # WIDENED IN T003: the same map, now with the evidence argument the
+        # builder passes straight through, so the raised object carries all EIGHT
+        # names rather than round 6's five.
         with pytest.raises(OverrideRefused) as excinfo:
             build_effective_task_class_tiers(
                 TestOverrideValidatorCollectsEveryViolation.BREAKS_EVERY_RULE,
                 OVERRIDE_SAFETY_CLASSES,
+                TestOverrideValidatorCollectsEveryViolation.EVERY_RULE_EVIDENCE,
             )
         assert _rule_names(excinfo.value.violations) == list(OVERRIDE_VIOLATION_RULE_NAMES)
 
     @pytest.mark.parametrize("rule_name", OVERRIDE_VIOLATION_RULE_NAMES)
     def test_the_message_names_every_violated_rule(self, rule_name):
+        # The parametrization is NOT narrowed to dodge the new names: it runs over
+        # the whole report order, so the three promotion names are covered too.
         with pytest.raises(OverrideRefused) as excinfo:
             build_effective_task_class_tiers(
                 TestOverrideValidatorCollectsEveryViolation.BREAKS_EVERY_RULE,
                 OVERRIDE_SAFETY_CLASSES,
+                TestOverrideValidatorCollectsEveryViolation.EVERY_RULE_EVIDENCE,
             )
         assert rule_name in str(excinfo.value)
 
@@ -841,3 +1052,4 @@ class TestOverrideAwareResolver:
         # Round 5's resolve_task_class_tier answers from the SHIPPED table and
         # knows nothing about overrides; the two are siblings, not a replacement.
         assert resolve_task_class_tier("format") == (TASK_CLASS_TIERS["format"], SEED_MAPPING_REASON)
+
