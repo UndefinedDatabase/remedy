@@ -44,6 +44,17 @@ configured to break it. packages/orchestration/config.py is deliberately NOT
 imported — every function below stays a pure function of its arguments, which is
 what lets the override rules be tested without a config file existing at all.
 
+Remedy deliberately does not CALL :func:`promotion_evidence_from_mapping` from
+anywhere in production yet, and a reader searching for its caller should find
+this sentence rather than a silence. The parser turns the raw
+``model_routing.promotion_evidence`` config table into
+:class:`PromotionEvidence` records, and the call that hands it that table arrives
+with the wiring round, in ``packages/orchestration/role_config.py`` beside
+``resolve_effective_task_class_tiers`` — the config-reading layer, which is
+already where the per-project TIERS table is read. The schema lands a round
+BEFORE its reader on purpose, so it is pinned before routing behaviour moves
+against it.
+
 THE SEAM IS WIRED IN EXACTLY ONE PLACE, and a reader searching for where a call
 routes must go there: ``packages/orchestration/role_config.resolve_role_config``
 calls :func:`route_role_call` and carries what it returned on the ``RoleConfig``
@@ -128,6 +139,10 @@ Public API::
     PROMOTION_RULE_NAMES: the three above, in report order
     is_task_class_promotion(task_class, tier) -> bool — CHEAPER than the seed
     check_promotion_backed_by_evidence(task_class, tier, evidence)
+    PROMOTION_EVIDENCE_NESTED_FIELD: the one field that is itself a table
+    PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES: the raw type each other field reads as
+    promotion_evidence_from_mapping(raw_evidence) -> dict[str, PromotionEvidence]
+        — the PURE parser; a malformed entry is SKIPPED, never guessed at
     OVERRIDE_VIOLATION_RULE_NAMES: schema names, then HARD_RULE_NAMES, then
         PROMOTION_RULE_NAMES — the order an override map's violations are
         reported in
@@ -742,6 +757,153 @@ def check_promotion_backed_by_evidence(
     if results.overall_pass_rate < PROMOTION_MINIMUM_OVERALL_PASS_RATE:
         return RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
     return None
+
+
+# ---------------------------------------------------------------------------
+# Reading promotion evidence out of a RAW MAPPING — F110 T003
+# ---------------------------------------------------------------------------
+# A project WRITES DOWN the benchmark run that licenses a cheaper tier, and a
+# config table hands it here as plain strings, numbers and nested tables. This
+# section is the ONE place such a mapping becomes PromotionEvidence records. It
+# stays a pure function of its argument for the reason the module docstring
+# gives: it reads no config file and imports nothing that does.
+
+#: The field of :class:`PromotionEvidence` that is itself a NESTED TABLE, read
+#: into a :class:`PromotionAssertionResults` of its own rather than into a scalar.
+#: Named as a constant because :func:`promotion_evidence_from_mapping` and the
+#: tests both need it, and a retyped literal in either would let a rename land
+#: with a test still passing against the dead spelling.
+PROMOTION_EVIDENCE_NESTED_FIELD: str = "assertion_results"
+
+#: THE RAW TYPE EACH FIELD OF :class:`PromotionEvidence` IS READ FROM,
+#: :data:`PROMOTION_EVIDENCE_NESTED_FIELD` excepted because it is a table and not
+#: a reading. DECLARED RATHER THAN DERIVED FROM THE DATACLASS: this module runs
+#: under ``from __future__ import annotations``, so a field's annotation is the
+#: STRING ``"int | None"`` and deriving the type would mean evaluating annotations
+#: back into types at import time. tests/orchestration/test_model_routing.py
+#: asserts these names are EXACTLY the record's own fields minus that one, so a
+#: field added to :class:`PromotionEvidence` without a reading here is a red test
+#: rather than a value silently dropped on the floor.
+PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES: dict[str, type] = {
+    "model_id": str,
+    "quantization": str,
+    "prompt_hash": str,
+    "tokens": int,
+    "cost": float,
+    "reviewer_verdict": str,
+    "runs_per_fixture": int,
+    "corpus": str,
+}
+
+
+# WHY A BOOLEAN IS NEVER A READING: ``bool`` is a subclass of ``int`` in Python,
+# so a TOML ``tokens = true`` would pass a bare isinstance check and land in the
+# record as 1. An int is accepted where a float is wanted — TOML writes ``0`` for
+# a free run and that is a cost — and widened, so the record carries the number
+# the mapping carried.
+def _promotion_evidence_reading(value: object, expected: type) -> object | None:
+    """Return ``value`` as ``expected``, or ``None`` when it is not readable as one."""
+    if isinstance(value, bool):
+        return None
+    if expected is float and isinstance(value, int):
+        return float(value)
+    if isinstance(value, expected):
+        return value
+    return None
+
+
+def _promotion_assertion_results_from_mapping(
+    raw: dict[str, object],
+) -> PromotionAssertionResults | None:
+    """Return the two readings ``raw`` carries, or ``None`` if it carries neither shape.
+
+    THE FIELD NAMES ARE READ FROM :class:`PromotionAssertionResults` ITSELF and
+    never spelled here, so renaming a reading moves this parser with it. They are
+    read off ``__dataclass_fields__`` rather than through ``dataclasses.fields``
+    because this module imports nothing beyond ``dataclass`` itself and stays
+    that way. Both fields are required because the record has no defaults for
+    them: a table missing one is not half a measurement, it is an unreadable one.
+    """
+    read: dict[str, object] = {}
+    for field_name in PromotionAssertionResults.__dataclass_fields__:
+        if field_name not in raw:
+            return None
+        reading = _promotion_evidence_reading(raw[field_name], int)
+        if reading is None:
+            return None
+        read[field_name] = reading
+    return PromotionAssertionResults(**read)  # type: ignore[arg-type]
+
+
+def _promotion_evidence_from_entry(entry: dict[str, object]) -> PromotionEvidence | None:
+    """Return the record ``entry`` describes, or ``None`` when it cannot be read."""
+    read: dict[str, object] = {}
+    for field_name, expected in PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES.items():
+        if field_name not in entry:
+            continue
+        reading = _promotion_evidence_reading(entry[field_name], expected)
+        if reading is None:
+            return None
+        read[field_name] = reading
+    if PROMOTION_EVIDENCE_NESTED_FIELD in entry:
+        raw_results = entry[PROMOTION_EVIDENCE_NESTED_FIELD]
+        if not isinstance(raw_results, dict):
+            return None
+        results = _promotion_assertion_results_from_mapping(raw_results)
+        if results is None:
+            return None
+        read[PROMOTION_EVIDENCE_NESTED_FIELD] = results
+    return PromotionEvidence(**read)  # type: ignore[arg-type]
+
+
+# WHY A MALFORMED ENTRY IS SKIPPED HERE AND A MALFORMED OVERRIDE IS REFUSED
+# LOUDLY, WHICH LOOKS LIKE TWO ANSWERS TO ONE QUESTION AND IS NOT. A missing
+# evidence record means the promotion it would have licensed is REFUSED by
+# check_promotion_backed_by_evidence with RULE_PROMOTION_WITHOUT_EVIDENCE, so a
+# malformed record FAILS CLOSED — the class keeps its seeded, stronger tier and
+# the project pays money rather than quality. A malformed OVERRIDE fails the
+# other way: dropping it would leave the operator believing a re-tier took
+# effect, which is the silent downgrade policy hard rule 2 forbids, so
+# build_effective_task_class_tiers raises instead. Both refuse to act on input
+# they do not understand; they differ only in which direction is conservative.
+def promotion_evidence_from_mapping(
+    raw_evidence: dict[str, object],
+) -> dict[str, PromotionEvidence]:
+    """Return the :class:`PromotionEvidence` records ``raw_evidence`` describes.
+
+    ``raw_evidence`` is the RAW mapping a config table produces — task class to
+    a table of readings — and this function is a PURE function of it: no config
+    file is read here, exactly as the module docstring promises for everything
+    in this module. The returned mapping is keyed by NORMALIZED task class,
+    through :func:`normalize_task_class`, precisely as
+    :func:`validate_task_class_tier_overrides` normalizes the keys of an override
+    map, so a project may spell a class in the policy document's own wording in
+    both tables.
+
+    AN ENTRY THAT CANNOT BE READ PRODUCES NO RECORD, and skipping is PER ENTRY:
+    a well-formed sibling in the same mapping is still parsed. An entry that is
+    not a table, an entry whose ``assertion_results`` is present but is not a
+    table or is missing a reading, and an entry carrying a field of the wrong
+    type are all unreadable. An ABSENT field is not: it stays ``None`` on the
+    record, which is the state
+    :data:`RULE_PROMOTION_EVIDENCE_INCOMPLETE` exists to report.
+
+    NOTHING IN PRODUCTION CALLS THIS YET, and a reader searching for the caller
+    should find this sentence rather than a silence. The call arrives with the
+    wiring round, in ``packages/orchestration/role_config.py`` — the
+    config-reading layer, beside ``resolve_effective_task_class_tiers``, which is
+    already where the per-project TIERS table is read. It is deliberately a round
+    apart: the schema is pinned before routing behaviour moves against it.
+    """
+    parsed: dict[str, PromotionEvidence] = {}
+    for name, entry in raw_evidence.items():
+        if not isinstance(entry, dict):
+            continue
+        record = _promotion_evidence_from_entry(entry)
+        if record is None:
+            continue
+        parsed[normalize_task_class(name)] = record
+    return parsed
 
 
 #: The FIXED, DECLARED order an override map's violations are reported in: the
