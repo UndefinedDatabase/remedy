@@ -106,6 +106,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from packages.orchestration.prompt_budget import resolve_task_class_cap
 from packages.orchestration.prompt_segments import (
     PromptSegment,
     PromptSegmentRegistry,
@@ -926,6 +927,71 @@ def compile_task_context(
         budget_tokens=token_budget,
         over_budget=total_tokens > token_budget,
         line_cap=line_cap,
+    )
+
+
+@dataclass(frozen=True)
+class ClassBudgetFit:
+    """Whether ``task_class``'s compiled context fits its resolved cap (F112 T002).
+
+    ``fits`` is False exactly for the ``cannot_fit`` outcome
+    (docs/roadmap/features/T3_F112.md Design): tier-1 content alone still
+    exceeds ``cap_tokens`` after the existing demotion cascade has demoted or
+    dropped every tier-2 and tier-3 candidate, which is also why
+    ``tier1_tokens`` equals ``compiled.estimated_tokens`` in that case.
+    """
+
+    compiled: CompiledContext
+    task_class: str
+    cap_tokens: int
+    cap_source: str
+    fits: bool
+    tier1_tokens: int
+
+
+def fit_task_context_to_class_cap(
+    root: Path,
+    fenced_paths: Iterable[str],
+    repo_paths: Iterable[str],
+    task_class: str,
+    *,
+    inline_cap_bytes: int = DEFAULT_INLINE_SIZE_CAP_BYTES,
+    line_cap: int = DEFAULT_SIGNATURE_LINE_CAP,
+) -> ClassBudgetFit:
+    """Compile ``task_class``'s context under its resolved per-class cap.
+
+    Resolves the cap via
+    :func:`packages.orchestration.prompt_budget.resolve_task_class_cap`
+    (F112 T001), then runs ``compile_task_context`` unchanged at that
+    budget — no new selection or demotion logic, only the class-specific
+    number the existing cascade enforces
+    (docs/roadmap/features/T3_F112.md Design). ``fits`` is False exactly
+    when tier-1 content alone still exceeds the cap after every tier-2 and
+    tier-3 candidate has been demoted or dropped, carrying the arithmetic
+    (``tier1_tokens``, ``cap_tokens``, ``task_class``) the ``cannot_fit``
+    task-split decision needs (T003).
+    """
+    resolution = resolve_task_class_cap(task_class)
+    compiled = compile_task_context(
+        root,
+        fenced_paths,
+        repo_paths,
+        token_budget=resolution.cap_tokens,
+        inline_cap_bytes=inline_cap_bytes,
+        line_cap=line_cap,
+    )
+    tier1_tokens = sum(
+        selected.estimated_tokens
+        for selected in compiled.included
+        if selected.tier == TIER_FENCED
+    )
+    return ClassBudgetFit(
+        compiled=compiled,
+        task_class=task_class,
+        cap_tokens=resolution.cap_tokens,
+        cap_source=resolution.source,
+        fits=not compiled.over_budget,
+        tier1_tokens=tier1_tokens,
     )
 
 
