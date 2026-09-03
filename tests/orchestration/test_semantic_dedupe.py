@@ -592,6 +592,7 @@ class TestChainAgainstTheRealLoop:
         with_session_ids: bool = True,
         supports_resume: bool = True,
         builder_resume_fails: bool = False,
+        reviewer_resume_fails: bool = False,
     ) -> tuple[FakeProvider, FakeProvider]:
         """THE PAIR EVERY CASE HERE DRIVES: one provider per role, distinct ids.
 
@@ -609,7 +610,7 @@ class TestChainAgainstTheRealLoop:
         )
         reviewer = FakeProvider(
             fail_on_round=1, pass_on_round=2, supports_resume=supports_resume,
-            fake_session_id=reviewer_id,
+            fake_session_id=reviewer_id, resume_fails=reviewer_resume_fails,
         )
         return builder, reviewer
 
@@ -1354,3 +1355,202 @@ class TestTheComposeSeamBypassesUntilAResumedSessionSaysOtherwise:
         # RESUMED SESSION ONLY: round 1 can never carry a marker, because there
         # is nothing proven sent to a session that did not exist yet.
         assert all(round_number > 1 for _, round_number in marked), marked
+
+
+# ---------------------------------------------------------------------------
+# R-0771: A RESUME FALLBACK IS NOT A RESUMED SESSION.
+#
+# Every case above either composes a prompt directly or drives a chain whose
+# resumes SUCCEED. The cases below drive the one path where the loop composes for
+# a session it then abandons: a resume attempt that errors, whose retry opens a
+# BRAND-NEW session. That new session has been told nothing, so a marker in its
+# prompt names content it has never seen — and the segment this feature replaces
+# first is ``builder_system``, the one carrying the safety rules about working
+# only in staging. These cases exist so that property cannot rot.
+#
+# THEY READ THE CALLS, NOT THE TRACES. The prompt TRACE for a round is written
+# before the provider call, so on the Builder side it describes the composition
+# the fallback abandoned rather than the one that was sent; only the arguments
+# the provider was really invoked with say what left the loop.
+
+
+DEDUPE_MARKER_PREFIX = "[unchanged: "
+
+
+def _capture_role_calls(provider: FakeProvider, method_name: str) -> list[tuple[str | None, str]]:
+    """Wrap ONE provider method so every real call is recorded and still happens.
+
+    The wrapper delegates to the bound original and returns its result unchanged,
+    so the run stays the real one: nothing here stubs a provider or short-circuits
+    a round. Each entry is ``(resume, prompt)``, which is exactly the pair a marker
+    claim is about — what was sent, and whether the session it went to had ever
+    received the originals.
+    """
+    calls: list[tuple[str | None, str]] = []
+    original = getattr(provider, method_name)
+
+    def wrapper(prompt: str, **kwargs):
+        calls.append((kwargs.get("resume"), prompt))
+        return original(prompt, **kwargs)
+
+    setattr(provider, method_name, wrapper)
+    return calls
+
+
+@pytest.fixture
+def fallback_repo(tmp_path: Path, monkeypatch) -> Path:
+    """The demo repo with ``REMEDY_DATA_DIR`` redirected, for the fallback cases.
+
+    Module level, NOT autouse, and under a name no class above uses, so nothing
+    already in this file changes behaviour. The repo itself still comes from
+    ``TestChainAgainstTheRealLoop._make_repo`` and the providers from that class's
+    ``_provider_pair`` — one construction, one place to keep honest, exactly as
+    the class above does it.
+    """
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return TestChainAgainstTheRealLoop._make_repo(tmp_path / "demo_repo")
+
+
+class TestAResumeFallbackSendsFullContent:
+    """R-0771, pinned against the real loop on both roles."""
+
+    @staticmethod
+    def _split(calls: list[tuple[str | None, str]]) -> tuple[list[str], list[str]]:
+        """The prompts sent to a FRESH session, and the prompts sent to a resumed one."""
+        fresh = [prompt for resume, prompt in calls if resume is None]
+        resumed = [prompt for resume, prompt in calls if resume is not None]
+        return fresh, resumed
+
+    # -- SPEC O case 1: the builder fallback, the case that must never rot ----
+
+    def test_a_builder_resume_fallback_sends_full_content(self, fallback_repo: Path):
+        # THE DISCRIMINATOR FOR THE WHOLE REPAIR. Deleting the two recomposition
+        # statements from the Builder fallback branch of ``pingpong_loop.py``
+        # restores the defect exactly and fails assertion (b) below.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            builder_resume_fails=True,
+        )
+        calls = _capture_role_calls(builder, "build")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+
+        # (a) THE FALLBACK REALLY HAPPENED, so this case cannot pass vacuously
+        # on a run that never took the branch it is about.
+        assert result.final_status == "staged_review_passed"
+        assert result.rounds[1].builder_output.resume_fallback is True
+
+        fresh, resumed = self._split(calls)
+        # (b) THE PROPERTY R-0771 NAMES: a session that has been told nothing is
+        # never told that content it has never seen was previously provided.
+        assert fresh
+        assert [p for p in fresh if DEDUPE_MARKER_PREFIX in p] == [], [len(p) for p in fresh]
+        # (c) AND DEDUPE WAS ON FOR THIS RUN. Without this, (b) would be
+        # satisfied by the feature never firing at all and would prove nothing
+        # about the fallback.
+        assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != [], [len(p) for p in resumed]
+
+    # -- SPEC O case 2: the same three assertions on the reviewer side --------
+
+    def test_a_reviewer_resume_fallback_sends_full_content(self, fallback_repo: Path):
+        # THE MIRROR, and it needs its own assertions rather than a parametrize:
+        # the Reviewer sends ``reviewer_effective`` — the base prompt plus any
+        # schema instruction — not ``reviewer_prompt``, so the two roles do not
+        # rebind the same names inside their fallback branches.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            reviewer_resume_fails=True,
+        )
+        calls = _capture_role_calls(reviewer, "review")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert result.rounds[1].reviewer_output.resume_fallback is True
+
+        fresh, resumed = self._split(calls)
+        assert fresh
+        assert [p for p in fresh if DEDUPE_MARKER_PREFIX in p] == [], [len(p) for p in fresh]
+        assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != [], [len(p) for p in resumed]
+
+    # -- SPEC O case 3: the evidence agrees with the bytes --------------------
+
+    def test_the_recorded_builder_row_describes_the_bytes_that_were_sent(
+        self, fallback_repo: Path,
+    ):
+        # HOW THE CORRESPONDENCE IS ESTABLISHED, AND WHERE IT STOPS SHORT — read
+        # this before strengthening or weakening the assertions. The evidence row
+        # carries sha256 values ALONE: no names, no text. A hash cannot be
+        # inverted back into a substring of the prompt, so "every recorded hash
+        # is a segment of the bytes that were sent" is not decidable from outside
+        # the loop, and this case does not claim it.
+        #
+        # What IS decidable is the thing the defect got wrong. A MARKER's text
+        # follows from its name alone, so its hash is computable here via
+        # ``_sha256_of_marker``; the round 2 Builder trace records the manifest of
+        # the composition the fallback ABANDONED, so the names that composition
+        # replaced are readable; and the round 1 trace records those same names at
+        # FULL content. This case therefore asserts, for every name the abandoned
+        # composition replaced, that the recorded row holds the FULL-content hash
+        # and NOT the marker hash — a statement about the segments the defect
+        # touched, which is narrower than the sentence above and is written that
+        # way on purpose.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            builder_resume_fails=True,
+        )
+        calls = _capture_role_calls(builder, "build")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+        assert result.rounds[1].builder_output.resume_fallback is True
+
+        traces = {
+            trace.round: {str(row["name"]): str(row["sha256"]) for row in trace.segment_manifest}
+            for trace in result.prompt_traces
+            if trace.role == "builder"
+        }
+        replaced = [name for name, sha in traces[2].items() if sha == _sha256_of_marker(name)]
+        # THE POSITIVE CONTROL: the abandoned composition really did replace
+        # something, so the loop below is not quantified over nothing.
+        assert replaced, sorted(traces[2])
+
+        recorded = set(
+            TestChainAgainstTheRealLoop._rows_by_session(result)[
+                TestChainAgainstTheRealLoop.BUILDER_SESSION
+            ]
+        )
+        for name in replaced:
+            assert name in traces[1], (name, sorted(traces[1]))
+            assert _sha256_of_marker(name) not in recorded, name
+            assert traces[1][name] in recorded, name
+        # AND THE BYTES AGREE WITH THE ROW: the last thing this session was
+        # actually sent opened a fresh session and carried no marker at all.
+        assert calls[-1][0] is None
+        assert DEDUPE_MARKER_PREFIX not in calls[-1][1]
+
+    # -- SPEC O case 4: the round 7 property survives the repair --------------
+
+    def test_a_resumed_chain_that_never_falls_back_still_dedupes(self, fallback_repo: Path):
+        # ROUND 7'S PROPERTY, RE-READ OFF THE CALLS RATHER THAN THE TRACES. No
+        # role falls back here, so every role must still carry a marker on its
+        # resumed call and none may carry one on a call that opened a session.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair()
+        builder_calls = _capture_role_calls(builder, "build")
+        reviewer_calls = _capture_role_calls(reviewer, "review")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert result.rounds[1].builder_output.resume_fallback is False
+        assert result.rounds[1].reviewer_output.resume_fallback is False
+        for role, calls in (("builder", builder_calls), ("reviewer", reviewer_calls)):
+            fresh, resumed = self._split(calls)
+            assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != [], role
+            assert [p for p in fresh if DEDUPE_MARKER_PREFIX in p] == [], role
