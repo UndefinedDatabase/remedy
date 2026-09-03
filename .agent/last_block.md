@@ -1,8 +1,8 @@
-== STEP closure-prep / F109 — ROUND 18 ==
+== STEP self-use / F109 — ROUND 19 ==
 
-SESSION 4 of feature F109. Round 18. Rounds so far: 17 done, this is the 18th.
+SESSION 4 of feature F109. Round 19. Rounds so far: 18 done, this is the 19th.
 Soft limit is 25 rounds / 7 sessions (docs/agents/self_drive_protocol.md G7,
-amend0827 rule 6); at 18 rounds and 4 sessions it is NOT reached, so no scope
+amend0827 rule 6); at 19 rounds and 4 sessions it is NOT reached, so no scope
 report is due. No line of this block is a run of a repeated character, so there
 is no run length to recover (§3 checklist item 37).
 
@@ -11,76 +11,79 @@ RESUMED SESSION ONLY, PROVEN SENDS ONLY.
 
 ## Goal
 
-Make every closure precondition that this round can reach TRUE. Give
-`docs/roadmap/features/T3_F109.md` the BUILT STATE section closure precondition 4
-requires and it does not have. Book round 17's PASS — the integration gate, both
-suites green with zero branch-only failures — resolve `R-0782`, and register and
-repair `R-0783`, the sixth site of the stale-prose class and the last one the
-sweep has found.
+Discharge closure precondition 6 (docs/roadmap/STATUS_closure_protocol.md): the
+self-use queue holds NO pending item, so the generator supplies one from the
+ledger, and it is PLANNED and RUN to the normal approval gate like any other job
+— never promoted. Report every defect the run exposes, so the reviewer can author
+them as findings for the closure round. Also book round 18's PASS and resolve
+`R-0783`.
 
 ## Bundle, in commit order
 
-- C0a  save this block verbatim to `.agent/authored/f109-r18.md`
+- C0a  save this block verbatim to `.agent/authored/f109-r19.md`
 - C0b  mirror it to `.agent/last_block.md`
-- C1   apply PLAN18 to `.agent/plan.md`            (FIRST substantive commit)
-- C2   append RECORD18 to `.agent/live_review.md`  (verdict, one resolution, new id)
-- C3   apply PAIR F to `tests/orchestration/test_semantic_dedupe.py`
-- C4   append BUILTSTATE to `docs/roadmap/features/T3_F109.md`
-- C5   rewrite `.agent/handoff.md`
+- C1   apply PLAN19 to `.agent/plan.md`            (FIRST substantive commit)
+- C2   append RECORD19 to `.agent/live_review.md`  (verdict, one resolution)
+- C3   the self-use item: generate, plan, RUN, and land its evidence
+- C4   rewrite `.agent/handoff.md`
 
 ## Change set — these paths and nothing else
 
-    .agent/authored/f109-r18.md
+    .agent/authored/f109-r19.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    tests/orchestration/test_semantic_dedupe.py
-    docs/roadmap/features/T3_F109.md
+    scripts/self_use_queue.json
+    .agent/selfuse_f109/             (new directory; `run.txt` and the job file)
     .agent/handoff.md
 
 ## Constraints
 
-1. EVERY slice below is applied BYTE FOR BYTE — no rewrap, no re-indent, no
-   improvement. If a slice looks wrong, apply it anyway and declare it in the
-   handback; that is how a reviewer mistake becomes visible rather than becoming
-   a silent correction.
+1. EVERY authored slice below is applied BYTE FOR BYTE. C3 is NOT a slice — it is
+   a procedure whose output is whatever the shipped code produces. You never
+   hand-write the queue entry or the job file; the shipped functions write them.
 2. `.agent/live_review.md` ends WITHOUT a trailing newline and that convention is
-   preserved: append exactly the two bytes `\n\n` then RECORD18, which itself
-   ends without one. Never rewrite a landed entry.
-3. `docs/roadmap/features/T3_F109.md` ends WITH exactly one trailing newline.
-   Append exactly the one byte `\n` and then BUILTSTATE, which itself ends with
-   one trailing newline — so the file gains a blank separator line and still ends
-   with exactly one newline. Nothing already in that file is edited or deleted.
-4. C3 changes ONE COMMENT. No executable line moves, no case is added, renamed or
-   deleted, no import changes. The dedupe suite's collected count must be
-   IDENTICAL before and after C3, and it is 130 at `50526376`.
-5. THE HANDBACK CARRIES THE FORTSCHRITT LINE, and this block supplies it as
-   authored text below rather than telling you to fetch it from somewhere you
-   cannot see. That is finding `R-0418`'s standing form for self-drive: under
-   docs/agents/self_drive_protocol.md there is no paste relay, so a worker never
-   sees the reviewer's operator brief and any order to copy a line out of it is
-   unsatisfiable by construction.
-6. Nothing outside the change set is edited. If the sweep finds something else,
+   preserved: append exactly the two bytes `\n\n` then RECORD19, which itself ends
+   without one. Never rewrite a landed entry.
+3. `consumed_by` STAYS EMPTY on the generated item this round. Closure
+   precondition 6 sets it to `F109` in the CLOSURE commit, which is not this
+   round. Do not set it early.
+4. The four items already in `scripts/self_use_queue.json` are NOT edited. After
+   C3 the file holds exactly one MORE item than before and the four prior ones
+   are byte-identical.
+5. THE RUN IS A REAL RUN. `packages.orchestration.role_config.resolve_role_config`
+   answers provider `ollama`, model `muse-glimmer:latest`, for both roles, so
+   `run_next_self_use_item` will NOT refuse for want of a real provider. Do NOT
+   pass `builder_name="fake"` or `reviewer_name="fake"` — the docstring reserves
+   those for tests, and a faked run does not discharge the precondition. Keep the
+   default budgets (`max_provider_calls=6`, `max_cost_usd=0.50`, `max_tasks=1`).
+6. IF THE RUN CANNOT HAPPEN — ollama unreachable, the model absent, the budget
+   exhausted, `SelfUseRunError` raised — that is a REPORTABLE OUTCOME, not
+   something to route around. Record the exact exception text and the full
+   traceback in `.agent/selfuse_f109/run.txt`, say so plainly in the handback, and
+   STOP the round there with C3 committed as far as it got. A blocked precondition
+   truthfully reported is a success; a faked run is a closure-corrupting lie.
+7. Nothing outside the change set is edited. If the sweep finds something else,
    DECLARE it; do not repair it.
-7. Do not quote this handback commit's own insertion count anywhere; it cannot
-   exist while the text stating it is written (§3 checklist item 14).
 8. `python3 -m pytest` is the pytest route. Env-var assignment (`VAR=x cmd`,
    `env`, `export`) and `cp` are DENIED: copy with
-   `python3 -c "import shutil; shutil.copyfile(a, b)"`. A `bash -c` wrapper
-   around a Python heredoc, and a heredoc with braces adjacent to quotes, have
-   both been observed DENIED — write such logic to a scratch `.py` under
-   `.remedy-wt/`, run it with `python3 -B`, and delete it by exact path.
+   `python3 -c "import shutil; shutil.copyfile(a, b)"`. A `bash -c` wrapper around
+   a Python heredoc, and a heredoc with braces adjacent to quotes, have both been
+   observed DENIED — write such logic to a scratch `.py` under `.remedy-wt/`, run
+   it with `python3 -B`, and delete it by exact path. A local-model run can be
+   SLOW: give it a generous timeout and never report a tool-level timeout as a run
+   result.
 9. Never force-push, never work on main, never create or merge a PR this round.
 
 ## SLICE FORTSCHRITT — one line, applied verbatim into the handback's state block
 
 BEGIN FORTSCHRITT
-| **Fortschritt** | ~97 % (T001 ✅ · T002 ✅ · T003 ✅ · Integration Gate ✅ · Closure offen) — Schätzung |
+| **Fortschritt** | ~98 % (T001-T003 ✅ · Integration Gate ✅ · Self-Use läuft · Closure offen) — Schätzung |
 END FORTSCHRITT
 
-## SLICE PLAN18 — the whole of `.agent/plan.md`
+## SLICE PLAN19 — the whole of `.agent/plan.md`
 
-BEGIN PLAN18
+BEGIN PLAN19
 # Plan — F109 Semantic dedupe
 
 Branch: feature/f109-semantic-dedupe, cut from `main` at
@@ -97,220 +100,170 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 18, session 4. CLOSURE PREPARATION. Give the feature file the
-BUILT STATE section closure precondition 4 requires; book round 17's
-PASS, which is the integration gate — branch 18937 passed and base 18799
-passed, both exit 0, with ZERO branch-only failures; resolve `R-0782`;
-and register and repair `R-0783`, the sixth and last site the
-stale-prose sweep has found.
+Round 19, session 4. CLOSURE PRECONDITION 6, the self-use item: the queue
+holds no pending item, so the generator supplies one from the ledger and
+it is planned and RUN to the normal approval gate under the product's own
+provider — never promoted, never faked. Its defects are reported in the
+handback for the reviewer to author as findings. Also book round 18's
+PASS and resolve `R-0783`.
 
 ## Next Steps
 
-- The self-use item closure precondition 6 requires: the queue holds no
-  pending item, so `generate_and_append_if_empty` supplies one from the
-  ledger, and it is planned, RUN to the normal approval gate, and its
-  defects registered before the close.
-- The closure sequence proper: evidence job, a FRESH review zip, the
-  authored STATUS line with the README sync in the SAME commit, the PR.
+- The closure sequence (docs/roadmap/STATUS_closure_protocol.md):
+  register the self-use defects, the evidence job, a FRESH review zip,
+  the authored STATUS line with the README sync in the SAME commit, the
+  `consumed_by` edit, and the PR. That round also runs the single
+  consolidation pass on the checklist of
+  docs/agents/planner_reviewer_prompt.md section 3.
 
 ## Risks
 
-- Six findings on this branch have been one class: prose that was TRUE
-  when written and was falsified by a later round. The closure
-  consolidation should answer the class, not add a seventh id.
+- The self-use run uses a local model. If it cannot run, the precondition
+  is BLOCKED and reported, never faked.
+- SEVEN findings on this branch have been one class: prose TRUE when
+  written and falsified by a later round. The consolidation should answer
+  the class, not add an eighth id.
 - Nothing dedupes in production: every concrete adapter returns
   `supports_resume = False`, so the mechanism is suite-only today.
-  `docs/system/semantic-dedupe-v1.md` states this plainly.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
   carry two `Done:` lines each. That is `R-0778`.
-- `R-0769` is registered, not fixed: its repair edits `README.md` and a
-  docs test, neither of which F109 owns.
-END PLAN18
+END PLAN19
 
-## SLICE RECORD18 — appended to `.agent/live_review.md`, three paragraphs
+## SLICE RECORD19 — appended to `.agent/live_review.md`, two paragraphs
 
-BEGIN RECORD18
-Gate: F109 R17 — the round 17 entry. VERDICT PASS, over the range `35c0b03f..50526376`. THIS IS THE INTEGRATION GATE ROUND AND IT IS GREEN ON BOTH SIDES: the branch at `cce5f9d7` ran 18937 passed, 20 skipped, ZERO failed, exit 0 in 133.20s, and the base at `5e18a8536afa086b591b5a2e13009d68d6227432`, checked out on the throwaway branch `tmp/base-gate` because a DETACHED base worktree fails the self-dogfood guard by design, ran 18799 passed, 20 skipped, ZERO failed, exit 0 in 159.88s. `comm -13` and `comm -23` are BOTH EMPTY, so there is no branch-only failure and no base-only failure, and NO BLOCKER exists. THE REVIEWER MEASURED THE BRANCH SUITE INDEPENDENTLY at `35c0b03f` before authoring the round — 18937 passed, 20 skipped, zero failed, exit 0, 133.30s — and gave those four figures to the worker precisely so a divergence would show as divergence; the worker's reading matches all four, differing by 0.10s of wall clock. THE PARITY CLAIM WAS MEASURED AS AN EVENT AND HOLDS: every one of the four files under the base worktree's `apps/ui/dist` carries mtime 1788410854.675 both before and after the base run, and the run window is 1788410860.264 to 1788411020.379, so none is inside it; the accompanying content digest `846b7f62fa3c13a8fd3ecd7c54dfd89771af272843530a59bd318d7e006f7a51` is identical before and after but was correctly reported BESIDE the mtime reading rather than in place of it, which is what `R-0444` asks for. THE ROUND'S THREE SUBSTANTIVE DEVIATIONS ARE ALL SOUND AND TWO OF THEM CORRECT THE REVIEWER. First, the block's constraint 6 sent the running suite's log into `.remedy-wt/`, inside the measured repository, on the reviewer's over-wide reading of `R-0176`; the worker first blamed a red run on it, then MEASURED that `worktree_identity()` reads `git ls-files --others --exclude-standard` and therefore cannot see a gitignored file, and reported its own diagnosis as wrong. That is the behaviour this record exists to reward, and it narrows `R-0176` to files git can actually see. Second, the block's sandbox note implied `REMEDY_UI_NO_AUTO_BUILD` for the whole gate while integration_gate.md scopes it to the BASE run; the worker followed the canonical doc, and its env-var branch run went red at 4 failures while the plain run matched the reviewer exactly — the doc was right and the block was loose. Third, and this is the round's real discovery, `R-0736` reaches further than the block warned: after `copytree(symlinks=True)` preserved all 27 npm symlinks, the first base run still produced 126 failures, every one in `tests/ui_server/` on `ERROR: React UI not built.`, because `git worktree add` stamped all 142 files under `apps/ui/src` at checkout time while `dist` kept its copied mtime, so `_frontend_is_stale()` demanded a rebuild the env var then refused. Re-stamping `dist` RESTORES the true relationship a real base environment would have and changes no content, the digest above proving it; the discarded 126-failure run is declared with its direct evidence rather than quietly dropped. FIVE IDS WENT RED ACROSS THE TWO FLAWED RUNS and every one passes serially, so all five are the xdist-flake class and none touches F109 code. THE TREE is clean, the base worktree and `tmp/base-gate` are gone, and the branch is pushed at `50526376`.
+BEGIN RECORD19
+Gate: F109 R18 — the round 18 entry. VERDICT PASS, over the range `50526376..cb19e916`. THE TRANSPORT PROOF IS AGAIN A REAL ONE — `cmp` of `.remedy-wt/f109-r18.md`, the reviewer's own original, against `.agent/authored/f109-r18.md` exited 0 — and EVERY SLICE WAS VERIFIED BYTE-IDENTICAL by the reviewer independently: `.agent/plan.md` equals PLAN18, RECORD18's three paragraphs are the tail of this record, PAIR F reads FROM 0x and TO 1x, and BUILTSTATE is the exact tail of `docs/roadmap/features/T3_F109.md`, which now carries exactly one `## Built State` heading and exactly one trailing newline. THE FEATURE FILE THEREFORE SATISFIES CLOSURE PRECONDITION 4, which it did not before this round: it had no Built State section at all. THE SUITES were re-run by the reviewer at 295, 130, 54 and 42, totalling 521 at exit 0, and NO COUNT MOVED IN EITHER DIRECTION, which is what the round's own constraint demanded of a comment-only repair. THE HANDBACK CARRIES THE FORTSCHRITT LINE VERBATIM, confirmed by the reviewer as a substring of `.agent/handoff.md`; that is finding `R-0418`'s standing form for self-drive, where no paste relay exists and a worker cannot see the operator brief, and this is the first round of this feature to satisfy it — the reviewer's earlier blocks simply omitted the line, which met `R-0418`'s letter by not ordering it and missed the obligation planner_reviewer_prompt.md §3 states. A CORRECTION THE REVIEWER OWES THIS RECORD, appended here rather than by rewriting the landed text, which item 20 forbids: the R-0783 paragraph committed at `18f0c9c6` calls that finding "THE SIXTH SITE OF ONE CLASS" and lists `R-0749`, `R-0773`, `R-0779`, `R-0780` and `R-0781` before it, omitting `R-0782`, which is a member of exactly that class by its own registration text. THE TRUE COUNT IS SEVEN. The worker of round 18 spotted the discrepancy and reported it rather than editing either text, which is correct. Nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is wrong because of it and the argument the numeral served — that the closure consolidation must answer the CLASS rather than mint another id — is unaffected at six or seven, so this is a dated correction and a `.agent/prose_slips.md` line at the consolidation, not a new id and not a correction round. TWO FURTHER REVIEWER LOOSENESSES the round declared and the reviewer accepts: G6(c) asked for the marker string `[unchanged: ` to "resolve in the modules named" when it lives in `session_sent_index.py` and reaches the loop only through the imported `dedupe_marker_for_segment`, so a literal grep in `pingpong_loop.py` reads 0 while the Built State sentence stays true; and G3(d) named `35c0b03f` as its base while G3(a) named `50526376`, so the ledger delta it reports spans two rounds — the figures 342 to 344 registered and 66 to 69 `Done:` lines are correct for that wider range, and the reviewer re-derived them independently, but the base should have been the round's own. THE OPEN SET IS 277 by set difference over 344 distinct registered ids and 67 distinct resolved ones. THE TREE is clean and the branch is pushed at `cb19e916`.
 
-Done: R-0782 — RESOLVED at `cce5f9d7` and verified by the reviewer at `50526376`. The `_capture_compositions` docstring in `tests/orchestration/test_semantic_dedupe.py` no longer says the dedupe report has no production consumer: it now states that the composed OBJECT never reaches `PingPongResult`, which is the helper's real reason for existing, while naming the prompt trace as carrying the manifest and, since `78d2b7b5`, the deduped NAMES that `build_trace_entry` reads off the composed prompt. The reviewer counted the string `no consumer for the report` in that file at ZERO, which is the finding's stated resolution condition, and confirmed by AST over the commit's own blobs that all 154 definition names and every definition's executable-statement count are unchanged, so the repair moved no code.
+Done: R-0783 — RESOLVED at `b89456a6` and verified by the reviewer at `cb19e916`. The comment above `test_a_disabled_run_reports_no_deduped_names_on_any_composition` in `tests/orchestration/test_semantic_dedupe.py` no longer gives "the report never reaches ``PingPongResult``" as its reason. It now says the composed OBJECT is what those cases assert on and only the capture helper yields it, while stating plainly that the prompt trace carries the deduped NAMES onto `PingPongResult` but never the `ComposedPrompt` itself — which is the distinction `R-0782`'s repair established one round earlier, now applied consistently across both sites. The reviewer counted the string `the report never reaches` in that file at ZERO, which is the finding's stated resolution condition, and confirmed by AST over the commit's own blobs that every definition name and every executable-statement count is unchanged, so the repair moved no code and the suite still collects 130.
+END RECORD19
 
-- R-0783 — Low, A COMMENT IN THE SAME SUITE STILL GIVES THE STALE REASON `R-0782` WAS REGISTERED AGAINST, ONE SCREEN AWAY FROM THE DOCSTRING THAT WAS REPAIRED. Offered by the WORKER of F109 R17 as a candidate and ASSESSED DIFFERENTLY BY THE REVIEWER, which is why it is registered rather than dropped: the worker judged the sentence "still literally true" and left it, correctly, because PAIR E authorised one docstring and widening a pair silently is worse than declaring the miss. MEASURED at `50526376`. The comment above `test_a_disabled_run_reports_no_deduped_names_on_any_composition` reads "THE COMPOSED OBJECTS ARE READ THE WAY SPEC T CASE 5 READS THEM, through that class's own capture helper, because the report never reaches ``PingPongResult``". BY THE VERY DISTINCTION `R-0782`'S REPAIR TURNS ON, that reason is now false: the composed OBJECT never reaches `PingPongResult`, but the REPORT does — as `deduped_segment_names` on each entry of `PingPongResult.prompt_traces`, since `78d2b7b5` — and `TestTheRunsOwnTraceMeasuresWhatItWithheld`, in this same file, reads the report off the result exactly that way. So the comment states a reason that the file itself contradicts two classes later. WHAT REMAINS TRUE and what the repair must keep is the helper's actual justification: the composed OBJECT is what these cases need, and only the capture helper yields it. WHY LOW: no behaviour is wrong, no gate is blind, no test is weakened, the suite is green at 130 cases and the comment misleads a reader rather than a machine. THIS IS THE SIXTH SITE OF ONE CLASS on this branch, after `R-0749`, `R-0773`, `R-0779`, `R-0780` and `R-0781`, and it is registered with that stated plainly because the class, not the site, is what the closure consolidation must answer: every one of the six was a sentence TRUE when written and falsified by a later round that did not sweep it, and five of the six were caught by the standing staleness sweep one round after the falsification. FIX: restate the comment so the OBJECT-versus-REPORT distinction survives and the false reason goes. Resolved when no comment or docstring in that file gives "the report never reaches `PingPongResult`" as a reason for anything.
-END RECORD18
+## C3 — the self-use procedure, in this order
 
-## PAIR F — in `tests/orchestration/test_semantic_dedupe.py`
+This is the only part of the round that is a PROCEDURE rather than a slice. Do
+each step, capture its REAL output, and write everything you capture into
+`.agent/selfuse_f109/run.txt` — commands, return values, status, provider, and
+any traceback in full.
 
-Containment test, run mechanically before emission: TO contains FROM: false.
-REWRITE, so the proof is FROM 0x and TO 1x after C3. FROM counted in the target
-at `50526376`: exactly 1x.
-
-BEGIN PAIRF_FROM
-        # THE COMPOSED OBJECTS ARE READ THE WAY SPEC T CASE 5 READS THEM, through
-        # that class's own capture helper, because the report never reaches
-        # ``PingPongResult``. The positive half already lives there:
-        # ``test_a_resumed_chain_reports_the_names_it_replaced`` runs this very
-        # chain at the default flag and finds names, so this case mirrors a
-        # measured run rather than an assumption.
-END PAIRF_FROM
-
-BEGIN PAIRF_TO
-        # THE COMPOSED OBJECTS ARE READ THE WAY SPEC T CASE 5 READS THEM, through
-        # that class's own capture helper, because the composed OBJECT is what
-        # these cases assert on and only that helper yields it — the prompt trace
-        # carries the deduped NAMES onto ``PingPongResult`` but never the
-        # ``ComposedPrompt`` itself. The positive half already lives there:
-        # ``test_a_resumed_chain_reports_the_names_it_replaced`` runs this very
-        # chain at the default flag and finds names, so this case mirrors a
-        # measured run rather than an assumption.
-END PAIRF_TO
-
-## SLICE BUILTSTATE — appended to `docs/roadmap/features/T3_F109.md`
-
-BEGIN BUILTSTATE
-## Built State — what F109 delivered
-
-T001-T003 built semantic dedupe inside a RESUMED provider session only.
-The prose description of the built state, for a reader rather than for
-this ledger, is `docs/system/semantic-dedupe-v1.md`.
-
-- `packages/orchestration/session_sent_index.py` — `SessionSentIndex`
-  keyed by provider session id, holding the segment SHA-256 digests
-  `ComposedPrompt.manifest_as_dicts()` produced. `record_call` records
-  nothing for a call that carried an error and nothing for an empty
-  session id, so an unproven send and a sessionless call can never enter
-  the index; a malformed manifest row raises rather than shrinking it
-  silently. The module is pure and imports nothing from the rest of
-  `packages.orchestration`. `record_finalized_call` and
-  `invalidate_on_resume_fallback` are the adapter seams, and
-  `session_sent_index_from_evidence` is the restart-honesty seam (T001a,
-  T001b-i).
-- `packages/orchestration/pingpong_loop.py` — the loop calls both seams
-  on the Builder path and again on the Reviewer path and writes
-  `as_evidence_dicts()` onto `PingPongResult.session_sent_evidence`
-  (T001b-ii, `7451e9c7`). `_dedupe_resumed_segments` replaces an
-  already-sent segment's text with
-  `[unchanged: <name>, previously provided]`, rewriting text only, so
-  names and ranks survive; both `compose_*` functions reach it behind a
-  `dedupe_sent_hashes` parameter that bypasses dedupe by default
-  (`24352750`, `60343048`). `run_pingpong` carries
-  `semantic_dedupe_enabled` and forwards it as `dedupe_enabled`, and
-  `enabled` is consulted first and alone, so the kill switch is total
-  (T002a-T002c, `b245e1c9`).
-- `packages/orchestration/prompt_trace.py` — every `PromptTraceEntry`
-  carries `deduped_segment_names`, derived from the composed prompt
-  alone (T003c, `78d2b7b5`); and `measure_dedupe_savings_from_traces`
-  reports what a run did not resend, reading only that record. Its
-  `unmeasured_segment_names` field NAMES a deduped segment whose
-  full-content size was never observed and excludes it from every total,
-  so an absent measurement can never be read as a zero saving (T003d).
-- Measured on the two-round resumed fixture chain at commit `d52a5371`:
-  556 characters avoided against 97 spent on markers, 459 net over 2
-  withheld segments, nothing unmeasurable; the same chain with the flag
-  off reports zero on every field and names nothing unmeasured.
-- SCOPE LIMIT, stated because it is the first thing a reader should
-  know: no concrete adapter resumes in production — `ClaudeProvider`,
-  `ClaudeCliProvider` and `OllamaPingPongProvider` all return
-  `supports_resume = False` — so dedupe is exercised by the suite and is
-  inert on every real run today. The measurement function is a library
-  with no production caller.
-END BUILTSTATE
+1. BEFORE. Record `pending_self_use_items()` (expect 0 pending of 4 items) and
+   `next_self_use_item()` (expect `None`), which is WHY the generator runs at all.
+2. GENERATE. Call
+   `packages.orchestration.self_use_generator.generate_and_append_if_empty()` and
+   record the entry it returns. The reviewer's own read-only probe of
+   `generate_self_use_item()` at `cb19e916` answered `SU-005`, titled
+   "Address ledger finding R-0418", provenance
+   `generated (self-use-generator tier 1, ledger scan, R-0418)`. Report what YOURS
+   returns; a different id or subject is a real difference worth declaring, not a
+   discrepancy to smooth over.
+3. RUN. Call
+   `packages.orchestration.self_use_runner.run_next_self_use_item(dest_dir=Path(".remedy-wt/selfuse-f109-run"), repo_path=".")`
+   with the DEFAULT budgets and NO `builder_name`/`reviewer_name` override, per
+   constraint 5. It answers `(entry, job_file_path, plan)`. Record the plan's
+   `status`, its `error` if any, and the provider its `execution_config` says
+   actually ran.
+4. DEFECTS. Call
+   `packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)`
+   and record EVERY string it returns, verbatim and in order, each on its own
+   clearly delimited line. An EMPTY TUPLE means nothing to register — record it
+   as the empty result it is, never as "no defects were checked".
+5. LAND THE EVIDENCE. Copy the rendered job file into `.agent/selfuse_f109/` under
+   its own item id (the precedent is `.agent/selfuse_f257/`, which holds `run.txt`
+   and `SU-001.md`), and commit `run.txt` beside it. The run's working directory
+   under `.remedy-wt/` is scratch and is NOT committed; delete it by exact path
+   after copying what you need.
 
 ## Done when — the eight gates. RUN each one and record its REAL exit code.
 
-Every gate below runs at a commit STRICTLY EARLIER than C5, the commit that
+Every gate below runs at a commit STRICTLY EARLIER than C4, the commit that
 writes the handback, so the handback can honestly quote all eight.
 
 G1 TRANSPORT, one comparison and no chain. Run
-   `cmp .remedy-wt/f109-r18.md .agent/authored/f109-r18.md` and report the exit
-   code. That scratch file is the REVIEWER'S OWN original, so this comparison
-   proves real transport and not merely your own self-consistency. Then report
-   `sha256sum .agent/authored/f109-r18.md .agent/last_block.md` — one digest twice.
+   `cmp .remedy-wt/f109-r19.md .agent/authored/f109-r19.md` and report the exit
+   code. That scratch file is the REVIEWER'S OWN original, so this proves real
+   transport, not your own self-consistency. Then report
+   `sha256sum .agent/authored/f109-r19.md .agent/last_block.md` — one digest twice.
 
-G2 THE PLAN. Extract PLAN18 by delimiter index and `cmp` it against
+G2 THE PLAN. Extract PLAN19 by delimiter index and `cmp` it against
    `.agent/plan.md` after C1: exit 0, no output. Report `wc -l .agent/plan.md`,
    under 50 (AGENTS.md), and `grep -c '^## Goal'` and `grep -c '^## Next Steps'`,
    each 1.
 
-G3 THE RECORD APPEND, four readings; the only slice earning full byte forensics.
+G3 THE RECORD APPEND, four readings.
    (a) ARITHMETIC. Report base size and base sha256 of `.agent/live_review.md` at
-       `50526376`, the appended length S, the new size, and whether base + S
+       `cb19e916`, the appended length S, the new size, and whether base + S
        equals it. Confirm the file still ends WITHOUT a trailing newline.
    (b) A SECOND READER THAT COUNTS NO BYTE, covering the WHOLE appended region.
        Split the entire file on blank-line boundaries into units. Let N be the
-       paragraph count of RECORD18 as YOUR SCRIPT COUNTS IT from the slice — do
-       not take N from this block. Assert the LAST N units equal RECORD18's N
+       paragraph count of RECORD19 as YOUR SCRIPT COUNTS IT from the slice — do
+       not take N from this block. Assert the LAST N units equal RECORD19's N
        paragraphs IN ORDER, printing each one's opening 60 characters.
    (c) A NEGATIVE CONTROL ON THE FIRST APPENDED PARAGRAPH. Copy the file to
-       `.remedy-wt/live_review_negative_control_r18.md`, flip one byte INSIDE the
+       `.remedy-wt/live_review_negative_control_r19.md`, flip one byte INSIDE the
        FIRST appended paragraph there, and show reader (b) REJECTS the copy while
-       ACCEPTING the tracked file. Report the tracked sha256 before and after to
-       show it never moved, then delete that scratch file BY ITS EXACT PATH and
-       report `os.path.exists` on that exact path as False.
+       ACCEPTING the tracked file. Report the tracked sha256 before and after,
+       then delete that scratch file BY ITS EXACT PATH and report
+       `os.path.exists` on that exact path as False.
    (d) COUNTS, AS A SET DIFFERENCE and never a subtraction (`R-0778`). Read the
-       base from `git show 35c0b03f:.agent/live_review.md`, never by rewinding the
-       tracked file, and report five figures for base and five for the new state:
-       registered ids, DISTINCT registered ids, `Done:` lines, DISTINCT resolved
-       ids, and `len(set(registered) - set(resolved))`. Also report
-       `grep -c '^Gate: F109 R17 — '` = 1, `grep -c '^Done: R-0782 — '` = 1 and
-       `grep -c '^- R-0783 — '` = 1.
+       base from `git show cb19e916:.agent/live_review.md` — THE ROUND'S OWN BASE,
+       not an earlier one — and report five figures for base and five for the new
+       state: registered ids, DISTINCT registered ids, `Done:` lines, DISTINCT
+       resolved ids, and `len(set(registered) - set(resolved))`. Also report
+       `grep -c '^Gate: F109 R18 — '` = 1 and `grep -c '^Done: R-0783 — '` = 1.
 
-G4 PAIR F AND THE PROOF THAT NO CODE MOVED. Report PAIR F's FROM count in
-   `tests/orchestration/test_semantic_dedupe.py` BEFORE C3 (1) and AFTER C3 (0),
-   and its TO after C3 (1). Then, from `git show <sha>:<path>` blobs only, parse
-   the BEFORE and AFTER blob with `ast` and report that the set of definition
-   NAMES is identical and that every definition's count of executable body
-   statements, with the docstring excluded, is identical. Report the dedupe
-   suite's collected count before and after C3; both must read 130.
+G4 THE QUEUE GREW BY EXACTLY ONE, AND ONLY AT THE END. Report the item count of
+   `scripts/self_use_queue.json` before and after C3 (expect 4 then 5), that the
+   FIRST FOUR items are byte-identical to their pre-C3 selves when re-serialised
+   in order, that the new item's `consumed_by` is the EMPTY string, that its
+   `provenance` is non-blank, and that its id matches `^SU-\d{3}$`. Report
+   `schema_version`, which must still read 2.
 
-G5 THE BUILT STATE APPEND. Report the size and sha256 of
-   `docs/roadmap/features/T3_F109.md` before C4 and after, the appended length,
-   and whether the arithmetic closes. Confirm the file ends with EXACTLY ONE
-   trailing newline, that `grep -c '^## Built State'` is 1, and that the bytes
-   BEFORE the appended region are byte-identical to the whole pre-C4 file — an
-   append adds and never edits.
+G5 THE RUN REALLY RAN, AND NOT UNDER THE FAKE PROVIDER. From the captured output
+   report: the `JobPlan.status`, its `error` if any, and the provider named in its
+   `execution_config`. That provider must NOT be `fake`. If the run raised
+   instead, report the exception type and message verbatim — constraint 6 makes
+   that a valid outcome for this gate, and the gate is then RED-BUT-HONEST rather
+   than passed.
 
-G6 THE BUILT STATE IS TRUE, re-measured by you rather than trusted. It is a
-   ledger claim about code it does not live in, so verify each and report the
-   reading: (a) `supports_resume` returns literal False for `ClaudeProvider`,
-   `ClaudeCliProvider` and `OllamaPingPongProvider`; (b) each of `7451e9c7`,
-   `24352750`, `60343048`, `b245e1c9`, `78d2b7b5` and `d52a5371` exists via
-   `git cat-file -e`; (c) the marker string `[unchanged: ` and the field
-   `unmeasured_segment_names` both resolve in the modules named; (d)
-   `docs/system/semantic-dedupe-v1.md` exists and its own savings table reads
-   556, 97, 459 and 2 — the Built State must not disagree with the doc. Any
-   reading that contradicts the slice is a finding against the REVIEWER: report
-   it, apply the slice unchanged, and do not silently correct it.
+G6 THE DEFECTS ARE RECORDED VERBATIM. Report the exact tuple
+   `describe_self_use_run_defects(plan)` returned — its length and every string in
+   order — and show that each one appears in `.agent/selfuse_f109/run.txt`. This
+   is the gate the CLOSURE round reads: the reviewer authors findings from these
+   strings, so a paraphrase here becomes a wrong finding there.
 
 G7 THE SUITES, run SERIALLY, one process finishing before the next starts. Report
    the collected count and REAL exit code of each:
-   - `python3 -m pytest tests/docs/ -q`
-   - `python3 -m pytest tests/orchestration/test_semantic_dedupe.py -q`
-   - `python3 -m pytest tests/orchestration/test_prompt_trace.py -q`
+   - `python3 -m pytest tests/orchestration/test_self_use_queue.py -q`
+   - `python3 -m pytest tests/orchestration/test_self_use_generator.py -q`
+   - `python3 -m pytest tests/orchestration/test_self_use_runner.py -q`
+   - `python3 -m pytest tests/orchestration/test_self_use_job.py -q`
    - `python3 -m pytest tests/cli/test_golden_path.py -q`
-   `tests/docs/` is FIRST and is mandatory because this round's change set
-   includes `docs/roadmap/**` (planner_reviewer_prompt.md §3, verification tier
-   5). The last is the mandatory canary. NO COUNT MAY MOVE IN EITHER DIRECTION —
-   the reviewer measured these at `50526376` as 295, 130, 54 and 42.
+   The first four are the suites that READ the queue file this round appends to,
+   which is why they are named; the last is the mandatory canary. None may go red.
+   The reviewer checked their guards at `cb19e916`: they assert at least one item,
+   `schema_version == 2`, unique ids matching `^SU-\d{3}$`, and a non-blank
+   provenance on every item — there is NO count-equality guard, so a fifth item is
+   safe by construction.
 
 G8 THE TREE AND THE SWEEP. `git status --porcelain` EMPTY and
-   `git ls-files .remedy-wt` returning nothing. Report each commit's insertion
-   count from `git show --numstat` — the `+` column ONLY, per AGENTS.md DECISION
-   F104 D1 — for every commit of this round EXCEPT C5, and compare cell by cell
-   against your own `## Commits` table (§3 checklist item 28). Then re-read each
-   file this round touched and report every sentence now stale, including any you
-   did NOT repair, with the reason.
+   `git ls-files .remedy-wt` returning nothing. Confirm
+   `.remedy-wt/selfuse-f109-run` is gone by exact path. Report each commit's
+   insertion count from `git show --numstat` — the `+` column ONLY, per AGENTS.md
+   DECISION F104 D1 — for every commit of this round EXCEPT C4, and compare cell
+   by cell against your own `## Commits` table (§3 checklist item 28). Then
+   re-read each file this round touched and report every sentence now stale,
+   including any you did NOT repair, with the reason.
 
 ## Handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It has NO
-length cap. Its STATE BLOCK carries the FORTSCHRITT slice above, applied
-VERBATIM as its own line — that is constraint 5 and finding `R-0418`'s standing
-form. It must also carry: the SESSION NUMBER (4) and round (18); the item-status
-table with every one of C0a, C0b, C1, C2, C3, C4, C5 appearing exactly once with
-`done`, `skipped` or `deviated` and a reason; a per-commit changed-files table
-with the `+/-` column; ONE LINE PER GATE G1 through G8 with its real reading; the
-open-finding count as a SET DIFFERENCE; a PENDING RESOLUTION note stating that
-`R-0783` is repaired but NOT resolved, because only reviewer-authored text sets
-`Done:`; your deviations and assumptions; and the next expected action, which is
-the self-use item closure precondition 6 requires. Then
+length cap. Its STATE BLOCK carries the FORTSCHRITT slice above, applied VERBATIM
+as its own line. It must also carry: the SESSION NUMBER (4) and round (19); the
+item-status table with every one of C0a, C0b, C1, C2, C3, C4 appearing exactly
+once with `done`, `skipped` or `deviated` and a reason; a per-commit changed-files
+table with the `+/-` column; ONE LINE PER GATE G1 through G8 with its real
+reading; THE SELF-USE OUTCOME in one unmissable sentence — item id, run status,
+provider, and the number of defects reported; the FULL verbatim defect list a
+second time in its own section, because the closure round authors findings from
+it; the open-finding count as a SET DIFFERENCE; your deviations and assumptions;
+and the next expected action, which is the closure sequence. Then
 `git push -u origin feature/f109-semantic-dedupe` and report the result. Create
 no PR.
