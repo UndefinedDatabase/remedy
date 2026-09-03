@@ -1,8 +1,8 @@
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1/T003b2a
-complete and green as of round 10.
+F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1/T003b2a/
+T003b2b1 complete and green as of round 11.
 
 ## Goal
 
@@ -14,35 +14,33 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 11, session 4 — fresh investigation over T003b2b's own call site
-(escalation.py's enqueue_task_decision/auto_apply_safe_default, the
-piece T003b2a deliberately left untouched) found a second latent
-incompatibility beyond DECISION F112 D2/D3's: _record_answer_on_task
-reads task.id and task.inputs, fields pingpong JobPlan's TaskEntry has
-never carried (only Core Job's Task has them) — calling
-auto_apply_safe_default against a live JobPlan would raise
-AttributeError (DECISION F112 D4). T003b2b splits into T003b2b1 (this
-round: the escalation.py dual-shape fix + a new TaskEntry.inputs field)
-and T003b2b2 (deferred: the live call-site wiring, now safe to build).
+Round 12, session 4 — investigation of T003b2b2's call site found
+run_pingpong's `use_compiled_context = bool(compiled_context_paths) and
+bool(compiled_context_candidates)` requires BOTH lists non-empty, and
+job-dispatch TaskEntry has no files_hint source — fenced_paths=[] (the
+only value available today) makes the whole wiring a silent no-op,
+always falling through to the uncapped build_repo_context path
+(DECISION F112 D5). Stronger than D3/D4: not just cannot_fit
+unreachable, the capped path never activates at all. T3_F112.md gains
+T003c (a "## Files" job-markdown section feeding TaskEntry.files_hint)
+as T003b2b2's prerequisite. This round is decision + plan + feature-file
+only — no production code, since T003c must land first.
 
 ## Next Steps
 
-- T003b2b2 (own dedicated round(s)): call fit_task_context_to_class_cap
-  between _build_task_prompt and task.status = TASK_RUNNING; wire
-  compiled_context_paths/candidates/token_budget into run_pingpong; on
-  cannot_fit call enqueue_task_decision (options=["split task"] only
-  when task_entry_to_planned_task(task) is not None and
-  split_one_task on its result returns non-None) then
-  auto_apply_safe_default under --yes, reading the answer off the
-  returned record directly rather than off task.inputs (same
-  dispatch-loop iteration, no resume needed for this path).
+- T003c (own round(s)): parse "## Files" in job task markdown (mirrors
+  the existing "Acceptance:" inline-marker pattern) into a new
+  TaskEntry.files_hint: list[str] field, exported/imported like
+  inputs/task_class; update task_entry_to_planned_task's mapping.
+- T003b2b2 (after T003c): fit_task_context_to_class_cap +
+  run_pingpong wiring (now with real fenced_paths) + the cannot_fit
+  decision call, now actually reachable.
 - Acceptance fixtures, the integration gate, then closure.
 
 ## Risks
 
-- T003b2b2 is still the highest-risk remaining slice — first-time
-  wiring against the live dispatch loop; re-read the call site fresh
-  again before authoring it, per DECISION F112 D2/D3/D4.
+- T003b2b2 depends on T003c landing first; re-read both call sites
+  fresh before authoring either.
 - R-0767 stays OPEN on the model-routing seam this feature's config
   pattern borrows from; unrelated to F112, not absorbed.
 - ruff is inconsistent this session; python3 -m ruff check <path> is the
