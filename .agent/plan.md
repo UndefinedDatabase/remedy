@@ -14,27 +14,26 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 13, session 3. Surface the deduped names into the prompt TRACE:
-`PromptTraceEntry` gains `deduped_segment_names`, derived from the composed
-prompt at the same seam `segment_manifest` already uses, so the evidence
-records what the model did NOT receive again. Round 12 made the trace
-honest about WHICH call it describes, which is what this field needed to
-inherit. Also book round 12's PASS, register `R-0777` and `R-0778`, and
-repair the stale comment `R-0777` names.
+Round 14, session 3. Measure the savings from the record itself: one PURE
+function reads a run's own prompt-trace entries and reports what the run
+did not resend, counting only what it can observe and NAMING the segments
+whose full-content size was never recorded rather than guessing them. It
+is deliberately not wired into the loop this round. Also book round 13's
+PASS and register and repair `R-0779`, the module docstring that still
+describes one real-loop class where there are now several.
 
 ## Next Steps
 
-- The measurement fixture on a resumed fixture chain with the savings
-  recorded, plus the docs (T003) — the last build slice of the feature.
-- The integration gate, then the closure sequence.
+- The T003 DOCS: describe the feature's built state and register the doc
+  in `docs/README.md` in the same commit.
+- The integration gate (docs/agents/integration_gate.md), then the closure
+  sequence.
 
 ## Risks
 
-- A positional selector over source text or over a trace list breaks
-  silently whenever a correct change adds a site. `R-0775` was that class;
-  prefer selecting by a declared property.
+- The savings function is landed UNWIRED. Nothing reads it yet, so a later
+  round must either wire it or say plainly why it stays a library.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
-  carry two `Done:` lines each, so line counts overstate what is resolved.
-  That is `R-0778`.
+  carry two `Done:` lines each. That is `R-0778`.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
