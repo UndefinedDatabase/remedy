@@ -83,6 +83,17 @@ measure what it withheld — 556 characters avoided against 97 spent on markers 
 the fixture chain. No concrete adapter resumes in production yet, so the
 mechanism is exercised by the suite and inert on real runs today).
 
+F110 model routing by task class (every role Remedy resolves a runtime
+configuration for now carries a declared task class; a single resolver
+seam routes builder/reviewer/orchestrator/teacher/summary/test-worker/
+design-worker calls to a cost tier — cheap, mid or top — with the
+reason recorded alongside the routed call; the three policy hard rules
+(reviewer never weaker than its paired worker, orchestrator/mission
+calls always top tier, safety-relevant classes never below mid) are
+enforced in code and refuse a violating override by name rather than
+silently applying it; moving a class to a cheaper tier requires a
+documented benchmark run, never a bare config edit).
+
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend
 reported as its own role in the token ledger).
