@@ -81,6 +81,14 @@ class PromptTraceEntry:
     #: deliberately does NOT register (DECISION F105 D3); recording both numbers
     #: makes that coverage gap visible instead of implied.
     segment_manifest_chars: int = 0
+    #: F109: the names of the segments whose TEXT this composition replaced with
+    #: a dedupe reference marker, in replacement order — what the model was
+    #: deliberately NOT sent again. EMPTY means nothing was deduped, which is the
+    #: NORMAL case: dedupe fires only for a call that RESUMES a session that
+    #: provably already received the segment. Empty here does NOT mean the prompt
+    #: was uncomposed — that is what an empty ``segment_manifest`` means, and the
+    #: two empties sit next to each other, so do not read one for the other.
+    deduped_segment_names: list[str] = field(default_factory=list)
     context_categories: list[str] = field(default_factory=list)
     changed_files: list[str] = field(default_factory=list)
     safe_diff_files: list[str] = field(default_factory=list)
@@ -132,6 +140,9 @@ def build_trace_entry(
     character count it covers can never disagree. Passing the two separately is
     deliberately NOT offered — a caller that could set them independently could
     describe one prompt with another prompt's manifest.
+    ``deduped_segment_names`` (F109) joins those two on the same seam and is
+    derived from the same object for the same reason: a caller that could pass
+    its own list could name segments the prompt never replaced.
     """
     raw_sha = hashlib.sha256(prompt_text.encode()).hexdigest()
     redacted = redact_prompt_text(prompt_text)
@@ -156,6 +167,9 @@ def build_trace_entry(
         ),
         segment_manifest_chars=(
             len(composed_prompt.text) if composed_prompt is not None else 0
+        ),
+        deduped_segment_names=(
+            list(composed_prompt.deduped_names) if composed_prompt is not None else []
         ),
         context_categories=list(context_categories or []),
         changed_files=list(changed_files or []),
