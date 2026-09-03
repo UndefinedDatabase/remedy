@@ -29,12 +29,14 @@ path appears in this round's changed-files table.
 
 ## Range
 
-Review of `92f773c6..<C5 SHA>` (commits C0a, C0b, C1, C2, plus this
-handback commit C5 itself — five real commits total this round; C3 and
-C4 in the block's own numbering are verification-only steps that made no
-file changes and so produced no commits, per the block's own instruction
-not to create empty commits for them). **This range is UNREVIEWED by
-construction** — round 18 has not yet been independently re-reviewed by
+Review of `92f773c6..9c37e9ff` (commits C0a, C0b, C1, C2, plus this
+handback commit C5 itself — five real commits total this round; C5 not
+yet made at the time of writing this section header, made immediately
+after. C3 and C4 in the block's own numbering are verification-only steps
+that made no file changes and so produced no commits, per the block's own
+instruction not to create empty commits for them). **This range is
+UNREVIEWED by construction** — round 18 has not yet been independently
+re-reviewed by
 the reviewer; no verdict on this round's own work is claimed anywhere in
 this file.
 
@@ -161,6 +163,18 @@ the block).
    the block's own instruction ("Do not attempt the integration gate
    yourself this round — it is explicitly deferred"). It is SESSION 6's
    first action; see Next below.
+6. **This file was committed twice** — commit `12d882e6` (the intended
+   C5) left an unfilled `<C5 SHA>` placeholder in the Range section
+   (the actual C5 SHA is self-referential and cannot be known before the
+   commit that writes it, same self-reference problem the Commits
+   section's own exception clause already names for the per-commit
+   table). A follow-up correction commit fixed the placeholder to read
+   the last real content commit (`9c37e9ff`, the same convention round
+   17's own handback used) plus corrected two changed-files-table +/-
+   counts (`last_block.md` 32/48 not 67/83, `plan.md` 26/24 not 49/47)
+   against `git show --stat`. This departs from the write-once rule
+   (PH v3); recorded here per that rule's own spirit rather than
+   silently re-writing history.
 
 ## Item-Status Table
 
