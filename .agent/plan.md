@@ -14,32 +14,31 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 5, session 1 — T002b, the THREE HARD RULES the policy document and
-`docs/roadmap/features/T3_F110.md` both name, each shipped as its own
-named check that returns the rule's name when violated: a reviewer never
-routed weaker than its paired worker, orchestrator and mission-compile
-calls always top tier, and a safety-relevant class never below mid. Each
-rule gets a violating fixture that is refused with the rule named, which
-is the feature file's own acceptance wording. Round 4's PASS verdict is
-booked in the same round.
+Round 6, session 2 — T002c, the PER-PROJECT OVERRIDE SCHEMA. An override
+map is validated before it is applied: every violation is collected and
+named, a malformed entry is reported rather than crashed on, and an
+override breaking a hard rule is REFUSED rather than silently dropped,
+because a dropped override leaves the operator believing it took effect.
+`mission` joins the orchestration class set per DECISION F110 D2, so an
+override demoting it is refused by name. Round 5's PASS verdict and that
+DECISION are booked in the same round.
 
 ## Next Steps
 
-- T002c: the config schema and per-project overrides, where the hard
-  rules always win and a violating override fails validation naming the
-  rule — the checks this round ships are what that validation calls.
 - T003: the promotion-evidence discipline, the evidence fields and the
   goldens — a promotion without evidence refused, with evidence logged.
-- Then the per-call-site class declarations (consolidation order E.d),
-  the integration gate, and the closure sequence, which also runs the one
-  checklist consolidation pass DECISION F110 D1 carries into it.
+- The per-call-site class declarations and the resolver seam
+  (consolidation order E.d), which is where the override map is finally
+  READ from a config file instead of being passed in.
+- Then the integration gate, and the closure sequence, which also runs
+  the one checklist consolidation pass DECISION F110 D1 carries into it.
 
 ## Risks
 
-- The safety-relevant class set is EMPTY in production today, because the
-  policy document scopes it to "fence/DoD evaluation prompts, if any
-  become LLM calls" and none is one yet. The check is therefore proven
-  against a fixture set so it is not a rule that can never fire.
-- Nothing routes in production yet: the table and its rules are pinned
-  before any call site declares a class (order E.d).
+- The safety-relevant class set is EMPTY in production today, so the
+  safety rule is proven against a fixture set in its override-map form
+  exactly as it already is in its per-choice form.
+- Nothing routes in production yet and no config file is read: the schema
+  validates a mapping handed to it, and the reader that produces that
+  mapping arrives with the seam round.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
