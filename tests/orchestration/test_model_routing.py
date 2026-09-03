@@ -1,4 +1,4 @@
-"""Tests for packages/orchestration/model_routing.py — F110 T002a, the class table.
+"""Tests for packages/orchestration/model_routing.py — F110 T002a, the class table, and T002b, the three hard rules.
 
 THE SYNC TEST IS THE ACCEPTANCE LINE. docs/roadmap/features/T3_F110.md's
 Acceptance section requires that "the class table matches the policy document (a
@@ -19,6 +19,21 @@ No model id is asserted anywhere in this file, deliberately: this round maps
 task classes to TIERS. Which concrete model serves a tier is a configuration
 fact and asserting one here would make these tests go stale on the day an
 operator repoints it.
+
+EACH HARD RULE HAS A VIOLATING FIXTURE REFUSED WITH THE RULE NAMED, which is the
+second acceptance line of docs/roadmap/features/T3_F110.md, and each is paired
+with a CONFORMING case so the test discriminates rather than merely producing a
+refusal. Every such assertion compares against the module's own rule-name
+CONSTANT and never against a retyped string literal: a renamed token must break
+the import, not leave a test quietly asserting a dead string.
+
+THE SAFETY RULE IS PROVEN NON-VACUOUS. Its production class set
+(``SAFETY_RELEVANT_CLASSES``) is EMPTY today, so a test written against that
+constant alone could never see the rule fire. The check therefore takes the class
+set as a parameter, the tests below supply a FIXTURE set and prove the refusal
+really happens, and a separate test asserts the production constant is empty
+TODAY — so the emptiness is a stated property under test rather than an accident
+nobody would notice changing.
 """
 
 from __future__ import annotations
@@ -28,13 +43,25 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.model_routing import (
+    HARD_RULE_NAMES,
+    MID_TIER,
     MODEL_TIERS,
+    ORCHESTRATION_TASK_CLASSES,
+    RULE_ORCHESTRATION_BELOW_TOP_TIER,
+    RULE_REVIEWER_WEAKER_THAN_WORKER,
+    RULE_SAFETY_CLASS_BELOW_MID_TIER,
+    SAFETY_RELEVANT_CLASSES,
     SEED_MAPPING_REASON,
     TASK_CLASS_TIERS,
     TOP_TIER,
     UNKNOWN_CLASS_REASON,
+    check_orchestration_class_routed_to_top_tier,
+    check_reviewer_not_weaker_than_worker,
+    check_safety_relevant_class_not_below_mid_tier,
+    model_tier_rank,
     normalize_task_class,
     resolve_task_class_tier,
+    validate_routing_choice,
 )
 
 REPO = Path(__file__).resolve().parents[2]
@@ -209,3 +236,248 @@ class TestTierVocabulary:
 
     def test_every_tier_is_actually_used_by_the_table(self):
         assert set(TASK_CLASS_TIERS.values()) == set(MODEL_TIERS)
+
+
+# ---------------------------------------------------------------------------
+# F110 T002b — the three hard rules
+# ---------------------------------------------------------------------------
+
+#: Every tier that is NOT the top one, derived from the module's own vocabulary
+#: rather than written out, so adding a tier extends the fixtures automatically.
+TIERS_BELOW_TOP = tuple(t for t in MODEL_TIERS if t != TOP_TIER)
+
+#: Every tier strictly below mid, derived the same way.
+TIERS_BELOW_MID = tuple(t for t in MODEL_TIERS if model_tier_rank(t) < model_tier_rank(MID_TIER))
+
+#: Every tier at or above mid.
+TIERS_AT_OR_ABOVE_MID = tuple(t for t in MODEL_TIERS if model_tier_rank(t) >= model_tier_rank(MID_TIER))
+
+#: A FIXTURE safety-relevant class set. The PRODUCTION set is empty (and a test
+#: below asserts that it is), so without a fixture set the safety rule could
+#: never fire and its check would be a rule that cannot fail. These two names are
+#: the prompts the policy document scopes the rule to, spelled as task classes.
+FIXTURE_SAFETY_CLASSES = frozenset({"fence_evaluation", "dod_evaluation"})
+
+#: A tier no MODEL_TIERS entry names, for the raise-on-unknown cases.
+UNKNOWN_TIER = "gigantic"
+
+
+class TestModelTierRank:
+    """One ordered vocabulary, compared by index — and no silent default."""
+
+    @pytest.mark.parametrize(
+        ("tier", "expected"),
+        [(tier, index) for index, tier in enumerate(MODEL_TIERS)],
+    )
+    def test_each_tier_ranks_at_its_position_in_the_tuple(self, tier, expected):
+        assert model_tier_rank(tier) == expected
+
+    def test_the_ranks_increase_from_cheapest_to_strongest(self):
+        ranks = [model_tier_rank(t) for t in MODEL_TIERS]
+        assert ranks == sorted(ranks)
+        assert len(set(ranks)) == len(MODEL_TIERS)
+
+    def test_mid_ranks_between_the_cheapest_and_the_top_tier(self):
+        assert model_tier_rank(MODEL_TIERS[0]) < model_tier_rank(MID_TIER) < model_tier_rank(TOP_TIER)
+
+    def test_mid_tier_is_a_member_of_the_tier_tuple(self):
+        assert MID_TIER in MODEL_TIERS
+
+    def test_an_unknown_tier_raises_rather_than_returning_a_default(self):
+        with pytest.raises(ValueError):
+            model_tier_rank(UNKNOWN_TIER)
+
+    def test_the_raised_error_names_the_offending_tier(self):
+        with pytest.raises(ValueError) as excinfo:
+            model_tier_rank(UNKNOWN_TIER)
+        assert UNKNOWN_TIER in str(excinfo.value)
+
+
+class TestHardRuleNamesAreStableTokens:
+    """Refused WITH THE RULE NAMED means a stable token, not a prose sentence."""
+
+    def test_the_three_names_are_distinct(self):
+        names = {
+            RULE_REVIEWER_WEAKER_THAN_WORKER,
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_SAFETY_CLASS_BELOW_MID_TIER,
+        }
+        assert len(names) == 3
+
+    def test_hard_rule_names_carries_exactly_those_three_in_a_declared_order(self):
+        assert HARD_RULE_NAMES == (
+            RULE_REVIEWER_WEAKER_THAN_WORKER,
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_SAFETY_CLASS_BELOW_MID_TIER,
+        )
+
+    def test_no_rule_name_is_a_tier_name(self):
+        assert set(HARD_RULE_NAMES).isdisjoint(set(MODEL_TIERS))
+
+
+class TestReviewerNeverWeakerThanTheWorker:
+    """Policy hard rule 1 — equal allowed, stronger fine, strictly weaker refused."""
+
+    @pytest.mark.parametrize(
+        ("worker_tier", "reviewer_tier"),
+        [
+            (w, r)
+            for w in MODEL_TIERS
+            for r in MODEL_TIERS
+            if model_tier_rank(r) < model_tier_rank(w)
+        ],
+    )
+    def test_a_weaker_reviewer_is_refused_with_the_rule_named(self, worker_tier, reviewer_tier):
+        assert check_reviewer_not_weaker_than_worker(worker_tier, reviewer_tier) == (
+            RULE_REVIEWER_WEAKER_THAN_WORKER
+        )
+
+    @pytest.mark.parametrize("tier", MODEL_TIERS)
+    def test_an_equal_reviewer_is_not_refused(self, tier):
+        assert check_reviewer_not_weaker_than_worker(tier, tier) is None
+
+    @pytest.mark.parametrize(
+        ("worker_tier", "reviewer_tier"),
+        [
+            (w, r)
+            for w in MODEL_TIERS
+            for r in MODEL_TIERS
+            if model_tier_rank(r) > model_tier_rank(w)
+        ],
+    )
+    def test_a_stronger_reviewer_is_not_refused(self, worker_tier, reviewer_tier):
+        assert check_reviewer_not_weaker_than_worker(worker_tier, reviewer_tier) is None
+
+    def test_an_unknown_tier_raises_rather_than_reading_as_a_pass(self):
+        with pytest.raises(ValueError):
+            check_reviewer_not_weaker_than_worker(TOP_TIER, UNKNOWN_TIER)
+
+
+class TestOrchestrationCallsAlwaysTopTier:
+    """The feature file's rule — orchestrator and mission-compile calls always top tier."""
+
+    @pytest.mark.parametrize("task_class", sorted(ORCHESTRATION_TASK_CLASSES))
+    @pytest.mark.parametrize("tier", TIERS_BELOW_TOP)
+    def test_an_orchestration_class_below_top_is_refused_with_the_rule_named(self, task_class, tier):
+        assert check_orchestration_class_routed_to_top_tier(task_class, tier) == (
+            RULE_ORCHESTRATION_BELOW_TOP_TIER
+        )
+
+    @pytest.mark.parametrize("task_class", sorted(ORCHESTRATION_TASK_CLASSES))
+    def test_an_orchestration_class_at_the_top_tier_is_not_refused(self, task_class):
+        assert check_orchestration_class_routed_to_top_tier(task_class, TOP_TIER) is None
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    @pytest.mark.parametrize("tier", MODEL_TIERS)
+    def test_a_class_the_rule_does_not_cover_is_never_refused_by_it(self, task_class, tier):
+        if task_class in ORCHESTRATION_TASK_CLASSES:
+            pytest.skip("covered by the violating fixture above")
+        assert check_orchestration_class_routed_to_top_tier(task_class, tier) is None
+
+    def test_the_declared_class_may_be_spelled_as_the_document_words_it(self):
+        assert check_orchestration_class_routed_to_top_tier("Mission Compile", MODEL_TIERS[0]) == (
+            RULE_ORCHESTRATION_BELOW_TOP_TIER
+        )
+
+    def test_the_covered_classes_are_the_two_the_feature_file_names(self):
+        assert ORCHESTRATION_TASK_CLASSES == frozenset(
+            {normalize_task_class("orchestrator"), normalize_task_class("mission compile")}
+        )
+
+
+class TestSafetyRelevantClassNeverBelowMid:
+    """Policy hard rule 2, and the proof that it is NOT a rule that cannot fail."""
+
+    @pytest.mark.parametrize("task_class", sorted(FIXTURE_SAFETY_CLASSES))
+    @pytest.mark.parametrize("tier", TIERS_BELOW_MID)
+    def test_a_safety_class_below_mid_is_refused_with_the_rule_named(self, task_class, tier):
+        assert check_safety_relevant_class_not_below_mid_tier(
+            task_class, tier, FIXTURE_SAFETY_CLASSES
+        ) == RULE_SAFETY_CLASS_BELOW_MID_TIER
+
+    @pytest.mark.parametrize("task_class", sorted(FIXTURE_SAFETY_CLASSES))
+    @pytest.mark.parametrize("tier", TIERS_AT_OR_ABOVE_MID)
+    def test_a_safety_class_at_or_above_mid_is_not_refused(self, task_class, tier):
+        assert check_safety_relevant_class_not_below_mid_tier(
+            task_class, tier, FIXTURE_SAFETY_CLASSES
+        ) is None
+
+    @pytest.mark.parametrize("tier", MODEL_TIERS)
+    def test_a_class_outside_the_supplied_set_is_not_refused(self, tier):
+        assert check_safety_relevant_class_not_below_mid_tier(
+            "format", tier, FIXTURE_SAFETY_CLASSES
+        ) is None
+
+    def test_the_production_safety_class_set_is_empty_today(self):
+        assert SAFETY_RELEVANT_CLASSES == frozenset()
+
+    def test_the_empty_production_set_therefore_refuses_nothing_today(self):
+        assert check_safety_relevant_class_not_below_mid_tier(
+            sorted(FIXTURE_SAFETY_CLASSES)[0], MODEL_TIERS[0]
+        ) is None
+
+    def test_an_unknown_tier_raises_for_a_class_the_rule_covers(self):
+        with pytest.raises(ValueError):
+            check_safety_relevant_class_not_below_mid_tier(
+                sorted(FIXTURE_SAFETY_CLASSES)[0], UNKNOWN_TIER, FIXTURE_SAFETY_CLASSES
+            )
+
+
+class TestRoutingChoiceValidatorCollectsEveryViolation:
+    """Reporting one of three broken rules sends the operator round the loop three times."""
+
+    #: A single choice that breaks ALL THREE hard rules at once: an orchestration
+    #: class, also declared safety-relevant by the fixture set, routed to the
+    #: cheapest tier while reviewing a top-tier worker.
+    BREAKS_ALL_THREE = {
+        "task_class": "orchestrator",
+        "tier": MODEL_TIERS[0],
+        "paired_worker_tier": TOP_TIER,
+        "safety_relevant_classes": frozenset({"orchestrator"}),
+    }
+
+    def test_a_choice_breaking_all_three_returns_all_three_rule_names(self):
+        assert validate_routing_choice(**self.BREAKS_ALL_THREE) == HARD_RULE_NAMES
+
+    def test_a_conforming_choice_returns_an_empty_result(self):
+        assert validate_routing_choice(
+            task_class="orchestrator",
+            tier=TOP_TIER,
+            paired_worker_tier=TOP_TIER,
+            safety_relevant_classes=frozenset({"orchestrator"}),
+        ) == ()
+
+    def test_only_the_reviewer_rule_fires_for_a_plain_weak_reviewer(self):
+        assert validate_routing_choice(
+            task_class="format",
+            tier=MODEL_TIERS[0],
+            paired_worker_tier=TOP_TIER,
+        ) == (RULE_REVIEWER_WEAKER_THAN_WORKER,)
+
+    def test_only_the_orchestration_rule_fires_for_a_cheap_orchestrator_call(self):
+        assert validate_routing_choice(
+            task_class="orchestrator",
+            tier=MODEL_TIERS[0],
+        ) == (RULE_ORCHESTRATION_BELOW_TOP_TIER,)
+
+    def test_only_the_safety_rule_fires_for_a_cheap_safety_class(self):
+        assert validate_routing_choice(
+            task_class=sorted(FIXTURE_SAFETY_CLASSES)[0],
+            tier=MODEL_TIERS[0],
+            safety_relevant_classes=FIXTURE_SAFETY_CLASSES,
+        ) == (RULE_SAFETY_CLASS_BELOW_MID_TIER,)
+
+    def test_the_reviewer_rule_is_not_evaluated_without_a_paired_worker(self):
+        assert validate_routing_choice(task_class="format", tier=MODEL_TIERS[0]) == ()
+
+    def test_the_result_follows_the_declared_order_not_the_alphabet(self):
+        result = validate_routing_choice(**self.BREAKS_ALL_THREE)
+        assert list(result) == [n for n in HARD_RULE_NAMES if n in set(result)]
+        assert list(result) != sorted(result)
+
+    def test_with_the_production_safety_set_the_safety_rule_never_appears(self):
+        result = validate_routing_choice(
+            task_class=sorted(FIXTURE_SAFETY_CLASSES)[0],
+            tier=MODEL_TIERS[0],
+        )
+        assert RULE_SAFETY_CLASS_BELOW_MID_TIER not in result
