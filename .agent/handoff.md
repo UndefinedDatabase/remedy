@@ -820,3 +820,96 @@ THE BRANCH HAS NO OPEN PULL REQUEST. None was created this round or in any
 earlier round of F110, so the next session's Open PR Gate finds none and proceeds
 normally. The next session's FIRST action is Phase 1 rule 1 — read `.agent/STOP`
 from disk — BEFORE Phase 1 rule 2, the Open PR Gate.
+
+
+## Reviewer verdict — ROUND 5: PASS
+
+Appended by the planner/reviewer after the handback was written, per
+docs/agents/planner_reviewer_prompt.md §3 item 14 and operator amendment
+amend0827-process-diet rule 1. It is booked into `.agent/live_review.md` as
+`Gate: F110 R5` in the FIRST commit of the next session's first round, which is
+where that rule puts it. This session ends here, at its stated cap of five
+delegated rounds.
+
+WHAT THE REVIEWER RE-DERIVED RATHER THAN READ. The block is 252 lines against a
+projection of 252 — the second exact projection in a row. Every slice is
+byte-identical to its target: `.agent/plan.md` equals PLAN5, `.agent/live_review.md`
+equals its base plus two newlines plus RECORD4 and still ends without a newline,
+`.agent/prose_slips.md` equals its base plus two newlines plus SLIPS5 with the
+base preserved as an exact byte PREFIX. `ruff check` over both changed files
+answers "All checks passed!", run reviewer-side because the worker's permission
+layer refuses the tool. The suites re-run at 127, 67, 295 and 42, every one exit
+0; the routing suite grew from 48 to 127 and nothing else moved. The open set is
+278 over 347 registered and 69 resolved, unchanged, and the round registered and
+resolved nothing.
+
+EVERY SHIPPED CHECK WAS RUN BY THE REVIEWER, not read. `model_tier_rank` answers
+0, 1, 2 and raises `ValueError` naming `MODEL_TIERS` for an unknown tier.
+Hard rule 1 refuses `reviewer_weaker_than_worker` for a cheap reviewer against a
+top worker and returns None for equal and for stronger. Hard rule 2 refuses
+`orchestration_below_top_tier` for `orchestrator` at mid and returns None at top
+and for an out-of-scope class. Hard rule 3 refuses `safety_class_below_mid_tier`
+against a FIXTURE safety set and returns None at mid — and returns None under the
+production default, because that set is empty, which is the honest reading and
+the reason the fixture exists. The collecting validator returns all three names
+in `HARD_RULE_NAMES` order for a choice breaking all three, and an empty tuple
+for a conforming one.
+
+C3 IS 227 INSERTIONS AND ZERO DELETIONS, so constraint 7 holds by measurement
+rather than by assertion: round 4's table is provably unrevised and its sync test
+still passes untouched.
+
+DEVIATION D1 — THE EXTRA COMMIT `0f4ece46` IS ACCEPTED, AND THE JUDGEMENT BEHIND
+IT WAS RIGHT. C3's own docstring said the module "Owns the CLASS TABLE and
+nothing else yet", and C3 itself made that false by adding the rules. The
+reviewer read the whole commit: it is five added and two removed lines, all
+docstring prose, no executable line touched. Constraint 8 covers a stale sentence
+OUTSIDE the change set; this sentence was inside it and inside the very commit
+that falsified it, so declaring-and-not-repairing would have shipped a knowingly
+false first paragraph of production code. Repairing it in its own clearly-labelled
+commit is the better of the two, and running G6 a second time at `0f4ece46` so the
+red proof pins the SHIPPED bytes rather than a superseded tree is exactly the
+right instinct.
+
+DECISION F110 D2 (2026-09-03) — `mission` BELONGS IN
+`ORCHESTRATION_TASK_CLASSES`, AND T002c ADDS IT. Deviation D6 asked for this
+ruling instead of taking it, which was correct. MEASURED by the reviewer at
+`0f4ece46`: `ORCHESTRATION_TASK_CLASSES` is `{mission_compile, orchestrator}`,
+`TASK_CLASS_TIERS` names neither, so the intersection of the two is EMPTY, and
+`check_orchestration_class_routed_to_top_tier("mission", "cheap")` returns None
+even though `mission` is a real seeded class the policy document puts at the top
+tier. The hard rules are not vacuous — they judge a candidate CHOICE, which is
+what T002c will feed them, and the reviewer confirmed each refuses on a violating
+input. The gap is narrower and real: a per-project override moving `mission` from
+top to cheap breaks no hard rule today, and the sync test cannot catch it because
+that test guards the TABLE against the DOCUMENT and an override is neither.
+CHOSEN: add `mission` to `ORCHESTRATION_TASK_CLASSES` in T002c, with a violating
+fixture asserting an override that demotes it is refused by name. ALTERNATIVE
+CONSIDERED AND REJECTED: leave the set as the feature file's two literal call
+kinds and rely on the sync test, rejected because the sync test demonstrably does
+not reach overrides, which is the surface F110 exists to police — "never by
+editing a mapping casually" is about exactly this edit. NOT DONE NOW because this
+session is at its round cap and a code change with no round left to gate it is a
+change nobody reviewed. REVERSE by deleting this DECISION and removing `mission`
+from the set.
+
+WHAT THE NEXT SESSION OWES, IN ORDER. Phase 1 rule 1 first — read `.agent/STOP`
+from disk — then rule 2, the Open PR Gate, which finds NO open pull request
+because this branch deliberately created none. Its first round then books
+`Gate: F110 R5` and DECISION F110 D2 into `.agent/live_review.md` and
+`.agent/decisions.md` as its first commit, and carries T002c: the config schema
+and per-project overrides, where the hard rules always win, a violating override
+fails validation with the rule named, and `mission` joins the orchestration set
+per D2 above.
+
+FIVE SMALLER THINGS THE NEXT REVIEWER SHOULD NOT REDISCOVER. The worker's
+permission layer refuses `ruff` while the reviewer's does not, so a ruff gate is
+run reviewer-side and never ordered to a worker. A block's `wc -l` is reported by
+gate G1 against the reviewer's stated projection, which is what caught three
+consecutive off-by-N projections. `.agent/live_review.md` and
+`.agent/prose_slips.md` both end WITHOUT a trailing newline and each append is
+two newline bytes plus the slice. The open-set reading this ledger uses is the
+first R-id named by each `^Done:` line, which is 69 resolved against 347
+registered and 278 open. And `R-0767` remains OPEN on the same seam this feature
+has been working: it widens a CLI allow-list, touches no resolver, and must not
+be absorbed into a routing commit.
