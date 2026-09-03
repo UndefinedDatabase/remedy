@@ -14,28 +14,32 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 15, session 5 — THE INTEGRATION GATE, the tier-3 full-suite gate this
-feature owes before closure. `docs/agents/integration_gate.md` steps 1-5 run
-against the branch and against the merge base in a throwaway worktree, with the
-base-worktree UI parity restored the way findings R-0591 and R-0736 require and
-BOTH comparison sets attributed the way R-0590 requires. The evidence lands
-under `.agent/gate_f110_r15/`. Round 14's PASS verdict, the resolution of
-`R-0789` and one prose slip are booked in the same round. This round changes no
-code: a red gate is handed back, never repaired here.
+Round 16, session 5 — CLOSURE ROUND 1: THE SELF-USE PRECONDITION AND THE
+CHECKLIST-CONSOLIDATION RULING. Round 15's PASS verdict (the integration
+gate: branch clean, both base-only failures attributed to the XDIST-FLAKE
+class, no blocker) is booked. Closure precondition 6's self-use item is
+generated (the queue is exhausted at 0 pending), planned and RUN for real
+through the shipped generator and runner, mirroring F109 R19's own
+precedent exactly — never promoted, never faked. DECISION F110 D6 rules on
+the section-3 consolidation pass DECISION F110 D1 committed to: it ran,
+found two real merge candidates, and performed neither, because
+renumbering would falsify roughly 2,013 existing by-number citations the
+append-only ledger forbids correcting; the checklist stays at 37 items,
+amend0827 rule 4's "same length" branch.
 
 ## Next Steps
 
-- The closure sequence, which takes two rounds, runs the one §3 checklist
-  consolidation pass DECISION F110 D1 carries into it, needs an evidence job
-  and a FRESH review zip, and updates the Design and Task-slicing bullets of
-  `docs/roadmap/features/T3_F110.md`.
-- The STATUS line and the closure pull request, which the operator merges at
-  the next feature's Open PR Gate.
+- Round 17: register the self-use run's defects (if any) as findings, run
+  the evidence job and build a FRESH review zip, and give
+  `docs/roadmap/features/T3_F110.md` its Built State section plus the
+  Design/Task-slicing bullet updates.
+- Round 18: the closure commit — the authored STATUS line, the README
+  capability sync in the same commit, the self-use item's `consumed_by`
+  set to `F110`, and the PR.
 
 ## Risks
 
-- The base worktree is the known-fragile half: without the R-0591 symlink
-  argument and the R-0736 mtime advance it produces false base failures by the
-  hundred, so the gate reports `_frontend_is_stale()` from inside that tree
-  before the run rather than after it.
+- The self-use run may land `blocked` at its own approval gate (F109's
+  SU-005 did) — a normal outcome per `self_use_runner`'s own docstring,
+  not a failure of this round; its defects route to round 17's findings.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
