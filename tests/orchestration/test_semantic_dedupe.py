@@ -1879,9 +1879,12 @@ class TestTheSemanticDedupeKillSwitch:
         self, fallback_repo: Path, enabled: bool,
     ):
         # R-0771'S PROPERTY, RE-ASSERTED UNDER THE NEW PARAMETER and read off the
-        # CALLS rather than the traces, for the reason SPEC O gives: the round 2
-        # Builder trace describes the composition the fallback ABANDONED, not the
-        # bytes that left the loop.
+        # CALLS rather than the traces. Since R-0774 the fallback round records
+        # TWO Builder traces — the composition the fallback ABANDONED first, then
+        # the full-content call that actually left the loop — so a trace-based
+        # reading would have to choose between them, while the calls say which
+        # bytes left the loop without choosing. R-0777 corrected this comment,
+        # which described a single trace.
         builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
             builder_resume_fails=True,
         )
