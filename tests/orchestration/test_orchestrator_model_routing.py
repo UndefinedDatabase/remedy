@@ -27,29 +27,55 @@ from packages.orchestration.role_config import RoleConfig, resolve_orchestrator_
 SENTINEL_CONFIGURED = "sentinel-configured-model:test"
 SENTINEL_FROM_ROLE_CONFIG = "sentinel-role-config-model:test"
 
+#: The one config key the orchestrator's operator override lives at, spelled
+#: once so the stub below and the test that proves it was read agree by
+#: construction rather than by two people typing the same string.
+ORCHESTRATOR_MODEL_CONFIG_KEY = "orchestrator.model"
+
 
 class _FakeConfig:
-    """The one method ``resolve_orchestrator_model`` calls on a config object."""
+    """A permissive config double that RECORDS every key it was asked for.
+
+    WHY IT IS PERMISSIVE. This stub used to refuse every key but
+    ``orchestrator.model`` with an assertion, and that refusal was the proof of
+    WHICH key ``resolve_orchestrator_model`` read. It stopped being right when
+    the fall-through path gained a SECOND legitimate reader: ``resolve_role_config``
+    now reads ``model_routing.task_class_tiers``, so the refusal turned a correct
+    read into a test failure. The proof did not go away — it moved to
+    ``TestTheOperatorOverrideKeyIsTheOneRead`` below, which reads
+    :attr:`keys_read` and asserts positively. ``None`` is the right answer for
+    every other key: it means "no per-project overrides", which is exactly the
+    state these tests intend.
+    """
 
     def __init__(self, value):
         self._value = value
+        self.keys_read: list[str] = []
 
     def get(self, key):
-        assert key == "orchestrator.model", f"unexpected config key {key!r}"
-        return self._value
+        self.keys_read.append(key)
+        if key == ORCHESTRATOR_MODEL_CONFIG_KEY:
+            return self._value
+        return None
 
 
-def _patch_config(monkeypatch, value) -> None:
-    """Make ``orchestrator.model`` answer ``value``.
+def _patch_config(monkeypatch, value) -> _FakeConfig:
+    """Make ``orchestrator.model`` answer ``value``; return the stub itself.
 
     Patched at ``packages.orchestration.config.get_config``, which is the name
     the function resolves at CALL time — it imports get_config inside its own
     body, so patching the defining module is what actually reaches it.
+
+    ONE instance is built and the lambda hands out that same object, because a
+    stub constructed afresh per call would throw away the key recording before
+    any test could read it.
     """
+    config = _FakeConfig(value)
     monkeypatch.setattr(
         "packages.orchestration.config.get_config",
-        lambda: _FakeConfig(value),
+        lambda: config,
     )
+    return config
 
 
 def _patch_role_config(monkeypatch, model: str) -> None:
@@ -152,3 +178,20 @@ class TestTheAnswerIsAlwaysUsable:
         result = resolve_orchestrator_model()
         assert isinstance(result, str)
         assert result.strip() != ""
+
+
+class TestTheOperatorOverrideKeyIsTheOneRead:
+    """The positive form of the proof the stub's old refusal carried.
+
+    Asserting that the operator-override key is among the keys the config was
+    asked for says the same thing the refusal said — this function reads THAT
+    key — without also forbidding the other, legitimate readers on the
+    fall-through path.
+    """
+
+    def test_the_operator_override_key_is_among_the_keys_read(self, monkeypatch):
+        config = _patch_config(monkeypatch, None)
+
+        resolve_orchestrator_model()
+
+        assert ORCHESTRATOR_MODEL_CONFIG_KEY in config.keys_read
