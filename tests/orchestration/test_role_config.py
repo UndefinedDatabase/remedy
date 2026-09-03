@@ -15,12 +15,18 @@ from packages.orchestration.model_routing import (
     MODEL_TIERS,
     ORCHESTRATION_TASK_CLASSES,
     OVERRIDE_REASON,
+    PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES,
+    PROMOTION_EVIDENCE_NESTED_FIELD,
+    PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+    PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+    PROMOTION_MINIMUM_RUNS_PER_FIXTURE,
     REVIEWER_WORKER_CLASS_PAIRS,
     ROLE_CONFIG_CALL_SITES,
     ROLE_CONFIG_RESOLVER_NAME,
     ROLE_TASK_CLASSES,
     ROUTED_CALL_EVIDENCE_FIELDS,
     RULE_ORCHESTRATION_BELOW_TOP_TIER,
+    RULE_PROMOTION_WITHOUT_EVIDENCE,
     SAFETY_RELEVANT_CLASSES,
     TASK_CLASS_INHERITING_ROLES,
     TASK_CLASS_TIERS,
@@ -28,6 +34,8 @@ from packages.orchestration.model_routing import (
     UNDECLARED_ROLE_TASK_CLASS,
     UNKNOWN_CLASS_REASON,
     OriginatingTaskClassRequired,
+    PromotionAssertionResults,
+    is_task_class_promotion,
     model_tier_rank,
     resolve_task_class_tier,
     route_role_call,
@@ -37,11 +45,13 @@ from packages.orchestration.role_config import (
     DEFAULT_MODEL,
     DEFAULT_PROVIDER,
     KNOWN_ROLES,
+    PROMOTION_EVIDENCE_CONFIG_KEY,
     TASK_CLASS_TIERS_CONFIG_KEY,
     RoleConfig,
     default_model_for_provider,
     resolve_effective_task_class_tiers,
     resolve_orchestrator_model,
+    resolve_promotion_evidence,
     resolve_role_config,
 )
 
@@ -652,3 +662,258 @@ class TestRefusedOverrideWarnsAndRoutesSeeded:
                 assert cfg.routed_call["tier"] == TASK_CLASS_TIERS[
                     ROLE_TASK_CLASSES[role]
                 ]
+
+
+# ---------------------------------------------------------------------------
+# F110 T003 — the PROMOTION-EVIDENCE table reaching the builder and the seam
+# ---------------------------------------------------------------------------
+# The fixtures below DERIVE the class, the role, the tier, every evidence field
+# name and every bar from model_routing's own constants. A spelled pair or a
+# spelled field would still pass after a re-seeding or a rename that made it
+# meaningless, and surviving exactly that event is why these tests exist.
+
+
+def _evidence_promotable_role() -> tuple[str, str, str]:
+    """Return ``(role, task_class, promoted_tier)`` a documented run can license.
+
+    A DECLARED role whose class is seeded at :data:`TOP_TIER` and which no HARD
+    rule protects — outside :data:`ORCHESTRATION_TASK_CLASSES`, outside every
+    :data:`REVIEWER_WORKER_CLASS_PAIRS` pair and outside
+    :data:`SAFETY_RELEVANT_CLASSES` — moved to the CHEAPEST tier, so the move IS
+    a promotion and the promotion rule is the ONLY rule standing in its way.
+    """
+    paired = {name for pair in REVIEWER_WORKER_CLASS_PAIRS for name in pair}
+    cheapest = MODEL_TIERS[0]
+    for role in sorted(ROLE_TASK_CLASSES):
+        task_class = ROLE_TASK_CLASSES[role]
+        if task_class in ORCHESTRATION_TASK_CLASSES or task_class in paired:
+            continue
+        if task_class in SAFETY_RELEVANT_CLASSES:
+            continue
+        if TASK_CLASS_TIERS[task_class] != TOP_TIER:
+            continue
+        if model_tier_rank(cheapest) >= model_tier_rank(TOP_TIER):
+            continue
+        return role, task_class, cheapest
+    raise AssertionError("no declared role carries a top-tier class a run could promote")
+
+
+def _well_formed_evidence_entry(task_class: str) -> dict[str, object]:
+    """Return a raw evidence entry for *task_class* that MEETS every bar.
+
+    Every field of :data:`PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES` is set, plus the
+    nested :data:`PROMOTION_EVIDENCE_NESTED_FIELD` table, so the record is
+    COMPLETE — an unset field would be refused as INCOMPLETE rather than as
+    unevidenced, and the test would then be proving the wrong refusal. The names
+    come from those constants and from ``PromotionAssertionResults`` itself; the
+    numbers come from the module's own bars, so raising a bar moves this fixture
+    with it instead of leaving it quietly under one.
+    """
+    bars = {
+        "block_level_pass_rate": PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+        "overall_pass_rate": PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+    }
+    assert set(bars) == set(PromotionAssertionResults.__dataclass_fields__), bars
+    entry: dict[str, object] = {}
+    for field_name, expected in PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES.items():
+        if field_name == "runs_per_fixture":
+            entry[field_name] = PROMOTION_MINIMUM_RUNS_PER_FIXTURE
+        elif expected is int:
+            entry[field_name] = 12345
+        elif expected is float:
+            entry[field_name] = 0.5
+        else:
+            entry[field_name] = f"{field_name}-of-{task_class}"
+    entry[PROMOTION_EVIDENCE_NESTED_FIELD] = dict(bars)
+    return entry
+
+
+def _toml_scalar(value: object) -> str:
+    """Render *value* as a TOML scalar, REFUSING a bool.
+
+    A bool is refused rather than rendered because ``bool`` is a subclass of
+    ``int``: a fixture emitting ``true`` for an int field would be probing the
+    parser's bool guard while claiming to build a well-formed record.
+    """
+    assert not isinstance(value, bool), value
+    if isinstance(value, str):
+        return f'"{value}"'
+    return repr(value)
+
+
+def _configure_promotion_tables(monkeypatch, tmp_path, tiers, evidence=None) -> None:
+    """Make BOTH model-routing config tables answer for this test.
+
+    ``tiers`` maps task class to tier. ``evidence`` is either a mapping of task
+    class to a raw entry, or a plain STRING — the shape an environment variable
+    could carry where a table belongs — or ``None`` for a key left unset. Both
+    tables are written as REAL TOML to a pytest ``tmp_path`` and resolved by the
+    REAL ``load_config``, so the table-valued flatten and the precedence chain
+    are exercised rather than stubbed. NOTHING is written to the repository
+    root: a ``remedy.toml`` there would change how every test in the suite
+    resolves configuration.
+    """
+    from packages.orchestration.config import load_config
+
+    lines: list[str] = []
+    if tiers:
+        lines.append(f"[remedy.{TASK_CLASS_TIERS_CONFIG_KEY}]")
+        lines += [f'{name} = "{tier}"' for name, tier in tiers.items()]
+        lines.append("")
+    if isinstance(evidence, str):
+        section, _, leaf = PROMOTION_EVIDENCE_CONFIG_KEY.rpartition(".")
+        lines.append(f"[remedy.{section}]")
+        lines.append(f"{leaf} = {_toml_scalar(evidence)}")
+        lines.append("")
+    elif evidence:
+        for name, entry in evidence.items():
+            lines.append(f"[remedy.{PROMOTION_EVIDENCE_CONFIG_KEY}.{name}]")
+            for field_name, value in entry.items():
+                if isinstance(value, dict):
+                    inner = ", ".join(
+                        f"{key} = {_toml_scalar(reading)}"
+                        for key, reading in value.items()
+                    )
+                    lines.append(f"{field_name} = {{ {inner} }}")
+                else:
+                    lines.append(f"{field_name} = {_toml_scalar(value)}")
+            lines.append("")
+
+    toml_file = tmp_path / "remedy.toml"
+    toml_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    loaded = load_config(
+        project_path=toml_file,
+        user_path=pathlib.Path("/nonexistent/user.toml"),
+    )
+    monkeypatch.setattr(
+        "packages.orchestration.config.get_config", lambda: loaded
+    )
+
+
+class TestPromotableRoleIsReadFromTheShippedTables:
+    """The class and the role under test come from the DATA, not from a literal."""
+
+    def test_the_promotable_role_and_class_are_derived(self):
+        role, task_class, promoted = _evidence_promotable_role()
+        assert ROLE_TASK_CLASSES[role] == task_class
+        assert TASK_CLASS_TIERS[task_class] == TOP_TIER
+        assert model_tier_rank(promoted) < model_tier_rank(TOP_TIER)
+        assert is_task_class_promotion(task_class, promoted)
+
+
+class TestPromotionEvidenceReachesTheTableBuilder:
+    """A documented benchmark run LICENSES a cheaper tier — and nothing else does."""
+
+    def test_a_promotion_with_evidence_is_accepted_end_to_end(
+        self, monkeypatch, tmp_path
+    ):
+        _, task_class, promoted = _evidence_promotable_role()
+        # THE DISCRIMINATOR: without this the seed tier could satisfy the
+        # assertion below and the promotion would prove nothing.
+        assert promoted != TASK_CLASS_TIERS[task_class]
+        _configure_promotion_tables(
+            monkeypatch,
+            tmp_path,
+            {task_class: promoted},
+            {task_class: _well_formed_evidence_entry(task_class)},
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            effective = resolve_effective_task_class_tiers()
+        assert effective[task_class] == promoted
+        assert [str(w.message) for w in caught] == []
+
+    def test_the_same_promotion_without_evidence_is_still_refused(
+        self, monkeypatch, tmp_path
+    ):
+        _, task_class, promoted = _evidence_promotable_role()
+        _configure_promotion_tables(monkeypatch, tmp_path, {task_class: promoted})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            effective = resolve_effective_task_class_tiers()
+        # The class comes back at its SEEDED tier, and the rule name is READ.
+        assert effective[task_class] == TASK_CLASS_TIERS[task_class]
+        assert effective[task_class] != promoted
+        messages = [str(w.message) for w in caught]
+        assert any(RULE_PROMOTION_WITHOUT_EVIDENCE in m for m in messages), messages
+
+
+class TestPromotionEvidenceReachesTheSeam:
+    """A routed call NAMES the run that promoted it, instead of answering None."""
+
+    def test_a_routed_call_names_what_promoted_it(self, monkeypatch, tmp_path):
+        role, task_class, promoted = _evidence_promotable_role()
+        entry = _well_formed_evidence_entry(task_class)
+        _configure_promotion_tables(
+            monkeypatch, tmp_path, {task_class: promoted}, {task_class: entry}
+        )
+        cfg = resolve_role_config(role)
+        assert cfg.routed_call is not None
+        assert cfg.routed_call["task_class"] == task_class
+        assert cfg.routed_call["tier"] == promoted
+        assert cfg.routed_call["reason"] == OVERRIDE_REASON
+        promoted_by = cfg.routed_call["promoted_by"]
+        assert promoted_by is not None
+        # THE SUBSTRINGS COME FROM THE CONFIGURED EVIDENCE, never from a literal
+        # reference string this suite would then own.
+        assert entry["model_id"] in promoted_by
+        assert entry["corpus"] in promoted_by
+
+    def test_the_same_role_records_no_promoter_without_evidence(
+        self, monkeypatch, tmp_path
+    ):
+        role, task_class, promoted = _evidence_promotable_role()
+        _configure_promotion_tables(monkeypatch, tmp_path, {task_class: promoted})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cfg = resolve_role_config(role)
+        assert cfg.routed_call["tier"] == TASK_CLASS_TIERS[task_class]
+        assert cfg.routed_call["promoted_by"] is None
+
+
+class TestUnsetPromotionEvidenceChangesNothing:
+    """No evidence configured: the reader is empty and every answer is unmoved."""
+
+    def test_an_unset_evidence_key_reads_as_an_empty_mapping(self):
+        assert resolve_promotion_evidence() == {}
+
+    def test_an_unset_evidence_key_leaves_every_routed_answer_unchanged(self):
+        for role in sorted(ROLE_TASK_CLASSES):
+            cfg = resolve_role_config(role)
+            # route_role_call with NO evidence is exactly the pre-wiring answer.
+            assert cfg.routed_call == route_role_call(role, None, TASK_CLASS_TIERS), role
+            assert cfg.routed_call["promoted_by"] is None, role
+
+
+class TestMalformedPromotionEvidenceIsNotACrash:
+    """DECISION F110 D5 one layer on: a shape fault must not break a resolution."""
+
+    def test_a_bare_string_where_the_table_belongs_reads_as_empty(
+        self, monkeypatch, tmp_path
+    ):
+        bare = "not-a-table"
+        _configure_promotion_tables(monkeypatch, tmp_path, {}, bare)
+        from packages.orchestration.config import get_config
+
+        # THE DISCRIMINATOR: the key really does carry the bare string, so it is
+        # the READER'S GUARD that answers empty and not an absent key.
+        assert get_config().get(PROMOTION_EVIDENCE_CONFIG_KEY) == bare
+        assert resolve_promotion_evidence() == {}
+
+    def test_a_bare_string_still_resolves_a_routed_call(self, monkeypatch, tmp_path):
+        role, task_class, promoted = _evidence_promotable_role()
+        baseline = resolve_role_config(role)
+        _configure_promotion_tables(
+            monkeypatch, tmp_path, {task_class: promoted}, "not-a-table"
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cfg = resolve_role_config(role)
+        # Provider, model and effort are UNCHANGED — routing records, it never
+        # selects, and a malformed evidence table cannot change that.
+        assert cfg.provider == baseline.provider
+        assert cfg.model == baseline.model
+        assert cfg.effort == baseline.effort
+        assert cfg.routed_call is not None
+        assert cfg.routed_call["tier"] == TASK_CLASS_TIERS[task_class]
+        assert cfg.routed_call["promoted_by"] is None
