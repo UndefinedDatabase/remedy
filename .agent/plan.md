@@ -14,19 +14,20 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 9, session 3 — THE WIRING ROUND, the third and last clause of T001.
-All seven inventoried call sites route through the seam in one change,
-because all seven already funnel through `resolve_role_config`: that
-function now calls `route_role_call` and carries the routed-call evidence
-on the `RoleConfig` it already returns. DECISION F110 D4 rules where that
-evidence lands. Round 8's PASS verdict and its prose slip are booked in
-the same round.
+Round 10, session 3 — THE CONFIGURATION ROUND. `config.py` learns to
+resolve a TABLE-VALUED key through the precedence chain it already has,
+F110 registers `model_routing.task_class_tiers`, and the routing layer lays
+that table over the seed mapping through the validator round 6 built. A
+project can re-tier a class; it cannot re-tier one the hard rules protect,
+and a refused map warns with the rule named and routes seeded — DECISION
+F110 D5. Round 9's PASS verdict and its two prose slips are booked in the
+same round.
 
 ## Next Steps
 
-- The configuration round: the per-project override map and the promotion
-  evidence map are READ from configuration rather than defaulting to the
-  shipped table — consolidation order E.d.
+- The promotion-evidence round: the evidence map is read from configuration
+  too, so a documented benchmark run can license a cheaper tier — the last
+  unbuilt clause of T003.
 - The acceptance round: a fixture run whose every call's evidence shows
   class, tier and reason, per the feature file's Acceptance section.
 - The integration gate round, before closure.
@@ -36,11 +37,8 @@ the same round.
 
 ## Risks
 
-- `resolve_role_config` now calls into the policy layer, so a routing fault
-  could become a config-resolution fault. `repair` is the live case: it
-  raises when no originating class is supplied, which is why the wiring
-  answers `None` there rather than breaking a resolution that worked.
-- Recording is not selecting: the seam answers a TIER and F110 maps no tier
-  to a model id, so this round changes what is RECORDED and nothing about
-  which model runs.
+- `config.py` is imported almost everywhere, so the flatten change is the
+  round's real blast radius; the unmoved suites are the regression evidence.
+- A refused override map must not break config resolution — the round 9
+  lesson one layer further out.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
