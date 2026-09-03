@@ -1,0 +1,31 @@
+F110 R15 integration gate - base-worktree UI parity, measured as an EVENT
+(R-0444: a content digest may accompany this reading, never replace it).
+
+Base run window (epoch): START 1788447658.9224236  END 1788447902.8479466
+                  (ISO): START Thu Sep  3 17:00:58 2026  END Thu Sep  3 17:05:02 2026
+
+Restoration performed BEFORE the run, applying R-0591 and R-0736:
+  apps/ui/node_modules copied with shutil.copytree(symlinks=True):
+    44839 entries, 27 symlinks PRESERVED (23 of them the npm .bin shims)
+  apps/ui/dist copied with shutil.copytree(symlinks=True):
+    5 entries, 0 symlinks (source dist carries none)
+  dist mtimes ADVANCED past the worktree's own checkout stamp
+  (checkout stamp measured as the max mtime under apps/ui/src in the base
+  worktree: 1788447609.019416; dist files re-stamped to 1788447634.5707407,
+  which is newer): _frontend_is_stale() evaluated FROM INSIDE the base
+  worktree, by importing packages/orchestration/ui_server.py from that tree
+  directly, read False BEFORE the run started.
+
+Every file under .remedy-wt/base-gate/apps/ui/dist, mtime before and after:
+  assets/diffHighlightGrammars-o9XqnLhb.js before=1788447634.5707407 after=1788447634.5707407 in_window=False
+  assets/index-Bh0mkYBD.js     before=1788447634.5707407 after=1788447634.5707407 in_window=False
+  assets/index-D_qZGOuo.css    before=1788447634.5707407 after=1788447634.5707407 in_window=False
+  index.html                   before=1788447634.5707407 after=1788447634.5707407 in_window=False
+
+Files: 4. Any mtime inside the window START..END would VOID the parity claim.
+None is inside it, and the before/after mtime maps are identical.
+Accompanying content digest (sha256 over the concatenated file contents,
+sorted by relative path), post-run:
+  ef09e3072d59b1d6fa7ea7ea0bd13aabaafb52674b9dbad58a8e2a615236f445
+
+PARITY HOLDS: apps/ui/dist was not rebuilt during the base run.

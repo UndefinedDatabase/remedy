@@ -1,0 +1,60 @@
+        sits BETWEEN the two cases rather than merely above the good one.
+    
+        It is deliberately not a full order of magnitude above the measurement: 1.0 s is
+        exactly where the quadratic case lands, so a ten-times ceiling would pass both
+        and record nothing. Anyone tightening this below about 0.35 s is policing a
+        machine rather than a complexity class, and should not.
+        """
+        diff_text = _generated_huge_single_file_diff(HUGE_DIFF_BODY_LINE_COUNT)
+    
+        started = time.perf_counter()
+        view = parse_unified_diff_to_view(diff_text)
+        elapsed = time.perf_counter() - started
+    
+        # A budget met by parsing nothing is not a budget: pin the work first.
+        assert len(view["files"]) == 1
+        parsed_lines = sum(len(hunk["lines"]) for hunk in view["files"][0]["hunks"])
+        assert parsed_lines == HUGE_DIFF_BODY_LINE_COUNT
+>       assert elapsed < HUGE_DIFF_PARSE_CEILING_SECONDS, (
+            f"parsing {HUGE_DIFF_BODY_LINE_COUNT} body lines took {elapsed:.3f}s, "
+            f"ceiling {HUGE_DIFF_PARSE_CEILING_SECONDS}s"
+        )
+E       AssertionError: parsing 10000 body lines took 0.573s, ceiling 0.5s
+E       assert 0.5729479959991295 < 0.5
+
+tests/orchestration/test_diff_parser.py:1254: AssertionError
+____________ TestSubprocessCleanup.test_timeout_raises_with_cleanup ____________
+[gw3] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.cli.test_review_bundle_runtime.TestSubprocessCleanup object at 0x7c9e18218b50>
+
+    def test_timeout_raises_with_cleanup(self):
+        """A very short timeout raises TimeoutExpired after cleanup."""
+        import subprocess as sp
+        try:
+            # Run a sleep command with 1-second timeout
+            _run_grouped_cli(
+                ["--help"],  # fast command, but use tiny timeout
+                timeout=0,  # immediate timeout
+            )
+            # If it didn't timeout (fast enough), that's OK too
+        except sp.TimeoutExpired:
+            pass  # Expected — process group was cleaned up
+        # Verify no orphan process from this test
+        import time
+        time.sleep(0.1)
+        result = subprocess.run(
+            ["pgrep", "-f", "apps.cli.grouped.*--help"],
+            capture_output=True, text=True,
+        )
+>       assert result.returncode != 0, "Orphan process found after timeout cleanup"
+E       AssertionError: Orphan process found after timeout cleanup
+E       assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['pgrep', '-f', 'apps.cli.grouped.*--help'], returncode=0, stdout='3828860\n', stderr='').returncode
+
+tests/cli/test_review_bundle_runtime.py:327: AssertionError
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+2 failed, 18935 passed, 20 skipped in 243.46s (0:04:03)
+

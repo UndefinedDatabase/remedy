@@ -16,14 +16,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-68 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+69 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 14 | 19 |
-| 3 | Full Token Economy & Autonomy | 3 | 26 |
+| 3 | Full Token Economy & Autonomy | 4 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -82,6 +82,17 @@ config kill switch disables the path completely, and a run's own prompt traces
 measure what it withheld — 556 characters avoided against 97 spent on markers on
 the fixture chain. No concrete adapter resumes in production yet, so the
 mechanism is exercised by the suite and inert on real runs today).
+
+F110 model routing by task class (every role Remedy resolves a runtime
+configuration for now carries a declared task class; a single resolver
+seam routes builder/reviewer/orchestrator/teacher/summary/test-worker/
+design-worker calls to a cost tier — cheap, mid or top — with the
+reason recorded alongside the routed call; the three policy hard rules
+(reviewer never weaker than its paired worker, orchestrator/mission
+calls always top tier, safety-relevant classes never below mid) are
+enforced in code and refuse a violating override by name rather than
+silently applying it; moving a class to a cheaper tier requires a
+documented benchmark run, never a bare config edit).
 
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend

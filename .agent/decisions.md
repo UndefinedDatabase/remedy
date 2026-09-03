@@ -9958,3 +9958,264 @@ MEASURED: `tests/docs/` 295 passed, `tests/orchestration/test_roadmap_index.py`
 30 passed, `tests/cli/test_golden_path.py` 42 passed;
 `remedy plan status --json` reports feature_count 266, scheduled_count 266, no
 inconsistencies, and still proposes F108.
+
+## DECISION F110 D1 (2026-09-03) — the section 3 checklist consolidation F109 owed is carried into F110's closure sequence
+
+CONTEXT. Operator amendment amend0827-process-diet rule 4 freezes the
+pre-emission checklist of `docs/agents/planner_reviewer_prompt.md` section 3
+while a feature is open, and requires the consolidation pass to happen EXACTLY
+ONCE per feature, inside the closure sequence, coming out the SAME LENGTH OR
+SHORTER. F109 never performed it. MEASURED at `edb16a46`:
+`git log 5e18a853..edb16a46 -- docs/agents/planner_reviewer_prompt.md` returns
+no commit, so that file was never touched on the F109 branch. F109's own round
+21 handback declared the omission as its deviation D3, and F109's closure gate
+raised it as the first of the four closure candidates.
+
+CHOSEN. F110's closure sequence runs ONE consolidation pass covering BOTH
+features' lessons, against the ceiling amend0827 rule 4 names — the item count
+the checklist stood at on 2026-08-27, which that rule states and this DECISION
+deliberately does not restate. F109's lessons are on disk for that pass to
+consume: the same round that carries this DECISION appends to
+`.agent/prose_slips.md` the entries F109's rounds 8 through 21 owed and never
+wrote.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Run the consolidation now, as a round of
+its own on the F110 branch. Rejected because amend0827 rule 4 places the pass
+inside a closure sequence and inside a round that is running anyway, while
+amend0827 rule 1 forbids a round whose whole change set is corrections — so
+running it now would break both halves of the order it exists to satisfy.
+
+NOT AVAILABLE. Reopening F109 to perform the pass there: F109 is `[x]` in the
+ledger, its branch is merged, and the self-drive guardrail G2 forbids rewriting
+landed history.
+
+CONSEQUENCE. The checklist stays unchanged and therefore NOT WRONG — only
+unconsolidated — until F110's closure sequence. The ceiling that pass measures
+against is amend0827 rule 4's own figure, and F110 may not raise it.
+
+REVERSE by deleting this DECISION; the obligation then reverts to whatever a
+later relay rules, and the checklist is untouched either way.
+
+## DECISION F110 D2 (2026-09-03, F110 R5) — `mission` belongs in the orchestration class set, and T002c adds it
+
+CONTEXT. Round 5 shipped the three hard rules of
+`docs/agents/model_routing_policy.md` as named checks. Its deviation D6 asked
+for this ruling instead of taking it, which was correct; the reviewer rules on
+it here.
+
+MEASURED by the reviewer at `0f4ece46`, by RUNNING the shipped code rather than
+reading it. `ORCHESTRATION_TASK_CLASSES` holds `mission_compile` and
+`orchestrator`; `TASK_CLASS_TIERS` names neither of those, so the intersection
+of the two is EMPTY; and
+`check_orchestration_class_routed_to_top_tier("mission", "cheap")` returns
+`None`, even though `mission` is a real seeded class the policy document routes
+to the top tier.
+
+The hard rules are NOT vacuous and this DECISION does not say they are. They
+judge a candidate CHOICE, which is exactly what the T002c override schema feeds
+them, and each was confirmed at that same commit to refuse on a violating input.
+The gap is narrower and real: a per-project override moving `mission` from the
+top tier to the cheap one breaks no hard rule today, and the policy-document
+sync test cannot catch it, because that test guards the TABLE against the
+DOCUMENT and an override is neither.
+
+CHOSEN. `mission` joins `ORCHESTRATION_TASK_CLASSES` in T002c, with a violating
+fixture asserting that an override demoting it is refused BY NAME. F110 exists
+to stop a tier moving "by editing a mapping casually", and an override map is
+that edit wearing a config file's clothes.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Leave the set as the feature file's two
+literal call kinds and rely on the sync test. Rejected because the sync test
+demonstrably does not reach an override, which is the surface this feature
+exists to police.
+
+CONSEQUENCE, and it is a real one. The set stops matching the wording of
+`docs/roadmap/features/T3_F110.md`, which names orchestrator and mission-compile
+calls and not `mission`. Nothing is renamed and the feature file is not edited;
+the module says at the constant why the set is deliberately wider than the
+sentence that seeded it. One existing test asserts the exact two-class
+membership; it is REWRITTEN in the same round rather than deleted, so the
+membership stays pinned — a pin on a wider set, not a weaker pin.
+
+REVERSE by deleting this DECISION, removing `mission` from
+`ORCHESTRATION_TASK_CLASSES`, and restoring that membership test to the
+two-class form git history holds at `78071a87`.
+
+## DECISION F110 D3 (2026-09-03, F110 R7) — the orchestrator ROLE declares the `mission` task class, and the policy document is not edited to seed a new one
+
+CONTEXT. Round 8 maps every role Remedy resolves a runtime configuration for to
+a task class. All but one map onto a class the policy document's seed mapping
+already names; the `orchestrator` role does not, and the choice has to be made
+before the map can be written.
+
+MEASURED by the reviewer at `4cfcb464`, from the shipped constants rather than
+the prose. `TASK_CLASS_TIERS` does not name `orchestrator`.
+`ORCHESTRATION_TASK_CLASSES` names `orchestrator`, `mission_compile` and
+`mission`, and round 6's own `OVERRIDABLE_ORCHESTRATION_CLASSES` computes the
+intersection of those two sets and finds `mission` alone — so `orchestrator` and
+`mission_compile` are CALL KINDS the hard rule guards, not classes the seed
+table routes.
+
+CHOSEN. The `orchestrator` role declares the `mission` class. That class is
+seeded at the top tier, it is in `ORCHESTRATION_TASK_CLASSES` after DECISION
+F110 D2, and it is therefore already guarded by hard rule 2 against any override
+that would demote it — so the orchestrator's call is pinned to the top tier by a
+CHECKED rule and not merely by a table entry. The reading is honest as well as
+convenient: the orchestrator's call is the mission-level decision every later
+call obeys, which is what the policy document's top tier exists for.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Add `orchestrator` to the seed mapping in
+`docs/agents/model_routing_policy.md` and to `TASK_CLASS_TIERS` together, keeping
+round 4's sync test green. Rejected on two grounds. It edits the human-readable
+POLICY to make a code mapping convenient, which inverts the direction this
+feature exists to enforce — the document seeds the code, never the reverse. And
+it would put a CALL KIND into a vocabulary of WORK KINDS, so the seed mapping
+would then answer two different questions with one list.
+
+ALSO REJECTED. Let the role fall through to the conservative unknown-class path,
+which routes to the top tier anyway. Rejected because evidence would then record
+`unknown_class_conservative` for a role Remedy knows perfectly well, and a reason
+saying "nobody declared this" about a declared role makes the evidence base less
+trustworthy exactly where it is most read.
+
+CONSEQUENCE. `mission_compile` and `orchestrator` stay in
+`ORCHESTRATION_TASK_CLASSES` while being unreachable through an override map,
+because neither is a seed-table key — round 6's tests already measure that. They
+are kept because the hard rule judges a candidate CHOICE and a later round may
+route one directly. The module carries a deliberate-absence note saying
+`mission_compile` has no role and no call site.
+
+REVERSE by deleting this DECISION and repointing the orchestrator role at
+whatever class a later relay rules, or by seeding `orchestrator` into the policy
+document and the table together, which is the rejected alternative above and
+needs its own decision.
+
+## DECISION F110 D4 (2026-09-03, round 9) — where the routed-call evidence lands
+
+CONTEXT. Round 8 shipped `route_role_call`, the single seam, and left it
+wired to nothing. Round 8's verdict refused to rule on the sink without
+measuring the surfaces that already carry a field of nearly the same name,
+and named that measurement as session 3's opening work. It has now been
+taken, at `328228dc`.
+
+WHAT WAS MEASURED. Four production surfaces carry `model_routing_tier` or
+`model_routing_plan.tier`: `packages/orchestration/progress_ledger.py`,
+`packages/orchestration/review_bundle.py`,
+`packages/orchestration/ui_server.py` and
+`apps/cli/commands/orchestrator_cmd.py`. All four read the SAME source — the
+`model_routing_plan` of an `orchestrator_brain` decision record — whose
+vocabulary is HUMAN_REVIEW_REQUIRED / EXTERNAL_BUILDER_NEEDED /
+local_advisor_preferred. That answers WHEN a job escalates to a human or an
+external builder. It has nothing to do with F110's cheap/mid/top, and the
+name is fully occupied across all four.
+
+CHOSEN. The sink is the `RoleConfig` object `resolve_role_config` already
+returns, carrying the evidence as ONE nested mapping field whose keys are
+exactly `ROUTED_CALL_EVIDENCE_FIELDS`. One change wires all seven
+inventoried call sites, because all seven already funnel through that
+function. `role_config.py` imports `model_routing.py` — config depending on
+policy, the direction that module's docstring permits — and no cycle is
+possible: `model_routing.py` imports only `warnings` and `dataclasses`.
+
+REJECTED, AND WHY.
+(1) Flatten the four evidence keys onto `RoleConfig` as top-level fields.
+    Rejected: `tier` and `reason` are bare generic words, AGENTS.md's
+    discoverability section requires two to four words including a domain
+    word, and any name close to `model_routing_tier` collides with the
+    escalation vocabulary measured above. Nesting keeps ONE spelling.
+(2) Edit each of the seven call sites. Rejected: all seven already share the
+    resolver, so seven edits buy exactly what one buys, and every future call
+    site would then have to REMEMBER to route. Wiring the resolver makes
+    routing the default and an unrouted call site impossible by construction.
+(3) Push the evidence into the ledger, the review bundle or the UI this
+    round. Rejected: those surfaces read an orchestrator-brain DECISION
+    record, not a provider call, so F110's evidence has no existing row
+    there. Adding one is a new surface rather than a wiring, and the feature
+    file gives that to the report's cost section. Deferred, and named here so
+    the round that wants it finds this paragraph.
+(4) Widen `packages/orchestration/call_identity.py`'s `CallIdentity`, which
+    already carries a `role`. Rejected: that is F012's structure and widening
+    it reaches the providers, the ping-pong loop and the run manifest — out
+    of T001's scope and against the feature file's "Do not touch".
+
+CONSEQUENCE. Recording is not selecting. The seam answers a TIER and F110
+deliberately maps no tier to a model id, so this wiring changes what a call
+RECORDS and nothing about which model runs. That absence is stated in
+`role_config.py`'s module docstring in the AGENTS.md idiom rather than left
+to be rediscovered. The inheriting role `repair` records `None` at this
+layer, because a config resolver has no originating task to name, and
+`route_role_call` still raises for every direct caller.
+
+REVERSE THIS DECISION by deleting the `routed_call` field and its helper from
+`packages/orchestration/role_config.py`, restoring the two docstring
+paragraphs in `packages/orchestration/model_routing.py` from `328228dc`, and
+deleting this paragraph.
+
+## DECISION F110 D5 (2026-09-03, round 10) — what a refused override map does
+
+CONTEXT. Round 10 lets a project configure
+`model_routing.task_class_tiers` in `remedy.toml`.
+`build_effective_task_class_tiers` already REFUSES a map that breaks a hard
+rule or promotes a class without benchmark evidence, raising
+`OverrideRefused` with every violation. What the CONFIG layer does with that
+refusal is a question round 6 deliberately left to the round that reads a
+config file, and this is that round.
+
+CHOSEN. The routing layer catches `OverrideRefused`, emits ONE `UserWarning`
+naming the config key and EVERY violated rule, and routes against the
+SHIPPED `TASK_CLASS_TIERS`. `validate_config` independently reports SHAPE
+faults in the table, so `remedy config` surfaces a malformed table without
+a routing call happening at all.
+
+WHY. The hard rules WIN, which is what the feature file demands, and they
+win the way `build_effective_task_class_tiers`'s own docstring says they
+must — by refusing the config rather than by quietly editing it. The
+offending override does not take effect, and the operator is told which rule
+refused it rather than left to wonder why a setting did nothing. Routing
+seeded is also the conservative direction: every hard rule this feature
+enforces protects a class from being routed DOWN, so the shipped table is
+never the cheaper answer, which matches the A9 default that over-spending
+beats under-thinking.
+
+REJECTED, AND WHY.
+(1) RAISE, letting `OverrideRefused` escape `resolve_role_config`. Rejected:
+    one typo in `remedy.toml` would then break every provider call in the
+    project, because `resolve_role_config` is the function all seven
+    inventoried call sites share. That is the round 9 lesson — a routing
+    concern must not become a config-resolution fault — one layer further
+    out, and it would make a policy guard into an outage.
+(2) DROP ONLY THE OFFENDING ENTRIES and apply the rest. Rejected: a silently
+    dropped override leaves the operator believing it took effect, which is
+    the silent downgrade `docs/agents/model_routing_policy.md` hard rule 2
+    exists to forbid, and `build_effective_task_class_tiers`'s docstring
+    already rejects this reading in so many words.
+(3) WARN BUT APPLY THE MAP ANYWAY. Rejected outright: it makes the hard
+    rules advisory, and a rule that a config can override is not a hard rule.
+(4) FAIL AT CONFIG LOAD, inside `load_config`. Rejected: `config.py` is the
+    lower layer and is deliberately policy-free — it must not import
+    `model_routing` to learn what a task class is. Shape validation belongs
+    there and does; rule validation belongs where the rules live.
+
+CONSEQUENCE. A project with a refused table still runs, on the shipped
+policy, loudly. The warning is the operator-facing surface, so it names the
+key and the rules rather than the exception type. Recording is still not
+selecting: this round changes which TIER a call records, never which model
+runs.
+
+REVERSE THIS DECISION by deleting the `OverrideRefused` catch in
+`packages/orchestration/role_config.py` and letting the exception propagate,
+and by deleting this paragraph.
+
+## DECISION F110 D6 (2026-09-03, F110 R16) — the section 3 consolidation pass DECISION F110 D1 ordered cannot renumber the checklist, and none is performed
+
+CONTEXT. DECISION F110 D1 committed this closure sequence to running one consolidation pass over the pre-emission checklist of docs/agents/planner_reviewer_prompt.md section 3, against amend0827 rule 4's requirement that the list come out "the SAME LENGTH OR SHORTER" than the 37 items it held on 2026-08-27. The pass was run at this round: every one of the 37 items was read for a genuine merge candidate, and two real ones were found — items 11, 16 and 32 state the identical rule (no hand-counted numeral about the block's own parts) over three different surfaces (a convention paragraph, a heading or quantifying sentence, and a gate or constraint), and items 4 and 15 split one rule (an APPEND pair requires containment) from its verification method (a mechanical, never-by-eye test) across two items that each explicitly name the other as its only reason to exist separately.
+
+MEASURED. Both merges would RENUMBER every item after the earliest one touched, because neither pair sits at the end of the list. Section 3 is cited BY ITEM NUMBER outside itself, in text this repository's own rules forbid rewriting: `.agent/live_review.md`, `.agent/decisions.md` and `.agent/prose_slips.md` (append-only, never rewritten or renumbered) and roughly 1,200 files under `.agent/authored/` (one committed block per historical round, never edited after landing). A mechanical scan of "section 3 item N" and "checklist item N" across those locations, run by the reviewer at this round, found approximately 2,013 such citations; zero exist anywhere under docs/. Individually, item 20 alone carries roughly 220 citations and item 30 roughly 243 — both sit AFTER item 16 and item 15 in the current numbering, so either merge would silently change what "item 20" and "item 30" mean in every one of those historical sentences, none of which can be corrected without violating the append-only rule those same sentences exist to enforce.
+
+CHOSEN. The pass runs, finds two real merge candidates, and performs NEITHER, because section 3 is a rare case where the numbered position IS the reference and not merely a locator: a merge is safe here only when it touches solely the LAST item of the list (nothing after it to renumber) or when it is written as an in-place widening paragraph under the EARLIER item's existing number — which is already how items 9, 14, 16, 18 and 20 have each absorbed later findings into themselves without ever renumbering. Items 11/16/32 and items 4/15 are not that shape: each is a genuinely separate, independently-cited surface rather than a later widening of an earlier one, so folding them together would have to delete a heading and shift every number after it. The list stays at 37 items — SAME LENGTH, which is the rule's OR clause, not its failure. F109's lessons that D1 also owed are on disk: `.agent/prose_slips.md` already carries F109's rounds 1, 2, 6, 7, 17, 18, 20 and 21; rounds 8 through 16 raised no reviewer-prose defect of the kind that file records.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Renumber anyway and treat the roughly 2,013 stale citations as accepted drift, on the theory that they are historical prose rather than live rules. Rejected because several are load-bearing explanations of WHY a specific finding was raised — `.agent/authored/f109-r2.md` names "section 3 item 32" as the rule a defect broke — and a reader resolving that citation against a renumbered document would attribute the wrong rule to a real, closed defect, which is a worse outcome than an unconsolidated list.
+
+CONSEQUENCE. docs/agents/planner_reviewer_prompt.md section 3 is UNCHANGED by this round. DECISION F110 D1's obligation is discharged by this DECISION, not deferred: the pass ran, is recorded, and its answer is "no safe merge exists under current citation discipline," which amend0827 rule 4's own "SAME LENGTH OR SHORTER" wording already permits. A future amendment wishing to actually shrink the list would need either a citation-migration pass over `.agent/authored/` (which the append-only rule currently forbids) or a documented exception permitting it — neither exists today.
+
+REVERSE by deleting this DECISION; F110 D1's obligation then reverts to open.

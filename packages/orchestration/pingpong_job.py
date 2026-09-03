@@ -1537,6 +1537,30 @@ def validate_job_task_result(result: Any) -> tuple[bool, list[str]]:
     return (len(reasons) == 0, reasons)
 
 
+# The recorded provider must NAME WHAT ACTUALLY RAN: a literal default made an
+# unflagged run report a provider it never used (finding R-0768). One function so
+# ``run_job``'s own precedence chain stops being a rival answer to role_config's.
+def default_role_provider_name(role: str, injected_provider: Any = None) -> str:
+    """Return the provider name to record for ``role`` when nothing was given.
+
+    Used as ``_resolve_cfg``'s product default, i.e. only when neither an
+    explicit CLI value nor a persisted one exists. An INJECTED provider object
+    wins, because that object is what will really run; otherwise the answer
+    comes from ``role_config``, the single seam that owns provider defaults.
+
+    ``role_config`` is imported inside the body on purpose: this module has no
+    module-level import of it, and adding one risks an import cycle.
+    """
+    if injected_provider is not None:
+        name = getattr(injected_provider, "name", None)
+        if isinstance(name, str) and name:
+            return name
+
+    from packages.orchestration import role_config
+
+    return role_config.resolve_role_config(role).provider
+
+
 def _resolve_cfg(cli_val: Any, persisted_val: Any, default: Any) -> tuple[Any, str]:
     """Resolve config field: explicit CLI > persisted > product default."""
     if cli_val is not None:
@@ -1738,9 +1762,11 @@ def run_job(
     ec = job.execution_config
 
     builder_name, builder_src = _resolve_cfg(
-        builder_name, ec.builder if ec else None, "fake")
+        builder_name, ec.builder if ec else None,
+        default_role_provider_name("builder", builder_provider))
     reviewer_name, reviewer_src = _resolve_cfg(
-        reviewer_name, ec.reviewer if ec else None, "fake")
+        reviewer_name, ec.reviewer if ec else None,
+        default_role_provider_name("reviewer", reviewer_provider))
     max_rounds, max_rounds_src = _resolve_cfg(
         max_rounds, ec.max_rounds if ec else None, 3)
     test_command, test_cmd_src = _resolve_cfg(

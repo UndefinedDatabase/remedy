@@ -1,0 +1,99 @@
+F110 — INTEGRATION GATE, round 15, session 5
+==============================================
+
+Procedure: docs/agents/integration_gate.md, steps 1-5.
+Branch : feature/f110-model-routing-by-task-class at 8a45ea10 (this round's C2
+         tree; C0a-C2 touch only .agent/, so the code under test is the code
+         at 970ffc27, F110 R14 C5)
+Base   : 6f2230cea29af36a75fea253afc10f4dfe5a79f0, checked out on the
+         throwaway branch tmp/base-gate at .remedy-wt/base-gate
+         (a DETACHED base worktree fails the self-dogfood branch guard by
+         design — DECISION D3, F053 R2)
+
+Three OPEN findings bind this round's procedure beyond the literal text of
+integration_gate.md: R-0591 (copytree symlinks=True, explicit on every
+apps/ui/node_modules and apps/ui/dist copy), R-0736 (base-worktree dist
+mtimes advanced past the worktree's own checkout stamp, so
+_frontend_is_stale() reads False from inside that tree before the run), and
+R-0590 (both comm -13 and comm -23 sets attributed by direct evidence
+unconditionally, not only when parity is void).
+
+STEP 1 — BRANCH RUN
+    precondition (WARM BUILD) : apps/ui/dist/index.html mtime 1788057215.85
+        exceeds the newest apps/ui/src file's mtime 1788057023.74 (measured
+        fresh at gate time, matching THIS ROUND'S PARAMETERS) — no cold
+        build owed.
+    command : pytest.main(["-n", "auto", "-q"]) from
+              /home/decodeux/Repos/remedy (shell ENV assignment and `cp` are
+              denied in this sandbox, so pytest is invoked as a library; NO
+              env var is set for the branch run, because integration_gate.md
+              step 1 asks for a plain run)
+    result  : 19487 passed, 23 skipped, 0 failed
+    exit    : 0 (ExitCode.OK)
+    wall    : 158.29s (reported by pytest) / 158.71s measured around the call
+
+STEP 2 — BASE RUN
+    parity restored BEFORE the run:
+      - apps/ui/node_modules copied with shutil.copytree(symlinks=True):
+        44839 entries, 27 of them symlinks PRESERVED (23 of the 27 are the
+        node_modules/.bin npm shims R-0591 names; copytree's symlinks=False
+        default would have dereferenced them)
+      - apps/ui/dist copied the same way: 5 entries, 0 symlinks (source
+        carries none)
+      - dist mtimes ADVANCED to 1788447634.57, past the worktree's own
+        checkout stamp (max apps/ui/src mtime in that tree: 1788447609.02),
+        per R-0736 — git worktree add stamps every checked-out file with the
+        checkout time while copytree preserves source mtimes, so an
+        unrepaired copy reads _frontend_is_stale() True and starves the UI
+        server. _frontend_is_stale(), evaluated FROM INSIDE the base
+        worktree by loading packages/orchestration/ui_server.py from that
+        tree directly, read False before the run started.
+    command : REMEDY_UI_NO_AUTO_BUILD set in-process, then
+              pytest.main(["-n", "auto", "-q"]) from .remedy-wt/base-gate
+    result  : 2 failed, 18935 passed, 20 skipped
+    exit    : 1 (ExitCode.TESTS_FAILED)
+    wall    : 243.46s (reported) / 243.93s measured around the call
+    parity verified as an EVENT, not an outcome — see parity_mtime.txt:
+      no mtime under apps/ui/dist falls inside the run window; PARITY HOLDS
+
+STEP 3 — COMPARISON
+    branch_failed.txt      0 lines
+    base_failed.txt        2 lines
+    branch_only.txt        0 lines   (comm -13 base branch)
+    fixed_by_branch.txt    2 lines   (comm -23 base branch)
+
+STEP 4 — ATTRIBUTION
+    the branch-only set is EMPTY, so no id from it can be a blocker.
+    the base-only set (fixed_by_branch.txt) holds 2 ids, both attributed by
+    direct evidence in attribution.txt per R-0590's unconditional-attribution
+    requirement: both serially re-run PASS at the base worktree
+    (base_serial_rerun.txt: 2 passed in 0.60s, xdist disabled), classifying
+    both as the XDIST-FLAKE class (F135/F052) — a hard-coded 0.5s perf
+    ceiling that a 16-way parallel run can blow past, and an unscoped `pgrep`
+    orphan-process check that can match a sibling xdist worker's own
+    short-lived subprocess. A grep for model_routing/role_config/task_class
+    over both test files returns no match: neither reaches any file this
+    feature touches. NEITHER id is a BLOCKER.
+
+STEP 5 — BUDGET
+    The base run (243.93s) is under the ~5 min note threshold; the branch run
+    (158.71s) likewise. No perf pass is indicated by wall clock. The verdict
+    itself belongs to the reviewer.
+
+TEST-COUNT DELTA
+    19487 (branch, passed) vs 18935 (base, passed) — branch collects 19510
+    total (per THIS ROUND'S PARAMETERS), base collects 18935 + 2 failed + 20
+    skipped = 18957; branch adds 553 cases (19510 - 18957) relative to the
+    merge base's own collection.
+
+CLEANUP
+    the base worktree was removed by its exact path, `git worktree prune`
+    run, and the tmp/base-gate branch deleted; see the round's handback.
+
+VERDICT
+    This section states measurements only. The VERDICT itself belongs to the
+    reviewer, per docs/agents/integration_gate.md step 5 and this round's own
+    Handback instruction; the worker does not issue one. On the measurements
+    above: branch run clean (0 failed), base-only failures both attributed to
+    the XDIST-FLAKE class and neither coupled to F110 code, no branch-only
+    failure exists to be a blocker.

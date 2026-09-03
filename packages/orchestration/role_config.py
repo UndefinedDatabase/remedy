@@ -11,19 +11,77 @@ role. Values come from three sources, highest precedence first:
 Provider-aware defaults: the default model depends on which provider is
 selected. Claude providers default to Opus; Ollama keeps its own default.
 
+THIS IS ALSO WHERE F110'S ROUTING SEAM IS WIRED, and it is wired ONCE.
+:func:`resolve_role_config` calls
+``packages.orchestration.model_routing.route_role_call`` and carries what that
+seam recorded on the :class:`RoleConfig` it already returns, so every production
+call that resolves a role's runtime configuration routes — the whole
+``ROLE_CONFIG_CALL_SITES`` inventory that module declares funnels through this
+one function. The dependency runs CONFIG -> POLICY and never back: model_routing
+imports nothing from here, and its own docstring forbids the inverse.
+
+THE TABLE THAT SEAM ROUTES AGAINST IS THE **EFFECTIVE** ONE, not the shipped one:
+:func:`resolve_effective_task_class_tiers` reads ``model_routing.task_class_tiers``
+from the configuration and lays it over the seed mapping, so a project can
+re-tier a class it is allowed to re-tier. It cannot re-tier one a hard rule
+protects — such a map is REFUSED, one warning names the key and every violated
+rule, and the shipped table is used (DECISION F110 D5).
+
+AND THIS IS WHERE A DOCUMENTED BENCHMARK RUN ENTERS THE ROUTING:
+:func:`resolve_promotion_evidence` reads ``model_routing.promotion_evidence``,
+parses it through
+``packages.orchestration.model_routing.promotion_evidence_from_mapping`` — this
+module is that pure parser's ONE production caller — and the records reach BOTH
+consumers: the table builder, so a promotion to a cheaper tier is licensed rather
+than refused with ``promotion_without_evidence``, and the seam, so a routed call's
+``promoted_by`` NAMES the run instead of answering None. Nothing is promoted
+without evidence: the two paths read the same key through the same reader.
+
+Remedy deliberately does NOT select a model from the routed tier here. The seam
+answers a TIER, and F110 maps no tier to a MODEL ID at all — which concrete model
+serves a tier is a configuration question that feature deliberately leaves open.
+So the wiring changes what a call RECORDS and nothing about which model runs:
+``provider``, ``model`` and ``effort`` are resolved by exactly the precedence
+chain above, unchanged. A reader searching HERE for the code that turns a routed
+tier into a model id will not find it, and that absence is deliberate. Configuring
+the override table above does not weaken that sentence by one word: the table
+moves which TIER a call records, never which model runs.
+
 Public API::
 
     KNOWN_ROLES: tuple of recognised role names
+    TASK_CLASS_TIERS_CONFIG_KEY: the config key carrying the override table
+    PROMOTION_EVIDENCE_CONFIG_KEY: the config key carrying the evidence table
     RoleConfig: resolved provider/model/effort for one role
-    resolve_role_config(role, cli_args=None, config_file=None) -> RoleConfig
+    RoleConfig.routed_call: what F110's seam recorded for this role's calls,
+        or None when the role inherits its class and none was supplied
+    resolve_promotion_evidence() -> dict[str, PromotionEvidence], the documented
+        benchmark runs the evidence key declares, EMPTY when nothing is configured
+    resolve_effective_task_class_tiers() -> dict, the shipped table with the
+        configured overrides laid over it, or the shipped table on refusal
+    resolve_routed_call_evidence(role, originating_task_class=None)
+        -> dict | None, the seam call that swallows exactly one exception
+    resolve_role_config(role, cli_args=None, config_file=None,
+        originating_task_class=None) -> RoleConfig
+    resolve_orchestrator_model() -> str
 """
 
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 from packages.orchestration.model_aliases import resolve_model_alias
+from packages.orchestration.model_routing import (
+    TASK_CLASS_TIERS,
+    OriginatingTaskClassRequired,
+    OverrideRefused,
+    PromotionEvidence,
+    build_effective_task_class_tiers,
+    promotion_evidence_from_mapping,
+    route_role_call,
+)
 
 # ---------------------------------------------------------------------------
 # Defaults (provider-aware)
@@ -97,6 +155,21 @@ class RoleConfig:
     model: str = DEFAULT_MODEL
     effort: str = DEFAULT_EFFORT
 
+    #: WHAT F110'S ROUTING SEAM RECORDED for a call by this role. The keys are
+    #: exactly ``model_routing.ROUTED_CALL_EVIDENCE_FIELDS`` — task_class, tier,
+    #: reason, promoted_by — so this module introduces no second spelling of any
+    #: of them. ``None`` when the role INHERITS its task class and no originating
+    #: class was supplied; see :func:`resolve_routed_call_evidence`.
+    #:
+    #: WHY ``compare=False``, and it is not a style choice: a frozen dataclass
+    #: derives ``__hash__`` from its COMPARED fields, so an unqualified dict field
+    #: makes ``hash(RoleConfig(...))`` raise ``TypeError: unhashable type:
+    #: 'dict'``. Excluding it keeps RoleConfig exactly as hashable and as
+    #: comparable as it has always been — two configs for one role still compare
+    #: on provider, model and effort, and evidence about HOW a call was routed is
+    #: not part of WHAT was resolved.
+    routed_call: dict[str, str | None] | None = field(default=None, compare=False)
+
 
 def _role_section(source: object, role: str) -> dict:
     """Extract the override mapping for ``role`` from a config source.
@@ -115,10 +188,175 @@ def _role_section(source: object, role: str) -> dict:
     return source
 
 
+#: THE CONFIG KEY CARRYING THE PER-PROJECT OVERRIDE TABLE, spelled ONCE in this
+#: module and shared by the read and by the refusal warning. A warning naming a
+#: key other than the key actually read would send an operator to the wrong line
+#: of their remedy.toml; a test pins this constant against config.py's registry,
+#: so the two modules cannot drift apart silently.
+TASK_CLASS_TIERS_CONFIG_KEY: str = "model_routing.task_class_tiers"
+
+#: THE CONFIG KEY CARRYING THE PROMOTION-EVIDENCE TABLE, spelled ONCE here for the
+#: same reason its sibling above is: the two consumers that need the records — the
+#: override builder and the routing seam — read it through
+#: :func:`resolve_promotion_evidence` and never by spelling the key themselves, so
+#: they cannot come to read different keys. packages/orchestration/config.py
+#: registers this same key as a TABLE-VALUED one, and that registration is the
+#: only other place production code spells the string.
+PROMOTION_EVIDENCE_CONFIG_KEY: str = "model_routing.promotion_evidence"
+
+
+def resolve_promotion_evidence() -> dict[str, PromotionEvidence]:
+    """Return the documented benchmark runs this project's configuration declares.
+
+    Reads :data:`PROMOTION_EVIDENCE_CONFIG_KEY` from the configuration and parses
+    it through
+    :func:`packages.orchestration.model_routing.promotion_evidence_from_mapping`,
+    which is a PURE function of that raw mapping — this is its one production
+    caller, and the reason model_routing itself reads no config file.
+
+    NOTHING CONFIGURED RETURNS AN EMPTY MAPPING — the key unset, or an explicitly
+    empty table — so a project that documents no benchmark run licenses no
+    promotion and every class keeps its seeded tier. The same answer is given for
+    a value that is not a mapping at all, the identical three-way guard
+    :func:`resolve_effective_task_class_tiers` applies to the tiers table and for
+    the identical reason: an environment variable cannot carry a table, so a bare
+    string can arrive on this path, and
+    :func:`packages.orchestration.config.validate_config` already reports that
+    SHAPE fault. Handing such a value to the parser would raise inside a config
+    resolution, which is the fault DECISION F110 D5 exists to prevent.
+
+    A MALFORMED ENTRY IS SKIPPED BY THE PARSER, not guessed at, and skipping fails
+    CLOSED: the promotion that entry would have licensed is refused and the class
+    keeps its seeded, stronger tier.
+
+    ``get_config`` is imported inside the body on purpose: this module has no
+    module-level import of config and is itself imported early by others — the
+    idiom :func:`resolve_orchestrator_model` already established here.
+    """
+    from packages.orchestration.config import get_config
+
+    configured = get_config().get(PROMOTION_EVIDENCE_CONFIG_KEY)
+    if not isinstance(configured, Mapping) or not configured:
+        return {}
+    return promotion_evidence_from_mapping(dict(configured))
+
+
+# WHY A REFUSED MAP WARNS AND ROUTES SEEDED RATHER THAN RAISING — DECISION F110 D5
+# (.agent/decisions.md, 2026-09-03): resolve_role_config is the function all seven
+# inventoried call sites share, so letting OverrideRefused escape would turn one
+# typo in remedy.toml into an outage on every provider call. The hard rules still
+# WIN — the offending override does not take effect — and the operator is told
+# WHICH rule refused it rather than left wondering why a setting did nothing.
+def resolve_effective_task_class_tiers() -> dict[str, str]:
+    """Return the task-class-to-tier table this project actually routes against.
+
+    Reads :data:`TASK_CLASS_TIERS_CONFIG_KEY` from the configuration and lays it
+    over :data:`packages.orchestration.model_routing.TASK_CLASS_TIERS` through
+    :func:`packages.orchestration.model_routing.build_effective_task_class_tiers`,
+    which is the ONE place an override map becomes a routing table and therefore
+    the one place the hard rules can still win before anything routes.
+
+    NOTHING CONFIGURED RETURNS THE SHIPPED TABLE UNCHANGED — the key unset, or an
+    explicitly empty table — so a project with no overrides routes exactly as it
+    did before this key existed. The same answer is given for a value that is not
+    a mapping at all: an environment variable cannot carry a table, so a bare
+    string can arrive on that path, and
+    :func:`packages.orchestration.config.validate_config` already reports that
+    SHAPE fault. Handing such a value to the builder would raise inside a config
+    resolution, which is exactly the fault DECISION F110 D5 exists to prevent.
+
+    THE DOCUMENTED BENCHMARK RUNS GO TO THE BUILDER WITH THE MAP, from
+    :func:`resolve_promotion_evidence`, and that is the line which lets an override
+    move a class to a CHEAPER tier at all: without it every such move is refused
+    with :data:`packages.orchestration.model_routing.RULE_PROMOTION_WITHOUT_EVIDENCE`.
+    The evidence never weakens a hard rule — it discharges the promotion rule and
+    nothing else, so a class a hard rule protects stays protected however well
+    documented the run is.
+
+    A map the builder REFUSES raises
+    :class:`packages.orchestration.model_routing.OverrideRefused`. That is caught,
+    ONE :class:`UserWarning` is emitted naming the config key and EVERY violated
+    rule it carries, and the SHIPPED table is returned. Routing seeded is the
+    conservative direction: every hard rule this feature enforces protects a
+    class from being routed DOWN, so the shipped table is never the cheaper
+    answer.
+
+    ``get_config`` is imported inside the body on purpose: this module has no
+    module-level import of config and is itself imported early by others — the
+    idiom :func:`resolve_orchestrator_model` already established here.
+    """
+    from packages.orchestration.config import get_config
+
+    configured = get_config().get(TASK_CLASS_TIERS_CONFIG_KEY)
+    if not isinstance(configured, Mapping) or not configured:
+        return TASK_CLASS_TIERS
+    try:
+        return build_effective_task_class_tiers(
+            dict(configured), promotion_evidence=resolve_promotion_evidence()
+        )
+    except OverrideRefused as refused:
+        warnings.warn(
+            f"{TASK_CLASS_TIERS_CONFIG_KEY}: per-project model-routing overrides "
+            f"REFUSED; routing against the shipped table instead. Violated "
+            f"rules: "
+            f"{', '.join(violation.rule_name for violation in refused.violations)}.",
+            stacklevel=2,
+        )
+        return TASK_CLASS_TIERS
+
+
+# WHY EXACTLY ONE EXCEPTION IS SWALLOWED, AND ONLY HERE: ``repair`` is the sole
+# member of model_routing.TASK_CLASS_INHERITING_ROLES and also a member of
+# KNOWN_ROLES, so ``resolve_role_config("repair")`` is an ordinary config
+# resolution that has always worked and that the F110 wiring must not break. A
+# config resolver has no ORIGINATING TASK to name, so ``None`` is that role's
+# honest answer at this layer rather than a guessed class. Every DIRECT caller of
+# route_role_call still gets the raise, unchanged.
+def resolve_routed_call_evidence(
+    role: str,
+    originating_task_class: str | None = None,
+) -> dict[str, str | None] | None:
+    """Return what F110's routing seam RECORDS for a call by ``role``.
+
+    Delegates to
+    :func:`packages.orchestration.model_routing.route_role_call` and returns its
+    mapping unchanged, so the declared class, the tier, the reason and what
+    promoted it come from that ONE seam and cannot disagree with it. The table
+    that seam routes against is :func:`resolve_effective_task_class_tiers`, so a
+    per-project override reaches every routed call through this one argument and
+    through no second path. The evidence the seam names in ``promoted_by`` reaches
+    it the same way, from :func:`resolve_promotion_evidence`.
+
+    Returns ``None`` when — and only when — the seam raises
+    :class:`packages.orchestration.model_routing.OriginatingTaskClassRequired`:
+    the role inherits its task class from the work that provoked the call, and no
+    such class was supplied. NO OTHER EXCEPTION IS CAUGHT, deliberately; a broken
+    routing table must surface rather than be recorded as a missing evidence line.
+    """
+    # WHY THE EVIDENCE IS READ TWICE ON THIS PATH AND THAT IS NOT AN ACCIDENT:
+    # resolve_effective_task_class_tiers reads it too, for the BUILDER, and this
+    # call reads it again for the SEAM. Threading one read through both would mean
+    # widening resolve_effective_task_class_tiers' signature, which takes NO
+    # argument and returns a plain dict and is depended on as such by its callers
+    # and its tests. get_config is cached, so the second read costs one dict lookup
+    # and one small parse — less than the churn of changing that signature.
+    effective_tiers = resolve_effective_task_class_tiers()
+    try:
+        return route_role_call(
+            role,
+            originating_task_class,
+            effective_tiers,
+            promotion_evidence=resolve_promotion_evidence(),
+        )
+    except OriginatingTaskClassRequired:
+        return None
+
+
 def resolve_role_config(
     role: str,
     cli_args: object | None = None,
     config_file: object | None = None,
+    originating_task_class: str | None = None,
 ) -> RoleConfig:
     """Resolve the runtime configuration for ``role``.
 
@@ -134,9 +372,19 @@ def resolve_role_config(
         cli_args: Optional per-invocation overrides — either a flat mapping of
             ``provider``/``model``/``effort`` or a mapping keyed by role.
         config_file: Optional persisted overrides, same shape as ``cli_args``.
+        originating_task_class: The task class of the work that PROVOKED this
+            call. Supplied only for a role in
+            ``model_routing.TASK_CLASS_INHERITING_ROLES`` — ``repair`` today —
+            and ignored for every other role, which declares its own class.
+            LAST AND DEFAULTED so that no existing caller has to change.
 
     Unknown roles emit a warning (rather than raising) and still resolve against
     the supplied overrides, falling back to the built-in defaults.
+
+    The returned config also carries ``routed_call``, what F110's routing seam
+    recorded for this role — see :func:`resolve_routed_call_evidence`. Routing is
+    RECORDING and not SELECTING: provider, model and effort are resolved by the
+    precedence chain above and by nothing else.
     """
     if role not in KNOWN_ROLES:
         warnings.warn(
@@ -149,12 +397,12 @@ def resolve_role_config(
     cfg = _role_section(config_file, role)
 
     resolved: dict[str, str] = {}
-    for field in _FIELDS:
-        value = cli.get(field)
+    for field_name in _FIELDS:
+        value = cli.get(field_name)
         if value is None:
-            value = cfg.get(field)
+            value = cfg.get(field_name)
         if value is not None:
-            resolved[field] = value
+            resolved[field_name] = value
 
     # Provider-aware model default: if provider is set but model is not,
     # use the provider's default model instead of the global default.
@@ -162,4 +410,36 @@ def resolve_role_config(
         provider = resolved.get("provider", DEFAULT_PROVIDER)
         resolved["model"] = default_model_for_provider(provider)
 
-    return RoleConfig(role=role, **resolved)
+    return RoleConfig(
+        role=role,
+        routed_call=resolve_routed_call_evidence(role, originating_task_class),
+        **resolved,
+    )
+
+
+# The orchestrator's model must have ONE answer: `orchestrator.model` when the
+# operator set it, and otherwise the same resolution every other role gets —
+# which is what config.py already promises the key means, stated here in code.
+def resolve_orchestrator_model() -> str:
+    """Return the model id the ``orchestrator`` role should run on.
+
+    ``orchestrator.model`` (packages/orchestration/config.py) is the ONLY
+    orchestrator-specific routing surface, and its own documented promise is
+    that "Unset means the role resolves exactly like every other one". So a set,
+    non-empty value wins, and anything else — unset, empty, whitespace-only, or
+    not a string at all — falls through to
+    :func:`resolve_role_config` for the ``orchestrator`` role. Callers that need
+    the orchestrator's model ask HERE rather than reading the config key
+    themselves, so the key stays the operator-facing surface without also being
+    a second, rival resolver.
+
+    ``get_config`` is imported inside the body on purpose: this module has no
+    module-level import of config and is itself imported early by others.
+    """
+    from packages.orchestration.config import get_config
+
+    configured = get_config().get("orchestrator.model")
+    if isinstance(configured, str) and configured.strip():
+        return configured
+
+    return resolve_role_config("orchestrator").model
