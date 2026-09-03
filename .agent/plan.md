@@ -14,13 +14,13 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 11, session 3. Book round 10's PASS, register `R-0773` and `R-0774`,
-and fix both. `R-0773` is three docstring passages in `pingpong_loop.py`
-that still call F109's config plumbing absent after round 10 landed it.
-`R-0774` is the prompt TRACE describing the abandoned resumed composition
-on a resume fallback rather than the full-content call that actually
-reached the provider; the fix appends a second trace in each role's
-fallback branch, so one trace exists per real provider invocation.
+Round 12, session 3, a REPAIR round. Round 11 landed the correct fix for
+`R-0774` on the Builder side and ended RED: two test selectors assumed one
+Builder trace per role per round, and a second, honest trace falsified
+them. Repair both by the property they meant to assert rather than the
+position they used, book round 11's FAIL, register `R-0775` and `R-0776`,
+and record that `R-0774`'s Reviewer half was false — that role already
+recorded two traces before the round began. No production file changes.
 
 ## Next Steps
 
@@ -35,8 +35,8 @@ fallback branch, so one trace exists per real provider invocation.
 
 ## Risks
 
-- A suite that no round gate names can go red without anyone seeing it.
-  That is what `R-0772` was. Every block from here names the suites its
-  change set can REACH, not only the ones it expects to move.
+- A positional selector over source text or over a trace list breaks
+  silently whenever a correct change adds a site. `R-0775` is that class;
+  prefer selecting by a declared property.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
