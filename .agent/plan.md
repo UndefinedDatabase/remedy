@@ -1,34 +1,33 @@
 # Plan — F110 Model routing by task class
 
-Branch: feature/f110-model-routing-by-task-class, cut from `main` after
-pull request 232 was merged at the Open PR Gate.
+Branch: feature/f110-model-routing-by-task-class, PR #233 open into `main`
+since F110 R19 (session 7). F110 is CLOSED as a build feature; this round
+is a REPAIR round against the still-open PR, triggered by CI going red.
 
 ## Goal
 
-End one-model-for-everything: every provider call declares a TASK CLASS, a
-router maps classes to model tiers, and each routed call records the routed
-model WITH its reason. The hard rules of
-`docs/agents/model_routing_policy.md` are ENFORCED IN CODE, and moving a
-class to a cheaper tier is possible only against documented benchmark
-evidence — never by editing a mapping casually.
+Fix the two doc-consistency failures CI reported on PR #233: R19's C3
+(`86bc9444`) authored the new STATUS `[x] F110` line and README capability
+paragraph but never re-derived the two counts those additions moved, so
+`tests/docs/test_docs_consistency.py` failed
+`test_the_readme_accepted_count_equals_the_status_count` (68 vs 69) and
+`test_the_readme_tier_table_done_column_matches_the_ledger` (Tier 3
+Done=3 vs ledger 4).
 
 ## Current Step
 
-Round 19 — THE CLOSURE COMMIT (final round of this feature). Round 18's
-Built State section is booked (`Gate: F110 R18`, PASS); closure
-precondition 4 is satisfied. This round books the authored STATUS `[x]`
-line and the README capability paragraph in ONE commit, sets `SU-006`'s
-`consumed_by` to `F110` in `scripts/self_use_queue.json`, and opens the
-pull request. The PR is NOT merged this session — it merges at the next
-feature's Open PR Gate, the operator's manual-review window.
+Round 20 (repair). Rewrite README.md's accepted-count line and Tier 3
+Done cell to match the real STATUS.md ledger, register and resolve
+finding R-0790 for the omission, push, and confirm CI goes green.
 
 ## Next Steps
 
-None — this is the feature's last round. The next session's Phase 0
-finds an open, non-draft PR from this branch into `main` and merges it
-at the Open PR Gate before claiming a new feature.
+Once CI is green on PR #233, the Open PR Gate merges it (AGENTS.md):
+`gh pr merge 233 --merge --delete-branch`, then `git checkout main` and
+`git pull --ff-only`. No further F110 rounds are planned after the
+merge — the next session claims the next STATUS `[ ]` feature.
 
 ## Risks
 
-- `R-0767` and `R-0784` stay OPEN; both predate F110 and are documented,
-  not F110 defects — see the Built State section's own citations.
+- `R-0767` and `R-0784` stay OPEN; both predate F110, documented in the
+  Built State section, not F110 defects.
