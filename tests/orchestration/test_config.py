@@ -7,11 +7,11 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.config import (
+    _TABLE_VALUED_KEYS,
     ConfigKeySpec,
     ConfigSource,
     ConfigValue,
     RemedyConfig,
-    _TABLE_VALUED_KEYS,
     _coerce_value,
     _extract_remedy_table,
     _flatten_toml,
