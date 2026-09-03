@@ -1,95 +1,87 @@
-STEP T003a — F109 Semantic dedupe — ROUND 11, SESSION 3
+STEP T003b — F109 Semantic dedupe — ROUND 12, SESSION 3 — REPAIR ROUND
 
 Scope rule, quoted verbatim as every F109 order requires: RESUMED SESSION
 ONLY, PROVEN SENDS ONLY.
 
-Goal: Book round 10's PASS, register `R-0773` and `R-0774`, and fix both.
-`R-0773` is three docstring passages in `pingpong_loop.py` that still call
-F109's config plumbing absent after round 10 landed it. `R-0774` is the
-prompt TRACE describing the ABANDONED resumed composition on a resume
-fallback instead of the full-content call that actually reached the
-provider. The trace fix comes FIRST, before the next round surfaces the
-deduped names as a trace field, so that field inherits an honest record
-instead of turning a misleading paragraph into a structured false claim.
+Goal: Get the branch green again. Round 11's C4 was CORRECT and stays;
+what it broke is two test SELECTORS that silently assumed one Builder
+trace per role per round. Repair both by the property they meant to
+assert instead of the position they happened to use, book round 11's FAIL,
+register `R-0775` and `R-0776`, and append the correction that `R-0774`'s
+Reviewer half was false. NO PRODUCTION FILE CHANGES THIS ROUND.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f109-r11.md`
+  C0a  save this block verbatim to `.agent/authored/f109-r12.md`
   C0b  mirror it to `.agent/last_block.md`
   C1   apply SLICE PLAN to `.agent/plan.md`
   C2   append SLICE RECORD to `.agent/live_review.md`
-  C3   apply SPEC X to `packages/orchestration/pingpong_loop.py`
-  C4   apply SPEC Y to `packages/orchestration/pingpong_loop.py`
-  C5   apply SPEC Z to `tests/orchestration/test_semantic_dedupe.py`
-  C6   rewrite `.agent/handoff.md`
+  C3   apply SPEC A to `tests/orchestration/test_semantic_dedupe.py`
+  C4   apply SPEC B to `tests/orchestration/test_prompt_trace.py`
+  C5   rewrite `.agent/handoff.md`
 
 Change set — exactly these seven paths and no eighth:
-  `.agent/authored/f109-r11.md`
+  `.agent/authored/f109-r12.md`
   `.agent/last_block.md`
   `.agent/plan.md`
   `.agent/live_review.md`
-  `packages/orchestration/pingpong_loop.py`
   `tests/orchestration/test_semantic_dedupe.py`
+  `tests/orchestration/test_prompt_trace.py`
   `.agent/handoff.md`
 
 Constraints:
 
 1. Every authored slice is applied BYTE FOR BYTE. This block reached you as
-   a file: `cp` it from `/home/decodeux/Repos/remedy/.remedy-wt/f109-r11.md`
-   into `.agent/authored/f109-r11.md` and `cp` that into
-   `.agent/last_block.md`. Never retype either. A slice is never edited to
-   fit, however wrong it looks; declare it in the handback instead.
+   a file: `cp` it from `/home/decodeux/Repos/remedy/.remedy-wt/f109-r12.md`
+   into `.agent/authored/f109-r12.md` and `cp` that into
+   `.agent/last_block.md`. Never retype either.
 2. The commit order above is FIXED. C1 advances `.agent/plan.md` as the
    FIRST substantive commit because this round touches the finding ledger.
 3. YOU WRITE NO `Done:` PARAGRAPH AND NO VERDICT OF YOUR OWN. SLICE RECORD
-   already carries the reviewer-authored text. Apply it and add nothing.
-4. `packages/orchestration/pingpong_loop.py` changes ONLY as SPEC X and
-   SPEC Y describe. SPEC X changes docstring prose and no executable
-   statement; SPEC Y adds two `build_trace_entry` appends and nothing else.
-   No signature moves, no helper is extracted, no primary append is edited.
-5. Do NOT touch `packages/orchestration/prompt_trace.py`,
-   `packages/orchestration/prompt_segments.py` or
-   `packages/orchestration/token_ledger.py`. Adding a
-   `deduped_segment_names` field is the NEXT round's work and anticipating
-   it here would put an untested field under an unreviewed gate.
-6. `tests/orchestration/test_semantic_dedupe.py` gains ONE appended class at
-   the very END. Zero existing lines are edited, reordered or deleted. The
-   one named exception: if a name SPEC Z uses is genuinely not already
-   imported or defined in that file, extend the import — and report in the
-   handback whether you had to.
-7. Every gate G1-G8 runs at C5 or earlier, so the handback can quote every
-   reading. The handback commit's own insertion count is NOT quoted
-   anywhere in it; the reviewer measures that one.
+   carries the reviewer-authored text; apply it and add nothing. `R-0775`
+   and `R-0776` are REGISTERED this round and resolved by a later one, so
+   do not mark either resolved however green the suite ends.
+4. NO FILE UNDER `packages/` OR `apps/` IS TOUCHED. Round 11's C4 is
+   correct and stays exactly as it is. If a gate below tempts you to
+   change production code to make a test pass, that is the wrong repair:
+   stop and declare it.
+5. UNLIKE ROUND 11, EDITING EXISTING LINES IS THE POINT. SPEC A and SPEC B
+   both rewrite lines already in their files. What stays forbidden is
+   DELETING a test, weakening an assertion, or loosening a guard to make a
+   colour: every repair below makes its guard STRICTER than it was.
+6. Do not add a new test case to either file this round. Both files already
+   carry the cases; this round fixes how two of them SELECT what they read.
+7. Every gate G1-G8 runs at C4 or earlier, so the handback can quote every
+   reading. The handback commit's own insertion count is NOT quoted in it.
 8. Re-read `.agent/STOP` from disk before your first action and again
-   before the handback. If it exists, finish any half-written commit, write
-   the handback and end.
-9. Destructive verification — G5's mutations and G3's negative control —
-   runs ONLY inside a disposable `git worktree` or on a scratch copy, each
-   addressed BY EXACT PATH under `.remedy-wt/`, never in the primary
-   checkout. Remove and prune what you create, delete scratch copies by
-   exact path, and confirm `git status --porcelain` is EMPTY afterwards.
+   before the handback. If it exists, finish any half-written commit,
+   write the handback and end.
+9. Destructive verification runs ONLY inside a disposable `git worktree` or
+   on a scratch copy, each addressed BY EXACT PATH under `.remedy-wt/`,
+   never in the primary checkout. Remove and prune what you create and
+   confirm `git status --porcelain` is EMPTY afterwards.
 10. Push after the handback commit. Create no PR. Merge nothing. Never
     force-push. Stay on `feature/f109-semantic-dedupe`.
 
 Done when — EIGHT GATES, every one executed with its real exit code
 recorded, one line per gate in the handback:
 
-G1 TRANSPORT. `sha256sum .remedy-wt/f109-r11.md .agent/authored/f109-r11.md
+G1 TRANSPORT. `sha256sum .remedy-wt/f109-r12.md .agent/authored/f109-r12.md
    .agent/last_block.md` prints ONE digest three times. Report it. This
    chain compares the scratch original against the saved copy against its
-   mirror; it claims nothing about any earlier bytes.
+   mirror and claims nothing about any earlier bytes.
 
 G2 THE PLAN. Extract SLICE PLAN mechanically from
-   `.agent/authored/f109-r11.md` (index of the opening `<<<SLICE PLAN`
+   `.agent/authored/f109-r12.md` (index of the opening `<<<SLICE PLAN`
    line, index of the closing `SLICE PLAN` line, everything between) and
-   `cmp` it against `.agent/plan.md`: no output, exit 0. `wc -l
-   .agent/plan.md` is strictly under 50. `grep -c '^## Goal'` is 1 and
+   `cmp` it against `.agent/plan.md`: no output, exit 0. `wc -l` is
+   strictly under 50. `grep -c '^## Goal'` is 1 and
    `grep -c '^## Next Steps'` is 1.
 
 G3 THE RECORD APPEND, four readings.
-   (a) ARITHMETIC. Report base `.agent/live_review.md` size and sha256,
-       the appended length S after stripping trailing newlines, and that
-       base + S equals the new size exactly. Report the new sha256. The
-       file still ends WITHOUT a trailing newline.
+   (a) ARITHMETIC. Report base size and sha256, the appended length S after
+       stripping trailing newlines, and that base + S equals the new size
+       exactly. Report the new sha256. The file still ends WITHOUT a
+       trailing newline.
    (b) A SECOND, STRUCTURALLY DIFFERENT READER that counts no byte: split
        the WHOLE file on blank-line boundaries into units, COUNT N from the
        payload itself rather than taking it from this block, and assert the
@@ -98,105 +90,103 @@ G3 THE RECORD APPEND, four readings.
    (c) NEGATIVE CONTROL on a scratch copy at an exact path under
        `.remedy-wt/`, never on the tracked file: flip one byte INSIDE THE
        FIRST appended paragraph and confirm reader (b) REJECTS it while it
-       accepted the tracked file. Report the tracked file's sha256 before
-       and after to show it did not move, then delete the copy by exact
-       path and confirm its absence.
-   (d) COUNTS. `grep -c '^Gate: F109 R10 — '` is 1. `grep -c '^- R-0773 — '`
-       is 1. `grep -c '^- R-0774 — '` is 1. `grep -c '^- R-[0-9]\{4\} — '`
-       is 335 against 333 at `c22818f59e6f52ea79b10cb0f36390c5070322c7`.
-       `grep -c '^Done: R-[0-9]\{4\} — '` is UNCHANGED at 65, because this
-       round resolves nothing. Read every base count from
-       `git show c22818f5…:.agent/live_review.md`, never by rewinding the
-       tracked file.
+       accepted the tracked file. Report the tracked sha256 before and
+       after to show it did not move, then delete the copy by exact path
+       and confirm its absence.
+   (d) COUNTS. `grep -c '^Gate: F109 R11 — '` is 1. `grep -c '^- R-0775 — '`
+       is 1. `grep -c '^- R-0776 — '` is 1. `grep -c '^Note: R-0774 — '`
+       is 1. `grep -c '^- R-[0-9]\{4\} — '` is 337 against 335 at
+       `906532ef`. `grep -c '^Done: R-[0-9]\{4\} — '` is UNCHANGED at 65.
+       Read every base count from `git show 906532ef:.agent/live_review.md`,
+       never by rewinding the tracked file.
 
 G4 THE EDIT SHAPE, read from `git show <sha>:<path>` blobs and never by
-   writing a revision over the tracked file.
-   (a) ACROSS C3: parse the module before and after with `ast.parse` and
-       compare `ast.dump(tree, include_attributes=False)`. THE TWO MUST BE
-       EQUAL — SPEC X changes docstring prose only, and a docstring is an
-       expression, so state plainly whether equality held. If it did not,
-       SPEC X was misapplied: stop and declare it.
-   (b) ACROSS C4: compare the blobs as SEQUENCES OF LINES with
-       `difflib.SequenceMatcher(None, before, after, autojunk=False)`.
-       Every non-equal opcode is an `insert`; none is `replace` or
-       `delete`. Report the opcodes and TOTAL LINES DELETED, which is 0.
-   (c) ACROSS C5: the same line-sequence reading over the test file. One
-       `insert` opcode at the END of the file, TOTAL LINES DELETED 0.
-   (d) THE ZERO-GATE, scoped to `packages/orchestration/pingpong_loop.py`
-       alone and to no other path: after C3,
-       `grep -c 'config plumbing that supplies'` in THAT FILE is 0, against
-       2 at `c22818f59e6f52ea79b10cb0f36390c5070322c7`.
+   writing a revision over the tracked file. These are REPLACE-shaped
+   edits, so unlike round 11 a non-zero deletion count is EXPECTED and is
+   not a defect. Compare the blobs as SEQUENCES OF LINES with
+   `difflib.SequenceMatcher(None, before, after, autojunk=False)` for each
+   of C3 and C4 and report the opcodes. THE PROPERTY THAT MUST HOLD IS
+   THAT NO TEST WAS LOST: `grep -c '    def test_'` is IDENTICAL before and
+   after in each file. Report both numbers for both files.
 
-G5 THE COLOUR. In a disposable worktree added BY EXACT PATH under
-   `.remedy-wt/`, checked out at C5. RUN THE IMPORT PROBE FIRST:
-   `python3 -B -c "import packages.orchestration.pingpong_loop as m;
-   print(m.__file__)"` with the worktree as cwd must resolve INSIDE the
-   worktree, or an editable install is shadowing it and the gate is void.
-   Purge `__pycache__` before every run; every process is `python3 -B` with
-   `-p no:cacheprovider`.
-   (a) CONTROL, unmutated: report exit code and passed count.
-   (b) MUTATION A: delete the BUILDER's new `build_trace_entry` append from
-       the fallback branch. A named case of SPEC Z case 1 must FAIL. Report
-       the exit code, the counts and the failing node.
-   (c) MUTATION B: delete the REVIEWER's new append instead. A named case
-       of SPEC Z case 2 must FAIL. Same reporting.
-   Before each write, count the bytes you are about to change IN THAT FILE
-   and report the count — it must be 1, and where it is not, quote a longer
-   UNIQUE string and say which occurrence you took. Restore from the C5
-   blob by exact path between mutations and after the last, then confirm
-   `git status --porcelain` inside the worktree is EMPTY. Remove the
-   worktree and prune, and show that `git worktree list` holds only the
-   primary checkout and the four pre-existing `remedy/job-*` worktrees.
+G5 THE COLOUR — THREE RED-PROOFS, each with its UNMUTATED CONTROL reported
+   beside it, because a colour with no baseline is not evidence. In a
+   disposable worktree added BY EXACT PATH under `.remedy-wt/`, checked out
+   at C4. RUN THE IMPORT PROBE FIRST: `python3 -B -c "import
+   packages.orchestration.pingpong_loop as m; print(m.__file__)"` with the
+   worktree as cwd must resolve INSIDE the worktree, or an editable install
+   is shadowing it and the gate is void. Purge `__pycache__` before every
+   run; every process is `python3 -B` with `-p no:cacheprovider`. Before
+   each write, count the bytes you are about to change IN THAT FILE and
+   report the count; where it is not 1, quote a longer UNIQUE string and
+   say which occurrence you took. Restore from the C4 blob by exact path
+   between mutations and after the last.
+   (a) In `packages/orchestration/pingpong_loop.py`, delete
+       `composed_prompt=reviewer_composed,` from the Reviewer append. THE
+       REPAIRED REVIEWER GUARD IN `test_prompt_trace.py` MUST FAIL. This is
+       the guard's original purpose and the repair must not have cost it.
+   (b) In the same file, delete `composed_prompt=builder_composed,` from
+       the BUILDER FALLBACK append that round 11's C4 added — NOT the
+       primary one; the two are distinguished by the fallback's own comment
+       above it, so quote a string that includes part of that comment. THE
+       REPAIRED BUILDER GUARD MUST FAIL. The old positional guard could not
+       see this site at all, so this proof is the repair's whole point.
+   (c) In the same file, delete the Builder fallback's recomposition
+       statement `builder_composed = compose_builder_prompt(effective_goal,
+       context, **builder_compose_args)`. THE REPAIRED DEDUPE CASE
+       `test_the_recorded_builder_row_describes_the_bytes_that_were_sent`
+       MUST FAIL — that statement is the `R-0771` repair, and this case
+       exists to keep it from rotting.
+   Then remove the worktree and prune, and show that `git worktree list`
+   holds only the primary checkout and the four pre-existing
+   `remedy/job-*` worktrees.
 
 G6 THE SUITES, run SERIALLY — one process starts, finishes, and only then
-   the next. All fifteen must be exit 0. Base readings, measured by the
-   reviewer at `c22818f59e6f52ea79b10cb0f36390c5070322c7`, in parentheses;
-   report yours beside each and name any that moved:
-     tests/orchestration/test_semantic_dedupe.py            (122)
-     tests/orchestration/test_prompt_trace.py                (46)
-     tests/orchestration/test_pingpong_cli.py               (173)
-     tests/orchestration/test_pingpong.py                    (34)
-     tests/orchestration/test_session_resume.py              (27)
-     tests/orchestration/test_token_ledger.py               (120)
-     tests/orchestration/test_token_truth.py                 (37)
-     tests/orchestration/test_token_truth_v1_contract.py    (101)
-     tests/orchestration/test_job_evidence.py                (93)
-     tests/orchestration/test_provider_evidence_integration.py (64)
-     tests/orchestration/test_cost_report.py                 (22)
-     tests/ui_server/test_prompt_trace_payload.py            (20)
-     tests/ui_server/test_prompt_trace_lens.py               (13)
-     tests/test_observability_index.py                       (14)
-     tests/cli/test_golden_path.py                           (42)
-   This list names the suites the change set can REACH, not only the ones
-   expected to move: every one of them reads a prompt trace or drives
-   `run_pingpong`. Only the dedupe suite is expected to rise.
+   the next. ALL FIFTEEN MUST BE EXIT 0; that is this round's whole point.
+   Base readings measured by the reviewer at `906532ef`, in parentheses.
+   The first two are the ROUND'S TARGET and are the only ones that may
+   move: each currently holds ONE failing case and must reach the same
+   TOTAL with zero failures. Report yours beside each and name any that
+   moved.
+     tests/orchestration/test_semantic_dedupe.py   (125 total: 124 passed, 1 FAILED)
+     tests/orchestration/test_prompt_trace.py       (46 total:  45 passed, 1 FAILED)
+     tests/orchestration/test_pingpong_cli.py               (173 passed)
+     tests/orchestration/test_pingpong.py                    (34 passed)
+     tests/orchestration/test_session_resume.py              (27 passed)
+     tests/orchestration/test_token_ledger.py               (120 passed)
+     tests/orchestration/test_token_truth.py                 (37 passed)
+     tests/orchestration/test_token_truth_v1_contract.py    (101 passed)
+     tests/orchestration/test_job_evidence.py                (93 passed)
+     tests/orchestration/test_provider_evidence_integration.py (64 passed)
+     tests/orchestration/test_cost_report.py                 (22 passed)
+     tests/ui_server/test_prompt_trace_payload.py            (20 passed)
+     tests/ui_server/test_prompt_trace_lens.py               (13 passed)
+     tests/test_observability_index.py                       (14 passed)
+     tests/cli/test_golden_path.py                           (42 passed)
 
 G7 THE TREE. `git status --porcelain` EMPTY. `git ls-files .remedy-wt`
-   returns nothing. Report the insertion count of C0a through C5 from
+   returns nothing. Report the insertion count of C0a through C4 from
    `git show --numstat` — the `+` column only, per AGENTS.md DECISION
-   F104 D1, never insertions plus deletions and never a before/after line
-   count of a rewritten file — and confirm each is under 500. Confirm every
-   commit is single-parent with `git log --format="%h parents=%p"`. Compare
-   those numbers CELL BY CELL against your own `## Commits` table and state
+   F104 D1 — and confirm each is under 500. Confirm every commit is
+   single-parent with `git log --format="%h parents=%p"`. Compare those
+   numbers CELL BY CELL against your own `## Commits` table and state
    plainly that you ran that comparison.
 
 G8 THE STALENESS SWEEP (finding `R-0417`'s standing counter-measure, which
    is OPEN and binding). For EACH file this round touched, re-read it end
    to end and report every sentence that states a count, a list of modules,
-   a round map, or a completion — together with whether it STILL HOLDS
-   after this round's own commits. This round is where that gate earns its
-   place twice over: C3 exists because round 10 falsified prose it was
-   forbidden to repair, and C4 changes what the loop RECORDS, so any
-   sentence anywhere in `pingpong_loop.py` or the dedupe suite that
-   describes trace behaviour is a candidate. Report the sweep even when it
-   finds nothing, and repair nothing outside the change set — declare it.
+   a round map, or a completion — together with whether it STILL HOLDS.
+   Two are already known and SPEC A and SPEC B both repair them, so report
+   them as repaired rather than as new: the dedupe case's own comment about
+   what the round 2 trace records, and the two `test_prompt_trace.py`
+   docstrings naming index positions. Report the sweep even where it finds
+   nothing more, and repair nothing outside the change set — declare it.
 
 Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md.
-It carries the state block, the item-status table with every C0a-C6 item
+It carries the state block, the item-status table with every C0a-C5 item
 present exactly once, the changed-files table, one line per gate with real
-readings, the deviations, the open-findings count, and — mandatory, since
-this is session 3 — the SESSION NUMBER of the running feature. It has no
-length cap. Then push.
+readings, the deviations, the open-findings count, and — mandatory — the
+SESSION NUMBER, which is 3. It has no length cap. Then push.
 
 <<<SLICE PLAN
 # Plan — F109 Semantic dedupe
@@ -215,13 +205,13 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 11, session 3. Book round 10's PASS, register `R-0773` and `R-0774`,
-and fix both. `R-0773` is three docstring passages in `pingpong_loop.py`
-that still call F109's config plumbing absent after round 10 landed it.
-`R-0774` is the prompt TRACE describing the abandoned resumed composition
-on a resume fallback rather than the full-content call that actually
-reached the provider; the fix appends a second trace in each role's
-fallback branch, so one trace exists per real provider invocation.
+Round 12, session 3, a REPAIR round. Round 11 landed the correct fix for
+`R-0774` on the Builder side and ended RED: two test selectors assumed one
+Builder trace per role per round, and a second, honest trace falsified
+them. Repair both by the property they meant to assert rather than the
+position they used, book round 11's FAIL, register `R-0775` and `R-0776`,
+and record that `R-0774`'s Reviewer half was false — that role already
+recorded two traces before the round began. No production file changes.
 
 ## Next Steps
 
@@ -236,130 +226,94 @@ fallback branch, so one trace exists per real provider invocation.
 
 ## Risks
 
-- A suite that no round gate names can go red without anyone seeing it.
-  That is what `R-0772` was. Every block from here names the suites its
-  change set can REACH, not only the ones it expects to move.
+- A positional selector over source text or over a trace list breaks
+  silently whenever a correct change adds a site. `R-0775` is that class;
+  prefer selecting by a declared property.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
 SLICE PLAN
 
 <<<SLICE RECORD
-Gate: F109 R10 — the round 10 entry. VERDICT PASS, AND EVERY GATE WAS RE-RUN BY THE REVIEWER RATHER THAN READ FROM THE HANDBACK, over the range `d7fbff5b99d35e1601c6001086a508187eaed323..c22818f59e6f52ea79b10cb0f36390c5070322c7`. THE TRANSPORT: `sha256sum .agent/authored/f109-r10.md .agent/last_block.md` prints `3a8ef357639196c7bc40e0c98dba54ac49f4224832dae0fd6ca843cb2f6011d5` twice; that chain compares the saved copy against its mirror and claims nothing about the emitted bytes. THE PLAN: 45 lines, `^## Goal` 1, `^## Next Steps` 1. THE LEDGER, re-measured against `git show d7fbff5b…:.agent/live_review.md` rather than against the handback: `Done: R-` rose 64 to 65, `- R-` unchanged at 333, `Gate: F109 R9 — ` 0 to 1, and `Landed: R-0772 — ` still reads 1, standing beside its new `Done:` paragraph as the record requires. THE PRODUCTION DIFF, read in full rather than sampled: `packages/orchestration/pingpong_loop.py` gains one parameter, one docstring paragraph and two keyword arguments, with ZERO lines deleted. The claim that the two resume-fallback recompositions stay outside the flag was verified NOT by reading the comment that asserts it but by reading `builder_compose_args`, the dict both the primary and the fallback call sites splat: it holds no dedupe key, so the fallback cannot carry one whatever the comment says. `_dedupe_resumed_segments` opens `if not enabled: return tuple(segments), ()`, so the flag really is consulted first and alone. THE COLOUR, reproduced independently by the reviewer in a disposable worktree removed and pruned after, `python3 -B`, with an import probe confirming `pingpong_loop` resolved INSIDE the worktree: mutation A (`semantic_dedupe_enabled: bool = True,` to `False`) gives exit 1 at 7 failed, 115 passed; mutation B (the BUILDER site's `dedupe_enabled=semantic_dedupe_enabled` to `True`, reached by the two-line string ending `# into it.`, which occurs exactly once) gives exit 1 at 3 failed, 119 passed — both counts and both failure SETS identical to the handback's, including the named node in each. THE SUITES, all ten re-run serially by the reviewer: 122, 46, 25, 120, 36, 39, 14, 34, 27, 42, every one exit 0 and every one equal to the handback's reading. THE TREE: `git status --porcelain` empty, `git ls-files .remedy-wt` empty, and `origin/feature/f109-semantic-dedupe` equal to HEAD, so the round was pushed as its handback said it would be. NO BLOCK CONDITION IS MET: not one number in the handback failed to reproduce, and the three declared deviations were all accurate. TWO FINDINGS ARE RAISED BY THIS REVIEW AND NEITHER IS THE ROUND'S FAULT — `R-0773`, whose repair round 10's own constraint 4 forbade and whose staleness the worker declared rather than hid, and `R-0774`, which the reviewer found while reading the trace seam the NEXT round was to change and which predates F109's trace work entirely.
+Gate: F109 R11 — the round 11 entry. VERDICT FAIL, AND THE FAULT IS THE REVIEWER'S ON THREE COUNTS WHILE THE ROUND'S EXECUTION WAS EXEMPLARY, over the range `c22818f59e6f52ea79b10cb0f36390c5070322c7..906532ef`. THE ROUND ENDS RED AND THE WORKER SAID SO RATHER THAN ROUTING AROUND IT: `tests/orchestration/test_semantic_dedupe.py` is exit 1 at 124 passed 1 failed and `tests/orchestration/test_prompt_trace.py` is exit 1 at 45 passed 1 failed, both independently reproduced by the reviewer at the tip. WHAT LANDED AND IS CORRECT: `R-0773`'s three docstring repairs, verified by the reviewer with the zero-gate `grep -c 'config plumbing that supplies'` over `packages/orchestration/pingpong_loop.py` reading 0 against 2 at `c22818f5`, and the replacement text present 3 times; and C4's Builder second trace append, which does exactly what `R-0774` ordered. THE THREE REVIEWER DEFECTS. FIRST, `R-0774`'s REVIEWER HALF WAS FALSE and is corrected in the `Note:` paragraph below. SECOND, gate G4(a) WAS UNMEETABLE AS ORDERED: it demanded `ast.dump(tree, include_attributes=False)` be EQUAL across a commit that changes only docstrings, and that dump renders `Constant` values, so no docstring edit can satisfy it — the reviewer independently reproduced this with a two-function control, and the worker had already proved it and correctly continued after showing the stop clause's antecedent false. Registered as `R-0776`. THIRD, and the reason the round is FAIL rather than PASS, THE BLOCK ORDERED A CHANGE WHOSE RIPPLE ITS OWN CONSTRAINTS FORBADE REPAIRING: constraint 6 barred editing any existing line of the dedupe suite and `tests/orchestration/test_prompt_trace.py` was not in the change set at all, so neither break was fixable inside the round's authority. Registered as `R-0775`. THE GATE LIST DID ITS JOB, which is the one thing to keep from this round: `test_prompt_trace.py` was named in G6 ONLY because `R-0772` taught that a gate list must name the suites a change can REACH rather than the ones it expects to move, and it is exactly the suite that moved without being touched. THE OTHER THIRTEEN SUITES were re-run by the reviewer at the tip and are unchanged and green: 173, 34, 27, 120, 37, 101, 93, 64, 22, 20, 13, 14, 42. THE LEDGER, re-measured against `git show c22818f5…:.agent/live_review.md`: `- R-` rose 333 to 335, `Done: R-` unchanged at 65, `Gate: F109 R10 — ` 1, `- R-0773 — ` 1, `- R-0774 — ` 1. THE TREE is clean and the branch is pushed. NO BLOCK CONDITION OF §4 ITEM 5 IS MET — nothing was fabricated, no indicator is false, the changed-files table is present and accurate, and every deviation was declared before review; the FAIL is the red tip, and the round that produced it behaved exactly as a worker should when a correct change meets a constraint that forbids completing it.
 
-- R-0773 — Low, `packages/orchestration/pingpong_loop.py` STILL DOCUMENTS F109'S CONFIG PLUMBING AS ABSENT IN THREE PLACES AFTER ROUND 10 LANDED IT. Raised by the reviewer at the F109 R10 gate, from the worker's own declared deviation 1, and registered with an id rather than slipped because the wrong state is on disk under `packages/` — the amend0827 rule 2 test — and the next reader meets it in the exact paragraph that explains the seam. MEASURED at `c22818f59e6f52ea79b10cb0f36390c5070322c7`: `grep -n "config plumbing that supplies"` over that file returns lines 1006 and 1541, each reading "the config plumbing that supplies it is T002c.", once in `compose_builder_prompt`'s docstring and once in `compose_reviewer_prompt`'s; and `_dedupe_resumed_segments`'s own scope-boundary paragraph closes at lines 921-922 with "What remains absent is the config plumbing that supplies ``enabled``, which is T002c." That plumbing landed at `b245e1c96a5568d0f8b471ed00ae0618d91b00db`, where `run_pingpong` gained `semantic_dedupe_enabled` and forwarded it to both primary compositions as `dedupe_enabled`. All three sentences were TRUE when written and round 10 falsified them without touching them — the `R-0749` shape, raised against the round that made the prose false rather than the round that wrote it. WHY LOW: no behaviour is wrong, no gate is blind, no test is weakened, and by AST the module's executable statements are untouched by the repair; the defect is confined to explanatory prose. WHY IT IS NOT HARMLESS: the first of the three is a DELIBERATE-ABSENCE note of exactly the kind AGENTS.md's discoverability section asks a reader to trust — "text search cannot find code that does not exist" — so a reader who trusts it concludes the kill switch is unbuilt, and the obvious next move is to build it a second time. THE FAULT IS THE REVIEWER'S: round 10's constraint 4 permitted only the edits SPEC V described and said "nothing else in that file changes", so the worker applied the constraint as written and declared the residual in its handback, which is exactly what guardrail G8 requires of it. FIX: rewrite all three passages to state the plumbing as it now IS, naming `b245e1c9` as the commit the reading was taken at, and change no executable statement of the module. Resolved when no docstring under `packages/` asserts that F109's config plumbing is absent, unbuilt or pending — a reading taken over the CLAIM and not over any one wording of it.
+Note: R-0774 — CORRECTION, appended rather than rewritten because this record is append-only and a dated wrong sentence is better than an overwritten one. `R-0774`'s REVIEWER HALF WAS FALSE. The finding stated "The Reviewer side is the same shape: append at 3658, call at 3699, fallback recomposition at 3738", and that sentence was produced by grepping `build_trace_entry` for line numbers and generalising the Builder's structure to the Reviewer WITHOUT reading the enclosing code — an inference presented as a measurement, which is the `R-0747` move this record exists to catch. THE TRUTH, measured at `906532ef` by the reviewer: line 3695 defines a closure `_rev_trace`, and the Reviewer's traces are written through `on_call=_rev_trace(...)` passed to `_call_with_retry` at the primary call, at the FALLBACK call and at the parse-retry call. `_call_with_retry` fires that callback once per ACTUAL provider invocation and `_rev_trace` reads `reviewer_composed` at call time, so the Reviewer already picked up the fallback rebinding and already recorded a second, full-content entry BEFORE round 11 began. `R-0774`'s own "Resolved when" clause was therefore already satisfied for that role at `c22818f5`. The Builder half of the finding was correct and its fix landed at `498d98dc`. THE ROUND 11 WORKER CAUGHT THIS, refused to apply SPEC Y's Reviewer half on the ground that it would write a THIRD entry and double-count one provider call in `prompt_trace.jsonl` and `call_segments`, and declared the refusal loudly instead of applying an order it had measured to be wrong — which is precisely what AGENTS.md's Commit Gate requires and is the correct behaviour under self-drive guardrail G8. It additionally left a deliberate-absence comment at the Reviewer fallback naming `R-0774` and stating why no append belongs there, which is the discoverability convention AGENTS.md asks for, applied unprompted. `R-0774` remains OPEN: the Builder half is fixed and the Reviewer half needs no fix, but the finding is not resolved until `R-0775`'s repair makes the suite green, because its own resolution clause requires a named test to go red on deleting the new append and that test is currently one of the two that are red.
 
-- R-0774 — Medium, ON EVERY RESUME FALLBACK THE PROMPT TRACE DESCRIBES THE ABANDONED RESUMED COMPOSITION INSTEAD OF THE BYTES THAT ACTUALLY REACHED THE PROVIDER. Raised by the reviewer at the F109 R10 gate while reading the trace seam round 11 was to change; it PREDATES F109's trace work and is not caused by it. MEASURED at `c22818f59e6f52ea79b10cb0f36390c5070322c7` by driving the REAL loop through the dedupe suite's own `fallback_repo` fixture with `builder_resume_fails=True` and `repair_rounds=2`, inside a disposable worktree removed after: `result.rounds[1].builder_output.resume_fallback` is True, the captured Builder calls of that round are `(resume='sess-builder', marker PRESENT, 808 chars)` followed by `(resume=None, marker ABSENT, 1110 chars)`, and the ONE builder trace recorded for that round reads `prompt_chars=808` with the dedupe marker present in `prompt_text_redacted`. The 1110-character full-content call that actually reached the provider has NO trace at all, and the trace that does exist describes an attempt the provider rejected. THE CAUSE IS ORDERING, NOT CONTENT: the Builder trace is appended at line 3352, the first `_call_with_retry` runs at 3373, the fallback branch opens at 3395 and rebinds `builder_composed` and `builder_prompt` at 3406-3407, and the second `_call_with_retry` at 3410 sends the rebound prompt — so the trace is written two statements before the composition it names is discarded. The Reviewer side is the same shape: append at 3658, call at 3699, fallback recomposition at 3738. `R-0771` repaired the bytes SENT and the manifest `record_finalized_call` reads, and the rebinding comment at lines 3401-3405 claims that rebinding makes "the bytes sent, the ``fallback_prompt`` stored by ``_finalize_call`` and the recorded evidence describe one and the same call" — the prompt TRACE is the one artefact that promise does not reach, which is why the defect survived that repair. WHY MEDIUM: nothing is corrupted and no security boundary is crossed, but `prompt_trace.jsonl` is the artefact that answers "what did we send the model", `token_ledger.record_call_segments` copies its manifest rows into the `call_segments` table, and on a fallback every one of `prompt_sha256`, `prompt_chars`, `segment_manifest`, `segment_manifest_chars` and `prompt_text_redacted` describes bytes that were never delivered — a FALSE live indicator in the evidence rather than a missing one, which this repository's own block conditions treat as the more serious of the two. It also blocks the next slice from landing honestly: surfacing the deduped names as a trace field on top of this ordering would turn a misleading paragraph into a structured, machine-readable claim that named segments were withheld from a call that re-sent them in full. FIX: in EACH role's fallback branch, after the recomposition rebinding and before the stream call, append a SECOND trace entry built from the rebound composition, mirroring that role's own existing append argument for argument. The entry already carries `transport_attempt` and `is_transport_retry` and its contract is one trace per ACTUAL provider invocation — which `tests/orchestration/test_structured_outputs.py`'s parse-retry pair, whose own name promises two traces for two calls, already relies on — so a second invocation earns a second entry rather than an overwrite of the first, and the failed resumed attempt keeps its own honest record. Resolved when a Builder resume fallback and a Reviewer resume fallback each record TWO traces for that round, the second carrying the full-content prompt's own character count and no dedupe marker, and when deleting either new append turns a named test red.
+- R-0775 — High, THE BRANCH TIP SHIPS A RED SUITE: TWO TEST SELECTORS ASSUMED ONE BUILDER TRACE PER ROLE PER ROUND AND A CORRECT SECOND TRACE FALSIFIED THEM. Registered by the reviewer at the F109 R11 gate, against the reviewer's own block. MEASURED independently at `906532ef`: `python3 -B -m pytest tests/orchestration/test_semantic_dedupe.py tests/orchestration/test_prompt_trace.py -q` reads exit 1 at 2 failed, 169 passed. THE TWO BREAKS ARE THE SAME CLASS — A POSITIONAL SELECTOR OVER A LIST THAT GREW — arriving in two different materials. (1) `test_the_recorded_builder_row_describes_the_bytes_that_were_sent` builds `traces = {trace.round: ... for trace in result.prompt_traces if trace.role == "builder"}`, a dict comprehension that is LAST-WINS per round, so `traces[2]` used to be the abandoned resumed composition and is now the full-content one; its positive control `assert replaced, sorted(traces[2])` then fails because the full-content composition replaced nothing. The case's own comment already states which composition it needs — "the round 2 Builder trace records the manifest of the composition the fallback ABANDONED" — so the selector, not the intent, is what broke. (2) `test_the_reviewer_call_site_hands_its_composition_down` takes `source.split("result.prompt_traces.append(build_trace_entry(")[2]` as the Reviewer's append, and round 11's C4 inserted a third append earlier in the file, so index 2 now resolves to the BUILDER's fallback site and the guard fails on `assert 'role="reviewer",' in site`. Its sibling `test_the_builder_call_site_hands_its_composition_down` takes index 1, still resolves, and is GREEN — which is worse than red, because it means the same latent trap survives untripped in the same file, and it does not guard the new fallback append at all. THE FAULT IS THE REVIEWER'S, TWICE: §3 item 7 orders a grep of the suite for guards over a file BEFORE ordering an addition to it, and the round 11 block ran that check for closed KEY SETS over the trace record and never for POSITIONAL selectors over the trace LIST or over the module source; and the block's own constraint 6 then forbade editing any existing line of the dedupe suite while `test_prompt_trace.py` was not in its change set, so an honest worker could not repair either break and correctly stopped. WHY HIGH: a red branch tip blocks the integration gate and therefore blocks closure, which is exactly the severity `R-0772` carried for the same symptom on the same branch. FIX, and it must make each guard STRICTER rather than merely green: select by the property the assertion is about, never by position. For (1), take the FIRST Builder trace of the round — the abandoned composition the case's own comment names — rather than relying on dict last-wins, and update that comment to say the round now records two. For (2), split the source into ALL append sites and select by the `role="..."` each site declares, asserting the Reviewer has exactly one and that BOTH Builder sites hand their composition down, so the fallback append round 11 added is guarded too and no future insertion can move a numeral. Resolved when all fifteen suites the round 12 block names are exit 0, and when deleting `composed_prompt=builder_composed,` from the Builder FALLBACK append alone turns the repaired Builder guard red.
+
+- R-0776 — Low, A GATE OVER PRODUCTION CODE WAS UNMEETABLE BY CONSTRUCTION: G4(a) DEMANDED AN AST DUMP BE EQUAL ACROSS A COMMIT THAT CHANGES DOCSTRINGS. Registered by the reviewer at the F109 R11 gate, against the reviewer's own block, under amend0827 rule 2's clause for a gate over production code shown to be blind or unmeetable. THE ORDER: round 11's G4(a) required `ast.parse` of `packages/orchestration/pingpong_loop.py` before and after C3 and demanded `ast.dump(tree, include_attributes=False)` be EQUAL, on the stated reasoning that "SPEC X changes docstring prose only, and a docstring is an expression". THE MEASUREMENT, taken independently by the reviewer: a docstring is an `Expr` wrapping a `Constant`, and `include_attributes=False` suppresses line and column attributes ONLY, not VALUES, so the dump renders the docstring text itself — two functions differing only in their docstring produce unequal dumps. The gate could therefore never pass for the commit it was written for, and its own stop clause ("If it did not, SPEC X was misapplied: stop and declare it") would have halted a round whose slice was applied perfectly. THE ROUND 11 WORKER HANDLED IT CORRECTLY: it recorded the real red, proved the antecedent false with a three-line control, showed by a stripped-docstring comparison that the module's executable statements were genuinely untouched (23625 nodes on both sides, exactly the three intended docstrings differing), and continued. WHY LOW AND NOT HIGHER: no product state is wrong, no test was weakened, and the property the gate MEANT to establish was established by the worker's own stronger reading; the cost was a declared deviation on a round that did nothing wrong — the same shape as `R-0252`, whose lesson is item 5 of the pre-emission checklist. FIX: where a gate must prove that a prose-only commit changed no executable statement, compare the AST with docstrings STRIPPED — walk the tree and drop the leading `Expr(Constant(str))` of every module, class and function body before dumping — or compare `co_consts`-free structural summaries; and never assert equality of a representation that renders the very bytes the commit changes. Resolved when a later block orders such a proof in a form that a correct prose-only commit can actually satisfy, and states which reading it used.
 SLICE RECORD
 
-<<<SPEC X
-SPEC X — R-0773: THE THREE STALE PASSAGES.
+<<<SPEC A
+SPEC A — R-0775 (1): SELECT THE COMPOSITION THE CASE IS ABOUT.
 
-File: `packages/orchestration/pingpong_loop.py`. Three prose replacements
-and no fourth. No executable statement changes — G4(a) proves that by AST.
+File: `tests/orchestration/test_semantic_dedupe.py`. One case changes:
+`test_the_recorded_builder_row_describes_the_bytes_that_were_sent`.
 
-PAIR X1. TO contains FROM: false, so this is a REWRITE and the obligation
-is FROM 0x, TO 1x after the commit. FROM occurs exactly 1 time before it.
+THE DEFECT. The case builds a dict keyed by `trace.round` over the Builder
+traces. A dict comprehension is LAST-WINS, so before round 11 `traces[2]`
+was the round's only Builder trace — the ABANDONED resumed composition —
+and it is now the SECOND, full-content one, which replaced nothing. The
+positive control `assert replaced, sorted(traces[2])` therefore fails.
 
-FROM:
-    supplies a real set. What remains absent is the config plumbing that
-    supplies ``enabled``, which is T002c.
+THE REPAIR. Keep every assertion. Change only WHICH trace the case reads,
+so it reads the one its own comment already names: the FIRST Builder trace
+of the round, which is the composition the fallback abandoned. Take it
+explicitly — collect the Builder traces of each round in order and take
+index 0 — rather than by relying on a dict's overwrite order in either
+direction, so the selection states what it means and a third trace could
+not silently change it again.
 
-TO:
-    supplies a real set. THE CONFIG PLUMBING NOW EXISTS: ``run_pingpong``
-    carries ``semantic_dedupe_enabled`` and forwards it to both primary
-    compositions as ``dedupe_enabled`` (F109 T002c, landed at
-    ``b245e1c9``), so ``enabled`` is supplied on every production
-    composition. The remaining bypass is ``dedupe_sent_hashes`` being
-    ``None`` off a call that is not resuming, which is the scope rule
-    rather than a gap.
+ALSO UPDATE THE CASE'S OWN COMMENT, which is now stale in one sentence: it
+says "the round 2 Builder trace records the manifest of the composition the
+fallback ABANDONED" as though there were one. Say instead that the round
+now records TWO Builder traces — the abandoned resumed composition first,
+then the full-content call that actually reached the provider — and that
+this case reads the FIRST because the names the abandoned composition
+replaced are what the assertion is about. Name `R-0774` as the round that
+added the second and `R-0775` as the finding this repair closes.
 
-PAIR X2. TO contains FROM: false, so this is a REWRITE. FROM occurs
-exactly 2 times before the commit — once in `compose_builder_prompt`'s
-docstring and once in `compose_reviewer_prompt`'s — and BOTH are replaced
-with the same TO. After the commit FROM occurs 0 times and TO occurs
-exactly 2 times. Report both counts.
+Change nothing else in the file. No case is added, renamed or deleted, and
+`grep -c '    def test_'` is identical before and after.
+SPEC A
 
-FROM:
-    ``dedupe_enabled`` is the kill switch, forwarded straight to
-    :func:`_dedupe_resumed_segments`; the config plumbing that supplies it is
-    T002c.
+<<<SPEC B
+SPEC B — R-0775 (2): GUARD THE SITES BY THE ROLE THEY DECLARE.
 
-TO:
-    ``dedupe_enabled`` is the kill switch, forwarded straight to
-    :func:`_dedupe_resumed_segments`. ``run_pingpong`` supplies it from its
-    own ``semantic_dedupe_enabled`` parameter (F109 T002c, landed at
-    ``b245e1c9``), which reaches this composition and the other role's and
-    nothing else.
-SPEC X
+File: `tests/orchestration/test_prompt_trace.py`. Two cases change:
+`test_the_builder_call_site_hands_its_composition_down` and
+`test_the_reviewer_call_site_hands_its_composition_down`.
 
-<<<SPEC Y
-SPEC Y — R-0774: ONE TRACE PER ACTUAL PROVIDER INVOCATION.
+THE DEFECT. Each splits the module source on
+`result.prompt_traces.append(build_trace_entry(` and takes a FIXED INDEX —
+`[1]` for the Builder, `[2]` for the Reviewer. Round 11's C4 added a
+Builder append in the resume-fallback branch, so `[2]` is now that new
+Builder site and the Reviewer guard fails. The Builder guard still passes
+by luck, and guards only the primary site.
 
-File: `packages/orchestration/pingpong_loop.py`. Two insertions, one per
-role, and no third. Nothing already in the file is edited or deleted.
+THE REPAIR, applied to BOTH cases. Split the source into ALL append sites
+once — every part after the first, each truncated at its own `))` — and
+select by the `role="..."` the site itself declares, never by position.
 
-Each role's resume-fallback branch — the Builder's
-`if builder_resume_ref and builder_out.error:` and the Reviewer's
-counterpart — already recomposes at full content and rebinds BOTH
-`<role>_composed` and `<role>_prompt`. Immediately AFTER that rebinding
-pair, and BEFORE the `_begin_stream_call` that opens the fallback attempt,
-add a second `result.prompt_traces.append(build_trace_entry(...))`.
+For the REVIEWER case: exactly ONE site declares `role="reviewer",`. Assert
+that arity, take that site, and keep the existing assertions on it
+unchanged (`prompt_text=prompt_text,` and
+`composed_prompt=reviewer_composed,`).
 
-That call MIRRORS THAT ROLE'S OWN EXISTING PRIMARY APPEND ARGUMENT FOR
-ARGUMENT. Copy the role's primary append and change exactly two things:
-  - `prompt_text=` takes the REBOUND `<role>_prompt`
-  - `composed_prompt=` takes the REBOUND `<role>_composed`
-Every other argument is copied unchanged from that SAME role's primary
-append — including any the Reviewer's carries and the Builder's does not.
-Do not invent an argument, do not drop one, do not reorder them, and do
-not refactor the primary append into a shared helper: the two appends
-differ by role and a helper would be a third thing to keep in step.
+For the BUILDER case: exactly TWO sites declare `role="builder",` — the
+primary and the fallback append `R-0774` added. Assert that arity and then
+assert of EVERY one of them that it carries `prompt_text=builder_prompt,`
+and `composed_prompt=builder_composed,`. This is strictly stronger than the
+old guard: it pins the fallback append, which no index reached before.
 
-Carry a short comment above each insertion naming F109 and `R-0774`, and
-stating WHY this is a second entry rather than a rewrite of the first: the
-resumed attempt really did reach the provider and keeps its own honest
-record, and the entry's contract is one trace per ACTUAL provider
-invocation, so a fallback — which is a second invocation — earns a second
-trace. The Reviewer comment may point at the Builder comment rather than
-repeat it.
-SPEC Y
+UPDATE BOTH DOCSTRINGS. Each currently explains the index it used —
+"Index [2] is the reviewer's `build_trace_entry` append; [1] is the
+builder's" — and that sentence is exactly the fragility being removed.
+Replace it with the property the case now asserts, naming `R-0774` as the
+change that added the second Builder site and `R-0775` as the finding that
+made the selector positional-free. Leave every other sentence of both
+docstrings, including the `R-0771` paragraph about the composition count,
+untouched and true.
 
-<<<SPEC Z
-SPEC Z — THE TESTS FOR R-0774.
-
-File: `tests/orchestration/test_semantic_dedupe.py`, ONE new class appended
-at the very END. No existing line is edited, reordered or deleted.
-
-Drive the REAL loop through the file's existing fixtures — `fallback_repo`,
-`TestChainAgainstTheRealLoop._provider_pair` and `._run`,
-`_capture_role_calls` and `_split` — exactly as the existing
-`test_a_builder_resume_fallback_sends_full_content` does. Reuse them; do
-not build a second fixture that could drift from the first.
-
-Every trace you read is asserted `prompt_text_truncated is False` BEFORE it
-is read, so a marker absence is only as wide as the recorded text and no
-wider — the same guard `_marked_traces` already applies, for the same
-reason.
-
-CASE 1 — THE BUILDER FALLBACK RECORDS THE BYTES IT ACTUALLY SENT. With
-`builder_resume_fails=True` and `repair_rounds=2`: assert FIRST that the
-fallback really fired (`result.rounds[1].builder_output.resume_fallback is
-True`), so the case cannot pass vacuously on a run that never took the
-branch it is about. Then, over the BUILDER traces of that fallback round:
-there are exactly TWO; the FIRST carries the dedupe marker in
-`prompt_text_redacted`; the SECOND does not; and the SECOND's
-`prompt_chars` equals the length of the full-content prompt actually sent
-to the fresh session. Take that length from `_split(calls)`'s fresh list
-rather than hard-coding a number, so the case survives a fixture change
-instead of pinning today's byte count.
-
-CASE 2 — THE REVIEWER FALLBACK, the same claim for the other role, using
-the reviewer-side resume failure `_provider_pair` already supports and the
-existing `test_a_reviewer_resume_fallback_sends_full_content` already
-drives.
-
-CASE 3 — A CHAIN THAT NEVER FALLS BACK RECORDS ONE TRACE PER ROLE PER
-ROUND. This is the DISCRIMINATOR: without it, cases 1 and 2 would still
-pass if the loop began appending a second trace unconditionally, which
-would be a different defect wearing the same green.
-SPEC Z
+Change nothing else in the file. No case is added, renamed or deleted, and
+`grep -c '    def test_'` is identical before and after.
+SPEC B
