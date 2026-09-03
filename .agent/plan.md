@@ -14,31 +14,30 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 18, session 4. CLOSURE PREPARATION. Give the feature file the
-BUILT STATE section closure precondition 4 requires; book round 17's
-PASS, which is the integration gate — branch 18937 passed and base 18799
-passed, both exit 0, with ZERO branch-only failures; resolve `R-0782`;
-and register and repair `R-0783`, the sixth and last site the
-stale-prose sweep has found.
+Round 19, session 4. CLOSURE PRECONDITION 6, the self-use item: the queue
+holds no pending item, so the generator supplies one from the ledger and
+it is planned and RUN to the normal approval gate under the product's own
+provider — never promoted, never faked. Its defects are reported in the
+handback for the reviewer to author as findings. Also book round 18's
+PASS and resolve `R-0783`.
 
 ## Next Steps
 
-- The self-use item closure precondition 6 requires: the queue holds no
-  pending item, so `generate_and_append_if_empty` supplies one from the
-  ledger, and it is planned, RUN to the normal approval gate, and its
-  defects registered before the close.
-- The closure sequence proper: evidence job, a FRESH review zip, the
-  authored STATUS line with the README sync in the SAME commit, the PR.
+- The closure sequence (docs/roadmap/STATUS_closure_protocol.md):
+  register the self-use defects, the evidence job, a FRESH review zip,
+  the authored STATUS line with the README sync in the SAME commit, the
+  `consumed_by` edit, and the PR. That round also runs the single
+  consolidation pass on the checklist of
+  docs/agents/planner_reviewer_prompt.md section 3.
 
 ## Risks
 
-- Six findings on this branch have been one class: prose that was TRUE
-  when written and was falsified by a later round. The closure
-  consolidation should answer the class, not add a seventh id.
+- The self-use run uses a local model. If it cannot run, the precondition
+  is BLOCKED and reported, never faked.
+- SEVEN findings on this branch have been one class: prose TRUE when
+  written and falsified by a later round. The consolidation should answer
+  the class, not add an eighth id.
 - Nothing dedupes in production: every concrete adapter returns
   `supports_resume = False`, so the mechanism is suite-only today.
-  `docs/system/semantic-dedupe-v1.md` states this plainly.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
   carry two `Done:` lines each. That is `R-0778`.
-- `R-0769` is registered, not fixed: its repair edits `README.md` and a
-  docs test, neither of which F109 owns.
