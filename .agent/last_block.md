@@ -1,112 +1,235 @@
-── STEP R20/1 — F110 (repair round) ────────────────────────
-Goal: Fix the two doc-consistency test failures that turned PR #233's
-CI red, caused by R19's STATUS/README bundle never re-deriving the two
-counts its own additions moved.
+STEP F112 CLAIM / ROUND 1 - F112 Prompt budget per task class
+FEATURE F112 - Prompt budget per task class (Tier 3) - SESSION 1, ROUND 1
 
-Bundle:
-1. Save this whole block verbatim.
-2. Apply PLAN20 (full replacement) to .agent/plan.md.
-3. Apply README_COUNT_PAIR and README_TIER3_PAIR to README.md, one commit.
-4. Append RECORD20 to .agent/live_review.md.
-5. Rewrite .agent/handoff.md (handback).
+Goal
+  Claim F112 in the STATUS ledger and set .agent/plan.md and
+  .agent/context.md for the branch, which the reviewer already cut from
+  main at pull request 233's merge commit (5c28c674). No production code
+  this round: T001 (config schema, resolver, validation, tests) is split
+  across rounds 2 and 3 to respect the 400-line block cap
+  (docs/agents/planner_reviewer_prompt.md section 3 item 1).
 
-Change: .agent/authored/f110-r20.md (new), .agent/last_block.md (mirror),
-.agent/plan.md (full replace), README.md (two in-place rewrites),
-.agent/live_review.md (append), .agent/handoff.md (rewrite). No other
-path.
+Bundle, in this order
+  C0a save this block verbatim to .agent/authored/f112-r1.md
+  C0b mirror it to .agent/last_block.md
+  C1  apply PLAN1 to .agent/plan.md (FIRST substantive commit)
+  C2  apply PAIR S to docs/roadmap/STATUS.md and CONTEXT1 to .agent/context.md
+  C3  rewrite .agent/handoff.md - the handback
 
-Constraints:
-- Do not touch any file under packages/, apps/, tests/, or
-  docs/roadmap/features/.
-- Both README pairs are REWRITES (TO does not contain FROM) — apply as
-  literal string replacement, each FROM must occur exactly once in the
-  base README.md before your edit.
-- Commit order: C0a (save authored block verbatim to
-  .agent/authored/f110-r20.md) → C0b (mirror committed authored file to
-  .agent/last_block.md, byte-identical) → C1 (PLAN20 to .agent/plan.md)
-  → C2 (both README pairs, one commit) → C3 (RECORD20 appended to
-  .agent/live_review.md — append means: read the current file, then
-  write two newline characters, then RECORD20's exact bytes, with
-  nothing else changed; the file must end WITHOUT a trailing newline,
-  matching its current convention) → C4 (handback: rewrite
-  .agent/handoff.md, commit).
-- Before C2, run: python3 -m pytest tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger -q
-  and confirm it reproduces the same two AssertionErrors CI reported
-  (68 vs 69; Tier 3 Done=3 vs 4). Report the exact output.
-- After C2, re-run the same pytest command and confirm both tests PASS.
-  Report the exact output.
-- AGENTS.md self-review loop (git diff --stat, git diff) before every
-  commit — no exceptions.
-- git push -u origin feature/f110-model-routing-by-task-class after C4.
-- Do not run `gh pr merge`. Do not create a worktree. Do not touch main.
+Change set - EXACTLY these paths and nothing else
+  .agent/authored/f112-r1.md (new, C0a) - .agent/last_block.md (C0b) -
+  .agent/plan.md (C1) - docs/roadmap/STATUS.md (C2) - .agent/context.md (C2) -
+  .agent/handoff.md (C3)
 
-Done when:
-- Both pytest tests above pass after C2, real exit code 0, output
-  quoted in the handback.
-- git diff --stat over the full round's range, scoped to packages/,
-  apps/, tests/, docs/roadmap/features/, is EMPTY.
-- git status --porcelain is EMPTY after C4.
-- .agent/plan.md is under 50 lines, exactly one `## Goal`, exactly one
-  `## Next Steps`.
-- .agent/live_review.md's new byte length equals its pre-C3 byte length
-  plus 2 (two newlines) plus RECORD20's UTF-8 byte length (2129), and
-  the file still ends without a trailing newline; report all three
-  numbers.
-- The branch is pushed.
+Constraints
+  1. Every authored slice is applied BYTE FOR BYTE: extract it by delimiter
+     index from the COMMITTED .agent/authored/f112-r1.md - marker lines
+     EXCLUDED - and write it with a script, never by retyping. If a slice
+     looks wrong, apply it as written and DECLARE it in the handback.
+  2. C1 is the first substantive commit of the round, before any other
+     content commit.
+  3. Newline conventions: this block's own PLAN1 and CONTEXT1 slices both
+     end WITH a trailing newline (measured on the scratch originals before
+     emission); .agent/plan.md and .agent/context.md must too after C1/C2.
+  4. The STATUS edit is str.replace(FROM, TO, 1) on the file's text. No
+     JSON or YAML round trip, no reformatting, no reflowing.
+  5. PLAN1 and CONTEXT1 REPLACE their whole files.
+  6. A sentence OUTSIDE the change set that this round makes stale is
+     DECLARED in the handback and NOT repaired.
+  7. Read .agent/STOP from disk before the first commit and again before
+     C3. If it exists, finish the commit in hand, write the handback, and
+     stop.
+  8. Self-review loop before every commit (git diff --stat, git diff).
+     Push after C3. No pull request, no merge.
+  9. This branch was cut and PR #233 was merged directly by the reviewing
+     session this session (git plumbing only - no file content was
+     authored by that session; every byte in every commit still comes
+     from a worker). Do not re-run the Open PR Gate or re-create the
+     branch - both already exist. `git rev-parse HEAD` before C0a must
+     read `5c28c674...` (report the full SHA).
 
-Handback: completion report (AGENTS.md handback fields) + rewrite
-.agent/handoff.md naming: SESSION 8 of feature F110, round 20 (repair),
-branch, commit SHAs, changed-files table, the real pytest output before
-and after C2, git diff --stat scope check result, live_review.md byte
-arithmetic, next expected action = "the reviewer re-verifies and, if
-green, re-checks PR #233's CI and merges at the Open PR Gate."
-──────────────────────────────────────────────────────────────
+Done when - the gates. Run each, record the REAL exit code and the REAL
+output.
 
-PLAN20 (full replacement of .agent/plan.md):
-<<<PLAN20_START>>>
-# Plan — F110 Model routing by task class
+  G1 TRANSPORT. After C0b:
+       sha256sum .agent/authored/f112-r1.md .agent/last_block.md
+     One digest, twice. Report both lines verbatim.
+  G2 THE PLAN. Extract PLAN1 from the COMMITTED authored file to scratch,
+     then:
+       cmp <extracted> .agent/plan.md            -> exit 0
+       wc -l .agent/plan.md                      -> report; must be under 50
+       grep -c '^## Goal' .agent/plan.md         -> 1
+       grep -c '^## Next Steps' .agent/plan.md   -> 1
+  G3 THE STATUS PAIR. Count FROM in docs/roadmap/STATUS.md BEFORE C2; it
+     must be exactly 1 before anything is written. After C2 report the
+     FROM and TO counts and the containment test's own output, in these
+     words:
+       TO contains FROM: false
+     This pair is a REWRITE and the FROM-zero count is the right proof.
+  G4 THE CONTEXT. Extract CONTEXT1 from the COMMITTED authored file and
+     cmp against .agent/context.md -> exit 0. Then, on the written
+     .agent/context.md, report each reading as a number, not as a word:
+       grep -c '^## Active Branch'  -> 1
+       grep -c '^## Steps'          -> 1
+       count of 'feature/'          -> report the number
+       first regex match of F followed by three digits -> report it
+       'pytest' in the lowercased text -> report True
+  G5 THE SUITES, EACH AS ITS OWN INVOCATION, RUN SERIALLY. This round edits
+     no test and no production code, so a MOVED COUNT IS ITSELF THE
+     FINDING.
+       python3 -m pytest tests/docs/ -q
+       python3 -m pytest tests/orchestration/test_roadmap_index.py -q
+       python3 -m pytest tests/ui_server/ -q
+       python3 -m pytest tests/orchestration/test_test_runner.py -q
+       python3 -m pytest tests/regression/test_resource_safety.py -q
+       python3 -m pytest tests/orchestration/test_integrity_gate.py -q
+       python3 -m pytest tests/cli/test_golden_path.py -q
+     Report the pass count of each; the reviewer will diff them against a
+     base reading taken independently. THE FOUR STATE READERS ARE RUN AS
+     FOUR, NOT AS THREE. The last is the canary every handback owes.
+  G6 THE TREE, THE COMMITS AND THE SWEEP. Read git status --porcelain
+     immediately before C3 is staged, and git ls-files .remedy-wt (no
+     output - nothing under .remedy-wt/ is ever committed). Then, for
+     C0a, C0b, C1 and C2 - the commits BEFORE the handback commit - report
+     each one's insertion count from git show --numstat, the '+' column
+     ONLY, and compare it CELL BY CELL against the Commits table of the
+     handback you are writing. C3's own numbers go to NEITHER a round
+     report NOR this file - the reviewer measures them at the next gate.
+     Then THE STALENESS SWEEP over every file this round touched, one
+     entry per file, stale or NOT stale, why.
 
-Branch: feature/f110-model-routing-by-task-class, PR #233 open into `main`
-since F110 R19 (session 7). F110 is CLOSED as a build feature; this round
-is a REPAIR round against the still-open PR, triggered by CI going red.
+Handback
+  Rewrite .agent/handoff.md per docs/agents/handback_template.md. It
+  carries the SESSION NUMBER of the running feature - this is SESSION 1
+  of F112 - the state block, the item-status table with every ordered
+  item appearing exactly once, the Commits table, one line per gate
+  followed by the transcripts, the deviations, and the next steps. It has
+  no length cap.
+
+SLICES. Each slice lies between its own one-line BEGIN and END marker. The
+marker lines are NEVER part of the slice. The slices carried here are
+PLAN1, CONTEXT1, PAIR S FROM and PAIR S TO.
+
+<<<BEGIN PLAN1>>>
+# Plan — F112 Prompt budget per task class
+
+Branch: feature/f112-prompt-budget-per-task-class, cut from `main` after
+pull request 233 was merged at the Open PR Gate.
 
 ## Goal
 
-Fix the two doc-consistency failures CI reported on PR #233: R19's C3
-(`86bc9444`) authored the new STATUS `[x] F110` line and README capability
-paragraph but never re-derived the two counts those additions moved, so
-`tests/docs/test_docs_consistency.py` failed
-`test_the_readme_accepted_count_equals_the_status_count` (68 vs 69) and
-`test_the_readme_tier_table_done_column_matches_the_ledger` (Tier 3
-Done=3 vs ledger 4).
+No prompt can silently balloon: every task class carries an input-token
+cap, the context compiler fits under it via the existing demotion cascade
+with full omission disclosure, and a context that cannot fit raises a
+task-split decision instead of a truncated prayer
+(docs/roadmap/features/T3_F112.md).
 
 ## Current Step
 
-Round 20 (repair). Rewrite README.md's accepted-count line and Tier 3
-Done cell to match the real STATUS.md ledger, register and resolve
-finding R-0790 for the omission, push, and confirm CI goes green.
+Round 1, session 1 — claim F112 in the STATUS ledger and set this file and
+`.agent/context.md`. Branch already cut. T001 lands over the next two
+rounds, split for the 400-line block cap (section 3 item 1): round 2 ships
+the config schema (`prompt_budget.task_class_caps` +
+`prompt_budget.default_cap`) and the new module
+`packages/orchestration/prompt_budget.py` (resolver
+`resolve_task_class_cap`, validator `validate_prompt_budget_config`,
+reusing `model_routing.TASK_CLASS_TIERS` as the one shared class
+vocabulary); round 3 ships that module's tests. No compiler wiring yet —
+that is T002.
 
 ## Next Steps
 
-Once CI is green on PR #233, the Open PR Gate merges it (AGENTS.md):
-`gh pr merge 233 --merge --delete-branch`, then `git checkout main` and
-`git pull --ff-only`. No further F110 rounds are planned after the
-merge — the next session claims the next STATUS `[ ]` feature.
+- Round 2: `prompt_budget.py` + its config registration.
+- Round 3: `tests/orchestration/test_class_prompt_budget.py`, gating
+  round 2's module.
+- T002: compiler cap enforcement in `context_compiler.py` — `fit(context,
+  cap)` over the existing demotion order, plus the `cannot_fit` outcome
+  with the tier-1-size/cap/class arithmetic, and oversized/unfittable
+  fixtures.
+- T003: the decision wiring (`escalation.enqueue_task_decision`, type
+  `task_decision`) for "task context exceeds its class cap", unattended
+  default split, and the granularity-machinery seam (see Risks).
+- Acceptance fixtures, the integration gate, then the closure sequence.
 
 ## Risks
 
-- `R-0767` and `R-0784` stay OPEN; both predate F110, documented in the
-  Built State section, not F110 defects.
-<<<PLAN20_END>>>
+- `task_granularity.py`'s split helpers are module-private and built for
+  plan-time normalization, not a live dispatched task; T003 may need a
+  small public seam addition, never a fork of the heuristics themselves
+  (feature file "Do not touch").
+- `R-0767` stays OPEN on the model-routing seam this feature's config
+  registration pattern borrows from; unrelated to F112, not absorbed.
+<<<END PLAN1>>>
 
-README_COUNT_PAIR:
-FROM: "68 of 266 registered items accepted."
-TO:   "69 of 266 registered items accepted."
+<<<BEGIN CONTEXT1>>>
+# Context — F112 Prompt budget per task class
 
-README_TIER3_PAIR:
-FROM: "| 3 | Full Token Economy & Autonomy | 3 | 26 |"
-TO:   "| 3 | Full Token Economy & Autonomy | 4 | 26 |"
+## Active Branch
+feature/f112-prompt-budget-per-task-class, cut from `main` at the merge
+commit of pull request 233.
 
-RECORD20 (append to .agent/live_review.md, exactly as C3 above describes):
-<<<RECORD20_START>>>
-Gate: F110 R20 — the round 20 entry. VERDICT PASS, over this round's own commit sequence (base e6e413ad, F110 R19's closure handback). THE ROUND REPAIRED A CI-RED LEFT BY R19: R19's C3 (86bc9444) authored the STATUS `[x] F110` line and the README capability paragraph but never re-derived the two counts those additions moved, so PR #233's `ci` check failed tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count (README claimed 68 accepted; docs/roadmap/STATUS.md carries 69 `- [x] F\d{3} — ` lines) and test_the_readme_tier_table_done_column_matches_the_ledger (README's Tier 3 Done cell read 3; the ledger derives 4 from F106/F108/F109/F110 all resolving to tier 3 via their feature files). THE REVIEWER REPRODUCED BOTH FAILURES LOCALLY BEFORE AUTHORING THIS ROUND, MATCHING CI'S OWN TWO ASSERTIONERRORS EXACTLY, and confirmed both FROM strings this round replaces occurred exactly once each in the base README.md. THE FIX IS TWO REWRITE PAIRS IN README.md ONLY: `68 of 266 registered items accepted.` to `69 of 266 registered items accepted.`, and `| 3 | Full Token Economy & Autonomy | 3 | 26 |` to `| 3 | Full Token Economy & Autonomy | 4 | 26 |` — neither TO contains its FROM (the changed digit sits mid-string in both), so both are REWRITES, not appends. FINDING R-0790 IS REGISTERED AND RESOLVED IN THE SAME ROUND: the open set was searched first per §3 item 30 and held no existing entry for this defect class; root cause is that R19's STATUS_PAIR/README_PAIR bundle carried no done-when asserting the two derived counts, so nothing caught the omission before it reached CI. THE GATE WAS RE-RUN AFTER THIS ROUND'S OWN README-FIX COMMIT (the commit immediately preceding this ledger entry in the sequence) AND WENT GREEN: both named tests pass at exit 0, reproduced directly against the committed README.md. THE TREE AND THE SWEEP HELD: this round's change set is README.md plus its own `.agent/**` state files only — no path under packages/, apps/, tests/ or docs/roadmap/features/ was touched. Done: R-0790 — the same round that registered it.<<<RECORD20_END>>>
+## Scope
+F112 (Tier 3, depends on F103 — done): every task class carries an
+input-token cap; the context compiler fits under it via its documented
+demotion cascade (distant signatures drop first) with full omission
+disclosure; a context that CANNOT fit raises a task-split decision instead
+of a truncated prayer. Task slicing: T001 config + validation + the
+shared class vocabulary assertion + tests; T002 compiler cap enforcement
++ cannot_fit arithmetic + fixture; T003 the decision wiring + unattended
+default (split) + an end-to-end where the split resolves the fit + tests.
+
+## Do not touch
+Calibration (F074), the demotion order itself, granularity heuristics
+(reused, not modified) — all explicitly out of scope per
+`docs/roadmap/features/T3_F112.md` Do not touch. Mid-file truncation stays
+forbidden; enforcement lives inside the compiler, never as an outer
+truncation.
+
+## Assumptions
+- `packages/orchestration/model_routing.TASK_CLASS_TIERS` is the ONE task
+  class vocabulary; F112 reuses it rather than declaring a second one, and
+  a cap for a class outside it is refused, not silently guessed.
+- `packages/orchestration/context_compiler.py` already owns tiered
+  selection, budget demotion (`compile_task_context`,
+  `DEFAULT_CONTEXT_TOKEN_BUDGET = 24000`) and the omissions record
+  (`OmissionRecord`, `write_omitted_context_json`); F112 gives it PER-CLASS
+  caps and the hard-floor behavior, T002's job.
+
+## Constraints
+The bullets in this first group are STANDING project constraints, carried
+forward from the context this file replaced.
+
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree,
+  never in the primary checkout, which satisfies `git status --porcelain`
+  empty at every verdict.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
+- `ruff check` is DENIED to this session's reviewer, measured at the F112
+  claim (`ruff check <path>` answers "This command requires approval").
+  F110's opposite constraint was measured for a DIFFERENT session and does
+  NOT carry forward. A round of F112 that ships a `.py` file gates
+  `python3 -m py_compile <path>` instead, and the worker attempts `ruff
+  check` itself, reporting success or the exact refusal.
+
+This round is NOT UI work — no design-reference binding applies.
+
+## Steps
+The item-status table for each round lives in that round's handback,
+`.agent/handoff.md`, which AGENTS.md's "Completion Report — Item-Status
+Table" section requires of every completion report. This file deliberately
+does not restate it.
+<<<END CONTEXT1>>>
+
+<<<BEGIN PAIR S FROM>>>
+- [ ] F112 — Prompt budget per task class
+<<<END PAIR S FROM>>>
+
+<<<BEGIN PAIR S TO>>>
+- [~] F112 — Prompt budget per task class
+<<<END PAIR S TO>>>
