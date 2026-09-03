@@ -1,134 +1,148 @@
-── STEP INTEGRATION GATE — F110 model routing by task class ───────────────────
-Round 15 · SESSION 5 of F110 · base `970ffc27` (F110 R14 C5)
+── STEP F110 CLOSURE ROUND 1 — self-use precondition + checklist ruling ──────
+Round 16 · SESSION 5 of F110 · base `1d1a82e1` (F110 R15 C4)
 
 Goal:
-  Run the INTEGRATION GATE this feature owes before closure — the full suite on
-  the branch and at the merge base, compared and attributed — and land its
-  evidence under `.agent/gate_f110_r15/`. Round 14's PASS verdict, the
-  resolution of `R-0789` and one prose slip are booked in the same round.
-
-  The procedure is `docs/agents/integration_gate.md`, steps 1-5. This block does
-  NOT restate it (§3, verification tier 3); it supplies only this round's
-  parameters, the repairs three OPEN findings require of it, and the gates.
+  Book round 15's PASS verdict. Run closure precondition 6's self-use item for
+  real, through the shipped generator and runner, mirroring F109 R19's own
+  precedent commit `9ee3ab57` exactly (dest_dir, budgets, evidence shape).
+  Author DECISION F110 D6 ruling on DECISION F110 D1's consolidation-pass
+  obligation: the pass runs (a genuine read of all 37 items for merge
+  candidates), finds two real candidates, and performs NEITHER, because
+  renumbering would falsify roughly 2,013 existing by-number citations of
+  docs/agents/planner_reviewer_prompt.md section 3 that the append-only ledger
+  forbids correcting. This is closure round 1 of what is now a THREE-round
+  closure sequence (round 17: findings + evidence job + review zip + feature
+  file Built State; round 18: STATUS/README/PR) — plan.md's earlier estimate
+  of two rounds undercounted the self-use and consolidation work; that
+  correction is itself part of PLAN16 below.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f110-r15.md`
+  C0a  save this block verbatim to `.agent/authored/f110-r16.md`
   C0b  mirror the committed authored file to `.agent/last_block.md`
-  C1   apply PLAN15 to `.agent/plan.md`
-  C2   append RECORD15 to `.agent/live_review.md` and SLIPS15 to
-       `.agent/prose_slips.md`
-  C3   the gate evidence: create `.agent/gate_f110_r15/` and commit the files
-       G7 lists
+  C1   apply PLAN16 to `.agent/plan.md`
+  C2   append RECORD16 to `.agent/live_review.md`, DECISION16 to
+       `.agent/decisions.md`, and SLIPS16 to `.agent/prose_slips.md`
+  C3   the self-use run: generate, plan, RUN (never promoted, never faked),
+       land the evidence under `.agent/selfuse_f110/`
   C4   the handback: rewrite `.agent/handoff.md`
 
 Change set — NOTHING outside these paths:
-  `.agent/authored/f110-r15.md`
+  `.agent/authored/f110-r16.md`
   `.agent/last_block.md`
   `.agent/plan.md`
   `.agent/live_review.md`
+  `.agent/decisions.md`
   `.agent/prose_slips.md`
-  `.agent/gate_f110_r15/` (created by this round; the files G7 lists)
+  `.agent/selfuse_f110/` (created by this round; the files constraint 6 lists)
   `.agent/handoff.md`
-  NO file under `packages/`, `apps/`, `tests/` or `docs/` is touched. This round
-  MEASURES the branch; it does not change it. A red gate is a HANDBACK, never a
-  repair applied here — integration_gate.md step 4 makes a reproducible
-  branch-only failure coupled to feature code a BLOCKER whose fix is its own
-  reviewer-gated round.
+  NO file under `packages/`, `apps/`, `tests/` or `docs/` is touched BY THIS
+  ROUND'S OWN COMMITS. The self-use run itself operates in ITS OWN isolated
+  job worktree (created and managed by `self_use_runner`/`pingpong_job`, e.g.
+  `.remedy-wt/job-<id>`) exactly as F109 R19's precedent shows — that
+  worktree's own commits, if any, are the SELF-USE JOB's business, not this
+  round's, are never merged or promoted, and are not part of this change set.
 
 Constraints:
-  1. Apply every delimited slice BYTE FOR BYTE — never edit, retype or re-wrap
-     one. If a slice looks wrong, apply it anyway and DECLARE the problem in the
-     handback: a declared conflict is worth more than a silent repair.
+  1. Apply every delimited slice BYTE FOR BYTE — never edit, retype or
+     re-wrap one. If a slice looks wrong, apply it anyway and DECLARE the
+     problem in the handback.
   2. `.agent/STOP` is read FROM DISK before the first commit and again before
      C4. If it exists at either reading: finish the commit in hand, write the
      handback, push, and stop.
   3. Slices are transported, not typed: C0a is `shutil.copyfile` from
-     `remedy-review-r9-scratch/f110-r15.md`, and every slice is EXTRACTED from
-     the COMMITTED `.agent/authored/f110-r15.md` by locating its `<<<BEGIN X>>>`
+     `remedy-review-r9-scratch/f110-r16.md`; every slice is EXTRACTED from the
+     COMMITTED `.agent/authored/f110-r16.md` by locating its `<<<BEGIN X>>>`
      and `<<<END X>>>` marker lines with `list.index` and joining the lines
      BETWEEN them, markers excluded. Nothing is taken from this prompt.
-  4. THE TARGET WINS on newline convention: `.agent/plan.md` ends WITH exactly
-     one trailing newline and the PLAN15 extraction carries none, so the applied
-     file is the extraction PLUS that one byte; `.agent/live_review.md` and
-     `.agent/prose_slips.md` end WITHOUT one and each append is `\n\n` + slice.
-  5. Do NOT run `ruff`, `npm`, or any formatter. This round writes no code.
-  6. THE SANDBOX SHAPES HOW THE SUITE IS INVOKED, and the F109 R17 gate already
-     solved it — `.agent/gate_f109_r17/gate_summary.txt` is the precedent to
-     follow. `VAR=x cmd`, `env VAR=x cmd`, `export VAR=x; cmd` and `cp` are all
-     DENIED. So: invoke pytest AS A LIBRARY, `pytest.main(["-n", "auto", "-q"])`,
-     with the working directory pinned per run; set `REMEDY_UI_NO_AUTO_BUILD`
-     IN-PROCESS via `os.environ` for the BASE run only; and copy with
-     `python3 -c "import shutil; shutil.copyfile(a, b)"`. Capture a real exit
-     code by wrapping any shell gate as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
-  7. RUN LOGS ARE WRITTEN OUTSIDE THE REPOSITORY WORKTREE while a suite runs and
-     COPIED IN only after that run has exited (R-0176: a log growing inside the
-     repo changes the worktree digest mid-run and fails the manifest-identity
-     ids as FALSE positives). Use `/home/decodeux/remedy-gate-scratch/`, which
-     the reviewer created and verified WRITABLE this session. NOTE, measured by
-     the reviewer: this sandbox permits WRITING there but BLOCKS reading a file
-     back from outside the repository, so every log is copied in with
-     `shutil.copyfile` before it is read. Evidence files carry `.txt` names and
-     NEVER `.log` — `.gitignore` drops `*.log` silently and the review-zip guard
-     rejects any `\.log$` member (R-0169).
-  8. Every destructive or throwaway checkout is a `git worktree` and is removed
-     by its EXACT path with `git worktree remove` plus `git worktree prune`, and
-     the throwaway BRANCH is deleted. The primary checkout reads
-     `git status --porcelain` EMPTY at every verdict. NEVER force-push, never
-     work on `main`, create NO pull request, merge nothing.
-  9. A sentence THIS ROUND makes stale, anywhere inside the change set, is
-     repaired in the commit that falsifies it. One outside the change set is
-     DECLARED in the handback and left alone.
-  10. `.agent/decisions.md`, `.agent/candidates.md` and
-      `docs/roadmap/features/T3_F110.md` are NOT touched. The feature file's
-      Design and Task-slicing bullets are the closure sequence's work.
+  4. NEWLINE CONVENTION, THE TARGET WINS: `.agent/plan.md` ends WITH exactly
+     one trailing newline and the PLAN16 extraction carries none, so the
+     applied file is the extraction PLUS that one byte. `.agent/live_review.md`
+     and `.agent/prose_slips.md` end WITHOUT a trailing newline and each
+     append is TWO newlines + slice. `.agent/decisions.md` ENDS WITH a
+     trailing newline (measured by the reviewer: base is 738004 bytes, ends
+     in a single `\n`) and its OWN convention differs from the other two
+     record files: the append is ONE newline + DECISION16 (DECISION16 itself
+     already ends with its own trailing newline, so the applied file's total
+     tail is the base's final paragraph, one blank line, then the new
+     DECISION heading through its own closing sentence and trailing newline —
+     matching the D4-to-D5 boundary the reviewer read on disk: the prior
+     paragraph's final period, then a blank line, then the next `## DECISION`
+     heading).
+  5. Do NOT run `ruff`, `npm`, or any formatter — this round's own commits
+     write no `.py` file (the self-use run's OWN job worktree is a separate
+     matter, governed by that job's own acceptance text, not by this block).
+  6. THE SELF-USE STEP (C3) FOLLOWS F109 R19 C3's PRECEDENT EXACTLY — read
+     `git show 9ee3ab57` yourself before writing any code, and mirror its
+     shape with `f110`/`F110` in place of `f109`/`F109`:
+       a. Print `.agent/STOP` existence (must be False; if True, stop here
+          per constraint 2).
+       b. `packages.orchestration.self_use_queue.load_self_use_queue()`,
+          print every entry's id/consumed_by/title, and
+          `pending_self_use_items()` / `next_self_use_item()` BEFORE any
+          change (expect 0 pending, `None`).
+       c. Call `packages.orchestration.self_use_generator.generate_and_append_if_empty()`
+          with no arguments. Print the returned `SelfUseQueueEntry` in full.
+          If it returns `None` (Tier 1 found nothing eligible either): STOP,
+          write `self-use NONE (queue exhausted)` in the handback exactly as
+          STATUS_closure_protocol.md precondition 6 names it, and do not
+          attempt a job run — report this as a DEVIATION, not a failure, and
+          proceed to C4.
+       d. Re-read `pending_self_use_items()` / `next_self_use_item()` AFTER
+          generation and print them (expect 1 pending, the new entry).
+       e. Call `packages.orchestration.self_use_runner.run_next_self_use_item(
+          dest_dir=Path('.remedy-wt/selfuse-f110-run'), repo_path='.')` with
+          NO `builder_name`/`reviewer_name` override and the DEFAULT budgets
+          (max_provider_calls=6, max_cost_usd=0.50, max_tasks=1) — the same
+          call shape F109 R19 used. Print `resolve_role_config('builder')` and
+          `resolve_role_config('reviewer')` immediately before the call, the
+          elapsed wall-clock seconds, and every field of the returned
+          `(entry, job_file_path, JobPlan)` tuple that F109's `run.txt`
+          printed (job_id, status, error, execution_config, isolation_mode,
+          worktree_path, worktree_cleanup_status/_error, every task's fields).
+       f. Call `packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)`
+          and print the tuple length plus each string verbatim between
+          `--- DEFECT N BEGIN ---` / `--- DEFECT N END ---` markers, exactly
+          as F109's `run.txt` does. Do NOT author `.agent/live_review.md`
+          finding text for these yourself — that is round 17's, per section 4
+          item 4 (only reviewer-authored text sets a registration); this round
+          only RECORDS the defect strings verbatim for round 17 to consume.
+       g. Copy the job markdown file from the run's `dest_dir` to
+          `.agent/selfuse_f110/<ENTRY_ID>.md` with `shutil.copyfile`, and
+          print BOTH sha256 digests (source, copied) proving byte-identity —
+          the same proof F109's `run.txt` STEP 5 shows.
+       h. Write the ENTIRE transcript above — every printed value, in the
+          order printed — to `.agent/selfuse_f110/run.txt`. Commit both files
+          in C3.
+       i. Delete the run's OWN `dest_dir` (`.remedy-wt/selfuse-f110-run`) by
+          its exact path after the copy in (g); do NOT touch
+          `JobPlan.worktree_path` (the job's own isolated worktree under
+          `.remedy-wt/job-<id>`) — it is retained by the product itself,
+          exactly as F109 R19's precedent left its own worktrees untouched.
+       j. `SU-005` is NOT consumed by this round: `consumed_by` for the new
+          entry stays the empty string in `scripts/self_use_queue.json`.
+          Setting it belongs to round 18's closure commit
+          (STATUS_closure_protocol.md precondition 6), and this round's own
+          change set does not list `scripts/self_use_queue.json` at all —
+          if the generator's own `append_generated_item` call writes to it
+          (it does, by design), that file's change IS necessarily part of
+          this round's diff even though it is not separately listed above;
+          report it honestly in the handback rather than pretending it did
+          not happen.
+  7. A `blocked` job status (the normal approval-gate outcome per
+     `self_use_runner`'s own docstring) is NOT a round failure and is NOT
+     "declared" as a deviation — report it as the measured OUTCOME it is,
+     exactly as F109 R19's own handback did.
 
-THIS ROUND'S PARAMETERS, all measured by the reviewer at `970ffc27`:
-  BRANCH      `feature/f110-model-routing-by-task-class` at this round's C2 tree
-              (C0a-C2 touch only `.agent/`, so the code under test is the code
-              at `970ffc27`).
-  MERGE BASE  `6f2230cea29af36a75fea253afc10f4dfe5a79f0`, from
-              `git merge-base main HEAD`.
-  BASE TREE   a worktree at `.remedy-wt/base-gate` created ON A THROWAWAY BRANCH
-              — `git worktree add -b tmp/base-gate .remedy-wt/base-gate
-              6f2230cea29af36a75fea253afc10f4dfe5a79f0`. A DETACHED base
-              worktree fails the self-dogfood branch guard BY DESIGN (DECISION
-              D3, F053 R2), so the branch is not optional.
-  COLLECTION  `pytest --collect-only -q` answers 19510 tests on the branch.
-  UI DIST     `apps/ui/dist` holds 4 files; `apps/ui/dist/index.html` has mtime
-              1788057215.85 against a newest-file-under-`apps/ui/src` mtime of
-              1788057023.74, so the PRIMARY checkout's build is WARM and no cold
-              build is owed there. G4 re-measures this rather than trusting it.
-  UI SHIMS    `apps/ui/node_modules/.bin` holds 23 SYMLINKS.
-  STALENESS   `_frontend_is_stale()` is `packages/orchestration/ui_server.py:3071`
-              and returns True when ANY file under `apps/ui/src` has an mtime
-              greater than `apps/ui/dist/index.html`'s.
+DECISION F110 D6's OWN MEASUREMENT, taken by the reviewer before this block
+was authored (re-verify only if the branch has moved — it has not, since
+round 15 changed no code): a mechanical scan of the checklist's by-number
+citation forms across `.agent/live_review.md`, `.agent/decisions.md`,
+`.agent/prose_slips.md`, `.agent/candidates.md` and every file under
+`.agent/authored/` found approximately 2,013 total citations and 0 under
+docs/; item 20 alone carries roughly 220 and item 30 roughly 243. DECISION16
+below states this measurement; do not re-run it, it is prose, not a gate.
 
-THREE OPEN FINDINGS BIND THIS ROUND'S PROCEDURE. Each is a repair the literal
-text of integration_gate.md does not yet carry, so the block carries it:
-  R-0591 — `shutil.copytree` DEFAULTS to `symlinks=False`, which DEREFERENCES
-    those 23 npm bin shims and CAUSES base-only failures the parity exists to
-    prevent. Write `symlinks=True` EXPLICITLY on every copytree of
-    `apps/ui/node_modules` and `apps/ui/dist`. Order the argument, not the
-    function.
-  R-0736 — `copytree` PRESERVES source mtimes while `git worktree add` stamps
-    every checked-out file with the CHECKOUT time, so a byte-correct copied
-    build is mtime-STALE: `_frontend_is_stale()` reads True in the base
-    worktree, `REMEDY_UI_NO_AUTO_BUILD` then correctly suppresses the rebuild,
-    the UI is never built, and every test reaching the door dies on
-    `React UI not built.` — measured at 114 FAILED on the F033 R27 gate. AFTER
-    copying, ADVANCE the mtimes of every file under the base worktree's
-    `apps/ui/dist` past that worktree's own checkout time, and report
-    `_frontend_is_stale()` read from INSIDE the base worktree as False BEFORE
-    the base run starts. Nothing is rebuilt and nothing is faked: what is
-    corrected is a timestamp the copy mechanism cannot carry across a fresh
-    checkout.
-  R-0590 — ATTRIBUTE BOTH COMPARISON SETS UNCONDITIONALLY. A gate that
-    attributes `comm -23` only "if the parity claim went VOID" demands nothing
-    in exactly the case where the ids still exist. Every id in `branch_only.txt`
-    AND every id in `fixed_by_branch.txt` is attributed by direct evidence,
-    whether parity holds or not.
-
-<<<BEGIN PLAN15>>>
+<<<BEGIN PLAN16>>>
 # Plan — F110 Model routing by task class
 
 Branch: feature/f110-model-routing-by-task-class, cut from `main` after
@@ -145,163 +159,130 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 15, session 5 — THE INTEGRATION GATE, the tier-3 full-suite gate this
-feature owes before closure. `docs/agents/integration_gate.md` steps 1-5 run
-against the branch and against the merge base in a throwaway worktree, with the
-base-worktree UI parity restored the way findings R-0591 and R-0736 require and
-BOTH comparison sets attributed the way R-0590 requires. The evidence lands
-under `.agent/gate_f110_r15/`. Round 14's PASS verdict, the resolution of
-`R-0789` and one prose slip are booked in the same round. This round changes no
-code: a red gate is handed back, never repaired here.
+Round 16, session 5 — CLOSURE ROUND 1: THE SELF-USE PRECONDITION AND THE
+CHECKLIST-CONSOLIDATION RULING. Round 15's PASS verdict (the integration
+gate: branch clean, both base-only failures attributed to the XDIST-FLAKE
+class, no blocker) is booked. Closure precondition 6's self-use item is
+generated (the queue is exhausted at 0 pending), planned and RUN for real
+through the shipped generator and runner, mirroring F109 R19's own
+precedent exactly — never promoted, never faked. DECISION F110 D6 rules on
+the section-3 consolidation pass DECISION F110 D1 committed to: it ran,
+found two real merge candidates, and performed neither, because
+renumbering would falsify roughly 2,013 existing by-number citations the
+append-only ledger forbids correcting; the checklist stays at 37 items,
+amend0827 rule 4's "same length" branch.
 
 ## Next Steps
 
-- The closure sequence, which takes two rounds, runs the one §3 checklist
-  consolidation pass DECISION F110 D1 carries into it, needs an evidence job
-  and a FRESH review zip, and updates the Design and Task-slicing bullets of
-  `docs/roadmap/features/T3_F110.md`.
-- The STATUS line and the closure pull request, which the operator merges at
-  the next feature's Open PR Gate.
+- Round 17: register the self-use run's defects (if any) as findings, run
+  the evidence job and build a FRESH review zip, and give
+  `docs/roadmap/features/T3_F110.md` its Built State section plus the
+  Design/Task-slicing bullet updates.
+- Round 18: the closure commit — the authored STATUS line, the README
+  capability sync in the same commit, the self-use item's `consumed_by`
+  set to `F110`, and the PR.
 
 ## Risks
 
-- The base worktree is the known-fragile half: without the R-0591 symlink
-  argument and the R-0736 mtime advance it produces false base failures by the
-  hundred, so the gate reports `_frontend_is_stale()` from inside that tree
-  before the run rather than after it.
+- The self-use run may land `blocked` at its own approval gate (F109's
+  SU-005 did) — a normal outcome per `self_use_runner`'s own docstring,
+  not a failure of this round; its defects route to round 17's findings.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
-<<<END PLAN15>>>
+<<<END PLAN16>>>
 
-<<<BEGIN RECORD15>>>
-Gate: F110 R14 — the round 14 entry. VERDICT PASS, over the range `f0bbdc5c..37d62419` plus the handback commit `970ffc27`. THE ROUND DID TWO THINGS AND THE REVIEWER RE-DERIVED BOTH FROM DISK. THE TRANSPORT PROOF REACHED THE REVIEWER'S OWN BYTES: `cmp` between the reviewer's scratch original and the committed `.agent/authored/f110-r14.md` exits 0, and ONE digest `8966f2c6982617f79238707b43d171b4568a0cf3634bdf77691e00d4222b5954` covers that original, the saved copy at `b335a56b` and the mirror at `040ef860`; the block is 399 lines against the reviewer's own pre-emission count of 399, under the §3 item 1 cap of 400. EVERY SLICE IS BYTE-EXACT: `.agent/plan.md` equals PLAN14 plus the one trailing newline the target's convention adds, at 42 lines, and the BARE extraction's `cmp` exits 1 on that single byte — the round reported BOTH readings because this round's own SLIPS14 slip asked a block to state the newline up front, and this block's G2 did; `.agent/live_review.md` is 2215298 + 2 + 6966 = 2222266, base an exact byte prefix, still ending without a newline; `.agent/prose_slips.md` is 62351 + 2 + 1768 = 64121, same shape. The second reader counted N = 2 paragraphs in each slice and matched the last 2 blank-line units of each file against them IN ORDER, and the negative control flipped byte 0 of the FIRST appended paragraph in a copy and was REJECTED by that reader in both files — the §3 item 36 shape, satisfied on both targets. `ruff check` over all three changed files answers "All checks passed!", run reviewer-side because the worker's permission layer refuses the tool. R-0789 IS DISCHARGED ON DISK AND THE REPAIR IS PROSE-ONLY, PROVED PER LINE RATHER THAN PER HUNK: C3 `d8a66340` is 11 insertions against 6 deletions in `model_routing.py` and 2 against 2 in `config.py`; the reviewer parsed the BASE file with `ast` to fix the docstring span of `promotion_evidence_from_mapping` at base lines 876..901, then walked the diff line by line to map each deletion to its own base line number — 895, 896, 897, 898, 899, 900, every one strictly inside that span and every one matching the base file at that number. Both `config.py` deletions are `#` comment lines. The count of `NOTHING IN PRODUCTION CALLS THIS YET` in `model_routing.py` is 0 and of `NOTHING READS THIS KEY YET` in `config.py` is 0, the repaired docstring NAMES `resolve_promotion_evidence`, and that name's count in `config.py` went 0 at `f0bbdc5c` to 1. THE ROUTING WAS RUN, NOT READ, and it did not move: with nothing configured `builder` and `reviewer` both answer provider `ollama`, model `muse-glimmer:latest`, effort `medium`, tier `mid`, reason `seed_mapping` and `promoted_by` None — byte-identical to the reviewer's own reading at `f0bbdc5c` across all four configuration states it probed. THE ACCEPTANCE CLAUSE IS BUILT AND ITS COVERAGE IS NEW, WHICH THE RED PROOF ESTABLISHES RATHER THAN ASSERTS. C4 `37d62419` is 205 insertions against ZERO deletions, so "no existing test was edited" is MEASURED; the committed file with the one added import line removed has the base blob as a byte-exact PREFIX, so the import went in at its anchor and all 204 remaining lines were APPENDED with nothing edited between. The reviewer re-ran the red proof INDEPENDENTLY in its own disposable worktree at `970ffc27`, module paths printed from inside it: control 126 passed at exit 0; mutation (i), the pairing check replaced by a never-firing branch, reddens EXACTLY 8 ids and they are exactly the eight parametrizations of the two new refusal tests, which means NO PRE-EXISTING TEST CATCHES THAT MUTATION and the acceptance clause added coverage that did not exist; mutation (ii), a REFUSED override table routed anyway, reddens 13, a strict SUPERSET of (i). Both reverts return to the 126-passed control, the primary checkout read `git status --porcelain` empty at all six readings, and the worktree was removed by its exact path. The worker's own red proof reported the same two counts and the same subset relation, as a measured result rather than as a fault. THE SUITES WERE RE-RUN BY THE REVIEWER at 126 passed for `test_role_config.py`, grown from 101 by the 25 tests C4 adds, then 406 with 3 skipped, 81, 34, 130, 54, 295 and 42, every one exit 0, and ONLY the suite this round adds to moved. Per-commit insertions are 399, 374, 19, 10, 13 and 205, every one under the AGENTS.md cap and every one matching the handback's `## Commits` table cell by cell, which is §3 item 28 met on the table and not only on the verification line; `970ffc27` is 350 insertions, a verbatim rewrite of a single `.agent/**` state file. `git diff --stat f0bbdc5c..37d62419` over `packages/` and `apps/` with the two edited files excluded is EMPTY and over `docs/` is EMPTY. The open set is 279 over 350 unique registered and 71 unique resolved, against 73 `Done:` lines, because `R-0721` and `R-0725` each carry two. `R-0767` stays OPEN. The tree is clean, `git ls-files .remedy-wt` is empty, no worktree of the round's making survives, no `remedy.toml` sits in the repository root, `.agent/candidates.md` is untouched and still EMPTY, and the branch is pushed with no pull request open. ONE PROSE SLIP IS OWED and it is the reviewer's own; it is in `.agent/prose_slips.md` this round. NO FINDING IS OWED.
+<<<BEGIN RECORD16>>>
+Gate: F110 R15 — the round 15 entry. VERDICT PASS (GREEN, no blocker), over the range `970ffc27..f14b0d34` plus the handback commit `1d1a82e1`. THE ROUND RAN THE TIER-3 INTEGRATION GATE THIS FEATURE OWES BEFORE CLOSURE, per docs/agents/integration_gate.md steps 1-5, and changed no code: `git diff --stat 970ffc27..f14b0d34 -- packages/ apps/ tests/ docs/` is EMPTY, reproduced by the reviewer directly. THE TRANSPORT PROOF REACHED THE REVIEWER'S OWN BYTES: one sha256 digest `754dbb5c2d40cd2577ee1e85722e55fe5851f4251093d7023c191f8f046dbd3e`, reproduced by the reviewer against the scratch original, the committed `.agent/authored/f110-r15.md` and the mirror `.agent/last_block.md`, all three identical; `wc -l` on the authored file is 307, matching the worker's own reading. EVERY SLICE IS BYTE-EXACT, REPRODUCED INDEPENDENTLY: `.agent/plan.md` is 41 lines, `## Goal` and `## Next Steps` each occurring once; `.agent/live_review.md` is `2222266 + 2 + 6737 = 2229003` against a real 2229003, base an exact byte prefix, still ending without a trailing newline; `.agent/prose_slips.md` is `64121 + 2 + 928 = 65049` against a real 65049, same shape. THE OPEN SET, recomputed by the reviewer directly from the committed ledger: 350 unique registered ids, 72 unique resolved across 74 `Done:` lines (the `R-0721`/`R-0725` double pair), open = 278; `R-0767` is IN that set and `R-0789` is OUT of it, both reproduced. THE SUITE NUMBERS WERE CROSS-CHECKED, NOT MERELY READ: the reviewer's own `pytest --collect-only -q` at this round's HEAD (run before the round was delegated) answered 19510 tests, and 19487 passed + 23 skipped = 19510 exactly, so the branch run's own arithmetic closes against an independently-taken collection count. BOTH BASE-ONLY FAILURES WERE REPRODUCED BY THE REVIEWER, SERIALLY, ON THE PRIMARY CHECKOUT AT THE BRANCH HEAD: `tests/orchestration/test_diff_parser.py::test_the_huge_diff_parses_inside_the_recorded_perf_budget` and `tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup` both PASS together in 0.55s, consistent with the XDIST-FLAKE classification (a fixed wall-clock ceiling and an unscoped `pgrep` pattern, neither reaching `model_routing.py`, `config.py` or `role_config.py`) and inconsistent with a real base-commit defect. PARITY WAS MEASURED AS AN EVENT, per R-0444, and the reviewer's own reading of `parity_mtime.txt` shows all four `apps/ui/dist` files' before/after mtimes identical and outside the run window — PARITY HOLDS, independently read. PER-COMMIT INSERTIONS, reproduced cell for cell against the handback's own `## Commits` table: `298a1580` 307, `42976190` 234, `fb111342` 17, `8a45ea10` 8, `f14b0d34` 321 — every one under 500 and every one matching. A STALL WAS REPORTED MID-ROUND, BY THE REVIEWER, AND WAS WRONG: byte-growth stagnation in a log file polled from outside the process is not a liveness signal on its own — this run's log evidently buffered rather than flushing continuously, so a near-final read looked identical to a hung one; the worker's own investigation, corroborated here, found the run had already completed cleanly (fresh completion-artifact timestamps, a matching wall-clock reading, an ordinary tail with full tracebacks, zero live processes) and took no corrective action, correctly. THE LESSON IS RECORDED IN `.agent/prose_slips.md` THIS ROUND, not against the worker's conduct, which was correct throughout. NO CODE PATH WAS TOUCHED and `git diff --stat` over `docs/` is also EMPTY. NO FINDING IS OWED BY THIS ROUND.
+<<<END RECORD16>>>
 
-Done: R-0789 — RESOLVED at `d8a66340` (F110 R14 C3), verified by the reviewer at the F110 R14 gate. Both deliberate-absence notes are retired in ONE commit, which is what this finding's own FIX clause required, and the block that ordered it scoped its permitted-deletion region to the FILE rather than to a module docstring and named `config.py` in its change set for that purpose alone — the two things the fix clause asked of the next block. MEASURED: the count of `NOTHING IN PRODUCTION CALLS THIS YET` in `packages/orchestration/model_routing.py` is 0 and of `NOTHING READS THIS KEY YET` in `packages/orchestration/config.py` is 0, where each was 1 at `f0bbdc5c`. Each replacement NAMES the reader that now exists — `role_config.resolve_promotion_evidence` — and names the commit it landed at, `8efa2330`, so a searching reader lands on the caller rather than on a retired promise. The repair is PROSE-ONLY and proved per line, not per hunk: all six deletions in `model_routing.py` are base lines 895 through 900, strictly inside the `promotion_evidence_from_mapping` docstring span the reviewer fixed at 876..901 by parsing the base file with `ast`, and both `config.py` deletions are `#` comment lines. The shipped routing did not move: `builder` and `reviewer` both still answer `ollama` / `muse-glimmer:latest` / `medium` at tier `mid` with reason `seed_mapping`, byte-identical to the reading taken at `f0bbdc5c` before the repair.
-<<<END RECORD15>>>
+<<<BEGIN DECISION16>>>
+## DECISION F110 D6 (2026-09-03, F110 R16) — the section 3 consolidation pass DECISION F110 D1 ordered cannot renumber the checklist, and none is performed
 
-<<<BEGIN SLIPS15>>>
-2026-09-03 · F110 R14 · The round 14 block sent the worker into `remedy-review-r9-scratch/` — the REVIEWER's own scratch directory — without reserving a namespace for the worker's files, so the worker created its own `probe14.py` over the reviewer's file of that name and then correctly removed it by exact path, exactly as the no-delete-by-glob rule asks. Nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` was wrong and no gate depended on the lost file, which the reviewer simply rewrote under a different name; the worker declared the removal in its handback, which is how it was traced at all rather than guessed at. THE LESSON: a block that names a shared scratch directory gives the worker its own prefix for anything it creates there, because a reviewer's pre-emission probe and a worker's gate script converge on the same obvious filename, and the reviewer's copy is the one that vanishes silently.
-<<<END SLIPS15>>>
+CONTEXT. DECISION F110 D1 committed this closure sequence to running one consolidation pass over the pre-emission checklist of docs/agents/planner_reviewer_prompt.md section 3, against amend0827 rule 4's requirement that the list come out "the SAME LENGTH OR SHORTER" than the 37 items it held on 2026-08-27. The pass was run at this round: every one of the 37 items was read for a genuine merge candidate, and two real ones were found — items 11, 16 and 32 state the identical rule (no hand-counted numeral about the block's own parts) over three different surfaces (a convention paragraph, a heading or quantifying sentence, and a gate or constraint), and items 4 and 15 split one rule (an APPEND pair requires containment) from its verification method (a mechanical, never-by-eye test) across two items that each explicitly name the other as its only reason to exist separately.
+
+MEASURED. Both merges would RENUMBER every item after the earliest one touched, because neither pair sits at the end of the list. Section 3 is cited BY ITEM NUMBER outside itself, in text this repository's own rules forbid rewriting: `.agent/live_review.md`, `.agent/decisions.md` and `.agent/prose_slips.md` (append-only, never rewritten or renumbered) and roughly 1,200 files under `.agent/authored/` (one committed block per historical round, never edited after landing). A mechanical scan of "section 3 item N" and "checklist item N" across those locations, run by the reviewer at this round, found approximately 2,013 such citations; zero exist anywhere under docs/. Individually, item 20 alone carries roughly 220 citations and item 30 roughly 243 — both sit AFTER item 16 and item 15 in the current numbering, so either merge would silently change what "item 20" and "item 30" mean in every one of those historical sentences, none of which can be corrected without violating the append-only rule those same sentences exist to enforce.
+
+CHOSEN. The pass runs, finds two real merge candidates, and performs NEITHER, because section 3 is a rare case where the numbered position IS the reference and not merely a locator: a merge is safe here only when it touches solely the LAST item of the list (nothing after it to renumber) or when it is written as an in-place widening paragraph under the EARLIER item's existing number — which is already how items 9, 14, 16, 18 and 20 have each absorbed later findings into themselves without ever renumbering. Items 11/16/32 and items 4/15 are not that shape: each is a genuinely separate, independently-cited surface rather than a later widening of an earlier one, so folding them together would have to delete a heading and shift every number after it. The list stays at 37 items — SAME LENGTH, which is the rule's OR clause, not its failure. F109's lessons that D1 also owed are on disk: `.agent/prose_slips.md` already carries F109's rounds 1, 2, 6, 7, 17, 18, 20 and 21; rounds 8 through 16 raised no reviewer-prose defect of the kind that file records.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Renumber anyway and treat the roughly 2,013 stale citations as accepted drift, on the theory that they are historical prose rather than live rules. Rejected because several are load-bearing explanations of WHY a specific finding was raised — `.agent/authored/f109-r2.md` names "section 3 item 32" as the rule a defect broke — and a reader resolving that citation against a renumbered document would attribute the wrong rule to a real, closed defect, which is a worse outcome than an unconsolidated list.
+
+CONSEQUENCE. docs/agents/planner_reviewer_prompt.md section 3 is UNCHANGED by this round. DECISION F110 D1's obligation is discharged by this DECISION, not deferred: the pass ran, is recorded, and its answer is "no safe merge exists under current citation discipline," which amend0827 rule 4's own "SAME LENGTH OR SHORTER" wording already permits. A future amendment wishing to actually shrink the list would need either a citation-migration pass over `.agent/authored/` (which the append-only rule currently forbids) or a documented exception permitting it — neither exists today.
+
+REVERSE by deleting this DECISION; F110 D1's obligation then reverts to open.
+<<<END DECISION16>>>
+
+<<<BEGIN SLIPS16>>>
+2026-09-03 · F110 R15 (reviewer) · Polling a background pytest run's captured-output file for byte-growth was read as a liveness signal — three samples 90-180s apart showed the file frozen near 99% and were reported mid-round as "the base run appears hung." The run had, in fact, either already finished or was progressing normally behind a buffer that had not yet flushed; the worker's own investigation (fresh completion timestamps, a matching wall-clock reading between the run's meta file and pytest's self-report, an ordinary tail with tracebacks, zero live processes) found no hang and took no corrective action. THE LESSON: a captured log's byte count is evidence of I/O buffering, not of process liveness; check the run's own completion artifacts (a written end-timestamp, the process table) before reporting a stall, rather than sampling a log file's size. Reviewer-prose false alarm, nothing wrong on disk, no process was harmed; no R-id spent (amend0827-process-diet rule 2).
+<<<END SLIPS16>>>
 
 Done when — the gates below, within the amend0827 rule 5 budget, each RUN and
 each reported as ONE LINE in the handback with its real exit code. Every gate
-runs at a commit STRICTLY EARLIER than C4, the commit that writes the handback.
+runs at a commit STRICTLY EARLIER than C4, the commit that writes the
+handback.
 
 G1 TRANSPORT — one digest comparison.
-   `cmp remedy-review-r9-scratch/f110-r15.md .agent/authored/f110-r15.md` — exit
-   0. `sha256sum` those two plus `.agent/last_block.md` — one digest, repeated.
-   Report `wc -l .agent/authored/f110-r15.md`. This proves the scratch original,
-   the saved copy and the mirror agree; it claims nothing about other bytes.
+   `cmp remedy-review-r9-scratch/f110-r16.md .agent/authored/f110-r16.md` —
+   exit 0. `sha256sum` those two plus `.agent/last_block.md` — one digest,
+   repeated. Report `wc -l .agent/authored/f110-r16.md`.
 
-G2 THE PLAN — a byte-equality check of the plan slice, and nothing more.
-   Extract PLAN15 by delimiter index from the COMMITTED authored file. `cmp` the
-   extraction PLUS ONE TRAILING NEWLINE against `.agent/plan.md` — exit 0; also
-   report the bare extraction's exit code beside it. Report
-   `wc -l .agent/plan.md` (must be under 50), `grep -c '^## Goal'` and
-   `grep -c '^## Next Steps'`.
+G2 THE PLAN — a byte-equality check of the plan slice, nothing more.
+   Extract PLAN16 by delimiter index from the COMMITTED authored file. `cmp`
+   the extraction PLUS ONE TRAILING NEWLINE against `.agent/plan.md` — exit 0;
+   report the bare extraction's exit code beside it. Report `wc -l
+   .agent/plan.md` (must be under 50), `grep -c '^## Goal'` and `grep -c '^##
+   Next Steps'`.
 
-G3 THE RECORD APPENDS — full byte forensics, which amend0827 rule 5 reserves for
-   exactly this target.
-   `.agent/live_review.md`: base 2222266 bytes at `970ffc27`, ending WITHOUT a
-   newline. Append `\n\n` + RECORD15. `.agent/prose_slips.md`: base 64121 bytes,
-   same convention; append `\n\n` + SLIPS15. For EACH file report the arithmetic
-   `<base> + 2 + <len> = <total>` against the real size, that the pre-C2 content
-   is an exact byte PREFIX, and that the file still ends without a newline.
-   SECOND READER over the WHOLE appended region, per file: let N be the number of
-   paragraphs your script COUNTS in that slice — do not take N from this block —
-   and compare the LAST N blank-line units of the whole file against the slice's
-   N paragraphs IN ORDER. NEGATIVE CONTROL on the FIRST appended paragraph of
-   each: flip its byte 0 in a COPY and confirm the reader REJECTS it; the real
-   files are never written. HEADER SHAPE (§3 item 26): report the count of lines
-   matching the slice's own `Gate: F110 R14 — the round 14 entry.` prefix BEFORE
-   C2 (expected 0) and AFTER C2 (expected 1).
-   THE OPEN SET, recomputed mechanically and never carried forward: paragraphs
-   matching `^- R-\d+ — ` and lines matching `^Done: R-\d+ — `, each reduced to
-   UNIQUE IDS, the set difference their open set. Report registered, unique
-   resolved, the `Done:` LINE count beside it, the open total, and whether
-   `R-0767` is IN the open set and `R-0789` is OUT of it — RECORD15 carries the
-   `Done:` paragraph that resolves R-0789, so this reading is what proves the
-   resolution landed rather than merely having been written.
+G3 THE RECORD APPENDS — full byte forensics for `.agent/live_review.md` and
+   `.agent/decisions.md` (amend0827 rule 5 reserves it for exactly these two
+   plus production code); `.agent/prose_slips.md` gets the lighter
+   byte-equality check only.
+   For `.agent/live_review.md` and `.agent/decisions.md`: report the base size
+   at `1d1a82e1`, the arithmetic `<base> + <separator bytes> + <slice bytes> =
+   <total>` against the real size (separator is TWO newlines for
+   live_review.md, ONE newline for decisions.md per constraint 4), that the
+   pre-C2 content is an exact byte PREFIX, and the trailing-newline state
+   (live_review.md: still none; decisions.md: still exactly one). SECOND
+   READER for `.agent/live_review.md`: let N be the paragraph count your
+   script COUNTS in RECORD16 — do not take N from this block — and compare
+   the LAST N blank-line units of the whole file against RECORD16's N
+   paragraphs IN ORDER; NEGATIVE CONTROL on RECORD16's FIRST paragraph (flip
+   byte 0 in a COPY, confirm rejection). HEADER SHAPE: count of lines matching
+   `Gate: F110 R15 — the round 15 entry.` BEFORE C2 (expected 0) and AFTER
+   (expected 1). For `.agent/decisions.md`: count of lines matching `## DECISION
+   F110 D6` BEFORE C2 (expected 0) and AFTER (expected 1).
+   For `.agent/prose_slips.md`: `cmp` of (base + two newlines + SLIPS16)
+   against the committed file — exit 0.
+   THE OPEN SET, recomputed mechanically and never carried forward: unique
+   registered ids, unique resolved ids (with the `Done:` LINE count beside
+   it), the open total, and whether `R-0767` is IN the open set.
 
-G4 STEP 1, THE BRANCH RUN. Assert the WARM-BUILD precondition FIRST and report
-   both readings: `apps/ui/dist/index.html` exists, and its mtime exceeds the
-   mtime of EVERY file under `apps/ui/src` (a cold or stale dist reddens one
-   `tests/ui_server` id for a reason that has nothing to do with this branch).
-   Then run the full suite from the repository root per integration_gate.md step
-   1, invoked as a library per constraint 6, with NO environment variable set.
-   Report the raw tail, the exit code, the wall clock, and write the sorted
-   `^FAILED` list to `branch_failed.txt` and the tail to `branch_run_tail.txt`.
-   The reviewer's own reading at `970ffc27` is in the handback of this round's
-   review, not here: report yours as measured and compare it to nothing.
+G4 THE SELF-USE RUN — report every value constraint 6 orders printed, as ONE
+   block quoting `.agent/selfuse_f110/run.txt` verbatim (or a clear pointer to
+   it plus the key numbers inline): the entry id generated, the job id, the
+   final `JobPlan.status`, whether `describe_self_use_run_defects` returned
+   any strings (and if so, quote them), the source/copied sha256 pair proving
+   the evidence copy is byte-identical, and confirmation that
+   `scripts/self_use_queue.json`'s new entry still has `consumed_by` equal to
+   the empty string. Report `git status --porcelain` immediately after C3 is
+   staged, BEFORE C4 — must show only the paths this round's own change set
+   names (plus `scripts/self_use_queue.json`, per constraint 6j).
 
-G5 STEP 2, THE BASE RUN. Create the base worktree exactly as THIS ROUND'S
-   PARAMETERS specifies — on the throwaway branch, at the named merge base.
-   Restore parity BEFORE the run, applying R-0591 and R-0736 as stated above,
-   and report: the entry count copied for each of `apps/ui/node_modules` and
-   `apps/ui/dist`; how many of those entries were SYMLINKS and that they were
-   PRESERVED; and `_frontend_is_stale()` evaluated FROM INSIDE the base worktree,
-   which must read False before the run starts. Then run the same suite there
-   with `REMEDY_UI_NO_AUTO_BUILD` set in-process. Report the raw tail, exit code
-   and wall clock; write `base_failed.txt` and `base_run_tail.txt`.
-   PARITY AS AN EVENT, NOT AN OUTCOME (R-0444): record the mtime of EVERY file
-   under the base worktree's `apps/ui/dist` immediately before and immediately
-   after the run, report the run's wall-clock window, and state per file whether
-   its mtime falls inside it. ANY mtime inside the window VOIDS the parity claim.
-   A content digest may accompany that reading and NEVER replaces it, because
-   equal content is consistent both with no rebuild and with a byte-identical
-   one. Write it all to `parity_mtime.txt`.
-
-G6 STEPS 3 AND 4, THE COMPARISON AND THE ATTRIBUTION.
-   `comm -13 base_failed.txt branch_failed.txt` → `branch_only.txt`;
-   `comm -23 base_failed.txt branch_failed.txt` → `fixed_by_branch.txt`. Report
-   the line count of all four files.
-   ATTRIBUTE BOTH SETS UNCONDITIONALLY, per R-0590 — not only when parity is
-   void. For every id in `branch_only.txt`: serially re-run that EXACT node id
-   and classify per integration_gate.md step 4 — serial-pass is the xdist-flake
-   class and is recorded, not a blocker; serial-fail is reproduced AT THE MERGE
-   BASE before the feature is blamed; a reproducible branch-only failure coupled
-   to F110 code is a BLOCKER, which means STOP and hand back. For every id in
-   `fixed_by_branch.txt`: name the direct evidence for its class — the missing
-   base artifact per id, or the branch commit that fixed it. An unattributed id
-   in either set blocks the gate verdict. Write it all to `attribution.txt`.
-   If BOTH sets are empty, say so and attribute nothing: that is the honest
-   discharge of this gate, and it is what the F109 R17 gate recorded.
-
-G7 THE EVIDENCE DIRECTORY. C3 creates `.agent/gate_f110_r15/` and commits
-   exactly these files, all `.txt` and none `.log`, matching the file set
-   `.agent/gate_f109_r17/` established: `gate_summary.txt`,
-   `branch_run_tail.txt`, `branch_failed.txt`, `base_run_tail.txt`,
-   `base_failed.txt`, `branch_only.txt`, `fixed_by_branch.txt`,
-   `parity_mtime.txt`, `attribution.txt`. `gate_summary.txt` follows the shape of
-   its F109 R17 predecessor — the branch and base identifiers, then one block per
-   integration_gate.md step, then the test-count delta and the cleanup note — and
-   states that the VERDICT belongs to the reviewer. Report `ls -la` of the
-   directory and `git ls-files .agent/gate_f110_r15` so the committed set is
-   measured rather than claimed. Report the count of committed members whose
-   name ends `.log` (expected 0).
-
-G8 THE TREE, THE COMMITS AND THE SWEEP.
+G5 THE TREE, THE COMMITS AND THE SWEEP.
    `git status --porcelain` immediately before C4 is staged — EMPTY.
-   `git worktree list` — the base worktree does NOT survive; `git branch --list
-   'tmp/*'` — the throwaway branch does NOT survive; `ls -d
-   .remedy-wt/base-gate` reports no such file. `git ls-files .remedy-wt` —
-   EMPTY. `ls /home/decodeux/Repos/remedy/remedy.toml` — no such file.
-   `git diff --stat 970ffc27..<C3> -- packages/ apps/ tests/ docs/` — must be
-   EMPTY, which is the change set's "this round measures, it does not change"
-   clause MEASURED.
+   `git diff --stat 1d1a82e1..<C3> -- packages/ apps/ tests/ docs/` — must be
+   EMPTY (this round's own commits touch none of them; the self-use job's own
+   worktree is not part of this diff by construction).
+   `git worktree list` — no NEW worktree beyond the self-use job's own
+   `.remedy-wt/job-<id>` (which the product retains, not this round);
+   `ls -d .remedy-wt/selfuse-f110-run` — no such file (deleted per
+   constraint 6i).
    PER-COMMIT INSERTIONS, the `+` column only (DECISION F104 D1), for every
-   commit from C0a through C3 — the commits that exist when this gate runs —
-   reported cell by cell against the handback's own `## Commits` table and each
-   confirmed under 500. If the evidence commit exceeds 500 insertions, declare it
-   in the handback WITH the inseparability reason BEFORE review, per AGENTS.md.
-   C4's own numbers are not this gate's business: §3 item 14 routes them to the
-   next ledger entry.
+   commit from C0a through C3, reported cell by cell against the handback's
+   own `## Commits` table and each confirmed under 500.
 
-Handback: rewrite `.agent/handoff.md` in full — feature and round, SESSION 5 of
-F110, branch, base and head SHAs, the per-commit changed-files table with its
-`+/-` column, ONE line per gate above with its real exit code, the item-status
-table AGENTS.md mandates covering every C-commit and every gate, the deviations,
-the open-findings count, the next expected action. It has NO length cap
-(amend0827 rule 3). State plainly whether the gate is GREEN or whether a blocker
-was found; the VERDICT itself is the reviewer's and you do not write one. Then
-`git push -u origin feature/f110-model-routing-by-task-class`; create NO pull
+Handback: rewrite `.agent/handoff.md` in full — feature and round, SESSION 5
+of F110, branch, base and head SHAs, the per-commit changed-files table with
+its `+/-` column, ONE line per gate above with its real exit code, the
+item-status table AGENTS.md mandates, the deviations, the open-findings count,
+the next expected action. It has NO length cap (amend0827 rule 3). Then `git
+push -u origin feature/f110-model-routing-by-task-class`; create NO pull
 request, merge nothing.
