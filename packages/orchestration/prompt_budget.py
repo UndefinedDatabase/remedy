@@ -97,7 +97,7 @@ def resolve_task_class_cap(task_class: str) -> TaskClassCapResolution:
     )
 
 
-def validate_prompt_budget_config(config: "RemedyConfig") -> list[str]:
+def validate_prompt_budget_config(config: RemedyConfig) -> list[str]:
     """Return floor and vocabulary violations in ``config``'s prompt_budget keys.
 
     Empty list means the configured table (if any, or its absence) is
