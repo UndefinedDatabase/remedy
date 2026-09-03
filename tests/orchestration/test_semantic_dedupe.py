@@ -21,7 +21,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from packages.orchestration.pingpong_loop import run_pingpong
+from packages.orchestration.pingpong_loop import _dedupe_resumed_segments, run_pingpong
 from packages.orchestration.pingpong_provider import FakeProvider
 from packages.orchestration.prompt_segments import (
     PromptSegmentRegistry,
@@ -898,3 +898,193 @@ class TestTheDecisionAgainstARecordedIndex:
         # because replacing it would not pay for the marker.
         assert by_name["task"] in sent
         assert should_dedupe_segment(self.SHORT_TEXT, by_name["task"], sent) is False
+
+
+# ---------------------------------------------------------------------------
+# T002b, first half: the composition TRANSFORM that applies that decision
+#
+# PURE like the T002a block above — no tmp_path, no provider and no loop below
+# this line. Segments are built through the REAL PromptSegmentRegistry rather
+# than as PromptSegment literals, so every case runs against the shape that
+# actually ships, and the last cases pin the transform's hash source against
+# the index's own.
+
+
+TRANSFORM_LONG_TEXT = "the dossier body, long enough to earn its replacement. " * 8
+TRANSFORM_SHORT_TEXT = "implement the transform"
+
+
+def _registered_segments(*specs: tuple[str, SegmentStabilityRank, str]) -> tuple:
+    """Segments from the REAL registry, in registration order."""
+    registry = PromptSegmentRegistry()
+    for name, rank, text in specs:
+        registry.register(name, rank, text)
+    return registry.registered_segments()
+
+
+def _sha256_by_name(*specs: tuple[str, SegmentStabilityRank, str]) -> dict[str, str]:
+    """Segment name -> sha256, taken from the shipped manifest producer."""
+    return {str(row["name"]): str(row["sha256"]) for row in _real_manifest_rows(*specs)}
+
+
+class TestDedupeResumedSegments:
+    """The transform rewrites TEXT and nothing else, and says what it rewrote."""
+
+    def test_a_long_already_sent_segment_becomes_its_marker_with_name_and_rank_kept(self):
+        specs = (("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),)
+        segments = _registered_segments(*specs)
+        sent = frozenset(_sha256_by_name(*specs).values())
+
+        kept, replaced = _dedupe_resumed_segments(segments, sent)
+
+        # THE TEXT IS EXACTLY THE MARKER, not merely something shorter.
+        assert kept[0].text == dedupe_marker_for_segment("dossier")
+        # AND EVERYTHING ELSE ABOUT THE SEGMENT SURVIVES — this is what keeps
+        # composition order and the cacheable prefix untouched.
+        assert kept[0].name == segments[0].name == "dossier"
+        assert kept[0].rank == segments[0].rank == SegmentStabilityRank.DOSSIER
+        assert replaced == ("dossier",)
+
+    def test_the_replaced_names_are_exactly_the_replaced_segments_in_order(self):
+        specs = (
+            ("system", SegmentStabilityRank.SYSTEM, TRANSFORM_LONG_TEXT + " one"),
+            ("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT + " two"),
+            ("task", SegmentStabilityRank.TASK, TRANSFORM_LONG_TEXT + " three"),
+        )
+        by_name = _sha256_by_name(*specs)
+        sent = frozenset({by_name["system"], by_name["task"]})
+
+        kept, replaced = _dedupe_resumed_segments(_registered_segments(*specs), sent)
+
+        assert replaced == ("system", "task")
+        # The one segment this session never received still carries its body.
+        assert kept[1].text == TRANSFORM_LONG_TEXT + " two"
+
+    def test_the_returned_order_is_input_order_and_never_rank_order(self):
+        # Ranks 5, 0, 2 in REGISTRATION order, so a rank sort inside the
+        # transform would visibly reorder them and fail this case.
+        specs = (
+            ("steering", SegmentStabilityRank.STEERING, TRANSFORM_LONG_TEXT + " a"),
+            ("system", SegmentStabilityRank.SYSTEM, TRANSFORM_LONG_TEXT + " b"),
+            ("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT + " c"),
+        )
+        segments = _registered_segments(*specs)
+        sent = frozenset(_sha256_by_name(*specs).values())
+
+        kept, replaced = _dedupe_resumed_segments(segments, sent)
+
+        assert [segment.name for segment in kept] == [segment.name for segment in segments]
+        assert [segment.name for segment in kept] == ["steering", "system", "dossier"]
+        assert replaced == ("steering", "system", "dossier")
+
+    def test_the_kill_switch_returns_every_segment_unchanged_and_no_names(self):
+        # THE CASE THAT MUST NEVER ROT. Disabling has to be TOTAL, so the same
+        # input is deduped with the default first: nothing but the flag differs.
+        specs = (("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),)
+        segments = _registered_segments(*specs)
+        sent = frozenset(_sha256_by_name(*specs).values())
+        assert _dedupe_resumed_segments(segments, sent)[1] == ("dossier",)
+
+        kept, replaced = _dedupe_resumed_segments(segments, sent, enabled=False)
+
+        assert kept == tuple(segments)
+        assert replaced == ()
+
+    def test_an_empty_sent_set_replaces_nothing(self):
+        specs = (
+            ("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),
+            ("task", SegmentStabilityRank.TASK, TRANSFORM_SHORT_TEXT),
+        )
+        segments = _registered_segments(*specs)
+
+        kept, replaced = _dedupe_resumed_segments(segments, frozenset())
+
+        assert replaced == ()
+        # UNCHANGED means the SAME OBJECTS, not equal copies.
+        assert all(kept[index] is segments[index] for index in range(len(segments)))
+
+    def test_a_long_segment_whose_hash_was_never_sent_is_not_replaced(self):
+        specs = (("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),)
+        segments = _registered_segments(*specs)
+        stranger = _sha256_by_name(("other", SegmentStabilityRank.TASK, "a different body"))
+
+        kept, replaced = _dedupe_resumed_segments(segments, frozenset(stranger.values()))
+
+        assert replaced == ()
+        assert kept[0].text == TRANSFORM_LONG_TEXT
+
+    def test_a_short_already_sent_segment_is_refused_for_its_length_alone(self):
+        specs = (("task", SegmentStabilityRank.TASK, TRANSFORM_SHORT_TEXT),)
+        segments = _registered_segments(*specs)
+        digest = _sha256_by_name(*specs)["task"]
+        sent = frozenset({digest})
+        # THE HASH IS IN THE SET FIRST, so the refusal below is demonstrably
+        # about LENGTH and not about a hash the session never received.
+        assert digest in sent
+        assert len(TRANSFORM_SHORT_TEXT) < DEDUPE_MIN_SEGMENT_CHARS
+
+        kept, replaced = _dedupe_resumed_segments(segments, sent)
+
+        assert replaced == ()
+        assert kept[0].text == TRANSFORM_SHORT_TEXT
+
+    def test_a_smaller_min_chars_replaces_what_the_default_refuses(self):
+        specs = (("task", SegmentStabilityRank.TASK, TRANSFORM_SHORT_TEXT),)
+        segments = _registered_segments(*specs)
+        sent = frozenset(_sha256_by_name(*specs).values())
+
+        assert _dedupe_resumed_segments(segments, sent)[1] == ()
+
+        kept, replaced = _dedupe_resumed_segments(
+            segments, sent, min_chars=len(TRANSFORM_SHORT_TEXT)
+        )
+
+        assert replaced == ("task",)
+        assert kept[0].text == dedupe_marker_for_segment("task")
+
+    def test_the_transform_reads_the_same_hashes_a_real_index_recorded(self):
+        # THE ANTI-DRIFT PIN, end to end. The sent set is not hand-made: the
+        # REAL manifest rows are recorded into a REAL SessionSentIndex and read
+        # back, so a change to either hash source that broke dedupe could not
+        # land green here.
+        specs = (
+            ("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),
+            ("task", SegmentStabilityRank.TASK, TRANSFORM_SHORT_TEXT),
+        )
+        index = SessionSentIndex()
+        index.record_call("session-a", _real_manifest_rows(*specs), ok=True)
+        sent = index.sent_hashes("session-a")
+
+        kept, replaced = _dedupe_resumed_segments(_registered_segments(*specs), sent)
+
+        assert replaced == ("dossier",)
+        assert kept[0].text == dedupe_marker_for_segment("dossier")
+        assert kept[1].text == TRANSFORM_SHORT_TEXT
+
+    def test_the_input_segments_are_not_mutated(self):
+        specs = (("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),)
+        segments = _registered_segments(*specs)
+        sent = frozenset(_sha256_by_name(*specs).values())
+
+        kept, replaced = _dedupe_resumed_segments(segments, sent)
+
+        assert replaced == ("dossier",)
+        assert kept[0].text != segments[0].text
+        assert segments[0].text == TRANSFORM_LONG_TEXT
+
+    def test_composing_the_returned_segments_carries_the_marker_not_the_body(self):
+        specs = (
+            ("dossier", SegmentStabilityRank.DOSSIER, TRANSFORM_LONG_TEXT),
+            ("task", SegmentStabilityRank.TASK, TRANSFORM_SHORT_TEXT),
+        )
+        index = SessionSentIndex()
+        index.record_call("session-a", _real_manifest_rows(*specs), ok=True)
+        kept, _ = _dedupe_resumed_segments(
+            _registered_segments(*specs), index.sent_hashes("session-a")
+        )
+
+        composed = compose_prompt_segments(kept)
+
+        assert dedupe_marker_for_segment("dossier") in composed.text
+        assert TRANSFORM_LONG_TEXT not in composed.text
+        assert TRANSFORM_SHORT_TEXT in composed.text
