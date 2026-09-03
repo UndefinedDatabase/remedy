@@ -38,22 +38,26 @@ configuration question, and mixing the two would put the promotion discipline
 Remedy deliberately does not READ A CONFIG FILE here, and the per-project override
 map is a MAPPING PASSED IN rather than one this module loads. A reader searching
 here for the loader that turns a project's TOML table into that mapping will not
-find it: it arrives with the resolver-seam round, alongside the per-call-site
-class declarations, because the schema is worth pinning BEFORE anything can be
-configured to break it. packages/orchestration/config.py is deliberately NOT
+find it HERE: it lives in packages/orchestration/role_config.py, the
+config-reading layer, and it arrived in TWO halves — the per-project TIERS table
+in round 10 (`76658375`) and the PROMOTION-EVIDENCE table in round 13 — each a
+round after the schema it loads, because a schema is worth pinning BEFORE
+anything can be configured to break it. Neither half is the resolver-seam round
+(`6c7fb4eb`), which wired the seam into the role resolver and read no config key
+at all. packages/orchestration/config.py is deliberately NOT
 imported — every function below stays a pure function of its arguments, which is
 what lets the override rules be tested without a config file existing at all.
 
-Remedy deliberately does not CALL :func:`promotion_evidence_from_mapping` from
-anywhere in production yet, and a reader searching for its caller should find
-this sentence rather than a silence. The parser turns the raw
-``model_routing.promotion_evidence`` config table into
-:class:`PromotionEvidence` records, and the call that hands it that table arrives
-with the wiring round, in ``packages/orchestration/role_config.py`` beside
-``resolve_effective_task_class_tiers`` — the config-reading layer, which is
-already where the per-project TIERS table is read. The schema lands a round
-BEFORE its reader on purpose, so it is pinned before routing behaviour moves
-against it.
+:func:`promotion_evidence_from_mapping` HAS EXACTLY ONE PRODUCTION CALLER, and a
+reader searching for it should land there rather than on a silence: it is
+``packages.orchestration.role_config.resolve_promotion_evidence``, in the
+config-reading layer, which reads the raw ``model_routing.promotion_evidence``
+table and hands it here to become :class:`PromotionEvidence` records. Those
+records then reach BOTH consumers from that one reader — the override builder,
+so a promotion to a cheaper tier is licensed rather than refused, and the seam,
+so a routed call's ``promoted_by`` names the run. This module still loads
+nothing: the parser is a pure function of the mapping it is given, and the round
+that pinned the schema landed BEFORE the round that wired its caller, on purpose.
 
 THE SEAM IS WIRED IN EXACTLY ONE PLACE, and a reader searching for where a call
 routes must go there: ``packages/orchestration/role_config.resolve_role_config``
