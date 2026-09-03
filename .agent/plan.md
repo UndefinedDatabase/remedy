@@ -14,29 +14,28 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 19, session 4. CLOSURE PRECONDITION 6, the self-use item: the queue
-holds no pending item, so the generator supplies one from the ledger and
-it is planned and RUN to the normal approval gate under the product's own
-provider — never promoted, never faked. Its defects are reported in the
-handback for the reviewer to author as findings. Also book round 18's
-PASS and resolve `R-0783`.
+Round 20, session 4. CLOSURE, steps 1 and 2: the evidence job and a FRESH
+review zip, plus the integrity check. Register the three findings the
+round 19 self-use run exposed, all three as documented Low risks carried
+into closure — two of them are F258's generator, not F109's code. The
+STATUS line and the PR are round 21, because the closure commit must
+FOLLOW a READY package.
 
 ## Next Steps
 
-- The closure sequence (docs/roadmap/STATUS_closure_protocol.md):
-  register the self-use defects, the evidence job, a FRESH review zip,
-  the authored STATUS line with the README sync in the SAME commit, the
-  `consumed_by` edit, and the PR. That round also runs the single
-  consolidation pass on the checklist of
+- Round 21, the closure commit: the authored STATUS line with the README
+  capability sync in the SAME commit, `consumed_by` set to F109 on
+  `SU-005`, the final `.agent/` state, then the PR. That round also runs
+  the single consolidation pass on the checklist of
   docs/agents/planner_reviewer_prompt.md section 3.
 
 ## Risks
 
-- The self-use run uses a local model. If it cannot run, the precondition
-  is BLOCKED and reported, never faked.
-- SEVEN findings on this branch have been one class: prose TRUE when
-  written and falsified by a later round. The consolidation should answer
-  the class, not add an eighth id.
+- A failing zip build is a CLOSURE BLOCKER, never something to work
+  around; `PACKAGE_STATUS` is the reading, not the exit code.
+- SEVEN findings on this branch were one class: prose TRUE when written
+  and falsified by a later round. The consolidation should answer the
+  class, not add an eighth id.
 - Nothing dedupes in production: every concrete adapter returns
   `supports_resume = False`, so the mechanism is suite-only today.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
