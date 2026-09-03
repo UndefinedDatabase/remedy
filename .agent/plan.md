@@ -14,29 +14,35 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 5, the last of session 1 — book round 4's PASS verdict, correct a
-false load-bearing clause in `R-0770` and resolve that finding, and land
-T002a: the pure dedupe DECISION in
-`packages/orchestration/session_sent_index.py` —
-`DEDUPE_MIN_SEGMENT_CHARS`, `should_dedupe_segment` and
-`dedupe_marker_for_segment`. No prompt is rewritten yet and the loop is
-not touched.
+Round 6, session 2 — book round 5's PASS verdict, then land the first
+half of T002b: the pure composition transform `_dedupe_resumed_segments`
+in `packages/orchestration/pingpong_loop.py`, which rewrites an
+already-sent segment's TEXT to its marker while leaving that segment's
+NAME, RANK and POSITION alone, and reports which names it replaced. No
+call site is added: `compose_builder_prompt` and `compose_reviewer_prompt`
+are not touched, so every prompt this repository composes stays
+byte-identical to the one before this round.
 
 ## Next Steps
 
-- T002b: the composition hook in `packages/orchestration/pingpong_loop.py`
-  that calls the decision, replaces a deduped segment's text with its
-  marker while leaving rank and order untouched, and bypasses non-resume
-  calls entirely under a byte-equality golden.
-- T002c: record the deduped segments in the manifest so evidence shows
-  what the model did NOT receive again, and plumb the config kill switch.
-- T003: the measurement fixture and the docs.
+- Wire the transform into `compose_builder_prompt` and
+  `compose_reviewer_prompt` behind a parameter that defaults to no dedupe,
+  and pass the session's sent hashes at the two loop call sites only when
+  a resume ref is actually set. The non-resume byte-equality golden is
+  that round's first acceptance item.
+- Record the deduped segments in the manifest so evidence shows what the
+  model did NOT receive again, and plumb the config kill switch through
+  to `enabled` (T002c).
+- The measurement fixture and the docs (T003).
 - The integration gate, then the closure sequence.
 
 ## Risks
 
 - The parse-retry and post-mortem provider calls are still NOT wired into
   the index. That records strictly less than was sent, which errs in the
-  safe direction; T002b must not assume the index is complete.
+  safe direction; the wiring step must not assume the index is complete.
+- `tests/orchestration/test_builder_prompt_golden.py` pins frozen renders
+  and an exact ten-name manifest tuple. This round adds no call site, so
+  it cannot reach them; the wiring step must gate on that suite.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
