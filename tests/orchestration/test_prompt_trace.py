@@ -11,8 +11,10 @@ import json
 
 from packages.orchestration.intake import compose_intake_prompt, make_intake_call_recorder
 from packages.orchestration.prompt_trace import (
+    PromptTraceEntry,
     build_trace_entry,
     build_trace_summary,
+    measure_dedupe_savings_from_traces,
     redact_prompt_text,
     trace_entry_to_dict,
     write_trace_jsonl,
@@ -573,6 +575,142 @@ class TestDedupedSegmentNames:
             "intake_system",
             "intake_rules",
         ]
+
+
+# ---------------------------------------------------------------------------
+# F109 T003d: the savings the trace record itself proves
+# ---------------------------------------------------------------------------
+
+
+class TestMeasureDedupeSavingsFromTraces:
+    """SPEC H: the arithmetic, on hand-built entries, where the numbers are exact.
+
+    HAND-BUILT AND NOT LOOP-DRIVEN, on purpose. A real run's segment sizes move
+    whenever any prompt text changes, so a case asserting them as numerals would
+    pin this file to unrelated prompt edits. The real-loop claim lives in
+    `tests/orchestration/test_semantic_dedupe.py` and asserts relations rather
+    than numbers; the exact arithmetic is asserted here, where the inputs are
+    chosen and cannot drift.
+    """
+
+    FULL_CHARS = 1200
+    MARKER_CHARS = 40
+    NAME = "builder_context"
+
+    @classmethod
+    def _row(cls, name: str, chars: int) -> dict[str, str | int]:
+        """One manifest row in the shipped shape — `manifest_as_dicts`'s five keys."""
+        return {
+            "name": name,
+            "rank": "job_context",
+            "sha256": "0" * 64,
+            "chars": chars,
+            "tokens_estimated": chars // 4,
+        }
+
+    @classmethod
+    def _full_entry(cls, role: str = "builder") -> PromptTraceEntry:
+        """An entry that sent the segment IN FULL and withheld nothing."""
+        return PromptTraceEntry(
+            role=role, segment_manifest=[cls._row(cls.NAME, cls.FULL_CHARS)],
+        )
+
+    @classmethod
+    def _deduped_entry(cls, role: str = "builder") -> PromptTraceEntry:
+        """An entry whose manifest row for the segment is the MARKER, not the text."""
+        return PromptTraceEntry(
+            role=role,
+            segment_manifest=[cls._row(cls.NAME, cls.MARKER_CHARS)],
+            deduped_segment_names=[cls.NAME],
+        )
+
+    # -- SPEC H case 1: nothing in, nothing claimed --------------------------
+
+    def test_no_entries_measures_nothing(self):
+        measured = measure_dedupe_savings_from_traces([])
+
+        assert measured.chars_avoided == 0
+        assert measured.chars_spent_on_markers == 0
+        assert measured.net_chars_saved == 0
+        assert measured.deduped_occurrences_counted == 0
+        assert measured.unmeasured_segment_names == ()
+
+    # -- SPEC H case 2: entries that deduped nothing, however many -----------
+
+    def test_entries_that_deduped_nothing_measure_nothing(self):
+        # THE ENTRIES ARE REAL COMPOSITIONS as far as this function can tell —
+        # populated manifests, just no withheld names — so a zero here is about
+        # the absence of dedupe rather than about an empty input.
+        entries = [self._full_entry(), self._full_entry(), self._full_entry("reviewer")]
+        assert [e.segment_manifest for e in entries if e.segment_manifest] == [
+            e.segment_manifest for e in entries
+        ]
+
+        measured = measure_dedupe_savings_from_traces(entries)
+
+        assert measured.chars_avoided == 0
+        assert measured.chars_spent_on_markers == 0
+        assert measured.net_chars_saved == 0
+        assert measured.deduped_occurrences_counted == 0
+        assert measured.unmeasured_segment_names == ()
+
+    # -- SPEC H case 3: the arithmetic, as exact numbers ---------------------
+
+    def test_the_saving_is_the_full_size_minus_the_marker_it_paid_for(self):
+        # THE NUMBERS ARE LITERAL ON PURPOSE. Restating them as
+        # `FULL_CHARS - MARKER_CHARS` would let an implementation that never
+        # subtracted anything still agree with the assertion.
+        measured = measure_dedupe_savings_from_traces(
+            [self._full_entry(), self._deduped_entry()],
+        )
+
+        assert measured.unmeasured_segment_names == ()
+        assert measured.chars_avoided == 1200
+        assert measured.chars_spent_on_markers == 40
+        assert measured.net_chars_saved == 1160
+        assert measured.deduped_occurrences_counted == 1
+
+    # -- SPEC H case 4: unmeasured is NOT zero -------------------------------
+
+    def test_a_deduped_name_with_no_observed_full_size_is_unmeasured_not_zero(self):
+        # BOTH HALVES ARE ASSERTED, and the naming first. A function that simply
+        # returned zeroes would satisfy the totals alone, so the totals are
+        # evidence of nothing without the name that explains them.
+        measured = measure_dedupe_savings_from_traces([self._deduped_entry()])
+
+        assert measured.unmeasured_segment_names == (self.NAME,)
+        assert measured.deduped_occurrences_counted == 0
+        assert measured.chars_avoided == 0
+        assert measured.chars_spent_on_markers == 0
+        assert measured.net_chars_saved == 0
+
+    # -- SPEC H case 5: roles do not cross -----------------------------------
+
+    def test_one_roles_full_send_does_not_size_the_other_roles_dedupe(self):
+        # THE SCOPE RULE, READ THROUGH THE TRACE. What the Builder session was
+        # sent proves nothing about what the Reviewer session holds, so the
+        # Reviewer's withheld name is UNMEASURED rather than measured against
+        # the wrong session's number.
+        crossed = measure_dedupe_savings_from_traces(
+            [self._full_entry("builder"), self._deduped_entry("reviewer")],
+        )
+
+        assert crossed.unmeasured_segment_names == (self.NAME,)
+        assert crossed.deduped_occurrences_counted == 0
+        assert crossed.chars_avoided == 0
+        assert crossed.chars_spent_on_markers == 0
+        assert crossed.net_chars_saved == 0
+
+        # THE DISCRIMINATOR: the very same pair on ONE role measures cleanly, so
+        # the reading above is about the role boundary and not about these two
+        # entries being unusable.
+        same_role = measure_dedupe_savings_from_traces(
+            [self._full_entry("reviewer"), self._deduped_entry("reviewer")],
+        )
+
+        assert same_role.unmeasured_segment_names == ()
+        assert same_role.deduped_occurrences_counted == 1
+        assert same_role.net_chars_saved == 1160
 
 
 # ---------------------------------------------------------------------------

@@ -37,6 +37,7 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
+from packages.orchestration.prompt_trace import measure_dedupe_savings_from_traces
 from packages.orchestration.session_sent_index import (
     DEDUPE_MIN_SEGMENT_CHARS,
     SessionSentIndex,
@@ -2208,3 +2209,100 @@ class TestTheTraceNamesWhatWasNotResent:
         traces = self._untruncated(result)
         assert traces
         assert [t.deduped_segment_names for t in traces if t.deduped_segment_names] == []
+
+
+# ---------------------------------------------------------------------------
+# SPEC H cases 6-7: THE SAVING, MEASURED FROM THE RUN'S OWN RECORD.
+# The exact arithmetic of `measure_dedupe_savings_from_traces` is pinned in
+# `tests/orchestration/test_prompt_trace.py` on hand-built entries, where the
+# numbers can be chosen and cannot drift. What only the real loop can show is
+# that a genuine resumed chain produces a trace record the function can measure
+# at all — and that switching the feature off collapses that reading to nothing
+# without inventing an unmeasured name to explain it.
+# ---------------------------------------------------------------------------
+
+
+class TestTheRunsOwnTraceMeasuresWhatItWithheld:
+    """SPEC H: `measure_dedupe_savings_from_traces` driven by the real loop."""
+
+    @staticmethod
+    def _reported_names(result) -> list[str]:
+        """Every name any trace of the run reported as withheld, in trace order."""
+        return [
+            name
+            for trace in result.prompt_traces
+            for name in trace.deduped_segment_names
+        ]
+
+    # -- SPEC H case 6: a resumed chain saved something, and it is measurable --
+
+    def test_a_resumed_chain_reports_a_positive_net_saving(self, fallback_repo: Path):
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, providers, repair_rounds=2,
+        )
+
+        # (a) NON-VACUITY FIRST: the chain really resumed. Two rounds ran, the
+        # Builder did not fall back, both seams recorded a proven send, and some
+        # trace does report a withheld name — without which every assertion
+        # below would be satisfied by a run that never deduped anything.
+        assert result.final_status == "staged_review_passed"
+        assert len(result.rounds) == 2
+        assert result.rounds[1].builder_output.resume_fallback is False
+        assert sorted(TestChainAgainstTheRealLoop._rows_by_session(result)) == [
+            TestChainAgainstTheRealLoop.BUILDER_SESSION,
+            TestChainAgainstTheRealLoop.REVIEWER_SESSION,
+        ]
+        reported = self._reported_names(result)
+        assert reported != []
+
+        measured = measure_dedupe_savings_from_traces(list(result.prompt_traces))
+
+        # (b) EVERY REPORTED OCCURRENCE WAS MEASURABLE from this run's own
+        # record. The run opened both sessions itself, so nothing here was
+        # withheld against a full send that happened before the trace begins.
+        assert measured.unmeasured_segment_names == ()
+        assert measured.deduped_occurrences_counted == len(reported)
+        # (c) AND THE SAVING IS NET, not gross: a marker costs characters of its
+        # own, this run paid them, and what is left over is still positive.
+        assert measured.chars_spent_on_markers > 0
+        assert measured.chars_avoided > measured.chars_spent_on_markers
+        assert measured.net_chars_saved == (
+            measured.chars_avoided - measured.chars_spent_on_markers
+        )
+        assert measured.net_chars_saved > 0
+
+    # -- SPEC H case 7: the discriminator, on the same chain with the flag off -
+
+    def test_a_disabled_run_reports_zero_and_names_nothing_unmeasured(
+        self, fallback_repo: Path,
+    ):
+        # THE DISCRIMINATOR THAT STOPS CASE 6 PASSING on a function that reports
+        # activity whatever the run did. This is case 6's chain with
+        # `semantic_dedupe_enabled` the only argument that moves, so a zero here
+        # is about the flag rather than about a chain that never resumed. THE
+        # EMPTY UNMEASURED FIELD IS THE SECOND HALF: a run that withheld nothing
+        # has nothing it failed to measure, and a function that named a segment
+        # here would be inventing an excuse for its own zero.
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, providers, repair_rounds=2, semantic_dedupe_enabled=False,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert len(result.rounds) == 2
+        assert sorted(TestChainAgainstTheRealLoop._rows_by_session(result)) == [
+            TestChainAgainstTheRealLoop.BUILDER_SESSION,
+            TestChainAgainstTheRealLoop.REVIEWER_SESSION,
+        ]
+        assert self._reported_names(result) == []
+
+        measured = measure_dedupe_savings_from_traces(list(result.prompt_traces))
+
+        assert measured.chars_avoided == 0
+        assert measured.chars_spent_on_markers == 0
+        assert measured.net_chars_saved == 0
+        assert measured.deduped_occurrences_counted == 0
+        assert measured.unmeasured_segment_names == ()
