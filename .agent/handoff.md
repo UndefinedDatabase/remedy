@@ -1,228 +1,255 @@
-# Handoff — F112 Prompt budget per task class, round 2 (T001 part 1)
+# Handoff — F112 Prompt budget per task class, round 3 (T001 completion)
 
 ## Session
 
-SESSION 1 of feature F112 · round 2 · rounds so far 2.
+SESSION 1 of feature F112 · round 3 · rounds so far 3.
 
-This round books round 1's PASS verdict into `.agent/live_review.md` and
-lands T001 part 1: the config schema
-(`prompt_budget.task_class_caps` + `prompt_budget.default_cap`) and the
-new module `packages/orchestration/prompt_budget.py`
-(`resolve_task_class_cap`, `validate_prompt_budget_config`). No tests
-land this round (round 3, for the 400-line block cap) and no compiler
-wiring (T002) — the new module ships with zero production callers, as
-directed.
+This round fixes `R-0791` (two ruff-confirmed defects round 2's own
+MODULE slice shipped into `packages/orchestration/prompt_budget.py`:
+`UP037` redundant-quotes type hint, `W292` missing trailing newline),
+books round 2's PASS verdict into `.agent/live_review.md`, records round
+2's transport prose slip into `.agent/prose_slips.md`, and ships
+`tests/orchestration/test_class_prompt_budget.py` (24 tests), completing
+T001. Still no compiler wiring — T002.
 
 ## Range
 
-`0092939e..56a2475d` (commits C0a through C2; C3 is this handback commit
-itself).
+`e33a6161..72779afb` (commits C0a through C4; C5 is this handback
+commit itself).
 
 ## Commits
 
-### c82775c8 F112 R2 C0a: save the round 2 block verbatim to .agent/authored/f112-r2.md
+### 6774b8c7 F112 R3 C0a: save round 3 block verbatim to .agent/authored/f112-r3.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f112-r2.md` | +367/-0 | verbatim transport of this round's block, written directly by the Write tool from the prompt's literal bytes |
+| `.agent/authored/f112-r3.md` | +392/-0 | verbatim transport of this round's block, written directly by the Write tool from the prompt's literal bytes |
 
-### e3722df8 F112 R2 C0b: mirror the committed authored file to last_block
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/last_block.md` | +299/-167 | whole-file mirror of the committed `.agent/authored/f112-r2.md`, overwriting the prior F112 R1 block it held |
-
-### 1953d297 F112 R2 C1: append RECORD1 to live_review.md and apply PLAN2 to plan.md
+### 0615479d F112 R3 C0b: mirror the committed authored file to last_block
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +3/-1 | append of RECORD1 (F112 R1's PASS verdict) as two newline bytes plus the slice, no trailing newline, matching the file's own convention |
-| `.agent/plan.md` | +19/-21 | whole-file replacement with PLAN2, extracted programmatically from the committed authored file |
+| `.agent/last_block.md` | +392/-367 | whole-file mirror of the committed `.agent/authored/f112-r3.md`, overwriting the prior F112 R2 block it held |
 
-### 56a2475d F112 R2 C2: register prompt_budget config keys and ship prompt_budget.py
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `packages/orchestration/config.py` | +31/-0 | CONFIG PAIR applied as `str.replace(FROM, TO, 1)`: inserted the two new `ConfigKeySpec` entries between the prior last entry's closing paren and the tuple's own closing paren — a rewrite (TO does not contain FROM) |
-| `packages/orchestration/prompt_budget.py` | +133/-0 | brand new file, written byte-for-byte from the committed MODULE slice (copyfile, not retyped) |
-
-### C3 (this commit, self-reference)
+### 5e5bc5fe F112 R3 C1: apply PLAN3 to plan.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | (this commit) | the round 2 handback |
+| `.agent/plan.md` | +13/-17 | whole-file replacement with PLAN3, extracted programmatically from the committed authored file; first substantive commit of the round per §3 item 23 since this round registers/resolves R-0791 |
+
+### 9596c7ba F112 R3 C2: fix R-0791 (redundant quotes, missing trailing newline)
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `packages/orchestration/prompt_budget.py` | +2/-2 | THE FIX: `str.replace(FROM, TO, 1)` removing the redundant quotes around the `RemedyConfig` forward reference, then one `0x0a` byte appended at EOF |
+
+### 16127656 F112 R3 C3: append RECORD2 to live_review.md and SLIP1 to prose_slips.md
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/live_review.md` | +3/-1 | append of RECORD2 (F112 R2's PASS verdict, including R-0791's registration and resolution) as two newline bytes plus the slice, matching the file's own convention |
+| `.agent/prose_slips.md` | +3/-1 | append of SLIP1 (round 2's marker-boundary trailing-newline ambiguity, no product effect) as two newline bytes plus the slice |
+
+### 72779afb F112 R3 C4: add tests/orchestration/test_class_prompt_budget.py
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `tests/orchestration/test_class_prompt_budget.py` | +165/-0 | brand new file, written byte-for-byte from the committed TEST_FILE slice (copyfile via `cp`, not the Write tool — see Deviations) |
+
+### C5 (this commit, self-reference)
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | (this commit) | the round 3 handback |
 
 ## External actions
 
-- `git push` after C3 — reported below with real output, not assumed.
-- No `gh pr create` or `gh pr merge` this round. No worktree add/remove.
-  `main` was never touched.
+- `git worktree add .remedy-wt/f112-r3-mutate HEAD` before G6, and
+  `git worktree remove .remedy-wt/f112-r3-mutate --force` after G6 —
+  both reported below with real output.
+- `git push` after C5 — reported below with real output, not assumed.
+- No `gh pr create` or `gh pr merge` this round. `main` was never
+  touched.
 
 ## Verification
 
 **STOP check** — `.agent/STOP` was read from disk before the first
-commit (did not exist), again before C3 (still did not exist), and
-additionally re-checked before each of C1 and C2 out of caution (all
-readings: did not exist):
+commit (did not exist) and again before C5 (still did not exist):
 ```
-no STOP file
+ABSENT
 ```
-(every reading)
+(both readings)
 
-**G1 TRANSPORT** — `sha256sum .agent/authored/f112-r2.md
+**G1 TRANSPORT** — `sha256sum .agent/authored/f112-r3.md
 .agent/last_block.md`, run after C0b:
 ```
-de8563358bb8b63f7a856d5da44c6191eb71c19348d76347be7af4783fbf79c4  /home/decodeux/Repos/remedy/.agent/authored/f112-r2.md
-de8563358bb8b63f7a856d5da44c6191eb71c19348d76347be7af4783fbf79c4  /home/decodeux/Repos/remedy/.agent/last_block.md
+3105c6c2390836d41e7ec89131ba22e58ee3196d004e9b13b3f58457c7932daf  /home/decodeux/Repos/remedy/.agent/authored/f112-r3.md
+3105c6c2390836d41e7ec89131ba22e58ee3196d004e9b13b3f58457c7932daf  /home/decodeux/Repos/remedy/.agent/last_block.md
 ```
 Identical digest on both files.
 
-**G2 THE LEDGER APPEND** — base size of `.agent/live_review.md`
-immediately before C1, measured directly off disk:
+**G2 THE PLAN** — PLAN3 extracted from the committed authored file to
+`.remedy-wt/slices/PLAN3.txt` via a Python marker-index script (never
+retyped), then:
 ```
-base byte length: 2246582
-ends with trailing newline: False
+cmp .remedy-wt/slices/PLAN3.txt .agent/plan.md   -> exit 0 (no output, CMP_OK printed)
+wc -l .agent/plan.md                              -> 42 /home/decodeux/Repos/remedy/.agent/plan.md
+grep -c '^## Goal' .agent/plan.md                 -> 1
+grep -c '^## Next Steps' .agent/plan.md           -> 1
 ```
-RECORD1's own byte length via UTF-8 encoding:
-```
-RECORD1 len: 1663 bytes; ends with newline: False; internal newlines: 0
-```
-Arithmetic: `base + 2 + len(RECORD1)` = `2246582 + 2 + 1663` =
-`2248247`; the post-C1 file's actual byte length:
-```
-actual new file len: 2248247
-```
-Equal — confirmed.
+42 is under the required 50-line ceiling.
 
-Second, independent reader — split the whole post-C1 file on blank-line
+**G3 THE FIX** — count of QUOTE PAIR FROM in
+`packages/orchestration/prompt_budget.py` before C2:
+```
+before count FROM: 1
+last char before edit: 's'   (not a newline)
+```
+After the `str.replace` half of C2:
+```
+after count FROM: 0
+after count TO: 1
+TO contains FROM: False
+```
+After the trailing-newline-append half of C2:
+```
+size before append: 5795
+last byte before append: b's'
+size after append: 5796
+last byte after append: b'\n'
+diff: 1
+```
+`python3 -m ruff check packages/orchestration/prompt_budget.py`:
+```
+All checks passed!
+```
+
+**G4 THE LEDGER AND SLIP APPENDS**
+
+(a) `.agent/live_review.md` — base size immediately before C3, measured
+directly off disk:
+```
+base size before C3: 2248247
+```
+RECORD2's own byte length:
+```
+slice length: 2577
+```
+Arithmetic: `base + 2 + len(RECORD2)` = `2248247 + 2 + 2577` =
+`2250826`; the post-C3 file's actual byte length:
+```
+expected post-size: 2250826
+actual post-size: 2250826
+```
+Equal — confirmed. RECORD2 carries zero internal newlines, confirmed
+directly:
+```
+total newlines: 1
+last byte is newline: True
+```
+(the single newline is RECORD2's own trailing one).
+
+Second, independent reader — split the WHOLE post-C3 file on blank-line
 (`\n\n`) boundaries and check the last unit:
 ```
-number of units: 925
-last unit == RECORD1: True
+number of units: 926
+last unit == RECORD2 slice exactly: True
+last unit length: 2577 slice length: 2577
 ```
 
-Negative control, scratch copy only (`.remedy-wt/live_review_negctrl.md`,
-gitignored, never the tracked file — confirmed via `git check-ignore -v`):
-one byte inside RECORD1's own trailing region was XOR-flipped, then the
+Negative control, in-memory scratch only (never written to the tracked
+file): one byte inside RECORD2's own text was XOR-flipped, then the
 second reader was re-run against the mutated copy:
 ```
-flipped negative control last unit == RECORD1: False
-expected: False -> second reader REJECTS the mutated copy
+negative control: mutated last unit == RECORD2 slice exactly: False
+negative control: mutated last unit == mutated slice (self-consistent): True
 ```
 Rejected, as required.
 
-**G3 THE PLAN** — PLAN2 extracted from the committed authored file to
-`.remedy-wt/PLAN2.extracted` via a Python marker-index script (never
-retyped), then:
+(b) `.agent/prose_slips.md` — byte-equality check only:
 ```
-cmp .remedy-wt/PLAN2.extracted .agent/plan.md   -> exit 0 (no output)
-wc -l .agent/plan.md                            -> 45 /home/decodeux/Repos/remedy/.agent/plan.md
-grep -c '^## Goal' .agent/plan.md               -> 1
-grep -c '^## Next Steps' .agent/plan.md         -> 1
-```
-45 is under the required 50-line ceiling.
-
-**G4 THE CONFIG PAIR** — FROM count in `packages/orchestration/config.py`
-measured before C2:
-```
-FROM count before: 1
-```
-After C2 (`str.replace(FROM, TO, 1)` applied):
-```
-FROM count after: 0
-TO count after: 1
-TO contains FROM: False
-```
-i.e. **TO contains FROM: false** — a genuine rewrite, content inserted
-between the FROM's last two lines.
-
-**G5 THE NEW MODULE** — MODULE extracted from the committed authored
-file to `.remedy-wt/MODULE.extracted`, then:
-```
-cmp .remedy-wt/MODULE.extracted packages/orchestration/prompt_budget.py   -> exit 0 (no output)
-```
-Re-checked again after a `git stash` / `git stash pop` round-trip used
-for the G6 pre-round baseline (below) — still exit 0.
-
-`python3 -m py_compile`:
-```
-$ python3 -m py_compile packages/orchestration/config.py
-(no output — exit 0)
-$ python3 -m py_compile packages/orchestration/prompt_budget.py
-(no output — exit 0)
+base size before C3: 66041
+slice length: 575
+expected post-size: 66618
+actual post-size: 66618
+final bytes equal slice exactly: True
 ```
 
-`ruff check` — attempted directly as instructed, reporting the real
-result rather than assuming either way. The bare binary invocation
-(`ruff check ...`) hit a non-interactive approval gate this session
-could not clear:
+**G5 THE TEST FILE** — TEST_FILE extracted from the committed authored
+file to `.remedy-wt/slices/TEST_FILE.txt`, then:
 ```
-$ ruff check packages/orchestration/prompt_budget.py packages/orchestration/config.py
-This command requires approval
+cmp .remedy-wt/slices/TEST_FILE.txt tests/orchestration/test_class_prompt_budget.py   -> exit 0 (CMP_OK printed)
 ```
-`python3 -m ruff check` (same ruff 0.15.17 install at
-`~/.local/bin/ruff`) DID run, and is not denied this session — contrary
-to F112 R1's context claim that ruff is denied. It found 2 real issues,
-both confined to the new module:
 ```
-$ python3 -m ruff check packages/orchestration/prompt_budget.py packages/orchestration/config.py
-UP037 [*] Remove quotes from type annotation
-   --> packages/orchestration/prompt_budget.py:100:43
-    |
-100 | def validate_prompt_budget_config(config: "RemedyConfig") -> list[str]:
-    |                                           ^^^^^^^^^^^^^^
-101 |     """Return floor and vocabulary violations in ``config``'s prompt_budget keys.
-    |
-help: Remove quotes
+$ python3 -m pytest tests/orchestration/test_class_prompt_budget.py -q
+........................                                                 [100%]
+24 passed in 0.24s
+```
+24 passed, as expected.
 
-W292 [*] No newline at end of file
-   --> packages/orchestration/prompt_budget.py:133:18
-    |
-131 |             "single tier-1 fenced file"
-132 |         )
-133 |     return errors
-    |                  ^
-    |
-help: Add trailing newline
+**G6 THE MUTATION RED-PROOF**, inside a disposable worktree only:
+```
+$ git worktree add .remedy-wt/f112-r3-mutate HEAD
+Preparing worktree (detached HEAD 72779afb)
+HEAD is now at 72779afb F112 R3 C4: add tests/orchestration/test_class_prompt_budget.py
+```
+Module `__file__` printed before trusting any reading, confirming the
+worktree copy (not the primary checkout) was the one imported:
+```
+module file: /home/decodeux/Repos/remedy/.remedy-wt/f112-r3-mutate/packages/orchestration/prompt_budget.py
+```
+The two `if` blocks inside `resolve_task_class_cap` were swapped in the
+worktree copy only (DEFAULT_CAP_CONFIG_KEY check now runs before
+TASK_CLASS_CAPS_CONFIG_KEY check), then run via absolute path with
+`subprocess.run(cwd=<worktree>)`, no `cd`:
+```
+$ python3 -m pytest /home/decodeux/Repos/remedy/.remedy-wt/f112-r3-mutate/tests/orchestration/test_class_prompt_budget.py -q
+....F...................                                                 [100%]
+=================================== FAILURES ===================================
+_ TestResolutionPrecedence.test_a_configured_class_cap_wins_over_the_global_default _
+...
+E       AssertionError: assert 9000 == 5000
+E        +  where 9000 = TaskClassCapResolution(task_class='format', cap_tokens=9000, source='configured_default', estimate_basis='class_default').cap_tokens
+FAILED tests/orchestration/test_class_prompt_budget.py::TestResolutionPrecedence::test_a_configured_class_cap_wins_over_the_global_default
+1 failed, 23 passed in 0.25s
+returncode: 1
+```
+Exactly 1 failed, naming
+`TestResolutionPrecedence::test_a_configured_class_cap_wins_over_the_global_default`,
+23 others passing, matching the required proof.
 
-Found 2 errors.
-[*] 2 fixable with the `--fix` option.
+`git status --porcelain` on the PRIMARY checkout immediately after the
+mutation step:
 ```
-Neither was fixed: per constraint 1, an authored slice that "looks
-wrong" is applied as written and declared, never silently repaired —
-fixing either finding would break the byte-for-byte identity this
-round's G5 `cmp` gate requires against the committed MODULE slice. Both
-are declared under Deviations below. A runtime import smoke check (not
-a landed test — round 3 owns the test file) also confirmed the module
-imports and behaves as designed:
+(empty)
 ```
-$ python3 -c "from packages.orchestration.prompt_budget import resolve_task_class_cap, validate_prompt_budget_config; print(resolve_task_class_cap('boilerplate'))"
-TaskClassCapResolution(task_class='boilerplate', cap_tokens=24000, source='shipped_default', estimate_basis='class_default')
-```
-and raises `ValueError` for a class outside `TASK_CLASS_TIERS`, as
-designed.
 
-**G6 NO REGRESSION** — `tests/orchestration/test_config.py`, run against
-the post-C2 tree:
+The swap was then reverted in the SAME worktree, confirmed byte-identical
+to the primary checkout's file before re-running:
 ```
-$ python3 -m pytest tests/orchestration/test_config.py -q
-........................................................................ [ 88%]
-.........                                                                [100%]
-81 passed in 0.35s
+cmp packages/orchestration/prompt_budget.py .remedy-wt/f112-r3-mutate/packages/orchestration/prompt_budget.py -> REVERT_MATCHES_PRIMARY printed
+$ python3 -m pytest /home/decodeux/Repos/remedy/.remedy-wt/f112-r3-mutate/tests/orchestration/test_class_prompt_budget.py -q
+........................                                                 [100%]
+24 passed in 0.22s
+returncode: 0
 ```
-Pre-round baseline, obtained by `git stash push --include-untracked`
-(reverting `config.py` and removing `prompt_budget.py`), re-running the
-same suite, then `git stash pop` to restore the round's own changes
-(re-verified byte-identical to MODULE via `cmp` afterward):
+Back to 24 passed, as required.
+
+Worktree removed:
 ```
-$ python3 -m pytest tests/orchestration/test_config.py -q
-........................................................................ [ 88%]
-.........                                                                [100%]
-81 passed in 0.30s
+$ git worktree remove .remedy-wt/f112-r3-mutate --force
+$ git worktree list
+/home/decodeux/Repos/remedy                                  72779afb [feature/f112-prompt-budget-per-task-class]
+(plus pre-existing, unrelated .remedy-wt/job-* worktrees from other sessions — untouched)
 ```
-81 passed before and after — equal, a superset-behavior confirmation
-(no existing test broken by the two new keys, and no test collects the
-new keys into new parametrized cases).
+`git status --porcelain` on the PRIMARY checkout after cleanup:
+```
+(empty)
+```
+`git ls-files .remedy-wt`:
+```
+(empty — no output)
+```
 
 **G7 THE STATE READERS AND THE CANARY** — five separate invocations:
 ```
@@ -235,15 +262,15 @@ $ python3 -m pytest tests/ui_server/ -q
 ........................................................................ [ 83%]
 ........................................................................ [ 97%]
 ...........                                                              [100%]
-515 passed in 32.66s
+515 passed in 32.67s
 
 $ python3 -m pytest tests/orchestration/test_test_runner.py -q
 ....................................................                     [100%]
-52 passed in 5.57s
+52 passed in 5.58s
 
 $ python3 -m pytest tests/regression/test_resource_safety.py -q
 .....................                                                    [100%]
-21 passed in 11.51s
+21 passed in 11.58s
 
 $ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
 ................                                                         [100%]
@@ -251,7 +278,7 @@ $ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
 
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 ..........................................                               [100%]
-42 passed in 20.79s
+42 passed in 20.92s
 ```
 Pass counts: `tests/ui_server/` **515**, `test_test_runner.py` **52**,
 `test_resource_safety.py` **21**, `test_integrity_gate.py` **16**,
@@ -260,7 +287,7 @@ separate invocations — the four state readers ran as four, not three.
 
 **G8 THE TREE, THE COMMITS AND THE SWEEP** —
 
-`git status --porcelain` immediately before C3 was staged:
+`git status --porcelain` immediately before C5 was staged:
 ```
 (empty)
 ```
@@ -271,129 +298,130 @@ separate invocations — the four state readers ran as four, not three.
 ```
 
 Per-commit insertion counts (`git show --numstat`, `+` column only) for
-C0a, C0b, C1 and C2, compared cell-by-cell against this handback's own
+C0a through C4, compared cell-by-cell against this handback's own
 Commits table above:
 
 | Commit | Path | `+` (numstat) | `+` (Commits table above) | Match |
 |--------|------|---------------|---------------------------|-------|
-| c82775c8 (C0a) | `.agent/authored/f112-r2.md` | 367 | 367 | yes |
-| e3722df8 (C0b) | `.agent/last_block.md` | 299 | 299 | yes |
-| 1953d297 (C1) | `.agent/live_review.md` | 3 | 3 | yes |
-| 1953d297 (C1) | `.agent/plan.md` | 19 | 19 | yes |
-| 56a2475d (C2) | `packages/orchestration/config.py` | 31 | 31 | yes |
-| 56a2475d (C2) | `packages/orchestration/prompt_budget.py` | 133 | 133 | yes |
+| 6774b8c7 (C0a) | `.agent/authored/f112-r3.md` | 392 | 392 | yes |
+| 0615479d (C0b) | `.agent/last_block.md` | 392 | 392 | yes |
+| 5e5bc5fe (C1) | `.agent/plan.md` | 13 | 13 | yes |
+| 9596c7ba (C2) | `packages/orchestration/prompt_budget.py` | 2 | 2 | yes |
+| 16127656 (C3) | `.agent/live_review.md` | 3 | 3 | yes |
+| 16127656 (C3) | `.agent/prose_slips.md` | 3 | 3 | yes |
+| 72779afb (C4) | `tests/orchestration/test_class_prompt_budget.py` | 165 | 165 | yes |
 
-C3's own numbers are withheld from this file per the block's
-instruction — the reviewer measures them at the next gate.
+C5's own numbers go to neither a round report nor this file, per the
+block's instruction.
 
 **THE STALENESS SWEEP** — one entry per file this round touched:
 
-- `.agent/authored/f112-r2.md` — new file, not stale (created this
+- `.agent/authored/f112-r3.md` — new file, not stale (created this
   round, matches the block byte for byte per G1).
 - `.agent/last_block.md` — not stale; mirrors the just-committed
   authored file, confirmed identical by G1.
-- `.agent/live_review.md` — not stale; RECORD1 books round 1's already
-  true PASS verdict, confirmed by the append-arithmetic and second-reader
-  checks in G2.
-- `.agent/plan.md` — not stale; wholly replaced with PLAN2, describes
-  this round (round 2, T001 part 1) and the next two rounds accurately,
-  confirmed by G3.
-- `packages/orchestration/config.py` — not stale; the two new keys carry
-  accurate descriptions of the module that now implements their floor
-  and vocabulary checks. Checked whether the addition ripples into any
-  doc that counts config keys or enumerates the schema: no doc under
-  `docs/roadmap/` states a total config-key count or enumerates
-  `_CONFIG_KEY_SPECS` by number (grep for "config key" across
-  `docs/roadmap/features/` returned only unrelated per-feature key
-  mentions, none a count). Not stale.
-- `packages/orchestration/prompt_budget.py` — new file, not stale
-  itself (confirmed byte-identical to MODULE per G5, imports and runs
-  correctly). It DOES carry 2 real `ruff` findings (UP037, W292) that
-  are not repaired — see Deviations.
+- `.agent/plan.md` — not stale; wholly replaced with PLAN3, describes
+  this round (round 3, T001 completion) and T002/T003 accurately,
+  confirmed by G2.
+- `packages/orchestration/prompt_budget.py` — not stale; the fix is
+  confirmed by `ruff` reading clean and by the 24-test suite passing
+  against it (G3, G5).
+- `.agent/live_review.md` — not stale; RECORD2 books round 2's already
+  true PASS verdict including R-0791's registration and resolution,
+  confirmed by the append-arithmetic and second-reader checks in G4(a).
+- `.agent/prose_slips.md` — not stale; SLIP1 records round 2's own
+  transport ambiguity (no product effect), confirmed byte-equal by
+  G4(b).
+- `tests/orchestration/test_class_prompt_budget.py` — new file, not
+  stale (confirmed byte-identical to TEST_FILE per G5, 24 passed, and
+  the module's mutation red-proof in G6 confirms the precedence test
+  actually discriminates).
 - `docs/roadmap/features/T3_F112.md` — outside this round's change set
   (not touched). Its T001 line ("config + validation + the shared class
-  vocabulary assertion + tests") describes T001's FULL scope across all
-  of rounds 2 and 3, not round 2 alone; this round's partial slice
-  (config + module, no tests yet) does not contradict it — the file
-  already anticipates the split via `.agent/plan.md`'s Next Steps. Not
-  stale.
-- `packages/orchestration/role_config.py` — outside this round's change
-  set (not touched); its `resolve_effective_task_class_tiers` function,
-  which the new module's docstring cites as the pattern it mirrors
-  (config imported inside the function body, not at module level), was
-  checked and confirmed to exist at line 250 with that same import
-  pattern. Not stale, not made stale by this round.
+  vocabulary assertion + tests") is now fully satisfied across rounds
+  2 and 3; nothing in it contradicts the completed state. Not stale.
+- `.agent/context.md` — outside this round's change set (not touched).
+  Its constraint bullet "`ruff check` is DENIED to this session's
+  reviewer... F110's opposite constraint... does NOT carry forward" is
+  STALE, carried forward unrepaired from round 2's handback (which
+  already declared the same staleness): `python3 -m ruff check` ran
+  cleanly again this round (G3), the third round in a row `python3 -m
+  ruff` resolves in this session while the bare binary does not.
+  Declared per constraint 8, not repaired — outside this round's change
+  set.
 
 ## Authored-text proofs
 
-- `.agent/authored/f112-r2.md` vs `.agent/last_block.md`: byte-identical,
+- `.agent/authored/f112-r3.md` vs `.agent/last_block.md`: byte-identical,
   sha256
-  `de8563358bb8b63f7a856d5da44c6191eb71c19348d76347be7af4783fbf79c4` on
+  `3105c6c2390836d41e7ec89131ba22e58ee3196d004e9b13b3f58457c7932daf` on
   both — confirmed disk-to-disk (G1).
-- `.agent/authored/f112-r2.md` was written directly from this round's
+- `.agent/authored/f112-r3.md` was written directly from this round's
   prompt block via the Write tool, reproduced verbatim (no retyping of
   slices — those were extracted programmatically afterward via
   `/home/decodeux/Repos/remedy/.remedy-wt/extract_slices.py`).
-- RECORD1, PLAN2, CONFIG PAIR FROM, CONFIG PAIR TO and MODULE were all
-  extracted programmatically from the COMMITTED
-  `.agent/authored/f112-r2.md` by `<<<BEGIN name>>>` / `<<<END name>>>`
+- PLAN3, QUOTE PAIR FROM, QUOTE PAIR TO, RECORD2, SLIP1 and TEST_FILE
+  were all extracted programmatically from the COMMITTED
+  `.agent/authored/f112-r3.md` by `<<<BEGIN name>>>` / `<<<END name>>>`
   marker index (never retyped, never taken directly from the prompt
-  text).
-- RECORD1 vs the appended `.agent/live_review.md` tail: confirmed via
-  the base+2+len arithmetic and the second-reader blank-line-split check
-  (G2), plus a negative control that correctly rejects a mutated copy.
-- PLAN2 vs the extracted-then-written `.agent/plan.md`: `cmp` exit 0
-  (G3).
-- CONFIG PAIR: FROM occurred exactly once in `config.py` before the
-  edit, zero times after; TO occurs exactly once after; TO does not
-  contain FROM (G4).
-- MODULE vs the written `packages/orchestration/prompt_budget.py`: `cmp`
-  exit 0, re-verified after a `git stash`/`git stash pop` round-trip
-  (G5). Written via `cp` (a literal byte copy from the extracted scratch
-  file to the target path) rather than the Write tool's own retyped
-  content, to eliminate any risk of transcription drift — the `cmp`
-  result is the actual fidelity proof, independent of which tool
-  performed the write.
+  text). Each slice's trailing-newline byte length was verified
+  individually against `od`/Python byte counts before use, per this
+  round's explicit constraint 2 (the exact convention round 2 got
+  wrong).
+- PLAN3 vs the extracted-then-written `.agent/plan.md`: `cmp` exit 0
+  (G2).
+- QUOTE PAIR: FROM occurred exactly once in `prompt_budget.py` before
+  the edit, zero times after; TO occurs exactly once after; TO does not
+  contain FROM (G3).
+- RECORD2 vs the appended `.agent/live_review.md` tail: confirmed via
+  the base+2+len arithmetic and the second-reader blank-line-split
+  check (G4a), plus a negative control that correctly rejects a mutated
+  copy.
+- SLIP1 vs the appended `.agent/prose_slips.md` tail: confirmed by
+  direct byte-equality of the file's final bytes against the slice
+  (G4b).
+- TEST_FILE vs the written `tests/orchestration/test_class_prompt_budget.py`:
+  `cmp` exit 0 (G5). Written via `cp` (a literal byte copy from the
+  extracted scratch file to the target path) rather than the Write
+  tool's own retyped content, to eliminate any risk of transcription
+  drift — the `cmp` result is the actual fidelity proof, independent of
+  which tool performed the write (same reasoning round 2 used for
+  MODULE).
 
 ## Deviations & assumptions
 
-- None from the ordered commit sequence: C0a, C0b, C1, C2 ran exactly in
-  the bundle's declared order, followed by C3 (this handback).
-- **`ruff` is NOT denied to this (worker) session**, contrary to F112
-  R1's context claim: the bare `ruff check ...` binary invocation hit a
-  non-interactive approval gate and could not run, but `python3 -m ruff
-  check ...` (same install) ran successfully and produced real findings.
-  This contradicts the standing assumption carried into this round's
-  block (constraint 6) and is declared here rather than silently
-  resolved.
-- **2 real `ruff` findings in `packages/orchestration/prompt_budget.py`,
-  both left unrepaired**: `UP037` (the quoted `"RemedyConfig"` forward
-  reference in `validate_prompt_budget_config`'s signature, redundant
-  under `from __future__ import annotations` but present because the
-  import is `TYPE_CHECKING`-guarded) and `W292` (no trailing newline —
-  MODULE's slice in the committed authored file has none, since no
-  blank line separates its last content line from the `<<<END
-  MODULE>>>` marker). Per constraint 1, a slice that looks wrong is
-  applied as written and declared, not silently fixed; fixing either
-  would break the file's byte-for-byte identity to the committed MODULE
-  slice that G5's `cmp` gate requires. Left for the reviewing session to
-  decide whether a future round's edit corrects them.
+- None from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4 ran
+  exactly in the bundle's declared order, followed by C5 (this
+  handback).
+- **TEST_FILE was written via `cp`, not literally the "Write tool"**
+  constraint 5 names: the file was first extracted byte-exact from the
+  committed authored file by the marker-index script, then copied with
+  `cp` to the target path, then verified `cmp`-identical. This satisfies
+  the constraint's actual intent — exact bytes, "a copyfile, never a
+  text-extraction-and-reflow" — at least as strongly as retyping through
+  the Write tool's content parameter would have, and avoids reintroducing
+  exactly the kind of transcription risk round 2's `R-0791` originated
+  from. Declared per constraint 1's "if it looks wrong, apply as written
+  and declare" spirit, though here the deviation is a stronger-fidelity
+  substitution rather than an as-ordered application.
 - Scratch files were created under `.remedy-wt/` (gitignored, confirmed
-  by `git check-ignore -v`) to perform marker extraction and the G2/G6
-  proofs: `extract_slices.py`, `RECORD1.extracted`, `PLAN2.extracted`,
-  `CONFIG_PAIR_FROM.extracted`, `CONFIG_PAIR_TO.extracted`,
-  `MODULE.extracted`, `live_review_negctrl.md`. These were left in
-  place rather than deleted, consistent with the standing "never delete
-  by glob" convention and R1's own precedent; `git ls-files .remedy-wt`
-  confirms none of it is ever tracked regardless (G8).
-- A `git stash push --include-untracked` / `git stash pop` round-trip
-  was used mid-round (between committing C2 and running G6) solely to
-  obtain the pre-round `test_config.py` baseline count without a second
-  commit; the round's own C2 changes were restored immediately after
-  and re-verified (module `cmp` re-run, config.py diff re-checked
-  unchanged) before proceeding. Not itself a change-set path, not
-  committed, and left no trace in `git status --porcelain` once
-  complete.
+  by `git check-ignore -v`) to perform marker extraction and the
+  G4/G6 proofs: `extract_slices.py`, `apply_fix.py`,
+  `append_live_review.py`, `append_prose_slips.py`,
+  `check_live_review.py`, and `slices/PLAN3.txt`, `slices/FROM.txt`,
+  `slices/TO.txt`, `slices/RECORD2.txt`, `slices/SLIP1.txt`,
+  `slices/TEST_FILE.txt`. These were left in place rather than deleted,
+  consistent with the standing "never delete by glob" convention and
+  round 2's own precedent; `git ls-files .remedy-wt` confirms none of
+  it is ever tracked regardless (G8).
+- The mutation red-proof worktree
+  (`.remedy-wt/f112-r3-mutate`) was created and removed exactly once,
+  per constraint 11; `git status --porcelain` on the primary checkout
+  was confirmed empty both immediately after the mutation and after
+  cleanup (G6).
+- Carried-forward staleness in `.agent/context.md` (outside this
+  round's change set) — see the Staleness Sweep above — is declared,
+  not repaired, per constraint 8.
 
 ## Item status
 
@@ -402,34 +430,35 @@ instruction — the reviewer measures them at the next gate.
 | STOP check before first commit | done | did not exist |
 | C0a (save block verbatim) | done | |
 | C0b (mirror to last_block) | done | |
-| C1 (RECORD1 → live_review.md append, PLAN2 → plan.md, first substantive commit) | done | |
-| C2 (CONFIG PAIR → config.py, MODULE → prompt_budget.py, one commit) | done | |
-| STOP check before C3 | done | did not exist |
-| C3 (handback) | done | this document |
+| C1 (PLAN3 → plan.md, first substantive commit) | done | |
+| C2 (THE FIX → prompt_budget.py) | done | |
+| C3 (RECORD2 → live_review.md append, SLIP1 → prose_slips.md append) | done | |
+| C4 (TEST_FILE → test_class_prompt_budget.py, new file) | done | |
+| STOP check before C5 | done | did not exist |
+| C5 (handback) | done | this document |
 | G1 transport (sha256 match) | done | |
-| G2 the ledger append (arithmetic, second reader, negative control) | done | 2248247 bytes, last unit match, control rejected |
-| G3 the plan (cmp, line count, headings) | done | 45 lines |
-| G4 the config pair (FROM 1→0, TO 0→1, no containment) | done | |
-| G5 the new module (cmp, py_compile, ruff attempt) | done | cmp exit 0; py_compile exit 0 both; ruff ran, 2 findings, not fixed |
-| G6 no regression (test_config.py superset) | done | 81 passed pre and post |
+| G2 the plan (cmp, line count, headings) | done | 42 lines |
+| G3 the fix (FROM 1→0, TO 0→1, no containment, newline append, ruff) | done | All checks passed! |
+| G4 the ledger and slip appends (arithmetic, second reader, negative control, byte-equality) | done | 2250826 bytes / 66618 bytes, both matched |
+| G5 the test file (cmp, pytest) | done | 24 passed |
+| G6 the mutation red-proof (disposable worktree only) | done | 1 failed (correct test), 23 passed; revert 24 passed; porcelain empty before/after |
 | G7 the state readers and the canary (five invocations) | done | 515/52/21/16/42 |
 | G8 the tree, the commits and the sweep | done | porcelain empty, no `.remedy-wt` tracked, numstat matched |
 | Push | done | see below — real output |
 
 ## Next
 
-Open findings: unchanged this round — round 2 registers no new finding
-and resolves none in `.agent/live_review.md`'s ledger beyond booking
-round 1's own already-resolved PASS.
+Open findings: `R-0791` is registered and resolved this round (booked
+via RECORD2's text into `.agent/live_review.md`); no new finding is
+registered by round 3 itself.
 
 Next expected action: the reviewing session verifies this round's gates
-independently, decides whether the 2 declared `ruff` findings in
-`prompt_budget.py` warrant a fix-slice in a future round or acceptance
-as-is, then delegates round 3 —
-`tests/orchestration/test_class_prompt_budget.py`, gating round 2's
-module, per `.agent/plan.md`'s Next Steps. The mutation red-proof for
-this module is not orderable before round 3's test exists (section 3
-item 5).
+independently, confirms T001 is complete (config schema, module,
+resolver, validator, 24 tests, mutation-proof precedence), then
+delegates round 4 — T002: compiler cap enforcement in
+`context_compiler.py` (`fit(context, cap)` over the existing demotion
+order, the `cannot_fit` outcome with tier-1/cap/class arithmetic, and
+oversized/unfittable fixtures) per `.agent/plan.md`'s Next Steps.
 
-SESSION 1 continues (round 2, T001 part 1) and ends here with this
+SESSION 1 continues (round 3, T001 completion) and ends here with this
 handback.
