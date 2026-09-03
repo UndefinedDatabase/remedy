@@ -14,14 +14,13 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 10, session 3 — THE CONFIGURATION ROUND. `config.py` learns to
-resolve a TABLE-VALUED key through the precedence chain it already has,
-F110 registers `model_routing.task_class_tiers`, and the routing layer lays
-that table over the seed mapping through the validator round 6 built. A
-project can re-tier a class; it cannot re-tier one the hard rules protect,
-and a refused map warns with the rule named and routes seeded — DECISION
-F110 D5. Round 9's PASS verdict and its two prose slips are booked in the
-same round.
+Round 11, session 3 — THE REPAIR ROUND. Round 10 was gated FAIL: its
+production work is correct and stays, but the branch tip ships a red suite
+and a committed test file fails ruff. `R-0787` (High) is a config test
+double that asserted an exact key and so refused the second, legitimate
+reader the F110 wiring added; `R-0788` (Low) is an unsorted import block.
+Both are registered, then fixed, and no file under `packages/` or `apps/`
+is touched.
 
 ## Next Steps
 
@@ -37,8 +36,7 @@ same round.
 
 ## Risks
 
-- `config.py` is imported almost everywhere, so the flatten change is the
-  round's real blast radius; the unmoved suites are the regression evidence.
-- A refused override map must not break config resolution — the round 9
-  lesson one layer further out.
+- A test double that is too permissive stops proving anything, so the
+  refusal `R-0787` removes is replaced by a positive test that reads the
+  keys the stub recorded, and that test is red-proofed.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
