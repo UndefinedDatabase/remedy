@@ -914,11 +914,12 @@ def _dedupe_resumed_segments(
     untouched and an empty name tuple, and consults nothing else.
 
     Scope boundary — a deliberate absence, so a reader finds it here rather than
-    concluding the wiring was forgotten: NO CALLER EXISTS YET. Nothing in this
-    module calls this function. Wiring it into ``compose_builder_prompt`` and
-    ``compose_reviewer_prompt`` behind a parameter that bypasses dedupe by
-    default is the next slice of T002b, and the config plumbing that supplies
-    ``enabled`` is T002c.
+    concluding the wiring was forgotten: BOTH CALLERS EXIST, and have since
+    ``60343048``. ``compose_builder_prompt`` and ``compose_reviewer_prompt``
+    each call this function behind a ``dedupe_sent_hashes`` parameter that
+    BYPASSES DEDUPE BY DEFAULT, so the transform runs only for a caller that
+    supplies a real set. What remains absent is the config plumbing that
+    supplies ``enabled``, which is T002c.
     """
     if not enabled:
         return tuple(segments), ()
@@ -3273,8 +3274,13 @@ def run_pingpong(
                 full_ref=str(builder_tiered_artifact_path),
                 artifact_path=builder_tiered_artifact_path,
             )
-            builder_composed = compose_builder_prompt(
-                effective_goal, context,
+            # F109 T002b (R-0771): the keyword arguments live in ONE dict so the
+            # resume fallback below can recompose this very prompt at full
+            # content without restating them. ``dedupe_sent_hashes`` is
+            # deliberately NOT in here: it is the one argument the resumed
+            # composition and the fallback composition must differ in, so it
+            # stays at each call site where its condition is visible.
+            builder_compose_args = dict(
                 round_number=round_num,
                 findings=findings if is_repair else None,
                 staged_state="" if round_num == 1 else f"Files changed: {result.staged_files}",
@@ -3285,6 +3291,9 @@ def run_pingpong(
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,
                 tiered_diff_text=builder_tiered_diff_text,
+            )
+            builder_composed = compose_builder_prompt(
+                effective_goal, context, **builder_compose_args,
                 # F109 T002b: THE CONDITION IS THE SCOPE RULE — "resumed session
                 # only, proven sends only" — in the only form that cannot drift.
                 # A round that is not resuming passes None and therefore cannot
@@ -3361,6 +3370,18 @@ def run_pingpong(
             # resume in play is unaffected and falls straight through to the
             # existing terminal-error handling below, unchanged.
             if builder_resume_ref and builder_out.error:
+                # F109 T002b, R-0771: A FALLBACK IS NOT A RESUMED SESSION, so the
+                # feature's scope rule — "resumed session only, proven sends only"
+                # — forbids dedupe here. The prompt is RECOMPOSED AT FULL CONTENT
+                # because the fresh session the retry below opens never received
+                # the originals, and a marker would name content it has not seen.
+                # ``builder_composed`` is rebound TOO, not only ``builder_prompt``:
+                # ``record_finalized_call`` further down reads its manifest, so
+                # rebinding both is what makes the bytes sent, the
+                # ``fallback_prompt`` stored by ``_finalize_call`` and the recorded
+                # evidence describe one and the same call.
+                builder_composed = compose_builder_prompt(effective_goal, context, **builder_compose_args)
+                builder_prompt = builder_composed.text
                 _begin_stream_call(builder_provider, round_num, "attempt")
                 builder_call_reasons = []
                 builder_out = _call_with_retry(
@@ -3560,9 +3581,11 @@ def run_pingpong(
                 full_ref=str(reviewer_tiered_artifact_path),
                 artifact_path=reviewer_tiered_artifact_path,
             )
-            reviewer_composed = compose_reviewer_prompt(
-                effective_goal,
-                builder_out.summary,
+            # F109 T002b (R-0771): the Builder's dict, mirrored. The two
+            # POSITIONAL arguments this call site spells on their own lines —
+            # ``effective_goal`` and ``builder_out.summary`` — stay positional and
+            # stay out of the dict; only the keyword arguments are hoisted.
+            reviewer_compose_args = dict(
                 diff_summary=diff_summary,
                 safe_diff=reviewer_safe_diff,
                 test_result=rd.test_summary,
@@ -3576,6 +3599,11 @@ def run_pingpong(
                 scope_packet=runtime_scope_packet,
                 resume_hunks_text=reviewer_resume_hunks_text,
                 tiered_diff_text=reviewer_tiered_diff_text,
+            )
+            reviewer_composed = compose_reviewer_prompt(
+                effective_goal,
+                builder_out.summary,
+                **reviewer_compose_args,
                 # F109 T002b: THE CONDITION IS THE SCOPE RULE — "resumed session
                 # only, proven sends only" — in the only form that cannot drift.
                 # A round that is not resuming passes None and therefore cannot
@@ -3670,6 +3698,21 @@ def run_pingpong(
             # existing terminal-error / parse-retry handling below,
             # unchanged.
             if reviewer_resume_ref and reviewer_out.error:
+                # F109 T002b, R-0771: the Builder fallback's repair, mirrored. A
+                # fallback is not a resumed session, so the prompt is RECOMPOSED
+                # AT FULL CONTENT for the fresh session the retry below opens, and
+                # ``reviewer_composed`` is rebound TOO so the manifest
+                # ``record_finalized_call`` reads describes the bytes actually
+                # sent. ``reviewer_effective`` is rebound as well because on THIS
+                # role it — not ``reviewer_prompt`` — is the string the provider
+                # receives and the one ``_finalize_call`` stores as
+                # ``fallback_prompt``; rebinding only the other two would leave
+                # the marker in the bytes and repair nothing here.
+                reviewer_composed = compose_reviewer_prompt(
+                    effective_goal, builder_out.summary, **reviewer_compose_args,
+                )
+                reviewer_prompt = reviewer_composed.text
+                reviewer_effective = _reviewer_effective_prompt(reviewer_prompt)
                 _begin_stream_call(reviewer_provider, round_num, "attempt")
                 reviewer_call_reasons = []
                 reviewer_out = _call_with_retry(
