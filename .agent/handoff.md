@@ -499,3 +499,153 @@ whatever the gate's own inventory names. Then the closure sequence, which also
 runs the one checklist consolidation pass DECISION F110 D1 carries into it and
 updates the Design and Task-slicing bullets of
 `docs/roadmap/features/T3_F110.md`.
+
+
+## Reviewer verdict — ROUND 13: PASS
+
+Appended by the planner/reviewer after the handback was written, per
+docs/agents/planner_reviewer_prompt.md §3 item 14 and operator amendment
+amend0827-process-diet rule 1. It is booked into `.agent/live_review.md` as
+`Gate: F110 R13`, together with the finding and the two prose slips named below,
+in the FIRST COMMIT of the next session's first round. THIS SESSION — SESSION 3
+OF F110 — ENDS HERE, after FIVE delegated rounds (9, 10, 11, 12, 13), which is
+the top of the four-to-five default amend0827 rule 6 sets. T003 IS COMPLETE ON
+THIS BRANCH.
+
+WHAT THE REVIEWER RE-DERIVED RATHER THAN READ. The transport proof again reached
+the reviewer's OWN bytes rather than only the worker's self-consistent chain: the
+worker copied the block with `shutil.copyfile` from the reviewer's scratch
+original, so `cmp` between that original — written before delegation and
+untouched since — and the committed `.agent/authored/f110-r13.md` exits 0, and
+one digest `b7f4c58449a0d61cbf2a753f29f250dc747843c0d246340ab6796a342de07d29`
+at 26618 bytes covers the original, the saved copy at `745c5665` and the mirror
+at `347a84bb`. The block is 316 lines against the reviewer's own projection of
+316, under the §3 item 1 cap of 400. Every slice is byte-exact and every size
+matched the pre-emission projection: `.agent/plan.md` equals PLAN13 plus the one
+trailing newline the target's convention adds, at 41 lines; `.agent/live_review.md`
+is 2209946 + 2 + 5350 = 2215298, still ending without a newline, base an exact
+byte prefix; `.agent/prose_slips.md` is 61137 + 2 + 1212 = 62351. `ruff check`
+over all three changed code files answers "All checks passed!", run reviewer-side
+because the worker's permission layer refuses the tool.
+
+THE WIRING WAS RUN BY THE REVIEWER ACROSS FIVE CONFIGURATION STATES, not read.
+With BOTH tables configured, `architecture` — seeded at the TOP tier — comes back
+at `cheap` with reason `per_project_override` and
+`promoted_by = 'qwen3-8b-instruct + q4_k_m@0f1e2d3c4b5a6978 on F082'`, and no
+warning is raised: a documented benchmark run now licenses a cheaper tier and the
+routed call names the run that licensed it, which is the whole of T003's
+promotion clause. With the TIERS table alone the same promotion is REFUSED, one
+warning names `promotion_without_evidence`, and the class comes back at its
+seeded `top`. With EVIDENCE alone and no promotion asked, the records parse and
+the table is unchanged, `promoted_by` correctly None — evidence licenses, it does
+not promote. With NOTHING configured every answer is identical to round 9's. And
+with a BARE STRING where the evidence table belongs, `validate_config` reports
+"expected table, got str", `resolve_promotion_evidence()` returns an empty
+mapping, the promotion is refused with the rule named, and `provider`, `model`
+and `effort` come back unchanged — DECISION F110 D5's principle holding one layer
+further out, with no crash in a config resolution.
+
+THE DELETIONS WERE PROVED, NOT INSPECTED. C3 is 17 insertions against 13
+deletions in `model_routing.py` and 86 against 3 in `role_config.py`. The
+reviewer parsed the BASE file with `ast` to establish that its module docstring
+spans base lines 1..171, then read the diff's own hunk headers: the deleted base
+ranges are 41-43 and 47-56, both strictly inside that span. So constraint 7 is
+MEASURED — model_routing.py is docstring-only and no constant, signature or
+function body of rounds 4 through 12 was revised. `git diff --stat` over
+`packages/` and `apps/` with the two edited files excluded is EMPTY, which proves
+`config.py` was not touched, and over `docs/` it lists exactly the one
+configuration document.
+
+THE SUITES WERE RE-RUN BY THE REVIEWER at 101 passed for `test_role_config.py`,
+grown from 92 by the nine tests C4 adds, then 406 with 3 skipped, 81, 20, 68, 295
+and 42, every one exit 0 and every unmoved count matching the block. The G6 red
+proof's four mutations each go red and every revert returns to the control, with
+the primary checkout clean at every reading; the worker reports the red sets as
+NOT pairwise disjoint — (i) and (iii) produce identical sets — and reports that as
+a measured result rather than a fault, which is what the gate asked for. Per-commit
+insertions are 316, 219, 14, 6, 103, 265 and 36, every one under the AGENTS.md
+cap; `69090d90` is 449 insertions, a full-file rewrite of a single `.agent/**`
+state file and exempt under DECISION F104 D1. The open set is 278 over 349
+registered and 71 UNIQUE resolved — derived as a set difference over unique ids,
+because `R-0721` and `R-0725` each carry two `Done:` paragraphs and the ledger now
+holds 73 such lines. `R-0767` stays OPEN.
+
+ONE FINDING IS OWED AND ITS ROOT CAUSE IS THE REVIEWER'S OWN BLOCK. Registered in
+the next round as:
+
+- R-0789 — Low, TWO DELIBERATE-ABSENCE NOTES IN PRODUCTION CODE OUTLIVED THE
+  ABSENCE THEY DOCUMENT, AND THE BLOCK THAT SHIPPED THE WIRING FORBADE THEIR
+  REPAIR. Registered by the reviewer at the F110 R13 gate, against the reviewer's
+  own block. MEASURED at `69090d90`:
+  `packages/orchestration/model_routing.py` line 895 reads "NOTHING IN PRODUCTION
+  CALLS THIS YET" of `promotion_evidence_from_mapping`, and
+  `packages/orchestration/config.py` line 672 reads "NOTHING READS THIS KEY YET"
+  of `model_routing.promotion_evidence`. Both were true when written in round 12
+  and both were falsified by round 13's own C3 at `8efa2330`, which added
+  `role_config.resolve_promotion_evidence` — the caller and the reader they each
+  say does not exist. Both sentences additionally point a searching reader at
+  where the caller "arrives", and it has arrived. THIS IS ONE DEFECT IN TWO FILES
+  AND IT TAKES ONE ID, per §3 item 30: the same wiring falsified both notes, and
+  one commit repairs both. THE ROOT CAUSE IS A CONTRADICTION INTERNAL TO THE R13
+  BLOCK, not a worker fault: constraint 9 required a sentence the round makes
+  stale to be repaired in the commit that falsifies it, while constraint 7 and
+  gate G5 made ANY deletion in `model_routing.py` outside the MODULE docstring a
+  STOP — and the false sentence sits in a FUNCTION docstring. The worker obeyed
+  both, declared the conflict, and repaired neither, which is exactly what
+  constraint 1 asks for. `config.py` was additionally outside that round's change
+  set, so constraint 9 forbade touching it at all. FIX: repair both sentences in
+  one commit in the next round, whose block must scope its permitted-deletion
+  region to the file rather than to its module docstring, and must name
+  `config.py` in the change set for that purpose alone.
+
+TWO PROSE SLIPS, both the reviewer's, for `.agent/prose_slips.md`:
+
+2026-09-03 · F110 R13 · The round 13 block set constraint 9 ("a sentence this
+round makes stale INSIDE the change set is repaired in the commit that falsifies
+it") against constraint 7 and gate G5 ("model_routing.py is edited for its MODULE
+DOCSTRING ONLY and any deletion outside that docstring is a STOP"), and the
+sentence the round falsified sits in a FUNCTION docstring — so the two clauses
+could not both be obeyed and the worker was correct to declare the conflict and
+repair nothing. Registered as `R-0789` because the false sentences are on disk in
+production code. THE LESSON: a permitted-deletion region is scoped to the SMALLEST
+region that still contains every sentence the round can falsify, and a block that
+names "the module docstring" must first grep the file for the other prose its own
+change makes false — a deliberate-absence note lives wherever the absence was, and
+this feature has now written such notes in three files.
+
+2026-09-03 · F110 R13 · The block's gate G2 ordered "cmp the PLAN13 extraction
+against `.agent/plan.md` — exit 0" while its own constraint 4 states that the
+TARGET's convention adds one trailing newline the slice does not carry, so a
+literal cmp of the raw extraction cannot exit 0 and the two clauses disagree. Every
+round from 8 onward has carried this same wording and every worker has resolved it
+the same correct way, but this round's worker was the first to say so, running BOTH
+comparisons and reporting both exit codes rather than silently picking the green
+one. THE LESSON: state the gate as "cmp the slice PLUS the target's trailing
+newline", so the ordered command and the stated convention agree on the page
+instead of relying on the worker to reconcile them.
+
+WHAT THE NEXT SESSION OWES, IN ORDER. Phase 1 rule 1 first — read `.agent/STOP`
+from disk, ABSENT at this handback — then rule 2, the Open PR Gate, which finds NO
+open pull request because this branch has deliberately created none. Its first
+round then books `Gate: F110 R13`, the finding `R-0789` and the two prose slips
+above as its FIRST commit, and that round is the R-0789 repair plus the ACCEPTANCE
+round: the feature file's Acceptance section asks for a fixture run in which every
+call's evidence shows class, routed model and reason, for the policy-document sync
+test to be an explicit acceptance line, and for the reviewer/worker pairing to be
+asserted on a real fixture round — that pairing assertion is the one acceptance
+clause this branch has not yet built. THEN the integration gate round, which
+docs/agents/integration_gate.md governs and which will need the R-0736
+base-worktree mtime-parity repair and a cold `dist` build budgeted for; THEN the
+closure sequence, which needs two rounds, runs the single §3 checklist
+consolidation pass DECISION F110 D1 carries into it, and updates the Design and
+Task-slicing bullets of `docs/roadmap/features/T3_F110.md`. `R-0767` remains OPEN
+on this same seam and must not be absorbed into a routing commit.
+
+THREE THINGS THE NEXT REVIEWER SHOULD NOT REDISCOVER. A pytest node id is
+EVERYTHING AFTER THE FIRST SPACE of a `FAILED ` line and never a whitespace-token
+index, because a parametrized id may contain spaces — the round 12 block got this
+wrong and cost that round a discarded harness run. An open-set count is a set
+difference over UNIQUE IDS and never over `Done:` LINES, because this ledger has
+resolved two ids twice. And a `.agent/` byte figure is RE-MEASURED at each round's
+own base rather than carried forward or re-derived by arithmetic; every round from
+9 onward has done so and every projection has landed exact.
