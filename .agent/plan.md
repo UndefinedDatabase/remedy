@@ -14,31 +14,31 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 6, session 2 — T002c, the PER-PROJECT OVERRIDE SCHEMA. An override
-map is validated before it is applied: every violation is collected and
-named, a malformed entry is reported rather than crashed on, and an
-override breaking a hard rule is REFUSED rather than silently dropped,
-because a dropped override leaves the operator believing it took effect.
-`mission` joins the orchestration class set per DECISION F110 D2, so an
-override demoting it is refused by name. Round 5's PASS verdict and that
-DECISION are booked in the same round.
+Round 7, session 2 — T003, the PROMOTION-EVIDENCE DISCIPLINE. Moving a
+class to a CHEAPER tier is refused unless a documented benchmark run
+backs it: no evidence, incomplete evidence and below-threshold evidence
+are each refused with their own rule name, the bars are seeded from the
+policy document's "Promotion rule" section and pinned to it by a sync
+test, and every routed call can report which evidence promoted it. Round
+6's PASS verdict and its two prose slips are booked in the same round.
 
 ## Next Steps
 
-- T003: the promotion-evidence discipline, the evidence fields and the
-  goldens — a promotion without evidence refused, with evidence logged.
-- The per-call-site class declarations and the resolver seam
-  (consolidation order E.d), which is where the override map is finally
-  READ from a config file instead of being passed in.
-- Then the integration gate, and the closure sequence, which also runs
-  the one checklist consolidation pass DECISION F110 D1 carries into it.
+- The resolver seam and the per-call-site task-class declarations
+  (consolidation order E.d): the single place model selection happens,
+  where the override map and the evidence map are finally READ from
+  configuration instead of being passed in.
+- The integration gate round, before closure.
+- The closure sequence, which also runs the one checklist consolidation
+  pass DECISION F110 D1 carries into it, and which updates the Design
+  bullet of `docs/roadmap/features/T3_F110.md` so the roadmap names the
+  orchestration class set DECISION F110 D2 widened.
 
 ## Risks
 
-- The safety-relevant class set is EMPTY in production today, so the
-  safety rule is proven against a fixture set in its override-map form
-  exactly as it already is in its per-choice form.
+- The safety-relevant class set is EMPTY in production today, so that
+  rule is proven against a fixture set in both its per-choice and its
+  override-map form.
 - Nothing routes in production yet and no config file is read: the schema
-  validates a mapping handed to it, and the reader that produces that
-  mapping arrives with the seam round.
+  and the evidence discipline validate mappings handed to them.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
