@@ -1,14 +1,16 @@
-# Handback — F110 R7 (T003, the promotion-evidence discipline)
+# Handback — F110 R8 (T001, the role and call-site inventory, and the routing seam)
 
 ## Session
 
-SESSION 2 of feature F110 · round 7 · rounds so far 7
+SESSION 2 of feature F110 · round 8 · rounds so far 8
 
-Soft limit (25 rounds / 7 sessions) not reached: 7 rounds, 2 sessions. No scope
+Soft limit (25 rounds / 7 sessions) not reached: 8 rounds, 2 sessions. No scope
 report is owed.
 
 `.agent/STOP` read from disk twice, as constraint 10 orders — once before the
 first commit (C0a) and again before C5. ABSENT both times.
+
+THIS IS THE LAST ROUND OF THE SESSION.
 
 ## State
 
@@ -16,655 +18,538 @@ first commit (C0a) and again before C5. ABSENT both times.
 |------|------|
 | **Feature** | F110 Model routing by task class (Tier 3, depends on F103) |
 | **Branch** | `feature/f110-model-routing-by-task-class` |
-| **Round** | 7 (session 2), step T003 — the promotion-evidence discipline |
-| **Base** | `c1a3a3c4` |
-| **Head before C5** | `7db8c018` |
-| **Commits this round** | `5cadf64b` `1523b1b9` `98acd71f` `f2cf1db6` `5e9537f1` `2cd58c66` `7db8c018` + C5 |
-| **Tree** | clean at every verdict point |
-| **Open PR** | NONE — no pull request created, none merged |
-| **Open findings** | 278 open, over 347 registered and 69 resolved — UNCHANGED this round |
-| **Docs touched** | NONE. `docs/agents/model_routing_policy.md` is READ by the new sync test, never written |
+| **Round** | 8 (session 2), step T001 — the role/call-site inventory and the seam |
+| **Base** | `4cfcb464` |
+| **Head** | `f7765ec0` (last test commit) → C5 is the handback commit |
+| **Open findings** | 278 open, over 347 registered and 69 resolved — UNCHANGED; this round minted no R-id |
+| **`.agent/candidates.md`** | untouched, still declares EMPTY |
+| **Open PR** | NONE on this branch |
+| **Tree** | clean at every commit; `git status --porcelain` empty |
 
 ## Range
 
-Review of `c1a3a3c4..7db8c018` (plus this C5 commit).
+Review of `4cfcb464..f7765ec0` (plus the C5 handback commit).
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
 | C0a save the block verbatim | done | |
-| C0b mirror to `.agent/last_block.md` | done | |
-| C1 apply PLAN7 | done | first substantive commit, item 23 honoured |
-| C2 append RECORD6 + SLIPS7 | done | |
-| C3 the production commit | done | |
-| C4 the test commit | deviated | SPLIT into C4a + C4b: one commit would have been 717 insertions, over AGENTS.md's 500 cap. See D3 |
-| C5 the handback | done | this file |
-| (a) promotion bars as named constants | done | `PROMOTION_MINIMUM_RUNS_PER_FIXTURE` / `_BLOCK_ASSERTION_PASS_RATE` / `_OVERALL_PASS_RATE`, each carrying its document sentence |
-| (b) the document's own field list | done | `PROMOTION_EVIDENCE_DOCUMENT_FIELDS`, 7 names; the `" + "` split declared at `PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR` |
-| (c) the evidence record | done | `PromotionEvidence`, plus the nested `PromotionAssertionResults`. See D5 |
-| (d) three promotion rule names + report order | done | `PROMOTION_RULE_NAMES`; `OVERRIDE_VIOLATION_RULE_NAMES` is now schema + hard + promotion |
-| (e) the promotion predicate | done | `is_task_class_promotion` |
-| (f) the promotion check | done | `check_promotion_backed_by_evidence` |
-| (g) validator gains the optional evidence map | done | third parameter, defaults to `None` |
-| (h) builder gains the same optional parameter | done | passes it through |
-| (i) the evidence fields | done | `routed_call_evidence_fields` + `ROUTED_CALL_EVIDENCE_FIELDS` |
-| docstring Public API extension | done | every new name listed; the "SEEDED from the Promotion rule section" sentence added |
-| (j) the promotion-rule sync test | done | `TestPromotionRuleSyncTest`, bullet parser with continuation joining; the measured trap pinned |
-| (k) refused without evidence / accepted with it | done | `TestPromotionRefusedByTheOverrideMap`, first two cases |
-| (l) incomplete + below-threshold, each bar just below and just at | done | `TestPromotionCheck`, 6 boundary cases |
-| (m) stronger tier / undeclared class / restated seed tier | done | `TestPromotionPredicate` + `TestPromotionRefusedByTheOverrideMap` |
-| (n) the evidence fields with a GOLDEN | done | `TestRoutedCallEvidenceFields.GOLDEN_PROMOTED_CALL`, exact dict |
-| (o) the widened guards | deviated | (o)'s 5 named functions widened, AND 5 further existing functions that C3 also turned red. MEASURED, see D1 |
-| (p) HARD_RULE_NAMES / schema tuple unchanged | done | pinned in `TestOverrideRuleNamesAreNotHardRuleNames` and `TestRoundSixCallsAreUnchanged` |
-| (q) round 6 calls unchanged + two-positional call | done | `TestRoundSixCallsAreUnchanged` |
-| G1 transport | done | PASS |
-| G2 the plan | done | PASS, with the target-newline reading declared (D2) |
-| G3 the ledger append | done | PASS |
-| G4 the prose file | done | PASS |
-| G5 the module, measured and run | done | PASS, with two deletion regions outside the block's permitted list declared (D4) |
-| G6 the red proof | done | PASS; mutation (iii) reddens exactly one id and it is the dedicated one (D6) |
-| G7 the suites | done | PASS, all six |
-| G8 the tree, the commits, the sweep | done | PASS |
+| C0b mirror to `last_block.md` | done | |
+| C1 apply PLAN8 | done | first substantive commit, item 23 |
+| C2 RECORD7 + SLIPS8 + DECISION3 | done | one commit, three appends |
+| C3 production | done | 253 insertions, 6 deletions, all 6 in the module docstring |
+| C4 tests | done | 370 insertions — under the cap, so NOT split |
+| C5 handback | done | this file |
+| SPEC (a) role-to-class map | done | `ROLE_TASK_CLASSES`, 8 roles, exactly the reviewer's reading |
+| SPEC (b) inheriting roles | done | `TASK_CLASS_INHERITING_ROLES`, `repair` alone |
+| SPEC (c) role resolver | done | `resolve_role_task_class` |
+| SPEC (d) the seam | done | `route_role_call` |
+| SPEC (e) call-site inventory | done | `ROLE_CONFIG_CALL_SITES`, 7 pairs, no line numbers |
+| SPEC (f) deliberate absence | done | `mission_compile`, in the module docstring |
+| SPEC Public API extension | done | 10 new lines in the docstring's Public API list |
+| SPEC (g) declared classes are seed keys / disjoint | done | `TestEveryDeclaredRoleClassIsASeedTableKey` |
+| SPEC (h) the repair rule executes and discriminates | done | `TestTheRepairRuleIsExecutable` |
+| SPEC (i) a declared role ignores an originating class | done | `TestADeclaredRoleIgnoresAnOriginatingClass` |
+| SPEC (j) orchestrator routes to the top tier | done | `TestTheOrchestratorRoleRoutesToTheTopTier` |
+| SPEC (k) the seam's evidence mapping + GOLDEN | done | `TestTheSeamReturnsTheRoutedCallEvidence` |
+| SPEC (l) the inventory is checked | done | `TestTheCallSiteInventoryIsChecked` |
+| SPEC (m) the undeclared role warns | done | `TestTheUndeclaredRolePathWarnsAndAnswersConservatively` |
+| G1 transport | done | one digest twice; 399 lines against a projection of 399 |
+| G2 the plan | done | `cmp` exit 0, 44 lines, one `## Goal`, one `## Next Steps` |
+| G3 the ledger append | done | arithmetic exact, second reader in order, negative control rejected |
+| G4 decisions + prose_slips | done | arithmetic exact; prose_slips byte-equality only, per the gate budget |
+| G5 the module, measured and run | done | 253/6, `ast.parse` clean, every function RUN |
+| G6 the red proof | done | control 391/3; four mutations red 4, 2, 3 and 5 ids; no id shared |
+| G7 the suites | done | 391+3, 33, 34, 63, 295, 42 — all exit 0 |
+| G8 tree, commits, sweep | done | clean tree, no docs diff, no packages/apps diff outside the module |
 
 ## Commits
 
-### 5cadf64b F110 R7 C0a: the round 7 block, saved verbatim
+### 50adb6a8 F110 R8 C0a: save the round 8 block verbatim
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f110-r7.md` | +351 / -0 | the block between the sentinels, written verbatim |
+| `.agent/authored/f110-r8.md` | +399 / -0 | the block, byte for byte |
 
-### 1523b1b9 F110 R7 C0b: the block mirrored to last_block
+### e54c81fc F110 R8 C0b: mirror the block to last_block
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +246 / -292 | exact `shutil.copyfile` mirror of the committed authored file |
+| `.agent/last_block.md` | +305 / -257 | `shutil.copyfile` of the committed authored file |
 
-### 98acd71f F110 R7 C1: the plan names round 7 and the promotion-evidence discipline
+### 4b476fb7 F110 R8 C1: the plan names round 8, the inventory and the seam
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +20 / -20 | PLAN7, extracted by marker index from the COMMITTED authored file |
+| `.agent/plan.md` | +16 / -16 | PLAN8 applied byte for byte |
 
-### f2cf1db6 F110 R7 C2: round 6 verdict booked and the reviewer prose slips recorded
+### 34a77f33 F110 R8 C2: book round 7 - the verdict, the prose slip and DECISION D3
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +3 / -1 | RECORD6 appended after two newlines |
-| `.agent/prose_slips.md` | +5 / -1 | SLIPS7 appended after two newlines |
+| `.agent/decisions.md` | +49 / -0 | DECISION3 appended |
+| `.agent/live_review.md` | +3 / -1 | RECORD7 appended |
+| `.agent/prose_slips.md` | +3 / -1 | SLIPS8 appended |
 
-### 5e9537f1 F110 R7 C3: the promotion-evidence discipline, refused with the rule named
+### f342e3e7 F110 R8 C3: the role-to-class map, the inheriting roles and the routing seam
 | Path | +/- | Reason |
 |------|-----|--------|
-| `packages/orchestration/model_routing.py` | +370 / -17 | SPEC CODE (a) through (i), plus the docstring extension |
+| `packages/orchestration/model_routing.py` | +253 / -6 | SPEC (a)–(f) + the Public API list |
 
-### 2cd58c66 F110 R7 C4a: the round 6 guards widened for the promotion report order
+### f7765ec0 F110 R8 C4: the inventory sweep, the executable repair rule and the seam
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/orchestration/test_model_routing.py` | +231 / -19 | the header, the imports, the promotion fixtures, and every widened existing guard |
+| `tests/orchestration/test_model_routing.py` | +370 / -4 | SPEC (g)–(m) |
 
-### 7db8c018 F110 R7 C4b: a promotion without evidence refused, with evidence logged
+### C5 — the handback commit
 | Path | +/- | Reason |
 |------|-----|--------|
-| `tests/orchestration/test_model_routing.py` | +486 / -0 | SPEC TESTS (j) through (q): the new T003 classes |
+| `.agent/handoff.md` | rewrite | a handoff cannot table the commit that writes it (R-0149 pattern) |
 
-### C5 (this commit) F110 R7 C5: the round 7 handback
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/handoff.md` | rewrite | a handback cannot table the commit that writes it (R-0149 pattern) |
+Per-commit INSERTION counts, the `+` column only, for every commit before the
+handback commit: **399, 305, 16, 55, 253, 370**. Every one is under the
+AGENTS.md 500-insertion cap; no oversize exception was spent this round, and
+C4 therefore was NOT split.
 
 ## External actions
 
 | Command | Outcome |
-|---------|---------|
-| `git worktree add --detach /home/decodeux/Repos/remedy/remedy-review-f110-r7-wt 7db8c018` | created, detached at `7db8c018` |
-| `git -C <wt> checkout 7db8c018 -- packages/orchestration/model_routing.py` (×4) | each mutation reverted by RESTORING the file from the C4b commit, never by re-editing |
-| `git worktree remove /home/decodeux/Repos/remedy/remedy-review-f110-r7-wt --force` | removed by exact path |
-| `git worktree prune` | ran; `git worktree list` then holds only the five pre-existing `.remedy-wt/job-*` worktrees, none of this round's making |
-| `git push` | after C5 — see the push line at the end of Verification |
-| PR create / merge | NONE. No pull request exists on this branch |
+|---|---|
+| `git worktree add /home/decodeux/Repos/remedy/remedy-review-r8-wt f7765ec0 --detach` | created, detached at `f7765ec0` |
+| `git worktree remove /home/decodeux/Repos/remedy/remedy-review-r8-wt --force` | removed BY EXACT PATH |
+| `git worktree prune` | ran; only the five pre-existing `.remedy-wt/job-*` worktrees survive |
+| `git push -u origin feature/f110-model-routing-by-task-class` | pushed after C5 |
 
-Scratch files written and then removed BY EXACT PATH: `plan7_raw.tmp`,
-`plan7_nl.tmp` (G2 `cmp` operands), `c4_full.tmp`, `c4b_tail.tmp` (the C4 split).
-None was ever committed and `git status --porcelain` is empty.
+No pull request created. No merge. No force-push. No history rewrite.
 
 ## Verification
 
-One line per gate, then the transcripts.
+**G1 TRANSPORT** — exit 0.
 
-| Gate | Result |
-|------|--------|
-| G1 transport | PASS — one digest twice; 351 lines against a projection of 351, cap 400 |
-| G2 the plan | PASS — `cmp` exit 0 against the target-convention extract; 44 lines; one `## Goal`; one `## Next Steps` |
-| G3 the ledger append | PASS — arithmetic exact, second reader True, negative control REJECTED, grep 0 → 1 |
-| G4 the prose file | PASS — final bytes equal SLIPS7, base survives as an exact prefix, still ends without a newline |
-| G5 the module | PASS — 370/17, `ast.parse` clean, every deleted line read and attributed, every function RUN |
-| G6 the red proof | PASS — control 325/3 exit 0; the four mutations redden 39, 14, 1 and 25 ids; every revert returns 325 passed |
-| G7 the suites | PASS — 325+3, 33, 34, 63, 295, 42; the routing file GREW from 185 and the skips did NOT rise |
-| G8 the tree, the commits, the sweep | PASS — tree clean, no `.remedy-wt` tracked, no docs diff, every insertion cell matches |
+    $ sha256sum .agent/authored/f110-r8.md .agent/last_block.md
+    11b0c5855d8a82ee04728791ef426d8c5473ae15ca13025441c0cc35828eee5e  .agent/authored/f110-r8.md
+    11b0c5855d8a82ee04728791ef426d8c5473ae15ca13025441c0cc35828eee5e  .agent/last_block.md
+    $ wc -l .agent/authored/f110-r8.md
+    399 .agent/authored/f110-r8.md
 
-### G1 TRANSPORT
+ONE DIGEST TWICE. 33816 bytes. **399 lines against the Handback paragraph's
+projection of 399 — EXACT, and under the cap of 400.** The fifth exact
+projection in a row. The committed blob was also compared to the working copy
+inside the extractor (`git show HEAD:.agent/authored/f110-r8.md` == disk: True),
+so every slice below was extracted from the COMMITTED bytes.
 
-    $ sha256sum .agent/authored/f110-r7.md .agent/last_block.md
-    77d742debe526e97f8a1849fafbe462714e2354fded17c0a38f65b279f7c7581  .agent/authored/f110-r7.md
-    77d742debe526e97f8a1849fafbe462714e2354fded17c0a38f65b279f7c7581  .agent/last_block.md
-    exit 0
+**G2 THE PLAN** — exit 0.
 
-    $ wc -l .agent/authored/f110-r7.md
-    351 .agent/authored/f110-r7.md
-    exit 0
-
-The reviewer's projection is 351. REPORTED FIGURE 351. No difference; nothing
-repaired. The cap is 400 and the file is under it.
-
-### G2 THE PLAN
-
-PLAN7 extracted by marker index from the COMMITTED `.agent/authored/f110-r7.md`
-(`git show HEAD:.agent/authored/f110-r7.md`), marker lines excluded. Raw slice
-2030 bytes, and it does NOT end with a newline.
-
-    $ cmp <raw extract> .agent/plan.md
-    cmp: EOF on plan7_raw.tmp after byte 2030, in line 44
-    exit 1
-
-    $ cmp <extract + the one trailing newline constraint 4 orders the TARGET to keep> .agent/plan.md
-    (no output)
-    exit 0
-
-BOTH readings are reported rather than the green one being chosen. `.agent/plan.md`
-ends WITH a newline (constraint 4), the raw slice does not, so the raw `cmp` is
-one byte short by construction and the target-convention `cmp` is exit 0. This is
-the same target-convention/raw-slice tension the reviewer's own SLIPS7 entry
-records for round 6's G4.
-
+    $ cmp <PLAN8 extracted from the committed authored file> .agent/plan.md
+    (no output — exit 0)
     $ wc -l .agent/plan.md
-    44 .agent/plan.md            exit 0   (under 50)
+    44 .agent/plan.md
     $ grep -c '^## Goal' .agent/plan.md
-    1                            exit 0
+    1
     $ grep -c '^## Next Steps' .agent/plan.md
-    1                            exit 0
+    1
 
-### G3 THE LEDGER APPEND
+44 lines, under 50. The extracted PLAN8 is 1968 bytes marker-excluded; the file
+is 1969 — PLAN8 plus the ONE trailing newline the target's convention adds,
+which is the reading round 7's own record states and the reading under which
+`cmp` exits 0.
 
-Arithmetic, `.agent/live_review.md`, against the size immediately before C2:
+**G3 THE LEDGER APPEND** — `.agent/live_review.md`.
 
-    before        = 2168965
-    slice RECORD6 =    8260
-    before + 2 + slice = 2177227
-    real new size      = 2177227
-    EQUAL              = True
+    arithmetic: 2177227 + 2 + 7937 = 2185166 ; real new size 2185166 ; equal=True
+    pre-C2 content is an exact byte PREFIX: True
+    still ends WITHOUT a newline: True
+    SECOND READER: N counted by the script from the slice = 1
+    last N units equal the slice paragraphs IN ORDER: True
+    NEGATIVE CONTROL (flip byte at offset 2177229, inside the FIRST appended
+      paragraph): second reader accepts = False
+    $ grep -c '^Gate: F110 R7 — ' .agent/live_review.md
+    0   (before C2)
+    1   (after C2)
 
-Still ends WITHOUT a newline: True.
+**G4 THE DECISIONS APPEND** — `.agent/decisions.md`.
 
-Second reader, counting no byte — the WHOLE file split on blank-line boundaries,
-N counted BY THE SCRIPT from the slice:
+    arithmetic: 728132 + 1 + 3014 + 1 = 731148 ; real new size 731148 ; equal=True
+    pre-C2 content is an exact byte PREFIX: True
+    ends with exactly ONE newline byte: True
+    SECOND READER: N counted by the script from the slice = 8
+    last N units equal the slice paragraphs IN ORDER: True
+    NEGATIVE CONTROL (flip byte at offset 728133, inside the FIRST appended
+      paragraph): second reader accepts = False
+    $ grep -c '^## DECISION F110 D3 ' .agent/decisions.md
+    0   (before C2)
+    1   (after C2)
 
-    N counted by the script from the slice = 1
-    last N units equal the slice paragraphs IN ORDER -> True
-      unit 0 identical: True
+**G4 `.agent/prose_slips.md`** — byte-equality only, per the gate budget.
 
-Negative control, one byte flipped inside the FIRST appended paragraph of a
-SCRATCH COPY (offset 50, the file on disk untouched):
+    final bytes == before + 2 newlines + SLIPS8: True
+    pre-C2 content an exact byte PREFIX: True
+    still ends WITHOUT a newline: True
+    sizes: before 54853, slice 1116, after 55971
 
-    second reader on the flipped copy -> False   (REJECTED, which is the pass)
+**The before-size is 54853 and NOT the 53575 constraint 4 states — DEVIATION D1
+below.** The append itself is exact under either number; only the block's stated
+base byte count is wrong, and it gates nothing here because this file gets a
+byte-equality check rather than arithmetic.
 
-    $ grep -c '^Gate: F110 R6 — ' .agent/live_review.md    (BEFORE C2)
-    0                            exit 1  (grep exits 1 on a zero count)
-    $ grep -c '^Gate: F110 R6 — ' .agent/live_review.md    (AFTER C2)
-    1                            exit 0
+**G5 THE MODULE, MEASURED AND RUN.**
 
-### G4 THE PROSE FILE
+    $ git show --numstat f342e3e7 -- packages/orchestration/model_routing.py
+    253	6	packages/orchestration/model_routing.py
+    $ python3 -c "ast.parse(<the real file text>)"
+    ast.parse OK, lines 1262
 
-Byte-equality only, per the gate budget:
+EVERY DELETED LINE, VERBATIM, AND THE REGION IT CAME FROM — all six are in the
+MODULE DOCSTRING, which G5 permits:
 
-    final bytes equal the extracted SLIPS7 slice        -> True
-    pre-C2 content survives as an exact byte PREFIX     -> True
-    file still ends WITHOUT a newline                   -> True
-    base=53495  slice=1356  now=54853  base+2+slice=54853
+    -is applied, and the PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a
+    -CHEAPER tier unless a documented benchmark run backs it. Nothing else yet: no
+    -config file is read, no model id is named and no call site routes through it.
+      → the docstring's opening paragraph; rewritten because this round's own
+        commit falsifies "Nothing else yet" (constraint 9 repairs in-file).
+    -Nothing in production imports this module yet: the per-call-site task-class
+    -declarations come after the resolver seam work, so the table lands and is
+    -pinned before anything routes through it.
+      → the docstring's "nothing routes yet" paragraph; the clause "the
+        per-call-site task-class declarations come after the resolver seam work"
+        became false this round, so it was repaired in the same commit.
 
-### G5 THE MODULE, MEASURED AND RUN
+NO DELETION FALLS OUTSIDE THE MODULE DOCSTRING. No constant and no function of
+rounds 4 through 7 changed behaviour or signature; constraint 7 holds.
 
-    $ git show --numstat 5e9537f1 -- packages/orchestration/model_routing.py
-    370     17      packages/orchestration/model_routing.py
-    exit 0
+THE SHIPPED CODE, RUN — what the functions RETURNED:
 
-    $ python3 -c "import ast; ast.parse(open(...).read())"
-    ast.parse OK, bytes= 51640
-    exit 0
+    ROLE_TASK_CLASSES = {'builder': 'standard_build', 'reviewer': 'standard_review',
+      'design_worker': 'architecture', 'test_worker': 'standard_build',
+      'final_verifier': 'standard_review', 'teacher': 'summarize',
+      'summary': 'summarize', 'orchestrator': 'mission'}
+    TASK_CLASS_INHERITING_ROLES = frozenset({'repair'})
+    UNDECLARED_ROLE_TASK_CLASS = 'undeclared_role'
+    DYNAMIC_ROLE_MARKER = '<dynamic>'
+    ROLE_CONFIG_RESOLVER_NAME = 'resolve_role_config'
+    ROLE_CONFIG_CALL_SITES:
+        ('apps/cli/commands/do_cmd.py', '<dynamic>')
+        ('packages/orchestration/artifact_summary.py', 'summary')
+        ('packages/orchestration/pingpong_job.py', '<dynamic>')
+        ('packages/orchestration/role_config.py', 'orchestrator')
+        ('packages/orchestration/self_use_runner.py', '<dynamic>')
+        ('packages/orchestration/teacher_model.py', '<dynamic>')
+        ('packages/orchestration/teacher_model.py', '<dynamic>')
 
-EVERY DELETED LINE, VERBATIM, WITH ITS REGION — 17 lines, four regions:
+`resolve_role_task_class` on EVERY member of `role_config.KNOWN_ROLES`:
 
-REGION 1, the module docstring's opening paragraph (PERMITTED by the gate) — 3 lines:
+    builder         -> standard_build
+    reviewer        -> standard_review
+    repair          -> architecture      (originating=architecture supplied)
+    design_worker   -> architecture
+    test_worker     -> standard_build
+    final_verifier  -> standard_review
+    orchestrator    -> mission
+    teacher         -> summarize
+    summary         -> summarize
 
-    returning ITS OWN rule name when a routing choice violates it, and the PER-PROJECT
-    is applied. Nothing else yet: no config file is read, no model id is named and no
-    call site routes through it.
+An inheriting role with NO originating class:
 
-REGION 2, the module docstring's Public API list (PERMITTED) — 5 lines:
+    RAISED OriginatingTaskClassRequired | .role = 'repair'
+    message: role 'repair' inherits its task class and no originating task class
+    was supplied; docs/agents/model_routing_policy.md: 'Repair prompts follow the
+    tier of the original task class.'
 
-        OVERRIDE_VIOLATION_RULE_NAMES: schema names then HARD_RULE_NAMES — the
-            order an override map's violations are reported in
-        validate_task_class_tier_overrides(overrides, classes)
-        build_effective_task_class_tiers(overrides, classes) -> dict[str, str],
-            raising OverrideRefused rather than dropping a violating entry
+A role NEITHER set names:
 
-REGION 3, the report-order constant and its own comment (PERMITTED) — 4 lines:
+    returned 'undeclared_role' | warnings: 1 | UserWarning
+    warning: Role 'nightwatchman' declares no task class; routing conservatively
+      as 'undeclared_role'. Declared roles: builder, design_worker,
+      final_verifier, orchestrator, reviewer, summary, teacher, test_worker;
+      inheriting roles: repair.
+    routed: {'task_class': 'undeclared_role', 'tier': 'top',
+             'reason': 'unknown_class_conservative', 'promoted_by': None}
 
-    #: SCHEMA names first, then the hard-rule names. Schema first because a malformed
-    #: entry is what an operator must fix before any policy reading of it means
-    #: anything.
-    OVERRIDE_VIOLATION_RULE_NAMES: tuple[str, ...] = OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES
+THE SEAM:
 
-REGION 4, OUTSIDE the two regions the gate permits — 5 lines. DECLARED, NOT
-REPAIRED, and see deviation D4:
+    orchestrator : {'task_class': 'mission', 'tier': 'top',
+                    'reason': 'seed_mapping', 'promoted_by': None}
+    builder      : {'task_class': 'standard_build', 'tier': 'mid',
+                    'reason': 'seed_mapping', 'promoted_by': None}
+    builder with an originating class of a DIFFERENT tier (IGNORED):
+                   {'task_class': 'standard_build', 'tier': 'mid',
+                    'reason': 'seed_mapping', 'promoted_by': None}
+    repair<-architecture: {'task_class': 'architecture', 'tier': 'top',
+                    'reason': 'seed_mapping', 'promoted_by': None}
+    repair<-format      : {'task_class': 'format', 'tier': 'cheap',
+                    'reason': 'seed_mapping', 'promoted_by': None}
+    design_worker on a PROMOTED table with sufficient evidence:
+                   {'task_class': 'architecture', 'tier': 'cheap',
+                    'reason': 'per_project_override',
+                    'promoted_by': 'qwen3-8b-instruct + q4_k_m@0f1e2d3c4b5a6978 on F082'}
+    hard rule 2 on ROLE_TASK_CLASSES['orchestrator'] routed at the cheapest tier:
+                   'orchestration_below_top_tier'
 
-  4a — the `validate_task_class_tier_overrides` FUNCTION docstring, 4 lines:
+AN AST SWEEP OF MY OWN over `packages/` and `apps/`, printed beside the constant:
 
-        exists — the three hard-rule checks are called, never re-labelled — which is
-        the discipline :func:`validate_routing_choice` already states. The two schema
-        names have no check function of their own and are the only names this function
-        supplies directly.
+    REVIEWER-INDEPENDENT SWEEP (7) | SHIPPED CONSTANT (7)
+      ('apps/cli/commands/do_cmd.py', '<dynamic>')               | (identical)
+      ('packages/orchestration/artifact_summary.py', 'summary')  | (identical)
+      ('packages/orchestration/pingpong_job.py', '<dynamic>')    | (identical)
+      ('packages/orchestration/role_config.py', 'orchestrator')  | (identical)
+      ('packages/orchestration/self_use_runner.py', '<dynamic>') | (identical)
+      ('packages/orchestration/teacher_model.py', '<dynamic>')   | (identical)
+      ('packages/orchestration/teacher_model.py', '<dynamic>')   | (identical)
+    MULTISETS EQUAL: True
 
-  4b — ONE EXECUTABLE LINE, inside `build_effective_task_class_tiers`:
+The block's measurement of the seven call sites is confirmed independently,
+including the DOUBLE call in `teacher_model.py` and the two literal roles.
 
-        violations = validate_task_class_tier_overrides(normalized, safety_relevant_classes)
+**G6 THE RED PROOF** — disposable worktree
+`/home/decodeux/Repos/remedy/remedy-review-r8-wt` at `f7765ec0`, never `cd`-ed
+into (every command ran through `subprocess` with `cwd`), `__pycache__` purged
+before every run, `python3 -B` throughout.
 
-NO OTHER executable line was deleted. 4b is the builder's call to the validator,
-replaced by the same call carrying the new third argument — which is literally
-what SPEC (h) orders ("passes it through"). 4a is the sentence "the three hard-rule
-checks are called" which C3 itself falsifies, so constraint 9 orders it repaired in
-this commit. Reported here as the gate requires rather than reverted.
+    IMPORTED __file__ FROM INSIDE THE WORKTREE:
+      /home/decodeux/Repos/remedy/remedy-review-r8-wt/packages/orchestration/model_routing.py
 
-RUNNING THE SHIPPED CODE — what the functions RETURNED:
+UNMUTATED CONTROL, FIRST: exit 0, **391 passed, 3 skipped**.
 
-    MODULE FILE: /home/decodeux/Repos/remedy/packages/orchestration/model_routing.py
-    BARS: runs=3 block=90 overall=75
-    SEPARATOR: ' + '
-    DOC FIELDS: ('model_id', 'quantization', 'prompt_hash', 'tokens', 'cost',
-                 'assertion_results', 'reviewer_verdict')
-    PROMOTION_RULE_NAMES: ('promotion_without_evidence',
-                           'promotion_evidence_incomplete',
-                           'promotion_evidence_below_threshold')
-    OVERRIDE_VIOLATION_RULE_NAMES: ('override_unknown_task_class',
-        'override_unknown_tier', 'reviewer_weaker_than_worker',
-        'orchestration_below_top_tier', 'safety_class_below_mid_tier',
-        'promotion_without_evidence', 'promotion_evidence_incomplete',
-        'promotion_evidence_below_threshold')
-    HARD_RULE_NAMES: ('reviewer_weaker_than_worker', 'orchestration_below_top_tier',
-                      'safety_class_below_mid_tier')          UNCHANGED
-    OVERRIDE_SCHEMA_RULE_NAMES: ('override_unknown_task_class',
-                                 'override_unknown_tier')     UNCHANGED
+    === (i) inheriting role returns a FIXED class instead of the originating one
+        exit 1 | 4 failed, 387 passed, 3 skipped
+        PRIMARY CHECKOUT git status --porcelain: ''
+        RED (4):
+          TestTheRepairRuleIsExecutable::test_the_inheriting_role_returns_the_originating_class[architecture]
+          TestTheRepairRuleIsExecutable::test_the_originating_class_may_be_spelled_as_the_document_words_it
+          TestTheRepairRuleIsExecutable::test_the_seam_routes_it_to_the_originating_classes_tier[architecture]
+          TestTheSeamReturnsTheRoutedCallEvidence::test_a_promoted_class_carries_the_run_that_promoted_it
+        REVERTED (git checkout -- packages/orchestration/model_routing.py, inside
+        the worktree): 391 passed, 3 skipped, exit 0
 
-    PREDICATE cheaper   (mission -> cheap): True
-    PREDICATE equal     (mission -> top):   False
-    PREDICATE stronger  (format  -> top):   False
-    PREDICATE undeclared(unknown -> cheap): False
+    === (ii) the resolver ACCEPTS a missing originating class instead of raising
+        exit 1 | 2 failed, 389 passed, 3 skipped
+        PRIMARY CHECKOUT git status --porcelain: ''
+        RED (2):
+          TestTheRepairRuleIsExecutable::test_it_raises_when_no_originating_class_is_supplied
+          TestTheRepairRuleIsExecutable::test_the_seam_raises_too_rather_than_guessing_a_tier
+        REVERTED: 391 passed, 3 skipped, exit 0
 
-    CHECK no evidence            : promotion_without_evidence
-    CHECK incomplete (no hash)   : promotion_evidence_incomplete
-    CHECK incomplete (no results): promotion_evidence_incomplete
-    CHECK runs just below (2)    : promotion_evidence_below_threshold
-    CHECK runs just at   (3)     : None
-    CHECK block just below (89)  : promotion_evidence_below_threshold
-    CHECK block just at    (90)  : None
-    CHECK overall just below (74): promotion_evidence_below_threshold
-    CHECK overall just at    (75): None
-    CHECK non-promotion          : None
+    === (iii) one entry DROPPED from the call-site inventory constant
+        exit 1 | 3 failed, 388 passed, 3 skipped
+        PRIMARY CHECKOUT git status --porcelain: ''
+        RED (3):
+          TestTheCallSiteInventoryIsChecked::test_only_two_of_the_seven_call_sites_pass_a_role_literal
+          TestTheCallSiteInventoryIsChecked::test_the_sweep_and_the_inventory_hold_the_same_number_of_calls
+          TestTheCallSiteInventoryIsChecked::test_the_swept_multiset_equals_the_declared_inventory
+        REVERTED: 391 passed, 3 skipped, exit 0
 
-    VALIDATOR promotion, NO evidence  : [('vision', 'promotion_without_evidence')]
-    VALIDATOR promotion, WITH evidence: ()
-    BUILDER no evidence RAISED: [('vision', 'promotion_without_evidence')]
-      message: per-project model-routing overrides refused — vision: promotion_without_evidence
-    BUILDER with evidence: 'cheap'
+    === (iv) the orchestrator role pointed at a CHEAP-tier class
+        exit 1 | 5 failed, 386 passed, 3 skipped
+        PRIMARY CHECKOUT git status --porcelain: ''
+        RED (5):
+          TestTheOrchestratorRoleRoutesToTheTopTier::test_an_override_demoting_that_class_is_refused_with_the_rule_named
+          TestTheOrchestratorRoleRoutesToTheTopTier::test_its_class_is_one_the_hard_rule_speaks_about
+          TestTheOrchestratorRoleRoutesToTheTopTier::test_the_hard_rule_refuses_that_same_class_below_the_top_tier
+          TestTheOrchestratorRoleRoutesToTheTopTier::test_the_seam_routes_it_to_the_top_tier
+          TestTheSeamReturnsTheRoutedCallEvidence::test_the_golden_orchestrator_call_is_exactly_this_mapping
+        REVERTED: 391 passed, 3 skipped, exit 0
 
-    EVIDENCE FIELDS promoted  : {'task_class': 'vision', 'tier': 'cheap',
-        'reason': 'per_project_override',
-        'promoted_by': 'qwen3-8b-instruct + q4_k_m@0f1e2d3c4b5a6978 on F082'}
-    EVIDENCE FIELDS unpromoted: {'task_class': 'format', 'tier': 'cheap',
-        'reason': 'seed_mapping', 'promoted_by': None}
+THE DISCRIMINATOR, AS A PROPERTY. No mutation reddens nothing, so no proof
+failed. **The four red sets are pairwise DISJOINT — not one test id appears
+under two mutations** — so each mutation reddens the cases written for its own
+behaviour and no other mutation's dedicated fixtures. Specifically:
 
-    ROUND 6 TWO POSITIONAL ARGS: [('format', 'override_unknown_tier')]
-    ROUND 6 ONE POSITIONAL ARG : ()
+* (iii) reddens THREE ids and every one of them is in
+  `TestTheCallSiteInventoryIsChecked`. Nothing outside the inventory goes red,
+  which is the proof the sweep compares against the constant instead of
+  re-deriving it: a sweep that re-derived the list would agree with itself and
+  stay green.
+* (i) reddens the `[architecture]` parameter of both parametrised inheritance
+  cases and NOT the `[format]` parameter — because the fixed class the mutation
+  returns IS `format`. That is exactly why SPEC (h) demanded two originating
+  classes with DIFFERENT tiers: one of them can always be the value a constant
+  happens to return, and the other cannot.
+* (i)'s fourth id, `test_a_promoted_class_carries_the_run_that_promoted_it`, is
+  an INHERITING-role seam case (it routes `repair` with `vision` as the
+  originating class), so it belongs to (i)'s own behaviour and to no other
+  mutation's fixtures.
+* (iv)'s fifth id is the seam GOLDEN, whose exact dict names the orchestrator's
+  class — again (iv)'s own behaviour.
 
-### G6 THE RED PROOF
+`git status --porcelain` was read on the PRIMARY checkout immediately after
+EVERY mutation, in the same step, and was EMPTY every time. Every revert was a
+`git checkout -- <path>` INSIDE the worktree — the file restored from its
+commit, never re-edited back — and every revert returned the worktree to 391
+passed, 3 skipped. The worktree was then removed by its exact path and pruned.
 
-Worktree: `/home/decodeux/Repos/remedy/remedy-review-f110-r7-wt`, detached at the
-C4b commit `7db8c018`. `__pycache__` purge ran (0 directories found — a fresh
-worktree carries none); every pytest invocation used `python3 -B`.
+**G7 THE SUITES**, each its own invocation, run serially, all exit 0.
 
-    $ python3 -B -c "import sys; sys.path.insert(0, '<abs-worktree>'); ..."
-    IMPORTED FROM (no cd): /home/decodeux/Repos/remedy/remedy-review-f110-r7-wt/packages/orchestration/model_routing.py
+    $ python3 -m pytest tests/orchestration/test_model_routing.py -q
+    391 passed, 3 skipped in 2.68s
+    $ python3 -m pytest tests/orchestration/test_orchestrator_model_routing.py tests/orchestration/test_job_role_routing.py -q
+    33 passed in 0.32s
+    $ python3 -m pytest tests/orchestration/test_role_config.py -q
+    34 passed in 0.23s
+    $ python3 -m pytest tests/orchestration/test_config.py -q
+    63 passed in 0.28s
+    $ python3 -m pytest tests/docs/ -q
+    295 passed in 0.44s
+    $ python3 -m pytest tests/cli/test_golden_path.py -q
+    42 passed in 20.67s
 
-UNMUTATED CONTROL, FIRST:
+The routing file GREW from 325 to 391 and the skip count did NOT rise (3 → 3).
+The other five are UNMOVED at 33, 34, 63, 295 and 42. `test_role_config.py`
+holding at 34 is constraint 6 measured: this round READS `KNOWN_ROLES` from a
+new test while `model_routing.py` imports neither `role_config.py` nor
+`config.py`.
 
-    $ python3 -B -m pytest <abs-worktree>/tests/orchestration/test_model_routing.py -q -p no:cacheprovider
-    325 passed, 3 skipped in 0.48s
-    exit 0
+**G8 THE TREE, THE COMMITS AND THE SWEEP.**
 
-MUTATION (i) — the promotion predicate always answers "not a promotion"
-(`return model_tier_rank(tier) < model_tier_rank(seeded)` → `return False`):
-
-    PRIMARY git status --porcelain -> ''   (read immediately after the mutation, same step)
-    39 failed, 286 passed, 3 skipped
-
-    Its own dedicated fixtures, all RED: TestPromotionPredicate::
-      test_a_cheaper_tier_than_the_seed_is_a_promotion[architecture|mission|
-        prompt_authoring_for_other_agents|standard_build|standard_review|vision],
-      test_the_class_may_be_spelled_as_the_document_words_it
-    Plus every downstream promotion case, because the predicate gates them all.
-
-MUTATION (ii) — the check never returns the WITHOUT-EVIDENCE name
-(`if evidence is None: return RULE_PROMOTION_WITHOUT_EVIDENCE` → `return None`):
-
-    PRIMARY git status --porcelain -> ''
-    14 failed, 311 passed, 3 skipped
-
-    Its own dedicated fixtures, RED:
-      TestPromotionCheck::test_a_promotion_with_no_evidence_is_refused_with_its_own_rule
-      TestPromotionRefusedByTheOverrideMap::test_a_promotion_without_evidence_is_refused_with_the_rule_named
-      TestPromotionRefusedByTheOverrideMap::test_evidence_for_another_class_does_not_discharge_this_promotion
-      TestPromotionRefusedByTheOverrideMap::test_the_builder_refuses_a_promotion_without_evidence
-      TestEffectiveTableBuilder::test_the_message_names_every_violated_rule[promotion_without_evidence]
-    NOT red: mutation (i)'s dedicated TestPromotionPredicate cases, mutation (iii)'s
-    dedicated sync-test case, and every TestRoutedCallEvidenceFields case
-    (mutation (iv)'s dedicated set).
-
-MUTATION (iii) — `PROMOTION_MINIMUM_OVERALL_PASS_RATE` lowered to a tenth, 75 → 7:
-
-    PRIMARY git status --porcelain -> ''
-    1 failed, 324 passed, 3 skipped
-      TestPromotionRuleSyncTest::test_the_parsed_overall_rate_equals_the_module_constant
-
-    THE GATE'S OWN REQUIREMENT IS MET EXACTLY: mutation (iii) reddens the sync test
-    of (j), which is the proof that the bar really is pinned to the document. It
-    reddens NOTHING ELSE, and that is by design rather than by weakness — see D6.
-    A mutation that reddens nothing would be a FAILED proof; this one reddens its
-    dedicated case and no other mutation's.
-
-MUTATION (iv) — `routed_call_evidence_fields` omits the `promoted_by` key:
-
-    PRIMARY git status --porcelain -> ''
-    25 failed, 300 passed, 3 skipped
-
-    Its own dedicated set, RED: the whole of TestRoutedCallEvidenceFields —
-      test_the_golden_promoted_call_is_exactly_this_mapping (the GOLDEN),
-      test_the_keys_are_exactly_the_declared_fields[10 params],
-      test_an_unpromoted_class_reports_no_promoting_evidence[10 params],
-      test_a_promoted_class_names_the_run_that_promoted_it,
-      test_a_class_the_table_does_not_name_reports_the_conservative_pair,
-      test_the_class_may_be_spelled_as_the_document_words_it,
-      test_an_override_restating_the_seed_tier_reports_the_seed_reason_and_no_promotion
-    NOT red: any TestPromotionPredicate, TestPromotionCheck,
-    TestPromotionRefusedByTheOverrideMap or TestPromotionRuleSyncTest case.
-
-THE DISCRIMINATOR, as the property rather than as a colour: each mutation reddens
-the cases written for ITS OWN behaviour, and NO mutation reddens another
-mutation's DEDICATED fixtures. The cases that assert over a map breaking every
-rule at once (`TestOverrideValidatorCollectsEveryViolation`,
-`TestEffectiveTableBuilder::test_the_raised_object_carries_the_violations`,
-`TestOverrideRefusedPerHardRule`'s widened parameters) belong to no single
-mutation and redden under (i) and (ii) both — construction, not a failure, exactly
-as the block's own wording allows and as the reviewer's SLIPS7 entry records.
-
-REVERTS: each by `git -C <wt> checkout 7db8c018 -- packages/orchestration/model_routing.py`,
-NEVER by re-editing. After the last revert:
-
-    $ git -C <wt> status --porcelain      -> (empty)
-    $ git status --porcelain (PRIMARY)    -> (empty)
-    $ python3 -B -m pytest <abs-worktree>/tests/orchestration/test_model_routing.py -q -p no:cacheprovider
-    325 passed, 3 skipped        exit 0
-
-    $ git worktree remove /home/decodeux/Repos/remedy/remedy-review-f110-r7-wt --force
-    $ git worktree prune
+    $ git status --porcelain          (immediately before C5 was staged)
+    (no output)
+    $ git ls-files .remedy-wt
+    (no output)
     $ git worktree list
-    /home/decodeux/Repos/remedy                                  7db8c018 [feature/f110-model-routing-by-task-class]
+    /home/decodeux/Repos/remedy                                  f7765ec0 [feature/f110-model-routing-by-task-class]
     /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
     /home/decodeux/Repos/remedy/.remedy-wt/job-5e91e080219342d9  9fdb3b4b [remedy/job-5e91e080219342d9]
     /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
     /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
     /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
 
-The five `job-*` worktrees are NOT of this round's making and were left alone. No
-worktree this round created survives.
+Only the five PRE-EXISTING `job-*` worktrees survive; none is of this round's
+making and none was touched. The worktree this round created is gone.
 
-### G7 THE SUITES, EACH ITS OWN INVOCATION, SERIALLY
+    $ git diff --stat 4cfcb464..f7765ec0 -- docs/
+    (no output — NOTHING)
+    $ git diff --stat 4cfcb464..f7765ec0 -- packages/ apps/ ':(exclude)packages/orchestration/model_routing.py'
+    (no output — NOTHING)
 
-    $ python3 -m pytest tests/orchestration/test_model_routing.py -q
-    325 passed, 3 skipped in 0.50s                                  exit 0
-      passed 185 -> 325 (GREW, as the gate requires)
-      skipped 3 -> 3    (did NOT rise; no green was bought by skipping)
+That second command is CONSTRAINT 6 MEASURED rather than asserted: no file under
+`packages/` or `apps/` other than `model_routing.py` was written.
 
-    $ python3 -m pytest tests/orchestration/test_orchestrator_model_routing.py tests/orchestration/test_job_role_routing.py -q
-    33 passed in 0.27s                                              exit 0   (33 expected)
+PER-COMMIT INSERTION COUNTS, the `+` column only, CELL BY CELL against the
+Commits table above:
 
-    $ python3 -m pytest tests/orchestration/test_role_config.py -q
-    34 passed in 0.23s                                              exit 0   (34 expected)
+| Commit | `git show --numstat` `+` | Commits table | Match |
+|---|---|---|---|
+| `50adb6a8` | 399 | 399 | yes |
+| `e54c81fc` | 305 | 305 | yes |
+| `4b476fb7` | 16 | 16 | yes |
+| `34a77f33` | 49 + 3 + 3 = 55 | 49 + 3 + 3 = 55 | yes |
+| `f342e3e7` | 253 | 253 | yes |
+| `f7765ec0` | 370 | 370 | yes |
 
-    $ python3 -m pytest tests/orchestration/test_config.py -q
-    63 passed in 0.34s                                              exit 0   (63 expected)
+C5's own numbers appear in neither a round report nor this file.
 
-    $ python3 -m pytest tests/docs/ -q
-    295 passed in 0.44s                                             exit 0   (295 expected)
-
-    $ python3 -m pytest tests/cli/test_golden_path.py -q
-    42 passed in 20.63s                                             exit 0   (42 expected)
-
-The last five are UNMOVED. The three skips are round 5's `mission` skips in
-`test_a_class_the_rule_does_not_cover_is_never_refused_by_it`, unchanged.
-
-### G8 THE TREE, THE COMMITS AND THE SWEEP
-
-    $ git status --porcelain          (immediately before C5 was staged)
-    (no output)                                                     exit 0
-    $ git ls-files .remedy-wt
-    (no output)                                                     exit 0
-    $ git diff --stat c1a3a3c4..7db8c018 -- docs/
-    (no output)                                                     exit 0   NO DOCS EDITED
-
-PER-COMMIT INSERTION COUNTS, the `+` column only, from `git show --numstat`,
-compared CELL BY CELL against the Commits table above:
-
-| Commit | numstat `+` | Commits table | Match |
-|--------|-------------|---------------|-------|
-| `5cadf64b` C0a | 351 | 351 | yes |
-| `1523b1b9` C0b | 246 | 246 | yes |
-| `98acd71f` C1  | 20  | 20  | yes |
-| `f2cf1db6` C2  | 8 (3 + 5) | 3 + 5 | yes |
-| `5e9537f1` C3  | 370 | 370 | yes |
-| `2cd58c66` C4a | 231 | 231 | yes |
-| `7db8c018` C4b | 486 | 486 | yes |
-
-Every commit is under the 500-insertion cap (AGENTS.md, DECISION F104 D1 counting
-rule). No oversize-commit exception is claimed by this round. C5's own numbers go
-to neither a round report nor this file, per item 14.
-
-THE STALENESS SWEEP — one entry per file this round touched:
+THE STALENESS SWEEP, one entry per touched file:
 
 | File | Stale? | Why |
-|------|--------|-----|
-| `.agent/authored/f110-r7.md` | NOT stale | It is the block verbatim and describes nothing else on disk. Its SPEC TESTS (o) prediction proved incomplete (D1), but the file is a frozen record of what was ORDERED, and constraint 1 forbids repairing it |
-| `.agent/last_block.md` | NOT stale | byte-identical mirror of the above |
-| `.agent/plan.md` | NOT stale | names round 7 / T003 and describes exactly what C3 and C4a/C4b shipped; its Next Steps name the resolver seam, which is the next round |
-| `.agent/live_review.md` | NOT stale | RECORD6 describes round 6 at `c1a3a3c4`; every figure in it was measured there and nothing this round moved any of them |
-| `.agent/prose_slips.md` | NOT stale | two dated reviewer-slip lines about round 6; append-only, never rewritten |
-| `packages/orchestration/model_routing.py` | NOT stale | the opening paragraph now names the promotion discipline, the Public API list covers every new name, and the "Nothing in production imports this module yet" / "no config file is read" sentences are STILL TRUE — nothing was wired to a call site |
-| `tests/orchestration/test_model_routing.py` | NOT stale | the header now reads T002a/T002b/T002c/T003 and names the second sync test; every widened guard carries a comment saying it was widened and why |
-| `.agent/handoff.md` | NOT stale | written now |
-
-OUTSIDE THE CHANGE SET, sentences this round makes stale — DECLARED, NOT REPAIRED
-(constraint 9):
-
-- NONE FOUND. `docs/roadmap/features/T3_F110.md` line 37 says "the resolver logs
-  promoted_by evidence per run"; the shipped key is named exactly `promoted_by`,
-  so that sentence became MORE true, not less. Its lines 34-39 describe the
-  promotion discipline this round shipped and remain accurate; line 36's "recorded
-  in the config change" still awaits the resolver-seam round, which the plan names.
-- `docs/agents/model_routing_policy.md` is READ and never written; this round adds
-  no claim about it beyond what the new sync test proves against it.
-- Round 6's DEVIATION D7 (the feature file wording "orchestrator and
-  mission-compile calls" against the wider shipped set) is UNCHANGED by this round
-  and was already ruled on in RECORD6 as not a finding; F110's closure sequence
-  updates that bullet and `.agent/plan.md` now carries that obligation.
+|---|---|---|
+| `.agent/authored/f110-r8.md` | NOT stale | new; it IS the round's authored record and is never edited |
+| `.agent/last_block.md` | NOT stale | byte-identical mirror of the file above, same digest |
+| `.agent/plan.md` | NOT stale | rewritten to PLAN8: names round 8, T001, and the wiring round as next |
+| `.agent/live_review.md` | NOT stale | append-only; the new entry is round 7's verdict, written by round 8 as the rules require |
+| `.agent/prose_slips.md` | NOT stale | append-only; SLIPS8 is dated 2026-09-03 and scoped to R7 |
+| `.agent/decisions.md` | NOT stale | append-only; DECISION F110 D3 is the decision C3's map implements, and its CONSEQUENCE paragraph's promise of a deliberate-absence note is now true on disk |
+| `packages/orchestration/model_routing.py` | NOT stale | the two sentences this round falsified were repaired IN C3 (constraint 9), and the Public API list gained all ten new names |
+| `tests/orchestration/test_model_routing.py` | NOT stale | its docstring said "four rounds" and named four task ids; repaired in C4 to five, naming T001 |
+| `.agent/handoff.md` | NOT stale | this rewrite |
 
 ## Authored-text proofs
 
 | Slice | Applied to | Proof |
-|-------|-----------|-------|
-| PLAN7 | `.agent/plan.md` | extracted by marker index from the COMMITTED `.agent/authored/f110-r7.md`; `cmp` against the extract + the target's own trailing newline = exit 0. Raw-extract `cmp` = exit 1 at byte 2030 (the one newline constraint 4 orders the TARGET to keep). Both readings reported |
-| RECORD6 | `.agent/live_review.md` | byte arithmetic exact (2168965 + 2 + 8260 = 2177227), independent structural second reader True with N counted from the slice, negative control REJECTED |
-| SLIPS7 | `.agent/prose_slips.md` | final bytes byte-equal to the extract; pre-C2 content an exact byte PREFIX; still ends without a newline |
+|---|---|---|
+| PLAN8 | `.agent/plan.md` | `cmp` against the extraction from the COMMITTED authored file — exit 0 |
+| RECORD7 | `.agent/live_review.md` | 2177227 + 2 + 7937 = 2185166 = real size; base an exact byte prefix; second reader in order; negative control rejected |
+| SLIPS8 | `.agent/prose_slips.md` | final bytes == base + 2 newlines + SLIPS8, exact byte equality; base an exact prefix |
+| DECISION3 | `.agent/decisions.md` | 728132 + 1 + 3014 + 1 = 731148 = real size; base an exact prefix; exactly one trailing newline; second reader in order over 8 paragraphs; negative control rejected |
 
-No slice was retyped. Every extraction ran against
-`git show HEAD:.agent/authored/f110-r7.md`, never against the prompt.
+Every slice was extracted BY DELIMITER INDEX from the COMMITTED
+`.agent/authored/f110-r8.md` with a Python script (marker lines excluded), never
+retyped. The extractor first asserted that
+`git show HEAD:.agent/authored/f110-r8.md` equals the file on disk — that check
+returned True at 33816 bytes, so the slices provably came from the committed
+bytes.
 
 ## Deviations & assumptions
 
-**D1 — SPEC (o)'s MEASURED RED LIST IS INCOMPLETE, AND FIVE FURTHER EXISTING TEST
-FUNCTIONS WERE WIDENED. This is the round's most important deviation.**
-(o) states that "extending the override report order with two promotion names and
-changing nothing else turns exactly these red", names five functions, and projects
-6 failed / 181 passed / 3 skipped. That measurement is of the REPORT-ORDER CONSTANT
-ALONE. The round also orders (e) through (h), which put the promotion check into
-the validator, and that changes BEHAVIOUR, not only a tuple. MEASURED by this
-worker against the committed C3 (`5e9537f1`) with the test file still at round 6:
+**D1 — THE BLOCK'S STATED BASE SIZE FOR `.agent/prose_slips.md` IS WRONG, AND I
+APPLIED THE SLICE AS WRITTEN RATHER THAN REPAIRING ANYTHING.** Constraint 4
+states the file is 53575 bytes at `4cfcb464`. Measured on disk at `4cfcb464` it
+is **54853** bytes — a difference of 1278. The newline CONVENTION the constraint
+states is correct (no trailing newline, two-byte append), and that is what the
+append used, so the on-disk result is right under either figure; only the
+reviewer's numeral is wrong. It gates nothing, because G4 gives this file a
+byte-equality check rather than arithmetic. A reviewer-prose inaccuracy that left
+nothing wrong on disk — amend0827-process-diet rule 2 territory, not an R-id.
 
-    12 failed, 176 passed, 3 skipped
+**D2 — THREE NAMES THE SPEC IMPLIES BUT DOES NOT NAME.** SPEC (c) and (e)
+describe behaviour that needs vocabulary the block does not supply, so I minted
+it rather than departing silently:
 
-— ten distinct functions, not five. The five (o) names are all present. The five it
-does not name are:
+* `UNDECLARED_ROLE_TASK_CLASS = "undeclared_role"` — SPEC (c)'s "answers
+  conservatively" needs a VALUE. It is deliberately NOT a key of
+  `TASK_CLASS_TIERS`, so it flows through the EXISTING resolver to `TOP_TIER`
+  with `UNKNOWN_CLASS_REASON` rather than through a second, rival conservative
+  path. That is also what DECISION F110 D3 says the reason token is FOR.
+* `OriginatingTaskClassRequired` — SPEC (c) says the inheriting role "RAISES";
+  a named exception carrying `.role` lets a caller branch on structure, which is
+  the discipline `OverrideRefused` already set in this module.
+* `ROLE_CONFIG_RESOLVER_NAME = "resolve_role_config"` — SPEC (e)'s inventory is
+  meaningless without naming WHAT was swept for, and the test's sweep reads this
+  constant instead of retyping the function name, so a rename moves both
+  together. All three are in the Public API list.
 
-    TestOverrideRefusedPerHardRule::test_an_orchestration_class_demoted_below_top_is_refused_with_the_rule_named[cheap-mission]
-    TestOverrideRefusedPerHardRule::test_an_orchestration_class_demoted_below_top_is_refused_with_the_rule_named[mid-mission]
-    TestOverrideRefusedPerHardRule::test_mission_demoted_below_top_is_refused_with_the_rule_named
-    TestOverrideRefusedPerHardRule::test_a_safety_relevant_class_demoted_below_mid_is_refused_with_the_rule_named[cheap]
-    TestOverrideRefusedPerHardRule::test_the_same_safety_class_at_or_above_mid_is_not_refused[mid]
-    TestOverrideValidatorCollectsEveryViolation::test_an_override_key_may_be_spelled_as_the_document_words_it
+**D3 — THE TEST FILE'S MODULE DOCSTRING WAS EDITED; NO TEST WAS.** Constraint 8
+forbids editing an existing test. The 4 deleted lines in C4 are all in the
+FILE'S module docstring, which said "The four rounds this file covers" and named
+four task ids — a sentence this round's own commit falsifies, so constraint 9
+required repairing it in that commit. Every existing test FUNCTION, class and
+fixture is untouched; the only other change to existing lines is INSERTIONS into
+the import block. No test was renamed, deleted or skipped, and the skip count is
+unmoved at 3.
 
-WHY IT IS UNAVOIDABLE, and it is arithmetic rather than judgement: every
-orchestration class the seed table names (`mission`) and the fixture safety class
-(`architecture`) are SEEDED AT THE TOP TIER, so any demotion that breaks their hard
-rule is NECESSARILY also a move to a cheaper tier — a promotion. There is no
-override map that breaks the orchestration rule and is not a promotion. So with the
-discipline shipped, those maps report two names, and round 6's exact-list
-assertions became false statements about the shipped behaviour.
+**D4 — `route_role_call`'s ARGUMENT ORDER.** SPEC (d) lists the arguments as
+role, then the originating class, then the effective table, then the evidence
+map, and that is the signature shipped:
+`route_role_call(role, originating_task_class=None, effective_tiers=None, promotion_evidence=None)`.
+`effective_tiers` DEFAULTS to `TASK_CLASS_TIERS`, which the spec's word
+"optional" allows and which lets a call site with no project overrides route
+without building a table first. Declared because the round-7 evidence function it
+delegates to takes the table SECOND and positionally, so the two orders differ on
+purpose and a reader comparing them should know it is deliberate.
 
-WHAT WAS DONE, and constraint 8 versus constraint 9: constraint 8 says only (o)'s
-tests are edited; constraint 9 says a sentence INSIDE a file this round edits that
-this round's own commit falsifies IS repaired in that commit. The test file is such
-a file and those assertions are such sentences, so they were repaired — WIDENED,
-never weakened:
+**D5 — RUFF WAS NOT RUN, BY ORDER AND BY PERMISSION.** Constraint 5 orders no
+ruff gate and forbids adding one; the reviewer lints. Independently, this
+worker's permission layer refuses the tool, so no reading of it is offered here.
+This is a DECLARED REFUSAL, not a skipped gate.
 
-- the four "refused with the rule named" cases keep an EXACT list and simply name
-  the second rule too, so strictly more is pinned than before;
-- `test_the_same_safety_class_at_or_above_mid_is_not_refused` keeps its EXACTLY
-  EMPTY assertion and now makes it against a supplied benchmark run, so it says the
-  stronger thing;
-- nothing was deleted, nothing was skipped, and no parametrization was narrowed.
+**D6 — NO COMMIT WAS SPLIT AND NO COMMIT WAS ADDED OR REORDERED.** The block
+pre-authorises splitting C4 as round 7 did; C4 came in at 370 insertions, under
+the AGENTS.md cap, so it was NOT split. The commit sequence is exactly C0a, C0b,
+C1, C2, C3, C4, C5.
 
-Two NEW discriminating cases were added beside them
-(`test_evidence_clears_the_promotion_name_and_never_the_orchestration_rule`,
-`test_evidence_never_discharges_a_hard_rule`) so the widening is a proof rather
-than an accommodation.
+**D7 — ONE SCRATCH DIRECTORY OUTSIDE THE CHANGE SET, GITIGNORED AND REMOVED.**
+Slice extraction and the red-proof driver needed files on disk.
+`/home/decodeux/Repos/remedy/remedy-review-r8-scratch/` was used; it matches the
+`remedy-review-*` entry of `.gitignore`, never appeared in `git status
+--porcelain`, and was removed by its exact path. `.remedy-wt/` was never read,
+listed, copied from or named in any command.
 
-THE ALTERNATIVE WAS REJECTED DELIBERATELY. Suppressing the promotion violation for
-an entry that already breaks a hard rule would have left every (o)-unnamed test
-green and matched the block's projection exactly. It was not done: the module's own
-declared discipline is "an operator fixing a config one violation per round trip
-fixes it four times; this returns EVERY violation in the whole map at once", and
-silently narrowing the report to hit a projected number is the shape of defect this
-feature exists to prevent. The reviewer may of course rule the other way; the point
-is that the choice is stated rather than hidden.
+**ASSUMPTION** — SPEC (a) invited improvement on the reviewer's reading of each
+role but forbade a silent departure. NO ROLE WAS RE-READ: all eight map exactly
+as the block states, `orchestrator` to `mission` per DECISION F110 D3.
 
-**D2 — G2's `cmp` is exit 0 only against the target-convention extract.** The raw
-PLAN7 extract is 2030 bytes with no trailing newline; `.agent/plan.md` ends WITH one
-because constraint 4 orders the target's convention to win. `cmp` against the raw
-extract is exit 1 at byte 2030; `cmp` against extract + `"\n"` is exit 0. Both are
-reported above rather than the green one being chosen — the behaviour the reviewer's
-own SLIPS7 entry says is the one to keep.
-
-**D3 — C4 WAS SPLIT INTO C4a AND C4b, a departure from the block's ordered commit
-sequence.** The single C4 the block orders measures 717 insertions, over AGENTS.md's
-500-line cap, which counts INSERTIONS only (DECISION F104 D1). The AGENTS.md
-exception route (declare-and-proceed) was available and was NOT taken, because that
-allowance is "at most once per feature — by construction" and this content splits
-cleanly along its own seam: C4a (231) carries the header, the imports, the promotion
-fixtures and every WIDENED existing guard, and is GREEN on its own (200 passed, 3
-skipped); C4b (486) carries the NEW T003 test classes. C4a/C4b is also the split
-this branch already used at round 5. AGENTS.md is the highest authority and states
-"If a diff exceeds 500 lines, stop and split before committing".
-
-**D4 — TWO C3 DELETION REGIONS FALL OUTSIDE THE GATE'S PERMITTED LIST.** G5 permits
-deletions in the module docstring and the report-order constant. Five deleted lines
-are outside both: four in the `validate_task_class_tier_overrides` FUNCTION
-docstring, one executable line (the builder's call to the validator). Reported
-verbatim in G5 above rather than repaired, as the gate orders. Both are ordered by
-the block's own SPEC: (h) says the builder "passes it through", which cannot be done
-without rewriting that call, and constraint 9 orders the repair of the docstring
-sentence "the three hard-rule checks are called, never re-labelled", which C3 itself
-falsifies. NO OTHER executable line was deleted anywhere in C3.
-
-**D5 — THE TWO PASS RATES ARE NESTED INSIDE `assertion_results`, NOT ADDED BESIDE
-IT.** SPEC (c) orders the record to carry every name in (b) plus `runs_per_fixture`
-and `corpus`, and SPEC (f) orders the check to read "either pass rate". Those are
-only compatible if the rates live inside one of (b)'s names. `assertion_results` is
-the document's own name for them, so it is a nested frozen dataclass
-`PromotionAssertionResults(block_level_pass_rate, overall_pass_rate)` rather than a
-string. This keeps `PROMOTION_EVIDENCE_DOCUMENT_FIELDS` exactly what the document
-says, which is what lets the sync test be a straight comparison instead of a
-translation. Stated because it is a design choice the block did not spell out.
-
-**D6 — MUTATION (iii) REDDENS EXACTLY ONE ID, AND IT IS THE ONE THE GATE NAMES.**
-Lowering `PROMOTION_MINIMUM_OVERALL_PASS_RATE` from 75 to 7 turns
-`TestPromotionRuleSyncTest::test_the_parsed_overall_rate_equals_the_module_constant`
-red and nothing else. The boundary cases of (l) do NOT redden, because
-`_promotion_evidence()` derives its fixture rates FROM the module constants — which
-is deliberate and documented at that helper ("so the boundary cases below stay at
-the boundary when a bar moves"): a boundary test that hard-coded 75 would stop
-testing the boundary the day the bar moved. The gate's requirement is that mutation
-(iii) "must ALSO redden the sync test of (j), which is the proof that the bars
-really are pinned to the document", and it does exactly that. It is not a mutation
-that reddens nothing, so it is not a failed proof — but the reviewer should know
-that its red set is one id and why.
-
-**D7 — `ruff` IS REFUSED BY THIS WORKER'S PERMISSION LAYER.** The block orders no
-ruff gate and forbids adding one, so none was run and no lint reading is claimed.
-Declared for the record because round 6's D1 was the same refusal: the reviewer lints
-reviewer-side. NO NUMBER WAS INVENTED.
-
-**D8 — `cd` WAS USED ONCE INSIDE THE WORKTREE, against constraint 11.** The very
-first `__file__` probe ran as `cd <abs-worktree> && python3 -B -c ...`. It was
-immediately re-run WITHOUT `cd`, by absolute `sys.path` insertion, and that
-no-`cd` transcript is the one recorded in G6; both printed the same worktree path.
-Every subsequent command — every pytest invocation, every mutation, every revert,
-every status read — addressed the worktree by absolute path or by `git -C`, exactly
-as constraint 11 orders. Declared rather than quietly dropped.
-
-**D9 — THE WORKTREE LIVES OUTSIDE `.remedy-wt/`, as in round 6.** This worker's
-permission layer denies it every path under `.remedy-wt/`, so the disposable
-worktree was `/home/decodeux/Repos/remedy/remedy-review-f110-r7-wt` and was removed
-by exact path. The block explicitly sanctions this. `git ls-files .remedy-wt`
-returns nothing and `git status --porcelain` is empty.
-
-**D10 — `-p no:cacheprovider` was added to the worktree pytest invocations.** Not
-ordered by the block. It keeps a `.pytest_cache` from being written into the
-disposable worktree, which is a cleanliness measure and cannot affect a colour. The
-six G7 suites ran EXACTLY the commands the gate states, with no added flag.
-
-**Assumption (stated, not assumed silently):** the evidence map's keys are
-normalized through `normalize_task_class` exactly as the override map's are. The
-block does not say so; the module's declared discipline ("a project may spell a
-class in the policy document's own wording") makes any other choice a trap, and a
-test pins it (`test_an_evidence_key_may_be_spelled_as_the_document_words_it`).
+**A SENTENCE OUTSIDE THE CHANGE SET THIS ROUND MAKES STALE — DECLARED, NOT
+REPAIRED.** `docs/roadmap/features/T3_F110.md` line 44 states T001 as
+"call-site/role inventory + the single resolver seam + class declarations on all
+call sites". The first two clauses are now shipped; the third is NOT — no call
+site declares anything yet, by constraint 6. The line is therefore only PARTLY
+discharged rather than false, and the plan's Next Steps already names the wiring
+round that discharges the rest. No doc was edited this round.
 
 ## Next
 
-THE RESOLVER SEAM AND THE PER-CALL-SITE TASK-CLASS DECLARATIONS (consolidation
-order E.d) — the single place model selection happens, where the override map AND
-the evidence map are finally READ from configuration instead of being passed in.
-`packages/orchestration/config.py` is untouched and unimported to this day; that
-round is where it changes. `R-0767` is OPEN on the same seam and must not be
-absorbed into it.
+**THE WIRING ROUND**: the seven existing call sites `ROLE_CONFIG_CALL_SITES`
+names route through `route_role_call`, and the override map and the evidence map
+are READ from configuration instead of being passed in. That is the third clause
+of T001 plus consolidation order E.d, and it is the only thing standing between
+this seam and a routed production call.
 
-The session CONTINUES after this round. THE BRANCH STILL HAS NO OPEN PULL REQUEST:
-none was created, none was merged, nothing was force-pushed and no history was
-rewritten.
-
-Phase 1 rule 1 (`.agent/STOP`) is read BEFORE Phase 1 rule 2 (the Open PR Gate) at
-the next session start.
+THE BRANCH HAS NO OPEN PULL REQUEST — none was created this round and none
+existed before it — so the next session's Open PR Gate finds none and proceeds
+straight to Phase 1 rule 1 (`.agent/STOP`, absent at this handback) and then to
+claiming the next round on this branch.
