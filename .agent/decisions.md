@@ -9995,3 +9995,48 @@ against is amend0827 rule 4's own figure, and F110 may not raise it.
 
 REVERSE by deleting this DECISION; the obligation then reverts to whatever a
 later relay rules, and the checklist is untouched either way.
+
+## DECISION F110 D2 (2026-09-03, F110 R5) — `mission` belongs in the orchestration class set, and T002c adds it
+
+CONTEXT. Round 5 shipped the three hard rules of
+`docs/agents/model_routing_policy.md` as named checks. Its deviation D6 asked
+for this ruling instead of taking it, which was correct; the reviewer rules on
+it here.
+
+MEASURED by the reviewer at `0f4ece46`, by RUNNING the shipped code rather than
+reading it. `ORCHESTRATION_TASK_CLASSES` holds `mission_compile` and
+`orchestrator`; `TASK_CLASS_TIERS` names neither of those, so the intersection
+of the two is EMPTY; and
+`check_orchestration_class_routed_to_top_tier("mission", "cheap")` returns
+`None`, even though `mission` is a real seeded class the policy document routes
+to the top tier.
+
+The hard rules are NOT vacuous and this DECISION does not say they are. They
+judge a candidate CHOICE, which is exactly what the T002c override schema feeds
+them, and each was confirmed at that same commit to refuse on a violating input.
+The gap is narrower and real: a per-project override moving `mission` from the
+top tier to the cheap one breaks no hard rule today, and the policy-document
+sync test cannot catch it, because that test guards the TABLE against the
+DOCUMENT and an override is neither.
+
+CHOSEN. `mission` joins `ORCHESTRATION_TASK_CLASSES` in T002c, with a violating
+fixture asserting that an override demoting it is refused BY NAME. F110 exists
+to stop a tier moving "by editing a mapping casually", and an override map is
+that edit wearing a config file's clothes.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Leave the set as the feature file's two
+literal call kinds and rely on the sync test. Rejected because the sync test
+demonstrably does not reach an override, which is the surface this feature
+exists to police.
+
+CONSEQUENCE, and it is a real one. The set stops matching the wording of
+`docs/roadmap/features/T3_F110.md`, which names orchestrator and mission-compile
+calls and not `mission`. Nothing is renamed and the feature file is not edited;
+the module says at the constant why the set is deliberately wider than the
+sentence that seeded it. One existing test asserts the exact two-class
+membership; it is REWRITTEN in the same round rather than deleted, so the
+membership stays pinned — a pin on a wider set, not a weaker pin.
+
+REVERSE by deleting this DECISION, removing `mission` from
+`ORCHESTRATION_TASK_CLASSES`, and restoring that membership test to the
+two-class form git history holds at `78071a87`.
