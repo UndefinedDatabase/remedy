@@ -1,217 +1,316 @@
-# Handoff — F110 Model routing by task class, round 20 (repair)
+# Handoff — F112 Prompt budget per task class, round 1 (claim)
 
 ## Session
 
-SESSION 8 of feature F110 · round 20 (repair round against the still-open
-PR #233) · rounds so far 20.
+SESSION 1 of feature F112 · round 1 · rounds so far 1.
 
-F110 was CLOSED as a build feature at round 19 (session 7). This round is
-NOT new build work: it repairs a CI-red left on the still-open PR #233 by
-round 19's own closure commit, which authored the STATUS `[x] F110` line
-and the README capability paragraph but never re-derived two README
-derived-count cells that those additions moved.
+This is F112's first round. It claims F112 in the STATUS ledger and sets
+`.agent/plan.md` and `.agent/context.md` for the branch, which the
+reviewing session had already cut from `main` at pull request 233's merge
+commit (`5c28c674`) and merged the PR itself (git plumbing only — no file
+content in that action). No production code ships this round: T001
+(config schema, resolver, validation, tests) is split across rounds 2 and
+3 to respect the 400-line block cap
+(docs/agents/planner_reviewer_prompt.md section 3 item 1).
 
 ## Range
 
-`e6e413ad..d2b4d26a` (commits C0a through C3; C4 is this handback commit
+`5c28c674..c1c31bef` (commits C0a through C2; C3 is this handback commit
 itself).
 
 ## Commits
 
-### cfb81078 F110 R20 C0a: save the round 20 step block verbatim
+### be926e18 F112 R1 C0a: save the round 1 block verbatim to .agent/authored/f112-r1.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f110-r20.md` | +112/-0 | verbatim transport of this round's block, copied from `.remedy-wt/f110-r20-block.md` |
+| `.agent/authored/f112-r1.md` | +235/-0 | verbatim transport of this round's block, written directly by the Write tool from the prompt's literal bytes |
 
-### c15876a2 F110 R20 C0b: mirror the committed authored file to last_block
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/last_block.md` | +96/-207 | whole-file mirror, DECISION F104 D1 exempt |
-
-### 97b0e1b5 F110 R20 C1: apply PLAN20 to plan.md
+### da27fa9c F112 R1 C0b: mirror the committed authored file to last_block
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +19/-20 | whole-file replacement with PLAN20 |
+| `.agent/last_block.md` | +223/-100 | whole-file mirror of the committed `.agent/authored/f112-r1.md`, overwriting the prior F110 R20 block it held |
 
-### 0a297914 F110 R20 C2: fix README accepted-count and Tier 3 Done cell
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `README.md` | +2/-2 | README_COUNT_PAIR (68→69 accepted) and README_TIER3_PAIR (Tier 3 Done 3→4), both rewrites, one commit |
-
-### d2b4d26a F110 R20 C3: append RECORD20 to live_review.md
+### 853914e8 F112 R1 C1: apply PLAN1 to plan.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +3/-1 | append RECORD20 (two newlines + the paragraph) |
+| `.agent/plan.md` | +35/-20 | whole-file replacement with PLAN1, extracted programmatically from the committed authored file |
 
-### C4 (this commit, self-reference)
+### c1c31bef F112 R1 C2: claim F112 in STATUS.md and apply CONTEXT1 to context.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | (this commit) | the round 20 handback |
+| `.agent/context.md` | +30/-29 | whole-file replacement with CONTEXT1, extracted programmatically from the committed authored file |
+| `docs/roadmap/STATUS.md` | +1/-1 | PAIR S applied as `str.replace(FROM, TO, 1)`: `- [ ] F112` → `- [~] F112`, a rewrite (TO does not contain FROM) |
+
+### C3 (this commit, self-reference)
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | (this commit) | the round 1 handback |
 
 ## External actions
 
-- `git push -u origin feature/f110-model-routing-by-task-class` after C4
-  (reported below — real output, not assumed).
-- No `gh pr create` or `gh pr merge` this round (constraint: do not run
-  `gh pr merge`; PR #233 already exists from round 19). No worktree
-  add/remove. `main` was never touched.
+- `git push` after C3 — reported below with real output, not assumed.
+- No `gh pr create` or `gh pr merge` this round: PR #233 was already
+  merged by the reviewing session before this round began, and this round
+  creates no new PR. No worktree add/remove. `main` was never touched.
 
 ## Verification
 
-**Pytest, BEFORE C2** (`python3 -m pytest
-tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count
-tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger
--q`), run at commit `97b0e1b5` (after C1, before C2), real exit code **1**:
+**Pre-round HEAD check** — `git rev-parse HEAD` before C0a:
+```
+5c28c6741db2d9073fc75cd159d91037e0757fb0
+```
+Matches the block's required `5c28c674...` exactly.
+
+**STOP check** — `.agent/STOP` was read from disk before the first commit
+(did not exist) and again immediately before C3 (still did not exist):
+```
+no STOP file
+```
+(both readings)
+
+**G1 TRANSPORT** — `sha256sum .agent/authored/f112-r1.md
+.agent/last_block.md`, run after C0b:
+```
+8305f3fea6b57ec0ceda3bf7dce1b69d441eab4c579f8353c532484185ecee6c  /home/decodeux/Repos/remedy/.agent/authored/f112-r1.md
+8305f3fea6b57ec0ceda3bf7dce1b69d441eab4c579f8353c532484185ecee6c  /home/decodeux/Repos/remedy/.agent/last_block.md
+```
+Identical digest on both files.
+
+**G2 THE PLAN** — PLAN1 extracted from the committed authored file to
+`.remedy-wt/PLAN1.extracted` via a Python marker-index script (never
+retyped), then:
+```
+cmp .remedy-wt/PLAN1.extracted .agent/plan.md   -> CMP_OK (exit 0)
+wc -l .agent/plan.md                            -> 48 (.agent/plan.md)
+grep -c '^## Goal' .agent/plan.md               -> 1
+grep -c '^## Next Steps' .agent/plan.md         -> 1
+```
+48 is under the required 50-line ceiling.
+
+**G3 THE STATUS PAIR** — FROM count in `docs/roadmap/STATUS.md` measured
+BEFORE C2 (`- [ ] F112 — Prompt budget per task class`, matched by exact
+Python string containment against the extracted `PAIR S FROM` slice):
+```
+FROM count before: 1
+```
+After C2 (Python string counts on the post-edit file):
+```
+FROM count after: 0
+TO count after: 1
+TO contains FROM: False
+```
+i.e. **TO contains FROM: false** — the pair is a genuine rewrite and the
+FROM-zero count after is the correctness proof.
+
+**G4 THE CONTEXT** — CONTEXT1 extracted from the committed authored file
+to `.remedy-wt/CONTEXT1.extracted`, then:
+```
+cmp .remedy-wt/CONTEXT1.extracted .agent/context.md   -> CMP_OK (exit 0)
+grep -c '^## Active Branch' .agent/context.md         -> 1
+grep -c '^## Steps' .agent/context.md                 -> 1
+count of 'feature/'                                   -> 1
+first regex match of F\d{3}                            -> F112
+'pytest' in the lowercased text                        -> True
+```
+
+**G5 THE SUITES** — each run as its own separate invocation, serially, on
+the post-C2 tree:
 
 ```
-FF                                                                       [100%]
-=================================== FAILURES ===================================
-_ TestPrimaryDocsAreHonest.test_the_readme_accepted_count_equals_the_status_count _
-...
-E       AssertionError: README claims 68 accepted; STATUS.md has 69
-E       assert 68 == 69
-...
-_ TestPrimaryDocsAreHonest.test_the_readme_tier_table_done_column_matches_the_ledger _
-...
-E           AssertionError: README Tier 3 Done=3; the ledger derives 4
-E           assert 3 == 4
-...
-=========================== short test summary info ============================
-FAILED tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count
-FAILED tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger
-2 failed in 0.23s
+$ python3 -m pytest tests/docs/ -q
+........................................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 73%]
+........................................................................ [ 97%]
+.......                                                                  [100%]
+295 passed in 0.45s
 ```
 
-This reproduces CI's own two `AssertionError`s exactly: 68 vs 69, and
-Tier 3 Done=3 vs 4.
-
-**Pytest, AFTER C2**, run at commit `0a297914`, real exit code **0**:
-
 ```
-..                                                                       [100%]
-2 passed in 0.18s
+$ python3 -m pytest tests/orchestration/test_roadmap_index.py -q
+..............................                                           [100%]
+30 passed in 0.37s
 ```
 
-**README FROM-count check, before the edit** — `README_COUNT_PAIR`'s FROM
-(`68 of 266 registered items accepted.`) occurred **1** time in the base
-`README.md`; `README_TIER3_PAIR`'s FROM
-(`| 3 | Full Token Economy & Autonomy | 3 | 26 |`) occurred **1** time.
-Both TO strings do not contain their FROM (the changed digit sits
-mid-string in both) — genuine REWRITES, applied via literal string
-replacement, confirmed by direct read of the diff after C2: exactly two
-one-character digit changes, no other line touched.
+```
+$ python3 -m pytest tests/ui_server/ -q
+........................................................................ [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+........................................................................ [ 55%]
+........................................................................ [ 69%]
+........................................................................ [ 83%]
+........................................................................ [ 97%]
+...........                                                              [100%]
+515 passed in 33.21s
+```
 
-**Scope-check (git diff --stat over the full round's range)** —
-`git diff --stat e6e413ad..HEAD -- packages/ apps/ tests/
-docs/roadmap/features/`: **EMPTY**, confirmed directly.
+```
+$ python3 -m pytest tests/orchestration/test_test_runner.py -q
+....................................................                     [100%]
+52 passed in 5.75s
+```
 
-`git status --porcelain` after C4 (checked immediately before writing this
-file, tree otherwise clean apart from this in-progress commit): **EMPTY**
-once this commit lands.
+```
+$ python3 -m pytest tests/regression/test_resource_safety.py -q
+.....................                                                    [100%]
+21 passed in 11.54s
+```
 
-**`.agent/plan.md`** — `wc -l` → **33** (under 50). `grep -c '^## Goal'`
-→ **1**. `grep -c '^## Next Steps'` → **1**.
+```
+$ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
+................                                                         [100%]
+16 passed in 0.30s
+```
 
-**`.agent/live_review.md` byte arithmetic (C3)** — pre-C3 byte length
-(measured directly off the `0a297914` commit blob): **2244451** bytes,
-ending WITHOUT a trailing newline. RECORD20 measured **2129** bytes via
-UTF-8 encoding, 0 internal newlines (matches the block's own stated
-figure). Post-C3 byte length (measured directly off disk after the
-append): **2246582** bytes. Arithmetic: 2244451 + 2 (two newlines) + 2129
-= 2246582 — confirmed by direct computation, and the first 2244451 bytes
-of the post-C3 file were diffed byte-for-byte against the pre-C3 commit
-blob and found identical (exact prefix). The file still ends WITHOUT a
-trailing newline (confirmed via `tail -c 1` → `.`, no `\n`).
+```
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+..........................................                               [100%]
+42 passed in 20.82s
+```
 
-**Transport (C0a/C0b)** — `sha256sum .agent/authored/f110-r20.md
-.agent/last_block.md`: both produced
-`093164756a8128814d2972705d6e1792ac3cd3703092e55e849b49c96fff8e00` —
-MATCH. `wc -l` both files → **112**.
+Pass counts: tests/docs/ **295**, test_roadmap_index.py **30**,
+tests/ui_server/ **515**, test_test_runner.py **52**,
+test_resource_safety.py **21**, test_integrity_gate.py **16**,
+test_golden_path.py (canary) **42**. All seven suites ran as seven
+separate invocations; the four state readers (`tests/ui_server/`,
+`test_test_runner.py`, `test_resource_safety.py`, `test_integrity_gate.py`)
+ran as four, not three. This round edited no test and no production code,
+so these are the round's own MOVED-COUNT readings for the reviewer's base
+diff, not asserted as unchanged by the worker.
 
-**Finding R-0790** — the open set (`.agent/live_review.md`) was searched
-first (`grep -o 'R-07[0-9][0-9]'`) and the highest prior id was `R-0789`;
-`R-0790` was unused before this round, so no duplicate. RECORD20 both
-registers and resolves `R-0790` in running prose (`Done: R-0790 — the
-same round that registered it`), not as a separate `^- R-` ledger line —
-consistent with the repository's existing pattern of in-prose
-same-round resolution (see round 17's treatment of `R-0784`). The
-`^- R-` line count (350) and `^Done: R-` line count (74) in
-`.agent/live_review.md` are unchanged before and after this round's own
-C3 append, confirmed by direct grep against both the pre-C3 commit blob
-and the post-C3 file on disk.
+**G6 THE TREE, THE COMMITS AND THE SWEEP** —
+
+`git status --porcelain` immediately before C3 was staged:
+```
+(empty)
+```
+
+`git ls-files .remedy-wt`:
+```
+(empty — no output, nothing under .remedy-wt/ is ever committed)
+```
+
+Per-commit insertion counts (`git show --numstat`, `+` column only) for
+C0a, C0b, C1 and C2, compared cell-by-cell against this handback's own
+Commits table above:
+
+| Commit | Path | `+` (numstat) | `+` (Commits table above) | Match |
+|--------|------|---------------|---------------------------|-------|
+| be926e18 (C0a) | `.agent/authored/f112-r1.md` | 235 | 235 | yes |
+| da27fa9c (C0b) | `.agent/last_block.md` | 223 | 223 | yes |
+| 853914e8 (C1) | `.agent/plan.md` | 35 | 35 | yes |
+| c1c31bef (C2) | `.agent/context.md` | 30 | 30 | yes |
+| c1c31bef (C2) | `docs/roadmap/STATUS.md` | 1 | 1 | yes |
+
+C3's own numbers are withheld from this file per the block's instruction
+— the reviewer measures them at the next gate.
+
+**THE STALENESS SWEEP** — one entry per file this round touched:
+
+- `.agent/authored/f112-r1.md` — new file, not stale (created this round,
+  matches the block byte for byte per G1).
+- `.agent/last_block.md` — not stale; mirrors the just-committed authored
+  file, confirmed identical by G1.
+- `.agent/plan.md` — not stale; wholly replaced with PLAN1, describes this
+  round and the next two rounds accurately, confirmed by G2.
+- `docs/roadmap/STATUS.md` — not stale; the single F112 line now reads
+  `[~]` (in progress), matching the branch's actual state. Checked whether
+  this claim ripples into README.md's derived "accepted" count or Tier 3
+  "Done" cell: those counts are both derived from `[x]` (accepted) lines
+  only (confirmed by `tests/orchestration/test_roadmap_index.py` and
+  `tests/docs/` both passing unchanged at 30/295), and `[~]` is not `[x]`,
+  so neither derived count moves. Not stale.
+- `.agent/context.md` — not stale; wholly replaced with CONTEXT1, scoped
+  to F112's actual branch/scope/constraints, confirmed by G4.
+- `docs/roadmap/ROADMAP.md` — outside this round's change set (not
+  touched); still describes F112 accurately at line 537 ("Class input caps
+  with a documented...") and the dependency line at 1180 ("F118 ← F105/F112
+  · ..."); neither sentence is made stale by this round's claim-only
+  change, so nothing to declare here beyond noting it was checked.
 
 ## Authored-text proofs
 
-- `.agent/authored/f110-r20.md` vs `.agent/last_block.md`: byte-identical,
-  sha256 `093164756a8128814d2972705d6e1792ac3cd3703092e55e849b49c96fff8e00`
-  on both — confirmed disk-to-disk.
-- The literal source of `.agent/authored/f110-r20.md` is
-  `/home/decodeux/Repos/remedy/.remedy-wt/f110-r20-block.md`, read with
-  the Read tool and copied byte-for-byte (`diff` confirmed IDENTICAL
-  before the commit).
-- PLAN20 and RECORD20 were both extracted programmatically from the
-  COMMITTED `.agent/authored/f110-r20.md` by marker (`<<<PLAN20_START>>>`
-  / `<<<PLAN20_END>>>`, `<<<RECORD20_START>>>` / `<<<RECORD20_END>>>`),
-  never retyped and never taken directly from the prompt text. RECORD20
-  measured exactly 2129 bytes via UTF-8 encoding, matching the block's
-  own stated figure.
+- `.agent/authored/f112-r1.md` vs `.agent/last_block.md`: byte-identical,
+  sha256
+  `8305f3fea6b57ec0ceda3bf7dce1b69d441eab4c579f8353c532484185ecee6c` on
+  both — confirmed disk-to-disk (G1).
+- `.agent/authored/f112-r1.md` was written directly from this round's
+  prompt block via the Write tool, reproduced verbatim (no retyping of
+  slices — those were extracted programmatically afterward).
+- PLAN1, CONTEXT1, PAIR S FROM and PAIR S TO were all extracted
+  programmatically from the COMMITTED `.agent/authored/f112-r1.md` by
+  `<<<BEGIN name>>>` / `<<<END name>>>` marker index (never retyped, never
+  taken directly from the prompt text), via
+  `/home/decodeux/Repos/remedy/.remedy-wt/extract_slices.py`.
+- PLAN1 vs the extracted-then-written `.agent/plan.md`: `cmp` exit 0 (G2).
+- CONTEXT1 vs the extracted-then-written `.agent/context.md`: `cmp` exit 0
+  (G4).
+- PAIR S: FROM occurred exactly once in `docs/roadmap/STATUS.md` before
+  the edit, zero times after; TO occurs exactly once after; TO does not
+  contain FROM (G3).
+- Both PLAN1 and CONTEXT1, as extracted, end WITH a trailing newline
+  (`repr()` tails confirmed `...not absorbed.\n` and `...does not restate
+  it.\n` respectively before writing), and the written `.agent/plan.md`
+  and `.agent/context.md` match byte-for-byte per the `cmp` results above,
+  so they carry the same trailing newline. Constraint 3 satisfied.
 
 ## Deviations & assumptions
 
-- None from the ordered commit sequence: C0a, C0b, C1, C2, C3 ran exactly
-  in the bundle's declared order, followed by C4.
-- Two transient scratch files were created under `.remedy-wt/` (not
-  `.agent/`, since that directory is gitignored scratch per prior
-  sessions' convention) to perform marker extraction and prefix
-  verification: `plan20_extracted.md` and `prefix_check.md`, plus one
-  `pre_c3_live_review.md` and one `pre_c3.md` snapshot. All four were
-  deleted by exact path immediately after use, each confirmed by a
-  subsequent `git status --porcelain` reading of EMPTY (`.remedy-wt/` is
-  gitignored so these never appeared in `git status` regardless, but they
-  are named here for completeness per the "declare, don't hide"
-  convention).
-- The bash sandbox in this session rejected several single-command
-  invocations containing `awk` or a `$` end-of-line anchor in `grep -c`
-  as requiring approval that could not be granted; these were routed
-  through equivalent `python3 -c` one-liners or unanchored `grep -c`
-  patterns instead, with results cross-checked to be equivalent. This
-  changed tooling, not outcome.
+- None from the ordered commit sequence: C0a, C0b, C1, C2 ran exactly in
+  the bundle's declared order, followed by C3 (this handback).
+- Scratch files were created under `.remedy-wt/` (gitignored, confirmed by
+  `git check-ignore -v`) to perform marker extraction:
+  `extract_slices.py`, `PLAN1.extracted`, `CONTEXT1.extracted`,
+  `PAIR_S_FROM.extracted`, `PAIR_S_TO.extracted`. These were left in place
+  rather than deleted — `.remedy-wt/` already holds a large number of
+  scratch artifacts from prior sessions, and per the standing "never
+  delete by glob" convention, this round did not sweep or remove any of
+  it; `git ls-files .remedy-wt` confirms none of it is ever tracked
+  regardless (G6).
+- No `.py` file shipped this round (production code is deferred to rounds
+  2–3), so the `ruff check` / `py_compile` gate CONTEXT1 documents as
+  standing policy for a round that ships a `.py` file does not apply here
+  and was not run.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a (transport) | done | |
-| C0b (mirror) | done | |
-| C1 (PLAN20 replacement) | done | |
-| C2 (README_COUNT_PAIR + README_TIER3_PAIR, one commit) | done | |
-| C3 (RECORD20 append) | done | |
-| Pytest before C2 reproduces CI's two failures | done | 68 vs 69, Tier 3 Done=3 vs 4, exit 1 |
-| Pytest after C2 passes | done | 2 passed, exit 0 |
-| Scope-check (packages/apps/tests/docs-roadmap-features empty) | done | |
-| `.agent/plan.md` under 50 lines, one `## Goal`, one `## Next Steps` | done | 33 lines |
-| `.agent/live_review.md` byte arithmetic | done | 2244451 + 2 + 2129 = 2246582 |
-| R-0790 registered and resolved same round | done | in-prose, no duplicate |
-| C4 (handback) | done | this document |
+| Pre-round HEAD check (`5c28c674...`) | done | |
+| STOP check before first commit | done | did not exist |
+| C0a (save block verbatim) | done | |
+| C0b (mirror to last_block) | done | |
+| C1 (PLAN1 → plan.md, first substantive commit) | done | |
+| C2 (PAIR S → STATUS.md, CONTEXT1 → context.md, one commit) | done | |
+| STOP check before C3 | done | did not exist |
+| C3 (handback) | done | this document |
+| G1 transport (sha256 match) | done | |
+| G2 the plan (cmp, line count, headings) | done | 48 lines |
+| G3 the STATUS pair (FROM 1→0, TO 0→1, no containment) | done | |
+| G4 the context (cmp, headings, counts) | done | |
+| G5 the suites (seven invocations) | done | 295/30/515/52/21/16/42 |
+| G6 the tree, the commits and the sweep | done | porcelain empty, no `.remedy-wt` tracked, numstat matched |
 | Push | done | see below — real output |
 
 ## Next
 
-Open findings: **278** (unchanged from round 19 — `^- R-` count 350 and
-`^Done: R-` count 74 in `.agent/live_review.md` are identical before and
-after this round's own C3 append; this round's R-0790 is registered and
-resolved in the same paragraph, in prose, not as a new `^- R-` /
-`^Done: R-` ledger line).
+Open findings: unchanged this round — F112's claim-only round registers
+no new finding and resolves none; this round is not gated against
+`.agent/live_review.md`'s ledger counts (that state file is untouched by
+this round's change set).
 
-Next expected action: the reviewer re-verifies and, if green, re-checks
-PR #233's CI and merges at the Open PR Gate.
+Next expected action: the reviewing session verifies this round's gates
+independently, then delegates round 2 — the config schema
+(`prompt_budget.task_class_caps` + `prompt_budget.default_cap`) and the
+new module `packages/orchestration/prompt_budget.py`
+(`resolve_task_class_cap`, `validate_prompt_budget_config`) — per
+`.agent/plan.md`'s Next Steps.
 
-SESSION 8 spent this round (round 20, repair) and ends here with this
-handback. F110 remains CLOSED as a build feature; round 20 was a
-CI-repair round against the still-open PR, not a new build round.
+SESSION 1 spent this round (round 1, claim) and ends here with this
+handback.
