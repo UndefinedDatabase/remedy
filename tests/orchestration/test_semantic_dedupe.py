@@ -1893,3 +1893,156 @@ class TestTheSemanticDedupeKillSwitch:
         assert resumed
         marked_resumed = [p for p in resumed if DEDUPE_MARKER_PREFIX in p]
         assert (marked_resumed != []) is enabled, (enabled, len(resumed), len(marked_resumed))
+# ---------------------------------------------------------------------------
+# R-0774: ONE PROMPT TRACE PER ACTUAL PROVIDER INVOCATION, ON A RESUME FALLBACK.
+#
+# A resume fallback makes a SECOND provider call in the same round, with a
+# prompt RECOMPOSED AT FULL CONTENT. Until this round the Builder wrote its
+# trace two statements BEFORE that recomposition and never wrote another, so the
+# only Builder trace of a fallback round described the composition the loop had
+# just ABANDONED: ``prompt_sha256``, ``prompt_chars``, ``segment_manifest`` and
+# ``prompt_text_redacted`` all reported bytes the provider never received. That
+# is a FALSE live indicator in the evidence rather than a missing one.
+#
+# WHY THESE CASES READ THE TRACES AND SPEC O'S READ THE CALLS. SPEC O asserts
+# what LEFT the loop and deliberately refuses to trust the traces, because at
+# that time the traces were the broken artefact. These cases assert that the
+# traces now AGREE with those same calls, so the two sets are complementary and
+# neither replaces the other. Every length compared below is taken from
+# ``_split(calls)`` rather than written down, so a fixture change moves both
+# sides together instead of pinning today's byte count.
+
+
+class TestATraceIsRecordedForEveryProviderInvocation:
+    """SPEC Z: R-0774, pinned against the real loop on both roles."""
+
+    @staticmethod
+    def _role_traces(result, role: str, round_number: int) -> list:
+        """Every trace of one ROLE in one ROUND, in the order it was recorded.
+
+        Each trace is asserted UN-TRUNCATED before any caller reads it: a marker
+        ABSENCE is only as wide as the recorded text, so a truncated entry could
+        satisfy "carries no marker" by having dropped the marker. This is the
+        guard ``TestTheSemanticDedupeKillSwitch._marked_traces`` applies, for the
+        same reason.
+        """
+        for trace in result.prompt_traces:
+            assert trace.prompt_text_truncated is False, (trace.role, trace.round)
+        return [
+            trace for trace in result.prompt_traces
+            if trace.role == role and trace.round == round_number
+        ]
+
+    # -- SPEC Z case 1: the builder fallback ---------------------------------
+
+    def test_a_builder_resume_fallback_records_the_bytes_it_actually_sent(
+        self, fallback_repo: Path,
+    ):
+        # THE DISCRIMINATOR FOR THE BUILDER HALF OF THE REPAIR. Deleting the
+        # second ``result.prompt_traces.append`` from the Builder fallback branch
+        # of ``pingpong_loop.py`` restores the defect exactly and fails
+        # assertion (b) below on its very first line.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            builder_resume_fails=True,
+        )
+        calls = _capture_role_calls(builder, "build")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+
+        # (a) THE FALLBACK REALLY FIRED, so this case cannot pass vacuously on a
+        # run that never took the branch it is about.
+        assert result.final_status == "staged_review_passed"
+        fallback_round = result.rounds[1]
+        assert fallback_round.builder_output.resume_fallback is True
+
+        # (b) TWO INVOCATIONS, TWO TRACES — the abandoned resumed attempt keeps
+        # its own honest record, and the call that actually reached the provider
+        # finally gets one.
+        traces = self._role_traces(result, "builder", fallback_round.round_number)
+        assert len(traces) == 2, [t.prompt_chars for t in traces]
+        assert DEDUPE_MARKER_PREFIX in traces[0].prompt_text_redacted
+        assert DEDUPE_MARKER_PREFIX not in traces[1].prompt_text_redacted
+
+        # (c) AND THE SECOND TRACE DESCRIBES THE BYTES THAT LEFT THE LOOP. The
+        # length comes from the fresh-session call itself, so this pins the
+        # correspondence rather than today's prompt size.
+        fresh, resumed = TestAResumeFallbackSendsFullContent._split(calls)
+        assert fresh
+        assert traces[1].prompt_chars == len(fresh[-1]), (
+            traces[1].prompt_chars, [len(p) for p in fresh],
+        )
+        # AND DEDUPE WAS ON, so (b)'s marker assertions are about the fallback
+        # rather than about a run in which the feature never fired.
+        assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != []
+
+    # -- SPEC Z case 2: the reviewer fallback, the same claim ----------------
+
+    def test_a_reviewer_resume_fallback_records_the_bytes_it_actually_sent(
+        self, fallback_repo: Path,
+    ):
+        # THE MIRROR, AND IT NEEDS ITS OWN CASE RATHER THAN A PARAMETRIZE. This
+        # role reaches the property by a different route: its traces are written
+        # by the ``on_call=_rev_trace(...)`` callback, which ``_call_with_retry``
+        # fires once per ACTUAL invocation and which reads ``reviewer_composed``
+        # at call time, so it picks up the fallback rebinding on its own. The
+        # DISCRIMINATOR is therefore that callback: dropping ``on_call`` from the
+        # Reviewer fallback's ``_call_with_retry`` fails assertion (b) here.
+        # Pinning it matters precisely because nothing in the Reviewer branch
+        # looks like the Builder's explicit append.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            reviewer_resume_fails=True,
+        )
+        calls = _capture_role_calls(reviewer, "review")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        fallback_round = result.rounds[1]
+        assert fallback_round.reviewer_output.resume_fallback is True
+
+        traces = self._role_traces(result, "reviewer", fallback_round.round_number)
+        assert len(traces) == 2, [t.prompt_chars for t in traces]
+        assert DEDUPE_MARKER_PREFIX in traces[0].prompt_text_redacted
+        assert DEDUPE_MARKER_PREFIX not in traces[1].prompt_text_redacted
+
+        fresh, resumed = TestAResumeFallbackSendsFullContent._split(calls)
+        assert fresh
+        assert traces[1].prompt_chars == len(fresh[-1]), (
+            traces[1].prompt_chars, [len(p) for p in fresh],
+        )
+        assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != []
+
+    # -- SPEC Z case 3: the discriminator against an unconditional append ----
+
+    def test_a_chain_that_never_falls_back_records_one_trace_per_role_per_round(
+        self, fallback_repo: Path,
+    ):
+        # WITHOUT THIS CASE, CASES 1 AND 2 WOULD BOTH PASS ON A LOOP THAT HAD
+        # SIMPLY BEGUN APPENDING A SECOND TRACE UNCONDITIONALLY — a different
+        # defect wearing the same green, and a worse one, because it would
+        # double-count every call in ``call_segments`` rather than mis-describe
+        # the rare one. No role falls back here, so every role must record
+        # EXACTLY ONE trace in EVERY round.
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, providers, repair_rounds=2,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        # THE POSITIVE CONTROL: more than one round ran, and neither role fell
+        # back, so "one trace per role per round" is a claim about a chain that
+        # really had the opportunity to record a second one.
+        assert len(result.rounds) == 2
+        for round_data in result.rounds:
+            assert round_data.builder_output.resume_fallback is False
+            assert round_data.reviewer_output.resume_fallback is False
+            for role in ("builder", "reviewer"):
+                traces = self._role_traces(result, role, round_data.round_number)
+                assert len(traces) == 1, (
+                    role, round_data.round_number, [t.prompt_chars for t in traces],
+                )
