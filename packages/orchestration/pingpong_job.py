@@ -2393,6 +2393,24 @@ def run_job(
                 excerpt=task_prompt[:200],
             )
 
+            compiled_context_paths: list[str] | None = None
+            compiled_context_candidates: list[str] | None = None
+            compiled_context_token_budget: int | None = None
+            if task.files_hint:
+                from packages.orchestration.context_compiler import (
+                    fit_task_context_to_class_cap,
+                )
+                fit_result = fit_task_context_to_class_cap(
+                    Path(job.job_workspace_path),
+                    task.files_hint,
+                    task.files_hint,
+                    task.task_class,
+                )
+                if fit_result.fits:
+                    compiled_context_paths = list(task.files_hint)
+                    compiled_context_candidates = list(task.files_hint)
+                    compiled_context_token_budget = fit_result.cap_tokens
+
             try:
                 result = run_pingpong(
                     task.title,
@@ -2428,6 +2446,9 @@ def run_job(
                     stop_check=_stop_check,
                     episode_id=job.active_episode_id,
                     on_provider_call=_on_provider_call,
+                    compiled_context_paths=compiled_context_paths,
+                    compiled_context_candidates=compiled_context_candidates,
+                    compiled_context_token_budget=compiled_context_token_budget,
                 )
             except Exception as exc:
                 task.status = TASK_FAILED

@@ -3235,3 +3235,108 @@ class TestTaskEntryToPlannedTaskAdapter:
 
         assert planned is not None
         assert planned.files_hint == ["src/main.py", "docs/README.md"]
+
+
+class TestClassBudgetCompiledContextWiring:
+    """T003b2b2a (DECISION F112 D6): the job-dispatch call site wires a
+    task's real files_hint into run_pingpong's compiled_context_* params
+    only when fit_task_context_to_class_cap reports the fenced scope fits
+    under the task's class cap; otherwise it falls through unchanged to
+    build_repo_context, same as an empty files_hint always has."""
+
+    def test_a_fitting_files_hint_wires_compiled_context_into_run_pingpong(
+        self, isolate_data_root, demo_repo, monkeypatch
+    ):
+        job = parse_job_file(_JOB_WITH_FILES, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        captured = []
+
+        def capturing_run(*args, **kwargs):
+            captured.append(kwargs)
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert len(captured) == 1
+        assert captured[0]["compiled_context_paths"] == ["src/main.py", "docs/README.md"]
+        assert captured[0]["compiled_context_candidates"] == ["src/main.py", "docs/README.md"]
+        assert isinstance(captured[0]["compiled_context_token_budget"], int)
+        assert captured[0]["compiled_context_token_budget"] > 0
+
+    def test_a_files_hint_that_cannot_fit_its_class_cap_falls_through_unchanged(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        config_dir = tmp_path / "_config"
+        config_dir.mkdir()
+        toml_file = config_dir / "remedy.toml"
+        toml_file.write_text(
+            "[remedy.prompt_budget]\ndefault_cap = 1\n", encoding="utf-8"
+        )
+        from packages.orchestration.config import load_config
+        loaded = load_config(
+            project_path=toml_file, user_path=Path("/nonexistent/user.toml")
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.config.get_config", lambda: loaded
+        )
+
+        job = parse_job_file(_JOB_WITH_FILES, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        captured = []
+
+        def capturing_run(*args, **kwargs):
+            captured.append(kwargs)
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert len(captured) == 1
+        assert captured[0]["compiled_context_paths"] is None
+        assert captured[0]["compiled_context_candidates"] is None
+        assert captured[0]["compiled_context_token_budget"] is None
+
+    def test_an_empty_files_hint_leaves_compiled_context_untouched(
+        self, isolate_data_root, demo_repo, monkeypatch
+    ):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        captured = []
+
+        def capturing_run(*args, **kwargs):
+            captured.append(kwargs)
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert len(captured) == 2
+        for kwargs in captured:
+            assert kwargs["compiled_context_paths"] is None
+            assert kwargs["compiled_context_candidates"] is None
+            assert kwargs["compiled_context_token_budget"] is None
