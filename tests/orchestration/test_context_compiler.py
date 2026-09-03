@@ -32,7 +32,6 @@ from packages.orchestration.context_compiler import (
     OMISSION_REASON_SIZE,
     OMISSION_REASON_UNPARSEABLE,
     OMITTED_CONTEXT_FILENAME,
-    ClassBudgetFit,
     ContextSizeComparison,
     FileSignatures,
     ImportNeighbors,
