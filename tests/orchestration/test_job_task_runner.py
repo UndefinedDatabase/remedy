@@ -1713,6 +1713,8 @@ class TestCliPauseContinueSmoke:
         # Step 2: Run with --max-tasks 1, --repair-rounds 1
         args1 = _make_args(
             job_id=job.job_id,
+            builder="fake",
+            reviewer="fake",
             repair_rounds=1,
             max_tasks="1",
         )
@@ -1839,7 +1841,8 @@ class TestMaxRoundsContinuation:
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
         args1 = _make_args(
-            job_id=job.job_id, max_rounds="7", max_tasks="1",
+            job_id=job.job_id, builder="fake", reviewer="fake",
+            max_rounds="7", max_tasks="1",
         )
         COMMAND_HANDLERS["do.job-run"](args1)
         out1 = json.loads(capsys.readouterr().out)
@@ -2225,7 +2228,8 @@ class TestCommandPathFullConfigContinuation:
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
 
         args1 = _make_args(
-            job_id=job.job_id, max_rounds="7", max_tasks="1",
+            job_id=job.job_id, builder="fake", reviewer="fake",
+            max_rounds="7", max_tasks="1",
         )
         COMMAND_HANDLERS["do.job-run"](args1)
         capsys.readouterr()
@@ -2628,7 +2632,7 @@ class TestCommandPathGateSmoke:
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
-        args = _make_args(job_id=job.job_id)
+        args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
         COMMAND_HANDLERS["do.job-run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
@@ -3044,7 +3048,7 @@ class TestCommandPathPreApplySmoke:
 
         monkeypatch.setattr(pp_mod, "run_pingpong", mutating_run)
 
-        args = _make_args(job_id=job.job_id)
+        args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
         COMMAND_HANDLERS["do.job-run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "blocked"
@@ -3056,7 +3060,7 @@ class TestCommandPathPreApplySmoke:
         from apps.cli.commands.do_cmd import COMMAND_HANDLERS
 
         job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
-        args = _make_args(job_id=job.job_id)
+        args = _make_args(job_id=job.job_id, builder="fake", reviewer="fake")
         COMMAND_HANDLERS["do.job-run"](args)
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "completed"
