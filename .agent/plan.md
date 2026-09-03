@@ -14,29 +14,26 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 20, session 4. CLOSURE, steps 1 and 2: the evidence job and a FRESH
-review zip, plus the integrity check. Register the three findings the
-round 19 self-use run exposed, all three as documented Low risks carried
-into closure — two of them are F258's generator, not F109's code. The
-STATUS line and the PR are round 21, because the closure commit must
-FOLLOW a READY package.
+Round 21, session 4 — THE CLOSURE ROUND, and the last on this branch.
+The authored STATUS line flips F109 to accepted with the README
+capability sync in the SAME commit, `consumed_by` is set to `F109` on
+`SU-005`, and the PR is created but NOT merged: it merges at the next
+feature's start through the Open PR Gate, and that gap is the operator's
+manual-review window.
 
 ## Next Steps
 
-- Round 21, the closure commit: the authored STATUS line with the README
-  capability sync in the SAME commit, `consumed_by` set to F109 on
-  `SU-005`, the final `.agent/` state, then the PR. That round also runs
-  the single consolidation pass on the checklist of
-  docs/agents/planner_reviewer_prompt.md section 3.
+- The operator merges the PR, or the next feature's first session merges
+  it at the Open PR Gate.
+- Nothing else is owed by this branch.
 
 ## Risks
 
-- A failing zip build is a CLOSURE BLOCKER, never something to work
-  around; `PACKAGE_STATUS` is the reading, not the exit code.
-- SEVEN findings on this branch were one class: prose TRUE when written
-  and falsified by a later round. The consolidation should answer the
-  class, not add an eighth id.
+- Three findings from the self-use run are carried as documented Low
+  risks, not repaired: `R-0784`, `R-0785` and `R-0786`. Two of them are
+  F258's generator and one is F257's queue file, so none is F109's code.
 - Nothing dedupes in production: every concrete adapter returns
   `supports_resume = False`, so the mechanism is suite-only today.
+  `docs/system/semantic-dedupe-v1.md` states this as its first limit.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
   carry two `Done:` lines each. That is `R-0778`.
