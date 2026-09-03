@@ -1,10 +1,21 @@
-"""Tests for packages/orchestration/model_routing.py — F110 T002a/T002b/T002c/T003.
+"""Tests for packages/orchestration/model_routing.py — F110 T002a/T002b/T002c/T003/T001.
 
-The four rounds this file covers are the class TABLE (T002a), the three HARD
+The five rounds this file covers are the class TABLE (T002a), the three HARD
 RULES as named checks (T002b), the PER-PROJECT OVERRIDE SCHEMA that validates
-a whole override map against those rules before it is applied (T002c), and the
+a whole override map against those rules before it is applied (T002c), the
 PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a CHEAPER tier unless a
-documented benchmark run backs it (T003).
+documented benchmark run backs it (T003), and the ROLE AND CALL-SITE INVENTORY
+with the single ROUTING SEAM (T001).
+
+THE CALL-SITE INVENTORY IS RE-DERIVED HERE, NOT READ BACK.
+:class:`TestTheCallSiteInventoryIsChecked` re-runs an AST sweep over
+``packages/`` and ``apps/`` and asserts the resulting MULTISET of
+``(path, role-or-marker)`` pairs EQUALS ``ROLE_CONFIG_CALL_SITES``, so a new
+provider call site cannot land without this file going red. The same class holds
+the coupling between the two role vocabularies that
+``model_routing`` deliberately does not import: every member of
+``role_config.KNOWN_ROLES`` is either in the declaring map or in the inheriting
+set, and every literal role the inventory names is a KNOWN_ROLE.
 
 THERE IS A SECOND SYNC TEST NOW, AND IT IS T003's DELIVERABLE.
 :class:`TestPromotionRuleSyncTest` parses the "Promotion rule" section of the
@@ -52,13 +63,16 @@ nobody would notice changing.
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.model_routing import (
+    DYNAMIC_ROLE_MARKER,
     HARD_RULE_NAMES,
     MID_TIER,
     MODEL_TIERS,
@@ -73,6 +87,9 @@ from packages.orchestration.model_routing import (
     PROMOTION_MINIMUM_RUNS_PER_FIXTURE,
     PROMOTION_RULE_NAMES,
     REVIEWER_WORKER_CLASS_PAIRS,
+    ROLE_CONFIG_CALL_SITES,
+    ROLE_CONFIG_RESOLVER_NAME,
+    ROLE_TASK_CLASSES,
     ROUTED_CALL_EVIDENCE_FIELDS,
     RULE_ORCHESTRATION_BELOW_TOP_TIER,
     RULE_OVERRIDE_UNKNOWN_TASK_CLASS,
@@ -84,9 +101,12 @@ from packages.orchestration.model_routing import (
     RULE_SAFETY_CLASS_BELOW_MID_TIER,
     SAFETY_RELEVANT_CLASSES,
     SEED_MAPPING_REASON,
+    TASK_CLASS_INHERITING_ROLES,
     TASK_CLASS_TIERS,
     TOP_TIER,
+    UNDECLARED_ROLE_TASK_CLASS,
     UNKNOWN_CLASS_REASON,
+    OriginatingTaskClassRequired,
     OverrideRefused,
     PromotionAssertionResults,
     PromotionEvidence,
@@ -98,12 +118,22 @@ from packages.orchestration.model_routing import (
     is_task_class_promotion,
     model_tier_rank,
     normalize_task_class,
+    resolve_role_task_class,
     resolve_task_class_tier,
     resolve_task_class_tier_with_overrides,
+    route_role_call,
     routed_call_evidence_fields,
     validate_routing_choice,
     validate_task_class_tier_overrides,
 )
+
+# THE COUPLING THAT THE MODULE UNDER TEST DELIBERATELY DOES NOT IMPORT. F110 R8
+# constraint 6 keeps role_config out of model_routing's imports — policy layer
+# above config layer — so the two role vocabularies are held together HERE
+# instead, by TestTheCallSiteInventoryIsChecked below. That is stronger than an
+# import: an import fails only when something is MISSING, while this file fails
+# when the two sets disagree in EITHER direction.
+from packages.orchestration.role_config import KNOWN_ROLES, resolve_role_config
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -1539,3 +1569,339 @@ class TestRoutedCallEvidenceFields:
 
     def test_the_declared_field_tuple_is_exactly_four_names(self):
         assert ROUTED_CALL_EVIDENCE_FIELDS == ("task_class", "tier", "reason", "promoted_by")
+
+
+# ---------------------------------------------------------------------------
+# F110 T001 — the role inventory, the routing seam and the call-site sweep
+# ---------------------------------------------------------------------------
+
+#: The two source trees the call-site sweep covers. Everything Remedy ships that
+#: could hold a provider call site lives under one of them.
+SWEPT_SOURCE_TREES = ("packages", "apps")
+
+#: The single inheriting role, read from the module's own frozen set rather than
+#: retyped: a renamed role must move both together.
+INHERITING_ROLE = sorted(TASK_CLASS_INHERITING_ROLES)[0]
+
+#: Two originating classes whose SEED TIERS DIFFER. The difference is the
+#: discriminator: an inheriting role that returned a FIXED class could satisfy one
+#: of these but never both, so the pair proves INHERITANCE rather than a constant.
+ORIGINATING_TOP_CLASS = "architecture"
+ORIGINATING_CHEAP_CLASS = "format"
+
+#: A role neither :data:`ROLE_TASK_CLASSES` nor :data:`TASK_CLASS_INHERITING_ROLES`
+#: names, and that ``role_config.KNOWN_ROLES`` does not name either — so it
+#: exercises the unknown-role path of BOTH layers.
+UNDECLARED_ROLE = "a_role_nobody_declared_a_class_for"
+
+ORCHESTRATOR_ROLE = "orchestrator"
+
+
+def _resolve_role_config_call_sites(root: Path = REPO) -> list[tuple[str, str]]:
+    """Return every ``resolve_role_config`` call under the swept trees of ``root``.
+
+    Each entry is ``(repository-relative path, role literal or
+    ``DYNAMIC_ROLE_MARKER``)`` — exactly the shape of
+    :data:`ROLE_CONFIG_CALL_SITES`, and with NO LINE NUMBER, so an edit above a
+    call cannot redden this sweep.
+
+    A FILE THAT FAILS TO PARSE FAILS THE SWEEP WITH THAT FILE NAMED and is never
+    skipped: a silently skipped file is a call site nothing covers, which is the
+    exact hole this inventory exists to close.
+    """
+    found: list[tuple[str, str]] = []
+    for tree in SWEPT_SOURCE_TREES:
+        tree_root = root / tree
+        assert tree_root.is_dir(), f"swept tree {tree!r} is missing under {root}"
+        for path in sorted(tree_root.rglob("*.py")):
+            try:
+                parsed = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            except SyntaxError as exc:
+                raise AssertionError(
+                    f"{path.relative_to(root).as_posix()} failed to parse and was NOT "
+                    f"skipped — an unswept file is a call site nothing covers: {exc}"
+                ) from exc
+            for node in ast.walk(parsed):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if isinstance(func, ast.Attribute):
+                    called = func.attr
+                elif isinstance(func, ast.Name):
+                    called = func.id
+                else:
+                    continue
+                if called != ROLE_CONFIG_RESOLVER_NAME:
+                    continue
+                argument = node.args[0] if node.args else None
+                for keyword in node.keywords:
+                    if keyword.arg == "role":
+                        argument = keyword.value
+                if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+                    role = argument.value
+                else:
+                    role = DYNAMIC_ROLE_MARKER
+                found.append((path.relative_to(root).as_posix(), role))
+    return found
+
+
+class TestEveryDeclaredRoleClassIsASeedTableKey:
+    """A role declaring a class the table does not name would LOOK declared."""
+
+    @pytest.mark.parametrize("role", sorted(ROLE_TASK_CLASSES))
+    def test_the_declared_class_is_a_seed_table_key(self, role):
+        assert ROLE_TASK_CLASSES[role] in TASK_CLASS_TIERS
+
+    def test_the_declaring_map_and_the_inheriting_set_are_disjoint(self):
+        # A role is DECLARED or INHERITING, never both: the two answers differ.
+        assert set(ROLE_TASK_CLASSES) & set(TASK_CLASS_INHERITING_ROLES) == set()
+
+    def test_the_undeclared_class_is_deliberately_not_a_seed_table_key(self):
+        # Which is what routes it conservatively through the existing resolver.
+        assert UNDECLARED_ROLE_TASK_CLASS not in TASK_CLASS_TIERS
+
+
+class TestTheRepairRuleIsExecutable:
+    """The policy bullet round 4 pinned as a STRING is now a checked BEHAVIOUR."""
+
+    def test_the_inheriting_role_is_the_one_the_pinned_policy_bullet_names(self):
+        # REPAIR_RULE_BULLET is the document's own wording, pinned since round 4.
+        assert INHERITING_ROLE in REPAIR_RULE_BULLET.lower()
+
+    def test_the_two_originating_classes_really_have_different_tiers(self):
+        # THE DISCRIMINATOR: without this, the pair below could pass by accident.
+        assert (
+            TASK_CLASS_TIERS[ORIGINATING_TOP_CLASS] != TASK_CLASS_TIERS[ORIGINATING_CHEAP_CLASS]
+        )
+
+    @pytest.mark.parametrize(
+        "originating", [ORIGINATING_TOP_CLASS, ORIGINATING_CHEAP_CLASS]
+    )
+    def test_the_inheriting_role_returns_the_originating_class(self, originating):
+        assert resolve_role_task_class(INHERITING_ROLE, originating) == originating
+
+    @pytest.mark.parametrize(
+        "originating", [ORIGINATING_TOP_CLASS, ORIGINATING_CHEAP_CLASS]
+    )
+    def test_the_seam_routes_it_to_the_originating_classes_tier(self, originating):
+        assert route_role_call(INHERITING_ROLE, originating)["tier"] == (
+            TASK_CLASS_TIERS[originating]
+        )
+
+    def test_it_raises_when_no_originating_class_is_supplied(self):
+        with pytest.raises(OriginatingTaskClassRequired) as excinfo:
+            resolve_role_task_class(INHERITING_ROLE)
+        assert excinfo.value.role == INHERITING_ROLE
+
+    def test_the_seam_raises_too_rather_than_guessing_a_tier(self):
+        with pytest.raises(OriginatingTaskClassRequired):
+            route_role_call(INHERITING_ROLE)
+
+    def test_the_originating_class_may_be_spelled_as_the_document_words_it(self):
+        assert resolve_role_task_class(INHERITING_ROLE, "Architecture") == (
+            normalize_task_class("Architecture")
+        )
+
+
+class TestADeclaredRoleIgnoresAnOriginatingClass:
+    """A declared class IS the declaration; a caller cannot override it."""
+
+    @staticmethod
+    def _differently_tiered_class(declared: str) -> str:
+        return next(
+            task_class
+            for task_class in sorted(TASK_CLASS_TIERS)
+            if TASK_CLASS_TIERS[task_class] != TASK_CLASS_TIERS[declared]
+        )
+
+    @pytest.mark.parametrize("role", sorted(ROLE_TASK_CLASSES))
+    def test_the_declared_class_wins_over_a_differently_tiered_originating_class(self, role):
+        declared = ROLE_TASK_CLASSES[role]
+        originating = self._differently_tiered_class(declared)
+        # THE DISCRIMINATOR: the tiers differ, so being overridden would SHOW.
+        assert TASK_CLASS_TIERS[originating] != TASK_CLASS_TIERS[declared]
+        assert resolve_role_task_class(role, originating) == declared
+        assert route_role_call(role, originating)["tier"] == TASK_CLASS_TIERS[declared]
+
+
+class TestTheOrchestratorRoleRoutesToTheTopTier:
+    """DECISION F110 D3's whole point, as a test rather than a claim."""
+
+    def test_the_seam_routes_it_to_the_top_tier(self):
+        assert route_role_call(ORCHESTRATOR_ROLE)["tier"] == TOP_TIER
+
+    def test_its_class_is_one_the_hard_rule_speaks_about(self):
+        assert ROLE_TASK_CLASSES[ORCHESTRATOR_ROLE] in ORCHESTRATION_TASK_CLASSES
+
+    def test_the_hard_rule_refuses_that_same_class_below_the_top_tier(self):
+        assert check_orchestration_class_routed_to_top_tier(
+            ROLE_TASK_CLASSES[ORCHESTRATOR_ROLE], MODEL_TIERS[0]
+        ) == RULE_ORCHESTRATION_BELOW_TOP_TIER
+
+    def test_an_override_demoting_that_class_is_refused_with_the_rule_named(self):
+        with pytest.raises(OverrideRefused) as excinfo:
+            build_effective_task_class_tiers(
+                {ROLE_TASK_CLASSES[ORCHESTRATOR_ROLE]: MODEL_TIERS[0]}
+            )
+        assert RULE_ORCHESTRATION_BELOW_TOP_TIER in _rule_names(excinfo.value.violations)
+
+
+class TestTheSeamReturnsTheRoutedCallEvidence:
+    """One seam, one answer: class, tier, reason and what promoted it."""
+
+    #: One fully specified seam call, asserted as an EXACT dict. A GOLDEN is the
+    #: one place a retyped literal is right: comparing against the module's own
+    #: constants would let a renamed value rename itself on both sides at once.
+    GOLDEN_ORCHESTRATOR_CALL = {
+        "task_class": "mission",
+        "tier": "top",
+        "reason": "seed_mapping",
+        "promoted_by": None,
+    }
+
+    def test_the_golden_orchestrator_call_is_exactly_this_mapping(self):
+        assert route_role_call(ORCHESTRATOR_ROLE) == self.GOLDEN_ORCHESTRATOR_CALL
+
+    @pytest.mark.parametrize("role", sorted(ROLE_TASK_CLASSES))
+    def test_a_declared_role_returns_exactly_the_declared_fields(self, role):
+        assert tuple(route_role_call(role)) == ROUTED_CALL_EVIDENCE_FIELDS
+
+    def test_an_inheriting_role_returns_exactly_the_declared_fields(self):
+        fields = route_role_call(INHERITING_ROLE, ORIGINATING_TOP_CLASS)
+        assert tuple(fields) == ROUTED_CALL_EVIDENCE_FIELDS
+
+    def test_a_promoted_class_carries_the_run_that_promoted_it(self):
+        effective = build_effective_task_class_tiers(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE},
+        )
+        fields = route_role_call(
+            INHERITING_ROLE, PROMOTABLE_CLASS, effective, {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE}
+        )
+        assert tuple(fields) == ROUTED_CALL_EVIDENCE_FIELDS
+        assert fields["task_class"] == PROMOTABLE_CLASS
+        assert fields["tier"] == PROMOTED_TIER
+        assert fields["reason"] == OVERRIDE_REASON
+        assert fields["promoted_by"] == SUFFICIENT_EVIDENCE.promotion_run_reference()
+
+    @pytest.mark.parametrize("role", sorted(ROLE_TASK_CLASSES))
+    def test_the_seam_recomputes_nothing_and_delegates(self, role):
+        # The whole reason the seam exists: class, tier and reason come from ONE
+        # place, so the routed tier and the evidence's tier cannot disagree.
+        effective = build_effective_task_class_tiers({})
+        assert route_role_call(role, None, effective) == routed_call_evidence_fields(
+            ROLE_TASK_CLASSES[role], effective
+        )
+
+    def test_the_effective_table_defaults_to_the_shipped_seed_table(self):
+        assert route_role_call("builder") == route_role_call(
+            "builder", None, dict(TASK_CLASS_TIERS)
+        )
+
+
+class TestTheCallSiteInventoryIsChecked:
+    """T001's real deliverable: a new provider call site cannot land undeclared."""
+
+    def test_the_swept_multiset_equals_the_declared_inventory(self):
+        assert Counter(_resolve_role_config_call_sites()) == Counter(ROLE_CONFIG_CALL_SITES)
+
+    def test_the_sweep_and_the_inventory_hold_the_same_number_of_calls(self):
+        # A MULTISET and not a set: teacher_model.py calls the resolver TWICE and
+        # a set would silently collapse the two into one.
+        assert len(ROLE_CONFIG_CALL_SITES) == len(_resolve_role_config_call_sites())
+
+    def test_only_two_of_the_seven_call_sites_pass_a_role_literal(self):
+        # WHY THE INVENTORY PINS SITES AND NOT ROLE STRINGS, as a measurement: a
+        # sweep keyed on literal roles alone would reach two of seven and report a
+        # clean bill for the five it never looked at.
+        literal = [role for _, role in ROLE_CONFIG_CALL_SITES if role != DYNAMIC_ROLE_MARKER]
+        assert len(ROLE_CONFIG_CALL_SITES) == 7
+        assert len(literal) == 2
+
+    def test_the_inventory_carries_no_line_numbers(self):
+        # A line number moves under any edit ABOVE the call, so an inventory keyed
+        # on them would redden for edits that changed no call site at all.
+        assert all(len(pair) == 2 for pair in ROLE_CONFIG_CALL_SITES)
+        assert all(isinstance(part, str) for pair in ROLE_CONFIG_CALL_SITES for part in pair)
+
+    def test_every_literal_role_the_inventory_names_is_a_known_role(self):
+        named = [role for _, role in ROLE_CONFIG_CALL_SITES if role != DYNAMIC_ROLE_MARKER]
+        assert named
+        for role in named:
+            assert role in KNOWN_ROLES
+
+    def test_every_known_role_is_declared_or_inheriting(self):
+        # THE COUPLING constraint 6 keeps out of the module's imports, in both
+        # directions: a role added to KNOWN_ROLES with no declared class, and a
+        # class declared here for a role nobody configures, both redden.
+        assert set(KNOWN_ROLES) == set(ROLE_TASK_CLASSES) | set(TASK_CLASS_INHERITING_ROLES)
+
+    def test_the_dynamic_marker_can_never_be_mistaken_for_a_role(self):
+        assert DYNAMIC_ROLE_MARKER not in KNOWN_ROLES
+        assert DYNAMIC_ROLE_MARKER not in ROLE_TASK_CLASSES
+
+    def test_an_unparsable_file_fails_the_sweep_with_that_file_named(self, tmp_path):
+        # NEVER SKIPPED: a silently skipped file is a call site nothing covers.
+        for tree in SWEPT_SOURCE_TREES:
+            (tmp_path / tree).mkdir()
+        (tmp_path / SWEPT_SOURCE_TREES[0] / "broken_call_site.py").write_text(
+            "def f(:\n", encoding="utf-8"
+        )
+        with pytest.raises(AssertionError) as excinfo:
+            _resolve_role_config_call_sites(tmp_path)
+        assert "broken_call_site.py" in str(excinfo.value)
+
+    def test_the_sweep_finds_the_resolver_called_through_its_module(self, tmp_path):
+        # role_config.resolve_role_config(...) and a bare resolve_role_config(...)
+        # are the same call site; a sweep matching only one form would miss five.
+        for tree in SWEPT_SOURCE_TREES:
+            (tmp_path / tree).mkdir()
+        (tmp_path / SWEPT_SOURCE_TREES[0] / "attribute_form.py").write_text(
+            f"role_config.{ROLE_CONFIG_RESOLVER_NAME}('builder')\n"
+            f"{ROLE_CONFIG_RESOLVER_NAME}(role=some_variable)\n",
+            encoding="utf-8",
+        )
+        found = _resolve_role_config_call_sites(tmp_path)
+        assert Counter(found) == Counter(
+            [
+                (f"{SWEPT_SOURCE_TREES[0]}/attribute_form.py", "builder"),
+                (f"{SWEPT_SOURCE_TREES[0]}/attribute_form.py", DYNAMIC_ROLE_MARKER),
+            ]
+        )
+
+
+class TestTheUndeclaredRolePathWarnsAndAnswersConservatively:
+    """Two layers must not disagree about one unknown role."""
+
+    def test_it_is_a_role_neither_set_names(self):
+        assert UNDECLARED_ROLE not in ROLE_TASK_CLASSES
+        assert UNDECLARED_ROLE not in TASK_CLASS_INHERITING_ROLES
+
+    def test_it_warns_rather_than_raising(self):
+        with pytest.warns(UserWarning, match="declares no task class"):
+            resolve_role_task_class(UNDECLARED_ROLE)
+
+    def test_the_warning_names_the_role(self):
+        with pytest.warns(UserWarning) as caught:
+            resolve_role_task_class(UNDECLARED_ROLE)
+        assert UNDECLARED_ROLE in str(caught[0].message)
+
+    def test_it_answers_with_the_undeclared_class(self):
+        with pytest.warns(UserWarning):
+            assert resolve_role_task_class(UNDECLARED_ROLE) == UNDECLARED_ROLE_TASK_CLASS
+
+    def test_the_seam_routes_it_to_the_top_tier_with_the_unknown_class_reason(self):
+        with pytest.warns(UserWarning):
+            fields = route_role_call(UNDECLARED_ROLE)
+        assert fields["tier"] == TOP_TIER
+        assert fields["reason"] == UNKNOWN_CLASS_REASON
+        assert fields["promoted_by"] is None
+
+    def test_it_matches_role_configs_own_unknown_role_behaviour(self):
+        # role_config WARNS AND CONTINUES for a role KNOWN_ROLES does not name;
+        # this layer does the same, so one unknown role cannot half-succeed.
+        assert UNDECLARED_ROLE not in KNOWN_ROLES
+        with pytest.warns(UserWarning, match="Unknown role"):
+            resolved = resolve_role_config(UNDECLARED_ROLE)
+        assert resolved.role == UNDECLARED_ROLE
