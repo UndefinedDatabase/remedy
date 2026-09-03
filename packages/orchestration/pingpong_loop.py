@@ -3414,6 +3414,36 @@ def run_pingpong(
                 # evidence describe one and the same call.
                 builder_composed = compose_builder_prompt(effective_goal, context, **builder_compose_args)
                 builder_prompt = builder_composed.text
+                # F109 R-0774: A SECOND TRACE, NOT A REWRITE OF THE FIRST. The
+                # entry's contract is ONE TRACE PER ACTUAL PROVIDER INVOCATION,
+                # and this fallback is a second invocation, so it earns a second
+                # entry rather than overwriting the one above. The resumed
+                # attempt really did reach the provider and keeps its own honest
+                # record; without this append the only Builder trace of the round
+                # describes the composition the rebinding just ABANDONED, so
+                # ``prompt_sha256``, ``prompt_chars``, ``segment_manifest`` and
+                # ``prompt_text_redacted`` would all report bytes that were never
+                # delivered. Mirrors the primary append argument for argument;
+                # only ``prompt_text`` and ``composed_prompt`` differ, and they
+                # differ only by being the REBOUND full-content pair.
+                result.prompt_traces.append(build_trace_entry(
+                    prompt_text=builder_prompt,
+                    role="builder",
+                    run_id=result.run_id,
+                    job_id=result.job_id,
+                    task_id=result.task_id,
+                    round_num=round_num,
+                    provider=builder_name or "",
+                    provider_kind=_provider_kind(builder_name or ""),
+                    cwd=str(staging),
+                    write_mode=claude_cli_write_mode or "",
+                    prompt_kind="repair" if is_repair else "initial",
+                    context_categories=categories,
+                    changed_files=list(result.staged_files),
+                    task_excerpt_sha256=task_input.sha256 if task_input else "",
+                    configured_model=builder_model,
+                    composed_prompt=builder_composed,
+                ))
                 _begin_stream_call(builder_provider, round_num, "attempt")
                 builder_call_reasons = []
                 builder_out = _call_with_retry(
@@ -3749,6 +3779,17 @@ def run_pingpong(
                 )
                 reviewer_prompt = reviewer_composed.text
                 reviewer_effective = _reviewer_effective_prompt(reviewer_prompt)
+                # F109 R-0774, A DELIBERATE ABSENCE — DO NOT ADD THE BUILDER'S
+                # SECOND APPEND HERE. This role needs none: its traces are written
+                # by the ``on_call=_rev_trace(...)`` callback below, which
+                # ``_call_with_retry`` fires once per ACTUAL provider invocation,
+                # and ``_rev_trace`` reads ``reviewer_composed`` at call time — so
+                # it already picks up the rebinding two lines above and records a
+                # second, full-content entry on its own. Measured on the real loop
+                # at ``c22818f5``: a Reviewer resume fallback already records TWO
+                # traces for its round (the abandoned resumed one carrying the
+                # dedupe marker, then the full-content one without it). An eager
+                # append here would make a THIRD and double-count one call.
                 _begin_stream_call(reviewer_provider, round_num, "attempt")
                 reviewer_call_reasons = []
                 reviewer_out = _call_with_retry(
