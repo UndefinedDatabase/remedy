@@ -1,7 +1,8 @@
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1; T001 and T002 complete as of round 4.
+F112 claimed in STATUS.md round 1; T001 and T002 complete as of round 4;
+T003a (JobPlan.metadata persistence) complete as of round 6.
 
 ## Goal
 
@@ -13,33 +14,34 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 5, session 2 — books round 4's verdict (R-0792, a Low ruff F401
-fixed in this same round), then starts T003: `split_one_task` in
-`packages/orchestration/task_granularity.py`, a public seam over the
-existing `_cluster_acceptance`/`_split_task` clustering for a caller that
-already decided (via T002's `cannot_fit`) a task needs to split, without
-re-deciding the band/acceptance trigger `normalize_plan` owns.
+Round 6, session 2 — books round 5's verdict, records DECISION F112 D1
+(`.agent/decisions.md`) splitting T003 into T003a/T003b after
+investigation found the dispatch loop `pingpong_job.py` uses has no
+`task_class` on its task objects, never passes compiled-context params to
+`run_pingpong`, and its `JobPlan` has no durable `metadata` field at all
+— so `enqueue_task_decision`'s write would silently vanish on resume.
+This round ships T003a: a `metadata: dict` field on `JobPlan`, exported
+and imported like `input_snapshot`, with a persistence round-trip test.
 
 ## Next Steps
 
-- T003 continued: wire `cannot_fit` into `enqueue_task_decision` (type
-  `task_decision`, `escalation.py:211`) at the per-task dispatch loop in
-  `pingpong_job.py` (~line 2307's `run_pingpong` call, the site with a
-  live `Job`/`Task`). Needs: how `task_class` is resolved per task,
-  how `compiled_context_paths`/`candidates` reach `run_pingpong` today,
-  and a `Task`→`PlannedTask` reconstruction (`flight_plan.py:513-538`
-  stashes title/depends_on/band/files_hint on `task.inputs["flight"]`;
-  `goal` is not preserved separately — recover it from `task.description`).
-- Unattended default `safe_default="split task"`, applied via
-  `auto_apply_safe_default` when `unattended=True`
-  (`long_run_executor.py:992` `_escalate_task` is the pattern). Omit the
-  split option when `split_one_task` returns None (A9: real options only).
+- T003b: derive a `task_class` for a live `TaskEntry` (no existing
+  precedent to reuse — every current caller supplies task_class as a bare
+  string; investigate whether a title/body heuristic or a new field is
+  right), wire `compiled_context_paths`/`compiled_context_candidates`
+  into `pingpong_job.py`'s `run_pingpong(...)` call, then call
+  `fit_task_context_to_class_cap` and `enqueue_task_decision` between
+  `_build_task_prompt` and `task.status = TASK_RUNNING`
+  (`pingpong_job.py`, per-task loop) — before the F006 checkpoint block,
+  never after. `safe_default="split task"` via `auto_apply_safe_default`
+  when unattended; omit the option when `split_one_task` returns None.
 - Acceptance fixtures, the integration gate, then closure.
 
 ## Risks
 
-- Dispatch-loop wiring is the highest-risk remaining slice — a live loop,
-  not a pure function. Gets its own round, call site read in full first.
+- T003b remains the highest-risk remaining slice — a live dispatch loop
+  plus a persistence-format change together. Its own round, call site
+  re-read first.
 - `R-0767` stays OPEN on the model-routing seam this feature's config
   pattern borrows from; unrelated to F112, not absorbed.
 - ruff is inconsistent this session; `python3 -m ruff check <path>` is
