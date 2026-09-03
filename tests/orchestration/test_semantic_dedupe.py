@@ -1729,3 +1729,167 @@ class TestTheComposedPromptReportsTheNamesItReplaced:
         assert result.final_status == "staged_review_passed"
         assert composed
         assert [prompt.deduped_names for prompt in composed if prompt.deduped_names] == []
+
+
+# ---------------------------------------------------------------------------
+# T002c, the config KILL SWITCH.
+#
+# ``run_pingpong`` carries ``semantic_dedupe_enabled``, forwarded to both
+# PRIMARY compositions as ``dedupe_enabled``. The flag is tested in exactly one
+# place — ``should_dedupe_segment`` consults ``enabled`` first and alone, and
+# ``_dedupe_resumed_segments`` returns the segments untouched on False — so the
+# loop only has to hand it down, and these cases are about the handing down.
+#
+# THEY DRIVE THE REAL LOOP because a parameter that is accepted and then ignored
+# at a call site is invisible to any re-composition: a re-composition asserts
+# what the test itself passed in, and only the run's own prompts and calls say
+# what the loop composed.
+#
+# THE RESUME FALLBACK IS OUTSIDE THE SWITCH BY CONSTRUCTION: the fallback
+# recompositions pass no dedupe argument at all, so they send full content at
+# either value. Case 4 pins that, because "R-0771 still holds" is exactly the
+# property a new parameter threaded through this call site is most likely to
+# have broken.
+
+
+class TestTheSemanticDedupeKillSwitch:
+    """SPEC W: ``semantic_dedupe_enabled`` through the real loop, on and off."""
+
+    @staticmethod
+    def _marked_traces(result) -> list[tuple[str, int]]:
+        """Every recorded prompt carrying a marker, as ``(role, round)`` pairs.
+
+        An absence is only as wide as the text it was searched in, so every
+        trace is asserted UN-TRUNCATED before it is read — the same guard
+        ``test_a_chain_that_never_resumes_composes_no_marker_anywhere`` applies,
+        for the same reason.
+        """
+        for trace in result.prompt_traces:
+            assert trace.prompt_text_truncated is False, (trace.role, trace.round)
+        return [
+            (trace.role, trace.round)
+            for trace in result.prompt_traces
+            if DEDUPE_MARKER_PREFIX in trace.prompt_text_redacted
+        ]
+
+    # -- SPEC W case 1: the switch works, and only the switch differs ---------
+
+    def test_the_switch_alone_decides_whether_a_resumed_chain_carries_a_marker(
+        self, fallback_repo: Path,
+    ):
+        # ONE CASE, TWO RUNS, ONE FIXTURE, ON PURPOSE. The claim is a
+        # DIFFERENCE — the disabled run composes no marker where the otherwise
+        # identical default run does — and a difference split across two cases is
+        # two claims that could both hold while the runs differed in something
+        # else as well. Same repo, same provider construction, same repair
+        # budget; ``semantic_dedupe_enabled`` is the only argument that moves,
+        # and the second run does not even name it.
+        disabled = TestChainAgainstTheRealLoop._run(
+            fallback_repo,
+            TestChainAgainstTheRealLoop._provider_pair(),
+            repair_rounds=2,
+            semantic_dedupe_enabled=False,
+        )
+        default = TestChainAgainstTheRealLoop._run(
+            fallback_repo,
+            TestChainAgainstTheRealLoop._provider_pair(),
+            repair_rounds=2,
+        )
+
+        # BOTH RUNS STILL COMPLETE. A switch that changed the outcome would not
+        # be a kill switch, it would be a second code path.
+        assert disabled.final_status == "staged_review_passed"
+        assert default.final_status == "staged_review_passed"
+        assert disabled.prompt_traces
+        assert default.prompt_traces
+        # THE POSITIVE CONTROL FIRST, so the emptiness below is about the flag
+        # rather than about a chain that never resumed.
+        assert self._marked_traces(default) != []
+        assert self._marked_traces(disabled) == []
+
+    # -- SPEC W case 2: the deduped-name report agrees with the switch --------
+
+    def test_a_disabled_run_reports_no_deduped_names_on_any_composition(
+        self, fallback_repo: Path, monkeypatch,
+    ):
+        # THE COMPOSED OBJECTS ARE READ THE WAY SPEC T CASE 5 READS THEM, through
+        # that class's own capture helper, because the report never reaches
+        # ``PingPongResult``. The positive half already lives there:
+        # ``test_a_resumed_chain_reports_the_names_it_replaced`` runs this very
+        # chain at the default flag and finds names, so this case mirrors a
+        # measured run rather than an assumption.
+        composed = TestTheComposedPromptReportsTheNamesItReplaced._capture_compositions(
+            monkeypatch,
+        )
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, providers, repair_rounds=2, semantic_dedupe_enabled=False,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert composed
+        # THE CHAIN REALLY RESUMED: two rounds ran and both seams recorded proven
+        # sends, so round 2 composed against a POPULATED index and would have
+        # deduped had the flag not said otherwise.
+        assert len(result.rounds) == 2
+        assert sorted(TestChainAgainstTheRealLoop._rows_by_session(result)) == [
+            TestChainAgainstTheRealLoop.BUILDER_SESSION,
+            TestChainAgainstTheRealLoop.REVIEWER_SESSION,
+        ]
+        assert [prompt.deduped_names for prompt in composed if prompt.deduped_names] == []
+
+    # -- SPEC W case 3: the resume condition, not the flag, gates the marker --
+
+    @pytest.mark.parametrize("enabled", [True, False])
+    def test_a_chain_that_never_resumes_composes_no_marker_at_either_flag_value(
+        self, fallback_repo: Path, enabled: bool,
+    ):
+        # THE FLAG MUST NOT BECOME THE ONLY THING STANDING BETWEEN A FRESH CALL
+        # AND A MARKER — the resume condition is, and it holds at BOTH values.
+        # Without this case a switch wired permanently to False would satisfy
+        # every absence claim in this class and prove nothing about the scope
+        # rule the feature actually turns on.
+        providers = TestChainAgainstTheRealLoop._provider_pair(supports_resume=False)
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, providers, repair_rounds=2, semantic_dedupe_enabled=enabled,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert result.prompt_traces
+        assert self._marked_traces(result) == []
+
+    # -- SPEC W case 4: the fallback stays outside the switch -----------------
+
+    @pytest.mark.parametrize("enabled", [True, False])
+    def test_a_builder_resume_fallback_sends_full_content_at_either_flag_value(
+        self, fallback_repo: Path, enabled: bool,
+    ):
+        # R-0771'S PROPERTY, RE-ASSERTED UNDER THE NEW PARAMETER and read off the
+        # CALLS rather than the traces, for the reason SPEC O gives: the round 2
+        # Builder trace describes the composition the fallback ABANDONED, not the
+        # bytes that left the loop.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            builder_resume_fails=True,
+        )
+        calls = _capture_role_calls(builder, "build")
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+            semantic_dedupe_enabled=enabled,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        assert result.rounds[1].builder_output.resume_fallback is True
+
+        fresh, resumed = TestAResumeFallbackSendsFullContent._split(calls)
+        # THE FALLBACK OPENED A FRESH SESSION AND CARRIED NO MARKER, at either
+        # value, because that recomposition passes no dedupe argument at all.
+        assert fresh
+        assert [p for p in fresh if DEDUPE_MARKER_PREFIX in p] == [], [len(p) for p in fresh]
+        # AND THE FLAG STILL GOVERNED THE CALLS IT DOES GOVERN, so neither half
+        # of this case can pass because dedupe was simply off everywhere.
+        assert resumed
+        marked_resumed = [p for p in resumed if DEDUPE_MARKER_PREFIX in p]
+        assert (marked_resumed != []) is enabled, (enabled, len(resumed), len(marked_resumed))
