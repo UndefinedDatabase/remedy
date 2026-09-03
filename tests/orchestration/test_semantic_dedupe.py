@@ -1491,14 +1491,20 @@ class TestAResumeFallbackSendsFullContent:
         #
         # What IS decidable is the thing the defect got wrong. A MARKER's text
         # follows from its name alone, so its hash is computable here via
-        # ``_sha256_of_marker``; the round 2 Builder trace records the manifest of
-        # the composition the fallback ABANDONED, so the names that composition
-        # replaced are readable; and the round 1 trace records those same names at
-        # FULL content. This case therefore asserts, for every name the abandoned
-        # composition replaced, that the recorded row holds the FULL-content hash
-        # and NOT the marker hash — a statement about the segments the defect
-        # touched, which is narrower than the sentence above and is written that
-        # way on purpose.
+        # ``_sha256_of_marker``; round 2 now records TWO Builder traces — the
+        # abandoned resumed composition FIRST, then the full-content call that
+        # actually reached the provider, appended by F109 ``R-0774`` — and this
+        # case reads the FIRST of them, because the names that abandoned
+        # composition replaced are what the assertion is about; and the round 1
+        # trace records those same names at FULL content. The selection below
+        # therefore collects each round's Builder traces IN ORDER and takes
+        # index 0 explicitly, rather than leaning on a dict comprehension's
+        # last-wins overwrite: that reliance is finding ``R-0775``, and a third
+        # trace would have moved it again in silence. This case therefore
+        # asserts, for every name the abandoned composition replaced, that the
+        # recorded row holds the FULL-content hash and NOT the marker hash — a
+        # statement about the segments the defect touched, which is narrower
+        # than the sentence above and is written that way on purpose.
         builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
             builder_resume_fails=True,
         )
@@ -1509,10 +1515,16 @@ class TestAResumeFallbackSendsFullContent:
         )
         assert result.rounds[1].builder_output.resume_fallback is True
 
+        builder_traces_by_round: dict[int, list] = {}
+        for trace in result.prompt_traces:
+            if trace.role == "builder":
+                builder_traces_by_round.setdefault(trace.round, []).append(trace)
         traces = {
-            trace.round: {str(row["name"]): str(row["sha256"]) for row in trace.segment_manifest}
-            for trace in result.prompt_traces
-            if trace.role == "builder"
+            round_num: {
+                str(row["name"]): str(row["sha256"])
+                for row in entries[0].segment_manifest
+            }
+            for round_num, entries in builder_traces_by_round.items()
         }
         replaced = [name for name, sha in traces[2].items() if sha == _sha256_of_marker(name)]
         # THE POSITIVE CONTROL: the abandoned composition really did replace
