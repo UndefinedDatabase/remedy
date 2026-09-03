@@ -14,29 +14,28 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 14, session 4 — THE R-0789 REPAIR AND THE PAIRING ACCEPTANCE. Two
-deliberate-absence notes that round 13's own wiring falsified are repaired in
-one commit, in `model_routing.py` and in `config.py`. The feature file's last
-unbuilt acceptance clause — the reviewer/worker pairing asserted on a REAL
-fixture round — is built as tests that resolve BOTH halves of a round through
-the production seam under four real configurations, including the one where a
-documented benchmark run is supplied for the reviewer class and the hard rule
-refuses the table anyway. Round 13's PASS verdict, the finding and two prose
-slips are booked in the same round.
+Round 15, session 5 — THE INTEGRATION GATE, the tier-3 full-suite gate this
+feature owes before closure. `docs/agents/integration_gate.md` steps 1-5 run
+against the branch and against the merge base in a throwaway worktree, with the
+base-worktree UI parity restored the way findings R-0591 and R-0736 require and
+BOTH comparison sets attributed the way R-0590 requires. The evidence lands
+under `.agent/gate_f110_r15/`. Round 14's PASS verdict, the resolution of
+`R-0789` and one prose slip are booked in the same round. This round changes no
+code: a red gate is handed back, never repaired here.
 
 ## Next Steps
 
-- The integration gate round, which docs/agents/integration_gate.md governs
-  and which needs the R-0736 base-worktree mtime-parity repair and a cold
-  `dist` build budgeted for.
 - The closure sequence, which takes two rounds, runs the one §3 checklist
-  consolidation pass DECISION F110 D1 carries into it, and updates the Design
-  and Task-slicing bullets of `docs/roadmap/features/T3_F110.md`.
+  consolidation pass DECISION F110 D1 carries into it, needs an evidence job
+  and a FRESH review zip, and updates the Design and Task-slicing bullets of
+  `docs/roadmap/features/T3_F110.md`.
+- The STATUS line and the closure pull request, which the operator merges at
+  the next feature's Open PR Gate.
 
 ## Risks
 
-- The pairing acceptance rests on `REVIEWER_WORKER_CLASS_PAIRS` holding at
-  least one pair whose halves are both declared by a role; SPEC (c1) asserts
-  exactly that, so an emptied table is reported as a failure rather than as a
-  vacuous pass.
+- The base worktree is the known-fragile half: without the R-0591 symlink
+  argument and the R-0736 mtime advance it produces false base failures by the
+  hundred, so the gate reports `_frontend_is_stale()` from inside that tree
+  before the run rather than after it.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
