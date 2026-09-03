@@ -15,7 +15,10 @@ and is never hand-listed, so registering a second table key is one registry entr
 and no second edit. An environment variable cannot carry a table, so a
 table-valued key is configured in TOML only — its ``env_var`` exists for the
 uniform spec shape, and a string arriving through it is reported as a shape fault
-by :func:`validate_config` rather than silently read as a table.
+by :func:`validate_config` rather than silently read as a table. Such a key also
+DECLARES WHAT ITS ENTRIES HOLD, through ``ConfigKeySpec.entry_type`` — ``str``
+for a flat map, ``dict`` for a table of records, ``None`` for entries left
+unchecked — because one entry-shape rule cannot serve both kinds of table.
 
 Public API::
 
@@ -81,12 +84,21 @@ class ConfigKeySpec:
     When value_type is dict the key is TABLE-VALUED: the whole TOML sub-table
     named by ``key`` resolves as one value (see the module docstring), and TOML
     is the only source that can carry it.
+
+    ``entry_type`` names the type each ENTRY of such a table holds — ``str`` for
+    a flat map of strings, ``dict`` for a table of RECORDS — and defaults to
+    ``None``, which means the entries are not shape-checked at all. IT IS A
+    PER-KEY DECLARATION AND NOT ONE RULE FOR EVERY TABLE, because both kinds of
+    table are well formed: checking every table's entries as strings reports a
+    perfectly good record table as a fault, and hard-coding a key NAME inside
+    :func:`validate_config` would put routing policy in this, the lower, layer.
     """
 
     key: str
     env_var: str
     description: str
     value_type: type = str
+    entry_type: type | None = None
     default: Any = None
     env_only: bool = False
     secret: bool = False
@@ -652,6 +664,30 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
             "Configured in TOML only — an env var cannot carry a table."
         ),
         value_type=dict,
+        entry_type=str,
+        default=None,
+    ),
+    # F110's PROMOTION-EVIDENCE table, and the first table of RECORDS in this
+    # registry: every entry is itself a sub-table, so it declares entry_type
+    # dict where its sibling above declares str. NOTHING READS THIS KEY YET —
+    # the reader arrives with the wiring round, in
+    # packages/orchestration/role_config.py beside the one that already reads
+    # the tiers table. It is registered first, on purpose, so the schema is
+    # pinned before routing behaviour moves against it.
+    ConfigKeySpec(
+        key="model_routing.promotion_evidence",
+        env_var="REMEDY_MODEL_ROUTING_PROMOTION_EVIDENCE",
+        description=(
+            "Per-project TASK CLASS to BENCHMARK RUN map (F110). Each entry of "
+            "the [remedy.model_routing.promotion_evidence] sub-table is itself a "
+            "table: the documented run that LICENSES A CHEAPER TIER for that "
+            "class, as docs/agents/model_routing_policy.md's 'Promotion rule' "
+            "describes it. Whether a run clears the promotion bars is decided in "
+            "packages/orchestration/model_routing.py, never here. Configured in "
+            "TOML only — an env var cannot carry a table."
+        ),
+        value_type=dict,
+        entry_type=dict,
         default=None,
     ),
 )
@@ -1051,9 +1087,12 @@ def validate_config(config: RemedyConfig) -> list[str]:
     """Validate config values against key specs. Returns list of warnings.
 
     A TABLE-VALUED key is validated for SHAPE ONLY: that the value is a mapping,
-    and that every key and every value in it is a string. WHETHER a task class
-    exists, whether a tier exists and whether an override breaks a hard rule are
-    POLICY questions, and they are answered where the policy lives —
+    that every key in it is a string, and that every value in it matches the
+    ENTRY TYPE its own spec declares (``ConfigKeySpec.entry_type``). A key that
+    declares none has its entries left unchecked. WHETHER a task class exists,
+    whether a tier exists, whether an override breaks a hard rule and whether a
+    benchmark run meets the promotion bars are all POLICY questions, and they are
+    answered where the policy lives —
     ``packages.orchestration.model_routing.validate_task_class_tier_overrides``.
     This module is the LOWER layer and is deliberately policy-free: it must not
     import model_routing to learn what a task class is (DECISION F110 D5,
@@ -1080,11 +1119,12 @@ def validate_config(config: RemedyConfig) -> list[str]:
             if not isinstance(cv.value, Mapping):
                 warnings.append(
                     f"{spec.key}: expected table, got {type(cv.value).__name__}")
-            else:
+            elif spec.entry_type is not None:
                 for entry_key, entry_value in cv.value.items():
-                    if isinstance(entry_key, str) and isinstance(entry_value, str):
+                    if isinstance(entry_key, str) and isinstance(
+                            entry_value, spec.entry_type):
                         continue
                     warnings.append(
-                        f"{spec.key}: expected string entries, got "
-                        f"{entry_key!r} = {entry_value!r}")
+                        f"{spec.key}: expected {spec.entry_type.__name__} "
+                        f"entries, got {entry_key!r} = {entry_value!r}")
     return warnings
