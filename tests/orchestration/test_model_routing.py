@@ -1053,3 +1053,489 @@ class TestOverrideAwareResolver:
         # knows nothing about overrides; the two are siblings, not a replacement.
         assert resolve_task_class_tier("format") == (TASK_CLASS_TIERS["format"], SEED_MAPPING_REASON)
 
+
+# ---------------------------------------------------------------------------
+# F110 T003 — the promotion-evidence discipline
+# ---------------------------------------------------------------------------
+
+PROMOTION_HEADING = "## Promotion rule"
+CEILING_HEADING = "## Honest ceiling"
+
+#: "each fixture run 3×" — U+00D7 MULTIPLICATION SIGN, as the document writes it.
+RUNS_PATTERN = re.compile(r"(\d+)×")
+
+#: The two halves of "pass thresholds: ≥90% on block-level assertions, ≥75%
+#: overall". Each is matched WITH ITS OWN TRAILING WORDS rather than by position,
+#: so swapping the two numbers in the document is a red test and not a silent
+#: relabelling.
+BLOCK_RATE_PATTERN = re.compile(r"≥(\d+)% on block-level assertions")
+OVERALL_RATE_PATTERN = re.compile(r"≥(\d+)% overall")
+
+LOGGED_PER_RUN_PREFIX = "logged per run: "
+
+
+def _promotion_rule_bullets() -> list[str]:
+    """Return the bullets of the "Promotion rule" section, continuations JOINED.
+
+    A ``- `` line opens a bullet and an INDENTED non-blank line continues the one
+    before it; the first non-blank, non-indented, non-bullet line after the list
+    CLOSES it.
+
+    THAT CLOSING RULE IS THE POINT OF PARSING BULLETS AT ALL. The section's last
+    bullet is followed immediately by the paragraph "Below threshold, the class
+    stays on the stronger tier. Re-run on model version change ...", and a regex
+    over the whole section text swallows it into the logged-per-run list and
+    yields a "field" made of that sentence. This parser follows the seed-mapping
+    parser above: read the bullets, not the section.
+    """
+    lines = POLICY_DOC.read_text(encoding="utf-8").split("\n")
+    starts = [i for i, ln in enumerate(lines) if ln.startswith(PROMOTION_HEADING)]
+    assert len(starts) == 1, (
+        f"expected exactly one {PROMOTION_HEADING!r} heading, found {len(starts)}"
+    )
+    ends = [i for i, ln in enumerate(lines) if ln.startswith(CEILING_HEADING) and i > starts[0]]
+    assert ends, f"no {CEILING_HEADING!r} heading after {PROMOTION_HEADING!r}"
+
+    bullets: list[str] = []
+    for line in lines[starts[0] + 1:ends[0]]:
+        if line.startswith("- "):
+            bullets.append(line[len("- "):].strip())
+            continue
+        if not line.strip():
+            continue
+        if bullets and (line.startswith("  ") or line.startswith("\t")):
+            bullets[-1] = f"{bullets[-1]} {line.strip()}"
+            continue
+        if bullets:
+            break
+    return bullets
+
+
+def _parse_promotion_bars() -> dict[str, int]:
+    """Parse the runs count and the two pass-rate percentages from the bullets."""
+    joined = "\n".join(_promotion_rule_bullets())
+    runs = RUNS_PATTERN.search(joined)
+    block = BLOCK_RATE_PATTERN.search(joined)
+    overall = OVERALL_RATE_PATTERN.search(joined)
+    assert runs is not None, "no 'N×' runs-per-fixture figure in the Promotion rule bullets"
+    assert block is not None, "no '≥N% on block-level assertions' figure in those bullets"
+    assert overall is not None, "no '≥N% overall' figure in those bullets"
+    return {
+        "runs_per_fixture": int(runs.group(1)),
+        "block_level_pass_rate": int(block.group(1)),
+        "overall_pass_rate": int(overall.group(1)),
+    }
+
+
+def _parse_logged_per_run_fields() -> tuple[str, ...]:
+    """Parse the document's "logged per run" bullet into normalized field names.
+
+    The bullet's items are comma-separated; the ONE compound item,
+    "model id + quantization", is split on
+    ``PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR`` first. Every piece then passes
+    through ``normalize_task_class`` and no other route — the same single
+    normalization the seed-mapping parser uses, which is what lets the result be
+    compared to the module's tuple directly instead of through a translation.
+    """
+    matching = [b for b in _promotion_rule_bullets() if b.startswith(LOGGED_PER_RUN_PREFIX)]
+    assert len(matching) == 1, f"expected exactly one {LOGGED_PER_RUN_PREFIX!r} bullet"
+    listed = matching[0][len(LOGGED_PER_RUN_PREFIX):].strip().rstrip(".")
+    parsed: list[str] = []
+    for item in listed.split(", "):
+        for piece in item.split(PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR):
+            parsed.append(normalize_task_class(piece))
+    return tuple(parsed)
+
+
+class TestPromotionRuleSyncTest:
+    """T003's deliverable: the BARS are pinned to the policy document, not typed."""
+
+    def test_the_section_carries_exactly_three_bullets(self):
+        assert len(_promotion_rule_bullets()) == 3
+
+    def test_the_parsed_runs_count_equals_the_module_constant(self):
+        assert _parse_promotion_bars()["runs_per_fixture"] == PROMOTION_MINIMUM_RUNS_PER_FIXTURE
+
+    def test_the_parsed_block_level_rate_equals_the_module_constant(self):
+        assert _parse_promotion_bars()["block_level_pass_rate"] == (
+            PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE
+        )
+
+    def test_the_parsed_overall_rate_equals_the_module_constant(self):
+        assert _parse_promotion_bars()["overall_pass_rate"] == PROMOTION_MINIMUM_OVERALL_PASS_RATE
+
+    def test_the_parsed_logged_per_run_list_equals_the_module_tuple(self):
+        assert _parse_logged_per_run_fields() == PROMOTION_EVIDENCE_DOCUMENT_FIELDS
+
+    def test_the_last_bullet_does_not_swallow_the_paragraph_that_follows_it(self):
+        # THE MEASURED TRAP, pinned. A regex over the whole section text yields a
+        # "field" reading "the class stays on the stronger tier. Re-run on model
+        # version change ..."; the bullet parser must not.
+        assert not any(
+            "stronger tier" in field for field in _parse_logged_per_run_fields()
+        )
+        assert all(len(field) < 40 for field in _parse_logged_per_run_fields())
+
+    def test_the_compound_bullet_item_really_is_compound(self):
+        # The one document-to-code translation is DECLARED, so it is asserted:
+        # without the split the document would name six items and the module seven.
+        listed = [b for b in _promotion_rule_bullets() if b.startswith(LOGGED_PER_RUN_PREFIX)][0]
+        assert PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR in listed
+        without_split = listed[len(LOGGED_PER_RUN_PREFIX):].strip().rstrip(".").split(", ")
+        assert len(without_split) == len(PROMOTION_EVIDENCE_DOCUMENT_FIELDS) - 1
+
+    @pytest.mark.parametrize("field_name", PROMOTION_EVIDENCE_DOCUMENT_FIELDS)
+    def test_every_document_field_is_a_real_field_of_the_evidence_record(self, field_name):
+        assert field_name in {f.name for f in dataclasses.fields(PromotionEvidence)}
+
+    def test_the_record_carries_the_two_fields_the_document_names_only_in_prose(self):
+        # runs_per_fixture and corpus are deliberately NOT in the document's field
+        # tuple, because its "logged per run" bullet does not name them.
+        names = {f.name for f in dataclasses.fields(PromotionEvidence)}
+        assert {"runs_per_fixture", "corpus"} <= names
+        assert not {"runs_per_fixture", "corpus"} & set(PROMOTION_EVIDENCE_DOCUMENT_FIELDS)
+
+
+class TestPromotionPredicate:
+    """Only CHEAPER is a promotion — a stronger tier costs money, not quality."""
+
+    @pytest.mark.parametrize(
+        "task_class",
+        sorted(c for c, t in TASK_CLASS_TIERS.items() if model_tier_rank(t) > 0),
+    )
+    def test_a_cheaper_tier_than_the_seed_is_a_promotion(self, task_class):
+        assert is_task_class_promotion(task_class, MODEL_TIERS[0]) is True
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    def test_the_seed_tier_restated_is_not_a_promotion(self, task_class):
+        assert is_task_class_promotion(task_class, TASK_CLASS_TIERS[task_class]) is False
+
+    @pytest.mark.parametrize(
+        "task_class",
+        sorted(c for c, t in TASK_CLASS_TIERS.items() if t != TOP_TIER),
+    )
+    def test_a_stronger_tier_than_the_seed_is_not_a_promotion(self, task_class):
+        assert is_task_class_promotion(task_class, TOP_TIER) is False
+
+    @pytest.mark.parametrize("tier", MODEL_TIERS)
+    def test_a_class_the_seed_table_does_not_name_is_never_a_promotion(self, tier):
+        assert is_task_class_promotion(UNKNOWN_OVERRIDE_CLASS, tier) is False
+
+    def test_the_class_may_be_spelled_as_the_document_words_it(self):
+        assert is_task_class_promotion("Mission", MODEL_TIERS[0]) is True
+
+
+class TestPromotionCheck:
+    """One rule name per way evidence can fail, and each boundary pinned."""
+
+    def test_a_promotion_with_no_evidence_is_refused_with_its_own_rule(self):
+        assert check_promotion_backed_by_evidence(PROMOTABLE_CLASS, PROMOTED_TIER) == (
+            RULE_PROMOTION_WITHOUT_EVIDENCE
+        )
+
+    def test_the_same_promotion_with_sufficient_evidence_is_not_refused(self):
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, SUFFICIENT_EVIDENCE
+        ) is None
+
+    @pytest.mark.parametrize("field_name", PROMOTION_EVIDENCE_DOCUMENT_FIELDS)
+    def test_any_unset_document_field_is_refused_as_incomplete(self, field_name):
+        evidence = _promotion_evidence(**{field_name: None})
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) == RULE_PROMOTION_EVIDENCE_INCOMPLETE
+
+    def test_runs_just_below_the_bar_are_refused_as_below_threshold(self):
+        evidence = _promotion_evidence(
+            runs_per_fixture=PROMOTION_MINIMUM_RUNS_PER_FIXTURE - 1
+        )
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) == RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
+
+    def test_runs_exactly_at_the_bar_are_accepted(self):
+        evidence = _promotion_evidence(runs_per_fixture=PROMOTION_MINIMUM_RUNS_PER_FIXTURE)
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) is None
+
+    def test_the_block_level_rate_just_below_the_bar_is_refused(self):
+        evidence = _promotion_evidence(
+            assertion_results=PromotionAssertionResults(
+                block_level_pass_rate=PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE - 1,
+                overall_pass_rate=PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+            )
+        )
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) == RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
+
+    def test_the_block_level_rate_exactly_at_the_bar_is_accepted(self):
+        evidence = _promotion_evidence(
+            assertion_results=PromotionAssertionResults(
+                block_level_pass_rate=PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+                overall_pass_rate=PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+            )
+        )
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) is None
+
+    def test_the_overall_rate_just_below_the_bar_is_refused(self):
+        evidence = _promotion_evidence(
+            assertion_results=PromotionAssertionResults(
+                block_level_pass_rate=PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+                overall_pass_rate=PROMOTION_MINIMUM_OVERALL_PASS_RATE - 1,
+            )
+        )
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) == RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
+
+    def test_the_overall_rate_exactly_at_the_bar_is_accepted(self):
+        evidence = _promotion_evidence(
+            assertion_results=PromotionAssertionResults(
+                block_level_pass_rate=PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
+                overall_pass_rate=PROMOTION_MINIMUM_OVERALL_PASS_RATE,
+            )
+        )
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) is None
+
+    def test_incomplete_evidence_is_reported_before_a_missed_bar(self):
+        # A record that is BOTH under-logged and under-threshold asks the operator
+        # to finish logging first; the two names are not interchangeable.
+        evidence = _promotion_evidence(
+            prompt_hash=None, runs_per_fixture=PROMOTION_MINIMUM_RUNS_PER_FIXTURE - 1
+        )
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, evidence
+        ) == RULE_PROMOTION_EVIDENCE_INCOMPLETE
+
+    @pytest.mark.parametrize("evidence", [None, SUFFICIENT_EVIDENCE, INCOMPLETE_EVIDENCE])
+    def test_a_move_to_a_stronger_tier_is_never_refused(self, evidence):
+        assert check_promotion_backed_by_evidence("format", TOP_TIER, evidence) is None
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    def test_the_seed_tier_restated_is_never_refused(self, task_class):
+        assert check_promotion_backed_by_evidence(
+            task_class, TASK_CLASS_TIERS[task_class]
+        ) is None
+
+    def test_the_three_names_are_distinct(self):
+        assert len(set(PROMOTION_RULE_NAMES)) == 3
+
+    def test_the_promotion_rule_names_are_in_the_declared_order(self):
+        assert PROMOTION_RULE_NAMES == (
+            RULE_PROMOTION_WITHOUT_EVIDENCE,
+            RULE_PROMOTION_EVIDENCE_INCOMPLETE,
+            RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD,
+        )
+
+
+class TestPromotionRefusedByTheOverrideMap:
+    """T003's own acceptance line, as ONE discriminating pair per rule."""
+
+    def test_a_promotion_without_evidence_is_refused_with_the_rule_named(self):
+        violations = validate_task_class_tier_overrides({PROMOTABLE_CLASS: PROMOTED_TIER})
+        assert _rule_names(violations) == [RULE_PROMOTION_WITHOUT_EVIDENCE]
+        assert violations[0].task_class == PROMOTABLE_CLASS
+
+    def test_the_same_promotion_with_sufficient_evidence_is_accepted(self):
+        assert validate_task_class_tier_overrides(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE},
+        ) == ()
+
+    def test_incomplete_evidence_is_refused_with_its_own_rule(self):
+        violations = validate_task_class_tier_overrides(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: INCOMPLETE_EVIDENCE},
+        )
+        assert _rule_names(violations) == [RULE_PROMOTION_EVIDENCE_INCOMPLETE]
+        assert violations[0].task_class == PROMOTABLE_CLASS
+
+    def test_below_threshold_evidence_is_refused_with_its_own_rule(self):
+        violations = validate_task_class_tier_overrides(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: BELOW_THRESHOLD_EVIDENCE},
+        )
+        assert _rule_names(violations) == [RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD]
+        assert violations[0].task_class == PROMOTABLE_CLASS
+
+    def test_evidence_for_another_class_does_not_discharge_this_promotion(self):
+        # The discriminator that makes the evidence map a MAP: a benchmark run
+        # measured on one class buys nothing for another.
+        violations = validate_task_class_tier_overrides(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {"standard_build": SUFFICIENT_EVIDENCE},
+        )
+        assert _rule_names(violations) == [RULE_PROMOTION_WITHOUT_EVIDENCE]
+
+    def test_a_move_to_a_stronger_tier_is_accepted_with_no_evidence_at_all(self):
+        assert validate_task_class_tier_overrides({"format": TOP_TIER}) == ()
+
+    def test_an_undeclared_class_is_a_schema_fault_and_never_a_promotion_rule(self):
+        violations = validate_task_class_tier_overrides({UNKNOWN_OVERRIDE_CLASS: MODEL_TIERS[0]})
+        assert _rule_names(violations) == [RULE_OVERRIDE_UNKNOWN_TASK_CLASS]
+        assert not set(_rule_names(violations)) & set(PROMOTION_RULE_NAMES)
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    def test_an_override_restating_a_seed_tier_is_not_a_promotion(self, task_class):
+        violations = validate_task_class_tier_overrides(
+            {task_class: TASK_CLASS_TIERS[task_class]}
+        )
+        assert not set(_rule_names(violations)) & set(PROMOTION_RULE_NAMES)
+
+    def test_the_builder_refuses_a_promotion_without_evidence(self):
+        with pytest.raises(OverrideRefused) as excinfo:
+            build_effective_task_class_tiers({PROMOTABLE_CLASS: PROMOTED_TIER})
+        assert _rule_names(excinfo.value.violations) == [RULE_PROMOTION_WITHOUT_EVIDENCE]
+        assert RULE_PROMOTION_WITHOUT_EVIDENCE in str(excinfo.value)
+
+    def test_the_builder_accepts_the_same_promotion_with_evidence(self):
+        effective = build_effective_task_class_tiers(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE},
+        )
+        assert effective[PROMOTABLE_CLASS] == PROMOTED_TIER
+
+    def test_the_seed_table_is_not_mutated_by_an_evidenced_promotion(self):
+        before = dict(TASK_CLASS_TIERS)
+        build_effective_task_class_tiers(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE},
+        )
+        assert TASK_CLASS_TIERS == before
+
+
+class TestRoundSixCallsAreUnchanged:
+    """Constraint 7 as a TEST rather than a promise: the new parameter is optional."""
+
+    def test_the_validator_takes_round_sixs_two_positional_arguments(self):
+        # Exactly the call round 6 shipped — two positionals, no evidence map.
+        assert validate_task_class_tier_overrides({"mission": UNKNOWN_TIER}, OVERRIDE_SAFETY_CLASSES) == (
+            validate_task_class_tier_overrides({"mission": UNKNOWN_TIER}, OVERRIDE_SAFETY_CLASSES, None)
+        )
+        assert _rule_names(
+            validate_task_class_tier_overrides({"mission": UNKNOWN_TIER}, OVERRIDE_SAFETY_CLASSES)
+        ) == [RULE_OVERRIDE_UNKNOWN_TIER]
+
+    def test_the_builder_takes_round_sixs_two_positional_arguments(self):
+        assert build_effective_task_class_tiers({}, SAFETY_RELEVANT_CLASSES) == TASK_CLASS_TIERS
+
+    def test_an_empty_evidence_map_is_the_same_as_none(self):
+        assert validate_task_class_tier_overrides(
+            {PROMOTABLE_CLASS: PROMOTED_TIER}, SAFETY_RELEVANT_CLASSES, {}
+        ) == validate_task_class_tier_overrides({PROMOTABLE_CLASS: PROMOTED_TIER})
+
+    def test_hard_rule_names_still_holds_exactly_the_names_round_five_shipped(self):
+        assert HARD_RULE_NAMES == (
+            RULE_REVIEWER_WEAKER_THAN_WORKER,
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_SAFETY_CLASS_BELOW_MID_TIER,
+        )
+
+    def test_the_shipped_resolver_still_answers_exactly_as_it_did(self):
+        assert resolve_task_class_tier(PROMOTABLE_CLASS) == (
+            TASK_CLASS_TIERS[PROMOTABLE_CLASS],
+            SEED_MAPPING_REASON,
+        )
+
+
+class TestRoutedCallEvidenceFields:
+    """The feature file's Evidence line, and what promoted the call."""
+
+    #: One fully specified promoted call, asserted as an EXACT dict. A GOLDEN is
+    #: the one place a retyped literal is right: comparing against the module's own
+    #: constants would let a renamed key rename itself on both sides at once.
+    GOLDEN_PROMOTED_CALL = {
+        "task_class": "vision",
+        "tier": "cheap",
+        "reason": "per_project_override",
+        "promoted_by": "qwen3-8b-instruct + q4_k_m@0f1e2d3c4b5a6978 on F082",
+    }
+
+    @staticmethod
+    def _promoted_table() -> dict[str, str]:
+        return build_effective_task_class_tiers(
+            {PROMOTABLE_CLASS: PROMOTED_TIER},
+            SAFETY_RELEVANT_CLASSES,
+            {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE},
+        )
+
+    def test_the_golden_promoted_call_is_exactly_this_mapping(self):
+        assert routed_call_evidence_fields(
+            PROMOTABLE_CLASS, self._promoted_table(), {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE}
+        ) == self.GOLDEN_PROMOTED_CALL
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    def test_the_keys_are_exactly_the_declared_fields(self, task_class):
+        fields = routed_call_evidence_fields(task_class, build_effective_task_class_tiers({}))
+        assert tuple(fields) == ROUTED_CALL_EVIDENCE_FIELDS
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    def test_an_unpromoted_class_reports_no_promoting_evidence(self, task_class):
+        fields = routed_call_evidence_fields(
+            task_class, build_effective_task_class_tiers({}), {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE}
+        )
+        assert fields["promoted_by"] is None
+
+    def test_a_promoted_class_names_the_run_that_promoted_it(self):
+        fields = routed_call_evidence_fields(
+            PROMOTABLE_CLASS, self._promoted_table(), {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE}
+        )
+        assert fields["promoted_by"] == SUFFICIENT_EVIDENCE.promotion_run_reference()
+
+    def test_the_reference_locates_the_run_rather_than_copying_the_record(self):
+        reference = SUFFICIENT_EVIDENCE.promotion_run_reference()
+        assert isinstance(reference, str)
+        assert SUFFICIENT_EVIDENCE.model_id in reference
+        assert SUFFICIENT_EVIDENCE.prompt_hash in reference
+        assert SUFFICIENT_EVIDENCE.corpus in reference
+        # LOCATES, DOES NOT COPY: the measurement itself stays in the record.
+        assert str(SUFFICIENT_EVIDENCE.assertion_results) not in reference
+        assert len(reference) < len(repr(SUFFICIENT_EVIDENCE))
+
+    def test_the_tier_and_reason_are_the_resolvers_own_answer(self):
+        # Never recomputed here, so the two can never disagree.
+        effective = self._promoted_table()
+        fields = routed_call_evidence_fields(
+            PROMOTABLE_CLASS, effective, {PROMOTABLE_CLASS: SUFFICIENT_EVIDENCE}
+        )
+        assert (fields["tier"], fields["reason"]) == resolve_task_class_tier_with_overrides(
+            PROMOTABLE_CLASS, effective
+        )
+
+    def test_a_class_the_table_does_not_name_reports_the_conservative_pair(self):
+        fields = routed_call_evidence_fields(
+            UNKNOWN_OVERRIDE_CLASS, build_effective_task_class_tiers({})
+        )
+        assert fields["tier"] == TOP_TIER
+        assert fields["reason"] == UNKNOWN_CLASS_REASON
+        assert fields["promoted_by"] is None
+
+    def test_the_class_may_be_spelled_as_the_document_words_it(self):
+        fields = routed_call_evidence_fields(
+            "Vision", self._promoted_table(), {"Vision": SUFFICIENT_EVIDENCE}
+        )
+        assert fields["task_class"] == normalize_task_class("Vision")
+        assert fields["promoted_by"] == SUFFICIENT_EVIDENCE.promotion_run_reference()
+
+    def test_an_override_restating_the_seed_tier_reports_the_seed_reason_and_no_promotion(self):
+        effective = build_effective_task_class_tiers(
+            {PROMOTABLE_CLASS: TASK_CLASS_TIERS[PROMOTABLE_CLASS]}
+        )
+        fields = routed_call_evidence_fields(PROMOTABLE_CLASS, effective)
+        assert fields["reason"] == SEED_MAPPING_REASON
+        assert fields["promoted_by"] is None
+
+    def test_the_declared_field_tuple_is_exactly_four_names(self):
+        assert ROUTED_CALL_EVIDENCE_FIELDS == ("task_class", "tier", "reason", "promoted_by")
