@@ -14,33 +14,29 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 9, session 2 — a REPAIR round. Round 8 is booked FAIL: its
-`R-0771` fix added a second, correct composition site and turned two
-arity guards in `tests/orchestration/test_prompt_trace.py` red, which the
-round's gate list never ran. `R-0771` resolves, `R-0772` is registered
-for the red suite and repaired by rescoping both guards to the real shape
-— one primary composition and one fallback recomposition. On top of that,
-`ComposedPrompt` gains a `deduped_names` field so a composed prompt
-reports which segments it replaced. The manifest ROW keys stay closed.
+Round 10, session 2, the last round of that session — book round 9's PASS,
+resolve `R-0772`, and land the config kill switch. `run_pingpong` gains
+`semantic_dedupe_enabled`, defaulting to True and forwarded to both primary
+compose calls as `dedupe_enabled`, so an operator can disable semantic
+dedupe for a whole run without editing code. The resume-fallback
+recompositions stay outside it: they send full content whatever the flag
+says, because a fallback is not a resumed session.
 
 ## Next Steps
 
-- The config kill switch: a `run_pingpong` parameter forwarded to both
-  compose calls as `dedupe_enabled`, proven by a resumed chain in which
-  only the flag changed the outcome.
 - Surface the deduped names into the prompt trace, answering the
   `schema_v` question on its own evidence. The manifest row keys stay
   closed: the `call_segments` table in `token_ledger.py` mirrors them
   column for column, so widening them is a token-ledger change.
-- The measurement fixture on a resumed fixture chain, with the savings
+- The measurement fixture on a resumed fixture chain with the savings
   recorded, plus the docs (T003).
 - The integration gate, then the closure sequence.
 
 ## Risks
 
 - A suite that no round gate names can go red without anyone seeing it.
-  Every block from here names the suites its change set can REACH, not
-  only the ones it expects to move.
+  That is what `R-0772` was. Every block from here names the suites its
+  change set can REACH, not only the ones it expects to move.
 - The prompt TRACE entry is written before the provider call, so on a
   resume fallback it describes the abandoned resumed composition rather
   than the full one actually sent. The bytes sent and the recorded
