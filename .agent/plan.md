@@ -14,14 +14,15 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 7, session 2 — book round 6's PASS verdict, then give the transform
-`_dedupe_resumed_segments` its callers. `compose_builder_prompt` and
-`compose_reviewer_prompt` each gain a keyword-only `dedupe_sent_hashes`
-that defaults to None and bypasses entirely, plus a `dedupe_enabled` kill
-switch; the two call sites in `run_pingpong` pass the session's sent
-hashes only when a resume ref is actually set, so a non-resuming call has
-no value it could dedupe with. The byte-equality golden for the
-non-resume path is this round's first acceptance item.
+Round 8, session 2 — book round 7's PASS verdict, register `R-0771` and
+fix it. A resume FALLBACK is not a resumed session, yet the loop re-sent
+the prompt composed for the resumed one, markers and all, into a session
+that never received the originals, and then recorded that deduped
+manifest as what was sent. Both roles recompose at full content inside
+the fallback branch and rebind the composed prompt, so the sent bytes,
+the stored fallback prompt and the recorded evidence agree. The stale
+"no caller exists yet" claim in the transform's docstring is retired in
+the same commit.
 
 ## Next Steps
 
@@ -37,8 +38,10 @@ non-resume path is this round's first acceptance item.
 - The parse-retry and post-mortem provider calls are still NOT wired into
   the index. That records strictly less than was sent, which errs in the
   safe direction; nothing may assume the index is complete.
-- A deduped call records the MARKER's hash as sent, which is honest but
-  not useful. T002c's manifest annotation is what makes the evidence
-  readable; until then the marker hashes are harmless noise in the index.
+- The prompt TRACE entry is written before the provider call, so on a
+  fallback it describes the resumed composition rather than the full one
+  actually sent. The repair above fixes the sent bytes and the recorded
+  manifest; the trace ordering is untouched and belongs with T002c's
+  evidence work.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
