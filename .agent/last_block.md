@@ -1,89 +1,83 @@
-== STEP self-use / F109 — ROUND 19 ==
+== STEP closure-evidence / F109 — ROUND 20 ==
 
-SESSION 4 of feature F109. Round 19. Rounds so far: 18 done, this is the 19th.
+SESSION 4 of feature F109. Round 20. Rounds so far: 19 done, this is the 20th.
 Soft limit is 25 rounds / 7 sessions (docs/agents/self_drive_protocol.md G7,
-amend0827 rule 6); at 19 rounds and 4 sessions it is NOT reached, so no scope
-report is due. No line of this block is a run of a repeated character, so there
-is no run length to recover (§3 checklist item 37).
+amend0827 rule 6); at 20 rounds and 4 sessions it is NOT reached. No line of this
+block is a run of a repeated character, so there is no run length to recover
+(§3 checklist item 37).
 
 Scope rule, verbatim as every F109 order must carry it:
 RESUMED SESSION ONLY, PROVEN SENDS ONLY.
 
 ## Goal
 
-Discharge closure precondition 6 (docs/roadmap/STATUS_closure_protocol.md): the
-self-use queue holds NO pending item, so the generator supplies one from the
-ledger, and it is PLANNED and RUN to the normal approval gate like any other job
-— never promoted. Report every defect the run exposes, so the reviewer can author
-them as findings for the closure round. Also book round 18's PASS and resolve
-`R-0783`.
+Closure-protocol algorithm steps 1 and 2: the EVIDENCE JOB and a FRESH REVIEW
+ZIP, plus the integrity check precondition 3 demands. Register the three findings
+the round 19 self-use run exposed. This round does NOT write the STATUS line and
+does NOT create the PR — that is round 21, and the protocol requires the closure
+commit to FOLLOW a READY package.
 
 ## Bundle, in commit order
 
-- C0a  save this block verbatim to `.agent/authored/f109-r19.md`
+- C0a  save this block verbatim to `.agent/authored/f109-r20.md`
 - C0b  mirror it to `.agent/last_block.md`
-- C1   apply PLAN19 to `.agent/plan.md`            (FIRST substantive commit)
-- C2   append RECORD19 to `.agent/live_review.md`  (verdict, one resolution)
-- C3   the self-use item: generate, plan, RUN, and land its evidence
-- C4   rewrite `.agent/handoff.md`
+- C1   apply PLAN20 to `.agent/plan.md`            (FIRST substantive commit)
+- C2   append RECORD20 to `.agent/live_review.md`  (verdict, three registrations)
+- C3   rewrite `.agent/handoff.md`
+
+The evidence bundle and the zip are built BETWEEN C2 and C3, from the clean tree
+at C2. Neither is committed: `.gitignore` excludes `remedy-job-evidence-*/` and
+the zip, and the closure protocol's "Evidence dir is not committed" rule is
+explicit that a committed evidence dir puts evidence files into the review
+subject and packages BLOCKED_EVIDENCE. So C2's SHA is the ACCEPTED HEAD the
+manifest records, and you report it.
 
 ## Change set — these paths and nothing else
 
-    .agent/authored/f109-r19.md
+    .agent/authored/f109-r20.md
     .agent/last_block.md
     .agent/plan.md
     .agent/live_review.md
-    scripts/self_use_queue.json
-    .agent/selfuse_f109/             (new directory; `run.txt` and the job file)
     .agent/handoff.md
 
 ## Constraints
 
-1. EVERY authored slice below is applied BYTE FOR BYTE. C3 is NOT a slice — it is
-   a procedure whose output is whatever the shipped code produces. You never
-   hand-write the queue entry or the job file; the shipped functions write them.
-2. `.agent/live_review.md` ends WITHOUT a trailing newline and that convention is
-   preserved: append exactly the two bytes `\n\n` then RECORD19, which itself ends
-   without one. Never rewrite a landed entry.
-3. `consumed_by` STAYS EMPTY on the generated item this round. Closure
-   precondition 6 sets it to `F109` in the CLOSURE commit, which is not this
-   round. Do not set it early.
-4. The four items already in `scripts/self_use_queue.json` are NOT edited. After
-   C3 the file holds exactly one MORE item than before and the four prior ones
-   are byte-identical.
-5. THE RUN IS A REAL RUN. `packages.orchestration.role_config.resolve_role_config`
-   answers provider `ollama`, model `muse-glimmer:latest`, for both roles, so
-   `run_next_self_use_item` will NOT refuse for want of a real provider. Do NOT
-   pass `builder_name="fake"` or `reviewer_name="fake"` — the docstring reserves
-   those for tests, and a faked run does not discharge the precondition. Keep the
-   default budgets (`max_provider_calls=6`, `max_cost_usd=0.50`, `max_tasks=1`).
-6. IF THE RUN CANNOT HAPPEN — ollama unreachable, the model absent, the budget
-   exhausted, `SelfUseRunError` raised — that is a REPORTABLE OUTCOME, not
-   something to route around. Record the exact exception text and the full
-   traceback in `.agent/selfuse_f109/run.txt`, say so plainly in the handback, and
-   STOP the round there with C3 committed as far as it got. A blocked precondition
-   truthfully reported is a success; a faked run is a closure-corrupting lie.
-7. Nothing outside the change set is edited. If the sweep finds something else,
+1. EVERY authored slice is applied BYTE FOR BYTE. EVIDENCESCRIPT is COPIED to
+   `.remedy-wt/f109_evidence.py` and run — it is never retyped and never edited.
+   If it fails, report the real traceback; do not "fix" it silently.
+2. `.agent/live_review.md` ends WITHOUT a trailing newline: append exactly the two
+   bytes `\n\n` then RECORD20, which itself ends without one.
+3. THE ZIP IS BUILT FROM A CLEAN TREE. Run `git status --porcelain` immediately
+   before the build and record that it was empty. A package built from a dirty
+   tree is invalid.
+4. A FAILING ZIP BUILD IS A CLOSURE BLOCKER. If it fails, record the raw error in
+   the handback, do NOT close, and stop the round there. `PACKAGE_STATUS` is the
+   reading — NOT the exit code, which is 0 for both READY_FOR_REVIEW and
+   BLOCKED_EVIDENCE.
+5. Register the three findings EXACTLY as RECORD20 words them. Do not add a
+   `Done:` or `Landed:` line for any of them: all three are documented Low risks
+   carried into closure, and none is F109's code to repair — `R-0785` and
+   `R-0786` belong to F258's generator, and repairing another feature's code from
+   this branch is the scope drift AGENTS.md forbids.
+6. Nothing outside the change set is edited. If the sweep finds something else,
    DECLARE it; do not repair it.
-8. `python3 -m pytest` is the pytest route. Env-var assignment (`VAR=x cmd`,
+7. `python3 -m pytest` is the pytest route. Env-var assignment (`VAR=x cmd`,
    `env`, `export`) and `cp` are DENIED: copy with
    `python3 -c "import shutil; shutil.copyfile(a, b)"`. A `bash -c` wrapper around
    a Python heredoc, and a heredoc with braces adjacent to quotes, have both been
-   observed DENIED — write such logic to a scratch `.py` under `.remedy-wt/`, run
-   it with `python3 -B`, and delete it by exact path. A local-model run can be
-   SLOW: give it a generous timeout and never report a tool-level timeout as a run
-   result.
-9. Never force-push, never work on main, never create or merge a PR this round.
+   observed DENIED — write such logic to a scratch `.py` under `.remedy-wt/` and
+   run it with `python3 -B`.
+8. Never force-push, never work on main, never create or merge a PR this round.
 
 ## SLICE FORTSCHRITT — one line, applied verbatim into the handback's state block
 
 BEGIN FORTSCHRITT
-| **Fortschritt** | ~98 % (T001-T003 ✅ · Integration Gate ✅ · Self-Use läuft · Closure offen) — Schätzung |
+| **Fortschritt** | ~99 % (T001-T003 ✅ · Integration Gate ✅ · Self-Use ✅ · Evidence+Zip in Arbeit) — Schätzung |
 END FORTSCHRITT
 
-## SLICE PLAN19 — the whole of `.agent/plan.md`
+## SLICE PLAN20 — the whole of `.agent/plan.md`
 
-BEGIN PLAN19
+BEGIN PLAN20
 # Plan — F109 Semantic dedupe
 
 Branch: feature/f109-semantic-dedupe, cut from `main` at
@@ -100,170 +94,261 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 19, session 4. CLOSURE PRECONDITION 6, the self-use item: the queue
-holds no pending item, so the generator supplies one from the ledger and
-it is planned and RUN to the normal approval gate under the product's own
-provider — never promoted, never faked. Its defects are reported in the
-handback for the reviewer to author as findings. Also book round 18's
-PASS and resolve `R-0783`.
+Round 20, session 4. CLOSURE, steps 1 and 2: the evidence job and a FRESH
+review zip, plus the integrity check. Register the three findings the
+round 19 self-use run exposed, all three as documented Low risks carried
+into closure — two of them are F258's generator, not F109's code. The
+STATUS line and the PR are round 21, because the closure commit must
+FOLLOW a READY package.
 
 ## Next Steps
 
-- The closure sequence (docs/roadmap/STATUS_closure_protocol.md):
-  register the self-use defects, the evidence job, a FRESH review zip,
-  the authored STATUS line with the README sync in the SAME commit, the
-  `consumed_by` edit, and the PR. That round also runs the single
-  consolidation pass on the checklist of
+- Round 21, the closure commit: the authored STATUS line with the README
+  capability sync in the SAME commit, `consumed_by` set to F109 on
+  `SU-005`, the final `.agent/` state, then the PR. That round also runs
+  the single consolidation pass on the checklist of
   docs/agents/planner_reviewer_prompt.md section 3.
 
 ## Risks
 
-- The self-use run uses a local model. If it cannot run, the precondition
-  is BLOCKED and reported, never faked.
-- SEVEN findings on this branch have been one class: prose TRUE when
-  written and falsified by a later round. The consolidation should answer
-  the class, not add an eighth id.
+- A failing zip build is a CLOSURE BLOCKER, never something to work
+  around; `PACKAGE_STATUS` is the reading, not the exit code.
+- SEVEN findings on this branch were one class: prose TRUE when written
+  and falsified by a later round. The consolidation should answer the
+  class, not add an eighth id.
 - Nothing dedupes in production: every concrete adapter returns
   `supports_resume = False`, so the mechanism is suite-only today.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
   carry two `Done:` lines each. That is `R-0778`.
-END PLAN19
+END PLAN20
 
-## SLICE RECORD19 — appended to `.agent/live_review.md`, two paragraphs
+## SLICE RECORD20 — appended to `.agent/live_review.md`, four paragraphs
 
-BEGIN RECORD19
-Gate: F109 R18 — the round 18 entry. VERDICT PASS, over the range `50526376..cb19e916`. THE TRANSPORT PROOF IS AGAIN A REAL ONE — `cmp` of `.remedy-wt/f109-r18.md`, the reviewer's own original, against `.agent/authored/f109-r18.md` exited 0 — and EVERY SLICE WAS VERIFIED BYTE-IDENTICAL by the reviewer independently: `.agent/plan.md` equals PLAN18, RECORD18's three paragraphs are the tail of this record, PAIR F reads FROM 0x and TO 1x, and BUILTSTATE is the exact tail of `docs/roadmap/features/T3_F109.md`, which now carries exactly one `## Built State` heading and exactly one trailing newline. THE FEATURE FILE THEREFORE SATISFIES CLOSURE PRECONDITION 4, which it did not before this round: it had no Built State section at all. THE SUITES were re-run by the reviewer at 295, 130, 54 and 42, totalling 521 at exit 0, and NO COUNT MOVED IN EITHER DIRECTION, which is what the round's own constraint demanded of a comment-only repair. THE HANDBACK CARRIES THE FORTSCHRITT LINE VERBATIM, confirmed by the reviewer as a substring of `.agent/handoff.md`; that is finding `R-0418`'s standing form for self-drive, where no paste relay exists and a worker cannot see the operator brief, and this is the first round of this feature to satisfy it — the reviewer's earlier blocks simply omitted the line, which met `R-0418`'s letter by not ordering it and missed the obligation planner_reviewer_prompt.md §3 states. A CORRECTION THE REVIEWER OWES THIS RECORD, appended here rather than by rewriting the landed text, which item 20 forbids: the R-0783 paragraph committed at `18f0c9c6` calls that finding "THE SIXTH SITE OF ONE CLASS" and lists `R-0749`, `R-0773`, `R-0779`, `R-0780` and `R-0781` before it, omitting `R-0782`, which is a member of exactly that class by its own registration text. THE TRUE COUNT IS SEVEN. The worker of round 18 spotted the discrepancy and reported it rather than editing either text, which is correct. Nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is wrong because of it and the argument the numeral served — that the closure consolidation must answer the CLASS rather than mint another id — is unaffected at six or seven, so this is a dated correction and a `.agent/prose_slips.md` line at the consolidation, not a new id and not a correction round. TWO FURTHER REVIEWER LOOSENESSES the round declared and the reviewer accepts: G6(c) asked for the marker string `[unchanged: ` to "resolve in the modules named" when it lives in `session_sent_index.py` and reaches the loop only through the imported `dedupe_marker_for_segment`, so a literal grep in `pingpong_loop.py` reads 0 while the Built State sentence stays true; and G3(d) named `35c0b03f` as its base while G3(a) named `50526376`, so the ledger delta it reports spans two rounds — the figures 342 to 344 registered and 66 to 69 `Done:` lines are correct for that wider range, and the reviewer re-derived them independently, but the base should have been the round's own. THE OPEN SET IS 277 by set difference over 344 distinct registered ids and 67 distinct resolved ones. THE TREE is clean and the branch is pushed at `cb19e916`.
+BEGIN RECORD20
+Gate: F109 R19 — the round 19 entry. VERDICT PASS, over the range `cb19e916..a06a6e69`. CLOSURE PRECONDITION 6 IS DISCHARGED AND THE RUN WAS REAL. `SU-005` — "Address ledger finding R-0418", provenance `generated (self-use-generator tier 1, ledger scan, R-0418)`, which is exactly what the reviewer's own read-only probe predicted at `cb19e916` — was generated by the shipped generator, planned, and RUN for 184.3 seconds under provider `ollama` and model `muse-glimmer:latest` for both roles, with the default budgets and NO `builder_name`/`reviewer_name` override. Its `execution_config` records `builder='ollama'`, `reviewer='ollama'`, source `cli`, so the run was NOT faked, which constraint 5 of that round made the condition of the precondition being discharged at all. The job then stopped at the NORMAL APPROVAL GATE: `JobPlan.status='blocked'`, task T001 `final_status='repair_exhausted'`, `reviewer_verdict='fail'`, both repair rounds spent, nothing promoted. THE REVIEWER RE-VERIFIED THE ROUND independently: `cmp` of the reviewer's own `.remedy-wt/f109-r19.md` against the committed authored copy exited 0; the queue holds 5 items where it held 4, the four prior ones parse identically, the new one carries an EMPTY `consumed_by` as constraint 3 required; the ledger reads 344 distinct registered ids and 68 distinct resolved over 70 `Done:` lines, so the open set is 276; and the five gate suites re-run to 23, 20, 11, 18 and 42, totalling 114 at exit 0. THE ROUND FOUND THREE THINGS BEYOND ITS ORDERED TUPLE and repaired none of them, which is correct: two are registered below as `R-0785` and `R-0786`, and the third — the retained job worktree `.remedy-wt/job-5e91e080219342d9`, `worktree_cleanup_status='retained'` — is PRE-EXISTING product behaviour with four such worktrees already present, is gitignored, and is recorded here without an id rather than charged to this feature. ONE SENTENCE OF THE REVIEWER'S OWN PLAN WENT STALE INSIDE THIS ROUND and the worker declared it: `.agent/plan.md` at `5c051818` says "the queue holds no pending item", which was true when C1 was written and false after C3 appended one. It reads as the round's GOAL rather than as a claim about the end state, nothing on disk is wrong, and `.agent/plan.md` is rewritten every round by construction — so it is a `.agent/prose_slips.md` line at the consolidation, not an id.
 
-Done: R-0783 — RESOLVED at `b89456a6` and verified by the reviewer at `cb19e916`. The comment above `test_a_disabled_run_reports_no_deduped_names_on_any_composition` in `tests/orchestration/test_semantic_dedupe.py` no longer gives "the report never reaches ``PingPongResult``" as its reason. It now says the composed OBJECT is what those cases assert on and only the capture helper yields it, while stating plainly that the prompt trace carries the deduped NAMES onto `PingPongResult` but never the `ComposedPrompt` itself — which is the distinction `R-0782`'s repair established one round earlier, now applied consistently across both sites. The reviewer counted the string `the report never reaches` in that file at ZERO, which is the finding's stated resolution condition, and confirmed by AST over the commit's own blobs that every definition name and every executable-statement count is unchanged, so the repair moved no code and the suite still collects 130.
-END RECORD19
+- R-0784 — Low, THE SELF-USE RUN THIS CLOSURE CONSUMED ENDED BLOCKED AT THE APPROVAL GATE, AND BOTH STRINGS `describe_self_use_run_defects` RETURNED ARE REGISTERED HERE BECAUSE CLOSURE PRECONDITION 6 REQUIRES IT. The two strings, verbatim and in order, are `job 5e91e080219342d9 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. THEY ARE ONE DEFECT SEEN TWICE — the job-level view and the task-level view of the same gate failure — so they take ONE id and not two, per §3 checklist item 30, which forbids minting a second id for a defect the set already holds. WHAT ACTUALLY HAPPENED, stated plainly rather than dressed up: `SU-005`'s task was to repair `R-0418`, a finding about REVIEWER BLOCK-AUTHORING PRACTICE under self-drive, whose fix is a rule about what a block must contain and not a code change any builder can make. The configured local model spent both repair rounds and the reviewer role failed it, so the job blocked and promoted nothing. THAT IS THE SYSTEM WORKING: an approval gate that refuses an unfinished job is the gate doing its job, and the alternative — promoting it — is the outcome the gate exists to prevent. WHY THIS IS LOW AND NOT A PRODUCT DEFECT: no Remedy code behaved wrongly, no state on disk is wrong, and the run is evidence that the self-use rail executes end to end against a real provider. What it does expose is a CURATION mismatch worth naming: the generator's tier 1 picks the oldest open Low/Medium ledger finding without asking whether that finding's fix is something a builder CAN perform, and a process rule aimed at the reviewer is not. FIX: none is owed by F109, whose code this is not. The durable answer belongs to F258's generator — either a tier-1 filter that skips findings whose fix binds the reviewer rather than the code, or an explicit acceptance that some generated items will honestly block. Resolved when the generator either filters such findings or documents that blocking on them is the intended outcome.
 
-## C3 — the self-use procedure, in this order
+- R-0785 — Low, THE SELF-USE GENERATOR REWRITES THE WHOLE QUEUE FILE WITH `ensure_ascii` AT ITS DEFAULT, ESCAPING ELEVEN EM DASHES IN CONTENT IT NEVER TOUCHED. Found by the WORKER of F109 R19 during that round's G8 sweep and MEASURED INDEPENDENTLY by the reviewer across `cb19e916..a06a6e69`: the literal U+2014 character occurs 11 times in `scripts/self_use_queue.json` before the append and 0 times after, while the six-character JSON escape that stands in for it occurs 0 times before and 18 times after. `append_generated_item` in `packages/orchestration/self_use_generator.py` ends with `path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")`, and `json.dumps` defaults `ensure_ascii=True`, so appending ONE item rewrites EVERY byte of a file that is otherwise operator-curated. EVERY PARSED VALUE IS UNCHANGED — the reviewer confirmed the four prior items compare equal after `json.loads` — so no reader misbehaves and nothing is corrupted in the sense that matters to code. WHY IT IS STILL A FINDING: the wrong state is on disk under `packages/` by way of a producer that damages bytes it was never asked to touch, which is the amend0827 rule 2 test, and the practical cost is that every future generated append produces a whole-file diff in which the one real change is invisible — the exact review hazard AGENTS.md's commit discipline exists to prevent. WHY LOW: values survive, the loader re-validates, and the file stays valid JSON with `schema_version` 2. FIX: pass `ensure_ascii=False` to that `json.dumps` call. NOT REPAIRED BY F109, and deliberately: this is F258's generator, and repairing another feature's production code from this branch is the scope drift AGENTS.md forbids outright. Resolved when `append_generated_item` preserves non-ASCII characters it did not author.
 
-This is the only part of the round that is a PROCEDURE rather than a slice. Do
-each step, capture its REAL output, and write everything you capture into
-`.agent/selfuse_f109/run.txt` — commands, return values, status, provider, and
-any traceback in full.
+- R-0786 — Low, THE SELF-USE QUEUE FILE'S OWN DESCRIPTION NOW DENIES WHAT THE FILE CONTAINS. Found by the WORKER of F109 R19 and confirmed by the reviewer at `a06a6e69`: `scripts/self_use_queue.json` carries a `description` reading "Operator-curated DATA, not discovery: Remedy never invents an item and never appends one", while the file's fifth item is `SU-005`, whose own `provenance` field reads `generated (self-use-generator tier 1, ledger scan, R-0418)` — invented and appended by Remedy. The description's dated notes stop at 2026-08-30 and never record the generator's arrival at all. THIS IS THE SAME CLASS AS THE SEVEN STALE-PROSE FINDINGS THIS BRANCH ALREADY CARRIES — a sentence TRUE when written and falsified by a later feature landing — and it is the first instance of that class found OUTSIDE this feature's own files, which is worth saying because it suggests the class is a repository habit rather than a property of F109's rounds. WHY LOW: no behaviour depends on the description, every loader reads the `items` array, and the suite is green. WHY IT IS A FINDING AND NOT A SLIP: the wrong state is on disk in a file an operator is explicitly invited to curate by hand, and a curator who believes "Remedy never appends one" will misread a generated item as their own. FIX: restate the description so it distinguishes operator-curated items from generator-appended ones, and record the generator's arrival in its dated notes. NOT REPAIRED BY F109 — the file belongs to F257 and its generator to F258; this branch registers it and leaves it. Resolved when the description no longer denies that Remedy appends items.
+END RECORD20
 
-1. BEFORE. Record `pending_self_use_items()` (expect 0 pending of 4 items) and
-   `next_self_use_item()` (expect `None`), which is WHY the generator runs at all.
-2. GENERATE. Call
-   `packages.orchestration.self_use_generator.generate_and_append_if_empty()` and
-   record the entry it returns. The reviewer's own read-only probe of
-   `generate_self_use_item()` at `cb19e916` answered `SU-005`, titled
-   "Address ledger finding R-0418", provenance
-   `generated (self-use-generator tier 1, ledger scan, R-0418)`. Report what YOURS
-   returns; a different id or subject is a real difference worth declaring, not a
-   discrepancy to smooth over.
-3. RUN. Call
-   `packages.orchestration.self_use_runner.run_next_self_use_item(dest_dir=Path(".remedy-wt/selfuse-f109-run"), repo_path=".")`
-   with the DEFAULT budgets and NO `builder_name`/`reviewer_name` override, per
-   constraint 5. It answers `(entry, job_file_path, plan)`. Record the plan's
-   `status`, its `error` if any, and the provider its `execution_config` says
-   actually ran.
-4. DEFECTS. Call
-   `packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)`
-   and record EVERY string it returns, verbatim and in order, each on its own
-   clearly delimited line. An EMPTY TUPLE means nothing to register — record it
-   as the empty result it is, never as "no defects were checked".
-5. LAND THE EVIDENCE. Copy the rendered job file into `.agent/selfuse_f109/` under
-   its own item id (the precedent is `.agent/selfuse_f257/`, which holds `run.txt`
-   and `SU-001.md`), and commit `run.txt` beside it. The run's working directory
-   under `.remedy-wt/` is scratch and is NOT committed; delete it by exact path
-   after copying what you need.
+## EVIDENCESCRIPT — copy to `.remedy-wt/f109_evidence.py`, run with `python3 -B`
+
+Adapted from `.agent/authored/f009-r33.md`'s slice of the same name, which is the
+known-good shape. The reviewer PRE-SCANNED all six candidate suites at `a06a6e69`
+with `build_review_manifest._unsafe_text`: ZERO node ids were rejected in any of
+them, so no `-k` deselection is needed and none is ordered. The scanner's own red
+control fired correctly on an absolute path in that same probe.
+
+BEGIN EVIDENCESCRIPT
+"""F109 closure evidence bundle. Run with python3 from the repository root."""
+import hashlib
+import json
+import os
+import re
+import subprocess
+from datetime import datetime, timezone
+
+REPO = os.path.abspath(".")
+EVIDENCE_DIR = os.path.join(
+    REPO, ".remedy-wt", "f109_closure_evidence", "remedy-job-evidence-f109-closure"
+)
+BASE = "5e18a8536afa086b591b5a2e13009d68d6227432"
+assert len(BASE) == 40, BASE
+
+HEAD = subprocess.run(
+    ["git", "-C", REPO, "rev-parse", "HEAD"], capture_output=True, text=True
+).stdout.strip()
+assert len(HEAD) == 40, HEAD
+
+
+def _tail(text):
+    """The last 2000 chars on a WHOLE-LINE boundary, path-scrubbed TWICE.
+
+    job_evidence._scrub_paths only relativises paths under REPO. A pytest header
+    line can end in the interpreter's own absolute path, which
+    build_review_manifest._unsafe_text correctly rejects as a local absolute
+    path -> BLOCKED_EVIDENCE.
+    """
+    from packages.common.path_redaction import scrub_paths
+    from packages.orchestration.job_evidence import _scrub_paths
+
+    cut = text[-2000:]
+    if len(text) > 2000 and "\n" in cut:
+        cut = cut[cut.index("\n") + 1:]
+    return scrub_paths(_scrub_paths(cut, REPO))
+
+
+def mkrun(rid, path, expect):
+    """One verification record. Node ids come from --collect-only, never from a
+    -v log: a parametrized id can contain whitespace and a regex over -v output
+    splits it (finding R-0611). No -k deselection is used for F109 — the
+    reviewer scanned all six suites and none carries a rejectable id.
+    """
+    assert re.match(r"^vr-\d{4,}$", rid), rid
+    cmd = "python3 -m pytest " + path + " -q"
+    collect = subprocess.run(
+        ["python3", "-m", "pytest", path, "-q", "--collect-only"],
+        cwd=REPO, capture_output=True, text=True,
+    )
+    assert collect.returncode == 0, (rid, collect.returncode)
+    ids = [ln for ln in collect.stdout.split("\n") if ln.startswith("tests/")]
+    run = subprocess.run(
+        ["python3", "-m", "pytest", path, "-q"], cwd=REPO, capture_output=True, text=True,
+    )
+    text = run.stdout + run.stderr
+    assert run.returncode == 0, (rid, run.returncode, text[-400:])
+    passed = sum(int(x) for x in re.findall(r"(\d+) passed", text))
+    failed = sum(int(x) for x in re.findall(r"(\d+) (?:failed|error)", text))
+    skipped = sum(int(x) for x in re.findall(r"(\d+) skipped", text))
+    dur = float(re.findall(r"in ([\d.]+)s", text)[-1])
+    assert (passed, failed, skipped) == (expect, 0, 0), (rid, passed, failed, skipped)
+    selected = passed + failed + skipped
+    assert len(ids) == selected, (rid, len(ids), selected)
+    files = sorted({i.split("::")[0] for i in ids})
+    for f in files:
+        assert os.path.isfile(os.path.join(REPO, f)), f
+    return {
+        "run_id": rid, "command": cmd,
+        "exit_code": 0, "passed": passed, "failed": failed, "skipped": skipped,
+        "selected": selected, "deselected": 0, "node_ids": ids,
+        "test_files": files, "duration_seconds": dur,
+        "head_sha": HEAD, "stdout_summary": _tail(text),
+    }
+
+
+runs = [
+    mkrun("vr-0001", "tests/orchestration/test_semantic_dedupe.py", 130),
+    mkrun("vr-0002", "tests/orchestration/test_prompt_trace.py", 54),
+    mkrun("vr-0003", "tests/orchestration/test_session_resume.py", 27),
+    mkrun("vr-0004", "tests/ui_server/test_prompt_trace_payload.py", 20),
+    mkrun("vr-0005", "tests/ui_server/test_prompt_trace_lens.py", 13),
+    mkrun("vr-0006", "tests/test_observability_index.py", 14),
+]
+for r in runs:
+    print(r["run_id"], "selected", r["selected"], "node_ids", len(r["node_ids"]),
+          "files", len(r["test_files"]), "dur", r["duration_seconds"])
+
+# Every packaged string is scanned; prove the ids and commands pass BEFORE the
+# bundle is written, so a rejection is a red here and not a BLOCKED zip later.
+import sys  # noqa: E402
+sys.path.insert(0, os.path.join(REPO, "scripts"))
+from build_review_manifest import _unsafe_text  # noqa: E402
+
+rejected = [(r["run_id"], v) for r in runs for v in r["node_ids"] + [r["command"]]
+            if _unsafe_text(v)]
+print("SCAN rejected strings:", len(rejected), rejected[:3])
+assert not rejected, rejected
+print("SCAN red control:", _unsafe_text("/home/user/repo/tests/x.py::t"))
+
+now = datetime.now(timezone.utc)
+from packages.orchestration.job_evidence import create_manual_completion_bundle  # noqa: E402
+
+result = create_manual_completion_bundle(
+    EVIDENCE_DIR,
+    repo_root=REPO,
+    base_commit=BASE,
+    head_commit=HEAD,
+    job_id="f109-closure",
+    job_title="F109 Semantic dedupe - closure",
+    step_range="T001-T003",
+    prior_job_ids=[],
+    verification_runs=runs,
+    timestamp=now.replace(microsecond=0).isoformat(),
+    generated_at=now.isoformat(),
+    num_tasks=3,
+    note_prefix="operator-attested manual completion - F109 closure",
+    review_feature_id="f109",
+)
+print(json.dumps(result, indent=2, sort_keys=True))
+
+# The output_hash preimage rule: sha256 over stdout_summary EXACTLY. This is the
+# pitfall that blocked the F083 closure and it is not in the protocol's list.
+vt = os.path.join(EVIDENCE_DIR, "verification_tests.json")
+if os.path.isfile(vt):
+    with open(vt, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    for row in doc.get("runs", []):
+        want = hashlib.sha256(row.get("stdout_summary", "").encode()).hexdigest()
+        print("OUTPUT_HASH", row.get("run_id"), "matches sha256(stdout_summary):",
+              row.get("output_hash") == want)
+else:
+    print("OUTPUT_HASH no verification_tests.json at", vt)
+END EVIDENCESCRIPT
 
 ## Done when — the eight gates. RUN each one and record its REAL exit code.
 
-Every gate below runs at a commit STRICTLY EARLIER than C4, the commit that
-writes the handback, so the handback can honestly quote all eight.
+G1 TRANSPORT. `cmp .remedy-wt/f109-r20.md .agent/authored/f109-r20.md`, report the
+   exit code; that scratch file is the REVIEWER'S OWN original. Then
+   `sha256sum .agent/authored/f109-r20.md .agent/last_block.md` — one digest twice.
 
-G1 TRANSPORT, one comparison and no chain. Run
-   `cmp .remedy-wt/f109-r19.md .agent/authored/f109-r19.md` and report the exit
-   code. That scratch file is the REVIEWER'S OWN original, so this proves real
-   transport, not your own self-consistency. Then report
-   `sha256sum .agent/authored/f109-r19.md .agent/last_block.md` — one digest twice.
-
-G2 THE PLAN. Extract PLAN19 by delimiter index and `cmp` it against
-   `.agent/plan.md` after C1: exit 0, no output. Report `wc -l .agent/plan.md`,
-   under 50 (AGENTS.md), and `grep -c '^## Goal'` and `grep -c '^## Next Steps'`,
-   each 1.
+G2 THE PLAN. Extract PLAN20 by delimiter index and `cmp` against `.agent/plan.md`
+   after C1: exit 0. Report `wc -l` under 50, and `grep -c '^## Goal'` and
+   `grep -c '^## Next Steps'`, each 1.
 
 G3 THE RECORD APPEND, four readings.
-   (a) ARITHMETIC. Report base size and base sha256 of `.agent/live_review.md` at
-       `cb19e916`, the appended length S, the new size, and whether base + S
-       equals it. Confirm the file still ends WITHOUT a trailing newline.
-   (b) A SECOND READER THAT COUNTS NO BYTE, covering the WHOLE appended region.
-       Split the entire file on blank-line boundaries into units. Let N be the
-       paragraph count of RECORD19 as YOUR SCRIPT COUNTS IT from the slice — do
-       not take N from this block. Assert the LAST N units equal RECORD19's N
-       paragraphs IN ORDER, printing each one's opening 60 characters.
-   (c) A NEGATIVE CONTROL ON THE FIRST APPENDED PARAGRAPH. Copy the file to
-       `.remedy-wt/live_review_negative_control_r19.md`, flip one byte INSIDE the
-       FIRST appended paragraph there, and show reader (b) REJECTS the copy while
-       ACCEPTING the tracked file. Report the tracked sha256 before and after,
-       then delete that scratch file BY ITS EXACT PATH and report
-       `os.path.exists` on that exact path as False.
-   (d) COUNTS, AS A SET DIFFERENCE and never a subtraction (`R-0778`). Read the
-       base from `git show cb19e916:.agent/live_review.md` — THE ROUND'S OWN BASE,
-       not an earlier one — and report five figures for base and five for the new
-       state: registered ids, DISTINCT registered ids, `Done:` lines, DISTINCT
-       resolved ids, and `len(set(registered) - set(resolved))`. Also report
-       `grep -c '^Gate: F109 R18 — '` = 1 and `grep -c '^Done: R-0783 — '` = 1.
+   (a) base size and sha256 of `.agent/live_review.md` at `a06a6e69`, appended
+       length S, new size, and whether base + S equals it; still no trailing
+       newline.
+   (b) a SECOND READER counting no byte, over the WHOLE appended region: split the
+       file on blank-line boundaries, let N be RECORD20's paragraph count as YOUR
+       SCRIPT COUNTS IT from the slice, assert the LAST N units equal RECORD20's N
+       paragraphs IN ORDER, printing each one's first 60 characters.
+   (c) a NEGATIVE CONTROL on the FIRST appended paragraph, on a copy at
+       `.remedy-wt/live_review_negative_control_r20.md`; show reader (b) rejects
+       the copy and accepts the tracked file, report the tracked sha256 before and
+       after, then delete the copy BY EXACT PATH and report `os.path.exists` False.
+   (d) COUNTS AS A SET DIFFERENCE, never a subtraction (`R-0778`), base read from
+       `git show a06a6e69:.agent/live_review.md` — THE ROUND'S OWN BASE. Report
+       registered ids, DISTINCT registered, `Done:` lines, DISTINCT resolved, and
+       `len(set(registered) - set(resolved))`, for base and new. Also
+       `grep -c '^Gate: F109 R19 — '` = 1 and `grep -c '^- R-078[456] — '` = 3.
 
-G4 THE QUEUE GREW BY EXACTLY ONE, AND ONLY AT THE END. Report the item count of
-   `scripts/self_use_queue.json` before and after C3 (expect 4 then 5), that the
-   FIRST FOUR items are byte-identical to their pre-C3 selves when re-serialised
-   in order, that the new item's `consumed_by` is the EMPTY string, that its
-   `provenance` is non-blank, and that its id matches `^SU-\d{3}$`. Report
-   `schema_version`, which must still read 2.
+G4 THE EVIDENCE BUNDLE. Run EVIDENCESCRIPT and report: every `mkrun` line, the
+   SCAN rejected count (must be 0) and the red control (must be truthy), the full
+   summary dict `create_manual_completion_bundle` returned including its final
+   verdict, and one `OUTPUT_HASH ... matches sha256(stdout_summary): True` line
+   per run. Any False there is a BLOCKER — stop and report it.
 
-G5 THE RUN REALLY RAN, AND NOT UNDER THE FAKE PROVIDER. From the captured output
-   report: the `JobPlan.status`, its `error` if any, and the provider named in its
-   `execution_config`. That provider must NOT be `fake`. If the run raised
-   instead, report the exception type and message verbatim — constraint 6 makes
-   that a valid outcome for this gate, and the gate is then RED-BUT-HONEST rather
-   than passed.
+G5 THE TREE WAS CLEAN AT BUILD TIME. Report `git status --porcelain` IMMEDIATELY
+   before the zip build; it must be empty, and constraint 3 makes a package built
+   from a dirty tree invalid.
 
-G6 THE DEFECTS ARE RECORDED VERBATIM. Report the exact tuple
-   `describe_self_use_run_defects(plan)` returned — its length and every string in
-   order — and show that each one appears in `.agent/selfuse_f109/run.txt`. This
-   is the gate the CLOSURE round reads: the reviewer authors findings from these
-   strings, so a paraphrase here becomes a wrong finding there.
+G6 THE REVIEW ZIP. Build with
+   `bash scripts/make_review_zip.sh --evidence-dir <EVIDENCE_DIR>`. Report the
+   package FILENAME, its SHA-256, its `PACKAGE_STATUS`, `EVIDENCE_AUTHORITATIVE`,
+   and the manifest's `committed_review_subject` base and head. PACKAGE_STATUS
+   must read READY_FOR_REVIEW — it is the reading, NOT the exit code, which is 0
+   either way. Also report the package's ARCHIVED PATH: the absolute directory it
+   now sits in, or the literal `NOT ARCHIVED` if you left it where it was built
+   (DECISION amend0827 D1). Record the head commit the manifest names; that is the
+   ACCEPTED HEAD round 21's STATUS line will carry.
 
-G7 THE SUITES, run SERIALLY, one process finishing before the next starts. Report
-   the collected count and REAL exit code of each:
-   - `python3 -m pytest tests/orchestration/test_self_use_queue.py -q`
-   - `python3 -m pytest tests/orchestration/test_self_use_generator.py -q`
-   - `python3 -m pytest tests/orchestration/test_self_use_runner.py -q`
-   - `python3 -m pytest tests/orchestration/test_self_use_job.py -q`
-   - `python3 -m pytest tests/cli/test_golden_path.py -q`
-   The first four are the suites that READ the queue file this round appends to,
-   which is why they are named; the last is the mandatory canary. None may go red.
-   The reviewer checked their guards at `cb19e916`: they assert at least one item,
-   `schema_version == 2`, unique ids matching `^SU-\d{3}$`, and a non-blank
-   provenance on every item — there is NO count-equality guard, so a fifth item is
-   safe by construction.
+G7 THE INTEGRITY CHECK, closure precondition 3. The `remedy` binary may be denied,
+   so run `from packages.orchestration.integrity_gate import run_integrity_checks`.
+   The result is an object with `.passed`, `.fail_count` and `.checks` —
+   ATTRIBUTES, not a dict, so `.get(...)` raises. Report `.passed` and
+   `.fail_count`, and name every failing check if there are any.
 
-G8 THE TREE AND THE SWEEP. `git status --porcelain` EMPTY and
-   `git ls-files .remedy-wt` returning nothing. Confirm
-   `.remedy-wt/selfuse-f109-run` is gone by exact path. Report each commit's
-   insertion count from `git show --numstat` — the `+` column ONLY, per AGENTS.md
-   DECISION F104 D1 — for every commit of this round EXCEPT C4, and compare cell
-   by cell against your own `## Commits` table (§3 checklist item 28). Then
-   re-read each file this round touched and report every sentence now stale,
-   including any you did NOT repair, with the reason.
+G8 THE TREE AND THE SWEEP. `git status --porcelain` EMPTY at the end and
+   `git ls-files .remedy-wt` returning nothing; confirm no evidence dir and no zip
+   is tracked. Report each commit's insertion count from `git show --numstat` —
+   the `+` column ONLY — for every commit EXCEPT C3, compared cell by cell against
+   your own `## Commits` table. Then re-read each file this round touched and
+   report every sentence now stale, with the reason.
 
 ## Handback
 
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It has NO
-length cap. Its STATE BLOCK carries the FORTSCHRITT slice above, applied VERBATIM
-as its own line. It must also carry: the SESSION NUMBER (4) and round (19); the
-item-status table with every one of C0a, C0b, C1, C2, C3, C4 appearing exactly
-once with `done`, `skipped` or `deviated` and a reason; a per-commit changed-files
-table with the `+/-` column; ONE LINE PER GATE G1 through G8 with its real
-reading; THE SELF-USE OUTCOME in one unmissable sentence — item id, run status,
-provider, and the number of defects reported; the FULL verbatim defect list a
-second time in its own section, because the closure round authors findings from
-it; the open-finding count as a SET DIFFERENCE; your deviations and assumptions;
-and the next expected action, which is the closure sequence. Then
-`git push -u origin feature/f109-semantic-dedupe` and report the result. Create
-no PR.
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md; no length cap.
+Its STATE BLOCK carries the FORTSCHRITT slice VERBATIM. It must also carry: the
+SESSION NUMBER (4) and round (20); the item-status table with C0a, C0b, C1, C2, C3
+each appearing exactly once; a per-commit changed-files table with the `+/-`
+column; ONE LINE PER GATE G1 through G8 with its real reading; and, in its own
+unmissable section, THE CLOSURE FACTS round 21 needs — `Evidence job f109-closure`,
+the package FILENAME, its SHA-256, its ARCHIVED PATH, the PACKAGE_STATUS, and the
+ACCEPTED HEAD the manifest records. Also the open-finding count as a SET
+DIFFERENCE, your deviations, and the next expected action. Then
+`git push -u origin feature/f109-semantic-dedupe` and report the result. Create no
+PR and write no STATUS line this round.
