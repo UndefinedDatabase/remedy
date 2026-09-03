@@ -13,7 +13,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 - [x] F106 — Session resume instead of rebuild (T001–T003 complete; accepted 2026-09-02 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f106-closure · package remedy-review-20260902-115928-READY_FOR_REVIEW.zip · SHA-256 939f841e486a4361ec503f21bc697fc18dd9834b3312f34024339f7a865b2a65 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 82278107ecea9e291d668caa9180f3d847d13e88)
 - [x] F108 — Tiered artifact summaries (T001–T003 complete; accepted 2026-09-02 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f108-closure · package remedy-review-20260902-192835-READY_FOR_REVIEW.zip · SHA-256 a28313788d23607789ed8eaa25449a5329358392240c05a61509d70aae5dd73f · package path NOT ARCHIVED · accepted HEAD 28040b4bdb366e09d3f30feccf030dbdf7f8eabe)
-- [~] F109 — Semantic dedupe
+- [x] F109 — Semantic dedupe (T001–T003 complete; accepted 2026-09-03 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f109-closure · package remedy-review-20260903-073602-READY_FOR_REVIEW.zip · SHA-256 92b85aa8c28870d40d927773c1635c2aa6ae9b1ba02156e1b4e76e017aa7a538 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 00084eef9de84b01e207a621d05d9b55378a2abc)
 - [ ] F110 — Model routing by task class
 - [ ] F112 — Prompt budget per task class
 - [ ] F114 — Cost preview per command
