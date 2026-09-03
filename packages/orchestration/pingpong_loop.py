@@ -1125,16 +1125,18 @@ def compose_builder_prompt(
     for (name, rank, _), text in zip(specs, texts):
         registry.register(name, rank, text)
     segments = registry.registered_segments()
+    deduped_names: tuple[str, ...] = ()
     if dedupe_sent_hashes is not None:
-        # F109 T002b: the replaced NAMES are discarded here on purpose.
-        # ``ComposedPrompt`` carries text and manifest, and widening it to
-        # carry the deduped names is T002c, which is the slice that needs
-        # them. Threading a value no caller reads would be a second seam
-        # to keep honest for a round with nothing to read it.
-        segments, _ = _dedupe_resumed_segments(
+        # F109 T002c: the replaced NAMES are REPORTED on the composed prompt,
+        # so a later reader can see what the model was not sent again instead
+        # of having to infer it. The manifest ROW shape is deliberately left
+        # untouched: the ``call_segments`` table in ``token_ledger.py`` mirrors
+        # those keys column for column, so widening them is a token-ledger
+        # change and not this one.
+        segments, deduped_names = _dedupe_resumed_segments(
             segments, dedupe_sent_hashes, enabled=dedupe_enabled
         )
-    return compose_prompt_segments(segments)
+    return replace(compose_prompt_segments(segments), deduped_names=deduped_names)
 
 
 def _builder_tiered_diff_text(
@@ -1675,16 +1677,18 @@ def compose_reviewer_prompt(
     for (name, rank, _), text in zip(specs, texts):
         registry.register(name, rank, text)
     segments = registry.registered_segments()
+    deduped_names: tuple[str, ...] = ()
     if dedupe_sent_hashes is not None:
-        # F109 T002b: the replaced NAMES are discarded here on purpose.
-        # ``ComposedPrompt`` carries text and manifest, and widening it to
-        # carry the deduped names is T002c, which is the slice that needs
-        # them. Threading a value no caller reads would be a second seam
-        # to keep honest for a round with nothing to read it.
-        segments, _ = _dedupe_resumed_segments(
+        # F109 T002c: the replaced NAMES are REPORTED on the composed prompt,
+        # so a later reader can see what the model was not sent again instead
+        # of having to infer it. The manifest ROW shape is deliberately left
+        # untouched: the ``call_segments`` table in ``token_ledger.py`` mirrors
+        # those keys column for column, so widening them is a token-ledger
+        # change and not this one.
+        segments, deduped_names = _dedupe_resumed_segments(
             segments, dedupe_sent_hashes, enabled=dedupe_enabled
         )
-    return compose_prompt_segments(segments)
+    return replace(compose_prompt_segments(segments), deduped_names=deduped_names)
 
 
 def _reviewer_tiered_diff_text(

@@ -99,10 +99,23 @@ class PromptSegmentManifestEntry:
 
 @dataclass(frozen=True)
 class ComposedPrompt:
-    """A composed prompt plus the manifest of the segments that produced it."""
+    """A composed prompt plus the manifest of the segments that produced it.
+
+    ``deduped_names`` holds the names of the segments whose TEXT was replaced by
+    a reference marker before composition, in the order they were replaced. It
+    is empty for every composition that deduped nothing, which is every
+    composition THIS module performs: ``compose_prompt_segments`` never sets it,
+    because this module has no opinion about dedupe and does not import it.
+    F109's composition hook attaches the names after the fact, to the composed
+    object it gets back. The field deliberately does NOT appear in
+    ``manifest_as_dicts()`` — the ``call_segments`` table in ``token_ledger.py``
+    mirrors those row keys column for column, so widening them is a token-ledger
+    change and not this one.
+    """
 
     text: str
     manifest: tuple[PromptSegmentManifestEntry, ...]
+    deduped_names: tuple[str, ...] = ()
 
     def manifest_as_dicts(self) -> list[dict[str, str | int]]:
         """JSON-ready manifest rows, in composition order.
