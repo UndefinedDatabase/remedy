@@ -39,6 +39,11 @@ TASK_BLOCKED = "blocked"
 TASK_FAILED = "failed"
 TASK_SKIPPED = "skipped"
 
+# F112 T003b1: every TaskEntry's model-routing class, honestly defaulted rather
+# than inferred from title text (DECISION F112 D2) — the seeded
+# model_routing.TASK_CLASS_TIERS key F016's own build/repair tasks already are.
+TASK_CLASS_DEFAULT = "standard_build"
+
 JOB_PLANNED = "planned"
 JOB_RUNNING = "running"
 JOB_BLOCKED = "blocked"
@@ -116,6 +121,7 @@ class TaskEntry:
     task_id: str = ""          # T001, T002, ... (by parse order)
     source_heading_number: int = 0  # Original ## Task N number
     title: str = ""
+    task_class: str = TASK_CLASS_DEFAULT
     body: str = ""
     acceptance: str = ""
     status: str = TASK_PENDING
@@ -615,6 +621,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "task_id": t.task_id,
                 "source_heading_number": t.source_heading_number,
                 "title": t.title,
+                "task_class": t.task_class,
                 "body": t.body,
                 "acceptance": t.acceptance,
                 "status": t.status,
@@ -704,6 +711,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             task_id=t.get("task_id", ""),
             source_heading_number=t.get("source_heading_number", 0),
             title=t.get("title", ""),
+            task_class=t.get("task_class", TASK_CLASS_DEFAULT),
             body=t.get("body", ""),
             acceptance=t.get("acceptance", ""),
             status=t.get("status", TASK_PENDING),
