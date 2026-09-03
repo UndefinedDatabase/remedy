@@ -27,6 +27,7 @@ from packages.orchestration.pingpong_job import (
     TASK_PASSED,
     TASK_PENDING,
     TASK_SKIPPED,
+    TaskEntry,
     _build_task_prompt,
     _is_unsafe_path,
     _strict_apply_to_workspace,
@@ -38,6 +39,7 @@ from packages.orchestration.pingpong_job import (
     plan_job_from_file,
     run_job,
     save_job_plan,
+    task_entry_to_planned_task,
     validate_job_task_result,
 )
 from packages.orchestration.pingpong_provider import FakeProvider
@@ -3109,3 +3111,63 @@ class TestCommandPathPreApplySmoke:
         assert out["status"] == "completed"
         applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
         assert len(applied) == 2
+
+
+class TestTaskEntryToPlannedTaskAdapter:
+    """task_entry_to_planned_task (DECISION F112 D2/D3) translates one
+    dispatched TaskEntry into the granularity machinery's PlannedTask."""
+
+    def test_maps_fields_and_splits_acceptance_on_newlines(self):
+        task = TaskEntry(
+            task_id="T009",
+            title="Add OAuth support",
+            body="Wire the OAuth handshake into the login flow.",
+            acceptance="Login redirects to provider\n\nToken is persisted\n",
+        )
+
+        planned = task_entry_to_planned_task(task)
+
+        assert planned is not None
+        assert planned.id == "T009"
+        assert planned.title == "Add OAuth support"
+        assert planned.goal == "Wire the OAuth handshake into the login flow."
+        assert planned.acceptance == [
+            "Login redirects to provider", "Token is persisted",
+        ]
+        assert planned.files_hint == []
+        assert planned.est_tokens_band == "XL"
+
+    def test_goal_falls_back_to_title_when_body_is_empty(self):
+        task = TaskEntry(task_id="T010", title="Bump dependency", acceptance="Version pinned")
+
+        planned = task_entry_to_planned_task(task)
+
+        assert planned is not None
+        assert planned.goal == "Bump dependency"
+
+    def test_returns_none_when_acceptance_has_no_non_blank_line(self):
+        task = TaskEntry(task_id="T011", title="Empty", body="x", acceptance="\n\n  \n")
+
+        assert task_entry_to_planned_task(task) is None
+
+    def test_output_is_accepted_by_split_one_task_and_clusters_one_child_per_line(self):
+        from packages.orchestration.task_granularity import split_one_task
+
+        task = TaskEntry(
+            task_id="T012",
+            title="Large task",
+            body="Large task",
+            acceptance="First acceptance item\nSecond acceptance item\nThird acceptance item",
+        )
+        planned = task_entry_to_planned_task(task)
+        assert planned is not None
+
+        children = split_one_task(planned)
+
+        assert children is not None
+        assert len(children) == 3
+        assert [c.acceptance for c in children] == [
+            ["First acceptance item"],
+            ["Second acceptance item"],
+            ["Third acceptance item"],
+        ]

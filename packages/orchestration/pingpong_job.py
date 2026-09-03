@@ -24,8 +24,11 @@ import shutil
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from packages.orchestration.schemas.models import PlannedTask
 
 # ---------------------------------------------------------------------------
 # Task / Job state enums (string constants for JSON safety)
@@ -142,6 +145,39 @@ class TaskEntry:
     task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
     task_start_recorded_at: str = ""
     task_attempt_state: str = ""      # "" | "active" | "complete"
+
+
+# F112 T003b2a: translates a live TaskEntry into the granularity machinery's
+# own PlannedTask so `task_granularity.split_one_task` (DECISION F112 D2) can
+# run against a dispatched task without re-deciding its own band/acceptance
+# trigger. `est_tokens_band` is fixed at "XL" (never read by `split_one_task`,
+# which clusters on `acceptance`/`files_hint` alone — task_granularity.py:230)
+# and is present only because `PlannedTask` requires a valid TokenBand.
+def task_entry_to_planned_task(task: TaskEntry) -> PlannedTask | None:
+    """Adapt one dispatched ``TaskEntry`` into a plan-time ``PlannedTask``.
+
+    Returns None when ``task.acceptance`` holds no non-blank line: an empty
+    acceptance list violates ``PlannedTask``'s own validator, and per
+    T3_F112.md's edge case rule a split that cannot help drops the option
+    rather than raising. ``acceptance`` otherwise splits ``task.acceptance``
+    on newlines, dropping blank lines. ``files_hint`` is always empty:
+    `TaskEntry` carries no file-scope hint, and `_cluster_acceptance`
+    degrades safely to one cluster per acceptance item when `files_hint` is
+    empty (DECISION F112 D2 MEASURED — an empty hint is a safe, not a
+    broken, input).
+    """
+    from packages.orchestration.schemas.models import PlannedTask
+
+    lines = [line for line in task.acceptance.splitlines() if line.strip()]
+    if not lines:
+        return None
+    return PlannedTask(
+        id=task.task_id,
+        title=task.title,
+        goal=task.body or task.title,
+        acceptance=lines,
+        est_tokens_band="XL",
+    )
 
 
 @dataclass
