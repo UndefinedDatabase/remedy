@@ -2455,6 +2455,11 @@ def run_job(
                         question="task context exceeds its class cap",
                         options=["split task"],
                         safe_default="split task",
+                        impact=(
+                            f"tier1_tokens={fit_result.tier1_tokens} "
+                            f"cap_tokens={fit_result.cap_tokens} "
+                            f"task_class={fit_result.task_class}"
+                        ),
                         now=datetime.now(timezone.utc),
                     )
                     answered = auto_apply_safe_default(

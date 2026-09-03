@@ -3500,6 +3500,9 @@ class TestClassBudgetCannotFitEscalation:
         assert [r["task_id"] for r in records] == ["T001", "T001a", "T001b"]
         assert all(r["answer"] == "split task" for r in records)
         assert all(r["answer_source"] == "default" for r in records)
+        assert "tier1_tokens=" in records[0]["impact"]
+        assert "cap_tokens=1" in records[0]["impact"]
+        assert "task_class=standard_build" in records[0]["impact"]
 
     def test_an_unsplittable_task_falls_through_uncapped(
         self, isolate_data_root, demo_repo, monkeypatch, tmp_path
