@@ -1112,3 +1112,46 @@ class LinearStep:
         if all(t.status == RunState.COMPLETED for t in job.tasks):
             job.state = RunState.COMPLETED
         return TaskAttempt(task_id=task.id, executed=True, verified=True)
+
+
+class TestJobPlanCompatibility:
+    """DECISION F112 D4: enqueue_task_decision/auto_apply_safe_default must
+    work against a pingpong JobPlan/TaskEntry, not only Core Job/Task."""
+
+    def test_auto_apply_safe_default_answers_and_records_on_a_job_plan_task(self):
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
+        job = JobPlan(tasks=[TaskEntry(task_id="T003", title="Oversized task")])
+        record = enqueue_task_decision(
+            job,
+            task_id=job.tasks[0].task_id,
+            question="task context exceeds its class cap",
+            options=["split task"],
+            safe_default="split task",
+            now=T0,
+        )
+
+        answered = auto_apply_safe_default(job, record, now=T1)
+
+        assert answered is not None
+        assert answered["status"] == ESCALATION_STATUS_ANSWERED
+        assert answered["answer"] == "split task"
+        assert answered["answer_source"] == ANSWER_SOURCE_DEFAULT
+        assert (job.tasks[0].inputs[TASK_INPUTS_ANSWERS_KEY][answered["decision_id"]]
+                == "split task")
+
+    def test_answer_task_decision_matches_by_task_id_not_id(self):
+        from packages.orchestration.pingpong_job import JobPlan, TaskEntry
+
+        job = JobPlan(tasks=[
+            TaskEntry(task_id="T001", title="First"),
+            TaskEntry(task_id="T002", title="Second"),
+        ])
+        record = enqueue_task_decision(
+            job, task_id="T002", question="q", safe_default="d", now=T0,
+        )
+
+        auto_apply_safe_default(job, record, now=T1)
+
+        assert job.tasks[0].inputs == {}
+        assert TASK_INPUTS_ANSWERS_KEY in job.tasks[1].inputs
