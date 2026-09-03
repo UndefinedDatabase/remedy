@@ -3,16 +3,24 @@ Model routing by task class for Remedy (F110).
 
 Owns the CLASS TABLE — which model TIER a declared task class is routed to — the
 THREE HARD RULES of docs/agents/model_routing_policy.md as named checks, each
-returning ITS OWN rule name when a routing choice violates it, and the PER-PROJECT
+returning ITS OWN rule name when a routing choice violates it, the PER-PROJECT
 OVERRIDE SCHEMA that validates a whole override map against those rules BEFORE it
-is applied. Nothing else yet: no config file is read, no model id is named and no
-call site routes through it.
+is applied, and the PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a
+CHEAPER tier unless a documented benchmark run backs it. Nothing else yet: no
+config file is read, no model id is named and no call site routes through it.
 The table is SEEDED from the "Seed mapping" section of
 docs/agents/model_routing_policy.md, which remains the human-readable policy.
 tests/orchestration/test_model_routing.py parses that section and asserts the
 parsed mapping EQUALS :data:`TASK_CLASS_TIERS`, so the document and this table
 cannot drift apart silently — that sync test is an explicit acceptance line of
 docs/roadmap/features/T3_F110.md.
+
+THE PROMOTION BARS ARE SEEDED THE SAME WAY, from that document's "Promotion rule"
+section rather than from a hand-typed number, exactly as the table is seeded from
+its "Seed mapping" section. The same test file parses that section and asserts the
+parsed runs count, the two parsed percentages and the parsed logged-per-run field
+list EQUAL the constants below, so lowering a bar in the code without lowering it
+in the policy is a RED TEST rather than a quiet saving.
 
 :data:`MODEL_TIERS` is ordered CHEAPEST TO STRONGEST and that ORDER IS
 SIGNIFICANT: the hard rules of the policy document are comparisons along it
@@ -79,16 +87,35 @@ Public API::
     RULE_OVERRIDE_UNKNOWN_TIER: schema-rule name, an override naming a tier
         MODEL_TIERS does not
     OVERRIDE_SCHEMA_RULE_NAMES: the two above, in report order
-    OVERRIDE_VIOLATION_RULE_NAMES: schema names then HARD_RULE_NAMES — the
-        order an override map's violations are reported in
+    PROMOTION_MINIMUM_RUNS_PER_FIXTURE: the policy's runs-per-fixture bar
+    PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE: its block-level bar, PERCENT
+    PROMOTION_MINIMUM_OVERALL_PASS_RATE: its overall bar, PERCENT
+    PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR: the ONE document-to-code split
+    PROMOTION_EVIDENCE_DOCUMENT_FIELDS: the document's own logged-per-run names
+    PromotionAssertionResults: frozen (block_level_pass_rate, overall_pass_rate)
+    PromotionEvidence: frozen record of ONE documented benchmark run
+    RULE_PROMOTION_WITHOUT_EVIDENCE: promotion-rule name, no evidence at all
+    RULE_PROMOTION_EVIDENCE_INCOMPLETE: promotion-rule name, a document field
+        of PROMOTION_EVIDENCE_DOCUMENT_FIELDS left unset
+    RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD: promotion-rule name, a bar unmet
+    PROMOTION_RULE_NAMES: the three above, in report order
+    is_task_class_promotion(task_class, tier) -> bool — CHEAPER than the seed
+    check_promotion_backed_by_evidence(task_class, tier, evidence)
+    OVERRIDE_VIOLATION_RULE_NAMES: schema names, then HARD_RULE_NAMES, then
+        PROMOTION_RULE_NAMES — the order an override map's violations are
+        reported in
     OverrideViolation: frozen (task_class, rule_name) record of one violation
     OverrideRefused: the exception a refused override map raises
-    validate_task_class_tier_overrides(overrides, classes)
+    validate_task_class_tier_overrides(overrides, classes, promotion_evidence)
         -> tuple[OverrideViolation, ...] of EVERY violation in the map
-    build_effective_task_class_tiers(overrides, classes) -> dict[str, str],
-        raising OverrideRefused rather than dropping a violating entry
+    build_effective_task_class_tiers(overrides, classes, promotion_evidence)
+        -> dict[str, str], raising OverrideRefused rather than dropping a
+        violating entry
     resolve_task_class_tier_with_overrides(task_class, effective_tiers)
         -> tuple[str, str], the reason DERIVED by comparison with the seed
+    ROUTED_CALL_EVIDENCE_FIELDS: the keys a routed call records
+    routed_call_evidence_fields(task_class, effective_tiers, promotion_evidence)
+        -> dict[str, str | None], the mapping a routed call records
 """
 
 from __future__ import annotations
@@ -463,16 +490,236 @@ OVERRIDE_SCHEMA_RULE_NAMES: tuple[str, ...] = (
     RULE_OVERRIDE_UNKNOWN_TIER,
 )
 
+# ---------------------------------------------------------------------------
+# The promotion-evidence discipline — F110 T003
+# ---------------------------------------------------------------------------
+# docs/agents/model_routing_policy.md, "Promotion rule (evidence over claims, P1)":
+# "A model may be promoted into a task class only after a documented benchmark run
+# on the F082 corpus (or the class's frozen fixtures)". Everything below is that
+# sentence turned into a refusal a caller can branch on. The evidence map, like the
+# override map, is PASSED IN; see the module docstring for why no config file is
+# read here.
+
+#: MINIMUM RUNS PER FIXTURE. From the policy document's "Promotion rule" bullet
+#: "each fixture run 3× (small models are high-variance)". SEEDED from that
+#: sentence and pinned to it by the promotion-rule sync test in
+#: tests/orchestration/test_model_routing.py — lowering it here without lowering it
+#: in the document is a red test, which is the whole point of the bar living in
+#: two places.
+PROMOTION_MINIMUM_RUNS_PER_FIXTURE: int = 3
+
+#: MINIMUM BLOCK-LEVEL ASSERTION PASS RATE, IN PERCENT. From the same section's
+#: bullet "pass thresholds: ≥90% on block-level assertions, ≥75% overall" — this is
+#: the first of that bullet's two numbers. Percent and not a fraction because the
+#: document writes percent, and the sync test compares the parsed number to this
+#: constant directly rather than through a conversion nobody maintains.
+PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE: int = 90
+
+#: MINIMUM OVERALL PASS RATE, IN PERCENT. The second number of that same bullet,
+#: "≥75% overall", carried for the same reason and compared the same way.
+PROMOTION_MINIMUM_OVERALL_PASS_RATE: int = 75
+
+#: THE ONE TRANSLATION BETWEEN THE DOCUMENT AND THE CODE, DECLARED HERE BECAUSE A
+#: SILENT ONE WOULD TURN THE SYNC TEST INTO A TAUTOLOGY. The document's
+#: "logged per run" bullet carries one COMPOUND phrase, "model id + quantization",
+#: which is two logged names written as one item; the sync test splits on this
+#: separator before normalizing, and every other item passes through
+#: :func:`normalize_task_class` untouched. A reader who wonders why the document
+#: lists six items and this module names seven fields reads exactly this constant.
+PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR: str = " + "
+
+#: THE DOCUMENT'S OWN FIELD LIST — the names the "logged per run" bullet of the
+#: "Promotion rule" section carries, normalized through
+#: :func:`normalize_task_class` and split on
+#: :data:`PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR`, in the document's order.
+#: The sync test asserts the parsed bullet EQUALS this tuple, so a field added to
+#: or dropped from the policy is a red test rather than an undetected divergence.
+PROMOTION_EVIDENCE_DOCUMENT_FIELDS: tuple[str, ...] = (
+    "model_id",
+    "quantization",
+    "prompt_hash",
+    "tokens",
+    "cost",
+    "assertion_results",
+    "reviewer_verdict",
+)
+
+
+# WHY THE TWO RATES LIVE INSIDE "assertion results" AND NOT BESIDE IT: the document
+# names "assertion results" as ONE logged field, and its "pass thresholds" bullet
+# states two READINGS of that field. Nesting them keeps
+# PROMOTION_EVIDENCE_DOCUMENT_FIELDS exactly what the document says, which is what
+# lets the sync test be a straight comparison.
+@dataclass(frozen=True)
+class PromotionAssertionResults:
+    """The two pass rates a benchmark run reports, both IN PERCENT.
+
+    ``block_level_pass_rate`` is compared against
+    :data:`PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE` and
+    ``overall_pass_rate`` against :data:`PROMOTION_MINIMUM_OVERALL_PASS_RATE`.
+    """
+
+    block_level_pass_rate: int
+    overall_pass_rate: int
+
+
+# WHY A RECORD AND NOT A DICT: "with evidence logged"
+# (docs/roadmap/features/T3_F110.md, T003) has to be something a check can read
+# field by field; a dict would let a typo'd key read as an absent field and turn a
+# missing measurement into a silent pass.
+@dataclass(frozen=True)
+class PromotionEvidence:
+    """ONE documented benchmark run, as the policy's "Promotion rule" describes it.
+
+    The first seven fields are EXACTLY :data:`PROMOTION_EVIDENCE_DOCUMENT_FIELDS`,
+    every one of them defaulting to ``None`` so that "unset" is a state the
+    completeness check can see rather than a constructor error a caller routes
+    around.
+
+    ``runs_per_fixture`` AND ``corpus`` ARE DELIBERATELY NOT IN THAT TUPLE. The
+    document names both in the PROSE of the section — "each fixture run 3×" and
+    "on the F082 corpus (or the class's frozen fixtures)" — and NOT in its
+    "logged per run" bullet, so listing them among the document's field names
+    would make the sync test assert something the document does not say. They are
+    carried here because the promotion check needs the run count and the run
+    reference needs the corpus, and they are checked and reported on their own
+    terms.
+    """
+
+    model_id: str | None = None
+    quantization: str | None = None
+    prompt_hash: str | None = None
+    tokens: int | None = None
+    cost: float | None = None
+    assertion_results: PromotionAssertionResults | None = None
+    reviewer_verdict: str | None = None
+    runs_per_fixture: int = 0
+    corpus: str | None = None
+
+    def promotion_run_reference(self) -> str:
+        """Return a short reference LOCATING this benchmark run.
+
+        A routed call records this string and not the record itself: evidence
+        readers need to find the run, not to carry a copy of it, and a copy would
+        grow every routed call by the whole measurement.
+        """
+        return (
+            f"{self.model_id}{PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR}"
+            f"{self.quantization}@{self.prompt_hash} on {self.corpus}"
+        )
+
+
+#: Violated when a class is promoted to a CHEAPER tier with NO evidence at all.
+#: The plainest form of the policy's "evidence over claims": the mapping edit this
+#: feature exists to stop is the one nobody measured.
+RULE_PROMOTION_WITHOUT_EVIDENCE: str = "promotion_without_evidence"
+
+#: Violated when evidence is present but a field of
+#: :data:`PROMOTION_EVIDENCE_DOCUMENT_FIELDS` is unset. Reported apart from the
+#: name above because the two ask different things of an operator: one says
+#: "measure it", the other says "you measured it and did not log all of it".
+RULE_PROMOTION_EVIDENCE_INCOMPLETE: str = "promotion_evidence_incomplete"
+
+#: Violated when evidence is complete but a bar is unmet — the runs count, the
+#: block-level pass rate or the overall pass rate. The document's own consequence:
+#: "Below threshold, the class stays on the stronger tier."
+RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD: str = "promotion_evidence_below_threshold"
+
+#: The three promotion-rule names, in the order violations are reported.
+#:
+#: WHY THEY ARE THEIR OWN CLASS AND NOT HARD RULES. A HARD RULE IS NEVER
+#: SATISFIABLE BY EVIDENCE — no benchmark buys a reviewer weaker than the worker it
+#: reviews — while a PROMOTION RULE is precisely a rule that EVIDENCE DISCHARGES.
+#: Merging the two vocabularies would let a measured, documented promotion read as
+#: a policy breach, and would let an operator believe a benchmark could rescue an
+#: entry no benchmark can rescue. :data:`HARD_RULE_NAMES` and
+#: :data:`OVERRIDE_SCHEMA_RULE_NAMES` are therefore left exactly as they are, each
+#: pinned by its own test.
+PROMOTION_RULE_NAMES: tuple[str, ...] = (
+    RULE_PROMOTION_WITHOUT_EVIDENCE,
+    RULE_PROMOTION_EVIDENCE_INCOMPLETE,
+    RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD,
+)
+
+
+# WHY ONLY CHEAPER: the policy's promotion rule is about SPENDING LESS, and a move
+# to a STRONGER tier costs money rather than quality, so it needs no benchmark to
+# justify it.
+def is_task_class_promotion(task_class: str, tier: str) -> bool:
+    """Return whether routing ``task_class`` to ``tier`` is a PROMOTION.
+
+    True only when ``tier`` ranks STRICTLY BELOW the tier
+    :data:`TASK_CLASS_TIERS` seeds for that class — cheaper, in the vocabulary
+    :data:`MODEL_TIERS` orders.
+
+    False for a class the seed table does not name: that is a SCHEMA fault
+    (:data:`RULE_OVERRIDE_UNKNOWN_TASK_CLASS`) and never a promotion, and reading
+    it as one would report a dead config key as an unmeasured saving. False, too,
+    for a move to an equal or stronger tier.
+    """
+    key = normalize_task_class(task_class)
+    seeded = TASK_CLASS_TIERS.get(key)
+    if seeded is None:
+        return False
+    return model_tier_rank(tier) < model_tier_rank(seeded)
+
+
+# WHY: "a promotion without evidence refused, with evidence logged"
+# (docs/roadmap/features/T3_F110.md, T003) — and the three ways evidence can fail
+# ask three different things of an operator, so each gets its own name.
+def check_promotion_backed_by_evidence(
+    task_class: str,
+    tier: str,
+    evidence: PromotionEvidence | None = None,
+) -> str | None:
+    """Return the promotion-rule name a promotion VIOLATES, or ``None``.
+
+    ``None`` outright when :func:`is_task_class_promotion` says the change is not
+    a promotion — the rule simply does not speak about a move that costs more.
+
+    Otherwise, in order: no evidence at all is
+    :data:`RULE_PROMOTION_WITHOUT_EVIDENCE`; evidence with ANY field of
+    :data:`PROMOTION_EVIDENCE_DOCUMENT_FIELDS` unset is
+    :data:`RULE_PROMOTION_EVIDENCE_INCOMPLETE`; and evidence whose
+    ``runs_per_fixture`` or either pass rate falls below its bar is
+    :data:`RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD`. ``None`` when the run meets
+    every bar, which is the shape every check in this module shares: a rule name
+    is a refusal, ``None`` is a pass.
+
+    THE BARS ARE ``>=`` AND NOT ``>``, because the document writes "≥90%" and
+    "≥75%" and "run 3×": a run exactly AT a bar is a run that met it.
+    """
+    if not is_task_class_promotion(task_class, tier):
+        return None
+    if evidence is None:
+        return RULE_PROMOTION_WITHOUT_EVIDENCE
+    for field_name in PROMOTION_EVIDENCE_DOCUMENT_FIELDS:
+        if getattr(evidence, field_name) is None:
+            return RULE_PROMOTION_EVIDENCE_INCOMPLETE
+    if evidence.runs_per_fixture < PROMOTION_MINIMUM_RUNS_PER_FIXTURE:
+        return RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
+    results = evidence.assertion_results
+    if results.block_level_pass_rate < PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE:
+        return RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
+    if results.overall_pass_rate < PROMOTION_MINIMUM_OVERALL_PASS_RATE:
+        return RULE_PROMOTION_EVIDENCE_BELOW_THRESHOLD
+    return None
+
+
 #: The FIXED, DECLARED order an override map's violations are reported in: the
-#: SCHEMA names first, then the hard-rule names. Schema first because a malformed
-#: entry is what an operator must fix before any policy reading of it means
-#: anything.
+#: SCHEMA names first, then the hard-rule names, then the promotion-rule names.
+#: Schema first because a malformed entry is what an operator must fix before any
+#: policy reading of it means anything; the promotion names LAST because they are
+#: the only ones evidence can discharge, so they are the cheapest of the three to
+#: clear and the least urgent to read.
 #:
 #: Like :data:`HARD_RULE_NAMES`, this order is deliberately INDEPENDENT of
 #: :data:`MODEL_TIERS`, for the reason that constant already states: re-tiering the
 #: model vocabulary must not reshuffle an operator's error list, because a list
 #: that reorders itself reads as a different set of problems.
-OVERRIDE_VIOLATION_RULE_NAMES: tuple[str, ...] = OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES
+OVERRIDE_VIOLATION_RULE_NAMES: tuple[str, ...] = (
+    OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES + PROMOTION_RULE_NAMES
+)
 
 
 # WHY A RECORD AND NOT A MESSAGE: "refused with the rule named"
@@ -516,6 +763,7 @@ class OverrideRefused(Exception):
 def validate_task_class_tier_overrides(
     overrides: dict[str, str],
     safety_relevant_classes: frozenset[str] = SAFETY_RELEVANT_CLASSES,
+    promotion_evidence: dict[str, PromotionEvidence] | None = None,
 ) -> tuple[OverrideViolation, ...]:
     """Return EVERY violation in an override map, in :data:`OVERRIDE_VIOLATION_RULE_NAMES` order.
 
@@ -541,11 +789,25 @@ def validate_task_class_tier_overrides(
     cannot fail is not a rule, so the parameter lets a test supply a FIXTURE set
     and prove the refusal really happens.
 
+    ``promotion_evidence`` maps a task class to the :class:`PromotionEvidence`
+    record backing a move to a CHEAPER tier, and DEFAULTS TO NO EVIDENCE. It is
+    OPTIONAL so that every caller written before the promotion discipline existed
+    — including one passing only the two positional arguments — gets exactly the
+    answers it always got for a map that promotes nothing. Promotion violations
+    are reported AFTER the hard rules and attributed to the PROMOTED CLASS, which
+    is the entry whose evidence is missing.
+
+    A HARD RULE IS NOT DISCHARGED BY EVIDENCE. An override that both promotes a
+    class and breaks a hard rule reports BOTH names: the promotion name goes away
+    when a benchmark is supplied, the hard-rule name never does, and reporting
+    only one of them would tell the operator either that a measurement can rescue
+    an entry it cannot, or that a rule is broken when only the paperwork is.
+
     Each violation's ``rule_name`` is the value a check RETURNED wherever a check
-    exists — the three hard-rule checks are called, never re-labelled — which is
-    the discipline :func:`validate_routing_choice` already states. The two schema
-    names have no check function of their own and are the only names this function
-    supplies directly.
+    exists — the three hard-rule checks and the promotion check are called, never
+    re-labelled — which is the discipline :func:`validate_routing_choice` already
+    states. The two schema names have no check function of their own and are the
+    only names this function supplies directly.
     """
     normalized: dict[str, str] = {
         normalize_task_class(task_class): tier for task_class, tier in overrides.items()
@@ -590,6 +852,21 @@ def validate_task_class_tier_overrides(
             # fix a rule about the reviewer.
             found.append(OverrideViolation(reviewer_class, returned))
 
+    # The evidence map's keys are normalized exactly as the override map's are, so
+    # a project may spell a class in the policy document's own wording in both.
+    evidence_by_class: dict[str, PromotionEvidence] = {
+        normalize_task_class(name): record
+        for name, record in (promotion_evidence or {}).items()
+    }
+    for task_class in sorted(effective):
+        returned = check_promotion_backed_by_evidence(
+            task_class,
+            effective[task_class],
+            evidence_by_class.get(task_class),
+        )
+        if returned is not None:
+            found.append(OverrideViolation(task_class, returned))
+
     ordered: list[OverrideViolation] = []
     for rule_name in OVERRIDE_VIOLATION_RULE_NAMES:
         ordered.extend(
@@ -606,6 +883,7 @@ def validate_task_class_tier_overrides(
 def build_effective_task_class_tiers(
     overrides: dict[str, str],
     safety_relevant_classes: frozenset[str] = SAFETY_RELEVANT_CLASSES,
+    promotion_evidence: dict[str, PromotionEvidence] | None = None,
 ) -> dict[str, str]:
     """Return :data:`TASK_CLASS_TIERS` overlaid with ``overrides``, or REFUSE the map.
 
@@ -613,6 +891,13 @@ def build_effective_task_class_tiers(
     whole map is validated by :func:`validate_task_class_tier_overrides`, and if
     there is ANY violation at all this raises :class:`OverrideRefused` carrying
     every one of them.
+
+    ``promotion_evidence`` is passed straight through and DEFAULTS TO NO EVIDENCE,
+    so A PROMOTION WITHOUT EVIDENCE IS REFUSED BY THE SAME EXCEPTION that already
+    refuses a hard-rule breach. The hard rules and the promotion discipline win the
+    same way — by refusing the config, not by editing it — and a caller that
+    supplies no evidence map gets exactly the answers it got before the discipline
+    existed for any map that promotes nothing.
 
     WHY IT RAISES RATHER THAN DROPPING THE OFFENDING ENTRY: a silently dropped
     override leaves the operator believing it took effect, which is the silent
@@ -626,7 +911,9 @@ def build_effective_task_class_tiers(
     normalized: dict[str, str] = {
         normalize_task_class(task_class): tier for task_class, tier in overrides.items()
     }
-    violations = validate_task_class_tier_overrides(normalized, safety_relevant_classes)
+    violations = validate_task_class_tier_overrides(
+        normalized, safety_relevant_classes, promotion_evidence
+    )
     if violations:
         raise OverrideRefused(violations)
     effective = dict(TASK_CLASS_TIERS)
@@ -660,3 +947,69 @@ def resolve_task_class_tier_with_overrides(
     if tier != TASK_CLASS_TIERS.get(key):
         return tier, OVERRIDE_REASON
     return tier, SEED_MAPPING_REASON
+
+
+# ---------------------------------------------------------------------------
+# What a routed call RECORDS — F110's evidence line
+# ---------------------------------------------------------------------------
+
+#: The keys :func:`routed_call_evidence_fields` returns, DECLARED as a tuple so a
+#: renamed, dropped or added key is a red test rather than a quietly different
+#: evidence record. docs/roadmap/features/T3_F110.md's Evidence line is
+#: "routed_model, tier, reason on every call"; the routed MODEL is a configuration
+#: fact this module deliberately does not know (see the module docstring), so what
+#: it records is the declared CLASS, the tier, the reason — and, new in T003, WHAT
+#: PROMOTED IT.
+ROUTED_CALL_EVIDENCE_FIELDS: tuple[str, ...] = (
+    "task_class",
+    "tier",
+    "reason",
+    "promoted_by",
+)
+
+
+# WHY THE TIER AND THE REASON ARE NOT RECOMPUTED HERE: they come from
+# resolve_task_class_tier_with_overrides and nowhere else, so the tier a call is
+# routed to and the tier its evidence claims can never disagree.
+def routed_call_evidence_fields(
+    task_class: str,
+    effective_tiers: dict[str, str],
+    promotion_evidence: dict[str, PromotionEvidence] | None = None,
+) -> dict[str, str | None]:
+    """Return the mapping a routed call RECORDS for ``task_class``.
+
+    The keys are exactly :data:`ROUTED_CALL_EVIDENCE_FIELDS`. ``tier`` and
+    ``reason`` are whatever :func:`resolve_task_class_tier_with_overrides`
+    answered against ``effective_tiers``.
+
+    ``promoted_by`` is ``None`` when the class was NOT promoted — the ordinary
+    case, and the honest answer for a class routed at or above its seed tier.
+    When it WAS promoted it is a REFERENCE LOCATING THE BENCHMARK RUN
+    (:meth:`PromotionEvidence.promotion_run_reference`) and never a copy of the
+    whole record, because an evidence reader needs to find the run, not to carry
+    the measurement on every call.
+
+    A PROMOTED CLASS WITH NO EVIDENCE IN THE MAP ALSO ANSWERS ``None``, and that
+    state cannot arise from a table :func:`build_effective_task_class_tiers`
+    produced: that builder REFUSES such a map with
+    :data:`RULE_PROMOTION_WITHOUT_EVIDENCE`. It is reachable only from a table
+    assembled by hand, and answering ``None`` there is the truthful reading —
+    nothing located that run because nothing was recorded.
+    """
+    key = normalize_task_class(task_class)
+    tier, reason = resolve_task_class_tier_with_overrides(task_class, effective_tiers)
+    promoted_by: str | None = None
+    if is_task_class_promotion(key, tier):
+        evidence_by_class = {
+            normalize_task_class(name): record
+            for name, record in (promotion_evidence or {}).items()
+        }
+        evidence = evidence_by_class.get(key)
+        if evidence is not None:
+            promoted_by = evidence.promotion_run_reference()
+    return {
+        "task_class": key,
+        "tier": tier,
+        "reason": reason,
+        "promoted_by": promoted_by,
+    }
