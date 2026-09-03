@@ -24,16 +24,21 @@ rather than conclude the wiring was forgotten):
     evidence at the ``on_call_finalized`` seam is F109 T001b; this module only
     provides the two seams that round trip (``as_evidence_dicts`` and
     ``session_sent_index_from_evidence``).
-  - The resume-fallback DECISION now lives here (T001b-i):
+  - The resume-fallback DECISION lives here (T001b-i):
     ``invalidate_on_resume_fallback`` decides which session a fallen-back resume
-    must forget. What is still absent is only the CALL SITES — nothing in
-    ``pingpong_loop.py`` invokes it yet, and wiring those seams is T001b-ii.
-  - The dedupe DECISION and the MARKER TEXT now live here (T002a):
+    must forget. ITS CALL SITES NOW EXIST: ``pingpong_loop.py`` invokes it on the
+    Builder path and again on the Reviewer path, passing the resumed ref the loop
+    still holds, and the same commit added the ``record_finalized_call`` sites
+    that populate the index (T001b-ii, landed at ``7451e9c7``).
+  - The dedupe DECISION and the MARKER TEXT live here (T002a):
     ``should_dedupe_segment`` decides whether a segment may be replaced, and
-    ``dedupe_marker_for_segment`` says what the replacement reads. What is still
-    absent is the COMPOSITION HOOK that calls them — no prompt is rewritten here,
-    and nothing in ``pingpong_loop.py`` invokes either function yet — together
-    with the config plumbing that supplies ``enabled``; both are F109 T002b.
+    ``dedupe_marker_for_segment`` says what the replacement reads. THE WHOLE
+    CHAIN ABOVE THEM NOW EXISTS: ``_dedupe_resumed_segments`` in
+    ``pingpong_loop.py`` calls both (F109 T002b, landed at ``24352750``), both
+    ``compose_*`` functions call that hook (``60343048``), and the config
+    plumbing that supplies ``enabled`` landed at ``b245e1c9``. No prompt is
+    rewritten HERE, which stays true and is a statement about this module rather
+    than about the feature.
 
 Public API::
 
