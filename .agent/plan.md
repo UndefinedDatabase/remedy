@@ -14,25 +14,30 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 14, session 3. Measure the savings from the record itself: one PURE
-function reads a run's own prompt-trace entries and reports what the run
-did not resend, counting only what it can observe and NAMING the segments
-whose full-content size was never recorded rather than guessing them. It
-is deliberately not wired into the loop this round. Also book round 13's
-PASS and register and repair `R-0779`, the module docstring that still
-describes one real-loop class where there are now several.
+Round 15, session 4. The T003 DOCS: `docs/system/semantic-dedupe-v1.md`
+describes the built state — the sent-hash index, the composition hook,
+the kill switch, the trace record and the measured savings — and is
+registered in `docs/README.md` in the same commit. Also book round 14's
+PASS and resolve `R-0779`, and REGISTER `R-0780`: two deliberate absence
+bullets in `session_sent_index.py` still tell a reader the loop invokes
+nothing, three wiring commits after it did. This round does not touch
+that file.
 
 ## Next Steps
 
-- The T003 DOCS: describe the feature's built state and register the doc
-  in `docs/README.md` in the same commit.
-- The integration gate (docs/agents/integration_gate.md), then the closure
-  sequence.
+- Repair `R-0780` in `packages/orchestration/session_sent_index.py`.
+- The integration gate (docs/agents/integration_gate.md).
+- The closure sequence (docs/roadmap/STATUS_closure_protocol.md), which
+  also runs the single consolidation pass on the checklist of
+  docs/agents/planner_reviewer_prompt.md section 3.
 
 ## Risks
 
-- The savings function is landed UNWIRED. Nothing reads it yet, so a later
-  round must either wire it or say plainly why it stays a library.
+- Nothing dedupes in production: every concrete adapter returns
+  `supports_resume = False`, so the mechanism is suite-only today. The
+  doc states this plainly rather than leaving it to be discovered.
+- The measurement function is a library, consumed by the T003 fixture
+  and by no production caller. The doc states that too.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
   carry two `Done:` lines each. That is `R-0778`.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
