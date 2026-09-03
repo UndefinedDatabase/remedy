@@ -23,8 +23,8 @@ import shlex
 import shutil
 import subprocess
 import time as _time
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Container, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -45,6 +45,7 @@ from packages.orchestration.pingpong_provider import (
 )
 from packages.orchestration.prompt_segments import (
     ComposedPrompt,
+    PromptSegment,
     PromptSegmentError,
     PromptSegmentRegistry,
     SegmentStabilityRank,
@@ -69,9 +70,12 @@ from packages.orchestration.rate_governor import (
     normalize_rate_limit_signal,
 )
 from packages.orchestration.session_sent_index import (
+    DEDUPE_MIN_SEGMENT_CHARS,
     SessionSentIndex,
+    dedupe_marker_for_segment,
     invalidate_on_resume_fallback,
     record_finalized_call,
+    should_dedupe_segment,
 )
 
 # ---------------------------------------------------------------------------
@@ -870,6 +874,67 @@ def _drop_one_newline_per_segment_boundary(texts: list[str]) -> list[str]:
                 f"between segments {index} and {index + 1}"
             )
     return adjusted
+
+
+# F109 T002b, first half: the composition-side transform of semantic dedupe. It
+# sits here, between the boundary helper and the first compose_* function,
+# because the two compose_* functions below are its only future callers.
+def _dedupe_resumed_segments(
+    segments: Sequence[PromptSegment],
+    sent_hashes: Container[str],
+    *,
+    enabled: bool = True,
+    min_chars: int = DEDUPE_MIN_SEGMENT_CHARS,
+) -> tuple[tuple[PromptSegment, ...], tuple[str, ...]]:
+    """Rewrite already-sent segments to their markers; report which names were replaced.
+
+    This is F109 T002b's DECISION STEP applied to a segment list. It returns two
+    things: the segments to compose, and the names it replaced in the order it
+    replaced them. The second element exists so that T002c can record what the
+    model did NOT receive again WITHOUT re-deciding it — a second decision site
+    is a second thing that can disagree with the first.
+
+    NAMES AND RANKS SURVIVE BY CONSTRUCTION: only ``text`` is rewritten, and the
+    returned order is the INPUT order, never a rank sort.
+    ``compose_prompt_segments`` does its own (rank, registration index) sort
+    afterwards, so re-ordering here would change the tie-break between equal
+    ranks and move segments the cache discipline requires to stay put.
+
+    THE SHA256 COMES FROM THE SHIPPED PRODUCER, one segment at a time via
+    ``compose_prompt_segments((segment,))``, and is deliberately NOT recomputed
+    with ``hashlib`` here. The index remembers manifest hashes, so the decision
+    has to ask the same producer that made them; a second hashing expression in
+    this file would be a drift that makes the feature fail silently and safely,
+    which is the worst way for it to fail. Composing one segment at a time is
+    also what keeps this correct for a duplicate segment NAME, which a
+    name-keyed lookup over a whole manifest would collapse.
+
+    ``enabled`` is consulted first and alone, matching
+    ``should_dedupe_segment``'s own kill-switch rule: false returns the segments
+    untouched and an empty name tuple, and consults nothing else.
+
+    Scope boundary — a deliberate absence, so a reader finds it here rather than
+    concluding the wiring was forgotten: NO CALLER EXISTS YET. Nothing in this
+    module calls this function. Wiring it into ``compose_builder_prompt`` and
+    ``compose_reviewer_prompt`` behind a parameter that bypasses dedupe by
+    default is the next slice of T002b, and the config plumbing that supplies
+    ``enabled`` is T002c.
+    """
+    if not enabled:
+        return tuple(segments), ()
+
+    kept: list[PromptSegment] = []
+    replaced_names: list[str] = []
+    for segment in segments:
+        sha256 = compose_prompt_segments((segment,)).manifest[0].sha256
+        if should_dedupe_segment(
+            segment.text, sha256, sent_hashes, enabled=True, min_chars=min_chars
+        ):
+            kept.append(replace(segment, text=dedupe_marker_for_segment(segment.name)))
+            replaced_names.append(segment.name)
+        else:
+            kept.append(segment)
+    return tuple(kept), tuple(replaced_names)
 
 
 # F105 T003 migration site 5. Rank order fixes two inversions the ad-hoc
