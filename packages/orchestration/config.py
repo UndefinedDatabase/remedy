@@ -7,6 +7,16 @@ Source precedence (highest to lowest):
   3. User config (~/.config/remedy/remedy.toml)
   4. Built-in default
 
+TABLE-VALUED KEYS. A key registered with ``value_type is dict`` resolves to a
+WHOLE TOML SUB-TABLE as ONE value, through the same precedence chain every other
+key uses, instead of being flattened into one unregistered key per entry. The
+set of such keys is DERIVED FROM THE REGISTRY ITSELF (see ``_TABLE_VALUED_KEYS``)
+and is never hand-listed, so registering a second table key is one registry entry
+and no second edit. An environment variable cannot carry a table, so a
+table-valued key is configured in TOML only — its ``env_var`` exists for the
+uniform spec shape, and a string arriving through it is reported as a shape fault
+by :func:`validate_config` rather than silently read as a table.
+
 Public API::
 
     ConfigSource: enum of config sources
@@ -22,6 +32,7 @@ from __future__ import annotations
 import enum
 import os
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -64,9 +75,12 @@ class ConfigValue:
 class ConfigKeySpec:
     """Definition of one config key.
 
-    value_type supports: str, int, float, bool, list.
+    value_type supports: str, int, float, bool, list, dict.
     When value_type is list, values are list-of-strings. Env var values
     are split on commas. TOML arrays are used as-is.
+    When value_type is dict the key is TABLE-VALUED: the whole TOML sub-table
+    named by ``key`` resolves as one value (see the module docstring), and TOML
+    is the only source that can carry it.
     """
 
     key: str
@@ -620,9 +634,39 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=int,
         default=3,
     ),
+    # F110's per-project override map, and the first TABLE-VALUED key in this
+    # registry. The DEFAULT IS None AND NOT AN EMPTY TABLE on purpose: "no
+    # override configured" and "an override table that is explicitly empty" are
+    # different operator statements, and collapsing them would lose the one the
+    # routing layer reports on.
+    ConfigKeySpec(
+        key="model_routing.task_class_tiers",
+        env_var="REMEDY_MODEL_ROUTING_TASK_CLASS_TIERS",
+        description=(
+            "Per-project TASK CLASS to MODEL TIER map (F110). The whole "
+            "[remedy.model_routing.task_class_tiers] sub-table resolves as ONE "
+            "value and is laid over the shipped seed mapping in "
+            "packages/orchestration/model_routing.py. The hard rules of "
+            "docs/agents/model_routing_policy.md still win: a map that breaks "
+            "one is REFUSED with the rule named and the shipped table is used. "
+            "Configured in TOML only — an env var cannot carry a table."
+        ),
+        value_type=dict,
+        default=None,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
+
+#: The TABLE-VALUED keys, DERIVED FROM THE REGISTRY rather than hand-listed: a
+#: key is table-valued when, and only when, its spec says ``value_type is dict``.
+#: :func:`_flatten_toml` stops recursing at one of these, so its sub-table
+#: survives as a single value. Deriving it here is what makes registering a
+#: SECOND table key a one-line change to the registry above and nothing else —
+#: a hand-written list would be a second place to forget.
+_TABLE_VALUED_KEYS: frozenset[str] = frozenset(
+    spec.key for spec in _CONFIG_KEY_SPECS if spec.value_type is dict
+)
 
 
 def get_key_spec(key: str) -> ConfigKeySpec | None:
@@ -672,16 +716,31 @@ def _extract_remedy_table(parsed: dict[str, Any]) -> dict[str, Any]:
     return parsed.get("remedy", {})
 
 
-def _flatten_toml(d: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+def _flatten_toml(
+    d: dict[str, Any],
+    prefix: str = "",
+    table_valued_keys: frozenset[str] = _TABLE_VALUED_KEYS,
+) -> dict[str, Any]:
     """Flatten nested TOML dict into dotted keys.
 
     {"ollama": {"host": "x"}} -> {"ollama.host": "x"}
+
+    THE RECURSION STOPS at a key in ``table_valued_keys`` — by default the keys
+    :data:`_TABLE_VALUED_KEYS` derived from the registry. Such a sub-table is
+    carried through WHOLE, as one value under its own dotted key, instead of
+    becoming one dotted key per entry. Without that stop, every entry of a
+    project's table would be an unregistered key and ``load_config`` would
+    report one "Unknown key in ..." diagnostic per entry for a config that is
+    perfectly well formed.
+
+    The set is a PARAMETER so a caller — a test above all — can flatten against
+    a different registry without monkeypatching a module constant.
     """
     result: dict[str, Any] = {}
     for k, v in d.items():
         full_key = f"{prefix}{k}" if prefix else k
-        if isinstance(v, dict):
-            result.update(_flatten_toml(v, f"{full_key}."))
+        if isinstance(v, dict) and full_key not in table_valued_keys:
+            result.update(_flatten_toml(v, f"{full_key}.", table_valued_keys))
         else:
             result[full_key] = v
     return result
@@ -989,7 +1048,17 @@ def _serialize_toml(d: dict[str, Any], lines: list[str], depth: int, prefix: str
 
 
 def validate_config(config: RemedyConfig) -> list[str]:
-    """Validate config values against key specs. Returns list of warnings."""
+    """Validate config values against key specs. Returns list of warnings.
+
+    A TABLE-VALUED key is validated for SHAPE ONLY: that the value is a mapping,
+    and that every key and every value in it is a string. WHETHER a task class
+    exists, whether a tier exists and whether an override breaks a hard rule are
+    POLICY questions, and they are answered where the policy lives —
+    ``packages.orchestration.model_routing.validate_task_class_tier_overrides``.
+    This module is the LOWER layer and is deliberately policy-free: it must not
+    import model_routing to learn what a task class is (DECISION F110 D5,
+    rejected alternative 4).
+    """
     warnings: list[str] = []
     for spec in _CONFIG_KEY_SPECS:
         cv = config.values.get(spec.key)
@@ -1007,4 +1076,15 @@ def validate_config(config: RemedyConfig) -> list[str]:
                 int(str(cv.value))
             except (ValueError, TypeError):
                 warnings.append(f"{spec.key}: expected int, got {type(cv.value).__name__}")
+        elif spec.value_type is dict:
+            if not isinstance(cv.value, Mapping):
+                warnings.append(
+                    f"{spec.key}: expected table, got {type(cv.value).__name__}")
+            else:
+                for entry_key, entry_value in cv.value.items():
+                    if isinstance(entry_key, str) and isinstance(entry_value, str):
+                        continue
+                    warnings.append(
+                        f"{spec.key}: expected string entries, got "
+                        f"{entry_key!r} = {entry_value!r}")
     return warnings
