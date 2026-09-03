@@ -14,19 +14,19 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 11, session 3 — THE REPAIR ROUND. Round 10 was gated FAIL: its
-production work is correct and stays, but the branch tip ships a red suite
-and a committed test file fails ruff. `R-0787` (High) is a config test
-double that asserted an exact key and so refused the second, legitimate
-reader the F110 wiring added; `R-0788` (Low) is an unsorted import block.
-Both are registered, then fixed, and no file under `packages/` or `apps/`
-is touched.
+Round 12, session 3 — THE PROMOTION-EVIDENCE SCHEMA. `config.py` learns
+that a table-valued key can declare what its ENTRIES hold, F110 registers
+`model_routing.promotion_evidence` as a table of records, and
+`model_routing` gains a PURE parser turning that raw mapping into
+`PromotionEvidence`. Nothing is wired: no call reads the key yet, so the
+schema is pinned before routing behaviour moves. Round 11's PASS verdict is
+booked and `R-0787` and `R-0788` are resolved.
 
 ## Next Steps
 
-- The promotion-evidence round: the evidence map is read from configuration
-  too, so a documented benchmark run can license a cheaper tier — the last
-  unbuilt clause of T003.
+- The wiring round: `resolve_effective_task_class_tiers` reads the evidence
+  table too and passes it to the builder and to the seam, so a documented
+  run actually licenses a cheaper tier at a routed call.
 - The acceptance round: a fixture run whose every call's evidence shows
   class, tier and reason, per the feature file's Acceptance section.
 - The integration gate round, before closure.
@@ -36,7 +36,10 @@ is touched.
 
 ## Risks
 
-- A test double that is too permissive stops proving anything, so the
-  refusal `R-0787` removes is replaced by a positive test that reads the
-  keys the stub recorded, and that test is red-proofed.
+- `config.py` is read by 25 test files, so the gate list for a change in
+  that layer is deliberately wider than round 10's, which shipped a red
+  tip from a suite outside the narrow set.
+- A malformed evidence record fails CLOSED — the promotion it would have
+  licensed is refused — which is the opposite direction from a malformed
+  override, and both are stated in code.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
