@@ -1554,3 +1554,178 @@ class TestAResumeFallbackSendsFullContent:
             fresh, resumed = self._split(calls)
             assert [p for p in resumed if DEDUPE_MARKER_PREFIX in p] != [], role
             assert [p for p in fresh if DEDUPE_MARKER_PREFIX in p] == [], role
+
+
+# ---------------------------------------------------------------------------
+# T002c: A COMPOSED PROMPT REPORTS THE SEGMENTS IT REPLACED.
+#
+# ``_dedupe_resumed_segments`` has always returned the replaced NAMES, and both
+# compose functions used to throw them away. They now ride back on
+# ``ComposedPrompt.deduped_names``, so a later reader can see what the model was
+# NOT sent again instead of re-deriving it from hashes.
+#
+# EVERY POSITIVE CASE BELOW IS PAIRED WITH A MEASUREMENT OF THE SEGMENT IT
+# NAMES. A report is only worth having if it names the segments that actually
+# shrank; a name a caller had simply invented would satisfy "the report is
+# non-empty" and prove nothing, so cases 3 and 4 tie each reported name to a
+# manifest row of exactly marker length and each unreported name to its
+# unchanged hash.
+
+
+class TestTheComposedPromptReportsTheNamesItReplaced:
+    """SPEC T: ``deduped_names`` on both roles, pure and through the real loop."""
+
+    BUILDER_SHAPE = BUILDER_SHAPES[2]
+    REVIEWER_SHAPE = REVIEWER_SHAPES[1]
+    SESSION = "sess-report"
+
+    @classmethod
+    def _builder_pair(cls) -> tuple:
+        """A builder composition, and a second one against its OWN recorded manifest.
+
+        The sent set is built the way round 7's cases build it — through a real
+        ``SessionSentIndex.record_call(..., ok=True)`` over the first
+        composition's manifest rows — never from a hand-made hash, so a drift
+        between the composer's digests and the index's could not land green here.
+        """
+        first = compose_builder_prompt(*BUILDER_ARGS, **cls.BUILDER_SHAPE)
+        index = SessionSentIndex()
+        index.record_call(cls.SESSION, first.manifest_as_dicts(), ok=True)
+        second = compose_builder_prompt(
+            *BUILDER_ARGS,
+            dedupe_sent_hashes=index.sent_hashes(cls.SESSION),
+            **cls.BUILDER_SHAPE,
+        )
+        return first, second
+
+    @classmethod
+    def _reviewer_pair(cls) -> tuple:
+        """The reviewer half of ``_builder_pair``, built the same way."""
+        first = compose_reviewer_prompt(*REVIEWER_ARGS, **cls.REVIEWER_SHAPE)
+        index = SessionSentIndex()
+        index.record_call(cls.SESSION, first.manifest_as_dicts(), ok=True)
+        second = compose_reviewer_prompt(
+            *REVIEWER_ARGS,
+            dedupe_sent_hashes=index.sent_hashes(cls.SESSION),
+            **cls.REVIEWER_SHAPE,
+        )
+        return first, second
+
+    # -- SPEC T case 1: a composition that deduped nothing reports nothing ----
+
+    @pytest.mark.parametrize("explicit_none", [False, True])
+    def test_a_composition_that_dedupes_nothing_reports_no_names(self, explicit_none: bool):
+        # BOTH ROLES, AND BOTH SHAPES OF "no dedupe": the argument omitted, and
+        # the argument passed explicitly as ``None``. This is also the case that
+        # would go red if the keyword were passed only on the branch that really
+        # replaced something, because then the empty case would take a different
+        # code path from the full one.
+        extra = {"dedupe_sent_hashes": None} if explicit_none else {}
+
+        builder = compose_builder_prompt(*BUILDER_ARGS, **extra, **self.BUILDER_SHAPE)
+        reviewer = compose_reviewer_prompt(*REVIEWER_ARGS, **extra, **self.REVIEWER_SHAPE)
+
+        assert builder.deduped_names == ()
+        assert reviewer.deduped_names == ()
+
+    # -- SPEC T case 2: what really deduped is exactly what is reported -------
+
+    def test_a_composition_that_dedupes_reports_exactly_the_names_it_replaced(self):
+        # THE SECOND READER IS INDEPENDENT OF THE REPORT:
+        # ``_names_replaced_by_their_marker`` decides membership from the
+        # manifest's own sha256 against the marker text a name produces, so it
+        # neither reads ``deduped_names`` nor can be read from it.
+        _, builder = self._builder_pair()
+        _, reviewer = self._reviewer_pair()
+
+        assert list(builder.deduped_names) == _names_replaced_by_their_marker(builder)
+        assert list(reviewer.deduped_names) == _names_replaced_by_their_marker(reviewer)
+        # NOT VACUOUS: both roles really replaced something here, so the equality
+        # above is not two empty lists agreeing with each other.
+        assert builder.deduped_names != ()
+        assert reviewer.deduped_names != ()
+
+    # -- SPEC T case 3: each reported name shrank to exactly its own marker ---
+
+    def test_every_reported_name_names_a_segment_that_shrank_to_its_marker(self):
+        _, builder = self._builder_pair()
+
+        rows = {str(row["name"]): int(row["chars"]) for row in builder.manifest_as_dicts()}
+        assert builder.deduped_names != ()
+        for name in builder.deduped_names:
+            # IN THE MANIFEST AT ALL — a reported name the manifest never held
+            # would be an invented one.
+            assert name in rows, (name, sorted(rows))
+            assert rows[name] == len(dedupe_marker_for_segment(name)), name
+
+    # -- SPEC T case 4: the negative half, which is what makes case 3 mean it -
+
+    def test_a_segment_the_report_omits_kept_its_original_hash(self):
+        first, second = self._builder_pair()
+
+        before = {str(row["name"]): str(row["sha256"]) for row in first.manifest_as_dicts()}
+        after = {str(row["name"]): str(row["sha256"]) for row in second.manifest_as_dicts()}
+        untouched = [name for name in after if name not in second.deduped_names]
+        assert untouched, sorted(after)
+        for name in untouched:
+            assert after[name] == before[name], name
+
+    # -- SPEC T case 5: the report as the REAL loop produces it ---------------
+
+    @staticmethod
+    def _capture_compositions(monkeypatch) -> list:
+        """Record every ``ComposedPrompt`` the loop's own compose calls return.
+
+        The wrappers delegate to the originals and return their results
+        unchanged — exactly what ``_capture_role_calls`` does for a provider —
+        so the run below stays the real one. The composed object itself never
+        reaches ``PingPongResult`` (a prompt trace carries the manifest, not the
+        report), so wrapping the two functions in the loop's own module namespace
+        is how the LOOP's compositions are read without widening production code
+        that has no consumer for the report yet.
+        """
+        import packages.orchestration.pingpong_loop as loop
+
+        composed: list = []
+
+        def wrap(function_name: str) -> None:
+            original = getattr(loop, function_name)
+
+            def wrapper(*args, **kwargs):
+                result = original(*args, **kwargs)
+                composed.append(result)
+                return result
+
+            monkeypatch.setattr(loop, function_name, wrapper)
+
+        wrap("compose_builder_prompt")
+        wrap("compose_reviewer_prompt")
+        return composed
+
+    def test_a_resumed_chain_reports_the_names_it_replaced(
+        self, fallback_repo: Path, monkeypatch,
+    ):
+        composed = self._capture_compositions(monkeypatch)
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(fallback_repo, providers, repair_rounds=2)
+
+        assert result.final_status == "staged_review_passed"
+        assert composed
+        assert [prompt.deduped_names for prompt in composed if prompt.deduped_names] != []
+
+    def test_a_chain_that_never_resumes_reports_nothing_anywhere(
+        self, fallback_repo: Path, monkeypatch,
+    ):
+        # THE MIRROR, and the reason the case above is about the scope rule
+        # rather than about the field existing: providers that do not advertise
+        # resume leave both resume refs None, so no composition can dedupe and
+        # none may report a name.
+        composed = self._capture_compositions(monkeypatch)
+        providers = TestChainAgainstTheRealLoop._provider_pair(supports_resume=False)
+
+        result = TestChainAgainstTheRealLoop._run(fallback_repo, providers, repair_rounds=2)
+
+        assert result.final_status == "staged_review_passed"
+        assert composed
+        assert [prompt.deduped_names for prompt in composed if prompt.deduped_names] == []
