@@ -956,6 +956,8 @@ def compose_builder_prompt(
     hunk_ledger: Any = None,
     resume_hunks_text: str = "",
     tiered_diff_text: str = "",
+    dedupe_sent_hashes: Container[str] | None = None,
+    dedupe_enabled: bool = True,
 ) -> ComposedPrompt:
     """Compose the builder prompt from registered segments, with its manifest.
 
@@ -992,6 +994,16 @@ def compose_builder_prompt(
     operator recorded for a task reaches this segment in production. ``None``
     stays the answer for a round with no recorded decision, and the segment
     then registers not at all — which is the ordinary case, not a gap.
+
+    ``dedupe_sent_hashes`` is the set of segment hashes THIS SESSION HAS
+    PROVABLY ALREADY RECEIVED — F109's "resumed session only, proven sends
+    only" rule in the only form this function can enforce it. ``None`` is the
+    BYPASS and it is the DEFAULT: the transform is not called at all and the
+    composed bytes are exactly what a caller got before F109 existed, which is
+    what makes the byte-equality golden PROVABLE rather than merely likely.
+    ``dedupe_enabled`` is the kill switch, forwarded straight to
+    :func:`_dedupe_resumed_segments`; the config plumbing that supplies it is
+    T002c.
     """
     specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
         ("builder_system", SegmentStabilityRank.SYSTEM, [_BUILDER_SYSTEM, "\n"]),
@@ -1111,7 +1123,17 @@ def compose_builder_prompt(
     registry = PromptSegmentRegistry()
     for (name, rank, _), text in zip(specs, texts):
         registry.register(name, rank, text)
-    return compose_prompt_segments(registry.registered_segments())
+    segments = registry.registered_segments()
+    if dedupe_sent_hashes is not None:
+        # F109 T002b: the replaced NAMES are discarded here on purpose.
+        # ``ComposedPrompt`` carries text and manifest, and widening it to
+        # carry the deduped names is T002c, which is the slice that needs
+        # them. Threading a value no caller reads would be a second seam
+        # to keep honest for a round with nothing to read it.
+        segments, _ = _dedupe_resumed_segments(
+            segments, dedupe_sent_hashes, enabled=dedupe_enabled
+        )
+    return compose_prompt_segments(segments)
 
 
 def _builder_tiered_diff_text(
@@ -1495,6 +1517,8 @@ def compose_reviewer_prompt(
     task_id: str = "",
     resume_hunks_text: str = "",
     tiered_diff_text: str = "",
+    dedupe_sent_hashes: Container[str] | None = None,
+    dedupe_enabled: bool = True,
 ) -> ComposedPrompt:
     """Compose the reviewer prompt from registered segments, with its manifest.
 
@@ -1503,6 +1527,16 @@ def compose_reviewer_prompt(
     shapes at once, and that is a CONTENT change rather than a reordering —
     which is exactly what the content-equality golden exists to forbid. The two
     diff caps stay distinct for the same reason.
+
+    ``dedupe_sent_hashes`` is the set of segment hashes THIS SESSION HAS
+    PROVABLY ALREADY RECEIVED — F109's "resumed session only, proven sends
+    only" rule in the only form this function can enforce it. ``None`` is the
+    BYPASS and it is the DEFAULT: the transform is not called at all and the
+    composed bytes are exactly what a caller got before F109 existed, which is
+    what makes the byte-equality golden PROVABLE rather than merely likely.
+    ``dedupe_enabled`` is the kill switch, forwarded straight to
+    :func:`_dedupe_resumed_segments`; the config plumbing that supplies it is
+    T002c.
     """
     spec_summary = _render_spec_compliance_summary(evidence_dir, task_id)
     if scope_packet is None:
@@ -1639,7 +1673,17 @@ def compose_reviewer_prompt(
     registry = PromptSegmentRegistry()
     for (name, rank, _), text in zip(specs, texts):
         registry.register(name, rank, text)
-    return compose_prompt_segments(registry.registered_segments())
+    segments = registry.registered_segments()
+    if dedupe_sent_hashes is not None:
+        # F109 T002b: the replaced NAMES are discarded here on purpose.
+        # ``ComposedPrompt`` carries text and manifest, and widening it to
+        # carry the deduped names is T002c, which is the slice that needs
+        # them. Threading a value no caller reads would be a second seam
+        # to keep honest for a round with nothing to read it.
+        segments, _ = _dedupe_resumed_segments(
+            segments, dedupe_sent_hashes, enabled=dedupe_enabled
+        )
+    return compose_prompt_segments(segments)
 
 
 def _reviewer_tiered_diff_text(
