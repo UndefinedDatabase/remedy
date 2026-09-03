@@ -275,6 +275,11 @@ class JobPlan:
     # F104: the prediction that justified a predictive stop — its arithmetic is
     # what a human reads to see WHY the job stopped before doing any work.
     budget_prediction: dict | None = None
+    # F112 T003: durable escalation/decision state (e.g. `enqueue_task_decision`'s
+    # `job.metadata["escalations"]` list) — a plain dict, exported and imported
+    # verbatim like `input_snapshot` above so a cannot_fit decision survives a
+    # persist/resume cycle instead of vanishing as a Python-only attribute.
+    metadata: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -597,6 +602,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
         "budget_prediction": job.budget_prediction,
+        "metadata": job.metadata,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -691,6 +697,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         budget_actuals=data.get("budget_actuals"),
         # Absent in job files written before F104 — loads as None, unchanged.
         budget_prediction=data.get("budget_prediction"),
+        metadata=dict(data.get("metadata") or {}),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
