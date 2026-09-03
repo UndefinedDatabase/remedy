@@ -1,8 +1,8 @@
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1 complete and
-green as of round 9.
+F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1/T003b2a
+complete and green as of round 10.
 
 ## Goal
 
@@ -14,33 +14,35 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 10, session 3 — fresh investigation over T003b2's call site (per
-DECISION F112 D2's own instruction to re-read fresh before authoring)
-found run_pingpong has no token-budget passthrough: wiring
-compiled_context_paths/candidates alone recompiles at
-compile_task_context's DEFAULT budget, never the class cap (DECISION
-F112 D3). T003b2 splits further into T003b2a (this round: the
-TaskEntry->PlannedTask adapter + a compiled_context_token_budget
-passthrough on run_pingpong, both unit-tested in isolation) and T003b2b
-(deferred: the live call-site wiring).
+Round 11, session 4 — fresh investigation over T003b2b's own call site
+(escalation.py's enqueue_task_decision/auto_apply_safe_default, the
+piece T003b2a deliberately left untouched) found a second latent
+incompatibility beyond DECISION F112 D2/D3's: _record_answer_on_task
+reads task.id and task.inputs, fields pingpong JobPlan's TaskEntry has
+never carried (only Core Job's Task has them) — calling
+auto_apply_safe_default against a live JobPlan would raise
+AttributeError (DECISION F112 D4). T003b2b splits into T003b2b1 (this
+round: the escalation.py dual-shape fix + a new TaskEntry.inputs field)
+and T003b2b2 (deferred: the live call-site wiring, now safe to build).
 
 ## Next Steps
 
-- T003b2b (own dedicated round(s)): call fit_task_context_to_class_cap
-  between _build_task_prompt and task.status = TASK_RUNNING; pass its
-  compiled paths, the job's repo candidate listing, and cap_tokens into
-  run_pingpong(compiled_context_paths=..., compiled_context_candidates=...,
-  compiled_context_token_budget=...); on cannot_fit call
-  enqueue_task_decision (options=["split task"] only when
-  task_entry_to_planned_task(task) is not None and split_one_task on its
-  result returns non-None) then auto_apply_safe_default under --yes.
+- T003b2b2 (own dedicated round(s)): call fit_task_context_to_class_cap
+  between _build_task_prompt and task.status = TASK_RUNNING; wire
+  compiled_context_paths/candidates/token_budget into run_pingpong; on
+  cannot_fit call enqueue_task_decision (options=["split task"] only
+  when task_entry_to_planned_task(task) is not None and
+  split_one_task on its result returns non-None) then
+  auto_apply_safe_default under --yes, reading the answer off the
+  returned record directly rather than off task.inputs (same
+  dispatch-loop iteration, no resume needed for this path).
 - Acceptance fixtures, the integration gate, then closure.
 
 ## Risks
 
-- T003b2b is still the highest-risk remaining slice — first-time wiring
-  against the live dispatch loop; re-read the call site fresh again
-  before authoring it, per DECISION F112 D2/D3.
+- T003b2b2 is still the highest-risk remaining slice — first-time
+  wiring against the live dispatch loop; re-read the call site fresh
+  again before authoring it, per DECISION F112 D2/D3/D4.
 - R-0767 stays OPEN on the model-routing seam this feature's config
   pattern borrows from; unrelated to F112, not absorbed.
 - ruff is inconsistent this session; python3 -m ruff check <path> is the
