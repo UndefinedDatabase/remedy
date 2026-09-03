@@ -378,12 +378,12 @@ def _orchestrator_call_fn():
     Returning None is not a failure mode to work around — it is the honest
     "no provider" the loop turns into a terminal, never a fake run.
     """
-    from packages.orchestration.config import get_config
     from packages.orchestration.intake import make_structured_call_fn
     from packages.orchestration.orchestrator_move_schema import OrchestratorMove
+    from packages.orchestration.role_config import resolve_orchestrator_model
 
     return make_structured_call_fn(
-        OrchestratorMove, model=get_config().get("orchestrator.model") or None)
+        OrchestratorMove, model=resolve_orchestrator_model())
 
 
 def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,

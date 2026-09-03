@@ -218,12 +218,12 @@ def _default_plan_call_fn() -> Callable[[str, int], str] | None:
 
 def _default_move_call_fn() -> Callable[[str, int], str] | None:
     """The orchestrator role's call_fn — the SAME factory ``remedy mission run`` uses."""
-    from packages.orchestration.config import get_config
     from packages.orchestration.intake import make_structured_call_fn
     from packages.orchestration.orchestrator_move_schema import OrchestratorMove
+    from packages.orchestration.role_config import resolve_orchestrator_model
 
     return make_structured_call_fn(
-        OrchestratorMove, model=get_config().get("orchestrator.model") or None)
+        OrchestratorMove, model=resolve_orchestrator_model())
 
 
 def _default_execute_fn(max_cycles: int,

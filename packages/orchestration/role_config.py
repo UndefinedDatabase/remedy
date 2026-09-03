@@ -16,6 +16,7 @@ Public API::
     KNOWN_ROLES: tuple of recognised role names
     RoleConfig: resolved provider/model/effort for one role
     resolve_role_config(role, cli_args=None, config_file=None) -> RoleConfig
+    resolve_orchestrator_model() -> str
 """
 
 from __future__ import annotations
@@ -163,3 +164,31 @@ def resolve_role_config(
         resolved["model"] = default_model_for_provider(provider)
 
     return RoleConfig(role=role, **resolved)
+
+
+# The orchestrator's model must have ONE answer: `orchestrator.model` when the
+# operator set it, and otherwise the same resolution every other role gets —
+# which is what config.py already promises the key means, stated here in code.
+def resolve_orchestrator_model() -> str:
+    """Return the model id the ``orchestrator`` role should run on.
+
+    ``orchestrator.model`` (packages/orchestration/config.py) is the ONLY
+    orchestrator-specific routing surface, and its own documented promise is
+    that "Unset means the role resolves exactly like every other one". So a set,
+    non-empty value wins, and anything else — unset, empty, whitespace-only, or
+    not a string at all — falls through to
+    :func:`resolve_role_config` for the ``orchestrator`` role. Callers that need
+    the orchestrator's model ask HERE rather than reading the config key
+    themselves, so the key stays the operator-facing surface without also being
+    a second, rival resolver.
+
+    ``get_config`` is imported inside the body on purpose: this module has no
+    module-level import of config and is itself imported early by others.
+    """
+    from packages.orchestration.config import get_config
+
+    configured = get_config().get("orchestrator.model")
+    if isinstance(configured, str) and configured.strip():
+        return configured
+
+    return resolve_role_config("orchestrator").model
