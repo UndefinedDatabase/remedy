@@ -14,35 +14,31 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 6, session 2 — book round 5's PASS verdict, then land the first
-half of T002b: the pure composition transform `_dedupe_resumed_segments`
-in `packages/orchestration/pingpong_loop.py`, which rewrites an
-already-sent segment's TEXT to its marker while leaving that segment's
-NAME, RANK and POSITION alone, and reports which names it replaced. No
-call site is added: `compose_builder_prompt` and `compose_reviewer_prompt`
-are not touched, so every prompt this repository composes stays
-byte-identical to the one before this round.
+Round 7, session 2 — book round 6's PASS verdict, then give the transform
+`_dedupe_resumed_segments` its callers. `compose_builder_prompt` and
+`compose_reviewer_prompt` each gain a keyword-only `dedupe_sent_hashes`
+that defaults to None and bypasses entirely, plus a `dedupe_enabled` kill
+switch; the two call sites in `run_pingpong` pass the session's sent
+hashes only when a resume ref is actually set, so a non-resuming call has
+no value it could dedupe with. The byte-equality golden for the
+non-resume path is this round's first acceptance item.
 
 ## Next Steps
 
-- Wire the transform into `compose_builder_prompt` and
-  `compose_reviewer_prompt` behind a parameter that defaults to no dedupe,
-  and pass the session's sent hashes at the two loop call sites only when
-  a resume ref is actually set. The non-resume byte-equality golden is
-  that round's first acceptance item.
 - Record the deduped segments in the manifest so evidence shows what the
-  model did NOT receive again, and plumb the config kill switch through
-  to `enabled` (T002c).
-- The measurement fixture and the docs (T003).
+  model did NOT receive again, and plumb the config kill switch through to
+  `dedupe_enabled` (T002c).
+- The measurement fixture on a resumed fixture chain, with the savings
+  recorded, plus the docs (T003).
 - The integration gate, then the closure sequence.
 
 ## Risks
 
 - The parse-retry and post-mortem provider calls are still NOT wired into
   the index. That records strictly less than was sent, which errs in the
-  safe direction; the wiring step must not assume the index is complete.
-- `tests/orchestration/test_builder_prompt_golden.py` pins frozen renders
-  and an exact ten-name manifest tuple. This round adds no call site, so
-  it cannot reach them; the wiring step must gate on that suite.
+  safe direction; nothing may assume the index is complete.
+- A deduped call records the MARKER's hash as sent, which is honest but
+  not useful. T002c's manifest annotation is what makes the evidence
+  readable; until then the marker hashes are harmless noise in the index.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
