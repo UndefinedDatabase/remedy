@@ -1696,11 +1696,14 @@ class TestTheComposedPromptReportsTheNamesItReplaced:
 
         The wrappers delegate to the originals and return their results
         unchanged — exactly what ``_capture_role_calls`` does for a provider —
-        so the run below stays the real one. The composed object itself never
-        reaches ``PingPongResult`` (a prompt trace carries the manifest, not the
-        report), so wrapping the two functions in the loop's own module namespace
-        is how the LOOP's compositions are read without widening production code
-        that has no consumer for the report yet.
+        so the run below stays the real one. The composed OBJECT itself never
+        reaches ``PingPongResult``, and that is the reason this helper exists: a
+        prompt trace carries the manifest and, since ``78d2b7b5``, the deduped
+        NAMES that ``build_trace_entry`` reads off the composed prompt — but never
+        the ``ComposedPrompt`` itself. Wrapping the two functions in the loop's
+        own module namespace is therefore how the LOOP's own compositions are
+        read, without widening production code that already consumes the report
+        it needs.
         """
         import packages.orchestration.pingpong_loop as loop
 
