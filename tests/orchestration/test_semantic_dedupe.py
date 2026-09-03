@@ -2061,3 +2061,147 @@ class TestATraceIsRecordedForEveryProviderInvocation:
                 assert len(traces) == 1, (
                     role, round_data.round_number, [t.prompt_chars for t in traces],
                 )
+
+
+# ---------------------------------------------------------------------------
+# T003c: THE TRACE RECORDS WHAT THE MODEL DID NOT RECEIVE AGAIN.
+#
+# `PromptTraceEntry.deduped_segment_names` carries the names whose TEXT the
+# composition behind that trace replaced with a marker. It is derived from
+# `composed_prompt` at the same seam `segment_manifest` already uses, so a trace
+# can never describe one prompt's bytes with another prompt's withholdings.
+#
+# THESE CASES DRIVE THE REAL LOOP. The unit-level claims about the derivation
+# live in tests/orchestration/test_prompt_trace.py; what is only decidable here
+# is that the loop's OWN compositions reach the field — a derivation that is
+# correct in isolation proves nothing about a call site that never passes the
+# composed object down.
+
+
+class TestTheTraceNamesWhatWasNotResent:
+    """SPEC E: `deduped_segment_names` through the real loop, on both flag values."""
+
+    @staticmethod
+    def _untruncated(result) -> list:
+        """Every trace of the run, each asserted UN-TRUNCATED before it is read.
+
+        The same guard `TestTheSemanticDedupeKillSwitch._marked_traces` and
+        `TestATraceIsRecordedForEveryProviderInvocation._role_traces` apply, and
+        it is applied here for the neighbouring reads rather than for the new
+        field itself: `prompt_text_redacted` and the marker searches below are
+        only as wide as the bytes that survived the cap. `deduped_segment_names`
+        is a list the cap never touches, so this guard is honest about covering
+        the readings around it and keeps one convention across the file.
+        """
+        for trace in result.prompt_traces:
+            assert trace.prompt_text_truncated is False, (trace.role, trace.round)
+        return list(result.prompt_traces)
+
+    # -- SPEC E case 4: a resumed chain records the names it did not resend ----
+
+    def test_a_resumed_chain_records_the_names_it_did_not_resend(self, fallback_repo: Path):
+        # NEITHER ROLE FALLS BACK HERE, so every role records exactly one trace
+        # per round and the round 2 Builder trace IS the composition that left
+        # the loop — no choosing between two.
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(fallback_repo, providers, repair_rounds=2)
+
+        assert result.final_status == "staged_review_passed"
+        self._untruncated(result)
+        # (a) NON-VACUITY FIRST: the chain really resumed. Two rounds ran, the
+        # Builder did not fall back, and both seams recorded a proven send — so
+        # round 2 composed against a POPULATED index and had something to
+        # withhold. Without this the emptiness assertions below would be
+        # satisfied by a chain that never got the chance to dedupe.
+        assert len(result.rounds) == 2
+        assert result.rounds[1].builder_output.resume_fallback is False
+        assert sorted(TestChainAgainstTheRealLoop._rows_by_session(result)) == [
+            TestChainAgainstTheRealLoop.BUILDER_SESSION,
+            TestChainAgainstTheRealLoop.REVIEWER_SESSION,
+        ]
+
+        first = TestATraceIsRecordedForEveryProviderInvocation._role_traces(
+            result, "builder", 1,
+        )
+        second = TestATraceIsRecordedForEveryProviderInvocation._role_traces(
+            result, "builder", result.rounds[1].round_number,
+        )
+        assert len(first) == 1, [t.prompt_chars for t in first]
+        assert len(second) == 1, [t.prompt_chars for t in second]
+        # (b) ROUND 1 OPENED THE SESSION, so it withheld nothing and names nothing.
+        assert first[0].deduped_segment_names == []
+        # (c) ROUND 2 RESUMED IT, and says what it withheld.
+        assert second[0].deduped_segment_names != []
+        # (d) THE TWO READINGS OF ONE TRACE AGREE. A marker row is still a
+        # manifest row, so every withheld name is still named by that same
+        # trace's manifest; a name in one and not the other would mean the two
+        # fields describe different compositions.
+        manifest_names = {str(row["name"]) for row in second[0].segment_manifest}
+        for name in second[0].deduped_segment_names:
+            assert name in manifest_names, (name, sorted(manifest_names))
+
+    # -- SPEC E case 5: the fallback's two traces disagree, and that is the point
+
+    def test_the_fallbacks_two_builder_traces_disagree_about_what_was_withheld(
+        self, fallback_repo: Path,
+    ):
+        # WHAT TIES THIS FIELD TO `R-0774`'S REPAIR. The fallback round makes TWO
+        # Builder calls: the resumed composition that withheld segments, then the
+        # full-content recomposition that actually reached the provider. With
+        # only the first traced — the state before `R-0774` — the round's single
+        # trace would have reported withheld names for a call that re-sent every
+        # byte in full, which is a FALSE live indicator rather than a missing one.
+        builder, reviewer = TestChainAgainstTheRealLoop._provider_pair(
+            builder_resume_fails=True,
+        )
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, (builder, reviewer), repair_rounds=2,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        fallback_round = result.rounds[1]
+        assert fallback_round.builder_output.resume_fallback is True
+        self._untruncated(result)
+
+        traces = TestATraceIsRecordedForEveryProviderInvocation._role_traces(
+            result, "builder", fallback_round.round_number,
+        )
+        assert len(traces) == 2, [t.prompt_chars for t in traces]
+        # THE ABANDONED COMPOSITION WITHHELD SEGMENTS, and its own bytes carry
+        # the markers that withholding produced.
+        assert traces[0].deduped_segment_names != []
+        assert DEDUPE_MARKER_PREFIX in traces[0].prompt_text_redacted
+        # THE CALL THAT REACHED THE PROVIDER WITHHELD NOTHING, and its bytes
+        # agree: a fresh session was told nothing was previously provided.
+        assert traces[1].deduped_segment_names == []
+        assert DEDUPE_MARKER_PREFIX not in traces[1].prompt_text_redacted
+
+    # -- SPEC E case 6: the field is wired to the dedupe decision, not to a role
+
+    def test_a_disabled_run_names_nothing_on_any_trace(self, fallback_repo: Path):
+        # THE DISCRIMINATOR AGAINST THE FIELD BEING WIRED TO SOMETHING OTHER THAN
+        # THE DEDUPE DECISION. This is the very chain case 4 finds names on, with
+        # `semantic_dedupe_enabled` the only argument that moves, so an empty
+        # report here is about the flag rather than about a chain that never
+        # resumed.
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(
+            fallback_repo, providers, repair_rounds=2, semantic_dedupe_enabled=False,
+        )
+
+        assert result.final_status == "staged_review_passed"
+        # NON-VACUITY, the same two readings case 4 makes: two rounds ran and
+        # both seams recorded a proven send, so round 2 composed against a
+        # populated index and would have withheld had the flag not said no.
+        assert len(result.rounds) == 2
+        assert sorted(TestChainAgainstTheRealLoop._rows_by_session(result)) == [
+            TestChainAgainstTheRealLoop.BUILDER_SESSION,
+            TestChainAgainstTheRealLoop.REVIEWER_SESSION,
+        ]
+
+        traces = self._untruncated(result)
+        assert traces
+        assert [t.deduped_segment_names for t in traces if t.deduped_segment_names] == []

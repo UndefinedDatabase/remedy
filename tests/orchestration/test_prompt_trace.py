@@ -5,6 +5,7 @@ complete builder/reviewer metadata.
 """
 from __future__ import annotations
 
+import dataclasses
 import inspect
 import json
 
@@ -519,6 +520,59 @@ class TestSegmentManifest:
         site = reviewer_sites[0]
         assert "prompt_text=prompt_text," in site
         assert "composed_prompt=reviewer_composed," in site
+
+
+# ---------------------------------------------------------------------------
+# F109: the trace names what the composition did NOT resend
+# ---------------------------------------------------------------------------
+
+
+class TestDedupedSegmentNames:
+    """`deduped_segment_names` rides the same `composed_prompt` seam as the manifest.
+
+    A class of its own rather than three more cases in `TestSegmentManifest`,
+    because the two EMPTIES next door to each other mean different things: an
+    empty `segment_manifest` says the prompt was never composed through the
+    registry, an empty `deduped_segment_names` says a composed prompt withheld
+    nothing. Keeping the claims apart is what stops a reader conflating them.
+    """
+
+    def test_an_entry_without_a_composed_prompt_names_nothing(self):
+        entry = build_trace_entry(prompt_text="plain prompt", role="builder")
+        assert entry.deduped_segment_names == []
+
+    def test_a_composition_that_replaced_nothing_names_nothing(self):
+        # THE OTHER EMPTY, AND IT IS NOT THE SAME ONE. This prompt WAS composed —
+        # its manifest is populated — and simply deduped nothing, which is the
+        # normal case everywhere outside a resumed session.
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text, role="intake", composed_prompt=composed,
+        )
+        assert entry.segment_manifest != []
+        assert composed.deduped_names == ()
+        assert entry.deduped_segment_names == []
+
+    def test_the_names_arrive_in_order_and_as_a_list_not_the_source_tuple(self):
+        # THE TYPE IS PART OF THE CLAIM, not tidiness: `asdict` serialises this
+        # entry to JSON, where a tuple round-trips back as a list, so an entry
+        # that kept the source tuple would describe itself one way in memory and
+        # another way on disk. THE ORDER IS PART OF IT TOO — the pair below is
+        # deliberately NOT the manifest's own order, so a derivation that read
+        # the manifest instead of the report would fail here.
+        composed = dataclasses.replace(
+            compose_intake_prompt("demo mission"),
+            deduped_names=("intake_rules", "intake_system"),
+        )
+        entry = build_trace_entry(
+            prompt_text=composed.text, role="intake", composed_prompt=composed,
+        )
+        assert entry.deduped_segment_names == ["intake_rules", "intake_system"]
+        assert isinstance(entry.deduped_segment_names, list)
+        assert [row["name"] for row in entry.segment_manifest][:2] == [
+            "intake_system",
+            "intake_rules",
+        ]
 
 
 # ---------------------------------------------------------------------------
