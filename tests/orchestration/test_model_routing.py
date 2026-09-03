@@ -1,4 +1,8 @@
-"""Tests for packages/orchestration/model_routing.py — F110 T002a, the class table, and T002b, the three hard rules.
+"""Tests for packages/orchestration/model_routing.py — F110 T002a/T002b/T002c.
+
+The three rounds this file covers are the class TABLE (T002a), the three HARD
+RULES as named checks (T002b), and the PER-PROJECT OVERRIDE SCHEMA that validates
+a whole override map against those rules before it is applied (T002c).
 
 THE SYNC TEST IS THE ACCEPTANCE LINE. docs/roadmap/features/T3_F110.md's
 Acceptance section requires that "the class table matches the policy document (a
@@ -47,7 +51,13 @@ from packages.orchestration.model_routing import (
     MID_TIER,
     MODEL_TIERS,
     ORCHESTRATION_TASK_CLASSES,
+    OVERRIDE_REASON,
+    OVERRIDE_SCHEMA_RULE_NAMES,
+    OVERRIDE_VIOLATION_RULE_NAMES,
+    REVIEWER_WORKER_CLASS_PAIRS,
     RULE_ORCHESTRATION_BELOW_TOP_TIER,
+    RULE_OVERRIDE_UNKNOWN_TASK_CLASS,
+    RULE_OVERRIDE_UNKNOWN_TIER,
     RULE_REVIEWER_WEAKER_THAN_WORKER,
     RULE_SAFETY_CLASS_BELOW_MID_TIER,
     SAFETY_RELEVANT_CLASSES,
@@ -55,13 +65,17 @@ from packages.orchestration.model_routing import (
     TASK_CLASS_TIERS,
     TOP_TIER,
     UNKNOWN_CLASS_REASON,
+    OverrideRefused,
+    build_effective_task_class_tiers,
     check_orchestration_class_routed_to_top_tier,
     check_reviewer_not_weaker_than_worker,
     check_safety_relevant_class_not_below_mid_tier,
     model_tier_rank,
     normalize_task_class,
     resolve_task_class_tier,
+    resolve_task_class_tier_with_overrides,
     validate_routing_choice,
+    validate_task_class_tier_overrides,
 )
 
 REPO = Path(__file__).resolve().parents[2]
@@ -354,7 +368,14 @@ class TestReviewerNeverWeakerThanTheWorker:
 
 
 class TestOrchestrationCallsAlwaysTopTier:
-    """The feature file's rule — orchestrator and mission-compile calls always top tier."""
+    """The feature file's rule — orchestration calls always top tier.
+
+    The feature file words it "orchestrator and mission-compile calls"; the SET
+    the rule is checked against also carries ``mission``, per DECISION F110 D2,
+    because the seed table routes ``mission`` to the top tier and a per-project
+    override is exactly what could move it. The membership test below pins the
+    WIDER set exactly, so the widening stays a decision and not a drift.
+    """
 
     @pytest.mark.parametrize("task_class", sorted(ORCHESTRATION_TASK_CLASSES))
     @pytest.mark.parametrize("tier", TIERS_BELOW_TOP)
@@ -379,9 +400,17 @@ class TestOrchestrationCallsAlwaysTopTier:
             RULE_ORCHESTRATION_BELOW_TOP_TIER
         )
 
-    def test_the_covered_classes_are_the_two_the_feature_file_names(self):
+    def test_the_covered_classes_are_exactly_the_set_decision_d2_declares(self):
+        # A WIDER PIN IS STILL A PIN. DECISION F110 D2 added ``mission`` to the
+        # set, which made the previous two-class assertion false; it is REWRITTEN
+        # here to the exact new membership rather than deleted, so adding a fourth
+        # class silently still turns this file red.
         assert ORCHESTRATION_TASK_CLASSES == frozenset(
-            {normalize_task_class("orchestrator"), normalize_task_class("mission compile")}
+            {
+                normalize_task_class("orchestrator"),
+                normalize_task_class("mission compile"),
+                normalize_task_class("mission"),
+            }
         )
 
 
@@ -481,3 +510,334 @@ class TestRoutingChoiceValidatorCollectsEveryViolation:
             tier=MODEL_TIERS[0],
         )
         assert RULE_SAFETY_CLASS_BELOW_MID_TIER not in result
+
+
+# ---------------------------------------------------------------------------
+# F110 T002c — the per-project override schema
+# ---------------------------------------------------------------------------
+
+#: The orchestration classes an override map can actually REACH, which is the
+#: intersection of ORCHESTRATION_TASK_CLASSES with the seed table's keys. An
+#: override naming an orchestration class the seed table does NOT name is a SCHEMA
+#: fault (``override_unknown_task_class``) and never a hard rule 2 violation, so
+#: only this subset can produce the hard-rule refusal. After DECISION F110 D2 it
+#: is non-empty, which is precisely what that decision bought.
+OVERRIDABLE_ORCHESTRATION_CLASSES = tuple(
+    sorted(ORCHESTRATION_TASK_CLASSES & set(TASK_CLASS_TIERS))
+)
+
+#: A FIXTURE safety-relevant set for the override tests, and it names a class the
+#: SEED TABLE names, which ``FIXTURE_SAFETY_CLASSES`` above deliberately does not.
+#: An override on "fence_evaluation" would be refused as a schema fault before the
+#: safety rule ever looked at it, so proving the safety rule fires through an
+#: OVERRIDE needs a class the table already carries. ``architecture`` is seeded at
+#: the top tier, so the seed table alone conforms under this set and every refusal
+#: below is caused by the override rather than by the fixture.
+OVERRIDE_SAFETY_CLASSES = frozenset({"architecture"})
+
+#: A key no seed-table class normalizes to.
+UNKNOWN_OVERRIDE_CLASS = "a_class_the_document_does_not_name"
+
+
+def _rule_names(violations) -> list[str]:
+    """Return just the rule names of ``violations``, in the order reported."""
+    return [violation.rule_name for violation in violations]
+
+
+class TestOverrideSchemaFaults:
+    """A malformed override is REPORTED with its own name, not crashed on."""
+
+    def test_an_override_naming_an_unknown_task_class_is_refused_with_its_own_rule(self):
+        violations = validate_task_class_tier_overrides({UNKNOWN_OVERRIDE_CLASS: TOP_TIER})
+        assert _rule_names(violations) == [RULE_OVERRIDE_UNKNOWN_TASK_CLASS]
+        assert violations[0].task_class == UNKNOWN_OVERRIDE_CLASS
+
+    def test_an_override_naming_an_unknown_tier_is_refused_with_its_own_rule(self):
+        violations = validate_task_class_tier_overrides({"format": UNKNOWN_TIER})
+        assert _rule_names(violations) == [RULE_OVERRIDE_UNKNOWN_TIER]
+        assert violations[0].task_class == "format"
+
+    def test_a_malformed_override_is_reported_rather_than_raising_out_of_the_validator(self):
+        # The validator RETURNS for both schema faults; nothing propagates. A
+        # config typo an operator can read is worth more than a traceback.
+        assert validate_task_class_tier_overrides({UNKNOWN_OVERRIDE_CLASS: UNKNOWN_TIER})
+        assert validate_task_class_tier_overrides({"format": UNKNOWN_TIER})
+
+    def test_an_unrankable_tier_never_reaches_a_hard_rule_check(self):
+        # ``mission`` at an unknown tier would RAISE inside hard rule 2 if the
+        # schema-faulty entry were judged; it must report the schema fault alone.
+        violations = validate_task_class_tier_overrides({"mission": UNKNOWN_TIER})
+        assert _rule_names(violations) == [RULE_OVERRIDE_UNKNOWN_TIER]
+
+    def test_a_well_formed_override_produces_no_schema_fault(self):
+        violations = validate_task_class_tier_overrides({"format": MID_TIER})
+        assert not [n for n in _rule_names(violations) if n in OVERRIDE_SCHEMA_RULE_NAMES]
+
+
+class TestOverrideRefusedPerHardRule:
+    """One violating override map per hard rule, each refused WITH THE RULE NAMED."""
+
+    @pytest.mark.parametrize("task_class", OVERRIDABLE_ORCHESTRATION_CLASSES)
+    @pytest.mark.parametrize("tier", TIERS_BELOW_TOP)
+    def test_an_orchestration_class_demoted_below_top_is_refused_with_the_rule_named(
+        self, task_class, tier
+    ):
+        violations = validate_task_class_tier_overrides({task_class: tier})
+        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
+        assert violations[0].task_class == task_class
+
+    @pytest.mark.parametrize("task_class", OVERRIDABLE_ORCHESTRATION_CLASSES)
+    def test_the_same_orchestration_class_restated_at_the_top_tier_is_not_refused(
+        self, task_class
+    ):
+        assert validate_task_class_tier_overrides({task_class: TOP_TIER}) == ()
+
+    def test_mission_demoted_below_top_is_refused_with_the_rule_named(self):
+        # DECISION F110 D2's OWN ACCEPTANCE FIXTURE. Before D2, ``mission`` was
+        # outside ORCHESTRATION_TASK_CLASSES and this override was accepted in
+        # silence, because the policy-document sync test guards the TABLE against
+        # the DOCUMENT and cannot reach an override at all.
+        violations = validate_task_class_tier_overrides({"mission": MODEL_TIERS[0]})
+        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
+        assert violations[0].task_class == "mission"
+
+    def test_mission_left_at_the_top_tier_is_not_refused(self):
+        assert validate_task_class_tier_overrides({"mission": TOP_TIER}) == ()
+
+    @pytest.mark.parametrize("tier", TIERS_BELOW_MID)
+    def test_a_safety_relevant_class_demoted_below_mid_is_refused_with_the_rule_named(self, tier):
+        task_class = sorted(OVERRIDE_SAFETY_CLASSES)[0]
+        violations = validate_task_class_tier_overrides(
+            {task_class: tier}, OVERRIDE_SAFETY_CLASSES
+        )
+        assert _rule_names(violations) == [RULE_SAFETY_CLASS_BELOW_MID_TIER]
+        assert violations[0].task_class == task_class
+
+    @pytest.mark.parametrize("tier", TIERS_AT_OR_ABOVE_MID)
+    def test_the_same_safety_class_at_or_above_mid_is_not_refused(self, tier):
+        task_class = sorted(OVERRIDE_SAFETY_CLASSES)[0]
+        assert validate_task_class_tier_overrides({task_class: tier}, OVERRIDE_SAFETY_CLASSES) == ()
+
+    def test_the_seed_table_alone_conforms_under_the_fixture_safety_set(self):
+        # The discriminator for the pair above: with NO override at all the same
+        # fixture set produces nothing, so every refusal above is the override's.
+        assert validate_task_class_tier_overrides({}, OVERRIDE_SAFETY_CLASSES) == ()
+
+    @pytest.mark.parametrize(("worker_class", "reviewer_class"), REVIEWER_WORKER_CLASS_PAIRS)
+    def test_the_reviewer_half_of_a_pair_demoted_below_its_worker_is_refused(
+        self, worker_class, reviewer_class
+    ):
+        # ONLY the reviewer half moves. The worker half is still the SEED tier,
+        # which is what makes this the proof that the rule is judged against the
+        # EFFECTIVE table rather than against the override map alone.
+        below = MODEL_TIERS[0]
+        assert model_tier_rank(below) < model_tier_rank(TASK_CLASS_TIERS[worker_class])
+        violations = validate_task_class_tier_overrides({reviewer_class: below})
+        assert RULE_REVIEWER_WEAKER_THAN_WORKER in _rule_names(violations)
+
+    @pytest.mark.parametrize(("worker_class", "reviewer_class"), REVIEWER_WORKER_CLASS_PAIRS)
+    def test_the_pair_violation_is_attributed_to_the_reviewer_class(
+        self, worker_class, reviewer_class
+    ):
+        violations = validate_task_class_tier_overrides({reviewer_class: MODEL_TIERS[0]})
+        attributed = [
+            v.task_class for v in violations if v.rule_name == RULE_REVIEWER_WEAKER_THAN_WORKER
+        ]
+        assert attributed == [reviewer_class]
+
+    @pytest.mark.parametrize(("worker_class", "reviewer_class"), REVIEWER_WORKER_CLASS_PAIRS)
+    def test_the_reviewer_half_left_at_its_seed_tier_is_not_refused(
+        self, worker_class, reviewer_class
+    ):
+        violations = validate_task_class_tier_overrides(
+            {reviewer_class: TASK_CLASS_TIERS[reviewer_class]}
+        )
+        assert RULE_REVIEWER_WEAKER_THAN_WORKER not in _rule_names(violations)
+
+
+class TestOverrideValidatorCollectsEveryViolation:
+    """One map breaking every rule reports every rule, once, in the declared order."""
+
+    #: One override map that breaks ALL FIVE rules at once: a dead key, a typo'd
+    #: tier, a demoted orchestration class, a demoted safety class and a reviewer
+    #: dropped below its paired worker.
+    BREAKS_EVERY_RULE = {
+        UNKNOWN_OVERRIDE_CLASS: TOP_TIER,
+        "format": UNKNOWN_TIER,
+        "mission": MODEL_TIERS[0],
+        sorted(OVERRIDE_SAFETY_CLASSES)[0]: MODEL_TIERS[0],
+        REVIEWER_WORKER_CLASS_PAIRS[0][1]: MODEL_TIERS[0],
+    }
+
+    def test_every_rule_is_reported_exactly_once(self):
+        names = _rule_names(
+            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+        )
+        assert sorted(names) == sorted(OVERRIDE_VIOLATION_RULE_NAMES)
+
+    def test_the_result_follows_the_declared_order(self):
+        names = _rule_names(
+            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+        )
+        assert names == list(OVERRIDE_VIOLATION_RULE_NAMES)
+
+    def test_the_declared_order_is_provably_not_the_alphabet(self):
+        names = _rule_names(
+            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+        )
+        assert names != sorted(names)
+
+    def test_the_schema_names_are_reported_before_the_hard_rule_names(self):
+        names = _rule_names(
+            validate_task_class_tier_overrides(self.BREAKS_EVERY_RULE, OVERRIDE_SAFETY_CLASSES)
+        )
+        last_schema = max(names.index(n) for n in OVERRIDE_SCHEMA_RULE_NAMES)
+        first_hard = min(names.index(n) for n in HARD_RULE_NAMES)
+        assert last_schema < first_hard
+
+    def test_a_conforming_map_returns_an_empty_result(self):
+        assert validate_task_class_tier_overrides({"format": TOP_TIER, "mission": TOP_TIER}) == ()
+
+    def test_an_empty_map_returns_an_empty_result(self):
+        assert validate_task_class_tier_overrides({}) == ()
+
+    def test_an_override_key_may_be_spelled_as_the_document_words_it(self):
+        violations = validate_task_class_tier_overrides({"Mission": MODEL_TIERS[0]})
+        assert _rule_names(violations) == [RULE_ORCHESTRATION_BELOW_TOP_TIER]
+        assert violations[0].task_class == normalize_task_class("Mission")
+
+
+class TestOverrideRuleNamesAreNotHardRuleNames:
+    """A schema fault is a malformed config, not a policy breach."""
+
+    def test_hard_rule_names_still_holds_exactly_the_names_round_five_shipped(self):
+        assert HARD_RULE_NAMES == (
+            RULE_REVIEWER_WEAKER_THAN_WORKER,
+            RULE_ORCHESTRATION_BELOW_TOP_TIER,
+            RULE_SAFETY_CLASS_BELOW_MID_TIER,
+        )
+
+    @pytest.mark.parametrize("rule_name", OVERRIDE_SCHEMA_RULE_NAMES)
+    def test_no_schema_rule_name_is_in_hard_rule_names(self, rule_name):
+        assert rule_name not in HARD_RULE_NAMES
+
+    def test_the_report_order_is_the_schema_names_then_the_hard_rule_names(self):
+        assert OVERRIDE_VIOLATION_RULE_NAMES == OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES
+
+
+class TestReviewerWorkerClassPairs:
+    """The declared pairs are checkable, and the SHIPPED table already conforms."""
+
+    def test_at_least_one_pair_is_declared(self):
+        assert REVIEWER_WORKER_CLASS_PAIRS
+
+    @pytest.mark.parametrize(("worker_class", "reviewer_class"), REVIEWER_WORKER_CLASS_PAIRS)
+    def test_every_member_of_every_pair_is_a_key_of_the_seed_table(
+        self, worker_class, reviewer_class
+    ):
+        assert worker_class in TASK_CLASS_TIERS
+        assert reviewer_class in TASK_CLASS_TIERS
+
+    @pytest.mark.parametrize(("worker_class", "reviewer_class"), REVIEWER_WORKER_CLASS_PAIRS)
+    def test_the_seed_table_alone_routes_the_reviewer_at_or_above_its_worker(
+        self, worker_class, reviewer_class
+    ):
+        assert check_reviewer_not_weaker_than_worker(
+            TASK_CLASS_TIERS[worker_class], TASK_CLASS_TIERS[reviewer_class]
+        ) is None
+
+
+class TestEffectiveTableBuilder:
+    """The hard rules win by REFUSING a config, not by quietly editing it."""
+
+    def test_a_conforming_map_returns_the_seed_table_overlaid(self):
+        effective = build_effective_task_class_tiers({"format": TOP_TIER})
+        assert effective["format"] == TOP_TIER
+        assert {k: v for k, v in effective.items() if k != "format"} == {
+            k: v for k, v in TASK_CLASS_TIERS.items() if k != "format"
+        }
+
+    def test_an_empty_map_returns_the_seed_table_unchanged(self):
+        assert build_effective_task_class_tiers({}) == TASK_CLASS_TIERS
+
+    def test_the_seed_table_is_not_mutated(self):
+        before = dict(TASK_CLASS_TIERS)
+        build_effective_task_class_tiers({"format": TOP_TIER})
+        assert TASK_CLASS_TIERS == before
+
+    def test_the_returned_table_is_not_the_seed_table_itself(self):
+        effective = build_effective_task_class_tiers({})
+        effective["format"] = UNKNOWN_TIER
+        assert TASK_CLASS_TIERS["format"] != UNKNOWN_TIER
+
+    def test_a_violating_map_raises_rather_than_dropping_the_offending_entry(self):
+        with pytest.raises(OverrideRefused):
+            build_effective_task_class_tiers({"mission": MODEL_TIERS[0]})
+
+    def test_the_raised_object_carries_the_violations(self):
+        with pytest.raises(OverrideRefused) as excinfo:
+            build_effective_task_class_tiers(
+                TestOverrideValidatorCollectsEveryViolation.BREAKS_EVERY_RULE,
+                OVERRIDE_SAFETY_CLASSES,
+            )
+        assert _rule_names(excinfo.value.violations) == list(OVERRIDE_VIOLATION_RULE_NAMES)
+
+    @pytest.mark.parametrize("rule_name", OVERRIDE_VIOLATION_RULE_NAMES)
+    def test_the_message_names_every_violated_rule(self, rule_name):
+        with pytest.raises(OverrideRefused) as excinfo:
+            build_effective_task_class_tiers(
+                TestOverrideValidatorCollectsEveryViolation.BREAKS_EVERY_RULE,
+                OVERRIDE_SAFETY_CLASSES,
+            )
+        assert rule_name in str(excinfo.value)
+
+    def test_a_schema_faulty_entry_is_refused_rather_than_silently_dropped(self):
+        with pytest.raises(OverrideRefused):
+            build_effective_task_class_tiers({UNKNOWN_OVERRIDE_CLASS: TOP_TIER})
+
+
+class TestOverrideAwareResolver:
+    """The reason is DERIVED by comparison with the seed table, never asserted."""
+
+    def test_a_tier_that_differs_from_the_seed_reports_the_override_reason(self):
+        effective = build_effective_task_class_tiers({"format": TOP_TIER})
+        assert resolve_task_class_tier_with_overrides("format", effective) == (
+            TOP_TIER,
+            OVERRIDE_REASON,
+        )
+
+    def test_an_override_restating_the_seed_tier_reports_the_seed_reason(self):
+        effective = build_effective_task_class_tiers({"format": TASK_CLASS_TIERS["format"]})
+        assert resolve_task_class_tier_with_overrides("format", effective) == (
+            TASK_CLASS_TIERS["format"],
+            SEED_MAPPING_REASON,
+        )
+
+    @pytest.mark.parametrize("task_class", sorted(TASK_CLASS_TIERS))
+    def test_a_class_no_override_touched_reports_the_seed_reason(self, task_class):
+        effective = build_effective_task_class_tiers({})
+        assert resolve_task_class_tier_with_overrides(task_class, effective) == (
+            TASK_CLASS_TIERS[task_class],
+            SEED_MAPPING_REASON,
+        )
+
+    def test_a_class_the_table_does_not_name_reports_the_unknown_pair(self):
+        effective = build_effective_task_class_tiers({})
+        assert resolve_task_class_tier_with_overrides(UNKNOWN_OVERRIDE_CLASS, effective) == (
+            TOP_TIER,
+            UNKNOWN_CLASS_REASON,
+        )
+
+    def test_the_declared_class_may_be_spelled_as_the_document_words_it(self):
+        # "extract" deliberately: it is in no reviewer/worker pair, so raising it
+        # cannot trip hard rule 1 and the test measures normalization alone.
+        effective = build_effective_task_class_tiers({"Extract": TOP_TIER})
+        assert resolve_task_class_tier_with_overrides("Extract", effective) == (
+            TOP_TIER,
+            OVERRIDE_REASON,
+        )
+
+    def test_the_shipped_resolver_is_unchanged_by_any_of_this(self):
+        # Round 5's resolve_task_class_tier answers from the SHIPPED table and
+        # knows nothing about overrides; the two are siblings, not a replacement.
+        assert resolve_task_class_tier("format") == (TASK_CLASS_TIERS["format"], SEED_MAPPING_REASON)
