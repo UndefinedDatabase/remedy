@@ -553,3 +553,144 @@ THE BRANCH HAS NO OPEN PULL REQUEST — none was created this round and none
 existed before it — so the next session's Open PR Gate finds none and proceeds
 straight to Phase 1 rule 1 (`.agent/STOP`, absent at this handback) and then to
 claiming the next round on this branch.
+
+
+## Reviewer verdict — ROUND 8: PASS
+
+Appended by the planner/reviewer after the handback was written, per
+docs/agents/planner_reviewer_prompt.md §3 item 14 and operator amendment
+amend0827-process-diet rule 1. It is booked into `.agent/live_review.md` as
+`Gate: F110 R8` in the FIRST commit of the next session's first round, together
+with the prose slip named below. THIS SESSION — SESSION 2 of F110 — ENDS HERE,
+after three delegated rounds, and the reason is stated below rather than assumed.
+
+WHAT THE REVIEWER RE-DERIVED RATHER THAN READ. The transport proof again reached
+the EMITTED bytes: the reviewer's scratch original, written before delegation and
+untouched since, the committed `.agent/authored/f110-r8.md` at `50adb6a8`, its
+mirror at `e54c81fc`, and both working copies at `6d6988e7` are five artefacts
+carrying one digest,
+`11b0c5855d8a82ee04728791ef426d8c5473ae15ca13025441c0cc35828eee5e`, at 33816
+bytes each. The block is 399 lines against a projection of 399 — the fifth exact
+projection in a row — and under the cap of 400, which it reached only after the
+reviewer cut it from 415. Every slice is byte-exact: `.agent/plan.md` equals
+PLAN8 plus the one trailing newline the target's convention adds, at 44 lines;
+`.agent/live_review.md` is 2177227 + 2 + 7937 = 2185166, the real size, still
+ending without a newline, base preserved as an exact prefix, second reader in
+order, negative control on the FIRST appended paragraph rejected;
+`.agent/decisions.md` is 728132 + 1 + 3014 + 1 = 731148, the real size, ending
+with exactly one newline, its eight paragraphs in order under the target's own
+convention; `.agent/prose_slips.md` equals its base plus two newlines plus
+SLIPS8. `ruff check` over both changed files answers "All checks passed!", run
+reviewer-side because the worker's permission layer refuses the tool — declared,
+not invented.
+
+DEVIATION D1 IS CORRECT AND THE BLOCK WAS WRONG. Constraint 4 gave
+`.agent/prose_slips.md` as 53575 bytes; the real size at `4cfcb464` is 54853, and
+the reviewer confirms the arithmetic the worker could not have known to check:
+53495 at `c1a3a3c4`, plus two newlines, plus SLIPS7's 1356 bytes, is 54853
+exactly. The stated newline CONVENTION was right and G4 gated that file by byte
+equality rather than by arithmetic, so nothing on disk is wrong and the append is
+exact. The worker applied the constraint as written and declared the discrepancy,
+which is precisely what constraint 1 asks for. Recorded in
+`.agent/prose_slips.md` next round; no R-id, per amend0827-process-diet rule 2.
+
+THE DELETIONS WERE READ LINE BY LINE. C3 is 253 insertions against 6 deletions,
+all six in the module docstring — no constant, no signature and no behaviour of
+rounds 4 through 7 revised. C4 is 370 against 4, all four the TEST module's
+docstring, which said "four rounds" and named four task ids and was falsified by
+this round's own commit; repairing it there is constraint 9, and deviation D3
+declares it. No existing test function was edited, renamed, deleted or skipped,
+which is constraint 8 met exactly.
+
+EVERY SHIPPED FUNCTION WAS RUN BY THE REVIEWER, NOT READ. The role map declares
+eight roles and every declared class is a seed-table key; `repair` is the sole
+inheriting role; the two sets are disjoint and together cover
+`role_config.KNOWN_ROLES` exactly, with no role left over in either direction.
+THE REPAIR RULE IS EXECUTABLE AND DISCRIMINATES: the inheriting role answers
+`architecture` for an `architecture` origin and `format` for a `format` one —
+different classes at different tiers, so inheritance is proven rather than a
+constant — and it raises `OriginatingTaskClassRequired` when no origin is given.
+A declared role IGNORES an originating class rather than being overridden by it.
+The undeclared role warns and answers `undeclared_role`, which the seam then
+routes to the top tier with the reason `unknown_class_conservative` — the A9
+default, and the honest reason in exactly the case where nobody did declare.
+The seam answers `mission` at the top tier for the orchestrator role and routes
+the inheriting role to its origin's tier, and round 5's hard rule refuses that
+same class below top, so DECISION F110 D3's whole point is a test rather than a
+claim.
+
+THE INVENTORY IS THE ROUND'S REAL DELIVERABLE AND THE REVIEWER RE-SWEPT IT
+INDEPENDENTLY. An AST walk of the reviewer's own over `packages/` and `apps/`
+finds seven calls to `resolve_role_config`, and the multiset of (path, role) pairs
+it produces equals `ROLE_CONFIG_CALL_SITES` entry for entry: `artifact_summary.py`
+with the literal `summary`, `role_config.py` with the literal `orchestrator`, and
+`do_cmd.py`, `pingpong_job.py`, `self_use_runner.py` and `teacher_model.py` twice
+carrying the dynamic marker. Five of the seven pass the role as a variable, so a
+sweep keyed on literal roles would have reached two — which is why the inventory
+pins the call SITES.
+
+THE RED PROOF WAS RE-RUN IN FULL, in a disposable worktree at `f7765ec0`, module
+path printed from inside it, `git status --porcelain` read on the PRIMARY
+checkout immediately after every mutation and CLEAN every time. Control: 391
+passed, 3 skipped, exit 0. The four mutations redden 5, 2, 3 and 5 ids and THE
+FOUR RED SETS ARE PAIRWISE DISJOINT — the cleanest discrimination this feature
+has produced. Mutation (iii), dropping one inventory entry, reddens exactly three
+ids and every one of them is an inventory test, which is the proof the sweep
+compares against the constant instead of re-deriving it. One benign difference
+from the handback: the reviewer's mutation (i) reddens five where the worker
+reported four, because the two runs substituted different fixed classes for the
+inherited one; the property under proof is identical and holds in both.
+
+THE SUITES WERE RE-RUN BY THE REVIEWER at 391 passed with 3 skipped for the
+routing file — grown from 325, with the skip count unmoved — then 33, 34, 63,
+295 and 42, every one exit 0. The three skips remain round 5's own
+"covered by the violating fixture above". CONSTRAINT 6 WAS MEASURED, NOT
+ASSERTED: `git diff --name-only 4cfcb464..f7765ec0 -- packages/ apps/` lists
+`packages/orchestration/model_routing.py` and nothing else, the module imports
+neither `config.py` nor `role_config.py`, and `git diff --stat` over `docs/` is
+empty. The per-commit insertion counts match the handback's Commits table cell by
+cell — 399, 305, 16, 55, 253, 370 — and every one is under the AGENTS.md cap;
+`6d6988e7` is 463 insertions against 578 deletions, a full-file rewrite of a
+single `.agent/**` state file and exempt under DECISION F104 D1. The open set is
+278 over 347 registered and 69 resolved, UNCHANGED; the round minted no id and
+`R-0767` stays OPEN. The tree is clean, `git ls-files .remedy-wt` returns
+nothing, no worktree of the round's making survives, `.agent/candidates.md` is
+untouched and still EMPTY, and the branch is pushed at `6d6988e7` with no pull
+request open.
+
+WHY THIS SESSION ENDS AFTER THREE DELEGATED ROUNDS, STATED RATHER THAN ASSUMED.
+Operator amendment amend0827-process-diet rule 6 sets the default at four to five
+rounds and forbids stopping "at a nice seam", so the reason is named here and G7
+is NOT cited for it. The next round is the WIRING round, and its first act is a
+DECISION the reviewer is not yet entitled to take: WHERE F110's routed-call
+evidence lands. Two facts make that a real question rather than a formality.
+FIRST, the seam returns a TIER, and this feature deliberately refuses to map a
+tier to a model id — so wiring cannot yet change model SELECTION, only recording,
+and whether it ever should is itself undecided. SECOND, the obvious field name is
+already taken: `model_routing_tier` and `model_routing_plan.tier` belong to
+`orchestrator_brain.py`'s UNRELATED vocabulary and surface in the ledger, the
+review bundle at `review_bundle.py`, the UI server at `ui_server.py` and the CLI —
+the collision `model_routing.py`'s own docstring was written to warn about. Ruling
+on a sink across four surfaces the reviewer has not measured would be a guess, and
+guardrail G8 forbids guessing. Measuring them is a session's opening work, not its
+closing work.
+
+WHAT THE NEXT SESSION OWES, IN ORDER. Phase 1 rule 1 first — read `.agent/STOP`
+from disk — then rule 2, the Open PR Gate, which finds NO open pull request
+because this branch has deliberately created none. Its first round then books
+`Gate: F110 R8` into `.agent/live_review.md` and the prose-slip line above into
+`.agent/prose_slips.md` as its first commit. Before authoring the wiring round it
+reads `packages/orchestration/progress_ledger.py`, `review_bundle.py`,
+`ui_server.py` and the CLI surface that carries `model_routing_tier`, and records
+the sink ruling as DECISION F110 D4 with its rejected alternatives. `R-0767`
+remains OPEN on this same seam and must not be absorbed into a routing commit.
+
+THREE SMALLER THINGS THE NEXT REVIEWER SHOULD NOT REDISCOVER. A block's line
+count must be measured on the FINAL bytes AFTER the last edit — round 8's ran to
+415 and needed real cuts, not rewraps, because rewrapping a paragraph leaves the
+line count where it was. A pre-emission probe must exercise the BEHAVIOUR the
+round ships and not merely the SHAPE of the constant that names it; round 7's
+three wrong clauses all came from that one shortcut. And a byte figure quoted for
+one round's base must be RE-MEASURED at the next round's base rather than
+re-derived by arithmetic in the reviewer's head, which is how constraint 4 came to
+say 53575 where the file held 54853.
