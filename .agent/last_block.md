@@ -1,208 +1,70 @@
-STEP T003d — F109 Semantic dedupe — ROUND 14, SESSION 3
+== STEP T003-docs / F109 — ROUND 15 ==
 
-Scope rule, quoted verbatim as every F109 order requires: RESUMED SESSION
-ONLY, PROVEN SENDS ONLY.
+SESSION 4 of feature F109. Round 15. Rounds so far: 14 done, this is the 15th.
+Soft limit is 25 rounds / 7 sessions (docs/agents/self_drive_protocol.md G7,
+amend0827 rule 6); at 15 rounds and 4 sessions it is NOT reached, so no scope
+report is due. No line of this block is a run of a repeated character, so there
+is no run length to recover (§3 checklist item 37).
 
-Goal: MEASURE THE SAVINGS FROM THE RECORD ITSELF. The feature file's
-Design closes with "Measurement: actuals comparison on the fixture chain,
-recorded", and its Acceptance asks for "savings recorded". Round 13 put the
-deduped names on the trace; this round adds ONE PURE FUNCTION that reads a
-run's own trace entries and reports what the run did NOT resend, counting
-only what it can actually observe and NAMING what it cannot. Also book
-round 13's PASS and register and repair `R-0779`.
+Scope rule, verbatim as every F109 order must carry it:
+RESUMED SESSION ONLY, PROVEN SENDS ONLY.
 
-Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f109-r14.md`
-  C0b  mirror it to `.agent/last_block.md`
-  C1   apply SLICE PLAN to `.agent/plan.md`
-  C2   append SLICE RECORD to `.agent/live_review.md`
-  C3   apply SPEC F to `tests/orchestration/test_semantic_dedupe.py`
-  C4   apply SPEC G to `packages/orchestration/prompt_trace.py`
-  C5   apply SPEC H to the two test files
-  C6   rewrite `.agent/handoff.md`
+## Goal
 
-Change set — exactly these eight paths and no ninth:
-  `.agent/authored/f109-r14.md`
-  `.agent/last_block.md`
-  `.agent/plan.md`
-  `.agent/live_review.md`
-  `packages/orchestration/prompt_trace.py`
-  `tests/orchestration/test_prompt_trace.py`
-  `tests/orchestration/test_semantic_dedupe.py`
-  `.agent/handoff.md`
+Ship the T003 DOCS: one new built-state document describing what F109 actually
+built, registered in the docs index in the SAME commit. Book round 14's PASS,
+resolve R-0779, and REGISTER R-0780 — two "deliberate absence" bullets in
+`session_sent_index.py` that still tell a reader the ping-pong loop invokes
+nothing, three wiring commits after it did. Its repair is round 16's, so this
+round registers it and does not touch that file.
 
-Constraints:
+## Bundle, in commit order
 
-1. Every authored slice is applied BYTE FOR BYTE. This block reached you as
-   a file: `cp` it from `/home/decodeux/Repos/remedy/.remedy-wt/f109-r14.md`
-   into `.agent/authored/f109-r14.md` and `cp` that into
-   `.agent/last_block.md`. Never retype either.
-2. The commit order above is FIXED. C1 advances `.agent/plan.md` as the
-   FIRST substantive commit because this round touches the finding ledger.
-3. YOU WRITE NO `Done:` PARAGRAPH AND NO VERDICT OF YOUR OWN. `R-0779` is
-   repaired this round but only the reviewer marks it resolved; a
-   `Landed: R-0779 — <one line>` line is permitted and nothing else.
-4. THE NEW FUNCTION IS PURE AND READ-ONLY. It takes trace entries and
-   returns a value. It opens no file, writes nothing, reads no global, and
-   calls no provider. It is NOT wired into `run_pingpong` this round —
-   wiring it is a later slice with its own gate, and a function landed
-   unwired but tested is the smaller, reviewable step.
-5. Do not touch `packages/orchestration/pingpong_loop.py`,
-   `packages/orchestration/prompt_segments.py` or
-   `packages/orchestration/token_ledger.py`. The manifest ROW KEYS STAY
-   CLOSED, as they have every round of this feature.
-6. DO NOT REUSE `packages/orchestration/token_economy.py`'s
-   `estimate_token_savings`. Read it before deciding you disagree: its own
-   docstring says it "Never claims verified savings", and it takes two
-   ESTIMATES. This measurement is the opposite kind — the withheld
-   characters are recorded exactly — and collapsing the two concepts into
-   one name would make a measured number indistinguishable from a guess.
-   Say so in the new function's docstring, naming that function, so the
-   next reader finds the distinction where they would search for it.
-7. Every gate G1-G8 runs at C5 or earlier, so the handback can quote every
-   reading. The handback commit's own insertion count is NOT quoted in it.
-8. Re-read `.agent/STOP` from disk before your first action and again
-   before the handback. If it exists, finish any half-written commit,
-   write the handback and end.
-9. Destructive verification runs ONLY inside a disposable `git worktree` or
-   on a scratch copy, each addressed BY EXACT PATH under `.remedy-wt/`,
-   never in the primary checkout. Remove and prune what you create and
-   confirm `git status --porcelain` is EMPTY afterwards.
-10. Push after the handback commit. Create no PR. Merge nothing. Never
-    force-push. Stay on `feature/f109-semantic-dedupe`.
+- C0a  save this block verbatim to `.agent/authored/f109-r15.md`
+- C0b  mirror it to `.agent/last_block.md`
+- C1   apply PLAN15 to `.agent/plan.md`            (FIRST substantive commit)
+- C2   append RECORD15 to `.agent/live_review.md`  (verdict, resolution, new id)
+- C3   create `docs/system/semantic-dedupe-v1.md` from DOC, AND apply
+        PAIR IDX1 and PAIR IDX2 to `docs/README.md` — ONE commit, both paths
+- C4   rewrite `.agent/handoff.md`
 
-Done when — EIGHT GATES, every one executed with its real exit code
-recorded, one line per gate in the handback:
+## Change set — these paths and nothing else
 
-G1 TRANSPORT. `sha256sum .remedy-wt/f109-r14.md .agent/authored/f109-r14.md
-   .agent/last_block.md` prints ONE digest three times. Report it. This
-   chain compares the scratch original against the saved copy against its
-   mirror and claims nothing about any earlier bytes.
+    .agent/authored/f109-r15.md
+    .agent/last_block.md
+    .agent/plan.md
+    .agent/live_review.md
+    docs/system/semantic-dedupe-v1.md
+    docs/README.md
+    .agent/handoff.md
 
-G2 THE PLAN. Extract SLICE PLAN mechanically from
-   `.agent/authored/f109-r14.md` (index of the opening `<<<SLICE PLAN`
-   line, index of the closing `SLICE PLAN` line, everything between) and
-   `cmp` it against `.agent/plan.md`: no output, exit 0. `wc -l` is
-   strictly under 50. `grep -c '^## Goal'` is 1 and
-   `grep -c '^## Next Steps'` is 1.
+## Constraints
 
-G3 THE RECORD APPEND, four readings.
-   (a) ARITHMETIC. Report base size and sha256, the appended length S after
-       stripping trailing newlines, and that base + S equals the new size
-       exactly. Report the new sha256. The file still ends WITHOUT a
-       trailing newline.
-   (b) A SECOND, STRUCTURALLY DIFFERENT READER that counts no byte: split
-       the WHOLE file on blank-line boundaries into units, COUNT N from the
-       payload itself rather than taking it from this block, and assert the
-       LAST N units equal the appended paragraphs IN ORDER. Report N and
-       the first characters of each.
-   (c) NEGATIVE CONTROL on a scratch copy at an exact path under
-       `.remedy-wt/`, never on the tracked file: flip one byte INSIDE THE
-       FIRST appended paragraph and confirm reader (b) REJECTS it while it
-       accepted the tracked file. Report the tracked sha256 before and
-       after to show it did not move, then delete the copy by exact path
-       and confirm its absence.
-   (d) COUNTS, AND THE OPEN SET IS A SET DIFFERENCE, NEVER A SUBTRACTION
-       (`R-0778`). Report registered ids, DISTINCT registered ids, `Done:`
-       LINES, DISTINCT resolved ids, and the size of the set difference.
-       Against `5fe32449` those read 339 / 339 / 65 / 63 / 276; after this
-       round the registered count is 340 and the open set is 277, with
-       `Done:` lines and distinct resolved ids both UNCHANGED because this
-       round resolves nothing. Also report `grep -c '^Gate: F109 R13 — '`
-       as 1 and `grep -c '^- R-0779 — '` as 1. Read every base reading from
-       `git show 5fe32449:.agent/live_review.md`, never by rewinding the
-       tracked file.
+1. EVERY slice below is applied BYTE FOR BYTE — no rewrap, no re-indent, no
+   improvement. If a slice looks wrong, apply it anyway and declare it in the
+   handback; that is how a reviewer mistake becomes visible rather than becoming
+   a silent correction.
+2. `.agent/live_review.md` ends WITHOUT a trailing newline and that convention is
+   preserved: append exactly the two bytes `\n\n` then RECORD15, which itself
+   ends without one. Never rewrite a landed entry.
+3. `docs/system/semantic-dedupe-v1.md` is NEW: create it with the DOC text
+   exactly, ending with exactly one trailing newline.
+4. C3 lands the doc AND both index rows in ONE commit. A doc registered in a
+   later commit is the docs-index drift AGENTS.md forbids.
+5. Nothing outside the change set is edited. If the G8 sweep finds something
+   else, DECLARE it; do not repair it.
+6. `python3 -m pytest` is the pytest route; bare `remedy` may be denied, and
+   `python3 -m apps.cli.main <cmd>` is the substitute. Env-var assignment
+   (`VAR=x cmd`, `env`, `export`) and `cp` are DENIED by the sandbox: copy with
+   `python3 -c "import shutil; shutil.copyfile(a, b)"`, and capture real exit
+   codes with `bash -c '<cmd>; echo "REAL_EXIT=$?"'`.
+7. Do not quote this handback commit's own insertion count anywhere; it cannot
+   exist while the text stating it is written (§3 checklist item 14).
+8. Never force-push, never work on main, never create or merge a PR this round.
 
-G4 THE EDIT SHAPE, read from `git show <sha>:<path>` blobs and never by
-   writing a revision over the tracked file. Compare blobs as SEQUENCES OF
-   LINES with `difflib.SequenceMatcher(None, before, after,
-   autojunk=False)`.
-   (a) ACROSS C4 on `packages/orchestration/prompt_trace.py`: every
-       non-equal opcode is an `insert`; none is `replace` or `delete`.
-       Report the opcodes and TOTAL LINES DELETED, which is 0.
-   (b) ACROSS C3: a docstring rewrite, so a non-zero deletion count is
-       expected. Report `grep -c '    def test_'` before and after — it is
-       UNCHANGED, because C3 touches no case.
-   (c) ACROSS C5: cases are ADDED, so report `grep -c '    def test_'`
-       before and after for BOTH test files and say by how much each rose.
-   (d) THE FUNCTION IS PURE, proved on the SOURCE rather than asserted:
-       parse `packages/orchestration/prompt_trace.py` with `ast`, locate
-       the new function, and report that its body contains no `Import`, no
-       `Global`, no `Nonlocal`, and no call to `open`, `write`, `Path`, or
-       any name from this module that performs I/O. Name what you searched
-       for, so the absence is only as wide as the search.
+## SLICE PLAN15 — the whole of `.agent/plan.md`
 
-G5 THE COLOUR — TWO RED-PROOFS, each with its UNMUTATED CONTROL reported
-   beside it, because a colour with no baseline is not evidence. In a
-   disposable worktree added BY EXACT PATH under `.remedy-wt/`, checked out
-   at C5. RUN THE IMPORT PROBE FIRST: `python3 -B -c "import
-   packages.orchestration.prompt_trace as m; print(m.__file__)"` with the
-   worktree as cwd must resolve INSIDE the worktree, or an editable install
-   is shadowing it and the gate is void. Purge `__pycache__` before every
-   run; every process is `python3 -B` with `-p no:cacheprovider`. Before
-   each write, count the bytes you are about to change IN THAT FILE and
-   report the count; where it is not 1, quote a longer UNIQUE string and
-   say which occurrence you took. Restore from the C5 blob by exact path
-   between mutations and after the last.
-   (a) DROP THE HONESTY BRANCH: make the function count a deduped segment
-       whose full-content size it never observed as though the saving were
-       zero, instead of reporting it as unmeasured. The SPEC H case that
-       pins the unmeasured report must FAIL. Report the failing node.
-   (b) COUNT THE MARKER AS FREE: remove the subtraction of the marker's own
-       characters, so the function reports gross rather than net. The
-       SPEC H case that pins the arithmetic must FAIL. This is the proof
-       that the case pins a NUMBER and not merely a direction.
-   Then remove the worktree and prune, and show that `git worktree list`
-   holds only the primary checkout and the four pre-existing
-   `remedy/job-*` worktrees.
-
-G6 THE SUITES, run SERIALLY — one process starts, finishes, and only then
-   the next. ALL FIFTEEN MUST BE EXIT 0. Base readings measured by the
-   reviewer at `5fe32449`, in parentheses. Only the first two may move, and
-   only upward. Report yours beside each and name any that moved.
-     tests/orchestration/test_semantic_dedupe.py            (128)
-     tests/orchestration/test_prompt_trace.py                (49)
-     tests/orchestration/test_pingpong_cli.py               (173)
-     tests/orchestration/test_pingpong.py                    (34)
-     tests/orchestration/test_session_resume.py              (27)
-     tests/orchestration/test_token_ledger.py               (120)
-     tests/orchestration/test_token_truth.py                 (37)
-     tests/orchestration/test_token_truth_v1_contract.py    (101)
-     tests/orchestration/test_job_evidence.py                (93)
-     tests/orchestration/test_provider_evidence_integration.py (64)
-     tests/orchestration/test_cost_report.py                 (22)
-     tests/ui_server/test_prompt_trace_payload.py            (20)
-     tests/ui_server/test_prompt_trace_lens.py               (13)
-     tests/test_observability_index.py                       (14)
-     tests/cli/test_golden_path.py                           (42)
-
-G7 THE TREE. `git status --porcelain` EMPTY. `git ls-files .remedy-wt`
-   returns nothing. Report the insertion count of C0a through C5 from
-   `git show --numstat` — the `+` column only, per AGENTS.md DECISION
-   F104 D1 — and confirm each is under 500. Confirm every commit is
-   single-parent with `git log --format="%h parents=%p"`. Compare those
-   numbers CELL BY CELL against your own `## Commits` table and state
-   plainly that you ran that comparison.
-
-G8 THE STALENESS SWEEP (finding `R-0417`'s standing counter-measure, which
-   is OPEN and binding). For EACH file this round touched, re-read it end
-   to end and report every sentence that states a count, a list of modules,
-   a round map, or a completion — together with whether it STILL HOLDS. Two
-   are already known and SPEC F repairs both, so report them as repaired
-   rather than as new. Pay particular attention to
-   `packages/orchestration/prompt_trace.py`'s module docstring and to
-   `build_trace_entry`'s, which round 13 already widened once. Report the
-   sweep even where it finds nothing more, and repair nothing outside the
-   change set — declare it.
-
-Handback: rewrite `.agent/handoff.md` per docs/agents/handback_template.md.
-It carries the state block, the item-status table with every C0a-C6 item
-present exactly once, the changed-files table, one line per gate with real
-readings, the deviations, the open-findings count STATED AS A SET
-DIFFERENCE, and — mandatory — the SESSION NUMBER, which is 3. It has no
-length cap. Then push.
-
-<<<SLICE PLAN
+BEGIN PLAN15
 # Plan — F109 Semantic dedupe
 
 Branch: feature/f109-semantic-dedupe, cut from `main` at
@@ -219,160 +81,307 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 14, session 3. Measure the savings from the record itself: one PURE
-function reads a run's own prompt-trace entries and reports what the run
-did not resend, counting only what it can observe and NAMING the segments
-whose full-content size was never recorded rather than guessing them. It
-is deliberately not wired into the loop this round. Also book round 13's
-PASS and register and repair `R-0779`, the module docstring that still
-describes one real-loop class where there are now several.
+Round 15, session 4. The T003 DOCS: `docs/system/semantic-dedupe-v1.md`
+describes the built state — the sent-hash index, the composition hook,
+the kill switch, the trace record and the measured savings — and is
+registered in `docs/README.md` in the same commit. Also book round 14's
+PASS and resolve `R-0779`, and REGISTER `R-0780`: two deliberate absence
+bullets in `session_sent_index.py` still tell a reader the loop invokes
+nothing, three wiring commits after it did. This round does not touch
+that file.
 
 ## Next Steps
 
-- The T003 DOCS: describe the feature's built state and register the doc
-  in `docs/README.md` in the same commit.
-- The integration gate (docs/agents/integration_gate.md), then the closure
-  sequence.
+- Repair `R-0780` in `packages/orchestration/session_sent_index.py`.
+- The integration gate (docs/agents/integration_gate.md).
+- The closure sequence (docs/roadmap/STATUS_closure_protocol.md), which
+  also runs the single consolidation pass on the checklist of
+  docs/agents/planner_reviewer_prompt.md section 3.
 
 ## Risks
 
-- The savings function is landed UNWIRED. Nothing reads it yet, so a later
-  round must either wire it or say plainly why it stays a library.
+- Nothing dedupes in production: every concrete adapter returns
+  `supports_resume = False`, so the mechanism is suite-only today. The
+  doc states this plainly rather than leaving it to be discovered.
+- The measurement function is a library, consumed by the T003 fixture
+  and by no production caller. The doc states that too.
 - The open finding set is a SET DIFFERENCE, not a subtraction: two ids
   carry two `Done:` lines each. That is `R-0778`.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
-SLICE PLAN
+END PLAN15
 
-<<<SLICE RECORD
-Gate: F109 R13 — the round 13 entry. VERDICT PASS, over the range `7b423b1a..5fe32449`. THE REVIEWER RE-RAN EVERY SUITE RATHER THAN READING THE HANDBACK: all fifteen are exit 0, with the two suites that gained cases at 128 and 49 — up from 125 and 46 by exactly the six cases SPEC E ordered — and the other thirteen at 173, 34, 27, 120, 37, 101, 93, 64, 22, 20, 13, 14, 42, every one identical to its base. THE PRODUCTION DIFF WAS READ IN FULL and is exactly SPEC D: `PromptTraceEntry` gains `deduped_segment_names` with a `#:` comment that distinguishes its empty from `segment_manifest`'s empty, `build_trace_entry` derives it from `composed_prompt` alone, and the function's docstring paragraph is extended to say why it is derived rather than passed. Three `insert` opcodes, ZERO lines deleted, and no parameter was added to the function's signature. THE FIELD IS NOT A ROW KEY, independently confirmed: `deduped_segment_names` occurs 0 times in `prompt_segments.py` and 0 times in `token_ledger.py`, so the manifest rows and the `call_segments` columns they mirror are untouched, which is the constraint every round of this feature has carried. THE LOOP NEEDED NO CHANGE, and the round verified that rather than assuming it: all three `build_trace_entry` call sites already pass `composed_prompt=`. THE LEDGER, re-measured by the reviewer as a SET DIFFERENCE per `R-0778` and not as a subtraction: 339 registered ids, all distinct; 65 `Done:` lines over 63 distinct resolved ids; open set 276. `Gate: F109 R12 — ` 1 and `- R-0777 — `/`- R-0778 — ` 1 each. THE TREE is clean and the branch is pushed at `5fe32449`. THE ROUND'S FOUR DECLARED DEVIATIONS ARE ALL SOUND AND TWO ARE THE REVIEWER'S FAULT: SPEC D said "Two insertions and no third" while its own item (2) ordered a docstring extension, which is a third insertion region — the block contradicted itself and the worker applied all three ordered changes and said so; and SPEC E ordered a `prompt_text_truncated` guard for a list field the text cap cannot reach, so the guard is sound for the neighbouring reads and vacuous for the one it was named for. Neither damaged anything on disk and neither earns an id under amend0827 rule 2; both belong in `.agent/prose_slips.md` at the closure consolidation. The worker also declined to reword `build_trace_entry`'s "BOTH `segment_manifest` and `segment_manifest_chars`" because constraint 5 forbade editing existing lines — correctly, and the sentence remains TRUE as written since it quantifies over the two it names rather than over everything derived from the composed prompt.
+## SLICE RECORD15 — appended to `.agent/live_review.md`, three paragraphs
 
-- R-0779 — Low, THE DEDUPE SUITE'S MODULE DOCSTRING DESCRIBES A FILE THAT NO LONGER EXISTS: ONE REAL-LOOP CLASS WHERE THERE ARE NOW SEVERAL, AND A SCOPE LINE NAMING ONLY T001a. Found by the WORKER of F109 R13 during that round's G8 sweep, reported honestly against a gate that had already passed, and registered here at the reviewer's first opportunity. MEASURED INDEPENDENTLY by the reviewer at `5fe32449`: `tests/orchestration/test_semantic_dedupe.py` opens "Tests for the per-session sent-hash index (F109 T001a)." while the file now also covers the composition hook and its markers (T002), the config kill switch (T002c, landed at `b245e1c9`) and the trace's record of what was not resent (T003c, landed at `899eeefd`); and its third paragraph says "the final class deliberately drives the real ping-pong loop against ``FakeProvider`` in a tmp_path (F109 T001b-ii)", where SEVERAL later classes now drive the real loop and the final one is the T003c class rather than the T001b-ii one. Both sentences were TRUE when written and later rounds falsified them without touching them — the `R-0749` and `R-0773` shape, and the third instance of it on this branch, which is why the standing staleness sweep that found it is worth its place in every gate list. WHY LOW: no behaviour is wrong, no gate is blind, no test is weakened, and every case in the file passes; the defect is confined to the paragraph a reader meets FIRST when deciding what the file is for, which is the reason it is registered rather than ignored. WHY IT WAS NOT REPAIRED IN THE ROUND THAT FOUND IT: SPEC C and SPEC E both scoped round 13 to one comment and to additive cases, so repairing it would have widened the change set past the block, and the worker declared it instead — the correct behaviour under guardrail G8. FIX: restate the opening line to name the slices the file actually covers, and restate the real-loop sentence WITHOUT a numeral, since the count of such classes has now changed twice and a number in that sentence would only go stale again. Resolved when the module docstring names no single "final class" and no slice the file does not cover.
-SLICE RECORD
+BEGIN RECORD15
+Gate: F109 R14 — the round 14 entry. VERDICT PASS, over the range `5fe32449..d52a5371`. THE REVIEWER RE-RAN ALL FIFTEEN SUITES RATHER THAN READING THE HANDBACK, in two serial processes: 676 passed for the first eight and 268 for the remaining seven, 944 in total at exit 0, and every per-suite figure the handback stated is reproduced — `test_semantic_dedupe.py` at 130 and `test_prompt_trace.py` at 54, up from 128 and 49 by exactly the seven cases SPEC H ordered, with the other thirteen identical to their base. THE PRODUCTION DIFF WAS READ IN FULL: `git log --numstat` gives C4 as 104 insertions and ZERO deletions on `packages/orchestration/prompt_trace.py`, so the insert-only shape G4(a) demanded is confirmed from the tool rather than from the report, and every commit is under the 500-insertion cap of AGENTS.md DECISION F104 D1. THE LEDGER was recomputed mechanically as a SET DIFFERENCE per `R-0778` and never as a subtraction: 340 registered ids, all distinct; 65 `Done:` lines over 63 distinct resolved ids; open set 277 — matching the handback exactly. TWO INDEPENDENT RED-PROOFS OF THE REVIEWER'S OWN CHOOSING, neither of them one the worker ran, were executed in a disposable worktree detached at `d52a5371` with `__pycache__` purged and `python3 -B`: dropping the ROLE from both the write and the read key of `latest_full_chars` went RED at 1 failed with `assert () == ('builder_context',)`, and inflating `occurrences += 1` to `+= 2` went RED at 3 failed with `assert 2 == 1`, while the unmutated control was exit 0 at 135 passed BOTH before the mutations and after the restore. So the per-role scoping the docstring claims and the exact occurrence count are each PINNED by a case, and the suite is load-bearing rather than merely green. THE ROUND'S EIGHT DECLARED DEVIATIONS WERE READ AND ALL ARE SOUND; deviation 1 is the notable one and the worker was RIGHT to widen SPEC G's honesty branch to `if full is None or spent is None:`, because the reviewer's literal `marker_chars.get(name, 0)` would have claimed a marker cost zero characters and OVER-reported the saving — the exact dishonesty the branch exists to prevent. That is a reviewer error the round repaired, and it belongs in `.agent/prose_slips.md` at the closure consolidation rather than earning an id under amend0827 rule 2. THE TRANSPORT CHAIN THIS VERDICT COVERS is the saved copy, its mirror and the working copy — `sha256sum` gives one digest, `d391081163058c104207886d8beb09eac0a42eec24cc8321d395f2523487e558`, for `.agent/authored/f109-r14.md` and `.agent/last_block.md` — and it is NOT a claim about the emitted bytes, which this workflow cannot measure (§3 checklist item 37). THE TREE is clean and no worktree but the primary checkout and the four pre-existing `remedy/job-*` worktrees remains.
 
-<<<SPEC F
-SPEC F — R-0779: THE MODULE DOCSTRING.
+Done: R-0779 — RESOLVED at `79edbcbf` and verified by the reviewer at `d52a5371`. The module docstring of `tests/orchestration/test_semantic_dedupe.py` now opens "Tests for F109 semantic dedupe — the per-session sent-hash index (T001a), the composition hook and its markers (T002), the config kill switch (T002c) and the trace's record of what was not resent (T003c)", so it names no slice the file does not cover; and the real-loop sentence now reads "the later classes deliberately drive the real ping-pong loop against ``FakeProvider`` in a tmp_path, beginning at F109 T001b-ii and continuing through every slice that followed it", which states NO numeral and no "final class". Both halves of the finding's own resolution condition are therefore met, measured on disk and not taken from the handback. The file's remaining positional claim about `_real_manifest_rows` — the worker declared it under G8 and correctly declined to repair it, SPEC F having given two literal pairs and neither reaching that sentence — is NOT part of this resolution and stays declared.
 
-File: `tests/orchestration/test_semantic_dedupe.py`. Two prose
-replacements in the module docstring. No case, name or assertion is
-touched, and `grep -c '    def test_'` is identical before and after.
+- R-0780 — Low, THE SENT-INDEX MODULE STILL DOCUMENTS ITS OWN WIRING AS ABSENT, THREE WIRING COMMITS AFTER IT LANDED, IN THE ONE PLACE A READER IS TOLD TO LOOK. Raised by the REVIEWER at the F109 R14 gate while reading `packages/orchestration/session_sent_index.py` end to end for the T003 documentation round, and registered rather than slipped because the wrong state is on disk under `packages/` — the amend0827 rule 2 test. MEASURED at `d52a5371`. That module's docstring carries a section headed "Scope boundary — deliberate absences (a reader searching here should find this rather than conclude the wiring was forgotten)", which is exactly the construct AGENTS.md's Code Discoverability Conventions require, and TWO of its three bullets are now FALSE. The second says of `invalidate_on_resume_fallback` that "What is still absent is only the CALL SITES — nothing in ``pingpong_loop.py`` invokes it yet, and wiring those seams is T001b-ii", while `grep -n` puts real calls at `pingpong_loop.py:3469` and `:3818` and `git log -S` dates both to `7451e9c7`, the commit whose own subject is "wire the sent-hash index into the ping-pong loop". The third says of `should_dedupe_segment` and `dedupe_marker_for_segment` that "What is still absent is the COMPOSITION HOOK that calls them — no prompt is rewritten here, and nothing in ``pingpong_loop.py`` invokes either function yet — together with the config plumbing that supplies ``enabled``", while `_dedupe_resumed_segments` calls both at `pingpong_loop.py:936` and `:939` since `24352750`, both `compose_*` functions call that hook since `60343048`, and the config plumbing landed at `b245e1c9`. THE FIRST BULLET WAS EXAMINED AND IS LEFT ALONE DELIBERATELY, so a later reader does not think it was missed: its claim is scoped by the word "here" to this module, and this module genuinely still neither persists the index nor reads it back, even though `pingpong_loop.py` now writes `as_evidence_dicts()` onto `result.session_sent_evidence`. WHY LOW: no behaviour is wrong, no gate is blind, no test is weakened and every suite is green; the damage is confined to prose. WHY IT IS NOT MERELY A SLIP: an absence note is load-bearing documentation by AGENTS.md's own rule, so a reader who searches for "is the composition hook wired?" lands precisely here and is told NO when the answer is YES — a stale absence note is worse than no note, because it converts a search into a confident wrong answer. This is the same CLASS as the open finding `R-0593`, which records two such notes in `packages/orchestration/release_gate.py` and `pyproject.toml`; those are different files under a different feature, so this is a sibling instance and not a duplicate of it under the checklist's item 30 test, and it is the fourth staleness instance on this branch after `R-0749`, `R-0773` and `R-0779`. FIX: restate both bullets to say the call sites exist and name the commits that made them exist. Resolved when no bullet of that section says any part of this module's wiring is absent from `pingpong_loop.py`.
+END RECORD15
 
-PAIR F1. TO contains FROM: false, so this is a REWRITE. FROM occurs
-exactly 1 time before the commit.
+## DOC — the whole of the NEW file `docs/system/semantic-dedupe-v1.md`
 
-FROM:
-"""Tests for the per-session sent-hash index (F109 T001a).
+BEGIN DOC
+# Semantic Dedupe v1
 
-TO:
-"""Tests for F109 semantic dedupe — the per-session sent-hash index
-(T001a), the composition hook and its markers (T002), the config kill
-switch (T002c) and the trace's record of what was not resent (T003c).
+> Built state of F109 (`docs/roadmap/features/T3_F109.md`, Tier 3). Inside a
+> RESUMED provider session, a prompt segment whose exact content has already
+> provably reached that session is replaced by a one-line marker instead of
+> being sent again; everywhere else the full content is composed unchanged.
+> The scope rule of the whole feature binds every mechanism below:
+> RESUMED SESSION ONLY, PROVEN SENDS ONLY.
 
-PAIR F2. TO contains FROM: false, so this is a REWRITE. FROM occurs
-exactly 1 time before the commit. The TO states NO COUNT of the real-loop
-classes on purpose: that number has already changed twice, and a numeral
-here is a sentence nobody re-derives.
+## The sent-hash index (T001)
 
-FROM:
-PURE — no tmp_path, no provider — while the final class deliberately drives the
-real ping-pong loop against ``FakeProvider`` in a tmp_path (F109 T001b-ii). The
+`packages/orchestration/session_sent_index.py` holds `SessionSentIndex`: per
+provider session id, the set of segment SHA-256 digests PROVABLY delivered. The
+digests are the ones `ComposedPrompt.manifest_as_dicts()` already produces — no
+second hashing scheme — and the module is PURE: no file, no network, no
+provider, no import from the rest of `packages.orchestration`. "Proven" is the
+load-bearing word: `record_call` records nothing when the call carried an error,
+because a failed call did not reach the session, and nothing when the session id
+is empty after stripping, because an empty key would become one bucket every
+sessionless call shares. Neither case is an error and both are silent; a
+malformed manifest row, by contrast, RAISES `SessionSentIndexError` rather than
+degrading quietly into a smaller index.
 
-TO:
-PURE — no tmp_path, no provider — while the later classes deliberately drive
-the real ping-pong loop against ``FakeProvider`` in a tmp_path, beginning at
-F109 T001b-ii and continuing through every slice that followed it. The
-SPEC F
+`record_finalized_call` and `invalidate_on_resume_fallback` are the two adapter
+seams. `pingpong_loop.py` calls both on the Builder path and again on the
+Reviewer path (landed at `7451e9c7`), and writes `as_evidence_dicts()` onto
+`result.session_sent_evidence`, so `session_sent_index_from_evidence` rebuilds
+after a restart exactly what the evidence proves and never more.
 
-<<<SPEC G
-SPEC G — THE MEASUREMENT, READ FROM THE RECORD.
+## The composition hook and the marker (T002)
 
-File: `packages/orchestration/prompt_trace.py`. One new module-level
-function, appended after the existing ones. Nothing already in the file is
-edited or deleted.
+`_dedupe_resumed_segments` in `packages/orchestration/pingpong_loop.py` is the
+transform. It rewrites `text` and nothing else, so segment NAMES and RANKS
+survive by construction, and it returns the INPUT order rather than a rank sort —
+`compose_prompt_segments` sorts afterwards, and re-ordering here would move
+segments the cache discipline requires to stay put. The digest it compares comes
+from the shipped producer one segment at a time, never from a local `hashlib`
+call, so the decision asks the same producer that made the index's entries.
 
-THE FUNCTION takes an ordered sequence of `PromptTraceEntry` — a run's own
-`result.prompt_traces`, or the entries parsed back out of
-`prompt_trace.jsonl` — and returns what the run did NOT resend. Name it so
-it greps to itself and says which kind of number it is: it MEASURES, it
-does not estimate.
+The marker reads `[unchanged: <segment name>, previously provided]`. The name
+stays inside it deliberately: the model must still be able to refer to a segment
+it is no longer shown, so the marker withholds the content without withholding
+the means of asking for it back.
 
-WHAT IT COMPUTES. Walk the entries IN ORDER, remembering for each
-`(role, segment name)` the most recent FULL-CONTENT size seen for that
-segment — that is, its `chars` in the manifest of an entry whose
-`deduped_segment_names` does NOT contain it. When an entry DOES report a
-name in `deduped_segment_names`, that entry's manifest row for the same
-name carries the MARKER's `chars` instead. For each such occurrence:
-  - the characters avoided are the remembered FULL size,
-  - the characters spent are the marker's `chars` in this entry,
-  - the net saving is the first minus the second.
-Report the totals, and the number of deduped segment occurrences counted.
+Both `compose_builder_prompt` and `compose_reviewer_prompt` take a
+`dedupe_sent_hashes` parameter that BYPASSES dedupe by default (`60343048`), so
+the transform runs only for a caller supplying a real set; a non-resuming call
+passes `None`, which is the scope rule and not a gap. A segment shorter than
+`DEDUPE_MIN_SEGMENT_CHARS` (200, compared with `>=`) is never replaced, because
+a marker has a length of its own — 48 and 49 characters for the two names
+measured below — so replacing a small segment can cost more than it saves.
 
-THE HONESTY BRANCH, WHICH IS THE POINT OF THE FUNCTION. A name may be
-reported as deduped with NO earlier full-content observation in the
-entries given — a caller can hand over a partial trace, and a resumed
-session's first recorded call may already be deduping against a session
-opened before the record begins. Such an occurrence is NOT counted as
-zero and is NOT guessed: it is collected into a reported field naming
-those segments, and excluded from every total. A reader must be able to
-tell "nothing was saved" from "the saving is not measurable from what you
-gave me", and a function that conflates the two would report a confident
-zero for an unmeasured run.
+## The kill switch (T002c)
 
-Return a small frozen structure — a dataclass in this module's own idiom,
-or a dict if that fits the file better — carrying the totals, the counted
-occurrences, and the unmeasured names as a tuple in first-seen order.
+`run_pingpong` carries `semantic_dedupe_enabled` and forwards it to both primary
+compositions as `dedupe_enabled` (`b245e1c9`). In `should_dedupe_segment` and in
+`_dedupe_resumed_segments` alike, `enabled` is consulted FIRST and ALONE: false
+returns the segments untouched and consults nothing else, so the switch is
+provably and totally off rather than mostly off.
 
-THE DOCSTRING must say, in the file's own voice: that every number is
-MEASURED from recorded evidence rather than estimated; that
-`packages/orchestration/token_economy.py`'s `estimate_token_savings` is
-the DIFFERENT, estimate-shaped concept and is deliberately not reused
-here, because that function's own docstring says it never claims verified
-savings while this one reports only what the record proves; and that the
-unmeasured names exist so an absent measurement can never read as a zero.
-Purity is part of the contract: say that it opens nothing and writes
-nothing, since gate G4(d) proves exactly that.
-SPEC G
+## What the record shows, and what it measures (T003c, T003d)
 
-<<<SPEC H
-SPEC H — THE TESTS FOR THE MEASUREMENT.
+Every `PromptTraceEntry` carries `deduped_segment_names`, derived from the
+composed prompt alone rather than passed in beside it, so the evidence shows
+exactly which segments the model did NOT receive again.
 
-Two files. No existing case is edited, renamed or deleted; every case is
-ADDED.
+`measure_dedupe_savings_from_traces` in `packages/orchestration/prompt_trace.py`
+reads a run's own trace entries and reports what that run did not resend. Every
+number it returns is MEASURED from recorded evidence. It is deliberately NOT
+`estimate_token_savings` in `packages/orchestration/token_economy.py`: that
+function compares two ESTIMATES and says so, and one name over both concepts
+would make a measured number indistinguishable from a guess.
+`unmeasured_segment_names` is the load-bearing field — a segment reported as
+deduped whose full-content size never appeared in the entries handed over is
+NAMED there and excluded from every total, so "nothing was saved" and "the
+saving is not measurable from what you gave me" can never read alike.
 
-IN `tests/orchestration/test_prompt_trace.py` — the arithmetic, on
-hand-built entries, where the numbers can be exact:
-  1. NO ENTRIES yields zeroed totals, no counted occurrences and no
-     unmeasured names.
-  2. ENTRIES THAT DEDUPED NOTHING yield the same, however many entries.
-  3. THE ARITHMETIC CASE: one entry sending a named segment at a known
-     full size, then a later entry of the SAME role reporting that name in
-     `deduped_segment_names` with a known smaller marker size. Assert the
-     avoided total, the spent total, the NET, and the counted occurrences,
-     all as exact numbers. This is the case gate G5(b) reddens.
-  4. THE UNMEASURED CASE: an entry reporting a deduped name with no
-     earlier full-content observation. Assert that the name appears in the
-     unmeasured field, that it is EXCLUDED from every total, and that the
-     totals are therefore zero — and assert BOTH halves, because a
-     function that simply returned zero would satisfy the totals alone.
-     This is the case gate G5(a) reddens.
-  5. ROLES DO NOT CROSS: a full-content observation recorded for one role
-     does not supply the size for the other role's deduped name of the
-     same segment name. That name is unmeasured, not measured from the
-     wrong role. The scope rule of this feature is about what a SESSION
-     provably received, and a per-role reading is the nearest honest thing
-     the trace alone supports.
+Measured at commit `d52a5371` on the two-round resumed fixture chain of
+`tests/orchestration/test_semantic_dedupe.py::TestTheRunsOwnTraceMeasuresWhatItWithheld`,
+whose second case re-runs the identical chain with `semantic_dedupe_enabled=False`
+as the discriminator:
 
-IN `tests/orchestration/test_semantic_dedupe.py` — the claim on the REAL
-loop, appended as ONE new class at the very END, driving the existing
-fixtures exactly as the neighbouring chain classes do. Reuse
-`fallback_repo`, `TestChainAgainstTheRealLoop._provider_pair` and `._run`.
-  6. A RESUMED CHAIN REPORTS A POSITIVE NET SAVING, and the counted
-     occurrences equal the total number of names across every entry's
-     `deduped_segment_names`. Assert non-vacuity first: the chain really
-     resumed.
-  7. A DISABLED RUN REPORTS ZERO AND NAMES NOTHING UNMEASURED. With
-     `semantic_dedupe_enabled=False` the totals are zero, the counted
-     occurrences are zero, and the unmeasured field is EMPTY — the
-     discriminator that stops case 6 passing on a function that reports
-     activity whatever the run did.
-SPEC H
+| Reading | Dedupe on | Dedupe off |
+|---|---:|---:|
+| Segments withheld | 2 (`builder_system`, `reviewer_system`) | 0 |
+| Characters avoided | 556 | 0 |
+| Characters spent on markers | 97 | 0 |
+| Net characters saved | 459 | 0 |
+| Names that could not be measured | none | none |
+
+The two markers cost 97 characters against 556 of withheld content. As with
+F106's measured reduction, this comparison proves the DIRECTION is real and
+measured on a small fixture; it is not a claim about production magnitude, and
+the saving scales with how much of the world a real resumed round would
+otherwise resend rather than with this fixture's own size.
+
+## What this does NOT do
+
+- **Nothing dedupes in production today.** Dedupe fires only inside a resumed
+  session, and every concrete adapter in
+  `packages/orchestration/pingpong_provider.py` returns
+  `supports_resume = False` — `ClaudeProvider`, `ClaudeCliProvider` and
+  `OllamaPingPongProvider` alike. Only `FakeProvider`'s test-only constructor
+  override ever returns `True`, so the mechanism is exercised by the suite and
+  is inert on every real run.
+- A dedupe never crosses session ids: each session's hashes live in their own
+  set, and an empty session id is never used as a key.
+- A resume fallback forgets the resumed session entirely — once it has fallen
+  back to full context, nothing about what the model holds is proven.
+- The measurement function is a LIBRARY. The T003 fixture above is its only
+  caller; `run_pingpong` does not call it and no report renders it yet. A run's
+  savings stay recomputable from the traces the run already wrote.
+- Cross-session caching, provider-side cache mechanics and prompt CONTENT are
+  out of scope — the feature file's own "Do not touch".
+
+## Related
+
+- `docs/roadmap/features/T3_F109.md` — the target spec and its acceptance list.
+- [session-resume-v1.md](session-resume-v1.md) — the resume machinery this
+  feature's scope rule depends on, and the reason nothing dedupes in production.
+- [cache-optimal-prompt-ordering-v1.md](cache-optimal-prompt-ordering-v1.md) —
+  the ranked segment composition that dedupe rewrites one segment of.
+END DOC
+
+## PAIR IDX1 — the quick-find table of `docs/README.md`
+
+Containment test, run mechanically before emission: TO contains FROM: false.
+The new row goes BETWEEN the two FROM lines, so the TO does not contain the FROM
+contiguously and this is a REWRITE, not an append. FROM 0x and TO 1x after C4 is
+therefore attainable and IS the proof. FROM counted at `d52a5371`: exactly 1x.
+
+BEGIN IDX1_FROM
+| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |
+| session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
+END IDX1_FROM
+
+BEGIN IDX1_TO
+| self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |
+| semantic dedupe | [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | system |
+| session resume | [session-resume-v1.md](system/session-resume-v1.md) | system |
+END IDX1_TO
+
+## PAIR IDX2 — the system-docs table of `docs/README.md`
+
+Containment test, run mechanically before emission: TO contains FROM: false.
+REWRITE for the same reason as IDX1, and the same FROM 0x / TO 1x proof applies.
+FROM counted at `d52a5371`: exactly 1x.
+
+BEGIN IDX2_FROM
+| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
+| [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |
+END IDX2_FROM
+
+BEGIN IDX2_TO
+| [self-use-track-v1.md](system/self-use-track-v1.md) | Self-use track: the curated queue, the job-file format, one item consumed per feature close |
+| [semantic-dedupe-v1.md](system/semantic-dedupe-v1.md) | Semantic dedupe inside a resumed session: the sent-hash index, the marker hook, the kill switch, and the measured savings |
+| [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |
+END IDX2_TO
+
+## Done when — the eight gates. RUN each one and record its REAL exit code.
+
+Every gate below runs at a commit STRICTLY EARLIER than C4, the commit that
+writes the handback, so the handback can honestly quote all eight.
+
+G1 TRANSPORT, one comparison and no chain. Run
+   `cmp .remedy-wt/f109-r15.md .agent/authored/f109-r15.md` and report the exit
+   code. That scratch file is the REVIEWER'S OWN original, so this comparison
+   proves real transport and not merely your own self-consistency. Then report
+   `sha256sum .agent/authored/f109-r15.md .agent/last_block.md` — one digest
+   twice.
+
+G2 THE PLAN. Extract PLAN15 by delimiter index (the lines strictly between
+   `BEGIN PLAN15` and `END PLAN15`) and `cmp` it against `.agent/plan.md` after
+   C1: exit 0, no output. Report `wc -l .agent/plan.md`, which must be under 50
+   (AGENTS.md), and `grep -c '^## Goal'` and `grep -c '^## Next Steps'`, each 1.
+
+G3 THE RECORD APPEND, three readings, and this is the only slice that earns full
+   byte forensics this round.
+   (a) ARITHMETIC. Report the base size and base sha256 of `.agent/live_review.md`
+       at `d52a5371`, the length S of the appended bytes, the new size, and
+       whether base + S equals the new size. Confirm the file still ends WITHOUT
+       a trailing newline.
+   (b) A SECOND READER THAT COUNTS NO BYTE, covering the WHOLE appended region.
+       Split the entire file on blank-line boundaries into units. Let N be the
+       paragraph count of RECORD15 as YOUR SCRIPT COUNTS IT from the slice — do
+       not take N from this block. Assert the LAST N units equal RECORD15's N
+       paragraphs IN ORDER, printing each one's opening 60 characters.
+   (c) A NEGATIVE CONTROL ON THE FIRST APPENDED PARAGRAPH. Copy the file to
+       `.remedy-wt/live_review_negative_control_r15.md`, flip one byte INSIDE
+       the FIRST appended paragraph there, and show reader (b) REJECTS the copy
+       while ACCEPTING the tracked file. Report the tracked sha256 before and
+       after to show it never moved, then delete that scratch file BY ITS EXACT
+       PATH and report `os.path.exists` on that exact path as False.
+   (d) COUNTS, AS A SET DIFFERENCE and never a subtraction (`R-0778`). Read the
+       base from `git show 5fe32449:.agent/live_review.md`, never by rewinding
+       the tracked file, and report five figures for base and five for the new
+       state: registered ids, DISTINCT registered ids, `Done:` lines, DISTINCT
+       resolved ids, and `len(set(registered) - set(resolved))`. Also report
+       `grep -c '^Gate: F109 R14 — '` = 1, `grep -c '^Done: R-0779 — '` = 1 and
+       `grep -c '^- R-0780 — '` = 1.
+
+G4 THE INDEX PAIRS, both of which are REWRITES by the containment test recorded
+   beside each. For PAIR IDX1 and PAIR IDX2 in `docs/README.md`, report the count
+   of each FROM BEFORE C3 (each must be 1) and AFTER C3 (each must be 0), and the
+   count of each TO after C3 (each 1).
+
+G5 THE DOC IS REAL AND REGISTERED. After C3 report: the doc exists and its
+   `wc -l`; `git show --numstat <C3>` naming BOTH new paths, proving ONE commit;
+   `grep -c 'semantic-dedupe-v1.md' docs/README.md` = 2; and that EVERY relative
+   markdown link in the new doc resolves on disk, listing each target and
+   whether it exists — the reading
+   `tests/docs/test_docs_consistency.py::test_every_relative_markdown_link_exists`
+   will make, so make it yourself first.
+
+G6 THE SUITES, run SERIALLY, one process finishing before the next starts. Report
+   the collected count and REAL exit code of each:
+   - `python3 -m pytest tests/docs/ -q`
+   - `python3 -m pytest tests/orchestration/test_semantic_dedupe.py -q`
+   - `python3 -m pytest tests/orchestration/test_prompt_trace.py -q`
+   - `python3 -m pytest tests/orchestration/test_session_resume.py -q`
+   - `python3 -m pytest tests/orchestration/test_pingpong.py -q`
+   - `python3 -m pytest tests/orchestration/test_pingpong_cli.py -q`
+   - `python3 -m pytest tests/cli/test_golden_path.py -q`
+   The last is the mandatory canary; `tests/docs/` is listed because this round
+   touches `docs/`. NOTHING may go red and no count may FALL — the reviewer
+   measured the six that are not `tests/docs/` at `d52a5371` as 130, 54, 27, 34,
+   173 and 42.
+
+G7 THE DOC'S FACTUAL CLAIMS, RE-MEASURED BY YOU rather than trusted. The doc
+   asserts things about code it does not live in, so verify each and report the
+   reading: (a) `supports_resume` returns False for `ClaudeProvider`,
+   `ClaudeCliProvider` and `OllamaPingPongProvider` in `pingpong_provider.py`,
+   and `FakeProvider` alone takes it as a constructor override; (b) each of the
+   commits `7451e9c7`, `60343048` and `b245e1c9` exists (`git cat-file -e`);
+   (c) `DEDUPE_MIN_SEGMENT_CHARS` is 200 and the comparison in
+   `should_dedupe_segment` is `>=`; (d) `estimate_token_savings` exists in
+   `packages/orchestration/token_economy.py`; (e) the two marker strings for
+   `builder_system` and `reviewer_system` are 48 and 49 characters, summing to
+   the 97 the table states. Any reading that disagrees with the DOC is a finding
+   against the REVIEWER: report it, apply the slice unchanged, and do not
+   silently correct the doc.
+
+G8 THE TREE AND THE SWEEP. `git status --porcelain` must be EMPTY and
+   `git ls-files .remedy-wt` must return nothing. Report each commit's insertion
+   count from `git show --numstat` — the `+` column ONLY, per AGENTS.md DECISION
+   F104 D1 — for every commit of this round EXCEPT C4, and compare those figures
+   cell by cell against your own `## Commits` table, which must carry the same
+   numbers (§3 checklist item 28). Then RE-READ each file this round touched, end
+   to end, and report every sentence that is now stale — including any you did
+   NOT repair, with the reason. Repair nothing outside the change set.
+
+## Handback
+
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It has NO
+length cap. It must carry: the SESSION NUMBER (4) and round (15); the item-status
+table with every one of C0a, C0b, C1, C2, C3, C4 appearing exactly once with
+`done`, `skipped` or `deviated` and a reason; a per-commit changed-files table
+with the `+/-` column; ONE LINE PER GATE G1 through G8 with its real reading; the
+open-finding count as a SET DIFFERENCE; your deviations and assumptions; and the
+next expected action. Then `git push -u origin feature/f109-semantic-dedupe` and
+report the result. Create no PR.
