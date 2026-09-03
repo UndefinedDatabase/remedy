@@ -396,6 +396,17 @@ class TestSegmentManifest:
         because it never touches `pingpong_loop` — which is why this guard
         exists. Same `inspect.getsource` pattern as the CLI guards above.
 
+        THE SITES ARE SELECTED BY THE ROLE THEY DECLARE, NEVER BY POSITION.
+        F109 `R-0774` added a SECOND builder append inside the resume-fallback
+        branch; the old fixed index `[1]` never reached it and kept passing by
+        luck, while the same insertion silently moved the reviewer guard's
+        index onto a builder site — finding `R-0775`. So this case splits the
+        source into ALL `build_trace_entry` append sites, keeps the TWO that
+        declare `role="builder",`, and asserts of EVERY one of them that it
+        hands its composition down. That pins the fallback append too, which
+        no index reached before, and leaves no numeral for a future insertion
+        to move.
+
         The count is 2 because F109 `R-0771` added a SECOND composition inside
         the resume-fallback branch — a fallback is not a resumed session, so it
         recomposes at full content — and the second assertion below pins that
@@ -408,11 +419,15 @@ class TestSegmentManifest:
         fallback = source.split("if builder_resume_ref and builder_out.error:")[1]
         assert "builder_composed = compose_builder_prompt(" in fallback
         assert "builder_prompt = builder_composed.text" in source
-        site = source.split("result.prompt_traces.append(build_trace_entry(")[1]
-        site = site.split("))")[0]
-        assert 'role="builder",' in site
-        assert "prompt_text=builder_prompt," in site
-        assert "composed_prompt=builder_composed," in site
+        sites = [
+            part.split("))")[0]
+            for part in source.split("result.prompt_traces.append(build_trace_entry(")[1:]
+        ]
+        builder_sites = [site for site in sites if 'role="builder",' in site]
+        assert len(builder_sites) == 2, len(sites)
+        for site in builder_sites:
+            assert "prompt_text=builder_prompt," in site
+            assert "composed_prompt=builder_composed," in site
 
     def test_the_reviewer_composition_traces_a_real_segment_manifest(self, monkeypatch):
         """F115 D1 behaviour, reviewer half: the manifest covers the composed BASE.
@@ -475,8 +490,13 @@ class TestSegmentManifest:
 
         The behaviour test above passes even when this call site is unwired,
         because it never touches `pingpong_loop` — which is why this guard
-        exists. Index [2] is the reviewer's `build_trace_entry` append; [1] is
-        the builder's, guarded by the test above it.
+        exists. THE SITE IS SELECTED BY THE ROLE IT DECLARES, NEVER BY
+        POSITION: exactly ONE `build_trace_entry` append declares
+        `role="reviewer",`, and that arity is asserted before the site is
+        read. The old fixed index `[2]` broke the moment F109 `R-0774` added a
+        builder append earlier in the file and index 2 resolved onto it —
+        finding `R-0775` — so no numeral is left here for a future insertion
+        to move.
 
         The count is 2 because F109 `R-0771` added a SECOND composition inside
         the resume-fallback branch — a fallback is not a resumed session, so it
@@ -490,9 +510,13 @@ class TestSegmentManifest:
         fallback = source.split("if reviewer_resume_ref and reviewer_out.error:")[1]
         assert "reviewer_composed = compose_reviewer_prompt(" in fallback
         assert "reviewer_prompt = reviewer_composed.text" in source
-        site = source.split("result.prompt_traces.append(build_trace_entry(")[2]
-        site = site.split("))")[0]
-        assert 'role="reviewer",' in site
+        sites = [
+            part.split("))")[0]
+            for part in source.split("result.prompt_traces.append(build_trace_entry(")[1:]
+        ]
+        reviewer_sites = [site for site in sites if 'role="reviewer",' in site]
+        assert len(reviewer_sites) == 1, len(sites)
+        site = reviewer_sites[0]
         assert "prompt_text=prompt_text," in site
         assert "composed_prompt=reviewer_composed," in site
 
