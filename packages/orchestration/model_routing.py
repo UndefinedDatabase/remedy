@@ -892,12 +892,17 @@ def promotion_evidence_from_mapping(
     record, which is the state
     :data:`RULE_PROMOTION_EVIDENCE_INCOMPLETE` exists to report.
 
-    NOTHING IN PRODUCTION CALLS THIS YET, and a reader searching for the caller
-    should find this sentence rather than a silence. The call arrives with the
-    wiring round, in ``packages/orchestration/role_config.py`` — the
-    config-reading layer, beside ``resolve_effective_task_class_tiers``, which is
-    already where the per-project TIERS table is read. It is deliberately a round
-    apart: the schema is pinned before routing behaviour moves against it.
+    THE ONE PRODUCTION CALLER IS
+    :func:`packages.orchestration.role_config.resolve_promotion_evidence`, which
+    landed at ``8efa2330`` beside ``resolve_effective_task_class_tiers``, where
+    the per-project TIERS table is read. It reads the
+    ``model_routing.promotion_evidence`` table out of the project configuration
+    and hands the records this function returns to BOTH consumers: the table
+    builder :func:`build_effective_task_class_tiers`, so a documented run
+    LICENSES a cheaper tier, and the seam ``route_role_call``, so that same run
+    NAMES ITSELF on the routed call's ``promoted_by``. The deliberate-absence
+    note this paragraph used to carry is retired because the absence is over — a
+    reader searching for the caller lands on the caller's name.
     """
     parsed: dict[str, PromotionEvidence] = {}
     for name, entry in raw_evidence.items():

@@ -669,8 +669,8 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     ),
     # F110's PROMOTION-EVIDENCE table, and the first table of RECORDS in this
     # registry: every entry is itself a sub-table, so it declares entry_type
-    # dict where its sibling above declares str. NOTHING READS THIS KEY YET —
-    # the reader arrives with the wiring round, in
+    # dict where its sibling above declares str. THE READER NOW EXISTS: it is
+    # role_config.resolve_promotion_evidence, which landed at 8efa2330 in
     # packages/orchestration/role_config.py beside the one that already reads
     # the tiers table. It is registered first, on purpose, so the schema is
     # pinned before routing behaviour moves against it.
