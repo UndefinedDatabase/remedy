@@ -3285,6 +3285,14 @@ def run_pingpong(
                 hunk_ledger=hunk_ledger,
                 resume_hunks_text=builder_resume_hunks_text,
                 tiered_diff_text=builder_tiered_diff_text,
+                # F109 T002b: THE CONDITION IS THE SCOPE RULE — "resumed session
+                # only, proven sends only" — in the only form that cannot drift.
+                # A round that is not resuming passes None and therefore cannot
+                # dedupe, and it is structurally impossible for it to do
+                # otherwise because there is no other value to pass here.
+                dedupe_sent_hashes=(
+                    session_sent_index.sent_hashes(builder_resume_ref) if builder_resume_ref else None
+                ),
             )
             builder_prompt = builder_composed.text
             # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
@@ -3568,6 +3576,14 @@ def run_pingpong(
                 scope_packet=runtime_scope_packet,
                 resume_hunks_text=reviewer_resume_hunks_text,
                 tiered_diff_text=reviewer_tiered_diff_text,
+                # F109 T002b: THE CONDITION IS THE SCOPE RULE — "resumed session
+                # only, proven sends only" — in the only form that cannot drift.
+                # A round that is not resuming passes None and therefore cannot
+                # dedupe, and it is structurally impossible for it to do
+                # otherwise because there is no other value to pass here.
+                dedupe_sent_hashes=(
+                    session_sent_index.sent_hashes(reviewer_resume_ref) if reviewer_resume_ref else None
+                ),
             )
 
             reviewer_prompt = reviewer_composed.text
