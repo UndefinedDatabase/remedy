@@ -14,26 +14,27 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 17, session 4. THE INTEGRATION GATE
-(docs/agents/integration_gate.md): the full suite on this branch and at
-the merge base, compared, with every branch-only failure attributed, and
-the evidence landed under `.agent/gate_f109_r17/`. Also book round 16's
-PASS, resolve `R-0780` and `R-0781`, and register and repair `R-0782` —
-the `_capture_compositions` docstring, the third stale-prose site of the
-same class, which still says the dedupe report has no consumer.
+Round 18, session 4. CLOSURE PREPARATION. Give the feature file the
+BUILT STATE section closure precondition 4 requires; book round 17's
+PASS, which is the integration gate — branch 18937 passed and base 18799
+passed, both exit 0, with ZERO branch-only failures; resolve `R-0782`;
+and register and repair `R-0783`, the sixth and last site the
+stale-prose sweep has found.
 
 ## Next Steps
 
-- The closure sequence (docs/roadmap/STATUS_closure_protocol.md):
-  evidence job, a FRESH review zip, the authored STATUS line, the PR.
-  That sequence also runs the single consolidation pass on the checklist
-  of docs/agents/planner_reviewer_prompt.md section 3.
+- The self-use item closure precondition 6 requires: the queue holds no
+  pending item, so `generate_and_append_if_empty` supplies one from the
+  ledger, and it is planned, RUN to the normal approval gate, and its
+  defects registered before the close.
+- The closure sequence proper: evidence job, a FRESH review zip, the
+  authored STATUS line with the README sync in the SAME commit, the PR.
 
 ## Risks
 
-- A reproducible branch-only failure coupled to F109 code is a CLOSURE
-  BLOCKER and earns its own reviewer-gated round; it is never repaired
-  inside the gate round that found it.
+- Six findings on this branch have been one class: prose that was TRUE
+  when written and was falsified by a later round. The closure
+  consolidation should answer the class, not add a seventh id.
 - Nothing dedupes in production: every concrete adapter returns
   `supports_resume = False`, so the mechanism is suite-only today.
   `docs/system/semantic-dedupe-v1.md` states this plainly.
