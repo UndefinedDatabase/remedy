@@ -9958,3 +9958,40 @@ MEASURED: `tests/docs/` 295 passed, `tests/orchestration/test_roadmap_index.py`
 30 passed, `tests/cli/test_golden_path.py` 42 passed;
 `remedy plan status --json` reports feature_count 266, scheduled_count 266, no
 inconsistencies, and still proposes F108.
+
+## DECISION F110 D1 (2026-09-03) — the section 3 checklist consolidation F109 owed is carried into F110's closure sequence
+
+CONTEXT. Operator amendment amend0827-process-diet rule 4 freezes the
+pre-emission checklist of `docs/agents/planner_reviewer_prompt.md` section 3
+while a feature is open, and requires the consolidation pass to happen EXACTLY
+ONCE per feature, inside the closure sequence, coming out the SAME LENGTH OR
+SHORTER. F109 never performed it. MEASURED at `edb16a46`:
+`git log 5e18a853..edb16a46 -- docs/agents/planner_reviewer_prompt.md` returns
+no commit, so that file was never touched on the F109 branch. F109's own round
+21 handback declared the omission as its deviation D3, and F109's closure gate
+raised it as the first of the four closure candidates.
+
+CHOSEN. F110's closure sequence runs ONE consolidation pass covering BOTH
+features' lessons, against the ceiling amend0827 rule 4 names — the item count
+the checklist stood at on 2026-08-27, which that rule states and this DECISION
+deliberately does not restate. F109's lessons are on disk for that pass to
+consume: the same round that carries this DECISION appends to
+`.agent/prose_slips.md` the entries F109's rounds 8 through 21 owed and never
+wrote.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Run the consolidation now, as a round of
+its own on the F110 branch. Rejected because amend0827 rule 4 places the pass
+inside a closure sequence and inside a round that is running anyway, while
+amend0827 rule 1 forbids a round whose whole change set is corrections — so
+running it now would break both halves of the order it exists to satisfy.
+
+NOT AVAILABLE. Reopening F109 to perform the pass there: F109 is `[x]` in the
+ledger, its branch is merged, and the self-drive guardrail G2 forbids rewriting
+landed history.
+
+CONSEQUENCE. The checklist stays unchanged and therefore NOT WRONG — only
+unconsolidated — until F110's closure sequence. The ceiling that pass measures
+against is amend0827 rule 4's own figure, and F110 may not raise it.
+
+REVERSE by deleting this DECISION; the obligation then reverts to whatever a
+later relay rules, and the checklist is untouched either way.
