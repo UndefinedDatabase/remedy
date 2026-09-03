@@ -2,9 +2,8 @@
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
 F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1/T003b2a/
-T003b2b1/T003c complete and green as of round 13; round 14 splits
-T003b2b2 into T003b2b2a/T003b2b2b (DECISION F112 D6) after finding
-compiled_context_candidates has no source either.
+T003b2b1/T003c/T003b2b2a complete and green as of round 14; round 15
+splits T003b2b2b into T003b2b2b1/T003b2b2b2 (DECISION F112 D7).
 
 ## Goal
 
@@ -16,34 +15,33 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 14, session 4 — builds T003b2b2a per DECISION F112 D6's CHOSEN
-clause: the job-dispatch call site (pingpong_job.py's run_job, its one
-run_pingpong( call) gains a fit_task_context_to_class_cap check and three
-new run_pingpong kwargs (compiled_context_paths, compiled_context_candidates
-set to the same list, compiled_context_token_budget). When task.files_hint
-is empty or the fit reports fits=False, all three stay None — today's exact
-build_repo_context fallback, unchanged. No escalation on cannot_fit this
-round (that is T003b2b2b).
+Round 15, session 5 — builds T003b2b2b1 per DECISION F112 D7's CHOSEN
+clause: `planned_task_to_task_entry` (the reverse of the existing
+`task_entry_to_planned_task`) turns one `split_one_task` child
+`PlannedTask` back into a dispatchable `TaskEntry`. Not called from
+`run_job` this round — a prerequisite building block only, same shape
+T003c used before T003b2b2a wired it.
 
 ## Next Steps
 
-- T003b2b2b (own round(s)): the cannot_fit -> enqueue_task_decision ->
-  auto_apply_safe_default -> split_one_task chain. Prerequisite reading
-  before authoring: run_job's own task-iteration structure (how tasks are
-  consumed from job.tasks, whether a split's children can be inserted back
-  into the sequence) — split_one_task is not called anywhere in
-  pingpong_job.py today, confirmed by grep.
+- T003b2b2b2 (own round(s)): the actual dispatch-loop wiring — a new
+  TASK_* status for "replaced by a split", the enqueue_task_decision /
+  auto_apply_safe_default calls, used_ids collection from the live
+  job.tasks list, safe post-idx insertion, and the loop's own skip
+  condition for the new status. Re-read run_job fresh before authoring
+  (D7's own standing instruction) rather than trust this round's reading.
 - Acceptance fixtures, the integration gate, then closure.
 
 ## Risks
 
-- T003b2b2b remains the highest-risk remaining slice; re-read run_job's
-  dispatch loop fresh before authoring, same standing instruction as D2-D6.
+- T003b2b2b2 remains the highest-risk remaining slice, now for five
+  separately-named reasons (DECISION F112 D7's MEASURED section) rather
+  than one; re-read run_job's dispatch loop fresh before authoring.
 - A task with no Files: section, or one whose fenced scope cannot fit its
-  class cap, still falls through to build_repo_context uncapped — accepted
-  default for this round, not a regression; T003b2b2b is what makes
-  cannot_fit actionable instead of silently bypassed.
-- R-0767 stays OPEN on the model-routing seam this feature's config pattern
-  borrows from; unrelated to F112, not absorbed.
+  class cap, still falls through to build_repo_context uncapped and now
+  ALSO never reaches an escalation — accepted default until T003b2b2b2
+  lands, not a regression.
+- R-0767 stays OPEN on the model-routing seam this feature's config
+  pattern borrows from; unrelated to F112, not absorbed.
 - ruff is inconsistent this session; python3 -m ruff check <path> is the
   reliable form, re-measured every round.
