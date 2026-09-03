@@ -66,6 +66,20 @@ Acceptance:
 - no unrelated files touched
 """
 
+_JOB_WITH_FILES = """\
+# Job: Scoped task
+
+## Task 1
+Do the scoped thing.
+
+Files:
+- src/main.py
+- docs/README.md
+
+Acceptance:
+- done
+"""
+
 _NO_TASK_JOB = """\
 # Job: Empty job
 
@@ -896,6 +910,15 @@ class TestPersistence:
         assert loaded is not None
         assert loaded.tasks[0].inputs == {"decision_answers": {"dec-1": "split task"}}
 
+    def test_files_hint_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_JOB_WITH_FILES, "/tmp/repo")
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].files_hint == ["src/main.py", "docs/README.md"]
+
     def test_persist_with_manifests(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         loaded = load_job_plan(result.job_id)
@@ -924,6 +947,14 @@ class TestJobPlanParsing:
     def test_acceptance_extracted(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
         assert "repair-loop tests pass" in job.tasks[0].acceptance
+
+    def test_files_section_extracted(self, isolate_data_root):
+        job = parse_job_file(_JOB_WITH_FILES, "/tmp/repo")
+        assert job.tasks[0].files_hint == ["src/main.py", "docs/README.md"]
+
+    def test_no_files_section_leaves_files_hint_empty(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        assert job.tasks[0].files_hint == []
 
     def test_no_tasks_blocks(self, isolate_data_root):
         job = parse_job_file(_NO_TASK_JOB, "/tmp/repo")
@@ -3190,3 +3221,17 @@ class TestTaskEntryToPlannedTaskAdapter:
             ["Second acceptance item"],
             ["Third acceptance item"],
         ]
+
+    def test_files_hint_flows_through_from_task_entry(self):
+        task = TaskEntry(
+            task_id="T013",
+            title="Scoped task",
+            body="Scoped task",
+            acceptance="First\nSecond",
+            files_hint=["src/main.py", "docs/README.md"],
+        )
+
+        planned = task_entry_to_planned_task(task)
+
+        assert planned is not None
+        assert planned.files_hint == ["src/main.py", "docs/README.md"]

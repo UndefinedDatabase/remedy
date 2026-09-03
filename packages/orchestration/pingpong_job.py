@@ -130,6 +130,11 @@ class TaskEntry:
     # Core Job's Task.inputs so escalation.py's answer-recording path
     # (DECISION F112 D4) works unmodified against either task shape.
     inputs: dict = field(default_factory=dict)
+    # F112 T003c: this task's declared fenced scope, parsed from a "Files:"
+    # section in job markdown (mirrors "Acceptance:") — the
+    # compiled_context_paths source T003b2b2's run_pingpong call needs
+    # (DECISION F112 D5); empty when the job file declares none.
+    files_hint: list = field(default_factory=list)
     body: str = ""
     acceptance: str = ""
     status: str = TASK_PENDING
@@ -165,10 +170,11 @@ def task_entry_to_planned_task(task: TaskEntry) -> PlannedTask | None:
     acceptance list violates ``PlannedTask``'s own validator, and per
     T3_F112.md's edge case rule a split that cannot help drops the option
     rather than raising. ``acceptance`` otherwise splits ``task.acceptance``
-    on newlines, dropping blank lines. ``files_hint`` is always empty:
-    `TaskEntry` carries no file-scope hint, and `_cluster_acceptance`
-    degrades safely to one cluster per acceptance item when `files_hint` is
-    empty (DECISION F112 D2 MEASURED — an empty hint is a safe, not a
+    on newlines, dropping blank lines. ``files_hint`` carries whatever the
+    job markdown declared (T3_F112.md T003c, ``TaskEntry.files_hint``) —
+    empty when the file has no "Files:" section, in which case
+    `_cluster_acceptance` degrades safely to one cluster per acceptance
+    item (DECISION F112 D2 MEASURED — an empty hint is a safe, not a
     broken, input).
     """
     from packages.orchestration.schemas.models import PlannedTask
@@ -181,6 +187,7 @@ def task_entry_to_planned_task(task: TaskEntry) -> PlannedTask | None:
         title=task.title,
         goal=task.body or task.title,
         acceptance=lines,
+        files_hint=list(task.files_hint),
         est_tokens_band="XL",
     )
 
@@ -664,6 +671,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "title": t.title,
                 "task_class": t.task_class,
                 "inputs": t.inputs,
+                "files_hint": t.files_hint,
                 "body": t.body,
                 "acceptance": t.acceptance,
                 "status": t.status,
@@ -755,6 +763,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             title=t.get("title", ""),
             task_class=t.get("task_class", TASK_CLASS_DEFAULT),
             inputs=dict(t.get("inputs") or {}),
+            files_hint=list(t.get("files_hint") or []),
             body=t.get("body", ""),
             acceptance=t.get("acceptance", ""),
             status=t.get("status", TASK_PENDING),
@@ -823,6 +832,7 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
                 "title": task_title,
                 "body_lines": [],
                 "acceptance_lines": [],
+                "files_lines": [],
             }
             continue
 
@@ -830,8 +840,18 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
             stripped = line.strip()
             if stripped.lower().startswith("acceptance:") or stripped.lower().startswith("acceptance :"):
                 current_task["_in_acceptance"] = True
+                current_task["_in_files"] = False
                 continue
-            if current_task.get("_in_acceptance"):
+            # F112 T003c: a third parser state, mirroring "Acceptance:" —
+            # "Files:" declares this task's fenced scope (DECISION F112 D5),
+            # the compiled_context_paths source T003b2b2 needs.
+            if stripped.lower().startswith("files:") or stripped.lower().startswith("files :"):
+                current_task["_in_files"] = True
+                current_task["_in_acceptance"] = False
+                continue
+            if current_task.get("_in_files"):
+                current_task["files_lines"].append(line)
+            elif current_task.get("_in_acceptance"):
                 current_task["acceptance_lines"].append(line)
             else:
                 current_task["body_lines"].append(line)
@@ -859,12 +879,24 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
         title = sec["title"] or f"Task {sec['heading_num']}"
         if len(body) > _TASK_BODY_LIMIT:
             body = body[:_TASK_BODY_LIMIT] + "\n[truncated]"
+        # F112 T003c: "- path" / "path" bullet lines under "Files:" become
+        # TaskEntry.files_hint — unlike acceptance, these are literal repo-
+        # relative paths (compile_task_context checks them against disk), so
+        # the leading bullet marker is stripped rather than kept verbatim.
+        files_hint: list[str] = []
+        for fl in sec["files_lines"]:
+            fl_stripped = fl.strip()
+            if fl_stripped.startswith("-"):
+                fl_stripped = fl_stripped[1:].strip()
+            if fl_stripped:
+                files_hint.append(fl_stripped)
         tasks.append(TaskEntry(
             task_id=task_id,
             source_heading_number=sec["heading_num"],
             title=title,
             body=body,
             acceptance=acceptance,
+            files_hint=files_hint,
         ))
 
     job = JobPlan(
