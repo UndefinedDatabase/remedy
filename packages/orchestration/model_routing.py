@@ -1,10 +1,12 @@
 """
 Model routing by task class for Remedy (F110).
 
-Owns the CLASS TABLE — which model TIER a declared task class is routed to — and
-the THREE HARD RULES of docs/agents/model_routing_policy.md as named checks, each
-returning ITS OWN rule name when a routing choice violates it. Nothing else yet:
-no config file is read, no model id is named and no call site routes through it.
+Owns the CLASS TABLE — which model TIER a declared task class is routed to — the
+THREE HARD RULES of docs/agents/model_routing_policy.md as named checks, each
+returning ITS OWN rule name when a routing choice violates it, and the PER-PROJECT
+OVERRIDE SCHEMA that validates a whole override map against those rules BEFORE it
+is applied. Nothing else yet: no config file is read, no model id is named and no
+call site routes through it.
 The table is SEEDED from the "Seed mapping" section of
 docs/agents/model_routing_policy.md, which remains the human-readable policy.
 tests/orchestration/test_model_routing.py parses that section and asserts the
@@ -21,6 +23,15 @@ Remedy deliberately does not map a task class to a MODEL ID in this module. A
 tier is the policy-level answer; which concrete model serves a tier is a
 configuration question, and mixing the two would put the promotion discipline
 (policy document, "Promotion rule") behind a casual table edit.
+
+Remedy deliberately does not READ A CONFIG FILE here, and the per-project override
+map is a MAPPING PASSED IN rather than one this module loads. A reader searching
+here for the loader that turns a project's TOML table into that mapping will not
+find it: it arrives with the resolver-seam round, alongside the per-call-site
+class declarations, because the schema is worth pinning BEFORE anything can be
+configured to break it. packages/orchestration/config.py is deliberately NOT
+imported — every function below stays a pure function of its arguments, which is
+what lets the override rules be tested without a config file existing at all.
 
 Nothing in production imports this module yet: the per-call-site task-class
 declarations come after the resolver seam work, so the table lands and is
@@ -47,6 +58,7 @@ Public API::
     TASK_CLASS_TIERS: the seeded task-class -> tier table
     SEED_MAPPING_REASON: reason recorded for a class the seed mapping names
     UNKNOWN_CLASS_REASON: reason recorded for a class it does not
+    OVERRIDE_REASON: reason recorded when an OVERRIDE supplied the tier
     normalize_task_class(phrase) -> str
     resolve_task_class_tier(task_class) -> tuple[str, str]
     model_tier_rank(tier) -> int, raising on a tier MODEL_TIERS does not name
@@ -61,9 +73,27 @@ Public API::
     check_orchestration_class_routed_to_top_tier(task_class, tier)
     check_safety_relevant_class_not_below_mid_tier(task_class, tier, classes)
     validate_routing_choice(...) -> tuple[str, ...] of every violated rule name
+    REVIEWER_WORKER_CLASS_PAIRS: the declared (worker, reviewer) class pairs
+    RULE_OVERRIDE_UNKNOWN_TASK_CLASS: schema-rule name, an override naming a
+        task class the seed table does not
+    RULE_OVERRIDE_UNKNOWN_TIER: schema-rule name, an override naming a tier
+        MODEL_TIERS does not
+    OVERRIDE_SCHEMA_RULE_NAMES: the two above, in report order
+    OVERRIDE_VIOLATION_RULE_NAMES: schema names then HARD_RULE_NAMES — the
+        order an override map's violations are reported in
+    OverrideViolation: frozen (task_class, rule_name) record of one violation
+    OverrideRefused: the exception a refused override map raises
+    validate_task_class_tier_overrides(overrides, classes)
+        -> tuple[OverrideViolation, ...] of EVERY violation in the map
+    build_effective_task_class_tiers(overrides, classes) -> dict[str, str],
+        raising OverrideRefused rather than dropping a violating entry
+    resolve_task_class_tier_with_overrides(task_class, effective_tiers)
+        -> tuple[str, str], the reason DERIVED by comparison with the seed
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # The tier vocabulary
@@ -91,6 +121,16 @@ SEED_MAPPING_REASON: str = "seed_mapping"
 #: docs/roadmap/features/T3_F110.md's "Edge cases & assumption defaults"
 #: section specifies; it is a fixed token because evidence readers group on it.
 UNKNOWN_CLASS_REASON: str = "unknown_class_conservative"
+
+#: Recorded when a PER-PROJECT OVERRIDE, and not the seed mapping, supplied the
+#: class's tier. A fixed token for the same reason its two siblings above are:
+#: evidence readers GROUP on the reason, so "which of this run's calls were routed
+#: by a project's own override rather than by the shipped policy?" is a filter
+#: rather than a prose search. :func:`resolve_task_class_tier_with_overrides`
+#: DERIVES this reason by comparing against :data:`TASK_CLASS_TIERS` instead of
+#: asserting it, so an override that merely restates the seed tier still reports
+#: :data:`SEED_MAPPING_REASON`.
+OVERRIDE_REASON: str = "per_project_override"
 
 
 # The doc writes its classes as English phrases ("standard build", "prompt
@@ -226,13 +266,25 @@ HARD_RULE_NAMES: tuple[str, ...] = (
 
 #: The task classes that ALWAYS route to :data:`TOP_TIER`. These are the calls
 #: that decide what every other call does, so under-thinking one is paid for by
-#: every job it plans. Note that the seed table already routes ``mission`` to the
-#: top tier; this set is what makes the guarantee a CHECKED rule rather than a
-#: property of one table entry an override could quietly move.
+#: every job it plans.
+#:
+#: THIS SET IS DELIBERATELY WIDER THAN THE FEATURE FILE'S TWO LITERAL CALL KINDS,
+#: and that is not drift — it is DECISION F110 D2, taken at the F110 R5 gate and
+#: recorded in .agent/decisions.md. docs/roadmap/features/T3_F110.md names
+#: "orchestrator and mission-compile calls"; ``mission`` is here as well because
+#: :data:`TASK_CLASS_TIERS` already routes ``mission`` to the top tier, and THAT
+#: SEED ENTRY IS EXACTLY THE PROPERTY A PER-PROJECT OVERRIDE CAN MOVE. Membership
+#: here is what turns that top-tier routing from a table entry an override could
+#: quietly demote into a CHECKED rule that refuses the override by name. The
+#: policy-document sync test cannot reach an override at all — it guards the
+#: TABLE against the DOCUMENT — so without this entry the demotion had no guard.
+#: A reader comparing this set to the feature file's sentence reads that
+#: DECISION, not a rename.
 ORCHESTRATION_TASK_CLASSES: frozenset[str] = frozenset(
     {
         normalize_task_class("orchestrator"),
         normalize_task_class("mission compile"),
+        normalize_task_class("mission"),
     }
 )
 
@@ -358,3 +410,253 @@ def validate_routing_choice(
         returned.append(check_reviewer_not_weaker_than_worker(paired_worker_tier, tier))
     refused = {name for name in returned if name is not None}
     return tuple(name for name in HARD_RULE_NAMES if name in refused)
+
+
+# ---------------------------------------------------------------------------
+# The per-project override schema — F110 T002c
+# ---------------------------------------------------------------------------
+# docs/roadmap/features/T3_F110.md: "per-project overrides allowed but hard rules
+# always win. Violating overrides fail config validation with the rule named."
+# Everything below takes the override map as an ARGUMENT; see the module
+# docstring for why no config file is read here.
+
+#: The declared (WORKER class, REVIEWER class) pairs, so policy hard rule 1 —
+#: "a reviewer is never routed weaker than the worker it reviews" — is checkable
+#: against a TABLE rather than only against a per-call pairing an operator has to
+#: remember to supply. An override map names classes, not calls, so without this
+#: table nothing could tell that lowering ``standard_review`` alone breaks a pair.
+#:
+#: Seeded with the ONE pair the seed mapping supports today. EVERY MEMBER OF EVERY
+#: PAIR MUST BE A KEY OF :data:`TASK_CLASS_TIERS` — a pair naming a class the seed
+#: table does not would be silently unjudgeable, so a test pins that property.
+REVIEWER_WORKER_CLASS_PAIRS: tuple[tuple[str, str], ...] = (
+    ("standard_build", "standard_review"),
+)
+
+#: Violated when an override names a task class :data:`TASK_CLASS_TIERS` does not.
+#:
+#: WHY THIS IS REFUSED RATHER THAN IGNORED, which is the non-obvious half: the
+#: RESOLVER routes an undeclared class conservatively at call time
+#: (:data:`UNKNOWN_CLASS_REASON`, to :data:`TOP_TIER`), so nothing is unsafe about
+#: an undeclared class arriving at a call. But an OVERRIDE for a class NOBODY
+#: DECLARES is dead config: it can never match anything, it silently does nothing,
+#: and the operator who wrote it believes a tier moved when no tier moved. That is
+#: the casual mapping edit this feature exists to stop, one file over — so the
+#: config is refused and the operator is told which key is dead.
+RULE_OVERRIDE_UNKNOWN_TASK_CLASS: str = "override_unknown_task_class"
+
+#: Violated when an override names a tier :data:`MODEL_TIERS` does not. A typo'd
+#: tier cannot be ranked, and ranking it would RAISE by design
+#: (:func:`model_tier_rank`), so it is reported as a schema fault instead.
+RULE_OVERRIDE_UNKNOWN_TIER: str = "override_unknown_tier"
+
+#: The two schema-rule names, in the order they are reported.
+#:
+#: HARD_RULE_NAMES IS DELIBERATELY NOT EXTENDED WITH THESE. A schema fault is a
+#: MALFORMED CONFIG — a typo — while a hard-rule violation is a POLICY BREACH by a
+#: config that is perfectly well formed. Merging the two vocabularies would let a
+#: misspelling be reported as a policy breach, and
+#: :data:`HARD_RULE_NAMES` is pinned by its own test at exactly the three names
+#: the policy document carries.
+OVERRIDE_SCHEMA_RULE_NAMES: tuple[str, ...] = (
+    RULE_OVERRIDE_UNKNOWN_TASK_CLASS,
+    RULE_OVERRIDE_UNKNOWN_TIER,
+)
+
+#: The FIXED, DECLARED order an override map's violations are reported in: the
+#: SCHEMA names first, then the hard-rule names. Schema first because a malformed
+#: entry is what an operator must fix before any policy reading of it means
+#: anything.
+#:
+#: Like :data:`HARD_RULE_NAMES`, this order is deliberately INDEPENDENT of
+#: :data:`MODEL_TIERS`, for the reason that constant already states: re-tiering the
+#: model vocabulary must not reshuffle an operator's error list, because a list
+#: that reorders itself reads as a different set of problems.
+OVERRIDE_VIOLATION_RULE_NAMES: tuple[str, ...] = OVERRIDE_SCHEMA_RULE_NAMES + HARD_RULE_NAMES
+
+
+# WHY A RECORD AND NOT A MESSAGE: "refused with the rule named"
+# (docs/roadmap/features/T3_F110.md, Acceptance) has to be something a CALLER CAN
+# BRANCH ON. A prose sentence would have to be parsed back apart by anything that
+# wanted to act on it, and would go stale the first time somebody reworded it.
+@dataclass(frozen=True)
+class OverrideViolation:
+    """One violation found in an override map: WHICH class, and WHICH rule.
+
+    ``task_class`` is the normalized key the violation is attributed to, so an
+    operator is pointed at the entry to change rather than at the map as a whole.
+    ``rule_name`` is one of :data:`OVERRIDE_VIOLATION_RULE_NAMES`.
+    """
+
+    task_class: str
+    rule_name: str
+
+
+# WHY: dropping a violating entry would leave the operator believing it took
+# effect; see the builder's docstring, which states the reason this exception
+# exists at all.
+class OverrideRefused(Exception):
+    """Raised when an override map violates the schema or a hard rule.
+
+    Carries the :class:`OverrideViolation` records it was raised for on
+    ``.violations``, so a caller reads STRUCTURE rather than re-parsing the
+    message; the message itself names every violated rule, for the operator who
+    only ever sees a traceback.
+    """
+
+    def __init__(self, violations: tuple[OverrideViolation, ...]) -> None:
+        self.violations = violations
+        named = ", ".join(f"{v.task_class}: {v.rule_name}" for v in violations)
+        super().__init__(f"per-project model-routing overrides refused — {named}")
+
+
+# WHY: an operator fixing a config one violation per round trip fixes it four
+# times; this returns EVERY violation in the whole map at once, in one declared
+# order, so the error list reads the same way twice.
+def validate_task_class_tier_overrides(
+    overrides: dict[str, str],
+    safety_relevant_classes: frozenset[str] = SAFETY_RELEVANT_CLASSES,
+) -> tuple[OverrideViolation, ...]:
+    """Return EVERY violation in an override map, in :data:`OVERRIDE_VIOLATION_RULE_NAMES` order.
+
+    ``overrides`` maps a task class to the tier a project wants it routed to; the
+    keys pass through :func:`normalize_task_class`, so a project may spell a class
+    in the policy document's own wording.
+
+    THE HARD RULES ARE JUDGED AGAINST THE **EFFECTIVE** TABLE — the override map
+    laid over :data:`TASK_CLASS_TIERS` — and never against the override map alone.
+    That is what catches an override lowering only the REVIEWER half of a pair in
+    :data:`REVIEWER_WORKER_CLASS_PAIRS`: the worker half is still the seed tier,
+    and comparing the two requires both.
+
+    A SCHEMA-FAULTY ENTRY IS REPORTED AND THEN NOT JUDGED against the hard rules.
+    Ranking a tier :data:`MODEL_TIERS` does not name RAISES by design
+    (:func:`model_tier_rank`), so a typo'd tier would crash a policy check that
+    tried to read it; reporting the typo and leaving that entry out of the
+    effective table is what makes a malformed config REPORTABLE rather than fatal.
+
+    ``safety_relevant_classes`` defaults to :data:`SAFETY_RELEVANT_CLASSES`, which
+    is EMPTY in production today, for exactly the reason
+    :func:`check_safety_relevant_class_not_below_mid_tier` states: a rule that
+    cannot fail is not a rule, so the parameter lets a test supply a FIXTURE set
+    and prove the refusal really happens.
+
+    Each violation's ``rule_name`` is the value a check RETURNED wherever a check
+    exists — the three hard-rule checks are called, never re-labelled — which is
+    the discipline :func:`validate_routing_choice` already states. The two schema
+    names have no check function of their own and are the only names this function
+    supplies directly.
+    """
+    normalized: dict[str, str] = {
+        normalize_task_class(task_class): tier for task_class, tier in overrides.items()
+    }
+
+    found: list[OverrideViolation] = []
+    sound: dict[str, str] = {}
+    for task_class, tier in normalized.items():
+        faulty = False
+        if task_class not in TASK_CLASS_TIERS:
+            found.append(OverrideViolation(task_class, RULE_OVERRIDE_UNKNOWN_TASK_CLASS))
+            faulty = True
+        if tier not in MODEL_TIERS:
+            found.append(OverrideViolation(task_class, RULE_OVERRIDE_UNKNOWN_TIER))
+            faulty = True
+        if not faulty:
+            sound[task_class] = tier
+
+    effective = dict(TASK_CLASS_TIERS)
+    effective.update(sound)
+
+    for task_class in sorted(effective):
+        tier = effective[task_class]
+        returned = check_orchestration_class_routed_to_top_tier(task_class, tier)
+        if returned is not None:
+            found.append(OverrideViolation(task_class, returned))
+        returned = check_safety_relevant_class_not_below_mid_tier(
+            task_class, tier, safety_relevant_classes
+        )
+        if returned is not None:
+            found.append(OverrideViolation(task_class, returned))
+
+    for worker_class, reviewer_class in REVIEWER_WORKER_CLASS_PAIRS:
+        worker_tier = effective.get(worker_class)
+        reviewer_tier = effective.get(reviewer_class)
+        if worker_tier is None or reviewer_tier is None:
+            continue
+        returned = check_reviewer_not_weaker_than_worker(worker_tier, reviewer_tier)
+        if returned is not None:
+            # Attributed to the REVIEWER class: that is the entry an operator must
+            # change, because raising the worker to match would spend more money to
+            # fix a rule about the reviewer.
+            found.append(OverrideViolation(reviewer_class, returned))
+
+    ordered: list[OverrideViolation] = []
+    for rule_name in OVERRIDE_VIOLATION_RULE_NAMES:
+        ordered.extend(
+            sorted(
+                (v for v in found if v.rule_name == rule_name),
+                key=lambda v: v.task_class,
+            )
+        )
+    return tuple(ordered)
+
+
+# WHY: this is the ONE place an override map becomes a routing table, so it is the
+# one place the hard rules can still win before anything routes.
+def build_effective_task_class_tiers(
+    overrides: dict[str, str],
+    safety_relevant_classes: frozenset[str] = SAFETY_RELEVANT_CLASSES,
+) -> dict[str, str]:
+    """Return :data:`TASK_CLASS_TIERS` overlaid with ``overrides``, or REFUSE the map.
+
+    The override keys are normalized through :func:`normalize_task_class`, the
+    whole map is validated by :func:`validate_task_class_tier_overrides`, and if
+    there is ANY violation at all this raises :class:`OverrideRefused` carrying
+    every one of them.
+
+    WHY IT RAISES RATHER THAN DROPPING THE OFFENDING ENTRY: a silently dropped
+    override leaves the operator believing it took effect, which is the silent
+    downgrade policy hard rule 2 forbids. The hard rules win by REFUSING the
+    config, not by quietly editing it.
+
+    The returned table is a NEW dict; :data:`TASK_CLASS_TIERS` is never mutated,
+    so the shipped seed mapping stays the one thing the policy-document sync test
+    can compare the document against.
+    """
+    normalized: dict[str, str] = {
+        normalize_task_class(task_class): tier for task_class, tier in overrides.items()
+    }
+    violations = validate_task_class_tier_overrides(normalized, safety_relevant_classes)
+    if violations:
+        raise OverrideRefused(violations)
+    effective = dict(TASK_CLASS_TIERS)
+    effective.update(normalized)
+    return effective
+
+
+# WHY A SIBLING AND NOT A FLAG ON resolve_task_class_tier: that function answers
+# from the SHIPPED table and its behaviour is pinned by round 4's tests; this one
+# answers from a table a project built, and the two reasons differ.
+def resolve_task_class_tier_with_overrides(
+    task_class: str,
+    effective_tiers: dict[str, str],
+) -> tuple[str, str]:
+    """Return ``(tier, reason)`` for ``task_class`` against an EFFECTIVE table.
+
+    ``effective_tiers`` is what :func:`build_effective_task_class_tiers` returned.
+
+    THE REASON IS DERIVED BY COMPARISON, NEVER ASSERTED. A class the effective
+    table does not name answers ``(TOP_TIER, UNKNOWN_CLASS_REASON)``, exactly as
+    :func:`resolve_task_class_tier` does. A class it does name answers
+    :data:`OVERRIDE_REASON` only when the tier DIFFERS from
+    :data:`TASK_CLASS_TIERS`, and :data:`SEED_MAPPING_REASON` when it agrees — so
+    an override that merely restates the seed tier is honestly reported as the
+    seed mapping rather than as a project decision nobody actually made.
+    """
+    key = normalize_task_class(task_class)
+    tier = effective_tiers.get(key)
+    if tier is None:
+        return TOP_TIER, UNKNOWN_CLASS_REASON
+    if tier != TASK_CLASS_TIERS.get(key):
+        return tier, OVERRIDE_REASON
+    return tier, SEED_MAPPING_REASON
