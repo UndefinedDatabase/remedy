@@ -41,6 +41,11 @@ TASK_APPLIED = "applied_to_job_workspace"
 TASK_BLOCKED = "blocked"
 TASK_FAILED = "failed"
 TASK_SKIPPED = "skipped"
+# F112 T003b2b2b2: a task that never dispatched because its declared scope
+# could not fit its class cap and was replaced by split_one_task's children
+# instead (DECISION F112 D7/D8) — distinct from TASK_SKIPPED, which means
+# "the job blocked and this never got a chance."
+TASK_SPLIT = "split"
 
 # F112 T003b1: every TaskEntry's model-routing class, honestly defaulted rather
 # than inferred from title text (DECISION F112 D2) — the seeded
@@ -1722,7 +1727,7 @@ def select_next_predictable_task(job) -> tuple[object | None, list]:
         next_task = None
         for task in tasks:
             status = getattr(task, "status", None)
-            if status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+            if status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT):
                 continue
             if status not in (TASK_BLOCKED, TASK_FAILED):
                 next_task = task
@@ -2360,7 +2365,7 @@ def run_job(
                         )
 
         for idx, task in enumerate(job.tasks):
-            if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+            if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT):
                 continue
 
             if task.status in (TASK_BLOCKED, TASK_FAILED):
@@ -2436,6 +2441,44 @@ def run_job(
                     compiled_context_paths = list(task.files_hint)
                     compiled_context_candidates = list(task.files_hint)
                     compiled_context_token_budget = fit_result.cap_tokens
+                else:
+                    from packages.orchestration.escalation import (
+                        auto_apply_safe_default,
+                        enqueue_task_decision,
+                    )
+                    from packages.orchestration.task_granularity import (
+                        split_one_task,
+                    )
+                    decision = enqueue_task_decision(
+                        job,
+                        task_id=task.task_id,
+                        question="task context exceeds its class cap",
+                        options=["split task"],
+                        safe_default="split task",
+                        now=datetime.now(timezone.utc),
+                    )
+                    answered = auto_apply_safe_default(
+                        job, decision, now=datetime.now(timezone.utc))
+                    split_entries: list[TaskEntry] = []
+                    if answered is not None and answered["answer"] == "split task":
+                        planned = task_entry_to_planned_task(task)
+                        if planned is not None:
+                            used_ids = {t.task_id for t in job.tasks}
+                            children = split_one_task(planned, used_ids=used_ids)
+                            if children:
+                                split_entries = [
+                                    planned_task_to_task_entry(
+                                        child,
+                                        task_class=task.task_class,
+                                        source_heading_number=task.source_heading_number,
+                                    )
+                                    for child in children
+                                ]
+                    if split_entries:
+                        job.tasks[idx + 1:idx + 1] = split_entries
+                        task.status = TASK_SPLIT
+                        _persist_job(job)
+                        continue
 
             try:
                 result = run_pingpong(
@@ -2608,7 +2651,7 @@ def run_job(
 
         # Determine final job status
         all_done = all(
-            t.status in (TASK_APPLIED, TASK_SKIPPED)
+            t.status in (TASK_APPLIED, TASK_SKIPPED, TASK_SPLIT)
             for t in job.tasks
         )
         has_pending = any(t.status == TASK_PENDING for t in job.tasks)

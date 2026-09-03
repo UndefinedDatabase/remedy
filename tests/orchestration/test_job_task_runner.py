@@ -27,6 +27,7 @@ from packages.orchestration.pingpong_job import (
     TASK_PASSED,
     TASK_PENDING,
     TASK_SKIPPED,
+    TASK_SPLIT,
     TaskEntry,
     _build_task_prompt,
     _is_unsafe_path,
@@ -79,6 +80,21 @@ Files:
 
 Acceptance:
 - done
+"""
+
+_JOB_WITH_FILES_MULTI_ACCEPTANCE = """\
+# Job: Scoped multi-acceptance task
+
+## Task 1
+Do the scoped thing.
+
+Files:
+- src/main.py
+- docs/README.md
+
+Acceptance:
+- first acceptance item
+- second acceptance item
 """
 
 _NO_TASK_JOB = """\
@@ -3416,3 +3432,104 @@ class TestPlannedTaskToTaskEntryAdapter:
         for e in entries:
             assert e.task_class == "format"
             assert e.status == TASK_PENDING
+
+
+class TestClassBudgetCannotFitEscalation:
+    """T003b2b2b2 (DECISION F112 D8): when a task's declared files_hint
+    cannot fit its class cap, the dispatch loop escalates via
+    enqueue_task_decision/auto_apply_safe_default and, on the "split task"
+    default, replaces the task with split_one_task's children instead of
+    dispatching it uncapped."""
+
+    def _tiny_cap_config(self, tmp_path, monkeypatch):
+        config_dir = tmp_path / "_config"
+        config_dir.mkdir()
+        toml_file = config_dir / "remedy.toml"
+        toml_file.write_text(
+            "[remedy.prompt_budget]\ndefault_cap = 1\n", encoding="utf-8"
+        )
+        from packages.orchestration.config import load_config
+        loaded = load_config(
+            project_path=toml_file, user_path=Path("/nonexistent/user.toml")
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.config.get_config", lambda: loaded
+        )
+
+    def test_a_splittable_task_is_replaced_by_its_children(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        self._tiny_cap_config(tmp_path, monkeypatch)
+
+        job = parse_job_file(_JOB_WITH_FILES_MULTI_ACCEPTANCE, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        titles = []
+
+        def capturing_run(*args, **kwargs):
+            titles.append(args[0])
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert [t.task_id for t in result.tasks] == ["T001", "T001a", "T001b"]
+        assert result.tasks[0].status == TASK_SPLIT
+        assert result.tasks[1].status == TASK_APPLIED
+        assert result.tasks[2].status == TASK_APPLIED
+        assert titles == ["Task 1 (1/2)", "Task 1 (2/2)"]
+        assert result.status == JOB_COMPLETED
+
+        # Children inherit the parent's files_hint (task_granularity's own
+        # rule: "an over-broad hint is less harmful than none"), so they are
+        # ALSO fit-checked when dispatched and ALSO escalate — but each has
+        # only one acceptance item left, so split_one_task returns None for
+        # both and they fall through to a normal (uncapped) dispatch, same
+        # as the unsplittable case below. Three records, all answered
+        # "split task" by the safe default; only the parent's actually
+        # produced a structural split.
+        from packages.orchestration.escalation import escalation_records
+        records = escalation_records(result)
+        assert [r["task_id"] for r in records] == ["T001", "T001a", "T001b"]
+        assert all(r["answer"] == "split task" for r in records)
+        assert all(r["answer_source"] == "default" for r in records)
+
+    def test_an_unsplittable_task_falls_through_uncapped(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        self._tiny_cap_config(tmp_path, monkeypatch)
+
+        job = parse_job_file(_JOB_WITH_FILES, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        titles = []
+
+        def capturing_run(*args, **kwargs):
+            titles.append(args[0])
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert [t.task_id for t in result.tasks] == ["T001"]
+        assert result.tasks[0].status == TASK_APPLIED
+        assert titles == ["Task 1"]
+
+        from packages.orchestration.escalation import escalation_records
+        records = escalation_records(result)
+        assert len(records) == 1
+        assert records[0]["answer"] == "split task"
