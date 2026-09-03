@@ -14,28 +14,29 @@ evidence — never by editing a mapping casually.
 
 ## Current Step
 
-Round 13, session 3 — THE EVIDENCE WIRING, the last unbuilt clause of T003.
-The config-reading layer reads `model_routing.promotion_evidence`, parses it
-through the round-12 parser, and hands the records BOTH to the table builder,
-so a documented benchmark run licenses a cheaper tier, AND to the seam, so a
-routed call's `promoted_by` names the run. Round 12's PASS verdict and one
-prose slip are booked in the same round.
+Round 14, session 4 — THE R-0789 REPAIR AND THE PAIRING ACCEPTANCE. Two
+deliberate-absence notes that round 13's own wiring falsified are repaired in
+one commit, in `model_routing.py` and in `config.py`. The feature file's last
+unbuilt acceptance clause — the reviewer/worker pairing asserted on a REAL
+fixture round — is built as tests that resolve BOTH halves of a round through
+the production seam under four real configurations, including the one where a
+documented benchmark run is supplied for the reviewer class and the hard rule
+refuses the table anyway. Round 13's PASS verdict, the finding and two prose
+slips are booked in the same round.
 
 ## Next Steps
 
-- The acceptance round: a fixture run whose every call's evidence shows
-  class, tier and reason, per the feature file's Acceptance section, plus
-  the reviewer/worker pairing assertion that section also names.
-- The integration gate round, before closure.
-- The closure sequence, which also runs the one checklist consolidation
-  pass DECISION F110 D1 carries into it, and which updates the Design and
-  Task-slicing bullets of `docs/roadmap/features/T3_F110.md`.
+- The integration gate round, which docs/agents/integration_gate.md governs
+  and which needs the R-0736 base-worktree mtime-parity repair and a cold
+  `dist` build budgeted for.
+- The closure sequence, which takes two rounds, runs the one §3 checklist
+  consolidation pass DECISION F110 D1 carries into it, and updates the Design
+  and Task-slicing bullets of `docs/roadmap/features/T3_F110.md`.
 
 ## Risks
 
-- Two consumers each read and parse the evidence table; `get_config` is
-  cached so the cost is small, and keeping the existing signatures was
-  judged worth more than saving it.
-- A malformed evidence record fails CLOSED — the promotion it would have
-  licensed is refused and the class keeps its seeded tier.
+- The pairing acceptance rests on `REVIEWER_WORKER_CLASS_PAIRS` holding at
+  least one pair whose halves are both declared by a role; SPEC (c1) asserts
+  exactly that, so an emptied table is reported as a failure rather than as a
+  vacuous pass.
 - `R-0767` stays OPEN on the same seam and must not be absorbed.
