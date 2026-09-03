@@ -11,20 +11,46 @@ role. Values come from three sources, highest precedence first:
 Provider-aware defaults: the default model depends on which provider is
 selected. Claude providers default to Opus; Ollama keeps its own default.
 
+THIS IS ALSO WHERE F110'S ROUTING SEAM IS WIRED, and it is wired ONCE.
+:func:`resolve_role_config` calls
+``packages.orchestration.model_routing.route_role_call`` and carries what that
+seam recorded on the :class:`RoleConfig` it already returns, so every production
+call that resolves a role's runtime configuration routes — the whole
+``ROLE_CONFIG_CALL_SITES`` inventory that module declares funnels through this
+one function. The dependency runs CONFIG -> POLICY and never back: model_routing
+imports nothing from here, and its own docstring forbids the inverse.
+
+Remedy deliberately does NOT select a model from the routed tier here. The seam
+answers a TIER, and F110 maps no tier to a MODEL ID at all — which concrete model
+serves a tier is a configuration question that feature deliberately leaves open.
+So the wiring changes what a call RECORDS and nothing about which model runs:
+``provider``, ``model`` and ``effort`` are resolved by exactly the precedence
+chain above, unchanged. A reader searching HERE for the code that turns a routed
+tier into a model id will not find it, and that absence is deliberate.
+
 Public API::
 
     KNOWN_ROLES: tuple of recognised role names
     RoleConfig: resolved provider/model/effort for one role
-    resolve_role_config(role, cli_args=None, config_file=None) -> RoleConfig
+    RoleConfig.routed_call: what F110's seam recorded for this role's calls,
+        or None when the role inherits its class and none was supplied
+    resolve_routed_call_evidence(role, originating_task_class=None)
+        -> dict | None, the seam call that swallows exactly one exception
+    resolve_role_config(role, cli_args=None, config_file=None,
+        originating_task_class=None) -> RoleConfig
     resolve_orchestrator_model() -> str
 """
 
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from packages.orchestration.model_aliases import resolve_model_alias
+from packages.orchestration.model_routing import (
+    OriginatingTaskClassRequired,
+    route_role_call,
+)
 
 # ---------------------------------------------------------------------------
 # Defaults (provider-aware)
@@ -98,6 +124,21 @@ class RoleConfig:
     model: str = DEFAULT_MODEL
     effort: str = DEFAULT_EFFORT
 
+    #: WHAT F110'S ROUTING SEAM RECORDED for a call by this role. The keys are
+    #: exactly ``model_routing.ROUTED_CALL_EVIDENCE_FIELDS`` — task_class, tier,
+    #: reason, promoted_by — so this module introduces no second spelling of any
+    #: of them. ``None`` when the role INHERITS its task class and no originating
+    #: class was supplied; see :func:`resolve_routed_call_evidence`.
+    #:
+    #: WHY ``compare=False``, and it is not a style choice: a frozen dataclass
+    #: derives ``__hash__`` from its COMPARED fields, so an unqualified dict field
+    #: makes ``hash(RoleConfig(...))`` raise ``TypeError: unhashable type:
+    #: 'dict'``. Excluding it keeps RoleConfig exactly as hashable and as
+    #: comparable as it has always been — two configs for one role still compare
+    #: on provider, model and effort, and evidence about HOW a call was routed is
+    #: not part of WHAT was resolved.
+    routed_call: dict[str, str | None] | None = field(default=None, compare=False)
+
 
 def _role_section(source: object, role: str) -> dict:
     """Extract the override mapping for ``role`` from a config source.
@@ -116,10 +157,41 @@ def _role_section(source: object, role: str) -> dict:
     return source
 
 
+# WHY EXACTLY ONE EXCEPTION IS SWALLOWED, AND ONLY HERE: ``repair`` is the sole
+# member of model_routing.TASK_CLASS_INHERITING_ROLES and also a member of
+# KNOWN_ROLES, so ``resolve_role_config("repair")`` is an ordinary config
+# resolution that has always worked and that the F110 wiring must not break. A
+# config resolver has no ORIGINATING TASK to name, so ``None`` is that role's
+# honest answer at this layer rather than a guessed class. Every DIRECT caller of
+# route_role_call still gets the raise, unchanged.
+def resolve_routed_call_evidence(
+    role: str,
+    originating_task_class: str | None = None,
+) -> dict[str, str | None] | None:
+    """Return what F110's routing seam RECORDS for a call by ``role``.
+
+    Delegates to
+    :func:`packages.orchestration.model_routing.route_role_call` and returns its
+    mapping unchanged, so the declared class, the tier, the reason and what
+    promoted it come from that ONE seam and cannot disagree with it.
+
+    Returns ``None`` when — and only when — the seam raises
+    :class:`packages.orchestration.model_routing.OriginatingTaskClassRequired`:
+    the role inherits its task class from the work that provoked the call, and no
+    such class was supplied. NO OTHER EXCEPTION IS CAUGHT, deliberately; a broken
+    routing table must surface rather than be recorded as a missing evidence line.
+    """
+    try:
+        return route_role_call(role, originating_task_class)
+    except OriginatingTaskClassRequired:
+        return None
+
+
 def resolve_role_config(
     role: str,
     cli_args: object | None = None,
     config_file: object | None = None,
+    originating_task_class: str | None = None,
 ) -> RoleConfig:
     """Resolve the runtime configuration for ``role``.
 
@@ -135,9 +207,19 @@ def resolve_role_config(
         cli_args: Optional per-invocation overrides — either a flat mapping of
             ``provider``/``model``/``effort`` or a mapping keyed by role.
         config_file: Optional persisted overrides, same shape as ``cli_args``.
+        originating_task_class: The task class of the work that PROVOKED this
+            call. Supplied only for a role in
+            ``model_routing.TASK_CLASS_INHERITING_ROLES`` — ``repair`` today —
+            and ignored for every other role, which declares its own class.
+            LAST AND DEFAULTED so that no existing caller has to change.
 
     Unknown roles emit a warning (rather than raising) and still resolve against
     the supplied overrides, falling back to the built-in defaults.
+
+    The returned config also carries ``routed_call``, what F110's routing seam
+    recorded for this role — see :func:`resolve_routed_call_evidence`. Routing is
+    RECORDING and not SELECTING: provider, model and effort are resolved by the
+    precedence chain above and by nothing else.
     """
     if role not in KNOWN_ROLES:
         warnings.warn(
@@ -150,12 +232,12 @@ def resolve_role_config(
     cfg = _role_section(config_file, role)
 
     resolved: dict[str, str] = {}
-    for field in _FIELDS:
-        value = cli.get(field)
+    for field_name in _FIELDS:
+        value = cli.get(field_name)
         if value is None:
-            value = cfg.get(field)
+            value = cfg.get(field_name)
         if value is not None:
-            resolved[field] = value
+            resolved[field_name] = value
 
     # Provider-aware model default: if provider is set but model is not,
     # use the provider's default model instead of the global default.
@@ -163,7 +245,11 @@ def resolve_role_config(
         provider = resolved.get("provider", DEFAULT_PROVIDER)
         resolved["model"] = default_model_for_provider(provider)
 
-    return RoleConfig(role=role, **resolved)
+    return RoleConfig(
+        role=role,
+        routed_call=resolve_routed_call_evidence(role, originating_task_class),
+        **resolved,
+    )
 
 
 # The orchestrator's model must have ONE answer: `orchestrator.model` when the

@@ -9,8 +9,8 @@ is applied, the PROMOTION-EVIDENCE DISCIPLINE that refuses a move to a
 CHEAPER tier unless a documented benchmark run backs it, and — new in T001 — the
 ROLE-TO-CLASS INVENTORY that gives every role Remedy resolves a runtime
 configuration for a DECLARED task class, together with the SINGLE ROUTING SEAM
-every provider call site will invoke. Nothing else yet: no config file is read,
-no model id is named and no call site routes through the seam.
+every provider call site invokes. Nothing else yet: no config file is read and
+no model id is named.
 The table is SEEDED from the "Seed mapping" section of
 docs/agents/model_routing_policy.md, which remains the human-readable policy.
 tests/orchestration/test_model_routing.py parses that section and asserts the
@@ -44,14 +44,16 @@ configured to break it. packages/orchestration/config.py is deliberately NOT
 imported — every function below stays a pure function of its arguments, which is
 what lets the override rules be tested without a config file existing at all.
 
-Remedy deliberately does not WIRE THE SEAM INTO ANY CALL SITE YET.
-:func:`route_role_call` is the one function every provider call site will invoke,
-and AT THIS COMMIT NOTHING CALLS IT — no file under ``packages/`` or ``apps/``
-other than this one imports this module. A reader searching for the place a call
-site routes through the seam must land HERE: that wiring is the NEXT round, and
-it is deliberately separate so the role declarations and the CALL-SITE INVENTORY
-(:data:`ROLE_CONFIG_CALL_SITES`) land — and start going red on a new, undeclared
-call site — BEFORE any routing behaviour moves.
+THE SEAM IS WIRED IN EXACTLY ONE PLACE, and a reader searching for where a call
+routes must go there: ``packages/orchestration/role_config.resolve_role_config``
+calls :func:`route_role_call` and carries what it returned on the ``RoleConfig``
+it already hands back. That ONE call site reaches all seven entries of
+:data:`ROLE_CONFIG_CALL_SITES`, because all seven already funnel through that
+resolver — so routing is the DEFAULT for a provider call rather than something
+each site has to remember, and a new site that resolves a role is routed the day
+it lands. Nothing else calls :func:`route_role_call` in production, which is why
+the inventory below is unmoved by the wiring: it changes what that resolver DOES,
+not how many times it is called.
 
 Remedy deliberately does not IMPORT packages/orchestration/role_config.py here,
 even though this module now declares a task class for every role that module
