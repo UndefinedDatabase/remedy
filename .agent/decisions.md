@@ -10150,3 +10150,58 @@ REVERSE THIS DECISION by deleting the `routed_call` field and its helper from
 `packages/orchestration/role_config.py`, restoring the two docstring
 paragraphs in `packages/orchestration/model_routing.py` from `328228dc`, and
 deleting this paragraph.
+
+## DECISION F110 D5 (2026-09-03, round 10) — what a refused override map does
+
+CONTEXT. Round 10 lets a project configure
+`model_routing.task_class_tiers` in `remedy.toml`.
+`build_effective_task_class_tiers` already REFUSES a map that breaks a hard
+rule or promotes a class without benchmark evidence, raising
+`OverrideRefused` with every violation. What the CONFIG layer does with that
+refusal is a question round 6 deliberately left to the round that reads a
+config file, and this is that round.
+
+CHOSEN. The routing layer catches `OverrideRefused`, emits ONE `UserWarning`
+naming the config key and EVERY violated rule, and routes against the
+SHIPPED `TASK_CLASS_TIERS`. `validate_config` independently reports SHAPE
+faults in the table, so `remedy config` surfaces a malformed table without
+a routing call happening at all.
+
+WHY. The hard rules WIN, which is what the feature file demands, and they
+win the way `build_effective_task_class_tiers`'s own docstring says they
+must — by refusing the config rather than by quietly editing it. The
+offending override does not take effect, and the operator is told which rule
+refused it rather than left to wonder why a setting did nothing. Routing
+seeded is also the conservative direction: every hard rule this feature
+enforces protects a class from being routed DOWN, so the shipped table is
+never the cheaper answer, which matches the A9 default that over-spending
+beats under-thinking.
+
+REJECTED, AND WHY.
+(1) RAISE, letting `OverrideRefused` escape `resolve_role_config`. Rejected:
+    one typo in `remedy.toml` would then break every provider call in the
+    project, because `resolve_role_config` is the function all seven
+    inventoried call sites share. That is the round 9 lesson — a routing
+    concern must not become a config-resolution fault — one layer further
+    out, and it would make a policy guard into an outage.
+(2) DROP ONLY THE OFFENDING ENTRIES and apply the rest. Rejected: a silently
+    dropped override leaves the operator believing it took effect, which is
+    the silent downgrade `docs/agents/model_routing_policy.md` hard rule 2
+    exists to forbid, and `build_effective_task_class_tiers`'s docstring
+    already rejects this reading in so many words.
+(3) WARN BUT APPLY THE MAP ANYWAY. Rejected outright: it makes the hard
+    rules advisory, and a rule that a config can override is not a hard rule.
+(4) FAIL AT CONFIG LOAD, inside `load_config`. Rejected: `config.py` is the
+    lower layer and is deliberately policy-free — it must not import
+    `model_routing` to learn what a task class is. Shape validation belongs
+    there and does; rule validation belongs where the rules live.
+
+CONSEQUENCE. A project with a refused table still runs, on the shipped
+policy, loudly. The warning is the operator-facing surface, so it names the
+key and the rules rather than the exception type. Recording is still not
+selecting: this round changes which TIER a call records, never which model
+runs.
+
+REVERSE THIS DECISION by deleting the `OverrideRefused` catch in
+`packages/orchestration/role_config.py` and letting the exception propagate,
+and by deleting this paragraph.
