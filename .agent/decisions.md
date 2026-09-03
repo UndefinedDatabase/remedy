@@ -10089,3 +10089,64 @@ REVERSE by deleting this DECISION and repointing the orchestrator role at
 whatever class a later relay rules, or by seeding `orchestrator` into the policy
 document and the table together, which is the rejected alternative above and
 needs its own decision.
+
+## DECISION F110 D4 (2026-09-03, round 9) — where the routed-call evidence lands
+
+CONTEXT. Round 8 shipped `route_role_call`, the single seam, and left it
+wired to nothing. Round 8's verdict refused to rule on the sink without
+measuring the surfaces that already carry a field of nearly the same name,
+and named that measurement as session 3's opening work. It has now been
+taken, at `328228dc`.
+
+WHAT WAS MEASURED. Four production surfaces carry `model_routing_tier` or
+`model_routing_plan.tier`: `packages/orchestration/progress_ledger.py`,
+`packages/orchestration/review_bundle.py`,
+`packages/orchestration/ui_server.py` and
+`apps/cli/commands/orchestrator_cmd.py`. All four read the SAME source — the
+`model_routing_plan` of an `orchestrator_brain` decision record — whose
+vocabulary is HUMAN_REVIEW_REQUIRED / EXTERNAL_BUILDER_NEEDED /
+local_advisor_preferred. That answers WHEN a job escalates to a human or an
+external builder. It has nothing to do with F110's cheap/mid/top, and the
+name is fully occupied across all four.
+
+CHOSEN. The sink is the `RoleConfig` object `resolve_role_config` already
+returns, carrying the evidence as ONE nested mapping field whose keys are
+exactly `ROUTED_CALL_EVIDENCE_FIELDS`. One change wires all seven
+inventoried call sites, because all seven already funnel through that
+function. `role_config.py` imports `model_routing.py` — config depending on
+policy, the direction that module's docstring permits — and no cycle is
+possible: `model_routing.py` imports only `warnings` and `dataclasses`.
+
+REJECTED, AND WHY.
+(1) Flatten the four evidence keys onto `RoleConfig` as top-level fields.
+    Rejected: `tier` and `reason` are bare generic words, AGENTS.md's
+    discoverability section requires two to four words including a domain
+    word, and any name close to `model_routing_tier` collides with the
+    escalation vocabulary measured above. Nesting keeps ONE spelling.
+(2) Edit each of the seven call sites. Rejected: all seven already share the
+    resolver, so seven edits buy exactly what one buys, and every future call
+    site would then have to REMEMBER to route. Wiring the resolver makes
+    routing the default and an unrouted call site impossible by construction.
+(3) Push the evidence into the ledger, the review bundle or the UI this
+    round. Rejected: those surfaces read an orchestrator-brain DECISION
+    record, not a provider call, so F110's evidence has no existing row
+    there. Adding one is a new surface rather than a wiring, and the feature
+    file gives that to the report's cost section. Deferred, and named here so
+    the round that wants it finds this paragraph.
+(4) Widen `packages/orchestration/call_identity.py`'s `CallIdentity`, which
+    already carries a `role`. Rejected: that is F012's structure and widening
+    it reaches the providers, the ping-pong loop and the run manifest — out
+    of T001's scope and against the feature file's "Do not touch".
+
+CONSEQUENCE. Recording is not selecting. The seam answers a TIER and F110
+deliberately maps no tier to a model id, so this wiring changes what a call
+RECORDS and nothing about which model runs. That absence is stated in
+`role_config.py`'s module docstring in the AGENTS.md idiom rather than left
+to be rediscovered. The inheriting role `repair` records `None` at this
+layer, because a config resolver has no originating task to name, and
+`route_role_call` still raises for every direct caller.
+
+REVERSE THIS DECISION by deleting the `routed_call` field and its helper from
+`packages/orchestration/role_config.py`, restoring the two docstring
+paragraphs in `packages/orchestration/model_routing.py` from `328228dc`, and
+deleting this paragraph.
