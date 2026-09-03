@@ -1,22 +1,22 @@
 ## Authored texts
 
-The block below (from "===AUTHORED BLOCK START===" to "===AUTHORED BLOCK END===") is what you save verbatim to `.agent/authored/f112-r11.md` in commit C0a.
+The block below (from "===AUTHORED BLOCK START===" to "===AUTHORED BLOCK END===") is what you save verbatim to `.agent/authored/f112-r12.md` in commit C0a.
 
 ===AUTHORED BLOCK START===
 
-RECORD10 (append to .agent/live_review.md, one-newline formula — `content_bytes + b"\n" + RECORD10_bytes`, 2232 bytes):
+RECORD11 (append to .agent/live_review.md, one-newline formula — `content_bytes + b"\n" + RECORD11_bytes`, 2195 bytes):
 
-Gate: F112 R10 — the round 10 entry. VERDICT PASS, over the range `58cfae0e..0ec9d2b9` (commits C0a through C6), independently reviewed by the reviewer at the start of session 4's round 11. THE PASSTHROUGH HELD: `git show c2bbc5f9 -- packages/orchestration/pingpong_loop.py` reproduced the exact Pair A (APPEND, compiled_context_token_budget parameter) and Pair B (REWRITE, conditional token_budget kwarg) C4 describes; `git show c2bbc5f9 -- tests/orchestration/test_pingpong.py` reproduced the exact TestCompiledContextTokenBudget class with its two tests. THE ADAPTER HELD: `git show 01864da1 -- packages/orchestration/pingpong_job.py` reproduced the task_entry_to_planned_task function plus the declared TYPE_CHECKING-guarded-import deviation (verified against the cited packages/orchestration/approval_queue.py precedent); `git show 01864da1 -- tests/orchestration/test_job_task_runner.py` reproduced the exact TestTaskEntryToPlannedTaskAdapter class (4 tests) and the two import-list REWRITE pairs. THE LEDGER APPENDS HELD BYTE-IDENTICAL: `.agent/authored/f112-r10.md` and `.agent/last_block.md` compare equal; `.agent/plan.md` (47 lines) matches PLAN10 exactly; `.agent/decisions.md`'s tail matches DECISION F112 D3 exactly; `.agent/live_review.md`'s tail matches RECORD9 exactly. THE TESTS HELD: `python3 -m pytest tests/orchestration/test_pingpong.py tests/orchestration/test_job_task_runner.py -q` reproduced at 236 passed. THE LINT HELD: `python3 -m ruff check packages/orchestration/pingpong_loop.py packages/orchestration/pingpong_job.py tests/orchestration/test_pingpong.py tests/orchestration/test_job_task_runner.py` read "All checks passed!". THE CANARY HELD: `pytest tests/cli/test_golden_path.py -q` reproduced at 42 passed. THE MUTATION CLEANUP HELD: `git worktree list` showed neither `f112-r10-mutation-c4` nor `f112-r10-mutation-c5`, and `git status --porcelain` read empty in the primary checkout both before this reading and throughout — the mutation runs themselves were not re-executed by the reviewer this round, corroborated by the handback's own detailed before/after transcripts (both directions of each guard reported) and by the clean worktree list, the same honesty shape as the digest fallback.
+Gate: F112 R11 — the round 11 entry. VERDICT PASS, over the range `0ec9d2b9..2ef8c4dd` (commits C0a through C6), independently reviewed by the reviewer at the start of session 4's round 12. THE FIELD ADDITION HELD: `git show 21d79aa2 -- packages/orchestration/pingpong_job.py` reproduced the exact Pairs E/F/G (all REWRITE) C4 describes — the TaskEntry.inputs field plus its export/import round-trip; `git show 21d79aa2 -- tests/orchestration/test_job_task_runner.py` reproduced the exact two new TestPersistence tests. THE ESCALATION FIX HELD: `git show 01c87498 -- packages/orchestration/escalation.py` reproduced the exact Pair I (REWRITE) C5 describes — the dual-shape task-identifier lookup; `git show 01c87498 -- tests/orchestration/test_escalation.py` reproduced the exact TestJobPlanCompatibility class (2 tests). THE LEDGER APPENDS HELD BYTE-IDENTICAL: `.agent/authored/f112-r11.md` and `.agent/last_block.md` compare equal (10133 bytes both); `.agent/plan.md` (49 lines) matches PLAN11 exactly; `.agent/decisions.md`'s tail matches DECISION F112 D4 exactly; `.agent/live_review.md`'s tail matches RECORD10 exactly. THE TESTS HELD: `python3 -m pytest tests/orchestration/test_job_task_runner.py tests/orchestration/test_escalation.py -q` reproduced at 270 passed. THE LINT HELD: `python3 -m ruff check packages/orchestration/pingpong_job.py packages/orchestration/escalation.py tests/orchestration/test_job_task_runner.py tests/orchestration/test_escalation.py` read "All checks passed!". THE CANARY HELD: `pytest tests/cli/test_golden_path.py -q` reproduced at 42 passed. THE MUTATION CLEANUP HELD: `git worktree list` showed neither `f112-r11-mutation-c4` nor `f112-r11-mutation-c5`, and `git status --porcelain` read empty throughout — the mutation runs themselves were not re-executed by the reviewer this round, corroborated by the handback's own detailed before/after transcripts and the clean worktree list. THE DENIED-`cmp`-SUBSTITUTION DEVIATION WAS REASONABLE: the handback's own Python byte-equality read (`a == b` True, 10133 bytes both) is an equivalent proof to `cmp`'s exit code, and the sandbox denial is a documented, recurring session property, not a shortcut.
 
-<<<END RECORD10>>>
+<<<END RECORD11>>>
 
-PLAN11 (whole-file replacement of .agent/plan.md, no trailing newline, 2321 bytes):
+PLAN12 (whole-file replacement of .agent/plan.md, no trailing newline, 2163 bytes):
 
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1/T003b2a
-complete and green as of round 10.
+F112 claimed in STATUS.md round 1; T001/T002/T003a/T003b1/T003b2a/
+T003b2b1 complete and green as of round 11.
 
 ## Goal
 
@@ -28,58 +28,56 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 11, session 4 — fresh investigation over T003b2b's own call site
-(escalation.py's enqueue_task_decision/auto_apply_safe_default, the
-piece T003b2a deliberately left untouched) found a second latent
-incompatibility beyond DECISION F112 D2/D3's: _record_answer_on_task
-reads task.id and task.inputs, fields pingpong JobPlan's TaskEntry has
-never carried (only Core Job's Task has them) — calling
-auto_apply_safe_default against a live JobPlan would raise
-AttributeError (DECISION F112 D4). T003b2b splits into T003b2b1 (this
-round: the escalation.py dual-shape fix + a new TaskEntry.inputs field)
-and T003b2b2 (deferred: the live call-site wiring, now safe to build).
+Round 12, session 4 — investigation of T003b2b2's call site found
+run_pingpong's `use_compiled_context = bool(compiled_context_paths) and
+bool(compiled_context_candidates)` requires BOTH lists non-empty, and
+job-dispatch TaskEntry has no files_hint source — fenced_paths=[] (the
+only value available today) makes the whole wiring a silent no-op,
+always falling through to the uncapped build_repo_context path
+(DECISION F112 D5). Stronger than D3/D4: not just cannot_fit
+unreachable, the capped path never activates at all. T3_F112.md gains
+T003c (a "## Files" job-markdown section feeding TaskEntry.files_hint)
+as T003b2b2's prerequisite. This round is decision + plan + feature-file
+only — no production code, since T003c must land first.
 
 ## Next Steps
 
-- T003b2b2 (own dedicated round(s)): call fit_task_context_to_class_cap
-  between _build_task_prompt and task.status = TASK_RUNNING; wire
-  compiled_context_paths/candidates/token_budget into run_pingpong; on
-  cannot_fit call enqueue_task_decision (options=["split task"] only
-  when task_entry_to_planned_task(task) is not None and
-  split_one_task on its result returns non-None) then
-  auto_apply_safe_default under --yes, reading the answer off the
-  returned record directly rather than off task.inputs (same
-  dispatch-loop iteration, no resume needed for this path).
+- T003c (own round(s)): parse "## Files" in job task markdown (mirrors
+  the existing "Acceptance:" inline-marker pattern) into a new
+  TaskEntry.files_hint: list[str] field, exported/imported like
+  inputs/task_class; update task_entry_to_planned_task's mapping.
+- T003b2b2 (after T003c): fit_task_context_to_class_cap +
+  run_pingpong wiring (now with real fenced_paths) + the cannot_fit
+  decision call, now actually reachable.
 - Acceptance fixtures, the integration gate, then closure.
 
 ## Risks
 
-- T003b2b2 is still the highest-risk remaining slice — first-time
-  wiring against the live dispatch loop; re-read the call site fresh
-  again before authoring it, per DECISION F112 D2/D3/D4.
+- T003b2b2 depends on T003c landing first; re-read both call sites
+  fresh before authoring either.
 - R-0767 stays OPEN on the model-routing seam this feature's config
   pattern borrows from; unrelated to F112, not absorbed.
 - ruff is inconsistent this session; python3 -m ruff check <path> is the
   reliable form, re-measured every round.
 
-<<<END PLAN11>>>
+<<<END PLAN12>>>
 
-DECISION F112 D4 (append to .agent/decisions.md, one-newline formula, 5001 bytes):
+DECISION F112 D5 (append to .agent/decisions.md, one-newline formula, 5548 bytes):
 
-## DECISION F112 D4 (2026-09-03, F112 R11) — escalation.py's _record_answer_on_task assumes Core Job's Task shape (task.id, task.inputs), which pingpong JobPlan's TaskEntry has never carried; T003b2b splits into T003b2b1 (this round) and T003b2b2 (deferred)
+## DECISION F112 D5 (2026-09-03, F112 R12) — run_pingpong's use_compiled_context gate requires BOTH fenced and candidate path lists non-empty; job-dispatch TaskEntry has no fenced-scope source, so T003b2b2's live wiring cannot activate the compiler at all until T003c adds one
 
-CONTEXT. DECISION F112 D3 (F112 R10) narrowed T003b2b to three pieces: the fit_task_context_to_class_cap call, the run_pingpong wiring, and the cannot_fit -> enqueue_task_decision -> auto_apply_safe_default chain. Fresh investigation this round (reviewer, read-only, over packages/orchestration/escalation.py's enqueue_task_decision/answer_task_decision/auto_apply_safe_default/_record_answer_on_task/_metadata, and packages/orchestration/pingpong_job.py's TaskEntry/JobPlan) found that the third piece cannot run against a live JobPlan today: auto_apply_safe_default unconditionally calls answer_task_decision, which unconditionally calls _record_answer_on_task, which reads task.id and task.inputs on every task in job.tasks — attributes Core Job's packages.core.models.Task carries (id: UUID, inputs: dict) that pingpong JobPlan's TaskEntry has never had (it carries task_id: str instead, and no inputs field of any kind). Calling the decision chain from the dispatch loop as D3 left it planned would raise AttributeError the first time a JobPlan's cannot_fit task tried to auto-apply its safe default.
+CONTEXT. DECISION F112 D4 (F112 R11) left T003b2b2 as three pieces: the fit_task_context_to_class_cap call, the run_pingpong parameter wiring, and the cannot_fit -> enqueue_task_decision -> auto_apply_safe_default chain. Fresh investigation this round (reviewer, read-only, over packages/orchestration/pingpong_loop.py's run_pingpong, and pingpong_job.py's TaskEntry/task_entry_to_planned_task) re-checked the call site before authoring, per D2/D3/D4's own standing instruction, and found the plan as D3/D4 left it cannot work at all: run_pingpong's use_compiled_context gate (pingpong_loop.py:3115) is `bool(compiled_context_paths) and bool(compiled_context_candidates)` — BOTH lists must be non-empty, by the comment directly above it ("one list alone is a caller mistake and must not silently half-compile"). Job-dispatch TaskEntry carries no files_hint or any other fenced-scope declaration (confirmed again: TaskEntry's full field list, pingpong_job.py:119-146, has none), so the only value available for compiled_context_paths at this call site is `[]` — and `bool([])` is False. Wiring the three pieces as planned would silently keep use_compiled_context False forever, falling through to the untouched build_repo_context default path on every call: the class cap, the compiler, and the whole T003b2b2 round's work would exist in the code and never run once, for any task, ever. This is a stronger finding than D4's: D4 found one branch (cannot_fit) unreachable; this finds the ENTIRE compiled/capped path unreachable.
 
-MEASURED. escalation.py:102-115's _metadata() helper already documents and enacts dual-shape support — "Both Core Job and the pingpong JobPlan are accepted" — reading job.metadata via getattr with a graceful empty-dict fallback; a repo-wide grep confirms pingpong_job.py's JobPlan already carries a metadata: dict field (added ahead of this feature, comment at pingpong_job.py:320-323: "F112 T003: durable escalation/decision state... job.metadata[\"escalations\"] list"), so enqueue_task_decision's own write path (_stored_records, via _metadata) already works unmodified against a JobPlan. _record_answer_on_task (escalation.py:258-273) was never given the same dual-shape treatment: `str(task.id) != task_id` (line 266) has no getattr fallback, and `task.inputs` (line 268) assumes a dict field that does not exist on TaskEntry at all — confirmed by TaskEntry's full field list (pingpong_job.py:119-143), which has no `inputs` entry. No test in tests/orchestration/test_escalation.py constructs a JobPlan and calls any escalation.py function against it (grep for "JobPlan(" in that file: zero matches) — the dual-shape claim is proven for _metadata alone and untested for the answer-recording path.
+MEASURED. task_entry_to_planned_task (T003b2a, pingpong_job.py:150-176) deliberately sets files_hint=[] on the PlannedTask it returns, but that adapter feeds split_one_task's clustering (a DIFFERENT call, DECISION F112 D2's concern) — its empty files_hint has no bearing on what compiled_context_paths should be for run_pingpong, and D2/D3 never claimed it did. No existing job task markdown syntax declares a file scope: parse_job_file (pingpong_job.py:788-840) recognizes only a `## Task N` heading and an inline `Acceptance:` marker: two states (body, acceptance), no third. T3_F112.md's own "How it fits" section says "class comes from the same declaration routing uses" but says nothing about where FENCED SCOPE comes from for a job-dispatch task specifically — the Design section's "fit(context, cap)" sentence assumes a caller that already has fenced_paths, which is true for F107's other future callers (FlightPlan-derived tasks carry PlannedTask.files_hint natively) but not for this one.
 
-CHOSEN. Split T003b2b into T003b2b1 and T003b2b2. T003b2b1 (this round): add `inputs: dict = field(default_factory=dict)` to TaskEntry, exported/imported like `task_class` (T003b1 precedent, same position — immediately after task_class in the field list, the export dict and the import call); fix `_record_answer_on_task` to resolve a task's identifier via `getattr(task, "id", None)` falling back to `getattr(task, "task_id", None)`, matching `_metadata()`'s own already-established "accept either shape" contract, with a new test in tests/orchestration/test_escalation.py proving the full enqueue_task_decision -> auto_apply_safe_default -> answer_task_decision chain against a real JobPlan/TaskEntry (not just Core Job). T003b2b2 (a later round): the live call-site wiring alone — fit_task_context_to_class_cap, the run_pingpong parameter wiring, and the cannot_fit decision call — now safe to build on a working escalation path instead of discovering the AttributeError mid-round.
+CHOSEN. Add T003c to T3_F112.md's Task slicing: a job task markdown "## Files" section (a list of repo-relative paths, one per line), parsed by parse_job_file the same way "Acceptance:" already is (a third parser state, files_lines, joined into a new TaskEntry.files_hint: list[str] field, exported/imported like inputs and task_class), feeding compiled_context_paths at the T003b2b2 call site directly. T003b2b2 itself is NOT built this round: with no fenced-scope source, there is nothing correct to wire yet, and a block that ships plumbing between two points neither of which can be exercised would violate the reachable-red-proof rule (docs/agents/planner_reviewer_prompt.md §3 item 5) at the level of the WHOLE round, not one branch of it. This round's change set is DECISION F112 D5, the T3_F112.md amendment, and .agent/plan.md — no packages/ or tests/ path, an exception amend0827 rule 1 permits because a DECISION plus a feature-file amendment is planning content (the §4 item 7 "wrong spec is a finding routed to planning" shape), not a verdict, registration or correction.
 
-ALTERNATIVE CONSIDERED AND REJECTED. Have the dispatch loop read the answer directly off the returned `record` dict (both enqueue_task_decision and auto_apply_safe_default return the record) and skip calling auto_apply_safe_default's task-recording side effect entirely, avoiding the crash without touching escalation.py. Rejected: auto_apply_safe_default calls answer_task_decision internally regardless of what the caller does with its return value, and answer_task_decision unconditionally calls _record_answer_on_task before returning — there is no call shape that reaches "the safe default is recorded as this decision's answer" without also reaching the AttributeError; the crash is not avoidable from the call site, only by fixing the function.
+ALTERNATIVE CONSIDERED AND REJECTED. Widen run_pingpong's use_compiled_context gate to accept a non-empty compiled_context_candidates alone (fenced_paths optionally empty), so job-dispatch tasks could engage the capped path today with an all-tier-2/3/4 compiled context and no tier-1 floor. Rejected: this changes F107's own already-shipped, already-tested activation contract for EVERY caller, not only this one, and the comment guarding it names the exact failure this would reintroduce ("must not silently half-compile") — the gate is deliberate design, not an oversight, and F112 has no standing to relax a different feature's safety rail to route around its own missing prerequisite. Building the missing prerequisite (T003c) is smaller, safer, and fixes the actual gap.
 
-CONSEQUENCE. .agent/plan.md Next Steps is rewritten to name T003b2b1 (this round's scope) then T003b2b2 with the three-piece live-wiring list, now noting it should read the auto-applied answer off the returned record directly (same dispatch-loop iteration, no resume dependency on task.inputs). docs/roadmap/features/T3_F112.md stays unedited: its Design section names enqueue_task_decision as reused machinery without describing escalation.py's internals, so this fix contradicts no sentence there.
+CONSEQUENCE. docs/roadmap/features/T3_F112.md's Task slicing gains T003c between T002 and T003, described as this round's own prerequisite finding, not an alternative design. `.agent/plan.md` Next Steps names T003c before T003b2b2. Task slicing's existing T003 one-line description ("the decision wiring + unattended default (split) + an end-to-end where the split resolves the fit + tests") is left as written: it remains true at the escalation-chain level (tests/orchestration/test_escalation.py's TestJobPlanCompatibility, T003b2b1) even though the live-dispatch-loop half of "end-to-end" now explicitly waits on T003c.
 
-REVERSE by deleting this DECISION, reverting the TaskEntry.inputs field and the _record_answer_on_task fix, and treating T003b2b as D3 left it (a single three-piece round).
+REVERSE by deleting this DECISION, reverting the T3_F112.md Task-slicing amendment, and treating T003b2b2 as D4 left it (buildable today) — which a fresh read of run_pingpong's use_compiled_context gate would immediately re-discover false.
 
-<<<END D4>>>
+<<<END D5>>>
 
 ===AUTHORED BLOCK END===
