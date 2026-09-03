@@ -1,155 +1,202 @@
-# Handoff — F110 Model routing by task class, round 18 (CLOSURE ROUND 3)
+# Handoff — F110 Model routing by task class, round 19 (THE CLOSURE COMMIT — LAST ROUND)
 
 ## Session
 
-SESSION 7 of feature F110 · round 18 · rounds so far 18.
+SESSION 7 of feature F110 · round 19 · rounds so far 19.
+
+This is F110's LAST round. The pull request is created but NOT merged
+this session — it merges at the next feature's Open PR Gate, the
+operator's manual-review window.
 
 ## Range
 
-Review of `2fe36572..eaa4ccd2`.
-
-## State
-
-- Branch: `feature/f110-model-routing-by-task-class`, pushed at `eaa4ccd2`
-  (C3) and again after this handback commit (C4). NO pull request open,
-  NO merge.
-- Base of this round: `2fe36572` (F110 R17 C3, the round-17 closure
-  handback).
-- `.agent/STOP` read from disk before the first commit: ABSENT. Read
-  again before staging C4: ABSENT.
-- Round 17's PASS verdict (the closure evidence job and review zip) is
-  booked at `.agent/live_review.md` as `Gate: F110 R17`.
-- `docs/roadmap/features/T3_F110.md` now carries its Built State section
-  plus two APPENDED "AS BUILT" corrections to the Design section (module
-  is `model_routing.py`, not `routing.py`; a violating override WARNS per
-  DECISION F110 D5, it does not fail validation) — neither correction
-  rewrote the original intent text, both were appended after it.
-- No STATUS line, no README edit, no `SU-006` `consumed_by` update, no
-  pull request happened this round — those are round 19 per PLAN18.
-- No finding id was minted, no `- R-` line, no `Done:` line, no
-  `.agent/decisions.md` DECISION and no `.agent/prose_slips.md` line were
-  authored this round.
-- Scratch extraction files used to pull the seven marker-delimited slices
-  out of the committed authored block (a Python helper script and seven
-  `.agent/_slice_*.txt` files) were created transiently under `.agent/`,
-  never staged or committed, and deleted by exact path before C3's
-  `git status --porcelain` was taken — they do not appear in any commit.
+Review of `acd89a6f..e487af65` (commits through C4; C5 is this handback
+itself).
 
 ## Commits
 
-### 1417c43b F110 R18 C0a: save the authored block verbatim
+### 654d357c F110 R19 C0a: save the authored block verbatim
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f110-r18.md` | +304/-0 | verbatim transport of this round's block |
+| `.agent/authored/f110-r19.md` | +223/-0 | verbatim transport of this round's block |
 
-### 00c80584 F110 R18 C0b: mirror the committed authored file to last_block
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/last_block.md` | +245/-305 | whole-file mirror, DECISION F104 D1 exempt |
-
-### 0a2a1094 F110 R18 C1: apply PLAN18 to plan.md
+### 38235de2 F110 R19 C0b: mirror the committed authored file to last_block
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +14/-18 | whole-file replacement with PLAN18 |
+| `.agent/last_block.md` | +172/-253 | whole-file mirror, DECISION F104 D1 exempt |
 
-### 2e74d799 F110 R18 C2: append the round 17 ledger entry
-
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/live_review.md` | +3/-1 | append RECORD18 (two newlines + the paragraph) |
-
-### eaa4ccd2 F110 R18 C3: apply the two AS BUILT corrections and append Built State
+### f4286bb0 F110 R19 C1: apply PLAN19 to plan.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `docs/roadmap/features/T3_F110.md` | +102/-0 | PAIR1 + PAIR2 (AS BUILT corrections) and the appended Built State section, one commit |
+| `.agent/plan.md` | +12/-17 | whole-file replacement with PLAN19 |
 
-### C4 (this commit, self-reference)
+### 27111317 F110 R19 C2: append RECORD19 to live_review.md
 
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/handoff.md` | (this commit) | the round 18 handback |
+| `.agent/live_review.md` | +3/-1 | append RECORD19 (two newlines + the paragraph) |
+
+### 86bc9444 F110 R19 C3: apply STATUS_PAIR and README_PAIR
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `README.md` | +11/-0 | README_PAIR: inserts the new F110 capability paragraph between the F109 paragraph and "Accepted in Tier 5 so far:" |
+| `docs/roadmap/STATUS.md` | +1/-1 | STATUS_PAIR: rewrites the `- [~] F110` line to `- [x] F110 ...` with the closure evidence fields |
+
+### e487af65 F110 R19 C4: apply QUEUE_PAIR to self_use_queue.json
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `scripts/self_use_queue.json` | +1/-1 | SU-006's `consumed_by` set from `""` to `"F110"` |
+
+### C5 (this commit, self-reference)
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/handoff.md` | (this commit) | the round 19 handback |
 
 ## External actions
 
-- `git push -u origin feature/f110-model-routing-by-task-class` after C4
-  (see below). No `gh` command, no PR create/edit/merge, no worktree
-  add/remove.
+- `git push -u origin feature/f110-model-routing-by-task-class` after C5
+  (see below).
+- `gh pr create --base main --head feature/f110-model-routing-by-task-class
+  --title "F110 — Model routing by task class" --body-file <scratch>`:
+  see G7 below for the resulting PR number/URL. No `gh pr merge` was
+  invoked. No worktree add/remove.
 
 ## Verification
 
-**G1 TRANSPORT** — `sha256sum .agent/authored/f110-r18.md .agent/last_block.md`:
-both produced `52eb4f51244388d798b2f5fb4cee2c7afad3baf7610b9f402fa043b3d5c24eef` —
-MATCH. `wc -l` both files → **304**. Exit 0.
+**G1 TRANSPORT** — `sha256sum .agent/authored/f110-r19.md .agent/last_block.md`:
+both produced `281d8b3f2a30765e7bd3326e7d3e91255c1f4d874b747941ff9bddf7a0020936` —
+MATCH. `wc -l` both files → **222**. Exit 0.
 
-**G2 THE PLAN** — `wc -l .agent/plan.md` → **38** (under 50). sha256 of
-the result: `eb384f0dcee11fd42a4d1e9ef65ba11887d12cdcc95dd86c4b12cc5dbcbab483`.
+**G2 THE PLAN** — `wc -l .agent/plan.md` → **34** (under 50). sha256:
+`1d68ebac1b800dc694ef2f178f5f7ae85cd837ec14a1967202d9062cd36ed071`.
 `## Goal` count: **1**. `## Next Steps` count: **1**. Exit 0.
 
-**G3 THE LEDGER APPEND** — base 2238252 bytes + 2 (two newlines) + 3221
-(RECORD18, measured 3221 bytes exactly, 0 internal newlines) = **2241475**,
-matching the byte length of `.agent/live_review.md` after C2 exactly.
-Prefix check: the first 2238252 bytes of the new file compared byte-for-byte
-in Python against the pre-C2 committed blob (`git show HEAD:.agent/live_review.md`,
-HEAD being C1 `0a2a1094` at the time the check ran, before C2 was staged)
-— **True**, exact prefix. `Gate: F110 R17`
-count: **0 before C2, 1 after**. `- R-` line count: **350 before, 350
-after** (unchanged). `Done: R-` line count: **74 before, 74 after**
-(unchanged). No new finding line of either pattern was added. Exit 0.
+**G3 THE LEDGER APPEND** — base 2241475 bytes (measured directly, ending
+without a trailing newline) + 2 (two newlines) + 2974 (RECORD19, measured
+2974 bytes via UTF-8 encoding, 0 internal newlines) = **2244451**,
+matching the byte length of `.agent/live_review.md` after C2 exactly
+(verified programmatically: `new_bytes == base_bytes + 2 + 2974` → True).
+Prefix check: the first 2241475 bytes of the new file compared
+byte-for-byte in Python against the pre-C2 committed blob
+(`git show f4286bb0:.agent/live_review.md`, the C1 commit, immediately
+before C2 was staged) — **True**, exact prefix. `Gate: F110 R18` count:
+**0 before C2, 1 after**. `- R-` line count: **350 before, 350 after**
+(unchanged). `Done: R-` line count: **74 before, 74 after** (unchanged).
+No new finding line of either pattern was added. Exit 0.
 
-**G4 THE FEATURE FILE** — measured against the base
-`docs/roadmap/features/T3_F110.md` (3818 bytes) before C3:
+**G4 STATUS AND README** — measured against the base files before C3:
 
-| Pair | FROM count in base | `TO.startswith(FROM)` | bytes added |
-|------|---------------------|------------------------|-------------|
-| PAIR1 | 1 | True | 712 |
-| PAIR2 | 1 | True | 529 |
+| Pair | FROM count in base | Applied text present verbatim | TO contains FROM (append vs rewrite)? |
+|------|---------------------|-------------------------------|------------------------------------------|
+| STATUS_PAIR | 1 | True | False — genuine rewrite (new text inserted mid-line, replacing `[~]` with `[x]` and appending closure fields) |
+| README_PAIR | 1 | True | False — genuine rewrite (the FROM string's trailing "Accepted in Tier 5 so far:" line is preserved but a new paragraph is inserted before it, not appended after FROM) |
 
-Both matched the block's own stated deltas exactly (712 and 529). Applied
-in order (PAIR1 then PAIR2) as one commit; midpoint length after both
-pairs, before the append: `3818 + 712 + 529 = 5059` bytes, confirmed
-directly, ending with exactly one trailing newline. BUILTSTATE (5593
-bytes as extracted, already ending in its own trailing `\n`) was appended
-after one separator newline, giving a final file of **10653 bytes**
-(`5059 + 1 + 5593`), confirmed by direct read, ending with **exactly one**
-trailing newline (not two). `grep -c '^## Built State'` (via line-prefix
-match): **1**. `grep -c '^## Design'`: **1** (unchanged heading count).
-`AS BUILT` occurrence count: **2** (one per pair). Exit 0.
+`git diff --stat` for C3 (`86bc9444`): exactly `README.md` (+11/-0) and
+`docs/roadmap/STATUS.md` (+1/-1) — confirmed via `git show --numstat
+86bc9444`, no other path touched. Exit 0.
 
-**G5 THE TREE, THE COMMITS AND THE SWEEP** —
-`git status --porcelain` immediately before C4 staged: **0 lines,
-EMPTY** (the seven scratch extraction files were deleted by exact path
-beforehand). `git diff --stat 2fe36572..eaa4ccd2 -- packages/ apps/
-tests/ .agent/decisions.md .agent/prose_slips.md .agent/candidates.md
-scripts/self_use_queue.json`: **EMPTY**.
+**G5 THE QUEUE** — `QUEUE_PAIR_FROM` (`"consumed_by": "",`) count in
+`scripts/self_use_queue.json`: **1** (SU-006's own field; every other
+item's `consumed_by` was already non-empty). `json.load(...)` succeeded
+after the edit: **valid JSON**. `json.load(...)["items"]` length:
+**6 before, 6 after** (unchanged — no item added or removed). SU-006's
+`consumed_by` confirmed `"F110"` after the edit. Exit 0.
 
-Per-commit insertions (`git diff --numstat <sha>^..<sha>`, `+` column
-only):
+**G6 THE TREE, THE COMMITS AND THE SWEEP** —
+`git status --porcelain` immediately before C5 staged: **0 lines,
+EMPTY** (nine transient scratch files under `.agent/` — see Deviations
+— were deleted by exact path beforehand). `git diff --stat
+acd89a6f..e487af65 -- packages/ apps/ tests/ docs/roadmap/features/
+.agent/decisions.md .agent/prose_slips.md .agent/candidates.md`:
+**EMPTY**. Exit 0.
+
+Per-commit insertions (`git show --numstat <sha>`, `+` column only —
+NOTE: the transient message `git commit` itself printed at commit time
+for C0b and C1 showed different, larger figures (223/304 and 34/39
+respectively); those were NOT reproduced by `git show --numstat` or
+`git log --stat` run immediately afterward and repeatedly, which both
+consistently give the figures below. The figures below are the
+authoritative, reproducible ones and are what this table reports):
 
 | Commit | + | Under 500? |
 |--------|---|------------|
-| C0a `1417c43b` | 304 | yes |
-| C0b `00c80584` | 245 | yes (whole-file `.agent/**` mirror, DECISION F104 D1 exempt anyway) |
-| C1 `0a2a1094` | 14 | yes |
-| C2 `2e74d799` | 3 | yes |
-| C3 `eaa4ccd2` | 102 | yes |
+| C0a `654d357c` | 223 | yes |
+| C0b `38235de2` | 172 | yes (whole-file `.agent/**` mirror, DECISION F104 D1 exempt anyway) |
+| C1 `f4286bb0` | 12 | yes |
+| C2 `27111317` | 3 | yes |
+| C3 `86bc9444` | 12 (11 README.md + 1 STATUS.md) | yes |
+| C4 `e487af65` | 1 | yes |
+
+**G7 THE PR** — cannot be measured at a commit at or before C5: the
+bundle orders `gh pr create` strictly AFTER C5 and its push (constraint
+10), so no PR exists yet when this file is written. See the Pull request
+section below for the declared deviation and the PLANNED title/base/head;
+the real number, URL and `gh pr view` confirmation are reported in this
+round's session output, not in this committed file. `gh pr merge` will
+**not** be invoked this round regardless of `gh pr create`'s outcome.
 
 ## Authored-text proofs
 
-- `.agent/authored/f110-r18.md` vs `.agent/last_block.md`: byte-identical,
-  sha256 `52eb4f51244388d798b2f5fb4cee2c7afad3baf7610b9f402fa043b3d5c24eef`
+- `.agent/authored/f110-r19.md` vs `.agent/last_block.md`: byte-identical,
+  sha256 `281d8b3f2a30765e7bd3326e7d3e91255c1f4d874b747941ff9bddf7a0020936`
   on both — confirmed disk-to-disk.
-- PLAN18, RECORD18, PAIR1_FROM, PAIR1_TO, PAIR2_FROM, PAIR2_TO and
-  BUILTSTATE were all extracted programmatically from the COMMITTED
-  `.agent/authored/f110-r18.md` (never retyped, never taken from the
-  prompt directly) via marker-delimited byte-offset extraction. RECORD18
-  measured exactly 3221 bytes with 0 internal newlines, matching the
-  block's own stated figure; BUILTSTATE measured 5593 bytes and was
-  confirmed to already end with its own trailing newline, also matching
-  the block's own stated handling (no extra newline added after it).
+- PLAN19, RECORD19, STATUS_PAIR_FROM, STATUS_PAIR_TO, README_PAIR_FROM,
+  README_PAIR_TO, QUEUE_PAIR_FROM and QUEUE_PAIR_TO were all extracted
+  programmatically from the COMMITTED `.agent/authored/f110-r19.md`
+  (never retyped, never taken from the prompt directly) via
+  marker-delimited byte-offset extraction. RECORD19 measured exactly
+  2974 bytes via UTF-8 encoding with 0 internal newlines, matching the
+  block's own stated figure (byte length differs from Python `len()`
+  character count of 2964 because the text carries non-ASCII em-dash
+  characters — the extraction script measured via `.encode('utf-8')`,
+  not character count).
+
+## Deviations & assumptions
+
+- None from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4 ran
+  exactly in the bundle's declared order, followed by C5.
+- Nine transient scratch files were created under `.agent/` to perform
+  the byte-exact marker extraction and the STATUS/README/queue edits
+  programmatically (`_extract_r19.py`, `_slices_r19.json`,
+  `_apply_plan.py`, `_count_plan.py`, `_count_ledger_before.py`,
+  `_apply_record19.py`, `_verify_record19.py`, `_apply_c3.py`,
+  `_apply_c4.py`). All nine were deleted by exact path after C4 and
+  before C5's `git status --porcelain` reading, which was confirmed
+  EMPTY. None of the nine appears in any commit's changed-files list.
+- A discrepancy was observed between the transient `git commit` summary
+  line printed at commit time (for C0b and C1 only) and the figures
+  `git show --numstat` / `git log --stat` consistently reproduce for the
+  same two commits afterward. The commit-time messages showed
+  223/-304 for C0b and 34/-39 for C1; every subsequent independent
+  re-measurement (`git show --numstat`, `git show --stat`, `git log -1
+  --stat`, `git log -1 --numstat`, run multiple times) gives 172/-253
+  and 12/-17 respectively. Both commits were, either way, well under the
+  500-line cap and C0b is DECISION F104 D1 exempt regardless. This
+  handback reports the reproducible `git show --numstat` figures as
+  authoritative, per the "count mechanically" convention, and flags the
+  transient discrepancy rather than silently picking one number.
+- R-0418-class deviation: G7 (the PR gate) and the PR number/URL cannot
+  be reported inside this committed handback, because constraint 10
+  orders `gh pr create` to run strictly after C5 and its push, and C5 is
+  the last commit in the bundle's own declared order. This file states
+  the PR as PLANNED (title, base, head) and declares the value is
+  unmeetable at write time rather than inventing a number; the actual PR
+  number/URL/`gh pr view` output is reported in this round's session
+  output after `gh pr create` runs, per the write-once rule for
+  `.agent/handoff.md` (no second commit to this file).
+- The PR body's Test plan bullets restate round 15-18 evidence (the
+  Tier-3 integration gate, `remedy integrity check`, the review zip, the
+  F257 self-use precondition) that this round did not re-run; those
+  values are carried forward from the prior rounds' own ledger entries
+  and PLAN19/RECORD19, not re-measured by round 19 itself, which is
+  bookkeeping-only per its own bundle (no `.py` file under
+  packages/apps/tests touched, constraint 9).
 
 ## Item status
 
@@ -159,51 +206,48 @@ only):
 | C0b (mirror) | done | |
 | C1 (plan replacement) | done | |
 | C2 (ledger append) | done | |
-| C3 (feature file: two AS BUILT pairs + Built State append) | done | one commit |
+| C3 (STATUS_PAIR + README_PAIR, one commit) | done | |
+| C4 (QUEUE_PAIR) | done | |
 | Constraint 1 (STOP check x2) | done | absent both times |
-| Constraint 6 (no new finding id/decision/prose-slip) | done | |
-| Constraint 8 (no ruff/npm/formatter) | done | no `.py` file under packages/apps/tests written by this round's own commits |
-| G1-G5 | done | all reported above with real exit codes |
-| C4 (handback) | done | this document |
+| Constraint 6 (STATUS.md FROM=1, applied text confirmed) | done | |
+| Constraint 7 (README.md FROM=1) | done | |
+| Constraint 8 (queue FROM=1, JSON valid, item count unchanged) | done | |
+| Constraint 9 (no ruff/npm/formatter) | done | no `.py` file under packages/apps/tests written by this round's own commits |
+| G1-G6 | done | all reported above with real exit codes |
+| G7 (PR) | deviated | real PR number/URL cannot be known before C5 is committed (constraint 10 orders PR creation after C5); reported in this round's session output instead — see Deviations |
+| C5 (handback) | done | this document |
 
-## Deviations & assumptions
+## Pull request
 
-- None from the ordered commit sequence: C0a, C0b, C1, C2, C3 ran exactly
-  in the bundle's declared order, followed by C4.
-- Byte-precise slice extraction required treating RECORD18 and the two
-  FROM/TO pairs as stripped of the newline immediately preceding their
-  `<<<END X>>>` marker (matching the block's own explicit byte counts, e.g.
-  RECORD18 = 3221), while BUILTSTATE was extracted WITH that trailing
-  newline retained, per the block's explicit statement that "BUILTSTATE
-  itself already ends with its own trailing newline". Both extraction
-  conventions were verified against the block's own stated numbers before
-  being applied, not assumed.
-- Transient scratch files (`.agent/_extract_slices.py` and seven
-  `.agent/_slice_*.txt` files) were created to perform the byte-exact
-  extraction and deleted by exact path immediately after use, before any
-  `git status --porcelain` reading was taken for a gate. They were never
-  staged, never committed, and do not appear in the change set.
+Title: `F110 — Model routing by task class`, body per PR_CONTENT in
+`.agent/authored/f110-r19.md`, base `main`, head
+`feature/f110-model-routing-by-task-class`.
+
+**Declared deviation (R-0418 class — an instruction ordering a value that
+cannot exist at the moment the text is written):** constraint 10 orders
+`gh pr create` to run strictly AFTER C5 (this handback commit) and its
+push, and the bundle's own commit order lists C5 as the last commit. The
+real PR number, URL and `gh pr view` confirmation therefore cannot be
+known at the moment this file is authored and committed — inventing one
+here would be exactly the fabrication the R-0418 precedent in
+`scripts/self_use_queue.json` (SU-005/SU-006) warns against. Per that
+precedent's stated fix ("the worker did the right thing: it declared the
+deviation and invented nothing"), this section states the PR's
+title/base/head as PLANNED and leaves the actual number/URL/`gh pr view`
+output to be reported in this round's session output after C5 is pushed
+and `gh pr create` actually runs — not by a second write to this
+write-once file. **F110's LAST ROUND. THE PR IS UNMERGED, AWAITING THE
+OPEN PR GATE** — merging happens at the next session's Phase 0 Open PR
+Gate, never in this session.
 
 ## Next
 
 Open findings: **278** (UNCHANGED — no new id was minted this round).
 
-Round 17 already built the closure evidence bundle and review zip; round
-19 does not rebuild it. Closure values carried forward unchanged from
-round 17:
+Next expected action: the next session's Phase 0 finds this open,
+non-draft PR from `feature/f110-model-routing-by-task-class` into
+`main` and merges it at the Open PR Gate before claiming a new feature.
 
-| Field | Value |
-|-------|-------|
-| Evidence job | `f110-closure` |
-| package | `remedy-review-20260903-181544-READY_FOR_REVIEW.zip` |
-| SHA-256 | `767304077110354d0005b2f6c70cd53502b831c4161be6a5f6a65a31c136457b` |
-| package path | `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260903-181544-READY_FOR_REVIEW.zip` |
-| accepted HEAD | `953cade0f62b2687d7dafb5cf1e0b9631849b532` |
-
-Next expected action: **Round 19** — the closure commit: the authored
-STATUS `[x]` line and the README capability sync in the SAME commit,
-`SU-006`'s `consumed_by` set to `F110`, and the pull request.
-
-SESSION 7 spent this round (round 18) and ends here with this handback.
-F110 stands at 18 rounds against the 25-round soft limit; not reached, no
-scope report owed.
+SESSION 7 spent this round (round 19) and ends here with this handback.
+F110 stands at 19 rounds against the 25-round soft limit; not reached.
+F110 is now CLOSED as a build feature — round 19 is its last.
