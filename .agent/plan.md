@@ -14,34 +14,36 @@ session only, proven sends only".
 
 ## Current Step
 
-Round 8, session 2 — book round 7's PASS verdict, register `R-0771` and
-fix it. A resume FALLBACK is not a resumed session, yet the loop re-sent
-the prompt composed for the resumed one, markers and all, into a session
-that never received the originals, and then recorded that deduped
-manifest as what was sent. Both roles recompose at full content inside
-the fallback branch and rebind the composed prompt, so the sent bytes,
-the stored fallback prompt and the recorded evidence agree. The stale
-"no caller exists yet" claim in the transform's docstring is retired in
-the same commit.
+Round 9, session 2 — a REPAIR round. Round 8 is booked FAIL: its
+`R-0771` fix added a second, correct composition site and turned two
+arity guards in `tests/orchestration/test_prompt_trace.py` red, which the
+round's gate list never ran. `R-0771` resolves, `R-0772` is registered
+for the red suite and repaired by rescoping both guards to the real shape
+— one primary composition and one fallback recomposition. On top of that,
+`ComposedPrompt` gains a `deduped_names` field so a composed prompt
+reports which segments it replaced. The manifest ROW keys stay closed.
 
 ## Next Steps
 
-- Record the deduped segments in the manifest so evidence shows what the
-  model did NOT receive again, and plumb the config kill switch through to
-  `dedupe_enabled` (T002c).
+- The config kill switch: a `run_pingpong` parameter forwarded to both
+  compose calls as `dedupe_enabled`, proven by a resumed chain in which
+  only the flag changed the outcome.
+- Surface the deduped names into the prompt trace, answering the
+  `schema_v` question on its own evidence. The manifest row keys stay
+  closed: the `call_segments` table in `token_ledger.py` mirrors them
+  column for column, so widening them is a token-ledger change.
 - The measurement fixture on a resumed fixture chain, with the savings
   recorded, plus the docs (T003).
 - The integration gate, then the closure sequence.
 
 ## Risks
 
-- The parse-retry and post-mortem provider calls are still NOT wired into
-  the index. That records strictly less than was sent, which errs in the
-  safe direction; nothing may assume the index is complete.
+- A suite that no round gate names can go red without anyone seeing it.
+  Every block from here names the suites its change set can REACH, not
+  only the ones it expects to move.
 - The prompt TRACE entry is written before the provider call, so on a
-  fallback it describes the resumed composition rather than the full one
-  actually sent. The repair above fixes the sent bytes and the recorded
-  manifest; the trace ordering is untouched and belongs with T002c's
-  evidence work.
+  resume fallback it describes the abandoned resumed composition rather
+  than the full one actually sent. The bytes sent and the recorded
+  manifest were both repaired by `R-0771`; the trace ordering was not.
 - `R-0769` is registered, not fixed: its repair edits `README.md` and a
   docs test, neither of which F109 owns.
