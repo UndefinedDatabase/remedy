@@ -82,6 +82,8 @@ from packages.orchestration.model_routing import (
     OVERRIDE_VIOLATION_RULE_NAMES,
     PROMOTION_EVIDENCE_COMPOUND_FIELD_SEPARATOR,
     PROMOTION_EVIDENCE_DOCUMENT_FIELDS,
+    PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES,
+    PROMOTION_EVIDENCE_NESTED_FIELD,
     PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE,
     PROMOTION_MINIMUM_OVERALL_PASS_RATE,
     PROMOTION_MINIMUM_RUNS_PER_FIXTURE,
@@ -118,6 +120,7 @@ from packages.orchestration.model_routing import (
     is_task_class_promotion,
     model_tier_rank,
     normalize_task_class,
+    promotion_evidence_from_mapping,
     resolve_role_task_class,
     resolve_task_class_tier,
     resolve_task_class_tier_with_overrides,
@@ -1905,3 +1908,197 @@ class TestTheUndeclaredRolePathWarnsAndAnswersConservatively:
         with pytest.warns(UserWarning, match="Unknown role"):
             resolved = resolve_role_config(UNDECLARED_ROLE)
         assert resolved.role == UNDECLARED_ROLE
+
+
+# ---------------------------------------------------------------------------
+# F110 R12 — the PURE parser that turns a raw config table into records
+# ---------------------------------------------------------------------------
+# NOTHING IN PRODUCTION CALLS promotion_evidence_from_mapping YET, deliberately:
+# the schema is pinned a round before its reader (see the module's own
+# docstring). These tests are therefore the only caller, which is exactly why the
+# last class below feeds the parser's output to the REAL builder rather than
+# stopping at the record's shape.
+
+#: The two readings the fixture run reports, comfortably ABOVE both bars so this
+#: file's boundary cases stay the only ones that sit on them. Built as the RECORD
+#: and handed to the parser as ``dataclasses.asdict`` of it, so the raw table's
+#: keys are the record's own field names and no spelling is invented here.
+_FIXTURE_ASSERTION_RESULTS = PromotionAssertionResults(
+    block_level_pass_rate=PROMOTION_MINIMUM_BLOCK_ASSERTION_PASS_RATE + 2,
+    overall_pass_rate=PROMOTION_MINIMUM_OVERALL_PASS_RATE + 6,
+)
+
+#: A COMPLETE record that clears every bar, as the parser's own return type.
+_FIXTURE_EVIDENCE = PromotionEvidence(
+    model_id="qwen3-8b-instruct",
+    quantization="q4_k_m",
+    prompt_hash="0f1e2d3c4b5a6978",
+    tokens=1234,
+    cost=0.42,
+    assertion_results=_FIXTURE_ASSERTION_RESULTS,
+    reviewer_verdict="pass",
+    runs_per_fixture=PROMOTION_MINIMUM_RUNS_PER_FIXTURE,
+    corpus="F082",
+)
+
+#: A seeded class that is NOT the promotable one, used as the malformed sibling
+#: so per-entry skipping is shown rather than asserted.
+MALFORMED_ENTRY_CLASS = sorted(set(TASK_CLASS_TIERS) - {PROMOTABLE_CLASS})[0]
+
+
+def _raw_evidence_entry(**overrides) -> dict[str, object]:
+    """Return ``_FIXTURE_EVIDENCE`` as the RAW mapping a config table produces.
+
+    Every key is read from the module's own field declarations, so a renamed
+    field moves this fixture instead of leaving a test asserting a dead spelling.
+    """
+    entry: dict[str, object] = {
+        name: getattr(_FIXTURE_EVIDENCE, name)
+        for name in PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES
+    }
+    entry[PROMOTION_EVIDENCE_NESTED_FIELD] = dataclasses.asdict(
+        _FIXTURE_ASSERTION_RESULTS
+    )
+    entry.update(overrides)
+    return entry
+
+
+class TestThePromotionEvidenceParserRoundTripsACompleteRecord:
+    """Every field the mapping carried comes back, the nested table included."""
+
+    def test_the_declared_field_types_cover_every_field_but_the_nested_one(self):
+        record_fields = {f.name for f in dataclasses.fields(PromotionEvidence)}
+        assert PROMOTION_EVIDENCE_NESTED_FIELD in record_fields
+        assert PROMOTION_EVIDENCE_NESTED_FIELD in PROMOTION_EVIDENCE_DOCUMENT_FIELDS
+        assert set(PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES) == (
+            record_fields - {PROMOTION_EVIDENCE_NESTED_FIELD}
+        )
+
+    def test_every_scalar_field_comes_back_with_the_value_the_mapping_carried(self):
+        raw = _raw_evidence_entry()
+        parsed = promotion_evidence_from_mapping({PROMOTABLE_CLASS: raw})
+        record = parsed[PROMOTABLE_CLASS]
+        for name in PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES:
+            assert getattr(record, name) == raw[name], name
+
+    def test_the_nested_table_comes_back_as_the_record_type_with_both_readings(self):
+        raw = _raw_evidence_entry()
+        record = promotion_evidence_from_mapping({PROMOTABLE_CLASS: raw})[
+            PROMOTABLE_CLASS
+        ]
+        results = record.assertion_results
+        assert isinstance(results, PromotionAssertionResults)
+        for name, reading in raw[PROMOTION_EVIDENCE_NESTED_FIELD].items():
+            assert getattr(results, name) == reading, name
+
+    def test_the_whole_record_equals_the_one_the_mapping_describes(self):
+        parsed = promotion_evidence_from_mapping({PROMOTABLE_CLASS: _raw_evidence_entry()})
+        assert parsed == {PROMOTABLE_CLASS: _FIXTURE_EVIDENCE}
+
+    def test_the_class_key_is_normalized_exactly_as_an_override_key_is(self):
+        spelled = PROMOTABLE_CLASS.replace("_", " ").title()
+        parsed = promotion_evidence_from_mapping({spelled: _raw_evidence_entry()})
+        assert set(parsed) == {normalize_task_class(spelled)}
+        assert normalize_task_class(spelled) == PROMOTABLE_CLASS
+
+
+class TestThePromotionEvidenceParserSkipsWhatItCannotRead:
+    """SKIPPING IS PER ENTRY, so a well-formed sibling in the SAME mapping survives.
+
+    A missing record fails CLOSED: the promotion it would have licensed is
+    refused by ``check_promotion_backed_by_evidence`` and the class keeps its
+    seeded, stronger tier. That is the opposite direction from a malformed
+    OVERRIDE, which is refused loudly because dropping it would leave the
+    operator believing a re-tier took effect.
+    """
+
+    @pytest.mark.parametrize(
+        "label, entry",
+        [
+            ("not a mapping", MODEL_TIERS[0]),
+            (
+                "assertion_results is a scalar",
+                _raw_evidence_entry(**{PROMOTION_EVIDENCE_NESTED_FIELD: 7}),
+            ),
+            ("a wrong-typed field", _raw_evidence_entry(tokens="lots")),
+        ],
+    )
+    def test_the_malformed_entry_produces_no_record(self, label, entry):
+        parsed = promotion_evidence_from_mapping({MALFORMED_ENTRY_CLASS: entry})
+        assert parsed == {}, label
+
+    @pytest.mark.parametrize(
+        "label, entry",
+        [
+            ("not a mapping", MODEL_TIERS[0]),
+            (
+                "assertion_results is a scalar",
+                _raw_evidence_entry(**{PROMOTION_EVIDENCE_NESTED_FIELD: 7}),
+            ),
+            ("a wrong-typed field", _raw_evidence_entry(tokens="lots")),
+        ],
+    )
+    def test_a_well_formed_sibling_in_the_same_mapping_still_produces_one(
+        self, label, entry
+    ):
+        parsed = promotion_evidence_from_mapping(
+            {MALFORMED_ENTRY_CLASS: entry, PROMOTABLE_CLASS: _raw_evidence_entry()}
+        )
+        assert set(parsed) == {PROMOTABLE_CLASS}, label
+        assert parsed[PROMOTABLE_CLASS] == _FIXTURE_EVIDENCE
+
+    def test_an_absent_field_is_not_a_fault_and_stays_unset_on_the_record(self):
+        # An ABSENT field is a different state from a malformed one: it is what
+        # RULE_PROMOTION_EVIDENCE_INCOMPLETE exists to report, so the record is
+        # built and the completeness check gets to see it.
+        raw = _raw_evidence_entry()
+        del raw["prompt_hash"]
+        record = promotion_evidence_from_mapping({PROMOTABLE_CLASS: raw})[
+            PROMOTABLE_CLASS
+        ]
+        assert record.prompt_hash is None
+        assert check_promotion_backed_by_evidence(
+            PROMOTABLE_CLASS, PROMOTED_TIER, record
+        ) == RULE_PROMOTION_EVIDENCE_INCOMPLETE
+
+
+class TestTheParsedRecordLicensesARealPromotion:
+    """The parser's output is fed to the REAL builder, not merely inspected.
+
+    Without this class the parser is a shape exercise: it would be possible to
+    produce a record that satisfies every field assertion above and still fails
+    to discharge the promotion rule the record exists for.
+    """
+
+    def test_the_promotion_is_accepted_and_routed_with_what_promoted_it(self):
+        parsed = promotion_evidence_from_mapping(
+            {PROMOTABLE_CLASS: _raw_evidence_entry()}
+        )
+        effective = build_effective_task_class_tiers(
+            {PROMOTABLE_CLASS: PROMOTED_TIER}, promotion_evidence=parsed
+        )
+        assert effective[PROMOTABLE_CLASS] == PROMOTED_TIER
+        recorded = routed_call_evidence_fields(PROMOTABLE_CLASS, effective, parsed)
+        assert recorded["tier"] == PROMOTED_TIER
+        assert recorded["reason"] == OVERRIDE_REASON
+        assert recorded["promoted_by"] is not None
+
+    def test_the_same_map_with_an_empty_evidence_mapping_is_refused(self):
+        with pytest.raises(OverrideRefused) as caught:
+            build_effective_task_class_tiers(
+                {PROMOTABLE_CLASS: PROMOTED_TIER}, promotion_evidence={}
+            )
+        assert _rule_names(caught.value.violations) == [RULE_PROMOTION_WITHOUT_EVIDENCE]
+
+    def test_a_map_whose_only_evidence_entry_was_skipped_is_refused_the_same_way(self):
+        # The two paths meet here: a malformed record and no record at all are
+        # the SAME refusal, which is what "fails closed" means in practice.
+        parsed = promotion_evidence_from_mapping(
+            {PROMOTABLE_CLASS: _raw_evidence_entry(tokens="lots")}
+        )
+        assert parsed == {}
+        with pytest.raises(OverrideRefused) as caught:
+            build_effective_task_class_tiers(
+                {PROMOTABLE_CLASS: PROMOTED_TIER}, promotion_evidence=parsed
+            )
+        assert _rule_names(caught.value.violations) == [RULE_PROMOTION_WITHOUT_EVIDENCE]

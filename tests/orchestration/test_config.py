@@ -25,7 +25,13 @@ from packages.orchestration.config import (
     write_toml_template,
 )
 from packages.orchestration.model_aliases import resolve_model_alias
-from packages.orchestration.model_routing import MODEL_TIERS, TASK_CLASS_TIERS
+from packages.orchestration.model_routing import (
+    MODEL_TIERS,
+    PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES,
+    PROMOTION_EVIDENCE_NESTED_FIELD,
+    TASK_CLASS_TIERS,
+    PromotionAssertionResults,
+)
 from packages.orchestration.role_config import TASK_CLASS_TIERS_CONFIG_KEY
 
 
@@ -699,3 +705,178 @@ class TestTableValuedKeyShapeValidation:
         )
         found = validate_config(config)
         assert any(TASK_CLASS_TIERS_CONFIG_KEY in warning for warning in found), found
+
+
+#: F110 R12's key: a table whose every ENTRY is itself a table. SPELLED HERE and
+#: nowhere else in this file, because the constant that will name it for readers
+#: — the sibling of ``role_config.TASK_CLASS_TIERS_CONFIG_KEY`` — arrives with
+#: the wiring round, and nothing reads the key yet. Until it does,
+#: ``test_the_key_is_registered`` below is what keeps this literal honest: a
+#: rename in the registry turns it red rather than leaving it asserting a dead
+#: string.
+PROMOTION_EVIDENCE_CONFIG_KEY = "model_routing.promotion_evidence"
+
+#: One value per declared entry-field TYPE, keyed by the type
+#: ``model_routing`` declares rather than by field name, so a field that changes
+#: type gets a value of the new type instead of a silently wrong literal.
+_EVIDENCE_FIELD_VALUES: dict[type, object] = {str: "measured", int: 1234, float: 0.42}
+
+#: The reading written into both fields of the nested assertion-results table.
+#: Any int does: config.py checks SHAPE, and whether a rate clears a promotion
+#: bar is model_routing's question, never this layer's.
+_ASSERTION_READING = 90
+
+
+def _toml_literal(value: object) -> str:
+    return f'"{value}"' if isinstance(value, str) else repr(value)
+
+
+def _promotion_evidence_record() -> dict[str, object]:
+    """Return ONE well-formed evidence record as the mapping TOML would produce.
+
+    Every field name is read from ``model_routing``'s own declarations, and the
+    nested table's two readings from ``PromotionAssertionResults`` itself, so a
+    rename there moves this fixture rather than leaving it passing against a
+    dead spelling.
+    """
+    record: dict[str, object] = {
+        name: _EVIDENCE_FIELD_VALUES[entry_type]
+        for name, entry_type in PROMOTION_EVIDENCE_ENTRY_FIELD_TYPES.items()
+    }
+    record[PROMOTION_EVIDENCE_NESTED_FIELD] = {
+        name: _ASSERTION_READING
+        for name in PromotionAssertionResults.__dataclass_fields__
+    }
+    return record
+
+
+def _promotion_evidence_toml(task_class: str, record: dict[str, object]) -> str:
+    """Render *record* as the TOML a project would actually write."""
+    prefix = f"remedy.{PROMOTION_EVIDENCE_CONFIG_KEY}.{task_class}"
+    lines = [f"[{prefix}]"]
+    nested = record[PROMOTION_EVIDENCE_NESTED_FIELD]
+    lines += [
+        f"{name} = {_toml_literal(value)}"
+        for name, value in record.items()
+        if name != PROMOTION_EVIDENCE_NESTED_FIELD
+    ]
+    lines.append(f"[{prefix}.{PROMOTION_EVIDENCE_NESTED_FIELD}]")
+    lines += [f"{name} = {_toml_literal(value)}" for name, value in nested.items()]
+    return "\n".join(lines) + "\n"
+
+
+class TestThePromotionEvidenceTableResolvesWhole:
+    """F110 R12: a table of RECORDS, registered but not yet read by anything.
+
+    Registering the key is by itself what stops ``_flatten_toml`` recursing into
+    it, so the NESTED sub-table survives as part of one value instead of becoming
+    one unregistered dotted key per reading.
+    """
+
+    def test_the_key_is_registered_as_a_table_of_records(self):
+        spec = get_key_spec(PROMOTION_EVIDENCE_CONFIG_KEY)
+        assert spec is not None
+        assert spec.value_type is dict
+        assert spec.entry_type is dict
+        assert PROMOTION_EVIDENCE_CONFIG_KEY in _TABLE_VALUED_KEYS
+
+    def test_the_nested_record_resolves_whole_with_no_load_warning(self, tmp_path):
+        task_class = sorted(TASK_CLASS_TIERS)[0]
+        record = _promotion_evidence_record()
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text(_promotion_evidence_toml(task_class, record))
+        config = load_config(
+            project_path=toml_file,
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        assert config.get(PROMOTION_EVIDENCE_CONFIG_KEY) == {task_class: record}
+        assert config.get_source(PROMOTION_EVIDENCE_CONFIG_KEY) == ConfigSource.PROJECT
+        # Not one "Unknown key in ..." diagnostic per reading, which is what an
+        # unregistered key produces for a config that is perfectly well formed.
+        assert config.load_report.warnings == []
+
+    def test_an_unset_table_resolves_to_none(self):
+        config = load_config(
+            project_path=Path("/nonexistent/project.toml"),
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        assert config.get(PROMOTION_EVIDENCE_CONFIG_KEY) is None
+        assert config.get_source(PROMOTION_EVIDENCE_CONFIG_KEY) == ConfigSource.DEFAULT
+
+
+class TestTheDeclaredEntryTypeDiscriminatesBetweenTheTwoTables:
+    """``entry_type`` is a PER-KEY declaration, not a switch that disables a check.
+
+    One shape rule cannot serve both keys: a sub-table entry is exactly what an
+    evidence record IS and exactly what a tiers entry may never be. Before this
+    declaration existed the single "entries are strings" rule reported a
+    well-formed evidence table as a fault.
+    """
+
+    def test_a_well_formed_evidence_table_is_reported_silently(self, tmp_path):
+        task_class = sorted(TASK_CLASS_TIERS)[0]
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text(
+            _promotion_evidence_toml(task_class, _promotion_evidence_record())
+        )
+        config = load_config(
+            project_path=toml_file,
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        assert validate_config(config) == []
+
+    def test_an_evidence_entry_that_is_a_scalar_is_reported(self):
+        # A record is a TABLE; a bare tier string where one belongs is a shape
+        # fault even though the same string is a perfectly good TIERS entry.
+        task_class = sorted(TASK_CLASS_TIERS)[0]
+        spec = get_key_spec(PROMOTION_EVIDENCE_CONFIG_KEY)
+        config = RemedyConfig(
+            values={
+                spec.key: ConfigValue(
+                    key=spec.key,
+                    value={task_class: MODEL_TIERS[0]},
+                    source=ConfigSource.PROJECT,
+                )
+            }
+        )
+        found = validate_config(config)
+        assert any(
+            PROMOTION_EVIDENCE_CONFIG_KEY in warning and task_class in warning
+            for warning in found
+        ), found
+
+    def test_the_tiers_key_still_reports_a_sub_table_entry(self, tmp_path):
+        # THE DISCRIMINATOR, and the reason this is one test and not two: the
+        # SAME shape — a sub-table — is well formed under one key and a fault
+        # under the other, in ONE loaded config.
+        task_class = sorted(TASK_CLASS_TIERS)[0]
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text(
+            _promotion_evidence_toml(task_class, _promotion_evidence_record())
+            + f"[remedy.{TASK_CLASS_TIERS_CONFIG_KEY}.{task_class}]\n"
+            + f"tier = {_toml_literal(MODEL_TIERS[0])}\n"
+        )
+        config = load_config(
+            project_path=toml_file,
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        found = validate_config(config)
+        assert [w for w in found if TASK_CLASS_TIERS_CONFIG_KEY in w], found
+        assert [w for w in found if PROMOTION_EVIDENCE_CONFIG_KEY in w] == [], found
+
+    def test_the_tiers_key_still_reports_a_non_string_scalar_entry(self, tmp_path):
+        # Round 10's behaviour, unchanged: entry_type=str still rejects an int.
+        task_class = sorted(TASK_CLASS_TIERS)[0]
+        toml_file = tmp_path / "remedy.toml"
+        toml_file.write_text(
+            f"[remedy.{TASK_CLASS_TIERS_CONFIG_KEY}]\n{task_class} = 3\n"
+        )
+        config = load_config(
+            project_path=toml_file,
+            user_path=Path("/nonexistent/user.toml"),
+        )
+        found = validate_config(config)
+        assert any(
+            TASK_CLASS_TIERS_CONFIG_KEY in warning and task_class in warning
+            for warning in found
+        ), found
