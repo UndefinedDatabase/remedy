@@ -192,6 +192,32 @@ def task_entry_to_planned_task(task: TaskEntry) -> PlannedTask | None:
     )
 
 
+# F112 T003b2b2b1: the reverse of task_entry_to_planned_task, above — turns
+# one split_one_task (DECISION F112 D2) child PlannedTask back into a
+# dispatchable TaskEntry. task_class and source_heading_number are not
+# PlannedTask fields, so the caller (T003b2b2b2's dispatch-loop wiring,
+# DECISION F112 D7) passes the parent task's own values through; every
+# other field is a direct or joined mapping. Not yet called from run_job —
+# T003b2b2b2 is the wiring that calls it.
+def planned_task_to_task_entry(
+    planned: PlannedTask,
+    *,
+    task_class: str = TASK_CLASS_DEFAULT,
+    source_heading_number: int = 0,
+) -> TaskEntry:
+    """Adapt one split-off ``PlannedTask`` back into a dispatchable ``TaskEntry``."""
+    return TaskEntry(
+        task_id=planned.id,
+        source_heading_number=source_heading_number,
+        title=planned.title,
+        task_class=task_class,
+        body=planned.goal,
+        acceptance="\n".join(planned.acceptance),
+        files_hint=list(planned.files_hint),
+        status=TASK_PENDING,
+    )
+
+
 @dataclass
 class TargetGuard:
     """Job-level target repo mutation guard.

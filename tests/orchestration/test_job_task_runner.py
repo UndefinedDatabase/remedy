@@ -37,6 +37,7 @@ from packages.orchestration.pingpong_job import (
     load_job_plan,
     parse_job_file,
     plan_job_from_file,
+    planned_task_to_task_entry,
     run_job,
     save_job_plan,
     task_entry_to_planned_task,
@@ -3340,3 +3341,78 @@ class TestClassBudgetCompiledContextWiring:
             assert kwargs["compiled_context_paths"] is None
             assert kwargs["compiled_context_candidates"] is None
             assert kwargs["compiled_context_token_budget"] is None
+
+
+class TestPlannedTaskToTaskEntryAdapter:
+    """planned_task_to_task_entry (T003b2b2b1, DECISION F112 D7) is the
+    reverse of task_entry_to_planned_task: turns a split_one_task child
+    PlannedTask back into a dispatchable TaskEntry."""
+
+    def test_basic_field_mapping(self):
+        from packages.orchestration.schemas.models import PlannedTask
+
+        planned = PlannedTask(
+            id="T003a",
+            title="Split part 1",
+            goal="Do the first part",
+            acceptance=["First acceptance item"],
+            files_hint=["src/main.py"],
+            est_tokens_band="XL",
+        )
+
+        entry = planned_task_to_task_entry(planned, task_class="format")
+
+        assert entry.task_id == "T003a"
+        assert entry.title == "Split part 1"
+        assert entry.body == "Do the first part"
+        assert entry.acceptance == "First acceptance item"
+        assert entry.files_hint == ["src/main.py"]
+        assert entry.task_class == "format"
+        assert entry.status == TASK_PENDING
+
+    def test_task_class_defaults_to_standard_build(self):
+        from packages.orchestration.pingpong_job import TASK_CLASS_DEFAULT
+        from packages.orchestration.schemas.models import PlannedTask
+
+        planned = PlannedTask(
+            id="T004a", title="x", goal="x", acceptance=["done"],
+            est_tokens_band="XL",
+        )
+
+        entry = planned_task_to_task_entry(planned)
+
+        assert entry.task_class == TASK_CLASS_DEFAULT
+
+    def test_round_trips_through_split_one_task_with_ids_and_class_preserved(self):
+        from packages.orchestration.task_granularity import split_one_task
+
+        parent = TaskEntry(
+            task_id="T005",
+            title="Large task",
+            body="Large task",
+            task_class="format",
+            acceptance="First acceptance item\nSecond acceptance item\nThird acceptance item",
+        )
+        planned = task_entry_to_planned_task(parent)
+        assert planned is not None
+
+        children = split_one_task(planned)
+        assert children is not None
+
+        entries = [
+            planned_task_to_task_entry(
+                child, task_class=parent.task_class,
+                source_heading_number=parent.source_heading_number,
+            )
+            for child in children
+        ]
+
+        assert [e.task_id for e in entries] == ["T005a", "T005b", "T005c"]
+        assert [e.acceptance for e in entries] == [
+            "First acceptance item",
+            "Second acceptance item",
+            "Third acceptance item",
+        ]
+        for e in entries:
+            assert e.task_class == "format"
+            assert e.status == TASK_PENDING
