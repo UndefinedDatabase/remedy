@@ -12,16 +12,23 @@ from packages.orchestration import role_config as role_config_module
 from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.model_routing import (
     DYNAMIC_ROLE_MARKER,
+    MODEL_TIERS,
+    ORCHESTRATION_TASK_CLASSES,
+    OVERRIDE_REASON,
+    REVIEWER_WORKER_CLASS_PAIRS,
     ROLE_CONFIG_CALL_SITES,
     ROLE_CONFIG_RESOLVER_NAME,
     ROLE_TASK_CLASSES,
     ROUTED_CALL_EVIDENCE_FIELDS,
+    RULE_ORCHESTRATION_BELOW_TOP_TIER,
+    SAFETY_RELEVANT_CLASSES,
     TASK_CLASS_INHERITING_ROLES,
     TASK_CLASS_TIERS,
     TOP_TIER,
     UNDECLARED_ROLE_TASK_CLASS,
     UNKNOWN_CLASS_REASON,
     OriginatingTaskClassRequired,
+    model_tier_rank,
     resolve_task_class_tier,
     route_role_call,
 )
@@ -30,8 +37,10 @@ from packages.orchestration.role_config import (
     DEFAULT_MODEL,
     DEFAULT_PROVIDER,
     KNOWN_ROLES,
+    TASK_CLASS_TIERS_CONFIG_KEY,
     RoleConfig,
     default_model_for_provider,
+    resolve_effective_task_class_tiers,
     resolve_orchestrator_model,
     resolve_role_config,
 )
@@ -443,3 +452,203 @@ class TestCallSiteInventoryUnmoved:
             cfg = resolve_role_config(role)
             assert cfg.role == role
             assert cfg.routed_call is not None, path
+
+
+# ---------------------------------------------------------------------------
+# F110 R10 — the CONFIGURED override table reaches a routed call
+# ---------------------------------------------------------------------------
+# The two fixtures below DERIVE their role, class and tier from model_routing's
+# own constants instead of spelling them. A spelled pair would still pass after
+# a re-tiering that made it meaningless — the seed table moving is exactly the
+# event these tests exist to survive.
+
+
+def _legally_retierable_role() -> tuple[str, str, str]:
+    """Return ``(role, task_class, target_tier)`` no hard rule protects.
+
+    A DECLARED role whose class is outside :data:`ORCHESTRATION_TASK_CLASSES`,
+    outside every :data:`REVIEWER_WORKER_CLASS_PAIRS` pair and outside
+    :data:`SAFETY_RELEVANT_CLASSES`, moved to a STRONGER tier — stronger, so the
+    move is not a promotion and needs no benchmark evidence.
+    """
+    paired = {name for pair in REVIEWER_WORKER_CLASS_PAIRS for name in pair}
+    for role in sorted(ROLE_TASK_CLASSES):
+        task_class = ROLE_TASK_CLASSES[role]
+        if task_class in ORCHESTRATION_TASK_CLASSES or task_class in paired:
+            continue
+        if task_class in SAFETY_RELEVANT_CLASSES:
+            continue
+        seeded = TASK_CLASS_TIERS[task_class]
+        stronger = [
+            tier for tier in MODEL_TIERS
+            if model_tier_rank(tier) > model_tier_rank(seeded)
+        ]
+        if stronger:
+            return role, task_class, stronger[0]
+    raise AssertionError("no declared role is re-tierable without breaking a rule")
+
+
+def _illegally_demotable_role() -> tuple[str, str, str]:
+    """Return ``(role, task_class, target_tier)`` an ORCHESTRATION rule pins.
+
+    The target is the CHEAPEST tier, so the map breaks
+    :data:`RULE_ORCHESTRATION_BELOW_TOP_TIER` by construction.
+    """
+    for role in sorted(ROLE_TASK_CLASSES):
+        task_class = ROLE_TASK_CLASSES[role]
+        if task_class in ORCHESTRATION_TASK_CLASSES:
+            return role, task_class, MODEL_TIERS[0]
+    raise AssertionError("no declared role carries an orchestration task class")
+
+
+def _configure_override_table(monkeypatch, tmp_path, table) -> None:
+    """Make ``model_routing.task_class_tiers`` answer *table* for this test.
+
+    The table is written as REAL TOML to a pytest ``tmp_path`` and resolved by
+    the REAL ``load_config``, so the precedence chain and the table-valued
+    flatten are exercised rather than stubbed. NOTHING is written to the
+    repository root: a ``remedy.toml`` there would change how every test in the
+    suite resolves configuration.
+
+    Patched at ``packages.orchestration.config.get_config``, the name
+    ``resolve_effective_task_class_tiers`` resolves at CALL time — it imports
+    get_config inside its own body, the idiom this module established.
+    """
+    from packages.orchestration.config import load_config
+
+    toml_file = tmp_path / "remedy.toml"
+    lines = [f"[remedy.{TASK_CLASS_TIERS_CONFIG_KEY}]"]
+    lines += [f'{task_class} = "{tier}"' for task_class, tier in table.items()]
+    toml_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    loaded = load_config(
+        project_path=toml_file,
+        user_path=pathlib.Path("/nonexistent/user.toml"),
+    )
+    monkeypatch.setattr(
+        "packages.orchestration.config.get_config", lambda: loaded
+    )
+
+
+class TestConfigKeyIsRegisteredWhereItIsRead:
+    """The key this module reads is the key config.py registers — pinned."""
+
+    def test_the_config_key_constant_names_a_registered_spec(self):
+        from packages.orchestration.config import get_key_spec
+
+        spec = get_key_spec(TASK_CLASS_TIERS_CONFIG_KEY)
+        assert spec is not None, TASK_CLASS_TIERS_CONFIG_KEY
+        assert spec.value_type is dict
+
+
+class TestEffectiveTaskClassTiers:
+    """The shipped table with the configured overrides laid over it."""
+
+    def test_nothing_configured_returns_the_shipped_table(self):
+        assert resolve_effective_task_class_tiers() == TASK_CLASS_TIERS
+
+    def test_an_explicitly_empty_table_returns_the_shipped_table(
+        self, monkeypatch, tmp_path
+    ):
+        _configure_override_table(monkeypatch, tmp_path, {})
+        assert resolve_effective_task_class_tiers() == TASK_CLASS_TIERS
+
+    def test_a_legal_table_is_laid_over_the_shipped_one(self, monkeypatch, tmp_path):
+        _, task_class, tier = _legally_retierable_role()
+        _configure_override_table(monkeypatch, tmp_path, {task_class: tier})
+        effective = resolve_effective_task_class_tiers()
+        assert effective[task_class] == tier
+        # ...and every OTHER class is untouched: an override is an overlay.
+        for other, seeded in TASK_CLASS_TIERS.items():
+            if other != task_class:
+                assert effective[other] == seeded
+
+
+class TestConfiguredOverrideReachesARoutedCall:
+    """F110's whole point: a project re-tiers a class and the EVIDENCE moves."""
+
+    def test_a_legal_override_reaches_a_routed_call(self, monkeypatch, tmp_path):
+        role, task_class, tier = _legally_retierable_role()
+        seeded_tier, seeded_reason = resolve_task_class_tier(task_class)
+        # THE DISCRIMINATOR: without this, the seed tier could satisfy the
+        # assertions below and the override would prove nothing.
+        assert tier != seeded_tier
+        _configure_override_table(monkeypatch, tmp_path, {task_class: tier})
+        cfg = resolve_role_config(role)
+        assert cfg.routed_call is not None
+        assert cfg.routed_call["task_class"] == task_class
+        assert cfg.routed_call["tier"] == tier
+        assert cfg.routed_call["reason"] == OVERRIDE_REASON
+        assert cfg.routed_call["reason"] != seeded_reason
+
+    def test_an_unconfigured_run_still_records_the_seed_mapping(self):
+        role, task_class, _ = _legally_retierable_role()
+        seeded_tier, seeded_reason = resolve_task_class_tier(task_class)
+        cfg = resolve_role_config(role)
+        assert cfg.routed_call["tier"] == seeded_tier
+        assert cfg.routed_call["reason"] == seeded_reason
+
+
+class TestRefusedOverrideWarnsAndRoutesSeeded:
+    """DECISION F110 D5: the hard rules win by REFUSING, loudly, not silently.
+
+    The rule name is asserted by READING
+    :data:`RULE_ORCHESTRATION_BELOW_TOP_TIER`; a spelled name would freeze a
+    string this suite does not own.
+    """
+
+    def test_an_illegal_override_warns_with_the_rule_named(self, monkeypatch, tmp_path):
+        _, task_class, tier = _illegally_demotable_role()
+        _configure_override_table(monkeypatch, tmp_path, {task_class: tier})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            resolve_effective_task_class_tiers()
+        assert caught, "a refused override map emitted no warning at all"
+        assert all(issubclass(w.category, UserWarning) for w in caught)
+        messages = [str(w.message) for w in caught]
+        assert any(RULE_ORCHESTRATION_BELOW_TOP_TIER in m for m in messages), messages
+        assert any(TASK_CLASS_TIERS_CONFIG_KEY in m for m in messages), messages
+
+    def test_an_illegal_override_routes_against_the_shipped_table(
+        self, monkeypatch, tmp_path
+    ):
+        role, task_class, tier = _illegally_demotable_role()
+        seeded_tier, seeded_reason = resolve_task_class_tier(task_class)
+        assert tier != seeded_tier
+        _configure_override_table(monkeypatch, tmp_path, {task_class: tier})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cfg = resolve_role_config(role)
+        # The override did NOT take effect — seeded tier, seeded reason.
+        assert cfg.routed_call["tier"] == seeded_tier
+        assert cfg.routed_call["reason"] == seeded_reason
+        assert cfg.routed_call["tier"] != tier
+
+    def test_a_refused_table_does_not_break_config_resolution(
+        self, monkeypatch, tmp_path
+    ):
+        # THE ROUND 9 LESSON, ONE LAYER FURTHER OUT: a routing fault must not
+        # become a config-resolution fault.
+        role, task_class, tier = _illegally_demotable_role()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            baseline = resolve_role_config(role)
+            _configure_override_table(monkeypatch, tmp_path, {task_class: tier})
+            refused = resolve_role_config(role)
+        assert refused.provider == baseline.provider
+        assert refused.model == baseline.model
+        assert refused.effort == baseline.effort
+        assert refused.role == baseline.role
+
+    def test_every_declared_role_still_resolves_under_a_refused_table(
+        self, monkeypatch, tmp_path
+    ):
+        _, task_class, tier = _illegally_demotable_role()
+        _configure_override_table(monkeypatch, tmp_path, {task_class: tier})
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for role in sorted(ROLE_TASK_CLASSES):
+                cfg = resolve_role_config(role)
+                assert cfg.routed_call is not None, role
+                assert cfg.routed_call["tier"] == TASK_CLASS_TIERS[
+                    ROLE_TASK_CLASSES[role]
+                ]
