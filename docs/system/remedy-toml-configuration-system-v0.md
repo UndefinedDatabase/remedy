@@ -58,6 +58,7 @@ env var  >  project config  >  user config  >  built-in default
 | `cycles.batch_size` | int | `REMEDY_CYCLES_BATCH_SIZE` | `1` | no |
 | `cycles.verify_command` | string | `REMEDY_CYCLES_VERIFY_COMMAND` | (none) | no |
 | `model_routing.task_class_tiers` | table | (TOML only) | (none) | no |
+| `model_routing.promotion_evidence` | table | (TOML only) | (none) | no |
 
 The table above is not exhaustive — later features added their own keys
 (`scope.*`, `budget.*`, `postmortem.*`). The key registry
@@ -81,12 +82,16 @@ command reports a trimmed number instead of silently honoring it. `cycles.verify
 recorded on every cycle evidence record; a cycle that ran no verification
 records `not_run` and never claims a pass.
 
-### Table-valued keys: `model_routing.task_class_tiers`
+### Table-valued keys: the model-routing tables
 
-Most keys carry a scalar. `model_routing.task_class_tiers` (F110) carries a
+Most keys carry a scalar. The two `model_routing.*` keys (F110) each carry a
 whole TOML sub-table, resolved as **one value** through the same precedence
-chain. It maps a task class to the model tier this project wants that class
-routed to, laid over the shipped seed mapping:
+chain: `task_class_tiers` says which tier a class should be routed to, and
+`promotion_evidence` says which documented benchmark run licenses a move to a
+cheaper one.
+
+`model_routing.task_class_tiers` maps a task class to the model tier this
+project wants that class routed to, laid over the shipped seed mapping:
 
 ```toml
 [remedy.model_routing.task_class_tiers]
@@ -106,6 +111,33 @@ whole**, with the violated rule named in a warning, and the shipped table is
 used instead. Nothing is silently dropped and nothing is partially applied. The
 seed mapping itself lives in `docs/agents/model_routing_policy.md` and in
 `packages/orchestration/model_routing.py`; it is deliberately not restated here.
+
+**The evidence table.** `model_routing.promotion_evidence` is where a project
+writes down the benchmark run that licenses a cheaper tier. Each entry is itself
+a sub-table, keyed by the task class it speaks for, and one of its fields —
+`assertion_results` — is a nested table of its own:
+
+```toml
+[remedy.model_routing.promotion_evidence.architecture]
+model_id = "qwen3-8b-instruct"
+quantization = "q4_k_m"
+prompt_hash = "0f1e2d3c4b5a6978"
+tokens = 41200
+cost = 0.0
+reviewer_verdict = "PASS"
+runs_per_fixture = 5
+corpus = "F082"
+assertion_results = { block_level_pass_rate = 95, overall_pass_rate = 88 }
+```
+
+A record that leaves a field unset, or whose run falls short of the promotion
+bars, licenses nothing: the promotion it would have backed is refused and the
+class keeps its seeded, stronger tier, so a half-filled entry can cost money but
+never quality. The bars themselves — how many runs, and which pass rates — live
+in `docs/agents/model_routing_policy.md` and are deliberately not restated here.
+Evidence discharges the promotion rule and that rule only: the hard rules above
+still win, so no run however well documented can move a class one of them
+protects.
 
 ### TOML file format
 
