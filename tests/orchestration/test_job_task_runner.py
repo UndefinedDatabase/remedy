@@ -37,6 +37,7 @@ from packages.orchestration.pingpong_job import (
     parse_job_file,
     plan_job_from_file,
     run_job,
+    save_job_plan,
     validate_job_task_result,
 )
 from packages.orchestration.pingpong_provider import FakeProvider
@@ -831,6 +832,24 @@ class TestPersistence:
 
     def test_load_nonexistent(self, isolate_data_root):
         assert load_job_plan("nonexistent_id") is None
+
+    def test_metadata_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        job.metadata["escalations"] = [{"decision_id": "D1", "status": "open"}]
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.metadata == {"escalations": [{"decision_id": "D1", "status": "open"}]}
+
+    def test_metadata_defaults_to_an_empty_dict(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.metadata == {}
 
     def test_persist_with_manifests(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
