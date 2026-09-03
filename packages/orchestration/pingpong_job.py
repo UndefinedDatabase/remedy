@@ -125,6 +125,11 @@ class TaskEntry:
     source_heading_number: int = 0  # Original ## Task N number
     title: str = ""
     task_class: str = TASK_CLASS_DEFAULT
+    # F112 T003b2b1: durable per-task answers to escalated decisions this
+    # task raised (e.g. a cannot_fit split-or-proceed choice) — keyed like
+    # Core Job's Task.inputs so escalation.py's answer-recording path
+    # (DECISION F112 D4) works unmodified against either task shape.
+    inputs: dict = field(default_factory=dict)
     body: str = ""
     acceptance: str = ""
     status: str = TASK_PENDING
@@ -658,6 +663,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "source_heading_number": t.source_heading_number,
                 "title": t.title,
                 "task_class": t.task_class,
+                "inputs": t.inputs,
                 "body": t.body,
                 "acceptance": t.acceptance,
                 "status": t.status,
@@ -748,6 +754,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             source_heading_number=t.get("source_heading_number", 0),
             title=t.get("title", ""),
             task_class=t.get("task_class", TASK_CLASS_DEFAULT),
+            inputs=dict(t.get("inputs") or {}),
             body=t.get("body", ""),
             acceptance=t.get("acceptance", ""),
             status=t.get("status", TASK_PENDING),

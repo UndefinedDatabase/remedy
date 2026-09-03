@@ -877,6 +877,25 @@ class TestPersistence:
         from packages.orchestration.pingpong_job import TASK_CLASS_DEFAULT
         assert TASK_CLASS_DEFAULT in TASK_CLASS_TIERS
 
+    def test_inputs_defaults_to_empty_dict(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        assert job.tasks[0].inputs == {}
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].inputs == {}
+
+    def test_inputs_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        job.tasks[0].inputs = {"decision_answers": {"dec-1": "split task"}}
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].inputs == {"decision_answers": {"dec-1": "split task"}}
+
     def test_persist_with_manifests(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         loaded = load_job_plan(result.job_id)
