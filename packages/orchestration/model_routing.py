@@ -1,8 +1,11 @@
 """
 Model routing by task class for Remedy (F110).
 
-Owns the CLASS TABLE and nothing else yet: which model TIER a declared task
-class is routed to. The table is SEEDED from the "Seed mapping" section of
+Owns the CLASS TABLE — which model TIER a declared task class is routed to — and
+the THREE HARD RULES of docs/agents/model_routing_policy.md as named checks, each
+returning ITS OWN rule name when a routing choice violates it. Nothing else yet:
+no config file is read, no model id is named and no call site routes through it.
+The table is SEEDED from the "Seed mapping" section of
 docs/agents/model_routing_policy.md, which remains the human-readable policy.
 tests/orchestration/test_model_routing.py parses that section and asserts the
 parsed mapping EQUALS :data:`TASK_CLASS_TIERS`, so the document and this table
