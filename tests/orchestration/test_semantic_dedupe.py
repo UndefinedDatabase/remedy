@@ -21,7 +21,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from packages.orchestration.pingpong_loop import _dedupe_resumed_segments, run_pingpong
+from packages.orchestration.pingpong_loop import (
+    ReviewFinding,
+    _dedupe_resumed_segments,
+    compose_builder_prompt,
+    compose_reviewer_prompt,
+    run_pingpong,
+)
 from packages.orchestration.pingpong_provider import FakeProvider
 from packages.orchestration.prompt_segments import (
     PromptSegmentRegistry,
@@ -1088,3 +1094,263 @@ class TestDedupeResumedSegments:
         assert dedupe_marker_for_segment("dossier") in composed.text
         assert TRANSFORM_LONG_TEXT not in composed.text
         assert TRANSFORM_SHORT_TEXT in composed.text
+
+
+# ---------------------------------------------------------------------------
+# T002b, second half: THE COMPOSITION SEAM — the two compose functions and the
+# two loop call sites.
+#
+# THE "no tmp_path, no provider and no loop below this line" NOTE ABOVE STOPS
+# HERE, and deliberately so. The golden cases in the class below are still pure,
+# but the last two drive the REAL loop against ``FakeProvider`` in a tmp_path,
+# because the scope rule this whole feature turns on — "resumed session only" —
+# lives at the CALL SITE, and no re-composition can observe a call site. A
+# re-composition asserts what the test itself passed in; only the loop's own
+# recorded prompts say what the loop actually composed.
+#
+# THE FIRST THREE CASES ARE THE FEATURE FILE'S FIRST ACCEPTANCE ITEM: with no
+# dedupe argument, or with ``None``, or with an EMPTY sent set, the composed
+# bytes are exactly what this repository composed before the parameter existed.
+# That is why the default is ``None`` rather than an empty frozenset: ``None``
+# does not call the transform at all, so the bypass is provable and not merely
+# likely.
+
+
+GOLDEN_FINDING = ReviewFinding(
+    id="R-9001",
+    severity="high",
+    file="src/main.py",
+    summary="the greeting has no test",
+    required_fix="add a test for hello()",
+)
+
+GOLDEN_DIFF = (
+    "--- a/src/main.py\n+++ b/src/main.py\n@@ -1,2 +1,2 @@\n"
+    "-def hello():\n+def hello(name):\n"
+)
+
+# THREE SHAPES THAT REALLY DIFFER — findings, safe_diff and round_number all
+# vary, and ``test_the_three_builder_shapes_are_not_the_same_prompt`` below
+# PROVES they differ rather than asserting the goldens over three copies of one
+# prompt, which would pass while proving nothing.
+BUILDER_SHAPES: tuple[dict, ...] = (
+    {"round_number": 1},
+    {"round_number": 2, "findings": [GOLDEN_FINDING], "safe_diff": GOLDEN_DIFF},
+    {
+        "round_number": 7,
+        "findings": [GOLDEN_FINDING],
+        "safe_diff": GOLDEN_DIFF + "@@ -9,1 +9,1 @@\n-old\n+new\n",
+        "test_result": "1 failed, 3 passed",
+        "task_body": "rewrite the greeting so it takes a name",
+        "scope_contract": "Touch only src/main.py.",
+    },
+)
+
+REVIEWER_SHAPES: tuple[dict, ...] = (
+    {},
+    {
+        "safe_diff": GOLDEN_DIFF,
+        "test_result": "1 failed, 3 passed",
+        "prior_findings": [GOLDEN_FINDING],
+        "repair_round": 2,
+        "scope_contract": "Touch only src/main.py.",
+    },
+)
+
+BUILDER_ARGS = ("Fix the greeting", "The repository is remedy.")
+REVIEWER_ARGS = ("Fix the greeting", "I renamed the parameter.")
+
+
+def _sha256_of_marker(name: str) -> str:
+    """The SHIPPED producer's sha256 of ``name``'s marker text.
+
+    Rank is irrelevant to a manifest sha256 — it is taken over the segment TEXT
+    alone — so any rank answers here. Taking the digest from the same producer
+    the index recorded keeps this file free of a second hashing expression that
+    could drift away from the one the feature actually decides on.
+    """
+    spec = (name, SegmentStabilityRank.SYSTEM, dedupe_marker_for_segment(name))
+    return _sha256_by_name(spec)[name]
+
+
+def _names_replaced_by_their_marker(composed) -> list[str]:
+    """Every manifest name whose segment text is EXACTLY that name's marker."""
+    return [
+        str(row["name"])
+        for row in composed.manifest_as_dicts()
+        if str(row["sha256"]) == _sha256_of_marker(str(row["name"]))
+    ]
+
+
+class TestTheComposeSeamBypassesUntilAResumedSessionSaysOtherwise:
+    """The two compose functions, their default, and the loop's own call sites."""
+
+    @pytest.fixture
+    def loop_repo(self, tmp_path: Path, monkeypatch) -> Path:
+        """A demo repo with ``REMEDY_DATA_DIR`` redirected — for the loop cases only.
+
+        Deliberately NOT autouse, so the golden cases above it keep touching no
+        tmp_path and no environment. The repo itself comes from
+        ``TestChainAgainstTheRealLoop._make_repo`` rather than from a second copy
+        of it, and the providers below come from that class's ``_provider_pair``
+        for the same reason: one construction, one place to keep honest.
+        """
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return TestChainAgainstTheRealLoop._make_repo(tmp_path / "demo_repo")
+
+    # -- SPEC L case 1: the builder golden, over three shapes ----------------
+
+    def test_the_three_builder_shapes_are_not_the_same_prompt(self):
+        # THE DISCRIMINATOR FOR THE GOLDEN BELOW. Three shapes that composed the
+        # same bytes would make the byte-equality cases vacuous.
+        texts = [compose_builder_prompt(*BUILDER_ARGS, **shape).text for shape in BUILDER_SHAPES]
+        assert len(set(texts)) == len(BUILDER_SHAPES), [len(text) for text in texts]
+
+    @pytest.mark.parametrize("shape_index", range(len(BUILDER_SHAPES)))
+    def test_the_builder_default_and_an_explicit_none_compose_the_same_bytes(self, shape_index: int):
+        shape = BUILDER_SHAPES[shape_index]
+
+        omitted = compose_builder_prompt(*BUILDER_ARGS, **shape)
+        explicit = compose_builder_prompt(*BUILDER_ARGS, dedupe_sent_hashes=None, **shape)
+
+        assert explicit.text == omitted.text
+        # THE MANIFEST TOO, not only the text: a transform that rewrote names or
+        # ranks while leaving the bytes alone would pass a text-only assertion.
+        assert explicit.manifest == omitted.manifest
+
+    # -- SPEC L case 2: the reviewer golden, over two shapes -----------------
+
+    def test_the_two_reviewer_shapes_are_not_the_same_prompt(self):
+        texts = [compose_reviewer_prompt(*REVIEWER_ARGS, **shape).text for shape in REVIEWER_SHAPES]
+        assert len(set(texts)) == len(REVIEWER_SHAPES), [len(text) for text in texts]
+
+    @pytest.mark.parametrize("shape_index", range(len(REVIEWER_SHAPES)))
+    def test_the_reviewer_default_and_an_explicit_none_compose_the_same_bytes(self, shape_index: int):
+        shape = REVIEWER_SHAPES[shape_index]
+
+        omitted = compose_reviewer_prompt(*REVIEWER_ARGS, **shape)
+        explicit = compose_reviewer_prompt(*REVIEWER_ARGS, dedupe_sent_hashes=None, **shape)
+
+        assert explicit.text == omitted.text
+        assert explicit.manifest == omitted.manifest
+
+    # -- SPEC L case 3: an EMPTY set is not None, so the transform really runs -
+
+    @pytest.mark.parametrize("shape_index", range(len(BUILDER_SHAPES)))
+    def test_an_empty_sent_set_runs_the_transform_and_still_composes_the_same_bytes(
+        self, shape_index: int,
+    ):
+        # THIS IS THE CASE THAT PROVES THE BYPASS IS ABOUT THE DATA. ``None``
+        # skips the transform entirely; ``frozenset()`` walks every segment
+        # through it and must still produce the identical bytes, because nothing
+        # in an empty set can match a hash.
+        shape = BUILDER_SHAPES[shape_index]
+
+        omitted = compose_builder_prompt(*BUILDER_ARGS, **shape)
+        empty_set = compose_builder_prompt(*BUILDER_ARGS, dedupe_sent_hashes=frozenset(), **shape)
+
+        assert empty_set.text == omitted.text
+        assert empty_set.manifest == omitted.manifest
+
+    def test_an_empty_sent_set_composes_the_same_reviewer_bytes_too(self):
+        omitted = compose_reviewer_prompt(*REVIEWER_ARGS, **REVIEWER_SHAPES[1])
+        empty_set = compose_reviewer_prompt(
+            *REVIEWER_ARGS, dedupe_sent_hashes=frozenset(), **REVIEWER_SHAPES[1]
+        )
+
+        assert empty_set.text == omitted.text
+        assert empty_set.manifest == omitted.manifest
+
+    # -- SPEC L case 4: the dedupe actually firing ---------------------------
+
+    def test_a_second_composition_against_its_own_recorded_manifest_carries_markers(self):
+        # END TO END THROUGH THE REAL INDEX: the sent set is not hand-made. The
+        # FIRST composition's own manifest rows are recorded through a real
+        # ``SessionSentIndex.record_call(..., ok=True)`` and read back with
+        # ``sent_hashes``, so a drift between the composer's hashes and the
+        # index's could not land green here.
+        shape = BUILDER_SHAPES[2]
+        first = compose_builder_prompt(*BUILDER_ARGS, **shape)
+        index = SessionSentIndex()
+        index.record_call("sess-compose", first.manifest_as_dicts(), ok=True)
+
+        second = compose_builder_prompt(
+            *BUILDER_ARGS, dedupe_sent_hashes=index.sent_hashes("sess-compose"), **shape
+        )
+
+        replaced = _names_replaced_by_their_marker(second)
+        assert replaced, [str(row["name"]) for row in second.manifest_as_dicts()]
+        # STRICTLY SHORTER — the whole point of the feature, measured rather
+        # than assumed.
+        assert len(second.text) < len(first.text)
+        # NAMES AND RANKS SURVIVE. The manifest shape is what evidence and the
+        # cacheable prefix are keyed on; only text may move.
+        first_rows = first.manifest_as_dicts()
+        second_rows = second.manifest_as_dicts()
+        assert [str(row["name"]) for row in second_rows] == [str(row["name"]) for row in first_rows]
+        assert [int(row["rank"]) for row in second_rows] == [int(row["rank"]) for row in first_rows]
+
+    # -- SPEC L case 5: the kill switch, now at the composition seam ---------
+
+    def test_the_kill_switch_composes_the_no_dedupe_bytes_from_the_same_full_set(self):
+        # THE POSITIVE CONTROL COMES FIRST, so nothing but the flag differs
+        # between the two calls compared below.
+        shape = BUILDER_SHAPES[2]
+        plain = compose_builder_prompt(*BUILDER_ARGS, **shape)
+        index = SessionSentIndex()
+        index.record_call("sess-compose", plain.manifest_as_dicts(), ok=True)
+        sent = index.sent_hashes("sess-compose")
+        assert _names_replaced_by_their_marker(
+            compose_builder_prompt(*BUILDER_ARGS, dedupe_sent_hashes=sent, **shape)
+        )
+
+        disabled = compose_builder_prompt(
+            *BUILDER_ARGS, dedupe_sent_hashes=sent, dedupe_enabled=False, **shape
+        )
+
+        assert disabled.text == plain.text
+        assert disabled.manifest == plain.manifest
+
+    # -- SPEC L case 6: the scope rule at the call site, negative side -------
+
+    def test_a_chain_that_never_resumes_composes_no_marker_anywhere(self, loop_repo: Path):
+        # THE SAFETY PROPERTY OF THIS ROUND, READ OFF THE RUN'S OWN PROMPTS.
+        # Providers that do not advertise resume support leave
+        # ``builder_resume_ref`` and ``reviewer_resume_ref`` None for every
+        # round, so both call sites pass None and no marker can exist.
+        providers = TestChainAgainstTheRealLoop._provider_pair(supports_resume=False)
+
+        result = TestChainAgainstTheRealLoop._run(loop_repo, providers, repair_rounds=2)
+
+        assert result.final_status == "staged_review_passed"
+        assert len(result.rounds) == 2
+        assert result.prompt_traces
+        for trace in result.prompt_traces:
+            # THE ABSENCE IS ONLY AS WIDE AS THE RECORDED TEXT, so the trace is
+            # asserted un-truncated before it is asserted marker-free.
+            assert trace.prompt_text_truncated is False, (trace.role, trace.round)
+            assert "[unchanged: " not in trace.prompt_text_redacted, (trace.role, trace.round)
+
+    # -- SPEC L case 7: the scope rule at the call site, positive side -------
+
+    def test_a_resumed_repair_chain_composes_a_marker_and_still_completes(self, loop_repo: Path):
+        # THE MIRROR OF THE CASE ABOVE, and the one that shows the wiring is
+        # live rather than merely harmless. The pair here advertises resume and
+        # reports session ids, so round 2 resumes and its composition may skip
+        # what round 1 provably delivered to that same session.
+        providers = TestChainAgainstTheRealLoop._provider_pair()
+
+        result = TestChainAgainstTheRealLoop._run(loop_repo, providers, repair_rounds=2)
+
+        assert result.final_status == "staged_review_passed"
+        marked = [
+            (trace.role, trace.round)
+            for trace in result.prompt_traces
+            if "[unchanged: " in trace.prompt_text_redacted
+        ]
+        assert marked, [(trace.role, trace.round) for trace in result.prompt_traces]
+        # RESUMED SESSION ONLY: round 1 can never carry a marker, because there
+        # is nothing proven sent to a session that did not exist yet.
+        assert all(round_number > 1 for _, round_number in marked), marked
