@@ -1,26 +1,25 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 15 (T003 batch 3: tournament.list wiring)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 16 (T003 batch 4: project.list wiring)
 
 ## Session
 
-SESSION 5 of feature F262 · round 15 · rounds so far 15.
+SESSION 6 of feature F262 · round 16 · rounds so far 16.
 
-Round 15 books round 14's PASS verdict (GATE14) into the ledger, and
-continues T003 with its third batch: `tournament.list` is wired to
+Round 16 books round 15's PASS verdict (GATE15) into the ledger, and
+continues T003 with its fourth batch: `project.list` is wired to
 `packages/orchestration/list_options.py`'s `apply_list_options` with
-`default_sort_field="created_at"`. `list_tournament_reports()`'s own
-order (`sorted(root.iterdir())`, an on-disk directory-name order with
-no operational meaning) is exactly the arbitrary-order case
-T2_F262.md's Design section warns against, so forcing newest-first
-unconditionally is correct here — unlike `queue.list`'s DECISION F262
-D2 opt-out, no opt-out was needed. `tournament.list`'s dispatch is a
-direct handler reference (`"tournament.list": _cmd_tournament_list`),
-not a lambda, so only ONE pair (the function body) needed wiring — no
-separate dispatch-lambda pair. One production rewrite, one test file
-touched (append), one commit.
+`default_sort_field="created_at"`. `_list_projects_readonly()` already
+sorts newest-first (covered by `test_list_sorted_newest_first`), so
+forcing the same default via the shared helper changes nothing
+observable and needed no D2-style opt-out. `project.list`'s dispatch
+is a lambda (`"project.list": lambda args: _cmd_list_projects(...)`),
+unlike `tournament.list`'s direct handler reference, so BOTH the
+handler body (PAIR P1) and the dispatch site (PAIR P2) needed wiring —
+two pairs, not one. One production rewrite (two pairs in the same
+file), one test file touched (append of two new tests), one commit.
 
 ## Range
 
-Review of `60fe2ed19ff4f1f8c0c888139cb5ff356175e031..0fc3b66e2cc1301606942ce3ab0c94c9e83bfce6`.
+Review of `095cd91ba42148e3d9773f1d48069f8aaeaeb83c..4c476063f51fae8e9ba3ca258f5fabe48a810bb3`.
 That is C0a through C3 (five content commits before this handback —
 C0a, C0b, C1, C2, C3). This handback (C4) follows and is not part of
 the reviewed content range.
@@ -29,44 +28,49 @@ the reviewed content range.
 
 | Item | Status | Reason |
 |---|---|---|
-| Preconditions | done | HEAD matched `60fe2ed19ff4f1f8c0c888139cb5ff356175e031`, branch matched `feature/f262-list-commands-v2`, tree clean, STOP absent |
-| C0a | done | `.agent/authored/f262-r15.md` saved verbatim, 225 lines |
-| C0b | done | mirrored to `.agent/last_block.md` via `cp`, sha256 `3f3043f01bee72369808de89ae2e4efe755f3570aa7b11fe3d5c9a38e8257fcf` identical to C0a's file (confirmed by `sha256sum` on both files, one digest twice) |
-| C1 | done | GATE14 appended to `.agent/live_review.md` byte-exact (base 2457413 + `\n` + GATE14 2811 bytes = 2460225, confirmed by direct Python byte read after write) |
-| C2 | done | one production rewrite (`apps/cli/commands/tournament_cmd.py`) + one test append (`tests/cli/test_tournament_cli.py`) — two files, one commit; no follow-up fixes needed |
-| C3 | done | PLAN16 applied to `.agent/plan.md`, whole-file replace, verified byte-for-byte equal (2616 == 2616 bytes, binary mode) |
+| Preconditions | done | HEAD matched `095cd91ba42148e3d9773f1d48069f8aaeaeb83c`, branch matched `feature/f262-list-commands-v2`, tree clean, STOP absent |
+| C0a | done | `.agent/authored/f262-r16.md` saved verbatim, 197 lines, 16005 bytes |
+| C0b | done | mirrored to `.agent/last_block.md` via `shutil.copyfile`, sha256 `ca1aaebf4e6024b0a7d98d1faefbc12001bdf0635dc1931c5d7c514213adcc3d` identical to C0a's file (confirmed by `sha256sum` on both files, one digest twice) |
+| C1 | done | GATE15 appended to `.agent/live_review.md` byte-exact (base 2460225 + `\n` + GATE15 2317 bytes = 2462543, confirmed by direct Python byte read before and after write) |
+| C2 | done | PAIR P1 + PAIR P2 rewrite (`apps/cli/commands/project.py`) + TEST T1 append (`tests/test_grouped_cli.py`) — two files, one commit; no follow-up fixes needed |
+| C3 | done | PLAN17 applied to `.agent/plan.md`, whole-file replace, verified byte-for-byte equal (2530 == 2530 bytes, binary mode) |
 | C4 (this handback) | done | |
-| py_compile (2 files) | done | exit 0 (via `python3 -c "import py_compile; ..."` substitution — see Deviations) |
-| pytest, C2's file | done | 10 passed |
-| canary: combined 5-suite invocation | done | 646 passed, unmoved from prior baseline (515+52+21+16+42) |
+| G1 (py_compile, 2 files) | done | printed `OK` via the declared substitution (see Deviations) |
+| G2 (pytest, C2's test file) | done | 525 passed (523 pre-existing + 2 new) |
+| G3 (canary: combined 5-suite invocation) | done | 646 passed, unmoved from prior baseline (515+52+21+16+42) |
+| G4 (sha256sum transport) | done | one identical digest, twice |
+| G5 (live_review.md byte forensics) | done | before 2460225, after 2462543, matching exactly |
+| G6 (plan.md byte-for-byte) | done | 2530 bytes, byte-for-byte equal to PLAN17 |
+| G7 (git status --porcelain, twice) | done | empty before C0a, empty immediately before C4 |
+| G8 (git ls-files .remedy-wt) | done | empty output — nothing tracked under `.remedy-wt/` |
 
 ## Commits
 
-### f48090e000a3f1ee222834b998e8c9b2c9ef358a F262 R15 C0a: save block verbatim to .agent/authored/f262-r15.md
+### 2021dbff4ae3a429c33eb4779f154378172f427e F262 R16 C0a: save step block to .agent/authored/f262-r16.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r15.md` | +225/-0 | transport artifact — verbatim copy of the round's step block, new file |
+| `.agent/authored/f262-r16.md` | +197/-0 | transport artifact — verbatim copy of the round's step block, new file |
 
-### d0b279422e9ebf1a0bfc07a4c76bd03677f30364 F262 R15 C0b: mirror block to .agent/last_block.md
+### bb31aba53befe05436c575adfb86ac7107de1158 F262 R16 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +122/-549 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
+| `.agent/last_block.md` | +151/-179 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
 
-### 04f07b8a17aa1d24b44a13016c33d4f8e0b938aa F262 R15 C1: append GATE14 to live_review.md - books round 14's PASS verdict
+### 6ed533d38b1b083bc940525a7c9806069c15c5b4 F262 R16 C1: append GATE15 to live_review.md - books round 15's PASS verdict
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE14, `\n` + GATE14's own bytes appended to the base file |
+| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE15, `\n` + GATE15's own bytes appended to the base file |
 
-### 9901f718bc624420c9bc517aab95ec2aa2bca183 F262 R15 C2: T003 batch 3 - tournament.list wiring
+### f4b0ec8b8f733def806d6d3c39dd2fc7bdd39316 F262 R16 C2: T003 batch 4 - project.list wiring
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/tournament_cmd.py` | +18/-0 | PAIR P1: `_cmd_tournament_list` gains sort/since/until/limit wiring via `apply_list_options` with `default_sort_field="created_at"` |
-| `tests/cli/test_tournament_cli.py` | +16/-0 | TEST T1 (append: `test_limit_caps_the_report_count`, `test_unknown_sort_field_exits_nonzero`) |
+| `apps/cli/commands/project.py` | +32/-2 | PAIR P1: `_cmd_list_projects` gains sort/since/until/limit params and `apply_list_options` wiring with `default_sort_field="created_at"`; PAIR P2: `"project.list"` dispatch lambda forwards the new flags via `getattr` |
+| `tests/test_grouped_cli.py` | +21/-0 | TEST T1 (append: `test_limit_caps_returned_projects`, `test_unknown_sort_field_exits_nonzero`) |
 
-### 0fc3b66e2cc1301606942ce3ab0c94c9e83bfce6 F262 R15 C3: replace plan.md with PLAN16
+### 4c476063f51fae8e9ba3ca258f5fabe48a810bb3 F262 R16 C3: replace plan.md with PLAN17
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +18/-21 | whole-file replace with PLAN16, byte-for-byte verified |
+| `.agent/plan.md` | +17/-17 | whole-file replace with PLAN17, byte-for-byte verified |
 
 ### (this handback commit, C4)
 | Path | +/- | Reason |
@@ -85,12 +89,12 @@ the reviewed content range.
 
 Preconditions, checked before C0a:
 ```
-$ git rev-parse HEAD
-60fe2ed19ff4f1f8c0c888139cb5ff356175e031
-$ git branch --show-current
-feature/f262-list-commands-v2
 $ git status --porcelain
 (empty)
+$ git branch --show-current
+feature/f262-list-commands-v2
+$ git rev-parse HEAD
+095cd91ba42148e3d9773f1d48069f8aaeaeb83c
 $ ls .agent/STOP
 No such file or directory
 ```
@@ -98,60 +102,66 @@ All four confirmed.
 
 **TRANSPORT** (after C0b):
 ```
-$ sha256sum .agent/authored/f262-r15.md .agent/last_block.md
-3f3043f01bee72369808de89ae2e4efe755f3570aa7b11fe3d5c9a38e8257fcf  .agent/authored/f262-r15.md
-3f3043f01bee72369808de89ae2e4efe755f3570aa7b11fe3d5c9a38e8257fcf  .agent/last_block.md
+$ sha256sum .agent/authored/f262-r16.md .agent/last_block.md
+ca1aaebf4e6024b0a7d98d1faefbc12001bdf0635dc1931c5d7c514213adcc3d  .agent/authored/f262-r16.md
+ca1aaebf4e6024b0a7d98d1faefbc12001bdf0635dc1931c5d7c514213adcc3d  .agent/last_block.md
 ```
 One digest, twice — PASS.
 
-**LEDGER APPEND, GATE14 (live_review.md), byte-forensics**:
+**LEDGER APPEND, GATE15 (live_review.md), byte-forensics**:
 ```
-base size immediately before C1: 2457413 bytes
-GATE14 own byte length: 2811
-GATE14 internal newline count: 0
-base + 1 + GATE14_length = 2460225
-post-C1 file real byte length = 2460225
+base size immediately before C1: 2460225 bytes
+GATE15 own byte length: 2317
+GATE15 internal newline count: 0
+base + 1 + GATE15_length = 2462543
+post-C1 file real byte length = 2462543
 match: True
+file still ends with no trailing newline: confirmed
 ```
-Confirmed by direct Python byte read before and after the write, plus
-`git diff --stat` reading `2 insertions(+), 1 deletion(-)` for
-`live_review.md`, consistent with the prior line losing its "no
-newline at end of file" status and one new single-line region being
-appended.
+Confirmed by direct Python byte read before and after the write
+(`pathlib.Path.write_bytes`, not a shell append), plus `git show
+--numstat 6ed533d3` reading `2  1  .agent/live_review.md`, consistent
+with the prior line losing its "no newline at end of file" status and
+one new single-line region being appended.
 
-**PRODUCTION PAIR, READ AND COUNTED (P1, T1)**:
+**PRODUCTION PAIRS, READ AND COUNTED (P1, P2, T1)**:
 ```
-P1 (tournament_cmd.py, _cmd_tournament_list body): FROM count before 1
-T1 (test_tournament_cli.py, insertion point): FROM count before 1
+P1 (project.py, _cmd_list_projects signature+body): FROM count before 1
+P2 (project.py, "project.list" dispatch lambda): FROM count before 1
+T1 (test_grouped_cli.py, insertion point before class TestJobListCLI): FROM count before 1
 ```
-Both confirmed at exactly 1 occurrence in their target file before
-being applied (constraint 1's re-confirmation, using each file's
-CURRENT on-disk content, read via the Read tool). T1's FROM
-(`test_list_text_shows_per_row`) was also confirmed to be the file's
-own last function (nothing followed it) by reading the file's full
-contents. `sys` was confirmed already imported at module scope in
-`tournament_cmd.py` before applying P1, matching the block's
-BACKGROUND FACTS — no new import of `sys` was added. `json` and
-`run_grouped_cli` were confirmed already imported at module scope in
-`test_tournament_cli.py` before applying T1 — no new imports added
-there either.
+All three confirmed at exactly 1 occurrence in their target file
+before being applied (constraint 4's re-confirmation, using each
+file's CURRENT on-disk content, read via the Read tool). `sys` was
+confirmed already imported at module scope in `project.py` (line 6)
+before applying P1 — no new import of `sys` was added. `json`,
+`StringIO`, and `pytest` were confirmed already imported at module
+scope in `test_grouped_cli.py` before applying T1 — no new imports
+added there either.
 
-Full diff, C2 (`9901f718`), both files, was read in full before
-committing (reproduced in the commit; not repeated here for length).
-Every hunk matched its named PAIR/TEST exactly: no other lines in
-either file were touched — `_cmd_tournament_report`, `_cmd_tournament_show`,
-and `_cmd_tournament_integrity` are all untouched, confirmed by reading
-the full diff. `git show --numstat 9901f718` reads `18 0 apps/cli/
-commands/tournament_cmd.py`, `16 0 tests/cli/test_tournament_cli.py`
-— matching the Commits table above exactly.
+Full diff, C2 (`f4b0ec8b`), both files, was read in full before
+writing this handback (`git show f4b0ec8b -- apps/cli/commands/project.py
+tests/test_grouped_cli.py`). Every hunk matched its named
+PAIR/TEST exactly: no other lines in either file were touched — every
+other handler in `project.py` (`_cmd_create_project`,
+`_cmd_show_project`, `_cmd_attach_project_repo`,
+`_cmd_attach_project_job`, `_cmd_project_context`,
+`_cmd_project_brain`, `_cmd_project_summary`, `_cmd_project_current`,
+`_cmd_project_attach_repo`, `_cmd_project_adopt`) and every other
+dispatch entry are untouched, confirmed by reading the full diff.
+`git show --numstat f4b0ec8b` reads `32  2  apps/cli/commands/
+project.py`, `21  0  tests/test_grouped_cli.py` — matching the Commits
+table above exactly.
 
 ```
-$ python3 -m py_compile apps/cli/commands/tournament_cmd.py tests/cli/test_tournament_cli.py
+$ python3 -m py_compile apps/cli/commands/project.py tests/test_grouped_cli.py
 ```
-This exact invocation was denied by the Bash tool's sandbox permission
-(see Deviations). Substituted with an equivalent check:
+This exact invocation form has been denied by the Bash tool's sandbox
+permission in prior rounds (per the operator's declared known quirk);
+not retried this round, substituted directly with the declared
+equivalent:
 ```
-$ python3 -c "import py_compile; py_compile.compile('apps/cli/commands/tournament_cmd.py', doraise=True); py_compile.compile('tests/cli/test_tournament_cli.py', doraise=True); print('OK')"
+$ python3 -c "import py_compile; py_compile.compile('apps/cli/commands/project.py', doraise=True); py_compile.compile('tests/test_grouped_cli.py', doraise=True); print('OK')"
 OK
 ```
 `doraise=True` means any `SyntaxError` would have raised and been
@@ -163,34 +173,68 @@ known and constraint 3 treats it as a non-blocker either way.
 
 **PYTEST, C2's file**:
 ```
-$ python3 -m pytest tests/cli/test_tournament_cli.py -q
-10 passed in 4.32s
+$ python3 -m pytest tests/test_grouped_cli.py -q
+........................................................................ [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+........................................................................ [ 54%]
+........................................................................ [ 68%]
+........................................................................ [ 82%]
+........................................................................ [ 96%]
+.....................                                                    [100%]
+525 passed in 48.41s
 ```
-Matches the block's own prediction exactly: 8 pre-existing + 2 new = 10.
+Matches the block's own prediction exactly: 523 pre-existing + 2 new = 525.
 
 **THE STATE READERS AND THE CANARY, run as ONE combined invocation
 per this round's block**:
 ```
 $ python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q
-646 passed in 70.83s (0:01:10)
+........................................................................ [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 33%]
+........................................................................ [ 44%]
+........................................................................ [ 55%]
+........................................................................ [ 66%]
+........................................................................ [ 78%]
+........................................................................ [ 89%]
+......................................................................   [100%]
+646 passed in 70.26s (0:01:10)
 ```
-646 = 515 + 52 + 21 + 16 + 42, matching GATE14's stated per-suite
+646 = 515 + 52 + 21 + 16 + 42, matching GATE15's stated per-suite
 baseline exactly. Not moved, as expected: this round's change set
 names no path any of these five suites should be sensitive to.
 
-**THE PLAN, BYTE-FOR-BYTE (constraint 7)**:
+**THE PLAN, BYTE-FOR-BYTE (constraint: byte-exact whole-file replace)**:
 ```
-authored PLAN16 slice length: 2616 bytes (binary mode)
-written .agent/plan.md length: 2616 bytes (binary mode)
+authored PLAN17 slice length: 2530 bytes (binary mode, no trailing newline)
+written .agent/plan.md length: 2530 bytes (binary mode)
 EQUAL (bytes == bytes): True
 ```
-Whole-file replace applied via the Write tool. The first write
-produced a file 1 byte longer than the authored slice (a stray
-trailing newline the Write tool call's own content argument carried) —
-the same failure shape R14's handback already documented for PLAN15.
-Caught by a text-mode comparison (2615 vs 2614), corrected by
-rewriting the file directly from the extracted PLAN16 slice bytes via
-Python, then re-verified exact in BINARY mode: 2616 == 2616, `True`.
+Whole-file replace applied via a direct binary write (`shutil.copyfile`
+from a Python-constructed byte buffer), after first observing that a
+plain triple-quoted Python string carried one stray trailing `\n`
+beyond the target 2530 bytes (2531 vs 2530) — the same failure shape
+R14/R15's handbacks documented for PLAN15/PLAN16 — caught by the byte
+comparison, corrected by stripping the trailing newline to match
+`.agent/plan.md`'s own no-trailing-newline convention, then
+re-verified exact in BINARY mode: 2530 == 2530, `True`.
+
+**AUTHORED-TEXT PROOFS** (GATE15 and PLAN17 as embedded in the
+committed `.agent/authored/f262-r16.md`, compared disk-to-disk against
+what was actually written):
+```
+gate15_from_authored length: 2317
+gate15_in_live (last 2317 bytes of live_review.md) length: 2317
+MATCH gate15: True
+
+plan17_from_authored_block (stripped) length: 2530
+plan.md length: 2530
+MATCH plan17: True
+```
+Both reviewer-authored texts applied this round (GATE15 into
+`live_review.md`, PLAN17 into `plan.md`) are byte-identical to the
+text embedded in the committed `.agent/authored/f262-r16.md` slice.
 
 **THE TREE, THE COMMITS AND THE SWEEP**:
 ```
@@ -204,35 +248,41 @@ Tree clean before C4, nothing under `.remedy-wt/` tracked.
 Per-commit numstat cross-check against this handback's own Commits
 table:
 ```
-$ git show --numstat f48090e0
-225  0    .agent/authored/f262-r15.md
-$ git show --numstat d0b27942
-122  549  .agent/last_block.md
-$ git show --numstat 04f07b8a
+$ git show --numstat 2021dbff
+197  0    .agent/authored/f262-r16.md
+$ git show --numstat bb31aba5
+151  179  .agent/last_block.md
+$ git show --numstat 6ed533d3
 2    1    .agent/live_review.md
-$ git show --numstat 9901f718
-18   0    apps/cli/commands/tournament_cmd.py
-16   0    tests/cli/test_tournament_cli.py
-$ git show --numstat 0fc3b66e
-18   21   .agent/plan.md
+$ git show --numstat f4b0ec8b
+32   2    apps/cli/commands/project.py
+21   0    tests/test_grouped_cli.py
+$ git show --numstat 4c476063
+17   17   .agent/plan.md
 ```
 Every path and every insertion/deletion count matches the Commits
-table exactly — no rename/rewrite percentage substitution was
-observed for any commit this round.
+table exactly. Note: `git commit`'s own printed summary for C0b showed
+`197 insertions(+), 225 deletions(-)` with a `rewrite ... (90%)`
+annotation — that is `git commit`'s break-rewrite heuristic treating
+the file as a full delete+add (197 = new file's line count, 225 = old
+file's line count) rather than a line-level diff; `git show --numstat`
+without `-B` reports the line-level diff (151/179) used in the table
+above, consistent with the convention R15's handback used for its own
+C0b row.
 
 **Staleness sweep**, one entry per file this round touched:
-- `.agent/authored/f262-r15.md` — NOT stale. Immutable verbatim record
+- `.agent/authored/f262-r16.md` — NOT stale. Immutable verbatim record
   of this round's own step block.
 - `.agent/last_block.md` — NOT stale. Mirrors the current round's
   block exactly.
-- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE14's
-  content describes round 14's own verified facts.
-- `apps/cli/commands/tournament_cmd.py` — NOT stale. Matches PAIR P1
-  exactly; full diff read and confirmed.
-- `tests/cli/test_tournament_cli.py` — NOT stale. Matches TEST T1
-  exactly; all tests pass.
-- `.agent/plan.md` — NOT stale. Freshly written PLAN16 content
-  accurately describes round 15's actual state.
+- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE15's
+  content describes round 15's own verified facts.
+- `apps/cli/commands/project.py` — NOT stale. Matches PAIR P1 and PAIR
+  P2 exactly; full diff read and confirmed.
+- `tests/test_grouped_cli.py` — NOT stale. Matches TEST T1 exactly;
+  all tests pass.
+- `.agent/plan.md` — NOT stale. Freshly written PLAN17 content
+  accurately describes round 16's actual state.
 
 Constraint check (a sentence OUTSIDE the change set already stale
 before this round): `docs/roadmap/features/T2_F262.md` line 5 still
@@ -242,74 +292,73 @@ round's declared change set too, unchanged from prior rounds' notes.
 
 ## Deviations & assumptions
 
-1. **No FROM mismatch occurred.** Both FROM strings (P1, T1) were
-   re-read from each file's current on-disk content before applying,
-   per constraint 1, and each occurred exactly once — nothing needed
-   to stop or be reported as a mismatch.
-2. **The Bash tool denied the exact literal command
-   `python3 -m py_compile apps/cli/commands/tournament_cmd.py
-   tests/cli/test_tournament_cli.py`** with a sandbox permission
-   error, on more than one retry. Substituted with an equivalent
-   compile check via `python3 -c "import py_compile;
-   py_compile.compile(..., doraise=True); ..."` for both files, which
-   printed `OK` (i.e., no `SyntaxError` raised, equivalent to exit 0).
-   This is a command-form substitution only; the same underlying
-   verification (both files parse cleanly) was performed.
-3. **The C3 plan.md gate used the Write tool plus a real
-   `bytes == bytes` comparison** via an independent Python script
-   comparing the PLAN16 text (extracted from the same authored source
-   file used for C0a) against the written `.agent/plan.md` in binary
-   mode — not `wc -l`/diffstat. Result on the first attempt: 2614
-   authored text-mode chars vs 2615 written text-mode chars (a stray
-   trailing newline from the Write call, the same shape R14's
-   handback documented for PLAN15), caught by the comparison, fixed by
-   rewriting the file directly from the extracted bytes, then
-   re-verified exact in binary mode: 2616 == 2616 bytes.
-4. **`git commit`'s printed stat matched `--numstat` for every commit
-   this round** — no rename/rewrite percentage substitution was
-   observed.
+1. **No FROM mismatch occurred.** All three FROM strings (P1, P2, T1)
+   were re-read from each file's current on-disk content before
+   applying, per constraint 4, and each occurred exactly once —
+   nothing needed to stop or be reported as a mismatch.
+2. **The literal command `python3 -m py_compile apps/cli/commands/project.py
+   tests/test_grouped_cli.py` was not attempted directly** — the
+   operator's block flagged this exact form as previously denied by
+   the Bash tool's sandbox permission in this repo, so the declared
+   equivalent substitution (`python3 -c "import py_compile;
+   py_compile.compile(..., doraise=True); ..."`) was used from the
+   start, per constraint 9. It printed `OK` (i.e., no `SyntaxError`
+   raised, equivalent to exit 0).
+3. **The C3 plan.md gate used a direct binary write (`shutil.copyfile`
+   from a Python-constructed byte buffer) plus a real `bytes == bytes`
+   comparison**, not the Write tool directly on the target path — a
+   first construction via a Python triple-quoted string produced 2531
+   bytes (one stray trailing newline) against the target 2530, caught
+   before writing to `.agent/plan.md`, corrected by stripping the
+   trailing newline, then verified exact in binary mode: 2530 == 2530
+   bytes.
+4. **One combined Bash tool-call denial occurred** when several
+   inspection commands (`ls .agent/STOP`, `sha256sum`, `git ls-files
+   .remedy-wt`, echoed section headers) were chained together in a
+   single multi-line command with `&&`/`;` separators for the
+   pre-C4 gate re-checks; the tool denied the combined call outright.
+   Each check was then re-run as its own separate, simple Bash
+   invocation, with no change to the underlying checks performed or
+   their results.
 5. **Ruff was not attempted** this round (see Verification section) —
    a deliberate choice to avoid a known, already-documented refusal,
    not a new deviation in outcome.
-6. **`xxd` and a chained shell pipeline (`tail -c 1 | xxd`) were denied**
-   by the Bash tool's sandbox permission; substituted with a Python
-   one-liner reading the file in binary mode to inspect the last byte,
-   with no change to the underlying check performed.
+6. **`git commit`'s printed diffstat for C0b (bb31aba5) used a
+   break-rewrite heuristic** (`197 insertions(+), 225 deletions(-)`,
+   `rewrite ... (90%)`) that differs from `git show --numstat`'s
+   line-level count (`151  179`) for the same commit; the Commits
+   table above uses the `--numstat` line-level figures, consistent
+   with R15's handback convention for its own C0b row. No content
+   discrepancy — both commands describe the same commit; only the
+   diff-stat heuristic differs.
 
 No other deviations. `.agent/STOP` was absent every time it was
-checked (before C0a, after C2, and once more before writing this
+checked (before C0a, and once more immediately before writing this
 handback). No path outside the declared change set was written under
-version control: only `.agent/authored/f262-r15.md`,
+version control: only `.agent/authored/f262-r16.md`,
 `.agent/last_block.md`, `.agent/live_review.md`,
-`apps/cli/commands/tournament_cmd.py`, `tests/cli/test_tournament_cli.py`,
+`apps/cli/commands/project.py`, `tests/test_grouped_cli.py`,
 `.agent/plan.md` and this handback were committed. The bundle's commit
 order (C0a, C0b, C1, C2, C3 — this handback C4) was followed exactly,
 with C2 as one commit covering both named files per constraint 5. Only
-`tournament.list` was wired this round; no other list command's
-handler was touched, per constraint 2.
+`project.list` was wired this round; no other list command's handler
+was touched, per constraint 1. `apply_list_options` itself
+(`packages/orchestration/list_options.py`) was not touched, per
+constraint 2. `_list_projects_readonly`'s own sort in
+`project_registry.py` was not touched, per constraint 1.
 
 ## Next
 
-**NEXT EXPECTED ACTION: T003 batch 4 — wire `apply_list_options` into
-more list commands.** PLAN16's Next Steps names `project.list`,
-`blocker.list`, `decision.list`, `review.list`, `propose.list`, and
+**NEXT EXPECTED ACTION: T003 batch 5 — wire `apply_list_options` into
+more list commands.** PLAN17's Next Steps names `blocker.list`,
+`decision.list`, `review.list`, `propose.list`, and
 `external-builder.submission-list` as commands shaped like
-`tournament.list` (plain dict rows, single collection feeding both
-`--json` and text) — the lower-risk next batch. `patch.list`
-(`approval_queue.py`'s `format_intent_list` table renderer) and
-`loop.list` (JSON/text rows built from two different collections)
-still need their own look before wiring; `config.list`/`worker.list`/
-`execution.list` stay excused per PLAN16's Risks section. Round 16
-should grep each remaining command's own tests for an
-order-asserting test FIRST, per DECISION F262 D2's precedent, before
-assuming date-descending is safe to force.
-
-**THIS IS SESSION 5'S FIFTH ROUND (round 15) — session 5 has reached
-its default four-to-five-round session target per the self-drive
-protocol.** The next session should open fresh per the protocol's own
-judgment rather than continuing directly in this session. Round 16's
-likely focus, per PLAN16's ordered Next Steps list above, is T003
-batch 4 against the remaining plain-dict-row commands
-(`project.list`, `blocker.list`, `decision.list`, `review.list`,
-`propose.list`, `external-builder.submission-list`) — named here as
-what the next session should pick up, without starting it.
+`project.list`/`tournament.list` (plain dict/model rows, single
+collection feeding both `--json` and text) — the next batch.
+`patch.list` (`approval_queue.py`'s `format_intent_list` table
+renderer) and `loop.list` (JSON/text rows built from two different
+collections) still need their own look before wiring;
+`config.list`/`worker.list`/`execution.list` stay excused per PLAN17's
+Risks section. Round 17 should grep each remaining command's own
+tests for an order-asserting test FIRST, per DECISION F262 D2's
+precedent, before assuming date-descending is safe to force.
