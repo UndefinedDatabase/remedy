@@ -12,32 +12,36 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 10, session 4 - loop.list gains --json end to end (catalog
-_JSON_OPT + supports_json=True, handler json_output kwarg + json
-branch, dispatch lambda), carrying last_run_created_at/last_run_state
-per loop sourced from the SAME last_run_for_loop() call the existing
-text "last run:" label already uses - no new timestamp invented.
-T001's --sort/--since/--until/--limit flags were already present on
-loop.list via _with_list_options' auto-injection (subcommand=="list"
-matches); only --json and its JSON date fields were the real gap.
+Round 11, session 5 - review.list gains a CREATED date end to end:
+ReviewerRecommendation gains a created_at field stamped once in
+run_reviewer() at construction time (datetime/timezone, matching
+patch.list/loop.list's stamp-at-creation pattern), carried through
+store_recommendations()'s persisted dict, and rendered as a
+(created=...) suffix in _cmd_review_list's text branch - its --json
+branch needed no change since it already prints list_recommendations()'s
+own dicts verbatim. New tests/cli/test_review_cmd.py covers both
+branches.
 
 ## Next Steps
 
-- change.list's event-log CREATED date stays open, UNRELATED to D1:
-  do_run.py's event stays dead, job.py's real event carries no
-  intent_id to join on - see DECISION F262 D1's Alternative section.
-- The execution.* trio always prints JSON unconditionally with no
-  text branch - the pre-existing --json-ignored quirk Risks excuses.
-- T003 (sort/filter/limit) starts once date coverage is far enough
-  along to sort by - patch.list and loop.list both now have dates;
-  audit whether any remaining list command still lacks one before
-  starting T003, or start T003 against the commands that already
-  qualify.
+- Round 11's own audit of all 18 catalog list commands against T002:
+  job/queue/loop/project/patch/memory/tournament/blocker/decision/
+  propose/review all carry a date now; execution.list/worker.list/
+  config.list stay excused (Risks); change.list's event-log CREATED
+  date stays open per DECISION F262 D1; event.list already surfaces
+  `timestamp` per row under a different field name, satisfying
+  Acceptance as-is.
+- test.list's --json already carries created_at but its TEXT branch
+  prints a bare count with no per-row listing at all - a pre-existing
+  gap wider than a missing date, flagged rather than folded into T002.
+- T003 (sort/filter/limit) can start once the gaps above are resolved
+  or explicitly excused - review.list (this round) was the last
+  unexcused, undated list command the audit found.
 
 ## Risks
 
 - Stores with no timestamp concept may render "unknown" permanently -
   that satisfies Acceptance, it is not a gap to close later.
-- The three ignore-`--json`-entirely execution.* commands are a
-  pre-existing quirk this feature does not need to fix unless it
-  blocks T003's sort behavior for them specifically.
+- The three ignore-`--json`-entirely execution.* commands, and
+  test.list's missing per-row text listing, are pre-existing quirks
+  this feature does not need to fix unless they block T003.
