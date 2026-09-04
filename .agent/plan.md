@@ -12,28 +12,29 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 20, session 6 - T003 batch 8 (final): `loop.list` restructured
-per DECISION F262 D3 - `_cmd_loop_list` now builds one
-`(spec, last_run_created_at, last_run_state)` row list unconditionally
-(moving the `last_run_for_loop` lookup out of the json-only branch),
-runs `apply_list_options` once with `default_sort_field=None`
-(config-declaration order stays default, D2/D3 precedent), and renders
-BOTH text and json from that same row list - the text branch now reads
-its row's own precomputed last-run fields instead of calling
-`_last_run_label` a second time, removing the prior duplicate lookup.
+Round 21, session 7 - SCOPE REPORT per amend0827-process-diet rule 6:
+this feature has now run 7 sessions (the operator's soft limit), so
+this round books GATE20 (round 20 PASSED), registers R-0795 (T001's
+catalog test was never built; `config.list`/`worker.list`/
+`execution.list` all PARSE the T003 flags via `_with_list_options`'s
+mechanical catalog attachment but their handlers silently discard
+them - measured directly, `--sort bogus` raises nothing), and reports
+scope instead of opening an eighth build round.
 
-## Next Steps
+## Next Steps (operator decision needed, per amend0827 rule 6)
 
-- T003 is now DONE for every list command in scope. Remaining before
-  T003 closes out: an integration-level smoke test proving the
-  ten-second demo in Acceptance (a named run findable by one command
-  with --since/--sort), then move to closure per
-  docs/roadmap/STATUS_closure_protocol.md.
-- config.list/worker.list/execution.list stay excused per Risks -
-  confirm this is still true at closure time, not just asserted.
-- change.list's event-log CREATED date stays open, UNRELATED to D1:
-  do_run.py's event stays dead, job.py's real event carries no
-  intent_id to join on - see DECISION F262 D1's Alternative section.
+- Option A: authorize an 8th session to (1) build the T001 catalog
+  test deriving the list-command set from the CLI catalog, (2) wire
+  `config.list`/`worker.list`/`execution.list`'s handlers to
+  `apply_list_options` (they already receive the parsed flags), (3)
+  build the Acceptance ten-second-demo smoke test, then close F262.
+- Option B: register a DECISION narrowing T003's Acceptance to
+  explicitly exempt these three commands (naming the real reason, if
+  one exists, the way D2/D3 did for queue.list/loop.list), correct
+  plan.md's Risks section to state the exemption precisely, and close
+  F262 without the catalog test or the smoke test.
+- change.list's event-log CREATED date stays open, UNRELATED to D1 -
+  see DECISION F262 D1's Alternative section.
 
 ## Risks
 
@@ -41,7 +42,8 @@ its row's own precomputed last-run fields instead of calling
   that satisfies Acceptance, not a gap to close later.
 - The three ignore-`--json`-entirely execution.* commands are a
   pre-existing quirk this feature does not need to fix.
-- A command with its OWN meaningful non-date default order (queue.list's
-  priority D2, loop.list's config order D3) opts out via
-  `default_sort_field=None` rather than losing that order - this is
-  now DONE for both of the two commands that needed it.
+- R-0795 (this round): config.list/worker.list/execution.list PARSE
+  all four T003 flags (attached mechanically, like every list command)
+  but their handlers ignore them - `--sort bogus` against any of the
+  three raises nothing, violating Acceptance's own "exits non-zero"
+  bullet. Not yet resolved.
