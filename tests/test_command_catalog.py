@@ -90,6 +90,12 @@ class TestCatalogExpensive:
     def test_job_run_is_expensive(self) -> None:
         assert get_command("job.run").is_expensive is True
 
+    def test_job_run_has_a_yes_flag_to_skip_the_cost_confirmation(self) -> None:
+        args = get_command("job.run").args
+        yes_args = [a for a in args if a.name == "--yes"]
+        assert len(yes_args) == 1, "job.run must declare exactly one --yes arg"
+        assert yes_args[0].is_flag is True, "job.run's --yes must be a flag, not a valued option"
+
 
 class TestCatalogSensitivity:
     """No sensitive content in catalog descriptions."""

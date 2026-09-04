@@ -426,6 +426,10 @@ CATALOG: tuple[CommandEntry, ...] = (
                    "default is auto-answered from it and recorded in the escalation "
                    "assumption log. A question with no safe default still waits.",
                    required=False, is_option=True, is_flag=True),
+            ArgDef("--yes", "Skip the cost-preview confirmation prompt above the "
+                            "configured threshold (F114). Never bypasses budget "
+                            "limits or the escalation log.",
+                   required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         supports_json=True,
