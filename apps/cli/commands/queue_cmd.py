@@ -126,7 +126,8 @@ def _project_ids_with_a_queue() -> list[str]:
     return sorted(p.name for p in root.iterdir() if p.is_dir())
 
 
-def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -> None:
+def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False,
+                    json_output: bool = False) -> None:
     from packages.orchestration.job_queue import list_entries_safe
 
     if all_projects:
@@ -140,6 +141,18 @@ def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -
         entries, _degraded, skipped = list_entries_safe(project_id)
         skipped_total += len(skipped)
         rows.extend((project_id, entry) for entry in entries)
+
+    if json_output:
+        import json as _json
+        print(_json.dumps({
+            "version": 1,
+            "entry_count": len(rows),
+            "entries": [{"id": entry.id, "status": entry.status, "priority": entry.priority,
+                        "created_at": entry.created_at, "claimed_by": entry.claimed_by or "",
+                        "goal": _goal_label(entry), "project_id": project_id}
+                       for project_id, entry in rows],
+        }, sort_keys=True))
+        return
 
     if not rows:
         print("No queue entries found.")
@@ -234,6 +247,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "queue.list": lambda args: _cmd_queue_list(
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
+        json_output=args.json,
     ),
     "queue.rm": lambda args: _cmd_queue_rm(
         args.entry_id, project=getattr(args, "project", None)),

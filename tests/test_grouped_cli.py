@@ -590,3 +590,25 @@ class TestProjectListCLI:
         _cmd_list_projects(json_output=False)
         text = buf.getvalue()
         assert "created=" in text
+
+
+class TestJobListCLI:
+    """job.list JSON must include version: 1, job_count and created_at."""
+
+    def test_catalog_has_json_flag(self) -> None:
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("job.list")
+        assert cmd.supports_json is True
+        assert any(a.name == "--json" for a in cmd.args)
+
+    def test_list_json_has_created_at(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        from apps.cli.commands.job import _cmd_list_jobs
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_jobs(json_output=True, all_projects=True)
+        data = json.loads(buf.getvalue())
+        assert data["version"] == 1
+        assert data["jobs"][0]["created_at"]

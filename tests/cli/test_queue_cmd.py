@@ -80,6 +80,10 @@ class TestCatalog:
             assert entry.may_execute_commands is False
             assert entry.may_mutate_repo is False
 
+    def test_list_has_json_flag(self):
+        from apps.cli.command_catalog import get_command
+        assert get_command("queue.list").supports_json is True
+
 
 class TestAdd:
     def test_add_prints_the_new_entry_id(self, project):
@@ -194,6 +198,16 @@ class TestList:
         assert "good goal" in proc.stdout
         assert "doomed goal" not in proc.stdout
         assert "1 unreadable queue file(s) skipped" in proc.stderr
+
+    def test_json_has_created_at_and_goal(self, project):
+        data_root, project_id = project
+        _run(["queue", "add", "json goal", "--project", project_id], data_root)
+
+        proc = _run(["queue", "list", "--project", project_id, "--json"], data_root)
+        data = json.loads(proc.stdout)
+        assert data["version"] == 1
+        assert data["entries"][0]["created_at"]
+        assert data["entries"][0]["goal"] == "json goal"
 
 
 class TestRm:

@@ -123,11 +123,22 @@ def _cmd_list_jobs(
     *,
     project: str | None = None,
     all_projects: bool = False,
+    json_output: bool = False,
 ) -> None:
     from packages.orchestration.project_scope import resolve_scope, scoped_jobs
 
     scope = resolve_scope(project_flag=project, all_projects=all_projects)
     jobs, degraded, skipped = scoped_jobs(scope)
+    if json_output:
+        import json as _json
+        print(_json.dumps({
+            "version": 1,
+            "job_count": len(jobs),
+            "jobs": [{"id": str(job.id), "state": job.state.value, "name": job.name,
+                     "created_at": job.created_at.isoformat(),
+                     "project_id": job.project_id or ""} for job in jobs],
+        }, sort_keys=True))
+        return
     if not jobs:
         print("No jobs found.")
         return
@@ -2433,6 +2444,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.list": lambda args: _cmd_list_jobs(
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
+        json_output=args.json,
     ),
     "job.show": lambda args: _cmd_show_job(args.job_id),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),

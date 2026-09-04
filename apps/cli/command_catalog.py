@@ -273,7 +273,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List jobs (scoped to current project by default).",
         action_class="read_only",
-        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
+        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="job.show",
@@ -605,7 +606,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List queue entries (scoped to the current project by default).",
         action_class="read_only",
-        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
+        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
+        supports_json=True,
         related=("queue.add",),
     ),
     CommandEntry(
