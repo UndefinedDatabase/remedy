@@ -12,33 +12,29 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 8, session 3 - T002 batch 6: `patch.list` gains `--json` end to
-end (same shape rounds 6-7 proved for project.list/job.list/
-queue.list) plus a DECIDED column in text output surfacing the intent
-dict's own `decided_at` (no `created_at` exists on a patch intent -
-only a decision timestamp). Five other audited handlers closed out
-this round with NO code change owed: worker.list, worker.registry-list,
-review.list, config.list, builder.adapter-list carry no timestamp
-field anywhere on their underlying models - Acceptance is satisfied
-as-is per the Risks section below.
+Round 9, session 4 - patch.list gains a CREATED date end to end
+(DECISION F262 D1): both creation flows (do_run.py, job.py) stamp
+created_at on the stored patch_intent_explanations dict;
+list_patch_intents() surfaces it; format_intent_list() gains a
+CREATED column ahead of DECIDED. Corrects a stale R8 claim - job.py:623
+DOES emit patch_intent_created; only do_run.py's own
+do_run_patch_intent_created is dead. Neither event is the source
+list_patch_intents() reads (artifact metadata, not the event log) -
+see DECISION F262 D1.
 
 ## Next Steps
 
-- `change.list`'s event log DOES carry timestamps, but the only
-  production emitter of an intent-creation event
-  (`do_run_patch_intent_created` in do_run.py) is read by NO consumer,
-  while every reader instead checks a bare `patch_intent_created` no
-  production code emits - needs a design decision on which event
-  names creation before a date can land there.
-- `loop.list`/`patch.list` have no `created_at` on their own model and
-  need a design decision before a CREATED date can appear; `loop.list`
-  already prints a "last run" label that may be the right substitute.
-- The execution.* trio (`execution.template-list`, `execution.list`,
-  `execution.approval-list`) always print JSON unconditionally with no
-  text branch at all - the pre-existing `--json`-ignored quirk the
-  Risks section already excuses.
-- T003 (sort/filter/limit behavior) starts once date coverage is far
-  enough along to sort by.
+- loop.list has no created_at of its own (LoopSpec is static
+  remedy.toml config); already prints a "last run" label from
+  job.created_at, which may be the right substitute - separate design
+  pass from D1.
+- change.list's event-log CREATED date stays open, UNRELATED to D1:
+  do_run.py's event stays dead, job.py's real event carries no
+  intent_id to join on - see D1's Alternative section.
+- The execution.* trio always prints JSON unconditionally with no
+  text branch - the pre-existing --json-ignored quirk Risks excuses.
+- T003 (sort/filter/limit) starts once date coverage is far enough
+  along to sort by.
 
 ## Risks
 
