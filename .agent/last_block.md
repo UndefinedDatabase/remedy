@@ -1,129 +1,143 @@
-── STEP CLOSURE PRECONDITION 6 — F112 Prompt budget per task class ─────────
-Round 20 · SESSION 6 (or 7) of F112 · base `3b7a3e18` (F112 R19 C4, the tip
+── STEP CLOSURE PRECONDITION 6 (RUN) — F112 Prompt budget per task class ───
+Round 21 · session continuing F112 · base `e9b9c46e` (F112 R20 C4, the tip
 of feature/f112-prompt-budget-per-task-class)
 
 Goal:
-  Book round 19's PASS verdict (RECORD19, given verbatim below, independently
-  re-verified by the reviewer — this worker does not re-derive it) into
-  `.agent/live_review.md`, then open the closure sequence's precondition 6
-  (docs/roadmap/STATUS_closure_protocol.md): the self-use queue currently
-  holds no pending item, so call the generator that replenishes it and
-  report exactly what happens. No self-use JOB is planned or run this
-  round — only the generation step.
+  Book round 20's PASS verdict (RECORD20, given verbatim below,
+  independently re-verified by the reviewer — do not re-derive it), then
+  RUN the self-use queue's pending item SU-007 (`self_use_runner.
+  run_next_self_use_item`) to the normal approval gate. This is a REAL run
+  against the local `ollama` provider (already confirmed by the reviewer to
+  resolve for both `builder` and `reviewer` roles — no external network
+  cost). Do NOT promote it, do NOT set `consumed_by`, do NOT register any
+  finding in `.agent/live_review.md` this round — those are the CLOSURE
+  round's own acts (DECISION F257 D2; docs/roadmap/STATUS_closure_protocol.md
+  precondition 6). This round only runs the job and lands its evidence.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f112-r20.md`
+  C0a  save this block verbatim to `.agent/authored/f112-r21.md`
   C0b  mirror the committed authored file to `.agent/last_block.md`
-  C1   append RECORD19 to `.agent/live_review.md`
-  C2   apply PLAN20 to `.agent/plan.md`
-  C3   call `packages.orchestration.self_use_generator.generate_and_append_if_empty`
-       and commit whatever it writes to `scripts/self_use_queue.json` (if
-       anything)
+  C1   append RECORD20 to `.agent/live_review.md`
+  C2   apply PLAN21 to `.agent/plan.md`
+  C3   run SU-007 for real and commit its evidence under `.agent/selfuse_f112/`
   C4   the handback: rewrite `.agent/handoff.md`
 
 Change set — NOTHING outside these paths:
-  `.agent/authored/f112-r20.md`
+  `.agent/authored/f112-r21.md`
   `.agent/last_block.md`
   `.agent/live_review.md`
   `.agent/plan.md`
-  `scripts/self_use_queue.json`
+  `.agent/selfuse_f112/` (new directory this round creates)
   `.agent/handoff.md`
-  NO file under `packages/`, `apps/`, `tests/` or `docs/` is touched.
+  `scripts/self_use_queue.json` is NOT touched this round (consumed_by is
+  set only at the closure commit). NO file under `packages/`, `apps/`,
+  `tests/` or `docs/` in the PRIMARY checkout is touched — the job itself
+  runs in its OWN separate git worktree under `.remedy-wt/job-<job_id>/`,
+  which `run_job` creates and manages; that worktree's own commits are the
+  job's business, not this round's, and are not part of this round's diff.
 
 Constraints:
   1. Apply every delimited slice BYTE FOR BYTE — never edit, retype or
      re-wrap one. If a slice looks wrong, apply it anyway and DECLARE the
-     problem in the handback: a declared conflict is worth more than a
-     silent repair.
+     problem in the handback.
   2. `.agent/STOP` is read FROM DISK before the first commit and again
      before C4. If it exists at either reading: finish the commit in hand,
-     write the handback, push, and stop.
-  3. TYPE each slice from THIS PROMPT'S OWN BYTES directly into
-     `.agent/authored/f112-r20.md` at C0a — do not name any path under
-     `.remedy-wt/` in a bash command; that permission is denied this
-     session and naming it only costs a turn. This round needs no
-     `.remedy-wt/` scratch at all (no worktree, no long-running suite).
-  4. `.agent/plan.md` ends WITHOUT a trailing newline in this feature's own
-     convention, and PLAN20 is applied as an exact whole-file replacement
-     with no trailing newline added. `.agent/live_review.md` also ends
-     WITHOUT a trailing newline; append it as
-     `content_bytes + b"\n" + RECORD19_bytes` — ONE newline, no blank line
-     — which is the convention every F112 round since R14 has used.
-     Confirm this yourself before writing by reading the byte immediately
-     before the append point.
-  5. Do NOT run `ruff`, `npm`, or any formatter. This round writes no
-     Python/TS source; `scripts/self_use_queue.json` is data written by
-     calling the generator function, never hand-edited.
-  6. Invoke the generator as a library call from the repository root:
-     `python3 -c "from packages.orchestration.self_use_generator import generate_and_append_if_empty; entry = generate_and_append_if_empty(); print(entry)"`.
-     Do not set environment variables, do not `cd` anywhere first — run
-     from `/home/decodeux/Repos/remedy` directly.
-  7. This round runs no pytest suite and creates no worktree, so R-0176's
-     scratch-log rule does not bind it; no `.agent/gate_f112_r20/` directory
-     is created.
+     write the handback, push, and stop — even mid-run, if you can do so
+     without corrupting the job's own state (a job already started via
+     `run_job` is not aborted; let it finish, then stop after landing its
+     evidence).
+  3. `.agent/plan.md` ends WITHOUT a trailing newline; PLAN21 is applied as
+     an exact whole-file replacement, no trailing newline added.
+     `.agent/live_review.md` also ends WITHOUT a trailing newline; append
+     it as `content_bytes + b"\n" + RECORD20_bytes` — ONE newline, no blank
+     line. Confirm the byte immediately before the append point yourself
+     before writing.
+  4. Do NOT run `ruff`, `npm`, or any formatter as a gate for THIS round's
+     own authored files (`.agent/**`) — the job itself may run its own
+     internal gates, which is the job's business, not this round's.
+  5. RUN SU-007 exactly as:
+     `from pathlib import Path; from packages.orchestration.self_use_runner import run_next_self_use_item; entry, job_file_path, result = run_next_self_use_item(Path(".remedy-wt/selfuse-f112-run"), repo_path=".")`
+     — from the repository root, no `cd`, no environment variable
+     overrides, using the function's own DEFAULT budgets
+     (`max_provider_calls=6`, `max_cost_usd=0.50`, `max_tasks=1`) and its
+     own DEFAULT role resolution (do not pass `builder_name`/
+     `reviewer_name`, do not pass `"fake"` for either — let it resolve the
+     real local `ollama` provider as designed). If it raises
+     `SelfUseRunError` or `SelfUseJobError`, that is a valid outcome to
+     report, not a defect to paper over — capture the full exception text
+     in the handback and in `run.txt`, and still copy whatever job file
+     landed in the scratch dest_dir (see constraint 6) if one exists.
+  6. AFTER the run (or after the exception, if one occurred and a job file
+     exists), copy the rendered job file byte-identically (verify by
+     sha256) from `.remedy-wt/selfuse-f112-run/SU-007.md` into
+     `.agent/selfuse_f112/SU-007.md`. Write `.agent/selfuse_f112/run.txt`
+     recording, in plain text: the `job_id`; the entry id (`SU-007`); the
+     final `status` of the returned `JobPlan` (or the exception, if one was
+     raised instead); `result.error` (or the exception text); a table of
+     every task's `task_id`/`status`/`error`; the FULL tuple
+     `packages.orchestration.self_use_findings.describe_self_use_run_defects(result)`
+     answers, each string verbatim, one per line (or, if the run raised
+     before producing a `JobPlan`, state plainly that no defects tuple
+     could be computed and why); the resolved `execution_config` naming
+     which provider/model actually ran for `builder` and `reviewer`; the
+     wall-clock duration of the run, measured by you around the call; and
+     the job's own worktree path (`.remedy-wt/job-<job_id>`), stated as
+     RETAINED and untouched by this round (do not delete it, do not commit
+     it — it is a separate git worktree, not a path inside this
+     checkout's tracked tree).
+  7. AFTER copying, DELETE the scratch directory
+     `.remedy-wt/selfuse-f112-run/` (its content is now the committed
+     `.agent/selfuse_f112/` copy) — but do NOT touch
+     `.remedy-wt/job-<job_id>/`, which is the job's own separate worktree
+     and stays exactly as `run_job` left it.
   8. `.agent/decisions.md`, `.agent/candidates.md`, `.agent/prose_slips.md`
-     and `docs/roadmap/features/T3_F112.md` are NOT touched. Nothing this
-     round found needs any of them, and the change set forbids it.
+     and `docs/roadmap/features/T3_F112.md` are NOT touched.
   9. A sentence THIS ROUND makes stale, anywhere inside the change set, is
      repaired in the commit that falsifies it. One outside the change set
      is DECLARED in the handback and left alone.
   10. NEVER force-push, never work on `main`, create NO pull request, merge
-      nothing.
+      nothing. Do not run `--approve` / `job_promote` on this job under any
+      circumstance — the approval gate is where this round stops.
 
-THIS ROUND'S PARAMETERS, all measured by the reviewer at `3b7a3e18` before
-this block was authored:
-  LIVE_REVIEW PRE-C1   `.agent/live_review.md` measures 2286766 bytes,
+THIS ROUND'S PARAMETERS, measured by the reviewer at `e9b9c46e` before this
+block was authored:
+  LIVE_REVIEW PRE-C1   `.agent/live_review.md` measures 2290763 bytes,
                        ending WITHOUT a trailing newline.
-  RECORD19 LENGTH      3996 bytes (measure this yourself against the
-                       committed authored file's own extracted slice; it
-                       must match).
-  POST-C1 EXPECTED     2286766 + 1 + 3996 = 2290763 bytes.
+  RECORD20 LENGTH      2953 bytes (measure this yourself against the
+                       committed authored file's own extracted slice).
+  POST-C1 EXPECTED     2290763 + 1 + 2953 = 2293717 bytes.
   HEADER SHAPE         lines matching `^Gate: F\d+ R\d+ — ` currently
-                       number 266; lines matching `^Gate: F112 R19 — `
-                       currently number 0. Expected after C1: 267 and 1.
-  OPEN SET             350 registered (unique `^- R-\d+ — ` ids), 72 unique
-                       `^Done: R-\d+ — ` ids, 278 open. UNMOVED by this
-                       round's append (it registers no finding and resolves
-                       none) — reconfirm this on BOTH sides of C1.
-  PLAN.MD PRE-C2       44 lines, ends WITHOUT a trailing newline, currently
-                       holds PLAN19 (2088 bytes).
-  SELF-USE QUEUE       `packages.orchestration.self_use_queue.pending_self_use_items()`
-                       currently answers an empty tuple; `next_self_use_item()`
-                       currently answers `None`; `load_self_use_queue()`
-                       currently holds exactly 6 items (SU-001..SU-006, ids
-                       `SU-\d{3}`), all with non-empty `consumed_by`.
-  GENERATOR TIER 1     `self_use_generator._oldest_open_low_or_medium_finding`
-                       currently answers `R-0418` (a Low, REVIEWER-BLOCK-
-                       DEFECT finding at `.agent/live_review.md` line 135) as
-                       the oldest OPEN Low/Medium finding — this is expected
-                       and is NOT a defect in this round's own change: R-0418
-                       was already the target of SU-005 (consumed by F109)
-                       and SU-006 (consumed by F110), both of which really
-                       ran the job to the approval gate (see git log
-                       `9ee3ab57`, `d56c4a91`) without ever landing a
-                       `Done: R-0418` line — that gap is PRE-EXISTING and
-                       outside this round's change set; do not attempt to
-                       fix it here. `generate_and_append_if_empty()` is
-                       therefore expected to append a SEVENTH item,
-                       `SU-007`, whose `why` and `job_markdown` quote the
-                       SAME R-0418 paragraph, with `consumed_by` left empty
-                       (PENDING) and `provenance` reading
-                       `generated (self-use-generator tier 1, ledger scan, R-0418)`.
+                       number 267; matching `^Gate: F112 R20 — ` currently
+                       0. Expected after C1: 268 and 1.
+  OPEN SET             350 registered, 72 `Done:`, 278 open. UNMOVED by
+                       this round's append — reconfirm on both sides of C1.
+  PLAN.MD PRE-C2       46 lines (per `wc -l`), ends WITHOUT a trailing
+                       newline, currently holds PLAN20 (2083 bytes).
+  SELF-USE QUEUE       `pending_self_use_items()` currently answers exactly
+                       one entry, `SU-007`; `next_self_use_item()` answers
+                       that same entry. `scripts/self_use_queue.json` is
+                       NOT part of this round's change set (see above) —
+                       do not write to it.
+  ROLE RESOLUTION      `resolve_role_config("builder").provider` and
+                       `resolve_role_config("reviewer").provider` both
+                       currently answer `"ollama"` (model
+                       `muse-glimmer:latest`) — confirmed by the reviewer
+                       directly before this block was authored. If your own
+                       fresh read differs, DECLARE it; do not silently
+                       adjust the run to compensate.
 
-<<<BEGIN RECORD19>>>
-Gate: F112 R19 — the round 19 entry, session 6's integration gate (no production code). VERDICT PASS, over the range `c7d68c58..cd3173fc` (commits C0a `8fe10ad8`, C0b `598e228b`, C1 `4f8b4be1`, C2 `d217bab0`, C3 `cd3173fc` — five real content commits — plus handback commit `3b7a3e18`), independently re-verified by the reviewer at the start of round 20. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r19.md` and `HEAD:.agent/last_block.md` both print blob `5f4c5fe15b5fb3cde78732097d4a52af94be45f9`, reproduced directly; `sha256sum .agent/authored/f112-r19.md` reproduced `29563a53dd4fd4568249231d1242c059d2566531a1d8ccde9688f72bed8c1fcc` exactly as the handback claimed, and `wc -l` reproduced 336. THE PLAN REPLACEMENT AT C2 HELD BYTE-IDENTICAL: PLAN19 extracted by delimiter from the committed authored file (2088 bytes) compared byte-for-byte in Python against `.agent/plan.md` at C2 — equal, 2088 bytes both sides; `wc -l .agent/plan.md` reproduced 44, the file ends WITHOUT a trailing newline, and `## Goal` / `## Next Steps` each occur exactly once. THE RECORD APPEND AT C1 (booking RECORD18) HELD BYTE-IDENTICAL: pre-append `.agent/live_review.md` measured 2284151 bytes at `c7d68c58`, RECORD18 measured 2614 bytes, appended as `content_bytes + b"\n" + RECORD18_bytes` (one newline), post-append measured 2286766 bytes exactly matching `2284151 + 1 + 2614`; the pre-append content is an exact byte prefix of the post-append content; the file still ends WITHOUT a trailing newline; the open set recomputed mechanically read 350 registered / 72 `Done:` / 278 open on both sides of the append, reproduced identically by the reviewer against the CURRENT ledger. THE INTEGRATION GATE ITSELF WAS INDEPENDENTLY RE-RUN BY THE REVIEWER, NOT TAKEN ON THE WORKER'S SUMMARY: `pytest.main(["-n", "auto", "-q"])` from the repository root, run by the reviewer directly, reproduced 19546 passed, 23 skipped, 0 failed, exit 0, in 149.46s — matching the worker's own branch-run reading (19546 passed / 23 skipped / 0 failed, exit 0) exactly, on a separate invocation with its own separate wall-clock measurement. Because the branch run alone already shows 0 failures, `branch_only = set(branch_failed) - set(base_failed)` is empty under ANY reading of the base set, which is the decisive fact for this verdict: no branch-only regression exists. The reviewer separately corroborated the worker's base-only attribution without repeating the full base-worktree run: the one `fixed_by_branch` id, `tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup`, was already independently classified identically (base-only, XDIST-FLAKE, serial-pass) at `.agent/gate_f110_r15/attribution.txt` item 2 on an unrelated feature branch — confirmed by the reviewer's own direct read of that file, not by the worker's citation alone — and the reviewer's own `git diff --name-only 5c28c674..HEAD -- packages/` reproduced the identical eight-file coupling set the worker reported (`config.py`, `context_compiler.py`, `decision_queue.py`, `escalation.py`, `pingpong_job.py`, `pingpong_loop.py`, `prompt_budget.py`, `task_granularity.py`), with the reviewer additionally reading that test's own imports (`json`, `os`, `subprocess`, `sys`, `pathlib` — stdlib only) to confirm it reaches no orchestration module F112 touched. G7 AND G8 RE-VERIFIED BY THE REVIEWER DIRECTLY: `git ls-files .agent/gate_f112_r19` lists exactly the 9 files the block named, 0 named `.log`; `git status --porcelain` reads empty; no `tmp/*` branch and no `.remedy-wt/f112-r19-base` worktree survive; `git diff --stat c7d68c58..cd3173fc -- packages/ apps/ tests/ docs/` is empty. NO NEW FINDING AND NONE RESOLVED: the open set is unmoved at 278 (350 registered, 72 `Done:`). Session 6's round 19 gate is accepted as the integration gate the feature owes before closure; round 20 opens the closure sequence (docs/roadmap/STATUS_closure_protocol.md) at precondition 6, the self-use queue.
-<<<END RECORD19>>>
+<<<BEGIN RECORD20>>>
+Gate: F112 R20 — the round 20 entry, closure precondition 6's generation step (no production code). VERDICT PASS, over the range `3b7a3e18..e9b9c46e` (commits C0a `61b3ef58`, C0b `a1bb9448`, C1 `402f2220`, C2 `6c1dd691`, C3 `5ed84df4` — five real content commits — plus handback commit `e9b9c46e`), independently re-verified by the reviewer. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r20.md` and `HEAD:.agent/last_block.md` both print blob `7948c69cdc13f327351b58f2c816c2dbe60f719b`, reproduced directly; `wc -l` reproduced 227. THE PLAN REPLACEMENT AT C2 HELD BYTE-IDENTICAL: PLAN20 extracted by delimiter from the committed authored file (2083 bytes) compared byte-for-byte in Python against `.agent/plan.md` at C2 — equal, 2083 bytes both sides; the file ends WITHOUT a trailing newline, and `## Goal` / `## Next Steps` each occur exactly once. THE RECORD APPEND AT C1 (booking RECORD19) HELD BYTE-IDENTICAL: pre-append `.agent/live_review.md` measured 2286766 bytes at `3b7a3e18`, RECORD19 extracted from the committed authored file measured 3996 bytes exactly as pinned, appended as `content_bytes + b"\n" + RECORD19_bytes` (one newline), post-append measured 2290763 bytes exactly matching `2286766 + 1 + 3996`; the pre-append content is an exact byte prefix of the post-append content; the file still ends WITHOUT a trailing newline; the open set recomputed mechanically read 350 registered / 72 `Done:` / 278 open on both sides of the append, and lines matching `^Gate: F\d+ R\d+ — ` read 267 after C1 with exactly one matching `^Gate: F112 R19 — `. THE SELF-USE GENERATION AT C3 HELD EXACTLY AS THE BLOCK PREDICTED: `packages.orchestration.self_use_queue.load_self_use_queue()` read 6 items before this round's own re-check and 7 after, the reviewer's own re-parse of `scripts/self_use_queue.json` confirming the new entry `id="SU-007"`, `consumed_by=""` (PENDING), `provenance="generated (self-use-generator tier 1, ledger scan, R-0418)"`, and its `why`/`job_markdown` quoting the SAME R-0418 paragraph SU-005 and SU-006 already quoted — no exception was raised. G5 RE-VERIFIED BY THE REVIEWER DIRECTLY: `git status --porcelain` reads empty; `git diff --stat 3b7a3e18..e9b9c46e -- packages/ apps/ tests/ docs/` is empty; every commit's insertion count (227, 187, 2, 24, 8) is under 500. NO NEW FINDING AND NONE RESOLVED: the open set is unmoved at 278 (350 registered, 72 `Done:`). The reviewer additionally notes, as the round's own block already declared, that R-0418 was already the target of SU-005 (consumed by F109) and SU-006 (consumed by F110), both run to the approval gate without ever landing a `Done: R-0418` line — a pre-existing gap this round correctly left untouched, since fixing the generator's own selection logic or the ledger bookkeeping gap is out of F112's change set. Round 21 plans and runs SU-007 via `self_use_job`/`self_use_runner` to the normal approval gate, per PLAN20's Next Steps.
+<<<END RECORD20>>>
 
-<<<BEGIN PLAN20>>>
+<<<BEGIN PLAN21>>>
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
 F112 claimed in STATUS.md round 1; T001-T003b2b2b2 complete and green,
-Acceptance re-verified round 18, integration gate PASSED round 19
-(RECORD19: VERDICT PASS, booked this round, independently re-run by the
-reviewer: branch suite 19546 passed / 23 skipped / 0 failed reproduced
-directly). Round 20 opens the closure sequence
-(docs/roadmap/STATUS_closure_protocol.md).
+integration gate PASSED round 19, self-use item SU-007 generated round 20
+(RECORD20: VERDICT PASS, booked this round). Round 21 plans and runs
+SU-007 to the normal approval gate (closure precondition 6, F257/F258).
 
 ## Goal
 
@@ -135,21 +149,20 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 20 books RECORD19, then opens closure precondition 6 (the
-self-use queue, F257/F258): the queue holds no pending item
-(`next_self_use_item()` is None), so this round calls
-`self_use_generator.generate_and_append_if_empty` and reports the
-result. No self-use job is planned or run this round.
+Round 21 runs `self_use_runner.run_next_self_use_item` against SU-007
+(job "Address ledger finding R-0418") through the real builder/reviewer
+loop (local `ollama` provider, no external cost), stopping at the normal
+approval gate — never promoted. Every string
+`self_use_findings.describe_self_use_run_defects` returns for the run's
+JobPlan is registered as an R-id finding before close. `consumed_by` is
+set to F112 only in the closure commit, not this round.
 
 ## Next Steps
 
-- New item generated: a later round runs it via `self_use_job` /
-  `self_use_runner` to the approval gate, registers any findings
-  `self_use_findings.describe_self_use_run_defects` reports, and sets
-  `consumed_by` to F112 at closure.
-- Generator also answers None: record `self-use NONE (queue exhausted)`
-  and proceed without one.
-- Either way: evidence job, review zip, STATUS line, PR per
+- Register any findings the run's own defects surface; repair only if
+  small and reviewer-gated as its own round.
+- Set SU-007's `consumed_by` to F112 in the closure commit.
+- Then: evidence job, review zip, STATUS line, PR per
   docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
@@ -160,68 +173,78 @@ result. No self-use job is planned or run this round.
   deliberately unbuilt (DECISION F112 D9).
 - R-0767 stays OPEN on the model-routing seam this feature's config
   borrows from; unrelated to F112.
-- `self_use_runner.run_next_self_use_item` refuses an unflagged fake
-  provider (R-0767/R-0768 class) — a real provider must resolve first.
-<<<END PLAN20>>>
+- A self-use job can stall mid-run (F110 R16's SU-006 precedent) —
+  if so, declare it and resume via `resume_job_plan` next round rather
+  than treating it as failed.
+<<<END PLAN21>>>
 
-Done when — the gates below, each RUN and each reported as ONE LINE in the
-handback with its real exit code / real reading. Every gate runs at a
-commit STRICTLY EARLIER than C4.
+Done when — the gates below, each RUN and reported as ONE LINE in the
+handback with its real reading. Every gate runs at a commit STRICTLY
+EARLIER than C4.
 
-G1 TRANSPORT — one digest comparison. Report `sha256sum` of the committed
-   `.agent/authored/f112-r20.md` and its byte length. Report that
-   `git rev-parse HEAD:.agent/authored/f112-r20.md` and
+G1 TRANSPORT — `sha256sum` and byte length of the committed
+   `.agent/authored/f112-r21.md`. Report that
+   `git rev-parse HEAD:.agent/authored/f112-r21.md` and
    `git rev-parse HEAD:.agent/last_block.md` print ONE blob id after C0b.
-   Report `wc -l .agent/authored/f112-r20.md`.
+   Report `wc -l .agent/authored/f112-r21.md`.
 
-G2 THE PLAN — extract PLAN20 by delimiter from the COMMITTED authored file.
-   `cmp` (or a byte-equality check) against `.agent/plan.md` at C2 —
-   must be equal. Report `wc -l .agent/plan.md` (must be under 50), that the
-   file ends WITHOUT a trailing newline, `grep -c '^## Goal'` and
-   `grep -c '^## Next Steps'` (each expected 1).
+G2 THE PLAN — extract PLAN21 by delimiter from the committed authored
+   file, compare byte-for-byte against `.agent/plan.md` at C2 — must be
+   equal. Report `wc -l .agent/plan.md` (must be under 50), no trailing
+   newline, `## Goal` and `## Next Steps` each exactly once.
 
-G3 THE RECORD APPEND — extract RECORD19 by delimiter from the committed
-   authored file, report its byte length (expected 3996 — if it does not
-   match, DECLARE the mismatch, do not silently adjust the arithmetic
-   below). Report the arithmetic `2286766 + 1 + <len> = <total>` against
-   the real post-append size, that pre-C1 content is an exact byte PREFIX
-   of post-C1 content, and that the file still ends WITHOUT a trailing
-   newline. NEGATIVE CONTROL: flip one byte inside the appended RECORD19
-   slice, recompute, report the equality is now `False`. Report the count
-   of lines matching `^Gate: F112 R19 — ` before C1 (expected 0) and after
-   (expected 1). Report registered/`Done:`/open counts on BOTH sides of C1
-   (expected UNMOVED at 350/72/278).
+G3 THE RECORD APPEND — extract RECORD20 by delimiter, report its byte
+   length (expected 2953 — if it does not match, DECLARE the mismatch,
+   do not silently adjust the arithmetic below). Report the arithmetic
+   `2290763 + 1 + <len> = <total>` against the real post-append size, the
+   byte-prefix property, no trailing newline, a NEGATIVE CONTROL (flip one
+   byte, recompute, report `False`), lines matching `^Gate: F112 R20 — `
+   before (0) and after (1) C1, and registered/`Done:`/open counts on both
+   sides (expected UNMOVED 350/72/278).
 
-G4 THE SELF-USE GENERATION — report `pending_self_use_items()` and
-   `next_self_use_item()` BEFORE calling the generator (expected empty
-   tuple / `None`). Run the exact command in constraint 6. Report the
-   printed `entry` value in full. Report `scripts/self_use_queue.json`'s
-   item count before (6) and after (expected 7) by re-parsing the file
-   directly (not by trusting the return value alone). Report the new
-   item's `id` (expected `SU-007`), that its `consumed_by` is empty
-   (PENDING), and its `provenance` string. Report that
-   `load_self_use_queue()` re-parses the post-write file without raising.
-   If the generator raises instead of returning (e.g.
-   `SelfUseGenerationError`), STOP before C3's commit, do not paper over
-   it, and report the full exception in the handback instead of this
-   gate's expected reading — that is a valid, honestly-reported outcome
-   of this round, not a defect in the block.
+G4 THE RUN — report `pending_self_use_items()` and `next_self_use_item()`
+   immediately BEFORE calling `run_next_self_use_item` (expected: one
+   pending entry, `SU-007`). Run the exact call in constraint 5, wrapped
+   in your own wall-clock measurement. Report: the `job_id`; the final
+   `result.status` (or the exception class/message, if one was raised);
+   `result.error`; each task's `task_id`/`status`/`error`; the FULL tuple
+   `describe_self_use_run_defects(result)` answers (or state plainly that
+   none could be computed, and why); the resolved provider/model for
+   `builder` and `reviewer` as the run's own `execution_config` states
+   them; the wall-clock duration.
 
-G5 THE TREE AND THE COMMITS — `git status --porcelain` immediately before
-   C4 is staged — EMPTY. `git diff --stat 3b7a3e18..<C3> -- packages/ apps/
-   tests/ docs/` — must be EMPTY. PER-COMMIT INSERTIONS (the `+` column
-   only) for C0a through C3, each confirmed under 500 by `git show --stat`.
+G5 THE EVIDENCE COPY — report the sha256 of the job file as it existed in
+   the scratch dest_dir immediately after the run, and the sha256 of the
+   committed `.agent/selfuse_f112/SU-007.md` — must be equal. Report
+   `wc -l .agent/selfuse_f112/run.txt` and that it contains every element
+   constraint 6 names (job_id, status, defects tuple, execution_config,
+   worktree path).
 
-Handback: rewrite `.agent/handoff.md` in full — feature and round, SESSION
-number, branch, base and head SHAs, the per-commit changed-files table with
-its `+/-` column, ONE line per gate above with its real reading, the
-item-status table AGENTS.md mandates covering every C-commit and every
-gate, deviations, the open-findings count (expected 278, unmoved), the next
-expected action (plan and run SU-007 via `self_use_job`/`self_use_runner`
-in the following round, per PLAN20's Next Steps). It has NO length cap.
-State plainly what the generator returned. Do not write a `Done:` or
-`Gate:` paragraph anywhere beyond applying RECORD19 verbatim — the VERDICT
-on THIS round is the reviewer's, not yours. Then
+G6 THE CLEANUP — report `os.path.isdir('.remedy-wt/selfuse-f112-run')` is
+   `False` after C3. Report `os.path.isdir('.remedy-wt/job-<job_id>')` is
+   `True` and that it was NOT deleted or modified by this round (state
+   this as an assertion about what this round did, not a full audit of
+   the job's own worktree contents). Report `git status --porcelain` in
+   the PRIMARY checkout reads empty before C4 is staged.
+
+G7 THE TREE AND THE COMMITS — `git diff --stat e9b9c46e..<C3> -- packages/
+   apps/ tests/ docs/` in the PRIMARY checkout — must be EMPTY. `git ls-files
+   scripts/self_use_queue.json` shows it unchanged since `e9b9c46e` (`git
+   diff e9b9c46e..<C3> -- scripts/self_use_queue.json` empty). PER-COMMIT
+   INSERTIONS (the `+` column) for C0a through C3, each confirmed under 500.
+
+Handback: rewrite `.agent/handoff.md` in full — feature and round, session
+number, branch, base and head SHAs, per-commit changed-files table, ONE
+line per gate above with its real reading, the item-status table AGENTS.md
+mandates, deviations, the open-findings count (expected 278, unmoved),
+and the next expected action: the reviewer reads `run.txt`, decides which
+(if any) defects become R-id findings, and plans the closure commit
+(consumed_by=F112, STATUS line, README sync, evidence job, review zip,
+PR). It has NO length cap. State plainly what the job's own outcome was —
+completed clean, blocked at the approval gate, or an exception — in your
+own words, without characterizing it as good or bad; that judgment is the
+reviewer's. Do not write a `Done:` or `Gate:` paragraph anywhere beyond
+applying RECORD20 verbatim. Then
 `git push -u origin feature/f112-prompt-budget-per-task-class` and report
-the outcome; create NO pull request, merge nothing.
+the outcome; create NO pull request, merge nothing, run no `--approve`.
 ══END BLOCK══
