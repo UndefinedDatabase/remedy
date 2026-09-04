@@ -94,6 +94,19 @@ enforced in code and refuse a violating override by name rather than
 silently applying it; moving a class to a cheaper tier requires a
 documented benchmark run, never a bare config edit).
 
+F112 prompt budget per task class (every task carries a class-scoped
+input-token ceiling; the context compiler fits under it via the existing
+demotion cascade with full omission disclosure — no new selection logic,
+only a class-specific number the cascade already enforces. When even
+tier-1 content alone still cannot fit after full demotion, a task-split
+decision is raised — "task context exceeds its class cap" — with
+auto-apply-safe-default splitting the oversized task into children
+rather than running it truncated; "raise cap"/"proceed-overcap" stay
+deliberately unbuilt, since no audited or attended-mode seam exists to
+hook them to yet. Caps are config defaults labeled with an honest
+default basis until a calibration feature replaces them with measured
+ones).
+
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend
 reported as its own role in the token ledger).
