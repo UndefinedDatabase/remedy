@@ -15,13 +15,34 @@ def _cmd_blocker_list(
     job_id_str: str,
     *,
     json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
 ) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.stop_reasons import (
         export_stop_reason_json,
         list_stop_reasons,
     )
 
     stops = list_stop_reasons(job_id_str)
+    try:
+        stops = apply_list_options(
+            stops,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda s: s.created_at,
+                "status": lambda s: s.status,
+                "severity": lambda s: s.severity,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda s: s.created_at or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if json_output:
         print(_json.dumps({
@@ -92,6 +113,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "blocker.list": lambda args: _cmd_blocker_list(
         args.job_id,
         json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "blocker.show": lambda args: _cmd_blocker_show(
         args.job_id,

@@ -36,11 +36,36 @@ def _load_job_events(job_id_str: str):
     return job, events, job_id_str
 
 
-def _cmd_decision_list(job_id_str: str, *, json_output: bool = False) -> None:
+def _cmd_decision_list(
+    job_id_str: str,
+    *,
+    json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
+) -> None:
     from packages.orchestration.decision_queue import export_decision_json, list_decisions
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
 
     job, events, jid = _load_job_events(job_id_str)
     decisions = list_decisions(job, events)
+    try:
+        decisions = apply_list_options(
+            decisions,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda d: d.created_at,
+                "status": lambda d: d.status,
+                "severity": lambda d: d.severity,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda d: d.created_at or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if json_output:
         print(_json.dumps({
@@ -359,6 +384,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "decision.list": lambda args: _cmd_decision_list(
         args.job_id,
         json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "decision.show": lambda args: _cmd_decision_show(
         args.job_id,

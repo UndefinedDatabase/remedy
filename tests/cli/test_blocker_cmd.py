@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from packages.orchestration.stop_reasons import StopReason
 
 _LIST_STOPS = "packages.orchestration.stop_reasons.list_stop_reasons"
@@ -47,3 +49,23 @@ class TestBlockerListText:
         out = capsys.readouterr().out
         assert "created=2026-09-01T00:00:00+00:00" in out
         assert "resolved=2026-09-02T00:00:00+00:00" in out
+
+
+class TestBlockerListOptions:
+    @patch(_LIST_STOPS)
+    def test_limit_caps_returned_blockers(self, mock_list, capsys):
+        mock_list.return_value = [_stop(), _stop(), _stop()]
+        from apps.cli.commands.blocker import _cmd_blocker_list
+        _cmd_blocker_list("job-1", json_output=True, limit="2")
+        import json
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert len(data["stop_reasons"]) == 2
+
+    @patch(_LIST_STOPS)
+    def test_unknown_sort_field_exits_nonzero(self, mock_list, capsys):
+        mock_list.return_value = [_stop()]
+        from apps.cli.commands.blocker import _cmd_blocker_list
+        with pytest.raises(SystemExit) as exc:
+            _cmd_blocker_list("job-1", json_output=True, sort="bogus")
+        assert exc.value.code == 1

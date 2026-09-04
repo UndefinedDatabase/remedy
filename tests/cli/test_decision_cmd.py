@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from packages.orchestration.decision_queue import HumanDecision
 
 _LOAD_JOB_EVENTS = "apps.cli.commands.decision._load_job_events"
@@ -51,3 +53,27 @@ class TestDecisionListText:
         out = capsys.readouterr().out
         assert "created=2026-09-01T00:00:00+00:00" in out
         assert "resolved=2026-09-02T00:00:00+00:00" in out
+
+
+class TestDecisionListOptions:
+    @patch(_LIST_DECISIONS)
+    @patch(_LOAD_JOB_EVENTS)
+    def test_limit_caps_returned_decisions(self, mock_load, mock_list, capsys):
+        mock_load.return_value = (None, [], "job-1")
+        mock_list.return_value = [_decision(), _decision(), _decision()]
+        from apps.cli.commands.decision import _cmd_decision_list
+        _cmd_decision_list("job-1", json_output=True, limit="2")
+        import json
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert len(data["decisions"]) == 2
+
+    @patch(_LIST_DECISIONS)
+    @patch(_LOAD_JOB_EVENTS)
+    def test_unknown_sort_field_exits_nonzero(self, mock_load, mock_list, capsys):
+        mock_load.return_value = (None, [], "job-1")
+        mock_list.return_value = [_decision()]
+        from apps.cli.commands.decision import _cmd_decision_list
+        with pytest.raises(SystemExit) as exc:
+            _cmd_decision_list("job-1", json_output=True, sort="bogus")
+        assert exc.value.code == 1
