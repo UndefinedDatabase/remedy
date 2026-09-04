@@ -1,22 +1,20 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 3 (T002 batch 1 ships)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 4 (T002 batch 2, memory.list)
 
 ## Session
 
-SESSION 1 of feature F262 · round 3 · rounds so far 3.
+SESSION 1 of feature F262 · round 4 · rounds so far 4.
 
-Round 3 ships T002 batch 1: printed CREATED (and, where the model has
-it, RESOLVED/UPDATED) dates on four list commands whose store already
-records the timestamps and whose `--json` output already surfaces
-them — only the TEXT rendering was missing them. No model or store
-change, no `--json` change, no behavior change beyond the printed
-line: `blocker.list`, `decision.list`, `approval.policy-list`,
-`self-repair.proposal-list`. Two of the four (`blocker.list`,
-`decision.list`) had no dedicated CLI test file before this round;
-both now do.
+Round 4 ships T002 batch 2: `memory.list` gains `updated_at` in its
+`--json` output (the model already carries the field; the json branch
+simply omitted it) and both `created=`/`updated=` in its text output.
+Single production file (`apps/cli/commands/memory.py`), single test
+file (`tests/test_grouped_cli.py`, two new methods in the existing
+`TestMemoryCLIContract` class). No model or store change, no behavior
+change beyond the printed/exported fields.
 
 ## Range
 
-Review of `c324929e8f0b97b34de30c6e4eb42bbca3357b61..41922f01aa656c4fd968a412cb9731de608c83a9`.
+Review of `0d85f9fcc4381d0143c35f2e40bde6079e804789..a07c6cd2492c3dceea58d145f75df6746abbe81d`.
 That is C0a through C3 (five content commits before this handback —
 C0a, C0b, C1, C2, C3). This handback (C4) follows and is not part of
 the reviewed content range.
@@ -26,51 +24,47 @@ the reviewed content range.
 | Item | Status | Reason |
 |---|---|---|
 | Preconditions | done | HEAD matched, branch matched, tree clean, STOP absent |
-| C0a | done | `.agent/authored/f262-r3.md` saved verbatim, cmp exit 0 |
+| C0a | done | `.agent/authored/f262-r4.md` saved verbatim, cmp exit 0 |
 | C0b | done | mirrored to `.agent/last_block.md`, sha256 identical |
-| C1 | done | GATE2 appended to `.agent/live_review.md` byte-exact |
-| C2 | done | four printer PAIRs applied + two new test files, one commit |
-| C3 | done | PLAN4 applied to `.agent/plan.md`, whole-file replace |
+| C1 | done | GATE3 appended to `.agent/live_review.md` byte-exact |
+| C2 | done | PAIR M1 (append-shaped) + PAIR M2 (rewrite) applied to `memory.py`, two new test methods added, one commit |
+| C3 | done | PLAN5 applied to `.agent/plan.md`, whole-file replace |
 | C4 (this handback) | done | |
 | G1 TRANSPORT | done | PASS — one digest, twice |
 | G2 THE LEDGER APPEND | done | PASS — arithmetic matched, tail equal, negative control rejected |
-| G3 THE FOUR PAIRS | done | PASS — all four FROM 1→0, TO 0→1, containment False, py_compile exit 0 ×6 |
-| G4 THE TESTS, BEFORE AND AFTER | done | PASS — 68/12 unchanged before+after C2, new files 2/2 passed |
+| G3 THE TWO PAIRS | done | PASS — M1 FROM 1→1 (append-shaped, expected), TO 1; M2 FROM 1→0, TO 0→1; `_cmd_memory_recall` confirmed untouched; py_compile exit 0 ×2 |
+| G4 THE TESTS, BEFORE AND AFTER | done | PASS — 511 before C2, 513 after (base + 2), fully green both times |
 | G5 STATE READERS + CANARY | done | PASS — 515/52/21/16/42, unmoved from session baseline |
-| G6 THE PLAN | done | PASS — cmp exit 0, 40 lines, both header counts 1 |
+| G6 THE PLAN | done | PASS — cmp exit 0, 37 lines, both header counts 1 |
 | G7 THE TREE, COMMITS, SWEEP | done | PASS — tree clean, `.remedy-wt` untracked, numstats match, staleness declared |
 
 ## Commits
 
-### a262f041 F262 R3 C0a: save step block verbatim to .agent/authored/f262-r3.md
+### 831747fd F262 R4 C0a: save step block verbatim to .agent/authored/f262-r4.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r3.md` | +303/-0 | transport proof — verbatim `cp` of the reviewer's step block (`.remedy-wt/f262-r3-block.txt`), new file |
+| `.agent/authored/f262-r4.md` | +246/-0 | transport proof — verbatim `cp` of the reviewer's step block (`.remedy-wt/f262-r4-block.txt`), new file |
 
-### be92b657 F262 R3 C0b: mirror block to .agent/last_block.md
+### dfe89e7e F262 R4 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +227/-225 | mirror of the round's authored block via `cp` (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
+| `.agent/last_block.md` | +158/-215 | mirror of the round's authored block via `cp` (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
 
-### f5774a49 F262 R3 C1: append GATE2 to live_review.md, books round 2 PASS verdict
+### 2e1f7323 F262 R4 C1: append GATE3 to live_review.md - books round 3's PASS verdict
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE2 (extracted from committed authored file by marker index), `\n` + GATE2's own bytes appended to the base file |
+| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE3 (extracted from committed authored file by marker index), `\n` + GATE3's own bytes appended to the base file |
 
-### e9589f54 F262 R3 C2: T002 batch 1 - print created/resolved dates on four list commands, with coverage
+### 66d84b2e F262 R4 C2: memory.list gains updated_at in --json, created/updated in text output
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/blocker.py` | +2/-1 | PAIR B — `_cmd_blocker_list` text row now prints `created=` and, when set, `resolved=` |
-| `apps/cli/commands/decision.py` | +2/-1 | PAIR D — `_cmd_decision_list` text row now prints `created=` and, when set, `resolved=` |
-| `apps/cli/commands/self_repair_cmd.py` | +2/-1 | PAIR S — `_cmd_proposal_list` text row now prints `created=`/`updated=` |
-| `apps/cli/commands/worker_facade_cmd.py` | +2/-1 | PAIR P — `_cmd_approval_policy_list` text row now prints `created=`/`updated=` |
-| `tests/cli/test_blocker_cmd.py` | +49/-0 | new — `TestBlockerListText`, 2 tests, follows `TestApprovalPolicyList`'s patching idiom |
-| `tests/cli/test_decision_cmd.py` | +53/-0 | new — `TestDecisionListText`, 2 tests, same idiom, patches both `_load_job_events` and `list_decisions` |
+| `apps/cli/commands/memory.py` | +2/-1 | PAIR M1 (append-shaped: adds `"updated_at": e.updated_at,` after `"created_at": e.created_at,` in `_cmd_memory_list`'s json dict) and PAIR M2 (rewrite: extends the text-branch print with `created=`/`updated=`) |
+| `tests/test_grouped_cli.py` | +25/-0 | two new test methods added by hand to the existing `TestMemoryCLIContract` class per the TEST SPEC: `test_list_json_has_updated_at_key`, `test_list_text_shows_created_and_updated` |
 
-### 41922f01 F262 R3 C3: replace plan.md with PLAN4 - round 4 continues T002 batch 2
+### a07c6cd2 F262 R4 C3: replace plan.md with PLAN5
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +21/-17 | whole-file replace with PLAN4 extracted from the committed authored file (per constraint 6) |
+| `.agent/plan.md` | +18/-21 | whole-file replace with PLAN5 extracted from the committed authored file (per constraint 6) |
 
 ### (this handback commit, C4)
 | Path | +/- | Reason |
@@ -92,7 +86,7 @@ Preconditions, checked before C0a:
 $ git status --porcelain
 (empty)
 $ git rev-parse HEAD
-c324929e8f0b97b34de30c6e4eb42bbca3357b61
+0d85f9fcc4381d0143c35f2e40bde6079e804789
 $ git branch --show-current
 feature/f262-list-commands-v2
 $ ls .agent/STOP
@@ -102,102 +96,79 @@ All four confirmed.
 
 **G1 TRANSPORT** (after C0b):
 ```
-$ sha256sum .agent/authored/f262-r3.md .agent/last_block.md
-c8d93da08b41c7fe134ba3320f52f890d21a9998b300ffa8f19229c20313992b  .agent/authored/f262-r3.md
-c8d93da08b41c7fe134ba3320f52f890d21a9998b300ffa8f19229c20313992b  .agent/last_block.md
+$ sha256sum .agent/authored/f262-r4.md .agent/last_block.md
+420f487092908823e0e1b43459f8860cd777ad884f2a95841049c09a1756e1df  .agent/authored/f262-r4.md
+420f487092908823e0e1b43459f8860cd777ad884f2a95841049c09a1756e1df  .agent/last_block.md
 ```
 One digest, twice — PASS.
 
 **G2 THE LEDGER APPEND, FULL FORENSICS**:
 ```
-base size immediately before C1: 2417095 bytes, trailing byte b'.' (no trailing newline)
-GATE2 own byte length: 4209
-GATE2 internal newline count: 0
-base + 1 + GATE2_length = 2421305
-post-C1 file real byte length = 2421305
+base size immediately before C1: 2421305 bytes, no trailing newline (last byte '.')
+GATE3 own byte length: 3680
+GATE3 internal newline count: 0
+base + 1 + GATE3_length = 2424986
+post-C1 file real byte length = 2424986
 match: True
-tail slice (last 4209 bytes of post-C1 file) vs GATE2: equal True
+tail slice (last 3680 bytes of post-C1 file) vs GATE3: equal True
   (cmp both directions, via scratch copies under .remedy-wt/: exit 0, no output, each direction)
-negative control: flipped first byte of a COPY of GATE2 vs the real tail: rejected True
+negative control: flipped first byte of a COPY of GATE3 vs the real tail: rejected True
 ```
 All readings PASS — matches the block's own stated expected sizes
-(2417095 base, 2421305 post-append) exactly.
+(2421305 base, 2424986 post-append) exactly. Note: the character-count
+extraction in Python text mode read GATE3 at 3670 (one em-dash "—"
+character costs 3 UTF-8 bytes but 1 Python `str` character, and GATE3
+contains several); every arithmetic and comparison step above was
+redone and reported in raw BYTES (`rb`/`wb` file modes throughout),
+which is what reconciles to the block's own byte totals.
 
-**G3 THE FOUR PAIRS, READ AND COUNTED**:
+**G3 THE TWO PAIRS, READ AND COUNTED, PER CONSTRAINT 2's SHAPES**:
 ```
-PAIR B (blocker.py):            FROM before 1, FROM after 0, TO after 1, FROM in TO: False
-PAIR D (decision.py):           FROM before 1, FROM after 0, TO after 1, FROM in TO: False
-PAIR P (worker_facade_cmd.py):  FROM before 1, FROM after 0, TO after 1, FROM in TO: False
-PAIR S (self_repair_cmd.py):    FROM before 1, FROM after 0, TO after 1, FROM in TO: False
+PAIR M1 (append-shaped): FROM count before 1, TO contains FROM: True, FROM count after 1 (expected — TO literally contains FROM), TO count after 1
+PAIR M2 (rewrite):       FROM count before 1, FROM count after 0, TO count after 1
 ```
-All four PASS — REWRITE confirmed, not APPEND, for all four (extracted
+Both PASS, matching Constraint 2's predicted shapes exactly (extracted
 and applied via `.remedy-wt/apply_pairs.py`, never hand-retyped).
 
-Full diff of all four production files, confirmed nothing beyond the
-named pair changed in each:
+Full diff of `apps/cli/commands/memory.py`, confirmed nothing beyond
+the two named insertions changed:
 ```diff
---- a/apps/cli/commands/blocker.py
-+++ b/apps/cli/commands/blocker.py
-@@ -35,7 +35,8 @@ def _cmd_blocker_list(
-             return
-         for s in stops:
-             status_mark = "[resolved]" if s.status == "resolved" else "[active]"
--            print(f"  {s.reason_code} {status_mark}  {s.safe_summary}  (id={s.id[:8]})")
-+            resolved_str = f", resolved={s.resolved_at}" if s.resolved_at else ""
-+            print(f"  {s.reason_code} {status_mark}  {s.safe_summary}  (id={s.id[:8]}, created={s.created_at}{resolved_str})")
-
---- a/apps/cli/commands/decision.py
-+++ b/apps/cli/commands/decision.py
-@@ -54,7 +54,8 @@ def _cmd_decision_list(job_id_str: str, *, json_output: bool = False) -> None:
-             return
-         for d in decisions:
-             status_mark = "[open]" if d.status == "open" else "[resolved]"
--            print(f"  {d.type} {status_mark} ({d.severity}): {d.safe_summary}  (id={d.id})")
-+            resolved_str = f", resolved={d.resolved_at}" if d.resolved_at else ""
-+            print(f"  {d.type} {status_mark} ({d.severity}): {d.safe_summary}  (id={d.id}, created={d.created_at}{resolved_str})")
-
---- a/apps/cli/commands/self_repair_cmd.py
-+++ b/apps/cli/commands/self_repair_cmd.py
-@@ -90,7 +90,8 @@ def _cmd_proposal_list(args: argparse.Namespace) -> None:
-         return
-
-     for p in proposals:
--        print(f"  {p.get('proposal_id', '?'):20s}  {p.get('status', '?'):25s}  {p.get('title', '')[:50]}")
-+        print(f"  {p.get('proposal_id', '?'):20s}  {p.get('status', '?'):25s}  {p.get('title', '')[:50]}"
-+              f"  (created={p.get('created_at', '')}, updated={p.get('updated_at', '')})")
-
---- a/apps/cli/commands/worker_facade_cmd.py
-+++ b/apps/cli/commands/worker_facade_cmd.py
-@@ -662,7 +662,8 @@ def _cmd_approval_policy_list(ns: argparse.Namespace) -> None:
-     print(f"Approval policies: {len(policies)}")
-     for p in policies:
-         status = "ENABLED" if p.get("enabled") else "disabled"
--        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}")
-+        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}"
-+              f"  (created={p.get('created_at', '')}, updated={p.get('updated_at', '')})")
+--- a/apps/cli/commands/memory.py
++++ b/apps/cli/commands/memory.py
+@@ -93,6 +93,7 @@ def _cmd_memory_list(
+                 "validity": e.validity, "review_status": e.review_status,
+                 "scope": e.scope, "evidence_refs": e.evidence_refs,
+                 "created_at": e.created_at,
++                "updated_at": e.updated_at,
+             }
+             for e in entries
+         ]
+@@ -105,7 +106,7 @@ def _cmd_memory_list(
+         for e in entries:
+             approved_mark = " [approved]" if e.approved else ""
+             tags_str = f" tags={','.join(e.tags)}" if e.tags else ""
+-            print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]})")
++            print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]}, created={e.created_at}, updated={e.updated_at})")
 ```
-Confirmed by direct reading: exactly one line replaced by two in each
-file, nothing else touched.
+Confirmed by direct reading: exactly the two named lines changed in
+`_cmd_memory_list`. `_cmd_memory_recall` (lines 37-74, the
+near-identical function a few lines above with its own
+`recall_memory` import and its own byte-identical-before-this-round
+json-dict block) was read in full and is byte-for-byte untouched —
+still ends its dict at `"created_at": e.created_at,` with no
+`updated_at` key, and its print line is unchanged.
 
 ```
-$ python3 -m py_compile apps/cli/commands/blocker.py
+$ python3 -m py_compile apps/cli/commands/memory.py
 (exit 0, no output)
-$ python3 -m py_compile apps/cli/commands/decision.py
-(exit 0, no output)
-$ python3 -m py_compile apps/cli/commands/worker_facade_cmd.py
-(exit 0, no output)
-$ python3 -m py_compile apps/cli/commands/self_repair_cmd.py
-(exit 0, no output)
-$ python3 -m py_compile tests/cli/test_blocker_cmd.py
-(exit 0, no output)
-$ python3 -m py_compile tests/cli/test_decision_cmd.py
+$ python3 -m py_compile tests/test_grouped_cli.py
 (exit 0, no output)
 ```
-All six exit 0, reported individually — PASS.
+Both exit 0, reported individually — PASS.
 
 Ruff attempted per constraint 4, exact refusal reproduced:
 ```
-$ ruff check apps/cli/commands/blocker.py apps/cli/commands/decision.py apps/cli/commands/worker_facade_cmd.py apps/cli/commands/self_repair_cmd.py tests/cli/test_blocker_cmd.py tests/cli/test_decision_cmd.py
+$ ruff check apps/cli/commands/memory.py tests/test_grouped_cli.py
 This command requires approval
 ```
 Ruff is denied this session, exactly as the block warned.
@@ -205,45 +176,30 @@ Ruff is denied this session, exactly as the block warned.
 **G4 THE TESTS, BEFORE AND AFTER**:
 ```
 Before C2:
-$ python3 -m pytest tests/cli/test_worker_facade_cmd.py -q
-....................................................................     [100%]
-68 passed in 0.32s
-$ python3 -m pytest tests/cli/test_self_repair_cmd.py -q
-............                                                             [100%]
-12 passed in 2.43s
+$ python3 -m pytest tests/test_grouped_cli.py -q
+511 passed in 48.57s
 
 After C2:
-$ python3 -m pytest tests/cli/test_worker_facade_cmd.py -q
-....................................................................     [100%]
-68 passed in 0.32s
-$ python3 -m pytest tests/cli/test_self_repair_cmd.py -q
-............                                                             [100%]
-12 passed in 2.41s
-
-New files, only after C2:
-$ python3 -m pytest tests/cli/test_blocker_cmd.py -q
-..                                                                        [100%]
-2 passed in 0.19s
-$ python3 -m pytest tests/cli/test_decision_cmd.py -q
-..                                                                        [100%]
-2 passed in 0.20s
+$ python3 -m pytest tests/test_grouped_cli.py -q
+513 passed in 48.58s
 ```
-Both pre-existing suites fully green, unchanged before and after
-(68 and 12 both times) — additive printer change broke nothing. Both
-new files show `2 passed` — PASS on all four readings.
+Base count 511, fully green; after C2, 513 (base + 2), fully green —
+the two new tests plus every pre-existing test in this large shared
+file, none of which this round should have touched, moved together
+correctly.
 
 **G5 THE STATE READERS AND THE CANARY**:
 ```
 $ python3 -m pytest tests/ui_server/ -q
-515 passed in 32.61s
+515 passed in 32.72s
 $ python3 -m pytest tests/orchestration/test_test_runner.py -q
-52 passed in 5.62s
+52 passed in 5.60s
 $ python3 -m pytest tests/regression/test_resource_safety.py -q
-21 passed in 11.53s
+21 passed in 11.52s
 $ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
 16 passed in 0.29s
 $ python3 -m pytest tests/cli/test_golden_path.py -q
-42 passed in 21.22s
+42 passed in 20.85s
 ```
 515/52/21/16/42 — identical to this session's own prior readings.
 Not moved, as expected: this round's change set names no path any of
@@ -251,16 +207,16 @@ these five suites should be sensitive to.
 
 **G6 THE PLAN**:
 ```
-$ (PLAN4 extracted from committed authored file, compared byte-for-byte in Python)
+$ (PLAN5 extracted from committed authored file, compared byte-for-byte in Python)
 cmp equal: True
 $ wc -l .agent/plan.md
-40 .agent/plan.md
+37 .agent/plan.md
 $ grep -c '^## Goal' .agent/plan.md
 1
 $ grep -c '^## Next Steps' .agent/plan.md
 1
 ```
-cmp equal True (exit-0 equivalent), 40 lines (under 50), both header
+cmp equal True (exit-0 equivalent), 37 lines (under 50), both header
 counts 1 — PASS.
 
 **G7 THE TREE, THE COMMITS AND THE SWEEP**:
@@ -275,126 +231,120 @@ Tree clean before C4, nothing under `.remedy-wt/` tracked.
 Per-commit numstat cross-check (the '+' column) against this
 handback's own Commits table:
 ```
-$ git show --numstat a262f041
-303  0    .agent/authored/f262-r3.md
-$ git show --numstat be92b657
-227  225  .agent/last_block.md
-$ git show --numstat f5774a49
+$ git show --numstat 831747fd
+246  0    .agent/authored/f262-r4.md
+$ git show --numstat dfe89e7e
+158  215  .agent/last_block.md
+$ git show --numstat 2e1f7323
 2    1    .agent/live_review.md
-$ git show --numstat e9589f54
-2    1    apps/cli/commands/blocker.py
-2    1    apps/cli/commands/decision.py
-2    1    apps/cli/commands/self_repair_cmd.py
-2    1    apps/cli/commands/worker_facade_cmd.py
-49   0    tests/cli/test_blocker_cmd.py
-53   0    tests/cli/test_decision_cmd.py
-$ git show --numstat 41922f01
-21   17   .agent/plan.md
+$ git show --numstat 66d84b2e
+2    1    apps/cli/commands/memory.py
+25   0    tests/test_grouped_cli.py
+$ git show --numstat a07c6cd2
+18   21   .agent/plan.md
 ```
 Every path and every insertion count matches the Commits table exactly
-(303, 227, 2, 2+2+2+2+49+53=110 total for C2, 21).
+(246, 158, 2, 2+25=27 total for C2, 18). Note: `git commit`'s own
+printed post-commit summary differed from these `--numstat` readings
+for C0b and C3 (it printed 246/303 for C0b and 38/41 for C3) — that
+printed summary applies whole-file "rewrite %" accounting once a
+file's dissimilarity crosses its own display threshold, whereas
+`--numstat` reports the real line-level diff; this is the same
+tooling substitution already declared in round 1's ledger entry
+("`git show --numstat` used ... in place of `git commit`'s own
+rewrite-detected stat line for whole-file rewrites"), not a new
+finding, and this handback's table uses the `--numstat` reading
+throughout per the block's own G7 instruction.
 
 **Staleness sweep**, one entry per file this round touched:
-- `.agent/authored/f262-r3.md` — NOT stale. An immutable verbatim
+- `.agent/authored/f262-r4.md` — NOT stale. An immutable verbatim
   record of the round's own step block; nothing to go stale.
 - `.agent/last_block.md` — NOT stale. Mirrors the current round's
   block exactly, which is the file's whole purpose.
-- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE2's
-  content describes round 2's own verified facts and is not asserted
+- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE3's
+  content describes round 3's own verified facts and is not asserted
   to describe anything after it.
-- `apps/cli/commands/blocker.py` — NOT stale. Matches PAIR B exactly;
-  no other line touched.
-- `apps/cli/commands/decision.py` — NOT stale. Matches PAIR D exactly;
-  no other line touched.
-- `apps/cli/commands/worker_facade_cmd.py` — NOT stale. Matches PAIR P
-  exactly; no other line touched.
-- `apps/cli/commands/self_repair_cmd.py` — NOT stale. Matches PAIR S
-  exactly; no other line touched.
-- `tests/cli/test_blocker_cmd.py` — NOT stale. New file, matches the
-  TEST SPEC's field names, patch target and both test cases.
-- `tests/cli/test_decision_cmd.py` — NOT stale. New file, matches the
-  TEST SPEC's field names, both patch targets and both test cases.
-- `.agent/plan.md` — NOT stale. Freshly written PLAN4 content
-  accurately describes round 3's actual state (T002 batch 1 shipped,
-  round 4 = T002 batch 2 next).
+- `apps/cli/commands/memory.py` — NOT stale. Matches PAIR M1 and
+  PAIR M2 exactly; no other line touched; `_cmd_memory_recall`
+  confirmed untouched.
+- `tests/test_grouped_cli.py` — NOT stale. New methods match the
+  TEST SPEC's names, placement and assertions exactly.
+- `.agent/plan.md` — NOT stale. Freshly written PLAN5 content
+  accurately describes round 4's actual state (T002 batch 2 shipped,
+  round 5 = design the tournament.list/external-builder
+  per-row text format next).
 
 Constraint 8 check (a sentence OUTSIDE the change set made stale by
 this round): `docs/roadmap/features/T2_F262.md` line 5 still reads
 `> REGISTRATION ONLY — nothing in this file has been implemented.`
 This was already declared false as of round 2 (T001 shipped) and
-remains outside the declared change set this round too; T002 batch 1
+remains outside the declared change set this round too; T002 batch 2
 shipping this round makes the sentence even further from true, but it
-is still not repaired, per Constraint 8 and consistent with round 2's
-own handling of the same sentence.
+is still not repaired, per Constraint 8 and consistent with rounds 2
+and 3's own handling of the same sentence.
 
 No documentation elsewhere was found to quote an exact CLI output
-line for any of the four touched commands (`grep` across `docs/` for
-the four command ids found only conceptual references, no literal
-printed-line quotes), so no other staleness was introduced by this
-round's printer changes.
+line for `memory.list` (`grep` across `docs/` for `memory.list` found
+only conceptual references, no literal printed-line quotes), so no
+other staleness was introduced by this round's printer change.
 
 ## Authored-text proofs
 
-- `.agent/authored/f262-r3.md` written verbatim via `cp` from
-  `.remedy-wt/f262-r3-block.txt` (the reviewer's original), confirmed
+- `.agent/authored/f262-r4.md` written verbatim via `cp` from
+  `.remedy-wt/f262-r4-block.txt` (the reviewer's original), confirmed
   byte-identical by `cmp` (exit 0) immediately after the copy — the
   transport proof required before building anything on top of it
   (C0a).
 - `.agent/last_block.md` mirrors it via a second `cp`, likewise
   confirmed by matching sha256 (G1).
-- GATE2 was extracted from the COMMITTED `.agent/authored/f262-r3.md`
-  by a Python script reading the file in text mode, locating the
-  `<<<BEGIN GATE2>>>`/`<<<END GATE2>>>` marker pair by string index,
-  and taking the exact text strictly between them (marker lines
-  excluded), stripping exactly the one trailing `\n` belonging to the
-  marker line — never by hand-retyping (constraint 1). GATE2: 4209
+- GATE3 was extracted from the COMMITTED `.agent/authored/f262-r4.md`
+  by a Python script reading the file in BINARY mode, locating the
+  `<<<BEGIN GATE3>>>`/`<<<END GATE3>>>` marker pair by byte index, and
+  taking the exact bytes strictly between them (marker lines
+  excluded) — never by hand-retyping (constraint 1). GATE3: 3680
   bytes, 0 internal newlines, no trailing newline of its own. Applied
-  to `.agent/live_review.md` by appending `\n` + GATE2's bytes to the
+  to `.agent/live_review.md` by appending `\n` + GATE3's bytes to the
   base file — reproduced byte-identical (G2).
-- The four CODE PAIRS were extracted the same way, by their own
-  `<<<BEGIN PAIR_*_FROM/TO>>>` marker pairs, and applied with
+- PAIR M1 and PAIR M2 were extracted the same way, by their own
+  `<<<BEGIN PAIR_M1/M2_FROM/TO>>>` marker pairs, and applied with
   `str.replace(FROM, TO, 1)` via `.remedy-wt/apply_pairs.py` — never by
   hand-retyping (constraint 2). Verified per-pair in G3 above.
-- PLAN4 was extracted the same way, by the `<<<BEGIN PLAN4>>>`/
-  `<<<END PLAN4>>>` marker pair, 1727 bytes, last byte `.` (no
+- PLAN5 was extracted the same way, by the `<<<BEGIN PLAN5>>>`/
+  `<<<END PLAN5>>>` marker pair, 1536 bytes, last byte `.` (no
   trailing newline). `.agent/plan.md` reproduces it byte-identical
   (G6).
-- The two new test files (`tests/cli/test_blocker_cmd.py`,
-  `tests/cli/test_decision_cmd.py`) were written by hand from the
-  TEST SPEC, per constraint 3 — not a byte-transport slice. Verified
-  against the spec field-by-field and test-by-test in G4 above.
+- The two new test methods (`test_list_json_has_updated_at_key`,
+  `test_list_text_shows_created_and_updated`) were written by hand
+  from the TEST SPEC, per constraint 3 — not a byte-transport slice.
+  Verified against the spec field-by-field in G4 above.
 
 ## Deviations & assumptions
 
-1. **`/tmp` denied; scratch redirected to `.remedy-wt/`.** The G2
-   forensic scratch files (the extracted GATE2 copy and the tail
-   slice used for the `cmp` double-check) could not be written to or
-   read from `/tmp` — the sandbox blocked both `cp` and `cmp` against
-   `/tmp` paths outright ("may only compare/copy files from the
-   allowed working directories … `/home/decodeux/Repos/remedy`").
-   Redone with the same Python extraction writing directly into
-   `.remedy-wt/` (gitignored scratch, per this session's own
-   Self-Drive Scratch Location convention), then `cmp`'d there; both
-   scratch files were deleted immediately after use and `git ls-files
-   .remedy-wt` confirms nothing under that directory was ever tracked.
-   Same bytes, same comparisons, only the filesystem location of the
-   throwaway copies changed.
-2. **Bash tool chaining restriction.** Several attempted compound
+1. **`git commit`'s own printed rewrite-detected stat line disagreed
+   with `git show --numstat` for C0b and C3.** For a whole-file
+   rewrite that crosses git's own display dissimilarity threshold,
+   the plain post-commit summary shows "full old file deleted, full
+   new file inserted" counts (C0b: 246/303; C3: 38/41) rather than a
+   real line-level diff. `--numstat` (used throughout this handback's
+   Commits table, per the block's own G7 instruction) gives the real
+   diff counts (C0b: 158/215; C3: 18/21). Both are internally
+   consistent (each nets to the same net line-count delta) and this
+   substitution is the same one already declared in round 1's own
+   GATE1 ledger entry — not a new finding, no committed byte affected.
+2. **GATE3's Python `str`-mode character count (3670) differs from its
+   real byte length (3680).** The gate text contains several em-dash
+   ("—", U+2014) characters, each 1 Python `str` character but 3 UTF-8
+   bytes. All G2 arithmetic, extraction, and application in this round
+   was done and reported in raw bytes (`rb`/`wb` file modes) to
+   reconcile exactly with the block's own stated byte totals
+   (2421305 base, 2424986 post-append) — the earlier text-mode
+   character count was a scratch miscue, caught and discarded before
+   any file was touched, never applied to a committed byte.
+3. **Bash tool chaining restriction.** Several attempted compound
    commands (`cmd1; cmd2`, `cmd && echo "..."`) were rejected by this
    session's Bash tool as "multiple operations" requiring separate
    approval. Re-expressed as single, unchained invocations per tool
    call — no change to intent or result, only to invocation shape.
-   One consequence: several `py_compile` and `cmp` calls that the
-   block's own prose implies could be one line are reported above as
-   separate individual invocations instead; each was still run for
-   real and its real (silent, exit-0) result recorded.
-3. **`wc -l` undercounts a no-trailing-newline file by one line.**
-   `.agent/plan.md` ends without a trailing newline (per constraint 6),
-   so `wc -l`, which counts newline characters, reports 40 for a file
-   whose content is 41 lines wide by any line-splitting count. Reported
-   the raw `wc -l` reading (40) as the block's G6 literally asks for,
-   which is still comfortably under the 50-line cap either way; not
-   silently corrected to the alternate count.
 4. **Constraint 8's stale sentence, re-declared not repaired.**
    `docs/roadmap/features/T2_F262.md` line 5 ("REGISTRATION ONLY —
    nothing in this file has been implemented") was already false as of
@@ -405,24 +355,23 @@ round's printer changes.
 No other deviations. `.agent/STOP` was absent both times it was
 checked (before C0a and immediately before C4, per constraint 9 of the
 block). No path outside the declared change set was written under
-version control: only `.agent/authored/f262-r3.md`,
+version control: only `.agent/authored/f262-r4.md`,
 `.agent/last_block.md`, `.agent/live_review.md`,
-`apps/cli/commands/blocker.py`, `apps/cli/commands/decision.py`,
-`apps/cli/commands/worker_facade_cmd.py`,
-`apps/cli/commands/self_repair_cmd.py`, `tests/cli/test_blocker_cmd.py`,
-`tests/cli/test_decision_cmd.py`, `.agent/plan.md` and this handback
-were committed. The bundle's commit order (C0a, C0b, C1, C2, C3 — this
-handback C4) was followed exactly, with C2 as one commit covering all
-six files per constraint 5.
+`apps/cli/commands/memory.py`, `tests/test_grouped_cli.py`,
+`.agent/plan.md` and this handback were committed. The bundle's commit
+order (C0a, C0b, C1, C2, C3 — this handback C4) was followed exactly,
+with C2 as one commit covering both files per constraint 5.
 
 ## Next
 
-**NEXT EXPECTED ACTION: Round 4 builds T002 batch 2.** Per PLAN4's Next
-Steps: `memory.list` (add `updated_at` to its json dict, then text);
-`tournament.list` and `external-builder.submission-list` (both DROP
-their timestamp from the json shape today — restore it, then add
-text). Round 5 continues with T002 batch 3
-(`job.list`/`queue.list`/`project.list` need `--json` added before a
-date can appear there; `loop.list`/`patch.list` have no timestamp on
-their own model and need a design decision), and round 6+ covers the
-remaining no-timestamp-concept commands per the plan's Risks section.
+**NEXT EXPECTED ACTION: Round 5 designs the tournament.list /
+external-builder.submission-list per-row text format.** Both commands
+print only a COUNT in text mode today — no per-row listing exists at
+all — so adding dates there means designing a first per-row text
+format before coding it, a bigger slice than a one-line edit, per
+PLAN5's Next Steps. After that: `job.list`/`queue.list`/`project.list`
+need `--json` added before a date can appear there;
+`loop.list`/`patch.list` have no timestamp on their own model and need
+a design decision (round 3's handback carries the full 28-command
+audit). T003 (sort/filter/limit behavior) starts once date coverage is
+far enough along to sort by.
