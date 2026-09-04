@@ -12,33 +12,30 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 14, session 5 - T003 batch 2: `queue.list` and `memory.list` are
-wired to `apply_list_options`. `queue.list` passes `default_sort_field=
-None` (DECISION F262 D2) so its existing, tested PRIORITY default order
-is preserved when no flags are given - `--sort created_at`/`priority`/
-`status` are available as explicit overrides. `memory.list` passes
-`default_sort_field="created_at"`, changing nothing about its no-flag
-case (it already sorted newest-first internally) while adding `--sort
-key`/`--since`/`--until`/`--limit`. `list_options.py`'s own contract
-widened to make the priority-preserving case possible for any future
-caller with a similar pre-existing order.
+Round 15, session 5 - T003 batch 3: `tournament.list` wired to
+`apply_list_options` with `default_sort_field="created_at"` -
+`list_tournament_reports()`'s own order was `sorted(root.iterdir())`
+(an arbitrary on-disk directory-name order, not a meaningful one like
+queue.list's priority), so forcing newest-first is the correct,
+unconditional choice here, no D2-style opt-out needed. Single pair -
+`tournament.list`'s dispatch is a direct handler reference, not a
+lambda, so no separate dispatch-site edit was needed.
 
 ## Next Steps
 
-- T003 batch 3+: wire the remaining commands - patch.list (approval_
-  queue.py's format_intent_list table renderer needs its own look before
-  wiring, since it isn't a plain per-row print like the commands done so
-  far), loop.list (JSON rows and text rows are built from two DIFFERENT
-  collections today - reconcile before wiring), then project.list,
-  tournament.list, blocker.list, decision.list, review.list, propose.list,
-  test.list, external-builder.submission-list, config.list. Re-check EACH
-  one for a queue.list-shaped surprise (an existing meaningful non-date
-  order) before assuming date-descending is safe, per DECISION F262 D2's
-  precedent - grep its own tests for an order-asserting test FIRST.
+- T003 batch 4+: wire the remaining commands - project.list, blocker.list,
+  decision.list, review.list, propose.list, external-builder.submission-list
+  are all shaped like tournament.list (plain dict rows, single collection
+  feeding both --json and text). patch.list (approval_queue.py's
+  format_intent_list table renderer) and loop.list (JSON/text rows built
+  from two different collections) still need their own look before wiring.
+  config.list/worker.list/execution.list stay excused per Risks.
+  Re-check EACH remaining command's OWN tests for an order-asserting test
+  FIRST, per DECISION F262 D2's precedent, before assuming date-descending
+  is safe to force.
 - change.list's event-log CREATED date stays open, UNRELATED to D1:
   do_run.py's event stays dead, job.py's real event carries no
   intent_id to join on - see DECISION F262 D1's Alternative section.
-  execution.list/worker.list/config.list stay excused per Risks.
 - Once every command is wired, add an integration-level smoke test
   proving the ten-second demo in Acceptance: a named run findable by
   one command with --since/--sort.
