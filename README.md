@@ -16,14 +16,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-69 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+70 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 14 | 19 |
-| 3 | Full Token Economy & Autonomy | 4 | 26 |
+| 3 | Full Token Economy & Autonomy | 5 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
