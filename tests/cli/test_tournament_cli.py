@@ -80,3 +80,19 @@ def test_list_text_shows_per_row(env):
     assert r2.returncode == 0
     assert tid in r2.stdout
     assert "created=" in r2.stdout
+
+
+def test_limit_caps_the_report_count(env):
+    run_grouped_cli(["tournament", "report", "job-8", "--json"], env)
+    run_grouped_cli(["tournament", "report", "job-8", "--json"], env)
+    run_grouped_cli(["tournament", "report", "job-8", "--json"], env)
+    r = run_grouped_cli(["tournament", "list", "job-8", "--json", "--limit", "2"], env)
+    d = json.loads(r.stdout)
+    assert d["report_count"] == 2
+
+
+def test_unknown_sort_field_exits_nonzero(env):
+    run_grouped_cli(["tournament", "report", "job-9", "--json"], env)
+    r = run_grouped_cli(["tournament", "list", "job-9", "--sort", "bogus"], env)
+    assert r.returncode == 1
+    assert "created_at" in r.stderr
