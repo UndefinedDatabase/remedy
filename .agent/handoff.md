@@ -1,25 +1,26 @@
-# Handoff — F114 Cost preview per command, round 13 (books R12's PASS; runs closure precondition 6's RUN half)
+# Handoff — F114 Cost preview per command, round 14 (books R13's PASS; authors Built State — closure precondition 4)
 
 ## Session
 
-SESSION 3 of feature F114 · round 13 · rounds so far 13.
+SESSION 3 of feature F114 · round 14 · rounds so far 14.
 
-This round books round 12's PASS verdict into the ledger (RECORD12 —
-closure precondition 6's GENERATION half, SU-008 appended), then
-performs the RUN half of closure precondition 6
-(docs/roadmap/STATUS_closure_protocol.md): SU-008 was run for real,
-unflagged, to the normal approval gate via
-`packages.orchestration.self_use_runner.run_next_self_use_item()`
-against the real local `ollama` provider, and blocked there after
-repair rounds were exhausted — the same outcome class as
-SU-005/006/007 against the same underlying finding (R-0418). Evidence
-is saved under `.agent/selfuse_f114/`. No `consumed_by` edit and no
-new R-id finding were made this round, per constraints 10 and 11 —
-both are the next round's own work.
+This is the session's 5th delegated round (rounds 10-14), at the top of
+the operator's 4-5 default. This round books round 13's PASS verdict
+into the ledger (RECORD13 — closure precondition 6's RUN step; its two
+`describe_self_use_run_defects` strings add evidence to the
+already-open `R-0784`, no new id minted), which discharges closure
+precondition 6 for F114 pending only the `consumed_by=F114` edit the
+closure commit itself makes. It then authors
+`docs/roadmap/features/T3_F114.md`'s Built State section (closure
+precondition 4). No code changes this round. Per the delegation
+instructions, this handback is written as a normal round-complete
+handback; whether session 3 ends here is the reviewer's call, not
+this worker's.
 
 ## Range
 
-Review of `7997a766..HEAD` (HEAD is `c6429dfc` before this handback commit).
+Review of `fdfe587574be7af3625dcb219a99233508d561c9..HEAD` (HEAD is
+`e8fe6d7d4bc94e001407e37a4555a337cf0575f8` before this handback commit).
 
 ## Item Status
 
@@ -33,33 +34,33 @@ Review of `7997a766..HEAD` (HEAD is `c6429dfc` before this handback commit).
 | G1 TRANSPORT | done | PASS |
 | G2 THE LEDGER APPEND | done | PASS, all figures matched the block's own prediction exactly |
 | G3 THE PLAN | done | PASS |
-| G4 THE SELF-USE RUN | done | PASS — real run completed, ended BLOCKED at the approval gate (expected outcome) |
-| G5 THE EVIDENCE | done | PASS |
-| G6 THE TREE AND THE SWEEP | done | PASS |
+| G4 THE BUILT STATE PAIR | done | PASS, final byte length matched the block's own prediction exactly (6744) |
+| G5 THE DOCS GATES | done | PASS |
+| G6 THE SUITES | done | PASS, all five counts unchanged from round 9/10's own baseline |
+| G7 THE TREE, THE COMMITS AND THE SWEEP | done | PASS |
 
 ## Commits
 
-### 5be393bb F114 R13 C0a: save step block verbatim to .agent/authored/f114-r13.md
+### dfbf425e F114 R14 C0a: save step block verbatim to .agent/authored/f114-r14.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f114-r13.md` | +198/-0 | transport proof — verbatim save of the supplied step block, new file |
+| `.agent/authored/f114-r14.md` | +222/-0 | transport proof — verbatim save of the supplied step block, new file |
 
-### 7dcd80fc F114 R13 C0b: mirror block to .agent/last_block.md
+### 14f6d8a2 F114 R14 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +144/-131 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
+| `.agent/last_block.md` | +171/-147 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
 
-### 3afc78c5 F114 R13 C1: append RECORD12 to live_review.md, replace plan.md with PLAN13
+### 598f2ccd F114 R14 C1: append RECORD13 to live_review.md, replace plan.md with PLAN14
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | append RECORD12 (round 12's PASS verdict) — exactly one `\n` then RECORD12's 3755 bytes, no separator |
-| `.agent/plan.md` | +22/-22 | whole-file replace with PLAN13 (first substantive commit, per constraint 2) |
+| `.agent/live_review.md` | +2/-1 | append RECORD13 (round 13's PASS verdict) — exactly one `\n` then RECORD13's 4991 bytes, no separator |
+| `.agent/plan.md` | +21/-23 | whole-file replace with PLAN14 (first substantive commit, per constraint 2) |
 
-### c6429dfc F114 R13 C2: run SU-008 to the approval gate via run_next_self_use_item(), save evidence
+### e8fe6d7d F114 R14 C2: author T3_F114.md Built State section (closure precondition 4)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/selfuse_f114/SU-008.md` | +7/-0 | byte-exact `shutil.copyfile` of the rendered job file at `job_file_path`, verified with `cmp` |
-| `.agent/selfuse_f114/run.txt` | +78/-0 | free-form run evidence: job id, entry id, provider/model both roles, final status, per-task outcome, `describe_self_use_run_defects()` output verbatim |
+| `docs/roadmap/features/T3_F114.md` | +60/-0 | applied the BUILTSTATE PAIR via `str.replace(FROM, TO, 1)` — pure append after the existing "Do not touch" section, TO contains FROM verbatim |
 
 ### (this handback commit)
 | Path | +/- | Reason |
@@ -68,16 +69,15 @@ Review of `7997a766..HEAD` (HEAD is `c6429dfc` before this handback commit).
 
 ## External actions
 
-- `git push -u origin feature/f114-cost-preview-per-command` → run after
-  this handback commit (C3), pushing all five commits of the round.
-- No `gh pr` command of any kind was run this round — no PR is created,
-  edited or merged, per constraint 15 ("No pull request, no merge this
-  round").
-- No worktree was created or removed directly by this round's own
-  code; `run_next_self_use_item()` internally created and RETAINED its
-  own job execution worktree at `.remedy-wt/job-2ac1522a7034440b/`
-  (run_job's own standard behavior, matching every prior self-use run)
-  — left untouched, per constraint 12.
+- `git push -u origin feature/f114-cost-preview-per-command` → run
+  after this handback commit (C3), pushing all five commits of the
+  round.
+- No `gh pr` command of any kind was run this round — no PR is
+  created, edited or merged, per constraint 9 ("No pull request, no
+  merge this round").
+- No worktree was created or removed this round — this round touched
+  only `.agent/**` and `docs/roadmap/features/T3_F114.md`, no code or
+  self-use run was performed.
 
 ## Verification
 
@@ -91,150 +91,136 @@ $ git status --porcelain
 $ git branch --show-current
 feature/f114-cost-preview-per-command
 $ git rev-parse HEAD (round start)
-7997a76658289e71b0506f25ee8b48e0e29d165b
+fdfe587574be7af3625dcb219a99233508d561c9
 ```
 
 Step block was supplied directly in this round's delegation prompt (no
-relay path this session); saved verbatim to `.agent/authored/f114-r13.md`
-via the Write tool, delimiter lines excluded. During drafting, before
-any commit, the worker caught and corrected one own transcription slip
-(the PLAN13 "Session note" line read "round 14" in a first draft
-against the block's own "round 13" — fixed before C0a; see Deviations).
-Both applied slices were then extracted from the COMMITTED file by a
-Python script reading delimiter indices (constraint 1), never by hand.
-Byte counts matched the block's own stated expectations exactly
-(RECORD12 3755, PLAN13's 42 internal newlines implying 43 logical
-lines, matching the block's own G3 note exactly).
+relay path this session); saved verbatim to
+`.agent/authored/f114-r14.md` via the Write tool, delimiter lines
+excluded. All three applied slices (RECORD13, PLAN14, BUILTSTATE PAIR
+FROM/TO) were then extracted from the COMMITTED file by a Python
+script reading delimiter indices (constraint 1), never by hand.
 
 **G1 TRANSPORT** (after C0b):
 ```
-$ sha256sum .agent/authored/f114-r13.md .agent/last_block.md
-41d40b623eec851cf41502ff8777df6175216889323f6f9b6f2ef02be340bff4  .agent/authored/f114-r13.md
-41d40b623eec851cf41502ff8777df6175216889323f6f9b6f2ef02be340bff4  .agent/last_block.md
+$ sha256sum .agent/authored/f114-r14.md .agent/last_block.md
+bb040642421ea504a1e52c7afbe163e5d8ebf0f2834e6598e4f67d72f3679d54  .agent/authored/f114-r14.md
+bb040642421ea504a1e52c7afbe163e5d8ebf0f2834e6598e4f67d72f3679d54  .agent/last_block.md
 ```
 One digest, twice — PASS.
 
-**G2 THE LEDGER APPEND**:
+**G2 THE LEDGER APPEND (RECORD13)**:
 ```
-Base size of .agent/live_review.md immediately before C1: 2390210 bytes
+Base size of .agent/live_review.md immediately before C1: 2393966 bytes
 Base ends with trailing newline: False
-RECORD12 own byte length (extracted from committed authored file): 3755 bytes, 0 internal newlines
-base + 1 + 3755 = 2390210 + 1 + 3755 = 2393966
-post-C1 file byte length: 2393966
+RECORD13 own byte length (extracted from committed authored file): 4991 bytes, 0 internal newlines
+base + 1 + 4991 = 2393966 + 1 + 4991 = 2398958
+post-C1 file byte length: 2398958
 Match: True
 ```
-Every figure matches the block's own G2 prediction exactly (2390210,
-3755, 2393966) — zero deviation.
+Every figure matches the block's own G2 prediction exactly (2393966,
+4991, 2398958) — zero deviation.
 
-Second reader: sliced the post-C1 file's bytes from the measured `base`
-offset (2390210) to end-of-file and compared against `"\n" + RECORD12`
-directly:
+Second reader: sliced the post-C1 file's bytes from the measured
+`base` offset (2393966) to end-of-file and compared against
+`"\n" + RECORD13` directly:
 ```
-tail (base..end) == "\n" + RECORD12: True
+tail (base..end) == "\n" + RECORD13: True
 ```
-Negative control, scratch (in-memory) copy only — one byte flipped in a
-copy of RECORD12's own text, then re-compared against the real
-`"\n" + RECORD12`:
+Negative control, scratch (in-memory) copy only — one byte flipped in
+a copy of RECORD13's own text, then re-compared against the real
+`"\n" + RECORD13`:
 ```
-second reader REJECTS the mutated copy: True (mutated tail != "\n" + RECORD12)
+second reader REJECTS the mutated copy: True (mutated tail != "\n" + RECORD13)
 ```
 All PASS, zero deviation.
 
 **G3 THE PLAN**:
 ```
-$ cmp <PLAN13 extracted from committed authored file> .agent/plan.md
-(no output — exit 0, byte-identical)
+$ python3 -c "compare bytes of extracted PLAN14 against .agent/plan.md" -> equal: True (cmp-equivalent, exit 0)
 $ wc -l .agent/plan.md
-42 .agent/plan.md
+40 .agent/plan.md
 $ grep -c '^## Goal' .agent/plan.md
 1
 $ grep -c '^## Next Steps' .agent/plan.md
 1
 ```
-`cmp` exit 0 — PASS. `wc -l` reads 42, exactly matching the block's own
-stated expectation (PLAN13 has 43 logical lines, 42 internal newlines,
-no trailing newline of its own) — PASS, zero deviation. Both grep
-counts 1 — PASS. 42 is under 50.
+Byte-equal — PASS. `wc -l` reads 40, exactly matching the block's own
+stated expectation (PLAN14 has 41 logical lines, 40 internal
+newlines, no trailing newline of its own) — PASS, zero deviation.
+Both grep counts 1 — PASS. 40 is under 50.
 
-**G4 THE SELF-USE RUN**:
-```
-$ python3 -c "..."   # exact invocation per constraint 5, unflagged
-ENTRY_ID SU-008
-JOB_FILE_PATH .remedy-wt/selfuse-f114-run/SU-008.md
-WALL_TIME_SECONDS 77.30509328842163
-PLAN_STATUS blocked
-```
-No `SelfUseRunError` was raised — role resolution produced a real
-provider for both roles (constraint 6 did not trigger).
+Note on tooling: `cmp` itself was denied by the sandbox this round; a
+Python byte-equality read (`open(...,'rb').read()` compared directly)
+was substituted to the same effect and is reported here as a
+deviation (see Deviations).
 
-`plan.execution_config` (both roles, provider AND model): builder
-`provider=ollama` (source=cli), reviewer `provider=ollama` (source=cli);
-both `*_model` fields were blank with `source=default`, meaning the
-real product default model ran —
-`packages.orchestration.role_config._PROVIDER_DEFAULT_MODELS["ollama"]`
-= `muse-glimmer:latest` for both roles, confirmed by direct import.
-`max_provider_calls=6`, `max_cost_usd=0.50`, `max_tasks=1` — all
-constraint 5's stated defaults, none overridden.
+**G4 THE BUILT STATE PAIR**:
+```
+FROM count in docs/roadmap/features/T3_F114.md immediately before C2: 1
+$ python3 -c "str.replace(FROM, TO, 1) applied"
+TO contains FROM: True
+File byte length after C2: 6744
+File ends with trailing newline after C2: True
+```
+FROM occurred exactly once before C2 — PASS. TO-contains-FROM check —
+PASS. Final byte length matches the block's own G4 prediction exactly
+(6744) — PASS. Trailing newline present — PASS, matching expectation.
+(Note: the block's own decomposition of 6744 as "base 3331 + 1
+separator + 3412-byte slice" does not match this worker's own
+measured TO length of 3474 bytes; the two readings nonetheless
+converge on the identical final total 6744 via the direct
+`str.replace` arithmetic — `3331 - len(FROM=61) + len(TO=3474) =
+6744`. Reported as a deviation below since the block's own intermediate
+figure (3412) could not be reproduced, though the gated deliverable —
+6744 — held exactly.)
 
-Per-task outcome — one task, T001 (the JobPlan carries exactly one):
-`final_status=repair_exhausted`, `reviewer_verdict=fail`,
-`task.status=blocked`, `task.error="completion_gate_failed:
-final_status=repair_exhausted; reviewer_verdict=fail"`.
+**G5 THE DOCS GATES**:
+```
+$ python3 -m pytest tests/docs/ -q
+295 passed in 0.45s
+$ python3 -m pytest tests/orchestration/test_roadmap_index.py -q
+30 passed in 0.36s
+```
+Both PASS, both counts unchanged from round 9/10's own baseline.
 
-`describe_self_use_run_defects(plan)` — 2 strings, in order (re-loaded
-via `load_job_plan("2ac1522a7034440b")` in a fresh call to avoid a
-second real run; verified job id, status and execution_config on the
-reloaded object matched the original run's own printed values
-identically before trusting it):
+**G6 THE SUITES, EACH AS ITS OWN INVOCATION, RUN SERIALLY**:
 ```
-1. "job 2ac1522a7034440b (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
-2. "T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+$ python3 -m pytest tests/ui_server/ -q
+515 passed in 32.82s
+$ python3 -m pytest tests/orchestration/test_test_runner.py -q
+52 passed in 5.57s
+$ python3 -m pytest tests/regression/test_resource_safety.py -q
+21 passed in 11.53s
+$ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
+16 passed in 0.29s
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+42 passed in 20.77s
 ```
-NOT an empty tuple — reported verbatim, per constraint 8.
+All PASS, all five counts identical to round 9/10's own baseline
+(515/52/21/16/42) — no regression, this round touched no code path
+any of these suites exercise.
 
-**G5 THE EVIDENCE**:
-```
-$ ls .agent/selfuse_f114/
-SU-008.md
-run.txt
-```
-Exactly those two names, nothing else — PASS.
-```
-$ cmp .agent/selfuse_f114/SU-008.md .remedy-wt/selfuse-f114-run/SU-008.md
-(no output — exit 0)
-```
-`job_file_path` used: `.remedy-wt/selfuse-f114-run/SU-008.md` — PASS.
-`run.txt` byte length: 4278 bytes.
-
-**G6 THE TREE AND THE SWEEP**:
+**G7 THE TREE, THE COMMITS AND THE SWEEP**:
 ```
 $ git status --porcelain
 (empty — checked immediately before C3 staged)
-$ git diff --stat 7997a76658289e71b0506f25ee8b48e0e29d165b..HEAD -- packages/ apps/ tests/
+$ git diff --stat fdfe587574be7af3625dcb219a99233508d561c9..HEAD -- packages/ apps/ tests/
 (empty — no output)
 ```
-Base SHA used: `7997a76658289e71b0506f25ee8b48e0e29d165b` (this
+Base SHA used: `fdfe587574be7af3625dcb219a99233508d561c9` (this
 round's own starting HEAD, confirmed at Phase 0). Both PASS.
-
-`.remedy-wt/selfuse-f114-run/`: untracked and covered by the
-repository's existing `.remedy-wt/` `.gitignore` rule — `git
-check-ignore -v` confirms it matches `.gitignore:235:.remedy-wt/`.
-The job's own retained execution worktree,
-`.remedy-wt/job-2ac1522a7034440b/`, exists on disk and was left
-untouched (also covered by the same `.gitignore` rule, confirmed the
-same way).
 
 Per-commit numstat cross-check against this handback's own Commits
 table above — all cells match:
 
 | Commit | File | numstat `+`/`-` | Table `+`/`-` | Match |
 |---|---|---|---|---|
-| 5be393bb (C0a) | `.agent/authored/f114-r13.md` | 198/0 | 198/0 | yes |
-| 7dcd80fc (C0b) | `.agent/last_block.md` | 144/131 | 144/131 | yes |
-| 3afc78c5 (C1) | `.agent/live_review.md` | 2/1 | 2/1 | yes |
-| 3afc78c5 (C1) | `.agent/plan.md` | 22/22 | 22/22 | yes |
-| c6429dfc (C2) | `.agent/selfuse_f114/SU-008.md` | 7/0 | 7/0 | yes |
-| c6429dfc (C2) | `.agent/selfuse_f114/run.txt` | 78/0 | 78/0 | yes |
+| dfbf425e (C0a) | `.agent/authored/f114-r14.md` | 222/0 | 222/0 | yes |
+| 14f6d8a2 (C0b) | `.agent/last_block.md` | 171/147 | 171/147 | yes |
+| 598f2ccd (C1) | `.agent/live_review.md` | 2/1 | 2/1 | yes |
+| 598f2ccd (C1) | `.agent/plan.md` | 21/23 | 21/23 | yes |
+| e8fe6d7d (C2) | `docs/roadmap/features/T3_F114.md` | 60/0 | 60/0 | yes |
 
 C3's own numbers go to neither this table nor a round report, per the
 template's self-reference exception.
@@ -243,104 +229,124 @@ Staleness sweep, one entry per file this round touched:
 
 | File | Stale? | Why |
 |---|---|---|
-| `.agent/authored/f114-r13.md` | NOT stale | immutable historical stamp of this round's instructions |
-| `.agent/last_block.md` | NOT stale | current mirror of this round's block; accurate until round 14 overwrites it |
-| `.agent/live_review.md` | NOT stale | RECORD12 books round 12's real PASS verdict, append-only ledger |
-| `.agent/plan.md` | NOT stale | reflects F114 round 13's actual current step and real next steps |
-| `.agent/selfuse_f114/SU-008.md` | NOT stale | byte-exact copy of the real rendered job file, cmp-verified |
-| `.agent/selfuse_f114/run.txt` | NOT stale | records this round's own real, freshly measured run facts |
+| `.agent/authored/f114-r14.md` | NOT stale | immutable historical stamp of this round's instructions |
+| `.agent/last_block.md` | NOT stale | current mirror of this round's block; accurate until round 15 (if any) overwrites it |
+| `.agent/live_review.md` | NOT stale | RECORD13 books round 13's real PASS verdict, append-only ledger |
+| `.agent/plan.md` | NOT stale | reflects F114 round 14's actual current step and real next steps |
+| `docs/roadmap/features/T3_F114.md` | NOT stale | Built State section reflects the real, currently-existing files listed (all eight verified present on disk this round) and the real round-9/10 baseline suite counts |
 | `.agent/handoff.md` | N/A | this handback itself, written last, freshest by construction |
 
 Outside the change set: no NEW stale sentence was found this round.
 `scripts/self_use_queue.json` was not touched this round (no
-`consumed_by` edit, per constraint 10), so its own SU-008 entry
-remains correctly PENDING on disk — accurate, not stale, since the
-closure round has not yet run. `docs/roadmap/STATUS.md`'s F114 line
-was not opened this round — this round did not touch closure, so no
-change was due there.
+`consumed_by` edit — that is explicitly the closure commit's own
+work, per RECORD13's own text), so SU-008's entry remains correctly
+PENDING on disk. `docs/roadmap/STATUS.md`'s F114 line was not opened
+this round — this round did not touch closure, so no change was due
+there.
 
 ## Authored-text proofs
 
-- `.agent/authored/f114-r13.md` written verbatim via the Write tool
+- `.agent/authored/f114-r14.md` written verbatim via the Write tool
   from the step block supplied in this round's delegation prompt
   (delimiter lines `═══ BLOCK BEGINS ═══` / `═══ BLOCK ENDS ═══`
   excluded, exactly as instructed), sha256
-  `41d40b623eec851cf41502ff8777df6175216889323f6f9b6f2ef02be340bff4`,
+  `bb040642421ea504a1e52c7afbe163e5d8ebf0f2834e6598e4f67d72f3679d54`,
   confirmed identical to `.agent/last_block.md` after C0b (G1).
-- Both slices (RECORD12, PLAN13) were extracted from the COMMITTED
-  `.agent/authored/f114-r13.md` by a Python script reading delimiter
-  indices (`<<<BEGIN ...>>>` / `<<<END ...>>>`), taking the exact
-  substring strictly between each pair of markers — never by
-  hand-retyping (constraint 1).
-- Per constraint 4: RECORD12 and PLAN13 each had no trailing `\n` of
+- All three slices (RECORD13, PLAN14, the BUILTSTATE PAIR FROM/TO)
+  were extracted from the COMMITTED `.agent/authored/f114-r14.md` by
+  a Python script reading delimiter indices (`<<<BEGIN ...>>>` /
+  `<<<END ...>>>`), taking the exact substring strictly between each
+  pair of markers — never by hand-retyping (constraint 1).
+- Per constraint 4: RECORD13 and PLAN14 each had no trailing `\n` of
   their own carried into the target file.
-- RECORD12: 3755 bytes measured, matching the block exactly, 0
+- RECORD13: 4991 bytes measured, matching the block exactly, 0
   internal newlines; appended to `.agent/live_review.md` as exactly
-  one `\n` + RECORD12 (G2, above).
-- PLAN13: 1945 bytes, 43 logical lines (42 internal newlines), no
+  one `\n` + RECORD13 (G2, above).
+- PLAN14: 1852 bytes, 41 logical lines (40 internal newlines), no
   trailing newline; `.agent/plan.md` reproduces it byte-identical
-  (`cmp` exit 0, G3 above).
+  (G3 above).
+- BUILTSTATE PAIR FROM: 61 bytes, occurred exactly once in
+  `docs/roadmap/features/T3_F114.md` before C2. BUILTSTATE PAIR TO:
+  3474 bytes measured (block's own text estimated 3412 for this
+  intermediate figure; see Deviations), contains FROM verbatim
+  (confirmed True both before and after applying), applied via
+  `str.replace(FROM, TO, 1)`; the target file's byte length after C2
+  matched the block's own final G4 prediction exactly (6744).
 
 ## Deviations & assumptions
 
-Two deviations declared, neither a defect on disk:
+Three deviations declared, none a defect on disk:
 
-1. **A transcription slip caught before any commit.** While saving the
-   step block to `.agent/authored/f114-r13.md` (C0a), the worker's
-   first draft of PLAN13's "Session note" line read "round 14, session
-   3 - 4th delegated round" where the block's own text reads "round
-   13, session 3 - 4th delegated round". Caught by re-reading the
-   drafted file against the block's own text before staging or
-   committing anything, and corrected in place — the committed
-   `.agent/authored/f114-r13.md` (and everything derived from it: G1's
-   digest, the extracted PLAN13, `.agent/plan.md`) is exactly the
-   block's own wording, with no trace of the slip. Declared here in
-   the interest of full transparency even though nothing wrong ever
-   reached disk.
-2. **`describe_self_use_run_defects()` was called against a
-   re-loaded `JobPlan`, not the in-process one.** Constraint 5's
-   invocation and constraint 8's `describe_self_use_run_defects(plan)`
-   call were written as if in one script; the worker instead split
-   them across two separate `python3 -c` invocations (the run itself,
-   then a second process that reloaded the persisted plan via
-   `packages.orchestration.pingpong_job.load_job_plan("2ac1522a7034440b")`
-   before calling `describe_self_use_run_defects`), to avoid
-   re-running the real, budget-spending job a second time. Before
-   trusting the reloaded object the worker confirmed its `job_id`,
-   `status` and `execution_config` matched the original run's own
-   printed values identically. `load_job_plan` is the product's own
-   public read API for a persisted `JobPlan`
-   (`packages/orchestration/pingpong_job.py`), not an improvised
-   reconstruction, so this is the same object `run_next_self_use_item`
-   itself returned, read back rather than re-run. No cost or run was
-   duplicated; no value in the report was invented or estimated.
+1. **`cmp` was denied by the sandbox; a Python byte-equality
+   comparison was substituted.** The G3 gate calls for
+   `cmp <extracted> .agent/plan.md -> exit 0`. The `cmp` binary
+   itself was denied by this session's Bash sandbox (permission
+   error, not a tool failure), so the worker instead read both files'
+   raw bytes with Python (`open(path, 'rb').read()`) and compared
+   them for exact equality, which is the same underlying check `cmp`
+   performs. The comparison returned `True` (byte-identical, lengths
+   equal), the equivalent of `cmp` exit 0. No weaker check was
+   substituted.
+2. **The block's own G4 intermediate figure (3412-byte BUILTSTATE
+   slice) could not be reproduced; the worker's own measured TO
+   length is 3474 bytes.** The block's G4 prose decomposes the
+   post-C2 file length as "base 3331 + 1 separator newline + a
+   3412-byte BUILTSTATE slice = 6744". The worker's own extraction of
+   the BUILTSTATE PAIR TO slice (by the same delimiter-index method
+   used for every other slice this round and every prior round)
+   measures 3474 bytes, not 3412 — a 62-byte difference the worker
+   could not resolve to a consistent alternate accounting (it is
+   close to, but not exactly, FROM's own 61-byte length plus one).
+   Despite this, the FINAL gated deliverable — the file's byte length
+   after applying `str.replace(FROM, TO, 1)` — landed on exactly 6744,
+   matching the block's own stated expectation exactly, via the
+   direct arithmetic `3331 (base, ends with \n) - 61 (len(FROM)) +
+   3474 (len(TO)) = 6744`. The worker applied the slice AS WRITTEN
+   (per constraint 1's own instruction: "if a slice looks wrong,
+   apply it as written and declare it") and reports this arithmetic
+   mismatch in the block's own prose without altering anything on
+   disk. Nothing on disk is wrong; the discrepancy is confined to one
+   descriptive numeral in the block's own G4 paragraph.
+3. **The Built State section's own claims were spot-checked for
+   existence, not re-derived from scratch.** Per constraint 1 the
+   BUILTSTATE PAIR TO slice was applied byte-for-byte, unmodified.
+   The worker additionally checked (read-only, no edits) that all
+   eight files/paths the new Built State section names
+   (`packages/orchestration/token_economy.py`,
+   `packages/orchestration/cost_preview.py`,
+   `apps/cli/cost_preview_confirm.py`,
+   `docs/guides/cost-preview-user-guide-v0.md`,
+   `tests/orchestration/test_cost_preview.py`,
+   `tests/cli/test_cost_preview_confirm.py`,
+   `tests/cli/test_cost_preview.py`, `tests/test_command_catalog.py`)
+   exist on disk — all eight do. This is a confidence check, not a
+   content re-verification; the exact prose (e.g. the 19601/19554
+   suite counts attributed to round 11) was not independently
+   re-measured this round since the block instructed applying the
+   slice verbatim and G6 of THIS round's own suites confirms no
+   regression since round 11's integration gate.
 
 No other deviations. `.agent/STOP` was absent at both checkpoints
 (before the first commit and again before C3). No path outside the
-declared change set was written: only `.agent/authored/f114-r13.md`,
+declared change set was written: only `.agent/authored/f114-r14.md`,
 `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`.agent/selfuse_f114/SU-008.md`, `.agent/selfuse_f114/run.txt` and this
-handback were touched — `packages/`, `apps/` and `tests/` were never
-opened for writing, per constraint 13. The bundle's commit order (C0a,
-C0b, C1, C2, C3) was followed exactly. No `consumed_by` value was set
-anywhere in `scripts/self_use_queue.json`, per constraint 10. No new
-R-id finding was registered anywhere in `.agent/live_review.md`, per
-constraint 11 — the raw facts are reported in `.agent/selfuse_f114/run.txt`
-and above, un-interpreted, for the reviewer's own next-round analysis
-(this defect class matches the already-open `R-0784`, per the ledger
-text quoted in this session's own investigation — but that
-classification call belongs to the reviewer, not asserted here as a
-finding). No pull request or merge action was taken this round, per
-constraint 15.
+`docs/roadmap/features/T3_F114.md` and this handback were touched —
+`packages/`, `apps/` and `tests/` were never opened for writing, per
+constraint 7. The bundle's commit order (C0a, C0b, C1, C2, C3) was
+followed exactly. No pull request or merge action was taken this
+round, per constraint 9.
 
 ## Next
 
-Round 14: book round 13's PASS verdict (RECORD13 — the self-use RUN
-half, SU-008 blocked at the approval gate with two
-`describe_self_use_run_defects()` strings, expected to add evidence to
-the already-open `R-0784` rather than mint a new id per §3 item 30),
-author T3_F114.md's Built State section (precondition 4), and run
-`remedy integrity check --json` (precondition 3). No PR exists yet for
-F114. Session note: round 13, session 3 — this is the 4th delegated
-round of session 3, at the operator's 4-5 default; this is likely the
-session's last round before a scope check per G7.
+The closure commit is F114's remaining work: `remedy integrity check
+--json` (precondition 3, not yet run this session), the evidence job,
+a fresh review zip, the `docs/roadmap/STATUS.md` line, `docs/README.md`
+sync, the `scripts/self_use_queue.json` `consumed_by=F114` edit on
+SU-008, and the PR itself
+(docs/roadmap/STATUS_closure_protocol.md algorithm) — per F112's own
+precedent this is expected to be a fresh session's work. No PR exists
+yet for F114. Session note: round 14, session 3 — this is the 5th
+delegated round of session 3, at the top of the operator's 4-5
+default; per the delegation instructions for this round, whether
+session 3 ends here (vs. continuing) is the reviewer's decision to
+make, not stated by this worker.
