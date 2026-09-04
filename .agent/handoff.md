@@ -1,49 +1,66 @@
-# Handoff — F114 Cost preview per command, round 3 (books R2's PASS; ships cost_preview.py + its tests, completes T001)
+# Handoff — F114 Cost preview per command, round 4 (books R3's PASS; starts T002 — config key + resolve_confirm_above_usd())
 
 ## Session
 
-SESSION 1 of feature F114 · round 3 · rounds so far 3.
+SESSION 1 of feature F114 · round 4 · rounds so far 4.
 
-Same loop session as rounds 1 and 2. This round books round 2's PASS
-verdict into the ledger (RECORD2) and completes T001: a new pure module
-`packages/orchestration/cost_preview.py` (`estimate_cost_band`,
-`CostBandEstimate`, `ESTIMATE_UNAVAILABLE`) that computes a real USD
-cost band — never a fabricated point — from two `TokenBand` values, a
-repeat count and a `PredictiveBudgetConfig`, reusing round 2's
-`token_economy.tokens_to_cost_usd()`. Its unit tests land in
-`tests/orchestration/test_cost_preview.py` (13 passed, brand new file).
-Neither file has any production caller yet — that is T002, not started.
+Same loop session as rounds 1-3. This round books round 3's PASS verdict
+into the ledger (RECORD3) and starts T002: registers config key
+`cost_preview.confirm_above_usd` (default 0.5, F114 Design: "around half
+a dollar") in `packages/orchestration/config.py`, and adds resolver
+`resolve_confirm_above_usd()` (env > TOML > default, same authority as
+`resolve_predictive_budget_config`) to `cost_preview.py` itself. No CLI
+file touched this round — that lands in round 5, per constraint 8. 6 new
+tests land in `tests/orchestration/test_cost_preview.py` (19 passed
+total: 13 existing + 6 new).
 
 ## Range
 
-Review of `80d469c26d927bf16294edd83efd6d058f90f014..HEAD` (HEAD is
-`539b291dc4e4edff683608843133483233e7a865` before this handback commit;
-verified equal to the previous handback's own HEAD before C0a — see
-Verification).
+Review of `8b296131eff88cbdbe13bd47b839c95f5c4490d6..HEAD` (HEAD is
+`6978e949ece539b59e635ed899b23d557422fa3c` before this handback commit).
+
+## Item Status
+
+| Item | Status | Reason |
+|---|---|---|
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | this handback |
+| G1 TRANSPORT | done | PASS |
+| G2 THE LEDGER APPEND | done | PASS |
+| G3 THE PLAN | done | PASS |
+| G4 THE FOUR CODE PAIRS | done | PASS |
+| G5 COMPILE AND LINT | done | PASS (ruff denied, as expected) |
+| G6 THE RED-PROOF | done | PASS (1 failed / 19 green) |
+| G7 THE SUITES | done | PASS (all 13 measured) |
+| G8 THE TREE, THE COMMITS AND THE SWEEP | done | PASS |
 
 ## Commits
 
-### 6b7d394c F114 R3 C0a: save step block verbatim to .agent/authored/f114-r3.md
+### 8bb227b8 F114 R4 C0a: save step block verbatim to .agent/authored/f114-r4.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f114-r3.md` | +395/-0 | transport proof — verbatim `cp` of the supplied step block, new file |
+| `.agent/authored/f114-r4.md` | +388/-0 | transport proof — verbatim `cp` of the supplied step block, new file |
 
-### 1fb5c49a F114 R3 C0b: mirror step block to .agent/last_block.md
+### db8c8e73 F114 R4 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +293/-199 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
+| `.agent/last_block.md` | +264/-271 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
 
-### 63622705 F114 R3 C1: apply RECORD2 to .agent/live_review.md and PLAN3 to .agent/plan.md
+### 4d46e293 F114 R4 C1: append RECORD3 to live_review.md, replace plan.md with PLAN4
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | append RECORD2 (round 2's PASS verdict) — exactly one `\n` then RECORD2's 4018 bytes, no blank-line separator |
-| `.agent/plan.md` | +16/-19 | whole-file replace with PLAN3 (first substantive commit, per constraint 2) |
+| `.agent/live_review.md` | +2/-1 | append RECORD3 (round 3's PASS verdict) — exactly one `\n` then RECORD3's 4490 bytes, no blank-line separator |
+| `.agent/plan.md` | +16/-16 | whole-file replace with PLAN4 (first substantive commit, per constraint 2) |
 
-### 539b291d F114 R3 C2: write packages/orchestration/cost_preview.py and tests/orchestration/test_cost_preview.py
+### 6978e949 F114 R4 C2: register cost_preview.confirm_above_usd config key and resolve_confirm_above_usd()
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/cost_preview.py` | +88/-0 | new file — `estimate_cost_band`, `CostBandEstimate`, `ESTIMATE_UNAVAILABLE`, written whole-file per MODULE, verified `cmp` against the extracted slice |
-| `tests/orchestration/test_cost_preview.py` | +104/-0 | new file — 13 tests across 6 classes covering `estimate_cost_band`, written whole-file per TESTMODULE, verified `cmp` against the extracted slice |
+| `packages/orchestration/config.py` | +10/-0 | CONFIG PAIR append — new `ConfigKeySpec` for `cost_preview.confirm_above_usd` |
+| `packages/orchestration/cost_preview.py` | +41/-0 | IMPORT PAIR (rewrite, `Path` import) + APPEND PAIR (append, `DEFAULT_CONFIRM_ABOVE_USD` + `resolve_confirm_above_usd()`), applied in that order per constraint 7 |
+| `tests/orchestration/test_cost_preview.py` | +49/-0 | TEST PAIR append — `TestResolveConfirmAboveUsd`, 6 new tests |
 
 ### (this handback commit)
 | Path | +/- | Reason |
@@ -59,9 +76,9 @@ Verification).
   of PR creation and Done-when carries no Open PR Gate item.
 - One disposable git worktree, created and removed for G6's red-proof
   only, never the primary checkout:
-  `git worktree add .remedy-wt/f114-r3-redproof 539b291d` (created,
+  `git worktree add .remedy-wt/f114-r4-redproof 6978e949` (created,
   detached HEAD at this round's own C2) then, after the red/green cycle,
-  `git worktree remove --force .remedy-wt/f114-r3-redproof` (removed).
+  `git worktree remove --force .remedy-wt/f114-r4-redproof` (removed).
   `git worktree list` immediately after shows it gone — see G8.
 
 ## Verification
@@ -70,51 +87,51 @@ Preconditions, checked before C0a:
 
 ```
 $ git log --oneline -1
-80d469c2 F114 R2 C3: rewrite .agent/handoff.md - round 2 handback
+8b296131 F114 R3 C3: rewrite .agent/handoff.md - round 3 handback
 $ git status --short
 (empty)
-$ sha256sum .remedy-wt/f114_r3_block.txt
-8fee890a26670158becee84733669803e416a781f7e21273fa12d19a337cc740  .remedy-wt/f114_r3_block.txt
-$ wc -l .remedy-wt/f114_r3_block.txt; wc -c .remedy-wt/f114_r3_block.txt
-394 .remedy-wt/f114_r3_block.txt
-22523 .remedy-wt/f114_r3_block.txt
+$ sha256sum .remedy-wt/f114_r4_block.txt
+c0b99055ee4cb5f5b7c65d83240ba2339c829dfb12e5fd22c2d2a18713957b5b  .remedy-wt/f114_r4_block.txt
+$ wc -l .remedy-wt/f114_r4_block.txt; wc -c .remedy-wt/f114_r4_block.txt
+387 .remedy-wt/f114_r4_block.txt
+23167 .remedy-wt/f114_r4_block.txt
 ```
-`wc -l` reports 394 (newline-terminated-line count) against the block's
-own stated "395 lines" — the file has 395 physical lines with no
-trailing newline on the last one, so `wc -l` (which counts `\n` bytes)
-reads one less; `wc -c` matches the stated 22523 bytes exactly, and the
-sha256 matches the stated digest exactly, so the file is confirmed
-byte-identical to what was handed to this round (same pattern as round
-2's own precondition read). `.agent/STOP` checked absent both before
-the first commit and again before C3 (`test -f .agent/STOP` → false
-both times, no such file).
+`wc -l` reports 387 (newline-terminated-line count) against the round
+instructions' own stated "388 lines" — the file has 388 physical lines
+with no trailing newline on the last one, so `wc -l` (which counts `\n`
+bytes) reads one less; `wc -c` matches the stated 23167 bytes exactly,
+and the sha256 matches the stated digest exactly — same pattern rounds
+2 and 3 both hit. `.agent/STOP` checked absent both before the first
+commit and again before C3 (`test -f .agent/STOP` → false both times, no
+such file).
 
 **G1 TRANSPORT** (after C0b):
 ```
-$ sha256sum .agent/authored/f114-r3.md .agent/last_block.md
-8fee890a26670158becee84733669803e416a781f7e21273fa12d19a337cc740  .agent/authored/f114-r3.md
-8fee890a26670158becee84733669803e416a781f7e21273fa12d19a337cc740  .agent/last_block.md
+$ sha256sum .agent/authored/f114-r4.md .agent/last_block.md
+c0b99055ee4cb5f5b7c65d83240ba2339c829dfb12e5fd22c2d2a18713957b5b  .agent/authored/f114-r4.md
+c0b99055ee4cb5f5b7c65d83240ba2339c829dfb12e5fd22c2d2a18713957b5b  .agent/last_block.md
 ```
 One digest, twice — PASS.
 
 **G2 THE LEDGER APPEND**:
 ```
-Base size of .agent/live_review.md immediately before C1: 2351767 bytes
+Base size of .agent/live_review.md immediately before C1: 2355786 bytes
 Base ends with trailing newline: False
-RECORD2 own byte length (extracted from committed authored file): 4018 bytes, 0 internal newlines
-base + 1 + len(RECORD2) = 2351767 + 1 + 4018 = 2355786
-post-C1 file byte length: 2355786
-Match: True (also matches the block's own stated 2355786/2351767/4018 exactly)
+RECORD3 own byte length (extracted from committed authored file): 4490 bytes, 0 internal newlines
+base + 1 + len(RECORD3) = 2355786 + 1 + 4490 = 2360277
+post-C1 file byte length: 2360277
+Match: True (also matches the round instructions' own stated 2360277/2355786/4490 exactly)
 ```
 Second, independent reader — sliced the post-C1 file's bytes from the
-measured `base` offset (2351767) to end-of-file and compared against
-`"\n" + RECORD2` directly:
+measured `base` offset (2355786) to end-of-file and compared against
+`"\n" + RECORD3` directly:
 ```
-tail (base..end) == "\n" + RECORD2: True (4019 == 4019 bytes)
+tail (base..end) == "\n" + RECORD3: True
 ```
 Negative control, scratch copy only (never the tracked file) — one byte
-flipped inside a Python `bytearray` copy of RECORD2's own text (byte at
-offset 100, XORed), then re-compared against the real post-C1 tail:
+flipped inside a Python `bytearray` copy of RECORD3's own text (byte at
+offset 0, XORed with 0xFF), then re-compared against the real post-C1
+tail:
 ```
 second reader REJECTS the mutated copy: True (tail != "\n" + mutated)
 ```
@@ -122,7 +139,7 @@ All PASS.
 
 **G3 THE PLAN**:
 ```
-$ cmp <PLAN3 extracted from committed authored file> .agent/plan.md
+$ cmp <PLAN4 extracted from committed authored file> .agent/plan.md
 (no output — exit 0)
 $ wc -l .agent/plan.md
 39 .agent/plan.md
@@ -133,40 +150,60 @@ $ grep -c '^## Next Steps' .agent/plan.md
 ```
 `cmp` exit 0, `wc -l` 39 (under 50 — PASS), both grep counts 1 — PASS.
 
-**G4 THE TWO NEW FILES**:
+**G4 THE FOUR CODE PAIRS**:
+
+Unlike round 3, this round's constraint 4 stated each slice's newline
+convention explicitly, so no ambiguity needed resolving: IMPORT PAIR
+FROM/TO carry no trailing newline in either (bare 2-3 line snippets);
+APPEND PAIR FROM/TO and TEST PAIR FROM/TO each carry the target file's
+own real trailing newline (extracted slice text + one `\n`, confirmed a
+suffix via `.endswith()` before applying); CONFIG PAIR FROM/TO carry no
+trailing newline of their own (a mid-file entry, immediately followed by
+the next entry on the next line).
+
+Pre-C2 FROM counts (immediately before C2, from the actual pre-round
+file contents):
 ```
-$ cmp <MODULE extracted from committed authored file> packages/orchestration/cost_preview.py
-(no output — exit 0)
-$ cmp <TESTMODULE extracted from committed authored file> tests/orchestration/test_cost_preview.py
-(no output — exit 0)
-$ wc -c packages/orchestration/cost_preview.py tests/orchestration/test_cost_preview.py
-3414 packages/orchestration/cost_preview.py
-4614 tests/orchestration/test_cost_preview.py
+IMPORT PAIR FROM count in cost_preview.py (before edits): 1
+APPEND PAIR FROM count in cost_preview.py (before edits): 1
+CONFIG PAIR FROM count in config.py: 1
+TEST PAIR FROM count in test_cost_preview.py: 1
 ```
-MODULE 3414 bytes, TESTMODULE 4614 bytes — both match the block's own
-stated expected byte lengths exactly, recomputed independently. Both
-`cmp` exit 0 — PASS. (Extraction note: the naive delimiter-slice — text
-strictly between the BEGIN/END marker lines, joined without a trailing
-`\n` — measured 3413/4613, one byte short of the stated 3414/4614 in
-each case; the file's own real trailing newline, structurally consumed
-as the line-separator immediately before each `<<<END ...>>>` marker
-line, was restored for MODULE and TESTMODULE only — both are real
-source files that end with `\n` by ordinary convention — while RECORD2
-(4018 bytes, matching its own stated size with no addition) and PLAN3
-(no trailing newline, matching `.agent/plan.md`'s own pre-round
-no-trailing-newline convention, confirmed by reading the base file's
-own last byte before this round touched it) took none. This
-per-slice rule was confirmed by recomputing all four against the
-block's own stated/implied byte counts, not assumed uniformly — see
-Authored-text proofs below for the full derivation.)
+All exactly 1 — PASS. `APPEND PAIR FROM is suffix of cost_preview.py:
+True` and `TEST PAIR FROM is suffix of test_cost_preview.py: True`,
+confirmed via `.endswith()` before either was applied.
+
+Applied IMPORT PAIR first (constraint 7 — its FROM is nearer the top,
+unaffected by APPEND PAIR's own tail edit), then re-counted APPEND PAIR
+FROM in the post-IMPORT-PAIR content before applying it:
+```
+APPEND PAIR FROM count in cost_preview.py (after IMPORT PAIR, before APPEND PAIR): 1
+```
+Containment checks, matching constraints 5/6 exactly:
+```
+IMPORT PAIR: TO contains FROM: false   (a rewrite)
+APPEND PAIR: TO contains FROM: true    (an append)
+CONFIG PAIR: TO contains FROM: true    (an append)
+TEST PAIR:   TO contains FROM: true    (an append)
+```
+
+Byte-exact reconstruction, INDEPENDENT of the write path — each target's
+pre-C2 content read via `git show HEAD:<path>` (the C1 commit, before
+C2 touched anything), the same FROM/TO pairs applied in the
+constraint-7 order to a scratch in-memory copy, then compared against
+the actual post-C2 file on disk:
+```
+cost_preview.py scratch == actual: True
+config.py scratch == actual: True
+test_cost_preview.py scratch == actual: True
+```
+All three exit-0-equivalent (`True`) — PASS.
 
 **G5 COMPILE AND LINT**:
 ```
-$ python3 -m py_compile packages/orchestration/cost_preview.py
+$ python3 -m py_compile packages/orchestration/cost_preview.py packages/orchestration/config.py tests/orchestration/test_cost_preview.py
 (no output — exit 0)
-$ python3 -m py_compile tests/orchestration/test_cost_preview.py
-(no output — exit 0)
-$ ruff check packages/orchestration/cost_preview.py tests/orchestration/test_cost_preview.py
+$ ruff check packages/orchestration/cost_preview.py packages/orchestration/config.py
 Permission to use Bash has been denied. IMPORTANT: You *may* attempt to
 accomplish this action using other tools that might naturally be used
 to accomplish this goal [...] If you believe this capability is
@@ -174,94 +211,91 @@ essential to complete the user's request, STOP and explain to the user
 what you were trying to do and why you need this permission. Let the
 user decide how to proceed.
 ```
-`py_compile` exit 0 on both new `.py` files — PASS. `ruff check`
-produced the exact session-level refusal text above (reported verbatim
-per constraint 7, not assumed) — `ruff` is denied to this session,
-consistent with rounds 1 and 2's own notes.
+`py_compile` exit 0 on all three touched/created `.py` files — PASS.
+`ruff check` produced the exact session-level refusal text above
+(reported verbatim per constraint 9, not assumed) — `ruff` is denied to
+this session, consistent with rounds 1-3's own notes.
 
 **G6 THE RED-PROOF, INSIDE A DISPOSABLE GIT WORKTREE ONLY**:
 ```
-$ git worktree add .remedy-wt/f114-r3-redproof 539b291d
-Preparing worktree (detached HEAD 539b291d)
-HEAD is now at 539b291d F114 R3 C2: ...
+$ git worktree add .remedy-wt/f114-r4-redproof 6978e949
+Preparing worktree (detached HEAD 6978e949)
+HEAD is now at 6978e949 F114 R4 C2: ...
 ```
-Inside the worktree, `cost_preview.py`'s own final line changed from
-`return CostBandEstimate(min(usd_a, usd_b), max(usd_a, usd_b), basis,
-inputs)` to `return CostBandEstimate(max(usd_a, usd_b), max(usd_a,
-usd_b), basis, inputs)` — both bounds now `max`:
-```
-$ python3 -m pytest tests/orchestration/test_cost_preview.py -q
-1 failed, 12 passed in 0.25s
-FAILED tests/orchestration/test_cost_preview.py::TestSpanningBand::test_low_and_high_span_produces_a_real_range
-```
-1 failure (> 0) — `TestSpanningBand::test_low_and_high_span_produces_a_real_range`
-(asserted `e.band_usd_low == pytest.approx(0.16)`, got `2.4` since the
-mutated `min→max` collapsed both bounds to the higher figure) —
-proving the low/high band computation is real, reachable code, not
-dead. Edit reverted inside the same worktree:
+Inside the worktree, `resolve_confirm_above_usd`'s own `if value > 0:`
+line (line 127) changed to `if value >= 0:` — allowing a configured
+zero through instead of falling back to the default:
 ```
 $ python3 -m pytest tests/orchestration/test_cost_preview.py -q
-13 passed in 0.22s
+1 failed, 18 passed in 0.26s
+FAILED tests/orchestration/test_cost_preview.py::TestResolveConfirmAboveUsd::test_zero_configured_value_falls_back_to_default
 ```
-Fully green again (the unmutated control) — 13 passed, matching the
-primary checkout's own G7 reading for this new suite; the reverted
-worktree file was also confirmed byte-identical to the primary
-checkout's `cost_preview.py` via `cmp` before the worktree was removed.
-Worktree removed:
+1 failure (> 0) —
+`TestResolveConfirmAboveUsd::test_zero_configured_value_falls_back_to_default`
+(asserted `resolve_confirm_above_usd(config_path=str(toml)) ==
+DEFAULT_CONFIRM_ABOVE_USD` with a configured `confirm_above_usd = 0`,
+got `0.0` instead of `0.5` since the mutated `>= 0` now lets the
+configured zero through) — proving the zero-falls-back-to-default
+branch is real, reachable code, not dead, despite having no CLI caller
+yet (constraint 8). Edit reverted inside the same worktree:
 ```
-$ git worktree remove --force .remedy-wt/f114-r3-redproof
+$ python3 -m pytest tests/orchestration/test_cost_preview.py -q
+19 passed in 0.23s
+```
+Fully green again (the unmutated control) — 19 passed, matching the
+primary checkout's own G7 reading for this suite. Worktree removed:
+```
+$ git worktree remove --force .remedy-wt/f114-r4-redproof
 $ git worktree list
-(no .remedy-wt/f114-r3-redproof entry — confirmed gone)
+(no .remedy-wt/f114-r4-redproof entry — confirmed gone)
 ```
 PASS. The mutation was applied and tested exclusively inside
-`.remedy-wt/f114-r3-redproof/`, never the primary checkout
+`.remedy-wt/f114-r4-redproof/`, never the primary checkout
 (self_drive_protocol.md guardrail G5); the primary checkout's own
 `cost_preview.py` was never touched by this gate.
 
 **G7 THE SUITES, SERIALLY, PRIMARY CHECKOUT**:
 ```
 $ python3 -m pytest tests/orchestration/test_cost_preview.py -q
-13 passed in 0.23s
+19 passed in 0.24s
+$ python3 -m pytest tests/orchestration/test_config.py -q
+81 passed in 0.30s
 $ python3 -m pytest tests/test_no_interactive_guard.py -q
-6 passed in 1.17s
+6 passed in 1.19s
 $ python3 -m pytest tests/orchestration/test_predictive_budget.py -q
 75 passed in 2.13s
 $ python3 -m pytest tests/orchestration/test_budget_guard.py -q
-92 passed in 1.62s
+92 passed in 1.60s
 $ python3 -m pytest tests/orchestration/test_token_economy.py -q
 42 passed in 0.28s
 $ python3 -m pytest tests/docs/ -q
-295 passed in 0.44s
+295 passed in 0.45s
 $ python3 -m pytest tests/orchestration/test_roadmap_index.py -q
 30 passed in 0.36s
 $ python3 -m pytest tests/ui_server/ -q
-515 passed in 32.59s
+515 passed in 32.44s
 $ python3 -m pytest tests/orchestration/test_test_runner.py -q
-52 passed in 5.56s
+52 passed in 5.66s
 $ python3 -m pytest tests/regression/test_resource_safety.py -q
-21 passed in 11.53s
+21 passed in 11.36s
 $ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
 16 passed in 0.28s
 $ python3 -m pytest tests/cli/test_golden_path.py -q
-42 passed in 20.67s
+42 passed in 20.66s
 ```
-`test_cost_preview.py` reads 13 passed — matches the gate's stated
-expectation for a brand new file exactly. Every other count
-(6/75/92/42/295/30/515/52/21/16/42) is checked against round 2's own
-stated reviewer-verified baseline: `test_no_interactive_guard.py` is
-newly added to this round's suite list (not present in round 2's G7)
-so it carries no prior baseline to compare against — reported as
-measured, 6 passed, all real (this module scans production packages,
-including the new `cost_preview.py`, for interactive-input calls and
-found none, consistent with the module's own docstring claim of
-purity). `test_predictive_budget.py` (75), `test_budget_guard.py` (92),
-`test_token_economy.py` (42), `tests/docs/` (295),
-`test_roadmap_index.py` (30), `tests/ui_server/` (515),
-`test_test_runner.py` (52), `test_resource_safety.py` (21),
-`test_integrity_gate.py` (16) and `test_golden_path.py` (canary, 42)
-are ALL IDENTICAL to round 2's own stated reviewer-verified figures —
-nothing moved outside this round's own change set. These are the
-REAL, measured counts, not forced to any assumption.
+`test_cost_preview.py` reads 19 passed (13 existing + 6 new) — matches
+the gate's stated expectation exactly. `test_config.py` reads 81 passed
+— together with `test_cost_preview.py`'s 19, this is 100 passed
+combined across the two files, matching the round instructions' own
+statement that the reviewer's independent dry run measured "100 passed
+across test_cost_preview.py and test_config.py combined" exactly. Every
+other count (6/75/92/42/295/30/515/52/21/16/42) is a moved-count check
+against round 3's own stated reviewer-verified baseline — all IDENTICAL
+to round 3's own figures, nothing moved outside this round's own change
+set. These are the REAL, measured counts, not forced to any assumption.
+`tests/ui_server/`, `test_test_runner.py`, `test_resource_safety.py`
+and `test_integrity_gate.py` were run as all four named, not fewer, per
+the gate's own instruction.
 
 **G8 THE TREE, THE COMMITS AND THE SWEEP**:
 ```
@@ -270,10 +304,10 @@ $ git status --porcelain
 $ git ls-files .remedy-wt
 (no output — nothing under .remedy-wt/ is ever committed)
 $ git worktree list
-/home/decodeux/Repos/remedy                                  539b291d [feature/f114-cost-preview-per-command]
+/home/decodeux/Repos/remedy                                  6978e949 [feature/f114-cost-preview-per-command]
 (plus 8 pre-existing, unrelated .remedy-wt/job-* worktrees from other
 job runs — none created or touched by this round's G6, confirmed by
-name: none is "f114-r3-redproof")
+name: none is "f114-r4-redproof")
 ```
 Per-commit insertion cross-check (`git show --numstat`, `+` column
 only) against this handback's own Commits table above — all cells
@@ -281,164 +315,119 @@ match:
 
 | Commit | File | numstat `+` | Table `+` | Match |
 |---|---|---|---|---|
-| 6b7d394c (C0a) | `.agent/authored/f114-r3.md` | 395 | 395 | yes |
-| 1fb5c49a (C0b) | `.agent/last_block.md` | 293 | 293 | yes |
-| 63622705 (C1) | `.agent/live_review.md` | 2 | 2 | yes |
-| 63622705 (C1) | `.agent/plan.md` | 16 | 16 | yes |
-| 539b291d (C2) | `packages/orchestration/cost_preview.py` | 88 | 88 | yes |
-| 539b291d (C2) | `tests/orchestration/test_cost_preview.py` | 104 | 104 | yes |
+| 8bb227b8 (C0a) | `.agent/authored/f114-r4.md` | 388 | 388 | yes |
+| db8c8e73 (C0b) | `.agent/last_block.md` | 264 | 264 | yes |
+| 4d46e293 (C1) | `.agent/live_review.md` | 2 | 2 | yes |
+| 4d46e293 (C1) | `.agent/plan.md` | 16 | 16 | yes |
+| 6978e949 (C2) | `packages/orchestration/config.py` | 10 | 10 | yes |
+| 6978e949 (C2) | `packages/orchestration/cost_preview.py` | 41 | 41 | yes |
+| 6978e949 (C2) | `tests/orchestration/test_cost_preview.py` | 49 | 49 | yes |
 
-Note: `git commit`'s own terminal echo for C0b read "395 insertions(+),
-301 deletions(-)" with a "rewrite .agent/last_block.md (75%)" note —
-this is git's rewrite-detection stat (whole-file delete+insert counted
-against the OLD file's 301 lines and the NEW file's 395 lines) and
-differs from `git show --numstat`'s line-level diff (293/199) used in
-the table above, per G8's own explicit instruction to use `git show
---numstat`. Both are real git output; they measure different things
-(rewrite-heuristic stat vs. line diff), not a defect — same pattern
-round 2's own handback declared, reproduced again this round.
+C3's own numbers go to neither this table nor a round report, per G8's
+own instruction.
 
 Staleness sweep, one entry per file this round touched:
 
 | File | Stale? | Why |
 |---|---|---|
-| `.agent/authored/f114-r3.md` | NOT stale | immutable historical stamp of this round's instructions |
-| `.agent/last_block.md` | NOT stale | current mirror of this round's block; accurate until round 4 overwrites it |
-| `.agent/live_review.md` | NOT stale | RECORD2 books round 2's real PASS verdict, append-only ledger |
-| `.agent/plan.md` | NOT stale | reflects F114 round 3's actual current step and real next steps |
-| `packages/orchestration/cost_preview.py` | NOT stale | `estimate_cost_band`/`CostBandEstimate`/`ESTIMATE_UNAVAILABLE` are live and tested; no caller yet, by design (T002) |
-| `tests/orchestration/test_cost_preview.py` | NOT stale | 13 tests directly cover the new module, all passing |
+| `.agent/authored/f114-r4.md` | NOT stale | immutable historical stamp of this round's instructions |
+| `.agent/last_block.md` | NOT stale | current mirror of this round's block; accurate until round 5 overwrites it |
+| `.agent/live_review.md` | NOT stale | RECORD3 books round 3's real PASS verdict, append-only ledger |
+| `.agent/plan.md` | NOT stale | reflects F114 round 4's actual current step and real next steps |
+| `packages/orchestration/config.py` | NOT stale | the new `cost_preview.confirm_above_usd` key is live and read by `resolve_confirm_above_usd()` |
+| `packages/orchestration/cost_preview.py` | NOT stale | `DEFAULT_CONFIRM_ABOVE_USD`/`resolve_confirm_above_usd()` are live and tested; no CLI caller yet, by design (T002 completes in round 5, per constraint 8) |
+| `tests/orchestration/test_cost_preview.py` | NOT stale | 6 new tests directly cover the new resolver, all passing, 19 total |
 | `.agent/handoff.md` | N/A | this handback itself, written last, freshest by construction |
 
-Outside the change set: `.agent/context.md` line 36 — "No
-`cost_preview.py` or expensive-command registry exists today
-(confirmed by search); T001/T003 are new files, not refactors of
-existing ones" — is now PARTIALLY STALE. `packages/orchestration/cost_preview.py`
-now exists as of this round's C2; the "no `cost_preview.py`" clause no
-longer holds (the "no expensive-command registry" clause and the
-"T001/T003 are new files" framing both still hold — T001 is now
-complete but was indeed a new file, not a refactor, and T003's registry
-still does not exist). `.agent/context.md` is not in this round's
-change set (Change set section lists exactly 7 paths, `.agent/context.md`
-is not among them), so per constraint 8 this is DECLARED here and NOT
-repaired this round. Round 2's own separate `.agent/context.md` line 29
-declaration (the `budget_guard.py:482-484` reference) stands unrepeated,
-per this round's own constraint 8 instruction. No other new stale
-sentence was found: `docs/roadmap/features/T3_F114.md`'s "Design
-(suggested shape)" section (line 25, `estimate(command_context) →
-{band_usd_low, band_usd_high, basis, inputs}`) is explicitly labelled
-SUGGESTED, not a factual claim of what was built, and PLAN3's own Risks
-section already documents that this round's real shape
-(`estimate_cost_band(band_a, band_b, *, repeat_count, config)`)
-deviates deliberately — not a staleness, a declared design choice; the
-file's "Suggested tests: tests/cli/test_cost_preview.py" line (line 66,
-under "Do not touch") refers to T002's future CLI-level tests, a
-different, not-yet-built layer, not this round's
-`tests/orchestration/test_cost_preview.py` (T001's own package-level
-unit tests) — no conflict. `docs/roadmap/STATUS.md`'s F114 line
-(`- [~] F114`) is untouched and still correctly claimed (in progress).
+Outside the change set: no NEW stale sentence was found this round.
+`.agent/context.md` line 36 ("No `cost_preview.py` or expensive-command
+registry exists today...") and line 29 (the `budget_guard.py:482-484`
+reference) — round 2's and round 3's own declared staleness — both
+stand unrepeated, per constraint 10's explicit instruction not to
+repeat them. `docs/roadmap/features/T3_F114.md` line 29 already names
+`confirm_above_usd (config, default around half a dollar)` as an
+expected design item — this round fulfills part of that design rather
+than contradicting it, so no new staleness there.
+`docs/roadmap/STATUS.md`'s F114 line (`- [~] F114`) is untouched and
+still correctly claimed (in progress).
 
 ## Authored-text proofs
 
-- `.agent/authored/f114-r3.md` (copied via `cp`, never retyped) sha256
-  `8fee890a26670158becee84733669803e416a781f7e21273fa12d19a337cc740` at
-  22523 bytes, 395 lines — matches the block's own stamp exactly
-  (verified before C0a and again after commit).
+- `.agent/authored/f114-r4.md` (copied via `cp`, never retyped) sha256
+  `c0b99055ee4cb5f5b7c65d83240ba2339c829dfb12e5fd22c2d2a18713957b5b` at
+  23167 bytes, 388 lines — matches the round instructions' own stamp
+  exactly (verified before C0a and again after commit, via `cmp` against
+  the scratch source at `.remedy-wt/f114_r4_block.txt`).
 - `.agent/last_block.md` after C0b: same sha256 as above — confirmed
   equal (G1).
-- All four slices (RECORD2, PLAN3, MODULE, TESTMODULE) were extracted
-  from the COMMITTED `.agent/authored/f114-r3.md` by a Python script
+- All ten slices (RECORD3, PLAN4, IMPORT PAIR FROM/TO, APPEND PAIR
+  FROM/TO, CONFIG PAIR FROM/TO, TEST PAIR FROM/TO) were extracted from
+  the COMMITTED `.agent/authored/f114-r4.md` by a Python script
   (`.remedy-wt/extract_slices.py`) reading delimiter indices
   (`<<<BEGIN ...>>>` / `<<<END ...>>>`), splitting the file on `\n`
   bytes and re-joining the lines strictly between each pair of markers
-  — never by hand-retyping (constraint 1).
-- This naive join-without-trailing-newline extraction reproduced RECORD2
-  exactly at its own stated 4018 bytes (0 internal newlines) and PLAN3
-  at 1740 bytes with no trailing newline (matching `.agent/plan.md`'s
-  own pre-round last-byte convention, confirmed by reading the base
-  file directly: `d.endswith(b'\n')` → `False`) — both taken as-is, no
-  adjustment. For MODULE and TESTMODULE it undershot the block's own
-  stated expected byte counts (3414/4614) by exactly one byte each
-  (3413/4613): both are real Python source files whose own trailing
-  `\n` was structurally consumed as the line-separator immediately
-  before their respective `<<<END ...>>>` marker line (no blank line
-  separates the last content line from the marker in the raw block —
-  confirmed by reading the raw file directly around both boundaries),
-  so that one byte was restored for these two slices only, bringing
-  them to the stated 3414/4614 exactly. This is a recomputation against
-  the block's own explicitly stated expected values (G4), not an
-  assumption — the same per-slice-nature judgment round 2's own
-  handback made for its TEST PAIR FROM ("raw form, trailing newline
-  included") versus its TE/BG PAIR FROM (stripped).
-- RECORD2: 4018 bytes, 0 internal newlines, matches block's stated
-  figure exactly; appended to `.agent/live_review.md` as exactly one
-  `\n` + RECORD2 (G2, above).
-- PLAN3: 1740 bytes, ending `...not a rewrite.` with no trailing
-  newline (matches `.agent/plan.md`'s own pre-round no-trailing-newline
-  convention); `.agent/plan.md` reproduces it byte-identical (`cmp`
-  exit 0).
-- MODULE: 3414 bytes (trailing `\n` restored per the above), ending
-  `...basis, inputs)\n`; `packages/orchestration/cost_preview.py`
-  reproduces it byte-identical (`cmp` exit 0), written whole-file with
-  the Write tool (a copyfile, never a text-extraction-and-reflow).
-- TESTMODULE: 4614 bytes (trailing `\n` restored per the above), ending
-  `...repeat_count": 2}\n`; `tests/orchestration/test_cost_preview.py`
-  reproduces it byte-identical (`cmp` exit 0), written whole-file with
-  the Write tool.
+  — never by hand-retyping (constraint 1). The naive marker-to-marker
+  join carries no trailing newline for any slice by construction; per
+  constraint 4's explicit statement (not left implicit this round, in
+  contrast with round 3), one trailing `\n` was added back onto APPEND
+  PAIR FROM/TO and TEST PAIR FROM/TO only — both real source-file tails
+  — and confirmed a byte-exact suffix of their respective target files
+  via `.endswith()` before either was applied; IMPORT PAIR and CONFIG
+  PAIR took the extracted bytes as-is, no addition.
+- RECORD3: 4490 bytes, 0 internal newlines, matches the round
+  instructions' own stated figure exactly; appended to
+  `.agent/live_review.md` as exactly one `\n` + RECORD3 (G2, above).
+- PLAN4: 1738 bytes, no trailing newline (matches `.agent/plan.md`'s own
+  pre-round no-trailing-newline convention); `.agent/plan.md` reproduces
+  it byte-identical (`cmp` exit 0).
+- IMPORT PAIR FROM (63 bytes) / TO (88 bytes): both no trailing newline,
+  matched the pre-round `cost_preview.py`'s own import block exactly
+  once, and IMPORT PAIR's TO does not contain FROM as a substring
+  (rewrite), confirmed.
+- APPEND PAIR FROM (80 bytes raw + 1 restored `\n` = 81 bytes applied) /
+  TO (1599 bytes raw + 1 restored `\n` = 1600 bytes applied): FROM
+  confirmed a byte-exact suffix of the pre-round `cost_preview.py`
+  before applying; `packages/orchestration/cost_preview.py` reproduces
+  the combined IMPORT+APPEND result byte-identical to an independent
+  `git show HEAD:...`-based scratch reconstruction (G4, above).
+- CONFIG PAIR FROM (317 bytes) / TO (670 bytes): neither carries a
+  trailing newline of its own, matched the pre-round `config.py`'s
+  `budget.class_default_tokens_high` entry exactly once;
+  `packages/orchestration/config.py` reproduces the result
+  byte-identical to the independent scratch reconstruction.
+- TEST PAIR FROM (288 bytes raw + 1 restored `\n` = 289 bytes applied) /
+  TO (2634 bytes raw + 1 restored `\n` = 2635 bytes applied): FROM
+  confirmed a byte-exact suffix of the pre-round
+  `tests/orchestration/test_cost_preview.py`;
+  `tests/orchestration/test_cost_preview.py` reproduces the result
+  byte-identical to the independent scratch reconstruction.
 
 ## Deviations & assumptions
 
-1. G4's extraction: as detailed in Verification and Authored-text
-   proofs above, a naive marker-to-marker join (no synthetic bytes
-   added or removed beyond the markers themselves) undershot the
-   block's own explicitly stated MODULE/TESTMODULE byte counts by
-   exactly one byte each. This worker's assumption, confirmed by
-   recomputing against the block's own stated figures rather than
-   guessed: the structural `\n` immediately preceding each of these two
-   slices' own `<<<END ...>>>` marker is the real file's own trailing
-   newline (ordinary convention for a `.py` source file), not pure
-   marker-line formatting, and belongs in the slice — while the same
-   structural `\n` before `<<<END RECORD2>>>` and `<<<END PLAN3>>>`
-   does NOT, since RECORD2 is stated to have zero internal newlines
-   (a single-line ledger record) and PLAN3 matches `.agent/plan.md`'s
-   own pre-round no-trailing-newline file convention. Both readings
-   were verified against the block's own numbers/conventions, not
-   assumed uniformly; nothing was retyped by hand. Declared per
-   constraint 1's "apply as written... declare" spirit — the
-   convention was not, in fact, wrong, just non-uniform across the four
-   slices, and is fully reconciled by the numbers above.
-2. `.agent/context.md` staleness (line 36, the "no `cost_preview.py`
-   exists" clause, now partially false) — declared under G8's
-   staleness sweep above, per constraint 8. Not repaired this round;
-   `.agent/context.md` is not in the change set. Round 2's own separate
-   line-29 declaration was correctly NOT repeated, per this round's
-   explicit constraint 8 instruction.
-3. Tooling note, not a block deviation: this session's Bash tool has
-   previously (round 2) rejected `for`/loop-shaped constructs even
-   inside a Python `-c` string. This round's slice extraction and both
-   file writes were done via a standalone Python script file
-   (`.remedy-wt/extract_slices.py`, executed with `python3 -B`) and the
-   Write tool directly, rather than inline loop-shaped one-liners, so
-   this quirk was not encountered and did not need working around this
-   round. Noted for completeness only.
-
-The bundle's commit order (C0a, C0b, C1, C2, C3) was followed exactly;
-the change set touched exactly the seven declared paths and nothing
-else (`git status --porcelain` after C2 showed only the two intended
-new production/test files; constraint 6's excluded files —
-`token_economy.py`, `budget_guard.py`, `budget_resolution.py` — were
-never opened for writing); no slice's CONTENT looked wrong, so nothing
-needed declaring under constraint 1's "apply as written" clause beyond
-the extraction-byte-count reconciliation already noted above; `.agent/STOP`
-was absent at both checkpoints; no production caller of `cost_preview.py`
-was added anywhere, per constraint 5 (T002, not this round).
+None. Constraint 4 stated each slice's newline convention explicitly
+this round (in contrast with round 3, where the same class of
+convention had to be reverse-engineered from the block's own stated
+byte counts); this round applied the stated convention directly and it
+reproduced every stated/measured number exactly (RECORD3's 4490 bytes,
+the G2 arithmetic, and the G4 byte-exact reconstructions), so no
+ambiguity needed resolving or declaring. The bundle's commit order
+(C0a, C0b, C1, C2, C3) was followed exactly; the change set touched
+exactly the eight declared paths and nothing else (`apps/cli/` and
+`command_catalog.py` were never opened for writing, per constraint 8);
+no slice's content looked wrong, so nothing needed declaring under
+constraint 1's "apply as written... declare" clause; `.agent/STOP` was
+absent at both checkpoints; `resolve_confirm_above_usd()` has zero CLI
+callers, exactly as constraint 8 expects at this stage — G6's red-proof
+is what proves the code is real despite that, not a "dead code" defect.
 
 ## Next
 
-T002: the CLI helper in `apps/cli` — threshold confirm, tty/non-tty
-semantics (pipe never hangs), `--yes` audited, reusing
-`loop_cmd.py`'s `_confirm_materialization`/`_stdin_is_a_tty` pattern,
-calling `cost_preview.estimate_cost_band()` for the shown numbers — per
-`.agent/plan.md`'s own Next Steps. No PR exists yet and none is
+Round 5 completes T002: the actual CLI confirm helper, a new shared
+module `apps/cli/cost_preview_confirm.py` — the render+confirm helper,
+tty/non-tty semantics (pipe never hangs), `--yes` audited — reusing
+`loop_cmd.py`'s `_confirm_materialization`/`_stdin_is_a_tty` shape,
+calling this round's `resolve_confirm_above_usd()` and
+`estimate_cost_band()`. Its own tests land in
+`tests/cli/test_cost_preview_confirm.py`. No PR exists yet and none is
 expected until T002 (or later) lands enough of the feature to warrant
 one.
