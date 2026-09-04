@@ -1762,13 +1762,12 @@ def _run_verifications(
             _selected = len(_node_ids) if _node_ids else (_passed + _failed + _skipped)
         _deselected = int(r.get("deselected", 0) or 0)
         _stdout_summary = str(r.get("stdout_summary", "") or "")[-2000:]
-        _output_hash = str(r.get("output_hash", "") or "")
-        if _output_hash.startswith("sha256:"):
-            _output_hash = _output_hash[7:]
-        if not _output_hash:
-            import hashlib as _hl_norm
-            _output_hash = _hl_norm.sha256(
-                _stdout_summary.encode("utf-8", errors="replace")).hexdigest()
+        # A caller-supplied output_hash is NEVER kept — truncation above may
+        # have changed the stored bytes, so it no longer describes them.
+        # output_hash is always recomputed from the FINAL _stdout_summary
+        # (contract fixed by R-0792).
+        _output_hash = hashlib.sha256(
+            _stdout_summary.encode("utf-8", errors="replace")).hexdigest()
         _head_sha = str(r.get("head_sha", "") or "") or _head_sha_default
         _duration = r.get("duration_seconds")
         if _duration is None:
