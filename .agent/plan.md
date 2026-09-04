@@ -1,13 +1,12 @@
 # Plan — F112 Prompt budget per task class
 
-Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1. Round 30 landed the closure commit
-(STATUS [x], README capability sync, self_use_queue SU-007
-consumed_by=F112) but halted before the pull request: flipping F112's
-STATUS line to [x] moved README's own derived "N of 266 accepted" count
-and Tier 3 table Done cell, which round 30's block never named. Round 31
-fixes exactly those two numerals, re-confirms the docs gate green, and
-opens the pull request.
+Branch: feature/f112-prompt-budget-per-task-class, PR #234 OPEN (not
+merged), base main. All six closure preconditions satisfied; the
+evidence-packager contract fix (R-0792, R-0793) landed and independently
+verified end to end against the real packaged zip
+(remedy-review-20260904-123332-READY_FOR_REVIEW.zip, SHA-256
+b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927,
+PACKAGE_STATUS=READY_FOR_REVIEW, EVIDENCE_AUTHORITATIVE=true).
 
 ## Goal
 
@@ -15,25 +14,26 @@ No prompt can silently balloon: every task class carries an input-token
 cap, the context compiler fits under it via the existing demotion
 cascade with full omission disclosure, and a context that cannot fit
 raises a task-split decision instead of a truncated prayer
-(docs/roadmap/features/T3_F112.md).
+(docs/roadmap/features/T3_F112.md). ACHIEVED and CLOSED.
 
 ## Current Step
 
-Round 31 books round 30's PASS-with-declared-deviation verdict, fixes
-README.md's stale "69 of 266" -> "70 of 266" line and its Tier 3 table
-Done cell "4" -> "5", re-runs the docs gate to confirm green, then opens
-the pull request per the AGENTS.md PR workflow. Not merged this round.
+Round 32 books round 31's PASS verdict (bookkeeping only, closure
+sequence exempt per amend0827 rule 1). The reviewer then waits for
+hosted CI on PR #234 and merges directly once green, per the operator's
+own explicit instruction opening this session.
 
 ## Next Steps
 
-- Round 32: Open PR Gate — hosted CI green, docs gate/canary/touched
-  suites pass, planner merges per the standing merge-autonomy rule; hand
-  back the built zip's name and SHA-256 to the operator for archiving
-  and the formal package review.
+- Merge PR #234 once hosted CI is green (check status, then merge, as
+  two separate commands).
+- Hand back the built zip's name and SHA-256 to the operator for
+  archiving and the formal package review.
+- Next feature per STATUS order (Rule A5) starts a fresh session.
 
 ## Risks
 
 - R-0784 and R-0767 (both OPEN, unrelated to F112) are documented,
   pre-existing risks; F112's live-review verdict is PASS_WITH_RISKS.
-- Hosted CI must read green before the PR is merged; a red hosted run is
-  a blocker, not something to route around.
+- A red hosted CI run is a blocker; the merge waits for it honestly
+  rather than being forced.
