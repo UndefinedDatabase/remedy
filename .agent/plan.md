@@ -12,32 +12,29 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 2 books round 1's PASS verdict (RECORD1) and extracts the shared
-cost-arithmetic helper: `token_economy.tokens_to_cost_usd()` (new, pure,
-None-propagating) replaces the inlined multiply at
-`budget_guard.py:482-484` inside `predict_next_task_cost`, which now
-calls it. Round 1's plan text named the wrong regression suite
-(`test_budget_guard.py`); the real coverage of `predict_next_task_cost`
-is `tests/orchestration/test_predictive_budget.py`, and the new
-function's own unit tests land in
-`tests/orchestration/test_token_economy.py` (both suites, plus
-`test_budget_guard.py` itself, gate this round).
+Round 3 books round 2's PASS verdict (RECORD2) and completes T001: the
+new module `packages/orchestration/cost_preview.py` (`estimate_cost_band`,
+`CostBandEstimate`, `ESTIMATE_UNAVAILABLE`) computes a real USD band —
+never a fabricated point — from two `TokenBand` values, a repeat count
+and a `PredictiveBudgetConfig`, reusing round 2's
+`token_economy.tokens_to_cost_usd()`. Its tests land in
+`tests/orchestration/test_cost_preview.py`. Neither file has any
+production caller yet — that is T002, next.
 
 ## Next Steps
 
-- Round 3: `packages/orchestration/cost_preview.py` (`estimate_cost_band`,
-  band computation from `PredictiveBudgetConfig`'s per-`TokenBand` class
-  defaults, basis labels, "estimate unavailable" when no price basis) +
-  `tests/orchestration/test_cost_preview.py` — completes T001.
 - T002: CLI helper (`apps/cli`) — threshold confirm, tty/non-tty
   semantics (pipe never hangs), `--yes` audited, reusing
-  `loop_cmd.py`'s `_confirm_materialization`/`_stdin_is_a_tty` pattern.
+  `loop_cmd.py`'s `_confirm_materialization`/`_stdin_is_a_tty` pattern,
+  calling `cost_preview.estimate_cost_band()` for the shown numbers.
 - T003: mark expensive commands in `apps/cli/command_catalog.py`,
   goldens for preview lines, docs.
+- Acceptance fixtures, the integration gate, then the closure sequence.
 
 ## Risks
 
-- No `cost_preview.py` or expensive-command registry exists yet — T003
-  is greenfield, not a rename.
-- The estimator commits to `token_economy.TokenBand`, distinct from
-  `model_routing.TASK_CLASS_TIERS` (round 3 states which and why).
+- No expensive-command registry exists yet — T003 is greenfield.
+- `estimate_cost_band`'s two-band-plus-repeat-count shape is this
+  feature's own design choice (feature file gives a suggested shape
+  only); T002 is where it meets real CLI call sites and may need a
+  small adjustment, not a rewrite.
