@@ -1,0 +1,113 @@
+F114 - INTEGRATION GATE, round 11, session 3
+=============================================
+
+Procedure: docs/agents/integration_gate.md, steps 1-5.
+Branch : feature/f114-cost-preview-per-command at 6d20460dbd47c7e5e9e63ab81e17c68dbe3783c9 (C1's tree)
+Base   : a1b5d4bb455550f082da7d6c4c80fd968d6e1a88, confirmed by
+         `git merge-base main HEAD` (matches the expected value pinned
+         by this round's own constraint 5 exactly - PR 234's merge into
+         main), checked out on the throwaway branch tmp/f114-r11-base at
+         .remedy-wt/f114-r11-base (a DETACHED base worktree fails the
+         self-dogfood branch guard by design - DECISION D3, F053 R2)
+
+STEP 1 - BRANCH RUN
+    command : subprocess.run(["python3", "-m", "pytest", "-n", "auto",
+              "-q"], cwd=repo root) - invoked as a subprocess rather than
+              pytest.main() in the same interpreter, chosen for isolation
+              from this worker's own long-lived process; no shell
+              redirection was used to capture output (denied in this
+              sandbox for the ">" form), a Python subprocess call
+              captured stdout/stderr instead and the log was written to
+              /tmp (a path outside the repo worktree, then copied into
+              the evidence dir named below)
+    result  : 19601 passed, 23 skipped, 0 failed
+    exit    : 0
+    wall    : 120.87s (reported by pytest) / 121.49s measured around the
+              call
+
+STEP 2 - BASE RUN
+    parity restored BEFORE the run:
+      - apps/ui/node_modules copied with shutil.copytree(symlinks=True):
+        44839 entries, 27 of them symlinks PRESERVED (cp is denied here
+        and copytree defaults to symlinks=False, which would dereference
+        the npm bin shims - R-0591)
+      - apps/ui/dist copied the same way: 5 entries (4 files, 1
+        directory), 0 symlinks
+      - dist mtimes re-stamped to now (1788536061.377755): `git worktree
+        add` stamps the checkout with the CURRENT time while copytree
+        PRESERVES source mtimes, so _frontend_is_stale() would otherwise
+        read True inside the base worktree - R-0736. Re-measured from
+        inside the base worktree immediately after the re-stamp (a
+        subprocess with cwd pinned to the base worktree, importing
+        packages.orchestration.ui_server._frontend_is_stale directly):
+        _frontend_is_stale() = False.
+    command : subprocess.run(["python3", "-m", "pytest", "-n", "auto",
+              "-q"], cwd=base worktree, env with
+              REMEDY_UI_NO_AUTO_BUILD=1 added to a copy of os.environ) -
+              the env var is set via a Python dict passed to the child
+              process, never via shell "FOO=1 cmd" syntax (denied in
+              this sandbox)
+    result  : 19554 passed, 23 skipped, 0 failed
+    exit    : 0
+    wall    : 169.81s (reported) / 170.78s measured around the call
+    parity verified as an EVENT, not an outcome - see parity_mtime.txt:
+      run window 1788536151.354992 .. 1788536322.135282; no mtime under
+      apps/ui/dist falls inside it (all four are stamped at the earlier
+      restamp time, 1788536061.377755); PARITY HOLDS (content digest
+      before/after also identical: 242f8044eaddae8bf19406407337762bdd3fa
+      957eb789eddb0194c1fd10842e0 both times - accompanying only, per
+      R-0444)
+
+STEP 3 - COMPARISON
+    branch_failed.txt      0 lines
+    base_failed.txt        0 lines
+    branch_only.txt         0 lines   (set(branch_failed) - set(base_failed))
+    fixed_by_branch.txt     0 lines   (set(base_failed) - set(branch_failed))
+    (comm is unavailable through this sandbox's guard for piped forms -
+    R-0590 - computed as a Python set difference instead)
+
+STEP 4 - ATTRIBUTION
+    BOTH SETS ARE EMPTY. There is no branch-only id and no base-only id -
+    the branch run and the base run each finished 0 failed. No
+    attribution target exists on either side; see attribution.txt for
+    the full accounting of why an empty set still satisfies constraint
+    10's unconditional-attribution requirement (there is no id to leave
+    unattributed).
+
+STEP 5 - BUDGET
+    Both runs are under the ~5 min note threshold (120.87s and 169.81s),
+    so no perf pass is indicated. The verdict itself belongs to the
+    reviewer.
+
+TEST-COUNT DELTA
+    Branch total (passed + skipped): 19601 + 23 = 19624.
+    Base total (passed + skipped): 19554 + 23 = 19577.
+    19624 - 19577 = 47 cases added by this branch across its 10 prior
+    rounds. Three wholly new test files account for 36 of them (`git
+    cat-file -e a1b5d4bb...:<path>` returns non-zero for all three -
+    absent at the base, confirming NEW TEST files rather than regression
+    targets): tests/cli/test_cost_preview.py (5, --collect-only),
+    tests/cli/test_cost_preview_confirm.py (12, --collect-only),
+    tests/orchestration/test_cost_preview.py (19, --collect-only). The
+    remaining 11 are additional cases folded into existing test files
+    this branch modified across its prior rounds (tests/test_command_
+    catalog.py, tests/orchestration/test_escalation.py, tests/
+    orchestration/test_long_run_executor.py, tests/orchestration/
+    test_token_economy.py - all four confirmed EXISTING at the base by
+    the same git cat-file -e check). No branch-only id required a
+    NEW-TESTS classification of its own, because branch_only.txt is
+    empty.
+
+CLEANUP
+    the base worktree was removed by its exact path, `git worktree
+    prune` run, and the tmp/f114-r11-base branch deleted; see the
+    round's handback for the confirming `git worktree list` / `git
+    branch --list 'tmp/*'` output.
+
+GATE OUTCOME (measured, not a verdict)
+    branch-only failures : 0
+    base-only failures   : 0
+    BLOCKER              : none found by this worker's own measurement -
+                            both runs finished green with UI parity held
+                            as an event throughout
+    The VERDICT on this gate belongs to the reviewer, not to this file.

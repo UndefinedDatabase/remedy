@@ -1,0 +1,31 @@
+F114 R11 - integration gate, step 4 attribution
+================================================
+
+BOTH SETS ARE EMPTY.
+
+Produced by:
+
+    grep '^FAILED' <branch log> | sort > branch_failed.txt   -> 0 lines
+    grep '^FAILED' <base log>   | sort > base_failed.txt     -> 0 lines
+    branch_only     = sorted(set(branch_failed) - set(base_failed))     -> 0 lines
+    fixed_by_branch = sorted(set(base_failed) - set(branch_failed))     -> 0 lines
+(comm is unavailable through this sandbox's guard for piped forms, per
+R-0590; computed as a Python set difference instead.)
+
+branch_only.txt is empty, so there is no branch-only id to attribute and
+no BLOCKER is possible from that set: nothing failed on the branch. The
+branch run itself was 0 failed / 19601 passed / 23 skipped, exit 0.
+
+fixed_by_branch.txt is also empty: nothing failed at the base either. The
+base run was 0 failed / 19554 passed / 23 skipped, exit 0. Per constraint
+10, every id in fixed_by_branch.txt must be attributed by direct evidence
+- there are zero ids, so there is nothing to attribute and no
+unattributed base-only id exists (the degenerate, cleanest case of the
+"unconditional attribution" rule: an empty set requires no evidence
+because there is no claim being made about any id).
+
+NEITHER SET TOUCHES F114 CODE, BECAUSE NEITHER SET HAS ANY MEMBER.
+
+    branch-only failures : 0
+    base-only failures   : 0
+    BLOCKER              : none
