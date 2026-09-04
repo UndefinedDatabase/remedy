@@ -53,11 +53,16 @@ def _cmd_tournament_list(args: Any) -> None:
     out = {"job_id": str(args.job_id), "report_count": len(reps),
            "reports": [{"tournament_id": r.get("tournament_id"), "status": r.get("status"),
                         "winner_competitor_id": r.get("winner_competitor_id", ""),
-                        "confidence": r.get("confidence")} for r in reps]}
+                        "confidence": r.get("confidence"),
+                        "created_at": r.get("created_at", "")} for r in reps]}
     if getattr(args, "json", False):
         print(json.dumps(out, indent=2))
         return
     print(f"Tournament reports for {str(args.job_id)[:8]}: {len(reps)}")
+    for r in reps:
+        winner = r.get("winner_competitor_id") or "(none)"
+        print(f"  {r.get('tournament_id')}: {r.get('status')}  winner={winner}"
+              f"  confidence={r.get('confidence')}  (created={r.get('created_at', '')})")
 
 
 def _cmd_tournament_integrity(args: Any) -> None:

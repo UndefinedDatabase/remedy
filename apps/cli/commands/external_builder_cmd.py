@@ -112,11 +112,15 @@ def _cmd_external_builder_submission_list(args: Any) -> None:
     out = {"job_id": str(args.job_id), "submission_count": len(subs),
            "submissions": [{"submission_id": s.get("submission_id"), "state": s.get("state"),
                             "source_label": s.get("source_label"),
-                            "intent_id": s.get("intent_id", "")} for s in subs]}
+                            "intent_id": s.get("intent_id", ""),
+                            "received_at": s.get("received_at", "")} for s in subs]}
     if getattr(args, "json", False):
         print(json.dumps(out, indent=2))
         return
     print(f"External builder submissions for {str(args.job_id)[:8]}: {len(subs)}")
+    for s in subs:
+        print(f"  {s.get('submission_id')}: {s.get('state')}  source={s.get('source_label')}"
+              f"  (received={s.get('received_at', '')})")
 
 
 def _cmd_external_builder_evaluate(args: Any) -> None:

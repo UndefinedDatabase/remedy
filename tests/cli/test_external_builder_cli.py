@@ -109,3 +109,27 @@ def test_package_missing_job(env):
     r = run_grouped_cli(["external-builder", "package-create", str(uuid4()), "--json"], env)
     assert r.returncode == 1
     assert "Traceback" not in r.stderr
+
+
+def test_submission_list_json_has_received_at(env):
+    job_id = _job(env)
+    pkg = json.loads(run_grouped_cli(["external-builder", "package-create", job_id, "--json"], env).stdout)
+    cf = env / "resp.md"; cf.write_text(_SAFE_CAND)
+    run_grouped_cli(["external-builder", "submit", pkg["package_id"],
+                     "--candidate-file", str(cf), "--source-label", "claude", "--json"], env)
+    r = run_grouped_cli(["external-builder", "submission-list", job_id, "--json"], env)
+    d = json.loads(r.stdout)
+    assert d["submissions"][0]["received_at"]
+
+
+def test_submission_list_text_shows_per_row(env):
+    job_id = _job(env)
+    pkg = json.loads(run_grouped_cli(["external-builder", "package-create", job_id, "--json"], env).stdout)
+    cf = env / "resp.md"; cf.write_text(_SAFE_CAND)
+    r = run_grouped_cli(["external-builder", "submit", pkg["package_id"],
+                         "--candidate-file", str(cf), "--source-label", "claude", "--json"], env)
+    sid = json.loads(r.stdout)["submission_id"]
+    r2 = run_grouped_cli(["external-builder", "submission-list", job_id], env)
+    assert r2.returncode == 0
+    assert sid in r2.stdout
+    assert "received=" in r2.stdout
