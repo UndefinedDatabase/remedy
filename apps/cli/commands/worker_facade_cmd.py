@@ -662,7 +662,8 @@ def _cmd_approval_policy_list(ns: argparse.Namespace) -> None:
     print(f"Approval policies: {len(policies)}")
     for p in policies:
         status = "ENABLED" if p.get("enabled") else "disabled"
-        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}")
+        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}"
+              f"  (created={p.get('created_at', '')}, updated={p.get('updated_at', '')})")
 
 
 # ---------------------------------------------------------------------------

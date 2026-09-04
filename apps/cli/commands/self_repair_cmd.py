@@ -90,7 +90,8 @@ def _cmd_proposal_list(args: argparse.Namespace) -> None:
         return
 
     for p in proposals:
-        print(f"  {p.get('proposal_id', '?'):20s}  {p.get('status', '?'):25s}  {p.get('title', '')[:50]}")
+        print(f"  {p.get('proposal_id', '?'):20s}  {p.get('status', '?'):25s}  {p.get('title', '')[:50]}"
+              f"  (created={p.get('created_at', '')}, updated={p.get('updated_at', '')})")
 
 
 def _cmd_proposal_approve(args: argparse.Namespace) -> None:

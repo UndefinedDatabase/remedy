@@ -35,7 +35,8 @@ def _cmd_blocker_list(
             return
         for s in stops:
             status_mark = "[resolved]" if s.status == "resolved" else "[active]"
-            print(f"  {s.reason_code} {status_mark}  {s.safe_summary}  (id={s.id[:8]})")
+            resolved_str = f", resolved={s.resolved_at}" if s.resolved_at else ""
+            print(f"  {s.reason_code} {status_mark}  {s.safe_summary}  (id={s.id[:8]}, created={s.created_at}{resolved_str})")
 
 
 def _cmd_blocker_show(

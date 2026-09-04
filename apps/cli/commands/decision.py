@@ -54,7 +54,8 @@ def _cmd_decision_list(job_id_str: str, *, json_output: bool = False) -> None:
             return
         for d in decisions:
             status_mark = "[open]" if d.status == "open" else "[resolved]"
-            print(f"  {d.type} {status_mark} ({d.severity}): {d.safe_summary}  (id={d.id})")
+            resolved_str = f", resolved={d.resolved_at}" if d.resolved_at else ""
+            print(f"  {d.type} {status_mark} ({d.severity}): {d.safe_summary}  (id={d.id}, created={d.created_at}{resolved_str})")
 
 
 def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool = False) -> None:
