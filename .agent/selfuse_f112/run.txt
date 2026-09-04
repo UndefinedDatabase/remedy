@@ -1,0 +1,97 @@
+=== F112 R21 C3: run_next_self_use_item(Path(".remedy-wt/selfuse-f112-run"), repo_path=".") ===
+
+Call site (constraint 5, exact): from the repository root, no cd, no env
+overrides, function's own default budgets and default role resolution:
+
+    from pathlib import Path
+    from packages.orchestration.self_use_runner import run_next_self_use_item
+    entry, job_file_path, result = run_next_self_use_item(Path(".remedy-wt/selfuse-f112-run"), repo_path=".")
+
+Pre-run queue check (immediately before the call):
+  pending_self_use_items() ids = ['SU-007']
+  next_self_use_item() id      = SU-007
+
+wall_clock_duration_seconds = 116.85728768300032 (time.monotonic() around the call)
+start_wall (time.time())    = 1788481333.68585
+end_wall (time.time())      = 1788481450.5431376
+raised = False (no SelfUseRunError / SelfUseJobError raised — a JobPlan was returned)
+
+entry.id       = SU-007
+job_file_path  = .remedy-wt/selfuse-f112-run/SU-007.md
+result.job_id  = 848fc4c67d7b405b
+result.status  = blocked
+result.error   = task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+execution_config (result.execution_config, resolved provider/model for builder and reviewer):
+  builder='ollama'  builder_source='cli'  builder_model=''  builder_model_source='default'
+  reviewer='ollama' reviewer_source='cli' reviewer_model='' reviewer_model_source='default'
+  builder_effort='' builder_effort_source='default'
+  reviewer_effort='' reviewer_effort_source='default'
+  repair_provider='' repair_provider_source='default'
+  repair_model=''    repair_model_source='default'
+  repair_effort=''   repair_effort_source='default'
+  max_rounds=3 max_rounds_source='default'
+  repair_rounds_allowed=2 repair_rounds_source='default'
+  test_command='' test_command_source='default'
+  claude_cli_write_mode='none' claude_cli_write_mode_source='default'
+  context_strategy='task_bounded_sequential_job'
+  timeout_sec=120 timeout_sec_source='default'
+  timeout_profile='' timeout_profile_source='default'
+  max_output_chars=50000 max_output_chars_source='default'
+  stream_evidence=False stream_evidence_source='default'
+  max_tasks=1 max_tasks_source='invocation'
+
+  Note: builder_model/reviewer_model are blank with source='default' inside
+  ExecutionConfig — the underlying model actually invoked is the one
+  resolve_role_config() itself resolves for provider 'ollama', which the
+  reviewer measured directly before this block was authored (and this
+  round's own fresh read at the top of the round, before the run, agreed):
+  resolve_role_config("builder").provider == resolve_role_config("reviewer").provider == "ollama",
+  model "muse-glimmer:latest" — no discrepancy from the block's stated
+  parameters.
+
+tasks (task_id / status / error):
+  T001 / blocked / completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+describe_self_use_run_defects(result) — full tuple, each string verbatim, one per line:
+  DEFECT 1: job 848fc4c67d7b405b (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+  DEFECT 2: T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+tuple_length = 2
+
+job's own worktree: .remedy-wt/job-848fc4c67d7b405b — RETAINED, untouched by
+this round. This round did not delete it, did not modify any file inside
+it, and did not commit it (it is a separate git worktree, not a path
+inside this checkout's tracked tree). Its own internal state — whatever
+commits or gate runs it made on its own copy of the repo while attempting
+task T001 — is the job's business, not this round's, per the block's
+change-set note.
+
+=== evidence copy ===
+source_path = /home/decodeux/Repos/remedy/.remedy-wt/selfuse-f112-run/SU-007.md
+copied_path = /home/decodeux/Repos/remedy/.agent/selfuse_f112/SU-007.md
+source_sha256 = 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd
+copied_sha256 = 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd
+byte_identical = True
+
+Note: this sha256 is identical to F110 round 16's SU-006.md copy
+(.agent/selfuse_f110/run.txt) because SU-006 and SU-007 both render the
+SAME R-0418 ledger paragraph verbatim (RECORD20's own observation) — not a
+copy error; the job markdown text is genuinely identical, only the job_id
+generated at plan time differs.
+
+=== cleanup ===
+deleted = /home/decodeux/Repos/remedy/.remedy-wt/selfuse-f112-run
+(removed after the evidence copy above was verified byte-identical)
+
+=== outcome, plainly stated ===
+The run completed without raising: plan_next_self_use_item planned SU-007
+onto a JobPlan, run_job then ran task T001 through the real ollama
+builder/reviewer loop inside the job's own isolated worktree
+(.remedy-wt/job-848fc4c67d7b405b) to the normal approval gate. The task's
+own repair cycle ran out (final_status=repair_exhausted) with the
+reviewer's own verdict on the last attempt reading fail, so run_job
+recorded the JobPlan's overall status as blocked and stopped there — no
+promotion, no consumed_by write, exactly as ordered. This is the same
+"blocked at the approval gate" outcome class F110 R16's SU-006 run
+reached (a different specific gate: review_inconsistent there, versus
+repair_exhausted here), not an exception and not a crash.
