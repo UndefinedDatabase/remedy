@@ -12,29 +12,28 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 19, session 6 - T003 batch 7: `patch.list` wired to
-`apply_list_options` with `default_sort_field="created_at"` (ordinary
-shape, dict rows, dispatch lambda needed both pairs, no order test).
-`loop.list` was investigated but NOT wired this round - DECISION F262
-D3 keeps its config-declaration order as default (D2 precedent) and
-specifies a real restructure (unify text/json into one row list before
-sorting) that round 20 implements, since it does not fit the
-insert-before-render shape every other T003 batch used.
+Round 20, session 6 - T003 batch 8 (final): `loop.list` restructured
+per DECISION F262 D3 - `_cmd_loop_list` now builds one
+`(spec, last_run_created_at, last_run_state)` row list unconditionally
+(moving the `last_run_for_loop` lookup out of the json-only branch),
+runs `apply_list_options` once with `default_sort_field=None`
+(config-declaration order stays default, D2/D3 precedent), and renders
+BOTH text and json from that same row list - the text branch now reads
+its row's own precomputed last-run fields instead of calling
+`_last_run_label` a second time, removing the prior duplicate lookup.
 
 ## Next Steps
 
-- Round 20: implement DECISION F262 D3 - restructure `_cmd_loop_list`
-  to build `(spec, last_run_created_at, last_run_state)` rows
-  unconditionally, apply_list_options with `default_sort_field=None`,
-  render both text and json from the same post-option list.
-- After loop.list, T003 is done for every list command in scope.
-  config.list/worker.list/execution.list stay excused per Risks.
+- T003 is now DONE for every list command in scope. Remaining before
+  T003 closes out: an integration-level smoke test proving the
+  ten-second demo in Acceptance (a named run findable by one command
+  with --since/--sort), then move to closure per
+  docs/roadmap/STATUS_closure_protocol.md.
+- config.list/worker.list/execution.list stay excused per Risks -
+  confirm this is still true at closure time, not just asserted.
 - change.list's event-log CREATED date stays open, UNRELATED to D1:
   do_run.py's event stays dead, job.py's real event carries no
   intent_id to join on - see DECISION F262 D1's Alternative section.
-- Once loop.list lands, add an integration-level smoke test proving
-  the ten-second demo in Acceptance: a named run findable by one
-  command with --since/--sort.
 
 ## Risks
 
@@ -44,4 +43,5 @@ insert-before-render shape every other T003 batch used.
   pre-existing quirk this feature does not need to fix.
 - A command with its OWN meaningful non-date default order (queue.list's
   priority D2, loop.list's config order D3) opts out via
-  `default_sort_field=None` rather than losing that order.
+  `default_sort_field=None` rather than losing that order - this is
+  now DONE for both of the two commands that needed it.
