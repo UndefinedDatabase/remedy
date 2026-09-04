@@ -12,27 +12,39 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 5 books round 4's PASS verdict (RECORD4) and completes T002: the
-new shared module `apps/cli/cost_preview_confirm.py`
-(`render_estimate_line`, `confirm_cost_preview`, `EXIT_USAGE`) reuses
-`loop_cmd.py`'s tty/prompt shape, calling round 4's
-`resolve_confirm_above_usd()` and T001's `estimate_cost_band()`. Its
-tests land in `tests/cli/test_cost_preview_confirm.py`. No real command
-calls it yet - that is T003, a separate future round.
+Round 6 books round 5's PASS verdict (RECORD5) and starts T003's first
+slice: marking which commands are expensive. Adds `is_expensive: bool =
+False` to `CommandEntry` (apps/cli/command_catalog.py) and marks
+`job.run` (the feature doc's "mission runs" case) as the first and only
+expensive command so far. Catalog tests in tests/test_command_catalog.py
+assert the field's type, that exactly `job.run` is marked, and that
+`job.run.is_expensive` is True. This round does NOT wire
+`confirm_cost_preview()` into `job.run`'s real execution path yet -
+`_cmd_job_run_cycles` (apps/cli/commands/job.py) has no task-count/class
+data to build a `CostBandEstimate` from today, and that data-gathering
+design is separate, larger work.
 
 ## Next Steps
 
-- T003: mark expensive commands in `apps/cli/command_catalog.py`, wire
-  them to `confirm_cost_preview()`, goldens for the preview lines, docs.
+- T003 continuation: gather real task-count/class data for `job.run`
+  (see `packages/orchestration/token_economy.py`'s `TokenBand`
+  classification and `budget_guard.py`'s `predict_next_task_cost` for
+  the existing analogous consumer pattern), then wire
+  `confirm_cost_preview()` into `_cmd_job_run_cycles`
+  (apps/cli/commands/job.py).
+- T003 continuation: goldens for the preview line, docs
+  (docs/roadmap/features/T3_F114.md's "Suggested tests:
+  tests/cli/test_cost_preview.py" path does not exist yet).
 - Acceptance fixtures, the integration gate, then the closure sequence.
-- Session note: this is round 5 of the 4-5 default; the next round is a
-  natural point to consider a fresh session per amend0827 rule 6, unless
-  context remains ample.
+- Session note: this is round 6, session 2 of F114 (session 1 closed at
+  round 5 per amend0827 rule 6's 4-5 default).
 
 ## Risks
 
-- No expensive-command registry exists yet - T003 is greenfield.
-- T003 will be the first round with a REAL production caller; until
-  then, both `cost_preview.py` and `cost_preview_confirm.py` are
-  fully-tested but uncalled code, proven live only by their own
-  mutation red-proofs.
+- `job.run` is marked expensive but still has zero confirm-path callers
+  after this round - same "proven live only by mutation red-proof, not a
+  real caller yet" shape as T001/T002's modules, now also true of the
+  catalog flag itself until the next round wires it.
+- Only one command is marked so far; the feature doc's "rerunning
+  subtrees" and "long explanations" cases still need their own fixture
+  commands identified before they can be marked too.
