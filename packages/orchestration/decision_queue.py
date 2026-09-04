@@ -394,7 +394,8 @@ def list_decisions(
             ))
 
     # 5. Budget exhaustion — check job fields, metadata, AND stop events
-    # JobPlan has no .metadata attribute; Core Job does. Safe for both.
+    # JobPlan carries a real .metadata field too now (F112 T003a); getattr
+    # still covers any job shape without one, so nothing here changed.
     _job_meta = getattr(job, "metadata", None) or {}
     if not isinstance(_job_meta, dict):
         _job_meta = {}

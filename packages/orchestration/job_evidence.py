@@ -19,6 +19,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from packages.common.path_redaction import scrub_paths as _shared_scrub_paths
 from packages.orchestration.pingpong_evidence import (
     _redact_json_value,
     _redact_secrets,
@@ -1652,7 +1653,12 @@ def _scrub_paths(text: str, repo: str) -> str:
     # aimed at pytest's rootdir banner, but applied to every text, so any
     # single-line output ("ABSENT\n") was scrubbed down to "". Paths in the
     # banner are already handled by the replacements above.
-    return text
+    # R-0793: the repo-root/$HOME relativization above catches only those two
+    # roots; any other absolute path (e.g. pytest's own platform banner
+    # "-- /usr/bin/python3") survives it. Delegate to the shared,
+    # already-accepted scrubber (packages.common.path_redaction, F007) for
+    # everything else.
+    return _shared_scrub_paths(text)
 
 
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
@@ -1684,7 +1690,13 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     deselected = sum(int(x) for x in re.findall(r"(\d+)\s+deselected", stdout))
     node_ids = re.findall(r"^(tests/\S+::\S+)\s+(?:PASSED|FAILED|ERROR|SKIPPED)", stdout, re.MULTILINE)
     selected = len(node_ids) if node_ids else (passed + failed + skipped)
-    output_hash = hashlib.sha256(stdout.encode("utf-8", errors="replace")).hexdigest()
+    # Scrub THEN truncate — a path straddling the truncation cut must not
+    # survive it. output_hash is computed over this FINAL, already
+    # scrubbed-and-truncated stdout_summary, never over the raw stdout: it
+    # must always describe the exact bytes stored (contract fixed by R-0792).
+    stdout_summary = _scrub_paths(stdout, repo)[-2000:]
+    stderr_summary = _scrub_paths(result.stderr or "", repo)[-1000:]
+    output_hash = hashlib.sha256(stdout_summary.encode("utf-8", errors="replace")).hexdigest()
     head_sha = ""
     try:
         _h = _sp.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
@@ -1702,8 +1714,8 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         "node_ids": node_ids,
         "output_hash": output_hash,
         "head_sha": head_sha,
-        "stdout_summary": _scrub_paths(stdout[-2000:], repo),
-        "stderr_summary": _scrub_paths((result.stderr or "")[-1000:], repo),
+        "stdout_summary": stdout_summary,
+        "stderr_summary": stderr_summary,
         "duration_seconds": _duration,
     }
 
@@ -1750,13 +1762,12 @@ def _run_verifications(
             _selected = len(_node_ids) if _node_ids else (_passed + _failed + _skipped)
         _deselected = int(r.get("deselected", 0) or 0)
         _stdout_summary = str(r.get("stdout_summary", "") or "")[-2000:]
-        _output_hash = str(r.get("output_hash", "") or "")
-        if _output_hash.startswith("sha256:"):
-            _output_hash = _output_hash[7:]
-        if not _output_hash:
-            import hashlib as _hl_norm
-            _output_hash = _hl_norm.sha256(
-                _stdout_summary.encode("utf-8", errors="replace")).hexdigest()
+        # A caller-supplied output_hash is NEVER kept — truncation above may
+        # have changed the stored bytes, so it no longer describes them.
+        # output_hash is always recomputed from the FINAL _stdout_summary
+        # (contract fixed by R-0792).
+        _output_hash = hashlib.sha256(
+            _stdout_summary.encode("utf-8", errors="replace")).hexdigest()
         _head_sha = str(r.get("head_sha", "") or "") or _head_sha_default
         _duration = r.get("duration_seconds")
         if _duration is None:

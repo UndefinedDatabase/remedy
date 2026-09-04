@@ -27,6 +27,8 @@ from packages.orchestration.pingpong_job import (
     TASK_PASSED,
     TASK_PENDING,
     TASK_SKIPPED,
+    TASK_SPLIT,
+    TaskEntry,
     _build_task_prompt,
     _is_unsafe_path,
     _strict_apply_to_workspace,
@@ -36,7 +38,10 @@ from packages.orchestration.pingpong_job import (
     load_job_plan,
     parse_job_file,
     plan_job_from_file,
+    planned_task_to_task_entry,
     run_job,
+    save_job_plan,
+    task_entry_to_planned_task,
     validate_job_task_result,
 )
 from packages.orchestration.pingpong_provider import FakeProvider
@@ -61,6 +66,35 @@ Add one focused test for repair-disabled output.
 Acceptance:
 - new test passes
 - no unrelated files touched
+"""
+
+_JOB_WITH_FILES = """\
+# Job: Scoped task
+
+## Task 1
+Do the scoped thing.
+
+Files:
+- src/main.py
+- docs/README.md
+
+Acceptance:
+- done
+"""
+
+_JOB_WITH_FILES_MULTI_ACCEPTANCE = """\
+# Job: Scoped multi-acceptance task
+
+## Task 1
+Do the scoped thing.
+
+Files:
+- src/main.py
+- docs/README.md
+
+Acceptance:
+- first acceptance item
+- second acceptance item
 """
 
 _NO_TASK_JOB = """\
@@ -832,6 +866,76 @@ class TestPersistence:
     def test_load_nonexistent(self, isolate_data_root):
         assert load_job_plan("nonexistent_id") is None
 
+    def test_metadata_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        job.metadata["escalations"] = [{"decision_id": "D1", "status": "open"}]
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.metadata == {"escalations": [{"decision_id": "D1", "status": "open"}]}
+
+    def test_metadata_defaults_to_an_empty_dict(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.metadata == {}
+
+    def test_task_class_defaults_to_standard_build(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        assert job.tasks[0].task_class == "standard_build"
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].task_class == "standard_build"
+
+    def test_task_class_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        job.tasks[0].task_class = "architecture"
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].task_class == "architecture"
+
+    def test_default_task_class_is_a_seeded_model_routing_class(self):
+        from packages.orchestration.model_routing import TASK_CLASS_TIERS
+        from packages.orchestration.pingpong_job import TASK_CLASS_DEFAULT
+        assert TASK_CLASS_DEFAULT in TASK_CLASS_TIERS
+
+    def test_inputs_defaults_to_empty_dict(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        assert job.tasks[0].inputs == {}
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].inputs == {}
+
+    def test_inputs_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        job.tasks[0].inputs = {"decision_answers": {"dec-1": "split task"}}
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].inputs == {"decision_answers": {"dec-1": "split task"}}
+
+    def test_files_hint_round_trips_through_persist_and_load(self, isolate_data_root):
+        job = parse_job_file(_JOB_WITH_FILES, "/tmp/repo")
+        save_job_plan(job)
+
+        loaded = load_job_plan(job.job_id)
+
+        assert loaded is not None
+        assert loaded.tasks[0].files_hint == ["src/main.py", "docs/README.md"]
+
     def test_persist_with_manifests(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
         loaded = load_job_plan(result.job_id)
@@ -860,6 +964,14 @@ class TestJobPlanParsing:
     def test_acceptance_extracted(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
         assert "repair-loop tests pass" in job.tasks[0].acceptance
+
+    def test_files_section_extracted(self, isolate_data_root):
+        job = parse_job_file(_JOB_WITH_FILES, "/tmp/repo")
+        assert job.tasks[0].files_hint == ["src/main.py", "docs/README.md"]
+
+    def test_no_files_section_leaves_files_hint_empty(self, isolate_data_root):
+        job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
+        assert job.tasks[0].files_hint == []
 
     def test_no_tasks_blocks(self, isolate_data_root):
         job = parse_job_file(_NO_TASK_JOB, "/tmp/repo")
@@ -3066,3 +3178,361 @@ class TestCommandPathPreApplySmoke:
         assert out["status"] == "completed"
         applied = [t for t in out["tasks"] if t["status"] == TASK_APPLIED]
         assert len(applied) == 2
+
+
+class TestTaskEntryToPlannedTaskAdapter:
+    """task_entry_to_planned_task (DECISION F112 D2/D3) translates one
+    dispatched TaskEntry into the granularity machinery's PlannedTask."""
+
+    def test_maps_fields_and_splits_acceptance_on_newlines(self):
+        task = TaskEntry(
+            task_id="T009",
+            title="Add OAuth support",
+            body="Wire the OAuth handshake into the login flow.",
+            acceptance="Login redirects to provider\n\nToken is persisted\n",
+        )
+
+        planned = task_entry_to_planned_task(task)
+
+        assert planned is not None
+        assert planned.id == "T009"
+        assert planned.title == "Add OAuth support"
+        assert planned.goal == "Wire the OAuth handshake into the login flow."
+        assert planned.acceptance == [
+            "Login redirects to provider", "Token is persisted",
+        ]
+        assert planned.files_hint == []
+        assert planned.est_tokens_band == "XL"
+
+    def test_goal_falls_back_to_title_when_body_is_empty(self):
+        task = TaskEntry(task_id="T010", title="Bump dependency", acceptance="Version pinned")
+
+        planned = task_entry_to_planned_task(task)
+
+        assert planned is not None
+        assert planned.goal == "Bump dependency"
+
+    def test_returns_none_when_acceptance_has_no_non_blank_line(self):
+        task = TaskEntry(task_id="T011", title="Empty", body="x", acceptance="\n\n  \n")
+
+        assert task_entry_to_planned_task(task) is None
+
+    def test_output_is_accepted_by_split_one_task_and_clusters_one_child_per_line(self):
+        from packages.orchestration.task_granularity import split_one_task
+
+        task = TaskEntry(
+            task_id="T012",
+            title="Large task",
+            body="Large task",
+            acceptance="First acceptance item\nSecond acceptance item\nThird acceptance item",
+        )
+        planned = task_entry_to_planned_task(task)
+        assert planned is not None
+
+        children = split_one_task(planned)
+
+        assert children is not None
+        assert len(children) == 3
+        assert [c.acceptance for c in children] == [
+            ["First acceptance item"],
+            ["Second acceptance item"],
+            ["Third acceptance item"],
+        ]
+
+    def test_files_hint_flows_through_from_task_entry(self):
+        task = TaskEntry(
+            task_id="T013",
+            title="Scoped task",
+            body="Scoped task",
+            acceptance="First\nSecond",
+            files_hint=["src/main.py", "docs/README.md"],
+        )
+
+        planned = task_entry_to_planned_task(task)
+
+        assert planned is not None
+        assert planned.files_hint == ["src/main.py", "docs/README.md"]
+
+
+class TestClassBudgetCompiledContextWiring:
+    """T003b2b2a (DECISION F112 D6): the job-dispatch call site wires a
+    task's real files_hint into run_pingpong's compiled_context_* params
+    only when fit_task_context_to_class_cap reports the fenced scope fits
+    under the task's class cap; otherwise it falls through unchanged to
+    build_repo_context, same as an empty files_hint always has."""
+
+    def test_a_fitting_files_hint_wires_compiled_context_into_run_pingpong(
+        self, isolate_data_root, demo_repo, monkeypatch
+    ):
+        job = parse_job_file(_JOB_WITH_FILES, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        captured = []
+
+        def capturing_run(*args, **kwargs):
+            captured.append(kwargs)
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert len(captured) == 1
+        assert captured[0]["compiled_context_paths"] == ["src/main.py", "docs/README.md"]
+        assert captured[0]["compiled_context_candidates"] == ["src/main.py", "docs/README.md"]
+        assert isinstance(captured[0]["compiled_context_token_budget"], int)
+        assert captured[0]["compiled_context_token_budget"] > 0
+
+    def test_a_files_hint_that_cannot_fit_its_class_cap_falls_through_unchanged(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        config_dir = tmp_path / "_config"
+        config_dir.mkdir()
+        toml_file = config_dir / "remedy.toml"
+        toml_file.write_text(
+            "[remedy.prompt_budget]\ndefault_cap = 1\n", encoding="utf-8"
+        )
+        from packages.orchestration.config import load_config
+        loaded = load_config(
+            project_path=toml_file, user_path=Path("/nonexistent/user.toml")
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.config.get_config", lambda: loaded
+        )
+
+        job = parse_job_file(_JOB_WITH_FILES, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        captured = []
+
+        def capturing_run(*args, **kwargs):
+            captured.append(kwargs)
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert len(captured) == 1
+        assert captured[0]["compiled_context_paths"] is None
+        assert captured[0]["compiled_context_candidates"] is None
+        assert captured[0]["compiled_context_token_budget"] is None
+
+    def test_an_empty_files_hint_leaves_compiled_context_untouched(
+        self, isolate_data_root, demo_repo, monkeypatch
+    ):
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        captured = []
+
+        def capturing_run(*args, **kwargs):
+            captured.append(kwargs)
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert len(captured) == 2
+        for kwargs in captured:
+            assert kwargs["compiled_context_paths"] is None
+            assert kwargs["compiled_context_candidates"] is None
+            assert kwargs["compiled_context_token_budget"] is None
+
+
+class TestPlannedTaskToTaskEntryAdapter:
+    """planned_task_to_task_entry (T003b2b2b1, DECISION F112 D7) is the
+    reverse of task_entry_to_planned_task: turns a split_one_task child
+    PlannedTask back into a dispatchable TaskEntry."""
+
+    def test_basic_field_mapping(self):
+        from packages.orchestration.schemas.models import PlannedTask
+
+        planned = PlannedTask(
+            id="T003a",
+            title="Split part 1",
+            goal="Do the first part",
+            acceptance=["First acceptance item"],
+            files_hint=["src/main.py"],
+            est_tokens_band="XL",
+        )
+
+        entry = planned_task_to_task_entry(planned, task_class="format")
+
+        assert entry.task_id == "T003a"
+        assert entry.title == "Split part 1"
+        assert entry.body == "Do the first part"
+        assert entry.acceptance == "First acceptance item"
+        assert entry.files_hint == ["src/main.py"]
+        assert entry.task_class == "format"
+        assert entry.status == TASK_PENDING
+
+    def test_task_class_defaults_to_standard_build(self):
+        from packages.orchestration.pingpong_job import TASK_CLASS_DEFAULT
+        from packages.orchestration.schemas.models import PlannedTask
+
+        planned = PlannedTask(
+            id="T004a", title="x", goal="x", acceptance=["done"],
+            est_tokens_band="XL",
+        )
+
+        entry = planned_task_to_task_entry(planned)
+
+        assert entry.task_class == TASK_CLASS_DEFAULT
+
+    def test_round_trips_through_split_one_task_with_ids_and_class_preserved(self):
+        from packages.orchestration.task_granularity import split_one_task
+
+        parent = TaskEntry(
+            task_id="T005",
+            title="Large task",
+            body="Large task",
+            task_class="format",
+            acceptance="First acceptance item\nSecond acceptance item\nThird acceptance item",
+        )
+        planned = task_entry_to_planned_task(parent)
+        assert planned is not None
+
+        children = split_one_task(planned)
+        assert children is not None
+
+        entries = [
+            planned_task_to_task_entry(
+                child, task_class=parent.task_class,
+                source_heading_number=parent.source_heading_number,
+            )
+            for child in children
+        ]
+
+        assert [e.task_id for e in entries] == ["T005a", "T005b", "T005c"]
+        assert [e.acceptance for e in entries] == [
+            "First acceptance item",
+            "Second acceptance item",
+            "Third acceptance item",
+        ]
+        for e in entries:
+            assert e.task_class == "format"
+            assert e.status == TASK_PENDING
+
+
+class TestClassBudgetCannotFitEscalation:
+    """T003b2b2b2 (DECISION F112 D8): when a task's declared files_hint
+    cannot fit its class cap, the dispatch loop escalates via
+    enqueue_task_decision/auto_apply_safe_default and, on the "split task"
+    default, replaces the task with split_one_task's children instead of
+    dispatching it uncapped."""
+
+    def _tiny_cap_config(self, tmp_path, monkeypatch):
+        config_dir = tmp_path / "_config"
+        config_dir.mkdir()
+        toml_file = config_dir / "remedy.toml"
+        toml_file.write_text(
+            "[remedy.prompt_budget]\ndefault_cap = 1\n", encoding="utf-8"
+        )
+        from packages.orchestration.config import load_config
+        loaded = load_config(
+            project_path=toml_file, user_path=Path("/nonexistent/user.toml")
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.config.get_config", lambda: loaded
+        )
+
+    def test_a_splittable_task_is_replaced_by_its_children(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        self._tiny_cap_config(tmp_path, monkeypatch)
+
+        job = parse_job_file(_JOB_WITH_FILES_MULTI_ACCEPTANCE, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        titles = []
+
+        def capturing_run(*args, **kwargs):
+            titles.append(args[0])
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert [t.task_id for t in result.tasks] == ["T001", "T001a", "T001b"]
+        assert result.tasks[0].status == TASK_SPLIT
+        assert result.tasks[1].status == TASK_APPLIED
+        assert result.tasks[2].status == TASK_APPLIED
+        assert titles == ["Task 1 (1/2)", "Task 1 (2/2)"]
+        assert result.status == JOB_COMPLETED
+
+        # Children inherit the parent's files_hint (task_granularity's own
+        # rule: "an over-broad hint is less harmful than none"), so they are
+        # ALSO fit-checked when dispatched and ALSO escalate — but each has
+        # only one acceptance item left, so split_one_task returns None for
+        # both and they fall through to a normal (uncapped) dispatch, same
+        # as the unsplittable case below. Three records, all answered
+        # "split task" by the safe default; only the parent's actually
+        # produced a structural split.
+        from packages.orchestration.escalation import escalation_records
+        records = escalation_records(result)
+        assert [r["task_id"] for r in records] == ["T001", "T001a", "T001b"]
+        assert all(r["answer"] == "split task" for r in records)
+        assert all(r["answer_source"] == "default" for r in records)
+        assert "tier1_tokens=" in records[0]["impact"]
+        assert "cap_tokens=1" in records[0]["impact"]
+        assert "task_class=standard_build" in records[0]["impact"]
+
+    def test_an_unsplittable_task_falls_through_uncapped(
+        self, isolate_data_root, demo_repo, monkeypatch, tmp_path
+    ):
+        self._tiny_cap_config(tmp_path, monkeypatch)
+
+        job = parse_job_file(_JOB_WITH_FILES, str(demo_repo))
+
+        import packages.orchestration.pingpong_loop as pp_mod
+        real_run = pp_mod.run_pingpong
+        titles = []
+
+        def capturing_run(*args, **kwargs):
+            titles.append(args[0])
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(pp_mod, "run_pingpong", capturing_run)
+
+        result = run_job(
+            job.job_id,
+            builder_provider=_pass_provider(),
+            reviewer_provider=_pass_provider(),
+            repair_rounds=0,
+        )
+
+        assert [t.task_id for t in result.tasks] == ["T001"]
+        assert result.tasks[0].status == TASK_APPLIED
+        assert titles == ["Task 1"]
+
+        from packages.orchestration.escalation import escalation_records
+        records = escalation_records(result)
+        assert len(records) == 1
+        assert records[0]["answer"] == "split task"

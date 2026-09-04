@@ -1,0 +1,20 @@
+F112 R19 integration gate - base-worktree UI parity, measured as an EVENT
+(R-0444: a content hash may accompany this reading, never replace it).
+
+Base run window (epoch): START 1788479146.483  END 1788479315.044
+                  (UTC) : START 2026-09-03 23:45:46  END 2026-09-03 23:48:35
+
+Every file under /home/decodeux/Repos/remedy/.remedy-wt/f112-r19-base/apps/ui/dist, mtime before and after:
+  assets/diffHighlightGrammars-o9XqnLhb.js before=1788479066.574 after=1788479066.574 in_window=False
+  assets/index-Bh0mkYBD.js       before=1788479066.574 after=1788479066.574 in_window=False
+  assets/index-D_qZGOuo.css      before=1788479066.574 after=1788479066.574 in_window=False
+  index.html                     before=1788479066.574 after=1788479066.574 in_window=False
+
+Files: 4. Any mtime inside the window would VOID the parity claim.
+None is inside it, and the before/after mtime maps are identical.
+Accompanying content digest, before and after:
+  before: ef09e3072d59b1d6fa7ea7ea0bd13aabaafb52674b9dbad58a8e2a615236f445
+  after:  ef09e3072d59b1d6fa7ea7ea0bd13aabaafb52674b9dbad58a8e2a615236f445
+  identical: True
+
+PARITY HOLDS: apps/ui/dist was not rebuilt during the base run.

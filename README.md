@@ -16,14 +16,14 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-69 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+70 of 266 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 14 | 19 |
-| 3 | Full Token Economy & Autonomy | 4 | 26 |
+| 3 | Full Token Economy & Autonomy | 5 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
 | 6 | Design-to-Code | 0 | 16 |
@@ -93,6 +93,19 @@ calls always top tier, safety-relevant classes never below mid) are
 enforced in code and refuse a violating override by name rather than
 silently applying it; moving a class to a cheaper tier requires a
 documented benchmark run, never a bare config edit).
+
+F112 prompt budget per task class (every task carries a class-scoped
+input-token ceiling; the context compiler fits under it via the existing
+demotion cascade with full omission disclosure — no new selection logic,
+only a class-specific number the cascade already enforces. When even
+tier-1 content alone still cannot fit after full demotion, a task-split
+decision is raised — "task context exceeds its class cap" — with
+auto-apply-safe-default splitting the oversized task into children
+rather than running it truncated; "raise cap"/"proceed-overcap" stay
+deliberately unbuilt, since no audited or attended-mode seam exists to
+hook them to yet. Caps are config defaults labeled with an honest
+default basis until a calibration feature replaces them with measured
+ones).
 
 Accepted in Tier 5 so far:
 F255 teacher role (`remedy teach narrate`, `remedy teach ask`, teacher spend

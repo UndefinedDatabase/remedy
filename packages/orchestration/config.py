@@ -690,6 +690,37 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         entry_type=dict,
         default=None,
     ),
+    # F112's per-class input-token cap table and its global fallback scalar.
+    # Reuses the shared task-class vocabulary TASK_CLASS_TIERS declares
+    # (packages/orchestration/model_routing.py) — the floor and vocabulary
+    # checks specific to this feature live in
+    # packages/orchestration/prompt_budget.py, not here (DECISION F110 D5
+    # precedent: policy-level validation stays out of config.py).
+    ConfigKeySpec(
+        key="prompt_budget.task_class_caps",
+        env_var="REMEDY_PROMPT_BUDGET_TASK_CLASS_CAPS",
+        description=(
+            "Per-task-class input token cap overrides (F112). Each entry's "
+            "basis is class_default until F074 calibration ships measured "
+            "caps. Configured in TOML only — an env var cannot carry a "
+            "table."
+        ),
+        value_type=dict,
+        entry_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="prompt_budget.default_cap",
+        env_var="REMEDY_PROMPT_BUDGET_DEFAULT_CAP",
+        description=(
+            "Global fallback input token cap (F112) for a task class "
+            "carrying no configured per-class cap. Falls back further to "
+            "packages.orchestration.prompt_budget.DEFAULT_FALLBACK_CAP_TOKENS "
+            "when unset."
+        ),
+        value_type=int,
+        default=None,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}

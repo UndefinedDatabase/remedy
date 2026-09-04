@@ -1077,3 +1077,22 @@ class TestABareSlashIsNotAPath:
         from packages.orchestration.run_manifest import _contains_local_path
 
         assert _contains_local_path("fix: read /home/user/secret.txt") is True
+
+    @pytest.mark.parametrize("text", [
+        "F112 R18 C5-fix: correct Range placeholder and changed-files +/- counts in handback",
+        "changed-files +/- counts",
+        "a+/-b",
+    ])
+    def test_a_punctuation_only_tail_is_not_a_path(self, text):
+        # R-0790: a ONE-CHARACTER punctuation tail like the "-" in "+/-"
+        # satisfied R-0206's own "tail is now mandatory" fix without being
+        # any part of a real filesystem path, and blocked a real closure's
+        # review zip on this exact ordinary commit subject.
+        assert FP.safe_text(text) == text
+
+    def test_the_packaging_metadata_scan_accepts_a_punctuation_only_tail(self):
+        from packages.orchestration.run_manifest import _contains_local_path
+
+        assert _contains_local_path(
+            "F112 R18 C5-fix: correct Range placeholder and changed-files "
+            "+/- counts in handback") is False

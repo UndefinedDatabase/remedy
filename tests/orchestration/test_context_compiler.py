@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.config import load_config
 from packages.orchestration.context_compiler import (
     COMPILED_CONTEXT_SEGMENT_NAME,
     CONTEXT_SIZE_FILENAME,
@@ -41,6 +42,7 @@ from packages.orchestration.context_compiler import (
     export_context_size_comparison_json,
     export_omitted_context_json,
     extract_file_signatures,
+    fit_task_context_to_class_cap,
     fits_inline_size_cap,
     python_file_signatures,
     python_import_neighbors,
@@ -51,6 +53,7 @@ from packages.orchestration.context_compiler import (
     write_context_size_comparison_json,
     write_omitted_context_json,
 )
+from packages.orchestration.prompt_budget import TaskClassCapResolution
 from packages.orchestration.prompt_segments import (
     PromptSegmentError,
     PromptSegmentRegistry,
@@ -728,6 +731,106 @@ def test_tier_one_is_never_cut_by_the_budget_and_the_overflow_is_reported(tmp_pa
     assert _tiering(compiled) == (("app.py", 1, "full"),)
     assert compiled.budget_tokens == 1
     assert compiled.over_budget is True
+
+
+def test_an_oversized_context_fits_under_its_class_cap_with_the_demotion_recorded(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The cap comes from the resolver (T001); everything past that is the
+    existing compiler unchanged — a cap one token under the unconstrained
+    total still forces the same tier-2 demotion phase A already proves, and
+    ``fits`` reports the result as fitting."""
+    _selector_tree(tmp_path)
+    unconstrained = compile_task_context(tmp_path, ["app.py"], _SELECTOR_REPO_PATHS)
+    cap = unconstrained.estimated_tokens - 1
+    monkeypatch.setattr(
+        "packages.orchestration.context_compiler.resolve_task_class_cap",
+        lambda task_class: TaskClassCapResolution(
+            task_class=task_class,
+            cap_tokens=cap,
+            source="configured_class",
+            estimate_basis="class_default",
+        ),
+    )
+
+    result = fit_task_context_to_class_cap(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, "format"
+    )
+
+    assert result.fits is True
+    assert result.cap_tokens == cap
+    assert result.cap_source == "configured_class"
+    assert result.tier1_tokens == _full_tokens(tmp_path, "app.py")
+    assert (
+        OmissionRecord("lib_big.py", 2, "budget", "signatures")
+        in result.compiled.omissions
+    )
+
+
+def test_an_unfittable_context_reports_cannot_fit_with_the_tier1_arithmetic(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Tier 1 alone still exceeds a cap of 1: ``fits`` is False and
+    ``tier1_tokens`` carries the exact arithmetic a task-split decision
+    needs (T003), equal to the compiled context's own total in this case."""
+    _selector_tree(tmp_path)
+    monkeypatch.setattr(
+        "packages.orchestration.context_compiler.resolve_task_class_cap",
+        lambda task_class: TaskClassCapResolution(
+            task_class=task_class,
+            cap_tokens=1,
+            source="configured_class",
+            estimate_basis="class_default",
+        ),
+    )
+
+    result = fit_task_context_to_class_cap(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, "format"
+    )
+
+    assert result.fits is False
+    assert result.cap_tokens == 1
+    assert result.tier1_tokens == _full_tokens(tmp_path, "app.py")
+    assert result.tier1_tokens == result.compiled.estimated_tokens
+    assert result.compiled.over_budget is True
+
+
+def test_a_class_outside_the_shared_vocabulary_is_refused(tmp_path: Path) -> None:
+    """No mock here: the real resolver's vocabulary check (T001) refuses the
+    class before any file under root is even read."""
+    _selector_tree(tmp_path)
+
+    with pytest.raises(ValueError, match="shared vocabulary"):
+        fit_task_context_to_class_cap(
+            tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, "not_a_real_class"
+        )
+
+
+def test_the_cap_comes_from_the_real_resolver_when_config_sets_one(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """No mock of resolve_task_class_cap here either: a real config
+    default_cap reaches the compiler exactly the way T001 designed it to."""
+    _selector_tree(tmp_path)
+    default_cap = _full_tokens(tmp_path, "app.py")
+    config_dir = tmp_path / "_config"
+    config_dir.mkdir()
+    toml_file = config_dir / "remedy.toml"
+    toml_file.write_text(
+        f"[remedy.prompt_budget]\ndefault_cap = {default_cap}\n", encoding="utf-8"
+    )
+    loaded = load_config(
+        project_path=toml_file, user_path=Path("/nonexistent/user.toml")
+    )
+    monkeypatch.setattr("packages.orchestration.config.get_config", lambda: loaded)
+
+    result = fit_task_context_to_class_cap(
+        tmp_path, ["app.py"], _SELECTOR_REPO_PATHS, "format"
+    )
+
+    assert result.cap_tokens == default_cap
+    assert result.cap_source == "configured_default"
+    assert result.fits is True
 
 
 def test_a_binary_tier_two_file_is_omitted_entirely(tmp_path: Path) -> None:

@@ -210,6 +210,30 @@ def _split_task(
     return children
 
 
+def split_one_task(
+    task: PlannedTask, used_ids: set[str] | None = None,
+) -> list[PlannedTask] | None:
+    """Split ONE already-dispatched task into acceptance-clustered children,
+    or None when it cannot usefully split.
+
+    This is the public seam plan-time normalization never needed: F016's own
+    entry point is :func:`normalize_plan`, which decides FOR ITSELF (via
+    ``_split_triggers``) whether a task is oversized. A caller here has
+    already made that call for its own reason — F112's ``cannot_fit``
+    outcome, for instance — and wants exactly the clustering
+    ``_apply_splits`` already proved out, without re-deciding the
+    band/acceptance-count trigger. Returns None for the same "cannot
+    usefully split" case ``_apply_splits`` flags as ``unsplittable_flag``:
+    fewer than 2 acceptance clusters, where a split would produce one child
+    carrying everything the parent already carried.
+    """
+    clusters = _cluster_acceptance(task.acceptance, task.files_hint)
+    if len(clusters) < 2:
+        return None
+    ids = used_ids if used_ids is not None else {task.id}
+    return _split_task(task, clusters, ids)
+
+
 def _rewire(task: PlannedTask, mapping: dict[str, str]) -> PlannedTask:
     """Point dependencies at replacement ids, preserving order."""
     if not any(dep in mapping for dep in task.depends_on):

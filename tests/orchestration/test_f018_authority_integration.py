@@ -1042,11 +1042,16 @@ class TestRealJobPlanDecision:
         assert d.source == "budget_guard"
 
     def test_jobplan_no_metadata_attr_safe(self):
-        """JobPlan has no .metadata — list_decisions must not crash."""
+        """A JobPlan shape without a .metadata attribute — list_decisions
+        must not crash. F112 T003a gave JobPlan a real .metadata field, so
+        this deletes it to reconstruct the absence the getattr fallback
+        exists for, rather than asserting a state JobPlan can no longer be
+        in."""
         from packages.orchestration.decision_queue import list_decisions
         from packages.orchestration.pingpong_job import JobPlan
 
         job = JobPlan()
+        del job.metadata
         assert not hasattr(job, "metadata")
         decisions = list_decisions(job, [])
         assert isinstance(decisions, list)

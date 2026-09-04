@@ -364,3 +364,54 @@ def test_pingpong_loop_test_command_runs_on_the_guarded_seam(tmp_path, monkeypat
     assert summary.startswith("exit=0")
     assert "out-line" in summary
     assert "err-line" in summary
+
+
+# F112 T003b2a — compiled_context_token_budget passthrough on run_pingpong
+
+
+class TestCompiledContextTokenBudget:
+    """compiled_context_token_budget must reach compile_task_context's own
+    token_budget kwarg only when the caller supplies it (DECISION F112 D3)."""
+
+    def test_token_budget_reaches_compile_task_context(self, demo_repo, monkeypatch):
+        from packages.orchestration import context_compiler
+
+        captured: dict[str, object] = {}
+        real_compile = context_compiler.compile_task_context
+
+        def _spy(root, fenced_paths, repo_paths, **kwargs):
+            captured.update(kwargs)
+            return real_compile(root, fenced_paths, repo_paths, **kwargs)
+
+        monkeypatch.setattr(context_compiler, "compile_task_context", _spy)
+
+        run_pingpong(
+            "Fix something", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            compiled_context_paths=["src/main.py"],
+            compiled_context_candidates=["src/main.py", "README.md"],
+            compiled_context_token_budget=777,
+        )
+
+        assert captured.get("token_budget") == 777
+
+    def test_no_token_budget_kwarg_when_caller_omits_it(self, demo_repo, monkeypatch):
+        from packages.orchestration import context_compiler
+
+        captured: dict[str, object] = {}
+        real_compile = context_compiler.compile_task_context
+
+        def _spy(root, fenced_paths, repo_paths, **kwargs):
+            captured.update(kwargs)
+            return real_compile(root, fenced_paths, repo_paths, **kwargs)
+
+        monkeypatch.setattr(context_compiler, "compile_task_context", _spy)
+
+        run_pingpong(
+            "Fix something", str(demo_repo),
+            builder_name="fake", reviewer_name="fake",
+            compiled_context_paths=["src/main.py"],
+            compiled_context_candidates=["src/main.py", "README.md"],
+        )
+
+        assert "token_budget" not in captured

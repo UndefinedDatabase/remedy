@@ -1,0 +1,60 @@
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+......................................................................   [100%]
+=================================== FAILURES ===================================
+____________ TestSubprocessCleanup.test_timeout_raises_with_cleanup ____________
+[gw3] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.cli.test_review_bundle_runtime.TestSubprocessCleanup object at 0x754ba8f18df0>
+
+    def test_timeout_raises_with_cleanup(self):
+        """A very short timeout raises TimeoutExpired after cleanup."""
+        import subprocess as sp
+        try:
+            # Run a sleep command with 1-second timeout
+            _run_grouped_cli(
+                ["--help"],  # fast command, but use tiny timeout
+                timeout=0,  # immediate timeout
+            )
+            # If it didn't timeout (fast enough), that's OK too
+        except sp.TimeoutExpired:
+            pass  # Expected — process group was cleaned up
+        # Verify no orphan process from this test
+        import time
+        time.sleep(0.1)
+        result = subprocess.run(
+            ["pgrep", "-f", "apps.cli.grouped.*--help"],
+            capture_output=True, text=True,
+        )
+>       assert result.returncode != 0, "Orphan process found after timeout cleanup"
+E       AssertionError: Orphan process found after timeout cleanup
+E       assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['pgrep', '-f', 'apps.cli.grouped.*--help'], returncode=0, stdout='954599\n', stderr='').returncode
+
+tests/cli/test_review_bundle_runtime.py:327: AssertionError
+=============================== warnings summary ===============================
+tests/orchestration/test_model_routing.py::TestTheUndeclaredRolePathWarnsAndAnswersConservatively::test_it_matches_role_configs_own_unknown_role_behaviour
+  /home/decodeux/Repos/remedy/.remedy-wt/f112-r19-base/packages/orchestration/model_routing.py:1392: UserWarning: Role 'a_role_nobody_declared_a_class_for' declares no task class; routing conservatively as 'undeclared_role'. Declared roles: builder, design_worker, final_verifier, orchestrator, reviewer, summary, teacher, test_worker; inheriting roles: repair.
+    task_class = resolve_role_task_class(role, originating_task_class)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
+1 failed, 19486 passed, 23 skipped, 1 warning in 168.29s (0:02:48)

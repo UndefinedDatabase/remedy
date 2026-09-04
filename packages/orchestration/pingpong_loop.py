@@ -2862,6 +2862,7 @@ def run_pingpong(
     mentioned_files: list[str] | None = None,
     compiled_context_paths: list[str] | None = None,
     compiled_context_candidates: list[str] | None = None,
+    compiled_context_token_budget: int | None = None,
     context_record_dir: str | Path | None = None,
     test_command: str = "",
     keep_staging: bool = False,
@@ -3129,8 +3130,15 @@ def run_pingpong(
             )
 
             compiled_root = Path(repo_path)
+            # F112 T003b2a: only override the compiler's default token budget
+            # when the caller supplies one, so no existing caller's behavior
+            # changes (compile_task_context's own default stays in force).
+            compile_kwargs: dict[str, int] = {}
+            if compiled_context_token_budget is not None:
+                compile_kwargs["token_budget"] = compiled_context_token_budget
             compiled = compile_task_context(
                 compiled_root, compiled_context_paths, compiled_context_candidates,
+                **compile_kwargs,
             )
             context = render_compiled_context_text(compiled_root, compiled)
             categories = [COMPILED_CONTEXT_SEGMENT_NAME]

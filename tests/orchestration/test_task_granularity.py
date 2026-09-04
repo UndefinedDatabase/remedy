@@ -9,6 +9,7 @@ from packages.orchestration.schemas.models import FlightPlan, PlannedTask
 from packages.orchestration.task_granularity import (
     GranularityConfig,
     normalize_plan,
+    split_one_task,
 )
 
 # ---------------------------------------------------------------------------
@@ -207,6 +208,47 @@ def test_split_band_config_lowers_the_trigger() -> None:
 def test_invalid_split_band_is_rejected_loudly() -> None:
     with pytest.raises(ValueError, match="split_band"):
         GranularityConfig(split_band="huge")
+
+
+def test_split_one_task_splits_by_acceptance_clusters() -> None:
+    task = _task("T1", acceptance=["one", "two", "three", "four"], band="XL")
+
+    children = split_one_task(task)
+
+    assert children is not None
+    assert [c.id for c in children] == ["T1a", "T1b", "T1c", "T1d"]
+    assert [c.acceptance for c in children] == [["one"], ["two"], ["three"], ["four"]]
+
+
+def test_split_one_task_returns_none_when_unsplittable() -> None:
+    task = _task("T1", acceptance=["ship it"], band="XL")
+
+    assert split_one_task(task) is None
+
+
+def test_split_one_task_avoids_collisions_against_a_supplied_used_ids_set() -> None:
+    task = _task("T1", acceptance=["one", "two"], band="XL")
+    used = {"T1", "T1a"}
+
+    children = split_one_task(task, used_ids=used)
+
+    assert children is not None
+    assert [c.id for c in children] == ["T1ax", "T1b"]
+    assert used == {"T1", "T1a", "T1ax", "T1b"}
+
+
+def test_split_one_task_matches_apply_splits_output_for_the_same_task() -> None:
+    """No forked heuristic: the plan-time path (`normalize_plan`) and this
+    single-task seam produce identical children for the same task."""
+    plan = _plan([_task("T1", acceptance=["one", "two", "three", "four"], band="XL")])
+    via_plan = normalize_plan(plan, GranularityConfig())
+
+    via_seam = split_one_task(
+        _task("T1", acceptance=["one", "two", "three", "four"], band="XL")
+    )
+
+    assert via_seam is not None
+    assert list(via_plan.plan.tasks) == via_seam
 
 
 # ---------------------------------------------------------------------------

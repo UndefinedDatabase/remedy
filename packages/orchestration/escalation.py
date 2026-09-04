@@ -263,7 +263,14 @@ def _record_answer_on_task(job: Job | Any, record: Mapping[str, Any]) -> None:
     """
     task_id = str(record.get("task_id"))
     for task in getattr(job, "tasks", ()) or ():
-        if str(task.id) != task_id:
+        # F112 T003b2b1: pingpong JobPlan's TaskEntry carries `task_id`
+        # (a plain string), never Core Job's Task.id (a UUID) — accept
+        # either shape rather than assuming the Core one, matching
+        # _metadata()'s own "both Core Job and pingpong JobPlan" contract.
+        task_identifier = getattr(task, "id", None)
+        if task_identifier is None:
+            task_identifier = getattr(task, "task_id", None)
+        if str(task_identifier) != task_id:
             continue
         inputs = task.inputs if isinstance(task.inputs, dict) else {}
         answers = inputs.get(TASK_INPUTS_ANSWERS_KEY)

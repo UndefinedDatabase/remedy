@@ -24,8 +24,11 @@ import shutil
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from packages.orchestration.schemas.models import PlannedTask
 
 # ---------------------------------------------------------------------------
 # Task / Job state enums (string constants for JSON safety)
@@ -38,6 +41,16 @@ TASK_APPLIED = "applied_to_job_workspace"
 TASK_BLOCKED = "blocked"
 TASK_FAILED = "failed"
 TASK_SKIPPED = "skipped"
+# F112 T003b2b2b2: a task that never dispatched because its declared scope
+# could not fit its class cap and was replaced by split_one_task's children
+# instead (DECISION F112 D7/D8) — distinct from TASK_SKIPPED, which means
+# "the job blocked and this never got a chance."
+TASK_SPLIT = "split"
+
+# F112 T003b1: every TaskEntry's model-routing class, honestly defaulted rather
+# than inferred from title text (DECISION F112 D2) — the seeded
+# model_routing.TASK_CLASS_TIERS key F016's own build/repair tasks already are.
+TASK_CLASS_DEFAULT = "standard_build"
 
 JOB_PLANNED = "planned"
 JOB_RUNNING = "running"
@@ -116,6 +129,17 @@ class TaskEntry:
     task_id: str = ""          # T001, T002, ... (by parse order)
     source_heading_number: int = 0  # Original ## Task N number
     title: str = ""
+    task_class: str = TASK_CLASS_DEFAULT
+    # F112 T003b2b1: durable per-task answers to escalated decisions this
+    # task raised (e.g. a cannot_fit split-or-proceed choice) — keyed like
+    # Core Job's Task.inputs so escalation.py's answer-recording path
+    # (DECISION F112 D4) works unmodified against either task shape.
+    inputs: dict = field(default_factory=dict)
+    # F112 T003c: this task's declared fenced scope, parsed from a "Files:"
+    # section in job markdown (mirrors "Acceptance:") — the
+    # compiled_context_paths source T003b2b2's run_pingpong call needs
+    # (DECISION F112 D5); empty when the job file declares none.
+    files_hint: list = field(default_factory=list)
     body: str = ""
     acceptance: str = ""
     status: str = TASK_PENDING
@@ -136,6 +160,67 @@ class TaskEntry:
     task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
     task_start_recorded_at: str = ""
     task_attempt_state: str = ""      # "" | "active" | "complete"
+
+
+# F112 T003b2a: translates a live TaskEntry into the granularity machinery's
+# own PlannedTask so `task_granularity.split_one_task` (DECISION F112 D2) can
+# run against a dispatched task without re-deciding its own band/acceptance
+# trigger. `est_tokens_band` is fixed at "XL" (never read by `split_one_task`,
+# which clusters on `acceptance`/`files_hint` alone — task_granularity.py:230)
+# and is present only because `PlannedTask` requires a valid TokenBand.
+def task_entry_to_planned_task(task: TaskEntry) -> PlannedTask | None:
+    """Adapt one dispatched ``TaskEntry`` into a plan-time ``PlannedTask``.
+
+    Returns None when ``task.acceptance`` holds no non-blank line: an empty
+    acceptance list violates ``PlannedTask``'s own validator, and per
+    T3_F112.md's edge case rule a split that cannot help drops the option
+    rather than raising. ``acceptance`` otherwise splits ``task.acceptance``
+    on newlines, dropping blank lines. ``files_hint`` carries whatever the
+    job markdown declared (T3_F112.md T003c, ``TaskEntry.files_hint``) —
+    empty when the file has no "Files:" section, in which case
+    `_cluster_acceptance` degrades safely to one cluster per acceptance
+    item (DECISION F112 D2 MEASURED — an empty hint is a safe, not a
+    broken, input).
+    """
+    from packages.orchestration.schemas.models import PlannedTask
+
+    lines = [line for line in task.acceptance.splitlines() if line.strip()]
+    if not lines:
+        return None
+    return PlannedTask(
+        id=task.task_id,
+        title=task.title,
+        goal=task.body or task.title,
+        acceptance=lines,
+        files_hint=list(task.files_hint),
+        est_tokens_band="XL",
+    )
+
+
+# F112 T003b2b2b1: the reverse of task_entry_to_planned_task, above — turns
+# one split_one_task (DECISION F112 D2) child PlannedTask back into a
+# dispatchable TaskEntry. task_class and source_heading_number are not
+# PlannedTask fields, so the caller (T003b2b2b2's dispatch-loop wiring,
+# DECISION F112 D7) passes the parent task's own values through; every
+# other field is a direct or joined mapping. Not yet called from run_job —
+# T003b2b2b2 is the wiring that calls it.
+def planned_task_to_task_entry(
+    planned: PlannedTask,
+    *,
+    task_class: str = TASK_CLASS_DEFAULT,
+    source_heading_number: int = 0,
+) -> TaskEntry:
+    """Adapt one split-off ``PlannedTask`` back into a dispatchable ``TaskEntry``."""
+    return TaskEntry(
+        task_id=planned.id,
+        source_heading_number=source_heading_number,
+        title=planned.title,
+        task_class=task_class,
+        body=planned.goal,
+        acceptance="\n".join(planned.acceptance),
+        files_hint=list(planned.files_hint),
+        status=TASK_PENDING,
+    )
 
 
 @dataclass
@@ -275,6 +360,11 @@ class JobPlan:
     # F104: the prediction that justified a predictive stop — its arithmetic is
     # what a human reads to see WHY the job stopped before doing any work.
     budget_prediction: dict | None = None
+    # F112 T003: durable escalation/decision state (e.g. `enqueue_task_decision`'s
+    # `job.metadata["escalations"]` list) — a plain dict, exported and imported
+    # verbatim like `input_snapshot` above so a cannot_fit decision survives a
+    # persist/resume cycle instead of vanishing as a Python-only attribute.
+    metadata: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -597,6 +687,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
         "budget_prediction": job.budget_prediction,
+        "metadata": job.metadata,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -609,6 +700,9 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "task_id": t.task_id,
                 "source_heading_number": t.source_heading_number,
                 "title": t.title,
+                "task_class": t.task_class,
+                "inputs": t.inputs,
+                "files_hint": t.files_hint,
                 "body": t.body,
                 "acceptance": t.acceptance,
                 "status": t.status,
@@ -691,12 +785,16 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         budget_actuals=data.get("budget_actuals"),
         # Absent in job files written before F104 — loads as None, unchanged.
         budget_prediction=data.get("budget_prediction"),
+        metadata=dict(data.get("metadata") or {}),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
             task_id=t.get("task_id", ""),
             source_heading_number=t.get("source_heading_number", 0),
             title=t.get("title", ""),
+            task_class=t.get("task_class", TASK_CLASS_DEFAULT),
+            inputs=dict(t.get("inputs") or {}),
+            files_hint=list(t.get("files_hint") or []),
             body=t.get("body", ""),
             acceptance=t.get("acceptance", ""),
             status=t.get("status", TASK_PENDING),
@@ -765,6 +863,7 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
                 "title": task_title,
                 "body_lines": [],
                 "acceptance_lines": [],
+                "files_lines": [],
             }
             continue
 
@@ -772,8 +871,18 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
             stripped = line.strip()
             if stripped.lower().startswith("acceptance:") or stripped.lower().startswith("acceptance :"):
                 current_task["_in_acceptance"] = True
+                current_task["_in_files"] = False
                 continue
-            if current_task.get("_in_acceptance"):
+            # F112 T003c: a third parser state, mirroring "Acceptance:" —
+            # "Files:" declares this task's fenced scope (DECISION F112 D5),
+            # the compiled_context_paths source T003b2b2 needs.
+            if stripped.lower().startswith("files:") or stripped.lower().startswith("files :"):
+                current_task["_in_files"] = True
+                current_task["_in_acceptance"] = False
+                continue
+            if current_task.get("_in_files"):
+                current_task["files_lines"].append(line)
+            elif current_task.get("_in_acceptance"):
                 current_task["acceptance_lines"].append(line)
             else:
                 current_task["body_lines"].append(line)
@@ -801,12 +910,24 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
         title = sec["title"] or f"Task {sec['heading_num']}"
         if len(body) > _TASK_BODY_LIMIT:
             body = body[:_TASK_BODY_LIMIT] + "\n[truncated]"
+        # F112 T003c: "- path" / "path" bullet lines under "Files:" become
+        # TaskEntry.files_hint — unlike acceptance, these are literal repo-
+        # relative paths (compile_task_context checks them against disk), so
+        # the leading bullet marker is stripped rather than kept verbatim.
+        files_hint: list[str] = []
+        for fl in sec["files_lines"]:
+            fl_stripped = fl.strip()
+            if fl_stripped.startswith("-"):
+                fl_stripped = fl_stripped[1:].strip()
+            if fl_stripped:
+                files_hint.append(fl_stripped)
         tasks.append(TaskEntry(
             task_id=task_id,
             source_heading_number=sec["heading_num"],
             title=title,
             body=body,
             acceptance=acceptance,
+            files_hint=files_hint,
         ))
 
     job = JobPlan(
@@ -1606,7 +1727,7 @@ def select_next_predictable_task(job) -> tuple[object | None, list]:
         next_task = None
         for task in tasks:
             status = getattr(task, "status", None)
-            if status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+            if status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT):
                 continue
             if status not in (TASK_BLOCKED, TASK_FAILED):
                 next_task = task
@@ -2244,7 +2365,7 @@ def run_job(
                         )
 
         for idx, task in enumerate(job.tasks):
-            if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+            if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED, TASK_SPLIT):
                 continue
 
             if task.status in (TASK_BLOCKED, TASK_FAILED):
@@ -2303,6 +2424,67 @@ def run_job(
                 excerpt=task_prompt[:200],
             )
 
+            compiled_context_paths: list[str] | None = None
+            compiled_context_candidates: list[str] | None = None
+            compiled_context_token_budget: int | None = None
+            if task.files_hint:
+                from packages.orchestration.context_compiler import (
+                    fit_task_context_to_class_cap,
+                )
+                fit_result = fit_task_context_to_class_cap(
+                    Path(job.job_workspace_path),
+                    task.files_hint,
+                    task.files_hint,
+                    task.task_class,
+                )
+                if fit_result.fits:
+                    compiled_context_paths = list(task.files_hint)
+                    compiled_context_candidates = list(task.files_hint)
+                    compiled_context_token_budget = fit_result.cap_tokens
+                else:
+                    from packages.orchestration.escalation import (
+                        auto_apply_safe_default,
+                        enqueue_task_decision,
+                    )
+                    from packages.orchestration.task_granularity import (
+                        split_one_task,
+                    )
+                    decision = enqueue_task_decision(
+                        job,
+                        task_id=task.task_id,
+                        question="task context exceeds its class cap",
+                        options=["split task"],
+                        safe_default="split task",
+                        impact=(
+                            f"tier1_tokens={fit_result.tier1_tokens} "
+                            f"cap_tokens={fit_result.cap_tokens} "
+                            f"task_class={fit_result.task_class}"
+                        ),
+                        now=datetime.now(timezone.utc),
+                    )
+                    answered = auto_apply_safe_default(
+                        job, decision, now=datetime.now(timezone.utc))
+                    split_entries: list[TaskEntry] = []
+                    if answered is not None and answered["answer"] == "split task":
+                        planned = task_entry_to_planned_task(task)
+                        if planned is not None:
+                            used_ids = {t.task_id for t in job.tasks}
+                            children = split_one_task(planned, used_ids=used_ids)
+                            if children:
+                                split_entries = [
+                                    planned_task_to_task_entry(
+                                        child,
+                                        task_class=task.task_class,
+                                        source_heading_number=task.source_heading_number,
+                                    )
+                                    for child in children
+                                ]
+                    if split_entries:
+                        job.tasks[idx + 1:idx + 1] = split_entries
+                        task.status = TASK_SPLIT
+                        _persist_job(job)
+                        continue
+
             try:
                 result = run_pingpong(
                     task.title,
@@ -2338,6 +2520,9 @@ def run_job(
                     stop_check=_stop_check,
                     episode_id=job.active_episode_id,
                     on_provider_call=_on_provider_call,
+                    compiled_context_paths=compiled_context_paths,
+                    compiled_context_candidates=compiled_context_candidates,
+                    compiled_context_token_budget=compiled_context_token_budget,
                 )
             except Exception as exc:
                 task.status = TASK_FAILED
@@ -2471,7 +2656,7 @@ def run_job(
 
         # Determine final job status
         all_done = all(
-            t.status in (TASK_APPLIED, TASK_SKIPPED)
+            t.status in (TASK_APPLIED, TASK_SKIPPED, TASK_SPLIT)
             for t in job.tasks
         )
         has_pending = any(t.status == TASK_PENDING for t in job.tasks)

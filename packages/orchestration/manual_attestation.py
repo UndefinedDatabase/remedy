@@ -17,6 +17,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from packages.common.path_redaction import scrub_paths
+
 #: Remedy's own source tree — the subject of the runtime-integration gate,
 #: which is a self check and has nothing to do with the repository a job
 #: happens to target.
@@ -195,13 +197,13 @@ def _vt_run_v11(run: dict, head_sha: str = "") -> dict[str, Any]:
     selected = int(run.get("selected", 0) or 0)
     if not selected:
         selected = len(node_ids) if node_ids else (passed + failed + skipped)
-    stdout_summary = str(run.get("stdout_summary", "") or "")[-2000:]
-    output_hash = str(run.get("output_hash", "") or "")
-    if output_hash.startswith("sha256:"):
-        output_hash = output_hash[7:]
-    if not output_hash:
-        output_hash = hashlib.sha256(
-            stdout_summary.encode("utf-8", errors="replace")).hexdigest()
+    # Scrub THEN truncate (same order as job_evidence._default_verification_runner),
+    # and never keep a caller-supplied output_hash — it no longer describes the
+    # stored bytes once scrubbing/truncation may have changed them (R-0792,
+    # R-0793: this call site previously applied no path scrubbing at all).
+    stdout_summary = scrub_paths(str(run.get("stdout_summary", "") or ""))[-2000:]
+    output_hash = hashlib.sha256(
+        stdout_summary.encode("utf-8", errors="replace")).hexdigest()
     duration = run.get("duration_seconds")
     return {
         "run_id": run["run_id"],

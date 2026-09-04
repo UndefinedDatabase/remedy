@@ -1,33 +1,39 @@
-# Plan — F110 Model routing by task class
+# Plan — F112 Prompt budget per task class
 
-Branch: feature/f110-model-routing-by-task-class, PR #233 open into `main`
-since F110 R19 (session 7). F110 is CLOSED as a build feature; this round
-is a REPAIR round against the still-open PR, triggered by CI going red.
+Branch: feature/f112-prompt-budget-per-task-class, PR #234 OPEN (not
+merged), base main. All six closure preconditions satisfied; the
+evidence-packager contract fix (R-0792, R-0793) landed and independently
+verified end to end against the real packaged zip
+(remedy-review-20260904-123332-READY_FOR_REVIEW.zip, SHA-256
+b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927,
+PACKAGE_STATUS=READY_FOR_REVIEW, EVIDENCE_AUTHORITATIVE=true).
 
 ## Goal
 
-Fix the two doc-consistency failures CI reported on PR #233: R19's C3
-(`86bc9444`) authored the new STATUS `[x] F110` line and README capability
-paragraph but never re-derived the two counts those additions moved, so
-`tests/docs/test_docs_consistency.py` failed
-`test_the_readme_accepted_count_equals_the_status_count` (68 vs 69) and
-`test_the_readme_tier_table_done_column_matches_the_ledger` (Tier 3
-Done=3 vs ledger 4).
+No prompt can silently balloon: every task class carries an input-token
+cap, the context compiler fits under it via the existing demotion
+cascade with full omission disclosure, and a context that cannot fit
+raises a task-split decision instead of a truncated prayer
+(docs/roadmap/features/T3_F112.md). ACHIEVED and CLOSED.
 
 ## Current Step
 
-Round 20 (repair). Rewrite README.md's accepted-count line and Tier 3
-Done cell to match the real STATUS.md ledger, register and resolve
-finding R-0790 for the omission, push, and confirm CI goes green.
+Round 32 books round 31's PASS verdict (bookkeeping only, closure
+sequence exempt per amend0827 rule 1). The reviewer then waits for
+hosted CI on PR #234 and merges directly once green, per the operator's
+own explicit instruction opening this session.
 
 ## Next Steps
 
-Once CI is green on PR #233, the Open PR Gate merges it (AGENTS.md):
-`gh pr merge 233 --merge --delete-branch`, then `git checkout main` and
-`git pull --ff-only`. No further F110 rounds are planned after the
-merge — the next session claims the next STATUS `[ ]` feature.
+- Merge PR #234 once hosted CI is green (check status, then merge, as
+  two separate commands).
+- Hand back the built zip's name and SHA-256 to the operator for
+  archiving and the formal package review.
+- Next feature per STATUS order (Rule A5) starts a fresh session.
 
 ## Risks
 
-- `R-0767` and `R-0784` stay OPEN; both predate F110, documented in the
-  Built State section, not F110 defects.
+- R-0784 and R-0767 (both OPEN, unrelated to F112) are documented,
+  pre-existing risks; F112's live-review verdict is PASS_WITH_RISKS.
+- A red hosted CI run is a blocker; the merge waits for it honestly
+  rather than being forced.
