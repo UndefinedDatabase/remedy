@@ -1,179 +1,153 @@
-── STEP CLOSE/2 — F112 round 28 ────────────────────────────────
-Goal: Book round 27's PASS verdict (resolves R-0792, R-0793), then
-rebuild F112's closure evidence bundle and the mandatory review zip
-against the now-fixed evidence-packager contract, and confirm
-`PACKAGE_STATUS=READY_FOR_REVIEW` / `EVIDENCE_AUTHORITATIVE=true`.
+── STEP CLOSE/3 — F112 round 29 ────────────────────────────────
+Goal: Book round 28's PASS verdict, then run closure precondition 6's
+self-use item (SU-007, already pending) for real through the shipped
+generator/runner to the normal approval gate — mirroring F109 R19 and
+F110 R16's precedent exactly, never promoted.
 
 Bundle:
-1. C0a/C0b — save this block verbatim (transport proof), same pattern
-   as every prior round (`cp`, never retype).
-2. C1 — append RECORD27 (below) to `.agent/live_review.md`: books round
-   27's PASS verdict, resolves `R-0792` and `R-0793` (`Done:` lines).
-3. C2 — apply PLAN28 (below) to `.agent/plan.md` (whole-file replace).
-4. C3 — THE EVIDENCE JOB AND THE REVIEW ZIP. This step produces NO
-   repository diff (the evidence dir and the zip are never committed —
-   both are gitignored). Do it with a Python driver script (write it to
-   disk with the Write tool under a path OUTSIDE the repo tracked tree,
-   e.g. `.remedy-wt/r28_evidence.py`, and run it with `python3
-   .remedy-wt/r28_evidence.py` from the repository root) that:
-   a. First re-runs these THREE SCOPED commands exactly as round 23
-      ran them (do NOT include the full test suite — a verification
-      record may never carry a full-suite node-id list, per
-      docs/roadmap/STATUS_closure_protocol.md's own rule; the full-suite
-      proof already rides in round 19's integration-gate evidence and
-      the reviewer's own re-run this round, ordered separately below):
-        "python3 -m pytest tests/orchestration/test_class_prompt_budget.py"
-        "python3 -m pytest tests/orchestration/test_context_compiler.py -k \"test_an_oversized_context_fits_under_its_class_cap_with_the_demotion_recorded or test_an_unfittable_context_reports_cannot_fit_with_the_tier1_arithmetic\""
-        "python3 -m pytest tests/cli/test_golden_path.py"
-      via `_run_verifications` imported from
-      `packages.orchestration.job_evidence` (the existing, tested
-      helper — the same function this round's own C1 booked as fixed
-      for R-0792). If ANY of the three exits non-zero, STOP before
-      calling `create_manual_completion_bundle` and declare it as a
-      BLOCKING finding rather than a routine result.
-   b. Calls `create_manual_completion_bundle` from
-      `packages.orchestration.job_evidence` with:
-      `evidence_dir="remedy-job-evidence-f112-closure"`,
-      `repo_root="."`,
-      `base_commit="5c28c6741db2d9073fc75cd159d91037e0757fb0"`
-      (reconfirm with `git merge-base main HEAD` before using it —
-      declare if it has changed),
-      `head_commit=<the full 40-char SHA of C2's own commit — reconfirm
-      this is still HEAD immediately before the call; if the branch
-      moved, use the real current HEAD and declare the discrepancy>`,
-      `job_id=uuid4().hex[:16]` (fresh),
-      `job_title="F112 Prompt budget per task class — closure evidence
-      (post R-0792/R-0793 fix)"`,
-      `step_range="T001-T003"`,
-      `prior_job_ids=[]`,
-      `verification_runs=<the "runs" list from step (a)'s
-      _run_verifications(...) return value>`,
-      `timestamp=<current UTC ISO-8601, generated fresh>`,
-      `generated_at=<current UTC ISO-8601 with microseconds, generated
-      fresh>`,
-      `num_tasks=3` (default, do not override),
-      `note_prefix="F112 closure evidence (rebuild after R-0792/R-0793
-      fix)"`,
-      `review_feature_id="f112"`.
-      Print and capture the returned summary dict in full. If this call
-      raises, capture the FULL exception and STOP.
-   c. THE OUTPUT_HASH SELF-CHECK: re-read
-      `remedy-job-evidence-f112-closure/verification_tests.json` from
-      disk after the bundle is written and, for every run, print
-      whether `output_hash == sha256(stdout_summary.encode()).hexdigest()`
-      — this must read `True` for all three runs; if any reads `False`,
-      STOP, the fix did not hold, and declare a finding rather than
-      proceeding to the zip.
-   d. THE REVIEW ZIP: run
-      `bash scripts/make_review_zip.sh --evidence-dir remedy-job-evidence-f112-closure`
-      as a real shell command (not through a pipe — the script's own
-      exit code must stay measurable). Capture stdout/stderr and the
-      real exit code. Confirm the printed SHA-256 with your own
-      `sha256sum` of the produced file.
-   e. THE READING THAT MATTERS: open the produced zip with `zipfile`
-      and read `.review_zip_manifest.json` FROM INSIDE IT (never from
-      builder stdout alone). Report `PACKAGE_STATUS`,
-      `EVIDENCE_AUTHORITATIVE`, `REVIEW_SUBJECT_ALIGNMENT`,
-      `committed_review_subject.base_commit`/`head_commit`/
-      `base_is_ancestor`, `ready_gate_matrix.ok` with its
-      `blocking_reasons`, and `review_subject_evidence_alignment.verdict`
-      with its issue/hash-mismatch counts. `PACKAGE_STATUS` other than
-      `READY_FOR_REVIEW` is a CLOSURE BLOCKER: stop, report the exact
-      blocking reason(s), change nothing to force it green. This is the
-      operator's own expected result per their ruling — if it does NOT
-      read `READY_FOR_REVIEW`/`true`, that is the single most important
-      fact in this round's handback.
-   f. ARCHIVING: if the zip built successfully, attempt to copy (not
-      move) it to `/home/decodeux/Repos/remedy-history/zips/` (create
-      the directory if missing and permitted). Report the absolute
-      archived path, or the literal `NOT ARCHIVED` with the reason.
-   g. Confirm `git status --porcelain` and `git status --porcelain
-      --ignored=no` both still read EMPTY for tracked paths afterward.
-5. C4 — THE INTEGRATION-GATE RE-CONFIRMATION AND INTEGRITY CHECK
-   (closure preconditions 2 and 3): report
-   `from packages.orchestration.integrity_gate import
-   run_integrity_checks; run_integrity_checks()` — `.passed`,
-   `.fail_count`, and the name+status of every check (attributes, not a
-   dict). Precondition 2 (full suite green) is satisfied by round 19's
-   integration-gate PASS plus this round's own re-run of the three
-   scoped commands above and the canary at G-canary below; do not
-   re-run the full `-n auto` suite this round unless the integrity
-   check or anything else raises doubt about it.
-6. Handback — completion report + rewrite `.agent/handoff.md`.
+1. C0a/C0b — save this block verbatim (transport proof), `cp` never
+   retype.
+2. C1 — append RECORD28 (below) to `.agent/live_review.md`: books round
+   28's PASS verdict. No new finding is registered or resolved by this
+   append (round 28 fixed nothing new).
+3. C2 — apply PLAN29 (below) to `.agent/plan.md` (whole-file replace).
+4. C3 — THE SELF-USE STEP. Read `git show 9ee3ab57` (F109 R19's own
+   precedent commit) and `.agent/authored/f110-r16.md`'s constraint 6
+   yourself before writing any code, and mirror their shape exactly
+   with `f112`/`F112` in place of `f109`/`f110`/`F109`/`F110`, with ONE
+   difference from both precedents: SU-007 is ALREADY PENDING in
+   `scripts/self_use_queue.json` (`consumed_by=""`), so there is no
+   generation step — do not call
+   `self_use_generator.generate_and_append_if_empty`.
+     a. Print `.agent/STOP` existence (must be False; if True, STOP here
+        and write the handoff instead of proceeding).
+     b. `packages.orchestration.self_use_queue.load_self_use_queue()`,
+        print every entry's id/consumed_by/title. Call
+        `pending_self_use_items()` and `next_self_use_item()` and print
+        both — expect exactly one pending item, `SU-007`, and
+        `next_self_use_item()` returning that same entry. If this is NOT
+        what you observe (e.g. SU-007 already consumed, or a different
+        item is first), STOP and declare the discrepancy rather than
+        proceeding on an assumption.
+     c. Call
+        `packages.orchestration.self_use_runner.run_next_self_use_item(
+        dest_dir=Path('.remedy-wt/selfuse-f112-run'), repo_path='.')`
+        with NO `builder_name`/`reviewer_name` override and the DEFAULT
+        budgets (`max_provider_calls=6`, `max_cost_usd=0.50`,
+        `max_tasks=1`) — the same call shape F109 R19 and F110 R16 both
+        used. Print `resolve_role_config('builder')` and
+        `resolve_role_config('reviewer')` immediately before the call,
+        the elapsed wall-clock seconds, and every field of the returned
+        `(entry, job_file_path, JobPlan)` tuple (job_id, status, error,
+        execution_config, isolation_mode, worktree_path,
+        worktree_cleanup_status/_error, every task's fields) — the same
+        set F109's and F110's own `run.txt` print.
+     d. Call
+        `packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)`
+        and print the tuple length plus each string verbatim between
+        `--- DEFECT N BEGIN ---` / `--- DEFECT N END ---` markers. Do
+        NOT author `.agent/live_review.md` finding text for these
+        yourself — that is round 30's job (only reviewer-authored text
+        sets a registration); this round only RECORDS the defect
+        strings verbatim for round 30 to consume.
+     e. Copy the job markdown file from the run's `dest_dir` to
+        `.agent/selfuse_f112/SU-007.md` with `shutil.copyfile`, and
+        print both sha256 digests (source, copied) proving byte
+        identity.
+     f. Write the ENTIRE transcript above — every printed value, in the
+        order printed — to `.agent/selfuse_f112/run.txt`. Commit both
+        files (and `.agent/selfuse_f112/` itself, new) in C3.
+     g. Delete the run's OWN `dest_dir` (`.remedy-wt/selfuse-f112-run`)
+        by its exact path after the copy in (e); do NOT touch
+        `JobPlan.worktree_path` (the job's own isolated worktree under
+        `.remedy-wt/job-<id>`) — it is retained by the product itself,
+        exactly as both precedents left their own worktrees untouched.
+     h. `SU-007` is NOT consumed by this round: `consumed_by` for that
+        entry stays the empty string in `scripts/self_use_queue.json`.
+        Setting it belongs to round 30's closure commit
+        (STATUS_closure_protocol.md precondition 6). This round's own
+        Change set does not list `scripts/self_use_queue.json` — since
+        no generation happens this round (SU-007 was already queued),
+        that file is NOT touched at all this round, unlike F110 R16
+        where generation itself wrote to it.
+   A `blocked` job status (the normal approval-gate outcome per
+   `self_use_runner`'s own docstring) is NOT a round failure and is NOT
+   "declared" as a deviation — report it as the measured OUTCOME it is,
+   exactly as F109 R19's and F110 R16's own handbacks did.
+5. Handback — completion report + rewrite `.agent/handoff.md`.
 
 Change: `.agent/live_review.md`, `.agent/plan.md`,
-`.agent/authored/f112-r28.md` (new), `.agent/last_block.md`,
-`.agent/handoff.md`. The evidence dir and the zip are NEVER committed
-(gitignored) — confirm this explicitly, do not `git add` either.
-Nothing under `packages/`, `apps/`, `tests/`, `docs/` this round.
+`.agent/authored/f112-r29.md` (new), `.agent/last_block.md`,
+`.agent/selfuse_f112/SU-007.md` (new), `.agent/selfuse_f112/run.txt`
+(new), `.agent/handoff.md`. `scripts/self_use_queue.json` is NOT
+touched this round (see 4h). Nothing under `packages/`, `apps/`,
+`tests/`, `docs/` is touched by THIS round's own commits — the self-use
+run's own job worktree under `.remedy-wt/job-<id>` is a separate matter,
+governed by that job's own acceptance text, not by this block, and is
+never merged or promoted onto this branch.
 
 Constraints:
 - `.agent/decisions.md`, `.agent/candidates.md`, `.agent/prose_slips.md`,
   `docs/roadmap/features/T3_F112.md`, `docs/roadmap/STATUS.md`,
-  `README.md`, `scripts/self_use_queue.json` are NOT touched this round
-  — closure lands in round 29, once this round's zip is confirmed
-  READY_FOR_REVIEW.
+  `README.md` are NOT touched this round.
+- Do not run `ruff`, `npm`, or any formatter as part of THIS round's own
+  commits — they write no `.py` file (the self-use run's own job
+  worktree is separate, governed by its own acceptance text).
 - Never force-push, never work on `main`, create NO pull request, merge
-  nothing, no `--approve` / promotion of anything.
-- If the zip still does not read READY_FOR_REVIEW after the R-0792/
-  R-0793 fix, do NOT attempt a second fix on this round's own
-  initiative — declare the exact blocking reason(s) from step (e) in
-  full and stop; that is a new finding for the reviewer to design the
-  next round around, not a guess to paper over.
+  nothing, no `--approve` / promotion of the self-use job's own diff —
+  "RUN... to the normal approval gate... never promoted" is load-bearing
+  and is what distinguishes this from an ordinary feature round.
+- If `run_next_self_use_item` raises `SelfUseRunError` or
+  `SelfUseJobError`, capture the FULL exception (class + message +
+  traceback), STOP, and declare it fully in the handback — do not retry
+  with different parameters on your own initiative.
 
 Done when — run every gate and report its REAL exit code/output:
-- `git status --porcelain` — empty before C0a and immediately before C3
-  is run and again before the handback commit.
-- `.agent/live_review.md` reproduces at exactly `2334372` bytes
-  immediately after C1 (pre-append `2328447` + 1 + RECORD27's `5924`
-  bytes), and RECORD27 extracted from the committed authored file is a
+- `git status --porcelain` — empty before C0a and immediately before the
+  handback commit.
+- `.agent/live_review.md` reproduces at exactly `2338544` bytes
+  immediately after C1 (pre-append `2334372` + 1 + RECORD28's `4171`
+  bytes), and RECORD28 extracted from the committed authored file is a
   byte-exact suffix; report registered/`Done:`/open counts before and
-  after C1 (before: 354 registered, 72 `Done:`, 282 open; after: 354
-  registered, 74 `Done:`, 280 open — UNMOVED registered count, `Done:`
-  count up by 2).
-- `.agent/plan.md` reproduces byte-identical to PLAN28 (`2218` bytes, no
+  after C1 (expect UNMOVED: 354 registered, 74 `Done:`, 280 open, both
+  sides).
+- `.agent/plan.md` reproduces byte-identical to PLAN29 (`2249` bytes, no
   trailing newline, `## Goal`/`## Next Steps` each exactly once,
   `wc -l` under 50) after C2.
-- The three scoped commands' real pass/fail/skip counts and node_ids
-  counts (must equal `selected`).
-- `create_manual_completion_bundle`'s full returned summary dict, or the
-  full exception if it raised.
-- The C3c output_hash self-check reading (`True`/`True`/`True`
-  expected) for all three runs.
-- The zip build's real exit code, printed filename and SHA-256, and
-  your own independent `sha256sum` confirming the same digest.
-- The `.review_zip_manifest.json` readings from step (e) in full —
-  `PACKAGE_STATUS`, `EVIDENCE_AUTHORITATIVE`,
-  `REVIEW_SUBJECT_ALIGNMENT`, base/head commit, `base_is_ancestor`,
-  `ready_gate_matrix.ok`/`blocking_reasons`,
-  `review_subject_evidence_alignment.verdict`.
-- The archiving outcome (absolute path or `NOT ARCHIVED` + reason).
-- `run_integrity_checks()` — `.passed`, `.fail_count`, per-check status.
-- `git check-ignore -v remedy-job-evidence-f112-closure` confirming it
-  is gitignored.
+- `pending_self_use_items()`/`next_self_use_item()` readings before C3
+  (expect: 1 pending, `SU-007`).
+- Every field `run_next_self_use_item` returns, printed in full, plus
+  the elapsed wall-clock seconds and the resolved role configs.
+- `describe_self_use_run_defects(plan)`'s tuple length and every string
+  verbatim.
+- The two sha256 digests proving the copied job markdown is byte
+  identical to the source.
+- `scripts/self_use_queue.json`'s `SU-007` entry still has
+  `consumed_by=""` after this round (report the read).
+- `git status --porcelain --ignored=no` immediately before the handback
+  commit — confirm `.remedy-wt/selfuse-f112-run` no longer appears
+  (deleted per 4g) and the job's own `.remedy-wt/job-<id>` worktree, if
+  any, is untracked/gitignored and not staged.
 
 Handback: completion report + rewrite `.agent/handoff.md`.
 ──────────────────────────────────────────────────────────────
 
---- BEGIN RECORD27 sha256=35a3c5fffd383da5d75f222bda03cf283150cad22acd71f3c70caffb23723a91 ---
-Gate: F112 R27 — the round 27 entry, the evidence-packager contract fix (operator ruling, 2026-09-04). VERDICT PASS, over the range `ade5abd4..7a1e3095` (commits C0a `dbba6ca9`, C0b `f9f65916`, C1 `734ecde8`, C2 `091ca97b`, C3 `42eb4342`, C4 `82c20785`, C5 `f39ecfef`, C6 `7a1e3095` — eight real content commits — plus handback commit `313126ce`), independently re-verified by the reviewer. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r27.md` and `HEAD:.agent/last_block.md` both print blob `e311d9295e87cbfe411f97f47e17907a33379e1e`, reproduced directly; `sha256sum .agent/authored/f112-r27.md` reproduced `60fd7980ad29045226901c0c8279bd2e74b3f9805bfa5898224a5f3b75ba219c` at 16170 bytes. THE PLAN HELD: `.agent/plan.md` reproduced at 2337 bytes, 47 lines, `## Goal`/`## Next Steps` each exactly once, no trailing newline. THE RECORD APPEND AT C1 HELD: `.agent/live_review.md` reproduced at 2328447 bytes immediately after C1, matching the round's own pinned figure exactly. THE CODE DIFF HELD, READ BOTTOM-UP AGAINST THE BLOCK'S OWN ORDERED ITEMS, NOT SUMMARIZED: `git diff ade5abd4..HEAD -- packages/ apps/ tests/ docs/` touches exactly `packages/orchestration/job_evidence.py` (+22/-11), `packages/orchestration/manual_attestation.py` (+9/-7) and the new `tests/orchestration/test_job_evidence_verification_contract.py` (+134/-0), matching the reported "3 files changed, 165 insertions(+), 18 deletions(-)" exactly. `job_evidence._scrub_paths` now delegates to `packages.common.path_redaction.scrub_paths` after its own repo-root/`$HOME` relativization, unchanged in shape. `_default_verification_runner` now scrubs-then-truncates `stdout_summary`/`stderr_summary` and hashes the FINAL string, not raw `stdout`. `_run_verifications`'s normalization loop unconditionally recomputes `_output_hash` from the final `_stdout_summary`, discarding any caller-supplied value; the dead local `import hashlib as _hl_norm` is gone with it. `manual_attestation._vt_run_v11` now imports and calls the shared `scrub_paths` before truncating, and unconditionally recomputes `output_hash` the same way — this call site previously applied NO scrubbing at all, confirmed fixed. GATES REPRODUCED INDEPENDENTLY, NOT TAKEN FROM THE HANDBACK: `python3 -m pytest tests/orchestration/test_job_evidence_verification_contract.py -q` → 4 passed; `python3 -m pytest tests/orchestration/test_job_evidence.py tests/orchestration/test_review_verification_tests_strict.py tests/orchestration/test_failure_postmortem.py -q` → 258 passed, no regression; `python3 -m pytest tests/cli/test_golden_path.py -q` → 42 passed, canary held; `python3 -m ruff check packages/orchestration/job_evidence.py packages/orchestration/manual_attestation.py tests/orchestration/test_job_evidence_verification_contract.py` → All checks passed. THE MUTATION RED-PROOF WAS REPRODUCED BY THE REVIEWER DIRECTLY (not only read from the worker's report): reverting `_run_verifications`'s C4 fix to the old caller-supplied-hash-with-fallback shape, applied and removed in the primary checkout with `git status --porcelain` confirmed empty both before and immediately after the revert-and-restore, turned `test_wrong_caller_supplied_hash_is_discarded_and_recomputed` RED (`AssertionError: assert 'deadbeef...' == '3c596061...'`, 1 failed/3 passed) and restoring the fix returned it to 4 passed/0 failed; the worker's own C3/R-0793 mutation (reverting the scrub delegation, run inside the disposable worktree `.remedy-wt/f112-r27-mutation`, reddening the (b) test alone) is taken on the worker's report per G5, which reserves the disposable-worktree route for exactly this kind of check and the worker's transcript shows the expected 1 failed/3 passed reading with the worktree removed and the primary tree confirmed clean afterward. ONE DEVIATION, CORRECTLY HANDLED: the block's C7 wording named "C3c's ordering" as the mutation target for test (a); the worker found that reverting C3c alone left all 4 tests green because test (a) exercises `_run_verifications` via an injected `runner=` callable that bypasses `_default_verification_runner` (C3c) entirely, and correctly mutated C4 instead (the code test (a) actually reaches), which is what the reviewer's own independent reproduction above also confirms is the right target — not a defect, a correctly-diagnosed and declared block imprecision. `git status --porcelain` reads empty now. THE OPERATOR'S ROOT-CAUSE RULING IS THEREFORE CONFIRMED FIXED AT BOTH NAMED SITES PLUS THE SCRUBBING GAP, and round 28 proceeds to rebuild F112's closure evidence job and review zip against this fix.
+--- BEGIN RECORD28 sha256=70db6db54e3e1007aad2b79ef389e7a4f3c1334594d7097dc47b59272f0d95c3 ---
+Gate: F112 R28 — the round 28 entry, the closure evidence bundle rebuild and review zip (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1-2). VERDICT PASS, over the range `313126ce..346c178f` (commits C0a `e4790bff`, C0b `fdaf902b`, C1 `e259d851`, C2 `346c178f` — four real content commits — plus handback commit `6dd06718`), independently re-verified by the reviewer. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r28.md` and `HEAD:.agent/last_block.md` both print blob `df782cadec1cb4436b6560f55a5663812983042c`, reproduced directly; `sha256sum .agent/authored/f112-r28.md` reproduced `4a64111331abc8f31617d0658f7f53fb22af236f10766a18339655079705595c` at 17747 bytes. THE PLAN HELD: `.agent/plan.md` reproduced at 2218 bytes, 47 lines, `## Goal`/`## Next Steps` each exactly once, no trailing newline. THE RECORD APPEND AT C1 HELD: `.agent/live_review.md` reproduced at 2334372 bytes immediately after C1 (booking RECORD27, resolving R-0792/R-0793 — see round 27's own gate entry above), matching the round's own pinned figure exactly; registered/`Done:` counts read 354/74 both before and after this round's own C1, unmoved by round 28 itself since round 28 mints and resolves nothing new. NO CODE CHANGED: `git diff --stat 313126ce..6dd06718 -- packages/ apps/ tests/ docs/` reproduced empty — the evidence dir and the zip are gitignored and were never `git add`ed, confirmed with `git status --porcelain` and `git status --porcelain --ignored=no` both empty throughout. THE EVIDENCE JOB AND ZIP WERE REPRODUCED INDEPENDENTLY BY THE REVIEWER, NOT TAKEN ON THE WORKER'S REPORT: the three scoped commands reproduced `test_class_prompt_budget.py` 24 passed, the two named `test_context_compiler.py` fixtures 2 passed, `test_golden_path.py` 42 passed — matching `create_manual_completion_bundle`'s reported summary (`job_id` `79b21c8cba8b4352`, `head_commit` `346c178f3241fad3984dca9baea3f37e34c3892a` = this round's own C2, `total_passed` 68, `verdict` `PASS_WITH_RISKS`) exactly. THE OUTPUT_HASH CONTRACT HOLDS ON THE PACKAGED ARTIFACT ITSELF: the reviewer independently re-opened `evidence/current/verification_tests.json` FROM INSIDE the produced zip (not from the worker's transcript) and confirmed `output_hash == sha256(stdout_summary.encode())` `True` for all three of `vr-0001`/`vr-0002`/`vr-0003`, proving round 27's fix (R-0792) holds on the real packaged evidence this closure will ship, not merely on the new unit tests. THE ZIP ITSELF WAS RE-OPENED BY THE REVIEWER DIRECTLY: `sha256sum /home/decodeux/Repos/remedy-history/zips/remedy-review-20260904-123332-READY_FOR_REVIEW.zip` reproduced `b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927`, matching the script's own printed `final_sha256` exactly; `.review_zip_manifest.json` read from inside that exact file (via `zipfile`, never from stdout) reproduced `PACKAGE_STATUS` `READY_FOR_REVIEW`, `EVIDENCE_AUTHORITATIVE` `True`, `REVIEW_SUBJECT_ALIGNMENT` `PASS` with 0 issues and 0 hash mismatches, `committed_review_subject.base_commit` `5c28c6741db2d9073fc75cd159d91037e0757fb0`, `head_commit` `346c178f3241fad3984dca9baea3f37e34c3892a`, `base_is_ancestor` `True`, `ready_gate_matrix.ok` `True` with an empty `blocking_reasons` list — every one of these READ DIRECTLY BY THE REVIEWER, not paraphrased from the handback. THIS IS THE OPERATOR'S RULING CONFIRMED END TO END: the `BLOCKED_EVIDENCE` defect the round 26 handoff escalated is now demonstrated FIXED on the real closure artifact, not only on unit tests. THE INTEGRITY CHECK WAS REPRODUCED BY THE REVIEWER DIRECTLY: `run_integrity_checks()` read `.passed` `True`, `.fail_count` `0`, all five checks (`handler_import`, `live_review_verdict`, `plan_consistency`, `relevant_untracked`, `high_blockers_open`) `PASS`. Closure preconditions 1 (this verdict, PASS), 2 (round 19 integration gate plus this round's own scoped re-runs), 3 (this round's integrity check), 4 (Built State landed round 22) and 5 (clean tree, pushed, worker idle — confirmed) are now satisfied; precondition 6 (the self-use item) is the one remaining precondition, taken up next round. `git status --porcelain` reads empty now.
+--- END RECORD28 ---
 
-Done: R-0792 — RESOLVED at `42eb4342`/`82c20785`/`f39ecfef` (F112 R27), verified by the reviewer independently above. `output_hash` is now always `sha256` of the exact stored `stdout_summary` bytes, at all three call sites the operator's ruling named (`_default_verification_runner`, `_run_verifications`'s normalization loop, `manual_attestation._vt_run_v11`), proved by `tests/orchestration/test_job_evidence_verification_contract.py::TestRunVerificationsOutputHashContract` and `::TestVtRunV11ScrubsAndRehashes`, and mutation red-proofed by the reviewer directly (above) as well as by the worker in a disposable worktree.
-
-Done: R-0793 — RESOLVED at `42eb4342`/`f39ecfef` (F112 R27), verified by the reviewer independently above. `job_evidence._scrub_paths` now delegates to `packages.common.path_redaction.scrub_paths`, and `manual_attestation._vt_run_v11` now calls the same shared scrubber where it previously called none; a third-party absolute path (`/usr/bin/python3`) is redacted at both call sites and the `R-0790` "+/-" non-match guard is confirmed unregressed, proved by `TestScrubPathsCatchesThirdPartyAbsolutePaths`, `TestScrubPathsDoesNotRegressPlusMinusGuard` and `TestVtRunV11ScrubsAndRehashes`, mutation red-proofed by the worker in the disposable worktree per the Gate paragraph above.
---- END RECORD27 ---
-
---- BEGIN PLAN28 sha256=33d287544d2c9b4c447bfd7cf64deccd7165a28b0c1f1e2492c3a6af3bf5805e ---
+--- BEGIN PLAN29 sha256=a7ed5cae805ccd0df3b904ed8642d8d3d3867b3816013d45e39815c48eb87130 ---
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1; T001-T003b2b2b2 complete and green,
-integration gate PASSED round 19, self-use consumed round 21, Built
-State landed round 22. Round 27 fixed the evidence-packager contract
-(R-0792, R-0793) per the operator's ruling of 2026-09-04 and is
-independently re-verified (RECORD27, this round). All six closure
-preconditions are now satisfied; round 28 rebuilds the evidence job and
-review zip against the fixed contract.
+F112 claimed in STATUS.md round 1. Round 27 fixed the evidence-packager
+contract (R-0792, R-0793); round 28 rebuilt the closure evidence bundle
+and review zip, confirmed READY_FOR_REVIEW/true on the real packaged
+artifact (RECORD28, this round). Closure preconditions 1-5 are now
+satisfied; precondition 6 (the self-use item) is the last one — SU-007
+is already pending in scripts/self_use_queue.json (consumed_by=""), so
+this round plans and RUNS it for real through the shipped generator/
+runner, mirroring F109 R19 and F110 R16's precedent exactly.
 
 ## Goal
 
@@ -185,31 +159,29 @@ raises a task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 28 rebuilds the F112 closure evidence bundle via
-`job_evidence.create_manual_completion_bundle` (the same three scoped
-verification commands round 23 used, via `_run_verifications`, now
-fixed) and the mandatory review zip
-(`scripts/make_review_zip.sh --evidence-dir <path>`), then confirms
-`PACKAGE_STATUS=READY_FOR_REVIEW` / `EVIDENCE_AUTHORITATIVE=true` by
-reading `.review_zip_manifest.json` from INSIDE the built zip.
+Round 29 books round 28's PASS verdict, then runs SU-007 (an "Address
+ledger finding R-0418" job) through
+`packages.orchestration.self_use_runner.run_next_self_use_item` to the
+normal approval gate — never promoted, `consumed_by` stays empty this
+round. The run's defects (if any) and `consumed_by=F112` land in round
+30, together with the closure commit.
 
 ## Next Steps
 
-- Round 29: reviewer authors the STATUS `[x]` line from round 28's
-  reported job_id/package/hash/path/accepted-HEAD; closure commit
-  (STATUS, README capability sync, `self_use_queue` SU-007
-  `consumed_by=F112`, final `.agent/` state); PR opened, not merged.
-- Round 30: Open PR Gate — hosted CI green, docs gate/canary/touched
+- Round 30: register any self-use-run defects as normal R-id findings,
+  author the STATUS `[x]` line from round 28's evidence values, closure
+  commit (STATUS, README capability sync, `self_use_queue` SU-007
+  `consumed_by=F112`, final `.agent/` state), PR opened, not merged.
+- Round 31: Open PR Gate — hosted CI green, docs gate/canary/touched
   suites pass, planner merges per the standing merge-autonomy rule;
   hand back the built zip's name and SHA-256 to the operator.
 
 ## Risks
 
-- R-0784 (self-use/R-0418 curation gap, OPEN) and R-0767 (model-routing
-  seam, OPEN) are both documented pre-existing risks, unrelated to
-  F112, carried forward per precondition 1's "Resolved or documented
-  risk".
-- A PACKAGE_STATUS other than READY_FOR_REVIEW is still a closure
-  BLOCKER even after the R-0792/R-0793 fix; round 28 declares rather
-  than works around any remaining blocking reason.
---- END PLAN28 ---
+- The self-use run may land `blocked` at its own approval gate (F109's
+  SU-005 and F110's SU-006 both did) — a normal outcome per
+  `self_use_runner`'s own docstring, not a failure of this round; its
+  defects route to round 30's findings.
+- R-0784 and R-0767 (both OPEN, unrelated to F112) carry forward as
+  documented risks per precondition 1's "Resolved or documented risk".
+--- END PLAN29 ---
