@@ -4,14 +4,10 @@ Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
 F112 claimed in STATUS.md round 1. Round 27 fixed the evidence-packager
 contract (R-0792, R-0793); round 28 rebuilt the closure evidence bundle
 and review zip, confirmed READY_FOR_REVIEW/true on the real packaged
-artifact (RECORD28). Round 29 discovered that PLAN29's own premise was
-stale: closure precondition 6 (the self-use item) was ALREADY discharged
-at round 21 (commit `1b9ac1ca`, RECORD21) — SU-007 was already planned
-and RUN to the approval gate there (job `848fc4c67d7b405b`, blocked,
-evidence added to the already-open `R-0784` per §3 item 30) — so PLAN29's
-own instruction to run it again was not carried out as new committed
-evidence; round 29 halted at C3 per self-drive protocol G8 and declared
-the discrepancy instead of landing a misleading duplicate.
+artifact; round 29 booked round 28's verdict and discovered closure
+precondition 6 (self-use) was already discharged at round 21, so no
+further self-use work is owed. All six closure preconditions are now
+satisfied. Round 30 is the closure commit and the pull request.
 
 ## Goal
 
@@ -23,27 +19,24 @@ raises a task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 29 booked round 28's PASS verdict (C1) and applied PLAN29
-byte-exact per constraint 1 (C2), then at C3 found PLAN29's premise
-false — precondition 6 needs no run, round 21 already ran and discharged
-it. C3 was executed once (job `962cb3c9b96244ed`, same blocked outcome
-as R21's job) then NOT committed, to avoid corrupting the record with a
-duplicate; `scripts/self_use_queue.json` is untouched, SU-007's
-`consumed_by` stays empty pending the closure commit.
+Round 30 books round 29's PASS verdict, then lands the closure commit
+per docs/roadmap/STATUS_closure_protocol.md algorithm step 5: the
+authored STATUS `[x]` line, the README capability-sync paragraph (same
+commit, R-0154 pin), `scripts/self_use_queue.json`'s SU-007
+`consumed_by=F112` — nothing else. Then the AGENTS.md PR workflow opens
+the pull request; it is NOT merged this round.
 
 ## Next Steps
 
-- Round 30: skip the self-use RUN step (already done at R21); go
-  straight to the closure commit — STATUS `[x]` line, README capability
-  sync, `self_use_queue` SU-007 `consumed_by=F112`, final `.agent/`
-  state, PR opened, not merged.
 - Round 31: Open PR Gate — hosted CI green, docs gate/canary/touched
   suites pass, planner merges per the standing merge-autonomy rule; hand
-  back the built zip's name and SHA-256 to the operator.
+  back the built zip's name and SHA-256 to the operator for archiving
+  and the formal package review.
 
 ## Risks
 
-- `R-0784` (OPEN) already covers this defect class from R21's run; round
-  29's redundant run (job `962cb3c9b96244ed`, same signature) was not
-  committed — round 30 decides whether a third note is warranted.
-- `R-0767` (OPEN, unrelated to F112) carries forward, documented.
+- `R-0784` and `R-0767` (both OPEN, unrelated to F112) are documented,
+  pre-existing risks; F112's live-review verdict is PASS_WITH_RISKS for
+  exactly this reason, matching F109's and F110's own closed precedent.
+- Hosted CI must read green before the PR is merged; a red hosted run is
+  a blocker, not something to route around.
