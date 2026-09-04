@@ -12,33 +12,34 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 12, session 5 - test.list's TEXT branch gains a real per-row
-listing (test_run_id, status, exit_code, created), replacing the old
-bare-count-only print; an honest "No test runs for X." message covers
-the empty case. --json needed no change - it already carried every
-field the text branch now uses, sourced from the same out["runs"]
-list built earlier in _cmd_test_list. This closes the last gap
-round 11's audit found: every catalog list command now either shows a
-date, or is explicitly excused in Risks below.
+Round 13, session 5 - T003 batch 1: `packages/orchestration/list_options.py`
+is a new shared helper (`apply_list_options`, `parse_time_bound`,
+`ListOptionError`) that filters by --since/--until, orders by
+--sort/--desc (newest-first is the DEFAULT with no flags), and caps by
+--limit, over any row list (dicts or objects, via key-function maps) -
+one implementation instead of 18 hand-rolled ones. Wired into `job.list`
+first as the design's proof: `_cmd_list_jobs` reassigns its own `jobs`
+list once before either --json or text rendering, so both branches see
+the same filtered/sorted/limited rows by construction. An unknown
+--sort field exits non-zero naming the valid set, never silently
+ignored.
 
 ## Next Steps
 
+- T003 batch 2+: wire `apply_list_options` into the remaining 17 list
+  commands, one or a few at a time, same pacing T002 used (R2-R12).
+  Order by risk/simplicity: patch.list/loop.list/queue.list/
+  memory.list next (already-dated, well-tested, isolated handlers);
+  loop.list needs care since its JSON rows (per-loop last-run lookup)
+  and text rows (iterating LoopSpec objects) are built from two
+  different collections today - reconcile that shape before wiring.
 - change.list's event-log CREATED date stays open, UNRELATED to D1:
   do_run.py's event stays dead, job.py's real event carries no
   intent_id to join on - see DECISION F262 D1's Alternative section.
-  This is the one remaining named, excused gap.
-- T003 (sort/filter/limit) can start now: every list command either
-  carries a date (job/queue/loop/project/patch/memory/tournament/
-  blocker/decision/propose/review/test/event, event.list's own
-  `timestamp` field counting) or is excused (execution.list/
-  worker.list/config.list: no timestamp concept or a pre-existing
-  --json-unconditional quirk; change.list: DECISION F262 D1).
-- T003 design should start with the shared `_with_list_options()`
-  surface in apps/cli/command_catalog.py (already injects --sort/
-  --since/--until/--limit into every list subcommand per T001) and
-  decide where the actual sort/filter/limit BEHAVIOUR lives - likely
-  one shared helper each list handler's text/json branches call,
-  rather than 18 hand-rolled implementations.
+  execution.list/worker.list/config.list stay excused per Risks.
+- Once every command is wired, add an integration-level smoke test
+  proving the ten-second demo in Acceptance: a named run findable by
+  one command with --since/--sort.
 
 ## Risks
 
