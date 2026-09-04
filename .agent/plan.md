@@ -1,13 +1,13 @@
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
-F112 claimed in STATUS.md round 1. Round 27 fixed the evidence-packager
-contract (R-0792, R-0793); round 28 rebuilt the closure evidence bundle
-and review zip, confirmed READY_FOR_REVIEW/true on the real packaged
-artifact; round 29 booked round 28's verdict and discovered closure
-precondition 6 (self-use) was already discharged at round 21, so no
-further self-use work is owed. All six closure preconditions are now
-satisfied. Round 30 is the closure commit and the pull request.
+F112 claimed in STATUS.md round 1. Round 30 landed the closure commit
+(STATUS [x], README capability sync, self_use_queue SU-007
+consumed_by=F112) but halted before the pull request: flipping F112's
+STATUS line to [x] moved README's own derived "N of 266 accepted" count
+and Tier 3 table Done cell, which round 30's block never named. Round 31
+fixes exactly those two numerals, re-confirms the docs gate green, and
+opens the pull request.
 
 ## Goal
 
@@ -19,24 +19,21 @@ raises a task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 30 books round 29's PASS verdict, then lands the closure commit
-per docs/roadmap/STATUS_closure_protocol.md algorithm step 5: the
-authored STATUS `[x]` line, the README capability-sync paragraph (same
-commit, R-0154 pin), `scripts/self_use_queue.json`'s SU-007
-`consumed_by=F112` — nothing else. Then the AGENTS.md PR workflow opens
-the pull request; it is NOT merged this round.
+Round 31 books round 30's PASS-with-declared-deviation verdict, fixes
+README.md's stale "69 of 266" -> "70 of 266" line and its Tier 3 table
+Done cell "4" -> "5", re-runs the docs gate to confirm green, then opens
+the pull request per the AGENTS.md PR workflow. Not merged this round.
 
 ## Next Steps
 
-- Round 31: Open PR Gate — hosted CI green, docs gate/canary/touched
+- Round 32: Open PR Gate — hosted CI green, docs gate/canary/touched
   suites pass, planner merges per the standing merge-autonomy rule; hand
   back the built zip's name and SHA-256 to the operator for archiving
   and the formal package review.
 
 ## Risks
 
-- `R-0784` and `R-0767` (both OPEN, unrelated to F112) are documented,
-  pre-existing risks; F112's live-review verdict is PASS_WITH_RISKS for
-  exactly this reason, matching F109's and F110's own closed precedent.
+- R-0784 and R-0767 (both OPEN, unrelated to F112) are documented,
+  pre-existing risks; F112's live-review verdict is PASS_WITH_RISKS.
 - Hosted CI must read green before the PR is merged; a red hosted run is
   a blocker, not something to route around.
