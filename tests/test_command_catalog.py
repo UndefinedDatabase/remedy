@@ -21,6 +21,7 @@ import pytest
 from apps.cli.command_catalog import (
     CATALOG,
     GROUPS,
+    _is_list_command,
     get_command,
     get_commands_for_group,
     get_group,
@@ -95,6 +96,33 @@ class TestCatalogExpensive:
         yes_args = [a for a in args if a.name == "--yes"]
         assert len(yes_args) == 1, "job.run must declare exactly one --yes arg"
         assert yes_args[0].is_flag is True, "job.run's --yes must be a flag, not a valued option"
+
+
+class TestListCommandOptions:
+    """F262 T001 - every list-shaped command carries the shared listing flags."""
+
+    def test_every_list_command_carries_all_four_flags(self) -> None:
+        list_commands = [c for c in CATALOG if _is_list_command(c)]
+        assert list_commands, "no list-shaped commands found in CATALOG"
+        for cmd in list_commands:
+            missing = {"--sort", "--since", "--until", "--limit"} - {a.name for a in cmd.args}
+            assert not missing, f"{cmd.command_id} is missing list flags: {missing}"
+
+    def test_every_list_command_has_exactly_one_desc_flag(self) -> None:
+        list_commands = [c for c in CATALOG if _is_list_command(c)]
+        for cmd in list_commands:
+            desc_args = [a for a in cmd.args if a.name == "--desc"]
+            assert len(desc_args) == 1, f"{cmd.command_id} must declare exactly one --desc arg"
+            assert desc_args[0].is_flag is True, f"{cmd.command_id}'s --desc must be a flag"
+
+    def test_the_parser_builds_for_every_list_command(self) -> None:
+        """Building the whole parser tree once is the cheapest proof that no
+        command anywhere in the catalog - list-shaped or not - has two ArgDefs
+        sharing a flag name, which is exactly the collision class this
+        round's add-only-if-missing design avoids by construction."""
+        from apps.cli.grouped import build_parser
+
+        build_parser()
 
 
 class TestCatalogSensitivity:

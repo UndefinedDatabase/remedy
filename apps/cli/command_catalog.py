@@ -22,7 +22,7 @@ Public API::
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 # ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", req
 # Catalog
 # ---------------------------------------------------------------------------
 
-CATALOG: tuple[CommandEntry, ...] = (
+_BASE_CATALOG: tuple[CommandEntry, ...] = (
     # ── init ─────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="init.run",
@@ -4862,6 +4862,66 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("self-repair.proposal-approve",),
     ),
 )
+
+
+# ---------------------------------------------------------------------------
+# List command shared option surface (F262 T001)
+# ---------------------------------------------------------------------------
+
+_LIST_SORT_ARG = ArgDef(
+    "--sort", "Sort field; this command's own columns are the valid set (see --help)",
+    required=False, is_option=True)
+_LIST_DESC_ARG = ArgDef(
+    "--desc", "Reverse the sort order",
+    required=False, is_option=True, is_flag=True)
+_LIST_SINCE_ARG = ArgDef(
+    "--since",
+    "Only rows at or after this time: an ISO-8601 timestamp, or a relative "
+    "form such as 2d or 12h",
+    required=False, is_option=True)
+_LIST_UNTIL_ARG = ArgDef(
+    "--until",
+    "Only rows before this time: an ISO-8601 timestamp, or a relative form "
+    "such as 2d or 12h",
+    required=False, is_option=True)
+_LIST_LIMIT_ARG = ArgDef(
+    "--limit", "Max rows to return",
+    required=False, is_option=True)
+
+_LIST_OPTION_ARGS: tuple[ArgDef, ...] = (
+    _LIST_SORT_ARG,
+    _LIST_DESC_ARG,
+    _LIST_SINCE_ARG,
+    _LIST_UNTIL_ARG,
+    _LIST_LIMIT_ARG,
+)
+
+
+def _is_list_command(entry: CommandEntry) -> bool:
+    """True for a catalog entry whose subcommand is list-shaped (F262 T001)."""
+    return entry.subcommand == "list" or entry.subcommand.endswith("-list")
+
+
+def _with_list_options(entry: CommandEntry) -> CommandEntry:
+    """Attach the shared list-option surface to a list-shaped entry.
+
+    Add-only-if-missing: a command that already declares one of these flags
+    by name (today only `event.list`, which already has `--since` and
+    `--limit`) keeps its own existing ArgDef for that name untouched and
+    only gains the flags it is missing. Appending a second ArgDef of an
+    already-present name crashes argparse at parser-build time with a
+    conflicting-option error (verified against `grouped.build_parser()`).
+    """
+    if not _is_list_command(entry):
+        return entry
+    existing = {a.name for a in entry.args}
+    missing = tuple(a for a in _LIST_OPTION_ARGS if a.name not in existing)
+    if not missing:
+        return entry
+    return replace(entry, args=(*entry.args, *missing))
+
+
+CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_CATALOG)
 
 
 # The whole surface of the UI write door: no other `command_id` above is
