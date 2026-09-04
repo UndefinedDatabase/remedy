@@ -357,6 +357,16 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=120000,
     ),
     ConfigKeySpec(
+        key="cost_preview.confirm_above_usd",
+        env_var="REMEDY_COST_PREVIEW_CONFIRM_ABOVE_USD",
+        description=(
+            "USD threshold above which an expensive command's cost preview "
+            "requires operator confirmation before it runs (F114)"
+        ),
+        value_type=float,
+        default=0.5,
+    ),
+    ConfigKeySpec(
         key="budget.deadline",
         env_var="REMEDY_BUDGET_DEADLINE",
         description="UTC deadline for a job as ISO 8601 string (F018 budgets)",

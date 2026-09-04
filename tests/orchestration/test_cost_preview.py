@@ -102,3 +102,52 @@ class TestInputsRecordWhatWasAsked:
     def test_inputs_carry_the_raw_request(self):
         e = estimate_cost_band(TokenBand.MEDIUM, TokenBand.HIGH, repeat_count=2, config=_config(0.02))
         assert e.inputs == {"band_a": TokenBand.MEDIUM, "band_b": TokenBand.HIGH, "repeat_count": 2}
+
+
+# ---------------------------------------------------------------------------
+# resolve_confirm_above_usd (F114 T002 — the CLI confirm threshold)
+# ---------------------------------------------------------------------------
+
+
+class TestResolveConfirmAboveUsd:
+    def test_documented_default_when_nothing_is_configured(self):
+        from packages.orchestration.cost_preview import (
+            DEFAULT_CONFIRM_ABOVE_USD,
+            resolve_confirm_above_usd,
+        )
+        assert resolve_confirm_above_usd() == DEFAULT_CONFIRM_ABOVE_USD == 0.5
+
+    def test_toml_sets_the_threshold(self, tmp_path):
+        from packages.orchestration.cost_preview import resolve_confirm_above_usd
+        toml = tmp_path / "remedy.toml"
+        toml.write_text("[remedy.cost_preview]\nconfirm_above_usd = 2.5\n")
+        assert resolve_confirm_above_usd(config_path=str(toml)) == 2.5
+
+    def test_env_sets_the_threshold(self, monkeypatch):
+        from packages.orchestration.cost_preview import resolve_confirm_above_usd
+        monkeypatch.setenv("REMEDY_COST_PREVIEW_CONFIRM_ABOVE_USD", "1.25")
+        assert resolve_confirm_above_usd() == 1.25
+
+    def test_negative_configured_value_falls_back_to_default(self, tmp_path):
+        from packages.orchestration.cost_preview import (
+            DEFAULT_CONFIRM_ABOVE_USD,
+            resolve_confirm_above_usd,
+        )
+        toml = tmp_path / "remedy.toml"
+        toml.write_text("[remedy.cost_preview]\nconfirm_above_usd = -1.0\n")
+        assert resolve_confirm_above_usd(config_path=str(toml)) == DEFAULT_CONFIRM_ABOVE_USD
+
+    def test_zero_configured_value_falls_back_to_default(self, tmp_path):
+        from packages.orchestration.cost_preview import (
+            DEFAULT_CONFIRM_ABOVE_USD,
+            resolve_confirm_above_usd,
+        )
+        toml = tmp_path / "remedy.toml"
+        toml.write_text("[remedy.cost_preview]\nconfirm_above_usd = 0\n")
+        assert resolve_confirm_above_usd(config_path=str(toml)) == DEFAULT_CONFIRM_ABOVE_USD
+
+    def test_project_root_form_reads_the_same_file(self, tmp_path):
+        from packages.orchestration.cost_preview import resolve_confirm_above_usd
+        (tmp_path / "remedy.toml").write_text(
+            "[remedy.cost_preview]\nconfirm_above_usd = 3.0\n")
+        assert resolve_confirm_above_usd(project_root=str(tmp_path)) == 3.0

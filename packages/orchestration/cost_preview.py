@@ -11,6 +11,7 @@ built in a later round, entirely inside apps/cli.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
@@ -86,3 +87,43 @@ def estimate_cost_band(
         f"price_basis_usd_per_1k_tokens={price_basis}"
     )
     return CostBandEstimate(min(usd_a, usd_b), max(usd_a, usd_b), basis, inputs)
+
+
+#: Default confirm-above threshold (F114 Design: "around half a dollar").
+#: Config source of truth is cost_preview.confirm_above_usd; this is only
+#: the fallback when nothing is configured (same non-invention posture as
+#: token_economy - a real number, not a magic default hidden in the CLI).
+DEFAULT_CONFIRM_ABOVE_USD = 0.5
+
+
+def resolve_confirm_above_usd(
+    *,
+    config_path: str | None = None,
+    project_root: str | None = None,
+) -> float:
+    """Resolve the F114 confirm-above-USD threshold: env > TOML > default.
+
+    Same config authority as ``resolve_predictive_budget_config``. A
+    malformed or non-positive configured value falls back to
+    ``DEFAULT_CONFIRM_ABOVE_USD`` rather than raising - this threshold is
+    a UX policy, not a budget limit, so a bad config value degrades to
+    the safe default instead of blocking every command.
+    """
+    from packages.orchestration.config import ConfigSource, load_config
+
+    if config_path:
+        cfg = load_config(project_path=Path(config_path))
+    elif project_root:
+        cfg = load_config(project_path=Path(project_root) / "remedy.toml")
+    else:
+        cfg = load_config()
+
+    cv = cfg.get_value("cost_preview.confirm_above_usd")
+    if cv is not None and cv.source != ConfigSource.DEFAULT and cv.value is not None:
+        try:
+            value = float(cv.value)
+        except (TypeError, ValueError):
+            return DEFAULT_CONFIRM_ABOVE_USD
+        if value > 0:
+            return value
+    return DEFAULT_CONFIRM_ABOVE_USD
