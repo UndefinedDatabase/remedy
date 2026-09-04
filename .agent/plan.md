@@ -12,27 +12,27 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 15, session 5 - T003 batch 3: `tournament.list` wired to
+Round 16, session 6 - T003 batch 4: `project.list` wired to
 `apply_list_options` with `default_sort_field="created_at"` -
-`list_tournament_reports()`'s own order was `sorted(root.iterdir())`
-(an arbitrary on-disk directory-name order, not a meaningful one like
-queue.list's priority), so forcing newest-first is the correct,
-unconditional choice here, no D2-style opt-out needed. Single pair -
-`tournament.list`'s dispatch is a direct handler reference, not a
-lambda, so no separate dispatch-site edit was needed.
+`_list_projects_readonly()` already sorted newest-first
+(`test_list_sorted_newest_first`), so forcing the same default via the
+shared helper changes nothing observable and needed no D2-style
+opt-out. Dispatch is a lambda (`"project.list": lambda args: ...`), so
+both the handler body AND the dispatch site needed a pair, unlike
+tournament.list's single pair.
 
 ## Next Steps
 
-- T003 batch 4+: wire the remaining commands - project.list, blocker.list,
-  decision.list, review.list, propose.list, external-builder.submission-list
-  are all shaped like tournament.list (plain dict rows, single collection
-  feeding both --json and text). patch.list (approval_queue.py's
-  format_intent_list table renderer) and loop.list (JSON/text rows built
-  from two different collections) still need their own look before wiring.
-  config.list/worker.list/execution.list stay excused per Risks.
-  Re-check EACH remaining command's OWN tests for an order-asserting test
-  FIRST, per DECISION F262 D2's precedent, before assuming date-descending
-  is safe to force.
+- T003 batch 5+: wire the remaining plain-dict/model-row commands -
+  blocker.list, decision.list, review.list, propose.list,
+  external-builder.submission-list are shaped like
+  project.list/tournament.list. patch.list (approval_queue.py's
+  format_intent_list table renderer) and loop.list (JSON/text rows
+  built from two different collections) still need their own look
+  before wiring. config.list/worker.list/execution.list stay excused
+  per Risks. Re-check EACH remaining command's OWN tests for an
+  order-asserting test FIRST, per DECISION F262 D2's precedent, before
+  assuming date-descending is safe to force.
 - change.list's event-log CREATED date stays open, UNRELATED to D1:
   do_run.py's event stays dead, job.py's real event carries no
   intent_id to join on - see DECISION F262 D1's Alternative section.
