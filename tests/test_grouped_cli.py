@@ -610,6 +610,27 @@ class TestProjectListCLI:
         text = buf.getvalue()
         assert "created=" in text
 
+    def test_limit_caps_returned_projects(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        for i in range(3):
+            save_project(RemyProject(name=f"p{i}", slug=f"p{i}"))
+        from apps.cli.commands.project import _cmd_list_projects
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_projects(json_output=True, limit="2")
+        data = json.loads(buf.getvalue())
+        assert data["project_count"] == 2
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        save_project(RemyProject(name="p1", slug="p1"))
+        from apps.cli.commands.project import _cmd_list_projects
+        with pytest.raises(SystemExit) as exc:
+            _cmd_list_projects(json_output=True, sort="bogus")
+        assert exc.value.code == 1
+
 
 class TestJobListCLI:
     """job.list JSON must include version: 1, job_count and created_at."""

@@ -27,9 +27,32 @@ def _cmd_create_project(name: str, description: str | None) -> None:
     print(project.id)
 
 
-def _cmd_list_projects(*, json_output: bool = False) -> None:
+def _cmd_list_projects(
+    *,
+    json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
+) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.project_registry import _list_projects_readonly
     projects = _list_projects_readonly()
+    try:
+        projects = apply_list_options(
+            projects,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda p: p.created_at,
+                "name": lambda p: p.name,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda p: p.created_at.isoformat(),
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     if json_output:
         print(_json.dumps({
             "version": 1,
@@ -447,7 +470,14 @@ def _cmd_project_adopt(
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
-    "project.list": lambda args: _cmd_list_projects(json_output=args.json),
+    "project.list": lambda args: _cmd_list_projects(
+        json_output=args.json,
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
+    ),
     "project.show": lambda args: _cmd_show_project(args.project_id, json_output=args.json),
     "project.attach-repo": lambda args: _cmd_attach_project_repo(args.project_id, args.repo_path),
     "project.attach-job": lambda args: _cmd_attach_project_job(args.project_id, args.job_id),
