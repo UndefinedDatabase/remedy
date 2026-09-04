@@ -1078,7 +1078,6 @@ class TestABareSlashIsNotAPath:
 
         assert _contains_local_path("fix: read /home/user/secret.txt") is True
 
-
     @pytest.mark.parametrize("text", [
         "F112 R18 C5-fix: correct Range placeholder and changed-files +/- counts in handback",
         "changed-files +/- counts",
