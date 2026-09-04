@@ -443,6 +443,24 @@ class TestCmdListPatchIntents:
         data = json.loads(capsys.readouterr().out)
         assert "created_at" in data["intents"][0]
 
+    def test_limit_caps_returned_intents(self, tmp_path, monkeypatch, capsys):
+        job = self._save(tmp_path, monkeypatch)
+        _add_patch_artifact(job, intent_count=3)
+        save_job(job)
+        from apps.cli.commands.patch import _cmd_list_patch_intents
+        _cmd_list_patch_intents(str(job.id), json_output=True, limit="2")
+        data = json.loads(capsys.readouterr().out)
+        assert data["intent_count"] == 2
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch):
+        job = self._save(tmp_path, monkeypatch)
+        _add_patch_artifact(job)
+        save_job(job)
+        from apps.cli.commands.patch import _cmd_list_patch_intents
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_list_patch_intents(str(job.id), json_output=True, sort="bogus")
+        assert exc_info.value.code == 1
+
 
 # ---------------------------------------------------------------------------
 # CLI: show-patch-intent
