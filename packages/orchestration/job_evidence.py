@@ -19,6 +19,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from packages.common.path_redaction import scrub_paths as _shared_scrub_paths
 from packages.orchestration.pingpong_evidence import (
     _redact_json_value,
     _redact_secrets,
@@ -1652,7 +1653,12 @@ def _scrub_paths(text: str, repo: str) -> str:
     # aimed at pytest's rootdir banner, but applied to every text, so any
     # single-line output ("ABSENT\n") was scrubbed down to "". Paths in the
     # banner are already handled by the replacements above.
-    return text
+    # R-0793: the repo-root/$HOME relativization above catches only those two
+    # roots; any other absolute path (e.g. pytest's own platform banner
+    # "-- /usr/bin/python3") survives it. Delegate to the shared,
+    # already-accepted scrubber (packages.common.path_redaction, F007) for
+    # everything else.
+    return _shared_scrub_paths(text)
 
 
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
@@ -1684,7 +1690,13 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     deselected = sum(int(x) for x in re.findall(r"(\d+)\s+deselected", stdout))
     node_ids = re.findall(r"^(tests/\S+::\S+)\s+(?:PASSED|FAILED|ERROR|SKIPPED)", stdout, re.MULTILINE)
     selected = len(node_ids) if node_ids else (passed + failed + skipped)
-    output_hash = hashlib.sha256(stdout.encode("utf-8", errors="replace")).hexdigest()
+    # Scrub THEN truncate — a path straddling the truncation cut must not
+    # survive it. output_hash is computed over this FINAL, already
+    # scrubbed-and-truncated stdout_summary, never over the raw stdout: it
+    # must always describe the exact bytes stored (contract fixed by R-0792).
+    stdout_summary = _scrub_paths(stdout, repo)[-2000:]
+    stderr_summary = _scrub_paths(result.stderr or "", repo)[-1000:]
+    output_hash = hashlib.sha256(stdout_summary.encode("utf-8", errors="replace")).hexdigest()
     head_sha = ""
     try:
         _h = _sp.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
@@ -1702,8 +1714,8 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         "node_ids": node_ids,
         "output_hash": output_hash,
         "head_sha": head_sha,
-        "stdout_summary": _scrub_paths(stdout[-2000:], repo),
-        "stderr_summary": _scrub_paths((result.stderr or "")[-1000:], repo),
+        "stdout_summary": stdout_summary,
+        "stderr_summary": stderr_summary,
         "duration_seconds": _duration,
     }
 
