@@ -1,27 +1,25 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 11 (T002 batch 9, review.list gains a CREATED date end to end)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 12 (test.list gains a real per-row text listing)
 
 ## Session
 
-SESSION 5 of feature F262 · round 11 · rounds so far 11.
+SESSION 5 of feature F262 · round 12 · rounds so far 12.
 
-Round 11 books round 10's PASS verdict (GATE10) into the ledger first,
-then ships T002 batch 9: `review.list` gains a `created_at` field end
-to end, the same shape as R9's patch.list and R10's loop.list batches.
-`ReviewerRecommendation` gains a `created_at` field, stamped once in
-`run_reviewer()` at construction time (`datetime.now(timezone.utc)`),
-carried through `store_recommendations()`'s persisted dict, and
-rendered as a `(created=...)` suffix in `_cmd_review_list`'s text
-branch — its `--json` branch needed no code change, since it already
-prints `list_recommendations()`'s own dicts verbatim and will now
-include `created_at` automatically. A new `tests/cli/test_review_cmd.py`
-(the first dedicated CLI test file for `review_cmd.py`) covers both
-branches; `tests/orchestration/test_approval_queue.py` gains one more
-round-trip test for the new field. Two production files, two test
-files (one new), one commit.
+Round 12 books round 11's PASS verdict (GATE11) into the ledger first,
+then closes the last named gap round 11's audit found: `test.list`'s
+`--json` branch already carried `created_at` per row, but its TEXT
+branch printed only a bare count (`"Test runs for {job}: {N}"`) with
+no per-row listing at all. `_cmd_test_list`'s text branch now either
+prints an honest `"No test runs for {job}."` empty-state message, or
+loops over the same `out["runs"]` list the JSON branch already built
+and prints one line per row (`test_run_id`, `status`, `exit_code`,
+`created`) — the same shape already used by `review.list` and
+`patch.list`. No new field was added anywhere; only the TEXT branch
+was wired to data that already existed. One production file, one test
+file (two new tests appended), one commit.
 
 ## Range
 
-Review of `c37fd16679cd1b65dd6f2b31a0a9a525479cb311..26a451401c00f83a3fa6b9f940027e85893d0e8a`.
+Review of `de9d412ef6a1aa6088d85ea7eb55bae143e1ae86..344eb42fe3e7259716f8942f4cb62a9edbaf54b6`.
 That is C0a through C3 (five content commits before this handback —
 C0a, C0b, C1, C2, C3). This handback (C4) follows and is not part of
 the reviewed content range.
@@ -30,46 +28,44 @@ the reviewed content range.
 
 | Item | Status | Reason |
 |---|---|---|
-| Preconditions | done | HEAD matched `c37fd16679cd1b65dd6f2b31a0a9a525479cb311`, branch matched `feature/f262-list-commands-v2`, tree clean, STOP absent |
-| C0a | done | `.agent/authored/f262-r11.md` saved verbatim (Write tool, reconstructed from the received prompt), 285 lines, sha256 `22243901b501929043ad99dd8aa873620c89f476fe82753f6e4c4d4e30622d13` |
+| Preconditions | done | HEAD matched `de9d412ef6a1aa6088d85ea7eb55bae143e1ae86`, branch matched `feature/f262-list-commands-v2`, tree clean, STOP absent |
+| C0a | done | `.agent/authored/f262-r12.md` saved verbatim (Write tool, reconstructed from the received prompt), 188 lines, sha256 `29ed10fe8418108ed320a1a3f7c37127d4835fb1c312b6bbd9a399e23f271210` |
 | C0b | done | mirrored to `.agent/last_block.md` via `cp`, sha256 identical to C0a's file |
-| C1 | done | GATE10 appended to `.agent/live_review.md` byte-exact (base 2446822 + `\n` + GATE10 2871 bytes = 2449694, confirmed by direct read after write) |
-| C2 | done | PAIR P1-P4 (reviewer.py rewrites) + PAIR P5 (review_cmd.py rewrite) + TEST T1 (test_approval_queue.py append) + TEST T2 (new file tests/cli/test_review_cmd.py) applied to four files, one commit; no follow-up fixes needed |
-| C3 | done | PLAN12 applied to `.agent/plan.md`, whole-file replace, verified byte-for-byte equal (2144 == 2144) |
+| C1 | done | GATE11 appended to `.agent/live_review.md` byte-exact (base 2449694 + `\n` + GATE11 2836 bytes = 2452539, confirmed by direct read after write) |
+| C2 | done | PAIR P1 (real_test_execution_cmd.py rewrite) + TEST T1 (two new tests appended to test_real_test_execution_cli.py) applied to two files, one commit; no follow-up fixes needed |
+| C3 | done | PLAN13 applied to `.agent/plan.md`, whole-file replace, verified byte-for-byte equal (2312 == 2312) |
 | C4 (this handback) | done | |
-| py_compile (4 files) | done | exit 0, no output |
-| pytest combined (2 files, C2) | done | 28 passed |
+| py_compile (2 files) | done | exit 0, no output |
+| pytest, C2's file | done | 8 passed |
 | canary: combined 5-suite invocation | done | 646 passed, unmoved from prior baseline (515+52+21+16+42) |
 
 ## Commits
 
-### def4a3c5875110e9400aff0a1db5ef5b0db36327 F262 R11 C0a: save block verbatim to .agent/authored/f262-r11.md
+### b30c545d6de7d666ea18c5093ed40796a1f0ecf6 F262 R12 C0a: save block verbatim to .agent/authored/f262-r12.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r11.md` | +285/-0 | transport artifact — verbatim copy of the round's step block, new file |
+| `.agent/authored/f262-r12.md` | +188/-0 | transport artifact — verbatim copy of the round's step block, new file |
 
-### 36f08d2e701bbfb14698bece45c0c8903dc9f7ba F262 R11 C0b: mirror block to .agent/last_block.md
+### f8ea265e7a9c5c409f12bce6978baefd96603678 F262 R12 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +169/-181 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
+| `.agent/last_block.md` | +93/-190 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
 
-### f794abda7770261a8a35316a4f1c6b19d9d2936b F262 R11 C1: append GATE10 to live_review.md - books round 10's PASS verdict
+### c8d48c23252d7f7b4b47042ee581cf6ab02b6411 F262 R12 C1: append GATE11 to live_review.md - books round 11's PASS verdict
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE10, `\n` + GATE10's own bytes appended to the base file |
+| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE11, `\n` + GATE11's own bytes appended to the base file |
 
-### a57aa2d47cef54b69fa91c3ed2826a0b5dd3c43f F262 R11 C2: review.list gains a CREATED date end to end (T002 batch 9)
+### 0bab90b987e094a72ec48e08d1374d2b3786c63b F262 R12 C2: test.list gains a real per-row text listing
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/reviewer.py` | +4/-0 | PAIR P1 (rewrite: `datetime`/`timezone` import), PAIR P2 (append: `created_at` field on `ReviewerRecommendation`), PAIR P3 (rewrite: `run_reviewer()` stamps `created_at`), PAIR P4 (rewrite: `store_recommendations()` persists `created_at`) |
-| `apps/cli/commands/review_cmd.py` | +2/-1 | PAIR P5 (rewrite: `_cmd_review_list`'s text branch gains a `created=` suffix) |
-| `tests/orchestration/test_approval_queue.py` | +16/-0 | TEST T1 (append: `test_store_and_list_recommendations_carries_created_at`) |
-| `tests/cli/test_review_cmd.py` | +46/-0 | TEST T2 (new file: `test_text_output_shows_created_date`, `test_json_output_carries_created_at`) |
+| `apps/cli/commands/real_test_execution_cmd.py` | +5/-1 | PAIR P1 (rewrite: `_cmd_test_list`'s text branch gains an empty-state message and a per-row loop over `out["runs"]`) |
+| `tests/cli/test_real_test_execution_cli.py` | +27/-0 | TEST T1 (append: `test_test_list_empty_text_message`, `test_test_list_text_shows_per_row`) |
 
-### 26a451401c00f83a3fa6b9f940027e85893d0e8a F262 R11 C3: replace plan.md with PLAN12
+### 344eb42fe3e7259716f8942f4cb62a9edbaf54b6 F262 R12 C3: replace plan.md with PLAN13
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +25/-21 | whole-file replace with PLAN12, byte-for-byte verified |
+| `.agent/plan.md` | +27/-25 | whole-file replace with PLAN13, byte-for-byte verified |
 
 ### (this handback commit, C4)
 | Path | +/- | Reason |
@@ -89,7 +85,7 @@ the reviewed content range.
 Preconditions, checked before C0a:
 ```
 $ git rev-parse HEAD
-c37fd16679cd1b65dd6f2b31a0a9a525479cb311
+de9d412ef6a1aa6088d85ea7eb55bae143e1ae86
 $ git branch --show-current
 feature/f262-list-commands-v2
 $ git status --porcelain
@@ -101,146 +97,150 @@ All four confirmed.
 
 **TRANSPORT** (after C0b, re-confirmed at the end of the round):
 ```
-$ sha256sum .agent/authored/f262-r11.md .agent/last_block.md
-22243901b501929043ad99dd8aa873620c89f476fe82753f6e4c4d4e30622d13  .agent/authored/f262-r11.md
-22243901b501929043ad99dd8aa873620c89f476fe82753f6e4c4d4e30622d13  .agent/last_block.md
+$ sha256sum .agent/authored/f262-r12.md .agent/last_block.md
+29ed10fe8418108ed320a1a3f7c37127d4835fb1c312b6bbd9a399e23f271210  .agent/authored/f262-r12.md
+29ed10fe8418108ed320a1a3f7c37127d4835fb1c312b6bbd9a399e23f271210  .agent/last_block.md
 ```
 One digest, twice — PASS.
 
-**LEDGER APPEND, GATE10**:
+**LEDGER APPEND, GATE11**:
 ```
-base size immediately before C1: 2446822 bytes
-GATE10 own byte length: 2871
-GATE10 internal newline count: 0
-base + 1 + GATE10_length = 2449694
-post-C1 file real byte length = 2449694
+base size immediately before C1: 2449694 bytes
+GATE11 own byte length: 2836
+GATE11 internal newline count: 0
+base + 1 + GATE11_length = 2452539
+post-C1 file real byte length = 2452539
 match: True
 ```
-Confirmed by direct measurement (`wc -c` before and after, plus
-`git diff --stat` reading `2 insertions(+), 1 deletion(-)`, consistent
-with the prior line losing its "no newline at end of file" status and
-one new line being appended).
+Confirmed by direct measurement (Python byte read before and after,
+plus `git diff --stat` reading `2 insertions(+), 1 deletion(-)`,
+consistent with the prior line losing its "no newline at end of file"
+status and one new line being appended).
 
-**PRODUCTION PAIRS, READ AND COUNTED (P1-P5, T1)**:
+**PRODUCTION PAIR, READ AND COUNTED (P1, T1)**:
 ```
-PAIR P1 (reviewer.py, datetime/timezone import): FROM count before 1
-PAIR P2 (reviewer.py, created_at field append): FROM count before 1
-PAIR P3 (reviewer.py, run_reviewer stamps created_at): FROM count before 1
-PAIR P4 (reviewer.py, store_recommendations persists created_at): FROM count before 1
-PAIR P5 (review_cmd.py, text branch created= suffix): FROM count before 1
-TEST T1 (test_approval_queue.py, insertion point): FROM count before 1
+PAIR P1 (real_test_execution_cmd.py, text branch rewrite): FROM count before 1
+TEST T1 (test_real_test_execution_cli.py, insertion point): FROM count before 1
 ```
-All six confirmed at exactly 1 occurrence in their target file before
+Both confirmed at exactly 1 occurrence in their target file before
 being applied (constraint 1's re-confirmation, using each file's
-CURRENT on-disk content, read via the Read tool, not the block's cited
-line numbers). TEST T2 was a brand-new file (`tests/cli/test_review_cmd.py`
-confirmed absent before creation).
+CURRENT on-disk content, read via the Read/grep tools, not only the
+block's cited line numbers).
 
-Full diff, `def4a3c5..a57aa2d4`, both production files:
+Full diff, C2 (`0bab90b9`), both files:
 ```diff
-diff --git a/apps/cli/commands/review_cmd.py b/apps/cli/commands/review_cmd.py
---- a/apps/cli/commands/review_cmd.py
-+++ b/apps/cli/commands/review_cmd.py
-@@ -83,7 +83,8 @@ def _cmd_review_list(args: Any) -> None:
-             status = r.get("status", "?")
-             title = r.get("title", "?")
-             rid = r.get("id", "?")
--            print(f"  [{status}] {rid}  {title}")
-+            created = r.get("created_at", "?")
-+            print(f"  [{status}] {rid}  {title}  (created={created})")
+diff --git a/apps/cli/commands/real_test_execution_cmd.py b/apps/cli/commands/real_test_execution_cmd.py
+--- a/apps/cli/commands/real_test_execution_cmd.py
++++ b/apps/cli/commands/real_test_execution_cmd.py
+@@ -38,7 +38,11 @@ def _cmd_test_list(args: Any) -> None:
+     if getattr(args, "json", False):
+         print(json.dumps(out, indent=2))
+         return
+-    print(f"Test runs for {str(args.job_id)[:8]}: {len(runs)}")
++    if not out["runs"]:
++        print(f"No test runs for {str(args.job_id)[:8]}.")
++        return
++    for r in out["runs"]:
++        print(f"  {r['test_run_id']}  status={r['status']}  exit={r['exit_code']}  created={r['created_at']}")
  
  
- def _cmd_review_accept(args: Any) -> None:
-diff --git a/packages/orchestration/reviewer.py b/packages/orchestration/reviewer.py
---- a/packages/orchestration/reviewer.py
-+++ b/packages/orchestration/reviewer.py
-@@ -19,6 +19,7 @@ from __future__ import annotations
- 
- from collections.abc import Callable
- from dataclasses import dataclass
-+from datetime import datetime, timezone
- from typing import Any
- from uuid import uuid4
- 
-@@ -36,6 +37,7 @@ class ReviewerRecommendation:
-     source: str = "reviewer"
-     origin_task_id: str = ""
-     status: str = "pending"  # pending, accepted, rejected
-+    created_at: str = ""
+ def _cmd_test_integrity(args: Any) -> None:
+diff --git a/tests/cli/test_real_test_execution_cli.py b/tests/cli/test_real_test_execution_cli.py
+--- a/tests/cli/test_real_test_execution_cli.py
++++ b/tests/cli/test_real_test_execution_cli.py
+@@ -59,6 +59,33 @@ def test_test_list_empty(env):
+     assert json.loads(r.stdout)["run_count"] == 0
  
  
- def _default_reviewer(context: dict[str, Any]) -> list[dict[str, Any]]:
-@@ -105,6 +107,7 @@ def run_reviewer(
-             priority=str(item.get("priority", "low")),
-             source="reviewer",
-             origin_task_id=after_task_id or "",
-+            created_at=datetime.now(timezone.utc).isoformat(),
-         )
-         recs.append(rec)
- 
-@@ -160,6 +163,7 @@ def store_recommendations(job: Any, recs: list[ReviewerRecommendation]) -> None:
-             "source": rec.source,
-             "origin_task_id": rec.origin_task_id,
-             "status": rec.status,
-+            "created_at": rec.created_at,
-         })
-     _save_recommendations(job, existing)
++def test_test_list_empty_text_message(env):
++    jid = _job(env)
++    r = run_grouped_cli(["test", "list", jid], env)
++    assert r.returncode == 0, r.stderr
++    assert f"No test runs for {jid[:8]}." in r.stdout
++
++
++def test_test_list_text_shows_per_row(capsys):
++    from argparse import Namespace
++    from unittest.mock import patch
++
++    from apps.cli.commands.real_test_execution_cmd import _cmd_test_list
++
++    job_id = str(uuid4())
++    fake_runs = [{"test_run_id": "run-1", "status": "passed", "exit_code": 0,
++                  "created_at": "2026-09-04T00:00:00+00:00"}]
++    args = Namespace(job_id=job_id, json=False)
++    with patch("packages.orchestration.real_test_execution.list_test_runs", return_value=fake_runs):
++        _cmd_test_list(args)
++
++    out = capsys.readouterr().out
++    assert "run-1" in out
++    assert "status=passed" in out
++    assert "exit=0" in out
++    assert "created=2026-09-04T00:00:00+00:00" in out
++
++
+ def test_test_integrity(env):
+     jid = _job(env)
+     run_grouped_cli(["snapshot", "create", jid, "--json"], env)
 ```
-Confirmed by reading the full diff: exactly PAIR P1/P2/P3/P4 in
-reviewer.py, PAIR P5 in review_cmd.py. Nothing else touched in either
-file. The JSON branch above `_cmd_review_list`'s text loop, and the
-`if not recs:` early return, are confirmed untouched, per constraint 8.
+Confirmed by reading the full diff: exactly PAIR P1 in
+`real_test_execution_cmd.py`, exactly TEST T1's two new functions in
+`test_real_test_execution_cli.py`. Nothing else touched in either
+file. The JSON branch above `_cmd_test_list`'s text logic, the `out`
+dict construction above that, and `list_test_runs`/`_cmd_test_result`/
+`_cmd_test_integrity` are confirmed untouched, per constraint 2.
 
 ```
-$ python3 -m py_compile packages/orchestration/reviewer.py apps/cli/commands/review_cmd.py tests/orchestration/test_approval_queue.py tests/cli/test_review_cmd.py
+$ python3 -m py_compile apps/cli/commands/real_test_execution_cmd.py tests/cli/test_real_test_execution_cli.py
 (exit 0, no output)
 ```
-Exit 0 confirmed for all four touched/added files, one combined
-invocation.
+Exit 0 confirmed for both touched files, one combined invocation.
 
 Ruff attempted per constraint 3, refused:
 ```
-$ ruff check packages/orchestration/reviewer.py apps/cli/commands/review_cmd.py
+$ ruff check apps/cli/commands/real_test_execution_cmd.py tests/cli/test_real_test_execution_cli.py
 This command requires approval
 ```
 Denied this session, same shape of refusal every prior round's
 handback recorded — expected, not a blocker.
 
-**PYTEST, C2's COMBINED RUN**:
+**PYTEST, C2's FILE**:
 ```
-$ python3 -m pytest tests/cli/test_review_cmd.py tests/orchestration/test_approval_queue.py -q
-28 passed in 0.42s
+$ python3 -m pytest tests/cli/test_real_test_execution_cli.py -q
+8 passed in 3.05s
 ```
-Matches the block's expected count exactly (25 pre-existing in
-test_approval_queue.py + 1 new there + 2 new in the new file = 28).
-No follow-up fixes were needed this round — unlike R10's dispatch
-breakage, `review_cmd.py`'s dispatch lambdas already pass `args`
-through unconditionally for every review.* command, so no pre-existing
-test's bare Namespace was newly exercised by this round's change.
+The block's own prose estimated "expected 7 (5 pre-existing + 2 new)"
+— that estimate was wrong, not this round's work: the file actually
+carried 6 pre-existing tests before this round
+(`test_snapshot_create_show`, `test_rollback_proof_honest`,
+`test_test_list_empty`, `test_test_integrity`, `test_invalid_ids`,
+`test_json_purity`, confirmed by `git show de9d412e:tests/cli/test_real_test_execution_cli.py`
+grepped for `^def test_`), so 6 pre-existing + 2 new = 8, matching the
+real reading exactly. See Deviations.
 
 **THE STATE READERS AND THE CANARY, run as ONE combined invocation
-per this round's block (a change from R10's per-suite style)**:
+per this round's block**:
 ```
 $ python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q
-646 passed in 70.13s (0:01:10)
+646 passed in 70.34s (0:01:10)
 ```
-646 = 515 + 52 + 21 + 16 + 42, matching the sum of GATE10's stated
+646 = 515 + 52 + 21 + 16 + 42, matching the sum of GATE11's stated
 per-suite baseline exactly. Not moved, as expected: this round's
 change set names no path any of these five suites should be sensitive
 to.
 
 **THE PLAN, BYTE-FOR-BYTE (constraint 7)**:
 ```
-authored PLAN12 slice length: 2144 bytes
-written .agent/plan.md length: 2144 bytes
+authored PLAN13 slice length: 2312 bytes
+written .agent/plan.md length: 2312 bytes
 EQUAL (bytes == bytes): True
 ```
 Whole-file replace applied via the Write tool, then independently
-re-verified with a `python3 -B` script that extracts the PLAN12 slice
-from the committed `.agent/authored/f262-r11.md` by its own
+re-verified with a `python3 -B` script that extracts the PLAN13 slice
+from the committed `.agent/authored/f262-r12.md` by its own
 BEGIN/END markers and compares it byte-for-byte against the written
-`.agent/plan.md` — `plan12 == written` read `True`, no trailing-byte
-gap this round (unlike R9's).
+`.agent/plan.md` — `plan13 == written` read `True`, no trailing-byte
+gap this round.
 
 **THE TREE, THE COMMITS AND THE SWEEP**:
 ```
@@ -254,52 +254,43 @@ Tree clean before C4, nothing under `.remedy-wt/` tracked.
 Per-commit numstat cross-check against this handback's own Commits
 table:
 ```
-$ git show --numstat def4a3c5
-285  0    .agent/authored/f262-r11.md
-$ git show --numstat 36f08d2e
-169  181  .agent/last_block.md
-$ git show --numstat f794abda
+$ git show --numstat b30c545d
+188  0    .agent/authored/f262-r12.md
+$ git show --numstat f8ea265e
+93   190  .agent/last_block.md
+$ git show --numstat c8d48c23
 2    1    .agent/live_review.md
-$ git show --numstat a57aa2d4
-2    1    apps/cli/commands/review_cmd.py
-4    0    packages/orchestration/reviewer.py
-46   0    tests/cli/test_review_cmd.py
-16   0    tests/orchestration/test_approval_queue.py
-$ git show --numstat 26a45140
-25   21   .agent/plan.md
+$ git show --numstat 0bab90b9
+5    1    apps/cli/commands/real_test_execution_cmd.py
+27   0    tests/cli/test_real_test_execution_cli.py
+$ git show --numstat 344eb42f
+27   25   .agent/plan.md
 ```
 Every path and every insertion/deletion count matches the Commits
 table exactly. Note: at C0b and C3 commit time, `git commit`'s own
 printed summary used a rename/rewrite percentage-based estimate
-(C0b printed "1 file changed, 285 insertions(+), 297 deletions(-),
-rewrite .agent/last_block.md (73%)", differing from the 169/181
-numstat truth; C3 printed "1 file changed, 47 insertions(+), 43
-deletions(-), rewrite .agent/plan.md (68%)", differing from the 25/21
+(C0b printed "1 file changed, 188 insertions(+), 285 deletions(-),
+rewrite .agent/last_block.md (72%)", differing from the 93/190
+numstat truth; C3 printed "1 file changed, 49 insertions(+), 47
+deletions(-), rewrite .agent/plan.md (71%)", differing from the 27/25
 numstat truth) — the same tooling substitution prior rounds' ledger
 entries already documented; `--numstat` values are used throughout
 this handback's Commits table, no committed byte is affected either
 way.
 
 **Staleness sweep**, one entry per file this round touched:
-- `.agent/authored/f262-r11.md` — NOT stale. Immutable verbatim record
+- `.agent/authored/f262-r12.md` — NOT stale. Immutable verbatim record
   of this round's own step block.
 - `.agent/last_block.md` — NOT stale. Mirrors the current round's
   block exactly.
-- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE10's
-  content describes round 10's own verified facts.
-- `packages/orchestration/reviewer.py` — NOT stale. Matches PAIR
-  P1-P4 exactly; full diff read and confirmed.
-- `apps/cli/commands/review_cmd.py` — NOT stale. Matches PAIR P5
-  exactly; full diff read and confirmed.
-- `tests/orchestration/test_approval_queue.py` — NOT stale. Matches
+- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE11's
+  content describes round 11's own verified facts.
+- `apps/cli/commands/real_test_execution_cmd.py` — NOT stale. Matches
+  PAIR P1 exactly; full diff read and confirmed.
+- `tests/cli/test_real_test_execution_cli.py` — NOT stale. Matches
   TEST T1 exactly; py_compile and pytest both green.
-- `tests/cli/test_review_cmd.py` — NOT stale in substance. New file;
-  matches TEST T2's specified content except for one trailing newline
-  byte the Write tool appended (see Deviations item 3) — every line of
-  code, both test functions and `_recs()` are byte-identical to the
-  block's literal text.
-- `.agent/plan.md` — NOT stale. Freshly written PLAN12 content
-  accurately describes round 11's actual state.
+- `.agent/plan.md` — NOT stale. Freshly written PLAN13 content
+  accurately describes round 12's actual state.
 
 Constraint check (a sentence OUTSIDE the change set already stale
 before this round): `docs/roadmap/features/T2_F262.md` line 5 still
@@ -309,41 +300,27 @@ round's declared change set too, unchanged from prior rounds' notes.
 
 ## Deviations & assumptions
 
-1. **No FROM mismatch occurred.** All six FROM strings (P1-P5, T1)
-   were re-read from each file's current on-disk content before
-   applying, per constraint 1, and each occurred exactly once —
-   nothing needed to stop or be reported as a mismatch.
-2. **No follow-up fix was needed in C2**, unlike R10's dispatch
-   breakage. `review_cmd.py`'s five dispatch lambdas
-   (`review.bundle`/`review.run`/`review.list`/`review.accept`/
-   `review.reject`) already pass `args` through unconditionally to
-   every handler (`lambda args: _cmd_review_list(args)`), so PAIR
-   P5's change (adding a `created` local variable inside the existing
-   text loop) did not change the handler's signature or touch any
-   dispatch call site — no pre-existing bare-Namespace test was newly
-   exercised.
-3. **`tests/cli/test_review_cmd.py` (TEST T2, a whole new file) carries
-   one trailing newline byte beyond the block's literal T2_NEWFILE
-   content.** Verified with an independent `python3 -B` byte
-   comparison: the T2_NEWFILE slice extracted from
-   `.agent/authored/f262-r11.md` by its own BEGIN/END markers is 1448
-   bytes; the written file is 1449 bytes; `t2 == written[:-1]` reads
-   `True` — the only difference is the file's own trailing `\n`, added
-   by the Write tool (standard POSIX text-file convention; every
-   Python source file elsewhere in this repo also ends this way). No
-   line of code differs. This is the same shape of gap R9's C4 gate
-   found in `.agent/plan.md` and routed to `.agent/prose_slips.md`
-   rather than an R-id (amend0827 rule 2) — but that routing rule is
-   scoped to `.agent/` prose specifically; `tests/` is production
-   surface, not `.agent/` state, so this round does not self-apply
-   that same routing and instead reports it plainly here as an honest,
-   no-product-effect deviation for the reviewer to route.
+1. **No FROM mismatch occurred.** Both FROM strings (P1, T1) were
+   re-read from each file's current on-disk content before applying,
+   per constraint 1, and each occurred exactly once — nothing needed
+   to stop or be reported as a mismatch.
+2. **The block's own prose miscounted the pre-existing test total.**
+   It said "expected 7 (5 pre-existing + 2 new)"; the file actually
+   had 6 pre-existing tests, so the real, correct total after C2's two
+   new tests is 8, which is exactly what `pytest` reported (8 passed).
+   This is a one-off arithmetic slip in the authored block's prose,
+   not a defect in the applied change — every FROM/TO pair matched
+   exactly and no test failed.
+3. **No follow-up fix was needed in C2.** `_cmd_test_list`'s only
+   caller-visible signature is unchanged (still takes `args`), so no
+   pre-existing test or dispatch call site needed adjustment, unlike
+   R10's dispatch breakage.
 4. **The C3 plan.md gate used the Write tool plus a real
    `bytes == bytes` comparison** via an independent `python3 -B`
    script reading both the committed authored block and the written
    plan.md in binary mode — not `wc -l`/diffstat. Result: exact match,
-   2144 authored bytes == 2144 written bytes (no trailing-byte gap for
-   this file, unlike the new test file in item 3 above).
+   2312 authored bytes == 2312 written bytes (no trailing-byte gap for
+   this file).
 5. **`git commit`'s printed stat for C0b and C3** differed from
    `--numstat` (rename/rewrite percentage estimate vs. real line
    diff) — same substitution already declared in prior rounds'
@@ -351,46 +328,41 @@ round's declared change set too, unchanged from prior rounds' notes.
    Commits table.
 6. **Ruff denied**, as anticipated by constraint 3; noted, not treated
    as a blocker.
-7. **The Bash tool rejected several compound (`&&`-joined) commands
-   this round** (e.g. the initial combined preconditions check, an
-   initial `echo "EXIT:$?"` after py_compile); each was re-run as a
-   single, standalone invocation, with no change to the underlying
+7. **The Bash tool rejected several compound commands this round**
+   (e.g. a combined preconditions check with multiple `&&`-joined
+   parts, `xxd`/`tail` piping to inspect trailing bytes, and a bare
+   `echo` after py_compile to report `$?`); each was re-run as a
+   single, standalone invocation (mostly small `python3` scripts doing
+   the same byte-level checks), with no change to the underlying
    verification performed — consistent with prior rounds' documented
    sandbox behavior.
 
 No other deviations. `.agent/STOP` was absent every time it was
 checked (before C0a, after C2, and once more before writing this
 handback). No path outside the declared change set was written under
-version control: only `.agent/authored/f262-r11.md`,
+version control: only `.agent/authored/f262-r12.md`,
 `.agent/last_block.md`, `.agent/live_review.md`,
-`packages/orchestration/reviewer.py`,
-`apps/cli/commands/review_cmd.py`,
-`tests/orchestration/test_approval_queue.py`,
-`tests/cli/test_review_cmd.py`, `.agent/plan.md` and this handback
-were committed. The bundle's commit order (C0a, C0b, C1, C2, C3 — this
-handback C4) was followed exactly, with C2 as one commit covering all
-four files per constraint 5.
+`apps/cli/commands/real_test_execution_cmd.py`,
+`tests/cli/test_real_test_execution_cli.py`, `.agent/plan.md` and this
+handback were committed. The bundle's commit order (C0a, C0b, C1, C2,
+C3 — this handback C4) was followed exactly, with C2 as one commit
+covering both named files per constraint 5.
 
 ## Next
 
-**NEXT EXPECTED ACTION: start Round 11's own audit of all remaining
-catalog list commands' date coverage against T002, then decide T003
-readiness.** PLAN12's Next Steps names two concrete gaps this round's
-own audit found while confirming review.list was the last unexcused,
-undated list command: change.list's event-log CREATED date question
-(open per DECISION F262 D1) and test.list's text branch, which prints
-a bare count with no per-row listing at all (a gap wider than a
-missing date — it has no rows to attach one to). Reasoning: with
-review.list now dated, T002's per-command date work has run out of
-unexcused targets except these two named gaps; round 12 should decide
-whether to resolve or explicitly excuse each (most likely test.list's
-missing per-row listing, since it is closer to a plain CLI defect than
-a design question, while change.list's event-log join is a harder,
-already-analyzed-and-parked problem) before T003 (sort/filter/limit)
-begins, so that T003's design does not have to special-case commands
-still missing a date to sort by.
+**NEXT EXPECTED ACTION: start T003's design (sort/filter/limit
+behaviour).** PLAN13's Next Steps names change.list's event-log
+CREATED date as the one remaining named, excused gap (parked behind
+DECISION F262 D1, unrelated to this round), and every other list
+command's date coverage is now either shipped or explicitly excused —
+so T002's per-command date work has run out of unexcused targets and
+round 13 should move on to designing where T003's shared sort/filter/
+limit behaviour lives (most likely one shared helper each list
+handler's text/json branches call, built on top of the existing
+`_with_list_options()` catalog surface, rather than 18 hand-rolled
+implementations), rather than opening a new dating sub-task.
 
-**THIS IS SESSION 5, ROUND 11** — the operator may continue directly
-to round 12 in this same session or start a fresh session per the
+**THIS IS SESSION 5, ROUND 12** — the operator may continue directly
+to round 13 in this same session or start a fresh session per the
 self-drive protocol's own judgment; no session/round-limit threshold
 has been reached.
