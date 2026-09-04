@@ -12,21 +12,22 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 1, session 1 — claim F114 in the STATUS ledger and set this file
-and `.agent/context.md`. Branch already cut. Round 2 extracts the shared
-cost-arithmetic helper (`packages/orchestration/budget_guard.py:482-484`,
-today inlined inside `predict_next_task_cost`) into
-`packages/orchestration/token_economy.py` as `tokens_to_cost_usd()`, with
-`predict_next_task_cost` refactored to call it (no behavior change).
-Round 3 ships the new module `packages/orchestration/cost_preview.py`
-(band estimator + basis labels) and its tests, completing T001.
+Round 2 books round 1's PASS verdict (RECORD1) and extracts the shared
+cost-arithmetic helper: `token_economy.tokens_to_cost_usd()` (new, pure,
+None-propagating) replaces the inlined multiply at
+`budget_guard.py:482-484` inside `predict_next_task_cost`, which now
+calls it. Round 1's plan text named the wrong regression suite
+(`test_budget_guard.py`); the real coverage of `predict_next_task_cost`
+is `tests/orchestration/test_predictive_budget.py`, and the new
+function's own unit tests land in
+`tests/orchestration/test_token_economy.py` (both suites, plus
+`test_budget_guard.py` itself, gate this round).
 
 ## Next Steps
 
-- Round 2: extract `tokens_to_cost_usd()`, refactor
-  `predict_next_task_cost` to use it, regression-prove
-  `tests/orchestration/test_budget_guard.py` unchanged.
-- Round 3: `cost_preview.py` (`estimate_cost_band`) +
+- Round 3: `packages/orchestration/cost_preview.py` (`estimate_cost_band`,
+  band computation from `PredictiveBudgetConfig`'s per-`TokenBand` class
+  defaults, basis labels, "estimate unavailable" when no price basis) +
   `tests/orchestration/test_cost_preview.py` — completes T001.
 - T002: CLI helper (`apps/cli`) — threshold confirm, tty/non-tty
   semantics (pipe never hangs), `--yes` audited, reusing
@@ -38,6 +39,5 @@ Round 3 ships the new module `packages/orchestration/cost_preview.py`
 
 - No `cost_preview.py` or expensive-command registry exists yet — T003
   is greenfield, not a rename.
-- Two class vocabularies exist (`model_routing.TASK_CLASS_TIERS` vs
-  `token_economy.TokenBand`); the estimator commits to `TokenBand`
-  (round 3 states which and why).
+- The estimator commits to `token_economy.TokenBand`, distinct from
+  `model_routing.TASK_CLASS_TIERS` (round 3 states which and why).
