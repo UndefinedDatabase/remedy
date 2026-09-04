@@ -12,26 +12,30 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 2, session 1 — T001 ships: the shared listing-option surface
-attached to every list-shaped catalog command by construction
-(`apps/cli/command_catalog.py`, `_with_list_options`), plus a
-catalog-derived coverage test. The flags parse everywhere now; no
-store's OUTPUT changes yet — that is T002/T003.
+Round 3, session 1 — T002 batch 1: text-output dates for the four
+commands whose store already has them and whose --json already shows
+them (blocker.list, decision.list, approval.policy-list,
+self-repair.proposal-list), plus new coverage for the two that had
+none before.
 
 ## Next Steps
 
-- Round 3 (T002): audit which stores already record CREATED/UPDATED,
-  surface both on every list row; an unknown date renders as unknown,
-  never invented. Widest slice — plan the commit split before starting.
-- T003: the behaviour behind the four flags (per-command `--sort`
-  choices, `--since`/`--until` parsing, `--limit`, newest-first default)
-  now that T001's flags exist to carry it.
+- Round 4 (T002 batch 2): memory.list (add `updated_at` to its json
+  dict, then text); tournament.list and external-builder.submission-list
+  (both DROP their timestamp from the json shape today — restore it,
+  then add text).
+- Round 5 (T002 batch 3): job.list/queue.list/project.list need
+  `--json` added before a date can appear there; loop.list/patch.list
+  have no timestamp on their own model and need a design decision.
+- Round 6+: builder.adapter-list, execution.* (ignore --json entirely,
+  pre-existing), worker.list, worker.registry-list, change.list,
+  review.list, config.list have NO timestamp concept — most likely
+  render "unknown" (Acceptance) rather than invent one. T003 starts
+  once date coverage is far enough along to sort by.
 
 ## Risks
 
-- T001 leaves the flags accepted but inert everywhere except
-  `event.list`'s pre-existing `--since`/`--limit`, kept as-is rather
-  than replaced to avoid an argparse collision (see round 2's handback).
-- The mechanical rule catches 28 commands; `snapshot list-applies`
-  (starts with, not ends with, `list`) is excluded — round 3 states
-  whether it belongs, explicitly, rather than widening the rule.
+- The full per-store audit (28 commands) lives in this round's
+  handback, not restated here every round.
+- Stores with no timestamp concept may render "unknown" permanently —
+  that satisfies Acceptance, it is not a gap to close later.
