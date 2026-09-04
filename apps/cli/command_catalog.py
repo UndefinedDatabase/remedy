@@ -84,6 +84,11 @@ class CommandEntry:
     requires_permission: bool = False
     may_mutate_repo: bool = False
     may_execute_commands: bool = False
+    #: True marks a command whose real-money spend requires an upfront
+    #: estimate and, above a configured threshold, operator confirmation
+    #: before it runs (F114). Explicit and reviewable per command - never
+    #: derived from another flag such as may_execute_commands.
+    is_expensive: bool = False
     related: tuple[str, ...] = ()
 
 
@@ -421,10 +426,15 @@ CATALOG: tuple[CommandEntry, ...] = (
                    "default is auto-answered from it and recorded in the escalation "
                    "assumption log. A question with no safe default still waits.",
                    required=False, is_option=True, is_flag=True),
+            ArgDef("--yes", "Skip the cost-preview confirmation prompt above the "
+                            "configured threshold (F114). Never bypasses budget "
+                            "limits or the escalation log.",
+                   required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         supports_json=True,
         may_execute_commands=True,
+        is_expensive=True,
         related=("job.run-next", "job.plan", "decision.list"),
     ),
 

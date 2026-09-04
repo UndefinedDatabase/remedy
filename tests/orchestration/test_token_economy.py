@@ -341,3 +341,27 @@ class TestArchitectureGuards:
         for bad in ("os.system", "Popen", "check_output", "do_continue(", "apply_patch(",
                     ".approve(", "os.fork", "eval(", "exec("):
             assert bad not in src, bad
+
+
+# ---------------------------------------------------------------------------
+# tokens_to_cost_usd (F114 T001 — extracted from budget_guard.predict_next_task_cost)
+# ---------------------------------------------------------------------------
+
+
+class TestTokensToCostUsd:
+    def test_ordinary_multiply(self):
+        # 8000 tokens x $0.02/1k = $0.16 — the exact figure
+        # test_predictive_budget.py's TestBreachBoundary pins for the same inputs.
+        assert te.tokens_to_cost_usd(8000, 0.02) == 0.16
+
+    def test_zero_tokens_is_a_measured_zero_not_none(self):
+        assert te.tokens_to_cost_usd(0, 0.02) == 0.0
+
+    def test_none_tokens_propagates_none(self):
+        assert te.tokens_to_cost_usd(None, 0.02) is None
+
+    def test_none_price_basis_propagates_none(self):
+        assert te.tokens_to_cost_usd(8000, None) is None
+
+    def test_both_none_propagates_none(self):
+        assert te.tokens_to_cost_usd(None, None) is None

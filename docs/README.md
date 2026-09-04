@@ -27,6 +27,7 @@
 | candidate gen | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
 | context | [context-inspector.md](system/context-inspector.md) | system |
+| cost preview | [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | guide |
 | cost report | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | guide |
 | diff-only repair | [diff-only-repair-v1.md](system/diff-only-repair-v1.md) | system |
 | do continue | [do-continue-v1.md](guides/do-continue-v1.md) | guide |
@@ -153,6 +154,7 @@ User-facing guides, quickstarts, and usage documentation.
 | File | Description |
 |------|-------------|
 | [autocoder-usage.md](guides/autocoder-usage.md) | How to use the autocoder |
+| [cost-preview-user-guide-v0.md](guides/cost-preview-user-guide-v0.md) | Cost preview before an expensive command runs (`remedy job run`) |
 | [cost-report-user-guide-v0.md](guides/cost-report-user-guide-v0.md) | Reading `remedy stats report` |
 | [do-continue-v1.md](guides/do-continue-v1.md) | `remedy do --continue` one-cycle apply flow |
 | [do-run-v1.md](guides/do-run-v1.md) | `remedy do` cohesive flow |

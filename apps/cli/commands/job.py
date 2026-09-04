@@ -648,6 +648,7 @@ def _cmd_job_run_cycles(
     *,
     cycles: int | None = None,
     unattended: bool = False,
+    yes: bool = False,
     json_output: bool = False,
 ) -> None:
     """Run a job in bounded cycles (F046).
@@ -687,6 +688,23 @@ def _cmd_job_run_cycles(
             f"by the F046 rollout default (raised by the F075 milestone gate).",
             file=sys.stderr,
         )
+
+    from apps.cli.cost_preview_confirm import confirm_cost_preview
+    from packages.orchestration.cost_preview import (
+        ESTIMATE_UNAVAILABLE,
+        CostBandEstimate,
+        resolve_confirm_above_usd,
+    )
+
+    estimate = CostBandEstimate(None, None, ESTIMATE_UNAVAILABLE, {})
+    if not confirm_cost_preview(
+        estimate,
+        confirm_above_usd=resolve_confirm_above_usd(),
+        yes=(yes or unattended),
+        command_name="job.run",
+    ):
+        print("Cancelled. Nothing was run.")
+        return
 
     if resolved.max_cycles <= 1:
         # One cycle == today's single pass. Reuse it verbatim rather than
@@ -2429,6 +2447,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
         unattended=getattr(args, "unattended", False),
+        yes=getattr(args, "yes", False),
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),

@@ -1,0 +1,25 @@
+F114 R11 integration gate - base-worktree UI parity, measured as an EVENT
+(R-0444: a content hash may accompany this reading, never replace it).
+
+Base run window (epoch): START 1788536151.354992  END 1788536322.135282
+                  (UTC) : START 2026-09-04 15:35:51  END 2026-09-04 15:38:42
+
+Every file under /home/decodeux/Repos/remedy/.remedy-wt/f114-r11-base/apps/ui/dist, mtime before and after:
+  assets/diffHighlightGrammars-o9XqnLhb.js before=1788536061.377755 after=1788536061.377755 in_window=False
+  assets/index-Bh0mkYBD.js       before=1788536061.377755 after=1788536061.377755 in_window=False
+  assets/index-D_qZGOuo.css      before=1788536061.377755 after=1788536061.377755 in_window=False
+  index.html                     before=1788536061.377755 after=1788536061.377755 in_window=False
+
+Files: 4. Any mtime inside the window would VOID the parity claim.
+None is inside it, and the before/after mtime maps are identical.
+Accompanying content digest, before and after:
+  before: 242f8044eaddae8bf19406407337762bdd3fa957eb789eddb0194c1fd10842e0
+  after:  242f8044eaddae8bf19406407337762bdd3fa957eb789eddb0194c1fd10842e0
+  identical: True
+
+Frontend is-stale check, measured inside the base worktree immediately
+after the copy/restamp and before the base run:
+  _frontend_is_stale() = False (packages.orchestration.ui_server, invoked
+  as a subprocess with cwd pinned to the base worktree)
+
+PARITY HOLDS: apps/ui/dist was not rebuilt during the base run.

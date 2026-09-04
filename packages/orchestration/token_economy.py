@@ -97,6 +97,18 @@ class TokenBand:
     UNKNOWN = "unknown"
 
 
+def tokens_to_cost_usd(tokens: int | None, price_basis_usd_per_1k_tokens: float | None) -> float | None:
+    """Convert a token count to a USD cost at a given per-1k-token price.
+
+    ``None`` propagates rather than becoming a fabricated 0.0: an unmeasured
+    token count or an unset price basis (P6, the hard rule this module states
+    at its top — no invented pricing) both mean no cost can be computed.
+    """
+    if tokens is None or price_basis_usd_per_1k_tokens is None:
+        return None
+    return tokens / 1000 * price_basis_usd_per_1k_tokens
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 

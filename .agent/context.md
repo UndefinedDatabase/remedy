@@ -1,35 +1,45 @@
-# Context — F112 Prompt budget per task class
+# Context — F114 Cost preview per command
 
 ## Active Branch
-feature/f112-prompt-budget-per-task-class, cut from `main` at the merge
-commit of pull request 233.
+feature/f114-cost-preview-per-command, cut from `main` at the merge
+commit of pull request 234.
 
 ## Scope
-F112 (Tier 3, depends on F103 — done): every task class carries an
-input-token cap; the context compiler fits under it via its documented
-demotion cascade (distant signatures drop first) with full omission
-disclosure; a context that CANNOT fit raises a task-split decision instead
-of a truncated prayer. Task slicing: T001 config + validation + the
-shared class vocabulary assertion + tests; T002 compiler cap enforcement
-+ cannot_fit arithmetic + fixture; T003 the decision wiring + unattended
-default (split) + an end-to-end where the split resolves the fit + tests.
+F114 (Tier 3, depends on F103 — done; enhanced by F074 calibration, not
+yet built): commands that will spend real money show an upfront estimate
+band with its basis and require confirmation above a configured
+threshold in attended mode; unattended runs rely on budgets, not
+prompts. Task slicing: T001 the shared estimator extraction + band
+computation + basis labels + unit tests; T002 the CLI helper + threshold
++ tty/non-tty semantics + tests; T003 marking the expensive commands +
+goldens for their preview lines + docs.
 
 ## Do not touch
-Calibration (F074), the demotion order itself, granularity heuristics
-(reused, not modified) — all explicitly out of scope per
-`docs/roadmap/features/T3_F112.md` Do not touch. Mid-file truncation stays
-forbidden; enforcement lives inside the compiler, never as an outer
-truncation.
+The interactive guard's package boundary
+(`tests/test_no_interactive_guard.py`, `_GUARDED_PACKAGES` / empty
+`_ALLOWLIST`), budget enforcement, calibration (F074) — all explicitly
+out of scope per `docs/roadmap/features/T3_F114.md` Do not touch.
+Confirmation prompts live in `apps/cli` ONLY, never inside a guarded
+package.
 
 ## Assumptions
-- `packages/orchestration/model_routing.TASK_CLASS_TIERS` is the ONE task
-  class vocabulary; F112 reuses it rather than declaring a second one, and
-  a cap for a class outside it is refused, not silently guessed.
-- `packages/orchestration/context_compiler.py` already owns tiered
-  selection, budget demotion (`compile_task_context`,
-  `DEFAULT_CONTEXT_TOKEN_BUDGET = 24000`) and the omissions record
-  (`OmissionRecord`, `write_omitted_context_json`); F112 gives it PER-CLASS
-  caps and the hard-floor behavior, T002's job.
+- `packages/orchestration/budget_resolution.PredictiveBudgetConfig` /
+  `resolve_predictive_budget_config()` already supply the reusable
+  inputs (price basis + per-`TokenBand` class-default tokens); only the
+  one-line multiply at `budget_guard.py:482-484` needs extracting, not a
+  new config layer.
+- `apps/cli/commands/loop_cmd.py` already has the reusable confirm
+  pattern: `_confirm_materialization` (an `input()` y/N prompt),
+  `_stdin_is_a_tty`, and the `--yes` flag
+  (`apps/cli/command_catalog.py:653`) — T002 reuses this shape rather
+  than inventing a second one.
+- No `cost_preview.py` or expensive-command registry exists today
+  (confirmed by search); T001/T003 are new files, not refactors of
+  existing ones.
+- The estimator commits to `token_economy.TokenBand` (LOW/MEDIUM/HIGH)
+  as its class vocabulary, distinct from `model_routing.TASK_CLASS_TIERS`
+  (a cost TIER, not a token-size band) — round 3 states this explicitly
+  in `cost_preview.py`'s own docstring.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -46,12 +56,12 @@ forward from the context this file replaced.
   never in the primary checkout, which satisfies `git status --porcelain`
   empty at every verdict.
 - THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
-- `ruff check` is DENIED to this session's reviewer, measured at the F112
-  claim (`ruff check <path>` answers "This command requires approval").
-  F110's opposite constraint was measured for a DIFFERENT session and does
-  NOT carry forward. A round of F112 that ships a `.py` file gates
-  `python3 -m py_compile <path>` instead, and the worker attempts `ruff
-  check` itself, reporting success or the exact refusal.
+- `ruff check` is DENIED to this session's reviewer, measured at the
+  F114 claim (`ruff check packages/orchestration/budget_guard.py`
+  answers "This command requires approval"). A round of F114 that ships
+  a `.py` file gates `python3 -m py_compile <path>` instead, and the
+  worker attempts `ruff check` itself, reporting success or the exact
+  refusal.
 
 This round is NOT UI work — no design-reference binding applies.
 

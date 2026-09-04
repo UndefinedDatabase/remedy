@@ -479,9 +479,7 @@ def predict_next_task_cost(
         expected_tokens = max(class_defaults.values()) if class_defaults else None
         band_basis = "class_default_missing_band"
 
-    expected_cost_usd: float | None = None
-    if expected_tokens is not None and price_basis is not None:
-        expected_cost_usd = expected_tokens / 1000 * price_basis
+    expected_cost_usd = token_economy.tokens_to_cost_usd(expected_tokens, price_basis)
 
     spent = counters.measured_cost_usd
     # WHY the exception: a job that has made NO provider call has definitionally
