@@ -1,108 +1,182 @@
-── STEP CLOSURE PRECONDITION 4 — F112 Prompt budget per task class ─────────
-Round 22 · session continuing F112 · base `042d3683` (F112 R21 C4, the tip
+── STEP CLOSURE: EVIDENCE JOB + REVIEW ZIP — F112 Prompt budget per task class ─
+Round 23 · session continuing F112 · base `dd80e564` (F112 R22 C4, the tip
 of feature/f112-prompt-budget-per-task-class)
 
 Goal:
-  Book round 21's PASS verdict (RECORD21, given verbatim below, already
+  Book round 22's PASS verdict (RECORD22, given verbatim below, already
   independently re-verified by the reviewer — do not re-derive it), then
-  append a "Built State — what F112 delivered" section to
-  `docs/roadmap/features/T3_F112.md`, which currently has none
-  (closure precondition 4, docs/roadmap/STATUS_closure_protocol.md).
-  No production code touched.
+  run docs/roadmap/STATUS_closure_protocol.md's Algorithm steps 1-2: the
+  evidence job (`job_evidence.create_manual_completion_bundle`) and the
+  mandatory fresh review zip (`scripts/make_review_zip.sh`). Neither step
+  produces a repository diff — the evidence dir is NEVER committed
+  (closure protocol's own explicit rule) — so this round's only COMMITS
+  are the same mechanical bookkeeping every round has: booking the prior
+  verdict and updating the plan. The evidence/zip work is an EXTERNAL
+  ACTION, reported in the handback, not landed as a diff.
 
 Bundle, in commit order:
-  C0a  save this block verbatim to `.agent/authored/f112-r22.md`
+  C0a  save this block verbatim to `.agent/authored/f112-r23.md`
   C0b  mirror the committed authored file to `.agent/last_block.md`
-  C1   append RECORD21 to `.agent/live_review.md`
-  C2   apply PLAN22 to `.agent/plan.md`
-  C3   append BUILT_STATE to `docs/roadmap/features/T3_F112.md`
-  C4   the handback: rewrite `.agent/handoff.md`
+  C1   append RECORD22 to `.agent/live_review.md`
+  C2   apply PLAN23 to `.agent/plan.md`
+  C3   the handback: rewrite `.agent/handoff.md` (this round has no other
+       content commit — the evidence/zip work below is an external action
+       reported IN this handback, not its own commit)
 
-Change set — NOTHING outside these paths:
-  `.agent/authored/f112-r22.md`
+Change set for COMMITS — NOTHING outside these paths:
+  `.agent/authored/f112-r23.md`
   `.agent/last_block.md`
   `.agent/live_review.md`
   `.agent/plan.md`
-  `docs/roadmap/features/T3_F112.md`
   `.agent/handoff.md`
-  NO file under `packages/`, `apps/`, `tests/` is touched, and no OTHER
-  file under `docs/` is touched.
+  The evidence dir and the built zip (both described below) are created
+  on disk but are NOT git-added, NOT committed — they must remain
+  untracked/gitignored. NO file under `packages/`, `apps/`, `tests/` or
+  `docs/` is touched. `scripts/self_use_queue.json` is NOT touched this
+  round (its `consumed_by` edit is the closure commit's own, later).
 
 Constraints:
-  1. Apply every delimited slice BYTE FOR BYTE — never edit, retype or
-     re-wrap one. If a slice looks wrong, apply it anyway and DECLARE the
-     problem in the handback.
+  1. Apply every delimited slice BYTE FOR BYTE. If a slice looks wrong,
+     apply it anyway and DECLARE the problem in the handback.
   2. `.agent/STOP` is read FROM DISK before the first commit and again
-     before C4. If it exists at either reading: finish the commit in
-     hand, write the handback, push, and stop.
-  3. `.agent/plan.md` ends WITHOUT a trailing newline; PLAN22 is applied
+     before C3 (this round's handback commit). If it exists at either
+     reading: finish the commit in hand, write the handback, push, stop.
+  3. `.agent/plan.md` ends WITHOUT a trailing newline; PLAN23 is applied
      as an exact whole-file replacement, no trailing newline added.
      `.agent/live_review.md` also ends WITHOUT a trailing newline; append
-     it as `content_bytes + b"\n" + RECORD21_bytes` — ONE newline, no
+     it as `content_bytes + b"\n" + RECORD22_bytes` — ONE newline, no
      blank line. Confirm the byte immediately before the append point
      yourself before writing, per this feature's own established
      convention since R14.
-  4. `docs/roadmap/features/T3_F112.md` is a NORMAL markdown doc file and
-     ends WITH a trailing newline (unlike the `.agent/**` files above —
-     do not confuse the two conventions). Append BUILT_STATE to it as
-     `current_bytes + b"\n" + BUILT_STATE_bytes + b"\n"` — ONE blank line
-     before the new section's heading, and the file ends with exactly one
-     trailing newline afterward, matching how `docs/roadmap/features/T3_F110.md`'s
-     own "## Built State — what F110 delivered" section was appended
-     (read that file yourself to confirm the shape if useful — read-only,
-     it is not part of this round's change set).
-  5. Do NOT run `ruff`. You MAY run `python3 -m pytest tests/docs/ -q` as
-     a sanity check after C3 if you want extra confidence the doc change
-     doesn't break a doc-structure test, but it is not a required gate
-     below and its result does not gate this round either way (this is a
-     pure content append to an existing, already-indexed feature file —
-     no new page, no README index entry needed).
-  6. `.agent/decisions.md`, `.agent/candidates.md`, `.agent/prose_slips.md`
-     are NOT touched.
-  7. A sentence THIS ROUND makes stale, anywhere inside the change set, is
-     repaired in the commit that falsifies it. One outside the change set
-     is DECLARED in the handback and left alone.
-  8. NEVER force-push, never work on `main`, create NO pull request, merge
-     nothing.
+  4. THE EVIDENCE BUNDLE: build it at repo-root path
+     `remedy-job-evidence-f112-closure/` (already gitignored by the
+     pattern `remedy-job-evidence-*/` — confirm this yourself with
+     `git check-ignore -v remedy-job-evidence-f112-closure` before
+     writing anything there). Use a Python driver (write it to disk with
+     the Write tool and run it with
+     `python3 -c "import runpy; runpy.run_path('/absolute/path/to/driver.py')"`,
+     matching the pattern earlier rounds this session used to route around
+     this sandbox's `.remedy-wt`-naming quirk — this path does not contain
+     `.remedy-wt` so you likely will not hit that quirk here, but use the
+     same driver-script approach anyway for reliability) that:
+       a. Imports `_run_verifications` from `packages.orchestration.job_evidence`
+          (a private helper — that is fine and intentional; it is the
+          existing, tested logic that already produces correctly-shaped
+          `VerificationTests` runs: real `run_id`s matching `^vr-\\d{4,}$`,
+          real sha256 `output_hash`, real `node_ids` from a verbose run,
+          `test_files` as FILE paths never directories — precisely the
+          shapes that four historical BLOCKED_EVIDENCE attempts (F051,
+          F052, F080) got wrong by hand-building these dicts instead).
+       b. Runs it against these THREE SCOPED commands, run from the repo
+          root, repo=".". Do NOT include the full 19546-test suite here —
+          per the closure protocol's own explicit rule, a verification
+          record may never carry a full-suite node-id list; the full-suite
+          proof already rides in round 19's integration-gate evidence and
+          the reviewer's own re-run:
+            "python3 -m pytest tests/orchestration/test_class_prompt_budget.py"
+            "python3 -m pytest tests/orchestration/test_context_compiler.py -k \"test_an_oversized_context_fits_under_its_class_cap_with_the_demotion_recorded or test_an_unfittable_context_reports_cannot_fit_with_the_tier1_arithmetic\""
+            "python3 -m pytest tests/cli/test_golden_path.py"
+          If ANY of these three commands exits non-zero or reports a
+          failure, STOP before calling `create_manual_completion_bundle`
+          (which itself refuses a failing run) and declare this as a
+          BLOCKING finding in the handback rather than a routine result —
+          it would mean something regressed since round 19's own gate.
+       c. Calls `create_manual_completion_bundle` from
+          `packages.orchestration.job_evidence` with:
+          `evidence_dir="remedy-job-evidence-f112-closure"`,
+          `repo_root="."`,
+          `base_commit="5c28c6741db2d9073fc75cd159d91037e0757fb0"` (the
+          FULL 40-character merge-base SHA — an abbreviated one surfaces
+          as a defect only at zip time, per the closure protocol's own
+          documented lesson),
+          `head_commit="dd80e564e034152e8f0becc49829250336ba7399"` (the
+          full SHA of this round's own base, `dd80e564` — reconfirm this
+          is still HEAD before the call; if the branch has moved, use the
+          real current HEAD and declare the discrepancy),
+          `job_id=uuid4().hex[:16]` (generate one fresh, matching
+          `pingpong_job.py`'s own convention),
+          `job_title="F112 Prompt budget per task class — closure evidence"`,
+          `step_range="T001-T003"`,
+          `prior_job_ids=[]`,
+          `verification_runs=<the "runs" list from step (b)'s
+          _run_verifications(...) return value>`,
+          `timestamp=<current UTC ISO-8601, generated fresh>`,
+          `generated_at=<current UTC ISO-8601 with microseconds, generated
+          fresh>`,
+          `num_tasks=3` (its own default — do not override),
+          `note_prefix="F112 closure evidence"`,
+          `review_feature_id="f112"`.
+          Print and capture the returned summary dict in full.
+     If this call raises, capture the FULL exception (class + message +
+     traceback) and STOP — do not attempt a second call with different
+     parameters on your own initiative; declare it in the handback as a
+     blocking outcome for the reviewer to redesign the next round around.
+  5. THE REVIEW ZIP: run
+     `bash scripts/make_review_zip.sh --evidence-dir remedy-job-evidence-f112-closure`
+     from the repository root as a real shell command (not a driver
+     script — this one is a plain `bash` invocation with no `.remedy-wt`
+     path in it). Capture its full stdout/stderr and real exit code. It
+     should print a filename (matching the gitignored `remedy-review-*`
+     pattern) and a SHA-256. Confirm the printed SHA-256 yourself with a
+     direct `sha256sum` of the produced file. If it exits non-zero or
+     prints anything indicating `BLOCKED_EVIDENCE`, that is this round's
+     honest result — declare it fully in the handback (the exact blocking
+     reason(s) the script/validator prints) rather than retrying blindly;
+     do not attempt more than ONE retry, and only if the FIRST failure's
+     printed reason names something you are confident this exact
+     constraint-4 recipe already gets right (in which case declare why you
+     believe a retry is warranted before running it).
+  6. ARCHIVING: if the zip built successfully, attempt to copy (not move —
+     leave the original where the script wrote it too) it into
+     `/home/decodeux/Repos/remedy-history/zips/` (create the directory if
+     it does not exist and you have permission to). Report the OUTCOME
+     honestly either way: the absolute archived path, or the literal
+     string `NOT ARCHIVED` with the reason (e.g. permission denied) if it
+     could not be copied there. Do not treat a failed archive attempt as
+     a round failure — DECISION amend0827 D1 explicitly allows `NOT
+     ARCHIVED` as a valid recorded outcome.
+  7. Do not `git add` or commit the evidence directory or the zip file.
+     Confirm `git status --porcelain` still reads EMPTY with respect to
+     tracked paths after all of this (untracked, gitignored paths do not
+     count against this — confirm with `git status --porcelain
+     --ignored=no`, which must show nothing for these paths since they
+     match `.gitignore` patterns).
+  8. `.agent/decisions.md`, `.agent/candidates.md`, `.agent/prose_slips.md`,
+     `docs/roadmap/features/T3_F112.md` are NOT touched this round.
+  9. NEVER force-push, never work on `main`, create NO pull request, merge
+     nothing, run no `--approve` / promotion of anything.
 
-THIS ROUND'S PARAMETERS, measured by the reviewer at `042d3683` before
+THIS ROUND'S PARAMETERS, measured by the reviewer at `dd80e564` before
 this block was authored:
-  LIVE_REVIEW PRE-C1     `.agent/live_review.md` measures 2293718 bytes,
-                         ending WITHOUT a trailing newline.
-  RECORD21 LENGTH        5338 bytes (measure this yourself against the
-                         committed authored file's own extracted slice).
-  POST-C1 EXPECTED       2293718 + 1 + 5338 = 2299057 bytes.
-  HEADER SHAPE           lines matching `^Gate: F\d+ R\d+ — ` currently
-                         number 268; matching `^Gate: F112 R21 — `
-                         currently 0. Expected after C1: 269 and 1.
-  OPEN SET               350 registered, 72 `Done:`, 278 open. UNMOVED by
-                         this round's append (RECORD21 adds evidence to
-                         `R-0784` in prose only — no id is minted, no
-                         `Done:` line is written by this round). Reconfirm
-                         on both sides of C1.
-  PLAN.MD PRE-C2         45 lines (`wc -l`), ends WITHOUT a trailing
-                         newline, currently holds PLAN21 (2025 bytes).
-  T3_F112.MD PRE-C3      3970 bytes, ends WITH a trailing newline, 74
-                         lines (`wc -l`), no `## Built State` heading
-                         anywhere in it yet (`grep -c '^## Built State'`
-                         answers 0).
-  BUILT_STATE LENGTH     3520 bytes (measure this yourself against the
-                         committed authored file's own extracted slice).
-  POST-C3 EXPECTED       3970 + 1 + 3520 + 1 = 7495 bytes.
+  LIVE_REVIEW PRE-C1   `.agent/live_review.md` measures 2299057 bytes,
+                       ending WITHOUT a trailing newline.
+  RECORD22 LENGTH      3870 bytes (measure this yourself against the
+                       committed authored file's own extracted slice).
+  POST-C1 EXPECTED     2299057 + 1 + 3870 = 2302928 bytes.
+  HEADER SHAPE         lines matching `^Gate: F\\d+ R\\d+ — ` currently
+                       number 269; matching `^Gate: F112 R22 — `
+                       currently 0. Expected after C1: 270 and 1.
+  OPEN SET             350 registered, 72 `Done:`, 278 open. UNMOVED by
+                       this round's append. Reconfirm on both sides of C1.
+  PLAN.MD PRE-C2       46 lines (per `wc -l`), ends WITHOUT a trailing
+                       newline, currently holds PLAN22 (2099 bytes).
+  MERGE BASE           `5c28c6741db2d9073fc75cd159d91037e0757fb0`,
+                       reconfirm yourself with `git merge-base main HEAD`
+                       before using it — declare if it has changed.
 
-<<<BEGIN RECORD21>>>
-Gate: F112 R21 — the round 21 entry, closure precondition 6's run step (no production code touched in the primary checkout). VERDICT PASS, over the range `e9b9c46e..042d3683` (commits C0a `60fd935c`, C0b `1e07cfa0`, C1 `e822388f`, C2 `7bea3efc`, C3 `1b9ac1ca` — five real content commits — plus handback commit `042d3683`), independently re-verified by the reviewer. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r21.md` and `HEAD:.agent/last_block.md` both print blob `e16ce65ac9e224eadc20396e0d0f2bbfa9162eb2`, reproduced directly; `wc -l` reproduced 250. THE PLAN REPLACEMENT AT C2 HELD BYTE-IDENTICAL: PLAN21 extracted from the committed authored file (2025 bytes) compared byte-for-byte against `.agent/plan.md` at C2 — equal, 2025 bytes both sides, no trailing newline, `## Goal` / `## Next Steps` each exactly once. THE RECORD APPEND AT C1 (booking RECORD20) HELD BYTE-IDENTICAL, WITH ONE DECLARED CORRECTION TO THE REVIEWER'S OWN PRIOR ARITHMETIC: the block's own params paragraph had pinned RECORD20's length at 2953 bytes, but the slice extracted from the committed authored file measures 2954 bytes — the reviewer's own pre-emission byte count was wrong by one, not a transport defect; the worker correctly applied the slice byte-for-byte as extracted rather than trusting the reviewer's stale numeral (checklist item 9's own lesson, here caught on the reviewer's side rather than a citation). Reproduced independently: pre-append `.agent/live_review.md` measured 2290763 bytes at `e9b9c46e`, RECORD20 extracted measured 2954 bytes, appended as one newline plus RECORD20, post-append measured 2293718 bytes exactly matching `2290763 + 1 + 2954`; the pre-append content is an exact byte prefix; the file still ends WITHOUT a trailing newline; the open set recomputed mechanically read 350 registered / 72 `Done:` / 278 open on both sides, and lines matching `^Gate: F\d+ R\d+ — ` read 268 after C1 with exactly one matching `^Gate: F112 R20 — `. THE RUN AT C3 WAS REAL, NOT SIMULATED: `run_next_self_use_item` was invoked exactly as ordered (default budgets, default role resolution, no `"fake"` override), ran for 116.86 seconds against the local `ollama` provider (`muse-glimmer:latest`, `execution_config` recording `builder='ollama'`/`reviewer='ollama'`, source `cli` for both — confirmed independently by the reviewer's own re-read of `resolve_role_config` before this block was authored and unchanged at the time of the run), and returned (did not raise) a `JobPlan` for job `848fc4c67d7b405b`: `status='blocked'`, task T001 `final_status='repair_exhausted'`, `reviewer_verdict='fail'`, both repair rounds spent, nothing promoted, `consumed_by` correctly left unset this round. `describe_self_use_run_defects(result)` returned exactly two strings, quoted verbatim in `.agent/selfuse_f112/run.txt`: `job 848fc4c67d7b405b (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. THE EVIDENCE COPY IS BYTE-IDENTICAL, reproduced independently by the reviewer: `sha256sum .agent/selfuse_f112/SU-007.md` reads `6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd` — the SAME digest as `.agent/selfuse_f110/SU-006.md`, expected and not a copy error, because SU-006 and SU-007 render the identical R-0418 ledger paragraph verbatim and only their `job_id`s differ. CLEANUP REPRODUCED INDEPENDENTLY: `.remedy-wt/selfuse-f112-run` is absent; `.remedy-wt/job-848fc4c67d7b405b` exists, retained and untouched by this round; the two untracked driver-script scratch files are gone; `git diff --stat e9b9c46e..042d3683 -- packages/ apps/ tests/ docs/` and the same range over `scripts/self_use_queue.json` are both empty; every commit's insertion count is under 500. CLOSURE PRECONDITION 6's REGISTRATION OBLIGATION, DISCHARGED PER §3 ITEM 30: the open set was searched for this defect before any id was considered. `R-0784` (registered F109 R19, OPEN, evidence already added once by F110 R16 on job `6f74dd7367704fd5`) already describes exactly this class — a self-use run against `R-0418` (a reviewer-block-authoring-practice finding no builder can fix in code) blocking at the normal approval gate. This is the SAME defect recurring a THIRD time, on a THIRD job (`848fc4c67d7b405b`), on a THIRD feature branch, with the SAME proximate trigger F109's own original instance had — `repair_exhausted` after both repair rounds spent, rather than F110's `review_inconsistent` after one. Per item 30 this evidence is ADDED TO `R-0784` here rather than minted as a third id; `R-0784` remains OPEN, its fix unchanged and still owed to F258's generator (a tier-1 filter for reviewer-practice findings, or an explicit acceptance that some generated items will honestly block), not to F112. NO NEW ID IS MINTED, so the open set is unmoved at 278 (350 registered, 72 `Done:`). THE OUTCOME IS A NORMAL APPROVAL-GATE RESULT, NOT A ROUND FAILURE: the self-use rail executed end to end against a real local provider and correctly refused to promote unfinished work. NO PRODUCTION CODE WAS TOUCHED IN THE PRIMARY CHECKOUT. Closure precondition 6 is now DISCHARGED for F112 pending only the `consumed_by=F112` edit, which lands in the closure commit itself, not in this round.
-<<<END RECORD21>>>
+<<<BEGIN RECORD22>>>
+Gate: F112 R22 — the round 22 entry, closure precondition 4's Built State section (no production code touched). VERDICT PASS, over the range `042d3683..dd80e564` (commits C0a `30c6d9b2`, C0b `99492af8`, C1 `a9387abd`, C2 `818a766e`, C3 `ae0b4111` — five real content commits — plus handback commit `dd80e564`), independently re-verified by the reviewer. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r22.md` and `HEAD:.agent/last_block.md` both print blob `e9d15484f981a462e56887bbdf0b62bd5c1bd17a`, reproduced directly; `wc -l` reproduced 257. THE PLAN REPLACEMENT AT C2 HELD BYTE-IDENTICAL: PLAN22 extracted from the committed authored file (2099 bytes) compared byte-for-byte against `.agent/plan.md` at C2 — equal, 2099 bytes both sides, no trailing newline, `## Goal` / `## Next Steps` each exactly once. THE RECORD APPEND AT C1 (booking RECORD21) HELD BYTE-IDENTICAL: pre-append `.agent/live_review.md` measured 2293718 bytes at `042d3683`, RECORD21 extracted from the committed authored file measured 5338 bytes exactly as pinned, appended as one newline plus RECORD21, post-append measured 2299057 bytes exactly matching `2293718 + 1 + 5338`; the pre-append content is an exact byte prefix; the file still ends WITHOUT a trailing newline; the open set recomputed mechanically read 350 registered / 72 `Done:` / 278 open on both sides, and lines matching `^Gate: F\d+ R\d+ — ` read 269 after C1 with exactly one matching `^Gate: F112 R21 — `. THE BUILT STATE APPEND AT C3 HELD BYTE-IDENTICAL, WITH TWO DECLARED CORRECTIONS TO THE REVIEWER'S OWN BLOCK, NEITHER A TRANSPORT DEFECT: (1) the block's params paragraph stated `.agent/plan.md`'s pre-C2 `wc -l` as 45; the real reading is 44 (the file has 44 newline characters; its 45th logical line carries no trailing newline) — a wording imprecision about what `wc -l` counts on a no-final-newline file, not a byte disagreement, and PLAN22 was still applied byte-for-byte and verified equal above; (2) the block's own stated arithmetic `3970 + 1 + 3520 + 1 = 7495` is simply wrong addition — the correct sum is 7492 — and BOTH pinned inputs (3970, 3520) were independently confirmed correct by the reviewer, so only the reviewer's own addition was off; the worker applied the slice byte-for-byte and reported the real 7492 rather than the block's wrong target, exactly as constraint 1 requires. Reproduced independently: `docs/roadmap/features/T3_F112.md` pre-C3 measured 3970 bytes ending WITH a trailing newline; BUILT_STATE extracted measured 3520 bytes exactly as pinned; post-C3 measured 7492 bytes exactly matching `3970 + 1 + 3520 + 1`; the pre-C3 content is an exact byte prefix of the post-C3 content; the file still ends with exactly one trailing newline; `grep -c '^## Built State'` reads 0 before and 1 after. G5 RE-VERIFIED BY THE REVIEWER DIRECTLY: `git status --porcelain` reads empty; `git diff --stat 042d3683..dd80e564 -- packages/ apps/ tests/` is empty; the only path touched under `docs/` in this range is `docs/roadmap/features/T3_F112.md`; every commit's insertion count (258, 191, 2, 19, 57) is under 500. NO NEW FINDING AND NONE RESOLVED: the open set is unmoved at 278 (350 registered, 72 `Done:`). Closure precondition 4 (Built State current) is now DISCHARGED. Closure preconditions 1 (latest verdict PASS, this one), 2 (integration gate, round 19), 3 (`remedy integrity_gate.run_integrity_checks()` all-PASS, reviewer-confirmed directly before round 22 was authored), 4 (this round) and 6 (round 21) are all satisfied; precondition 5 (clean tree, pushed, worker idle) holds now. Round 23 runs the evidence job and the mandatory review zip (docs/roadmap/STATUS_closure_protocol.md algorithm steps 1-2), producing no repository diff (the evidence dir is never committed) and reported in that round's own handback for the reviewer to author the STATUS line from.
+<<<END RECORD22>>>
 
-<<<BEGIN PLAN22>>>
+<<<BEGIN PLAN23>>>
 # Plan — F112 Prompt budget per task class
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
 F112 claimed in STATUS.md round 1; T001-T003b2b2b2 complete and green,
-integration gate PASSED round 19, self-use item SU-007 run round 21
-(RECORD21: VERDICT PASS, booked this round; R-0784 gained a third
-occurrence, no new id). Round 22 lands the Built State section
-(precondition 4) and re-confirms remaining preconditions before closure.
+integration gate PASSED round 19, self-use consumed round 21, Built
+State landed round 22 (RECORD22: VERDICT PASS, booked this round). All
+six closure preconditions are now satisfied. Round 23 runs the evidence
+job and the mandatory review zip.
 
 ## Goal
 
@@ -114,145 +188,90 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 22 books RECORD21, then appends a "Built State — what F112
-delivered" section to `docs/roadmap/features/T3_F112.md` (precondition
-4 — the file has none yet). `remedy integrity_gate.run_integrity_checks()`
-already reads all-PASS (precondition 3, reviewer-confirmed pre-round).
-No production code touched.
+Round 23 builds the evidence bundle via
+`job_evidence.create_manual_completion_bundle` (review_feature_id="f112",
+scoped verification runs via `_run_verifications`, never a full-suite
+node-id list), then the mandatory review zip
+(`scripts/make_review_zip.sh --evidence-dir <path>`). Produces NO
+repository diff — the evidence dir is never committed
+(docs/roadmap/STATUS_closure_protocol.md). Results (job_id, package
+filename, SHA-256, archived path or NOT ARCHIVED) are reported in the
+handback for the reviewer to author the STATUS line from.
 
 ## Next Steps
 
-- Precondition 6's `consumed_by=F112` edit to `scripts/self_use_queue.json`
-  lands in the closure commit itself, alongside STATUS/README.
-- Evidence job (`job_evidence.create_manual_completion_bundle`), then the
-  mandatory fresh review zip, per
-  docs/roadmap/STATUS_closure_protocol.md steps 1-2.
-- STATUS line authored by the reviewer, applied by the worker; README
-  capability sync in the SAME commit (R-0154 pin).
-- Final closure commit + PR; merge deferred to the next feature's start.
+- Reviewer authors the STATUS line from round 23's reported job_id/
+  package/hash/path/accepted-HEAD.
+- Closure commit: STATUS `[x]`, README capability sync (same commit,
+  R-0154 pin), `scripts/self_use_queue.json` SU-007 `consumed_by=F112`,
+  final `.agent/` state — nothing else.
+- AGENTS.md PR workflow; merge deferred to the next feature's start.
 
 ## Risks
 
-- Split children inherit the parent's full files_hint and re-escalate
-  themselves (harmlessly — DECISION F112 D8's own MEASURED section).
-- The Design section's "raise cap" / "proceed-overcap once" options are
-  deliberately unbuilt (DECISION F112 D9).
-- R-0767 stays OPEN on the model-routing seam this feature's config
-  borrows from; unrelated to F112.
-- R-0784 (self-use/R-0418 curation gap) is OPEN and belongs to F258, not
-  F112 — do not attempt to fix it here.
-<<<END PLAN22>>>
-
-<<<BEGIN BUILT_STATE>>>
-## Built State — what F112 delivered
-
-T001-T003 give every task a class-scoped input-token ceiling the context
-compiler enforces via its existing demotion cascade, with a task-split
-decision as the fallback when even tier-1 content alone cannot fit —
-never a silently truncated prompt.
-
-- `packages/orchestration/prompt_budget.py` — `resolve_task_class_cap`
-  resolves one `TaskClassCapResolution` per call, precedence configured
-  per-class cap (`config.prompt_budget.task_class_caps[class]`) over
-  configured global default (`config.prompt_budget.default_cap`) over the
-  shipped `DEFAULT_FALLBACK_CAP_TOKENS=24000` (matching
-  `context_compiler.DEFAULT_CONTEXT_TOKEN_BUDGET`). Reuses
-  `model_routing.TASK_CLASS_TIERS` as the ONE task-class vocabulary — a
-  class routing does not recognize is refused outright, never silently
-  capped. `validate_prompt_budget_config` enforces a hard floor,
-  `MIN_TASK_CLASS_CAP_TOKENS=2000`, below which a cap could never hold a
-  usable prompt.
-- `packages/orchestration/context_compiler.py` —
-  `fit_task_context_to_class_cap` (`ClassBudgetFit`) resolves the class's
-  cap via `resolve_task_class_cap`, then runs the EXISTING
-  `compile_task_context` demotion cascade unchanged at that budget — no
-  new selection logic, only the class-specific number the cascade already
-  enforces. `fits` is False exactly when tier-1 content alone still
-  exceeds the cap after every tier-2/tier-3 candidate has been demoted or
-  dropped, carrying `tier1_tokens`/`cap_tokens`/`task_class` for the
-  `cannot_fit` decision.
-- `packages/orchestration/pingpong_job.py` (`run_job`'s per-task loop,
-  ~line 2434) — every task with a `files_hint` is fit to its class cap
-  before `run_pingpong` runs. On fit: the task's own files/candidates and
-  the resolved cap are used unchanged. On `cannot_fit`:
-  `escalation.enqueue_task_decision` raises a `task_decision` (question
-  "task context exceeds its class cap", the single option `"split task"`,
-  `safe_default="split task"`, `impact` carrying the tier1/cap/class
-  arithmetic verbatim — DECISION F112 D9), `auto_apply_safe_default`
-  answers it unattended, and on "split task"
-  `task_granularity.split_one_task` splits the oversized task into
-  children inserted immediately after it in `job.tasks`; the parent is
-  marked `TASK_SPLIT`, persisted, and skipped — never run truncated.
-  `task_granularity.py`'s split heuristics themselves are UNFORKED, per
-  the feature file's Do-not-touch.
-- Design's "raise cap for this job" / "proceed-overcap once" options are
-  deliberately UNBUILT (DECISION F112 D9): no audit or attended-mode seam
-  exists anywhere in this codebase to hook them to today.
-- Split children inherit the parent's full `files_hint` and so can
-  re-escalate themselves against the SAME cap — harmless and MEASURED
-  (DECISION F112 D8), not a defect: a child that still cannot fit splits
-  again rather than running truncated.
-- Tests: `tests/orchestration/test_class_prompt_budget.py` (24 cases,
-  mutation-verified — resolver precedence, floor/vocabulary validation)
-  and the two `context_compiler` fixtures naming the acceptance criteria
-  directly, `test_an_oversized_context_fits_under_its_class_cap_with_the_demotion_recorded`
-  and `test_an_unfittable_context_reports_cannot_fit_with_the_tier1_arithmetic`.
-- Full-suite integration gate PASSED (round 19): branch 19546 passed / 23
-  skipped / 0 failed against merge base `5c28c674`, one base-only
-  xdist-flake attributed, not coupled to F112 code.
-<<<END BUILT_STATE>>>
+- R-0784 (self-use/R-0418 curation gap, OPEN) and R-0767 (model-routing
+  seam, OPEN) are both documented pre-existing risks, unrelated to F112,
+  carried forward per precondition 1's "Resolved or documented risk".
+- Evidence-bundle construction has a documented history of BLOCKED_EVIDENCE
+  pitfalls (F051/F052/F080) — round 23 uses the existing
+  `_run_verifications` helper rather than hand-building verification_run
+  dicts, specifically to avoid them.
+<<<END PLAN23>>>
 
 Done when — the gates below, each RUN and reported as ONE LINE in the
 handback with its real reading. Every gate runs at a commit STRICTLY
-EARLIER than C4.
+EARLIER than C3 (this round's handback commit), or, for the external
+evidence/zip action, before C3 is staged.
 
 G1 TRANSPORT — `sha256sum` and byte length of the committed
-   `.agent/authored/f112-r22.md`. Report that
-   `git rev-parse HEAD:.agent/authored/f112-r22.md` and
+   `.agent/authored/f112-r23.md`. Report that
+   `git rev-parse HEAD:.agent/authored/f112-r23.md` and
    `git rev-parse HEAD:.agent/last_block.md` print ONE blob id after C0b.
-   Report `wc -l .agent/authored/f112-r22.md`.
+   Report `wc -l .agent/authored/f112-r23.md`.
 
-G2 THE PLAN — extract PLAN22 by delimiter, compare byte-for-byte against
+G2 THE PLAN — extract PLAN23 by delimiter, compare byte-for-byte against
    `.agent/plan.md` at C2 — must be equal. Report `wc -l .agent/plan.md`
    (must be under 50), no trailing newline, `## Goal` and `## Next Steps`
    each exactly once.
 
-G3 THE RECORD APPEND — extract RECORD21 by delimiter, report its byte
-   length (expected 5338 — if it does not match, DECLARE the mismatch,
-   apply the extracted bytes as-is, do not silently adjust the arithmetic
-   below to compensate). Report the arithmetic
-   `2293718 + 1 + <len> = <total>` against the real post-append size, the
+G3 THE RECORD APPEND — extract RECORD22 by delimiter, report its byte
+   length (expected 3870 — if it does not match, DECLARE the mismatch,
+   apply the extracted bytes as-is). Report the arithmetic
+   `2299057 + 1 + <len> = <total>` against the real post-append size, the
    byte-prefix property, no trailing newline, a NEGATIVE CONTROL (flip one
-   byte, recompute, report `False`), lines matching `^Gate: F112 R21 — `
+   byte, recompute, report `False`), lines matching `^Gate: F112 R22 — `
    before (0) and after (1) C1, and registered/`Done:`/open counts on both
    sides (expected UNMOVED 350/72/278).
 
-G4 THE BUILT STATE APPEND — extract BUILT_STATE by delimiter, report its
-   byte length (expected 3520 — if it does not match, DECLARE the
-   mismatch and apply the extracted bytes as-is). Report
-   `docs/roadmap/features/T3_F112.md`'s pre-C3 size (expected 3970,
-   ending WITH a trailing newline) and post-C3 size, with the arithmetic
-   `3970 + 1 + <len> + 1 = <total>` against the real post-append size.
-   Report the byte-prefix property (pre-C3 content is an exact prefix of
-   post-C3 content) and that the file still ends WITH exactly one trailing
-   newline (not zero, not two). Report `grep -c '^## Built State'` before
-   (0) and after (1).
+G4 THE EVIDENCE JOB — report each of the three scoped commands' exit
+   code, passed/failed/skipped counts, and node_ids count (must equal
+   `selected` per `_run_verifications`'s own arithmetic). Report the full
+   summary dict `create_manual_completion_bundle` returns (job_id, head,
+   authority count, partition sizes, final verdict) or the full exception
+   if it raised. Report `git check-ignore -v remedy-job-evidence-f112-closure`
+   confirming it is gitignored.
 
-G5 THE TREE AND THE COMMITS — `git status --porcelain` immediately before
-   C4 is staged — EMPTY. `git diff --stat 042d3683..<C3> -- packages/
-   apps/ tests/` — must be EMPTY, and the same range over `docs/` other
-   than `docs/roadmap/features/T3_F112.md` must also be EMPTY. PER-COMMIT
-   INSERTIONS (the `+` column) for C0a through C3, each confirmed under
-   500 by `git show --stat`.
+G5 THE REVIEW ZIP — report the script's real exit code, the printed
+   filename and SHA-256, and your own independent `sha256sum` of the
+   produced file (must match the script's own printed digest). Report the
+   archiving outcome (absolute path, or `NOT ARCHIVED` with reason).
+
+G6 THE TREE AND THE COMMITS — `git status --porcelain` immediately before
+   C3 is staged — EMPTY (tracked paths only; the gitignored evidence dir
+   and zip do not count against this — confirm neither appears in `git
+   status --porcelain --ignored=no`). PER-COMMIT INSERTIONS (the `+`
+   column) for C0a through C2, each confirmed under 500.
 
 Handback: rewrite `.agent/handoff.md` in full — feature and round, session
 number, branch, base and head SHAs, per-commit changed-files table, ONE
 line per gate above with its real reading, the item-status table
 AGENTS.md mandates, deviations, the open-findings count (expected 278,
-unmoved), and the next expected action (evidence job, review zip, STATUS
-line, README sync, closure commit, PR — per PLAN22's Next Steps). It has
-NO length cap. Do not write a `Done:` or `Gate:` paragraph anywhere
-beyond applying RECORD21 verbatim. Then
+unmoved), and the next expected action: the reviewer authors the STATUS
+line from this round's own reported job_id/package/hash/path/accepted-HEAD,
+then the closure commit + PR. It has NO length cap. Do not write a `Done:`
+or `Gate:` paragraph anywhere beyond applying RECORD22 verbatim. State
+plainly whether the evidence job and the zip both succeeded, or exactly
+where either blocked. Then
 `git push -u origin feature/f112-prompt-budget-per-task-class` and report
 the outcome; create NO pull request, merge nothing.
 ══END BLOCK══
