@@ -1,46 +1,46 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 9 (T002 batch 7, patch.list gains created_at end to end)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 10 (T002 batch 8, loop.list gains --json end to end)
 
 ## Session
 
-SESSION 4 of feature F262 · round 9 · rounds so far 9.
+SESSION 4 of feature F262 · round 10 · rounds so far 10.
 
-Round 9 books round 8's PASS verdict (GATE8) into the ledger first,
-then ships T002 batch 7: `created_at` is added to every patch-intent
-explanation, stamped once at intent-derivation time in both creation
-flows (`do_run.py`, `apps/cli/commands/job.py`), surfaced through
-`list_patch_intents()` and a new CREATED column in
-`format_intent_list()` ahead of DECIDED. `patch.list --json` needed no
-separate change — it prints `list_patch_intents()`'s own dicts
-verbatim, so the key flows through automatically. DECISION F262 D1
-records why the value is sourced from the stored explanation dict
-rather than the run-event log, and corrects a stale R8 plan.md claim
-(job.py:623 DOES emit `patch_intent_created`; only do_run.py's own
-`do_run_patch_intent_created` is dead — neither is what
-`list_patch_intents()` reads). Three production files, three test
-files, one commit.
+Round 10 books round 9's PASS verdict (GATE9) into the ledger first,
+plus one `.agent/prose_slips.md` line for a byte-fidelity gap the
+round 9 reviewer found in round 9's own C4, then ships T002 batch 8:
+`loop.list` gains a `--json` output matching the pattern already
+shipped for job.list/queue.list/patch.list — the catalog entry gains
+`_JSON_OPT` and `supports_json=True`, `_cmd_loop_list` gains a
+`json_output` kwarg and a JSON branch, and the dispatch lambda passes
+`args.json` through. The JSON path carries each loop's
+`last_run_created_at`/`last_run_state` sourced from the exact same
+`last_run_for_loop()` call the existing text "last run:" label
+already uses — no new timestamp invented. `loop.list` already had
+T001's `--sort/--since/--until/--limit` flags via
+`_with_list_options()`'s auto-injection, so `--json` and its JSON
+date fields were the only real gap. Three production files, one test
+file, one commit.
 
 ## Range
 
-Review of `74cfbd2863da1a50ac44d2a48a936bae720aaa95..8bbed794`. That
-is C0a through C4 (six content commits before this handback — C0a,
-C0b, C1, C2, C3, C4). This handback (C5) follows and is not part of
+Review of `9adfbc5360befe2c7e77c76454bfb31f2c5b9198..ada5cafa04b6ed24eb27425a50c79c1b7a8ea3b7`.
+That is C0a through C3 (five content commits before this handback —
+C0a, C0b, C1, C2, C3). This handback (C4) follows and is not part of
 the reviewed content range.
 
 ## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
-| Preconditions | done | HEAD matched `74cfbd2863da1a50ac44d2a48a936bae720aaa95`, branch matched `feature/f262-list-commands-v2`, tree clean, STOP absent |
-| C0a | done | `.agent/authored/f262-r9.md` saved verbatim (Write tool, reconstructed from the received prompt), 440 lines, sha256 `76bc49e7643f81d00fd5c3e46f732a75e48bfd79ee80eaccb552e3bbb442f784` |
+| Preconditions | done | HEAD matched `9adfbc5360befe2c7e77c76454bfb31f2c5b9198`, branch matched `feature/f262-list-commands-v2`, tree clean, STOP absent |
+| C0a | done | `.agent/authored/f262-r10.md` saved verbatim (Write tool, reconstructed from the received prompt), 297 lines, sha256 `bfdaf95dbb4abdc8c6adcc94917a62ddf503eb54cdaef734e0adb09b47b9a46a` |
 | C0b | done | mirrored to `.agent/last_block.md` via `cp`, sha256 identical to C0a's file |
-| C1 | done | GATE8 appended to `.agent/live_review.md` byte-exact (base 2441251 + `\n` + GATE8 2457 bytes = 2443709, confirmed by direct read after write) |
-| C2 | done | PAIR P1-P6 (rewrites) + TEST T1-T4 (appends) applied to six files, one commit, 176 insertions total |
-| C3 | done | DECISION F262 D1 appended to `.agent/decisions.md` byte-exact (base 792132 + `\n` + 5397 bytes = 797530, confirmed) |
-| C4 | done | PLAN10 applied to `.agent/plan.md`, whole-file replace |
-| C5 (this handback) | done | |
-| py_compile (6 files) | done | exit 0 |
-| pytest combined (4 files) | done | 223 passed |
-| canary: tests/ui_server/ | done | 515 passed, unmoved from GATE8 baseline |
+| C1 | done | GATE9 appended to `.agent/live_review.md` byte-exact (base 2443709 + `\n` + GATE9 3112 bytes = 2446822, confirmed by direct read after write); PROSE_SLIP appended to `.agent/prose_slips.md` byte-exact (base 72104 + `\n` + slip 893 bytes = 72998, confirmed) |
+| C2 | done | PAIR P1-P4 (loop_cmd.py, command_catalog.py rewrites) + PAIR P5 (test import) + TEST T1-T2 (appends) applied to four files, one commit; three PRE-EXISTING tests in the same file needed a follow-up fix — see Deviations |
+| C3 | done | PLAN11 applied to `.agent/plan.md`, whole-file replace, verified byte-for-byte equal (1928 == 1928) |
+| C4 (this handback) | done | |
+| py_compile (3 files) | done | exit 0 |
+| pytest combined (2 files) | done | 41 passed |
+| canary: tests/ui_server/ | done | 515 passed, unmoved from GATE9 baseline |
 | canary: test_test_runner.py | done | 52 passed, unmoved |
 | canary: test_resource_safety.py | done | 21 passed, unmoved |
 | canary: test_integrity_gate.py | done | 16 passed, unmoved |
@@ -48,42 +48,35 @@ the reviewed content range.
 
 ## Commits
 
-### e15da6a8 F262 R9 C0a: save block verbatim to .agent/authored/f262-r9.md
+### 1302b67da6f28105843b3ecb8b165a371ea45870 F262 R10 C0a: save block verbatim to .agent/authored/f262-r10.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r9.md` | +440/-0 | transport artifact — verbatim copy of the round's step block, new file |
+| `.agent/authored/f262-r10.md` | +297/-0 | transport artifact — verbatim copy of the round's step block, new file |
 
-### 23733b15 F262 R9 C0b: mirror block to .agent/last_block.md
+### f7d7dac47dc3018198e72963acb3eb20386fed89 F262 R10 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +382/-280 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
+| `.agent/last_block.md` | +180/-323 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
 
-### 7d6df1bd F262 R9 C1: append GATE8 to live_review.md - books round 8's PASS verdict
+### b5c152d14275ccebd7775f8eb0109e89c86bd4f0 F262 R10 C1: append GATE9 to live_review.md and one line to prose_slips.md - books round 9's PASS verdict
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE8, `\n` + GATE8's own bytes appended to the base file |
+| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE9, `\n` + GATE9's own bytes appended to the base file |
+| `.agent/prose_slips.md` | +2/-1 | byte-exact append of the round 9 byte-fidelity prose slip, `\n` + the line's own bytes appended to the base file |
 
-### 838e0009 F262 R9 C2: patch.list/do_run/job.py gain created_at end to end (T002 batch 7)
+### 9aaaedcb79a2d776a88825857679b61f82505c84 F262 R10 C2: loop.list gains --json end to end (T002 batch 8)
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/job.py` | +3/-1 | PAIR P1 (rewrite: `datetime`/`timezone` import) and PAIR P2 (rewrite: `pi_created_at` stamped once, added to every explanation dict) |
-| `packages/orchestration/approval_queue.py` | +5/-2 | PAIR P4 (rewrite: `created_at` in `list_patch_intents()`'s returned dict), PAIR P5 (rewrite: docstring line), PAIR P6 (rewrite: `format_intent_list()` gains CREATED column ahead of DECIDED) |
-| `packages/orchestration/do_run.py` | +1/-0 | PAIR P3 (rewrite: `created_at` added to the fixture explanation dict; `datetime`/`timezone` already imported at line 22, no second import added) |
-| `tests/orchestration/test_do_run.py` | +11/-0 | TEST T1 (append: `test_patch_intent_created_has_created_at` inserted after `test_patch_intent_created`, before `test_artifact_created`) |
-| `tests/test_patch_intent_approval.py` | +31/-0 | TEST T2 (append: `test_format_intent_list_shows_created_when_set` in `TestFormatHelpers`, local `from packages.core.models import Artifact` import chosen over a module-level import to keep the diff smaller) and TEST T3 (append: `test_json_output_has_created_at_key` in `TestCmdListPatchIntents`) |
-| `tests/test_run_log_cli.py` | +125/-0 | TEST T4 (append: `test_patch_intent_created_writes_created_at_on_explanation` in `TestRunNextTaskPatchIntentCreated`, after the class's only existing method) |
+| `apps/cli/command_catalog.py` | +2/-0 | PAIR P3 (rewrite: `loop.list` CommandEntry gains `args=(_JSON_OPT,)` and `supports_json=True`) |
+| `apps/cli/commands/loop_cmd.py` | +26/-2 | PAIR P1 (rewrite: `json` import), PAIR P2 (rewrite: `_cmd_loop_list` gains `json_output` kwarg and JSON branch), PAIR P4 (rewrite: dispatch lambda passes `args.json`) |
+| `tests/cli/test_loop_cmd.py` | +29/-3 | PAIR P5 (rewrite: `json` import), TEST T1 (append: `test_json_output_carries_last_run_created_at_and_state`), TEST T2 (append: `test_json_output_last_run_is_null_when_never_ran`), plus a follow-up fix to 3 pre-existing tests' dispatch calls — see Deviations |
 
-### 59bf9fe9 F262 R9 C3: append DECISION F262 D1 to decisions.md - CREATED date source
+### ada5cafa04b6ed24eb27425a50c79c1b7a8ea3b7 F262 R10 C3: replace plan.md with PLAN11
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | +14/-1 | byte-exact append of DECISION F262 D1 |
+| `.agent/plan.md` | +14/-16 | whole-file replace with PLAN11, byte-for-byte verified |
 
-### 8bbed794 F262 R9 C4: replace plan.md with PLAN10
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +21/-25 | whole-file replace with PLAN10 |
-
-### (this handback commit, C5)
+### (this handback commit, C4)
 | Path | +/- | Reason |
 |---|---|---|
 | `.agent/handoff.md` | rewrite | this handback (write-once) — numbers not tabled here; the reviewer measures them at the next gate |
@@ -101,300 +94,327 @@ the reviewed content range.
 Preconditions, checked before C0a:
 ```
 $ git rev-parse HEAD
-74cfbd2863da1a50ac44d2a48a936bae720aaa95
+9adfbc5360befe2c7e77c76454bfb31f2c5b9198
 $ git branch --show-current
 feature/f262-list-commands-v2
 $ git status --porcelain
 (empty)
-$ ls .agent/STOP
-ls: cannot access '.agent/STOP': No such file or directory
+$ test -f .agent/STOP
+ABSENT
 ```
 All four confirmed.
 
-**TRANSPORT** (after C0b):
+**TRANSPORT** (after C0b, re-confirmed at the end of the round):
 ```
-$ sha256sum .agent/authored/f262-r9.md .agent/last_block.md
-76bc49e7643f81d00fd5c3e46f732a75e48bfd79ee80eaccb552e3bbb442f784  .agent/authored/f262-r9.md
-76bc49e7643f81d00fd5c3e46f732a75e48bfd79ee80eaccb552e3bbb442f784  .agent/last_block.md
+$ sha256sum .agent/authored/f262-r10.md .agent/last_block.md
+bfdaf95dbb4abdc8c6adcc94917a62ddf503eb54cdaef734e0adb09b47b9a46a  .agent/authored/f262-r10.md
+bfdaf95dbb4abdc8c6adcc94917a62ddf503eb54cdaef734e0adb09b47b9a46a  .agent/last_block.md
 ```
 One digest, twice — PASS.
 
-**LEDGER APPEND, GATE8**:
+**LEDGER APPEND, GATE9**:
 ```
-base size immediately before C1: 2441251 bytes, no trailing newline (last byte '.')
-GATE8 own byte length: 2457
-GATE8 internal newline count: 0
-base + 1 + GATE8_length = 2443709
-post-C1 file real byte length = 2443709
+base size immediately before C1: 2443709 bytes
+GATE9 own byte length: 3112
+GATE9 internal newline count: 0
+base + 1 + GATE9_length = 2446822
+post-C1 file real byte length = 2446822
 match: True
+tail matches gate9: True
+preceding newline: True
 ```
 
-**LEDGER APPEND, DECISION F262 D1**:
+**LEDGER APPEND, PROSE_SLIP**:
 ```
-base size immediately before C3: 792132 bytes, no trailing newline
-DECISION own byte length: 5397
-base + 1 + DECISION_length = 797530
-post-C3 file real byte length = 797530
+base size immediately before C1: 72104 bytes
+slip own byte length: 893
+slip internal newline count: 0
+base + 1 + slip_length = 72998
+post-C1 file real byte length = 72998
 match: True
+tail matches slip: True
+preceding newline: True
 ```
 
-**PRODUCTION PAIRS, READ AND COUNTED (P1-P6)**:
+**PRODUCTION PAIRS, READ AND COUNTED (P1-P5)**:
 ```
-PAIR P1 (job.py, datetime import): FROM count before 1
-PAIR P2 (job.py, explanation dict comprehension): FROM count before 1
-PAIR P3 (do_run.py, fixture dict): FROM count before 1
-PAIR P4 (approval_queue.py, list_patch_intents dict): FROM count before 1
-PAIR P5 (approval_queue.py, docstring): FROM count before 1
-PAIR P6 (approval_queue.py, format_intent_list): FROM count before 1
+PAIR P1 (loop_cmd.py, json import): FROM count before 1
+PAIR P2 (loop_cmd.py, _cmd_loop_list whole body): FROM count before 1
+PAIR P3 (command_catalog.py, loop.list CommandEntry): FROM count before 1
+PAIR P4 (loop_cmd.py, dispatch lambda): FROM count before 1
+PAIR P5 (test_loop_cmd.py, json import): FROM count before 1
 ```
-All six confirmed at exactly 1 occurrence in their target file before
+All five confirmed at exactly 1 occurrence in their target file before
 being applied (constraint 1's re-confirmation, using each file's
 CURRENT on-disk content, not the block's cited line numbers).
 
-Full diff, `74cfbd28..838e0009`, all three production files:
+Full diff, `9adfbc53..9aaaedcb`, both production files:
 ```diff
-diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
---- a/apps/cli/commands/job.py
-+++ b/apps/cli/commands/job.py
-@@ -6,6 +6,7 @@ import re
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -642,6 +642,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
+         subcommand="list",
+         description="List the loops in remedy.toml: name, trigger, action and last run.",
+         action_class="read_only",
++        args=(_JSON_OPT,),
++        supports_json=True,
+         related=("loop.validate", "loop.run"),
+     ),
+     CommandEntry(
+diff --git a/apps/cli/commands/loop_cmd.py b/apps/cli/commands/loop_cmd.py
+--- a/apps/cli/commands/loop_cmd.py
++++ b/apps/cli/commands/loop_cmd.py
+@@ -23,6 +23,7 @@ wants: the feature requires all errors and a nonzero exit, not the first error.
+ """
+ from __future__ import annotations
+ 
++import json
  import sys
- import time
  from collections.abc import Callable
-+from datetime import datetime, timezone
  from typing import TYPE_CHECKING, Any
+@@ -77,7 +78,7 @@ def _trigger_label(spec: Any) -> str:
+     return str(spec.trigger.kind)
  
- from packages.core.models import Job, RunState, Task
-@@ -609,9 +610,10 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
-                         pis, pi_artifact.content or "", pi_task_type, pi_repo_root,
-                     )
-                     if dry_run_results:
-+                        pi_created_at = datetime.now(timezone.utc).isoformat()
-                         pi_artifact.metadata["patch_intent_explanations"] = [
-                             {"file": r.target_path, "action": r.action, "risk": r.risk_level,
--                             "reason": r.reason, "summary": r.summary}
-+                             "reason": r.reason, "summary": r.summary, "created_at": pi_created_at}
-                             for r in dry_run_results
-                         ]
-                         pi_artifact.metadata["patch_intent_risks"] = [r.risk_level for r in dry_run_results]
-diff --git a/packages/orchestration/approval_queue.py b/packages/orchestration/approval_queue.py
---- a/packages/orchestration/approval_queue.py
-+++ b/packages/orchestration/approval_queue.py
-@@ -146,6 +146,7 @@ def list_patch_intents(job: Job) -> list[dict]:
-       risk             — validated risk level (RISK_LEVELS; RISK_UNKNOWN if bad)
-       reason           — human-readable derivation reason
-       summary          — truncated intent text
-+      created_at       — ISO datetime string or None (set once, at intent-derivation time)
-       state            — APPROVAL_PENDING | APPROVAL_APPROVED | APPROVAL_REJECTED
-       decided_at       — ISO datetime string or None
-       decided_by       — who recorded the decision, or None
-@@ -174,6 +175,7 @@ def list_patch_intents(job: Job) -> list[dict]:
-                     "risk": risk,
-                     "reason": exp.get("reason", ""),
-                     "summary": exp.get("summary", ""),
-+                    "created_at": exp.get("created_at"),
-                     "state": approval.get("state", APPROVAL_PENDING),
-                     "decided_at": approval.get("decided_at"),
-                     "decided_by": approval.get("decided_by"),
-@@ -272,14 +274,15 @@ def format_intent_list(intents: list[dict]) -> str:
-     if not intents:
-         return "No patch intents found for this job."
  
--    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'DECIDED':<20}  TARGET PATH"]
--    lines.append("-" * 72)
-+    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'CREATED':<20}  {'DECIDED':<20}  TARGET PATH"]
-+    lines.append("-" * 92)
-     for item in intents:
-         lines.append(
-             f"{item['intent_id']:<14}  "
-             f"{item['state']:<8}  "
-             f"{item['risk']:<8}  "
-             f"{item['action']:<12}  "
-+            f"{(item['created_at'] or '-'):<20}  "
-             f"{(item['decided_at'] or '-'):<20}  "
-             f"{item['target_path']}"
-         )
-diff --git a/packages/orchestration/do_run.py b/packages/orchestration/do_run.py
---- a/packages/orchestration/do_run.py
-+++ b/packages/orchestration/do_run.py
-@@ -517,6 +517,7 @@ def _run_patch_intent_phase(job: Any, artifact: Any, data_dir: Path) -> str:
-             "action": "create",
-             "risk": "low",
-             "summary": "Safe documentation change",
-+            "created_at": datetime.now(timezone.utc).isoformat(),
-         }
-     ]
-     artifact.metadata["patch_intent_approvals"] = {}
+-def _cmd_loop_list() -> None:
++def _cmd_loop_list(*, json_output: bool = False) -> None:
+     """List every loop: name, trigger, action, last run. Reads, never writes."""
+     from packages.orchestration.loop_spec import LoopSpecError, load_loop_specs
+ 
+@@ -87,6 +88,29 @@ def _cmd_loop_list() -> None:
+         print(f"Error: {exc}", file=sys.stderr)
+         sys.exit(EXIT_ERROR)
+ 
++    if json_output:
++        from packages.orchestration.loop_run import last_run_for_loop
++        loops = []
++        for spec in specs:
++            job = last_run_for_loop(spec.name)
++            last_run_created_at = None
++            last_run_state = None
++            if job is not None:
++                last_run_created_at = getattr(
++                    job.created_at, "isoformat", lambda: str(job.created_at)
++                )()
++                last_run_state = getattr(job.state, "value", job.state)
++            loops.append({
++                "name": spec.name,
++                "trigger": spec.trigger.kind,
++                "is_inert": spec.is_inert,
++                "action": spec.action.kind,
++                "last_run_created_at": last_run_created_at,
++                "last_run_state": last_run_state,
++            })
++        print(json.dumps({"version": 1, "loops": loops}, sort_keys=True))
++        return
++
+     if not specs:
+         print("No loops defined. Add a [[loop]] table to remedy.toml.")
+         return
+@@ -207,7 +231,7 @@ def _cmd_loop_run(name: str, *, project: str | None = None, yes: bool = False) -
+ 
+ 
+ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+-    "loop.list": lambda args: _cmd_loop_list(),
++    "loop.list": lambda args: _cmd_loop_list(json_output=args.json),
+     "loop.validate": lambda args: _cmd_loop_validate(),
+     "loop.run": lambda args: _cmd_loop_run(
+         args.name,
 ```
-Confirmed by reading the full diff: exactly PAIR P1/P2 in job.py, PAIR
-P3 in do_run.py, PAIR P4/P5/P6 in approval_queue.py. Nothing else
-touched in any of the three files.
+Confirmed by reading the full diff: exactly PAIR P1/P2/P4 in
+loop_cmd.py, PAIR P3 in command_catalog.py. Nothing else touched in
+either file.
 
 ```
-$ python3 -m py_compile apps/cli/commands/job.py packages/orchestration/do_run.py packages/orchestration/approval_queue.py tests/orchestration/test_do_run.py tests/test_patch_intent_approval.py tests/test_run_log_cli.py
+$ python3 -m py_compile apps/cli/commands/loop_cmd.py apps/cli/command_catalog.py tests/cli/test_loop_cmd.py
 (exit 0, no output)
 ```
-Exit 0 confirmed for all six touched files, one combined invocation.
+Exit 0 confirmed for all three touched files, one combined invocation.
 
 Ruff attempted per constraint 3, refused:
 ```
 $ ruff check <files>
 This command requires approval
 ```
-Denied this session, same shape of refusal seen in prior rounds (R8's
-own handback recorded the identical text) — expected, not a blocker.
+Denied this session, same shape of refusal every prior round's
+handback recorded — expected, not a blocker.
 
 **PYTEST, C2's COMBINED RUN**:
 ```
-$ python3 -m pytest tests/orchestration/test_do_run.py tests/test_patch_intent_approval.py tests/test_run_log_cli.py tests/test_command_catalog.py -q
-223 passed in 1.02s
+$ python3 -m pytest tests/cli/test_loop_cmd.py tests/test_command_catalog.py -q
+41 passed in 0.34s
 ```
+(This run followed the Deviations-section fix below; the first
+attempt, before that fix, read `3 failed, 38 passed in 0.43s`.)
 
 **THE STATE READERS AND THE CANARY, run individually**:
 ```
 $ python3 -m pytest tests/ui_server/ -q
-515 passed in 32.58s
+515 passed in 32.49s
 $ python3 -m pytest tests/orchestration/test_test_runner.py -q
-52 passed in 5.58s
+52 passed in 5.59s
 $ python3 -m pytest tests/regression/test_resource_safety.py -q
 21 passed in 11.51s
 $ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
-16 passed in 0.30s
+16 passed in 0.28s
 $ python3 -m pytest tests/cli/test_golden_path.py -q
-42 passed in 20.99s
+42 passed in 20.97s
 ```
-515/52/21/16/42 — identical to GATE8's stated baseline. Not moved, as
+515/52/21/16/42 — identical to GATE9's stated baseline. Not moved, as
 expected: this round's change set names no path any of these five
 suites should be sensitive to.
 
-**THE PLAN**:
+**THE PLAN, BYTE-FOR-BYTE (constraint 7)**:
 ```
-$ wc -l .agent/plan.md
-45 .agent/plan.md
-$ git diff --stat -- .agent/plan.md   (against pre-C4 HEAD)
-21 insertions, 25 deletions
+authored PLAN11 slice length: 1928 bytes
+written .agent/plan.md length: 1928 bytes
+EQUAL (bytes == bytes): True
 ```
-Whole-file replace applied via the Write tool with PLAN10's exact
-content; `## Goal` and `## Next Steps` each appear once.
+Whole-file replace applied via a direct binary write of the extracted
+PLAN11 slice (not the Write tool's text path), specifically to avoid
+repeating R9's trailing-newline gap; the byte comparison above is the
+gate itself, not a proxy (`wc -l`/diffstat were not used to establish
+correctness this time, per the lesson booked in C1).
 
 **THE TREE, THE COMMITS AND THE SWEEP**:
 ```
-$ git status --porcelain   (immediately before C5 staged)
+$ git status --porcelain   (immediately before C4 staged)
 (empty)
 $ git ls-files .remedy-wt
 (no output)
 ```
-Tree clean before C5, nothing under `.remedy-wt/` tracked (scratch
-files `.remedy-wt/gate8_line.txt` and `.remedy-wt/decision_f262_d1.txt`
-were written during this round to build byte-exact appends, remain
-there, gitignored, untracked).
+Tree clean before C4, nothing under `.remedy-wt/` tracked (scratch
+files `.remedy-wt/gate9_line.txt` and `.remedy-wt/prose_slip_line.txt`
+were written during this round to build the byte-exact ledger appends,
+remain there, gitignored, untracked).
 
 Per-commit numstat cross-check against this handback's own Commits
 table:
 ```
-$ git show --numstat e15da6a8
-440  0    .agent/authored/f262-r9.md
-$ git show --numstat 23733b15
-382  280  .agent/last_block.md
-$ git show --numstat 7d6df1bd
+$ git show --numstat 1302b67d
+297  0    .agent/authored/f262-r10.md
+$ git show --numstat f7d7dac4
+180  323  .agent/last_block.md
+$ git show --numstat b5c152d1
 2    1    .agent/live_review.md
-$ git show --numstat 838e0009
-3    1    apps/cli/commands/job.py
-5    2    packages/orchestration/approval_queue.py
-1    0    packages/orchestration/do_run.py
-11   0    tests/orchestration/test_do_run.py
-31   0    tests/test_patch_intent_approval.py
-125  0    tests/test_run_log_cli.py
-$ git show --numstat 59bf9fe9
-14   1    .agent/decisions.md
-$ git show --numstat 8bbed794
-21   25   .agent/plan.md
+2    1    .agent/prose_slips.md
+$ git show --numstat 9aaaedcb
+2    0    apps/cli/command_catalog.py
+26   2    apps/cli/commands/loop_cmd.py
+29   3    tests/cli/test_loop_cmd.py
+$ git show --numstat ada5cafa
+14   16   .agent/plan.md
 ```
 Every path and every insertion/deletion count matches the Commits
 table exactly. Note: at C0b commit time, `git commit`'s own printed
-summary read "440 insertions(+), 338 deletions(-)" (a rename/rewrite
-percentage-based estimate), while `--numstat` gives the real
-line-level diff (382/280) used throughout this handback's Commits
-table — the same tooling substitution R8's ledger entry already
-documented; no committed byte is affected either way.
+summary read "1 file changed, 297 insertions(+), 440 deletions(-)" (a
+rename/rewrite percentage-based estimate), while `--numstat` gives the
+real line-level diff (180/323) used throughout this handback's Commits
+table — the same tooling substitution prior rounds' ledger entries
+already documented; no committed byte is affected either way.
 
 **Staleness sweep**, one entry per file this round touched:
-- `.agent/authored/f262-r9.md` — NOT stale. Immutable verbatim record
+- `.agent/authored/f262-r10.md` — NOT stale. Immutable verbatim record
   of this round's own step block.
 - `.agent/last_block.md` — NOT stale. Mirrors the current round's
   block exactly.
-- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE8's
-  content describes round 8's own verified facts.
-- `apps/cli/commands/job.py` — NOT stale. Matches PAIR P1/P2 exactly;
+- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE9's
+  content describes round 9's own verified facts.
+- `.agent/prose_slips.md` — NOT stale. Append-only log; the new line
+  describes round 9's own C4 byte-fidelity gap, already fixed in this
+  round's own C3.
+- `apps/cli/command_catalog.py` — NOT stale. Matches PAIR P3 exactly;
   full diff read and confirmed.
-- `packages/orchestration/do_run.py` — NOT stale. Matches PAIR P3
-  exactly; no second `datetime` import added.
-- `packages/orchestration/approval_queue.py` — NOT stale. Matches PAIR
-  P4/P5/P6 exactly.
-- `tests/orchestration/test_do_run.py`, `tests/test_patch_intent_approval.py`,
-  `tests/test_run_log_cli.py` — NOT stale. TEST T1-T4 inserted exactly
-  where specified; py_compile and pytest both green.
-- `.agent/decisions.md` — NOT stale. DECISION F262 D1 is a fresh,
-  dated entry describing this round's own reasoning.
-- `.agent/plan.md` — NOT stale. Freshly written PLAN10 content
-  accurately describes round 9's actual state.
+- `apps/cli/commands/loop_cmd.py` — NOT stale. Matches PAIR P1/P2/P4
+  exactly; full diff read and confirmed.
+- `tests/cli/test_loop_cmd.py` — NOT stale. Matches PAIR P5 and TEST
+  T1/T2 exactly, plus the 3-test dispatch fix described in Deviations;
+  py_compile and pytest both green.
+- `.agent/plan.md` — NOT stale. Freshly written PLAN11 content
+  accurately describes round 10's actual state.
 
 Constraint check (a sentence OUTSIDE the change set already stale
 before this round): `docs/roadmap/features/T2_F262.md` line 5 still
 reads `> REGISTRATION ONLY — nothing in this file has been
 implemented.` Already false as of round 2 and remains outside this
-round's declared change set too, unchanged from R8's own note.
+round's declared change set too, unchanged from prior rounds' notes.
 
 ## Deviations & assumptions
 
-1. **No FROM mismatch occurred.** All six PAIR FROM strings (P1-P6)
+1. **A follow-up fix was required in `tests/cli/test_loop_cmd.py`,
+   beyond P1-P5/T1-T2 as literally specified.** PAIR P4's exact TO
+   text (`"loop.list": lambda args: _cmd_loop_list(json_output=args.json)`)
+   makes the dispatch lambda access `args.json` unconditionally. Three
+   PRE-EXISTING tests in this same file
+   (`test_a_manual_loop_lists_its_name_trigger_action_and_never`,
+   `test_a_schedule_trigger_loop_is_listed_and_marked_inert`,
+   `test_after_one_real_firing_the_row_shows_that_run`) call the
+   file's own `_dispatch(command_id)` helper, which builds a bare
+   `argparse.Namespace()` with NO attributes at all — this predates
+   the round and was not flagged in the block's BACKGROUND FACTS.
+   Before this round, `_cmd_loop_list()` took no arguments at all, so
+   the old lambda (`lambda args: _cmd_loop_list()`) never touched
+   `args`; PAIR P4 made it touch `args.json` for the first time,
+   breaking those 3 tests with `AttributeError: 'Namespace' object has
+   no attribute 'json'`. First pytest run (before the fix) read `3
+   failed, 38 passed in 0.43s`. Fixed by changing those 3 call sites
+   from `_dispatch("loop.list")` to `_dispatch_with("loop.list",
+   json=False)` — using the file's own existing helper built exactly
+   for this, staying inside the already-named test file, and not
+   altering the P1-P5/T1-T2 pairs themselves in any way. Second run:
+   `41 passed in 0.34s`. Reported here rather than silently folded in,
+   per constraint 6's spirit (report the real numbers, not a
+   "green"-only claim).
+2. **No FROM mismatch occurred.** All five PAIR FROM strings (P1-P5)
    were re-read from each file's current on-disk content before
    applying, per constraint 1, and each occurred exactly once —
    nothing needed to stop or be reported as a mismatch.
-2. **TEST T2's import placement** — the block offered a choice between
-   a local `from packages.core.models import Artifact` inside the new
-   test method or a module-level addition. Chose the local import (as
-   the very first line of the method body) since `_add_patch_artifact`
-   in the same file already uses that pattern, and it keeps the diff
-   to exactly the new lines with no change to the shared module-level
-   import list other tests also rely on.
-3. **`git commit`'s printed stat for C0b** differed from `--numstat`
+3. **The C3 plan.md gate used a direct binary write plus a real
+   `bytes == bytes` comparison**, not the Write tool's normal text
+   path, specifically to avoid reproducing R9's own trailing-newline
+   gap (the lesson just booked in this round's own C1). Result: exact
+   match, 1928 authored bytes == 1928 written bytes.
+4. **`git commit`'s printed stat for C0b** differed from `--numstat`
    (rename/rewrite percentage estimate vs. real line diff) — same
-   substitution already declared in R8's own ledger; `--numstat`
-   values are used throughout this handback's Commits table.
-4. **Ruff denied**, as anticipated by constraint 3; noted, not treated
+   substitution already declared in prior rounds' ledgers;
+   `--numstat` values are used throughout this handback's Commits
+   table.
+5. **Ruff denied**, as anticipated by constraint 3; noted, not treated
    as a blocker.
-5. **`/tmp` writes were denied by the sandbox**; scratch files for
-   building the byte-exact GATE8 and DECISION appends were written
+6. **`/tmp` writes were denied by the sandbox**; scratch files for
+   building the byte-exact GATE9 and PROSE_SLIP appends were written
    under the gitignored `.remedy-wt/` directory instead (consistent
    with this project's established scratch-location convention).
 
 No other deviations. `.agent/STOP` was absent every time it was
-checked (before C0a, before C5, and once more before writing this
+checked (before C0a, after C2, and once more before writing this
 handback). No path outside the declared change set was written under
-version control: only `.agent/authored/f262-r9.md`,
+version control: only `.agent/authored/f262-r10.md`,
 `.agent/last_block.md`, `.agent/live_review.md`,
-`apps/cli/commands/job.py`, `packages/orchestration/do_run.py`,
-`packages/orchestration/approval_queue.py`,
-`tests/orchestration/test_do_run.py`,
-`tests/test_patch_intent_approval.py`, `tests/test_run_log_cli.py`,
-`.agent/decisions.md`, `.agent/plan.md` and this handback were
-committed. The bundle's commit order (C0a, C0b, C1, C2, C3, C4 — this
-handback C5) was followed exactly, with C2 as one commit covering all
-six files per constraint 5.
+`.agent/prose_slips.md`, `apps/cli/command_catalog.py`,
+`apps/cli/commands/loop_cmd.py`, `tests/cli/test_loop_cmd.py`,
+`.agent/plan.md` and this handback were committed. The bundle's commit
+order (C0a, C0b, C1, C2, C3 — this handback C4) was followed exactly,
+with C2 as one commit covering all four files per constraint 5.
 
 ## Next
 
-**NEXT EXPECTED ACTION: further date-coverage design, not T003 yet.**
-PLAN10's Next Steps still lists two open date-coverage questions
-(loop.list's CREATED substitute, change.list's event-log CREATED date)
-before T003 (sort/filter/limit) should start, since T003 needs a
-reasonably complete set of date fields to sort by across commands;
-starting sort/filter work while two list commands still lack any
-CREATED value risks building the sort flag against an incomplete
-target shape. The execution.* trio's pre-existing `--json`-ignored
+**NEXT EXPECTED ACTION: audit remaining list commands' date coverage
+before starting T003.** PLAN11's Next Steps names two open items:
+change.list's event-log CREATED date question (unrelated to D1 — see
+D1's Alternative section) and a broader audit of whether any other
+list command still lacks a date field now that patch.list and
+loop.list both have one. Reasoning: T003 (sort/filter/limit) needs a
+reasonably complete set of date fields to sort by across commands, and
+change.list is only ONE instance of that open question — starting the
+audit first (rather than jumping straight to change.list's harder
+event-log-join problem) gives round 11 a clean read on exactly how
+many commands still block T003 before committing to a design for any
+one of them. The execution.* trio's pre-existing `--json`-ignored
 quirk stays excused per the Risks section.
 
-**THIS IS SESSION 4, ROUND 9** — the operator may continue directly to
-round 10 in this same session or start a fresh session per the
+**THIS IS SESSION 4, ROUND 10** — the operator may continue directly
+to round 11 in this same session or start a fresh session per the
 self-drive protocol's own judgment; no session/round-limit threshold
 has been reached.
