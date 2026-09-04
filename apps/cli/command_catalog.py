@@ -687,6 +687,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List all projects.",
         action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
     ),
     CommandEntry(
         command_id="project.show",

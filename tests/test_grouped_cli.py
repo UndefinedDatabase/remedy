@@ -557,3 +557,36 @@ class TestMemoryCLIContract:
         parser = build_parser()
         args = parser.parse_args(["memory", "store", "k", "v"])
         assert args.approved is False
+
+
+class TestProjectListCLI:
+    """project.list JSON must include version: 1, project_count and created_at."""
+
+    def test_catalog_has_json_flag(self) -> None:
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("project.list")
+        assert cmd.supports_json is True
+        assert any(a.name == "--json" for a in cmd.args)
+
+    def test_list_json_has_created_at(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        save_project(RemyProject(name="p1", slug="p1"))
+        from apps.cli.commands.project import _cmd_list_projects
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_projects(json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data["version"] == 1
+        assert data["projects"][0]["created_at"]
+
+    def test_list_text_shows_created(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        save_project(RemyProject(name="p2", slug="p2"))
+        from apps.cli.commands.project import _cmd_list_projects
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_projects(json_output=False)
+        text = buf.getvalue()
+        assert "created=" in text

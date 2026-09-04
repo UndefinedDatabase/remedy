@@ -27,16 +27,25 @@ def _cmd_create_project(name: str, description: str | None) -> None:
     print(project.id)
 
 
-def _cmd_list_projects() -> None:
+def _cmd_list_projects(*, json_output: bool = False) -> None:
     from packages.orchestration.project_registry import _list_projects_readonly
     projects = _list_projects_readonly()
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "project_count": len(projects),
+            "projects": [{"id": str(p.id), "slug": p.slug or "", "name": p.name,
+                          "description": p.description or "",
+                          "created_at": p.created_at.isoformat()} for p in projects],
+        }, sort_keys=True))
+        return
     if not projects:
         print("No projects found.")
         return
     for p in projects:
         slug = p.slug or "-"
         desc = f"  {p.description}" if p.description else ""
-        print(f"{p.id}  {slug:<20s}  {p.name}{desc}")
+        print(f"{p.id}  {slug:<20s}  {p.name}  (created={p.created_at.isoformat()}){desc}")
 
 
 def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
@@ -438,7 +447,7 @@ def _cmd_project_adopt(
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
-    "project.list": lambda args: _cmd_list_projects(),
+    "project.list": lambda args: _cmd_list_projects(json_output=args.json),
     "project.show": lambda args: _cmd_show_project(args.project_id, json_output=args.json),
     "project.attach-repo": lambda args: _cmd_attach_project_repo(args.project_id, args.repo_path),
     "project.attach-job": lambda args: _cmd_attach_project_job(args.project_id, args.job_id),
