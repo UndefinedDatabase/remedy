@@ -1,70 +1,76 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 2 (T001 ships)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 3 (T002 batch 1 ships)
 
 ## Session
 
-SESSION 1 of feature F262 · round 2 · rounds so far 2.
+SESSION 1 of feature F262 · round 3 · rounds so far 3.
 
-Round 2 ships T001: the shared listing-option surface (`--sort`,
-`--desc`, `--since`, `--until`, `--limit`) attached to every list-shaped
-catalog command by construction, plus a catalog-derived coverage test
-proving no list command is missing one. This round changes what
-argparse ACCEPTS, not what any store's output looks like — no handler's
-behavior changes (T002/T003 do that).
+Round 3 ships T002 batch 1: printed CREATED (and, where the model has
+it, RESOLVED/UPDATED) dates on four list commands whose store already
+records the timestamps and whose `--json` output already surfaces
+them — only the TEXT rendering was missing them. No model or store
+change, no `--json` change, no behavior change beyond the printed
+line: `blocker.list`, `decision.list`, `approval.policy-list`,
+`self-repair.proposal-list`. Two of the four (`blocker.list`,
+`decision.list`) had no dedicated CLI test file before this round;
+both now do.
 
 ## Range
 
-Review of `9d15b7f2a23fb7234d7e2f33f043689363050eeb..1e5dabe4a4bb39c006e1dba20b4f2ea74ef13d13`.
-That is C0a through C3 (five content commits before this handback — C0a,
-C0b, C1, C2, C3). This handback (C4) follows and is not part of the
-reviewed content range.
+Review of `c324929e8f0b97b34de30c6e4eb42bbca3357b61..41922f01aa656c4fd968a412cb9731de608c83a9`.
+That is C0a through C3 (five content commits before this handback —
+C0a, C0b, C1, C2, C3). This handback (C4) follows and is not part of
+the reviewed content range.
 
 ## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
 | Preconditions | done | HEAD matched, branch matched, tree clean, STOP absent |
-| C0a | done | `.agent/authored/f262-r2.md` saved verbatim, cmp exit 0 |
-| C0b | done | mirrored to `.agent/last_block.md`, cmp exit 0 |
-| C1 | done | GATE1 appended to `.agent/live_review.md` byte-exact |
-| C2 | done | T001 shipped: `apps/cli/command_catalog.py` + `tests/test_command_catalog.py`, one commit |
-| C3 | done | PLAN3 applied to `.agent/plan.md`, whole-file replace |
+| C0a | done | `.agent/authored/f262-r3.md` saved verbatim, cmp exit 0 |
+| C0b | done | mirrored to `.agent/last_block.md`, sha256 identical |
+| C1 | done | GATE2 appended to `.agent/live_review.md` byte-exact |
+| C2 | done | four printer PAIRs applied + two new test files, one commit |
+| C3 | done | PLAN4 applied to `.agent/plan.md`, whole-file replace |
 | C4 (this handback) | done | |
 | G1 TRANSPORT | done | PASS — one digest, twice |
 | G2 THE LEDGER APPEND | done | PASS — arithmetic matched, tail equal, negative control rejected |
-| G3 THE CODE | done | PASS — spec symbols confirmed, count 28, missing dict empty, py_compile exit 0 both |
-| G4 THE NEW TESTS | done | PASS — 22 base, 25 after (base + 3) |
-| G5 THE MUTATION RED-PROOF | done | PASS — named `--until` missing, reverted clean, worktree removed |
-| G6 THE FULL SUITE | done | PASS — 19604 passed vs baseline 19601 passed, delta declared |
-| G7 THE PLAN | done | PASS — cmp 0, 36 lines, both header counts 1 |
-| G8 THE TREE, COMMITS, SWEEP | done | PASS — tree clean, `.remedy-wt` untracked, numstats match, staleness declared |
+| G3 THE FOUR PAIRS | done | PASS — all four FROM 1→0, TO 0→1, containment False, py_compile exit 0 ×6 |
+| G4 THE TESTS, BEFORE AND AFTER | done | PASS — 68/12 unchanged before+after C2, new files 2/2 passed |
+| G5 STATE READERS + CANARY | done | PASS — 515/52/21/16/42, unmoved from session baseline |
+| G6 THE PLAN | done | PASS — cmp exit 0, 40 lines, both header counts 1 |
+| G7 THE TREE, COMMITS, SWEEP | done | PASS — tree clean, `.remedy-wt` untracked, numstats match, staleness declared |
 
 ## Commits
 
-### 037a77f4 F262 R2 C0a: save step block verbatim to .agent/authored/f262-r2.md
+### a262f041 F262 R3 C0a: save step block verbatim to .agent/authored/f262-r3.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r2.md` | +301/-0 | transport proof — verbatim `cp` of the reviewer's step block (`.remedy-wt/f262-r2-block.txt`), new file |
+| `.agent/authored/f262-r3.md` | +303/-0 | transport proof — verbatim `cp` of the reviewer's step block (`.remedy-wt/f262-r3-block.txt`), new file |
 
-### c119c213 F262 R2 C0b: mirror block to .agent/last_block.md
+### be92b657 F262 R3 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +260/-201 | mirror of the round's authored block via `cp` (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
+| `.agent/last_block.md` | +227/-225 | mirror of the round's authored block via `cp` (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption from the 500-line cap) |
 
-### 66770833 F262 R2 C1: append GATE1 to live_review.md - books round 1's PASS verdict
+### f5774a49 F262 R3 C1: append GATE2 to live_review.md, books round 2 PASS verdict
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE1 (extracted from committed authored file by marker index), `\n` + GATE1's own bytes appended to the base file |
+| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE2 (extracted from committed authored file by marker index), `\n` + GATE2's own bytes appended to the base file |
 
-### 55a29fb0 F262 R2 C2: T001 shared list-option surface + catalog coverage test
+### e9589f54 F262 R3 C2: T002 batch 1 - print created/resolved dates on four list commands, with coverage
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/command_catalog.py` | +62/-2 | rename `CATALOG`→`_BASE_CATALOG`, import `replace`, add five `_LIST_*_ARG` constants, `_LIST_OPTION_ARGS`, `_is_list_command`, `_with_list_options`, rebuild `CATALOG` |
-| `tests/test_command_catalog.py` | +28/-0 | import `_is_list_command`, add `TestListCommandOptions` (3 tests) between `TestCatalogExpensive` and `TestCatalogSensitivity` |
+| `apps/cli/commands/blocker.py` | +2/-1 | PAIR B — `_cmd_blocker_list` text row now prints `created=` and, when set, `resolved=` |
+| `apps/cli/commands/decision.py` | +2/-1 | PAIR D — `_cmd_decision_list` text row now prints `created=` and, when set, `resolved=` |
+| `apps/cli/commands/self_repair_cmd.py` | +2/-1 | PAIR S — `_cmd_proposal_list` text row now prints `created=`/`updated=` |
+| `apps/cli/commands/worker_facade_cmd.py` | +2/-1 | PAIR P — `_cmd_approval_policy_list` text row now prints `created=`/`updated=` |
+| `tests/cli/test_blocker_cmd.py` | +49/-0 | new — `TestBlockerListText`, 2 tests, follows `TestApprovalPolicyList`'s patching idiom |
+| `tests/cli/test_decision_cmd.py` | +53/-0 | new — `TestDecisionListText`, 2 tests, same idiom, patches both `_load_job_events` and `list_decisions` |
 
-### 1e5dabe4 F262 R2 C3: apply PLAN3 to .agent/plan.md
+### 41922f01 F262 R3 C3: replace plan.md with PLAN4 - round 4 continues T002 batch 2
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +17/-22 | whole-file replace with PLAN3 extracted from the committed authored file (per constraint 5) |
+| `.agent/plan.md` | +21/-17 | whole-file replace with PLAN4 extracted from the committed authored file (per constraint 6) |
 
 ### (this handback commit, C4)
 | Path | +/- | Reason |
@@ -73,13 +79,6 @@ reviewed content range.
 
 ## External actions
 
-- `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/f262-r2-mutation HEAD`
-  (after C2 was committed) — created for G5's disposable mutation
-  red-proof, outcome: worktree prepared at detached HEAD `55a29fb0`.
-- `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f262-r2-mutation`
-  — outcome: removed cleanly before C3, confirmed absent from
-  `git worktree list` afterward (see Deviations for the caveat on what
-  else that listing shows).
 - `git push origin feature/f262-list-commands-v2` — runs immediately
   after this commit, per the Bundle's C4 step; reported in the closing
   message, not here, since it happens after this file is committed. No
@@ -93,7 +92,7 @@ Preconditions, checked before C0a:
 $ git status --porcelain
 (empty)
 $ git rev-parse HEAD
-9d15b7f2a23fb7234d7e2f33f043689363050eeb
+c324929e8f0b97b34de30c6e4eb42bbca3357b61
 $ git branch --show-current
 feature/f262-list-commands-v2
 $ ls .agent/STOP
@@ -103,262 +102,168 @@ All four confirmed.
 
 **G1 TRANSPORT** (after C0b):
 ```
-$ sha256sum .agent/authored/f262-r2.md .agent/last_block.md
-a398aa1cb99f7c52d01b77be23ed76e18df6b8035d322d7c93968abb8ca84682  .agent/authored/f262-r2.md
-a398aa1cb99f7c52d01b77be23ed76e18df6b8035d322d7c93968abb8ca84682  .agent/last_block.md
+$ sha256sum .agent/authored/f262-r3.md .agent/last_block.md
+c8d93da08b41c7fe134ba3320f52f890d21a9998b300ffa8f19229c20313992b  .agent/authored/f262-r3.md
+c8d93da08b41c7fe134ba3320f52f890d21a9998b300ffa8f19229c20313992b  .agent/last_block.md
 ```
-One digest, twice — PASS. `cmp .remedy-wt/f262-r2-block.txt .agent/authored/f262-r2.md` also returned exit 0, no output, before the copy to `last_block.md` was even made.
+One digest, twice — PASS.
 
 **G2 THE LEDGER APPEND, FULL FORENSICS**:
 ```
-base size immediately before C1: 2414126 bytes, trailing byte b'.' (no trailing newline)
-GATE1 own byte length: 2968
-GATE1 internal newline count: 0
-base + 1 + GATE1_length = 2417095
-post-C1 file real byte length = 2417095
+base size immediately before C1: 2417095 bytes, trailing byte b'.' (no trailing newline)
+GATE2 own byte length: 4209
+GATE2 internal newline count: 0
+base + 1 + GATE2_length = 2421305
+post-C1 file real byte length = 2421305
 match: True
-tail slice (last 2968 bytes of post-C1 file) vs GATE1: equal True
-  (cmp both directions: exit 0, no output, each direction)
-negative control: flipped first byte of a COPY of GATE1 vs the real tail: rejected True
+tail slice (last 4209 bytes of post-C1 file) vs GATE2: equal True
+  (cmp both directions, via scratch copies under .remedy-wt/: exit 0, no output, each direction)
+negative control: flipped first byte of a COPY of GATE2 vs the real tail: rejected True
 ```
-All readings PASS.
+All readings PASS — matches the block's own stated expected sizes
+(2417095 base, 2421305 post-append) exactly.
 
-**G3 THE CODE, READ NOT ONLY GATED**:
-Full diff of `apps/cli/command_catalog.py`:
+**G3 THE FOUR PAIRS, READ AND COUNTED**:
+```
+PAIR B (blocker.py):            FROM before 1, FROM after 0, TO after 1, FROM in TO: False
+PAIR D (decision.py):           FROM before 1, FROM after 0, TO after 1, FROM in TO: False
+PAIR P (worker_facade_cmd.py):  FROM before 1, FROM after 0, TO after 1, FROM in TO: False
+PAIR S (self_repair_cmd.py):    FROM before 1, FROM after 0, TO after 1, FROM in TO: False
+```
+All four PASS — REWRITE confirmed, not APPEND, for all four (extracted
+and applied via `.remedy-wt/apply_pairs.py`, never hand-retyped).
+
+Full diff of all four production files, confirmed nothing beyond the
+named pair changed in each:
 ```diff
---- a/apps/cli/command_catalog.py
-+++ b/apps/cli/command_catalog.py
-@@ -22,7 +22,7 @@ Public API::
- 
- from __future__ import annotations
- 
--from dataclasses import dataclass
-+from dataclasses import dataclass, replace
- from typing import Literal
- 
- # ---------------------------------------------------------------------------
-@@ -217,7 +217,7 @@ _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", req
- # Catalog
- # ---------------------------------------------------------------------------
- 
--CATALOG: tuple[CommandEntry, ...] = (
-+_BASE_CATALOG: tuple[CommandEntry, ...] = (
-     # ── init ─────────────────────────────────────────────────────────────
-     CommandEntry(
-         command_id="init.run",
-@@ -4864,6 +4864,66 @@ CATALOG: tuple[CommandEntry, ...] = (
- )
- 
- 
-+# ---------------------------------------------------------------------------
-+# List command shared option surface (F262 T001)
-+# ---------------------------------------------------------------------------
-+
-+_LIST_SORT_ARG = ArgDef(
-+    "--sort", "Sort field; this command's own columns are the valid set (see --help)",
-+    required=False, is_option=True)
-+_LIST_DESC_ARG = ArgDef(
-+    "--desc", "Reverse the sort order",
-+    required=False, is_option=True, is_flag=True)
-+_LIST_SINCE_ARG = ArgDef(
-+    "--since",
-+    "Only rows at or after this time: an ISO-8601 timestamp, or a relative "
-+    "form such as 2d or 12h",
-+    required=False, is_option=True)
-+_LIST_UNTIL_ARG = ArgDef(
-+    "--until",
-+    "Only rows before this time: an ISO-8601 timestamp, or a relative form "
-+    "such as 2d or 12h",
-+    required=False, is_option=True)
-+_LIST_LIMIT_ARG = ArgDef(
-+    "--limit", "Max rows to return",
-+    required=False, is_option=True)
-+
-+_LIST_OPTION_ARGS: tuple[ArgDef, ...] = (
-+    _LIST_SORT_ARG,
-+    _LIST_DESC_ARG,
-+    _LIST_SINCE_ARG,
-+    _LIST_UNTIL_ARG,
-+    _LIST_LIMIT_ARG,
-+)
-+
-+
-+def _is_list_command(entry: CommandEntry) -> bool:
-+    """True for a catalog entry whose subcommand is list-shaped (F262 T001)."""
-+    return entry.subcommand == "list" or entry.subcommand.endswith("-list")
-+
-+
-+def _with_list_options(entry: CommandEntry) -> CommandEntry:
-+    """Attach the shared list-option surface to a list-shaped entry.
-+
-+    Add-only-if-missing: a command that already declares one of these flags
-+    by name (today only `event.list`, which already has `--since` and
-+    `--limit`) keeps its own existing ArgDef for that name untouched and
-+    only gains the flags it is missing. Appending a second ArgDef of an
-+    already-present name crashes argparse at parser-build time with a
-+    conflicting-option error (verified against `grouped.build_parser()`).
-+    """
-+    if not _is_list_command(entry):
-+        return entry
-+    existing = {a.name for a in entry.args}
-+    missing = tuple(a for a in _LIST_OPTION_ARGS if a.name not in existing)
-+    if not missing:
-+        return entry
-+    return replace(entry, args=(*entry.args, *missing))
-+
-+
-+CATALOG: tuple[CommandEntry, ...] = tuple(_with_list_options(c) for c in _BASE_CATALOG)
-+
-+
- # The whole surface of the UI write door: no other `command_id` above is
- # reachable from a browser, and plan approval arrives here as `decision.resolve`
- # carrying an `fp:`-prefixed decision id rather than as a command of its own
-```
-Confirmed by direct reading: every named symbol in the CODE SPEC
-(`_LIST_SORT_ARG` through `_LIST_LIMIT_ARG`, `_LIST_OPTION_ARGS`,
-`_is_list_command`, `_with_list_options`, `_BASE_CATALOG`, `CATALOG`)
-exists with the described behavior. Only two lines outside the inserted
-region changed — the import line and the tuple's own binding name — and
-`git diff` names zero other changed lines; no byte inside any
-`_BASE_CATALOG` entry moved.
+--- a/apps/cli/commands/blocker.py
++++ b/apps/cli/commands/blocker.py
+@@ -35,7 +35,8 @@ def _cmd_blocker_list(
+             return
+         for s in stops:
+             status_mark = "[resolved]" if s.status == "resolved" else "[active]"
+-            print(f"  {s.reason_code} {status_mark}  {s.safe_summary}  (id={s.id[:8]})")
++            resolved_str = f", resolved={s.resolved_at}" if s.resolved_at else ""
++            print(f"  {s.reason_code} {status_mark}  {s.safe_summary}  (id={s.id[:8]}, created={s.created_at}{resolved_str})")
 
-Independent check, run exactly as specified:
+--- a/apps/cli/commands/decision.py
++++ b/apps/cli/commands/decision.py
+@@ -54,7 +54,8 @@ def _cmd_decision_list(job_id_str: str, *, json_output: bool = False) -> None:
+             return
+         for d in decisions:
+             status_mark = "[open]" if d.status == "open" else "[resolved]"
+-            print(f"  {d.type} {status_mark} ({d.severity}): {d.safe_summary}  (id={d.id})")
++            resolved_str = f", resolved={d.resolved_at}" if d.resolved_at else ""
++            print(f"  {d.type} {status_mark} ({d.severity}): {d.safe_summary}  (id={d.id}, created={d.created_at}{resolved_str})")
+
+--- a/apps/cli/commands/self_repair_cmd.py
++++ b/apps/cli/commands/self_repair_cmd.py
+@@ -90,7 +90,8 @@ def _cmd_proposal_list(args: argparse.Namespace) -> None:
+         return
+
+     for p in proposals:
+-        print(f"  {p.get('proposal_id', '?'):20s}  {p.get('status', '?'):25s}  {p.get('title', '')[:50]}")
++        print(f"  {p.get('proposal_id', '?'):20s}  {p.get('status', '?'):25s}  {p.get('title', '')[:50]}"
++              f"  (created={p.get('created_at', '')}, updated={p.get('updated_at', '')})")
+
+--- a/apps/cli/commands/worker_facade_cmd.py
++++ b/apps/cli/commands/worker_facade_cmd.py
+@@ -662,7 +662,8 @@ def _cmd_approval_policy_list(ns: argparse.Namespace) -> None:
+     print(f"Approval policies: {len(policies)}")
+     for p in policies:
+         status = "ENABLED" if p.get("enabled") else "disabled"
+-        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}")
++        print(f"  [{status}] {p.get('policy_id', '?')}: {p.get('label', '')}"
++              f"  (created={p.get('created_at', '')}, updated={p.get('updated_at', '')})")
 ```
-$ python3 -c "from apps.cli.command_catalog import CATALOG, _is_list_command; lc = [c for c in CATALOG if _is_list_command(c)]; print(len(lc)); missing = {c.command_id: sorted({'--sort','--since','--until','--limit'} - {a.name for a in c.args}) for c in lc}; print({k: v for k, v in missing.items() if v})"
-28
-{}
-```
-Count 28, missing-flags dict empty — PASS.
+Confirmed by direct reading: exactly one line replaced by two in each
+file, nothing else touched.
 
 ```
-$ python3 -m py_compile apps/cli/command_catalog.py
+$ python3 -m py_compile apps/cli/commands/blocker.py
 (exit 0, no output)
-$ python3 -m py_compile tests/test_command_catalog.py
+$ python3 -m py_compile apps/cli/commands/decision.py
+(exit 0, no output)
+$ python3 -m py_compile apps/cli/commands/worker_facade_cmd.py
+(exit 0, no output)
+$ python3 -m py_compile apps/cli/commands/self_repair_cmd.py
+(exit 0, no output)
+$ python3 -m py_compile tests/cli/test_blocker_cmd.py
+(exit 0, no output)
+$ python3 -m py_compile tests/cli/test_decision_cmd.py
 (exit 0, no output)
 ```
-Both exit 0, reported separately — PASS.
+All six exit 0, reported individually — PASS.
 
-Ruff attempted per constraint 3, exact refusal reproduced:
+Ruff attempted per constraint 4, exact refusal reproduced:
 ```
-$ ruff check apps/cli/command_catalog.py tests/test_command_catalog.py
+$ ruff check apps/cli/commands/blocker.py apps/cli/commands/decision.py apps/cli/commands/worker_facade_cmd.py apps/cli/commands/self_repair_cmd.py tests/cli/test_blocker_cmd.py tests/cli/test_decision_cmd.py
 This command requires approval
 ```
 Ruff is denied this session, exactly as the block warned.
 
-**G4 THE NEW TESTS, BEFORE AND AFTER**:
+**G4 THE TESTS, BEFORE AND AFTER**:
 ```
-$ git stash                              # isolates the pre-C2 tree
-$ python3 -m pytest tests/test_command_catalog.py -q
-......................                                                   [100%]
-22 passed in 0.22s
-$ git stash pop                          # restores the C2 working tree
-$ python3 -m pytest tests/test_command_catalog.py -q
-.........................                                                [100%]
-25 passed in 0.28s
-```
-Base 22, after 25 — base + 3, all passing — PASS. (The `stash`/`pop`
-pair applied only to the uncommitted C2 diff at the time, using working
-tree state, not a committed change; no commit was created or altered by
-this probe.)
+Before C2:
+$ python3 -m pytest tests/cli/test_worker_facade_cmd.py -q
+....................................................................     [100%]
+68 passed in 0.32s
+$ python3 -m pytest tests/cli/test_self_repair_cmd.py -q
+............                                                             [100%]
+12 passed in 2.43s
 
-**G5 THE MUTATION RED-PROOF, INSIDE A DISPOSABLE WORKTREE**:
-```
-$ git worktree add /home/decodeux/Repos/remedy/.remedy-wt/f262-r2-mutation HEAD
-Preparing worktree (detached HEAD 55a29fb0)
-```
-Inside the worktree only, removed `_LIST_UNTIL_ARG` from
-`_LIST_OPTION_ARGS` (four entries instead of five):
-```
-$ python3 -m pytest tests/test_command_catalog.py::TestListCommandOptions -q
-F..                                                                      [100%]
-=================================== FAILURES ===================================
-____ TestListCommandOptions.test_every_list_command_carries_all_four_flags _____
-...
-    assert not missing, f"{cmd.command_id} is missing list flags: {missing}"
-E   AssertionError: job.list is missing list flags: {'--until'}
-E   assert not {'--until'}
-1 failed, 2 passed in 0.25s
-```
-`--until` is named as the missing flag in the failing assertion message
-— the test loops with a plain `assert` per command (as written in the
-CODE SPEC) and stops at the first failing command it iterates
-(`job.list`, the first list-shaped entry in catalog order), so the
-reported failure names `--until` for that one command rather than
-enumerating all 28 in a single message; every other list command would
-independently fail the same assertion the same way with `--until`
-named, which the code's structure (a per-command loop with the same
-plain assert) makes true by construction, not merely by this one
-sample.
+After C2:
+$ python3 -m pytest tests/cli/test_worker_facade_cmd.py -q
+....................................................................     [100%]
+68 passed in 0.32s
+$ python3 -m pytest tests/cli/test_self_repair_cmd.py -q
+............                                                             [100%]
+12 passed in 2.41s
 
-Reverted the edit and re-ran:
+New files, only after C2:
+$ python3 -m pytest tests/cli/test_blocker_cmd.py -q
+..                                                                        [100%]
+2 passed in 0.19s
+$ python3 -m pytest tests/cli/test_decision_cmd.py -q
+..                                                                        [100%]
+2 passed in 0.20s
 ```
-$ git -C .remedy-wt/f262-r2-mutation diff apps/cli/command_catalog.py
---- a/apps/cli/command_catalog.py
-+++ b/apps/cli/command_catalog.py
-@@ -4892,7 +4892,6 @@ _LIST_OPTION_ARGS: tuple[ArgDef, ...] = (
-     _LIST_SORT_ARG,
-     _LIST_DESC_ARG,
-     _LIST_SINCE_ARG,
--    _LIST_UNTIL_ARG,
-     _LIST_LIMIT_ARG,
- )
-$ git -C .remedy-wt/f262-r2-mutation checkout -- apps/cli/command_catalog.py
-$ python3 -m pytest .remedy-wt/f262-r2-mutation/tests/test_command_catalog.py::TestListCommandOptions -q
-...                                                                      [100%]
-3 passed in 0.23s
-```
-Clean pass reproduced after revert — PASS.
-```
-$ git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f262-r2-mutation
-(no output)
-$ git worktree list
-/home/decodeux/Repos/remedy                                  55a29fb0 [feature/f262-list-commands-v2]
-/home/decodeux/Repos/remedy/.remedy-wt/job-2ac1522a7034440b  3afc78c5 [remedy/job-2ac1522a7034440b]
-/home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
-/home/decodeux/Repos/remedy/.remedy-wt/job-5e91e080219342d9  9fdb3b4b [remedy/job-5e91e080219342d9]
-/home/decodeux/Repos/remedy/.remedy-wt/job-6f74dd7367704fd5  cf0e00e9 [remedy/job-6f74dd7367704fd5]
-/home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
-/home/decodeux/Repos/remedy/.remedy-wt/job-848fc4c67d7b405b  7bea3efc [remedy/job-848fc4c67d7b405b]
-/home/decodeux/Repos/remedy/.remedy-wt/job-962cb3c9b96244ed  05852956 [remedy/job-962cb3c9b96244ed]
-/home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
-/home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
-```
-`f262-r2-mutation` is confirmed removed. The listing does NOT show
-"only the primary checkout" — nine other worktrees (`job-*`) were
-already present in this repo before this round began (confirmed by
-running `git worktree list` before creating `f262-r2-mutation`; they
-were already there), are unrelated to F262, and were neither created
-nor touched by this round. This is declared in Deviations below rather
-than silently narrated as satisfying the block's literal expectation.
+Both pre-existing suites fully green, unchanged before and after
+(68 and 12 both times) — additive printer change broke nothing. Both
+new files show `2 passed` — PASS on all four readings.
 
-**G6 THE FULL SUITE, THE REVIEWER'S BASELINE ALREADY TAKEN**:
+**G5 THE STATE READERS AND THE CANARY**:
 ```
-$ python3 -m pytest -n auto -q
-19604 passed, 23 skipped, 1 warning in 117.92s
+$ python3 -m pytest tests/ui_server/ -q
+515 passed in 32.61s
+$ python3 -m pytest tests/orchestration/test_test_runner.py -q
+52 passed in 5.62s
+$ python3 -m pytest tests/regression/test_resource_safety.py -q
+21 passed in 11.53s
+$ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
+16 passed in 0.29s
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+42 passed in 21.22s
 ```
-Reviewer's baseline: `19601 passed, 23 skipped, 1 warning in 117.31s`.
-This round's reading: `19604 passed, 23 skipped, 1 warning in 117.92s`.
-Difference named explicitly: +3 passed (19604 vs 19601), skip count
-identical (23), warning count identical (1). This matches the +3 new
-tests added by `TestListCommandOptions` in C2's coverage-test file
-(base 22 → 25 in G4, a +3 delta on the same commit). Reported as
-observed; not treated as closing the question, per the block's
-instruction to name the difference rather than explain it away.
+515/52/21/16/42 — identical to this session's own prior readings.
+Not moved, as expected: this round's change set names no path any of
+these five suites should be sensitive to.
 
-**G7 THE PLAN**:
+**G6 THE PLAN**:
 ```
-$ cmp .remedy-wt/plan3_extracted.md .agent/plan.md
-(exit 0, no output)
+$ (PLAN4 extracted from committed authored file, compared byte-for-byte in Python)
+cmp equal: True
 $ wc -l .agent/plan.md
-36 .agent/plan.md
+40 .agent/plan.md
 $ grep -c '^## Goal' .agent/plan.md
 1
 $ grep -c '^## Next Steps' .agent/plan.md
 1
 ```
-cmp exit 0, 36 lines (under 50), both header counts 1 — PASS.
+cmp equal True (exit-0 equivalent), 40 lines (under 50), both header
+counts 1 — PASS.
 
-**G8 THE TREE, THE COMMITS AND THE SWEEP**:
+**G7 THE TREE, THE COMMITS AND THE SWEEP**:
 ```
 $ git status --porcelain   (immediately before C4 staged)
 (empty)
@@ -367,137 +272,157 @@ $ git ls-files .remedy-wt
 ```
 Tree clean before C4, nothing under `.remedy-wt/` tracked.
 
-Per-commit numstat cross-check (the '+' column) against this handback's
-own Commits table:
+Per-commit numstat cross-check (the '+' column) against this
+handback's own Commits table:
 ```
-$ git show --numstat 037a77f4
-301  0    .agent/authored/f262-r2.md
-$ git show --numstat c119c213
-260  201  .agent/last_block.md
-$ git show --numstat 66770833
+$ git show --numstat a262f041
+303  0    .agent/authored/f262-r3.md
+$ git show --numstat be92b657
+227  225  .agent/last_block.md
+$ git show --numstat f5774a49
 2    1    .agent/live_review.md
-$ git show --numstat 55a29fb0
-62   2    apps/cli/command_catalog.py
-28   0    tests/test_command_catalog.py
-$ git show --numstat 1e5dabe4
-17   22   .agent/plan.md
+$ git show --numstat e9589f54
+2    1    apps/cli/commands/blocker.py
+2    1    apps/cli/commands/decision.py
+2    1    apps/cli/commands/self_repair_cmd.py
+2    1    apps/cli/commands/worker_facade_cmd.py
+49   0    tests/cli/test_blocker_cmd.py
+53   0    tests/cli/test_decision_cmd.py
+$ git show --numstat 41922f01
+21   17   .agent/plan.md
 ```
 Every path and every insertion count matches the Commits table exactly
-(301, 260, 2, 62+28=90 total for C2, 17).
+(303, 227, 2, 2+2+2+2+49+53=110 total for C2, 21).
 
 **Staleness sweep**, one entry per file this round touched:
-- `.agent/authored/f262-r2.md` — NOT stale. An immutable verbatim
+- `.agent/authored/f262-r3.md` — NOT stale. An immutable verbatim
   record of the round's own step block; nothing to go stale.
-- `.agent/last_block.md` — NOT stale. Mirrors the current round's block
-  exactly, which is the file's whole purpose.
-- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE1's
-  content describes round 1's own verified facts and is not asserted to
-  describe anything after it.
-- `apps/cli/command_catalog.py` — NOT stale. Matches the CODE SPEC
-  exactly; every list-shaped command carries all four flags (confirmed
-  above).
-- `tests/test_command_catalog.py` — NOT stale. `TestListCommandOptions`
-  matches the three tests the CODE SPEC names.
-- `.agent/plan.md` — NOT stale. Freshly written PLAN3 content
-  accurately describes round 2's actual state (T001 shipped, round 3 =
-  T002 next).
+- `.agent/last_block.md` — NOT stale. Mirrors the current round's
+  block exactly, which is the file's whole purpose.
+- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE2's
+  content describes round 2's own verified facts and is not asserted
+  to describe anything after it.
+- `apps/cli/commands/blocker.py` — NOT stale. Matches PAIR B exactly;
+  no other line touched.
+- `apps/cli/commands/decision.py` — NOT stale. Matches PAIR D exactly;
+  no other line touched.
+- `apps/cli/commands/worker_facade_cmd.py` — NOT stale. Matches PAIR P
+  exactly; no other line touched.
+- `apps/cli/commands/self_repair_cmd.py` — NOT stale. Matches PAIR S
+  exactly; no other line touched.
+- `tests/cli/test_blocker_cmd.py` — NOT stale. New file, matches the
+  TEST SPEC's field names, patch target and both test cases.
+- `tests/cli/test_decision_cmd.py` — NOT stale. New file, matches the
+  TEST SPEC's field names, both patch targets and both test cases.
+- `.agent/plan.md` — NOT stale. Freshly written PLAN4 content
+  accurately describes round 3's actual state (T002 batch 1 shipped,
+  round 4 = T002 batch 2 next).
 
-Constraint 7 check (a sentence OUTSIDE the change set made stale by
-this round): `docs/roadmap/features/T2_F262.md` line 5 reads
-`> REGISTRATION ONLY — nothing in this file has been implemented.` This
-is now false — T001 (the shared listing-option surface) was implemented
-by this round's C2. `docs/roadmap/features/T2_F262.md` is NOT in the
-declared change set (`.agent/authored/f262-r2.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `apps/cli/command_catalog.py`,
-`tests/test_command_catalog.py`, `.agent/plan.md`, `.agent/handoff.md`),
-so per Constraint 7 this staleness is declared here and NOT repaired.
+Constraint 8 check (a sentence OUTSIDE the change set made stale by
+this round): `docs/roadmap/features/T2_F262.md` line 5 still reads
+`> REGISTRATION ONLY — nothing in this file has been implemented.`
+This was already declared false as of round 2 (T001 shipped) and
+remains outside the declared change set this round too; T002 batch 1
+shipping this round makes the sentence even further from true, but it
+is still not repaired, per Constraint 8 and consistent with round 2's
+own handling of the same sentence.
+
+No documentation elsewhere was found to quote an exact CLI output
+line for any of the four touched commands (`grep` across `docs/` for
+the four command ids found only conceptual references, no literal
+printed-line quotes), so no other staleness was introduced by this
+round's printer changes.
 
 ## Authored-text proofs
 
-- `.agent/authored/f262-r2.md` written verbatim via `cp` from
-  `.remedy-wt/f262-r2-block.txt` (the reviewer's original), confirmed
-  byte-identical by `cmp` (exit 0, no output) immediately after the
-  copy — this is the transport proof required before building anything
-  on top of it (C0a).
+- `.agent/authored/f262-r3.md` written verbatim via `cp` from
+  `.remedy-wt/f262-r3-block.txt` (the reviewer's original), confirmed
+  byte-identical by `cmp` (exit 0) immediately after the copy — the
+  transport proof required before building anything on top of it
+  (C0a).
 - `.agent/last_block.md` mirrors it via a second `cp`, likewise
   confirmed by matching sha256 (G1).
-- GATE1 was extracted from the COMMITTED `.agent/authored/f262-r2.md` by
-  a Python script reading the file in binary mode, locating the
-  `<<<BEGIN GATE1>>>`/`<<<END GATE1>>>` marker pair by byte index, and
-  taking the exact bytes strictly between them (marker lines excluded),
-  stripping exactly the one trailing `\n` belonging to the marker line —
-  never by hand-retyping (constraint 1). GATE1: 2968 bytes, 0 internal
-  newlines, no trailing newline of its own. Applied to `.agent/live_review.md`
-  by appending `\n` + GATE1's bytes to the base file — reproduced
-  byte-identical (G2).
-- PLAN3 was extracted the same way, by the `<<<BEGIN PLAN3>>>`/
-  `<<<END PLAN3>>>` marker pair, 1576 bytes, last byte `.` (0x2e, no
-  trailing newline). `.agent/plan.md` reproduces it byte-identical (G7).
-- C2's Python (`apps/cli/command_catalog.py`,
-  `tests/test_command_catalog.py`) was written by hand from the CODE
-  SPEC, per constraint 2 — not a byte-transport slice. Verified against
-  the spec symbol-by-symbol in G3 above.
+- GATE2 was extracted from the COMMITTED `.agent/authored/f262-r3.md`
+  by a Python script reading the file in text mode, locating the
+  `<<<BEGIN GATE2>>>`/`<<<END GATE2>>>` marker pair by string index,
+  and taking the exact text strictly between them (marker lines
+  excluded), stripping exactly the one trailing `\n` belonging to the
+  marker line — never by hand-retyping (constraint 1). GATE2: 4209
+  bytes, 0 internal newlines, no trailing newline of its own. Applied
+  to `.agent/live_review.md` by appending `\n` + GATE2's bytes to the
+  base file — reproduced byte-identical (G2).
+- The four CODE PAIRS were extracted the same way, by their own
+  `<<<BEGIN PAIR_*_FROM/TO>>>` marker pairs, and applied with
+  `str.replace(FROM, TO, 1)` via `.remedy-wt/apply_pairs.py` — never by
+  hand-retyping (constraint 2). Verified per-pair in G3 above.
+- PLAN4 was extracted the same way, by the `<<<BEGIN PLAN4>>>`/
+  `<<<END PLAN4>>>` marker pair, 1727 bytes, last byte `.` (no
+  trailing newline). `.agent/plan.md` reproduces it byte-identical
+  (G6).
+- The two new test files (`tests/cli/test_blocker_cmd.py`,
+  `tests/cli/test_decision_cmd.py`) were written by hand from the
+  TEST SPEC, per constraint 3 — not a byte-transport slice. Verified
+  against the spec field-by-field and test-by-test in G4 above.
 
 ## Deviations & assumptions
 
-1. **`git worktree list` shows more than the primary checkout after
-   G5's cleanup.** The block's G5 instruction says to report
-   `git worktree list` "showing only the primary checkout" after
-   removing the mutation worktree. This round's own
-   `.remedy-wt/f262-r2-mutation` worktree WAS cleanly created and
-   removed (confirmed absent from the post-removal listing), but nine
-   other worktrees (`.remedy-wt/job-2ac1522a7034440b` and eight
-   siblings) were already present in this repo before this round began
-   — pre-existing, unrelated to F262, not created or touched by any
-   step in this round's Bundle. `git worktree list` therefore does NOT
-   read "only the primary checkout" literally; it reads the primary
-   checkout plus those nine pre-existing entries, with the round's own
-   mutation worktree correctly absent. Declared here rather than
-   silently narrated as a literal match to the block's expected
-   reading.
-2. **G6's full-suite delta.** This round's own new tests add exactly 3
-   passing tests to the suite (G4: 22 → 25), and the full-suite reading
-   is exactly +3 passed over the reviewer's baseline (19601 → 19604)
-   with skip/warning counts unchanged. Reported per the block's
-   instruction to name the difference explicitly rather than silently
-   explain it away — the arithmetic is consistent with the round's own
-   change, but the reviewer investigates the delta itself per the
-   block's own instruction, not this handback.
-3. **Constraint 7's stale sentence, declared not repaired.**
+1. **`/tmp` denied; scratch redirected to `.remedy-wt/`.** The G2
+   forensic scratch files (the extracted GATE2 copy and the tail
+   slice used for the `cmp` double-check) could not be written to or
+   read from `/tmp` — the sandbox blocked both `cp` and `cmp` against
+   `/tmp` paths outright ("may only compare/copy files from the
+   allowed working directories … `/home/decodeux/Repos/remedy`").
+   Redone with the same Python extraction writing directly into
+   `.remedy-wt/` (gitignored scratch, per this session's own
+   Self-Drive Scratch Location convention), then `cmp`'d there; both
+   scratch files were deleted immediately after use and `git ls-files
+   .remedy-wt` confirms nothing under that directory was ever tracked.
+   Same bytes, same comparisons, only the filesystem location of the
+   throwaway copies changed.
+2. **Bash tool chaining restriction.** Several attempted compound
+   commands (`cmd1; cmd2`, `cmd && echo "..."`) were rejected by this
+   session's Bash tool as "multiple operations" requiring separate
+   approval. Re-expressed as single, unchained invocations per tool
+   call — no change to intent or result, only to invocation shape.
+   One consequence: several `py_compile` and `cmp` calls that the
+   block's own prose implies could be one line are reported above as
+   separate individual invocations instead; each was still run for
+   real and its real (silent, exit-0) result recorded.
+3. **`wc -l` undercounts a no-trailing-newline file by one line.**
+   `.agent/plan.md` ends without a trailing newline (per constraint 6),
+   so `wc -l`, which counts newline characters, reports 40 for a file
+   whose content is 41 lines wide by any line-splitting count. Reported
+   the raw `wc -l` reading (40) as the block's G6 literally asks for,
+   which is still comfortably under the 50-line cap either way; not
+   silently corrected to the alternate count.
+4. **Constraint 8's stale sentence, re-declared not repaired.**
    `docs/roadmap/features/T2_F262.md` line 5 ("REGISTRATION ONLY —
-   nothing in this file has been implemented") is now false after this
-   round's C2, and is outside the declared change set, so it is left
-   untouched per the block's own instruction — see the Constraint 7
-   check under G8 above.
-4. **Bash tool chaining restriction.** Several attempted one-line
-   compound commands (`cmd1 && echo "..."`, `cmd; echo "..."`) were
-   rejected by this session's Bash tool as "multiple operations"
-   requiring separate approval. Re-expressed as single, unchained
-   invocations (one `cp`, one `cmp`, one `sha256sum`, etc. per tool
-   call) — no change to intent or result, only to invocation shape.
-5. **`git worktree add`/`remove` used `-C`/absolute-path git
-   invocations instead of `cd`.** The sandbox rejected commands that
-   changed directory before running `git` as a hook-execution risk;
-   `git -C <path>` was used instead for every operation inside the
-   mutation worktree, with identical effect.
+   nothing in this file has been implemented") was already false as of
+   round 2 and remains outside this round's declared change set, so it
+   is left untouched again — see the Constraint 8 check under the
+   staleness sweep above.
 
 No other deviations. `.agent/STOP` was absent both times it was
-checked (before C0a and immediately before C4, per constraint 8 of the
+checked (before C0a and immediately before C4, per constraint 9 of the
 block). No path outside the declared change set was written under
-version control: only `.agent/authored/f262-r2.md`,
+version control: only `.agent/authored/f262-r3.md`,
 `.agent/last_block.md`, `.agent/live_review.md`,
-`apps/cli/command_catalog.py`, `tests/test_command_catalog.py`,
-`.agent/plan.md` and this handback were committed. The bundle's commit
-order (C0a, C0b, C1, C2, C3 — this handback C4) was followed exactly,
-with C2 as one commit covering both files per constraint 4.
+`apps/cli/commands/blocker.py`, `apps/cli/commands/decision.py`,
+`apps/cli/commands/worker_facade_cmd.py`,
+`apps/cli/commands/self_repair_cmd.py`, `tests/cli/test_blocker_cmd.py`,
+`tests/cli/test_decision_cmd.py`, `.agent/plan.md` and this handback
+were committed. The bundle's commit order (C0a, C0b, C1, C2, C3 — this
+handback C4) was followed exactly, with C2 as one commit covering all
+six files per constraint 5.
 
 ## Next
 
-**NEXT EXPECTED ACTION: Round 3 builds T002 — dates on every row.**
-Audit which stores already record CREATED/UPDATED, surface both on
-every list row; an unknown date renders as unknown, never invented.
-This is the widest slice named by the plan and the feature file's
-Orchestrator brief (`docs/roadmap/features/T2_F262.md`) — plan the
-commit split before starting. Round 3 should also decide explicitly
-whether `snapshot.list-applies` (starts with, not ends with, `list`)
-belongs to the list-command surface, per the plan's own Risks section.
+**NEXT EXPECTED ACTION: Round 4 builds T002 batch 2.** Per PLAN4's Next
+Steps: `memory.list` (add `updated_at` to its json dict, then text);
+`tournament.list` and `external-builder.submission-list` (both DROP
+their timestamp from the json shape today — restore it, then add
+text). Round 5 continues with T002 batch 3
+(`job.list`/`queue.list`/`project.list` need `--json` added before a
+date can appear there; `loop.list`/`patch.list` have no timestamp on
+their own model and need a design decision), and round 6+ covers the
+remaining no-timestamp-concept commands per the plan's Risks section.
