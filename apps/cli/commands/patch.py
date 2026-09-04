@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import argparse
 
 
-def _cmd_list_patch_intents(job_id_str: str) -> None:
+def _cmd_list_patch_intents(job_id_str: str, *, json_output: bool = False) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
@@ -24,6 +24,13 @@ def _cmd_list_patch_intents(job_id_str: str) -> None:
 
     from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
     intents = list_patch_intents(job)
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "intent_count": len(intents),
+            "intents": intents,
+        }, sort_keys=True))
+        return
     print(format_intent_list(intents))
 
 
@@ -359,7 +366,7 @@ def _cmd_approve_hunks(
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "patch.list": lambda args: _cmd_list_patch_intents(args.job_id),
+    "patch.list": lambda args: _cmd_list_patch_intents(args.job_id, json_output=args.json),
     "patch.show": lambda args: _cmd_show_patch_intent(args.job_id, args.intent_id),
     "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.reject": lambda args: _cmd_reject_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),

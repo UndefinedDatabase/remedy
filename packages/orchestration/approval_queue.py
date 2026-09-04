@@ -272,7 +272,7 @@ def format_intent_list(intents: list[dict]) -> str:
     if not intents:
         return "No patch intents found for this job."
 
-    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  TARGET PATH"]
+    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'DECIDED':<20}  TARGET PATH"]
     lines.append("-" * 72)
     for item in intents:
         lines.append(
@@ -280,6 +280,7 @@ def format_intent_list(intents: list[dict]) -> str:
             f"{item['state']:<8}  "
             f"{item['risk']:<8}  "
             f"{item['action']:<12}  "
+            f"{(item['decided_at'] or '-'):<20}  "
             f"{item['target_path']}"
         )
     return "\n".join(lines)

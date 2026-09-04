@@ -323,6 +323,14 @@ class TestFormatHelpers:
         out = format_intent_list(list_patch_intents(job))
         assert "docs/file_0.md" in out
 
+    def test_format_intent_list_shows_decided_when_set(self):
+        job = _make_job()
+        intent_id = _add_patch_artifact(job)
+        set_approval_state(job, intent_id, APPROVAL_APPROVED)
+        item = get_patch_intent(job, intent_id)
+        out = format_intent_list(list_patch_intents(job))
+        assert item["decided_at"] in out
+
     def test_format_intent_detail_shows_risk_and_summary(self):
         job = _make_job()
         intent_id = _add_patch_artifact(job)
@@ -391,6 +399,18 @@ class TestCmdListPatchIntents:
         with pytest.raises(SystemExit) as exc_info:
             _cmd_list_patch_intents(str(uuid4()))
         assert exc_info.value.code == 1
+
+    def test_json_output_has_version_and_intents(self, tmp_path, monkeypatch, capsys):
+        job = self._save(tmp_path, monkeypatch)
+        _add_patch_artifact(job)
+        save_job(job)
+        from apps.cli.commands.patch import _cmd_list_patch_intents
+        _cmd_list_patch_intents(str(job.id), json_output=True)
+        data = json.loads(capsys.readouterr().out)
+        assert data["version"] == 1
+        assert data["intent_count"] == 1
+        assert data["intents"][0]["target_path"] == "docs/file_0.md"
+        assert data["intents"][0]["decided_at"] is None
 
 
 # ---------------------------------------------------------------------------

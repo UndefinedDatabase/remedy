@@ -181,7 +181,7 @@ class TestCatalogJSONSupport:
             "brain.graph", "brain.node", "brain.context",
             "policy.contract", "policy.token",
             "worker.list", "test.discover",
-            "project.show", "project.context",
+            "project.show", "project.context", "patch.list",
         }
         for cid in expected_json:
             cmd = get_command(cid)

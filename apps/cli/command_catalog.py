@@ -794,7 +794,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List patch intents for a job.",
         action_class="read_only",
-        args=(_JOB_ID,),
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
         related=("patch.show", "patch.approve"),
     ),
     CommandEntry(
