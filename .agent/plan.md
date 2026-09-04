@@ -12,32 +12,32 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 12 books round 11's PASS verdict (RECORD11 - integration gate
-clean, F114's first "full suite green" claim) and one reviewer prose
-slip (PROSESLIP11), then does closure precondition 6's GENERATION step
-only: the queue has no pending item, so `generate_and_append_if_empty()`
-appends SU-008 (the R-0418 paragraph SU-005/006/007 already quoted) as
-PENDING. No production code changes. Running SU-008 is round 13, per
-the split F112 used at its own rounds 20/21.
+Round 13 books round 12's PASS verdict (RECORD12 - the self-use
+GENERATION step, SU-008 appended) then performs closure precondition
+6's RUN step: `run_next_self_use_item()` unflagged, real local
+`ollama` provider, default small budget, against SU-008 (the R-0418
+paragraph). Evidence (job id, provider, final status,
+`describe_self_use_run_defects()` output) saved under
+`.agent/selfuse_f114/`. No `consumed_by` edit yet - that is the
+closure commit's own edit. No new R-id is minted this round; the
+reviewer analyzes and narrates the defect-registration obligation
+against the open ledger when booking THIS round's own verdict next
+round (the same split F110 R16 / F112 R21 used).
 
 ## Next Steps
 
-- Round 13: run SU-008 via `self_use_job`/`self_use_runner` to the
-  approval gate (real local `ollama`, small budget); register
-  `describe_self_use_run_defects`' output - expect it adds evidence to
-  the ALREADY-OPEN `R-0784` (§3 item 30), not a new id.
-- Author T3_F114.md's Built State section (precondition 4).
-- `remedy integrity check --json` (precondition 3).
+- Round 14: book round 13 (RECORD13, with the R-0784 evidence-addition
+  narration), author T3_F114.md's Built State section (precondition
+  4), run `remedy integrity check --json` (precondition 3).
 - Then the closure commit: evidence job, fresh review zip, STATUS
-  line, README sync, `consumed_by=F114`, the PR. Likely its own
-  session, per F112's closure spanning rounds 20/21/22/29/30/31.
-- Session note: round 12, session 3 - 3rd delegated round, at the 4-5
-  default.
+  line, README sync, `consumed_by=F114`, the PR.
+- Session note: round 13, session 3 - 4th delegated round, at the 4-5
+  default; likely the session's last round before a scope check.
 
 ## Risks
 
-- `append_generated_item` rewrites the WHOLE queue file (`json.dumps`
-  ensure_ascii) - the ALREADY-OPEN `R-0785` class; expect a full-file
-  diff, not a clean append.
-- Round 13's run is a real, budget-capped LLM call against local
-  `ollama` - bounded, expected to end BLOCKED (the correct outcome).
+- The run is a real, budget-capped LLM call against local `ollama`
+  (`max_cost_usd=0.50`, `max_provider_calls=6`) - bounded, expected to
+  end BLOCKED at the approval gate (the correct, safe outcome for a
+  reviewer-practice finding no builder can fix in code), matching
+  every prior run against R-0418 (SU-005/006/007).
