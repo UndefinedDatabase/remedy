@@ -12,20 +12,19 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 4, session 1 — T002 batch 2: memory.list gains `updated_at` in
-its --json output and both created/updated in its text output.
+Round 5, session 2 — T002 batch 3: tournament.list and external-
+builder.submission-list gain a first per-row text format (neither had
+one before - text mode printed only a count) plus their own single
+date field in --json (`created_at` for tournament reports,
+`received_at` for submissions - neither record has a second/updated
+timestamp, so neither row shows one).
 
 ## Next Steps
 
-- Round 5: tournament.list and external-builder.submission-list print
-  only a COUNT in text mode today - no per-row listing exists at all -
-  so adding dates there means designing a first per-row text format,
-  a bigger slice than a one-line edit. Design it explicitly before
-  coding it.
-- Then: job.list/queue.list/project.list need `--json` added before a
-  date can appear there; loop.list/patch.list have no timestamp on
-  their model and need a design decision (round 3's handback carries
-  the full 28-command audit).
+- Round 6: job.list/queue.list/project.list need `--json` added before
+  a date can appear there; loop.list/patch.list have no timestamp on
+  their own model and need a design decision (round 3's handback
+  carries the full 28-command audit).
 - T003 (sort/filter/limit behavior) starts once date coverage is far
   enough along to sort by.
 
