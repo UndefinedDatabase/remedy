@@ -83,7 +83,8 @@ def _cmd_review_list(args: Any) -> None:
             status = r.get("status", "?")
             title = r.get("title", "?")
             rid = r.get("id", "?")
-            print(f"  [{status}] {rid}  {title}")
+            created = r.get("created_at", "?")
+            print(f"  [{status}] {rid}  {title}  (created={created})")
 
 
 def _cmd_review_accept(args: Any) -> None:

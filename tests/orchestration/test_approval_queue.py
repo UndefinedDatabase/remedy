@@ -526,6 +526,22 @@ class TestReviewerLoop:
         assert stored[0]["title"] == "Fix bug"
         assert stored[0]["status"] == "pending"
 
+    def test_store_and_list_recommendations_carries_created_at(self):
+        from datetime import datetime
+
+        from packages.orchestration.reviewer import list_recommendations, run_reviewer, store_recommendations
+
+        job = _make_job_s101(1)
+
+        def custom_reviewer(context):
+            return [{"title": "Add caching", "task_type": "perf", "reason": "latency"}]
+
+        recs = run_reviewer(job, reviewer_fn=custom_reviewer)
+        store_recommendations(job, recs)
+        stored = list_recommendations(job)
+        assert stored[0]["created_at"] != ""
+        datetime.fromisoformat(stored[0]["created_at"])
+
     def test_accept_recommendation(self, tmp_path, monkeypatch):
         from packages.orchestration.proposed_tasks import load_proposed_tasks
         from packages.orchestration.reviewer import (
