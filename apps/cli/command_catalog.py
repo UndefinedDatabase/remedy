@@ -84,6 +84,11 @@ class CommandEntry:
     requires_permission: bool = False
     may_mutate_repo: bool = False
     may_execute_commands: bool = False
+    #: True marks a command whose real-money spend requires an upfront
+    #: estimate and, above a configured threshold, operator confirmation
+    #: before it runs (F114). Explicit and reviewable per command - never
+    #: derived from another flag such as may_execute_commands.
+    is_expensive: bool = False
     related: tuple[str, ...] = ()
 
 
@@ -425,6 +430,7 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         may_execute_commands=True,
+        is_expensive=True,
         related=("job.run-next", "job.plan", "decision.list"),
     ),
 

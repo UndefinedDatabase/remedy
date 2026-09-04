@@ -72,6 +72,25 @@ class TestCatalogClassification:
                 )
 
 
+class TestCatalogExpensive:
+    """F114 T003 - is_expensive is explicit and reviewable, never inferred."""
+
+    def test_is_expensive_is_a_bool_on_every_entry(self) -> None:
+        for cmd in CATALOG:
+            assert isinstance(cmd.is_expensive, bool), (
+                f"{cmd.command_id}.is_expensive must be a bool"
+            )
+
+    def test_exactly_job_run_is_marked_expensive_so_far(self) -> None:
+        marked = sorted(cmd.command_id for cmd in CATALOG if cmd.is_expensive)
+        assert marked == ["job.run"], (
+            f"F114 T003 has only marked job.run so far; found {marked}"
+        )
+
+    def test_job_run_is_expensive(self) -> None:
+        assert get_command("job.run").is_expensive is True
+
+
 class TestCatalogSensitivity:
     """No sensitive content in catalog descriptions."""
 
