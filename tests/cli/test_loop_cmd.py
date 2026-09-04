@@ -347,3 +347,34 @@ def test_loop_run_is_registered_and_in_the_catalog():
 
     assert "loop.run" in handlers
     assert "loop.run" in catalog_ids
+
+
+def test_limit_caps_returned_loops(project, capsys):
+    _write_config(project, """
+[[loop]]
+name = "alpha-loop"
+
+[loop.action]
+kind = "job"
+goal_template = "alpha {project} on {date}"
+
+[[loop]]
+name = "beta-loop"
+
+[loop.action]
+kind = "job"
+goal_template = "beta {project} on {date}"
+""")
+
+    _dispatch_with("loop.list", json=True, limit="1")
+
+    data = json.loads(capsys.readouterr().out)
+    assert len(data["loops"]) == 1
+
+
+def test_unknown_sort_field_exits_nonzero(project, capsys):
+    _write_config(project, MANUAL_JOB_LOOP)
+
+    with pytest.raises(SystemExit) as exc:
+        _dispatch_with("loop.list", json=True, sort="bogus")
+    assert exc.value.code == 1
