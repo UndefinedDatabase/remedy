@@ -133,3 +133,26 @@ def test_submission_list_text_shows_per_row(env):
     assert r2.returncode == 0
     assert sid in r2.stdout
     assert "received=" in r2.stdout
+
+
+def test_submission_list_limit_caps_count(env):
+    job_id = _job(env)
+    pkg = json.loads(run_grouped_cli(["external-builder", "package-create", job_id, "--json"], env).stdout)
+    for label in ("claude", "gpt", "gemini"):
+        cf = env / f"resp-{label}.md"; cf.write_text(_SAFE_CAND)
+        run_grouped_cli(["external-builder", "submit", pkg["package_id"],
+                         "--candidate-file", str(cf), "--source-label", label, "--json"], env)
+    r = run_grouped_cli(["external-builder", "submission-list", job_id, "--json", "--limit", "2"], env)
+    d = json.loads(r.stdout)
+    assert d["submission_count"] == 2
+
+
+def test_submission_list_unknown_sort_field_exits_nonzero(env):
+    job_id = _job(env)
+    pkg = json.loads(run_grouped_cli(["external-builder", "package-create", job_id, "--json"], env).stdout)
+    cf = env / "resp.md"; cf.write_text(_SAFE_CAND)
+    run_grouped_cli(["external-builder", "submit", pkg["package_id"],
+                     "--candidate-file", str(cf), "--source-label", "claude", "--json"], env)
+    r = run_grouped_cli(["external-builder", "submission-list", job_id, "--sort", "bogus"], env)
+    assert r.returncode == 1
+    assert "created_at" in r.stderr

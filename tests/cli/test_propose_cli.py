@@ -103,6 +103,23 @@ class TestProposeListHandler:
         with pytest.raises(SystemExit):
             handlers["propose.list"](args)
 
+    def test_limit_caps_returned_tasks(self, tmp_store, capsys):
+        add_proposed_task(JOB_ID, ProposedTask(title="A"))
+        add_proposed_task(JOB_ID, ProposedTask(title="B"))
+        add_proposed_task(JOB_ID, ProposedTask(title="C"))
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=JOB_ID, status=None, json=True, limit="2")
+        handlers["propose.list"](args)
+        data = json.loads(capsys.readouterr().out)
+        assert data["count"] == 2
+
+    def test_unknown_sort_field_exits_nonzero_for_list(self, tmp_store):
+        add_proposed_task(JOB_ID, ProposedTask(title="A"))
+        handlers = collect_all_handlers()
+        args = SimpleNamespace(job_id=JOB_ID, status=None, json=True, sort="bogus")
+        with pytest.raises(SystemExit):
+            handlers["propose.list"](args)
+
 
 class TestProposeShowHandler:
     def test_show_existing(self, tmp_store, capsys):

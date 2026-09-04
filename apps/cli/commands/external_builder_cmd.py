@@ -108,7 +108,24 @@ def _cmd_external_builder_submission_show(args: Any) -> None:
 
 def _cmd_external_builder_submission_list(args: Any) -> None:
     from packages.orchestration.external_builder_sandbox import load_external_submissions
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     subs = load_external_submissions(job_id=str(args.job_id))
+    try:
+        subs = apply_list_options(
+            subs,
+            sort=getattr(args, "sort", None), desc=getattr(args, "desc", False),
+            since=getattr(args, "since", None), until=getattr(args, "until", None),
+            limit=getattr(args, "limit", None),
+            sort_fields={
+                "created_at": lambda s: s.get("received_at", ""),
+                "state": lambda s: s.get("state", ""),
+            },
+            default_sort_field="created_at",
+            date_getter=lambda s: s.get("received_at") or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     out = {"job_id": str(args.job_id), "submission_count": len(subs),
            "submissions": [{"submission_id": s.get("submission_id"), "state": s.get("state"),
                             "source_label": s.get("source_label"),
