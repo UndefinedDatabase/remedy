@@ -2,9 +2,10 @@
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
 F112 claimed in STATUS.md round 1; T001-T003b2b2b2 complete and green,
-integration gate PASSED round 19, self-use item SU-007 generated round 20
-(RECORD20: VERDICT PASS, booked this round). Round 21 plans and runs
-SU-007 to the normal approval gate (closure precondition 6, F257/F258).
+integration gate PASSED round 19, self-use item SU-007 run round 21
+(RECORD21: VERDICT PASS, booked this round; R-0784 gained a third
+occurrence, no new id). Round 22 lands the Built State section
+(precondition 4) and re-confirms remaining preconditions before closure.
 
 ## Goal
 
@@ -16,21 +17,22 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 21 runs `self_use_runner.run_next_self_use_item` against SU-007
-(job "Address ledger finding R-0418") through the real builder/reviewer
-loop (local `ollama` provider, no external cost), stopping at the normal
-approval gate — never promoted. Every string
-`self_use_findings.describe_self_use_run_defects` returns for the run's
-JobPlan is registered as an R-id finding before close. `consumed_by` is
-set to F112 only in the closure commit, not this round.
+Round 22 books RECORD21, then appends a "Built State — what F112
+delivered" section to `docs/roadmap/features/T3_F112.md` (precondition
+4 — the file has none yet). `remedy integrity_gate.run_integrity_checks()`
+already reads all-PASS (precondition 3, reviewer-confirmed pre-round).
+No production code touched.
 
 ## Next Steps
 
-- Register any findings the run's own defects surface; repair only if
-  small and reviewer-gated as its own round.
-- Set SU-007's `consumed_by` to F112 in the closure commit.
-- Then: evidence job, review zip, STATUS line, PR per
-  docs/roadmap/STATUS_closure_protocol.md.
+- Precondition 6's `consumed_by=F112` edit to `scripts/self_use_queue.json`
+  lands in the closure commit itself, alongside STATUS/README.
+- Evidence job (`job_evidence.create_manual_completion_bundle`), then the
+  mandatory fresh review zip, per
+  docs/roadmap/STATUS_closure_protocol.md steps 1-2.
+- STATUS line authored by the reviewer, applied by the worker; README
+  capability sync in the SAME commit (R-0154 pin).
+- Final closure commit + PR; merge deferred to the next feature's start.
 
 ## Risks
 
@@ -40,6 +42,5 @@ set to F112 only in the closure commit, not this round.
   deliberately unbuilt (DECISION F112 D9).
 - R-0767 stays OPEN on the model-routing seam this feature's config
   borrows from; unrelated to F112.
-- A self-use job can stall mid-run (F110 R16's SU-006 precedent) —
-  if so, declare it and resume via `resume_job_plan` next round rather
-  than treating it as failed.
+- R-0784 (self-use/R-0418 curation gap) is OPEN and belongs to F258, not
+  F112 — do not attempt to fix it here.
