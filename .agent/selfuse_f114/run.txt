@@ -1,0 +1,78 @@
+F114 R13 — closure precondition 6's RUN step — SU-008 self-use run evidence
+
+Job id: 2ac1522a7034440b
+Queue entry id: SU-008
+Job file path: .remedy-wt/selfuse-f114-run/SU-008.md
+(rendered by plan_next_self_use_item(); byte-identical copy saved
+alongside this file as SU-008.md, verified with cmp)
+
+Invocation:
+  from pathlib import Path
+  from packages.orchestration.self_use_runner import run_next_self_use_item
+  entry, job_file_path, plan = run_next_self_use_item(Path(".remedy-wt/selfuse-f114-run"))
+Unflagged — no builder_name/reviewer_name/builder_provider/reviewer_provider/
+queue_path passed. Role resolution picked the real product default provider
+for both roles (packages.orchestration.role_config.DEFAULT_PROVIDER = "ollama").
+
+Measured wall time: 77.30509328842163 seconds (time.time() around the call)
+
+Provider / model actually used (from plan.execution_config; both roles'
+*_model fields were blank with source="default", meaning the real default
+model per packages.orchestration.role_config._PROVIDER_DEFAULT_MODELS was
+used):
+  builder:  provider=ollama (source=cli), model=muse-glimmer:latest (default)
+  reviewer: provider=ollama (source=cli), model=muse-glimmer:latest (default)
+Budgets: max_provider_calls=6, max_cost_usd=0.50, max_tasks=1 (all defaults
+of run_next_self_use_item, none overridden).
+
+Full plan.execution_config repr:
+ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama',
+reviewer_source='cli', builder_model='', builder_model_source='default',
+builder_effort='', builder_effort_source='default', reviewer_model='',
+reviewer_model_source='default', reviewer_effort='',
+reviewer_effort_source='default', repair_provider='',
+repair_provider_source='default', repair_model='',
+repair_model_source='default', repair_effort='',
+repair_effort_source='default', max_rounds=3, max_rounds_source='default',
+repair_rounds_allowed=2, repair_rounds_source='default', test_command='',
+test_command_source='default', claude_cli_write_mode='none',
+claude_cli_write_mode_source='default',
+context_strategy='task_bounded_sequential_job', timeout_sec=120,
+timeout_sec_source='default', timeout_profile='',
+timeout_profile_source='default', max_output_chars=50000,
+max_output_chars_source='default', stream_evidence=False,
+stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')
+
+Final plan.status: blocked
+Plan-level error: task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+Per-task outcome (one task, T001 — the JobPlan carries exactly one task):
+  T001: final_status=repair_exhausted, reviewer_verdict=fail,
+        task.status=blocked,
+        task.error="completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+
+describe_self_use_run_defects(plan) output — 2 strings, in order (NOT an
+empty tuple):
+  1. "job 2ac1522a7034440b (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+  2. "T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+
+Outcome classification: this is BLOCKED at the normal approval gate after
+repair rounds were exhausted and the reviewer verdict was "fail" — the
+expected, safe outcome for SU-008 (the R-0418 reviewer-practice paragraph),
+matching every prior run against the same R-0418 item (SU-005/006/007 per
+PLAN13's Risks section). No production code changed by this run. No
+consumed_by edit was made to scripts/self_use_queue.json this round (that
+edit belongs to the closure round, per constraint 10). No new R-id finding
+was registered this round (per constraint 11); the reviewer performs that
+analysis, including whether these two defect strings add evidence to the
+already-open R-0784 rather than mint a new id, when booking this round's
+own verdict at the next round's C1.
+
+The job's own retained execution worktree (created and managed by run_job
+itself): .remedy-wt/job-2ac1522a7034440b/ — left untouched, exactly as
+every prior self-use run has left its own.
+
+The scratch dest_dir used only to render/plan the job file:
+.remedy-wt/selfuse-f114-run/ — untracked and covered by the repository's
+existing `.remedy-wt/` .gitignore rule (git status --porcelain shows it as
+nothing at all, i.e. ignored, not merely untracked-and-unlisted).
