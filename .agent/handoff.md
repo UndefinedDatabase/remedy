@@ -50,7 +50,11 @@ Review of `a5df6f2b..HEAD` (base is F112 R29's handback commit).
 
 ## External actions
 
-None. No push, no `gh pr create`, no merge, no `--approve`, nothing
+`git push -u origin feature/f112-prompt-budget-per-task-class` — run
+AFTER this handback commit (`a5df6f2b..28af00f4`), per AGENTS.md's
+standing Push Discipline rule and round 29's own precedent (pushed at
+its handback despite creating no PR). This is NOT part of the block's
+C5 step: no `gh pr create`, no merge, no `--approve`, nothing
 force-pushed, `main` never touched. Per the block's own constraint
 ("If ANY gate at C4 is not green, STOP before C5 — no PR on a red
 gate") and self-drive protocol G8, C5 (which the block itself bundles
