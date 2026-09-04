@@ -61,7 +61,7 @@ def apply_list_options(
     until: str | None,
     limit: str | None,
     sort_fields: dict[str, Callable[[T], Any]],
-    default_sort_field: str,
+    default_sort_field: str | None = None,
     date_getter: Callable[[T], str | None] | None = None,
 ) -> list[T]:
     """Filter by --since/--until, order by --sort/--desc (newest-first is
@@ -70,7 +70,9 @@ def apply_list_options(
     row; an unknown name raises ListOptionError naming the valid set.
     `date_getter` extracts a row's own date string for --since/--until; a
     store with no timestamp concept passes None and --since/--until are
-    accepted but filter nothing."""
+    accepted but filter nothing. `default_sort_field=None` means the
+    caller's row order already has real meaning (e.g. queue priority):
+    ordering is skipped entirely unless --sort is given explicitly."""
     out = list(rows)
 
     if (since or until) and date_getter is not None:
@@ -94,13 +96,14 @@ def apply_list_options(
             filtered.append(row)
         out = filtered
 
-    field = sort or default_sort_field
-    if field not in sort_fields:
-        valid = ", ".join(sorted(sort_fields))
-        raise ListOptionError(f"unknown --sort field {field!r}; valid fields: {valid}")
-    is_default_reverse = field == default_sort_field
-    reverse = (not desc) if is_default_reverse else desc
-    out = sorted(out, key=sort_fields[field], reverse=reverse)
+    if sort is not None or default_sort_field is not None:
+        field = sort or default_sort_field
+        if field not in sort_fields:
+            valid = ", ".join(sorted(sort_fields))
+            raise ListOptionError(f"unknown --sort field {field!r}; valid fields: {valid}")
+        is_default_reverse = field == default_sort_field
+        reverse = (not desc) if is_default_reverse else desc
+        out = sorted(out, key=sort_fields[field], reverse=reverse)
 
     if limit:
         try:

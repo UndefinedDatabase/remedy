@@ -97,3 +97,23 @@ def test_invalid_limit_raises():
             default_sort_field="created_at",
             date_getter=lambda r: r["created_at"],
         )
+
+
+def test_no_default_sort_field_keeps_original_order_when_sort_not_given():
+    rows = [{"id": "c"}, {"id": "a"}, {"id": "b"}]
+    out = apply_list_options(
+        rows, sort=None, desc=False, since=None, until=None, limit=None,
+        sort_fields={"id": lambda r: r["id"]},
+        default_sort_field=None,
+    )
+    assert [r["id"] for r in out] == ["c", "a", "b"]
+
+
+def test_no_default_sort_field_still_honours_explicit_sort():
+    rows = [{"id": "c"}, {"id": "a"}, {"id": "b"}]
+    out = apply_list_options(
+        rows, sort="id", desc=False, since=None, until=None, limit=None,
+        sort_fields={"id": lambda r: r["id"]},
+        default_sort_field=None,
+    )
+    assert [r["id"] for r in out] == ["a", "b", "c"]

@@ -558,6 +558,25 @@ class TestMemoryCLIContract:
         args = parser.parse_args(["memory", "store", "k", "v"])
         assert args.approved is False
 
+    def test_sort_by_key_orders_entries(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        _cmd_memory_store("zeta", "v1")
+        _cmd_memory_store("alpha", "v2")
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_list(json_output=True, sort="key")
+        data = json.loads(buf.getvalue())
+        assert [e["key"] for e in data["entries"]] == ["alpha", "zeta"]
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        _cmd_memory_store("key", "v")
+        with pytest.raises(SystemExit) as exc:
+            _cmd_memory_list(json_output=True, sort="bogus")
+        assert exc.value.code == 1
+
 
 class TestProjectListCLI:
     """project.list JSON must include version: 1, project_count and created_at."""

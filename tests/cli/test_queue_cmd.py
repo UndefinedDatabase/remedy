@@ -209,6 +209,26 @@ class TestList:
         assert data["entries"][0]["created_at"]
         assert data["entries"][0]["goal"] == "json goal"
 
+    def test_sort_created_at_overrides_the_priority_default(self, project):
+        data_root, project_id = project
+        _run(["queue", "add", "first goal", "--project", project_id], data_root)
+        _run(["queue", "add", "second goal", "--prio", "9", "--project", project_id], data_root)
+
+        lines = [ln for ln in _run(
+            ["queue", "list", "--project", project_id, "--sort", "created_at"], data_root,
+        ).stdout.splitlines() if ln.strip()]
+        assert "first goal" in lines[0]
+        assert "second goal" in lines[1]
+
+    def test_unknown_sort_field_exits_nonzero_naming_valid_fields(self, project):
+        data_root, project_id = project
+        _run(["queue", "add", "a goal", "--project", project_id], data_root)
+
+        proc = _run(["queue", "list", "--project", project_id, "--sort", "bogus"], data_root,
+                    expect_ok=False)
+        assert proc.returncode == 1
+        assert "created_at" in proc.stderr
+
 
 class TestRm:
     def test_rm_removes_an_unclaimed_entry(self, project):
