@@ -1,144 +1,157 @@
-STEP CLOSURE PRECONDITION 6 (GENERATION) / ROUND 12 - F114 Cost preview per command
-FEATURE F114 - Cost preview per command (Tier 3) - SESSION 3, ROUND 12
+STEP CLOSURE PRECONDITION 6 (RUN) / ROUND 13 - F114 Cost preview per command
+FEATURE F114 - Cost preview per command (Tier 3) - SESSION 3, ROUND 13
 
 Goal
-  Book round 11's PASS verdict into the ledger (RECORD11 - the
-  integration gate came back clean, F114's first "full suite green"
-  claim) and one reviewer prose slip (PROSESLIP11), then perform ONLY
-  the GENERATION half of closure precondition 6: the self-use queue
-  currently holds no pending item (all seven existing entries are
-  already consumed by earlier features), so
-  packages.orchestration.self_use_generator.generate_and_append_if_empty()
-  is called once, expected to append one new PENDING item. Running
-  that item to the approval gate is round 13, not this one.
+  Book round 12's PASS verdict into the ledger (RECORD12 - the
+  self-use GENERATION step, SU-008 appended), then perform closure
+  precondition 6's RUN step: run SU-008 to the normal approval gate via
+  packages.orchestration.self_use_runner.run_next_self_use_item(),
+  unflagged (real provider resolution, no fake override), save the
+  evidence, and report describe_self_use_run_defects()'s output
+  verbatim. No consumed_by edit and no new finding registration this
+  round - both are the reviewer's own next-round work.
 
 Bundle, in this order
-  C0a save this block verbatim to .agent/authored/f114-r12.md
+  C0a save this block verbatim to .agent/authored/f114-r13.md
   C0b mirror it to .agent/last_block.md
-  C1  apply RECORD11 to .agent/live_review.md (append), PROSESLIP11 to
-      .agent/prose_slips.md (append), and PLAN12 to .agent/plan.md
-      (whole-file replacement)
-  C2  call generate_and_append_if_empty() per constraint 5 below
+  C1  apply RECORD12 to .agent/live_review.md (append) and PLAN13 to
+      .agent/plan.md (whole-file replacement)
+  C2  run SU-008 per constraints 5-11 below; save evidence under
+      .agent/selfuse_f114/
   C3  rewrite .agent/handoff.md - the handback
 
 Change set - EXACTLY these paths and nothing else
-  .agent/authored/f114-r12.md (new, C0a) - .agent/last_block.md (C0b) -
-  .agent/live_review.md (C1) - .agent/prose_slips.md (C1) -
-  .agent/plan.md (C1) - scripts/self_use_queue.json (C2) -
-  .agent/handoff.md (C3)
+  .agent/authored/f114-r13.md (new, C0a) - .agent/last_block.md (C0b) -
+  .agent/live_review.md (C1) - .agent/plan.md (C1) -
+  .agent/selfuse_f114/SU-008.md (new, C2) -
+  .agent/selfuse_f114/run.txt (new, C2) - .agent/handoff.md (C3)
 
 Constraints
-  1. Every authored slice (RECORD11, PROSESLIP11, PLAN12) is applied
-     BYTE FOR BYTE: extract it by delimiter index from the COMMITTED
-     .agent/authored/f114-r12.md - marker lines EXCLUDED - and write it
+  1. Every authored slice (RECORD12, PLAN13) is applied BYTE FOR BYTE:
+     extract it by delimiter index from the COMMITTED
+     .agent/authored/f114-r13.md - marker lines EXCLUDED - and write it
      with a script, never by retyping. If a slice looks wrong, apply it
      as written and DECLARE it in the handback.
   2. C1 is the first substantive commit of the round.
-  3. RECORD11 appends to .agent/live_review.md as EXACTLY ONE newline
-     byte followed by the slice. PROSESLIP11 appends to
-     .agent/prose_slips.md the SAME way: one newline byte, then the
-     slice, with NO trailing newline of its own. PLAN12 REPLACES
-     .agent/plan.md whole.
-  4. NEWLINE CONVENTION: RECORD11, PROSESLIP11 and PLAN12 all carry NO
-     trailing newline of their own.
-  5. C2 IS A PURE PYTHON CALL - NO WORKTREE NEEDED:
-       from packages.orchestration.self_use_queue import next_self_use_item, load_self_use_queue
-       from packages.orchestration.self_use_generator import generate_and_append_if_empty
-     BEFORE calling the generator, verify the precondition the block's
-     own Goal states: next_self_use_item() must return None, and
-     len(load_self_use_queue().items) must be 7. If EITHER check
-     disagrees (a pending item already exists, or the count differs),
-     STOP before calling generate_and_append_if_empty(), do NOT call
-     it, and declare the discrepancy in the handback instead of
-     proceeding on a stale assumption - someone else may have already
-     advanced this step. Otherwise, call
-     generate_and_append_if_empty() exactly once (no arguments - use
-     the real, shipped queue and ledger paths) and report its full
-     returned SelfUseQueueEntry (or None, if it answers that).
-  6. The returned entry is EXPECTED to have id "SU-008", consumed_by
-     "", and a provenance string naming "generated (self-use-generator
-     tier 1, ledger scan, R-0418)" (matching SU-005/006/007's own
-     provenance shape exactly) - report the REAL returned values
-     verbatim; do not assume they match before checking, and declare
-     any difference rather than silently reconciling it.
-  7. This round does NOT run the generated item (no self_use_job or
-     self_use_runner call of any kind) and does NOT set any
-     consumed_by value anywhere - both are later rounds' work.
-  8. scripts/self_use_queue.json's diff at C2 is EXPECTED to be a
-     FULL-FILE rewrite (every line's byte position may shift, because
-     json.dumps(..., ensure_ascii=True) re-escapes existing non-ASCII
-     content such as em dashes) rather than a clean single-item
-     append. This is the ALREADY-OPEN R-0785 finding's own known
-     class - do NOT register a new finding for it, and say so plainly
-     in the handback if the diff does show a full-file rewrite.
-  9. This round does not touch packages/, apps/, or tests/ - only
-     scripts/self_use_queue.json (a data file) and .agent/** change.
-  10. Read .agent/STOP from disk before the first commit and again
+  3. RECORD12 appends to .agent/live_review.md as EXACTLY ONE newline
+     byte followed by the slice. PLAN13 REPLACES .agent/plan.md whole.
+  4. NEWLINE CONVENTION: RECORD12 and PLAN13 both carry NO trailing
+     newline of their own.
+  5. C2 runs the queue's pending item:
+       from pathlib import Path
+       from packages.orchestration.self_use_runner import run_next_self_use_item
+       entry, job_file_path, plan = run_next_self_use_item(Path(".remedy-wt/selfuse-f114-run"))
+     UNFLAGGED - pass no builder_name/reviewer_name/builder_provider/
+     reviewer_provider/fake override of any kind, and no queue_path
+     (use the real shipped scripts/self_use_queue.json) - so role
+     resolution picks the REAL default provider, exactly as every prior
+     self-use run this repository has performed. Report entry.id
+     (expected "SU-008"), job_file_path, and measure wall time around
+     the call.
+  6. If run_next_self_use_item raises SelfUseRunError because role
+     resolution cannot produce a usable real provider: STOP right
+     there, do NOT retry with a "fake" override or any other
+     workaround, and declare the exact exception text in the handback
+     instead of a normal C2/C3 completion.
+  7. After a successful run, report plan.status, plan.execution_config
+     (the provider AND model actually used for both builder and
+     reviewer roles), and per-task final_status/reviewer_verdict for
+     every task the JobPlan carries.
+  8. Call packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)
+     and report EVERY string it returns, verbatim, in order (an empty
+     tuple is a valid, complete answer - report "empty tuple" plainly
+     if so, never omit the check).
+  9. EVIDENCE, saved under .agent/selfuse_f114/ (a new directory this
+     round creates):
+       - SU-008.md: a byte-exact copy of the rendered job file at
+         job_file_path (shutil.copyfile, never a retype or
+         reconstruction) - verify with cmp against the original after
+         copying.
+       - run.txt: a plain text file recording - the job id, entry.id,
+         job_file_path, provider/model for both roles (from
+         plan.execution_config), final plan.status, every task's
+         final_status/reviewer_verdict, measured wall time, and the
+         full describe_self_use_run_defects() output verbatim
+         (or "empty tuple" if empty). Free-form otherwise; this is a
+         fresh evidence file, not an authored slice needing byte-exact
+         reproduction from anywhere.
+  10. Do NOT set consumed_by anywhere in scripts/self_use_queue.json -
+      that edit belongs to the closure commit, a later round, not this
+      one.
+  11. Do NOT register any new R-id finding in .agent/live_review.md
+      this round, regardless of the run's outcome (blocked, completed,
+      or anything else) - the reviewer performs that analysis (searching
+      the open finding set, narrating any connection to an existing
+      finding) when booking THIS round's own verdict at the next
+      round's C1. Simply report the raw, real facts in the handback;
+      do not interpret or classify them as a finding yourself.
+  12. The scratch dest_dir (.remedy-wt/selfuse-f114-run/) used only to
+      render/plan the job file: confirm after the run whether
+      `git status --porcelain` shows it as untracked, and if so
+      whether it is covered by .gitignore's existing `.remedy-wt/`
+      rule (expected) - report which. Do not delete the job's OWN
+      execution worktree (created and managed by run_job itself,
+      typically under .remedy-wt/job-<id>/) - every prior self-use
+      run has left that one retained deliberately; report its path
+      and leave it untouched.
+  13. This round does not touch packages/, apps/, or tests/ in the
+      PRIMARY checkout - only .agent/** changes (including the new
+      .agent/selfuse_f114/ evidence directory).
+  14. Read .agent/STOP from disk before the first commit and again
       before C3. If it exists, finish the commit in hand, write the
       handback, and stop.
-  11. Self-review loop before every commit (git diff --stat, git diff).
+  15. Self-review loop before every commit (git diff --stat, git diff).
       Push after C3. No pull request, no merge this round.
 
 Done when - the gates. Run each, record the REAL exit code and the REAL
 output.
 
   G1 TRANSPORT. After C0b:
-       sha256sum .agent/authored/f114-r12.md .agent/last_block.md
+       sha256sum .agent/authored/f114-r13.md .agent/last_block.md
      One digest, twice. Report both lines verbatim.
-  G2 THE LEDGER APPEND (RECORD11). Base size of .agent/live_review.md
+  G2 THE LEDGER APPEND (RECORD12). Base size of .agent/live_review.md
      immediately BEFORE C1: report byte length and trailing-newline
-     status (expect 2385806, no trailing newline). RECORD11 has ZERO
-     internal newlines - report its own byte length (expect 4403).
-     Report base + 1 + 4403 and whether it equals the post-C1 file's
-     byte length (expect 2390210). Second reader: post-C1 file's bytes
-     from `base` to end equal exactly "\n" + RECORD11. Negative control
-     in a scratch copy ONLY: flip one byte inside RECORD11's own text,
+     status (expect 2390210, no trailing newline). RECORD12 has ZERO
+     internal newlines - report its own byte length (expect 3755).
+     Report base + 1 + 3755 and whether it equals the post-C1 file's
+     byte length (expect 2393966). Second reader: post-C1 file's bytes
+     from `base` to end equal exactly "\n" + RECORD12. Negative control
+     in a scratch copy ONLY: flip one byte inside RECORD12's own text,
      confirm the second reader REJECTS it.
-  G3 THE PROSE SLIP APPEND (PROSESLIP11). Base size of
-     .agent/prose_slips.md immediately BEFORE C1: report byte length
-     and trailing-newline status (expect 69890, no trailing newline).
-     PROSESLIP11 has ZERO internal newlines - report its own byte
-     length (expect 1144). Report base + 1 + 1144 and whether it
-     equals the post-C1 file's byte length (expect 71035). Second
-     reader: post-C1 file's bytes from `base` to end equal exactly
-     "\n" + PROSESLIP11.
-  G4 THE PLAN. Extract PLAN12 from the COMMITTED authored file, then:
+  G3 THE PLAN. Extract PLAN13 from the COMMITTED authored file, then:
        cmp <extracted> .agent/plan.md            -> exit 0
-       wc -l .agent/plan.md                      -> report; expect 42 (PLAN12 has 43 logical lines but no trailing newline, so wc -l reads one less), must be under 50
+       wc -l .agent/plan.md                      -> report; expect 42 (PLAN13 has 43 logical lines but no trailing newline), must be under 50
        grep -c '^## Goal' .agent/plan.md         -> 1
        grep -c '^## Next Steps' .agent/plan.md   -> 1
-  G5 THE SELF-USE GENERATION. Report the precondition check from
-     constraint 5 (next_self_use_item() result, item count) BEFORE the
-     call; report the exact returned SelfUseQueueEntry (all fields) from
-     generate_and_append_if_empty(); report load_self_use_queue().items
-     count AFTER the call (expect 8); report whether the new entry
-     matches constraint 6's expectation, field by field; report
-     `git show --numstat <C2 sha> -- scripts/self_use_queue.json` and
-     whether the diff is a full-file rewrite (most/all lines touched)
-     or a clean append (only new lines added) - either is acceptable,
-     just report which, per constraint 8.
+  G4 THE SELF-USE RUN. Report entry.id, job_file_path, measured wall
+     time; plan.status; plan.execution_config for both roles
+     (provider and model); every task's final_status/reviewer_verdict;
+     the full describe_self_use_run_defects(plan) output verbatim (or
+     "empty tuple").
+  G5 THE EVIDENCE. `ls .agent/selfuse_f114/` names exactly SU-008.md
+     and run.txt, nothing else. `cmp .agent/selfuse_f114/SU-008.md
+     <job_file_path>` -> exit 0 (report the real job_file_path used).
+     Report run.txt's byte length.
   G6 THE TREE AND THE SWEEP.
        git status --porcelain            -> empty, checked immediately before C3 staged
-       git diff --stat <base>..HEAD -- packages/ apps/ tests/  -> empty (report the exact base SHA used, this round's own starting HEAD)
-     Per-commit numstat cross-check (`git show --numstat`) for C0a,
-     C0b, C1 (three paths) and C2 (one path) against this handback's
-     own Commits table - report every cell and confirm it matches.
-     Staleness sweep: one entry per file this round touched (NOT stale
-     / stale + why), plus a statement that no NEW stale sentence was
-     found outside the change set this round.
+       git diff --stat <this round's own starting HEAD>..HEAD -- packages/ apps/ tests/  -> empty
+     Report whether .remedy-wt/selfuse-f114-run is gone, or untracked-
+     and-gitignored (name which); report the job's own retained
+     worktree path (report it exists, untouched). Per-commit numstat
+     cross-check (`git show --numstat`) for C0a, C0b, C1 (two paths)
+     and C2 (two paths) against this handback's own Commits table -
+     report every cell and confirm it matches. Staleness sweep: one
+     entry per file this round touched, plus a statement that no NEW
+     stale sentence was found outside the change set this round.
 
 SLICES. Each slice lies between its own one-line BEGIN and END marker.
-There are three: RECORD11, PROSESLIP11 and PLAN12.
+There are two: RECORD12 and PLAN13.
 
-<<<BEGIN RECORD11>>>
-Gate: F114 R11 — the round 11 entry, the INTEGRATION GATE (docs/agents/integration_gate.md steps 1-5) before closure, no production code touched. VERDICT PASS — GATE CLEAN, over the range `9e04b4379ce5342656831a51cd99492d0f211d9f..a4af43f9a6ed22d641cff132512fe844ae5d5fbc` (commits C0a `f553d3276ed3a05ee06ef43f5673c2294b278d7b`, C0b `dc65ab66aca42d1f42da892a2f30c106fedc0181`, C1 `6d20460dbd47c7e5e9e63ab81e17c68dbe3783c9`, C2 `a4af43f9a6ed22d641cff132512fe844ae5d5fbc` — four real content commits — plus handback commit `31aa76b79a8dd9eda17039c903cbff3fef1e06bc`), independently re-verified by the reviewer. TRANSPORT HELD: `sha256sum .agent/authored/f114-r11.md .agent/last_block.md` both print `b90f3cd34771cdb62c0da869d25fea9d211cde10dd403ae54a614eedbfeb9ba7`, reproduced directly. G2 THE LEDGER APPEND (RECORD10) HELD ON DISK, WITH ONE DECLARED CORRECTION TO THE REVIEWER'S OWN PRIOR ARITHMETIC: the round 11 block's own G2 text had pinned RECORD10 at 3363 bytes and the post-append total at 2385810, but the slice extracted from the committed authored file measures 3359 bytes and the real post-append file measures 2385806 — the reviewer's own pre-emission byte count was wrong by 4, not a transport or content defect; the worker correctly applied RECORD10 byte-for-byte as extracted rather than trusting the reviewer's stale numeral (the same class as F112 R21's own declared correction). Reproduced independently: base 2382446 bytes (no trailing newline), RECORD10 measured 3359 bytes with zero internal newlines, base + 1 + 3359 = 2385806 exactly matching the post-C1 file; the appended tail equals `\n` + RECORD10 byte for byte, and RECORD10's own text (start and end) reads exactly as authored. G3 THE PROSE SLIP APPEND (PROSESLIP10) HELD BYTE-EXACT: base 69169 bytes (ends WITH a trailing newline), PROSESLIP10 measured 720 bytes with zero internal newlines, base + 1 + 720 = 69890 exactly matching the post-C1 file, which now ends WITHOUT a trailing newline exactly as the block's own constraint 3 stated. G4 THE PLAN HELD BYTE-EXACT: PLAN11 extracted from the committed authored file compares equal to `.agent/plan.md` (43 lines by `wc -l`, matching the block's own corrected prediction this time; `## Goal`/`## Next Steps` each exactly once). G5 THE GATE EVIDENCE HELD: all nine files named by constraint 5 exist under `.agent/gate_f114_r11/` and nothing else does; `gate_summary.txt` follows the `.agent/gate_f112_r19/` shape and ends with the required measured-not-a-verdict framing. THE GATE ITSELF READ CLEAN, REPRODUCED INDEPENDENTLY BY THE REVIEWER: the branch run (`python3 -m pytest -n auto -q` at this round's own HEAD) read 19601 passed, 23 skipped, 0 failed in the reviewer's own re-run, identical to the worker's own reading; the base run (merge-base `a1b5d4bb455550f082da7d6c4c80fd968d6e1a88`, confirmed by `git merge-base main HEAD` matching the block's pinned expectation exactly, UI parity restored in a disposable worktree on throwaway branch `tmp/f114-r11-base`) read 19554 passed, 23 skipped, 0 failed; both `branch_only.txt` and `fixed_by_branch.txt` are empty, so no attribution target exists on either side and no BLOCKER is possible — the reviewer read the full raw evidence (`gate_summary.txt`, `attribution.txt`, `parity_mtime.txt`, both run tails) rather than a summary. UI parity held as an EVENT: no `apps/ui/dist` mtime fell inside the base run's own window, the content digest was identical before and after, and `_frontend_is_stale()` read False inside the base worktree immediately before the run. G6 THE CLEANUP AND THE TREE HELD: `git worktree list` and `git branch --list 'tmp/*'` show neither the base worktree nor its throwaway branch, `git status --porcelain` and `git ls-files .remedy-wt` are both empty, reproduced independently. G7 HELD: every commit's numstat cells match the handback's own Commits table cell for cell, reproduced independently. ONE DEVIATION IS DECLARED (the RECORD10 byte-count correction above, a reviewer-authoring slip with nothing wrong on disk, to be recorded in `.agent/prose_slips.md` at the next round); the reviewer found no others. This is F114's FIRST 'full suite green' claim, per planner_reviewer_prompt.md §4 item 6 — only an integration-gate round may make it. Branch `feature/f114-cost-preview-per-command` is pushed and matches `origin` head-for-head; `git status --porcelain` reads empty now.
-<<<END RECORD11>>>
+<<<BEGIN RECORD12>>>
+Gate: F114 R12 — the round 12 entry, closure precondition 6's GENERATION step only, no production code touched. VERDICT PASS, over the range `31aa76b79a8dd9eda17039c903cbff3fef1e06bc..5d614a7469171ccdb450b37dc66a306297b4bc6f` (commits C0a `aae446bad07559777368358fd613c97a92f982b1`, C0b `dd6a9203113a7dafa19a534129684aec6f6e00e7`, C1 `1e1f6d3caea7d77af1e88cd6795235d6f444bf16`, C2 `5d614a7469171ccdb450b37dc66a306297b4bc6f` — four real content commits — plus handback commit `7997a76658289e71b0506f25ee8b48e0e29d165b`), independently re-verified by the reviewer. TRANSPORT HELD: `sha256sum .agent/authored/f114-r12.md .agent/last_block.md` both print `7dcc5685b027a53c1388f6f9f3cac234d6a53b7a672c4653dc2cde5c5fde8b44`, reproduced directly. G2 THE LEDGER APPEND (RECORD11) HELD BYTE-EXACT: base 2385806 bytes (no trailing newline), RECORD11 measured 4403 bytes with zero internal newlines, base + 1 + 4403 = 2390210 exactly matching the post-C1 file; the appended tail equals `\n` + RECORD11 byte for byte, a one-byte-flipped negative control was correctly rejected. G3 THE PROSE SLIP APPEND (PROSESLIP11) HELD BYTE-EXACT: base 69890 bytes (no trailing newline), PROSESLIP11 measured 1144 bytes with zero internal newlines, base + 1 + 1144 = 71035 exactly matching the post-C1 file. G4 THE PLAN HELD BYTE-EXACT: PLAN12 extracted from the committed authored file compares equal to `.agent/plan.md` (42 lines by `wc -l`, matching the block's own corrected prediction; `## Goal`/`## Next Steps` each exactly once). G5 THE SELF-USE GENERATION HELD, WITH ONE HARMLESS CORRECTED ILLUSTRATION AND ONE CORRECTED PREDICTION, BOTH DECLARED BY THE WORKER: constraint 5's illustrative code named a `.items` attribute `load_self_use_queue()` does not carry (the real return is a plain tuple), and the worker correctly substituted the equivalent real call (`len(load_self_use_queue())`) to perform the same precondition check rather than following broken illustrative code verbatim — reproduced independently: `next_self_use_item()` read `None` and `len(load_self_use_queue())` read 7 before the call, exactly the block's own stated precondition. `generate_and_append_if_empty()` returned `SU-008`, `consumed_by=""`, provenance `generated (self-use-generator tier 1, ledger scan, R-0418)` — matching constraint 6 exactly, and `load_self_use_queue()` read 8 items afterward. Constraint 8 predicted a FULL-FILE rewrite of `scripts/self_use_queue.json` (the open `R-0785` class); the real diff is a clean `+8/-0` append instead — reproduced independently via `git show --numstat 5d614a74 -- scripts/self_use_queue.json`. This does not contradict `R-0785`: that finding's own `ensure_ascii` escaping already ran once, at F109 R19, over the four items shipped at that time, so every item this round's re-serialization touches was ALREADY escaped and re-serializes byte-identical — a full rewrite is only visible in a diff the FIRST time it happens to a given byte range, which was three features ago. No new finding is warranted; `R-0785` remains open, unchanged, for the reason its own fix clause already names. G6 THE TREE AND THE SWEEP HELD: `git status --porcelain` and `git diff --stat 31aa76b7..5d614a74 -- packages/ apps/ tests/` are both empty, reproduced independently; every commit's numstat cells match the handback's own Commits table cell for cell. TWO DEVIATIONS ARE DECLARED (the broken illustrative code and the append-vs-rewrite correction above, neither a defect on disk); the reviewer found no others. Closure precondition 6's RUN step (SU-008 to the approval gate) is round 13's own work, not this round's. Branch `feature/f114-cost-preview-per-command` is pushed and matches `origin` head-for-head; `git status --porcelain` reads empty now.
+<<<END RECORD12>>>
 
-<<<BEGIN PROSESLIP11>>>
-2026-09-04 · F114 R11 (reviewer) · The round 11 block's G2 gate text predicted RECORD10 at 3363 bytes and the post-append `.agent/live_review.md` total at 2385810, but the real measured values are 3359 bytes and 2385806 — a 4-byte arithmetic slip in the reviewer's own re-transcription of RECORD10 between authoring round 10's ledger entry and re-quoting its byte count inside round 11's block, most likely from a differing count of the multi-byte em-dash characters across the two authoring passes. The worker applied the slice byte-for-byte as extracted from the committed authored file, exactly as constraint 1 requires, and correctly reported the real measured values rather than the block's stale prediction (the same class as F112 R21's own declared correction). THE LESSON: a byte count re-quoted for a SECOND gate, in a LATER round's block, is re-measured from the actual committed file at authoring time rather than copied from an earlier round's own prose — a value is only as fresh as the last time it was actually counted. Reviewer-authored gate-text slip, nothing wrong on disk; no R-id spent (amend0827-process-diet rule 2).
-<<<END PROSESLIP11>>>
-
-<<<BEGIN PLAN12>>>
+<<<BEGIN PLAN13>>>
 # Plan — F114 Cost preview per command
 
 Branch: feature/f114-cost-preview-per-command, cut from `main` after
@@ -153,33 +166,33 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 12 books round 11's PASS verdict (RECORD11 - integration gate
-clean, F114's first "full suite green" claim) and one reviewer prose
-slip (PROSESLIP11), then does closure precondition 6's GENERATION step
-only: the queue has no pending item, so `generate_and_append_if_empty()`
-appends SU-008 (the R-0418 paragraph SU-005/006/007 already quoted) as
-PENDING. No production code changes. Running SU-008 is round 13, per
-the split F112 used at its own rounds 20/21.
+Round 13 books round 12's PASS verdict (RECORD12 - the self-use
+GENERATION step, SU-008 appended) then performs closure precondition
+6's RUN step: `run_next_self_use_item()` unflagged, real local
+`ollama` provider, default small budget, against SU-008 (the R-0418
+paragraph). Evidence (job id, provider, final status,
+`describe_self_use_run_defects()` output) saved under
+`.agent/selfuse_f114/`. No `consumed_by` edit yet - that is the
+closure commit's own edit. No new R-id is minted this round; the
+reviewer analyzes and narrates the defect-registration obligation
+against the open ledger when booking THIS round's own verdict next
+round (the same split F110 R16 / F112 R21 used).
 
 ## Next Steps
 
-- Round 13: run SU-008 via `self_use_job`/`self_use_runner` to the
-  approval gate (real local `ollama`, small budget); register
-  `describe_self_use_run_defects`' output - expect it adds evidence to
-  the ALREADY-OPEN `R-0784` (§3 item 30), not a new id.
-- Author T3_F114.md's Built State section (precondition 4).
-- `remedy integrity check --json` (precondition 3).
+- Round 14: book round 13 (RECORD13, with the R-0784 evidence-addition
+  narration), author T3_F114.md's Built State section (precondition
+  4), run `remedy integrity check --json` (precondition 3).
 - Then the closure commit: evidence job, fresh review zip, STATUS
-  line, README sync, `consumed_by=F114`, the PR. Likely its own
-  session, per F112's closure spanning rounds 20/21/22/29/30/31.
-- Session note: round 12, session 3 - 3rd delegated round, at the 4-5
-  default.
+  line, README sync, `consumed_by=F114`, the PR.
+- Session note: round 13, session 3 - 4th delegated round, at the 4-5
+  default; likely the session's last round before a scope check.
 
 ## Risks
 
-- `append_generated_item` rewrites the WHOLE queue file (`json.dumps`
-  ensure_ascii) - the ALREADY-OPEN `R-0785` class; expect a full-file
-  diff, not a clean append.
-- Round 13's run is a real, budget-capped LLM call against local
-  `ollama` - bounded, expected to end BLOCKED (the correct outcome).
-<<<END PLAN12>>>
+- The run is a real, budget-capped LLM call against local `ollama`
+  (`max_cost_usd=0.50`, `max_provider_calls=6`) - bounded, expected to
+  end BLOCKED at the approval gate (the correct, safe outcome for a
+  reviewer-practice finding no builder can fix in code), matching
+  every prior run against R-0418 (SU-005/006/007).
+<<<END PLAN13>>>
