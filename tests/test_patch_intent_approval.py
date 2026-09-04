@@ -331,6 +331,28 @@ class TestFormatHelpers:
         out = format_intent_list(list_patch_intents(job))
         assert item["decided_at"] in out
 
+    def test_format_intent_list_shows_created_when_set(self):
+        from packages.core.models import Artifact
+
+        job = _make_job()
+        artifact = Artifact(
+            name="builder_proposal",
+            content="",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={
+                "patch_intent_explanations": [
+                    {"file": "docs/file_0.md", "action": "modify", "risk": RISK_MEDIUM,
+                     "reason": "task type 'write_readme'", "summary": "Proposed change 0",
+                     "created_at": "2026-09-04T12:00:00+00:00"},
+                ],
+                "patch_intent_approvals": {},
+            },
+        )
+        job.artifacts.append(artifact)
+        out = format_intent_list(list_patch_intents(job))
+        assert "2026-09-04T12:00:00+00:00" in out
+
     def test_format_intent_detail_shows_risk_and_summary(self):
         job = _make_job()
         intent_id = _add_patch_artifact(job)
@@ -411,6 +433,15 @@ class TestCmdListPatchIntents:
         assert data["intent_count"] == 1
         assert data["intents"][0]["target_path"] == "docs/file_0.md"
         assert data["intents"][0]["decided_at"] is None
+
+    def test_json_output_has_created_at_key(self, tmp_path, monkeypatch, capsys):
+        job = self._save(tmp_path, monkeypatch)
+        _add_patch_artifact(job)
+        save_job(job)
+        from apps.cli.commands.patch import _cmd_list_patch_intents
+        _cmd_list_patch_intents(str(job.id), json_output=True)
+        data = json.loads(capsys.readouterr().out)
+        assert "created_at" in data["intents"][0]
 
 
 # ---------------------------------------------------------------------------

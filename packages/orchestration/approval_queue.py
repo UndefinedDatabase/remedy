@@ -146,6 +146,7 @@ def list_patch_intents(job: Job) -> list[dict]:
       risk             — validated risk level (RISK_LEVELS; RISK_UNKNOWN if bad)
       reason           — human-readable derivation reason
       summary          — truncated intent text
+      created_at       — ISO datetime string or None (set once, at intent-derivation time)
       state            — APPROVAL_PENDING | APPROVAL_APPROVED | APPROVAL_REJECTED
       decided_at       — ISO datetime string or None
       decided_by       — who recorded the decision, or None
@@ -174,6 +175,7 @@ def list_patch_intents(job: Job) -> list[dict]:
                     "risk": risk,
                     "reason": exp.get("reason", ""),
                     "summary": exp.get("summary", ""),
+                    "created_at": exp.get("created_at"),
                     "state": approval.get("state", APPROVAL_PENDING),
                     "decided_at": approval.get("decided_at"),
                     "decided_by": approval.get("decided_by"),
@@ -272,14 +274,15 @@ def format_intent_list(intents: list[dict]) -> str:
     if not intents:
         return "No patch intents found for this job."
 
-    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'DECIDED':<20}  TARGET PATH"]
-    lines.append("-" * 72)
+    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'CREATED':<20}  {'DECIDED':<20}  TARGET PATH"]
+    lines.append("-" * 92)
     for item in intents:
         lines.append(
             f"{item['intent_id']:<14}  "
             f"{item['state']:<8}  "
             f"{item['risk']:<8}  "
             f"{item['action']:<12}  "
+            f"{(item['created_at'] or '-'):<20}  "
             f"{(item['decided_at'] or '-'):<20}  "
             f"{item['target_path']}"
         )

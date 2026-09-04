@@ -6,6 +6,7 @@ import re
 import sys
 import time
 from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from packages.core.models import Job, RunState, Task
@@ -609,9 +610,10 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
                         pis, pi_artifact.content or "", pi_task_type, pi_repo_root,
                     )
                     if dry_run_results:
+                        pi_created_at = datetime.now(timezone.utc).isoformat()
                         pi_artifact.metadata["patch_intent_explanations"] = [
                             {"file": r.target_path, "action": r.action, "risk": r.risk_level,
-                             "reason": r.reason, "summary": r.summary}
+                             "reason": r.reason, "summary": r.summary, "created_at": pi_created_at}
                             for r in dry_run_results
                         ]
                         pi_artifact.metadata["patch_intent_risks"] = [r.risk_level for r in dry_run_results]
