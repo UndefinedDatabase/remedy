@@ -1,315 +1,229 @@
-# Handoff — F112 Prompt budget per task class, round 25 (fix R-0791 + rebuild evidence/zip)
+# Handoff — F112 Prompt budget per task class, round 26 (session-ending handoff: book RECORD25, register R-0792, NO code changes)
 
 ## Session
 
-Session continuing F112 (same numbering as round 24's handoff used) ·
-round 25 · rounds so far 25.
+Session continuing F112 (same numbering ambiguity round 20's handoff
+introduced and rounds 21-25 carried forward unresolved — "6 (or 7)") ·
+round 26 · rounds so far 26.
 
-This round booked round 24's PASS verdict (RECORD24 — R-0790's fix
-independently re-verified, one owed finding R-0791) into
-`.agent/live_review.md` (C1), registering `R-0791` in the same append;
-applied PLAN25 to `.agent/plan.md` (C2); FIXED `R-0791` — a
-whitespace-only defect (double blank line at an append seam, missing
-trailing newline) — in `tests/orchestration/test_failure_postmortem.py`
-(C3); then, as an EXTERNAL ACTION (no commit of its own), re-ran the
-evidence job and the mandatory review zip against the new head.
+**SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE.** Round 26
+is the 26th delegated round on this feature, which has now REACHED AND
+PASSED the amend0827-process-diet rule 6 soft limit of 25 rounds per
+feature (the alternative "7 sessions" leg of that same limit is not
+separately resolvable given the "6 or 7" ambiguity above, but the round
+count alone is unambiguous and sufficient to trigger the obligation on
+its own). Per that rule, this handoff carries a SCOPE REPORT instead of
+more work:
 
-**THE ZIP DID NOT FULLY SUCCEED.** It built (exit 0, a real 22MB archive
-at a real path with a verified SHA-256), so R-0790's fix IS confirmed
-sufficient for the specific defect it targeted (the commit-subject
-`ReviewSubjectError` crash that blocked round 23 is gone). But the
-package is `PACKAGE_STATUS=BLOCKED_EVIDENCE` / `EVIDENCE_AUTHORITATIVE=false`
-— a NEW, DIFFERENT blocker, unrelated to R-0790/R-0791, in the
-verification-run recording shape that `job_evidence._run_verifications`
-itself produces. Full detail in "The new blocker" below. Per constraint
-6e this is declared, not papered over; no fix was attempted (it would
-require touching `packages/orchestration/job_evidence.py` and/or
-`scripts/build_review_manifest.py`, both outside this round's locked
-change set).
+- **What is finished.** F112's own product code is complete and green:
+  T001 (per-class cap config, validation, floor + shared class
+  vocabulary), T002 (compiler cap enforcement + `cannot_fit` arithmetic),
+  T003/T003b2a/T003b2b2a/T003b2b2b1/T003b2b2b2/T003c (the decision
+  wiring, dispatch-loop integration, `TaskEntry.files_hint`/`inputs`/
+  `task_class` round-trips) — all per
+  `docs/roadmap/features/T3_F112.md`'s task slicing and Built State
+  section. Of the six closure preconditions this repository's closure
+  protocol requires, FIVE are satisfied. `R-0790` (the `ABS_PATH_RE`
+  false positive on a punctuation-only commit-subject tail) is fixed,
+  mutation-red-proofed and independently re-verified (F112 R24/R25).
+  `R-0791` (a whitespace-only transport defect in
+  `tests/orchestration/test_failure_postmortem.py`) is fixed and
+  independently re-verified (F112 R25). This round additionally books
+  round 25's PASS verdict and registers one further finding, `R-0792`
+  (below) — real, confirmed, but explicitly NOT shown to bear on the
+  remaining blocker.
+- **What is missing.** Closure precondition/algorithm step 2 — the
+  mandatory review-zip build to a commit-ready, authoritative package —
+  is BLOCKED. The zip now builds (exit 0, a real archive, a verified
+  SHA-256) with R-0790's specific `ReviewSubjectError` crash gone, but it
+  packages as `PACKAGE_STATUS=BLOCKED_EVIDENCE` /
+  `EVIDENCE_AUTHORITATIVE=false`. Two full investigation passes (F112
+  R25's own worker, then the R25 gate's independent reviewer
+  re-verification) have NOT isolated a confirmed root cause: every
+  individual gate file read directly out of the packaged zip via
+  `zipfile` reads clean, so the failure is somewhere in the
+  `package_status` decision logic itself (seven booleans plus
+  `_check_bundle_integrity`, `scripts/build_review_manifest.py:3290-3296`
+  and `:3323-3325`) rather than in any gate's own JSON. Full detail is in
+  RECORD25 below and in this file's Verification section. Closure
+  (STATUS `[x]`, README capability sync, `scripts/self_use_queue.json`
+  SU-007 `consumed_by=F112`) cannot proceed while this precondition is
+  unmet.
+- **Proposal to the operator** (documented only; NOT executed on this
+  session's own authority, per amend0827 rule 6): the `BLOCKED_EVIDENCE`
+  defect lives entirely inside shared evidence/packaging infrastructure
+  (`scripts/build_review_manifest.py`, `packages/orchestration/
+  job_evidence.py`) rather than in any F112-specific code path, and
+  nothing about it is unique to this feature's own task-splitting logic.
+  Two options, per the rule's own wording:
+  (a) **Split remaining scope off as a DECISION** — record that F112's
+  own product code is complete and closure is deferred pending a
+  separately-scoped investigation into the review-zip packaging defect,
+  picked up with a fresh round budget rather than continuing to spend
+  F112's own count against it; or
+  (b) **Split into two STATUS lines** — keep F112's STATUS line pointed
+  at its now-complete code, and open a second, differently-scoped STATUS
+  line for the review-zip/evidence-packaging `BLOCKED_EVIDENCE`
+  investigation, since a defect in shared packaging machinery is plausibly
+  a blocker for OTHER features' closures too, not only F112's, and a
+  feature-scoped round budget is an awkward fit for a cross-cutting
+  infrastructure bug. This session recommends (b) as the better shape
+  given where the defect actually lives, but leaves the choice to the
+  operator, exactly as amend0827 rule 6 requires.
+
+**A separate, mechanical problem in this round's own step block is
+declared here per constraint 1** (apply byte-for-byte, declare rather
+than silently correct): constraint 4's own closing bullet is internally
+contradictory — it first states the SITZUNGS-LIMIT banner is "NOT owed
+here (this is not a soft-limit round-count situation — 26 rounds is
+under the 25-round soft limit's...)" (a factually false premise: 26 is
+not under 25, it is over it), then immediately breaks off with "actually
+reconfirm" and states the correct rule that the round count is what
+governs. This handoff follows the block's own final, corrective clause
+(round count ≥ 25 → name it plainly, apply the scope-report obligation)
+rather than its earlier, self-contradicted premise, since the corrective
+clause is both later in the text and arithmetically the only one of the
+two that is true.
 
 ## Range
 
-`6dfdff5d..a06e8430` (base is F112 R24's handback commit; this handoff
-itself lands as commit C4 on top of `a06e8430`).
+`138f616e..ee4b9a22` (base is F112 R25's handback commit; this handoff
+itself lands as commit C3 on top of `ee4b9a22`).
 
 ## Commits
 
-### 43f84b79 F112 R25 C0a: save round 25 step block verbatim to .agent/authored/f112-r25.md
+### 39fd60a1 F112 R26 C0a: save the round 26 step block verbatim to .agent/authored/f112-r26.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f112-r25.md` | 324/0 | Transport-proof source of truth for this round's block, saved verbatim (new file). |
+| `.agent/authored/f112-r26.md` | 236/0 | Transport-proof source of truth for this round's block, saved verbatim (new file). |
 
-### bad3101f F112 R25 C0b: mirror block to .agent/last_block.md
+### 97f955d8 F112 R26 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | 324/288 | Byte-identical mirror of the authored file (whole-file overwrite; diff algorithm reports 324/288 due to partial line overlap with the prior round's block, not a size mismatch). Confirmed with `git rev-parse HEAD:.agent/authored/f112-r25.md` and `git rev-parse HEAD:.agent/last_block.md` printing the SAME blob id, `5b252687735a527c01a73367b1462450e4d5e3f0`. |
+| `.agent/last_block.md` | 175/263 | Byte-identical mirror of the authored file (whole-file overwrite; numstat reflects a partial-line-overlap diff against the prior round's block content, not a size mismatch). Confirmed with `git rev-parse HEAD:.agent/authored/f112-r26.md` and `git rev-parse HEAD:.agent/last_block.md` printing the SAME blob id, `42a613fc8c867eb3566e71bb41e4154286b58c33`, re-confirmed at the current HEAD (`ee4b9a22`) after C1/C2 landed. |
 
-### 0972376d F112 R25 C1: append RECORD24 to live_review.md (books R24 PASS, registers R-0791)
+### 1704be71 F112 R26 C1: append RECORD25 to live_review.md (books R25 PASS, registers R-0792)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 4/1 | Appended RECORD24 via `content_bytes + b"\n" + RECORD24_bytes` (one-newline formula), extracted programmatically from the committed authored file. RECORD24 itself carries one internal `\n\n` (Gate paragraph / finding paragraph), preserved exactly. |
+| `.agent/live_review.md` | 4/1 | Appended RECORD25 via `content_bytes + b"\n" + RECORD25_bytes` (one-newline formula), extracted programmatically from the committed authored file. RECORD25 carries one internal blank line (Gate paragraph / `R-0792` finding paragraph), preserved exactly. |
 
-### ad3e4207 F112 R25 C2: apply PLAN25 to plan.md
+### ee4b9a22 F112 R26 C2: apply PLAN26 to plan.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | 14/18 | Whole-file replacement with PLAN25, extracted programmatically from the committed authored file, not retyped. No trailing newline. |
+| `.agent/plan.md` | 22/20 | Whole-file replacement with PLAN26, extracted programmatically from the committed authored file, not retyped. No trailing newline. |
 
-### a06e8430 F112 R25 C3: fix R-0791 - collapse double blank line and add trailing newline
-| Path | +/- | Reason |
-|---|---|---|
-| `tests/orchestration/test_failure_postmortem.py` | 1/2 | Single literal-string replacement (PAIR25_FROM → PAIR25_TO), extracted programmatically from the committed authored file, verified to occur exactly once before applying. Net byte count unchanged (50148 both sides): removes one blank line (-1 byte), adds a trailing newline (+1 byte). |
-
-5 commits, 668 insertions total across C0a-C3 (largest single commit
-324, under the 500 cap; no oversize declaration needed). This handback
-is commit C4 — its own diff is the `.agent/handoff.md` rewrite only,
+4 commits, 437 insertions total across C0a-C2 (largest single commit
+236, well under the 500 cap; no oversize declaration needed — and every
+one of these is a whole-file `.agent/**` state-file save exempt from the
+churn reading regardless). This handback is commit C3 (per the block's
+own numbering) — its own diff is the `.agent/handoff.md` rewrite only,
 exempt from the churn reading as a single-state-file save.
+
+## External actions
+
+None yet at the time this file is written. `git push -u origin
+feature/f112-prompt-budget-per-task-class` runs after this commit lands;
+its outcome is reported in the completion report per the write-once rule
+(not re-written into this file). No PR created, nothing merged, per
+constraint 6.
 
 ## Verification
 
-**G1 TRANSPORT** — sha256 of the committed `.agent/authored/f112-r25.md`:
-`9dc6e3b9ba66fbe0d70713df6c1e3033f067349f060bcbb13bd98bfbe8606d4e`, length
-**23028 bytes**. `git rev-parse HEAD:.agent/authored/f112-r25.md` and
+**G1 TRANSPORT** — sha256 of the committed `.agent/authored/f112-r26.md`:
+`84424ad7677f5a8be08f0fe9d0df189d5a30ebf11032c079ed40fcb6d485f94e`, length
+**20490 bytes**. `git rev-parse HEAD:.agent/authored/f112-r26.md` and
 `git rev-parse HEAD:.agent/last_block.md` BOTH print
-`5b252687735a527c01a73367b1462450e4d5e3f0` — ONE blob id. PASS.
+`42a613fc8c867eb3566e71bb41e4154286b58c33` — ONE blob id, confirmed
+immediately after C0b and re-confirmed at the current HEAD. PASS.
 
-**G2 THE PLAN** — PLAN25 extracted by delimiter from the committed
-authored file (1794 bytes) compared byte-for-byte against the written
-`.agent/plan.md` at C2: **equal, 1794 bytes**. `wc -l .agent/plan.md` =
-**40** (under 50). File ends WITHOUT a trailing newline. `## Goal`
-count = **1**. `## Next Steps` count = **1**. PASS.
+**G2 THE PLAN** — PLAN26 extracted by delimiter from the committed
+authored file (2006 bytes) compared byte-for-byte against the written
+`.agent/plan.md` at C2: **equal**. `wc -l .agent/plan.md` = **42** (under
+50). File ends WITHOUT a trailing newline (confirmed: last byte is
+`.`). `## Goal` count = **1**. `## Next Steps` count = **1**. (`##
+Current Step` and `## Risks` also each occur exactly once, matching the
+file's required shape.) PASS.
 
-**G3 THE RECORD APPEND** — RECORD24 extracted from the committed
-authored file measured **5824 bytes**, matching the block's own pinned
-figure exactly (Gate paragraph 3816 bytes + `\n\n` separator 2 bytes +
-finding paragraph 2006 bytes = 5824, confirmed by splitting on the first
-`\n\n`). `.agent/live_review.md` measured **2310824 bytes** immediately
-before the append (matches the block's pinned pre-C1 figure exactly).
-Arithmetic: `2310824 + 1 + 5824 = 2316649` — matches the real
+**G3 THE RECORD APPEND** — RECORD25 extracted from the committed
+authored file measured **7531 bytes**, matching the block's own pinned
+figure exactly. `.agent/live_review.md` measured **2316649 bytes**
+immediately before the append (matches the block's pinned pre-C1 figure
+exactly, and matches this file's own last-committed size from round 25's
+handback). Arithmetic: `2316649 + 1 + 7531 = 2324181` — matches the real
 post-append size exactly, confirmed directly, and matches the block's
-own predicted total exactly. Old-file-is-prefix check: **True**.
-Post-append file still ends WITHOUT a trailing newline: **True**. The
-seam itself reads `...it.\nGate: F112 R24...` — exactly one newline
-between the old tail and the new record, no extra blank line. HEADER
-SHAPE: lines matching `^Gate: F\d+ R\d+ — ` — before C1 **271**, after
-**272**. Lines matching `^Gate: F112 R24 — ` — before **0**, after
-**1**. Lines matching `^- R-0791 — ` — before **0**, after **1**. OPEN
-SET recomputed mechanically directly against `.agent/live_review.md`:
-registered (unique `^- R-\d{4} — ` ids) — before **351**, after
-**352**. `Done:` (unique `^Done: R-\d{4}` ids) — before **72**, after
-**72**. Open total (registered minus done) — before **279**, after
-**280**. MOVED exactly as the block predicted. PASS, no deviation.
+own predicted total exactly. Old-file-is-prefix check (first 2316649
+bytes of the new file compared byte-for-byte against the pre-C1 file,
+read from the prior commit): **True**. Post-append file still ends
+WITHOUT a trailing newline: **True**. The seam reads
+`...attempting anything.\nGate: F112 R25...` — exactly one newline
+between the old tail and the new record, no extra blank line, and
+exactly one blank line survives INSIDE the appended record between its
+Gate paragraph and its `- R-0792 —` finding paragraph (confirmed: zero
+occurrences of a triple newline anywhere in the appended span). NEGATIVE
+CONTROL: flipping the single last byte of the post-append file breaks
+the byte-for-byte match between the file's tail and the extracted
+RECORD25 slice (confirmed False where the unmutated check reads True),
+so the equality check is sensitive rather than vacuous. HEADER SHAPE:
+lines matching `^Gate: F\d+ R\d+ — ` — before C1 **272**, after **273**.
+Lines matching `^Gate: F112 R25 — ` — before **0**, after **1**. Lines
+matching `^- R-0792 — ` — before **0**, after **1**. OPEN SET recomputed
+mechanically directly against `.agent/live_review.md`: registered
+(unique `^- R-\d+` ids) — before **352**, after **353**. `Done:`
+(unique `^Done: R-\d+` ids, DISTINCT from the raw `Done:` LINE count) —
+before **72**, after **72**. One verification note earned its own
+sub-check here: a naive raw-line count of `^Done:` reads **74**, not
+72, because two ids (`R-0721`, `R-0725`) each carry a SECOND `Done:`
+paragraph from an earlier correction round — the block's own "72" figure
+is the UNIQUE-id reading and is confirmed correct once de-duplicated;
+this is a verification detail, not a deviation from the block, since the
+block's own arithmetic already used the correct reading. Open total
+(registered minus unique done) — before **280**, after **281**. MOVED
+exactly as the block predicted. `git status --porcelain` immediately
+before C3 was staged: **empty**. `git diff --stat 138f616e..ee4b9a22 --
+packages/ apps/ tests/ docs/`: **empty** — no file under any of those
+four trees appears anywhere in this round's four commits. PASS, no
+deviation.
 
-**G4 PAIR25** — `.count()` of PAIR25_FROM's exact bytes (911 bytes) in
-`tests/orchestration/test_failure_postmortem.py` before C3: **1**. File
-byte size: **50148** before AND after C3 (unchanged, as predicted).
-`wc -l`: **1098** before AND after C3 (unchanged). File now ends WITH a
-trailing newline (confirmed `True`, was `False` before). Exactly ONE
-blank line now separates `is True` from `@pytest.mark.parametrize`
-(confirmed by regex: one match of `is True\n\n    @pytest.mark.parametrize`,
-zero matches of the old double-blank pattern). `python3 -m ruff check
-tests/orchestration/test_failure_postmortem.py` → **`All checks
-passed!`**, exit 0 — the one `W292` finding present before C3 is gone.
-PASS.
+## Authored-text proofs
 
-**G5 THE EVIDENCE + ZIP REBUILD** — see "The new blocker" section below
-for full detail; summary line: merge-base reconfirmed unchanged
-(`5c28c6741db2d9073fc75cd159d91037e0757fb0`); all three scoped
-verification commands exit 0 (24, 2, 42 passed respectively, 68 total, 0
-failed); `create_manual_completion_bundle` did NOT raise — it returned a
-summary dict (`verdict: PASS_WITH_RISKS`, `authority_count: 21`,
-`partition: T001/T002/T003 = 7/7/7`, `total_passed: 68`); the zip script
-exited **0** and produced a real archive, but
-`PACKAGE_STATUS=BLOCKED_EVIDENCE` / `EVIDENCE_AUTHORITATIVE=false`. **THE
-ZIP DOES NOT NOW FULLY SUCCEED** — R-0790's own specific defect is
-confirmed fixed (no more `ReviewSubjectError` crash on the commit
-subject), but a second, different, previously-undiscovered defect in the
-verification-run recording shape blocks the package from being
-authoritative. Declared as a new blocker, not fixed (outside this
-round's change set). PARTIAL — zip built, but not to a
-commit-ready/authoritative state.
+Both reviewer-authored texts applied this round were extracted
+PROGRAMMATICALLY from the committed `.agent/authored/f112-r26.md` (never
+retyped) and compared disk-to-disk against the file each was applied to:
 
-**G6 THE TREE AND THE COMMITS** — `git status --porcelain` and `git
-status --porcelain --ignored=no` immediately before staging C4: **both
-empty** (confirmed after the evidence/zip external action too — neither
-the evidence directory nor the zip file is tracked or shown, both being
-gitignored scratch). `git diff --stat 6dfdff5d..a06e8430 -- packages/
-apps/ tests/ docs/`: **exactly one file**,
-`tests/orchestration/test_failure_postmortem.py | 3 +-` — excluding that
-file from consideration leaves an empty diff, exactly the declared
-change set. PER-COMMIT INSERTIONS (the `+` column): C0a `43f84b79`
-**324**, C0b `bad3101f` **324** (238 net-new content lines re-diffed
-against the prior block; well under 500 regardless), C1 `0972376d` **4**,
-C2 `ad3e4207` **14**, C3 `a06e8430` **1** — every one confirmed under
-500; no oversize commit to declare. PASS.
-
-## The new blocker (G5 detail — full text, not summarized)
-
-After C3, the evidence + zip rebuild was run as an external action using
-a driver script. **First attempt** placed the driver at the repo root
-(`.remedy_r25_evidence_driver.py`, untracked) and hit
-`ValueError: T001: safe-diff path set does not match the task
-partition` inside `create_manual_completion_bundle` — root-caused by
-direct inspection: `resolve_review_subject` merges the committed
-base..head delta with the CURRENT WORKING TREE'S DIRTY STATE
-(`_dirty_records`), so the untracked driver script itself was being
-swept into the "attestable authority" file set, while `git diff
-base..head` naturally had no history for an untracked file — a
-self-inflicted mismatch, not a codebase defect. Fixed by relocating the
-driver to the gitignored `.remedy-wt/` scratch location (per this
-repo's own established convention for exactly this class of problem)
-and re-running from a clean `git status --porcelain`; the second run's
-authority count came out to 21 (7+7+7), matching the partition, and this
-error did not recur.
-
-**Second attempt** (from `.remedy-wt/r25_evidence_driver.py`, tree
-clean) got past that point cleanly:
-
-- `git merge-base main HEAD` → `5c28c6741db2d9073fc75cd159d91037e0757fb0` — UNCHANGED, matches the pinned base.
-- Stale `remedy-job-evidence-f112-closure/` from round 23 confirmed gitignored via `git check-ignore -v` (`.gitignore:226:remedy-job-evidence-*/`), then removed.
-- All three scoped verification commands, exit 0 each:
-  - `python3 -m pytest tests/orchestration/test_class_prompt_budget.py` → 24 passed, 0 failed.
-  - `python3 -m pytest tests/orchestration/test_context_compiler.py -k "test_an_oversized_context_fits_under_its_class_cap_with_the_demotion_recorded or test_an_unfittable_context_reports_cannot_fit_with_the_tier1_arithmetic"` → 2 passed, 0 failed.
-  - `python3 -m pytest tests/cli/test_golden_path.py` → 42 passed, 0 failed.
-- `create_manual_completion_bundle(...)` did NOT raise. Returned summary:
-  ```
-  {
-    "job_id": "cee206d7881e4699",
-    "head_commit": "a06e8430a632e00d88224417208b86ea7e0b7c68",
-    "authority_count": 21,
-    "partition": {"T001": 7, "T002": 7, "T003": 7},
-    "commit_count": 165,
-    "verdict": "PASS_WITH_RISKS",
-    "manual_completion": true,
-    "operator_attested_tasks": ["T001", "T002", "T003"],
-    "total_passed": 68
-  }
-  ```
-- `bash scripts/make_review_zip.sh --evidence-dir remedy-job-evidence-f112-closure` exited **0** and printed:
-  ```
-  UNCHANGED: runtime_integration_gate.json — rebuilt from source; identical to existing
-  Evidence refresh completed for staged copy.
-  Observability index generated from staged bytes: evidence/current/self_run_observability_index.json
-  WARNING: Evidence validation failed (is_valid_current_run=false).
-  Zip will be built anyway — reviewer will see validation status in manifest.
-  {"member_count": 3862, "authoritative_count": 21, "symlink_count": 0, "tombstone_count": 0, "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20260904-034254-BLOCKED_EVIDENCE.zip", "final_sha256": "bb52ab1106a77d706fa3e1a25e4bdc80510645194e9b303d46f3e6c03a59e96d", "publication_capability": "SUPPORTED", "package_status": "BLOCKED_EVIDENCE", "evidence_authoritative": false, "review_subject_alignment": "PASS", "manifest_sha256": "e08d5b466e8af7fc322dc0fa77d2ab8a928a6d73a16b3699a103726aac9d797e"}
-
-  ============================================
-  REVIEW_PACKAGE_CREATED=true
-  PACKAGE_STATUS=BLOCKED_EVIDENCE
-  PACKAGING_CWD=/home/decodeux/Repos/remedy
-  EVIDENCE_DIR=remedy-job-evidence-f112-closure
-  REVIEW_SUBJECT_ALIGNMENT=PASS
-  EVIDENCE_AUTHORITATIVE=false
-  REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
-  ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260904-034254-BLOCKED_EVIDENCE.zip
-  DO_NOT_COMMIT=true
-  ============================================
-
-  *** ZIP CREATED, BUT THIS PACKAGE IS NOT COMMIT-READY ***
-  ```
-- Independently confirmed the printed SHA-256 with a fresh, separate `hashlib.sha256` read of the produced file: `bb52ab1106a77d706fa3e1a25e4bdc80510645194e9b303d46f3e6c03a59e96d` — **MATCHES**. File size 22202607 bytes.
-- Archiving: the zip script itself already writes directly to `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260904-034254-BLOCKED_EVIDENCE.zip` (its `REVIEW_PACKAGE_DIR`); no separate copy step was needed or performed. Archived path: `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260904-034254-BLOCKED_EVIDENCE.zip`.
-
-**Root cause of `is_valid_current_run=false`**, found by calling
-`scripts/build_review_manifest.validate_evidence_candidate('remedy-job-evidence-f112-closure')`
-directly (read-only diagnostic, no file written):
-
-```
-{
-  "is_valid_current_run": false,
-  "validation_errors": [
-    "verification_tests.json field verification_tests.runs[1].stdout_summary carries a local absolute path",
-    "verification_tests.json runs[0] output_hash does not match sha256(stdout_summary)",
-    "verification_tests.json runs[1] output_hash does not match sha256(stdout_summary)",
-    "verification_tests.json runs[2] output_hash does not match sha256(stdout_summary)"
-  ]
-}
-```
-
-Two distinct, independently-confirmed sub-causes, BOTH inside
-`packages/orchestration/job_evidence.py`'s `_run_verifications` /
-`_default_verification_runner` machinery — NEITHER touched by this
-round's commits (which are whitespace-in-a-test-file and `.agent/`
-bookkeeping only):
-
-1. **`output_hash` vs `stdout_summary` mismatch, all three runs.**
-   `_run_verifications` stores `stdout_summary` truncated to its last
-   2000 characters, but `output_hash` (when the runner supplies its own,
-   as `_default_verification_runner` does) is computed over the FULL,
-   untruncated output. Confirmed directly: `hashlib.sha256(stdout_summary
-   .encode())` != the recorded `output_hash` for all three runs (any
-   output over 2000 chars reproduces this). This is a structural property
-   of the verification-recording code, not something this round's
-   pytest commands did unusually.
-2. **A local absolute path in run[1]'s `stdout_summary`.** The offending
-   line, found by scanning `stdout_summary` line-by-line with
-   `packages.orchestration.run_manifest._contains_local_path`:
-   `'platform linux -- Python 3.10.12, pytest-9.0.3, pluggy-1.6.0 -- /usr/bin/python3'`
-   — pytest's own standard verbose header line, which names the
-   interpreter binary path. `_contains_local_path` flags `/usr/bin/python3`
-   as an unsafe local path even though it is a stock system binary path
-   that reveals nothing about this machine or this repo — the same
-   defect FAMILY as R-0206/R-0790 (over-eager local-path detection
-   producing false positives on ordinary, harmless text), but a
-   DIFFERENT call site (`run_manifest._contains_local_path` scanning
-   captured verification stdout, not `path_redaction.ABS_PATH_RE`
-   scanning a commit subject) and a different triggering string. Only
-   run[1] shows it in this bundle because its output is short enough
-   that the header line survives the last-2000-char truncation window;
-   run[0] and run[2] likely carry the same header line but it falls
-   outside their truncated windows.
-
-Neither sub-cause is fixable within this round's locked change set
-(`.agent/authored/f112-r25.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/plan.md`,
-`tests/orchestration/test_failure_postmortem.py`, `.agent/handoff.md`)
-— both live in `packages/orchestration/job_evidence.py` and/or
-`packages/orchestration/run_manifest.py` / `scripts/build_review_manifest.py`,
-none of which this round is authorized to touch. Per constraint 6e, this
-is declared as the round's central, load-bearing result rather than
-patched over: **the zip built (exit 0, real file, verified hash), but is
-NOT commit-ready** — `PACKAGE_STATUS=BLOCKED_EVIDENCE`,
-`EVIDENCE_AUTHORITATIVE=false`.
+- **RECORD25** (7531 bytes) — the bytes appended to `.agent/live_review.md`
+  at C1 are byte-identical to the extracted slice; confirmed by direct
+  tail comparison (see G3 above).
+- **PLAN26** (2006 bytes) — the bytes written to `.agent/plan.md` at C2
+  are byte-identical to the extracted slice; confirmed by direct
+  whole-file comparison (see G2 above).
 
 ## Deviations & assumptions
 
-1. **The driver script's first placement (repo root, untracked) caused a
-   self-inflicted `ValueError` inside `create_manual_completion_bundle`**,
-   traced to `resolve_review_subject` including dirty/untracked
-   working-tree files in its authority scan. No production code was
-   touched to work around this — the fix was purely procedural
-   (relocate the driver into the gitignored `.remedy-wt/` scratch
-   location and re-run from a clean tree), matching this repo's own
-   established convention for exactly this class of problem. Not a
-   registered finding (nothing on disk was ever wrong; the mistake was
-   this round's own transient scratch-file placement, corrected before
-   any commit).
-2. **The zip's `BLOCKED_EVIDENCE` status is a NEW blocker, not a
-   continuation of R-0790 or R-0791.** Both of this round's own fixes
-   (booking RECORD24/registering R-0791, then fixing R-0791) are
-   confirmed correct and complete by G1-G4 above; the block's own
-   prediction that "the zip should now succeed" is only PARTIALLY borne
-   out — R-0790's specific crash is gone, but a second, previously
-   undiscovered defect (detailed above) now blocks authoritativeness.
-   This is exactly the scenario constraint 6e names as its own new
-   finding rather than something to paper over — no id is minted here by
-   the worker (that is the reviewer's call per the findings-ledger
-   rules), but the full, unsummarized evidence is captured above for the
-   reviewer to register and design a round around.
-3. **`.remedy-wt/r25_evidence_driver.py`** (the corrected, working driver
-   script) and **`remedy-job-evidence-f112-closure/`** (the rebuilt
-   evidence directory, job_id `cee206d7881e4699`) are both left on disk,
-   gitignored, untracked, uncommitted — confirmed by G6's clean `git
-   status --porcelain` (both plain and `--ignored=no`). Left in place
-   intentionally so the reviewer can inspect the full evidence bundle
-   directly rather than only this handback's excerpts.
+1. **The constraint-4 self-contradiction on the SITZUNGS-LIMIT banner**,
+   declared in full in the Session section above: the block's own text
+   asserts both "not owed" and a false premise ("26 is under 25") before
+   correcting itself mid-sentence. Resolved by following the block's own
+   later, arithmetically-true correction. Not a registered finding
+   (nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is
+   affected; this is reviewer/worker-prose territory per
+   amend0827-process-diet rule 2) — logged here per constraint 1's own
+   instruction to declare rather than silently resolve.
+2. **No code file anywhere was touched**, exactly as ordered: `git diff
+   --stat 138f616e..ee4b9a22 -- packages/ apps/ tests/ docs/` is empty
+   (G3 above). No evidence job was re-run, no zip was rebuilt, no fix was
+   attempted for `BLOCKED_EVIDENCE` or for `R-0792` — all per constraint
+   4's explicit prohibition on guessing at a fix this round.
+3. **No new `R-` id was minted for `BLOCKED_EVIDENCE` itself.** Only
+   `R-0792` (the independently-confirmed `output_hash`/`stdout_summary`
+   mismatch, on its own terms) is registered this round, exactly as
+   RECORD25 and the block's constraint 4 both specify.
 4. **`.agent/decisions.md`, `.agent/candidates.md`, `.agent/prose_slips.md`,
-   `docs/roadmap/features/T3_F112.md` were NOT touched**, per constraint
-   8. **`scripts/self_use_queue.json` was NOT touched**, per the
-   change-set note.
-5. **`packages/common/path_redaction.py` was NOT touched**, per
-   constraint 5 — this round's only code-adjacent change is the
-   whitespace normalization in the test file (C3).
+   `docs/roadmap/features/T3_F112.md` were NOT touched**, per constraint 5.
+5. **The "6 (or 7)" session-number ambiguity from round 20 is carried
+   forward unresolved**, not invented or silently picked one way — the
+   round count (26, unambiguous) is what this handoff relies on to
+   trigger the soft-limit obligation, precisely because the session count
+   is not resolvable from the record as it stands.
 6. **`git push` outcome is not recorded in this file** (write-once rule)
    — see the completion report for the real result.
 
@@ -318,54 +232,63 @@ NOT commit-ready** — `PACKAGE_STATUS=BLOCKED_EVIDENCE`,
 | Item | Status | Reason |
 |---|---|---|
 | C0a save block | done | |
-| C0b mirror block | done | blob-id-identical to C0a |
-| C1 append RECORD24 (books R24, registers R-0791) | done | byte length matched pinned figure exactly (5824); arithmetic, prefix, header/open-set counts all match pinned figures; open set correctly MOVED (279→280) |
-| C2 apply PLAN25 | done | byte-equal, 40 lines (under 50), no trailing newline, headings present exactly once each |
-| C3 fix R-0791 (PAIR25) | done | count 1 before, byte size unchanged (50148), line count unchanged (1098), file now ends with trailing newline, one blank line at seam, `ruff` clean |
+| C0b mirror block | done | blob-id-identical to C0a, re-confirmed at current HEAD |
+| C1 append RECORD25 (books R25 PASS, registers R-0792) | done | byte length matched pinned figure exactly (7531); arithmetic, prefix, no-trailing-newline, header/open-set counts, and a negative control all confirmed; open set correctly MOVED (280→281) |
+| C2 apply PLAN26 | done | byte-equal, 42 lines (under 50), no trailing newline, `## Goal`/`## Next Steps` present exactly once each |
+| C3 this handoff | done | comprehensive session-ending handoff per docs/agents/handback_template.md and self_drive_protocol.md's "Ending a session"; scope report included per the soft-limit trigger |
 | G1 transport | done | blob ids match, sha256 + length reported |
 | G2 the plan | done | byte-equal, headings present exactly once each |
-| G3 the record append | done | arithmetic matches; open set correctly MOVED |
-| G4 PAIR25 | done | count, byte sizes, line counts, trailing newline, blank-line seam, ruff all exactly as expected |
-| G5 evidence + zip rebuild | deviated | zip built (exit 0, verified hash, archived) but package is BLOCKED_EVIDENCE/not authoritative — a new, different, fully-diagnosed blocker unrelated to R-0790/R-0791, declared in full above |
-| G6 the tree and the commits | done | no protected-path diff outside the declared file, all commits under 500 insertions, tree clean including ignored scan |
-| RECORD24 booked | done | applied verbatim at C1 |
-| R-0791 registered | done | applied verbatim at C1, as part of RECORD24's own text |
-| R-0791 fixed | done | PAIR25 applied at C3, ruff-confirmed clean |
-| PLAN25 applied | done | applied verbatim at C2 |
+| G3 the record append | done | arithmetic matches; open set correctly MOVED; negative control confirmed sensitive |
+| RECORD25 booked | done | applied verbatim at C1 |
+| R-0792 registered | done | applied verbatim at C1, as part of RECORD25's own text |
+| PLAN26 applied | done | applied verbatim at C2 |
+| Constraint-4 SITZUNGS-LIMIT self-contradiction | deviated | declared in Session section and Deviations item 1; resolved by following the block's own corrective clause |
+| No code/docs/tests/packages change | done | confirmed empty diff over those four trees between 138f616e and ee4b9a22 |
+| No new fix or zip rebuild attempted | done | per constraint 4's explicit prohibition |
 
 ## Next
 
 This round issues no verdict on its own work — that is the reviewer's,
-per the block's own instruction. No `Done: R-0790` or `Done: R-0791`
-line is written here; per the block's own Handback instruction, those
-lines are authored by the reviewer next round, once the reviewer accepts
-this round's own verdict.
+per the block's own instruction. No `Done: R-0790`, `Done: R-0791`, or
+any `Done:`/`Gate:` line for THIS round's own work is written here; the
+reviewer books this round's own verdict, if any, into
+`.agent/live_review.md` in the first commit of whatever round follows.
 
-**Next expected action: this is a BLOCKER, not a closure handoff.** The
-zip is not commit-ready. The reviewer needs to design the next round
-around the two sub-causes named above in "The new blocker" — most
-likely a fix to `_run_verifications`'s `output_hash`/`stdout_summary`
-pairing (compute the hash over the same truncated text it stores, or
-store the full text) and a narrowing fix to
-`run_manifest._contains_local_path` (or its allow-list) so a bare stock
-interpreter path like `/usr/bin/python3` in captured tool output is not
-treated the same as a real local filesystem path worth redacting —
-mirroring the same lesson R-0790 already taught about `ABS_PATH_RE`,
-now needed at a second call site. Both changes would be to files outside
-this round's locked scope, so no fix was attempted here. Do NOT retry
-the zip build again without a code change — the two sub-causes are
-deterministic and will reproduce identically.
+**Next expected action, in order:**
 
-Open findings count: **280** (352 registered, 72 `Done:`) — MOVED from
-279 by this round's C1 append (G3 above), because this round both books
-RECORD24's PASS verdict and registers `R-0791` in the same commit. This
-handback's own new blocker (the `output_hash`/`stdout_summary` mismatch
-and the `/usr/bin/python3` false positive) is NOT YET a registered
-`R-` id — that registration is the reviewer's call for the next round.
+1. **The operator decides the scope-report proposal above** (split as a
+   DECISION, or split into two STATUS lines) before continuing — this is
+   the amend0827 rule 6 obligation this handoff exists to raise, and
+   nothing below should proceed on the session's own authority ahead of
+   that decision.
+2. Once that is settled, whichever session picks this up next should
+   read `scripts/build_review_manifest.py` roughly lines 3150-3340 in
+   FULL — further back than either the round-25 worker or this round's
+   reviewer got to — to find exactly which of the seven `package_status`
+   booleans (`evidence_valid`, `alignment_ok`, `containment_ok`,
+   `gate_matrix["ok"]`, `fv_ok_for_ready`, `git_status_ok`,
+   `tt_ok_for_ready`) or `_check_bundle_integrity` actually reads false
+   AT BUILD TIME, and whether that reading happens before or after the
+   "Evidence refresh completed for staged copy" console line — printing
+   each boolean's value at the point of the `package_status` decision (a
+   one-line debug print, or a direct call to the relevant helper
+   functions against the SAME evidence dir still on disk,
+   `remedy-job-evidence-f112-closure/`, job id `cee206d7881e4699`) will
+   answer this far faster than re-reading the packaged JSON files after
+   the fact, which is what led both this round's and round 25's
+   investigation to first (correctly) rule out every individual gate
+   file without yet finding which upstream boolean actually flips.
+3. Do NOT attempt another zip rebuild or another fix before that reading
+   is done — the cause is not yet confirmed and guessing again would
+   repeat exactly the mistake G8 exists to prevent.
 
-Before starting the next round: re-check `.agent/STOP` from disk
-(absent as of this round, confirmed at both the round's start and
-immediately before this handback). Phase 0's state probe (git status,
-branch, log, `gh pr list`) should be re-run fresh at that round's own
-start, per `docs/agents/self_drive_protocol.md` — not assumed carried
-over from this handoff.
+Open findings count: **281** (353 registered, 72 `Done:`) — MOVED from
+280 by this round's C1 append (G3 above), because this round both books
+RECORD25's PASS verdict and registers `R-0792` in the same commit.
+
+Before starting the next round: re-check `.agent/STOP` from disk (absent
+as of this round, confirmed at both the round's start and immediately
+before this handback, per constraint 2). Phase 0's state probe (git
+status, branch, log, `gh pr list`) should be re-run fresh at that
+round's own start, per `docs/agents/self_drive_protocol.md` — not
+assumed carried over from this handoff.
