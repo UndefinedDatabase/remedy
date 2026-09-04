@@ -1,103 +1,374 @@
-── STEP R8/25 — F262 List commands v2 ────────────────────────
-Goal: Book round 7's PASS verdict into the ledger (this round's first
-commit, per amend0827-process-diet rule 1 — a verdict never buys a
-round of its own) and ship T002 batch 6: patch.list gains --json end
-to end plus a DECIDED column in text output, matching the shape
-rounds 6-7 already proved for project.list/job.list/queue.list.
-
-Bundle:
-  C0a. Save this entire block verbatim to .agent/authored/f262-r8.md
-  C0b. Mirror it to .agent/last_block.md
-  C1.  Append GATE7 (below) to .agent/live_review.md, byte-exact
-  C2.  Apply PAIR P1-P4 (production code) + PAIR P5-P7 (tests), one
-       commit, five files
-  C3.  Replace .agent/plan.md with PLAN9 (below), whole-file
-  C4.  Rewrite .agent/handoff.md (the handback), push
-
-Change: apps/cli/command_catalog.py, apps/cli/commands/patch.py,
-packages/orchestration/approval_queue.py,
-tests/test_patch_intent_approval.py, tests/test_command_catalog.py,
-plus the four .agent/** state files C0a/C0b/C1/C3 touch. Nothing else.
-
-Constraints:
-  1. GATE7 and PLAN9 below are authored text: extract each by its own
-     <<<BEGIN ...>>>/<<<END ...>>> marker pair from the COMMITTED
-     .agent/authored/f262-r8.md (byte-exact, binary mode), never by
-     hand-retyping. GATE7 is appended to the base file as exactly
-     "\n" + GATE7's own bytes, with nothing else added or stripped.
-     PLAN9 replaces the whole of .agent/plan.md byte-for-byte.
-  2. PAIR P1-P7 below are also authored text, extracted the same way
-     by their own <<<BEGIN PAIR_Pn_FROM>>>/<<<END PAIR_Pn_FROM>>> and
-     <<<BEGIN PAIR_Pn_TO>>>/<<<END PAIR_Pn_TO>>> marker pairs, applied
-     with str.replace(FROM, TO, 1) via a python3 script — never by
-     hand-retyping. Every FROM has been counted by the reviewer at
-     exactly 1 occurrence in its target file before this block was
-     written; the worker re-confirms that count (before and after)
-     for each pair before treating a "replaced" result as real.
-  3. Pair shapes (reviewer's own containment test, run before this
-     block was written): P1, P2, P3, P4 and P7 are REWRITEs (TO does
-     NOT contain FROM verbatim) — order the "FROM 0x, TO 1x" proof for
-     each. P5 and P6 are APPEND-shaped (TO contains FROM verbatim,
-     each appends one new test method after the existing ones) — for
-     these two, order ordered equality instead (§4.9 of
-     docs/agents/planner_reviewer_prompt.md): the pre-commit blob is a
-     byte-exact prefix of the post-commit file and the appended lines
-     are an exact suffix, in order.
-  4. C2 is ONE commit covering all five touched files (command_catalog.py,
-     patch.py, approval_queue.py, test_patch_intent_approval.py,
-     test_command_catalog.py).
-  5. No path outside this change set is written under version control.
-  6. `.agent/plan.md` stays under 50 lines (AGENTS.md cap); PLAN9 is
-     49 lines, already under it.
-  7. `.agent/STOP` is checked, read from disk, before C0a and again
-     immediately before C4. If present at either check: stop, do not
-     commit further, and write a handoff explaining where the round
-     stopped instead.
-  8. Constraint 8 (feature-file staleness): `docs/roadmap/features/T2_F262.md`
-     line 5 ("REGISTRATION ONLY — nothing in this file has been
-     implemented.") is already false and outside this round's change
-     set; do not repair it this round, just re-declare it stale in the
-     handback as every prior round has.
-  9. Ruff is expected to be denied this session (every prior round hit
-     "This command requires approval" or the Bash-permission refusal);
-     attempt it once per constraint 4's precedent, record whatever
-     refusal text appears, and do not treat its absence as a gate
-     failure.
-
-Done when (worker runs these for real, records real output):
-  $ git status --porcelain                                    # empty, before C0a and before C4
-  $ python3 -m py_compile apps/cli/command_catalog.py apps/cli/commands/patch.py packages/orchestration/approval_queue.py tests/test_patch_intent_approval.py tests/test_command_catalog.py
-                                                                # exit 0
-  $ python3 -m pytest tests/test_patch_intent_approval.py tests/test_command_catalog.py -q
-                                                                # before C2: 77 passed; after C2: 91 passed
-  $ python3 -m pytest tests/ui_server/ -q                      # 515 passed
-  $ python3 -m pytest tests/orchestration/test_test_runner.py -q      # 52 passed
-  $ python3 -m pytest tests/regression/test_resource_safety.py -q    # 21 passed
-  $ python3 -m pytest tests/orchestration/test_integrity_gate.py -q  # 16 passed
-  $ python3 -m pytest tests/cli/test_golden_path.py -q         # 42 passed
-  $ git push origin feature/f262-list-commands-v2              # after C4
-
-Handback: rewrite .agent/handoff.md per docs/agents/handback_template.md,
-covering C0a-C4, all seven gates below (G1-G7), the Commits table with
-git show --numstat readings, and the Verification section with every
-command's real output.
-
 ═══════════════════════════════════════════════════════════════
-GATES THE REVIEWER WILL RE-RUN (worker records its own readings too)
+STEP — F262 R9/? — patch.list gains a CREATED date end to end
 ═══════════════════════════════════════════════════════════════
-G1 TRANSPORT: sha256sum .agent/authored/f262-r8.md .agent/last_block.md — one digest, twice.
-G2 THE LEDGER APPEND: base size/trailing-byte of .agent/live_review.md immediately before C1, GATE7's own byte length and internal newline count, base+1+GATE7_length == post-C1 size, tail slice equals GATE7 byte for byte, negative control (flipped first byte of a COPY of GATE7) rejected against the real tail.
-G3 THE FOUR PRODUCTION PAIRS (P1-P4): FROM count before/after, TO count after, for each of P1 (command_catalog.py), P2 (patch.py handler body), P3 (patch.py dispatch lambda), P4 (approval_queue.py format_intent_list) — full diff of all three files read and confirmed nothing else changed; py_compile exit 0 on all five touched/added files.
-G4 THE TESTS, BEFORE AND AFTER: tests/test_patch_intent_approval.py + tests/test_command_catalog.py combined, 77 before C2, 91 after — reproduced independently.
-G5 STATE READERS + CANARY: tests/ui_server/ 515, test_test_runner 52, test_resource_safety 21, test_integrity_gate 16, test_golden_path 42 — unmoved from session baseline.
-G6 THE PLAN: PLAN9 extracted from the committed authored file compares byte-equal to .agent/plan.md; wc -l reads 49 or fewer; `## Goal` and `## Next Steps` each appear exactly once.
-G7 THE TREE, COMMITS, SWEEP: git status --porcelain empty before C4; git ls-files .remedy-wt empty; every commit's insertion/deletion counts cross-checked cell-for-cell against the handback's own Commits table via git show --numstat; one staleness-sweep line per file this round touched.
 
-<<<BEGIN GATE7>>>
-Gate: R7 — the F262 R7 entry. R7 SHIPPED T002 BATCH 5, job.list and queue.list gain --json end to end (catalog args gain _JSON_OPT + supports_json=True for both entries, handler json_output kwarg + json branch for both, dispatch lambda passes json_output=args.json for both) — job.list's json carries created_at (its text output already had it), queue.list's json carries the RAW created_at string (its text output keeps its existing AGE display, _age(), unchanged) plus goal — AND THE REVIEWER RE-RAN EVERY GATE ITSELF rather than reading the handback back. TRANSPORT HELD: `.agent/authored/f262-r7.md`/`.agent/last_block.md` share one sha256 digest, `3ba94f24b91b38acc72ca8c09f90e9ed6d0007fa869247eb92ca19ca99667e6b`, confirmed by the reviewer's own `sha256sum` of both committed files. THE DIFF WAS READ, NOT ONLY GATED: `git diff 7c25e9363ee43c6b91d26659e7d538ce9b9650f2..2286919d` shows 10 files changed, 1282 insertions, 436 deletions; `apps/cli/command_catalog.py`'s diff is exactly PAIR J1 (job.list CommandEntry gains _JSON_OPT and supports_json=True) and PAIR Q1 (queue.list CommandEntry gains the same, related= unchanged), both confirmed independently at their own command_id anchors, every other CommandEntry untouched; `apps/cli/commands/job.py`'s diff is exactly PAIR J2 (the _cmd_list_jobs body gains a json_output kwarg and a json branch) and PAIR J3 (the dispatch lambda passes json_output=args.json), degraded stays unused as before, every other handler and dispatch line untouched; `apps/cli/commands/queue_cmd.py`'s diff is exactly PAIR Q2 (the _cmd_queue_list body gains the same shape, entry.created_at used raw, never .isoformat()'d) and PAIR Q3 (the dispatch lambda passes json_output=args.json), skipped_total and its stderr print stay in place unmoved, every other handler and dispatch line untouched — every diff re-read in full by the reviewer, not just diffstat'd. `python3 -m py_compile` exited 0 on all five touched/added files (`command_catalog.py`, `job.py`, `queue_cmd.py`, `tests/test_grouped_cli.py`, `tests/cli/test_queue_cmd.py`), run together by the reviewer. THE TESTS MOVED EXACTLY AS THE HANDBACK CLAIMED: `tests/test_grouped_cli.py` read 518 passing (base 516 plus the two `TestJobListCLI` tests), `tests/cli/test_queue_cmd.py` read 26 passing (base 24 plus `test_list_has_json_flag` and `test_json_has_created_at_and_goal`), both reproduced by the reviewer independently, nothing else in either file touched. THE STATE READERS AND THE CANARY WERE UNMOVED FROM THIS SESSION'S OWN BASELINE, reproduced by the reviewer: `tests/ui_server/` 515, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `test_golden_path` 42. HYGIENE HELD: `git status --porcelain` empty at HEAD `2286919d60503ddd0535eedc49af3ea1242ac047`, `git ls-files .remedy-wt` empty, and `git ls-remote origin refs/heads/feature/f262-list-commands-v2` matches the local HEAD exactly — the push discharged, nothing merged, the branch carries R1 through R7 unmerged. THE DECLARED DEVIATIONS ARE ALL TOOLING, NONE A DEFECT ON DISK: a commit-message typo in C1 (R4 instead of R7) was self-corrected before push via `git commit --amend` on the tip commit only, no content affected; `git commit`'s own rewrite-detected stat line disagreed with `git show --numstat` for the whole-file C0b mirror, the same substitution already declared every prior round; several Bash compound-command and `cmp` rejections were re-expressed as single invocations or as `python3 -c` byte comparisons; ruff's exact denial text was equally a refusal, not a run; `docs/roadmap/features/T2_F262.md` line 5's "REGISTRATION ONLY" sentence remains stale since round 2, outside this round's declared change set, correctly declared and left unrepaired again. THE VERDICT IS PASS.
-<<<END GATE7>>>
+GOAL: Add a `created_at` timestamp to every patch-intent explanation, stamped once at intent-derivation time in BOTH creation flows (`do_run.py` and `apps/cli/commands/job.py`), surface it through `list_patch_intents()` and `format_intent_list()`'s CREATED column (which flows into `patch.list --json` automatically, since the JSON path prints `list_patch_intents()`'s own dicts verbatim). Book round 8's reviewer verdict into the ledger. Record the design decision that resolves plan.md's stale "no production code emits patch_intent_created" claim.
 
-<<<BEGIN PLAN9>>>
+BACKGROUND FACTS (already verified by the reviewer — do not re-derive, just apply):
+- `list_patch_intents()` in `packages/orchestration/approval_queue.py` reads `artifact.metadata["patch_intent_explanations"]`, a list of plain dicts. This is the ONLY place all consumers (patch.list, cockpit, trust_report, etc.) converge — not the event log, not the `PatchIntent`/`Artifact` pydantic models (neither has a timestamp field).
+- Two write sites populate `patch_intent_explanations`: `packages/orchestration/do_run.py:514` (`_run_patch_intent_phase`, already imports `datetime`/`timezone` at line 22) and `apps/cli/commands/job.py:612` (`_cmd_run_next_task_local`, does NOT import `datetime` yet).
+- No test anywhere does an exact whole-dict `==` equality check on `list_patch_intents()`'s output or a byte-exact string check on `format_intent_list()`'s output — all existing tests check individual keys / substrings, confirmed by the reviewer's own grep. Adding a new dict key and a new table column is safe.
+
+═══ COMMIT SEQUENCE (7 commits total; keep each one exactly as scoped below) ═══
+
+──────────────────────────────────────────────────────────
+C0a — save this entire step block verbatim
+──────────────────────────────────────────────────────────
+Save the FULL literal text of this prompt message (everything between the "STEP —" header above and the final "END OF BLOCK" marker at the very bottom of this message) to `.agent/authored/f262-r9.md`, byte for byte, exactly as received — do not retype, do not summarize, do not reformat. Commit message: `F262 R9 C0a: save block verbatim to .agent/authored/f262-r9.md`
+
+──────────────────────────────────────────────────────────
+C0b — mirror to .agent/last_block.md
+──────────────────────────────────────────────────────────
+Copy `.agent/authored/f262-r9.md` (the file you just committed) to `.agent/last_block.md`, whole-file replace (AGENTS.md's `.agent/**` state-file exemption from the 500-line cap applies — this is a single indivisible artifact). Verify `sha256sum` of both files matches after writing. Commit message: `F262 R9 C0b: mirror block to .agent/last_block.md`
+
+──────────────────────────────────────────────────────────
+C1 — append GATE8 to .agent/live_review.md
+──────────────────────────────────────────────────────────
+Append exactly the text between the GATE8 markers below to the END of `.agent/live_review.md`. The append is: one newline character, then the GATE8 text verbatim (it is a SINGLE LINE — no internal newlines, matching the file's existing GATE entries), with no other bytes added. Do not touch anything else in the file.
+
+<<<BEGIN GATE8>>>
+Gate: R8 — the F262 R8 entry. R8 SHIPPED T002 BATCH 6, patch.list gains --json end to end (catalog args gain _JSON_OPT + supports_json=True, handler json_output kwarg + json branch, dispatch lambda passes json_output=args.json) plus a DECIDED column in format_intent_list surfacing the intent's own decided_at — AND THE REVIEWER RE-RAN EVERY GATE ITSELF rather than reading the handback back. TRANSPORT HELD: `.agent/authored/f262-r8.md`/`.agent/last_block.md` share one sha256 digest, `44f83c824b9e9756096948569313664134a71cfeee76f892c4cda66870b37031`, confirmed by the reviewer's own sha256 read of both committed files. THE DIFF WAS READ, NOT ONLY GATED: `git diff 2286919d60503ddd0535eedc49af3ea1242ac047..8108c51c` shows the exact five pairs the handback claimed — command_catalog.py's diff is exactly PAIR P1 (patch.list CommandEntry gains _JSON_OPT and supports_json=True), patch.py's diff is exactly PAIR P2 (handler gains json_output kwarg + json branch) and PAIR P3 (dispatch lambda), approval_queue.py's diff is exactly PAIR P4 (format_intent_list header+row gain DECIDED), test_command_catalog.py's diff is exactly PAIR P7 (expected_json gains patch.list), test_patch_intent_approval.py's diff is exactly PAIR P5/P6 (two new tests appended) — every diff re-read in full, nothing else touched. `python3 -m py_compile` exited 0 on all five touched files, run together by the reviewer. THE GATE7 LEDGER APPEND (commit a850bff6) WAS RE-VERIFIED BYTE-EXACT: base (2437464 bytes) + one newline + GATE7 (3786 bytes, extracted from the committed .agent/authored/f262-r8.md by its own BEGIN/END markers, excluding the marker line's own trailing newline) reproduces the post-commit file (2441251 bytes) exactly; tail-equality, preceding-newline and negative-control byte-flip rejection all confirmed. THE TESTS MOVED EXACTLY AS THE HANDBACK CLAIMED, reproduced independently: `tests/test_patch_intent_approval.py tests/test_command_catalog.py` read 91 passed (matching the handback's own after-C2 reading; the handback's declared 77-vs-89 pre-C2 discrepancy is the worker's own honestly-reported deviation, not re-litigated here). THE STATE READERS AND THE CANARY WERE UNMOVED, reproduced by the reviewer: `tests/ui_server/` 515, `test_test_runner` 52, `test_resource_safety` 21, `test_integrity_gate` 16, `test_golden_path` 42. HYGIENE HELD: `git status --porcelain` empty at HEAD `74cfbd28`, `git ls-files .remedy-wt` empty. THE VERDICT IS PASS.
+<<<END GATE8>>>
+
+Commit message: `F262 R9 C1: append GATE8 to live_review.md - books round 8's PASS verdict`
+
+──────────────────────────────────────────────────────────
+C2 — production pairs + tests (one commit, six files)
+──────────────────────────────────────────────────────────
+
+PAIR P1 (REWRITE) — `apps/cli/commands/job.py`, add the datetime import.
+FROM (exact, currently lines 8-9):
+<<<BEGIN PAIR_P1_FROM>>>
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+<<<END PAIR_P1_FROM>>>
+TO:
+<<<BEGIN PAIR_P1_TO>>>
+from collections.abc import Callable
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+<<<END PAIR_P1_TO>>>
+Verify FROM occurs exactly once in the file before applying.
+
+PAIR P2 (REWRITE) — `apps/cli/commands/job.py`, stamp created_at once per task-run and add it to every explanation dict.
+FROM (exact, currently lines 612-616):
+<<<BEGIN PAIR_P2_FROM>>>
+                        pi_artifact.metadata["patch_intent_explanations"] = [
+                            {"file": r.target_path, "action": r.action, "risk": r.risk_level,
+                             "reason": r.reason, "summary": r.summary}
+                            for r in dry_run_results
+                        ]
+<<<END PAIR_P2_FROM>>>
+TO:
+<<<BEGIN PAIR_P2_TO>>>
+                        pi_created_at = datetime.now(timezone.utc).isoformat()
+                        pi_artifact.metadata["patch_intent_explanations"] = [
+                            {"file": r.target_path, "action": r.action, "risk": r.risk_level,
+                             "reason": r.reason, "summary": r.summary, "created_at": pi_created_at}
+                            for r in dry_run_results
+                        ]
+<<<END PAIR_P2_TO>>>
+Verify FROM occurs exactly once in the file before applying.
+
+PAIR P3 (REWRITE) — `packages/orchestration/do_run.py`, add created_at to the fixture explanation dict (datetime/timezone already imported at line 22 — do not add a second import).
+FROM (exact, currently lines 514-521):
+<<<BEGIN PAIR_P3_FROM>>>
+    artifact.metadata["patch_intent_explanations"] = [
+        {
+            "file": "docs/CHANGES.md",
+            "action": "create",
+            "risk": "low",
+            "summary": "Safe documentation change",
+        }
+    ]
+<<<END PAIR_P3_FROM>>>
+TO:
+<<<BEGIN PAIR_P3_TO>>>
+    artifact.metadata["patch_intent_explanations"] = [
+        {
+            "file": "docs/CHANGES.md",
+            "action": "create",
+            "risk": "low",
+            "summary": "Safe documentation change",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ]
+<<<END PAIR_P3_TO>>>
+Verify FROM occurs exactly once in the file before applying.
+
+PAIR P4 (REWRITE) — `packages/orchestration/approval_queue.py`, surface created_at in `list_patch_intents()`'s returned dict.
+FROM (exact, currently within the `result.append({...})` block):
+<<<BEGIN PAIR_P4_FROM>>>
+                    "summary": exp.get("summary", ""),
+                    "state": approval.get("state", APPROVAL_PENDING),
+<<<END PAIR_P4_FROM>>>
+TO:
+<<<BEGIN PAIR_P4_TO>>>
+                    "summary": exp.get("summary", ""),
+                    "created_at": exp.get("created_at"),
+                    "state": approval.get("state", APPROVAL_PENDING),
+<<<END PAIR_P4_TO>>>
+Verify FROM occurs exactly once in the file before applying.
+
+PAIR P5 (REWRITE) — `packages/orchestration/approval_queue.py`, docstring of `list_patch_intents()`.
+FROM (exact):
+<<<BEGIN PAIR_P5_FROM>>>
+      summary          — truncated intent text
+      state            — APPROVAL_PENDING | APPROVAL_APPROVED | APPROVAL_REJECTED
+<<<END PAIR_P5_FROM>>>
+TO:
+<<<BEGIN PAIR_P5_TO>>>
+      summary          — truncated intent text
+      created_at       — ISO datetime string or None (set once, at intent-derivation time)
+      state            — APPROVAL_PENDING | APPROVAL_APPROVED | APPROVAL_REJECTED
+<<<END PAIR_P5_TO>>>
+Verify FROM occurs exactly once in the file before applying.
+
+PAIR P6 (REWRITE) — `packages/orchestration/approval_queue.py`, `format_intent_list()` gains a CREATED column ahead of DECIDED.
+FROM (exact, this is the CURRENT content after R8 — read the file yourself first and confirm this matches before applying; if it does not match exactly, STOP and report the mismatch rather than guessing):
+<<<BEGIN PAIR_P6_FROM>>>
+    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'DECIDED':<20}  TARGET PATH"]
+    lines.append("-" * 72)
+    for item in intents:
+        lines.append(
+            f"{item['intent_id']:<14}  "
+            f"{item['state']:<8}  "
+            f"{item['risk']:<8}  "
+            f"{item['action']:<12}  "
+            f"{(item['decided_at'] or '-'):<20}  "
+            f"{item['target_path']}"
+        )
+<<<END PAIR_P6_FROM>>>
+TO:
+<<<BEGIN PAIR_P6_TO>>>
+    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'CREATED':<20}  {'DECIDED':<20}  TARGET PATH"]
+    lines.append("-" * 92)
+    for item in intents:
+        lines.append(
+            f"{item['intent_id']:<14}  "
+            f"{item['state']:<8}  "
+            f"{item['risk']:<8}  "
+            f"{item['action']:<12}  "
+            f"{(item['created_at'] or '-'):<20}  "
+            f"{(item['decided_at'] or '-'):<20}  "
+            f"{item['target_path']}"
+        )
+<<<END PAIR_P6_TO>>>
+Verify FROM occurs exactly once in the file before applying.
+
+TEST T1 (APPEND) — `tests/orchestration/test_do_run.py`. Insert this new test method immediately after the existing `test_patch_intent_created` method (which ends `assert result.patch_intent_id`) and before `test_artifact_created`, same indentation/class (`TestPhaseModel`... actually check: locate the method by its exact body, insert the new method directly after it, before the blank line + next method):
+<<<BEGIN T1>>>
+    def test_patch_intent_created_has_created_at(self, tmp_path):
+        from uuid import UUID
+
+        from packages.orchestration.approval_queue import list_patch_intents
+        from packages.orchestration.storage import load_job
+
+        result = _run_with_tmp(tmp_path, autonomy=3)
+        job = load_job(UUID(result.job_id), root=tmp_path / "data")
+        intents = list_patch_intents(job)
+        assert intents[0]["created_at"]
+
+<<<END T1>>>
+(Insert this whole block, including its trailing blank line, directly before `    def test_artifact_created(self, tmp_path):`.)
+
+TEST T2 (APPEND) — `tests/test_patch_intent_approval.py`, class `TestFormatHelpers`. Insert immediately after `test_format_intent_list_shows_decided_when_set` (ends `assert item["decided_at"] in out`) and before `test_format_intent_detail_shows_risk_and_summary`:
+<<<BEGIN T2>>>
+    def test_format_intent_list_shows_created_when_set(self):
+        job = _make_job()
+        artifact = Artifact(
+            name="builder_proposal",
+            content="",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            task_id=uuid4(),
+            metadata={
+                "patch_intent_explanations": [
+                    {"file": "docs/file_0.md", "action": "modify", "risk": RISK_MEDIUM,
+                     "reason": "task type 'write_readme'", "summary": "Proposed change 0",
+                     "created_at": "2026-09-04T12:00:00+00:00"},
+                ],
+                "patch_intent_approvals": {},
+            },
+        )
+        job.artifacts.append(artifact)
+        out = format_intent_list(list_patch_intents(job))
+        assert "2026-09-04T12:00:00+00:00" in out
+
+<<<END T2>>>
+(`Artifact` needs importing in this test — check the top of the file: it currently imports `ArtifactKind, Job, RunState, Task` from `packages.core.models` but not `Artifact` at module level, though `_add_patch_artifact` does `from packages.core.models import Artifact` locally inside its own function. Do the same here: add a local `from packages.core.models import Artifact` as the first line of this new test method's body, OR add `Artifact` to the existing module-level import — your choice, pick whichever keeps the diff smaller and matches this file's own existing style; if you add it locally inside the method, put it as the very first line of the method body, before `job = _make_job()`.)
+
+TEST T3 (APPEND) — `tests/test_patch_intent_approval.py`, class `TestCmdListPatchIntents`. Insert immediately after `test_json_output_has_version_and_intents` (the last method in that class, ends `assert data["intents"][0]["decided_at"] is None`), keeping the blank-line spacing this file uses before the next `# ---` section comment:
+<<<BEGIN T3>>>
+    def test_json_output_has_created_at_key(self, tmp_path, monkeypatch, capsys):
+        job = self._save(tmp_path, monkeypatch)
+        _add_patch_artifact(job)
+        save_job(job)
+        from apps.cli.commands.patch import _cmd_list_patch_intents
+        _cmd_list_patch_intents(str(job.id), json_output=True)
+        data = json.loads(capsys.readouterr().out)
+        assert "created_at" in data["intents"][0]
+<<<END T3>>>
+
+TEST T4 (APPEND) — `tests/test_run_log_cli.py`, class `TestRunNextTaskPatchIntentCreated`. Insert this new test method immediately after `test_patch_intent_created_writes_event_with_count_and_risks` (the only method currently in that class):
+<<<BEGIN T4>>>
+
+    def test_patch_intent_created_writes_created_at_on_explanation(
+        self, tmp_path, monkeypatch
+    ):
+        """Patch intent explanations carry a created_at timestamp (F262 T002)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        job = Job(name="test", state=RunState.RUNNING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job.tasks.append(task)
+        save_job(job)
+
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content=(
+                "Summary:\n  Quick summary.\n\nProposed Changes:\n"
+                "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
+            ),
+            mime_type="text/plain",
+            task_id=task.id,
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            metadata={"task_type": "write_readme", "summary": "done"},
+        )
+        task.output_artifact_ids.append(artifact.id)
+        job.artifacts.append(artifact)
+
+        ws_file = tmp_path / "fake_ws.txt"
+        ws_file.write_text("  - Change A\n  - Change B\n")
+        artifact.metadata["workspace_file"] = str(ws_file)
+        task.status = RunState.RUNNING
+
+        from packages.orchestration.patch_intent import (
+            PatchDryRunResult,
+            PatchIntent,
+            PatchIntentSet,
+        )
+        from packages.orchestration.task_runner import RunTaskResult
+        from packages.orchestration.verifier import VerificationResult
+        from packages.orchestration.workspace import MaterializedFile
+
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+        vr = VerificationResult(task_id=task.id, passed=True, checks=[])
+        fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
+
+        fake_pis = PatchIntentSet(
+            task_id=task.id,
+            artifact_id=artifact.id,
+            intents=[
+                PatchIntent(
+                    target_path="README.md",
+                    intent="Add installation section",
+                )
+            ],
+        )
+        fake_pi_mf = MaterializedFile(
+            path=tmp_path / "pi.json", content="{}", size=2
+        )
+        fake_dry_run = [
+            PatchDryRunResult(
+                target_path="README.md",
+                action="modify",
+                risk_level="medium",
+                reason="task type 'write_readme'",
+                summary="Add installation section",
+                diff_preview="--- README.md",
+            )
+        ]
+
+        def fake_finalize(r, v):
+            for t in r.job.tasks:
+                if t.id == r.task_id:
+                    t.status = RunState.COMPLETED
+
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch(
+                "packages.providers.ollama_builder.provider.OllamaBuilder",
+                builder_cls,
+            ),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+            patch("packages.orchestration.task_runner.annotate_task_result"),
+            patch(
+                "packages.orchestration.task_runner.materialize_task_output",
+                return_value=fake_mf,
+            ),
+            patch(
+                "packages.orchestration.verifier.verify_task_output",
+                return_value=vr,
+            ),
+            patch(
+                "packages.orchestration.task_runner.finalize_task",
+                side_effect=fake_finalize,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.derive_patch_intents",
+                return_value=fake_pis,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.verify_patch_intent_set",
+                return_value=[],
+            ),
+            patch(
+                "packages.orchestration.patch_intent.materialize_patch_intents",
+                return_value=fake_pi_mf,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.generate_dry_run_preview",
+                return_value=fake_dry_run,
+            ),
+        ):
+            from apps.cli.commands.job import _cmd_run_next_task_local
+
+            _cmd_run_next_task_local(str(job.id))
+
+        from packages.orchestration.storage import load_job
+
+        reloaded = load_job(job.id)
+        explanations = reloaded.artifacts[0].metadata["patch_intent_explanations"]
+        assert explanations[0]["created_at"]
+<<<END T4>>>
+
+Apply P1-P6 and T1-T4, run `python3 -m py_compile apps/cli/commands/job.py packages/orchestration/do_run.py packages/orchestration/approval_queue.py tests/orchestration/test_do_run.py tests/test_patch_intent_approval.py tests/test_run_log_cli.py` and confirm exit 0. Then run `python3 -m pytest tests/orchestration/test_do_run.py tests/test_patch_intent_approval.py tests/test_run_log_cli.py tests/test_command_catalog.py -q` and record the exact pass count (report it verbatim — do not round or guess). All 6 files (3 production, 3 test) in ONE commit. Commit message: `F262 R9 C2: patch.list/do_run/job.py gain created_at end to end (T002 batch 7)`
+
+──────────────────────────────────────────────────────────
+C3 — append DECISION F262 D1 to .agent/decisions.md
+──────────────────────────────────────────────────────────
+Append exactly the text between the DECISION markers below to the END of `.agent/decisions.md`: one newline, then the decision text verbatim, nothing else added.
+
+<<<BEGIN DECISION_F262_D1>>>
+## DECISION F262 D1 (2026-09-04, F262 R9) — patch.list/loop.list's CREATED date is sourced from a new `created_at` field on each stored patch-intent explanation dict, stamped once at intent-derivation time in both creation flows, not reconstructed from the run-event log
+
+CONTEXT. `.agent/plan.md`'s Next Steps (as of R8) named an open design question for `patch.list`'s CREATED date: "the only production emitter of an intent-creation event (`do_run_patch_intent_created` in do_run.py) is read by NO consumer, while every reader instead checks a bare `patch_intent_created` no production code emits." A fresh read this round (reviewer, read-only) found that claim stale: `apps/cli/commands/job.py:623` (`_cmd_run_next_task_local`, the `remedy job run-next-task-local` flow) DOES emit `log.log("patch_intent_created", task_id=..., outcome="created", intent_count=..., risk_levels=...)` — a real, live emitter. The claim was true only of `do_run.py`'s OWN emission (`do_run_patch_intent_created`, still dead, still unread) and became false the moment job.py's flow was read fresh rather than recalled from plan.md's prose.
+
+MEASURED. `list_patch_intents()` (packages/orchestration/approval_queue.py:129) — the SOLE function `patch.list`, `change.list`'s callers, cockpit, trust_report and eight other consumers all read patch intents through — does not read the event log or the `PatchIntent` pydantic model at all. It reads `artifact.metadata["patch_intent_explanations"]`, a plain list of dicts written directly by BOTH creation flows: `do_run.py:514` (`_run_patch_intent_phase`) and `apps/cli/commands/job.py:612` (`_cmd_run_next_task_local`). Neither the `PatchIntent` model (packages/orchestration/patch_intent.py:78-95) nor the `Artifact` model (packages/core/models.py:91-114) carries any timestamp field, so neither the event log NOR either model can supply a per-intent creation time without a new field somewhere; the two `patch_intent_explanations` write sites are the only place all consumers actually converge, and both already run inside a `datetime`-using module or one line from importing it (do_run.py:22 already imports `datetime`/`timezone`; job.py imports neither, and needed to).
+
+CHOSEN. Both write sites gain a `created_at` key (ISO-8601 UTC, `datetime.now(timezone.utc).isoformat()`) in the explanation dict — do_run.py's fixture-shaped dict gets it directly; job.py's dict-comprehension stamps one `pi_created_at` value shared by every intent derived from the same task-run (accurate: they really are created together in one CLI call). `list_patch_intents()` surfaces it as `exp.get("created_at")` on each returned dict (mirroring how `decided_at` already reads `approval.get("decided_at")`), and `format_intent_list()` gains a CREATED column ahead of DECIDED (chronological order). `patch.list --json` (R8) needed no separate change — it prints `list_patch_intents()`'s own dicts verbatim, so the new key flows through automatically.
+
+ALTERNATIVE CONSIDERED AND REJECTED. Route CREATED through the run-event log instead — either by fixing `do_run.py`'s dead emitter to match the 8 existing `patch_intent_created` readers, or by having `list_patch_intents()` scan `load_run_events()` for a `patch_intent_created`/`do_run_patch_intent_created` event and join it to each intent by `intent_id`/`task_id`. Rejected on two independent grounds: (1) job.py's real `patch_intent_created` event carries no `intent_id` at all (only `task_id`, `outcome`, `intent_count`, `risk_levels`), so it cannot be joined to an individual intent without ALSO changing that call site, at which point the event-log route costs strictly more than the metadata-dict route while solving nothing the dict route doesn't already solve; (2) the event log is a per-JOB append-only history, while `list_patch_intents()` is a pure function of `job.artifacts` metadata with no event-log dependency today — introducing one would add a second data source for a value the existing single source (the explanation dict) can hold directly, for no accuracy gain.
+
+CONSEQUENCE. `apps/cli/commands/job.py` gains a `datetime`/`timezone` import and one `created_at` key in its explanation dict comprehension. `packages/orchestration/do_run.py` gains one `created_at` key in its fixture dict (import already present). `packages/orchestration/approval_queue.py` gains `created_at` in `list_patch_intents()`'s returned dict, its docstring, and a CREATED column in `format_intent_list()`. The stale plan.md claim about `do_run_patch_intent_created`/`patch_intent_created` is corrected in this round's plan.md rewrite rather than repeated; the event-log naming mismatch itself (do_run.py's dead emitter, 8 readers of a string only job.py's flow emits) is UNCHANGED and OUT OF SCOPE for F262 — it is a pre-existing gap in a different subsystem (timeline/cockpit/trust-report event narration) that this DECISION's own MEASURED paragraph documents but does not fix, since nothing in F262's Acceptance depends on it.
+
+REVERSE by deleting this DECISION and reverting the `created_at` additions in `do_run.py`, `apps/cli/commands/job.py` and `approval_queue.py` (including the CREATED column) — which a fresh read of `list_patch_intents()` against `patch.list`'s Acceptance requirement (a CREATED date) would immediately re-discover necessary, `list_patch_intents()` reading only `artifact.metadata` either way.
+<<<END DECISION_F262_D1>>>
+
+Commit message: `F262 R9 C3: append DECISION F262 D1 to decisions.md - CREATED date source`
+
+──────────────────────────────────────────────────────────
+C4 — replace .agent/plan.md with PLAN10
+──────────────────────────────────────────────────────────
+Replace the ENTIRE content of `.agent/plan.md` with exactly the text between the PLAN10 markers below (whole-file replace, byte-exact, no trailing content added):
+
+<<<BEGIN PLAN10>>>
 # Plan — F262 List commands v2 (dates, sort, filter)
 
 Branch: feature/f262-list-commands-v2, cut from `main` after pull
@@ -112,33 +383,29 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 8, session 3 - T002 batch 6: `patch.list` gains `--json` end to
-end (same shape rounds 6-7 proved for project.list/job.list/
-queue.list) plus a DECIDED column in text output surfacing the intent
-dict's own `decided_at` (no `created_at` exists on a patch intent -
-only a decision timestamp). Five other audited handlers closed out
-this round with NO code change owed: worker.list, worker.registry-list,
-review.list, config.list, builder.adapter-list carry no timestamp
-field anywhere on their underlying models - Acceptance is satisfied
-as-is per the Risks section below.
+Round 9, session 4 - patch.list gains a CREATED date end to end
+(DECISION F262 D1): both creation flows (do_run.py, job.py) stamp
+created_at on the stored patch_intent_explanations dict;
+list_patch_intents() surfaces it; format_intent_list() gains a
+CREATED column ahead of DECIDED. Corrects a stale R8 claim - job.py:623
+DOES emit patch_intent_created; only do_run.py's own
+do_run_patch_intent_created is dead. Neither event is the source
+list_patch_intents() reads (artifact metadata, not the event log) -
+see DECISION F262 D1.
 
 ## Next Steps
 
-- `change.list`'s event log DOES carry timestamps, but the only
-  production emitter of an intent-creation event
-  (`do_run_patch_intent_created` in do_run.py) is read by NO consumer,
-  while every reader instead checks a bare `patch_intent_created` no
-  production code emits - needs a design decision on which event
-  names creation before a date can land there.
-- `loop.list`/`patch.list` have no `created_at` on their own model and
-  need a design decision before a CREATED date can appear; `loop.list`
-  already prints a "last run" label that may be the right substitute.
-- The execution.* trio (`execution.template-list`, `execution.list`,
-  `execution.approval-list`) always print JSON unconditionally with no
-  text branch at all - the pre-existing `--json`-ignored quirk the
-  Risks section already excuses.
-- T003 (sort/filter/limit behavior) starts once date coverage is far
-  enough along to sort by.
+- loop.list has no created_at of its own (LoopSpec is static
+  remedy.toml config); already prints a "last run" label from
+  job.created_at, which may be the right substitute - separate design
+  pass from D1.
+- change.list's event-log CREATED date stays open, UNRELATED to D1:
+  do_run.py's event stays dead, job.py's real event carries no
+  intent_id to join on - see D1's Alternative section.
+- The execution.* trio always prints JSON unconditionally with no
+  text branch - the pre-existing --json-ignored quirk Risks excuses.
+- T003 (sort/filter/limit) starts once date coverage is far enough
+  along to sort by.
 
 ## Risks
 
@@ -147,192 +414,27 @@ as-is per the Risks section below.
 - The three ignore-`--json`-entirely execution.* commands are a
   pre-existing quirk this feature does not need to fix unless it
   blocks T003's sort behavior for them specifically.
-<<<END PLAN9>>>
+<<<END PLAN10>>>
 
-<<<BEGIN PAIR_P1_FROM>>>
-        command_id="patch.list",
-        group_id="patch",
-        subcommand="list",
-        description="List patch intents for a job.",
-        action_class="read_only",
-        args=(_JOB_ID,),
-        related=("patch.show", "patch.approve"),
-    ),
-<<<END PAIR_P1_FROM>>>
-<<<BEGIN PAIR_P1_TO>>>
-        command_id="patch.list",
-        group_id="patch",
-        subcommand="list",
-        description="List patch intents for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("patch.show", "patch.approve"),
-    ),
-<<<END PAIR_P1_TO>>>
-Target: apps/cli/command_catalog.py — REWRITE.
+Commit message: `F262 R9 C4: replace plan.md with PLAN10`
 
-<<<BEGIN PAIR_P2_FROM>>>
-def _cmd_list_patch_intents(job_id_str: str) -> None:
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+──────────────────────────────────────────────────────────
+C5 — handback
+──────────────────────────────────────────────────────────
+Rewrite `.agent/handoff.md` (whole-file, per AGENTS.md's handback contract) with: Session (this is SESSION 4 of feature F262, round 9, rounds so far 9), a Range section stating this handback covers `74cfbd28..<C4 sha>` (state that C5/this handback commit is NOT part of the reviewed content range, matching R8's own convention), an Item Status table (Preconditions, C0a, C0b, C1, C2, C3, C4, C5, plus one row per gate you ran), a Commits table with every file changed per commit and its +/- line counts from `git show --numstat`, a Verification section with the REAL output of every command you ran (py_compile exit codes, the exact pytest pass counts for C2's combined run, the canary suite counts: `tests/ui_server/`, `tests/orchestration/test_test_runner.py`, `tests/regression/test_resource_safety.py`, `tests/orchestration/test_integrity_gate.py`, `tests/cli/test_golden_path.py` — all five, run individually, report exact pass counts), a Deviations & assumptions section (state honestly anything that didn't go exactly as ordered, including if PAIR P6's FROM did not match — do not force it to match), and a Next section naming the next expected action (T003 sort/filter/limit work, or further date-coverage design per plan.md's Next Steps — your call which to name first, state your reasoning in one sentence). Follow the exact structure of the R8 handback (commit 74cfbd28, already on disk — read it for the template) since it is this file's own immediately-preceding instance and demonstrates the required shape.
 
-    from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
-    intents = list_patch_intents(job)
-    print(format_intent_list(intents))
-<<<END PAIR_P2_FROM>>>
-<<<BEGIN PAIR_P2_TO>>>
-def _cmd_list_patch_intents(job_id_str: str, *, json_output: bool = False) -> None:
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+After committing C5, run `git push -u origin feature/f262-list-commands-v2` (branch already tracks the remote from prior rounds, but include `-u` defensively) and report the push result in your closing message (not inside the handoff file, since it happens after that commit).
 
-    from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
-    intents = list_patch_intents(job)
-    if json_output:
-        print(_json.dumps({
-            "version": 1,
-            "intent_count": len(intents),
-            "intents": intents,
-        }, sort_keys=True))
-        return
-    print(format_intent_list(intents))
-<<<END PAIR_P2_TO>>>
-Target: apps/cli/commands/patch.py — REWRITE. `_json` is already
-imported at module level (`import json as _json`, line 5) — do not
-add a second import.
+Do NOT run any `gh pr` command. Do NOT merge anything. Do NOT touch `main`. This round ships no PR — the branch stays open for round 10.
 
-<<<BEGIN PAIR_P3_FROM>>>
-    "patch.list": lambda args: _cmd_list_patch_intents(args.job_id),
-<<<END PAIR_P3_FROM>>>
-<<<BEGIN PAIR_P3_TO>>>
-    "patch.list": lambda args: _cmd_list_patch_intents(args.job_id, json_output=args.json),
-<<<END PAIR_P3_TO>>>
-Target: apps/cli/commands/patch.py — REWRITE (same file as P2, same commit).
+═══════════════════════════════════════════════════════════════
+CONSTRAINTS
+═══════════════════════════════════════════════════════════════
+1. Every FROM string in P1-P6 must be verified to occur exactly once in its target file, using the file's CURRENT content on disk (re-read each file yourself before applying — do not trust the line numbers cited above blindly, they were correct when the reviewer read them but re-confirm). If a FROM does not match, STOP that pair, do not guess a fix, and report the exact mismatch in your Deviations section instead — do not improvise different bytes.
+2. Do not touch any file not named in this block.
+3. Do not run `ruff` if it requires approval you don't have — if it's denied, note the refusal in Deviations exactly as prior rounds did, this is expected and not a blocker.
+4. If `.agent/STOP` appears at any point mid-round, finish the commit you are mid-way through (if any), then stop and hand off — do not start the next commit.
+5. Keep C2 as ONE commit covering exactly the six named files (three production, three test). If total insertions in C2 exceed 500 lines, stop before committing and report — but this should not happen (the additions are small).
+6. Report every command's REAL exit code and REAL output. Never write the word "green" or "passed" without the actual number. Never accept your own summary as evidence — the reviewer will independently re-run every gate.
 
-<<<BEGIN PAIR_P4_FROM>>>
-    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  TARGET PATH"]
-    lines.append("-" * 72)
-    for item in intents:
-        lines.append(
-            f"{item['intent_id']:<14}  "
-            f"{item['state']:<8}  "
-            f"{item['risk']:<8}  "
-            f"{item['action']:<12}  "
-            f"{item['target_path']}"
-        )
-    return "\n".join(lines)
-<<<END PAIR_P4_FROM>>>
-<<<BEGIN PAIR_P4_TO>>>
-    lines = [f"{'ID':<14}  {'STATE':<8}  {'RISK':<8}  {'ACTION':<12}  {'DECIDED':<20}  TARGET PATH"]
-    lines.append("-" * 72)
-    for item in intents:
-        lines.append(
-            f"{item['intent_id']:<14}  "
-            f"{item['state']:<8}  "
-            f"{item['risk']:<8}  "
-            f"{item['action']:<12}  "
-            f"{(item['decided_at'] or '-'):<20}  "
-            f"{item['target_path']}"
-        )
-    return "\n".join(lines)
-<<<END PAIR_P4_TO>>>
-Target: packages/orchestration/approval_queue.py, function
-format_intent_list — REWRITE.
-
-<<<BEGIN PAIR_P5_FROM>>>
-    def test_format_intent_list_shows_target_path(self):
-        job = _make_job()
-        _add_patch_artifact(job)
-        out = format_intent_list(list_patch_intents(job))
-        assert "docs/file_0.md" in out
-<<<END PAIR_P5_FROM>>>
-<<<BEGIN PAIR_P5_TO>>>
-    def test_format_intent_list_shows_target_path(self):
-        job = _make_job()
-        _add_patch_artifact(job)
-        out = format_intent_list(list_patch_intents(job))
-        assert "docs/file_0.md" in out
-
-    def test_format_intent_list_shows_decided_when_set(self):
-        job = _make_job()
-        intent_id = _add_patch_artifact(job)
-        set_approval_state(job, intent_id, APPROVAL_APPROVED)
-        item = get_patch_intent(job, intent_id)
-        out = format_intent_list(list_patch_intents(job))
-        assert item["decided_at"] in out
-<<<END PAIR_P5_TO>>>
-Target: tests/test_patch_intent_approval.py, class TestFormatHelpers —
-APPEND (TO contains FROM verbatim; order ordered-equality, not a
-FROM-count proof).
-
-<<<BEGIN PAIR_P6_FROM>>>
-    def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.patch import _cmd_list_patch_intents
-        with pytest.raises(SystemExit) as exc_info:
-            _cmd_list_patch_intents(str(uuid4()))
-        assert exc_info.value.code == 1
-<<<END PAIR_P6_FROM>>>
-<<<BEGIN PAIR_P6_TO>>>
-    def test_unknown_job_id_exits_1(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.patch import _cmd_list_patch_intents
-        with pytest.raises(SystemExit) as exc_info:
-            _cmd_list_patch_intents(str(uuid4()))
-        assert exc_info.value.code == 1
-
-    def test_json_output_has_version_and_intents(self, tmp_path, monkeypatch, capsys):
-        job = self._save(tmp_path, monkeypatch)
-        _add_patch_artifact(job)
-        save_job(job)
-        from apps.cli.commands.patch import _cmd_list_patch_intents
-        _cmd_list_patch_intents(str(job.id), json_output=True)
-        data = json.loads(capsys.readouterr().out)
-        assert data["version"] == 1
-        assert data["intent_count"] == 1
-        assert data["intents"][0]["target_path"] == "docs/file_0.md"
-        assert data["intents"][0]["decided_at"] is None
-<<<END PAIR_P6_TO>>>
-Target: tests/test_patch_intent_approval.py, class TestCmdListPatchIntents
-(same file as P5, same commit) — APPEND (TO contains FROM verbatim;
-order ordered-equality). `json` is already imported at module level.
-
-<<<BEGIN PAIR_P7_FROM>>>
-        expected_json = {
-            "brain.graph", "brain.node", "brain.context",
-            "policy.contract", "policy.token",
-            "worker.list", "test.discover",
-            "project.show", "project.context",
-        }
-<<<END PAIR_P7_FROM>>>
-<<<BEGIN PAIR_P7_TO>>>
-        expected_json = {
-            "brain.graph", "brain.node", "brain.context",
-            "policy.contract", "policy.token",
-            "worker.list", "test.discover",
-            "project.show", "project.context", "patch.list",
-        }
-<<<END PAIR_P7_TO>>>
-Target: tests/test_command_catalog.py, TestCatalogJSONSupport.test_known_json_commands — REWRITE.
-
-Reviewer's own pre-emission proof (dry run, disposable worktree
-`.remedy-wt/dryrun-r8` off HEAD `2286919d60503ddd0535eedc49af3ea1242ac047`,
-removed before this block was written): all seven FROM strings counted
-at exactly 1 occurrence in their target files; all seven pairs applied
-via the same str.replace(FROM, TO, 1) shape this block orders;
-`python3 -m py_compile` exit 0 on all five files; `python3 -m pytest
-tests/test_patch_intent_approval.py tests/test_command_catalog.py -q`
-read 91 passed (up from a 77-passed baseline on the unmodified worktree);
-`python3 -m pytest tests/cli/test_golden_path.py -q` read 42 passed; a
-manual smoke script constructed one pending patch intent and confirmed
-both the text table's new DECIDED column (reading `-` for the
-undecided row) and the `--json` payload (`version`, `intent_count`,
-`intents[0].decided_at is None`) by hand.
+END OF BLOCK
