@@ -1,99 +1,248 @@
-── STEP CLOSE/6 — F112 round 32 (bookkeeping only) ──────────────
-Goal: Book round 31's PASS verdict. This round writes NO code and
-touches nothing outside `.agent/` — permitted under amend0827 rule 1's
-own exception for a feature's closure sequence, since precondition work
-is done and only the merge (performed by the reviewer directly, per the
-operator's own explicit instruction, once hosted CI reads green) and the
-next feature's session remain.
+STEP F114 CLAIM / ROUND 1 - F114 Cost preview per command
+FEATURE F114 - Cost preview per command (Tier 3) - SESSION 1, ROUND 1
 
-Bundle: C0a save this block · C0b mirror it · C1 append RECORD31 · C2
-apply PLAN32 · C3 handback.
+Goal
+  Claim F114 in the STATUS ledger and set .agent/plan.md and
+  .agent/context.md for the branch, which the reviewer already cut from
+  main at pull request 234's merge commit (a1b5d4bb). No production code
+  this round: T001 (shared estimator extraction + band computation +
+  basis labels + unit tests) lands over rounds 2 and 3.
 
-Change: `.agent/authored/f112-r32.md` (new), `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`. Nothing
-else.
+Bundle, in this order
+  C0a save this block verbatim to .agent/authored/f114-r1.md
+  C0b mirror it to .agent/last_block.md
+  C1  apply PLAN1 to .agent/plan.md (FIRST substantive commit)
+  C2  apply PAIR S to docs/roadmap/STATUS.md and CONTEXT1 to .agent/context.md
+  C3  rewrite .agent/handoff.md - the handback
 
-Constraints:
-1. Apply every slice byte for byte. `cp`, never retype.
-2. `.agent/decisions.md`, `.agent/candidates.md`, `.agent/prose_slips.md`,
-   `docs/roadmap/features/T3_F112.md`, `docs/roadmap/STATUS.md`,
-   `README.md`, `scripts/self_use_queue.json` are NOT touched.
-3. No PR action of any kind this round — no `gh pr` command. The merge
-   is the reviewer's own next step, outside this delegated round.
-4. Never force-push, never work on `main`.
+Change set - EXACTLY these paths and nothing else
+  .agent/authored/f114-r1.md (new, C0a) - .agent/last_block.md (C0b) -
+  .agent/plan.md (C1) - docs/roadmap/STATUS.md (C2) - .agent/context.md (C2) -
+  .agent/handoff.md (C3)
 
-Done when:
-- `git status --porcelain` — empty before C0a and immediately before the
-  handback commit.
-- TRANSPORT: `git rev-parse HEAD:.agent/authored/f112-r32.md` and
-  `HEAD:.agent/last_block.md` print ONE blob id; report sha256 and bytes
-  for the committed authored file.
-- THE RECORD APPEND: RECORD31 extracted from the committed authored
-  file by its `--- BEGIN RECORD31 sha256=... ---` /
-  `--- END RECORD31 ---` markers must be exactly `2358` bytes and match
-  the stamped sha256. Append as `content_bytes + b"\n" + RECORD31_bytes`.
-  `.agent/live_review.md` must reproduce at exactly `2349237` bytes
-  immediately after C1 (pre-append `2346878` + 1 + `2358`), byte-exact
-  prefix, no trailing newline. Report registered/`Done:`/open counts
-  before and after (expect UNMOVED: 354 registered, 74 `Done:`, 280
-  open, both sides — this round mints and resolves nothing).
-- THE PLAN: PLAN32 extracted the same way must be exactly `1624` bytes
-  and match its stamped sha256 (`b550af7f2138ef6fe09525010702bcb9533200b714574297762739de69eacb34`).
-  `.agent/plan.md` must reproduce byte-identical to it after C2 —
-  `wc -l` under 50, no trailing newline, `## Goal`/`## Next Steps` each
-  exactly once.
-- `git diff --stat 9b30be51..HEAD` outside `.agent/` — empty.
+Constraints
+  1. Every authored slice is applied BYTE FOR BYTE: extract it by delimiter
+     index from the COMMITTED .agent/authored/f114-r1.md - marker lines
+     EXCLUDED - and write it with a script, never by retyping. If a slice
+     looks wrong, apply it as written and DECLARE it in the handback.
+  2. C1 is the first substantive commit of the round, before any other
+     content commit.
+  3. Newline conventions, measured on the scratch originals before
+     emission and re-measured on the committed file after C1/C2: PLAN1
+     and CONTEXT1 both end WITHOUT a trailing newline (the last byte of
+     each slice, between its own END marker's preceding newline and the
+     marker line, is not itself a newline) - .agent/plan.md and
+     .agent/context.md must match, byte for byte, after C1/C2
+     respectively. Report `tail -c 1 <path> | od -An -tx1` for both
+     written files; neither may print `0a`.
+  4. The STATUS edit is str.replace(FROM, TO, 1) on the file's text. No
+     JSON or YAML round trip, no reformatting, no reflowing.
+  5. PLAN1 and CONTEXT1 REPLACE their whole files.
+  6. A sentence OUTSIDE the change set that this round makes stale is
+     DECLARED in the handback and NOT repaired.
+  7. Read .agent/STOP from disk before the first commit and again before
+     C3. If it exists, finish the commit in hand, write the handback, and
+     stop.
+  8. Self-review loop before every commit (git diff --stat, git diff).
+     Push after C3 (git push -u origin feature/f114-cost-preview-per-command).
+     No pull request, no merge.
+  9. This branch was cut directly by the reviewing session (git plumbing
+     only - no file content was authored by that session; every byte in
+     every commit still comes from a worker). PR #234, the PREVIOUS
+     feature's PR, was already merged by the reviewer in an earlier
+     session - do not touch it, do not run the Open PR Gate, do not
+     re-create the branch. `git rev-parse HEAD` before C0a must read
+     `a1b5d4bb455550f082da7d6c4c80fd968d6e1a88` (report the full SHA);
+     `git branch --show-current` must read
+     `feature/f114-cost-preview-per-command`.
 
-Handback: completion report + rewrite `.agent/handoff.md`. State plainly
-in the handoff that the reviewer, not a delegated worker, performs the
-merge next (checking hosted CI status and merging as two separate
-commands) once CI reads green, per this session's opening operator
-ruling — no further delegated round is expected before that, and the
-NEXT delegated round (if any) belongs to the next feature.
-──────────────────────────────────────────────────────────────
+Done when - the gates. Run each, record the REAL exit code and the REAL
+output.
 
---- BEGIN RECORD31 sha256=3121e880e5d58bc7deb7ecd9545af4b89319955e2fa294ba2030ab36d88236a6 ---
-Gate: F112 R31 — the round 31 entry, the README numeral sweep and the pull request. VERDICT PASS, over the range `9b30be51..71820a17` (commits C0a `b3b02146`, C0b `718fc035`, C1 `619b1fa2`, C2 `98027a76`, C3 `71820a17` — five real content commits — plus handback commit `94b29ba4`), independently re-verified by the reviewer. TRANSPORT HELD: `git rev-parse HEAD:.agent/authored/f112-r31.md` and `HEAD:.agent/last_block.md` both print blob `243f97e1f7340dfed0ce145bf7bcea460069bde5`, reproduced directly; `sha256sum .agent/authored/f112-r31.md` reproduced `d956918ba8b6670d26cad7435495ddbb507aa002ef524c0a94982622ad5f23d9` at 12589 bytes. THE README FIX AT C3 HELD BYTE-EXACT, REPRODUCED INDEPENDENTLY: `git diff 9b30be51..HEAD -- README.md` shows exactly two lines changed — `69 of 266 registered items accepted.` to `70 of 266 registered items accepted.` (rest of the line byte-identical) and the Tier 3 table row's Done cell `4` to `5` (its Total cell `26` unchanged) — nothing else in the file moved. `python3 -m pytest tests/docs/ -q`, reproduced by the reviewer at this round's own HEAD, reads `295 passed`, fully green, up from round 30's `2 failed, 293 passed`. `python3 -m pytest tests/cli/test_golden_path.py -q` reproduced 42 passed. `git status --porcelain` reads empty. THE PULL REQUEST WAS OPENED, REPRODUCED INDEPENDENTLY BY THE REVIEWER: `gh pr view 234` reads `state=OPEN`, `isDraft=false`, `baseRefName=main`, `headRefName=feature/f112-prompt-budget-per-task-class`, `mergeable=MERGEABLE` — exactly the single non-draft `feature/*`-to-`main` PR the Open PR Gate expects, NOT merged this round, per constraint and per self_drive_protocol.md G1 ("never merge a PR this session created in the same session"). Closure preconditions 1-6 are ALL now satisfied and landed on this branch's own HEAD; the only remaining step is hosted CI turning green and the merge itself, which — per the operator's own explicit instruction in this session's opening ruling ("merge this amendment's own PR yourself at the end after the gate battery... passes; check status and merge as two separate commands") — this session performs directly once CI reads green, as an explicit, in-session operator authorization that supersedes the general default of deferring the merge to a later session's Open PR Gate. `git status --porcelain` reads empty now.
---- END RECORD31 ---
+  G1 TRANSPORT. After C0b:
+       sha256sum .agent/authored/f114-r1.md .agent/last_block.md
+     One digest, twice. Report both lines verbatim.
+  G2 THE PLAN. Extract PLAN1 from the COMMITTED authored file to scratch,
+     then:
+       cmp <extracted> .agent/plan.md            -> exit 0
+       wc -l .agent/plan.md                      -> report; must be under 50
+       grep -c '^## Goal' .agent/plan.md         -> 1
+       grep -c '^## Next Steps' .agent/plan.md   -> 1
+  G3 THE STATUS PAIR. Count FROM in docs/roadmap/STATUS.md BEFORE C2; it
+     must be exactly 1 before anything is written. After C2 report the
+     FROM and TO counts and the containment test's own output, in these
+     words:
+       TO contains FROM: false
+     This pair is a REWRITE and the FROM-zero count is the right proof.
+  G4 THE CONTEXT. Extract CONTEXT1 from the COMMITTED authored file and
+     cmp against .agent/context.md -> exit 0. Then, on the written
+     .agent/context.md, report each reading as a number, not as a word:
+       grep -c '^## Active Branch'  -> 1
+       grep -c '^## Steps'          -> 1
+       count of 'feature/'          -> report the number
+       first regex match of F followed by three digits -> report it
+       'pytest' in the lowercased text -> report True
+  G5 THE SUITES, EACH AS ITS OWN INVOCATION, RUN SERIALLY. This round edits
+     no test and no production code, so a MOVED COUNT IS ITSELF THE
+     FINDING.
+       python3 -m pytest tests/docs/ -q
+       python3 -m pytest tests/orchestration/test_roadmap_index.py -q
+       python3 -m pytest tests/ui_server/ -q
+       python3 -m pytest tests/orchestration/test_test_runner.py -q
+       python3 -m pytest tests/regression/test_resource_safety.py -q
+       python3 -m pytest tests/orchestration/test_integrity_gate.py -q
+       python3 -m pytest tests/cli/test_golden_path.py -q
+     Report the pass count of each; the reviewer will diff them against a
+     base reading taken independently. THE FOUR STATE READERS ARE RUN AS
+     FOUR, NOT AS THREE. The last is the canary every handback owes.
+  G6 THE TREE, THE COMMITS AND THE SWEEP. Read git status --porcelain
+     immediately before C3 is staged, and git ls-files .remedy-wt (no
+     output - nothing under .remedy-wt/ is ever committed). Then, for
+     C0a, C0b, C1 and C2 - the commits BEFORE the handback commit - report
+     each one's insertion count from git show --numstat, the '+' column
+     ONLY, and compare it CELL BY CELL against the Commits table of the
+     handback you are writing. C3's own numbers go to NEITHER a round
+     report NOR this file - the reviewer measures them at the next gate.
+     Then THE STALENESS SWEEP over every file this round touched, one
+     entry per file, stale or NOT stale, why.
 
---- BEGIN PLAN32 sha256=b550af7f2138ef6fe09525010702bcb9533200b714574297762739de69eacb34 ---
-# Plan — F112 Prompt budget per task class
+Handback
+  Rewrite .agent/handoff.md per docs/agents/handback_template.md. It
+  carries the SESSION NUMBER of the running feature - this is SESSION 1
+  of F114 - the state block, the item-status table with every ordered
+  item appearing exactly once, the Commits table, one line per gate
+  followed by the transcripts, the deviations, and the next steps. It has
+  no length cap.
 
-Branch: feature/f112-prompt-budget-per-task-class, PR #234 OPEN (not
-merged), base main. All six closure preconditions satisfied; the
-evidence-packager contract fix (R-0792, R-0793) landed and independently
-verified end to end against the real packaged zip
-(remedy-review-20260904-123332-READY_FOR_REVIEW.zip, SHA-256
-b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927,
-PACKAGE_STATUS=READY_FOR_REVIEW, EVIDENCE_AUTHORITATIVE=true).
+SLICES. Each slice lies between its own one-line BEGIN and END marker. The
+marker lines are NEVER part of the slice. The slices carried here are
+PLAN1, CONTEXT1, PAIR S FROM and PAIR S TO.
+
+<<<BEGIN PLAN1>>>
+# Plan — F114 Cost preview per command
+
+Branch: feature/f114-cost-preview-per-command, cut from `main` after
+pull request 234 was merged at the Open PR Gate.
 
 ## Goal
 
-No prompt can silently balloon: every task class carries an input-token
-cap, the context compiler fits under it via the existing demotion
-cascade with full omission disclosure, and a context that cannot fit
-raises a task-split decision instead of a truncated prayer
-(docs/roadmap/features/T3_F112.md). ACHIEVED and CLOSED.
+Expensive actions stop starting silently: commands that will spend real
+money show an upfront estimate band with its basis and require
+confirmation above a configured threshold in attended mode; unattended
+runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 32 books round 31's PASS verdict (bookkeeping only, closure
-sequence exempt per amend0827 rule 1). The reviewer then waits for
-hosted CI on PR #234 and merges directly once green, per the operator's
-own explicit instruction opening this session.
+Round 1, session 1 — claim F114 in the STATUS ledger and set this file
+and `.agent/context.md`. Branch already cut. Round 2 extracts the shared
+cost-arithmetic helper (`packages/orchestration/budget_guard.py:482-484`,
+today inlined inside `predict_next_task_cost`) into
+`packages/orchestration/token_economy.py` as `tokens_to_cost_usd()`, with
+`predict_next_task_cost` refactored to call it (no behavior change).
+Round 3 ships the new module `packages/orchestration/cost_preview.py`
+(band estimator + basis labels) and its tests, completing T001.
 
 ## Next Steps
 
-- Merge PR #234 once hosted CI is green (check status, then merge, as
-  two separate commands).
-- Hand back the built zip's name and SHA-256 to the operator for
-  archiving and the formal package review.
-- Next feature per STATUS order (Rule A5) starts a fresh session.
+- Round 2: extract `tokens_to_cost_usd()`, refactor
+  `predict_next_task_cost` to use it, regression-prove
+  `tests/orchestration/test_budget_guard.py` unchanged.
+- Round 3: `cost_preview.py` (`estimate_cost_band`) +
+  `tests/orchestration/test_cost_preview.py` — completes T001.
+- T002: CLI helper (`apps/cli`) — threshold confirm, tty/non-tty
+  semantics (pipe never hangs), `--yes` audited, reusing
+  `loop_cmd.py`'s `_confirm_materialization`/`_stdin_is_a_tty` pattern.
+- T003: mark expensive commands in `apps/cli/command_catalog.py`,
+  goldens for preview lines, docs.
 
 ## Risks
 
-- R-0784 and R-0767 (both OPEN, unrelated to F112) are documented,
-  pre-existing risks; F112's live-review verdict is PASS_WITH_RISKS.
-- A red hosted CI run is a blocker; the merge waits for it honestly
-  rather than being forced.
---- END PLAN32 ---
+- No `cost_preview.py` or expensive-command registry exists yet — T003
+  is greenfield, not a rename.
+- Two class vocabularies exist (`model_routing.TASK_CLASS_TIERS` vs
+  `token_economy.TokenBand`); the estimator commits to `TokenBand`
+  (round 3 states which and why).
+<<<END PLAN1>>>
+
+<<<BEGIN CONTEXT1>>>
+# Context — F114 Cost preview per command
+
+## Active Branch
+feature/f114-cost-preview-per-command, cut from `main` at the merge
+commit of pull request 234.
+
+## Scope
+F114 (Tier 3, depends on F103 — done; enhanced by F074 calibration, not
+yet built): commands that will spend real money show an upfront estimate
+band with its basis and require confirmation above a configured
+threshold in attended mode; unattended runs rely on budgets, not
+prompts. Task slicing: T001 the shared estimator extraction + band
+computation + basis labels + unit tests; T002 the CLI helper + threshold
++ tty/non-tty semantics + tests; T003 marking the expensive commands +
+goldens for their preview lines + docs.
+
+## Do not touch
+The interactive guard's package boundary
+(`tests/test_no_interactive_guard.py`, `_GUARDED_PACKAGES` / empty
+`_ALLOWLIST`), budget enforcement, calibration (F074) — all explicitly
+out of scope per `docs/roadmap/features/T3_F114.md` Do not touch.
+Confirmation prompts live in `apps/cli` ONLY, never inside a guarded
+package.
+
+## Assumptions
+- `packages/orchestration/budget_resolution.PredictiveBudgetConfig` /
+  `resolve_predictive_budget_config()` already supply the reusable
+  inputs (price basis + per-`TokenBand` class-default tokens); only the
+  one-line multiply at `budget_guard.py:482-484` needs extracting, not a
+  new config layer.
+- `apps/cli/commands/loop_cmd.py` already has the reusable confirm
+  pattern: `_confirm_materialization` (an `input()` y/N prompt),
+  `_stdin_is_a_tty`, and the `--yes` flag
+  (`apps/cli/command_catalog.py:653`) — T002 reuses this shape rather
+  than inventing a second one.
+- No `cost_preview.py` or expensive-command registry exists today
+  (confirmed by search); T001/T003 are new files, not refactors of
+  existing ones.
+- The estimator commits to `token_economy.TokenBand` (LOW/MEDIUM/HIGH)
+  as its class vocabulary, distinct from `model_routing.TASK_CLASS_TIERS`
+  (a cost TIER, not a token-size band) — round 3 states this explicitly
+  in `cost_preview.py`'s own docstring.
+
+## Constraints
+The bullets in this first group are STANDING project constraints, carried
+forward from the context this file replaced.
+
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree,
+  never in the primary checkout, which satisfies `git status --porcelain`
+  empty at every verdict.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
+- `ruff check` is DENIED to this session's reviewer, measured at the
+  F114 claim (`ruff check packages/orchestration/budget_guard.py`
+  answers "This command requires approval"). A round of F114 that ships
+  a `.py` file gates `python3 -m py_compile <path>` instead, and the
+  worker attempts `ruff check` itself, reporting success or the exact
+  refusal.
+
+This round is NOT UI work — no design-reference binding applies.
+
+## Steps
+The item-status table for each round lives in that round's handback,
+`.agent/handoff.md`, which AGENTS.md's "Completion Report — Item-Status
+Table" section requires of every completion report. This file deliberately
+does not restate it.
+<<<END CONTEXT1>>>
+
+<<<BEGIN PAIR S FROM>>>
+- [ ] F114 — Cost preview per command
+<<<END PAIR S FROM>>>
+
+<<<BEGIN PAIR S TO>>>
+- [~] F114 — Cost preview per command
+<<<END PAIR S TO>>>
