@@ -2,10 +2,10 @@
 
 Branch: feature/f112-prompt-budget-per-task-class, PR #233 merged (F110);
 F112 claimed in STATUS.md round 1; T001-T003b2b2b2 complete and green,
-integration gate PASSED round 19, self-use item SU-007 run round 21
-(RECORD21: VERDICT PASS, booked this round; R-0784 gained a third
-occurrence, no new id). Round 22 lands the Built State section
-(precondition 4) and re-confirms remaining preconditions before closure.
+integration gate PASSED round 19, self-use consumed round 21, Built
+State landed round 22 (RECORD22: VERDICT PASS, booked this round). All
+six closure preconditions are now satisfied. Round 23 runs the evidence
+job and the mandatory review zip.
 
 ## Goal
 
@@ -17,30 +17,31 @@ task-split decision instead of a truncated prayer
 
 ## Current Step
 
-Round 22 books RECORD21, then appends a "Built State — what F112
-delivered" section to `docs/roadmap/features/T3_F112.md` (precondition
-4 — the file has none yet). `remedy integrity_gate.run_integrity_checks()`
-already reads all-PASS (precondition 3, reviewer-confirmed pre-round).
-No production code touched.
+Round 23 builds the evidence bundle via
+`job_evidence.create_manual_completion_bundle` (review_feature_id="f112",
+scoped verification runs via `_run_verifications`, never a full-suite
+node-id list), then the mandatory review zip
+(`scripts/make_review_zip.sh --evidence-dir <path>`). Produces NO
+repository diff — the evidence dir is never committed
+(docs/roadmap/STATUS_closure_protocol.md). Results (job_id, package
+filename, SHA-256, archived path or NOT ARCHIVED) are reported in the
+handback for the reviewer to author the STATUS line from.
 
 ## Next Steps
 
-- Precondition 6's `consumed_by=F112` edit to `scripts/self_use_queue.json`
-  lands in the closure commit itself, alongside STATUS/README.
-- Evidence job (`job_evidence.create_manual_completion_bundle`), then the
-  mandatory fresh review zip, per
-  docs/roadmap/STATUS_closure_protocol.md steps 1-2.
-- STATUS line authored by the reviewer, applied by the worker; README
-  capability sync in the SAME commit (R-0154 pin).
-- Final closure commit + PR; merge deferred to the next feature's start.
+- Reviewer authors the STATUS line from round 23's reported job_id/
+  package/hash/path/accepted-HEAD.
+- Closure commit: STATUS `[x]`, README capability sync (same commit,
+  R-0154 pin), `scripts/self_use_queue.json` SU-007 `consumed_by=F112`,
+  final `.agent/` state — nothing else.
+- AGENTS.md PR workflow; merge deferred to the next feature's start.
 
 ## Risks
 
-- Split children inherit the parent's full files_hint and re-escalate
-  themselves (harmlessly — DECISION F112 D8's own MEASURED section).
-- The Design section's "raise cap" / "proceed-overcap once" options are
-  deliberately unbuilt (DECISION F112 D9).
-- R-0767 stays OPEN on the model-routing seam this feature's config
-  borrows from; unrelated to F112.
-- R-0784 (self-use/R-0418 curation gap) is OPEN and belongs to F258, not
-  F112 — do not attempt to fix it here.
+- R-0784 (self-use/R-0418 curation gap, OPEN) and R-0767 (model-routing
+  seam, OPEN) are both documented pre-existing risks, unrelated to F112,
+  carried forward per precondition 1's "Resolved or documented risk".
+- Evidence-bundle construction has a documented history of BLOCKED_EVIDENCE
+  pitfalls (F051/F052/F080) — round 23 uses the existing
+  `_run_verifications` helper rather than hand-building verification_run
+  dicts, specifically to avoid them.
