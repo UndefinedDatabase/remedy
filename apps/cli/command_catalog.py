@@ -642,6 +642,8 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         subcommand="list",
         description="List the loops in remedy.toml: name, trigger, action and last run.",
         action_class="read_only",
+        args=(_JSON_OPT,),
+        supports_json=True,
         related=("loop.validate", "loop.run"),
     ),
     CommandEntry(

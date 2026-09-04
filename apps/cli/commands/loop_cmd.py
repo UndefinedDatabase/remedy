@@ -23,6 +23,7 @@ wants: the feature requires all errors and a nonzero exit, not the first error.
 """
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -77,7 +78,7 @@ def _trigger_label(spec: Any) -> str:
     return str(spec.trigger.kind)
 
 
-def _cmd_loop_list() -> None:
+def _cmd_loop_list(*, json_output: bool = False) -> None:
     """List every loop: name, trigger, action, last run. Reads, never writes."""
     from packages.orchestration.loop_spec import LoopSpecError, load_loop_specs
 
@@ -86,6 +87,29 @@ def _cmd_loop_list() -> None:
     except LoopSpecError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(EXIT_ERROR)
+
+    if json_output:
+        from packages.orchestration.loop_run import last_run_for_loop
+        loops = []
+        for spec in specs:
+            job = last_run_for_loop(spec.name)
+            last_run_created_at = None
+            last_run_state = None
+            if job is not None:
+                last_run_created_at = getattr(
+                    job.created_at, "isoformat", lambda: str(job.created_at)
+                )()
+                last_run_state = getattr(job.state, "value", job.state)
+            loops.append({
+                "name": spec.name,
+                "trigger": spec.trigger.kind,
+                "is_inert": spec.is_inert,
+                "action": spec.action.kind,
+                "last_run_created_at": last_run_created_at,
+                "last_run_state": last_run_state,
+            })
+        print(json.dumps({"version": 1, "loops": loops}, sort_keys=True))
+        return
 
     if not specs:
         print("No loops defined. Add a [[loop]] table to remedy.toml.")
@@ -207,7 +231,7 @@ def _cmd_loop_run(name: str, *, project: str | None = None, yes: bool = False) -
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "loop.list": lambda args: _cmd_loop_list(),
+    "loop.list": lambda args: _cmd_loop_list(json_output=args.json),
     "loop.validate": lambda args: _cmd_loop_validate(),
     "loop.run": lambda args: _cmd_loop_run(
         args.name,
