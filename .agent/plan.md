@@ -12,36 +12,38 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 11, session 5 - review.list gains a CREATED date end to end:
-ReviewerRecommendation gains a created_at field stamped once in
-run_reviewer() at construction time (datetime/timezone, matching
-patch.list/loop.list's stamp-at-creation pattern), carried through
-store_recommendations()'s persisted dict, and rendered as a
-(created=...) suffix in _cmd_review_list's text branch - its --json
-branch needed no change since it already prints list_recommendations()'s
-own dicts verbatim. New tests/cli/test_review_cmd.py covers both
-branches.
+Round 12, session 5 - test.list's TEXT branch gains a real per-row
+listing (test_run_id, status, exit_code, created), replacing the old
+bare-count-only print; an honest "No test runs for X." message covers
+the empty case. --json needed no change - it already carried every
+field the text branch now uses, sourced from the same out["runs"]
+list built earlier in _cmd_test_list. This closes the last gap
+round 11's audit found: every catalog list command now either shows a
+date, or is explicitly excused in Risks below.
 
 ## Next Steps
 
-- Round 11's own audit of all 18 catalog list commands against T002:
-  job/queue/loop/project/patch/memory/tournament/blocker/decision/
-  propose/review all carry a date now; execution.list/worker.list/
-  config.list stay excused (Risks); change.list's event-log CREATED
-  date stays open per DECISION F262 D1; event.list already surfaces
-  `timestamp` per row under a different field name, satisfying
-  Acceptance as-is.
-- test.list's --json already carries created_at but its TEXT branch
-  prints a bare count with no per-row listing at all - a pre-existing
-  gap wider than a missing date, flagged rather than folded into T002.
-- T003 (sort/filter/limit) can start once the gaps above are resolved
-  or explicitly excused - review.list (this round) was the last
-  unexcused, undated list command the audit found.
+- change.list's event-log CREATED date stays open, UNRELATED to D1:
+  do_run.py's event stays dead, job.py's real event carries no
+  intent_id to join on - see DECISION F262 D1's Alternative section.
+  This is the one remaining named, excused gap.
+- T003 (sort/filter/limit) can start now: every list command either
+  carries a date (job/queue/loop/project/patch/memory/tournament/
+  blocker/decision/propose/review/test/event, event.list's own
+  `timestamp` field counting) or is excused (execution.list/
+  worker.list/config.list: no timestamp concept or a pre-existing
+  --json-unconditional quirk; change.list: DECISION F262 D1).
+- T003 design should start with the shared `_with_list_options()`
+  surface in apps/cli/command_catalog.py (already injects --sort/
+  --since/--until/--limit into every list subcommand per T001) and
+  decide where the actual sort/filter/limit BEHAVIOUR lives - likely
+  one shared helper each list handler's text/json branches call,
+  rather than 18 hand-rolled implementations.
 
 ## Risks
 
 - Stores with no timestamp concept may render "unknown" permanently -
   that satisfies Acceptance, it is not a gap to close later.
-- The three ignore-`--json`-entirely execution.* commands, and
-  test.list's missing per-row text listing, are pre-existing quirks
-  this feature does not need to fix unless they block T003.
+- The three ignore-`--json`-entirely execution.* commands are a
+  pre-existing quirk this feature does not need to fix unless it
+  blocks T003's sort behavior for them specifically.
