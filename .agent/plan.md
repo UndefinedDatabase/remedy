@@ -12,22 +12,24 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 6, session 2 — T002 batch 4: `project.list` gains its first
-`--json` support (it had none before this round - no other list
-command in this feature has needed to add `--json` from scratch, only
-extend an existing one) plus a `created_at` field and a text-mode
-`created=` field. `RemyProject` has no second/updated timestamp, so
-neither surface shows one.
+Round 7, session 2 — T002 batch 5: `job.list` and `queue.list` gain
+`--json` end to end (same shape round 6 proved once for
+`project.list`). `job.list`'s json carries `created_at` (text already
+had it); `queue.list`'s json carries the RAW `created_at` (text keeps
+its existing AGE display, `_age()`, unchanged - a pre-existing choice
+outside this round's scope) plus `goal`. Neither surface adds an
+`updated_at` - neither `Job` nor the queue entry model has a second
+timestamp.
 
 ## Next Steps
 
-- Round 7: `job.list` (text already prints an ISO date; needs --json
-  added) and `queue.list` (text prints an age, derived from
-  created_at, not raised as a gap; needs --json added) - same new-flag
-  shape as this round, now proven once.
 - `loop.list`/`patch.list` have no timestamp on their own model and
   need a design decision before any date can appear (round 3's
   handback carries the full 28-command audit).
+- The remaining un-audited handlers from that 28-command list (worker.
+  list, worker.registry-list, change.list, review.list, config.list,
+  builder.adapter-list, the execution.* trio) still need their own
+  pass once T002's date coverage stabilizes.
 - T003 (sort/filter/limit behavior) starts once date coverage is far
   enough along to sort by.
 
