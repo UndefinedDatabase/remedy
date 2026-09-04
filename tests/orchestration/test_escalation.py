@@ -1020,7 +1020,7 @@ class TestUnattendedRunLoopCliFlag:
         from packages.orchestration.storage import load_job
 
         with pytest.raises(SystemExit) as exit_info:
-            job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3)
+            job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3, yes=True)
         out = capsys.readouterr().out
 
         assert exit_info.value.code == 1          # blocked is a non-zero exit
@@ -1089,7 +1089,7 @@ class TestUnattendedRunLoopCliFlag:
         from apps.cli.commands import job as job_cmd
 
         monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
-        job_cmd._cmd_job_run_cycles("abc12345")
+        job_cmd._cmd_job_run_cycles("abc12345", yes=True)
 
         assert "--unattended" not in capsys.readouterr().err
 

@@ -837,7 +837,7 @@ class TestJobRunCommand:
 
         seen: list[str] = []
         monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
-        job_cmd._cmd_job_run_cycles("abc12345")
+        job_cmd._cmd_job_run_cycles("abc12345", yes=True)
         assert seen == ["abc12345"]
 
     def test_the_flag_is_capped_and_the_operator_is_told(self, monkeypatch, capsys):
@@ -852,7 +852,7 @@ class TestJobRunCommand:
 
         job = make_job(2)
         save_job(job)
-        job_cmd._cmd_job_run_cycles(str(job.id), cycles=99)
+        job_cmd._cmd_job_run_cycles(str(job.id), cycles=99, yes=True)
 
         err = capsys.readouterr().err
         assert "capped to 8" in err and "F075" in err
@@ -874,7 +874,7 @@ class TestJobRunCommand:
 
         job = make_job(2)
         save_job(job)
-        job_cmd._cmd_job_run_cycles(str(job.id), cycles=3)
+        job_cmd._cmd_job_run_cycles(str(job.id), cycles=3, yes=True)
 
         out = capsys.readouterr().out
         assert "cycles=2/3" in out
@@ -894,11 +894,42 @@ class TestJobRunCommand:
         job = make_job(2)
         save_job(job)
         try:
-            job_cmd._cmd_job_run_cycles(str(job.id))
+            job_cmd._cmd_job_run_cycles(str(job.id), yes=True)
         finally:
             reset_config()
         err = capsys.readouterr().err
         assert "cycles.max_cycles 20 capped to 8" in err
+
+    def test_declining_the_cost_preview_returns_without_running(self, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+
+        monkeypatch.setattr(
+            "apps.cli.cost_preview_confirm.confirm_cost_preview", lambda *a, **k: False)
+        ran: list[str] = []
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        job_cmd._cmd_job_run_cycles("abc12345")
+        assert ran == []
+        assert "Cancelled" in capsys.readouterr().out
+
+    def test_the_gate_sees_an_unavailable_estimate_and_yes_or_unattended(self, monkeypatch):
+        from apps.cli.commands import job as job_cmd
+
+        seen: dict = {}
+
+        def fake_confirm(estimate, *, confirm_above_usd, yes, command_name):
+            seen["estimate"] = estimate
+            seen["yes"] = yes
+            seen["command_name"] = command_name
+            return True
+
+        monkeypatch.setattr("apps.cli.cost_preview_confirm.confirm_cost_preview", fake_confirm)
+        ran: list[str] = []
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", ran.append)
+        job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
+        assert seen["estimate"].band_usd_high is None
+        assert seen["yes"] is True
+        assert seen["command_name"] == "job.run"
+        assert ran == ["abc12345"]
 
 
 # ---------------------------------------------------------------------------
