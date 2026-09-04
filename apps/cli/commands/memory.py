@@ -93,6 +93,7 @@ def _cmd_memory_list(
                 "validity": e.validity, "review_status": e.review_status,
                 "scope": e.scope, "evidence_refs": e.evidence_refs,
                 "created_at": e.created_at,
+                "updated_at": e.updated_at,
             }
             for e in entries
         ]
@@ -105,7 +106,7 @@ def _cmd_memory_list(
         for e in entries:
             approved_mark = " [approved]" if e.approved else ""
             tags_str = f" tags={','.join(e.tags)}" if e.tags else ""
-            print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]})")
+            print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]}, created={e.created_at}, updated={e.updated_at})")
 
 
 def _cmd_memory_learn(

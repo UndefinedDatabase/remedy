@@ -523,6 +523,31 @@ class TestMemoryCLIContract:
         data = json.loads(buf2.getvalue())
         assert data["entries"][0]["approved"] is False
 
+    def test_list_json_has_updated_at_key(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_store("test_key", "test_value")
+        buf2 = StringIO()
+        monkeypatch.setattr("sys.stdout", buf2)
+        _cmd_memory_list(json_output=True)
+        data = json.loads(buf2.getvalue())
+        assert "updated_at" in data["entries"][0]
+
+    def test_list_text_shows_created_and_updated(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_store("test_key", "test_value")
+        buf2 = StringIO()
+        monkeypatch.setattr("sys.stdout", buf2)
+        _cmd_memory_list(json_output=False)
+        text = buf2.getvalue()
+        assert "created=" in text
+        assert "updated=" in text
+
     def test_approved_is_store_true_in_argparse(self) -> None:
         parser = build_parser()
         args = parser.parse_args(["memory", "store", "k", "v", "--approved"])
