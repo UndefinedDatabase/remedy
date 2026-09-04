@@ -12,22 +12,25 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 16 opens SESSION 4. It books round 15's PASS verdict (RECORD15 —
-the session-ending handback itself, reviewed and reproduced
-independently at session start) into the ledger, then runs closure
-precondition 3 (`remedy integrity check --json`) for the first time
-this feature. No code changes.
+Round 17 books round 16's PASS verdict (RECORD16 — precondition 3
+confirmed, all six closure preconditions now hold) into the ledger,
+then builds the evidence job and the review zip — algorithm steps 1-2
+of docs/roadmap/STATUS_closure_protocol.md. No `[x]` flip, no README
+sync, no `consumed_by` edit, no pull request this round.
 
 ## Next Steps
 
-- The closure commit itself: evidence job, fresh review zip, STATUS
-  line, README sync, `scripts/self_use_queue.json`'s `consumed_by=F114`
-  edit, the PR (STATUS_closure_protocol.md algorithm) — its own round
-  or two, per F258's own precedent (rounds 9-11).
-- Preconditions 1, 2, 4, 5 and 6 hold; precondition 3 is confirmed this
-  round (see Done when).
+- The closure commit itself, in ONE commit: the `[x]` flip on
+  docs/roadmap/STATUS.md, the README capability sync,
+  `scripts/self_use_queue.json`'s `consumed_by=F114` edit and the
+  final `.agent/` state.
+- Open the pull request. Not merged this session — the operator's
+  manual-review window; the next feature's Open PR Gate merges it.
 
 ## Risks
 
-- None new this round. The closure commit remains the highest-stakes
-  remaining work.
+- The evidence directory and the zip are gitignored and NEVER
+  committed; only `.agent/**` changes land in git this round.
+- `remedy-review-*.zip` files write directly under
+  `/home/decodeux/Repos/remedy-history/zips`; nothing there is
+  deleted.
