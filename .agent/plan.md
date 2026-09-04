@@ -12,33 +12,32 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 11 runs the INTEGRATION GATE (docs/agents/integration_gate.md,
-steps 1-5) before closure: branch run vs. a base run at the merge-base
-`a1b5d4bb455550f082da7d6c4c80fd968d6e1a88` (PR 234's merge into main),
-UI parity restored in a disposable worktree on a throwaway branch,
-every branch-only failure attributed, evidence saved under
-`.agent/gate_f114_r11/`. The worker measures; only the reviewer issues
-the gate verdict at the next round.
+Round 12 books round 11's PASS verdict (RECORD11 - integration gate
+clean, F114's first "full suite green" claim) and one reviewer prose
+slip (PROSESLIP11), then does closure precondition 6's GENERATION step
+only: the queue has no pending item, so `generate_and_append_if_empty()`
+appends SU-008 (the R-0418 paragraph SU-005/006/007 already quoted) as
+PENDING. No production code changes. Running SU-008 is round 13, per
+the split F112 used at its own rounds 20/21.
 
 ## Next Steps
 
-- If the gate is clean (no unattributed branch-only failure): author
-  the closure sequence per STATUS_closure_protocol.md - evidence job,
-  fresh review zip, the STATUS line, the PR. T003's core scope (mark,
-  golden tests, docs) is complete; marking further commands
-  `is_expensive` and real cost bands for `job.run` are named as
-  explicit future work in the guide and the feature file, not blockers.
-- If a branch-only failure is a genuine BLOCKER coupled to F114 code:
-  that repair is its own reviewer-gated round before closure proceeds.
-- Session note: round 11, session 3 - 2nd delegated round this session,
-  at the 4-5 default.
+- Round 13: run SU-008 via `self_use_job`/`self_use_runner` to the
+  approval gate (real local `ollama`, small budget); register
+  `describe_self_use_run_defects`' output - expect it adds evidence to
+  the ALREADY-OPEN `R-0784` (§3 item 30), not a new id.
+- Author T3_F114.md's Built State section (precondition 4).
+- `remedy integrity check --json` (precondition 3).
+- Then the closure commit: evidence job, fresh review zip, STATUS
+  line, README sync, `consumed_by=F114`, the PR. Likely its own
+  session, per F112's closure spanning rounds 20/21/22/29/30/31.
+- Session note: round 12, session 3 - 3rd delegated round, at the 4-5
+  default.
 
 ## Risks
 
-- The integration gate is the round most likely to surface xdist-flake
-  noise (F135/F052 class) unrelated to F114; every branch-only id gets
-  a serial re-run and a stated attribution, never an assumed one.
-- UI parity (apps/ui/node_modules, apps/ui/dist) must be restored
-  correctly in the base worktree or false base-only failures mask real
-  ones (R-0736 mtime lesson) - the block states the exact copytree and
-  re-stamp procedure rather than leaving it to be improvised.
+- `append_generated_item` rewrites the WHOLE queue file (`json.dumps`
+  ensure_ascii) - the ALREADY-OPEN `R-0785` class; expect a full-file
+  diff, not a clean append.
+- Round 13's run is a real, budget-capped LLM call against local
+  `ollama` - bounded, expected to end BLOCKED (the correct outcome).
