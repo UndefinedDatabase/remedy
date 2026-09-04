@@ -12,25 +12,23 @@ runs rely on budgets, not prompts (docs/roadmap/features/T3_F114.md).
 
 ## Current Step
 
-Round 17 books round 16's PASS verdict (RECORD16 — precondition 3
-confirmed, all six closure preconditions now hold) into the ledger,
-then builds the evidence job and the review zip — algorithm steps 1-2
-of docs/roadmap/STATUS_closure_protocol.md. No `[x]` flip, no README
-sync, no `consumed_by` edit, no pull request this round.
+Round 18 books round 17's PASS verdict (RECORD17 — the evidence bundle
+and review zip, algorithm steps 1-2) and records one reviewer-authoring
+slip (SLIPF114R18), then runs the closure commit itself: the `[x]` flip
+on docs/roadmap/STATUS.md, the README capability sync, and
+`scripts/self_use_queue.json`'s `consumed_by=F114` edit on SU-008 — one
+commit, per docs/roadmap/STATUS_closure_protocol.md algorithm step 5.
+The pull request follows in this same round.
 
 ## Next Steps
 
-- The closure commit itself, in ONE commit: the `[x]` flip on
-  docs/roadmap/STATUS.md, the README capability sync,
-  `scripts/self_use_queue.json`'s `consumed_by=F114` edit and the
-  final `.agent/` state.
-- Open the pull request. Not merged this session — the operator's
-  manual-review window; the next feature's Open PR Gate merges it.
+None — F114 closes with this round's pull request. The next session
+claims the next feature per Rule A5.
 
 ## Risks
 
-- The evidence directory and the zip are gitignored and NEVER
-  committed; only `.agent/**` changes land in git this round.
-- `remedy-review-*.zip` files write directly under
-  `/home/decodeux/Repos/remedy-history/zips`; nothing there is
-  deleted.
+- The README's derived numerals (the accepted count and the Tier 3
+  Done cell) move mechanically the moment STATUS.md flips to `[x]`;
+  both are re-derived and edited in the SAME commit as the flip, per
+  F112 R30's own lesson (a closure commit that skipped this went red
+  on `tests/docs/` and needed a repair commit).
