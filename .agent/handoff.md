@@ -1,45 +1,47 @@
-# Handoff — F112 Prompt budget per task class, round 29 (HALTED at C3 — closure precondition 6 already discharged at round 21; redundant duplicate self-use run declared, not committed)
+# Handoff — F112 Prompt budget per task class, round 30 (HALTED at C4 — docs gate RED after the closure commit; PR NOT created)
 
 ## Session
 
 Session continuing F112 (same numbering ambiguity round 20's handoff
-introduced and rounds 21-28 carried forward unresolved — "6 (or 7)")
-· round 29 · rounds so far 29.
+introduced and rounds 21-29 carried forward unresolved — "6 (or 7)")
+· round 30 · rounds so far 30.
 
 This round is NOT a fresh loop-session bootstrap — it is a direct
-continuation of round 28's own session, so the session number is
-unchanged from round 28.
+continuation of round 29's own session, so the session number is
+unchanged from round 29.
 
 ## Range
 
-Review of `6dd06718..HEAD` (base is F112 R28's handback commit).
+Review of `a5df6f2b..HEAD` (base is F112 R29's handback commit).
 
 ## Commits
 
-### 6132c7af F112 R29 C0a: save the round 29 step block verbatim to .agent/authored/f112-r29.md
+### be0c9e5b F112 R30 C0a: save the round 30 step block verbatim to .agent/authored/f112-r30.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f112-r29.md` | +187/-0 | transport proof — verbatim copy of the supplied step block |
+| `.agent/authored/f112-r30.md` | +193/-0 | transport proof — verbatim copy of the supplied step block |
 
-### d0d38a82 F112 R29 C0b: mirror block to .agent/last_block.md
+### 954a56cf F112 R30 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +146/-174 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
+| `.agent/last_block.md` | +193/-187 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
 
-### 2d2b07af F112 R29 C1: append RECORD28 to live_review.md (books R28 PASS)
+### 38f52919 F112 R30 C1: append RECORD29 to live_review.md (books R29 PASS-with-declared-deviation, precondition 6 already discharged at R21)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-1 | append RECORD28 (books round 28's PASS verdict; no new finding registered or resolved) |
+| `.agent/live_review.md` | +2/-1 | append RECORD29 (books round 29's PASS-with-declared-deviation verdict; no new finding registered or resolved) |
 
-### 05852956 F112 R29 C2: apply PLAN29 to plan.md
+### b025d3c2 F112 R30 C2: apply PLAN30 to plan.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +25/-26 | whole-file replace with PLAN29, applied byte-exact per constraint 1 even though its own premise was later found stale (see Deviations item 1) |
+| `.agent/plan.md` | +17/-24 | whole-file replace with PLAN30 |
 
-### 0c08d6d9 F112 R29 C3: self-use step HALTED — precondition 6 already discharged at R21, redundant run declared not committed
+### 255a4e5f F112 R30 C3: closure commit - STATUS [x], README capability sync, self_use_queue SU-007 consumed
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +25/-23 | AGENTS.md "If Blocked" — corrected plan.md to state the true current position after PLAN29's premise was found false; no self-use evidence files were touched by this commit (see Deviations item 1 for why C3 produced no `.agent/selfuse_f112/` diff) |
+| `docs/roadmap/STATUS.md` | +1/-1 | flip F112's line from `[~]` to `[x]`, with the accepted/evidence/package metadata the block's item 4a specified byte-exact |
+| `README.md` | +13/-0 | insert READMEF112's capability-sync paragraph, byte-exact, between the F110 paragraph and "Accepted in Tier 5 so far:" |
+| `scripts/self_use_queue.json` | +1/-1 | SU-007's `consumed_by` field `""` → `"F112"`; every other byte in the file unchanged (confirmed by `git diff`) |
 
 ### (this handback commit)
 | Path | +/- | Reason |
@@ -48,50 +50,47 @@ Review of `6dd06718..HEAD` (base is F112 R28's handback commit).
 
 ## External actions
 
-- `git push -u origin feature/f112-prompt-budget-per-task-class` — run
-  after this handback commit; outcome reported in the completion message
-  to the operator.
-- No PR created, no merge, no `--approve`, nothing force-pushed, `main`
-  never touched.
+None. No push, no `gh pr create`, no merge, no `--approve`, nothing
+force-pushed, `main` never touched. Per the block's own constraint
+("If ANY gate at C4 is not green, STOP before C5 — no PR on a red
+gate") and self-drive protocol G8, C5 (which the block itself bundles
+as "Push, then `gh pr create`") was not started at all: the round
+halted the instant C4's docs-gate command returned a nonzero exit
+code, before any push was attempted.
 
 ## Verification
 
-Real, trimmed transcripts for every gate this round's block ordered:
+Real, trimmed transcripts for every gate this round's block ordered.
 
+**C0a/C0b — transport:**
 ```
-$ sha256sum f112-r29.md (scratchpad)
-10d7a6247bee952420a1da3a12d2269a14f8831025742a608bcdc5a12f2812e2  187 lines, 14694 bytes
+$ sha256sum .agent/authored/f112-r30.md
+0a02207955e2458e06b83d3e3361ba5d69a869af6186d0673da34317b9d6180c  15327 bytes, 193 lines
 -> matches the prompt's stated hash/size/line-count exactly.
 
-$ git status --porcelain   # before C0a
-(empty)
+$ git rev-parse HEAD:.agent/authored/f112-r30.md HEAD:.agent/last_block.md
+3d23ac8094b202da5e2fb4ed179c0e4b3086614c
+3d23ac8094b202da5e2fb4ed179c0e4b3086614c
+-> identical blob ids, confirmed after C0b's own commit.
 ```
 
-**C0a/C0b — transport:** `sha256sum .agent/authored/f112-r29.md`
-reproduced `10d7a6247bee952420a1da3a12d2269a14f8831025742a608bcdc5a12f2812e2`
-(matching the scratchpad original exactly). `git hash-object
-.agent/last_block.md .agent/authored/f112-r29.md` both printed blob
-`ecf064052b64d4ca72e578de479f318a5e534b4f` — identical. `git rev-parse
-HEAD:.agent/authored/f112-r29.md HEAD:.agent/last_block.md` (after C0b's
-commit) both printed the same blob id, confirmed.
-
-**C1 — the RECORD28 append:** RECORD28 extracted from the committed
-authored file (between its `--- BEGIN RECORD28 sha256=... ---` /
-`--- END RECORD28 ---` markers, trailing newline stripped) measured
-exactly `4171` bytes with sha256
-`70db6db54e3e1007aad2b79ef389e7a4f3c1334594d7097dc47b59272f0d95c3`,
+**C1 — the RECORD29 append:** RECORD29 extracted from the committed
+authored file (between its `--- BEGIN RECORD29 sha256=... ---` /
+`--- END RECORD29 ---` markers, trailing newline before the END marker
+stripped) measured exactly `4211` bytes with sha256
+`ad73d8470015e65618bdb6577d297fc2f2e9251ce37adee39f4f7d1e3bac2b0d`,
 matching the marker's own stamp exactly. Pre-append `.agent/live_review.md`
-measured `2334372` bytes; append computed as
-`content_bytes + b"\n" + RECORD28_bytes`; post-append measured `2338544`
-bytes, exactly `2334372 + 1 + 4171`. `cmp` confirmed the pre-append
-content is a byte-exact prefix (EOF at byte 2334372, zero differing
-bytes reported). File still ends WITHOUT a trailing newline (`xxd` on the
-last byte: `2e` = `.`).
+measured `2338544` bytes; append computed as
+`content_bytes + b"\n" + RECORD29_bytes`; post-append measured `2342756`
+bytes, exactly `2338544 + 1 + 4211`. The pre-append content is a
+byte-exact prefix (verified in Python: `new_live[:len(live)] == live`).
+File still ends WITHOUT a trailing newline.
 
 Registered/`Done:`/open counts, counted mechanically (registered =
-unique ids matching `^- R-\d{4} —`; resolved = unique ids appearing on a
-line matching `^Done: R-\d{4}`, since `R-0721` and `R-0725` each appear
-on two `Done:` lines — 76 total `Done:` lines, 74 unique resolved ids):
+unique ids matching `^- R-\d{4} — `; resolved = unique ids appearing on
+a line matching `^Done: R-\d{4}`, since `R-0721` and `R-0725` each
+appear on two `Done:` lines — 76 total `Done:` lines, 74 unique
+resolved ids):
 
 | | registered | Done: lines | unique resolved | open |
 |---|---|---|---|---|
@@ -99,244 +98,189 @@ on two `Done:` lines — 76 total `Done:` lines, 74 unique resolved ids):
 | after C1  | 354 | 76 | 74 | 280 |
 
 UNMOVED on both sides, exactly matching the block's own expectation
-("354 registered, 74 Done, 280 open" — where "74 Done" is the unique-id
-reading, consistent with the F110 R15 precedent's own "72 unique resolved
-across 74 Done: lines" wording for the same counting convention).
+(354/74/280), consistent with round 29's own reading of the same
+convention.
 
-**C2 — the PLAN29 replacement:** PLAN29 extracted from the committed
-authored file measured exactly `2249` bytes with sha256
-`a7ed5cae805ccd0df3b904ed8642d8d3d3867b3816013d45e39815c48eb87130`,
-matching the marker's stamp exactly. `.agent/plan.md` after C2 reproduced
-byte-identical (same 2249 bytes), no trailing newline, `wc -l` = 46
-(under 50), `## Goal`/`## Next Steps` each occurring exactly once. This
-was applied byte-exact per constraint 1 ("apply every delimited slice
-BYTE FOR BYTE... if a slice looks wrong, apply it anyway and DECLARE the
-problem") — the problem PLAN29's own text carried is declared in
-Deviations item 1 below, and C3 corrected plan.md's content afterward.
+**C2 — the PLAN30 replacement:** PLAN30 extracted from the committed
+authored file measured exactly `1925` bytes with sha256
+`2f33269d4192efe07ca13fb2bb6757804649229b4a7144ee3982e50318721f43`,
+matching the marker's stamp exactly. `.agent/plan.md` after C2
+reproduced byte-identical (same 1925 bytes), no trailing newline,
+`wc -l` = 41 (under 50), `## Goal`/`## Next Steps` each occurring
+exactly once.
 
-**C3 — the self-use step, HALTED. Full transcript of what was actually
-run, reported in full per the block's own done-when order, even though
-none of this landed as committed evidence (see Deviations item 1):**
+**C3 — the closure commit:**
+- Re-verified the zip's SHA-256 myself before committing:
+  `sha256sum /home/decodeux/Repos/remedy-history/zips/remedy-review-20260904-123332-READY_FOR_REVIEW.zip`
+  → `b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927`,
+  matching the block's stated value exactly.
+- `docs/roadmap/STATUS.md`: extracted the exact literal TO-text from the
+  block's own line 22 (which already carries the correct U+2014 em
+  dashes and the U+2013 en dash between `T001` and `T003`, copied
+  programmatically rather than retyped) and applied it. Post-edit:
+  exactly one line matches `^\- \[x\] F112 — ` (was 0), zero lines match
+  `^\- \[~\] F112 — ` (was 1).
+- `README.md`: extracted READMEF112 (776 bytes, sha256
+  `04b5c0b34aa40cd453a58ae70fa96db1620331582ed1ea467a6d79e3dfbb0b11`,
+  matching the marker's stamp) and inserted it verbatim between the
+  F110 paragraph's closing text and "Accepted in Tier 5 so far:".
+  Confirmed by byte-search: the exact 776-byte span occurs exactly once
+  in the post-edit file. Surrounding context reproduced under
+  "Authored-text proofs" below.
+- `scripts/self_use_queue.json`: `git diff` (full, reproduced above)
+  shows exactly one changed line — SU-007's `consumed_by` field,
+  `""` → `"F112"` — no reformatting, no key reordering, no whitespace
+  change anywhere else in the file. `python3 -c "import json; ..."`
+  confirmed the file still parses as valid JSON.
+- `git diff --stat` immediately before the C3 commit showed exactly the
+  three files the block's item 4 names (`README.md`,
+  `docs/roadmap/STATUS.md`, `scripts/self_use_queue.json`) — nothing
+  else.
+
+**C4 — GATES (run for real):**
 
 ```
-STOP re-check before C3
-  os.path.exists('.agent/STOP') = False
-
-=== C3 STEP 1 -- BEFORE ===
-load_self_use_queue() -> 7 entries
-  SU-001 consumed_by='F257' title='Document the Markdown job-file format under docs'
-  SU-002 consumed_by='F258' title="Fix architecture.md's stale 12-group CLI claim (60 groups shipped)"
-  SU-003 consumed_by='F106' title="Give apps/ui's ESLint config a TypeScript parser (R-0622)"
-  SU-004 consumed_by='F108' title='Give FailureClass a RESOURCE_LIMIT member (R-0568)'
-  SU-005 consumed_by='F109' title='Address ledger finding R-0418'
-  SU-006 consumed_by='F110' title='Address ledger finding R-0418'
-  SU-007 consumed_by='' title='Address ledger finding R-0418'
-pending_self_use_items() -> 1 pending of 7 items (SU-007)
-next_self_use_item() -> SU-007
-EXPECTATION CONFIRMED: exactly 1 pending item, SU-007, next_self_use_item() == SU-007
-(matches the block's own step 4b expectation exactly)
-
-=== C3 STEP 2 -- RUN ===
-call: run_next_self_use_item(dest_dir=Path('.remedy-wt/selfuse-f112-run'), repo_path='.')
-budgets: DEFAULT max_provider_calls=6, max_cost_usd=0.50, max_tasks=1
-NO builder_name / reviewer_name override was passed.
-
-resolve_role_config('builder') -> RoleConfig(role='builder', provider='ollama',
-  model='muse-glimmer:latest', effort='medium',
-  routed_call={'task_class': 'standard_build', 'tier': 'mid',
-  'reason': 'seed_mapping', 'promoted_by': None})
-resolve_role_config('reviewer') -> RoleConfig(role='reviewer', provider='ollama',
-  model='muse-glimmer:latest', effort='medium',
-  routed_call={'task_class': 'standard_review', 'tier': 'mid',
-  'reason': 'seed_mapping', 'promoted_by': None})
-
-elapsed seconds: 129.5
-returned entry.id:      SU-007
-returned entry.title:   Address ledger finding R-0418
-returned job_file_path: .remedy-wt/selfuse-f112-run/SU-007.md
-JobPlan.job_id:         962cb3c9b96244ed
-JobPlan.status:         blocked
-JobPlan.error:          'task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
-JobPlan.execution_config: ExecutionConfig(builder='ollama', builder_source='cli',
-  reviewer='ollama', reviewer_source='cli', builder_model='',
-  builder_model_source='default', builder_effort='',
-  builder_effort_source='default', reviewer_model='',
-  reviewer_model_source='default', reviewer_effort='',
-  reviewer_effort_source='default', repair_provider='',
-  repair_provider_source='default', repair_model='',
-  repair_model_source='default', repair_effort='',
-  repair_effort_source='default', max_rounds=3, max_rounds_source='default',
-  repair_rounds_allowed=2, repair_rounds_source='default', test_command='',
-  test_command_source='default', claude_cli_write_mode='none',
-  claude_cli_write_mode_source='default',
-  context_strategy='task_bounded_sequential_job', timeout_sec=120,
-  timeout_sec_source='default', timeout_profile='',
-  timeout_profile_source='default', max_output_chars=50000,
-  max_output_chars_source='default', stream_evidence=False,
-  stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')
-JobPlan.isolation_mode: 'worktree'
-JobPlan.worktree_path: '.remedy-wt/job-962cb3c9b96244ed'
-JobPlan.worktree_cleanup_status: 'retained'
-JobPlan.worktree_cleanup_error: ''
-JobPlan.tasks: [TaskEntry(task_id='T001', source_heading_number=1, title='Task 1',
-  task_class='standard_build', inputs={}, files_hint=[],
-  body='- R-0418 -- Low, REVIEWER-BLOCK DEFECT ... [same R-0418 paragraph as
-  SU-005/SU-006/SU-007's job_markdown -- identical text, elided here, see
-  scripts/self_use_queue.json for the full string]',
-  acceptance='- R-0418 is repaired with a red-to-green proof, or the reviewer
-  records in `.agent/live_review.md` why it cannot be -- either way the
-  ledger gains a `Done: R-0418` line.',
-  status='blocked', run_id='05a7ca9b87cf4134', final_status='repair_exhausted',
-  safe_diff_files=[], test_passed=None, reviewer_verdict='fail',
-  repair_rounds_used=2, repair_rounds_allowed=2,
-  error='completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail',
-  apply_manifest=None, proof_summary=None,
-  task_start_tree='33e8e56702fbdd9b030fb3247dc0f9abf67e9871',
-  task_start_tree_ref='refs/remedy/checkpoints/job-962cb3c9b96244ed/tasks/T001-start',
-  task_start_recorded_at='2026-09-04T10:43:05.994439+00:00',
-  task_attempt_state='active')]
-JobPlan.repo_path: '/home/decodeux/Repos/remedy'
-
-=== C3 STEP 3 -- DEFECTS ===
-call: describe_self_use_findings.describe_self_use_run_defects(plan)
-tuple length: 2
---- DEFECT 1 BEGIN ---
-job 962cb3c9b96244ed (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
---- DEFECT 1 END ---
---- DEFECT 2 BEGIN ---
-T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
---- DEFECT 2 END ---
-
-=== C3 STEP 4 -- evidence copy (performed then DISCARDED, see below) ===
-  .remedy-wt/selfuse-f112-run/SU-007.md -> .agent/selfuse_f112/SU-007.md
-  source sha256 = 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd
-  copied sha256 = 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd
-  BYTE-IDENTICAL = True
-  (this digest is identical to the ALREADY-COMMITTED
-  .agent/selfuse_f112/SU-007.md from round 21's commit 1b9ac1ca, because
-  SU-006/SU-007 both render the same R-0418 paragraph verbatim -- expected,
-  not a copy error)
-
-=== C3 STEP 5 -- cleanup ===
-  deleted .remedy-wt/selfuse-f112-run (exact path)
-  dest_dir exists after cleanup: False
-
-=== C3 STEP 6 -- queue untouched check ===
-  SU-007 consumed_by after run = '' (unchanged, as ordered)
+$ python3 -m pytest tests/docs/ -q
+...
+FAILED tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_accepted_count_equals_the_status_count
+FAILED tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_tier_table_done_column_matches_the_ledger
+2 failed, 293 passed in 0.53s
 ```
+RED. Root cause, confirmed independently (compared README.md/STATUS.md
+at commit `b025d3c2`, i.e. immediately BEFORE C3, against the current
+tree): flipping F112's STATUS line to `[x]` at C3 moved the ledger's
+real accepted count from 69 to 70 (`grep -c '^- \[x\] F' docs/roadmap/STATUS.md`
+now reads `70`) and Tier 3's derived Done-count from 4 to 5, but
+`README.md`'s prose line ("69 of 266 registered items accepted.") and
+its Tier-status table's Tier 3 `Done` cell (still `4`) were NOT part of
+this round's ordered edit — the block's item 4b instructed inserting
+ONLY the READMEF112 paragraph and named nothing else in README.md to
+touch. This is a genuine gap in the round's own authored block, not a
+worker error: two long-standing pinning tests
+(`test_the_readme_accepted_count_equals_the_status_count` /
+R-0156, and `test_the_readme_tier_table_done_column_matches_the_ledger`
+/ R-0360) require these two README values to move in the SAME commit
+that flips a STATUS `[x]` line, and item 4b's change-set for C3 did not
+name them.
 
-**WHY C3 PRODUCED NO COMMIT AND NO `.agent/selfuse_f112/` DIFF:**
-immediately after running the above (before committing anything), `git
-status --porcelain` showed `.agent/selfuse_f112/run.txt` as `M`
-(**M**odified) rather than the `A` (new file) the block's own framing
-assumed. Investigation (`git log --oneline -- .agent/selfuse_f112/`)
-found commit `1b9ac1ca` — **"F112 R21 C3: run SU-007 via self_use_runner
-to the approval gate, land evidence"** — already on this branch,
-ancestor of this round's HEAD, already ran `SU-007` for real (job
-`848fc4c67d7b405b`, same `blocked` outcome, same two defect strings, same
-`SU-007.md` sha256) and already landed `.agent/selfuse_f112/SU-007.md`
-and `.agent/selfuse_f112/run.txt` as committed evidence. `RECORD21` in
-`.agent/live_review.md` (line 2606) states explicitly: *"Closure
-precondition 6 is now DISCHARGED for F112 pending only the
-`consumed_by=F112` edit, which lands in the closure commit itself, not in
-this round."* It also states the defects were correctly added, per §3
-item 30, to the ALREADY-OPEN `R-0784` (which already covers this exact
-defect class from F109's SU-005 run) rather than minted as a new id.
-
-The round-29 block (`f112-r29.md`) was authored on stale information —
-it frames C3 as "the last precondition" needing a first real run,
-mirroring F109 R19/F110 R16 as if F112 had never run its own self-use
-item, when in fact F112 ran and discharged its own item eight rounds
-earlier. I had already executed the run (as literally ordered, and
-correctly so — nothing in the block's own step 4b discrepancy check,
-which is scoped to the QUEUE state only, would have caught this before
-running) before discovering the duplication via the self-review loop's
-`git status` check.
-
-Given self-drive protocol G8 ("Ambiguity ends the round... never guess,
-never widen scope to route around a block") and the fact that committing
-this round's run as new `.agent/selfuse_f112/` evidence would silently
-overwrite round 21's legitimate, already-reviewed evidence with a
-misleading duplicate (implying precondition 6 needed re-running, which is
-false), I discarded the round 29 run's output
-(`git checkout -- .agent/selfuse_f112/run.txt .agent/selfuse_f112/SU-007.md`,
-verified restored files are byte-identical to `HEAD`, confirmed via
-`sha256sum` both reading
-`6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd`), did
-NOT commit new `.agent/selfuse_f112/` content, and instead used C3 to
-correct `.agent/plan.md`'s now-false premise per AGENTS.md's "If
-Blocked" rule.
-
-**Tree/worktree state, verified:**
 ```
-$ git status --porcelain --ignored=no   # immediately before this handback commit
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+..........................................                               [100%]
+42 passed in 21.00s
+```
+GREEN.
+
+```
+$ python3 -c "from packages.orchestration.integrity_gate import run_integrity_checks; r = run_integrity_checks(); print(r.passed, r.fail_count)"
+True 0
+handler_import: PASS (handlers=342)
+live_review_verdict: PASS
+plan_consistency: PASS (unchecked=0, context_complete=True)
+relevant_untracked: PASS (untracked=0, relevant=0)
+high_blockers_open: PASS (no open blocker/high findings)
+```
+GREEN, taken at C3's own commit (`255a4e5f`, current HEAD).
+
+```
+$ git status --porcelain
 (empty)
-
-$ ls -d .remedy-wt/selfuse-f112-run
-ls: cannot access '.remedy-wt/selfuse-f112-run': No such file or directory
-(confirmed deleted, per C3 step 5 above)
-
-$ git worktree list
-... (no worktree beyond pre-existing job worktrees, including the round-29
-run's own retained .remedy-wt/job-962cb3c9b96244ed and round-21's own
-retained .remedy-wt/job-848fc4c67d7b405b — neither touched or tracked by
-this checkout) ...
 ```
+CLEAN.
+
+Per the block's own explicit constraint ("If ANY gate at C4 is not
+green, STOP before C5 ... and declare the failure fully — do not
+attempt a fix on this round's own initiative beyond what the block
+already ordered") and self-drive protocol G8 ("Any red gate ... →
+write the handoff and end cleanly. Never guess, never widen scope to
+route around a block"), this round STOPS HERE. C5 (push + `gh pr
+create`) was never started. `README.md`'s prose count and Tier 3 table
+cell were deliberately NOT edited by me — fixing them was not ordered,
+and the round's own rule forbids initiative fixes beyond what the block
+ordered.
 
 ## Authored-text proofs
 
-- `.agent/authored/f112-r29.md` (C0a): sha256 of the scratchpad source
+- `.agent/authored/f112-r30.md` (C0a): sha256 of the scratchpad source
   and the committed copy both read
-  `10d7a6247bee952420a1da3a12d2269a14f8831025742a608bcdc5a12f2812e2`
-  (14694 bytes, 187 lines) — identical.
-- `.agent/last_block.md` (C0b): `git hash-object` on both files (before
-  commit) and `git rev-parse HEAD:...` on both paths (after commit) all
-  read blob `ecf064052b64d4ca72e578de479f318a5e534b4f` — identical.
-- RECORD28 (C1) and PLAN29 (C2): byte-exact, hash-verified as reported
-  under Verification above.
+  `0a02207955e2458e06b83d3e3361ba5d69a869af6186d0673da34317b9d6180c`
+  (15327 bytes, 193 lines) — identical.
+- `.agent/last_block.md` (C0b): `git rev-parse HEAD:...` on both paths
+  (after commit) both read blob `3d23ac8094b202da5e2fb4ed179c0e4b3086614c`
+  — identical.
+- RECORD29 (C1), PLAN30 (C2), and READMEF112 (C3): byte-exact,
+  hash-verified as reported under Verification above.
+- STATUS.md's new F112 line (C3): extracted verbatim from the block's
+  own line 22 (not retyped), applied via exact string match, confirmed
+  by regex count (1 match `^\- \[x\] F112 — `, 0 matches
+  `^\- \[~\] F112 — `).
+- README.md's surrounding context after the READMEF112 insertion
+  (lines 84-109 of the post-edit file):
+```
+84  mechanism is exercised by the suite and inert on real runs today).
+85
+86  F110 model routing by task class (every role Remedy resolves a runtime
+...
+95  documented benchmark run, never a bare config edit).
+96
+97  F112 prompt budget per task class (every task carries a class-scoped
+...
+108 ones).
+109
+```
+  (line 97 begins the newly-inserted paragraph; the line immediately
+  after it, currently blank, is followed by "Accepted in Tier 5 so
+  far:" at line 110, confirmed unchanged from before this round.)
 
 ## Deviations & assumptions
 
-1. **C3 did not land the self-use run as new evidence — the round's
-   central premise was stale.** PLAN29 (applied byte-exact at C2, per
-   constraint 1, before this was discovered) states "precondition 6 ...
-   is the last one ... this round plans and RUNS it for real ... never
-   promoted" as if this were F112's first self-use run. It is not: round
-   21 (commit `1b9ac1ca`) already ran SU-007 to the approval gate and
-   `RECORD21` already declared precondition 6 discharged, with the
-   defects already added to the open `R-0784`. This round's own C3 ran
-   SU-007 again (job `962cb3c9b96244ed`, identical `blocked` outcome and
-   identical defect strings to round 21's job `848fc4c67d7b405b`,
-   differing only in job id and timestamp) before the duplication was
-   discovered; that run's output was NOT committed (discarded via `git
-   checkout --`) to avoid overwriting round 21's legitimate evidence with
-   a misleading duplicate. `.agent/plan.md` was corrected at C3 to state
-   the true position instead. This is a departure from the block's
-   ordered commit sequence (C3 was supposed to land two new files under
-   `.agent/selfuse_f112/`; it lands a plan.md correction instead) and is
-   declared here per handback_template.md's instruction that any
-   departure belongs in this section even when correct.
-2. **Real compute was spent on a redundant local-model run.** The
-   duplicate run used the local `ollama`/`muse-glimmer:latest` provider
-   for both roles (129.5s wall-clock), the same class of cost as round
-   21's own run — no cloud/paid provider was invoked, and nothing was
-   promoted at any point.
+1. **The round halted at C4, before C5, on a red docs gate the block's
+   own C3 change-set did not anticipate.** `tests/docs/` failed two
+   tests (`test_the_readme_accepted_count_equals_the_status_count`,
+   `test_the_readme_tier_table_done_column_matches_the_ledger`) because
+   flipping F112's STATUS line to `[x]` moved two derived numbers
+   (README's "N of 266 accepted" prose, now stale at 69 vs the real 70;
+   README's Tier 3 Done cell, now stale at 4 vs the real 5) that C3's
+   own ordered change-set ("Exactly three files ... nothing else is
+   touched in this commit") did not include. This is the SAME class of
+   defect the open ledger already knows by name (R-0570: "the root
+   README's accepted-feature list is pinned in one direction only";
+   R-0360/R-0156 are the two tests that fired here) recurring as a
+   BLOCK-AUTHORING gap rather than a worker error — the block ordered
+   an edit that its own gate list (item 5, `tests/docs/`) was certain
+   to catch as incomplete. I did NOT fix README's prose count or Tier
+   3 cell myself: the block explicitly forbids an initiative fix
+   beyond what it ordered when a C4 gate is red, so this is left for
+   the next round's own authored block to correct (a fourth README
+   value edit — "69 of 266" → "70 of 266" and the Tier 3 `Done` cell
+   `4` → `5` — most likely folded into a small correction commit before
+   C5's push/PR can proceed).
+2. No push and no PR were created this round — C5 never started. This
+   departs from the block's own ordered sequence (which named C5 as
+   "THE PULL REQUEST" and expected it to run) but is exactly what the
+   block's own constraint requires when C4 is red.
 3. No `git worktree` (disposable) was used for destructive verification
-   this round — none of this round's own changes touch production code,
-   so G5 does not apply.
+   this round — none of this round's own changes touch production code
+   under `packages/`/`apps/`, so G5 does not apply.
 4. This round wrote NO new `Done:`/verdict line into
-   `.agent/live_review.md` beyond RECORD28's verbatim C1 append — booking
-   round 29's own verdict is the reviewer's job next round.
+   `.agent/live_review.md` beyond RECORD29's verbatim C1 append —
+   booking round 30's own outcome (a HALT, not a PASS) is the
+   reviewer's job next round.
 
 ## Next
 
-The reviewer should independently verify: (a) this handoff's central
-claim, by re-reading `git show 1b9ac1ca` and `.agent/live_review.md`'s
-RECORD21 entry (line 2606) directly; (b) that `.agent/selfuse_f112/`
-still holds only round 21's original evidence
-(`SU-007.md` sha256 `6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd`).
-If confirmed, round 30 should SKIP the self-use run step entirely
-(already discharged) and proceed directly to the closure commit — STATUS
-`[x]` line, README capability sync, `self_use_queue` SU-007
-`consumed_by=F112`, final `.agent/` state — then round 31 is the Open PR
-Gate.
+The reviewer should independently re-run `python3 -m pytest tests/docs/ -q`
+to confirm the same two failures, then author a small correction block
+(NOT this round's own initiative) that fixes exactly the two stale
+README values — the "N of 266 accepted" prose (69 → 70) and the Tier 3
+`Done` table cell (4 → 5) — in one additional commit before C5 (push +
+`gh pr create`) can run. Nothing else on this branch is blocked: C0a
+through C3 all verified byte-exact and green per the transcripts above,
+the golden-path canary and integrity gate are both green, and the
+closure commit's three-file change set is exactly what the block
+ordered. The built review-package zip
+(`remedy-review-20260904-123332-READY_FOR_REVIEW.zip`, sha256
+`b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927`, at
+`/home/decodeux/Repos/remedy-history/zips/`) remains valid and
+unchanged — it is unaffected by this docs-gate failure, which is a
+prose-consistency issue in `README.md`, not a defect in the packaged
+evidence.
