@@ -125,11 +125,32 @@ def _cmd_list_jobs(
     project: str | None = None,
     all_projects: bool = False,
     json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
 ) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.project_scope import resolve_scope, scoped_jobs
 
     scope = resolve_scope(project_flag=project, all_projects=all_projects)
     jobs, degraded, skipped = scoped_jobs(scope)
+    try:
+        jobs = apply_list_options(
+            jobs,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda j: j.created_at,
+                "name": lambda j: j.name,
+                "state": lambda j: j.state.value,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda j: j.created_at.isoformat(),
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     if json_output:
         import json as _json
         print(_json.dumps({
@@ -2447,6 +2468,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
         json_output=args.json,
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "job.show": lambda args: _cmd_show_job(args.job_id),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),

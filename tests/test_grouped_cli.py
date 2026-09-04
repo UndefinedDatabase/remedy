@@ -612,3 +612,38 @@ class TestJobListCLI:
         data = json.loads(buf.getvalue())
         assert data["version"] == 1
         assert data["jobs"][0]["created_at"]
+
+    def test_default_order_is_newest_first(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from datetime import datetime, timedelta, timezone
+        older = Job(id=uuid4(), name="older", user_prompt="x",
+                    created_at=datetime.now(timezone.utc) - timedelta(days=1))
+        newer = Job(id=uuid4(), name="newer", user_prompt="x",
+                    created_at=datetime.now(timezone.utc))
+        save_job(older)
+        save_job(newer)
+        from apps.cli.commands.job import _cmd_list_jobs
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_jobs(json_output=True, all_projects=True)
+        data = json.loads(buf.getvalue())
+        assert [j["name"] for j in data["jobs"]] == ["newer", "older"]
+
+    def test_limit_caps_returned_jobs(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        for _ in range(3):
+            save_job(_make_job())
+        from apps.cli.commands.job import _cmd_list_jobs
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_jobs(json_output=True, all_projects=True, limit="2")
+        data = json.loads(buf.getvalue())
+        assert data["job_count"] == 2
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        save_job(_make_job())
+        from apps.cli.commands.job import _cmd_list_jobs
+        with pytest.raises(SystemExit) as exc:
+            _cmd_list_jobs(json_output=True, all_projects=True, sort="bogus")
+        assert exc.value.code == 1
