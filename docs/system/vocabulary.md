@@ -271,3 +271,38 @@ two spellings of the same thing: a Markdown file a human hands Remedy. Under D1 
 thing is an Order. Both words are deleted; the file is "an order file" and the
 argument is `remedy do <order>` where `<order>` is text or a `.md` path (D4). F261
 performs the rename. Reverse by deleting this paragraph.
+
+## What counts as the meaning
+
+The enforced mode of `tests/docs/test_vocabulary.py` has to decide, mechanically,
+whether a command description uses a word in the sense this page gives it. It
+cannot read English, so this table gives it something it can check: per word, the
+fragments that mark the page's meaning. A description that uses a binding word
+must also contain at least one of that word's fragments.
+
+This is a floor, not a definition — it catches a description that uses a word
+while saying nothing that fits its meaning. The definitions are in the table
+above; these are the handles a test can grip.
+
+| Word | Fragments that count as its meaning |
+|---|---|
+| **Project** | `repo`, `mission` |
+| **Order** | `order file`, `what you ask`, `text or` |
+| **Mission** | `order`, `job`, `contract` |
+| **Contract** | `acceptance`, `definition of done`, `criteria` |
+| **Job** | `mission`, `budget`, `fence`, `task` |
+| **Plan** | `task`, `milestone`, `step` |
+| **Task** | `job plan`, `step`, `run` |
+| **Run** | `task`, `evidence` |
+| **Round** | `build`, `review`, `repair` |
+| **Worker** | `role`, `builder`, `reviewer`, `planner`, `teacher`, `model` |
+| **Decision** | `answer`, `question`, `resolve`, `blocker` |
+| **Evidence** | `run`, `folder`, `bundle`, `proof` |
+| **Gate** | `check`, `pass`, `block` |
+| **Verdict** | `review`, `round` |
+| **Roadmap** | `build plan`, `docs/roadmap`, `remedy's own` |
+
+Until F261 rewrites the descriptions, this check runs in planned mode, where it
+asserts the OPPOSITE — that violations still exist. That is deliberate: a test
+switched off records nothing, while a test that measures the debt turns red by
+itself on the day the debt is paid and the mode constant has not been flipped.
