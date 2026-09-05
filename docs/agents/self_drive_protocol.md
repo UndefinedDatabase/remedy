@@ -116,6 +116,21 @@ docs/agents/planner_reviewer_prompt.md §3 carries the full wording.
 Verification tiers, the canary, the integration gate and the closure
 protocol are unchanged; this file adds no exception to any of them.
 
+Operator amendment amend0905-throughput (2026-09-05) — LEDGER ROTATION.
+`.agent/live_review.md` is rotated by `scripts/rotate_live_review.py` as its
+own commit inside EVERY closure sequence, after the verdict bookings and
+before the STATUS flip: every `Gate:` record whose feature id is `[x]` in
+`docs/roadmap/STATUS.md`, and every resolved finding pair (the `- R-xxxx`
+registration block with its one matching `Done: R-xxxx` block), moves
+byte-verbatim into the append-only `.agent/live_review_archive.md`, which
+the script verifies by per-record sha256 before and after and refuses on any
+mismatch; the open-findings count is identical before and after. The byte-
+append arithmetic of the next round's block re-baselines on the
+post-rotation length. The archive is never read at session start — only on
+demand, by id. Rationale: the ledger had grown to ~2.5 MB, most of it
+per-round `Gate:` records of long-closed features, and every bootstrap paid
+for it. Reverse by deleting this paragraph.
+
 ## Guardrails (any one trips → stop and hand off)
 - **G1 PR-only merges.** Merges happen only at the Open PR Gate, only via
   `gh pr merge <n> --merge --delete-branch`. Never merge a PR this
@@ -145,6 +160,18 @@ protocol are unchanged; this file adds no exception to any of them.
   for it. The SOFT LIMIT is 25 rounds OR 7 sessions per feature, whichever
   comes first; on reaching it the obligation is a scope report, not more
   work — see "Ending a session". Reverse by deleting this paragraph.
+  Operator amendment amend0905-throughput (2026-09-05) — SESSIONS CONTINUE
+  WHILE CONTEXT COMFORTABLY SUFFICES. The target is SIX TO EIGHT delegated
+  rounds per session; four remains the floor. The honest early-end reasons
+  above are unchanged — demonstrably exhausted context, or a round that
+  explicitly needs a fresh session — and now explicitly include the
+  reviewer noticing its own authoring errors accumulating (a run of
+  `.agent/prose_slips.md` lines in one session is that signal). Every
+  handoff adds ONE sentence of context self-assessment in its Session
+  section. Rationale: each session boundary re-buys the full cold start —
+  protocol, handoff, ledger, decisions — and F109's session 4 already ran
+  eight PASS rounds, so the four-to-five default was spending boundaries
+  the context did not need. Reverse by deleting this paragraph.
 - **G8 Ambiguity ends the round.** Any red gate, contradiction, or
   question the rules do not answer → write the handoff and end cleanly.
   Never guess, never widen scope to route around a block.
@@ -171,6 +198,22 @@ unmissable line:
 
 Continuing quietly past the limit is a protocol violation. Reverse by deleting
 this paragraph.
+
+Operator amendment amend0905-throughput (2026-09-05) — THE STANDING DEFAULT AT
+THE SOFT LIMIT IS SPLIT-AND-CLOSE, EXECUTED BY THE SESSION. On reaching the
+soft limit the session still writes the scope report, and then EXECUTES the
+default on its own authority: it registers the remaining scope as a new
+follow-up feature (registration only, ledger atomicity respected — the
+`TOTAL_FEATURES` pin, the README counters and the STATUS line in one commit
+with the feature file), closes the current feature at a self-consistent
+scope through the normal closure sequence, and records the whole move as a
+dated DECISION in `.agent/decisions.md` that the operator may reverse
+afterwards. The banner line stays but announces the REPORT, not a stop.
+Only when no self-consistent close is possible does the old hard stop with
+an operator question remain. This applies equally to a feature found
+already past its limit with a pending scope report at session start.
+Rationale: F262's round 23 wrote a correct scope report and then waited a
+session for a ruling the default would have supplied. Reverse by deleting this paragraph.
 
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN

@@ -142,6 +142,18 @@
    The closure handback includes grep proof that every piece of
    reviewer-authored applied text (STATUS line, resolution
    entries) is byte-identical to the authored paste block.
+   Operator amendment amend0905-throughput (2026-09-05) — LEDGER ROTATION
+   IS A STEP OF THIS SEQUENCE. After the verdict bookings and BEFORE the
+   STATUS `[x]` flip, the worker runs `python3 scripts/rotate_live_review.py`
+   as its OWN commit (paths: `.agent/live_review.md` and
+   `.agent/live_review_archive.md` only). It moves, byte-verbatim, every
+   `Gate:` record of a `[x]` feature and every resolved finding pair into
+   the append-only archive, verifies each moved record's sha256 before and
+   after and refuses on mismatch, keeps the open-findings count identical,
+   and prints the old and new ledger sizes, which the handback records. The
+   next block's byte-append arithmetic re-baselines on the post-rotation
+   length; the archive is read only on demand, by id, never at session
+   start. Reverse by deleting this paragraph.
 6. **Merge — deferred to the next feature.** The closure PR is NOT merged
    in this session. It merges at the next feature's start via the Open PR
    Gate on Window 1's instruction; the gap is the operator's manual-review
