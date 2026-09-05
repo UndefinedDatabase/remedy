@@ -7,7 +7,6 @@ SESSION 1 of amendment amend0905-testlog · round 1 · rounds so far 1.
 ## Range
 
 Review of `b3224322..c893d454` (3 content commits, 6 files, +95/−32).
-This handback commit follows and is not part of the reviewed range.
 
 ## Commits (file list per commit)
 
@@ -35,7 +34,6 @@ grep -c '^- \[~\]' docs/roadmap/STATUS.md         → 0
 remedy plan next                                  → F259 — Vocabulary & concept model v1
 acceptance sentences (whitespace-normalised count) → F260 [1,1,1,1,1,1] F261 [1,1,1] F268 [1,1,1]
 grep -c 'Clarification 2026-09-05: repo is deleted; see R-0800.' .agent/decisions.md → 1
-git status --porcelain | wc -l                    → 0
 ```
 
 Log verification per finding (line numbers, counts) lives in R-0803..R-0812.
@@ -55,8 +53,7 @@ Log verification per finding (line numbers, counts) lives in R-0803..R-0812.
 The configured data root `/home/decodeux/Repos/remedy/.data` holds the suite's
 test runs (`.data/runs`: 31,538 entries at this session; 9,239 rows in the log).
 F260 deletes the old stores anyway (amend0831 D-A), so nothing is deleted now.
-Until F260: either stop exporting `REMEDY_DATA_DIR` toward the repo's `.data` for
-the spielwiese work (point it at a fresh directory), or accept slow lists.
+Until F260: point `REMEDY_DATA_DIR` at a fresh directory for spielwiese work, or accept slow lists.
 
 ## Next
 
