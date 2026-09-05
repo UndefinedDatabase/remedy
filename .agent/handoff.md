@@ -1,82 +1,73 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 28 (closure commit landed; PR NOT created — G6 red)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 29 (README repair landed, docs gate green, PR #236 OPEN)
 
 ## Session
 
-SESSION 9 of feature F262 · round 28 · rounds so far 28.
+SESSION 9 of feature F262 · round 29 · rounds so far 29.
 
-Context self-assessment: this round was delegated as the FINAL round —
-book round 27, land the closure commit (algorithm step 5 of
-`docs/roadmap/STATUS_closure_protocol.md`) and open the pull request.
-C0a, C0b, C1 and C2 landed exactly as ordered and are pushed; the docs
-gate G6 then read RED on ONE test
-(`tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature`,
-"README claims F267 accepted; STATUS does not"), so per G6's own order
-the worker STOPPED before `gh pr create`. NO PULL REQUEST EXISTS. The
-branch is at C2 with `tests/docs/` 294/295 — the F112 R30 shape the
-block set out to avoid, produced this time by the reviewer-authored
-README_PARA_TO slice itself (its capability sentence names `F267`
-inside the "Accepted in Tier 2 so far:" block, and the test reads every
-`F\d{3}` token in an Accepted block as a claimed acceptance). One repair
-pair over README.md line 67 is owed before the PR; the worker did not
-author it (constraint 1: no retyped or invented text). Round 28 exceeds
-the 25-round soft limit (28 of 25; session 9 of 7) — scope report: T001-
-T003 built and accepted at the D4 scope, evidence bundle and zip done,
-STATUS flipped, README synced, `consumed_by=F262` set; MISSING: one
-README wording repair and the PR; PROPOSAL: a round 29 with a single
-README pair (drop or re-word the `F267` token, e.g. "are the completion
-feature's") then `gh pr create` with the PRBODY slice unchanged.
+Context self-assessment: this round was delegated as the FINAL round on
+the branch — book round 28's FAIL, register FINDING R-0797 (the reviewer's
+own README slice named `F267` inside an "Accepted" block), repair it with
+ONE README pair that names no feature id, re-run the docs gate to green
+and open the pull request; every ordered step landed in the ordered
+sequence, `tests/docs/` reads 295 passed at the committed head, PR #236
+is OPEN against `main` (not a draft, not merged, hosted `ci` check
+pending at handback time), and nothing outside the declared change set
+was written. Round 29 is past the 25-round / 7-session soft limit
+(29 of 25; session 9 of 7) — scope report: FINISHED — T001-T003 built and
+accepted at the D4 scope, evidence bundle and zip, STATUS `[x]`, README
+sync, `consumed_by=F262`, the README repair and the PR; MISSING — nothing
+on this branch; PROPOSAL — the reviewer merges PR #236 once its hosted
+check is green and verifies `main`.
 
 ## Range
 
-Review of `d887906b..423bc28d`. FINAL content HEAD (C2, the closure
-commit) is `423bc28d79b9497f295c64121eb23a012e6206f4`. This handback
-(C3) follows and is not part of the reviewed content range.
+Review of `893ae3c9..22073040`. FINAL content HEAD (C2, the README
+repair + `Landed:` line) is `22073040ff10c259611dee3cfb92815a796b3bd0`.
+This handback (C3) follows and is not part of the reviewed content range.
 
 ## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | copyfile route, digest 9005edf3… over 18922 bytes = reviewer's original |
+| C0a | done | copyfile route, sha256 5b57b6d2… over 18962 bytes = reviewer's stated digest |
 | C0b | done | mirror byte-identical (G2) |
-| C1 | done | RECORD27 appended, PLAN29 replaced; every G3/G4 expectation met |
-| C2 | done | all FIVE pairs in ONE commit; pushed `d887906b..423bc28d` |
-| push | done | `origin/feature/f262-list-commands-v2` = 423bc28d |
-| G6 docs gates | deviated | `tests/docs/` 1 failed / 294 passed (expect 295); `test_roadmap_index.py` 30 passed — RED, so STOP |
-| gh pr create | skipped | ordered by G6: "if either is red, STOP before creating the PR" — NO PR created, `gh pr list` still `[]` |
+| C1 | done | RECORD28 then FINDING appended (that order), PLAN30 replaced; every G3/G4 expectation met |
+| C2 | done | PARA pair applied once (`grep -c F267 README.md` 0) + `Landed: R-0797 —` line, ONE commit; pushed `893ae3c9..22073040` |
+| push | done | `origin/feature/f262-list-commands-v2` = 22073040 after C2 |
+| G5 (pre-PR) | done | 295 passed / 30 passed, both exit 0, run at the committed C2 before `gh pr create` |
+| gh pr create | done | PR #236 https://github.com/UndefinedDatabase/remedy/pull/236 — base main, head feature/f262-list-commands-v2, isDraft false, state OPEN, mergedAt null |
 | C3 (this handback) | done | |
 | G1 HYGIENE | done | PASS — STOP absent at all three reads; porcelain 0 after C0a/C0b/C1/C2 |
-| G2 TRANSPORT | done | PASS — one digest, twice |
-| G3 RECORD APPEND | done | PASS — 2508240 + 2 + 4977 = 2513219, tail equal, control rejected |
-| G4 PLAN AT C1 | done | PASS — 1449 bytes byte-equal, 33 lines, headers 1/1 |
-| G5 FIVE PAIRS | done | PASS — every FROM count 1, every `TO contains FROM` False as the block pre-computed |
-| G6 DOCS GATES | deviated | RED on one test (detail in Verification) — PR blocked |
-| G7 STATE READERS + CANARY | done | PASS — 515 / 52 / 21 / 16 / 42 |
-| G8 TREE/COMMITS/PR/INTEGRITY | deviated | tree, diff-stat, numstat, integrity all PASS; the PR sub-check has NO PR to read (not created) |
+| G2 TRANSPORT | done | PASS — one digest, twice (and equal to the scratch original) |
+| G3 RECORD APPENDS + Landed | done | PASS — 2513219 + 2 + 4060 + 2 + 2545 = 2519828, tail equal, control rejected; Landed 1 / Done 0 |
+| G4 PLAN AT C1 | done | PASS — 1375 bytes byte-equal, `wc -l` 33, headers 1/1 |
+| G5 DOCS GATES | done | PASS — `tests/docs/` 295, `test_roadmap_index.py` 30 |
+| G6 STATE READERS + CANARY | done | PASS — 515 / 52 / 21 / 16 / 42 |
+| G7 STRUCTURE + PR | done | PASS — tree clean, prod diff-stat empty, numstat = table, integrity passed/0/pass, PR #236 read back |
 
 ## Commits
 
-### 71635dd5 F262 R28 C0a: save step block verbatim to .agent/authored/f262-r28.md
+### adaa6b3e F262 R29 C0a: save round-29 block verbatim to .agent/authored/f262-r29.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r28.md` | +275/-0 | transport proof — verbatim save of the round's step block (new file), via `shutil.copyfile` from the reviewer's scratch original |
+| `.agent/authored/f262-r29.md` | +236/-0 | transport proof — verbatim save of the round's step block (new file) via `shutil.copyfile` from the reviewer's scratch original |
 
-### 9364ff12 F262 R28 C0b: mirror block to .agent/last_block.md
+### 8788fad3 F262 R29 C0b: mirror round-29 block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +228/-185 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
+| `.agent/last_block.md` | +119/-158 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
 
-### 7dbcde4c F262 R28 C1: append RECORD27 to live_review.md, replace plan.md with PLAN29
+### a7880f5f F262 R29 C1: book RECORD28 and register FINDING R-0797 in live_review.md; replace plan.md with PLAN30
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +3/-1 | append RECORD27 (round 27's PASS verdict: evidence bundle + review zip, algorithm steps 1-2 complete) — exactly two `\n` then RECORD27's 4977 bytes |
-| `.agent/plan.md` | +13/-18 | whole-file replace with PLAN29 (first substantive commit, constraint 2) |
+| `.agent/live_review.md` | +5/-1 | two appends in order: `\n\n` + RECORD28 (4060 bytes, round 28's FAIL-on-one-gate verdict), then `\n\n` + FINDING (2545 bytes, registers R-0797 Low) |
+| `.agent/plan.md` | +12/-12 | whole-file replace with PLAN30 (first substantive commit, constraint 2) |
 
-### 423bc28d F262 R28 C2: closure commit - flip STATUS to [x], sync README numerals and capability paragraph, mark self_use_queue consumed_by=F262
+### 22073040 F262 R29 C2: repair README accepted block to name no feature id (R-0797); append Landed line to live_review.md
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/STATUS.md` | +1/-1 | STATUS pair: `[~]` → `[x]` with acceptance metadata (evidence job, package, SHA-256, package path, accepted HEAD) |
-| `README.md` | +8/-3 | README_COUNT (71→72 of 267), README_TIER2 (Tier 2 Done 14→15), README_PARA (F262 capability sentence inserted after F086's line) — all three in this one commit |
-| `scripts/self_use_queue.json` | +1/-1 | QUEUE pair: SU-009 `"consumed_by": ""` → `"consumed_by": "F262"` |
+| `README.md` | +2/-1 | PARA pair: `the remaining nine are F267's).` → `the remaining nine belong to the follow-up feature the STATUS ledger\nregisters next).` (REWRITE, FROM occurred once) |
+| `.agent/live_review.md` | +3/-1 | `\n\n` + the worker's one-line `Landed: R-0797 — …` marker (540 bytes, own words, names commit C2 of F262 R29, the pair and the 295 count) |
 
 ### (this handback commit, C3)
 | Path | +/- | Reason |
@@ -86,278 +77,187 @@ commit) is `423bc28d79b9497f295c64121eb23a012e6206f4`. This handback
 ## External actions
 
 - `git push -u origin feature/f262-list-commands-v2` after C2 →
-  `d887906b..423bc28d`, exit 0. `origin/feature/f262-list-commands-v2`
-  reads `423bc28d79b9497f295c64121eb23a012e6206f4`.
-- `gh pr create` — NOT RUN. G6 read red and the block orders a STOP
-  before creating the PR in that case. `gh pr list --state open --json
-  number,headRefName,baseRefName,isDraft` → `[]` after all commits.
+  `893ae3c9..22073040  feature/f262-list-commands-v2 -> feature/f262-list-commands-v2`,
+  exit 0; `git rev-parse origin/feature/f262-list-commands-v2` →
+  `22073040ff10c259611dee3cfb92815a796b3bd0`.
+- `gh pr list --state open --json number --jq 'length'` before creating → `0`.
+- `gh pr create --title "F262: List commands v2 (dates, sort, filter)" --base main --head feature/f262-list-commands-v2 --body-file <scratch>/f262-prbody.md`
+  → `https://github.com/UndefinedDatabase/remedy/pull/236`, exit 0.
+  **PR #236.** The body file is the PRBODY slice extracted by Python from
+  the committed `.agent/authored/f262-r29.md` (4071 bytes), unmodified.
+- `gh pr view 236 --json …` → number 236, baseRefName `main`, headRefName
+  `feature/f262-list-commands-v2`, isDraft false, state OPEN, mergedAt
+  null, mergeable MERGEABLE. `gh pr checks 236` → `ci  pending` (run
+  33959176105) at handback time.
 - No `gh pr merge` of any kind. No `git worktree` created or removed.
-- Scratch scripts, never committed (gitignored `.remedy-wt/`):
-  `.remedy-wt/r28_apply_c1.py`, `.remedy-wt/r28_apply_c2.py`. The PRBODY
-  slice was extracted in memory (3741 bytes) but NOT written to any
-  file and NOT sent anywhere.
+- Scratch files, never committed (session scratchpad, outside the repo):
+  `slices29.py` (marker extractor), `f262-prbody.md` (the PRBODY slice).
 - A second push follows this handback commit (C3).
 
 ## Verification
 
 Preconditions before C0a:
 ```
-$ git status --porcelain | wc -l
-0
-$ git rev-parse HEAD
-d887906bed8cb6441e2bec3267a3da5fda46f321
-$ git branch --show-current
-feature/f262-list-commands-v2
-$ gh pr list --state open --json number,headRefName,baseRefName,isDraft
-[]
+$ git status --porcelain | wc -l        → 0
+$ git rev-parse --short HEAD            → 893ae3c9
+$ git branch --show-current             → feature/f262-list-commands-v2
+$ ls .agent/STOP                        → No such file or directory
 ```
 
 **G1 HYGIENE**:
 ```
-ls .agent/STOP:
-  before C0a: No such file or directory (absent)
-  before C2:  No such file or directory (absent)
-  before C3:  No such file or directory (absent)
-git status --porcelain | wc -l:
-  after C0a: 0
-  after C0b: 0
-  after C1:  0
-  after C2:  0
+ls .agent/STOP:  before C0a: absent · before C2: absent · before C3: absent
+git status --porcelain | wc -l:  after C0a: 0 · after C0b: 0 · after C1: 0 · after C2: 0
 ```
 PASS.
 
-**G2 TRANSPORT**:
+**G2 TRANSPORT** (route: PRIMARY `shutil.copyfile` from the scratch original; the Write-tool fallback was not needed):
 ```
-$ sha256sum <scratch>/f262-r28.block.md      (the reviewer's original)
-9005edf35c4330d3e7e06407810c3414bd8291e09ade30b8c25b554deee32d55  18922 bytes
-$ sha256sum .agent/authored/f262-r28.md .agent/last_block.md
-9005edf35c4330d3e7e06407810c3414bd8291e09ade30b8c25b554deee32d55  .agent/authored/f262-r28.md
-9005edf35c4330d3e7e06407810c3414bd8291e09ade30b8c25b554deee32d55  .agent/last_block.md
+$ sha256sum .agent/authored/f262-r29.md .agent/last_block.md
+5b57b6d22c7308f07b792f267c4dfb06a6bcbf6d9cac9437a73aee3792bf3b02  .agent/authored/f262-r29.md
+5b57b6d22c7308f07b792f267c4dfb06a6bcbf6d9cac9437a73aee3792bf3b02  .agent/last_block.md
+$ wc -c .agent/authored/f262-r29.md   → 18962
 ```
-One digest, three times — PASS. Route: PRIMARY (`shutil.copyfile`
-from the scratch original); the Write-tool fallback was not needed.
+One digest, twice, equal to the reviewer's stated digest — PASS.
 
-**G3 THE RECORD APPEND (RECORD27)** — `.remedy-wt/r28_apply_c1.py`,
-slices read from `git show HEAD:.agent/authored/f262-r28.md` (committed
-== disk: True):
+**G3 THE RECORD APPENDS AT C1** (slices extracted from the committed block by Python):
 ```
-RECORD27 bytes: 4977  trailing newline: False  internal newlines: 0
-live_review base size (before C1): 2508240  trailing newline: False
-expected post-C1 length: 2508240 + 2 + 4977 = 2513219
-post-C1 length: 2513219  match: True
-tail == b"\n\n" + RECORD27: True
-negative control (first byte XOR 0xFF) rejected: True
+RECORD28 4060 bytes  trailing newline False  internal newlines 0
+FINDING  2545 bytes  trailing newline False  internal newlines 0
+live_review base size before C1: 2513219  trailing newline False
+expected post-C1: 2513219 + 2 + 4060 + 2 + 2545 = 2519828
+post-C1 length: 2519828  match True   prefix (base) intact True
+tail == b"\n\n" + RECORD28 + b"\n\n" + FINDING: True
+negative control: scratch copy, byte at offset 2513321 (inside RECORD28, the first appended paragraph) XOR 0x01 → reader rejects: True
+```
+After C2:
+```
+post-C2 length: 2520370 = 2519828 + 2 + 540; file ends with b"\n\n" + the Landed line: True
+$ grep -c '^Landed: R-0797' .agent/live_review.md   → 1
+$ grep -c '^Done: R-0797' .agent/live_review.md     → 0
 ```
 PASS, every figure equal to the block's expectation.
 
-**Constraint 6 — THE OPEN SET (§3 item 10 formula)**:
+**Constraint 6 — THE OPEN SET** (`^- R-\d{4} — ` registered / `^Done: R-\d{4}` lines / open):
 ```
-BEFORE C1: registered 356 / Done: 77 / open 279
-AFTER  C1: registered 356 / Done: 77 / open 279
-```
-UNCHANGED — PASS. `.agent/candidates.md` untouched (EMPTY).
-
-**G4 THE PLAN AT C1**:
-```
-PLAN29 bytes: 1449  trailing newline: False
-plan.md == PLAN29: True  plan bytes: 1449
-$ wc -l .agent/plan.md
-33
-$ grep -c '^## Goal' .agent/plan.md
-1
-$ grep -c '^## Next Steps' .agent/plan.md
-1
+BEFORE C1:            356 / 77 / 279
+AFTER  C1:            357 / 77 / 280   (FINDING registers R-0797)
+AFTER  C2 Landed line: 357 / 77 / 280  (unchanged)
 ```
 PASS.
 
-**G5 THE FIVE PAIRS AT C2** — `.remedy-wt/r28_apply_c2.py`,
-`str.replace(FROM, TO, 1)` after asserting count == 1:
+**G4 THE PLAN AT C1**:
 ```
-STATUS        file=docs/roadmap/STATUS.md      FROM_count_before=1 TO_contains_FROM=False  (block: false) FROM_bytes=53 TO_bytes=423
-README_COUNT  file=README.md                   FROM_count_before=1 TO_contains_FROM=False  (block: false) FROM_bytes=36 TO_bytes=36
-README_TIER2  file=README.md                   FROM_count_before=1 TO_contains_FROM=False  (block: false) FROM_bytes=44 TO_bytes=44
-README_PARA   file=README.md                   FROM_count_before=1 TO_contains_FROM=False  (block: false) FROM_bytes=94 TO_bytes=413
-QUEUE         file=scripts/self_use_queue.json FROM_count_before=1 TO_contains_FROM=False  (block: false) FROM_bytes=18 TO_bytes=22
-each: applied; TO present 1, FROM remaining 0
+PLAN30 1375 bytes, trailing newline False;  plan.md == PLAN30: True (1375)
+$ wc -l .agent/plan.md              → 33
+$ grep -c '^## Goal' .agent/plan.md → 1
+$ grep -c '^## Next Steps' .agent/plan.md → 1
 ```
-Every measured containment equals the block's pre-computed reading —
-all five REWRITES, no FROM-zero count ordered or taken.
+PASS.
 
-Resulting lines, exactly as they read:
+**Constraint 5 — THE PARA PAIR AT C2**:
 ```
-$ grep -n 'F262 — ' docs/roadmap/STATUS.md
-24:- [x] F262 — List commands v2 (dates, sort, filter) (T001–T003 complete; accepted 2026-09-05 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f262-closure · package remedy-review-20260905-112903-READY_FOR_REVIEW.zip · SHA-256 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0)
-$ grep -c '^- \[x\] F262 — ' docs/roadmap/STATUS.md
-1
-$ grep -c '^- \[~\] ' docs/roadmap/STATUS.md
-0
-$ grep -n 'registered items accepted' README.md
-19:72 of 267 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
-$ grep -n 'Minimal Self-Build Runtime' README.md
-25:| 2 | Minimal Self-Build Runtime | 15 | 20 |
-$ grep -n 'consumed_by' scripts/self_use_queue.json | tail -1
-74:      "consumed_by": "F262",
-$ python3 -c "import json; json.load(open('scripts/self_use_queue.json'))"
-(parses)
+FROM count in README.md before: 1     TO contains FROM: False (block: false — REWRITE confirmed)
+README.md 13767 → 13821 bytes (delta 54 = len(TO) 156 − len(FROM) 102);  TO present once: 1
+$ grep -c "F267" README.md          → 0
 ```
-README.md lines 62-67 now read the F086 line with a trailing comma
-followed by the five-line F262 sentence, then the blank line and
-"Accepted in Tier 3 so far:" — the intended boundary.
+README.md lines 66-68 now read `sort/filter/limit behaviour wired into 15 of the 24 in-scope commands;` / `the remaining nine belong to the follow-up feature the STATUS ledger` / `registers next).` — still inside the "Accepted in Tier 2 so far:" block, naming no `F\d{3}` token.
 
-**G6 THE DOCS GATES** (run after C2 was pushed, before any PR step):
+**G5 THE DOCS GATES** (at the committed and pushed C2, before `gh pr create`; the same 295 was also measured on the working tree before the `Landed:` line was written):
 ```
-$ python3 -m pytest tests/docs/ -q
-FAILED tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
-1 failed, 294 passed in 0.56s
-exit 1
+$ python3 -m pytest tests/docs/ -q                              → 295 passed in 0.50s   exit 0
+$ python3 -m pytest tests/orchestration/test_roadmap_index.py -q → 30 passed in 0.39s    exit 0
+```
+GREEN — the PR step was therefore taken.
 
-$ python3 -m pytest tests/orchestration/test_roadmap_index.py -q
-30 passed in 0.49s
-exit 0
+**G6 THE STATE READERS AND THE CANARY** (serially):
 ```
-RED — G6 orders STOP before `gh pr create`; NO PR was created.
-
-The failing assertion, re-run alone:
-```
-    for block in re.findall(r"Accepted[^\n]*:\n((?:[^\n]+\n)+)", readme):
-        for fid in re.findall(r"\bF(\d{3})\b", block):
->           assert fid in accepted, f"README claims F{fid} accepted; STATUS does not"
-E           AssertionError: README claims F267 accepted; STATUS does not
-tests/docs/test_docs_consistency.py:192
-```
-Cause on disk: README.md line 67 (the last line of README_PARA_TO,
-applied byte for byte) reads `the remaining nine are F267's).` inside
-the "Accepted in Tier 2 so far:" block; `docs/roadmap/STATUS.md` line 99
-reads `- [ ] F267 — List commands v2 completion …` (open). The test's
-regex takes every `F\d{3}` token in an Accepted block as a claimed
-acceptance. This is a defect in the reviewer-authored slice, not in the
-application: README_PARA_TO occurs in README.md exactly once, byte for
-byte. No other test in `tests/docs/` failed, so the STATUS flip, the two
-numeral pairs and the queue edit are green.
-
-**G7 THE FOUR STATE READERS AND THE CANARY** (serially):
-```
-$ python3 -m pytest tests/ui_server/ -q
-515 passed in 35.35s          exit 0
-$ python3 -m pytest tests/orchestration/test_test_runner.py -q
-52 passed in 7.54s            exit 0
-$ python3 -m pytest tests/regression/test_resource_safety.py -q
-21 passed in 11.48s           exit 0
-$ python3 -m pytest tests/orchestration/test_integrity_gate.py -q
-16 passed in 0.39s            exit 0
-$ python3 -m pytest tests/cli/test_golden_path.py -q
-42 passed in 25.71s           exit 0
+$ python3 -m pytest tests/ui_server/ -q                          → 515 passed in 38.29s  exit 0
+$ python3 -m pytest tests/orchestration/test_test_runner.py -q   → 52 passed in 6.30s    exit 0
+$ python3 -m pytest tests/regression/test_resource_safety.py -q  → 21 passed in 11.43s   exit 0
+$ python3 -m pytest tests/orchestration/test_integrity_gate.py -q → 16 passed in 0.29s   exit 0
+$ python3 -m pytest tests/cli/test_golden_path.py -q             → 42 passed in 24.19s   exit 0
 ```
 515 / 52 / 21 / 16 / 42 — PASS.
 
-**G8 THE TREE, THE COMMITS, THE PR**:
+**G7 STRUCTURE AND THE PR**:
 ```
-$ git status --porcelain | wc -l          (before C3 was staged)
-0
-$ git diff --stat d887906b..423bc28d -- packages/ apps/ tests/
-(empty)
-$ git show --numstat --format="%H %s" 71635dd5
-275  0    .agent/authored/f262-r28.md
-$ git show --numstat --format="%H %s" 9364ff12
-228  185  .agent/last_block.md
-$ git show --numstat --format="%H %s" 7dbcde4c
-3    1    .agent/live_review.md
-13   18   .agent/plan.md
-$ git show --numstat --format="%H %s" 423bc28d
-8    3    README.md
-1    1    docs/roadmap/STATUS.md
-1    1    scripts/self_use_queue.json
-$ git rev-parse origin/feature/f262-list-commands-v2
-423bc28d79b9497f295c64121eb23a012e6206f4
-$ gh pr list --state open --json number,headRefName,baseRefName,isDraft
-[]
+$ git status --porcelain | wc -l   (before C3 was staged)          → 0
+$ git diff --stat 893ae3c9..22073040 -- packages/ apps/ tests/ docs/ scripts/   → (empty)
+$ git show --numstat --format="" adaa6b3e   → 236 0   .agent/authored/f262-r29.md
+$ git show --numstat --format="" 8788fad3   → 119 158 .agent/last_block.md
+$ git show --numstat --format="" a7880f5f   → 5 1     .agent/live_review.md
+                                              12 12   .agent/plan.md
+$ git show --numstat --format="" 22073040   → 3 1     .agent/live_review.md
+                                              2 1     README.md
+$ git rev-list --parents 893ae3c9..22073040 → 4 commits, each 1 parent; largest insertion count 236
+$ git diff --shortstat 893ae3c9..22073040   → 5 files changed, 376 insertions(+), 172 deletions(-)
 $ python3 -m apps.cli.grouped integrity check --json
-passed: true, fail_count: 0, check_count: 5, high_blockers_open: pass
-exit 0
+  passed: true, fail_count: 0, check_count: 5, checks[high_blockers_open].status: pass ("no open blocker/high findings")   exit 0
+$ gh pr view 236 --json number,url,baseRefName,headRefName,isDraft,state,mergedAt
+  {"baseRefName":"main","headRefName":"feature/f262-list-commands-v2","isDraft":false,"mergedAt":null,"number":236,"state":"OPEN","url":"https://github.com/UndefinedDatabase/remedy/pull/236"}
+push: 893ae3c9..22073040 exit 0; origin head == local head (22073040ff10c259611dee3cfb92815a796b3bd0)
 ```
-Every numstat cell matches the Commits table above; no stray path in
-any commit; every commit single-parent, largest insertion count 275.
-The PR sub-check has nothing to read: no PR exists (G6 STOP).
+Every numstat cell matches the Commits table above; no stray path; STATUS.md and scripts/self_use_queue.json untouched (constraint 7). PASS.
 
 ## Authored-text proofs
 
-- `.agent/authored/f262-r28.md` written by `shutil.copyfile` from the
+- `.agent/authored/f262-r29.md` written by `shutil.copyfile` from the
   reviewer's scratch original; sha256
-  `9005edf35c4330d3e7e06407810c3414bd8291e09ade30b8c25b554deee32d55`,
-  18922 bytes, equal to the reviewer's stated digest and to
+  `5b57b6d22c7308f07b792f267c4dfb06a6bcbf6d9cac9437a73aee3792bf3b02`,
+  18962 bytes, equal to the reviewer's stated digest and to
   `.agent/last_block.md` after C0b (G2).
-- All slices (RECORD27, PLAN29, the five FROM/TO pairs) were extracted
-  by Python from the COMMITTED file (`git show HEAD:.agent/authored/
-  f262-r28.md`, confirmed equal to the disk copy) as the exact bytes
-  between `<<<BEGIN X>>>\n` and `\n<<<END X>>>` — never retyped
-  (constraint 1). No slice carried a trailing newline (constraint 3).
-- STATUS line proof: the STATUS_TO slice equals `docs/roadmap/STATUS.md`
-  line 24 byte for byte (1 line-identical match, at line 24);
-  `grep -c -F -- '<full STATUS_TO text>' docs/roadmap/STATUS.md` → 1.
-- Queue line proof: the QUEUE_TO slice equals the whitespace-stripped
-  `scripts/self_use_queue.json` line 74 (1 match, at line 74);
-  `grep -c -F '"consumed_by": "F262",' scripts/self_use_queue.json` → 1.
-- README_COUNT_TO, README_TIER2_TO, README_PARA_TO each occur in
-  README.md exactly once (`bytes.count` → 1, 1, 1).
-- PRBODY: extracted (3741 bytes) but NOT applied anywhere — no PR.
+- Every slice (RECORD28, FINDING, PLAN30, PARA_FROM, PARA_TO, PRBODY)
+  was extracted by Python (`slices29.py`) from the COMMITTED
+  `.agent/authored/f262-r29.md` as the exact bytes between
+  `<<<BEGIN X>>>\n` and `\n<<<END X>>>`, each marker asserted to occur
+  once — never retyped (constraint 1). RECORD28 / FINDING / PLAN30 carry
+  no trailing newline (constraint 3).
+- RECORD28 and FINDING: the post-C1 tail of `.agent/live_review.md`
+  equals `\n\n` + RECORD28 + `\n\n` + FINDING (G3).
+- PLAN30: `.agent/plan.md` == PLAN30 byte for byte, 1375 bytes (G4).
+- PARA_TO occurs in README.md exactly once; PARA_FROM zero times.
+- PRBODY: 4071 bytes written to the scratch body file and passed to
+  `gh pr create --body-file` unmodified; PR #236's body is that slice.
+- The `Landed: R-0797 — ` line is the worker's own words (the block
+  ordered it so), not a reviewer slice.
 
 ## Deviations & assumptions
 
-1. **G6 RED → NO PULL REQUEST (ordered stop, not a worker choice).**
-   `tests/docs/` read 1 failed / 294 passed; the block's G6 says "if
-   either is red, STOP before creating the PR and report the failure".
-   The worker stopped; `gh pr create` was never run. The bundle's
-   ordered sequence was therefore followed up to and including the
-   push after C2 and the G6 run, then the `gh pr create` step was
-   SKIPPED, and C3 (this handback) followed. Root cause: the
-   reviewer-authored README_PARA_TO slice's final line names `F267`
-   inside an "Accepted … so far:" block (see G6 in Verification). The
-   worker did NOT author a repair pair (constraint 1 forbids retyped or
-   invented text; the change set bounds C2 to the five slices as
-   written). The branch is at C2 with `tests/docs/` red — exactly the
-   F112 R30 shape constraint 7 recalls, so a repair pair on README.md
-   line 67 is owed in the next round BEFORE the PR.
-2. **`.agent/plan.md` (PLAN29) is now inaccurate in two places** — its
-   Current Step ends "then `gh pr create`" and Next Steps reads "None on
-   this branch — F262 closes with this round's pull request". No PR
-   exists. AGENTS.md "If Blocked" asks for the blocker in plan.md, but
-   the block's change set names only `.agent/handoff.md` for C3 and
-   PLAN29 is a byte-for-byte reviewer slice; the worker left it as
-   PLAN29 and records the blocker HERE. The reviewer's next PLAN should
-   carry the README repair + PR.
-3. **Sandbox forms used without refusal** (reported per constraint 8):
-   a `cd /home/decodeux/Repos/remedy 2>/dev/null;` prefix on several
-   read-only compounds (pytest, gh, integrity) — the block's "never
-   `cd`" guidance was not honoured on those compounds, no write depended
-   on it and every path was absolute; one shell `for` loop over the
-   four commit SHAs for `git show --numstat`; `${PIPESTATUS[0]}` for
-   exit codes after `| tail`. `cp`/`cmp` were pre-emptively re-expressed
-   in Python (`shutil.copyfile`, byte comparisons) — no refusal to
-   report. `git commit -F -` with a heredoc carried each commit message
-   (subject + the two trailer lines) and was not refused.
-4. **Handback structure.** This is the FINAL-round handback the block
-   ordered, but its Item Status marks G6/G8/`gh pr create` as
-   deviated/skipped and its Next differs from the block's ordered
-   sentence, because the ordered sentence ("F262 is closed on this
-   branch") would be false: the PR does not exist. The ordered Next is
-   quoted in the Next section beneath the real one.
+1. **The `Landed:` line names the repairing commit by LABEL, not by short
+   sha.** The block orders the line to name "the repairing commit's short
+   sha" while also ordering the line INTO that same commit (C2, "ONE
+   commit for both edits"); a commit cannot embed its own sha. The line
+   therefore reads "applied in commit C2 of F262 R29 — the commit
+   carrying this line, whose short sha the round-29 handback names" —
+   that sha is `22073040`. Prior `Landed:` lines in the ledger use the
+   same by-label form (e.g. R-0787 "commit C3 of F110 R11").
+2. **Sandbox forms used without refusal** (reported per constraint 7):
+   `$( )` inside compounds for the porcelain counts and the `gh pr list
+   … | length` read; one shell `for` loop over the four SHAs for `git
+   show --numstat`; `${PIPESTATUS[0]}` for pytest exit codes after
+   `| tail`. No `cd` was issued this round; every path was absolute or
+   repo-relative from the fixed working directory. `cp`/`cmp` were
+   pre-emptively re-expressed in Python (`shutil.copyfile`, `bytes`
+   equality / `endswith`), so no refusal to report. Commit messages went
+   through `git commit -q -F -` with a quoted heredoc.
+3. **Integrity-check field shape.** The block names
+   `passed / fail_count / high_blockers_open`; the JSON exposes the third
+   as an entry of the `checks` array (`name: high_blockers_open, status:
+   pass`), not a top-level key — reported from there.
+4. **Bundle order followed exactly**: C0a, C0b, C1, C2, push, G5, `gh pr
+   create`, C3. No extra, dropped or reordered commit. G6 and the G7
+   structure reads were run after `gh pr create` (the block gates only
+   G5 on the PR step). The hosted `ci` check on PR #236 was still
+   `pending` when this handback was written; it was not waited on, since
+   the block hands the checks to the reviewer.
 
 No path outside the declared change set was written under version
-control. `packages/`, `apps/`, `tests/` untouched (G8 diff-stat empty).
-`.agent/STOP` absent at all three reads. Closure algorithm step 5's
-disk edits (STATUS `[x]`, README sync, `consumed_by=F262`) ARE landed
-and pushed in ONE commit (423bc28d); only the PR is missing, blocked by
-the one red docs test.
+control. `packages/`, `apps/`, `tests/`, `docs/`, `scripts/` untouched
+(G7 diff-stat empty). `.agent/STOP` absent at all three reads.
 
 ## Next
 
-**NEXT EXPECTED ACTION: the reviewer authors a round 29 with ONE README
-pair over `README.md` line 67 (remove or re-word the `F267` token so no
-`F\d{3}` in the "Accepted in Tier 2 so far:" block is unaccepted —
-`tests/docs/test_docs_consistency.py:192`), then the ordered
-`gh pr create` with the PRBODY slice from `.agent/authored/f262-r28.md`
-unchanged, then G6 re-run green.** The block's ordered Next — "the
-reviewer reads the PR's hosted checks and merges under the operator's
-2026-09-05 authorization; F262 is closed on this branch" — does not yet
-hold: there is no PR to read. The `remedy-wt` scripts and the PRBODY
-slice are reusable as-is.
+The reviewer reads the PR's hosted checks and merges under the
+operator's 2026-09-05 authorization; F262 is closed on this branch;
+R-0797's `Done:` is booked by the next feature's first round.
