@@ -1,259 +1,238 @@
-STEP CLOSURE PART 1 / F259 — Vocabulary & concept model v1 — round 8 of session 1
-BRANCH feature/f259-vocabulary, head e10cbc30 at the time this block was written.
+STEP CLOSURE PART 2 / F259 — Vocabulary & concept model v1 — round 9 of session 1
+BRANCH feature/f259-vocabulary, head 32808b5d at the time this block was written.
+MERGE BASE 25961794.
 
 Goal
-  The content half of the closure sequence, so that part 2 can build the review
-  zip from a clean tree with every content commit already in. Four pieces of
-  work, none of them bookkeeping:
-  (1) the feature file gains its Built State section and loses its
-      REGISTRATION-ONLY banner (closure precondition 4);
-  (2) the §3 pre-emission checklist gets its ONE consolidation pass, which
-      operator amendment amend0827-process-diet rule 4 mandates exactly once per
-      feature and only inside the closure sequence;
-  (3) the self-use track's next item is generated and RUN (closure precondition
-      6), and every defect its own reader reports is captured;
-  (4) the round-7 integration-gate verdict and one reviewer prose slip are booked.
+  The evidence half of the closure sequence. Book the round-8 verdict and the
+  three ledger obligations closure precondition 6 and §4 item 4 create; repair
+  the one real defect round 8 left on disk; rotate the ledger; build the evidence
+  bundle and the FRESH review zip from a clean tree. The STATUS `[x]` flip, the
+  README capability sync, the `consumed_by` edit and the pull request are part 3,
+  because the STATUS line cannot be authored until this round has measured the
+  evidence job id, the package name, its SHA-256 and the accepted HEAD.
 
-  The STATUS flip, the README sync, the ledger rotation, the evidence job, the
-  review zip and the pull request are all part 2. Nothing here touches
-  `docs/roadmap/STATUS.md` or `README.md`.
+Why each ledger entry is what it is
+  R-0813 IS A NEW ID because round 8's consolidation left a real contradiction on
+  disk under `docs/`: the frozen paragraph of
+  `docs/agents/planner_reviewer_prompt.md` §3 now says both "The list stood at 37
+  items on 2026-08-27, which is the number the next consolidation measures
+  against" and "The next consolidation measures against 36." Both sentences claim
+  to name what the NEXT consolidation measures against. The reviewer searched the
+  open set for the defect before minting, per §3 item 30, and no open finding
+  describes it — it did not exist until round 8 created it.
+  THE SELF-USE DEFECTS TAKE NO NEW ID. Closure precondition 6 requires every
+  string `describe_self_use_run_defects` returns to be registered before the
+  close, and round 8's run returned two. `R-0784` is OPEN and is exactly this
+  defect: its own text records the same two strings from an earlier run and
+  states that they are one defect seen twice — the job-level and task-level views
+  of one gate failure — and therefore take ONE id. §3 item 30 forbids a second id
+  for a defect the open set already holds, so this round appends a `Recurrence:`
+  paragraph to that id rather than minting `R-0814`.
+  `Done: R-0418` IS OWED AND IS PAID HERE. SU-010's own acceptance reads: "R-0418
+  is repaired with a red-to-green proof, or the reviewer records in
+  `.agent/live_review.md` why it cannot be — either way the ledger gains a
+  `Done: R-0418` line." R-0418 is a rule about REVIEWER block-authoring practice
+  under self-drive, so it has no code to turn red; the reviewer measured
+  compliance instead, across all seven of this feature's build rounds.
 
 Bundle, in this order (one commit each)
-  C0a save the block file to .agent/authored/f259-r8.md (copy, never retype)
+  C0a save the block file to .agent/authored/f259-r9.md (copy, never retype)
   C0b mirror it to .agent/last_block.md
-  C1  .agent/plan.md ← PLANF259R8 (whole rewrite)
-  C2  .agent/live_review.md: GATE_R7 appended; .agent/prose_slips.md: SLIP8
-      appended. One commit.
-  C3  docs/roadmap/features/T2_F259.md: apply the REGBANNER pair, then append
-      BUILTSTATE (see "The feature file" below)
-  C4  docs/agents/planner_reviewer_prompt.md: the consolidation (see "The
-      consolidation pass" below)
-  C5  the self-use item: generate, run, and record (see "The self-use item")
-  then push; run the gates
-  C6  rewrite .agent/handoff.md; push again.
+  C1  .agent/plan.md ← PLANF259R9 (whole rewrite)
+  C2  FINDINGS PERSIST FIRST (§4 item 4). `.agent/live_review.md`: append, in
+      this order and separated as described below, GATE_R8, FIND0813, REC0784 and
+      DONE0418. `.agent/prose_slips.md`: append SLIP9. One commit.
+  C3  docs/agents/planner_reviewer_prompt.md: the FROZENFIX pair — the repair of
+      R-0813.
+  C4  THE LEDGER ROTATION, its own commit, paths `.agent/live_review.md` and
+      `.agent/live_review_archive.md` ONLY: `python3 scripts/rotate_live_review.py`.
+      Run `--dry-run` first and report its output, then the real run.
+  then push. Then, from the CLEAN TREE at that head, and committing nothing:
+      the evidence job (G5) and the review zip (G6).
+  C5  rewrite .agent/handoff.md, which records the zip outcome; push again.
 
-  Create NO pull request. It belongs to part 2.
+  Create NO pull request. Do NOT touch `docs/roadmap/STATUS.md`, `README.md` or
+  `scripts/self_use_queue.json` — all three belong to part 3's single closure
+  commit, which must carry them together (R-0154).
 
 Change set — EXACTLY these paths and nothing else
-  .agent/authored/f259-r8.md (C0a) — .agent/last_block.md (C0b) —
+  .agent/authored/f259-r9.md (C0a) — .agent/last_block.md (C0b) —
   .agent/plan.md (C1) — .agent/live_review.md, .agent/prose_slips.md (C2) —
-  docs/roadmap/features/T2_F259.md (C3) —
-  docs/agents/planner_reviewer_prompt.md (C4) —
-  scripts/self_use_queue.json, .agent/selfuse_f259/** (C5) —
-  .agent/handoff.md (C6)
+  docs/agents/planner_reviewer_prompt.md (C3) —
+  .agent/live_review.md, .agent/live_review_archive.md (C4) —
+  .agent/handoff.md (C5)
 
 Delivery
-  The block is at `.remedy-wt/f259-r8-block.md`, gitignored scratch. C0a COPIES
-  it to .agent/authored/f259-r8.md, C0b to .agent/last_block.md. Slices are
+  The block is at `.remedy-wt/f259-r9-block.md`, gitignored scratch. C0a COPIES
+  it to .agent/authored/f259-r9.md, C0b to .agent/last_block.md. Slices are
   extracted from the COMMITTED authored file by marker extraction in Python.
 
-The record append (C2)
-  `.agent/live_review.md` ends with a newline. Append `"\n" + GATE_R7 + "\n"`.
-  `.agent/prose_slips.md` does NOT end with a newline. Append `"\n\n" + SLIP8`
+The C2 appends
+  `.agent/live_review.md` ends with a newline. Append, in ONE write:
+      "\n" + GATE_R8 + "\n\n" + FIND0813 + "\n\n" + REC0784 + "\n\n" + DONE0418 + "\n"
+  so the four paragraphs land in that order, each separated from its neighbour by
+  one empty line, and the file still ends with exactly one newline.
+  `.agent/prose_slips.md` does NOT end with a newline. Append `"\n\n" + SLIP9`
   and add NO trailing newline.
 
-The feature file (C3)
-  Two edits to `docs/roadmap/features/T2_F259.md`, in this order.
-  (a) The REGBANNER pair, applied with `str.replace(FROM, TO, 1)` after
-      confirming FROM occurs EXACTLY ONCE. The reviewer ran the containment test
-      on it before emission and it printed `TO contains FROM: false`, so it is a
-      REWRITE and the obligation is FROM 0x and TO 1x afterwards.
-  (b) The file ends with a newline. Append `"\n" + BUILTSTATE + "\n"`.
-
-The consolidation pass (C4)
-  Operator amendment amend0827-process-diet rule 4 freezes the §3 checklist while
-  a feature is open and mandates ONE consolidation inside the closure sequence,
-  from which the list must emerge the SAME LENGTH OR SHORTER. Merging two items
-  into one is the intended move; growing the list is forbidden. The reviewer
-  measured the list at e10cbc30: 37 items, numbered 1 to 37 with no gaps, which
-  is the figure the frozen paragraph names.
-
-  THE MERGE: item 32 into item 16. They are one rule — a numeral a block states
-  about its OWN parts is hand-counted, drifts the moment the block is edited, and
-  is the half nobody re-reads. Item 32's own text says so: "Items 11 and 16 are
-  the same family". Item 32 was chosen because it is referenced BY NUMBER nowhere
-  in the governing documents — the reviewer counted references to every item
-  number across `docs/agents/planner_reviewer_prompt.md`,
-  `docs/agents/self_drive_protocol.md`, `AGENTS.md`,
-  `docs/roadmap/STATUS_closure_protocol.md`, `docs/agents/integration_gate.md`,
-  `docs/agents/split_workflow.md` and `docs/agents/handback_template.md`, and item
-  32 has zero.
-
-  THE SURVIVORS ARE NOT RENUMBERED. Item 32's number is RETIRED. `.agent/live_review.md`
-  is append-only and cross-references these items by number from dated entries
-  that cannot be corrected; renumbering would silently re-point every one of them
-  at a different rule. The list therefore runs 1 to 31 and 33 to 37 — 36 items,
-  shorter than 37, with one retired number and every existing cross-reference
-  still resolving to the rule it was written about.
-
-  Three edits, in this order:
-  (a) ITEM16 pair — append the merged paragraph to item 16. The FROM is item 16's
-      last line, which the reviewer confirmed occurs EXACTLY ONCE in the file, and
-      the containment test printed `TO contains FROM: true`, so it is an APPEND
-      and the obligation is FROM exactly 1x afterwards plus each new line once
-      among the lines that commit's diff ADDS — never a FROM-zero count.
-  (b) DELETE ITEM 32 BY DIGEST, not by retyping it. Item 32 is the block of lines
-      from the one matching `^  32\. \*\*` up to but NOT including the next line
-      matching `^  \d+\. \*\*`, joined by newlines WITHOUT a trailing one. At
-      e10cbc30 that block is 23 lines and 1703 bytes and its sha256 is
-          695759114c327d494d21e548170eeefd74e9263db04881dd9baa8de814d8000b
-      Recompute that digest and REFUSE if it differs; the block is identified by
-      its digest, not by a line number. DELETE THE BLOCK TOGETHER WITH THE
-      NEWLINE THAT TERMINATES ITS LAST LINE — that is, replace `block + "\n"`
-      with the empty string, exactly once. Deleting the block alone leaves that
-      newline behind as a second blank line, which changes item 31's trailing
-      bytes; the reviewer's dry run hit precisely that and G4's per-item digest
-      sweep is what catches it. Item 32's own last line is blank — the separator
-      before item 33 — so the correct deletion leaves item 31's own trailing
-      blank line followed directly by item 33's first line.
-  (c) FROZEN pair — add the retired-numbering sentences to the frozen paragraph.
-      The FROM is a two-line anchor the reviewer confirmed occurs EXACTLY ONCE.
-      The reviewer ran the containment test on this pair before emission and it
-      printed `TO contains FROM: false`, so it is a REWRITE, not an append: the
-      new text goes BETWEEN the anchor's two lines, so the TO does not contain
-      the FROM contiguously. The obligation is therefore FROM 0x and TO 1x
-      afterwards — not the append obligation of (a).
-
-The self-use item (C5) — closure precondition 6
-  `scripts/self_use_queue.json` holds nine items and NO pending one; the reviewer
-  confirmed `packages.orchestration.self_use_queue.next_self_use_item()` answers
-  `None` at e10cbc30. Precondition 6 therefore requires
-  `packages.orchestration.self_use_generator.generate_and_append_if_empty()` FIRST.
-  Run it, report the entry it appended, and then:
-    (i)   `packages.orchestration.self_use_runner.run_next_self_use_item(
-          dest_dir=<a directory under the gitignored .remedy-wt/>, repo_path='.')`
-          — take its defaults for `max_provider_calls`, `max_cost_usd` and
-          `max_tasks`. Report the returned entry id, the path and the JobPlan's
-          id and status. The dest_dir is scratch and is NEVER committed.
-    (ii)  `packages.orchestration.self_use_findings.describe_self_use_run_defects`
-          for that run's own `JobPlan`. Report EVERY string it returns, verbatim
-          and complete. An empty tuple means nothing to register — report the
-          empty tuple explicitly, because "nothing was returned" and "nothing was
-          checked" must not look the same.
-    (iii) Write the run's record into `.agent/selfuse_f259/`, matching the shape
-          of the precedent directory `.agent/selfuse_f262/`: the generated job
-          markdown as `<entry id>.md`, and `run.txt` carrying the commands, the
-          JobPlan id and status, the defect strings from (ii), and the budgets
-          that were in force.
-  DO NOT set `consumed_by` this round. Precondition 6 requires that edit in the
-  CLOSURE commit, which is part 2's. If the runner raises, commit nothing for C5,
-  record the full traceback in `run.txt` and in the handback, and continue with
-  C6 — a failed self-use run is reported, never hidden, and the reviewer decides
-  what it means.
+The FROZENFIX pair (C3)
+  Applied with `str.replace(FROM, TO, 1)` after confirming FROM occurs EXACTLY
+  ONCE. The reviewer ran the containment test before emission and it printed
+  `TO contains FROM: false`, so it is a REWRITE and the obligation is FROM 0x and
+  TO 1x afterwards. It changes exactly one clause of one sentence; gate G3
+  requires the per-item digest sweep to show that NO checklist item's text
+  changed, because the frozen paragraph is not inside any item.
 
 Constraints
   1. Slices are applied BYTE FOR BYTE from the committed authored file by marker
      extraction in Python. Apply a slice you believe wrong verbatim and declare
      it in the handback.
-  2. NOTHING in this round touches `docs/roadmap/STATUS.md` or `README.md`. The
-     STATUS flip and the README capability sync must land in the SAME commit as
-     each other (R-0154), and that commit is part 2's.
-  3. Read `.agent/STOP` from disk before C0a, before C5 and before C6.
-  4. NEWLINE CONVENTIONS: PLANF259R8 replaces `.agent/plan.md` whole with exactly
-     one trailing newline; the record and slip appends are as described above;
-     `docs/roadmap/features/T2_F259.md` and
-     `docs/agents/planner_reviewer_prompt.md` each still end with exactly one
-     newline after their edits.
-  5. This session's shell guard refuses some command FORMS outright — shell
+  2. Read `.agent/STOP` from disk before C0a, before C4 and before C5.
+  3. NEWLINE CONVENTIONS: PLANF259R9 replaces `.agent/plan.md` whole with exactly
+     one trailing newline; the C2 appends are as described above;
+     `docs/agents/planner_reviewer_prompt.md` still ends with exactly one newline.
+  4. THE ROTATION IS ITS OWN COMMIT AND TOUCHES TWO PATHS. If the script refuses,
+     STOP the rotation: commit nothing for C4, report the refusal text verbatim,
+     and continue to the evidence job and the zip — a refused rotation is
+     reported, never forced.
+  5. THE EVIDENCE DIRECTORY IS NEVER COMMITTED. Put it OUTSIDE the review
+     subject, under the gitignored `.remedy-wt/`. A pre-committed evidence dir
+     puts evidence files into the base..HEAD review subject and the package
+     builds BLOCKED_EVIDENCE.
+  6. THE TREE IS CLEAN when the evidence job and the zip run. A package built
+     from a dirty tree is invalid. Report `git status --porcelain` immediately
+     before each.
+  7. This session's shell guard refuses some command FORMS outright — shell
      loops, `$(...)` substitution, `$?` in a compound command, `${PIPESTATUS[0]}`,
      a `$` anchor inside a `grep -c` pattern, brace-with-quote literals in a
      heredoc, and a non-ASCII character in a Python bytes literal. Re-express in
      Python and report the Python you ran beside its output, with any refusal
-     quoted verbatim. `ruff check` and the built `remedy` CLI are denied to this
-     session; where a `remedy` subcommand is needed, use
-     `python3 -m apps.cli.grouped <...>` and report which route was used.
-  6. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
-     path. End every commit message with the trailer
+     quoted verbatim. `ruff check` and the built `remedy` CLI are denied; use
+     `python3 -m apps.cli.grouped <...>` where a remedy subcommand is needed.
+  8. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
+     path, no secret-like string. End every commit message with the trailer
      `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
-  7. AGENTS.md binds you in full. Never `--force`, never a history rewrite, never
-     `gh pr merge`, never a branch deletion. C6 is ONE commit and reports no
-     reading that only exists after it is pushed.
-  8. The self-use RUN is a real job execution with a real budget. Let it run to
-     the approval gate and no further; never approve, never apply, never promote
-     its result. Precondition 6 says "to the normal approval gate like any other
-     job — never applied".
+  9. AGENTS.md binds you in full. Never `--force`, never a history rewrite, never
+     `gh pr merge`, never a branch deletion. C5 is ONE commit.
+ 10. A FAILING ZIP BUILD IS A CLOSURE BLOCKER, not something to work around.
+     Record the raw error, commit the handback saying so, and stop; the reviewer
+     decides. Never close without the package.
 
 Done when — the gates. Real exit codes, real output, one line per gate in the
-handback. Every gate runs at or before C5.
+handback. Every gate runs at or before the zip; none is ordered after C5.
 
-  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r8-block.md .agent/authored/f259-r8.md .agent/last_block.md`
+  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r9-block.md .agent/authored/f259-r9.md .agent/last_block.md`
      — one digest, three times.
-  G2 THE RECORD AND THE SLIP. For `.agent/live_review.md`: pre-append bytes are a
-     byte-exact PREFIX of the post-append bytes, remainder exactly
-     `"\n" + GATE_R7 + "\n"`, and `grep -c '^Gate: R7 — '` 0 → 1. For
+  G2 THE C2 APPENDS. `.agent/live_review.md`: the pre-append bytes are a
+     byte-exact PREFIX of the post-append bytes and the remainder equals exactly
+     the concatenation named above — report both booleans and the byte lengths.
+     Then report the counts, each of which must go from 0 to 1:
+     `^Gate: R8 — `, `^- R-0813 — `, `^Recurrence: R-0784`, `^Done: R-0418`.
      `.agent/prose_slips.md`: same prefix property, remainder exactly
-     `"\n\n" + SLIP8`, still no trailing newline. Byte lengths before and after
-     for both.
-  G3 THE FEATURE FILE. REGBANNER: FROM count 1 before, 0 after; TO count 1 after;
-     the printed containment reading. BUILTSTATE: the post-commit bytes equal the
-     pre-commit bytes with the pair applied plus exactly `"\n" + BUILTSTATE + "\n"`
-     — report the boolean and the byte lengths. Then report the file's `^## `
-     headings in order, and confirm `Built State` is among them and
-     `REGISTRATION ONLY` occurs 0 times.
-  G4 THE CONSOLIDATION, MEASURED BEFORE AND AFTER. Report: the item count and the
-     full list of item numbers BEFORE the edit (expect 37, 1..37) and AFTER
-     (expect 36, 1..31 and 33..37); the recomputed sha256 of the item-32 block
-     before deletion, which must equal the value stated above; the ITEM16 and
-     FROZEN containment readings, each printed; and the boolean that the
-     post-commit file equals the pre-commit file with exactly those three edits
-     applied and nothing else. Then confirm no OTHER item's text changed, by
-     reporting the sha256 of every surviving item's block before and after and
-     the count that differ — which must be exactly 1, item 16.
-  G5 THE SELF-USE ITEM. Report, in order: `next_self_use_item()` before the
-     generator (expect `None`); the entry `generate_and_append_if_empty()`
-     appended, with its id, title and provenance; the runner's returned entry id,
-     path, JobPlan id and status; the COMPLETE tuple from
-     `describe_self_use_run_defects`; the files written under
-     `.agent/selfuse_f259/` with their byte sizes; and the confirmation that
-     `consumed_by` is still empty for the new entry — this round does not consume
-     it. Also report `git status --porcelain` naming nothing under the runner's
-     dest_dir.
-  G6 THE SUITES. Run serially at C5, each a real run with its passed count and
-     exit code. Expected counts re-measured by the reviewer at e10cbc30:
-       python3 -m pytest tests/docs/ -q                                 expect 303
-       python3 -m pytest tests/orchestration/test_roadmap_index.py -q   expect 30
-       python3 -m pytest tests/ui_server/ -q                            expect 515
-       python3 -m pytest tests/orchestration/test_test_runner.py -q     expect 52
-       python3 -m pytest tests/regression/test_resource_safety.py -q    expect 21
-       python3 -m pytest tests/orchestration/test_integrity_gate.py -q  expect 16
-       python3 -m pytest tests/cli/test_golden_path.py -q               expect 42
-       python3 -m pytest tests/test_agent_tooling.py -q                 report the number
-     The last is added because this round edits `docs/agents/`. The four state
-     readers are run as four. A different count is reported as the number it is,
-     with failing node ids verbatim.
-  G7 THE INTEGRITY GATE — closure precondition 3.
-     `python3 -m apps.cli.grouped integrity check --json`. Report the full JSON,
-     including `passed` and `fail_count`, and the exact command you ran. Also
-     report `git status --porcelain` and confirm there are no relevant untracked
-     files — listing any untracked path you see, with whether it is gitignored.
+     `"\n\n" + SLIP9`, still no trailing newline.
+  G3 THE FROZENFIX. FROM count 1 before and 0 after; TO count 1 after; the
+     printed containment reading; and the boolean that the post-commit file
+     equals the pre-commit file with that one replacement and nothing else. Then
+     the per-item digest sweep: report the checklist item count (expect 36,
+     numbers 1..31 and 33..37) and the number of items whose block digest
+     changed, which must be ZERO — the frozen paragraph sits outside every item.
+     Confirm the paragraph now contains the string `measures against 36` exactly
+     once and `the number the next consolidation measures against` zero times.
+  G4 THE ROTATION. Report the `--dry-run` output in full, then the real run's
+     output in full, then: `wc -c` of `.agent/live_review.md` and
+     `.agent/live_review_archive.md` before and after; the open-findings count
+     before and after, computed as the number of `^- R-\d{4} — ` lines minus the
+     number of `^Done: R-\d{4} — ` lines IN THE LEDGER, which the script
+     guarantees identical across the rotation — report both numbers and say
+     plainly whether they are equal; the count of `^Gate: ` records remaining in
+     the ledger and the count now in the archive; and `git show --numstat <C4>`,
+     which must name exactly those two paths.
+  G5 THE EVIDENCE JOB — closure algorithm step 1. `git status --porcelain` empty
+     first. Then call, in Python,
+     `packages.orchestration.job_evidence.create_manual_completion_bundle` with:
+       evidence_dir   a fresh directory under the gitignored `.remedy-wt/`
+       repo_root      the primary checkout
+       base_commit    25961794 (the full 40-character sha, not abbreviated)
+       head_commit    the full sha of C4, measured
+       job_id         16 lowercase hex characters from `secrets.token_hex(8)`
+       job_title      `F259 vocabulary and concept model v1`
+       step_range     `T001-T004`
+       prior_job_ids  the empty list
+       review_feature_id  `f259`
+       timestamp / generated_at   ISO-8601 UTC
+       verification_runs  ONE run, schema 1.1.0 shaped, built from a REAL run of
+         `python3 -m pytest tests/docs/ -q` at C4, with these fields and no
+         others: `run_id` matching `^vr-\d{4,}$`; `command` the exact command
+         string; `exit_code`; `passed`; `failed`; `skipped`; `deselected`;
+         `selected` EQUAL to passed+failed+skipped; `node_ids` from a real
+         `--collect-only` of the same selection, whose length must EQUAL
+         `selected`; `test_files` the actual FILE paths, SORTED, never a
+         directory; `stdout_summary` the run's own stdout, under 4000
+         characters; `output_hash` the sha256 hex of EXACTLY that
+         `stdout_summary` string; `head_sha`; `duration_seconds`.
+     The reviewer measured at 32808b5d: `tests/docs/` collects 303 node ids, all
+     free of absolute paths and traversal, and the two test files sort as
+     `tests/docs/test_docs_consistency.py` then `tests/docs/test_vocabulary.py`.
+     Report the returned summary dict in full, the job id, and the final verdict
+     it names. Do NOT record a full-suite node-id list anywhere in the bundle:
+     the full-suite proof rides in the committed `.agent/gate_f259_r7/` evidence
+     and the reviewer's own re-run.
+  G6 THE REVIEW ZIP — closure algorithm step 2, MANDATORY. `git status --porcelain`
+     empty first, branch pushed. Then
+     `bash scripts/make_review_zip.sh --evidence-dir <the dir from G5>`.
+     Report: the full stdout, the package FILENAME, its SHA-256 as the script
+     printed it AND as you recompute it from the file on disk, the package's
+     absolute directory, `PACKAGE_STATUS`, and the manifest's
+     `committed_review_subject` base and head — which must span 25961794..C4.
+     If the build does not reach READY_FOR_REVIEW, report the raw error verbatim
+     and stop per constraint 10.
+  G7 THE PRECONDITIONS THIS ROUND CAN ANSWER.
+     `python3 -m apps.cli.grouped integrity check --json` — report `passed` and
+     `fail_count`. `python3 -m pytest tests/docs/ -q` and
+     `python3 -m pytest tests/cli/test_golden_path.py -q` — report both counts
+     and exit codes; the reviewer measured 303 and 42 at 32808b5d.
+     `python3 -m pytest tests/orchestration/test_live_review_rotation.py -q` —
+     report the count and exit code, because this round runs that script for
+     real. Also report `git status --porcelain` and the full list of untracked
+     paths with whether each is gitignored.
   G8 THE PLAN AND THE STRUCTURE. `wc -l .agent/plan.md` under 50; one `## Goal`
-     and one `## Next Steps` (report both counts); `filecmp.cmp(..., shallow=False)`
-     True against the slice plus one newline. Then `git status --porcelain` empty
-     immediately before C6 is staged; `git ls-files .remedy-wt` returns nothing;
-     every commit single-parent; `git diff --numstat <parent> <commit>` for EACH
-     commit C0a through C5 reported cell by cell; each commit's insertion count
-     against the 500 cap; the push result; and confirmation that no pull request
-     was created.
+     and one `## Next Steps`; `filecmp.cmp(..., shallow=False)` True against the
+     slice plus one newline. Then `git status --porcelain` empty immediately
+     before C5 is staged; `git ls-files .remedy-wt` returns nothing; every commit
+     single-parent; `git diff --numstat <parent> <commit>` for EACH commit C0a
+     through C4 reported cell by cell; each commit's insertion count against the
+     500 cap, with C4 declared under the AGENTS.md DECISION F104 D1 exemption if
+     the rotation's diff exceeds it — it is the verbatim rewrite of a single
+     `.agent/**` state file pair; the push result; and confirmation that no pull
+     request was created and that STATUS.md, README.md and
+     `scripts/self_use_queue.json` are named nowhere in this round's diff.
 
-The handback (C6) — rewrite .agent/handoff.md whole
-  No length cap. Carry: feature, round and SESSION NUMBER — still SESSION 1 of
-  F259, round 8, rounds so far 8; the commit range; a `## Commits` table with the
-  `+/-` numbers G8 printed; the AGENTS.md item-status table, one row per bundle
-  item C0a through C6; one line per gate G1 through G8 with its real reading; the
-  complete self-use transcript of G5; the deviations; ONE sentence of context
-  self-assessment; and the next expected action — the reviewer's gate, then
-  CLOSURE PART 2: the ledger rotation, the evidence job, the review zip, the
-  STATUS/README closure commit and the pull request. Repeat this line verbatim in
-  its state block:
-  `~97 % (T001–T004 ✅ · Integration Gate ✅ · Closure Teil 1 im Review · Teil 2 offen) — Schätzung`
+The handback (C5) — rewrite .agent/handoff.md whole
+  No length cap. It is the durable carrier for everything part 3 needs, so it
+  must record, in a section a later reader can find by name: the EVIDENCE JOB ID;
+  the PACKAGE FILENAME; its SHA-256; the package's ABSOLUTE DIRECTORY (DECISION
+  amend0827 D1 — or the literal `NOT ARCHIVED` if it was left where it was
+  built); the ACCEPTED HEAD, which is the full sha of C4 and the head the
+  manifest recorded; and `PACKAGE_STATUS`. Part 3 authors the STATUS line from
+  those five values, so a missing one costs a round. Beyond that: feature, round
+  and SESSION NUMBER — still SESSION 1 of F259, round 9, rounds so far 9; the
+  commit range; a `## Commits` table with the `+/-` numbers G8 printed; the
+  AGENTS.md item-status table, one row per bundle item C0a through C5; one line
+  per gate G1 through G8 with its real reading; the rotation transcript; the
+  deviations; ONE sentence of context self-assessment; and the next expected
+  action — the reviewer's gate, then CLOSURE PART 3: the STATUS `[x]` line, the
+  README capability sync and the `consumed_by` edit in ONE commit, then the pull
+  request, which is NOT merged this session. Repeat this line verbatim in its
+  state block:
+  `~99 % (T001–T004 ✅ · Integration Gate ✅ · Evidence + Zip gebaut · nur noch STATUS/README/PR) — Schätzung`
 
-<<<BEGIN PLANF259R8>>>
+<<<BEGIN PLANF259R9>>>
 # Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 7
-PASSED the reviewer's gate, the last of them the INTEGRATION GATE: the full
-suite is green on the branch and at the merge base, with zero branch-only and
-zero base-only failures. The round-7 verdict is booked by round 8's own C2.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 8
+PASSED the reviewer's gate. Round 7 was the integration gate: the full suite is
+green on the branch and at the merge base, with zero branch-only and zero
+base-only failures. Round 8 was closure part 1.
 
 ## Goal
 
@@ -267,134 +246,58 @@ code: F259 decides words, F260 and F261 spend them.
 
 ## Current Step
 
-Round 8 is CLOSURE PART 1, the content half: the feature file gains its Built
-State and loses its registration-only banner; the §3 checklist takes its one
-mandated consolidation pass, merging item 32 into item 16 and retiring the
-number rather than renumbering, because the append-only review record
-cross-references these items by number; the self-use queue is replenished and
-its item is run to the approval gate; and the integration-gate verdict is booked.
+Round 9 is CLOSURE PART 2, the evidence half: the round-8 verdict is booked
+together with the three ledger obligations the closure creates — a new finding
+for the contradiction round 8's own consolidation left in the frozen paragraph,
+a recurrence under the existing R-0784 rather than a second id for the self-use
+run's two defect strings, and the `Done: R-0418` that SU-010's acceptance owes;
+then that contradiction is repaired, the ledger is rotated, and the evidence
+bundle and the FRESH review zip are built from a clean tree.
 
 ## Next Steps
 
-- CLOSURE PART 2: the ledger rotation as its own commit; the evidence job; the
-  FRESH review zip, whose failure would be a closure blocker; the STATUS `[x]`
-  line and the README capability sync in ONE commit with the self-use
-  `consumed_by` edit; then the pull request, which is NOT merged in this session
-  but at the next feature's Open PR Gate.
+- CLOSURE PART 3: the reviewer authors the STATUS `[x]` line from this round's
+  measured evidence job id, package name, SHA-256, package path and accepted
+  HEAD; the worker applies it with the README capability sync and the self-use
+  `consumed_by` edit in ONE commit, which is the last on the branch; then the
+  pull request, which is NOT merged this session but at the next feature's Open
+  PR Gate.
 
 ## Risks
 
-- The self-use run is a real job execution. If it raises, that is reported and
-  the reviewer decides what it means; it is never hidden and never retried into
-  silence.
-- The consolidation edits the document that governs the reviewer's own work. Its
-  gate therefore measures every surviving item's digest, so a merge cannot
-  quietly alter a rule it was only supposed to move.
-<<<END PLANF259R8>>>
+- A failing zip build is a closure BLOCKER, not a nuisance: it is reported raw
+  and the feature does not close until it is fixed.
+- The rotation rewrites the ledger. It verifies every moved record by sha256
+  before and after and refuses on mismatch; a refusal stops the rotation and is
+  reported, never forced.
+<<<END PLANF259R9>>>
 
-<<<BEGIN GATE_R7>>>
-Gate: R7 — the F259 R7 entry, the INTEGRATION GATE (docs/agents/integration_gate.md steps 1 to 4) before closure. VERDICT PASS. THE FULL SUITE IS GREEN ON BOTH SIDES AND THE BRANCH INTRODUCES NO FAILURE: branch run 19694 passed, 23 skipped, 0 failed, exit 0, 134.50s; base run at the merge base 25961794 in a throwaway worktree 19686 passed, 23 skipped, 0 failed, exit 0, 161.68s; `comm -13` (branch-only) EMPTY and `comm -23` (base-only) EMPTY, both stated as empty rather than sampled, so there was nothing to attribute and no blocker. The difference of 8 is exactly the eight tests of `tests/docs/test_vocabulary.py`, which does not exist at the base. THE REVIEWER RE-RAN THE BRANCH SUITE ITSELF rather than reading the worker's number: `python3 -m pytest -n auto -q` in the primary checkout returned 19694 passed, 23 skipped, 1 warning in 141.61s — the same 19694, independently measured. This is the only entry in this record entitled to the "full suite" claim, per §3 verification tier 3. Range 6e6e73ae..e10cbc30, six commits, all single-parent, pushed, no pull request; largest commit 291 insertions. TRANSPORT: one digest `a8c08ea7d75b5c051a25a3e3c4ba347f80e38f8fb4e23bd07d2acb88cab09f39` across `.remedy-wt/f259-r7-block.md`, `.agent/authored/f259-r7.md` and `.agent/last_block.md`, equal to the reviewer's own pre-emission digest; a COPY chain per §3 item 37. The record append was proved by reconstruction: `.agent/live_review.md` equals its parent plus exactly `"\n" + GATE_R6 + "\n"` (839 318 to 843 886 bytes). THE PARITY RECIPE OBEYED THE TWO OPEN FINDINGS THE BLOCK NAMED, and the round produced fresh evidence for one of them. R-0591's clause: the copy was made with `symlinks=True`, and `apps/ui/node_modules/.bin` holds 23 symlinks in the primary checkout and 23 in the base worktree with equal name sets, so npm's shims were not dereferenced. R-0736's clause: the defect was reproduced directly before it was fixed — the worktree's newest source file `apps/ui/src/types/react-force-graph-2d.d.ts` stamped 1788645445.45 against a copied `apps/ui/dist/index.html` stamped 1788057215.85, so `_frontend_is_stale` read True and the base run would have manufactured its ~114 false failures; setting the dist mtimes to 1788645565.45 cleared it to False. R-0736 remains OPEN and `docs/agents/integration_gate.md` was correctly left unedited, because it is not F259's surface; the finding now carries a second independent measurement for whoever repairs it. THE WORKER FOUND A DEGENERACY IN THE REVIEWER'S OWN PARITY GATE AND ANSWERED IT PROPERLY. G4 ordered the dist mtimes stamped into the future AND ordered a test that no dist mtime fall inside the run's time window — and a synthetic stamp of newest_src plus 120 seconds necessarily lands inside a window the run then takes 162 seconds to open, so the ordered test reads "void" by construction rather than by evidence. The worker declared it and measured the EVENT a second, independent way, which is what R-0444 asks for: every dist file's ctime is 1788645468.32, 18.4 seconds BEFORE the run started, and every inode is unchanged, so no write and no replacement occurred; the mtimes are also identical before and after. No rebuild happened, the neutralisation was real, and the empty base-only list is the corroboration. The reviewer's gate error is recorded in `.agent/prose_slips.md` by the same commit that appends this entry. THE R-0176 DISCLOSURE the block required: writing run logs under `~` was refused by the sandbox, so the worker fell back to the gitignored `.remedy-wt/` and reported it; of the two node ids that finding names, neither exists in the suite at this tip, and the surviving `tests/orchestration/test_run_manifest_logical_identity.py` collects 11 ids, all passing in both runs. EVIDENCE, verified by the reviewer on disk: `.agent/gate_f259_r7/` holds all eight ordered files, no name ends in `.log`, and `branch_failed.txt`, `base_failed.txt`, `comm_13.txt` and `comm_23.txt` are each 0 bytes and 0 lines. TEARDOWN, verified by the reviewer: `git worktree list` shows the primary checkout and the ten pre-existing `remedy/job-*` worktrees and nothing else, no `tmp/*` branch survives, `git status --porcelain` is empty and `gh pr list --state open` returns `[]`. OPEN SET, recomputed mechanically per §3 item 10: 299 registrations against 5 `Done:` lines, 294 open, unchanged by this round.
-<<<END GATE_R7>>>
+<<<BEGIN GATE_R8>>>
+Gate: R8 — the F259 R8 entry, CLOSURE PART 1. VERDICT PASS. Range e10cbc30..32808b5d, eight commits, all single-parent, pushed, no pull request; largest commit 400 insertions. The change set is exactly the ordered paths and the reviewer confirmed with `git diff --name-only` that `docs/roadmap/STATUS.md` and `README.md` are named nowhere in it, which matters because the STATUS flip and the README capability sync must land in ONE commit with each other (R-0154) and that commit is part 3's. TRANSPORT: one digest `481692ac503da0cc3a803fe8bf68bb414525f421aa15021571b6a310c236334b` across `.remedy-wt/f259-r8-block.md`, `.agent/authored/f259-r8.md` and `.agent/last_block.md`, equal to the reviewer's own pre-emission digest; a COPY chain per §3 item 37. EVERY EDIT PROVED BY RECONSTRUCTION FROM THE COMMITTED BLOBS: `.agent/live_review.md` equals its parent plus exactly `"\n" + GATE_R7 + "\n"` (843 886 to 848 281 bytes); `.agent/prose_slips.md` equals its parent plus exactly `"\n\n" + SLIP8`, still ending with no newline (82 415 to 83 964); `docs/roadmap/features/T2_F259.md` equals its parent with the REGBANNER pair applied plus exactly `"\n" + BUILTSTATE + "\n"` (9 401 to 12 386), carries a `## Built State` heading and no longer contains the string `REGISTRATION ONLY`, and its single mermaid block is untouched — closure precondition 4 is met. THE ONE MANDATED CONSOLIDATION OF THE §3 CHECKLIST WAS PERFORMED AND THE REVIEWER RE-MEASURED IT INDEPENDENTLY FROM THE COMMITTED BLOBS: before, 37 items numbered 1 to 37; after, 36 items numbered 1 to 31 and 33 to 37; item 32's block hashed `695759114c327d494d21e548170eeefd74e9263db04881dd9baa8de814d8000b` before deletion, matching the value the block stated; and the per-item digest sweep shows EXACTLY ONE surviving item changed — item 16, which absorbed item 32 — with item 31 byte-IDENTICAL, which is the trap the block warned about, since deleting the block without its terminating newline would have left a stray blank line inside item 31. The list came out SHORTER, which operator amendment amend0827-process-diet rule 4 requires, and the survivors were deliberately NOT renumbered because this record cross-references those items by number from dated entries that cannot be corrected. THE SELF-USE TRACK WAS EXERCISED FOR REAL, closure precondition 6: `next_self_use_item()` answered `None` over nine consumed entries, `generate_and_append_if_empty()` appended `SU-010` (`Address ledger finding R-0418`, provenance `generated (self-use-generator tier 1, ledger scan, R-0418)`), and the runner ran it for 107.8 seconds to the approval gate and no further under `max_provider_calls=6`, `max_cost_usd=0.5`, `max_tasks=1`, producing job `1cbb6972bf7c4ffc` with status `blocked`, T001 `repair_exhausted`, reviewer verdict `fail`. Nothing was approved and nothing applied. `describe_self_use_run_defects` returned a tuple of LENGTH TWO, reported verbatim, and `consumed_by` is still the empty string — that edit belongs to the closure commit. SUITES, re-run by the reviewer: `tests/docs/` 303, `tests/test_agent_tooling.py` 10 passed and 1 skipped, `tests/orchestration/test_roadmap_index.py` 30. `python3 -m apps.cli.grouped integrity check --json` reports `passed true`, `fail_count 0` and `relevant_untracked untracked=0, relevant=0` — closure precondition 3 — though the reviewer notes for honesty that this gate's `high_blockers_open` check reports "no open blocker/high findings" while the ledger holds High findings R-0803 and R-0806, a blind spot in the gate rather than a statement about the record. TWO THINGS THE WORKER FOUND AND THE REVIEWER ACTED ON. First, the block's prose said the deletion "leaves item 31's own trailing blank line", and item 31 has no trailing blank line — the blank belonged to item 32; the instruction was nevertheless correct and the digest sweep proves it, so this is a reviewer prose slip and is recorded in `.agent/prose_slips.md` by the same commit that appends this entry. Second, and this one is a real defect on disk under `docs/`: the FROZEN pair left the paragraph asserting both that 37 "is the number the next consolidation measures against" and that "The next consolidation measures against 36", which is registered as `R-0813` immediately below and repaired by this round's own C3.
+<<<END GATE_R8>>>
 
-<<<BEGIN SLIP8>>>
-2026-09-05 · F259 R7 (reviewer) · The round-7 block's gate G4 ordered two things that cannot both be informative: step (ii) stamped every `apps/ui/dist` mtime into the FUTURE, at newest_src plus 120 seconds, to clear the staleness relation R-0736 names; step (iii) then ordered the parity claim VOID if any dist mtime fell inside the run's time window. A synthetic future stamp lands inside its own window whenever the run outlasts the offset, and the run took 162 seconds against a 120-second offset, so the test read "void" by construction and not by evidence. The worker declared the degeneracy and measured the event a second, independent way — ctime and inode, both of which any rebuild would change — finding every dist ctime 18.4 seconds BEFORE the run started and every inode unchanged, which establishes what the window test was written to establish. THE LESSON: §3 item 18 asks whether an ordered recipe and the property it must establish agree, and this pair fails that reading in a way neither half shows alone — when a gate MUTATES the very attribute a later clause measures, the later clause must read a DIFFERENT attribute, not the mutated one. Order ctime or inode where the mtime is the thing being set, or offset the stamp beyond the expected run duration and say why. Reviewer-authored gate degeneracy; the worker's substitute measurement is sound and the base-only failure list came back empty, so nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is wrong; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP8>>>
+<<<BEGIN FIND0813>>>
+- R-0813 — Low, THE CONSOLIDATION ROUND LEFT THE FROZEN PARAGRAPH NAMING TWO DIFFERENT FIGURES FOR WHAT "THE NEXT CONSOLIDATION" MEASURES AGAINST. Found by the WORKER of F259 R8, who applied the authored slice verbatim as constraint 1 required and declared the contradiction instead of silently repairing it, and confirmed by the reviewer at `32808b5d` by reading the paragraph on disk. The rule-4 paragraph of `docs/agents/planner_reviewer_prompt.md` §3 now contains, nine lines apart, `The list stood at 37 items on 2026-08-27, which is the number the next consolidation measures against.` and `The next consolidation measures against 36.` Both sentences state what the NEXT consolidation measures against and they give different numbers; the first was written on 2026-08-27 about the consolidation that F259 has now performed, and became stale the moment that consolidation landed. PRODUCT EFFECT, which is why this spends an id rather than a `.agent/prose_slips.md` line under operator amendment amend0827-process-diet rule 2: the wrong state is on disk under `docs/`, in the document that governs every reviewer's pre-emission discipline, and a later consolidation reading the stale sentence would measure against 37 and could therefore GROW the list to 37 while believing it had obeyed the same-length-or-shorter rule. Low rather than Medium because both figures are individually true of something, the corrected sentence stands beside the stale one rather than replacing it, and the next consolidation is a whole feature away. ROOT CAUSE, stated so the class is visible: the reviewer authored an APPEND to a paragraph without re-reading the paragraph's EXISTING sentences for claims the appended text would contradict — §3 item 6 binds a zero-gate to the target's existing content and item 34 binds an order to the file it is written into, and neither was applied to the PROSE of the very paragraph being extended. Searched before minting per §3 item 30: `grep` over the open set for `frozen`, `consolidat` and `checklist` finds `R-0387`, `R-0411`, `R-0461` and `R-0604`, none of which describes a stale numeral in this paragraph, and the defect did not exist before F259 R8 created it. FIX, applied by this round's own C3 as a single REWRITE pair: the 2026-08-27 sentence is re-worded to name itself as the figure the FIRST consolidation measured against, leaving exactly one sentence in the paragraph that says what the next one measures against. Resolved when `docs/agents/planner_reviewer_prompt.md` contains `measures against 36` exactly once and `the number the next consolidation measures against` zero times, and the per-item digest sweep shows no checklist item changed.
+<<<END FIND0813>>>
 
-<<<BEGIN REGBANNER_FROM>>>
-> REGISTRATION ONLY — nothing in this file has been implemented.
-<<<END REGBANNER_FROM>>>
+<<<BEGIN REC0784>>>
+Recurrence: R-0784 — the same defect, at F259's closure. Closure precondition 6 requires every string `packages.orchestration.self_use_findings.describe_self_use_run_defects` returns for the closing run to be registered before the close, and F259 R8's run of `SU-010` returned two: `job 1cbb6972bf7c4ffc (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. These are the SAME defect `R-0784` already holds open — the job-level and task-level views of one gate failure, in a self-use run that exhausted its repair rounds — differing from the entry above only in the job id and the queue item. NO NEW ID IS MINTED, per §3 item 30: the reviewer searched the open set for the DEFECT before writing, found `R-0784` describing it in as many words, and `R-0784`'s own text already rules that the two strings are one defect and take one id. Registering `R-0814` here would give one defect two things to resolve, two things to carry forward and two chances to fix it half-way, which is precisely what that item forbids. The evidence is added to the open finding instead, which is this paragraph. WHAT IS NEW AND WORTH RECORDING: this is the SIXTH consecutive closure whose self-use item was generated from the same ledger source. The generator's tier 1 takes the OLDEST open Low or Medium finding, that finding has been `R-0418` since F110, and each closure has therefore run a job whose task was to repair a rule about REVIEWER AUTHORING PRACTICE — work no builder can do, which is why every one of those runs ended `repair_exhausted`. F259 breaks that loop from the other end: it pays `R-0418` off by demonstrated compliance rather than by another failing run, as the `Done: R-0418` paragraph below records, so the generator's tier 1 will offer a DIFFERENT finding at the next closure. Whether the runner should refuse a task whose subject is a reviewer-practice rule remains open under `R-0784`.
+<<<END REC0784>>>
 
-<<<BEGIN REGBANNER_TO>>>
-> BUILT 2026-09-06 on branch `feature/f259-vocabulary`; see Built State below.
-<<<END REGBANNER_TO>>>
+<<<BEGIN DONE0418>>>
+Done: R-0418 — RESOLVED by demonstrated compliance, which is the branch its own acceptance offers for a finding that has no code to turn red. R-0418 is a rule about REVIEWER BLOCK-AUTHORING PRACTICE under docs/agents/self_drive_protocol.md: its fix clause states that in self-drive, where the worker is a delegated subagent that never sees the reviewer's operator brief, every block requiring the handoff to carry the Fortschritt line must CONTAIN that line as authored text or must not order it — because an instruction to repeat something from a brief the worker cannot read is unsatisfiable by construction, the R-0371 class. The acceptance carried on the self-use queue item that has re-raised this finding at every closure since F110 reads: "R-0418 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done: R-0418` line." WHY NO RED-TO-GREEN PROOF EXISTS, recorded as that acceptance asks: the subject is a rule binding the author of a paste block, not a code path, so there is no branch to mutate and no test that could go red; the five self-use runs that tried — SU-005 through SU-010, one per closure — each ended `repair_exhausted` for exactly that reason, and a sixth would too. WHAT WAS MEASURED INSTEAD, by the reviewer at `32808b5d`: every one of F259's seven build-round blocks, as COMMITTED under `.agent/authored/`, contains the Fortschritt line as authored literal text rather than ordering the worker to fetch it — `f259-r1.md` through `f259-r7.md`, seven files, seven matches of a backtick-quoted line ending `— Schätzung`, and every one of the seven handbacks carries the corresponding line. The rule is therefore not merely stated but followed for a full feature, by the role it binds, under the workflow that created the defect. This resolution does NOT claim the rule can no longer be broken; it claims the finding has been discharged in the only currency it accepts. The neighbouring question — whether the self-use RUNNER should refuse a task whose subject is a reviewer-practice rule instead of burning two repair rounds on it — stays open under `R-0784`, which the recurrence paragraph above names.
+<<<END DONE0418>>>
 
-<<<BEGIN BUILTSTATE>>>
-## Built State
-Built 2026-09-06 on `feature/f259-vocabulary`, cut from `main` at 25961794.
-Seven delegated rounds, every one PASSED by the reviewer; the seventh was the
-integration gate.
+<<<BEGIN SLIP9>>>
+2026-09-06 · F259 R8 (reviewer) · The round-8 block's consolidation instruction said the item-32 deletion "leaves item 31's own trailing blank line followed directly by item 33", and item 31 has NO trailing blank line — the blank line the sentence attributes to item 31 was the last line of item 32's own block. The instruction itself was correct and the round's per-item digest sweep proves item 31 byte-identical; only the reviewer's account of WHOSE bytes those were is wrong, which the worker measured and declared. THE LESSON: when a block explains what a deletion will leave behind, the explanation is a claim about the target's existing bytes and is measured like any other — §3 item 34 reaches it, and the same probe that produced the block's digest could have produced the adjacency reading for free. Reviewer-authored prose inaccuracy in an `.agent/` block; nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result, and the separate defect that round DID leave under `docs/` is registered as `R-0813` rather than recorded here; no R-id spent for this one (amend0827-process-diet rule 2).
+<<<END SLIP9>>>
 
-What exists now:
+<<<BEGIN FROZENFIX_FROM>>>
+  move, growing the list is forbidden. The list stood at 37 items on
+  2026-08-27, which is the number the next consolidation measures against.
+<<<END FROZENFIX_FROM>>>
 
-- `docs/system/vocabulary.md` — the BINDING page. It carries, in order: a
-  binding preamble; a "How to read the table" section explaining why the code
-  spelling today and the code spelling after F260/F261 differ on purpose; the
-  DECISION amend0905-vocab D1 table with one row per word for all fifteen words
-  (Project, Order, Mission, Contract, Job, Plan, Task, Run, Round, Worker,
-  Decision, Evidence, Gate, Verdict, Roadmap), each with its meaning, its code
-  spelling today, its code spelling after F260/F261, its CLI spelling and what
-  it is NOT; the do-not-confuse table with the eight pairs T2_F259.md's Goal &
-  Done names; the concept model as a Mermaid `flowchart TD`; the rulings —
-  DECISION amend0905-vocab D2 through D10 copied byte-verbatim from
-  `.agent/decisions.md` and DECISION F259 D1 and D2 copied byte-verbatim from
-  this file, edited only by one heading level; and the per-word meaning-fragment
-  table the test's enforced mode reads.
-- The "code spelling today" column was READ, not remembered. `.agent/f259_inventory.md`
-  holds the measurement it was taken from: 471 `path:line` citations across the
-  seven modules T001 names, each quoting its source line verbatim, every one
-  re-verified by the reviewer against disk.
-- `tests/docs/test_vocabulary.py` — eight tests, reading the SHIPPED catalog by
-  importing `CATALOG` and `GROUPS` from `apps/cli/command_catalog.py`, never a
-  transcript. `VOCABULARY_MODE = "planned"` is a plain module constant that F261
-  flips to `"enforced"`; nothing in the file is skipped. The two mode-dependent
-  tests assert the OPPOSITE thing in each mode, so planned mode measures the
-  outstanding debt rather than switching a test off, and the file turns red by
-  itself when F261 finishes the renames without flipping the constant. Measured
-  at the close: 64 retired-synonym occurrences and 664 meaning violations remain
-  in the catalog — F261's work, recorded rather than hidden.
-- `README.md` carries the same Mermaid block under the one-sentence description,
-  byte-equal to the page's; the eighth test pins the two together, and the page's
-  block is in turn pinned byte-equal to the one in this file.
-- `docs/system/vocabulary.md` is registered in `docs/README.md`'s Quick-Find
-  table and its System Documentation table.
-- DECISION F259 D3 (in `.agent/decisions.md`) scopes the enforced-mode synonym
-  scan to the catalog surface and names `Worker:` as deliberately outside it,
-  because that string occurs nowhere in the catalog and asserting its absence
-  there would forbid nothing. That check belongs to F261.
-
-Deliberate absences: F259 renames no command, moves no module, changes no data
-shape and edits no catalog description. It decides the words; F260 and F261
-spend them.
-<<<END BUILTSTATE>>>
-
-<<<BEGIN ITEM16_FROM>>>
-      NAMES, wherever in the block that list lives, and prefer naming it over counting it.
-<<<END ITEM16_FROM>>>
-
-<<<BEGIN ITEM16_TO>>>
-      NAMES, wherever in the block that list lives, and prefer naming it over counting it.
-      Finding R-0656 brings this item to a GATE's or a CONSTRAINT's OWN WORDING, which
-      neither this item as first written nor item 11 reached: item 11 forbids the numeral
-      in a CONVENTION PARAGRAPH and this one forbade it in a HEADING or a quantifying
-      sentence, while a gate's own text is neither. A gate or a constraint that names a
-      CATEGORY of the block's own slices — the whole texts, the marker prefixes, the pairs
-      — names that category and gives NO numeral for it, because the numeral is
-      hand-counted while the extraction standing beside it is measured, so the two drift
-      the moment the block is edited and the hand-counted half is the one nobody re-reads.
-      Where a count is genuinely owed, the block orders the WORKER to report the number IT
-      measured rather than naming one itself. R22's G3 ordered the extraction "for the two
-      whole texts" over a block carrying three, and R23's G10 bound the marker sweep to
-      "every one of the four marker prefixes" over the six that block's G3 names, as the
-      recurrence paragraph committed at `bdc242b4` records; in each the block's arithmetic
-      was right and only the adjective was wrong, which is why no gate the block ordered
-      could see it and the WORKER caught each. Consolidated into this item at F259's
-      closure on 2026-09-06 from what was item 32; that number is RETIRED, not reused.
-<<<END ITEM16_TO>>>
-
-<<<BEGIN FROZEN_FROM>>>
-  round, and it grew fastest exactly where it was already being skimmed.
-  Reverse by deleting this paragraph.
-<<<END FROZEN_FROM>>>
-
-<<<BEGIN FROZEN_TO>>>
-  round, and it grew fastest exactly where it was already being skimmed.
-  Consolidated once, at F259's closure on 2026-09-06: item 32 was merged into item
-  16, whose family it belonged to and which its own text named, leaving 36 items.
-  A merged item's NUMBER IS RETIRED AND NEVER REUSED, and the survivors are NEVER
-  RENUMBERED, so this list now runs 1 to 31 and 33 to 37. The reason is that
-  `.agent/live_review.md` is append-only and cross-references these items by
-  number from dated entries that cannot be corrected: renumbering would silently
-  re-point every one of those references at a different rule, which is a worse
-  failure than a gap in the numbering. The next consolidation measures against 36.
-  Reverse by deleting this paragraph.
-<<<END FROZEN_TO>>>
+<<<BEGIN FROZENFIX_TO>>>
+  move, growing the list is forbidden. The list stood at 37 items on
+  2026-08-27, which is the figure the FIRST consolidation measured against.
+<<<END FROZENFIX_TO>>>
