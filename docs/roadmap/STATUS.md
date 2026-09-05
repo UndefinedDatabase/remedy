@@ -26,6 +26,10 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [ ] F260 — Job/execution marriage (one job model)
 - [ ] F261 — CLI vocabulary v2 (rename & prune)
 - [ ] F263 — Human-change absorption (working name: absorb)
+- [ ] F268 — remedy do: the one-command start
+- [ ] F269 — Contract & contract templates
+- [ ] F270 — History apply: one commit per task, merge on demand
+- [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
 
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
 
