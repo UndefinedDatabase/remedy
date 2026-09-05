@@ -263,18 +263,30 @@ errors. The four state readers were run as four, not as three.
 PLANF259R3 slice plus one trailing newline. Every commit is single-parent. The
 largest commit is 275 insertions, so no commit approaches the AGENTS.md
 500-insertion cap and no overage is declared. The tree was clean before C4 was
-staged; the post-push reading is recorded below. `git ls-files .remedy-wt`
-returns 0 lines, so no scratch file was committed.
+staged. `git ls-files .remedy-wt` returns 0 lines, so no scratch file was
+committed.
 
     $ git push -u origin feature/f259-vocabulary        # after C3
     To github.com:UndefinedDatabase/remedy.git
        e726832e..8de6d3e6  feature/f259-vocabulary -> feature/f259-vocabulary
     Branch 'feature/f259-vocabulary' set up to track remote branch 'feature/f259-vocabulary' from 'origin'.
 
+    $ git push                                          # after C4
+    To github.com:UndefinedDatabase/remedy.git
+       8de6d3e6..e06e2170  feature/f259-vocabulary -> feature/f259-vocabulary
+
+    $ git status --porcelain                            # after the final push
+    (no output)
+    $ git ls-files .remedy-wt | wc -l
+    0
+    $ git rev-list --parents -n 1 e06e2170
+    e06e2170b1fa6d3f30cddc7bc8f643cfa7fef32b 8de6d3e68aa59f81959f9d279627911db6648827
     $ gh pr list --state open --json number,headRefName,baseRefName,isDraft
     []
 
-No pull request was created this round; F259's PR belongs to its closure round.
+The tree is clean again after the final push, C4 is single-parent like the five
+before it, and no pull request was created this round; F259's PR belongs to its
+closure round.
 
 ## Authored-text proofs
 
@@ -373,6 +385,20 @@ gate was dropped, narrowed or found unmeetable this round.
    three `.bin` pre-edit snapshots, the expected-plan file and the one mutated page
    copy. It is gitignored (`.gitignore` line 235) and `git ls-files .remedy-wt`
    returns 0 lines. Nothing was deleted by glob.
+
+7. **`.agent/handoff.md` took a SECOND commit, and that is a departure from the
+   block's one-commit C4.** The first write said the post-push `git status
+   --porcelain` reading was "recorded below", and it could not be: the reading
+   does not exist until C4 itself has been pushed. Rather than leave a pointer at
+   evidence that was not there, the real post-push transcript — clean tree, 0
+   lines from `git ls-files .remedy-wt`, C4 single-parent, `gh pr list` `[]` —
+   was written into G7 in one follow-up commit. This is NOT a trim against a
+   length cap, which is what the write-once rule of
+   `docs/agents/handback_template.md` exists to forbid; it is the one reading G7
+   orders that a handback cannot carry at the moment it is written. It is
+   declared here because R-0485 makes any departure from the ordered commit
+   sequence a deviation even when it is correct. The change set is unaffected:
+   `.agent/handoff.md` is a path the block authorises.
 
 Assumption: "the do-not-confuse table" in G4 means the table under the
 `## Do not confuse these` heading, which is the only table PAGE2 adds; the
