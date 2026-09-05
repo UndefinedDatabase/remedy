@@ -1,9 +1,10 @@
 # Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 8
-PASSED the reviewer's gate. Round 7 was the integration gate: the full suite is
-green on the branch and at the merge base, with zero branch-only and zero
-base-only failures. Round 8 was closure part 1.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 9
+PASSED the reviewer's gate. Round 7 was the integration gate — the full suite
+green on the branch and at the merge base, zero branch-only and zero base-only
+failures. Rounds 8 and 9 were closure parts 1 and 2; the package is built and
+READY_FOR_REVIEW.
 
 ## Goal
 
@@ -17,27 +18,23 @@ code: F259 decides words, F260 and F261 spend them.
 
 ## Current Step
 
-Round 9 is CLOSURE PART 2, the evidence half: the round-8 verdict is booked
-together with the three ledger obligations the closure creates — a new finding
-for the contradiction round 8's own consolidation left in the frozen paragraph,
-a recurrence under the existing R-0784 rather than a second id for the self-use
-run's two defect strings, and the `Done: R-0418` that SU-010's acceptance owes;
-then that contradiction is repaired, the ledger is rotated, and the evidence
-bundle and the FRESH review zip are built from a clean tree.
+Round 10 is CLOSURE PART 3 — the last round. One commit flips the STATUS line to
+accepted, syncs the README's counters and its Tier 2 accepted list, marks the
+self-use item consumed and rewrites the handback; it is the last commit on the
+branch. Then the pull request is opened and left UNMERGED, which is the
+operator's review window.
 
 ## Next Steps
 
-- CLOSURE PART 3: the reviewer authors the STATUS `[x]` line from this round's
-  measured evidence job id, package name, SHA-256, package path and accepted
-  HEAD; the worker applies it with the README capability sync and the self-use
-  `consumed_by` edit in ONE commit, which is the last on the branch; then the
-  pull request, which is NOT merged this session but at the next feature's Open
-  PR Gate.
+- The operator reviews the package at their own pace.
+- The next feature's session merges this pull request at its Open PR Gate, then
+  claims the next unchecked line in the DECISION amend0905-vocab D12 order,
+  which is F260 — one world: mission, job, run.
 
 ## Risks
 
-- A failing zip build is a closure BLOCKER, not a nuisance: it is reported raw
-  and the feature does not close until it is fixed.
-- The rotation rewrites the ledger. It verifies every moved record by sha256
-  before and after and refuses on mismatch; a refusal stops the rotation and is
-  reported, never forced.
+- The README and the STATUS ledger must never disagree in any committed state,
+  which is why one commit carries both. A split would leave a state where the
+  README claims an acceptance the ledger does not.
+- The pull request must not be merged in this session. Merging it here would
+  close the operator's review window before it opened.
