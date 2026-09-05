@@ -611,6 +611,7 @@ If plan is missing:
 - Only work within current task scope.
 - Do not introduce unrelated changes.
 - No "while I'm here" edits.
+- **Replacing is deleting.** A feature that replaces a mechanism (a command, a module, a data shape, a UI panel) deletes the replaced mechanism in the SAME closure sequence, with a dated DECISION naming what was deleted and which feature inherited its idea. There is no attic, no deprecated alias and no compatibility reader: git is the archive. A closure that leaves the old mechanism alive beside the new one is not a closure. (Operator order amend0905-vocab-rebuild, 2026-09-05.)
 
 The agent MUST NOT introduce changes that are not reflected in `.agent/plan.md`.
 
