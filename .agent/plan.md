@@ -13,31 +13,30 @@ remaining wirings are F267's per DECISION F262 D5).
 
 ## Current Step
 
-Round 25, session 9 — the INTEGRATION GATE (docs/agents/integration_gate.md
-steps 1-5) before closure: branch run vs. a base run at the merge-base
-`7c65d9cc` (PR 235's merge into main), UI parity restored in a
-disposable worktree on a throwaway branch, every branch-only and
-base-only failure attributed, evidence under `.agent/gate_f262_r25/`.
-The worker measures; the reviewer issues the gate verdict next round.
+Round 26, session 9 — closure preconditions 6 and 3. The self-use queue
+holds no pending item (eight, all consumed), so
+`generate_and_append_if_empty()` appends one (expected SU-009, tier 1,
+the oldest open Low/Medium finding), `run_next_self_use_item()` runs it
+unflagged to the normal approval gate with the default small budget,
+`describe_self_use_run_defects()` is reported verbatim, evidence lands
+under `.agent/selfuse_f262/`; then `integrity check --json` via the
+`apps.cli.grouped` module route. No `consumed_by` edit, no new R-id.
 
 ## Next Steps
 
-- If the gate is clean: closure preconditions 3 and 6 (`integrity check
-  --json` via the `apps.cli.grouped` module route; the self-use queue is
-  exhausted, so `generate_and_append_if_empty`, then run the item to the
-  approval gate and register what `describe_self_use_run_defects`
-  returns), then closure algorithm steps 1-2 (evidence job
-  `f262-closure`, fresh review zip with red control), then the closure
-  commit (STATUS `[x]`, README sync, `consumed_by=F262`) and the PR.
-- A reproducible branch-only failure coupled to F262 code is a BLOCKER
-  and gets its own reviewer-gated repair round before closure.
-- Merge under the operator's 2026-09-05 authorization once hosted CI
-  reads green (checks read as their own command first).
+- Book round 26 (with the reviewer's defect-registration narration
+  against the open set — §3 item 30), then closure algorithm steps 1-2:
+  evidence job `f262-closure` (EVIDENCESCRIPT template from
+  `.agent/authored/f009-r33.md`), fresh review zip with red control.
+- The closure commit (STATUS `[x]`, README sync, `consumed_by=F262` on
+  the new item) and the pull request; merge under the operator's
+  2026-09-05 authorization once hosted CI reads green.
 
 ## Risks
 
-- The gate is where xdist-flake noise (F135/F052 class) surfaces; every
-  branch-only id gets a serial re-run and a stated attribution.
-- UI parity in the base worktree must be restored exactly (copytree
-  symlinks=True, dist re-stamp — R-0591, R-0736) or false base-only
-  failures mask real ones.
+- The self-use run is a real, budget-capped call against local
+  `ollama` (`max_cost_usd=0.50`, `max_provider_calls=6`); prior runs of
+  the same tier-1 pick ended BLOCKED at the approval gate — the correct
+  outcome — and their defect strings were added to the open `R-0784`.
+- `append_generated_item` may rewrite `scripts/self_use_queue.json`
+  whole (open `R-0785` class); report append vs rewrite, never fix it.
