@@ -23,7 +23,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 
 - [x] F262 — List commands v2 (dates, sort, filter) (T001–T003 complete; accepted 2026-09-05 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f262-closure · package remedy-review-20260905-112903-READY_FOR_REVIEW.zip · SHA-256 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0)
 - [x] F259 — Vocabulary & concept model v1 (T001–T004 complete; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job ace7fa4d9d782a7a · package remedy-review-20260906-004320-READY_FOR_REVIEW.zip · SHA-256 164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD efd2a4fb04bb82b8ee87b812327a7c3f9776853a)
-- [ ] F260 — One world: mission → job → run
+- [~] F260 — One world: mission → job → run
 - [ ] F261 — CLI vocabulary v2 (rename & prune)
 
 ## Tier 4 — Repo Comprehension (operator order amend0831)
