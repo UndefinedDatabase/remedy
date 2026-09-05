@@ -21,7 +21,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 <!-- operator order amend0831-vocab-registrations (2026-08-31): the eight lines below are the registrations of that order, inserted directly after the amend0830 cost-first block in the operator-decided execution order F262, F259, F260, F261, F263, F264, F265, F266. They carry three tier headings because that order happens to fall into three contiguous tier runs (five Tier 2, two Tier 5, one Tier 4) and tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier pins each line's STATUS-derived tier — the enclosing '## Tier <n>' heading — against its T<tier>_F<id>.md filename. Reversible by moving these eight lines into their tier blocks further down and deleting these three headings and this comment. -->
 ## Tier 2 — Vocabulary & Concept Block (operator order amend0831)
 
-- [~] F262 — List commands v2 (dates, sort, filter)
+- [x] F262 — List commands v2 (dates, sort, filter) (T001–T003 complete; accepted 2026-09-05 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f262-closure · package remedy-review-20260905-112903-READY_FOR_REVIEW.zip · SHA-256 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0)
 - [ ] F259 — Vocabulary & concept model v1
 - [ ] F260 — Job/execution marriage (one job model)
 - [ ] F261 — CLI vocabulary v2 (rename & prune)

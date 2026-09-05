@@ -16,13 +16,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-71 of 267 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+72 of 267 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 14 | 20 |
+| 2 | Minimal Self-Build Runtime | 15 | 20 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -59,7 +59,12 @@ Accepted in Tier 2 so far:
 F254 model alias table & dead-model doctor check,
 F103 token ledger (SQLite), F104 hard budget enforcement,
 F105 cache-optimal prompt ordering, F107 context compiler v2,
-F086 release capability (wheel, `remedy --version`, release gate).
+F086 release capability (wheel, `remedy --version`, release gate),
+F262 list commands v2 (one shared `--sort <field> [--desc] --since <when>
+--until <when> --limit <n>` surface attached to every list-shaped command
+by the catalog, CREATED/UPDATED dates on the rows, and newest-first
+sort/filter/limit behaviour wired into 15 of the 24 in-scope commands;
+the remaining nine are F267's).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
