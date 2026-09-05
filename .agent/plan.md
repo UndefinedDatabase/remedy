@@ -13,22 +13,22 @@ remaining wirings are F267's per DECISION F262 D5).
 
 ## Current Step
 
-Round 28, session 9 — the closure commit and the pull request. Books
-round 27 (evidence job `f262-closure`, package `remedy-review-20260905-112903-READY_FOR_REVIEW.zip`, accepted HEAD
-`a5896aa6`), then ONE commit flips STATUS to `[x]`, syncs the
-README numerals and capability list, and sets `consumed_by=F262` on
-SU-009 (docs/roadmap/STATUS_closure_protocol.md algorithm step 5); then
-`gh pr create`. The merge follows under the operator's 2026-09-05
-authorization once hosted CI reads green.
+Round 29, session 9 — the repair of round 28's red docs gate and the
+pull request. Books RECORD28 (FAIL on G6, all else held), registers
+FINDING R-0797 (the reviewer's README slice named F267 inside an
+"Accepted" block), applies one README pair that names no feature id,
+re-runs `tests/docs/` to 295, then `gh pr create`. The STATUS `[x]`
+line, README numerals and `consumed_by=F262` landed at `423bc28d` and
+are untouched.
 
 ## Next Steps
 
 None on this branch — F262 closes with this round's pull request. The
-reviewer reads the PR checks, merges, and verifies `main`. The next
-feature is claimed per Rule A5 in a fresh session.
+reviewer reads the PR checks, merges under the operator's 2026-09-05
+authorization, and verifies `main`. R-0797 stays `Landed:` until the
+next feature's first round books its `Done:`.
 
 ## Risks
 
-- README's derived numerals (accepted count, Tier 2 Done cell) move the
-  moment STATUS flips; both land in the SAME commit as the flip (F112
-  R30 lesson: a split closure commit went red on `tests/docs/`).
+- A README repair after the STATUS flip is the F112 R30 shape; it is
+  declared, not hidden, and the flip commit itself is not rewritten.
