@@ -8,38 +8,39 @@ request 235 was merged at the Open PR Gate.
 Every list command shows a CREATED and an UPDATED date and carries the
 same `--sort <field> [--desc] --since <when> --until <when> --limit <n>`
 flags, with newest-first as the DEFAULT everywhere, without a flag
-(docs/roadmap/features/T2_F262.md).
+(docs/roadmap/features/T2_F262.md, scoped by DECISION F262 D4).
 
 ## Current Step
 
-Round 22, session 8 - R-0795 core fix: `config.list`, `worker.list`
-and `execution.list` wired to `apply_list_options`. `worker.list`/
-`config.list` use `default_sort_field=None` (no date field, like
-queue.list/loop.list's D2/D3); `execution.list` uses
-`default_sort_field="started_at"` (a real ISO date per row). Six
-regression tests added (two per command). R-0795 is LANDED, not yet
-Done - the reviewer converts it at the next gate (§4 item 4).
+Round 23, session 8 - SCOPE CORRECTION, no code this round: booked
+GATE22 (round 22 PASSED), converted R-0795 to Done. Registered
+FINDING R-0796 - 13 of 28 list-shaped catalog commands were never
+wired at all, not just the 3 R-0795 named. Registered DECISION F262
+D4 scoping Acceptance to 24 of 28 commands (3 static registries + 1
+hybrid catalog excluded by name); the other 9 have genuine dates and
+stay IN scope, deferred. T2_F262.md amended with a pointer to D4.
 
-## Next Steps
+## Next Steps (round-budget mismatch - a DECISION-routed proposal per
+amend0827 rule 6's mechanism, not a question)
 
-- Round 23: extend `TestListCommandOptions`
-  (tests/test_command_catalog.py) to dispatch every `_is_list_command`
-  entry's HANDLER (not just its argparse signature) with an invalid
-  `--sort` and assert a non-zero exit - T001's own never-built
-  Acceptance bullet.
-- Round 24: the Acceptance ten-second-demo smoke test, then closure
-  per docs/roadmap/STATUS_closure_protocol.md.
-- change.list's event-log CREATED date stays open, UNRELATED to D1 -
-  see DECISION F262 D1's Alternative section.
+- Option A: authorize sessions beyond the 7-session/25-round soft
+  caps (already session 8, round 23) to wire the 9 remaining commands
+  (test.list, repair.item-list, builder.session-list,
+  execution.approval-list, mission.list, change.list, event.list,
+  external-builder.package-list, self-repair.proposal-list) plus the
+  T001 catalog-driven handler test plus the Acceptance smoke test.
+- Option B: split the 9 remaining into a NEW follow-up feature
+  (STATUS.md line), build the T001/Acceptance tests scoped to the 24
+  D4-covered commands only, and close F262 within the 3 rounds left.
+- change.list's event-log CREATED date (a separate, older gap) stays
+  open either way - see DECISION F262 D1's Alternative section.
 
 ## Risks
 
-- Stores with no timestamp concept may render "unknown" permanently -
-  that satisfies Acceptance, not a gap to close later.
-- The three ignore-`--json`-entirely execution.* commands are a
-  pre-existing quirk this feature does not need to fix.
-- A command with its OWN meaningful non-date default order opts out
-  via `default_sort_field=None` (queue.list D2, loop.list D3,
-  worker.list/config.list now too).
-- R-0795: LANDED this round for the three named commands - the
-  catalog-wide enumeration proof (T001's own gap) stays open, round 23.
+- Stores with no timestamp concept render "unknown" permanently - now
+  formalized as D4's static-registry exclusion, not an informal note.
+- R-0796's 9 gaps are real product debt regardless of option chosen -
+  Option B moves them, it does not remove them.
+- Round 23 has NO code/test path in its change set (only `.agent/**`
+  plus T2_F262.md's pointer) - a finding-routed-to-planning round per
+  §4 item 7, matching the DECISION F112 D5 precedent shape.
