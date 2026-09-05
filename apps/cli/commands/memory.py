@@ -79,10 +79,31 @@ def _cmd_memory_list(
     project_id: str | None = None,
     job_id: str | None = None,
     json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
 ) -> None:
     from packages.memory.local_gateway import list_memory
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
 
     entries = list_memory(project_id=project_id, job_id=job_id)
+
+    try:
+        entries = apply_list_options(
+            entries,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda e: e.created_at,
+                "key": lambda e: e.key,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda e: e.created_at,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if json_output:
         output = [
@@ -93,6 +114,7 @@ def _cmd_memory_list(
                 "validity": e.validity, "review_status": e.review_status,
                 "scope": e.scope, "evidence_refs": e.evidence_refs,
                 "created_at": e.created_at,
+                "updated_at": e.updated_at,
             }
             for e in entries
         ]
@@ -105,7 +127,7 @@ def _cmd_memory_list(
         for e in entries:
             approved_mark = " [approved]" if e.approved else ""
             tags_str = f" tags={','.join(e.tags)}" if e.tags else ""
-            print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]})")
+            print(f"  {e.key}: {e.value}{approved_mark}{tags_str}  (id={str(e.id)[:8]}, created={e.created_at}, updated={e.updated_at})")
 
 
 def _cmd_memory_learn(
@@ -404,6 +426,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project_id=getattr(args, "project", None),
         job_id=getattr(args, "job", None),
         json_output=getattr(args, "json", False),
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "memory.learn": lambda args: _cmd_memory_learn(
         args.job_id,

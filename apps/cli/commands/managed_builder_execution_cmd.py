@@ -110,9 +110,29 @@ def _cmd_show(ns: argparse.Namespace) -> None:
 
 
 def _cmd_list(ns: argparse.Namespace) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.managed_builder_execution import list_execution_results
     job_id = getattr(ns, "job_id", "") or ""
     results = list_execution_results(job_id)
+    try:
+        results = apply_list_options(
+            results,
+            sort=getattr(ns, "sort", None),
+            desc=getattr(ns, "desc", False),
+            since=getattr(ns, "since", None),
+            until=getattr(ns, "until", None),
+            limit=getattr(ns, "limit", None),
+            sort_fields={
+                "started_at": lambda r: r.get("started_at") or "",
+                "ended_at": lambda r: r.get("ended_at") or "",
+                "status": lambda r: r.get("status") or "",
+                "duration_ms": lambda r: r.get("duration_ms") or 0,
+            },
+            default_sort_field="started_at",
+            date_getter=lambda r: r.get("started_at") or None,
+        )
+    except ListOptionError as exc:
+        _err(str(exc))
     print(json.dumps(results, indent=2))
 
 

@@ -59,6 +59,33 @@ def test_test_list_empty(env):
     assert json.loads(r.stdout)["run_count"] == 0
 
 
+def test_test_list_empty_text_message(env):
+    jid = _job(env)
+    r = run_grouped_cli(["test", "list", jid], env)
+    assert r.returncode == 0, r.stderr
+    assert f"No test runs for {jid[:8]}." in r.stdout
+
+
+def test_test_list_text_shows_per_row(capsys):
+    from argparse import Namespace
+    from unittest.mock import patch
+
+    from apps.cli.commands.real_test_execution_cmd import _cmd_test_list
+
+    job_id = str(uuid4())
+    fake_runs = [{"test_run_id": "run-1", "status": "passed", "exit_code": 0,
+                  "created_at": "2026-09-04T00:00:00+00:00"}]
+    args = Namespace(job_id=job_id, json=False)
+    with patch("packages.orchestration.real_test_execution.list_test_runs", return_value=fake_runs):
+        _cmd_test_list(args)
+
+    out = capsys.readouterr().out
+    assert "run-1" in out
+    assert "status=passed" in out
+    assert "exit=0" in out
+    assert "created=2026-09-04T00:00:00+00:00" in out
+
+
 def test_test_integrity(env):
     jid = _job(env)
     run_grouped_cli(["snapshot", "create", jid, "--json"], env)

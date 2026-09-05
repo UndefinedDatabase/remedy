@@ -517,6 +517,7 @@ def _run_patch_intent_phase(job: Any, artifact: Any, data_dir: Path) -> str:
             "action": "create",
             "risk": "low",
             "summary": "Safe documentation change",
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
     ]
     artifact.metadata["patch_intent_approvals"] = {}

@@ -523,6 +523,31 @@ class TestMemoryCLIContract:
         data = json.loads(buf2.getvalue())
         assert data["entries"][0]["approved"] is False
 
+    def test_list_json_has_updated_at_key(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_store("test_key", "test_value")
+        buf2 = StringIO()
+        monkeypatch.setattr("sys.stdout", buf2)
+        _cmd_memory_list(json_output=True)
+        data = json.loads(buf2.getvalue())
+        assert "updated_at" in data["entries"][0]
+
+    def test_list_text_shows_created_and_updated(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_store("test_key", "test_value")
+        buf2 = StringIO()
+        monkeypatch.setattr("sys.stdout", buf2)
+        _cmd_memory_list(json_output=False)
+        text = buf2.getvalue()
+        assert "created=" in text
+        assert "updated=" in text
+
     def test_approved_is_store_true_in_argparse(self) -> None:
         parser = build_parser()
         args = parser.parse_args(["memory", "store", "k", "v", "--approved"])
@@ -532,3 +557,133 @@ class TestMemoryCLIContract:
         parser = build_parser()
         args = parser.parse_args(["memory", "store", "k", "v"])
         assert args.approved is False
+
+    def test_sort_by_key_orders_entries(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        _cmd_memory_store("zeta", "v1")
+        _cmd_memory_store("alpha", "v2")
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_memory_list(json_output=True, sort="key")
+        data = json.loads(buf.getvalue())
+        assert [e["key"] for e in data["entries"]] == ["alpha", "zeta"]
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.memory import _cmd_memory_list, _cmd_memory_store
+        _cmd_memory_store("key", "v")
+        with pytest.raises(SystemExit) as exc:
+            _cmd_memory_list(json_output=True, sort="bogus")
+        assert exc.value.code == 1
+
+
+class TestProjectListCLI:
+    """project.list JSON must include version: 1, project_count and created_at."""
+
+    def test_catalog_has_json_flag(self) -> None:
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("project.list")
+        assert cmd.supports_json is True
+        assert any(a.name == "--json" for a in cmd.args)
+
+    def test_list_json_has_created_at(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        save_project(RemyProject(name="p1", slug="p1"))
+        from apps.cli.commands.project import _cmd_list_projects
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_projects(json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data["version"] == 1
+        assert data["projects"][0]["created_at"]
+
+    def test_list_text_shows_created(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        save_project(RemyProject(name="p2", slug="p2"))
+        from apps.cli.commands.project import _cmd_list_projects
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_projects(json_output=False)
+        text = buf.getvalue()
+        assert "created=" in text
+
+    def test_limit_caps_returned_projects(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        for i in range(3):
+            save_project(RemyProject(name=f"p{i}", slug=f"p{i}"))
+        from apps.cli.commands.project import _cmd_list_projects
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_projects(json_output=True, limit="2")
+        data = json.loads(buf.getvalue())
+        assert data["project_count"] == 2
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        save_project(RemyProject(name="p1", slug="p1"))
+        from apps.cli.commands.project import _cmd_list_projects
+        with pytest.raises(SystemExit) as exc:
+            _cmd_list_projects(json_output=True, sort="bogus")
+        assert exc.value.code == 1
+
+
+class TestJobListCLI:
+    """job.list JSON must include version: 1, job_count and created_at."""
+
+    def test_catalog_has_json_flag(self) -> None:
+        from apps.cli.command_catalog import get_command
+        cmd = get_command("job.list")
+        assert cmd.supports_json is True
+        assert any(a.name == "--json" for a in cmd.args)
+
+    def test_list_json_has_created_at(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = _make_job()
+        save_job(job)
+        from apps.cli.commands.job import _cmd_list_jobs
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_jobs(json_output=True, all_projects=True)
+        data = json.loads(buf.getvalue())
+        assert data["version"] == 1
+        assert data["jobs"][0]["created_at"]
+
+    def test_default_order_is_newest_first(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from datetime import datetime, timedelta, timezone
+        older = Job(id=uuid4(), name="older", user_prompt="x",
+                    created_at=datetime.now(timezone.utc) - timedelta(days=1))
+        newer = Job(id=uuid4(), name="newer", user_prompt="x",
+                    created_at=datetime.now(timezone.utc))
+        save_job(older)
+        save_job(newer)
+        from apps.cli.commands.job import _cmd_list_jobs
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_jobs(json_output=True, all_projects=True)
+        data = json.loads(buf.getvalue())
+        assert [j["name"] for j in data["jobs"]] == ["newer", "older"]
+
+    def test_limit_caps_returned_jobs(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        for _ in range(3):
+            save_job(_make_job())
+        from apps.cli.commands.job import _cmd_list_jobs
+        buf = StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        _cmd_list_jobs(json_output=True, all_projects=True, limit="2")
+        data = json.loads(buf.getvalue())
+        assert data["job_count"] == 2
+
+    def test_unknown_sort_field_exits_nonzero(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        save_job(_make_job())
+        from apps.cli.commands.job import _cmd_list_jobs
+        with pytest.raises(SystemExit) as exc:
+            _cmd_list_jobs(json_output=True, all_projects=True, sort="bogus")
+        assert exc.value.code == 1

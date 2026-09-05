@@ -122,3 +122,20 @@ class TestConfigCli:
         data = json.loads(r.stdout)
         assert data["key"] == "ollama.host"
         assert data["value"] == "http://custom:11434"
+
+    def test_config_list_limit(self):
+        r = subprocess.run(
+            [*_CLI, "config", "list", "--json", "--limit", "1"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert len(data) == 1
+
+    def test_config_list_unknown_sort_field_exits_nonzero(self):
+        r = subprocess.run(
+            [*_CLI, "config", "list", "--json", "--sort", "bogus"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert r.returncode != 0
+        assert "unknown --sort field" in r.stderr

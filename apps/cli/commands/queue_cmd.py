@@ -126,8 +126,12 @@ def _project_ids_with_a_queue() -> list[str]:
     return sorted(p.name for p in root.iterdir() if p.is_dir())
 
 
-def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -> None:
+def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False,
+                    json_output: bool = False, sort: str | None = None, desc: bool = False,
+                    since: str | None = None, until: str | None = None,
+                    limit: str | None = None) -> None:
     from packages.orchestration.job_queue import list_entries_safe
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
 
     if all_projects:
         project_ids = _project_ids_with_a_queue()
@@ -140,6 +144,34 @@ def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -
         entries, _degraded, skipped = list_entries_safe(project_id)
         skipped_total += len(skipped)
         rows.extend((project_id, entry) for entry in entries)
+
+    try:
+        rows = apply_list_options(
+            rows,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda pair: pair[1].created_at,
+                "priority": lambda pair: pair[1].priority,
+                "status": lambda pair: pair[1].status,
+            },
+            default_sort_field=None,
+            date_getter=lambda pair: pair[1].created_at,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if json_output:
+        import json as _json
+        print(_json.dumps({
+            "version": 1,
+            "entry_count": len(rows),
+            "entries": [{"id": entry.id, "status": entry.status, "priority": entry.priority,
+                        "created_at": entry.created_at, "claimed_by": entry.claimed_by or "",
+                        "goal": _goal_label(entry), "project_id": project_id}
+                       for project_id, entry in rows],
+        }, sort_keys=True))
+        return
 
     if not rows:
         print("No queue entries found.")
@@ -234,6 +266,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "queue.list": lambda args: _cmd_queue_list(
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
+        json_output=args.json,
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
     ),
     "queue.rm": lambda args: _cmd_queue_rm(
         args.entry_id, project=getattr(args, "project", None)),

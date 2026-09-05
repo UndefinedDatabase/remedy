@@ -1,0 +1,43 @@
+F262 R25 - integration gate, step 4 attribution
+================================================
+
+BOTH SETS ARE EMPTY.
+
+Produced by:
+
+    [l for l in <branch log>.splitlines() if l.startswith('FAILED')], sorted -> branch_failed.txt, 0 lines
+    [l for l in <base log>.splitlines()   if l.startswith('FAILED')], sorted -> base_failed.txt,   0 lines
+    branch_only     = sorted(set(branch_failed) - set(base_failed))     -> 0 lines
+    fixed_by_branch = sorted(set(base_failed) - set(branch_failed))     -> 0 lines
+(the piped `comm` form is refused by this sandbox's guard, per R-0590;
+computed as a Python set difference; an unpiped `comm -13` / `comm -23`
+over the two files, run through subprocess.run, cross-checked to 0 lines
+each.)
+
+branch_only.txt is empty, so there is no branch-only id to attribute
+(constraint 9): no serial re-run was needed, no reproduction at the base
+was needed, and no BLOCKER is possible from that set - nothing failed on
+the branch. The branch run itself was 0 failed / 19676 passed / 23
+skipped, exit 0, 163.80s wall.
+
+fixed_by_branch.txt is also empty: nothing failed at the base either
+(constraint 10). The base run was 0 failed / 19601 passed / 23 skipped,
+exit 0, 191.86s wall, with UI parity restored beforehand and held as an
+event (parity_mtime.txt). Every id in fixed_by_branch.txt must be
+attributed by direct evidence - there are zero ids, so there is nothing
+to attribute and no unattributed base-only id exists (the degenerate,
+cleanest case of the unconditional-attribution rule: an empty set
+requires no evidence because there is no claim being made about any
+id).
+
+Coupling check (constraint 9), for completeness: `git diff --name-only
+7c65d9cc..HEAD -- packages/ apps/` names 23 files (apps/cli/
+command_catalog.py, 18 files under apps/cli/commands/, and packages/
+orchestration/{approval_queue,do_run,list_options,reviewer}.py). No
+failing node id exists on either side to couple to any of them.
+
+NEITHER SET TOUCHES F262 CODE, BECAUSE NEITHER SET HAS ANY MEMBER.
+
+    branch-only failures : 0
+    base-only failures   : 0
+    BLOCKER              : none

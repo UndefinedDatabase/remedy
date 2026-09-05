@@ -80,6 +80,10 @@ class TestCatalog:
             assert entry.may_execute_commands is False
             assert entry.may_mutate_repo is False
 
+    def test_list_has_json_flag(self):
+        from apps.cli.command_catalog import get_command
+        assert get_command("queue.list").supports_json is True
+
 
 class TestAdd:
     def test_add_prints_the_new_entry_id(self, project):
@@ -194,6 +198,36 @@ class TestList:
         assert "good goal" in proc.stdout
         assert "doomed goal" not in proc.stdout
         assert "1 unreadable queue file(s) skipped" in proc.stderr
+
+    def test_json_has_created_at_and_goal(self, project):
+        data_root, project_id = project
+        _run(["queue", "add", "json goal", "--project", project_id], data_root)
+
+        proc = _run(["queue", "list", "--project", project_id, "--json"], data_root)
+        data = json.loads(proc.stdout)
+        assert data["version"] == 1
+        assert data["entries"][0]["created_at"]
+        assert data["entries"][0]["goal"] == "json goal"
+
+    def test_sort_created_at_overrides_the_priority_default(self, project):
+        data_root, project_id = project
+        _run(["queue", "add", "first goal", "--project", project_id], data_root)
+        _run(["queue", "add", "second goal", "--prio", "9", "--project", project_id], data_root)
+
+        lines = [ln for ln in _run(
+            ["queue", "list", "--project", project_id, "--sort", "created_at"], data_root,
+        ).stdout.splitlines() if ln.strip()]
+        assert "first goal" in lines[0]
+        assert "second goal" in lines[1]
+
+    def test_unknown_sort_field_exits_nonzero_naming_valid_fields(self, project):
+        data_root, project_id = project
+        _run(["queue", "add", "a goal", "--project", project_id], data_root)
+
+        proc = _run(["queue", "list", "--project", project_id, "--sort", "bogus"], data_root,
+                    expect_ok=False)
+        assert proc.returncode == 1
+        assert "created_at" in proc.stderr
 
 
 class TestRm:

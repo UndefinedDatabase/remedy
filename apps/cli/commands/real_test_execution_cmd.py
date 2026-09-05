@@ -38,7 +38,11 @@ def _cmd_test_list(args: Any) -> None:
     if getattr(args, "json", False):
         print(json.dumps(out, indent=2))
         return
-    print(f"Test runs for {str(args.job_id)[:8]}: {len(runs)}")
+    if not out["runs"]:
+        print(f"No test runs for {str(args.job_id)[:8]}.")
+        return
+    for r in out["runs"]:
+        print(f"  {r['test_run_id']}  status={r['status']}  exit={r['exit_code']}  created={r['created_at']}")
 
 
 def _cmd_test_integrity(args: Any) -> None:

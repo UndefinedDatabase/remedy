@@ -63,11 +63,28 @@ def _cmd_review_run(args: Any) -> None:
 
 def _cmd_review_list(args: Any) -> None:
     """List reviewer recommendations."""
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.reviewer import list_recommendations
     from packages.orchestration.storage import load_job
 
     job = load_job(UUID(args.job_id))
     recs = list_recommendations(job)
+    try:
+        recs = apply_list_options(
+            recs,
+            sort=getattr(args, "sort", None), desc=getattr(args, "desc", False),
+            since=getattr(args, "since", None), until=getattr(args, "until", None),
+            limit=getattr(args, "limit", None),
+            sort_fields={
+                "created_at": lambda r: r.get("created_at", ""),
+                "status": lambda r: r.get("status", ""),
+            },
+            default_sort_field="created_at",
+            date_getter=lambda r: r.get("created_at") or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     if getattr(args, "json", False):
         print(json.dumps({
@@ -83,7 +100,8 @@ def _cmd_review_list(args: Any) -> None:
             status = r.get("status", "?")
             title = r.get("title", "?")
             rid = r.get("id", "?")
-            print(f"  [{status}] {rid}  {title}")
+            created = r.get("created_at", "?")
+            print(f"  [{status}] {rid}  {title}  (created={created})")
 
 
 def _cmd_review_accept(args: Any) -> None:

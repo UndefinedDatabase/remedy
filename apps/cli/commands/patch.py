@@ -14,7 +14,16 @@ if TYPE_CHECKING:
     import argparse
 
 
-def _cmd_list_patch_intents(job_id_str: str) -> None:
+def _cmd_list_patch_intents(
+    job_id_str: str,
+    *,
+    json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
+) -> None:
     job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
@@ -23,7 +32,30 @@ def _cmd_list_patch_intents(job_id_str: str) -> None:
         sys.exit(1)
 
     from packages.orchestration.approval_queue import format_intent_list, list_patch_intents
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     intents = list_patch_intents(job)
+    try:
+        intents = apply_list_options(
+            intents,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "created_at": lambda i: i.get("created_at") or "",
+                "state": lambda i: i.get("state", ""),
+                "risk": lambda i: i.get("risk", ""),
+            },
+            default_sort_field="created_at",
+            date_getter=lambda i: i.get("created_at") or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "intent_count": len(intents),
+            "intents": intents,
+        }, sort_keys=True))
+        return
     print(format_intent_list(intents))
 
 
@@ -359,7 +391,15 @@ def _cmd_approve_hunks(
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "patch.list": lambda args: _cmd_list_patch_intents(args.job_id),
+    "patch.list": lambda args: _cmd_list_patch_intents(
+        args.job_id,
+        json_output=args.json,
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
+    ),
     "patch.show": lambda args: _cmd_show_patch_intent(args.job_id, args.intent_id),
     "patch.approve": lambda args: _cmd_approve_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),
     "patch.reject": lambda args: _cmd_reject_patch_intent(args.job_id, args.intent_id, getattr(args, "reason", None)),

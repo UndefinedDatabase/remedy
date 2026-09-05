@@ -48,16 +48,39 @@ def _cmd_tournament_show(args: Any) -> None:
 
 
 def _cmd_tournament_list(args: Any) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.model_route_tournament import list_tournament_reports
     reps = list_tournament_reports(job_id=str(args.job_id))
+    try:
+        reps = apply_list_options(
+            reps,
+            sort=getattr(args, "sort", None), desc=getattr(args, "desc", False),
+            since=getattr(args, "since", None), until=getattr(args, "until", None),
+            limit=getattr(args, "limit", None),
+            sort_fields={
+                "created_at": lambda r: r.get("created_at", ""),
+                "status": lambda r: r.get("status", ""),
+                "confidence": lambda r: r.get("confidence", ""),
+            },
+            default_sort_field="created_at",
+            date_getter=lambda r: r.get("created_at") or None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     out = {"job_id": str(args.job_id), "report_count": len(reps),
            "reports": [{"tournament_id": r.get("tournament_id"), "status": r.get("status"),
                         "winner_competitor_id": r.get("winner_competitor_id", ""),
-                        "confidence": r.get("confidence")} for r in reps]}
+                        "confidence": r.get("confidence"),
+                        "created_at": r.get("created_at", "")} for r in reps]}
     if getattr(args, "json", False):
         print(json.dumps(out, indent=2))
         return
     print(f"Tournament reports for {str(args.job_id)[:8]}: {len(reps)}")
+    for r in reps:
+        winner = r.get("winner_competitor_id") or "(none)"
+        print(f"  {r.get('tournament_id')}: {r.get('status')}  winner={winner}"
+              f"  confidence={r.get('confidence')}  (created={r.get('created_at', '')})")
 
 
 def _cmd_tournament_integrity(args: Any) -> None:

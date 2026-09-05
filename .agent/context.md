@@ -1,45 +1,41 @@
-# Context — F114 Cost preview per command
+# Context — F262 List commands v2 (dates, sort, filter)
 
 ## Active Branch
-feature/f114-cost-preview-per-command, cut from `main` at the merge
-commit of pull request 234.
+feature/f262-list-commands-v2, cut from `main` at the merge commit of
+pull request 235.
 
 ## Scope
-F114 (Tier 3, depends on F103 — done; enhanced by F074 calibration, not
-yet built): commands that will spend real money show an upfront estimate
-band with its basis and require confirmation above a configured
-threshold in attended mode; unattended runs rely on budgets, not
-prompts. Task slicing: T001 the shared estimator extraction + band
-computation + basis labels + unit tests; T002 the CLI helper + threshold
-+ tty/non-tty semantics + tests; T003 marking the expensive commands +
-goldens for their preview lines + docs.
+F262 (Tier 2, depends on nothing, blocks F267 — the follow-up DECISION F262
+D5 split off on 2026-09-05; scope per DECISION F262 D4: 24 of 28 list-shaped
+commands, 15 wired here, 9 owned by F267): every list command —
+`job list`, the `do` run listings, `queue list`, `mission list`,
+`memory list`, `event list` and the rest of the catalog's list-shaped
+commands — shows a CREATED and an UPDATED date and supports the same
+`--sort <field> [--desc] --since <when> --until <when> --limit <n>`
+flags with the same spelling; default ordering is newest-first
+everywhere, without a flag. Task slicing: T001 the shared listing-option
+surface, defined once and pinned by a catalog-derived coverage test; T002
+CREATED/UPDATED dates surfaced from each store; T003 the sort/filter/limit
+behaviour plus the newest-first default.
 
 ## Do not touch
-The interactive guard's package boundary
-(`tests/test_no_interactive_guard.py`, `_GUARDED_PACKAGES` / empty
-`_ALLOWLIST`), budget enforcement, calibration (F074) — all explicitly
-out of scope per `docs/roadmap/features/T3_F114.md` Do not touch.
-Confirmation prompts live in `apps/cli` ONLY, never inside a guarded
-package.
+The stores' own schemas beyond adding a missing timestamp, and the
+`--json` contract's existing keys — this feature ADDS keys, it does not
+rename them (docs/roadmap/features/T2_F262.md, Do not touch).
 
 ## Assumptions
-- `packages/orchestration/budget_resolution.PredictiveBudgetConfig` /
-  `resolve_predictive_budget_config()` already supply the reusable
-  inputs (price basis + per-`TokenBand` class-default tokens); only the
-  one-line multiply at `budget_guard.py:482-484` needs extracting, not a
-  new config layer.
-- `apps/cli/commands/loop_cmd.py` already has the reusable confirm
-  pattern: `_confirm_materialization` (an `input()` y/N prompt),
-  `_stdin_is_a_tty`, and the `--yes` flag
-  (`apps/cli/command_catalog.py:653`) — T002 reuses this shape rather
-  than inventing a second one.
-- No `cost_preview.py` or expensive-command registry exists today
-  (confirmed by search); T001/T003 are new files, not refactors of
-  existing ones.
-- The estimator commits to `token_economy.TokenBand` (LOW/MEDIUM/HIGH)
-  as its class vocabulary, distinct from `model_routing.TASK_CLASS_TIERS`
-  (a cost TIER, not a token-size band) — round 3 states this explicitly
-  in `cost_preview.py`'s own docstring.
+- The list-command set is derived MECHANICALLY from
+  `apps/cli/command_catalog.py` in round 2, never hand-written; today's
+  measurement (28 subcommands matching `list` or `*-list`) is a sizing
+  signal for this file only, not the rule itself.
+- `--sort <field>` validates against the CALLING list's own columns and
+  fails non-zero naming the valid set, per the feature file's Design
+  section — the valid-field set is therefore per-command, not global.
+- Dates render human-readable in the text UI and ISO-8601 with a
+  timezone under `--json`; any probe added by this feature reads the
+  TEXT-UI value, never the internal one (feature file, Design).
+- A list whose store cannot order by recency says so rather than
+  presenting arbitrary order as newest-first (feature file, Design).
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -56,12 +52,14 @@ forward from the context this file replaced.
   never in the primary checkout, which satisfies `git status --porcelain`
   empty at every verdict.
 - THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
-- `ruff check` is DENIED to this session's reviewer, measured at the
-  F114 claim (`ruff check packages/orchestration/budget_guard.py`
-  answers "This command requires approval"). A round of F114 that ships
-  a `.py` file gates `python3 -m py_compile <path>` instead, and the
-  worker attempts `ruff check` itself, reporting success or the exact
-  refusal.
+- `ruff check` is DENIED to this session's reviewer, re-measured at the
+  F262 claim (`ruff check apps/cli/command_catalog.py` answers "This
+  command requires approval"). A round of F262 that ships a `.py` file
+  gates `python3 -m py_compile <path>` instead, and the worker attempts
+  `ruff check` itself, reporting success or the exact refusal.
+- `remedy` (the built CLI) is DENIED to this session's reviewer
+  session-wide; a round needing to run it delegates that run to the
+  worker and reports the exact output.
 
 This round is NOT UI work — no design-reference binding applies.
 

@@ -112,6 +112,25 @@ def _cmd_propose_list(args: Any) -> None:
             print(f"Proposed task store is unreadable: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
+    try:
+        tasks = apply_list_options(
+            tasks,
+            sort=getattr(args, "sort", None), desc=getattr(args, "desc", False),
+            since=getattr(args, "since", None), until=getattr(args, "until", None),
+            limit=getattr(args, "limit", None),
+            sort_fields={
+                "created_at": lambda t: t.created_at,
+                "status": lambda t: t.status.value if hasattr(t.status, "value") else str(t.status),
+                "priority": lambda t: t.priority,
+            },
+            default_sort_field="created_at",
+            date_getter=lambda t: t.created_at.isoformat(),
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     if getattr(args, "json", False):
         print(json.dumps({
             "version": 1,

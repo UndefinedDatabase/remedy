@@ -1047,3 +1047,17 @@ class TestApprovalPolicyGrant:
             _cmd_approval_policy_grant(_ns(
                 session_id="", template_id="tmpl-001", json=True,
             ))
+
+
+class TestWorkerListOptions:
+    def test_limit_caps_returned_workers(self, capsys):
+        from apps.cli.commands import collect_all_handlers
+        collect_all_handlers()["worker.list"](_ns(json=True, limit="1"))
+        data = json.loads(capsys.readouterr().out)
+        assert len(data["providers"]) == 1
+
+    def test_unknown_sort_field_exits_nonzero(self):
+        from apps.cli.commands import collect_all_handlers
+        with pytest.raises(SystemExit) as exc:
+            collect_all_handlers()["worker.list"](_ns(json=True, sort="bogus"))
+        assert exc.value.code == 1

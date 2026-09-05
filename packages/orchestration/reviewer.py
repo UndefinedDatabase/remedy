@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -36,6 +37,7 @@ class ReviewerRecommendation:
     source: str = "reviewer"
     origin_task_id: str = ""
     status: str = "pending"  # pending, accepted, rejected
+    created_at: str = ""
 
 
 def _default_reviewer(context: dict[str, Any]) -> list[dict[str, Any]]:
@@ -105,6 +107,7 @@ def run_reviewer(
             priority=str(item.get("priority", "low")),
             source="reviewer",
             origin_task_id=after_task_id or "",
+            created_at=datetime.now(timezone.utc).isoformat(),
         )
         recs.append(rec)
 
@@ -160,6 +163,7 @@ def store_recommendations(job: Any, recs: list[ReviewerRecommendation]) -> None:
             "source": rec.source,
             "origin_task_id": rec.origin_task_id,
             "status": rec.status,
+            "created_at": rec.created_at,
         })
     _save_recommendations(job, existing)
 

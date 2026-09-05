@@ -32,6 +32,7 @@ variable and as a ``root`` argument, and never inside an expected value.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pytest
@@ -139,7 +140,7 @@ def _row(text: str, name: str) -> str:
 def test_a_manual_loop_lists_its_name_trigger_action_and_never(project, capsys):
     _write_config(project, MANUAL_JOB_LOOP)
 
-    _dispatch("loop.list")
+    _dispatch_with("loop.list", json=False)
 
     row = _row(capsys.readouterr().out, "nightly-tidy")
     assert "manual" in row
@@ -153,7 +154,7 @@ def test_a_schedule_trigger_loop_is_listed_and_marked_inert(project, capsys):
 
     _write_config(project, SCHEDULE_JOB_LOOP)
 
-    _dispatch("loop.list")
+    _dispatch_with("loop.list", json=False)
 
     out = capsys.readouterr().out
     row = _row(out, "weekly-sweep")
@@ -171,12 +172,37 @@ def test_after_one_real_firing_the_row_shows_that_run(project, capsys):
     outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=project)
     stored = storage.load_job(outcome.job.id, project)
 
-    _dispatch("loop.list")
+    _dispatch_with("loop.list", json=False)
 
     row = _row(capsys.readouterr().out, "nightly-tidy")
     assert "never" not in row
     assert stored.created_at.isoformat() in row
     assert stored.state.value in row
+
+
+def test_json_output_carries_last_run_created_at_and_state(project, capsys):
+    _write_config(project, MANUAL_JOB_LOOP)
+    (spec,) = load_loop_specs()
+    outcome = run_loop(spec, project_id="remedy", date="2026-08-13", root=project)
+    stored = storage.load_job(outcome.job.id, project)
+
+    _dispatch_with("loop.list", json=True)
+
+    data = json.loads(capsys.readouterr().out)
+    row = next(item for item in data["loops"] if item["name"] == "nightly-tidy")
+    assert row["last_run_created_at"] == stored.created_at.isoformat()
+    assert row["last_run_state"] == stored.state.value
+
+
+def test_json_output_last_run_is_null_when_never_ran(project, capsys):
+    _write_config(project, MANUAL_JOB_LOOP)
+
+    _dispatch_with("loop.list", json=True)
+
+    data = json.loads(capsys.readouterr().out)
+    row = next(item for item in data["loops"] if item["name"] == "nightly-tidy")
+    assert row["last_run_created_at"] is None
+    assert row["last_run_state"] is None
 
 
 def test_validate_reports_every_error_and_exits_non_zero(project, capsys):
@@ -321,3 +347,34 @@ def test_loop_run_is_registered_and_in_the_catalog():
 
     assert "loop.run" in handlers
     assert "loop.run" in catalog_ids
+
+
+def test_limit_caps_returned_loops(project, capsys):
+    _write_config(project, """
+[[loop]]
+name = "alpha-loop"
+
+[loop.action]
+kind = "job"
+goal_template = "alpha {project} on {date}"
+
+[[loop]]
+name = "beta-loop"
+
+[loop.action]
+kind = "job"
+goal_template = "beta {project} on {date}"
+""")
+
+    _dispatch_with("loop.list", json=True, limit="1")
+
+    data = json.loads(capsys.readouterr().out)
+    assert len(data["loops"]) == 1
+
+
+def test_unknown_sort_field_exits_nonzero(project, capsys):
+    _write_config(project, MANUAL_JOB_LOOP)
+
+    with pytest.raises(SystemExit) as exc:
+        _dispatch_with("loop.list", json=True, sort="bogus")
+    assert exc.value.code == 1

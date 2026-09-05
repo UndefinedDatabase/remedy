@@ -23,6 +23,7 @@ wants: the feature requires all errors and a nonzero exit, not the first error.
 """
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -77,8 +78,18 @@ def _trigger_label(spec: Any) -> str:
     return str(spec.trigger.kind)
 
 
-def _cmd_loop_list() -> None:
+def _cmd_loop_list(
+    *,
+    json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
+) -> None:
     """List every loop: name, trigger, action, last run. Reads, never writes."""
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
+    from packages.orchestration.loop_run import last_run_for_loop
     from packages.orchestration.loop_spec import LoopSpecError, load_loop_specs
 
     try:
@@ -87,15 +98,57 @@ def _cmd_loop_list() -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(EXIT_ERROR)
 
-    if not specs:
+    rows = []
+    for spec in specs:
+        job = last_run_for_loop(spec.name)
+        last_run_created_at = None
+        last_run_state = None
+        if job is not None:
+            last_run_created_at = getattr(
+                job.created_at, "isoformat", lambda: str(job.created_at)
+            )()
+            last_run_state = getattr(job.state, "value", job.state)
+        rows.append((spec, last_run_created_at, last_run_state))
+
+    try:
+        rows = apply_list_options(
+            rows,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "last_run_created_at": lambda r: r[1] or "",
+            },
+            default_sort_field=None,
+            date_getter=lambda r: r[1],
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    if json_output:
+        loops = [{
+            "name": spec.name,
+            "trigger": spec.trigger.kind,
+            "is_inert": spec.is_inert,
+            "action": spec.action.kind,
+            "last_run_created_at": last_run_created_at,
+            "last_run_state": last_run_state,
+        } for spec, last_run_created_at, last_run_state in rows]
+        print(json.dumps({"version": 1, "loops": loops}, sort_keys=True))
+        return
+
+    if not rows:
         print("No loops defined. Add a [[loop]] table to remedy.toml.")
         return
 
-    for spec in specs:
+    for spec, last_run_created_at, last_run_state in rows:
+        last_run_label = (
+            NEVER_RAN if last_run_created_at is None
+            else f"{last_run_created_at}  {last_run_state}"
+        )
         print(f"{spec.name:<24}  {_trigger_label(spec):<20}  "
-              f"{spec.action.kind:<8}  last run: {_last_run_label(spec.name)}")
+              f"{spec.action.kind:<8}  last run: {last_run_label}")
 
-    if any(spec.is_inert for spec in specs):
+    if any(spec.is_inert for spec, _, _ in rows):
         print(f"  ({INERT_MARK}: {INERT_TRIGGER_LEGEND})")
 
 
@@ -207,7 +260,14 @@ def _cmd_loop_run(name: str, *, project: str | None = None, yes: bool = False) -
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "loop.list": lambda args: _cmd_loop_list(),
+    "loop.list": lambda args: _cmd_loop_list(
+        json_output=args.json,
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
+    ),
     "loop.validate": lambda args: _cmd_loop_validate(),
     "loop.run": lambda args: _cmd_loop_run(
         args.name,

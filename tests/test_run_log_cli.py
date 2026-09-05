@@ -743,6 +743,131 @@ class TestRunNextTaskPatchIntentCreated:
         assert created["metadata"]["intent_count"] == 1
         assert "risk_levels" in created["metadata"]
 
+    def test_patch_intent_created_writes_created_at_on_explanation(
+        self, tmp_path, monkeypatch
+    ):
+        """Patch intent explanations carry a created_at timestamp (F262 T002)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+        job = Job(name="test", state=RunState.RUNNING)
+        task = Task(description="write readme", inputs={"task_type": "write_readme"})
+        job.tasks.append(task)
+        save_job(job)
+
+        artifact = Artifact(
+            name="task_output_write_readme",
+            content=(
+                "Summary:\n  Quick summary.\n\nProposed Changes:\n"
+                "  - Change A\n  - Change B\n\nNotes:\n  - None\n"
+            ),
+            mime_type="text/plain",
+            task_id=task.id,
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            metadata={"task_type": "write_readme", "summary": "done"},
+        )
+        task.output_artifact_ids.append(artifact.id)
+        job.artifacts.append(artifact)
+
+        ws_file = tmp_path / "fake_ws.txt"
+        ws_file.write_text("  - Change A\n  - Change B\n")
+        artifact.metadata["workspace_file"] = str(ws_file)
+        task.status = RunState.RUNNING
+
+        from packages.orchestration.patch_intent import (
+            PatchDryRunResult,
+            PatchIntent,
+            PatchIntentSet,
+        )
+        from packages.orchestration.task_runner import RunTaskResult
+        from packages.orchestration.verifier import VerificationResult
+        from packages.orchestration.workspace import MaterializedFile
+
+        run_result = RunTaskResult(job=job, task_id=task.id, changed=True)
+        vr = VerificationResult(task_id=task.id, passed=True, checks=[])
+        fake_mf = MaterializedFile(path=ws_file, content="  - Change A\n", size=14)
+
+        fake_pis = PatchIntentSet(
+            task_id=task.id,
+            artifact_id=artifact.id,
+            intents=[
+                PatchIntent(
+                    target_path="README.md",
+                    intent="Add installation section",
+                )
+            ],
+        )
+        fake_pi_mf = MaterializedFile(
+            path=tmp_path / "pi.json", content="{}", size=2
+        )
+        fake_dry_run = [
+            PatchDryRunResult(
+                target_path="README.md",
+                action="modify",
+                risk_level="medium",
+                reason="task type 'write_readme'",
+                summary="Add installation section",
+                diff_preview="--- README.md",
+            )
+        ]
+
+        def fake_finalize(r, v):
+            for t in r.job.tasks:
+                if t.id == r.task_id:
+                    t.status = RunState.COMPLETED
+
+        builder_instance = MagicMock()
+        builder_instance.model = "test-model"
+        builder_cls = MagicMock(return_value=builder_instance)
+
+        with (
+            patch(
+                "packages.providers.ollama_builder.provider.OllamaBuilder",
+                builder_cls,
+            ),
+            patch(
+                "packages.orchestration.task_runner.run_next_task",
+                return_value=run_result,
+            ),
+            patch("packages.orchestration.task_runner.annotate_task_result"),
+            patch(
+                "packages.orchestration.task_runner.materialize_task_output",
+                return_value=fake_mf,
+            ),
+            patch(
+                "packages.orchestration.verifier.verify_task_output",
+                return_value=vr,
+            ),
+            patch(
+                "packages.orchestration.task_runner.finalize_task",
+                side_effect=fake_finalize,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.derive_patch_intents",
+                return_value=fake_pis,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.verify_patch_intent_set",
+                return_value=[],
+            ),
+            patch(
+                "packages.orchestration.patch_intent.materialize_patch_intents",
+                return_value=fake_pi_mf,
+            ),
+            patch(
+                "packages.orchestration.patch_intent.generate_dry_run_preview",
+                return_value=fake_dry_run,
+            ),
+        ):
+            from apps.cli.commands.job import _cmd_run_next_task_local
+
+            _cmd_run_next_task_local(str(job.id))
+
+        from packages.orchestration.storage import load_job
+
+        reloaded = load_job(job.id)
+        explanations = reloaded.artifacts[0].metadata["patch_intent_explanations"]
+        assert explanations[0]["created_at"]
+
 
 # ---------------------------------------------------------------------------
 # Terminal-event invariant — workspace_write denial
