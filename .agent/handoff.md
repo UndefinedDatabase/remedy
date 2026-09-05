@@ -1,70 +1,70 @@
-# Handback — F259 Vocabulary & concept model v1, round 2
+# Handback — F259 Vocabulary & concept model v1, round 3
 
 ## Session
 
-`SESSION 1 of feature F259 · round 2 · rounds so far 2`
+`SESSION 1 of feature F259 · round 3 · rounds so far 3`
 
-Fortschritt: `~25 % (T001 inventory ✅ · D1-Tabelle im Review · Diagramm, T002, T003, T004 offen) — Schätzung`
+Fortschritt: `~40 % (T001 ✅ komplett · T002, T003, T004 offen) — Schätzung`
 
 Context self-assessment (operator amendment amend0905-throughput): this round
-cost far less window than round 1 — no source was read wholesale, only the block,
-four `.agent/` files and the checker output — so several more rounds of this size
-fit before a session boundary is needed.
+was the cheapest of the three — the block, four `.agent/` files, one feature file
+and one docs page were the whole read set — so the session has ample window for
+several more rounds before a boundary is needed.
 
 ## Range
 
-Review of `85b0e8b5..<the C4 commit that carries this file>`; the reviewable work
-is `85b0e8b5..da1a708a` plus this handback commit.
+Review of `e726832e..<the C4 commit that carries this file>`; the reviewable work
+is `e726832e..8de6d3e6` plus this handback commit.
 
 Branch `feature/f259-vocabulary`. No pull request exists for this branch and none
 was created — F259's pull request belongs to its closure round.
 
 ## Commits
 
-All five numbers below come from `git diff --numstat <parent> <commit>` and from
-nothing else (gate G7).
+Every `+/-` number below comes from `git diff --numstat <parent> <commit>` as
+gate G7 printed it, and from nothing else.
 
-### 5ba3100c f259: save round 2 block to authored
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f259-r2.md` | +326 / -0 | C0a — the reviewer's block file, copied with `shutil.copyfile`, never retyped |
-
-Insertions 326, under the 500 cap.
-
-### 90a1fea9 f259: mirror round 2 block to last_block
+### 2e29738b f259: save round 3 block to authored
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +269 / -406 | C0b — the same bytes mirrored as the current block |
+| `.agent/authored/f259-r3.md` | +275 / -0 | C0a — the reviewer's block file, copied with `shutil.copyfile`, never retyped |
 
-Insertions 269, under the 500 cap. C0a and C0b are separate commits this round,
-as the block requires after round 1's collapsed C0 landed 908 insertions.
+Insertions 275, under the 500 cap.
 
-### 7fb09cd6 f259: plan for round 2 - the D1 table page
-
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +18 / -18 | C1 — the PLANF259R2 slice, whole-file rewrite |
-
-Insertions 18, under the 500 cap.
-
-### 07bc4194 f259: book the round 1 PASS verdict, repair the record head, log two prose slips
+### 947e94ab f259: mirror round 3 block to last_block
 
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +3 / -0 | C2 — the blank-line repair before `## Findings`, then the GATE_R1 record appended at end of file |
-| `.agent/prose_slips.md` | +5 / -1 | C2 — SLIP1 and SLIP2 appended; the `-1` is the pre-existing last line re-emitted because the file has no final newline |
+| `.agent/last_block.md` | +186 / -237 | C0b — the same bytes mirrored as the current block |
 
-Insertions 8, under the 500 cap.
+Insertions 186, under the 500 cap. C0a and C0b are separate commits, as the block
+requires and as round 1's collapsed C0 taught.
 
-### da1a708a f259: create the vocabulary page with its binding preamble and the D1 table
+### 5e8c90b1 f259: plan for round 3 - do-not-confuse table and concept model
 
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/system/vocabulary.md` | +58 / -0 | C3 — the VOCABPAGE slice plus exactly one trailing newline; new file |
+| `.agent/plan.md` | +13 / -15 | C1 — the PLANF259R3 slice, whole-file rewrite |
 
-Insertions 58, under the 500 cap.
+Insertions 13, under the 500 cap.
+
+### c6999268 f259: book the round 2 PASS verdict and one reviewer prose slip
+
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +2 / -0 | C2 — GATE_R2 appended at end of file |
+| `.agent/prose_slips.md` | +3 / -1 | C2 — SLIP3 appended; the `-1` is the pre-existing last line re-emitted because the file has no final newline |
+
+Insertions 5, under the 500 cap.
+
+### 8de6d3e6 f259: append the do-not-confuse table and the concept model to the vocabulary page
+
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/system/vocabulary.md` | +41 / -0 | C3 — `"\n" + PAGE2 + "\n"` appended; T001 is now complete |
+
+Insertions 41, under the 500 cap.
 
 ### C4 — this commit (self-reference, R-0149 pattern)
 
@@ -74,7 +74,8 @@ Insertions 58, under the 500 cap.
 
 ## External actions
 
-- `git push -u origin feature/f259-vocabulary` after C3 — `85b0e8b5..da1a708a`,
+- `git push -u origin feature/f259-vocabulary` after C3 —
+  `e726832e..8de6d3e6  feature/f259-vocabulary -> feature/f259-vocabulary`,
   fast-forward, branch set up to track the remote.
 - `git push` after C4 — result recorded in the Verification section below.
 - `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
@@ -85,294 +86,304 @@ Insertions 58, under the 500 cap.
 
 ### G1 TRANSPORT — PASS
 
-    $ sha256sum .remedy-wt/f259-r2-block.md .agent/authored/f259-r2.md .agent/last_block.md
-    e70d84ebe4e516a685a293ef820e2a813d5ba095c24370570fb3c33a2de3e27a  .remedy-wt/f259-r2-block.md
-    e70d84ebe4e516a685a293ef820e2a813d5ba095c24370570fb3c33a2de3e27a  .agent/authored/f259-r2.md
-    e70d84ebe4e516a685a293ef820e2a813d5ba095c24370570fb3c33a2de3e27a  .agent/last_block.md
+    $ sha256sum .remedy-wt/f259-r3-block.md .agent/authored/f259-r3.md .agent/last_block.md
+    7c12b38cdc9b9f921b3fd768861898e6fdd1664f840e747a40a1fe50a88f74a2  .remedy-wt/f259-r3-block.md
+    7c12b38cdc9b9f921b3fd768861898e6fdd1664f840e747a40a1fe50a88f74a2  .agent/authored/f259-r3.md
+    7c12b38cdc9b9f921b3fd768861898e6fdd1664f840e747a40a1fe50a88f74a2  .agent/last_block.md
 
-One digest, three paths. It equals the digest this round's order stated, so the
-copy chain is unbroken.
+One digest, three paths, and it equals the digest this round's order stated, so
+the copy chain scratch → saved → mirror is unbroken.
 
-### G2 THE THREE APPENDS OF C2 — PASS, with one block expectation unmeetable as stated
+### G2 THE PAGE APPEND, BY RECONSTRUCTION — PASS
 
-Run by `.remedy-wt/f259r2_c2.py` (the edits themselves) and
-`.remedy-wt/f259r2_g2_extra.py` (the two counts under both readings):
+`.remedy-wt/f259r3_c3.py`, which performed the append and measured it:
 
-    G2 lr BEFORE repair: count('\n## Findings\n') = 1  count('\n\n## Findings\n') = 0
-    G2 lr AFTER  repair: count('\n## Findings\n') = 1  count('\n\n## Findings\n') = 1
-    G2 lr repair delta bytes: 1
-    G2 lr repair is pure insertion: True
-    G2 lr GATE_R1 prefix property: True
-    G2 lr GATE_R1 remainder == '\n' + GATE_R1 + '\n': True
-    G2 lr bytes: 819122 -> 819123 -> 823241
-    G2 ps BEFORE: bytes = 74550  ends with newline: False  final byte: b'.'
-    G2 ps prefix property: True
-    G2 ps remainder == '\n\n'+SLIP1+'\n\n'+SLIP2: True
-    G2 ps AFTER: bytes = 76469  ends with newline: False  final byte: b'.'
+    STOP exists (before C3): False
+    G2 BEFORE: bytes = 10608  ends with newline: True  final bytes: b' under `apps/`.\n'
+    G2 prefix property (pre-append bytes are a byte-exact PREFIX): True
+    G2 remainder == '\n' + PAGE2 + '\n': True
+    G2 AFTER: bytes = 14545  ends with newline: True
+    G2 delta bytes: 3937   len(PAGE2) + 2 = 3937
 
-The pre-repair readings are exactly the 1 and 0 the block asserts. The block then
-expects 0 and 1 AFTER the repair. The literal reading is **1 and 1**, not 0 and 1,
-and it cannot be otherwise: `\n\n## Findings\n` CONTAINS `\n## Findings\n` as a
-substring, so whenever the second count is 1 the first is at least 1. Nothing was
-adjusted to make the stated number appear. Both readings, from
-`.remedy-wt/f259r2_g2_extra.py`:
+Both booleans are True. 10 608 bytes before, 14 545 after — exactly the 10 608
+the block measured at `e726832e`, and the growth is exactly `len(PAGE2) + 2`.
+Nothing already in the file moved: the prefix property is what proves it.
 
-    literal str.count of '\n## Findings\n' : 1
-    literal str.count of '\n\n## Findings\n': 1
-    occurrences of '\n## Findings\n' NOT preceded by a newline: 0
-    bytes around the heading: b'\xe2\x86\x92 the closure sequence.\n\n## Findings\n\n'
+### G3 THE DIAGRAM CANNOT DRIFT — PASS, with a negative control that fires
 
-Under the non-overlapping reading — occurrences of `\n## Findings\n` that are not
-themselves preceded by a newline — the numbers ARE 0 and 1, which is what the
-block's sentence means. The repaired bytes are literally
-`…the closure sequence.\n\n## Findings\n`, exactly as ordered.
+`.remedy-wt/f259r3_g3_mermaid.py` takes the body of the single fenced
+```mermaid block of each file — the bytes between the opening fence line's
+newline and the newline preceding the closing fence, that final newline excluded
+— and reports both readings so neither is hidden:
 
-    $ grep -c '^Gate: R1 — ' .agent/live_review.md      # before C2
-    0
-    $ grep -c '^Gate: R1 — ' .agent/live_review.md      # after C2
-    1
+    $ python3 .remedy-wt/f259r3_g3_mermaid.py docs/roadmap/features/T2_F259.md docs/system/vocabulary.md
+      docs/roadmap/features/T2_F259.md
+        fenced ```mermaid blocks in file: 1
+        body bytes=309 lines=7 sha256=6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c
+        body+trailing-newline bytes=310 sha256=1da6e9ee983e53b252f5982dc0449dea1473a15b8c028b4e3d1fe42677b0a716
+        contains U+00B7 MIDDLE DOT: True
+        four-space indent lines: 6
+      docs/system/vocabulary.md
+        fenced ```mermaid blocks in file: 1
+        body bytes=309 lines=7 sha256=6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c
+        body+trailing-newline bytes=310 sha256=1da6e9ee983e53b252f5982dc0449dea1473a15b8c028b4e3d1fe42677b0a716
+        contains U+00B7 MIDDLE DOT: True
+        four-space indent lines: 6
+      EQUAL: True
+      sha256 A == sha256 B: True
 
-`git show --numstat` for C2, reported verbatim rather than asserted:
+309 bytes, seven lines, exactly one fenced mermaid block per file, and the digest
+is `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c` — the value
+the reviewer measured at `e726832e`. The byte length and line count reported here
+are what this worker's own extraction measured, not numbers copied from the block.
 
-    $ git show --numstat 07bc4194 --format='%H %s' --
-    07bc4194cd5ca678104ce6c248808554e2e39c72 f259: book the round 1 PASS verdict, repair the record head, log two prose slips
+NEGATIVE CONTROL — `.remedy-wt/f259r3_g3_negctl.py` copies the page under
+`.remedy-wt/` and turns the middle dot in `Round 1 (build · review)` into a
+hyphen; the SAME comparator then runs against the copy:
 
-    3	0	.agent/live_review.md
-    5	1	.agent/prose_slips.md
+    needle present in copy: True   occurrences: 1
+    middle dot replaced by a hyphen in .remedy-wt/vocab_broken_dot.md
+    copy still contains U+00B7 anywhere: False
 
-`.agent/prose_slips.md` still ends with `.` and not with a newline.
+    $ python3 .remedy-wt/f259r3_g3_mermaid.py docs/roadmap/features/T2_F259.md .remedy-wt/vocab_broken_dot.md
+      .remedy-wt/vocab_broken_dot.md
+        body bytes=308 lines=7 sha256=fb3933084aaf4759b8a2089e5b77e357841a024f764603d5467c9360db5d3a5b
+        contains U+00B7 MIDDLE DOT: False
+      EQUAL: False
+      sha256 A == sha256 B: False
 
-### G3 THE PAGE LANDED VERBATIM AND ROWS THE RIGHT WORDS — PASS
+One byte of difference in one character flips the comparison to False, so the
+comparison that passed on the real page is a comparison that can fail.
 
-    $ python3 -c "import filecmp; print(filecmp.cmp('docs/system/vocabulary.md', '.remedy-wt/vocabpage_expected.md', shallow=False))"
-    True
+### G4 THE DO-NOT-CONFUSE TABLE ROWS THE RIGHT PAIRS — PASS
 
-where `.remedy-wt/vocabpage_expected.md` is the VOCABPAGE slice extracted from the
-COMMITTED `.agent/authored/f259-r2.md` plus exactly one trailing newline.
+`.remedy-wt/f259r3_g4_pairs.py`, which locates the table under
+`## Do not confuse these` and reports its own measurements:
 
-`.remedy-wt/f259r2_g3_words.py`:
-
-    rows beginning with '|' on the page: 17
-    header cell: 'Word'
-    separator cell: '---'
-    word count my extraction measured: 15
-    words in file order:
-    ['Project', 'Order', 'Mission', 'Contract', 'Job', 'Plan', 'Task', 'Run', 'Round', 'Worker', 'Decision', 'Evidence', 'Gate', 'Verdict', 'Roadmap']
-
-15 words, in the order DECISION amend0905-vocab D1 names them, with no word added,
-dropped or reordered. The count 15 is what my own extraction measured, not a number
-copied from the block.
-
-### G4 EVERY MODULE AND SYMBOL THE PAGE NAMES RESOLVES — PASS, with a documented attribution rule
-
-Checker: `.remedy-wt/f259r2_g4_check.py <page>` (gitignored, never committed;
-`git ls-files .remedy-wt` returns 0 lines). It takes the page path as an argument
-so the same code runs against the real page and against a broken copy.
-
-    $ python3 .remedy-wt/f259r2_g4_check.py docs/system/vocabulary.md
-    (a) backticked spans containing a slash and ending .py: found 43 resolved 43
-    (a) distinct paths: 11
-    (b) identifiers checked: 70  found: 70  not found: 0
-    (b) NOT FOUND list: []
-    (b) STRICT reading (backticked cell paths only) not found: 3 [('contract.inspect', [...]), ('contract.check', [...]), ('contract.set', [...])]
-    TOTAL FAILURES: 0
+    rows beginning with '|' under the heading: 10
+    header cells: 3 ['Not the same', 'The difference', 'Why they get confused']
+    separator cells: 3
+    data rows: 8
+    first cells, in file order, bold markers stripped:
+        'Job / Run'
+        'Plan / Roadmap'
+        'Order / Job'
+        'Task / Round'
+        'Contract / permissions'
+        'Mission / schedule'
+        'Worker / role'
+        'template / order file'
+    length my extraction measured: 8
+    every data row splits into the header's cell count (3): True
+    equals the T2_F259.md Goal & Done pairs, in order: True
     exit=0
 
-(a) 43 spans found, 43 resolved, 11 distinct paths. Spans ending `.py` WITHOUT a
-slash — `job_plan.py`, `flight_plan.py` — are not paths and are not checked, as
-the block directs.
+Eight rows, in exactly the order T2_F259.md's Goal & Done names them, and every
+row splits into three cells like its header, so no stray unescaped pipe ate a
+column.
 
-(b) The first run of the checker used the block's literal rule — an identifier is
-checked against the modules backticked in the SAME table cell — and reported 3 not
-found: `contract.inspect`, `contract.check` and `contract.set` in the Contract row.
-Those three are catalog command ids, and the same cell attributes them in prose to
-"The catalog's `contract` group", not to the two module paths it backticks. They do
-resolve:
+### G5 THE RECORD AND THE SLIP APPENDS — PASS
 
-    $ grep -n 'contract\.inspect\|contract\.check\|contract\.set' apps/cli/command_catalog.py
-    4452:        command_id="contract.inspect",
-    4462:        related=("contract.check", "policy.contract"),
-    4465:        command_id="contract.check",
-    4478:        related=("contract.inspect",),
-    4481:        command_id="contract.set",
-    4493:        related=("contract.inspect",),
+`.remedy-wt/f259r3_c2.py`, which performed both appends and measured them:
 
-So the page is right and the checker's attribution was too coarse. The checker now
-carries an explicit, commented rule — a cell that names "catalog" in prose also
-attributes to `apps/cli/command_catalog.py` — and it reports BOTH readings on every
-run, so the strict count is never hidden. No identifier was removed from the checked
-set to make the gate pass: the checked count is 70 under both readings.
+    G5 lr BEFORE: bytes = 823241  ends with newline: True
+    G5 ps BEFORE: bytes = 76469  ends with newline: False  final byte: b'.'
+    G5 lr prefix property: True
+    G5 lr remainder == '\n' + GATE_R2 + '\n': True
+    G5 lr AFTER: bytes = 827079  ends with newline: True
+    G5 ps prefix property: True
+    G5 ps remainder == '\n\n' + SLIP3: True
+    G5 ps AFTER: bytes = 77778  ends with newline: False  final byte: b'.'
 
-NEGATIVE CONTROL (`.remedy-wt/f259r2_g4_negctl.py` builds the broken copies; the
-same checker runs against them):
+`.agent/live_review.md` 823 241 → 827 079 bytes; `.agent/prose_slips.md`
+76 469 → 77 778 bytes — both starting exactly where the block measured them — and
+the slip file still ends with `.` and no newline. Both prefix booleans and both
+remainder booleans are True.
 
-    $ python3 .remedy-wt/f259r2_g4_check.py .remedy-wt/vocab_broken_ident.md
-    (b) identifiers checked: 70  found: 69  not found: 1
-    (b) NOT FOUND list: [('GateResultZZZ', ['packages/orchestration/dod_gate.py'])]
-    TOTAL FAILURES: 1
-    exit=1
+    $ grep -c '^Gate: R2 — ' .agent/live_review.md      # before C2
+    0
+    $ grep -c '^Gate: R2 — ' .agent/live_review.md      # after C2
+    1
 
-    $ python3 .remedy-wt/f259r2_g4_check.py .remedy-wt/vocab_broken_path.md
-    (a) ... found 43 resolved 42
-    (a) NOT RESOLVED: ['packages/orchestration/dod_gate_ZZZ.py']
-    (b) identifiers checked: 69  found: 69  not found: 0
-    TOTAL FAILURES: 1
-    exit=1
+### G6 THE SUITES, RUN SERIALLY AT C3 — PASS, all seven exact
 
-Control 1 is the one the block ordered — one identifier renamed to a name that does
-not exist, exactly one failure reported. Control 2 was added by this worker to prove
-branch (a) can fail too, since the ordered control only exercises branch (b): one
-module path renamed, exactly one failure. The checker can fail, so its pass means
-something.
-
-### G5 THE SUITES, RUN SERIALLY — PASS, all seven exact
-
-Run twice: once command by command, once through `.remedy-wt/f259r2_g5_suites.py`
-so the real exit codes are captured rather than a pipeline's. Both runs agree.
+`.remedy-wt/f259r3_g6_suites.py` runs them one after another via
+`subprocess.run`, so the exit code recorded is the pytest process's own and not a
+pipeline's:
 
     tests/docs/                                    exit=0 passed=295 expected=295 OK
+        last line: 295 passed in 0.45s
     tests/orchestration/test_roadmap_index.py      exit=0 passed=30 expected=30 OK
+        last line: 30 passed in 0.42s
     tests/ui_server/                               exit=0 passed=515 expected=515 OK
+        last line: 515 passed in 33.82s
     tests/orchestration/test_test_runner.py        exit=0 passed=52 expected=52 OK
+        last line: 52 passed in 6.11s
     tests/regression/test_resource_safety.py       exit=0 passed=21 expected=21 OK
+        last line: 21 passed in 11.54s
     tests/orchestration/test_integrity_gate.py     exit=0 passed=16 expected=16 OK
+        last line: 16 passed in 0.28s
     tests/cli/test_golden_path.py                  exit=0 passed=42 expected=42 OK
+        last line: 42 passed in 21.18s
 
-Every count equals the reviewer's baseline at `85b0e8b5`. No failing node ids, no
-errors, no skips reported. The four state readers were run as four.
+Every count equals the reviewer's baseline at `e726832e`. No failing node ids, no
+errors. The four state readers were run as four, not as three.
 
-### G6 THE PLAN MEETS ITS CONTRACT — PASS
+### G7 THE PLAN AND THE STRUCTURE — PASS
 
-    $ wc -l .agent/plan.md
-    46 .agent/plan.md
-    $ grep -c '^## Goal' .agent/plan.md
-    1
-    $ grep -c '^## Next Steps' .agent/plan.md
-    1
-    $ python3 -c "import filecmp; print(filecmp.cmp('.agent/plan.md', '.remedy-wt/plan_expected.md', shallow=False))"
-    True
+`.remedy-wt/f259r3_g7_structure.py`, run immediately before C4 was staged:
 
-46 lines, under 50; one `## Goal`, one `## Next Steps`; byte-equal to the
-PLANF259R2 slice plus one trailing newline.
+    PLAN
+        wc -l .agent/plan.md -> 44 .agent/plan.md(exit=0)  under 50: True
+        grep -c '^## Goal' .agent/plan.md -> 1 (exit=0)
+        grep -c '^## Next Steps' .agent/plan.md -> 1 (exit=0)
+        filecmp.cmp(.agent/plan.md, PLANF259R3 + one newline, shallow=False) -> True
+    STRUCTURE
+        git status --porcelain -> '' (exit=0)
+        git ls-files .remedy-wt -> 0 lines (exit=0)
+        range base: e726832e e726832e9b346a40e853cd65a783aa1b4c8526c2
+        C0a 2e29738b  parents=1
+           numstat: +275 -0  .agent/authored/f259-r3.md
+           insertions=275  500-cap: OK
+        C0b 947e94ab  parents=1
+           numstat: +186 -237  .agent/last_block.md
+           insertions=186  500-cap: OK
+        C1 5e8c90b1  parents=1
+           numstat: +13 -15  .agent/plan.md
+           insertions=13  500-cap: OK
+        C2 c6999268  parents=1
+           numstat: +2 -0  .agent/live_review.md
+           numstat: +3 -1  .agent/prose_slips.md
+           insertions=5  500-cap: OK
+        C3 8de6d3e6  parents=1
+           numstat: +41 -0  docs/system/vocabulary.md
+           insertions=41  500-cap: OK
 
-### G7 STRUCTURE — PASS
+44 lines, under 50; one `## Goal`, one `## Next Steps`; byte-equal to the
+PLANF259R3 slice plus one trailing newline. Every commit is single-parent. The
+largest commit is 275 insertions, so no commit approaches the AGENTS.md
+500-insertion cap and no overage is declared. The tree was clean before C4 was
+staged; the post-push reading is recorded below. `git ls-files .remedy-wt`
+returns 0 lines, so no scratch file was committed.
 
-`.remedy-wt/f259r2_g7_structure.py`, run immediately before C4 was staged:
+    $ git push -u origin feature/f259-vocabulary        # after C3
+    To github.com:UndefinedDatabase/remedy.git
+       e726832e..8de6d3e6  feature/f259-vocabulary -> feature/f259-vocabulary
+    Branch 'feature/f259-vocabulary' set up to track remote branch 'feature/f259-vocabulary' from 'origin'.
 
-    range base: 85b0e8b5 85b0e8b511e69f1ccdd351600baae64898169f02
+    $ gh pr list --state open --json number,headRefName,baseRefName,isDraft
+    []
 
-    C0a 5ba3100c  parents=1
-       numstat: +326 -0  .agent/authored/f259-r2.md
-       insertions=326  500-cap: OK
-    C0b 90a1fea9  parents=1
-       numstat: +269 -406  .agent/last_block.md
-       insertions=269  500-cap: OK
-    C1 7fb09cd6  parents=1
-       numstat: +18 -18  .agent/plan.md
-       insertions=18  500-cap: OK
-    C2 07bc4194  parents=1
-       numstat: +3 -0  .agent/live_review.md
-       numstat: +5 -1  .agent/prose_slips.md
-       insertions=8  500-cap: OK
-    C3 da1a708a  parents=1
-       numstat: +58 -0  docs/system/vocabulary.md
-       insertions=58  500-cap: OK
-
-    git status --porcelain: ''
-    git ls-files .remedy-wt line count: 0
-
-Every commit is single-parent. No commit exceeds the 500-insertion cap, so no
-overage is declared this round — the C0a/C0b split the block ordered is exactly
-what keeps the largest at 326. The tree was clean before C4 was staged and clean
-again after the final push. `gh pr list --state open` returned `[]`; no pull
-request was created.
+No pull request was created this round; F259's PR belongs to its closure round.
 
 ## Authored-text proofs
 
-Every slice was extracted from the COMMITTED `.agent/authored/f259-r2.md` by
-marker extraction in `.remedy-wt/f259r2_extract.py`, never retyped and never
-edited:
+Every slice was extracted from the COMMITTED `.agent/authored/f259-r3.md` by
+marker extraction in `.remedy-wt/f259r3_extract.py`, never retyped, never edited
+and never routed through anything that could rewrite whitespace:
+
+    PLANF259R3   bytes=2112   lines=44  sha256=59e86a1427350c3229daf07d847b912e1bc01a7b00c353e64348c29ce98b7792
+    GATE_R2      bytes=3836   lines=1   sha256=67bef1ae6118bbb28b03911f87983f83be9c98084626c380f1934d41b82d33c0
+    SLIP3        bytes=1307   lines=1   sha256=f91d1de9b550728e7a2b56f67715bcbec7e40c2e4606e8adcb4c846acb4f1ac5
+    PAGE2        bytes=3935   lines=40  sha256=9f3293ffe456f9bbd83546f98f93c047c7be1e1f25625730f1f07905b1dbfd1d
 
 | Slice | Bytes | Lines | Applied to | Proof |
 |---|---|---|---|---|
-| `PLANF259R2` | 2244 | 46 | `.agent/plan.md`, whole file + one `\n` | `filecmp.cmp(..., shallow=False)` → True (G6) |
-| `GATE_R1` | 4116 | 1 | `.agent/live_review.md`, appended | prefix property True, remainder byte-equal to `"\n" + GATE_R1 + "\n"` (G2) |
-| `SLIP1` | 924 | 1 | `.agent/prose_slips.md`, appended | prefix property True, remainder byte-equal (G2) |
-| `SLIP2` | 991 | 1 | `.agent/prose_slips.md`, appended | prefix property True, remainder byte-equal (G2) |
-| `VOCABPAGE` | 10607 | 58 | `docs/system/vocabulary.md`, new file + one `\n` | `filecmp.cmp(..., shallow=False)` → True (G3) |
+| `PLANF259R3` | 2112 | 44 | `.agent/plan.md`, whole file + one `\n` | `filecmp.cmp(..., shallow=False)` → True (G7) |
+| `GATE_R2` | 3836 | 1 | `.agent/live_review.md`, appended | prefix property True, remainder byte-equal to `"\n" + GATE_R2 + "\n"` (G5) |
+| `SLIP3` | 1307 | 1 | `.agent/prose_slips.md`, appended | prefix property True, remainder byte-equal to `"\n\n" + SLIP3`, no trailing newline (G5) |
+| `PAGE2` | 3935 | 40 | `docs/system/vocabulary.md`, appended | prefix property True, remainder byte-equal to `"\n" + PAGE2 + "\n"` (G2); its mermaid body digest equals the feature file's (G3) |
 
-No slice was improved, rewrapped, re-punctuated or shortened.
+No slice was improved, rewrapped, re-punctuated or shortened. The mermaid block
+inside PAGE2 was written as bytes and its four-space indentation and its U+00B7
+MIDDLE DOT survive — G3 measures both.
 
 ## Item status
 
 | Item | Status | Reason |
 |--------|----------|------------------------------|
-| C0a | done | `5ba3100c` — block copied to `.agent/authored/f259-r2.md`, digest identical |
-| C0b | done | `90a1fea9` — mirrored to `.agent/last_block.md`, digest identical |
-| C1 | done | `7fb09cd6` — `.agent/plan.md` = PLANF259R2 + one newline |
-| C2 | done | `07bc4194` — blank-line repair, GATE_R1 appended, SLIP1 and SLIP2 appended, one commit |
-| C3 | done | `da1a708a` — `docs/system/vocabulary.md` created = VOCABPAGE + one newline |
+| C0a | done | `2e29738b` — block copied with `shutil.copyfile` to `.agent/authored/f259-r3.md`, digest identical |
+| C0b | done | `947e94ab` — mirrored to `.agent/last_block.md`, digest identical |
+| C1 | done | `5e8c90b1` — `.agent/plan.md` = PLANF259R3 + one newline, 44 lines |
+| C2 | done | `c6999268` — GATE_R2 appended to the record, SLIP3 appended to the slips, one commit |
+| C3 | done | `8de6d3e6` — `"\n" + PAGE2 + "\n"` appended to `docs/system/vocabulary.md`; pushed; the seven gates then ran |
 | C4 | done | this commit — handback rewritten whole, then pushed |
 
 ## Deviations & assumptions
 
 The block's ordered commit sequence was followed exactly: C0a, C0b, C1, C2, C3,
-push, gates, C4, push. No commit was added, dropped or reordered.
+push, gates, C4, push. No commit was added, dropped or reordered. Every gate the
+block ordered was executed and every reading it asked for is reported above; no
+gate was dropped, narrowed or found unmeetable this round.
 
-1. **G2's post-repair expectation is unmeetable as stated, and was reported, not
-   met.** The block expects `count('\n## Findings\n')` = 0 and
-   `count('\n\n## Findings\n')` = 1 after the repair. The literal counts are 1 and 1,
-   because the second string contains the first. Nothing on disk was changed to
-   produce the stated number; the repair is byte-exactly what the block's prose
-   describes (`…the closure sequence.\n\n## Findings\n`). Both readings are reported
-   in G2 above, including the non-overlapping reading under which the numbers are
-   0 and 1. This is a reviewer-prose arithmetic slip with no product effect; it is
-   declared here rather than appended to `.agent/prose_slips.md`, because that file
-   is the reviewer's to write and this round's change set does not authorise a
-   third line in it.
-2. **G4's attribution rule was made explicit, and both readings are reported.**
-   Under the block's literal "module in the same table cell" rule the checker
-   reported 3 identifiers not found — `contract.inspect`, `contract.check`,
-   `contract.set`. All three exist in `apps/cli/command_catalog.py`, which the same
-   cell names in prose as "The catalog's `contract` group" without backticking its
-   path. The checker now attributes a cell that says "catalog" to that module, and
-   prints the strict count on every run so nothing is hidden. The checked-identifier
-   count is 70 under both readings — no identifier was dropped from the set to
-   make the gate green. The page itself is correct; only the checker's heuristic
-   was too coarse.
-3. **One extra negative control was added.** The block ordered one — an identifier
-   renamed on a copy. Branch (a) of the checker, the path resolution, would have
-   gone unproven by that control alone, so a second control renaming a module path
-   was added. Both report exactly one failure. This is a strengthening, not a
-   narrowing.
-4. **Two shell-guard refusals, both re-expressed in Python, neither weakened.**
-   `grep -c '^Gate: R1 — ' .agent/live_review.md; echo "exit=$?"` was refused
-   verbatim with `Permission to use Bash has been denied.`; the `grep -c` was then
-   run on its own and returned 0 before C2 and 1 after. A `python3 -c` one-liner
-   containing a comprehension over `range(len(d))` was refused with the same
-   message; it was moved unchanged into `.remedy-wt/f259r2_g2_extra.py` and run
-   from there. No gate was dropped or narrowed.
-5. **`.agent/context.md` was not touched.** The Commit Gate asks whether it needs
-   an update; the branch, scope and constraints it records are unchanged from round
-   1, and the block's change set names EXACTLY seven paths and forbids any other,
-   so editing it would have been scope drift.
-6. **`docs/README.md` was deliberately not updated.** Registering
-   `docs/system/vocabulary.md` in the index is round 6's work (T004) per constraint
-   2, so the new page is intentionally unregistered for now.
-7. `.remedy-wt/` holds seven scratch files this round — the block, the extractor,
-   the C2 edit script, the three gate scripts and the two broken page copies plus
-   the two expected-output files. It is gitignored and `git ls-files .remedy-wt`
+1. **One shell-guard refusal, re-expressed in Python, nothing weakened.** The
+   command
+
+       python3 .remedy-wt/f259r3_g4_pairs.py docs/system/vocabulary.md ; echo "exit=$?"
+
+   was refused verbatim with:
+
+       Permission to use Bash has been denied. IMPORTANT: You *may* attempt to
+       accomplish this action using other tools that might naturally be used to
+       accomplish this goal, e.g. using head instead of cat. But you *should not*
+       attempt to work around this denial in malicious ways, e.g. do not use your
+       ability to run tests to execute non-test actions. You should only try to
+       work around this restriction in reasonable ways that do not attempt to
+       bypass the intent behind this denial. If you believe this capability is
+       essential to complete the user's request, STOP and explain to the user what
+       you were trying to do and why you need this permission. Let the user decide
+       how to proceed.
+
+   This is the `$?`-in-a-compound-command form the block's constraint 5 names. The
+   check was not narrowed: `f259r3_g4_pairs.py` now computes its exit code, prints
+   it as `exit=0` and then exits with that same value, so the number in the
+   transcript is the process's real status. The identical refusal was returned
+   earlier for `grep -c '^Gate: R2 — ' .agent/live_review.md ; echo "exit=$?"`,
+   and that `grep -c` was then run on its own — 0 before C2, 1 after.
+
+2. **G3's mermaid body is reported under two readings.** The block does not define
+   whether the "body" carries the newline before the closing fence. The reading
+   that reproduces the reviewer's stated 309 bytes and seven lines is the one that
+   EXCLUDES it — the same convention the block uses for its own BEGIN/END slices —
+   and that reading's digest is the stated
+   `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c`. The
+   including reading (310 bytes) is printed beside it on every run so no reading is
+   hidden; both are equal across the two files.
+
+3. **A second measurement was added to G3, not a substitute for one.** Besides the
+   two digests the block ordered, the comparator prints the number of fenced
+   ```mermaid blocks in each file (1 and 1), whether the body contains U+00B7, and
+   how many body lines carry the four-space indent (6 of 7 — the `flowchart TD`
+   line is unindented). These make the two properties the block warns about
+   directly visible rather than inferred from a digest.
+
+4. **`.agent/context.md` and `.agent/decisions.md` were not touched.** The Commit
+   Gate asks whether either needs an update; the branch, scope and constraints they
+   record are unchanged from round 2, and the block's change set names EXACTLY
+   seven paths and forbids any other, so editing either would have been scope
+   drift.
+
+5. **`docs/README.md` and `README.md` were deliberately not touched.** Registering
+   the page in the docs index and writing the diagram into `README.md` are round
+   6's work (T004) under the block's constraint 8, so the page stays unregistered
+   for now and `README.md` still carries no mermaid block.
+
+6. **Scratch files.** `.remedy-wt/` holds this round's block, the extractor, the
+   C2 and C3 edit scripts, the three gate scripts, three commit-message files, the
+   three `.bin` pre-edit snapshots, the expected-plan file and the one mutated page
+   copy. It is gitignored (`.gitignore` line 235) and `git ls-files .remedy-wt`
    returns 0 lines. Nothing was deleted by glob.
 
-Assumption: "one commit each" for C0a and C0b means the block file's own 326 lines
-land as a plain insert and the mirror as a plain rewrite, which is what the numstat
-shows; no attempt was made to shrink either.
+Assumption: "the do-not-confuse table" in G4 means the table under the
+`## Do not confuse these` heading, which is the only table PAGE2 adds; the
+extractor locates it by that heading rather than by taking the last table in the
+file, so the D1 table above it can never be measured by mistake.
 
 ## Next
 
-The reviewer gates round 2 — the round-1 verdict booking, the blank-line repair,
-the two prose slips and the new `docs/system/vocabulary.md` — and then issues the
-round-3 block: the do-not-confuse table and the Mermaid concept diagram with its
-short REMEDY_EINSTIEG-grade description, which together complete T001. Phase 1
-rule 1 (`.agent/STOP`) is checked before rule 2, as the protocol requires;
-`.agent/STOP` did not exist at any of this round's three mandated reads.
+The reviewer gates round 3 — the round-2 verdict booking, SLIP3, and the
+do-not-confuse table and concept model that complete T001 — and then issues the
+round-4 block: DECISION amend0905-vocab D2–D10 and F259 D1/D2 onto the page as
+dated paragraphs, which is T002. Phase 1 rule 1 (`.agent/STOP`) is checked before
+rule 2, as the protocol requires; `.agent/STOP` did not exist at any of this
+round's three mandated reads — before C0a, before C3 and before C4.
