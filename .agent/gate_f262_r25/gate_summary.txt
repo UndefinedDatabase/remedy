@@ -1,0 +1,146 @@
+F262 - INTEGRATION GATE, round 25, session 9
+=============================================
+
+Procedure: docs/agents/integration_gate.md, steps 1-5.
+Branch : feature/f262-list-commands-v2 at fe74206b296e1fdfb0196122db225e6425c1153f (C1's tree)
+Base   : 7c65d9ccfb512aef1c3eea0245030647332c26ea, confirmed by
+         `git merge-base main HEAD` (matches the expected value pinned
+         by this round's own constraint 5 exactly - PR 235's merge into
+         main), checked out on the throwaway branch tmp/f262-r25-base at
+         .remedy-wt/f262-r25-base (a DETACHED base worktree fails the
+         self-dogfood branch guard by design - DECISION D3, F053 R2);
+         `git worktree add -b tmp/f262-r25-base .remedy-wt/f262-r25-base
+         7c65d9cc...` ran through Python subprocess.run (exit 0, HEAD
+         7c65d9cc, branch tmp/f262-r25-base)
+
+STEP 1 - BRANCH RUN
+    command : subprocess.run(["python3", "-m", "pytest", "-n", "auto",
+              "-q"], cwd=repo root) - invoked as a subprocess for
+              isolation from this worker's own long-lived process; stdout
+              and stderr were captured by the Python call (no shell
+              redirection) and written to the session scratchpad under
+              /tmp (outside the repo worktree - R-0176), then the 40-line
+              tail was copied into this evidence dir after the run exited
+    result  : 19676 passed, 23 skipped, 0 failed (1 warning, a
+              UserWarning from model_routing.py:1392 emitted during
+              tests/orchestration/test_model_routing.py::TestTheUndeclared
+              RolePathWarnsAndAnswersConservatively - see the tail file)
+    exit    : 0
+    wall    : 163.18s (reported by pytest) / 163.80s measured around the
+              call; window (UTC) 2026-09-05 08:55:03 .. 2026-09-05 08:57:47
+
+STEP 2 - BASE RUN
+    parity restored BEFORE the run:
+      - apps/ui/node_modules copied with shutil.copytree(symlinks=True):
+        44839 entries, 27 of them symlinks PRESERVED (cp is denied here
+        and copytree defaults to symlinks=False, which would dereference
+        the npm bin shims - R-0591)
+      - apps/ui/dist copied the same way: 5 entries (4 files, 1
+        directory), 0 symlinks
+      - dist mtimes re-stamped to now (1788598700.3356388): `git worktree
+        add` stamps the checkout with the CURRENT time while copytree
+        PRESERVES source mtimes, so _frontend_is_stale() would otherwise
+        read True inside the base worktree - R-0736 (newest apps/ui/src
+        mtime in the base worktree: 1788598698.7182918, older than the
+        re-stamp). Re-measured from inside the base worktree immediately
+        after the re-stamp (a subprocess with cwd pinned to the base
+        worktree, importing packages.orchestration.ui_server directly;
+        the module resolved to .remedy-wt/f262-r25-base/packages/
+        orchestration/ui_server.py, i.e. the base worktree's own copy):
+        _frontend_is_stale() = False.
+    command : subprocess.run(["python3", "-m", "pytest", "-n", "auto",
+              "-q"], cwd=base worktree, env with
+              REMEDY_UI_NO_AUTO_BUILD=1 added to a copy of os.environ) -
+              the env var is set via a Python dict passed to the child
+              process, never via shell "FOO=1 cmd" syntax (denied in
+              this sandbox); log captured to the scratchpad the same way
+              as STEP 1 and copied in after exit
+    result  : 19601 passed, 23 skipped, 0 failed (the same 1 warning)
+    exit    : 0
+    wall    : 191.27s (reported) / 191.86s measured around the call
+    parity verified as an EVENT, not an outcome - see parity_mtime.txt:
+      run window 1788598715.6313965 .. 1788598907.4925125; no mtime under
+      apps/ui/dist falls inside it (all four are stamped at the earlier
+      restamp time, 1788598700.3356388); PARITY HOLDS (content digest
+      before/after also identical: d60df0999db7b10950afce7da0b7e2ab756739878cbe72c163fdf7ad8a0ee3b7
+      both times - accompanying only, per R-0444)
+
+STEP 3 - COMPARISON
+    branch_failed.txt      0 lines
+    base_failed.txt        0 lines
+    branch_only.txt         0 lines   (set(branch_failed) - set(base_failed))
+    fixed_by_branch.txt     0 lines   (set(base_failed) - set(branch_failed))
+    METHOD: Python set difference over the two sorted FAILED lists (the
+    procedure's piped `comm` form is refused by this sandbox's guard -
+    R-0590). A direct, unpiped `comm -13 base_failed.txt
+    branch_failed.txt` and `comm -23 ...` were ALSO run through
+    subprocess.run as a cross-check: exit 0, 0 lines each - the same
+    answer.
+
+STEP 4 - ATTRIBUTION
+    BOTH SETS ARE EMPTY. There is no branch-only id and no base-only id -
+    the branch run and the base run each finished 0 failed. No serial
+    re-run was needed (no node id to re-run) and no id could be coupled
+    to F262's changed-file list (`git diff --name-only 7c65d9cc..HEAD --
+    packages/ apps/` names 23 files; none has a failing test on either
+    side). See attribution.txt for the full accounting of why an empty
+    set still satisfies constraints 9 and 10 (there is no id to leave
+    unattributed).
+
+STEP 5 - BUDGET
+    Both runs are under the ~5 min note threshold (163.18s and 191.27s),
+    so no perf pass is indicated. The verdict itself belongs to the
+    reviewer.
+
+TEST-COUNT DELTA
+    Branch total (passed + skipped): 19676 + 23 = 19699.
+    Base total (passed + skipped): 19601 + 23 = 19624.
+    19699 - 19624 = 75 cases added by this branch across its 24 prior
+    rounds, accounted for EXACTLY by `--collect-only -q` per changed test
+    file in BOTH trees (branch = primary checkout at fe74206b, base = the
+    base worktree), 20 files named by `git diff --name-only 7c65d9cc..HEAD
+    -- tests/`:
+      4 wholly NEW test files (`git cat-file -e 7c65d9cc:<path>` non-zero
+      - absent at the base, NEW TEST files rather than regression
+      targets), 23 cases:
+        tests/cli/test_blocker_cmd.py (4)
+        tests/cli/test_decision_cmd.py (4)
+        tests/cli/test_review_cmd.py (4)
+        tests/orchestration/test_list_options.py (11)
+      15 EXISTING files (present at the base) grew by 52 cases in total:
+        tests/cli/test_config_cmd.py (14 -> 16, +2)
+        tests/cli/test_external_builder_cli.py (7 -> 11, +4)
+        tests/cli/test_loop_cmd.py (14 -> 18, +4)
+        tests/cli/test_managed_builder_execution_cli.py (10 -> 12, +2)
+        tests/cli/test_propose_cli.py (29 -> 31, +2)
+        tests/cli/test_queue_cmd.py (24 -> 28, +4)
+        tests/cli/test_real_test_execution_cli.py (6 -> 8, +2)
+        tests/cli/test_tournament_cli.py (6 -> 10, +4)
+        tests/cli/test_worker_facade_cmd.py (68 -> 70, +2)
+        tests/orchestration/test_approval_queue.py (25 -> 26, +1)
+        tests/orchestration/test_do_run.py (67 -> 68, +1)
+        tests/test_command_catalog.py (22 -> 25, +3)
+        tests/test_grouped_cli.py (511 -> 525, +14)
+        tests/test_patch_intent_approval.py (64 -> 70, +6)
+        tests/test_run_log_cli.py (61 -> 62, +1)
+      1 existing file unchanged in count: tests/docs/test_docs_consistency.py
+        (295 -> 295; only the TOTAL_FEATURES pin moved).
+    23 + 52 = 75 = the observed delta. No branch-only id required a
+    NEW-TESTS classification of its own, because branch_only.txt is
+    empty.
+
+CLEANUP
+    the base worktree was removed by its exact path (`git worktree
+    remove --force .remedy-wt/f262-r25-base`), `git worktree prune` run,
+    and the tmp/f262-r25-base branch deleted (`git branch -D`); see the
+    round's handback for the confirming `git worktree list` / `git
+    branch --list 'tmp/*'` output. The pre-existing remedy/job-*
+    worktrees under .remedy-wt/ were not touched.
+
+GATE OUTCOME (measured, not a verdict)
+    branch-only failures : 0
+    base-only failures   : 0
+    BLOCKER              : none found by this worker's own measurement -
+                            both runs finished 0 failed with UI parity
+                            held as an event throughout
+    The VERDICT on this gate belongs to the reviewer, not to this file.

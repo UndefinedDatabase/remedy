@@ -1,0 +1,38 @@
+F262 R25 integration gate - base-worktree UI parity, measured as an EVENT
+(R-0444: a content hash may accompany this reading, never replace it).
+
+Base run window (epoch): START 1788598715.6313965  END 1788598907.4925125
+                  (UTC) : START 2026-09-05 08:58:35  END 2026-09-05 09:01:47
+
+Every file under /home/decodeux/Repos/remedy/.remedy-wt/f262-r25-base/apps/ui/dist, mtime before and after:
+  assets/diffHighlightGrammars-o9XqnLhb.js before=1788598700.3356388 after=1788598700.3356388 in_window=False
+  assets/index-Bh0mkYBD.js                 before=1788598700.3356388 after=1788598700.3356388 in_window=False
+  assets/index-D_qZGOuo.css                before=1788598700.3356388 after=1788598700.3356388 in_window=False
+  index.html                               before=1788598700.3356388 after=1788598700.3356388 in_window=False
+
+Files: 4. Any mtime inside the window would VOID the parity claim.
+None is inside it, and the before/after mtime maps are identical: True.
+The mtime-before reading was taken at 1788598715.610146 (immediately before
+the run started) and the mtime-after reading at 1788598907.4965193 (immediately
+after it exited); both readings were taken by the same Python process
+that launched the run.
+Accompanying content digest (sha256 over relative path + bytes of every
+dist file, in sorted order), before and after:
+  before: d60df0999db7b10950afce7da0b7e2ab756739878cbe72c163fdf7ad8a0ee3b7
+  after:  d60df0999db7b10950afce7da0b7e2ab756739878cbe72c163fdf7ad8a0ee3b7
+  identical: True
+
+Re-stamp: all 4 dist files set to 1788598700.3356388 with os.utime after the
+copytree (R-0736); newest apps/ui/src mtime in the base worktree is
+1788598698.7182918 (older than the re-stamp).
+
+Frontend is-stale check, measured inside the base worktree immediately
+after the copy/restamp and before the base run:
+  _frontend_is_stale() = False (packages.orchestration.ui_server, invoked
+  as a subprocess with cwd pinned to the base worktree; the imported
+  module file was .remedy-wt/f262-r25-base/packages/orchestration/ui_server.py)
+
+REMEDY_UI_NO_AUTO_BUILD=1 was passed in the env dict of the base run's
+subprocess (not trusted alone - the mtime reading above is the proof).
+
+PARITY HOLDS: apps/ui/dist was not rebuilt during the base run.
