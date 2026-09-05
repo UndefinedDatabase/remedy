@@ -5,6 +5,16 @@ It plans a job, runs it through a Builder / Reviewer loop inside an isolated git
 worktree, collects verifiable evidence, and stops at a human approval gate. Nothing
 reaches your repository or your remote without you saying so.
 
+```mermaid
+flowchart TD
+    Order["Order (text or .md file)"] --> Mission["Mission (contract, plan)"]
+    Mission --> Job["Job 1..n (budget, fences, plan)"]
+    Job --> Task["Task 1..n"]
+    Task --> Run["Run (one evidence folder per task)"]
+    Run --> R1["Round 1 (build · review)"]
+    R1 --> R2["Round 2+ (repair)"]
+```
+
 **Local-first.** Everything runs on your machine. Providers (Claude CLI, Ollama) are
 optional plug-ins behind interfaces; the core has no cloud dependency.
 
