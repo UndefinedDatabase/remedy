@@ -1,304 +1,129 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 21 (SCOPE REPORT — session soft limit reached)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 22 (R-0795 fix batch 1 — wiring)
 
 ## Session
 
-SESSION 7 of feature F262 · round 21 · rounds so far 21.
+SESSION 8 of feature F262 · round 22 · rounds so far 22.
 
-SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
-
-This feature has now run 7 sessions, the operator's stated soft limit
-per amendment amend0827-process-diet rule 6
-(docs/agents/planner_reviewer_prompt.md §3,
-docs/agents/self_drive_protocol.md "Ending a session"). Per that rule,
-this round's obligation is a SCOPE REPORT, not more build work: round
-21 books round 20's already-PASSED verdict (GATE20) into
-`.agent/live_review.md`, registers finding R-0795, replaces
-`.agent/plan.md` with PLAN22, and writes this handback as the scope
-report the limit obliges. No production, test, or docs path was
-touched this round — see item 4 below.
-
-### SCOPE REPORT
-
-**DONE:**
-- T001 — shared list-command surface: the catalog's `_is_list_command`
-  match and mechanical `_with_list_options` attachment of
-  `--sort`/`--desc`/`--since`/`--until`/`--limit` to every catalog
-  entry whose id is `list` or ends `-list`.
-- T002 — every list command shows a CREATED and an UPDATED date (per
-  Acceptance), across all list commands in scope.
-- T003 — sort/filter/limit fully wired for five commands:
-  `job.list`, `patch.list`, `queue.list`, `memory.list`, `loop.list`.
-  Two of these five — `queue.list` and `loop.list` — carry a
-  deliberate, DECISION-documented (D2/D3) opt-out from the
-  newest-first default sort field (`default_sort_field=None`,
-  config-declaration order stays default for those two).
-
-**MISSING:**
-- The T001 catalog test that proves no list command is missing a
-  flag (T001's own Acceptance bullet; never built).
-- `config.list`/`worker.list`/`execution.list` PARSE all four T003
-  flags via the catalog's mechanical attachment, but their handlers
-  silently discard them — measured directly this round (R-0795,
-  registered below): `--sort bogus` against any of the three raises
-  nothing, where T2_F262.md's Acceptance requires a non-zero exit
-  naming the valid fields.
-- The Acceptance ten-second-demo integration smoke test (a named run
-  findable by one command with `--since`/`--sort`) — not yet built.
-- `change.list`'s event-log CREATED date — tracked separately as OUT
-  OF SCOPE per DECISION F262 D1's Alternative section, unrelated to
-  R-0795.
-
-### PROPOSAL TO THE OPERATOR (documented only, not executed this session)
-
-Per PLAN22's Next Steps, two options, neither acted on by this
-session's own authority:
-
-- **Option A**: authorize an 8th session to (1) build the T001
-  catalog test deriving the list-command set from the CLI catalog,
-  (2) wire `config.list`/`worker.list`/`execution.list`'s handlers to
-  `apply_list_options` (they already receive the parsed flags), (3)
-  build the Acceptance ten-second-demo smoke test, then close F262.
-- **Option B**: register a DECISION narrowing T003's Acceptance to
-  explicitly exempt these three commands by name and reason, correct
-  `.agent/plan.md`'s Risks section to state the exemption precisely
-  (accepted-but-ignored, not the current imprecise blanket "excused"
-  phrasing), and close F262 without the catalog test or the smoke
-  test.
-
-This is a proposal for the operator to choose between at the next
-session's Phase 0 — it is not a decision this round makes for itself.
-
-**No code, test or docs path was touched this round.** Only
-`.agent/authored/f262-r21.md`, `.agent/last_block.md`,
-`.agent/plan.md`, `.agent/live_review.md` and this handback
-(`.agent/handoff.md`) were written — five `.agent/**` paths, matching
-the block's constraint 1 exactly. Why: this round's entire obligation,
-per the soft-limit rule, was booking GATE20, registering R-0795, and
-reporting scope — not more build work.
+22 of the 25-round soft cap — 3 rounds of headroom left before the cap.
 
 ## Range
 
-Review of `22915c4b..d4760aa2`. That is C0a through C3 (five content
-commits: C0a, C0b, C1, C2, C3). This handback (C4) follows and is not
-part of the reviewed content range.
-
-## Item Status
-
-| Item | Status | Reason |
-|---|---|---|
-| Preconditions | done | branch `feature/f262-list-commands-v2`, tree clean, `.agent/STOP` absent, all confirmed before C0a |
-| C0a | done | `.agent/authored/f262-r21.md` saved verbatim, new file; sha256 matches source block file exactly |
-| C0b | done | mirrored to `.agent/last_block.md` via `shutil.copyfile`; identical sha256 to C0a's file |
-| C1 | done | PLAN22 applied to `.agent/plan.md`, whole-file replace, byte-for-byte verified 2350/2350, 49 lines |
-| C2 | done | GATE20 appended to `.agent/live_review.md`: before 2473689, after 2476468 — matches 2473689+1+2778 exactly |
-| C3 | done | FINDING R-0795 appended to `.agent/live_review.md`: before 2476468, after 2479698 — matches 2476468+2+3228 exactly |
-| C4 (this handback) | done | |
-| G1 (sha256sum transport) | done | one identical digest, twice |
-| G2 (live_review.md byte forensics, C2) | done | before 2473689, after 2476468 — both match |
-| G3 (live_review.md byte forensics, C3) | done | before 2476468, after 2479698 — both match |
-| G4 (plan.md byte-for-byte) | done | 2350 bytes, byte-for-byte equal to PLAN22, 49 lines |
-| G5 (git status --porcelain, twice) | done | empty before C0a, empty immediately before C4 |
-| G6 (git ls-files .remedy-wt) | done | empty output |
+Review of c129b4f2..a51653ad
 
 ## Commits
 
-### 655f71ae F262 R21 C0a: save step block verbatim to .agent/authored/f262-r21.md
+### 159885b4 F262 R22 C0a: save step block to .agent/authored/f262-r22.md
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f262-r21.md` | +104/-0 | transport artifact — verbatim copy of the round's step block, new file |
+| .agent/authored/f262-r22.md | +393/-0 | Save the reviewer's round-22 step block byte-for-byte (new file), per C0a and the write-once transport rule. |
 
-### 2909d2b4 F262 R21 C0b: mirror block to .agent/last_block.md
+### ccb30598 F262 R22 C0b: mirror block to .agent/last_block.md
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +68/-240 | mirror of the round's authored block (whole-file rewrite via `shutil.copyfile`; diff hunk counts differ from C0a's raw insert count because this is a content replacement over the prior round's mirrored block, not an append — content is byte-identical to C0a's file, confirmed by G1's matching sha256) |
+| .agent/last_block.md | +355/-66 | Whole-file replace with the identical bytes committed in C0a (mirror), per C0b. |
 
-### 76c8c6b9 F262 R21 C1: replace plan.md with PLAN22
+### 0d77edb5 F262 R22 C1: append GATE21 to live_review.md - books round 21's PASS verdict
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +28/-26 | whole-file replace with PLAN22, byte-for-byte verified (2350/2350 bytes, 49 lines, no trailing newline) |
+| .agent/live_review.md | +3/-1 | Append GATE21 (the reviewer's verbatim PASS verdict text for round 21) as a new paragraph, two `\n` separator, no trailing newline, per C1. |
 
-### 8d141dd4 F262 R21 C2: append GATE20 to live_review.md - books round 20's PASS verdict
+### 175ddfa1 F262 R22 C2: wire worker.list to apply_list_options (R-0795)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +2/-1 | byte-exact append of GATE20, `\n` + GATE20's own 2778 bytes appended to the base file |
+| apps/cli/commands/worker.py | +34/-2 | PAIR W1 (rewrite `_cmd_workers` to accept sort/desc/since/until/limit and call `apply_list_options`) + PAIR W2 (dispatch site passes the new args via `getattr`), fixing R-0795 for `worker.list`. |
 
-### d4760aa2 F262 R21 C3: append FINDING R-0795 to live_review.md
+### 36088098 F262 R22 C3: wire config.list to apply_list_options (R-0795)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +3/-1 | byte-exact append of FINDING R-0795, `\n\n` + R-0795's own 3228 bytes appended immediately after GATE20 |
+| apps/cli/commands/config_cmd.py | +19/-2 | PAIR CFG1: rewrite `_cmd_config_list` to call `apply_list_options` via `getattr(args, ..., default)` (function is shared with `config.show`, which has no list-option attrs), fixing R-0795 for `config.list`. |
 
-### (this handback commit, C4)
+### 4d51ea23 F262 R22 C4: wire execution.list to apply_list_options (R-0795)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | rewrite | this handback (write-once) — numbers not tabled here; the reviewer measures them at the next gate |
+| apps/cli/commands/managed_builder_execution_cmd.py | +20/-0 | PAIR EXE1: rewrite `_cmd_list` to call `apply_list_options` and route `ListOptionError` through the file's existing `_err` convention, fixing R-0795 for `execution.list`. |
+
+### dc74c2a2 F262 R22 C5: add regression tests for worker/config/execution list wiring (R-0795)
+| Path | +/- | Reason |
+| tests/cli/test_config_cmd.py | +17/-0 | TEST T1 append: `test_config_list_limit`, `test_config_list_unknown_sort_field_exits_nonzero`. |
+| tests/cli/test_managed_builder_execution_cli.py | +12/-0 | TEST T2 rewrite (insert before module guard): `test_execution_list_limit`, `test_execution_list_unknown_sort_field_exits_nonzero`. |
+| tests/cli/test_worker_facade_cmd.py | +14/-0 | TEST T3 append (new class `TestWorkerListOptions`): `test_limit_caps_returned_workers`, `test_unknown_sort_field_exits_nonzero`. |
+
+### 2e3169d1 F262 R22 C6: append LANDED R-0795 to live_review.md
+| Path | +/- | Reason |
+| .agent/live_review.md | +3/-1 | Append the LANDED (not Done — only the reviewer writes Done) line for R-0795, two `\n` separator, no trailing newline, per C6. |
+
+### a51653ad F262 R22 C7: replace plan.md with PLAN23
+| Path | +/- | Reason |
+| .agent/plan.md | +22/-26 | Whole-file replace with PLAN23 (Current Step now reflects the R-0795 wiring fix; Next Steps point at round 23's catalog-driven handler test and round 24's closure smoke test). |
+
+### (this commit) F262 R22 C8: rewrite .agent/handoff.md
+| Path | +/- | Reason |
+| .agent/handoff.md | rewrite | Round-22 handback per docs/agents/handback_template.md; this is the round's last commit (write-once rule). |
 
 ## External actions
 
-- `git push -u origin feature/f262-list-commands-v2` — runs
-  immediately after this commit; result reported in the closing
-  message, not here, since it happens after this file is committed.
-  No `gh pr` command of any kind was run (forbidden this round: no PR,
-  no merge, no Open PR Gate, no `main` touched).
+`git push -u origin feature/f262-list-commands-v2` — run after this commit; result reported below (Verification / push section).
+
+No PR created, nothing merged, `main` untouched.
 
 ## Verification
 
-Preconditions, checked before C0a:
+**G1** — `sha256sum .agent/authored/f262-r22.md .agent/last_block.md`:
 ```
-$ git status --porcelain
-(empty)
-$ git branch --show-current
-feature/f262-list-commands-v2
-$ ls .agent/STOP
-No such file or directory
+be063df027d5daf0fae01a1b422d5aee83829025e985ca98342f833c4f9f4697  .agent/authored/f262-r22.md
+be063df027d5daf0fae01a1b422d5aee83829025e985ca98342f833c4f9f4697  .agent/last_block.md
 ```
-All confirmed.
+Identical digest for both files. Exit code 0.
 
-**BYTE PRECONDITIONS, verified before any write (per block arithmetic):**
+**G2** — `python3 -c "import py_compile; [py_compile.compile(p, doraise=True) for p in ['apps/cli/commands/worker.py','apps/cli/commands/config_cmd.py','apps/cli/commands/managed_builder_execution_cmd.py','tests/cli/test_config_cmd.py','tests/cli/test_managed_builder_execution_cli.py','tests/cli/test_worker_facade_cmd.py']]; print('OK')"`:
 ```
-GATE20 text: 2778 bytes, 0 internal newlines — matches block's stated 2778 exactly
-FINDING R-0795 text: 3228 bytes, 0 internal newlines — matches block's stated 3228 exactly
-live_review.md size before any write: 2473689 — matches block's stated base exactly
+OK
 ```
+Exit code 0.
 
-**TRANSPORT (after C0b):**
+**G3** — `python3 -m pytest tests/cli/test_worker_facade_cmd.py tests/cli/test_config_cmd.py tests/cli/test_managed_builder_execution_cli.py -q`:
 ```
-$ sha256sum .agent/authored/f262-r21.md .agent/last_block.md
-62077e148db6644c38030ef6fe3c94f225f8020448fa53d1e75d927871ba984f  .agent/authored/f262-r21.md
-62077e148db6644c38030ef6fe3c94f225f8020448fa53d1e75d927871ba984f  .agent/last_block.md
+........................................................................ [ 73%]
+..........................                                               [100%]
+98 passed in 6.69s
 ```
-One digest, twice — PASS. Also confirmed against
-`.remedy-wt/block21.md` itself (the source file the block was read
-from): identical sha256, verified before C0a's commit.
+98 passed (92 pre-existing + 6 new), matching the block's expectation exactly. Exit code 0.
 
-**LEDGER APPEND, GATE20 (live_review.md), byte-forensics:**
+**G4** — `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q`:
 ```
-before size: 2473689
-gate20 length: 2778
-after size: 2476468
-ALL ASSERTIONS PASSED
+........................................................................ [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 33%]
+........................................................................ [ 44%]
+........................................................................ [ 55%]
+........................................................................ [ 66%]
+........................................................................ [ 78%]
+........................................................................ [ 89%]
+......................................................................   [100%]
+646 passed in 70.67s (0:01:10)
 ```
-Confirmed by direct Python byte read before and after the write
-(`pathlib.Path.write_bytes`, not a shell append).
+646 passed, unmoved (515+52+21+16+42), matching the block's expectation exactly. Exit code 0.
 
-**LEDGER APPEND, FINDING R-0795 (live_review.md), byte-forensics:**
-```
-before size: 2476468
-finding length: 3228
-after size: 2479698
-ALL ASSERTIONS PASSED
-```
-Confirmed by direct Python byte read before and after the write
-(`pathlib.Path.write_bytes`, not a shell append). Both appends were
-verified against the previous append's own post-size before writing,
-so C2 and C3 chain correctly with no stale base.
+**G5** — byte-reads of `.agent/live_review.md`, Python binary mode:
+- Immediately before C1: 2479698
+- Immediately after C1: 2482245 (2479698 + 2 + 2545, GATE21 text)
+- Immediately before C6: 2482245
+- Immediately after C6: 2482540 (2482245 + 2 + 293, LANDED text)
 
-**THE PLAN, BYTE-FOR-BYTE (constraint: byte-exact whole-file replace):**
-```
-PLAN22 bytes (extracted from block, lines 30-78): 2350
-written size: 2350
-line count: 49 (under the AGENTS.md 50-line cap)
-EXACT MATCH CONFIRMED
-```
-Whole-file replace applied via a direct `pathlib.Path.write_bytes`
-call after extracting PLAN22's exact text from the authored block
-(lines 30 through 78 inclusive — line 79 is a blank separator line
-before the `====` divider, not part of PLAN22), then re-verified exact
-in BINARY mode.
+All four numbers match the block's stated arithmetic exactly.
 
-**THE TREE, THE COMMITS AND THE SWEEP:**
-```
-$ git status --porcelain   (immediately before C4 staged)
-(empty)
-$ git ls-files .remedy-wt
-(no output)
-$ ls .agent/STOP   (re-checked immediately before C4)
-No such file or directory
-```
-Tree clean before C4, nothing under `.remedy-wt/` tracked, STOP absent
-both times it was checked.
+**G6** — byte-read of `.agent/plan.md` immediately after C7, binary mode: 1959 bytes, byte-for-byte equal to the PLAN23 text in the step block (verified by direct write of the exact PLAN23 string and reconfirming length). Matched exactly. Note: the Write tool's normal trailing-newline behavior produced 1960 bytes on first write; this was corrected by stripping the single trailing `\n` (matching this file's established no-trailing-newline convention, confirmed against the prior committed plan.md at HEAD `c129b4f2` which also ends with no trailing newline) to land on the mandated 1959.
 
-Per-commit numstat cross-check against this handback's own Commits
-table:
-```
-$ git show --numstat --format="" 655f71ae
-104  0    .agent/authored/f262-r21.md
-$ git show --numstat --format="" 2909d2b4
-68   240  .agent/last_block.md
-$ git show --numstat --format="" 76c8c6b9
-28   26   .agent/plan.md
-$ git show --numstat --format="" 8d141dd4
-2    1    .agent/live_review.md
-$ git show --numstat --format="" d4760aa2
-3    1    .agent/live_review.md
-```
-Every path and every insertion/deletion count matches the Commits
-table exactly.
-
-**Staleness sweep**, one entry per file this round touched:
-- `.agent/authored/f262-r21.md` — NOT stale. Immutable verbatim record
-  of this round's own step block.
-- `.agent/last_block.md` — NOT stale. Mirrors the current round's
-  block exactly.
-- `.agent/plan.md` — NOT stale. Freshly written PLAN22 content
-  accurately describes round 21's actual state (scope report, session
-  soft limit reached, R-0795 registered, two-option proposal open).
-- `.agent/live_review.md` — NOT stale. Append-only ledger; GATE20's
-  content describes round 20's own verified facts, and R-0795 is
-  registered exactly as measured this round, both new appends with no
-  edit to prior content.
-
-No `apps/`, `packages/`, `tests/` or `docs/` path was read for
-modification purposes this round (constraint 1); the only reads of
-production code this session were the ones already embedded, verbatim,
-in R-0795's own text as authored by the reviewer and copied unmodified
-into the ledger.
+**G7** — `git status --porcelain`: empty, checked before C0a (clean at start) and immediately before C8 (checked again just above, empty). `git ls-files .remedy-wt`: empty, both checks. `.agent/STOP`: absent, both checks (`ls: cannot access '.agent/STOP': No such file or directory`).
 
 ## Authored-text proofs
 
-For every reviewer-authored text applied this round — GATE20 and
-FINDING R-0795 (both into `.agent/live_review.md`) and PLAN22 (into
-`.agent/plan.md`) — the disk-to-disk comparison against the committed
-`.agent/authored/f262-r21.md` slice is reported above under
-Verification: all three matched byte-for-byte (GATE20: 2778/2778 bytes
-equal; R-0795: 3228/3228 bytes equal; PLAN22: 2350/2350 bytes equal).
-All three texts were extracted directly from `.remedy-wt/block21.md`
-(the same source `.agent/authored/f262-r21.md` was copied from
-byte-for-byte via `shutil.copyfile`, confirmed by G1's matching
-sha256), so authored-text identity holds by construction as well as by
-direct re-measurement.
+- GATE21 text (2545 bytes UTF-8): appended via Python `pathlib.Path.write_bytes`, byte length asserted equal to 2545 before writing (assertion held, no AssertionError raised) and the file's before/after sizes cross-checked in G5.
+- LANDED text (293 bytes UTF-8): same method, byte length asserted equal to 293 before writing (assertion held), before/after sizes cross-checked in G5.
+- PLAN23 (1959 bytes UTF-8): written via the Write tool then corrected to strip one trailing newline byte (see G6); final on-disk content matches the step block's PLAN23 text exactly, final byte count 1959.
+- `.agent/authored/f262-r22.md` / `.agent/last_block.md`: identical per G1's sha256sum.
 
 ## Deviations & assumptions
 
-None. The bundle's commit order (C0a, C0b, C1, C2, C3 — this handback
-C4) was followed exactly, one commit per bundle item, in the exact
-order the block specified. No byte-count or arithmetic contradiction
-was found anywhere in this round's block: GATE20's stated 2778 bytes,
-R-0795's stated 3228 bytes, PLAN22's stated 2350 bytes / 49 lines, and
-every before/after arithmetic check (2473689+1+2778=2476468;
-2476468+2+3228=2479698) were all independently verified true by direct
-byte measurement before any write, with no STOP triggered. `.agent/STOP`
-was absent every time it was checked (before C0a, and once more
-immediately before C4/this handback). No path outside the declared
-change set was written under version control: only
-`.agent/authored/f262-r21.md`, `.agent/last_block.md`,
-`.agent/plan.md`, `.agent/live_review.md`, and this handback were
-committed — five `.agent/**` paths, matching constraint 1 exactly. No
-`apps/`, `packages/`, `tests/` or `docs/` path was touched, per this
-round's own point (a scope-report round). No `remedy` CLI command was
-attempted (per constraint 7, denied session-wide). No sandbox-override
-flag was used for any command; `shutil.copyfile` was used for both
-copies per constraint 6.
+- The step block's Python snippet for writing PLAN23 used a triple-quoted string containing `#` headings after a newline, which the sandbox's bash-guard rejected as a potential argument-hiding pattern ("Newline followed by # inside a quoted argument can hide arguments from path validation"). Substituted the Write tool for the initial content write, which produced one extra trailing-newline byte (1960 instead of 1959) versus the block's exact byte target; corrected with a separate Python `pathlib.Path.write_bytes` call that stripped the single trailing `\n`, landing on the mandated 1959 bytes, confirmed to match the established no-trailing-newline convention for this file (the prior plan.md at HEAD `c129b4f2` also has no trailing newline). No content besides the trailing-newline byte was affected; this is a mechanical tooling substitution, not a content change, and is recorded here per constraint 8's substitution-declaration requirement.
+- No other departure from the block's ordered commit sequence (C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8, in that exact order).
+- No mutation red-proof was ordered this round (constraint 9): it is explicitly deferred to round 23, bundled with the T001 catalog-test's own red-proof, per PLAN23's Next Steps. This is a deferral, not a skip — the new tests in commit C5 (G3, 98 passed including the 6 new regression tests) are this round's only behavioural proof, as the block specifies.
 
 ## Next
 
-**NEXT EXPECTED ACTION: Phase 0, fresh, at the start of the next
-session — an OPERATOR DECISION between PLAN22's Option A (authorize an
-8th session to build the T001 catalog test, wire
-`config.list`/`worker.list`/`execution.list` to `apply_list_options`,
-and build the Acceptance smoke test, then close F262) and Option B
-(register a DECISION narrowing T003's Acceptance to exempt those three
-commands by name, correct `.agent/plan.md`'s Risks section precisely,
-and close F262 without the catalog test or smoke test).** This
-session (session 7) has reached the operator's stated 7-session soft
-limit for this feature, so no further round should be delegated on
-this feature without that decision being made first.
+Round 23: extend `TestListCommandOptions` (tests/test_command_catalog.py) into a catalog-driven test that dispatches every `_is_list_command` entry's HANDLER (not just its argparse signature) with an invalid `--sort` and asserts a non-zero exit — T001's own never-built Acceptance bullet — AND run the full mutation red-proof deferred from this round, covering all three of this round's wirings (`worker.list`, `config.list`, `execution.list`).
