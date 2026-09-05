@@ -1,0 +1,118 @@
+F259 R8 — closure precondition 6's RUN step — SU-010 self-use run evidence
+
+Job id: 1cbb6972bf7c4ffc
+Queue entry id: SU-010 (generated this round by generate_and_append_if_empty(),
+tier 1, ledger scan, R-0418; provenance "generated (self-use-generator tier 1,
+ledger scan, R-0418)"; consumed_by "" — NOT set this round, because closure
+precondition 6 requires that edit in the CLOSURE commit, which is part 2's)
+Job file path: .remedy-wt/selfuse-f259-run/SU-010.md
+(rendered by run_next_self_use_item(); byte-identical copy saved alongside this
+file as SU-010.md — 1541 bytes both, compared by a Python byte read;
+sha256 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd,
+equal to the persisted plan's job_file_sha256 in
+.data/task_jobs/1cbb6972bf7c4ffc/job.json)
+
+Note on that digest: it is the SAME sha256 and the same 1541 bytes as F262's
+SU-009 (see .agent/selfuse_f262/run.txt). That is expected, not a copy error —
+both entries are tier-1 picks of the same oldest open Low finding R-0418, so
+the generator renders the identical job body; only the queue id differs, and
+the id lives in the queue entry and the filename, not in the job markdown.
+
+Precondition-6 sequence actually executed, in order:
+
+  1. packages.orchestration.self_use_queue.next_self_use_item()
+     -> None  (the queue held nine entries, SU-001..SU-009, every one with a
+        non-empty consumed_by; so there was no pending item)
+  2. packages.orchestration.self_use_generator.generate_and_append_if_empty()
+     -> SelfUseQueueEntry SU-010, title "Address ledger finding R-0418",
+        provenance "generated (self-use-generator tier 1, ledger scan, R-0418)",
+        consumed_by ""
+     next_self_use_item() then answered SU-010, so the track is NOT exhausted.
+  3. the run (below)
+
+Invocation (python3, foreground, from the repo root; the whole script is
+.remedy-wt/f259_r8_selfuse_run.py, gitignored scratch):
+  from pathlib import Path
+  from packages.orchestration.self_use_runner import run_next_self_use_item
+  entry, job_file_path, plan = run_next_self_use_item(
+      Path(".remedy-wt/selfuse-f259-run"), repo_path=".")
+Unflagged beyond dest_dir and repo_path — no builder_name/reviewer_name/
+builder_provider/reviewer_provider/fake override/queue_path passed, and
+max_provider_calls, max_cost_usd and max_tasks were left at the function's
+own defaults. Role resolution picked the real product default provider for
+both roles (packages.orchestration.role_config.DEFAULT_PROVIDER = "ollama").
+
+Measured wall time: 107.832 s. Unlike the F262 R26 run, the measurement
+survived: the reporting code wraps every field read in its own try/except and
+writes the transcript to disk after every line, precisely so a wrong attribute
+name cannot lose a completed run again.
+  call start epoch 1788646916.114
+  call end   epoch 1788647023.946
+  plan.created_at  2026-09-05T22:21:56.194573+00:00
+  job.json final persist mtime epoch 1788647023.946
+
+Budgets in force (plan.budgets, all defaults of run_next_self_use_item, none
+overridden): max_provider_calls=6, max_cost_usd=0.5, max_total_tokens=None,
+max_wall_clock_minutes=None, deadline=None; max_tasks=1 (source=invocation).
+plan.budget_actuals: None.
+
+Provider / model actually used (from plan.execution_config; both roles'
+*_model fields are blank with source="default", meaning the real default model
+per packages.orchestration.role_config._PROVIDER_DEFAULT_MODELS["ollama"] was
+used):
+  builder:  provider=ollama (source=cli), model=<default>
+  reviewer: provider=ollama (source=cli), model=<default>
+
+Full plan.execution_config repr:
+ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama',
+reviewer_source='cli', builder_model='', builder_model_source='default',
+builder_effort='', builder_effort_source='default', reviewer_model='',
+reviewer_model_source='default', reviewer_effort='',
+reviewer_effort_source='default', repair_provider='',
+repair_provider_source='default', repair_model='',
+repair_model_source='default', repair_effort='',
+repair_effort_source='default', max_rounds=3, max_rounds_source='default',
+repair_rounds_allowed=2, repair_rounds_source='default', test_command='',
+test_command_source='default', claude_cli_write_mode='none',
+claude_cli_write_mode_source='default',
+context_strategy='task_bounded_sequential_job', timeout_sec=120,
+timeout_sec_source='default', timeout_profile='',
+timeout_profile_source='default', max_output_chars=50000,
+max_output_chars_source='default', stream_evidence=False,
+stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')
+
+Final plan.status: blocked
+Plan-level error: task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+Per-task outcome (one task, T001 — the JobPlan carries exactly one task):
+  T001 "Task 1": final_status=repair_exhausted, reviewer_verdict=fail,
+       task.status=blocked, test_passed=None, repair_rounds_used=2 of 2,
+       task.error="completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+
+packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)
+output — a tuple of length 2, NOT an empty tuple, both strings verbatim and in
+order:
+  1. "job 1cbb6972bf7c4ffc (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+  2. "T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+
+Outcome classification: BLOCKED at the normal approval gate after both repair
+rounds were used and the reviewer verdict was "fail" — the same outcome as
+every prior run of the same tier-1 R-0418 pick (SU-005..SU-009). The run was
+taken to the approval gate AND NO FURTHER: nothing was approved, nothing was
+applied, nothing was promoted. No production code changed by this run
+(result.diff persisted at 0 bytes; result_diff_path="result.diff";
+worktree_cleanup_status=retained). No consumed_by edit was made to
+scripts/self_use_queue.json this round. No R-id was registered this round; the
+reviewer decides, when gating this round, whether these two strings add
+evidence to the open R-0784 or mint a new id — precondition 6 requires that
+registration before the close, and the close is part 2.
+
+The job's own retained execution worktree (created and managed by run_job
+itself): .remedy-wt/job-1cbb6972bf7c4ffc/ on branch remedy/job-1cbb6972bf7c4ffc
+at db21957a (C4's tree) — left untouched, as every prior self-use run has left
+its own.
+
+The scratch dest_dir used only to render/plan the job file:
+.remedy-wt/selfuse-f259-run/ — untracked and ignored by the repository's
+existing `.remedy-wt/` rule (.gitignore:235); plain `git status --porcelain`
+prints nothing for it.
