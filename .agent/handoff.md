@@ -1,173 +1,320 @@
-# Handback — F259 Vocabulary & concept model v1, round 4
+# Handback — F259 Vocabulary & concept model v1, round 5 (T003)
 
 ## Session
 
-`SESSION 1 of feature F259 · round 4 · rounds so far 4`
+SESSION 1 of feature F259 · round 5 · rounds so far 5
 
-Fortschritt: `~55 % (T001 ✅ · T002 ✅ · T003, T004 offen) — Schätzung`
+Branch `feature/f259-vocabulary`, cut from `main` at `25961794`. Rounds 1-4 PASSED;
+the round-4 verdict is booked into `.agent/live_review.md` by this round's C2, per
+operator amendment amend0827-process-diet rule 1. Soft limit (25 rounds / 7
+sessions) is far away.
 
-Context self-assessment (operator amendment amend0905-throughput): the round's
-read set was the block, four `.agent/` files, one feature file and one docs page,
-plus two source files read only by script, so the session window is still wide
-and several more rounds fit before a boundary is needed.
+Fortschritt: `~75 % (T001 ✅ · T002 ✅ · T003 ✅ · T004 offen) — Schätzung`
+
+Context self-assessment: context is comfortable — this round spent it on reading
+the page and the catalog rather than on retries, and a further round of this size
+fits without a boundary.
+
+Open findings: 299 registrations against 5 `Done:` lines in `.agent/live_review.md`
+= **294 open**, unchanged this round. No new finding raised.
 
 ## Range
 
-Review of a03d8b6b..36eaa893.
+Review of `42448906..dbacffd7` (six commits; C5 adds a seventh, this file).
 
 ## Commits
 
-### 736bc124 f259: save the round 4 block to .agent/authored
+### 50a3abb2 f259: save the round 5 block to .agent/authored
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f259-r4.md | +283 / -0 | C0a — `shutil.copyfile` of `.remedy-wt/f259-r4-block.md`, never retyped |
+| `.agent/authored/f259-r5.md` | +409 / -0 | C0a — `shutil.copyfile` of the reviewer's block file, never retyped |
 
-### 145845e5 f259: mirror the round 4 block to .agent/last_block.md
+### 2a6028f7 f259: mirror the round 5 block to .agent/last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +180 / -172 | C0b — same copy; the churn is round 3's block being replaced |
+| `.agent/last_block.md` | +352 / -226 | C0b — same copy, mirrored over round 4's block |
 
-### b0641672 f259: rewrite the plan for round 4, T002
+### 32158ff6 f259: rewrite the plan for round 5 (T003)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +18 / -17 | C1 — whole rewrite from the PLANF259R4 slice |
+| `.agent/plan.md` | +18 / -21 | C1 — whole rewrite from the PLANF259R5 slice + one newline |
 
-### c1dfb765 f259: book the round 3 PASS verdict and the reviewer prose slip
+### 4f30e4f7 f259: book the round 4 PASS verdict and record DECISION F259 D3
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2 / -0 | C2 — GATE_R3 appended at end of file |
-| .agent/prose_slips.md | +3 / -1 | C2 — SLIP4 appended; the one deletion is the former last line regaining a newline, the file itself still ends without one |
+| `.agent/decisions.md` | +39 / -1 | C2 — DECISION_D3 appended as `"\n\n" + slice`, no trailing newline |
+| `.agent/live_review.md` | +2 / -0 | C2 — GATE_R4 appended as `"\n" + slice + "\n"` |
 
-### 36eaa893 f259: append the eleven rulings to the vocabulary page
+### 707ddd3e f259: add the per-word meaning table the enforced mode reads
 | Path | +/- | Reason |
 |---|---|---|
-| docs/system/vocabulary.md | +174 / -0 | C3 — RULINGS_INTRO plus the eleven script-extracted rulings |
+| `docs/system/vocabulary.md` | +35 / -0 | C3 — MEANINGS appended as `"\n" + slice + "\n"` |
 
-The final commit (C4) writes this file and cannot table itself
-(handback_template.md R-0149 exception): it changes `.agent/handoff.md` only.
-
-## Item status
-
-| Item | Status | Reason |
+### dbacffd7 f259: pin the vocabulary page against the shipped catalog
+| Path | +/- | Reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | this commit |
+| `tests/docs/test_vocabulary.py` | +240 / -0 | C4 — production code, written by the worker to the block's SPEC |
+
+### C5 (this commit) f259: round 5 handback
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | whole rewrite | C5 — a handoff cannot table the commit that writes it (R-0149) |
+
+Every commit above is SINGLE-PARENT (`git rev-list --parents -n 1` reports one
+parent each) and every one is under the 500-insertion cap: 409, 352, 18, 41, 35,
+240.
 
 ## External actions
 
-- `git push -u origin feature/f259-vocabulary` → `a03d8b6b..36eaa893`, tracking set. Second push after C4.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`. No pull request created this round, as the block orders.
-- No worktree added or removed. No `gh pr merge`, no force push, no history rewrite, no branch deletion.
+| Action | Outcome |
+|---|---|
+| `git push -u origin feature/f259-vocabulary` | `42448906..dbacffd7` — ok, tracking set |
+| `git worktree add .remedy-wt/f259-r5-redproof HEAD` | exit 0, detached at `dbacffd7` |
+| `git worktree remove .remedy-wt/f259-r5-redproof --force` + `git worktree prune` | exit 0; `git worktree list` no longer shows it |
+| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — **no pull request created this round**, as ordered |
+| push of C5 | ordered after this file is written; its result is deliberately NOT reported here (constraint 10) |
 
-## Verification
+`git worktree list` still shows ten pre-existing `remedy/job-*` dogfood worktrees
+under `.remedy-wt/`. They predate this round and were not touched.
 
-G1 TRANSPORT — `sha256sum .remedy-wt/f259-r4-block.md .agent/authored/f259-r4.md .agent/last_block.md`, exit 0. One digest three times:
-`7b58ea8e5d5d8990dc545a1f949ec05aba23d90887d8868f1c95ab9724ec2aa5`. It also equals the digest the delegation named, so the block arrived unaltered.
+## Verification — one line per gate
 
-G2 THE PAGE APPEND — `docs/system/vocabulary.md` 14 545 → 25 555 bytes; joined text 11 008 bytes; remainder 11 010. Prefix property `True`; total reconstruction `post == pre + "\n" + joined + "\n"` `True`.
+- **G1 TRANSPORT — PASS.** `sha256sum` over `.remedy-wt/f259-r5-block.md`,
+  `.agent/authored/f259-r5.md`, `.agent/last_block.md`: one digest three times,
+  `2e9aeaf94d5269d06473479693f71976d426ab4eb5e0b35c132f8e5db831ad67`.
+- **G2 RECORD + DECISION — PASS.** Measured against the committed blobs of
+  `4f30e4f7^` and `4f30e4f7`. `.agent/live_review.md`: prefix=True,
+  remainder byte-equal to `"\n" + GATE_R4 + "\n"`=True, 830 738 → 834 169 bytes;
+  `grep -c '^Gate: R4 — '` 0 → 1. `.agent/decisions.md`: prefix=True, remainder
+  byte-equal to `"\n\n" + DECISION_D3`=True, 833 794 → 836 338 bytes, still ends
+  with NO newline (final byte `.`); count of `DECISION F259 D3` 0 → 1.
+- **G3 PAGE APPEND — PASS.** prefix=True, post = pre + exactly
+  `"\n" + MEANINGS + "\n"` = True, 25 555 → 27 295 bytes. Undisturbed: exactly one
+  fenced mermaid block; its body (trailing newline stripped — see deviation 3)
+  hashes `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c`;
+  `^## ` headings in order = How to read the table, The words, Do not confuse
+  these, The concept model, The rulings, What counts as the meaning.
+- **G4 GREEN IN PLANNED MODE — PASS.** `python3 -m pytest
+  tests/docs/test_vocabulary.py -q` → **7 passed**, exit 0. `python3 -m pytest
+  tests/docs/ -q` → **302 passed**, exit 0. Arithmetic as the block ordered it:
+  295 (the count at `42448906`) + 7 (the new file) = 302, and 302 is the number
+  measured, not predicted.
+- **G5 RED PROOFS — PASS.** Four runs in a disposable worktree, full transcript
+  below. control 0 → (a) 1 failed/6 passed → (b) 2 failed/5 passed → control 0.
+- **G6 SHIPPED CATALOG, NOT A TRANSCRIPT — PASS on every clause the worker could
+  execute.** Import line, verbatim: `from apps.cli.command_catalog import CATALOG,
+  GROUPS`. Occurrences in the file: `--help` 0, `subprocess` 0, `capsys` 0,
+  `skipif` 0, `pytest.mark.skip` 0. `VOCABULARY_MODE` occurs 5 times, of which
+  module-level assignments (`^VOCABULARY_MODE\s*=`) exactly 1.
+  `python3 -m py_compile tests/docs/test_vocabulary.py` → exit 0.
+  `ruff check tests/docs/test_vocabulary.py` → REFUSED by this session's
+  permission guard (deviation 1; refusal quoted there).
+- **G7 SUITES, SERIALLY at C4 — PASS, every count exact.**
+  `tests/orchestration/test_roadmap_index.py` 30 passed exit 0 (expected 30);
+  `tests/ui_server/` 515 passed exit 0 (515); `tests/orchestration/test_test_runner.py`
+  52 passed exit 0 (52); `tests/regression/test_resource_safety.py` 21 passed exit 0
+  (21); `tests/orchestration/test_integrity_gate.py` 16 passed exit 0 (16);
+  `tests/cli/test_golden_path.py` 42 passed exit 0 (42). No failing node ids.
+- **G8 PLAN AND STRUCTURE — PASS.** `wc -l .agent/plan.md` = **42** (< 50);
+  `grep -c '^## Goal'` = 1, `grep -c '^## Next Steps'` = 1;
+  `filecmp.cmp(..., shallow=False)` against the PLANF259R5 slice + one newline =
+  **True**. `git status --porcelain` EMPTY immediately before C5 was staged;
+  `git ls-files .remedy-wt` returns nothing; all six commits single-parent; the
+  per-commit `git diff --numstat` cells are the `+/-` numbers in the Commits table
+  above; every insertion count under 500; push `42448906..dbacffd7` ok; and
+  `gh pr list --state open` = `[]`, so **no pull request was created**.
 
-G3 ELEVEN RULINGS UNEDITED — all eleven equal, source digest == page digest after restoring `## ` on the nine amend0905 headings:
-D2 `48e76936a6a1a5b0`, D3 `25bfb567fc45b5f9`, D4 `aa2885b866c18062`, D5 `1091816d5e58c8e7`, D6 `50312b57ad18e9de`, D7 `6f0894c5a2047f70`, D8 `c3a7b8be33c745b4`, D9 `7f2e0623424628f8`, D10 `6044d221fe84bef2`, F259 D1 `83bfc3c7f6f07454`, F259 D2 `c00e8779d5c8d6e6` (sha256 prefixes; equality was tested on the full digests). `rulings compared: 11, equal: 11`.
-NEGATIVE CONTROL, on `.remedy-wt/vocabulary.negctl.md` with `job plan` → `job scheme` inside D6's BODY (heading untouched): `rulings compared: 11, equal: 10`, the single unequal one being D6, page digest `7f74d74aed89205c` against source `50312b57ad18e9de`. The comparison can fail.
+## G5 — the full red-proof transcript
 
-G4 SECTIONS AND ORDER — five `## ` headings in file order: `How to read the table`, `The words`, `Do not confuse these`, `The concept model`, `The rulings`. Eleven `### ` headings in file order: amend0905-vocab D2, D3, D4, D5, D6, D7, D8, D9, D10, then F259 D1, then F259 D2 — exactly the ordered list the block requires. My own extraction measured the eleven source blocks at **10 023 bytes / 146 lines** before demotion (identical to the reviewer's a03d8b6b measurement) and 10 032 bytes / 146 lines after, +9, one byte per demoted block. Exactly one fenced `mermaid` block (opened by a triple-backtick `mermaid` line); its body is 309 bytes and hashes to `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c`, the pinned value, undisturbed.
+Isolation per guardrail G5 and constraint 5: `git worktree add
+.remedy-wt/f259-r5-redproof HEAD` (detached at `dbacffd7`); every pytest run with
+`cwd=<worktree>`, invoked as `python3 -B -m pytest`, with every `__pycache__`
+under the worktree removed immediately before each run (0 found each time — the
+worktree was freshly checked out and `-B` wrote none). The primary checkout was
+never mutated. Driver: `.remedy-wt/redproof.py`.
 
-G5 THE T002 CONDITIONAL — first line of `docs/roadmap/features/T2_F263.md`, verbatim:
-`# T2_F263 — Human-change absorption (absorb)`
-The string `absorb` occurs in it: `True`. The block's claim holds, the conditional is false, the file was not edited. `git status --porcelain` named `docs/roadmap/features/T2_F263.md` at no point this round (checked in Python against the captured status output: `names T2_F263.md: False`).
+Constraint 6 — the worktree reads ITSELF. Printed before every one of the four
+runs, identical each time:
 
-G6 RECORD AND SLIP APPENDS — `.agent/live_review.md` 827 079 → 830 738 bytes; prefix `True`, remainder `== "\n" + GATE_R3 + "\n"` `True`; `grep -c '^Gate: R3 — '` 0 on the pre-append copy, 1 on the committed file. `.agent/prose_slips.md` 77 778 → 79 043 bytes; prefix `True`, remainder `== "\n\n" + SLIP4` `True`, still no trailing newline (final byte `b'.'`).
+    CATALOG __file__ = /home/decodeux/Repos/remedy/.remedy-wt/f259-r5-redproof/apps/cli/command_catalog.py
+    test REPO       = /home/decodeux/Repos/remedy/.remedy-wt/f259-r5-redproof
+    cwd             = /home/decodeux/Repos/remedy/.remedy-wt/f259-r5-redproof
 
-G7 THE SUITES, SERIAL, at C3 — every count exact, every exit code 0:
+No path resolves into the primary checkout, so no run measured the wrong tree.
 
-    tests/docs/                                 exit=0  295 passed
-    tests/orchestration/test_roadmap_index.py   exit=0   30 passed
-    tests/ui_server/                            exit=0  515 passed
-    tests/orchestration/test_test_runner.py     exit=0   52 passed
-    tests/regression/test_resource_safety.py    exit=0   21 passed
-    tests/orchestration/test_integrity_gate.py  exit=0   16 passed
-    tests/cli/test_golden_path.py               exit=0   42 passed
+### CONTROL 1 — unmutated worktree
 
-The four state readers ran as four separate invocations. No failing node ids, so none to quote.
+    __pycache__ directories purged under the worktree: 0
+    VOCABULARY_MODE = planned
+    $ python3 -B -m pytest tests/docs/test_vocabulary.py -q     (exit 0)
+    .......                                                                  [100%]
+    7 passed in 0.22s
 
-G8 PLAN AND STRUCTURE — `wc -l .agent/plan.md` = 45, under 50. `grep -c '^## Goal'` = 1, `grep -c '^## Next Steps'` = 1. `filecmp.cmp('.agent/plan.md', <PLANF259R4 slice + one newline>, shallow=False)` = `True` (slice 2 245 bytes, file 2 246). `git status --porcelain` EMPTY immediately before C4 was staged. `git ls-files .remedy-wt` returned 0 lines. Every commit single-parent, confirmed by `git log --format='%h %p %s'`: 736bc124←a03d8b6b, 145845e5←736bc124, b0641672←145845e5, c1dfb765←b0641672, 36eaa893←c1dfb765, one parent each. Per-commit `git diff --numstat <parent> <commit>`, cell by cell, the same numbers the Commits table above carries:
+### PROOF (a) — one binding word's row deleted from the word table
 
-    a03d8b6b→736bc124   283  0  .agent/authored/f259-r4.md
-    736bc124→145845e5   180 172 .agent/last_block.md
-    145845e5→b0641672    18  17 .agent/plan.md
-    b0641672→c1dfb765     2   0 .agent/live_review.md
-    b0641672→c1dfb765     3   1 .agent/prose_slips.md
-    c1dfb765→36eaa893   174   0 docs/system/vocabulary.md
+Word removed: **Verdict**. The removed line, verbatim:
 
-Insertions against the AGENTS.md 500 cap: 283, 180, 18, 5, 174 — largest 283, no commit near the cap, no oversize declaration needed. Push: `a03d8b6b..36eaa893`, succeeded. No pull request created (`gh pr list --state open` → `[]`).
+    | **Verdict** | The Reviewer's judgement on one Round. | `Verdict` and `ReviewVerdict` in `packages/orchestration/schemas/models.py`, where `Verdict` is the literal set pass, fail, needs_repair, blocked; the field carrying it is `reviewer_verdict` in `packages/orchestration/pingpong_job.py` | unchanged | none | a Gate's result |
+
+    __pycache__ directories purged under the worktree: 0
+    VOCABULARY_MODE = planned
+    $ python3 -B -m pytest tests/docs/test_vocabulary.py -q     (exit 1)
+    =================================== FAILURES ===================================
+    ________ test_the_word_table_carries_the_fifteen_binding_words_in_order ________
+        def test_the_word_table_carries_the_fifteen_binding_words_in_order():
+    >       assert _word_rows() == BINDING_WORDS
+    E       AssertionError: assert ['Project', '..., 'Plan', ...] == ['Project', '..., 'Plan', ...]
+    E         At index 13 diff: 'Roadmap' != 'Verdict'
+    E         Right contains one more item: 'Roadmap'
+    tests/docs/test_vocabulary.py:190: AssertionError
+    =========================== short test summary info ============================
+    FAILED tests/docs/test_vocabulary.py::test_the_word_table_carries_the_fifteen_binding_words_in_order
+    1 failed, 6 passed in 0.23s
+
+Page restored afterwards; byte-identical to the original: True.
+
+### PROOF (b) — VOCABULARY_MODE flipped to "enforced" in the worktree's test
+
+    __pycache__ directories purged under the worktree: 0
+    VOCABULARY_MODE = enforced
+    $ python3 -B -m pytest tests/docs/test_vocabulary.py -q     (exit 1)
+    =================================== FAILURES ===================================
+    _________________ test_no_retired_synonym_reaches_the_catalog __________________
+        def test_no_retired_synonym_reaches_the_catalog():
+            offenders = _synonym_offenders()
+            if VOCABULARY_MODE == "enforced":
+    >           assert offenders == [], (
+                    f"retired vocabulary still reaches the catalog: {offenders}")
+    E           AssertionError: retired vocabulary still reaches the catalog: [('arg:contract.set:field:description', 'loop'), ('arg:do.job-flow:--job-file:name', 'job-file'), ('arg:do.job-plan:--job-file:name', 'job-file'), ('arg:do.job-promote:--skip-blocked:description', 'promote'), ('arg:do.plan:--task-file:name', 'task-file'), ('arg:do.promote:run_id:description', 'promote'), ('arg:do.run:--fixture-builder:description', 'loop'), ('arg:do.run:--task-file:name', 'task-file'), ('arg:dogfood.run-loop:--max-steps:description', 'loop'), ('arg:loop.run:name:description', 'loop'), ('arg:mission.run:--max-steps:description', 'loop'), ('arg:mission.run:run_id:description', 'loop'), ('command:builder-…
+    E           assert [('arg:contra...romote'), ...] == []
+    E             Left contains 64 more items, first extra item: ('arg:contract.set:field:description', 'loop')
+    tests/docs/test_vocabulary.py:223: AssertionError
+    ______ test_every_binding_word_in_a_description_carries_the_pages_meaning ______
+    =========================== short test summary info ============================
+    FAILED tests/docs/test_vocabulary.py::test_no_retired_synonym_reaches_the_catalog
+    FAILED tests/docs/test_vocabulary.py::test_every_binding_word_in_a_description_carries_the_pages_meaning
+    2 failed, 5 passed in 0.23s
+
+The offenders the message names are REAL catalog surfaces, all six retired words
+represented: `job-file` in the option names of `do.job-plan` and `do.job-flow`;
+`task-file` in the option names of `do.run` and `do.plan`; `promote` in the
+command ids and in `do.job-promote --skip-blocked`'s description and
+`do.promote run_id`'s description; `loop` as the `loop` group and in
+`mission.run` and `dogfood.run-loop` option descriptions. 64 pairs in total.
+`overnight` and `flight plan` are in the tail the assertion truncated; the full
+64 are reproducible with `_synonym_offenders()`.
+
+Test file restored afterwards; byte-identical to the original: True.
+
+### CONTROL 2 — both mutations reverted
+
+    __pycache__ directories purged under the worktree: 0
+    VOCABULARY_MODE = planned
+    $ python3 -B -m pytest tests/docs/test_vocabulary.py -q     (exit 0)
+    .......                                                                  [100%]
+    7 passed in 0.22s
+
+Worktree removed and pruned; `git worktree list` no longer lists
+`.remedy-wt/f259-r5-redproof`; `git status --porcelain` EMPTY in the primary
+checkout.
 
 ## Authored-text proofs
 
-Every applied text was extracted from the COMMITTED `.agent/authored/f259-r4.md`
-by marker extraction in Python (`.remedy-wt/f259_r4_extract.py`), never retyped:
+| Slice | Applied to | Proof |
+|---|---|---|
+| PLANF259R5 | `.agent/plan.md` (whole rewrite) | `filecmp.cmp(shallow=False)` against slice + one newline = **True** |
+| GATE_R4 | `.agent/live_review.md` (append) | committed blob = parent blob + exactly `"\n" + slice + "\n"` = **True** |
+| DECISION_D3 | `.agent/decisions.md` (append) | committed blob = parent blob + exactly `"\n\n" + slice` = **True**, no trailing newline |
+| MEANINGS | `docs/system/vocabulary.md` (append) | committed blob = parent blob + exactly `"\n" + slice + "\n"` = **True** |
 
-| Slice | Bytes | Landed in | Proof |
-|---|---|---|---|
-| PLANF259R4 | 2 245 | `.agent/plan.md` | `filecmp.cmp(..., shallow=False)` `True` against slice + one newline |
-| GATE_R3 | 3 657 | `.agent/live_review.md` | total reconstruction `True` |
-| SLIP4 | 1 263 | `.agent/prose_slips.md` | total reconstruction `True` |
-| RULINGS_INTRO | 954 | `docs/system/vocabulary.md` | total reconstruction of the whole append `True` |
+Every slice was extracted from the COMMITTED `.agent/authored/f259-r5.md` by
+marker extraction in Python (`.remedy-wt/extract.py`), never retyped. No slice was
+reworded, rewrapped or shortened. `tests/docs/test_vocabulary.py` carries no
+slice — it is production code written to the block's SPEC.
 
-The eleven rulings are NOT authored slices. They were extracted from
-`.agent/decisions.md` and `docs/roadmap/features/T2_F259.md` by
-`.remedy-wt/f259_r4_rulings.py`, which asserted nine amend0905 blocks in the
-order D2…D10 and two F259 blocks in the order D1, D2 before writing anything.
-Their fidelity proof is G3, per-ruling sha256 against the source, with a
-negative control.
+## Item-status table
+
+| Item | Status | Reason |
+|---|---|---|
+| C0a | done | `.agent/authored/f259-r5.md`, digest-identical copy |
+| C0b | done | `.agent/last_block.md`, same digest |
+| C1 | done | `.agent/plan.md` = PLANF259R5 + one newline, 42 lines |
+| C2 | done | GATE_R4 + DECISION_D3, one commit |
+| C3 | done | MEANINGS onto `docs/system/vocabulary.md` |
+| C4 | done | `tests/docs/test_vocabulary.py`, 7 tests green in planned mode |
+| C5 | done | this file; one commit, then push |
+
+No commit was added, dropped or reordered relative to the block's sequence.
 
 ## Deviations & assumptions
 
-1. **No departure from the block's ordered commit sequence.** C0a, C0b, C1, C2,
-   C3, push, gates, C4, push — exactly as ordered, five commits before the
-   handback and one for it, no extra and none dropped. Constraint 8 is honoured:
-   this handback quotes no reading that only exists after it is pushed. The
-   post-C4-push `git status --porcelain`, `git ls-files .remedy-wt` and the
-   `origin/feature/f259-vocabulary` tip are deliberately absent here and belong
-   to the reviewer's next ledger entry (planner_reviewer_prompt.md §3 item 31).
-2. **One shell-guard refusal, re-expressed in Python, no gate narrowed.** The
-   session guard denied the G7 form
-   `python3 -m pytest tests/docs/ -q 2>&1 | tail -4; echo "EXIT: ${PIPESTATUS[0]}"`
-   with, verbatim: `Permission to use Bash has been denied. IMPORTANT: You *may*
-   attempt to accomplish this action using other tools that might naturally be
-   used to accomplish this goal, e.g. using head instead of cat. But you *should
-   not* attempt to work around this denial in malicious ways, e.g. do not use
-   your ability to run tests to execute non-test actions. You should only try to
-   work around this restriction in reasonable ways that do not attempt to bypass
-   the intent behind this denial. If you believe this capability is essential to
-   complete the user's request, STOP and explain to the user what you were trying
-   to do and why you need this permission. Let the user decide how to proceed.`
-   Every suite was then run plainly for its count AND a second time under
-   `.remedy-wt/f259_r4_g7.py`, which reads `subprocess.CompletedProcess.returncode`
-   directly, so both readings G7 asks for are real. Both passes agreed on all
-   seven counts. The `$?` and `$` -anchor forms were avoided for the same reason;
-   `grep -c '^Gate: R3 — '` carries no `$` anchor and was accepted as written.
-3. **No error found in any slice.** Nothing in PLANF259R4, GATE_R3, SLIP4 or
-   RULINGS_INTRO needed declaring under constraint 1, and no ruling was touched
-   beyond step C's heading demotion.
-4. **G4's `###` count.** The eleven `### ` headings on the page are exactly the
-   eleven rulings; the page carried no `### ` heading before this round, so the
-   ordered list is complete rather than filtered.
-5. `.remedy-wt/` holds four scratch files this round —
-   `f259_r4_extract.py`, `f259_r4_rulings.py`, `f259_r4_g3.py`, `f259_r4_g7.py`,
-   plus the pre-append captures and `vocabulary.negctl.md`. All gitignored, none
-   committed, confirmed by `git ls-files .remedy-wt` returning 0 lines.
-6. `.agent/STOP` was read from disk before C0a, before C3 and before C4
-   (constraint 3). Absent all three times.
+1. **`ruff check` was REFUSED, not run** (constraint 8 / G6). Attempted twice —
+   once inside a compound command, once standalone as
+   `ruff check tests/docs/test_vocabulary.py`. Both times the session guard
+   answered, verbatim: *"Permission to use Bash has been denied. IMPORTANT: You
+   *may* attempt to accomplish this action using other tools that might naturally
+   be used to accomplish this goal, e.g. using head instead of cat. But you
+   *should not* attempt to work around this denial in malicious ways… If you
+   believe this capability is essential to complete the user's request, STOP and
+   explain to the user what you were trying to do and why you need this
+   permission."* No workaround was attempted. `python3 -m py_compile` ran and
+   returned exit 0, as constraint 8 requires either way. So `ruff check` is denied
+   to the WORKER as well as to the reviewer; the block assumed only the latter.
+2. **Two shell command FORMS were refused** (constraint 7) and re-expressed in
+   Python, with the Python reported beside its output above. (a) A compound
+   `grep …; echo "grep exit=$?"` — the `$?`-in-a-compound form; re-expressed with
+   `subprocess.run(...).returncode`, giving `grep -c '^Gate: R4 — '` exit 1 /
+   stdout 0 before the append and exit 0 / stdout 1 after. (b) A heredoc
+   containing a brace-with-quote dict literal; re-expressed as a list of tuples
+   in the file `.remedy-wt/probe_mermaid.py`. No gate was dropped or narrowed for
+   either refusal.
+3. **G3's mermaid digest needed a stated normalization.** The block asks for "its
+   body's sha256 = `6f6d59ee…`". The RAW fenced body ends with a newline and
+   hashes `1da6e9ee983e53b252f5982dc0449dea1473a15b8c028b4e3d1fe42677b0a716`; the
+   body with that trailing newline stripped hashes exactly the expected
+   `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c`. Round 4's
+   record used the stripped convention, so the page is UNCHANGED and the gate
+   passes; only the normalization was unstated. Declared so the reviewer does not
+   re-derive it.
+4. **Red proof (b) turned TWO tests red, not one.** The block requires
+   `test_no_retired_synonym_reaches_the_catalog` to fail; it does, naming real
+   offenders. `test_every_binding_word_in_a_description_carries_the_pages_meaning`
+   also fails, because it is the SECOND mode-dependent test and it too asserts
+   the opposite in enforced mode (664 violations measured). That is the SPEC's
+   designed behaviour, not damage; declared because the block named only one.
+5. **The SPEC says an argument has a `description`; `ArgDef` spells it `help`.**
+   `ArgDef` has fields `name`, `help`, `required`, `is_option`, `default`,
+   `is_flag`, `is_repeatable` — there is no `description` attribute, so reading
+   one literally would raise `AttributeError` at collection. `_catalog_surfaces()`
+   therefore reads `arg.help` as the argument's description and says so in its
+   docstring, which is where the two names meet. Same for `GroupDef.description`
+   and `CommandEntry.description`, which DO exist under those names.
+6. **The module docstring was reworded before C4 to satisfy G6.** The natural
+   phrasing of the SPEC's "no network, no provider call" clause was "no captured
+   `--help` transcript, no subprocess" — but G6 asserts the FILE contains no
+   occurrence of the strings `--help` or `subprocess`, and a docstring counts.
+   Reworded to "no captured help transcript, no child process". No behaviour
+   change; the file now contains 0 of each.
+7. **Constraint 11 held.** No catalog description was edited. The 64 synonym
+   offenders and 664 meaning violations are MEASURED and left in place; that is
+   the debt F261 pays.
+8. **Scratch files were left under the gitignored `.remedy-wt/`**, by exact path:
+   `extract.py`, `plan_expect.md`, `pre_live_review.md`, `pre_decisions.md`,
+   `pre_vocabulary.md`, `probe_mermaid.py`, `probe_spec.py`, `probe_g6.py`,
+   `redproof.py`, `gates.py`, `g8.py`, `final_checks.py`. They are the Python the
+   refused shell forms were re-expressed as, kept so the reviewer can re-run them.
+   `git ls-files .remedy-wt` returns nothing and `git status --porcelain` is
+   empty, so none of them is in the repository.
+
+No pull request was created. Nothing was force-pushed, no history was rewritten,
+no branch was deleted. `.agent/STOP` was read from disk before C0a, before C4 and
+before C5, and was absent every time.
 
 ## Next
 
-The reviewer gates this round (a03d8b6b..36eaa893) and takes the post-push
-readings constraint 8 reserves for it. Then round 5, T003:
-`tests/docs/test_vocabulary.py` in planned mode, with both red proofs
-T2_F259.md's T003 names — removing a binding word from the page must fail the
-page assertion, and flipping the mode constant to enforced against today's
-`apps/cli/command_catalog.py` must fail the synonym assertion.
+The reviewer's gate on `42448906..<C5>`, then **round 6 — T004**: the Mermaid
+block into `README.md` byte-equal to the page's, directly under the one-sentence
+description, and `docs/system/vocabulary.md` registered in `docs/README.md`.
+Round 6 writes into `README.md`, whose `Accepted in Tier 2 so far:` block is
+scanned for feature ids (R-0797): it must add no id token there. Phase 1 rule 1
+(`.agent/STOP`) is checked before rule 2 at the start of that round.
