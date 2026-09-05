@@ -16,11 +16,12 @@ runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 1 claims F260, books the F259 R10 verdict into the review record, and
-writes `.agent/f260_inventory.md` — the measured reading of every job, run and
-evidence area on disk, both job record shapes, every id shape minted, and the
-re-grepped consumer list. It rules nothing: DECISION F260 D1 and D2 are ruled in
-round 2 from this measurement.
+Round 1 claimed F260 and booked the F259 R10 verdict into the review record;
+C0a, C0b, C1 and C2 landed. It then STOPPED at gate G2 (BLOCKER): readings (b)
+and (d) of that gate are unsatisfiable as worded for a round that re-heads AND
+appends in the same commit. C3 (the STATUS claim), C4 (`.agent/f260_inventory.md`)
+and C5 (the D0 amendment) are NOT done. The inventory is still the next round's
+real work, and DECISION F260 D1 and D2 stay unruled until it exists.
 
 ## Next Steps
 
