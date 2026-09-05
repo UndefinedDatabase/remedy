@@ -224,7 +224,7 @@ end the response with:
   and as part of a round that is running anyway, and the list must come out of
   it the SAME LENGTH OR SHORTER — merging two items into one is the intended
   move, growing the list is forbidden. The list stood at 37 items on
-  2026-08-27, which is the number the next consolidation measures against.
+  2026-08-27, which is the figure the FIRST consolidation measured against.
   Reason: a checklist that grows every round is read less carefully every
   round, and it grew fastest exactly where it was already being skimmed.
   Consolidated once, at F259's closure on 2026-09-06: item 32 was merged into item
