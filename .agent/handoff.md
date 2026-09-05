@@ -1,382 +1,357 @@
-# Handback — F259 Vocabulary & concept model v1, round 6 (T004)
+# Handback — F259 Vocabulary & concept model v1, round 7 (INTEGRATION GATE)
 
 ## Session
 
-SESSION 1 of feature F259 · round 6 · rounds so far 6
+SESSION 1 of feature F259 · round 7 · rounds so far 7
 
-Branch `feature/f259-vocabulary`, cut from `main` at `25961794`. Rounds 1-5 PASSED;
-the round-5 verdict is booked into `.agent/live_review.md` by this round's C2, per
-operator amendment amend0827-process-diet rule 1. Soft limit (25 rounds / 7
-sessions) is far away.
+Context self-assessment: context is comfortable — this round spent most of its
+budget waiting on two full-suite runs rather than on reading, and there is ample
+room left for the closure sequence.
 
-Fortschritt: `~90 % (T001 ✅ · T002 ✅ · T003 ✅ · T004 ✅ · Integration Gate + Closure offen) — Schätzung`
-
-Context self-assessment: context is comfortable — this round was byte work over
-four small files with no retries, and further rounds of this size fit without a
-session boundary.
-
-Open findings: 299 registrations against 5 `Done:` lines in `.agent/live_review.md`
-= **294 open**, unchanged this round. No new finding raised. Three reviewer prose
-slips (SLIP5-SLIP7) appended to `.agent/prose_slips.md`, which spends no id
-(amend0827-process-diet rule 2).
-
-T004 is complete. F259's build work is done; only the integration gate and the
-closure sequence remain.
+State block, verbatim as the block ordered:
+`~95 % (T001–T004 ✅ · Integration Gate gelaufen · Closure offen) — Schätzung`
 
 ## Range
 
-Review of cc8834bf..549e39d9
+Review of 6e6e73ae..0cc0bdd2
 
 ## Commits
 
-Seven commits, all single-parent, all pushed. The C6 commit that writes this file
-cannot table itself (R-0149 pattern) and is listed last without its own numbers.
-
-### 34215224 f259: save round 6 block to .agent/authored
+### c2a3b4d9 f259: save the round 7 integration-gate block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f259-r6.md | +344 -0 | C0a — the round's block saved by `shutil.copyfile`, never retyped |
+| .agent/authored/f259-r7.md | +266 / -0 | C0a — the block file copied byte for byte from `.remedy-wt/f259-r7-block.md` (shutil.copyfile, never retyped) |
 
-### 1cde0bd7 f259: mirror round 6 block to .agent/last_block.md
+### 3f7e8546 f259: mirror the round 7 block to last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +268 -333 | C0b — same bytes mirrored to the last-block slot |
+| .agent/last_block.md | +224 / -302 | C0b — mirror of the committed authored file; the -302 is the round-6 block it replaces |
 
-### 57ad83f7 f259: plan.md for round 6, T004
+### 41f7b57a f259: plan for the round 7 integration gate
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +20 -20 | C1 — whole rewrite from the PLANF259R6 slice + one newline |
+| .agent/plan.md | +25 / -27 | C1 — whole rewrite from the PLANF259R7 slice, one trailing newline |
 
-### 776d4711 f259: book the round 5 PASS verdict and three reviewer prose slips
+### 490f7f27 f259: book the round 6 gate verdict in the record
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2 -0 | C2 — `"\n" + GATE_R5 + "\n"` appended at end of file |
-| .agent/prose_slips.md | +7 -1 | C2 — `"\n\n"+SLIP5+"\n\n"+SLIP6+"\n\n"+SLIP7`, still no trailing newline |
+| .agent/live_review.md | +2 / -0 | C2 — the GATE_R6 record appended at end of file |
 
-### 91fecaa4 f259: put the concept diagram into the README under the description
+### 0cc0bdd2 f259: integration gate evidence for round 7
 | Path | +/- | Reason |
 |---|---|---|
-| README.md | +10 -0 | C3 — the READMEBLOCK mermaid fence inserted between the description paragraph and `**Local-first.**` |
+| .agent/gate_f259_r7/attribution.txt | +94 / -0 | C3 — every branch-only and base-only id, the comm route, the R-0176 disclosure |
+| .agent/gate_f259_r7/base_parity.txt | +107 / -0 | C3 — symlink count, mtime relation, dist mtime window, teardown |
+| .agent/gate_f259_r7/base_tail.txt | +45 / -0 | C3 — base run raw tail, exit code, wall time |
+| .agent/gate_f259_r7/branch_tail.txt | +45 / -0 | C3 — branch run raw tail, exit code, wall time |
+| .agent/gate_f259_r7/base_failed.txt | +0 / -0 | C3 — empty: no base failures |
+| .agent/gate_f259_r7/branch_failed.txt | +0 / -0 | C3 — empty: no branch failures |
+| .agent/gate_f259_r7/comm_13.txt | +0 / -0 | C3 — empty: no branch-only failures |
+| .agent/gate_f259_r7/comm_23.txt | +0 / -0 | C3 — empty: no base-only failures |
 
-### 8972af01 f259: register the vocabulary page in the doc index tables
-| Path | +/- | Reason |
-|---|---|---|
-| docs/README.md | +2 -0 | C4 — QUICKFIND and SYSTABLE rows for `system/vocabulary.md` |
+### C4 — this handback
+The commit that writes `.agent/handoff.md` cannot table itself (R-0149 pattern).
+It touches exactly one path, `.agent/handoff.md`, and nothing else.
 
-### 549e39d9 f259: pin the README concept diagram byte-equal to the vocabulary page
-| Path | +/- | Reason |
-|---|---|---|
-| tests/docs/test_vocabulary.py | +14 -0 | C5 — the `README` constant and one new test, written to the SPEC |
-
-### C6 (this file)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | — | C6 — the round-6 handback; a handoff cannot table its own commit |
+Insertion counts against the 500 cap: C0a 266, C0b 224, C1 25, C2 2, C3 291.
+Every commit is under the cap; no oversize declaration is needed. Every commit
+is single-parent:
+c2a3b4d9←6e6e73ae, 3f7e8546←c2a3b4d9, 41f7b57a←3f7e8546, 490f7f27←41f7b57a,
+0cc0bdd2←490f7f27.
 
 ## External actions
 
-| Command | Outcome |
+- `git worktree add -b tmp/f259-base-gate .remedy-wt/f259-base-gate 25961794`
+  → created on a THROWAWAY BRANCH, not detached. `rev-parse HEAD` =
+  259617949461c993f1b8dabcf659e6a73110b162, `branch --show-current` =
+  tmp/f259-base-gate.
+- `git worktree remove --force .remedy-wt/f259-base-gate` → removed; the path no
+  longer exists.
+- `git branch -D tmp/f259-base-gate` → "Deleted branch tmp/f259-base-gate (was
+  25961794)." No other branch was deleted.
+- `git worktree prune` → exit 0.
+- `git worktree list` → the primary checkout plus the ten pre-existing
+  `remedy/job-*` worktrees and nothing else.
+- `git push -u origin feature/f259-vocabulary` → `6e6e73ae..0cc0bdd2`; HEAD and
+  `origin/feature/f259-vocabulary` both at 0cc0bdd2.
+- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` → `[]`.
+  NO pull request was created. F259's PR belongs to the closure round.
+
+## Verification — one line per gate, real readings
+
+**G1 TRANSPORT — PASS.** `sha256sum` over three paths, one digest three times:
+`a8c08ea7d75b5c051a25a3e3c4ba347f80e38f8fb4e23bd07d2acb88cab09f39` for
+`.remedy-wt/f259-r7-block.md`, `.agent/authored/f259-r7.md` and
+`.agent/last_block.md`. The digest equals the one the order stated, so the block
+was executed as written.
+
+**G2 THE RECORD APPEND — PASS.** `.agent/live_review.md` 839318 bytes before,
+843886 after (+4568). Pre-append bytes are a byte-exact PREFIX of the post-append
+bytes: **True**. Remainder equals exactly `"\n" + GATE_R6 + "\n"`: **True**.
+`grep -c '^Gate: R6 — ' .agent/live_review.md` went from **0** to **1**.
+
+**G3 THE BRANCH RUN — PASS, exit 0.** `python3 -m pytest -n auto -q` in the
+PRIMARY checkout at `/home/decodeux/Repos/remedy`.
+Raw tail: `19694 passed, 23 skipped, 1 warning in 134.50s (0:02:14)`.
+Exit code **0**; wall time **135.2 s** (23:54:49 → 23:57:04).
+`branch_failed.txt` line count: **0**.
+`git status --porcelain` immediately before the run: **empty**. Immediately
+after: **empty**. The primary checkout was never mutated.
+
+**G4 THE BASE RUN WITH REAL PARITY — PASS, exit 0.** See the full parity
+transcript below. `REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q` with
+the worktree as cwd. Raw tail: `19686 passed, 23 skipped, 1 warning in 161.68s
+(0:02:41)`. Exit code **0**; wall time **162.3 s** (23:58:06 → 00:00:49).
+`base_failed.txt` line count: **0**.
+
+**G5 COMPARE — PASS.** `comm_13.txt` **0 lines**, `comm_23.txt` **0 lines**.
+Both lists reproduced in full below. No base-only id needs attribution, so no
+unattributed `comm -23` id blocks the verdict.
+
+**G6 ATTRIBUTION — PASS, vacuously and stated as such.** `comm_13.txt` is EMPTY.
+There is no branch-only id to re-run serially, no xdist-flake to record, and no
+reproducible branch-only failure coupled to this feature's code. Constraint 10
+(BLOCKER) is **not** triggered.
+
+**G7 THE EVIDENCE DIRECTORY — PASS.** `.agent/gate_f259_r7/`:
+
+| File | Bytes | Lines |
+|---|---|---|
+| attribution.txt | 4859 | 94 |
+| base_failed.txt | 0 | 0 |
+| base_parity.txt | 5894 | 107 |
+| base_tail.txt | 3190 | 45 |
+| branch_failed.txt | 0 | 0 |
+| branch_tail.txt | 3126 | 45 |
+| comm_13.txt | 0 | 0 |
+| comm_23.txt | 0 | 0 |
+
+Every file named in the block exists (missing: none); no unexpected extra file;
+no file name ends in `.log`: **True**. Truncation check — the line count in the
+file equals the count reported in G3/G4/G5 for all four of `branch_failed.txt`,
+`base_failed.txt`, `comm_13.txt`, `comm_23.txt` (0 = 0 in each case).
+
+**G8 THE PLAN AND THE STRUCTURE — PASS.** `wc -l .agent/plan.md` = **40**, under
+50. `## Goal` heading count **1**; `## Next Steps` heading count **1**.
+`filecmp.cmp(plan.md, slice+newline, shallow=False)` = **True**; trailing
+newline count **1**. `git status --porcelain` immediately before C4 was staged:
+**empty**. `git ls-files .remedy-wt` returns **nothing**. Every commit
+single-parent (listed above). Per-commit `git diff --numstat` reported cell by
+cell in the Commits table above. Push result and the empty `gh pr list` are in
+External actions.
+
+## The complete branch-only and base-only lists
+
+**BRANCH-ONLY (`comm -13 base_failed.txt branch_failed.txt`) — comm_13.txt:**
+
+    <EMPTY — 0 lines. There are no branch-only failures.>
+
+Stated explicitly because an empty list still gets stated: both suites ran in
+full and both exited 0, so there is nothing to attribute. No id was omitted,
+sampled or headed.
+
+**BASE-ONLY (`comm -23 base_failed.txt branch_failed.txt`) — comm_23.txt:**
+
+    <EMPTY — 0 lines. There are no base-only failures.>
+
+Attribution of the empty base-only list: no id requires assignment to the
+environment class. The emptiness is itself the evidence that the corrected
+parity recipe worked. Had `integration_gate.md` step 3 been followed literally,
+R-0736 predicts ~114 false `tests/ui_server/` failures here and R-0591 a further
+7 from dereferenced `.bin` shims — 121 ids that would all have landed in this
+list. The pre-fix measurement in the parity transcript below shows the first
+mechanism was live and was disarmed.
+
+**Corroborating delta:** branch 19694 passed − base 19686 passed = **8**, and
+`tests/docs/test_vocabulary.py` collects exactly **8 tests** and does not exist
+at the merge base. Skips are 23 on both sides. The two runs differ by F259's own
+new tests and by nothing else.
+
+## The full parity transcript (G4)
+
+**Worktree creation.** `git worktree add -b tmp/f259-base-gate
+.remedy-wt/f259-base-gate 25961794` — ON A THROWAWAY BRANCH, never detached
+(a detached base worktree fails the self-dogfood branch guard for the wrong
+reason, DECISION D3 / F053 R2). Confirmed: HEAD
+259617949461c993f1b8dabcf659e6a73110b162, current branch `tmp/f259-base-gate`.
+
+**(i) The copy, with the argument named.**
+
+    shutil.copytree(<primary>/apps/ui/node_modules, <wt>/apps/ui/node_modules, symlinks=True)
+    shutil.copytree(<primary>/apps/ui/dist,         <wt>/apps/ui/dist,         symlinks=True)
+
+SYMLINK COUNT under `apps/ui/node_modules/.bin` AFTER the copy —
+primary checkout **23** symlinks of 23 entries; base worktree **23** symlinks of
+23 entries; counts equal **True**; name sets equal **True**. This matches the 23
+the reviewer measured at 6e6e73ae. A count of 0 would have meant the copy
+dereferenced them and the parity was void; it did not.
+
+**(ii) The R-0736 mtime fix — the relation the code actually reads.**
+`packages/orchestration/ui_server.py::_frontend_is_stale` was read on disk and
+returns True when any file under `apps/ui/src/` is newer than
+`apps/ui/dist/index.html` — it compares against `index.html` alone.
+
+Measured in the worktree BEFORE the fix:
+
+| Reading | Value |
 |---|---|
-| `git push -u origin feature/f259-vocabulary` (after C5) | exit 0 — `cc8834bf..549e39d9  feature/f259-vocabulary -> feature/f259-vocabulary` |
-| `git worktree add --detach .remedy-wt/f259-r6-redproof 549e39d9` | exit 0 — G6's disposable worktree |
-| `git worktree remove --force .remedy-wt/f259-r6-redproof` | exit 0 |
-| `git worktree prune` | exit 0 |
-| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | exit 0 — `[]` |
-| PR create / edit / merge | **None.** No pull request was created; F259's PR belongs to its closure round. |
-| `git push` (after C6) | run after this file is committed; its result is not reported here, because C6 may report no reading that only exists after it is pushed |
+| `apps/ui/src` file count | 142 |
+| newest src file | `apps/ui/src/types/react-force-graph-2d.d.ts` |
+| newest src mtime | 1788645445.454480 (2026-09-05 23:57:25) |
+| `dist/index.html` mtime | 1788057215.853621 (2026-08-30 04:33:35) |
+| staleness relation holds | **True** — staleness WOULD have fired |
 
-## Verification
+That is R-0736 reproduced directly: the copied dist is byte-correct and
+mtime-STALE, because `copytree` preserves source mtimes while `git worktree add`
+stamps checked-out sources with the checkout time.
 
-One line per ordered gate, each executed, with its real reading.
+The fix, applied as the block ordered — every mtime under `apps/ui/dist` set to
+newest_src + 120 s = **1788645565.454480** (2026-09-05 23:59:25). AFTER the fix:
+`dist/index.html` strictly newer than the newest src file **True**; staleness
+relation holds **False**.
 
-**G1 TRANSPORT — PASS.** `sha256sum` over the three paths, one digest three times:
-`96a4ddf9376d64a0d722251ccab71d27482c098644ae82a87194c1f96224f44e` for
-`.remedy-wt/f259-r6-block.md`, `.agent/authored/f259-r6.md` and
-`.agent/last_block.md`, all 28 255 bytes. Copy chain, never a retype.
+**(iii) The dist mtime WINDOW around the base run.** Run window
+1788645486.731395 (23:58:06) → 1788645649.020247 (00:00:49).
 
-**G2 THE README INSERTION — PASS.** Anchor count BEFORE = 1, AFTER = 0. README
-13 893 → 14 219 bytes (delta 326 = len(READMEBLOCK) 324 + the two added newlines),
-still ending in exactly one newline. Reconstruction
-`before.replace(ANCHOR, REPLACEMENT, 1) == disk` → **True**: nothing else in the
-file differs. Mermaid body digests, under the block's stated convention (the bytes
-between the opening fence's newline and the newline before the closing fence), all
-309 bytes / seven lines:
-`README.md` → `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c`;
-`docs/system/vocabulary.md` → same; `docs/roadmap/features/T2_F259.md` → same;
-each equals the block's pin. The U+00B7 MIDDLE DOT and the four-space indentation
-landed unchanged (bytes were extracted and written; no re-indent, no normalisation).
-
-**G3 THE INDEX PAIRS — PASS.**
-QUICKFIND: FROM count before = 1; `TO contains FROM: true` → **APPEND**; FROM count
-after = 1; the new row `| vocabulary | [vocabulary.md](system/vocabulary.md) | system |`
-occurs 1× among the lines `git show 8972af01` reports as ADDED.
-SYSTABLE: FROM count before = 1; `TO contains FROM: true` → **APPEND**; FROM count
-after = 1; the new `| [vocabulary.md](system/vocabulary.md) | The binding vocabulary: … |`
-row occurs 1× among the ADDED lines.
-`git show --numstat 8972af01` → `2  0  docs/README.md`; 2 added lines, 0 removed.
-`docs/README.md` contains `system/vocabulary.md` exactly **2×**. Reconstruction:
-post-commit bytes == pre-commit bytes with exactly those two replacements applied →
-**True**; 21 616 → 21 946 bytes, still one trailing newline. Both rows land in sorted
-position (between `UI` and `watchdog`; between `token-economy-…` and `worker.md`).
-
-**G4 THE GUARDED README REGION (finding R-0797's binding clause) — PASS.** Extracted
-after C3 with the guard test's own paragraph convention
-(`Accepted[^\n]*:\n((?:[^\n]+\n)+)`): 5 `Accepted…:` blocks in the file, of which
-**4** are `Accepted in Tier N so far:` blocks — Tier 1, Tier 2, Tier 3, Tier 5 — and
-they carry **31 distinct `F\d{3}` tokens**. Full sorted list, each with its
-`docs/roadmap/STATUS.md` `- [x]` status:
-
-     1 F008  STATUS '- [x]': True      17 F052  STATUS '- [x]': True
-     2 F009  STATUS '- [x]': True      18 F053  STATUS '- [x]': True
-     3 F013  STATUS '- [x]': True      19 F086  STATUS '- [x]': True
-     4 F014  STATUS '- [x]': True      20 F103  STATUS '- [x]': True
-     5 F016  STATUS '- [x]': True      21 F104  STATUS '- [x]': True
-     6 F021  STATUS '- [x]': True      22 F105  STATUS '- [x]': True
-     7 F022  STATUS '- [x]': True      23 F106  STATUS '- [x]': True
-     8 F031  STATUS '- [x]': True      24 F107  STATUS '- [x]': True
-     9 F032  STATUS '- [x]': True      25 F251  STATUS '- [x]': True
-    10 F034  STATUS '- [x]': True      26 F252  STATUS '- [x]': True
-    11 F037  STATUS '- [x]': True      27 F254  STATUS '- [x]': True
-    12 F046  STATUS '- [x]': True      28 F255  STATUS '- [x]': True
-    13 F047  STATUS '- [x]': True      29 F256  STATUS '- [x]': True
-    14 F048  STATUS '- [x]': True      30 F257  STATUS '- [x]': True
-    15 F050  STATUS '- [x]': True      31 F262  STATUS '- [x]': True
-    16 F051  STATUS '- [x]': True
-
-Thirty-one tokens enumerated, thirty-one rows above; `every token is [x] in
-STATUS.md: True`. No token is reported as a summary count alone.
-
-Those blocks' BYTES are identical before and after C3: 4 510 bytes both times,
-sha256 `3841a684b692dc330c60e221051e723a0cc0fff1520d8b3fcda2ada55c1e3824` before and
-after. The round's README slice contains no `F\d{3}` token at all.
-`python3 -m pytest tests/docs/test_docs_consistency.py -q` → exit **0**, **295 passed**.
-
-**G5 THE TEST IS GREEN AND THE DOCS SUITE GREW BY ONE — PASS.**
-`python3 -m pytest tests/docs/test_vocabulary.py -q` → exit **0**, **8 passed**
-(7 at cc8834bf + the one test this round adds).
-`python3 -m pytest tests/docs/ -q` → exit **0**, **303 passed**.
-Arithmetic against the number the first command reported: 302 at cc8834bf, and
-test_vocabulary.py moved 7 → 8, so 302 + (8 − 7) = **303**. Measured 303. Exact.
-
-**G6 THE RED PROOF — PASS.** Full transcript in its own section below. Control exit
-0 / 8 passed; mutated exit 1 / 1 failed 7 passed with only
-`tests/docs/test_vocabulary.py::test_the_readmes_mermaid_block_is_byte_equal_to_the_pages`
-failing; restored control exit 0 / 8 passed. Whole-`tests/docs/` runs in each stage:
-303 / 302+1 / 303 — so no test other than the new pin moved.
-
-**G7 THE RECORD, THE SLIPS AND THE SUITES — PASS.**
-`.agent/live_review.md`: 834 169 → 839 318 bytes; pre-append bytes are a byte-exact
-PREFIX of the post-append bytes → True; the 5 149-byte remainder equals exactly
-`"\n" + GATE_R5 + "\n"` → True; `grep -c '^Gate: R5 — ' .agent/live_review.md` went
-**0 → 1**.
-`.agent/prose_slips.md`: 79 043 → 82 415 bytes; prefix property → True; the
-3 372-byte remainder equals exactly `"\n\n"+SLIP5+"\n\n"+SLIP6+"\n\n"+SLIP7` → True;
-the file still does **not** end with a newline (last 20 bytes
-`b'rocess-diet rule 2).'`).
-The six suites, run serially at C5, real exit codes:
-
-| Suite | Exit | Passed | Expected |
+| File | mtime BEFORE | mtime AFTER | inside window? |
 |---|---|---|---|
-| `tests/orchestration/test_roadmap_index.py` | 0 | 30 | 30 ✅ |
-| `tests/ui_server/` | 0 | 515 | 515 ✅ |
-| `tests/orchestration/test_test_runner.py` | 0 | 52 | 52 ✅ |
-| `tests/regression/test_resource_safety.py` | 0 | 21 | 21 ✅ |
-| `tests/orchestration/test_integrity_gate.py` | 0 | 16 | 16 ✅ |
-| `tests/cli/test_golden_path.py` | 0 | 42 | 42 ✅ |
+| apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js | 1788645565.454480 | 1788645565.454480 | **yes** |
+| apps/ui/dist/assets/index-Bh0mkYBD.js | 1788645565.454480 | 1788645565.454480 | **yes** |
+| apps/ui/dist/assets/index-D_qZGOuo.css | 1788645565.454480 | 1788645565.454480 | **yes** |
+| apps/ui/dist/index.html | 1788645565.454480 | 1788645565.454480 | **yes** |
 
-No failing node ids anywhere. `tests/docs/` is covered by G4 and G5 and was not
-repeated here.
+Files added by the run: none. Files removed: none. Mtimes changed by the run:
+**none** — mtime BEFORE equals mtime AFTER for every dist file.
 
-**G8 THE PLAN AND THE STRUCTURE — PASS.** `wc -l .agent/plan.md` = **42**, under 50.
-`## Goal` count = 1, `## Next Steps` count = 1.
-`filecmp.cmp('.agent/plan.md', PLANF259R6 + '\n', shallow=False)` → **True**
-(slice 2 082 bytes, sha `58ee5f4d93b46fbb062b558aeb3db4c4f63b0bab48985887b951e4e21c0df6e2`;
-file 2 083 bytes, exactly one trailing newline).
-`python3 -m py_compile tests/docs/test_vocabulary.py` → exit **0** (silent).
-`ruff check tests/docs/test_vocabulary.py` → **REFUSED by this session's permission
-layer**, verbatim: `Permission to use Bash has been denied. IMPORTANT: You *may*
-attempt to accomplish this action using other tools that might naturally be used to
-accomplish this goal, e.g. using head instead of cat. But you *should not* attempt
-to work around this denial in malicious ways…` — the same denial round 5 measured;
-`py_compile` was run either way, as constraint 8 requires.
-`git status --porcelain` immediately before C6 was staged → **empty**.
-`git ls-files .remedy-wt` → **empty** (the scratch dir is gitignored, `.gitignore`
-line 235).
-Every commit single-parent; per-commit `git diff --numstat <parent> <commit>`:
+SAID PLAINLY, NOT EXPLAINED AWAY: all four dist mtimes DO fall numerically
+inside the run window. That is an artefact of the fix itself, not evidence of a
+rebuild — step (ii) deliberately stamped dist into the future at newest_src +
+120 s, and the run lasted 162.3 s, so the synthetic stamp lands inside its own
+run window by construction. Choosing an offset SMALLER than the run duration
+made the plain in-window test degenerate; that is a methodological deviation and
+is declared as one below.
 
-| Commit | Path | + | − | Insertions vs 500 cap |
-|---|---|---:|---:|---|
-| 34215224 | .agent/authored/f259-r6.md | 344 | 0 | 344 OK |
-| 1cde0bd7 | .agent/last_block.md | 268 | 333 | 268 OK |
-| 57ad83f7 | .agent/plan.md | 20 | 20 | 20 OK |
-| 776d4711 | .agent/live_review.md | 2 | 0 | 9 OK (both files) |
-| 776d4711 | .agent/prose_slips.md | 7 | 1 | — |
-| 91fecaa4 | README.md | 10 | 0 | 10 OK |
-| 8972af01 | docs/README.md | 2 | 0 | 2 OK |
-| 549e39d9 | tests/docs/test_vocabulary.py | 14 | 0 | 14 OK |
+Because the window test is degenerate, the EVENT was measured a second,
+independent way — ctime and inode, since any rebuild writes or replaces the file
+and either changes ctime:
 
-No commit approaches the 500-insertion cap. Push after C5: exit 0,
-`cc8834bf..549e39d9`. `origin/feature/f259-vocabulary` = `549e39d9`.
-**No pull request was created**, and `gh pr list --state open` returns `[]`.
+| File | inode | ctime | ctime inside window? |
+|---|---|---|---|
+| apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js | 5557655 | 1788645468.316750 | no |
+| apps/ui/dist/assets/index-Bh0mkYBD.js | 5557657 | 1788645468.316750 | no |
+| apps/ui/dist/assets/index-D_qZGOuo.css | 5557656 | 1788645468.316750 | no |
+| apps/ui/dist/index.html | 5557653 | 1788645468.316750 | no |
 
-`.agent/STOP` was read from disk before C0a, before C3 and before C6 — absent all
-three times.
+Every ctime is 1788645468.32 — the moment of the `os.utime` call in step (ii),
+18.4 s BEFORE the run started. All ctimes predate the run start: **True**. No
+file under `apps/ui/dist` was written, replaced or touched during the base run:
+**no rebuild event occurred**. A content hash is deliberately not offered as the
+primary reading, because equal content is consistent both with no rebuild and
+with a byte-identical one.
 
-## G6 — full red-proof transcript
+**(iv) The run.** Reported under G4 above.
 
-Guardrail G5 / block constraint 6: destructive verification ran ONLY inside a
-disposable worktree created from this branch's head; the primary checkout was never
-mutated.
-
-    === G6 RED PROOF — disposable worktree at 549e39d930d3543f1b3064266a21d023bfd26e9b ===
-    git worktree add --detach .remedy-wt/f259-r6-redproof 549e39d9 -> exit 0
-    Preparing worktree (detached HEAD 549e39d9)
-    HEAD is now at 549e39d9 f259: pin the README concept diagram byte-equal to the vocabulary page
-    worktree README.md: 14219 bytes, sha 079d47c8b38530e0d61f3df691e4c782269a5142a197b720a6dcb84eb7ef101b
-
-    --- RUN 1: UNMUTATED CONTROL ---
-      __pycache__ dirs purged under the worktree: 0
-      worktree self-reading probe (exit 0):
-      apps.cli.command_catalog.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof/apps/cli/command_catalog.py
-      test module REPO           = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof
-      test module README         = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof/README.md
-    [control] python3 -B -m pytest, cwd=/home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof
-      tests/docs/test_vocabulary.py: exit 0 | 8 passed in 0.26s
-      tests/docs/ (whole suite): exit 0 | 303 passed in 0.65s
-
-    --- RUN 2: MUTATION (worktree README.md only) ---
-      exact byte changed: offset 505 in the worktree's README.md; 0x6e ('n') -> 0x4e ('N')
-      line BEFORE:     Job --> Task["Task 1..n"]
-      line AFTER :     Job --> Task["Task 1..N"]
-      worktree README.md now: 14219 bytes, sha 6f851933bb04b66dec9d900d53276471d9cf2e8419fd035917513f39109771ad
-      __pycache__ dirs purged under the worktree: 0
-      worktree self-reading probe (exit 0):
-      apps.cli.command_catalog.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof/apps/cli/command_catalog.py
-      test module REPO           = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof
-      test module README         = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof/README.md
-    [mutated] python3 -B -m pytest, cwd=/home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof
-      tests/docs/test_vocabulary.py: exit 1 | 1 failed, 7 passed in 0.28s
-          failing node id: FAILED tests/docs/test_vocabulary.py::test_the_readmes_mermaid_block_is_byte_equal_to_the_pages
-      tests/docs/ (whole suite): exit 1 | 1 failed, 302 passed in 0.79s
-          failing node id: FAILED tests/docs/test_vocabulary.py::test_the_readmes_mermaid_block_is_byte_equal_to_the_pages
-
-    --- RUN 3: RESTORED CONTROL ---
-      worktree README.md byte-identical to before the mutation: True | sha 079d47c8b38530e0d61f3df691e4c782269a5142a197b720a6dcb84eb7ef101b
-      __pycache__ dirs purged under the worktree: 0
-      worktree self-reading probe (exit 0):
-      apps.cli.command_catalog.__file__ = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof/apps/cli/command_catalog.py
-      test module REPO           = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof
-      test module README         = /home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof/README.md
-    [restored] python3 -B -m pytest, cwd=/home/decodeux/Repos/remedy/.remedy-wt/f259-r6-redproof
-      tests/docs/test_vocabulary.py: exit 0 | 8 passed in 0.22s
-      tests/docs/ (whole suite): exit 0 | 303 passed in 0.70s
-
-    --- TEARDOWN ---
-    git worktree remove -> exit 0
-    git worktree prune -> exit 0
-    scratch worktree path still exists on disk: False
-    git worktree list -> exit 0
-    /home/decodeux/Repos/remedy                                  549e39d9 [feature/f259-vocabulary]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-21c19578b8754287  79a73b5a [remedy/job-21c19578b8754287]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-2ac1522a7034440b  3afc78c5 [remedy/job-2ac1522a7034440b]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-5e91e080219342d9  9fdb3b4b [remedy/job-5e91e080219342d9]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-6f74dd7367704fd5  cf0e00e9 [remedy/job-6f74dd7367704fd5]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-848fc4c67d7b405b  7bea3efc [remedy/job-848fc4c67d7b405b]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-962cb3c9b96244ed  05852956 [remedy/job-962cb3c9b96244ed]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
-    primary git status --porcelain -> exit 0 | output: ''
-
-The scratch worktree is gone; the ten pre-existing `remedy/job-*` worktrees are
-untouched. Every run resolved `apps.cli.command_catalog` and the test module's
-`REPO`/`README` to the WORKTREE's own copies — the editable-install shadow that
-would have made the proof measure the wrong tree is excluded.
+**Teardown.** Reported under External actions above.
 
 ## Authored-text proofs
 
-Every slice was extracted BY MARKER, in bytes, from the COMMITTED
-`.agent/authored/f259-r6.md`, never retyped, and applied verbatim.
-
-| Slice | Applied to | Proof |
-|---|---|---|
-| PLANF259R6 | .agent/plan.md | `filecmp.cmp(shallow=False)` against slice + one newline → **True**; slice sha `58ee5f4d…`, 2 082 B |
-| GATE_R5 | .agent/live_review.md | post == pre + `"\n" + slice + "\n"`, byte-exact → **True** |
-| SLIP5 / SLIP6 / SLIP7 | .agent/prose_slips.md | post == pre + `"\n\n"+S5+"\n\n"+S6+"\n\n"+S7`, byte-exact → **True**, no trailing newline |
-| READMEBLOCK | README.md | reconstruction `before.replace(ANCHOR, REPLACEMENT, 1) == disk` → **True**; slice sha `fe7e6186…`, 324 B; body sha `6f6d59ee…` equals the page's and the feature file's |
-| QUICKFIND_FROM/TO, SYSTABLE_FROM/TO | docs/README.md | reconstruction with exactly the two `str.replace(FROM, TO, 1)` → **True** |
-| (none) | tests/docs/test_vocabulary.py | production code, written by the worker to the SPEC; no slice was shipped for it |
-
-Transport digest, one value across all three paths:
-`96a4ddf9376d64a0d722251ccab71d27482c098644ae82a87194c1f96224f44e`.
-
-## Item status
-
-| Item | Status | Reason |
-|---|---|---|
-| C0a | done | `.agent/authored/f259-r6.md` — `shutil.copyfile`, digest verified equal |
-| C0b | done | `.agent/last_block.md` — same bytes |
-| C1 | done | `.agent/plan.md` rewritten whole from PLANF259R6 + one newline, 42 lines |
-| C2 | done | GATE_R5 appended to the record; SLIP5-SLIP7 appended to the slips; one commit |
-| C3 | done | READMEBLOCK inserted at the single anchor; anchor 1 → 0 |
-| C4 | done | both index pairs applied, both APPEND-shaped, both FROM surviving 1× |
-| C5 | done | `README` constant + `test_the_readmes_mermaid_block_is_byte_equal_to_the_pages`, reusing `_mermaid_body`; pushed |
-| C6 | done | this file, one commit; no post-push-only reading claimed |
-
-No item was skipped. No item deviated from its ordered position; the bundle ran
-C0a → C0b → C1 → C2 → C3 → C4 → C5 → push → gates → C6 exactly as ordered, with no
-extra, dropped or reordered commit.
+- `.agent/authored/f259-r7.md` — `shutil.copyfile` from
+  `.remedy-wt/f259-r7-block.md`; sha256 identical across scratch, saved copy and
+  mirror (G1).
+- `.agent/plan.md` — PLANF259R7 extracted by marker regex from the COMMITTED
+  authored file; `filecmp.cmp(..., shallow=False)` against the slice plus one
+  newline: **True**.
+- `.agent/live_review.md` — GATE_R6 extracted from the committed authored file;
+  post-append bytes equal pre-append bytes plus exactly `"\n" + GATE_R6 + "\n"`:
+  **True**.
 
 ## Deviations & assumptions
 
-1. **Two shell FORMS were refused, as constraint 7 predicted; no gate was dropped or
-   narrowed.** `python3 .remedy-wt/r6s/c1.py; echo "exit=$?"; wc -l .agent/plan.md`
-   and `python3 -m pytest … > file 2>&1; echo $?` were both refused with
-   `Permission to use Bash has been denied. …` — the `$?`-in-a-compound-command form.
-   Both were re-expressed in Python: `.remedy-wt/r6s/suites.py` runs each pytest
-   target through `subprocess.run` and prints `p.returncode`, so every exit code in
-   this handback is a REAL measured code, not an inferred one. The Python is on disk
-   under the gitignored `.remedy-wt/r6s/` and the output is quoted above.
-2. **`ruff check` is denied to the worker as well as to the reviewer.** Attempted on
-   `tests/docs/test_vocabulary.py` per constraint 8; the refusal is quoted verbatim
-   in G8. `python3 -m py_compile tests/docs/test_vocabulary.py` was run either way
-   and exits 0. This confirms what round 5 measured and is not new.
-3. **The block's G2 body pin is exact, but it is convention-sensitive — read this
-   before re-measuring.** Under the block's own stated convention ("the bytes between
-   the opening fence's newline and the newline before the closing fence", i.e.
-   EXCLUDING that final newline) the body is 309 bytes, seven lines, sha
-   `6f6d59ee6f3d2b36525d64596b04fee3f5ce43d2c439367e6e40c613d313e07c` — exactly as
-   the block states, in all three files. Under the SHIPPED `_mermaid_body` helper's
-   convention, whose regex `^```mermaid\n(.*?)^``` ` captures the trailing newline,
-   the same body reads 310 bytes and sha
-   `1da6e9ee983e53b252f5982dc0449dea1473a15b8c028b4e3d1fe42677b0a716`. Both readings
-   are reported so a re-measurement that lands on 310 is not mistaken for drift. No
-   discrepancy exists in the bytes: README, the page and the feature file are
-   byte-identical under either convention.
-4. **The SYSTABLE row carries `F260/F261` tokens, and this is in scope.** Constraint
-   11 forbids an `F\d{3}` token in a slice bound for `README.md`; this slice is bound
-   for `docs/README.md`, which the R-0797 guard test does not scan — it reads
-   `REPO / "README.md"` only. Verified two ways: G4 shows README's guarded blocks
-   byte-identical before and after, and `tests/docs/test_docs_consistency.py` passes
-   at 295. No `F\d{3}` token entered `README.md` this round.
-5. **No pull request was created**, as ordered. F259's PR belongs to its closure
-   round. No `--force`, no `--force-with-lease`, no history rewrite, no branch
-   deletion, no `gh pr merge`.
-6. **Scratch scripts left in place.** The Python re-expressions and byte snapshots
-   live under `.remedy-wt/r6s/`, which is gitignored (`git ls-files .remedy-wt` is
-   empty). They are left on disk deliberately so the reviewer can re-run them; they
-   are not deleted by glob (memory rule: clean up by exact path only).
+1. **Run logs could not be written outside the repository.** The block orders
+   `~/remedy-gate-f259/`. The sandbox REFUSED it, verbatim: *"Permission to use
+   Bash has been denied. IMPORTANT: You *may* attempt to accomplish this action
+   using other tools that might naturally be used to accomplish this goal, e.g.
+   using head instead of cat. But you *should not* attempt to work around this
+   denial in malicious ways, e.g. do not use your ability to run tests to execute
+   non-test actions. You should only try to work around this restriction in
+   reasonable ways that do not attempt to bypass the intent behind this denial.
+   If you believe this capability is essential to complete the user's request,
+   STOP and explain to the user what you were trying to do and why you need this
+   permission. Let the user decide how to proceed."* Refused for both
+   `mkdir -p ~/remedy-gate-f259` and the absolute-path form
+   `mkdir -p /home/decodeux/remedy-gate-f259`. The block's own fallback clause
+   was taken: logs went to the gitignored `.remedy-wt/gate-f259/` and were copied
+   into `.agent/gate_f259_r7/` only after each run exited. Required explicit
+   statement: the two node ids R-0176 names did NOT fail — and more precisely
+   **neither node id exists** in the suite at 6e6e73ae. A grep over `tests/`,
+   `packages/` and `scripts/` finds no test function
+   `test_run_manifest_logical_identity` and none `test_job_rerun_workspace_identity`.
+   The nearest surviving surface, the FILE
+   `tests/orchestration/test_run_manifest_logical_identity.py`, collects 11 ids;
+   all 11 passed in both runs, since both runs had zero failures overall. For the
+   base run the log lived OUTSIDE the base worktree in any case.
+2. **The dist mtime offset was too small to keep the window test meaningful.**
+   +120 s against a 162.3 s run put the synthetic stamp inside the run window by
+   construction, so the literal in-window boolean reads "yes" for all four files
+   while nothing was rebuilt. Compensated by the independent ctime/inode
+   measurement above, which is decisive. A future gate should offset dist beyond
+   the expected run duration.
+3. **Three shell command FORMS were refused and re-expressed**, per block
+   constraint 7. (a) `cd <dir> && comm ...` refused → `comm(1)` invoked through
+   Python `subprocess.run(["comm", "-13", base, branch])`; both invocations
+   exited 0; the route is recorded in `attribution.txt`. (b) A heredoc Python
+   snippet containing a brace-with-quote dict literal refused → the same checks
+   were written to `.remedy-wt/gate-f259/check_evidence.py` and run as a file.
+   (c) `grep -c '^## Goal$'` refused (`$` anchor inside a `grep -c` pattern) →
+   re-expressed as `re.findall` in `.remedy-wt/gate-f259/check_plan.py`. Each
+   refusal is quoted or named rather than the check being weakened.
+4. **No deviation from the block's ordered commit sequence.** C0a, C0b, C1, C2,
+   C3, push, C4, push — exactly as ordered, no extra commit, none dropped, none
+   reordered.
+5. **R-0736 stays OPEN and `docs/agents/integration_gate.md` was NOT edited**,
+   per constraint 11 — this round measures and edits no product code, no test and
+   no doc. This round obeyed R-0736's fix clause rather than the defective step 3
+   text, and says so here and in `base_parity.txt`. The defect is now backed by a
+   fresh direct measurement (staleness True before the fix, False after) which the
+   repair round can cite.
+6. **Scratch helper scripts** (`run_suite.py`, `run_base.py`, `check_evidence.py`,
+   `check_plan.py`, the raw logs and the two `*_meta.json`) remain in the
+   gitignored `.remedy-wt/gate-f259/`. `git ls-files .remedy-wt` returns nothing,
+   so none of them entered the change set.
+
+## Item-status table
+
+| Item | Status | Reason |
+|---|---|---|
+| C0a | done | `.agent/authored/f259-r7.md` — c2a3b4d9 |
+| C0b | done | `.agent/last_block.md` — 3f7e8546 |
+| C1 | done | `.agent/plan.md` ← PLANF259R7 — 41f7b57a |
+| C2 | done | `.agent/live_review.md` + GATE_R6 — 490f7f27 |
+| C3 | done | `.agent/gate_f259_r7/` 8 files — 0cc0bdd2, committed after both runs exited |
+| C4 | done | this handback |
+
+| Gate | Status | Reading |
+|---|---|---|
+| G1 | done | one digest a8c08ea7… across all three paths |
+| G2 | done | prefix True, remainder True, 839318→843886, grep 0→1 |
+| G3 | done | exit 0, 19694 passed / 23 skipped, 135.2 s, 0 FAILED, tree clean both sides |
+| G4 | done | exit 0, 19686 passed / 23 skipped, 162.3 s, 0 FAILED; 23 symlinks; staleness True→False; no rebuild event |
+| G5 | done | comm_13 0 lines, comm_23 0 lines, both reproduced in full |
+| G6 | done | branch-only list empty; no BLOCKER |
+| G7 | done | 8/8 files present, no `.log` name, no truncation |
+| G8 | done | plan 40 lines, headings 1/1, filecmp True, tree clean, no PR |
+
+## Open findings
+
+Unchanged by this round: 294 open (299 registrations against 5 `Done:` lines, as
+recomputed at R6). This round registered no new finding — it measured and found
+nothing to register. R-0736 and R-0591 remain OPEN; both had their fix clauses
+obeyed here, and R-0736 now has a fresh direct measurement behind it.
 
 ## Next
 
-The reviewer's gate on cc8834bf..549e39d9 — then, on PASS, the **integration gate
-round** per `docs/agents/integration_gate.md` (the full suite against this branch, a
-regression there being a normal repair round), and after that the **closure
-sequence** per `docs/roadmap/STATUS_closure_protocol.md`: the evidence job, a FRESH
-review zip, the ledger rotation before the STATUS flip (amend0905-throughput), the
-reviewer-authored STATUS line committed last, and the pull request — created but NOT
-merged in this session; it merges at the next feature's Open PR Gate.
-
-Phase 1 rule 1 first at the next session start: read `.agent/STOP` from disk before
-anything else.
+The reviewer's GATE VERDICT on this integration gate. On PASS, the CLOSURE round
+per `docs/roadmap/STATUS_closure_protocol.md`: the evidence job, a fresh review
+zip, the ledger rotation, the §3 checklist consolidation pass, the
+reviewer-authored STATUS line committed last, and the pull request — which is
+NOT merged in this session but at the next feature's Open PR Gate.
