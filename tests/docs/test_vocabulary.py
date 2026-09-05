@@ -30,6 +30,9 @@ REPO = Path(__file__).resolve().parents[2]
 PAGE = REPO / "docs" / "system" / "vocabulary.md"
 #: The feature file holds the authoritative Mermaid block the page copies.
 FEATURE = REPO / "docs" / "roadmap" / "features" / "T2_F259.md"
+#: The README carries the same Mermaid block under its one-sentence description,
+#: so a reader meets the concept model before any command (T2_F259.md, T004).
+README = REPO / "README.md"
 
 #: The fifteen binding words, in DECISION amend0905-vocab D1's order.
 BINDING_WORDS = [
@@ -199,6 +202,17 @@ def test_the_pages_mermaid_block_is_byte_equal_to_the_feature_files():
     feature_body = _mermaid_body(FEATURE.read_text(encoding="utf-8"))
     assert page_body == feature_body, (
         "the concept diagram drifted between the page and T2_F259.md")
+
+
+def test_the_readmes_mermaid_block_is_byte_equal_to_the_pages():
+    readme_text = README.read_text(encoding="utf-8")
+    assert len(MERMAID_RE.findall(readme_text)) == 1, (
+        "README.md must carry exactly one fenced mermaid block — the concept "
+        "diagram")
+    assert _mermaid_body(readme_text) == _mermaid_body(_page()), (
+        "the concept diagram drifted between README.md and "
+        "docs/system/vocabulary.md; the two copies are one diagram and are "
+        "edited together")
 
 
 def test_the_page_carries_every_ruling_as_a_decision_heading_in_order():
