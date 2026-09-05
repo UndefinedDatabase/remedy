@@ -5,7 +5,9 @@ feature/f262-list-commands-v2, cut from `main` at the merge commit of
 pull request 235.
 
 ## Scope
-F262 (Tier 2, depends on nothing, blocks nothing): every list command —
+F262 (Tier 2, depends on nothing, blocks F267 — the follow-up DECISION F262
+D5 split off on 2026-09-05; scope per DECISION F262 D4: 24 of 28 list-shaped
+commands, 15 wired here, 9 owned by F267): every list command —
 `job list`, the `do` run listings, `queue list`, `mission list`,
 `memory list`, `event list` and the rest of the catalog's list-shaped
 commands — shows a CREATED and an UPDATED date and supports the same
