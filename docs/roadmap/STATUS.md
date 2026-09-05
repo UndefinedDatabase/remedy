@@ -22,7 +22,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 ## Tier 2 — Vocabulary & Concept Block (operator order amend0831, reordered amend0905)
 
 - [x] F262 — List commands v2 (dates, sort, filter) (T001–T003 complete; accepted 2026-09-05 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f262-closure · package remedy-review-20260905-112903-READY_FOR_REVIEW.zip · SHA-256 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0)
-- [ ] F259 — Vocabulary & concept model v1
+- [~] F259 — Vocabulary & concept model v1
 - [ ] F260 — One world: mission → job → run
 - [ ] F261 — CLI vocabulary v2 (rename & prune)
 
