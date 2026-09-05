@@ -28,13 +28,30 @@ def _redact_path(raw: str | None) -> str | None:
 
 def _cmd_config_list(args: argparse.Namespace) -> None:
     from packages.orchestration.config import all_key_specs, get_config
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
 
     config = get_config()
     use_json = getattr(args, "json", False)
 
+    try:
+        specs = apply_list_options(
+            list(all_key_specs()),
+            sort=getattr(args, "sort", None),
+            desc=getattr(args, "desc", False),
+            since=getattr(args, "since", None),
+            until=getattr(args, "until", None),
+            limit=getattr(args, "limit", None),
+            sort_fields={"key": lambda s: s.key},
+            default_sort_field=None,
+            date_getter=None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     if use_json:
         entries = []
-        for spec in all_key_specs():
+        for spec in specs:
             cv = config.get_value(spec.key)
             val = cv.value if cv else None
             if spec.secret or spec.env_only:
@@ -51,7 +68,7 @@ def _cmd_config_list(args: argparse.Namespace) -> None:
         sys.stdout.write("\n")
         return
 
-    for spec in all_key_specs():
+    for spec in specs:
         cv = config.get_value(spec.key)
         val = cv.value if cv else None
         source = cv.source.value if cv else "default"
