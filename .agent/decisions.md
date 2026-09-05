@@ -10512,6 +10512,8 @@ commit-readiness`) appears in neither list of the ruling and therefore falls und
 "every group not named here is deleted"; the session recorded this as a finding in
 `.agent/live_review.md` so the operator sees it at the next relay.
 
+Clarification 2026-09-05: repo is deleted; see R-0800.
+
 The commands per surviving group:
 
 - `do <order>` where `<order>` is a text or a path to a `.md` file. Flags:

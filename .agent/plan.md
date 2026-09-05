@@ -1,45 +1,42 @@
-# Plan — amend0905-vocab-rebuild (operator planning amendment)
+# Plan — amend0905-testlog (operator planning follow-up)
 
-Branch: feature/amend0905-vocab-rebuild, cut from `main` after PR #237
-(amend0905-throughput) merged; STATUS.md had 0 `[~]` lines and
+Branch: feature/amend0905-testlog, cut from `main` at b3224322 (PR #238
+amend0905-vocab-rebuild merged); STATUS.md had 0 `[~]` lines and
 `remedy plan next` proposed F259 at the cut.
 
 ## Goal
 
-Write down the operator's 2026-09-05 vocabulary rulings (DECISION
-amend0905-vocab D1–D12 in `.agent/decisions.md`) and make the vocabulary
-rebuild the very next work: rewrite T2_F259.md / T2_F260.md / T2_F261.md
-completely, register F268–F271 with ledger atomicity (STATUS lines,
-TOTAL_FEATURES 267 → 271, README counter), reorder STATUS.md per D12,
-sweep every feature file for the retired vocabulary (open files edited by
-the replacement table, `[x]` files get a dated vocabulary note only), add
-the "Replacing is deleting" rule to AGENTS.md. PLANNING ONLY: no product
-code, no command or module rename, no module deletion.
+Turn the operator's hands-on tests.md run (Levels 0–7 against b2ee0a84 on
+2026-09-05, ~/remedy-tests.log) into acceptance criteria: register the ten
+measured findings A–J as R-0803..R-0812 in `.agent/live_review.md`, add
+each acceptance sentence to its feature file (F260, F261, F268) under
+`## Acceptance`, add the tests.md Level 4.1 line to F260, clarify D4 for
+the catalog group `repo` and resolve R-0800 with that reference, and write
+the data-root hygiene note for the operator into the handoff. PLANNING
+ONLY: no product code, no tests, every edit presence-checked.
 
 ## Current Step
 
-Commit sequence of the single amendment round: (1) decisions D1–D12 ·
-(2) this plan · (3) F259 rewrite · (4) F260 rewrite · (5) F261 rewrite ·
-(6) registrations F268–F271 + pin + README in one commit · (7) STATUS
-layout (D12 order, F260/F263 titles) · (8) feature-file sweep, ~15 files
-per commit · (9) README / docs index / closure protocol / docs/agents
-sweep · (10) AGENTS.md rule · (11) ruling conflicts as findings in
-live_review.md · (12) handoff rewrite. Then push, PR, hosted run GREEN,
-checks read, merge (two separate commands), verify on main.
+Commit sequence of the single round: (1) this plan · (2) findings
+R-0803..R-0812 + R-0800 resolved + D4 clarification · (3) acceptance
+lines in T2_F260 / T2_F261 / T2_F268 · (4) handoff rewrite. Then push,
+PR, hosted run GREEN, checks read, merge (two separate commands), verify
+on main.
 
 ## Next Steps
 
 - Operator starts remedy-loop-feature; Rule A5 proposes F259.
-- F259 → F260 → F261 → F266 → F268 → F269 → F270 → F271 → F263 → F264 →
-  F265 in that order (D12).
+- F259 → F260 → F261 → F266 → F268 → … in the D12 order; F260 now owes
+  the data-root isolation, cockpit walk, ledger-row, fake-builder and
+  narration acceptance; F261 the ui-session prune, blocked-findings
+  display and one id-error shape; F268 the cost line, granularity
+  ceiling and repo auto-attach.
 
 ## Risks
 
-- The ruling table applies `promote → apply` by SENSE (job-result verb
-  only); the kept senses are listed in the live_review finding so a later
-  reader does not re-sweep them.
-- README counter is measured on disk (72 accepted), not the operator's
-  recalled 71 — recorded as a conflict finding.
-- Two modules of the F260 deletion list do not exist under those names
-  (`provider_trust_gate.py`, `local_advisor.py`); F260's file names the
-  on-disk modules and the finding records the mismatch.
+- Finding A's acceptance line arrives cut mid-sentence in the order
+  (after `ls <data_root>/runs`); completed as an equal-count check and
+  declared in R-0803 and the handoff.
+- `grep -c 'R-08' .agent/live_review.md` must rise by exactly 10: every
+  finding is one line and R-0800 is resolved IN its own line, not by a
+  new `Done:` line.
