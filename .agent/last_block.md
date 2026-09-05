@@ -1,184 +1,112 @@
-STEP CLOSURE ALGORITHM 1-2 (EVIDENCE + ZIP) / ROUND 27 - F262 List commands v2 (dates, sort, filter)
-FEATURE F262 - List commands v2 (dates, sort, filter) (Tier 2) - SESSION 9, ROUND 27
+STEP CLOSURE COMMIT + PR / ROUND 28 - F262 List commands v2 (dates, sort, filter) (FINAL ROUND ON THIS BRANCH)
+FEATURE F262 - List commands v2 (dates, sort, filter) (Tier 2) - SESSION 9, ROUND 28
 
 Goal
-  Book round 26's verdict (RECORD26 - preconditions 3 and 6 confirmed,
-  all six closure preconditions now hold), then build F262's
-  evidence bundle and review zip - algorithm steps 1-2 of
-  docs/roadmap/STATUS_closure_protocol.md. This round does NOT close the
-  feature: no `[x]`, no README sync, no consumed_by edit, no pull request.
+  Book round 27's verdict (RECORD27 - evidence bundle + review zip,
+  algorithm steps 1-2 complete), then execute the closure commit itself
+  (STATUS `[x]` flip + README sync + self_use_queue consumed_by edit, all
+  in ONE commit per docs/roadmap/STATUS_closure_protocol.md algorithm
+  step 5) and open the pull request. Do NOT merge the PR - the reviewer
+  reads its checks and merges under the operator's authorization.
 
 Bundle, in this order
-  C0a save this block verbatim to .agent/authored/f262-r27.md
+  C0a save this block verbatim to .agent/authored/f262-r28.md
   C0b mirror it to .agent/last_block.md
-  C1  apply RECORD26 to .agent/live_review.md (append) and PLAN28 to
+  C1  apply RECORD27 to .agent/live_review.md (append) and PLAN29 to
       .agent/plan.md (whole-file replacement)
-  then PUSH, and build the evidence bundle and the zip from the clean
-      tree at C1 (neither is committed - both are gitignored)
-  C2  rewrite .agent/handoff.md - the handback
+  C2  THE CLOSURE COMMIT: apply the STATUS pair to docs/roadmap/STATUS.md,
+      the three README pairs to README.md, and the QUEUE pair to
+      scripts/self_use_queue.json - ALL FIVE PAIRS IN THIS ONE COMMIT
+  then push, run the docs gates (G6, must be green), then `gh pr create`
+  C3  rewrite .agent/handoff.md - the FINAL handback
 
 Change set - EXACTLY these paths and nothing else
-  .agent/authored/f262-r27.md (new, C0a) - .agent/last_block.md (C0b) -
-  .agent/live_review.md (C1) - .agent/plan.md (C1) - .agent/handoff.md (C2)
-
-THE EVIDENCE DIRECTORY IS NEVER COMMITTED and neither is the zip; a
-committed evidence dir puts evidence files into the review subject and
-packages BLOCKED_EVIDENCE. NO file under packages/, apps/, tests/,
-scripts/ or docs/ is edited this round.
-
-ACCEPTED HEAD IS C1 (the last content commit before the package build).
-The zip is built after C1 is pushed, so the manifest's
-committed_review_subject.head_commit must equal C1's full sha. C2 writes
-only .agent/handoff.md and follows the READY package. Report C1's full
-sha as the accepted HEAD; the next round's STATUS line carries it.
+  .agent/authored/f262-r28.md (new, C0a) - .agent/last_block.md (C0b) -
+  .agent/live_review.md, .agent/plan.md (C1) - docs/roadmap/STATUS.md,
+  README.md, scripts/self_use_queue.json (C2) - .agent/handoff.md (C3)
 
 Constraints
-  1. Every authored slice is applied BYTE FOR BYTE: extract it by its
-     one-line BEGIN/END markers from the COMMITTED
-     .agent/authored/f262-r27.md (marker lines EXCLUDED), by a Python
-     script, never retyped. If a slice looks wrong, apply it as written
-     and DECLARE it.
+  1. Every authored slice (RECORD27, PLAN29, PRBODY, every pair) is
+     applied BYTE FOR BYTE: extract by its one-line BEGIN/END markers
+     from the COMMITTED .agent/authored/f262-r28.md (marker lines
+     EXCLUDED), by a Python script, never retyped.
   2. C1 is the first substantive commit of the round.
-  3. RECORD26 appends to .agent/live_review.md as EXACTLY TWO newline
-     bytes followed by the slice; PLAN28 REPLACES .agent/plan.md whole;
+  3. RECORD27 appends to .agent/live_review.md as EXACTLY TWO newline
+     bytes followed by the slice; PLAN29 REPLACES .agent/plan.md whole;
      neither carries a trailing newline.
-  4. Read .agent/STOP before C0a, before the zip build and before C2; if
-     present, finish the commit in hand, write the handback, stop.
-  5. Sandbox forms this session refuses are RE-EXPRESSED, never skipped
-     (`cp`, `cmp`, env assignment, loops, `$( )` in compounds): Python
-     (`shutil`, `pathlib`, `subprocess.run`) and `bash -c '<cmd>; echo
-     REAL_EXIT=$?'`. Scratch work goes under `.remedy-wt/` (gitignored);
-     if naming that path in bash is refused, drive the step from a
-     `python3 - <<'PY'` heredoc. Report every re-expression.
-  6. THE OPEN SET, §3 item 10's line-count formula: report registered /
-     Done / open BEFORE C1 and AFTER C1 and confirm both UNCHANGED at
-     356 / 77 / 279 - this round registers no id and resolves none.
-  7. EXIT CODE 0 IS NEVER THE READING FOR THE ZIP.
-     `scripts/make_review_zip.sh` exits 0 for a BLOCKED_EVIDENCE package
-     as readily as for a READY one. The reading is `PACKAGE_STATUS` in
-     the printed output and `package_status` in `.review_zip_manifest.json`.
-  8. This is F262's FIRST package. Delete nothing under
-     `/home/decodeux/Repos/remedy-history/zips`.
-
-The evidence script - ADAPTED FROM THE COMMITTED TEMPLATE, NOT WRITTEN
-FRESH. Extract the slice named EVIDENCESCRIPT from the COMMITTED blob
-`git show HEAD:.agent/authored/f009-r33.md` by its `<<<SLICE
-EVIDENCESCRIPT` and `<<<END EVIDENCESCRIPT` marker lines, save it to
-`.remedy-wt/f262_evidence_r27.py`, and change ONLY the values below.
-Every other line stays BYTE FOR BYTE - the double path scrub in `_tail`,
-node ids from `--collect-only`, the `len(node_ids) == selected` assert,
-the sorted `test_files`, the `_unsafe_text` pre-scan with its red control
-and the `OUTPUT_HASH` re-derivation are all load-bearing.
-
-  - `EVIDENCE_DIR` -> `<REPO>/.remedy-wt/f262_closure_evidence/remedy-job-evidence-f262-closure`.
-  - `BASE` -> `7c65d9ccfb512aef1c3eea0245030647332c26ea` (the merge base with `main`, PR 235's merge,
-    confirmed by `git merge-base main HEAD`; the template asserts the
-    40-character length).
-  - the `runs = [...]` list -> exactly these seven, in this order, no
-    `-k` and no deselection (the reviewer scanned every collected id
-    with `_unsafe_text` at 0609f113: 0 rejected):
-    - `mkrun("vr-0001", "tests/orchestration/test_list_options.py", 11)`
-    - `mkrun("vr-0002", "tests/test_command_catalog.py::TestListCommandOptions", 3)`
-    - `mkrun("vr-0003", "tests/cli/test_config_cmd.py", 16)`
-    - `mkrun("vr-0004", "tests/cli/test_worker_facade_cmd.py", 70)`
-    - `mkrun("vr-0005", "tests/cli/test_managed_builder_execution_cli.py", 12)`
-    - `mkrun("vr-0006", "tests/cli/test_queue_cmd.py", 28)`
-    - `mkrun("vr-0007", "tests/docs/test_docs_consistency.py", 295)`
-  - the `create_manual_completion_bundle(...)` keyword arguments:
-    `job_id="f262-closure"`, `job_title="F262 List commands v2 (dates,
-    sort, filter) - closure"`, `step_range="T001-T003"`,
-    `prior_job_ids=["f114-closure"]` (F114's evidence job id - the
-    immediately preceding closed feature, `docs/roadmap/STATUS.md`),
-    `num_tasks=3`, `note_prefix="operator-attested manual completion -
-    F262 closure"`, `review_feature_id="f262"`.
-
-`HEAD` is computed by the template at run time and must come out as
-C1's full sha; report it. A verification record may NEVER carry a
-full-suite node-id list.
-
-The zip and the red control
-  1. Confirm the tree is clean and the branch is pushed, then build with
-     `bash scripts/make_review_zip.sh --evidence-dir <the EVIDENCE_DIR
-     above>`. Report `PACKAGE_STATUS`, the zip filename and its SHA-256
-     computed by you over the file on disk.
-  2. THE RED CONTROL. Copy the evidence directory to a SECOND directory
-     under `.remedy-wt/`, append ONE node id containing an absolute path
-     to the first run of that copy's `verification_tests.json`, and build
-     a zip from the COPY. It must report `PACKAGE_STATUS=BLOCKED_EVIDENCE`
-     at REAL exit code 0 - report the exit code beside the status and
-     the `ready_gate_matrix.blocking_reasons` list from the control's
-     manifest, untruncated. Declare it as a DELIBERATE CONTROL in the
-     handback, in run.txt-style plain words: the control package is NOT
-     evidence about the real bundle and the two were built from
-     DIFFERENT inputs (the F114 closure's control was later misread as
-     non-determinism - DECISION F262 D6). The real bundle is not touched.
-  3. The script writes into `/home/decodeux/Repos/remedy-history/zips`
-     directly. If the READY zip is already there when the build
-     finishes, say so; if not, move it there with `shutil.move`. Report
-     the absolute path the live package occupies and its size in bytes.
+  4. Read .agent/STOP before C0a, before C2 and before C3; if present,
+     finish the commit in hand, write the handback, stop - and create no
+     PR.
+  5. Pairs are applied with str.replace(FROM, TO, 1) after confirming
+     FROM occurs EXACTLY ONCE in the file. Containment readings computed
+     before emission: STATUS `TO contains FROM: false`, README_COUNT
+     `TO contains FROM: false`, README_TIER2 `TO contains FROM:
+     false`, README_PARA `TO contains FROM: false`, QUEUE
+     `TO contains FROM: false` - every one a REWRITE, so no FROM-zero
+     count is ordered; re-check each and report what you measured.
+  6. THE OPEN SET, §3 item 10's line-count formula: registered / Done /
+     open BEFORE C1 and AFTER C1, both UNCHANGED at 356 / 77 / 279.
+  7. THE CLOSURE COMMIT IS ONE COMMIT, NOT TWO (F112 R30 lesson: a split
+     flip left `tests/docs/` red until a repair commit). All five pairs
+     land together in C2.
+  8. This round does not touch packages/, apps/ or tests/. Sandbox
+     re-expressions as in every prior round (Python for cp/cmp/env/
+     loops), each reported.
+  9. THE PULL REQUEST, after C2 is pushed and G6 is green: extract the
+     PRBODY slice to a scratch file under .remedy-wt/ (or write it via a
+     heredoc if that path is refused) and run
+       gh pr create --title "F262: List commands v2 (dates, sort, filter)" --base main --head feature/f262-list-commands-v2 --body-file <that file>
+     Report the PR number and URL. Do NOT run `gh pr merge`.
 
 Done when - the gates. Run each, record the REAL exit code and the REAL
 output.
 
-  G1 HYGIENE. `.agent/STOP` at each of constraint 4's reads (report
-     each); `git status --porcelain | wc -l` after C0a, C0b and C1, and
-     again immediately BEFORE the zip build, where it must be 0.
-  G2 TRANSPORT. `sha256sum .agent/authored/f262-r27.md
+  G1 HYGIENE. `.agent/STOP` at each of constraint 4's reads; `git status
+     --porcelain | wc -l` 0 after each of C0a, C0b, C1 and C2.
+  G2 TRANSPORT. `sha256sum .agent/authored/f262-r28.md
      .agent/last_block.md` - one digest, twice.
-  G3 THE PLAN AT C1. `.agent/plan.md` equals PLAN28 byte for byte
-     (expect 1681 bytes); `wc -l` under 50 (expect 38);
-     `grep -c '^## Goal'` and `grep -c '^## Next Steps'` each 1.
-  G4 THE RECORD APPEND (RECORD26). Base size of .agent/live_review.md
-     before C1 (expect 2503246, no trailing newline); RECORD26's byte
-     length (expect 4992); base + 2 + that (expect 2508240)
-     versus the post-C1 length; tail equality "\n\n" + RECORD26; negative
+  G3 THE RECORD APPEND (RECORD27). Base size of .agent/live_review.md
+     before C1 (expect 2508240, no trailing newline); RECORD27's byte
+     length (expect 4977); base + 2 + that (expect 2513219)
+     versus the post-C1 length; tail equality "\n\n" + RECORD27; negative
      control in a scratch copy (one flipped byte REJECTED).
-  G5 THE LEDGER, per constraint 6: registered / Done / open BEFORE and
-     AFTER C1, both UNCHANGED (356 / 77 / 279).
-  G6 THE EVIDENCE BUNDLE. (a) Unified diff between the template slice
-     EVIDENCESCRIPT and `.remedy-wt/f262_evidence_r27.py` - ONLY the
-     values listed above may differ; name each changed line. (b) Per
-     verification run: run_id, selected, len(node_ids), whether equal,
-     passed/failed/skipped/deselected, whether test_files is sorted.
-     Expected passes 11, 3, 16, 70, 12, 28, 295 with failed/skipped/
-     deselected 0 everywhere. (c) The `_unsafe_text` pre-scan over every
-     node id and command (expect 0 rejected) beside its red control on a
-     fabricated absolute-path id (expect a non-empty reason). (d) The
-     full list of files the producer wrote; confirm all eight closed-
-     schema gates are present: final_verifier_report, fresh_evidence,
-     artifact_contract, change_provenance, manifest_integrity,
-     postmortem_integrity, commit_execution, runtime_integration. (e)
-     Per run, output_hash equals sha256 of stdout_summary. (f) The HEAD
-     the template computed equals C1's full sha.
-  G7 THE REVIEW ZIP, read under constraint 7. (a) Zip filename, SHA-256
-     over the file on disk, the REAL build exit code, PACKAGE_STATUS
-     (must be READY_FOR_REVIEW). (b) From `.review_zip_manifest.json`
-     inside the zip: package_status, ready_gate_matrix.ok,
-     ready_gate_matrix.blocking_reasons (expect empty),
-     committed_review_subject.head_commit (equals C1's full sha - report
-     both) and committed_review_subject.base_commit (equals 7c65d9ccfb512aef1c3eea0245030647332c26ea).
-     (c) THE RED CONTROL: PACKAGE_STATUS (must be BLOCKED_EVIDENCE), REAL
-     exit code (expect 0), untruncated blocking_reasons. (d) The absolute
-     path the LIVE package occupies, that it exists, its size in bytes.
-     (e) `git status --porcelain | wc -l` after all of it (must be 0).
-  G8 STRUCTURE. Per-commit `git show --numstat --format=""` for C0a, C0b
-     and C1 against this handback's Commits table; each single-parent
-     and under 500 insertions; `git ls-files .remedy-wt | wc -l` 0;
-     tracked paths matching `remedy-job-evidence` 0; `git diff --numstat
-     0609f113..<C1> -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json`
-     empty; re-run `python3 -m apps.cli.grouped integrity check --json`
-     and report passed / fail_count / high_blockers_open (expect the
-     round-26 reading unchanged).
+  G4 THE PLAN AT C1. `.agent/plan.md` equals PLAN29 byte for byte
+     (expect 1449 bytes); `wc -l` under 50 (expect 33);
+     `grep -c '^## Goal'` and `grep -c '^## Next Steps'` each 1.
+  G5 THE FIVE PAIRS AT C2. For each: FROM count immediately before
+     applying (must be 1), the measured `TO contains FROM` beside the
+     label. After all five: STATUS.md's F262 line, README.md's
+     accepted-count line and Tier 2 row, and the SU-009 `consumed_by`
+     line, exactly as they read; `grep -c '^- \[x\] F262 — ' docs/roadmap/STATUS.md`
+     1 and `grep -c '^- \[~\] ' docs/roadmap/STATUS.md` 0.
+  G6 THE DOCS GATES, before `gh pr create`:
+       python3 -m pytest tests/docs/ -q                              (expect 295)
+       python3 -m pytest tests/orchestration/test_roadmap_index.py -q (expect 30)
+     Both MUST be green; if either is red, STOP before creating the PR
+     and report the failure.
+  G7 THE FOUR STATE READERS AND THE CANARY, serially:
+       python3 -m pytest tests/ui_server/ -q                          (expect 515)
+       python3 -m pytest tests/orchestration/test_test_runner.py -q   (expect 52)
+       python3 -m pytest tests/regression/test_resource_safety.py -q  (expect 21)
+       python3 -m pytest tests/orchestration/test_integrity_gate.py -q (expect 16)
+       python3 -m pytest tests/cli/test_golden_path.py -q             (expect 42)
+  G8 THE TREE, THE COMMITS, THE PR. `git status --porcelain` empty
+     before C3 is staged; `git diff --stat d887906b..<C2> -- packages/
+     apps/ tests/` empty; per-commit `git show --numstat --format=""`
+     for C0a, C0b, C1 (two paths), C2 (three paths) against this
+     handback's Commits table; the PR number, URL, base/head, not a
+     draft, not merged; re-run `python3 -m apps.cli.grouped integrity
+     check --json` and report passed / fail_count / high_blockers_open.
 
 SLICES. Each lies between its own one-line BEGIN and END marker; the
 slice is the bytes between the BEGIN marker's newline and the newline
 before the END marker, EXCLUDING that final newline.
 
-<<<BEGIN RECORD26>>>
-Gate: R26 — the F262 R26 entry, closure preconditions 6 and 3 of `docs/roadmap/STATUS_closure_protocol.md`, no production code touched. VERDICT PASS over the range `60f48fb6..0609f113` (C0a `d08493a2`, C0b `008ec51f`, C1 `bb8353ef`, C2 `79a73b5a`, C3 `47730045`, handback `0609f113`), independently re-verified by the reviewer. TRANSPORT HELD IN ITS PRIMARY FORM: scratch original, committed `.agent/authored/f262-r26.md` and `.agent/last_block.md` equal byte for byte, sha256 `24ea07da85dce005574c1d40a4f95352de8a6a7c0b2dcaa9e40316610c4b1d31`, 15480 bytes. THE LEDGER APPEND (RECORD25) HELD: 2498900 (at `008ec51f`) plus two newlines plus RECORD25 (4344 bytes) equals 2503246 (at `bb8353ef`), tail equal, the worker's flipped-byte control rejected. THE PLAN HELD: `.agent/plan.md` equals PLAN27 (1979 bytes, 41 lines by `wc -l`, `## Goal` and `## Next Steps` once each). PRECONDITION 6 IS SATISFIED, REPRODUCED FROM THE PERSISTED ARTEFACTS: the queue held eight items, all consumed, and `next_self_use_item()` answered `None`, so `generate_and_append_if_empty()` was called once with no arguments and appended `SU-009` — title "Address ledger finding R-0418", provenance `generated (self-use-generator tier 1, ledger scan, R-0418)`, `consumed_by` empty — as a clean `+8/-0` append to `scripts/self_use_queue.json` (reproduced by `git show --numstat 79a73b5a`; the open `R-0785` full-rewrite class did not show, for the reason RECORD12 of F114 already gave: every earlier item was re-serialised byte-identically once before). `run_next_self_use_item(Path(".remedy-wt/selfuse-f262-run"))` then ran it UNFLAGGED, role resolution picking the real default provider `ollama` for builder and reviewer (models blank with source `default`, i.e. `muse-glimmer:latest`), budgets `max_provider_calls=6`, `max_cost_usd=0.50`, `max_tasks=1`: job `21c19578b8754287` ended `blocked` at the normal approval gate — `T001` `final_status=repair_exhausted`, `reviewer_verdict=fail`, two repair rounds used — never promoted, which is the gate working. `describe_self_use_run_defects(plan)` returns exactly two strings, reproduced by the reviewer from the persisted `JobPlan` via `load_job_plan("21c19578b8754287")`: `job 21c19578b8754287 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. REGISTRATION OBLIGATION DISCHARGED WITHOUT A NEW ID, per §3 checklist item 30: both strings are the identical defect class the OPEN finding `R-0784` already registers — the tier-1 generator picking `R-0418`, a reviewer-practice rule no builder can repair in code, and the approval gate correctly refusing the unfinished job — the fifth consecutive run of that pick (SU-005 through SU-009) to end this way; this entry ADDS that run as evidence to `R-0784` rather than minting a second id, exactly as RECORD13 of F114 did for SU-008. Evidence is committed at `47730045`: `.agent/selfuse_f262/SU-009.md` (1541 bytes, sha256 equal to the plan's own `job_file_sha256`, reproduced) and `.agent/selfuse_f262/run.txt` (5598 bytes). The job's own retained worktree is `.remedy-wt/job-21c19578b8754287/`, untouched. PRECONDITION 3 IS CONFIRMED, REPRODUCED: `python3 -m apps.cli.grouped integrity check --json` (the module `pyproject.toml` maps the denied `remedy` console script to) reads `"passed": true`, `"fail_count": 0`, `"check_count": 5`, `high_blockers_open` "no open blocker/high findings". ONE DEVIATION WAS DECLARED AND IS ACCEPTED AS HARMLESS: the worker's reporter crashed after the run returned (it read `.id` on a `TaskEntry` that carries `task_id`), so the run's fields were read back from the persisted plan rather than the live return value and the wall time is a 136.97 s bracket between `plan.created_at` and the final `job.json` mtime instead of a `time.time()` reading; the run was correctly NOT repeated. A second declared deviation — a `cd <repo>` prefix on two compound commands, unrefused — changed nothing on disk. THE TREE HELD: `git status --porcelain` and `git ls-files .remedy-wt` empty, `.agent/STOP` absent, `git diff --stat 60f48fb6..47730045 -- packages/ apps/ tests/ docs/` empty, every numstat cell matching the handback's Commits table (201/0, 156/177, 3/1 + 21/22, 8/0, 7/0 + 96/0), all commits single-parent and under 500 insertions, head equal to `origin/feature/f262-list-commands-v2`. Open findings, canonical line-count formula: 356 registered minus 77 `Done:` lines equals 279 open, unchanged; `.agent/candidates.md` remains EMPTY. ALL SIX CLOSURE PRECONDITIONS FOR F262 NOW HOLD: 1 (every round PASS), 2 (integration gate clean, round 25), 3 (this round), 4 (Built State, round 24), 5 (clean, pushed), 6 (SU-009 generated, run to the gate, its defects registered as `R-0784` evidence; its `consumed_by` becomes `F262` in the closure commit). The next round is algorithm steps 1-2: the evidence job `f262-closure` and the review zip.
-<<<END RECORD26>>>
+<<<BEGIN RECORD27>>>
+Gate: R27 — the F262 R27 entry, algorithm steps 1-2 of `docs/roadmap/STATUS_closure_protocol.md`: the evidence bundle and the review zip, no production code touched. VERDICT PASS over the range `0609f113..d887906b` (C0a `fca83123`, C0b `694a11e1`, C1 `a5896aa6`, handback `d887906b`), independently re-verified by the reviewer. TRANSPORT HELD IN ITS PRIMARY FORM: scratch original, committed `.agent/authored/f262-r27.md` and `.agent/last_block.md` equal byte for byte, sha256 `68536a44a4274bd438ee53e58d2adb26201577e6df2fb62ede978fc4f2b2938f`, 18010 bytes. THE LEDGER APPEND (RECORD26) HELD: 2503246 (at `694a11e1`) plus two newlines plus RECORD26 (4992 bytes) equals 2508240 (at `a5896aa6`), tail equal, the flipped-byte control rejected. THE PLAN HELD: `.agent/plan.md` equals PLAN28 (1681 bytes, 38 lines by `wc -l`). THE EVIDENCE BUNDLE HELD, REPRODUCED FROM THE PACKAGE ON DISK: evidence job `f262-closure` carries seven verification runs, each with `len(node_ids)` equal to `selected` equal to `passed` — `tests/orchestration/test_list_options.py` 11, `tests/test_command_catalog.py::TestListCommandOptions` 3, `tests/cli/test_config_cmd.py` 16, `tests/cli/test_worker_facade_cmd.py` 70, `tests/cli/test_managed_builder_execution_cli.py` 12, `tests/cli/test_queue_cmd.py` 28, `tests/docs/test_docs_consistency.py` 295 — zero failed/skipped/deselected, every `output_hash` equal to sha256 of its `stdout_summary`, the `_unsafe_text` pre-scan 0 rejected with its red control answering "a local absolute path", all eight closed-schema gate files present (final_verifier_report, fresh_evidence, artifact_contract, change_provenance, manifest_integrity, postmortem_integrity, commit_execution, runtime_integration — confirmed by the reviewer from the zip's member list), the template's computed head equal to C1, the producer's own verdict PASS_WITH_RISKS. THE REVIEW ZIP HELD, REPRODUCED BY THE REVIEWER OVER THE FILE ON DISK: `remedy-review-20260905-112903-READY_FOR_REVIEW.zip` at `/home/decodeux/Repos/remedy-history/zips/`, 22992203 bytes, sha256 `83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e`, matching the worker's reported digest exactly; its `.review_zip_manifest.json` reads `package_status` READY_FOR_REVIEW, `ready_gate_matrix.ok` true, `blocking_reasons` empty, `committed_review_subject.head_commit` `a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0` (C1) and `committed_review_subject.base_commit` `7c65d9ccfb512aef1c3eea0245030647332c26ea`. THE RED CONTROL WAS OPENED, NOT TAKEN ON REPORT: the deliberately poisoned COPY of the evidence directory (one absolute-path node id appended to `vr-0001`, 11 ids becoming 12) packaged `remedy-review-20260905-112938-BLOCKED_EVIDENCE.zip` (22992497 bytes), re-opened by the reviewer, reading `package_status` BLOCKED_EVIDENCE with exactly three blocking reasons — the unconfirmable VerificationTests total, `runs[0].node_ids[11]` carrying a local absolute path, and the 12-versus-11 count mismatch — proving the validator distinguishes a poisoned bundle from the real one; the two packages were built from DIFFERENT inputs by design, and the control is not evidence about the real bundle (DECISION F262 D6 records why this pair must never be read as non-determinism). PRECONDITION 3 RE-CONFIRMED: `python3 -m apps.cli.grouped integrity check --json` unchanged from round 26. THE STRUCTURE HELD: `git status --porcelain` empty at every checkpoint including immediately before the zip build, `git ls-files .remedy-wt` empty, no tracked path matching `remedy-job-evidence`, `git diff --numstat 0609f113..a5896aa6` empty for `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json` and for every path under `packages/`, `apps/`, `tests/`, `docs/`, `scripts/`; every numstat cell matches the handback's Commits table (232/0, 186/155, 3/1 + 18/21), all three pre-handback commits single-parent and under 500 insertions; head equal to `origin/feature/f262-list-commands-v2`. FIVE DEVIATIONS WERE DECLARED, NONE A DEFECT ON DISK: an unrefused `cd` prefix on one read-only compound, the template's line-1 docstring left reading "F009" (not an ordered value), pre-emptive Python re-expressions with no refusal to report, the control zip left under the archive dir per constraint 8, and the block's line-wrapped `job_title` applied as one line. Open findings, canonical line-count formula: 356 registered minus 77 `Done:` lines equals 279 open, unchanged; `.agent/candidates.md` remains EMPTY. ALL SIX CLOSURE PRECONDITIONS CONTINUE TO HOLD and algorithm steps 1 and 2 are complete: `Evidence job f262-closure`, package `remedy-review-20260905-112903-READY_FOR_REVIEW.zip`, SHA-256 `83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e`, archived at `/home/decodeux/Repos/remedy-history/zips`, accepted head `a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0`. The next and final round on this branch is the closure commit (STATUS line, README sync, `consumed_by=F262`) and the pull request.
+<<<END RECORD27>>>
 
-<<<BEGIN PLAN28>>>
+<<<BEGIN PLAN29>>>
 # Plan — F262 List commands v2 (dates, sort, filter)
 
 Branch: feature/f262-list-commands-v2, cut from `main` after pull
@@ -194,39 +122,154 @@ remaining wirings are F267's per DECISION F262 D5).
 
 ## Current Step
 
-Round 27, session 9 — closure algorithm steps 1-2 of
-docs/roadmap/STATUS_closure_protocol.md: book round 26 (all six closure
-preconditions now hold), then build the evidence bundle (job
-`f262-closure`, seven scoped verification runs, EVIDENCESCRIPT template
-from `.agent/authored/f009-r33.md`) and the fresh review zip with its
-red control, from the clean tree at C1. No `[x]` flip, no README sync,
-no `consumed_by` edit, no pull request this round.
+Round 28, session 9 — the closure commit and the pull request. Books
+round 27 (evidence job `f262-closure`, package `remedy-review-20260905-112903-READY_FOR_REVIEW.zip`, accepted HEAD
+`a5896aa6`), then ONE commit flips STATUS to `[x]`, syncs the
+README numerals and capability list, and sets `consumed_by=F262` on
+SU-009 (docs/roadmap/STATUS_closure_protocol.md algorithm step 5); then
+`gh pr create`. The merge follows under the operator's 2026-09-05
+authorization once hosted CI reads green.
 
 ## Next Steps
 
-- The closure commit, in ONE commit: STATUS `[x]` line (reviewer-authored,
-  carrying the package name, SHA-256, archived path and accepted HEAD =
-  this round's C1), README numerals (accepted count, Tier 2 Done cell)
-  plus the F262 capability paragraph, `consumed_by=F262` on SU-009.
-- Open the pull request; merge under the operator's 2026-09-05
-  authorization once hosted CI reads green (checks read as their own
-  command first).
+None on this branch — F262 closes with this round's pull request. The
+reviewer reads the PR checks, merges, and verifies `main`. The next
+feature is claimed per Rule A5 in a fresh session.
 
 ## Risks
 
-- The evidence directory and the zip are gitignored and NEVER
-  committed; only `.agent/**` changes land in git this round.
-- `remedy-review-*.zip` files write under
-  `/home/decodeux/Repos/remedy-history/zips`; nothing there is deleted.
-<<<END PLAN28>>>
+- README's derived numerals (accepted count, Tier 2 Done cell) move the
+  moment STATUS flips; both land in the SAME commit as the flip (F112
+  R30 lesson: a split closure commit went red on `tests/docs/`).
+<<<END PLAN29>>>
+
+<<<BEGIN STATUS_FROM>>>
+- [~] F262 — List commands v2 (dates, sort, filter)
+<<<END STATUS_FROM>>>
+
+<<<BEGIN STATUS_TO>>>
+- [x] F262 — List commands v2 (dates, sort, filter) (T001–T003 complete; accepted 2026-09-05 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f262-closure · package remedy-review-20260905-112903-READY_FOR_REVIEW.zip · SHA-256 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0)
+<<<END STATUS_TO>>>
+
+<<<BEGIN README_COUNT_FROM>>>
+71 of 267 registered items accepted.
+<<<END README_COUNT_FROM>>>
+
+<<<BEGIN README_COUNT_TO>>>
+72 of 267 registered items accepted.
+<<<END README_COUNT_TO>>>
+
+<<<BEGIN README_TIER2_FROM>>>
+| 2 | Minimal Self-Build Runtime | 14 | 20 |
+<<<END README_TIER2_FROM>>>
+
+<<<BEGIN README_TIER2_TO>>>
+| 2 | Minimal Self-Build Runtime | 15 | 20 |
+<<<END README_TIER2_TO>>>
+
+<<<BEGIN README_PARA_FROM>>>
+F086 release capability (wheel, `remedy --version`, release gate).
+
+Accepted in Tier 3 so far:
+<<<END README_PARA_FROM>>>
+
+<<<BEGIN README_PARA_TO>>>
+F086 release capability (wheel, `remedy --version`, release gate),
+F262 list commands v2 (one shared `--sort <field> [--desc] --since <when>
+--until <when> --limit <n>` surface attached to every list-shaped command
+by the catalog, CREATED/UPDATED dates on the rows, and newest-first
+sort/filter/limit behaviour wired into 15 of the 24 in-scope commands;
+the remaining nine are F267's).
+
+Accepted in Tier 3 so far:
+<<<END README_PARA_TO>>>
+
+<<<BEGIN QUEUE_FROM>>>
+"consumed_by": "",
+<<<END QUEUE_FROM>>>
+
+<<<BEGIN QUEUE_TO>>>
+"consumed_by": "F262",
+<<<END QUEUE_TO>>>
+
+<<<BEGIN PRBODY>>>
+## Summary
+- Every list-shaped CLI command now carries one shared option surface —
+  `--sort <field> [--desc] --since <when> --until <when> --limit <n>` —
+  attached mechanically by the command catalog
+  (`apps/cli/command_catalog.py`: `_is_list_command`, `_with_list_options`),
+  so a new list command gets the flags by construction.
+- Rows carry CREATED/UPDATED dates (or the store's own equivalent) in text
+  and `--json`; `packages/orchestration/list_options.py`
+  (`apply_list_options`, `parse_time_bound`, `ListOptionError`) implements
+  newest-first default sort, `--since`/`--until` filtering (ISO-8601 or
+  `2d`/`12h`), `--limit`, and a non-zero exit naming the valid fields on an
+  unknown `--sort`.
+- Wired into 15 commands: job.list, queue.list, loop.list, project.list,
+  patch.list, worker.list, tournament.list, memory.list, blocker.list,
+  decision.list, external-builder.submission-list, review.list,
+  propose.list, config.list, execution.list — each with regression tests.
+
+## Key decisions
+- DECISION F262 D4 scopes Acceptance to 24 of the catalog's 28 list-shaped
+  commands (three static registries and one name-browsed policy catalog
+  excluded permanently).
+- DECISION F262 D5 (operator ruling 2026-09-05, Option B): the nine
+  remaining wirings, the catalog-driven handler test and the ten-second-demo
+  smoke test split into the newly registered feature F267
+  (`docs/roadmap/features/T2_F267.md`); F262 closes at the D4 scope.
+  FINDING R-0796 stays open as documented Medium risk, owned by F267.
+- DECISION F262 D6 records why the operator-ordered "non-deterministic
+  packaging" finding was NOT registered (the F114 BLOCKED zip was a
+  deliberate red control).
+- D1–D3: CREATED-date sourcing for patch/loop rows; queue.list keeps
+  priority order and loop.list keeps config-declaration order as defaults.
+
+## How to review
+- `docs/roadmap/features/T2_F262.md` Built State names every shipped
+  symbol and test file; `T2_F267.md` carries the split-off scope.
+- Full round-by-round record: `.agent/live_review.md`, `Gate: R1` through
+  `Gate: R27` of the F262 entries; decisions in `.agent/decisions.md`
+  (DECISION F262 D1–D6).
+
+## Verification
+- Integration gate (round 25): full suite clean at the merge-base with
+  `main` — 19676 passed / 23 skipped / 0 failed on branch, 19601 / 23 / 0
+  at base, both failure sets empty, UI parity held as an event.
+- Closure evidence bundle (round 27, job `f262-closure`): seven scoped
+  suites green — `test_list_options.py` 11, `TestListCommandOptions` 3,
+  `test_config_cmd.py` 16, `test_worker_facade_cmd.py` 70,
+  `test_managed_builder_execution_cli.py` 12, `test_queue_cmd.py` 28,
+  `tests/docs/` 295 — all eight closed-schema gates present; review zip
+  `remedy-review-20260905-112903-READY_FOR_REVIEW.zip` `PACKAGE_STATUS=READY_FOR_REVIEW` (SHA-256 `83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e`), red control
+  confirmed `BLOCKED_EVIDENCE`.
+- `integrity check --json` (module route): `passed: true`, `fail_count: 0`,
+  no open Blocker/High findings. Self-use precondition: SU-009 generated,
+  run to the approval gate (blocked, the correct outcome), defects added as
+  evidence to open `R-0784`.
+- Latest live-review verdict: PASS_WITH_RISKS — ACCEPTED. Open findings
+  ledger-wide: 279 (pre-existing project debt, none Blocker/High;
+  R-0796 is the one this feature leaves open by decision).
+
+## Runtime actuals
+- 28 delegated rounds across 9 sessions (self-drive, one branch, no
+  paste relay).
+- Wall clock / token / cost totals: not-measured (this workflow's ledger
+  does not track them per round).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+https://claude.ai/code/session_01LvvDEqLkieE84dZcwifEyU
+<<<END PRBODY>>>
 
 Handback: write .agent/handoff.md per docs/agents/handback_template.md
-and AGENTS.md - Session line `SESSION 9 of feature F262 · round 27 ·
-rounds so far 27` with one sentence of context self-assessment, Range
-`Review of 0609f113..<C1>`, one changed-files table per commit (C0a, C0b,
-C1; C2 grouped per the self-reference exception), an item-status table
-over C0a..C2 and G1..G8, External actions (the push, both zip builds,
-the archive move), raw Verification per gate, Authored-text proofs,
-Deviations, and Next: "the closure commit (STATUS line, README sync,
-consumed_by=F262) and the pull request". Record the package name, its
-SHA-256, its archived path and the accepted HEAD prominently.
+and AGENTS.md - Session line `SESSION 9 of feature F262 · round 28 ·
+rounds so far 28` with one sentence of context self-assessment, Range
+`Review of d887906b..<C2>`, one changed-files table per commit (C0a, C0b,
+C1, C2; C3 grouped per the self-reference exception), an item-status
+table over C0a..C3 and G1..G8, External actions (the push, `gh pr
+create` with the resulting PR number), raw Verification per gate,
+Authored-text proofs (grep proof that the STATUS line and the queue line
+read byte-identical to their slices), Deviations, and Next: "the
+reviewer reads the PR's hosted checks and merges under the operator's
+2026-09-05 authorization; F262 is closed on this branch".
