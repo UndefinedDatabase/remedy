@@ -14,7 +14,16 @@ if TYPE_CHECKING:
     import argparse
 
 
-def _cmd_workers(*, json_output: bool = False) -> None:
+def _cmd_workers(
+    *,
+    json_output: bool = False,
+    sort: str | None = None,
+    desc: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    limit: str | None = None,
+) -> None:
+    from packages.orchestration.list_options import ListOptionError, apply_list_options
     from packages.orchestration.worker_adapters import (
         export_worker_specs_json,
         list_worker_specs,
@@ -22,6 +31,22 @@ def _cmd_workers(*, json_output: bool = False) -> None:
     )
 
     specs = list_worker_specs()
+    try:
+        specs = apply_list_options(
+            specs,
+            sort=sort, desc=desc, since=since, until=until, limit=limit,
+            sort_fields={
+                "provider_id": lambda s: s.provider_id,
+                "display_name": lambda s: s.display_name,
+                "status": lambda s: s.status,
+            },
+            default_sort_field=None,
+            date_getter=None,
+        )
+    except ListOptionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     if json_output:
         print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
     else:
@@ -315,7 +340,14 @@ def _cmd_worker_status_live(*, json_output: bool = False) -> None:
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "worker.list": lambda args: _cmd_workers(json_output=args.json),
+    "worker.list": lambda args: _cmd_workers(
+        json_output=args.json,
+        sort=getattr(args, "sort", None),
+        desc=getattr(args, "desc", False),
+        since=getattr(args, "since", None),
+        until=getattr(args, "until", None),
+        limit=getattr(args, "limit", None),
+    ),
     "worker.recommend": lambda args: _cmd_worker_recommend(args.job_id, json_output=args.json),
     "worker.show": lambda args: _cmd_worker_show(args.provider_id, json_output=args.json),
     "worker.explain": lambda args: _cmd_worker_explain(args.job_id, json_output=args.json),
