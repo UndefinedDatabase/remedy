@@ -8,7 +8,7 @@ reaches your repository or your remote without you saying so.
 **Local-first.** Everything runs on your machine. Providers (Claude CLI, Ollama) are
 optional plug-ins behind interfaces; the core has no cloud dependency.
 
-**Human approval.** No automatic commit, push, merge or promotion. Ever. The final
+**Human approval.** No automatic commit, push, merge or apply. Ever. The final
 gate (`commit_execution_gate`) is `NEEDS_HUMAN_APPROVAL` by design.
 
 **Evidence, not claims.** Every completion carries hashes, gates and reproducible
@@ -48,7 +48,7 @@ F081 remedy init, F146 project identity & repo autodetection, F147 golden-path C
 F148 project scoping everywhere.
 
 Accepted in Tier 1 so far:
-F013 job intake, F014 flight plan, F016 scaling task granularity,
+F013 job intake, F014 job plan (then called flight plan; DECISION amend0905-vocab D6), F016 scaling task granularity,
 F034 bundled clarification, F046 multi-cycle loop, F047 checkpoint & resume,
 F048 job queue, F251 full-suite stabilization, F252 standing-red paydown,
 F050 DAG scheduling, F051 escalate instead of block,
@@ -204,7 +204,7 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 remedy doctor                              # check local health
 remedy config show                         # view current settings
 remedy job create --plan plan.yaml         # create a job from a plan
-remedy do plan <job-id>                    # generate a flight plan
+remedy do plan <job-id>                    # generate a job plan (F261 renames the command)
 remedy do run <job-id>                     # run the job
 remedy do report <job-id>                  # generate the report
 remedy job stop <job-id>                   # stop at next safe point (F011)
