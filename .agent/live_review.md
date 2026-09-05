@@ -1,31 +1,35 @@
-# Live Review — F037 Rendered diff viewer
+# Live Review — F259 Vocabulary & concept model v1
 
-> Round-by-round review record for the F037 branch, reset at the feature claim.
-> The F032 record closed with pull request #217, merged into `main` as
-> `9dde5495`, this branch's point. F032's LAST round, R19, is the round whose
-> own bundle CREATED that pull request, so it is a branch terminator under
-> `docs/agents/planner_reviewer_prompt.md` §4 item 13 and owes this record no
-> entry. Its verdict is nevertheless the first `Gate:` paragraph below, because
-> the finding record carries across the reset and an entry therefore costs this
-> round nothing — the disposition F031's own R1 chose for F022 R19. Finding ids
-> continue the monotonic R-XXXX series across the reset, and every finding
-> record F032 carried is carried forward unchanged: measured at `9dde5495`,
-> 275 findings, 24 resolved, 251 open, the maximum id `R-0714`.
+> Round-by-round review record, re-headed at the F259 claim. The heading this
+> replaces named F037 and had outlived every feature since: F037, F256, F033,
+> F040, F257, F258, F109, F110, F112, F114 and F262 all ran under it, because
+> the per-feature re-head of docs/agents/planner_reviewer_prompt.md §1 stopped
+> being performed and nothing on disk goes red for it. Only the heading and the
+> Steps section are rewritten. Every finding record below `## Findings` is
+> carried forward BYTE-IDENTICAL: the block that ordered this re-head gates
+> that region's sha256 equal before and after the edit, as its gate G3, and
+> finding ids continue the monotonic R-XXXX series across the re-head. Measured by the reviewer at
+> 25961794, the branch point: 299 lines matching `^- R-\d{4} — ` against 4
+> matching `^Done: R-\d{4} — `, so 295 findings are open, and the maximum id is
+> R-0812. Records belonging to features already marked `[x]` in
+> docs/roadmap/STATUS.md are not here at all: `scripts/rotate_live_review.py`
+> moves them byte-verbatim into the append-only `.agent/live_review_archive.md`
+> in every closure sequence, under operator amendment amend0905-throughput, and
+> that archive is read on demand by id, never at session start.
 
 ## Steps
 
-R1 claim F037 in the roadmap ledger, cut the branch, reset this record carrying
-every finding record forward, gate F032 R19, and put the F037 source inventory
-on disk — the unified-diff readers that already exist and what each discards,
-the file-status vocabulary and whether it names `binary`, where a diff is
-produced and whether one is kept per attempt, the server route table and the
-guards over it, what identifies an attempt, the client entry point the design
-reference names, the fetch seam and the bundle budget, and the guards a new
-parser must satisfy → R2 book the R1 verdict and plan T001 against that
-inventory → T001 the parser, its corpus and the read endpoint → T002 the
-rendering core, the binding CSS and the goldens → T003 sidebar, virtual
-scrolling, lazy languages and the L3 tab.
-
+R1 claim F259 in the roadmap ledger, cut the branch, re-point `.agent/plan.md`
+and `.agent/context.md`, re-head this record, book the reviewer's `Done: R-0797`
+from the F262 branch, and put the T001 source inventory on disk — per word of
+DECISION amend0905-vocab D1, the spelling the code really uses today, read from
+the seven modules T2_F259.md names and from the shipped command catalog, with
+every claim carrying the `path:line` it was read at → R2 the page's D1 table,
+written from that inventory → R3 the do-not-confuse table, the Mermaid diagram
+and its short description, completing T001 → R4 D2–D10 and F259 D1/D2 onto the
+page, T002 → R5 `tests/docs/test_vocabulary.py` in planned mode with both red
+proofs, T003 → R6 the README diagram and the docs index registration, T004 →
+the integration gate → the closure sequence.
 ## Findings
 
 - R-0570 — Low, THE ROOT README'S ACCEPTED-FEATURE LIST IS PINNED IN ONE DIRECTION ONLY, SO AN INCOMPLETE LIST PASSES EVERY TEST THAT READS IT. Raised by the reviewer's closure review of F085 R74, carried in `.agent/candidates.md` as a closure candidate per docs/roadmap/STATUS_closure_protocol.md "Closure-candidate findings", and registered here because this is F086's first reviewed round. Measured by the reviewer at 76661dc1: `README.md` line 58 opens "Accepted in Tier 2 so far:" and the list beneath it names F254, F103, F104, F105 and F107 — five ids — while the Tier 2 block of `docs/roadmap/STATUS.md` carries thirteen lines matching `^- \[x\] F\d{3} — `, namely F103, F104, F105, F107, F111, F115, F045, F057, F077, F082, F083, F085 and F254. Eight accepted features are therefore absent from the list that claims to enumerate them, and the README already contradicts itself on the same page: its tier table at line 25 reads `| 2 | Minimal Self-Build Runtime | 13 | 14 |`. The reason nothing catches it is structural rather than accidental. `test_the_readme_reports_the_accepted_foundation_and_no_later_feature` in `tests/docs/test_docs_consistency.py` iterates the ids the README LISTS and asserts each one is accepted in the ledger; that is the list→ledger direction only, so removing an id from the list, or never adding it, can never fail that test. Its two neighbours are pinned in the other direction and are both green for exactly that reason: `test_the_readme_accepted_count_equals_the_status_count` compares the prose "51 of 255 registered items accepted" against the ledger's `[x]` count, which the reviewer measured as 51 at the same commit, and `test_the_readme_tier_table_done_column_matches_the_ledger` pins the Done column, which is why the TABLE says thirteen while the PROSE LIST says five. Low, because nothing false is asserted anywhere — every count that is pinned is correct, and no unaccepted feature is claimed as accepted — and the whole cost is that a reader of the list under-counts Tier 2 by eight. This is not F085's defect: the same list was already incomplete when F082 and F083 closed, neither of which added itself, which is precisely why it needed a carrier rather than a repair inside that feature. The fix edits `README.md` and one test in `tests/docs/test_docs_consistency.py`, neither of which F086 owns, and AGENTS.md forbids mixing an unrelated fix into a feature branch, so it routes to the same paydown branch as R-0403, R-0448, R-0482, R-0487 and R-0490. OPEN.
