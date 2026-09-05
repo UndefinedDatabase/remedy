@@ -78,6 +78,18 @@ class TestManagedBuilderExecutionCLI(unittest.TestCase):
         data = json.loads(r.stdout)
         assert isinstance(data, list)
 
+    def test_execution_list_limit(self):
+        r = _run(["execution", "list", "--json", "--limit", "1"])
+        assert r.returncode == 0
+        data = json.loads(r.stdout)
+        assert isinstance(data, list)
+        assert len(data) <= 1
+
+    def test_execution_list_unknown_sort_field_exits_nonzero(self):
+        r = _run(["execution", "list", "--json", "--sort", "bogus"])
+        assert r.returncode != 0
+        assert "unknown --sort field" in r.stderr
+
 
 if __name__ == "__main__":
     unittest.main()
