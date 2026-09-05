@@ -1,327 +1,73 @@
-── STEP R-0795 fix batch 1 (wiring) — F262 List commands v2 ────────────────
-Goal: Wire config.list/worker.list/execution.list to apply_list_options (FIX option (a) of finding R-0795), add regression tests proving --limit and an unknown --sort field now work identically to every other list command, and book round 21's already-PASSED verdict into the ledger.
+── STEP scope-correction (no code) — F262 List commands v2 ────────────────
+Goal: Book round 22's PASS verdict, convert R-0795 to Done, register FINDING R-0796 (T003's scope was undercounted — 13 of 28 list-shaped commands were never wired, not 3), register DECISION F262 D4 (scope the closure Acceptance to 24 of 28), point T2_F262.md at that DECISION, and hand the operator a corrected-scope proposal in `.agent/plan.md`.
 
 Bundle:
-C0a. Save this entire step block, byte for byte, to a NEW file `.agent/authored/f262-r22.md`.
+C0a. Save this entire step block, byte for byte, to a NEW file `.agent/authored/f262-r23.md`.
 C0b. Whole-file replace `.agent/last_block.md` with the same bytes (mirror of C0a).
-C1. Append GATE21 (below) to `.agent/live_review.md`.
-C2. Production change: PAIR W1 (whole-function rewrite) + PAIR W2 (dispatch site) in `apps/cli/commands/worker.py`. ONE commit.
-C3. Production change: PAIR CFG1 (whole-function rewrite) in `apps/cli/commands/config_cmd.py`. ONE commit.
-C4. Production change: PAIR EXE1 (whole-function rewrite) in `apps/cli/commands/managed_builder_execution_cmd.py`. ONE commit.
-C5. Test change: TEST T1 (append) in `tests/cli/test_config_cmd.py`, TEST T2 (rewrite, inserts before the module guard) in `tests/cli/test_managed_builder_execution_cli.py`, TEST T3 (append, new class) in `tests/cli/test_worker_facade_cmd.py`. ONE commit covering all three files.
-C6. Append the LANDED line (below) to `.agent/live_review.md`.
-C7. Whole-file replace `.agent/plan.md` with PLAN23 (below).
-C8. Rewrite `.agent/handoff.md` (handback) per docs/agents/handback_template.md; this is the round's LAST commit.
+C1. Append GATE22 (below) to `.agent/live_review.md`.
+C2. Append the Done: R-0795 text (below) to `.agent/live_review.md`.
+C3. Append FINDING R-0796 (below) to `.agent/live_review.md`.
+C4. Append DECISION F262 D4 (below) to `.agent/decisions.md`.
+C5. Append the T2_F262.md amendment (below) to `docs/roadmap/features/T2_F262.md`.
+C6. Whole-file replace `.agent/plan.md` with PLAN24 (below).
+C7. Rewrite `.agent/handoff.md` (handback) per docs/agents/handback_template.md; this is the round's LAST commit.
 
 ============================================================
-GATE21 — append verbatim as a new paragraph at the end of `.agent/live_review.md`. The current file ends with NO trailing newline, and its own last entry is FINDING R-0795 (not a Gate) — every non-Gate-to-Gate transition measured in this file uses a BLANK LINE separator (confirmed directly: GATE20-to-R-0795 used `\n\n`; every Landed-to-* and Done-to-* transition checked also used `\n\n`; only Gate-immediately-after-Gate has ever been observed using a single `\n`, and this append is Finding-to-Gate, not Gate-to-Gate). C1 must therefore: read the current file, append exactly TWO `\n` characters followed by the GATE21 text below (with no trailing newline after it either). Do this with Python (`pathlib.Path.write_bytes`), not a shell append.
+GATE22 — append verbatim to `.agent/live_review.md`. The file currently ends with the LANDED R-0795 line (a prose entry, no trailing newline). Append exactly TWO `\n` characters followed by the GATE22 text below (no trailing newline after it). Python `pathlib.Path.write_bytes`.
 
-GATE21 text (copy exactly, it is a single line with zero internal newlines, 2545 bytes UTF-8):
-Gate: R21 — the F262 R21 entry. R21 was the OPERATOR-MANDATED SCOPE-REPORT ROUND triggered by amend0827-process-diet rule 6 (F262 reached 7 sessions, the stated soft limit): it booked round 20's already-PASSED verdict (GATE20, above) into the ledger, registered FINDING R-0795 (config.list/worker.list/execution.list PARSE all four T003 flags via the catalog's mechanical `_with_list_options` attachment but their handlers silently discard them, measured directly — `--sort bogus` against any of the three raises nothing, violating T2_F262.md's Acceptance bullet requiring a non-zero exit naming the valid fields), replaced `.agent/plan.md` with PLAN22 stating the two-option proposal (Option A: wire the three handlers plus build the T001 catalog test and the Acceptance smoke test; Option B: register a DECISION narrowing Acceptance to exempt the three by name), and wrote the mandated SCOPE REPORT handback — no `apps/`, `packages/`, `tests/` or `docs/` path was touched, which is the round's OWN stated obligation under rule 6 and not a rule-1 pure-bookkeeping violation, since rule 6 is a second sanctioned exception alongside a feature's closure sequence — AND THE REVIEWER RE-RAN EVERY GATE ITSELF, in a fresh session (session 8), independently. TRANSPORT HELD: `sha256sum .agent/authored/f262-r21.md .agent/last_block.md` printed one identical digest, `62077e148db6644c38030ef6fe3c94f225f8020448fa53d1e75d927871ba984f`, for both files, reproduced exactly. THE LEDGER APPENDS HELD, reproduced by direct byte reads of the tracked file: base 2473689 (before C2) plus one newline plus GATE20 (2778 bytes) equals 2476468 (after C2); 2476468 plus two newlines plus FINDING R-0795 (3228 bytes) equals 2479698 (after C3) — both exact, matching the round's own stated arithmetic and the file's current on-disk size (2479698 bytes, confirmed by a fresh byte read). THE PLAN HELD: `.agent/plan.md` measured 2350 bytes at HEAD `c129b4f2`, byte-for-byte equal to PLAN22, 49 lines, under the 50-line cap. THE NUMSTAT CROSS-CHECK HELD: `git show --numstat --format="" 655f71ae` read `104 0 .agent/authored/f262-r21.md`; `2909d2b4` read `68 240 .agent/last_block.md`; `76c8c6b9` read `28 26 .agent/plan.md`; `8d141dd4` read `2 1 .agent/live_review.md`; `d4760aa2` read `3 1 .agent/live_review.md` — every path and every insertion/deletion count matches the round's own handback Commits table exactly. HYGIENE HELD: `git status --porcelain` empty at HEAD `c129b4f2`, `git ls-files .remedy-wt` empty, `.agent/STOP` absent. THE VERDICT IS PASS.
+GATE22 text (single line, zero internal newlines, 3174 bytes UTF-8):
+Gate: R22 — the F262 R22 entry. R22 SHIPPED R-0795's FIX (option a): `worker.list`, `config.list` and `execution.list` all wired to `apply_list_options` — `worker.list`/`config.list` with `default_sort_field=None` (no date field on either row shape, matching D2/D3's precedent for a command with no natural recency), `execution.list` with `default_sort_field="started_at"` (a real ISO date on every row) — plus six new regression tests (two per command) proving `--limit` and an unknown `--sort` field now behave identically to every other list command, and no mutation red-proof was ordered this round by the block's own constraint 9 (deferred) — AND THE REVIEWER RE-RAN EVERY GATE ITSELF, in a fresh session (session 8), independently. TRANSPORT HELD: `sha256sum .agent/authored/f262-r22.md .agent/last_block.md` printed one identical digest, `be063df027d5daf0fae01a1b422d5aee83829025e985ca98342f833c4f9f4697`, for both files, reproduced exactly. THE DIFF WAS READ, NOT ONLY GATED: `git diff c129b4f2..2e7e68b6` for `apps/cli/commands/worker.py`, `apps/cli/commands/config_cmd.py`, `apps/cli/commands/managed_builder_execution_cmd.py`, `tests/cli/test_config_cmd.py`, `tests/cli/test_managed_builder_execution_cli.py` and `tests/cli/test_worker_facade_cmd.py` shows exactly PAIR W1/W2, PAIR CFG1, PAIR EXE1, and TEST T1/T2/T3's six new test functions, every other line in all six files untouched, confirmed by reading the full diff. `python3 -c "import py_compile; ..."` printed OK for all six touched files, run independently by the reviewer. THE TESTS MOVED EXACTLY AS THE HANDBACK CLAIMED, reproduced independently: `python3 -m pytest tests/cli/test_worker_facade_cmd.py tests/cli/test_config_cmd.py tests/cli/test_managed_builder_execution_cli.py -q` read `98 passed` (92 pre-existing plus 6 new). THE STATE READERS AND THE CANARY WERE UNMOVED, reproduced by the reviewer as ONE combined invocation: `tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py` read `646 passed`, matching 515+52+21+16+42 exactly. THE GATE21 AND LANDED LEDGER APPENDS WERE RE-VERIFIED BYTE-EXACT: base 2479698 plus two newlines plus GATE21 (2545 bytes) equals 2482245 (after C1); 2482245 plus two newlines plus the LANDED line (293 bytes) equals 2482540 (after C6) — both exact, matching the file's own on-disk size (2482540 bytes, confirmed by a fresh byte read). THE PLAN HELD: `.agent/plan.md` measured 1959 bytes at HEAD `2e7e68b6`, byte-for-byte equal to PLAN23. HYGIENE HELD: `git status --porcelain` empty at HEAD `2e7e68b6`, `git ls-files .remedy-wt` empty, `.agent/STOP` absent. ONE DEVIATION VERIFIED AS HARMLESS: the worker's `python3 -c` heredoc for PLAN23 was refused by the sandbox's bash guard (a `#` heading inside the heredoc looked like a hidden-argument attempt), so the worker used the Write tool instead and then trimmed one stray trailing-newline byte with a follow-up `write_bytes` call to reach the exact 1959-byte target — the final on-disk bytes match PLAN23 exactly regardless of the write route, confirmed above. THE VERDICT IS PASS.
 
-Base file size immediately before C1 must read 2479698 (confirm with a fresh Python byte read before writing). Post-C1 size must read exactly 2482245 (2479698 + 2 + 2545). Verify both numbers yourself and report them.
+Base size immediately before C1 must read 2482540. Post-C1 size must read exactly 2485716 (2482540 + 2 + 3174). Verify both numbers yourself.
 ============================================================
+Done: R-0795 — append verbatim to `.agent/live_review.md` immediately after C1 (append exactly TWO `\n` then the text below, no trailing newline after it).
 
-PAIR W1 — apps/cli/commands/worker.py — REWRITE (whole function). Before applying, re-read the CURRENT file and confirm this FROM text occurs exactly 1 time:
+Done: R-0795 text (single line, zero internal newlines, 1269 bytes UTF-8):
+Done: R-0795 — RESOLVED at `175ddfa1`/`36088098`/`4d51ea23` (F262 R22, C2/C3/C4), verified by the reviewer independently above (GATE22). `worker.list`, `config.list` and `execution.list` now all call `apply_list_options`, and `--sort bogus` against any of the three exits non-zero naming the valid fields — reproduced directly: `python3 -m pytest tests/cli/test_worker_facade_cmd.py::TestWorkerListOptions::test_unknown_sort_field_exits_nonzero tests/cli/test_config_cmd.py::TestConfigCli::test_config_list_unknown_sort_field_exits_nonzero tests/cli/test_managed_builder_execution_cli.py::TestManagedBuilderExecutionCLI::test_execution_list_unknown_sort_field_exits_nonzero -q` reads 3 passed. The mutation red-proof this finding's own FIX clause did not require (only options (a) or (b) were named) was not additionally ordered; the behavioural proof above is the resolution condition, matching FIX option (a) exactly. T001's own separate, never-built catalog-level enumeration gap — proving no list command's HANDLER, not just its argparse signature, ignores its flags — is NOT resolved by this and stays open, tracked as its own item in `.agent/plan.md`, not under this id (per §3 checklist item 30, searched and confirmed no separate id exists for it yet).
 
-FROM:
-def _cmd_workers(*, json_output: bool = False) -> None:
-    from packages.orchestration.worker_adapters import (
-        export_worker_specs_json,
-        list_worker_specs,
-        summarize_worker_specs,
-    )
-
-    specs = list_worker_specs()
-    if json_output:
-        print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
-    else:
-        print(summarize_worker_specs(specs))
-
-Replace it with this TO text:
-def _cmd_workers(
-    *,
-    json_output: bool = False,
-    sort: str | None = None,
-    desc: bool = False,
-    since: str | None = None,
-    until: str | None = None,
-    limit: str | None = None,
-) -> None:
-    from packages.orchestration.list_options import ListOptionError, apply_list_options
-    from packages.orchestration.worker_adapters import (
-        export_worker_specs_json,
-        list_worker_specs,
-        summarize_worker_specs,
-    )
-
-    specs = list_worker_specs()
-    try:
-        specs = apply_list_options(
-            specs,
-            sort=sort, desc=desc, since=since, until=until, limit=limit,
-            sort_fields={
-                "provider_id": lambda s: s.provider_id,
-                "display_name": lambda s: s.display_name,
-                "status": lambda s: s.status,
-            },
-            default_sort_field=None,
-            date_getter=None,
-        )
-    except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if json_output:
-        print(_json.dumps(export_worker_specs_json(specs), sort_keys=True))
-    else:
-        print(summarize_worker_specs(specs))
-
-Notes: `sys` is already imported at module scope (line 5) — no duplicate import; `apply_list_options` returns a `list`, and `export_worker_specs_json`/`summarize_worker_specs` iterate whatever is passed, no cast needed.
-
-PAIR W2 — apps/cli/commands/worker.py — REWRITE (dispatch site). Before applying, re-read the CURRENT file and confirm this FROM text occurs exactly 1 time:
-
-FROM:
-    "worker.list": lambda args: _cmd_workers(json_output=args.json),
-
-Replace it with this TO text:
-    "worker.list": lambda args: _cmd_workers(
-        json_output=args.json,
-        sort=getattr(args, "sort", None),
-        desc=getattr(args, "desc", False),
-        since=getattr(args, "since", None),
-        until=getattr(args, "until", None),
-        limit=getattr(args, "limit", None),
-    ),
-
-Commit C2 covers both pairs in `apps/cli/commands/worker.py` as ONE commit.
-
+Base size immediately before C2 must read 2485716. Post-C2 size must read exactly 2486987 (2485716 + 2 + 1269). Verify both numbers yourself.
 ============================================================
-PAIR CFG1 — apps/cli/commands/config_cmd.py — REWRITE (whole function). Before applying, re-read the CURRENT file and confirm this FROM text occurs exactly 1 time:
+FINDING R-0796 — append verbatim to `.agent/live_review.md` immediately after C2 (append exactly TWO `\n` then the text below, no trailing newline after it).
 
-FROM:
-def _cmd_config_list(args: argparse.Namespace) -> None:
-    from packages.orchestration.config import all_key_specs, get_config
+FINDING R-0796 text (single line, zero internal newlines, 4126 bytes UTF-8):
+- R-0796 — Medium, T003's OWN SCOPE WAS UNDERCOUNTED: 13 OF THE CATALOG'S 28 LIST-SHAPED COMMANDS WERE NEVER WIRED TO `apply_list_options` AT ALL, AND `.agent/plan.md` HAS CLAIMED "T003 is now DONE for every list command in scope" SINCE PLAN21 (round 20) WITHOUT THAT SCOPE EVER BEING MEASURED AGAINST THE FULL CATALOG. Raised by the reviewer at the start of session 8's round 23, by mechanically listing every `_is_list_command`-matched `CommandEntry` in `apps/cli/command_catalog.py::CATALOG` (28 total) against every file `grep -rl "apply_list_options(" apps/cli/commands/` names (15 files, one per wired command: job.list, queue.list, loop.list, project.list, patch.list, worker.list, tournament.list, memory.list, blocker.list, decision.list, external-builder.submission-list, review.list, propose.list, config.list, execution.list — the last three landed this session in F262 R22). The 13 UNWIRED command ids, characterized by whether their rows carry a genuine date field: test.list (`apps/cli/commands/real_test_execution_cmd.py::_cmd_test_list`, has `created_at`), repair.item-list (`repair_loop_v2_cmd.py::_cmd_item_list`, `RepairWorkItem.created_at`, already pre-sorted by it), builder.session-list (`main_builder_adapter_cmd.py::_cmd_session_list`, `BuilderSessionRecord.started_at`/`ended_at`), execution.approval-list (`managed_builder_execution_cmd.py::_cmd_approval_list`, `ExecutionApproval.approved_at`), mission.list (`mission_cmd.py::_cmd_mission_list`, `Mission.created_at`, `list_missions_safe` already sorts `reverse=True` by it), change.list (`change.py::_cmd_change_list`, recency lives in nested `approval`/`apply`/`proof`/`test`/`revert` dicts, no flat field), event.list (`event.py::_cmd_event_list`, has `timestamp`, already closest to wired per the catalog's own `_with_list_options` comment naming it the one pre-existing exception), external-builder.package-list (`external_builder_cmd.py::_cmd_external_builder_package_list`, has `created_at` in JSON only) and self-repair.proposal-list (`self_repair_cmd.py::_cmd_proposal_list`, has `created_at`/`updated_at`, already printed) — NINE commands with a genuine date field, squarely the class T003's Design section targets. THREE MORE have NO date field at all and no "newest" concept: builder.adapter-list (`main_builder_adapter_cmd.py::_cmd_adapter_list`, `BuilderAdapterSpec` carries no timestamp), execution.template-list (`managed_builder_execution_cmd.py::_cmd_template_list`, `CommandTemplate` carries no timestamp) and worker.registry-list (`route_policy_cmd.py::_cmd_worker_registry_list`, `WorkerSpec` carries no timestamp) — static configuration registries, not temporal history, the same class DECISION F262 D2/D3 already recognized for a command with its own non-arbitrary order, except here there is no order to preserve at all because there is nothing to order BY. ONE is a borderline hybrid: approval.policy-list (`worker_facade_cmd.py::_cmd_approval_policy_list`, `ExecutionApprovalPolicy.created_at`/`updated_at`, already printed) — has real dates but reads as a small named-policy catalog a user browses by policy id or enabled state, not by recency. FIX: DECISION F262 D4 (this round) scopes T003's closure Acceptance to the 9 genuine temporal-history gaps plus the 15 already-wired commands (24 of 28), explicitly excluding the 3 static registries and the 1 hybrid by name and reason; the 9 remaining genuine gaps do not fit the round budget left in this feature (3 of the 25-round soft cap remain) and are the subject of this round's scope proposal in `.agent/plan.md`. Searched before minting per §3 checklist item 30: grepped `.agent/live_review.md` for "test.list", "repair.item-list", "builder.adapter-list", "builder.session-list", "execution.template-list", "execution.approval-list", "worker.registry-list", "mission.list", "approval.policy-list", "change.list", "event.list", "external-builder.package-list" and "self-repair.proposal-list" as fixed strings — the only hit was test.list inside GATE12's own T002 text (round 12's date-only work, unrelated to T003 wiring), no open finding covers this gap.
 
-    config = get_config()
-    use_json = getattr(args, "json", False)
-
-    if use_json:
-        entries = []
-        for spec in all_key_specs():
-            cv = config.get_value(spec.key)
-            val = cv.value if cv else None
-            if spec.secret or spec.env_only:
-                val = "[REDACTED]" if val is not None else None
-            entries.append({
-                "key": spec.key,
-                "value": val,
-                "source": cv.source.value if cv else "unknown",
-                "env_var": spec.env_var,
-                "type": spec.value_type.__name__,
-                "is_default": cv.is_default if cv else True,
-            })
-        json.dump(entries, sys.stdout, indent=2)
-        sys.stdout.write("\n")
-        return
-
-    for spec in all_key_specs():
-        cv = config.get_value(spec.key)
-        val = cv.value if cv else None
-        source = cv.source.value if cv else "default"
-        if spec.secret or spec.env_only:
-            val = "[REDACTED]" if val is not None else None
-        val_str = str(val) if val is not None else "(not set)"
-        print(f"  {spec.key:40s} = {val_str:30s} [{source}]")
-
-Replace it with this TO text:
-def _cmd_config_list(args: argparse.Namespace) -> None:
-    from packages.orchestration.config import all_key_specs, get_config
-    from packages.orchestration.list_options import ListOptionError, apply_list_options
-
-    config = get_config()
-    use_json = getattr(args, "json", False)
-
-    try:
-        specs = apply_list_options(
-            list(all_key_specs()),
-            sort=getattr(args, "sort", None),
-            desc=getattr(args, "desc", False),
-            since=getattr(args, "since", None),
-            until=getattr(args, "until", None),
-            limit=getattr(args, "limit", None),
-            sort_fields={"key": lambda s: s.key},
-            default_sort_field=None,
-            date_getter=None,
-        )
-    except ListOptionError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    if use_json:
-        entries = []
-        for spec in specs:
-            cv = config.get_value(spec.key)
-            val = cv.value if cv else None
-            if spec.secret or spec.env_only:
-                val = "[REDACTED]" if val is not None else None
-            entries.append({
-                "key": spec.key,
-                "value": val,
-                "source": cv.source.value if cv else "unknown",
-                "env_var": spec.env_var,
-                "type": spec.value_type.__name__,
-                "is_default": cv.is_default if cv else True,
-            })
-        json.dump(entries, sys.stdout, indent=2)
-        sys.stdout.write("\n")
-        return
-
-    for spec in specs:
-        cv = config.get_value(spec.key)
-        val = cv.value if cv else None
-        source = cv.source.value if cv else "default"
-        if spec.secret or spec.env_only:
-            val = "[REDACTED]" if val is not None else None
-        val_str = str(val) if val is not None else "(not set)"
-        print(f"  {spec.key:40s} = {val_str:30s} [{source}]")
-
-Notes: `sys` already imported at module scope (line 6) — no duplicate import. This function ALSO serves `config.show` (`"config.show": _cmd_config_list`); its Namespace has no sort/desc/since/until/limit attributes, which is exactly why every read uses `getattr(args, ..., default)`. Commit C3 covers this pair.
-
+Base size immediately before C3 must read 2486987. Post-C3 size must read exactly 2491115 (2486987 + 2 + 4126). Verify both numbers yourself.
 ============================================================
-PAIR EXE1 — apps/cli/commands/managed_builder_execution_cmd.py — REWRITE (whole function). Before applying, re-read the CURRENT file and confirm this FROM text occurs exactly 1 time:
+DECISION F262 D4 — append verbatim to `.agent/decisions.md`. The file currently ends with D3's text (a "## DECISION" headed entry, no trailing newline) — consecutive `## DECISION` entries in this file use a SINGLE `\n` separator (confirmed directly: D2-to-D3's boundary uses exactly 1 newline), unlike the blank-line separator prose findings use. C4 must: append exactly ONE `\n` character followed by the text below (no trailing newline after it). Python `pathlib.Path.write_bytes`.
 
-FROM:
-def _cmd_list(ns: argparse.Namespace) -> None:
-    from packages.orchestration.managed_builder_execution import list_execution_results
-    job_id = getattr(ns, "job_id", "") or ""
-    results = list_execution_results(job_id)
-    print(json.dumps(results, indent=2))
+DECISION D4 text (copy exactly, it has internal blank lines between its own paragraphs — that is normal, matching D1/D2/D3's own internal shape; the WHOLE text below, 3213 bytes UTF-8, 7 lines, is what gets appended as one unit):
+## DECISION F262 D4 (2026-09-05, F262 R23) — T003's closure Acceptance is scoped to 24 of the catalog's 28 list-shaped commands, excluding 3 static registries and 1 hybrid config-catalog by name; the 9 remaining genuine temporal-history gaps are deferred, not silently dropped
 
-Replace it with this TO text:
-def _cmd_list(ns: argparse.Namespace) -> None:
-    from packages.orchestration.list_options import ListOptionError, apply_list_options
-    from packages.orchestration.managed_builder_execution import list_execution_results
-    job_id = getattr(ns, "job_id", "") or ""
-    results = list_execution_results(job_id)
-    try:
-        results = apply_list_options(
-            results,
-            sort=getattr(ns, "sort", None),
-            desc=getattr(ns, "desc", False),
-            since=getattr(ns, "since", None),
-            until=getattr(ns, "until", None),
-            limit=getattr(ns, "limit", None),
-            sort_fields={
-                "started_at": lambda r: r.get("started_at") or "",
-                "ended_at": lambda r: r.get("ended_at") or "",
-                "status": lambda r: r.get("status") or "",
-                "duration_ms": lambda r: r.get("duration_ms") or 0,
-            },
-            default_sort_field="started_at",
-            date_getter=lambda r: r.get("started_at") or None,
-        )
-    except ListOptionError as exc:
-        _err(str(exc))
-    print(json.dumps(results, indent=2))
+CHOSEN. T003's "every list command" is read as every list-shaped command whose rows carry a genuine, meaningful date (T2_F262.md's own Design section: "Newest-first is the DEFAULT... A list whose store cannot order says so"). `builder.adapter-list`, `execution.template-list` and `worker.registry-list` carry no date field on their row shape at all - `BuilderAdapterSpec`, `CommandTemplate` and `WorkerSpec` are static configuration registries with no created/updated concept to sort by, matching the class DECISION F262 D2/D3 already carved out for a command with its own non-arbitrary order, one step further: there D2/D3 had an order to preserve, here there is no order to preserve because there is nothing to order BY. `approval.policy-list` has real `created_at`/`updated_at` fields but is read as a small named-policy catalog browsed by policy id or enabled state rather than by recency, and is excluded on the same reasoning. These four are OUT of T003's Acceptance permanently, not deferred - a later feature adding genuine per-policy history would revisit `approval.policy-list` specifically, not reopen this DECISION. The remaining 9 unwired commands with genuine dates (test.list, repair.item-list, builder.session-list, execution.approval-list, mission.list, change.list, event.list, external-builder.package-list, self-repair.proposal-list - FINDING R-0796) stay IN T003's scope and are NOT excluded by this DECISION; they are DEFERRED, tracked in `.agent/plan.md`'s Next Steps as the actual remaining work, because F262 has 3 rounds left of its 25-round soft cap and wiring nine more commands with tests each does not fit that budget at the pace this feature has run (roughly 1-3 commands per round across R13-R22).
 
-Notes: `_err` is already defined above in this file (prints `json.dumps({"error": msg})` to stderr and calls `sys.exit(1)`) — reuse it, matching the file's own error convention. Commit C4 covers this pair.
+ALTERNATIVE CONSIDERED AND REJECTED. Exclude all 13 unwired commands from Acceptance to make T003 "done" immediately. Rejected: nine of them have exactly the shape T003 exists to fix (a real date, no sort/filter/limit), and declaring them out of scope would be a scope-narrowing dressed as a DECISION rather than a genuine one - the same failure mode R-0795 itself measured when `.agent/plan.md` said "excused" too broadly for three commands that turned out to parse the flags and silently ignore them.
 
+CONSEQUENCE. F262 cannot close this session under either PLAN23's Option A or Option B from round 21 - both assumed only 3 commands remained. The corrected count is 9 genuine wirings plus the T001 catalog-level handler test plus the Acceptance smoke test, none of which fit the 3 rounds of budget left. `.agent/plan.md`'s Next Steps (this round) proposes the operator choose between authorizing sessions beyond the 7-session/25-round soft caps, or splitting the 9 remaining wirings into a follow-up feature and closing F262 now on this DECISION's narrowed-but-honest Acceptance (24 of 28 commands, both static exclusions and the temporal 9 explicitly named as follow-up work, not silently dropped).
+
+Base size immediately before C4 must read 806068. Post-C4 size must read exactly 809282 (806068 + 1 + 3213). Verify both numbers yourself.
 ============================================================
-TEST T1 — tests/cli/test_config_cmd.py — APPEND at the very end of the file (currently ends with `test_config_set_json`'s last line, exactly `        assert data["value"] == "http://custom:11434"`, no trailing blank line). Re-read the CURRENT file first to confirm your insertion point is genuinely the end.
+T2_F262.md amendment — append verbatim to `docs/roadmap/features/T2_F262.md`. The file currently ends with "...T003 depends on both.\n" (one trailing newline, no blank line before it). Append the text below EXACTLY as given (it already starts with its own leading blank-line newline and ends with a single trailing newline, matching this file's own convention) — i.e. just concatenate the bytes below onto the end of the current file content.
 
-Append this new content (one blank line before it, matching the file's existing spacing between methods):
+Amendment text (copy exactly, 728 bytes UTF-8, 12 internal newlines):
 
-    def test_config_list_limit(self):
-        r = subprocess.run(
-            [*_CLI, "config", "list", "--json", "--limit", "1"],
-            capture_output=True, text=True, timeout=30,
-        )
-        assert r.returncode == 0
-        data = json.loads(r.stdout)
-        assert len(data) == 1
+## Amendment (DECISION F262 D4, 2026-09-05)
+"Every list command" (Goal) and the `--sort` Acceptance bullet are scoped
+to list-shaped commands whose rows carry a genuine date: 24 of the
+catalog's 28. `builder.adapter-list`, `execution.template-list`,
+`worker.registry-list` (no date field on their row shape) and
+`approval.policy-list` (has dates, browsed by name/state, not recency) are
+OUT of Acceptance permanently. The other 9 unwired commands with genuine
+dates (test.list, repair.item-list, builder.session-list,
+execution.approval-list, mission.list, change.list, event.list,
+external-builder.package-list, self-repair.proposal-list) stay IN scope,
+deferred per `.agent/decisions.md` DECISION F262 D4 and FINDING R-0796.
 
-    def test_config_list_unknown_sort_field_exits_nonzero(self):
-        r = subprocess.run(
-            [*_CLI, "config", "list", "--json", "--sort", "bogus"],
-            capture_output=True, text=True, timeout=30,
-        )
-        assert r.returncode != 0
-        assert "unknown --sort field" in r.stderr
-
-`_CLI`, `subprocess`, `json` are all already defined/imported at module scope — no duplicate imports.
-
+Base size immediately before C5 must read 3504. Post-C5 size must read exactly 4232 (3504 + 728). Verify both numbers yourself (this triggers the docs-round gate, G6 below, since the changed path is under docs/roadmap/**).
 ============================================================
-TEST T2 — tests/cli/test_managed_builder_execution_cli.py — REWRITE (inserts two new methods before the module guard; TO does not contain FROM verbatim, so use the standard REWRITE proof, not an append proof). Before applying, re-read the CURRENT file and confirm this FROM text occurs exactly 1 time:
+PLAN24 — whole-file replace of `.agent/plan.md`. Byte length must be exactly 2248 (UTF-8), confirm with a binary-mode byte comparison after writing.
 
-FROM:
-    def test_approval_list(self):
-        r = _run(["execution", "approval-list", "--json"])
-        assert r.returncode == 0
-        data = json.loads(r.stdout)
-        assert isinstance(data, list)
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-Replace it with this TO text:
-    def test_approval_list(self):
-        r = _run(["execution", "approval-list", "--json"])
-        assert r.returncode == 0
-        data = json.loads(r.stdout)
-        assert isinstance(data, list)
-
-    def test_execution_list_limit(self):
-        r = _run(["execution", "list", "--json", "--limit", "1"])
-        assert r.returncode == 0
-        data = json.loads(r.stdout)
-        assert isinstance(data, list)
-        assert len(data) <= 1
-
-    def test_execution_list_unknown_sort_field_exits_nonzero(self):
-        r = _run(["execution", "list", "--json", "--sort", "bogus"])
-        assert r.returncode != 0
-        assert "unknown --sort field" in r.stderr
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-============================================================
-TEST T3 — tests/cli/test_worker_facade_cmd.py — APPEND at the very end of the file (currently ends with `test_grant_no_session`'s body, last line exactly `            ))`, no trailing blank line). Re-read the CURRENT file first to confirm your insertion point is genuinely the end.
-
-Append this new content (two blank lines before it, matching the file's existing spacing between top-level classes):
-
-class TestWorkerListOptions:
-    def test_limit_caps_returned_workers(self, capsys):
-        from apps.cli.commands import collect_all_handlers
-        collect_all_handlers()["worker.list"](_ns(json=True, limit="1"))
-        data = json.loads(capsys.readouterr().out)
-        assert len(data["providers"]) == 1
-
-    def test_unknown_sort_field_exits_nonzero(self):
-        from apps.cli.commands import collect_all_handlers
-        with pytest.raises(SystemExit) as exc:
-            collect_all_handlers()["worker.list"](_ns(json=True, sort="bogus"))
-        assert exc.value.code == 1
-
-`_ns`, `json`, `pytest` are all already defined/imported at module scope (`_ns` at line 124) — no duplicate imports.
-
-Commit C5 covers TEST T1, TEST T2 and TEST T3 across all three files as ONE commit.
-
-============================================================
-LANDED line — append verbatim as a new paragraph at the end of `.agent/live_review.md` (after GATE21, which C1 already appended). Every Landed-to-* transition measured in this file uses a blank-line separator, so C6 must: read the current file (now ending with GATE21, no trailing newline), append exactly TWO `\n` characters followed by the text below (no trailing newline after it either). Python `pathlib.Path.write_bytes`, not a shell append.
-
-LANDED text (copy exactly, it is a single line with zero internal newlines, 293 bytes UTF-8):
-Landed: R-0795 — `worker.list` (commit C2), `config.list` (commit C3) and `execution.list` (commit C4) of F262 R22 are now wired to `apply_list_options`, with six new regression tests (commit C5) proving `--limit` and an unknown `--sort` field behave identically to every other list command.
-
-Base file size immediately before C6 must read 2482245 (the post-C1 size from GATE21's own arithmetic — C2 through C5 touch no other path in `.agent/live_review.md`). Post-C6 size must read exactly 2482540 (2482245 + 2 + 293). Verify both numbers yourself and report them. Do NOT write `Done: R-0795` — only the reviewer writes `Done:`, at the next gate, per docs/agents/planner_reviewer_prompt.md §4 item 4.
-
-============================================================
-PLAN23 — whole-file replace of `.agent/plan.md`. Byte length must be exactly 1959 (UTF-8), confirm with a binary-mode byte comparison after writing.
-
-PLAN23 text (copy exactly):
+PLAN24 text (copy exactly):
 # Plan — F262 List commands v2 (dates, sort, filter)
 
 Branch: feature/f262-list-commands-v2, cut from `main` after pull
@@ -332,62 +78,61 @@ request 235 was merged at the Open PR Gate.
 Every list command shows a CREATED and an UPDATED date and carries the
 same `--sort <field> [--desc] --since <when> --until <when> --limit <n>`
 flags, with newest-first as the DEFAULT everywhere, without a flag
-(docs/roadmap/features/T2_F262.md).
+(docs/roadmap/features/T2_F262.md, scoped by DECISION F262 D4).
 
 ## Current Step
 
-Round 22, session 8 - R-0795 core fix: `config.list`, `worker.list`
-and `execution.list` wired to `apply_list_options`. `worker.list`/
-`config.list` use `default_sort_field=None` (no date field, like
-queue.list/loop.list's D2/D3); `execution.list` uses
-`default_sort_field="started_at"` (a real ISO date per row). Six
-regression tests added (two per command). R-0795 is LANDED, not yet
-Done - the reviewer converts it at the next gate (§4 item 4).
+Round 23, session 8 - SCOPE CORRECTION, no code this round: booked
+GATE22 (round 22 PASSED), converted R-0795 to Done. Registered
+FINDING R-0796 - 13 of 28 list-shaped catalog commands were never
+wired at all, not just the 3 R-0795 named. Registered DECISION F262
+D4 scoping Acceptance to 24 of 28 commands (3 static registries + 1
+hybrid catalog excluded by name); the other 9 have genuine dates and
+stay IN scope, deferred. T2_F262.md amended with a pointer to D4.
 
-## Next Steps
+## Next Steps (round-budget mismatch - a DECISION-routed proposal per
+amend0827 rule 6's mechanism, not a question)
 
-- Round 23: extend `TestListCommandOptions`
-  (tests/test_command_catalog.py) to dispatch every `_is_list_command`
-  entry's HANDLER (not just its argparse signature) with an invalid
-  `--sort` and assert a non-zero exit - T001's own never-built
-  Acceptance bullet.
-- Round 24: the Acceptance ten-second-demo smoke test, then closure
-  per docs/roadmap/STATUS_closure_protocol.md.
-- change.list's event-log CREATED date stays open, UNRELATED to D1 -
-  see DECISION F262 D1's Alternative section.
+- Option A: authorize sessions beyond the 7-session/25-round soft
+  caps (already session 8, round 23) to wire the 9 remaining commands
+  (test.list, repair.item-list, builder.session-list,
+  execution.approval-list, mission.list, change.list, event.list,
+  external-builder.package-list, self-repair.proposal-list) plus the
+  T001 catalog-driven handler test plus the Acceptance smoke test.
+- Option B: split the 9 remaining into a NEW follow-up feature
+  (STATUS.md line), build the T001/Acceptance tests scoped to the 24
+  D4-covered commands only, and close F262 within the 3 rounds left.
+- change.list's event-log CREATED date (a separate, older gap) stays
+  open either way - see DECISION F262 D1's Alternative section.
 
 ## Risks
 
-- Stores with no timestamp concept may render "unknown" permanently -
-  that satisfies Acceptance, not a gap to close later.
-- The three ignore-`--json`-entirely execution.* commands are a
-  pre-existing quirk this feature does not need to fix.
-- A command with its OWN meaningful non-date default order opts out
-  via `default_sort_field=None` (queue.list D2, loop.list D3,
-  worker.list/config.list now too).
-- R-0795: LANDED this round for the three named commands - the
-  catalog-wide enumeration proof (T001's own gap) stays open, round 23.
+- Stores with no timestamp concept render "unknown" permanently - now
+  formalized as D4's static-registry exclusion, not an informal note.
+- R-0796's 9 gaps are real product debt regardless of option chosen -
+  Option B moves them, it does not remove them.
+- Round 23 has NO code/test path in its change set (only `.agent/**`
+  plus T2_F262.md's pointer) - a finding-routed-to-planning round per
+  §4 item 7, matching the DECISION F112 D5 precedent shape.
 
 ============================================================
 CONSTRAINTS:
-1. Do not touch any list command other than config.list, worker.list, execution.list this round.
-2. Do not widen or change `apply_list_options` itself (packages/orchestration/list_options.py) — it is unchanged this round.
-3. No file besides these may be written: `apps/cli/commands/worker.py`, `apps/cli/commands/config_cmd.py`, `apps/cli/commands/managed_builder_execution_cmd.py`, `tests/cli/test_config_cmd.py`, `tests/cli/test_managed_builder_execution_cli.py`, `tests/cli/test_worker_facade_cmd.py`, `.agent/authored/f262-r22.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`, `.agent/handoff.md`.
-4. Re-confirm each FROM string's exact occurrence count (must be 1) against the file's CURRENT on-disk content immediately before applying — not against the copy quoted in this prompt.
-5. Commit order is exactly C0a, C0b, C1, C2, C3, C4, C5, C6, C7, C8, each its own commit.
-6. Run `git status --porcelain` after every commit; it must be empty before proceeding. Capture REAL exit codes for every command — do not report "green" as a bare word.
-7. `.agent/STOP` must be absent before C0a and re-checked before C8. If it appears, stop immediately, finish only a half-written commit, and write the handoff reporting the STOP instead of continuing.
-8. Known sandbox quirks in this repo: `python3 -m py_compile <files>` as a literal multi-arg command has sometimes been denied — if denied, substitute a `python3 -c` one-liner using `py_compile.compile(..., doraise=True)` and declare the substitution. `VAR=x cmd`, `export VAR=x; cmd`, and `cp` are denied outright — use a `python3 -c "import shutil; shutil.copyfile(a,b)"` one-liner if ever needed. The `remedy` CLI itself is denied session-wide — use `python3 -m apps.cli.grouped` or `python3 -m pytest` instead. Never use a sandbox-override flag to route around a denial.
-9. No mutation red-proof is ordered this round (deferred to round 23, bundled with the catalog test's own red-proof, per PLAN23's Next Steps) — the new tests (G3) are this round's only behavioural proof; do not claim a mutation red-proof ran.
+1. This round writes NO code and NO test file — only `.agent/authored/f262-r23.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/decisions.md`, `docs/roadmap/features/T2_F262.md`, `.agent/plan.md`, `.agent/handoff.md`. Do not touch anything else.
+2. Commit order is exactly C0a, C0b, C1, C2, C3, C4, C5, C6, C7, each its own commit.
+3. Run `git status --porcelain` after every commit; it must be empty before proceeding. Capture REAL exit codes for every command — do not report "green" as a bare word.
+4. `.agent/STOP` must be absent before C0a and re-checked before C7. If it appears, stop immediately, finish only a half-written commit, and write the handoff reporting the STOP instead of continuing.
+5. Do NOT wire any of the 9 or 13 commands named above this round — that is explicitly out of scope, deferred per the DECISION.
+6. Known sandbox quirks: `VAR=x cmd`, `export VAR=x; cmd`, `cp` are denied — use a `python3 -c "import shutil; shutil.copyfile(a,b)"` one-liner if ever needed. The `remedy` CLI is denied session-wide — use `python3 -m apps.cli.grouped`/`python3 -m pytest`. If a `python3 -c` heredoc is refused by the bash guard, use the Write tool and verify/trim bytes with a follow-up read/write, declaring the substitution.
 
-DONE WHEN (run every one of these EXACTLY as written and record the REAL, complete output of each in your handback — quote actual pytest/py_compile output, do not summarize as "passed"):
-G1. `sha256sum .agent/authored/f262-r22.md .agent/last_block.md` → must print one identical digest for both files. Report both digests.
-G2. `python3 -c "import py_compile; [py_compile.compile(p, doraise=True) for p in ['apps/cli/commands/worker.py','apps/cli/commands/config_cmd.py','apps/cli/commands/managed_builder_execution_cmd.py','tests/cli/test_config_cmd.py','tests/cli/test_managed_builder_execution_cli.py','tests/cli/test_worker_facade_cmd.py']]; print('OK')"` → must print OK.
-G3. `python3 -m pytest tests/cli/test_worker_facade_cmd.py tests/cli/test_config_cmd.py tests/cli/test_managed_builder_execution_cli.py -q` → expect 98 passed (92 pre-existing + 6 new). Report the exact number.
-G4. `python3 -m pytest tests/ui_server/ tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py tests/cli/test_golden_path.py -q` → expect 646 passed (515+52+21+16+42), unmoved. Report the exact number.
-G5. Byte-read `.agent/live_review.md` immediately before C1 and immediately after C1 (before must be 2479698, after must be 2482245); immediately before C6 and immediately after C6 (before must be 2482245, after must be 2482540). Python, binary mode. Report all four numbers.
-G6. Byte-read `.agent/plan.md` immediately after C7, binary mode → must be exactly 1959 bytes, byte-for-byte equal to the PLAN23 text above. Report the byte count and whether it matched exactly.
-G7. `git status --porcelain` → empty, checked before C0a and immediately before C8. `git ls-files .remedy-wt` → empty. Report all three checks.
+DONE WHEN (run every one of these EXACTLY as written and record the REAL, complete output of each in your handback):
+G1. `sha256sum .agent/authored/f262-r23.md .agent/last_block.md` → must print one identical digest for both files.
+G2. Byte-read `.agent/live_review.md` before/after C1 (2482540/2485716), before/after C2 (2485716/2486987), before/after C3 (2486987/2491115). Python, binary mode. Report all six numbers.
+G3. Byte-read `.agent/decisions.md` before/after C4 (806068/809282). Report both numbers.
+G4. Byte-read `docs/roadmap/features/T2_F262.md` before/after C5 (3504/4232). Report both numbers.
+G5. Byte-read `.agent/plan.md` after C6, binary mode → must be exactly 2248 bytes, byte-for-byte equal to PLAN24 above.
+G6. `python3 -m pytest tests/docs/ -q` → report the real result (docs-round gate, since C5 touches `docs/roadmap/**`).
+G7. `python3 -m pytest tests/cli/test_golden_path.py -q` → report the real result (mandatory canary, every handback).
+G8. `git status --porcelain` → empty, checked before C0a and immediately before C7. `git ls-files .remedy-wt` → empty. `.agent/STOP` → absent, both checks.
 
-HANDBACK: write a full completion report and rewrite `.agent/handoff.md` per docs/agents/handback_template.md and AGENTS.md's "### handoff.md" section — include the changed-files table (path, +/-, reason) for every commit, an item-status table (Item | Status | Reason) covering every bundle item (C0a..C8, and each gate G1..G7), the real verification results for every gate above, the SESSION NUMBER (this is SESSION 8 of feature F262, round 22), and the next expected action (round 23: extend `TestListCommandOptions` into a catalog-driven handler test per PLAN23's Next Steps, AND run the full mutation red-proof deferred from this round, covering all three of this round's wirings). State explicitly that no mutation red-proof was ordered this round and why (deferred, not skipped — constraint 9). Confirm the `Landed: R-0795` line from C6 landed byte-for-byte (G5's second pair). State this round is at 22 of the 25-round soft cap, 3 rounds of headroom left before the cap. After the handoff commit (C8), run `git push -u origin feature/f262-list-commands-v2` and report the push result. Do NOT create a PR. Do NOT merge anything. Do NOT touch `main`.
+HANDBACK: write a full completion report and rewrite `.agent/handoff.md` per docs/agents/handback_template.md and AGENTS.md — changed-files table for every commit, item-status table covering C0a..C7 and G1..G8, real verification results for every gate, SESSION NUMBER 8 of feature F262 round 23, and the next expected action: **an OPERATOR DECISION between Option A and Option B in `.agent/plan.md`'s Next Steps — this is a genuine round-budget/scope mismatch discovered this round (FINDING R-0796), not a routine next-step, and no further F262 round should be delegated without it.** State clearly in the handback's Session section that this round found NEW scope (9 more commands, not 3) that the round budget cannot absorb, and that this is reported, not hidden. After the handoff commit (C7), run `git push -u origin feature/f262-list-commands-v2` and report the push result. Do NOT create a PR. Do NOT merge anything. Do NOT touch `main`.
 ──────────────────────────────────────────────────────────────
