@@ -56,3 +56,44 @@ Where a cell names a module outside that list —
 amend0905-vocab D1 gave that word no table row and told F259 to write one from
 the feature that owns the concept; they were found by searching every `.py`
 file under `packages/` and under `apps/`.
+
+## Do not confuse these
+
+Most of what this page exists to end was never someone failing to define a word.
+It was two words for one thing, or one word for two things.
+
+| Not the same | The difference | Why they get confused |
+|---|---|---|
+| **Job / Run** | A Job is the administrative unit — identity, budget, fences, permissions, a plan. A Run is one execution of the loop for one Task, owning one evidence folder. One Job has many Runs. | Both carry an id and a status, and the command `job run` reads as though the job were the thing that runs. |
+| **Plan / Roadmap** | A Plan is what Remedy will do for a mission or a job. The Roadmap is Remedy's OWN build plan under `docs/roadmap/`, a developer artefact no user ever sees. | The CLI today spells the roadmap mirror `plan status` and `plan next`, which is the sharpest collision in the tree; DECISION amend0905-vocab D6 moves it to the hidden group `roadmap`. |
+| **Order / Job** | The Order is what the human gives Remedy. The Job is what Remedy makes of it. Input against response. | The order arrives as a file and the job is parsed straight out of it, so one phrase — "job file" — has been naming both ends at once. |
+| **Task / Round** | A Task is one step of a job plan. A Round is one pass inside a single Run of a single Task: build, then tests, then review. A task that fails takes a second Round, never a second Task. | Both are counted and both are capped, and casual prose calls either one a "step". |
+| **Contract / permissions** | The Contract is what the mission must ACHIEVE — acceptance criteria compiled to checks. Permissions and fences are what Remedy is ALLOWED TO DO while trying. Goal against boundary. | The catalog's `contract` group today is the permission object, not the acceptance criteria, so the word currently points at the wrong one of the two. |
+| **Mission / schedule** | A Mission is one order and everything that came of it. It has no recurrence and no clock. | `remedy loop` and the `overnight` group made recurrence look like a property of a mission; DECISION amend0905-vocab D7 deletes both, and a recurring order becomes an order file started by hand. |
+| **Worker / role** | A Worker is a model IN a role. The role is Builder, Reviewer, Planner or Teacher; the worker is whichever model is bound to that role for this task. | Reports have printed "Worker: fake", which names the provider in the place a reader expects the role. |
+| **template / order file** | A template is a CONTRACT template — website, api-service, cli-tool, python-library — proposed by the planner or forced with `--contract`. An order file is a Markdown file holding one human's order, started with `remedy do <file>`. | Both are files you keep in the repo and hand to Remedy, and the deleted `loop` tables called order files templates. |
+
+## The concept model
+
+```mermaid
+flowchart TD
+    Order["Order (text or .md file)"] --> Mission["Mission (contract, plan)"]
+    Mission --> Job["Job 1..n (budget, fences, plan)"]
+    Job --> Task["Task 1..n"]
+    Task --> Run["Run (one evidence folder per task)"]
+    Run --> R1["Round 1 (build · review)"]
+    R1 --> R2["Round 2+ (repair)"]
+```
+
+In words, for a first read. You give Remedy an **Order** — a sentence, or a
+Markdown file. Remedy turns it into a **Mission**, the record of that order,
+which holds the **Contract**: the acceptance criteria the finished work must
+meet. The mission is carried out by one or more **Jobs**, and each job has its
+own budget, its fences and its own **Plan** — and that plan is a list of
+**Tasks**. Each task is executed by exactly one **Run**, which owns exactly one
+evidence folder. Inside a run the work happens in **Rounds**: round 1 builds and
+reviews, and every later round repairs.
+
+Everything above the Run is bookkeeping. The Run is where a model actually
+writes code, and the evidence folder it leaves behind is what you read
+afterwards to see what happened.
