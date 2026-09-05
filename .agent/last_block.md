@@ -1,238 +1,217 @@
-STEP CLOSURE PART 2 / F259 — Vocabulary & concept model v1 — round 9 of session 1
-BRANCH feature/f259-vocabulary, head 32808b5d at the time this block was written.
-MERGE BASE 25961794.
+STEP CLOSURE PART 3 / F259 — Vocabulary & concept model v1 — round 10 of session 1
+BRANCH feature/f259-vocabulary, head aba15f08 at the time this block was written.
 
 Goal
-  The evidence half of the closure sequence. Book the round-8 verdict and the
-  three ledger obligations closure precondition 6 and §4 item 4 create; repair
-  the one real defect round 8 left on disk; rotate the ledger; build the evidence
-  bundle and the FRESH review zip from a clean tree. The STATUS `[x]` flip, the
-  README capability sync, the `consumed_by` edit and the pull request are part 3,
-  because the STATUS line cannot be authored until this round has measured the
-  evidence job id, the package name, its SHA-256 and the accepted HEAD.
+  Close F259. Book the round-9 verdict, then make the ONE closure commit that
+  flips the ledger, syncs the README, consumes the self-use item and rewrites the
+  handback — Rule A4's last commit on the branch — and open the pull request.
+  The pull request is NOT merged in this session; it merges at the next feature's
+  Open PR Gate, and that gap is the operator's manual-review window.
 
-Why each ledger entry is what it is
-  R-0813 IS A NEW ID because round 8's consolidation left a real contradiction on
-  disk under `docs/`: the frozen paragraph of
-  `docs/agents/planner_reviewer_prompt.md` §3 now says both "The list stood at 37
-  items on 2026-08-27, which is the number the next consolidation measures
-  against" and "The next consolidation measures against 36." Both sentences claim
-  to name what the NEXT consolidation measures against. The reviewer searched the
-  open set for the defect before minting, per §3 item 30, and no open finding
-  describes it — it did not exist until round 8 created it.
-  THE SELF-USE DEFECTS TAKE NO NEW ID. Closure precondition 6 requires every
-  string `describe_self_use_run_defects` returns to be registered before the
-  close, and round 8's run returned two. `R-0784` is OPEN and is exactly this
-  defect: its own text records the same two strings from an earlier run and
-  states that they are one defect seen twice — the job-level and task-level views
-  of one gate failure — and therefore take ONE id. §3 item 30 forbids a second id
-  for a defect the open set already holds, so this round appends a `Recurrence:`
-  paragraph to that id rather than minting `R-0814`.
-  `Done: R-0418` IS OWED AND IS PAID HERE. SU-010's own acceptance reads: "R-0418
-  is repaired with a red-to-green proof, or the reviewer records in
-  `.agent/live_review.md` why it cannot be — either way the ledger gains a
-  `Done: R-0418` line." R-0418 is a rule about REVIEWER block-authoring practice
-  under self-drive, so it has no code to turn red; the reviewer measured
-  compliance instead, across all seven of this feature's build rounds.
+  Every value in the STATUS line below was MEASURED by the reviewer, not
+  reported: the package digest was recomputed from the file on disk
+  (22 510 711 bytes), `zipfile.testzip()` returned None over its 3877 members,
+  and the manifest's `committed_review_subject` was read out of
+  `.review_zip_manifest.json` inside the package — base
+  259617949461c993f1b8dabcf659e6a73110b162, head
+  efd2a4fb04bb82b8ee87b812327a7c3f9776853a, `base_is_ancestor` true, 61 commits,
+  `ready_gate_matrix.ok` true with no blocking reasons, `package_status`
+  READY_FOR_REVIEW.
+
+Finding R-0797 binds the README edit, harder than in round 6
+  `tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
+  scans each `Accepted in Tier N so far:` block for `F\d{3}` tokens and asserts
+  every one is `- [x]` in `docs/roadmap/STATUS.md`. This round ADDS a token to
+  that block, which is the exact operation R-0797 was. Two things make it safe
+  and both are gated: the token added is F259 itself, and the SAME commit flips
+  F259 to `[x]`, so no committed state has them disagreeing (R-0154); and the
+  authored entry names NO OTHER feature id — the reviewer checked its bytes for
+  `F\d{3}` before emission and found only the leading F259. Do not add one.
 
 Bundle, in this order (one commit each)
-  C0a save the block file to .agent/authored/f259-r9.md (copy, never retype)
+  C0a save the block file to .agent/authored/f259-r10.md (copy, never retype)
   C0b mirror it to .agent/last_block.md
-  C1  .agent/plan.md ← PLANF259R9 (whole rewrite)
-  C2  FINDINGS PERSIST FIRST (§4 item 4). `.agent/live_review.md`: append, in
-      this order and separated as described below, GATE_R8, FIND0813, REC0784 and
-      DONE0418. `.agent/prose_slips.md`: append SLIP9. One commit.
-  C3  docs/agents/planner_reviewer_prompt.md: the FROZENFIX pair — the repair of
-      R-0813.
-  C4  THE LEDGER ROTATION, its own commit, paths `.agent/live_review.md` and
-      `.agent/live_review_archive.md` ONLY: `python3 scripts/rotate_live_review.py`.
-      Run `--dry-run` first and report its output, then the real run.
-  then push. Then, from the CLEAN TREE at that head, and committing nothing:
-      the evidence job (G5) and the review zip (G6).
-  C5  rewrite .agent/handoff.md, which records the zip outcome; push again.
-
-  Create NO pull request. Do NOT touch `docs/roadmap/STATUS.md`, `README.md` or
-  `scripts/self_use_queue.json` — all three belong to part 3's single closure
-  commit, which must carry them together (R-0154).
+  C1  .agent/plan.md ← PLANF259R10 (whole rewrite)
+  C2  .agent/live_review.md: append `"\n" + GATE_R9 + "\n"`
+  C3  THE CLOSURE COMMIT — one commit, exactly these paths:
+        docs/roadmap/STATUS.md   the STATUS pair
+        README.md                the three README pairs
+        scripts/self_use_queue.json  the one `consumed_by` edit
+        .agent/handoff.md        the final handback
+      This is the LAST commit on the branch (Rule A4). Nothing follows it.
+  then push, then create the pull request (see "The pull request" below).
 
 Change set — EXACTLY these paths and nothing else
-  .agent/authored/f259-r9.md (C0a) — .agent/last_block.md (C0b) —
-  .agent/plan.md (C1) — .agent/live_review.md, .agent/prose_slips.md (C2) —
-  docs/agents/planner_reviewer_prompt.md (C3) —
-  .agent/live_review.md, .agent/live_review_archive.md (C4) —
-  .agent/handoff.md (C5)
+  .agent/authored/f259-r10.md (C0a) — .agent/last_block.md (C0b) —
+  .agent/plan.md (C1) — .agent/live_review.md (C2) —
+  docs/roadmap/STATUS.md, README.md, scripts/self_use_queue.json,
+  .agent/handoff.md (C3)
 
 Delivery
-  The block is at `.remedy-wt/f259-r9-block.md`, gitignored scratch. C0a COPIES
-  it to .agent/authored/f259-r9.md, C0b to .agent/last_block.md. Slices are
+  The block is at `.remedy-wt/f259-r10-block.md`, gitignored scratch. C0a COPIES
+  it to .agent/authored/f259-r10.md, C0b to .agent/last_block.md. Slices are
   extracted from the COMMITTED authored file by marker extraction in Python.
 
-The C2 appends
-  `.agent/live_review.md` ends with a newline. Append, in ONE write:
-      "\n" + GATE_R8 + "\n\n" + FIND0813 + "\n\n" + REC0784 + "\n\n" + DONE0418 + "\n"
-  so the four paragraphs land in that order, each separated from its neighbour by
-  one empty line, and the file still ends with exactly one newline.
-  `.agent/prose_slips.md` does NOT end with a newline. Append `"\n\n" + SLIP9`
-  and add NO trailing newline.
-
-The FROZENFIX pair (C3)
-  Applied with `str.replace(FROM, TO, 1)` after confirming FROM occurs EXACTLY
-  ONCE. The reviewer ran the containment test before emission and it printed
-  `TO contains FROM: false`, so it is a REWRITE and the obligation is FROM 0x and
-  TO 1x afterwards. It changes exactly one clause of one sentence; gate G3
-  requires the per-item digest sweep to show that NO checklist item's text
-  changed, because the frozen paragraph is not inside any item.
+The five pairs of C3
+  Each is applied with `str.replace(FROM, TO, 1)` after confirming the FROM
+  occurs EXACTLY ONCE. The reviewer ran the containment test on all five before
+  emission; every one printed `TO contains FROM: false`, so ALL FIVE ARE
+  REWRITES and the obligation for each is FROM 0x and TO 1x afterwards — never
+  an append's count.
+    STATUSPAIR   docs/roadmap/STATUS.md — `[~]` becomes the accepted `[x]` line
+    ACCPAIR      README.md — the Tier 2 accepted list gains F259; the previous
+                 entry's closing `).` becomes `),`
+    COUNTPAIR    README.md — 72 accepted becomes 73
+    TIERPAIR     README.md — the Tier 2 table's Done column, 15 becomes 16
+    QUEUEPAIR    scripts/self_use_queue.json — SU-010's `consumed_by` gains
+                 `F259`. Apply it as a TEXT replacement, never by loading and
+                 re-dumping the JSON: the file stores em dashes as `—`
+                 escapes and a round-trip through `json.dump` would rewrite
+                 every one of them, which is the open finding R-0785. The
+                 reviewer measured `"consumed_by": ""` at exactly one occurrence
+                 in the file, SU-010's, because it is the only unconsumed entry.
 
 Constraints
   1. Slices are applied BYTE FOR BYTE from the committed authored file by marker
      extraction in Python. Apply a slice you believe wrong verbatim and declare
      it in the handback.
-  2. Read `.agent/STOP` from disk before C0a, before C4 and before C5.
-  3. NEWLINE CONVENTIONS: PLANF259R9 replaces `.agent/plan.md` whole with exactly
-     one trailing newline; the C2 appends are as described above;
-     `docs/agents/planner_reviewer_prompt.md` still ends with exactly one newline.
-  4. THE ROTATION IS ITS OWN COMMIT AND TOUCHES TWO PATHS. If the script refuses,
-     STOP the rotation: commit nothing for C4, report the refusal text verbatim,
-     and continue to the evidence job and the zip — a refused rotation is
-     reported, never forced.
-  5. THE EVIDENCE DIRECTORY IS NEVER COMMITTED. Put it OUTSIDE the review
-     subject, under the gitignored `.remedy-wt/`. A pre-committed evidence dir
-     puts evidence files into the base..HEAD review subject and the package
-     builds BLOCKED_EVIDENCE.
-  6. THE TREE IS CLEAN when the evidence job and the zip run. A package built
-     from a dirty tree is invalid. Report `git status --porcelain` immediately
-     before each.
-  7. This session's shell guard refuses some command FORMS outright — shell
+  2. C3 IS ONE COMMIT AND IT IS THE LAST ON THE BRANCH. The STATUS flip and the
+     README sync may never be in different commits (R-0154): no committed state
+     of this repository may have README and STATUS disagreeing about what is
+     accepted.
+  3. Read `.agent/STOP` from disk before C0a and before C3.
+  4. NEWLINE CONVENTIONS: PLANF259R10 replaces `.agent/plan.md` whole with
+     exactly one trailing newline; the record append is as described;
+     `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` each
+     still end with exactly one newline after their edits.
+  5. This session's shell guard refuses some command FORMS outright — shell
      loops, `$(...)` substitution, `$?` in a compound command, `${PIPESTATUS[0]}`,
      a `$` anchor inside a `grep -c` pattern, brace-with-quote literals in a
      heredoc, and a non-ASCII character in a Python bytes literal. Re-express in
      Python and report the Python you ran beside its output, with any refusal
      quoted verbatim. `ruff check` and the built `remedy` CLI are denied; use
      `python3 -m apps.cli.grouped <...>` where a remedy subcommand is needed.
-  8. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
-     path, no secret-like string. End every commit message with the trailer
+  6. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
+     path, no secret-like string — the evidence-packaging metadata scanner
+     rejects such subjects. End every commit message with the trailer
      `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
-  9. AGENTS.md binds you in full. Never `--force`, never a history rewrite, never
-     `gh pr merge`, never a branch deletion. C5 is ONE commit.
- 10. A FAILING ZIP BUILD IS A CLOSURE BLOCKER, not something to work around.
-     Record the raw error, commit the handback saying so, and stop; the reviewer
-     decides. Never close without the package.
+  7. AGENTS.md binds you in full. Never `--force`, never a history rewrite,
+     never a branch deletion, and NEVER `gh pr merge` — the merge belongs to the
+     next feature's Open PR Gate and is the operator's review window.
+  8. If ANY gate below comes back wrong, do NOT create the pull request. Commit
+     what is sound, report the failure, and stop; the reviewer decides.
+
+The pull request — after C3 is pushed
+  Write the PR body to a scratch file under the gitignored `.remedy-wt/` and run
+    gh pr create --title "F259: vocabulary and concept model v1" --base main --head feature/f259-vocabulary --body-file <file>
+  The body carries: what changed and why; the key decisions (DECISION F259 D3,
+  and the §3 checklist consolidation that merged item 32 into item 16 and retired
+  the number); how to review; the changed-files table; the latest live-review
+  verdict; the open-findings count; and the runtime actuals below. Report the PR
+  number and URL in your final message. NEVER `gh pr merge`.
+  The PR number cannot be inside `.agent/handoff.md`, because C3 writes that file
+  and C3 is the last commit (Rule A4) — this is the R-0449 shape and the block
+  accepts it rather than ordering an impossible value: the number lives in your
+  final message and in the pull request itself, and `gh pr list` recovers it.
+
+Runtime actuals for the PR body (observed; `not-measured` beats a guess)
+  Rounds: 10 delegated rounds, all PASS at the reviewer's gate, one session.
+  Wall clock: not-measured as a total; the integration gate's two full-suite runs
+  were 134.50s (branch) and 161.68s (base), and the self-use job ran 107.8s.
+  Models/tokens/cost: not-measured — no provider ledger was consulted for this
+  feature, and the only model calls were the self-use job's own, inside its
+  `max_provider_calls=6` / `max_cost_usd=0.5` budget.
 
 Done when — the gates. Real exit codes, real output, one line per gate in the
-handback. Every gate runs at or before the zip; none is ordered after C5.
+handback. Gates G1 through G7 run at or before C3; G8 covers the push and the PR
+and is reported in your final message as well as in the PR.
 
-  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r9-block.md .agent/authored/f259-r9.md .agent/last_block.md`
+  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r10-block.md .agent/authored/f259-r10.md .agent/last_block.md`
      — one digest, three times.
-  G2 THE C2 APPENDS. `.agent/live_review.md`: the pre-append bytes are a
-     byte-exact PREFIX of the post-append bytes and the remainder equals exactly
-     the concatenation named above — report both booleans and the byte lengths.
-     Then report the counts, each of which must go from 0 to 1:
-     `^Gate: R8 — `, `^- R-0813 — `, `^Recurrence: R-0784`, `^Done: R-0418`.
-     `.agent/prose_slips.md`: same prefix property, remainder exactly
-     `"\n\n" + SLIP9`, still no trailing newline.
-  G3 THE FROZENFIX. FROM count 1 before and 0 after; TO count 1 after; the
-     printed containment reading; and the boolean that the post-commit file
-     equals the pre-commit file with that one replacement and nothing else. Then
-     the per-item digest sweep: report the checklist item count (expect 36,
-     numbers 1..31 and 33..37) and the number of items whose block digest
-     changed, which must be ZERO — the frozen paragraph sits outside every item.
-     Confirm the paragraph now contains the string `measures against 36` exactly
-     once and `the number the next consolidation measures against` zero times.
-  G4 THE ROTATION. Report the `--dry-run` output in full, then the real run's
-     output in full, then: `wc -c` of `.agent/live_review.md` and
-     `.agent/live_review_archive.md` before and after; the open-findings count
-     before and after, computed as the number of `^- R-\d{4} — ` lines minus the
-     number of `^Done: R-\d{4} — ` lines IN THE LEDGER, which the script
-     guarantees identical across the rotation — report both numbers and say
-     plainly whether they are equal; the count of `^Gate: ` records remaining in
-     the ledger and the count now in the archive; and `git show --numstat <C4>`,
-     which must name exactly those two paths.
-  G5 THE EVIDENCE JOB — closure algorithm step 1. `git status --porcelain` empty
-     first. Then call, in Python,
-     `packages.orchestration.job_evidence.create_manual_completion_bundle` with:
-       evidence_dir   a fresh directory under the gitignored `.remedy-wt/`
-       repo_root      the primary checkout
-       base_commit    25961794 (the full 40-character sha, not abbreviated)
-       head_commit    the full sha of C4, measured
-       job_id         16 lowercase hex characters from `secrets.token_hex(8)`
-       job_title      `F259 vocabulary and concept model v1`
-       step_range     `T001-T004`
-       prior_job_ids  the empty list
-       review_feature_id  `f259`
-       timestamp / generated_at   ISO-8601 UTC
-       verification_runs  ONE run, schema 1.1.0 shaped, built from a REAL run of
-         `python3 -m pytest tests/docs/ -q` at C4, with these fields and no
-         others: `run_id` matching `^vr-\d{4,}$`; `command` the exact command
-         string; `exit_code`; `passed`; `failed`; `skipped`; `deselected`;
-         `selected` EQUAL to passed+failed+skipped; `node_ids` from a real
-         `--collect-only` of the same selection, whose length must EQUAL
-         `selected`; `test_files` the actual FILE paths, SORTED, never a
-         directory; `stdout_summary` the run's own stdout, under 4000
-         characters; `output_hash` the sha256 hex of EXACTLY that
-         `stdout_summary` string; `head_sha`; `duration_seconds`.
-     The reviewer measured at 32808b5d: `tests/docs/` collects 303 node ids, all
-     free of absolute paths and traversal, and the two test files sort as
-     `tests/docs/test_docs_consistency.py` then `tests/docs/test_vocabulary.py`.
-     Report the returned summary dict in full, the job id, and the final verdict
-     it names. Do NOT record a full-suite node-id list anywhere in the bundle:
-     the full-suite proof rides in the committed `.agent/gate_f259_r7/` evidence
-     and the reviewer's own re-run.
-  G6 THE REVIEW ZIP — closure algorithm step 2, MANDATORY. `git status --porcelain`
-     empty first, branch pushed. Then
-     `bash scripts/make_review_zip.sh --evidence-dir <the dir from G5>`.
-     Report: the full stdout, the package FILENAME, its SHA-256 as the script
-     printed it AND as you recompute it from the file on disk, the package's
-     absolute directory, `PACKAGE_STATUS`, and the manifest's
-     `committed_review_subject` base and head — which must span 25961794..C4.
-     If the build does not reach READY_FOR_REVIEW, report the raw error verbatim
-     and stop per constraint 10.
-  G7 THE PRECONDITIONS THIS ROUND CAN ANSWER.
+  G2 THE RECORD APPEND. The pre-append bytes of `.agent/live_review.md` are a
+     byte-exact PREFIX of the post-append bytes, the remainder equals exactly
+     `"\n" + GATE_R9 + "\n"`, and `grep -c '^Gate: R9 — '` goes 0 → 1. Report the
+     byte lengths.
+  G3 THE FIVE PAIRS. For EACH: the FROM count before (1), the printed containment
+     reading with the label derived from it on the same line, the FROM count after
+     (0) and the TO count after (1). Then the whole-file reconstruction for each
+     of the three files: the post-commit bytes equal the pre-commit bytes with
+     exactly its pairs applied and nothing else — three booleans.
+  G4 THE LEDGER AND THE README AGREE — R-0154 and R-0797 together. After C3,
+     from the COMMITTED state, report:
+       `grep -c '^- \[x\] F' docs/roadmap/STATUS.md`            expect 73
+       `grep -c '^- \[~\] F' docs/roadmap/STATUS.md`            expect 0
+       the F259 STATUS line, in full, verbatim
+       the accepted-per-tier counts, Tier 2 expect 16
+       the README's `N of 271 registered items accepted` numeral, expect 73
+       the README Tier 2 table row, expect Done 16
+     Then the R-0797 sweep, which is the point: extract EVERY
+     `Accepted in Tier N so far:` block from `README.md`, collect EVERY `F\d{3}`
+     token in them, and report the FULL sorted list with, for each, whether
+     `docs/roadmap/STATUS.md` carries it as `- [x]`. Every one must be `[x]`, F259
+     among them, and the list is reported in full and never as a count alone.
+  G5 THE SELF-USE ITEM IS CONSUMED — closure precondition 6. Report SU-010's
+     `consumed_by` value after C3 (expect `F259`); the count of entries in
+     `scripts/self_use_queue.json` with an empty `consumed_by` (expect 0); the
+     total entry count (expect 10); and the boolean that the file's bytes differ
+     from their pre-commit state ONLY by the QUEUEPAIR replacement. Also report
+     the count of the literal two characters `\u` followed by `2014` in the file
+     before and after — they must be EQUAL, which is what proves no JSON
+     round-trip reformatted the file (open finding R-0785).
+  G6 THE SUITES, RUN SERIALLY, at C3. Each a real run with its passed count and
+     exit code. The reviewer measured at aba15f08:
+       python3 -m pytest tests/docs/ -q                                 expect 303
+       python3 -m pytest tests/orchestration/test_roadmap_index.py -q   expect 30
+       python3 -m pytest tests/ui_server/ -q                            expect 515
+       python3 -m pytest tests/orchestration/test_test_runner.py -q     expect 52
+       python3 -m pytest tests/regression/test_resource_safety.py -q    expect 21
+       python3 -m pytest tests/orchestration/test_integrity_gate.py -q  expect 16
+       python3 -m pytest tests/cli/test_golden_path.py -q               expect 42
+       python3 -m pytest tests/orchestration/test_self_use_generator.py -q  report the number
+     The last is added because this round consumes a queue entry. `tests/docs/`
+     is the one that would catch a README/STATUS disagreement, so run it AFTER C3
+     is committed, not before. A different count is reported as the number it is,
+     with failing node ids verbatim.
+  G7 THE CLOSURE PRECONDITIONS RESTATED AGAINST THE FINAL STATE.
      `python3 -m apps.cli.grouped integrity check --json` — report `passed` and
-     `fail_count`. `python3 -m pytest tests/docs/ -q` and
-     `python3 -m pytest tests/cli/test_golden_path.py -q` — report both counts
-     and exit codes; the reviewer measured 303 and 42 at 32808b5d.
-     `python3 -m pytest tests/orchestration/test_live_review_rotation.py -q` —
-     report the count and exit code, because this round runs that script for
-     real. Also report `git status --porcelain` and the full list of untracked
-     paths with whether each is gitignored.
-  G8 THE PLAN AND THE STRUCTURE. `wc -l .agent/plan.md` under 50; one `## Goal`
-     and one `## Next Steps`; `filecmp.cmp(..., shallow=False)` True against the
-     slice plus one newline. Then `git status --porcelain` empty immediately
-     before C5 is staged; `git ls-files .remedy-wt` returns nothing; every commit
-     single-parent; `git diff --numstat <parent> <commit>` for EACH commit C0a
-     through C4 reported cell by cell; each commit's insertion count against the
-     500 cap, with C4 declared under the AGENTS.md DECISION F104 D1 exemption if
-     the rotation's diff exceeds it — it is the verbatim rewrite of a single
-     `.agent/**` state file pair; the push result; and confirmation that no pull
-     request was created and that STATUS.md, README.md and
-     `scripts/self_use_queue.json` are named nowhere in this round's diff.
+     `fail_count`. `git status --porcelain` — empty. The open-findings count,
+     computed as `^- R-\d{4} — ` lines minus `^Done: R-\d{4} — ` lines in
+     `.agent/live_review.md` — report the number. And confirm
+     `.agent/candidates.md` is unchanged by this round, since no candidate was
+     raised.
+  G8 STRUCTURE, THE PUSH AND THE PULL REQUEST. Every commit single-parent;
+     `git diff --numstat <parent> <commit>` for EACH commit C0a through C3
+     reported cell by cell; each commit's insertion count against the 500 cap;
+     `git ls-files .remedy-wt` returns nothing; the push result; that C3 is the
+     branch tip and NOTHING follows it; the PR number, its URL, that it is not a
+     draft, that its base is `main` and its head is `feature/f259-vocabulary`,
+     and that it is NOT merged. Report `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
 
-The handback (C5) — rewrite .agent/handoff.md whole
-  No length cap. It is the durable carrier for everything part 3 needs, so it
-  must record, in a section a later reader can find by name: the EVIDENCE JOB ID;
-  the PACKAGE FILENAME; its SHA-256; the package's ABSOLUTE DIRECTORY (DECISION
-  amend0827 D1 — or the literal `NOT ARCHIVED` if it was left where it was
-  built); the ACCEPTED HEAD, which is the full sha of C4 and the head the
-  manifest recorded; and `PACKAGE_STATUS`. Part 3 authors the STATUS line from
-  those five values, so a missing one costs a round. Beyond that: feature, round
-  and SESSION NUMBER — still SESSION 1 of F259, round 9, rounds so far 9; the
-  commit range; a `## Commits` table with the `+/-` numbers G8 printed; the
-  AGENTS.md item-status table, one row per bundle item C0a through C5; one line
-  per gate G1 through G8 with its real reading; the rotation transcript; the
-  deviations; ONE sentence of context self-assessment; and the next expected
-  action — the reviewer's gate, then CLOSURE PART 3: the STATUS `[x]` line, the
-  README capability sync and the `consumed_by` edit in ONE commit, then the pull
-  request, which is NOT merged this session. Repeat this line verbatim in its
-  state block:
-  `~99 % (T001–T004 ✅ · Integration Gate ✅ · Evidence + Zip gebaut · nur noch STATUS/README/PR) — Schätzung`
+The handback, inside C3 — rewrite .agent/handoff.md whole
+  No length cap. It is the last state this branch leaves behind, so it carries:
+  feature, round and SESSION NUMBER — SESSION 1 of F259, round 10, rounds so far
+  10, and the feature CLOSED; the commit range for this round and the accepted
+  HEAD `efd2a4fb04bb82b8ee87b812327a7c3f9776853a`; the evidence job id, package
+  filename, SHA-256 and package path exactly as they appear in the STATUS line;
+  a `## Commits` table with the `+/-` numbers G8 printed for C0a through C3; the
+  AGENTS.md item-status table, one row per bundle item; one line per gate G1
+  through G7 with its real reading, plus what G8 could measure before the commit;
+  the deviations; ONE sentence of context self-assessment; the open-findings
+  count; and the next expected action — the operator's review window, then the
+  next feature's Open PR Gate merging this pull request. Say plainly that the
+  pull request number is NOT in this file and why (Rule A4 makes C3 the last
+  commit; the number is in the round's final message and recoverable with
+  `gh pr list`). Repeat this line verbatim in its state block:
+  `100 % (T001–T004 ✅ · Integration Gate ✅ · Closure ✅ — F259 geschlossen, PR offen) — Schätzung`
 
-<<<BEGIN PLANF259R9>>>
+<<<BEGIN PLANF259R10>>>
 # Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 8
-PASSED the reviewer's gate. Round 7 was the integration gate: the full suite is
-green on the branch and at the merge base, with zero branch-only and zero
-base-only failures. Round 8 was closure part 1.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 9
+PASSED the reviewer's gate. Round 7 was the integration gate — the full suite
+green on the branch and at the merge base, zero branch-only and zero base-only
+failures. Rounds 8 and 9 were closure parts 1 and 2; the package is built and
+READY_FOR_REVIEW.
 
 ## Goal
 
@@ -246,58 +225,76 @@ code: F259 decides words, F260 and F261 spend them.
 
 ## Current Step
 
-Round 9 is CLOSURE PART 2, the evidence half: the round-8 verdict is booked
-together with the three ledger obligations the closure creates — a new finding
-for the contradiction round 8's own consolidation left in the frozen paragraph,
-a recurrence under the existing R-0784 rather than a second id for the self-use
-run's two defect strings, and the `Done: R-0418` that SU-010's acceptance owes;
-then that contradiction is repaired, the ledger is rotated, and the evidence
-bundle and the FRESH review zip are built from a clean tree.
+Round 10 is CLOSURE PART 3 — the last round. One commit flips the STATUS line to
+accepted, syncs the README's counters and its Tier 2 accepted list, marks the
+self-use item consumed and rewrites the handback; it is the last commit on the
+branch. Then the pull request is opened and left UNMERGED, which is the
+operator's review window.
 
 ## Next Steps
 
-- CLOSURE PART 3: the reviewer authors the STATUS `[x]` line from this round's
-  measured evidence job id, package name, SHA-256, package path and accepted
-  HEAD; the worker applies it with the README capability sync and the self-use
-  `consumed_by` edit in ONE commit, which is the last on the branch; then the
-  pull request, which is NOT merged this session but at the next feature's Open
-  PR Gate.
+- The operator reviews the package at their own pace.
+- The next feature's session merges this pull request at its Open PR Gate, then
+  claims the next unchecked line in the DECISION amend0905-vocab D12 order,
+  which is F260 — one world: mission, job, run.
 
 ## Risks
 
-- A failing zip build is a closure BLOCKER, not a nuisance: it is reported raw
-  and the feature does not close until it is fixed.
-- The rotation rewrites the ledger. It verifies every moved record by sha256
-  before and after and refuses on mismatch; a refusal stops the rotation and is
-  reported, never forced.
-<<<END PLANF259R9>>>
+- The README and the STATUS ledger must never disagree in any committed state,
+  which is why one commit carries both. A split would leave a state where the
+  README claims an acceptance the ledger does not.
+- The pull request must not be merged in this session. Merging it here would
+  close the operator's review window before it opened.
+<<<END PLANF259R10>>>
 
-<<<BEGIN GATE_R8>>>
-Gate: R8 — the F259 R8 entry, CLOSURE PART 1. VERDICT PASS. Range e10cbc30..32808b5d, eight commits, all single-parent, pushed, no pull request; largest commit 400 insertions. The change set is exactly the ordered paths and the reviewer confirmed with `git diff --name-only` that `docs/roadmap/STATUS.md` and `README.md` are named nowhere in it, which matters because the STATUS flip and the README capability sync must land in ONE commit with each other (R-0154) and that commit is part 3's. TRANSPORT: one digest `481692ac503da0cc3a803fe8bf68bb414525f421aa15021571b6a310c236334b` across `.remedy-wt/f259-r8-block.md`, `.agent/authored/f259-r8.md` and `.agent/last_block.md`, equal to the reviewer's own pre-emission digest; a COPY chain per §3 item 37. EVERY EDIT PROVED BY RECONSTRUCTION FROM THE COMMITTED BLOBS: `.agent/live_review.md` equals its parent plus exactly `"\n" + GATE_R7 + "\n"` (843 886 to 848 281 bytes); `.agent/prose_slips.md` equals its parent plus exactly `"\n\n" + SLIP8`, still ending with no newline (82 415 to 83 964); `docs/roadmap/features/T2_F259.md` equals its parent with the REGBANNER pair applied plus exactly `"\n" + BUILTSTATE + "\n"` (9 401 to 12 386), carries a `## Built State` heading and no longer contains the string `REGISTRATION ONLY`, and its single mermaid block is untouched — closure precondition 4 is met. THE ONE MANDATED CONSOLIDATION OF THE §3 CHECKLIST WAS PERFORMED AND THE REVIEWER RE-MEASURED IT INDEPENDENTLY FROM THE COMMITTED BLOBS: before, 37 items numbered 1 to 37; after, 36 items numbered 1 to 31 and 33 to 37; item 32's block hashed `695759114c327d494d21e548170eeefd74e9263db04881dd9baa8de814d8000b` before deletion, matching the value the block stated; and the per-item digest sweep shows EXACTLY ONE surviving item changed — item 16, which absorbed item 32 — with item 31 byte-IDENTICAL, which is the trap the block warned about, since deleting the block without its terminating newline would have left a stray blank line inside item 31. The list came out SHORTER, which operator amendment amend0827-process-diet rule 4 requires, and the survivors were deliberately NOT renumbered because this record cross-references those items by number from dated entries that cannot be corrected. THE SELF-USE TRACK WAS EXERCISED FOR REAL, closure precondition 6: `next_self_use_item()` answered `None` over nine consumed entries, `generate_and_append_if_empty()` appended `SU-010` (`Address ledger finding R-0418`, provenance `generated (self-use-generator tier 1, ledger scan, R-0418)`), and the runner ran it for 107.8 seconds to the approval gate and no further under `max_provider_calls=6`, `max_cost_usd=0.5`, `max_tasks=1`, producing job `1cbb6972bf7c4ffc` with status `blocked`, T001 `repair_exhausted`, reviewer verdict `fail`. Nothing was approved and nothing applied. `describe_self_use_run_defects` returned a tuple of LENGTH TWO, reported verbatim, and `consumed_by` is still the empty string — that edit belongs to the closure commit. SUITES, re-run by the reviewer: `tests/docs/` 303, `tests/test_agent_tooling.py` 10 passed and 1 skipped, `tests/orchestration/test_roadmap_index.py` 30. `python3 -m apps.cli.grouped integrity check --json` reports `passed true`, `fail_count 0` and `relevant_untracked untracked=0, relevant=0` — closure precondition 3 — though the reviewer notes for honesty that this gate's `high_blockers_open` check reports "no open blocker/high findings" while the ledger holds High findings R-0803 and R-0806, a blind spot in the gate rather than a statement about the record. TWO THINGS THE WORKER FOUND AND THE REVIEWER ACTED ON. First, the block's prose said the deletion "leaves item 31's own trailing blank line", and item 31 has no trailing blank line — the blank belonged to item 32; the instruction was nevertheless correct and the digest sweep proves it, so this is a reviewer prose slip and is recorded in `.agent/prose_slips.md` by the same commit that appends this entry. Second, and this one is a real defect on disk under `docs/`: the FROZEN pair left the paragraph asserting both that 37 "is the number the next consolidation measures against" and that "The next consolidation measures against 36", which is registered as `R-0813` immediately below and repaired by this round's own C3.
-<<<END GATE_R8>>>
+<<<BEGIN GATE_R9>>>
+Gate: R9 — the F259 R9 entry, CLOSURE PART 2. VERDICT PASS. Range 32808b5d..aba15f08, seven commits, all single-parent, pushed, no pull request; largest commit 303 insertions, so the AGENTS.md DECISION F104 D1 exemption was not needed for the rotation commit, which carried 8. The change set is exactly the ordered paths and the reviewer confirmed with `git diff --name-only` that `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` are named nowhere in it — they belong to the single closure commit that must carry them together under R-0154. TRANSPORT: one digest `5ae765ed108327d52ed5b9e216a859a2186c9ef7b7b601ffae2ac66b18be8da0` across the scratch file, the saved copy and the mirror, equal to the reviewer's own pre-emission digest; a COPY chain per §3 item 37. THE FOUR LEDGER PARAGRAPHS LANDED BYTE-EXACTLY: `.agent/live_review.md` at 3a5f006f equals its parent plus exactly `"\n" + GATE_R8 + "\n\n" + FIND0813 + "\n\n" + REC0784 + "\n\n" + DONE0418 + "\n"` (848 281 to 859 557 bytes), and `.agent/prose_slips.md` equals its parent plus exactly `"\n\n" + SLIP9`, still ending with no newline. THE R-0813 REPAIR: `docs/agents/planner_reviewer_prompt.md` at a7c72f25 equals its parent with the single FROZENFIX replacement and nothing else; the paragraph now contains `measures against 36` exactly once and `the number the next consolidation measures against` zero times; and the per-item digest sweep the reviewer re-ran independently shows the checklist still at 36 items numbered 1 to 31 and 33 to 37 with ZERO item texts changed, which is what a repair confined to the frozen paragraph must look like. THE ROTATION HELD ITS INVARIANT, measured by the reviewer from the committed blobs on both sides: before, 300 registrations against 6 `Done:` lines; after, 298 against 4; open findings 294 on BOTH sides, which is the equality `scripts/rotate_live_review.py` guarantees and refuses on. The ledger fell from 859 557 to 851 727 bytes and the archive rose from 1 723 631 to 1 731 461; the resolved `R-0418` pair is now in the archive, one registration and one `Done:`, and is gone from the live ledger, which is the intended effect of resolving it. THE PACKAGE WAS VERIFIED BY THE REVIEWER FROM THE FILE ON DISK, not from the worker's report: `remedy-review-20260906-004320-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, 22 510 711 bytes, sha256 recomputed as `164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3` — equal to the worker's value — `zipfile.testzip()` returning None over 3877 members with no `.log` member among them, and its `.review_zip_manifest.json` read out of the archive giving `committed_review_subject` base `259617949461c993f1b8dabcf659e6a73110b162`, head `efd2a4fb04bb82b8ee87b812327a7c3f9776853a`, `base_is_ancestor` true over 61 commits, `ready_gate_matrix.ok` true with an empty `blocking_reasons`, `package_status` READY_FOR_REVIEW, and the evidence job id `ace7fa4d9d782a7a` present. The evidence bundle's own final verdict is PASS_WITH_RISKS over 8 authority gates, and its one verification run records `tests/docs/` at 303 selected with 303 node ids and two sorted real file paths — the scoped shape closure algorithm step 1 requires, with no full-suite node-id list anywhere. SUITES, re-run by the reviewer: `tests/docs/` 303 and `tests/cli/test_golden_path.py` 42, both reproducing the worker's numbers. THE WORKER'S TWO HONESTY NOTES ARE ACCEPTED AS WRITTEN. `vt_passed` is ABSENT from this manifest rather than null, so a `None` read there means absent-key and not a rejected VerificationTests document — the record was accepted on its own merits and `ready_gate_matrix.ok` is true. The manifest's `dirty_file_count_total` reads 1 while `git status --porcelain` was empty and its own `git_status_snapshot.status` reads OK; the worker reported the discrepancy without explaining it, which is the correct disposition for a number it did not establish, and that block's verdict is PASS with zero issues. Neither is a finding: nothing false is claimed anywhere and no gate over production code is blind.
+<<<END GATE_R9>>>
 
-<<<BEGIN FIND0813>>>
-- R-0813 — Low, THE CONSOLIDATION ROUND LEFT THE FROZEN PARAGRAPH NAMING TWO DIFFERENT FIGURES FOR WHAT "THE NEXT CONSOLIDATION" MEASURES AGAINST. Found by the WORKER of F259 R8, who applied the authored slice verbatim as constraint 1 required and declared the contradiction instead of silently repairing it, and confirmed by the reviewer at `32808b5d` by reading the paragraph on disk. The rule-4 paragraph of `docs/agents/planner_reviewer_prompt.md` §3 now contains, nine lines apart, `The list stood at 37 items on 2026-08-27, which is the number the next consolidation measures against.` and `The next consolidation measures against 36.` Both sentences state what the NEXT consolidation measures against and they give different numbers; the first was written on 2026-08-27 about the consolidation that F259 has now performed, and became stale the moment that consolidation landed. PRODUCT EFFECT, which is why this spends an id rather than a `.agent/prose_slips.md` line under operator amendment amend0827-process-diet rule 2: the wrong state is on disk under `docs/`, in the document that governs every reviewer's pre-emission discipline, and a later consolidation reading the stale sentence would measure against 37 and could therefore GROW the list to 37 while believing it had obeyed the same-length-or-shorter rule. Low rather than Medium because both figures are individually true of something, the corrected sentence stands beside the stale one rather than replacing it, and the next consolidation is a whole feature away. ROOT CAUSE, stated so the class is visible: the reviewer authored an APPEND to a paragraph without re-reading the paragraph's EXISTING sentences for claims the appended text would contradict — §3 item 6 binds a zero-gate to the target's existing content and item 34 binds an order to the file it is written into, and neither was applied to the PROSE of the very paragraph being extended. Searched before minting per §3 item 30: `grep` over the open set for `frozen`, `consolidat` and `checklist` finds `R-0387`, `R-0411`, `R-0461` and `R-0604`, none of which describes a stale numeral in this paragraph, and the defect did not exist before F259 R8 created it. FIX, applied by this round's own C3 as a single REWRITE pair: the 2026-08-27 sentence is re-worded to name itself as the figure the FIRST consolidation measured against, leaving exactly one sentence in the paragraph that says what the next one measures against. Resolved when `docs/agents/planner_reviewer_prompt.md` contains `measures against 36` exactly once and `the number the next consolidation measures against` zero times, and the per-item digest sweep shows no checklist item changed.
-<<<END FIND0813>>>
+<<<BEGIN STATUSPAIR_FROM>>>
+- [~] F259 — Vocabulary & concept model v1
+<<<END STATUSPAIR_FROM>>>
 
-<<<BEGIN REC0784>>>
-Recurrence: R-0784 — the same defect, at F259's closure. Closure precondition 6 requires every string `packages.orchestration.self_use_findings.describe_self_use_run_defects` returns for the closing run to be registered before the close, and F259 R8's run of `SU-010` returned two: `job 1cbb6972bf7c4ffc (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail` and `T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail`. These are the SAME defect `R-0784` already holds open — the job-level and task-level views of one gate failure, in a self-use run that exhausted its repair rounds — differing from the entry above only in the job id and the queue item. NO NEW ID IS MINTED, per §3 item 30: the reviewer searched the open set for the DEFECT before writing, found `R-0784` describing it in as many words, and `R-0784`'s own text already rules that the two strings are one defect and take one id. Registering `R-0814` here would give one defect two things to resolve, two things to carry forward and two chances to fix it half-way, which is precisely what that item forbids. The evidence is added to the open finding instead, which is this paragraph. WHAT IS NEW AND WORTH RECORDING: this is the SIXTH consecutive closure whose self-use item was generated from the same ledger source. The generator's tier 1 takes the OLDEST open Low or Medium finding, that finding has been `R-0418` since F110, and each closure has therefore run a job whose task was to repair a rule about REVIEWER AUTHORING PRACTICE — work no builder can do, which is why every one of those runs ended `repair_exhausted`. F259 breaks that loop from the other end: it pays `R-0418` off by demonstrated compliance rather than by another failing run, as the `Done: R-0418` paragraph below records, so the generator's tier 1 will offer a DIFFERENT finding at the next closure. Whether the runner should refuse a task whose subject is a reviewer-practice rule remains open under `R-0784`.
-<<<END REC0784>>>
+<<<BEGIN STATUSPAIR_TO>>>
+- [x] F259 — Vocabulary & concept model v1 (T001–T004 complete; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job ace7fa4d9d782a7a · package remedy-review-20260906-004320-READY_FOR_REVIEW.zip · SHA-256 164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD efd2a4fb04bb82b8ee87b812327a7c3f9776853a)
+<<<END STATUSPAIR_TO>>>
 
-<<<BEGIN DONE0418>>>
-Done: R-0418 — RESOLVED by demonstrated compliance, which is the branch its own acceptance offers for a finding that has no code to turn red. R-0418 is a rule about REVIEWER BLOCK-AUTHORING PRACTICE under docs/agents/self_drive_protocol.md: its fix clause states that in self-drive, where the worker is a delegated subagent that never sees the reviewer's operator brief, every block requiring the handoff to carry the Fortschritt line must CONTAIN that line as authored text or must not order it — because an instruction to repeat something from a brief the worker cannot read is unsatisfiable by construction, the R-0371 class. The acceptance carried on the self-use queue item that has re-raised this finding at every closure since F110 reads: "R-0418 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done: R-0418` line." WHY NO RED-TO-GREEN PROOF EXISTS, recorded as that acceptance asks: the subject is a rule binding the author of a paste block, not a code path, so there is no branch to mutate and no test that could go red; the five self-use runs that tried — SU-005 through SU-010, one per closure — each ended `repair_exhausted` for exactly that reason, and a sixth would too. WHAT WAS MEASURED INSTEAD, by the reviewer at `32808b5d`: every one of F259's seven build-round blocks, as COMMITTED under `.agent/authored/`, contains the Fortschritt line as authored literal text rather than ordering the worker to fetch it — `f259-r1.md` through `f259-r7.md`, seven files, seven matches of a backtick-quoted line ending `— Schätzung`, and every one of the seven handbacks carries the corresponding line. The rule is therefore not merely stated but followed for a full feature, by the role it binds, under the workflow that created the defect. This resolution does NOT claim the rule can no longer be broken; it claims the finding has been discharged in the only currency it accepts. The neighbouring question — whether the self-use RUNNER should refuse a task whose subject is a reviewer-practice rule instead of burning two repair rounds on it — stays open under `R-0784`, which the recurrence paragraph above names.
-<<<END DONE0418>>>
+<<<BEGIN ACCPAIR_FROM>>>
+the remaining nine belong to the follow-up feature the STATUS ledger
+registers next).
+<<<END ACCPAIR_FROM>>>
 
-<<<BEGIN SLIP9>>>
-2026-09-06 · F259 R8 (reviewer) · The round-8 block's consolidation instruction said the item-32 deletion "leaves item 31's own trailing blank line followed directly by item 33", and item 31 has NO trailing blank line — the blank line the sentence attributes to item 31 was the last line of item 32's own block. The instruction itself was correct and the round's per-item digest sweep proves item 31 byte-identical; only the reviewer's account of WHOSE bytes those were is wrong, which the worker measured and declared. THE LESSON: when a block explains what a deletion will leave behind, the explanation is a claim about the target's existing bytes and is measured like any other — §3 item 34 reaches it, and the same probe that produced the block's digest could have produced the adjacency reading for free. Reviewer-authored prose inaccuracy in an `.agent/` block; nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result, and the separate defect that round DID leave under `docs/` is registered as `R-0813` rather than recorded here; no R-id spent for this one (amend0827-process-diet rule 2).
-<<<END SLIP9>>>
+<<<BEGIN ACCPAIR_TO>>>
+the remaining nine belong to the follow-up feature the STATUS ledger
+registers next),
+F259 vocabulary & concept model v1 (the binding page
+`docs/system/vocabulary.md`: one row per word with its meaning, its code
+spelling today and after the rename features, its CLI spelling and what it
+is NOT; the do-not-confuse table; the concept diagram, byte-equal in this
+README and pinned against the page by a test; and the rulings that decided
+them, copied verbatim from the build record).
+<<<END ACCPAIR_TO>>>
 
-<<<BEGIN FROZENFIX_FROM>>>
-  move, growing the list is forbidden. The list stood at 37 items on
-  2026-08-27, which is the number the next consolidation measures against.
-<<<END FROZENFIX_FROM>>>
+<<<BEGIN COUNTPAIR_FROM>>>
+72 of 271 registered items accepted.
+<<<END COUNTPAIR_FROM>>>
 
-<<<BEGIN FROZENFIX_TO>>>
-  move, growing the list is forbidden. The list stood at 37 items on
-  2026-08-27, which is the figure the FIRST consolidation measured against.
-<<<END FROZENFIX_TO>>>
+<<<BEGIN COUNTPAIR_TO>>>
+73 of 271 registered items accepted.
+<<<END COUNTPAIR_TO>>>
+
+<<<BEGIN TIERPAIR_FROM>>>
+| 2 | Minimal Self-Build Runtime | 15 | 24 |
+<<<END TIERPAIR_FROM>>>
+
+<<<BEGIN TIERPAIR_TO>>>
+| 2 | Minimal Self-Build Runtime | 16 | 24 |
+<<<END TIERPAIR_TO>>>
+
+<<<BEGIN QUEUEPAIR_FROM>>>
+      "consumed_by": ""
+<<<END QUEUEPAIR_FROM>>>
+
+<<<BEGIN QUEUEPAIR_TO>>>
+      "consumed_by": "F259"
+<<<END QUEUEPAIR_TO>>>
