@@ -1,42 +1,46 @@
-# Plan — amend0905-testlog (operator planning follow-up)
+# Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/amend0905-testlog, cut from `main` at b3224322 (PR #238
-amend0905-vocab-rebuild merged); STATUS.md had 0 `[~]` lines and
-`remedy plan next` proposed F259 at the cut.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794 (the merge of pull
+request #239). STATUS.md carried no `[~]` line at the cut and F259 is the first
+`[ ]` line of the execution order DECISION amend0905-vocab D12 fixes.
 
 ## Goal
 
-Turn the operator's hands-on tests.md run (Levels 0–7 against b2ee0a84 on
-2026-09-05, ~/remedy-tests.log) into acceptance criteria: register the ten
-measured findings A–J as R-0803..R-0812 in `.agent/live_review.md`, add
-each acceptance sentence to its feature file (F260, F261, F268) under
-`## Acceptance`, add the tests.md Level 4.1 line to F260, clarify D4 for
-the catalog group `repo` and resolve R-0800 with that reference, and write
-the data-root hygiene note for the operator into the handoff. PLANNING
-ONLY: no product code, no tests, every edit presence-checked.
+Write `docs/system/vocabulary.md` as the BINDING vocabulary page: the DECISION
+amend0905-vocab D1 table — one row per word, with its meaning, its code
+spelling today, its code spelling after F260/F261, its CLI spelling and what it
+is NOT — plus the do-not-confuse table, the Mermaid concept diagram, and D2–D10
+and F259 D1/D2 as dated DECISION paragraphs. Pin the page with
+`tests/docs/test_vocabulary.py` in planned mode against the shipped
+`apps/cli/command_catalog.py`, put the same Mermaid block into `README.md`, and
+register the page in `docs/README.md`. Explicitly no other code: F259 decides
+words, F260 and F261 spend them.
 
 ## Current Step
 
-Commit sequence of the single round: (1) this plan · (2) findings
-R-0803..R-0812 + R-0800 resolved + D4 clarification · (3) acceptance
-lines in T2_F260 / T2_F261 / T2_F268 · (4) handoff rewrite. Then push,
-PR, hosted run GREEN, checks read, merge (two separate commands), verify
-on main.
+Round 1 — claim F259, cut the branch, re-point this file and `.agent/context.md`
+at it, re-head `.agent/live_review.md`, book the reviewer's `Done: R-0797`, and
+put the T001 source inventory on disk in `.agent/f259_inventory.md`: per D1
+word, the spelling the code really uses today, read from the seven modules
+T2_F259.md names and never from memory.
 
 ## Next Steps
 
-- Operator starts remedy-loop-feature; Rule A5 proposes F259.
-- F259 → F260 → F261 → F266 → F268 → … in the D12 order; F260 now owes
-  the data-root isolation, cockpit walk, ledger-row, fake-builder and
-  narration acceptance; F261 the ui-session prune, blocked-findings
-  display and one id-error shape; F268 the cost line, granularity
-  ceiling and repo auto-attach.
+- Write the page's D1 table from that inventory, one row per word.
+- Add the do-not-confuse table, the Mermaid diagram and its short
+  REMEDY_EINSTIEG-grade description; that completes T001.
+- Write D2–D10 and F259 D1/D2 onto the page and check `T2_F263.md`'s heading
+  for a working name (T002).
+- Write `tests/docs/test_vocabulary.py` in planned mode with both of the red
+  proofs T2_F259.md's T003 names.
+- Put the Mermaid block into `README.md` and register the page in
+  `docs/README.md` (T004).
+- Run the integration gate, then the closure sequence.
 
 ## Risks
 
-- Finding A's acceptance line arrives cut mid-sentence in the order
-  (after `ls <data_root>/runs`); completed as an equal-count check and
-  declared in R-0803 and the handoff.
-- `grep -c 'R-08' .agent/live_review.md` must rise by exactly 10: every
-  finding is one line and R-0800 is resolved IN its own line, not by a
-  new `Done:` line.
+- The "code spelling today" column is worthless if it is guessed, which is why
+  the inventory round comes before any page round.
+- `README.md` has a guarded region: its `Accepted in Tier 2 so far:` block is
+  scanned for feature ids, and putting an unaccepted id there is what R-0797
+  was. The T004 round writes into that file and must not add an id token.
