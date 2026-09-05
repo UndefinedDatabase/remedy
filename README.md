@@ -64,7 +64,8 @@ F262 list commands v2 (one shared `--sort <field> [--desc] --since <when>
 --until <when> --limit <n>` surface attached to every list-shaped command
 by the catalog, CREATED/UPDATED dates on the rows, and newest-first
 sort/filter/limit behaviour wired into 15 of the 24 in-scope commands;
-the remaining nine are F267's).
+the remaining nine belong to the follow-up feature the STATUS ledger
+registers next).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
