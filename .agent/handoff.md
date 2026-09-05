@@ -16,7 +16,7 @@ This handback commit follows and is not part of the reviewed range.
 | d80355c3 plan | .agent/plan.md (rewrite) |
 | 0f5ecb02 findings | .agent/live_review.md (R-0803..R-0812 appended, one line each; R-0800 resolved in its own line), .agent/decisions.md (D4 clarification line) |
 | c893d454 acceptance | T2_F260.md (A, B, E1, H, J, Level 4.1), T2_F261.md (C, D, G), T2_F268.md (E2, F, I) |
-| (this commit) | .agent/handoff.md |
+| ee69692a + this commit | .agent/handoff.md (handback, then trim to ≤60 lines) |
 
 ## External actions
 
@@ -38,25 +38,17 @@ grep -c 'Clarification 2026-09-05: repo is deleted; see R-0800.' .agent/decision
 git status --porcelain | wc -l                    → 0
 ```
 
-Log verification (`~/Desktop/remedy-tests.log`, ANSI stripped): 9,239 run rows
-after `do report list`; traceback ui_server.py:3479 → ui_view_model.py:297 →
-project_brain.py:324, `_JobPlanTaskAdapter` ×8; `[DEAD]` ×35 (lines 10223–10257);
-ledger row `TOTAL 1 36 3266 494463 77352 0.4410 provider_reported (1/1)`; the
-four id wordings at lines 10783–10787; `<!-- Remedy: Task 1 -->` ×2; ten planned
-tasks, six read-only; `sr:derived_no_repo` + `<job_id> <path>` tip; 26 `no
-narration for` lines.
+Log verification per finding (line numbers, counts) lives in R-0803..R-0812.
 
 ## Deviations & assumptions
 
-1. Finding A's acceptance line arrives cut in the order after `ls <data_root>/runs`;
-   completed as "`ls <data_root>/runs | wc -l` is equal before and after a full
-   suite run" and declared in R-0803.
-2. R-0800 is resolved INSIDE its own ledger line (no new `Done:` line) so the
-   `R-08` line count rises by exactly 10.
-3. Acceptance bullets are wrapped at 85 columns like their neighbours; the
-   once-per-file check is whitespace-normalised. Idempotent: every edit is
-   presence-checked, a second run changes nothing.
-4. PR number written after `gh pr create` (R-0449 class): one extra push.
+1. Finding A's acceptance line arrives cut after `ls <data_root>/runs`; completed
+   as an equal-count check before/after a full suite run, declared in R-0803.
+2. R-0800 resolved INSIDE its own ledger line (no `Done:` line): `R-08` +10 exactly.
+3. Acceptance bullets wrapped at 85 columns; once-per-file check is
+   whitespace-normalised. Every edit presence-checked (idempotent).
+4. PR number written after `gh pr create` (R-0449 class): one extra push; this
+   trim to the order's 60-line cap is a second one.
 
 ## Data-root hygiene note for the operator (no action by this session)
 
