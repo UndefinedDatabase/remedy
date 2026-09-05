@@ -1,254 +1,455 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 26 (closure preconditions 6 + 3, no code)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 27 (books R26's PASS; builds the evidence bundle + review zip)
 
 ## Session
 
-SESSION 9 of feature F262 · round 26 · rounds so far 26.
+SESSION 9 of feature F262 · round 27 · rounds so far 27.
 
-Context self-assessment: this session started cold at `60f48fb6` with the
-round-26 block as its only brief, read AGENTS.md, STATUS_closure_protocol.md
-precondition 6 and `.agent/selfuse_f114/run.txt` (the evidence shape) first, and
-executed the block mechanically — slices extracted from the COMMITTED authored
-file by Python, the generator and the runner called as the pure Python calls the
-block states, every gate run with real exit codes; no state was carried from
-memory. One reporting bug of the worker's own (declared under Deviations) cost
-the in-process wall-time measurement of the self-use run; the run itself was
-not affected and was not repeated.
-
-PRECONDITION 6 WAS EXECUTED END TO END, NOT JUDGED: the queue held no pending
-item (8 entries, all consumed), `generate_and_append_if_empty()` appended
-SU-009 (tier 1, R-0418, `consumed_by` ""), `run_next_self_use_item()` ran it
-UNFLAGGED under the real default provider (ollama / muse-glimmer:latest, both
-roles) to the normal approval gate: job `21c19578b8754287` ended `blocked`,
-T001 `final_status=repair_exhausted`, `reviewer_verdict=fail`, two defect
-strings from `describe_self_use_run_defects` (below, verbatim). No
-`consumed_by` edit, no R-id. PRECONDITION 3 read `"passed": true`,
-`"fail_count": 0`, `high_blockers_open` pass — CONFIRMED (literal JSON below).
+Session 9's delegated round 27 books round 26's PASS (RECORD26 — closure
+preconditions 3 and 6 confirmed, all six now hold) and executes closure
+algorithm steps 1-2 of `docs/roadmap/STATUS_closure_protocol.md`: the
+evidence job `f262-closure` and the fresh review zip with its red
+control. This round does NOT close the feature — no `[x]`, no README
+sync, no `consumed_by` edit, no pull request. Context self-assessment:
+this session started cold at `0609f113` with the round-27 block as its
+only brief, read AGENTS.md, the closure protocol's Algorithm 1-2 and zip
+sequence and the F114 round-17 handback (`af075516`) first, and executed
+the block mechanically — every slice extracted from the COMMITTED
+authored file by Python, every gate run with real exit codes, no state
+carried from memory. Both soft limits are exceeded (round 27 of 25,
+session 9 of 7); the scope report they oblige was carried by rounds
+23-24 under DECISION F262 D4/D5 (remainder scoped to F267), and the plan
+now holds exactly two steps to the merge.
 
 ## Range
 
-Review of 60f48fb6..47730045
+Review of `0609f1138171a6e38dbfcd8d15d8a9fb06fade2b..a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0`.
+ACCEPTED HEAD (C1, the last content commit before the package build) is
+`a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0`. This handback (C2) follows
+the READY package and is not part of the reviewed content range.
 
-## Commits
+## For the next round — the carried facts
 
-### d08493a2 F262 R26 C0a: save round 26 step block verbatim to authored file
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f262-r26.md | +201/-0 | New file: the reviewer's round-26 block, byte-for-byte (shutil.copyfile of the scratch original; sha256 24ea07da…, 15480 bytes). |
+- **Evidence job**: `f262-closure`
+- **LIVE package filename**: `remedy-review-20260905-112903-READY_FOR_REVIEW.zip`
+- **LIVE package SHA-256**: `83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e`
+- **LIVE package archived path**: `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112903-READY_FOR_REVIEW.zip` (22992203 bytes)
+- **ACCEPTED HEAD** (C1's full sha): `a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0`
+- **BASE**: `7c65d9ccfb512aef1c3eea0245030647332c26ea`
+- Disambiguation only, NOT the live package: the DELIBERATE red-control
+  byproduct `remedy-review-20260905-112938-BLOCKED_EVIDENCE.zip` also
+  sits in that directory (see Deviations 4).
 
-### 008ec51f F262 R26 C0b: mirror round 26 step block to last_block.md
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +156/-177 | Mirror of the authored file (same digest). |
-
-### bb8353ef F262 R26 C1: book round 25 verdict (RECORD25), replace plan.md with PLAN27
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +3/-1 | RECORD25 appended as "\n\n" + slice (2498900 → 2503246). |
-| .agent/plan.md | +21/-22 | Whole-file replacement with PLAN27 (1979 bytes, no trailing newline). |
-
-### 79a73b5a F262 R26 C2: generate self-use item SU-009 (tier 1, R-0418) into the empty queue
-| Path | +/- | Reason |
-|---|---|---|
-| scripts/self_use_queue.json | +8/-0 | The one entry `generate_and_append_if_empty()` appended — a CLEAN APPEND (0 deletions), not a full-file rewrite. |
-
-### 47730045 F262 R26 C3: self-use run evidence for SU-009 - blocked at the approval gate, two defect strings
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/selfuse_f262/SU-009.md | +7/-0 | Byte-exact copy of the rendered job file at `.remedy-wt/selfuse-f262-run/SU-009.md` (1541 bytes, sha256 6d72d9c1… = the plan's job_file_sha256). |
-| .agent/selfuse_f262/run.txt | +96/-0 | Free-form evidence: job id, entry id, job file path, provider/model both roles, budgets, plan.status, T001 outcome, wall-time bracket, the two defect strings verbatim. |
-
-### C4 (this commit) F262 R26 C4: rewrite handoff.md - round 26 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | This handback (self-reference exception; SHA in the reviewer's `git log`). |
-
-## Item status
+## Item Status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | shutil.copyfile route (route 1), digest matched the reviewer's stated 24ea07da… / 15480 |
-| C0b | done | identical digest |
-| C1 | done | RECORD25 appended ("\n\n" convention); PLAN27 whole-file; first substantive commit |
-| C2 | done | preconditions read None / 8 (tuple); one no-argument call; SU-009 / R-0418 / consumed_by "" — the expected pick; clean append 8/0 |
-| C3 | done | unflagged run under ollama, blocked at the gate; evidence dir has exactly SU-009.md + run.txt; no re-run, no fake override, no consumed_by, no R-id |
-| C4 | done | this file; push follows |
-| G1 | done | one digest twice |
-| G2 | done | 2498900 + 2 + 4344 = 2503246 = post; tail equal; negative control REJECTED |
-| G3 | done | plan 1979 = 1979 equal True; wc -l 41; headings 1/1 |
-| G4 | done | None / 8 before; entry field by field below; len 9 after; numstat `8 0`; APPEND |
-| G5 | deviated | every field reported from the persisted JobPlan (`load_job_plan`), and the wall time is a 136.972 s timestamp bracket, NOT time.time() around the call — the in-process reporter crashed after the run returned (see Deviations) |
-| G6 | done | ls = SU-009.md run.txt; 1541 = 1541 bytes equal True; run.txt 5598 bytes |
-| G7 | done | `python3 -m apps.cli.grouped integrity check --json` exit 0; passed true, fail_count 0, high_blockers_open pass — CONFIRMED |
-| G8 | done | porcelain 0 before C4; ls-files .remedy-wt 0; STOP absent x3; job worktree retained; numstat matches; sweep empty; push below |
+| C0a | done | primary `shutil.copyfile` transport, digest matched |
+| C0b | done | |
+| C1 | done | pushed before the build |
+| push | done | `0609f113..a5896aa6`, HEAD == origin |
+| evidence bundle | done | 7/7 runs green, all 8 closed-schema gates present, HEAD == C1 |
+| review zip | done | PACKAGE_STATUS=READY_FOR_REVIEW, exit 0 |
+| red control | done | PACKAGE_STATUS=BLOCKED_EVIDENCE, exit 0, 3 blocking reasons — DELIBERATE CONTROL |
+| C2 | done | this handback |
+| G1 HYGIENE | done | PASS |
+| G2 TRANSPORT | done | PASS |
+| G3 THE PLAN AT C1 | done | PASS (1681 bytes, 38 lines) |
+| G4 THE RECORD APPEND | done | PASS (2503246 + 2 + 4992 = 2508240) |
+| G5 THE LEDGER | done | PASS, 356 / 77 / 279 before and after C1 |
+| G6 THE EVIDENCE BUNDLE | done | PASS |
+| G7 THE REVIEW ZIP | done | PASS |
+| G8 STRUCTURE | done | PASS |
+
+## Commits
+
+### fca83123 F262 R27 C0a: save step block verbatim to .agent/authored/f262-r27.md
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/authored/f262-r27.md` | +232/-0 | transport proof — verbatim save of the supplied step block, new file |
+
+### 694a11e1 F262 R27 C0b: mirror block to .agent/last_block.md
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/last_block.md` | +186/-155 | mirror of the round's authored block (whole-file rewrite; AGENTS.md `.agent/**` state-file exemption) |
+
+### a5896aa6 F262 R27 C1: append RECORD26 to live_review.md, replace plan.md with PLAN28
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +3/-1 | append RECORD26 (round 26's PASS: preconditions 3 and 6) — exactly two `\n` then RECORD26's 4992 bytes, no trailing newline |
+| `.agent/plan.md` | +18/-21 | whole-file replace with PLAN28 (first substantive commit, per constraint 2) |
+
+### (this handback commit, C2)
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewrite | this handback (write-once per PH v3) — numbers not tabled here per the template's self-reference exception; the reviewer measures them at the next gate |
 
 ## External actions
 
-- The self-use run created and RETAINED its own execution worktree via run_job:
-  `.remedy-wt/job-21c19578b8754287/` on branch `remedy/job-21c19578b8754287`
-  at `79a73b5a` (`git worktree list` shows it; worktree_cleanup_status=retained).
-  Left untouched per constraint 11. The scratch dest_dir
-  `.remedy-wt/selfuse-f262-run/` is untracked and ignored (.gitignore:235).
-- `git push -u origin feature/f262-list-commands-v2` after C4 — result recorded
-  in the completion report (executed immediately after this commit; the
-  reviewer verifies with `git status -sb`).
-- No pull request, no merge, main untouched.
+- `git push -u origin feature/f262-list-commands-v2` after C1, before the
+  evidence/zip build (the block's own ordering) → exit 0, pushed
+  `0609f113..a5896aa6`; `git rev-parse HEAD origin/feature/f262-list-commands-v2`
+  both read `a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0` immediately after.
+- `bash scripts/make_review_zip.sh --evidence-dir
+  /home/decodeux/Repos/remedy/.remedy-wt/f262_closure_evidence/remedy-job-evidence-f262-closure`
+  (run via `subprocess.run(cwd=REPO)`) → REAL_EXIT=0,
+  PACKAGE_STATUS=READY_FOR_REVIEW, wrote
+  `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112903-READY_FOR_REVIEW.zip`
+  directly — the READY zip was ALREADY in the archive directory when the
+  build finished; no `shutil.move` was needed or performed.
+- `bash scripts/make_review_zip.sh --evidence-dir
+  /home/decodeux/Repos/remedy/.remedy-wt/f262_closure_evidence_CONTROL/remedy-job-evidence-f262-closure-control`
+  → REAL_EXIT=0, PACKAGE_STATUS=BLOCKED_EVIDENCE (DELIBERATE CONTROL, see
+  Verification G7(c)), wrote
+  `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112938-BLOCKED_EVIDENCE.zip`,
+  left in place (constraint 8 deletes nothing there).
+- A second push after C2 (this handback) — recorded in the round report,
+  since this file cannot table it.
+- No `gh pr` command of any kind, no merge, no worktree add/remove.
+  `main` untouched.
 
 ## Verification
 
-Transport route: route 1 (Python `shutil.copyfile` of the reviewer's scratch
-original at the stated scratchpad path) WORKED; the typed fallback was not
-needed.
+Preconditions before C0a:
+```
+$ git rev-parse HEAD
+0609f1138171a6e38dbfcd8d15d8a9fb06fade2b
+$ git status --porcelain | wc -l
+0
+$ ls .agent/STOP
+ls: cannot access '.agent/STOP': No such file or directory
+$ git merge-base main HEAD
+7c65d9ccfb512aef1c3eea0245030647332c26ea
+```
 
-STOP READS (constraint 4)
-    test -e .agent/STOP  →  STOP_ABSENT_read1_before_C0a · STOP_ABSENT_read2_before_C3 · STOP_ABSENT_read3_before_C4
+**G1 HYGIENE**:
+```
+.agent/STOP:
+  before C0a:        absent (ls: No such file or directory)
+  before zip build:  absent (os.path.exists -> False)
+  before C2:         absent (ls: No such file or directory)
+git status --porcelain | wc -l:
+  after C0a: 0
+  after C0b: 0
+  after C1:  0
+  immediately before zip build: 0
+```
+PASS.
 
-G1 TRANSPORT (after C0b)
-    sha256sum .agent/authored/f262-r26.md .agent/last_block.md
-    24ea07da85dce005574c1d40a4f95352de8a6a7c0b2dcaa9e40316610c4b1d31  .agent/authored/f262-r26.md
-    24ea07da85dce005574c1d40a4f95352de8a6a7c0b2dcaa9e40316610c4b1d31  .agent/last_block.md
-    (authored file 15480 bytes; equals the reviewer's stated digest and size)
+**G2 TRANSPORT** (after C0b):
+```
+$ sha256sum .agent/authored/f262-r27.md .agent/last_block.md
+68536a44a4274bd438ee53e58d2adb26201577e6df2fb62ede978fc4f2b2938f  .agent/authored/f262-r27.md
+68536a44a4274bd438ee53e58d2adb26201577e6df2fb62ede978fc4f2b2938f  .agent/last_block.md
+$ wc -c .agent/authored/f262-r27.md
+18010
+```
+One digest, twice; equals the reviewer's stated original digest and
+byte count. PASS.
 
-G2 THE LEDGER APPEND (RECORD25, slice extracted from HEAD:.agent/authored/f262-r26.md via `git show`, HEAD = 008ec51f)
-    RECORD25 len 4344, internal newlines 0, trailing nl False
-    .agent/live_review.md base 2498900 (ends with nl False) ; expected 2498900 + 2 + 4344 = 2503246 ; post 2503246 ; equal True
-    second reader: post[base:] == "\n\n" + RECORD25 → True
-    negative control (in-memory scratch copy, byte 100 of RECORD25 XOR 1): second reader accepts: False (REJECTED)
-    Open set before/after C1: registered 356 (`^- R-dddd — `) · Done 77 · open 279 (UNCHANGED)
+**G3 THE PLAN AT C1** (from `.remedy-wt/apply_r27_slices.py` and shell):
+```
+PLAN28 bytes 1681 trailing newline False
+plan.md bytes 1681 equals PLAN28: True sha256 01718eb8e98a76999fecdc6ac08c7eff79ae94c2f3206e50f796bb9668de867b
+$ wc -l .agent/plan.md
+38
+$ grep -c '^## Goal' .agent/plan.md
+1
+$ grep -c '^## Next Steps' .agent/plan.md
+1
+```
+PASS.
 
-G3 THE PLAN
-    PLAN27 len 1979, trailing nl False ; .agent/plan.md before 2015 → after 1979 ; equal True
-    wc -l .agent/plan.md → 41 ; grep -c '^## Goal' → 1 ; grep -c '^## Next Steps' → 1
+**G4 THE RECORD APPEND (RECORD26)**:
+```
+RECORD26 bytes 4992 internal newlines 0 trailing newline False
+live_review base bytes 2503246 base trailing newline False
+expected 2508240 post-C1 bytes 2508240 match True
+tail == \n\n + RECORD26: True
+negative control (flipped byte) REJECTED: True
+$ wc -c .agent/live_review.md
+2508240
+```
+The negative control flipped bit 0 of RECORD26's first byte in an
+in-memory copy and re-compared against the real tail — rejected. PASS.
 
-G4 THE GENERATION (constraint 5)
-    before: type(load_self_use_queue()) = tuple ; len = 8 ; next_self_use_item() = None
-            ids/consumed_by: SU-001 F257 · SU-002 F258 · SU-003 F106 · SU-004 F108 · SU-005 F109 · SU-006 F110 · SU-007 F112 · SU-008 F114
-    generate_and_append_if_empty()  (one call, no arguments) → SelfUseQueueEntry:
-      id          = 'SU-009'
-      title       = 'Address ledger finding R-0418'
-      why         = the full R-0418 ledger paragraph ('- R-0418 — Low, REVIEWER-BLOCK DEFECT, found by the worker and confirmed by the reviewer. …' … 'R11 carries it as an authored slice, which is the standing form from here.')
-      job_markdown= '# Job: Address ledger finding R-0418\n\n## Task 1\n' + the same paragraph + '\n\nAcceptance:\n- R-0418 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be — either way the ledger gains a `Done: R-0418` line.\n'
-      consumed_by = ''
-      provenance  = 'generated (self-use-generator tier 1, ledger scan, R-0418)'
-    (the reviewer's expected pick R-0418 / id SU-009 / consumed_by "" — REAL values equal the expectation)
-    after: len(load_self_use_queue()) = 9 ; the JSON parses (dict: schema_version, description, items)
-    git show --numstat 79a73b5a -- scripts/self_use_queue.json → `8	0	scripts/self_use_queue.json`
-    diff reading: 8 added lines, 0 removed — a CLEAN APPEND of one object after SU-008 (not the R-0785 rewrite class this time); no finding minted either way
+**G5 THE LEDGER** (canonical line-count formula, §3 item 10):
+```
+BEFORE C1: grep -c '^- R-[0-9]* — '    356 ; grep -c '^Done: R-[0-9]* — '  77 ; open 279
+AFTER  C1: grep -c '^- R-[0-9]* — '    356 ; grep -c '^Done: R-[0-9]* — '  77 ; open 279
+```
+UNCHANGED at 356 / 77 / 279. PASS.
 
-G5 THE RUN (constraints 6-9)
-    call: python3 -c (foreground, repo root; the bash guard did NOT refuse the `.remedy-wt/` path, so no heredoc was needed for the run)
-          entry, job_file_path, plan = run_next_self_use_item(Path(".remedy-wt/selfuse-f262-run"))   — UNFLAGGED, no queue_path
-    no SelfUseRunError was raised; the run completed and persisted its plan; the worker's post-call reporter then crashed (AttributeError: 'TaskEntry' object has no attribute 'id') BEFORE printing — see Deviations; NOT re-run
-    recovered from the persisted store: load_job_plan("21c19578b8754287") → JobPlan (.data/task_jobs/21c19578b8754287/job.json, ignored by .gitignore:211)
-    entry.id        = SU-009 (the only pending item; the rendered file is named after it)
-    job_file_path   = .remedy-wt/selfuse-f262-run/SU-009.md  (1541 bytes, mtime 2026-09-05T09:14:57.182839+00:00, sha256 6d72d9c1… = plan.job_file_sha256)
-    wall time       = 136.972 s BRACKET: plan.created_at 2026-09-05T09:14:57.182947+00:00 → job.json final persist 2026-09-05T09:17:14.155072+00:00 (task_start_recorded_at 09:14:58.790); time.time() around the call was lost
-    plan.job_id     = 21c19578b8754287
-    plan.status     = blocked
-    plan.error      = task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
-    execution_config: builder='ollama' (builder_source='cli'), builder_model='' (builder_model_source='default' → muse-glimmer:latest per role_config._PROVIDER_DEFAULT_MODELS['ollama'])
-                      reviewer='ollama' (reviewer_source='cli'), reviewer_model='' (reviewer_model_source='default' → muse-glimmer:latest)
-                      max_rounds=3, repair_rounds_allowed=2, timeout_sec=120, max_tasks=1 (max_tasks_source='invocation'), claude_cli_write_mode='none', context_strategy='task_bounded_sequential_job'
-                      full repr in .agent/selfuse_f262/run.txt
-    budgets         = max_provider_calls=6, max_cost_usd=0.5, max_total_tokens=None, max_wall_clock_minutes=None, deadline=None
-    isolation_mode=worktree ; worktree_path=.remedy-wt/job-21c19578b8754287 ; worktree_branch=remedy/job-21c19578b8754287 ; worktree_head=worktree_base_commit=79a73b5a ; worktree_cleanup_status=retained ; result.diff 0 bytes
-    tasks (1): T001 'Task 1' — final_status=repair_exhausted ; reviewer_verdict=fail ; status=blocked ; repair_rounds_used=2 of 2 ; task_class=standard_build ; run_id=e0b6c89c44dc4428
-               error="completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
-    describe_self_use_run_defects(plan) → tuple, len 2, in order:
-      1. 'job 21c19578b8754287 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
-      2. 'T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+**G6 THE EVIDENCE BUNDLE**:
 
-G6 THE EVIDENCE
-    ls .agent/selfuse_f262/ → run.txt  SU-009.md  (2 entries, nothing else)
-    SU-009.md: src len 1541, dst len 1541, Python byte read equal True (shutil.copyfile; cmp not used)
-    wc -c run.txt → 5598 ; grep -c 'PASS' run.txt → 0
+(a) Unified diff (difflib, n=0), template slice EVIDENCESCRIPT from
+`git show HEAD:.agent/authored/f009-r33.md` (lines 314-461) vs
+`.remedy-wt/f262_evidence_r27.py` — every changed line:
+```
+@@ -11 +11 @@
+-    REPO, ".remedy-wt", "f009_closure_evidence", "remedy-job-evidence-f009-closure"
++    REPO, ".remedy-wt", "f262_closure_evidence", "remedy-job-evidence-f262-closure"
+@@ -13 +13 @@
+-BASE = "ce49348b8f5b0374417f5b6c47d8c04966e7108e"
++BASE = "7c65d9ccfb512aef1c3eea0245030647332c26ea"
+@@ -93,5 +93,7 @@
+-    mkrun("vr-0001", "tests/ui_server/test_command_channel.py", 99, "not escape", 1),
+-    mkrun("vr-0002", "tests/ui_server/test_command_dispatch.py", 4),
+-    mkrun("vr-0003", "tests/orchestration/test_command_nonce.py", 27, "not escape", 1),
+-    mkrun("vr-0004", "tests/orchestration/test_command_audit.py", 16, "not escape", 1),
+-    mkrun("vr-0005", "tests/orchestration/test_secure_fs.py", 11),
++    mkrun("vr-0001", "tests/orchestration/test_list_options.py", 11),
++    mkrun("vr-0002", "tests/test_command_catalog.py::TestListCommandOptions", 3),
++    mkrun("vr-0003", "tests/cli/test_config_cmd.py", 16),
++    mkrun("vr-0004", "tests/cli/test_worker_facade_cmd.py", 70),
++    mkrun("vr-0005", "tests/cli/test_managed_builder_execution_cli.py", 12),
++    mkrun("vr-0006", "tests/cli/test_queue_cmd.py", 28),
++    mkrun("vr-0007", "tests/docs/test_docs_consistency.py", 295),
+@@ -124,2 +126,2 @@
+-    job_id="f009-closure",
+-    job_title="F009 The single write channel - closure",
++    job_id="f262-closure",
++    job_title="F262 List commands v2 (dates, sort, filter) - closure",
+@@ -127 +129 @@
+-    prior_job_ids=["f008-closure"],
++    prior_job_ids=["f114-closure"],
+@@ -132,2 +134,2 @@
+-    note_prefix="operator-attested manual completion - F009 closure",
+-    review_feature_id="f009",
++    note_prefix="operator-attested manual completion - F262 closure",
++    review_feature_id="f262",
+```
+`step_range="T001-T003"` and `num_tasks=3` already matched the template
+and are unchanged. Nothing else differs (see Deviations 2 for the
+untouched line-1 docstring).
 
-G7 PRECONDITION 3 (constraint 12) — read-only
-    pyproject.toml:16  remedy = "apps.cli.grouped:main"
-    python3 -m apps.cli.grouped integrity check --json   → exit 0
-    {
-      "version": 1,
-      "passed": true,
-      "fail_count": 0,
-      "check_count": 5,
-      "checks": [
-        {"name": "handler_import",      "status": "pass", "message": "handlers=342"},
-        {"name": "live_review_verdict", "status": "pass", "message": "> Round-by-round review record for the F037 branch, reset at the feature claim."},
-        {"name": "plan_consistency",    "status": "pass", "message": "unchecked=0, context_complete=False"},
-        {"name": "relevant_untracked",  "status": "pass", "message": "untracked=0, relevant=0"},
-        {"name": "high_blockers_open",  "status": "pass", "message": "no open blocker/high findings"}
-      ]
-    }
-    (the tool printed one key per line; the object above is the same JSON with each check compacted to one line — nothing added or removed)
-    Reading: CONFIRMED — passed true, fail_count 0, high_blockers_open reports no open Blocker/High finding. Nothing was fixed or touched.
+(b)+(e) Per verification run (from the produced `verification_tests.json`):
+```
+vr-0001 selected 11  len(node_ids) 11  equal True passed 11  failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+vr-0002 selected 3   len(node_ids) 3   equal True passed 3   failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+vr-0003 selected 16  len(node_ids) 16  equal True passed 16  failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+vr-0004 selected 70  len(node_ids) 70  equal True passed 70  failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+vr-0005 selected 12  len(node_ids) 12  equal True passed 12  failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+vr-0006 selected 28  len(node_ids) 28  equal True passed 28  failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+vr-0007 selected 295 len(node_ids) 295 equal True passed 295 failed 0 skipped 0 deselected 0 test_files_sorted True output_hash==sha256(stdout_summary) True
+```
+Exactly the expected passes 11, 3, 16, 70, 12, 28, 295; zero failed/
+skipped/deselected everywhere. Evidence script REAL_EXIT=0. PASS.
 
-G8 THE TREE AND THE COMMITS
-    git status --porcelain (immediately before C4 is staged) → (empty), wc -l 0 ; also 0 after each of C0a, C0b, C1, C2, C3
-    git ls-files .remedy-wt | wc -l → 0
-    .agent/STOP absent at all three reads (above)
-    job's retained worktree: /home/decodeux/Repos/remedy/.remedy-wt/job-21c19578b8754287  79a73b5a [remedy/job-21c19578b8754287]
-    .remedy-wt/selfuse-f262-run: `git check-ignore -v` → .gitignore:235:.remedy-wt/ ; `git status --porcelain --ignored -- .remedy-wt/selfuse-f262-run` → `!! .remedy-wt/` ; plain porcelain shows nothing → untracked-and-gitignored
-    git show --numstat --format="" per commit (matches the Commits tables above cell for cell):
-      d08493a2: 201 0 .agent/authored/f262-r26.md
-      008ec51f: 156 177 .agent/last_block.md
-      bb8353ef: 3 1 .agent/live_review.md · 21 22 .agent/plan.md
-      79a73b5a: 8 0 scripts/self_use_queue.json
-      47730045: 7 0 .agent/selfuse_f262/SU-009.md · 96 0 .agent/selfuse_f262/run.txt
-    git rev-list --parents -n1 <c> → exactly one parent for each of the five (chain 60f48fb6 → d08493a2 → 008ec51f → bb8353ef → 79a73b5a → 47730045); max insertions 201 (< 500)
-    git diff --stat 60f48fb6..47730045 -- packages/ apps/ tests/ docs/ → (empty), exit 0
-    Push result: see the completion report (executed immediately after this commit).
+(c) `_unsafe_text` pre-scan (script output):
+```
+SCAN rejected strings: 0 []
+SCAN red control: a local absolute path
+```
+0 rejected; the fabricated `/home/user/repo/tests/x.py::t` returned the
+non-empty reason `a local absolute path`. PASS.
+
+(d) Files the producer wrote under
+`.remedy-wt/f262_closure_evidence/remedy-job-evidence-f262-closure`: 225
+files — 25 top-level (`artifact_contract_gate.json`,
+`change_provenance_gate.json`, `commit_execution_gate.json`,
+`context_strategy.json`, `current_change_content_proof.json`,
+`execution_config.json`, `final_job_review.json`,
+`final_verifier_report.json`, `fresh_evidence_gate.json`,
+`job_report.json`, `job_timeline.json`, `manifest.json`,
+`manifest_integrity.json`, `postmortem_integrity.json`,
+`prompt_trace_summary.json`, `review_commit_chain.json`,
+`review_subject.json`, `runtime_integration_gate.json`,
+`scratch_file_guard.json`, `target_guard.json`, `tasks.json`,
+`token_truth.json`, `verification_tests.json`, `workspace.diff`,
+`workspace_apply.json`), 167 `review_commit_patches/*.patch` (one per
+commit in BASE..HEAD, `commit_count` 167) and 33 files under
+`task_runs/{T001,T002,T003}/`. All eight closed-schema gates present:
+```
+gate final_verifier_report.json present: True
+gate fresh_evidence_gate.json present: True
+gate artifact_contract_gate.json present: True
+gate change_provenance_gate.json present: True
+gate manifest_integrity.json present: True
+gate postmortem_integrity.json present: True
+gate commit_execution_gate.json present: True
+gate runtime_integration_gate.json present: True
+all eight present: True
+```
+PASS.
+
+(f) HEAD the template computed: `a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0`
+(the producer's result JSON `head_commit`, and every run's `head_sha`)
+— equals C1's full sha. Producer verdict `PASS_WITH_RISKS`,
+`total_passed` 435, `authority_count` 48. PASS.
+
+**G7 THE REVIEW ZIP** (constraint 7: the reading is PACKAGE_STATUS, never
+the exit code):
+
+(a) LIVE build:
+```
+REAL_EXIT=0
+PACKAGE_STATUS=READY_FOR_REVIEW
+ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112903-READY_FOR_REVIEW.zip
+sha256 (hashlib, streamed, over the file on disk): 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e
+```
+Matches the script's printed `final_sha256` exactly.
+
+(b) From `.review_zip_manifest.json` inside the LIVE zip:
+```
+package_status: READY_FOR_REVIEW
+ready_gate_matrix.ok: True
+ready_gate_matrix.blocking_reasons: []
+committed_review_subject.head_commit: a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0
+  (C1's sha: a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0 — MATCH)
+committed_review_subject.base_commit: 7c65d9ccfb512aef1c3eea0245030647332c26ea
+  (equals the ordered BASE)
+```
+
+(c) THE RED CONTROL — a DELIBERATE CONTROL, in plain words: the real
+evidence directory was copied (`shutil.copytree`) to
+`.remedy-wt/f262_closure_evidence_CONTROL/remedy-job-evidence-f262-closure-control`;
+in the COPY ONLY, one node id carrying an absolute path
+(`/home/decodeux/Repos/remedy/tests/orchestration/test_list_options.py::test_absolute_path_injection`)
+was appended to `verification_tests.json` `runs[0].node_ids` (11 -> 12,
+selected still 11), and a zip was built from that copy:
+```
+CONTROL REAL_EXIT=0
+PACKAGE_STATUS=BLOCKED_EVIDENCE
+CONTROL ZIP: /home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112938-BLOCKED_EVIDENCE.zip (22992497 bytes)
+ready_gate_matrix.ok: False
+ready_gate_matrix.blocking_reasons (untruncated, 3):
+  - final_verifier_report.json test_status.passed cannot be confirmed: the VerificationTests total is missing or invalid
+  - verification_tests.json field verification_tests.runs[0].node_ids[11] carries a local absolute path
+  - verification_tests.json runs[0] node_ids count (12) != selected (11)
+```
+The control package is NOT evidence about the real bundle; the two zips
+were built from DIFFERENT inputs (the real directory and a deliberately
+mutated copy), so their differing statuses are not non-determinism —
+the misreading DECISION F262 D6 names from the F114 closure. The real
+bundle was never touched: after the mutation, the real
+`verification_tests.json` still holds 11 ids in `runs[0]` and does not
+contain the fabricated id (`fake id in real bundle: False`).
+
+(d) The LIVE package's absolute path:
+`/home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112903-READY_FOR_REVIEW.zip`
+— written there directly by the build script (`REVIEW_PACKAGE_DIR`);
+exists: True; size 22992203 bytes.
+
+(e) `git status --porcelain | wc -l` after all of it: `0`.
+
+**G8 STRUCTURE**:
+```
+$ git show --numstat --format="" fca83123   (C0a)
+232  0    .agent/authored/f262-r27.md
+$ git show --numstat --format="" 694a11e1   (C0b)
+186  155  .agent/last_block.md
+$ git show --numstat --format="" a5896aa6   (C1)
+3    1    .agent/live_review.md
+18   21   .agent/plan.md
+$ git log --format='%h parents=%p' 0609f113..a5896aa6
+a5896aa6 parents=694a11e1
+694a11e1 parents=fca83123
+fca83123 parents=0609f113
+$ git ls-files .remedy-wt | wc -l
+0
+$ git ls-files | grep -c remedy-job-evidence
+0
+$ git diff --numstat 0609f113..a5896aa6 -- docs/roadmap/STATUS.md README.md scripts/self_use_queue.json
+(empty)
+$ git diff --stat 0609f113..a5896aa6 -- packages/ apps/ tests/ docs/ scripts/
+(empty)
+```
+Every cell matches the Commits tables above; each commit single-parent,
+all insertions under 500.
+```
+$ python3 -m apps.cli.grouped integrity check --json   (cwd=REPO)
+REAL_EXIT=0
+passed: True fail_count: 0 check_count: 5
+high_blockers_open: {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
+```
+The round-26 reading, unchanged. PASS.
 
 ## Authored-text proofs
 
-Both slices were extracted from the COMMITTED authored file (`git show
-HEAD:.agent/authored/f262-r26.md`, HEAD = 008ec51f at extraction time, whose
-authored file is d08493a2's) by one-line BEGIN/END markers with a Python script
-(bytes in, bytes out), marker lines excluded; neither slice carries a trailing
-newline.
-- RECORD25 → live_review.md: tail equality True (4344 bytes, 0 internal newlines)
-- PLAN27 → plan.md: whole-file equality True (1979 bytes)
-Transport: committed authored file sha256
-24ea07da85dce005574c1d40a4f95352de8a6a7c0b2dcaa9e40316610c4b1d31 (15480 bytes)
-equals the reviewer's stated original digest; last_block.md identical.
-No slice looked wrong; both were applied as written.
+- `.agent/authored/f262-r27.md` was written by the PRIMARY transport
+  route — `shutil.copyfile` from the reviewer's scratch original
+  `/tmp/claude-1000/-home-decodeux-Repos-remedy/62969f5d-578f-413a-8775-0dee473d35ff/scratchpad/f262-r27.block.md`
+  — and measured sha256
+  `68536a44a4274bd438ee53e58d2adb26201577e6df2fb62ede978fc4f2b2938f`
+  over 18010 bytes, equal to the reviewer's stated digest and count; the
+  Write-tool fallback was not needed. `.agent/last_block.md` was
+  produced from the committed authored file by `shutil.copyfile` and
+  measures the same digest (G2).
+- RECORD26 (4992 bytes, 0 internal newlines, no trailing newline) and
+  PLAN28 (1681 bytes, no trailing newline) were extracted from the
+  COMMITTED blob `git show HEAD:.agent/authored/f262-r27.md` by
+  `.remedy-wt/apply_r27_slices.py`, as the bytes strictly between each
+  slice's one-line `<<<BEGIN ...>>>` / `<<<END ...>>>` markers (each
+  marker asserted unique), never retyped (constraint 1).
+- RECORD26 was appended as exactly `\n\n` + slice (constraint 3); PLAN28
+  replaced `.agent/plan.md` whole; disk-to-slice equality and the
+  flipped-byte control are at G3/G4.
+- EVIDENCESCRIPT was extracted from the committed blob
+  `git show HEAD:.agent/authored/f009-r33.md` between its `<<<SLICE
+  EVIDENCESCRIPT` / `<<<END EVIDENCESCRIPT` marker lines by
+  `.remedy-wt/adapt_r27_evidence.py` (the unmodified extraction is kept
+  at `.remedy-wt/evidencescript_template.py`), then only the ordered
+  values were substituted, each by a uniqueness-asserted replacement;
+  the complete unified diff is at G6(a).
 
 ## Deviations & assumptions
 
-- Transport digest: NO mismatch (route 1 matched exactly).
-- Commit order: followed exactly C0a, C0b, C1, C2, C3, C4; no extra, dropped or
-  reordered commit. No SelfUseRunError path was taken; no fake override was
-  ever passed; the run was executed exactly ONCE.
-- WALL TIME AND THE RETURNED TRIPLE (constraints 6 and 8, gate G5): the
-  `python3 -c` program that made the call measured `time.time()` around it and
-  then, AFTER the call had returned, crashed in its own reporting code on
-  `t.id` (TaskEntry carries `task_id`, not `id`) before any value was printed.
-  The run itself completed normally and run_job persisted the final plan; the
-  worker did NOT call run_next_self_use_item again (that would have planned and
-  run SU-009 a second time). Every G5 field is therefore read from the
-  persisted JobPlan (`load_job_plan("21c19578b8754287")`, the same object
-  run_job returns and persists), and the wall time is the 136.972 s bracket
-  between plan.created_at and the final job.json mtime rather than the
-  in-process measurement — a lower bound on the call by a fraction of a second
-  on each side. entry.id is read from the rendered file name and the queue
-  (SU-009 was the only pending item). run.txt states this in the same words.
-- `cd /home/decodeux/Repos/remedy 2>/dev/null;` was prefixed to two compound
-  bash commands (the C0a copyfile and the G7 integrity check) as a defensive
-  root pin, against the brief's "never cd"; it was not refused and every other
-  command used absolute paths or `git -C`. Declared, not repeated.
-- Re-expressions: `cp` → `shutil.copyfile` (C0a, C0b, C3's evidence copy);
-  `cmp` → Python byte read equality; slice extraction and appends → Python
-  pathlib/bytes. The generator call, the precondition reads and the plan
-  recovery ran as `python3 - <<'PY'` heredocs (no script file); the run itself
-  ran as `python3 -c` since the guard did not refuse the `.remedy-wt/` path.
-  The only script file written was the C1 slice applier in the session
-  scratchpad (outside the repo). No shell loop, `$( )`, `export`, `VAR=x cmd`
-  or `cmp` was used.
-- The G2 negative control was performed in memory on a scratch copy, never
-  against the tracked file.
-- The integrity check's `live_review_verdict` message quotes the ledger's header
-  line ("… for the F037 branch …"); it is the tool's own output and is reported
-  as printed, not interpreted.
+Five declared, none a defect on disk, none a departure from the ordered
+commit sequence (C0a, C0b, C1, push, evidence, zip, control, C2 — followed
+exactly):
+
+1. **One `cd` prefix.** The G8 structure command was issued as
+   `cd /home/decodeux/Repos/remedy 2>/dev/null; git -C ... ` — every
+   sub-command also carried its own absolute `-C` path, the `cd` was
+   not refused, and it read only; nothing on disk changed. The block's
+   "never `cd`" instruction was nonetheless not honoured on that one
+   compound, so it is declared (the same class round 26 declared).
+2. **The module docstring of `.remedy-wt/f262_evidence_r27.py`** still
+   reads `"""F009 closure evidence bundle. ..."""` verbatim — not one of
+   the values the block ordered changed, and "every other line stays
+   BYTE FOR BYTE" was read literally (as the F114 R17 round also did).
+3. **Sandbox re-expressions — pre-emptive, no refusal occurred.** No
+   bash form was refused this round; the forms the block names as
+   refusable were expressed in Python from the start: the evidence
+   script, both zip builds and the integrity check were driven from
+   `python3 - <<'PY'` heredocs / `.remedy-wt/*.py` scripts via
+   `subprocess.run([...], cwd=REPO)` (so no `cd`, no env assignment);
+   the evidence copy for the control was `shutil.copytree`; the zip
+   SHA-256 values were `hashlib.sha256` streamed over the files on
+   disk (also cross-checked against the script's printed
+   `final_sha256`); exit codes were read from `CompletedProcess.returncode`
+   and printed as `REAL_EXIT=`. `git commit` messages were passed via
+   `-F <scratch file>` (printf-built) to carry the two trailer lines.
+4. **The control zip's byproduct was left on disk**:
+   `/home/decodeux/Repos/remedy-history/zips/remedy-review-20260905-112938-BLOCKED_EVIDENCE.zip`.
+   Constraint 8 forbids deleting anything under that directory and the
+   block does not order removing what this round adds, so it stays, and
+   is named here so it is never mistaken for the live package.
+5. **`job_title` wrapping.** The block prints the title across two
+   lines (`"F262 List commands v2 (dates,` / `sort, filter) - closure"`)
+   for line-width; it was applied as the single string
+   `"F262 List commands v2 (dates, sort, filter) - closure"` (one space
+   at the wrap), as the visible line break is prose formatting and a
+   string literal cannot span lines in the template.
+
+`.agent/STOP` was absent at all three reads. No path outside the change
+set was written under version control: only `.agent/authored/f262-r27.md`,
+`.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md` and
+this handback. `packages/`, `apps/`, `tests/`, `scripts/` and `docs/`
+were never opened for writing. The evidence directories and both zips
+are gitignored and were never committed (`git ls-files .remedy-wt` 0,
+tracked `remedy-job-evidence` 0). No pull request, no merge, `main`
+untouched.
 
 ## Next
 
-The reviewer books round 26 with the defect-registration narration, then
-closure algorithm steps 1-2 (evidence job f262-closure and the review zip).
+**NEXT EXPECTED ACTION: the closure commit (STATUS line, README sync,
+consumed_by=F262) and the pull request** — in ONE commit the
+reviewer-authored `[x]` STATUS line carrying Evidence job
+`f262-closure`, package `remedy-review-20260905-112903-READY_FOR_REVIEW.zip`,
+SHA-256 `83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e`,
+archived path `/home/decodeux/Repos/remedy-history/zips`, accepted HEAD
+`a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0`; the README numerals and
+F262 capability paragraph; `consumed_by=F262` on SU-009 — then
+`gh pr create`, and the merge under the operator's 2026-09-05
+authorization once hosted CI reads green.
