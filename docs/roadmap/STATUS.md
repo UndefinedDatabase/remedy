@@ -18,27 +18,33 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F112 — Prompt budget per task class (T001–T003 complete; accepted 2026-09-04 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 79b21c8cba8b4352 · package remedy-review-20260904-123332-READY_FOR_REVIEW.zip · SHA-256 b0085f28a2c0c50654ed33be647ed986addc07c1c462324b1ee3fc1c8bb05927 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 346c178f3241fad3984dca9baea3f37e34c3892a)
 - [x] F114 — Cost preview per command (T001–T003 complete; accepted 2026-09-04 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f114-closure · package remedy-review-20260904-185732-READY_FOR_REVIEW.zip · SHA-256 8632f182052a2d0f1343e1a0c77ed1c588b87208e9192ec5cd675678ec0e2810 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 6e0c2124723c9f55bfa1481b56bbcfe8ad2d2bc6)
 
-<!-- operator order amend0831-vocab-registrations (2026-08-31): the eight lines below are the registrations of that order, inserted directly after the amend0830 cost-first block in the operator-decided execution order F262, F259, F260, F261, F263, F264, F265, F266. They carry three tier headings because that order happens to fall into three contiguous tier runs (five Tier 2, two Tier 5, one Tier 4) and tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier pins each line's STATUS-derived tier — the enclosing '## Tier <n>' heading — against its T<tier>_F<id>.md filename. Reversible by moving these eight lines into their tier blocks further down and deleting these three headings and this comment. -->
-## Tier 2 — Vocabulary & Concept Block (operator order amend0831)
+<!-- operator order amend0905-vocab-rebuild (2026-09-05, DECISION amend0905-vocab D12): the twelve lines below are the amend0831 registrations (F259–F266, inserted 2026-08-31 directly after the amend0830 cost-first block) plus the four amend0905 registrations (F268–F271), in the operator-decided execution order F259, F260, F261, F266, F268, F269, F270, F271, F263, F264, F265 — the vocabulary rebuild is the very next work, and `remedy do` (F268) needs `remedy study` (F266) before it. They carry five tier headings because that order falls into five contiguous tier runs (Tier 2, Tier 4, Tier 2, Tier 2, Tier 5) and tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier pins each line's STATUS-derived tier — the enclosing '## Tier <n>' heading — against its T<tier>_F<id>.md filename; repeated '## Tier 2' headings are accepted by that test. Reversible by moving these lines back into the amend0831 order (or into their tier blocks further down) and deleting these headings and this comment. -->
+## Tier 2 — Vocabulary & Concept Block (operator order amend0831, reordered amend0905)
 
 - [x] F262 — List commands v2 (dates, sort, filter) (T001–T003 complete; accepted 2026-09-05 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f262-closure · package remedy-review-20260905-112903-READY_FOR_REVIEW.zip · SHA-256 83953f280dd856277529add08212b767e5588370da937ccfad5608923a73295e · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD a5896aa6c7e8ebc7616fdef62f5964f6bb9772a0)
 - [ ] F259 — Vocabulary & concept model v1
-- [ ] F260 — Job/execution marriage (one job model)
+- [ ] F260 — One world: mission → job → run
 - [ ] F261 — CLI vocabulary v2 (rename & prune)
-- [ ] F263 — Human-change absorption (working name: absorb)
+
+## Tier 4 — Repo Comprehension (operator order amend0831)
+
+- [ ] F266 — remedy study (repo comprehension pass)
+
+## Tier 2 — Easy Start & Contract Block (operator order amend0905)
+
 - [ ] F268 — remedy do: the one-command start
 - [ ] F269 — Contract & contract templates
 - [ ] F270 — History apply: one commit per task, merge on demand
 - [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
 
+## Tier 2 — Human-change absorption (operator order amend0831)
+
+- [ ] F263 — Human-change absorption (absorb)
+
 ## Tier 5 — Steering & Learning Surfaces (operator order amend0831)
 
 - [ ] F264 — Steering channel (remedy chat)
 - [ ] F265 — Teacher learning UI v1 (post-task lessons)
-
-## Tier 4 — Repo Comprehension (operator order amend0831)
-
-- [ ] F266 — remedy study (repo comprehension pass)
 
 ## Tier 0 — Foundation & Trust Core
 
