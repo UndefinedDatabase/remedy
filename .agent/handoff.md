@@ -1,73 +1,65 @@
-# Handoff — F262 List commands v2 (dates, sort, filter), round 24 (operator ruling Option B + F267 registration, no code)
+# Handoff — F262 List commands v2 (dates, sort, filter), round 25 (integration gate measured, no code)
 
 ## Session
 
-SESSION 9 of feature F262 · round 24 · rounds so far 24.
+SESSION 9 of feature F262 · round 25 · rounds so far 25.
 
-Context self-assessment: this session started cold at `6991059c` with the
-round-24 block as its only brief, read AGENTS.md first, and executed the block
-mechanically — every slice extracted from the COMMITTED authored file by
-Python, every gate run with real exit codes; no state was carried from memory.
+Context self-assessment: this session started cold at `92cc869b` with the
+round-25 block as its only brief, read AGENTS.md and
+docs/agents/integration_gate.md first, took `.agent/gate_f114_r11/` as the shape
+precedent, and executed the block mechanically — slices extracted from the
+COMMITTED authored file by Python, both suites run through subprocess.run with
+logs captured in the session scratchpad, every gate run with real exit codes; no
+state was carried from memory.
 
-THE OPERATOR RULED OPTION B (2026-09-05). That ruling is recorded this round as
-DECISION F262 D5: F262 closes at DECISION F262 D4's 24-of-28 scope with the 15
-wired commands as its built scope; the nine remaining wirings, the
-catalog-driven handler test and the Acceptance smoke test split into the NEW
-feature F267, WHICH IS NOW REGISTERED (commit ff95b0f4: `T2_F267.md`, STATUS
-line at the end of the Tier 2 block after F086, `TOTAL_FEATURES = 267`, README
-counters 71/267 and Tier 2 total 20 — one commit, ledger atomicity). amend0827
-rule 6's operator gate is discharged for F262; no `SITZUNGS-LIMIT ERREICHT` line
-is emitted, and F262's closure sequence continues on its own round budget.
-DECISION F262 D6 records the reviewer's examination of the operator-ordered
-"packaging validation is non-deterministic" finding and DECLINES to register
-it on the evidence (the two F114 zips were built from different evidence — the
-second a deliberate red control ordered by round 17). No production code and
-no test behaviour changed; the only `tests/` edit is the TOTAL_FEATURES pin and
-its comment.
+THE INTEGRATION GATE WAS MEASURED, NOT JUDGED. Branch run at `fe74206b` (C1's
+tree): 19676 passed, 23 skipped, 0 failed, exit 0, 163.80s. Base run at the
+measured merge-base `7c65d9cc` (equal to the expected value) in the throwaway
+worktree `.remedy-wt/f262-r25-base` on branch `tmp/f262-r25-base`, UI parity
+restored (copytree symlinks=True, dist re-stamped, `_frontend_is_stale()` False
+in-worktree) and held as an EVENT (no dist mtime inside the run window): 19601
+passed, 23 skipped, 0 failed, exit 0, 191.86s. branch_only and fixed_by_branch
+are both EMPTY, so there is no id to attribute and no BLOCKER by this worker's
+measurement; the 75-case count delta is accounted for exactly by collect-only in
+both trees. The worktree and tmp branch are gone. The reviewer issues the gate
+verdict next round; this file and the evidence files state no verdict.
 
 ## Range
 
-Review of 6991059c..9c5a1af2
+Review of 92cc869b..3aeed0e1
 
 ## Commits
 
-### 1f99a958 F262 R24 C0a: save round 24 step block verbatim to authored file
+### f6f9ed29 F262 R25 C0a: save round 25 step block verbatim to authored file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f262-r24.md | +454/-0 | New file: the reviewer's round-24 block, byte-for-byte (shutil.copyfile of the scratch original; sha256 a2740b98…, 35837 bytes). |
+| .agent/authored/f262-r25.md | +222/-0 | New file: the reviewer's round-25 block, byte-for-byte (shutil.copyfile of the scratch original; sha256 2f623c61…, 16851 bytes). |
 
-### 7b50bc97 F262 R24 C0b: mirror round 24 step block to last_block.md
+### df882239 F262 R25 C0b: mirror round 25 step block to last_block.md
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +421/-105 | Mirror of the authored file (same digest). |
+| .agent/last_block.md | +183/-415 | Mirror of the authored file (same digest). |
 
-### 7390ae7e F262 R24 C1: book GATE23 verdict and R24 prose slip, replace plan.md with PLAN25
+### fe74206b F262 R25 C1: book GATE24 verdict (RECORD24), replace plan.md with PLAN26
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +3/-1 | RECORD23 appended as "\n\n" + slice (2491115 → 2494695). |
-| .agent/plan.md | +28/-30 | Whole-file replacement with PLAN25 (2039 bytes, no trailing newline). |
-| .agent/prose_slips.md | +3/-1 | SLIPF262R24 appended as "\n\n" + slice (73583 → 74550). |
+| .agent/live_review.md | +3/-1 | RECORD24 appended as "\n\n" + slice (2494695 → 2498900). |
+| .agent/plan.md | +20/-21 | Whole-file replacement with PLAN26 (2015 bytes, no trailing newline). |
 
-### be835908 F262 R24 C2: append DECISION F262 D5 (operator ruling Option B) and D6 (packaging finding declined) to decisions.md
+### 3aeed0e1 F262 R25 C2: integration gate evidence - branch and base runs 0 failed, parity held, nine files under gate_f262_r25
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +23/-1 | DECISIONS appended as "\n" + slice (809282 → 818043); D5 and D6 each 0 → 1. |
+| .agent/gate_f262_r25/attribution.txt | +43/-0 | Step 4 accounting: both sets empty, coupling check against the 23 changed packages/apps files. |
+| .agent/gate_f262_r25/base_failed.txt | +0/-0 | Empty: the base run had no FAILED line. |
+| .agent/gate_f262_r25/base_run_tail.txt | +40/-0 | Last 40 lines of the base run log (copied in after exit). |
+| .agent/gate_f262_r25/branch_failed.txt | +0/-0 | Empty: the branch run had no FAILED line. |
+| .agent/gate_f262_r25/branch_only.txt | +0/-0 | Empty: set(branch_failed) − set(base_failed). |
+| .agent/gate_f262_r25/branch_run_tail.txt | +40/-0 | Last 40 lines of the branch run log (copied in after exit). |
+| .agent/gate_f262_r25/fixed_by_branch.txt | +0/-0 | Empty: set(base_failed) − set(branch_failed). |
+| .agent/gate_f262_r25/gate_summary.txt | +146/-0 | STEP 1-5, TEST-COUNT DELTA, CLEANUP, GATE OUTCOME (measured, not a verdict) — printed in full under Verification G4. |
+| .agent/gate_f262_r25/parity_mtime.txt | +38/-0 | Every dist mtime before/after the base run, the window, the accompanying digest, the in-worktree stale probe. |
 
-### ff95b0f4 F262 R24 C3: register F267 list commands v2 completion (T2_F267.md, STATUS line, TOTAL_FEATURES 267, README counters)
-| Path | +/- | Reason |
-|---|---|---|
-| README.md | +2/-2 | README_COUNT pair (71 of 266 → 267) and README_TIER2 pair (Tier 2 total 19 → 20). |
-| docs/roadmap/STATUS.md | +1/-0 | STATUS pair: `- [ ] F267 — …` line after F086, end of the Tier 2 block. |
-| docs/roadmap/features/T2_F267.md | +84/-0 | New file: F267FILE (4772 bytes, byte-equal to the slice). |
-| tests/docs/test_docs_consistency.py | +5/-2 | TESTPIN pair: comment + `TOTAL_FEATURES = 267`. |
-
-### 9c5a1af2 F262 R24 C4: bring T2_F262.md banner and Built State current (D5 amendment), point context.md at the D4/D5 scope
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/context.md | +3/-1 | CONTEXT pair: scope line names F267 and the 24/15/9 split. |
-| docs/roadmap/features/T2_F262.md | +40/-2 | F262BANNER pair (+84 bytes, 4232 → 4316) then F262APPEND concatenated (+2513 → 6829). |
-
-### C5 (this commit) F262 R24 C5: rewrite handoff.md - round 24 handback
+### C3 (this commit) F262 R25 C3: rewrite handoff.md - round 25 handback
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | This handback (self-reference exception; SHA in the reviewer's `git log`). |
@@ -76,127 +68,274 @@ Review of 6991059c..9c5a1af2
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | shutil.copyfile route, digest matched the reviewer's stated a2740b98… / 35837 |
+| C0a | done | shutil.copyfile route, digest matched the reviewer's stated 2f623c61… / 16851 |
 | C0b | done | identical digest |
-| C1 | done | RECORD23, SLIPF262R24 appended; PLAN25 whole-file |
-| C2 | done | DECISIONS appended, one-newline convention |
-| C3 | done | four files, one commit |
-| C4 | done | banner pair, F262APPEND, CONTEXT pair |
-| C5 | done | this file; push follows |
-| G1 | done | STOP absent x3; porcelain 0 after each of C0a..C4; ls-files .remedy-wt 0 |
-| G2 | done | one digest twice |
-| G3 | done | (a) 2491115+2+3578=2494695, tail equal, negative control rejected; (b) 73583+2+965=74550, tail equal |
-| G4 | done | 809282+1+8760=818043, tail equal, D5/D6 0→1 |
-| G5 | done | plan 2039 equal, 43 lines, headings 1/1; T2_F267 4772 equal; T2_F262 6829, tail equal |
-| G6 | done | six pairs FROM count 1, `TO contains FROM: False` each, matching labels |
-| G7 | done | 295/30/515/52/21/16/42, all exit 0; ruff exit 0 |
-| G8 | done | numstat matches tables; single-parent; <500 insertions; packages/apps empty; tests/ names only the pin file |
+| C1 | done | RECORD24 appended ("\n\n" convention); PLAN26 whole-file; first substantive commit |
+| C2 | done | integration_gate.md steps 1-5 executed; nine `.txt` files; base worktree on tmp branch, removed after |
+| C3 | done | this file; push follows |
+| G1 | done | one digest twice |
+| G2 | done | 2494695 + 2 + 4203 = 2498900 = post; tail equal; negative control REJECTED |
+| G3 | done | plan 2015 = 2015 equal True; wc -l 42; headings 1/1 |
+| G4 | done | exactly nine files; sizes below; gate_summary.txt printed in full |
+| G5 | done | no f262-r25-base worktree; tmp/* empty; porcelain 0 before C3; ls-files .remedy-wt 0; STOP absent x3 |
+| G6 | done | numstat matches the tables cell for cell; single-parent; max 222 insertions; sweep empty; push below |
 
 ## External actions
 
-- `git push -u origin feature/f262-list-commands-v2` after C5 — result recorded
-  at the end of Verification (G8) below, as printed.
+- `git worktree add -b tmp/f262-r25-base .remedy-wt/f262-r25-base 7c65d9cc…` via
+  Python subprocess.run — exit 0, "Preparing worktree (new branch
+  'tmp/f262-r25-base') / HEAD is now at 7c65d9cc Merge pull request #235 …".
+- `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f262-r25-base` —
+  exit 0; `git worktree prune` — exit 0; `git branch -D tmp/f262-r25-base` —
+  "Deleted branch tmp/f262-r25-base (was 7c65d9cc)", exit 0.
+- `git push -u origin feature/f262-list-commands-v2` after C3 — result recorded
+  in the completion report (executed immediately after this commit; the
+  reviewer verifies with `git status -sb`).
+- No pull request, no merge.
 
 ## Verification
 
 Transport route: route 1 (Python `shutil.copyfile` of the reviewer's scratch
-original) WORKED; the typed fallback was not needed.
+original at the stated scratchpad path) WORKED; the typed fallback was not
+needed.
 
-G1 HYGIENE
-    test -e .agent/STOP  →  STOP_ABSENT_read1 (before C0a) · STOP_ABSENT_read2_before_C3 · STOP_ABSENT_read3_before_C5
-    git status --porcelain | wc -l  →  0 after C0a, 0 after C0b, 0 after C1, 0 after C2, 0 after C3, 0 after C4
-    git ls-files .remedy-wt | wc -l  →  0
+STOP READS (constraint 4)
+    test -e .agent/STOP  →  STOP_ABSENT_read1_before_C0a · STOP_ABSENT_read2_before_C2 · STOP_ABSENT_read3_before_C3
 
-G2 TRANSPORT
-    sha256sum .agent/authored/f262-r24.md .agent/last_block.md
-    a2740b98bb2a0cc296b8ccbd67202004c510f77b2bb469eab26916b778eee5e8  /home/decodeux/Repos/remedy/.agent/authored/f262-r24.md
-    a2740b98bb2a0cc296b8ccbd67202004c510f77b2bb469eab26916b778eee5e8  /home/decodeux/Repos/remedy/.agent/last_block.md
-    (authored file 35837 bytes; matches the reviewer's stated digest and size)
+G1 TRANSPORT (after C0b)
+    sha256sum .agent/authored/f262-r25.md .agent/last_block.md
+    2f623c61ddd7227eaabf76f4eed7f617de41b417dbed969fda2822dd807fa2aa  /home/decodeux/Repos/remedy/.agent/authored/f262-r25.md
+    2f623c61ddd7227eaabf76f4eed7f617de41b417dbed969fda2822dd807fa2aa  /home/decodeux/Repos/remedy/.agent/last_block.md
+    (authored file 16851 bytes; equals the reviewer's stated digest and size)
 
-G3 RECORD APPENDS AT C1 (slices extracted from HEAD:.agent/authored/f262-r24.md via `git show`)
-    (a) .agent/live_review.md: base 2491115 (no trailing newline) + 2 + 3578 = 2494695 ; post 2494695 ; tail_equal True ; internal_newlines 0
-        negative control (scratch copy, one byte of RECORD23 flipped): second reader accepts: False  (REJECTED)
-    (b) .agent/prose_slips.md: base 73583 (no trailing newline) + 2 + 965 = 74550 ; post 74550 ; tail_equal True ; internal_newlines 0
-    Open set before C1: registered 356 · Done 77 · open 279
-    Open set after  C1: registered 356 · Done 77 · open 279   (UNCHANGED)
+G2 THE LEDGER APPEND (RECORD24, slice extracted from HEAD:.agent/authored/f262-r25.md via `git show`)
+    RECORD24 len 4203, internal newlines 0, trailing nl False
+    .agent/live_review.md base 2494695 (ends with nl False) ; expected 2494695 + 2 + 4203 = 2498900 ; post 2498900 ; equal True
+    second reader: post[base:] == "\n\n" + RECORD24 → True
+    negative control (scratch copy in memory, byte 100 of RECORD24 XOR 1): second reader accepts: False (REJECTED)
+    Open set before/after C1: registered 356 (`^- R-dddd — `) · Done 77 · open 279 (UNCHANGED)
 
-G4 DECISIONS APPEND AT C2
-    .agent/decisions.md: base 809282 (no trailing newline) + 1 + 8760 = 818043 ; post 818043 ; tail_equal True
-    grep -c '^## DECISION F262 D5' → before 0, after 1 ; grep -c '^## DECISION F262 D6' → before 0, after 1
+G3 THE PLAN
+    PLAN26 len 2015, trailing nl False ; .agent/plan.md before 2039 → after 2015 ; equal True
+    wc -l .agent/plan.md → 42 ; grep -c '^## Goal' → 1 ; grep -c '^## Next Steps' → 1
 
-G5 WHOLE FILES
-    .agent/plan.md: len 2039, slice len 2039, equal True, trailing_nl False ; wc -l → 43 ; grep -c '^## Goal' → 1 ; grep -c '^## Next Steps' → 1
-    docs/roadmap/features/T2_F267.md: written 4772, equal True, ends with newline True
-    docs/roadmap/features/T2_F262.md: 4232 at 6991059c → 4316 after banner pair (+84) → 6829 after F262APPEND (2513) ; tail_equal True
+G4 THE GATE EVIDENCE
+    ls -1 .agent/gate_f262_r25/ → attribution.txt base_failed.txt base_run_tail.txt branch_failed.txt branch_only.txt branch_run_tail.txt fixed_by_branch.txt gate_summary.txt parity_mtime.txt  (9 entries)
+    wc -c: attribution.txt 2105 · base_failed.txt 0 · base_run_tail.txt 3439 · branch_failed.txt 0 · branch_only.txt 0 · branch_run_tail.txt 3414 · fixed_by_branch.txt 0 · gate_summary.txt 8084 · parity_mtime.txt 2265
+    grep -n 'PASS' .agent/gate_f262_r25/*.txt | grep -v passed → no line (exit 1)
+    gate_summary.txt, in full:
 
-G6 PAIRS (FROM count in target immediately before applying ; measured `TO contains FROM` ; block label)
-    STATUS        docs/roadmap/STATUS.md               FROM count 1 ; False ; label false (REWRITE)
-    TESTPIN       tests/docs/test_docs_consistency.py  FROM count 1 ; False ; label false (REWRITE)
-    README_COUNT  README.md                            FROM count 1 ; False ; label false (REWRITE)
-    README_TIER2  README.md                            FROM count 1 ; False ; label false (REWRITE)
-    F262BANNER    docs/roadmap/features/T2_F262.md     FROM count 1 ; False ; label false (REWRITE)
-    CONTEXT       .agent/context.md                    FROM count 1 ; False ; label false (REWRITE)
-    After C3, exactly as they read:
-    STATUS.md:99   - [ ] F267 — List commands v2 completion — sort/filter/limit for the remaining nine commands
-    README.md:19   71 of 267 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
-    README.md:25   | 2 | Minimal Self-Build Runtime | 14 | 20 |
-    grep -c '^TOTAL_FEATURES = 267' tests/docs/test_docs_consistency.py → 1
+        F262 - INTEGRATION GATE, round 25, session 9
+        =============================================
 
-G7 SUITES (serially, one invocation each, after C4)
-    python3 -m pytest tests/docs/ -q                                → 295 passed in 0.64s   REAL_EXIT=0
-    python3 -m pytest tests/orchestration/test_roadmap_index.py -q  → 30 passed in 0.36s    REAL_EXIT=0
-    python3 -m pytest tests/ui_server/ -q                           → 515 passed in 32.87s  REAL_EXIT=0
-    python3 -m pytest tests/orchestration/test_test_runner.py -q    → 52 passed in 5.69s    REAL_EXIT=0
-    python3 -m pytest tests/regression/test_resource_safety.py -q   → 21 passed in 11.53s   REAL_EXIT=0
-    python3 -m pytest tests/orchestration/test_integrity_gate.py -q → 16 passed in 0.30s    REAL_EXIT=0
-    python3 -m pytest tests/cli/test_golden_path.py -q              → 42 passed in 23.69s   REAL_EXIT=0
-    ruff check tests/docs/test_docs_consistency.py (after C3)       → All checks passed!    REAL_EXIT=0
+        Procedure: docs/agents/integration_gate.md, steps 1-5.
+        Branch : feature/f262-list-commands-v2 at fe74206b296e1fdfb0196122db225e6425c1153f (C1's tree)
+        Base   : 7c65d9ccfb512aef1c3eea0245030647332c26ea, confirmed by
+                 `git merge-base main HEAD` (matches the expected value pinned
+                 by this round's own constraint 5 exactly - PR 235's merge into
+                 main), checked out on the throwaway branch tmp/f262-r25-base at
+                 .remedy-wt/f262-r25-base (a DETACHED base worktree fails the
+                 self-dogfood branch guard by design - DECISION D3, F053 R2);
+                 `git worktree add -b tmp/f262-r25-base .remedy-wt/f262-r25-base
+                 7c65d9cc...` ran through Python subprocess.run (exit 0, HEAD
+                 7c65d9cc, branch tmp/f262-r25-base)
 
-G8 STRUCTURE
+        STEP 1 - BRANCH RUN
+            command : subprocess.run(["python3", "-m", "pytest", "-n", "auto",
+                      "-q"], cwd=repo root) - invoked as a subprocess for
+                      isolation from this worker's own long-lived process; stdout
+                      and stderr were captured by the Python call (no shell
+                      redirection) and written to the session scratchpad under
+                      /tmp (outside the repo worktree - R-0176), then the 40-line
+                      tail was copied into this evidence dir after the run exited
+            result  : 19676 passed, 23 skipped, 0 failed (1 warning, a
+                      UserWarning from model_routing.py:1392 emitted during
+                      tests/orchestration/test_model_routing.py::TestTheUndeclared
+                      RolePathWarnsAndAnswersConservatively - see the tail file)
+            exit    : 0
+            wall    : 163.18s (reported by pytest) / 163.80s measured around the
+                      call; window (UTC) 2026-09-05 08:55:03 .. 2026-09-05 08:57:47
+
+        STEP 2 - BASE RUN
+            parity restored BEFORE the run:
+              - apps/ui/node_modules copied with shutil.copytree(symlinks=True):
+                44839 entries, 27 of them symlinks PRESERVED (cp is denied here
+                and copytree defaults to symlinks=False, which would dereference
+                the npm bin shims - R-0591)
+              - apps/ui/dist copied the same way: 5 entries (4 files, 1
+                directory), 0 symlinks
+              - dist mtimes re-stamped to now (1788598700.3356388): `git worktree
+                add` stamps the checkout with the CURRENT time while copytree
+                PRESERVES source mtimes, so _frontend_is_stale() would otherwise
+                read True inside the base worktree - R-0736 (newest apps/ui/src
+                mtime in the base worktree: 1788598698.7182918, older than the
+                re-stamp). Re-measured from inside the base worktree immediately
+                after the re-stamp (a subprocess with cwd pinned to the base
+                worktree, importing packages.orchestration.ui_server directly;
+                the module resolved to .remedy-wt/f262-r25-base/packages/
+                orchestration/ui_server.py, i.e. the base worktree's own copy):
+                _frontend_is_stale() = False.
+            command : subprocess.run(["python3", "-m", "pytest", "-n", "auto",
+                      "-q"], cwd=base worktree, env with
+                      REMEDY_UI_NO_AUTO_BUILD=1 added to a copy of os.environ) -
+                      the env var is set via a Python dict passed to the child
+                      process, never via shell "FOO=1 cmd" syntax (denied in
+                      this sandbox); log captured to the scratchpad the same way
+                      as STEP 1 and copied in after exit
+            result  : 19601 passed, 23 skipped, 0 failed (the same 1 warning)
+            exit    : 0
+            wall    : 191.27s (reported) / 191.86s measured around the call
+            parity verified as an EVENT, not an outcome - see parity_mtime.txt:
+              run window 1788598715.6313965 .. 1788598907.4925125; no mtime under
+              apps/ui/dist falls inside it (all four are stamped at the earlier
+              restamp time, 1788598700.3356388); PARITY HOLDS (content digest
+              before/after also identical: d60df0999db7b10950afce7da0b7e2ab756739878cbe72c163fdf7ad8a0ee3b7
+              both times - accompanying only, per R-0444)
+
+        STEP 3 - COMPARISON
+            branch_failed.txt      0 lines
+            base_failed.txt        0 lines
+            branch_only.txt         0 lines   (set(branch_failed) - set(base_failed))
+            fixed_by_branch.txt     0 lines   (set(base_failed) - set(branch_failed))
+            METHOD: Python set difference over the two sorted FAILED lists (the
+            procedure's piped `comm` form is refused by this sandbox's guard -
+            R-0590). A direct, unpiped `comm -13 base_failed.txt
+            branch_failed.txt` and `comm -23 ...` were ALSO run through
+            subprocess.run as a cross-check: exit 0, 0 lines each - the same
+            answer.
+
+        STEP 4 - ATTRIBUTION
+            BOTH SETS ARE EMPTY. There is no branch-only id and no base-only id -
+            the branch run and the base run each finished 0 failed. No serial
+            re-run was needed (no node id to re-run) and no id could be coupled
+            to F262's changed-file list (`git diff --name-only 7c65d9cc..HEAD --
+            packages/ apps/` names 23 files; none has a failing test on either
+            side). See attribution.txt for the full accounting of why an empty
+            set still satisfies constraints 9 and 10 (there is no id to leave
+            unattributed).
+
+        STEP 5 - BUDGET
+            Both runs are under the ~5 min note threshold (163.18s and 191.27s),
+            so no perf pass is indicated. The verdict itself belongs to the
+            reviewer.
+
+        TEST-COUNT DELTA
+            Branch total (passed + skipped): 19676 + 23 = 19699.
+            Base total (passed + skipped): 19601 + 23 = 19624.
+            19699 - 19624 = 75 cases added by this branch across its 24 prior
+            rounds, accounted for EXACTLY by `--collect-only -q` per changed test
+            file in BOTH trees (branch = primary checkout at fe74206b, base = the
+            base worktree), 20 files named by `git diff --name-only 7c65d9cc..HEAD
+            -- tests/`:
+              4 wholly NEW test files (`git cat-file -e 7c65d9cc:<path>` non-zero
+              - absent at the base, NEW TEST files rather than regression
+              targets), 23 cases:
+                tests/cli/test_blocker_cmd.py (4)
+                tests/cli/test_decision_cmd.py (4)
+                tests/cli/test_review_cmd.py (4)
+                tests/orchestration/test_list_options.py (11)
+              15 EXISTING files (present at the base) grew by 52 cases in total:
+                tests/cli/test_config_cmd.py (14 -> 16, +2)
+                tests/cli/test_external_builder_cli.py (7 -> 11, +4)
+                tests/cli/test_loop_cmd.py (14 -> 18, +4)
+                tests/cli/test_managed_builder_execution_cli.py (10 -> 12, +2)
+                tests/cli/test_propose_cli.py (29 -> 31, +2)
+                tests/cli/test_queue_cmd.py (24 -> 28, +4)
+                tests/cli/test_real_test_execution_cli.py (6 -> 8, +2)
+                tests/cli/test_tournament_cli.py (6 -> 10, +4)
+                tests/cli/test_worker_facade_cmd.py (68 -> 70, +2)
+                tests/orchestration/test_approval_queue.py (25 -> 26, +1)
+                tests/orchestration/test_do_run.py (67 -> 68, +1)
+                tests/test_command_catalog.py (22 -> 25, +3)
+                tests/test_grouped_cli.py (511 -> 525, +14)
+                tests/test_patch_intent_approval.py (64 -> 70, +6)
+                tests/test_run_log_cli.py (61 -> 62, +1)
+              1 existing file unchanged in count: tests/docs/test_docs_consistency.py
+                (295 -> 295; only the TOTAL_FEATURES pin moved).
+            23 + 52 = 75 = the observed delta. No branch-only id required a
+            NEW-TESTS classification of its own, because branch_only.txt is
+            empty.
+
+        CLEANUP
+            the base worktree was removed by its exact path (`git worktree
+            remove --force .remedy-wt/f262-r25-base`), `git worktree prune` run,
+            and the tmp/f262-r25-base branch deleted (`git branch -D`); see the
+            round's handback for the confirming `git worktree list` / `git
+            branch --list 'tmp/*'` output. The pre-existing remedy/job-*
+            worktrees under .remedy-wt/ were not touched.
+
+        GATE OUTCOME (measured, not a verdict)
+            branch-only failures : 0
+            base-only failures   : 0
+            BLOCKER              : none found by this worker's own measurement -
+                                    both runs finished 0 failed with UI parity
+                                    held as an event throughout
+            The VERDICT on this gate belongs to the reviewer, not to this file.
+
+G5 THE CLEANUP AND THE TREE
+    git worktree list → primary at fe74206b [feature/f262-list-commands-v2] plus the nine pre-existing .remedy-wt/job-* entries; `grep -c f262-r25-base` → 0
+    git branch --list 'tmp/*' → (empty), wc -l 0
+    git status --porcelain (immediately before C3 is staged) → (empty), wc -l 0 ; also 0 after each of C0a, C0b, C1, C2
+    git ls-files .remedy-wt | wc -l → 0
+    .agent/STOP absent at all three reads (above)
+
+G6 THE COMMITS AND THE SWEEP
     git show --numstat --format="" per commit (matches the Commits tables above cell for cell):
-      1f99a958: 454 0 .agent/authored/f262-r24.md
-      7b50bc97: 421 105 .agent/last_block.md
-      7390ae7e: 3 1 .agent/live_review.md · 28 30 .agent/plan.md · 3 1 .agent/prose_slips.md
-      be835908: 23 1 .agent/decisions.md
-      ff95b0f4: 2 2 README.md · 1 0 docs/roadmap/STATUS.md · 84 0 docs/roadmap/features/T2_F267.md · 5 2 tests/docs/test_docs_consistency.py
-      9c5a1af2: 3 1 .agent/context.md · 40 2 docs/roadmap/features/T2_F262.md
-    `git rev-list --parents -n1 <c> | wc -w` → 2 for each of the six (single-parent); max insertions 454 (< 500)
-    git diff --stat 6991059c..9c5a1af2 -- packages/ apps/  → (empty)
-    git diff --name-only 6991059c..9c5a1af2 -- tests/      → tests/docs/test_docs_consistency.py
-    Push result: see the completion report (executed immediately after this commit; the reviewer verifies with `git status -sb`).
+      f6f9ed29: 222 0 .agent/authored/f262-r25.md
+      df882239: 183 415 .agent/last_block.md
+      fe74206b: 3 1 .agent/live_review.md · 20 21 .agent/plan.md
+      3aeed0e1: 43 0 attribution.txt · 0 0 base_failed.txt · 40 0 base_run_tail.txt · 0 0 branch_failed.txt · 0 0 branch_only.txt · 40 0 branch_run_tail.txt · 0 0 fixed_by_branch.txt · 146 0 gate_summary.txt · 38 0 parity_mtime.txt (all under .agent/gate_f262_r25/)
+    `git rev-list --parents -n1 <c> | wc -w` → 2 for each of the four (single-parent); max insertions 222 (< 500)
+    git diff --stat 92cc869b..3aeed0e1 -- packages/ apps/ tests/ docs/ → (empty), exit 0
+    Push result: see the completion report (executed immediately after this commit).
+
+SUITE RUNS (the two gate runs, as printed by run_suite.py)
+    branch: cwd /home/decodeux/Repos/remedy · exit 0 · wall 163.80s · "19676 passed, 23 skipped, 1 warning in 163.18s (0:02:43)"
+    base  : cwd /home/decodeux/Repos/remedy/.remedy-wt/f262-r25-base · env REMEDY_UI_NO_AUTO_BUILD=1 · exit 0 · wall 191.86s · "19601 passed, 23 skipped, 1 warning in 191.27s (0:03:11)"
+    parity: window 1788598715.6313965 .. 1788598907.4925125 ; all four dist mtimes 1788598700.3356388 before and after, in_window False ; digest d60df099… identical ; _frontend_is_stale() False (in-worktree subprocess)
 
 ## Authored-text proofs
 
-Every slice was extracted from the COMMITTED authored file (`git show
-HEAD:.agent/authored/f262-r24.md`) by one-line BEGIN/END markers with a Python
-script (read_bytes/write_bytes), marker lines excluded; F267FILE and F262APPEND
-carry their final newline, every other slice does not.
-- RECORD23 → live_review.md: tail equality True (3578 bytes, 0 internal newlines)
-- SLIPF262R24 → prose_slips.md: tail equality True (965 bytes)
-- DECISIONS → decisions.md: tail equality True (8760 bytes)
-- PLAN25 → plan.md: whole-file equality True (2039 bytes)
-- F267FILE → T2_F267.md: whole-file equality True (4772 bytes)
-- F262APPEND → T2_F262.md: region equality True (2513 bytes; file 6829)
-- Six pairs: str.replace(FROM, TO, 1) after FROM count == 1 in each target.
-Transport: committed authored file sha256 a2740b98bb2a0cc296b8ccbd67202004c510f77b2bb469eab26916b778eee5e8 equals the reviewer's stated original digest; last_block.md identical.
+Both slices were extracted from the COMMITTED authored file (`git show
+HEAD:.agent/authored/f262-r25.md`, HEAD = df882239 at extraction time, whose
+authored file is f6f9ed29's) by one-line BEGIN/END markers with a Python script
+(bytes in, bytes out), marker lines excluded; neither slice carries a trailing
+newline.
+- RECORD24 → live_review.md: tail equality True (4203 bytes, 0 internal newlines)
+- PLAN26 → plan.md: whole-file equality True (2015 bytes)
+Transport: committed authored file sha256
+2f623c61ddd7227eaabf76f4eed7f617de41b417dbed969fda2822dd807fa2aa (16851 bytes)
+equals the reviewer's stated original digest; last_block.md identical.
+No slice looked wrong; both were applied as written.
 
 ## Deviations & assumptions
 
 - Transport digest: NO mismatch (route 1 matched exactly).
-- Commit order: followed exactly C0a, C0b, C1, C2, C3, C4, C5; no extra,
-  dropped or reordered commit.
-- Re-expressions (constraint 6): `cp` → `shutil.copyfile` (C0a, C0b); slice
-  extraction and appends → Python pathlib; exit codes → `bash -c '<cmd>; echo
-  REAL_EXIT=$?'` (ruff) and `${PIPESTATUS[0]}` (pytest through `tail`). A
-  shell `for` loop over the six SHAs for the G8 numstat was NOT refused by
-  this session's sandbox and ran as written; no `.remedy-wt/` path, `export`,
-  `VAR=x cmd` or `cmp` was needed.
-- G3 negative control was performed in memory on a scratch copy of the slice
-  bytes (one byte XOR 1 at offset 100), never against the tracked file.
-- No slice looked wrong; all were applied as written.
+- Commit order: followed exactly C0a, C0b, C1, C2, C3; no extra, dropped or
+  reordered commit. No BLOCKER path was taken; G5 was NOT skipped.
+- Re-expressions: `cp` → `shutil.copyfile` (C0a, C0b) and `shutil.copytree(...,
+  symlinks=True)` (parity); slice extraction and appends → Python
+  pathlib/bytes; the two suite runs, the `git worktree add`, the stale probe and
+  the `--collect-only` counts → `subprocess.run` with `cwd=` (and `env=` for the
+  base run — no shell `VAR=x cmd`); `comm` → Python set difference (an unpiped
+  `comm -13`/`comm -23` via subprocess.run cross-checked to 0 lines each). The
+  `git worktree remove/prune` and `git branch -D` ran as plain bash with the
+  absolute path and were NOT refused; a shell `for` loop over the four SHAs for
+  the G6 numstat ran unrefused as well (as in round 24). No `cd`, `export` or
+  `cmp` was used.
+- gate_summary.txt was edited once before C2 was committed (a wording change in
+  STEP 1's warning note, from an inferred "on purpose" to the measured test id);
+  the committed file is the only version in history.
+- Run logs were captured under the session scratchpad (/tmp/claude-1000/…/
+  scratchpad/r25/), outside the repo tree, and only the 40-line tails and the
+  FAILED lists were copied into the evidence dir after each run exited
+  (R-0176). The full logs remain in the scratchpad for this session only.
+- The G2 negative control was performed in memory on a scratch copy, never
+  against the tracked file.
+- Both `--collect-only` totals in the TEST-COUNT DELTA were measured in this
+  round (branch tree at fe74206b, base tree in the worktree before its removal).
 
 ## Next
 
-The integration-gate round (docs/agents/integration_gate.md steps 1-5) at
-merge-base 7c65d9cc; the reviewer issues the gate verdict at the round after
-it.
+The reviewer issues the integration gate verdict; if clean, closure
+preconditions 3 and 6 follow.
