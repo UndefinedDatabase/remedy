@@ -1,0 +1,94 @@
+=== F259 R7 INTEGRATION GATE — ATTRIBUTION ===
+
+integration_gate.md step 3 (compare) and step 4 (attribute every branch-only id).
+
+--- FAILURE SETS AS MEASURED ---
+
+branch run : exit 0 — 19694 passed, 23 skipped, 1 warning in 134.50s
+             grep "^FAILED" over the whole branch log: 0 lines
+base run   : exit 0 — 19686 passed, 23 skipped, 1 warning in 161.68s
+             grep "^FAILED" over the whole base log:   0 lines
+
+branch_failed.txt : 0 lines
+base_failed.txt   : 0 lines
+comm_13.txt (branch-only, comm -13 base branch) : 0 lines
+comm_23.txt (base-only,   comm -23 base branch) : 0 lines
+
+--- BRANCH-ONLY IDS (comm_13.txt) ---
+
+THE BRANCH-ONLY LIST IS EMPTY. There are no branch-only failures.
+Stated explicitly per the block: comm_13.txt contains zero lines, so there is
+no id to re-run serially, no xdist-flake class to record, and no branch-only
+failure coupled to this feature's code. Constraint 10 (BLOCKER) is not
+triggered. This is the expected outcome for a docs-and-tests feature and it is
+reported rather than assumed: both suites were run in full and both exited 0.
+
+--- BASE-ONLY IDS (comm_23.txt) ---
+
+THE BASE-ONLY LIST IS EMPTY. There are no base-only failures.
+No id therefore requires attribution to the environment class, and there is no
+unattributed comm -23 id to block the gate verdict.
+
+This empty result is itself the evidence that the parity work of base_parity.txt
+did its job. Had integration_gate.md step 3 been followed LITERALLY — copy
+without the mtime fix — the base run would have produced roughly 114 false
+tests/ui_server/ failures (finding R-0736), every one of them landing in
+comm_23.txt; and had the copy used shutil.copytree's DEFAULT symlinks=False,
+a further 7 base-only failures would have come from the dereferenced
+apps/ui/node_modules/.bin shims (finding R-0591). Both were avoided by
+obeying the two open findings' fix clauses. The pre-fix staleness reading in
+base_parity.txt section 2 (_frontend_is_stale relation True BEFORE the fix,
+False after) is the direct measurement of the first of those.
+
+--- THE PASS-COUNT DELTA, CORROBORATING THE COMPARISON ---
+
+branch 19694 passed − base 19686 passed = 8.
+The delta is exactly the eight tests F259 adds:
+  python3 -m pytest tests/docs/test_vocabulary.py --collect-only -q
+    -> 8 tests collected in 0.01s
+  the file does not exist at the merge base:
+    ls <wt>/tests/docs/test_vocabulary.py
+    -> ls: cannot access ...: No such file or directory
+Skips are 23 on both sides. So the two runs differ by the feature's own new
+tests and by nothing else — no test was lost, disabled or silently skipped by
+the branch.
+
+--- R-0176 DISCLOSURE (run-log location) ---
+
+The block orders run logs OUTSIDE the repository, at ~/remedy-gate-f259/.
+This session's sandbox REFUSED that write, verbatim:
+
+  "Permission to use Bash has been denied. IMPORTANT: You *may* attempt to
+  accomplish this action using other tools that might naturally be used to
+  accomplish this goal, e.g. using head instead of cat. But you *should not*
+  attempt to work around this denial in malicious ways, e.g. do not use your
+  ability to run tests to execute non-test actions. You should only try to work
+  around this restriction in reasonable ways that do not attempt to bypass the
+  intent behind this denial. If you believe this capability is essential to
+  complete the user's request, STOP and explain to the user what you were
+  trying to do and why you need this permission. Let the user decide how to
+  proceed."
+
+Refused for BOTH `mkdir -p ~/remedy-gate-f259` and the absolute-path form
+`mkdir -p /home/decodeux/remedy-gate-f259`. The block's own fallback clause was
+therefore taken: the logs were written to the gitignored .remedy-wt/gate-f259/
+and copied into this directory only AFTER each run had exited.
+
+The block requires an explicit statement of whether the two node ids R-0176
+names failed. They did not — and more precisely, NEITHER NODE ID EXISTS in the
+suite at 6e6e73ae:
+  grep -rn "logical_identity|workspace_identity" over tests/, packages/, scripts/
+  returns no test function named test_run_manifest_logical_identity and none
+  named test_job_rerun_workspace_identity.
+The nearest surviving surface is the FILE
+tests/orchestration/test_run_manifest_logical_identity.py, which collects 11
+ids; all 11 passed in BOTH runs, since both runs had zero failures overall.
+The .remedy-wt/ fallback therefore produced no false manifest-identity failure,
+and the reader can tell that from the measurement rather than from an argument.
+
+--- COMM ROUTE ---
+
+The shell form `cd <dir> && comm ...` was REFUSED by this session's command
+guard (cd-compound). Per block constraint 7, comm(1) was invoked through
+Python subprocess.run(["comm", "-13", base, branch]) instead; both invocations
+exited 0. The route is reported here as the constraint requires.
