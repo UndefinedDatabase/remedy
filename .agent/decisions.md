@@ -10402,3 +10402,27 @@ CHOSEN. No finding is registered. The two zips did not share evidence: one was b
 ALTERNATIVE CONSIDERED AND REJECTED. Register the finding as ordered. Rejected: its load-bearing claim — same evidence, opposite verdicts — is false on the evidence above, and a false load-bearing claim in the append-only record is the one thing docs/agents/planner_reviewer_prompt.md §4 item 5 ("fabricated data") and docs/roadmap/STATUS_closure_protocol.md's failure-honesty clause exist to prevent; an operator instruction to record a fact does not make the fact true. Recording the decline loudly and reversibly here follows §4 item 7 rather than asking the operator a question.
 
 REVERSE by deleting this decision; registering the finding afterwards would need evidence that two packages built from one UNMODIFIED evidence directory disagreed, which the 2026-09-04 pair does not supply.
+## 2026-09-05: amend0905-throughput — session length, split-and-close default, ledger rotation
+
+Operator instruction of 2026-09-05 (Part 2), executed on `feature/amend0905-throughput`
+cut from `main` after F262's closure PR merged. Three rules, each a dated paragraph
+labelled "Operator amendment amend0905-throughput" ending "Reverse by deleting this
+paragraph": (2a) `docs/agents/self_drive_protocol.md` G7 — sessions continue while
+context comfortably suffices, target six to eight delegated rounds, four the floor,
+early-end reasons unchanged plus the reviewer's own accumulating authoring errors,
+one sentence of context self-assessment per handoff; (2b) `docs/agents/self_drive_protocol.md`
+"Ending a session" — the standing default at the soft limit is split-and-close
+executed by the session (register the remainder as a follow-up feature with ledger
+atomicity, close the current feature at a self-consistent scope, record it as a
+dated DECISION), the banner announces the report, the hard stop remains only when
+no self-consistent close exists; (2c) `scripts/rotate_live_review.py` with
+`tests/orchestration/test_live_review_rotation.py`, rule paragraphs in
+`docs/agents/self_drive_protocol.md` and `docs/roadmap/STATUS_closure_protocol.md`,
+and the FIRST rotation executed on this branch, whose printed counts and old→new
+sizes the branch's handoff carries verbatim. Ids with more than one `Done:` block
+(`R-0721` and `R-0725` at the time of writing) are left in place so the canonical
+line-count open-findings formula reads identically before and after. Not rotated:
+`.agent/decisions.md` — its measured size and a one-paragraph follow-up proposal
+travel in this branch's handoff. Reverse by deleting the three
+rule paragraphs and this entry; the archive file stays, because moving records back
+would rewrite the append-only ledger.

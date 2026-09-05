@@ -1,34 +1,33 @@
-# Plan — F262 List commands v2 (dates, sort, filter)
+# Plan — amend0905-throughput (operator amendment, Part 2)
 
-Branch: feature/f262-list-commands-v2, cut from `main` after pull
-request 235 was merged at the Open PR Gate.
+Branch: feature/amend0905-throughput, cut from `main` after F262's
+closure pull request merged.
 
 ## Goal
 
-Every list command shows a CREATED and an UPDATED date and carries the
-same `--sort <field> [--desc] --since <when> --until <when> --limit <n>`
-flags, with newest-first as the DEFAULT everywhere, without a flag
-(docs/roadmap/features/T2_F262.md, scoped by DECISION F262 D4; the nine
-remaining wirings are F267's per DECISION F262 D5).
+Land the operator's 2026-09-05 Part 2: sessions run six to eight rounds
+while context suffices (2a); the soft-limit default is split-and-close
+executed by the session (2b); `scripts/rotate_live_review.py` rotates
+`[x]` Gate records and resolved finding pairs into the append-only
+`.agent/live_review_archive.md` as a step of every closure sequence, and
+the first rotation runs on this branch (2c).
 
 ## Current Step
 
-Round 29, session 9 — the repair of round 28's red docs gate and the
-pull request. Books RECORD28 (FAIL on G6, all else held), registers
-FINDING R-0797 (the reviewer's README slice named F267 inside an
-"Accepted" block), applies one README pair that names no feature id,
-re-runs `tests/docs/` to 295, then `gh pr create`. The STATUS `[x]`
-line, README numerals and `consumed_by=F262` landed at `423bc28d` and
-are untouched.
+The single amendment round: four rule paragraphs (C1), the script and its
+tests (C2), the first rotation (C3), the DECISION entry and this plan
+(C4), the handoff and the pull request (C5). No feature is in progress;
+Rule A5 proposes the next feature once this merges.
 
 ## Next Steps
 
-None on this branch — F262 closes with this round's pull request. The
-reviewer reads the PR checks, merges under the operator's 2026-09-05
-authorization, and verifies `main`. R-0797 stays `Landed:` until the
-next feature's first round books its `Done:`.
+- The reviewer reads the PR's hosted checks and merges under the
+  operator's 2026-09-05 authorization; end state 0 open PRs.
+- Follow-up proposal (handoff): rotate `.agent/decisions.md`.
 
 ## Risks
 
-- A README repair after the STATUS flip is the F112 R30 shape; it is
-  declared, not hidden, and the flip commit itself is not rewritten.
+- The rotation commit is large by construction (a verbatim move of one
+  state-file pair) — declared under AGENTS.md DECISION F104 D1's exemption.
+- Readers of `.agent/live_review.md` (integrity check, self-use generator,
+  dashboard contract) must stay green after rotation — gated in G4.
