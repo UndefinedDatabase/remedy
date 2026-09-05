@@ -71,6 +71,7 @@
 | token economy | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | guide |
 | tournament | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | system |
 | UI | [ui-target.md](archive/ui-target.md) | archive |
+| vocabulary | [vocabulary.md](system/vocabulary.md) | system |
 | watchdog | [autonomy-watchdog-v1.md](system/autonomy-watchdog-v1.md) | system |
 | worker | [worker.md](system/worker.md) | system |
 
@@ -144,6 +145,7 @@ Specifications and design documents for the built system.
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
 | [token-aware-repair-loop-v1-v2.md](system/token-aware-repair-loop-v1-v2.md) | Token-aware repair loop architecture |
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
+| [vocabulary.md](system/vocabulary.md) | The binding vocabulary: one row per word with its meaning, its code spelling today and after F260/F261, its CLI spelling and what it is NOT; the do-not-confuse table; the concept diagram; and the rulings that decided them |
 | [worker.md](system/worker.md) | Worker architecture and guide |
 | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | Worker registry + route policy |
 

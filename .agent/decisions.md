@@ -10627,3 +10627,41 @@ are, in this order: F259, F260, F261, F266, F268, F269, F270, F271, then F263, F
 F265, then the rest of the file unchanged. Reason: the operator wants the rebuild to
 be the very next work, and `do` (F268) needs `study` (F266) before it. Reverse by
 moving the lines back into the amend0831 order and deleting this paragraph.
+
+## DECISION F259 D3 (2026-09-05, reviewer, docs/agents/planner_reviewer_prompt.md §4 item 7) — the enforced synonym scan is scoped to the catalog, and `Worker:` is named out of it
+
+T2_F259.md lists seven retired synonyms for the vocabulary test's enforced mode
+to assert absent — `promote`, `flight plan`, `job-file`, `task-file`, `loop` as
+a group, `overnight`, and `Worker:` as a role label — and scopes that mode to
+`apps/cli/command_catalog.py`. Measured at 42448906 by importing the catalog,
+six of the seven are reachable there: `promote` in the descriptions of the `do`
+group, `do.promote` and `do.job-flow` and in the command ids `do.promote` and
+`do.job-promote`; `flight plan` in the description of `do.replan`; `overnight`
+in six descriptions and as a group id; `loop` as a group id; `job-file` in the
+option names of `do.job-plan` and `do.job-flow`; `task-file` in the option names
+of `do.run` and `do.plan`.
+
+`Worker:` is not there at all. It occurs 78 times under `packages/` and `apps/`
+— in report and render code such as `packages/orchestration/pingpong_evidence.py`
+and `apps/cli/commands/do_cmd.py` — and zero times anywhere in the catalog. An
+assertion that the catalog does not contain `Worker:` would therefore hold for
+every possible state of this repository: it would forbid nothing while reading
+on the page exactly like a guard, which is the vacuous-gate failure recorded as
+R-0438.
+
+CHOSEN: the enforced mode scans the whole catalog surface — every group's `id`,
+`label` and `description`, and every command's `command_id`, `description` and
+each of its arguments' `name` and `description` — for the SIX synonyms that live
+there, and `tests/docs/test_vocabulary.py` names `Worker:` in a comment as
+deliberately excluded, citing this decision, so no later reader restores a
+clause that cannot fail. The role-label check belongs to F261, which owns the
+renames and edits those renderers; its own round asserts that the report prints
+the ROLE, per DECISION amend0905-vocab D1.
+
+ALTERNATIVES CONSIDERED: (a) widen the vocabulary test to scan `packages/` and
+`apps/` for `Worker:` — rejected, because F259 explicitly ships no check over
+production code and the string occurs in HTML and JavaScript fragments where an
+absence rule needs a parser, not a grep; (b) ship the clause anyway and note the
+vacuity in prose — rejected, because a passing gate that forbids nothing is the
+exact failure this project keeps paying for. Reverse by deleting this paragraph
+and adding `Worker:` to `RETIRED_SYNONYMS`.

@@ -1,42 +1,40 @@
-# Plan — amend0905-testlog (operator planning follow-up)
+# Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/amend0905-testlog, cut from `main` at b3224322 (PR #238
-amend0905-vocab-rebuild merged); STATUS.md had 0 `[~]` lines and
-`remedy plan next` proposed F259 at the cut.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 9
+PASSED the reviewer's gate. Round 7 was the integration gate — the full suite
+green on the branch and at the merge base, zero branch-only and zero base-only
+failures. Rounds 8 and 9 were closure parts 1 and 2; the package is built and
+READY_FOR_REVIEW.
 
 ## Goal
 
-Turn the operator's hands-on tests.md run (Levels 0–7 against b2ee0a84 on
-2026-09-05, ~/remedy-tests.log) into acceptance criteria: register the ten
-measured findings A–J as R-0803..R-0812 in `.agent/live_review.md`, add
-each acceptance sentence to its feature file (F260, F261, F268) under
-`## Acceptance`, add the tests.md Level 4.1 line to F260, clarify D4 for
-the catalog group `repo` and resolve R-0800 with that reference, and write
-the data-root hygiene note for the operator into the handoff. PLANNING
-ONLY: no product code, no tests, every edit presence-checked.
+`docs/system/vocabulary.md` is the BINDING vocabulary page: the DECISION
+amend0905-vocab D1 table, the do-not-confuse table, the Mermaid concept diagram,
+the per-word meaning table, and D2–D10 plus F259 D1/D2 as dated DECISION
+paragraphs. `tests/docs/test_vocabulary.py` pins it in planned mode against the
+shipped `apps/cli/command_catalog.py`; the same diagram stands in `README.md`,
+byte-equal and pinned; the page is registered in `docs/README.md`. No other
+code: F259 decides words, F260 and F261 spend them.
 
 ## Current Step
 
-Commit sequence of the single round: (1) this plan · (2) findings
-R-0803..R-0812 + R-0800 resolved + D4 clarification · (3) acceptance
-lines in T2_F260 / T2_F261 / T2_F268 · (4) handoff rewrite. Then push,
-PR, hosted run GREEN, checks read, merge (two separate commands), verify
-on main.
+Round 10 is CLOSURE PART 3 — the last round. One commit flips the STATUS line to
+accepted, syncs the README's counters and its Tier 2 accepted list, marks the
+self-use item consumed and rewrites the handback; it is the last commit on the
+branch. Then the pull request is opened and left UNMERGED, which is the
+operator's review window.
 
 ## Next Steps
 
-- Operator starts remedy-loop-feature; Rule A5 proposes F259.
-- F259 → F260 → F261 → F266 → F268 → … in the D12 order; F260 now owes
-  the data-root isolation, cockpit walk, ledger-row, fake-builder and
-  narration acceptance; F261 the ui-session prune, blocked-findings
-  display and one id-error shape; F268 the cost line, granularity
-  ceiling and repo auto-attach.
+- The operator reviews the package at their own pace.
+- The next feature's session merges this pull request at its Open PR Gate, then
+  claims the next unchecked line in the DECISION amend0905-vocab D12 order,
+  which is F260 — one world: mission, job, run.
 
 ## Risks
 
-- Finding A's acceptance line arrives cut mid-sentence in the order
-  (after `ls <data_root>/runs`); completed as an equal-count check and
-  declared in R-0803 and the handoff.
-- `grep -c 'R-08' .agent/live_review.md` must rise by exactly 10: every
-  finding is one line and R-0800 is resolved IN its own line, not by a
-  new `Done:` line.
+- The README and the STATUS ledger must never disagree in any committed state,
+  which is why one commit carries both. A split would leave a state where the
+  README claims an acceptance the ledger does not.
+- The pull request must not be merged in this session. Merging it here would
+  close the operator's review window before it opened.

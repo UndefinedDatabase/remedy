@@ -1,0 +1,107 @@
+=== F259 R7 INTEGRATION GATE — BASE WORKTREE BUILD PARITY ===
+
+Worktree : /home/decodeux/Repos/remedy/.remedy-wt/f259-base-gate
+Created  : git worktree add -b tmp/f259-base-gate <path> 25961794
+           ON A THROWAWAY BRANCH, NOT DETACHED. Confirmed after creation:
+           rev-parse HEAD = 259617949461c993f1b8dabcf659e6a73110b162
+           branch --show-current = tmp/f259-base-gate
+           (A detached base worktree fails the self-dogfood branch guard for
+           the wrong reason — DECISION D3, F053 R2.)
+
+--- 1. WHAT WAS COPIED, AND WITH WHICH ARGUMENT ---
+
+shutil.copytree(<primary>/apps/ui/node_modules, <wt>/apps/ui/node_modules, symlinks=True)
+shutil.copytree(<primary>/apps/ui/dist,         <wt>/apps/ui/dist,         symlinks=True)
+
+symlinks preserved: the copy was made with symlinks=True, NOT with the
+shutil.copytree default symlinks=False, which DEREFERENCES symlinks and caused
+7 base-only failures on a previous gate (finding R-0591, checklist item 18).
+
+SYMLINK COUNT under apps/ui/node_modules/.bin AFTER the copy:
+  primary checkout : 23 symlinks (23 entries total)
+  base worktree    : 23 symlinks (23 entries total)
+  counts equal     : True
+  name sets equal  : True
+A count of 0 would have meant the copy dereferenced them and the parity was
+void. It is 23, matching the count the reviewer measured at 6e6e73ae.
+
+--- 2. THE R-0736 MTIME FIX (the relation the code actually reads) ---
+
+packages/orchestration/ui_server.py::_frontend_is_stale returns True when ANY
+file under apps/ui/src/ is newer than apps/ui/dist/index.html. shutil.copytree
+PRESERVES source mtimes while git worktree add stamps every checked-out source
+file with the checkout time, so a copied dist is byte-correct and mtime-STALE.
+Content parity is NOT the relation the code reads; the mtime relation is.
+
+MEASURED IN THE WORKTREE, BEFORE THE FIX:
+  apps/ui/src file count            : 142
+  newest src file                   : apps/ui/src/types/react-force-graph-2d.d.ts
+  newest src mtime                  : 1788645445.454480  (2026-09-05 23:57:25)
+  apps/ui/dist/index.html mtime     : 1788057215.853621  (2026-08-30 04:33:35)
+  _frontend_is_stale relation holds : True  <-- staleness WOULD have fired
+
+Without the fix this is the state that manufactures 114 false
+tests/ui_server/ failures with "ERROR: React UI not built."
+
+THE FIX APPLIED — every mtime under apps/ui/dist set to newest_src + 120 s:
+  dist mtime set to                 : 1788645565.454480  (2026-09-05 23:59:25)
+
+AFTER THE FIX:
+  dist/index.html strictly NEWER than newest src : True
+  _frontend_is_stale relation holds              : False  <-- staleness cleared
+
+--- 3. DIST MTIME WINDOW AROUND THE BASE RUN (R-0444: measure the EVENT) ---
+
+REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run but NOT trusted alone — a
+spawned build path ignored it once (R-0169). The mtime of EVERY file under the
+worktree apps/ui/dist was recorded immediately before and immediately after.
+
+run start : 1788645486.731395  (2026-09-05 23:58:06)
+run end   : 1788645649.020247  (2026-09-06 00:00:49)
+
+file                                           mtime BEFORE         mtime AFTER          in window?
+apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js 1788645565.454480    1788645565.454480    True
+apps/ui/dist/assets/index-Bh0mkYBD.js          1788645565.454480    1788645565.454480    True
+apps/ui/dist/assets/index-D_qZGOuo.css         1788645565.454480    1788645565.454480    True
+apps/ui/dist/index.html                        1788645565.454480    1788645565.454480    True
+
+files added by the run    : []  (none)
+files removed by the run  : []  (none)
+mtimes CHANGED by the run : {}  (none)
+mtime BEFORE == mtime AFTER for every dist file : True
+
+READ THIS READING CAREFULLY — IT IS REPORTED, NOT EXPLAINED AWAY:
+All four dist mtimes fall NUMERICALLY INSIDE the run window. That is an
+ARTEFACT OF THE FIX, not evidence of a rebuild: section 2 deliberately stamped
+dist into the future at newest_src + 120 s = 1788645565.45, and the run lasted
+162.3 s (1788645486.73 .. 1788645649.02), so the synthetic future stamp lands
+inside its own run window by construction. The offset chosen (+120 s) was
+SMALLER than the run duration, which makes the plain in-window test degenerate.
+That is a methodological deviation and is declared as such; an offset larger
+than the run would have kept the test non-degenerate.
+
+THE EVENT ITSELF WAS THEREFORE MEASURED A SECOND, INDEPENDENT WAY — ctime and
+inode. Any rebuild writes or replaces the file; either changes ctime, and a
+fresh vite write changes the inode as well:
+
+file                                           inode        ctime                ctime in window?
+apps/ui/dist/assets/diffHighlightGrammars-o9XqnLhb.js 5557655      1788645468.316750    False
+apps/ui/dist/assets/index-Bh0mkYBD.js          5557657      1788645468.316750    False
+apps/ui/dist/assets/index-D_qZGOuo.css         5557656      1788645468.316750    False
+apps/ui/dist/index.html                        5557653      1788645468.316750    False
+
+Every ctime is 1788645468.32 — the moment of the os.utime call in section 2,
+18.4 s BEFORE the run started. All ctimes predate the run start: True.
+No file under apps/ui/dist was written, replaced or touched during the base
+run. NO REBUILD EVENT OCCURRED. A content hash is deliberately not offered as
+the primary reading, because equal content is consistent both with no rebuild
+and with a byte-identical one.
+
+--- 4. TEARDOWN ---
+
+git worktree remove --force <path>   -> worktree gone (path no longer exists)
+git branch -D tmp/f259-base-gate     -> "Deleted branch tmp/f259-base-gate (was 25961794)."
+git worktree prune                   -> exit 0
+git worktree list                    -> the primary checkout plus the ten
+  pre-existing remedy/job-* worktrees and nothing else. No branch other than
+  the throwaway tmp/f259-base-gate was deleted.
