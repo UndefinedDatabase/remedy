@@ -227,6 +227,14 @@ end the response with:
   2026-08-27, which is the number the next consolidation measures against.
   Reason: a checklist that grows every round is read less carefully every
   round, and it grew fastest exactly where it was already being skimmed.
+  Consolidated once, at F259's closure on 2026-09-06: item 32 was merged into item
+  16, whose family it belonged to and which its own text named, leaving 36 items.
+  A merged item's NUMBER IS RETIRED AND NEVER REUSED, and the survivors are NEVER
+  RENUMBERED, so this list now runs 1 to 31 and 33 to 37. The reason is that
+  `.agent/live_review.md` is append-only and cross-references these items by
+  number from dated entries that cannot be corrected: renumbering would silently
+  re-point every one of those references at a different rule, which is a worse
+  failure than a gap in the numbering. The next consolidation measures against 36.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -490,6 +498,22 @@ end the response with:
       never looked at the list that had drifted, and an honest worker had to spend a declared
       deviation proving the block contradicted itself. Resolve every count to the list it
       NAMES, wherever in the block that list lives, and prefer naming it over counting it.
+      Finding R-0656 brings this item to a GATE's or a CONSTRAINT's OWN WORDING, which
+      neither this item as first written nor item 11 reached: item 11 forbids the numeral
+      in a CONVENTION PARAGRAPH and this one forbade it in a HEADING or a quantifying
+      sentence, while a gate's own text is neither. A gate or a constraint that names a
+      CATEGORY of the block's own slices — the whole texts, the marker prefixes, the pairs
+      — names that category and gives NO numeral for it, because the numeral is
+      hand-counted while the extraction standing beside it is measured, so the two drift
+      the moment the block is edited and the hand-counted half is the one nobody re-reads.
+      Where a count is genuinely owed, the block orders the WORKER to report the number IT
+      measured rather than naming one itself. R22's G3 ordered the extraction "for the two
+      whole texts" over a block carrying three, and R23's G10 bound the marker sweep to
+      "every one of the four marker prefixes" over the six that block's G3 names, as the
+      recurrence paragraph committed at `bdc242b4` records; in each the block's arithmetic
+      was right and only the adjective was wrong, which is why no gate the block ordered
+      could see it and the WORKER caught each. Consolidated into this item at F259's
+      closure on 2026-09-06 from what was item 32; that number is RETIRED, not reused.
   17. **A pair that changes a structure's arity spans the whole structure.** Finding
       R-0509. When a TO adds or removes an entry of a numbered list, a table, or any
       other structure whose items carry positional labels, the FROM spans that WHOLE
@@ -802,29 +826,6 @@ end the response with:
       it already applied in the block that registered it, and the class then
       recurred in two consecutive rounds — the second of them authored by the
       reviewer who had registered it.
-  32. **A clause naming a KIND of the block's own parts states no COUNT of that
-      kind.** Finding R-0656, and its recurrence one round later inside the very
-      round that registered it. A gate or a constraint that names a CATEGORY of
-      the block's own slices — the whole texts, the marker prefixes, the pairs —
-      names that category and gives no numeral for it. The numeral is
-      hand-counted while the extraction standing beside it is measured, so the
-      two drift apart the moment the block is edited, and the hand-counted half
-      is the one nobody re-reads. Where a count is genuinely owed, the block
-      orders the WORKER to report the number IT measured rather than naming one
-      itself. Items 11 and 16 are the same family and neither reaches this case:
-      item 11 forbids the numeral in a CONVENTION PARAGRAPH and item 16 in a
-      HEADING or any quantifying sentence, while a GATE's own text is neither.
-      That is where R-0656 landed, and then landed again — R22's G3 ordered the
-      extraction "for the two whole texts" over a block carrying three, and
-      R23's G10 bound the marker sweep to "every one of the four marker
-      prefixes" over the six that block's G3 names, as the recurrence paragraph
-      committed at `bdc242b4` records — and in each the block's arithmetic was
-      right while only the adjective was wrong, which is why no gate the block
-      ordered could see it and the WORKER caught each. This is an item rather
-      than a habit for the reason the list itself exists: R-0656's FIX clause
-      stated exactly this counter-measure in a finding BODY, and the class
-      recurred in the next block the reviewer wrote.
-
   33. **A colour ordered inside a worktree names the runner's configuration, SCOPES
       its selection, and reports the UNMUTATED control beside the mutated one.**
       Finding R-0703. A block may order a vitest red-proof in the disposable
