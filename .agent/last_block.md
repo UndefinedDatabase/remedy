@@ -1,300 +1,457 @@
-STEP CLOSURE PART 3 / F259 — Vocabulary & concept model v1 — round 10 of session 1
-BRANCH feature/f259-vocabulary, head aba15f08 at the time this block was written.
+── STEP T001 (part 1 of 2) — F260 ────────────────────────────
+Goal:        Claim F260 on a new branch, book the F259 R10 verdict into the
+             record, and put the MEASURED inventory of Remedy's job/run storage
+             on disk — including the collision that makes this feature file's
+             "renamed to runs/" sentence unbuildable as written.
+Bundle:      C0a save this block · C0b mirror it · C1 plan + context · C2 the
+             record (re-head + the R10 gate entry) · C3 the STATUS claim ·
+             C4 the inventory · C5 the feature-file amendment · C6 the handback
+(the rule line below is 62 copies of U+2500, per §3 item 37)
+──────────────────────────────────────────────────────────────
 
-Goal
-  Close F259. Book the round-9 verdict, then make the ONE closure commit that
-  flips the ledger, syncs the README, consumes the self-use item and rewrites the
-  handback — Rule A4's last commit on the branch — and open the pull request.
-  The pull request is NOT merged in this session; it merges at the next feature's
-  Open PR Gate, and that gap is the operator's manual-review window.
+## Before anything: the branch
 
-  Every value in the STATUS line below was MEASURED by the reviewer, not
-  reported: the package digest was recomputed from the file on disk
-  (22 510 711 bytes), `zipfile.testzip()` returned None over its 3877 members,
-  and the manifest's `committed_review_subject` was read out of
-  `.review_zip_manifest.json` inside the package — base
-  259617949461c993f1b8dabcf659e6a73110b162, head
-  efd2a4fb04bb82b8ee87b812327a7c3f9776853a, `base_is_ancestor` true, 61 commits,
-  `ready_gate_matrix.ok` true with no blocking reasons, `package_status`
-  READY_FOR_REVIEW.
+The Open PR Gate has already run in the reviewer's session. Pull request 240 was
+merged with `gh pr merge 240 --merge --delete-branch` at merge commit
+`b5cd6c20`, `main` was pulled, and `gh pr list --state open` returns an empty
+list. Do NOT re-run the gate and do NOT merge anything this round.
 
-Finding R-0797 binds the README edit, harder than in round 6
-  `tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
-  scans each `Accepted in Tier N so far:` block for `F\d{3}` tokens and asserts
-  every one is `- [x]` in `docs/roadmap/STATUS.md`. This round ADDS a token to
-  that block, which is the exact operation R-0797 was. Two things make it safe
-  and both are gated: the token added is F259 itself, and the SAME commit flips
-  F259 to `[x]`, so no committed state has them disagreeing (R-0154); and the
-  authored entry names NO OTHER feature id — the reviewer checked its bytes for
-  `F\d{3}` before emission and found only the leading F259. Do not add one.
+Start on `main` at `b5cd6c20` with a clean tree, then:
 
-Bundle, in this order (one commit each)
-  C0a save the block file to .agent/authored/f259-r10.md (copy, never retype)
-  C0b mirror it to .agent/last_block.md
-  C1  .agent/plan.md ← PLANF259R10 (whole rewrite)
-  C2  .agent/live_review.md: append `"\n" + GATE_R9 + "\n"`
-  C3  THE CLOSURE COMMIT — one commit, exactly these paths:
-        docs/roadmap/STATUS.md   the STATUS pair
-        README.md                the three README pairs
-        scripts/self_use_queue.json  the one `consumed_by` edit
-        .agent/handoff.md        the final handback
-      This is the LAST commit on the branch (Rule A4). Nothing follows it.
-  then push, then create the pull request (see "The pull request" below).
+    git checkout -b feature/f260-one-world
 
-Change set — EXACTLY these paths and nothing else
-  .agent/authored/f259-r10.md (C0a) — .agent/last_block.md (C0b) —
-  .agent/plan.md (C1) — .agent/live_review.md (C2) —
-  docs/roadmap/STATUS.md, README.md, scripts/self_use_queue.json,
-  .agent/handoff.md (C3)
+Every commit of this round lands on that branch. Never work on `main` (G3).
 
-Delivery
-  The block is at `.remedy-wt/f259-r10-block.md`, gitignored scratch. C0a COPIES
-  it to .agent/authored/f259-r10.md, C0b to .agent/last_block.md. Slices are
-  extracted from the COMMITTED authored file by marker extraction in Python.
+## Change set — nothing outside this list
 
-The five pairs of C3
-  Each is applied with `str.replace(FROM, TO, 1)` after confirming the FROM
-  occurs EXACTLY ONCE. The reviewer ran the containment test on all five before
-  emission; every one printed `TO contains FROM: false`, so ALL FIVE ARE
-  REWRITES and the obligation for each is FROM 0x and TO 1x afterwards — never
-  an append's count.
-    STATUSPAIR   docs/roadmap/STATUS.md — `[~]` becomes the accepted `[x]` line
-    ACCPAIR      README.md — the Tier 2 accepted list gains F259; the previous
-                 entry's closing `).` becomes `),`
-    COUNTPAIR    README.md — 72 accepted becomes 73
-    TIERPAIR     README.md — the Tier 2 table's Done column, 15 becomes 16
-    QUEUEPAIR    scripts/self_use_queue.json — SU-010's `consumed_by` gains
-                 `F259`. Apply it as a TEXT replacement, never by loading and
-                 re-dumping the JSON: the file stores em dashes as `—`
-                 escapes and a round-trip through `json.dump` would rewrite
-                 every one of them, which is the open finding R-0785. The
-                 reviewer measured `"consumed_by": ""` at exactly one occurrence
-                 in the file, SU-010's, because it is the only unconsumed entry.
+    .agent/authored/f260-r1.md          (new, C0a)
+    .agent/last_block.md                (C0b)
+    .agent/plan.md                      (C1)
+    .agent/context.md                   (C1)
+    .agent/live_review.md               (C2)
+    docs/roadmap/STATUS.md              (C3)
+    .agent/f260_inventory.md            (new, C4)
+    docs/roadmap/features/T2_F260.md    (C5)
+    .agent/handoff.md                   (C6)
 
-Constraints
-  1. Slices are applied BYTE FOR BYTE from the committed authored file by marker
-     extraction in Python. Apply a slice you believe wrong verbatim and declare
-     it in the handback.
-  2. C3 IS ONE COMMIT AND IT IS THE LAST ON THE BRANCH. The STATUS flip and the
-     README sync may never be in different commits (R-0154): no committed state
-     of this repository may have README and STATUS disagreeing about what is
-     accepted.
-  3. Read `.agent/STOP` from disk before C0a and before C3.
-  4. NEWLINE CONVENTIONS: PLANF259R10 replaces `.agent/plan.md` whole with
-     exactly one trailing newline; the record append is as described;
-     `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` each
-     still end with exactly one newline after their edits.
-  5. This session's shell guard refuses some command FORMS outright — shell
-     loops, `$(...)` substitution, `$?` in a compound command, `${PIPESTATUS[0]}`,
-     a `$` anchor inside a `grep -c` pattern, brace-with-quote literals in a
-     heredoc, and a non-ASCII character in a Python bytes literal. Re-express in
-     Python and report the Python you ran beside its output, with any refusal
-     quoted verbatim. `ruff check` and the built `remedy` CLI are denied; use
-     `python3 -m apps.cli.grouped <...>` where a remedy subcommand is needed.
-  6. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
-     path, no secret-like string — the evidence-packaging metadata scanner
-     rejects such subjects. End every commit message with the trailer
-     `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
-  7. AGENTS.md binds you in full. Never `--force`, never a history rewrite,
-     never a branch deletion, and NEVER `gh pr merge` — the merge belongs to the
-     next feature's Open PR Gate and is the operator's review window.
-  8. If ANY gate below comes back wrong, do NOT create the pull request. Commit
-     what is sound, report the failure, and stop; the reviewer decides.
+Scratch you may create freely under the gitignored `.remedy-wt/`; it must stay
+untracked, and `git ls-files .remedy-wt` must return nothing at the end.
 
-The pull request — after C3 is pushed
-  Write the PR body to a scratch file under the gitignored `.remedy-wt/` and run
-    gh pr create --title "F259: vocabulary and concept model v1" --base main --head feature/f259-vocabulary --body-file <file>
-  The body carries: what changed and why; the key decisions (DECISION F259 D3,
-  and the §3 checklist consolidation that merged item 32 into item 16 and retired
-  the number); how to review; the changed-files table; the latest live-review
-  verdict; the open-findings count; and the runtime actuals below. Report the PR
-  number and URL in your final message. NEVER `gh pr merge`.
-  The PR number cannot be inside `.agent/handoff.md`, because C3 writes that file
-  and C3 is the last commit (Rule A4) — this is the R-0449 shape and the block
-  accepts it rather than ordering an impossible value: the number lives in your
-  final message and in the pull request itself, and `gh pr list` recovers it.
+## C0a — save this block
 
-Runtime actuals for the PR body (observed; `not-measured` beats a guess)
-  Rounds: 10 delegated rounds, all PASS at the reviewer's gate, one session.
-  Wall clock: not-measured as a total; the integration gate's two full-suite runs
-  were 134.50s (branch) and 161.68s (base), and the self-use job ran 107.8s.
-  Models/tokens/cost: not-measured — no provider ledger was consulted for this
-  feature, and the only model calls were the self-use job's own, inside its
-  `max_provider_calls=6` / `max_cost_usd=0.5` budget.
+This block is on disk at `.remedy-wt/f260-r1-block.md`. The prompt that
+delegated this round states that file's sha256; call it BLOCK_SHA. A file
+cannot carry its own digest, so BLOCK_SHA is named there and never here.
 
-Done when — the gates. Real exit codes, real output, one line per gate in the
-handback. Gates G1 through G7 run at or before C3; G8 covers the push and the PR
-and is reported in your final message as well as in the PR.
+COPY that file to `.agent/authored/f260-r1.md` (`shutil.copyfile`, never a
+retype, never a text round-trip) and commit it alone.
 
-  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r10-block.md .agent/authored/f259-r10.md .agent/last_block.md`
-     — one digest, three times.
-  G2 THE RECORD APPEND. The pre-append bytes of `.agent/live_review.md` are a
-     byte-exact PREFIX of the post-append bytes, the remainder equals exactly
-     `"\n" + GATE_R9 + "\n"`, and `grep -c '^Gate: R9 — '` goes 0 → 1. Report the
-     byte lengths.
-  G3 THE FIVE PAIRS. For EACH: the FROM count before (1), the printed containment
-     reading with the label derived from it on the same line, the FROM count after
-     (0) and the TO count after (1). Then the whole-file reconstruction for each
-     of the three files: the post-commit bytes equal the pre-commit bytes with
-     exactly its pairs applied and nothing else — three booleans.
-  G4 THE LEDGER AND THE README AGREE — R-0154 and R-0797 together. After C3,
-     from the COMMITTED state, report:
-       `grep -c '^- \[x\] F' docs/roadmap/STATUS.md`            expect 73
-       `grep -c '^- \[~\] F' docs/roadmap/STATUS.md`            expect 0
-       the F259 STATUS line, in full, verbatim
-       the accepted-per-tier counts, Tier 2 expect 16
-       the README's `N of 271 registered items accepted` numeral, expect 73
-       the README Tier 2 table row, expect Done 16
-     Then the R-0797 sweep, which is the point: extract EVERY
-     `Accepted in Tier N so far:` block from `README.md`, collect EVERY `F\d{3}`
-     token in them, and report the FULL sorted list with, for each, whether
-     `docs/roadmap/STATUS.md` carries it as `- [x]`. Every one must be `[x]`, F259
-     among them, and the list is reported in full and never as a count alone.
-  G5 THE SELF-USE ITEM IS CONSUMED — closure precondition 6. Report SU-010's
-     `consumed_by` value after C3 (expect `F259`); the count of entries in
-     `scripts/self_use_queue.json` with an empty `consumed_by` (expect 0); the
-     total entry count (expect 10); and the boolean that the file's bytes differ
-     from their pre-commit state ONLY by the QUEUEPAIR replacement. Also report
-     the count of the literal two characters `\u` followed by `2014` in the file
-     before and after — they must be EQUAL, which is what proves no JSON
-     round-trip reformatted the file (open finding R-0785).
-  G6 THE SUITES, RUN SERIALLY, at C3. Each a real run with its passed count and
-     exit code. The reviewer measured at aba15f08:
-       python3 -m pytest tests/docs/ -q                                 expect 303
-       python3 -m pytest tests/orchestration/test_roadmap_index.py -q   expect 30
-       python3 -m pytest tests/ui_server/ -q                            expect 515
-       python3 -m pytest tests/orchestration/test_test_runner.py -q     expect 52
-       python3 -m pytest tests/regression/test_resource_safety.py -q    expect 21
-       python3 -m pytest tests/orchestration/test_integrity_gate.py -q  expect 16
-       python3 -m pytest tests/cli/test_golden_path.py -q               expect 42
-       python3 -m pytest tests/orchestration/test_self_use_generator.py -q  report the number
-     The last is added because this round consumes a queue entry. `tests/docs/`
-     is the one that would catch a README/STATUS disagreement, so run it AFTER C3
-     is committed, not before. A different count is reported as the number it is,
-     with failing node ids verbatim.
-  G7 THE CLOSURE PRECONDITIONS RESTATED AGAINST THE FINAL STATE.
-     `python3 -m apps.cli.grouped integrity check --json` — report `passed` and
-     `fail_count`. `git status --porcelain` — empty. The open-findings count,
-     computed as `^- R-\d{4} — ` lines minus `^Done: R-\d{4} — ` lines in
-     `.agent/live_review.md` — report the number. And confirm
-     `.agent/candidates.md` is unchanged by this round, since no candidate was
-     raised.
-  G8 STRUCTURE, THE PUSH AND THE PULL REQUEST. Every commit single-parent;
-     `git diff --numstat <parent> <commit>` for EACH commit C0a through C3
-     reported cell by cell; each commit's insertion count against the 500 cap;
-     `git ls-files .remedy-wt` returns nothing; the push result; that C3 is the
-     branch tip and NOTHING follows it; the PR number, its URL, that it is not a
-     draft, that its base is `main` and its head is `feature/f259-vocabulary`,
-     and that it is NOT merged. Report `gh pr list --state open --json number,headRefName,baseRefName,isDraft`.
+## C0b — mirror
 
-The handback, inside C3 — rewrite .agent/handoff.md whole
-  No length cap. It is the last state this branch leaves behind, so it carries:
-  feature, round and SESSION NUMBER — SESSION 1 of F259, round 10, rounds so far
-  10, and the feature CLOSED; the commit range for this round and the accepted
-  HEAD `efd2a4fb04bb82b8ee87b812327a7c3f9776853a`; the evidence job id, package
-  filename, SHA-256 and package path exactly as they appear in the STATUS line;
-  a `## Commits` table with the `+/-` numbers G8 printed for C0a through C3; the
-  AGENTS.md item-status table, one row per bundle item; one line per gate G1
-  through G7 with its real reading, plus what G8 could measure before the commit;
-  the deviations; ONE sentence of context self-assessment; the open-findings
-  count; and the next expected action — the operator's review window, then the
-  next feature's Open PR Gate merging this pull request. Say plainly that the
-  pull request number is NOT in this file and why (Rule A4 makes C3 the last
-  commit; the number is in the round's final message and recoverable with
-  `gh pr list`). Repeat this line verbatim in its state block:
-  `100 % (T001–T004 ✅ · Integration Gate ✅ · Closure ✅ — F259 geschlossen, PR offen) — Schätzung`
+Copy the same bytes to `.agent/last_block.md` and commit it alone. This is one
+indivisible `.agent/**` state rewrite (AGENTS.md DECISION F104 D1 exemption), so
+its insertion count is not split.
 
-<<<BEGIN PLANF259R10>>>
-# Plan — F259 Vocabulary & concept model v1
+## C1 — plan and context
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 9
-PASSED the reviewer's gate. Round 7 was the integration gate — the full suite
-green on the branch and at the merge base, zero branch-only and zero base-only
-failures. Rounds 8 and 9 were closure parts 1 and 2; the package is built and
-READY_FOR_REVIEW.
+Write `.agent/plan.md` from the PLANF260R1 slice and `.agent/context.md` from
+the CONTEXTF260 slice, each byte-for-byte plus exactly one trailing newline, and
+commit the two together. This is the round's FIRST substantive commit because
+the round touches the finding ledger (planner_reviewer_prompt.md §3 item 23).
+
+## C2 — the record
+
+Two edits to `.agent/live_review.md`, one commit.
+
+FIRST, the re-head. The file contains the separator `"\n## Steps\n"` exactly
+once (measured by the reviewer at `b5cd6c20`: 1 occurrence). Partition on it and
+replace only the head:
+
+    text = path.read_text(encoding="utf-8")
+    assert text.count("\n## Steps\n") == 1
+    head, sep, tail = text.partition("\n## Steps\n")
+    new = REHEADTO + sep + tail
+
+where REHEADTO is the slice below WITHOUT a trailing newline (the separator
+supplies it). At `b5cd6c20` the head is 1299 bytes over 18 lines and the tail is
+854531 bytes; the tail carries 298 `^- R-\d{4} — ` registrations against 4
+`^Done: R-\d{4} — ` lines, and NOT ONE BYTE of it may change.
+
+SECOND, the append. To the result of the re-head, append exactly
+`"\n" + GATE_R10 + "\n"`, where GATE_R10 is the slice below with no trailing
+newline. The file ends with exactly one newline before and after.
+
+## C3 — the STATUS claim
+
+One replacement in `docs/roadmap/STATUS.md`, applied with
+`str.replace(FROM, TO, 1)` after asserting the FROM occurs exactly once.
+Measured by the reviewer at `b5cd6c20`: FROM occurs 1x, TO occurs 0x, and
+`TO contains FROM: false` — so this is a REWRITE and the FROM-zero count is
+attainable.
+
+    <<<BEGIN STATUSPAIR_FROM>>>
+- [ ] F260 — One world: mission → job → run
+    <<<END STATUSPAIR_FROM>>>
+
+    <<<BEGIN STATUSPAIR_TO>>>
+- [~] F260 — One world: mission → job → run
+    <<<END STATUSPAIR_TO>>>
+
+Strip exactly one trailing newline from each extracted slice before replacing;
+the markers sit on their own lines, so a raw extraction carries the newline that
+precedes the END marker and the FROM would then match zero times.
+
+## C4 — the inventory (the round's real work)
+
+Write `.agent/f260_inventory.md`. This file is a MEASUREMENT, not prose: every
+claim in it is produced by a command you run, and every path and symbol it names
+is one you resolved on disk at `b5cd6c20`. Cite `file:line` for each. It must
+answer, at minimum:
+
+1. **Every on-disk area that stores a job, a run, or a run's evidence**, with
+   its path template, what KEY the directory or file is named by (job id or run
+   id), the writer module and function, and the reader modules. The reviewer
+   measured four such areas at `b5cd6c20` and expects your independent reading
+   to confirm or correct each; report what YOU measure, and where you disagree
+   with this list say so explicitly rather than reproducing it:
+   - `<data_root>/jobs/<uuid>.json` — `storage.save_job` (storage.py:75),
+     `packages.core.models.Job`.
+   - `<data_root>/task_jobs/<16hex>/job.json` — `pingpong_job._persist_job`
+     (pingpong_job.py:381), `JobPlan`; the directory is keyed by JOB id.
+   - `<data_root>/runs/<job_id>/*.jsonl` — `run_log.RunLogWriter`
+     (run_log.py:114 via `data_paths.runs_dir`), read by
+     `timeline.load_run_events` (timeline.py:75). Keyed by JOB id.
+   - `<data_root>/pingpong_runs/<run_id>/` — `pingpong_loop._persist_run`
+     (pingpong_loop.py:4234) via `_pingpong_runs_dir` (pingpong_loop.py:4228).
+     Keyed by RUN id.
+2. **The field-by-field shape of both job records** — `packages.core.models.Job`
+   against `pingpong_job.JobPlan` — as a table: field name, type, which record
+   has it, and whether the two spellings mean the same thing. This is the
+   evidence DECISION F260 D1 will be ruled from; do not rule it here.
+3. **Every id shape actually minted**, with the minting call site, and every
+   parse or validation path that constrains it — including
+   `data_paths._SHORT_HEX_RE` (data_paths.py:150) and the `UUID(raw)` branch of
+   `resolve_job_id` (data_paths.py:205). This is the evidence for D2; do not
+   rule it here either.
+4. **Every consumer named under "Design" in `docs/roadmap/features/T2_F260.md`**,
+   re-grepped at `b5cd6c20`, as a table of path, the symbol it actually calls,
+   and the line where it calls it — with a column saying whether the feature
+   file's cited line number still resolves. The feature file's citations were
+   taken on 2026-09-05 and this branch has moved nothing yet, so a mismatch is a
+   defect of the feature file and must be reported, not silently corrected.
+5. **The `runs/` collision, stated as a measurement.** The feature file says the
+   `task_jobs/` directory "is renamed to `runs/`". `data_paths.runs_dir`
+   (data_paths.py:78) already returns `<data_root>/runs` and the run log already
+   writes `<data_root>/runs/<job_id>/`. Report both readings and say plainly
+   whether the ordered rename lands on an occupied path.
+
+Do NOT rule D1, D2 or D3, do not rename anything, do not delete anything, and do
+not change a single line under `packages/` or `apps/` this round. This round
+measures; the next round rules.
+
+## C5 — the feature-file amendment
+
+Append the AMENDF260D0 slice to `docs/roadmap/features/T2_F260.md`, immediately
+after the line `### DECISION F260 D2 — the one id shape (to be recorded in T001)`
+paragraph and before the `### DECISION F260 D3` heading — that is, the new
+heading becomes the last DECISION before D3. Apply it as an insertion and prove
+it by whole-file reconstruction: the post-edit file equals the pre-edit file with
+exactly the slice inserted at that point, and nothing else moves.
+
+## C6 — the handback
+
+Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. It has no
+length cap (AGENTS.md, amend0827 rule 3). It carries the mandated sections, the
+changed-files table with the `+/-` column taken from `git diff --numstat` (NOT
+from before/after line counts — planner_reviewer_prompt.md §3 item 28), one line
+per gate below with its real exit code and real output, the item-status table,
+and the Session line:
+
+    SESSION 1 of feature F260 · round 1 · rounds so far 1
+
+plus one sentence of context self-assessment (self_drive_protocol.md G7).
+The state block repeats this line verbatim:
+
+    ~5 % (T001 Inventar ✅ · D1/D2 offen · T002–T005 offen) — Schätzung
+
+C6 is the LAST commit of the round. Push after it:
+
+    git push -u origin feature/f260-one-world
+
+Do NOT create a pull request and do NOT merge anything this round.
+
+## Constraints
+
+1. Apply every authored slice BYTE FOR BYTE. If a slice looks wrong, apply it as
+   written and declare the problem in the handback — never silently repair it.
+2. Nothing outside the change set above is created, edited or deleted.
+3. No file under `packages/`, `apps/` or `tests/` changes this round.
+4. Commit in the order C0a, C0b, C1, C2, C3, C4, C5, C6. No extra commit, no
+   dropped commit, no reordering.
+5. Every commit is single-parent and stays under the AGENTS.md 500-INSERTION cap
+   (insertions only, the `+` column — DECISION F104 D1).
+6. Destructive verification, if you do any, runs only inside a disposable
+   `git worktree`; the primary checkout satisfies `git status --porcelain` empty
+   at the end of the round (G5).
+7. `.agent/plan.md` stays under 50 lines (AGENTS.md).
+8. Commit subjects carry no leading-slash token, no absolute path and no
+   secret-like string (AGENTS.md Commit Discipline).
+
+## Done when — the gates
+
+Run every one and report its real exit code and real output. "Green" as a word
+is a finding (G4).
+
+- **G1 TRANSPORT.** `sha256sum .remedy-wt/f260-r1-block.md
+  .agent/authored/f260-r1.md .agent/last_block.md` prints ONE digest three
+  times, equal to the BLOCK_SHA the delegating prompt states. This is a COPY
+  chain over the scratch
+  original, the saved copy and the mirror; per §3 item 37 it is not a claim
+  about bytes emitted into a prompt.
+- **G2 THE RECORD.** Take the pre-edit bytes of `.agent/live_review.md` at
+  `b5cd6c20` into scratch first. Then, after C2, prove all of:
+  (a) the post-edit file equals `REHEADTO + "\n## Steps\n" + tail + "\n" +
+  GATE_R10 + "\n"` where `tail` is the partition tail of the PRE-edit bytes —
+  one boolean, byte-exact reconstruction;
+  (b) an independent structural reader: split both pre- and post-edit files on
+  blank lines, report N = (post units − pre units) as a number your script
+  COUNTS, and compare the LAST N units of the post-edit file against GATE_R10's
+  paragraphs in order;
+  (c) a negative control on reading (b): flip one byte inside the FIRST appended
+  paragraph and confirm reading (b) REJECTS it, in scratch, never on the tracked
+  file;
+  (d) the region from `## Findings` to end of file has an identical sha256
+  before and after the whole commit;
+  (e) `grep -c '^Gate: R10 — '` goes 0 → 1, and no two `^Gate: R` headers in the
+  file are byte-identical.
+- **G3 THE STATUS PAIR.** FROM occurs 1x before and 0x after; TO occurs 0x
+  before and 1x after; whole-file reconstruction from the pre-edit bytes with
+  only this replacement applied is byte-equal to the committed file; the file
+  still ends with exactly one newline. Then `^- \[~\] F` = 1 and its id is F260,
+  and `^- \[x\] F` = 73 (unchanged by this round).
+- **G4 THE INVENTORY IS MEASURED.** For EVERY `path:line` citation in
+  `.agent/f260_inventory.md`, run a script that opens that file at that line and
+  prints the line, and assert the cited symbol occurs in it. Report the total
+  number of citations checked and the number that resolved; a citation that does
+  not resolve is a red gate, not a footnote. Also confirm each of the four store
+  paths is named in the file, and that item 5 of C4 states explicitly whether
+  the rename lands on an occupied path.
+- **G5 THE STATE CONTRACTS.** `.agent/plan.md` holds `## Goal`, `## Next Steps`
+  and a `\bF\d{3}\b` match, and is under 50 lines. `.agent/context.md` holds
+  `Steps`, `## Active Branch`, `feature/`, a `\bF\d{3}\b` match, and `resource`
+  or `pytest` case-insensitively, and holds none of `steps-74_1-79`,
+  `Steps 91-100`, `allow repo_test_run`, `synthetic_count: 4`,
+  `job=None source_apply bypass`. `.agent/live_review.md` holds `Steps`.
+- **G6 THE SUITES, RUN SERIALLY, one at a time, in the primary checkout.**
+  Report exit code and the passed count for each:
+
+      python3 -m pytest tests/docs/ -q
+      python3 -m pytest tests/orchestration/test_roadmap_index.py -q
+      python3 -m pytest tests/ui_server/ -q
+      python3 -m pytest tests/orchestration/test_test_runner.py -q
+      python3 -m pytest tests/regression/test_resource_safety.py -q
+      python3 -m pytest tests/orchestration/test_integrity_gate.py -q
+      python3 -m pytest tests/cli/test_golden_path.py -q
+
+  The reviewer measured these at `b5cd6c20` before this block was emitted:
+  303, 30, 515, 52, 21, 16 and 42 passed, every one exit 0. A DIFFERENT number
+  is not automatically a failure — report the number you get and, if it differs,
+  name the node ids that account for the difference.
+- **G7 STRUCTURE AND PUSH.** Every commit single-parent
+  (`git log --format='%h %p' b5cd6c20..HEAD` — one parent each) and every
+  insertion count under 500, reported per commit for C0a through C5. C6's own
+  numbers cannot exist while C6 is being written, and self-drive has no round
+  report to route them to, so do NOT state them anywhere: the reviewer measures
+  them at the next gate and records them in that round's ledger entry
+  (§3 item 31). `git status --porcelain` empty. `git ls-files .remedy-wt` empty. The push
+  result reported. `python3 -m apps.cli.grouped integrity check --json` prints
+  `"passed": true` with `"fail_count": 0`.
+
+## Handback
+
+Completion report plus the rewrite of `.agent/handoff.md` described at C6.
+Declare every deviation. If a gate goes red, STOP at that gate, do not route
+around it, and report the exact output — a red gate ends the round honestly and
+is worth more than a green one that was reached by widening scope.
+
+────────────────────────── authored slices ──────────────────────────
+
+<<<BEGIN PLANF260R1>>>
+# Plan — F260 One world: mission → job → run
+
+Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
+pull request 240 (F259). F259 is accepted and its page
+`docs/system/vocabulary.md` is binding for every name this feature introduces.
 
 ## Goal
 
-`docs/system/vocabulary.md` is the BINDING vocabulary page: the DECISION
-amend0905-vocab D1 table, the do-not-confuse table, the Mermaid concept diagram,
-the per-word meaning table, and D2–D10 plus F259 D1/D2 as dated DECISION
-paragraphs. `tests/docs/test_vocabulary.py` pins it in planned mode against the
-shipped `apps/cli/command_catalog.py`; the same diagram stands in `README.md`,
-byte-equal and pinned; the page is registered in `docs/README.md`. No other
-code: F259 decides words, F260 and F261 spend them.
+One job model on disk. The classic store `<data_root>/jobs/<uuid>.json` and the
+ping-pong store `<data_root>/task_jobs/<16hex>/job.json` become one record with
+one id shape minted by one function; a Run becomes the evidence case a Job
+points at; `resolve_any_job_id`, the "TWO job stores" paragraph and every
+which-store branch are deleted. Task slicing per T2_F260.md: T001 inventory and
+id shape, T002 the records and writers, T003 the consumers, T004 the classic
+runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 10 is CLOSURE PART 3 — the last round. One commit flips the STATUS line to
-accepted, syncs the README's counters and its Tier 2 accepted list, marks the
-self-use item consumed and rewrites the handback; it is the last commit on the
-branch. Then the pull request is opened and left UNMERGED, which is the
-operator's review window.
+Round 1 claims F260, books the F259 R10 verdict into the review record, and
+writes `.agent/f260_inventory.md` — the measured reading of every job, run and
+evidence area on disk, both job record shapes, every id shape minted, and the
+re-grepped consumer list. It rules nothing: DECISION F260 D1 and D2 are ruled in
+round 2 from this measurement.
 
 ## Next Steps
 
-- The operator reviews the package at their own pace.
-- The next feature's session merges this pull request at its Open PR Gate, then
-  claims the next unchecked line in the DECISION amend0905-vocab D12 order,
-  which is F260 — one world: mission, job, run.
+- Rule DECISION F260 D1 (where the classic job fields live) and D2 (the one id
+  shape) from the inventory, and settle where a Run's evidence lives now that
+  `<data_root>/runs/` is measured as already occupied by the run log.
+- Write the one minting and resolving function, and move every job-taking
+  command onto it while both stores still exist (T001, part 2).
+- T002: the extended Mission record, the unified Job record, the run directory.
 
 ## Risks
 
-- The README and the STATUS ledger must never disagree in any committed state,
-  which is why one commit carries both. A split would leave a state where the
-  README claims an acceptance the ledger does not.
-- The pull request must not be merged in this session. Merging it here would
-  close the operator's review window before it opened.
-<<<END PLANF259R10>>>
+- The feature file orders `task_jobs/` "renamed to `runs/`" onto a path the run
+  log already writes. Round 1 records the collision; round 2 must rule it before
+  any directory moves, or the rename silently merges two keyspaces — one keyed
+  by job id, one by run id.
+- The prototype cluster deletion (T005) is large and irreversible in one
+  direction only. It runs last, behind a reachability test that is green BEFORE
+  the first `git rm`.
+<<<END PLANF260R1>>>
 
-<<<BEGIN GATE_R9>>>
-Gate: R9 — the F259 R9 entry, CLOSURE PART 2. VERDICT PASS. Range 32808b5d..aba15f08, seven commits, all single-parent, pushed, no pull request; largest commit 303 insertions, so the AGENTS.md DECISION F104 D1 exemption was not needed for the rotation commit, which carried 8. The change set is exactly the ordered paths and the reviewer confirmed with `git diff --name-only` that `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` are named nowhere in it — they belong to the single closure commit that must carry them together under R-0154. TRANSPORT: one digest `5ae765ed108327d52ed5b9e216a859a2186c9ef7b7b601ffae2ac66b18be8da0` across the scratch file, the saved copy and the mirror, equal to the reviewer's own pre-emission digest; a COPY chain per §3 item 37. THE FOUR LEDGER PARAGRAPHS LANDED BYTE-EXACTLY: `.agent/live_review.md` at 3a5f006f equals its parent plus exactly `"\n" + GATE_R8 + "\n\n" + FIND0813 + "\n\n" + REC0784 + "\n\n" + DONE0418 + "\n"` (848 281 to 859 557 bytes), and `.agent/prose_slips.md` equals its parent plus exactly `"\n\n" + SLIP9`, still ending with no newline. THE R-0813 REPAIR: `docs/agents/planner_reviewer_prompt.md` at a7c72f25 equals its parent with the single FROZENFIX replacement and nothing else; the paragraph now contains `measures against 36` exactly once and `the number the next consolidation measures against` zero times; and the per-item digest sweep the reviewer re-ran independently shows the checklist still at 36 items numbered 1 to 31 and 33 to 37 with ZERO item texts changed, which is what a repair confined to the frozen paragraph must look like. THE ROTATION HELD ITS INVARIANT, measured by the reviewer from the committed blobs on both sides: before, 300 registrations against 6 `Done:` lines; after, 298 against 4; open findings 294 on BOTH sides, which is the equality `scripts/rotate_live_review.py` guarantees and refuses on. The ledger fell from 859 557 to 851 727 bytes and the archive rose from 1 723 631 to 1 731 461; the resolved `R-0418` pair is now in the archive, one registration and one `Done:`, and is gone from the live ledger, which is the intended effect of resolving it. THE PACKAGE WAS VERIFIED BY THE REVIEWER FROM THE FILE ON DISK, not from the worker's report: `remedy-review-20260906-004320-READY_FOR_REVIEW.zip` in `/home/decodeux/Repos/remedy-history/zips`, 22 510 711 bytes, sha256 recomputed as `164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3` — equal to the worker's value — `zipfile.testzip()` returning None over 3877 members with no `.log` member among them, and its `.review_zip_manifest.json` read out of the archive giving `committed_review_subject` base `259617949461c993f1b8dabcf659e6a73110b162`, head `efd2a4fb04bb82b8ee87b812327a7c3f9776853a`, `base_is_ancestor` true over 61 commits, `ready_gate_matrix.ok` true with an empty `blocking_reasons`, `package_status` READY_FOR_REVIEW, and the evidence job id `ace7fa4d9d782a7a` present. The evidence bundle's own final verdict is PASS_WITH_RISKS over 8 authority gates, and its one verification run records `tests/docs/` at 303 selected with 303 node ids and two sorted real file paths — the scoped shape closure algorithm step 1 requires, with no full-suite node-id list anywhere. SUITES, re-run by the reviewer: `tests/docs/` 303 and `tests/cli/test_golden_path.py` 42, both reproducing the worker's numbers. THE WORKER'S TWO HONESTY NOTES ARE ACCEPTED AS WRITTEN. `vt_passed` is ABSENT from this manifest rather than null, so a `None` read there means absent-key and not a rejected VerificationTests document — the record was accepted on its own merits and `ready_gate_matrix.ok` is true. The manifest's `dirty_file_count_total` reads 1 while `git status --porcelain` was empty and its own `git_status_snapshot.status` reads OK; the worker reported the discrepancy without explaining it, which is the correct disposition for a number it did not establish, and that block's verdict is PASS with zero issues. Neither is a finding: nothing false is claimed anywhere and no gate over production code is blind.
-<<<END GATE_R9>>>
+<<<BEGIN CONTEXTF260>>>
+# Context — F260 One world: mission → job → run
 
-<<<BEGIN STATUSPAIR_FROM>>>
-- [~] F259 — Vocabulary & concept model v1
-<<<END STATUSPAIR_FROM>>>
+## Active Branch
+feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of pull
+request 240.
 
-<<<BEGIN STATUSPAIR_TO>>>
-- [x] F259 — Vocabulary & concept model v1 (T001–T004 complete; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job ace7fa4d9d782a7a · package remedy-review-20260906-004320-READY_FOR_REVIEW.zip · SHA-256 164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD efd2a4fb04bb82b8ee87b812327a7c3f9776853a)
-<<<END STATUSPAIR_TO>>>
+## Scope
+F260 (Tier 2, depends on F259's binding vocabulary page; blocks F261, F266,
+F268, F269, F270, F271 and F263): make DECISION amend0905-vocab D2 real on disk
+— one Mission record, one Job record, one Run evidence case, one id shape minted
+by one function. Task slicing per T2_F260.md: T001 inventory and id shape, T002
+the records and their writers, T003 the consumer list, T004 the classic runner's
+deletion, T005 the reachability test and the prototype cluster deletion.
 
-<<<BEGIN ACCPAIR_FROM>>>
-the remaining nine belong to the follow-up feature the STATUS ledger
-registers next).
-<<<END ACCPAIR_FROM>>>
+## Do not touch
+The scope-fence builtin deny list (F017), the approval gate, STATUS semantics.
+No command is RENAMED here — F261 owns renames; this feature changes what a job
+IS, not what it is called. No module outside the T2_F260.md lists is deleted,
+and a module that turns out to be reachable is reported, never deleted.
 
-<<<BEGIN ACCPAIR_TO>>>
-the remaining nine belong to the follow-up feature the STATUS ledger
-registers next),
-F259 vocabulary & concept model v1 (the binding page
-`docs/system/vocabulary.md`: one row per word with its meaning, its code
-spelling today and after the rename features, its CLI spelling and what it
-is NOT; the do-not-confuse table; the concept diagram, byte-equal in this
-README and pinned against the page by a test; and the rulings that decided
-them, copied verbatim from the build record).
-<<<END ACCPAIR_TO>>>
+## Assumptions
+- Cleanliness before compatibility (DECISION D-A): no migration shim, no
+  compatibility reader, no alias. Old `.data` content is deleted by the
+  developer, not converted.
+- The inventory on disk as `.agent/f260_inventory.md` is the evidence D1 and D2
+  are ruled from; no later round reconstructs those readings from memory.
+- `<data_root>/runs/` is ALREADY the run-log area keyed by job id, so the
+  feature file's "renamed to runs/" needs a ruling before any directory moves.
+- Deletion is proved before it is performed: the T005 reachability test is green
+  with the doomed modules absent from the reachable set BEFORE the first
+  `git rm`.
 
-<<<BEGIN COUNTPAIR_FROM>>>
-72 of 271 registered items accepted.
-<<<END COUNTPAIR_FROM>>>
+## Constraints
+The bullets in this first group are STANDING project constraints, carried
+forward from the context this file replaced.
 
-<<<BEGIN COUNTPAIR_TO>>>
-73 of 271 registered items accepted.
-<<<END COUNTPAIR_TO>>>
+- A round touching `docs/roadmap/**` also gates
+  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
+- A round rewriting `.agent/` state gates the four state readers:
+  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
+  `tests/regression/test_resource_safety.py` and
+  `tests/orchestration/test_integrity_gate.py`.
+- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
+- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
+- Destructive verification runs only inside a disposable git worktree, never in
+  the primary checkout, which satisfies `git status --porcelain` empty at every
+  verdict.
+- `ruff check` is DENIED to this session's reviewer. A round of F260 that ships
+  a `.py` file gates `python3 -m py_compile <path>` instead, and the worker
+  attempts `ruff check` itself, reporting success or the exact refusal.
+- `remedy` (the built CLI) is DENIED to this session's reviewer session-wide,
+  subagents included; a round needing it delegates the run to the worker and
+  reports the exact output.
+- This session's shell guard refuses some command FORMS outright — shell loops,
+  `$(...)` substitution, a `$` inside a `sed` range — so checks of that shape
+  are re-expressed in Python and the re-expression is reported.
 
-<<<BEGIN TIERPAIR_FROM>>>
-| 2 | Minimal Self-Build Runtime | 15 | 24 |
-<<<END TIERPAIR_FROM>>>
+This feature is NOT UI work — no design-reference binding applies.
 
-<<<BEGIN TIERPAIR_TO>>>
-| 2 | Minimal Self-Build Runtime | 16 | 24 |
-<<<END TIERPAIR_TO>>>
+## Steps
+The item-status table for each round lives in that round's handback,
+`.agent/handoff.md`, which AGENTS.md's "Completion Report — Item-Status Table"
+section requires of every completion report. This file deliberately does not
+restate it.
+<<<END CONTEXTF260>>>
 
-<<<BEGIN QUEUEPAIR_FROM>>>
-      "consumed_by": ""
-<<<END QUEUEPAIR_FROM>>>
+<<<BEGIN REHEADTO>>>
+# Live Review — F260 One world: mission → job → run
 
-<<<BEGIN QUEUEPAIR_TO>>>
-      "consumed_by": "F259"
-<<<END QUEUEPAIR_TO>>>
+> Round-by-round review record, re-headed at the F260 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named
+> F259, which is accepted: its STATUS line went `[x]` at `1e7ecf90` and its pull
+> request 240 merged at `b5cd6c20`. Only the heading and this paragraph are
+> rewritten. Every finding record below `## Findings` is carried forward
+> BYTE-IDENTICAL — the block that ordered this re-head gates that region's
+> sha256 equal before and after the edit, as its gate G2(d) — and finding ids
+> continue the monotonic R-XXXX series across the re-head. Measured by the
+> reviewer at `b5cd6c20`, the branch point: 298 lines matching `^- R-\d{4} — `
+> against 4 matching `^Done: R-\d{4} — `, so 294 findings are open, and the
+> maximum id in use is R-0813 — the next id this feature mints is R-0814.
+> Records belonging to features already marked `[x]` in docs/roadmap/STATUS.md
+> are not here at all: `scripts/rotate_live_review.py` moves them byte-verbatim
+> into the append-only `.agent/live_review_archive.md` in every closure
+> sequence, under operator amendment amend0905-throughput, and that archive is
+> read on demand by id, never at session start.
+<<<END REHEADTO>>>
+
+<<<BEGIN GATE_R10>>>
+Gate: R10 — the F259 R10 entry, CLOSURE PART 3, and the terminator of that branch. VERDICT PASS. Range aba15f08..1e7ecf90, five commits, all single-parent, insertions 300, 251, 19, 2 and 253 — every one far under the AGENTS.md 500-insertion cap, and the last of them is the closure commit whose 253 are the handback plus the three content paths at 9, 1 and 1. This entry is written by the FIRST round of F260 rather than by F259 itself, because the round that writes a record cannot record the gate on itself (planner_reviewer_prompt.md §4 item 13) and self-drive has no second window to carry it (§3 item 31); operator amendment amend0827-process-diet rule 1 routes it to the first commit of the next round that was happening anyway, which is this one. THE REVIEWER RE-RAN EVERY GATE ITSELF and reproduced every number the handback stated. TRANSPORT: one digest `3c9ece83b1b4f46af15c9bc280d9f24ec8e0e61604793d03eb8958b5e9853ae5` across `.agent/authored/f259-r10.md` and `.agent/last_block.md`, equal to the digest the round's own order stated; per §3 item 37 that covers the saved copy and its mirror and is not a claim about bytes emitted into a prompt. THE RECORD APPEND at `df26cab3`: pre 851727 bytes, post 855840, delta 4113, and the pre-image is a byte-exact PREFIX of the post-image with the remainder equal to `"\n" + GATE_R9 + "\n"` for a 4111-byte slice — all four readings true. The independent structural reader agrees: 416 blank-line units before and 417 after, N = 1, every unit preceding the append byte-identical, the appended header `Gate: R9 — the F259 R9 entry, CLOSURE PART 2`, and no two `Gate: R` headers in the file byte-identical, so the item-26 duplicate-header class did not recur. The landed slice carries zero unquoted matches of the token this record forbids outside backticks (R-0586). THE FIVE PAIRS at `1e7ecf90` reconstruct: `docs/roadmap/STATUS.md`, `README.md` and `scripts/self_use_queue.json` each rebuild byte-exactly from their pre-edit bytes with only their own replacements applied, and each still ends with exactly one newline. THE LEDGER AND THE README AGREE: `^- \[x\] F` = 73, `^- \[~\] F` = 0, the README numeral reads 73 of 271, the Tier 2 row reads Done 16 of 24, and the per-tier accepted counts derived from the STATUS headings are Tier 0 16, Tier 1 22, Tier 2 16, Tier 3 6 and Tier 5 13, summing to 73. THE R-0797 TOKEN SWEEP, the point of that round, reproduces exactly and is reported as tokens rather than as a count: the narrow form over the `Accepted in Tier N so far:` blocks finds 4 blocks, 33 occurrences and 32 distinct ids — F008 F009 F013 F014 F016 F021 F022 F031 F032 F034 F037 F046 F047 F048 F050 F051 F052 F053 F086 F103 F104 F105 F106 F107 F251 F252 F254 F255 F256 F257 F259 F262 — and the wide form over the pinning test's own `Accepted[^\n]*:` regex finds 5 blocks, 49 occurrences and 48 distinct, adding F001 F002 F003 F004 F005 F006 F007 F010 F011 F012 F017 F018 F081 F146 F147 F148. In BOTH forms every id is `[x]` in docs/roadmap/STATUS.md and none is absent from it; the count of ids not `[x]` is zero either way, which is what discharges R-0797. THE SELF-USE ITEM is consumed: SU-010 `consumed_by` = `F259`, entries with an empty `consumed_by` = 0, total entries 10, and the `—` escape count is 53 before and 53 after, which is the evidence the file was edited as TEXT and never round-tripped through `json.dump` — the standing shape of open finding R-0785. THE EIGHT SUITES were re-run by the reviewer serially and all eight matched their expected counts at exit 0: tests/docs/ 303, test_roadmap_index.py 30, test_self_use_generator.py 20, tests/ui_server/ 515, test_test_runner.py 52, test_resource_safety.py 21, test_integrity_gate.py 16 and tests/cli/test_golden_path.py 42. THE CLOSURE PRECONDITIONS hold: `integrity check --json` returns `"passed": true` with `"fail_count": 0` over 5 checks at handlers=342, the open-finding count is 294 (298 registrations minus 4 `Done:` lines) unchanged across the round, `.agent/candidates.md` is untouched by the range and remains EMPTY, and the working tree is clean with no tracked file under `.remedy-wt`. THE THREE VALUES THE HANDBACK COULD NOT CARRY, because the commit that writes it is the last on the branch (the R-0449 shape that round declared rather than faked), are recorded here as §3 item 31 requires: the push succeeded, the pull request was number 240, and it was NOT merged by that session — it was merged by THIS session's Open PR Gate with `gh pr merge 240 --merge --delete-branch` at merge commit `b5cd6c20`, after its CI run 33997545989 completed with conclusion success, leaving `gh pr list --state open` empty. Two declared deviations were checked and both are sound: stripping one trailing newline from each pair slice before `str.replace` is newline-neutral and was forced by the block's own marker convention, and running `tests/docs/`, G4 and G5 both before and after the closure commit on byte-identical content is the only way to satisfy a go/no-go gate on a commit nothing may follow. Nothing in that round is owed a repair round, and no closure candidate was raised.
+<<<END GATE_R10>>>
+
+<<<BEGIN AMENDF260D0>>>
+### DECISION F260 D0 (2026-09-06, F260 round 1) — the run directory the feature file names is already taken
+
+RECORDED BEFORE D1 AND D2 BECAUSE BOTH DEPEND ON IT. The "Goal & Done" section
+above says a Run "is the evidence-case folder that today is
+`<data_root>/task_jobs/<16hex>/`" and that "the directory is renamed to
+`runs/`". Measured at `b5cd6c20`, before any line of this feature was written,
+that sentence is wrong twice over and the rename it orders lands on an occupied
+path:
+
+- `<data_root>/task_jobs/<16hex>/` is keyed by JOB id and holds `job.json`,
+  written by `pingpong_job._persist_job`. It is a JOB record, not a run's
+  evidence case.
+- `<data_root>/runs/` already exists and is already written: `data_paths.runs_dir`
+  returns it and `run_log.RunLogWriter` files run logs at
+  `<data_root>/runs/<job_id>/*.jsonl`, which `timeline.load_run_events` reads.
+  It too is keyed by JOB id.
+- The folder actually keyed by RUN id is `<data_root>/pingpong_runs/<run_id>/`,
+  written by `pingpong_loop._persist_run`.
+
+So a plain rename of `task_jobs/` to `runs/` would merge two directories keyed
+by the same job id but holding different things, and would still leave the one
+directory keyed by run id outside the model — while the vocabulary page F259
+made binding gives a Job MANY runs, which no job-keyed directory can express.
+
+CHOSEN: this feature does not perform that rename as written. Round 1 records
+the four measured areas in `.agent/f260_inventory.md`; DECISION F260 D1 is
+widened to rule the RUN directory as well as the job fields, and must state, for
+each of the four areas, whether it survives, moves or is deleted, and what the
+surviving directory is keyed by. Nothing moves on disk until D1 is recorded.
+
+ALTERNATIVES CONSIDERED. Renaming `task_jobs/` to `runs/` as written and letting
+the run log share the directory — rejected: it merges a job-keyed and a
+job-keyed store whose contents answer to different concepts, and leaves
+`pingpong_runs/` stranded. Keeping `task_jobs/` under its present name —
+rejected: the whole point of the feature is that the name lies about what the
+directory holds.
+
+REVERSE by deleting this paragraph and restoring the "Goal & Done" sentence as
+the binding order, at which point the rename becomes a required slice and the
+collision above becomes a defect to be repaired inside it.
+<<<END AMENDF260D0>>>
