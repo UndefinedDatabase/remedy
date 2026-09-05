@@ -12,27 +12,23 @@ flags, with newest-first as the DEFAULT everywhere, without a flag
 
 ## Current Step
 
-Round 21, session 7 - SCOPE REPORT per amend0827-process-diet rule 6:
-this feature has now run 7 sessions (the operator's soft limit), so
-this round books GATE20 (round 20 PASSED), registers R-0795 (T001's
-catalog test was never built; `config.list`/`worker.list`/
-`execution.list` all PARSE the T003 flags via `_with_list_options`'s
-mechanical catalog attachment but their handlers silently discard
-them - measured directly, `--sort bogus` raises nothing), and reports
-scope instead of opening an eighth build round.
+Round 22, session 8 - R-0795 core fix: `config.list`, `worker.list`
+and `execution.list` wired to `apply_list_options`. `worker.list`/
+`config.list` use `default_sort_field=None` (no date field, like
+queue.list/loop.list's D2/D3); `execution.list` uses
+`default_sort_field="started_at"` (a real ISO date per row). Six
+regression tests added (two per command). R-0795 is LANDED, not yet
+Done - the reviewer converts it at the next gate (§4 item 4).
 
-## Next Steps (operator decision needed, per amend0827 rule 6)
+## Next Steps
 
-- Option A: authorize an 8th session to (1) build the T001 catalog
-  test deriving the list-command set from the CLI catalog, (2) wire
-  `config.list`/`worker.list`/`execution.list`'s handlers to
-  `apply_list_options` (they already receive the parsed flags), (3)
-  build the Acceptance ten-second-demo smoke test, then close F262.
-- Option B: register a DECISION narrowing T003's Acceptance to
-  explicitly exempt these three commands (naming the real reason, if
-  one exists, the way D2/D3 did for queue.list/loop.list), correct
-  plan.md's Risks section to state the exemption precisely, and close
-  F262 without the catalog test or the smoke test.
+- Round 23: extend `TestListCommandOptions`
+  (tests/test_command_catalog.py) to dispatch every `_is_list_command`
+  entry's HANDLER (not just its argparse signature) with an invalid
+  `--sort` and assert a non-zero exit - T001's own never-built
+  Acceptance bullet.
+- Round 24: the Acceptance ten-second-demo smoke test, then closure
+  per docs/roadmap/STATUS_closure_protocol.md.
 - change.list's event-log CREATED date stays open, UNRELATED to D1 -
   see DECISION F262 D1's Alternative section.
 
@@ -42,8 +38,8 @@ scope instead of opening an eighth build round.
   that satisfies Acceptance, not a gap to close later.
 - The three ignore-`--json`-entirely execution.* commands are a
   pre-existing quirk this feature does not need to fix.
-- R-0795 (this round): config.list/worker.list/execution.list PARSE
-  all four T003 flags (attached mechanically, like every list command)
-  but their handlers ignore them - `--sort bogus` against any of the
-  three raises nothing, violating Acceptance's own "exits non-zero"
-  bullet. Not yet resolved.
+- A command with its OWN meaningful non-date default order opts out
+  via `default_sort_field=None` (queue.list D2, loop.list D3,
+  worker.list/config.list now too).
+- R-0795: LANDED this round for the three named commands - the
+  catalog-wide enumeration proof (T001's own gap) stays open, round 23.
