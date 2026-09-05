@@ -1,8 +1,9 @@
 # Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 6
-PASSED the reviewer's gate; the round-6 verdict is booked in
-`.agent/live_review.md` by round 7's own C2. All four task slices are built.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 7
+PASSED the reviewer's gate, the last of them the INTEGRATION GATE: the full
+suite is green on the branch and at the merge base, with zero branch-only and
+zero base-only failures. The round-7 verdict is booked by round 8's own C2.
 
 ## Goal
 
@@ -16,25 +17,26 @@ code: F259 decides words, F260 and F261 spend them.
 
 ## Current Step
 
-Round 7 is the INTEGRATION GATE — the full suite on this branch and at the merge
-base 25961794, compared, with every branch-only id attributed, per
-docs/agents/integration_gate.md. The base worktree's parity obeys the fix clause
-of the open finding R-0736: after copying `apps/ui/dist`, its mtimes are set
-newer than the newest file under `apps/ui/src`, because the mtime relation is
-what `_frontend_is_stale` reads and content parity alone manufactures 114 false
-base failures. `apps/ui/node_modules` is copied with `symlinks=True` so the 23
-`.bin` shims are not dereferenced.
+Round 8 is CLOSURE PART 1, the content half: the feature file gains its Built
+State and loses its registration-only banner; the §3 checklist takes its one
+mandated consolidation pass, merging item 32 into item 16 and retiring the
+number rather than renumbering, because the append-only review record
+cross-references these items by number; the self-use queue is replenished and
+its item is run to the approval gate; and the integration-gate verdict is booked.
 
 ## Next Steps
 
-- The closure sequence per docs/roadmap/STATUS_closure_protocol.md: the evidence
-  job, a FRESH review zip, the ledger rotation, the §3 checklist consolidation
-  pass, the reviewer-authored STATUS line committed last, and the pull request —
-  which is NOT merged in this session but at the next feature's Open PR Gate.
+- CLOSURE PART 2: the ledger rotation as its own commit; the evidence job; the
+  FRESH review zip, whose failure would be a closure blocker; the STATUS `[x]`
+  line and the README capability sync in ONE commit with the self-use
+  `consumed_by` edit; then the pull request, which is NOT merged in this session
+  but at the next feature's Open PR Gate.
 
 ## Risks
 
-- A branch-only failure coupled to this feature's code is a blocker and gets its
-  own reviewer-gated repair round; the gate round never fixes what it finds.
-- The suite is large and both runs are full runs, so this round is the session's
-  longest by wall clock.
+- The self-use run is a real job execution. If it raises, that is reported and
+  the reviewer decides what it means; it is never hidden and never retried into
+  silence.
+- The consolidation edits the document that governs the reviewer's own work. Its
+  gate therefore measures every surviving item's digest, so a merge cannot
+  quietly alter a rule it was only supposed to move.
