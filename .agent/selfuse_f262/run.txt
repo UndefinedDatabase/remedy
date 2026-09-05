@@ -1,0 +1,96 @@
+F262 R26 — closure precondition 6's RUN step — SU-009 self-use run evidence
+
+Job id: 21c19578b8754287
+Queue entry id: SU-009 (generated this round by generate_and_append_if_empty(),
+tier 1, ledger scan, R-0418; provenance "generated (self-use-generator tier 1,
+ledger scan, R-0418)"; consumed_by "" — NOT set this round)
+Job file path: .remedy-wt/selfuse-f262-run/SU-009.md
+(rendered by plan_next_self_use_item(); byte-identical copy saved alongside
+this file as SU-009.md — 1541 bytes both, verified by a Python byte read since
+cmp may be denied here; sha256 6d72d9c11ae0c86cff04f4bc9f20235412826871f221dc4ea6908829887360dd,
+equal to the persisted plan's job_file_sha256)
+
+Invocation (python3 -c, foreground, from the repo root):
+  from pathlib import Path
+  from packages.orchestration.self_use_runner import run_next_self_use_item
+  entry, job_file_path, plan = run_next_self_use_item(Path(".remedy-wt/selfuse-f262-run"))
+Unflagged — no builder_name/reviewer_name/builder_provider/reviewer_provider/
+fake override/queue_path passed. Role resolution picked the real product
+default provider for both roles
+(packages.orchestration.role_config.DEFAULT_PROVIDER = "ollama").
+
+Measured wall time: the in-process time.time() measurement around the call
+was LOST — the reporting code that ran after the call returned crashed on a
+wrong attribute name (TaskEntry has task_id, not id) before printing. The
+run itself had completed. It was NOT re-run (a second call would run SU-009
+again). The plan was reloaded from the persisted store
+(.data/task_jobs/21c19578b8754287/job.json via
+packages.orchestration.pingpong_job.load_job_plan) and the wall time is
+bracketed from timestamps on disk instead:
+  plan.created_at            2026-09-05T09:14:57.182947+00:00 (epoch 1788599697.183)
+  task.task_start_recorded_at 2026-09-05T09:14:58.790173+00:00
+  job.json final persist mtime 2026-09-05T09:17:14.155072+00:00 (epoch 1788599834.155)
+  bracket: 136.972 s (planning start to the final persist of the blocked
+  plan; the call itself spanned a fraction of a second more on each side).
+
+Provider / model actually used (from plan.execution_config; both roles'
+*_model fields are blank with source="default", meaning the real default
+model per packages.orchestration.role_config._PROVIDER_DEFAULT_MODELS
+["ollama"] = "muse-glimmer:latest" was used):
+  builder:  provider=ollama (source=cli), model=muse-glimmer:latest (default)
+  reviewer: provider=ollama (source=cli), model=muse-glimmer:latest (default)
+Budgets (plan.budgets): max_provider_calls=6, max_cost_usd=0.5,
+max_total_tokens=None, max_wall_clock_minutes=None, deadline=None;
+max_tasks=1 (source=invocation). All defaults of run_next_self_use_item,
+none overridden.
+
+Full plan.execution_config repr:
+ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama',
+reviewer_source='cli', builder_model='', builder_model_source='default',
+builder_effort='', builder_effort_source='default', reviewer_model='',
+reviewer_model_source='default', reviewer_effort='',
+reviewer_effort_source='default', repair_provider='',
+repair_provider_source='default', repair_model='',
+repair_model_source='default', repair_effort='',
+repair_effort_source='default', max_rounds=3, max_rounds_source='default',
+repair_rounds_allowed=2, repair_rounds_source='default', test_command='',
+test_command_source='default', claude_cli_write_mode='none',
+claude_cli_write_mode_source='default',
+context_strategy='task_bounded_sequential_job', timeout_sec=120,
+timeout_sec_source='default', timeout_profile='',
+timeout_profile_source='default', max_output_chars=50000,
+max_output_chars_source='default', stream_evidence=False,
+stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')
+
+Final plan.status: blocked
+Plan-level error: task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+Per-task outcome (one task, T001 — the JobPlan carries exactly one task):
+  T001: final_status=repair_exhausted, reviewer_verdict=fail,
+        task.status=blocked, repair_rounds_used=2 of 2,
+        task.error="completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+
+describe_self_use_run_defects(plan) output — 2 strings, in order (NOT an
+empty tuple):
+  1. "job 21c19578b8754287 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+  2. "T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail"
+
+Outcome classification: BLOCKED at the normal approval gate after both
+repair rounds were used and the reviewer verdict was "fail" — the same
+outcome as every prior run of the same tier-1 R-0418 pick (SU-005..SU-008).
+No production code changed by this run (result.diff persisted at 0 bytes;
+worktree_cleanup_status=retained). No consumed_by edit was made to
+scripts/self_use_queue.json this round. No R-id was registered this round;
+the reviewer decides, when booking this round, whether these two strings
+add evidence to the open R-0784 or mint a new id.
+
+The job's own retained execution worktree (created and managed by run_job
+itself): .remedy-wt/job-21c19578b8754287/ on branch remedy/job-21c19578b8754287
+at 79a73b5a (C2's tree) — left untouched, as every prior self-use run has
+left its own.
+
+The scratch dest_dir used only to render/plan the job file:
+.remedy-wt/selfuse-f262-run/ — untracked and ignored by the repository's
+existing `.remedy-wt/` rule (.gitignore:235; `git status --porcelain
+--ignored -- .remedy-wt/selfuse-f262-run` prints "!! .remedy-wt/",
+plain `git status --porcelain` prints nothing for it).
