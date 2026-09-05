@@ -1,40 +1,42 @@
-# Plan — F259 Vocabulary & concept model v1
+# Plan — F260 One world: mission → job → run
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 9
-PASSED the reviewer's gate. Round 7 was the integration gate — the full suite
-green on the branch and at the merge base, zero branch-only and zero base-only
-failures. Rounds 8 and 9 were closure parts 1 and 2; the package is built and
-READY_FOR_REVIEW.
+Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
+pull request 240 (F259). F259 is accepted and its page
+`docs/system/vocabulary.md` is binding for every name this feature introduces.
 
 ## Goal
 
-`docs/system/vocabulary.md` is the BINDING vocabulary page: the DECISION
-amend0905-vocab D1 table, the do-not-confuse table, the Mermaid concept diagram,
-the per-word meaning table, and D2–D10 plus F259 D1/D2 as dated DECISION
-paragraphs. `tests/docs/test_vocabulary.py` pins it in planned mode against the
-shipped `apps/cli/command_catalog.py`; the same diagram stands in `README.md`,
-byte-equal and pinned; the page is registered in `docs/README.md`. No other
-code: F259 decides words, F260 and F261 spend them.
+One job model on disk. The classic store `<data_root>/jobs/<uuid>.json` and the
+ping-pong store `<data_root>/task_jobs/<16hex>/job.json` become one record with
+one id shape minted by one function; a Run becomes the evidence case a Job
+points at; `resolve_any_job_id`, the "TWO job stores" paragraph and every
+which-store branch are deleted. Task slicing per T2_F260.md: T001 inventory and
+id shape, T002 the records and writers, T003 the consumers, T004 the classic
+runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 10 is CLOSURE PART 3 — the last round. One commit flips the STATUS line to
-accepted, syncs the README's counters and its Tier 2 accepted list, marks the
-self-use item consumed and rewrites the handback; it is the last commit on the
-branch. Then the pull request is opened and left UNMERGED, which is the
-operator's review window.
+Round 1 claims F260, books the F259 R10 verdict into the review record, and
+writes `.agent/f260_inventory.md` — the measured reading of every job, run and
+evidence area on disk, both job record shapes, every id shape minted, and the
+re-grepped consumer list. It rules nothing: DECISION F260 D1 and D2 are ruled in
+round 2 from this measurement.
 
 ## Next Steps
 
-- The operator reviews the package at their own pace.
-- The next feature's session merges this pull request at its Open PR Gate, then
-  claims the next unchecked line in the DECISION amend0905-vocab D12 order,
-  which is F260 — one world: mission, job, run.
+- Rule DECISION F260 D1 (where the classic job fields live) and D2 (the one id
+  shape) from the inventory, and settle where a Run's evidence lives now that
+  `<data_root>/runs/` is measured as already occupied by the run log.
+- Write the one minting and resolving function, and move every job-taking
+  command onto it while both stores still exist (T001, part 2).
+- T002: the extended Mission record, the unified Job record, the run directory.
 
 ## Risks
 
-- The README and the STATUS ledger must never disagree in any committed state,
-  which is why one commit carries both. A split would leave a state where the
-  README claims an acceptance the ledger does not.
-- The pull request must not be merged in this session. Merging it here would
-  close the operator's review window before it opened.
+- The feature file orders `task_jobs/` "renamed to `runs/`" onto a path the run
+  log already writes. Round 1 records the collision; round 2 must rule it before
+  any directory moves, or the rename silently merges two keyspaces — one keyed
+  by job id, one by run id.
+- The prototype cluster deletion (T005) is large and irreversible in one
+  direction only. It runs last, behind a reachability test that is green BEFORE
+  the first `git rm`.
