@@ -37,8 +37,11 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: channel), F265 (teacher learning UI v1) and F266 (`remedy study`) — were
 #: added by operator order amend0831-vocab-registrations of 2026-08-31; see
 #: T2_F259.md, T2_F260.md, T2_F261.md, T2_F262.md, T2_F263.md, T5_F264.md,
-#: T5_F265.md and T4_F266.md.
-TOTAL_FEATURES = 266
+#: T5_F265.md and T4_F266.md. One more, F267 (list commands v2 completion:
+#: the nine sort/filter/limit wirings DECISION F262 D5 split off F262), was
+#: registered on 2026-09-05 under operator ruling amend0905-throughput; see
+#: T2_F267.md.
+TOTAL_FEATURES = 267
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

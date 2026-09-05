@@ -96,6 +96,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F085 — Sandbox hardening (stage 1) (T001–T003 complete; accepted 2026-08-19 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f085-closure · package remedy-review-20260819-203439-READY_FOR_REVIEW.zip · SHA-256 951d05c41f7c9ab5ee4dc0428b8be17e981b09738c20587f5c6c31b020296ad6 · accepted HEAD 617ef70a3d566abed1ca68a034570636636edad5)
 - [x] F254 — Model alias table & dead-model doctor check (R1–R12 complete; accepted 2026-08-07 · live review PASS — ACCEPTED · Evidence job f254-closure · package remedy-review-20260807-204305-READY_FOR_REVIEW.zip · SHA-256 1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0 · accepted HEAD b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26)
 - [x] F086 — Release capability (T001–T003 complete; accepted 2026-08-20 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f086-closure · package remedy-review-20260820-200318-READY_FOR_REVIEW.zip · SHA-256 bc140179628e8698ef2bd7354cfb30187554f277312f524c9d6ab0324b500855 · accepted HEAD f5fa19c368ed15d14ee6067fc69fde4fbc7863a6)
+- [ ] F267 — List commands v2 completion — sort/filter/limit for the remaining nine commands
 
 Milestone R1 — Remedy as the daily tool: Tier 2 complete (F086 as the self-install/update vehicle). Build-first ends here; use-first begins — from here the order follows the Self-Use sequence below.
 
