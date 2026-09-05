@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-72 of 271 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+73 of 271 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 15 | 24 |
+| 2 | Minimal Self-Build Runtime | 16 | 24 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -75,7 +75,13 @@ F262 list commands v2 (one shared `--sort <field> [--desc] --since <when>
 by the catalog, CREATED/UPDATED dates on the rows, and newest-first
 sort/filter/limit behaviour wired into 15 of the 24 in-scope commands;
 the remaining nine belong to the follow-up feature the STATUS ledger
-registers next).
+registers next),
+F259 vocabulary & concept model v1 (the binding page
+`docs/system/vocabulary.md`: one row per word with its meaning, its code
+spelling today and after the rename features, its CLI spelling and what it
+is NOT; the do-not-confuse table; the concept diagram, byte-equal in this
+README and pinned against the page by a test; and the rulings that decided
+them, copied verbatim from the build record).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
