@@ -1,33 +1,45 @@
-# Plan — amend0905-throughput (operator amendment, Part 2)
+# Plan — amend0905-vocab-rebuild (operator planning amendment)
 
-Branch: feature/amend0905-throughput, cut from `main` after F262's
-closure pull request merged.
+Branch: feature/amend0905-vocab-rebuild, cut from `main` after PR #237
+(amend0905-throughput) merged; STATUS.md had 0 `[~]` lines and
+`remedy plan next` proposed F259 at the cut.
 
 ## Goal
 
-Land the operator's 2026-09-05 Part 2: sessions run six to eight rounds
-while context suffices (2a); the soft-limit default is split-and-close
-executed by the session (2b); `scripts/rotate_live_review.py` rotates
-`[x]` Gate records and resolved finding pairs into the append-only
-`.agent/live_review_archive.md` as a step of every closure sequence, and
-the first rotation runs on this branch (2c).
+Write down the operator's 2026-09-05 vocabulary rulings (DECISION
+amend0905-vocab D1–D12 in `.agent/decisions.md`) and make the vocabulary
+rebuild the very next work: rewrite T2_F259.md / T2_F260.md / T2_F261.md
+completely, register F268–F271 with ledger atomicity (STATUS lines,
+TOTAL_FEATURES 267 → 271, README counter), reorder STATUS.md per D12,
+sweep every feature file for the retired vocabulary (open files edited by
+the replacement table, `[x]` files get a dated vocabulary note only), add
+the "Replacing is deleting" rule to AGENTS.md. PLANNING ONLY: no product
+code, no command or module rename, no module deletion.
 
 ## Current Step
 
-The single amendment round: four rule paragraphs (C1), the script and its
-tests (C2), the first rotation (C3), the DECISION entry and this plan
-(C4), the handoff and the pull request (C5). No feature is in progress;
-Rule A5 proposes the next feature once this merges.
+Commit sequence of the single amendment round: (1) decisions D1–D12 ·
+(2) this plan · (3) F259 rewrite · (4) F260 rewrite · (5) F261 rewrite ·
+(6) registrations F268–F271 + pin + README in one commit · (7) STATUS
+layout (D12 order, F260/F263 titles) · (8) feature-file sweep, ~15 files
+per commit · (9) README / docs index / closure protocol / docs/agents
+sweep · (10) AGENTS.md rule · (11) ruling conflicts as findings in
+live_review.md · (12) handoff rewrite. Then push, PR, hosted run GREEN,
+checks read, merge (two separate commands), verify on main.
 
 ## Next Steps
 
-- The reviewer reads the PR's hosted checks and merges under the
-  operator's 2026-09-05 authorization; end state 0 open PRs.
-- Follow-up proposal (handoff): rotate `.agent/decisions.md`.
+- Operator starts remedy-loop-feature; Rule A5 proposes F259.
+- F259 → F260 → F261 → F266 → F268 → F269 → F270 → F271 → F263 → F264 →
+  F265 in that order (D12).
 
 ## Risks
 
-- The rotation commit is large by construction (a verbatim move of one
-  state-file pair) — declared under AGENTS.md DECISION F104 D1's exemption.
-- Readers of `.agent/live_review.md` (integrity check, self-use generator,
-  dashboard contract) must stay green after rotation — gated in G4.
+- The ruling table applies `promote → apply` by SENSE (job-result verb
+  only); the kept senses are listed in the live_review finding so a later
+  reader does not re-sweep them.
+- README counter is measured on disk (72 accepted), not the operator's
+  recalled 71 — recorded as a conflict finding.
+- Two modules of the F260 deletion list do not exist under those names
+  (`provider_trust_gate.py`, `local_advisor.py`); F260's file names the
+  on-disk modules and the finding records the mismatch.

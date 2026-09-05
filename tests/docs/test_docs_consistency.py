@@ -40,8 +40,12 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: T5_F265.md and T4_F266.md. One more, F267 (list commands v2 completion:
 #: the nine sort/filter/limit wirings DECISION F262 D5 split off F262), was
 #: registered on 2026-09-05 under operator ruling amend0905-throughput; see
-#: T2_F267.md.
-TOTAL_FEATURES = 267
+#: T2_F267.md. Four more — F268 (`remedy do`: the one-command start), F269
+#: (contract & contract templates), F270 (history apply) and F271 (no more
+#: legacy: ownership, reachability, replace-is-delete) — were registered on
+#: 2026-09-05 by operator order amend0905-vocab-rebuild; see T2_F268.md,
+#: T2_F269.md, T2_F270.md and T2_F271.md.
+TOTAL_FEATURES = 271
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

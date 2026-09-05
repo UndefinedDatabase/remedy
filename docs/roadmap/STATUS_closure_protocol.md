@@ -23,7 +23,7 @@
    been planned through `packages.orchestration.self_use_job` and RUN
    through `packages.orchestration.self_use_runner.run_next_self_use_item`
    (F258 T002) to the normal approval gate like any other job — never
-   promoted — and its `consumed_by` set to this
+   applied (the word `promoted` retired by DECISION amend0905-vocab D5) — and its `consumed_by` set to this
    feature's id in the closure commit. Before that: every string
    `packages.orchestration.self_use_findings.describe_self_use_run_defects`
    returns for the run's own `JobPlan` (F258 T003) is registered as a normal

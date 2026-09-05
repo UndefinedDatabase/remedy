@@ -10426,3 +10426,202 @@ line-count open-findings formula reads identically before and after. Not rotated
 travel in this branch's handoff. Reverse by deleting the three
 rule paragraphs and this entry; the archive file stays, because moving records back
 would rewrite the append-only ledger.
+
+## 2026-09-05: amend0905-vocab-rebuild — the vocabulary rebuild becomes the next work
+
+Operator instruction of 2026-09-05, decided in a two-round grill-me and executed on
+`feature/amend0905-vocab-rebuild` cut from `main` after PR #237 merged. PLANNING
+ONLY: this amendment rewrites the registered feature files T2_F259.md, T2_F260.md
+and T2_F261.md, registers F268–F271, reorders `docs/roadmap/STATUS.md`, sweeps the
+feature files for the retired vocabulary, adds one AGENTS.md rule ("Replacing is
+deleting") and records the twelve rulings below. It writes no product code, renames
+no command, deletes no module; everything it decides is built by the features it
+(re)registers. Each ruling ends with its own reverse clause.
+
+## DECISION amend0905-vocab D1 (2026-09-05, operator order amend0905-vocab-rebuild) — one concept model, one word per concept
+
+The nouns of Remedy are: Project, Order, Mission, Contract, Job, Plan, Task, Run,
+Round, Worker (with the roles Builder, Reviewer, Planner, Teacher), Decision,
+Evidence, Gate, Verdict, Roadmap. Their meanings, binding for every later feature,
+every catalog description and every doc under `docs/`:
+
+| Word | Meaning (one sentence) | Is NOT |
+|---|---|---|
+| Project | The frame: one or more repos and every mission inside them. | — |
+| Order | Everything the human gives Remedy: the initial text or file behind `remedy do`, and every later message during a run. | the Job (the Order is input; the Job is Remedy's response) |
+| Mission | What every Order becomes: one persistent record holding the Order, the Contract, the mission Plan and an ordered list of 1..n Jobs. Every order is a mission; a mission has one or more jobs. | a schedule; a job |
+| Contract | The acceptance criteria of a Mission, compiled to machine-checkable checks (Definition of Done). One contract per mission; a job's contract is the derived slice for that job. The mission is not achieved until every blocking check passes. | the run-permission object formerly called "run contract" (that concept is folded into permissions/fences) |
+| Job | The administrative unit under a mission: identity, budget, fences, permissions, decisions, the job Plan (its Tasks) and references to its Runs. | the Run |
+| Plan | The ordered "what will be done" of a level: the mission plan is the list of milestones (each becomes a job); the job plan is the list of tasks. The word "flight plan" is retired everywhere. | the Roadmap |
+| Task | One step in a job plan; the planner chooses how many, bounded by configured maxima that are ceilings, not targets. | a Round |
+| Run | One execution of the ping-pong loop for exactly one Task, owning exactly one evidence folder. | the verb; a dogfood run; the run manifest |
+| Round | One pass inside a run: build → tests → review; round 2+ are repairs. | — |
+| Worker | A model in a role. Roles: Builder, Reviewer, Planner, Teacher (extensible). The report never says "Worker: fake" for a builder; it says the role. | — |
+| Roadmap | Remedy's own build plan under `docs/roadmap/`; a developer tool, never a user concept. | a mission plan |
+
+Decision, Evidence, Gate and Verdict are named by the ruling without a table row;
+F259 T001 writes their rows from the accepted features that own them (F031's inbox,
+the evidence folders, the F061/F062 gates, the Reviewer's verdict), read from the
+code, not remembered. F259 writes this table into `docs/system/vocabulary.md` as the
+binding page. Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D2 (2026-09-05, operator order amend0905-vocab-rebuild) — everything is a mission
+
+No job exists without a mission. The contract has exactly one home, the mission.
+`remedy do` decides from the order whether the mission gets one job or several —
+the planner's shape decision; `--force-job` forces exactly one job, `--force-mission`
+forces at least two. The F056 rule "a mission is never created automatically"
+(T1_F056.md Goal & Done, Acceptance, and the negative tests named in its Built State)
+is REVERSED by this ruling; the explicit mission start (`mission start "<goal>"`)
+remains available. F260 builds the unified record; F268 builds the shape decision.
+Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D3 (2026-09-05, operator order amend0905-vocab-rebuild) — cleanliness before compatibility, deletion before archive
+
+Restates amend0831 D-A (hard breaks allowed while Remedy is deployed nowhere; no
+migration shims) and D-B (old commands are deleted, not aliased; dependents converted
+in the same move) and adds: there is NO `attic/`, NO deprecated alias, NO
+compatibility reader. Deleted code is recovered from git if ever needed. The only
+trace of a deletion is one dated DECISION paragraph naming the deleted modules and,
+per module, the feature that inherited its idea, so no later session rebuilds it.
+Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D4 (2026-09-05, operator order amend0905-vocab-rebuild) — the CLI tree after F261 (binding, complete)
+
+Measured 2026-09-05 at `b2ee0a84`: `apps/cli/command_catalog.py` carries 60 groups
+and 342 commands; `GroupDef` has the fields `id`, `label`, `description`,
+`user_facing`, and 17 groups are `user_facing=True`. After F261 the tree is:
+
+Visible in `remedy --help`, in this order: do, mission, job, run, decision, status,
+stats, teach, memory, ui, config (with the `settings` alias of amend0831 D-D), doctor,
+project, init, worker, runtime.
+
+Advanced (only with `--all-commands`): brain, event, patch, test, blocker, change,
+file, snapshot, self, ci, integrity, dev.
+
+Hidden (in no help at all, callable): roadmap.
+
+Every group not named above is deleted by F261. That includes: queue, loop,
+overnight, provider, external-builder, local-advisor, local-candidate,
+candidate-quality, builder-routing, route-policy, tournament, context, context-pack,
+token, contract (the run-permission group; the word is freed for D1's Contract),
+policy, approval, readiness, progress, feature, propose, review, repair, builder,
+execution, dogfood, self-repair, orchestrator, rollback, guide, dashboard, plan
+(renamed to the hidden roadmap). The catalog group `repo` (`repo status`, `repo
+commit-readiness`) appears in neither list of the ruling and therefore falls under
+"every group not named here is deleted"; the session recorded this as a finding in
+`.agent/live_review.md` so the operator sees it at the next relay.
+
+The commands per surviving group:
+
+- `do <order>` where `<order>` is a text or a path to a `.md` file. Flags:
+  `--apply`, `--with-history`, `--step-by-step`, `--plan-only`, `--force-job`,
+  `--force-mission`, `--contract <template>`, `--no-ui`, `--project`, `--repo`, the
+  budget flags, the role flags (`--builder-model`, `--reviewer-model`,
+  `--planner-model`, and the `--*-provider` triplet), `--yes`, `--json`. Nothing
+  else under `do`.
+- `mission list | show <id> [--full] | plan <id> | contract <id> | run <id> |
+  continue <id> "<next step>" | pause | resume | achieve | abandon | watchdog |
+  handoff | report | readiness | start "<goal>"`. `mission list` IS the operator's
+  list of orders; `show` prints the order text and every amendment.
+- `job list | show <id> [--full] | run <id> [--tasks n] | plan <id> | contract <id> |
+  stop <id> | resume <id> | checkpoints <id> | apply <id> [--approve]
+  [--with-history] [--skip-blocked] | evidence <id> | context <id> --task <t> |
+  budget <id> [set …]`. Permissions, fences, assumptions, digest, summary, status,
+  report, dod are sections of `job show --full`; they are not commands.
+- `run show <id> | list`.
+- `worker list | show | resources | unload | status | doctor`.
+- All other surviving groups keep their commands minus anything that imports a
+  deleted module.
+
+Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D5 (2026-09-05, operator order amend0905-vocab-rebuild) — apply replaces promote everywhere
+
+`apply` replaces `promote` everywhere: CLI (`do promote`, `do job-promote` → `job
+apply`), code identifiers, docs, and evidence file names where a rename does not
+break an accepted evidence chain. Accepted `[x]` evidence is history and stays
+byte-identical. The word `promote` in its OTHER senses — a memory card promoted
+between scopes (F125, F211), a model promoted into a task class (F110,
+docs/agents/model_routing_policy.md), a non-blocking check promoted to blocking by
+config (F130, F132–F134, F156, F170), a finding promoted into a checklist — is not
+the job-result verb and is not renamed; the sweep of this amendment applied the
+ruling by SENSE and recorded the kept occurrences in `.agent/live_review.md`.
+Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D6 (2026-09-05, operator order amend0905-vocab-rebuild) — plan words
+
+`job plan` and `mission plan` are the only two plan commands.
+`packages/orchestration/flight_plan.py` becomes `job_plan.py`; the noun "flight
+plan" is deleted from code, catalog, docs and feature files (accepted `[x]` feature
+files carry a vocabulary note instead of an edit, per D5's history rule). The
+roadmap mirror (today `remedy plan status|next`, F080) becomes the hidden group
+`roadmap` with the same two subcommands. Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D7 (2026-09-05, operator order amend0905-vocab-rebuild) — templates
+
+`remedy loop` (F045's `loop.list`, `loop.validate`, `loop.run` and the `[[loop]]`
+tables of `remedy.toml`) is deleted by F261. A recurring order is an order file kept
+in the repo and started with `remedy do <file.md>`. The word "template" is reserved
+for contract templates (D9). A scheduler that fires order files on a schedule is a
+later feature; nothing here builds it and nothing here registers it. Reverse by
+deleting this paragraph.
+
+## DECISION amend0905-vocab D8 (2026-09-05, operator order amend0905-vocab-rebuild) — remedy do is THE easy start and the operator's standing test path
+
+In order: `init` if the repo is not registered; `study` (F266) exactly once if the
+repo is non-empty and never studied (afterwards only by hand); the planner produces
+mission plan + contract + job plans; the shape decision (one job or several); the
+runs start; the cockpit opens in the browser (unless `--no-ui`); it stops before
+applying unless `--apply`. `--step-by-step` halts at every safe point, prints what
+just happened and what comes next, waits for Enter (`q` stops). `--plan-only` stops
+after planning. `do` never runs a model call while waiting for a keypress. F268
+builds this. Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D9 (2026-09-05, operator order amend0905-vocab-rebuild) — contract and templates
+
+The contract is compiled from the order by the planner; today's F014 acceptance
+criteria (`PlannedTask.acceptance`) and the F061 DoD compiler
+(`packages/orchestration/dod_compiler.py`) are its two halves. Four templates ship
+first: website, api-service, cli-tool, python-library; the planner proposes one from
+the order, `--contract <name>` forces one. Every later operator message (the F264
+channel) is an amendment to the contract: recorded on the mission, DoD recompiled,
+acknowledged with what was understood and from which round it applies. At budget end
+with blocking criteria open, Remedy proposes a remainder contract ("these two
+criteria are unmet — start a follow-up mission?") as a decision the operator answers
+with one word. The old overnight Mission Contract prototype
+(`packages/orchestration/overnight_mission.py`, `overnight contract-create |
+contract-show | contract-readiness`) is superseded by this and deleted (F260). F269
+builds the contract. Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D10 (2026-09-05, operator order amend0905-vocab-rebuild) — history apply
+
+Every passed task lands as one commit on the job worktree branch `remedy/<job id>`
+(the branch `packages/orchestration/worktrees.py` already creates with
+`git worktree add -b`; message: task title + contract state). `job apply --approve`
+copies files as today; `job apply --approve --with-history` merges those commits
+into the operator's current branch instead. Remedy never commits on the operator's
+branch by itself; `--with-history` is an operator command. Non-git targets (staging
+copies) support copy only. F270 builds this. Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D11 (2026-09-05, operator order amend0905-vocab-rebuild) — no more legacy
+
+(a) Every command group in the catalog names its owning feature and its reach
+(golden-path, job-path, mission-path, self-use, teacher, cockpit, self-build); a
+catalog test refuses a group without both. (b) A feature that replaces a mechanism
+deletes the replaced mechanism in the SAME closure sequence — "replacing is
+deleting", added to AGENTS.md Core Workflow by this amendment. (c) An
+import-reachability test asserts that no module outside an allowlist is importable
+from the golden path (`do`), the job path, the mission path, the self-use runner, the
+teacher and the cockpit read endpoints; a new orphan module reds the test. (d)
+`remedy doctor` gets a dead-command check mirroring the F254 dead-model check. F260
+lands (c) first because its deletion round needs it; F271 lands (a), (d) and the
+closure precondition. Reverse by deleting this paragraph.
+
+## DECISION amend0905-vocab D12 (2026-09-05, operator order amend0905-vocab-rebuild) — execution order
+
+Immediately after F262's line in `docs/roadmap/STATUS.md`, the next unchecked lines
+are, in this order: F259, F260, F261, F266, F268, F269, F270, F271, then F263, F264,
+F265, then the rest of the file unchanged. Reason: the operator wants the rebuild to
+be the very next work, and `do` (F268) needs `study` (F266) before it. Reverse by
+moving the lines back into the amend0831 order and deleting this paragraph.
