@@ -1,243 +1,170 @@
-STEP T001-A / F259 — Vocabulary & concept model v1 — round 1 of session 1
-BRANCH feature/f259-vocabulary, to be cut from `main` at 25961794 (the merge of
-pull request #239, amend0905-testlog). The Open PR Gate was run by the reviewer
-before this block was written: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-answered `[]`, so nothing is owed a merge and a new branch is permitted.
+STEP T001-B / F259 — Vocabulary & concept model v1 — round 2 of session 1
+BRANCH feature/f259-vocabulary, already cut and pushed; its head at the time this
+block was written is 85b0e8b5, the round-1 handback commit.
 
 Goal
-  Claim F259 in the roadmap ledger, cut its branch, re-point the two `.agent/`
-  state files at it, re-head this branch's review record, book the reviewer's
-  pending `Done: R-0797` from the F262 branch, and put the T001 source
-  inventory on disk: for each word of DECISION amend0905-vocab D1, the spelling
-  the CODE really uses today, read from the modules T2_F259.md names and from
-  the shipped command catalog. NO product code, NO test, NO page yet — the page
-  is written in later rounds FROM this inventory, and T2_F259.md's T001 says in
-  as many words that the "code spelling today" column is worthless if it is a
-  guess.
+  Book the reviewer's PASS verdict on round 1, repair one byte the round-1 slice
+  cost `.agent/live_review.md`, record two reviewer prose slips, and create
+  `docs/system/vocabulary.md` carrying its binding preamble and the DECISION
+  amend0905-vocab D1 table — one row per D1 word, with the "code spelling today"
+  column taken from `.agent/f259_inventory.md` and from nothing else. The
+  do-not-confuse table, the Mermaid diagram and the D2–D10 paragraphs are NOT in
+  this round; they are rounds 3 and 4.
 
 Bundle, in this order (one commit each)
-  C0  save the block file to .agent/authored/f259-r1.md and mirror it to
-      .agent/last_block.md (see "Delivery" below — copy the file, never retype)
-  C1  .agent/plan.md ← PLANF259R1 (whole rewrite); .agent/context.md ← CTXF259
-      (whole rewrite). One commit: both files are re-pointed from F262 to F259
-      by the same claim.
-  C2a .agent/live_review.md: replace the PREAMBLE REGION with LRHEAD_TO
-      (see "The preamble region" below). The record below `## Findings` is not
-      touched.
-  C2b .agent/live_review.md: insert DONE0797 after the single line beginning
-      `Landed: R-0797` (see "The DONE0797 insertion" below).
-  C3  docs/roadmap/STATUS.md: apply the STATUS pair — the F259 line goes from
-      unclaimed to in-progress.
-  C4  .agent/f259_inventory.md (new) — written by you to the SPEC below.
-  then push the branch; run the gates
-  C5  rewrite .agent/handoff.md (see "The handback" below); push again.
+  C0a save the block file to .agent/authored/f259-r2.md (copy, never retype)
+  C0b mirror it to .agent/last_block.md
+  C1  .agent/plan.md ← PLANF259R2 (whole rewrite)
+  C2  .agent/live_review.md: the blank-line repair, then GATE_R1 appended at end
+      of file; .agent/prose_slips.md: SLIP1 and SLIP2 appended. One commit — all
+      three edits are this round's booking of the round-1 verdict.
+  C3  docs/system/vocabulary.md (new) ← VOCABPAGE
+  then push; run the gates
+  C4  rewrite .agent/handoff.md; push again.
 
-  Create NO pull request this round. F259's pull request is created by its
-  CLOSURE round under docs/agents/planner_reviewer_prompt.md §5, which is also
-  what preserves the operator's manual-review window.
+  Create NO pull request. F259's pull request belongs to its closure round.
 
 Change set — EXACTLY these paths and nothing else
-  .agent/authored/f259-r1.md, .agent/last_block.md (C0) —
-  .agent/plan.md, .agent/context.md (C1) —
-  .agent/live_review.md (C2a, C2b) —
-  docs/roadmap/STATUS.md (C3) —
-  .agent/f259_inventory.md (C4) —
-  .agent/handoff.md (C5)
+  .agent/authored/f259-r2.md (C0a) — .agent/last_block.md (C0b) —
+  .agent/plan.md (C1) — .agent/live_review.md, .agent/prose_slips.md (C2) —
+  docs/system/vocabulary.md (C3) — .agent/handoff.md (C4)
+
+  C0a and C0b are SEPARATE commits this round. Round 1 collapsed them into one
+  and that commit carried 908 insertions, over the AGENTS.md Commit Discipline
+  cap; split, neither half reaches it. This is the shape every later F259 block
+  uses.
 
 Delivery — how this block reaches the repository
-  This block is already on disk, written by the reviewer, at
-      .remedy-wt/f259-r1-block.md
-  `.remedy-wt/` is gitignored (`.gitignore` line 235), so that path is scratch
-  and is never committed. C0 COPIES that file — `shutil.copyfile` or `cp`,
-  never a retype and never an editor round-trip — to .agent/authored/f259-r1.md
-  and to .agent/last_block.md, and gate G1 proves all three bytes-identical by
-  digest. Every authored slice you apply is then extracted from the COMMITTED
-  .agent/authored/f259-r1.md by marker extraction in Python, never retyped.
+  The block is on disk, written by the reviewer, at
+      .remedy-wt/f259-r2-block.md
+  `.remedy-wt/` is gitignored (`.gitignore` line 235). C0a COPIES that file —
+  `shutil.copyfile` or `cp`, never a retype — to .agent/authored/f259-r2.md, and
+  C0b copies it to .agent/last_block.md. Every slice you apply is extracted from
+  the COMMITTED .agent/authored/f259-r2.md by marker extraction in Python.
 
 The authored slices. Each lies between its own one-line BEGIN and END marker;
-the slice is the bytes between the BEGIN marker's newline and the newline
-before the END marker, EXCLUDING that final newline. The marker lines
-themselves are never applied to any file.
+the slice is the bytes between the BEGIN marker's newline and the newline before
+the END marker, EXCLUDING that final newline. The marker lines themselves are
+never applied to any file.
 
-The preamble region (C2a)
-  The PREAMBLE REGION of .agent/live_review.md is its first 28 lines together
-  with the newline ending line 28 — that is, the bytes from offset 0 up to and
-  excluding the byte at which the line `## Findings` begins. Measured by the
-  reviewer at 25961794 with Python: those bytes are 1708 long and their sha256
-  is
-      0f0355434f64b121e845eeb97166dd17e8a97ae2de92ae2383d2f454c4e9922a
-  Line 28 is empty and line 29 is exactly `## Findings`.
-  BEFORE replacing anything, recompute that digest and REFUSE if it differs:
-  the region is identified by its digest, not by a line number, so a file that
-  has moved under this block cannot be silently mis-edited. Then write
-  LRHEAD_TO plus one newline in place of exactly those bytes, leaving every
-  byte from `## Findings` to end of file untouched. That trailing region is
-  815223 bytes with sha256
-      c9a028823fc3a8018ca85e6d90bcbdc4049e4fa2ab976ac025f6595efdb4db9e
-  at 25961794, and gate G3 requires it unchanged by C2a.
+The blank-line repair (C2, first edit)
+  Round 1's LRHEAD_TO slice replaced the record's preamble, and the reviewer's
+  constraint ordered exactly one newline after it, where the preamble it replaced
+  had ended with an empty line. `.agent/live_review.md` therefore reads
+  `…the closure sequence.` immediately followed by `## Findings` with no blank
+  line between them. Insert exactly one newline byte immediately before the `#`
+  of `## Findings`, so the file reads `…the closure sequence.\n\n## Findings\n`.
+  Assert first that `\n## Findings\n` occurs EXACTLY ONCE in the file and that
+  `\n\n## Findings\n` occurs ZERO times; assert afterwards that the second count
+  is 1. Nothing else in the file changes in this edit.
 
-The DONE0797 insertion (C2b)
-  Exactly one line of .agent/live_review.md begins `Landed: R-0797` (count
-  measured 1 by the reviewer at 25961794); the line after it is empty and the
-  line after that begins `- R-0798 —`. Assert the count is 1, then insert,
-  immediately after that line's own newline, the bytes
-      "\n" + DONE0797 + "\n"
-  so the file reads: the Landed line, an empty line, the DONE0797 line, an
-  empty line, the `- R-0798` line. This is an INSERTION, not a rewrite: the
-  `Landed: R-0797` line survives byte for byte, which is what
-  docs/agents/planner_reviewer_prompt.md §4 item 4 preserves — a `Landed:` line
-  is the worker's record that a fix landed, and the reviewer's `Done:` text is
-  what closes it. Gate G3 requires C2b's numstat to read exactly 2 insertions
-  and 0 deletions.
+The GATE_R1 append (C2, second edit)
+  `.agent/live_review.md` ends with a newline. Append the bytes
+      "\n" + GATE_R1 + "\n"
+  so the record gains one empty line and then the GATE_R1 line at end of file.
+  This is the file's existing convention: records are appended at end of file,
+  separated by one empty line.
+
+The prose-slip appends (C2, third edit)
+  `.agent/prose_slips.md` does NOT end with a newline (measured by the reviewer
+  at 85b0e8b5: 74 550 bytes, final byte `.`). Its entries are separated by one
+  empty line. Append the bytes
+      "\n\n" + SLIP1 + "\n\n" + SLIP2
+  and add NO trailing newline, so the file's convention is preserved. The file
+  is append-only and is never rewritten or renumbered (AGENTS.md, prose_slips.md).
 
 Constraints
   1. Every slice is applied BYTE FOR BYTE from the committed
-     .agent/authored/f259-r1.md by marker extraction in Python. You may not
+     .agent/authored/f259-r2.md by marker extraction in Python. You may not
      improve, rewrap, re-punctuate or shorten a slice, and you may not fix an
      error you find in one: apply it as written and declare the problem in the
      handback's deviations. The reviewer owns this text.
-  2. The STATUS pair is applied with `str.replace(FROM, TO, 1)` after
-     confirming FROM occurs EXACTLY ONCE in docs/roadmap/STATUS.md. The
-     reviewer ran the containment test on these exact bytes before emission and
-     it printed `TO contains FROM: false`, so the pair is a REWRITE and the
-     obligation is FROM 0x and TO 1x afterwards — not the append obligation.
-     Re-run the same test yourself before applying —
-     `print('TO contains FROM:', STATUS_TO_bytes.find(STATUS_FROM_bytes) >= 0)`
-     — and record that printed line in the handback. Do not label the pair by
-     eye; the label follows the printed reading on the same line.
-  3. Read `.agent/STOP` from disk before C0, before C3 and before C5. If it
+  2. `docs/system/vocabulary.md` is a NEW file. Write it as VOCABPAGE plus
+     exactly one trailing newline, and create no other file under `docs/`.
+     Registering the page in `docs/README.md` is round 6's work (T004), not
+     this round's — do not do it early.
+  3. Read `.agent/STOP` from disk before C0a, before C3 and before C4. If it
      exists, finish the commit in hand, write the handback saying so, push, and
-     stop — create nothing further.
-  4. NEWLINE CONVENTIONS. PLANF259R1, CTXF259 and the handback each replace
-     their whole file and each end with exactly one trailing newline.
-     LRHEAD_TO replaces the preamble region and is followed by exactly one
-     newline, so `## Findings` still begins its own line. DONE0797 is inserted
-     as described above and is one single line — it contains no newline of its
-     own.
-  5. This session's shell guard refuses some command FORMS outright: shell
-     loops, `$(...)` substitution, `$` inside a `sed` range, and several
-     binaries. Do not fight it — express the check in Python
-     (`python3 -c` or a script under `.remedy-wt/`, which is gitignored) and
-     report the Python you ran beside its output. A refusal is reported
-     verbatim, never worked around by weakening the check.
-  6. `ruff check` and the built `remedy` CLI are DENIED to the reviewer's
-     session. Nothing in this round needs either — no `.py` file is in the
-     change set. If you find you need one, that is a scope escape: stop and
-     say so in the handback.
-  7. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
-     path, no secret-like string — the evidence-packaging metadata scanner
-     rejects such subjects and blocks closure later (AGENTS.md, Commit
-     Discipline). End every commit message with the trailer
+     stop.
+  4. NEWLINE CONVENTIONS, all four in one place: PLANF259R2 replaces
+     `.agent/plan.md` whole and ends with exactly one trailing newline; VOCABPAGE
+     creates `docs/system/vocabulary.md` with exactly one trailing newline;
+     GATE_R1 is appended as described above and is ONE line containing no
+     newline of its own; SLIP1 and SLIP2 are each ONE line and the appended
+     region ends with NO newline.
+  5. This session's shell guard refuses some command FORMS outright — shell
+     loops, `$(...)` substitution, `$?` in a compound command, a `$` anchor
+     inside a `grep -c` pattern, brace-with-quote literals in a heredoc. Do not
+     fight it: re-express the check in Python (`python3 -c`, or a script under
+     the gitignored `.remedy-wt/`) and report the Python you ran beside its
+     output, with the refusal quoted verbatim. No gate is dropped or narrowed
+     because a form was refused.
+  6. Commit subjects are `f259: <what>`. No leading-slash token, no absolute
+     path. End every commit message with the trailer
      `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
-  8. AGENTS.md binds you in full: the self-review loop (`git diff --stat`,
-     `git diff`) before EVERY commit, the Commit Gate, small commits, the
-     branch never being `main`, `git push -u origin feature/f259-vocabulary`.
-     Never `--force`, never `--force-with-lease`, never `gh pr merge`, never a
-     branch deletion.
-  9. The inventory (C4) is a MEASUREMENT. Every claim in it is read from the
-     file it cites at this branch's own commit, and no claim is copied from
-     T2_F259.md, from `.agent/decisions.md`, or from memory: those documents
-     say what the words SHALL mean after F260 and F261, and the inventory
-     records what the code says TODAY. Where the two disagree, the inventory
-     records the code and says nothing about the disagreement.
- 10. Do-not-touch, from T2_F259.md: no command is renamed, no module is moved,
-     no data shape changes, no catalog description is edited. Reading is the
-     whole of C4's work.
-
-SPEC — .agent/f259_inventory.md (C4, new file, written by you)
-
-  Sources to read, and no others for the per-word CODE and CLI lines:
-      packages/core/models.py
-      packages/orchestration/pingpong_job.py
-      packages/orchestration/schemas/models.py
-      packages/orchestration/flight_plan.py
-      packages/orchestration/mission_state.py
-      packages/orchestration/data_paths.py
-      apps/cli/command_catalog.py
-  These are the seven T2_F259.md's T001 names. All seven resolve at 25961794;
-  the reviewer checked each with `git ls-tree`.
-
-  Shape:
-
-    # F259 inventory — the vocabulary as the code spells it today
-    A short blockquote naming the commit every citation was read at and stating
-    that each citation is `path:line` with the line quoted verbatim.
-
-    ## <Word>
-    One section per word of DECISION amend0905-vocab D1, in D1's own order:
-    Project, Order, Mission, Contract, Job, Plan, Task, Run, Round, Worker,
-    Decision, Evidence, Gate, Verdict, Roadmap. Each section carries exactly
-    these three labelled lines or bullet groups:
-
-    - CODE: every symbol in the seven sources whose NAME contains the word,
-      matched case-insensitively, each as `path:line` followed by that source
-      line quoted verbatim in a backtick span. A symbol here is a class, a
-      dataclass or pydantic field, an enum member, a module-level constant, or
-      a `def`. Where the word has no such symbol in the seven sources, the line
-      reads exactly `CODE: none in the seven sources` — that is a fact about
-      the code and is reported, never filled in from somewhere else.
-    - CLI: every `GroupDef` id and every catalog command id containing the
-      word, cited as `apps/cli/command_catalog.py:<line>` with the line quoted
-      verbatim, or exactly `CLI: none in the catalog`.
-    - COMPETING: any OTHER spelling in the seven sources denoting the same
-      thing, each with its own citation, or exactly `COMPETING: none found`.
-      D1's "Is NOT" column is the hint for where to look — flight plan beside
-      plan, promote beside apply, task-file beside job-file, "run" as one
-      provider call beside "run" as a whole execution.
-
-    ## Catalog totals
-    The number of entries in `GROUPS` and in `CATALOG`, and the number of
-    groups whose `user_facing` is True, each obtained by IMPORTING
-    `apps.cli.command_catalog` and calling `len()` — never by grepping — with
-    the exact expression printed beside each number.
-
-    ## Where the unrowed words live
-    D1 gives table rows for some of its words and names Decision, Evidence,
-    Gate and Verdict without one, telling F259's T001 to write their rows from
-    the features that own them. For EACH of those four, name the module that
-    DEFINES the concept, with one `path:line` citation, and state which paths
-    you searched to find it — this is the one part of the inventory that may
-    look outside the seven sources.
+  7. AGENTS.md binds you in full: the self-review loop before EVERY commit, the
+     Commit Gate, the branch never being `main`, `git push -u origin
+     feature/f259-vocabulary`. Never `--force`, never a history rewrite, never
+     `gh pr merge`, never a branch deletion.
+  8. NO `path:line` citation appears anywhere in VOCABPAGE. The page names
+     MODULES and SYMBOLS, because a symbol survives an edit above it and a line
+     number does not (AGENTS.md, Code Discoverability Conventions; the same rule
+     the §3 checklist states as item 9). `.agent/f259_inventory.md` is where the
+     line numbers live, and it is dated and disposable; the page is not.
+  9. Do-not-touch, from T2_F259.md: no command is renamed, no module is moved,
+     no data shape changes, no catalog description is edited. This round writes
+     one new documentation page and four `.agent/` state edits, nothing else.
 
 Done when — the gates. Real exit codes, real output, one line per gate in the
-handback. Every gate runs at or before C4, so the handback can quote all of
+handback. Every gate runs at or before C3, so the handback can quote all of
 them; none is ordered after the commit that writes the handback.
 
-  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r1-block.md .agent/authored/f259-r1.md .agent/last_block.md`
-     — one digest, three times. Report the digest and all three paths. This
-     chain covers the reviewer's own scratch file, your saved copy and the
-     mirror; it is a copy chain, not a retype chain, which is why one reading
-     settles it.
-  G2 THE PAIR AND THE TWO ANCHORED EDITS. For the STATUS pair: the FROM count
-     before (must be 1), the printed containment reading of constraint 2, and
-     after C3 `grep -c '^- \[~\] F259 — Vocabulary & concept model v1$' docs/roadmap/STATUS.md`
-     reads 1 while `grep -c '^- \[ \] F259' docs/roadmap/STATUS.md` reads 0.
-     For C2a: the recomputed preamble digest BEFORE the edit equals the one
-     stated above (report both hex strings), and afterwards
-     `grep -c '^# Live Review — F037' .agent/live_review.md` reads 0 while
-     `grep -c '^# Live Review — F259' .agent/live_review.md` reads 1 and
-     `grep -c 'Steps' .agent/live_review.md` is at least 1. For C2b: the
-     `Landed: R-0797` line count is 1 before AND 1 after, and
-     `grep -c '^Done: R-0797' .agent/live_review.md` goes from 0 to 1.
-  G3 THE RECORD IS CARRIED FORWARD. For C2a: the bytes from the start of
-     `## Findings` to end of file, before and after the edit, have the SAME
-     sha256, and that digest equals
-     c9a028823fc3a8018ca85e6d90bcbdc4049e4fa2ab976ac025f6595efdb4db9e —
-     report both computed hex strings. For C2b: `git show --numstat <C2b>`
-     names exactly `.agent/live_review.md` and reads exactly 2 insertions and
-     0 deletions. Also report, after C2b, the open-finding arithmetic that
-     docs/agents/planner_reviewer_prompt.md §3 item 10 prescribes: the count of
-     lines matching `^- R-[0-9]{4} — ` and the count matching
-     `^Done: R-[0-9]{4} — `, and their difference.
-  G4 STATUS INVARIANTS. After C3: `grep -c '^- \[~\] F' docs/roadmap/STATUS.md`
-     reads 1 (at most one feature is in progress — the invariant
-     `tests/docs/test_docs_consistency.py` pins with
-     `assert len(in_progress) <= 1`); `grep -c '^- \[x\] F' docs/roadmap/STATUS.md`
-     reads 72, unchanged from the branch point; `git show --numstat <C3>` names
-     exactly `docs/roadmap/STATUS.md` at 1 insertion and 1 deletion.
-  G5 THE SUITES, RUN SERIALLY, at C4. Each is a real run; report the passed
-     count and the exit code for each. The expected counts were all measured by
-     the reviewer at 25961794 on this machine:
+  G1 TRANSPORT. `sha256sum .remedy-wt/f259-r2-block.md .agent/authored/f259-r2.md .agent/last_block.md`
+     — one digest, three times. Report the digest and all three paths. It is a
+     copy chain, not a retype chain, which is why one reading settles it.
+  G2 THE THREE APPENDS OF C2, each proved by a PREFIX property rather than by a
+     line count. For `.agent/live_review.md`: report the count of `\n## Findings\n`
+     and of `\n\n## Findings\n` before the repair (expect 1 and 0) and after
+     (expect 0 and 1); then, for the GATE_R1 append, the file's bytes immediately
+     before the append are a byte-exact PREFIX of its bytes after, and the
+     remainder is exactly `"\n" + GATE_R1 + "\n"` — report both booleans;
+     and `grep -c '^Gate: R1 — ' .agent/live_review.md` goes from 0 to 1. For
+     `.agent/prose_slips.md`: the pre-append bytes are a byte-exact PREFIX of the
+     post-append bytes and the remainder equals `"\n\n" + SLIP1 + "\n\n" + SLIP2`
+     exactly — report both booleans — and the file still does not end with a
+     newline. Report `git show --numstat <C2>` verbatim beside these readings
+     rather than asserting its numbers: the prose-slip file's missing final
+     newline makes the diff's line accounting unobvious, and the prefix property
+     is the real proof.
+  G3 THE PAGE LANDED VERBATIM AND ROWS THE RIGHT WORDS. `docs/system/vocabulary.md`
+     equals the extracted VOCABPAGE slice plus one trailing newline, compared with
+     `filecmp.cmp(..., shallow=False)` against the extraction written to
+     `.remedy-wt/`; report the boolean. Then extract the first cell of every table
+     row of the page's word table, in file order, strip the bold markers, and
+     report that list. It must equal, in order, the words DECISION amend0905-vocab
+     D1 names: Project, Order, Mission, Contract, Job, Plan, Task, Run, Round,
+     Worker, Decision, Evidence, Gate, Verdict, Roadmap. Report the length your
+     own extraction measured rather than checking it against a number this block
+     states.
+  G4 EVERY MODULE AND SYMBOL THE PAGE NAMES RESOLVES. Write a checker under
+     `.remedy-wt/` (gitignored, never committed) that (a) collects every
+     backticked span on the page that CONTAINS A SLASH and ends `.py`, and
+     confirms each such file exists — report the count found and the count
+     resolved, which must be equal. The slash is what makes this a path rather
+     than a filename: the "after F260/F261" column deliberately names
+     `job_plan.py`, a module F261 has not created yet, and a bare `.py` appears
+     in ordinary prose, so neither is a path and neither is checked. Then (b)
+     for every OTHER backticked span on the page that is a bare
+     Python identifier or a dotted identifier — no spaces, no `<`, no `-` — that
+     the page attributes to a module in the same table cell, confirms the
+     identifier occurs in that module's source. Report the count checked, the
+     count found, and the full list of any not found. Then run a NEGATIVE
+     CONTROL: on a COPY of the page under `.remedy-wt/`, rename one identifier to
+     a name that does not exist and confirm the checker reports exactly one
+     failure — a checker that cannot fail proves nothing when it passes.
+  G5 THE SUITES, RUN SERIALLY, at C3. Each is a real run; report the passed count
+     and exit code for each. The expected counts were measured by the reviewer at
+     85b0e8b5, this branch's head before this round:
        python3 -m pytest tests/docs/ -q                                 expect 295
        python3 -m pytest tests/orchestration/test_roadmap_index.py -q   expect 30
        python3 -m pytest tests/ui_server/ -q                            expect 515
@@ -245,72 +172,52 @@ them; none is ordered after the commit that writes the handback.
        python3 -m pytest tests/regression/test_resource_safety.py -q    expect 21
        python3 -m pytest tests/orchestration/test_integrity_gate.py -q  expect 16
        python3 -m pytest tests/cli/test_golden_path.py -q               expect 42
-     The first two are the docs-round gate this round owes because its change
-     set includes `docs/roadmap/**`; the next four are the state readers this
-     round owes because it rewrites `.agent/` state, and they are run as four,
-     not as three; the last is the standing canary. A count that comes back
-     DIFFERENT is not rounded off or explained away — report the number and the
-     failing node ids verbatim.
-  G6 THE INVENTORY IS MEASURED, NOT REMEMBERED. Write a checker under
-     `.remedy-wt/` (gitignored, never committed) that parses EVERY
-     `path:line` citation out of `.agent/f259_inventory.md`, opens each cited
-     file, reads that line, and compares it against the text the inventory
-     quotes beside the citation. Report: the number of citations found, the
-     number that resolved to an existing file and line, and the number whose
-     quoted text did not match — the last must be 0, and any mismatch is listed
-     with its citation. Report also `grep -c '^## ' .agent/f259_inventory.md`
-     and confirm each of the seven source paths appears at least once in the
-     file.
-  G7 THE STATE FILES MEET THEIR CONTRACTS. `wc -l .agent/plan.md` is under 50
-     (AGENTS.md, plan.md rules); `grep -c '^## Goal$' .agent/plan.md` and
-     `grep -c '^## Next Steps$' .agent/plan.md` each read 1;
-     `grep -c '^## Active Branch$' .agent/context.md` reads 1 and
-     `grep -c 'feature/f259-vocabulary' .agent/context.md` is at least 1. Then
-     the byte-equality check: the applied `.agent/plan.md` and
-     `.agent/context.md` each equal their extracted slice plus one trailing
-     newline, compared with `filecmp.cmp(..., shallow=False)` against the
-     extraction written to `.remedy-wt/`; report each comparison's boolean.
-  G8 STRUCTURE. `git status --porcelain` is empty immediately before C5 is
-     staged and again after the final push; `git ls-files .remedy-wt` returns
-     nothing (report the line count); `git log --oneline` for the branch shows
-     each commit single-parent; and `git diff --numstat <parent> <commit>` for
-     EACH commit from C0 through C4, reported cell by cell so that the
-     `## Commits` table of the handback carries the SAME numbers this gate
-     printed — the table's `+/-` cells are derived from `git diff --numstat`
-     and from nothing else. Every commit is under 500 insertions; if one is
-     not, declare it with its inseparability reason rather than splitting a
-     slice. Report the push result and confirm no pull request was created.
+     The four state readers are run as four, not as three. A count that comes
+     back different is not rounded off or explained away: report the number and
+     the failing node ids verbatim.
+  G6 THE PLAN MEETS ITS CONTRACT. `wc -l .agent/plan.md` under 50; the file
+     carries one `## Goal` heading and one `## Next Steps` heading (report both
+     counts); and it equals the extracted PLANF259R2 slice plus one trailing
+     newline under `filecmp.cmp(..., shallow=False)` — report the boolean.
+  G7 STRUCTURE. `git status --porcelain` empty immediately before C4 is staged
+     and again after the final push; `git ls-files .remedy-wt` returns nothing
+     (report the line count); every commit single-parent; and
+     `git diff --numstat <parent> <commit>` for EACH commit C0a through C3,
+     reported cell by cell so the handback's `## Commits` table carries the same
+     numbers this gate printed and is derived from `git diff --numstat` and from
+     nothing else. Report each commit's insertion count against the 500 cap; if
+     one exceeds it, declare it with its inseparability reason rather than
+     splitting a slice. Report the push result and confirm no pull request was
+     created.
 
-The handback (C5) — rewrite .agent/handoff.md whole
-  It has no length cap (AGENTS.md, operator amendment amend0827-process-diet
-  rule 3); it is valid when it carries its mandated sections. It must carry:
-  the feature and round and the SESSION NUMBER — this is SESSION 1 of F259 —
-  and the running round count; the commit range; a `## Commits` table with one
-  row per commit giving the files and the `+/-` numbers G8 printed; the
-  item-status table AGENTS.md requires, with one row per bundle item C0 through
-  C5 and a status of done, skipped or deviated with a reason; one line per gate
-  G1 through G8 with its real reading; the open-findings count G3 computed; the
-  deviations and assumptions; ONE sentence assessing how much context this
-  session has left (operator amendment amend0905-throughput); and the next
-  expected action, which is the reviewer's gate of this round and then round 2,
-  the D1 table written from the inventory. Repeat the Fortschritt line of the
-  operator brief verbatim in its state block: `~10 % (T001 inventory in review
-  · T001 page, T002, T003, T004 open) — Schätzung`.
+The handback (C4) — rewrite .agent/handoff.md whole
+  No length cap. It must carry: the feature, the round and the SESSION NUMBER —
+  this is still SESSION 1 of F259, round 2, rounds so far 2; the commit range;
+  a `## Commits` table with one row per commit giving the files and the `+/-`
+  numbers G7 printed; the item-status table AGENTS.md requires, one row per
+  bundle item C0a through C4 with a status of done, skipped or deviated with a
+  reason; one line per gate G1 through G7 with its real reading; the deviations
+  and assumptions; ONE sentence of context self-assessment (operator amendment
+  amend0905-throughput); and the next expected action, which is the reviewer's
+  gate of this round and then round 3, the do-not-confuse table and the Mermaid
+  diagram. Repeat this line verbatim in its state block:
+  `~25 % (T001 inventory ✅ · D1-Tabelle im Review · Diagramm, T002, T003, T004 offen) — Schätzung`
 
-<<<BEGIN PLANF259R1>>>
+<<<BEGIN PLANF259R2>>>
 # Plan — F259 Vocabulary & concept model v1
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794 (the merge of pull
-request #239). STATUS.md carried no `[~]` line at the cut and F259 is the first
-`[ ]` line of the execution order DECISION amend0905-vocab D12 fixes.
+Branch: feature/f259-vocabulary, cut from `main` at 25961794. Round 1 PASSED the
+reviewer's gate; its verdict is booked in `.agent/live_review.md` by round 2's
+own C2, which is where a verdict lands under operator amendment
+amend0827-process-diet rule 1.
 
 ## Goal
 
 Write `docs/system/vocabulary.md` as the BINDING vocabulary page: the DECISION
-amend0905-vocab D1 table — one row per word, with its meaning, its code
-spelling today, its code spelling after F260/F261, its CLI spelling and what it
-is NOT — plus the do-not-confuse table, the Mermaid concept diagram, and D2–D10
-and F259 D1/D2 as dated DECISION paragraphs. Pin the page with
+amend0905-vocab D1 table — one row per word, with its meaning, its code spelling
+today, its code spelling after F260/F261, its CLI spelling and what it is NOT —
+plus the do-not-confuse table, the Mermaid concept diagram, and D2–D10 and F259
+D1/D2 as dated DECISION paragraphs. Pin the page with
 `tests/docs/test_vocabulary.py` in planned mode against the shipped
 `apps/cli/command_catalog.py`, put the same Mermaid block into `README.md`, and
 register the page in `docs/README.md`. Explicitly no other code: F259 decides
@@ -318,19 +225,17 @@ words, F260 and F261 spend them.
 
 ## Current Step
 
-Round 1 — claim F259, cut the branch, re-point this file and `.agent/context.md`
-at it, re-head `.agent/live_review.md`, book the reviewer's `Done: R-0797`, and
-put the T001 source inventory on disk in `.agent/f259_inventory.md`: per D1
-word, the spelling the code really uses today, read from the seven modules
-T2_F259.md names and never from memory.
+Round 2 — create `docs/system/vocabulary.md` with its binding preamble and the
+D1 table, every "code spelling today" cell taken from `.agent/f259_inventory.md`
+and from nothing else; book the round-1 verdict and two reviewer prose slips;
+repair the blank line the round-1 preamble slice cost the review record.
 
 ## Next Steps
 
-- Write the page's D1 table from that inventory, one row per word.
 - Add the do-not-confuse table, the Mermaid diagram and its short
   REMEDY_EINSTIEG-grade description; that completes T001.
-- Write D2–D10 and F259 D1/D2 onto the page and check `T2_F263.md`'s heading
-  for a working name (T002).
+- Write D2–D10 and F259 D1/D2 onto the page and check `T2_F263.md`'s heading for
+  a working name (T002).
 - Write `tests/docs/test_vocabulary.py` in planned mode with both of the red
   proofs T2_F259.md's T003 names.
 - Put the Mermaid block into `README.md` and register the page in
@@ -339,125 +244,83 @@ T2_F259.md names and never from memory.
 
 ## Risks
 
-- The "code spelling today" column is worthless if it is guessed, which is why
-  the inventory round comes before any page round.
+- The page's middle two columns say different things ON PURPOSE — today's
+  spelling and the spelling after F260/F261 — and a reader who conflates them
+  will think the page is wrong. The preamble says so before the table.
 - `README.md` has a guarded region: its `Accepted in Tier 2 so far:` block is
   scanned for feature ids, and putting an unaccepted id there is what R-0797
-  was. The T004 round writes into that file and must not add an id token.
-<<<END PLANF259R1>>>
+  was. Round 6 writes into that file and must add no id token.
+<<<END PLANF259R2>>>
 
-<<<BEGIN CTXF259>>>
-# Context — F259 Vocabulary & concept model v1
+<<<BEGIN GATE_R1>>>
+Gate: R1 — the F259 R1 entry. R1 WAS THE CLAIM AND THE T001 SOURCE INVENTORY. VERDICT PASS. Range 25961794..85b0e8b5, seven commits, all single-parent, pushed to `origin/feature/f259-vocabulary`, no pull request created. The reviewer re-ran every gate itself rather than reading the handback's numbers. TRANSPORT: `sha256sum` over `.remedy-wt/f259-r1-block.md`, `.agent/authored/f259-r1.md` and `.agent/last_block.md` returns the single digest `6b0cd1746c917224a52cfd71d07b9497729b6ea2f8441ffb85702911add499cf`, equal to the digest the reviewer computed over its own scratch file before emission; per §3 item 37 that chain covers the reviewer's scratch file, the worker's saved copy and the mirror — it is a COPY chain under docs/agents/self_drive_protocol.md, where nothing is retyped, and it is not a claim about bytes emitted into a prompt. SLICES: the reviewer extracted each slice from the COMMITTED `.agent/authored/f259-r1.md` and compared it against disk — `LRHEAD_TO` is an exact byte prefix of `.agent/live_review.md` at ddf1e9b3 with `## Findings` beginning immediately after it; `.agent/plan.md` and `.agent/context.md` at 951134e8 each equal their slice plus one trailing newline exactly; the `DONE0797` slice occurs exactly once at 6efb510b in the shape Landed-line, empty line, Done-line, empty line, `- R-0798` line, with the `Landed: R-0797` line surviving byte for byte as §4 item 4 requires. RECORD CARRIED FORWARD: the bytes from `## Findings` to end of file are byte-IDENTICAL across the re-head at ddf1e9b3, 815 223 bytes, sha256 `c9a028823fc3a8018ca85e6d90bcbdc4049e4fa2ab976ac025f6595efdb4db9e` before and after, equal to the value the reviewer measured at 25961794 before the block was emitted. LEDGER: `docs/roadmap/STATUS.md` at 67598164 differs from its parent in exactly the F259 line and in nothing else — the reviewer reconstructed the parent by the single substitution and compared byte-for-byte — leaving one `[~]` line and 72 `[x]` lines. OPEN SET, recomputed mechanically per §3 item 10: 299 `^- R-\d{4} — ` registrations against 5 `^Done: R-\d{4} — ` lines, 294 open, down one from the 295 measured at the branch point because this round closed R-0797. SUITES, re-run by the reviewer serially and all exact: `tests/docs/` 295, `tests/orchestration/test_roadmap_index.py` 30, `tests/ui_server/` 515, `tests/orchestration/test_test_runner.py` 52, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, `tests/cli/test_golden_path.py` 42. INVENTORY: the reviewer wrote its OWN citation checker rather than trusting the worker's and measured 471 citations, 471 resolving to an existing file and line, 0 whose quoted text differs from the source, with a negative control perturbing one quotation and correctly reporting exactly 1 mismatch; `len(GROUPS)` 60, `len(CATALOG)` 342 and 17 user-facing groups were re-derived by IMPORTING `apps.cli.command_catalog`, and all three equal the values DECISION amend0905-vocab D4 measured independently at `b2ee0a84`. TWO COMMITS EXCEED THE 500-INSERTION CAP AND BOTH WERE DECLARED BY THE WORKER BEFORE REVIEW, which is the honest route AGENTS.md Commit Discipline names: C4 `c2f74bd1` at 615 insertions is ONE new file holding one indivisible measurement and is ACCEPTED as this feature's single stated-cause overage, and it is not a precedent; C0 `686dde44` at 908 was the reviewer's own authoring error, because the block collapsed the authored save and the `.agent/last_block.md` mirror into one commit where the precedent block of amend0905-throughput had split them into C0a and C0b for exactly this reason, and split they are 463 and 445, both under the cap. BINDING ON EVERY LATER F259 BLOCK: the block save is TWO commits. Neither overage is a finding with product effect under operator amendment amend0827-process-diet rule 2 — nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong and no gate over production code is blind — so no R-id is spent and the two reviewer-side lessons are recorded in `.agent/prose_slips.md` by the same commit that appends this entry.
+<<<END GATE_R1>>>
 
-## Active Branch
-feature/f259-vocabulary, cut from `main` at 25961794, the merge commit of pull
-request 239.
+<<<BEGIN SLIP1>>>
+2026-09-05 · F259 R1 (reviewer) · The round-1 block ordered the authored save and the `.agent/last_block.md` mirror as ONE commit (C0), which landed 908 insertions against the 500-insertion cap of AGENTS.md Commit Discipline, while the amend0905-throughput block the reviewer had read while writing it split exactly that work into C0a and C0b — 463 and 445 apart, both under the cap. The reviewer copied the precedent's slice conventions and not its commit split. THE LESSON: the block-save commit costs roughly twice the block's own length, because the authored file is a full insert and the mirror is a full rewrite, so a block over about 250 lines must split the save or it orders an overage by arithmetic alone. Reviewer-authored ordering slip; the worker declared it correctly before review and nothing on disk under `packages/`, `apps/`, `tests/` or `docs/` is wrong; no R-id spent (amend0827-process-diet rule 2).
+<<<END SLIP1>>>
 
-## Scope
-F259 (Tier 2, depends on nothing; F260 and F261 both cite its page as binding,
-F263 takes its command name from it, and F268–F271 take their words from it):
-write `docs/system/vocabulary.md` as the binding vocabulary page and pin it
-with a docs test that reads the shipped command catalog. Task slicing per
-T2_F259.md: T001 the page written from the code as it is TODAY, T002 the two
-rulings F259 settles itself onto the page, T003 the docs test in planned mode
-with both red proofs, T004 the README diagram and the docs index registration.
+<<<BEGIN SLIP2>>>
+2026-09-05 · F259 R1 (reviewer) · The round-1 block's constraint 4 ordered the `LRHEAD_TO` preamble slice "followed by exactly one newline, so `## Findings` still begins its own line", and the preamble it replaced had ended with an EMPTY line, so the applied file reads `…the closure sequence.` immediately followed by `## Findings` with no blank line between them. The constraint reasoned about what the heading needs to PARSE and not about what the region it replaced actually ended with; the worker applied the slice verbatim as constraint 1 required and flagged the gap rather than silently fixing it. THE LESSON: a whole-region replacement's newline convention is derived from the BYTES of the region being replaced, which the block already had to measure to identify the region at all, not from what the following construct needs in order to render. Reviewer-authored newline slip in an `.agent/` prose file, repaired by round 2's C2; no R-id spent (amend0827-process-diet rule 2).
+<<<END SLIP2>>>
 
-## Do not touch
-No command is renamed, no module is moved, no data shape changes, no catalog
-description is edited (T2_F259.md, "Do not touch"). A rename inside this
-feature is out of scope by construction: F261 owns renames and F260 owns the
-data model.
+<<<BEGIN VOCABPAGE>>>
+# Vocabulary — the words Remedy uses
 
-## Assumptions
-- The "code spelling today" column of the D1 table is READ from the seven
-  modules T2_F259.md's T001 names, never reconstructed; round 1 puts that
-  reading on disk as `.agent/f259_inventory.md` so later rounds copy from a
-  measurement.
-- The docs test reads the `GROUPS` dict and `CATALOG` list of
-  `apps/cli/command_catalog.py` directly, never a captured transcript of
-  `remedy --help`.
-- The planned/enforced switch is a named module constant that F261 flips, never
-  a skip marker (T2_F259.md, Goal & Done).
-- The page's Mermaid block and the README's are byte-equal, and the test is
-  what stops them drifting.
+> **BINDING.** These are the words. Every feature, every command description in
+> `apps/cli/command_catalog.py` and every document under `docs/` uses them with
+> the meaning given here, and uses no synonym for a word that already has one.
+> The operator decided them on 2026-09-05 in order amend0905-vocab-rebuild,
+> DECISION amend0905-vocab D1; F259 wrote them down. To change a word, change
+> this page first.
 
-## Constraints
-The bullets in this first group are STANDING project constraints, carried
-forward from the context this file replaced.
+## How to read the table
 
-- A round touching `docs/roadmap/**` also gates
-  `tests/orchestration/test_roadmap_index.py` beside `tests/docs/`.
-- A round rewriting `.agent/` state gates the four state readers:
-  `tests/ui_server/`, `tests/orchestration/test_test_runner.py`,
-  `tests/regression/test_resource_safety.py` and
-  `tests/orchestration/test_integrity_gate.py`.
-- THE FOUR STATE READERS ARE RUN AS FOUR, NOT AS THREE.
-- Every handback runs the canary `pytest tests/cli/test_golden_path.py`.
-- Destructive verification runs only inside a disposable git worktree, never in
-  the primary checkout, which satisfies `git status --porcelain` empty at every
-  verdict.
-- `ruff check` is DENIED to this session's reviewer. A round of F259 that ships
-  a `.py` file gates `python3 -m py_compile <path>` instead, and the worker
-  attempts `ruff check` itself, reporting success or the exact refusal.
-- `remedy` (the built CLI) is DENIED to this session's reviewer session-wide,
-  subagents included; a round needing it delegates the run to the worker and
-  reports the exact output.
-- This session's shell guard refuses some command FORMS outright — shell loops,
-  `$(...)` substitution, a `$` inside a `sed` range — so checks of that shape
-  are re-expressed in Python and the re-expression is reported.
+Two of the columns disagree on purpose. **Code spelling today** is what the
+source really says right now — it was read out of the code, not remembered, and
+`.agent/f259_inventory.md` holds the per-symbol citations it was taken from,
+measured at commit `67598164`. **Code spelling after F260/F261** is a PLAN:
+F260 rebuilds the data model and F261 performs the renames, and until they land
+the two columns differ wherever the current code carries a word this page
+retires. A reader who conflates them will think the page is wrong about the
+code; it is not, it is about both the code and the decision.
 
-This feature is NOT UI work — no design-reference binding applies.
+The last column is the one that does the work. Most of the confusion this page
+exists to end was not people failing to define a word — it was two words for one
+thing, or one word for two things.
 
-## Steps
-The item-status table for each round lives in that round's handback,
-`.agent/handoff.md`, which AGENTS.md's "Completion Report — Item-Status Table"
-section requires of every completion report. This file deliberately does not
-restate it.
-<<<END CTXF259>>>
+## The words
 
-<<<BEGIN LRHEAD_TO>>>
-# Live Review — F259 Vocabulary & concept model v1
+| Word | Meaning | Code spelling today | Code spelling after F260/F261 | CLI spelling | Is NOT |
+|---|---|---|---|---|---|
+| **Project** | The frame: one or more repos and every mission inside them. | `project_id` in `packages/core/models.py` and in `packages/orchestration/mission_state.py`, which also defines `mission_dir_for_project` and `project_ids_with_missions`; the store path is `projects_dir` in `packages/orchestration/data_paths.py` | unchanged | the `project` group: `create`, `list`, `show`, `attach-repo`, `attach-job`, `brain`, `context`, `summary`, `current`, `adopt` | — |
+| **Order** | Everything the human gives Remedy: the initial text or file behind `remedy do`, and every later message during a run. | no symbol spells it; the same thing is carried under two other names — `parse_job_file`, `plan_job_from_file` and `job_file_sha256` in `packages/orchestration/pingpong_job.py`, and the `--job-file` and `--task-file` options in `apps/cli/command_catalog.py` | `order`; both option spellings are deleted and the argument becomes the positional `<order>`, text or a `.md` path (DECISION F259 D2) | none today; `do <order>` after F261 | the Job — the Order is the input, the Job is Remedy's response |
+| **Mission** | What every Order becomes: one persistent record holding the Order, the Contract, the mission Plan and an ordered list of 1..n Jobs. | `Mission`, `MissionJobLink`, the `MISSION_STATUS_` and `MISSION_ROLE_` constants and the `Mission*Error` family, all in `packages/orchestration/mission_state.py` | unchanged as a type; a mission is created for EVERY order, which reverses F056's "a mission is never created automatically" (DECISION amend0905-vocab D2) | the `mission` group: `list`, `show`, `plan`, `contract`, `run`, `continue`, `pause`, `resume`, `achieve`, `abandon`, `start` | a schedule; a job |
+| **Contract** | The acceptance criteria of a Mission, compiled to machine-checkable checks — its Definition of Done. One per mission; a job's contract is the derived slice for that job. | nothing in the seven sources spells this concept; its two halves are `PlannedTask.acceptance` in `packages/orchestration/schemas/models.py` and `packages/orchestration/dod_compiler.py`. The catalog's `contract` group today is a DIFFERENT concept wearing the word: the run-permission object, as `contract.inspect`, `contract.check` and `contract.set` | `contract` names the acceptance criteria and nothing else; the run-permission group is deleted and its idea folded into permissions and fences (DECISION amend0905-vocab D4) | `mission contract <id>` and `job contract <id>` after F261 | the run-permission object once called the "run contract" |
+| **Job** | The administrative unit under a mission: identity, budget, fences, permissions, decisions, the job Plan with its Tasks, and references to its Runs. | the record and its parts are `Job`, `JobBudgets` and `JobFences` in `packages/core/models.py`; the plan and the state constants are `JobPlan`, `JOB_PLANNED`, `JOB_RUNNING`, `JOB_BLOCKED`, `JOB_COMPLETED`, `JOB_PAUSED` and `JOB_STOPPED` in `packages/orchestration/pingpong_job.py`. Two id shapes are minted from two stores, which `packages/orchestration/data_paths.py` documents in as many words: "Remedy has TWO job stores and they are shaped differently" | one store and one id shape (F260) | the `job` group | the Run |
+| **Plan** | The ordered "what will be done" of a level: the mission plan lists the milestones, each of which becomes a job; the job plan lists the tasks. | two dialects side by side. `packages/orchestration/schemas/models.py` defines `FlightPlan`, `FlightPlanClarification`, `PlannerPlan`, `PlannedTask` and `FLIGHT_PLAN_SCHEMA_V`; `packages/orchestration/flight_plan.py` defines `FlightPlanResult` and `map_flight_plan_to_tasks`; and `packages/orchestration/pingpong_job.py` carries `JobPlan` beside them | `flight_plan.py` becomes `job_plan.py` and the noun "flight plan" is deleted from code, catalog, docs and feature files (DECISION amend0905-vocab D6) | `job plan` and `mission plan` are the only two plan commands; today's `plan status` and `plan next` become the hidden group `roadmap` | the Roadmap |
+| **Task** | One step in a job plan; the planner chooses how many, bounded by configured maxima that are ceilings, not targets. | four spellings for one idea: `Task` in `packages/core/models.py`; `TaskEntry` in `packages/orchestration/pingpong_job.py`, alongside the `TASK_PENDING` to `TASK_SPLIT` state constants, `max_tasks` and the converters `task_entry_to_planned_task` and `planned_task_to_task_entry`; and `PlannedTask` and `ProposedTask` in `packages/orchestration/schemas/models.py` | one task type (F260) | no group of its own; it appears as `job run <id> --tasks n` and `job context <id> --task <t>` | a Round |
+| **Run** | One execution of the ping-pong loop for exactly one Task, owning exactly one evidence folder. | `RunState` in `packages/core/models.py`; `run_id`, `run_job` and the `run_manifest_path`, `run_manifest_created_at` and `run_manifest_episodes` fields in `packages/orchestration/pingpong_job.py`; `runs_dir` in `packages/orchestration/data_paths.py`. The word also names a provider call in one place and a whole execution in another | `run` means the per-task execution and nothing else | `run show <id>` and `run list` after F261; today the verb is scattered across `job run`, `do run`, `mission run`, `loop run` and more | the verb; a dogfood run; the run manifest |
+| **Round** | One pass inside a run: build, then tests, then review. Round 2 and later are repairs. | `max_rounds`, `max_rounds_source`, `repair_rounds_allowed`, `repair_rounds_used` and `repair_rounds_source` in `packages/orchestration/pingpong_job.py` | unchanged | none | a Task — a task can take several rounds |
+| **Worker** | A model in a role. The roles are Builder, Reviewer, Planner and Teacher, and the list is extensible. | nothing spells the concept itself; the roles appear as the `builder_model` and `reviewer_model` fields in `packages/orchestration/pingpong_job.py` | unchanged as a type, but the report names the ROLE and never says "Worker: fake" for a builder (DECISION amend0905-vocab D1) | the `worker` group: `list`, `show`, `resources`, `unload`, `status`, `doctor` after F261 | — |
+| **Decision** | A question Remedy cannot answer for itself, put to the human and answered with one command. | `HumanDecision` in `packages/orchestration/decision_queue.py`; the flight-plan approval path spells the same idea as `flight_plan_approval_open` and `resolve_flight_plan_approval` in `packages/orchestration/flight_plan.py` | the approval stays a Decision; the retired noun leaves its name with DECISION amend0905-vocab D6 | the `decision` group: `list`, `show`, `resolve`, `explain` | a DECISION paragraph in `.agent/decisions.md`, which is Remedy's own build record and not a user concept |
+| **Evidence** | What one Run leaves behind: exactly one folder per task run, holding the inputs, the outputs and the proofs. | `build_evidence_bundle` in `packages/orchestration/pingpong_evidence.py`; `stream_evidence` and `job_evidence_dir` in `packages/orchestration/pingpong_job.py`; `mission_evidence_dir` in `packages/orchestration/mission_state.py`; `evidence_exports_dir` in `packages/orchestration/data_paths.py` | unchanged | `job evidence <id>` after F261; today `do evidence` and `do job-evidence` | the run manifest, which is one file inside the folder |
+| **Gate** | A check that must pass before the work may proceed; it decides, and it records what it decided from. | `GateResult` in `packages/orchestration/dod_gate.py`, the only type under `packages/` named for the concept itself rather than for one particular gate; nothing in the seven sources spells it | unchanged | none | a Verdict — the gate is the check, the verdict is the Reviewer's judgement |
+| **Verdict** | The Reviewer's judgement on one Round. | `Verdict` and `ReviewVerdict` in `packages/orchestration/schemas/models.py`, where `Verdict` is the literal set pass, fail, needs_repair, blocked; the field carrying it is `reviewer_verdict` in `packages/orchestration/pingpong_job.py` | unchanged | none | a Gate's result |
+| **Roadmap** | Remedy's own build plan under `docs/roadmap/`; a developer tool, never a user concept. | nothing in the seven sources spells it; the ledger is the file `docs/roadmap/STATUS.md` | unchanged | today's `plan status` and `plan next` become the hidden group `roadmap` (DECISION amend0905-vocab D6) | a mission plan |
 
-> Round-by-round review record, re-headed at the F259 claim. The heading this
-> replaces named F037 and had outlived every feature since: F037, F256, F033,
-> F040, F257, F258, F109, F110, F112, F114 and F262 all ran under it, because
-> the per-feature re-head of docs/agents/planner_reviewer_prompt.md §1 stopped
-> being performed and nothing on disk goes red for it. Only the heading and the
-> Steps section are rewritten. Every finding record below `## Findings` is
-> carried forward BYTE-IDENTICAL: the block that ordered this re-head gates
-> that region's sha256 equal before and after the edit, as its gate G3, and
-> finding ids continue the monotonic R-XXXX series across the re-head. Measured by the reviewer at
-> 25961794, the branch point: 299 lines matching `^- R-\d{4} — ` against 4
-> matching `^Done: R-\d{4} — `, so 295 findings are open, and the maximum id is
-> R-0812. Records belonging to features already marked `[x]` in
-> docs/roadmap/STATUS.md are not here at all: `scripts/rotate_live_review.py`
-> moves them byte-verbatim into the append-only `.agent/live_review_archive.md`
-> in every closure sequence, under operator amendment amend0905-throughput, and
-> that archive is read on demand by id, never at session start.
-
-## Steps
-
-R1 claim F259 in the roadmap ledger, cut the branch, re-point `.agent/plan.md`
-and `.agent/context.md`, re-head this record, book the reviewer's `Done: R-0797`
-from the F262 branch, and put the T001 source inventory on disk — per word of
-DECISION amend0905-vocab D1, the spelling the code really uses today, read from
-the seven modules T2_F259.md names and from the shipped command catalog, with
-every claim carrying the `path:line` it was read at → R2 the page's D1 table,
-written from that inventory → R3 the do-not-confuse table, the Mermaid diagram
-and its short description, completing T001 → R4 D2–D10 and F259 D1/D2 onto the
-page, T002 → R5 `tests/docs/test_vocabulary.py` in planned mode with both red
-proofs, T003 → R6 the README diagram and the docs index registration, T004 →
-the integration gate → the closure sequence.
-<<<END LRHEAD_TO>>>
-
-<<<BEGIN STATUS_FROM>>>
-- [ ] F259 — Vocabulary & concept model v1
-<<<END STATUS_FROM>>>
-
-<<<BEGIN STATUS_TO>>>
-- [~] F259 — Vocabulary & concept model v1
-<<<END STATUS_TO>>>
-
-<<<BEGIN DONE0797>>>
-Done: R-0797 — RESOLVED. Verified by the reviewer at 25961794 — the merge of pull request #239 and the commit this F259 branch is cut from — by re-running the finding's own two measurements rather than accepting the `Landed:` line above it, which the F262 round-29 worker wrote and which no reviewer text had ever closed. First, `grep -c 'F267' README.md` reads 0, so the file names that registered-but-unaccepted id nowhere at all, let alone inside the `Accepted in Tier 2 so far:` block the test scans; the repairing wording stands at `README.md` line 67 as `the remaining nine belong to the follow-up feature the STATUS ledger`, which names no `F\d{3}` token. Second, `python3 -m pytest tests/docs/ -q` reads 295 passed, 0 failed, so `tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature` — the node id the finding measured as failing at `423bc28d` — is green, and the docs suite is no longer red at a committed head. This booking is the first commit of F259 R1 rather than a round of its own, which is what operator amendment amend0827-process-diet rule 1 requires of a verdict the previous session's pushed handback already carried. What this resolution does NOT discharge is the finding's ROOT CAUSE clause: §3 checklist item 34 was applied to the DIRECTION of that test's pin instead of to the TOKENS the authored slice would place inside the guarded block, and that clause binds every later block writing into a guarded region of `README.md`. F259's own T004 round writes the Mermaid diagram into `README.md`, so its block names this clause in its constraints and its gates read the guarded block's id tokens, not only the pin's direction.
-<<<END DONE0797>>>
+The seven sources the "code spelling today" column was read from are
+`packages/core/models.py`, `packages/orchestration/pingpong_job.py`,
+`packages/orchestration/schemas/models.py`,
+`packages/orchestration/flight_plan.py`,
+`packages/orchestration/mission_state.py`,
+`packages/orchestration/data_paths.py` and `apps/cli/command_catalog.py`.
+Where a cell names a module outside that list —
+`packages/orchestration/decision_queue.py`,
+`packages/orchestration/pingpong_evidence.py`,
+`packages/orchestration/dod_gate.py` and
+`packages/orchestration/dod_compiler.py` — it is because DECISION
+amend0905-vocab D1 gave that word no table row and told F259 to write one from
+the feature that owns the concept; they were found by searching every `.py`
+file under `packages/` and under `apps/`.
+<<<END VOCABPAGE>>>
