@@ -1,315 +1,406 @@
-# Handback — F272 round 1
+# Handback — F272 round 2
 
 ## Session
 
-SESSION 1 of feature F272 · round 1 · rounds so far 1
+`SESSION 1 of feature F272 · round 2 · rounds so far 2`
 
-Context self-assessment: this is the feature's first round on a fresh branch;
-the worker's context was comfortable throughout and nothing was abbreviated.
+Context self-assessment: comfortable. The round ended on a RED GATE, not on
+context exhaustion.
+
+**THE ROUND IS BLOCKED. THE BRANCH TIP IS RED.** G8's canary was ordered exit 0
+at 42 passed and is exit 1 at 41 passed at C4. The cause is not a defect in the
+applied change: it is that the block's change set, and DECISION F272 D1's own
+sentence "the only code that observes the change is the three test files that
+hand-spell the layout", are FALSE BY MEASUREMENT. **22 test files** hand-spell
+`<root>/runs/<job_id>`, and **205 tests** are red at `1d24b4a7`. Per
+`docs/agents/self_drive_protocol.md` guardrail G8 — "any red gate,
+contradiction … → write the handoff and end cleanly. Never guess, never widen
+scope to route around a block" — this worker did NOT widen the sweep beyond the
+three files the block named, and did NOT revert. Both are re-rulings that
+belong to the planner/reviewer.
 
 ## Range
 
-Review of b18fad576252f7f2739a5807b6408031da8fcde6..HEAD (the branch point of
-`feature/f272-one-world-completion`, i.e. the merge commit of pull request 242).
-
-## Item status — C0a through C6
-
-| Item | Status | Reason |
-|------|--------|--------|
-| C0a  | done   | |
-| C0b  | done   | |
-| C1   | done   | |
-| C2   | done   | |
-| C3   | done   | |
-| C4   | done   | |
-| C5   | done   | |
-| C6   | done   | this commit |
+Review of `69138a45eeb5d31d996e47ec5c2591bfec57085c`..`1d24b4a7` plus the C5
+commit that writes this file.
 
 ## Commits
 
-### 4e524d0b f272: save the round 1 block as the authored original
+### 5a93878c f272: save the round 2 step block as the authored original
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f272-r1.md | +488/-0 | C0a — the round's block, copied with `shutil.copyfile` |
+|---|---|---|
+| `.agent/authored/f272-r2.md` | +379/-0 | C0a — `shutil.copyfile` of the block, never a retype |
 
-### a23c3748 f272: mirror the round 1 block into the last-block slot
+### 948977a7 f272: mirror the round 2 step block into the last-block slot
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/last_block.md | +472/-382 | C0b — same bytes, one indivisible `.agent/**` state rewrite |
+|---|---|---|
+| `.agent/last_block.md` | +322/-431 | C0b — same bytes; one indivisible `.agent/**` state rewrite (DECISION F104 D1 exemption) |
 
-### 9b5312b2 f272: point the plan and the context at the F272 branch
+### bdef4507 f272: point the plan at the round 2 run re-key and its staging
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/plan.md | +43/-34 | C1 — PLANF272R1 slice, whole file |
-| .agent/context.md | +14/-13 | C1 — CONTEXTF272 slice, whole file |
+|---|---|---|
+| `.agent/plan.md` | +20/-20 | C1 — the PLANF272R2 slice plus exactly one trailing newline |
 
-### 5b14f469 f272: re-head the live review record at the F272 claim
+### 6f1efb37 f272: book the round 1 verdict into the live review record
 | Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | +28/-22 | C2 — HEAD1 and STEPS pairs only; nothing below `## Findings` moved |
+|---|---|---|
+| `.agent/live_review.md` | +2/-0 | C2 — the GATEF272R1 append; blank separator plus the one paragraph |
 
-### 754bd14e f272: claim F272 in the roadmap ledger
+### 43d91cda f272: record DECISION F272 D1 staging the run re-key in two moves
 | Path | +/- | Reason |
-|------|-----|--------|
-| docs/roadmap/STATUS.md | +1/-1 | C3 — STATUS pair, `[ ]` → `[~]` on F272 |
+|---|---|---|
+| `docs/roadmap/features/T2_F272.md` | +62/-0 | C3 — the DECISIOND1 append; blank separator plus the slice's 61 lines |
 
-### 6955a197 f272: give the job record the plural run list run_refs
+### 1d24b4a7 f272: move the job run log to job_logs and the run store to runs
 | Path | +/- | Reason |
-|------|-----|--------|
-| packages/orchestration/pingpong_job.py | +10/-0 | C4 — the field (a), the export/import (b), the population in `run_job` (c) |
+|---|---|---|
+| `packages/orchestration/data_paths.py` | +35/-25 | C4(a) — `job_logs_dir` added; `run_log_dir` and `pingpong_runs_dir` bodies changed; Public API list and both comment blocks re-stated |
+| `tests/test_data_paths.py` | +18/-12 | C4(b) — the `run_log_dir` and `pingpong_*` equalities and their docstrings |
+| `tests/test_run_log.py` | +3/-3 | C4(b) — lines 128, 134, 175 |
+| `tests/test_timeline.py` | +11/-5 | C4(b) — the `_runs_path` helper plus lines 255, 273, 274, 767 |
 
-### c16ad23d f272: pin the plural run list with four tests
+### C5 (this commit) f272: record the round 2 blocker in the plan and hand back
 | Path | +/- | Reason |
-|------|-----|--------|
-| tests/orchestration/test_job_run_refs.py | +122/-0 | C5 — the four tests, new file |
+|---|---|---|
+| `.agent/handoff.md` | rewrite | C5 — this handback |
+| `.agent/plan.md` | rewrite | AGENTS.md "If Blocked" rule 2 — the plan MUST carry the exact blocker; declared as a deviation below |
 
-### C6 — this commit (a handoff cannot table the commit that writes it, R-0149)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/handoff.md | rewrite | C6 — this handback |
+## Item status
 
-Per-commit insertion counts (`git diff --numstat <parent> <commit>`, the `+`
-column only, AGENTS.md DECISION F104 D1), each commit single-parent:
-
-    C0a 4e524d0b insertions=488 parents=1
-    C0b a23c3748 insertions=472 parents=1
-    C1  9b5312b2 insertions=57  parents=1
-    C2  5b14f469 insertions=28  parents=1
-    C3  754bd14e insertions=1   parents=1
-    C4  6955a197 insertions=10  parents=1
-    C5  c16ad23d insertions=122 parents=1
+| Item | Status | Reason |
+|---|---|---|
+| C0a | done | block copied byte-identical to `.agent/authored/f272-r2.md`, committed alone |
+| C0b | done | same bytes mirrored to `.agent/last_block.md`, committed alone |
+| C1 | done | `.agent/plan.md` = PLANF272R2 + one newline, 2172 bytes, 43 lines |
+| C2 | done | GATEF272R1 appended; every G2 count landed on its predicted value |
+| C3 | done | DECISIOND1 appended; nothing already in the file moved by one byte |
+| C4 | deviated | applied as specified, and it turns the branch tip RED: the spec's three-file observer set is incomplete by 22 files / 205 tests. The sweep was NOT widened (protocol G8). One in-file docstring outside the cited lines was corrected — see deviations |
+| C5 | deviated | written as ordered, but the commit also rewrites `.agent/plan.md`, which AGENTS.md "If Blocked" rule 2 compels and which the block attributed to C1 only |
 
 ## External actions
 
-    git checkout -b feature/f272-one-world-completion      -> on main at b18fad57, clean tree
-    git worktree add .remedy-wt/f272-g7-wt c16ad23d        -> detached HEAD c16ad23d (G7 only)
-    git worktree remove --force .remedy-wt/f272-g7-wt      -> removed
-    git worktree prune                                     -> ok; `git worktree list` no longer lists it
-    git push -u origin feature/f272-one-world-completion    (run immediately after this commit)
-
-No `gh pr merge`, no `gh pr create`, no merge, no force-push. The Open PR Gate
-was NOT re-run: the block records that it already ran in the reviewer's session
-and that pull request 242 was merged at b18fad57.
+| Command | Outcome |
+|---|---|
+| `git worktree add --detach .remedy-wt/f272-r2-redproof 1d24b4a7` | exit 0 — G7 |
+| `git worktree remove --force .remedy-wt/f272-r2-redproof` | exit 0 |
+| `git worktree add --detach .remedy-wt/f272-r2-diffprobe 1d24b4a7` | exit 0 — G7 addendum |
+| `git worktree remove --force .remedy-wt/f272-r2-diffprobe` | exit 0 |
+| `git worktree add --detach .remedy-wt/f272-r2-canary-control 43d91cda` | exit 0 — canary attribution control |
+| `git worktree remove --force .remedy-wt/f272-r2-canary-control` | exit 0 |
+| `git worktree prune` (after each) | exit 0 |
+| `git worktree list` | 13 lines: the primary checkout plus the 12 pre-existing `remedy/job-*` worktrees that predate this round. No `f272-r2` worktree remains |
+| `git push` | see below |
+| `gh pr create` / `gh pr merge` | NOT RUN — constraint 9 |
 
 ## Verification
 
-**G1 TRANSPORT** — exit 0.
+**G1 TRANSPORT.** One sha256
+`3376cfc5939bdde59665369d310971ea4a84d1af3c66c7e6f64ceeb6718ffcc6` = BLOCK_SHA,
+one byte length 27503, 379 lines, for all three artefacts.
+`filecmp.cmp(shallow=False)` source-vs-saved `True`; source-vs-mirror `True`.
 
-    sha256      = 229900f50fc6cf7dfc85d54ab2e6631cc6e8ec5cf08be54db92bf13f627e0165
-    byte length = 27393
-    filecmp source-vs-saved  (shallow=False) = True
-    filecmp source-vs-mirror (shallow=False) = True
-    committed C0a  .agent/authored/f272-r1.md  sha256 229900f5...627e0165  bytes 27393
-    committed C0b  .agent/last_block.md        sha256 229900f5...627e0165  bytes 27393
+**G2 THE RECORD, at 6f1efb37.**
+(a) BYTE — pre-image terminal byte asserted BEFORE writing: exactly one newline
+(last two bytes `b'.\n'`). 955908 → 961527 bytes, delta 5619 = 1 + 5617 + 1.
+`post == pre + NL + slice + NL` `True`; pre is a byte-exact PREFIX `True`;
+post ends in exactly one newline `True`.
+(b) STRUCTURAL, computed independently — N counted from the slice by the script
+= 1. Units 437 → 438; last N units equal the slice's paragraphs IN ORDER `True`;
+the leading units are unchanged as a prefix `True`.
+(c) NEGATIVE CONTROL, in memory on a `bytes` object, never on disk — first
+appended paragraph occupies `[955909, 961526)`; chosen offset 958717 asserted
+INSIDE it `True`; byte `b'e'` flipped to `b'E'`. Reader (a) REJECTS `True`;
+reader (b) REJECTS `True`. After restoring: reader (a) ACCEPTS `True`; reader
+(b) ACCEPTS `True`; restored image == disk image `True`.
+(d) COUNTS before → after: `^Gate: ` 23 → 24; `^Gate: F272 R1 — ` 0 → 1;
+`^Gate: R1 — ` 1 → 1 UNCHANGED; distinct `^- R-\d{4} — ` 301 → 301; distinct
+`^Done: R-\d{4} — ` 3 → 3; open set BY DISTINCT ID 298 → 298. Every one of the
+six landed on the value the block predicted. No id minted, resolved or
+renumbered. Also confirmed by reading `scripts/rotate_live_review.py`: its
+first pattern `^Gate: F(\d{3}) R\d+` (line 73) is the one this header matches.
 
-That digest equals BLOCK_SHA as stated in the delegating prompt; it was verified
-against the source file BEFORE any other step of this round.
+**G3 THE PLAN, at bdef4507.** `.agent/plan.md` = PLANF272R2 + exactly one
+trailing newline: `True`. 2172 bytes (slice 2171). 43 lines, under the
+AGENTS.md 50-line cap. Carries `## Goal` `True` and `## Next Steps` `True`.
 
-**G2 THE RECORD**, at C2 5b14f469.
+**G4 THE FEATURE FILE, at 43d91cda.** Pre-commit blob 6852 bytes is a byte-exact
+PREFIX of the 10790-byte post-commit file `True`. Slice + leading + trailing
+newline is an exact SUFFIX `True`. Lines the diff ADDS: 62 = the blank separator
+the append recipe writes, then the slice's 61 lines IN ORDER (`added[1:] ==
+slice_lines` `True`; `added == [""] + slice_lines` `True`). See deviations.
+`python3 -m pytest tests/docs/ -q -p no:randomly` exit **0**, `303 passed`.
+`python3 -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly`
+exit **0**, `30 passed`. Both at their base counts.
 
-(a) BYTE. pre 955525 bytes → post 955908 bytes; disk image == committed image.
-An independent reconstruction, built from the C1 pre-image with ONLY
-HEAD1_FROM→HEAD1_TO and STEPS_FROM→STEPS_TO applied, is 955908 bytes and
-compares EQUAL to the committed post-image. The file ends in exactly one
-newline. Per-pair containment at apply time: HEAD1 FROM 1→0, TO 0→1;
-STEPS FROM 1→0, TO 0→1.
+**G5 THE CODE, at 1d24b4a7.**
+`python3 -m ruff check packages/orchestration/data_paths.py
+tests/test_data_paths.py tests/test_run_log.py tests/test_timeline.py`
+exit **0**, `All checks passed!`.
+Read from the SHIPPED functions with `R = Path("/R")`:
 
-(b) THE CARRIED REGION, before and after:
+| Call | Returned |
+|---|---|
+| `job_logs_dir(R)` | `/R/job_logs` |
+| `run_log_dir("j1", R)` | `/R/job_logs/j1` |
+| `runs_dir(R)` | `/R/runs` |
+| `run_dir("r1", R)` | `/R/runs/r1` |
+| `pingpong_runs_dir(R)` | `/R/runs` |
+| `pingpong_run_dir("r1", R)` | `/R/runs/r1` |
 
-    reviewer's convention (region starts at the newline terminating the
-    line before `## Findings`):
-      before  953408 bytes  147ce009557d42bc81def2249853ed1a8fccd60676077a08e9532aea0bc0f8dc
-      after   953408 bytes  147ce009557d42bc81def2249853ed1a8fccd60676077a08e9532aea0bc0f8dc
-    the strictly-from-the-`#` reading, reported for completeness:
-      before  953407 bytes  447b08c3937da2d0c600f4f20f1e8736b24913022cc28c7a1f68f4ae7ec5a45a
-      after   953407 bytes  447b08c3937da2d0c600f4f20f1e8736b24913022cc28c7a1f68f4ae7ec5a45a
+All six equal their expected value. `pingpong_runs` occurs **0** times in those
+six RETURNED paths. Module resolved from
+`/home/decodeux/Repos/remedy/packages/orchestration/data_paths.py`.
 
-The block's stated figures (953408 / 147ce009…) reproduce exactly under the
-first convention and are UNCHANGED across C2. Both readings are unchanged.
+**G6 THE OBSERVERS AND THE NEIGHBOURS, at 1d24b4a7, run SERIALLY.**
 
-(c) COUNTS, before → after:
+| Command | Exit | Result |
+|---|---|---|
+| `pytest tests/test_data_paths.py tests/test_run_log.py tests/test_timeline.py -q -p no:randomly` | 0 | `140 passed in 0.78s` |
+| `pytest tests/test_do_job_flow.py tests/orchestration/test_job_run_refs.py -q -p no:randomly` | 0 | `182 passed in 28.58s` (178 + 4, both base counts) |
+| `pytest tests/ui_server/ -q -p no:randomly` | 0 | `515 passed in 33.43s` |
+| `pytest tests/orchestration/test_test_runner.py tests/regression/test_resource_safety.py tests/orchestration/test_integrity_gate.py -q -p no:randomly` | 0 | `89 passed in 17.32s` |
 
-    distinct ids '^- R-\d{4} — '     301 → 301
-    distinct ids '^Done: R-\d{4} — '   3 → 3
-    open set BY DISTINCT ID          298 → 298
-    '^Gate: ' lines                   23 → 23
+Every ordered suite is green at its base count. G6 as written cannot see the
+failure G8 found, because none of the 22 files below is in it.
 
-(d) NEGATIVE CONTROL, on in-memory `bytes` objects only, nothing written to
-disk: one byte flipped at offset 20, inside the HEAD1_TO span (0..1650) —
-reader (a) ACCEPTS = False. Restored — reader (a) ACCEPTS = True, and the
-restored image == the disk image.
+**G7 THE PRE-SWEEP RED PROOF**, in the disposable worktree
+`.remedy-wt/f272-r2-redproof` at `1d24b4a7`, `python3 -B` throughout, every
+`__pycache__` purged before each run.
 
-**G3 THE PLAN AND THE CONTEXT**, at C1 9b5312b2.
+(i) CONTROL: `python3 -B -m pytest tests/test_data_paths.py tests/test_run_log.py
+tests/test_timeline.py -q -p no:randomly` exit **0**, `140 passed in 0.81s`.
+`packages.orchestration.data_paths.__file__` as imported there is
+`/home/decodeux/Repos/remedy/.remedy-wt/f272-r2-redproof/packages/orchestration/data_paths.py`
+— INSIDE the worktree `True`, so no editable install shadowed it. The control is
+exit 0, so the proof is NOT void.
 
-    .agent/plan.md    bytes=2097  equals PLANF272R1 + exactly one trailing newline = True
-    .agent/context.md bytes=3366  equals CONTEXTF272 + exactly one trailing newline = True
-    .agent/plan.md line count = 43 (< 50 = True); '## Goal' = True; '## Next Steps' = True
+(ii) PRE-SWEEP: `git checkout 43d91cda -- tests/test_data_paths.py
+tests/test_run_log.py tests/test_timeline.py` exit 0, `data_paths.py` left at
+C4. Same pytest command: exit **1**, `17 failed, 123 passed in 0.94s`. The 17:
 
-    $ python3 -m pytest tests/ui_server/ -q -p no:randomly
-    exit = 0 ; 515 passed in 33.42s
-    $ python3 -m pytest tests/orchestration/test_test_runner.py \
-        tests/regression/test_resource_safety.py \
-        tests/orchestration/test_integrity_gate.py -q -p no:randomly
-    exit = 0 ; 89 passed in 17.13s
+```
+tests/test_data_paths.py::TestDirectoryHelpers::test_run_log_dir_coerces_a_uuid_job_id_to_its_string_form
+tests/test_data_paths.py::TestDirectoryHelpers::test_run_log_dir_explicit_root
+tests/test_data_paths.py::TestDirectoryHelpers::test_run_log_dir_follows_the_process_data_root
+tests/test_data_paths.py::TestJobAndRunLayout::test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir
+tests/test_run_log.py::TestRunLogWriterConstruction::test_creates_job_directory
+tests/test_run_log.py::TestRunLogWriterConstruction::test_default_data_root_is_the_process_data_dir
+tests/test_run_log.py::TestRunLogWriterConstruction::test_path_is_inside_job_directory
+tests/test_timeline.py::TestCmdTimeline::test_prints_planning_completed_in_output
+tests/test_timeline.py::TestCmdTimeline::test_prints_timeline_for_job_with_logs
+tests/test_timeline.py::TestCmdTimeline::test_timeline_output_includes_next_action
+tests/test_timeline.py::TestLoadRunEvents::test_accepts_uuid_or_str_job_id
+tests/test_timeline.py::TestLoadRunEvents::test_ignores_empty_lines
+tests/test_timeline.py::TestLoadRunEvents::test_ignores_malformed_json_lines
+tests/test_timeline.py::TestLoadRunEvents::test_loads_multiple_files_sorted_by_timestamp
+tests/test_timeline.py::TestLoadRunEvents::test_loads_single_jsonl_file
+tests/test_timeline.py::TestOneRunPerInvocation::test_all_events_of_one_invocation_share_one_run
+tests/test_timeline.py::TestOneRunPerInvocation::test_two_jobs_do_not_share_a_run_file
+```
 
-**G4 THE STATUS CLAIM**, at C3 754bd14e.
+Every one names a run-log or ping-pong path assertion. Non-zero exit, real
+failures, real names: the swept tests do observe the paths C4(a) moved.
 
-    '^- \[~\] F272 — '        = 1  (expected 1)
-    '^- \[ \] F272 — '        = 0  (expected 0)
-    '^- \[x\] F\d{3} — '      = 74 (expected 74)
-    '^- \[[ x~!]\] F\d{3} — ' = 272 (expected 272)
-    '^- \[~\] F\d{3} — '      = 1  (the at-most-one-claim invariant)
+(iii) `git -C <worktree> diff --name-only` after the restore: exit 0, **empty**.
+That is the real output of the ordered command; it is empty because
+`git checkout <sha> -- <paths>` STAGES what it writes. Rather than assert that,
+it was measured in a second disposable worktree (`f272-r2-diffprobe`, same
+commit, same checkout): `git diff --name-only` → empty; `git diff --name-only
+HEAD` → exactly `tests/test_data_paths.py`, `tests/test_run_log.py`,
+`tests/test_timeline.py`; `git status --porcelain` → `M ` on those three and
+nothing else. So the restore touched exactly the three intended files.
 
-    $ git diff --name-only HEAD~1 HEAD   -> exit 0
-    docs/roadmap/STATUS.md
-    $ python3 -m pytest tests/docs/ -q -p no:randomly
-    exit = 0 ; 303 passed in 0.66s
-    $ python3 -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
-    exit = 0 ; 30 passed in 0.36s
+Both worktrees removed and pruned. `git worktree list` = 13 lines, none of them
+this round's.
 
-**G5 THE CODE**, at C4 6955a197.
+**G8 THE CANARY, INTEGRITY AND THE TREE, at 1d24b4a7, before C5 was staged.**
 
-    $ python3 -m ruff check packages/orchestration/pingpong_job.py
-    exit = 0 ; All checks passed!
+`python3 -m pytest tests/cli/test_golden_path.py -q -p no:randomly`
+exit **1** — `1 failed, 41 passed in 20.93s`. **RED. The block ordered exit 0 at
+42 passed.** The single failure:
 
-    SHIPPED dataclass, two constructed JobPlan() objects:
-      a.run_refs = []   b.run_refs = []   both empty lists = True
-      a.run_refs is b.run_refs = False  -> distinct list objects
-    occurrences of the string 'run_refs' in the file = 7 (was 0 at b18fad57; >= 4 required)
+```
+tests/cli/test_golden_path.py::TestLLMIntakeWiring::test_fake_provider_stores_llm_intake_with_evidence
+  tests/cli/test_golden_path.py:335: AssertionError: evidence directory must exist
+  runs_dir = tmp_path / "data" / "runs" / job_id      # line 334, hand-spelled
+```
 
-    $ git diff --name-only HEAD~1 HEAD   -> exit 0
-    packages/orchestration/pingpong_job.py
+ATTRIBUTION MEASURED, not inferred: in a disposable worktree at C4's PARENT
+`43d91cda`, the same command is exit **0**, `42 passed in 21.69s`. C4 causes it.
 
-**G6 THE NEW TESTS**, at C5 c16ad23d.
+`python3 -m apps.cli.grouped integrity check --json` exit **0**,
+`"passed": true`, `"fail_count": 0`.
 
-    $ python3 -m pytest tests/orchestration/test_job_run_refs.py -q -p no:randomly
-    exit = 0 ; 4 passed in 0.73s
-    $ python3 -m pytest tests/test_do_job_flow.py -q -p no:randomly
-    exit = 0 ; 178 passed in 28.02s
-    $ python3 -m pytest tests/orchestration/test_job_budgets.py -q -p no:randomly
-    exit = 0 ; 135 passed in 30.61s
+`git status --porcelain` **EMPTY**. `git ls-files .remedy-wt` **EMPTY**.
 
-**G7 THE RED PROOF**, inside the disposable worktree `.remedy-wt/f272-g7-wt`
-created at c16ad23d; never in the primary checkout.
+Per-commit INSERTIONS from `git diff --numstat <parent> <commit>`, C0a–C4 only:
 
-Shadow probe first, because an editable install of `remedy` points at the
-primary checkout:
+| Item | SHA | Insertions | Parents | ≤500 |
+|---|---|---|---|---|
+| C0a | 5a93878c | 379 | 1 | yes |
+| C0b | 948977a7 | 322 | 1 | yes |
+| C1 | bdef4507 | 20 | 1 | yes |
+| C2 | 6f1efb37 | 2 | 1 | yes |
+| C3 | 43d91cda | 62 | 1 | yes |
+| C4 | 1d24b4a7 | 67 | 1 | yes |
 
-    $ python3 -B -c "import packages.orchestration.pingpong_job as m; print(m.__file__)"  (cwd=worktree)
-    exit 0 ; /home/decodeux/Repos/remedy/.remedy-wt/f272-g7-wt/packages/orchestration/pingpong_job.py
+Every commit single-parent. Marker-prefix lines (`<<<BEGIN` / `<<<END`) in each
+of `.agent/plan.md`, `.agent/live_review.md`,
+`docs/roadmap/features/T2_F272.md`, `packages/orchestration/data_paths.py`,
+`tests/test_data_paths.py`, `tests/test_run_log.py`, `tests/test_timeline.py`:
+**0, 0, 0, 0, 0, 0, 0**.
 
-so the worktree's own module is the one under test. `__pycache__` purge before
-each run removed 0 directories, and every run used `python3 -B`.
+**Constraint 11 — block size, re-measured from the committed
+`.agent/authored/f272-r2.md`.** TOTAL **379** lines against the 490-line budget
+of DECISION F085 D6. Slice CONTENT lines: PLANF272R2 43 + GATEF272R1 1 +
+DECISIOND1 61 = 105. PROSE = 379 − 105 = **274** against the 400-line cap of
+DECISION F105 D5. Both figures reproduce the block's own claim exactly. (Counting
+the 6 marker lines as slice rather than prose would give 268; the 274 the block
+states is the reading in which marker lines count as prose.)
 
-(i) UNMUTATED CONTROL
+**Constraint 10 — the three `.agent/STOP` readings**, all by `os.path.exists`:
 
-    $ python3 -B -m pytest tests/orchestration/test_job_run_refs.py -q -p no:randomly
-    exit = 0 ; 4 passed in 1.08s
-
-(ii) THE MUTATION — the two lines C4(c) inserted were deleted; occurrences of
-`job.run_refs.append` in that file went 1 → 0.
-
-    $ python3 -B -m pytest tests/orchestration/test_job_run_refs.py -q -p no:randomly
-    exit = 1 ; 1 failed, 3 passed in 1.11s
-    FAILED tests/orchestration/test_job_run_refs.py::TestJobRunRefsEndToEnd::test_run_refs_names_every_task_run_in_order
-    E  AssertionError: assert [] == ['c23c4080058...103b8ee94132']
-
-The failing test is the C5 item 4 end-to-end test, as required.
-
-(iii) WHAT WAS MUTATED
-
-    $ git -C <worktree> diff --name-only   -> exit 0
-    packages/orchestration/pingpong_job.py
-
-Then `git worktree remove --force <worktree>` and `git worktree prune`;
-`git worktree list` afterwards no longer contains `f272-g7-wt` (only the primary
-checkout and twelve pre-existing, unrelated `remedy/job-*` worktrees).
-
-**G8 THE CANARY, INTEGRITY AND THE TREE**, primary checkout, after C5 and before
-C6 was staged.
-
-    $ python3 -m pytest tests/cli/test_golden_path.py -q -p no:randomly
-    exit = 0 ; 42 passed in 22.95s
-    $ python3 -m apps.cli.grouped integrity check --json
-    exit = 0 ; "passed" = True ; "fail_count" = 0
-    $ git status --porcelain   -> exit 0 ; output '' (EMPTY)
-    $ git ls-files .remedy-wt  -> exit 0 ; output '' (nothing tracked)
-
-Per-commit insertions and single-parent readings for C0a..C5 are in the Commits
-section above. Marker lines (prefix `<<<BEGIN` or `<<<END`) per changed file:
-
-    .agent/plan.md                            0
-    .agent/context.md                         0
-    .agent/live_review.md                     0
-    docs/roadmap/STATUS.md                    0
-    packages/orchestration/pingpong_job.py    0
-    tests/orchestration/test_job_run_refs.py  0
-
-**Constraint 11 — the block's own size, re-measured on the committed
-`.agent/authored/f272-r1.md`:**
-
-    TOTAL lines            = 488  (budget 490, DECISION F085 D6)
-    slice BODY lines       = 174
-    PROSE = TOTAL - slices = 314  (cap 400, DECISION F105 D5)
-
-Both figures agree with the block's own statement; no drift.
-
-**`.agent/STOP` readings (constraint 10), read with `os.path.exists`:**
-
-    before C0a : False
-    before C4  : False
-    before C6  : False
+| When | Reading |
+|---|---|
+| before C0a | does NOT exist |
+| before C4 | does NOT exist |
+| before C5 | does NOT exist |
 
 ## Authored-text proofs
 
-| Slice | Target | Result |
-|-------|--------|--------|
-| the whole block | .agent/authored/f272-r1.md, .agent/last_block.md | `filecmp.cmp(shallow=False)` True against the source for both; one sha256 229900f5…627e0165, 27393 bytes |
-| PLANF272R1 | .agent/plan.md | equals slice + exactly one trailing newline (2097 bytes) |
-| CONTEXTF272 | .agent/context.md | equals slice + exactly one trailing newline (3366 bytes) |
-| HEAD1_FROM/TO | .agent/live_review.md | FROM 1→0, TO 0→1; independent reconstruction equals the committed image |
-| STEPS_FROM/TO | .agent/live_review.md | FROM 1→0, TO 0→1; same reconstruction |
-| STATUS_FROM/TO | docs/roadmap/STATUS.md | FROM 1→0, TO 0→1 |
+| Text | Result |
+|---|---|
+| the block itself | `filecmp.cmp(shallow=False)` `.remedy-wt/f272-r2-block.md` vs `.agent/authored/f272-r2.md` → `True`; vs `.agent/last_block.md` → `True`. All 27503 bytes, all sha256 `3376cfc5…8ffcc6` = BLOCK_SHA |
+| PLANF272R2 | extracted by exact-position marker matching, exactly one BEGIN and one END asserted; 2171 bytes; `.agent/plan.md` at C1 == slice + `\n` → `True` |
+| GATEF272R1 | 5617 bytes; post-image == pre + `\n` + slice + `\n` → `True`, plus the independent structural reader and the negative control above |
+| DECISIOND1 | 3936 bytes; slice + leading/trailing newline is an exact SUFFIX of the post-commit file → `True`; the diff's added lines are the slice's 61 lines in order after the separator |
 
-Every slice was extracted by exact-position marker matching, asserting exactly
-one BEGIN and one END line per name, and applied byte for byte. No slice was
-edited.
+No slice was edited. Marker lines reached no file (all seven counts 0).
 
 ## Deviations & assumptions
 
-1. **G2(b) region-boundary convention — a reading difference, not an edit.**
-   Taking "the bytes from and including the line `## Findings` to end of file"
-   literally from the `#` character yields 953407 bytes hashing to
-   `447b08c3…a45a`, one byte short of the block's stated 953408 /
-   `147ce009…f8dc`. Including the newline that terminates the preceding line
-   reproduces the block's figures exactly. BOTH readings are byte-identical
-   before and after C2, so the carried region is unchanged under either
-   convention; both are reported above. Nothing was changed to make either
-   match.
-2. **C0a and C0b precede the plan advance.** AGENTS.md requires `.agent/plan.md`
-   to reflect the current state before every commit; at C0a and C0b it still
-   named F260. This follows the block's ordered bundle, which names C1 the
-   round's FIRST SUBSTANTIVE commit and puts the two transport commits ahead of
-   it, and matches the standing pattern of this repository's rounds. Declared
-   rather than silently reordered.
-3. **No objection to any slice.** No slice was believed wrong; none was edited.
-4. **No commit was added, dropped or reordered.** The committed sequence is
-   exactly C0a, C0b, C1, C2, C3, C4, C5, C6, each single-parent.
-5. **No finding was minted, resolved or renumbered** (constraint 4). The open
-   set is 298 by distinct id before and after C2; R-0818 remains the next free
-   id and this round did not spend it. No `Gate:` paragraph was appended: this
-   round's verdict is written by the NEXT round's first commit.
-6. **The change set was not widened.** `README.md`,
-   `docs/roadmap/features/T2_F272.md` and `docs/roadmap/features/T2_F260.md`
-   were not touched.
-7. **Assumption, declared:** `git worktree list` still shows twelve pre-existing
-   `remedy/job-*` worktrees under `.remedy-wt/`. They predate this round, were
-   not created or removed by it, and were left alone.
+**1. BLOCKING — C4's observer set is incomplete, and the branch tip is RED.**
+The block's C4(b) and DECISION F272 D1 both state that the three swept test
+files are the only code observing the moved directory. Measured at `1d24b4a7`
+over 30 candidate files found by grepping `tests/` for the hand-spelled
+layouts: `205 failed, 1454 passed`, across **22 files**:
+
+| File | Failures |
+|---|---|
+| `tests/test_run_log_cli.py` | 56 |
+| `tests/test_patch_apply.py` | 18 |
+| `tests/orchestration/test_event_replay.py` | 18 |
+| `tests/orchestration/test_worktree_resume_cli.py` | 16 |
+| `tests/test_brain_smoke.py` | 13 |
+| `tests/orchestration/test_structured_planner_cli.py` | 12 |
+| `tests/orchestration/test_worktree_lifecycle.py` | 12 |
+| `tests/orchestration/test_job_stop_integration.py` | 11 |
+| `tests/orchestration/test_budget_tick.py` | 9 |
+| `tests/test_brain_viewer.py` | 6 |
+| `tests/test_project_brain.py` | 5 |
+| `tests/cli/test_teach_cmd.py` | 4 |
+| `tests/test_agent_loop_execution.py` | 4 |
+| `tests/test_context_coverage.py` | 4 |
+| `tests/test_patch_intent_approval.py` | 4 |
+| `tests/test_agent_loop.py` | 3 |
+| `tests/test_brain_detail.py` | 3 |
+| `tests/orchestration/test_worker_execution.py` | 3 |
+| `tests/cli/test_golden_path.py` | 1 |
+| `tests/cli/test_job_rerun_manifest.py` | 1 |
+| `tests/orchestration/test_event_persistence.py` | 1 |
+| `tests/test_project_constitution.py` | 1 |
+
+`tests/cli/runtime_helpers.py:279` is a shared non-test helper spelling the same
+join, so its blast radius reaches further than its own file.
+
+This worker did NOT sweep them. Constraint 2 makes the change set exhaustive,
+`docs/agents/self_drive_protocol.md` G8 forbids widening scope to route around a
+block, and a 22-file sweep is precisely the "whole-feature change standing
+inside a T001 slice" that DECISION F272 D1 exists to refuse. It also did NOT
+revert C4, because reverting drops an ordered commit and the reviewer needs C4
+present to reproduce these numbers. The choice between widening the sweep and
+re-ruling D1 belongs to the planner/reviewer.
+
+Note that D1's ruling is not wrong about PRODUCTION code: no caller moved, and
+all 74 readers and 35 writers resolve through `run_log_dir` exactly as ruled.
+What was under-measured is the TEST side — the sentence "the only code that
+observes the change is the three test files" was measured over three files
+rather than over `tests/`.
+
+**2. C4(b) — three cited line lists were incomplete; three more spellings were
+swept inside the named files.** Re-grepped before editing, as ordered. The block
+cited `tests/test_timeline.py` lines 66 and 255; lines 273, 274 and 767 carry
+the same `tmp_path / "runs" / str(job_id)` join and were swept too, since C4(b)'s
+binding sentence is "sweep EVERY hand-spelled occurrence … in [these three
+files]" and leaving them would have left those files red. The block also did not
+cite `tests/test_data_paths.py:132` (`run_log_dir("j1") == runs_dir() / "j1"`),
+which is not a string literal but asserts the old relationship; it now reads
+`job_logs_dir() / "j1"`. Lines 79, 102, 120 and 392 were LEFT UNCHANGED as
+ordered (392 now reads 396 after a docstring grew above it; the assertion is
+byte-identical).
+
+**3. C4(a) — one docstring outside the two named comment blocks was corrected.**
+`resolve_any_job_id`'s docstring said run logs live "under
+`<data_root>/runs/<job-id>/`". C4(a) orders that "no comment survives claiming a
+layout the code no longer has"; that sentence was one, so it now reads
+`<data_root>/job_logs/<job-id>/`. One line, same file, no behaviour.
+
+**4. C4(b) — a test helper NAME still says "runs" while returning `job_logs`.**
+`tests/test_timeline.py::_runs_path`, and the local variables `runs_dir` /
+`run_dir` / `job_dir` at several sites, now name a `job_logs/` path. Renaming
+them is not a hand-spelled layout occurrence, so it was NOT done; instead
+`_runs_path` gained a docstring stating exactly what it returns. Recommend the
+rename rides along with the `pingpong_runs_dir` / `pingpong_run_dir` deletion
+round, which is already a naming round.
+
+**5. C5 also rewrites `.agent/plan.md`.** The block attributes `.agent/plan.md`
+to C1 only. AGENTS.md "If Blocked" rule 2 — "Update `.agent/plan.md` with the
+exact blocker" — is mandatory and AGENTS.md outranks the block, and the Commit
+Gate forbids committing while the plan misdescribes the work. The plan written
+at C1 said the round "sweeps the three test files that hand-spell those paths"
+and listed a Risk that measurement has now refuted. The path was already in the
+change set; only a second write to it was added. Still 43 lines, under the cap.
+
+**6. G4's two clauses about the added lines do not agree, and the append recipe
+decides it.** G4 asks that "the lines C3's diff ADDS are exactly the slice's
+lines IN ORDER" while also requiring that "the slice plus its LEADING and
+trailing newline is an exact SUFFIX". The recipe's leading newline necessarily
+adds one blank line, so the diff adds 62 lines, not 61. Both readings are
+reported: `added == [""] + slice_lines` is `True` and `added[1:] == slice_lines`
+is `True`. The same applies to C2, where the diff adds 2 lines for a 1-line
+slice. This matches the F260 R23 precedent already in `.agent/live_review.md`
+("one of them the blank separator").
+
+**7. Slice boundary convention.** A slice was taken as the text between its
+marker lines MINUS the newline terminating its own last content line, so that
+`slice + b"\n"` gives a file ending in exactly one newline. This is forced by
+G2(a), which requires the post-image to end in exactly one newline, and it
+reproduces round 1's "byte-equal to its slice plus exactly one trailing
+newline" arithmetic.
+
+**8. C0a and C0b precede the plan advance.** Not a deviation but the rule:
+`docs/agents/planner_reviewer_prompt.md` §3 item 23 exempts exactly the two
+block-save commits, which write nothing but the block itself.
+
+**9. Housekeeping.** No slice was edited; no commit was reordered or dropped
+from C0a–C5; no finding id was minted, resolved or renumbered (open set 298 →
+298 BY DISTINCT ID; next free id remains R-0817's successor R-0818, unspent).
+Nothing was merged and no PR was created. The 12 `remedy/job-*` worktrees under
+`.remedy-wt/` predate this round and were left alone. All scratch lives under
+the gitignored `.remedy-wt/`; `git ls-files .remedy-wt` is empty.
 
 ## Next
 
-The planner/reviewer re-runs G1–G8 against `b18fad57..HEAD` on
-`feature/f272-one-world-completion` and issues the round 1 verdict; that verdict
-is booked into `.agent/live_review.md` by the FIRST commit of round 2, which
-then lands the run re-key — `run_log_dir` and `pingpong_run_dir` collapsing onto
-the one `run_dir` keyed by RUN id — as the second half of T001.
+**The planner/reviewer must rule on the widened observer set before any further
+build work.** The two options, both re-rulings:
+
+1. **Widen the sweep.** Amend DECISION F272 D1's "three test files" sentence to
+   the measured 22, and order a round that replaces the job-keyed `"runs"`
+   component with `"job_logs"` across those files plus
+   `tests/cli/runtime_helpers.py`. Mechanical, but it needs its own change set
+   and probably its own insertion budget.
+2. **Revert C4** on this branch and re-rule the re-key's staging with the
+   22-file cost on the table.
+
+Until one of those lands, the branch tip `1d24b4a7` is RED at 205 tests and
+must not be merged.

@@ -14,30 +14,29 @@ cluster deletion, which is never split.
 
 ## Current Step
 
-Round 2 completes the FIRST move of the re-key. `<data_root>/runs/` is occupied
-today by the job-keyed run log, so nothing can be keyed there by RUN id until
-that log moves out. This round books round 1's verdict, records DECISION F272 D1
-— which rules the staging from the reviewer's measurement of 74 reader and 35
-writer call sites — moves the run log to `<data_root>/job_logs/<job_id>` and the
-ping-pong run store to `<data_root>/runs/<run_id>`, each one function body, and
-sweeps the three test files that hand-spell those paths.
+BLOCKED at `1d24b4a7`. Round 2 landed the re-key — the run log at
+`<data_root>/job_logs/<job_id>`, the ping-pong run store at
+`<data_root>/runs/<run_id>` — and swept the three test files its block named.
+DECISION F272 D1's premise that those three are the only code observing the
+change is FALSE BY MEASUREMENT: 22 test files hand-spell `<root>/runs/<job_id>`
+and 205 tests are red, the canary `tests/cli/test_golden_path.py` among them
+(42 passed at C3, 41 at C4). No production caller moved — all 74 readers and
+35 writers resolve through `run_log_dir`, exactly as D1 says.
 
 ## Next Steps
 
-1. The name collapse DECISION F272 D1 places next: `pingpong_runs_dir` and
-   `pingpong_run_dir` are DELETED in favour of `runs_dir` and `run_dir` at every
-   call site, with no alias and no attic, per AGENTS.md "Replacing is deleting".
-2. The rest of the unified record: the eleven administrative fields and the
-   Mission extension (T002).
-3. The eleven consumers named under Design in `T2_F260.md`, one per commit where
-   the diff allows (T003).
+1. Rule the widened sweep, then execute it: the 22 files and their failure
+   counts are listed in `.agent/handoff.md`. It is mechanical — `"runs"`
+   becomes `"job_logs"` wherever the join is keyed by JOB id — but it is far
+   outside round 2's change set, so no worker may take it on its own authority.
+2. The name collapse D1 places next: `pingpong_runs_dir` and `pingpong_run_dir`
+   are DELETED in favour of `runs_dir` and `run_dir` at every call site.
+3. The rest of the unified record (T002), then the eleven consumers (T003).
 
 ## Risks
 
-- The run log's directory moves while its API does not. Every one of the 74
-  readers and 35 writers keeps working only because they all resolve through
-  `data_paths.run_log_dir`; a caller that hand-spells the path instead would
-  break silently, which is why the three test files that do exactly that are
-  swept in the same commit and are the round's red proof.
+- The branch tip is RED. Reverting C4 is the alternative to widening the
+  sweep; both are re-rulings, and this round declined to choose either on its
+  own authority.
 - Old `.data` content becomes unreadable at this move. That is DECISION D-A
   working as ruled — no migration, no compatibility reader — not a regression.
