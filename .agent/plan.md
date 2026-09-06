@@ -1,10 +1,10 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 13 are reviewed and 2 to 13 PASSED. T001 is
+pull request 240 (F259). Rounds 1 to 14 are reviewed and 2 to 14 PASSED. T001 is
 CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, both
 resolvers return `str`, the ping-pong run store has one spelling on both sides,
-and the run-log store has one spelling on the production READ side.
+and the run-log store has one spelling on the whole production side.
 
 ## Goal
 
@@ -18,23 +18,22 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-ONE SPELLING FOR THE RUN-LOG JOIN. `RunLogWriter.__init__` still joins
-`root / self._job_id` onto a runs BASE it is handed — the last production
-hand-spelling of the job-keyed layout. It takes a DATA root instead and builds
-its directory with `data_paths.run_log_dir`. Eight production call sites and
-three test files move with it.
+ONE RUN PER INVOCATION. `timeline.append_run_event` mints a new run id on every
+call, so five events of one resume become five runs in five files — measured on
+the shipped function. The module takes ONE run id for the life of the process
+and passes it, which is what `RunLogWriter`'s docstring already promises. This
+is registered as finding R-0816 and ruled by DECISION F260 D7.
 
 ## Next Steps
 
+- `Job.run_refs`, the plural run list D1 names and nothing on disk carries yet.
+  It is meaningful only once a run is an invocation rather than an event, which
+  is what this round buys.
 - THE RE-KEY ITSELF: `run_log_dir` and `pingpong_run_dir` collapse onto
-  `run_dir`, keyed by RUN id — DECISION F260 D1. `RunLogWriter` already mints a
-  run id, so the writer side is short; the READER side needs a job to name its
-  runs, which makes the step below its prerequisite.
-- `Job.run_refs`, the plural run list D1 names and nothing on disk carries yet:
-  no reader can find a job's runs once `<data_root>/runs/` is keyed by run id.
-- The rest of T002: the unified record's own administrative fields — measured at
-  `4f265f91`, eight of D1's eleven have no counterpart in `JobPlan` — and the
-  Mission extension.
+  `run_dir`, keyed by RUN id — DECISION F260 D1. The reader side needs a job to
+  name its runs, so `run_refs` above is its prerequisite.
+- The rest of T002: the unified record's own administrative fields — eight of
+  D1's eleven have no counterpart in `JobPlan` — and the Mission extension.
 - Then T003 consumer by consumer; T004 the classic runner, the classic store and
   the resolver collapse together (DECISION F260 D5); T005 the reachability test
   and the cluster deletion.
@@ -43,6 +42,7 @@ three test files move with it.
 
 - The test side of the run-log spelling is DECLINED, not forgotten: DECISION
   F260 D6 records why, and the re-key inherits those sites.
-- The soft limit is 25 rounds or 7 sessions. This is round 14 of session 5 and
-  the remaining scope is larger than the rounds left, so split-and-close is the
-  likely endgame and each round leaves a self-consistent tree.
+- The soft limit is 25 rounds or 7 sessions. This is round 15 of session 6, so
+  the SESSION limit is reached next session and split-and-close is the endgame.
+  Every round leaves a self-consistent tree so that close is available at any
+  point.
