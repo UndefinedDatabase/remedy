@@ -1995,3 +1995,19 @@ Done: R-0802 — RESOLVED 2026-09-06 (triage amend0906): the sense-scoping recor
 Done: R-0813 — RESOLVED 2026-09-06 (triage amend0906): both contradicting sentences are gone: `measures against 36` 0x and `the number the next consolidation measures against` 0x.
 
 Done: R-0816 — RESOLVED 2026-09-06 (triage amend0906): timeline.py:49,69 passes a module-level `_PROCESS_RUN_ID`, so one process is one run.
+
+## Triage 2026-09-06 — routing for the findings that stay open
+
+Operator order amend0906-triage-throughput, Part A.2. The lines below route the
+findings the triage did NOT resolve. They are deliberately not `Done:` lines:
+each id stays in the open set as the canonical
+`scripts/rotate_live_review.py::count_open_findings` computes it, and this
+section is a plain record rather than a finding record, so
+`rotate_live_review.py` never moves it. The evidence for every routing decision
+is `.agent/triage_2026-09-06.md`, committed at e0fc5c6b before any resolution.
+
+TRIAGE 2026-09-06: R-0767 — deletion-bound → F261; resolves in that feature's
+deletion round. The `--builder`/`--reviewer` flags this finding asks to widen
+for the `ollama` provider are deleted by F261 T003 in favour of the
+`--*-provider` / `--*-model` pairs, so the deletion discharges the repair rather
+than deferring it. F261's T003 carries the sentence that binds it.
