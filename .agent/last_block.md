@@ -1,324 +1,399 @@
-# STEP — F260 round 17: rule the split, and state what F260 actually built
+# STEP — F260 round 18: register the follow-up feature F272
 
-Feature F260 "One world: mission → job → run", session 7, round 17.
-Base for this round: `867f34ae0c4632c961ad4a0dc9ef168d595606fc`, the branch tip,
-which is the same object as `origin/feature/f260-one-world`.
-
-Frame convention: this block uses NO runs of repeated characters. Slice
-delimiters are the single lines `<<<BEGIN name>>>` and `<<<END name>>>`.
+Feature F260 "One world: mission → job → run", session 7, round 18. Base for this
+round: `7a1ce69d594043dfaad6c69161c93613d4229821`, the branch tip, the same object
+as `origin/feature/f260-one-world`. Frame convention: this block uses NO runs of
+repeated characters; slice delimiters are the single lines `<<<BEGIN name>>>` and
+`<<<END name>>>`.
 
 ## Goal
 
-Session 7 reaches the soft limit of operator amendment amend0905-throughput — 25
-rounds or 7 sessions, whichever comes first. This round performs the first half of
-the standing default: it RULES the split as a dated DECISION, books round 16's
-verdict and the reviewer's own prose slips, and rewrites F260's feature file so it
-states the scope F260 actually built and which slices move to the follow-up. The
-follow-up's REGISTRATION — its detail file, its STATUS line, the README counters
-and the `TOTAL_FEATURES` pin — is the NEXT round's, deliberately: the ruling is
-recorded before it is applied.
+Apply DECISION F260 D8, which round 17 recorded: register F272 — the remaining
+scope of F260 — as a new feature whose STATUS line sits IMMEDIATELY after F260's
+inside the same tier heading, per operator order amend0906-split-placement, so
+that Rule A5 proposes it before any other unchecked feature. The ledger pin, the
+README counters, the STATUS line and the detail file move in ONE commit, because
+`tests/docs/test_docs_consistency.py` pins the feature count, the id contiguity
+and the filename tier against each other, and any split of that edit is red.
 
 ## Bundle, in this exact order
 
-- C0a — save this block verbatim to `.agent/authored/f260-r17.md`
+- C0a — save this block verbatim to `.agent/authored/f260-r18.md`
 - C0b — mirror the same source file to `.agent/last_block.md`
 - C1 — `.agent/plan.md`, whole-file replacement from the PLAN slice
-- C2 — the record: `.agent/live_review.md` gains GATE_R16; `.agent/prose_slips.md`
-  gains SLIP21, SLIP22 and SLIP23; `.agent/decisions.md` gains DEC_D8 — ONE commit,
-  in that file order
-- C3 — `docs/roadmap/features/T2_F260.md`: the BUILTSTATE slice appended, and the
-  three pairs applied
+- C2 — the record: `.agent/live_review.md` gains GATE_R17, then
+  `.agent/prose_slips.md` gains SLIP24 — ONE commit, in that file order
+- C3 — THE REGISTRATION, one atomic commit over the paths listed below
 - C4 — rewrite `.agent/handoff.md` as the handback
 
 ## Change set — no path outside this list may be written
 
-- `.agent/authored/f260-r17.md` (C0a)
-- `.agent/last_block.md` (C0b)
-- `.agent/plan.md` (C1)
-- `.agent/live_review.md`, `.agent/prose_slips.md`, `.agent/decisions.md` (C2)
-- `docs/roadmap/features/T2_F260.md` (C3)
-- `.agent/handoff.md` (C4)
+- `.agent/authored/f260-r18.md` (C0a) · `.agent/last_block.md` (C0b) ·
+  `.agent/plan.md` (C1) · `.agent/live_review.md` and `.agent/prose_slips.md` (C2)
+  · `.agent/handoff.md` (C4)
+- C3, and every one of these lands in that ONE commit:
+  `docs/roadmap/features/T2_F272.md` (NEW FILE, the F272FILE slice) ·
+  `docs/roadmap/STATUS.md` (STATUSPAIR) · `README.md` (READMECOUNT, READMETIER) ·
+  `tests/docs/test_docs_consistency.py` (PINPAIR) ·
+  `docs/roadmap/features/T2_F261.md`, `T2_F268.md`, `T2_F269.md`, `T2_F270.md`,
+  `T2_F271.md` (GENPAIR, once in each) ·
+  `docs/roadmap/features/T2_F263.md` (F263PAIR)
 
-Nothing under `packages/`, `apps/`, `tests/` or `scripts/` is touched this round,
-and `docs/roadmap/STATUS.md` and `README.md` are NOT touched — they move together
-with the follow-up's registration in the next round, because the ledger and the
-README may never disagree in any committed state.
+`docs/roadmap/features/T2_F260.md` is NOT touched; round 17 wrote its Built State.
+Nothing under `packages/`, `apps/` or `scripts/` is touched, and
+`tests/docs/test_docs_consistency.py` is the ONLY file under `tests/` this round
+writes — only its `TOTAL_FEATURES` pin and the comment above it.
 
 ## Constraints
 
 1. Apply every slice BYTE FOR BYTE. If a slice or a gate looks wrong, apply it as
    written and DECLARE the problem in the handback. Never adjust a slice, a test
    or a gate to make a reading come out as ordered.
-2. TERMINAL BYTES, measured by the reviewer at `867f34ae`. They are NOT the same
-   for the three record files, and one of them CHANGED last round:
-   `.agent/live_review.md` 953191 bytes ending in exactly ONE newline;
-   `.agent/prose_slips.md` 119984 bytes ending in exactly ONE newline;
-   `.agent/decisions.md` 848037 bytes ending in **ZERO** newlines — the round-16
-   merge left that file on `origin/main`'s own convention, which the round-16
-   handback declared as its deviation 4. Derive each append recipe from its own
-   target's measured terminal byte and `assert` that count before writing, so a
-   wrong measurement aborts rather than corrupts. The decisions recipe is
-   therefore `pre + b"\n\n" + DEC_D8 + b"\n"`, which restores a trailing newline;
-   the other two are `pre + b"\n" + <slice> + b"\n"`.
-3. C2 writes its three files in this order: `.agent/live_review.md` FIRST,
-   `.agent/prose_slips.md` SECOND, `.agent/decisions.md` THIRD, all in ONE commit.
-   The three prose slips go in as SLIP21, then SLIP22, then SLIP23, separated by
-   one blank line each, in that order.
-4. Do NOT author a `Done:` or `Landed:` paragraph for any finding. GATE_R16 is a
-   `Gate:` record and registers nothing; the open set does not move this round.
-5. The three pairs of C3 are applied with `str.replace(FROM, TO, 1)` AFTER
-   asserting the FROM occurs EXACTLY ONCE in the file. Each pair's shape is stated
-   beside it below, as the OUTPUT of a containment test the reviewer ran, not as a
-   label. The BUILTSTATE slice is an APPEND to the end of that same file.
-6. `cmp` and the `remedy` binary are denied in this sandbox. Use
-   `filecmp.cmp(shallow=False)` plus sha256, and `python3 -m apps.cli.grouped` for
-   the CLI. Take every exit code from a Python `subprocess.run(...).returncode`;
-   the bash guard rejects `$?`, `$( )` and shell loop forms BY FORM.
-7. Scratch goes under the gitignored `.remedy-wt/`. Never `git add` anything
-   there. Remove any worktree you create BY EXACT PATH, never by glob.
-8. `.agent/STOP` does not exist at `867f34ae`. If it appears at any point, finish
+2. TERMINAL BYTES, measured by the reviewer at `7a1ce69d`: `.agent/live_review.md`
+   959115 bytes and `.agent/prose_slips.md` 122752 bytes, each ending in exactly
+   ONE newline. Derive each recipe from its own target's measured terminal byte
+   and `assert` the count before writing anyway — that is what makes a wrong
+   measurement abort instead of corrupt.
+3. C3 IS ONE COMMIT. Every path listed under C3 above is staged and committed
+   together. Committing the STATUS line without the detail file, or the counters
+   without the pin, leaves a state in which `tests/docs/` is red, and the README
+   and the ledger may never disagree in any committed state.
+4. Every pair is applied with `str.replace(FROM, TO, 1)` AFTER asserting the FROM
+   occurs EXACTLY ONCE in the file being edited; GENPAIR is asserted once PER
+   FILE, not once overall. `T2_F272.md` is a NEW file — write the F272FILE slice
+   plus exactly one trailing newline, never by copying another feature file.
+5. Do NOT author a `Done:` or `Landed:` paragraph. GATE_R17 is a `Gate:` record
+   and registers nothing; the open set does not move this round.
+6. `cmp` and the `remedy` binary are denied in this sandbox: use
+   `filecmp.cmp(shallow=False)` plus sha256, and `python3 -m apps.cli.grouped`.
+   Take every exit code from a Python `subprocess.run(...).returncode`; the bash
+   guard rejects `$?`, `$( )` and shell loop forms BY FORM. Scratch goes under the
+   gitignored `.remedy-wt/`, is never `git add`ed, and any worktree you create is
+   removed BY EXACT PATH, never by glob.
+7. `.agent/STOP` does not exist at `7a1ce69d`. If it appears at any point, finish
    the commit in flight, hand off and end. Do not delete it, do not commit it.
-9. The handback cannot table its own commit (the R-0149 pattern). Report C4's own
-   numbers nowhere; the reviewer measures them at the next gate.
-10. Create no pull request. Merge nothing. Never force-push. Never work on `main`.
+8. The handback cannot table its own commit (the R-0149 pattern). Report C4's own
+   numbers nowhere; the reviewer measures them at the next gate. Create no pull
+   request, merge nothing, never force-push, never work on `main`.
 
-## The pairs for C3, in `docs/roadmap/features/T2_F260.md`
+## The pairs
 
 The reviewer ran the containment test on each pair and reports its OUTPUT here.
+Every FROM below occurs EXACTLY ONCE in its own target file, and all six read
+`TO contains FROM: false` ⇒ REWRITE, so every FROM count after its edit must be 0.
 
-PAIR 1 — the header note. `TO contains FROM: true` ⇒ APPEND-shaped.
+STATUSPAIR — `docs/roadmap/STATUS.md`. The FROM spans F260's line AND the line
+that follows it, so the pair PROVES the new line lands between them and nowhere
+else — which is what amend0906-split-placement requires.
 
-<<<BEGIN P1_FROM>>>
-> Registered 2026-08-31 by operator order amend0831-vocab-registrations.
-<<<END P1_FROM>>>
+<<<BEGIN STATUSPAIR_FROM>>>
+- [~] F260 — One world: mission → job → run
+- [ ] F261 — CLI vocabulary v2 (rename & prune)
+<<<END STATUSPAIR_FROM>>>
+<<<BEGIN STATUSPAIR_TO>>>
+- [~] F260 — One world: mission → job → run
+- [ ] F272 — One world completion — the run re-key, the consumers, the classic runner and the cluster deletion
+- [ ] F261 — CLI vocabulary v2 (rename & prune)
+<<<END STATUSPAIR_TO>>>
 
-<<<BEGIN P1_TO>>>
-> Registered 2026-08-31 by operator order amend0831-vocab-registrations.
-> BUILT across rounds 1 to 17 (2026-09-05/06) on branch `feature/f260-one-world`;
-> the scope that landed is the Built State section at the end of this file. The
-> remainder was split off at the amend0905-throughput soft limit by DECISION F260
-> D8 and is carried by the follow-up feature registered directly after this one in
-> `docs/roadmap/STATUS.md`.
-<<<END P1_TO>>>
+READMECOUNT — `README.md`.
 
-PAIR 2 — the "REGISTRATION ONLY" claim, which is no longer true of this file.
-`TO contains FROM: false` ⇒ REWRITE.
+<<<BEGIN READMECOUNT_FROM>>>
+73 of 271 registered items accepted.
+<<<END READMECOUNT_FROM>>>
+<<<BEGIN READMECOUNT_TO>>>
+73 of 272 registered items accepted.
+<<<END READMECOUNT_TO>>>
 
-<<<BEGIN P2_FROM>>>
-> REGISTRATION ONLY — nothing in this file has been implemented.
-<<<END P2_FROM>>>
+READMETIER — `README.md`. F272 is Tier 2, so that tier's TOTAL rises by one; its
+DONE column does not move, because F272 is registered unchecked and F260 is still
+`[~]` at this commit.
 
-<<<BEGIN P2_TO>>>
-> PARTLY BUILT — read the Built State section before this file's Goal, T-slice and
-> Acceptance sections, which describe the feature AS ORIGINALLY SCOPED and are kept
-> unedited on purpose so the follow-up can copy its slices from them unchanged.
-<<<END P2_TO>>>
+<<<BEGIN READMETIER_FROM>>>
+| 2 | Minimal Self-Build Runtime | 16 | 24 |
+<<<END READMETIER_FROM>>>
+<<<BEGIN READMETIER_TO>>>
+| 2 | Minimal Self-Build Runtime | 16 | 25 |
+<<<END READMETIER_TO>>>
 
-PAIR 3 — the Orchestrator brief's split point, which this feature did not reach.
-`TO contains FROM: true` ⇒ APPEND-shaped.
+PINPAIR — `tests/docs/test_docs_consistency.py`. The comment block above the
+constant narrates every registration batch, so the new batch is narrated in the
+same commit that changes the number.
 
-<<<BEGIN P3_FROM>>>
-amend0905-throughput split-and-close default applies — if the session must split,
-the split point is between T003 and T004, never inside T005.
-<<<END P3_FROM>>>
+<<<BEGIN PINPAIR_FROM>>>
+#: T2_F269.md, T2_F270.md and T2_F271.md.
+TOTAL_FEATURES = 271
+<<<END PINPAIR_FROM>>>
+<<<BEGIN PINPAIR_TO>>>
+#: T2_F269.md, T2_F270.md and T2_F271.md. One more, F272 (one world
+#: completion: the run re-key, the consumers, the classic runner and the
+#: prototype cluster deletion), was registered on 2026-09-06 by DECISION
+#: F260 D8, which split it off F260 at the amend0905-throughput soft limit
+#: and placed it directly after its parent per amend0906-split-placement;
+#: see T2_F272.md.
+TOTAL_FEATURES = 272
+<<<END PINPAIR_TO>>>
 
-<<<BEGIN P3_TO>>>
-amend0905-throughput split-and-close default applies — if the session must split,
-the split point is between T003 and T004, never inside T005. THAT SENTENCE WAS
-OVERTAKEN BY EVENTS AND IS AMENDED BY DECISION F260 D8: the session limit arrived
-during T002, which is earlier than any split point this brief anticipated, so the
-split fell inside T002 and the brief is amended rather than obeyed. The prohibition
-it carries is untouched and still binds the follow-up: never split inside T005.
-<<<END P3_TO>>>
+GENPAIR — applied ONCE IN EACH of `docs/roadmap/features/T2_F261.md`,
+`T2_F268.md`, `T2_F269.md`, `T2_F270.md` and `T2_F271.md`, which already carry the
+placeholder clause the operator's amend0906 commit wrote. This pair replaces the
+placeholder with the concrete id, which is what amend0906-split-placement asks for
+and what AGENTS.md's one-spelling-per-concept rule prefers over keeping both.
+
+<<<BEGIN GENPAIR_FROM>>>
+ and any follow-up feature split off F260 (amend0906-split-placement)
+<<<END GENPAIR_FROM>>>
+<<<BEGIN GENPAIR_TO>>>
+, F272 (one world completion — the run re-key, the consumers, the classic runner and the cluster deletion)
+<<<END GENPAIR_TO>>>
+
+F263PAIR — `docs/roadmap/features/T2_F263.md` ONLY. That file names F260 in its
+"Depends on" line and did NOT receive the operator's placeholder clause — the
+amend0906 commit reached five of the six dependents — so it needs its own pair.
+
+<<<BEGIN F263PAIR_FROM>>>
+F260 (one world: mission → job → run) · Blocks/used by:
+<<<END F263PAIR_FROM>>>
+<<<BEGIN F263PAIR_TO>>>
+F260 (one world: mission → job → run), F272 (one world completion — the run re-key, the consumers, the classic runner and the cluster deletion) · Blocks/used by:
+<<<END F263PAIR_TO>>>
 
 ## The slices
 
+<<<BEGIN F272FILE>>>
+# T2_F272 — One world completion — the run re-key, the consumers, the classic runner and the cluster deletion
+**Tier 2 · Depends on: F259 (the binding concept model, `docs/system/vocabulary.md`), F260 (the one job record and the one id shape it closed at) · Blocks/used by: F261, F266, F268, F269, F270, F271, F263 — everything later that names a job, a run or a command**
+
+> Registered 2026-09-06 by DECISION F260 D8 in `.agent/decisions.md`, which split
+> the remaining scope off F260 at the amend0905-throughput soft limit and placed
+> this line directly after its parent per operator order amend0906-split-placement.
+> The closure evidence this feature starts from — the accepted HEAD, the evidence
+> job, the package name and its SHA-256 — is recorded on F260's own accepted line
+> in `docs/roadmap/STATUS.md` and deliberately not copied here, because a second
+> copy of a value drifts and the ledger line is the durable carrier.
+> REGISTRATION ONLY — nothing in this file has been implemented.
+
+## Goal & Done
+Finish what F260 began. F260 settled WHAT a job is — one record at
+`<data_root>/jobs/<16hex>/job.json`, one id shape, one minting function per kind,
+and a run that is an INVOCATION rather than an event. This feature spends that
+settlement: a Job carries MANY runs, every consumer moves onto the unified model,
+and the classic runner, its resolver and the prototype cluster are deleted.
+
+DONE when every Acceptance item below holds — they are F260's Acceptance list,
+carried over unchanged, because none of them held at F260's close — and when
+DECISION F260 D3, the deletion paragraph, exists and names every deleted module
+and the feature that inherited its idea.
+
+## Why this exists
+Not because F260 was wrong, and not because anything it built is being redone.
+F260 reached the operator's soft limit of 7 sessions during T002, earlier than the
+split point its own Orchestrator brief anticipated, and DECISION F260 D8 closed it
+at a self-consistent scope rather than running past the limit or narrowing the
+Acceptance list to fit. Every ruling F260 recorded — D-A, D0, D1, D2, D4, D5, D6,
+D7 — stays binding here and is NOT restated: read
+`docs/roadmap/features/T2_F260.md`, which keeps its Goal, Design, T-slice and
+Acceptance sections unedited for exactly this purpose, and its Built State for
+what is already on disk. The one measurement worth repeating, because it is this
+feature's first prerequisite and F260 paid for it: before F260's round 15 a "run"
+was an EVENT, so five events of one resume became five runs in five files; after
+it, one invocation is one run. `Job.run_refs` is truthful only on the far side of
+that change, and the re-key only on the far side of `run_refs`.
+
+## T001 — The plural run list and the run re-key
+`Job.run_refs`, the plural run list DECISION F260 D1 names and nothing on disk
+carries yet. Then the re-key: `run_log_dir` and `pingpong_run_dir` collapse onto
+one `run_dir` keyed by RUN id, per D1. The reader side needs a job to name its
+runs, so `run_refs` is the prerequisite and lands first.
+
+The test-side spelling sweep DECISION F260 D6 declined is inherited HERE and
+touched once, in this task. It needs its own red-proof plan: F260's round 15 could
+go red only because `tests/test_timeline.py`, `tests/test_run_log.py` and
+`tests/test_data_paths.py` still hand-spell the old path, so a round that sweeps
+them consumes its own observer. The pre-sweep and post-sweep PAIR is the shape.
+
+## T002 — The rest of the unified record
+The administrative fields — eight of D1's eleven have no counterpart in `JobPlan`
+— and the Mission extension: the order, the contract (D9 shape, may be empty until
+F269 fills it), the mission plan and the ordered job references.
+
+## T003 — Move the consumer list
+Every consumer named under "Design" in `docs/roadmap/features/T2_F260.md` onto the
+unified model, one consumer per commit where the diff allows, each with the test
+that proves it works on a job created through the ping-pong path. That list is not
+copied here on purpose: F260's file measures it with line citations, and a second
+copy would drift.
+
+## T004 — Delete the classic runner
+`job.run --cycles`, `job.run-next`, `job.run-loop`, their handlers and tests; the
+resolver collapse DECISION F260 D5 placed here, in the SAME commit range that
+deletes the classic store, because the collapse is a behaviour change to a shared
+error path and is harmless only once that store is gone; `resolve_any_job_id`, the
+"TWO job stores" paragraph, every which-store branch, and the absence test.
+
+## T005 — Reachability test and cluster deletion (last, the deletion round)
+The D11c reachability test in `tests/`, run and green BEFORE deletion; the two
+carry-overs F260's Design section names; DECISION F260 D3 drafted; then the
+deletion of every module, handler, catalog entry, `ui_server.py` section and test
+that section lists, one commit per module group. A module that turns out to be
+REACHABLE is reported with its import chain, never deleted.
+
+## Acceptance
+THE ACCEPTANCE LIST OF THIS FEATURE IS THE ONE IN
+`docs/roadmap/features/T2_F260.md`, IN FULL AND UNCHANGED. It is referenced rather
+than copied for the same reason the consumer list and the module list above are:
+every item of it was measured OPEN at F260's close, F260's file keeps that section
+unedited on purpose, and a second copy of a contract is a copy that drifts. Read it
+there; it binds here.
+
+Five of its items were raised by the operator's tests.md run of 2026-09-05 and
+carry finding ids, named here so a reader can find them by id without opening the
+other file: R-0803 (the suite never writes into the configured data root),
+R-0804 (every cockpit read endpoint returns 200 for a ping-pong-created job, and
+the `_JobPlanTaskAdapter` shim is deleted rather than fixed), R-0807 (one ledger
+row per provider call, with its role), R-0810 (the fake builder is idempotent per
+task) and R-0812 (the narration table covers every emitted event kind).
+
+## Do not touch
+Everything F260's own "Do not touch" section names, unchanged: the scope-fence
+builtin deny list (F017), the approval gate, STATUS semantics. No command is
+RENAMED here — F261 owns renames. No module outside F260's Design lists is
+deleted.
+
+## Orchestrator brief
+T001 first, because `run_refs` and the re-key are what every later task reads
+through; then T002, T003 consumer by consumer, T004, and T005 LAST as the deletion
+round with the reachability test run before the first `git rm`. F260's brief
+prohibition binds here unchanged and is the one hard rule of the sequencing: NEVER
+SPLIT INSIDE T005. A half-performed deletion is the single state this work must
+not leave behind, so a session reaching its own soft limit splits between T003 and
+T004, or before T005, and never within it.
+Findings carried: R-0816 (open, owned here).
+<<<END F272FILE>>>
 <<<BEGIN PLAN>>>
 # Plan — F260 One world: mission → job → run
 
-Branch: feature/f260-one-world, cut from `main` at b5cd6c20, with `origin/main`
-merged in at round 16. Rounds 1 to 16 are reviewed and 2 to 16 PASSED.
+Branch: feature/f260-one-world, cut from `main` at b5cd6c20, `origin/main` merged
+in at round 16. Rounds 1 to 17 are reviewed; round 1 FAILED and was repaired, and
+2 to 17 PASSED.
 
 ## Goal
 
-SESSION 7 REACHES THE SOFT LIMIT — 25 rounds or 7 sessions, whichever comes first,
-and this is session 7. The obligation is a SCOPE REPORT and then the standing
-default of operator amendment amend0905-throughput: SPLIT-AND-CLOSE, executed on
-this session's own authority. F260 closes at the scope it has actually built —
-T001 whole, and the RUN side of T002 — and the remainder is carried by a follow-up
-feature registered directly after F260, per operator order amend0906-split-placement.
+Session 7 reaches the amend0905-throughput soft limit of 7 sessions, so this
+session performs SPLIT-AND-CLOSE on its own authority. DECISION F260 D8, recorded
+in round 17, closes F260 at the scope it built — T001 whole, and the RUN side of
+T002 — and moves the remainder to a follow-up feature registered directly after
+F260 per operator order amend0906-split-placement.
 
 ## Current Step
 
-Round 17 RULES the split as DECISION F260 D8, books round 16's verdict and the
-reviewer's three prose slips, and rewrites this feature's file so it states what
-was built and what moved. The follow-up's registration is the next round's, so
-that the ruling is recorded before it is applied.
+Round 18 REGISTERS that follow-up as F272: its detail file, its STATUS line
+between F260's and F261's, the README counters, the `TOTAL_FEATURES` pin and the
+six downstream "Depends on" lines, all in ONE commit, because the docs suite pins
+those values against each other.
 
 ## Next Steps
 
-1. Register the follow-up feature: its detail file, its STATUS line directly after
-   F260's inside the same tier heading, the README counters, the TOTAL_FEATURES
-   pin and the six downstream "Depends on" lines, in ONE commit.
-2. The integration gate: the full suite at the branch head and at the merge base.
-3. Closure part 1: the self-use item, the evidence job and the review zip.
-4. Closure part 2: the verdict bookings and the ledger rotation.
-5. Closure part 3: the STATUS accepted flip, the README sync, the handback and the
+1. The integration gate: the full suite at the branch head and at the merge base,
+   per docs/agents/integration_gate.md.
+2. Closure part 1: the self-use item, the evidence job and the review zip.
+3. Closure part 2: the verdict bookings and the ledger rotation.
+4. Closure part 3: the STATUS accepted flip, the README sync, the handback and the
    pull request, which is left UNMERGED as the operator's review window.
 
 ## Risks
 
-- README.md and docs/roadmap/STATUS.md may never disagree in any committed state,
-  so the registration counters and the closure flip each land in one commit, and
-  neither file is touched by any other commit of this session.
-- `tests/docs/test_docs_consistency.py` pins the feature count, the id contiguity
-  and the filename tier against STATUS.md, so the registration's STATUS line, its
-  detail file and the TOTAL_FEATURES pin are one commit or the suite goes red.
+- README.md and docs/roadmap/STATUS.md may never disagree in any committed state.
+  This round moves both plus the pin in one commit; the closure flip moves both
+  again in one commit; no other commit of this session touches either.
+- The self-use queue is EXHAUSTED — all ten entries carry a `consumed_by` — so
+  closure precondition 6 runs `generate_and_append_if_empty` FIRST and records
+  `self-use NONE (queue exhausted)` only after that also answers `None`.
 <<<END PLAN>>>
-
-<<<BEGIN GATE_R16>>>
-Gate: R16 — the F260 R16 entry. R16 BROUGHT `origin/main` ONTO THE BRANCH AND BOOKED ROUND 15'S VERDICT INTO THE RECORD. VERDICT PASS. Range `08dca210b4b70153c35e419044dc4de6f4a188cd`..`867f34ae0c4632c961ad4a0dc9ef168d595606fc`, six commits in exactly the bundle's ordered sequence C0a, C0b, C1, C2, C3, C4, with nothing added, dropped or reordered; five are single-parent and C1 is the merge commit, whose two parents are the round's own C0b `aa6a76a5` and `f957c4c6`, the tip of `origin/main`. The reviewer re-ran every gate itself rather than reading the handback's numbers. TRANSPORT: the reviewer's scratchpad original `.remedy-wt/f260-r16-block.md`, the committed `.agent/authored/f260-r16.md` and `.agent/last_block.md` are all 20342 bytes and all hash to `4de9eb8b3979428b359f0e81bf6856023267875542449b32c03486c52b65acfc`; per §3 item 37 that chain covers the reviewer's scratch file, the worker's saved copy and the mirror, it is a COPY chain in which nothing is retyped, and it is not a claim about the bytes emitted into a prompt. THE MERGE, which was the point of the round: `.agent/decisions.md` at the merge commit is 848037 bytes with sha256 `e161a74832cc6452f6fc2755d09de4bbd1fd8e3d223ec25b6410904e5cfef463`, exactly the value the block ordered, and the reviewer reproduced the three-segment equality independently — its first 836338 bytes equal the file at `b5cd6c20`, the next 8734 equal this branch's own appended tail carrying DECISION F260 D5, D6 and D7, and the remaining 2965 equal the tail `origin/main` appended carrying the operator's amend0906-split-placement DECISION. Nothing was dropped from either side and nothing was invented: lines opening or closing a git conflict marker and lines equal to a run of seven equals signs each count ZERO in the merged file, and the reviewer measured those same three counts at zero in all three inputs, so the gate is not satisfied by its own absence of subject matter. Over the merge's own change set the seven paths other than `.agent/decisions.md` are byte-identical to their blobs on `origin/main`. THE SLICES, extracted by the reviewer from the COMMITTED authored copy and never from a retype: `.agent/plan.md` equals the PLAN slice plus exactly one newline at 2245 bytes and 43 lines, under the 50-line cap, carrying `## Goal` and `## Next Steps`; `.agent/live_review.md` equals its pre-image plus a newline plus GATE_R15 plus a newline, 947109 to 953191 bytes, blank-line units 437 to 438; `.agent/prose_slips.md` the same shape for SLIP20, 119984 bytes after, units 150 to 151. Both appended regions were checked by an independent structural reader over the whole appended region with N counted from the slice, and by an in-memory negative control that flipped one byte inside the first appended paragraph and was REJECTED by both readers, then restored and accepted by both. CENSUS at the round's last content commit: `^Gate: ` 25 with `^Gate: R15 — ` at exactly 1, registrations 301 over 301 DISTINCT ids, `^Done: ` 5 lines over THREE distinct ids, OPEN SET 298 BY DISTINCT ID — unchanged, which is correct because this round registered and resolved nothing. Zero lines beginning with a block marker prefix reached either record file. SUITES re-run by the reviewer in the primary checkout, serially: `tests/docs/` exit 0 at 303 passed, the canary `tests/cli/test_golden_path.py` exit 0 at 42 passed, and the three-file run-log selection exit 0 at 140 passed, with zero `FAILED` and zero `ERROR` lines in each; `python3 -m apps.cli.grouped integrity check --json` exit 0 with `"passed": true` and `"fail_count": 0` over five checks. `tests/docs/` is the suite that matters here because the merge carried `docs/` changes, and the reviewer had additionally dry-run it against the merge result BEFORE emitting the block, together with a red control that broke the README accepted-count on purpose inside a disposable worktree and confirmed the suite really goes red — exit 1 at 1 failed and 302 passed — then restored the file byte-identically and re-read exit 0 at 303 passed. `git status --porcelain` is EMPTY in the primary checkout and `git ls-files .remedy-wt` is EMPTY. THREE DEVIATIONS WERE DECLARED AND ALL THREE ARE UPHELD, and all three are defects of the REVIEWER's own block rather than of the work; the worker applied the block as written, declared each gap, adjusted nothing, and was right to do so in every case. First, the block named a full base SHA that does not exist as an object — the reviewer had measured only the eight-character prefix and wrote out a full-length value it never read — while the prefix every gate actually used resolves uniquely to the real tip. Second, the block's merge gate ordered the merge commit's FIRST parent to be that base, which its own bundle makes impossible, because the bundle places the two block-save commits before the merge and the first parent is therefore necessarily the second of them. Third, the same gate ordered a path comparison over a range that also contains those two block-save commits, one of which writes a file that does not exist on `origin/main` at all; the worker ran both the ordered form and the corrected form scoped to the merge's own change set, and the property the gate exists to protect holds at seven of seven. None of the three left anything wrong under `packages/`, `apps/`, `tests/` or `docs/`, so per operator amendment amend0827-process-diet rule 2 none spends an id and each is one dated line in `.agent/prose_slips.md`. The worker additionally reported, unprompted and correctly, that the merge left `.agent/decisions.md` ending in ZERO newlines where this branch's own convention had been one, and warned that the next round's append recipe for that file must be derived from that measurement rather than copied from a prior round; the reviewer confirms the terminal-byte count at zero and the round-17 block carries the corrected recipe.
-<<<END GATE_R16>>>
-
-<<<BEGIN SLIP21>>>
-2026-09-06 · F260 R16 (reviewer) · The round-16 block stated its base as a full forty-character SHA that does not exist as an object in this repository: the reviewer had only ever measured the eight-character prefix `08dca210`, and wrote out a full-length value it never read, inventing the remaining thirty-two characters. Nothing broke, because every gate in the block quoted the prefix rather than the long form and the prefix resolves uniquely to the real tip, so the worker executed against the right commit and declared the discrepancy. THE LESSON is that a SHA is a measurement like any other and is never completed from memory or from the shape of the thing: write the prefix that was actually read, or run `git rev-parse` and paste what it returns. A base SHA is the one value in a block that every later gate resolves against, so a fabricated one is the cheapest possible way to make an entire round unverifiable.
-<<<END SLIP21>>>
-
-<<<BEGIN SLIP22>>>
-2026-09-06 · F260 R16 (reviewer) · Gate G2(f) of the round-16 block ordered the merge commit's two parents to be the round's BASE and the tip of `origin/main`, while the same block's own Bundle places the two block-save commits C0a and C0b BEFORE the merge — so the merge's first parent is necessarily C0b and the ordered reading was unmeetable by construction, for every possible execution of that bundle. THE LESSON is checklist item 13 arriving through a gate about PARENTAGE rather than about a reading's timing: a clause naming which commit another commit descends from is a claim about the block's OWN commit sequence, and it is checked by walking that sequence on the page before emission. The safe form names the position — "C1's first parent is the commit immediately before it in this bundle" — rather than a SHA that was true only before the bundle added commits ahead of it.
-<<<END SLIP22>>>
-
-<<<BEGIN SLIP23>>>
-2026-09-06 · F260 R16 (reviewer) · Gate G2(e) of the round-16 block ordered every path in the range BASE to the merge commit, other than the resolved one, to be byte-identical to its blob on `origin/main` — but that range also contains the block's own two save commits, and one of the paths they write, `.agent/authored/f260-r16.md`, does not exist on `origin/main` at all, so a literal reading of the gate cannot even produce a value for it. THE LESSON is that a gate comparing a merge against what it merged must be scoped to the MERGE's own change set, which is the diff against its first parent, and not to a range whose endpoints the block itself chose for other reasons; the worker ran both forms and the corrected one holds at seven of seven, which is the reading the gate was written to take. Item 22's shape — a sentence quantifying across commits measured over the wrong range — reaching a gate's path set instead of a count.
-<<<END SLIP23>>>
-
-<<<BEGIN DEC_D8>>>
-### DECISION F260 D8 (2026-09-06, F260 round 17, session 7) — F260 closes at the job record and the one id shape; the run re-key, the consumers and the deletions are split off as a follow-up feature placed directly after it
-CONTEXT. Operator amendment amend0905-throughput sets the soft limit at 25 ROUNDS or 7 SESSIONS per feature, whichever comes first, and makes SPLIT-AND-CLOSE the standing default on reaching it, executed on the session's own authority rather than referred to the operator as a question. This is session 7 of F260 at round 17, so the SESSION half of the limit is the binding one; the round half is not close, which is worth recording because it means the constraint that ended this feature was WALL CLOCK, not scope creep and not repair churn. Every round from 2 to 16 PASSED, one round FAILED and was repaired, and no round was spent on rework of its own earlier work. MEASURED SCOPE, from the ledger entries `Gate: R1` through `Gate: R16` and the feature file's own task list. BUILT: T001 whole — the inventory in `.agent/f260_inventory.md`, DECISION F260 D1 ruling the record layout and D2 ruling the 16-hex id shape with one minting function per kind, and those minting functions at their call sites; and the RUN side of T002 — the ping-pong job record moved under the one jobs root beside its own evidence, both resolvers returning `str`, the ping-pong run store and the job-keyed run-log store each given one spelling in `data_paths` across the whole production side, and, at round 15, a run made an INVOCATION rather than an event, which DECISION F260 D7 rules and finding R-0816 measured on disk before and after. NOT BUILT: the rest of T002 — `Job.run_refs`, the re-key of the run directory onto a RUN id, the unified record's eleven administrative fields and the Mission extension; T003 whole, the eleven named consumers; T004 whole, the classic cycle runner and the resolver collapse DECISION F260 D5 placed there; and T005 whole, the reachability test and the prototype cluster deletion, measured in the feature file at 24527 lines under `packages/orchestration/` plus 4731 lines of `apps/cli/commands/*_cmd.py`. CHOSEN. F260 closes at the scope it built, and the remainder is registered as ONE new follow-up feature placed IMMEDIATELY AFTER F260's line inside the same tier heading, per operator order amend0906-split-placement, so that Rule A5 proposes it before any other unchecked feature. The follow-up's file copies its T-slices and its Acceptance items from F260's file rather than re-planning them, which is why this decision does not restate them; F260's own file keeps its Goal, T-slice and Acceptance sections UNEDITED for exactly that reason, and gains a Built State section stating what landed and what moved. THE DEPARTURE THIS DECISION IS MOST RESPONSIBLE FOR RECORDING: F260's Orchestrator brief says that if the session must split, "the split point is between T003 and T004, never inside T005". The session limit arrived during T002, which is EARLIER than any split point that brief anticipated, so the split falls inside T002 and the brief is amended rather than obeyed. The prohibition the same sentence carries — never split inside T005 — is untouched and binds the follow-up, because T005 is the deletion round and a half-performed deletion is the one state this feature must never leave behind. This is a wrong-spec finding routed to planning under docs/agents/planner_reviewer_prompt.md §4 item 7: the ruling is authored, recorded and proceeded under, and the operator's veto is any later relay. ALTERNATIVES CONSIDERED. Run session 7 past the limit to reach the brief's own split point between T003 and T004 — rejected: T003 is eleven consumers each owed a test against a ping-pong-created job, and T004 is a forty-call-site resolver collapse, which is several sessions of work rather than several rounds, so this option does not reach the brief's split point either, it merely reaches the limit later and with the same split still owed. Close F260 at its full scope by narrowing what the Acceptance list demands — rejected outright: the Acceptance items are the feature's reason for existing and none of them holds today, so this is the failure mode AGENTS.md names as the one unforgivable one. Stop and ask the operator which of the two to take — rejected because amend0905-throughput exists precisely to remove that question, having been written after F262's round 23 wrote a correct scope report and then waited a whole session for a ruling the default already supplied. Split the remaining scope into TWO follow-up features, one for the records and one for the deletions — rejected as premature: the follow-up inherits a coherent single narrative, and if it in turn reaches its own limit the same default applies to it with better information than this session has. CONSEQUENCE. F260's STATUS line will read as complete for the slices it built and will name the follow-up; it will not claim T002 through T005. The vocabulary page F259 made binding is unaffected, since F260 changed what a job IS and never what it is CALLED. No production behaviour is reverted by this decision and nothing on disk is deleted by it; it moves the boundary of a ledger line and nothing else. REVERSE by deleting this paragraph, deleting the follow-up feature's STATUS line and its detail file, restoring the `TOTAL_FEATURES` pin and the README counters to their pre-registration values, removing the follow-up from the six downstream "Depends on" lines, and returning F260's STATUS line to `[~]`; the feature then stands unsplit at the scope its Goal section describes, with its Orchestrator brief's split point binding again unamended.
-<<<END DEC_D8>>>
-
-<<<BEGIN BUILTSTATE>>>
-## Built State (2026-09-06, rounds 1 to 17, ledger `Gate: R1` to `Gate: R16`)
-
-Scope per DECISION F260 D8, which closed this feature at the soft limit of operator
-amendment amend0905-throughput and split the remainder off as the follow-up feature
-registered directly after this one in `docs/roadmap/STATUS.md`. The Goal & Done,
-T001 to T005 and Acceptance sections above are kept UNEDITED and describe the
-feature as originally scoped, so that the follow-up copies its slices from them
-unchanged; this section is the one that describes what is on disk.
-
-- T001 (rounds 1 to 6), COMPLETE. `.agent/f260_inventory.md` measured both writers,
-  the three id shapes actually minted, and the four kinds of thing the 16-hex shape
-  already named. DECISION F260 D1 rules the record layout and the three areas;
-  DECISION F260 D2 rules the one id shape as 16-hex with a SEPARATE minting function
-  per kind, in `packages/orchestration/data_paths.py`, because one shape naming four
-  kinds is not one function. DECISION F260 D4 records why the one RESOLVER could not
-  land in T001, and moves it to the store that makes it true.
-- T002 (rounds 7 to 15), PARTIAL — the RUN side only. The ping-pong job record moved
-  under the one jobs root beside its own evidence; both resolvers return `str`; the
-  ping-pong run store and the job-keyed run-log store each have ONE spelling in
-  `data_paths` across the whole production side; `RunLogWriter` takes a data root;
-  and a RUN is now an INVOCATION rather than an event — `packages/orchestration/
-  timeline.py` holds one run id for the life of the process, which is what
-  `RunLogWriter`'s docstring had always promised. DECISION F260 D7 rules that
-  cardinality and finding R-0816 records it, measured on disk at five files for one
-  five-event resume before the fix and one file after. DECISION F260 D5 records why
-  the resolver COLLAPSE belongs in T004 rather than here. DECISION F260 D6 records
-  why the TEST-side spelling sweep was declined rather than forgotten.
-- MOVED TO THE FOLLOW-UP FEATURE by DECISION F260 D8, not abandoned: the rest of
-  T002 — `Job.run_refs`, the re-key of the run directory onto a RUN id, the unified
-  record's eleven administrative fields, and the Mission extension; T003 whole, the
-  eleven consumers named under Design; T004 whole, the classic cycle runner and the
-  resolver collapse; and T005 whole, the reachability test, the two carry-overs,
-  DECISION F260 D3 and the prototype cluster deletion. Every Acceptance item of this
-  file moves with them, because none of them holds at this close.
-- Findings: R-0814 resolved; R-0816 open at this close and owned by the follow-up,
-  which is where the re-key it is a prerequisite for now lives.
-<<<END BUILTSTATE>>>
+<<<BEGIN GATE_R17>>>
+Gate: R17 — the F260 R17 entry. R17 RULED THE SPLIT AS DECISION F260 D8 AND STATED WHAT F260 ACTUALLY BUILT. VERDICT PASS. Range `867f34ae0c4632c961ad4a0dc9ef168d595606fc`..`7a1ce69d594043dfaad6c69161c93613d4229821`, six commits, EVERY ONE SINGLE-PARENT, in exactly the bundle's ordered sequence C0a, C0b, C1, C2, C3, C4 with nothing added, dropped or reordered; insertion counts 324, 242, 15, 12 and 50 for the five commits before the handback, every one far under the 500 cap. The reviewer re-ran every gate itself rather than reading the handback's numbers. TRANSPORT: the reviewer's scratchpad original `.remedy-wt/f260-r17-block.md`, the committed `.agent/authored/f260-r17.md` and `.agent/last_block.md` are all 31781 bytes and all hash to `ceec367fcf541c704f86a2d2259929445044cc49b729809a61e20fc63aeb4a03`; per §3 item 37 that chain covers the reviewer's scratch file, the worker's saved copy and the mirror, it is a COPY chain in which nothing is retyped, and it is not a claim about the bytes emitted into a prompt. THE RECORD: `.agent/live_review.md` 953191 to 959115 bytes and `.agent/decisions.md` 848037 to 853742 bytes, each equal to its pre-image plus its own recipe exactly, each with the pre-image a byte-exact prefix, blank-line units 438 to 439 and 1899 to 1900, and each proved a THIRD time by an in-memory negative control that flipped one byte inside the first appended paragraph, was REJECTED by both the byte reader and the structural reader, and was accepted by both after restoration. The two files needed DIFFERENT recipes and the worker derived each from its own target: `.agent/decisions.md` ended in ZERO newlines after the round-16 merge left it on `origin/main`'s convention, so its recipe opened with two newlines and closed with one, restoring a trailing newline the file now has. `.agent/prose_slips.md` 119984 to 122752 bytes, units 151 to 154, carrying SLIP21, SLIP22 and SLIP23 as its last three units in that order. THE FEATURE FILE: `docs/roadmap/features/T2_F260.md` 28449 to 32057 bytes, and the reviewer reconstructed it INDEPENDENTLY from the pre-edit text — the three pairs applied in order, then the Built State appended by the recipe derived from the file's own terminal byte — and the reconstruction equals the committed bytes exactly. The three pairs each read FROM exactly 1 before; the containment test printed `true` for the header-note pair and the Orchestrator-brief pair, which are append-shaped and whose FROM therefore survives inside the TO, and `false` for the REGISTRATION ONLY pair, whose FROM reads 0 after. The file ends with exactly one newline and no block marker line reached it. CENSUS: `^Gate: ` 26 with `^Gate: R17 — ` not yet present and `^Gate: R16 — ` at exactly 1; registrations 301 over 301 DISTINCT ids; `^Done: ` 5 lines over THREE distinct ids; OPEN SET 298 BY DISTINCT ID, unchanged, which is correct because this round registered and resolved nothing. TWO CLAIMS INSIDE THE AUTHORED SLICES WERE FLAGGED BY THE WORKER AS TRANSPORTED ON THE BLOCK'S AUTHORITY RATHER THAN INDEPENDENTLY MEASURED, WHICH WAS EXACTLY RIGHT OF IT TO SAY, AND THE REVIEWER HAS NOW MEASURED BOTH. DECISION F260 D8's sentence "Every round from 2 to 16 PASSED, one round FAILED and was repaired" is TRUE: the sixteen F260 `Gate:` records were parsed as whole blank-line units and read one `VERDICT FAIL`, at R1, and fifteen `VERDICT PASS`, at R2 through R16, with none neither. The Built State's round attributions are accurate with one qualification now recorded here rather than left for a later reader: R6 STRADDLES the boundary the section draws, because it carries DECISION F260 D4 — the ruling that closes T001 by moving the resolver out of it — and ALSO the first `data_paths` spelling of D1's layout, which is T002 work; the section says T001 ran rounds 1 to 6 and T002 rounds 7 to 15, which describes where each task's work sat and does not claim exclusivity, so it stands. SUITES re-run by the reviewer in the primary checkout, serially: `tests/docs/` exit 0 at 303 passed, `tests/orchestration/test_roadmap_index.py` exit 0 at 30 passed, the canary `tests/cli/test_golden_path.py` exit 0 at 42 passed, each with zero `FAILED` and zero `ERROR` lines, and `python3 -m apps.cli.grouped integrity check --json` exit 0 with `"passed": true` and `"fail_count": 0` over five checks. The reviewer had additionally dry-run the whole of C3 before emitting the block — the three pairs and the append applied to a scratch copy in a disposable worktree, with both docs suites green on the result — and removed that worktree by exact path. `git status --porcelain` EMPTY and `git ls-files .remedy-wt` EMPTY in the primary checkout. NINE ITEMS WERE DECLARED AND ALL NINE ARE UPHELD; two are consequences of the reviewer's own choice of pair anchors and neither leaves anything false on disk. The header-note pair anchored on the file's OLDEST registration line, so the new "BUILT across rounds 1 to 17" sentences now sit ABOVE the "Rewritten 2026-09-05" line rather than below it — chronologically interleaved prose in a header block, recorded as one dated line in `.agent/prose_slips.md`. The Orchestrator-brief pair's FROM ended mid-line, so its replacement leaves one line of about 105 characters where the file's convention is roughly 80; the markdown and the link inside it are intact and nothing was reflowed, because reflowing is an edit the block did not order.
+<<<END GATE_R17>>>
+<<<BEGIN SLIP24>>>
+2026-09-06 · F260 R17 (reviewer) · The round-17 block's header-note pair for `docs/roadmap/features/T2_F260.md` anchored its FROM on the file's OLDEST line, "Registered 2026-08-31 by operator order amend0831-vocab-registrations.", and appended the new BUILT sentences directly after it — but that header block carries a SECOND, later line, "Rewritten 2026-09-05 by operator order amend0905-vocab-rebuild", so the applied result reads 2026-08-31, then 2026-09-06, then 2026-09-05. The worker applied it byte for byte and declared the interleave, which was right. THE LESSON is that an append-shaped pair whose purpose is to EXTEND a block anchors on the LAST line of that block, not the first: the FROM must read forward far enough to prove what the new text lands in front of, which is the same obligation an insert-after pair has and which this pair had only for the line it replaced. Nothing under `packages/`, `apps/`, `tests/` or `docs/` is false as a result — every sentence in that header is true, and only their order is odd — so no id is spent (amend0827-process-diet rule 2).
+<<<END SLIP24>>>
 
 ## Done when — the gates. Report ONE LINE PER GATE with its REAL exit code.
 
 **G1 TRANSPORT — one comparison.** Before staging C0a, sha256 over the
-delegation's source file, `.agent/authored/f260-r17.md` and
-`.agent/last_block.md`. All three must equal the digest the delegation names.
-Both writes are `shutil.copyfile` from the source path, each proved with
-`filecmp.cmp(shallow=False)` = True.
+delegation's source file, `.agent/authored/f260-r18.md` and
+`.agent/last_block.md`; all three must equal the digest the delegation names.
+Both writes are `shutil.copyfile`, each proved with `filecmp.cmp(shallow=False)`.
 
-**G2 THE RECORD, at C2.** For `.agent/live_review.md` and for
-`.agent/decisions.md`, three readings each:
-(a) exact image — `post == pre + <this file's recipe from constraint 2>` is True,
-and `post[:len(pre)] == pre` is True. Report both byte counts;
+**G2 THE RECORD, at C2.** For `.agent/live_review.md`, three readings:
+(a) exact image — `post == pre + b"\n" + GATE_R17 + b"\n"` True and
+`post[:len(pre)] == pre` True; report both byte counts;
 (b) structural, independent of (a) — split the WHOLE file on a blank line and
-compare the last N units against the slice's N paragraphs IN ORDER, where N is a
-number your script COUNTS from the slice and never one this block asserts. Report
-the unit count before and after;
-(c) negative control, run IN MEMORY on a `bytes` object so the primary checkout
-never holds known-bad bytes: flip one byte inside the FIRST appended paragraph;
-both readers must REJECT. Restore; both must ACCEPT and the restored image must
-equal the disk image.
-For `.agent/prose_slips.md` a byte-equality reading is enough: `post == pre +
-b"\n" + SLIP21 + b"\n\n" + SLIP22 + b"\n\n" + SLIP23 + b"\n"` is True. Report both
-byte counts and the blank-line unit count before and after, and confirm the last
-three units are SLIP21, SLIP22, SLIP23 in that order.
+compare the last N units against the slice's N paragraphs IN ORDER, N counted by
+your script from the slice and never asserted by this block; report units before
+and after;
+(c) negative control IN MEMORY on a `bytes` object: flip one byte inside the FIRST
+appended paragraph; both readers must REJECT; restore and both must ACCEPT with
+the restored image equal to the disk image.
+For `.agent/prose_slips.md`, byte equality is enough: `post == pre + b"\n" +
+SLIP24 + b"\n"` True; report byte counts and units before and after.
 
 **G3 THE PLAN, at C1.** `.agent/plan.md` equals the PLAN slice plus exactly one
-trailing newline. Report its byte count and line count; it must be under the
-50-line cap AGENTS.md sets and must carry `## Goal` and `## Next Steps`.
+trailing newline. Report byte count and line count; under the 50-line cap, and
+carrying `## Goal` and `## Next Steps`.
 
-**G4 THE THREE PAIRS, at C3.** For each of P1, P2, P3 report FOUR numbers: the
-FROM count BEFORE the edit, which must be 1; the containment reading `TO contains
-FROM` printed as the words `true` or `false`; the FROM count AFTER; and the TO
-count AFTER, which must be 1. For P1 and P3 the containment reading is `true`, so
-the FROM count after is NOT ordered to be 0 and must not be reported as a
-failure when it is 1 — those are append-shaped pairs and the FROM survives inside
-the TO. For P2 the reading is `false`, so the FROM count after must be 0.
+**G4 THE FOUR REGISTRATION PAIRS, at C3.** For STATUSPAIR, READMECOUNT,
+READMETIER and PINPAIR report FOUR numbers each: FROM count BEFORE (1); the
+containment reading printed as the word `true` or `false`; FROM count AFTER; TO
+count AFTER (1). All four are REWRITEs, so every FROM count after must be 0. Then
+reconstruct each of `docs/roadmap/STATUS.md`, `README.md` and
+`tests/docs/test_docs_consistency.py` independently from its pre-edit bytes with
+only its own pairs applied — one boolean per file — plus that each still ends
+with exactly one newline.
 
-**G5 THE APPEND AND THE WHOLE-FILE RECONSTRUCTION, at C3.**
-`docs/roadmap/features/T2_F260.md` after C3 must equal its pre-edit bytes with
-ONLY the three pair replacements applied AND the BUILTSTATE slice appended by the
-recipe your script derives from the file's own measured terminal byte — recomputed
-independently from the pre-edit text, reported as ONE boolean. Report the file's
-byte count before and after, and that it ends with exactly one newline. Also
-report that the file contains ZERO lines beginning `<<<BEGIN ` or `<<<END `.
+**G5 THE SIX DEPENDS-ON EDITS, at C3.** GENPAIR is applied once in each of its
+five files; report PER FILE the FROM count before (1), after (0) and the TO count
+after (1). F263PAIR is applied to `T2_F263.md`; report the same numbers, its FROM
+count after also 0, because it too is a REWRITE. Then report that
+`amend0906-split-placement` appears ZERO times in the five GENPAIR files after the
+edit, and that `F272` appears exactly once in the `**Tier` line of all SIX.
 
-**G6 THE CENSUS, after C2.** Over `.agent/live_review.md`: `^Gate: ` must read 26;
-`^Gate: R16 — ` must read exactly 1; registrations `^- R-\d{4} — ` must read 301
-over 301 DISTINCT ids; `^Done: R-\d{4} — ` must read 5 lines over 3 distinct ids;
-and the OPEN SET BY DISTINCT ID must read 298 — unchanged, because this round
-registers and resolves nothing. Report that `.agent/live_review.md`,
-`.agent/prose_slips.md` and `.agent/decisions.md` each contain ZERO lines
-beginning `<<<BEGIN ` or `<<<END `.
+**G6 THE NEW FILE, at C3.** `docs/roadmap/features/T2_F272.md` exists and its
+bytes equal the F272FILE slice plus exactly one trailing newline — report the byte
+count and the boolean, that it holds ZERO lines beginning `<<<BEGIN ` or `<<<END `,
+that its first line begins `# T2_F272 — `, and that `git status --porcelain`
+showed it as a NEW file before staging.
 
-**G7 THE SUITES, run SERIALLY, in the PRIMARY checkout, after C3.** Report each
-one's real exit code and its pass count:
+**G7 THE LEDGER AND THE README AGREE, after C3, then the suites.** Report: feature
+detail files 272; STATUS entries 272; the sorted set of ids missing from
+`range(1, 273)` for both, empty for both; `^- \[x\] F` 73 and `^- \[~\] F` 1;
+the README numeral parsed by `^(\d+) of (\d+) registered items accepted\.` reading
+73 and 272; `TOTAL_FEATURES` 272; and F272's filename tier and STATUS tier, both
+2. Then, run SERIALLY in the PRIMARY checkout:
 
     python3 -m pytest tests/docs/ -q -p no:randomly
     python3 -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
     python3 -m pytest tests/cli/test_golden_path.py -q -p no:randomly
     python3 -m apps.cli.grouped integrity check --json
 
-`tests/docs/` and `test_roadmap_index.py` are in this list because C3 changes a
-file under `docs/roadmap/`. The integrity check must report `"passed": true` with
-`"fail_count": 0`. Report any `^FAILED` or `^ERROR` lines; there must be none.
+Report each real exit code and pass count; the integrity check must report
+`"passed": true` with `"fail_count": 0`. Report any `^FAILED` or `^ERROR` lines;
+there must be none.
 
-**G8 TREE AND STRUCTURE.** `git status --porcelain` is EMPTY; `git ls-files
-.remedy-wt` is EMPTY. Every commit C0a through C3 is single-parent — report each
-one's parent count. Every commit's INSERTION count — the `+` column of `git diff
---numstat`, never insertions plus deletions — is reported for C0a through C3 and
-is under 500. Count the `.py` files in `git diff --name-only 867f34ae..C3`
-yourself; if there are none, report this gate's lint half as not applicable rather
-than inventing a target, and if there are any, run `python3 -m ruff check` over
-exactly those and report the names and the exit code.
+**G8 TREE, LINT AND STRUCTURE.** `python3 -m ruff check
+tests/docs/test_docs_consistency.py` — that is the one `.py` file this round
+edits; report its exit code and confirm by counting the `.py` files in `git diff
+--name-only 7a1ce69d..C3` yourself. Then `git status --porcelain` EMPTY;
+`git ls-files .remedy-wt` EMPTY; every commit C0a through C3 single-parent with
+its parent count reported; and each of their INSERTION counts — the `+` column of
+`git diff --numstat`, never insertions plus deletions — reported and under 500.
 
 ## Handback
 
 Rewrite `.agent/handoff.md`. Mandated sections: the Session block naming SESSION 7
-of F260, round 17, and rounds so far 17; a one-sentence context self-assessment;
-the Range; the per-commit table with `+/-` taken from `git log --numstat` and
-never re-derived by eye; External actions; Verification, one line per gate with
-its real exit code; the Authored-text proofs; Deviations and assumptions; the
-Item-status table with every bundle item and every gate appearing exactly once as
-`done`, `skipped` or `deviated` with a reason; Open findings; and Next.
-
-Then `git push -u origin feature/f260-one-world`. Create NO pull request. Merge
-nothing. Never force-push.
+of F260, round 18, rounds so far 18; a one-sentence context self-assessment; the
+Range; the per-commit table with `+/-` from `git log --numstat`, never re-derived
+by eye; External actions; Verification, one line per gate with its real exit code;
+the Authored-text proofs; Deviations and assumptions; the Item-status table with
+every bundle item and every gate appearing exactly once as `done`, `skipped` or
+`deviated` with a reason; Open findings; and Next. Then
+`git push -u origin feature/f260-one-world`.
