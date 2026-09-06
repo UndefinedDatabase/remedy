@@ -1,0 +1,118 @@
+F260 R20 — closure precondition 6's RUN step — SU-011 self-use run evidence
+
+Job id: 101fad068c0741f4
+Queue entry id: SU-011 (generated this round by generate_and_append_if_empty(),
+tier 1, ledger scan, R-0419; provenance 'generated (self-use-generator tier 1, ledger scan, R-0419)'; title 'Address ledger finding R-0419'; consumed_by '' — NOT set
+this round, because closure precondition 6 requires that edit in the CLOSURE
+commit, which is part 3's.)
+Job file path: .remedy-wt/selfuse-f260-run/SU-011.md
+(rendered by run_next_self_use_item(); byte-identical copy saved alongside this
+file as SU-011.md — 2009 bytes both, compared with filecmp.cmp(shallow=False);
+sha256 29fa81063d19edf8b9daee627682709ccd1f9d9b86a0b77aa4acdb71dc4691ad,
+job_file_sha256 as persisted in .data/jobs/101fad068c0741f4/job.json: 29fa81063d19edf8b9daee627682709ccd1f9d9b86a0b77aa4acdb71dc4691ad)
+
+Precondition-6 sequence actually executed, in order:
+
+  1. packages.orchestration.self_use_queue.next_self_use_item()
+     -> None  (the queue held ten entries, SU-001..SU-010, every one with a
+        non-empty consumed_by; so there was no pending item)
+  2. packages.orchestration.self_use_generator.generate_and_append_if_empty()
+     -> SelfUseQueueEntry SU-011, title 'Address ledger finding R-0419',
+        provenance 'generated (self-use-generator tier 1, ledger scan, R-0419)',
+        consumed_by ''
+     next_self_use_item() then answered SU-011, so the track is NOT exhausted.
+  3. the run (below)
+
+Invocation (python3, from the repo root; the whole script is
+.remedy-wt/f260r20/c4.py, gitignored scratch):
+  from pathlib import Path
+  from packages.orchestration.self_use_runner import run_next_self_use_item
+  entry, job_file_path, plan = run_next_self_use_item(
+      Path('.remedy-wt/selfuse-f260-run'), repo_path='.')
+Unflagged beyond dest_dir and repo_path — no builder_name/reviewer_name/
+builder_provider/reviewer_provider/fake override/queue_path passed, and
+max_provider_calls, max_cost_usd and max_tasks were left at the function's
+own defaults.
+
+Measured wall time: 96.499 s.
+
+Budgets in force (all defaults of run_next_self_use_item, none overridden):
+  plan.budgets: {"max_total_tokens": null, "max_provider_calls": 6, "max_wall_clock_minutes": null, "max_cost_usd": 0.5, "deadline": null}
+  plan.budget_actuals: null
+  max_tasks=1 (the run_next_self_use_item default, source=invocation)
+
+plan.execution_config as persisted:
+  {"builder": "ollama", "builder_source": "cli", "reviewer": "ollama", "reviewer_source": "cli", "builder_model": "", "builder_model_source": "default", "builder_effort": "", "builder_effort_source": "default", "reviewer_model": "", "reviewer_model_source": "default", "reviewer_effort": "", "reviewer_effort_source": "default", "repair_provider": "", "repair_provider_source": "default", "repair_model": "", "repair_model_source": "default", "repair_effort": "", "repair_effort_source": "default", "max_rounds": 3, "max_rounds_source": "default", "repair_rounds_allowed": 2, "repair_rounds_source": "default", "test_command": "", "test_command_present": false, "test_command_source": "default", "claude_cli_write_mode": "none", "claude_cli_write_mode_source": "default", "context_strategy": "task_bounded_sequential_job", "timeout_sec": 120, "timeout_sec_source": "default", "timeout_profile": "", "timeout_profile_source": "default", "max_output_chars": 50000, "max_output_chars_source": "default", "stream_evidence": false, "stream_evidence_source": "default", "max_tasks": 1, "max_tasks_source": "invocation"}
+
+Final plan.status: blocked
+Plan-level error: task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+Per-task outcome:
+  T001 'Task 1': final_status=repair_exhausted, reviewer_verdict=fail, task.status=blocked,
+       test_passed=None, repair_rounds_used=2 of 2,
+       task.error='completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+
+packages.orchestration.self_use_findings.describe_self_use_run_defects(plan)
+output — a tuple of length 2, NOT an empty tuple, every string verbatim
+and in order:
+  1. 'job 101fad068c0741f4 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+  2. 'T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+
+The run was taken to the normal approval gate AND NO FURTHER: nothing was
+approved and nothing was applied. No consumed_by edit was made to
+scripts/self_use_queue.json this round. No R-id was registered this round and
+no Done:/Landed: paragraph was authored — the reviewer authors the findings
+from the strings above, and precondition 6 requires that registration before
+the close.
+
+Job worktree recorded by the plan: .remedy-wt/job-101fad068c0741f4 (branch remedy/job-101fad068c0741f4) at base_commit 3c10561b3eca1b802318655c95651044f09c6968,
+head 3c10561b3eca1b802318655c95651044f09c6968, cleanup_status retained — left in place, as every prior self-use run has
+left its own; it was created by run_job itself, not by this round, and it
+lives under the gitignored .remedy-wt/.
+result_diff: {"path": "result.diff", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "size_bytes": 0}
+Nothing was applied to the primary checkout: the diff the job produced is 0
+bytes.
+
+The scratch dest_dir used only to render/plan the job file:
+.remedy-wt/selfuse-f260-run/ — untracked and ignored by the repository's
+existing `.remedy-wt/` rule (.gitignore:235).
+
+Raw run transcript, as produced live by .remedy-wt/f260r20/c4.py:
+
+  G6 STEP 1 — next_self_use_item() BEFORE the generator
+  G6 next_self_use_item() BEFORE = None  is None: True
+  G6 queue entries BEFORE: 10 ; entries with empty consumed_by BEFORE: 0 []
+  G6 queue sha256 BEFORE: d245816f1730e18463c047a8dab43e0d249b18ef9d5de9e8523086df67d3ee5c
+
+  G6 STEP 2 — generate_and_append_if_empty()
+  G6 appended entry id: SU-011
+  G6 appended entry title: Address ledger finding R-0419
+  G6 appended entry provenance: generated (self-use-generator tier 1, ledger scan, R-0419)
+  G6 appended entry consumed_by: ''  is empty string: True
+  G6 appended entry why: - R-0419 — Medium, REVIEWER-BLOCK DEFECT, found by the worker and confirmed by the reviewer against the code. The R11 block asserted a fact about this repository that a wider grep refutes: DECISION-D6 states the reviewer "found exactly one role bound to a model — `orchestrator.model`", and the PLAN slice repeated it as "only one role is bound to a model". Both are FALSE. `packages/providers/ollama_planner/provider.py::_resolve_model` and `packages/providers/ollama_builder/provider.py::_resolve_model` each bind a second and third role to a model, and `packages/orchestration/role_config.py::KNOWN_ROLES` is a seven-name table whose resolvable `_FIELDS` include `model`. The cause is precise and worth naming rather than generalising: the reviewer grepped ONE file, `gauntlet_runner.py`, and wrote the result as a property of the whole repository. That is the R-0391 class — "an invariant is not established by the first file you look in; grep every writer before authoring a claim against it" — recurring here in its authored-block form rather than its finding form. The claim was also load-bearing, which is what makes this Medium rather than Low: the scarcity of role→model bindings was the stated reason DECISION F082 D6 inserted an inventory round, so a false fact was carrying a real planning decision. The decision survives its bad reason — the inventory was worth running, and it is precisely what caught this — but the reason is corrected in DECISION F082 D7 rather than left standing. Standing rule from here, binding the reviewer: a block may state a repository-wide absence ("nothing does X", "only one Y exists") only after a repository-wide search, and the block names the search it ran. An absence claimed from a single file is an unrun claim.
+  G6 queue entries AFTER: 11 ; entries with empty consumed_by AFTER: 1 ['SU-011']
+  G6 empty-consumed_by count goes 0 -> 1
+  G6 queue sha256 AFTER: 2ab2db3c101d1703edb0ea706c2c2f46e46f167baa176e115ebbca3b32c459fd
+  G6 next_self_use_item() AFTER the generator: SU-011
+
+  G6 STEP 3 — run_next_self_use_item(dest_dir=.remedy-wt/selfuse-f260-run, repo_path='.')
+  G6 max_provider_calls, max_cost_usd, max_tasks left at the function's own defaults
+  G6 call start epoch 1788690955.444
+  G6 call end epoch 1788691051.942  wall clock 96.499 s
+  G6 returned entry id: SU-011
+  G6 returned job file path: .remedy-wt/selfuse-f260-run/SU-011.md
+  G6 JobPlan id: 101fad068c0741f4
+  G6 JobPlan status: blocked
+  G6 JobPlan error: 'task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+  G6 JobPlan budgets: {'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
+  G6 JobPlan budget_actuals: None
+  G6 JobPlan execution_config: ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama', reviewer_source='cli', builder_model='', builder_model_source='default', builder_effort='', builder_effort_source='default', reviewer_model='', reviewer_model_source='default', reviewer_effort='', reviewer_effort_source='default', repair_provider='', repair_provider_source='default', repair_model='', repair_model_source='default', repair_effort='', repair_effort_source='default', max_rounds=3, max_rounds_source='default', repair_rounds_allowed=2, repair_rounds_source='default', test_command='', test_command_source='default', claude_cli_write_mode='none', claude_cli_write_mode_source='default', context_strategy='task_bounded_sequential_job', timeout_sec=120, timeout_sec_source='default', timeout_profile='', timeout_profile_source='default', max_output_chars=50000, max_output_chars_source='default', stream_evidence=False, stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')
+  G6 task T001 'Task 1': status=blocked final_status=repair_exhausted reviewer_verdict=fail test_passed=None repair_rounds_used=2 of 2 error='completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail'
+
+  G6 STEP 4 — describe_self_use_run_defects(plan)
+  G6 defects type: tuple  length: 2
+  G6 defect 1 verbatim: job 101fad068c0741f4 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+  G6 defect 2 verbatim: T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+  G6 defects repr, complete and untruncated: ('job 101fad068c0741f4 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail', 'T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail')
+
+  G6 wrote .remedy-wt/f260r20/c4_result.json
