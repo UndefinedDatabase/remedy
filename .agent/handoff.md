@@ -1,552 +1,292 @@
-# Handoff — F260 One world · round 15 · ONE RUN PER INVOCATION
+# Handoff — F260 One world · round 16 · `origin/main` onto the branch, round 15 booked
 
 ## Session
 
-SESSION 6 of feature F260 · round 15 · rounds so far 15
+SESSION 7 of feature F260 · round 16 · rounds so far 16
 
-**`.agent/STOP` APPEARED DURING THIS ROUND.** It did not exist when the round
-started (`ls .agent/STOP` → "No such file or directory") and it exists now: an
-EMPTY, untracked, not-gitignored file with mtime `2026-09-06 10:20:01 +0200`,
-which is twenty minutes AFTER this round's last code commit (`9487e1c8`,
-committed `10:00:57`). Nothing in `tests/`, `packages/`, `apps/` or `scripts/`
-writes that path — grep finds zero references — so it is an operator signal and
-not fixture residue. Self-drive guardrail G6 says: "If `.agent/STOP` appears at
-any point, finish the current commit if one is half-written, then hand off and
-end." All eight gates were already executed when it appeared, so this handback IS
-that finish. **No further round may be authored without the operator clearing it;
-rule 1 of Phase 1 is to re-read `.agent/STOP` from disk before anything else.**
+`.agent/STOP` did NOT exist at the start of this round (`ls .agent/STOP` → "No
+such file or directory"), was re-checked before the handback and still does not
+exist; the operator cleared the sentinel that ended session 6.
 
-Context self-assessment (amend0905-throughput): context was never a constraint —
-comfortable throughout. WALL CLOCK was the whole cost again: `tests/orchestration/`
-744.74 s and `tests/cli/` 303.73 s, run SERIALLY, on top of G4's base-worktree
-probe and G6's three worktree runs. The soft limit is 25 rounds or 7 sessions; at
-15 rounds and 6 sessions the SESSION budget is the binding one and is reached next
-session, so split-and-close is the endgame and this round leaves a self-consistent
-tree.
+Context self-assessment (amend0905-throughput): context was never a constraint
+this round — the work was five small `.agent/**` commits plus a merge, and the
+whole gate set ran in well under a minute of suite time.
+
+**THIS SESSION REACHES THE SOFT LIMIT** (25 rounds or 7 sessions, whichever
+first; this is session 7). The obligation is a scope report and then the standing
+default of amend0905-throughput: SPLIT-AND-CLOSE. This round is the enabling
+step — the branch now HOLDS operator order amend0906-split-placement, which is
+the rule that governs where the follow-up feature's STATUS line goes.
 
 ## Range
 
-Review of `1d344b485ce6c4e5e7768c6ab001a10bf8ab69d2`..`HEAD`.
+Review of `08dca210b4b70153c35e419044dc4de6f4a188cd`..`HEAD`.
 
-SIX commits plus this handback, all single-parent (verified by
-`git log --format="%H %P"` — every commit has exactly one parent and the chain
-runs back to `1d344b48`), and they are EXACTLY the Bundle's ordered sequence
-C0a → C0b → C1 → C2 → C3 → C4 → C5. No commit was added, dropped or reordered.
-Largest insertion count 333 (`.agent/authored/f260-r15.md`, a single `.agent/**`
-state write); largest CODE commit 73 insertions (`9487e1c8`). Nothing approached
-the 500-insertion cap.
+FIVE commits plus this handback. Four are single-parent; ONE is a merge commit
+with two parents (`7ed25b88`, C1), which the block ordered and declared. They are
+EXACTLY the bundle's ordered sequence C0a → C0b → C1 → C2 → C3 → C4, with nothing
+added, dropped or reordered. Largest insertion count 243 (`.agent/authored/f260-r16.md`,
+a single `.agent/**` state write); nothing approached the 500-insertion cap.
 
 ## Commits
 
-`+/-` taken from `git log --numstat`, never re-derived by eye.
+`+/-` taken from `git diff --numstat <first parent> <commit>`, never re-derived by
+eye. (`git log --numstat` prints no rows for a merge commit by default, so C1's
+row is measured against its first parent, which is the honest reading for it.)
 
-### daddf265 f260: save the round 15 block verbatim as the authored source
+### b8c283054ea471929c5898549a0573205223eeff — f260: save the round 16 block verbatim as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f260-r15.md | +333 / -0 | C0a — `shutil.copyfile` from `.remedy-wt/f260-r15-block.md`, proved by `filecmp.cmp(shallow=False)` = True and sha256 equal to the delegation digest BEFORE staging |
+| .agent/authored/f260-r16.md | +243 / -0 | C0a — `shutil.copyfile` from `.remedy-wt/f260-r16-block.md`, proved by `filecmp.cmp(shallow=False)` = True and sha256 equal to the delegation digest BEFORE staging |
 
-### 4fd49c6a f260: mirror the round 15 block into the last block slot
+### aa6a76a56180ce3caf2cfd541889fc599550e38f — f260: mirror the round 16 block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +291 / -355 | C0b — same source file, same `shutil.copyfile` route, same two proofs |
+| .agent/last_block.md | +229 / -319 | C0b — same source file, same `shutil.copyfile` route, same two proofs |
 
-### d810d8ad f260: point the plan at one run per invocation for round 15
+### 7ed25b88993d497463129e21ad9b008362304e90 — Merge remote-tracking branch 'origin/main' into feature/f260-one-world
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +18 / -18 | C1 — whole-file replacement by the PLAN slice plus one trailing newline; 2531 bytes, 48 lines, under the 50-line cap, carrying `## Goal` and `## Next Steps` |
+| .agent/decisions.md | +45 / -0 | C1 — the ONE conflict, resolved deterministically as `BASE + OURS[len(BASE):] + THEIRS[len(BASE):]`, never by hand-editing markers. 848037 bytes, sha256 `e161a748…f463`, exactly the gate's two values |
+| docs/agents/self_drive_protocol.md | +12 / -0 | C1 — carried unchanged from `origin/main`: the amend0906-split-placement paragraph |
+| docs/roadmap/STATUS_closure_protocol.md | +2 / -0 | C1 — carried unchanged from `origin/main` |
+| docs/roadmap/features/T2_F261.md | +1 / -1 | C1 — carried unchanged from `origin/main` |
+| docs/roadmap/features/T2_F268.md | +1 / -1 | C1 — carried unchanged from `origin/main` |
+| docs/roadmap/features/T2_F269.md | +1 / -1 | C1 — carried unchanged from `origin/main` |
+| docs/roadmap/features/T2_F270.md | +1 / -1 | C1 — carried unchanged from `origin/main` |
+| docs/roadmap/features/T2_F271.md | +1 / -1 | C1 — carried unchanged from `origin/main` |
 
-### b06899b9 f260: record the round 14 gate, finding R-0816 and decision D7
+Merge total against its first parent: **+64 / -5**, eight paths. Two parents:
+`aa6a76a56180ce3caf2cfd541889fc599550e38f` (C0b) and
+`f957c4c6dede34e9ba9d3653ae01cc16157b96fc` (`origin/main` tip).
+
+### 87cae91feb2383176237b48174d512331efdac43 — f260: point the plan at the session 7 split-and-close endgame
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4 / -0 | C2 — GATE_R14 then FIND816 appended, in that order; 937682 → 947109 bytes |
-| .agent/decisions.md | +3 / -0 | C2 — DEC_D7 appended in the SAME commit, AFTER the live_review append (constraint 4); 842038 → 845072 bytes |
+| .agent/plan.md | +29 / -34 | C2 — whole-file replacement by the PLAN slice plus one trailing newline; 2245 bytes, 43 lines, under the 50-line cap, carrying `## Goal` and `## Next Steps` |
 
-### 97161332 f260: append the two round 14 reviewer prose slips
+### 92a99a8e900416eb7d11067620a2463cac5e8b4c — f260: book the round 15 gate record and its reviewer prose slip
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/prose_slips.md | +4 / -0 | C3 — SLIP18 then SLIP19, blank-line separated; 117457 → 118817 bytes |
+| .agent/live_review.md | +2 / -0 | C3 — GATE_R15 appended FIRST; 947109 → 953191 bytes |
+| .agent/prose_slips.md | +2 / -0 | C3 — SLIP20 appended SECOND, same commit (constraint 4); 118817 → 119984 bytes |
 
-### 9487e1c8 f260: give the timeline one run id per process so an invocation is one run
+### C4 — this file
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/timeline.py | +7 / -3 | C4 SPEC (1) — module-level `from packages.orchestration.run_log import RunLogWriter, new_run_id`; `_PROCESS_RUN_ID = new_run_id()` with its three-line WHY comment directly above it; the FUNCTION-LOCAL import DELETED; `run_id=_PROCESS_RUN_ID` passed at the one construction |
-| tests/test_timeline.py | +66 / -1 | C4 SPEC (2) — `append_run_event` added to the existing `timeline` import, plus the new class `TestOneRunPerInvocation` carrying its three tests |
-
-### C5 — this file
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | C5 — a handoff cannot table the commit that writes it (R-0149 pattern; constraint 10). No gate reading was taken after this file existed; the reviewer measures C5's own insertion count at the next gate |
+| .agent/handoff.md | rewrite | C4 — a handback cannot table the commit that writes it (R-0149 pattern; constraint 10). No gate reading was taken after this file existed; the reviewer measures C4's own numbers at the next gate |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/f260-r15-base 1d344b485ce6c4e5e7768c6ab001a10bf8ab69d2` | exit 0; detached HEAD at `1d344b48` for G4 |
-| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f260-r15-base --force` | exit 0; removed BY EXACT PATH |
-| `git worktree prune` | exit 0 |
-| `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/f260-r15-head 9487e1c8968a34e175d8248b62ec41740694bd6e` | exit 0; detached HEAD at the round head for G6 |
-| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f260-r15-head --force` | exit 0; removed BY EXACT PATH |
-| `git worktree prune` | exit 0; `git worktree list` then shows **12 rows** — the primary checkout and the ELEVEN pre-existing `remedy/job-*` worktrees — and neither `f260-r15-base` nor `f260-r15-head` |
+| `sha256sum .remedy-wt/f260-r16-block.md` | exit 0; `4de9eb8b…cacf` — equals the digest the delegation names |
+| `git merge origin/main` | exit 1 (expected): "CONFLICT (content): Merge conflict in .agent/decisions.md", exactly ONE conflicted path |
+| `git add .agent/decisions.md` + `git commit --no-edit` | exit 0; C1 `7ed25b88` |
 | `git push -u origin feature/f260-one-world` | runs AFTER this file is committed; see the note under Verification |
 
-No PR created. No PR merged. No `gh` command run. No force push. No branch
-deleted. No glob was used to remove anything. No file under `.remedy-wt/` was
-ever `git add`ed.
+NO git worktree was created this round, so none was removed and none needed
+pruning. No PR created. No PR merged. No `gh` command run. No force push. No
+branch deleted. No glob was used to remove anything. No file under `.remedy-wt/`
+was ever `git add`ed (`git ls-files .remedy-wt` is empty).
 
 ## Verification
 
-ONE LINE PER GATE, with its REAL exit code. Every suite ran SERIALLY — never two
-at once — captured to its own file under `.remedy-wt/` and read from the capture.
-The sandbox bash guard rejects `$?`, `$( )` and shell loop forms BY FORM, so
-every exit code below came from a Python `subprocess.run(...).returncode` written
-into the capture as a trailing `__EXIT_CODE__` line; none was inferred from
-output text.
+ONE LINE PER GATE, with its REAL exit code. Every exit code was taken from a
+Python `subprocess.run(...).returncode`; the sandbox bash guard rejects `$?`,
+`$( )` and shell loop forms BY FORM. `cmp` and `remedy` are denied, so byte
+comparisons went through `filecmp.cmp(shallow=False)` plus sha256, and the CLI
+through `python3 -m apps.cli.grouped`. All four suites ran SERIALLY in the
+PRIMARY checkout, after C3.
 
-| Gate | Command / reading | Exit | Result |
-|---|---|---|---|
-| G1 | ONE comparison: sha256 of `.remedy-wt/f260-r15-block.md`, `.agent/authored/f260-r15.md`, `.agent/last_block.md`, checked BEFORE staging | **0** | all three **`454d291c41432e5c296dc56b28bbaabbcefa1c770f5d18b1555361acb4983d84`** at **32568** bytes, equal to the digest the DELEGATION names. Both writes were `shutil.copyfile` from the delegation's source path; `filecmp.cmp(shallow=False)` True for both |
-| G2(a) live_review | exact-image byte equality | **0** | `post == pre + b"\n" + GATE_R14 + b"\n\n" + FIND816 + b"\n"` is **True**; prefix check `post[:len(pre)] == pre` **True**. **937682 → 947109** bytes. Recipe derived from THIS target's measured terminal byte, asserted == 1 before writing |
-| G2(b) live_review | structural, whole file split on `"\n\n"` | **0** | units **435 → 437**; last-but-one unit EQUALS GATE_R14, last unit ends with exactly ONE newline and EQUALS FIND816 once that newline is removed — GATE_R14 then FIND816, in that order |
-| G2(c) live_review | negative control, IN MEMORY on a `bytes` object | **0** | byte at offset **937723**, inside the appended region, XOR-flipped: reader (a) REJECTS, reader (b) REJECTS. After restore BOTH ACCEPT and the restored image EQUALS the disk image |
-| G2(a) decisions | exact-image byte equality | **0** | `post == pre + b"\n" + DEC_D7 + b"\n"` **True**; prefix check **True**. **842038 → 845072** bytes |
-| G2(b) decisions | structural, split on `"\n\n"` | **0** | units **1893 → 1894**; last unit ends with exactly ONE newline and EQUALS DEC_D7 once removed |
-| G2(c) decisions | negative control, IN MEMORY | **0** | byte at offset **842079** flipped: both readers REJECT; after restore both ACCEPT and the restored image EQUALS the disk image |
-| G2(d) | CENSUS after C2, counted by the script | **0** | `^Gate: ` **24** · registrations `^- R-\d+ — ` **301** over **301** DISTINCT ids · `^Done: ` **5** lines over **3** DISTINCT ids · **OPEN SET 298 BY DISTINCT ID**. Exactly the block's expected post reading (24 / 301 over 301 / 5 over 3 / 298). `R-0816` registered **True**; `R-0816` carries a `Done:` paragraph **False**, as constraint 5 requires |
-| G3 (plan) | `.agent/plan.md` | **0** | disk bytes `== PLAN slice + b"\n"` **True**; **2531** bytes, **48 lines**, under the 50-line cap; `## Goal` present, `## Next Steps` present; `BEGIN `/`END ` lines **0** |
-| G3 (slips) | `.agent/prose_slips.md` | **0** | `post == pre + b"\n" + SLIP18 + b"\n\n" + SLIP19 + b"\n"` **True**; **117457 → 118817** bytes; blank-line units **148 → 150**; last-but-one unit EQUALS SLIP18, last unit EQUALS SLIP19 — in that order; `BEGIN `/`END ` lines **0** |
-| G4 | THE DEFECT IS REAL AT THE BASE — disposable worktree at `1d344b48`, `python3 -B`, `PYTHONDONTWRITEBYTECODE=1`, run BEFORE C4 | **0** | `__pycache__` purged 0 → re-enumerated at **0**; `timeline.__file__` = `…/.remedy-wt/f260-r15-base/packages/orchestration/timeline.py`, resolves inside that worktree **True**; LIVE construction line printed as `writer = RunLogWriter(jid, data_root=Path(data_dir))`. Five events, one job, read from the BYTES: **jsonl files 5 · event lines 5 · DISTINCT run_id values 5** |
-| G5 | THE FIX IS REAL AT THE HEAD — same probe, same shape, primary checkout after C4, `python3 -B` | **0** | `__pycache__` purged 28 → re-enumerated at **0**; LIVE construction line printed as `writer = RunLogWriter(jid, run_id=_PROCESS_RUN_ID, data_root=Path(data_dir))`. **jsonl files 1 · event lines 5 · DISTINCT run_id values 1**; TWO jobs in the same process → job A dir **1** file, job B dir **1** file, the two directories differ **True** |
-| G6(i) | CONTROL, unmutated, disposable worktree at `9487e1c8`, `python3 -B`, selection `tests/test_timeline.py tests/test_run_log.py tests/test_data_paths.py` | **0** | **140 passed** in 0.81 s, 0 FAILED. `__pycache__` purged then RE-ENUMERATED at **0**. Module resolution CONFIRMED to that worktree: `timeline.__file__` = `…/.remedy-wt/f260-r15-head/packages/orchestration/timeline.py`, live construction line printed WITH `run_id=_PROCESS_RUN_ID` |
-| G6(ii) | revert-target uniqueness, then the mutation | **1** | the exact bytes `run_id=_PROCESS_RUN_ID, ` occur **EXACTLY 1** time before mutating; after DELETING them the count is **0** and the LIVE construction line re-printed as `writer = RunLogWriter(jid, data_root=Path(data_dir))` — the pre-round behaviour exactly. **IT WENT RED: exit 1, 1 failed, 139 passed.** Failing node id: `tests/test_timeline.py::TestOneRunPerInvocation::test_all_events_of_one_invocation_share_one_run`. Only ONE of the three SPEC (2) tests is a discriminator for this mutation — **deviation 3** |
-| G6(iii) | restore + clean worktree + removal | **0** | mutated byte count back at **0**, revert target back at **1**, file byte-identical to the pre-mutation image **True**; `__pycache__` re-enumerated at **0**; control re-run **exit 0, 140 passed**, the same reading as (i). That worktree's `git status --porcelain` **EMPTY** (`''`) and `git diff HEAD --stat` **EMPTY** (`''`). Worktree removed BY EXACT PATH, `git worktree prune` exit 0, path gone **True** |
-| G7(1) | `python3 -m pytest tests/test_timeline.py tests/test_run_log.py tests/test_data_paths.py tests/test_patch_apply.py -q -p no:randomly` | **0** | **264 passed** in 2.04 s, 0 FAILED |
-| G7(2) | `python3 -m pytest tests/orchestration/ -q -p no:randomly` | **0** | **12805 passed, 10 skipped**, 1 warning in 744.74 s. `^FAILED` lines **0**, `^ERROR` lines **0**. Identical pass/skip counts to the reviewer's `1d344b48` reading |
-| G7(3) | `python3 -m pytest tests/cli/ -q -p no:randomly` | **0** | **1537 passed** in 303.73 s. `^FAILED` lines **0**, `^ERROR` lines **0**. Identical to the reviewer's `1d344b48` reading. Canary presence verified separately: `python3 -m pytest tests/cli/test_golden_path.py --collect-only` exit **0**, **42 tests collected**, so the canary IS inside the selection |
-| G7(4) | `python3 -m apps.cli.grouped integrity check --json` | **0** | `"passed": true`, `"fail_count": 0`, `"check_count": 5`; all five checks `"status": "pass"` |
-| G8 (lint) | `python3 -m ruff check` over the code files I counted myself — **TWO** | **0** | `All checks passed!` |
-| G8 (tree) | `git status --porcelain` / `git ls-files .remedy-wt` | 0 / 0 | `git ls-files .remedy-wt` **EMPTY**. `git status --porcelain` is **NOT empty**: its single line is `?? .agent/STOP` — the operator's stop file, created at 10:20:01 during this round's gate phase and NOT mine to delete. **Deviation 4.** No other path appears; nothing of mine is uncommitted |
-
-**THE TWO CODE FILES G8 LINTED, counted from my own change set rather than taken
-from the block:** `git diff --name-only 1d344b48..HEAD` returns eight paths, six
-of them under `.agent/`; the code files are exactly
-`packages/orchestration/timeline.py` and `tests/test_timeline.py`. The two
-pre-existing errors G8 warns about (`UP035` at `dag_schedule.py:36`, `F821` at
-`gauntlet_injection.py:286`) were not approached; neither file is in the change
-set and neither was opened.
-
-**G4 AND G5 ARE THE PAIR, AND THE PAIR IS THE PROOF.** The same probe, the same
-shape, the same five `event_replay` resume events, run at the base and at the
-head:
-
-    BASE (1d344b48)   jsonl files 5   event lines 5   DISTINCT run_id values 5
-    HEAD (9487e1c8)   jsonl files 1   event lines 5   DISTINCT run_id values 1
-    HEAD, two jobs    job A: 1 file   job B: 1 file   directories differ: True
-
-Both readings come from parsing the `.jsonl` bytes the SHIPPED
-`timeline.append_run_event` left on disk, not from asking the writer what it did.
-`load_run_events` returns the five event names in append order at BOTH commits —
-which is why test (iii) is a non-regression guard rather than a discriminator
-(deviation 3).
-
-The push runs AFTER this file is committed, so its transcript cannot appear in
-the commit that carries it (the R-0149 self-reference pattern, the same reason the
-C5 row of the commit table has no `+/-`). Its outcome is verifiable directly:
-`origin/feature/f260-one-world` points at the C5 commit.
+| Gate | Exit | Real reading |
+|---|---|---|
+| G1 TRANSPORT | 0 | `.remedy-wt/f260-r16-block.md`, `.agent/authored/f260-r16.md` and `.agent/last_block.md` all sha256 `4de9eb8b3979428b359f0e81bf6856023267875542449b32c03486c52b65acfc` at 20342 bytes; both writes `shutil.copyfile`, both `filecmp.cmp(shallow=False)` = True |
+| G2(a) MERGE | 0 | `.agent/decisions.md` = 848037 bytes (block: 848037), sha256 `e161a74832cc6452f6fc2755d09de4bbd1fd8e3d223ec25b6410904e5cfef463` — equal to the gate's value |
+| G2(b) MERGE | 0 | three-segment equality holds: first 836338 == BASE, next 8734 == OURS tail, remainder (2965) == THEIRS tail. All three True |
+| G2(c) MERGE | 0 | in the MERGED file: lines starting `<<<<<<<` = 0, lines exactly seven `=` = 0, lines starting `>>>>>>>` = 0. Same three counts are 0 in BASE, OURS and THEIRS, so the gate is not self-satisfied |
+| G2(d) MERGE | 0 | `git diff --name-only --diff-filter=U` is EMPTY |
+| G2(e) MERGE | **1 as written / 0 corrected** | AS WRITTEN over `08dca210..C1`: 10 paths, 9 "other", **2 mismatches** — `.agent/authored/f260-r16.md` and `.agent/last_block.md`, which are C0a's and C0b's OWN writes, not the merge's. CORRECTED reading over the merge's own path set `C0b..C1`: 8 paths, 7 "other", **0 mismatches** — every merge-carried blob byte-identical to `origin/main`. See deviation 3 |
+| G2(f) MERGE | **partly unmeetable as written** | C1 has exactly TWO parents ✔. Second parent == `origin/main` tip `f957c4c6` ✔. First parent is `aa6a76a5` (C0b), NOT `08dca210` — forced by the block's own bundle order. See deviation 2 |
+| G3 THE PLAN | 0 | `.agent/plan.md` == PLAN slice + exactly one trailing newline (True). 2245 bytes, 43 newline-terminated lines, under the 50-line cap; carries `## Goal` and `## Next Steps`; zero marker lines |
+| G4(a) RECORD | 0 | `post == pre + b"\n" + GATE_R15 + b"\n"` True; `post[:len(pre)] == pre` True. 947109 → 953191 bytes |
+| G4(b) RECORD | 0 | N COUNTED from the slice = 1. Blank-line units 437 → 438. Last N units == slice paragraphs IN ORDER: True |
+| G4(c) RECORD | 0 | negative control run IN MEMORY on a `bytes` object: byte flipped at offset 947120, inside the FIRST appended paragraph — reader (a) REJECT, reader (b) REJECT. Restored: reader (a) accept, reader (b) accept, restored image == disk image True |
+| G5 PROSE SLIP | 0 | `post == pre + b"\n" + SLIP20 + b"\n"` True. 118817 → 119984 bytes; units 150 → 151; last unit == SLIP20 with its single trailing newline removed: True |
+| G6 CENSUS | 0 | `^Gate: ` = **25** ✔; registrations `^- R-\d{4} — ` = **301 lines over 301 DISTINCT ids** ✔; `^Done: R-\d{4} — ` = **5 lines over 3 distinct ids** (`R-0721`, `R-0725`, `R-0814`) ✔; **OPEN SET BY DISTINCT ID = 298** ✔ unchanged; `^Gate: R15 — ` = exactly **1** ✔; `.agent/live_review.md` and `.agent/prose_slips.md` each carry **0** lines beginning `<<<BEGIN ` or `<<<END ` ✔ |
+| G7 `tests/docs/` | 0 | **303 passed** in 0.49 s; zero `^FAILED`, zero `^ERROR` |
+| G7 `tests/cli/test_golden_path.py` (canary) | 0 | **42 passed** in 21.10 s; zero `^FAILED`, zero `^ERROR` |
+| G7 `tests/test_timeline.py tests/test_run_log.py tests/test_data_paths.py` | 0 | **140 passed** in 0.79 s; zero `^FAILED`, zero `^ERROR` |
+| G7 `python3 -m apps.cli.grouped integrity check --json` | 0 | `"passed": true`, `"fail_count": 0`, `check_count` 5, zero non-pass checks |
+| G8 LINT | **n/a** | `git diff --name-only 08dca210..C3` yields 13 paths and **ZERO** with a `.py` extension, so `ruff` has no target. Reported as NOT APPLICABLE; no target was invented |
+| G8 TREE | 0 | `git status --porcelain` EMPTY; `git ls-files .remedy-wt` EMPTY |
+| G8 STRUCTURE | 0 | C0a 1 parent, +243; C0b 1 parent, +229; **C1 2 parents (merge), +64 against its first parent**; C2 1 parent, +29; C3 1 parent, +4. Every insertion count under 500 |
 
 ## Authored-text proofs
 
-| Slice | Target | Shape | Proof |
-|---|---|---|---|
-| the whole block | `.agent/authored/f260-r15.md` | file copy | `shutil.copyfile`, then `filecmp.cmp(shallow=False)` = True, then sha256 equal to the delegation digest |
-| the whole block | `.agent/last_block.md` | file copy | same source, same route, same two proofs |
-| PLAN | `.agent/plan.md` | whole-file REWRITE | disk bytes `== slice + b"\n"`, True (G3) |
-| GATE_R14 | `.agent/live_review.md` | APPEND, first | exact-image equality + structural reader + in-memory negative control (G2 a/b/c) |
-| FIND816 | `.agent/live_review.md` | APPEND, second, same commit | same three readers; it is the LAST unit of the file |
-| DEC_D7 | `.agent/decisions.md` | APPEND, same commit, AFTER live_review | exact-image equality + structural reader + in-memory negative control (G2 a/b/c) |
-| SLIP18, SLIP19 | `.agent/prose_slips.md` | APPEND, IN ORDER | exact-image equality over the derived recipe, plus the two-unit reading (G3) |
-
-Every slice was extracted from the COMMITTED `.agent/authored/f260-r15.md` — not
-from a retype and not from the delegation message — by taking the lines strictly
-between its marker lines, joined by `"\n"`, with no trailing newline. All **TWELVE**
-marker lines were enumerated and each occurs EXACTLY ONCE; the six slices measure
-PLAN 2530 bytes, GATE_R14 5737, FIND816 3686, DEC_D7 3032, SLIP18 722, SLIP19 634,
-none of them ending in a newline. Every target file was re-read afterwards and
-contains **ZERO** lines beginning `BEGIN ` or `END ` — `.agent/plan.md` 0,
-`.agent/live_review.md` 0, `.agent/decisions.md` 0, `.agent/prose_slips.md` 0.
-NO MARKER LINE REACHED ANY TARGET FILE.
+- **Transport is a COPY chain, never a retype.** `.remedy-wt/f260-r16-block.md`
+  (the delegation's source file on disk), `.agent/authored/f260-r16.md` and
+  `.agent/last_block.md` all hash to
+  `4de9eb8b3979428b359f0e81bf6856023267875542449b32c03486c52b65acfc` at 20342
+  bytes. Both writes went through `shutil.copyfile` and each was proved with
+  `filecmp.cmp(shallow=False)` = True before staging.
+- **Every slice was extracted from the COMMITTED authored copy**, via
+  `git show HEAD:.agent/authored/f260-r16.md`, and never from the delegation
+  message and never retyped. The extractor matches lines EXACTLY equal to
+  `<<<BEGIN name>>>` / `<<<END name>>>` and asserts each occurs exactly once.
+- **Marker census in the committed authored copy**: all SIX marker lines
+  (`<<<BEGIN PLAN>>>`, `<<<END PLAN>>>`, `<<<BEGIN GATE_R15>>>`,
+  `<<<END GATE_R15>>>`, `<<<BEGIN SLIP20>>>`, `<<<END SLIP20>>>`) occur exactly
+  once each. **ZERO** marker lines reached `.agent/plan.md`,
+  `.agent/live_review.md` or `.agent/prose_slips.md`.
+- **Slice sizes**: PLAN 2244 bytes (file 2245 with its one trailing newline);
+  GATE_R15 6080 bytes, 1 line, 1 paragraph; SLIP20 1165 bytes, 1 line, 1
+  paragraph.
+- **Append recipes were derived from each target's OWN measured terminal byte**,
+  with `assert trailing_newline_count == 1` executed BEFORE the write, as
+  constraint 2 orders. Both measurements reproduced the block exactly:
+  `.agent/live_review.md` 947109 bytes / 1 terminal newline;
+  `.agent/prose_slips.md` 118817 bytes / 1 terminal newline.
+- **The merge resolution was constructed, not typed.** BASE, OURS and THEIRS were
+  read with `git show`, the block's formula applied in Python, the result written
+  with `shutil.copyfile` and proved with `filecmp.cmp(shallow=False)` = True. No
+  conflict marker was ever hand-edited.
 
 ## Deviations & assumptions
 
-**1. SPEC (2)'s PLACEMENT ANCHOR DOES NOT EXIST IN `tests/test_timeline.py`.**
-The spec says "Put it after the existing class that covers `append_run_event`; if
-no such class exists, put it directly after the last `append_run_event` test."
-Measured at the base, `git show 1d344b48:tests/test_timeline.py | grep -n
-"append_run_event"` returns **ZERO** lines: that file had no class covering
-`append_run_event` AND no `append_run_event` test, so NEITHER anchor was
-available. `append_run_event` was exercised only from `tests/orchestration/`,
-`tests/ui_server/` and `tests/ui_contracts/`, none of which this round may touch
-(constraint 6). I placed `TestOneRunPerInvocation` directly after
-`TestLoadRunEvents` — the class covering the sibling reader in the same module —
-which keeps the two run-log-byte-reading classes adjacent and follows the order
-the module itself declares. Nothing else in the file moved.
+**1 — THE BLOCK'S FULL BASE SHA DOES NOT EXIST AS A GIT OBJECT.** The block names
+the base `08dca210f8dd8e58c0e21b23fcb1e4b6ee9ffa93`;
+`git cat-file -t 08dca210f8dd8e58c0e21b23fcb1e4b6ee9ffa93` exits non-zero with
+"could not get object info". The 8-character prefix `08dca210` — which is what
+every gate in the block actually writes — resolves UNIQUELY to
+`08dca210b4b70153c35e419044dc4de6f4a188cd`, which was the branch tip and equals
+`origin/feature/f260-one-world`. Executed against the prefix, as written in the
+gates. This is a reviewer-prose error in the block; nothing on disk is wrong as a
+result, and it is the kind of inaccuracy amend0827-process-diet rule 2 routes to
+`.agent/prose_slips.md` rather than to an R-id. **No slip line was appended for
+it this round**, because constraint 5 forbids authoring record text beyond the
+two named slices; it is raised here for the reviewer to rule.
 
-**2. SPEC (1)(c)'s TWO ANCHORS CANNOT BOTH HOLD.** It orders the constant
-"Immediately BELOW the import block and ABOVE the first `# ---` banner". In
-`timeline.py` at `1d344b48` the FIRST `# ---` banner is at line **31** (the
-"Symbols" banner) and it sits INSIDE the import block, which continues to line
-**43** — so "below the import block" and "above the first `# ---` banner" name
-disjoint places and the two clauses cannot both be honoured. I applied the evident
-intent: the constant sits below the LAST import line (the new `run_log` import)
-and above the first `# ---` banner that FOLLOWS the import block, the "Load"
-banner. The three-line WHY comment is byte-for-byte the slice's and sits directly
-above the definition, which is what AGENTS.md's discoverability rule asks for.
+**2 — G2(f) IS PARTLY UNMEETABLE AGAINST THE BLOCK'S OWN BUNDLE ORDER.** G2(f)
+demands that C1's two parents be `08dca210` and `origin/main`'s tip. But the
+bundle ORDERS C0a and C0b before C1, so by construction C1's first parent is C0b
+(`aa6a76a5`), which is `08dca210` plus those two commits. The clause is therefore
+self-contradictory with the bundle. Applied as written and reported honestly: two
+parents ✔, second parent `f957c4c6` == `origin/main` tip ✔, first parent
+`aa6a76a5` ✘ against the literal text but exactly right against the bundle. No
+slice, gate or commit was adjusted to make the reading come out as ordered.
 
-**3. G6's MUTATION WENT RED, BUT ONLY ONE OF THE THREE SPEC (2) TESTS IS A
-DISCRIMINATOR FOR IT.** The gate orders "that the run goes RED and that the
-failures include the three tests SPEC (2) adds". The COLOUR clause — the one the
-gate itself calls the ordered property — is MET: exit **1**. The three-test
-clause is NOT. Deleting `run_id=_PROCESS_RUN_ID, ` reddens
-`test_all_events_of_one_invocation_share_one_run` and nothing else.
-`test_two_jobs_do_not_share_a_run_file` appends ONE event per job, so under
-per-event run ids each job still gets exactly one file — it cannot tell the two
-behaviours apart BY CONSTRUCTION, and it is a non-regression guard rather than a
-discriminator. `test_events_come_back_in_append_order` is insensitive for the
-reason FIND816 itself states: "`timeline.load_run_events` globs the job directory
-and sorts by timestamp, so it returns all five events in order regardless" — G4
-measured exactly that at the base, five events in order across five files. I did
-NOT adjust, strengthen or re-scope any test to make the gate read as ordered
-(constraint 1). The block's STOP condition is a GREEN mutation; the mutation was
-RED, so I proceeded and declare the gap. If the reviewer wants all three to bite,
-that is a change to SPEC (2) — (ii) would have to append TWO events per job and
-(iii) would have to assert the FILE the events land in, not their order — and it
-belongs in a later block, not in an edit I make to a test to satisfy a gate.
+**3 — G2(e)'s PATH SET IS WIDER THAN ITS PREMISE.** G2(e) enumerates
+`git diff --name-only 08dca210..C1` and asserts every path other than
+`.agent/decisions.md` is byte-identical to `origin/main`, reasoning that "the
+branch touched none of them". By the same bundle order, that range also contains
+`.agent/authored/f260-r16.md` and `.agent/last_block.md`, which the branch DID
+touch at C0a and C0b — the first does not exist on `origin/main` at all
+(`git show` exits 128). Ran BOTH: as written, 9 "other" paths with **2**
+mismatches, both being C0a/C0b's own writes; and the corrected reading over the
+merge's own path set `C0b..C1`, 7 "other" paths with **0** mismatches. The
+property the gate exists to protect — the merge invented no content — HOLDS, at
+7 of 7. Nothing was adjusted to hide the as-written failure.
 
-**4. G8's `git status --porcelain` IS NOT EMPTY: `?? .agent/STOP` APPEARED
-MID-ROUND.** The gate orders it shown EMPTY, and it is not. The single line is an
-untracked, NOT-gitignored, **zero-byte** `.agent/STOP` with mtime
-`2026-09-06 10:20:01 +0200`. It did not exist earlier in this round — I checked
-that path explicitly before the gate phase and `ls` returned "No such file or
-directory" — and its mtime is twenty minutes after this round's last code commit
-(`9487e1c8`, `10:00:57`). `grep -rn` for that path across `tests/`, `packages/`,
-`apps/` and `scripts/` returns nothing, so no suite or fixture creates it; it is
-an operator signal. I did NOT delete it: it is not mine, it is not in this
-round's change set, and deleting the operator's stop signal to make a tree
-reading green would be exactly the kind of adjustment constraint 1 forbids. I
-also did NOT commit it. Everything of MINE is committed — no other path appears
-in `git status --porcelain` — and `git ls-files .remedy-wt` is EMPTY. Guardrail
-G6 of the self-drive protocol says to finish the current commit, hand off and
-end, which is what this file does.
+**4 — `.agent/decisions.md` NOW ENDS WITHOUT A TRAILING NEWLINE.** Measured:
+BASE ends `b'.'` (no newline), OURS ends `b'\n'`, THEIRS ends `b'.'` (no
+newline). The block's ordered construction ends the file with the THEIRS tail, so
+the merged file's terminal byte is `b'.'` and `git diff` prints
+"\ No newline at end of file". This is faithful to `origin/main` and produces
+exactly the sha256 the gate names, so it is EXPECTED, not corruption. Flagged
+because it is a trap for the next round: **an append to `.agent/decisions.md`
+must now be derived from a ZERO trailing-newline terminal byte**, and any recipe
+copied from a previous round's `assert count == 1` will abort.
 
-**5. SPEC (1)(b)'s RE-GREP, REPORTED AS ORDERED.** `grep -n "RunLogWriter"
-packages/orchestration/timeline.py` before editing returns exactly three lines:
-the docstring mention at 59, the FUNCTION-LOCAL import at 62 inside
-`append_run_event`, and the construction at 65. There is **exactly ONE**
-function-local `RunLogWriter` import in the module and NO other function imports
-it, so exactly one deletion was made and the module now has ONE spelling of the
-import — which is the point the spec states, rather than a fixed count.
+**5 — C1 PRECEDES C2, a departure from §3 item 23, declared by the block itself**
+(constraint 3) and carried unchanged. `.agent/plan.md` became current at C2,
+BEFORE the ledger append at C3, which is the property item 23 protects.
 
-**6. `ruff` ACCEPTED THE SPEC'S OWN PLACEMENT; `I001` DID NOT DISAGREE.**
-Constraint 7 asks me to follow `ruff` over the spec's wording if they conflict.
-They did not: `from packages.orchestration.run_log import RunLogWriter,
-new_run_id` sorts directly after `from packages.orchestration.data_paths import
-run_log_dir`, which is where the spec puts it, and `python3 -m ruff check` over
-both edited files is exit 0. The import block was not hand-sorted. In
-`tests/test_timeline.py` the existing single-line `timeline` import became a
-parenthesised three-name block so the added name stays sorted — `ruff` accepts
-it and it introduces no second convention.
+**6 — The two items "owed to the next session, in its FIRST commit"** by the
+round-15 handback (GATE_R15 and SLIP20) were discharged at C3. They landed in the
+FIRST commit of this round that writes the record, which is C3; C0a, C0b, C1 and
+C2 are the block's ordered predecessors and none of them writes to
+`.agent/live_review.md`.
 
-**7. THE TEST FILE'S MODULE-LEVEL "Coverage:" DOCSTRING LIST WAS NOT EXTENDED.**
-`tests/test_timeline.py` opens with a bullet list of what it covers. SPEC (2)
-orders one class with three tests and nothing else, so I left that list untouched
-rather than make an unordered edit; the new class carries its own docstring
-stating the property and why it reads bytes, which is where a reader searches.
-Stated so it is a declared choice rather than an oversight.
+**7 — No `Done:` or `Landed:` paragraph was authored** for any finding
+(constraint 5). GATE_R15 is a `Gate:` record and registers nothing; the open set
+is unchanged at 298 by distinct id, confirmed by G6.
 
-**8. CONSTRAINT 2's THREE TERMINAL-BYTE MEASUREMENTS, RE-DERIVED FROM EACH
-TARGET.** Measured at `1d344b48` by trailing-`\n` enumeration on the raw bytes:
-`.agent/live_review.md` **937682** bytes ending in exactly ONE newline,
-`.agent/decisions.md` **842038** in exactly ONE, `.agent/prose_slips.md`
-**117457** in exactly ONE. The block is CORRECT for all three this round. Each
-recipe was nonetheless derived from its own target's measured terminal byte, and
-each append `assert`ed the count was 1 before writing — the assertion is IN the
-scripts, so a wrong terminal byte would have aborted the write rather than
-produced a bad append.
+**8 — `git merge origin/main` exited 1**, which is the expected and predicted
+outcome for a conflicting merge, not a gate failure. The block predicted "exactly
+ONE conflict, in `.agent/decisions.md`" and that is exactly what occurred.
 
-**9. THE STRUCTURAL READER COMPARES THE LAST UNIT WITH ONE TRAILING NEWLINE
-REMOVED.** Splitting the whole file on `"\n\n"` makes the final unit
-`FIND816 + b"\n"` (respectively `DEC_D7 + b"\n"`, `SLIP19 + b"\n"`), because the
-file ends with a newline no `"\n\n"` consumes. The gate is therefore reported as
-two separate printed facts: the last unit ends with EXACTLY ONE newline, AND it
-equals the slice once that newline is removed. Neither is a hidden `strip`.
-
-**10. `cmp` AND `remedy` ARE DENIED IN THIS SANDBOX (constraint 9).** C0a and C0b
-were proved with `filecmp.cmp(shallow=False)` — a full byte comparison, not a
-stat comparison — plus sha256 on both files against the delegation's digest.
-`remedy` was invoked as `python3 -m apps.cli.grouped` and `ruff` as
-`python3 -m ruff`. Every exit code in the Verification table came from a Python
-`subprocess.run(...).returncode` written into a capture file under `.remedy-wt/`;
-none came from `$?`, none from a shell loop, none from output text.
-
-**11. G2(c)'s NEGATIVE CONTROLS RAN IN MEMORY, ONE PER FILE.** The flip and the
-restore were done on `bytes` objects inside the checking process rather than by
-writing a corrupted image to `.agent/live_review.md` or `.agent/decisions.md`, so
-the primary checkout never held known-bad bytes — the block's own G2(c) wording
-and self-drive guardrail G5. The property measured is identical and the restored
-image was asserted equal to the disk image both times.
-
-**Not a deviation, recorded because it was checked:**
-`packages/orchestration/run_log.py` was NOT edited — its docstring was already
-correct and this round makes the CALLER honour it; `new_run_id`, `RunLogWriter`'s
-signature, its `path` and `run_id` properties, `log`, `append` and the event shape
-are all untouched, and the run id stays a `str`. `load_run_events`,
-`summarize_timeline` and every other function in `timeline.py` are unchanged
-(SPEC 1's NOT-CHANGED list). `tests/test_run_log.py`, `tests/test_data_paths.py`,
-`tests/test_patch_apply.py` and everything under `tests/orchestration/` were NOT
-touched (constraint 6) — the first three are in the G6 selection as this round's
-observers, and their 140-test control is what makes the red-proof readable. No
-`Done:` or `Landed:` paragraph was authored for `R-0816` (constraint 5); that is
-the reviewer's to write. `.agent/context.md` was not touched — it is not in the
-block's change set. No file under `docs/` or `scripts/` was opened. The eleven
-`remedy/job-*` worktrees pre-date this round and were neither created nor
-removed; only `.remedy-wt/f260-r15-base` and `.remedy-wt/f260-r15-head` were
-added, and both were removed BY EXACT PATH.
+**9 — Scratch discipline.** Seven helper scripts were written under the
+gitignored `.remedy-wt/` and run with `python3 -B`. None was ever `git add`ed;
+`git ls-files .remedy-wt` is EMPTY. No worktree was created, so nothing needed
+removing by exact path.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | `shutil.copyfile`; `filecmp.cmp(shallow=False)` True + sha256 equals the delegation digest, checked before staging |
-| C0b mirror the block | done | same source, same route, same two proofs |
-| C1 PLAN slice | done | whole-file replacement; 2531 bytes, 48 lines, under the 50-line cap, `## Goal` and `## Next Steps` present |
-| C2 GATE_R14 + FIND816 + DEC_D7 | done | ONE commit; live_review appended FIRST (both slices, in order), decisions SECOND |
-| C3 SLIP18 + SLIP19 | done | units 148 → 150, in order, blank-line separated |
-| C4 SPEC (1) + SPEC (2) | done | one module constant, one import added, one function-local import deleted, one construction changed; one new class with three tests |
-| C5 handback | done | this file |
-| G1 transport | done | exit 0; both digests equal the delegation's, ONE comparison, `filecmp` True for both |
-| G2 the record | done | exit 0; (a) (b) (c) for BOTH files, negative controls reject and restore; (d) census **24 / 301 over 301 / 5 over 3 / OPEN 298**, exactly the expected post reading |
-| G3 the prose files | done | exit 0; plan byte-equal at 48 lines, slips byte-equal at 148 → 150 units, zero marker lines in either |
-| G4 the defect at the base | done | exit 0; run BEFORE C4 in a disposable worktree at `1d344b48`; **5 / 5 / 5**, matching the reviewer's reading |
-| G5 the fix at the head | done | exit 0; **1 / 5 / 1** for one job, **1 file each** in two directories for two jobs |
-| G6 mutation red-proof | **deviated** | exit 1 on the mutant, so the ORDERED COLOUR is met; the block's further clause that the failures include all THREE new tests is NOT met — only one of the three discriminates, by construction. Deviation 3. No test was adjusted. Control 140 passed before and after; worktree clean and removed by exact path |
-| G7 the suites | done | exit 0 on all four; **264** / **12805 + 10 skipped** / **1537** / integrity `passed: true`; canary **42** collected; `^FAILED` and `^ERROR` both 0 for (2) and (3) |
-| G8 lint and tree | **deviated** | lint exit 0, `All checks passed!` over the TWO code files I counted myself; `git ls-files .remedy-wt` EMPTY; but `git status --porcelain` shows `?? .agent/STOP`, an operator file created mid-round that is not mine to delete or commit. Deviation 4 |
+| C0a — `.agent/authored/f260-r16.md` | done | `b8c28305` |
+| C0b — `.agent/last_block.md` | done | `aa6a76a5` |
+| C1 — merge of `origin/main`, `.agent/decisions.md` resolved | done | `7ed25b88`, two parents |
+| C2 — `.agent/plan.md` from the PLAN slice | done | `87cae91f` |
+| C3 — GATE_R15 then SLIP20, one commit | done | `92a99a8e` |
+| C4 — rewrite `.agent/handoff.md` | done | this file |
+| G1 TRANSPORT | done | exit 0; one digest, three files |
+| G2(a) | done | exit 0; 848037 bytes, sha matches |
+| G2(b) | done | exit 0; three segments equal |
+| G2(c) | done | exit 0; 0 / 0 / 0 in merged, BASE, OURS and THEIRS |
+| G2(d) | done | exit 0; unmerged set EMPTY |
+| G2(e) | deviated | gate's path set includes C0a/C0b's own writes; 2 as-written mismatches, 0 on the merge's own path set. Deviation 3 |
+| G2(f) | deviated | first-parent clause unmeetable against the bundle's own order; two parents and the second parent are as ordered. Deviation 2 |
+| G3 THE PLAN | done | exit 0; 2245 bytes, 43 lines |
+| G4(a) | done | exit 0; exact image |
+| G4(b) | done | exit 0; N=1 counted from the slice, units 437 → 438 |
+| G4(c) | done | exit 0; both readers reject the corrupted image, both accept the restored one |
+| G5 THE PROSE SLIP | done | exit 0; units 150 → 151 |
+| G6 THE CENSUS | done | exit 0; 25 / 301 / 5-over-3 / open 298 / `Gate: R15` ×1 / 0 markers |
+| G7 `tests/docs/` | done | exit 0; 303 passed |
+| G7 canary `test_golden_path.py` | done | exit 0; 42 passed |
+| G7 timeline+run_log+data_paths | done | exit 0; 140 passed |
+| G7 `integrity check --json` | done | exit 0; `passed` true, `fail_count` 0 |
+| G8 LINT | skipped | ZERO `.py` files in `08dca210..C3`; the gate itself says to report it as not applicable rather than invent a target |
+| G8 TREE | done | exit 0; both EMPTY |
+| G8 STRUCTURE | done | exit 0; parents and insertions as tabled |
 
 ## Open findings
 
-**298** by DISTINCT ID, measured after C2: 301 registrations over 301 distinct
-ids, minus 3 distinct ids carrying a `Done:` line. (The `^Done: ` LINE count is 5;
-two findings were each resolved across two paragraphs, so a line-based formula
-over-counts by two — the distinct-id reading is the correct one.) The base at
-`1d344b48` was 297; this round REGISTERED exactly one finding, `R-0816`, and
-resolved none, so 297 + 1 = 298. GATE_R14 is a `Gate:` record, not a registration,
-which is why `^Gate: ` rose 23 → 24 without moving the open set. No `Done:` and no
-`Landed:` paragraph was authored here.
+**298 open by distinct id**, unchanged from round 15. This round registered
+nothing and resolved nothing (constraint 5). Census at C3, counted by script over
+`.agent/live_review.md`: 301 registrations over 301 distinct ids, 5 `Done:` lines
+over 3 distinct ids (`R-0721`, `R-0725`, `R-0814`), 25 `Gate:` records.
+
+`.agent/candidates.md` was not touched this round.
 
 ## Next
 
-**Rule order at session start is Phase 1 rule 1 BEFORE rule 2: re-read
-`.agent/STOP` from disk first, then check for an open PR.** As of this handback
-**`.agent/STOP` EXISTS** — zero bytes, untracked, created 10:20:01 during this
-round. Under self-drive guardrail G6 and Phase 1 rule 1, the correct next action
-is to **write nothing further and end the session**; no round may be authored
-while it is present. There is no open PR for this branch and none may be created
-without an instruction.
+**Phase 1 rule 1 first: re-read `.agent/STOP` from disk.** It does not exist as
+of this handback. There is no open PR for this branch and none was created.
 
-**If and only if the operator clears `.agent/STOP`: review round 15.** Read
-`git diff 1d344b48..HEAD` bottom-up and re-run the eight gates independently.
-Eleven deviations are declared; the two wanting a RULING rather than an
-acknowledgement are **3** and **4**. Deviation 3 is G6's own further clause going
-unmet while its ordered colour is met — the block asked for three discriminators
-and SPEC (2) as written yields one, which is a fact about the block rather than
-about the code, and the block itself says a green mutation would be "a finding
-about this block and not about your work". Deviation 4 is the operator's stop file
-making G8's tree reading unmeetable; nothing of mine is uncommitted. Deviations 1
-and 2 are the block's placement anchors not existing on disk — checklist item 16's
-shape — and in both cases I applied the evident intent and said so.
+The branch now HOLDS operator order amend0906-split-placement — the rule that a
+follow-up split off an open feature is registered DIRECTLY AFTER its parent,
+inside the same tier heading, with every dependent feature file updated in the
+same commit. The plan at C2 names the remaining sequence:
 
-**Then: `Job.run_refs`**, the plural run list DECISION F260 D1 names and nothing on
-disk carries yet. This round is its prerequisite and that is now measured rather
-than argued: before it, a "run" was an EVENT (G4: five events, five runs, five
-files), so a `run_refs` list built at `1d344b48` would have enumerated events
-wearing the name of runs. After it, a run is an INVOCATION (G5: five events, one
-run, one file), which is what `RunLogWriter`'s docstring has always promised and
-what D7 rules.
+1. **Register the follow-up feature**: its detail file, its STATUS line directly
+   after F260's inside the same tier heading, the README counters, the
+   `TOTAL_FEATURES` pin and the downstream "Depends on" lines, in ONE commit; a
+   DECISION records the split and how to reverse it.
+2. **The integration gate**: the full suite at the branch head and at the merge
+   base.
+3. **Closure part 1**: the self-use item, the evidence job and the review zip.
+4. **Closure part 2**: the verdict bookings and the ledger rotation.
+5. **Closure part 3**: the STATUS accepted flip, the README sync, the handback
+   and the pull request, left UNMERGED as the operator's review window.
 
-**Then THE RE-KEY ITSELF**: `run_log_dir` and `pingpong_run_dir` collapse onto
-`run_dir`, keyed by RUN id — DECISION F260 D1. It could not have gone first:
-under the pre-round cardinality it would have created one DIRECTORY per event.
-The reader side still needs a job to name its runs, so `run_refs` above remains
-its prerequisite.
+Two traps for whoever authors round 17: `.agent/decisions.md` now ends with NO
+trailing newline (deviation 4), and `.agent/live_review.md` is 953191 bytes at
+438 blank-line units while `.agent/prose_slips.md` is 119984 bytes at 151 — any
+byte-append arithmetic must re-baseline on those numbers.
 
-**The test-side sweep stays DECLINED, not forgotten** — DECISION F260 D6. The
-re-key round inherits those sites and touches them once, and it must plan its own
-red-proof carefully: this round's G6 could go red only because
-`tests/test_timeline.py`, `tests/test_run_log.py` and `tests/test_data_paths.py`
-still hand-spell `tmp_path / "runs" / str(job_id)`, and a round that sweeps them
-consumes its own observer — round 12's finding, and the pre-sweep/post-sweep PAIR
-is the shape that round will need.
-
-**A KNOWN CONSEQUENCE THIS ROUND SHIPS, stated rather than hidden** (DECISION F260
-D7 records it): a long-lived process — `ui_server.py` is the case — now keeps ONE
-run id for its lifetime, so its events form one long run rather than many. That is
-a strict improvement on one run per event and the same trade `BUDGET_TICK_RUN_ID`
-already makes on the safe-point path; if a server ever needs a run per request,
-the run id becomes a parameter of the request and this constant is its default.
-
-After that, the rest of T002: the unified record's own administrative fields —
-eight of D1's eleven have no counterpart in `JobPlan` — and the Mission extension.
-Then T003 consumer by consumer; T004 the classic runner, the classic store and the
-resolver collapse together (DECISION F260 D5); T005 the reachability test and the
-cluster deletion.
-
-
-## Reviewer verdict — round 15 · PASS · and the session ends on `.agent/STOP`
-
-Written by the planner/reviewer after round 15 was committed and pushed, and
-appended here rather than to `.agent/live_review.md` because operator amendment
-amend0827-process-diet rule 1 makes the committed and pushed handoff a durable
-carrier: this verdict is BOOKED into the ledger in the FIRST COMMIT of the next
-round that happens anyway, and it buys no round of its own.
-
-**VERDICT: PASS.** Range `1d344b485ce6c4e5e7768c6ab001a10bf8ab69d2`..`30da0b702f9374f960dd1829a2afe9a92fad9f63`,
-seven commits, all single-parent, in exactly the Bundle's ordered sequence C0a to
-C5 with nothing added, dropped or reordered. `HEAD` and
-`origin/feature/f260-one-world` are the same object. No pull request was created
-and none may be created without an instruction.
-
-**THE REVIEWER RE-RAN THE ROUND'S GATES ITSELF; the numbers below are the
-reviewer's own readings, not the handback's.**
-
-- TRANSPORT: the reviewer's scratchpad original `.remedy-wt/f260-r15-block.md`
-  still existed at review time, so the PRIMARY disk-to-disk proof was available
-  and the §4 item 9 digest fallback was NOT used. All three of that file,
-  `.agent/authored/f260-r15.md` and `.agent/last_block.md` hash to
-  `454d291c41432e5c296dc56b28bbaabbcefa1c770f5d18b1555361acb4983d84`.
-- THE SLICES, extracted from the COMMITTED authored copy and never from a
-  retype: `.agent/plan.md` equals the PLAN slice plus one newline exactly at
-  2531 bytes and 48 lines, carrying `## Goal` and `## Next Steps`;
-  `.agent/live_review.md` equals its pre-image plus `"\n"` plus GATE_R14 plus
-  `"\n\n"` plus FIND816 plus `"\n"`, 937682 to 947109 bytes, units 435 to 437,
-  and the last two units ARE those two slices in that order;
-  `.agent/decisions.md` the same shape for DEC_D7, 842038 to 845072, units 1893
-  to 1894; `.agent/prose_slips.md` the same shape for SLIP18 and SLIP19, 117457
-  to 118817, units 148 to 150. All twelve marker lines occur exactly once and
-  ZERO lines beginning `BEGIN ` or `END ` reached any target file.
-- CENSUS, counted by script: `^Gate: ` 24, registrations 301 over 301 DISTINCT
-  ids, `^Done: ` 5 lines over THREE distinct ids, **OPEN SET 298 BY DISTINCT
-  ID**, `R-0816` present, and no `Done:` id added this round — correct, because
-  the worker rightly authored none.
-- THE G4/G5 PAIR IS THE PROOF AND BOTH HALVES ARE THE REVIEWER'S OWN. The same
-  probe, run against the SHIPPED `timeline.append_run_event`, read FIVE `.jsonl`
-  files, five event lines and FIVE DISTINCT `run_id` values at `1d344b48`, and
-  reads ONE file, five lines and ONE distinct `run_id` at `30da0b70`. That is
-  finding `R-0816` measured on disk before the fix and measured gone after it.
-- MUTATION RED-PROOF, reproduced independently in the reviewer's own disposable
-  worktree at `30da0b70`, `python3 -B`, `__pycache__` enumerated at 0, module
-  resolution confirmed to that worktree's own `timeline.py` and the LIVE
-  construction line printed before and after: revert target
-  `run_id=_PROCESS_RUN_ID, ` counted at EXACTLY 1 before mutating; control exit
-  0 at 140 passed, mutated **exit 1 at 1 failed and 139 passed**, restored exit
-  0 at 140 passed; that worktree's `git status --porcelain` and
-  `git diff HEAD --stat` both EMPTY; worktree removed BY EXACT PATH and pruned.
-- IMPORT REACHABILITY, which is the one real risk this diff carries, since
-  `timeline.py` moved `run_log` to a MODULE-level import: all **262** modules
-  under `packages/orchestration/` import successfully, and
-  `run_log` → `timeline` and `timeline` → `run_log` both exit 0 in fresh
-  interpreters, so no cycle was introduced in either order. `_PROCESS_RUN_ID` is
-  stable within a process and differs between processes, which is exactly the
-  cardinality DECISION F260 D7 rules.
-- SUITES AND LINT re-run by the reviewer: the four-file selection exit 0 at 264
-  passed; `ruff` over both edited files exit 0, `All checks passed!`.
-- NOT RE-RUN BY THE REVIEWER, STATED SO THE EVIDENCE CHAIN STAYS HONEST:
-  `tests/orchestration/` and `tests/cli/`. The worker reports them exit 0 at
-  12805 passed / 10 skipped and 1537 passed. The reviewer had re-run both
-  itself at the ROUND-14 head — 12805 passed / 10 skipped and 1537 passed,
-  identical figures — and this round's production diff is four lines in one
-  module, whose broad blast radius is the import graph rather than behaviour;
-  that graph was measured directly above at 262 of 262. This verdict therefore
-  claims a re-run of the targeted selection and of the import reachability, and
-  does NOT claim a reviewer re-run of the two long suites.
-
-**ELEVEN DEVIATIONS WERE DECLARED AND ALL ELEVEN ARE UPHELD.** The two needing a
-ruling are 3 and 4.
-
-**Deviation 3 is a defect of the REVIEWER's gate, not of the work, and the
-worker handled it correctly.** G6 ordered the mutation to redden "the three
-tests SPEC (2) adds". Only `test_all_events_of_one_invocation_share_one_run` can
-discriminate that mutation, and the reviewer confirmed it by reproducing the run
-and reading the failing node id. The other two are unattainable as
-discriminators BY CONSTRUCTION and the worker's reasons are exactly right: test
-(ii) appends ONE event per job, so one run id per event still yields one file
-per job; test (iii) asks `load_run_events`, which sorts by timestamp across
-every file in the directory, so append order survives either behaviour — a fact
-FIND816's own text states, which means the reviewer wrote a gate contradicted by
-a slice in the same block. The gate's BINDING clause was the COLOUR, which the
-block itself says in as many words ("the COLOUR is what is ordered, never a
-particular count"), and the colour was met. The worker correctly did not trip
-the block's STOP clause, which is armed for a GREEN mutation. Tests (ii) and
-(iii) are kept: they pin per-job separation and append order, which are real
-properties of DECISION F260 D7 and are what a LATER regression would break, and
-neither is weakened. Nothing on disk is wrong as a result, so per operator
-amendment amend0827-process-diet rule 2 this spends no id and is booked as
-SLIP20 below.
-
-**Deviation 4 is `.agent/STOP` and it ENDS THE SESSION.** The reviewer confirms
-the file: `.agent/STOP`, zero bytes, UNTRACKED, mtime 10:20:01, appearing
-roughly twenty minutes after the round's last code commit. Self-drive guardrail
-G6 binds — finish the commit in flight, hand off, end — and the worker did
-exactly that, committing and pushing everything of its own and neither deleting
-nor committing the sentinel. The reviewer likewise leaves it untouched: it is
-the operator's signal, deleting it would destroy that signal, and committing it
-would carry a stop sentinel into the branch. **`git status --porcelain` is
-therefore `?? .agent/STOP` and nothing else** — the tree is otherwise clean, and
-this is the one and only reason it is not empty at this verdict.
-
-## Owed to the next session, in its FIRST commit
-
-1. **GATE_R15** — a `Gate:` record booking this PASS into `.agent/live_review.md`.
-   The next session's reviewer authors it from this section; the open set is
-   **298 by distinct id** and this round resolved nothing.
-2. **SLIP20**, one dated line for `.agent/prose_slips.md`, authored here so it is
-   not lost:
-
-   2026-09-06 · F260 R15 (reviewer) · Gate G6 of the round-15 block ordered the mutation to redden "the three tests SPEC (2) adds" while only ONE of the three can discriminate it: test (ii) appends one event per job, so a run id per event still leaves one file per job, and test (iii) reads through `load_run_events`, which sorts by timestamp across the whole directory — a fact the block's own FIND816 slice states two hundred lines above the gate, so the block contradicted itself and an honest worker had to spend a declared deviation on it. THE LESSON is that a gate naming WHICH tests must go red is making a reachability claim about each one, and each must be checked against the mutation separately before the gate is written; the safe form is the one the same gate already used for its colour — order the property, name the observer that can see it, and let the run report the rest. Reviewer-authored gate clause unattainable for two of the three tests it named; the colour clause was met, both tests are correct and were kept, and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no id spent (amend0827-process-diet rule 2).
-
-## Next expected action
-
-**Phase 1 rule 1 BEFORE rule 2: re-read `.agent/STOP` from disk FIRST, then
-check for an open PR.** If the sentinel is still present, the next session
-writes a handoff and ends without doing anything else. There is no open PR for
-this branch.
-
-If the operator has removed the sentinel, the work resumes at `Job.run_refs` —
-the plural run list DECISION F260 D1 names and nothing on disk carries yet —
-which round 15 has just made meaningful by making a run an invocation instead of
-an event. After it, the re-key itself: `run_log_dir` and `pingpong_run_dir`
-collapse onto `run_dir`, keyed by RUN id.
-
-**THE NEXT SESSION IS SESSION 7, WHICH REACHES THE SOFT LIMIT** (25 rounds or 7
-sessions, whichever first). Its obligation is therefore a SCOPE REPORT and then
-the standing default of amend0905-throughput: SPLIT-AND-CLOSE, executed on the
-session's own authority — register the remaining scope as a follow-up feature,
-close F260 at a self-consistent scope through the normal closure sequence, and
-record the move as a dated DECISION. The scope report's raw material, measured
-this session: T001 is closed and T002 is nearly closed on the RUN side, while
-T003 (eleven named consumers), T004 (the classic runner, the classic store and
-the resolver) and T005 (the reachability test plus a prototype cluster measured
-at 24 527 lines under `packages/orchestration/` and 4 731 lines of
-`apps/cli/commands/*_cmd.py`) are untouched and are far larger than the ten
-rounds the limit leaves. A self-consistent close at "records and writers" is
-available and every round of this session deliberately left the tree in that
-state.
-
-## Session self-assessment (amend0905-throughput)
-
-SESSION 6 of F260 ran ONE delegated round against a planned six. Context was
-never a constraint and remained comfortable throughout; the session ended
-because `.agent/STOP` appeared mid-round, which is an operator signal and one of
-the protocol's own honest end conditions, not because the work ran out or the
-context did. Wall clock was again the dominant cost — the reviewer's own
-round-14 re-verification alone spent about twenty-one minutes of serial suite
-time before round 15 was authored.
-
+The soft-limit banner is NOT emitted here: this handback is one round's report,
+not the session's scope report, and the scope report is the closing session's own
+obligation. Claiming it in this file would be an overclaim.
