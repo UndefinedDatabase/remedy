@@ -2011,3 +2011,25 @@ deletion round. The `--builder`/`--reviewer` flags this finding asks to widen
 for the `ollama` provider are deleted by F261 T003 in favour of the
 `--*-provider` / `--*-model` pairs, so the deletion discharges the repair rather
 than deferring it. F261's T003 carries the sentence that binds it.
+
+F273 was registered by this same order at Part A.3 as
+`docs/roadmap/features/T2_F273.md`, directly after F271 under the Easy Start &
+Contract Block heading, with `TOTAL_FEATURES` and the README counter moved in
+the same commit. Its T-slices group the 54 product findings by module, highest
+severity first; the finding text is the spec and no slice re-plans a fix. The
+routing lines below name the slice each id belongs to.
+
+TRIAGE 2026-09-06: product → F273 T001 — the ten findings owned by another feature (BOOK, do not build). Ids: R-0803, R-0804, R-0805, R-0806, R-0807, R-0808, R-0809, R-0810, R-0811, R-0812. Modules: apps/cli do; apps/cli job show; apps/cli/commands/**; packages/orchestration fake builder; packages/orchestration planner; packages/orchestration token ledger; packages/orchestration ui session store; packages/orchestration/teacher_narration.py; packages/orchestration/ui_server.py; tests/ + data root.
+TRIAGE 2026-09-06: product → F273 T002 — guards that cannot fail, and a harness that reddens for its own reasons. Ids: R-0518, R-0569, R-0649, R-0662, R-0664, R-0671, R-0689, R-0690, R-0691, R-0708, R-0734, R-0815, R-0499. Modules: acceptance reads; apps/ui/src/api/costMetric.test.ts; tests/orchestration/test_job_stop_integration.py; tests/orchestration/test_product_smoke.py; tests/orchestration/test_test_runner.py; tests/ui_contracts/test_brain_stream_ring.py; tests/ui_contracts/test_decision_answer_wiring.py; tests/ui_contracts/test_humanize_catalog.py; tests/ui_server/test_command_channel.py; tests/ui_server/test_dashboard_contract.py; tests/ui_server/test_live_state.py.
+TRIAGE 2026-09-06: product → F273 T003 — the integration gate's own procedure. Ids: R-0396, R-0445, R-0645, R-0736. Modules: docs/agents/integration_gate.md.
+TRIAGE 2026-09-06: product → F273 T004 — ledger, budget and cost truth. Ids: R-0648, R-0753, R-0774. Modules: packages/orchestration/budget_guard.py; packages/orchestration/integrity_gate.py; packages/orchestration/pingpong_loop.py.
+TRIAGE 2026-09-06: product → F273 T005 — an undefined name, and the linter nobody runs. Ids: R-0469, R-0482, R-0468. Modules: packages/orchestration/gauntlet_injection.py; pyproject.toml / CI stages.
+TRIAGE 2026-09-06: product → F273 T006 — the frontend toolchain and the design reference. Ids: R-0622, R-0661, R-0755. Modules: apps/ui/package.json + eslint.config.js; apps/ui/src/styles + docs/ui/design_reference; docs/ui/design_reference/tokens_rules.md.
+TRIAGE 2026-09-06: product → F273 T007 — CLI surface completeness. Ids: R-0796, R-0762. Modules: apps/cli/commands/**; packages/orchestration orchestrator move schema.
+TRIAGE 2026-09-06: product → F273 T008 — the door's transitive closure and the write door's validation. Ids: R-0745, R-0685. Modules: packages/orchestration/escalation.py; packages/orchestration/evidence_index.py.
+TRIAGE 2026-09-06: product → F273 T009 — the postmortem taxonomy. Ids: R-0568. Modules: packages/orchestration/failure_postmortem.py.
+TRIAGE 2026-09-06: product → F273 T010 — bench scope. Ids: R-0411. Modules: packages/orchestration/bench_orders.py.
+TRIAGE 2026-09-06: product → F273 T011 — evidence packaging and the review zip. Ids: R-0666, R-0667, R-0668. Modules: evidence job builder; evidence packager; scripts/build_review_manifest.py.
+TRIAGE 2026-09-06: product → F273 T012 — the self-use track. Ids: R-0784, R-0785, R-0786. Modules: packages/orchestration/self_use_generator.py; scripts/self_use_queue.json.
+TRIAGE 2026-09-06: product → F273 T013 — docs and README pins. Ids: R-0570, R-0665, R-0752, R-0769. Modules: README.md; README.md + tests/docs/test_docs_consistency.py; docs/roadmap/features/**; docs/roadmap/features/** + docs/ui/design_reference.
+TRIAGE 2026-09-06: product → F273 T014 — the parse-retry wiring and the reject coupling. Ids: R-0374, R-0378. Modules: packages/orchestration/pingpong_loop.py.

@@ -49,8 +49,13 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: prototype cluster deletion), was registered on 2026-09-06 by DECISION
 #: F260 D8, which split it off F260 at the amend0905-throughput soft limit
 #: and placed it directly after its parent per amend0906-split-placement;
-#: see T2_F272.md.
-TOTAL_FEATURES = 272
+#: see T2_F272.md. One more, F273 (findings paydown v1), was registered on
+#: 2026-09-06 by operator order amend0906-triage-throughput, whose Part A
+#: triaged all 298 open findings and collected the 54 with product effect
+#: into one feature; it is placed directly after F271 under the Easy Start &
+#: Contract Block heading, as that order requires. See T2_F273.md and
+#: .agent/triage_2026-09-06.md.
+TOTAL_FEATURES = 273
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
