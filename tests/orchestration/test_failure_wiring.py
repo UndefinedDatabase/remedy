@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from packages.orchestration import failure_postmortem as FP
-from packages.orchestration.data_paths import pingpong_run_dir, pingpong_runs_dir
+from packages.orchestration.data_paths import run_dir, runs_dir
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
     _call_with_retry,
@@ -41,7 +41,7 @@ def demo_repo(tmp_path) -> Path:
 
 
 def _run_dir(result: PingPongResult) -> Path:
-    return pingpong_run_dir(result.run_id)
+    return run_dir(result.run_id)
 
 
 def _postmortems(result: PingPongResult) -> list[dict]:
@@ -348,7 +348,7 @@ class TestTargetGuardExemptionIsStrict:
         beside it is still a target mutation.
         """
         data_root = repo / "remedy_data"
-        pingpong_runs_dir(data_root).mkdir(parents=True)
+        runs_dir(data_root).mkdir(parents=True)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
 
         from packages.orchestration.pingpong_loop import (
@@ -356,7 +356,7 @@ class TestTargetGuardExemptionIsStrict:
             _snapshot_target,
         )
         before = _snapshot_target(repo)
-        (pingpong_runs_dir(data_root) / "postmortem.json").write_text("{}\n")
+        (runs_dir(data_root) / "postmortem.json").write_text("{}\n")
         (repo / "source.py").write_text("mutated\n")
         content, operational, _noise = _classify_target_changes(repo, before)
 
@@ -550,7 +550,7 @@ class TestWriteFailureIsVisibleAndBlocking:
 
     def test_a_recorded_write_failure_blocks_the_package(self, demo_repo, tmp_path):
         """A bundle that lost a required record must not present clean gates."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         from packages.orchestration.final_verifier import build_final_verifier_report
         from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
@@ -561,7 +561,7 @@ class TestWriteFailureIsVisibleAndBlocking:
                                        error="reviewer failed", run_id="run-broken")])
         _persist_job(job)
 
-        run_dir = pingpong_run_dir("run-broken")
+        run_dir = data_paths.run_dir("run-broken")
         run_dir.mkdir(parents=True)
         (run_dir / "result.json").write_text(json.dumps({
             "run_id": "run-broken",
@@ -620,7 +620,7 @@ class TestDataRootSymlinksExemptNothing:
 
     def test_a_real_data_directory_inside_the_repo_still_works(self, repo, monkeypatch):
         data = repo / "remedy_data"
-        pingpong_runs_dir(data).mkdir(parents=True)
+        runs_dir(data).mkdir(parents=True)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data))
 
         from packages.orchestration.pingpong_loop import (
@@ -628,7 +628,7 @@ class TestDataRootSymlinksExemptNothing:
             _snapshot_target,
         )
         before = _snapshot_target(repo)
-        (pingpong_runs_dir(data) / "postmortem.json").write_text("{}\n")
+        (runs_dir(data) / "postmortem.json").write_text("{}\n")
         (repo / "src" / "source.py").write_text("mutated\n")
         content, operational, _ = _classify_target_changes(repo, before)
 
