@@ -1,10 +1,8 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Round 1 committed C0a, C0b, C1 and C2 correctly and
-stopped at a red gate whose two causes were both defects in the reviewer's own
-block; those commits are kept and round 2 repairs the record and finishes the
-work round 1 could not reach.
+pull request 240 (F259). Rounds 1 and 2 are reviewed; round 2 PASSED and put the
+measured inventory on disk as `.agent/f260_inventory.md`.
 
 ## Goal
 
@@ -18,25 +16,28 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 2 restores the one byte round 1's block cost the review record, books
-round 1's verdict and the reviewer's two authoring slips, claims F260 in the
-STATUS ledger, and writes `.agent/f260_inventory.md` — the measured reading of
-every job, run and evidence area on disk, both job record shapes, every id shape
-minted, and the re-grepped consumer list. It rules nothing.
+Round 3 closes T001 by ruling DECISION F260 D1 (the record layout, and where a
+Run's evidence lives) and D2 (the one id shape) from round 2's inventory, and
+registers finding R-0814 — the split storage root that inventory measured, where
+one ping-pong job files its record under `task_jobs/<16hex>/` and its evidence
+under the classic store's `jobs/<16hex>/evidence/`. It changes no production
+line; the code that implements the rulings is round 4.
 
 ## Next Steps
 
-- Rule DECISION F260 D1 (where the classic job fields live) and D2 (the one id
-  shape) from the inventory, and settle where a Run's evidence lives now that
-  `<data_root>/runs/` is measured as already occupied by the run log.
-- Write the one minting and resolving function and move every job-taking command
-  onto it while both stores still exist (T001, part 2).
-- T002: the extended Mission record, the unified Job record, the run directory.
+- T001 part 3: the one minting and resolving function, with its mutation
+  red-proof, and every job-taking command moved onto it while both stores still
+  exist.
+- T002: the extended Mission record, the unified Job record under
+  `jobs/<16hex>/`, and the run directory keyed by run id. R-0814 is fixed here,
+  because the layout D1 rules is what removes the split root.
+- T003 consumer by consumer, T004 the classic runner, T005 the reachability test
+  and the cluster deletion, in that order.
 
 ## Risks
 
-- The feature file orders `task_jobs/` "renamed to `runs/`" onto a path the run
-  log already writes. The collision is recorded before anything moves; ruling it
-  is round 3's first job.
+- D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
+  reader of the old shape must move in the same commit as the writer, or a run
+  log becomes unreadable between two commits.
 - The T005 cluster deletion is large and reversible in one direction only. It
   runs last, behind a reachability test green BEFORE the first `git rm`.
