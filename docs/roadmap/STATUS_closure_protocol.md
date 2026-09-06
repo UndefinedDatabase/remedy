@@ -88,6 +88,26 @@
    the committed integration-gate evidence and the reviewer's own
    re-run. The package still covers the accepted HEAD, and nothing
    green is claimed that was not run.
+
+   A fifth, from the F260 R22 attempt (58 unexplained source paths,
+   packaged BLOCKED_EVIDENCE): (e) `base_commit` is the branch's FORK
+   POINT — the first commit that `git rev-list --first-parent <head>`
+   shares with `main` — and NEVER `git merge-base <head> main` once the
+   branch has merged `main` IN. `packages/orchestration/review_subject.py`
+   builds the packaged chain with `rev-list --ancestry-path`, so a
+   merge-base taken after such a merge names main's own tip, and the
+   chain then silently drops every commit the branch made BEFORE that
+   merge while the `base..head` diff still carries their effect; the
+   one-directional check in `build_review_manifest.py` reports "the
+   review subject claims committed changes no packaged commit made" and
+   the package builds BLOCKED_EVIDENCE. Measured at `6cebdce6`: the
+   merge-base gave an ancestry chain of 41 against a plain `rev-list` of
+   158 and left 58 source paths unexplained, while the fork point gave
+   160 against 160 and left none. CHECK IT BY RUNNING BOTH — `rev-list
+   --ancestry-path <base>..<head>` and `rev-list <base>..<head>` must
+   return the SAME count, or the base is wrong. A branch with no merges
+   makes the two bases coincide, which is why carrying an earlier
+   closure's base wording forward generalises a coincidence.
 2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
    canonical sequence below. Verify committed_review_subject spans
    BASE..HEAD and the zip import check passes. Record `package <filename>`
