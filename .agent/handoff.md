@@ -1,297 +1,451 @@
-# Handoff — F260 One world: mission → job → run, round 5
+# Handoff — F260 One world: mission → job → run, round 6
 
 ## Session
 
-`SESSION 2 of feature F260 · round 5 · rounds so far 5`
+`SESSION 2 of feature F260 · round 6 · rounds so far 6`
 
 Well inside the 25-round / 7-session soft limit, so no scope report is owed.
 
 Open findings: **295** (299 `^- R-\d{4} — ` registrations minus 4
 `^Done: R-\d{4} — ` lines) — unchanged, because this round registers and
-resolves nothing. Maximum id in use: **R-0814**.
+resolves nothing. Maximum id in use: **R-0814**. R-0814's root cause is what
+this round's code addresses; the finding itself is resolved in T002, against
+the fix clause it already carries.
 
-Branch `feature/f260-one-world`, resumed at `c5da84cb`. No branch created, no
+Branch `feature/f260-one-world`, resumed at `3aaeb042`. No branch created, no
 merge, no pull request touched — the pull request belongs to the closure
 sequence.
 
 ## Range
 
-Review of `c5da84cb..HEAD`, where HEAD is the C4 commit that writes this file.
+Review of `3aaeb042..HEAD`, where HEAD is the C6 commit that writes this file.
 Its SHA is deliberately NOT spelled here: a commit cannot carry its own digest,
 and the block states the handback commit's own numbers are owed by no one
-because the reviewer measures the branch tip itself. The five SHAs below are
+because the reviewer measures the branch tip itself. The seven SHAs below are
 measured, not predicted.
 
 ## Commits
 
-Six commits, all single-parent. Insertion counts are the `+` column of
-`git diff --numstat` (DECISION F104 D1), the largest being 299 — well under the
-AGENTS.md 500-insertion cap.
+Seven commits, all single-parent. Insertion counts are the `+` column of
+`git diff --numstat` (DECISION F104 D1). The largest is 364 — the C0a block
+save, a single `.agent/**` state-file write and in any case well under the
+AGENTS.md 500-insertion cap. The largest CODE commit is C5 at 168.
 
-### 95cda3c1 f260: save the round 5 step block as authored input  (+299)
+### 5cbf74c8 f260: save the round 6 step block as authored text (C0a, +364)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f260-r5.md` | +299 / -0 | C0a. `shutil.copyfile` of the scratch block, never retyped. |
+| `.agent/authored/f260-r6.md` | +364/-0 | the round-6 step block, copied with `shutil.copyfile`, never retyped |
 
-### 54481538 f260: mirror the round 5 block into last_block  (+241)
+### db6f43ef f260: mirror the round 6 step block into last_block (C0b, +298)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +241 / -250 | C0b. Same bytes; the +/- is the diff against round 4's block, not a partial copy — G1 proves byte identity. |
+| `.agent/last_block.md` | +298/-233 | same bytes mirrored; the round-5 block it replaces accounts for the deletions |
 
-### 8fe90ef8 f260: book the round 4 gate record into the live review ledger  (+2)
+### b964fc18 f260: book the round 5 gate record into the live review ledger (C1, +2)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2 / -0 | C1. Appended `"\n"` + GATE_R4 + `"\n"`; two lines because the slice is one long paragraph plus its blank-line separator. |
+| `.agent/live_review.md` | +2/-0 | `"\n"` + the GATE_R5 slice + `"\n"`, appended; 881955 → 887129 bytes |
 
-### a2a428e2 f260: point the plan at T001's call-site half  (+11)
+### 6174d465 f260: append the round 5 reviewer prose slips (C2, +3)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +11 / -11 | C2. Whole-file replacement by the PLANF260R5 slice; Current Step now names the four call sites. |
+| `.agent/prose_slips.md` | +3/-1 | SLIP4 and SLIP5 appended; 89710 → 92673 bytes. The single deletion is the pre-image's unterminated last line gaining its newline — see deviation 1 |
 
-### 40fd11fd f260: mint job, run and episode ids at the call sites (D2)  (+107)
+### 770283b4 f260: point the plan at T002 and the one layout spelling (C3, +21)
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/pingpong_job.py` | +9 / -4 | C3. `JobPlan.job_id` takes `mint_job_id` itself; both `active_episode_id` assignments call `mint_episode_id()`; `from uuid import uuid4` removed; module-level `data_paths` import added with its D2 rationale. |
-| `packages/orchestration/pingpong_loop.py` | +3 / -2 | C3. `PingPongResult.run_id` takes `mint_run_id` itself; `from uuid import uuid4` removed; `data_paths` sorted into the existing first-party block. |
-| `tests/orchestration/test_mint_call_sites.py` | +95 / -0 | C3. New guard: two object-identity readings, one AST reading of the in-body episode sites, one parametrized `uuid4`-absence reading. |
+| `.agent/plan.md` | +21/-18 | replaced entirely by the PLANF260R6 slice plus one trailing newline; 48 lines |
 
-### (C4, this commit) f260: hand back round 5 with the call-site mints and their red-proof
+### 2c102636 f260: rule the one resolver into T002 as DECISION F260 D4 (C4, +38)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | — | C4, this file. A handoff cannot table the commit that writes it (R-0149 pattern). |
+| `docs/roadmap/features/T2_F260.md` | +38/-0 | the D4PAIR FROM→TO rewrite; 22955 → 25427 bytes |
+
+### a02c25b3 f260: give data_paths the one spelling of D1's job layout (C5, +168)
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/data_paths.py` | +42/-0 | `job_dir`, `job_record_path`, `job_evidence_dir`, `run_dir`, one D1 comment above the group, four names added to the `Public API::` block |
+| `packages/orchestration/pingpong_job.py` | +13/-5 | `job_evidence_dir` and `_task_stream_dir` now build on `data_paths.job_evidence_dir`; no path and no behaviour changes |
+| `tests/test_data_paths.py` | +113/-0 | one new class `TestJobAndRunLayout`, seven tests |
+
+### C6 (this commit) f260: hand back round 6 …
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | — | this file; a handoff cannot table the commit that writes it (R-0149 pattern) |
 
 ## External actions
 
-- `git worktree add .remedy-wt/r5-mut 40fd11fd` — created for G5. Outcome: detached HEAD at `40fd11fd`.
-- `git worktree remove --force .remedy-wt/r5-mut` — outcome: removed; `git worktree list` no longer lists it.
-- `rm -f .remedy-wt/pristine_pingpong_job.py .remedy-wt/pristine_pingpong_loop.py .remedy-wt/live_review.negcontrol` — G5/G2 scratch, deleted BY EXACT PATH, never by glob.
-- `git push origin feature/f260-one-world` — after C4.
-- No `gh` command. No pull request created, edited or merged.
+| Command | Outcome |
+|---|---|
+| `git worktree add --detach .remedy-wt/rev-r6 a02c25b3` | **FAILED**, `fatal: '…/.remedy-wt/rev-r6' already exists` — a pre-existing August scratch directory of unrelated files, not a worktree. Nothing was deleted; see deviation 3 |
+| `git worktree add --detach .remedy-wt/f260-r6-mut a02c25b3` | created, detached at `a02c25b3` |
+| `git worktree remove --force .remedy-wt/f260-r6-mut` | removed; `git worktree list` then holds the primary checkout plus the eleven pre-existing `job-*` worktrees and nothing this round created |
+| `git push origin feature/f260-one-world` | run after C6; never a force-push |
+| PR create / edit / merge | **None** — the block forbids it this round |
 
-## Verification — eight gates, each run, each exit code real
+## Verification
 
-**G1 TRANSPORT — exit 0.** `sha256sum` over `.remedy-wt/f260-r5-block.md`,
-`.agent/authored/f260-r5.md` and `.agent/last_block.md` returns ONE value:
-`277b68dd70a61a529e4a2db37d1e1e6f5e6ed6821f1ccdd3aa8266aa4d9c59ee`, equal to the
-BLOCK_SHA the delegating prompt stated. That chain covers three of my own files
-and is not a claim about the bytes emitted into my prompt.
+All eight gates ran AT C5 (`a02c25b3`), before this file was written, so every
+exit code below is real and measured rather than predicted.
 
-**G2 THE RECORD — exit 0.** `.agent/live_review.md` 877435 → 881955 bytes,
-growth **4520**, equal to the appended byte count exactly (`1 + 4518 + 1`).
-(a) the 877435-byte pre-image is a byte-exact PREFIX — True.
-(b) the remainder is exactly `"\n"` + GATE_R4 + `"\n"` — True.
-(c) the file's last blank-line-separated unit equals the GATE_R4 slice — True.
-NEGATIVE CONTROL, in a scratch copy only: flipping one byte inside that unit
-makes (c) REJECT it — True. It does NOT make (a) reject, and cannot; see
-deviation 2.  A byte flipped inside the pre-image region DOES make (a) reject —
-True, run as the companion control.
-(d) `^- R-[0-9]{4} — ` matches **299**, `^Done: R-[0-9]{4} — ` matches **4** —
-both unchanged, correct for a round that registers and resolves nothing.
-`^Gate: ` headers: **14**, all distinct.
-
-**G3 THE PLAN — exit 0.** `.agent/plan.md` == PLANF260R5 slice (2333 bytes) plus
-exactly one trailing newline; file is 2334 bytes; byte-equality True. Line count
-**45**, under the AGENTS.md 50.
-
-**G4 THE CODE, READ AND RUN — exit 0**, all five readings:
-(a) `python3 -m ruff check packages/orchestration/pingpong_job.py
-    packages/orchestration/pingpong_loop.py` → `All checks passed!`, exit 0.
-    (The new test file also passes ruff, run separately.)
-(b) `ast.Name` nodes with `id == "uuid4"`: **0** in `pingpong_job.py`, **0** in
-    `pingpong_loop.py`.
-(c) `JobPlan.__dataclass_fields__["job_id"].default_factory is
-    data_paths.mint_job_id` → **True**;
-    `PingPongResult.__dataclass_fields__["run_id"].default_factory is
-    data_paths.mint_run_id` → **True**. Both factories' `__qualname__` are
-    `mint_job_id` / `mint_run_id` — function objects, not lambdas.
-(d) `Assign` nodes targeting attribute `active_episode_id`: **2**, at lines 2273
-    and 2296, each a call to the name `mint_episode_id`.
-(e) `git diff --numstat c5da84cb..40fd11fd -- packages/` — exactly two rows:
-    `9 4 packages/orchestration/pingpong_job.py` and
-    `3 2 packages/orchestration/pingpong_loop.py`.
-
-Module resolution was checked, not assumed: `pingpong_job.__file__` resolved to
-`/home/decodeux/Repos/remedy/packages/orchestration/pingpong_job.py`, so no
-editable install shadowed these readings.
-
-**G5 THE MUTATION RED-PROOF — run in full**, in the disposable worktree
-`.remedy-wt/r5-mut` at `40fd11fd`, every run under `python3 -B` after purging
-`__pycache__` (0 dirs found). Module resolution inside the worktree was verified
-first: all three modules resolved from `.remedy-wt/r5-mut/packages/orchestration/`,
-so nothing was shadowed.
-
-| Run | Exit | Result |
+| Gate | Result | Real exit code |
 |---|---|---|
-| UNMUTATED CONTROL (first) | 0 | 5 passed |
-| (i) job-id default wrapped in `lambda: mint_job_id()` | 1 | 1 failed, 4 passed |
-| control after restore | 0 | 5 passed |
-| (ii) run-id default wrapped in `lambda: mint_run_id()` | 1 | 1 failed, 4 passed |
-| control after restore | 0 | 5 passed |
-| (iii) inline `uuid4().hex[:16]` back at the F018 episode site only | 1 | 2 failed, 3 passed |
-| control after restore (last) | 0 | 5 passed |
+| G1 TRANSPORT | PASS — one digest across all three artefacts | 0 |
+| G2 THE RECORD | PASS — growth exact, (a)(b)(c) hold, both negative controls reject, counts unchanged | 0 |
+| G3 THE PROSE FILES | PASS — prefix exact, remainder exact, plan is slice+`\n` at 48 lines | 0 |
+| G4 THE DECISION | PASS — byte-exact reconstruction, FROM 1x→0x, TO 0x→1x, five D-headings | 0 |
+| G5 THE CODE, READ AND RUN | PASS — ruff clean, all four readings hold, three paths in the numstat | 0 |
+| G6 THE MUTATION RED-PROOF | PASS — control green, all four properties turn the guard red, control green after each | 0 (control) / 1 (each mutation) |
+| G7 THE SUITES | PASS — eight suites, 730 tests, every one exit 0 | 0 (×8) |
+| G8 THE TREE AND THE CHANGE SET | PASS — tree clean, nine paths, integrity `passed: true` | 0 |
 
-Failing node ids:
-- (i) `tests/orchestration/test_mint_call_sites.py::TestMintCallSites::test_job_plan_job_id_default_is_the_mint_function_itself`
-- (ii) `tests/orchestration/test_mint_call_sites.py::TestMintCallSites::test_pingpong_result_run_id_default_is_the_mint_function_itself`
-- (iii) `tests/orchestration/test_mint_call_sites.py::TestMintCallSites::test_every_active_episode_id_assignment_calls_mint_episode_id`
-  and `...::test_module_no_longer_names_uuid4[pingpong_job]`
+### G1 — transport (one digest)
 
-(i) and (ii) are the valuable ones: the mutant is BEHAVIOURALLY IDENTICAL — it
-mints the same ids from the same function — and only the identity reading can
-see it. A text or behavioural check would have stayed green. (iii) reddens two
-independent readers, the AST episode reading and the `uuid4`-absence reading,
-because an inline mint is both a non-`mint_episode_id` value and a live `uuid4`
-name; one mutation, two witnesses.
+    $ sha256sum .remedy-wt/f260-r6-block.md .agent/authored/f260-r6.md .agent/last_block.md
+    868a89bb4df7d29a92ef1b5654ed0d344932db534e9f56c434178e7840feb00c  .remedy-wt/f260-r6-block.md
+    868a89bb4df7d29a92ef1b5654ed0d344932db534e9f56c434178e7840feb00c  .agent/authored/f260-r6.md
+    868a89bb4df7d29a92ef1b5654ed0d344932db534e9f56c434178e7840feb00c  .agent/last_block.md
+    exit 0
 
-Restores were byte-exact `shutil.copyfile` from pristine copies taken before the
-first mutation (`filecmp.cmp(..., shallow=False)` True each time), never
-`git checkout --`. The worktree was DISCARDED with `git worktree remove --force`,
-and no mutation ever touched the primary checkout.
+ONE value, and it equals the BLOCK_SHA the delegating prompt states. Per §3
+item 37 this chain covers those three artefacts and is NOT a claim about the
+bytes emitted into the prompt.
 
-**G6 THE SUITES — run SERIALLY in the primary checkout at C3**, each its own
-invocation, never through a pipe:
+### G2 — the record
 
-| Suite | Count | Exit |
-|---|---|---|
-| `tests/orchestration/test_mint_call_sites.py` | 5 passed | 0 |
-| `tests/test_data_paths.py` | 28 passed | 0 |
-| `tests/orchestration/test_pingpong_cli.py` | 173 passed | 0 |
-| `tests/test_do_job_flow.py` | 178 passed | 0 |
-| `tests/orchestration/test_pingpong_job_hunk_ledger.py` | 10 passed | 0 |
-| `tests/orchestration/test_job_evidence.py` | 93 passed | 0 |
-| `tests/cli/test_golden_path.py` (canary) | 42 passed | 0 |
+    .agent/live_review.md   881955 → 887129 bytes, growth 5174
+    appended byte count     5174  ( "\n" + GATE_R5 (5172 bytes) + "\n" )
+    growth == appended:     True
+    (a) 881955-byte pre-image is a byte-exact PREFIX:      True
+    (b) remainder is exactly "\n" + GATE_R5 + "\n":        True
+    (c) file's LAST blank-line unit equals the GATE_R5 slice: True
+    file still ends with exactly one newline:              True
+    exit 0
 
-529 tests, no failure, no error, no skip reported.
+TWO negative controls, both in scratch copies held in memory; the file on disk
+was re-read afterwards and is unchanged.
 
-**G7 THE TREE — exit 0.** `git status --porcelain` empty. `git ls-files
-.remedy-wt` empty. `.agent/STOP` absent (re-read from disk before C3 and again
-here). `git worktree list` holds eleven `remedy/job-*` worktrees that predate
-this session and NO worktree this round created — `r5-mut` is gone.
-`python3 -m apps.cli.grouped integrity check --json` → `"passed": true`,
-`"fail_count": 0`, 5 checks, handlers=342.
+    CONTROL 1  flip at offset 882016, INSIDE the appended paragraph ('A' → 'a')
+       (c) REJECTS: True
+       (a) accepts — the flip lies entirely after the prefix region, so (a)
+           cannot see it. This is the asymmetry round 5 reported and this
+           round's block correctly split into two controls.
+    CONTROL 2  flip at offset 876955, INSIDE the pre-image region ('h' → 'H')
+       (a) REJECTS: True
+       (c) accepts — the flip lies before the tail unit, so (c) cannot see it.
 
-**G8 THE CHANGE SET — exit 0.** `git diff --name-only c5da84cb..40fd11fd`
-printed exactly, and only, the seven paths:
+The two readings cover DIFFERENT REGIONS and neither alone is total, which is
+exactly why both controls are needed. Counts afterwards:
 
-    .agent/authored/f260-r5.md
+    ^- R-[0-9]{4} — ......... 299
+    ^Done: R-[0-9]{4} — ..... 4
+    ^Gate: ................... 15 headers, 15 distinct → all distinct: True
+
+The fifteenth is `Gate: R5 — the F260 R5 entry.`, occurring exactly once.
+
+### G3 — the prose files
+
+    .agent/prose_slips.md   89710 → 92673 bytes, growth 2963
+    appended                2963 = "\n" + SLIP4 (1420) + "\n" + SLIP5 (1540) + "\n"
+    pre-image is a byte-exact PREFIX:                True
+    remainder is exactly nl+SLIP4+nl+SLIP5+nl:       True
+    exit 0
+
+    .agent/plan.md          2568 bytes
+    equals PLANF260R6 slice + exactly one trailing newline:  True
+    line count 48  → under 50:                               True
+    exit 0
+
+Nothing already in `prose_slips.md` changed by one byte — the prefix comparison
+is the authoritative reading and it holds. See deviation 1 for the structural
+consequence of the block's byte recipe.
+
+### G4 — the decision
+
+    docs/roadmap/features/T2_F260.md   22955 → 25427 bytes (delta 2472)
+    reconstructs BYTE-EXACTLY from the pre-image with the single
+      D4PAIR substitution applied and no other change:   True
+    §4.9 counts over the WHOLE file:
+      D4PAIR_FROM  1x before → 0x after
+      D4PAIR_TO    0x before → 1x after
+    ^### DECISION F260 D  matches 5 times: D1, D2, D0, D3, D4
+      each of D0 D1 D2 D3 D4 appears exactly once:       True
+    file still ends with exactly one newline:            True
+    exit 0
+
+The block's pre-emission containment test is confirmed on disk: `TO contains
+FROM` is False, so the pair is a REWRITE and the "FROM 0x, TO 1x" reading is
+attainable, as ordered.
+
+### G5 — the code, read and run
+
+(a) ruff:
+
+    $ python3 -m ruff check packages/orchestration/data_paths.py \
+        packages/orchestration/pingpong_job.py
+    All checks passed!
+    exit 0
+
+(b) with `REMEDY_DATA_DIR` set to a temporary directory:
+
+    job_dir(x)          = <tmp>/jobs/0123456789abcdef
+    job_record_path(x)  = <tmp>/jobs/0123456789abcdef/job.json
+    job_evidence_dir(x) = <tmp>/jobs/0123456789abcdef/evidence
+    run_dir(y)          = <tmp>/runs/fedcba9876543210
+    job_record_path(x).parent == job_evidence_dir(x).parent == job_dir(x): True
+    run_dir(y).parent is runs_dir():                                       True
+    jobs_dir() nowhere in run_dir(y).parents:                              True
+
+(c) the no-behaviour-change property:
+
+    pingpong_job.job_evidence_dir(x) == data_paths.job_evidence_dir(x)     True
+    pingpong_job._task_stream_dir(x,"t1")
+        == data_paths.job_evidence_dir(x) / "task_runs" / "t1"             True
+
+(d) exactly three paths:
+
+    $ git diff --numstat 3aaeb042..a02c25b3 -- packages/ tests/
+    42	0	packages/orchestration/data_paths.py
+    13	5	packages/orchestration/pingpong_job.py
+    113	0	tests/test_data_paths.py
+    exit 0
+
+### G6 — the mutation red-proof
+
+Disposable worktree `.remedy-wt/f260-r6-mut`, detached at `a02c25b3`,
+`__pycache__` purged before every run and every run under `python3 -B`. Module
+resolution was probed FIRST, so no editable install shadowed the worktree:
+
+    data_paths   <- .remedy-wt/f260-r6-mut/packages/orchestration/data_paths.py
+    pingpong_job <- .remedy-wt/f260-r6-mut/packages/orchestration/pingpong_job.py
+
+The UNMUTATED CONTROL ran first, and again after every restore. Restores were
+byte-for-byte rewrites of the saved source, never `git checkout --`.
+
+    [control-0]          exit=0   35 passed
+    [mut-1]  run keyed under jobs_dir            exit=1   2 failed, 33 passed
+        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_a_run_hangs_under_runs_dir_and_never_under_jobs_dir
+        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
+    [control-after-1]    exit=0   35 passed
+    [mut-2]  evidence beside the record          exit=1   2 failed, 33 passed
+        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_record_and_the_evidence_share_one_root
+        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
+    [control-after-2]    exit=0   35 passed
+    [mut-3]  job_dir ignores root                exit=1   1 failed, 34 passed
+        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
+    [control-after-3]    exit=0   35 passed
+    [mut-4]  pingpong spells it by hand          exit=1   1 failed, 34 passed
+        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_pingpong_job_no_longer_spells_the_evidence_path_itself
+    [control-after-4]    exit=0   35 passed
+
+The block's note on (iv) is CONFIRMED by measurement, not assumed: under that
+mutation exactly ONE test failed and it is the text/AST reading. The equality
+test `test_pingpong_job_evidence_paths_equal_the_data_paths_ones` stayed GREEN,
+because the hand-built path is genuinely equal to the new one. That is why the
+block ordered both readings, and it is the whole justification for the AST
+guard's existence.
+
+    $ git worktree remove --force .remedy-wt/f260-r6-mut
+    $ git worktree list
+    /home/decodeux/Repos/remedy                                  a02c25b3 [feature/f260-one-world]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-1cbb6972bf7c4ffc  db21957a [remedy/job-1cbb6972bf7c4ffc]
+    … ten further pre-existing `job-*` worktrees, all present before this round began …
+
+### G7 — the suites, serially in the primary checkout
+
+Each suite ran as its OWN sequential process with its real return code
+captured; no shell pipe was used, so no `$?` was replaced by a pipe's.
+
+    exit=0   tests/test_data_paths.py                      35 passed
+    exit=0   tests/orchestration/test_checkpoints.py       37 passed
+    exit=0   tests/orchestration/test_repair_attest.py     37 passed
+    exit=0   tests/orchestration/test_job_evidence.py      93 passed
+    exit=0   tests/orchestration/test_mint_call_sites.py    5 passed
+    exit=0   tests/test_do_job_flow.py                    178 passed
+    exit=0   tests/docs/                                  303 passed
+    exit=0   tests/cli/test_golden_path.py                 42 passed
+    worst exit code across the eight suites: 0
+
+730 tests. `tests/docs/` is this round's docs-round gate — the change set holds
+a `docs/roadmap/` path (verification tier 5) — and `tests/cli/test_golden_path.py`
+is the canary. `tests/test_data_paths.py` went 28 → 35, the seven new tests.
+
+### G8 — the tree and the change set
+
+    $ git status --porcelain
+    (empty)
+    $ git ls-files .remedy-wt
+    (empty)
+    $ test -e .agent/STOP
+    ABSENT
+    $ git worktree list
+    holds no worktree this round created (see G6)
+
+    $ git diff --name-only 3aaeb042..a02c25b3
+    .agent/authored/f260-r6.md
     .agent/last_block.md
     .agent/live_review.md
     .agent/plan.md
+    .agent/prose_slips.md
+    docs/roadmap/features/T2_F260.md
+    packages/orchestration/data_paths.py
     packages/orchestration/pingpong_job.py
-    packages/orchestration/pingpong_loop.py
-    tests/orchestration/test_mint_call_sites.py
+    tests/test_data_paths.py
 
-`.agent/handoff.md` is the eighth and is added by C4, as the block states.
+Exactly the nine paths of the change set other than `.agent/handoff.md`, which
+C6 adds.
+
+    $ python3 -m apps.cli.grouped integrity check --json
+    "passed": true, "fail_count": 0, "check_count": 5
+      handler_import        pass   handlers=342
+      live_review_verdict   pass
+      plan_consistency      pass   unchecked=0, context_complete=False
+      relevant_untracked    pass   untracked=0, relevant=0
+      high_blockers_open    pass   no open blocker/high findings
+    exit 0
 
 ## Authored-text proofs
 
-Two reviewer-authored slices applied, both extracted programmatically from
-`.remedy-wt/f260-r5-block.md` and never retyped:
+Every authored slice was extracted from `.agent/authored/f260-r6.md`'s own byte
+source programmatically and applied byte for byte — none was retyped. The
+slice convention this round's block states outright (the slice EXCLUDES the
+newline terminating its last content line) was applied uniformly.
 
-- **GATE_R4** → appended to `.agent/live_review.md`. Disk-to-disk: the appended
-  remainder equals `"\n"` + the slice extracted from the committed
-  `.agent/authored/f260-r5.md`'s source bytes + `"\n"` — True.
-- **PLANF260R5** → whole of `.agent/plan.md`. Disk-to-disk byte-equality against
-  the slice plus one trailing newline — True.
-- The block itself → `.agent/authored/f260-r5.md` and `.agent/last_block.md`,
-  proved by G1's single digest.
+| Slice | Bytes | Applied to | Disk-to-disk result |
+|---|---|---|---|
+| PLANF260R6 | 2567 | `.agent/plan.md` | file == slice + `"\n"` exactly (2568 bytes) |
+| D4PAIR_FROM → D4PAIR_TO | 63 → 2535 | `docs/roadmap/features/T2_F260.md` | byte-exact reconstruction from the pre-image, single substitution |
+| GATE_R5 | 5172 | `.agent/live_review.md` | remainder == `"\n"` + slice + `"\n"` exactly |
+| SLIP4 | 1420 | `.agent/prose_slips.md` | remainder == `"\n"`+SLIP4+`"\n"`+SLIP5+`"\n"` exactly |
+| SLIP5 | 1540 | `.agent/prose_slips.md` | (same remainder comparison) |
+
+The C0a/C0b transport digest is identical across the scratch original, the
+saved copy and the mirror (G1).
 
 ## Deviations & assumptions
 
-**1. SLICE BOUNDARY: the slice's terminating newline is the marker line's, not
-the slice's — and I resolved this by measurement, not preference.** The
-delegating prompt defines a slice as "everything strictly between those two
-marker lines", which for GATE_R4 is 4519 bytes ending in `\n`. Applying that
-literally would append `"\n" + 4519 bytes + "\n"`, leaving `.agent/live_review.md`
-ending in TWO newlines — a trailing blank line. That contradicts the block's own
-statement that the file "ends with a single newline", and it breaks G2(c): with a
-trailing blank line the file's LAST `\n\n`-separated unit is the empty string,
-which cannot equal the slice.
+The commit sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was followed exactly, in
+order, one commit each, with C5 landing the functions, both call sites and the
+tests together. No commit was added, dropped or reordered.
 
-I measured the round-4 precedent rather than guessing. The pre-image's last
-paragraph (the R3 entry) is 4143 bytes with its trailing newline and **4142
-without**, and the R4 gate record states the R3 append was `"\n" + GATE_R3 +
-"\n"` at growth **4144** = 1 + 4142 + 1. So the established, on-disk convention
-is unambiguous: a gate slice carries NO trailing newline. I applied GATE_R4 at
-**4518** bytes (append 4520) and PLANF260R5 at **2333** bytes (file 2334), which
-leaves both files ending in exactly one newline and satisfies G2(c) and G3 as
-written. Flagging it because it is a real ambiguity in the block's wording, and
-the reviewer should confirm the convention rather than take my reading.
+**1. The block's C2 byte recipe assumes a trailing newline that `prose_slips.md`
+does not have — applied anyway, structural consequence declared.**
+`.agent/prose_slips.md` at `3aaeb042` is 89710 bytes and does NOT end with a
+newline (its last line is unterminated). The block ordered the append as
+`"\n"` + SLIP4 + `"\n"` + SLIP5 + `"\n"`, which is the same recipe C1 uses for
+`live_review.md` — but `live_review.md` DOES end with a newline, so there the
+leading `"\n"` creates a blank-line separator, while here it merely terminates
+the pre-image's last line. The measured result: SLIP4 sits directly beneath the
+previous slip with no blank line, and SLIP5 directly beneath SLIP4. The file's
+blank-line-unit count therefore stayed at **128** instead of rising to 130,
+and the last unit is now three slips fused into one. Every other slip in that
+file is its own blank-line unit, so this breaks the file's own convention.
+Per constraint 1 I applied the bytes as ordered and did not repair them.
+G3 as written is fully MET — the pre-image is a byte-exact prefix and the
+remainder is exactly the ordered bytes — so this is a defect in the recipe, not
+in my application of it. Suggested repair for a later round: append `"\n\n"`
+between units when the pre-image does not end in a newline, or normalise the
+pre-image first. This is a reviewer-authored slip over an `.agent/` prose file
+that left nothing wrong under `packages/`, `apps/`, `tests/` or `docs/`, so
+under amend0827-process-diet rule 2 it belongs in `prose_slips.md` and spends
+no R-id.
 
-**2. THE BLOCK IS WRONG ABOUT ONE NEGATIVE CONTROL, and the error is
-structural, not a typo.** G2(c) orders: flip one byte inside the last unit and
-report that "both (a) and (c) then REJECT it". (a) is a PREFIX comparison over
-the first 877435 bytes; the last unit lies entirely AFTER that prefix. No flip
-inside the appended unit can ever make (a) reject — the two readings are
-disjoint by construction. I ran the control as ordered and report honestly that
-(c) rejects and (a) does NOT. To give the clause the discriminating power it was
-plainly reaching for, I ran the companion control the block should have ordered:
-a byte flipped inside the PRE-IMAGE region, which does make (a) reject. Together
-the pair shows each reading rejects exactly the corruption it is responsible
-for. I did not repair the block's wording, only satisfied it and said so.
+**2. One stale line number in the block.** The block gives
+`_task_stream_dir` at `pingpong_job.py:3568` at `3aaeb042`; the `def` is at
+line **3565** (3568 is the second line of its docstring). `job_evidence_dir` at
+`3055` is exact. The block ordered both symbols re-grepped before editing,
+which I did, so the correct function was edited in both cases and nothing on
+disk is wrong. Recorded because a line number stated as a measurement should be
+one.
 
-**3. C3's `pingpong_loop.py` import comment moved to the field.** The block
-asked for the WHY comment and I first wrote it directly above the new
-`data_paths` import inside the existing first-party block. Ruff's `I001`
-rejected that — it demands a BLANK LINE before a comment that opens a new
-sorted-import run, which would have split a contiguous first-party block for no
-reader benefit. Rather than insert that blank line I moved the one-line D2
-rationale to the `run_id` field itself, where the decision actually bites. The
-`pingpong_job.py` comment stayed at its import, where it is legal because that
-import starts a genuinely new block, and where it is also more useful: it is the
-place that must explain why the import is module-level and not function-scoped.
-No behaviour or gate reading is affected; G4(a) is green.
+**3. The disposable worktree was named `.remedy-wt/f260-r6-mut`, not a
+`rev-r6` name.** `git worktree add --detach .remedy-wt/rev-r6 a02c25b3` failed
+with `fatal: … already exists`: `.remedy-wt/rev-r6` is a PRE-EXISTING scratch
+directory from 2026-08-21 holding unrelated files from another feature, and is
+not a worktree. I did not delete it or any part of it. The block ordered a
+disposable worktree "under `.remedy-wt/`" without fixing its name, so a
+distinct unused name satisfies the order; G6 and constraint 4 are met in full.
 
-**4. I ALMOST SHIPPED AN UNMEASURED SHA, and record it rather than hide it.**
-The first draft of this file spelled the C4 commit's own SHA in the Range line
-and the last commit table — a value I could only have predicted, never measured,
-since a commit cannot contain its own digest. I caught it against the committed
-file, corrected both places to a self-reference, and `git commit --amend`ed the
-UNPUSHED C4 commit. No push preceded the amend, so nothing was rewritten that
-anyone had seen and no force-push was involved (guardrail G2 intact). The five
-SHAs in the commit tables above are all measured from `git log`.
+**4. G6's control scope was the whole `tests/test_data_paths.py` file** (35
+tests), not just the new class. The block ordered "the UNMUTATED CONTROL" and
+its pass count without naming a scope; the wider scope is the stricter reading,
+since it would also catch a mutation breaking a pre-existing test.
 
-**5. Test-file scope note.** The block described one class; the module-level
-helper `_parsed(module)` sits outside it because both the AST readings and the
-parametrized absence reading need it. This is a shape choice inside the file the
-block told me to author, not a change-set deviation.
+**5. G7's exit codes were captured by a sequential Python driver**, one
+`subprocess.run` per suite in the primary checkout, rather than eight shell
+invocations. The suites still ran serially, one process each, and each real
+return code is the one reported. This satisfies "never through a pipe" in
+substance: the hazard that clause names is a shell pipe replacing `$?` with the
+downstream command's, and no shell pipe was used.
 
-No departure from the ordered commit sequence: C0a, C0b, C1, C2, C3, C4, six
-commits in that order, each its own commit, C3 landing sources and guard test
-together. Nothing outside the change set was created, edited or deleted; the
-five function-scoped `data_paths` imports in `pingpong_job.py` (lines 377, 3052,
-3159, 3198, 3566) are untouched, and no other `uuid4().hex[:16]` site moved.
+**6. The "no hand-built evidence path survives" guard is an AST reference
+guard, not a substring search.** The block called this "a text reading" and
+named the expression `jobs_dir() / job_id / "evidence"`. I implemented it as:
+no `ast.Name`, `ast.Attribute` or `ast.alias` resolving to the exact name
+`jobs_dir` occurs anywhere in `pingpong_job.py`. This is strictly stronger than
+a substring search — it cannot be dodged by an `import … as` alias or by
+whitespace, and it cannot be tripped by a comment or docstring that merely
+NAMES the old layout, which a substring search would be. `_jobs_dir` and
+`task_jobs_dir` are different names and are deliberately out of scope; they
+hold the ping-pong store and move in T002. G6 mutation (iv) proves the guard
+fires.
+
+**7. No `.agent/context.md` or `.agent/decisions.md` update.** The Commit Gate
+asks whether they need one; the block's change set forbids writing them, and
+the change set bounds writes. The decision this round makes is DECISION F260 D4,
+which the block placed in `docs/roadmap/features/T2_F260.md` — the durable
+home — so nothing is lost.
+
+Nothing outside the ten-path change set was created, edited or deleted.
+Scratch under the gitignored `.remedy-wt/` is untracked and `git ls-files
+.remedy-wt` is empty.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| Book the round 4 verdict | done | C1, the `Gate: R4` entry; 14 gate headers, all distinct |
-| T001 the minting functions | done | shipped round 4 |
-| T001 the CALL SITES | done | all four moved; both modules stop naming `uuid4` |
-| Guard against mint drift | done | object identity for the two defaults, AST for the two in-body sites; red-proved three ways |
-| T001 the one resolver | NOT STARTED | needs T002's store; see Next |
-| T002 records and writers | NOT STARTED | where R-0814 is fixed |
-| T003 / T004 / T005 | NOT STARTED | in that order |
-| Book the round 5 verdict | owed | the reviewer writes it; the NEXT round's first commit books it |
-| Open a pull request | not due | the closure sequence opens it, not now |
+| C0a save the block | done | |
+| C0b mirror the block | done | |
+| C1 the record | done | |
+| C2 the two slips | deviated | applied byte for byte as ordered; the block's recipe fused three blank-line units into one — deviation 1 |
+| C3 the plan | done | |
+| C4 DECISION F260 D4 | done | |
+| C5 the code, call sites and tests | done | one commit, 168 insertions |
+| C6 the handback | done | this file |
+| G1 TRANSPORT | done | exit 0, one digest = BLOCK_SHA |
+| G2 THE RECORD | done | exit 0, both region-disjoint controls behave as split |
+| G3 THE PROSE FILES | done | exit 0 |
+| G4 THE DECISION | done | exit 0 |
+| G5 THE CODE, READ AND RUN | done | exit 0, all four readings |
+| G6 THE MUTATION RED-PROOF | done | control 0, four mutations each exit 1 |
+| G7 THE SUITES | done | eight suites, all exit 0 |
+| G8 THE TREE AND THE CHANGE SET | done | exit 0, integrity passed |
 
-## Next — the single expected next action
+## What this round actually changed
 
-Review round 5: re-run G1 through G8 independently at the branch tip and read
-the real diff, then write the PASS/FAIL verdict for round 6's first commit to
-book. Do not take the numbers above on trust — in particular re-derive the
-GATE_R4 slice boundary of deviation 1 for yourself, since if my reading is wrong
-the ledger's newline convention is wrong from this entry onward.
+DECISION F260 D4 rules that the ONE resolver lands with the store it resolves
+over — inside T002, beside the unified record and its loader — and RETIRES
+T001's "while both stores still exist" clause, because forty of the forty-two
+job-taking call sites take a `UUID` today and that is not a state they can move
+in. T001 is CLOSED with its minting half.
 
-After the verdict, round 6 is T001's last item: the ONE resolver DECISION F260
-D2 rules, written while both job stores still exist and deleted from its
-predecessors only in T004.
+`data_paths` now owns the ONE spelling of DECISION F260 D1's layout:
+`job_dir`, `job_record_path`, `job_evidence_dir` and `run_dir`, each built on
+the one above it so a layout change has exactly one place to happen.
+`pingpong_job`'s two hand-built evidence paths were put onto it, changing no
+path and no behaviour — proved by value equality AND by the AST guard, because
+the equality alone cannot see a regression to a path that is equal.
 
-## Open risks carried forward
+`job_record_path` names a path NOTHING WRITES YET, and its docstring says so
+and names T002 as the task that moves the writer. The live ping-pong record is
+still at `<data_root>/task_jobs/<16hex>/job.json`; moving it before the
+resolver moves would break `remedy teach narrate` for every ping-pong job,
+which is precisely what D4 rules against.
 
-- D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
-  reader of the old shape must move in the same commit as its writer.
-- The T005 cluster deletion is large and reversible in one direction only. It
-  runs last, behind a reachability test green BEFORE the first `git rm`.
-- R-0814 stays open; T002's unified layout is where it is fixed.
+## Next
+
+The reviewer re-runs all eight gates and reads the real diff for round 6, then
+rules on the round. The next build round puts the four remaining hand-built
+evidence paths — `job_evidence.py` twice, `repair_attest.py` and `do_cmd.py` —
+onto `data_paths.job_evidence_dir`, with a guard that no module outside
+`data_paths` spells that path again.
