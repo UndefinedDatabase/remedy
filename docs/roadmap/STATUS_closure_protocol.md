@@ -124,6 +124,8 @@
    `accepted HEAD` = the reviewed head the verdict and zip cover (manifest
    committed_review_subject.head_commit). External-verdict segment only
    when an external round happened. Touch no other line.
+   Placement of a split: a split-off follow-up is registered directly after
+   the parent; see self_drive_protocol.md amend0906-split-placement.
 5. **Final commit + PR (worker).** STATUS edit is the last commit on the
    branch (Rule A4), with ONE permitted successor — see DECISION amend0827 D2
    under "Closure-candidate findings": a commit whose path set is exactly
