@@ -1146,7 +1146,7 @@ def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
     regular file (never a symlink), resolving inside that job directory, and match
     the sha256 and size recorded in job.json.
     """
-    from packages.orchestration.pingpong_job import _jobs_dir
+    from packages.orchestration.data_paths import task_job_dir
 
     if getattr(job, "isolation_mode", "copy") != "worktree":
         return None, "not_a_worktree_job"
@@ -1157,7 +1157,7 @@ def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
     }
     if not recorded["path"]:
         return None, "job records no result.diff"
-    return _resolve_result_diff_source(_jobs_dir() / job.job_id, recorded)
+    return _resolve_result_diff_source(task_job_dir(job.job_id), recorded)
 
 
 def _write_job_worktree_evidence(

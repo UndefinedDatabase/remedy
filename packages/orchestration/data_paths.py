@@ -17,6 +17,8 @@ Public API::
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
     task_jobs_dir(root: Path | None = None) -> Path
+    task_job_dir(job_id, root: Path | None = None) -> Path
+    task_job_record_path(job_id, root: Path | None = None) -> Path
     resolve_job_id(raw) -> UUID              # the classic store
     resolve_any_job_id(raw) -> str           # both stores
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
@@ -80,6 +82,32 @@ def task_jobs_dir(root: Path | None = None) -> Path:
     "where the task jobs live" cannot drift apart.
     """
     return (root if root is not None else resolve_data_root()) / "task_jobs"
+
+
+# The pair below NAMES THE PING-PONG STORE AS IT IS TODAY —
+# ``<data_root>/task_jobs/<16hex>/job.json`` — and nothing more. It is the
+# TARGET layout's mirror image: ``job_dir`` and ``job_record_path`` further down
+# spell where DECISION F260 D1 says the record BELONGS, these two spell where it
+# actually sits. Until T002 moves it, both spellings have to exist, and the
+# alternative — every caller hand-building the live path — is finding R-0814's
+# root cause. Giving the live store one spelling too is what makes DECISION F260
+# D1's collapse of this pair into ``job_dir`` / ``job_record_path`` ONE EDIT to
+# two function bodies here, instead of a sweep of every caller in the tree.
+
+
+def task_job_dir(job_id: str, root: Path | None = None) -> Path:
+    """The one directory holding everything about one PING-PONG job, as it is today."""
+    return task_jobs_dir(root) / job_id
+
+
+def task_job_record_path(job_id: str, root: Path | None = None) -> Path:
+    """The ping-pong job's own record — the file ``pingpong_job._persist_job`` writes.
+
+    THIS ONE IS LIVE, which is the whole difference between it and
+    :func:`job_record_path` above: a reader who wants the record on disk right
+    now wants this path, and T002 is what makes the other one true.
+    """
+    return task_job_dir(job_id, root) / "job.json"
 
 
 def runs_dir(root: Path | None = None) -> Path:

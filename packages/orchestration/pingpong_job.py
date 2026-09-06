@@ -376,17 +376,13 @@ class JobPlan:
 # Persistence
 # ---------------------------------------------------------------------------
 
-def _jobs_dir() -> Path:
-    # One spelling of "where the task jobs live": data_paths owns it, so the
-    # readers that resolve an id there cannot drift from the writer here.
-    from packages.orchestration.data_paths import task_jobs_dir
-    return task_jobs_dir()
-
-
 def _persist_job(job: JobPlan) -> Path:
-    job_dir = _jobs_dir() / job.job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-    out = job_dir / "job.json"
+    # ``data_paths`` owns "where the ping-pong record lives" (DECISION F260 D1),
+    # so this writer and the readers that resolve an id cannot drift apart.
+    from packages.orchestration.data_paths import task_job_record_path
+
+    out = task_job_record_path(job.job_id)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
@@ -397,7 +393,9 @@ def save_job_plan(job: JobPlan) -> Path:
 
 
 def load_job_plan(job_id: str) -> JobPlan | None:
-    job_file = _jobs_dir() / job_id / "job.json"
+    from packages.orchestration.data_paths import task_job_record_path
+
+    job_file = task_job_record_path(job_id)
     if not job_file.exists():
         return None
     try:
@@ -971,9 +969,10 @@ def job_worktree_id(job_id: str) -> str:
 
 def _create_job_workspace_copy(job: JobPlan) -> str:
     """Non-git fallback: a filtered copy of the target (isolation_mode=copy)."""
+    from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.staging_workspace import create_staging_workspace
 
-    data_root = _jobs_dir().parent
+    data_root = resolve_data_root()
     ws_parent = data_root / "job_workspaces"
     ws_parent.mkdir(parents=True, exist_ok=True)
 
@@ -1180,8 +1179,9 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     if handle is None:
         return
     from packages.orchestration import worktrees as W
+    from packages.orchestration.data_paths import task_job_dir
 
-    job_dir = _jobs_dir() / job.job_id
+    job_dir = task_job_dir(job.job_id)
 
     # --- Completion gate: the root hand-off must be exactly the reviewed work ---
     coverage_error = ""
@@ -2672,6 +2672,7 @@ def run_job(
 
             # Final job review — job-level review after all per-task reviewers pass
             try:
+                from packages.orchestration.data_paths import task_job_dir
                 from packages.orchestration.final_job_review import build_final_job_review
 
                 _task_verdicts_fjr = [
@@ -2693,7 +2694,7 @@ def run_job(
                     gate_verdicts=[],
                     job_id=job.job_id,
                 )
-                _fjr_dir = _jobs_dir() / job.job_id
+                _fjr_dir = task_job_dir(job.job_id)
                 _fjr_dir.mkdir(parents=True, exist_ok=True)
                 (_fjr_dir / "final_job_review.json").write_text(
                     _json.dumps(_fjr, indent=2) + "\n"
@@ -2845,6 +2846,12 @@ def _build_task_prompt(
 
 def export_job_report(job: JobPlan) -> dict[str, Any]:
     """Export a JSON-serializable job report."""
+    # Function-scoped, like every other data_paths import in this module. The
+    # single use below sits inside a compound boolean, where a missing import is
+    # a runtime NameError on the worktree path only — so it is bound HERE, at
+    # the top of the function, where it is visible to a reader.
+    from packages.orchestration.data_paths import task_job_dir
+
     task_reports = []
     for t in job.tasks:
         task_reports.append({
@@ -2874,7 +2881,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         handoff_available = bool(
             job.result_diff_path
             and job.result_diff_sha256
-            and (_jobs_dir() / job.job_id / job.result_diff_path).is_file()
+            and (task_job_dir(job.job_id) / job.result_diff_path).is_file()
         )
         has_workspace_changes = handoff_available and any(
             t.status == TASK_APPLIED for t in job.tasks

@@ -23,6 +23,7 @@ from packages.orchestration import job_promote as JP
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
+from packages.orchestration.data_paths import task_job_dir
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.job_promote import promote_job
 from packages.orchestration.pingpong_job import (
@@ -150,7 +151,7 @@ class TestCompletedJobPromotion:
 
     def test_a_tampered_job_result_diff_blocks(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        (PJ._jobs_dir() / job.job_id / "result.diff").write_bytes(b"tampered\n")
+        (task_job_dir(job.job_id) / "result.diff").write_bytes(b"tampered\n")
 
         res = promote_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
@@ -159,7 +160,7 @@ class TestCompletedJobPromotion:
 
     def test_a_missing_job_result_diff_blocks(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        (PJ._jobs_dir() / job.job_id / "result.diff").unlink()
+        (task_job_dir(job.job_id) / "result.diff").unlink()
 
         res = promote_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
@@ -167,7 +168,7 @@ class TestCompletedJobPromotion:
 
     def test_a_mismatched_base_commit_blocks(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        path = PJ._jobs_dir() / job.job_id / "job.json"
+        path = task_job_dir(job.job_id) / "job.json"
         data = json.loads(path.read_text())
         data["worktree"]["base_commit"] = "0" * 40
         path.write_text(json.dumps(data, indent=2))
@@ -284,7 +285,7 @@ class TestRootJobEvidence:
         self, repo, monkeypatch, tmp_path,
     ):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        job_dir = PJ._jobs_dir() / job.job_id
+        job_dir = task_job_dir(job.job_id)
         secret = tmp_path / "secret"
         secret.write_bytes(b"TOPSECRET\n")
         (job_dir / "result.diff").unlink()
@@ -399,7 +400,7 @@ class TestJobPlanResumeAfterCrash:
         assert sorted(task.safe_diff_files) == ["finished.txt", "partial.txt"]
         assert sorted(task.apply_manifest.applied_files) == ["finished.txt", "partial.txt"]
         # And so does the final job hand-off: nothing entered it unreviewed.
-        job_diff = (PJ._jobs_dir() / done.job_id / "result.diff").read_text()
+        job_diff = (task_job_dir(done.job_id) / "result.diff").read_text()
         assert "partial.txt" in job_diff and "finished.txt" in job_diff
 
     def test_the_original_task_start_tree_is_reused_not_replaced(

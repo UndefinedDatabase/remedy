@@ -22,13 +22,13 @@ from pathlib import Path
 import psutil
 import pytest
 
+from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_STOPPED,
     STOP_POSTMORTEM_SUBDIR,
     TASK_APPLIED,
     TASK_PENDING,
-    _jobs_dir,
     job_evidence_dir,
     load_job_plan,
     parse_job_file,
@@ -245,9 +245,9 @@ class TestStopDuringAProviderCall:
         assert stopped.status == JOB_STOPPED
         assert stopped.tasks[0].status == TASK_PENDING
 
-        run = json.loads((_jobs_dir().parent / "pingpong_runs"
+        run = json.loads((resolve_data_root() / "pingpong_runs"
                           / f"{stopped.tasks[0].run_id}.json").read_text()) \
-            if (_jobs_dir().parent / "pingpong_runs"
+            if (resolve_data_root() / "pingpong_runs"
                 / f"{stopped.tasks[0].run_id}.json").is_file() else None
         if run is not None:
             assert run["reviewer_parse_retry_count"] == 0

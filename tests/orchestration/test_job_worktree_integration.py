@@ -15,6 +15,7 @@ import pytest
 
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
+from packages.orchestration.data_paths import task_job_dir
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
@@ -176,7 +177,7 @@ class TestSequentialTasksShareTheWorkspace:
     def test_the_final_job_diff_contains_both_tasks(self, repo, monkeypatch):
         seen: dict = {}
         job = _run_two_task_job(repo, monkeypatch, seen)
-        job_diff = (PJ._jobs_dir() / job.job_id / "result.diff").read_text()
+        job_diff = (task_job_dir(job.job_id) / "result.diff").read_text()
         assert "one.txt" in job_diff and "two.txt" in job_diff
         assert job.result_diff_sha256 and job.result_diff_size_bytes > 0
 

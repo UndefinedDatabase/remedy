@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import task_job_dir
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
-    _jobs_dir,
     parse_job_file,
     run_job,
 )
@@ -144,7 +144,7 @@ class TestRunJobFinalReview:
         )
         assert completed_job.status == JOB_COMPLETED
 
-        fjr_path = _jobs_dir() / completed_job.job_id / "final_job_review.json"
+        fjr_path = task_job_dir(completed_job.job_id) / "final_job_review.json"
         assert fjr_path.exists(), "final_job_review.json not persisted"
         data = json.loads(fjr_path.read_text())
         assert "verdict" in data
@@ -160,7 +160,7 @@ class TestRunJobFinalReview:
             reviewer_provider=_pass_provider(),
             repair_rounds=0,
         )
-        fjr_path = _jobs_dir() / completed_job.job_id / "final_job_review.json"
+        fjr_path = task_job_dir(completed_job.job_id) / "final_job_review.json"
         data = json.loads(fjr_path.read_text())
         # All tasks passed with fake provider, so verdict should be PASS
         # (fake provider issues "pass" verdict, which is in _PASSING_TASK_VERDICTS)
@@ -176,7 +176,7 @@ class TestRunJobFinalReview:
             repair_rounds=0,
             max_tasks=1,
         )
-        fjr_path = _jobs_dir() / paused_job.job_id / "final_job_review.json"
+        fjr_path = task_job_dir(paused_job.job_id) / "final_job_review.json"
         assert not fjr_path.exists(), "paused job should not have final review"
 
 

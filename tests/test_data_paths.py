@@ -288,6 +288,17 @@ _JOB_EVIDENCE_OWNING_MODULES = (
     "apps.cli.commands.do_cmd",
 )
 
+# The modules that reached the live ping-pong store through
+# ``pingpong_job._jobs_dir`` until F260 T002 DELETED that helper. They now spell
+# it as ``data_paths.task_job_dir`` / ``task_job_record_path`` and nothing else.
+# ``packages.orchestration.storage`` is NOT in this set and must never be added:
+# its ``_resolve_jobs_dir`` is a different symbol naming the CLASSIC store that
+# F260 T004 deletes, and it merely shares a substring with the deleted name.
+_MIGRATED_OFF_JOBS_DIR_MODULES = (
+    "packages.orchestration.pingpong_job",
+    "packages.orchestration.job_evidence",
+)
+
 
 class TestJobAndRunLayout:
     """DECISION F260 D1: ONE root per job, and ONE spelling of that layout.
@@ -373,25 +384,53 @@ class TestJobAndRunLayout:
         assert pingpong_job._task_stream_dir(jid, "t1") == \
             data_paths.job_evidence_dir(jid) / "task_runs" / "t1"
 
-    def _jobs_dir_references(self, module):
-        """Every AST reference in ``module`` resolving to exactly ``jobs_dir``.
+    def _references_to(self, module, name):
+        """Every AST reference in ``module`` resolving to exactly ``name``.
 
         Read via ``ast`` rather than as a substring, so a comment or a docstring
         naming the old layout cannot trip the guard and an ``import ... as``
-        alias cannot dodge it. ``_jobs_dir`` and ``task_jobs_dir`` are DIFFERENT
-        names that merely contain the same substring; matching on the resolved
-        name is exactly what keeps them correctly invisible here.
+        alias cannot dodge it. ``jobs_dir``, ``_jobs_dir``, ``task_jobs_dir`` and
+        ``_resolve_jobs_dir`` are FOUR DIFFERENT names that merely share a
+        substring; matching on the resolved name is exactly what keeps each of
+        them correctly invisible to a reading aimed at another.
         """
         import ast
 
         tree = ast.parse(Path(module.__file__).read_text())
         return [
             node for node in ast.walk(tree)
-            if (isinstance(node, ast.Name) and node.id == "jobs_dir")
-            or (isinstance(node, ast.Attribute) and node.attr == "jobs_dir")
+            if (isinstance(node, ast.Name) and node.id == name)
+            or (isinstance(node, ast.Attribute) and node.attr == name)
             or (isinstance(node, ast.alias)
-                and (node.asname or node.name) == "jobs_dir")
+                and (node.asname or node.name) == name)
         ]
+
+    def _jobs_dir_references(self, module):
+        """Every AST reference in ``module`` resolving to exactly ``jobs_dir``."""
+        return self._references_to(module, "jobs_dir")
+
+    def _names_of(self, module, name):
+        """Every AST node in ``module`` that NAMES ``name`` — reference OR definition.
+
+        ``_references_to`` above reads USES, and a use is all the round-7 guard
+        needed: ``jobs_dir`` is defined in ``data_paths`` and the modules it
+        ranges over can only ever call it. A DELETED helper is different. A bare
+        ``def _jobs_dir(): ...`` that nothing calls yet is exactly how a deleted
+        helper comes back — and it is invisible to a reference reading, because
+        a ``FunctionDef`` is not a ``Name``. Measured: reviving the helper as an
+        uncalled ``def`` leaves the reference reading GREEN and is caught only
+        by the ``hasattr`` test. So this reading adds the binding forms, and the
+        two guards below fail for genuinely different reasons.
+        """
+        import ast
+
+        tree = ast.parse(Path(module.__file__).read_text())
+        bindings = [
+            node for node in ast.walk(tree)
+            if (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and node.name == name)
+        ]
+        return self._references_to(module, name) + bindings
 
     @pytest.mark.parametrize("modname", _JOB_EVIDENCE_OWNING_MODULES)
     def test_no_module_that_owns_job_evidence_spells_the_path_itself(self, modname):
@@ -453,3 +492,139 @@ class TestJobAndRunLayout:
                 "either a real regression or a sign this guard now measures "
                 "nothing"
             )
+
+    # -- The LIVE ping-pong store: one spelling, and the deleted helper --------
+    #
+    # ``task_job_dir`` and ``task_job_record_path`` name the store AS IT IS
+    # TODAY, ``<data_root>/task_jobs/<16hex>/job.json``. The readings below are
+    # deliberately the same ones the D1 pair above already has, because the two
+    # pairs collapse into one in T002 and a reading that exists for only one of
+    # them would be lost in that collapse.
+
+    def _task_layout(self):
+        from packages.orchestration.data_paths import (
+            task_job_dir,
+            task_job_record_path,
+            task_jobs_dir,
+        )
+        return task_jobs_dir, task_job_dir, task_job_record_path
+
+    def test_the_task_job_record_is_job_json_under_the_task_job_dir(
+        self, monkeypatch, tmp_path,
+    ):
+        """Each function is built on the one above it, so there is one layout, not three."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        task_jobs_dir, task_job_dir, task_job_record_path = self._task_layout()
+        jid = "0123456789abcdef"
+        assert task_job_dir(jid) == task_jobs_dir() / jid
+        assert task_job_record_path(jid) == task_job_dir(jid) / "job.json"
+        assert task_job_record_path(jid).parent == task_job_dir(jid)
+        assert task_job_record_path(jid).name == "job.json"
+
+    def test_the_root_override_is_honoured_by_both_task_job_helpers(
+        self, monkeypatch, tmp_path,
+    ):
+        """Set the env root to a DIFFERENT directory from the argument root.
+
+        A helper that quietly drops its ``root`` argument returns the env path,
+        and would pass a same-root comparison by coincidence.
+        """
+        env_root = tmp_path / "env"
+        arg_root = tmp_path / "arg"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
+        _, task_job_dir, task_job_record_path = self._task_layout()
+        jid = "0123456789abcdef"
+        assert task_job_dir(jid, arg_root) == arg_root / "task_jobs" / jid
+        assert task_job_record_path(jid, arg_root) == \
+            arg_root / "task_jobs" / jid / "job.json"
+        for p in (task_job_dir(jid, arg_root), task_job_record_path(jid, arg_root)):
+            assert env_root not in p.parents, f"{p} ignored its root argument"
+
+    def test_pingpong_job_has_no_jobs_dir_attribute_at_all(self):
+        """``pingpong_job._jobs_dir`` is GONE, not merely unused.
+
+        Read by ``hasattr`` on the IMPORTED module rather than from its text, so
+        a helper reintroduced by any route — a def, an assignment, a re-export —
+        is caught. The AST guard below reads the source instead; the two fail
+        for different reasons and both ship.
+        """
+        from packages.orchestration import pingpong_job
+
+        assert not hasattr(pingpong_job, "_jobs_dir"), (
+            "pingpong_job._jobs_dir is back; F260 T002 deleted it so the live "
+            "ping-pong store has ONE spelling, data_paths.task_job_dir"
+        )
+        assert hasattr(pingpong_job, "_persist_job"), (
+            "hasattr found nothing at all on pingpong_job; the absence above "
+            "would then be measuring an import failure, not a deleted helper"
+        )
+
+    @pytest.mark.parametrize("modname", _MIGRATED_OFF_JOBS_DIR_MODULES)
+    def test_no_migrated_module_names_the_deleted_jobs_dir_helper(self, modname):
+        """The VALUE readings above cannot see the deleted spelling come back.
+
+        ``_jobs_dir() / job_id`` was EQUAL to what ``task_job_dir`` returns, so
+        an equality test stays green while the second spelling returns. Only
+        reading the module itself sees it.
+
+        ``storage.py`` is out of scope on purpose: its ``_resolve_jobs_dir`` is
+        a DIFFERENT symbol that merely contains the same substring, and it names
+        the CLASSIC store ``<data_root>/jobs/<uuid>.json`` that F260 T004
+        deletes. It is not a survivor of this migration and never referenced the
+        deleted helper.
+        """
+        import importlib
+
+        module = importlib.import_module(modname)
+        hits = self._names_of(module, "_jobs_dir")
+        assert hits == [], (
+            f"{modname} names _jobs_dir at lines "
+            f"{[getattr(n, 'lineno', '?') for n in hits]}; F260 T002 deleted "
+            "that helper and data_paths.task_job_dir replaced it"
+        )
+
+    def test_the_deleted_name_guard_is_not_vacuous(self):
+        """Non-vacuity, in both directions the absence guard above can be empty in.
+
+        The set could be empty, and the AST reading could be structurally unable
+        to see an underscore-prefixed private helper — in which case the guard
+        would pass while measuring nothing. ``storage._resolve_jobs_dir`` is the
+        control: a private, underscore-prefixed, module-local helper of exactly
+        the shape ``_jobs_dir`` had, defined AND called in the same file, which
+        the same reading DOES find.
+
+        The last assertion is the one that matters most. A helper comes back as
+        an uncalled ``def`` before it comes back as a call, so the reading must
+        see a DEFINITION and not only a use. If ``_names_of`` ever collapses
+        back to ``_references_to``, the guard above stops catching the revival
+        it exists for, and this is where that shows up.
+        """
+        import importlib
+
+        from packages.orchestration import storage
+
+        assert _MIGRATED_OFF_JOBS_DIR_MODULES, (
+            "the migrated module set is EMPTY; the absence guard above would "
+            "then range over nothing and pass without reading any module"
+        )
+        assert len(set(_MIGRATED_OFF_JOBS_DIR_MODULES)) == \
+            len(_MIGRATED_OFF_JOBS_DIR_MODULES), "duplicate module in the set"
+        for modname in _MIGRATED_OFF_JOBS_DIR_MODULES:
+            module = importlib.import_module(modname)
+            assert Path(module.__file__).is_file(), f"{modname} has no source file"
+        assert self._names_of(storage, "_resolve_jobs_dir"), (
+            "the AST reading cannot find storage._resolve_jobs_dir, a private "
+            "helper of exactly the shape _jobs_dir had; the absence assertions "
+            "above are therefore measuring nothing"
+        )
+        assert self._names_of(storage, "_jobs_dir") == [], (
+            "storage.py names _jobs_dir; it never did, so either the reading "
+            "now matches on a substring or storage.py grew a dependency on a "
+            "helper that no longer exists"
+        )
+        assert len(self._names_of(storage, "_resolve_jobs_dir")) > \
+            len(self._references_to(storage, "_resolve_jobs_dir")), (
+            "_names_of found no more than _references_to did, so its DEFINITION "
+            "arm is dead; a helper revived as an uncalled def would then slip "
+            "past the absence guard above"
+        )
