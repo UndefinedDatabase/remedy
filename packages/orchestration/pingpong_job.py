@@ -26,6 +26,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+# F272 T002: the closed types JobPlan's administrative fields carry. Imported at
+# module level and not under TYPE_CHECKING because `_import_job` reconstructs
+# them at runtime from the job record's plain JSON.
+from packages.core.models import Artifact, Budget, JobFences
+
 # F260 D2: one minting function per KIND of id. This module names JOBs and
 # EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
 # Module-level and not function-scoped: JobPlan's default_factory below is read
@@ -376,6 +381,32 @@ class JobPlan:
     # verbatim like `input_snapshot` above so a cannot_fit decision survives a
     # persist/resume cycle instead of vanishing as a Python-only attribute.
     metadata: dict = field(default_factory=dict)
+    # F272 T002, DECISION F260 D1: the eight administrative fields of the ONE
+    # job record that had no counterpart here. `id`, `name` and `state` are the
+    # other three D1 names and are NOT in this block — they already have a
+    # spelling above (`job_id`, `job_title`, `status`) and their collapse is a
+    # separate change. Each of these eight is wired through BOTH `_export_job`
+    # and `_import_job` below, because those are explicit field-by-field
+    # functions and a field missing from either is a Python-only attribute that
+    # vanishes on the first persist/resume cycle.
+    #
+    # Absent is spelled "" for a string and None for a structured value, which
+    # is what every field above already does. The classic `Job` in
+    # `packages.core.models` spells the first three `str | None`; the empty
+    # string is what survives here, because no reader that must tell "unset"
+    # from "empty" for them exists yet.
+    mission: str = ""
+    user_prompt: str = ""
+    project_id: str = ""
+    intake: dict | None = None
+    flight_plan: dict | None = None
+    artifacts: list[Artifact] = field(default_factory=list)
+    # NOT a `Budget()` default factory, unlike the classic `Job`: an empty
+    # budget and an absent one are indistinguishable once exported, and
+    # `budgets` above already carries the F018 limits, so a defaulted second
+    # budget object would write a meaningless `{}` into every job record.
+    budget: Budget | None = None
+    fences: JobFences | None = None
 
 
 # ---------------------------------------------------------------------------
