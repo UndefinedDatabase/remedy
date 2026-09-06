@@ -1,451 +1,454 @@
-# Handoff — F260 One world: mission → job → run, round 6
+# Handoff — F260 One world: mission → job → run, round 7
 
 ## Session
 
-`SESSION 2 of feature F260 · round 6 · rounds so far 6`
+`SESSION 2 of feature F260 · round 7 · rounds so far 7`
 
 Well inside the 25-round / 7-session soft limit, so no scope report is owed.
 
 Open findings: **295** (299 `^- R-\d{4} — ` registrations minus 4
 `^Done: R-\d{4} — ` lines) — unchanged, because this round registers and
 resolves nothing. Maximum id in use: **R-0814**. R-0814's root cause is what
-this round's code addresses; the finding itself is resolved in T002, against
-the fix clause it already carries.
+this round's code finishes addressing — "one spelling per concept" failing
+across modules — but the finding itself is resolved in the T002 writer round,
+against the fix clause it already carries.
 
-Branch `feature/f260-one-world`, resumed at `3aaeb042`. No branch created, no
+Branch `feature/f260-one-world`, resumed at `99ca6406`. No branch created, no
 merge, no pull request touched — the pull request belongs to the closure
 sequence.
 
 ## Range
 
-Review of `3aaeb042..HEAD`, where HEAD is the C6 commit that writes this file.
-Its SHA is deliberately NOT spelled here: a commit cannot carry its own digest,
-and the block states the handback commit's own numbers are owed by no one
-because the reviewer measures the branch tip itself. The seven SHAs below are
-measured, not predicted.
+Review of `99ca6406..HEAD`.
 
 ## Commits
 
-Seven commits, all single-parent. Insertion counts are the `+` column of
-`git diff --numstat` (DECISION F104 D1). The largest is 364 — the C0a block
-save, a single `.agent/**` state-file write and in any case well under the
-AGENTS.md 500-insertion cap. The largest CODE commit is C5 at 168.
+### 7afe3056 f260: save the round 7 step block as authored input (C0a, +294)
 
-### 5cbf74c8 f260: save the round 6 step block as authored text (C0a, +364)
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f260-r6.md` | +364/-0 | the round-6 step block, copied with `shutil.copyfile`, never retyped |
+| .agent/authored/f260-r7.md | +294 / -0 | the round 7 block, copied with `shutil.copyfile`, never retyped |
 
-### db6f43ef f260: mirror the round 6 step block into last_block (C0b, +298)
+### f9c648ac f260: mirror the round 7 step block into last_block (C0b, +197)
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +298/-233 | same bytes mirrored; the round-5 block it replaces accounts for the deletions |
+| .agent/last_block.md | +197 / -267 | same bytes as C0a; the round 6 block it replaces was longer |
 
-### b964fc18 f260: book the round 5 gate record into the live review ledger (C1, +2)
+### adc66ae4 f260: book the round 6 gate record into the live review ledger (C1, +2)
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-0 | `"\n"` + the GATE_R5 slice + `"\n"`, appended; 881955 → 887129 bytes |
+| .agent/live_review.md | +2 / -0 | `"\n"` + the 6674-byte GATE_R6 slice + `"\n"`; 887129 → 893805 bytes |
 
-### 6174d465 f260: append the round 5 reviewer prose slips (C2, +3)
+### 36c4c375 f260: append the round 6 reviewer recipe slip (C2, +2)
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/prose_slips.md` | +3/-1 | SLIP4 and SLIP5 appended; 89710 → 92673 bytes. The single deletion is the pre-image's unterminated last line gaining its newline — see deviation 1 |
+| .agent/prose_slips.md | +2 / -0 | `"\n"` + the 2127-byte SLIP6 slice + `"\n"`; 92673 → 94802 bytes |
 
-### 770283b4 f260: point the plan at T002 and the one layout spelling (C3, +21)
+### 1ad4c238 f260: point the plan at the remaining evidence path swaps (C3, +17)
+
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +21/-18 | replaced entirely by the PLANF260R6 slice plus one trailing newline; 48 lines |
+| .agent/plan.md | +17 / -19 | replaced entirely with the PLANF260R7 slice plus one trailing newline; 46 lines |
 
-### 2c102636 f260: rule the one resolver into T002 as DECISION F260 D4 (C4, +38)
+### 246efbb9 f260: put the last four evidence paths on data_paths and widen the guard (C4, +96)
+
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T2_F260.md` | +38/-0 | the D4PAIR FROM→TO rewrite; 22955 → 25427 bytes |
+| packages/orchestration/job_evidence.py | +4 / -4 | two sites: `ev_base` in the attestation-snapshot reader and `src_task` in the task-stream export, both onto `job_evidence_dir`; each function-scoped import moved with its site |
+| packages/orchestration/repair_attest.py | +2 / -2 | `base` onto `job_evidence_dir`; its import is MODULE-LEVEL and moved in place, keeping the module's existing import style |
+| apps/cli/commands/do_cmd.py | +2 / -2 | `_task_ev_dir` in the task-stream trace reader onto `job_evidence_dir`; function-scoped import moved with it |
+| tests/test_data_paths.py | +88 / -13 | the round 6 guard widened from one module to the semantically-defined set of four, parametrized, plus two non-vacuity tests |
 
-### a02c25b3 f260: give data_paths the one spelling of D1's job layout (C5, +168)
+### C5 f260: hand back round 7 (this file)
+
 | Path | +/- | Reason |
 |---|---|---|
-| `packages/orchestration/data_paths.py` | +42/-0 | `job_dir`, `job_record_path`, `job_evidence_dir`, `run_dir`, one D1 comment above the group, four names added to the `Public API::` block |
-| `packages/orchestration/pingpong_job.py` | +13/-5 | `job_evidence_dir` and `_task_stream_dir` now build on `data_paths.job_evidence_dir`; no path and no behaviour changes |
-| `tests/test_data_paths.py` | +113/-0 | one new class `TestJobAndRunLayout`, seven tests |
+| .agent/handoff.md | this rewrite | a handoff cannot table the commit that writes it (R-0149 pattern) |
 
-### C6 (this commit) f260: hand back round 6 …
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | — | this file; a handoff cannot table the commit that writes it (R-0149 pattern) |
+Largest commit this round is 294 insertions, a single `.agent/**` state write;
+the largest code commit is 96. Both are under the AGENTS.md 500-insertion cap.
 
 ## External actions
 
-| Command | Outcome |
+| Action | Outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/rev-r6 a02c25b3` | **FAILED**, `fatal: '…/.remedy-wt/rev-r6' already exists` — a pre-existing August scratch directory of unrelated files, not a worktree. Nothing was deleted; see deviation 3 |
-| `git worktree add --detach .remedy-wt/f260-r6-mut a02c25b3` | created, detached at `a02c25b3` |
-| `git worktree remove --force .remedy-wt/f260-r6-mut` | removed; `git worktree list` then holds the primary checkout plus the eleven pre-existing `job-*` worktrees and nothing this round created |
-| `git push origin feature/f260-one-world` | run after C6; never a force-push |
-| PR create / edit / merge | **None** — the block forbids it this round |
+| `git worktree add .remedy-wt/f260-r7-mut 246efbb9` | created, detached at `246efbb9`; name confirmed not to exist beforehand |
+| `git worktree remove --force .remedy-wt/f260-r7-mut` | removed; `git worktree list` then holds only the primary checkout and eleven PRE-EXISTING `job-*` worktrees, none created this round |
+| `git push origin feature/f260-one-world` | run after C5; never force-pushed |
+
+No branch created, no merge, no pull request created, edited or merged. No `gh`
+command run.
 
 ## Verification
 
-All eight gates ran AT C5 (`a02c25b3`), before this file was written, so every
-exit code below is real and measured rather than predicted.
+One line per gate, with its real exit code.
 
-| Gate | Result | Real exit code |
+| Gate | Exit | Result |
 |---|---|---|
-| G1 TRANSPORT | PASS — one digest across all three artefacts | 0 |
-| G2 THE RECORD | PASS — growth exact, (a)(b)(c) hold, both negative controls reject, counts unchanged | 0 |
-| G3 THE PROSE FILES | PASS — prefix exact, remainder exact, plan is slice+`\n` at 48 lines | 0 |
-| G4 THE DECISION | PASS — byte-exact reconstruction, FROM 1x→0x, TO 0x→1x, five D-headings | 0 |
-| G5 THE CODE, READ AND RUN | PASS — ruff clean, all four readings hold, three paths in the numstat | 0 |
-| G6 THE MUTATION RED-PROOF | PASS — control green, all four properties turn the guard red, control green after each | 0 (control) / 1 (each mutation) |
-| G7 THE SUITES | PASS — eight suites, 730 tests, every one exit 0 | 0 (×8) |
-| G8 THE TREE AND THE CHANGE SET | PASS — tree clean, nine paths, integrity `passed: true` | 0 |
+| G1 TRANSPORT | 0 | one digest `dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0` across all three artefacts, equal to BLOCK_SHA |
+| G2 THE RECORD | 0 | 887129 → 893805, growth 6676 = `"\n"` + 6674 + `"\n"`; prefix, remainder and last-unit all exact; both region-disjoint controls reject in their own region; 424 → 425 units; 299 / 4 / 16 distinct `Gate:` headers |
+| G3 THE PROSE FILES | 0 | terminal byte before the append was `\n`; 92673 → 94802; units 128 → 129, a rise of EXACTLY ONE; plan == slice + one newline, 46 lines |
+| G4 THE SWAPS ARE VALUE-PRESERVING | 0 | all four migrated expressions equal their hand-built forms, paths reported below |
+| G5 THE CODE | 0 | ruff clean; AST counts 0/0/0/0 migrated and 2/2 excluded; range numstat exactly four code paths |
+| G6 THE MUTATION RED-PROOF | 0 | control exit 0 at 40 passed before and after each; three mutations each exit 1 |
+| G7 THE SUITES | 0 | eight suites serially, every one exit 0, 603 tests |
+| G8 THE TREE AND THE CHANGE SET | 0 | porcelain empty, `ls-files .remedy-wt` empty, no STOP, no worktree left; integrity `passed: true`, `fail_count: 0` |
 
-### G1 — transport (one digest)
+### G1 TRANSPORT — exit 0
 
-    $ sha256sum .remedy-wt/f260-r6-block.md .agent/authored/f260-r6.md .agent/last_block.md
-    868a89bb4df7d29a92ef1b5654ed0d344932db534e9f56c434178e7840feb00c  .remedy-wt/f260-r6-block.md
-    868a89bb4df7d29a92ef1b5654ed0d344932db534e9f56c434178e7840feb00c  .agent/authored/f260-r6.md
-    868a89bb4df7d29a92ef1b5654ed0d344932db534e9f56c434178e7840feb00c  .agent/last_block.md
-    exit 0
+    $ sha256sum .remedy-wt/f260-r7-block.md .agent/authored/f260-r7.md .agent/last_block.md
+    dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0  .remedy-wt/f260-r7-block.md
+    dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0  .agent/authored/f260-r7.md
+    dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0  .agent/last_block.md
 
-ONE value, and it equals the BLOCK_SHA the delegating prompt states. Per §3
-item 37 this chain covers those three artefacts and is NOT a claim about the
-bytes emitted into the prompt.
+ONE value, equal to the BLOCK_SHA the delegating prompt stated. Per §3 item 37
+this chain covers those three artefacts on disk and is NOT a claim about the
+bytes emitted into the worker's prompt.
 
-### G2 — the record
+### G2 THE RECORD — exit 0
 
-    .agent/live_review.md   881955 → 887129 bytes, growth 5174
-    appended byte count     5174  ( "\n" + GATE_R5 (5172 bytes) + "\n" )
-    growth == appended:     True
-    (a) 881955-byte pre-image is a byte-exact PREFIX:      True
-    (b) remainder is exactly "\n" + GATE_R5 + "\n":        True
-    (c) file's LAST blank-line unit equals the GATE_R5 slice: True
-    file still ends with exactly one newline:              True
-    exit 0
+    pre  bytes (99ca6406): 887129
+    post bytes (246efbb9): 893805
+    growth: 6676 | appended byte count: 6676 | equal: True
+    slice bytes: 6674
+    (a) pre-image is a byte-exact PREFIX      : True
+    (b) remainder is exactly \n + slice + \n  : True
+    (c) last blank-line unit == GATE_R6 slice : True
 
-TWO negative controls, both in scratch copies held in memory; the file on disk
-was re-read afterwards and is unchanged.
+    -- negative controls, in scratch copies, one per region --
+    control 1 flip INSIDE appended paragraph at offset 890467
+       (c) last-unit reading rejects : True   [(a) still True ]
+    control 2 flip INSIDE pre-image region at offset 443564
+       (a) prefix reading rejects    : True   [(c) still True ]
 
-    CONTROL 1  flip at offset 882016, INSIDE the appended paragraph ('A' → 'a')
-       (c) REJECTS: True
-       (a) accepts — the flip lies entirely after the prefix region, so (a)
-           cannot see it. This is the asymmetry round 5 reported and this
-           round's block correctly split into two controls.
-    CONTROL 2  flip at offset 876955, INSIDE the pre-image region ('h' → 'H')
-       (a) REJECTS: True
-       (c) accepts — the flip lies before the tail unit, so (c) cannot see it.
+    blank-line units before: 424  after: 425
+    post ends with exactly one newline: True
+    ^- R-[0-9]{4} — matches      : 299 (expected 299)
+    ^Done: R-[0-9]{4} — matches  : 4 (expected 4)
+    ^Gate:  headers              : 16
+    Gate headers all distinct    : True
 
-The two readings cover DIFFERENT REGIONS and neither alone is total, which is
-exactly why both controls are needed. Counts afterwards:
+The controls are region-disjoint as the round 5 deviation earned: a flip in the
+appended paragraph is caught ONLY by the last-unit reading and leaves the prefix
+reading true, and a flip in the pre-image region is caught ONLY by the prefix
+reading and leaves the last-unit reading true. Neither reading subsumes the
+other. Sixteen `Gate:` headers, one more than round 6's fifteen, which is this
+round's C1 append and nothing else.
 
-    ^- R-[0-9]{4} — ......... 299
-    ^Done: R-[0-9]{4} — ..... 4
-    ^Gate: ................... 15 headers, 15 distinct → all distinct: True
+### G3 THE PROSE FILES — exit 0
 
-The fifteenth is `Gate: R5 — the F260 R5 entry.`, occurring exactly once.
+THE READING THIS ROUND EXISTS FOR, reported before the append as ordered:
 
-### G3 — the prose files
+    LAST BYTE BEFORE THE APPEND: b'\n' = newline
+      tail before: b'end0827-process-diet rule 2).\n'
+    bytes before: 92673  after: 94802
+    growth: 2129 | appended: 2129 | equal: True
+    pre-image is a byte-exact PREFIX     : True
+    remainder is exactly \n + SLIP6 + \n : True
+    blank-line units before: 128  after: 129  rise: 1
+    RISES BY EXACTLY ONE, to 129        : True
+    bytes at the seam: b'\n\n' -> blank line present: True
+    last unit == SLIP6: True
+    ends with exactly one newline: True
 
-    .agent/prose_slips.md   89710 → 92673 bytes, growth 2963
-    appended                2963 = "\n" + SLIP4 (1420) + "\n" + SLIP5 (1540) + "\n"
-    pre-image is a byte-exact PREFIX:                True
-    remainder is exactly nl+SLIP4+nl+SLIP5+nl:       True
-    exit 0
+`.agent/prose_slips.md` NOW ENDS WITH A NEWLINE, so the block's C2 paragraph is
+correct and the leading `"\n"` created a real blank-line separator. The file
+gained that terminal newline precisely because round 6's malformed append
+terminated the previous line — the defect repaired its own precondition. The
+structural count is the reading that proves it: 128 → 129, and the two bytes at
+the seam are `\n\n`. Under the round 6 recipe against the round 6 pre-image this
+number would not have moved, which is exactly what the counter-measure is for.
 
-    .agent/plan.md          2568 bytes
-    equals PLANF260R6 slice + exactly one trailing newline:  True
-    line count 48  → under 50:                               True
-    exit 0
+    .agent/plan.md
+    equals PLANF260R7 + exactly one trailing newline: True
+    line count: 46  under 50: True
 
-Nothing already in `prose_slips.md` changed by one byte — the prefix comparison
-is the authoritative reading and it holds. See deviation 1 for the structural
-consequence of the block's byte recipe.
+### G4 THE SWAPS ARE VALUE-PRESERVING — exit 0
 
-### G4 — the decision
+`REMEDY_DATA_DIR` = `/tmp/f260r7-g4-s2c8nxx3`, job id `0123456789abcdef`, task
+id `T001`. Paths reported, not just booleans:
 
-    docs/roadmap/features/T2_F260.md   22955 → 25427 bytes (delta 2472)
-    reconstructs BYTE-EXACTLY from the pre-image with the single
-      D4PAIR substitution applied and no other change:   True
-    §4.9 counts over the WHOLE file:
-      D4PAIR_FROM  1x before → 0x after
-      D4PAIR_TO    0x before → 1x after
-    ^### DECISION F260 D  matches 5 times: D1, D2, D0, D3, D4
-      each of D0 D1 D2 D3 D4 appears exactly once:       True
-    file still ends with exactly one newline:            True
-    exit 0
+    job_evidence.py / attestation-snapshot  ev_base
+      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
+      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
+      equal: True
 
-The block's pre-emission containment test is confirmed on disk: `TO contains
-FROM` is False, so the pair is a REWRITE and the "FROM 0x, TO 1x" reading is
-attainable, as ordered.
+    job_evidence.py / task-stream export    src_task
+      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001/streams
+      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001/streams
+      equal: True
 
-### G5 — the code, read and run
+    repair_attest.py                        base
+      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
+      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
+      equal: True
+
+    do_cmd.py / trace reader                _task_ev_dir
+      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001
+      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001
+      equal: True
+
+    ALL FOUR VALUE-PRESERVING: True
+
+This is the no-behaviour-change property the four swaps rest on.
+
+### G5 THE CODE — exit 0, all three readings
 
 (a) ruff:
 
-    $ python3 -m ruff check packages/orchestration/data_paths.py \
-        packages/orchestration/pingpong_job.py
-    All checks passed!
-    exit 0
+    $ python3 -m ruff check packages/orchestration/job_evidence.py \
+        packages/orchestration/repair_attest.py apps/cli/commands/do_cmd.py
+    All checks passed!            [exit 0]
 
-(b) with `REMEDY_DATA_DIR` set to a temporary directory:
+    $ python3 -m ruff check tests/test_data_paths.py
+    All checks passed!            [exit 0]
 
-    job_dir(x)          = <tmp>/jobs/0123456789abcdef
-    job_record_path(x)  = <tmp>/jobs/0123456789abcdef/job.json
-    job_evidence_dir(x) = <tmp>/jobs/0123456789abcdef/evidence
-    run_dir(y)          = <tmp>/runs/fedcba9876543210
-    job_record_path(x).parent == job_evidence_dir(x).parent == job_dir(x): True
-    run_dir(y).parent is runs_dir():                                       True
-    jobs_dir() nowhere in run_dir(y).parents:                              True
+The second command is beyond the gate; the guard file changed, so it was read.
 
-(c) the no-behaviour-change property:
+(b) AST references resolving to exactly `jobs_dir` — all six numbers:
 
-    pingpong_job.job_evidence_dir(x) == data_paths.job_evidence_dir(x)     True
-    pingpong_job._task_stream_dir(x,"t1")
-        == data_paths.job_evidence_dir(x) / "task_runs" / "t1"             True
+    pingpong_job.py       0  lines=[]
+    job_evidence.py       0  lines=[]
+    repair_attest.py      0  lines=[]
+    do_cmd.py             0  lines=[]
+    checkpoints.py        2  lines=[225, 227]
+    storage.py            2  lines=[25, 49]
 
-(d) exactly three paths:
+The migrated set is 0 across the board; the excluded pair is NON-ZERO, which is
+the non-vacuity half — a guard reading zero everywhere would be measuring
+nothing. `job_evidence.py` still names `_jobs_dir` at lines 1149 and 1160 and
+`pingpong_job.py` names it at seven sites; that is a DIFFERENT symbol which
+merely contains the same substring, it is correctly invisible to the AST
+reading, and it was left alone as ordered.
 
-    $ git diff --numstat 3aaeb042..a02c25b3 -- packages/ tests/
-    42	0	packages/orchestration/data_paths.py
-    13	5	packages/orchestration/pingpong_job.py
-    113	0	tests/test_data_paths.py
-    exit 0
+(c) `git diff --numstat 99ca6406..246efbb9` over code, exactly four rows:
 
-### G6 — the mutation red-proof
+    2   2   apps/cli/commands/do_cmd.py
+    4   4   packages/orchestration/job_evidence.py
+    2   2   packages/orchestration/repair_attest.py
+    88  13  tests/test_data_paths.py
 
-Disposable worktree `.remedy-wt/f260-r6-mut`, detached at `a02c25b3`,
-`__pycache__` purged before every run and every run under `python3 -B`. Module
-resolution was probed FIRST, so no editable install shadowed the worktree:
+### G6 THE MUTATION RED-PROOF — exit 0
 
-    data_paths   <- .remedy-wt/f260-r6-mut/packages/orchestration/data_paths.py
-    pingpong_job <- .remedy-wt/f260-r6-mut/packages/orchestration/pingpong_job.py
+Disposable worktree `.remedy-wt/f260-r7-mut` at `246efbb9`. An editable install
+`remedy 0.1.0 -> /home/decodeux/Repos/remedy` exists and COULD have shadowed the
+worktree, so resolution was probed before any mutation was trusted:
 
-The UNMUTATED CONTROL ran first, and again after every restore. Restores were
-byte-for-byte rewrites of the saved source, never `git checkout --`.
+    data_paths -> /home/decodeux/Repos/remedy/.remedy-wt/f260-r7-mut/packages/orchestration/data_paths.py
 
-    [control-0]          exit=0   35 passed
-    [mut-1]  run keyed under jobs_dir            exit=1   2 failed, 33 passed
-        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_a_run_hangs_under_runs_dir_and_never_under_jobs_dir
-        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
-    [control-after-1]    exit=0   35 passed
-    [mut-2]  evidence beside the record          exit=1   2 failed, 33 passed
-        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_record_and_the_evidence_share_one_root
-        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
-    [control-after-2]    exit=0   35 passed
-    [mut-3]  job_dir ignores root                exit=1   1 failed, 34 passed
-        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
-    [control-after-3]    exit=0   35 passed
-    [mut-4]  pingpong spells it by hand          exit=1   1 failed, 34 passed
-        FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_pingpong_job_no_longer_spells_the_evidence_path_itself
-    [control-after-4]    exit=0   35 passed
+Every run purges `__pycache__` inside the worktree and uses `python3 -B` and
+`-p no:cacheprovider`. Restores write back the captured original bytes; no
+`git checkout --` was used on any file.
 
-The block's note on (iv) is CONFIRMED by measurement, not assumed: under that
-mutation exactly ONE test failed and it is the text/AST reading. The equality
-test `test_pingpong_job_evidence_paths_equal_the_data_paths_ones` stayed GREEN,
-because the hand-built path is genuinely equal to the new one. That is why the
-block ordered both readings, and it is the whole justification for the AST
-guard's existence.
+    UNMUTATED CONTROL (before):
+      exit=0  passed=40  failed=0
 
-    $ git worktree remove --force .remedy-wt/f260-r6-mut
-    $ git worktree list
-    /home/decodeux/Repos/remedy                                  a02c25b3 [feature/f260-one-world]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-1cbb6972bf7c4ffc  db21957a [remedy/job-1cbb6972bf7c4ffc]
-    … ten further pre-existing `job-*` worktrees, all present before this round began …
+    MUTATION (i)   job_evidence.py spells the evidence path itself again
+      exit=1  passed=39  failed=1
+         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_no_module_that_owns_job_evidence_spells_the_path_itself[packages.orchestration.job_evidence]
+      restored; control again: exit=0  passed=40  failed=0
 
-### G7 — the suites, serially in the primary checkout
+    MUTATION (ii)  repair_attest.py spells the evidence path itself again
+      exit=1  passed=39  failed=1
+         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_no_module_that_owns_job_evidence_spells_the_path_itself[packages.orchestration.repair_attest]
+      restored; control again: exit=0  passed=40  failed=0
 
-Each suite ran as its OWN sequential process with its real return code
-captured; no shell pipe was used, so no `$?` was replaced by a pipe's.
+    MUTATION (iii) data_paths.job_evidence_dir returns jobs_dir(root)/"evidence"/job_id
+      exit=1  passed=38  failed=2
+         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_record_and_the_evidence_share_one_root
+         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
+      restored; control again: exit=0  passed=40  failed=0
 
-    exit=0   tests/test_data_paths.py                      35 passed
-    exit=0   tests/orchestration/test_checkpoints.py       37 passed
-    exit=0   tests/orchestration/test_repair_attest.py     37 passed
-    exit=0   tests/orchestration/test_job_evidence.py      93 passed
-    exit=0   tests/orchestration/test_mint_call_sites.py    5 passed
-    exit=0   tests/test_do_job_flow.py                    178 passed
-    exit=0   tests/docs/                                  303 passed
-    exit=0   tests/cli/test_golden_path.py                 42 passed
-    worst exit code across the eight suites: 0
+Mutations (i) and (ii) each fail ONLY their own parametrized case, which is the
+discriminator: the parametrization is real, and a regression in one module
+cannot be masked by another module being clean. Mutation (iii) is the one the
+block predicted — breaking the layout function reddens the ROUND 6 value tests,
+not the widened guard, proving the guard did not replace them and that both
+readings still ship. `git worktree list` after the removal holds the primary
+checkout plus eleven pre-existing `job-*` worktrees; the round created one
+worktree and removed it, and deleted nothing it did not create.
 
-730 tests. `tests/docs/` is this round's docs-round gate — the change set holds
-a `docs/roadmap/` path (verification tier 5) — and `tests/cli/test_golden_path.py`
-is the canary. `tests/test_data_paths.py` went 28 → 35, the seven new tests.
+### G7 THE SUITES — every suite exit 0
 
-### G8 — the tree and the change set
+Run serially, one process per suite, exit code captured per process — never
+through a pipe.
 
-    $ git status --porcelain
-    (empty)
-    $ git ls-files .remedy-wt
-    (empty)
-    $ test -e .agent/STOP
-    ABSENT
-    $ git worktree list
-    holds no worktree this round created (see G6)
+| Suite | Exit | Passed |
+|---|---|---|
+| tests/test_data_paths.py | 0 | 40 |
+| tests/orchestration/test_job_evidence.py | 0 | 93 |
+| tests/orchestration/test_repair_attest.py | 0 | 37 |
+| tests/orchestration/test_stream_export_e2e.py | 0 | 7 |
+| tests/orchestration/test_evidence_index.py | 0 | 33 |
+| tests/test_do_job_flow.py | 0 | 178 |
+| tests/orchestration/test_pingpong_cli.py | 0 | 173 |
+| tests/cli/test_golden_path.py | 0 | 42 |
 
-    $ git diff --name-only 3aaeb042..a02c25b3
-    .agent/authored/f260-r6.md
+603 tests, all green. `tests/test_data_paths.py` went 35 → 40: the single guard
+became four parametrized cases (+3) and two non-vacuity tests were added (+2).
+The other seven suites are unchanged in count, which is the no-behaviour-change
+claim read from the consumers of all four migrated call sites.
+
+### G8 THE TREE AND THE CHANGE SET — exit 0
+
+    $ git status --porcelain          -> empty
+    $ git ls-files .remedy-wt         -> empty
+    $ ls .agent/STOP                  -> No such file or directory (absent)
+    $ git check-ignore -v .remedy-wt/f260-r7-block.md
+      .gitignore:235:.remedy-wt/	.remedy-wt/f260-r7-block.md
+
+`git diff --name-only 99ca6406..246efbb9`, as the command printed it:
+
+    .agent/authored/f260-r7.md
     .agent/last_block.md
     .agent/live_review.md
     .agent/plan.md
     .agent/prose_slips.md
-    docs/roadmap/features/T2_F260.md
-    packages/orchestration/data_paths.py
-    packages/orchestration/pingpong_job.py
+    apps/cli/commands/do_cmd.py
+    packages/orchestration/job_evidence.py
+    packages/orchestration/repair_attest.py
     tests/test_data_paths.py
 
-Exactly the nine paths of the change set other than `.agent/handoff.md`, which
-C6 adds.
+NINE paths, not eight — see deviation 1. The SET is exactly the block's change
+set minus `.agent/handoff.md`, verified by set comparison, not by eye.
 
     $ python3 -m apps.cli.grouped integrity check --json
     "passed": true, "fail_count": 0, "check_count": 5
-      handler_import        pass   handlers=342
-      live_review_verdict   pass
-      plan_consistency      pass   unchecked=0, context_complete=False
-      relevant_untracked    pass   untracked=0, relevant=0
-      high_blockers_open    pass   no open blocker/high findings
-    exit 0
+      handler_import       pass  handlers=342
+      live_review_verdict  pass
+      plan_consistency     pass  unchecked=0, context_complete=False
+      relevant_untracked   pass  untracked=0, relevant=0
+      high_blockers_open   pass  no open blocker/high findings
 
 ## Authored-text proofs
 
-Every authored slice was extracted from `.agent/authored/f260-r6.md`'s own byte
-source programmatically and applied byte for byte — none was retyped. The
-slice convention this round's block states outright (the slice EXCLUDES the
-newline terminating its last content line) was applied uniformly.
+Re-extracted from the COMMITTED `.agent/authored/f260-r7.md`, not from the
+scratch original, so the proof runs disk to disk across the transport:
 
-| Slice | Bytes | Applied to | Disk-to-disk result |
+| Slice | Bytes | Target | Result |
 |---|---|---|---|
-| PLANF260R6 | 2567 | `.agent/plan.md` | file == slice + `"\n"` exactly (2568 bytes) |
-| D4PAIR_FROM → D4PAIR_TO | 63 → 2535 | `docs/roadmap/features/T2_F260.md` | byte-exact reconstruction from the pre-image, single substitution |
-| GATE_R5 | 5172 | `.agent/live_review.md` | remainder == `"\n"` + slice + `"\n"` exactly |
-| SLIP4 | 1420 | `.agent/prose_slips.md` | remainder == `"\n"`+SLIP4+`"\n"`+SLIP5+`"\n"` exactly |
-| SLIP5 | 1540 | `.agent/prose_slips.md` | (same remainder comparison) |
+| GATE_R6 | 6674 | .agent/live_review.md | prefix exact, remainder `\n`+slice+`\n` exact, last unit == slice |
+| SLIP6 | 2127 | .agent/prose_slips.md | prefix exact, remainder `\n`+slice+`\n` exact, last unit == slice |
+| PLANF260R7 | 2408 | .agent/plan.md | file == slice + exactly one trailing newline |
 
-The C0a/C0b transport digest is identical across the scratch original, the
-saved copy and the mirror (G1).
+No slice carries trailing whitespace on any line. No slice was retyped: C0a and
+C0b used `shutil.copyfile`, and every application read the slice out of the
+block file's bytes programmatically.
 
 ## Deviations & assumptions
 
-The commit sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was followed exactly, in
-order, one commit each, with C5 landing the functions, both call sites and the
-tests together. No commit was added, dropped or reordered.
+**1. The block's G8 says "eight paths"; the correct number is NINE. Measured,
+not estimated.** The block's own change-set list holds TEN entries, so minus
+`.agent/handoff.md` it is nine, and `git diff --name-only 99ca6406..246efbb9`
+prints nine. Counted mechanically rather than by eye:
 
-**1. The block's C2 byte recipe assumes a trailing newline that `prose_slips.md`
-does not have — applied anyway, structural consequence declared.**
-`.agent/prose_slips.md` at `3aaeb042` is 89710 bytes and does NOT end with a
-newline (its last line is unterminated). The block ordered the append as
-`"\n"` + SLIP4 + `"\n"` + SLIP5 + `"\n"`, which is the same recipe C1 uses for
-`live_review.md` — but `live_review.md` DOES end with a newline, so there the
-leading `"\n"` creates a blank-line separator, while here it merely terminates
-the pre-image's last line. The measured result: SLIP4 sits directly beneath the
-previous slip with no blank line, and SLIP5 directly beneath SLIP4. The file's
-blank-line-unit count therefore stayed at **128** instead of rising to 130,
-and the last unit is now three slips fused into one. Every other slip in that
-file is its own blank-line unit, so this breaks the file's own convention.
-Per constraint 1 I applied the bytes as ordered and did not repair them.
-G3 as written is fully MET — the pre-image is a byte-exact prefix and the
-remainder is exactly the ordered bytes — so this is a defect in the recipe, not
-in my application of it. Suggested repair for a later round: append `"\n\n"`
-between units when the pre-image does not end in a newline, or normalise the
-pre-image first. This is a reviewer-authored slip over an `.agent/` prose file
-that left nothing wrong under `packages/`, `apps/`, `tests/` or `docs/`, so
-under amend0827-process-diet rule 2 it belongs in `prose_slips.md` and spends
-no R-id.
+    change-set entries in the block (10)
+    change set MINUS .agent/handoff.md: 9 paths
+    block's G8 asserts: eight
+    actual cardinality : 9
+    git diff --name-only reports 9 paths
+    range set == change set minus handoff: True
 
-**2. One stale line number in the block.** The block gives
-`_task_stream_dir` at `pingpong_job.py:3568` at `3aaeb042`; the `def` is at
-line **3565** (3568 is the second line of its docstring). `job_evidence_dir` at
-`3055` is exact. The block ordered both symbols re-grepped before editing,
-which I did, so the correct function was edited in both cases and nothing on
-disk is wrong. Recorded because a line number stated as a measurement should be
-one.
+The numeral is wrong; the SET is right and complete. Nothing outside the change
+set was created, edited or deleted. This is the "count your own enumeration"
+class: a gate that states a cardinality it never counted. Applied as ordered and
+declared here rather than repaired.
 
-**3. The disposable worktree was named `.remedy-wt/f260-r6-mut`, not a
-`rev-r6` name.** `git worktree add --detach .remedy-wt/rev-r6 a02c25b3` failed
-with `fatal: … already exists`: `.remedy-wt/rev-r6` is a PRE-EXISTING scratch
-directory from 2026-08-21 holding unrelated files from another feature, and is
-not a worktree. I did not delete it or any part of it. The block ordered a
-disposable worktree "under `.remedy-wt/`" without fixing its name, so a
-distinct unused name satisfies the order; G6 and constraint 4 are met in full.
+**2. "Last blank-line unit equals the slice" needs a stated convention, and the
+raw comparison is False without it.** A blank-line unit split on `\n[ \t]*\n`
+gives a FINAL unit that carries the file's own terminating newline, so it is
+slice + `"\n"` and one byte longer than the slice, which by the block's own
+definition excludes the newline ending its last content line. Measured:
 
-**4. G6's control scope was the whole `tests/test_data_paths.py` file** (35
-tests), not just the new class. The block ordered "the UNMUTATED CONTROL" and
-its pass count without naming a scope; the wider scope is the stricter reading,
-since it would also catch a mutation breaking a pre-existing test.
+    raw last unit len: 6675 slice len: 6674
+    raw last == slice: False
+    raw last rstripped of \n == slice: True
+    diff is exactly one trailing newline: True
 
-**5. G7's exit codes were captured by a sequential Python driver**, one
-`subprocess.run` per suite in the primary checkout, rather than eight shell
-invocations. The suites still ran serially, one process each, and each real
-return code is the one reported. This satisfies "never through a pipe" in
-substance: the hazard that clause names is a shell pipe replacing `$?` with the
-downstream command's, and no shell pipe was used.
+G2(c) and G3 are therefore evaluated with the file's terminating newline
+stripped from the final unit. This is a reading convention, not a change to what
+landed; the bytes on disk are exactly `"\n"` + slice + `"\n"` as G2(b) proves
+independently. Flagged because a reviewer running the naive comparison will get
+False on a correct file.
 
-**6. The "no hand-built evidence path survives" guard is an AST reference
-guard, not a substring search.** The block called this "a text reading" and
-named the expression `jobs_dir() / job_id / "evidence"`. I implemented it as:
-no `ast.Name`, `ast.Attribute` or `ast.alias` resolving to the exact name
-`jobs_dir` occurs anywhere in `pingpong_job.py`. This is strictly stronger than
-a substring search — it cannot be dodged by an `import … as` alias or by
-whitespace, and it cannot be tripped by a comment or docstring that merely
-NAMES the old layout, which a substring search would be. `_jobs_dir` and
-`task_jobs_dir` are different names and are deliberately out of scope; they
-hold the ping-pong store and move in T002. G6 mutation (iv) proves the guard
-fires.
+**3. The widened guard was RENAMED, and two tests were added beyond the block.**
+The block named `test_pingpong_job_no_longer_spells_the_evidence_path_itself` to
+identify what to widen. Since it now ranges over four modules, that name would
+falsely claim single-module scope, so it is
+`test_no_module_that_owns_job_evidence_spells_the_path_itself`, parametrized
+over `_JOB_EVIDENCE_OWNING_MODULES`. Constraint 1 binds authored SLICES byte for
+byte; the guard is described in prose, not shipped as a slice, so naming is mine.
+The block ordered parametrization, which changes node ids regardless. Verified
+first that no code depends on the old node id — the only references are frozen
+prose in `.agent/live_review.md`, `.agent/last_block.md` and the previous
+handoff. Two tests were added beyond the ordered non-vacuity assertion:
 
-**7. No `.agent/context.md` or `.agent/decisions.md` update.** The Commit Gate
-asks whether they need one; the block's change set forbids writing them, and
-the change set bounds writes. The decision this round makes is DECISION F260 D4,
-which the block placed in `docs/roadmap/features/T2_F260.md` — the durable
-home — so nothing is lost.
+  * `test_the_job_evidence_owning_module_set_is_real` — the ordered one: the set
+    is non-empty, duplicate-free, and every member imports with a readable
+    source file.
+  * `test_the_classic_store_modules_still_call_jobs_dir` — NOT ordered. It makes
+    G5(b)'s non-vacuity half permanent: if `jobs_dir` were simply deleted
+    everywhere, the absence guard would pass for the wrong reason. Measured 2
+    references in each of `checkpoints.py` and `storage.py` before asserting it,
+    rather than assuming the block's claim.
 
-Nothing outside the ten-path change set was created, edited or deleted.
-Scratch under the gitignored `.remedy-wt/` is untracked and `git ls-files
-.remedy-wt` is empty.
+**4. `repair_attest.py`'s import is module-level and one swap retired the whole
+import in three modules.** Each of the four sites was the LAST use of `jobs_dir`
+in its module, so each import had to move to `job_evidence_dir` in the same edit
+or ruff would report an unused import. Verified per module by AST both before
+and after — the block's claim that these modules reference `jobs_dir` at exactly
+those four sites is confirmed, not assumed. Each module's existing import style
+was kept: module-level in `repair_attest.py`, function-scoped in the other three.
+
+**5. Line numbers were re-grepped, not trusted, and the block's were correct.**
+The block warned they might be stale after round 6's deviation 2. At `99ca6406`
+they resolve as `repair_attest.py:34` import / `:153` site,
+`job_evidence.py:1346` import / `:1348` site and `:2885` import / `:2892` site,
+`do_cmd.py:2414` import / `:2458` site. All four matched the block's description
+exactly; the one line number the block asserted, `repair_attest.py:34`, is right.
+
+**6. `checkpoints.py` and `storage.py` were not touched**, as ordered, and the
+reason is now written into the guard's docstring and the module-set comment so a
+later reader can justify the exclusion instead of deleting it.
+
+**7. No deviation from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4,
+C5, each its own commit, in order, with C4 as ONE commit carrying the four swaps
+and the widened guard together. No extra commit, none dropped, none reordered.
+
+Assumption: none load-bearing. Every number in this handback was measured this
+round; nothing was carried forward from the round 6 record.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | |
-| C0b mirror the block | done | |
-| C1 the record | done | |
-| C2 the two slips | deviated | applied byte for byte as ordered; the block's recipe fused three blank-line units into one — deviation 1 |
-| C3 the plan | done | |
-| C4 DECISION F260 D4 | done | |
-| C5 the code, call sites and tests | done | one commit, 168 insertions |
-| C6 the handback | done | this file |
+| C0a save the block | done | 7afe3056, +294, `shutil.copyfile` |
+| C0b mirror the block | done | f9c648ac, +197 |
+| C1 the record | done | adc66ae4, +2 |
+| C2 the slip | done | 36c4c375, +2; terminal byte was `\n`, units rose by exactly one |
+| C3 the plan | done | 1ad4c238, +17, 46 lines |
+| C4 the four call sites and the widened guard | done | 246efbb9, one commit, +96 |
+| C5 the handback | done | this file |
 | G1 TRANSPORT | done | exit 0, one digest = BLOCK_SHA |
 | G2 THE RECORD | done | exit 0, both region-disjoint controls behave as split |
-| G3 THE PROSE FILES | done | exit 0 |
-| G4 THE DECISION | done | exit 0 |
-| G5 THE CODE, READ AND RUN | done | exit 0, all four readings |
-| G6 THE MUTATION RED-PROOF | done | control 0, four mutations each exit 1 |
-| G7 THE SUITES | done | eight suites, all exit 0 |
-| G8 THE TREE AND THE CHANGE SET | done | exit 0, integrity passed |
+| G3 THE PROSE FILES | done | exit 0, 128 → 129, the round 6 counter-measure holds |
+| G4 THE SWAPS ARE VALUE-PRESERVING | done | exit 0, all four paths equal |
+| G5 THE CODE | done | exit 0, all three readings, six AST numbers |
+| G6 THE MUTATION RED-PROOF | done | control exit 0 at 40, three mutations each exit 1 |
+| G7 THE SUITES | done | eight suites, all exit 0, 603 tests |
+| G8 THE TREE AND THE CHANGE SET | done | exit 0, integrity passed; block's "eight" is nine — deviation 1 |
 
-## What this round actually changed
-
-DECISION F260 D4 rules that the ONE resolver lands with the store it resolves
-over — inside T002, beside the unified record and its loader — and RETIRES
-T001's "while both stores still exist" clause, because forty of the forty-two
-job-taking call sites take a `UUID` today and that is not a state they can move
-in. T001 is CLOSED with its minting half.
-
-`data_paths` now owns the ONE spelling of DECISION F260 D1's layout:
-`job_dir`, `job_record_path`, `job_evidence_dir` and `run_dir`, each built on
-the one above it so a layout change has exactly one place to happen.
-`pingpong_job`'s two hand-built evidence paths were put onto it, changing no
-path and no behaviour — proved by value equality AND by the AST guard, because
-the equality alone cannot see a regression to a path that is equal.
-
-`job_record_path` names a path NOTHING WRITES YET, and its docstring says so
-and names T002 as the task that moves the writer. The live ping-pong record is
-still at `<data_root>/task_jobs/<16hex>/job.json`; moving it before the
-resolver moves would break `remedy teach narrate` for every ping-pong job,
-which is precisely what D4 rules against.
+DECISION F260 D1 now has ONE spelling in every module that owns a job's
+evidence. T002's layout consolidation is finished; what remains in T002 is the
+unified record and its writer.
 
 ## Next
 
-The reviewer re-runs all eight gates and reads the real diff for round 6, then
-rules on the round. The next build round puts the four remaining hand-built
-evidence paths — `job_evidence.py` twice, `repair_attest.py` and `do_cmd.py` —
-onto `data_paths.job_evidence_dir`, with a guard that no module outside
-`data_paths` spells that path again.
+The reviewer independently re-runs G1 through G8 and reads the real diff of
+`99ca6406..HEAD` before any verdict. The next build round is the unified Job
+record and its writer under `jobs/<16hex>/job.json`, moving `_persist_job` and
+`load_job_plan` off `task_jobs/` and DELETING `pingpong_job._jobs_dir`, with
+finding R-0814 resolved there against the fix clause it already carries.
