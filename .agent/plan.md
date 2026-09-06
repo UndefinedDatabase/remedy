@@ -1,36 +1,37 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, `origin/main` merged in at round 16. Rounds 1 to
-19 are reviewed; round 1 FAILED and was repaired, and 2 to 19 PASSED. DECISION
+20 are reviewed; round 1 FAILED and was repaired, and 2 to 20 PASSED. DECISION
 F260 D8 closes this feature at the scope it built; F272 carries the remainder and
 was registered in round 18, directly after F260 in the ledger.
 
 ## Goal
 
 Session 7 performs SPLIT-AND-CLOSE at the amend0905-throughput soft limit of 7
-sessions. The split is ruled and registered, and round 19's integration gate was
-GREEN on both sides with both comparison sets empty, which satisfies closure
-precondition 2. What remains is the closure sequence itself.
+sessions. The split is RULED and REGISTERED, the integration gate was GREEN on both
+sides with both comparison sets empty, the §3 checklist has had its one mandated
+consolidation pass, and closure precondition 6's self-use item has been generated
+and run. What remains is the closure's evidence half.
 
 ## Current Step
 
-Round 20 is CLOSURE PART 1, the content half: the §3 checklist's one mandated
-consolidation pass, the self-use item generated and run for closure precondition
-6, and round 19's verdict booked. It touches neither `docs/roadmap/STATUS.md` nor
-`README.md`.
+Round 21 books round 20, registers the self-use run's outcome as a RECURRENCE of
+the open finding R-0784 rather than a new id, and repairs one garbled phrase the
+reviewer's round-20 slice landed in the §3 checklist. THIS SESSION ENDS AFTER IT.
 
 ## Next Steps
 
-1. Closure part 2: any findings the self-use run reported are registered first;
-   then the evidence job, the review zip, and the ledger rotation.
-2. Closure part 3: the STATUS accepted flip, the README sync, `consumed_by` set on
-   the self-use item, the handback, and the pull request — left UNMERGED as the
-   operator's review window.
+1. CLOSURE PART 2, first commit: book round 21's verdict. Then the evidence job
+   (`create_manual_completion_bundle(review_feature_id='f260', ...)`), the review
+   zip from a clean tree, and `python3 scripts/rotate_live_review.py` as its OWN
+   commit — after the bookings and before the STATUS flip.
+2. CLOSURE PART 3: the STATUS `[x]` flip and the README sync in ONE commit, with
+   `consumed_by` set to `F260` on SU-011 in that same commit, then the handback,
+   then the pull request — left UNMERGED as the operator's review window.
 
 ## Risks
 
-- The self-use run is a real job execution against a real budget. If it raises,
-  that is reported with its full traceback and the reviewer rules on it; it is
-  never hidden and never retried into silence.
-- The consolidation may not lengthen the list. It merges two items into one and
-  re-bases the figure the next pass measures against, in the same commit.
+- The self-use queue's SU-011 is PENDING and must be marked consumed in the
+  closure commit, not before. Nothing else may set it.
+- The ledger rotation re-bases every byte baseline, so the block after it measures
+  its own terminal bytes rather than reusing any number from this session.
