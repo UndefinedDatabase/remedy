@@ -1,8 +1,9 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 3 are reviewed; rounds 2 and 3 PASSED. T001
-is closed: the inventory is on disk and DECISION F260 D1 and D2 are ruled.
+pull request 240 (F259). Rounds 1 to 4 are reviewed; 2, 3 and 4 PASSED. T001's
+inventory is on disk, DECISION F260 D1 and D2 are ruled, and the three minting
+functions ship in `packages/orchestration/data_paths.py`.
 
 ## Goal
 
@@ -16,14 +17,13 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 4 is the first production-code round. It ships the three id-minting
-functions DECISION F260 D2 rules — `mint_job_id`, `mint_run_id` and
-`mint_episode_id`, each a separate `def` returning `uuid4().hex[:16]` — into
-`packages/orchestration/data_paths.py`, with a test class that pins the shape,
-the freshness, the three-distinct-objects property an alias would break, and the
-`UUID()` rejection that is the whole reason the id shapes must converge. A
-mutation red-proof in a disposable worktree proves the tests catch a widened
-slice.
+Finish T001's minting half at the CALL SITES. The four inline `uuid4().hex[:16]`
+mints that name a job, a run or an episode move onto the shipped functions:
+`JobPlan.job_id` and both `active_episode_id` assignments in `pingpong_job.py`,
+and `PingPongResult.run_id` in `pingpong_loop.py`. Both modules stop naming
+`uuid4` at all. A new guard test pins the two dataclass defaults by OBJECT
+IDENTITY, which a look-alike lambda cannot satisfy, and parses the module for
+the two episode sites, which have no object to compare.
 
 ## Next Steps
 
@@ -32,7 +32,7 @@ slice.
   T004.
 - T002: the extended Mission record, the unified Job record under
   `jobs/<16hex>/` with its evidence beside it, and `runs/<run_id>/` keyed by run
-  id. Finding R-0814 is fixed here, because that layout removes the split root.
+  id. Finding R-0814 is fixed there, because that layout removes the split root.
 - T003 consumer by consumer, T004 the classic runner, T005 the reachability test
   and the cluster deletion, in that order.
 
