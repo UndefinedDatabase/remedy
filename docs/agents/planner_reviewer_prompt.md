@@ -800,8 +800,8 @@ end the response with:
       older one as the record, and say in both resolutions which is which.
   31. **A gate whose reading an authored text must carry runs at a commit STRICTLY
       EARLIER than the commit that writes that text.** Findings R-0449, R-0494 and
-      R-0515. This item absorbed former item 32-neighbour ITEM 19 at F260's closure
-      on 2026-09-06; 19 is RETIRED and never reused. The two were one rule about two
+      R-0515. This item absorbed ITEM 19 at F260's closure on 2026-09-06, and the
+      number 19 is RETIRED and never reused. The two were one rule about two
       artefacts, and the merged form states it once: an authored text may claim what
       a gate showed only when the same block fixes that the gate runs BEFORE the
       commit writing that text. THE SLICE HALF, formerly item 19 and finding R-0515:
