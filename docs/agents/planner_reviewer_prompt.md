@@ -227,14 +227,20 @@ end the response with:
   2026-08-27, which is the figure the FIRST consolidation measured against.
   Reason: a checklist that grows every round is read less carefully every
   round, and it grew fastest exactly where it was already being skimmed.
-  Consolidated once, at F259's closure on 2026-09-06: item 32 was merged into item
+  Consolidated at F259's closure on 2026-09-06: item 32 was merged into item
   16, whose family it belonged to and which its own text named, leaving 36 items.
+  Consolidated again at F260's closure on 2026-09-06: item 19 was merged into item
+  31, the same rule about a second artefact, leaving 35 items.
   A merged item's NUMBER IS RETIRED AND NEVER REUSED, and the survivors are NEVER
-  RENUMBERED, so this list now runs 1 to 31 and 33 to 37. The reason is that
+  RENUMBERED, so this list now runs 1 to 18, 20 to 31 and 33 to 37. The reason is that
   `.agent/live_review.md` is append-only and cross-references these items by
   number from dated entries that cannot be corrected: renumbering would silently
   re-point every one of those references at a different rule, which is a worse
-  failure than a gap in the numbering. The next consolidation measures against 36.
+  failure than a gap in the numbering. That reason also fixes the DIRECTION of a
+  merge, which F260's pass measured rather than assumed: `item 31` had 31 landed
+  references across the record and its archive and the prose slips, and `item 19`
+  had none, so 19 was the number that could be retired without stranding one.
+  The next consolidation measures against 35.
   Reverse by deleting this paragraph.
   1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
      cut BEFORE emitting. A worker must save the block verbatim, so an oversize
@@ -549,17 +555,6 @@ end the response with:
       preserved" — and the block kept the citation while dropping the qualifier, which is
       how a correct precedent becomes an incorrect order. Where a mechanism's DEFAULT is
       the hazard, order the argument, not the function.
-  19. **A claim about a gate's result names the commit that runs the gate.** Finding
-      R-0515. An authored slice may state what a gate showed only when the same block
-      fixes that the gate runs BEFORE the commit that writes the slice. Otherwise the
-      worker must either reorder the round on its own initiative or commit a claim it
-      has not verified, and the second puts a false line into the permanent record.
-      Item 13 governs the ORDER a block imposes on the worker's runs and item 14 which
-      commits a per-commit gate can honestly reach; this one governs a slice's TEXT
-      making a claim whose producer the block never scheduled — the R-0371 and R-0449
-      family, narrowed from commit SHAs to gate results. The R22 instance: DONE1
-      asserted a probe outcome while the block listed its gates after its commits, and
-      only the worker's own reordering kept the record true.
   20. **A slice states a fact about a file the same block edits only with the commit
       it was read at.** Finding R-0520. An authored slice may assert a present-tense
       fact about a source file — "these modules reference neither symbol", "this
@@ -567,7 +562,7 @@ end the response with:
       reading was taken at, because a later commit of the SAME block may falsify it and
       the slice is by then unalterable: constraint 1 forbids editing a slice and the
       file it lands in is the permanent record. Item 9 re-measures a block's POINTERS
-      at emission and item 19 governs a claim about a GATE's result; this one governs a
+      at emission and item 31 governs a claim about a GATE's result; this one governs a
       claim about a file's CONTENT, which neither reaches, because the pointer resolves
       and no gate is involved — the sentence is simply true at the base and false at
       HEAD. The R29 instance: a gate entry listed seven modules as referencing neither
@@ -803,8 +798,20 @@ end the response with:
       two entries could have been resolved in contradictory directions. When a
       duplicate is discovered, retire the NEWER id as the duplicate, keep the
       older one as the record, and say in both resolutions which is which.
-  31. **A gate whose reading the handback must carry runs at a commit STRICTLY
-      EARLIER than the handback commit.** Findings R-0449 and R-0494. When a block
+  31. **A gate whose reading an authored text must carry runs at a commit STRICTLY
+      EARLIER than the commit that writes that text.** Findings R-0449, R-0494 and
+      R-0515. This item absorbed former item 32-neighbour ITEM 19 at F260's closure
+      on 2026-09-06; 19 is RETIRED and never reused. The two were one rule about two
+      artefacts, and the merged form states it once: an authored text may claim what
+      a gate showed only when the same block fixes that the gate runs BEFORE the
+      commit writing that text. THE SLICE HALF, formerly item 19 and finding R-0515:
+      an authored slice bound for the permanent record may state a gate's result only
+      under that scheduling, because otherwise the worker must either reorder the
+      round on its own initiative or commit a claim it has not verified, and the
+      second puts a false line into a file nothing can correct. The R22 instance:
+      DONE1 asserted a probe outcome while the block listed its gates after its
+      commits, and only the worker's own reordering kept the record true. THE
+      HANDBACK HALF, formerly the whole of this item. When a block
       requires the handback to state a gate's result — "one line per gate" is the
       usual form — every one of those gates is ordered at a commit that precedes
       the commit writing the handback, and the block says which commit that is. A
