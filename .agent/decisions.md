@@ -10765,3 +10765,93 @@ the five feature files.
 
 ### DECISION F260 D8 (2026-09-06, F260 round 17, session 7) — F260 closes at the job record and the one id shape; the run re-key, the consumers and the deletions are split off as a follow-up feature placed directly after it
 CONTEXT. Operator amendment amend0905-throughput sets the soft limit at 25 ROUNDS or 7 SESSIONS per feature, whichever comes first, and makes SPLIT-AND-CLOSE the standing default on reaching it, executed on the session's own authority rather than referred to the operator as a question. This is session 7 of F260 at round 17, so the SESSION half of the limit is the binding one; the round half is not close, which is worth recording because it means the constraint that ended this feature was WALL CLOCK, not scope creep and not repair churn. Every round from 2 to 16 PASSED, one round FAILED and was repaired, and no round was spent on rework of its own earlier work. MEASURED SCOPE, from the ledger entries `Gate: R1` through `Gate: R16` and the feature file's own task list. BUILT: T001 whole — the inventory in `.agent/f260_inventory.md`, DECISION F260 D1 ruling the record layout and D2 ruling the 16-hex id shape with one minting function per kind, and those minting functions at their call sites; and the RUN side of T002 — the ping-pong job record moved under the one jobs root beside its own evidence, both resolvers returning `str`, the ping-pong run store and the job-keyed run-log store each given one spelling in `data_paths` across the whole production side, and, at round 15, a run made an INVOCATION rather than an event, which DECISION F260 D7 rules and finding R-0816 measured on disk before and after. NOT BUILT: the rest of T002 — `Job.run_refs`, the re-key of the run directory onto a RUN id, the unified record's eleven administrative fields and the Mission extension; T003 whole, the eleven named consumers; T004 whole, the classic cycle runner and the resolver collapse DECISION F260 D5 placed there; and T005 whole, the reachability test and the prototype cluster deletion, measured in the feature file at 24527 lines under `packages/orchestration/` plus 4731 lines of `apps/cli/commands/*_cmd.py`. CHOSEN. F260 closes at the scope it built, and the remainder is registered as ONE new follow-up feature placed IMMEDIATELY AFTER F260's line inside the same tier heading, per operator order amend0906-split-placement, so that Rule A5 proposes it before any other unchecked feature. The follow-up's file copies its T-slices and its Acceptance items from F260's file rather than re-planning them, which is why this decision does not restate them; F260's own file keeps its Goal, T-slice and Acceptance sections UNEDITED for exactly that reason, and gains a Built State section stating what landed and what moved. THE DEPARTURE THIS DECISION IS MOST RESPONSIBLE FOR RECORDING: F260's Orchestrator brief says that if the session must split, "the split point is between T003 and T004, never inside T005". The session limit arrived during T002, which is EARLIER than any split point that brief anticipated, so the split falls inside T002 and the brief is amended rather than obeyed. The prohibition the same sentence carries — never split inside T005 — is untouched and binds the follow-up, because T005 is the deletion round and a half-performed deletion is the one state this feature must never leave behind. This is a wrong-spec finding routed to planning under docs/agents/planner_reviewer_prompt.md §4 item 7: the ruling is authored, recorded and proceeded under, and the operator's veto is any later relay. ALTERNATIVES CONSIDERED. Run session 7 past the limit to reach the brief's own split point between T003 and T004 — rejected: T003 is eleven consumers each owed a test against a ping-pong-created job, and T004 is a forty-call-site resolver collapse, which is several sessions of work rather than several rounds, so this option does not reach the brief's split point either, it merely reaches the limit later and with the same split still owed. Close F260 at its full scope by narrowing what the Acceptance list demands — rejected outright: the Acceptance items are the feature's reason for existing and none of them holds today, so this is the failure mode AGENTS.md names as the one unforgivable one. Stop and ask the operator which of the two to take — rejected because amend0905-throughput exists precisely to remove that question, having been written after F262's round 23 wrote a correct scope report and then waited a whole session for a ruling the default already supplied. Split the remaining scope into TWO follow-up features, one for the records and one for the deletions — rejected as premature: the follow-up inherits a coherent single narrative, and if it in turn reaches its own limit the same default applies to it with better information than this session has. CONSEQUENCE. F260's STATUS line will read as complete for the slices it built and will name the follow-up; it will not claim T002 through T005. The vocabulary page F259 made binding is unaffected, since F260 changed what a job IS and never what it is CALLED. No production behaviour is reverted by this decision and nothing on disk is deleted by it; it moves the boundary of a ledger line and nothing else. REVERSE by deleting this paragraph, deleting the follow-up feature's STATUS line and its detail file, restoring the `TOTAL_FEATURES` pin and the README counters to their pre-registration values, removing the follow-up from the six downstream "Depends on" lines, and returning F260's STATUS line to `[~]`; the feature then stands unsplit at the scope its Goal section describes, with its Orchestrator brief's split point binding again unamended.
+
+## DECISION amend0906-triage-throughput (2026-09-06, operator order amend0906-triage-throughput) — the finding ledger is triaged into four buckets, and deletion rounds are verified by measurement rather than by transport
+
+CONTEXT. The open finding set had grown to 298 distinct ids — 296 by the canonical
+line formula `scripts/rotate_live_review.py::count_open_findings`, the two-id gap
+being R-0721 and R-0725, which each carry two `Done:` lines. A ledger that only
+grows stops being read, and closure precondition 3, which is supposed to block on
+open High findings, cannot parse this ledger's format at all (R-0648), so nothing
+in the pipeline was measuring the set either.
+
+CHOSEN, PART A — FOUR BUCKETS, FIRST MATCH WINS, EACH DECIDED BY READING THE
+FINDING'S OWN TEXT. `fixed`: the sentence, symbol, path or behaviour the finding
+describes no longer exists on main, verified by a grep or by running the described
+command, and the resolution line carries that evidence. `deletion-bound`: the
+finding names something on F272's T004/T005 deletion list or F261's D4 list, so it
+keeps its id, carries a dated TRIAGE line and resolves in that feature's deletion
+round. `process-only`: the finding is about reviewer prose, a block's gate
+arithmetic, `.agent/` bookkeeping, checklist wording, handoff counts or a comment
+whose wording has no effect on behaviour — nothing under `packages/`, `apps/` or
+`tests/` behaves differently because of it, which is amend0827 rule 2's own test;
+one summary line per CLASS goes to `.agent/prose_slips.md`, never one per finding.
+`product`: everything else — behaviour, data, security, evidence correctness, a
+user-visible message, a test that cannot fail — which keeps its id and is carried
+into F273. Ambiguity resolves to `product`, and a finding naming a deleted module
+beside a surviving behaviour is `product`.
+
+TWO READINGS THIS ORDER LEFT OPEN AND THIS DECISION SETTLES, because the sweep
+could not proceed without them and a later triage should not re-derive them.
+FIRST, `fixed` is scoped to DURABLE artifacts. `.agent/plan.md`, `.agent/context.md`,
+`.agent/handoff.md` and a round's block are rewritten every round, so a defect
+described in one of them is trivially absent from main and every such finding would
+fall into `fixed`, emptying the bucket of meaning; a round-local reviewer artifact
+routes to `process-only`, which is what it is. SECOND, the process-only line is the
+review process's OWN artifacts. `docs/agents/planner_reviewer_prompt.md`,
+`docs/roadmap/STATUS_closure_protocol.md` and `docs/agents/handback_template.md` are
+checklist wording and route there. A roadmap feature file, a design reference and
+`docs/agents/integration_gate.md` are NOT: builders and gates execute against them,
+so a defect in one is `product` — for the integration gate additionally under
+amend0827 rule 2's own clause for a gate over production code shown to be blind.
+
+MEASURED RESULT. Of 298 distinct open ids: 39 fixed, 1 deletion-bound, 204
+process-only, 54 product. Open after: 53 by the canonical formula and 55 by the set
+difference, which is the 54 product ids plus deletion-bound R-0767. The id-by-id
+audit trail is `.agent/triage_2026-09-06.md`, committed at `e0fc5c6b` BEFORE any
+resolution line so the classification can be audited independently of the
+resolutions it produced. The 54 product findings are registered as F273, Findings
+paydown v1, whose T-slices group them by module with the highest severity first and
+whose slices re-plan nothing: the finding text is the spec.
+
+CHOSEN, PART B — THREE THROUGHPUT RULES, recorded verbatim in
+`docs/agents/self_drive_protocol.md` directly after the amend0906-split-placement
+paragraph. (1) A DELETION ROUND has no edited line under `packages/`, `apps/` or
+`tests/` and is verified by four measurements and nothing else — the
+import-reachability test green, the full suite green, a repo-wide grep for every
+deleted module and symbol at zero, and ruff clean on the touched files — with no
+byte-arithmetic transport, no per-file reconstruction and no mutation red-proof of
+deleted code; its block is at most sixty lines and lists the paths, and a whole
+deletion list may be one round. (2) F272's soft limit is 12 sessions and 40 rounds,
+because it was measured before registration as the largest feature of the block and
+a second split would only mint F274 with the same remainder; split-and-close still
+applies at 12/40. (3) The session round target of 6 to 8 stands, and a session
+ending below it states the reason in one sentence in its handoff.
+
+ALTERNATIVES CONSIDERED. Resolve nothing and only classify — rejected: the
+classification is worthless if the set it describes does not move, and 243 of these
+findings buy no repair at all. Delete the process-only findings from the record
+rather than resolving them — rejected outright: the ledger is append-only and a
+resolved finding with a dated reason is an audit trail where a deleted one is a
+hole. Mint one feature per module instead of one paydown feature — rejected:
+fourteen registrations for 54 repairs is ledger churn, and the slices inside F273
+are independent by construction anyway. Build the ten tests.md findings inside F273
+— rejected: they already carry Acceptance lines in F272, F261 and F268, and a
+second owner for one contract is the drift the whole block exists to avoid, so F273
+BOOKS them and builds nothing.
+
+CONSEQUENCE. Closure precondition 3 still cannot parse this ledger; that is R-0648
+and it is F273 T004's, not this order's. The 243 resolutions make 244 pairs
+rotatable, so the next closure sequence's `scripts/rotate_live_review.py` run moves
+them into the archive and the working ledger shrinks from about 1.05 MB to about
+0.33 MB, measured by that script's own `--dry-run`. No production code, no test
+except the `TOTAL_FEATURES` pin, and no behaviour is changed by this decision.
+
+REVERSE by deleting this paragraph, deleting the amend0906-triage-throughput
+paragraph from `docs/agents/self_drive_protocol.md`, deleting F273's STATUS line
+and `docs/roadmap/features/T2_F273.md`, restoring `TOTAL_FEATURES` to 272 and the
+README counter and Tier 2 total to their pre-registration values, and removing the
+deletion-bound sentence from F272's T005 and F261's T003. The 243 resolution lines
+and the `.agent/prose_slips.md` class lines are NOT reversed: the record is
+append-only and a dated resolution is not undone by deleting the order that
+prompted it.
