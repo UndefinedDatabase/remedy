@@ -299,6 +299,12 @@ class JobPlan:
     job_title: str = ""
     status: str = JOB_PLANNED
     tasks: list[TaskEntry] = field(default_factory=list)
+    # F272 T001, DECISION F260 D1: a Job has MANY runs. The ordered ids of
+    # the runs this job produced, oldest first and each exactly once. F260
+    # closed with a record that could name only the one run of each task;
+    # this list is what makes a job able to name its runs at all, and it is
+    # the prerequisite for re-keying the run directory by RUN id.
+    run_refs: list[str] = field(default_factory=list)
     created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -687,6 +693,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
             "episodes": job.run_manifest_episodes,
         },
         "budgets": job.budgets,
+        "run_refs": job.run_refs,
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
         "budget_prediction": job.budget_prediction,
@@ -784,6 +791,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         input_snapshot_error=str((data.get("run_manifest") or {}).get("input_snapshot_error", "") or ""),
         run_manifest_episodes=list((data.get("run_manifest") or {}).get("episodes") or []),
         budgets=data.get("budgets"),
+        run_refs=list(data.get("run_refs") or []),
         first_running_at=str(data.get("first_running_at", "") or ""),
         budget_actuals=data.get("budget_actuals"),
         # Absent in job files written before F104 — loads as None, unchanged.
@@ -2539,6 +2547,8 @@ def run_job(
 
             # Record task result
             task.run_id = result.run_id
+            if result.run_id and result.run_id not in job.run_refs:
+                job.run_refs.append(result.run_id)
             task.final_status = result.final_status
             task.safe_diff_files = list(result.safe_diff_files)
             task.repair_rounds_used = result.repair_rounds_used
