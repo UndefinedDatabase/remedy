@@ -725,6 +725,18 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         },
         "budgets": job.budgets,
         "run_refs": job.run_refs,
+        # F272 T002: the eight administrative fields, in the dataclass's own
+        # order. The three model-valued ones are dumped to plain JSON data here
+        # rather than left as model objects, so `_persist_job`'s `json.dumps`
+        # can write them.
+        "mission": job.mission,
+        "user_prompt": job.user_prompt,
+        "project_id": job.project_id,
+        "intake": job.intake,
+        "flight_plan": job.flight_plan,
+        "artifacts": [a.model_dump(mode="json") for a in job.artifacts],
+        "budget": job.budget.model_dump(mode="json") if job.budget else None,
+        "fences": job.fences.model_dump(mode="json") if job.fences else None,
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
         "budget_prediction": job.budget_prediction,
@@ -823,6 +835,17 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         run_manifest_episodes=list((data.get("run_manifest") or {}).get("episodes") or []),
         budgets=data.get("budgets"),
         run_refs=list(data.get("run_refs") or []),
+        # F272 T002: every one of the eight reads through a default, because a
+        # job record written before this round carries none of these keys and
+        # must still load unchanged.
+        mission=str(data.get("mission", "") or ""),
+        user_prompt=str(data.get("user_prompt", "") or ""),
+        project_id=str(data.get("project_id", "") or ""),
+        intake=data.get("intake"),
+        flight_plan=data.get("flight_plan"),
+        artifacts=[Artifact(**a) for a in (data.get("artifacts") or [])],
+        budget=Budget(**_budget) if (_budget := data.get("budget")) else None,
+        fences=JobFences(**_fences) if (_fences := data.get("fences")) else None,
         first_running_at=str(data.get("first_running_at", "") or ""),
         budget_actuals=data.get("budget_actuals"),
         # Absent in job files written before F104 — loads as None, unchanged.
