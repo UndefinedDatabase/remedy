@@ -1,7 +1,9 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion, cut from `main` at
-`b18fad576252f7f2739a5807b6408031da8fcde6`. Round 1 is reviewed and PASSED.
+Branch: feature/f272-one-world-completion. Round 1 PASSED. ROUND 2 FAILED its
+gate: its production change is correct, but the reviewer's DECISION F272 D1
+claimed only three test files observed it, and 24 do, so the tip went red at 207
+tests. Round 3 is the repair.
 
 ## Goal
 
@@ -14,29 +16,28 @@ cluster deletion, which is never split.
 
 ## Current Step
 
-BLOCKED at `1d24b4a7`. Round 2 landed the re-key — the run log at
-`<data_root>/job_logs/<job_id>`, the ping-pong run store at
-`<data_root>/runs/<run_id>` — and swept the three test files its block named.
-DECISION F272 D1's premise that those three are the only code observing the
-change is FALSE BY MEASUREMENT: 22 test files hand-spell `<root>/runs/<job_id>`
-and 205 tests are red, the canary `tests/cli/test_golden_path.py` among them
-(42 passed at C3, 41 at C4). No production caller moved — all 74 readers and
-35 writers resolve through `run_log_dir`, exactly as D1 says.
+Round 3 returns the tip to green WITHOUT reverting round 2. It registers finding
+R-0818 before touching anything, sweeps the job-keyed run-log path out of the 24
+files that hand-spell it, and appends DECISION F272 D2 correcting D1's
+premise — the sentence that called three files the only observers — while
+leaving D1's ruling, which the gates proved right about production code, intact.
 
 ## Next Steps
 
-1. Rule the widened sweep, then execute it: the 22 files and their failure
-   counts are listed in `.agent/handoff.md`. It is mechanical — `"runs"`
-   becomes `"job_logs"` wherever the join is keyed by JOB id — but it is far
-   outside round 2's change set, so no worker may take it on its own authority.
-2. The name collapse D1 places next: `pingpong_runs_dir` and `pingpong_run_dir`
-   are DELETED in favour of `runs_dir` and `run_dir` at every call site.
-3. The rest of the unified record (T002), then the eleven consumers (T003).
+1. The name collapse DECISION F272 D1 places next: `pingpong_runs_dir` and
+   `pingpong_run_dir` are DELETED in favour of `runs_dir` and `run_dir` at every
+   call site, with no alias and no attic, per AGENTS.md "Replacing is deleting".
+2. The rest of the unified record: the eleven administrative fields and the
+   Mission extension (T002).
+3. The eleven consumers named under Design in `T2_F260.md`, one per commit where
+   the diff allows (T003).
 
 ## Risks
 
-- The branch tip is RED. Reverting C4 is the alternative to widening the
-  sweep; both are re-rulings, and this round declined to choose either on its
-  own authority.
-- Old `.data` content becomes unreadable at this move. That is DECISION D-A
-  working as ruled — no migration, no compatibility reader — not a regression.
+- The sweep is not a blind substitution: `"runs"` is still the correct spelling
+  of the RUN store, which round 2 moved INTO `<data_root>/runs/<run_id>`. Only a
+  path keyed by a JOB id changes, and the gate counts the job-keyed spellings to
+  zero rather than counting the word.
+- A test that reaches the path through a shared helper is fixed by the helper and
+  must not be edited; two such files are deliberately outside the change set and
+  must go green untouched.
