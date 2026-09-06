@@ -10665,3 +10665,47 @@ absence rule needs a parser, not a grep; (b) ship the clause anyway and note the
 vacuity in prose — rejected, because a passing gate that forbids nothing is the
 exact failure this project keeps paying for. Reverse by deleting this paragraph
 and adding `Worker:` to `RETIRED_SYNONYMS`.
+
+## DECISION amend0906-split-placement (2026-09-06, operator order amend0906-split-placement) — a split-off follow-up feature is registered directly after its parent
+
+CONTEXT: amend0905-throughput made split-and-close the standing default at the
+soft limit — the session registers the remaining scope of the open feature as a
+new follow-up feature on its own authority. It says WHAT to register but never
+WHERE the new STATUS line goes.
+
+PRECEDENT THAT MOTIVATED THIS: F267 — "List commands v2 completion", the nine
+wirings split off F262 — was registered under the heading
+`## Tier 2 — Minimal Self-Build Runtime` at line 109 of `docs/roadmap/STATUS.md`,
+not beside its parent F262 at line 24 under
+`## Tier 2 — Vocabulary & Concept Block`. Rule A5 takes the FIRST unchecked entry
+top to bottom, so a remainder placed that far down is proposed only after every
+feature between it and its parent has been built — on exactly the half-finished
+substrate the remainder exists to finish. F260's remainder (record move, consumer
+moves, classic-runner deletion, prototype-cluster deletion) would be reached
+after F261, F266 and F268, and F268's mission record plus the operator's
+Level-4.1 acceptance depend on precisely that deferred scope.
+
+CHOSEN: the placement rule is written verbatim into
+`docs/agents/self_drive_protocol.md`, directly after the amend0905-throughput
+split-and-close paragraph, and referenced in one sentence from
+`docs/roadmap/STATUS_closure_protocol.md` under the Algorithm step that governs
+the closure STATUS line (step 4) — the step a closing session actually reads
+when it writes that line. The new line goes IMMEDIATELY after the parent's, inside
+the same tier heading, which the docs suite already permits: repeated
+`## Tier 2` headings are accepted and
+`tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier`
+pins the filename tier to the ENCLOSING heading, so the follow-up's file keeps
+the parent's tier prefix. The five open feature files that name F260 as a
+dependency — T2_F261, T2_F268, T2_F269, T2_F270, T2_F271 — gain the follow-up in
+their `Depends on` clause now, so the dependency is recorded before the split
+session runs. F260's own feature file is deliberately NOT edited here: it is open
+on `feature/f260-one-world`, and the split session applies the rule to it itself.
+
+ALTERNATIVES CONSIDERED: (a) leave placement to the closing session's judgement —
+rejected, because F267 is the measured evidence that the judgement goes the other
+way without a rule; (b) require the follow-up to reuse the parent's own STATUS
+line — rejected, because two ids on one line breaks the line grammar the docs
+suite pins and Rule A5 reads. Reverse by deleting this paragraph and the
+amend0906-split-placement paragraph in `docs/agents/self_drive_protocol.md`, the
+sentence in `docs/roadmap/STATUS_closure_protocol.md`, and the appended clause in
+the five feature files.
