@@ -1,331 +1,378 @@
-# Handoff — F260 One world · round 13 · ONE SPELLING FOR THE RUN-LOG STORE
+# Handoff — F260 One world · round 14 · ONE SPELLING FOR THE RUN-LOG JOIN
 
 ## Session
 
-SESSION 4 of feature F260 · round 13 · rounds so far 13
+SESSION 5 of feature F260 · round 14 · rounds so far 14
 
 Context self-assessment (amend0905-throughput): context is comfortable and was
-never a constraint this round. WALL CLOCK was the whole cost —
-`tests/orchestration/` alone ran 745.59 s and `tests/cli/` 304.93 s, so G6 spent
-roughly seventeen minutes of serial suite time. The 25-round / 7-session soft
-limit is not reached (13 rounds, 4 sessions).
+never a constraint. WALL CLOCK was again the whole cost — `tests/orchestration/`
+alone ran 738.68 s and `tests/cli/` 303.30 s, so G7 spent roughly seventeen
+minutes of serial suite time on top of G6's three worktree runs. The 25-round /
+7-session soft limit is NOT reached (14 rounds, 5 sessions), but the plan's
+remaining scope is larger than the eleven rounds left, so split-and-close is the
+likely endgame and this round leaves a self-consistent tree.
 
 ## Range
 
-Review of `4d13f5a02608a40081a7ebacf779124cc6318309`..`HEAD`.
+Review of `4f265f91cbdf2f4c327e9dd303b8cd78c146618d`..`HEAD`.
 
-Seven commits plus this one, all single-parent, in EXACTLY the Bundle's ordered
-sequence C0a → C0b → C1 → C2 → C3 → C4 → C5 → C6. No extra commit, no dropped
-commit, no reordering. Largest insertion count 318 (`.agent/authored/f260-r13.md`,
-a single `.agent/**` state write, exempt under the AGENTS.md DECISION F104 D1
-counting rule); largest CODE commit 22 insertions (`8ccd9309`, the sweep).
-Nothing approached the 500-insertion cap.
+NINE commits plus this one, all single-parent. Eight of the nine are EXACTLY the
+Bundle's ordered sequence C0a → C0b → C1 → C2 → C3 → C4 → C5 → C6. There is ONE
+EXTRA COMMIT, `c296ee97`, inserted after C6 and before this handback; it is
+deviation 3 below and it is the only departure from the ordered sequence. No
+commit was dropped and nothing was reordered. Largest insertion count 397
+(`.agent/authored/f260-r14.md`, a single `.agent/**` state write, exempt under
+the AGENTS.md DECISION F104 D1 counting rule); largest CODE commit 35 insertions
+(`dcfe7a36`). Nothing approached the 500-insertion cap.
 
 ## Commits
 
-`+/-` taken from `git diff --numstat`, never re-derived by eye.
+`+/-` taken from `git log --numstat`, never re-derived by eye.
 
-### a5039818 f260: save the round 13 step block verbatim under agent authored
+### 11fa257b f260: save the round 14 step block verbatim under agent authored
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f260-r13.md | +318 / -0 | C0a — `shutil.copyfile` from `.remedy-wt/f260-r13-block.md`, proved by `filecmp.cmp(shallow=False)` = True and sha256 equal to the delegation digest BEFORE staging |
+| .agent/authored/f260-r14.md | +397 / -0 | C0a — `shutil.copyfile` from `.remedy-wt/f260-r14-block.md`, proved by `filecmp.cmp(shallow=False)` = True and sha256 equal to the delegation digest BEFORE staging |
 
-### 2f18e3c7 f260: mirror the round 13 step block into the last block state file
+### 755b0a98 f260: mirror the round 14 step block into the last block state file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +285 / -267 | C0b — same source file, same copy route, same two proofs |
+| .agent/last_block.md | +319 / -240 | C0b — same source file, same copy route, same two proofs |
 
-### 727b281f f260: point the plan at the one spelling for the run log store
+### a7a47473 f260: rewrite the plan for round 14, the run-log join
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +17 / -17 | C1 — whole-file replacement by the PLAN slice plus one trailing newline; 2664 bytes, 49 lines, under the 50-line cap |
+| .agent/plan.md | +21 / -22 | C1 — whole-file replacement by the PLAN slice plus one trailing newline; 2530 bytes, 48 lines, under the 50-line cap |
 
-### aaaff111 f260: book the round 12 PASS verdict and register finding R-0815
+### f5f959d0 f260: book the round 13 PASS verdict and record DECISION F260 D6
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +4 / -0 | C2 — GATE_R12 then FIND815 appended in that order; 923356 → 931365 bytes |
+| .agent/live_review.md | +2 / -0 | C2 — GATE_R13 appended; 931365 → 937682 bytes |
+| .agent/decisions.md | +3 / -0 | C2 — DEC_D6 appended in the SAME commit, after the live_review append; 839361 → 842038 bytes |
 
-### e1096fe6 f260: append the round 12 reviewer prose slip about the unreachable red proof
+### 24596473 f260: append the four round 13 reviewer prose slips
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/prose_slips.md | +2 / -0 | C3 — SLIP13 appended; 113984 → 115506 bytes |
+| .agent/prose_slips.md | +8 / -0 | C3 — SLIP14, SLIP15, SLIP16, SLIP17 appended IN ORDER, blank-line separated; 115506 → 117457 bytes |
 
-### 97ced424 f260: give the live job-keyed run-log store one spelling in data_paths
+### dcfe7a36 f260: give RunLogWriter a data root and build its directory with run_log_dir
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/data_paths.py | +13 / -0 | C4 — SPEC (1): the six-line WHY comment plus `run_log_dir`, inserted between `runs_dir` and `projects_dir` |
-| tests/test_data_paths.py | +17 / -0 | C4 — SPEC (2): three tests in `TestDirectoryHelpers`, each a PATH EQUALITY — explicit root, process data root, `UUID` coercion |
+| packages/orchestration/run_log.py | +5 / -5 | C4 — SPEC (1): the import at 34, the class docstring at 97, the one-line WHY comment above `__init__`, `runs_root` → `data_root`, and the three path lines collapsed to two |
+| tests/test_run_log.py | +30 / -23 | C4 — SPEC (2): all 21 `runs_root=tmp_path` → `data_root=tmp_path`, the two constraint-3 observers re-spelled LITERALLY as `tmp_path / "runs" / str(job_id)`, plus ONE new default-root test |
 
-### 8ccd9309 f260: move the nine hand-spelled run-log paths onto the data_paths accessors
+### 3126d0cc f260: move the seven production run-log call sites onto the data root
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/cockpit.py | +2 / -1 | C5 — site 380 onto `run_log_dir(job.id, data_dir)`; one module-level import |
-| packages/orchestration/patch_apply.py | +4 / -2 | C5 — sites 526 and 563 onto `runs_dir(data_dir)`; two FUNCTION-LOCAL imports, one per function |
-| packages/orchestration/patch_revert.py | +2 / -2 | C5 — site 245 onto `runs_dir(actual_data_dir)`; `runs_dir` joined the EXISTING module-level `data_paths` import (deviation 3) |
-| packages/orchestration/pingpong_job.py | +2 / -2 | C5 — site 3217 onto `run_log_dir(job_id)`; the function-local `runs_dir` import at 3215 became the `run_log_dir` import (constraint 5(b), deviation 5) |
-| packages/orchestration/timeline.py | +5 / -4 | C5 — site 64 onto `runs_dir(Path(data_dir))`, site 75 onto `run_log_dir(job_id, data_dir)`; the local `runs_dir` renamed to `run_log_path` because the added module-level import WOULD have been shadowed (deviation 4) |
-| packages/orchestration/trust_report.py | +3 / -2 | C5 — site 373 onto `run_log_dir(job.id, data_dir)`; the local renamed to `run_log_path` per constraint 5(a); printed text unchanged |
-| packages/orchestration/worker_queue.py | +2 / -1 | C5 — site 488 onto `runs_dir(root)`; one FUNCTION-LOCAL import, because this file has NO module-level `packages.*` import at all (deviation 3) |
+| packages/orchestration/timeline.py | +2 / -2 | C5 — site 65 → `data_root=Path(data_dir)`; `runs_dir` left the module-level import (now unused), `run_log_dir` stays for site 76 |
+| packages/orchestration/worker_queue.py | +1 / -2 | C5 — site 489 → `data_root=root`; the function-local `runs_dir` import removed (F401) |
+| packages/orchestration/patch_apply.py | +2 / -6 | C5 — BOTH pairs (527-528 and 565-566): the `runs_root` local deleted, `data_root=data_dir` passed, and each function's local `runs_dir` import removed |
+| packages/orchestration/patch_revert.py | +2 / -3 | C5 — site 245-246: the local deleted, `data_root=actual_data_dir` passed; `runs_dir` left the module-level import at 33 |
+| packages/orchestration/safe_points.py | +1 / -2 | C5 — site 675: the `runs_root` argument DROPPED entirely; the function-local `runs_dir` import removed |
+| packages/orchestration/pingpong_job.py | +1 / -2 | C5 — site 3182: the `runs_root` argument DROPPED entirely; the function-local `runs_dir` import removed |
+| packages/orchestration/prompt_trace.py | +1 / -1 | C5 — COMMENT ONLY at 215: `<runs_root>/<job_id>/` → `<data_root>/runs/<job_id>/`. No code in this file changed |
 
-### C6 — this file
+### 34b14577 f260: move the last two run-log test call sites onto the data root
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | C6 — a handoff cannot table the commit that writes it (R-0149 pattern). Constraint 7: no gate reading is taken after this file exists; the reviewer measures C6's own insertion count at the next gate |
+| tests/test_test_runner.py | +1 / -1 | C6 — site 344 → `data_root=tmp_path`; the written path is unchanged by construction |
+| tests/cli/test_propose_cli.py | +1 / -2 | C6 — site 340 → `data_root=tmp_path`; the local `runs_dir` at 339 WAS unused afterwards and was deleted, as SPEC (4) permits |
+
+### c296ee97 f260: stop respelling the deleted runs-dir alias in a new test comment
+| Path | +/- | Reason |
+|---|---|---|
+| tests/test_run_log.py | +1 / -1 | EXTRA COMMIT, deviation 3 — the C4 comment on the new test spelled `_runs_dir_default`, which made G5(a)'s word-bounded reading 1 instead of 0. Reworded to "the deleted module-level runs-dir alias" |
+
+### C7 — this file
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C7 — a handoff cannot table the commit that writes it (R-0149 pattern). Constraint 9: no gate reading was taken after this file existed; the reviewer measures C7's own insertion count at the next gate |
 
 ## External actions
 
 | Command | Outcome |
 |---|---|
-| `git worktree add .remedy-wt/g7-r13 8ccd9309 --detach` | created, detached HEAD at `8ccd9309` |
-| `git worktree remove .remedy-wt/g7-r13 --force` | removed BY EXACT PATH, exit 0 |
-| `git worktree prune` | exit 0; `git worktree list` then shows the primary checkout and the ELEVEN pre-existing `remedy/job-*` worktrees only, none of which this round created or touched, and no `g7-r13` row |
+| `git worktree add --detach /home/decodeux/Repos/remedy/.remedy-wt/f260-r14-mut HEAD` | exit 0; detached HEAD at `c296ee97` |
+| `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/f260-r14-mut` | exit 0; removed BY EXACT PATH. No glob was used anywhere |
+| `git worktree prune` | exit 0; `git worktree list` then shows the primary checkout and the ELEVEN pre-existing `remedy/job-*` worktrees only, no `f260-r14-mut` row |
 | `git push -u origin feature/f260-one-world` | runs after this file is committed; see the note under Verification |
 
 No PR created. No PR merged. No `gh` command run. No force push. No branch
-deleted. No file under `.remedy-wt/` was ever `git add`ed.
+deleted. No file under `.remedy-wt/` was ever `git add`ed. `.agent/STOP` was
+checked at the start of the round and did not exist.
 
 ## Verification
 
 ONE LINE PER GATE, with its REAL exit code. Every suite ran SERIALLY — never two
 at once — captured to a file under `.remedy-wt/`, and read from the capture.
+Because the sandbox guard rejects `$?` and shell loop forms, every exit code was
+taken from a Python `subprocess.run(...).returncode` and written into the capture
+as a trailing `__EXIT_CODE__` line; no exit code in this table was inferred from
+output text.
 
 | Gate | Command / reading | Exit | Result |
 |---|---|---|---|
-| G1 | `sha256sum .agent/authored/f260-r13.md .agent/last_block.md` | 0 | both `ba81fed15e2173bd73d969458cd033910ef7af510ae99d5c40f392a1402e3adb`, equal to the digest the delegation names. One comparison, not a chain |
-| G2(a) | exact-image equality of `.agent/live_review.md` | 0 | `post == pre + b"\n" + GATE_R12 + b"\n\n" + FIND815 + b"\n"` is True, and `post[:len(pre)] == pre`. 923356 → **931365** bytes, +8009. sha pre `986744520cd7fdc7a69afc309c9b9a051ad77ffcb2cff95862782c8c68786ff5`, sha post `2cd831ca9a2f71667acc8a8eadcd3c08ae61a11b1caff17a6cbf3583d1a81050` |
-| G2(b) | structural, split on `"\n\n"` | 0 | units counted BY THE SCRIPT: **432 → 434**, a rise of two. The last two units, in order, EQUAL GATE_R12 and FIND815, and units `[:-2]` equal the pre-image's units exactly |
-| G2(c) | negative control, IN MEMORY | 0 | byte at offset **923397** (`b'T'`, 40 bytes into the FIRST appended paragraph) XOR-flipped to `b't'`: reader (a) REJECTS and reader (b) REJECTS. After restore both ACCEPT. No bad bytes were ever written to the file (self-drive G5) |
-| G2(d) | census after C2 | 0 | `^Gate: ` **22** · registrations **300** over **300** distinct ids · `^Done: ` **5** lines over **3** distinct ids · open set **297** BY DISTINCT ID. `R-0815` present in the registration set |
-| G3 (plan) | `.agent/plan.md` | 0 | disk bytes `== PLAN slice + b"\n"` is True; **2664** bytes, **49 lines**, under the 50-line cap; carries `## Goal` and `## Next Steps` |
-| G3 (slips) | `.agent/prose_slips.md` | 0 | `post == pre + b"\n" + SLIP13 + b"\n"` is True and the post-image begins with the pre-image byte for byte. Bytes **113984 → 115506**. Blank-line units **143 → 144**, a rise of exactly ONE |
-| G4 (tests) | `python3 -m pytest tests/test_data_paths.py -q -p no:randomly` at C4 | 0 | **51 passed** in 0.63 s (48 at the base, plus the three new ones) |
-| G4 (uniqueness) | occurrences of `    return runs_dir(root) / str(job_id)` in `data_paths.py` | 0 | **1**, verified BEFORE C4 was committed, as SPEC (1) requires for the G7 revert target |
-| G4 (probe) | scratch probe under `.remedy-wt/`, run BEFORE any consumer was edited | 0 | five printed pairs, hand-spelled vs accessor-built, all EQUAL — see the transcript below |
-| G5(a) | quoted token `"runs"` over **1030** tracked `.py` files under `packages/`, `apps/`, `tests/`, enumerated from `git ls-files` IN PYTHON | 0 | PATH-BUILDING lines **82 → 76**. All eight quoted-token swept sites ABSENT at C5; the ninth (`pingpong_job.py:3217`, `runs_dir() / job_id`, no quoted token) also ABSENT. NON-path (JSON-key) occurrences **60 → 60**, changed files: NONE |
-| G5(b) | AST reading, calls to `run_log_dir` / `runs_dir` per swept module | 0 | timeline 0/0 → 1/1 · cockpit 0/0 → 1/0 · trust_report 0/0 → 1/0 · pingpong_job 0/2 → 1/1 · patch_apply 0/0 → 0/2 · patch_revert 0/0 → 0/1 · worker_queue 0/0 → 0/1. ALL SEVEN NON-ZERO at C5; six of the seven were ZERO at the base |
-| G5(c) | `git diff --numstat 8ccd9309^ 8ccd9309` | 0 | SEVEN rows, exactly the SPEC (3) modules and nothing else: cockpit +2/−1 · patch_apply +4/−2 · patch_revert +2/−2 · pingpong_job +2/−2 · timeline +5/−4 · trust_report +3/−2 · worker_queue +2/−1 |
-| G6 (1) | `pytest tests/orchestration/ -q -p no:randomly` | **0** | **12805 passed, 10 skipped**, 1 warning in 745.59 s. 0 FAILED lines, 0 ERROR lines. Identical pass count to the base reading round 12 recorded |
-| G6 (2) | `pytest tests/cli/ -q -p no:randomly` | **0** | **1537 passed** in 304.93 s, 0 FAILED lines. Canary presence verified separately: `pytest tests/cli/test_golden_path.py --collect-only` exit 0, **42 tests collected**, so the canary is inside this selection |
-| G6 (3) | `pytest tests/test_data_paths.py tests/test_timeline.py tests/test_cockpit.py tests/test_trust_report.py tests/test_patch_apply.py -q -p no:randomly` | **0** | **344 passed** in 1.73 s, 0 FAILED lines |
-| G6 (4) | `python3 -m apps.cli.grouped integrity check --json` | 0 | `"passed": true`, `"fail_count": 0`, `"check_count": 5` |
-| G7(i) | control in `.remedy-wt/g7-r13` at `8ccd9309`, `python3 -B`, the G6(3) selection | **0** | **344 passed** in 2.07 s. `__pycache__` dirs ENUMERATED after purge: **0**. Module resolution CONFIRMED before any colour was trusted: `data_paths.__file__` = `/home/decodeux/Repos/remedy/.remedy-wt/g7-r13/packages/orchestration/data_paths.py`; the LIVE body printed back as `return runs_dir(root) / str(job_id)`; `run_log_dir("J", Path("/R"))` = `/R/runs/J`. Revert target occurrences in that worktree: **1** |
-| G7(ii) | the ordered mutation — `run_log_dir` appends `"_MUTATED"` to the job id | **1** | **IT WENT RED. 17 failed, 327 passed.** Mutation confirmed LIVE in the same process before the run: body `return runs_dir(root) / (str(job_id) + "_MUTATED")`, `run_log_dir("J", Path("/R"))` = `/R/runs/J_MUTATED`. Failing files: `tests/test_timeline.py` (**8**), `tests/test_patch_apply.py` (**6**), `tests/test_data_paths.py` (**3**). `tests/test_cockpit.py` and `tests/test_trust_report.py` contributed 0 — see deviation 7 |
-| G7(iii) | restore | **0** | original line restored (original count 1, mutated count 0); `__pycache__` re-enumerated at 0; live body re-printed as the original; control re-run **344 passed**, exit 0. `git status --porcelain` in that worktree EMPTY (`''`), `git diff HEAD --stat` EMPTY (`''`). Worktree removed BY EXACT PATH, then `git worktree prune` |
-| G8 (lint) | `python3 -m ruff check` over the edited `.py` paths of the change set — **NINE, not eight** (deviation 6) | **0** | `All checks passed!` |
+| G1 | `sha256sum .agent/authored/f260-r14.md .agent/last_block.md` | 0 | BOTH `59fb3c47a421fa4e14fe13f8afa6761a3a97caebc764ca0101bf8b22935e0d57`, equal to the digest the delegation names. ONE comparison, not a chain |
+| G2(a) live_review | exact-image byte equality | 0 | `post == pre + b"\n" + GATE_R13 + b"\n"` is **True**, and `post[:len(pre)] == pre` is True. **931365 → 937682** bytes. Recipe derived from the target's own terminal byte, measured at the base |
+| G2(b) live_review | structural, whole file split on `"\n\n"` | 0 | N counted BY THE SCRIPT = **1**; total blank-line units **434 → 435**; the last 1 unit EQUALS the slice's 1 paragraph. Marker lines in the file: **0** |
+| G2(c) live_review | negative control, IN MEMORY | 0 | byte at offset **931371**, inside the FIRST appended paragraph, XOR-flipped `b' '` → `b'\x00'`: reader (a) REJECTS, reader (b) REJECTS. After restore both ACCEPT and the restored image equals the disk image |
+| G2(a) decisions | exact-image byte equality | 0 | `post == pre + b"\n" + DEC_D6 + b"\n"` is **True**, prefix check True. **839361 → 842038** bytes |
+| G2(b) decisions | structural, whole file split on `"\n\n"` | 0 | N counted BY THE SCRIPT = **1**; total units **1892 → 1893**; last 1 unit EQUALS the slice's 1 paragraph (DEC_D6 is a heading line plus a body line with no blank between them). Marker lines: **0** |
+| G2(c) decisions | negative control, IN MEMORY | 0 | byte at offset **839367** flipped `b'E'` → `b'e'`: both readers REJECT, both ACCEPT after restore |
+| G2(d) | census after C2 | 0 | `.agent/live_review.md`: `^Gate: ` **23** (base 22) · registrations **300** over **300** DISTINCT ids · `^Done: ` **5** lines over **3** DISTINCT ids · **open set 297 BY DISTINCT ID**. `.agent/decisions.md`: `### DECISION F260 D5` headings **1** (unchanged from base 1), `### DECISION F260 D6` headings **1** (base 0) |
+| G3 (plan) | `.agent/plan.md` | 0 | disk bytes `== PLAN slice + b"\n"` is **True**; **2530** bytes, **48 lines**, under the 50-line cap; carries `## Goal` and `## Next Steps`. Marker lines: 0 |
+| G3 (slips) | `.agent/prose_slips.md` | 0 | `post == pre + b"\n" + SLIP14 + b"\n\n" + SLIP15 + b"\n\n" + SLIP16 + b"\n\n" + SLIP17 + b"\n"` is **True**. Bytes **115506 → 117457**. Blank-line units **144 → 148**, a rise of exactly FOUR; the last four units EQUAL SLIP14…SLIP17 IN ORDER. Marker lines: 0 |
+| G4 | scratch probe under `.remedy-wt/`, run BEFORE C4 while `run_log.py` still held the old join | 0 | three printed pairs, all EQUAL — full transcript below. `_runs_dir_default is runs_dir` printed **True**, which is the identity the equality rests on |
+| G5(a) | bytes `root / self._job_id` in `run_log.py` | 0 | base **1** → C6 **0** |
+| G5(a) | word-bounded `_runs_dir_default` over the file set | 0 | base **2** (both in `run_log.py`) → C6 **0**. Intermediate reading of **1** at `34b14577`, in a comment, is deviation 3 |
+| G5(b) | AST reading, calls to `run_log_dir` in `run_log.py` | 0 | base **0** → C6 **1**, exactly as ordered |
+| G5(c) | word-bounded `runs_root` over the file set | 0 | base **41 in 11 files** (the block says 37 — deviation 1) → C6 **0 in 0 files**. NO SURVIVOR. Enumeration: `git ls-files` IN PYTHON, filtered to `.py` under `packages/`, `apps/`, `tests/` = **1030** files; `tests/test_data_paths.py` confirmed present in the set |
+| G6(i) | control, disposable worktree, `python3 -B`, the four-file selection | **0** | **261 passed** in 2.12 s, 0 FAILED. `__pycache__` dirs purged then RE-ENUMERATED as **0**. Module resolution CONFIRMED to the worktree: `data_paths.__file__` = `/home/decodeux/Repos/remedy/.remedy-wt/f260-r14-mut/packages/orchestration/data_paths.py`, live body printed as `return runs_dir(root) / str(job_id)` |
+| G6(ii) | revert-target uniqueness, then the mutation | **1** | exact bytes `    return runs_dir(root) / str(job_id)` occur **EXACTLY 1** time before mutating. After replacing with `    return runs_dir(root) / (str(job_id) + "_MUTATED")` the live body re-printed WITH `_MUTATED`. **IT WENT RED: exit 1, 32 failed, 229 passed.** Failing files: `tests/test_patch_apply.py` **18**, `tests/test_timeline.py` **8**, `tests/test_data_paths.py` **3**, `tests/test_run_log.py` **3**. BOTH constraint-3 observers are AMONG the failures: `test_creates_job_directory` True, `test_path_is_inside_job_directory` True |
+| G6(iii) | restore + clean worktree + removal | **0** | original line restored (mutated count 1 → 0), `__pycache__` re-enumerated at 0, live body re-printed as the original, control re-run **261 passed exit 0**. That worktree's `git status --porcelain` EMPTY (`''`) and `git diff HEAD --stat` EMPTY (`''`). Worktree removed BY EXACT PATH, then `git worktree prune` |
+| G7(1) | `pytest tests/test_run_log.py tests/test_data_paths.py tests/test_timeline.py tests/test_patch_apply.py tests/test_test_runner.py -q -p no:randomly` | **0** | **304 passed** in 3.17 s, 0 FAILED |
+| G7(2) | `pytest tests/orchestration/ -q -p no:randomly` | **0** | **12805 passed, 10 skipped**, 1 warning in 738.68 s. `^FAILED` lines **0**, `^ERROR` lines **0**. Same pass count as round 13's reading |
+| G7(3) | `pytest tests/cli/ -q -p no:randomly` | **0** | **1537 passed** in 303.30 s, 0 FAILED. Canary presence verified separately: `pytest tests/cli/test_golden_path.py --collect-only` exit 0, **42 tests collected**, so the canary is inside this selection |
+| G7(4) | `python3 -m apps.cli.grouped integrity check --json` | **0** | `"passed": true`, `"fail_count": 0`, `"check_count": 5`; all five checks `"status": "pass"` |
+| G8 (lint) | `python3 -m ruff check` over the edited `.py` paths — **COUNTED MYSELF: ELEVEN** | **0** | `All checks passed!` |
 | G8 (tree) | `git status --porcelain` / `git ls-files .remedy-wt` | 0 / 0 | both EMPTY (`''` each) |
 
+THE ELEVEN EDITED `.py` PATHS, counted rather than recalled: `run_log.py`,
+`timeline.py`, `worker_queue.py`, `patch_apply.py`, `patch_revert.py`,
+`safe_points.py`, `pingpong_job.py`, `prompt_trace.py`, `tests/test_run_log.py`,
+`tests/test_test_runner.py`, `tests/cli/test_propose_cli.py`. The two
+pre-existing errors G8 warns about (`UP035` at `dag_schedule.py:36`, `F821` at
+`gauntlet_injection.py:286`) were not approached; neither file is in the change
+set.
+
 G4 PROBE TRANSCRIPT — the printed pairs, not a summary of them. Run under
-`.remedy-wt/` with `python3 -B`, BEFORE any consumer file was edited:
+`.remedy-wt/` with `python3 -B`, BEFORE `run_log.py` was edited:
 
-    SHAPE root/"runs"
-       hand     = .remedy-wt/g4arg-hwu0c_nq/runs
-       accessor = .remedy-wt/g4arg-hwu0c_nq/runs
-       EQUAL    = True
-    SHAPE root/"runs"/str(jid=str)
-       hand     = .remedy-wt/g4arg-hwu0c_nq/runs/0123456789abcdef
-       accessor = .remedy-wt/g4arg-hwu0c_nq/runs/0123456789abcdef
-       EQUAL    = True
-    SHAPE root/"runs"/str(jid=UUID)
-       hand     = .remedy-wt/g4arg-hwu0c_nq/runs/0a3e0529-3c8c-46e1-8e5d-2ce1bd2d6bde
-       accessor = .remedy-wt/g4arg-hwu0c_nq/runs/0a3e0529-3c8c-46e1-8e5d-2ce1bd2d6bde
-       EQUAL    = True
-    SHAPE resolve_data_root()/"runs"/str(jid)
-       hand     = .remedy-wt/g4env-46gn2yvj/runs/0123456789abcdef
-       accessor = .remedy-wt/g4env-46gn2yvj/runs/0123456789abcdef
-       EQUAL    = True
-    SHAPE runs_dir()/jid  [pingpong_job.py:3217 base spelling]
-       hand     = .remedy-wt/g4env-46gn2yvj/runs/0123456789abcdef
-       accessor = .remedy-wt/g4env-46gn2yvj/runs/0123456789abcdef
-       EQUAL    = True
-    ALL PAIRS EQUAL: True
+    data_paths module   : /home/decodeux/Repos/remedy/packages/orchestration/data_paths.py
+    _runs_dir_default is runs_dir: True
+    CASE1 lhs runs_dir(R)/str(J) : /tmp/f260r14-explicit-ezir4rmu/runs/11111111-2222-3333-4444-555555555555
+    CASE1 rhs run_log_dir(J, R)  : /tmp/f260r14-explicit-ezir4rmu/runs/11111111-2222-3333-4444-555555555555
+    CASE1 equal                  : True
+    CASE2 REMEDY_DATA_DIR        : /tmp/f260r14-datadir-gjnogtan
+    CASE2 lhs _runs_dir_default()/str(J): /tmp/f260r14-datadir-gjnogtan/runs/11111111-2222-3333-4444-555555555555
+    CASE2 rhs run_log_dir(J, None)     : /tmp/f260r14-datadir-gjnogtan/runs/11111111-2222-3333-4444-555555555555
+    CASE2 equal                  : True
+    CASE3 lhs run_log_dir(UUID, R)      : /tmp/f260r14-explicit-ezir4rmu/runs/11111111-2222-3333-4444-555555555555
+    CASE3 rhs run_log_dir(str(UUID), R) : /tmp/f260r14-explicit-ezir4rmu/runs/11111111-2222-3333-4444-555555555555
+    CASE3 equal                  : True
+    G4 ALL THREE PAIRS EQUAL: True
 
-The two `g4arg-`/`g4env-` scratch directories the probe created were removed BY
-EXACT PATH afterwards. No glob was used.
+"NO LAYOUT CHANGE" IS THEREFORE A MEASUREMENT AND NOT A CLAIM.
+`<data_root>/runs/<job_id>/<run_id>.jsonl` is where a run log lived before this
+round and where it lives after it; only WHO SPELLS THE JOIN moved. The re-key to
+`<run_id>` is DECISION F260 D1's own work and was NOT performed here.
 
-THE RED-PROOF IS THE ROUND'S CENTRAL MEASUREMENT AND IT BEHAVED AS THE BLOCK
-PREDICTED. Round 12's G7 could not fail because round 11 had already routed the
-production writer AND every reader through one accessor. Here the writer moved
-and the tests did NOT: `tests/test_timeline.py`, `tests/test_patch_apply.py` and
-`tests/test_data_paths.py` still hand-spell `tmp_path / "runs" / <job id>`, so
-they remain an INDEPENDENT OBSERVER of `run_log_dir`. Mutating the one function
-body therefore reddens 17 of them. That observer is exactly what the plan's first
-"Next Step" says the next round will consume, and consuming it is what will make
-the NEXT round's red-proof unreachable in turn — the pre-sweep/post-sweep PAIR
-that round 12's P3 supplied is the shape that round will need.
+THE RED-PROOF COULD FAIL AND DID. The two tests constraint 3 names still assert
+the writer's directory against a HAND-SPELLED right-hand side — now
+`tmp_path / "runs" / str(job_id)` — and the three `run_log_dir` tests in
+`tests/test_data_paths.py` are literal for the same reason and were not touched.
+Mutating the one function body reddens 32 tests across four files, both named
+observers among them. That is 32 rather than round 13's 17 because the selection
+changed (`tests/test_run_log.py` replaces `test_cockpit.py` and
+`test_trust_report.py`) AND because `RunLogWriter` itself now routes through the
+accessor, so every `patch_apply` test that reads a run-log path moved from 6
+failures to 18.
 
 The push runs AFTER this file is committed, so its transcript cannot appear in
-the commit that carries it (the R-0149 self-reference pattern, same reason the C6
+the commit that carries it (the R-0149 self-reference pattern, same reason the C7
 row of the commit table has no `+/-`). Its outcome is verifiable directly:
-`origin/feature/f260-one-world` points at the C6 commit.
+`origin/feature/f260-one-world` points at the C7 commit.
 
 ## Authored-text proofs
 
 | Slice | Target | Shape | Proof |
 |---|---|---|---|
-| the whole block | `.agent/authored/f260-r13.md` | file copy | `shutil.copyfile`, then `filecmp.cmp(shallow=False)` = True, then sha256 equal to the delegation digest |
+| the whole block | `.agent/authored/f260-r14.md` | file copy | `shutil.copyfile`, then `filecmp.cmp(shallow=False)` = True, then sha256 equal to the delegation digest |
 | the whole block | `.agent/last_block.md` | file copy | same source, same route, same two proofs |
 | PLAN | `.agent/plan.md` | whole-file REWRITE | disk bytes `== slice + b"\n"`, True (G3) |
-| GATE_R12, FIND815 | `.agent/live_review.md` | APPEND, in that order | exact-image equality + structural reader + in-memory negative control (G2 a/b/c) |
-| SLIP13 | `.agent/prose_slips.md` | APPEND | exact-image equality over the derived recipe, plus a unit reading (G3) |
+| GATE_R13 | `.agent/live_review.md` | APPEND | exact-image equality + structural reader + in-memory negative control (G2 a/b/c) |
+| DEC_D6 | `.agent/decisions.md` | APPEND, same commit, after live_review | exact-image equality + structural reader + in-memory negative control (G2 a/b/c) |
+| SLIP14, SLIP15, SLIP16, SLIP17 | `.agent/prose_slips.md` | APPEND, IN ORDER | exact-image equality over the derived recipe, plus the four-unit reading (G3) |
 
-Every slice was extracted from the COMMITTED `.agent/authored/f260-r13.md` — not
+Every slice was extracted from the COMMITTED `.agent/authored/f260-r14.md` — not
 from a retype — by taking the lines strictly between its marker lines, joined by
-`"\n"`, with no trailing newline. Each of the eight marker lines was verified to
-occur EXACTLY ONCE (at file lines 256, 306, 308, 310, 312, 314, 316, 318), and
-every extracted slice was asserted to contain none of the eight marker tokens. NO
-MARKER LINE REACHED ANY TARGET FILE.
+`"\n"`, with no trailing newline. Each of the FOURTEEN marker lines was verified
+to occur EXACTLY ONCE, at file lines 323, 372, 374, 376, 378, 381, 383, 385, 387,
+389, 391, 393, 395 and 397, and each target file was re-read afterwards and
+contains **ZERO** lines beginning `BEGIN ` or `END `. NO MARKER LINE REACHED ANY
+TARGET FILE.
 
 ## Deviations & assumptions
 
-**1. CONSTRAINT 6 MIS-STATES `.agent/prose_slips.md`'s TERMINAL BYTE, AND THE
-CONSTRAINT'S OWN DERIVE-IT RULE WAS FOLLOWED INSTEAD.** The constraint says that
-file "at the base ends with NO trailing newline". MEASURED at the base
-`4d13f5a0`: it ends with EXACTLY ONE newline — last 40 bytes
-`b' spent (amend0827-process-diet rule 2).\n'`, trailing-newline count 1, 113984
-bytes. `.agent/live_review.md` also ends with exactly ONE newline, as the
-constraint says. Because constraint 6 also orders "DERIVE EACH RECIPE FROM ITS
-OWN TARGET'S TERMINAL BYTE, measured at the base", the derived recipe was used
-for both files: `pre + "\n" + slice + "\n"` per appended paragraph. BOTH BASE
-MEASUREMENTS ARE STATED IN G2/G3 ABOVE, as the constraint requires. Worth noting
-for the reviewer: this is the SECOND consecutive round whose constraint 6 got
-this file's terminal byte wrong, and in the opposite direction each time —
-round 11's block claimed a trailing newline the file did not have, round 12's
-`.agent/prose_slips.md` append then GAVE it one, and round 13's block still
-carries round 11's description. The file's own SLIP for round 11 records the
-first half of that story.
+**1. G5(c)'s BASE COUNT IS 41, NOT THE 37 THE GATE STATES; THE ELEVEN FILES ARE
+EXACTLY AS STATED.** Measured at the base with the gate's own word-bounded reading
+over the same 1030-file enumeration: `\bruns_root\b` occurs **41** times in
+**11** files — `patch_apply.py` 6, `run_log.py` 4, `patch_revert.py` 3,
+`test_run_log.py` 21, and 1 each in `pingpong_job.py`, `prompt_trace.py`,
+`safe_points.py`, `timeline.py`, `worker_queue.py`, `tests/cli/test_propose_cli.py`,
+`tests/test_test_runner.py`. The eleven files ARE the code files of the change
+set, exactly as constraint 4 says. The gap of four is four LINES that carry the
+token TWICE: `patch_apply.py:528` and `:566` and `patch_revert.py:246` each read
+`runs_root=runs_root`, and `run_log.py:114` reads
+`runs_root if runs_root is not None`. 41 − 4 = 37, so the block's number is a
+LINE count where its own words order an OCCURRENCE count. Nothing on disk is
+affected: the C6 reading is **0** under either reading, and the gate's binding
+clause — "any survivor FAILS the gate" — is met with no survivors. Recorded per
+constraint 1: the gate was executed as written and the discrepancy declared, not
+edited away. SPEC (2)'s own sub-count of TWENTY-ONE in `tests/test_run_log.py`
+re-measured at exactly **21**.
 
-**2. THE BLOCK'S OWN LINE NUMBER FOR `pingpong_job.py` IS OFF BY ONE IN THE
-BUNDLE LINE AND CORRECT IN SPEC (3).** The Bundle's C4/C5 prose and constraint
-5(b) name `pingpong_job.py:3215` for the IMPORT and SPEC (3) names `:3217` for
-the expression. Both are correct and they are different lines — 3215 is
-`from packages.orchestration.data_paths import runs_dir`, 3217 is
-`job_runs = runs_dir() / job_id`. Recorded only so the reviewer does not read
-them as a contradiction. All nine SPEC (3) line numbers were RE-GREPPED at the
-base before editing and all nine matched: timeline 64/75, cockpit 380,
-trust_report 373, pingpong_job 3217, patch_apply 526/563, patch_revert 245,
-worker_queue 488. Re-measured count: **NINE**.
+**2. SPEC (3) SAYS "EIGHT CONSTRUCTIONS PASS `runs_root`"; THERE ARE SEVEN
+CONSTRUCTIONS AND ONE COMMENT.** Re-grepped at the base before editing, all line
+numbers matched the block: `timeline.py:65`, `worker_queue.py:489`,
+`patch_apply.py:527-528`, `patch_apply.py:565-566`, `patch_revert.py:245-246`,
+`safe_points.py:675`, `pingpong_job.py:3182` — **SEVEN** `RunLogWriter(...)`
+constructions — plus `prompt_trace.py:215`, which is a COMMENT and constructs
+nothing. Eight SITES, seven CONSTRUCTIONS. The block's own enumeration is seven
+bullets, so the numeral disagrees with the list beside it. All eight sites moved;
+the count I re-measured and report is SEVEN constructions. The PLAN slice
+inherits the same numeral ("Eight production call sites") and was applied BYTE FOR
+BYTE anyway, per constraint 1.
 
-**3. CONSTRAINT 4's PER-FILE MEASUREMENT IS WRONG FOR TWO FILES, AND THE
-CONSTRAINT'S GOVERNING RULE — NOT ITS LIST — WAS FOLLOWED.** Constraint 4 states
-the rule ("decided PER FILE, following what that file already does, and no second
-convention is introduced") and then lists which files do what. The list is wrong
-twice, measured at the base:
-- `patch_revert.py` does NOT import `data_paths` function-locally. Line 33 is a
-  MODULE-LEVEL `from packages.orchestration.data_paths import resolve_data_root`.
-  Adding a function-local import would have introduced a SECOND convention in
-  that file, which the governing rule forbids, so `runs_dir` joined line 33:
-  `from packages.orchestration.data_paths import resolve_data_root, runs_dir`.
-- `worker_queue.py` has NO module-level `packages.*` import AT ALL — every one of
-  its `packages.*` imports (lines 187, 431-433, 487, 582-583 at the base) is
-  function-local. The new import therefore went FUNCTION-LOCALLY, beside the
-  existing `run_log` import inside the same `try:` block at line 487.
-The other five files match the constraint's list: `timeline.py`, `cockpit.py` and
-`trust_report.py` took a module-level import in isort order, `patch_apply.py` and
-`pingpong_job.py` took function-local ones. `ruff check`'s `I001` accepted every
-placement (G8, exit 0), which is the check constraint 4 itself names.
+**3. ONE EXTRA COMMIT, `c296ee97`, OUTSIDE THE BLOCK'S ORDERED SEQUENCE.** The
+WHY comment SPEC (2) does not order but which I wrote above the new default-root
+test read "the deleted `_runs_dir_default` alias". G5(a) is a WORD-BOUNDED
+identifier search that does not strip comments, so at `34b14577` it read **1**,
+not the ordered **0** — the single occurrence being that comment, in
+`tests/test_run_log.py`. I did not reshape any code, any test or any assertion:
+I reworded MY OWN comment to "the deleted module-level runs-dir alias", which
+removes the re-spelling of a symbol this round deletes and is precisely what the
+gate measures. Both readings are reported in the table (1 at `34b14577`, 0 at
+`c296ee97`). Declared here because ANY departure from the ordered commit sequence
+belongs in this section even when it is correct (finding R-0485).
 
-**4. `timeline.py`'s LOCAL `runs_dir` WAS RENAMED, WHICH SPEC (3) MADE
-CONDITIONAL.** SPEC (3) says to keep the local name `runs_dir` at
-`timeline.py:75` "if that does not shadow an import you added; rename it if it
-does". It does: site 64 in the SAME module needs `runs_dir` the accessor, and the
-per-file convention put that import at MODULE level, so the local binding at 75
-would have shadowed it inside `load_run_events`. The local is now `run_log_path`
-— the same spelling constraint 5(a) suggests for the `trust_report.py` collision,
-so the two collisions resolve to ONE new name rather than two. Three references
-moved (75, 76, 79); no printed or logged text changed.
+**4. THE `patch_apply.py` `None` PASS-THROUGH IS INTENTIONAL AND UNGUARDED, AS
+SPEC (3) DIRECTS.** Both `_emit_run_log` and `_emit_proof_run_log` now call
+`RunLogWriter(job_id=job.id, data_root=data_dir)` where `data_dir` may be `None`.
+`run_log_dir(job_id, None)` resolves the process data root through `runs_dir` →
+`resolve_data_root`, which is EXACTLY what `RunLogWriter` did with a `None`
+`runs_root` before — G4's CASE2 measures that equality. No guard was added and
+the two `runs_root = ... if data_dir is not None else None` locals are gone.
 
-**5. `pingpong_job.py`'s LOCAL IMPORT WAS REBOUND RATHER THAN DELETED.**
-Constraint 5(b) anticipates that the `runs_dir` import at 3215 "becomes unused"
-and says to remove it. In fact the enclosing function `_job_stopped_event_exists`
-had exactly ONE use of `runs_dir`, the swept expression, so the import line was
-REPLACED in place by `from packages.orchestration.data_paths import run_log_dir`
-rather than deleted and a new line added. Net effect is identical and ruff `F401`
-is clean; declared because the block's word was "remove", the way round 12
-declared its `resolve_data_root` removal. The module's OTHER function-local
-`runs_dir` import at line 3176 is untouched and still used at 3182 — it is one of
-the two sites SPEC (3) explicitly excludes.
+**5. TWO CALL SITES DROPPED THE ARGUMENT ENTIRELY RATHER THAN RE-SPELLING IT.**
+`safe_points.py:675` and `pingpong_job.py:3182` both passed `runs_root=runs_dir()`
+— the process data root, spelled at the call site. SPEC (3) orders the argument
+DROPPED, so it is: `RunLogWriter(job_id, run_id=BUDGET_TICK_RUN_ID)` and
+`RunLogWriter(job.job_id)`. The resolution now happens INSIDE `run_log_dir`
+instead of at the call site; the resulting path is identical (G4 CASE2). Both
+files' function-local `runs_dir` imports became unused and were removed.
 
-**6. G8 SAYS "THE EIGHT EDITED `.py` PATHS"; THE CHANGE SET HAS NINE.** Counting
-the change set's own list: `data_paths.py`, `test_data_paths.py`, `timeline.py`,
-`cockpit.py`, `trust_report.py`, `pingpong_job.py`, `patch_apply.py`,
-`patch_revert.py`, `worker_queue.py` = **9**. The lint gate was run over all
-nine, which is the wider reading and the one the gate's own words
-("over exactly the ... edited `.py` paths of the change set") select. Exit 0,
-`All checks passed!`. The two pre-existing errors the gate warns about
-(`UP035` at `dag_schedule.py:36`, `F821` at `gauntlet_injection.py:286`) were not
-approached: neither file is in the change set.
+**6. IMPORT REMOVALS, PER FILE, AS CONSTRAINT 7 REQUIRES.** This round mostly
+REMOVED `runs_dir` calls, so six imports went unused and all six were deleted
+(`F401`), each following what its own file already does and introducing no second
+convention: `timeline.py:43` MODULE-level, `runs_dir` dropped from the pair, and
+`run_log_dir` KEPT because site 76 still uses it; `patch_revert.py:33`
+MODULE-level, `runs_dir` dropped, `resolve_data_root` kept; and four FUNCTION-LOCAL
+single-name import lines deleted outright — `worker_queue.py:487`,
+`patch_apply.py:524` and `:562`, `safe_points.py:671`, `pingpong_job.py:3176`
+(five lines across four files). `run_log.py:34` is the only ADDITION: the same
+module-level line, its imported name changed from `runs_dir as _runs_dir_default`
+to `run_log_dir`. `ruff check` accepted every placement including `I001` (G8,
+exit 0). `pingpong_job.py`'s OTHER function-local `runs_dir` import, outside this
+function, is untouched — constraint 4's five other modules with their own run
+stores (`job_evidence.py`, `pingpong_loop.py`, `worktree_resume.py`,
+`local_candidate_generator.py`, `local_model_advisor.py`) were never opened.
 
-**7. TWO OF THE FIVE FILES IN THE G7 SELECTION CANNOT REDDEN UNDER THIS
-MUTATION, AND THAT IS A PROPERTY OF THOSE TESTS.** Reported because the gate asks
-for the failing files and the absences are informative. `tests/test_cockpit.py`
-and `tests/test_trust_report.py` contributed ZERO failures. Their assertions on
-this feature are `assert "run log" in out.lower() or "runs" in out`
-(`test_cockpit.py:480`, `test_trust_report.py:660`) — a substring test against a
-LABEL, which no change to the path's leaf can disturb. They are not evidence of a
-surviving hand-spelling: G5(a) measures both modules at ZERO path-building
-occurrences of the quoted token at C5, and G5(b) measures both at one
-`run_log_dir` call. The gate's post-condition ("IT MUST GO RED") is about the
-SELECTION and the selection went red at exit 1 with 17 failures.
+**7. SPEC (2) ASKED WHAT ELSE ASSERTS A PATH RELATIVE TO `tmp_path`; I MEASURED
+FIVE LINES, OF WHICH THREE ARE WRITER-DIRECTORY ASSERTIONS AND TWO ARE NOT.**
+`grep -n "tmp_path /" tests/test_run_log.py` at C6 returns lines **128**, **134**,
+**175**, **340** and **358**. The reviewer measured two; the two it measured are
+128 and 134, the constraint-3 observers, and BOTH keep a literal right-hand side.
+The third, line 175, is the NEW test this round adds — also literal, also a
+writer-directory assertion, and it did not exist when the reviewer counted. Lines
+340 and 358 are `tmp_path / "nonexistent.jsonl"` and `tmp_path / "empty.jsonl"`:
+standalone files handed straight to `read_run_events`, never produced by
+`RunLogWriter`, so the root's meaning changing from runs-base to data-root cannot
+disturb them. The binding count is therefore THREE writer-layout assertions after
+this round, two of them pre-existing.
 
-**8. `cmp` IS DENIED IN THIS SANDBOX.** As constraint 9 directs, C0a and C0b were
-proved with `filecmp.cmp(shallow=False)` — a full byte comparison, not a stat
-comparison — plus sha256 on both files against the delegation's digest. `remedy`
-was invoked as `python3 -m apps.cli.grouped` and `ruff` as `python3 -m ruff`.
+**8. THE `runs_dir` LOCAL IN `tests/cli/test_propose_cli.py` WAS UNUSED AND WAS
+DELETED, AS SPEC (4) ASKED ME TO REPORT.** Line 339 read `runs_dir = tmp_path / "runs"`
+and its ONLY consumer was line 340. With the construction taking `data_root=tmp_path`
+the local had no reader left, so the line went. `tests/test_test_runner.py:344`
+needed no such deletion — it built `tmp_path / "runs"` inline.
 
-**9. G2(c)'s NEGATIVE CONTROL RAN IN MEMORY.** The flip and restore were done on
-`bytes` objects inside the checking process rather than by writing a corrupted
-image to `.agent/live_review.md`, so the primary checkout never held known-bad
-bytes (self-drive guardrail G5, and the block's own G2(c) wording). The property
-measured is identical: offset 923397, one bit flipped inside the FIRST appended
-paragraph, both readers reject, both accept after restore.
+**9. CONSTRAINT 8's THREE TERMINAL-BYTE MEASUREMENTS, TAKEN AT THE BASE AND
+STATED HERE AS ORDERED.** At `4f265f91`, counted by trailing-`\n` enumeration on
+the raw bytes: `.agent/live_review.md` ends with **exactly ONE** newline (931365
+bytes), `.agent/decisions.md` with **exactly ONE** (839361 bytes),
+`.agent/prose_slips.md` with **exactly ONE** (115506 bytes). The block is CORRECT
+for all three this round. Each recipe was nonetheless derived from its own
+target's measured terminal byte, not from the block's sentence, and each append
+asserted the count was 1 before writing.
 
-**10. G5(a)'s ENUMERATION IS IN PYTHON, AND ITS "BUILDS A PATH" PREDICATE IS
-STATED SO THE REVIEWER CAN RE-RUN IT.** `git ls-files` was enumerated in Python
-and filtered to `.py` under `packages/`, `apps/`, `tests/` — 1030 files — because
-the shell glob `tests/**/*.py` silently misses `tests/test_data_paths.py` (round
-12 deviation 7, promoted into this round's G5). A line COUNTS AS PATH-BUILDING
-when the quoted token is joined with `/` (`/ "runs"`, `"runs" /`, `/"runs"`);
-everything else — `"runs": [...]`, `["runs"]`, `.get("runs")` — is a JSON key and
-is reported separately and unchanged at 60. The base side of every count was read
-with `git show 4d13f5a0:<path>`, not from the working tree.
+**10. `cmp` IS DENIED IN THIS SANDBOX (constraint 11).** C0a and C0b were proved
+with `filecmp.cmp(shallow=False)` — a full byte comparison, not a stat comparison
+— plus sha256 on both files against the delegation's digest. `remedy` was invoked
+as `python3 -m apps.cli.grouped` and `ruff` as `python3 -m ruff`. Every mutation
+reading ran under `python3 -B` with `PYTHONDONTWRITEBYTECODE=1` and `__pycache__`
+purged and re-enumerated at 0.
 
-**Not a deviation, recorded because it was checked:** `packages/orchestration/run_log.py`
-was NOT touched, per constraint 2. `RunLogWriter.__init__` still joins
-`root / self._job_id` where `root` is the runs BASE, and `RunLogWriter`'s
-signature is unchanged. `safe_points.py:671` and `pingpong_job.py:3178` already
-call `runs_dir()` and were not swept. The eleven `remedy/job-*` worktrees under
-`.remedy-wt/` pre-date this round and were neither created nor removed here; only
-`.remedy-wt/g7-r13` was added and removed, by exact path.
+**11. G2(c)'s NEGATIVE CONTROLS RAN IN MEMORY, ONE PER FILE.** The flip and
+restore were done on `bytes` objects inside the checking process rather than by
+writing a corrupted image to `.agent/live_review.md` or `.agent/decisions.md`, so
+the primary checkout never held known-bad bytes — the block's own G2(c) wording
+and self-drive guardrail G5. The property measured is identical, and the restored
+image was asserted equal to the disk image in both cases.
+
+**12. EXIT CODES WERE CAPTURED THROUGH A PYTHON RUNNER, NOT `$?`.** The sandbox's
+bash guard rejects `$?`, `$( )` and shell loop forms by FORM, so every gate ran
+through `.remedy-wt/f260_r14_run.py`, which executes the command with
+`subprocess.run`, writes stdout+stderr plus a trailing `__EXIT_CODE__ <n>` line to
+a capture file under `.remedy-wt/`, and prints the real return code. Reported so
+the reviewer can reproduce the readings the same way. None of those scratch files
+is tracked — `git ls-files .remedy-wt` is empty (G8).
+
+**Not a deviation, recorded because it was checked:** `scripts/` and
+`tests/test_remedy_smoke_script.py` were NOT touched (constraint 5); the shell
+smoke script's `RUNS_ROOT=".data/runs"` pin is a different convention and is
+untouched. `tests/test_data_paths.py` was NOT touched (constraint 3); its three
+`run_log_dir` tests remain literal and are part of the G6 selection.
+`RunLogWriter(job_id=...)` calls that pass NO root were left alone (constraint 6).
+`new_run_id`, the `path` and `run_id` properties, `append`, `log` and the event
+shape are unchanged (SPEC 1). The module docstring at `run_log.py:5` already read
+`<REMEDY_DATA_DIR>/runs/<job_id>/<run_id>.jsonl` and was deliberately NOT "fixed".
+The eleven `remedy/job-*` worktrees pre-date this round and were neither created
+nor removed; only `.remedy-wt/f260-r14-mut` was added and removed, by exact path.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block | done | file copy, two proofs |
-| C0b mirror the block | done | file copy, two proofs |
-| C1 PLAN slice | done | 49 lines, 2664 bytes |
-| C2 GATE_R12 + FIND815 append | done | in that order; open set 297 by distinct id |
-| C3 SLIP13 append | done | units 143 → 144 |
-| C4 accessor + its tests | done | `run_log_dir` added; revert target unique (count 1); 51 passed |
-| C5 the nine-site sweep | done | 9 re-grepped at the base, 9 moved, 7 modules, no row outside SPEC (3) |
-| C6 handback | done | this file |
-| G1 transport | done | pass, exit 0 |
-| G2 the record | done | pass, all four parts, exits 0 |
-| G3 the prose files | done | pass, both targets, exits 0 |
-| G4 accessor + no behaviour change | done | pass, exit 0; five printed pairs all equal |
-| G5 sweep complete and non-vacuous | done | pass, all three parts, exits 0 |
-| G6 the suites | done | pass, all four readings, exits 0 |
-| G7 mutation red-proof | done | **MET AS WRITTEN** — control 0/344, mutation **exit 1, 17 failed**, restore 0/344, worktree clean and removed |
-| G8 lint + clean tree | done | pass, exits 0; nine paths linted, not eight (deviation 6) |
+| C0a save the block | done | file copy, `filecmp` True + sha256 equals the delegation digest |
+| C0b mirror the block | done | same source, same route, same two proofs |
+| C1 PLAN slice | done | 2530 bytes, 48 lines, under the 50-line cap |
+| C2 GATE_R13 + DEC_D6 append | done | both in ONE commit, live_review first then decisions |
+| C3 four SLIP appends | done | units 144 → 148, in order |
+| C4 writer takes a data root + its tests | done | SPEC (1) and SPEC (2); 21 kwargs moved, 2 observers kept literal, 1 new test |
+| C5 seven production sites + one comment | done | SPEC (3); re-grepped at the base, all eight line numbers matched |
+| C6 the other two test files | done | SPEC (4); the unused `runs_dir` local deleted and reported |
+| — extra commit `c296ee97` | deviated | not in the ordered sequence; reworded my own C4 comment so G5(a) reads 0 — deviation 3 |
+| C7 handback | done | this file |
+| G1 transport | done | exit 0; both digests equal the delegation's, one comparison |
+| G2 the two records | done | exit 0; a/b/c/d for BOTH files, negative controls reject and restore |
+| G3 the prose files | done | exit 0; plan byte-equal at 48 lines, slips byte-equal at 144 → 148 units |
+| G4 the fallback equality | done | exit 0; taken BEFORE C4, three printed pairs all equal |
+| G5 the join is gone | done | exit 0; 1→0, 2→0, 0→1 AST, 41→0 word-bounded, no survivor. Base count is 41 not 37 — deviation 1 |
+| G6 mutation red-proof | done | **MET AS WRITTEN** — control exit 0 / 261 passed, mutation **exit 1 / 32 failed**, both named observers among the failures, restore exit 0 / 261 passed, worktree clean and removed by exact path |
+| G7 the suites | done | exit 0 on all four; 304 / 12805+10s / 1537 / integrity `passed:true`; canary 42 collected |
+| G8 lint + clean tree | done | exit 0; ELEVEN paths linted, `All checks passed!`; both tree readings EMPTY |
 
 ## Open findings
 
 **297** by DISTINCT ID, measured after C2: 300 registrations over 300 distinct
 ids, minus 3 distinct ids carrying a `Done:` line. (The `^Done: ` LINE count is 5;
-two findings, R-0721 and R-0725, were each resolved across two paragraphs, so a
-line-based formula over-counts by two — the distinct-id reading is the correct
-one.) This round REGISTERED `R-0815` from the FIND815 slice and resolved nothing;
-authoring a `Done:` paragraph is the reviewer's, not the worker's.
+two findings were each resolved across two paragraphs, so a line-based formula
+over-counts by two — the distinct-id reading is the correct one.) This round
+registered NOTHING and resolved NOTHING: GATE_R13 is a `Gate:` record, not a
+registration, so the open set is unchanged from the base. No `Done:` paragraph was
+authored here; that is the reviewer's to write. Nothing this round is marked
+`Landed:` either, because no finding was repaired by it.
 
 ## Next
 
@@ -333,45 +380,45 @@ authoring a `Done:` paragraph is the reviewer's, not the worker's.
 `.agent/STOP` from disk first, then check for an open PR.** There is no open PR
 for this branch and none may be created without an instruction.
 
-**Immediate: review round 13.** Read `git diff 4d13f5a0..HEAD` bottom-up and
-re-run the eight gates independently. Ten deviations are declared; the ones
-wanting a RULING rather than an acknowledgement are 1, 3 and 6 — all three are
-places where the BLOCK's own measured claim disagrees with the disk, and in each
-the block's governing RULE was followed over its stated list. Deviations 4 and 5
-are scope questions the constraints already anticipated. Nothing was reshaped to
-make a gate pass and no gate went red.
+**Immediate: review round 14.** Read `git diff 4f265f91..HEAD` bottom-up and
+re-run the eight gates independently. Twelve deviations are declared; the ones
+wanting a RULING rather than an acknowledgement are **1**, **2** and **3**.
+Deviations 1 and 2 are the block's own numerals disagreeing with the disk and with
+the block's own lists — the shape of checklist item 16 — and in both cases the
+gate's binding clause was met and nothing on disk is wrong, so both look like
+`.agent/prose_slips.md` lines under amend0827-process-diet rule 2 rather than
+R-ids. Deviation 3 is the only departure from the ordered commit sequence and is
+the one place where I edited something to make a gate read as ordered; the edit
+was to MY OWN comment, not to any code, test or assertion, and both readings are
+reported. Nothing was reshaped to make a gate pass and no gate went red.
 
-**Then: THE TEST SIDE OF THE RUN-LOG SPELLING**, which is the plan's first Next
-Step and is deliberately left standing by this round. Measured here, at
-`8ccd9309`, so that round does not start blind:
+**Then: THE RE-KEY ITSELF**, which is what rounds 11-14 have been buying.
+`run_log_dir` and `pingpong_run_dir` collapse onto `run_dir`, keyed by RUN id —
+DECISION F260 D1. After this round the WRITER side of that collapse is ONE
+function body, `data_paths.run_log_dir`, plus `RunLogWriter`'s own run-id
+plumbing: no production module joins a job id onto a runs base any more (G5, four
+independent readings). The READER side is the open problem, and it is the reason
+the step below is its prerequisite.
 
-- **76** path-building occurrences of the quoted token `"runs"` remain across
-  1030 tracked `.py` files. ONE is the definition (`data_paths.py:73`); the rest
-  are tests. Per-file counts are in the G5(a) capture.
-- The heaviest are `tests/test_patch_apply.py` (6), `tests/test_agent_loop.py`
-  (5), `tests/test_patch_intent_approval.py` (5), `tests/test_project_brain.py`
-  (5), `tests/orchestration/test_worker_execution.py` (4),
-  `tests/test_project_context_coverage.py` (4).
-- **A ROUND THAT SWEEPS THOSE DESTROYS ITS OWN RED-PROOF OBSERVER.** This round's
-  G7 went red only because 17 tests in three files still hand-spell the path. Once
-  they route through `run_log_dir`, mutating that body moves writer and reader in
-  lockstep and no test inside the system can see it — precisely round 12's
-  finding. That round's gate must therefore order the PAIR: red against the
-  pre-sweep bytes, green against the swept ones, which is what round 12's P3 did.
-- Two of the five files in this round's G7 selection are useless as observers
-  either way (deviation 7); a future selection should be chosen for its
-  path-asserting tests, not its module names.
+**Its prerequisite: `Job.run_refs`**, the plural run list D1 names and nothing on
+disk carries yet. Once `<data_root>/runs/` is keyed by run id, no reader can find
+a job's runs — `timeline.load_run_events` reads `run_log_dir(job_id, data_dir)`
+today and would have nothing to read.
 
-**Then THE RE-KEY ITSELF**, which is what all of this has been buying:
-`run_log_dir` and `pingpong_run_dir` collapse onto `run_dir`, keyed by RUN id.
-After this round that collapse touches `data_paths.py` plus ONE remaining
-writer-side spelling — `RunLogWriter.__init__` (`run_log.py:114-115`), which joins
-`root / self._job_id` onto a runs BASE it is handed and is deliberately outside
-this round's change set (constraint 2). Its signature must change in the same
-commit as the re-key, or `timeline.load_run_events` reads one directory keyed two
-ways — DECISION F260 D0's collision, concretely.
+**The test-side sweep is DECLINED, not forgotten** — DECISION F260 D6, appended to
+`.agent/decisions.md` this round, records the measurement and the ruling: 75
+path-building occurrences of the quoted token `"runs"` survive under `tests/` in
+34 files, 65 of the 69 non-contract ones supply a JOB id, and D1's re-key makes
+each a SEMANTIC change rather than a spelling change. The re-key round inherits
+those sites and touches them ONCE. That ruling also means the re-key round must
+plan its own red-proof carefully: this round's G6 could fail only because
+`tests/test_run_log.py`, `tests/test_data_paths.py`, `tests/test_timeline.py` and
+`tests/test_patch_apply.py` still hand-spell the path, and a round that sweeps
+them consumes its own observer — round 12's finding, and the pre-sweep/post-sweep
+PAIR is the shape that round will need.
 
-After that, the rest of T002: the unified record's own fields and the Mission
-extension (order, contract, mission plan, job refs). Then T003 consumer by
-consumer; T004 the classic runner, the classic store and the resolver collapse
-together (DECISION F260 D5); T005 the reachability test and the cluster deletion.
+After that, the rest of T002: the unified record's own administrative fields —
+measured at `4f265f91`, eight of D1's eleven have no counterpart in `JobPlan` —
+and the Mission extension. Then T003 consumer by consumer; T004 the classic
+runner, the classic store and the resolver collapse together (DECISION F260 D5);
+T005 the reachability test and the cluster deletion.
