@@ -10665,3 +10665,49 @@ absence rule needs a parser, not a grep; (b) ship the clause anyway and note the
 vacuity in prose — rejected, because a passing gate that forbids nothing is the
 exact failure this project keeps paying for. Reverse by deleting this paragraph
 and adding `Worker:` to `RETIRED_SYNONYMS`.
+
+### DECISION F260 D5 (2026-09-06, F260 round 11) — the resolver collapse lands in T004, with the store that makes it true
+DECISION F260 D4 placed the ONE resolver "inside T002, in the same round group as
+the unified record and its loader", and rounds 9 and 10 built both halves that
+ruling named: the record now lives at `<data_root>/jobs/<16hex>/job.json` beside
+its own evidence, and `resolve_job_id` returns a `str` exactly as
+`resolve_any_job_id` does. The collapse itself is now measured as belonging one
+task later, and this decision records why rather than leaving the discrepancy for
+a later reader to find.
+
+MEASURED at `2cedf98c`. `resolve_job_id` searches the CLASSIC store only;
+`resolve_any_job_id` searches both. Collapsing them means the survivor searches
+both, and forty call sites across nine `apps/cli/commands/` modules then accept a
+16-hex ping-pong id they reject today. Every one of those call sites feeds
+`storage.load_job`, which reads `<data_root>/jobs/<id>.json` — a FILE. A ping-pong
+id names a DIRECTORY, so the resolver would succeed and the loader would then
+raise `JobNotFoundError`, replacing today's clean `exit 1` with an exception on a
+path forty commands share. The collapse is therefore not a rename; it is a
+behaviour change to an error path, and it is only harmless once the classic store
+is gone.
+
+CHOSEN: the collapse happens in T004, in the same commit range that deletes the
+classic store `<data_root>/jobs/<uuid>.json` and the classic runner. At that point
+"one resolver over one store" is true rather than aspirational, the
+`JobNotFoundError` case above cannot arise because there is no second shape left
+to resolve into, and the feature file's existing T004 order — which already lists
+`resolve_any_job_id` and every which-store branch as T004's deletions — is
+satisfied by one change instead of two. T002's remaining work is what it always
+was: the run directory, the unified record's fields and the Mission extension.
+
+ALTERNATIVES CONSIDERED. Collapsing now and letting the loader raise — rejected:
+it degrades a shared error path for forty commands for the length of a task, in a
+feature whose own reason for existing is that unresolvable ids confuse the
+operator. Collapsing now and teaching the loader to read both shapes — rejected:
+that builds a compatibility reader, which AGENTS.md "Replacing is deleting" and
+DECISION D-A forbid outright, and T004 would then delete code written two rounds
+earlier. Leaving D4 unamended and letting a later session rediscover the
+sequencing — rejected: D4 is quoted by the plan and by two round blocks, so an
+unrecorded departure from it reads as drift rather than as a ruling.
+
+NOT CHANGED BY THIS RULING: the deliverable, the scope, and D4's own reasoning
+about why the resolver could not land in T001. Only the task the collapse sits in
+moves, from T002 to T004.
+
+REVERSE by deleting this paragraph, at which point D4's placement binds again and
+the collapse returns to T002 with the error-path change unresolved.
