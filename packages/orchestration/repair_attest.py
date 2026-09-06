@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from packages.orchestration.data_paths import jobs_dir
+from packages.orchestration.data_paths import job_evidence_dir
 from packages.orchestration.evidence_mode import ExecutionMode
 from packages.orchestration.pingpong_evidence import _validate_output_path
 from packages.orchestration.pingpong_job import load_job_plan
@@ -150,7 +150,7 @@ def _task_evidence_dir(job_id: str, task_id: str) -> Path:
         raise ValueError(
             f"Unsafe task ID {task_id!r}: must match T<digits> (e.g. T001)."
         )
-    base = jobs_dir() / job_id / "evidence"
+    base = job_evidence_dir(job_id)
     return _validate_output_path(str(base), f"task_runs/{task_id}")
 
 
@@ -383,8 +383,8 @@ def _prior_provider_call_count(task: Any) -> int | None:
     if not run_id:
         return None
     try:
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-        trace = Path(_pingpong_runs_dir()) / run_id / "prompt_trace_summary.json"
+        from packages.orchestration.data_paths import pingpong_run_dir
+        trace = Path(pingpong_run_dir(run_id)) / "prompt_trace_summary.json"
         if trace.exists():
             data = json.loads(trace.read_text(encoding="utf-8"))
             return int(data.get("builder_prompts", 0)) + int(data.get("reviewer_prompts", 0))

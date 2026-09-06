@@ -1,36 +1,34 @@
-# Context — F259 Vocabulary & concept model v1
+# Context — F260 One world: mission → job → run
 
 ## Active Branch
-feature/f259-vocabulary, cut from `main` at 25961794, the merge commit of pull
-request 239.
+feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of pull
+request 240.
 
 ## Scope
-F259 (Tier 2, depends on nothing; F260 and F261 both cite its page as binding,
-F263 takes its command name from it, and F268–F271 take their words from it):
-write `docs/system/vocabulary.md` as the binding vocabulary page and pin it
-with a docs test that reads the shipped command catalog. Task slicing per
-T2_F259.md: T001 the page written from the code as it is TODAY, T002 the two
-rulings F259 settles itself onto the page, T003 the docs test in planned mode
-with both red proofs, T004 the README diagram and the docs index registration.
+F260 (Tier 2, depends on F259's binding vocabulary page; blocks F261, F266,
+F268, F269, F270, F271 and F263): make DECISION amend0905-vocab D2 real on disk
+— one Mission record, one Job record, one Run evidence case, one id shape minted
+by one function. Task slicing per T2_F260.md: T001 inventory and id shape, T002
+the records and their writers, T003 the consumer list, T004 the classic runner's
+deletion, T005 the reachability test and the prototype cluster deletion.
 
 ## Do not touch
-No command is renamed, no module is moved, no data shape changes, no catalog
-description is edited (T2_F259.md, "Do not touch"). A rename inside this
-feature is out of scope by construction: F261 owns renames and F260 owns the
-data model.
+The scope-fence builtin deny list (F017), the approval gate, STATUS semantics.
+No command is RENAMED here — F261 owns renames; this feature changes what a job
+IS, not what it is called. No module outside the T2_F260.md lists is deleted,
+and a module that turns out to be reachable is reported, never deleted.
 
 ## Assumptions
-- The "code spelling today" column of the D1 table is READ from the seven
-  modules T2_F259.md's T001 names, never reconstructed; round 1 puts that
-  reading on disk as `.agent/f259_inventory.md` so later rounds copy from a
-  measurement.
-- The docs test reads the `GROUPS` dict and `CATALOG` list of
-  `apps/cli/command_catalog.py` directly, never a captured transcript of
-  `remedy --help`.
-- The planned/enforced switch is a named module constant that F261 flips, never
-  a skip marker (T2_F259.md, Goal & Done).
-- The page's Mermaid block and the README's are byte-equal, and the test is
-  what stops them drifting.
+- Cleanliness before compatibility (DECISION D-A): no migration shim, no
+  compatibility reader, no alias. Old `.data` content is deleted by the
+  developer, not converted.
+- The inventory on disk as `.agent/f260_inventory.md` is the evidence D1 and D2
+  are ruled from; no later round reconstructs those readings from memory.
+- `<data_root>/runs/` is ALREADY the run-log area keyed by job id, so the
+  feature file's "renamed to runs/" needs a ruling before any directory moves.
+- Deletion is proved before it is performed: the T005 reachability test is green
+  with the doomed modules absent from the reachable set BEFORE the first
+  `git rm`.
 
 ## Constraints
 The bullets in this first group are STANDING project constraints, carried
@@ -47,7 +45,7 @@ forward from the context this file replaced.
 - Destructive verification runs only inside a disposable git worktree, never in
   the primary checkout, which satisfies `git status --porcelain` empty at every
   verdict.
-- `ruff check` is DENIED to this session's reviewer. A round of F259 that ships
+- `ruff check` is DENIED to this session's reviewer. A round of F260 that ships
   a `.py` file gates `python3 -m py_compile <path>` instead, and the worker
   attempts `ruff check` itself, reporting success or the exact refusal.
 - `remedy` (the built CLI) is DENIED to this session's reviewer session-wide,

@@ -130,9 +130,9 @@ class TestTwoJobsDoNotCollide:
         r1 = _run_with_content(monkeypatch, repo, "job one\n")
         r2 = _run_with_content(monkeypatch, repo, "job two\n")
 
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-        d1 = (_pingpong_runs_dir() / r1.run_id / "result.diff").read_text()
-        d2 = (_pingpong_runs_dir() / r2.run_id / "result.diff").read_text()
+        from packages.orchestration.data_paths import pingpong_run_dir
+        d1 = (pingpong_run_dir(r1.run_id) / "result.diff").read_text()
+        d2 = (pingpong_run_dir(r2.run_id) / "result.diff").read_text()
 
         assert "job one" in d1 and "job two" not in d1
         assert "job two" in d2 and "job one" not in d2

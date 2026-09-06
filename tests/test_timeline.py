@@ -39,7 +39,11 @@ import pytest
 
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.storage import save_job
-from packages.orchestration.timeline import load_run_events, summarize_timeline
+from packages.orchestration.timeline import (
+    append_run_event,
+    load_run_events,
+    summarize_timeline,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -220,6 +224,67 @@ class TestLoadRunEvents:
         by_uuid = load_run_events(tmp_path, job_id)
         by_str = load_run_events(tmp_path, str(job_id))
         assert len(by_uuid) == len(by_str) == 2
+
+
+# ---------------------------------------------------------------------------
+# append_run_event — one run per invocation
+# ---------------------------------------------------------------------------
+
+
+class TestOneRunPerInvocation:
+    """All events one invocation appends to a job belong to ONE run.
+
+    These tests read the BYTES the writer left rather than asking the writer
+    what it did, and they spell the run-log join literally, so they stay an
+    independent observer of `data_paths.run_log_dir` (DECISION F260 D6).
+    """
+
+    RESUME_EVENTS = [
+        "resume_blocked",
+        "resume_started",
+        "resume_test_started",
+        "resume_test_completed",
+        "resume_completed",
+    ]
+
+    def test_all_events_of_one_invocation_share_one_run(self, tmp_path):
+        job_id = uuid4()
+        for name in self.RESUME_EVENTS:
+            append_run_event(tmp_path, job_id, event=name, metadata={"exit_code": 0})
+
+        job_dir = tmp_path / "runs" / str(job_id)
+        files = sorted(job_dir.glob("*.jsonl"))
+        assert len(files) == 1
+
+        lines = [
+            raw for raw in files[0].read_text(encoding="utf-8").splitlines() if raw.strip()
+        ]
+        assert len(lines) == 5
+
+        run_ids = {json.loads(raw)["run_id"] for raw in lines}
+        assert len(run_ids) == 1
+
+    def test_two_jobs_do_not_share_a_run_file(self, tmp_path):
+        job_a = uuid4()
+        job_b = uuid4()
+        append_run_event(tmp_path, job_a, event="resume_started", metadata={})
+        append_run_event(tmp_path, job_b, event="resume_started", metadata={})
+
+        dir_a = tmp_path / "runs" / str(job_a)
+        dir_b = tmp_path / "runs" / str(job_b)
+        assert dir_a.is_dir()
+        assert dir_b.is_dir()
+        assert dir_a != dir_b
+        assert len(sorted(dir_a.glob("*.jsonl"))) == 1
+        assert len(sorted(dir_b.glob("*.jsonl"))) == 1
+
+    def test_events_come_back_in_append_order(self, tmp_path):
+        job_id = uuid4()
+        for name in self.RESUME_EVENTS:
+            append_run_event(tmp_path, job_id, event=name, metadata={"exit_code": 0})
+
+        loaded = load_run_events(tmp_path, job_id)
+        assert [ev["event"] for ev in loaded] == self.RESUME_EVENTS
 
 
 # ---------------------------------------------------------------------------

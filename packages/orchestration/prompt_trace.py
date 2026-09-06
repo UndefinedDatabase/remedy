@@ -212,7 +212,7 @@ def write_trace_jsonl(entries: list[PromptTraceEntry], path: Path) -> None:
 
 
 # Two writers, because the trace file is per JOB and not per run:
-# `RunLogWriter.path.parent` is `<runs_root>/<job_id>/`, so a second command
+# `RunLogWriter.path.parent` is `<data_root>/runs/<job_id>/`, so a second command
 # against the same job would truncate the first command's traces if it used
 # `write_trace_jsonl`. The command that CREATES a job writes; a command that
 # adds traces to a job that already has some appends (F105 R28).

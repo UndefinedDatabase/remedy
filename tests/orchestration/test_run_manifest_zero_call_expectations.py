@@ -113,8 +113,8 @@ def _with_live_workspace(job, repo):
 
 
 def _run_path(job, ix=0):
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-    return _pingpong_runs_dir() / job.tasks[ix].run_id / "result.json"
+    from packages.orchestration.data_paths import pingpong_run_dir
+    return pingpong_run_dir(job.tasks[ix].run_id) / "result.json"
 
 
 # --------------------------------------------------------------------------- FALSE zero calls

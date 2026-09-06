@@ -19,8 +19,8 @@ from packages.orchestration.artifact_contract_gate import (
     build_artifact_contract_gate,
     check_worktree_artifacts,
 )
+from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.pingpong_loop import (
-    _pingpong_runs_dir,
     load_run,
     run_pingpong,
 )
@@ -121,7 +121,7 @@ class TestPersistedRunRecord:
         res = _run(monkeypatch, repo)
         wt = load_run(res.run_id)["worktree"]
 
-        diff_file = _pingpong_runs_dir() / res.run_id / wt["result_diff"]["path"]
+        diff_file = pingpong_run_dir(res.run_id) / wt["result_diff"]["path"]
         data = diff_file.read_bytes()
         assert hashlib.sha256(data).hexdigest() == wt["result_diff"]["sha256"]
         assert len(data) == wt["result_diff"]["size_bytes"]

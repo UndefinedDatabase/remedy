@@ -21,7 +21,7 @@ from apps.cli.commands import job as job_cmd
 from packages.core.models import Job, RunState
 from packages.orchestration import event_replay
 from packages.orchestration import worktrees as W
-from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.storage import save_job
 
 
@@ -64,7 +64,7 @@ def _write_events(job_id: str) -> None:
 
 def _persist_interrupted_run(run_id: str, job_id: str, repo: Path, handle) -> Path:
     """The record a killed run leaves behind: a worktree still marked active."""
-    run_dir = _pingpong_runs_dir() / run_id
+    run_dir = pingpong_run_dir(run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "result.json").write_text(json.dumps({
         "run_id": run_id,

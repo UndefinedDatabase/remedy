@@ -446,7 +446,7 @@ def _cmd_project_adopt(
         )
         sys.exit(3)
 
-    resolved_id = str(resolve_job_id(job_id_str))
+    resolved_id = resolve_job_id(job_id_str)
 
     try:
         job = load_job(UUID(resolved_id))

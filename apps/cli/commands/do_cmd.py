@@ -2372,10 +2372,10 @@ def _print_final_audit(audit: dict) -> None:
 
 def _load_prompt_trace_index(run_id: str) -> dict[tuple[int, str], dict]:
     """Load prompt trace entries for a run and index by (round, role)."""
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+    from packages.orchestration.data_paths import pingpong_run_dir
 
     index: dict[tuple[int, str], dict] = {}
-    trace_path = _pingpong_runs_dir() / run_id / "prompt_trace.jsonl"
+    trace_path = pingpong_run_dir(run_id) / "prompt_trace.jsonl"
     if not trace_path.exists():
         return index
     for line in trace_path.read_text().splitlines():
@@ -2411,7 +2411,7 @@ def _build_agent_run_trace(
         task_has_stream_evidence,
         trace_events_from_task_streams,
     )
-    from packages.orchestration.data_paths import jobs_dir
+    from packages.orchestration.data_paths import job_evidence_dir
     from packages.orchestration.pingpong_loop import _provider_kind, load_run
 
     _SRC = "reconstructed_legacy_evidence"
@@ -2455,7 +2455,7 @@ def _build_agent_run_trace(
 
         # F004: normalized provider/tool events replace reconstruction for this
         # task when its per-call stream artifacts exist.
-        _task_ev_dir = jobs_dir() / job_id / "evidence" / "task_runs" / task.task_id
+        _task_ev_dir = job_evidence_dir(job_id) / "task_runs" / task.task_id
         if task_has_stream_evidence(_task_ev_dir):
             events.extend(trace_events_from_task_streams(
                 _task_ev_dir, job_id=job_id, task_id=task.task_id, run_id=task.run_id,

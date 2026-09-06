@@ -22,6 +22,7 @@ from packages.orchestration import job_promote as JP
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
+from packages.orchestration.data_paths import job_dir
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.job_promote import promote_job
 from packages.orchestration.pingpong_job import (
@@ -152,7 +153,7 @@ class TestCheckpointRefsSurviveGc:
     def test_resume_after_gc_reviews_pre_crash_and_post_resume_files(
         self, repo, monkeypatch,
     ):
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        from packages.orchestration.data_paths import pingpong_run_dir
 
         job, handle = self._crashed_two_task_job(repo, monkeypatch)
         _git(repo, "gc", "--prune=now", "--quiet")
@@ -168,7 +169,7 @@ class TestCheckpointRefsSurviveGc:
         t2 = done.tasks[1]
         assert "partial.txt" in seen["reviewer_prompt"]
         assert "finished.txt" in seen["reviewer_prompt"]
-        diff = (_pingpong_runs_dir() / t2.run_id / "result.diff").read_text()
+        diff = (pingpong_run_dir(t2.run_id) / "result.diff").read_text()
         assert "partial.txt" in diff and "finished.txt" in diff
         assert "prior.txt" not in diff              # task 1's work is not re-reported
         assert sorted(t2.safe_diff_files) == ["finished.txt", "partial.txt"]
@@ -276,7 +277,7 @@ class TestHandoffCoverage:
         assert done.unexpected_root_files == ["rogue.txt"]
         # No authoritative root hand-off is exported, and the work is retained.
         assert done.result_diff_path == ""
-        assert not (PJ._jobs_dir() / done.job_id / "result.diff").exists()
+        assert not (job_dir(done.job_id) / "result.diff").exists()
         assert done.worktree_cleanup_status == "retained"
         assert Path(holder["path"]).is_dir()
 

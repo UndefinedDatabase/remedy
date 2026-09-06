@@ -118,7 +118,7 @@ def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
     """Export a finished job's evidence so its cost reaches the F103 token ledger.
 
     THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy do job-run` used to complete
-    a job, write ``task_jobs/<id>/job.json`` and its run log, and touch no ledger
+    a job, write ``jobs/<id>/job.json`` and its run log, and touch no ledger
     at all, so `remedy stats cost` reported "No ledger on disk for this scope"
     after a run that had spent real money. The mirror is armed in exactly one
     place — ``_resolve_job_ledger_project_id``, reached only from
@@ -351,11 +351,11 @@ def export_job_evidence(
             written[rel] = str(err_path)
         # Per-task execution evidence (execution_mode classification)
         try:
+            from packages.orchestration.data_paths import pingpong_run_dir
             from packages.orchestration.evidence_mode import (
                 build_task_execution_evidence,
                 classify_execution_mode,
             )
-            from packages.orchestration.pingpong_loop import _pingpong_runs_dir as _pp_runs
 
             _prompt_count = 0
             _provider_call_count = 0
@@ -366,7 +366,7 @@ def export_job_evidence(
                 getattr(job.execution_config, "reviewer", None) or ""
             ) if job.execution_config else ""
             if task.run_id:
-                _trace_file = _pp_runs() / task.run_id / "prompt_trace_summary.json"
+                _trace_file = pingpong_run_dir(task.run_id) / "prompt_trace_summary.json"
                 if _trace_file.exists():
                     try:
                         _tdata = json.loads(_trace_file.read_text())
@@ -1146,7 +1146,7 @@ def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
     regular file (never a symlink), resolving inside that job directory, and match
     the sha256 and size recorded in job.json.
     """
-    from packages.orchestration.pingpong_job import _jobs_dir
+    from packages.orchestration.data_paths import job_dir
 
     if getattr(job, "isolation_mode", "copy") != "worktree":
         return None, "not_a_worktree_job"
@@ -1157,7 +1157,7 @@ def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
     }
     if not recorded["path"]:
         return None, "job records no result.diff"
-    return _resolve_result_diff_source(_jobs_dir() / job.job_id, recorded)
+    return _resolve_result_diff_source(job_dir(job.job_id), recorded)
 
 
 def _write_job_worktree_evidence(
@@ -1343,9 +1343,9 @@ def _snapshot_attestation_artifacts(
     Must be called BEFORE _write_task_run_evidence to capture attestation
     data that would otherwise be overwritten when src and dst dirs are the same.
     """
-    from packages.orchestration.data_paths import jobs_dir
+    from packages.orchestration.data_paths import job_evidence_dir
 
-    ev_base = jobs_dir() / job.job_id / "evidence"
+    ev_base = job_evidence_dir(job.job_id)
     if not ev_base.exists():
         return {}
 
@@ -1494,13 +1494,13 @@ def _linked_job_summary(jid: str) -> dict[str, Any]:
     status = str(getattr(j, "status", "") or "") or "unknown"
     total: int | None = None
     try:
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-        runs_dir = Path(_pingpong_runs_dir())
+        from packages.orchestration.data_paths import pingpong_runs_dir
+        pp_runs_root = Path(pingpong_runs_dir())
         for t in getattr(j, "tasks", []) or []:
             rid = getattr(t, "run_id", "") or ""
             if not rid:
                 continue
-            trace = runs_dir / rid / "prompt_trace_summary.json"
+            trace = pp_runs_root / rid / "prompt_trace_summary.json"
             if trace.exists():
                 d = json.loads(trace.read_text(encoding="utf-8"))
                 c = int(d.get("builder_prompts", 0)) + int(d.get("reviewer_prompts", 0))
@@ -2412,6 +2412,7 @@ def _write_task_postmortems(
     could not do: a streamed failure's record never left the job store, so the rollup
     pointed at nothing and the stats saw nothing.
     """
+    from packages.orchestration.data_paths import pingpong_run_dir
     from packages.orchestration.failure_postmortem import (
         CALL_POSTMORTEM_SUBDIR,
         POSTMORTEM_FILENAME,
@@ -2420,7 +2421,6 @@ def _write_task_postmortems(
         write_postmortem,
     )
     from packages.orchestration.pingpong_job import _task_stream_dir
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
 
     if str(getattr(task, "status", "")) not in TERMINAL_TASK_STATUSES:
         return
@@ -2429,7 +2429,7 @@ def _write_task_postmortems(
     task_out = _task_evidence_dir(out_base, task.task_id)
 
     run_id = str(getattr(task, "run_id", "") or "")
-    run_dir = (_pingpong_runs_dir() / run_id) if run_id else None
+    run_dir = pingpong_run_dir(run_id) if run_id else None
     # The provider streams into ``…/task_runs/<task>/streams/<role>/round-NN/<kind>-II``;
     # that ``streams`` directory is the root of the streamed call layout.
     stream_dir = _task_stream_dir(job_id, task.task_id) / "streams"
@@ -2470,8 +2470,8 @@ def _read_run_json(run_id: str) -> dict[str, Any]:
     if not run_id:
         return {}
     try:
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-        path = _pingpong_runs_dir() / run_id / "result.json"
+        from packages.orchestration.data_paths import pingpong_run_dir
+        path = pingpong_run_dir(run_id) / "result.json"
         if not path.is_file():
             return {}
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -2588,8 +2588,8 @@ def _write_task_run_evidence(
     bundle = build_evidence_bundle(run_data, promotion_data)
 
     # Include prompt traces from persisted run dir
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-    trace_file = _pingpong_runs_dir() / task.run_id / "prompt_trace.jsonl"
+    from packages.orchestration.data_paths import pingpong_run_dir
+    trace_file = pingpong_run_dir(task.run_id) / "prompt_trace.jsonl"
     if trace_file.exists():
         bundle["prompt_trace_jsonl_path"] = str(trace_file)
 
@@ -2692,7 +2692,7 @@ def _write_task_worktree_evidence(
     if wt.get("isolation_mode") != "worktree":
         return
 
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+    from packages.orchestration.data_paths import pingpong_run_dir
 
     doc: dict[str, Any] = {
         "schema_version": "1.0.0",
@@ -2712,7 +2712,7 @@ def _write_task_worktree_evidence(
 
     rd = wt.get("result_diff") or {}
     if rd:
-        run_dir = _pingpong_runs_dir() / str(task.run_id)
+        run_dir = pingpong_run_dir(str(task.run_id))
         src, err = _resolve_result_diff_source(run_dir, rd)
         if err:
             # Report the validation failure; NEVER rewrite the persisted metadata
@@ -2765,7 +2765,7 @@ def _write_job_prompt_trace_summary(
     written: dict[str, str],
 ) -> None:
     """Write aggregate prompt trace summary across all tasks."""
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+    from packages.orchestration.data_paths import pingpong_run_dir
 
     total_builder = 0
     total_reviewer = 0
@@ -2776,7 +2776,7 @@ def _write_job_prompt_trace_summary(
     for task in job.tasks:
         if not task.run_id:
             continue
-        summary_file = _pingpong_runs_dir() / task.run_id / "prompt_trace_summary.json"
+        summary_file = pingpong_run_dir(task.run_id) / "prompt_trace_summary.json"
         if not summary_file.exists():
             task_traces.append({
                 "task_id": task.task_id,
@@ -2882,14 +2882,14 @@ def _copy_task_stream_artifacts(
     """
     import hashlib as _hl
 
-    from packages.orchestration.data_paths import jobs_dir
+    from packages.orchestration.data_paths import job_evidence_dir
     from packages.orchestration.stream_evidence import (
         RAW_STREAM_FILENAME,
         RUN_EVENTS_FILENAME,
     )
 
     listing: dict[str, Any] = {}
-    src_task = jobs_dir() / job_id / "evidence" / "task_runs" / task_id / "streams"
+    src_task = job_evidence_dir(job_id) / "task_runs" / task_id / "streams"
     if not src_task.is_dir():
         return listing
 

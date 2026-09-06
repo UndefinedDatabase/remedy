@@ -23,6 +23,7 @@ from packages.orchestration import job_promote as JP
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
+from packages.orchestration.data_paths import job_dir
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.job_promote import promote_job
 from packages.orchestration.pingpong_job import (
@@ -150,7 +151,7 @@ class TestCompletedJobPromotion:
 
     def test_a_tampered_job_result_diff_blocks(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        (PJ._jobs_dir() / job.job_id / "result.diff").write_bytes(b"tampered\n")
+        (job_dir(job.job_id) / "result.diff").write_bytes(b"tampered\n")
 
         res = promote_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
@@ -159,7 +160,7 @@ class TestCompletedJobPromotion:
 
     def test_a_missing_job_result_diff_blocks(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        (PJ._jobs_dir() / job.job_id / "result.diff").unlink()
+        (job_dir(job.job_id) / "result.diff").unlink()
 
         res = promote_job(job.job_id, str(repo), dry_run=True)
         assert res.status == "blocked"
@@ -167,7 +168,7 @@ class TestCompletedJobPromotion:
 
     def test_a_mismatched_base_commit_blocks(self, repo, monkeypatch):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        path = PJ._jobs_dir() / job.job_id / "job.json"
+        path = job_dir(job.job_id) / "job.json"
         data = json.loads(path.read_text())
         data["worktree"]["base_commit"] = "0" * 40
         path.write_text(json.dumps(data, indent=2))
@@ -284,11 +285,11 @@ class TestRootJobEvidence:
         self, repo, monkeypatch, tmp_path,
     ):
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        job_dir = PJ._jobs_dir() / job.job_id
+        job_root = job_dir(job.job_id)
         secret = tmp_path / "secret"
         secret.write_bytes(b"TOPSECRET\n")
-        (job_dir / "result.diff").unlink()
-        (job_dir / "result.diff").symlink_to(secret)
+        (job_root / "result.diff").unlink()
+        (job_root / "result.diff").symlink_to(secret)
 
         out = self._export(load_job_plan(job.job_id), tmp_path)  # reloaded job
         assert not (out / "result.diff").exists()
@@ -378,7 +379,7 @@ class TestJobPlanResumeAfterCrash:
     def test_the_pre_crash_file_stays_inside_the_task_diff_and_review(
         self, repo, monkeypatch,
     ):
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        from packages.orchestration.data_paths import pingpong_run_dir
 
         job, handle = self._crashed_job(repo, monkeypatch)
         holder = {"path": handle.path}
@@ -394,12 +395,12 @@ class TestJobPlanResumeAfterCrash:
         assert "partial.txt" in seen["reviewer_prompt"]
         assert "finished.txt" in seen["reviewer_prompt"]
         # Task-local diff, safe-diff file list and apply manifest all carry both.
-        task_diff = (_pingpong_runs_dir() / task.run_id / "result.diff").read_text()
+        task_diff = (pingpong_run_dir(task.run_id) / "result.diff").read_text()
         assert "partial.txt" in task_diff and "finished.txt" in task_diff
         assert sorted(task.safe_diff_files) == ["finished.txt", "partial.txt"]
         assert sorted(task.apply_manifest.applied_files) == ["finished.txt", "partial.txt"]
         # And so does the final job hand-off: nothing entered it unreviewed.
-        job_diff = (PJ._jobs_dir() / done.job_id / "result.diff").read_text()
+        job_diff = (job_dir(done.job_id) / "result.diff").read_text()
         assert "partial.txt" in job_diff and "finished.txt" in job_diff
 
     def test_the_original_task_start_tree_is_reused_not_replaced(

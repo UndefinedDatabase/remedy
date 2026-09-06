@@ -523,8 +523,7 @@ def _emit_run_log(
     """
     from packages.orchestration.run_log import RunEvent, RunLogWriter
 
-    runs_root = (data_dir / "runs") if data_dir is not None else None
-    log = RunLogWriter(job_id=job.id, runs_root=runs_root)
+    log = RunLogWriter(job_id=job.id, data_root=data_dir)
     log.append(
         RunEvent(
             event="patch_intent_applied",
@@ -560,8 +559,7 @@ def _emit_proof_run_log(
     """
     from packages.orchestration.run_log import RunEvent, RunLogWriter
 
-    runs_root = (data_dir / "runs") if data_dir is not None else None
-    log = RunLogWriter(job_id=job.id, runs_root=runs_root)
+    log = RunLogWriter(job_id=job.id, data_root=data_dir)
     log.append(
         RunEvent(
             event="patch_apply_proof_recorded",

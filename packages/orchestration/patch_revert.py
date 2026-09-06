@@ -242,8 +242,7 @@ def revert_patch_intent(
 
     # Emit run-log event
     actual_data_dir = data_dir or resolve_data_root()
-    runs_root = actual_data_dir / "runs"
-    log = RunLogWriter(job_id=job.id, runs_root=runs_root)
+    log = RunLogWriter(job_id=job.id, data_root=actual_data_dir)
     from packages.orchestration.run_log import RunEvent
     log.append(RunEvent(
         event="patch_intent_reverted",

@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration import failure_postmortem as FP
+from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.failure_postmortem import (
     MAX_RAW_REASON_CHARS,
     POSTMORTEM_FILENAME,
@@ -684,7 +685,7 @@ class TestRedaction:
 
     def test_the_runtime_data_root_keeps_its_meaning(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        (tmp_path / "data" / "pingpong_runs" / "r1").mkdir(parents=True)
+        pingpong_run_dir("r1", tmp_path / "data").mkdir(parents=True)
         text = FP.safe_text(f"could not write {tmp_path}/data/pingpong_runs/r1/postmortem.json")
         assert text.endswith("[runtime-data]/pingpong_runs/r1/postmortem.json"), text
 

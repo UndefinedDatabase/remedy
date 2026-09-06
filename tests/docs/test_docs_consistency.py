@@ -44,8 +44,13 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: (contract & contract templates), F270 (history apply) and F271 (no more
 #: legacy: ownership, reachability, replace-is-delete) — were registered on
 #: 2026-09-05 by operator order amend0905-vocab-rebuild; see T2_F268.md,
-#: T2_F269.md, T2_F270.md and T2_F271.md.
-TOTAL_FEATURES = 271
+#: T2_F269.md, T2_F270.md and T2_F271.md. One more, F272 (one world
+#: completion: the run re-key, the consumers, the classic runner and the
+#: prototype cluster deletion), was registered on 2026-09-06 by DECISION
+#: F260 D8, which split it off F260 at the amend0905-throughput soft limit
+#: and placed it directly after its parent per amend0906-split-placement;
+#: see T2_F272.md.
+TOTAL_FEATURES = 272
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

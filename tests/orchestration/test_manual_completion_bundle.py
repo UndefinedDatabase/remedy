@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.pingpong_job import _persist_job, parse_job_file
 from packages.orchestration.repair_attest import attest_operator_repair
@@ -139,7 +140,7 @@ def _write_files(repo: Path, files: list[str]) -> None:
 
 
 def _seed_old_run_trace(data_root: Path, run_id: str, provider_calls: int) -> None:
-    run_dir = data_root / "pingpong_runs" / run_id
+    run_dir = pingpong_run_dir(run_id, data_root)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "prompt_trace_summary.json").write_text(json.dumps({
         "builder_prompts": provider_calls,

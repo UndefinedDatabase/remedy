@@ -336,8 +336,7 @@ class TestAuditEvents:
         t = ProposedTask(title="Test", risk="medium")
         add_proposed_task(job_uuid, t)
 
-        runs_dir = tmp_path / "runs"
-        writer_with_root = RunLogWriter(UUID(job_uuid), runs_root=runs_dir)
+        writer_with_root = RunLogWriter(UUID(job_uuid), data_root=tmp_path)
         monkeypatch.setattr("apps.cli.commands.propose_cmd._make_writer", lambda jid: writer_with_root)
 
         handlers = collect_all_handlers()

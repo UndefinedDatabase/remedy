@@ -25,7 +25,12 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
+
+# F260 D2: one minting function per KIND of id. This module names JOBs and
+# EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
+# Module-level and not function-scoped: JobPlan's default_factory below is read
+# when the class body runs, which a local import could never reach.
+from packages.orchestration.data_paths import mint_episode_id, mint_job_id
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -287,7 +292,7 @@ class ExecutionConfig:
 @dataclass
 class JobPlan:
     """Durable job plan with ordered tasks."""
-    job_id: str = field(default_factory=lambda: uuid4().hex[:16])
+    job_id: str = field(default_factory=mint_job_id)
     job_file_sha256: str = ""
     repo_path: str = ""
     job_workspace_path: str = ""
@@ -371,17 +376,13 @@ class JobPlan:
 # Persistence
 # ---------------------------------------------------------------------------
 
-def _jobs_dir() -> Path:
-    # One spelling of "where the task jobs live": data_paths owns it, so the
-    # readers that resolve an id there cannot drift from the writer here.
-    from packages.orchestration.data_paths import task_jobs_dir
-    return task_jobs_dir()
-
-
 def _persist_job(job: JobPlan) -> Path:
-    job_dir = _jobs_dir() / job.job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
-    out = job_dir / "job.json"
+    # ``data_paths`` owns "where the ping-pong record lives" (DECISION F260 D1),
+    # so this writer and the readers that resolve an id cannot drift apart.
+    from packages.orchestration.data_paths import job_record_path
+
+    out = job_record_path(job.job_id)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
     return out
 
@@ -392,7 +393,9 @@ def save_job_plan(job: JobPlan) -> Path:
 
 
 def load_job_plan(job_id: str) -> JobPlan | None:
-    job_file = _jobs_dir() / job_id / "job.json"
+    from packages.orchestration.data_paths import job_record_path
+
+    job_file = job_record_path(job_id)
     if not job_file.exists():
         return None
     try:
@@ -966,9 +969,10 @@ def job_worktree_id(job_id: str) -> str:
 
 def _create_job_workspace_copy(job: JobPlan) -> str:
     """Non-git fallback: a filtered copy of the target (isolation_mode=copy)."""
+    from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.staging_workspace import create_staging_workspace
 
-    data_root = _jobs_dir().parent
+    data_root = resolve_data_root()
     ws_parent = data_root / "job_workspaces"
     ws_parent.mkdir(parents=True, exist_ok=True)
 
@@ -1175,8 +1179,9 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     if handle is None:
         return
     from packages.orchestration import worktrees as W
+    from packages.orchestration.data_paths import job_dir
 
-    job_dir = _jobs_dir() / job.job_id
+    job_root = job_dir(job.job_id)
 
     # --- Completion gate: the root hand-off must be exactly the reviewed work ---
     coverage_error = ""
@@ -1195,7 +1200,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
             job.result_diff_sha256 = ""
             job.result_diff_size_bytes = 0
             try:
-                (job_dir / "result.diff").unlink()
+                (job_root / "result.diff").unlink()
             except OSError:
                 pass
 
@@ -1205,7 +1210,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
         if not coverage_error:
             info = W.write_tree_diff(
                 handle, job.job_initial_tree, W.write_tree(handle),
-                job_dir / "result.diff",
+                job_root / "result.diff",
             )
             job.result_diff_path = "result.diff"
             job.result_diff_sha256 = info["sha256"]
@@ -2265,7 +2270,7 @@ def run_job(
     # F018: allocate episode BEFORE computing budget identity so the stop
     # request_id is stable across finalization failures.
     if not job.active_episode_id:
-        job.active_episode_id = uuid4().hex[:16]
+        job.active_episode_id = mint_episode_id()
 
     # Deliberately argument-free: there is no "next task" before the episode loop,
     # and inventing one would predict against a task that may never be reached.
@@ -2288,7 +2293,7 @@ def run_job(
     # F012: no pending pre-work stop — this is a real execution EPISODE. Allocate a fresh
     # episode id now (a resume gets its own episode; only calls made in THIS episode are
     # collected into its manifest).
-    job.active_episode_id = uuid4().hex[:16]
+    job.active_episode_id = mint_episode_id()
 
     # F006: the job workspace IS a job-owned git worktree for a git target.
     # The runner owns the handle (and its lock) for the whole execution.
@@ -2667,6 +2672,7 @@ def run_job(
 
             # Final job review — job-level review after all per-task reviewers pass
             try:
+                from packages.orchestration.data_paths import job_dir
                 from packages.orchestration.final_job_review import build_final_job_review
 
                 _task_verdicts_fjr = [
@@ -2688,7 +2694,7 @@ def run_job(
                     gate_verdicts=[],
                     job_id=job.job_id,
                 )
-                _fjr_dir = _jobs_dir() / job.job_id
+                _fjr_dir = job_dir(job.job_id)
                 _fjr_dir.mkdir(parents=True, exist_ok=True)
                 (_fjr_dir / "final_job_review.json").write_text(
                     _json.dumps(_fjr, indent=2) + "\n"
@@ -2735,7 +2741,7 @@ JOB_RECOVERABLE_STATES = frozenset({"active", "retained", "failed_recoverable"})
 def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     """Resume an interrupted JobPlan in its OWN job-owned worktree.
 
-    This is the JobPlan-level recovery record: it reads ``task_jobs/<job-id>/
+    This is the JobPlan-level recovery record: it reads ``jobs/<job-id>/
     job.json``, NOT a Core Job event log and not per-task ping-pong run records
     (those correctly say ``cleanup_status=job_owned``; the job owns the worktree).
 
@@ -2840,6 +2846,12 @@ def _build_task_prompt(
 
 def export_job_report(job: JobPlan) -> dict[str, Any]:
     """Export a JSON-serializable job report."""
+    # Function-scoped, like every other data_paths import in this module. The
+    # single use below sits inside a compound boolean, where a missing import is
+    # a runtime NameError on the worktree path only — so it is bound HERE, at
+    # the top of the function, where it is visible to a reader.
+    from packages.orchestration.data_paths import job_dir
+
     task_reports = []
     for t in job.tasks:
         task_reports.append({
@@ -2869,7 +2881,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         handoff_available = bool(
             job.result_diff_path
             and job.result_diff_sha256
-            and (_jobs_dir() / job.job_id / job.result_diff_path).is_file()
+            and (job_dir(job.job_id) / job.result_diff_path).is_file()
         )
         has_workspace_changes = handoff_available and any(
             t.status == TASK_APPLIED for t in job.tasks
@@ -3048,9 +3060,14 @@ def _suggest_next_command(job: JobPlan) -> str:
 
 
 def job_evidence_dir(job_id: str):
-    """The job's own (hidden) evidence directory — where a job-level record lives."""
-    from packages.orchestration.data_paths import jobs_dir
-    return jobs_dir() / job_id / "evidence"
+    """The job's own (hidden) evidence directory — where a job-level record lives.
+
+    ``data_paths`` OWNS this layout (DECISION F260 D1); this is not a second
+    answer to the same question. The NAME survives only until F260 T004 moves
+    its remaining callers onto ``data_paths.job_evidence_dir`` directly.
+    """
+    from packages.orchestration.data_paths import job_evidence_dir as _job_evidence_dir
+    return _job_evidence_dir(job_id)
 
 
 def job_postmortem_path(job_id: str):
@@ -3156,13 +3173,12 @@ def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
     from packages.orchestration.failure_postmortem import safe_text
 
     try:
-        from packages.orchestration.data_paths import runs_dir
         from packages.orchestration.run_log import RunLogWriter
 
         completed = sum(
             1 for t in job.tasks if t.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED))
         pending = sum(1 for t in job.tasks if t.status == TASK_PENDING)
-        writer = RunLogWriter(job.job_id, runs_root=runs_dir())
+        writer = RunLogWriter(job.job_id)
         writer.log(
             "job_stopped",
             task_id=task_id or None,
@@ -3195,9 +3211,9 @@ def _job_stopped_event_exists(job_id: str, request_id: str) -> bool | None:
     stays a single stat plus a small read.
     """
     try:
-        from packages.orchestration.data_paths import runs_dir
+        from packages.orchestration.data_paths import run_log_dir
 
-        job_runs = runs_dir() / job_id
+        job_runs = run_log_dir(job_id)
         if not job_runs.is_dir():
             return False
         for jsonl in sorted(job_runs.glob("*.jsonl")):
@@ -3562,6 +3578,9 @@ def _task_stream_dir(job_id: str, task_id: str):
 
     Streams land beside the job's persisted evidence so `job-evidence` picks them
     up as ``task_runs/<task>/`` artifacts without polluting the repository.
+
+    ``data_paths`` owns the evidence root (DECISION F260 D1); only the
+    ``task_runs/<task>/`` tail below is this module's own.
     """
-    from packages.orchestration.data_paths import jobs_dir
-    return jobs_dir() / job_id / "evidence" / "task_runs" / task_id
+    from packages.orchestration.data_paths import job_evidence_dir as _job_evidence_dir
+    return _job_evidence_dir(job_id) / "task_runs" / task_id

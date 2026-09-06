@@ -28,9 +28,13 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
+from packages.orchestration.data_paths import (
+    mint_run_id,
+    pingpong_run_dir,
+    pingpong_runs_dir,
+)
 from packages.orchestration.exec_guard import run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_provider import (
@@ -119,7 +123,8 @@ class PingPongRound:
 @dataclass
 class PingPongResult:
     """Complete result of a ping-pong run."""
-    run_id: str = field(default_factory=lambda: uuid4().hex[:16])
+    # F260 D2: a RUN id is minted by its own function, not by an inline uuid4.
+    run_id: str = field(default_factory=mint_run_id)
     job_id: str = ""
     goal: str = ""
     repo_path: str = ""
@@ -644,7 +649,7 @@ def load_task_stdin(text: str) -> TaskInput:
 def _persist_task_artifact(run_id: str, task: TaskInput) -> None:
     """Persist task input as durable artifact under run directory."""
     try:
-        task_dir = _pingpong_runs_dir() / run_id / "task"
+        task_dir = pingpong_run_dir(run_id) / "task"
         task_dir.mkdir(parents=True, exist_ok=True)
         # Store the task body
         (task_dir / "input.md").write_text(task.body, encoding="utf-8")
@@ -2009,7 +2014,7 @@ def _finalize_workspace(
 
     from packages.orchestration import worktrees as _wt
 
-    run_dir = _pingpong_runs_dir() / result.run_id
+    run_dir = pingpong_run_dir(result.run_id)
 
     if job_owned:
         # The JOB owns this worktree and its lock: never remove it, never release
@@ -2751,7 +2756,7 @@ def _record_call_failure(
     if isinstance(getter, str):
         provider_call_dir = getter
 
-    run_dir = _pingpong_runs_dir() / result.run_id
+    run_dir = pingpong_run_dir(result.run_id)
     directory = call_evidence_dir(
         run_dir, role, round_no, kind, provider_call_dir=provider_call_dir)
     # The trusted containment root for this write: the streamed call directory belongs to
@@ -3001,7 +3006,7 @@ def run_pingpong(
     # directory (``do run``) gets this run's own directory, so the flag can never
     # be silently accepted and then dropped.
     if stream_evidence and not stream_evidence_dir:
-        stream_evidence_dir = str(_pingpong_runs_dir() / result.run_id)
+        stream_evidence_dir = str(pingpong_run_dir(result.run_id))
 
     # Create staging BEFORE providers (so Builder cwd can be set)
     if _job_owned:
@@ -3295,7 +3300,7 @@ def run_pingpong(
                     max_total_chars=_REPAIR_DIFF_CAP,
                 ))
             builder_tiered_artifact_path = (
-                _pingpong_runs_dir() / result.run_id / "calls" / "builder"
+                pingpong_run_dir(result.run_id) / "calls" / "builder"
                 / f"round-{round_num:02d}" / "tiered_diff.diff"
             )
             builder_tiered_diff_text = _builder_tiered_diff_text(
@@ -3641,7 +3646,7 @@ def run_pingpong(
                     max_total_chars=_REVIEWER_DIFF_CAP,
                 ))
             reviewer_tiered_artifact_path = (
-                _pingpong_runs_dir() / result.run_id / "calls" / "reviewer"
+                pingpong_run_dir(result.run_id) / "calls" / "reviewer"
                 / f"round-{round_num:02d}" / "tiered_diff.diff"
             )
             reviewer_tiered_diff_text = _reviewer_tiered_diff_text(
@@ -4068,7 +4073,7 @@ def run_pingpong(
                 and staging.exists()
                 and promotion_eligible):
             from packages.orchestration.pingpong_promote import persist_artifacts
-            run_dir = _pingpong_runs_dir() / result.run_id
+            run_dir = pingpong_run_dir(result.run_id)
             run_dir.mkdir(parents=True, exist_ok=True)
             persist_artifacts(run_dir, staging, original, result.staged_files)
 
@@ -4225,16 +4230,10 @@ def _run_test_command(
 # Durable run storage (Remedy data root, NOT target repo)
 # ---------------------------------------------------------------------------
 
-def _pingpong_runs_dir() -> Path:
-    """Return the ping-pong runs storage directory (Remedy data root)."""
-    from packages.orchestration.data_paths import resolve_data_root
-    return resolve_data_root() / "pingpong_runs"
-
-
 def _persist_run(result: PingPongResult) -> Path | None:
     """Persist run result as JSON under <remedy_data_root>/pingpong_runs/<run_id>/."""
     try:
-        run_dir = _pingpong_runs_dir() / result.run_id
+        run_dir = pingpong_run_dir(result.run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
         data = export_pingpong_json(result)
         out_file = run_dir / "result.json"
@@ -4256,7 +4255,7 @@ def _persist_run(result: PingPongResult) -> Path | None:
 
 def load_run(run_id: str) -> dict[str, Any] | None:
     """Load a persisted run result by ID from Remedy data root."""
-    result_file = _pingpong_runs_dir() / run_id / "result.json"
+    result_file = pingpong_run_dir(run_id) / "result.json"
     if not result_file.exists():
         return None
     try:
@@ -4267,11 +4266,11 @@ def load_run(run_id: str) -> dict[str, Any] | None:
 
 def list_runs() -> list[dict[str, str]]:
     """List all persisted run IDs from Remedy data root."""
-    runs_dir = _pingpong_runs_dir()
-    if not runs_dir.exists():
+    pp_runs_root = pingpong_runs_dir()
+    if not pp_runs_root.exists():
         return []
     results: list[dict[str, str]] = []
-    for entry in sorted(runs_dir.iterdir()):
+    for entry in sorted(pp_runs_root.iterdir()):
         if entry.is_dir():
             result_file = entry / "result.json"
             if result_file.exists():
@@ -5029,7 +5028,7 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
             }
         rounds.append(round_data)
 
-    report_path = str(_pingpong_runs_dir() / result.run_id / "result.json")
+    report_path = str(pingpong_run_dir(result.run_id) / "result.json")
 
     return {
         "run_id": result.run_id,

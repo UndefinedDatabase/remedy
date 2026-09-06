@@ -1,285 +1,264 @@
-# Handback — F259 Vocabulary & concept model v1, round 10 (CLOSURE PART 3)
+# Handoff — F260 One world · round 24 · THE CLOSURE ROUND · LAST ROUND OF THE BRANCH
+
+SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
+(the banner announces the REPORT, not a stop — amend0905-throughput)
+
+F260 IS CLOSED. This round booked round 23's verdict, authored the resolution of
+`R-0817`, and then flipped `docs/roadmap/STATUS.md` to `[x]`, synced `README.md`,
+marked self-use item `SU-011` consumed and rewrote this handback — ALL FOUR IN ONE
+COMMIT, which is the last commit on this branch (Rule A4, R-0154). The pull request
+is opened and left UNMERGED: it is the operator's manual-review window.
+
+THIS IS THE LAST ROUND OF THE BRANCH. Its own verdict lives HERE and in the pull
+request, never in a ledger entry — §4 item 13, the branch terminator. No `Gate: R24`
+record exists or will exist in `.agent/live_review.md`.
 
 ## Session
 
-`SESSION 1 of feature F259 · round 10 · rounds so far 10` — and the feature is
-CLOSED. Well inside the 25-round / 7-session soft limit, so no scope report is
-owed.
+SESSION 8 of feature F260 · round 24 · rounds so far 24
 
-State block:
+`.agent/STOP` was read from disk with `os.path.exists` before C0a (**False**),
+before C3 (**False**) and before the pull request (**False**).
 
-`100 % (T001–T004 ✅ · Integration Gate ✅ · Closure ✅ — F259 geschlossen, PR offen) — Schätzung`
+Context self-assessment (amend0905-throughput): context is comfortable — this round
+is four small commits and eight gates, and nothing about it pressed the margin.
 
-Accepted HEAD: `efd2a4fb04bb82b8ee87b812327a7c3f9776853a`
-Evidence job: `ace7fa4d9d782a7a`
-Package: `remedy-review-20260906-004320-READY_FOR_REVIEW.zip`
-SHA-256: `164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3`
-Package path: `/home/decodeux/Repos/remedy-history/zips`
+F260 IS PAST ITS 7-SESSION SOFT LIMIT. **DECISION F260 D8** (2026-09-06, round 17)
+IS THE AUTHORITY FOR CLOSING THIS FEATURE AT THE SCOPE IT BUILT; the remainder is
+carried by the follow-up feature the STATUS ledger registers directly after F260,
+which Rule A5 therefore proposes first.
 
-Context self-assessment: context was comfortable throughout this round — the
-whole order fit in one pass with room for the full G4 sweep and both suite
-batches, and nothing was skipped for budget.
+THE LEDGER ROTATION RAN IN ROUND 22, AT `6cebdce6`, WHERE THE CLOSURE SEQUENCE
+PLACES IT — after the verdict bookings and before the STATUS flip. IT WAS
+DELIBERATELY NOT REPEATED HERE. `scripts/rotate_live_review.py` was not run and
+`.agent/live_review_archive.md` is untouched by this round; the `R-0817` pair this
+round resolves stays in the live ledger and is archived by the NEXT feature's
+closure rotation, exactly as F259's closure left its own last pair.
 
-## Range
+`100 % fuer den gebauten Umfang (T001 komplett, T002 Run-Haelfte; Rest per DECISION F260 D8 abgespalten) — Schaetzung`
 
-Review of `aba15f08..HEAD` (five commits: C0a, C0b, C1, C2, C3).
+## The closure inputs — repeated verbatim from the round 24 block
+
+    EVIDENCE JOB   017d918464634206
+    PACKAGE        remedy-review-20260906-133417-READY_FOR_REVIEW.zip
+    SHA-256        0f87ce8e9c4c506f82a6eb401deb6d85fb6ad1b3f7b066ad35808ca3df21c804
+    PACKAGE PATH   /home/decodeux/Repos/remedy-history/zips
+    ACCEPTED HEAD  1eb980675b2c553f4aa8b949265eb3b6f30d6964 (round 23's C3)
+
+These are the values the STATUS line was authored from, and the F260 STATUS line on
+disk carries each of them — see G5 below, which prints that line in full. Nothing
+was rebuilt this round: no evidence job, no package.
 
 ## Commits
 
-### 42a4699f f259: save the round 10 block to the authored directory
+Range `790e6605`..`HEAD`. Every commit single-parent. The insertion and deletion
+cells below are the numbers `git diff --numstat <parent> <commit>` printed in G7,
+compared cell by cell against that tool rather than re-derived by eye.
 
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f259-r10.md | +300 / -0 | C0a — the round-10 block copied byte-for-byte from `.remedy-wt/f259-r10-block.md` |
+| Item | SHA | Subject | Path | Ins | Del |
+|---|---|---|---|---|---|
+| C0a | `e683058e` | f260: save the round 24 closure block as the authored original | `.agent/authored/f260-r24.md` | 398 | 0 |
+| C0b | `e45b2c7e` | f260: mirror the round 24 closure block into the last-block slot | `.agent/last_block.md` | 347 | 305 |
+| C1 | `1591d33c` | f260: point the plan at the round 24 closure and the review window | `.agent/plan.md` | 20 | 25 |
+| C2 | `819a1618` | f260: book the round 23 verdict and resolve the closure base finding | `.agent/live_review.md` | 4 | 0 |
+| C3 | this commit | f260: close F260 at the built scope and consume the self-use item | `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json`, `.agent/handoff.md` | not reported | not reported |
 
-### 3ad2a4fc f259: mirror the round 10 block into last_block
+C3's row states its four paths and NO numbers: its own insertion count and this
+handback's own length cannot exist while the text inside it is being written, so per
+checklist items 14 and 31 they are reported NOWHERE. Every insertion cell above —
+398, 347, 20 and 4 — is far under the AGENTS.md DECISION F104 D1 cap of 500, which
+counts INSERTIONS ONLY and never insertions plus deletions, so no oversize
+declaration is needed.
 
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +251 / -254 | C0b — mirror of the authored copy; one indivisible `.agent/**` state rewrite (DECISION F104 D1 exemption) |
-
-### 72edb018 f259: rewrite the plan for round 10, closure part 3
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +19 / -22 | C1 — whole rewrite from the PLANF259R10 slice, 40 lines, one trailing newline |
-
-### df26cab3 f259: book the round 9 gate record into the live review ledger
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +2 / -0 | C2 — pure byte-append of `"\n" + GATE_R9 + "\n"` |
-
-### C3 — the closure commit (self-referential, R-0149 pattern)
-
-The commit that writes this file cannot table its own numbers for this file.
-The three CONTENT paths were measured with `git diff --numstat` immediately
-before the commit; `.agent/handoff.md` is the self-reference.
-
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md | +1 / -1 | STATUSPAIR — F259 `[~]` becomes the accepted `[x]` line |
-| README.md | +9 / -3 | ACCPAIR + COUNTPAIR + TIERPAIR — Tier 2 accepted list gains F259, 72→73, Done 15→16 |
-| scripts/self_use_queue.json | +1 / -1 | QUEUEPAIR — SU-010 `consumed_by` becomes `F259` (closure precondition 6) |
-| .agent/handoff.md | self-reference | this handback |
-
-C3 IS THE LAST COMMIT ON THE BRANCH (Rule A4). Nothing follows it — no fixup,
-no second handback, and no `.agent/candidates.md` commit, because this round
-raised no candidate.
-
-## External actions
-
-- `git push -u origin feature/f259-vocabulary` — run after C3; result in the
-  round's final message.
-- `gh pr create --title "F259: vocabulary and concept model v1" --base main
-  --head feature/f259-vocabulary --body-file <scratch>` — run after the push.
-- NO `gh pr merge`. The merge belongs to the next feature's Open PR Gate
-  (guardrail G1, closure protocol step 6); that gap is the operator's manual
-  review window.
-
-**The pull request number is NOT in this file, deliberately.** Rule A4 makes C3
-the last commit on the branch, and C3 is the commit that writes this file, so
-the number does not exist yet at the moment these bytes are written. This is the
-R-0449 shape and the round-10 block accepts it explicitly rather than ordering an
-impossible value. The number lives in the round's final message and in the pull
-request itself, and `gh pr list` recovers it at any time.
-
-## Verification
-
-One line per gate, real exit codes and real output.
-
-- **G1 TRANSPORT — PASS.** `sha256sum .remedy-wt/f259-r10-block.md
-  .agent/authored/f259-r10.md .agent/last_block.md` → the single digest
-  `3c9ece83b1b4f46af15c9bc280d9f24ec8e0e61604793d03eb8958b5e9853ae5` three
-  times, equal to the digest the order stated. A copy chain, never a retype.
-- **G2 THE RECORD APPEND — PASS.** `.agent/live_review.md` 851 727 → 855 840
-  bytes, delta 4 113 = `len("\n" + GATE_R9 + "\n")` exactly. Pre-append bytes
-  are a byte-exact PREFIX of the post-append bytes (true) and the remainder
-  equals `"\n" + GATE_R9 + "\n"` (true). `grep -c '^Gate: R9 — '` went 0 → 1.
-- **G3 THE FIVE PAIRS — PASS.** Every one FROM 1 before, `TO contains FROM:
-  false` ⇒ REWRITE, FROM 0 after and TO 1 after:
-  STATUSPAIR 1 / false-REWRITE / 0 / 1 · ACCPAIR 1 / false-REWRITE / 0 / 1 ·
-  COUNTPAIR 1 / false-REWRITE / 0 / 1 · TIERPAIR 1 / false-REWRITE / 0 / 1 ·
-  QUEUEPAIR 1 / false-REWRITE / 0 / 1. Whole-file reconstruction, recomputed
-  independently from the pre-edit text: `docs/roadmap/STATUS.md` true,
-  `README.md` true, `scripts/self_use_queue.json` true — three booleans, and
-  each file still ends with exactly one newline (true, true, true).
-  Pre-edit sha256: STATUS `27a706ff…f5d5` (37 358 B), README `079d47c8…101b`
-  (14 184 B), queue `8e68368a…3b96` (29 625 B). Post-edit: STATUS
-  `0944d55d…f441` (37 722 B), README `4d39d65a…2cfa` (14 580 B), queue
-  `d245816f…ee5c` (29 629 B).
-- **G4 THE LEDGER AND THE README AGREE — PASS.** `^- \[x\] F` = 73 (expected
-  73); `^- \[~\] F` = 0 (expected 0); README numeral `73 of 271 registered
-  items accepted.` (expected 73); README Tier 2 row
-  `| 2 | Minimal Self-Build Runtime | 16 | 24 |` (expected Done 16); accepted
-  per tier from the STATUS headings — Tier 0 16, Tier 1 22, **Tier 2 16**,
-  Tier 3 6, Tier 4 0, Tier 5 13, Tiers 6-17 0. The F259 STATUS line, verbatim:
-
-      - [x] F259 — Vocabulary & concept model v1 (T001–T004 complete; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job ace7fa4d9d782a7a · package remedy-review-20260906-004320-READY_FOR_REVIEW.zip · SHA-256 164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD efd2a4fb04bb82b8ee87b812327a7c3f9776853a)
-
-  **The R-0797 token sweep — the point of the round.** Run twice, on tokens and
-  never on a count. NARROW form, the block's `Accepted in Tier N so far:` — 4
-  blocks, 33 occurrences, 32 distinct, reproducing the reviewer's simulated 32
-  exactly; every one `[x]` in `docs/roadmap/STATUS.md`, F259 among them:
-  F008 F009 F013 F014 F016 F021 F022 F031 F032 F034 F037 F046 F047 F048 F050
-  F051 F052 F053 F086 F103 F104 F105 F106 F107 F251 F252 F254 F255 F256 F257
-  **F259** F262 — all `[x]`, none `NOT-[x]`.
-  WIDE form, the pinning test's OWN regex `Accepted[^\n]*:` (which also sweeps
-  the `Accepted foundation (Tier 0, complete):` block the narrow form misses) —
-  5 headers, 49 occurrences, 48 distinct, again every one `[x]`: the 32 above
-  plus F001 F002 F003 F004 F005 F006 F007 F010 F011 F012 F017 F018 F081 F146
-  F147 F148. Tokens NOT `[x]`: none, in either form. F037 is the one id
-  appearing twice in the wide set; both occurrences are `[x]`, so it is not a
-  gate condition. The full list is reported here and in the round's final
-  message; a count alone would not discharge R-0797.
-- **G5 THE SELF-USE ITEM IS CONSUMED — PASS.** SU-010 `consumed_by` = `'F259'`;
-  entries with an empty `consumed_by` = 0 (expected 0); total entry count = 10
-  (expected 10); the post-edit bytes equal the pre-edit bytes with ONLY the
-  QUEUEPAIR replacement applied — true. The `—` literal escape count is
-  **53 before and 53 after**, equal, which is the proof that the file was edited
-  as TEXT and never round-tripped through `json.dump` — open finding R-0785.
-  Closure precondition 6 is discharged.
-- **G6 THE SUITES, RUN SERIALLY — PASS, 8 of 8, every expected count matched.**
-
-      python3 -m pytest tests/docs/ -q                                exit 0   303 passed  (expected 303)
-      python3 -m pytest tests/orchestration/test_roadmap_index.py -q  exit 0    30 passed  (expected 30)
-      python3 -m pytest tests/orchestration/test_self_use_generator.py -q exit 0 20 passed (number reported, no expectation)
-      python3 -m pytest tests/ui_server/ -q                           exit 0   515 passed  (expected 515)
-      python3 -m pytest tests/orchestration/test_test_runner.py -q    exit 0    52 passed  (expected 52)
-      python3 -m pytest tests/regression/test_resource_safety.py -q   exit 0    21 passed  (expected 21)
-      python3 -m pytest tests/orchestration/test_integrity_gate.py -q exit 0    16 passed  (expected 16)
-      python3 -m pytest tests/cli/test_golden_path.py -q              exit 0    42 passed  (expected 42)
-
-  No failing node ids anywhere. See the deviation below on WHEN `tests/docs/`
-  was run relative to C3 — it was run twice, and the post-commit reading is in
-  the round's final message.
-- **G7 THE CLOSURE PRECONDITIONS — PASS.** `python3 -m apps.cli.grouped
-  integrity check --json` → `"passed": true`, `"fail_count": 0` over 5 checks
-  (handler_import handlers=342, live_review_verdict, plan_consistency
-  unchecked=0, relevant_untracked untracked=0 relevant=0, high_blockers_open
-  "no open blocker/high findings"). `git status --porcelain` — empty, reported
-  post-commit in the final message. Open findings = **294** (`^- R-\d{4} — `
-  298 minus `^Done: R-\d{4} — ` 4), the same number the round-9 gate record
-  measured on both sides of the ledger rotation. `.agent/candidates.md` is
-  UNCHANGED by this round: it is absent from `git diff --name-only
-  aba15f08..HEAD`, and its last touching commit is `be8d5946` (F110 R1), long
-  before this branch. No candidate was raised, so no post-closure
-  candidates-only commit is owed.
-- **G8 STRUCTURE, PUSH, PR — measured pre-commit as far as it reaches.** All of
-  C0a-C2 are single-parent (`42a4699f←aba15f08`, `3ad2a4fc←42a4699f`,
-  `72edb018←3ad2a4fc`, `df26cab3←72edb018` — one parent each) and every
-  insertion count is far under the 500 cap: C0a 300, C0b 251, C1 19, C2 2, and
-  C3's three content paths 9+1+1 = 11 plus this file. `git ls-files .remedy-wt`
-  returns nothing — the scratch stays untracked. The push result, the PR number
-  and URL, that it is not a draft, that its base is `main` and its head is
-  `feature/f259-vocabulary`, that it is NOT merged, and the
-  `gh pr list --state open` readout are in the round's final message; none of
-  them can be in this file, which C3 writes.
-
-## Authored-text proofs
-
-Every applied text came from the COMMITTED `.agent/authored/f259-r10.md` by
-marker extraction in Python, never retyped:
-
-- PLANF259R10 → `.agent/plan.md`, written from the extracted slice and read
-  back byte-equal (1 877 bytes both sides), 40 lines, exactly one trailing
-  newline.
-- GATE_R9 → `.agent/live_review.md`, the appended remainder byte-equal to
-  `"\n" + GATE_R9 + "\n"` (G2, true).
-- STATUSPAIR / ACCPAIR / COUNTPAIR / TIERPAIR / QUEUEPAIR → applied with
-  `str.replace(FROM, TO, 1)` after asserting the FROM occurs exactly once;
-  each file reconstructs byte-exactly from its pre-edit bytes with only its own
-  pairs applied (G3, three booleans true).
-- Transport: one sha256 across the scratch block, the authored copy and the
-  mirror (G1).
-
-## Deviations & assumptions
-
-1. **The pair slices were stripped of exactly one trailing newline before
-   `str.replace`.** The block delimits each slice with `<<<BEGIN X>>>` /
-   `<<<END X>>>` on their own lines, so a raw extraction carries the newline
-   that precedes the END marker. Applied raw, two of the five FROM texts occur
-   ZERO times: `72 of 271 registered items accepted.` is followed on the SAME
-   line by ` Next: the first unchecked item in docs/roadmap/STATUS.md.`, and
-   `      "consumed_by": ""` is followed by `,`. The reviewer's own measurement
-   quotes the queue FROM bare — "`"consumed_by": ""` at exactly one occurrence"
-   — which is the same reading. Stripping one newline from BOTH sides of every
-   pair is newline-neutral, all five then matched exactly once, and all three
-   files still end with exactly one newline (G3). Declared rather than silently
-   done, because it is a departure from a literal reading of the slice bytes.
-2. **`tests/docs/`, G4 and G5 were run BEFORE C3 as the go/no-go, and again
-   AFTER it for the record.** The block orders `tests/docs/` after C3 because it
-   is the suite that catches a README/STATUS disagreement, and separately
-   forbids anything following C3 — so a gate that first went red after C3 would
-   leave no legal repair. Both obligations are met by running each gate twice on
-   byte-identical content: the pre-commit run authorised the commit, the
-   post-commit run is taken from the COMMITTED state and reported in the round's
-   final message. The readings above are the pre-commit ones; nothing in
-   `docs/`, `README.md`, `docs/roadmap/STATUS.md` or
-   `scripts/self_use_queue.json` differs by one byte between them.
-3. **Two bash command FORMS were refused outright by this session's guard and
-   were re-expressed.** (a) A compound command ending `; echo "grep exit: $?"`
-   was refused; it was split into two separate calls. (b) A heredoc Python
-   script containing a brace-with-quote literal (a dict comprehension,
-   `{p: open(p, encoding='utf-8').read() for p in FILES}`) was refused; the
-   scripts were written to files under the gitignored `.remedy-wt/` and run as
-   `python3 -B <file>`. Each refusal returned "Permission to use Bash has been
-   denied." verbatim. No gate was weakened, skipped or replaced by a weaker
-   one; the Python actually run is reported beside its output in the round's
-   final message.
-4. **The R-0797 sweep was run in TWO forms, and the wider one is the binding
-   one.** The block names `Accepted in Tier N so far:` blocks; the pinning test
-   `TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
-   actually iterates `re.findall(r"Accepted[^\n]*:\n((?:[^\n]+\n)+)", readme)`,
-   which additionally sweeps the `Accepted foundation (Tier 0, complete):`
-   block. Reporting only the narrow 32 would have measured a shape the test does
-   not use, so both are reported: narrow 32 distinct (matching the reviewer's
-   simulation exactly), wide 48 distinct, every token `[x]` in either form.
-5. **Scratch scripts were written under the gitignored `.remedy-wt/`**
-   (`r10_apply_pairs.py`, `r10_g4.py`, `r10_g4_narrow.py`, `r10_g5.py`,
-   `r10_suites.py`, and the pre-edit copies under `.remedy-wt/r10pre/`). None
-   is tracked — `git ls-files .remedy-wt` returns nothing — so the change set is
-   unchanged.
-6. No other deviation. The bundle ran in the block's exact order, C0a, C0b, C1,
-   C2, C3, with no extra commit, no dropped commit and no reordering, and the
-   change set is exactly the paths the block listed.
-
-## Item-status table
+## Item status
 
 | Item | Status | Reason |
-|---|---|---|
-| C0a save the block to `.agent/authored/f259-r10.md` | done | copied, digest equal |
-| C0b mirror to `.agent/last_block.md` | done | copied, digest equal |
-| C1 `.agent/plan.md` ← PLANF259R10 | done | whole rewrite, 40 lines |
-| C2 `.agent/live_review.md` append `"\n" + GATE_R9 + "\n"` | done | +4 113 bytes, prefix and remainder exact |
-| C3 STATUSPAIR — `docs/roadmap/STATUS.md` | done | `[~]` → the accepted `[x]` line |
-| C3 ACCPAIR — `README.md` Tier 2 accepted list | done | gains F259; previous entry's `).` → `),` |
-| C3 COUNTPAIR — `README.md` 72 → 73 | done | |
-| C3 TIERPAIR — `README.md` Tier 2 Done 15 → 16 | done | |
-| C3 QUEUEPAIR — `scripts/self_use_queue.json` | done | text replacement; 53 escapes before and after |
-| C3 `.agent/handoff.md` rewrite | done | this file |
-| G1 transport | done | one digest, three times |
-| G2 record append | done | 851 727 → 855 840, grep 0 → 1 |
-| G3 the five pairs | done | 1/false/0/1 each; three reconstructions true |
-| G4 ledger and README agree + R-0797 sweep | done | 73 / 0 / 73 / Done 16; 32 narrow and 48 wide tokens, all `[x]` |
-| G5 self-use item consumed | done | SU-010 = `F259`; 0 empty; 10 entries; 53 = 53 |
-| G6 the eight suites | done | 8 exit-0 runs, every expected count matched |
-| G7 closure preconditions | done | integrity passed, fail_count 0; 294 open findings; candidates unchanged |
-| G8 structure, push, PR | deviated | the pre-commit half is measured above; the push, the PR number and URL and the `gh pr list` readout cannot be in a file that C3 writes, so they are in the round's final message (R-0449 shape) |
-| Push the branch | deviated | happens AFTER this file is committed; result in the final message |
-| Create the pull request | deviated | happens AFTER the push; number and URL in the final message |
-| Merge the pull request | skipped | FORBIDDEN this session — guardrail G1 and closure-protocol step 6; the merge is the next feature's Open PR Gate and the gap is the operator's review window |
+|--------|----------|------------------------------|
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | this commit; the last on the branch |
 
-## Next
+## Gates — one line each, real exit codes and real readings
 
-The operator's manual review window opens now: the pull request is open,
-unmerged, and the package
-`remedy-review-20260906-004320-READY_FOR_REVIEW.zip` waits in
-`/home/decodeux/Repos/remedy-history/zips` for review at the operator's pace.
+**G1 TRANSPORT — PASS.** One digest three times: `.remedy-wt/f260-r24-block.md`,
+`.agent/authored/f260-r24.md` and `.agent/last_block.md` are each **31310** bytes and
+each hash to `32e72deee2217943d79528c01befd333288772f46b95b67ef932fdb4210e142e`, which
+is the digest the delegation named and which was verified against the source file
+BEFORE anything else in the block was executed; `filecmp.cmp(shallow=False)` is
+**True** for source-vs-saved and **True** for source-vs-mirror; both measured before
+C0a was staged, and both saves are `shutil.copyfile` of the same source file, never
+retyped.
 
-The single expected next action: a FRESH session for the next feature, which
-begins at Phase 1 rule 1 (read `.agent/STOP` from disk) and then rule 2 (the
-Open PR Gate) — where it MERGES this pull request with
-`gh pr merge <n> --merge --delete-branch`, pulls `main`, and only then claims
-the next unchecked line in the DECISION amend0905-vocab D12 order, which is
-**F260 — one world: mission → job → run**.
+**G2 THE RECORD — PASS.** `.agent/live_review.md`, at C2 `819a1618`:
+(a) BYTE — post equals pre + newline + GATE_R23 + blank line + DONE0817 + newline
+**True**; pre is a byte-exact PREFIX of post **True**; **948369** → **955525** bytes,
+delta **7156**; pre ended in exactly one newline **True** (asserted from the file's
+own measured terminal byte BEFORE writing) and post ends in exactly one newline
+**True**; written in ONE write.
+(b) STRUCTURAL, computed independently of (a) by splitting the WHOLE image on
+`\n{2,}`, dropping units empty after stripping and stripping each survivor of leading
+and trailing newlines — unit count **435** before, **437** after; N = **2**, COUNTED
+BY THE SCRIPT from the slices' own paragraphs and not taken from the block; the last
+2 units equal those paragraphs IN ORDER **True**, with unit[-2] = GATE_R23
+(`Gate: R23 — the F260 R23 entry, CLOSURE PART 2 REDONE. VERDI…`) and unit[-1] =
+DONE0817 (`Done: R-0817 — RESOLVED at \`1eb980675b2c553f4aa8b949265eb3b6…`).
+(c) NEGATIVE CONTROL, in memory on a `bytes` object and NEVER on disk — offset
+**951000** was first ASSERTED by the script to lie inside the FIRST appended
+paragraph, GATE_R23 and not DONE0817 (GATE_R23 occupies bytes 948370..953630); the
+byte `'i'` XOR 0x20 became `'I'`; reader (a) REJECTS **True** and reader (b) REJECTS
+**True**; after restoring, reader (a) ACCEPTS **True**, reader (b) ACCEPTS **True**,
+and the restored image equals the disk image **True**.
+LEDGER COUNTS before → after: `^Gate: ` **22 → 23**; `^Gate: R23 — ` **0 → 1**;
+`^Done: R-0817 — ` **0 → 1** — the last two each 0 to exactly 1.
+OPEN SET BY DISTINCT ID before → after: distinct `^- R-\d{4} — ` ids **301 → 301**
+minus distinct `^Done: R-\d{4} — ` ids **2 → 3**, so the open set is **299 → 298** —
+it went DOWN BY EXACTLY ONE, which is the arithmetic of resolving one id and minting
+none. New registration lines added: **0**. `R-0817` is registered **True** and now
+resolved **True**. NO ID WAS MINTED, as constraint 4 requires.
+
+**G3 THE PLAN — PASS.** `.agent/plan.md` equals the PLANF260R24 slice plus exactly one
+trailing newline **True**, measured length **1607** bytes; **34** lines, under the
+AGENTS.md cap of 50 **True**; it carries `## Goal` **True** and `## Next Steps`
+**True**.
+
+**G4 THE CLOSURE PAIRS — PASS.** Measured on the WORKING TREE after the edits and
+before C3 was staged. **5** pairs extracted from the committed authored file and **5**
+applied — the count is this script's own, not the block's sentence. Containment was
+measured here, not taken from the block; each line below is one pair, with the label
+derived from that same line's output:
+
+| Pair | Target | Containment | Label | FROM before | FROM after | TO after |
+|---|---|---|---|---|---|---|
+| STATUS | `docs/roadmap/STATUS.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
+| COUNT | `README.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
+| TIER | `README.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
+| LIST | `README.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
+| QUEUE | `scripts/self_use_queue.json` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
+
+Per FILE, the edited file was reconstructed INDEPENDENTLY by the script from the
+pre-edit image (taken from `git show HEAD:<path>`, and asserted equal to the working
+tree before any edit) with ONLY that file's own pairs applied and nothing else:
+
+| File | Equals the independent reconstruction | Bytes before → after | Ends in exactly one newline |
+|---|---|---|---|
+| `docs/roadmap/STATUS.md` | **True** | 39107 → 39499 | **True** |
+| `README.md` | **True** | 14615 → 15225 | **True** |
+| `scripts/self_use_queue.json` | **True** | 33718 → 33722 | **True** |
+
+**G5 THE DOCS PINS — PASS**, run on the working tree BEFORE C3 was staged.
+`python3 -m pytest tests/docs/ -q -p no:randomly` exit **0**, `303 passed in 0.49s` —
+**303**, exactly the count the reviewer measured at `790e6605` and expected after the
+edits. Computed DIRECTLY, not only through the suite:
+`^- \[x\] F\d{3} — ` lines in `docs/roadmap/STATUS.md` = **74**;
+the README `N of M registered items accepted.` line reads N = **74**, M = **272**,
+with N equal to the STATUS accepted count **True** and M equal to the STATUS ledger's
+**272** distinct feature lines **True**;
+the README Tier 2 row's Done cell = **17** (Total 25);
+`scripts/self_use_queue.json` parses as JSON **True**, **11** items, exactly one whose
+`consumed_by` is `F260` **True** (that item is `SU-011`), and none left empty
+**True**.
+The F260 STATUS line in full, as it stands on disk:
+
+    - [x] F260 — One world: mission → job → run (T001 complete and the run half of T002; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 017d918464634206 · package remedy-review-20260906-133417-READY_FOR_REVIEW.zip · SHA-256 0f87ce8e9c4c506f82a6eb401deb6d85fb6ad1b3f7b066ad35808ca3df21c804 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 1eb980675b2c553f4aa8b949265eb3b6f30d6964)
+
+**G6 THE CANARY AND INTEGRITY — PASS**, run SERIALLY in the primary checkout.
+`python3 -m pytest tests/cli/test_golden_path.py -q -p no:randomly` exit **0**,
+`42 passed in 20.99s` — the canary at the expected **42**.
+`python3 -m apps.cli.grouped integrity check --json` exit **0**, `"passed": true`,
+`"fail_count": 0`.
+`git status --porcelain --untracked-files=all` reports **no untracked paths at all
+(0)**, because every scratch artifact this round produced sits under `.remedy-wt/`,
+which `.gitignore` excludes; there is therefore no untracked path to classify.
+
+**G7 STRUCTURE AND TREE — PASS.** `git status --porcelain` was EMPTY immediately
+before the C3 edits were made and staged, and is EMPTY again after C3 is committed
+(the post-commit reading is taken after this text is sealed and is reported in the
+round's handback message). `git ls-files .remedy-wt` returns **nothing** (`''`).
+All four prior commits are single-parent (parents=1 each), and the
+`git diff --numstat <parent> <commit>` cells are the table above: C0a 398/0, C0b
+347/305, C1 20/25, C2 4/0 — the INSERTIONS column only, which is the count AGENTS.md
+DECISION F104 D1 caps at 500, never insertions plus deletions, and every one of 398,
+347, 20 and 4 is under that cap. `git diff --name-only` over C3 lists exactly the four
+paths of the change set and nothing more: `docs/roadmap/STATUS.md`, `README.md`,
+`scripts/self_use_queue.json`, `.agent/handoff.md`. C3 is the branch tip with no
+commit after it. Marker lines beginning with the BEGIN or END prefix that reached any
+written file: `.agent/plan.md` **0**, `.agent/live_review.md` **0**,
+`docs/roadmap/STATUS.md` **0**, `README.md` **0**, `scripts/self_use_queue.json`
+**0** — zero in each.
+
+**G8 THE PULL REQUEST — runs after this commit is pushed.** The PR_BODY slice is
+written to a file under the gitignored `.remedy-wt/` and the request is created with
+`gh pr create --base main --head feature/f260-one-world --title "f260: one world -
+mission, job, run" --body-file <that file>`. NOTHING IS MERGED AND NO MERGE IS
+ATTEMPTED: `gh pr merge` is never run, per constraint 9 — the pull request is the
+operator's review window and it stays open. Its readings — the PR number, the URL and
+`gh pr view <n> --json state,isDraft,baseRefName,headRefName,mergeable` — cannot
+exist while this text is being written (see deviation 1) and are reported in the
+round's handback message to the reviewer; they are re-derivable at any time with
+`gh pr list --state open`.
+
+## Open findings
+
+**298 by distinct id** after C2, down by exactly one from 299, because `R-0817` was
+resolved and no id was minted.
+
+## Deviations
+
+1. **The block orders this handback to carry "the PR number", and that number cannot
+   exist while this text is written.** The handback is rewritten INSIDE C3;
+   constraint 5 makes C3 the last commit on the branch, so no later commit may add
+   the number; and the Bundle orders the pull request created only after C3 is pushed.
+   The value is therefore unobtainable at authoring time by exactly the construction
+   the block itself invokes for C3's insertion count and this file's own length
+   (checklist items 14 and 31), and it is the R-0418 class — an instruction to repeat
+   a value that does not yet exist. NOTHING WAS INVENTED: no number was guessed from
+   the `gh pr list` sequence. The real PR number and URL are reported in the round's
+   handback message to the reviewer, and `gh pr list --state open` re-derives them on
+   demand. The alternative — creating the pull request before C3 — was rejected
+   because it would put a body describing the closure commit onto a branch that did
+   not yet carry it, and would contradict the Bundle's stated order.
+2. **G7's `git status --porcelain` EMPTY "immediately before C3 is staged" was
+   measured before the C3 edits were made**, since the working tree necessarily
+   carries those edits between the edit and the staging. The reading was taken
+   directly after C2 was committed and printed nothing. The post-commit reading is
+   taken after this file is sealed, for the same reason, and is reported in the
+   handback message.
+3. **Constraint 1 — no slice was believed wrong.** All 14 slices (PLANF260R24,
+   GATE_R23, DONE0817, STATUS_FROM/TO, COUNT_FROM/TO, TIER_FROM/TO, LIST_FROM/TO,
+   QUEUE_FROM/TO, PR_BODY) were extracted from the COMMITTED
+   `.agent/authored/f260-r24.md` by exact-position marker matching, with exactly one
+   BEGIN and one END asserted for each, and applied byte for byte. Nothing was edited,
+   reflowed or corrected.
+4. **`python3 <script>` followed by `echo "EXIT=$?"` was refused by this session's
+   shell guard**, verbatim: `Permission to use Bash has been denied.` — the `$?`
+   inside a compound command, exactly as constraint 7 warned. Every exit code above
+   was therefore read from `subprocess.run(...).returncode` inside a Python file under
+   `.remedy-wt/`, never from a word. The scripts run were `r24_c0_g1.py`,
+   `r24_slices.py`, `r24_c1_g3.py`, `r24_c2_g2.py`, `r24_g4_pairs.py`,
+   `r24_g5_direct.py`, `r24_g6.py` and `r24_g7_pre.py`; none was ever `git add`ed and
+   `git ls-files .remedy-wt` is empty.
+5. **One G5 reading was re-run after a fault in the measuring script, not in the
+   product.** The first `r24_g5_direct.py` run anchored the README count regex with a
+   trailing `$` and matched nothing, because that line continues `… accepted. Next:
+   the first unchecked item in docs/roadmap/STATUS.md.` The regex was corrected and
+   the gate re-run; no file under `README.md`, `docs/` or `scripts/` was touched to
+   make a reading come out, and the pytest exit code in the same run was already 0.
+6. **No git worktree was created and nothing destructive ran**, per constraint 10.
+   The ledger rotation was NOT run (constraint 6), the package was NOT rebuilt and the
+   evidence job was NOT re-run (constraint 6).
+
+## Next expected action
+
+1. **Phase 1 rule 1 before rule 2**: re-read `.agent/STOP` from disk first.
+2. **THE REVIEWER'S GATE on round 24** — re-run G1 through G8 independently. This is
+   the branch terminator: the verdict is recorded HERE and in the pull request, and NO
+   `Gate: R24` line is ever written to `.agent/live_review.md` (§4 item 13).
+3. **THE PULL REQUEST STAYS OPEN AND UNMERGED.** It is the operator's manual-review
+   window. It merges at the START OF THE NEXT FEATURE through the AGENTS.md Open PR
+   Gate, or manually by the operator at any time before that. This session merged
+   nothing and attempted no merge.
+4. **The next feature** is the follow-up registered directly after F260 in
+   `docs/roadmap/STATUS.md`, which Rule A5 proposes first; it starts in a FRESH
+   session, whose first reviewed round also picks up any closure candidates.

@@ -195,7 +195,7 @@ class TestTeachReachesTaskJobs:
     answered "no job matches prefix" while that job's run log sat in
     `<data_root>/runs/edbbc42bba4c4b00/`. `resolve_job_id` searched
     `jobs/*.json` and returned a UUID; a task job is a DIRECTORY under
-    `task_jobs/` named by sixteen hex characters, which is not a UUID. The
+    `jobs/` named by sixteen hex characters, which is not a UUID. The
     teacher was built against the classic store and could not see a job-based
     run at all.
     """
@@ -204,9 +204,11 @@ class TestTeachReachesTaskJobs:
     TASK_JOB_ID = "edbbc42bba4c4b00"
 
     def _write_task_job(self, data_root: Path, job_id: str) -> None:
-        job_dir = data_root / "task_jobs" / job_id
-        job_dir.mkdir(parents=True)
-        (job_dir / "job.json").write_text(
+        from packages.orchestration.data_paths import job_dir
+
+        job_root = job_dir(job_id, data_root)
+        job_root.mkdir(parents=True)
+        (job_root / "job.json").write_text(
             json.dumps({"job_id": job_id, "status": "completed"}), encoding="utf-8")
 
     def test_narrate_finds_a_task_job_and_reads_its_run_log(self, data_root, capsys):
@@ -252,7 +254,9 @@ class TestTeachReachesTaskJobs:
 
     def test_a_directory_without_a_job_file_is_not_a_job(self, data_root, capsys):
         """A half-created or hand-made directory must not resolve as a job."""
-        (data_root / "task_jobs" / self.TASK_JOB_ID).mkdir(parents=True)
+        from packages.orchestration.data_paths import job_dir
+
+        job_dir(self.TASK_JOB_ID, data_root).mkdir(parents=True)
 
         assert _exit_code(lambda: _cmd_teach_narrate(self.TASK_JOB_ID)) == 1
         assert "no job matches prefix" in capsys.readouterr().err

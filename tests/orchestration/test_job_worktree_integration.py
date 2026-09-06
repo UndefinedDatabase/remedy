@@ -15,6 +15,7 @@ import pytest
 
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
+from packages.orchestration.data_paths import job_dir
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
@@ -161,12 +162,12 @@ class TestSequentialTasksShareTheWorkspace:
         assert [t.status for t in job.tasks] == [PJ.TASK_APPLIED, PJ.TASK_APPLIED]
 
     def test_each_task_has_an_exact_task_local_diff(self, repo, monkeypatch):
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        from packages.orchestration.data_paths import pingpong_run_dir
         seen: dict = {}
         job = _run_two_task_job(repo, monkeypatch, seen)
 
-        d1 = (_pingpong_runs_dir() / job.tasks[0].run_id / "result.diff").read_text()
-        d2 = (_pingpong_runs_dir() / job.tasks[1].run_id / "result.diff").read_text()
+        d1 = (pingpong_run_dir(job.tasks[0].run_id) / "result.diff").read_text()
+        d2 = (pingpong_run_dir(job.tasks[1].run_id) / "result.diff").read_text()
 
         assert "one.txt" in d1 and "two.txt" not in d1        # only task 1's change
         assert "two.txt" in d2 and "one.txt" not in d2        # only task 2's change
@@ -176,7 +177,7 @@ class TestSequentialTasksShareTheWorkspace:
     def test_the_final_job_diff_contains_both_tasks(self, repo, monkeypatch):
         seen: dict = {}
         job = _run_two_task_job(repo, monkeypatch, seen)
-        job_diff = (PJ._jobs_dir() / job.job_id / "result.diff").read_text()
+        job_diff = (job_dir(job.job_id) / "result.diff").read_text()
         assert "one.txt" in job_diff and "two.txt" in job_diff
         assert job.result_diff_sha256 and job.result_diff_size_bytes > 0
 

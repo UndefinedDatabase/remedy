@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
-from packages.orchestration.data_paths import runs_dir as _runs_dir_default
+from packages.orchestration.data_paths import run_log_dir
 
 # ---------------------------------------------------------------------------
 # Run ID
@@ -94,7 +94,7 @@ class RunEvent:
 class RunLogWriter:
     """Append-only writer for a single run's JSONL event log.
 
-    Creates <runs_root>/<job_id>/<run_id>.jsonl on first write (directory
+    Creates <data_root>/runs/<job_id>/<run_id>.jsonl on first write (directory
     is created eagerly on construction).
 
     One instance should be used per CLI invocation. All events from a
@@ -102,17 +102,17 @@ class RunLogWriter:
     session trail.
     """
 
+    # The job-keyed join lives in data_paths.run_log_dir, so DECISION F260 D1's re-key changes one function body.
     def __init__(
         self,
         job_id: UUID,
         run_id: str | None = None,
         *,
-        runs_root: Path | None = None,
+        data_root: Path | None = None,
     ) -> None:
         self._job_id = str(job_id)
         self._run_id = run_id if run_id is not None else new_run_id()
-        root = runs_root if runs_root is not None else _runs_dir_default()
-        job_dir = root / self._job_id
+        job_dir = run_log_dir(self._job_id, data_root)
         job_dir.mkdir(parents=True, exist_ok=True)
         self._path = job_dir / f"{self._run_id}.jsonl"
 

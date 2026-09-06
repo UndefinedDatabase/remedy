@@ -1,40 +1,34 @@
-# Plan — F259 Vocabulary & concept model v1
+# Plan — F260 One world: mission → job → run
 
-Branch: feature/f259-vocabulary, cut from `main` at 25961794. Rounds 1 to 9
-PASSED the reviewer's gate. Round 7 was the integration gate — the full suite
-green on the branch and at the merge base, zero branch-only and zero base-only
-failures. Rounds 8 and 9 were closure parts 1 and 2; the package is built and
-READY_FOR_REVIEW.
+Branch: feature/f260-one-world. Rounds 1 to 23 are reviewed; round 1 FAILED and was
+repaired, and 2 to 23 PASSED. DECISION F260 D8 closes this feature at the scope it
+built; the follow-up feature registered directly after F260 carries the remainder.
 
 ## Goal
 
-`docs/system/vocabulary.md` is the BINDING vocabulary page: the DECISION
-amend0905-vocab D1 table, the do-not-confuse table, the Mermaid concept diagram,
-the per-word meaning table, and D2–D10 plus F259 D1/D2 as dated DECISION
-paragraphs. `tests/docs/test_vocabulary.py` pins it in planned mode against the
-shipped `apps/cli/command_catalog.py`; the same diagram stands in `README.md`,
-byte-equal and pinned; the page is registered in `docs/README.md`. No other
-code: F259 decides words, F260 and F261 spend them.
+Close F260. This is the LAST round of the branch: the STATUS line goes to `[x]`,
+the README is synced in the same commit, self-use item SU-011 is marked consumed,
+and the pull request is opened and left UNMERGED as the operator's review window.
 
 ## Current Step
 
-Round 10 is CLOSURE PART 3 — the last round. One commit flips the STATUS line to
-accepted, syncs the README's counters and its Tier 2 accepted list, marks the
-self-use item consumed and rewrites the handback; it is the last commit on the
-branch. Then the pull request is opened and left UNMERGED, which is the
-operator's review window.
+Round 24 books round 23's verdict and the resolution of `R-0817`, then lands the
+STATUS flip, the README capability sync, the `consumed_by` edit and the handback in
+ONE commit — the last on this branch (Rule A4) — and opens the pull request. The
+ledger rotation ran in round 22 and is not repeated. The evidence job and the
+review package were built in round 23 and are not rebuilt.
 
 ## Next Steps
 
-- The operator reviews the package at their own pace.
-- The next feature's session merges this pull request at its Open PR Gate, then
-  claims the next unchecked line in the DECISION amend0905-vocab D12 order,
-  which is F260 — one world: mission, job, run.
+1. The operator's review window: the pull request stays OPEN and UNMERGED. It is
+   merged at the start of the next feature through the AGENTS.md Open PR Gate, or
+   manually by the operator at any time before that.
+2. The next feature is the follow-up registered directly after F260 in the ledger,
+   which Rule A5 proposes first; it starts in a fresh session.
 
 ## Risks
 
-- The README and the STATUS ledger must never disagree in any committed state,
-  which is why one commit carries both. A split would leave a state where the
-  README claims an acceptance the ledger does not.
-- The pull request must not be merged in this session. Merging it here would
-  close the operator's review window before it opened.
+- Nothing may follow the closure commit on this branch. A commit after it breaks
+  Rule A4's rendering, which the ledger cross-check pins.
+- README and STATUS may never disagree in any committed state, which is why both
+  land in the same commit (R-0154).
