@@ -1,9 +1,7 @@
 # Plan — F272 One world completion
 
 Branch: feature/f272-one-world-completion, cut from `main` at
-`b18fad576252f7f2739a5807b6408031da8fcde6`, the merge commit of pull request
-242. F260 is accepted; this feature carries the scope DECISION F260 D8 split
-off it, and its Acceptance list IS F260's, unchanged.
+`b18fad576252f7f2739a5807b6408031da8fcde6`. Round 1 is reviewed and PASSED.
 
 ## Goal
 
@@ -16,28 +14,30 @@ cluster deletion, which is never split.
 
 ## Current Step
 
-Round 1 claims F272 in the roadmap ledger, cuts the branch, re-points this file
-and `.agent/context.md`, re-heads `.agent/live_review.md`, and lands the FIRST
-half of T001: `JobPlan.run_refs`, the ordered ids of the runs one job produced,
-persisted through the job record and populated where a task's run is recorded,
-with the tests that prove it on a job created through the ping-pong path.
+Round 2 completes the FIRST move of the re-key. `<data_root>/runs/` is occupied
+today by the job-keyed run log, so nothing can be keyed there by RUN id until
+that log moves out. This round books round 1's verdict, records DECISION F272 D1
+— which rules the staging from the reviewer's measurement of 74 reader and 35
+writer call sites — moves the run log to `<data_root>/job_logs/<job_id>` and the
+ping-pong run store to `<data_root>/runs/<run_id>`, each one function body, and
+sweeps the three test files that hand-spell those paths.
 
 ## Next Steps
 
-1. The run re-key: `run_log_dir` and `pingpong_run_dir` collapse onto the one
-   `run_dir` keyed by RUN id, together with the test-side spelling sweep
-   DECISION F260 D6 declined and this feature inherits. `run_refs` lands first
-   because a reader needs a job able to name its runs before the directory
-   stops being keyed by the job.
+1. The name collapse DECISION F272 D1 places next: `pingpong_runs_dir` and
+   `pingpong_run_dir` are DELETED in favour of `runs_dir` and `run_dir` at every
+   call site, with no alias and no attic, per AGENTS.md "Replacing is deleting".
 2. The rest of the unified record: the eleven administrative fields and the
    Mission extension (T002).
-3. The eleven consumers named under Design in `T2_F260.md`, one per commit
-   where the diff allows (T003).
+3. The eleven consumers named under Design in `T2_F260.md`, one per commit where
+   the diff allows (T003).
 
 ## Risks
 
-- The re-key consumes its own observer: the tests that hand-spell the old path
-  are the only reason such a round can go red at all, so the sweep needs its
-  pre-sweep and post-sweep pair rather than one commit.
-- `<data_root>/runs/` is occupied today by the job-keyed run log, so both
-  function bodies must move together or two directories merge under one key.
+- The run log's directory moves while its API does not. Every one of the 74
+  readers and 35 writers keeps working only because they all resolve through
+  `data_paths.run_log_dir`; a caller that hand-spells the path instead would
+  break silently, which is why the three test files that do exactly that are
+  swept in the same commit and are the round's red proof.
+- Old `.data` content becomes unreadable at this move. That is DECISION D-A
+  working as ruled — no migration, no compatibility reader — not a regression.
