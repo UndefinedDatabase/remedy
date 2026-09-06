@@ -1,333 +1,273 @@
-STEP T002/6 — F260 · ROUND 14 — ONE SPELLING FOR THE RUN-LOG JOIN
+── STEP T002 — F260 One world · ROUND 15 · ONE RUN PER INVOCATION ────────────
 
-Goal:        Delete the LAST production hand-spelling of the job-keyed run-log
-             layout. `RunLogWriter.__init__` still joins `root / self._job_id`
-             onto a runs BASE it is handed; give it a DATA root instead and let
-             `data_paths.run_log_dir` build the directory, so DECISION F260 D1's
-             re-key of `<data_root>/runs/` by RUN id becomes a change to one
-             function body plus the run-id plumbing, and to nothing else.
+Goal:        `timeline.append_run_event` mints a NEW run id on every call, so a
+             single invocation's events become one run EACH. Give the process
+             ONE run id, so all of a job's events from one invocation land in
+             one run — which is what `RunLogWriter`'s own docstring already
+             promises and what DECISION F260 D1's run-keyed layout needs before
+             `Job.run_refs` can mean anything.
 
-Base:        `4f265f91cbdf2f4c327e9dd303b8cd78c146618d` (round 13, reviewed PASS).
-
-WHY THIS ROUND AND NOT THE TEST-SIDE SWEEP. Round 13's handback and
-`.agent/plan.md` both name "the TEST side of the run-log spelling" as the next
-step. The reviewer measured that step at `4f265f91` and is DECLINING it; the
-measurement and the ruling are DECISION F260 D6, which C2 records. In short:
-those tests supply a JOB id, D1 re-keys the directory by RUN id, so each needs a
-SEMANTIC change at the re-key and not a spelling change — routing them through
-`run_log_dir` first is churn the re-key undoes. The join below is the opposite:
-deleted once, and it stays deleted.
-
-Bundle:      C0a  save this block verbatim to `.agent/authored/f260-r14.md`
-             C0b  mirror the same bytes into `.agent/last_block.md`
+Bundle:      C0a  save this block verbatim to `.agent/authored/f260-r15.md`
+             C0b  mirror it to `.agent/last_block.md`
              C1   rewrite `.agent/plan.md` from the PLAN slice
-             C2   append GATE_R13 to `.agent/live_review.md` AND DEC_D6 to
-                  `.agent/decisions.md`, in that order, in ONE commit
-             C3   append SLIP14, SLIP15, SLIP16, SLIP17 to `.agent/prose_slips.md`
-             C4   SPEC (1) `RunLogWriter` takes a data root + SPEC (2) its tests
-             C5   SPEC (3) the eight production call sites and the one comment
-             C6   SPEC (4) the two other test files that pass `runs_root`
-             C7   rewrite `.agent/handoff.md` (the handback)
+             C2   append GATE_R14 then FIND816 to `.agent/live_review.md`, and
+                  DEC_D7 to `.agent/decisions.md`, in ONE commit
+             C3   append SLIP18 and SLIP19 to `.agent/prose_slips.md`
+             C4   SPEC (1): `packages/orchestration/timeline.py` takes one run
+                  id per process; SPEC (2): its three new tests
+             C5   the handback
 
-Change:      EXACTLY these paths, nothing else:
-               .agent/authored/f260-r14.md
-               .agent/last_block.md
-               .agent/plan.md
-               .agent/live_review.md
-               .agent/decisions.md
-               .agent/prose_slips.md
-               .agent/handoff.md
-               packages/orchestration/run_log.py
-               tests/test_run_log.py
+Change:      EXACTLY the files named here and nothing else. The `.agent/**`
+             writes are `.agent/authored/f260-r15.md`, `.agent/last_block.md`,
+             `.agent/plan.md`, `.agent/live_review.md`, `.agent/decisions.md`,
+             `.agent/prose_slips.md` and `.agent/handoff.md`. The code writes
+             are:
+
                packages/orchestration/timeline.py
-               packages/orchestration/worker_queue.py
-               packages/orchestration/patch_apply.py
-               packages/orchestration/patch_revert.py
-               packages/orchestration/safe_points.py
-               packages/orchestration/pingpong_job.py
-               packages/orchestration/prompt_trace.py
-               tests/test_test_runner.py
-               tests/cli/test_propose_cli.py
+               tests/test_timeline.py
+
+             Nothing else. No other module, no other test file, no `docs/`,
+             no `scripts/`. `packages/orchestration/run_log.py` is NOT edited
+             this round: its docstring is already correct and this round makes
+             the CALLER honour it.
+
+SPEC (1) — `packages/orchestration/timeline.py`
+
+  (a) The module-level import block currently ends with
+      `from packages.orchestration.data_paths import run_log_dir`. ADD one
+      line importing BOTH names this module needs from the run log:
+
+          from packages.orchestration.run_log import RunLogWriter, new_run_id
+
+      Place it where `ruff` `I001` accepts it and let `ruff` decide the order;
+      do not hand-sort the block.
+
+  (b) DELETE the function-local import inside `append_run_event` that reads
+      `from packages.orchestration.run_log import RunLogWriter`. That name now
+      comes from (a). Re-grep the file first: if any OTHER function in
+      `timeline.py` imports `RunLogWriter` function-locally, delete that one
+      too and say so in the handback — the point is ONE spelling of the import
+      in this module, not a fixed number of deletions.
+
+  (c) Immediately BELOW the import block and ABOVE the first `# ---` banner,
+      add the module constant with its one-line WHY comment directly above the
+      definition, which is where a reader searches (AGENTS.md, Code
+      Discoverability Conventions):
+
+          # One run per PROCESS: every event one invocation appends to a job belongs to the
+          # same run, which is what RunLogWriter's docstring promises and what DECISION F260
+          # D1's run-keyed layout needs to stay bounded.
+          _PROCESS_RUN_ID = new_run_id()
+
+  (d) In `append_run_event`, the construction currently reads
+
+          writer = RunLogWriter(jid, data_root=Path(data_dir))
+
+      and becomes
+
+          writer = RunLogWriter(jid, run_id=_PROCESS_RUN_ID, data_root=Path(data_dir))
+
+      Nothing else in the function changes: `jid` is resolved exactly as today,
+      and the `writer.log(event, **(metadata or {}))` line is untouched.
+
+  NOT CHANGED BY THIS SPEC: `load_run_events`, `summarize_timeline`, every
+  other function in the module, and `RunLogWriter` itself. The run id stays a
+  `str`; no signature changes anywhere.
+
+SPEC (2) — `tests/test_timeline.py`
+
+  Add ONE new test class, `TestOneRunPerInvocation`, carrying THREE tests. Put
+  it after the existing class that covers `append_run_event`; if no such class
+  exists, put it directly after the last `append_run_event` test. Each test
+  uses `tmp_path` as the DATA root, so the run-log directory it reads is
+  `tmp_path / "runs" / str(job_id)` — spell that right-hand side LITERALLY, as
+  `tests/test_run_log.py` does, so these tests remain an independent observer
+  of the accessor (this is the same reason DECISION F260 D6 gives, and it is
+  what makes G6 below able to fail).
+
+  (i)  `test_all_events_of_one_invocation_share_one_run`: append FIVE events
+       for ONE job id through `append_run_event`, then assert the job's
+       directory holds EXACTLY ONE `*.jsonl` file, that the file holds FIVE
+       event lines, and that the set of `run_id` values across those lines has
+       exactly ONE member.
+  (ii) `test_two_jobs_do_not_share_a_run_file`: append one event for each of
+       TWO job ids in the same test, then assert each job has its OWN
+       directory and each directory holds exactly one `*.jsonl` file.
+  (iii)`test_events_come_back_in_append_order`: append the five events of (i),
+       then assert `load_run_events` returns their `event` names in the order
+       they were appended.
+
+  Write the assertions against the BYTES on disk — read the `.jsonl` and parse
+  its lines — not against the writer object, because the writer is what this
+  round changes and a test that asks the writer what it did proves nothing.
 
 Constraints:
- 1. A slice is applied byte for byte. If a slice looks wrong, apply it anyway
-    and declare the problem in the handback; never edit a slice.
- 2. NO LAYOUT CHANGE. `<data_root>/runs/<job_id>/<run_id>.jsonl` is exactly
-    where a run log lives before this round and exactly where it lives after.
-    This round moves WHO SPELLS the join, never the join's result. The re-key
-    to `<run_id>` is D1's own work and is NOT performed here.
- 3. THE RED-PROOF OBSERVER IS NAMED AND IS NOT SWEPT. Two tests in
-    `tests/test_run_log.py` assert the writer's directory against a HAND-SPELLED
-    right-hand side — `test_creates_job_directory` and
-    `test_path_is_inside_job_directory`, at base lines 125 and 131. Their
-    right-hand sides move from `tmp_path / str(job_id)` to
-    `tmp_path / "runs" / str(job_id)` and STAY LITERAL. Do NOT route them
-    through `run_log_dir`: they are what makes G6 able to fail, and round 12 of
-    this feature is the record of what happens when a sweep consumes its own
-    observer. The three `run_log_dir` tests in `tests/test_data_paths.py` are
-    literal for the same reason and that file is NOT in the change set.
- 4. SEARCH BY IDENTIFIER, NEVER BY SUBSTRING. Measured at the base: a SUBSTRING
-    search for `runs_root` hits 17 files, because `job_evidence.py`,
-    `pingpong_loop.py` and `worktree_resume.py` carry `pp_runs_root` locals and
-    `local_candidate_generator.py` and `local_model_advisor.py` each define a
-    `_runs_root(data_dir)` helper for their OWN run stores. A WORD-BOUNDED
-    search (`\bruns_root\b`) hits 37 occurrences in 11 files, and those 11 are
-    exactly the code files of the change set above. Use the word-bounded
-    reading everywhere, and touch none of those five other modules — their
-    stores are not this one. The same applies to `_runs_dir_default`:
-    word-bounded it occurs TWICE, both in `run_log.py` (lines 34 and 114),
-    while a substring search also hits `tests/test_data_paths.py:76`, which is
-    a test NAMED `test_runs_dir_default` and is not the symbol.
- 5. `scripts/` AND `tests/test_remedy_smoke_script.py` ARE NOT TOUCHED. That
-    test pins the SHELL smoke script to `RUNS_ROOT=".data/runs"`. This round
-    does not change that on-disk convention, so those guards stay green
-    untouched. Checked at the base so you do not chase it.
- 6. Every `RunLogWriter(job_id=...)` call that passes NO root is left alone.
-    There are many and they already fall through to the module default;
-    leaving them is what keeps this diff the size of its idea.
- 7. IMPORT CONVENTION IS DECIDED PER FILE, following what that file already
-    does, and no second convention is introduced. `ruff check` enforces `I001`
-    through this repository's own `pyproject.toml`. `run_log.py` imports
-    `data_paths` at MODULE level (line 34), so the new name goes there. In the
-    consumer files this round mostly REMOVES a `runs_dir` call rather than
-    adding one — if that leaves an import unused, remove it (`F401`) and
-    declare the removal, per file.
- 8. `.agent/live_review.md`, `.agent/decisions.md` and `.agent/prose_slips.md`
-    ALL THREE end with exactly ONE newline at the base — MEASURED at
-    `4f265f91`, not recalled, because the round-13 block stated one of them
-    wrongly and the round-12 block stated it wrongly in the opposite direction.
-    Derive each recipe from its own target's terminal byte anyway, measured at
-    the base, and state all three measurements in the handback.
- 9. G4 IS A PRE-EDIT PROBE AND RUNS BEFORE C4; every other gate runs at C6.
-    Stated as an ordering rather than as the word "before" because the two
-    cannot both be met by one sentence: G4 measures the equality the edit
-    depends on, so it can only be taken while `run_log.py` still holds the old
-    join. The handback is C7, so no gate reading may be taken after the
-    handback exists. C7's own insertion count is not reported by C7; the
-    reviewer measures it at the next gate.
-10. Every destructive check runs in a disposable `git worktree` under
-    `.remedy-wt/`, removed by EXACT PATH before the handback; the primary
-    checkout satisfies `git status --porcelain` == empty at the handback.
-11. `cmp` is denied in this sandbox. Use `filecmp.cmp(shallow=False)` plus
-    sha256. `remedy` is invoked as `python3 -m apps.cli.grouped`, `ruff` as
-    `python3 -m ruff`. Purge `__pycache__` and run `python3 -B` for every
-    mutation reading.
 
-SPEC (1) — THE WRITER TAKES A DATA ROOT
+  1. APPLY EVERY SLICE BYTE FOR BYTE. If a slice contradicts what you measure,
+     apply it anyway and DECLARE the contradiction in the handback. Never edit
+     a slice to make a gate read as ordered. This is the rule every earlier
+     round of this feature followed and it is why their deviations are
+     trustworthy.
+  2. All three `.agent` append targets end with EXACTLY ONE newline at
+     `1d344b48`, measured by the reviewer by trailing-`\n` enumeration on the
+     raw bytes: `.agent/live_review.md` at 937682 bytes, `.agent/decisions.md`
+     at 842038, `.agent/prose_slips.md` at 117457. DERIVE each recipe from its
+     OWN target's measured terminal byte anyway, and assert the count is 1
+     before writing — the sentence above is a courtesy, not the authority, and
+     the last two rounds of this feature both got one of these three wrong.
+  3. `.agent/plan.md` is a WHOLE-FILE replacement by the PLAN slice plus one
+     trailing newline. It must stay under the 50-line AGENTS.md cap and must
+     carry `## Goal` and `## Next Steps` (§4 item 11's contract readers).
+  4. C2 is ONE commit carrying BOTH files, `.agent/live_review.md` appended
+     FIRST and `.agent/decisions.md` second. Findings persist before any code
+     moves (§4 item 4), so C2 lands before C4.
+  5. FIND816 registers a finding the REVIEWER measured; do not write a `Done:`
+     or `Landed:` paragraph for it and do not attempt to fix it beyond what
+     SPEC (1) orders. A worker-authored `Done:` is a finding however hedged.
+  6. Do not touch `tests/test_run_log.py`, `tests/test_data_paths.py`,
+     `tests/test_patch_apply.py` or any file under `tests/orchestration/`.
+     They are this round's OBSERVERS and G6 needs them unmoved.
+  7. Imports: follow what `timeline.py` already does and introduce no second
+     convention. `ruff` decides placement; if `I001` disagrees with the spec's
+     wording, follow `ruff` and declare it.
+  8. Every destructive check runs inside a disposable `git worktree` created
+     and removed BY EXACT PATH — never by glob, never in the primary checkout,
+     which satisfies `git status --porcelain` empty at the handback.
+  9. `cmp` and `remedy` are denied in this sandbox and the bash guard rejects
+     `$?`, `$( )` and shell loop forms BY FORM. Use `filecmp.cmp(shallow=False)`
+     plus sha256, invoke the CLI as `python3 -m apps.cli.grouped` and `ruff` as
+     `python3 -m ruff`, and take every exit code from a Python
+     `subprocess.run(...).returncode` written into a capture file under
+     `.remedy-wt/`. Nothing under `.remedy-wt/` is ever `git add`ed.
+ 10. The handback cannot table the commit that writes it; measure C5's own
+     insertion count at the next gate, not in the file itself.
 
-In `packages/orchestration/run_log.py`:
+Done when:   EIGHT gates, each executed with its REAL exit code recorded, one
+             line per gate in the handback (amend0827 rule 5 caps a round at
+             eight).
 
-  - line 34 reads
-    `from packages.orchestration.data_paths import runs_dir as _runs_dir_default`.
-    Replace the imported name with `run_log_dir`, keeping the module-level
-    position and isort order. The aliased binding disappears with it; per
-    constraint 4 nothing else in the repository uses that symbol.
-  - `RunLogWriter.__init__`'s keyword-only parameter `runs_root: Path | None`
-    becomes `data_root: Path | None`, same `None` default, same keyword-only
-    position, same place in the signature.
-  - the three lines that build the path (base lines 114-116)
+  G1 TRANSPORT — ONE comparison, not a chain. `sha256sum` over
+     `.agent/authored/f260-r15.md` and `.agent/last_block.md`: both equal the
+     digest the DELEGATION names for this block, checked BEFORE staging. The
+     digest cannot be printed inside the bytes it measures, so it reaches you
+     through the delegation and never through this file. C0a and C0b are both `shutil.copyfile` from the delegation's
+     source path, each proved additionally by `filecmp.cmp(shallow=False)`.
 
-        root = runs_root if runs_root is not None else _runs_dir_default()
-        job_dir = root / self._job_id
-        job_dir.mkdir(parents=True, exist_ok=True)
+  G2 THE RECORD — for `.agent/live_review.md`: (a) exact-image byte equality,
+     `post == pre + b"\n" + GATE_R14 + b"\n\n" + FIND816 + b"\n"`, plus the
+     prefix check `post[:len(pre)] == pre`; (b) structural — split the whole
+     file on `"\n\n"`, report the unit count before and after and show the LAST
+     TWO units equal GATE_R14 then FIND816 in that order; (c) a negative
+     control run IN MEMORY on a `bytes` object — flip one byte inside the
+     appended region, show BOTH readers reject, restore, show both accept and
+     the restored image equals the disk image. For `.agent/decisions.md`: the
+     same (a), (b) and (c) over `post == pre + b"\n" + DEC_D7 + b"\n"`.
+     (d) CENSUS after C2, counted by the script and not by eye: `^Gate: `
+     lines, registration lines and their DISTINCT id count, `^Done: ` lines and
+     their DISTINCT id count, and the OPEN SET BY DISTINCT ID. The base reading
+     at `1d344b48` is 23 / 300 over 300 / 5 over 3 / open 297; this round adds
+     ONE registration, so the expected post reading is 24 / 301 over 301 /
+     5 over 3 / OPEN 298. Report what you measure; if it differs, the
+     measurement wins and the difference is a declared deviation.
 
-    become two:
+  G3 THE PROSE FILES — `.agent/plan.md`: disk bytes `== PLAN slice + b"\n"`,
+     with its byte count and line count reported and the presence of `## Goal`
+     and `## Next Steps` shown. `.agent/prose_slips.md`:
+     `post == pre + b"\n" + SLIP18 + b"\n\n" + SLIP19 + b"\n"`, with the
+     blank-line unit count before and after and the last TWO units shown to
+     equal SLIP18 then SLIP19 in that order. Both files re-read afterwards and
+     shown to contain ZERO lines beginning `BEGIN ` or `END `.
 
-        job_dir = run_log_dir(self._job_id, data_root)
-        job_dir.mkdir(parents=True, exist_ok=True)
+  G4 THE DEFECT IS REAL AT THE BASE — run this BEFORE C4, in a disposable
+     worktree at the base, `python3 -B`, `__pycache__` purged and re-enumerated
+     at 0, module resolution printed and confirmed to that worktree: append
+     FIVE events for one job through the SHIPPED `timeline.append_run_event`
+     into a temporary data root, then PRINT the number of `*.jsonl` files, the
+     number of event lines and the number of DISTINCT `run_id` values found in
+     the bytes. The reviewer measured 5 / 5 / 5 at `1d344b48`. Print the three
+     numbers; do not print a verdict word. This gate establishes that FIND816
+     describes the disk and not a reading of the source.
 
-    `run_log_dir` resolves a `None` root through `runs_dir`, which is the same
-    fallback `_runs_dir_default()` performed. THAT EQUALITY IS NOT ASSUMED: G4
-    measures it before anything is edited.
-  - the class docstring line 97 says
-    `Creates <runs_root>/<job_id>/<run_id>.jsonl on first write`. It becomes
-    `<data_root>/runs/<job_id>/<run_id>.jsonl` — the same directory, named by
-    the root the caller now passes.
-  - the module docstring line 5 already reads
-    `<REMEDY_DATA_DIR>/runs/<job_id>/<run_id>.jsonl` and is CORRECT. Leave it.
-    Recorded so you do not "fix" it.
+  G5 THE FIX IS REAL AT THE HEAD — the SAME probe, same shape, run in the
+     primary checkout after C4 with `python3 -B`: print the number of `*.jsonl`
+     files, the event-line count and the DISTINCT `run_id` count for one job,
+     and then the per-job file count for TWO different jobs appended in the
+     same process. The ordered property is ONE file, FIVE lines, ONE distinct
+     run id for the single job, and ONE file EACH in TWO separate directories
+     for the two jobs. G4 and G5 are a PAIR and the pair is the proof; neither
+     number alone is.
 
-Add a one-line WHY comment directly above `__init__`, in this file's voice,
-saying the job-keyed join lives in `data_paths.run_log_dir` so DECISION F260 D1's
-re-key changes one function body. Do NOT change `new_run_id`, the `path` and
-`run_id` properties, `append`, or the event shape.
+  G6 MUTATION RED-PROOF — inside a disposable `git worktree` at the round's
+     head, created BY EXACT PATH, `python3 -B`, `PYTHONDONTWRITEBYTECODE=1`,
+     `__pycache__` purged and re-enumerated at 0, and module resolution
+     confirmed to that worktree's own `timeline.py` by printing
+     `timeline.__file__` and the LIVE source line of the construction.
+     Selection: `tests/test_timeline.py tests/test_run_log.py
+     tests/test_data_paths.py`.
+       (i)   CONTROL, unmutated: record the exit code and the counts.
+       (ii)  Count the exact revert-target bytes `run_id=_PROCESS_RUN_ID, `
+             and show they occur EXACTLY ONCE before mutating. Then DELETE
+             those bytes — which restores the pre-round behaviour exactly —
+             re-print the LIVE construction line to prove the mutation is the
+             one the interpreter sees, and re-run. The ORDERED property is
+             that the run goes RED and that the failures include the three
+             tests SPEC (2) adds. Report the exit code, the failure count and
+             the failing node ids; the COLOUR is what is ordered, never a
+             particular count.
+       (iii) Restore, show the mutated byte count back at 0 and the original
+             at 1, purge and re-enumerate `__pycache__` at 0, re-run the
+             control to the same reading as (i), show that worktree's
+             `git status --porcelain` and `git diff HEAD --stat` both EMPTY,
+             then remove the worktree BY EXACT PATH and `git worktree prune`.
+     If the mutation does NOT go red, STOP and say so in the handback rather
+     than adjusting the test — a green mutation means SPEC (2) built no
+     observer, which is a finding about this block and not about your work.
 
-SPEC (2) — THE WRITER'S OWN TESTS
+  G7 THE SUITES — run SERIALLY, never two at once, each captured to its own
+     file under `.remedy-wt/` and read from the capture:
+       (1) `python3 -m pytest tests/test_timeline.py tests/test_run_log.py
+           tests/test_data_paths.py tests/test_patch_apply.py -q -p no:randomly`
+       (2) `python3 -m pytest tests/orchestration/ -q -p no:randomly` — the
+           reviewer measured 12805 passed and 10 skipped at `1d344b48`
+       (3) `python3 -m pytest tests/cli/ -q -p no:randomly` — 1537 passed at
+           `1d344b48`; confirm the canary is inside the selection by running
+           `python3 -m pytest tests/cli/test_golden_path.py --collect-only`
+           and reporting the collected count
+       (4) `python3 -m apps.cli.grouped integrity check --json` — report
+           `passed`, `fail_count` and `check_count`
+     Report `^FAILED` and `^ERROR` line counts for (2) and (3) rather than
+     trusting the summary line alone.
 
-In `tests/test_run_log.py` every `RunLogWriter(...)` construction passes
-`runs_root=tmp_path`. Measured at the base: TWENTY-ONE word-bounded occurrences
-of `runs_root` in this file and none outside those constructions. Each becomes
-`data_root=tmp_path`.
+  G8 LINT AND TREE — `python3 -m ruff check` over the code files this round
+     edited. COUNT THEM YOURSELF from your own change set and lint exactly what
+     you counted; do not take a number from this block. Then
+     `git status --porcelain` and `git ls-files .remedy-wt`, both shown EMPTY.
+     Two errors pre-exist and are NOT in this change set — `UP035` at
+     `dag_schedule.py:36` and `F821` at `gauntlet_injection.py:286`; do not
+     approach either file.
 
-Because `tmp_path` was being used AS the runs base and is now the DATA root, the
-writer's directory moves from `tmp_path/<job_id>/` to `tmp_path/runs/<job_id>/`
-inside these tests. Two tests assert that directory and BOTH keep a literal
-right-hand side, per constraint 3:
+Handback:    rewrite `.agent/handoff.md` per docs/agents/handback_template.md.
+             It carries: the SESSION NUMBER (this is SESSION 6 of F260) and the
+             round, the branch, the commit table with `+/-` taken from
+             `git log --numstat` and never re-derived by eye, the external
+             actions table, ONE LINE PER GATE with its real exit code, the
+             authored-text proof table, every deviation, the item-status table
+             covering C0a through C5 and G1 through G8, the open-findings count
+             BY DISTINCT ID, and one sentence of context self-assessment
+             (amend0905-throughput). There is NO length cap. Push after the
+             handback commit; the push's own transcript cannot appear in the
+             commit that carries it.
 
-  - `test_creates_job_directory` — `job_dir = tmp_path / "runs" / str(job_id)`
-  - `test_path_is_inside_job_directory` —
-    `assert writer.path.parent == tmp_path / "runs" / str(job_id)`
-
-Re-grep the file for any OTHER assertion naming a path relative to `tmp_path`
-and REPORT WHAT YOU FOUND; the reviewer measured two, and the count you measure
-is the one that binds.
-
-Add ONE new test to `TestRunLogWriterConstruction`: with NO `data_root` argument
-and a monkeypatched `REMEDY_DATA_DIR`, the writer's directory equals
-`<that dir>/runs/<job_id>` — spelled LITERALLY, not through the accessor. This
-pins the default path the deleted alias used to carry.
-
-SPEC (3) — THE PRODUCTION CALL SITES AND THE ONE COMMENT
-
-Eight constructions pass `runs_root`. Line numbers measured at the base
-`4f265f91`; re-grep each before editing and report the count you re-measured.
-
-  timeline.py:65        `RunLogWriter(jid, runs_root=runs_dir(Path(data_dir)))`
-                        → `RunLogWriter(jid, data_root=Path(data_dir))`
-  worker_queue.py:489   `runs_root=runs_dir(root)` → `data_root=root`
-  patch_apply.py:527-528  `runs_root = runs_dir(data_dir) if data_dir is not None else None`
-                        then `RunLogWriter(job_id=job.id, runs_root=runs_root)`
-                        → the local goes away; pass `data_root=data_dir`
-  patch_apply.py:565-566  the SAME pair a second time — both move
-  patch_revert.py:245-246 `runs_root = runs_dir(actual_data_dir)` then the call
-                        → the local goes away; pass `data_root=actual_data_dir`
-  safe_points.py:675    `runs_root=runs_dir()` → DROP the argument entirely
-  pingpong_job.py:3182  `runs_root=runs_dir()` → DROP the argument entirely
-
-`patch_apply.py` passing `data_root=data_dir` when `data_dir` is `None` is
-CORRECT and is the point of the change: `run_log_dir(job_id, None)` resolves the
-process data root, which is exactly what `RunLogWriter` did with a `None`
-`runs_root` before. State that in the handback; do not add a guard.
-
-  prompt_trace.py:215   the comment ``RunLogWriter.path.parent`` is
-                        ``<runs_root>/<job_id>/`` → ``<data_root>/runs/<job_id>/``.
-                        COMMENT ONLY; no code in that file changes.
-
-SPEC (4) — THE OTHER TWO TEST FILES
-
-  tests/test_test_runner.py:344   `RunLogWriter(job_id=job.id, runs_root=tmp_path / "runs")`
-                                  → `RunLogWriter(job_id=job.id, data_root=tmp_path)`
-                                  The written path is unchanged by construction.
-  tests/cli/test_propose_cli.py:339-340
-                                  `runs_dir = tmp_path / "runs"` then
-                                  `RunLogWriter(UUID(job_uuid), runs_root=runs_dir)`
-                                  → `RunLogWriter(UUID(job_uuid), data_root=tmp_path)`.
-                                  If the local `runs_dir` is then unused, delete
-                                  that line too; report whether it was.
-
-DONE WHEN — EIGHT GATES
-
-Every gate is EXECUTED and its REAL exit code recorded, one line per gate in the
-handback. "Green" as a word is a finding.
-
-G1 TRANSPORT. `sha256sum .agent/authored/f260-r14.md .agent/last_block.md`;
-   both equal the digest the delegation names. One comparison, not a chain.
-
-G2 THE TWO RECORDS. After C2, prove EACH of `.agent/live_review.md` and
-   `.agent/decisions.md` equals its own pre-image plus its own appended slice,
-   by TWO independent readers per file:
-   (a) exact-image byte equality against the recipe derived in constraint 8;
-   (b) a STRUCTURAL reader that splits that whole file on `"\n\n"`, counts the
-       units itself, and compares the LAST N units in order against that file's
-       slice paragraphs. N is counted by your script, never asserted by this
-       block, and the reading covers the WHOLE appended region.
-   (c) a negative control per file, flipping one byte inside the FIRST appended
-       paragraph, confirming BOTH readers reject it and both accept after
-       restore. Run it in memory, not by writing bad bytes to either file.
-   (d) report, for `.agent/live_review.md`, the `^Gate: ` count, registrations,
-       `^Done: ` lines, and the open set BY DISTINCT ID after C2; and for
-       `.agent/decisions.md`, the count of `^### DECISION F260 D` headings,
-       which must be 1 for each of D5 and D6 and must not have changed for D5.
-
-G3 THE PROSE FILES. `.agent/plan.md` disk bytes equal the PLAN slice plus one
-   trailing newline; report its line count, which must be under 50.
-   `.agent/prose_slips.md` equals its pre-image plus the constraint-8 recipe
-   applied to the four slices IN ORDER; report bytes before and after and the
-   blank-line unit count before and after.
-
-G4 THE FALLBACK EQUALITY, MEASURED BEFORE ANYTHING IS EDITED. A scratch probe
-   under `.remedy-wt/` prints BOTH sides of the equality this round rests on and
-   confirms each pair equal, for three cases:
-     - explicit root: `runs_dir(R) / str(J)` versus `run_log_dir(J, R)`
-     - no root, under a monkeypatched `REMEDY_DATA_DIR`:
-       `_runs_dir_default() / str(J)` versus `run_log_dir(J, None)`
-     - `J` as a `UUID` and as its `str()` form, which must agree
-   Report the printed pairs, not a summary. This is what makes "no layout
-   change" a measurement rather than a claim.
-
-G5 THE JOIN IS GONE AND ONE SPELLING SURVIVES. At C6, enumerating `git ls-files`
-   IN PYTHON and filtering to `.py` under `packages/`, `apps/` and `tests/` (a
-   `tests/**/*.py` shell glob silently misses `tests/test_data_paths.py`):
-   (a) the bytes `root / self._job_id` occur ZERO times in `run_log.py` — base
-       count 1 — and the WORD-BOUNDED identifier `_runs_dir_default` occurs
-       ZERO times anywhere in that file set, against a base count of 2, both in
-       `run_log.py`. Report both base and C6 readings.
-   (b) an AST reading of `run_log.py` counts calls to `run_log_dir`: exactly 1
-       at C6, 0 at the base.
-   (c) the WORD-BOUNDED identifier `runs_root` occurs ZERO times in that file
-       set, against a base count of 37 in 11 files. Report every surviving
-       occurrence with its file and line; any survivor FAILS the gate.
-
-G6 MUTATION RED-PROOF, AND IT MUST BE ABLE TO FAIL. In a disposable worktree at
-   C6, `python3 -B`, `__pycache__` enumerated as 0:
-   (i)   CONTROL FIRST, unmutated, over `tests/test_run_log.py
-         tests/test_data_paths.py tests/test_timeline.py tests/test_patch_apply.py`:
-         record exit code and count. Confirm module resolution by printing
-         `data_paths.__file__` and the live BODY of `run_log_dir` from that
-         worktree before trusting any colour.
-   (ii)  Verify the bytes `    return runs_dir(root) / str(job_id)` occur EXACTLY
-         ONCE in that worktree's `packages/orchestration/data_paths.py`, then
-         replace that one line with
-         `    return runs_dir(root) / (str(job_id) + "_MUTATED")` — note the
-         PARENTHESES; without them the expression is a `Path + str` TypeError
-         rather than a different path, and the run reddens for the wrong reason.
-         Re-print the live BODY to prove the mutation is loaded. Re-run the SAME
-         selection. IT MUST GO RED, and the two tests constraint 3 names must be
-         AMONG the failures — report the failure count, the failing files, and
-         whether those two are in the list.
-   (iii) Restore the original line, re-run the control, and show
-         `git status --porcelain` and `git diff HEAD --stat` EMPTY in that
-         worktree. Remove the worktree BY EXACT PATH and `git worktree prune`.
-   If (ii) does NOT go red, STOP, do not reshape anything to make it red, and
-   report the measurement — that would mean the writer no longer routes through
-   the accessor, which SPEC (1) forbids.
-
-G7 THE SUITES, SERIALLY, each captured to a file under `.remedy-wt/` and read
-   from the capture:
-   (1) `python3 -m pytest tests/test_run_log.py tests/test_data_paths.py
-       tests/test_timeline.py tests/test_patch_apply.py tests/test_test_runner.py
-       -q -p no:randomly`
-   (2) `python3 -m pytest tests/orchestration/ -q -p no:randomly`
-   (3) `python3 -m pytest tests/cli/ -q -p no:randomly`
-   (4) `python3 -m apps.cli.grouped integrity check --json`
-   The canary is inside (3); verify its presence with
-   `python3 -m pytest tests/cli/test_golden_path.py --collect-only` and report
-   the collected count. Report each suite's real numbers.
-
-G8 LINT AND CLEAN TREE. `python3 -m ruff check` over exactly the edited `.py`
-   paths of the change set — COUNT THEM YOURSELF and report the number:
-   `All checks passed!`. Then `git status --porcelain` and
-   `git ls-files .remedy-wt`, both EMPTY.
-   NOTE, measured at the base so you do not chase it: `ruff check` over ALL of
-   `packages/orchestration/` reports two PRE-EXISTING errors, `UP035` at
-   `dag_schedule.py:36` and `F821` at `gauntlet_injection.py:286`. Neither file
-   is in this change set and neither is yours to fix.
-
-Handback:    completion report + rewrite `.agent/handoff.md`. Carry the SESSION
-             NUMBER (this is SESSION 5 of F260, round 14), the changed-files
-             table with `+/-` from `git diff --numstat` and never re-derived by
-             eye, one line per gate with its real exit code, the open-findings
-             count BY DISTINCT ID, every deviation, and the item-status table.
-             Push after the handback commit.
+──────────────────────────────────────────────────────────────────────────────
 
 BEGIN PLAN
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 13 are reviewed and 2 to 13 PASSED. T001 is
+pull request 240 (F259). Rounds 1 to 14 are reviewed and 2 to 14 PASSED. T001 is
 CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, both
 resolvers return `str`, the ping-pong run store has one spelling on both sides,
-and the run-log store has one spelling on the production READ side.
+and the run-log store has one spelling on the whole production side.
 
 ## Goal
 
@@ -341,23 +281,22 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-ONE SPELLING FOR THE RUN-LOG JOIN. `RunLogWriter.__init__` still joins
-`root / self._job_id` onto a runs BASE it is handed — the last production
-hand-spelling of the job-keyed layout. It takes a DATA root instead and builds
-its directory with `data_paths.run_log_dir`. Eight production call sites and
-three test files move with it.
+ONE RUN PER INVOCATION. `timeline.append_run_event` mints a new run id on every
+call, so five events of one resume become five runs in five files — measured on
+the shipped function. The module takes ONE run id for the life of the process
+and passes it, which is what `RunLogWriter`'s docstring already promises. This
+is registered as finding R-0816 and ruled by DECISION F260 D7.
 
 ## Next Steps
 
+- `Job.run_refs`, the plural run list D1 names and nothing on disk carries yet.
+  It is meaningful only once a run is an invocation rather than an event, which
+  is what this round buys.
 - THE RE-KEY ITSELF: `run_log_dir` and `pingpong_run_dir` collapse onto
-  `run_dir`, keyed by RUN id — DECISION F260 D1. `RunLogWriter` already mints a
-  run id, so the writer side is short; the READER side needs a job to name its
-  runs, which makes the step below its prerequisite.
-- `Job.run_refs`, the plural run list D1 names and nothing on disk carries yet:
-  no reader can find a job's runs once `<data_root>/runs/` is keyed by run id.
-- The rest of T002: the unified record's own administrative fields — measured at
-  `4f265f91`, eight of D1's eleven have no counterpart in `JobPlan` — and the
-  Mission extension.
+  `run_dir`, keyed by RUN id — DECISION F260 D1. The reader side needs a job to
+  name its runs, so `run_refs` above is its prerequisite.
+- The rest of T002: the unified record's own administrative fields — eight of
+  D1's eleven have no counterpart in `JobPlan` — and the Mission extension.
 - Then T003 consumer by consumer; T004 the classic runner, the classic store and
   the resolver collapse together (DECISION F260 D5); T005 the reachability test
   and the cluster deletion.
@@ -366,32 +305,29 @@ three test files move with it.
 
 - The test side of the run-log spelling is DECLINED, not forgotten: DECISION
   F260 D6 records why, and the re-key inherits those sites.
-- The soft limit is 25 rounds or 7 sessions. This is round 14 of session 5 and
-  the remaining scope is larger than the rounds left, so split-and-close is the
-  likely endgame and each round leaves a self-consistent tree.
+- The soft limit is 25 rounds or 7 sessions. This is round 15 of session 6, so
+  the SESSION limit is reached next session and split-and-close is the endgame.
+  Every round leaves a self-consistent tree so that close is available at any
+  point.
 END PLAN
 
-BEGIN GATE_R13
-Gate: R13 — the F260 R13 entry. R13 GAVE THE LIVE JOB-KEYED RUN-LOG STORE ONE SPELLING IN `data_paths` AND MOVED NINE HAND-SPELLED SITES IN SEVEN MODULES ONTO IT. VERDICT PASS. Range `4d13f5a02608a40081a7ebacf779124cc6318309`..`4f265f91cbdf2f4c327e9dd303b8cd78c146618d`, eight commits, all single-parent, in exactly the Bundle's ordered sequence C0a to C6, pushed to `origin/feature/f260-one-world` — `origin` and the branch tip are the same object — and no pull request created. Largest insertion count 318, a single `.agent/**` state write exempt under AGENTS.md DECISION F104 D1; largest CODE commit 22. THE REVIEWER RE-RAN EVERY GATE ITSELF AND REPRODUCED EVERY NUMBER THE HANDBACK REPORTED. TRANSPORT: one digest `ba81fed15e2173bd73d969458cd033910ef7af510ae99d5c40f392a1402e3adb` over `.agent/authored/f260-r13.md` and `.agent/last_block.md`, recomputed by the reviewer. Per §3 item 37 that chain covers the SAVED COPY and its MIRROR and nothing wider; this session did not author the round-13 block, so the delegation digest is not independently recoverable and this verdict claims no comparison against emitted bytes. THE SLICES WERE VERIFIED DISK TO DISK, not against a retype: extracting each slice from the COMMITTED `.agent/authored/f260-r13.md` between its marker lines, `.agent/plan.md` equals the PLAN slice plus one newline exactly, `.agent/live_review.md` equals its pre-image plus `"\n"` plus GATE_R12 plus `"\n\n"` plus FIND815 plus `"\n"` exactly, and `.agent/prose_slips.md` equals its pre-image plus `"\n"` plus SLIP13 plus `"\n"` exactly. All eight marker lines occur once, at file lines 256, 306, 308, 310, 312, 314, 316 and 318, and NONE of the eight reached any of the three target files. THE RECORD: 923356 to 931365 bytes, blank-line units 432 to 434, the last two units GATE_R12 then FIND815 in that order, the post-image beginning with the pre-image byte for byte; `^Gate: ` 22, registrations 300 over 300 DISTINCT ids, `^Done: ` 5 lines over THREE distinct ids, open set 297 BY DISTINCT ID, `R-0815` present. A search of the appended region for unquoted `\bHEAD\b`, after deleting every backtick-quoted span, returns ZERO. THE SLIPS: 113984 to 115506 bytes, units 143 to 144. THE PLAN: 2664 bytes, 49 lines, under the 50-line cap, carrying `## Goal` and `## Next Steps`. THE SWEEP, RE-MEASURED BY THE REVIEWER over 1030 tracked `.py` files enumerated from `git ls-files` in Python: lines where the quoted token `"runs"` BUILDS A PATH now number 76, of which the production side under `packages/` and `apps/` is exactly ONE — the definition at `data_paths.py:73` — and the other 75 are tests; non-path JSON-key occurrences are 60 and unchanged. THAT READING IS ABOUT THE QUOTED TOKEN AND IS NOT A CLAIM THAT PRODUCTION HOLDS NO OTHER SPELLING OF THIS LAYOUT: `run_log.py:115` joins `root / self._job_id` onto a runs base and carries no quoted token at all, so the sweep cannot see it by construction. Round 13's constraint 2 deferred that join deliberately and correctly, and round 14 deletes it. THE AST READING reproduces the handback's table exactly — timeline 0/0 to 1/1, cockpit 0/0 to 1/0, trust_report 0/0 to 1/0, pingpong_job 0/2 to 1/1, patch_apply 0/0 to 0/2, patch_revert 0/0 to 0/1, worker_queue 0/0 to 0/1 — all seven modules non-zero at `8ccd9309` and six of the seven zero at the base. THE SUITES, re-run serially by the reviewer at the branch tip: `tests/orchestration/` exit 0 at 12805 passed and 10 skipped in 733.34 s with zero FAILED and zero ERROR lines, the five-file selection exit 0 at 344 passed, and `integrity check --json` `"passed": true` with `"fail_count": 0` over 5 checks. RUFF over the nine edited `.py` paths: `All checks passed!`. THE MUTATION RED-PROOF REPRODUCES INDEPENDENTLY in the reviewer's own disposable worktree at `8ccd9309`, `python3 -B`, `__pycache__` enumerated at 0, module resolution confirmed to that worktree's own `data_paths.py` and the revert target counted at 1 before anything was changed: the unmutated control is exit 0 at 344 passed; with `run_log_dir` appending `"_MUTATED"` to the job id and the mutation confirmed live in the same process, the run is exit 1 at 17 FAILED and 327 passed, the failures falling in `tests/test_timeline.py` 8, `tests/test_patch_apply.py` 6 and `tests/test_data_paths.py` 3 — the handback's split, digit for digit; after restore the control is exit 0 at 344 again, that worktree's `git status --porcelain` and `git diff HEAD --stat` are both empty, and the worktree was removed BY EXACT PATH and pruned, leaving only the eleven pre-existing `remedy/job-*` worktrees. THE ROUND'S CENTRAL CLAIM IS THEREFORE MEASURED AND TRUE: unlike round 12's, this red-proof COULD fail, because the tests still hand-spell `tmp_path / "runs" / <job id>` and remain an independent observer of the accessor. TEN DEVIATIONS WERE DECLARED AND ALL TEN ARE UPHELD. The three that needed a ruling are 1, 3 and 6, and in each the block's governing RULE was rightly followed over the block's own stated list: constraint 6 mis-stated `.agent/prose_slips.md` as ending with no trailing newline when it ends with exactly one — the reviewer confirmed both files end with exactly one newline at the base — constraint 4's import-convention list was wrong for `patch_revert.py`, which already imports `data_paths` at MODULE level, and for `worker_queue.py`, which has no module-level `packages.*` import at all, and G8 said "the eight edited `.py` paths" over a change set holding nine. All three are defects of the reviewer's own text that left nothing wrong on disk, so per operator amendment amend0827-process-diet rule 2 they are dated lines in `.agent/prose_slips.md` and spend no id. Deviation 7's absence is independently confirmed: `tests/test_cockpit.py` and `tests/test_trust_report.py` contribute zero failures because their assertions are substring tests against a LABEL, which no change to the path's leaf can disturb, and both modules measure at zero quoted-token occurrences and one `run_log_dir` call. The reviewer additionally read the second guarded read in `tests/orchestration/test_job_stop_integration.py`, at lines 527-529, and it is NOT a second instance of `R-0815`: that one sits in a polling loop whose `else` branch calls `pytest.fail`, so it cannot pass having asserted nothing.
-END GATE_R13
+BEGIN GATE_R14
+Gate: R14 — the F260 R14 entry. R14 GAVE `RunLogWriter` A DATA ROOT AND DELETED THE LAST PRODUCTION HAND-SPELLING OF THE JOB-KEYED RUN-LOG JOIN. VERDICT PASS. Range `4f265f91cbdf2f4c327e9dd303b8cd78c146618d`..`1d344b485ce6c4e5e7768c6ab001a10bf8ab69d2`, ten commits, all single-parent, of which nine are the Bundle's ordered sequence C0a to C6 plus the handback and one is the declared extra commit `c296ee97`; pushed to `origin/feature/f260-one-world`, which the reviewer confirmed points at the same object as `HEAD`, and no pull request created. Largest insertion count 397, a single `.agent/**` state write exempt under AGENTS.md DECISION F104 D1; largest CODE commit 35. THE REVIEWER RE-RAN EVERY GATE ITSELF AND REPRODUCED EVERY NUMBER THE HANDBACK REPORTED, INCLUDING THE MUTATION SPLIT DIGIT FOR DIGIT. TRANSPORT: the reviewer's scratchpad original `.remedy-wt/f260-r14-block.md` still existed at review time, so the PRIMARY disk-to-disk proof was available and the §4 item 9 digest fallback was NOT used: all three of that file, `.agent/authored/f260-r14.md` and `.agent/last_block.md` hash to `59fb3c47a421fa4e14fe13f8afa6761a3a97caebc764ca0101bf8b22935e0d57`. THE SLICES WERE VERIFIED DISK TO DISK against the COMMITTED `.agent/authored/f260-r14.md`, never against a retype: `.agent/plan.md` equals the PLAN slice plus one newline exactly at 2530 bytes and 48 lines, carrying `## Goal` and `## Next Steps`; `.agent/live_review.md` equals its pre-image plus `"\n"` plus GATE_R13 plus `"\n"` exactly, 931365 to 937682 bytes, units 434 to 435; `.agent/decisions.md` equals its pre-image plus `"\n"` plus DEC_D6 plus `"\n"` exactly, 839361 to 842038 bytes, units 1892 to 1893; `.agent/prose_slips.md` equals its pre-image plus `"\n"` plus SLIP14, SLIP15, SLIP16 and SLIP17 joined by `"\n\n"` plus a final `"\n"`, exactly, 115506 to 117457 bytes, units 144 to 148, a rise of exactly four. All fourteen marker lines occur exactly once and NONE of them reached any target file, which the reviewer re-measured at zero `BEGIN `/`END ` lines per target. THE CENSUS: `^Gate: ` 23, registrations 300 over 300 DISTINCT ids, `^Done: ` 5 lines over THREE distinct ids, OPEN SET 297 BY DISTINCT ID — identical to the base, which is correct, because GATE_R13 is a `Gate:` record and this round registered and resolved nothing; no worker-authored `Done:` paragraph was added. G5 REPRODUCED IN FULL over 1030 tracked `.py` files enumerated from `git ls-files` in Python: the literal join `root / self._job_id` 1 to 0, word-bounded `_runs_dir_default` 2 to 0, the AST reading of calls to `run_log_dir` in `run_log.py` 0 to 1, and word-bounded `runs_root` from 41 occurrences in 11 files to ZERO in ZERO files — no survivor. G4 WAS REPRODUCED AND STRENGTHENED: rather than compare two accessors the reviewer ran the SHIPPED `RunLogWriter` and read the bytes it left, under an explicit root and under `REMEDY_DATA_DIR`, and both land at `<data_root>/runs/<job_id>/<run_id>.jsonl` — so "no layout change" is a measurement of the writer's own output and not an inference from its source. THE MUTATION RED-PROOF REPRODUCES INDEPENDENTLY in the reviewer's own disposable worktree at `1d344b48`, `python3 -B`, `__pycache__` enumerated at 0, module resolution confirmed to that worktree's own `data_paths.py`, and the revert target counted at EXACTLY 1 before anything was changed: control exit 0 at 261 passed; with `run_log_dir` appending `"_MUTATED"` to the job id and the mutated body re-printed from the live module, exit 1 at 32 FAILED and 229 passed, the split falling in `tests/test_patch_apply.py` 18, `tests/test_timeline.py` 8, `tests/test_run_log.py` 3 and `tests/test_data_paths.py` 3 — the handback's split exactly; after restore, control exit 0 at 261 again, that worktree's `git status --porcelain` empty, and the worktree removed BY EXACT PATH and pruned, leaving the twelve rows that are the primary checkout and the eleven pre-existing `remedy/job-*` worktrees. THE SUITES, re-run serially by the reviewer at the branch tip: `tests/orchestration/` exit 0 at 12805 passed and 10 skipped in 720.62 s, `tests/cli/` exit 0 at 1537 passed in 302.73 s, the five-file selection exit 0 at 304 passed, and `integrity check --json` `"passed": true` with `"fail_count": 0` over 5 checks all passing. RUFF over the eleven edited `.py` paths: `All checks passed!`. TWELVE DEVIATIONS WERE DECLARED AND ALL TWELVE ARE UPHELD. The three needing a ruling are 1, 2 and 3. Deviations 1 and 2 are the block's own numerals disagreeing with the disk — the base `runs_root` count is 41 occurrences where the gate said 37, because the gate stated a LINE count while its own words ordered an OCCURRENCE count, and SPEC (3) said "eight constructions" over a list of seven constructions plus one comment — and the reviewer re-measured both and confirms the worker's readings, 41 in 11 files and seven constructions in `prompt_trace.py`'s comment's company. In both the gate's BINDING clause was met with nothing left on disk to repair, so per operator amendment amend0827-process-diet rule 2 they are dated lines in `.agent/prose_slips.md` and spend no id. Deviation 3 is the only departure from the ordered commit sequence and is ACCEPTED: the worker reworded ITS OWN comment, not a test, an assertion or a line of code, so that G5(a)'s word-bounded reading — which does not strip comments — read the ordered 0, and it reported BOTH readings rather than only the final one. Nothing was reshaped to make a gate pass and no gate went red. SEPARATELY, AND NOT A DEFECT OF THIS ROUND: while re-running the round's own G4 the reviewer measured a defect this round did not introduce and could not have seen, registered immediately below as `R-0816`.
+END GATE_R14
 
-BEGIN DEC_D6
-### DECISION F260 D6 (2026-09-06, F260 round 14) — the test-side sweep of the job-keyed run-log paths is declined, and the re-key inherits those sites
-Routed to planning under §4 item 7: the reviewer authored this ruling and proceeded under it rather than asking. `.agent/plan.md` at `4f265f91` and the round-13 handback both name "the TEST side of the run-log spelling" as the next step — the hand-built `tmp_path / "runs" / <job id>` paths across the suite — on the stated ground that it is what turns DECISION F260 D1's re-key into a change to one function body. MEASURED at `4f265f91` over 1030 tracked `.py` files enumerated from `git ls-files` in Python: 75 path-building occurrences of the quoted token `"runs"` survive under `tests/`, in 34 files, of which 6 are `tests/test_data_paths.py`'s own accessor contract tests and 65 of the remaining 69 supply a JOB id. THE STATED GROUND HOLDS FOR PRODUCTION AND NOT FOR TESTS. D1 re-keys `<data_root>/runs/` by RUN id, so a test asserting `tmp_path / "runs" / str(job.id)` does not merely spell that path differently after the re-key — it must supply a different id, obtained from somewhere it does not have today. Sweeping those 65 sites onto `run_log_dir(job.id, root)` therefore buys no reduction in the re-key's work and rewrites every one of them twice, against the AGENTS.md ruling that mass renames of existing code are forbidden as their own activity because churn is the enemy. CHOSEN: the sweep is declined; the re-key round touches those sites once, semantically, in the same commits as the writer whose layout they assert. Round 14 instead deletes the one remaining PRODUCTION hand-spelling, `RunLogWriter.__init__`'s join of `root / self._job_id`, which round 13's constraint 2 deferred on the ground that the accessor's signature did not fit — a blocker round 13's own work removed, since all eight call sites that pass a runs base now spell it `runs_dir(<data root>)` and can pass the data root directly. ALTERNATIVES CONSIDERED. Performing the sweep anyway for greppability — rejected: the re-key finds those sites by the same measured token search that found them here, and a symbol that is deleted one round later is not a reverse index. Sweeping only the 10 base-only test sites, which DO survive the re-key — rejected as too small to buy a round, and they are picked up free by any later round that touches their files. NOT CHANGED BY THIS RULING: D1's target layout, the re-key's scope, and the plan's remaining Next Steps. REVERSE by deleting this paragraph and restoring the test-side sweep as the plan's first Next Step, at which point the 69 sites measured above are its change set.
-END DEC_D6
+BEGIN FIND816
+- R-0816 — Medium, `timeline.append_run_event` MINTS A NEW RUN ID ON EVERY CALL, SO ONE INVOCATION'S EVENTS BECOME ONE RUN EACH AND `RunLogWriter`'s STATED CONTRACT IS FALSE FOR EVERY CALLER OF IT. Measured by the reviewer at `1d344b485ce6c4e5e7768c6ab001a10bf8ab69d2` by RUNNING THE SHIPPED FUNCTION, not by reading it: appending the five events `event_replay` emits for one resume — `resume_blocked`, `resume_started`, `resume_test_started`, `resume_test_completed`, `resume_completed` — for a single job id into a temporary data root produces FIVE `.jsonl` files under `<data_root>/runs/<job_id>/`, FIVE event lines in total, and FIVE DISTINCT `run_id` values, one per event. `packages/orchestration/timeline.py:62` constructs `RunLogWriter(jid, data_root=Path(data_dir))` with no `run_id`, and `RunLogWriter.__init__` therefore calls `new_run_id()` per construction, while `RunLogWriter`'s own class docstring states "One instance should be used per CLI invocation. All events from a single invocation share the same run_id, forming a chronological session trail." PRODUCT EFFECT, which is why this spends an id rather than a `.agent/prose_slips.md` line under operator amendment amend0827-process-diet rule 2: the wrong state is on disk under `packages/`, the run-log directory of any job grows one FILE per event without bound, and the word "run" is left naming two different things in one store — an invocation for `RunLogWriter`'s direct callers and an event for `append_run_event`'s, which are `autorun.py`, `event_persistence.py`, `event_replay.py`, `repair_loop.py`, `source_apply.py` and `source_context.py` among others. IT ALSO FALSIFIES A LANDED DECISION'S STATED PREMISE. DECISION F022 D2 rejected giving each budget tick its own run id on the ground that "those writers are one-per-invocation while this one is one-per-safe-point, and the file count is unbounded in the length of the job"; the first half of that sentence is not true of `append_run_event`, and the unbounded file count the decision declined to create on the safe-point path already exists on the event path. The decision's CHOSEN option is unaffected and stays correct — a fixed `BUDGET_TICK_RUN_ID` is the right answer either way — so nothing is reversed by this finding; what is corrected is a premise, and it is recorded here because F260's remaining design leans on it. IT IS ALSO LOAD-BEARING FOR THIS FEATURE. DECISION F260 D1 re-keys the store to `<data_root>/runs/<run_id>/`, which under today's behaviour would create one DIRECTORY per event, and it gives the Job a plural `run_refs`, which under today's behaviour would be a list of events wearing the name of runs. MEDIUM rather than High because no data is lost and no reader is broken — `timeline.load_run_events` globs the job directory and sorts by timestamp, so it returns all five events in order regardless — and rather than Low because the defect is in production code under `packages/`, grows without bound and would be inherited and amplified by the re-key. SEARCHED BEFORE MINTING per §3 item 30: the open set was grepped for `append_run_event`, for `new_run_id`, and for the phrases "run id per event", "one run per event" and "per CLI invocation", and no open finding describes this defect; the nearest neighbours are this feature's own store findings and none names the writer's id cardinality. FIX: give the process ONE run id and pass it, so an invocation is a run. Resolved when five events appended for one job in one process land in ONE file under ONE `run_id`, proved by reading the bytes rather than by asking the writer, and when two different jobs in that same process still get their own directories.
+END FIND816
 
-BEGIN SLIP14
-2026-09-06 · F260 R13 (reviewer) · Constraint 6 of the round-13 block stated that `.agent/prose_slips.md` "at the base ends with NO trailing newline"; measured at `4d13f5a0` it ends with exactly one, as `.agent/live_review.md` does — the second consecutive round whose constraint 6 got this file's terminal byte wrong and in the opposite direction each time, and the worker followed the constraint's own derive-it-from-the-target rule instead, correctly; no id spent (amend0827-process-diet rule 2).
-END SLIP14
+BEGIN DEC_D7
+### DECISION F260 D7 (2026-09-06, F260 round 15) — a run is an INVOCATION, not an event, and the run id is one module constant
+Routed to planning under §4 item 7: the reviewer authored this ruling and proceeded under it rather than asking. It rules the repair of finding `R-0816` and it re-orders this feature's remaining plan. THE PLAN AT `1d344b48` named `Job.run_refs` as the next step and the re-key as the one after it. Measured against the disk, `run_refs` cannot be built first: `timeline.append_run_event` mints a run id per EVENT, so a run list assembled today would enumerate events, and DECISION F260 D1's `<data_root>/runs/<run_id>/` would hold one directory per event. The cardinality of a run is therefore a PREREQUISITE of both, and it is repaired first. CHOSEN: `timeline.py` holds ONE module-level `_PROCESS_RUN_ID = new_run_id()`, computed once at import, and `append_run_event` passes it to every `RunLogWriter` it constructs. A run is then exactly what `RunLogWriter`'s docstring has always said it is — one invocation — and different jobs stay in different directories because the job id, not the run id, keys the directory today. The mechanism was DRY-RUN by the reviewer against the SHIPPED writer before being ordered: five events for one job under one fixed run id produce ONE file, FIVE lines, ONE distinct `run_id`, in append order, while a second job in the same process gets its own directory and its own file. ALTERNATIVES CONSIDERED. A per-`(data root, job id)` cache of writers in a module dict — rejected: it is process-global mutable state that needs an eviction rule and a test-visible reset, and it buys nothing the constant does not, since the directory is already keyed by job. Giving each caller its own run id to pass — rejected: it moves the decision to eleven call sites and is the shape this feature exists to remove. Deriving the run id from the job id — rejected: it would make a job's runs indistinguishable from each other, which is precisely what D1's plural `run_refs` needs to be able to tell apart. Leaving it and letting the re-key absorb it — rejected: the re-key would then be written against a cardinality nobody had measured, and the finding's own product effect would ship one directory per event. KNOWN CONSEQUENCE, STATED RATHER THAN HIDDEN: a long-lived process — `ui_server.py` is the case — keeps ONE run id for its lifetime, so its events form one long run rather than many. That is a strict improvement on one run per event and it is the same trade `BUDGET_TICK_RUN_ID` already makes on the safe-point path; if a server ever needs a run per request, the run id becomes a parameter of the request and this constant is its default. NOT CHANGED BY THIS RULING: D1's target layout, `RunLogWriter`'s signature and docstring, `load_run_events`, and DECISION F022 D2's chosen option. REVERSE by deleting this paragraph, removing `_PROCESS_RUN_ID` and its argument, at which point `R-0816` is open again and `run_refs` returns to being the plan's next step.
+END DEC_D7
 
-BEGIN SLIP15
-2026-09-06 · F260 R13 (reviewer) · Constraint 4 of the round-13 block listed `worker_queue.py` among the modules importing `packages.*` names at MODULE level and implied `patch_revert.py` imports `data_paths` function-locally; measured at the base both are wrong — `patch_revert.py:33` is a module-level `data_paths` import and `worker_queue.py` has no module-level `packages.*` import at all — and the worker followed the constraint's governing per-file rule over its list, which ruff `I001` then accepted; no id spent (amend0827-process-diet rule 2).
-END SLIP15
+BEGIN SLIP18
+2026-09-06 · F260 R14 (reviewer) · Gate G5(c) of the round-14 block ordered a word-bounded `runs_root` search and stated its base count as 37, while the same search over the same 1030-file enumeration returns 41 in 11 files — the reviewer re-measured both readings and the worker's 41 is correct. The gap is four LINES that carry the token TWICE, so the block stated a LINE count where its own words ordered an OCCURRENCE count; the gate's binding clause was "any survivor FAILS", which the C6 reading of 0 in 0 files meets under either reading. Reviewer-authored numeral disagreeing with the disk, nothing wrong under `packages/`, `apps/`, `tests/` or `docs/` as a result; no id spent (amend0827-process-diet rule 2).
+END SLIP18
 
-BEGIN SLIP16
-2026-09-06 · F260 R13 (reviewer) · Gate G8 of the round-13 block ordered `ruff check` over "exactly the eight edited `.py` paths of the change set" while that change set holds nine, so the numeral contradicted the list beside it — reviewer-checklist item 16's shape, a hand-counted number stated over a list the reader can count — and the worker linted all nine, which is the wider reading the gate's own words select; no id spent (amend0827-process-diet rule 2).
-END SLIP16
-
-BEGIN SLIP17
-2026-09-06 · F260 R13 (reviewer) · The round-13 block's Bundle prose and constraint 5(b) named `pingpong_job.py:3215` for the import while SPEC (3) named `:3217` for the expression; both numbers are correct and they are different lines, but the block never said so, and the worker had to spend a declared deviation establishing that the two were not a contradiction; no id spent (amend0827-process-diet rule 2).
-END SLIP17
+BEGIN SLIP19
+2026-09-06 · F260 R14 (reviewer) · SPEC (3) of the round-14 block said "eight constructions pass `runs_root`" while its own enumeration beneath it listed seven `RunLogWriter(...)` constructions plus `prompt_trace.py:215`, which is a COMMENT and constructs nothing — checklist item 16's shape, a hand-counted numeral stated over a list the reader can count, and the second instance of that shape in two rounds. All eight SITES moved and the reviewer confirms seven constructions; the worker applied the slice byte for byte and declared the disagreement, which is what constraint 1 asks. No id spent (amend0827-process-diet rule 2).
+END SLIP19
