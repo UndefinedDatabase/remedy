@@ -28,8 +28,6 @@ Public API::
     run_dir(run_id, root: Path | None = None) -> Path
     job_logs_dir(root: Path | None = None) -> Path           # keyed by JOB id
     run_log_dir(job_id, root: Path | None = None) -> Path
-    pingpong_runs_dir(root: Path | None = None) -> Path      # == runs_dir today
-    pingpong_run_dir(run_id, root: Path | None = None) -> Path  # == run_dir today
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
     viewers_dir(root: Path | None = None) -> Path
@@ -219,29 +217,6 @@ def job_evidence_dir(job_id: str, root: Path | None = None) -> Path:
 def run_dir(run_id: str, root: Path | None = None) -> Path:
     """One RUN's log directory, keyed by RUN id and never by job id (DECISION F260 D1)."""
     return runs_dir(root) / run_id
-
-
-# The ping-pong run store now IS the run store: DECISION F272 D1 moved it to
-# ``<data_root>/runs/<run_id>/``, the layout DECISION F260 D1 names, which was
-# only reachable once the job-keyed run log left ``runs/`` above. Giving the store
-# ONE spelling in F260 rounds 11 and 12 is what turned that move into a change to
-# the two bodies below instead of a sweep of every caller.
-#
-# The two names below are therefore now EXACT ALIASES of ``runs_dir`` and
-# ``run_dir``, and DECISION F272 D1 DELETES them in the next round in favour of
-# those two at every call site — no alias, no attic, per AGENTS.md "Replacing is
-# deleting". They survive this round only so that a nineteen-site rename is not
-# mixed into a directory move; do not add a new caller.
-
-
-def pingpong_runs_dir(root: Path | None = None) -> Path:
-    """The ping-pong run store, which is now the run store (<root>/runs)."""
-    return runs_dir(root)
-
-
-def pingpong_run_dir(run_id: str, root: Path | None = None) -> Path:
-    """One ping-pong RUN's directory, keyed by run id (<root>/runs/<run_id>)."""
-    return pingpong_runs_dir(root) / run_id
 
 
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")
