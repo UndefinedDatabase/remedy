@@ -1,257 +1,266 @@
-STEP T002/5 — F260 · ROUND 12 · THE TEST SIDE OF THE ONE SPELLING
-(§3 item 37: every rule line below is exactly sixty-two U+2500 characters, and
-no other line of this block's frame is a run of a repeated character.)
+STEP T002/5 — F260 · ROUND 13 — ONE SPELLING FOR THE RUN-LOG STORE
 
-Goal:
-  Round 11 moved every `_pingpong_runs_dir` reference onto the `data_paths`
-  pair, and left fourteen HAND-SPELLED `"pingpong_runs"` path components in
-  seven test files untouched, because they never named the deleted helper. Those
-  are the test-side twin of finding R-0814: a path built by hand does not follow
-  its writer, so each one is a test that will silently keep pointing at the old
-  directory when DECISION F260 D1's move happens. Move them onto the pair.
+Goal:        Give `<data_root>/runs/<job_id>/` ONE spelling in `data_paths`, as
+             rounds 11 and 12 gave the ping-pong run store one, so DECISION F260
+             D1's re-key of that directory by RUN id becomes a change to one
+             function body instead of a sweep of every caller.
 
-Base: `2ad2d1534ff53a202dc6965909391849b2dd2ca0` (`2ad2d153`). Every reading
-quoted in this block was taken by the reviewer at that commit.
+Base:        `4d13f5a02608a40081a7ebacf779124cc6318309` (round 12, reviewed PASS).
 
-Bundle:
-  C0a  Save this block verbatim as `.agent/authored/f260-r12.md`.
-  C0b  Mirror it into `.agent/last_block.md`.
-  C1   `.agent/plan.md` ← the PLAN slice, whole-file replacement.
-  C2   `.agent/live_review.md` ← append GATE_R11.
-  C3   `.agent/prose_slips.md` ← append the four SLIP lines.
-  C4   THE SWEEP — see the SPEC below.
-  C5   Handback: rewrite `.agent/handoff.md`.
+Bundle:      C0a  save this block verbatim to `.agent/authored/f260-r13.md`
+             C0b  mirror the same bytes into `.agent/last_block.md`
+             C1   rewrite `.agent/plan.md` from the PLAN slice
+             C2   append GATE_R12 then FIND815 to `.agent/live_review.md`
+             C3   append SLIP13 to `.agent/prose_slips.md`
+             C4   SPEC (1) the `run_log_dir` accessor + SPEC (2) its tests
+             C5   SPEC (3) the nine-site sweep across seven modules
+             C6   rewrite `.agent/handoff.md` (the handback)
 
-Change set — nothing outside these paths:
-  .agent/authored/f260-r12.md           (new)
-  .agent/last_block.md
-  .agent/plan.md
-  .agent/live_review.md
-  .agent/prose_slips.md
-  .agent/handoff.md
-  tests/orchestration/test_failure_wiring.py
-  tests/orchestration/test_failure_postmortem.py
-  tests/orchestration/test_evidence_bundle.py
-  tests/orchestration/test_manual_completion_bundle.py
-  tests/orchestration/test_pingpong_cli.py
-  tests/orchestration/test_job_stop_integration.py
-  tests/cli/test_task_input.py
+Change:      EXACTLY these fifteen paths, nothing else:
+               .agent/authored/f260-r13.md
+               .agent/last_block.md
+               .agent/plan.md
+               .agent/live_review.md
+               .agent/prose_slips.md
+               .agent/handoff.md
+               packages/orchestration/data_paths.py
+               tests/test_data_paths.py
+               packages/orchestration/timeline.py
+               packages/orchestration/cockpit.py
+               packages/orchestration/trust_report.py
+               packages/orchestration/pingpong_job.py
+               packages/orchestration/patch_apply.py
+               packages/orchestration/patch_revert.py
+               packages/orchestration/worker_queue.py
 
-──────────────────────────────────────────────────────────────
-MEASURED AT THE BASE — the complete site list, do not re-derive it
+Constraints:
+ 1. A slice is applied byte for byte. If a slice looks wrong, apply it anyway
+    and declare the problem in the handback; never edit a slice.
+ 2. `packages/orchestration/run_log.py` IS DELIBERATELY NOT IN THE CHANGE SET.
+    `RunLogWriter.__init__` (run_log.py:114-115) joins `root / self._job_id`
+    where `root` is already the runs BASE, so the accessor below — which takes a
+    DATA root — does not fit its signature. That join is the one remaining
+    writer-side spelling of this layout and it moves with D1's re-key, not here.
+    Do not touch it, and do not change `RunLogWriter`'s signature.
+ 3. NO BEHAVIOUR CHANGE. Every edited site must build the IDENTICAL path it
+    builds today. Measure that, per shape, before editing anything (G4).
+ 4. Import convention is decided PER FILE, following what that file already
+    does, and no second convention is introduced. Measured at the base:
+    `timeline.py`, `cockpit.py`, `trust_report.py` and `worker_queue.py` import
+    their `packages.*` names at MODULE level, so the new import goes there, in
+    isort order — `ruff check` enforces `I001` through this repository's own
+    `pyproject.toml` and will reject a wrong position. `patch_apply.py`,
+    `patch_revert.py` and `pingpong_job.py` import `data_paths` names
+    FUNCTION-LOCALLY at the sites in question, so the new import goes beside the
+    existing local import there.
+ 5. TWO NAME COLLISIONS EXIST AT THE BASE AND BOTH ARE YOURS TO RESOLVE.
+    (a) `trust_report.py:373` already binds a LOCAL variable named
+    `run_log_dir`. Rebinding that name in a function that also imports the
+    accessor makes the name local for the whole function and raises
+    `UnboundLocalError`. Rename the local — `run_log_path` is the suggested
+    spelling — and leave the printed text unchanged.
+    (b) `pingpong_job.py:3215` currently imports `runs_dir` for the single
+    expression this round replaces. If that import becomes unused, remove it
+    (ruff `F401`), and declare the removal in the handback the way round 12
+    declared the `resolve_data_root` removal.
+ 6. `.agent/live_review.md` at the base ends with exactly ONE newline; append
+    accordingly. `.agent/prose_slips.md` at the base ends with NO trailing
+    newline. DERIVE EACH RECIPE FROM ITS OWN TARGET'S TERMINAL BYTE, measured
+    at the base, and state both measurements in the handback.
+ 7. Gates run at C5. The handback is C6, so no gate reading may be taken after
+    the handback exists (§3 item 31). C6's own insertion count is not reported
+    by C6; the reviewer measures it at the next gate.
+ 8. Every destructive check runs in a disposable `git worktree` under
+    `.remedy-wt/`, removed by EXACT PATH before the handback; the primary
+    checkout satisfies `git status --porcelain` == empty at the handback.
+ 9. `cmp` is denied in this sandbox. Use `filecmp.cmp(shallow=False)` plus
+    sha256. `remedy` is invoked as `python3 -m apps.cli.grouped`, `ruff` as
+    `python3 -m ruff`. Purge `__pycache__` and run `python3 -B` for every
+    mutation reading.
 
-The quoted token `"pingpong_runs"` — either quote style — occurs SEVENTEEN times
-in NINE tracked files under `packages/`, `apps/` and `tests/`. Two of those files
-are NOT swept and the reason is given, so the remaining fourteen sites in seven
-files are this round's whole change:
+SPEC (1) — THE ACCESSOR
 
-  KEPT — `packages/orchestration/data_paths.py:216` (one site). This is the
-    definition. The string has to live somewhere and this is where.
-  KEPT — `tests/test_data_paths.py:406` and `:407` (two sites). This is the
-    contract test round 11 added, and a test that pins a layout must spell the
-    layout it pins — the same reason round 9's `task_jobs` assertion spells its
-    own forbidden component.
-  SWEPT — the fourteen below:
-    tests/orchestration/test_failure_wiring.py:351, 359, 623, 631
-    tests/orchestration/test_pingpong_cli.py:281, 283
-    tests/orchestration/test_job_stop_integration.py:248, 250
-    tests/orchestration/test_evidence_bundle.py:201, 209
-    tests/cli/test_task_input.py:146, 155
-    tests/orchestration/test_failure_postmortem.py:687
-    tests/orchestration/test_manual_completion_bundle.py:142
+In `packages/orchestration/data_paths.py`, DIRECTLY BELOW the existing
+`runs_dir` function (base line 71-73) and above `projects_dir`, add ONE new
+public function plus the WHY comment above it, separated from its neighbours by
+the file's existing two-blank-line convention.
 
-DO NOT TOUCH `tests/orchestration/test_failure_postmortem.py` LINES 669, 688 AND
-689. They contain the substring `pingpong_runs` inside STRING LITERALS that
-assert REDACTION OUTPUT — `"/home/user/.data/pingpong_runs/r1/postmortem.json"`
-and `"[runtime-data]/pingpong_runs/r1/postmortem.json"`. Those are assertions
-about text a function PRINTS, not path construction, and an accessor cannot
-produce them. They are invisible to the quoted-token reading above, which is why
-the count is fourteen and not seventeen; the reviewer read them before excluding
-them. Line 687 in the same file IS a construction and IS swept.
+The comment states, in this order: that this is the LIVE run-log store keyed by
+JOB id as it is TODAY, `<data_root>/runs/<job_id>/`; that DECISION F260 D1
+re-keys the directory by RUN id; and that giving it one spelling here turns that
+re-key into a change to this function body instead of a sweep of every caller.
+Write it in the voice of the `pingpong_runs_dir` comment block already in this
+file (base lines 202-211) — that block is the model to follow, not to copy.
 
-──────────────────────────────────────────────────────────────
-SPEC FOR C4 — described, not sliced; you write the code
+The function:
 
-Replace each hand-built path with the `data_paths` accessor that produces it.
-Every site's root is visible in its own line; use the accessor's `root`
-parameter rather than re-deriving a root:
+  - named `run_log_dir`
+  - signature `(job_id: UUID | str, root: Path | None = None) -> Path`
+    (`UUID` is already imported at data_paths.py:42; add no import)
+  - one-line docstring naming what it returns TODAY
+  - body exactly: `return runs_dir(root) / str(job_id)`
 
-  - A site rooted at the DATA ROOT (`resolve_data_root() / "pingpong_runs" ...`
-    or `isolate_data_root / "pingpong_runs" ...`) becomes `pingpong_runs_dir()`
-    or `pingpong_run_dir(<run id>)` where a run id follows.
-  - A site rooted at an EXPLICIT directory (`tmp_path / "data" / "pingpong_runs"`,
-    `data_dir / "pingpong_runs"`, `data_root / "pingpong_runs"`,
-    `demo_repo / ".data" / "pingpong_runs"`) becomes
-    `pingpong_runs_dir(<that root>)` or `pingpong_run_dir(<run id>, <that root>)`.
-    Pass the root explicitly; do NOT assume it equals the data root, and do not
-    change which directory any test reads.
-  - Where a site already ends in `/ <run id>`, prefer `pingpong_run_dir(...)`
-    over `pingpong_runs_dir(...) / <run id>`, because the hand-built join is the
-    same shape this round exists to remove.
+That body must be a single line and must occur EXACTLY ONCE in the file — G7
+reverts by those bytes and constraint 25 of the reviewer's checklist requires
+the revert target to be unique inside its named file. Verify the count is 1
+before you commit C4 and report it.
 
-BEHAVIOUR MUST NOT CHANGE. Each edited line must resolve to the SAME path it
-resolved to before. Where you are unsure a root is equal, print both paths in a
-scratch probe and compare them before committing rather than reasoning about it.
+Do NOT change `runs_dir`, `run_dir`, `jobs_dir` or any other existing function.
+`run_dir(run_id, root)` is the TARGET spelling D1 introduces and is keyed by RUN
+id; `run_log_dir` is the LIVE spelling keyed by JOB id. THEY ARE NOT THE SAME
+FUNCTION AND MUST NOT BE MERGED THIS ROUND — that merge is D1's own work, and
+performing it here would re-create the collision DECISION F260 D0 recorded.
 
-Add the import each file needs, following that file's existing convention
-(module-level or function-local — check which, per file, and do not introduce a
-second convention into a file that has one).
+SPEC (2) — TESTS FOR THE ACCESSOR
 
-Re-grep every line number above before editing. They were read at `2ad2d153`
-and this round's own commits move them (§3 item 9).
+In `tests/test_data_paths.py`, add tests for `run_log_dir` beside the existing
+`runs_dir` / `run_dir` tests (base lines 79, 102, 120, 375 show the house
+style — follow it, including how the module imports the names under test).
 
-──────────────────────────────────────────────────────────────
-CONSTRAINTS
+Three readings, each its own test:
+  (a) with an EXPLICIT root: `run_log_dir("j1", tmp_path)` equals
+      `tmp_path / "runs" / "j1"`.
+  (b) with NO root, under a monkeypatched `REMEDY_DATA_DIR`: the result equals
+      `runs_dir() / "j1"`, so the accessor follows the process data root.
+  (c) with a `UUID` job id: the result equals the same path built from
+      `str(that_uuid)`, which is what pins the `str()` coercion in the body.
 
- 1. Apply every authored slice BYTE FOR BYTE. If a slice or a gate looks wrong,
-    apply it as given and DECLARE the defect. Never repair a slice, and never
-    reshape code to make a gate go green. Round 11 declared ten deviations and
-    nine were upheld; that is the handback working as intended.
- 2. Change-set discipline: no path outside the list above. The list bounds
-    WRITES, not reads or worktrees.
- 3. `.agent/plan.md` stays under 50 lines; the PLAN slice was measured against
-    that cap before emission.
- 4. THIS ROUND HAS EXACTLY TWO `.agent/` APPENDS — `.agent/live_review.md` and
-    `.agent/prose_slips.md` — and no other file is appended to. Both end with
-    exactly ONE newline at `2ad2d153`, measured: 918017 bytes and 108734 bytes.
-    Derive each recipe from its own target's terminal byte. (Round 11's
-    constraint 4 said "both" while three files were appended to, which the
-    worker had to catch; this one states the set and the count together so the
-    claim is checkable.)
- 5. Slice shapes, classified before emission and stated per target: GATE_R11 is
-    an APPEND at end of `.agent/live_review.md`; SLIP9 through SLIP12 are an
-    APPEND at end of `.agent/prose_slips.md`; PLAN is a whole-file REWRITE of
-    `.agent/plan.md`. No pair in this block has a FROM, so no containment test
-    applies and no FROM-zero count is ordered anywhere.
- 6. `git status --porcelain` is EMPTY at the handback. Destructive checks run
-    only in a disposable `git worktree` (self-drive protocol G5).
- 7. AGENTS.md throughout: self-review loop before every commit, 500-insertion
-    cap counting INSERTIONS only, push after committing, no force push, no work
-    on `main`, no merge, no pull request.
+Each test asserts a PATH EQUALITY, never a string containment.
 
-──────────────────────────────────────────────────────────────
-DONE WHEN — eight gates, each RUN and its real exit code recorded
+SPEC (3) — THE NINE-SITE SWEEP
 
-G1 TRANSPORT — one digest. `sha256sum .agent/authored/f260-r12.md` equals the
-   digest named in the delegation that carried this block, and the same digest
-   over `.agent/last_block.md`. One reading, not a chain.
+Nine hand-spelled sites in seven modules move onto the two accessors. The line
+numbers are measured at the base `4d13f5a0`; re-grep each before editing, and
+report the count you re-measured (§3 item 9).
 
-G2 THE RECORD. (a) EXACT IMAGE: the post-image at C2 EQUALS
-   `pre + b"\n" + GATE_R11 + b"\n"` byte for byte, where `pre` is the file at
-   `2ad2d153`; state the measured length. (b) STRUCTURAL: split on `"\n\n"`; the
-   last unit with the terminating newline stripped equals GATE_R11; units run
-   431 → 432. (c) NEGATIVE CONTROL: flip ONE byte inside the appended paragraph
-   and confirm readings (a) AND (b) both reject it, then restore and confirm
-   both accept. (d) After C2: `^Gate: ` headers 21, all distinct; registrations
-   299 over 299 distinct ids; `^Done: ` 5 lines over 3 distinct ids; the open
-   set is 296 BY DISTINCT ID.
+FOUR JOB-KEYED SITES move onto `run_log_dir`:
+  timeline.py:75      `runs_dir = data_dir / "runs" / str(job_id)`
+                      → the accessor, keeping the local name `runs_dir` if that
+                        does not shadow an import you added; rename it if it does
+  cockpit.py:380      `str(data_dir / "runs" / str(job.id))`
+  trust_report.py:373 `run_log_dir = data_dir / "runs" / str(job.id)`
+                      → see constraint 5(a): the LOCAL is renamed
+  pingpong_job.py:3217 `job_runs = runs_dir() / job_id`
+                      → `run_log_dir(job_id)`; see constraint 5(b)
 
-G3 THE SLIPS. The post-image EQUALS `pre + b"\n" + SLIP9 + b"\n\n" + SLIP10 +
-   b"\n\n" + SLIP11 + b"\n\n" + SLIP12 + b"\n"` byte for byte; blank-line units
-   run 139 → 143, a rise of exactly FOUR, one per slip.
+FIVE BASE-ONLY SITES move onto `runs_dir`:
+  timeline.py:64        `runs_root=Path(data_dir) / "runs"`
+  patch_apply.py:526    `runs_root = (data_dir / "runs") if data_dir is not None else None`
+  patch_apply.py:563    the SAME expression a second time — both move
+  patch_revert.py:245   `runs_root = actual_data_dir / "runs"`
+  worker_queue.py:488   `runs_root=root / "runs"`
 
-G4 THE PLAN. `.agent/plan.md` equals the PLAN slice plus exactly one trailing
-   newline, byte for byte, and its line count is under 50.
+`safe_points.py:671` and `pingpong_job.py:3178` already call `runs_dir()` and
+are correct; they are NOT in the change set. The quoted token `"runs"` also
+occurs across this repository as an ordinary JSON dict KEY (`"runs": [...]` in
+verification payloads) — those are not paths and are NOT swept. Only the nine
+sites listed above move.
 
-G5 THE HAND-SPELLED PATHS ARE GONE.
-   (a) The QUOTED TOKEN `"pingpong_runs"` (or `'pingpong_runs'`) occurs, over
-       every TRACKED `.py` file under `packages/`, `apps/` and `tests/`, in
-       EXACTLY THREE places: `packages/orchestration/data_paths.py` once and
-       `tests/test_data_paths.py` twice. Report the full `file:line` list rather
-       than only the total. Measured at the base: SEVENTEEN sites in NINE files,
-       so this gate can fail, and the two surviving files are named rather than
-       counted to zero — a zero would be unmeetable, which is the mistake round
-       9's G5(c) and round 11's G5(c) each made in a different direction.
-   (b) NON-VACUITY, PER FILE: in each of the seven swept files, AST references
-       resolving to `pingpong_run_dir` or `pingpong_runs_dir` are NON-ZERO.
-       Report the count per file. At the base every one of the seven is ZERO, so
-       the reading really distinguishes before from after.
-   (c) NO BEHAVIOUR CHANGE: `git diff --numstat` over C4 shows, for every one of
-       the seven files, insertions and deletions that are both non-zero and
-       within two of each other — a sweep that replaces a spelling neither adds
-       nor removes test logic. Report the seven rows. If any row is further
-       apart than that, say which and why; do not adjust the code to fit.
+DONE WHEN — EIGHT GATES
 
-G6 THE SUITES, run SERIALLY, each exit code recorded separately, never piped —
-   capture each run to a file under `.remedy-wt/` and read the capture, because
-   a pipe reports the pipe's exit code and not pytest's:
-     `pytest tests/orchestration/ -q -p no:randomly`
-     `pytest tests/cli/ -q -p no:randomly`   (carries the canary)
-     `pytest tests/test_data_paths.py -q -p no:randomly`
-   The reviewer ran all three at the base: `tests/orchestration/` is 12805
-   passed and 10 skipped at exit 0, `tests/test_data_paths.py` is 48 passed, and
-   `tests/cli/` carries `test_golden_path.py`. Report each passed count. Also
-   run `python3 -m apps.cli.grouped integrity check --json` and record `passed`,
-   `fail_count` and the check count.
+Every gate below is EXECUTED and its REAL exit code recorded, one line per gate
+in the handback. "Green" as a word is a finding.
 
-G7 THE MUTATION RED-PROOF, and it is the proof this round is worth a round.
-   In a disposable `git worktree` at the C4 commit, `python3 -B`, modules
-   confirmed to resolve from THAT worktree:
-   (i)   UNMUTATED CONTROL FIRST over the seven swept files: exit code AND
-         passed count, per the whole selection.
-   (ii)  Change `data_paths.pingpong_runs_dir` to return
-         `(root if root is not None else resolve_data_root()) / "pingpong_runs_MUTATED"`.
-         Tests in the swept files must now FAIL — because they read the accessor
-         rather than a hand-spelled string. Report HOW MANY failed and name at
-         least one node id per swept file that fails, or say plainly which swept
-         file produced no failure and why.
-   (iii) Restore, confirm the control is green again and that `git diff` in that
-         worktree is empty.
-   A file whose tests do NOT redden under (ii) is still hand-spelling its path
-   somewhere the token reading missed; that is a finding about this round, and
-   reporting it is worth more than a green gate.
-   Name the revert target by PATH and verify the bytes you replace occur EXACTLY
-   ONCE in that file before editing (§3 item 25).
+G1 TRANSPORT. `sha256sum .agent/authored/f260-r13.md .agent/last_block.md`;
+   both equal the digest the delegation names. One comparison, not a chain.
 
-G8 LINT AND CLEAN TREE. `python3 -m ruff check` over exactly the seven swept
-   files exits 0 — file-scoped on purpose, because `ruff check tests/` is RED at
-   the base with pre-existing errors that are not this feature's. Then
-   `git status --porcelain` and `git ls-files .remedy-wt` are both EMPTY.
+G2 THE RECORD. After C2, prove `.agent/live_review.md` equals its pre-image plus
+   exactly the two appended paragraphs, by TWO independent readers:
+   (a) exact-image byte equality against the recipe you derived in constraint 6;
+   (b) a STRUCTURAL reader that splits the whole file on `"\n\n"`, counts the
+       units itself, and compares the LAST TWO units in order against GATE_R12
+       and FIND815. N is counted by your script, never asserted by this block.
+   (c) a negative control that flips one byte inside the FIRST appended
+       paragraph (GATE_R12) and confirms BOTH readers reject it, and both accept
+       after restore. Run it in memory, not by writing bad bytes to the file.
+   (d) report `^Gate: ` count, registrations, `^Done: ` lines, and the open set
+       BY DISTINCT ID after C2.
 
-──────────────────────────────────────────────────────────────
-HANDBACK
+G3 THE PROSE FILES. `.agent/plan.md` disk bytes equal the PLAN slice plus one
+   trailing newline; report its line count, which must be under 50.
+   `.agent/prose_slips.md` equals its pre-image plus the recipe of constraint 6;
+   report bytes before and after and the blank-line unit count before and after.
 
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
-round, `SESSION 3 of feature F260`, branch, commit SHAs, the changed-files table
-with its `+/-` column from `git diff --numstat` and never re-derived by eye (§3
-item 28), ONE LINE PER GATE with its real exit code, the open-findings count BY
-DISTINCT ID, the item-status table, the next expected action, and every
-deviation — including any place this block is wrong. No length cap.
+G4 THE ACCESSOR AND NO BEHAVIOUR CHANGE. At C4: `python3 -m pytest
+   tests/test_data_paths.py -q -p no:randomly` exits 0 and its count is REPORTED.
+   Additionally, BEFORE editing any consumer, run a scratch probe under
+   `.remedy-wt/` that prints BOTH the hand-spelled and the accessor-built path
+   for all THREE shapes this sweep uses — `root/"runs"`, `root/"runs"/str(jid)`,
+   and `resolve_data_root()/"runs"/str(jid)` — and confirms each pair compares
+   equal. Report the printed pairs, not a summary of them.
 
-──────────────────────────────────────────────────────────────
-AUTHORED SLICES
+G5 THE SWEEP IS COMPLETE AND NON-VACUOUS. At C5, three readings:
+   (a) enumerate `git ls-files` in PYTHON (a `tests/**/*.py` shell glob silently
+       misses `tests/test_data_paths.py` — round 12 deviation 7), filter to `.py`
+       under `packages/`, `apps/`, `tests/`, and report every line containing the
+       quoted token `"runs"` that BUILDS A PATH, at the base and at C5, with the
+       per-file counts. The nine swept sites must be absent at C5; JSON-key
+       occurrences are expected to be unchanged and are reported as such.
+   (b) per swept module, an AST reading counting calls to `run_log_dir` /
+       `runs_dir`: EVERY module named in SPEC (3) is NON-ZERO at C5, and each
+       file's base value is reported beside it.
+   (c) `git diff --numstat <C5>^ <C5>` — exactly one row per module named in
+       SPEC (3) and no row outside that list. Report the rows you measured
+       rather than a count of them.
 
-A slice is the bytes of the lines strictly BETWEEN its BEGIN and END marker
-lines, joined by `"\n"`, carrying NO trailing newline. The marker lines are
-never part of any slice and never reach any file.
+G6 THE SUITES, SERIALLY, each captured to a file under `.remedy-wt/` and read
+   from the capture:
+   (1) `python3 -m pytest tests/orchestration/ -q -p no:randomly`
+   (2) `python3 -m pytest tests/cli/ -q -p no:randomly`
+   (3) `python3 -m pytest tests/test_data_paths.py tests/test_timeline.py
+       tests/test_cockpit.py tests/test_trust_report.py tests/test_patch_apply.py
+       -q -p no:randomly`
+   (4) `python3 -m apps.cli.grouped integrity check --json`
+   The canary is inside (2); verify its presence with
+   `python3 -m pytest tests/cli/test_golden_path.py --collect-only` and report
+   the collected count. Report each suite's real numbers.
 
-<<<BEGIN GATE_R11>>>
-Gate: R11 — the F260 R11 entry. R11 GAVE THE PING-PONG RUN STORE ONE SPELLING IN `data_paths` AND DELETED `pingpong_loop._pingpong_runs_dir`, AND RECORDED DECISION F260 D5. VERDICT PASS. Range 2cedf98c..2ad2d153, ten commits, all single-parent, pushed to `origin/feature/f260-one-world`, no pull request created; largest insertion count 399, a single `.agent/**` state write, and largest code commit 97, both far under the AGENTS.md 500-insertion cap. THE REVIEWER RE-RAN EVERY GATE ITSELF. TRANSPORT: one digest `e2dc8680811953e9119c64eaabd552bdfe5285bafef7bba74b5644a84b777fac` across the reviewer's scratch original, the saved copy at `.agent/authored/f260-r11.md` and the mirror at `.agent/last_block.md`; per §3 item 37 that chain covers those three artefacts and is not a claim about bytes emitted into a prompt. THE RECORD: 912232 to 918017 bytes by exact-image equality, blank-line units 430 to 431, the last unit equal to the slice byte for byte, twenty `Gate:` headers, registrations 299 over 299 DISTINCT ids, `Done:` 5 lines over THREE distinct ids, open set 296 BY DISTINCT ID. THE SLIPS: 105750 to 108734 by the same reading, units 137 to 139. THE DECISION LANDED AS AN INSERTION AND IS PROVED AS ONE: `docs/roadmap/features/T2_F260.md` satisfies `pre[:off] + inserted + pre[off:] == post` byte for byte at `off` 15662 with 3022 bytes inserted, so nothing outside the insertion point moved; `^### DECISION F260 D` matches SIX times with D0, D1, D2, D3, D4 and D5 each exactly once; the D5 heading sits at byte 15663, after D4 at 13191 and before `## Design` at 18684, which is the placement the block ordered; and the file still ends with exactly one newline. THE HELPER IS GONE: `hasattr(pingpong_loop, "_pingpong_runs_dir")` is False, and by an AST reading covering `Name`, `Attribute`, `alias` AND `FunctionDef` over 1030 tracked Python files the name resolves ZERO times, against a non-vacuity control of 138 for `pingpong_run_dir` and 13 for `pingpong_runs_dir`. THE VALUE IS PRESERVED and both new functions honour a `root` argument set to a different directory from the environment root. THE SUITES, re-run serially by the reviewer at the branch tip, all exit 0: `tests/orchestration/` at 12805 passed and 10 skipped in 738 seconds, `tests/test_data_paths.py` at 48, and `tests/test_data_paths.py` with the canary and `tests/docs/` together at 393; `integrity check --json` returned `"passed": true` with `"fail_count": 0` over 5 checks; and RUFF over exactly the twenty-nine changed paths under `packages/`, `apps/` and `tests/` exits 0. THE MUTATION RED-PROOF REPRODUCES INDEPENDENTLY in the reviewer's own disposable worktree at `2be351cc`, control exit 0 at 48 passed: making `pingpong_run_dir` ignore its `root` argument reddens exactly `test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir`, and reviving `_pingpong_runs_dir` in `pingpong_loop` as an UNCALLED `def` reddens exactly `test_pingpong_loop_has_no_runs_dir_helper_at_all`; `git diff` was empty after each restore and the control was green again. NINE OF THE WORKER'S TEN DEVIATIONS ARE UPHELD AND ONE IS DECLINED. Upheld and worth the record: G5(c) as written was UNMEETABLE, because it required the literal `pingpong_runs` to occur only in `data_paths.py` while the new identifier `pingpong_runs_dir` CONTAINS that substring, so every importer is a hit by construction — round 9 wrote an unmeetable ZERO and round 11 an unmeetable ONE, the same defect at two different numbers; the property that actually holds, and that the reviewer confirmed, is that the QUOTED TOKEN `"pingpong_runs"` occurs exactly once under `packages/` and `apps/`, at `data_paths.py:216`. The block's Bundle assigned SPEC (4) no commit slot, so the two ordered guard tests had nowhere to land and the worker created `2be351cc` for them. The block's "measured for you" offsets 13104 and 15565 were CHARACTER offsets presented as BYTE offsets, the real values being 13191 and 15662, which the reviewer re-measured both ways to confirm. And constraint 4 said "both `.agent/` appends" over a round that appended to THREE files, the third being `.agent/decisions.md`, which ends with NO trailing newline and so needed a different recipe than the two the constraint named. DECLINED, with the measurement: the worker read the GATE_R10 slice's sentence "THE SUITES, re-run serially by the reviewer, all exit 0 at 59, 1537 and 203" as describing `tests/test_data_paths.py` and `tests/orchestration/`, and reported the numerals as wrong. They are correct. That sentence names no files, it sits inside the R10 gate record, and it reports the three suite groups the ROUND-10 block's G6 ordered — `tests/test_data_paths.py` with `tests/cli/test_patch_cmd.py` at 59, `tests/cli/` at 1537, and the three-file group at 203 — every one of which the reviewer measured itself during the round-10 review. The numerals the worker compared them against belong to ROUND 11's G6, which names different suites. No correction is owed to the record. THE WORKER'S OWN COUNTS MATCHED THE BLOCK'S CHECKLISTS EXACTLY at 39 production references across seven modules and 97 test references across twenty files, per file, and it flagged that the delegation prose said "roughly 95" while the block's own list summed to 97 — the list being the half that is executed, per §3 item 35.
-<<<END GATE_R11>>>
+G7 MUTATION RED-PROOF — AND THIS ONE CAN GO RED, WHICH ROUND 12's COULD NOT.
+   In a disposable worktree at C5, `python3 -B`, `__pycache__` enumerated as 0:
+   (i)   CONTROL FIRST, unmutated, over the G6(3) selection: record exit code
+         and count. Confirm module resolution by printing
+         `data_paths.__file__` and the live BODY of `run_log_dir` from that
+         worktree before trusting any colour.
+   (ii)  Verify the bytes `    return runs_dir(root) / str(job_id)` occur
+         EXACTLY ONCE in that worktree's `packages/orchestration/data_paths.py`,
+         then replace that one line so `run_log_dir` appends `"_MUTATED"` to the
+         job id. Re-print the live BODY to prove the mutation is loaded. Re-run
+         the SAME selection. IT MUST GO RED. The tests still hand-spell
+         `tmp_path / "runs" / <job id>`, so they are an INDEPENDENT OBSERVER of
+         the accessor — which is exactly the property round 12's sweep had
+         already destroyed for `pingpong_runs_dir`, and why that gate could not
+         fail. Report the failure count and the failing files.
+   (iii) Restore the original line, re-run the control, and show
+         `git status --porcelain` and `git diff HEAD --stat` EMPTY in that
+         worktree. Remove the worktree BY EXACT PATH and `git worktree prune`.
+   If (ii) does NOT go red, STOP, do not reshape anything to make it red, and
+   report the measurement — that would mean the sweep changed a path, which
+   constraint 3 forbids.
 
-<<<BEGIN SLIP9>>>
-2026-09-06 · F260 R11 (reviewer) · Gate G5(c) of the round-11 block required the literal `pingpong_runs` to occur under `packages/`, `apps/` and `tests/` ONLY inside `packages/orchestration/data_paths.py`, and no round could satisfy it: the identifier the same block introduces, `pingpong_runs_dir`, CONTAINS that substring, so every module importing the new accessor is a hit by construction — 51 raw hits across 13 files at the round's own tip. The block even carried the reasoning that would have caught it, noting in the gate itself that a zero would be unmeetable "because `data_paths` is where the string now lives", and then set the bound to one file instead of asking about the right token. THE LESSON: a substring gate over an identifier family is not a gate over the STRING CONSTANT it was written for; name the token — the quoted `"pingpong_runs"` — or the gate measures the vocabulary rather than the spelling. The property that holds, measured by the worker and reproduced by the reviewer, is that the quoted token occurs EXACTLY ONCE under `packages/` and `apps/`, at `data_paths.py:216`. This is the third gate of this shape in three rounds: round 9's G5(c) asserted an unmeetable ZERO, round 11's an unmeetable ONE. Reviewer-authored unmeetable gate clause; the round's real property holds and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP9>>>
+G8 LINT AND CLEAN TREE. `python3 -m ruff check` over exactly the eight edited
+   `.py` paths of the change set: `All checks passed!`. Then
+   `git status --porcelain` and `git ls-files .remedy-wt`, both EMPTY.
+   NOTE, measured at the base so you do not chase it: `ruff check` over ALL of
+   `packages/orchestration/` reports two PRE-EXISTING errors, `UP035` at
+   `dag_schedule.py:36` and `F821` at `gauntlet_injection.py:286`. Neither file
+   is in this change set and neither is yours to fix. Scope the gate to the
+   edited paths, as written above.
 
-<<<BEGIN SLIP10>>>
-2026-09-06 · F260 R11 (reviewer) · The round-11 block's Bundle listed C5 as SPEC (1) and (2) and C6 as SPEC (3), and gave SPEC (4) — two new guard tests the block ordered in full, with their names, their readings and their non-vacuity controls — NO COMMIT SLOT AT ALL. The worker landed them as an extra commit `2be351cc` and declared it. THE LESSON is §3 item 35 exactly, and it is the second time this session that a block's prose has promised what its enumeration did not hold: the Bundle is the half that is EXECUTED, because a worker commits by it, so every SPEC section is resolved against the Bundle item by item before emission and anything the prose orders that the list does not carry is added to the list. The counter-measure is mechanical and takes one reading — enumerate the SPEC sections, enumerate the Bundle's commits, and check that each of the former is named by one of the latter. Reviewer-authored prose/enumeration mismatch, caught and repaired by the worker inside the round; nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP10>>>
+Handback:    completion report + rewrite `.agent/handoff.md`. Carry the SESSION
+             NUMBER (this is SESSION 4 of F260, round 13), the changed-files
+             table with `+/-` from `git diff --numstat` and never re-derived by
+             eye, one line per gate with its real exit code, the open-findings
+             count BY DISTINCT ID, every deviation, and the item-status table.
+             Push after the handback commit.
 
-<<<BEGIN SLIP11>>>
-2026-09-06 · F260 R11 (reviewer) · Gate G4(b) of the round-11 block offered the worker two offsets "measured at the base for you" — 13104 for the D4 heading and 15565 for `## Design` — and ordered an insertion proof stated in BYTES. Those two numbers are CHARACTER offsets. The reviewer's pre-emission checker read the feature file with `Path.read_text()` and used `str.index`, and `docs/roadmap/features/T2_F260.md` carries em dashes and other multi-byte characters, so the byte offsets are 13191 and 15662 — the worker's correct `off` of 15662 would have looked out of range against the range the block supplied. The worker measured both and declared the discrepancy; the reviewer re-measured with `bytes.index` and confirms every figure. THE LESSON: an offset is only a number until its UNIT is named, and a proof stated in bytes must be prepared in bytes — read the file with `read_bytes()` and index the bytes whenever the value will be handed to someone as a byte offset. §3 item 12 already requires a dry run to use the gate's exact command; this is the same rule one level down, at the gate's exact TYPE. Reviewer-authored unit error in a gate's supplied constants; the insertion itself is correct and proved by whole-file identity, and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP11>>>
-
-<<<BEGIN SLIP12>>>
-2026-09-06 · F260 R11 (reviewer) · Constraint 4 of the round-11 block opened "Both `.agent` appends target files ending with exactly ONE newline at `2cedf98c`" and named `.agent/live_review.md` and `.agent/prose_slips.md`, while the same block's own Bundle appended to a THIRD file: `.agent/decisions.md`, which the block's C4 ordered the DECISION_D5 text appended to. That file ends with NO trailing newline at 836338 bytes, so the recipe the constraint supplied was wrong for it, and the worker had to derive a different one and say so. THE LESSON is the append rule this repository already carries — an append recipe is a function of ITS OWN target's terminal byte and is derived per target, never generalised across a set — arriving through the word "both", which is a COUNT of the block's own parts and therefore §3 item 11's forbidden shape: a convention paragraph names its units and states no count of them. Had the constraint listed the three files instead of counting two, the missing recipe would have been visible while the block was being written. Reviewer-authored miscount in a convention paragraph; the worker derived the correct recipe and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP12>>>
-
-<<<BEGIN PLAN>>>
+BEGIN PLAN
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 11 are reviewed and 2 to 11 PASSED. T001 is
+pull request 240 (F259). Rounds 1 to 12 are reviewed and 2 to 12 PASSED. T001 is
 CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, both
-resolvers return `str`, and the run store has one spelling.
+resolvers return `str`, and the ping-pong run store has one spelling on both the
+production and the test side.
 
 ## Goal
 
@@ -265,21 +274,21 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-THE TEST SIDE OF THE ONE SPELLING. Round 11 moved every `_pingpong_runs_dir`
-reference onto `data_paths.pingpong_runs_dir` / `pingpong_run_dir` and left
-fourteen hand-spelled `"pingpong_runs"` path components in seven test files,
-which never named the deleted helper and so were invisible to that sweep. They
-are the test-side twin of R-0814 — a path built by hand does not follow its
-writer — and this round moves them onto the pair.
+ONE SPELLING FOR THE RUN-LOG STORE. `<data_root>/runs/<job_id>/` is spelled by
+hand at nine sites in seven modules. A new `data_paths.run_log_dir` names the
+live job-keyed directory, five base-only sites move onto the existing
+`runs_dir`, and the four job-keyed sites move onto the new accessor. This is the
+run-log twin of what rounds 11 and 12 did for the ping-pong run store, and it is
+what turns DECISION F260 D1's re-key into a change to one function body.
 
 ## Next Steps
 
-- THE RUN MOVE, which needs its own session: `pingpong_runs_dir` and
-  `pingpong_run_dir` collapse into `runs_dir` and `run_dir`, AND the run LOG at
-  `<data_root>/runs/<job_id>/` must move to the run id in the SAME commit, or
-  `timeline.load_run_events` reads one directory keyed two ways — DECISION F260
-  D0 measured that collision. It needs a fresh reading of `run_log.py` and
-  `timeline.py`, which no round so far has touched.
+- The TEST side of the run-log spelling: the hand-built `tmp_path / "runs" /
+  <job id>` paths across the suite, which this round deliberately leaves standing
+  because they are what makes its own red-proof able to fail.
+- THE RE-KEY ITSELF: `run_log_dir` and `pingpong_run_dir` collapse onto
+  `run_dir`, keyed by RUN id, and `<data_root>/runs/` stops being keyed by job
+  id — DECISION F260 D0 measured that collision and D1 rules the target.
 - The unified record's own fields, and the Mission extension (order, contract,
   mission plan, job refs), which is the rest of T002.
 - Then T003 consumer by consumer; T004 the classic runner, the classic store and
@@ -290,11 +299,20 @@ writer — and this round moves them onto the pair.
 
 - `<data_root>/runs/` is keyed by JOB id today and D1 keys it by RUN id. Every
   reader of the old shape moves in the same commit as its writer.
-- `<data_root>/jobs/` holds both `<uuid>.json` files and `<16hex>/` directories.
-  Any new reader of that directory must make the same file/directory
-  distinction the two matchers make.
+- `RunLogWriter.__init__` still joins the job id onto a runs BASE it is handed,
+  so the layout has one more writer-side spelling than `data_paths` shows.
 - The T005 cluster deletion is large and reversible in one direction only. It
   runs last, behind a reachability test green BEFORE the first `git rm`.
-<<<END PLAN>>>
+END PLAN
 
-──────────────────────────────────────────────────────────────
+BEGIN GATE_R12
+Gate: R12 — the F260 R12 entry. VERDICT PASS. Range `2ad2d1534ff53a202dc6965909391849b2dd2ca0`..`4d13f5a02608a40081a7ebacf779124cc6318309`, seven commits, all single-parent, in the Bundle's ordered sequence, pushed, no pull request. THE ROUND MOVED FOURTEEN HAND-SPELLED `"pingpong_runs"` PATH COMPONENTS IN SEVEN TEST FILES ONTO `data_paths.pingpong_run_dir` / `pingpong_runs_dir`, and the reviewer re-measured every gate independently rather than reading the handback's numbers. TRANSPORT: one digest `203cd3fc75b5c639947d1ace5a7a93197a8fe4ca18b60ab9296051e242d6410a` over `.agent/authored/f260-r12.md` and `.agent/last_block.md`, recomputed by the reviewer and equal to the digest the delegation carried. Per §3 item 37 that chain covers the SAVED COPY and its MIRROR and nothing wider: under self-drive the worker types the block into `.agent/authored/`, so no gate this workflow can run compares the EMITTED bytes, and this verdict claims no such comparison. THE SWEEP, RE-MEASURED: enumerating `git ls-files` in Python over 1030 tracked `.py` files under `packages/`, `apps/` and `tests/`, the quoted token `"pingpong_runs"` occurs at EXACTLY THREE sites at the round's head — `packages/orchestration/data_paths.py:216`, `tests/test_data_paths.py:406` and `tests/test_data_paths.py:407` — against SEVENTEEN sites in NINE files at the base, both readings taken by the reviewer from `git ls-tree` and `git show` rather than from the working tree. THE RECORD: `.agent/live_review.md` grew 918017 → 923356 bytes, its blank-line units 431 → 432, and the appended unit is the R11 entry; the open set stands at 296 BY DISTINCT ID, from 299 registrations over 299 distinct ids minus 3 distinct ids carrying a `Done:` line, recomputed mechanically from the record and not carried forward. `.agent/prose_slips.md` grew 108734 → 113984 with its blank-line units rising 139 → 143, a rise of exactly four, and the post-image begins with the pre-image byte for byte. `.agent/plan.md` is 2611 bytes and 49 lines, under the 50-line cap, and carries both `## Goal` and `## Next Steps`, so §4 item 11's contract readers stay green. LINT over exactly the seven swept files: `All checks passed!`. `tests/test_data_paths.py`: 48 passed. `integrity check --json`: passed, zero failures. SEVEN DEVIATIONS WERE DECLARED AND ALL SEVEN ARE ACCEPTED. THE ONE THAT NEEDED A VERDICT IS THE FIRST, AND THE WORKER WAS RIGHT: gate G7(ii) of the round-12 block ordered the swept test files to go RED under a mutation of `pingpong_runs_dir` and inferred that a file which stayed green "is still hand-spelling its path somewhere the token reading missed". THAT INFERENCE IS FALSE AND THE GATE COULD NOT FAIL. The reviewer reproduced the whole measurement in a disposable worktree at `326fe67abb62dbaaee7a3197dbab104d6db79f08`, `python3 -B`, `__pycache__` enumerated at 0, module resolution confirmed to the worktree's own `data_paths.py`: the unmutated control is exit 0 at 544 passed; with `pingpong_runs_dir` returning `"pingpong_runs_MUTATED"` and the mutation confirmed live in the same process, the run is STILL exit 0 at 544 passed and zero failed. The cause is the opposite of the one the gate named — round 11 had already moved PRODUCTION onto the same accessor, so mutating that one function moves the writer and the reader in lockstep and no observer inside the system can see it. THE WORKER'S P3 IS THE CORRECT PROOF AND THE REVIEWER REPRODUCED IT EXACTLY: the identical mutation, run against the same seven files checked out at their PRE-sweep bytes, is exit 1 at 30 failed and 514 passed. A one-spelling sweep is therefore proved by a PAIR — red before, green after — and never by demanding redness from the swept side. That is a defect of the reviewer's own gate text and not of anything on disk, so per operator amendment amend0827-process-diet rule 2 it is recorded as one dated line in `.agent/prose_slips.md` and spends no id, exactly as this feature's round 11 routed its own vacuous gate clause. THE REMAINING SIX DEVIATIONS ARE ACKNOWLEDGED AS CORRECT: `cmp` is denied in this sandbox and `filecmp.cmp(shallow=False)` plus sha256 is a full byte comparison, not a weaker one; the G2(c) negative control was run in memory rather than by writing corrupted bytes to the record, which is what self-drive guardrail G5 requires and is the stronger choice; `resolve_data_root` was dropped from an import line in `tests/orchestration/test_job_stop_integration.py` because the sweep left it unused and ruff `F401` would otherwise have gone red, which is inside the change set and behaviour-neutral; path equality was MEASURED for all five shapes before any file was edited rather than reasoned about; and the pathspec gotcha the worker recorded is real and is promoted into this round's own G5 — `tests/**/*.py` does not match `tests/test_data_paths.py`, so the reviewer's re-measurement above enumerates `git ls-files` in Python for exactly that reason. THE SECOND DEVIATION CARRIED A CANDIDATE AND IT IS REGISTERED THIS ROUND AS `R-0815`, immediately below: the guarded read at `tests/orchestration/test_job_stop_integration.py:248-251` skips its assertion instead of failing when the path is wrong. It predates round 12 and survives it unchanged, and the worker was right not to widen its change set to reach it.
+END GATE_R12
+
+BEGIN FIND815
+- R-0815 — Low, A GUARDED READ IN `test_job_stop_integration.py` SILENTLY SKIPS ITS ASSERTION INSTEAD OF FAILING WHEN THE RUN FILE IS ABSENT. Offered as a CANDIDATE by the worker of F260 R12 in that round's deviation 2, and confirmed by the reviewer by reading the site at `4d13f5a02608a40081a7ebacf779124cc6318309`. In `tests/orchestration/test_job_stop_integration.py` the body of `TestStopDuringAProviderCall` reads the run record through `run = json.loads((pingpong_runs_dir() / f"{...run_id}.json").read_text()) if (pingpong_runs_dir() / f"{...run_id}.json").is_file() else None`, and the two assertions that follow sit under `if run is not None:`. When the path is wrong — which is precisely the state a regression in the run store would produce — `is_file()` returns False, `run` becomes None, and the test PASSES having asserted nothing about the run at all. PRODUCT EFFECT, which is why this spends an id rather than a `.agent/prose_slips.md` line under operator amendment amend0827-process-diet rule 2: the wrong state is on disk under `tests/`, and it is a gate over production code that is demonstrably blind — the reviewer measured that blindness directly while re-running round 12's red-proof, where mutating `pingpong_runs_dir` to return a different leaf left this file at ZERO failures while the file's own swept sites were the mutation's direct subject. LOW rather than Medium because the surrounding test still exercises the stop path and its other assertions — `stopped.status == JOB_STOPPED` and `stopped.tasks[0].status == TASK_PENDING` — do bind, so the defect costs coverage of the run record only, not of the behaviour the test is named for. ROOT CAUSE, stated so the class is visible: a conditional written to tolerate an OPTIONAL artefact is indistinguishable, once written, from one written to tolerate a BROKEN one, and nothing in the suite records which was meant — the same shape as reviewer-checklist item 27, arriving in a test instead of in a gate. SEARCHED BEFORE MINTING per §3 item 30: the open set was grepped for `is_file() else None`, for `silently skipped`, and for the file's own basename, and no open finding describes this defect; the nearest neighbours are the two-store findings this feature exists to close and neither names a guarded read. FIX: decide whether that run record is guaranteed present at that point, and if it is, drop the guard so a missing file FAILS; if it genuinely is not, assert the condition that IS guaranteed instead of wrapping the whole reading. Resolved when the assertions in that block are reachable unconditionally, or when the test asserts a property that holds whether or not the file exists.
+END FIND815
+
+BEGIN SLIP13
+2026-09-06 · F260 R12 (reviewer) · Gate G7(ii) of the round-12 block ordered the seven swept test files to go RED under a mutation of `pingpong_runs_dir`, and told the worker that any file staying green "is still hand-spelling its path somewhere the token reading missed". Both halves are wrong, and the reviewer confirmed it by reproducing the entire measurement: the mutation leaves the swept selection at 544 passed and ZERO failed, while the same mutation against the same seven files at their pre-sweep bytes is 30 failed and 514 passed. THE LESSON is that a one-spelling sweep DESTROYS the very observer a mutation red-proof needs — once the writer and every reader route through one function, renaming that function's leaf moves them in lockstep and no test inside the system can see it — so the correct post-condition for such a round is a PAIR, red against the pre-sweep bytes and green against the swept ones, which is exactly what the worker's own P3 supplied. Checklist item 5 already says to order the PROBE instead of the colour when reachability is not obvious; the gap this instance exposes is that reachability had been DELETED by the round's own change, which is a case item 5's wording does not prompt anyone to look for. Reviewer-authored gate whose stated inference was false and whose colour was unreachable; the sweep itself is correct and independently re-measured, nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
+END SLIP13
