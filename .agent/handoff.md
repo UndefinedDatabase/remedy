@@ -344,3 +344,21 @@ past "all of `tests/`", per deviation 5; (2) change
 decide whether the sweep's completeness gate should search the repository
 rather than `tests/`, which is R-0818's own standing rule applied to itself.
 `.agent/STOP` must be removed by the operator before any further round.
+
+## Merged from main 2026-09-06 (amend0906-triage-throughput)
+
+Merge commit `2527624b`, a `--no-ff` merge of `origin/main` at `148fbd0b` into this
+branch at `9ed39cea`. No rebase, no force-push; the remote branch moved
+`9ed39cea..2527624b` as a fast-forward of the merge.
+Conflicts and how each was resolved: `.agent/live_review.md` — append-only, BOTH
+sides kept with main's block first (243 triage resolutions and 14 F273 routing
+lines, then this branch's `Gate: F272 R1` and `R-0818`), no line dropped;
+`docs/roadmap/features/T2_F272.md` — main's T004/T005 deletion-round sentence and
+its corrected R-0816 paragraph, then this branch's `## DECISIONs` section verbatim,
+the branch's stale "R-0816 (open, owned here)" line dropped because R-0816 is
+resolved and keeping both would contradict; `.agent/plan.md` and `.agent/handoff.md`
+— this branch's side taken whole, because they are rewritten every round and the
+keep-both rule is written for append-only files. `docs/roadmap/STATUS.md`
+auto-merged. New byte sizes, from which the next session's byte arithmetic starts:
+`.agent/live_review.md` 1066064 B, `.agent/prose_slips.md` 132118 B.
+F272's soft limit is now 12 sessions / 40 rounds; T004 and T005 are deletion rounds.
