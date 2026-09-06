@@ -25,6 +25,7 @@ from packages.orchestration.approval_queue import (
     APPROVAL_REJECTED,
     list_patch_intents,
 )
+from packages.orchestration.data_paths import run_log_dir
 from packages.orchestration.permissions import Capability, is_allowed
 
 if TYPE_CHECKING:
@@ -377,7 +378,7 @@ def _collect_artifacts(
         items.append(("patch intents:", f"{count}  risk={risk_str}"))
 
     if data_dir is not None:
-        items.append(("run log dir:", str(data_dir / "runs" / str(job.id))))
+        items.append(("run log dir:", str(run_log_dir(job.id, data_dir))))
 
     return items
 

@@ -3212,9 +3212,9 @@ def _job_stopped_event_exists(job_id: str, request_id: str) -> bool | None:
     stays a single stat plus a small read.
     """
     try:
-        from packages.orchestration.data_paths import runs_dir
+        from packages.orchestration.data_paths import run_log_dir
 
-        job_runs = runs_dir() / job_id
+        job_runs = run_log_dir(job_id)
         if not job_runs.is_dir():
             return False
         for jsonl in sorted(job_runs.glob("*.jsonl")):

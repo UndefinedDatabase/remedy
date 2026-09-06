@@ -521,9 +521,10 @@ def _emit_run_log(
     bytes_written, line_count.
     No raw content, approval reasons, diff text, or exception text.
     """
+    from packages.orchestration.data_paths import runs_dir
     from packages.orchestration.run_log import RunEvent, RunLogWriter
 
-    runs_root = (data_dir / "runs") if data_dir is not None else None
+    runs_root = runs_dir(data_dir) if data_dir is not None else None
     log = RunLogWriter(job_id=job.id, runs_root=runs_root)
     log.append(
         RunEvent(
@@ -558,9 +559,10 @@ def _emit_proof_run_log(
     before_line_count, after_line_count, line_delta, applied_at.
     No raw file content, diff text, approval reasons, or exception text.
     """
+    from packages.orchestration.data_paths import runs_dir
     from packages.orchestration.run_log import RunEvent, RunLogWriter
 
-    runs_root = (data_dir / "runs") if data_dir is not None else None
+    runs_root = runs_dir(data_dir) if data_dir is not None else None
     log = RunLogWriter(job_id=job.id, runs_root=runs_root)
     log.append(
         RunEvent(

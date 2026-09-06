@@ -40,6 +40,7 @@ from packages.orchestration._symbols import (
 from packages.orchestration._symbols import (
     section,
 )
+from packages.orchestration.data_paths import run_log_dir, runs_dir
 
 # ---------------------------------------------------------------------------
 # Load
@@ -61,7 +62,7 @@ def append_run_event(
     from packages.orchestration.run_log import RunLogWriter
 
     jid = job_id if isinstance(job_id, UUID) else UUID(str(job_id))
-    writer = RunLogWriter(jid, runs_root=Path(data_dir) / "runs")
+    writer = RunLogWriter(jid, runs_root=runs_dir(Path(data_dir)))
     writer.log(event, **(metadata or {}))
 
 
@@ -72,11 +73,11 @@ def load_run_events(data_dir: Path, job_id: UUID | str) -> list[dict[str, Any]]:
     Returns ``[]`` if the directory does not exist.
     Skips empty lines and silently ignores malformed JSON lines.
     """
-    runs_dir = data_dir / "runs" / str(job_id)
-    if not runs_dir.exists():
+    run_log_path = run_log_dir(job_id, data_dir)
+    if not run_log_path.exists():
         return []
     events: list[dict[str, Any]] = []
-    for jsonl_file in sorted(runs_dir.glob("*.jsonl")):
+    for jsonl_file in sorted(run_log_path.glob("*.jsonl")):
         for raw in jsonl_file.read_text(encoding="utf-8").splitlines():
             raw = raw.strip()
             if not raw:

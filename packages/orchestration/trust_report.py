@@ -52,6 +52,7 @@ from packages.orchestration.approval_queue import (
     APPROVAL_REJECTED,
     list_patch_intents,
 )
+from packages.orchestration.data_paths import run_log_dir
 from packages.orchestration.permissions import Capability, effective_permissions, is_allowed
 
 # ---------------------------------------------------------------------------
@@ -370,9 +371,9 @@ def summarize_trust_report(
 
     # Optional: run log dir path
     if data_dir is not None:
-        run_log_dir = data_dir / "runs" / str(job.id)
+        run_log_path = run_log_dir(job.id, data_dir)
         parts.append("")
-        parts.append(f"  Run log dir: {run_log_dir}")
+        parts.append(f"  Run log dir: {run_log_path}")
 
     return "\n".join(parts)
 
