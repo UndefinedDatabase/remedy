@@ -56,8 +56,8 @@ def _run(repo, text="# Job: own\n\n## Task 1\nx\n\nAcceptance:\n- y\n"):
 
 
 def _run_json_path(job, task_ix=0):
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-    return _pingpong_runs_dir() / job.tasks[task_ix].run_id / "result.json"
+    from packages.orchestration.data_paths import pingpong_run_dir
+    return pingpong_run_dir(job.tasks[task_ix].run_id) / "result.json"
 
 
 def _tamper(job, mutate, *, task_ix=0, call_ix=0):

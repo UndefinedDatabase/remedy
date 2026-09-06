@@ -14,10 +14,10 @@ from unittest.mock import patch
 import pytest
 
 from packages.orchestration import failure_postmortem as FP
+from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
     _call_with_retry,
-    _pingpong_runs_dir,
     _record_call_failure,
 )
 from packages.orchestration.pingpong_provider import BuilderOutput, ReviewerOutput
@@ -41,7 +41,7 @@ def demo_repo(tmp_path) -> Path:
 
 
 def _run_dir(result: PingPongResult) -> Path:
-    return _pingpong_runs_dir() / result.run_id
+    return pingpong_run_dir(result.run_id)
 
 
 def _postmortems(result: PingPongResult) -> list[dict]:
@@ -550,10 +550,10 @@ class TestWriteFailureIsVisibleAndBlocking:
 
     def test_a_recorded_write_failure_blocks_the_package(self, demo_repo, tmp_path):
         """A bundle that lost a required record must not present clean gates."""
+        from packages.orchestration.data_paths import pingpong_run_dir
         from packages.orchestration.final_verifier import build_final_verifier_report
         from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.pingpong_job import JobPlan, TaskEntry, _persist_job
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
 
         job = JobPlan(repo_path=str(demo_repo), job_title="broken recording",
                       tasks=[TaskEntry(task_id="T001", title="t", body="b",
@@ -561,7 +561,7 @@ class TestWriteFailureIsVisibleAndBlocking:
                                        error="reviewer failed", run_id="run-broken")])
         _persist_job(job)
 
-        run_dir = _pingpong_runs_dir() / "run-broken"
+        run_dir = pingpong_run_dir("run-broken")
         run_dir.mkdir(parents=True)
         (run_dir / "result.json").write_text(json.dumps({
             "run_id": "run-broken",

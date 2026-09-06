@@ -215,12 +215,12 @@ class TestProductionBuildsTheStateFromTheRun:
 
     def test_an_unreadable_run_outcome_is_incomplete_never_a_default(self, data_root, repo):
         """The old code defaulted an unknown status to "stopped" and sealed it as complete."""
+        from packages.orchestration.data_paths import pingpong_run_dir
         from packages.orchestration.pingpong_job import (
             load_job_plan,
             parse_job_file,
             run_job,
         )
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
         from packages.orchestration.pingpong_provider import FakeProvider
         from packages.orchestration.run_manifest import (
             EpisodeInputSnapshotV1,
@@ -234,7 +234,7 @@ class TestProductionBuildsTheStateFromTheRun:
         job = parse_job_file("# Job: ls\n\n## Task 1\nx\n\nAcceptance:\n- y\n", str(repo))
         run_job(job.job_id, builder_provider=prov(), reviewer_provider=prov(), repair_rounds=0)
         j = load_job_plan(job.job_id)
-        p = _pingpong_runs_dir() / j.tasks[0].run_id / "result.json"
+        p = pingpong_run_dir(j.tasks[0].run_id) / "result.json"
         d = json.loads(p.read_text())
         d["final_status"] = "a_status_from_the_future"
         p.write_text(json.dumps(d))

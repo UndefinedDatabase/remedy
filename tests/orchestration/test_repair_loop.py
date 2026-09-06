@@ -458,8 +458,8 @@ class TestPromotionBlocked:
             max_rounds=5, repair_rounds=1,
         )
         # Promotion artifacts should NOT be persisted
-        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-        run_dir = _pingpong_runs_dir() / result.run_id
+        from packages.orchestration.data_paths import pingpong_run_dir
+        run_dir = pingpong_run_dir(result.run_id)
         artifacts = run_dir / "artifacts"
         assert not artifacts.exists()
 

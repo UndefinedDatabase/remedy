@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.pingpong_loop as pingpong_loop
+from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.pingpong_loop import (
     _OVERSIZED_DIFF_THRESHOLD_CHARS,
     _OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
@@ -27,7 +28,6 @@ from packages.orchestration.pingpong_loop import (
     _is_safe_repo_path,
     _is_safe_staged_path,
     _is_target_noise,
-    _pingpong_runs_dir,
     _snapshot_target,
     build_repo_context,
     export_pingpong_json,
@@ -2730,10 +2730,10 @@ class TestTieredSummariesReduceComposedPromptSize:
             t for t in result.prompt_traces if t.role == "builder" and t.round == 2)
 
         reviewer_artifact = (
-            _pingpong_runs_dir() / result.run_id / "calls" / "reviewer"
+            pingpong_run_dir(result.run_id) / "calls" / "reviewer"
             / "round-01" / "tiered_diff.diff")
         builder_artifact = (
-            _pingpong_runs_dir() / result.run_id / "calls" / "builder"
+            pingpong_run_dir(result.run_id) / "calls" / "builder"
             / "round-02" / "tiered_diff.diff")
         assert reviewer_artifact.exists()
         assert builder_artifact.exists()
