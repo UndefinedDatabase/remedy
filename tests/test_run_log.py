@@ -168,7 +168,7 @@ class TestRunLogWriterConstruction:
         assert not writer.path.exists()
 
     def test_default_data_root_is_the_process_data_dir(self, tmp_path, monkeypatch):
-        # Pins the default path the deleted `_runs_dir_default` alias used to carry.
+        # Pins the default path the deleted module-level runs-dir alias used to carry.
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job_id = uuid4()
         writer = RunLogWriter(job_id=job_id)
