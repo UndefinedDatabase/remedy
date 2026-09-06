@@ -1,262 +1,258 @@
-── STEP T001 (part 3) — F260 ─────────────────────────────────
-Goal:        Ship the id-minting functions DECISION F260 D2 rules — one per KIND
-             of id, all in `data_paths` — with their tests and a real mutation
-             red-proof. First production-code round of this feature.
-Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the record
-             (the R3 gate entry) · C3 the reviewer's slip · C4 the minting
-             functions and their tests · C5 the handback
-(the rule line below is 62 copies of U+2500, per §3 item 37)
+── STEP T001 (part 4) — F260 ─────────────────────────────────
+Goal:        Move the four inline id mints that name a JOB, a RUN or an EPISODE
+             onto the functions round 4 shipped, so DECISION F260 D2's "one
+             minting function per kind" is true of the call sites and not only
+             of `data_paths`. Second production-code round of this feature.
+Bundle:      C0a save this block · C0b mirror it · C1 the record (the R4 gate
+             entry) · C2 the plan · C3 the four call sites, both import blocks
+             and the new guard test · C4 the handback
+(§3 item 37: the STEP line above is 62 characters ending in a run of U+2500,
+ and the rule line below is 62 copies of U+2500 and nothing else)
 ──────────────────────────────────────────────────────────────
 
 ## Where this round starts
 
-Continuing on `feature/f260-one-world` at `599b3df0`, already pushed. Do NOT
-create a branch, merge, or open a pull request. Round 3 PASSED — the reviewer
-re-ran every gate and reproduced every number, including 865153 → 873291 with
-N = 2 and both rulings landing once each.
+Continuing on `feature/f260-one-world` at `c5da84cb`, already pushed. Do NOT
+create a branch, do NOT merge, do NOT open a pull request: the Open PR Gate ran
+at session start and found no open pull request, and this branch's own pull
+request belongs to the closure sequence.
+
+Round 4 PASSED. The reviewer re-ran every gate itself, ran the three shipped
+functions 1000 times each in a disposable worktree, and reproduced the mutation
+red-proof independently. That verdict is carried in `.agent/handoff.md` at
+`c5da84cb` and is booked into the record by C1 below — operator amendment
+amend0827-process-diet rule 1, the first commit of the next round that is
+happening anyway. This round is NOT a bookkeeping round: C3 is production code.
+
+Checklist item 23 is not triggered here — C1 registers no finding, resolves
+none and renumbers none, it appends a gate record — so amend0827 rule 1 fixes
+C1 as the first substantive commit and the plan follows at C2.
 
 This is a SPLIT round over production code (planner_reviewer_prompt.md §3,
-Round types): the code below is DESCRIBED, not supplied as a byte slice. You
+Round types). The code in C3 is DESCRIBED, not supplied as a byte slice: you
 write it, in the repository's own idiom, and the gates prove it.
 
 ## Change set — nothing outside this list
 
-    .agent/authored/f260-r4.md              (new, C0a)
-    .agent/last_block.md                    (C0b)
-    .agent/plan.md                          (C1)
-    .agent/live_review.md                   (C2)
-    .agent/prose_slips.md                   (C3)
-    packages/orchestration/data_paths.py    (C4)
-    tests/test_data_paths.py                (C4)
-    .agent/handoff.md                       (C5)
+    .agent/authored/f260-r5.md                      (new, C0a)
+    .agent/last_block.md                            (C0b)
+    .agent/live_review.md                           (C1)
+    .agent/plan.md                                  (C2)
+    packages/orchestration/pingpong_job.py          (C3)
+    packages/orchestration/pingpong_loop.py         (C3)
+    tests/orchestration/test_mint_call_sites.py     (new, C3)
+    .agent/handoff.md                               (C4)
 
 `.remedy-wt/` scratch stays untracked; `git ls-files .remedy-wt` returns nothing.
 
 ## C0a / C0b — save and mirror
 
-The block is at `.remedy-wt/f260-r4-block.md`; the delegating prompt states its
+The block is at `.remedy-wt/f260-r5-block.md`; the delegating prompt states its
 sha256 (BLOCK_SHA — a file cannot carry its own digest). COPY it to
-`.agent/authored/f260-r4.md` with `shutil.copyfile`, commit alone; copy the same
-bytes to `.agent/last_block.md`, commit alone.
+`.agent/authored/f260-r5.md` with `shutil.copyfile`, commit alone; copy the same
+bytes to `.agent/last_block.md`, commit alone. Do not retype either.
 
-## C1 — the plan
+## C1 — the record
 
-`.agent/plan.md` from the PLANF260R4 slice, byte-for-byte plus exactly one
-trailing newline. FIRST substantive commit (§3 item 23).
+APPEND to `.agent/live_review.md`, in one commit of its own, exactly the bytes
+`"\n"` + the GATE_R4 slice + `"\n"`. Nothing in the file before the append
+changes by one byte. The file is 877435 bytes at `c5da84cb` and ends with a
+single newline.
 
-## C2 — the record
+## C2 — the plan
 
-Append to `.agent/live_review.md` exactly `"\n" + GATE_R3 + "\n"`. Measured at
-`599b3df0`: the file is 873291 bytes, ends with exactly one newline, and holds
-299 `^- R-\d{4} — ` registrations against 4 `^Done: R-\d{4} — ` lines. This round
-registers no finding and resolves none, so both counts are unchanged by it.
+REPLACE `.agent/plan.md` entirely with the PLANF260R5 slice plus one trailing
+newline. Commit alone.
 
-## C3 — the reviewer's slip
+## C3 — what to build
 
-Append to `.agent/prose_slips.md` exactly `"\n\n" + SLIP3`. Measured at
-`599b3df0`: the file ends WITHOUT a trailing newline and must still end without
-one. Append-only: nothing already in it is rewritten.
+Four call sites mint an id inline with `uuid4().hex[:16]` and each of them names
+one of the three KINDS DECISION F260 D2 rules. They move onto the shipped
+functions. What the reviewer read at `c5da84cb`, so you are not reading it cold:
 
-## C4 — the minting functions and their tests
+    packages/orchestration/pingpong_job.py:290
+        job_id: str = field(default_factory=lambda: uuid4().hex[:16])   → mint_job_id
+    packages/orchestration/pingpong_job.py:2268   (the F018 pre-budget allocation)
+        job.active_episode_id = uuid4().hex[:16]                        → mint_episode_id
+    packages/orchestration/pingpong_job.py:2291   (the F012 real-episode allocation)
+        job.active_episode_id = uuid4().hex[:16]                        → mint_episode_id
+    packages/orchestration/pingpong_loop.py:122
+        run_id: str = field(default_factory=lambda: uuid4().hex[:16])   → mint_run_id
 
-ONE commit carrying both the code and the tests that pin it, because a commit
-that ships a function with no test is a state this round has no reason to create.
+Re-grep each site before editing: these are line numbers read at `c5da84cb` and
+a symbol survives an edit above it where a number does not (§3 item 9). The
+enclosing symbols are `JobPlan`, `run_job` (both episode sites) and
+`PingPongResult`.
 
-### The code — `packages/orchestration/data_paths.py`
+SCOPE. Many other `uuid4().hex[:16]` sites live under `packages/orchestration/`
+— promotion, package, session, plan, quarantine, advisor-run, test-run ids and
+more. They name OTHER kinds of thing and DECISION F260 D2 does not reach them.
+Touch none of them. `safe_points.new_request_id` is the fourth ruled kind and
+stays where the stop request lives.
 
-DECISION F260 D2, as ruled in `docs/roadmap/features/T2_F260.md` at `599b3df0`,
-requires the 16-hex shape `uuid4().hex[:16]` AND a separate minting function per
-KIND of id, so that a swapped argument is greppable even though it is not a type
-error. Add THREE module-level functions to that file. Their names are fixed by
-D2 and are not yours to choose:
+A DATACLASS DEFAULT TAKES THE FUNCTION, NOT A LAMBDA. `field(default_factory=
+mint_job_id)` — the mint functions are argument-free precisely so this works, and
+a `lambda: mint_job_id()` wrapper would pass every behavioural test while
+defeating the identity guard C3's test uses. Same for `run_id`.
 
-    mint_job_id()      -> str
-    mint_run_id()      -> str
-    mint_episode_id()  -> str
+THE IMPORTS. Four readings the reviewer took at `c5da84cb`, because each one
+changes what you must write:
 
-Each returns a fresh `uuid4().hex[:16]`. Requirements:
+  (a) `uuid4` is used at exactly three places in `pingpong_job.py` and at exactly
+      ONE place in `pingpong_loop.py` — the sites above and nothing else. After
+      this change both modules stop using it, so `from uuid import uuid4` must be
+      REMOVED from both or ruff reports an unused import. Verify the count
+      yourself before removing.
+  (b) `packages/orchestration/data_paths.py` has ZERO module-level imports of any
+      `packages.` module — the reviewer listed them by AST at `c5da84cb`: only
+      `__future__`, `os`, `re`, `sys`, `pathlib` and `uuid`. Its one
+      `packages.orchestration.config` import is inside `resolve_data_root`. So a
+      module-level import of `data_paths` into either module CANNOT create a
+      cycle, and the reviewer confirmed both modules still import by running them.
+  (c) The import MUST be module-level, not function-scoped. `pingpong_job.py`
+      currently imports `data_paths` only inside function bodies (five places),
+      but a `field(default_factory=...)` is evaluated when the class body runs,
+      so a function-local import cannot reach it. Leave those five existing local
+      imports exactly as they are — they are out of this change set.
+  (d) `pingpong_job.py` today has NO module-level `packages.` import outside its
+      `if TYPE_CHECKING:` block, so the new import starts a first-party block and
+      ruff's `I001` requires a BLANK LINE between the stdlib block and it. The
+      reviewer hit exactly this in its own dry run. `pingpong_loop.py` already has
+      a first-party block; `data_paths` sorts between `artifact_summary` and
+      `exec_guard`.
 
-- Each carries a one-line WHY comment or docstring line directly above or as its
-  first line, naming WHAT KIND of thing the id names — AGENTS.md's "the one-line
-  WHY comment sits directly above the definition". Say what it names, not what
-  it does; "mint the id of one job" is the shape, "return 16 hex chars" is not.
-- Each is a SEPARATE function with its own `def`. Do NOT write one helper and
-  three one-line aliases, and do NOT set `mint_run_id = mint_job_id`: the point
-  of D2 is that the four kinds are distinguishable at every call site, and an
-  alias is invisible at the call site. A shared private helper called by three
-  distinct `def`s is acceptable; three names bound to one function object is not.
-- `uuid4` is NOT imported in this module. Measured by the reviewer at
-  `599b3df0`: line 34 reads `from uuid import UUID` and is the file's only
-  `uuid` import, so you must extend it to `from uuid import UUID, uuid4` (or add
-  the import in the module's existing style). Do not leave `UUID` unimported —
-  `resolve_job_id` and `resolve_any_job_id` both still use it.
-- Add the three names to the module docstring's `Public API::` block, in the
-  same style as the entries already there.
-- Change NOTHING else in the file. `resolve_job_id`, `resolve_any_job_id`,
-  `_SHORT_HEX_RE` and every directory helper stay exactly as they are; D2 rules
-  that the two resolvers are deleted, but that happens in T004 after T002 builds
-  the store they would resolve against, and deleting them here would break every
-  caller with nothing to replace them.
+THE GUARD TEST — new file `tests/orchestration/test_mint_call_sites.py`. It exists
+because this refactor changes no behaviour: a site that drifts back to an inline
+mint still produces a correct-looking 16-hex id, so nothing goes red on its own.
+The readers it needs, and why each is the shape it is:
 
-### The tests — `tests/test_data_paths.py`
+  * the two dataclass defaults are pinned by OBJECT IDENTITY —
+    `SomeClass.__dataclass_fields__["<field>"].default_factory is
+    data_paths.mint_job_id` — which runs the shipped function and, unlike any
+    text check, is NOT satisfied by a look-alike lambda that calls it;
+  * the two `active_episode_id` assignments are inside a function body, where no
+    object exists to compare, so they are read by parsing the module. Parse
+    `Path(pingpong_job.__file__).read_text(...)` rather than a path spelled in the
+    test, so the test reads the module that was actually imported and still works
+    inside a disposable worktree — the pattern
+    `tests/orchestration/test_pingpong_job_hunk_ledger.py` already uses;
+  * a fourth test asserts neither module still NAMES `uuid4`, as `ast.Name` nodes
+    and never as a substring: a docstring or comment that DISCUSSES `uuid4` is not
+    a call site, and a guard that cannot tell the two apart forbids the prose.
 
-Add ONE new test class at the end of the file, in the file's existing idiom
-(plain `class Test...` with `def test_...` methods, no fixtures it does not
-already use). Measured at `599b3df0`: that file is 217 lines and `python3 -m
-pytest tests/test_data_paths.py -q` reports 23 passed. The class pins, one test
-per property, and every one of these must be a real assertion about the SHIPPED
-functions — import them and CALL them, never re-implement the shape in the test:
-
-1. Each of the three returns a 16-character string, and every character is a
-   lowercase hex digit.
-2. Two successive calls to the same function differ — the id is minted, not
-   constant.
-3. The three names are three DIFFERENT function objects. Assert on the objects
-   themselves (`mint_job_id is not mint_run_id` and the other two pairings), so
-   an alias fails this test. This is the test that makes D2's "not one function"
-   clause real.
-4. Every minted id satisfies `data_paths._SHORT_HEX_RE.fullmatch(...)`, which is
-   what lets the existing prefix resolvers accept it.
-5. `uuid.UUID(mint_job_id())` raises `ValueError`. This is the probe round 2's
-   inventory recorded as the reason `resolve_job_id` can never resolve a
-   ping-pong job id, and pinning it here stops a later round "fixing" the shape
-   back to a UUID without noticing what it breaks.
-
-Do not modify or delete any existing test in that file.
-
-## C5 — the handback
-
-Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. No length cap.
-Mandated sections, the changed-files table with `+/-` from `git diff --numstat`
-(NOT before/after line counts — §3 item 28), one line per gate with real exit
-code and real output, the item-status table, every deviation, and:
-
-    SESSION 1 of feature F260 · round 4 · rounds so far 4
-
-plus one sentence of context self-assessment (self_drive_protocol.md G7). The
-state block repeats this line verbatim:
-
-    ~25 % (T001 ✅ · Minting-Funktionen ✅ · Resolver + T002–T005 offen) — Schätzung
-
-C5 is the LAST commit. Then `git push origin feature/f260-one-world`. No pull
-request, no merge.
+Give the episode test a non-vacuity assertion — a walk that found nothing would
+make its real assertion trivially true. Write the tests in the repository's own
+idiom: a module docstring saying why the file exists, one class, and the one-line
+WHY comment above anything a reader would otherwise have to reconstruct.
 
 ## Constraints
 
-1. Apply every authored PROSE slice byte for byte. The CODE is a spec, not a
-   slice: write it yourself to the requirements above, in the module's idiom.
-2. Nothing outside the change set is created, edited or deleted.
-3. Only the two named production/test files change. No other file under
-   `packages/`, `apps/` or `tests/` is touched.
-4. Commit order C0a, C0b, C1, C2, C3, C4, C5 — no extra, none dropped, none
-   reordered.
-5. Every commit single-parent, every insertion count under 500 (the `+` column
-   only — DECISION F104 D1).
-6. Destructive verification runs ONLY inside a disposable `git worktree`; the
-   primary checkout is `git status --porcelain` empty at the end.
-7. `.agent/plan.md` stays under 50 lines.
-8. Commit subjects carry no leading-slash token, no absolute path, no
-   secret-like string.
+1. Apply every authored slice BYTE FOR BYTE. If a slice looks wrong, apply it
+   anyway and say so in the handback's deviations — do not repair it.
+2. Nothing outside the change set above is created, edited or deleted. In
+   particular no other `uuid4().hex[:16]` site moves, and the five existing
+   function-scoped `data_paths` imports in `pingpong_job.py` stay as they are.
+3. Commit order is C0a, C0b, C1, C2, C3, C4, each its own commit. C3 is ONE
+   commit: the sources and the test that guards them land together, because a
+   test-only commit would be red and a source-only commit would be unguarded.
+4. Every destructive check — every mutation of G5 — runs ONLY inside a disposable
+   `git worktree` under `.remedy-wt/`, never in the primary checkout
+   (self_drive_protocol.md G5). Remove it with `git worktree remove --force`
+   before C4, and never `git checkout --` a mutated primary file to undo one.
+5. Purge `__pycache__` or run `python3 -B` for every mutation run: a stale cached
+   module is how a mutation silently fails to reach the test.
+6. Gates G1 through G8 are all run AT C3, before C4 is written, so the handback
+   can quote each one's real exit code (§3 item 31). The handback commit's own
+   numbers are not owed by anyone: the reviewer measures the branch tip itself.
+7. `git status --porcelain` is empty at C4. Re-read `.agent/STOP` from disk before
+   C3; if it exists, finish the commit in hand, write the handback and stop.
+8. Push after C4: `git push origin feature/f260-one-world`. Never force-push.
 
-## Done when — the gates
+## Done when — eight gates, each run and its real exit code recorded
 
-Every one runs for real; report its true exit code and true output.
+G1 TRANSPORT (one digest). `sha256sum` over `.remedy-wt/f260-r5-block.md`,
+   `.agent/authored/f260-r5.md` and `.agent/last_block.md` returns ONE value, and
+   it equals BLOCK_SHA from the delegating prompt. Report the digest.
 
-- **G1 TRANSPORT.** `sha256sum .remedy-wt/f260-r4-block.md
-  .agent/authored/f260-r4.md .agent/last_block.md` prints ONE digest three
-  times, equal to the BLOCK_SHA the delegating prompt states. A COPY chain over
-  scratch, saved copy and mirror; per §3 item 37 it is not a claim about bytes
-  emitted into a prompt.
-- **G2 THE RECORD AND THE SLIP.** For `.agent/live_review.md`: the pre-image is
-  a byte-exact PREFIX of the post-image and the remainder equals
-  `"\n" + GATE_R3 + "\n"`; the registration count stays 299 and the `Done:`
-  count stays 4; `grep -c '^Gate: R3 — the F260'` goes 0 → 1; no two `^Gate: R`
-  headers are byte-identical. For `.agent/prose_slips.md`: the post-image equals
-  the pre-image plus exactly `"\n\n" + SLIP3`, and it still ends WITHOUT a
-  trailing newline.
-- **G3 THE SHIPPED FUNCTIONS ARE RUN, NOT READ.** `python3 -m py_compile
-  packages/orchestration/data_paths.py` exits 0. Then, in a script under
-  `.remedy-wt/`, IMPORT the three functions from
-  `packages.orchestration.data_paths` and CALL each of them 1000 times, and
-  report: the set of returned lengths (must be exactly `{16}`), the number of
-  distinct values per function out of 1000, whether every character across all
-  3000 values is in `0123456789abcdef`, whether all three `is not` each other
-  pairwise, and the exception type and message from `uuid.UUID(mint_job_id())`.
-  Report the three functions' `__name__` and `__qualname__` too, so an alias is
-  visible in the output rather than only in an assertion. Also attempt
-  `ruff check packages/orchestration/data_paths.py` and report either its real
-  output or the exact refusal text.
-- **G4 THE MUTATION RED-PROOF, in a disposable worktree at the round's own
-  commit, never in the primary checkout.** Purge `__pycache__` and run pytest
-  with `python3 -B` and the worktree as the working directory.
-  (i) THE UNMUTATED CONTROL FIRST, in that same worktree:
-  `python3 -B -m pytest tests/test_data_paths.py -q` — report its exit code and
-  passed count. A colour with no baseline is not evidence (§3 item 33).
-  (ii) THEN the mutation: in the worktree's copy of
-  `packages/orchestration/data_paths.py`, inside the body of `mint_job_id` ONLY,
-  change the slice `[:16]` to `[:32]`. The three function bodies are identical,
-  so identify the one to change by its enclosing `def mint_job_id`, and print
-  the changed line with its line number to prove which one you edited.
-  (iii) Re-run the same command. Report the exit code, the failed count, and the
-  NODE IDS of the failing tests. The round's claim is that this mutation is
-  CAUGHT; if it is not caught, that is a red gate and a real finding about the
-  tests, so report it as such rather than adjusting anything.
-  (iv) DISCARD the worktree with `git worktree remove --force` and prune. The
-  worktree is thrown away, never reverted, so no revert target is named and no
-  edit ever reaches a tracked file.
-  Report `git worktree list` afterwards and `git status --porcelain` on the
-  primary checkout, both as proof of (iv).
-- **G5 THE STATE CONTRACTS.** `.agent/plan.md` holds `## Goal`, `## Next Steps`
-  and a `\bF\d{3}\b` match, and is under 50 lines. `.agent/context.md` holds
-  `Steps`, `## Active Branch`, `feature/`, a `\bF\d{3}\b` match, and `resource`
-  or `pytest` case-insensitively, and none of `steps-74_1-79`, `Steps 91-100`,
-  `allow repo_test_run`, `synthetic_count: 4`, `job=None source_apply bypass`.
-  `.agent/live_review.md` holds `Steps`.
-- **G6 THE SUITES, RUN SERIALLY, one at a time, in the primary checkout.**
-  Report exit code and passed count for each:
+G2 THE RECORD. At C1: `.agent/live_review.md` grew from 877435 bytes to a new
+   length; report both, and report that the growth equals the appended byte count
+   exactly. Prove all four: (a) the 877435-byte pre-image is a byte-exact PREFIX
+   of the new file; (b) the remainder is exactly `"\n"` + the GATE_R4 slice +
+   `"\n"`; (c) the file's LAST blank-line-separated unit equals the GATE_R4 slice,
+   and as a NEGATIVE CONTROL flip one byte inside that unit in a scratch copy and
+   report that both (a) and (c) then REJECT it — the slice is one paragraph, so
+   this is §3 item 36 at N=1; (d) `^- R-[0-9]{4} — ` still matches 299 and
+   `^Done: R-[0-9]{4} — ` still matches 4, which is right because this round
+   registers and resolves nothing. Report the count of `^Gate: ` headers and that
+   they are all distinct.
 
-      python3 -m pytest tests/test_data_paths.py -q
-      python3 -m pytest tests/storage/ -q
-      python3 -m pytest tests/docs/ -q
-      python3 -m pytest tests/orchestration/test_roadmap_index.py -q
-      python3 -m pytest tests/ui_server/ -q
-      python3 -m pytest tests/orchestration/test_test_runner.py -q
-      python3 -m pytest tests/regression/test_resource_safety.py -q
-      python3 -m pytest tests/orchestration/test_integrity_gate.py -q
-      python3 -m pytest tests/cli/test_golden_path.py -q
+G3 THE PLAN. At C2, `.agent/plan.md` equals the PLANF260R5 slice plus exactly one
+   trailing newline — one byte-equality reading, nothing more. Report its line
+   count, which must be under 50 (AGENTS.md).
 
-  Measured by the reviewer at `599b3df0`, before this block was emitted:
-  `tests/test_data_paths.py` 23 passed, and the last seven read 303, 30, 515,
-  52, 21, 16 and 42, every one exit 0. `tests/test_data_paths.py` MUST rise by
-  exactly the number of tests your new class adds — state both the new total and
-  the number of tests you wrote, and say whether they agree. `tests/storage/`
-  has no reviewer-measured expectation; report the number you get. Any other
-  suite differing is not automatically a failure: report the number and name the
-  node ids that account for it.
-- **G7 STRUCTURE AND PUSH.** Every commit single-parent
-  (`git log --format='%h %p' 599b3df0..HEAD`) and every insertion count under
-  500, reported per commit for C0a through C4. C5's own numbers cannot exist
-  while C5 is being written and self-drive has no round report to route them to,
-  so do NOT state them anywhere: the reviewer measures them at the next gate
-  (§3 item 31). `git status --porcelain` empty. `git ls-files .remedy-wt` empty.
-  `git diff --name-only 599b3df0..HEAD` lists exactly the change set above and
-  nothing more. The push result reported. `python3 -m apps.cli.grouped integrity
-  check --json` prints `"passed": true`, `"fail_count": 0`.
+G4 THE CODE, READ AND RUN. At C3, all five readings:
+   (a) `python3 -m ruff check packages/orchestration/pingpong_job.py
+       packages/orchestration/pingpong_loop.py` exits 0;
+   (b) parsing each module, the number of `ast.Name` nodes with `id == "uuid4"`
+       is 0 in both;
+   (c) `packages.orchestration.pingpong_job.JobPlan.__dataclass_fields__["job_id"]
+       .default_factory is packages.orchestration.data_paths.mint_job_id` is True,
+       and the same holds for `PingPongResult`'s `run_id` against `mint_run_id`;
+   (d) parsing `pingpong_job.py`, every `Assign` whose target is an attribute named
+       `active_episode_id` has a value that is a call to the name
+       `mint_episode_id`, and there are 2 such assignments;
+   (e) `git diff --numstat c5da84cb..C3 -- packages/` reports two paths and no
+       more. Report both rows.
+
+G5 THE MUTATION RED-PROOF (production code — mandatory in full). In a disposable
+   worktree at C3, run the UNMUTATED CONTROL FIRST and report its exit code and
+   pass count; then, one at a time, restoring between each, break these three
+   PROPERTIES and report each run's exit code and the failing node id:
+   (i) the job-id default is the mint function ITSELF — break it by wrapping it in
+       a lambda that calls the same function, which is the drift the identity
+       reading exists to catch;
+   (ii) the run-id default, the same way;
+   (iii) one episode site mints through `mint_episode_id` — break it by putting an
+       inline `uuid4().hex[:16]` back at that one site.
+   Each mutation must turn `tests/orchestration/test_mint_call_sites.py` RED, and
+   the control must be GREEN before and after each. Report `git worktree list`
+   after the removal.
+
+G6 THE SUITES, run SERIALLY in the primary checkout at C3, each exit code
+   recorded separately — never through a pipe, which reports the pipe's status:
+   `tests/orchestration/test_mint_call_sites.py`, `tests/test_data_paths.py`,
+   `tests/orchestration/test_pingpong_cli.py`, `tests/test_do_job_flow.py`,
+   `tests/orchestration/test_pingpong_job_hunk_ledger.py`,
+   `tests/orchestration/test_job_evidence.py`, and the canary
+   `tests/cli/test_golden_path.py`. Report each suite's count and exit code.
+
+G7 THE TREE. At C3: `git status --porcelain` empty, `git ls-files .remedy-wt`
+   empty, `.agent/STOP` absent, and `git worktree list` holds no worktree this
+   round created. Also report `python3 -m apps.cli.grouped integrity check --json`
+   with its `passed` and `fail_count` values.
+
+G8 THE CHANGE SET. `git diff --name-only c5da84cb..C3` lists exactly the seven
+   paths of the change set above other than `.agent/handoff.md`, which C4 adds.
+   Report the list as the command printed it.
 
 ## Handback
 
-Completion report plus the `.agent/handoff.md` rewrite described at C5. Declare
-every deviation. If a gate goes red, STOP there, do not route around it, and
-report the exact output — as you correctly did in rounds 1, 2 and 3.
+Rewrite `.agent/handoff.md` in C4 per docs/agents/handback_template.md: feature
+and round, `SESSION 2 of feature F260`, branch, the per-commit SHAs with each
+commit's insertion count from `git diff --numstat` (the `+` column — not a line
+count of the file), the changed-files table, ONE LINE PER GATE G1 to G8 carrying
+its real exit code, the open-findings count, the item-status table, and the next
+expected action. It has no length cap. Declare every deviation, including any
+place this block is wrong — the reviewer would rather read a correction than a
+silent repair.
 
-────────────────────────── authored slices ──────────────────────────
-
-<<<BEGIN PLANF260R4>>>
+<<<BEGIN PLANF260R5>>>
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 3 are reviewed; rounds 2 and 3 PASSED. T001
-is closed: the inventory is on disk and DECISION F260 D1 and D2 are ruled.
+pull request 240 (F259). Rounds 1 to 4 are reviewed; 2, 3 and 4 PASSED. T001's
+inventory is on disk, DECISION F260 D1 and D2 are ruled, and the three minting
+functions ship in `packages/orchestration/data_paths.py`.
 
 ## Goal
 
@@ -270,14 +266,13 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 4 is the first production-code round. It ships the three id-minting
-functions DECISION F260 D2 rules — `mint_job_id`, `mint_run_id` and
-`mint_episode_id`, each a separate `def` returning `uuid4().hex[:16]` — into
-`packages/orchestration/data_paths.py`, with a test class that pins the shape,
-the freshness, the three-distinct-objects property an alias would break, and the
-`UUID()` rejection that is the whole reason the id shapes must converge. A
-mutation red-proof in a disposable worktree proves the tests catch a widened
-slice.
+Finish T001's minting half at the CALL SITES. The four inline `uuid4().hex[:16]`
+mints that name a job, a run or an episode move onto the shipped functions:
+`JobPlan.job_id` and both `active_episode_id` assignments in `pingpong_job.py`,
+and `PingPongResult.run_id` in `pingpong_loop.py`. Both modules stop naming
+`uuid4` at all. A new guard test pins the two dataclass defaults by OBJECT
+IDENTITY, which a look-alike lambda cannot satisfy, and parses the module for
+the two episode sites, which have no object to compare.
 
 ## Next Steps
 
@@ -286,7 +281,7 @@ slice.
   T004.
 - T002: the extended Mission record, the unified Job record under
   `jobs/<16hex>/` with its evidence beside it, and `runs/<run_id>/` keyed by run
-  id. Finding R-0814 is fixed here, because that layout removes the split root.
+  id. Finding R-0814 is fixed there, because that layout removes the split root.
 - T003 consumer by consumer, T004 the classic runner, T005 the reachability test
   and the cluster deletion, in that order.
 
@@ -297,12 +292,8 @@ slice.
   log becomes unreadable between two commits.
 - The T005 cluster deletion is large and reversible in one direction only. It
   runs last, behind a reachability test green BEFORE the first `git rm`.
-<<<END PLANF260R4>>>
+<<<END PLANF260R5>>>
 
-<<<BEGIN GATE_R3>>>
-Gate: R3 — the F260 R3 entry. R3 CLOSED T001 BY RULING DECISION F260 D1 AND D2 FROM ROUND 2'S MEASURED INVENTORY, AND REGISTERED R-0814. VERDICT PASS. Range bd42e0bc..599b3df0, six commits, all single-parent, pushed, no pull request; largest commit 345 insertions, so no commit approached the AGENTS.md 500-insertion cap. THE REVIEWER RE-RAN EVERY GATE ITSELF and reproduced every number. THE RECORD: 873291 bytes from 865153, growth 8138 equal to the appended length exactly; the pre-image is a byte-exact PREFIX; `region_post == region_pre + appended` is true with `region_pre` hashing `e91d392a9188…`, which is precisely what the round-2 entry recorded as its POST-image region digest, so the chain across rounds 2 and 3 is continuous rather than merely consistent. Blank-line units ran 419 to 421, so N counts 2, and the last two units are the R-0814 registration FIRST and the R2 gate entry second — the order §4 item 4 requires, findings before verdicts. Registrations went 298 to 299 and the `Done:` count stayed 4; twelve `Gate:` headers, all distinct. THE TWO RULINGS: `docs/roadmap/features/T2_F260.md` went 17231 to 22955 bytes; both pairs measured FROM 1x before and 0x after against TO 0x before and 1x after, both with the containment test printing `TO contains FROM: false` so both are REWRITES and the FROM-zero reading is attainable; the whole file reconstructs byte-exactly from its pre-edit bytes with only those two replacements applied; it still ends with exactly one newline; and `^### DECISION F260 D` matches four times with D0, D1, D2 and D3 each appearing exactly once. Both retired headings are gone and both new ones occur once. NOTHING UNDER `packages/`, `apps/` OR `tests/` MOVED — `git diff --name-only` over the range lists six paths, five under `.agent/` and one under `docs/roadmap/`, which is what a design round should look like. The suites were re-run serially at 303, 30, 515, 52, 21, 16 and 42, every one exit 0, and `integrity check --json` returned `"passed": true` with `"fail_count": 0` over 5 checks at handlers=342. THE WORKER CORRECTED THE REVIEWER TWICE MORE, and both corrections are upheld. Its deviation 2 catches a STALE NUMERAL in the reviewer's own GATE_R2 slice: that slice says a plain `## Findings` substring search "matches 7 times", which is the reading at round 2's pre-image `4b704705` and not at `bd42e0bc`, where the reviewer independently measures 9 — each appended gate record that quotes the token raises the count, so the figure was true of the image it described and stale for any later one, and the sentence never named which image it meant. The load-bearing clause survives at every image, because what the gate turns on is that the ANCHORED match is exactly 1 while the substring match is not 1, and that holds throughout; the numeral was decoration and the decoration went stale. That is §3 item 20 asking a slice to name the commit its reading was taken at, applied to a count rather than to a claim about code, and the reviewer records it as a dated line in `.agent/prose_slips.md` in the round after this one rather than spending an id, because nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result. Its deviation 3 flags the same class from the other side and pre-empts a misreading: the digest `0d32b1f4…` named in the GATE_R2 slice is round 2's own `region_pre`, while round 3 measures `e91d392a9188…`, and the two are the two ends of one continuous chain rather than a contradiction — flagging it so a later reader finding two digests in one ledger does not open a repair round over a chain that is intact. Its deviation 4(b) is the better catch of the round on its own work: its first attempt at the suite gate piped pytest into `tail`, which reports `tail`'s exit code and not pytest's, and it DISCARDED that reading rather than reporting it, re-running all seven suites through a runner that records each true `returncode`. A worker that throws away its own green reading because the pipe made it meaningless is doing exactly what G4 of docs/agents/self_drive_protocol.md means by gates that run rather than are assumed.
-<<<END GATE_R3>>>
-
-<<<BEGIN SLIP3>>>
-2026-09-06 · F260 R3 (reviewer) · The GATE_R2 slice the round-3 block carried into the append-only review record states that a plain `## Findings` substring search "matches 7 times" while the anchored pattern matches once, and it names no image for that reading. Seven is the count at `4b704705`, round 2's pre-image; at `bd42e0bc`, the image the round-3 worker actually applied the slice to, the reviewer independently measures 9, because every appended gate record that QUOTES the token in backticks raises the count. The worker measured the discrepancy, applied the slice byte-for-byte as constraint 1 required, and declared it. Nothing follows from it: the clause is load-bearing only in the contrast — the anchored match is exactly 1 where the substring match is not 1 — and that holds at every image the file has ever had, so the numeral was decoration. THE LESSON: §3 item 20 requires a slice stating a fact about a file's content to name the commit the reading was taken at, and this is that rule reaching a COUNT rather than a claim about code — the shape a reviewer does not think of as a "fact about a file" and therefore does not date. A count over a file that this workflow appends to every round is stale by construction the moment the next round runs; either name the image beside it, or state the PROPERTY without the numeral, which here would have been strictly better. Reviewer-authored stale numeral in an `.agent/` record; nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP3>>>
+<<<BEGIN GATE_R4>>>
+Gate: R4 — the F260 R4 entry. R4 WAS THE FIRST PRODUCTION-CODE ROUND OF THIS FEATURE: THE THREE ID-MINTING FUNCTIONS DECISION F260 D2 RULES, THEIR TESTS, AND A MUTATION RED-PROOF. VERDICT PASS. Range 599b3df0..fc36ab21, seven commits, all single-parent, pushed to `origin/feature/f260-one-world`, no pull request created; the largest commit is 308 insertions, well under the AGENTS.md 500-insertion cap, which DECISION F104 D1 reads as the `+` column only. THE REVIEWER RE-RAN EVERY GATE ITSELF rather than reading the handback's numbers. TRANSPORT: one digest `ab4c1b77b317bd7dc6a4bcb6ad45c68cb3eecb48ea5362a1803b0105c7d06ca0` across the reviewer's scratch original, the worker's saved copy at `.agent/authored/f260-r4.md` and the mirror at `.agent/last_block.md`; per §3 item 37 that chain covers those three artefacts, all of them the worker's or the reviewer's own files, and it is NOT a claim about the bytes emitted into the worker's prompt. THE RECORD: `.agent/live_review.md` went 873291 to 877435 bytes, growth 4144 equal to the appended length exactly; the pre-image is a byte-exact PREFIX and the remainder is `"\n" + GATE_R3 + "\n"`; registrations stayed 299 and the `Done:` count stayed 4, which is correct because round 4 registered and resolved nothing; thirteen `Gate:` headers, all distinct. THE SHIPPED CODE WAS RUN, NOT READ: in a disposable worktree at `fc36ab21` the reviewer imported the three functions and called each 1000 times, and the returned lengths form the set {16} exactly, 1000 of 1000 values are distinct per function, every character across all 3000 values is lowercase hex, every value matches `data_paths._SHORT_HEX_RE`, and `uuid.UUID(mint_job_id())` raises `ValueError: badly formed hexadecimal UUID string` — the probe D2 rests on. The three names are three DISTINCT function objects with distinct `__qualname__`s, so D2's "one shape is not one function" clause is satisfied by the objects and not merely by the source. `resolve_job_id` and `resolve_any_job_id` both still import and are unchanged, which is what T004 needs to still be true. NO INSTALL SHADOWED THAT WORKTREE: the imported module resolved from `.remedy-wt/rev-r4/packages/orchestration/data_paths.py`, so those readings and the red-proof below describe the branch's own bytes and not an editable install's. THE MUTATION RED-PROOF REPRODUCES INDEPENDENTLY: in that worktree the unmutated control is exit 0 at 28 passed, and changing `[:16]` to `[:32]` inside the body of `mint_job_id` ONLY — verified by grep, the other two bodies untouched — gives exit 1 at 2 failed and 26 passed, at the node ids `tests/test_data_paths.py::TestMintIds::test_each_mints_sixteen_lowercase_hex_chars` and `tests/test_data_paths.py::TestMintIds::test_a_minted_job_id_is_not_a_uuid`. The second failure is the valuable one: widening the slice to 32 hex makes the value a VALID UUID hex, so `UUID()` accepts it and the test that pins D2's own premise fires. The worktree was discarded with `git worktree remove --force` rather than reverted, and the primary checkout satisfies `git status --porcelain` empty. THE SUITES, re-run serially by the reviewer, all exit 0: `tests/test_data_paths.py` at 28 — 23 before, plus exactly the 5 tests the new class adds — `tests/docs/` at 303, `test_roadmap_index.py` at 30, `tests/ui_server/` at 515, `test_test_runner.py` at 52, `test_resource_safety.py` at 21, `test_integrity_gate.py` at 16, and the canary `tests/cli/test_golden_path.py` at 42; `integrity check --json` returned `"passed": true` with `"fail_count": 0` over 5 checks at handlers=342. THE CODE IS IDIOMATIC AND SCOPED: three separate `def`s between `control_dir` and `_SHORT_HEX_RE`, one D2 rationale comment above the group, a first-line docstring per function naming WHAT KIND of thing the id names, `uuid4` added to the existing `from uuid import UUID` line with `UUID` retained, and the module docstring's `Public API::` block extended; nothing else in the file moved. THE WORKER'S DEVIATION 2 IS UPHELD, and it is a fair criticism of the reviewer's block: gate G4 ordered the mutation into the BODY of `mint_job_id`, which forced three literal function bodies and foreclosed the shared private helper the same block's C4 text had explicitly permitted. The outcome is correct and D2's intent is met, but that gate CONSTRAINED the implementation rather than MEASURING it, and a later block ordering a red-proof names the PROPERTY to break and never the line — which is how G5 of the round-5 block is written.
+<<<END GATE_R4>>>
