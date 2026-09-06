@@ -19,6 +19,9 @@ Public API::
     task_jobs_dir(root: Path | None = None) -> Path
     resolve_job_id(raw) -> UUID              # the classic store
     resolve_any_job_id(raw) -> str           # both stores
+    mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
+    mint_run_id() -> str                     # a run id
+    mint_episode_id() -> str                 # a run-episode id
     runs_dir(root: Path | None = None) -> Path
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
@@ -31,7 +34,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 
 def resolve_data_root() -> Path:
@@ -145,6 +148,30 @@ def control_dir(root: Path | None = None) -> Path:
     ``packages/orchestration/safe_points.py``.
     """
     return (root if root is not None else resolve_data_root()) / "control"
+
+
+# DECISION F260 D2 (2026-09-06): every Remedy id is ``uuid4().hex[:16]``, but ONE
+# SHAPE IS NOT ONE FUNCTION. The same sixteen hex characters already name four
+# different kinds of thing, so passing a run id where a job id belongs is not a
+# type error and never will be. A name is the weakest distinction Python gives
+# away for free, and it is the one thing that makes such a swap greppable, so
+# each kind is minted by its own ``def`` below. ``safe_points.new_request_id``
+# is the fourth kind and stays where the stop request lives.
+
+
+def mint_job_id() -> str:
+    """Mint the id of one JOB — the administrative unit that hangs under a mission."""
+    return uuid4().hex[:16]
+
+
+def mint_run_id() -> str:
+    """Mint the id of one RUN — the evidence case a job points at (DECISION F260 D1)."""
+    return uuid4().hex[:16]
+
+
+def mint_episode_id() -> str:
+    """Mint the id of one EPISODE — one execution attempt of a run; a resume gets its own."""
+    return uuid4().hex[:16]
 
 
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")

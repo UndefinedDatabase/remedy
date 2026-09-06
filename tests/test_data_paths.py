@@ -215,3 +215,53 @@ class TestSingleReaderInvariant:
             if env_re.search(text):
                 violations.append(str(p.relative_to(repo)))
         assert violations == [], f"Production packages/ files directly read REMEDY_DATA_DIR: {violations}"
+
+
+class TestMintIds:
+    """DECISION F260 D2: one 16-hex id shape, one minting function per KIND of id.
+
+    Every test here CALLS the shipped function. Re-implementing ``uuid4().hex[:16]``
+    in the test would pin the test's own copy of the rule and nothing else.
+    """
+
+    def _minters(self) -> list:
+        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id
+        return [mint_job_id, mint_run_id, mint_episode_id]
+
+    def test_each_mints_sixteen_lowercase_hex_chars(self):
+        for mint in self._minters():
+            value = mint()
+            assert isinstance(value, str), f"{mint.__name__} returned {value!r}"
+            assert len(value) == 16, f"{mint.__name__} returned {value!r} of length {len(value)}"
+            assert set(value) <= set("0123456789abcdef"), f"{mint.__name__} returned {value!r}"
+
+    def test_successive_calls_differ(self):
+        """The id is MINTED, not a constant the module computed once at import."""
+        for mint in self._minters():
+            assert mint() != mint(), f"{mint.__name__} returns the same id twice"
+
+    def test_the_three_names_are_three_distinct_functions(self):
+        """D2's "one shape is not one function" clause: an alias fails right here."""
+        from packages.orchestration.data_paths import mint_episode_id, mint_job_id, mint_run_id
+        assert mint_job_id is not mint_run_id
+        assert mint_job_id is not mint_episode_id
+        assert mint_run_id is not mint_episode_id
+
+    def test_minted_ids_match_the_short_hex_pattern(self):
+        """What lets the existing prefix resolvers accept a minted id at all."""
+        from packages.orchestration import data_paths
+        for mint in self._minters():
+            value = mint()
+            assert data_paths._SHORT_HEX_RE.fullmatch(value) is not None, \
+                f"{mint.__name__} minted {value!r}, which _SHORT_HEX_RE rejects"
+
+    def test_a_minted_job_id_is_not_a_uuid(self):
+        """Round 2's inventory recorded this as why ``resolve_job_id`` cannot resolve a
+        ping-pong job id. Pinned so a later round cannot quietly widen the shape back
+        into a UUID without this test saying what that breaks.
+        """
+        from uuid import UUID
+
+        from packages.orchestration.data_paths import mint_job_id
+        with pytest.raises(ValueError):
+            UUID(mint_job_id())
