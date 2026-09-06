@@ -398,3 +398,155 @@ eight of D1's eleven have no counterpart in `JobPlan` — and the Mission extens
 Then T003 consumer by consumer; T004 the classic runner, the classic store and the
 resolver collapse together (DECISION F260 D5); T005 the reachability test and the
 cluster deletion.
+
+
+## Reviewer verdict — round 15 · PASS · and the session ends on `.agent/STOP`
+
+Written by the planner/reviewer after round 15 was committed and pushed, and
+appended here rather than to `.agent/live_review.md` because operator amendment
+amend0827-process-diet rule 1 makes the committed and pushed handoff a durable
+carrier: this verdict is BOOKED into the ledger in the FIRST COMMIT of the next
+round that happens anyway, and it buys no round of its own.
+
+**VERDICT: PASS.** Range `1d344b485ce6c4e5e7768c6ab001a10bf8ab69d2`..`30da0b702f9374f960dd1829a2afe9a92fad9f63`,
+seven commits, all single-parent, in exactly the Bundle's ordered sequence C0a to
+C5 with nothing added, dropped or reordered. `HEAD` and
+`origin/feature/f260-one-world` are the same object. No pull request was created
+and none may be created without an instruction.
+
+**THE REVIEWER RE-RAN THE ROUND'S GATES ITSELF; the numbers below are the
+reviewer's own readings, not the handback's.**
+
+- TRANSPORT: the reviewer's scratchpad original `.remedy-wt/f260-r15-block.md`
+  still existed at review time, so the PRIMARY disk-to-disk proof was available
+  and the §4 item 9 digest fallback was NOT used. All three of that file,
+  `.agent/authored/f260-r15.md` and `.agent/last_block.md` hash to
+  `454d291c41432e5c296dc56b28bbaabbcefa1c770f5d18b1555361acb4983d84`.
+- THE SLICES, extracted from the COMMITTED authored copy and never from a
+  retype: `.agent/plan.md` equals the PLAN slice plus one newline exactly at
+  2531 bytes and 48 lines, carrying `## Goal` and `## Next Steps`;
+  `.agent/live_review.md` equals its pre-image plus `"\n"` plus GATE_R14 plus
+  `"\n\n"` plus FIND816 plus `"\n"`, 937682 to 947109 bytes, units 435 to 437,
+  and the last two units ARE those two slices in that order;
+  `.agent/decisions.md` the same shape for DEC_D7, 842038 to 845072, units 1893
+  to 1894; `.agent/prose_slips.md` the same shape for SLIP18 and SLIP19, 117457
+  to 118817, units 148 to 150. All twelve marker lines occur exactly once and
+  ZERO lines beginning `BEGIN ` or `END ` reached any target file.
+- CENSUS, counted by script: `^Gate: ` 24, registrations 301 over 301 DISTINCT
+  ids, `^Done: ` 5 lines over THREE distinct ids, **OPEN SET 298 BY DISTINCT
+  ID**, `R-0816` present, and no `Done:` id added this round — correct, because
+  the worker rightly authored none.
+- THE G4/G5 PAIR IS THE PROOF AND BOTH HALVES ARE THE REVIEWER'S OWN. The same
+  probe, run against the SHIPPED `timeline.append_run_event`, read FIVE `.jsonl`
+  files, five event lines and FIVE DISTINCT `run_id` values at `1d344b48`, and
+  reads ONE file, five lines and ONE distinct `run_id` at `30da0b70`. That is
+  finding `R-0816` measured on disk before the fix and measured gone after it.
+- MUTATION RED-PROOF, reproduced independently in the reviewer's own disposable
+  worktree at `30da0b70`, `python3 -B`, `__pycache__` enumerated at 0, module
+  resolution confirmed to that worktree's own `timeline.py` and the LIVE
+  construction line printed before and after: revert target
+  `run_id=_PROCESS_RUN_ID, ` counted at EXACTLY 1 before mutating; control exit
+  0 at 140 passed, mutated **exit 1 at 1 failed and 139 passed**, restored exit
+  0 at 140 passed; that worktree's `git status --porcelain` and
+  `git diff HEAD --stat` both EMPTY; worktree removed BY EXACT PATH and pruned.
+- IMPORT REACHABILITY, which is the one real risk this diff carries, since
+  `timeline.py` moved `run_log` to a MODULE-level import: all **262** modules
+  under `packages/orchestration/` import successfully, and
+  `run_log` → `timeline` and `timeline` → `run_log` both exit 0 in fresh
+  interpreters, so no cycle was introduced in either order. `_PROCESS_RUN_ID` is
+  stable within a process and differs between processes, which is exactly the
+  cardinality DECISION F260 D7 rules.
+- SUITES AND LINT re-run by the reviewer: the four-file selection exit 0 at 264
+  passed; `ruff` over both edited files exit 0, `All checks passed!`.
+- NOT RE-RUN BY THE REVIEWER, STATED SO THE EVIDENCE CHAIN STAYS HONEST:
+  `tests/orchestration/` and `tests/cli/`. The worker reports them exit 0 at
+  12805 passed / 10 skipped and 1537 passed. The reviewer had re-run both
+  itself at the ROUND-14 head — 12805 passed / 10 skipped and 1537 passed,
+  identical figures — and this round's production diff is four lines in one
+  module, whose broad blast radius is the import graph rather than behaviour;
+  that graph was measured directly above at 262 of 262. This verdict therefore
+  claims a re-run of the targeted selection and of the import reachability, and
+  does NOT claim a reviewer re-run of the two long suites.
+
+**ELEVEN DEVIATIONS WERE DECLARED AND ALL ELEVEN ARE UPHELD.** The two needing a
+ruling are 3 and 4.
+
+**Deviation 3 is a defect of the REVIEWER's gate, not of the work, and the
+worker handled it correctly.** G6 ordered the mutation to redden "the three
+tests SPEC (2) adds". Only `test_all_events_of_one_invocation_share_one_run` can
+discriminate that mutation, and the reviewer confirmed it by reproducing the run
+and reading the failing node id. The other two are unattainable as
+discriminators BY CONSTRUCTION and the worker's reasons are exactly right: test
+(ii) appends ONE event per job, so one run id per event still yields one file
+per job; test (iii) asks `load_run_events`, which sorts by timestamp across
+every file in the directory, so append order survives either behaviour — a fact
+FIND816's own text states, which means the reviewer wrote a gate contradicted by
+a slice in the same block. The gate's BINDING clause was the COLOUR, which the
+block itself says in as many words ("the COLOUR is what is ordered, never a
+particular count"), and the colour was met. The worker correctly did not trip
+the block's STOP clause, which is armed for a GREEN mutation. Tests (ii) and
+(iii) are kept: they pin per-job separation and append order, which are real
+properties of DECISION F260 D7 and are what a LATER regression would break, and
+neither is weakened. Nothing on disk is wrong as a result, so per operator
+amendment amend0827-process-diet rule 2 this spends no id and is booked as
+SLIP20 below.
+
+**Deviation 4 is `.agent/STOP` and it ENDS THE SESSION.** The reviewer confirms
+the file: `.agent/STOP`, zero bytes, UNTRACKED, mtime 10:20:01, appearing
+roughly twenty minutes after the round's last code commit. Self-drive guardrail
+G6 binds — finish the commit in flight, hand off, end — and the worker did
+exactly that, committing and pushing everything of its own and neither deleting
+nor committing the sentinel. The reviewer likewise leaves it untouched: it is
+the operator's signal, deleting it would destroy that signal, and committing it
+would carry a stop sentinel into the branch. **`git status --porcelain` is
+therefore `?? .agent/STOP` and nothing else** — the tree is otherwise clean, and
+this is the one and only reason it is not empty at this verdict.
+
+## Owed to the next session, in its FIRST commit
+
+1. **GATE_R15** — a `Gate:` record booking this PASS into `.agent/live_review.md`.
+   The next session's reviewer authors it from this section; the open set is
+   **298 by distinct id** and this round resolved nothing.
+2. **SLIP20**, one dated line for `.agent/prose_slips.md`, authored here so it is
+   not lost:
+
+   2026-09-06 · F260 R15 (reviewer) · Gate G6 of the round-15 block ordered the mutation to redden "the three tests SPEC (2) adds" while only ONE of the three can discriminate it: test (ii) appends one event per job, so a run id per event still leaves one file per job, and test (iii) reads through `load_run_events`, which sorts by timestamp across the whole directory — a fact the block's own FIND816 slice states two hundred lines above the gate, so the block contradicted itself and an honest worker had to spend a declared deviation on it. THE LESSON is that a gate naming WHICH tests must go red is making a reachability claim about each one, and each must be checked against the mutation separately before the gate is written; the safe form is the one the same gate already used for its colour — order the property, name the observer that can see it, and let the run report the rest. Reviewer-authored gate clause unattainable for two of the three tests it named; the colour clause was met, both tests are correct and were kept, and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no id spent (amend0827-process-diet rule 2).
+
+## Next expected action
+
+**Phase 1 rule 1 BEFORE rule 2: re-read `.agent/STOP` from disk FIRST, then
+check for an open PR.** If the sentinel is still present, the next session
+writes a handoff and ends without doing anything else. There is no open PR for
+this branch.
+
+If the operator has removed the sentinel, the work resumes at `Job.run_refs` —
+the plural run list DECISION F260 D1 names and nothing on disk carries yet —
+which round 15 has just made meaningful by making a run an invocation instead of
+an event. After it, the re-key itself: `run_log_dir` and `pingpong_run_dir`
+collapse onto `run_dir`, keyed by RUN id.
+
+**THE NEXT SESSION IS SESSION 7, WHICH REACHES THE SOFT LIMIT** (25 rounds or 7
+sessions, whichever first). Its obligation is therefore a SCOPE REPORT and then
+the standing default of amend0905-throughput: SPLIT-AND-CLOSE, executed on the
+session's own authority — register the remaining scope as a follow-up feature,
+close F260 at a self-consistent scope through the normal closure sequence, and
+record the move as a dated DECISION. The scope report's raw material, measured
+this session: T001 is closed and T002 is nearly closed on the RUN side, while
+T003 (eleven named consumers), T004 (the classic runner, the classic store and
+the resolver) and T005 (the reachability test plus a prototype cluster measured
+at 24 527 lines under `packages/orchestration/` and 4 731 lines of
+`apps/cli/commands/*_cmd.py`) are untouched and are far larger than the ten
+rounds the limit leaves. A self-consistent close at "records and writers" is
+available and every round of this session deliberately left the tree in that
+state.
+
+## Session self-assessment (amend0905-throughput)
+
+SESSION 6 of F260 ran ONE delegated round against a planned six. Context was
+never a constraint and remained comfortable throughout; the session ended
+because `.agent/STOP` appeared mid-round, which is an operator signal and one of
+the protocol's own honest end conditions, not because the work ran out or the
+context did. Wall clock was again the dominant cost — the reviewer's own
+round-14 re-verification alone spent about twenty-one minutes of serial suite
+time before round 15 was authored.
+
