@@ -1,9 +1,9 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 9 are reviewed and 2 to 9 PASSED. T001 is
-CLOSED. T002 is open: the record has MOVED and finding R-0814 is resolved; what
-remains of T002 is the one resolver over it.
+pull request 240 (F259). Rounds 1 to 10 are reviewed and 2 to 10 PASSED. T001 is
+CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, and both
+resolvers now return `str`.
 
 ## Goal
 
@@ -17,30 +17,29 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-THE RESOLVER RETURNS A STRING. `data_paths.resolve_job_id` is annotated and
-returns `str` instead of `UUID`, and `storage.load_job` / `load_job_safe` accept
-either. DECISION F260 D4 named this the one thing standing between the two
-resolvers and a collapse into one. Measured in a worktree before the round: the
-change costs FIVE tests, every one asserting the return type, and ZERO
-production call sites, because `load_job` formats its path from the id.
+ONE SPELLING FOR THE RUN STORE. `data_paths` gains `pingpong_runs_dir` and
+`pingpong_run_dir`, and `pingpong_loop._pingpong_runs_dir` is DELETED with its
+thirty-nine production references and its test references moved onto the pair.
+The store does NOT move: only its spelling changes, so D1's collapse into
+`<data_root>/runs/<run_id>/` becomes two function bodies. DECISION F260 D5 is
+recorded in the same round, moving the resolver collapse to T004.
 
 ## Next Steps
 
-- COLLAPSE the two resolvers into one, now that they share a return type: one
-  `str`-returning function over both stores, the loser deleted in the same
-  commit. Finding R-0809 — four wordings for "unknown id", and a real id of the
-  other store rejected — belongs here.
-- Then `runs/<run_id>/` keyed by run id, replacing `pingpong_runs/`.
-- Then T003 consumer by consumer, T004 the classic runner and the classic
-  store, T005 the reachability test and the cluster deletion.
+- The run move itself: `pingpong_runs_dir` and `pingpong_run_dir` collapse into
+  `runs_dir` and `run_dir`. The run LOG at `<data_root>/runs/<job_id>/` must
+  move to the run id in the same commit, or `timeline.load_run_events` reads a
+  directory keyed two ways — DECISION F260 D0 measured that collision.
+- The unified record's own fields, and the Mission extension (order, contract,
+  mission plan, job refs), which is the rest of T002.
+- Then T003 consumer by consumer; T004 the classic runner, the classic store and
+  the resolver collapse together (DECISION F260 D5); T005 the reachability test
+  and the cluster deletion.
 
 ## Risks
 
-- Widening what `resolve_job_id` accepts changes an ERROR path: an id of the
-  other store today exits 1 with "no job matches prefix" and would instead
-  reach `load_job` and raise. That is R-0809's territory and needs its own test.
-- D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
-  reader of the old shape must move in the same commit as its writer.
+- `<data_root>/runs/` is keyed by JOB id today and D1 keys it by RUN id. Every
+  reader of the old shape moves in the same commit as its writer.
 - `<data_root>/jobs/` holds both `<uuid>.json` files and `<16hex>/` directories.
   Any new reader of that directory must make the same file/directory
   distinction the two matchers make.
