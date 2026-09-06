@@ -1,187 +1,92 @@
-── STEP T001 (part 1 of 2, resumed) — F260 ───────────────────
-Goal:        Repair the one byte round 1's block cost the record, book round 1's
-             verdict and my two authoring slips, then finish the three commits
-             round 1 could not reach: the STATUS claim, the measured inventory,
-             and the feature-file amendment.
+── STEP T001 (part 2) — F260 ─────────────────────────────────
+Goal:        Rule DECISION F260 D1 and D2 from round 2's measured inventory,
+             register the storage defect that inventory found, and book round
+             2's verdict. Design only — no production line moves this round.
 Bundle:      C0a save this block · C0b mirror it · C1 plan · C2 the record
-             (blank-line repair + the R1 gate entry) · C3 prose slips ·
-             C4 the STATUS claim · C5 the inventory · C6 the amendment ·
-             C7 the handback
+             (R-0814 registration + the R2 gate entry) · C3 the two rulings ·
+             C4 the handback
 (the rule line below is 62 copies of U+2500, per §3 item 37)
 ──────────────────────────────────────────────────────────────
 
 ## Where this round starts
 
-You are continuing on `feature/f260-one-world` at `4b704705`, which is already
-pushed. Do NOT create a branch, do NOT merge, do NOT create a pull request.
-Round 1 stopped at a red gate and was RIGHT to stop: both causes were defects in
-MY block, not in your work. Your four commits `3085576d`, `dcabd38e`,
-`026cfe41` and `a0b43fb6` are byte-correct and are KEPT. Nothing is reverted.
-
-Two things I got wrong, both now measured and both repaired by this round:
-
-1. Gate G2(d) demanded the region from `## Findings` to end of file be
-   sha256-identical across a commit that appends a gate record INTO that region.
-   Measured at `4b704705`: 0 `Gate:` records sit above that heading and 10 below
-   it, so no round that books a verdict can ever satisfy it. It is replaced
-   below by the reading it was reaching for.
-2. The REHEADTO slice ended without the blank line that separated the header
-   from `## Steps`, so applying it byte-for-byte — which is what you were
-   required to do — merged two blank-line units and made N = 0. C2 restores that
-   single byte.
+Continuing on `feature/f260-one-world` at `bd42e0bc`, already pushed. Do NOT
+create a branch, do NOT merge, do NOT create a pull request. Round 2 PASSED: the
+reviewer re-ran every gate and reproduced every number, including the record
+arithmetic 860937 → 860938 → 865153 and the region digest `0d32b1f4…`, which
+independently matches the reviewer's own round-1 reading.
 
 ## Change set — nothing outside this list
 
-    .agent/authored/f260-r2.md          (new, C0a)
+    .agent/authored/f260-r3.md          (new, C0a)
     .agent/last_block.md                (C0b)
     .agent/plan.md                      (C1)
     .agent/live_review.md               (C2)
-    .agent/prose_slips.md               (C3)
-    docs/roadmap/STATUS.md              (C4)
-    .agent/f260_inventory.md            (new, C5)
-    docs/roadmap/features/T2_F260.md    (C6)
-    .agent/handoff.md                   (C7)
+    docs/roadmap/features/T2_F260.md    (C3)
+    .agent/handoff.md                   (C4)
 
 `.remedy-wt/` scratch stays untracked; `git ls-files .remedy-wt` returns nothing.
 
-## C0a — save this block
+## C0a / C0b — save and mirror
 
-The block is on disk at `.remedy-wt/f260-r2-block.md`. The prompt that delegated
-this round states its sha256; call that BLOCK_SHA. A file cannot carry its own
-digest, so it is named there and never here. COPY the file to
-`.agent/authored/f260-r2.md` with `shutil.copyfile` — never a retype, never a
-text round-trip — and commit it alone.
-
-## C0b — mirror
-
-Copy the same bytes to `.agent/last_block.md`, commit alone. One indivisible
+The block is at `.remedy-wt/f260-r3-block.md`; the delegating prompt states its
+sha256 (BLOCK_SHA — a file cannot carry its own digest). COPY it to
+`.agent/authored/f260-r3.md` with `shutil.copyfile`, commit alone; copy the same
+bytes to `.agent/last_block.md`, commit alone. The mirror is one indivisible
 `.agent/**` state rewrite (AGENTS.md DECISION F104 D1 exemption).
 
 ## C1 — the plan
 
-Write `.agent/plan.md` from the PLANF260R2 slice, byte-for-byte plus exactly one
+`.agent/plan.md` from the PLANF260R3 slice, byte-for-byte plus exactly one
 trailing newline. FIRST substantive commit, because this round touches the
-finding ledger (planner_reviewer_prompt.md §3 item 23).
+finding ledger (§3 item 23).
 
-## C2 — the record: repair, then append
+## C2 — the record: register, then book
 
-Both edits to `.agent/live_review.md`, one commit, in this order.
+One commit, appending BOTH paragraphs to `.agent/live_review.md` in one write:
 
-FIRST the repair. Measured at `4b704705`: `"\n## Steps\n"` occurs exactly once
-and the head before it ends `by id, never at session start.` with no blank line
-after it. Restore that one byte:
+    appended = "\n" + R0814 + "\n" + "\n" + GATE_R2 + "\n"
 
-    text = path.read_text(encoding="utf-8")
-    assert text.count("\n## Steps\n") == 1
-    head, sep, tail = text.partition("\n## Steps\n")
-    repaired = head + "\n" + sep + tail
+The finding paragraph comes FIRST, per planner_reviewer_prompt.md §4 item 4.
+Measured at `bd42e0bc`: the file is 865153 bytes, ends with exactly one newline,
+holds 298 `^- R-\d{4} — ` registrations against 4 `^Done: R-\d{4} — ` lines, and
+its maximum finding id is R-0813 — so R-0814 is the next free id. Findings and
+gate records are interleaved chronologically at the tail of this file; both new
+paragraphs go at the END, which is that convention.
 
-This adds exactly one byte (860937 → 860938 at `4b704705`) and exactly one
-blank-line unit (417 → 418). Legitimate because the header region is what round
-1 itself rewrote; nothing below `## Findings` is touched, and no landed finding
-or gate text is altered — planner_reviewer_prompt.md §3 item 20 forbids
-rewriting landed record text and this edit does not do that.
+Per §3 item 30 the open set was searched for the DEFECT before this id was
+minted, not merely for a free number: `resolve_any_job_id`, `task_jobs`,
+`jobs_dir`, `evidence` and `shadow` over `.agent/live_review.md` return no open
+finding describing the split storage root R-0814 names.
 
-SECOND the append. To the repaired text append exactly `"\n" + GATE_R1 + "\n"`,
-where GATE_R1 is the slice below with no trailing newline.
+## C3 — the two rulings
 
-## C3 — the prose slips
+Two REWRITE pairs in `docs/roadmap/features/T2_F260.md`, applied with
+`str.replace(FROM, TO, 1)` after asserting each FROM occurs exactly once.
+Measured at `bd42e0bc`: D1's heading is at line 63 and D2's at line 68; for both
+pairs `TO contains FROM: false`, so both are REWRITES and the FROM-zero count
+after is attainable. Apply D1PAIR first, then D2PAIR, to the same file in one
+commit.
 
-Append to `.agent/prose_slips.md` exactly `"\n\n" + SLIP1 + "\n\n" + SLIP2`.
-Measured at `4b704705`: the file is 85098 bytes, holds 112 dated lines and ends
-WITHOUT a trailing newline; it must still end without one. This file is
-append-only: nothing already in it is rewritten or renumbered.
+Strip exactly one trailing newline from each extracted slice before replacing —
+the markers sit on their own lines, so a raw extraction carries the newline that
+precedes the END marker.
 
-These are recorded as slips and NOT as R-ids because operator amendment
-amend0827-process-diet rule 2 reserves an id for a defect with product effect —
-wrong state under `packages/`, `apps/`, `tests/` or `docs/`, or a gate over
-PRODUCTION CODE shown blind or unmeetable. Both of mine were gates over an
-`.agent/` prose file and left nothing wrong outside `.agent/`.
-
-## C4 — the STATUS claim
-
-Measured at `4b704705`: FROM occurs 1x, TO occurs 0x, `TO contains FROM: false`
-⇒ REWRITE, so the FROM-zero count after is attainable. Apply with
-`str.replace(FROM, TO, 1)` after asserting FROM occurs exactly once.
-
-    <<<BEGIN STATUSPAIR_FROM>>>
-- [ ] F260 — One world: mission → job → run
-    <<<END STATUSPAIR_FROM>>>
-
-    <<<BEGIN STATUSPAIR_TO>>>
-- [~] F260 — One world: mission → job → run
-    <<<END STATUSPAIR_TO>>>
-
-Strip exactly one trailing newline from each extracted slice before replacing.
-The STATUSPAIR markers are indented four spaces and the other markers are not;
-extract by marker line regardless of indentation, as you did in round 1.
-
-## C5 — the inventory (the round's real work)
-
-Write `.agent/f260_inventory.md`. It is a MEASUREMENT, not prose: every claim is
-produced by a command you run, and every path and symbol it names is one you
-resolved on disk at `4b704705`, cited as `file:line`. It must answer:
-
-1. **Every on-disk area storing a job, a run, or a run's evidence** — path
-   template, what KEY it is named by (job id or run id), writer module and
-   function, reader modules. I measured four at `b5cd6c20`; confirm or CORRECT
-   each from your own reading, and say where you disagree rather than copying:
-   - `<data_root>/jobs/<uuid>.json` — `storage.save_job` (storage.py:75),
-     record `packages.core.models.Job`.
-   - `<data_root>/task_jobs/<16hex>/job.json` — `pingpong_job._persist_job`
-     (pingpong_job.py:381), record `JobPlan`; keyed by JOB id.
-   - `<data_root>/runs/<job_id>/*.jsonl` — `run_log.RunLogWriter`
-     (run_log.py:114, via `data_paths.runs_dir` at data_paths.py:78), read by
-     `timeline.load_run_events` (timeline.py:75). Keyed by JOB id.
-   - `<data_root>/pingpong_runs/<run_id>/` — `pingpong_loop._persist_run`
-     (pingpong_loop.py:4234) via `_pingpong_runs_dir` (pingpong_loop.py:4228).
-     Keyed by RUN id.
-2. **The field-by-field shape of both job records** — `packages.core.models.Job`
-   against `pingpong_job.JobPlan` — as a table: field, type, which record has
-   it, and whether the two spellings mean the same thing. This is the evidence
-   DECISION F260 D1 will be ruled from. Do NOT rule it here.
-3. **Every id shape actually minted**, with its minting call site, and every
-   parse or validation path constraining it — including `data_paths._SHORT_HEX_RE`
-   (data_paths.py:150) and the `UUID(raw)` branch of `resolve_job_id`
-   (data_paths.py:205). Evidence for D2. Do NOT rule it here.
-4. **Every consumer named under "Design" in `docs/roadmap/features/T2_F260.md`**,
-   re-grepped at `4b704705`: path, the symbol it actually calls, the line it
-   calls it at, and a column saying whether the feature file's cited line still
-   resolves. Those citations were taken 2026-09-05 and this branch has moved no
-   production file, so a mismatch is a defect OF THE FEATURE FILE — report it,
-   do not silently correct it.
-5. **The `runs/` collision, stated as a measurement.** The feature file says
-   `task_jobs/` "is renamed to `runs/`". Report what `data_paths.runs_dir`
-   returns and what the run log already writes there, and state plainly whether
-   the ordered rename lands on an occupied path.
-
-Rule NOTHING. Rename nothing. Delete nothing. Do not change one line under
-`packages/`, `apps/` or `tests/` this round. This round measures; round 3 rules.
-
-## C6 — the feature-file amendment
-
-Insert the AMENDF260D0 slice into `docs/roadmap/features/T2_F260.md` so the new
-`### DECISION F260 D0` heading and its body sit immediately BEFORE the line
-`### DECISION F260 D3 — the deletion paragraph (to be recorded in T005)`,
-separated from the paragraph above and below it by exactly one blank line each.
-Prove it by whole-file reconstruction: the post-edit file equals the pre-edit
-file with exactly this slice inserted at that point and nothing else moved.
-
-## C7 — the handback
+## C4 — the handback
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md. No length cap.
 Mandated sections, the changed-files table with `+/-` from `git diff --numstat`
 (NOT before/after line counts — §3 item 28), one line per gate with real exit
 code and real output, the item-status table, every deviation, and:
 
-    SESSION 1 of feature F260 · round 2 · rounds so far 2
+    SESSION 1 of feature F260 · round 3 · rounds so far 3
 
 plus one sentence of context self-assessment (self_drive_protocol.md G7). The
 state block repeats this line verbatim:
 
-    ~10 % (T001 Inventar ✅ · D1/D2 offen · T002–T005 offen) — Schätzung
+    ~18 % (T001 ✅ inkl. D1/D2 · T002–T005 offen) — Schätzung
 
-C7 is the LAST commit. Then `git push origin feature/f260-one-world`. No pull
+C4 is the LAST commit. Then `git push origin feature/f260-one-world`. No pull
 request, no merge.
 
 ## Constraints
@@ -189,9 +94,10 @@ request, no merge.
 1. Apply every authored slice BYTE FOR BYTE. If one looks wrong, apply it as
    written and declare the problem — never silently repair it.
 2. Nothing outside the change set is created, edited or deleted.
-3. No file under `packages/`, `apps/` or `tests/` changes this round.
-4. Commit order C0a, C0b, C1, C2, C3, C4, C5, C6, C7 — no extra, none dropped,
-   none reordered.
+3. NO file under `packages/`, `apps/` or `tests/` changes this round. This is a
+   design round; the code that implements D1 and D2 is round 4's work.
+4. Commit order C0a, C0b, C1, C2, C3, C4 — no extra, none dropped, none
+   reordered.
 5. Every commit single-parent, every insertion count under 500 (the `+` column
    only — DECISION F104 D1).
 6. Destructive checks only inside a disposable `git worktree`; the primary
@@ -204,56 +110,44 @@ request, no merge.
 
 Every one runs for real; report its true exit code and true output.
 
-- **G1 TRANSPORT.** `sha256sum .remedy-wt/f260-r2-block.md
-  .agent/authored/f260-r2.md .agent/last_block.md` prints ONE digest three
+- **G1 TRANSPORT.** `sha256sum .remedy-wt/f260-r3-block.md
+  .agent/authored/f260-r3.md .agent/last_block.md` prints ONE digest three
   times, equal to the BLOCK_SHA the delegating prompt states. A COPY chain over
   scratch, saved copy and mirror; per §3 item 37 it is not a claim about bytes
   emitted into a prompt.
 - **G2 THE RECORD.** Copy the pre-edit bytes to scratch first, then prove:
-  (a) the post-edit file equals `head + "\n" + "\n## Steps\n" + tail + "\n" +
-  GATE_R1 + "\n"`, where `head` and `tail` are the partition of the PRE-edit
-  bytes — one boolean, byte-exact reconstruction;
-  (b) the FINDINGS REGION GROWS ONLY BY THE APPEND. Locate the heading with the
-  anchored pattern `^## Findings\s*$` and NOT with a plain substring search —
-  the header blockquote mentions the same token in backticks 4 times at
-  `4b704705`, and a substring search finds a mention instead of the heading.
-  Assert exactly one anchored match, then prove `region_post ==
-  region_pre + appended` where `appended` is `"\n" + GATE_R1 + "\n"`. This
-  replaces round 1's G2(d), which demanded that region be IDENTICAL and was
-  unmeetable for any round that books a verdict.
-  (c) an independent structural reader, baselined on the REPAIRED INTERMEDIATE
-  and not on the pre-image, because the repair itself adds a blank-line unit and
-  only the append is what this reader is testing. Hold the repaired text in
-  memory before appending; split it and the final post-image on blank lines;
-  report N = post units − repaired units as a number your script COUNTS; and
-  compare the LAST N units of the post-image against GATE_R1's paragraphs in
-  order. Report the unit totals of all three images — pre, repaired, post — as
-  measured numbers, and state them rather than any number you expected.
+  (a) the post-edit file equals the pre-edit bytes plus exactly
+  `"\n" + R0814 + "\n" + "\n" + GATE_R2 + "\n"` — the pre-image is a byte-exact
+  PREFIX and the remainder is that string, two booleans;
+  (b) THE FINDINGS REGION GROWS ONLY BY THE APPEND. Locate the heading with the
+  anchored pattern `^## Findings\s*$`, NOT with a plain substring search — the
+  header blockquote mentions the same token in backticks and a substring search
+  finds a mention instead of the heading. Assert exactly one anchored match,
+  then prove `region_post == region_pre + appended`;
+  (c) an independent structural reader: split pre and post on blank lines,
+  report N = post units − pre units as a number your script COUNTS, and compare
+  the LAST N units of the post-image against the appended slices in order —
+  R0814 first, GATE_R2 second. Report the unit totals you measure;
   (d) a negative control on reading (c): flip one byte inside the FIRST appended
-  paragraph and confirm (c) REJECTS it — in scratch, never on the tracked file.
-  (e) `grep -c '^Gate: R1 — the F260'` goes 0 → 1; no two `^Gate: R` headers in
-  the file are byte-identical; the blank line before `## Steps` is present after
-  C2 and the file grew by exactly one byte more than the append itself.
-- **G3 THE SLIPS.** `.agent/prose_slips.md` post-image equals its pre-image plus
-  exactly `"\n\n" + SLIP1 + "\n\n" + SLIP2`; it still ends WITHOUT a trailing
-  newline; its dated-line count goes 112 → 114.
-- **G4 THE STATUS PAIR.** FROM 1x before / 0x after; TO 0x before / 1x after;
-  whole-file reconstruction from the pre-edit bytes with only this replacement
-  applied is byte-equal to the committed file; the file still ends with exactly
-  one newline; then `^- \[~\] F` = 1 and its id is F260, and `^- \[x\] F` = 73.
-- **G5 THE INVENTORY IS MEASURED.** For EVERY `path:line` citation in
-  `.agent/f260_inventory.md`, open that file at that line, print it, and assert
-  the cited symbol occurs in it. Report the number of citations checked and the
-  number that resolved. A citation that does not resolve is a RED gate, not a
-  footnote. Confirm all four store paths are named, and that item 5 states
-  explicitly whether the rename lands on an occupied path.
-- **G6 THE STATE CONTRACTS.** `.agent/plan.md` holds `## Goal`, `## Next Steps`
+  paragraph — that is R0814, not GATE_R2 — and confirm (c) REJECTS it, in
+  scratch, never on the tracked file;
+  (e) `grep -c '^- R-0814 — '` goes 0 → 1 and `grep -c '^Gate: R2 — the F260'`
+  goes 0 → 1; the registration count goes 298 → 299 while the `Done:` count
+  stays 4; no two `^Gate: R` headers in the file are byte-identical.
+- **G3 THE TWO RULINGS.** For EACH pair independently: FROM occurs 1x before and
+  0x after; TO occurs 0x before and 1x after; and print the containment test's
+  own output, the words `TO contains FROM: false`, beside each. Then whole-file
+  reconstruction: the committed file equals the pre-edit bytes with ONLY these
+  two replacements applied, one boolean, and the file still ends with exactly
+  one newline. Finally `grep -c '^### DECISION F260 D'` is 4 (D-A is not in that
+  pattern) and each of D0, D1, D2, D3 occurs exactly once.
+- **G4 THE STATE CONTRACTS.** `.agent/plan.md` holds `## Goal`, `## Next Steps`
   and a `\bF\d{3}\b` match, and is under 50 lines. `.agent/context.md` holds
   `Steps`, `## Active Branch`, `feature/`, a `\bF\d{3}\b` match, and `resource`
   or `pytest` case-insensitively, and none of `steps-74_1-79`, `Steps 91-100`,
   `allow repo_test_run`, `synthetic_count: 4`, `job=None source_apply bypass`.
   `.agent/live_review.md` holds `Steps`.
-- **G7 THE SUITES, RUN SERIALLY, one at a time, in the primary checkout.**
+- **G5 THE SUITES, RUN SERIALLY, one at a time, in the primary checkout.**
   Report exit code and passed count for each:
 
       python3 -m pytest tests/docs/ -q
@@ -264,13 +158,13 @@ Every one runs for real; report its true exit code and true output.
       python3 -m pytest tests/orchestration/test_integrity_gate.py -q
       python3 -m pytest tests/cli/test_golden_path.py -q
 
-  Round 1 measured 303, 30, 515, 52, 21, 16 and 42, every one exit 0. A
-  different number is not automatically a failure — report what you get and, if
-  it differs, name the node ids that account for the difference.
-- **G8 STRUCTURE AND PUSH.** Every commit single-parent
-  (`git log --format='%h %p' 4b704705..HEAD`) and every insertion count under
-  500, reported per commit for C0a through C6. C7's own numbers cannot exist
-  while C7 is being written and self-drive has no round report to route them to,
+  Rounds 1 and 2 both measured 303, 30, 515, 52, 21, 16 and 42, every one exit 0.
+  A different number is not automatically a failure — report what you get and,
+  if it differs, name the node ids that account for the difference.
+- **G6 STRUCTURE AND PUSH.** Every commit single-parent
+  (`git log --format='%h %p' bd42e0bc..HEAD`) and every insertion count under
+  500, reported per commit for C0a through C3. C4's own numbers cannot exist
+  while C4 is being written and self-drive has no round report to route them to,
   so do NOT state them anywhere: the reviewer measures them at the next gate
   (§3 item 31). `git status --porcelain` empty. `git ls-files .remedy-wt` empty.
   The push result reported. `python3 -m apps.cli.grouped integrity check --json`
@@ -278,20 +172,18 @@ Every one runs for real; report its true exit code and true output.
 
 ## Handback
 
-Completion report plus the `.agent/handoff.md` rewrite described at C7. Declare
+Completion report plus the `.agent/handoff.md` rewrite described at C4. Declare
 every deviation. If a gate goes red, STOP there, do not route around it, and
-report the exact output — as you correctly did in round 1.
+report the exact output — as you correctly did in rounds 1 and 2.
 
 ────────────────────────── authored slices ──────────────────────────
 
-<<<BEGIN PLANF260R2>>>
+<<<BEGIN PLANF260R3>>>
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Round 1 committed C0a, C0b, C1 and C2 correctly and
-stopped at a red gate whose two causes were both defects in the reviewer's own
-block; those commits are kept and round 2 repairs the record and finishes the
-work round 1 could not reach.
+pull request 240 (F259). Rounds 1 and 2 are reviewed; round 2 PASSED and put the
+measured inventory on disk as `.agent/f260_inventory.md`.
 
 ## Goal
 
@@ -305,80 +197,149 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Round 2 restores the one byte round 1's block cost the review record, books
-round 1's verdict and the reviewer's two authoring slips, claims F260 in the
-STATUS ledger, and writes `.agent/f260_inventory.md` — the measured reading of
-every job, run and evidence area on disk, both job record shapes, every id shape
-minted, and the re-grepped consumer list. It rules nothing.
+Round 3 closes T001 by ruling DECISION F260 D1 (the record layout, and where a
+Run's evidence lives) and D2 (the one id shape) from round 2's inventory, and
+registers finding R-0814 — the split storage root that inventory measured, where
+one ping-pong job files its record under `task_jobs/<16hex>/` and its evidence
+under the classic store's `jobs/<16hex>/evidence/`. It changes no production
+line; the code that implements the rulings is round 4.
 
 ## Next Steps
 
-- Rule DECISION F260 D1 (where the classic job fields live) and D2 (the one id
-  shape) from the inventory, and settle where a Run's evidence lives now that
-  `<data_root>/runs/` is measured as already occupied by the run log.
-- Write the one minting and resolving function and move every job-taking command
-  onto it while both stores still exist (T001, part 2).
-- T002: the extended Mission record, the unified Job record, the run directory.
+- T001 part 3: the one minting and resolving function, with its mutation
+  red-proof, and every job-taking command moved onto it while both stores still
+  exist.
+- T002: the extended Mission record, the unified Job record under
+  `jobs/<16hex>/`, and the run directory keyed by run id. R-0814 is fixed here,
+  because the layout D1 rules is what removes the split root.
+- T003 consumer by consumer, T004 the classic runner, T005 the reachability test
+  and the cluster deletion, in that order.
 
 ## Risks
 
-- The feature file orders `task_jobs/` "renamed to `runs/`" onto a path the run
-  log already writes. The collision is recorded before anything moves; ruling it
-  is round 3's first job.
+- D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
+  reader of the old shape must move in the same commit as the writer, or a run
+  log becomes unreadable between two commits.
 - The T005 cluster deletion is large and reversible in one direction only. It
   runs last, behind a reachability test green BEFORE the first `git rm`.
-<<<END PLANF260R2>>>
+<<<END PLANF260R3>>>
 
-<<<BEGIN GATE_R1>>>
-Gate: R1 — the F260 R1 entry. VERDICT FAIL — THE ROUND'S BUNDLE IS INCOMPLETE, AND BOTH CAUSES ARE DEFECTS IN THE REVIEWER'S OWN BLOCK RATHER THAN IN THE WORKER'S EXECUTION. Range b5cd6c20..4b704705, five commits, all single-parent, insertions 457, 445, 53, 20 and the handback commit's own, every one far under the AGENTS.md 500-insertion cap. The worker executed C0a, C0b, C1 and C2 exactly as ordered, reached gate G2, measured it RED, stopped there, and declared both causes instead of routing around either — which is the behaviour planner_reviewer_prompt.md §3 item 8 predicts of an honest worker facing an unmeetable gate, and it is why those four commits are KEPT rather than reverted. The three remaining commits of the bundle — the STATUS claim, the inventory and the feature-file amendment — were not reached and move to round 2. THE FIRST DEFECT: gate G2(d) demanded that the region from `## Findings` to end of file carry an identical sha256 before and after the very commit ordered to append a gate record. Re-measured independently by the reviewer at `4b704705`: the anchored heading matches exactly once, 0 `Gate:` records sit above it and 10 below it, so the append necessarily lands INSIDE the region the gate required to be unchanged and no round that books a verdict can ever satisfy it. That is the unmeetable-gate class of R-0438 arriving through a region boundary rather than through a missing path, and §3 item 8 is the item that should have caught it. The reading the gate was reaching for does hold and was verified: `region_post == region_pre + appended`, true, with `appended` equal to `"\n" + GATE_R10 + "\n"`; the region digests are `9343bcc2…` before and `0d32b1f4…` after, reproducing the worker's two readings exactly. THE SECOND DEFECT: the authored REHEADTO slice ended without the blank line that had separated the header from `## Steps`, and the block ordered it applied as `REHEADTO + "\n## Steps\n" + tail`, so applying it byte-for-byte — which constraint 1 required — merged two blank-line units. Measured: the boundary went from `session start.\n\n## Steps\n` to `session start.\n## Steps\n`, unit totals ran 417 to 416 to 417, and N came out 0, which made the ordered "last N units" reader vacuous rather than wrong. Isolated to the append alone the same reader agrees perfectly at N = 1. Round 2 restores that single byte, which is legitimate because round 1 itself rewrote that header region and nothing below `## Findings` is touched by it — §3 item 20 forbids rewriting landed record text and this repair does not do that. NEITHER DEFECT SPENDS AN R-ID. Operator amendment amend0827-process-diet rule 2 reserves an id for a defect with product effect — wrong state under `packages/`, `apps/`, `tests/` or `docs/`, or a gate over PRODUCTION CODE shown blind or unmeetable — and both of these are gates over an `.agent/` prose file that left nothing wrong outside `.agent/`. They are recorded instead as two dated lines in `.agent/prose_slips.md` by the round that also repairs the byte. WHAT DID LAND IS SOUND, and the reviewer re-ran it rather than reading the handback for it: the transport digest `be04f05b0666b6078010c967410c2e2e28fd1cbd604c52006481ec3263bba9a7` appears once across the scratch original, the saved copy and the mirror; the re-head landed with the file's first line reading the F260 heading; the R10 gate entry landed; the finding population is unchanged at 298 registrations against 4 `Done:` lines, so 294 open, with the maximum id still R-0813; the seven ordered suites all ran exit 0 at 303, 30, 515, 52, 21, 16 and 42, every count equal to the reviewer's own pre-emission measurement; `integrity check --json` returned `"passed": true` with `"fail_count": 0` over 5 checks at handlers=342; and the working tree is clean with nothing tracked under `.remedy-wt`. The state line the block ordered repeated verbatim was false when written — it claimed an inventory that C4 never reached — and the worker wrote it as ordered and set the correction directly beneath it, which is the right resolution of a byte-for-byte constraint against a false slice and is recorded here so the next reader is not misled by the file.
-<<<END GATE_R1>>>
+<<<BEGIN R0814>>>
+- R-0814 — Medium, ONE PING-PONG JOB FILES ITS RECORD AND ITS EVIDENCE UNDER TWO DIFFERENT DATA ROOTS, BECAUSE A MODULE-LOCAL `_jobs_dir` SHADOWS THE IMPORTED `jobs_dir`. Found by the WORKER of F260 R2 while writing the measured inventory `.agent/f260_inventory.md`, and confirmed independently by the reviewer at `bd42e0bc` by reading the four call sites. In `packages/orchestration/pingpong_job.py` the module-local `_jobs_dir()` (pingpong_job.py:374) returns `task_jobs_dir()` (pingpong_job.py:378) and is what `_persist_job` uses to write `task_jobs/<16hex>/job.json` (pingpong_job.py:382); but `job_evidence_dir` (pingpong_job.py:3050) imports the CLASSIC `jobs_dir` from `data_paths` (pingpong_job.py:3052) and returns `jobs_dir() / job_id / "evidence"` (pingpong_job.py:3053), as does `_task_stream_dir` (pingpong_job.py:3566-3567). So a single ping-pong job writes its record under `<data_root>/task_jobs/<16hex>/` and its evidence under `<data_root>/jobs/<16hex>/evidence/` — the CLASSIC store's root, keyed by a non-classic id shape. PRODUCT EFFECT, which is why this spends an id rather than a `.agent/prose_slips.md` line under operator amendment amend0827-process-diet rule 2: the wrong state is on disk under `packages/`, and it is wrong in two ways that compound. First, `<data_root>/jobs/` ends up holding BOTH `<uuid>.json` FILES and `<16hex>/` DIRECTORIES, two different shapes in one store. Second, `data_paths._classic_job_id_matches` (data_paths.py:153) globs `*.json` and therefore cannot see those directories at all, so the evidence root of a ping-pong job is invisible to every id resolver in the repository — which is the same blindness `resolve_any_job_id` exists to paper over, arriving through a second door nobody had named. Medium rather than High because nothing is lost or corrupted: both paths are written and read consistently by their own callers, and the defect surfaces as unfindable evidence rather than as a crash. Searched before minting per §3 item 30: `grep` over the open set for `resolve_any_job_id`, `task_jobs`, `jobs_dir`, `evidence` and `shadow` returns no open finding describing this split root; the nearest neighbours are the two-store findings this feature exists to close, and none of them names the evidence directory. ROOT CAUSE, stated so the class is visible: a module-local helper was given the name of an imported function it does not agree with, so both spellings read correctly at their own call sites and only a whole-module reading shows they disagree — the AGENTS.md "one spelling per concept" rule failing inside a single file rather than across the repository. FIX: DECISION F260 D1 rules the unified layout that removes the split — the job record and its evidence share one root `<data_root>/jobs/<16hex>/` — and the local `_jobs_dir` is deleted with the store it names. Resolved when `packages/orchestration/pingpong_job.py` contains no module-local `_jobs_dir`, every evidence path is built from the same directory function as the record path, and a test asserts that a job's record and its evidence resolve under one root.
+<<<END R0814>>>
 
-<<<BEGIN SLIP1>>>
-2026-09-06 · F260 R1 (reviewer) · The round-1 block's gate G2(d) ordered the region from `## Findings` to end of file to carry an identical sha256 before and after the commit that C2 was separately ordered to APPEND a gate record into. Measured at `4b704705`: the anchored heading `^## Findings\s*$` matches exactly once, 0 `Gate:` records sit above it and 10 below it, so every gate record the ledger has ever held lives inside the region the gate demanded be unchanged, and no round that books a verdict can satisfy it. The worker measured it red and stopped, which cost the round its last three commits. THE LESSON: §3 item 8 asks whether the code makes a gate's asserted value impossible, and a REGION boundary is that same question asked about bytes — before ordering an identity over a region, locate the region and check whether the same commit writes into it. The reading the gate was reaching for is `region_post == region_pre + appended`, which measures true; identity was never the property, only the shortest thing to write. A second hazard sits in the same gate and is worth the sentence: locating that heading with a plain substring search finds one of the 4 backticked mentions of the token in the header blockquote rather than the heading itself, the R-0584 quoted-token class, so the anchored pattern is part of the fix and not a detail of it. Reviewer-authored gate defect over an `.agent/` prose file; nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP1>>>
+<<<BEGIN GATE_R2>>>
+Gate: R2 — the F260 R2 entry. R2 REPAIRED THE RECORD BYTE ROUND 1 COST, BOOKED ROUND 1'S VERDICT AND THE REVIEWER'S TWO SLIPS, CLAIMED F260 IN THE LEDGER, AND WROTE THE MEASURED T001 INVENTORY. VERDICT PASS. Range 4b704705..bd42e0bc, nine commits, all single-parent, pushed, no pull request; largest commit 384 insertions, so no commit approached the AGENTS.md 500-insertion cap. THE REVIEWER RE-RAN EVERY GATE ITSELF rather than reading the handback for it, and reproduced every number the worker reported. TRANSPORT: one digest `a413a4b676098eb77b07f2b2e19d321ae00ca9b7ce7e34049dfca6972c7b389a` across the scratch original, the saved copy and the mirror; per §3 item 37 that is a COPY chain and not a claim about bytes emitted into a prompt. THE RECORD: 860937 bytes before, 860938 after the one-byte blank-line repair, 865153 after the append; the append is 4215 bytes and the total growth 4216, exactly one more, which is the arithmetic that proves the repair and the append are the only two changes. The repaired image is a byte-exact PREFIX of the post-image; the blank line before `## Steps` is restored; blank-line units run 417, 418, 419 so the append's N counts 1. The anchored heading `^## Findings\s*$` matches exactly once where a plain substring search matches 7 times — the R-0584 quoted-token hazard the round-1 block walked into and this block named — and `region_post == region_pre + appended` is true with `region_pre` hashing `0d32b1f4…`, which is the SAME digest the reviewer independently measured as round 1's post-image, so the two rounds' readings agree across a session boundary. Eleven `Gate:` headers, all distinct; the finding population is unchanged at 298 registrations against 4 `Done:` lines. THE SLIPS: `.agent/prose_slips.md` grew 85098 to 88132, the post-image starts with the pre-image byte-for-byte, it still ends WITHOUT a trailing newline, and its dated-line count went 112 to 114. THE STATUS CLAIM: exactly one `^- \[~\] F` line and its id is F260; `^- \[x\] F` is 73, unchanged; the old unchecked F260 line is gone. THE INVENTORY, which was the round's real work and is the reason this round is not bookkeeping: the reviewer re-resolved every `file:line` citation in `.agent/f260_inventory.md` against the committed tree — 98 distinct citations, ZERO unresolvable and ZERO ambiguous basenames — and spot-checked eight of them against the symbol each names, all eight landing on the right line, including `storage.save_job` at storage.py:75, `pingpong_job._persist_job` at pingpong_job.py:381, `run_log.RunLogWriter` at run_log.py:94, `timeline.load_run_events` at timeline.py:68 and `pingpong_loop._persist_run` at pingpong_loop.py:4234. THE INVENTORY CORRECTED THE REVIEWER TWICE AND THE FEATURE FILE TWICE, and all four corrections were verified: `RunLogWriter` is at run_log.py:94 and not the 114 the round-2 block cited, and `load_run_events` at timeline.py:68 and not 75 — in both cases the block had cited a line INSIDE the symbol rather than the symbol's own statement, which is §3 item 9 asking for the symbol over the number and getting the number; `bench_run.py` accesses no job at all, so the feature file's Design bullet grouping it with `gauntlet_runner.py` is unsupported; and the `decision_inbox.py` bullet has its direction inverted, since that module receives an already-loaded job rather than loading one. It also found a FIFTH storage area the reviewer's own list of four had missed — `<data_root>/jobs/<16hex>/evidence/` — which the reviewer confirmed at the four call sites and which is registered by this round as R-0814. THE SUITES were re-run by the reviewer serially and all matched: 303, 30, 515, 52, 21, 16 and 42, every one exit 0, plus `test_self_use_generator.py` at 20. `integrity check --json` returns `"passed": true` with `"fail_count": 0` over 5 checks at handlers=342, the working tree is clean, and nothing under `.remedy-wt` is tracked. SEVEN DEVIATIONS WERE DECLARED AND ALL ARE SOUND; three deserve the record. The worker's own G2(c) probe went red twice before the file did, both times a trailing-newline artifact of its splitter rather than a defect of the append, and it normalised the splitter rather than the gate — the right repair, and it kept the ordered clause and the non-vacuity check. Its first G3 pattern miscounted the slips because one existing line uses an em dash rather than the separator the pattern assumed; the block's figure of 112 was correct and the probe was not. And it caught two defects in its OWN inventory draft before committing: fifteen `models.py:N` citations were ambiguous across three tracked files of that name and its checker had silently resolved them to the wrong one, so it qualified every path and made the checker FAIL on ambiguity instead of guessing — which is why the reviewer's independent re-resolution found zero ambiguous citations. That is a worker strengthening a gate against itself, and it is the reason this round's inventory can be trusted as evidence for D1 and D2.
+<<<END GATE_R2>>>
 
-<<<BEGIN SLIP2>>>
-2026-09-06 · F260 R1 (reviewer) · The round-1 block's REHEADTO slice was ordered applied as `REHEADTO + "\n## Steps\n" + tail` and ended without the blank line that had separated the review record's header from its `## Steps` heading, so a byte-for-byte application — which the block's own constraint 1 required — deleted that blank line and merged two blank-line units. The boundary went from `session start.\n\n## Steps\n` to `session start.\n## Steps\n` and the file's unit total ran 417 to 416 and back to 417 across the append, so the same block's structural reader computed N = 0 and its ordered "compare the LAST N units" clause became vacuous rather than false. The worker applied the slice as written, declared the consequence, and was right on both counts. THE LESSON: when a block orders a slice applied around a SEPARATOR it also names, the slice's own trailing bytes are part of the pair and are measured with it — the partition that produced `head` kept a trailing newline the replacement text did not restore, and nothing in the block compared the two. Reconstruct the intended post-image once at emission and diff it against the pre-image; a one-byte difference in a boundary is invisible by eye and fully visible to `==`. Reviewer-authored slice defect in an `.agent/` prose file, repaired in round 2 by restoring the single byte; nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP2>>>
+    <<<BEGIN D1PAIR_FROM>>>
+### DECISION F260 D1 — where the classic job fields live (to be recorded in T001)
+Read both writers before deciding. Record: which fields of the classic `Job`
+(`packages/core/models.py`) move into the unified job record, which are dropped, and
+the resulting file layout under `<data_root>/`.
+    <<<END D1PAIR_FROM>>>
 
-<<<BEGIN AMENDF260D0>>>
-### DECISION F260 D0 (2026-09-06, F260 round 2) — the run directory the feature file names is already taken
+    <<<BEGIN D1PAIR_TO>>>
+### DECISION F260 D1 (2026-09-06, F260 round 3) — the unified record layout, ruled from the measured inventory
+Ruled from `.agent/f260_inventory.md`, written and gated in round 2 and re-verified
+by the reviewer at `bd42e0bc`. That inventory measured the classic `Job`
+(`packages/core/models.py:222`) at 15 fields and `pingpong_job.JobPlan`
+(`pingpong_job.py:288`) at 56, sharing exactly four NAMES — `budgets`,
+`created_at`, `metadata`, `tasks` — and not one shared name with a matching type.
+The split is not arbitrary: the classic record is ADMINISTRATIVE (mission,
+project, fences, budget, intake, flight plan, order text) and `JobPlan` is
+EXECUTIONAL (workspace, worktree, stop episode, run manifest, result diff).
 
-RECORDED BEFORE D1 AND D2 BECAUSE BOTH DEPEND ON IT. The "Goal & Done" section
-above says a Run "is the evidence-case folder that today is
-`<data_root>/task_jobs/<16hex>/`" and that "The directory is renamed to
-`runs/`". Measured at `b5cd6c20`, before any production line of this feature was
-written, that sentence is wrong twice over and the rename it orders lands on an
-occupied path:
+CHOSEN — one record, three areas, each keyed by exactly one kind of id:
 
-- `<data_root>/task_jobs/<16hex>/` is keyed by JOB id and holds `job.json`,
-  written by `pingpong_job._persist_job`. It is a JOB record, not a run's
-  evidence case.
-- `<data_root>/runs/` already exists and is already written: `data_paths.runs_dir`
-  returns it and `run_log.RunLogWriter` files run logs at
-  `<data_root>/runs/<job_id>/*.jsonl`, which `timeline.load_run_events` reads.
-  It too is keyed by JOB id.
-- The directory actually keyed by RUN id is `<data_root>/pingpong_runs/<run_id>/`,
-  written by `pingpong_loop._persist_run`.
+- `<data_root>/jobs/<16hex>/job.json` — THE JOB. It carries `JobPlan`'s execution
+  fields plus the eleven classic-only administrative fields (`artifacts`,
+  `budget`, `fences`, `flight_plan`, `intake`, `mission`, `name`, `project_id`,
+  `state`, `user_prompt`, and `id` as the 16-hex `job_id` of D2). The job's own
+  evidence lives beside its record, under `<data_root>/jobs/<16hex>/evidence/`.
+- `<data_root>/runs/<run_id>/` — THE RUN, keyed by RUN id and not by job id. It
+  inherits what `<data_root>/pingpong_runs/<run_id>/` holds today plus the
+  run-log `.jsonl` that today sits at `<data_root>/runs/<job_id>/`. This is the
+  change that makes `Job.run_refs` plural and truthful: F259's binding
+  vocabulary gives a Job MANY runs, which no job-keyed directory can express.
+- `<data_root>/missions/<project>/<id>.json` — THE MISSION, unchanged by this
+  decision beyond the F056 extension the feature file's T002 already orders.
 
-A plain rename of `task_jobs/` to `runs/` would therefore merge two directories
-keyed by the same job id but holding different things, and would still leave the
-one directory keyed by run id outside the model — while the vocabulary page F259
-made binding gives a Job MANY runs, which no job-keyed directory can express.
+The four shared names are resolved toward the typed spelling, because a type is
+recoverable from a string and a string is not recoverable from a type:
+`tasks` is `list[TaskEntry]`, `created_at` is `datetime` serialised as ISO-8601,
+`budgets` is the `JobBudgets` model rather than a `model_dump` dict, and
+`metadata` stays `dict[str, Any]`. `status` and `state` are ONE field, the
+`RunState` enum; the bare string spelling is dropped.
 
-CHOSEN: this feature does not perform that rename as written. Round 2 records
-the measured areas in `.agent/f260_inventory.md`; DECISION F260 D1 is widened to
-rule the RUN directory as well as the job fields, and must state, for each area
-the inventory finds, whether it survives, moves or is deleted, and what the
-surviving directory is keyed by. Nothing moves on disk until D1 is recorded.
+DELETED by this ruling, with no attic, alias or compatibility reader (DECISION
+D-A and AGENTS.md "Replacing is deleting"): `<data_root>/jobs/<uuid>.json`,
+`<data_root>/task_jobs/`, `<data_root>/pingpong_runs/`, and the module-local
+`pingpong_job._jobs_dir`. This is also the FIX for finding R-0814 — the record
+and its evidence share one root, so the shadowed spelling has nothing left to
+disagree with.
 
-ALTERNATIVES CONSIDERED. Renaming `task_jobs/` to `runs/` as written and letting
-the run log share the directory — rejected: it merges two job-keyed stores whose
-contents answer to different concepts, and leaves `pingpong_runs/` stranded.
-Keeping `task_jobs/` under its present name — rejected: the whole point of the
-feature is that the name lies about what the directory holds.
+ALTERNATIVES CONSIDERED. Keeping `runs/` keyed by JOB id and nesting runs beneath
+it — rejected: it preserves the very ambiguity D0 recorded, since `runs/<job_id>/`
+and a renamed `task_jobs/<job_id>/` are then the same path, and it still cannot
+express many runs per job. Moving the administrative fields into the Mission and
+leaving the Job purely executional — rejected: `job_context`, `job show` and the
+cockpit all read budgets and fences per JOB, so the fields would have to be
+re-joined at every read.
 
-REVERSE by deleting this paragraph and restoring the "Goal & Done" sentence as
-the binding order, at which point the rename becomes a required slice and the
-collision above becomes a defect to be repaired inside it.
-<<<END AMENDF260D0>>>
+REVERSE by deleting this paragraph, at which point D1 returns to its unruled form
+and the layout above becomes one option among the alternatives listed.
+    <<<END D1PAIR_TO>>>
+
+    <<<BEGIN D2PAIR_FROM>>>
+### DECISION F260 D2 — the one id shape (to be recorded in T001)
+16-hex (`uuid4().hex[:16]`) unless the writers prove otherwise; the minting function
+is named here once it exists, and every job-taking command resolves through it.
+    <<<END D2PAIR_FROM>>>
+
+    <<<BEGIN D2PAIR_TO>>>
+### DECISION F260 D2 (2026-09-06, F260 round 3) — the one id shape is 16-hex, and ids of different KINDS are minted by different functions
+Ruled from `.agent/f260_inventory.md` §3, which measured THREE shapes actually
+minted today — a 36-character canonical UUID, a 32-hex string and a 16-hex string
+— and found the 16-hex shape already naming FOUR different kinds of thing: a
+ping-pong job (`pingpong_job.py:290`), a ping-pong run (`pingpong_loop.py:122`),
+a run episode (`pingpong_job.py:2268`) and a stop request (`safe_points.py:153`).
+
+CHOSEN: 16-hex, `uuid4().hex[:16]`, as the feature file proposed — the writers
+did not prove otherwise. The evidence for it rather than the UUID: 16-hex is
+already the shape of the store that SURVIVES D1; `data_paths._SHORT_HEX_RE`
+(`data_paths.py:150`) accepts `[0-9a-fA-F]{4,32}` and so accepts it already;
+`safe_points.validate_job_id` (`safe_points.py:137`) accepts all three shapes; and
+the probe recorded in the inventory settles the other direction — `UUID(
+'a1b2c3d4e5f60718')` raises `ValueError: badly formed hexadecimal UUID string`,
+which is exactly why `resolve_job_id` can never resolve a ping-pong job id. A
+UUID cannot hold a 16-hex id; a 16-hex field can hold neither more nor less than
+what it is minted with, and everything already mints it.
+
+AND, because the same shape names four kinds of thing, ONE SHAPE IS NOT ONE
+FUNCTION. Each kind gets its own minting function with a domain word in its name,
+so a swapped argument is greppable and reviewable even though it is not a type
+error: `mint_job_id()`, `mint_run_id()`, `mint_episode_id()` and the existing
+`safe_points.new_request_id`. All live in ONE module, and `data_paths` is that
+module because it already owns every other "where does this live" answer. This is
+AGENTS.md's "distinct ID/value types where an argument swap is plausible" applied
+at the weakest form the language allows for free — a name — and it is why this
+decision does not simply say "16-hex" and stop.
+
+RESOLUTION: `resolve_job_id` and `resolve_any_job_id` are both deleted and
+replaced by ONE resolver over the one store D1 rules, returning `str`. The `UUID`
+parse path goes with them, and so does `data_paths._SHORT_HEX_RE`'s role as a
+job-id validator — it is not the id's definition, only a prefix filter.
+`run_log.new_run_id`'s 32-hex remains as the name of one run-log SESSION file,
+which is not an id any command takes.
+
+ALTERNATIVES CONSIDERED. The canonical UUID for everything — rejected on the
+probe above plus the migration it would force on every 16-hex writer, against
+DECISION D-A's no-migration rule. One `mint_id()` for all kinds — rejected: it
+makes the four kinds indistinguishable at every call site, which is the defect
+R-0814 is an instance of, arriving through ids instead of directories.
+
+REVERSE by deleting this paragraph; the shape then returns to the feature file's
+unruled proposal and the four minting functions collapse back to whatever each
+writer does today.
+    <<<END D2PAIR_TO>>>
