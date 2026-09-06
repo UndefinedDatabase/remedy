@@ -2372,10 +2372,10 @@ def _print_final_audit(audit: dict) -> None:
 
 def _load_prompt_trace_index(run_id: str) -> dict[tuple[int, str], dict]:
     """Load prompt trace entries for a run and index by (round, role)."""
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+    from packages.orchestration.data_paths import pingpong_run_dir
 
     index: dict[tuple[int, str], dict] = {}
-    trace_path = _pingpong_runs_dir() / run_id / "prompt_trace.jsonl"
+    trace_path = pingpong_run_dir(run_id) / "prompt_trace.jsonl"
     if not trace_path.exists():
         return index
     for line in trace_path.read_text().splitlines():

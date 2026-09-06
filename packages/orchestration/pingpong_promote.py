@@ -379,7 +379,8 @@ def promote_run(
     All validation completes before any target write.
     Artifact set must exactly match reviewed staged files.
     """
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir, load_run
+    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration.pingpong_loop import load_run
 
     result = PromotionResult(
         run_id=run_id,
@@ -396,7 +397,7 @@ def promote_run(
     if run_data is None:
         return _block(result, f"run_not_found: {run_id}")
 
-    run_dir = _pingpong_runs_dir() / run_id
+    run_dir = pingpong_run_dir(run_id)
 
     # --- Target repo binding ---
     run_repo = run_data.get("repo_path", "")
@@ -672,8 +673,8 @@ def _persist_promotion(run_dir: Path, result: PromotionResult) -> None:
 
 def load_promotion(run_id: str) -> dict[str, Any] | None:
     """Load promotion result for a run."""
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-    promo_file = _pingpong_runs_dir() / run_id / "promotion.json"
+    from packages.orchestration.data_paths import pingpong_run_dir
+    promo_file = pingpong_run_dir(run_id) / "promotion.json"
     if not promo_file.exists():
         return None
     try:

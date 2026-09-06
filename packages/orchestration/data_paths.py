@@ -26,6 +26,8 @@ Public API::
     job_evidence_dir(job_id, root: Path | None = None) -> Path
     run_dir(run_id, root: Path | None = None) -> Path
     runs_dir(root: Path | None = None) -> Path
+    pingpong_runs_dir(root: Path | None = None) -> Path    # the LIVE run store
+    pingpong_run_dir(run_id, root: Path | None = None) -> Path
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
     viewers_dir(root: Path | None = None) -> Path
@@ -196,6 +198,27 @@ def job_evidence_dir(job_id: str, root: Path | None = None) -> Path:
 def run_dir(run_id: str, root: Path | None = None) -> Path:
     """One RUN's log directory, keyed by RUN id and never by job id (DECISION F260 D1)."""
     return runs_dir(root) / run_id
+
+
+# The LIVE ping-pong run store, named as it is TODAY: ``<data_root>/pingpong_runs/``.
+# ``run_dir`` above is the TARGET spelling and this pair is the LIVE one — exactly
+# the relationship ``job_dir`` and ``task_job_dir`` had before F260 round 9
+# collapsed them. DECISION F260 D1 says a run belongs at
+# ``<data_root>/runs/<run_id>/``, and until round 11 the live store was spelled by
+# ``pingpong_loop._pingpong_runs_dir`` with thirty-nine references hanging off it.
+# Giving it ONE spelling here is what turns D1's collapse into a change to the two
+# function bodies below instead of a sweep of every caller; that collapse is F260
+# T002's remaining work.
+
+
+def pingpong_runs_dir(root: Path | None = None) -> Path:
+    """The ping-pong run store as it is today (<root>/pingpong_runs)."""
+    return (root if root is not None else resolve_data_root()) / "pingpong_runs"
+
+
+def pingpong_run_dir(run_id: str, root: Path | None = None) -> Path:
+    """One ping-pong RUN's directory, keyed by run id, under the live run store."""
+    return pingpong_runs_dir(root) / run_id
 
 
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")

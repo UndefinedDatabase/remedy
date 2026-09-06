@@ -76,8 +76,8 @@ class WorktreeResumeOutcome:
 
 
 def _run_dir(run_id: str) -> Path:
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
-    return _pingpong_runs_dir() / run_id
+    from packages.orchestration.data_paths import pingpong_run_dir
+    return pingpong_run_dir(run_id)
 
 
 def _update_persisted_run(run_id: str, worktree_patch: dict[str, Any]) -> None:
@@ -131,13 +131,14 @@ def find_recoverable_runs(job_id: str) -> list[dict[str, Any]]:
     Only persisted metadata is consulted — this is exactly the record Finding 1
     made durable.
     """
-    from packages.orchestration.pingpong_loop import _pingpong_runs_dir, load_run
+    from packages.orchestration.data_paths import pingpong_runs_dir
+    from packages.orchestration.pingpong_loop import load_run
 
-    runs_dir = _pingpong_runs_dir()
-    if not runs_dir.is_dir():
+    pp_runs_root = pingpong_runs_dir()
+    if not pp_runs_root.is_dir():
         return []
     out: list[dict[str, Any]] = []
-    for entry in sorted(p for p in runs_dir.iterdir() if p.is_dir()):
+    for entry in sorted(p for p in pp_runs_root.iterdir() if p.is_dir()):
         data = load_run(entry.name)
         if not data or str(data.get("job_id") or "") != str(job_id):
             continue
