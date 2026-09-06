@@ -1,9 +1,9 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 4 are reviewed; 2, 3 and 4 PASSED. T001's
-inventory is on disk, DECISION F260 D1 and D2 are ruled, and the three minting
-functions ship in `packages/orchestration/data_paths.py`.
+pull request 240 (F259). Rounds 1 to 5 are reviewed; 2, 3, 4 and 5 PASSED. T001
+is CLOSED: the inventory, DECISION F260 D1 and D2, the three minting functions
+and their four call sites are all on disk.
 
 ## Goal
 
@@ -17,29 +17,32 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Finish T001's minting half at the CALL SITES. The four inline `uuid4().hex[:16]`
-mints that name a job, a run or an episode move onto the shipped functions:
-`JobPlan.job_id` and both `active_episode_id` assignments in `pingpong_job.py`,
-and `PingPongResult.run_id` in `pingpong_loop.py`. Both modules stop naming
-`uuid4` at all. A new guard test pins the two dataclass defaults by OBJECT
-IDENTITY, which a look-alike lambda cannot satisfy, and parses the module for
-the two episode sites, which have no object to compare.
+Open T002 with the LAYOUT, ruling first why the resolver is not in T001.
+DECISION F260 D4 records that measurement. Then `data_paths` gains the one
+spelling of DECISION F260 D1's layout — `job_dir`, `job_record_path`,
+`job_evidence_dir` and `run_dir` — and `pingpong_job`'s two hand-built evidence
+paths are built from it. Nothing moves on disk yet: the paths are the target
+spelling every T002 writer will use.
 
 ## Next Steps
 
-- The ONE resolver D2 rules, replacing `resolve_job_id` and `resolve_any_job_id`,
-  written while both stores still exist and deleted from its predecessors only in
-  T004.
-- T002: the extended Mission record, the unified Job record under
-  `jobs/<16hex>/` with its evidence beside it, and `runs/<run_id>/` keyed by run
-  id. Finding R-0814 is fixed there, because that layout removes the split root.
-- T003 consumer by consumer, T004 the classic runner, T005 the reachability test
-  and the cluster deletion, in that order.
+- The four remaining hand-built evidence paths — `job_evidence.py` twice,
+  `repair_attest.py` and `do_cmd.py` — onto `data_paths.job_evidence_dir`, with
+  a guard that no module outside `data_paths` spells that path again.
+- The unified Job record and its writer under `jobs/<16hex>/job.json`, which
+  moves `_persist_job` off `task_jobs/` and DELETES `pingpong_job._jobs_dir`.
+  Finding R-0814 is resolved there, against the fix clause it already carries.
+- The ONE resolver, in the same round group as that writer, because 40 of the
+  42 job-taking call sites take a `UUID` today (DECISION F260 D4).
+- Then `runs/<run_id>/`, T003 consumer by consumer, T004 the classic runner,
+  T005 the reachability test and the cluster deletion, in that order.
 
 ## Risks
 
 - D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
   reader of the old shape must move in the same commit as its writer, or a run
   log becomes unreadable between two commits.
+- `job_record_path` names a path nothing writes yet. Its docstring says so and
+  T002's writer round is what makes it live.
 - The T005 cluster deletion is large and reversible in one direction only. It
   runs last, behind a reachability test green BEFORE the first `git rm`.
