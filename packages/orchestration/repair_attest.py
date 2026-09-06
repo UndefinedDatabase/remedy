@@ -383,8 +383,8 @@ def _prior_provider_call_count(task: Any) -> int | None:
     if not run_id:
         return None
     try:
-        from packages.orchestration.data_paths import pingpong_run_dir
-        trace = Path(pingpong_run_dir(run_id)) / "prompt_trace_summary.json"
+        from packages.orchestration.data_paths import run_dir
+        trace = Path(run_dir(run_id)) / "prompt_trace_summary.json"
         if trace.exists():
             data = json.loads(trace.read_text(encoding="utf-8"))
             return int(data.get("builder_prompts", 0)) + int(data.get("reviewer_prompts", 0))

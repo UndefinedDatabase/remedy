@@ -625,8 +625,8 @@ def export_evidence(
     bundle = build_evidence_bundle(run_data, promotion_data)
 
     # Load persisted prompt traces if available
-    from packages.orchestration.data_paths import pingpong_run_dir
-    trace_file = pingpong_run_dir(run_id) / "prompt_trace.jsonl"
+    from packages.orchestration.data_paths import run_dir
+    trace_file = run_dir(run_id) / "prompt_trace.jsonl"
     if trace_file.exists():
         bundle["prompt_trace_jsonl_path"] = str(trace_file)
 
