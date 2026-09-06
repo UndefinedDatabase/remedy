@@ -384,6 +384,75 @@ class TestJobAndRunLayout:
         assert pingpong_job._task_stream_dir(jid, "t1") == \
             data_paths.job_evidence_dir(jid) / "task_runs" / "t1"
 
+    def test_a_persisted_pingpong_job_writes_its_record_under_its_own_job_dir(
+        self, monkeypatch, tmp_path,
+    ):
+        """F260 T002: the WRITER, not only the accessor, files the record under ``jobs/``.
+
+        Every reading above proves ``job_record_path`` SPELLS the D1 layout. This
+        one runs the SHIPPED writer and reads the bytes it left, which is the
+        remaining fix condition of finding R-0814: a job's record and that job's
+        evidence share ONE root. Until T002 ``_persist_job`` wrote to
+        ``<data_root>/task_jobs/<16hex>/job.json`` while every equality test here
+        stayed green, because an accessor nobody calls is a spelling and not a
+        layout.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration import data_paths, pingpong_job
+
+        job = pingpong_job.JobPlan()
+        written = pingpong_job.save_job_plan(job)
+
+        assert written == data_paths.job_record_path(job.job_id)
+        assert written.is_file(), f"the writer returned {written} but wrote nothing there"
+        assert json.loads(written.read_text())["job_id"] == job.job_id
+        assert pingpong_job.job_evidence_dir(job.job_id).parent == \
+            data_paths.job_dir(job.job_id)
+        assert written.parent == pingpong_job.job_evidence_dir(job.job_id).parent, (
+            "the record and the evidence no longer share one root"
+        )
+        assert "task_jobs" not in written.parts, (
+            f"the record is still filed under a task_jobs component: {written}"
+        )
+
+    def test_a_pingpong_record_in_the_jobs_dir_is_still_resolvable_beside_a_classic_one(
+        self, monkeypatch, tmp_path,
+    ):
+        """Both stores share ``jobs/`` now, and neither shadows the other.
+
+        This is why the T002 move is ONE commit: the writer moved and its reader
+        moved with it. ``_classic_job_id_matches`` globs ``*.json`` and cannot
+        see a directory; ``_task_job_id_matches`` reads directories holding a
+        ``job.json`` and cannot see a classic file. So one directory carrying
+        both shapes yields exactly one match per id and never a false ambiguity —
+        and a directory without a ``job.json`` is not a job at all.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import jobs_dir, resolve_any_job_id
+
+        classic_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        pingpong_id = "0123456789abcdef"
+        bare_id = "fedcba9876543210"
+
+        jobs_dir().mkdir(parents=True)
+        (jobs_dir() / f"{classic_id}.json").write_text(
+            json.dumps({"job_id": classic_id}), encoding="utf-8")
+        (jobs_dir() / pingpong_id).mkdir()
+        (jobs_dir() / pingpong_id / "job.json").write_text(
+            json.dumps({"job_id": pingpong_id}), encoding="utf-8")
+        (jobs_dir() / bare_id).mkdir()
+
+        assert resolve_any_job_id(pingpong_id) == pingpong_id
+        assert resolve_any_job_id(pingpong_id[:8]) == pingpong_id
+        assert resolve_any_job_id(classic_id) == classic_id
+        assert resolve_any_job_id(classic_id[:8]) == classic_id
+
+        with pytest.raises(SystemExit) as exc:
+            resolve_any_job_id(bare_id)
+        assert exc.value.code == 1, (
+            f"a directory with no job.json resolved to something (exit {exc.value.code})"
+        )
+
     def _references_to(self, module, name):
         """Every AST reference in ``module`` resolving to exactly ``name``.
 
