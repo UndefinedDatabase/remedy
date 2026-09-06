@@ -1,48 +1,43 @@
 # Plan — F260 One world: mission → job → run
 
-Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 14 are reviewed and 2 to 14 PASSED. T001 is
-CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, both
-resolvers return `str`, the ping-pong run store has one spelling on both sides,
-and the run-log store has one spelling on the whole production side.
+Branch: feature/f260-one-world, cut from `main` at b5cd6c20. Rounds 1 to 15 are
+reviewed and 2 to 15 PASSED. T001 is CLOSED. T002 is open on the RUN side: the job
+record has MOVED, both resolvers return `str`, the ping-pong and run-log stores
+have one spelling on the production side, and a run is now an INVOCATION rather
+than an event (DECISION F260 D7).
 
 ## Goal
 
-One job model on disk. The classic store `<data_root>/jobs/<uuid>.json` and the
-ping-pong store, now `<data_root>/jobs/<16hex>/job.json`, become one record with
-one id shape minted by one function per kind; a Run becomes the evidence case a
-Job points at; `resolve_any_job_id`, the "TWO job stores" paragraph and every
-which-store branch are deleted. Task slicing per T2_F260.md: T001 inventory and
-id shape, T002 records and writers, T003 consumers, T004 the classic runner,
-T005 the reachability test and the cluster deletion.
+SESSION 7 REACHES THE SOFT LIMIT — 25 rounds or 7 sessions, whichever comes first,
+and this is session 7. The obligation is a SCOPE REPORT and then the standing
+default of operator amendment amend0905-throughput: SPLIT-AND-CLOSE, executed on
+this session's own authority. F260 closes at the scope it has actually built; the
+remaining scope is registered as a new follow-up feature placed directly after
+F260, per operator order amend0906-split-placement.
 
 ## Current Step
 
-ONE RUN PER INVOCATION. `timeline.append_run_event` mints a new run id on every
-call, so five events of one resume become five runs in five files — measured on
-the shipped function. The module takes ONE run id for the life of the process
-and passes it, which is what `RunLogWriter`'s docstring already promises. This
-is registered as finding R-0816 and ruled by DECISION F260 D7.
+Round 16 brings `origin/main` onto the branch — it carries
+amend0906-split-placement, the rule that governs this session's split — books the
+round-15 PASS verdict and its prose slip into the record, and rewrites this plan.
 
 ## Next Steps
 
-- `Job.run_refs`, the plural run list D1 names and nothing on disk carries yet.
-  It is meaningful only once a run is an invocation rather than an event, which
-  is what this round buys.
-- THE RE-KEY ITSELF: `run_log_dir` and `pingpong_run_dir` collapse onto
-  `run_dir`, keyed by RUN id — DECISION F260 D1. The reader side needs a job to
-  name its runs, so `run_refs` above is its prerequisite.
-- The rest of T002: the unified record's own administrative fields — eight of
-  D1's eleven have no counterpart in `JobPlan` — and the Mission extension.
-- Then T003 consumer by consumer; T004 the classic runner, the classic store and
-  the resolver collapse together (DECISION F260 D5); T005 the reachability test
-  and the cluster deletion.
+1. Register the follow-up feature: its detail file, its STATUS line directly after
+   F260's inside the same tier heading, the README counters, the TOTAL_FEATURES
+   pin and the downstream "Depends on" lines, in ONE commit; a DECISION records
+   the split and how to reverse it.
+2. The integration gate: the full suite at the branch head and at the merge base.
+3. Closure part 1: the self-use item, the evidence job and the review zip.
+4. Closure part 2: the verdict bookings and the ledger rotation.
+5. Closure part 3: the STATUS accepted flip, the README sync, the handback and the
+   pull request, which is left UNMERGED as the operator's review window.
 
 ## Risks
 
-- The test side of the run-log spelling is DECLINED, not forgotten: DECISION
-  F260 D6 records why, and the re-key inherits those sites.
-- The soft limit is 25 rounds or 7 sessions. This is round 15 of session 6, so
-  the SESSION limit is reached next session and split-and-close is the endgame.
-  Every round leaves a self-consistent tree so that close is available at any
-  point.
+- The feature file's Orchestrator brief names the split point "between T003 and
+  T004"; this split falls inside T002 and therefore amends that brief. It is ruled
+  as a DECISION and proceeded under, never asked as a question
+  (docs/agents/planner_reviewer_prompt.md §4 item 7).
+- README.md and docs/roadmap/STATUS.md may never disagree in any committed state,
+  so the registration counters and the closure flip each land in one commit.
