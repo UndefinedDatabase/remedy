@@ -1,0 +1,23 @@
+# F260 round 19 integration gate — branch run raw tail
+# cwd: /home/decodeux/Repos/remedy
+# command: python3 -m pytest -n auto -q
+# REMEDY_UI_NO_AUTO_BUILD: (unset)
+# exit code: 0
+# wall clock seconds: 130.0
+# FAILED ids: 0
+
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+..........................                                               [100%]
+=============================== warnings summary ===============================
+tests/orchestration/test_model_routing.py::TestTheUndeclaredRolePathWarnsAndAnswersConservatively::test_it_matches_role_configs_own_unknown_role_behaviour
+  /home/decodeux/Repos/remedy/packages/orchestration/model_routing.py:1392: UserWarning: Role 'a_role_nobody_declared_a_class_for' declares no task class; routing conservatively as 'undeclared_role'. Declared roles: builder, design_worker, final_verifier, orchestrator, reviewer, summary, teacher, test_worker; inheriting roles: repair.
+    task_class = resolve_role_task_class(role, originating_task_class)
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+19731 passed, 23 skipped, 1 warning in 129.35s (0:02:09)
