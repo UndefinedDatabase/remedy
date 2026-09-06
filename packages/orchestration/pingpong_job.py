@@ -3053,9 +3053,14 @@ def _suggest_next_command(job: JobPlan) -> str:
 
 
 def job_evidence_dir(job_id: str):
-    """The job's own (hidden) evidence directory — where a job-level record lives."""
-    from packages.orchestration.data_paths import jobs_dir
-    return jobs_dir() / job_id / "evidence"
+    """The job's own (hidden) evidence directory — where a job-level record lives.
+
+    ``data_paths`` OWNS this layout (DECISION F260 D1); this is not a second
+    answer to the same question. The NAME survives only until F260 T004 moves
+    its remaining callers onto ``data_paths.job_evidence_dir`` directly.
+    """
+    from packages.orchestration.data_paths import job_evidence_dir as _job_evidence_dir
+    return _job_evidence_dir(job_id)
 
 
 def job_postmortem_path(job_id: str):
@@ -3567,6 +3572,9 @@ def _task_stream_dir(job_id: str, task_id: str):
 
     Streams land beside the job's persisted evidence so `job-evidence` picks them
     up as ``task_runs/<task>/`` artifacts without polluting the repository.
+
+    ``data_paths`` owns the evidence root (DECISION F260 D1); only the
+    ``task_runs/<task>/`` tail below is this module's own.
     """
-    from packages.orchestration.data_paths import jobs_dir
-    return jobs_dir() / job_id / "evidence" / "task_runs" / task_id
+    from packages.orchestration.data_paths import job_evidence_dir as _job_evidence_dir
+    return _job_evidence_dir(job_id) / "task_runs" / task_id

@@ -265,3 +265,116 @@ class TestMintIds:
         from packages.orchestration.data_paths import mint_job_id
         with pytest.raises(ValueError):
             UUID(mint_job_id())
+
+
+class TestJobAndRunLayout:
+    """DECISION F260 D1: ONE root per job, and ONE spelling of that layout.
+
+    The record lives at ``<root>/jobs/<job_id>/job.json``, that job's evidence at
+    ``<root>/jobs/<job_id>/evidence/``, and a run's log under
+    ``<root>/runs/<run_id>/`` — keyed by RUN id, not by job id. These tests read
+    the SHIPPED functions; the layout is never re-spelled here, because a test
+    that rebuilds the path by hand pins its own copy of the rule and nothing else.
+    """
+
+    def _layout(self):
+        from packages.orchestration.data_paths import (
+            job_dir,
+            job_evidence_dir,
+            job_record_path,
+            run_dir,
+        )
+        return job_dir, job_record_path, job_evidence_dir, run_dir
+
+    def test_the_record_and_the_evidence_share_one_root(self, monkeypatch, tmp_path):
+        """D1's whole point: a job's record and its evidence hang off ONE directory."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_dir, job_record_path, job_evidence_dir, _ = self._layout()
+        jid = "0123456789abcdef"
+        assert job_record_path(jid).parent == job_dir(jid)
+        assert job_evidence_dir(jid).parent == job_dir(jid)
+        assert job_record_path(jid).parent == job_evidence_dir(jid).parent
+
+    def test_job_dir_is_jobs_dir_keyed_by_the_job_id(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import jobs_dir
+        job_dir, _, _, _ = self._layout()
+        jid = "0123456789abcdef"
+        assert job_dir(jid) == jobs_dir() / jid
+
+    def test_the_record_is_named_job_json(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        _, job_record_path, _, _ = self._layout()
+        assert job_record_path("0123456789abcdef").name == "job.json"
+
+    def test_a_run_hangs_under_runs_dir_and_never_under_jobs_dir(self, monkeypatch, tmp_path):
+        """The copy-paste this layout invites is keying a RUN under ``jobs/``.
+
+        D1 changes what ``<data_root>/runs/`` is keyed by — run id, not job id —
+        and a run filed under ``jobs/`` is unreadable by every run-log reader.
+        """
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import jobs_dir, runs_dir
+        _, _, _, run_dir = self._layout()
+        rid = "fedcba9876543210"
+        assert run_dir(rid) == runs_dir() / rid
+        assert run_dir(rid).parent == runs_dir()
+        assert jobs_dir() not in run_dir(rid).parents
+
+    def test_the_root_override_is_honoured_by_all_four(self, monkeypatch, tmp_path):
+        """Each function takes ``root`` exactly as ``jobs_dir`` and ``runs_dir`` do.
+
+        Set the env root to a DIFFERENT directory, so a function that quietly
+        ignores its ``root`` argument returns the env path and is caught here
+        rather than passing by coincidence.
+        """
+        env_root = tmp_path / "env"
+        arg_root = tmp_path / "arg"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
+        job_dir, job_record_path, job_evidence_dir, run_dir = self._layout()
+        jid = "0123456789abcdef"
+        rid = "fedcba9876543210"
+        assert job_dir(jid, arg_root) == arg_root / "jobs" / jid
+        assert job_record_path(jid, arg_root) == arg_root / "jobs" / jid / "job.json"
+        assert job_evidence_dir(jid, arg_root) == arg_root / "jobs" / jid / "evidence"
+        assert run_dir(rid, arg_root) == arg_root / "runs" / rid
+        for p in (job_dir(jid, arg_root), job_record_path(jid, arg_root),
+                  job_evidence_dir(jid, arg_root), run_dir(rid, arg_root)):
+            assert env_root not in p.parents, f"{p} ignored its root argument"
+
+    def test_pingpong_job_evidence_paths_equal_the_data_paths_ones(self, monkeypatch, tmp_path):
+        """No behaviour change: both call sites return exactly what they returned before."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration import data_paths, pingpong_job
+        jid = "0123456789abcdef"
+        assert pingpong_job.job_evidence_dir(jid) == data_paths.job_evidence_dir(jid)
+        assert pingpong_job._task_stream_dir(jid, "t1") == \
+            data_paths.job_evidence_dir(jid) / "task_runs" / "t1"
+
+    def test_pingpong_job_no_longer_spells_the_evidence_path_itself(self):
+        """The VALUE reading above cannot see a regression to the hand-built path.
+
+        ``jobs_dir() / job_id / "evidence"`` is EQUAL to what ``data_paths`` now
+        returns, so an equality test stays green while the second spelling comes
+        back. Only reading the module itself sees it. Read via ``ast`` rather
+        than as a substring, so a comment or a docstring naming the old layout
+        cannot trip the guard and an ``import ... as`` alias cannot dodge it.
+        ``_jobs_dir`` and ``task_jobs_dir`` are DIFFERENT names and out of scope
+        here — they hold the ping-pong store and move in F260 T002.
+        """
+        import ast
+
+        from packages.orchestration import pingpong_job
+        tree = ast.parse(Path(pingpong_job.__file__).read_text())
+        hits = [
+            node for node in ast.walk(tree)
+            if (isinstance(node, ast.Name) and node.id == "jobs_dir")
+            or (isinstance(node, ast.Attribute) and node.attr == "jobs_dir")
+            or (isinstance(node, ast.alias)
+                and (node.asname or node.name) == "jobs_dir")
+        ]
+        assert hits == [], (
+            "pingpong_job.py references data_paths.jobs_dir at lines "
+            f"{[getattr(n, 'lineno', '?') for n in hits]}; DECISION F260 D1 puts "
+            "the job evidence layout in data_paths and nowhere else"
+        )

@@ -22,6 +22,10 @@ Public API::
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
     mint_episode_id() -> str                 # a run-episode id
+    job_dir(job_id, root: Path | None = None) -> Path
+    job_record_path(job_id, root: Path | None = None) -> Path
+    job_evidence_dir(job_id, root: Path | None = None) -> Path
+    run_dir(run_id, root: Path | None = None) -> Path
     runs_dir(root: Path | None = None) -> Path
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
@@ -172,6 +176,44 @@ def mint_run_id() -> str:
 def mint_episode_id() -> str:
     """Mint the id of one EPISODE — one execution attempt of a run; a resume gets its own."""
     return uuid4().hex[:16]
+
+
+# DECISION F260 D1 (2026-09-06): ONE ROOT PER JOB — the record at
+# ``<data_root>/jobs/<16hex>/job.json``, that job's evidence at
+# ``<data_root>/jobs/<16hex>/evidence/``, and runs keyed by RUN id under
+# ``<data_root>/runs/<run_id>/``. That layout was spelled BY HAND at six call
+# sites in five modules, which is finding R-0814's root cause: "one spelling per
+# concept" failing first inside a file and then across them. ``data_paths``
+# already owns every other "where does this live" answer, so it owns these too,
+# and each function below is built on the one above it rather than re-deriving
+# the root — a layout change then has exactly one place to happen.
+
+
+def job_dir(job_id: str, root: Path | None = None) -> Path:
+    """The one directory holding everything about one JOB."""
+    return jobs_dir(root) / job_id
+
+
+def job_record_path(job_id: str, root: Path | None = None) -> Path:
+    """The job's own record — its plan, status and tasks as one JSON file.
+
+    NOTHING WRITES HERE YET. The live ping-pong record is still at
+    ``<data_root>/task_jobs/<16hex>/job.json`` via
+    ``pingpong_job._persist_job``, and TASK T002 of F260 is what moves that
+    writer onto this path. A reader who takes this for a live path today finds
+    nothing on disk; it is the target spelling every T002 writer will use.
+    """
+    return job_dir(job_id, root) / "job.json"
+
+
+def job_evidence_dir(job_id: str, root: Path | None = None) -> Path:
+    """The job's own evidence — artifacts, streams and post-mortems, beside its record."""
+    return job_dir(job_id, root) / "evidence"
+
+
+def run_dir(run_id: str, root: Path | None = None) -> Path:
+    """One RUN's log directory, keyed by RUN id and never by job id (DECISION F260 D1)."""
+    return runs_dir(root) / run_id
 
 
 _SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")
