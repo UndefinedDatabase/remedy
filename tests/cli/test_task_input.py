@@ -142,8 +142,9 @@ class TestTitleDerivation:
 
 class TestTaskPersistence:
     def test_task_manifest_persisted(self, tmp_path, monkeypatch):
+        from packages.orchestration.data_paths import pingpong_run_dir
         result, _, _ = _make_task_run(tmp_path, monkeypatch)
-        manifest_path = tmp_path / "data" / "pingpong_runs" / result.run_id / "task" / "task_manifest.json"
+        manifest_path = pingpong_run_dir(result.run_id, tmp_path / "data") / "task" / "task_manifest.json"
         assert manifest_path.exists()
         manifest = json.loads(manifest_path.read_text())
         assert "task_sha256" in manifest
@@ -151,8 +152,9 @@ class TestTaskPersistence:
         assert "task_tokens_estimated" in manifest
 
     def test_task_input_artifact_persisted(self, tmp_path, monkeypatch):
+        from packages.orchestration.data_paths import pingpong_run_dir
         result, _, _ = _make_task_run(tmp_path, monkeypatch)
-        input_path = tmp_path / "data" / "pingpong_runs" / result.run_id / "task" / "input.md"
+        input_path = pingpong_run_dir(result.run_id, tmp_path / "data") / "task" / "input.md"
         assert input_path.exists()
         content = input_path.read_text()
         assert "Improve README" in content

@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from packages.orchestration import failure_postmortem as FP
-from packages.orchestration.data_paths import pingpong_run_dir
+from packages.orchestration.data_paths import pingpong_run_dir, pingpong_runs_dir
 from packages.orchestration.pingpong_loop import (
     PingPongResult,
     _call_with_retry,
@@ -348,7 +348,7 @@ class TestTargetGuardExemptionIsStrict:
         beside it is still a target mutation.
         """
         data_root = repo / "remedy_data"
-        (data_root / "pingpong_runs").mkdir(parents=True)
+        pingpong_runs_dir(data_root).mkdir(parents=True)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
 
         from packages.orchestration.pingpong_loop import (
@@ -356,7 +356,7 @@ class TestTargetGuardExemptionIsStrict:
             _snapshot_target,
         )
         before = _snapshot_target(repo)
-        (data_root / "pingpong_runs" / "postmortem.json").write_text("{}\n")
+        (pingpong_runs_dir(data_root) / "postmortem.json").write_text("{}\n")
         (repo / "source.py").write_text("mutated\n")
         content, operational, _noise = _classify_target_changes(repo, before)
 
@@ -620,7 +620,7 @@ class TestDataRootSymlinksExemptNothing:
 
     def test_a_real_data_directory_inside_the_repo_still_works(self, repo, monkeypatch):
         data = repo / "remedy_data"
-        (data / "pingpong_runs").mkdir(parents=True)
+        pingpong_runs_dir(data).mkdir(parents=True)
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data))
 
         from packages.orchestration.pingpong_loop import (
@@ -628,7 +628,7 @@ class TestDataRootSymlinksExemptNothing:
             _snapshot_target,
         )
         before = _snapshot_target(repo)
-        (data / "pingpong_runs" / "postmortem.json").write_text("{}\n")
+        (pingpong_runs_dir(data) / "postmortem.json").write_text("{}\n")
         (repo / "src" / "source.py").write_text("mutated\n")
         content, operational, _ = _classify_target_changes(repo, before)
 
