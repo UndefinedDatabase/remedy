@@ -73,6 +73,19 @@ def runs_dir(root: Path | None = None) -> Path:
     return (root if root is not None else resolve_data_root()) / "runs"
 
 
+# The LIVE run-log store, named as it is TODAY: ``<data_root>/runs/<job_id>/``,
+# keyed by JOB id. ``run_dir`` below is the TARGET spelling and is keyed by RUN
+# id: DECISION F260 D1 re-keys this directory by run id, so the two are NOT the
+# same function and are not merged here. Giving the live layout ONE spelling is
+# what turns D1's re-key into a change to the body below instead of a sweep of
+# every caller — the same move rounds 11 and 12 made for the ping-pong run store.
+
+
+def run_log_dir(job_id: UUID | str, root: Path | None = None) -> Path:
+    """One JOB's run-log directory as it is today (<root>/runs/<job_id>)."""
+    return runs_dir(root) / str(job_id)
+
+
 def projects_dir(root: Path | None = None) -> Path:
     """Return the projects storage directory (<root>/projects)."""
     return (root if root is not None else resolve_data_root()) / "projects"

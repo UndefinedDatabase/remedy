@@ -120,6 +120,23 @@ class TestDirectoryHelpers:
         assert runs_dir() == tmp_path / "runs"
         assert projects_dir() == tmp_path / "projects"
 
+    def test_run_log_dir_explicit_root(self, tmp_path):
+        """The LIVE run-log store, keyed by JOB id, under an explicit root."""
+        from packages.orchestration.data_paths import run_log_dir
+        assert run_log_dir("j1", tmp_path) == tmp_path / "runs" / "j1"
+
+    def test_run_log_dir_follows_the_process_data_root(self, monkeypatch, tmp_path):
+        """With no root argument the accessor follows the process data root."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import run_log_dir, runs_dir
+        assert run_log_dir("j1") == runs_dir() / "j1"
+
+    def test_run_log_dir_coerces_a_uuid_job_id_to_its_string_form(self, tmp_path):
+        """A ``UUID`` job id builds the same path as its ``str()`` form."""
+        from packages.orchestration.data_paths import run_log_dir
+        jid = uuid4()
+        assert run_log_dir(jid, tmp_path) == tmp_path / "runs" / str(jid)
+
 
 class TestResolveJobId:
     """Test the central short-ID resolver."""
