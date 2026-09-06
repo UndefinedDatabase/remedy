@@ -668,11 +668,10 @@ def _emit_budget_tick(job_id: str, evaluation: Any) -> None:
     filesystem, `RuntimeError`, and `ValueError` / `TypeError` from serialising the
     payload.
     """
-    from packages.orchestration.data_paths import runs_dir
     from packages.orchestration.run_log import RunLogWriter
 
     try:
-        writer = RunLogWriter(job_id, run_id=BUDGET_TICK_RUN_ID, runs_root=runs_dir())
+        writer = RunLogWriter(job_id, run_id=BUDGET_TICK_RUN_ID)
         writer.log("budget.tick", **_budget_tick_payload(evaluation))
     except (OSError, RuntimeError, ValueError, TypeError):   # D2, clause four
         return

@@ -484,9 +484,8 @@ def _run_via_task_execution(
 
     writer = None
     try:
-        from packages.orchestration.data_paths import runs_dir
         from packages.orchestration.run_log import RunLogWriter
-        writer = RunLogWriter(job.id, runs_root=runs_dir(root))
+        writer = RunLogWriter(job.id, data_root=root)
     except (ImportError, OSError):
         pass
 

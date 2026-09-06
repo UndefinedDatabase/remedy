@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from packages.orchestration.data_paths import resolve_data_root, runs_dir
+from packages.orchestration.data_paths import resolve_data_root
 
 if TYPE_CHECKING:
     from packages.core.models import Job
@@ -242,8 +242,7 @@ def revert_patch_intent(
 
     # Emit run-log event
     actual_data_dir = data_dir or resolve_data_root()
-    runs_root = runs_dir(actual_data_dir)
-    log = RunLogWriter(job_id=job.id, runs_root=runs_root)
+    log = RunLogWriter(job_id=job.id, data_root=actual_data_dir)
     from packages.orchestration.run_log import RunEvent
     log.append(RunEvent(
         event="patch_intent_reverted",

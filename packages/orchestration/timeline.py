@@ -40,7 +40,7 @@ from packages.orchestration._symbols import (
 from packages.orchestration._symbols import (
     section,
 )
-from packages.orchestration.data_paths import run_log_dir, runs_dir
+from packages.orchestration.data_paths import run_log_dir
 
 # ---------------------------------------------------------------------------
 # Load
@@ -62,7 +62,7 @@ def append_run_event(
     from packages.orchestration.run_log import RunLogWriter
 
     jid = job_id if isinstance(job_id, UUID) else UUID(str(job_id))
-    writer = RunLogWriter(jid, runs_root=runs_dir(Path(data_dir)))
+    writer = RunLogWriter(jid, data_root=Path(data_dir))
     writer.log(event, **(metadata or {}))
 
 

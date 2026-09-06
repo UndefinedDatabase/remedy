@@ -3173,13 +3173,12 @@ def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
     from packages.orchestration.failure_postmortem import safe_text
 
     try:
-        from packages.orchestration.data_paths import runs_dir
         from packages.orchestration.run_log import RunLogWriter
 
         completed = sum(
             1 for t in job.tasks if t.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED))
         pending = sum(1 for t in job.tasks if t.status == TASK_PENDING)
-        writer = RunLogWriter(job.job_id, runs_root=runs_dir())
+        writer = RunLogWriter(job.job_id)
         writer.log(
             "job_stopped",
             task_id=task_id or None,
