@@ -298,3 +298,71 @@ ends with this handoff; the next session resumes at the rule order above and the
 2. **CLOSURE PART 3**: the STATUS `[x]` flip and the README sync in ONE commit,
    with `consumed_by` set to `F260` on `SU-011` in that same commit, then the
    handback, then the pull request — left UNMERGED as the operator's review window.
+
+## Reviewer verdict — round 21 · PASS · and SESSION 7 ENDS HERE
+
+Written by the planner/reviewer after round 21 was committed and pushed, and
+appended here rather than to `.agent/live_review.md` because operator amendment
+amend0827-process-diet rule 1 makes the committed and pushed handoff a durable
+carrier. This verdict is BOOKED into the ledger in the FIRST COMMIT of the next
+round that is happening anyway — session 8's closure part 2 — and it buys no round
+of its own. The plan on disk names that obligation as its first Next Step.
+
+**VERDICT: PASS.** Range `addca04a05034afa32e50e8e243f17a6ab8cb5df`..`e9a15db100ca497399ea02c0eb536f55f02ac4ce`,
+six commits, every one single-parent, in exactly the bundle's ordered sequence C0a
+to C4 with nothing added, dropped or reordered. Local and remote name the same
+object. No pull request exists for this branch and none was created.
+
+THE REVIEWER RE-RAN THE ROUND'S GATES ITSELF; the numbers below are the
+reviewer's own readings, not the handback's.
+
+- TRANSPORT: the scratchpad original, `.agent/authored/f260-r21.md` and
+  `.agent/last_block.md` are all 22504 bytes and all hash to
+  `ae2ef0118ef7627a69db02044452e4c96adf2d641c7260dcb5bc813a48da1984`. Per §3 item
+  37 that chain covers the reviewer's scratch file, the worker's saved copy and
+  the mirror; it is not a claim about the bytes emitted into a prompt.
+- THE RECORD: `.agent/live_review.md` 974830 to 983418 bytes, equal to its
+  pre-image plus a newline, GATE_R20, a blank line, RECUR784 and a newline —
+  exactly, with the pre-image a byte-exact prefix. `.agent/prose_slips.md` 125380
+  to 126730 bytes on the same shape for SLIP26. `.agent/plan.md` equals its slice
+  plus one newline at 1869 bytes and 37 lines, under the 50-line cap.
+- THE REPAIR, which is why this round existed: the reviewer reconstructed
+  `docs/agents/planner_reviewer_prompt.md` independently from its pre-edit bytes
+  with only the one pair applied and found it byte-equal to the committed result,
+  92539 to 92529 bytes. The garbled phrase the round-20 slice landed is GONE — it
+  occurred once before and occurs zero times after — and the consolidation it sat
+  inside is undisturbed: 35 items with gaps at exactly 19 and 32, the same reading
+  before and after the repair. NO KNOWN DEFECT OF THIS SESSION IS LEFT ON DISK.
+- THE OPEN SET DID NOT MOVE, which is the point of registering a recurrence rather
+  than an id: `^Gate: ` 30 with `^Gate: R20 — ` at exactly 1; `^Recurrence:
+  R-0784` at 2, this round's and F259's; registrations 301 over 301 DISTINCT ids;
+  `^Done: ` 5 lines over THREE distinct ids; OPEN SET 298 BY DISTINCT ID; and the
+  highest registered id still `R-0816`, which is the proof no new id was minted.
+- SUITES re-run by the reviewer, serially, in the primary checkout: `tests/docs/`
+  exit 0 at 303 passed, the canary `tests/cli/test_golden_path.py` exit 0 at 42
+  passed, and `python3 -m apps.cli.grouped integrity check --json` exit 0 with
+  `"passed": true` and `"fail_count": 0`. `git status --porcelain` EMPTY and
+  `git ls-files .remedy-wt` EMPTY at this verdict.
+
+FIVE ITEMS WERE DECLARED AND ALL FIVE ARE UPHELD. Two are the round correcting
+its own instruments rather than the evidence, which is the right direction in both
+cases: the worker's first checklist counter read 39 items with duplicates because
+its region bounds also caught the verification-tier list, and it fixed the READER
+and re-anchored the region on two lines it asserted unique; and it stated its
+blank-line splitter's exact definition so the reviewer could reproduce it rather
+than match a phrase. The reviewer reproduced both readings independently.
+
+WHY SESSION 7 ENDS HERE, stated as a reason and not as a seam. The honest
+end conditions of operator amendment amend0905-throughput are demonstrably
+exhausted context, a round that explicitly needs a fresh session, or THE REVIEWER
+NOTICING ITS OWN AUTHORING ERRORS ACCUMULATING — which that amendment defines as
+a run of `.agent/prose_slips.md` lines in one session. This session wrote SIX:
+SLIP21 through SLIP26, across six rounds. Five were caught before or during
+execution and cost nothing; the sixth, SLIP26, LANDED IN A COMMITTED DOCS FILE and
+needed this round to repair it. An error reaching disk is the signal that
+distinguishes a working checklist from a tiring one, and the work remaining —
+the evidence job, the review zip, the ledger rotation, the STATUS flip and the
+pull request — is the irreversible, operator-facing half of a closure. It is the
+worst possible place to spend a declining margin. The session therefore ends with
+six PASSED rounds, a tree with no known defect in it, and a closure whose two
+remaining parts are specified commit by commit in `.agent/plan.md`.
