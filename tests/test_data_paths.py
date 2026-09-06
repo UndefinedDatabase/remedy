@@ -377,6 +377,39 @@ class TestJobAndRunLayout:
                   job_evidence_dir(jid, arg_root), run_dir(rid, arg_root)):
             assert env_root not in p.parents, f"{p} ignored its root argument"
 
+    def test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir(
+        self, monkeypatch, tmp_path,
+    ):
+        """The LIVE run store has ONE spelling, built one function on the other.
+
+        ``run_dir`` above is D1's TARGET spelling; this pair is the store as it
+        is TODAY. Until F260 round 11 it was ``pingpong_loop._pingpong_runs_dir``
+        with thirty-nine references hanging off it, and D1's collapse is two
+        function bodies only while the two spellings stay in lock step.
+
+        The ``root`` argument is read against an env root pointing SOMEWHERE
+        ELSE, so a function that quietly drops ``root`` returns the env path and
+        is caught here rather than passing by coincidence.
+        """
+        env_root = tmp_path / "env"
+        arg_root = tmp_path / "arg"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
+        from packages.orchestration.data_paths import (
+            pingpong_run_dir,
+            pingpong_runs_dir,
+        )
+
+        rid = "fedcba9876543210"
+        assert pingpong_run_dir(rid) == pingpong_runs_dir() / rid
+        assert pingpong_run_dir(rid).parent == pingpong_runs_dir()
+
+        assert pingpong_runs_dir(arg_root) == arg_root / "pingpong_runs"
+        assert pingpong_run_dir(rid, arg_root) == arg_root / "pingpong_runs" / rid
+        for p in (pingpong_runs_dir(arg_root), pingpong_run_dir(rid, arg_root)):
+            assert env_root not in p.parents and p != env_root, (
+                f"{p} ignored its root argument and answered from the env root"
+            )
+
     def test_pingpong_job_evidence_paths_equal_the_data_paths_ones(self, monkeypatch, tmp_path):
         """No behaviour change: both call sites return exactly what they returned before."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -651,4 +684,36 @@ class TestJobAndRunLayout:
             "_names_of found no more than _references_to did, so its DEFINITION "
             "arm is dead; a helper revived as an uncalled def would then slip "
             "past the absence guard above"
+        )
+
+    def test_pingpong_loop_has_no_runs_dir_helper_at_all(self):
+        """``pingpong_loop._pingpong_runs_dir`` is GONE, not merely unused.
+
+        Two readings, which round 8 measured to be genuinely different. The
+        ``hasattr`` reading sees the IMPORTED module, so a helper reintroduced by
+        any route — a def, an assignment, a re-export — is caught. The
+        ``_names_of`` reading sees the SOURCE, and it covers ``FunctionDef`` as
+        well as references because a deleted helper comes back as an UNCALLED
+        ``def`` first, which is invisible to a reference-only reading.
+
+        The last assertion is the non-vacuity control: ``hasattr`` must find some
+        OTHER real attribute of ``pingpong_loop``, or the absence above would be
+        measuring an import failure rather than a deleted helper.
+        """
+        from packages.orchestration import pingpong_loop
+
+        assert not hasattr(pingpong_loop, "_pingpong_runs_dir"), (
+            "pingpong_loop._pingpong_runs_dir is back; F260 round 11 deleted it "
+            "so the live ping-pong run store has ONE spelling, "
+            "data_paths.pingpong_runs_dir / pingpong_run_dir"
+        )
+        hits = self._names_of(pingpong_loop, "_pingpong_runs_dir")
+        assert hits == [], (
+            "pingpong_loop names _pingpong_runs_dir at lines "
+            f"{[getattr(n, 'lineno', '?') for n in hits]}; F260 round 11 deleted "
+            "that helper and data_paths.pingpong_run_dir replaced it"
+        )
+        assert hasattr(pingpong_loop, "load_run"), (
+            "hasattr found nothing at all on pingpong_loop; the absence above "
+            "would then be measuring an import failure, not a deleted helper"
         )
