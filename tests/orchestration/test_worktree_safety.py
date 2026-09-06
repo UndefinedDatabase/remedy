@@ -23,7 +23,7 @@ import pytest
 from packages.orchestration import job_evidence as JE
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
-from packages.orchestration.data_paths import pingpong_run_dir
+from packages.orchestration.data_paths import run_dir
 from packages.orchestration.job_evidence import _resolve_result_diff_source
 from packages.orchestration.pingpong_loop import (
     load_run,
@@ -137,7 +137,7 @@ class TestDiffWriteFailureRetainsWork:
             .RECOVERABLE_STATES
         )
         data["job_id"] = "job-x"
-        (pingpong_run_dir(res.run_id) / "result.json").write_text(
+        (run_dir(res.run_id) / "result.json").write_text(
             json.dumps(data, indent=2)
         )
         found = [d["run_id"] for d in find_recoverable_runs("job-x")]
@@ -151,7 +151,7 @@ class TestDiffWriteFailureRetainsWork:
 
         out = resume_worktree_run(res.run_id)
         assert out.recovered is True
-        diff = (pingpong_run_dir(res.run_id) / "result.diff").read_text()
+        diff = (run_dir(res.run_id) / "result.diff").read_text()
         assert "precious work" in diff
         # Only NOW is the physical worktree removed — and the branch is kept.
         assert not path.exists()
@@ -264,7 +264,7 @@ class _Task:
 
 
 def _run_dir_with(tmp_path, monkeypatch, data: bytes = b"diff --git a/a b/a\n") -> Path:
-    runs = pingpong_run_dir("run1")
+    runs = run_dir("run1")
     runs.mkdir(parents=True, exist_ok=True)
     (runs / "result.diff").write_bytes(data)
     return runs

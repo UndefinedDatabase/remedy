@@ -379,7 +379,7 @@ class TestJobPlanResumeAfterCrash:
     def test_the_pre_crash_file_stays_inside_the_task_diff_and_review(
         self, repo, monkeypatch,
     ):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration.data_paths import run_dir
 
         job, handle = self._crashed_job(repo, monkeypatch)
         holder = {"path": handle.path}
@@ -395,7 +395,7 @@ class TestJobPlanResumeAfterCrash:
         assert "partial.txt" in seen["reviewer_prompt"]
         assert "finished.txt" in seen["reviewer_prompt"]
         # Task-local diff, safe-diff file list and apply manifest all carry both.
-        task_diff = (pingpong_run_dir(task.run_id) / "result.diff").read_text()
+        task_diff = (run_dir(task.run_id) / "result.diff").read_text()
         assert "partial.txt" in task_diff and "finished.txt" in task_diff
         assert sorted(task.safe_diff_files) == ["finished.txt", "partial.txt"]
         assert sorted(task.apply_manifest.applied_files) == ["finished.txt", "partial.txt"]

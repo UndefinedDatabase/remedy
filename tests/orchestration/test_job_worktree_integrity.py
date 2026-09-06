@@ -153,7 +153,7 @@ class TestCheckpointRefsSurviveGc:
     def test_resume_after_gc_reviews_pre_crash_and_post_resume_files(
         self, repo, monkeypatch,
     ):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration.data_paths import run_dir
 
         job, handle = self._crashed_two_task_job(repo, monkeypatch)
         _git(repo, "gc", "--prune=now", "--quiet")
@@ -169,7 +169,7 @@ class TestCheckpointRefsSurviveGc:
         t2 = done.tasks[1]
         assert "partial.txt" in seen["reviewer_prompt"]
         assert "finished.txt" in seen["reviewer_prompt"]
-        diff = (pingpong_run_dir(t2.run_id) / "result.diff").read_text()
+        diff = (run_dir(t2.run_id) / "result.diff").read_text()
         assert "partial.txt" in diff and "finished.txt" in diff
         assert "prior.txt" not in diff              # task 1's work is not re-reported
         assert sorted(t2.safe_diff_files) == ["finished.txt", "partial.txt"]

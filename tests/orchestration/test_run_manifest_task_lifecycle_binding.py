@@ -98,8 +98,8 @@ def _finalize(job, *, status="stopped", stop="stop-1", bind=False):
 
 
 def _run_path(job):
-    from packages.orchestration.data_paths import pingpong_run_dir
-    return pingpong_run_dir(job.tasks[0].run_id) / "result.json"
+    from packages.orchestration.data_paths import run_dir
+    return run_dir(job.tasks[0].run_id) / "result.json"
 
 
 def _te(m):
