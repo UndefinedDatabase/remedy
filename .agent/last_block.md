@@ -1,243 +1,283 @@
-STEP T002/5 — F260 · ROUND 10 · THE RESOLVER RETURNS A STRING
+STEP T002/5 — F260 · ROUND 11 · ONE SPELLING FOR THE RUN STORE
 (§3 item 37: every rule line below is exactly sixty-two U+2500 characters, and
 no other line of this block's frame is a run of a repeated character.)
 
 Goal:
-  Make `data_paths.resolve_job_id` return `str` instead of `UUID`, and make the
-  classic loader accept either. This is the one prerequisite DECISION F260 D4
-  named for the ONE resolver: "a `str`-returning resolver cannot replace it
-  until that loader reads the unified record". After this round the two
-  resolvers have the SAME return type, and collapsing them is a small change
-  instead of a forty-call-site sweep.
+  Give the ping-pong RUN store one spelling in `data_paths`, exactly as rounds 6
+  to 8 did for the job store, and DELETE the module-local
+  `pingpong_loop._pingpong_runs_dir` that owns it today. The store does NOT move
+  this round: only its spelling changes, so DECISION F260 D1's collapse of
+  `pingpong_runs/<run_id>/` into `runs/<run_id>/` becomes a change to two
+  function bodies instead of a sweep of every caller. Round 9 proves the
+  ordering works: it turned a 134-site move into a 76-insertion commit.
+  This round also records DECISION F260 D5, moving the resolver collapse from
+  T002 to T004 — the reasoning is measured, and is in the slice itself.
 
-Base: `ce08cfd0da8da2f2ad12237d385d26ea85698f0f` (`ce08cfd0`). Every reading
+Base: `2cedf98c9fbc85c90c85a3ed45cfd257164c7361` (`2cedf98c`). Every reading
 quoted in this block was taken by the reviewer at that commit.
 
 Bundle:
-  C0a  Save this block verbatim as `.agent/authored/f260-r10.md`.
+  C0a  Save this block verbatim as `.agent/authored/f260-r11.md`.
   C0b  Mirror it into `.agent/last_block.md`.
   C1   `.agent/plan.md` ← the PLAN slice, whole-file replacement.
-  C2   `.agent/live_review.md` ← append DONE0814, then GATE_R9, in that order.
-  C3   `.agent/prose_slips.md` ← append the three SLIP lines.
-  C4   THE SIGNATURE CHANGE — see the SPEC below.
-  C5   Handback: rewrite `.agent/handoff.md`.
+  C2   `.agent/live_review.md` ← append GATE_R10.
+  C3   `.agent/prose_slips.md` ← append the two SLIP lines.
+  C4   `docs/roadmap/features/T2_F260.md` ← append the DECISION_D5 slice, and
+       `.agent/decisions.md` ← append the same decision text.
+  C5   THE PRODUCTION SWEEP — see SPEC (1) and (2).
+  C6   THE TEST SWEEP — see SPEC (3).
+  C7   Handback: rewrite `.agent/handoff.md`.
 
 Change set — nothing outside these paths:
-  .agent/authored/f260-r10.md           (new)
+  .agent/authored/f260-r11.md           (new)
   .agent/last_block.md
   .agent/plan.md
   .agent/live_review.md
   .agent/prose_slips.md
+  .agent/decisions.md
   .agent/handoff.md
+  docs/roadmap/features/T2_F260.md
   packages/orchestration/data_paths.py
-  packages/orchestration/storage.py
-  apps/cli/commands/job_stop_cmd.py
-  apps/cli/commands/project.py
+  packages/orchestration/pingpong_loop.py
+  packages/orchestration/pingpong_evidence.py
+  packages/orchestration/pingpong_promote.py
+  packages/orchestration/worktree_resume.py
+  packages/orchestration/job_evidence.py
+  packages/orchestration/repair_attest.py
+  apps/cli/commands/do_cmd.py
   tests/test_data_paths.py
-  tests/cli/test_patch_cmd.py
+  — plus EXACTLY the test files SPEC (3) names, and no other.
 
 ──────────────────────────────────────────────────────────────
-THE BLAST RADIUS IS MEASURED, NOT ESTIMATED — do not re-derive it
+MEASURED AT THE BASE — do not re-derive these
 
-The reviewer applied exactly this change in a disposable worktree at `ce08cfd0`
-and ran the suite. Readings, all reproducible:
-
-  - FULL SUITE, `pytest tests/ -q -n auto`: 20 failed, 19666 passed. FIFTEEN of
-    those twenty are a PARALLELISM artifact, not this change: the same
-    `tests/ui_server/test_command_channel.py`, `tests/ui_server/test_live_state.py`
-    and `tests/orchestration/test_test_runner.py` selections run SERIALLY are
-    262 passed / 0 failed BOTH at the unpatched base AND with the patch applied.
-    They are therefore attributed by demonstration and not by assumption.
-  - THE CHANGE'S REAL COST IS FIVE TESTS, every one of them asserting the RETURN
-    TYPE that is being changed, and ZERO production call sites:
-      tests/test_data_paths.py::TestResolveJobId::test_full_uuid_returns_uuid
-      tests/test_data_paths.py::TestResolveJobId::test_short_prefix_resolves
-      tests/test_data_paths.py::TestResolveJobId::test_full_uuid_works_without_job_file
-      tests/cli/test_patch_cmd.py::TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId::test_a_short_hex_prefix_records_exactly_as_the_full_id_does
-      tests/cli/test_patch_cmd.py::TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId::test_an_uppercase_uuid_records_exactly_as_the_lowercase_one_does
-  - WHY forty call sites cost nothing: `storage.load_job` builds its path as
-    `f"{job_id}.json"`, which formats a `str` and a `UUID` identically, and the
-    call sites pass the resolved value straight into it.
-  - CASE NORMALISATION SURVIVES, which is the property the uppercase test above
-    exists for: with the patch, `resolve_job_id('0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D')`
-    returns `'0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'`. Keep `str(UUID(raw))` on
-    the parse path — `raw` alone would drop the normalisation and redden that
-    test for a real reason.
+  - `pingpong_loop._pingpong_runs_dir` is defined at `pingpong_loop.py:4229` and
+    returns `resolve_data_root() / "pingpong_runs"`. It is the ONLY definition.
+  - THIRTY-NINE references live under `packages/` and `apps/`, in seven modules:
+    `pingpong_loop.py` (12, including the definition), `job_evidence.py` (13),
+    `pingpong_promote.py` (4), `worktree_resume.py` (4), `pingpong_evidence.py`
+    (2), `repair_attest.py` (2) and `apps/cli/commands/do_cmd.py` (2).
+  - NO TEST GUARDS IT. `grep` over `tests/` for the name paired with `assert`,
+    `hasattr` or `def test` returns nothing, so no existing test pins it to
+    `pingpong_loop` and none has to be rewritten to allow the move.
+  - THE EVIDENCE-OWNING GUARD DOES NOT TRIP. `tests/test_data_paths.py`'s
+    `test_no_module_that_owns_job_evidence_spells_the_path_itself` requires ZERO
+    AST references to the name `jobs_dir` in `pingpong_job`, `job_evidence`,
+    `repair_attest` and `do_cmd`. `pingpong_runs_dir` and `pingpong_run_dir` are
+    DIFFERENT names under a reading that matches on the resolved name, so three
+    of those four modules take the new import safely. Do not weaken that guard.
+  - THREE LOCAL VARIABLES ARE NAMED `runs_dir` while holding the PING-PONG runs
+    root: `worktree_resume.py:136`, `job_evidence.py:1498` and
+    `pingpong_loop.py:4271`. `data_paths.runs_dir` is a real and different
+    function, so those names are the misleading-local defect R-0814 was an
+    instance of. SPEC (2) renames them.
 
 ──────────────────────────────────────────────────────────────
-SPEC FOR C4 — described, not sliced; you write the code
+SPEC FOR C5 — described, not sliced; you write the code
 
-(1) `packages/orchestration/data_paths.py`
-    - `resolve_job_id`: annotate `-> str`. On the parse path return
-      `str(UUID(raw))`, NOT `raw` — see the case-normalisation reading above. On
-      the unique-prefix path return `matches[0]` rather than `UUID(matches[0])`.
-      The exit codes and messages do not change.
-    - Its docstring says the return type "says so: a task-job id is sixteen hex
-      characters and `UUID()` rejects it". That reasoning is now carried by the
-      SEARCH rather than by the type, since a `str` could hold either shape.
-      Rewrite it to say the function still searches the CLASSIC store only, that
-      the return is the canonical lowercase id as a string, and that F260 T004
-      is where the two resolvers become one.
-    - Update the `Public API::` block at the top: `resolve_job_id(raw) -> str`.
-    - If `UUID` becomes unused as an import after your edit, check before
-      removing it — `resolve_any_job_id` still parses with it.
+(1) `packages/orchestration/data_paths.py` gains the pair, placed beside the
+    other "where does this live" answers and built one on the other exactly as
+    `job_dir` / `job_record_path` are:
 
-(2) `packages/orchestration/storage.py` — `load_job` and `load_job_safe` take
-    `job_id: UUID | str`. Both spellings must stay accepted, and this is not a
-    hedge: `Job.id` is a `UUID` model field and many callers pass `job.id`
-    directly, so narrowing to `str` here would break real callers that never
-    touch a resolver. Say that in a one-line WHY comment above `load_job`, per
-    the AGENTS.md discoverability convention. Change no behaviour: the path
-    build and both exception paths already format the id.
+      pingpong_runs_dir(root: Path | None = None) -> Path
+          <root>/pingpong_runs — the run store AS IT IS TODAY.
+      pingpong_run_dir(run_id: str, root: Path | None = None) -> Path
+          pingpong_runs_dir(root) / run_id
 
-(3) The two call sites that now wrap a string in `str()`:
-    `apps/cli/commands/job_stop_cmd.py:119` reads
-    `job_id = str(resolve_job_id(job_id))` and
-    `apps/cli/commands/project.py:449` reads
-    `resolved_id = str(resolve_job_id(job_id_str))`. Drop the redundant `str(`
-    call at both. Re-grep both line numbers before editing — they were read at
-    `ce08cfd0` and this round's own commits do not move them, but §3 item 9 asks
-    for the check rather than the assumption.
+    Both take `root` and honour it, like every other function in the module.
+    Add them to the `Public API::` block at the top.
+    Write the WHY comment above the pair, in the idiom the module already uses:
+    these name the store as it is today, DECISION F260 D1 says a run belongs at
+    `<data_root>/runs/<run_id>/`, and giving the live store one spelling is what
+    makes that move two function bodies instead of a sweep. Say plainly that
+    `run_dir` above is the TARGET spelling and this pair is the LIVE one, which
+    is the same relationship `job_dir` and `task_job_dir` had before round 9
+    collapsed them — and that the collapse here is F260 T002's remaining work.
 
-(4) The five tests named above. Each asserts the resolver's result equals a
-    `UUID`; make each compare against the STRING form. In
-    `tests/test_data_paths.py` that is `str(uid)` and in
-    `tests/cli/test_patch_cmd.py` it is `str(job.id)`.
-    RENAME `test_full_uuid_returns_uuid` — it now returns a string, so the name
-    states the opposite of what it asserts. Name it for the property it really
-    pins: a full UUID resolves to its own canonical string form.
-    Do NOT weaken the uppercase test. Its point is that the RESOLVED id is
-    canonical lowercase, and that property survives this change; asserting
-    against `shouted` instead of `str(job.id)` would delete the test's reason to
-    exist.
+(2) DELETE `pingpong_loop._pingpong_runs_dir` and move all thirty-nine
+    references onto the new pair. Where a site builds `_pingpong_runs_dir() /
+    <run id>` by hand, use `pingpong_run_dir(<run id>)` instead — that
+    hand-built join is the same shape whose job-store twin was finding R-0814's
+    root cause, and leaving it would keep the defect alive one directory over.
+    Where a site legitimately wants the ROOT (an iteration, an existence check),
+    use `pingpong_runs_dir()`.
+    Check whether each module imports `data_paths` at module level or inside
+    function bodies, and follow that file's existing convention.
+    RENAME the three misleading locals named `runs_dir` to `pp_runs_root` at
+    `worktree_resume.py:136`, `job_evidence.py:1498` and `pingpong_loop.py:4271`
+    and at every use of each within its own function. Re-grep all three line
+    numbers before editing: they were read at `2cedf98c` (§3 item 9).
+
+(3) FOR C6 — the test sweep. Move every `_pingpong_runs_dir` reference under
+    `tests/` onto the same pair, by the same rule. The reviewer measured the
+    reference counts per file at `2cedf98c`; use them as a CHECKLIST and report
+    any file where your own count differs:
+      test_pingpong_promote.py 46 · test_job_evidence.py 8 · test_failure_wiring.py 4
+      test_worktree_safety.py 4 · test_pingpong_cli.py 3 · test_worktree_isolation.py 3
+      test_job_worktree_integration.py 3 · test_worktree_resume_cli.py 2
+      test_stream_export_e2e.py 2 · test_run_manifest_ledger_semantics.py 2
+      test_worktree_persistence.py 2 · test_worktree_lifecycle.py 2
+      test_persisted_run_call_schema.py 2 · test_persisted_call_episode_membership.py 2
+      test_job_worktree_integrity.py 2 · test_run_manifest_zero_call_expectations.py 2
+      test_job_worktree_handoff.py 2 · test_run_manifest_task_lifecycle_binding.py 2
+      test_repair_loop.py 2 · test_persisted_call_ownership.py 2
+    All twenty are under `tests/orchestration/`. If C6 would exceed the
+    AGENTS.md 500-insertion cap, SPLIT it by file into two commits and say so.
+
+(4) ADD to `tests/test_data_paths.py`, inside `TestJobAndRunLayout`, two tests
+    mirroring the ones round 9 added for the job store:
+    (A) `test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir` —
+        `pingpong_run_dir(rid) == pingpong_runs_dir() / rid`, and the `root`
+        argument is honoured by BOTH against an env root pointing somewhere
+        else, so a function that drops `root` cannot pass by coincidence.
+    (B) `test_pingpong_loop_has_no_runs_dir_helper_at_all` — the deleted-name
+        guard, in the two readings round 8 proved are different:
+        `hasattr(pingpong_loop, "_pingpong_runs_dir")` is False, AND the
+        `_names_of` helper already in this file (which covers `FunctionDef` as
+        well as references, because a revived helper comes back as an uncalled
+        `def` first) finds zero for that name in `pingpong_loop`. Include the
+        non-vacuity assertion the round-8 test carries: `hasattr` must find some
+        OTHER real attribute of `pingpong_loop`, or the absence above would be
+        measuring an import failure rather than a deleted helper.
 
 ──────────────────────────────────────────────────────────────
 CONSTRAINTS
 
  1. Apply every authored slice BYTE FOR BYTE. If a slice or a gate looks wrong,
-    apply it as given and DECLARE the defect in the handback. Never repair a
-    slice. Two of this block's predecessors carried gate defects the worker
-    caught; that is the most valuable thing a handback contains.
- 2. Change-set discipline: no path outside the list above. The list bounds
-    WRITES; it does not bound the reads, probes or worktrees you need.
- 3. `.agent/plan.md` stays under 50 lines (AGENTS.md); the PLAN slice was
-    measured against that cap before emission.
- 4. Both appends are to files ending with exactly ONE newline at `ce08cfd0`,
-    measured: `.agent/live_review.md` at 904283 bytes and
-    `.agent/prose_slips.md` at 101682 bytes. Derive each append recipe from its
-    own target's terminal byte; never copy one recipe to the other.
- 5. Slice shapes, classified before emission: DONE0814, GATE_R9 and the three
-    SLIPs are all APPENDS with no FROM; PLAN is a whole-file REWRITE with no
-    FROM. No pair in this block has a FROM, so no containment test applies and
-    no FROM-zero count is ordered anywhere.
- 6. THE `Landed: R-0814` LINE AT `.agent/live_review.md` IS NOT TOUCHED. The
-    record is append-only (§3 item 20), and the DONE0814 paragraph is appended
-    at the END of the file like every other paragraph. Do not splice, do not
-    delete, do not rewrite that line.
- 7. C2 appends DONE0814 FIRST and GATE_R9 SECOND. That order is the one §4 item
-    4 fixes — findings and their resolutions before verdicts — and the round-3
-    entry of this same ledger records it being applied.
- 8. `git status --porcelain` is EMPTY at the handback. Every destructive check
-    runs in a disposable `git worktree`, never in the primary checkout
-    (self-drive protocol G5).
- 9. AGENTS.md throughout: self-review loop before every commit, 500-insertion
+    apply it as given and DECLARE the defect. Never repair a slice, and never
+    reshape code to make a reviewer's gate go green. Both of the last two rounds
+    contained reviewer gate defects that only a declared deviation exposed.
+ 2. Change-set discipline: no path outside the list above and the twenty test
+    files SPEC (3) names. The list bounds WRITES, not reads or worktrees.
+ 3. `.agent/plan.md` stays under 50 lines; the PLAN slice was measured against
+    that cap before emission.
+ 4. Both `.agent/` appends target files ending with exactly ONE newline at
+    `2cedf98c`, measured: `.agent/live_review.md` at 912232 bytes and
+    `.agent/prose_slips.md` at 105750 bytes. Derive each recipe from its own
+    target's terminal byte.
+ 5. Slice shapes, classified before emission and stated per target, because
+    DECISION_D5 has a DIFFERENT shape in each of its two targets:
+      GATE_R10 — APPEND at end of `.agent/live_review.md`.
+      SLIP7, SLIP8 — APPEND at end of `.agent/prose_slips.md`.
+      DECISION_D5 — INSERTION into `docs/roadmap/features/T2_F260.md`, between
+        the end of DECISION F260 D4 and the `## Design` heading; and an APPEND
+        at end of `.agent/decisions.md`.
+      PLAN — whole-file REWRITE of `.agent/plan.md`.
+    No pair in this block has a FROM, so no containment test applies and no
+    FROM-zero count is ordered anywhere. An INSERTION is not an append and its
+    proof is whole-file identity, which G4(b) orders.
+ 6. The DECISION_D5 slice is appended to `docs/roadmap/features/T2_F260.md` so
+    that it lands INSIDE the `## DECISIONs` section, after DECISION F260 D4 and
+    BEFORE the `## Design` heading — a decision filed under Design would not be
+    found by a reader following the file's own structure. Measure where that
+    boundary is and say which line you inserted at. The same text is APPENDED at
+    the end of `.agent/decisions.md`.
+ 7. `git status --porcelain` is EMPTY at the handback. Destructive checks run
+    only in a disposable `git worktree` (self-drive protocol G5).
+ 8. AGENTS.md throughout: self-review loop before every commit, 500-insertion
     cap counting INSERTIONS only, push after committing, no force push, no work
     on `main`, no merge, no pull request.
 
 ──────────────────────────────────────────────────────────────
 DONE WHEN — eight gates, each RUN and its real exit code recorded
 
-G1 TRANSPORT — one digest. `sha256sum .agent/authored/f260-r10.md` equals the
+G1 TRANSPORT — one digest. `sha256sum .agent/authored/f260-r11.md` equals the
    digest named in the delegation that carried this block, and the same digest
-   over `.agent/last_block.md`. One reading, not a chain. Per §3 item 37 this
-   covers the saved copy and its mirror and is not a claim about emitted bytes.
+   over `.agent/last_block.md`. One reading, not a chain.
 
-G2 THE RECORD — full byte forensics on the two-paragraph append.
-   (a) EXACT IMAGE, not a length check: the post-image at C2 EQUALS
-       `pre + b"\n" + DONE0814 + b"\n\n" + GATE_R9 + b"\n"` byte for byte, where
-       `pre` is the file at `ce08cfd0`. State the measured length beside it.
-       This gate is worded as an equality ON PURPOSE: round 9's version asked
-       for a length plus a prefix, and neither of those can reject a same-length
-       byte substitution, so its negative control could not pass in any round.
-   (b) STRUCTURAL, independent of (a): split the post-image on `"\n\n"`; the
-       last TWO units, with the file's terminating newline stripped from the
-       final one, equal DONE0814 and GATE_R9 IN THAT ORDER. Units run 428 → 430.
-   (c) NEGATIVE CONTROL on the FIRST appended paragraph (§3 item 36): flip ONE
-       byte inside DONE0814 as it sits in the post-image and confirm readings
-       (a) and (b) BOTH reject it. Restore and confirm both accept again.
-   (d) POPULATIONS after C2: `^Gate: ` headers 19, all distinct;
-       `^- R-\d{4} — ` registrations 299 over 299 distinct ids;
-       `^Done: R-\d{4} — ` lines 5 over THREE distinct ids;
-       `^Landed: R-0814 — ` still exactly 1, byte-identical to `ce08cfd0`.
+G2 THE RECORD. (a) EXACT IMAGE: the post-image at C2 EQUALS
+   `pre + b"\n" + GATE_R10 + b"\n"` byte for byte; state the measured length.
+   (b) STRUCTURAL: split on `"\n\n"`; the last unit with the terminating newline
+   stripped equals GATE_R10; units run 430 → 431. (c) NEGATIVE CONTROL: flip one
+   byte inside the appended paragraph and confirm (a) AND (b) both reject, then
+   restore and confirm both accept. (d) After C2: `^Gate: ` headers 20, all
+   distinct; registrations 299 over 299 distinct ids; `^Done: ` 5 lines over 3
+   distinct ids; open set 296 by distinct id.
 
 G3 THE SLIPS. The post-image EQUALS
-   `pre + b"\n" + SLIP4 + b"\n\n" + SLIP5 + b"\n\n" + SLIP6 + b"\n"` byte for
-   byte; blank-line units run 134 → 137, a rise of exactly THREE, one per slip.
+   `pre + b"\n" + SLIP7 + b"\n\n" + SLIP8 + b"\n"` byte for byte; blank-line
+   units run 137 → 139, a rise of exactly TWO, one per slip.
 
-G4 THE PLAN. `.agent/plan.md` equals the PLAN slice plus exactly one trailing
-   newline, byte for byte, and its line count is under 50.
+G4 THE PLAN AND THE DECISION.
+   (a) `.agent/plan.md` equals the PLAN slice plus exactly one trailing newline
+       and is under 50 lines.
+   (b) `docs/roadmap/features/T2_F260.md`, proved as an INSERTION by WHOLE-FILE
+       IDENTITY and not by a substring count: let `pre` be the file at
+       `2cedf98c` and `off` the byte offset you inserted at; then the post-image
+       EQUALS `pre[:off] + <the inserted bytes> + pre[off:]` exactly, so nothing
+       outside the insertion point moved. Report `off` and the inserted length.
+       Then, as the structural half: the DECISION_D5 text occurs EXACTLY ONCE;
+       the file still ends with exactly one newline; `^### DECISION F260 D`
+       matches SIX times with D0, D1, D2, D3, D4 and D5 each exactly once; and
+       the byte offset of the D5 heading is GREATER than that of the D4 heading
+       and LESS than that of the `## Design` heading — the placement constraint
+       6 orders. Measured at the base for you: D4's heading is at offset 13104
+       and `\n## Design` at 15565, so a correct `off` lies between them.
+   (c) The same text occurs exactly once in `.agent/decisions.md`.
 
-G5 THE RESOLVER CONTRACT, read from the SHIPPED function with
-   `REMEDY_DATA_DIR` at a scratch directory.
-   (a) TYPE: `resolve_job_id` returns an instance of `str` and never of `UUID`,
-       for BOTH the full-id form and the unique-prefix form. Assert on
-       `isinstance`, not on the annotation — an annotation is not a behaviour.
-   (b) CASE: an UPPERCASE full uuid resolves to the canonical LOWERCASE string.
-       This is the property the uppercase test exists for and the one a naive
-       `return raw` silently destroys.
-   (c) EXIT CODES UNCHANGED: an ambiguous prefix still exits 2, an unmatched
-       prefix and an invalid string still exit 1.
-   (d) THE LOADER TAKES BOTH: with a classic job on disk, `storage.load_job`
-       returns the same `Job` for `job.id` (a `UUID`) and for `str(job.id)`.
-       NON-VACUITY: assert the two returned records are equal AND that the id
-       really was passed in two different types, so a loader that ignored its
-       argument could not pass.
+G5 THE SPELLING IS ONE, AND THE OLD NAME IS GONE.
+   (a) `hasattr(pingpong_loop, "_pingpong_runs_dir")` is False, and
+       `hasattr(data_paths, n)` is True for `pingpong_runs_dir` and
+       `pingpong_run_dir`. The second half is the non-vacuity control.
+   (b) By AST over every TRACKED `.py` file under `packages/`, `apps/` and
+       `tests/`, references AND definitions resolving to exactly
+       `_pingpong_runs_dir` number ZERO. Use a reading that covers `FunctionDef`
+       as well as `Name`, `Attribute` and `alias` — round 8 measured that a
+       revived helper is a `def` and is INVISIBLE to a reference-only reading.
+       NON-VACUITY CONTROL: the same reading over `pingpong_run_dir` is
+       NON-ZERO. Both halves were run at the base: at `2cedf98c`
+       `_pingpong_runs_dir` is non-zero, so this gate can fail.
+   (c) The literal `pingpong_runs` occurs under `packages/`, `apps/` and
+       `tests/` ONLY inside `packages/orchestration/data_paths.py`. Report the
+       count and the file list rather than asserting a total the block names —
+       and note this gate is deliberately NOT "zero everywhere", because
+       `data_paths` is where the string now lives and a zero-gate would be
+       unmeetable by construction. Round 9's G5(c) was exactly that mistake.
+   (d) VALUE, with `REMEDY_DATA_DIR` at a scratch directory:
+       `pingpong_run_dir(r)` equals `pingpong_runs_dir() / r`, and both honour a
+       `root` argument set to a DIFFERENT directory from the env root.
 
-G6 THE SUITES, run SERIALLY, each exit code recorded separately. Every one of
-   these was GREEN at `ce08cfd0` when the reviewer ran it, so any red is this
-   round's:
-     `pytest tests/test_data_paths.py tests/cli/test_patch_cmd.py -q -p no:randomly`
-     `pytest tests/cli/ -q -p no:randomly`
-     `pytest tests/ui_server/test_command_channel.py
-      tests/ui_server/test_live_state.py tests/orchestration/test_test_runner.py
-      -q -p no:randomly`                                    (262 passed at base)
-   The second group carries the canary `tests/cli/test_golden_path.py`. The
-   third group is here BECAUSE the reviewer's parallel probe reddened it: run
-   serially it is green, and this round must show that it stays green. Also run
+G6 THE SUITES, run SERIALLY, each exit code recorded separately, never piped:
+     `pytest tests/test_data_paths.py -q -p no:randomly`
+     `pytest tests/orchestration/ -q -p no:randomly`
+     `pytest tests/cli/test_golden_path.py -q -p no:randomly`   (the canary)
+     `pytest tests/docs/ -q -p no:randomly`   (this round writes docs/roadmap/**,
+       which the §3 docs-round tier requires; run it AFTER C4)
+   Report the passed count and exit code for each. Also run
    `python3 -m apps.cli.grouped integrity check --json` and record `passed`,
    `fail_count` and the check count.
 
-G7 THE MUTATION RED-PROOF, in a disposable `git worktree` at the C4 commit,
+G7 THE MUTATION RED-PROOF, in a disposable `git worktree` at the C6 commit,
    `__pycache__` purged, `python3 -B`, and the module confirmed to resolve from
    THAT worktree before any colour is trusted.
-   (i)   UNMUTATED CONTROL FIRST in that worktree, over
-         `tests/test_data_paths.py tests/cli/test_patch_cmd.py`: record exit
-         code AND passed count. A colour with no baseline is not evidence.
-   (ii)  Change the parse path to `return raw` (dropping the normalisation).
-         The uppercase test must FAIL. Name the failing node id.
-   (iii) Change `resolve_job_id`'s prefix path back to `return UUID(matches[0])`.
-         At least one type assertion of G5(a) must FAIL. Name the node id.
-   (iv)  Restore after EACH mutation and confirm the control is green again, and
+   (i)   UNMUTATED CONTROL FIRST over `tests/test_data_paths.py`: exit code AND
+         passed count.
+   (ii)  Make `pingpong_run_dir` ignore its `root` argument. Test (A) must FAIL.
+   (iii) Re-add `_pingpong_runs_dir` to `pingpong_loop` as an uncalled `def`.
+         Test (B) must FAIL — and note which of its two readings catches it: a
+         `def` is invisible to a reference-only reading, which is the whole
+         reason (B) carries both.
+   (iv)  Restore after EACH mutation, confirm the control is green again, and
          confirm `git diff` in that worktree is empty after the last restore.
-   Name each revert target by PATH and verify the bytes you replace occur
-   EXACTLY ONCE in that file before editing (§3 item 25).
+   Name each revert target by PATH and verify the bytes you replace occur EXACTLY
+   ONCE in that file before editing (§3 item 25) — round 10's first two candidate
+   targets were both non-unique, so expect the same here.
 
-G8 LINT AND CLEAN TREE. `ruff check` over exactly the six change-set paths under
-   `packages/`, `apps/` and `tests/` exits 0 — the reviewer measured that
-   file-scoped reading green at the base, while `ruff check packages/` is RED
-   there with pre-existing errors that are not this feature's, which is why the
-   gate is file-scoped. Then `git status --porcelain` and
-   `git ls-files .remedy-wt` are both EMPTY.
+G8 LINT AND CLEAN TREE. `ruff check` over exactly the production and test paths
+   this round edited exits 0 — file-scoped on purpose, because `ruff check
+   packages/` and `ruff check tests/orchestration/` are RED at the base with
+   pre-existing errors that are not this feature's. Then `git status
+   --porcelain` and `git ls-files .remedy-wt` are both EMPTY.
 
 ──────────────────────────────────────────────────────────────
 HANDBACK
 
 Rewrite `.agent/handoff.md` per docs/agents/handback_template.md: feature and
 round, `SESSION 3 of feature F260`, branch, commit SHAs, the changed-files table
-with its `+/-` column read from `git diff --numstat` and never re-derived by eye
-(§3 item 28), ONE LINE PER GATE with its real exit code, the open-findings count
-BY DISTINCT ID, and the next expected action. No length cap applies. Declare
-every deviation, including any place this block is wrong.
+with its `+/-` column from `git diff --numstat` and never re-derived by eye (§3
+item 28), ONE LINE PER GATE with its real exit code, the open-findings count BY
+DISTINCT ID, the item-status table, the next expected action, and every
+deviation — including any place this block is wrong. No length cap.
 
 ──────────────────────────────────────────────────────────────
 AUTHORED SLICES
@@ -246,33 +286,73 @@ A slice is the bytes of the lines strictly BETWEEN its BEGIN and END marker
 lines, joined by `"\n"`, carrying NO trailing newline. The marker lines are
 never part of any slice and never reach any file.
 
-<<<BEGIN DONE0814>>>
-Done: R-0814 — RESOLVED at F260 R9, and the reviewer verified all three of the fix conditions this finding carries rather than reading them from the handback. FIRST, no module-local `_jobs_dir` in `packages/orchestration/pingpong_job.py`: `hasattr(pingpong_job, "_jobs_dir")` is False and the AST reading finds zero references, landed at R8 in `b92d096f`. SECOND, every evidence path is built from the same directory function as the record path: at `01c8c692` both `data_paths.job_record_path` and `data_paths.job_evidence_dir` are built on `data_paths.job_dir`, and `pingpong_job._persist_job` writes through the first while `pingpong_job.job_evidence_dir` returns the second, so the split root that produced this finding no longer has two roots to disagree about. THIRD, a test asserts that a job's record and its evidence resolve under one root: `test_a_persisted_pingpong_job_writes_its_record_under_its_own_job_dir` in `tests/test_data_paths.py` runs the SHIPPED writer, reads the bytes it left, and asserts `written == data_paths.job_record_path(job.job_id)` and `pingpong_job.job_evidence_dir(job.job_id).parent == data_paths.job_dir(job.job_id)` — a reading of the writer rather than a comparison of two accessors, which is what the accessor-only tests of R6 and R7 could not give. THE REVIEWER'S OWN MUTATION PROOF, run in a disposable worktree at `01c8c692` with the module confirmed to resolve from that worktree: the unmutated control is exit 0 at 46 passed; pointing `data_paths._task_job_id_matches` back at a literal `task_jobs` directory reddens `test_a_pingpong_record_in_the_jobs_dir_is_still_resolvable_beside_a_classic_one` with the exact stderr `Error: no job matches prefix '0123456789abcdef'`, which is the `remedy teach narrate` regression of 2026-08-25 reproduced on demand and the reason the writer and its reader had to move in ONE commit; making `_persist_job` write to `jobs_dir() / job.job_id / "record.json"` reddens the one-root test AND, unpredicted by the round-9 block, `test_no_module_that_owns_job_evidence_spells_the_path_itself[packages.orchestration.pingpong_job]`, because that mutation injects a `jobs_dir` reference into a module the round-7 guard forbids to hold one — which is that guard demonstrating from the other side that it is live and that the R9 change genuinely does not trip it. The control was green again after each restore. NOT CLAIMED HERE: the classic store `<data_root>/jobs/<uuid>.json` still exists beside the moved record, and `<data_root>/jobs/` now holds both `<uuid>.json` FILES and `<16hex>/` DIRECTORIES; the two are told apart by `_classic_job_id_matches` globbing `*.json` and `_task_job_id_matches` requiring a directory holding a `job.json`, proved by a test that plants both shapes plus a `job.json`-less directory in one directory and resolves each to exactly one match. Deleting the classic store is F260 T004's work and is not part of this resolution.
-<<<END DONE0814>>>
+<<<BEGIN GATE_R10>>>
+Gate: R10 — the F260 R10 entry. R10 MADE THE CLASSIC RESOLVER RETURN A STRING AND THE CLASSIC LOADER TAKE EITHER SPELLING. VERDICT PASS. Range ce08cfd0..2cedf98c, seven commits, all single-parent, pushed to `origin/feature/f260-one-world`, no pull request created; largest insertion count 320, a single `.agent/**` state write, and largest code commit 37, both far under the AGENTS.md 500-insertion cap. THE REVIEWER RE-RAN EVERY GATE ITSELF and reproduced every number the worker reported. TRANSPORT: one digest `28a3d69386e087be9fb6c8bd723592cc8121e60c5417686eea53e02fe6545f87` across the reviewer's scratch original, the saved copy at `.agent/authored/f260-r10.md` and the mirror at `.agent/last_block.md`; per §3 item 37 that chain covers those three artefacts and is not a claim about bytes emitted into a prompt. THE RECORD: 904283 to 912232 bytes, and the post-image is EQUAL to the pre-image plus a newline plus the 2934-byte DONE0814 slice plus two newlines plus the 5011-byte GATE_R9 slice plus a newline — an exact-image equality rather than a length check, which is the repair SLIP4 called for. Blank-line units ran 428 to 430 and the last two units are DONE0814 FIRST and GATE_R9 second, the order §4 item 4 requires. The negative control now WORKS: a byte flipped inside the FIRST appended paragraph is rejected by BOTH readings and both accept again after the restore, where round 9's wording could be satisfied by no run at all. Registrations 299 over 299 DISTINCT ids, `Done:` 5 lines over THREE distinct ids, nineteen `Gate:` headers, open set 296 BY DISTINCT ID, and the `Landed: R-0814` line survives BYTE-IDENTICAL to its image at `ce08cfd0`, which constraint 6 required and the reviewer verified by comparing the two lines rather than by counting them. THE SLIPS: 101682 to 105750 bytes by the same exact-image reading, units 134 to 137, a rise of exactly THREE. THE RESOLVER CONTRACT, read by the reviewer from the SHIPPED function against a scratch data root with a real classic job on disk: `resolve_job_id` returns a `str` and NOT a `UUID` for the full-id form and for the unique-prefix form alike, measured by `isinstance` rather than from the annotation; an UPPERCASE full uuid resolves to the canonical LOWERCASE string, which is the property a naive `return raw` destroys silently; the exit codes are unchanged at 2 for an ambiguous prefix and 1 for both an unmatched prefix and an invalid string; and `storage.load_job` returns the SAME record for `job.id` and for `str(job.id)`, with the two argument types confirmed to differ so a loader ignoring its argument could not pass. THE SUITES, re-run serially by the reviewer, all exit 0 at 59, 1537 and 203 — the middle one carrying the canary — and `integrity check --json` returned `"passed": true` with `"fail_count": 0` over 5 checks. THE MUTATION RED-PROOF REPRODUCES INDEPENDENTLY in the reviewer's own disposable worktree at `d2af8906`, with the module confirmed to resolve from it and the control at exit 0 and 59 passed: dropping the normalisation to `return raw` reddens exactly `test_an_uppercase_uuid_records_exactly_as_the_lowercase_one_does`, and restoring the prefix path to `return UUID(matches[0])` reddens both `test_short_prefix_resolves` and `test_a_short_hex_prefix_records_exactly_as_the_full_id_does`; `git diff` was empty after each restore and the control was green again. Neither revert target was unique in its file on the first reading — `return str(UUID(raw))` and `return matches[0]` each occur twice, once per resolver — so both were anchored on a longer span verified to occur exactly once, which is §3 item 25 doing its job rather than being recited. RUFF over exactly the six changed paths exits 0. THE WORKER DECLARED FIVE DEVIATIONS AND EVERY ONE IS UPHELD. The first is a reviewer numeral error the reviewer confirmed at the base: gate G6's third group named three files and carried the figure 262, which the reviewer had measured over a FIVE-file selection during its blast-radius probe and then attached to a three-file gate; the true base and post-change reading is 203, `git log` over those three paths across this range is empty, and the gate's real property — serially green before and after — holds. The second and third are corrections beyond the SPEC and both are right: `resolve_any_job_id`'s docstring still claimed `resolve_job_id` "returns a `UUID`, which a 16-hex task-job id can never be", a sentence this round makes false, and `JobNotFoundError.__init__` needed `UUID | str` because `load_job` now passes a `str` into it and the project configures mypy, so leaving it would have INTRODUCED a type error rather than avoided one. The fourth notes that G7(iii) demanded a pytest node id from a clause whose subject is a probe with no node id, and the worker satisfied both halves rather than picking one. THE BLAST RADIUS THIS ROUND RESTED ON WAS MEASURED, NOT ESTIMATED, and the measurement is worth recording because its first reading was misleading: patching the signature in a disposable worktree and running the full suite gave 20 failures, of which FIFTEEN were a `-n auto` PARALLELISM artifact — the same `tests/ui_server/` and `test_test_runner.py` selections are green run serially BOTH at the unpatched base and with the patch applied — leaving exactly five real failures, every one of them a test asserting the return type being changed, and ZERO production call sites, because `storage.load_job` builds its path by formatting the id and forty call sites pass the resolved value straight into it. Attributing those fifteen by demonstration rather than by assumption is what docs/agents/integration_gate.md step 3 asks for, and it is the difference between a round scoped at five tests and a round abandoned as too large.
+<<<END GATE_R10>>>
 
-<<<BEGIN GATE_R9>>>
-Gate: R9 — the F260 R9 entry. R9 MOVED THE PING-PONG RECORD UNDER THE ONE JOBS ROOT AND RESOLVED R-0814. VERDICT PASS. Range 1523fde1..ce08cfd0, eight commits, all single-parent, pushed to `origin/feature/f260-one-world`, no pull request created; largest insertion count 400, a single `.agent/**` state write, and largest code commit 76, both under the AGENTS.md 500-insertion cap. THE REVIEWER RE-RAN EVERY GATE ITSELF rather than reading the handback's numbers, and reproduced every number the worker reported. TRANSPORT: one digest `746c9953166920d3a6304bb115e47334ab07fb1db3916a0c9f658b83272c71c7` across the reviewer's scratch original, the saved copy at `.agent/authored/f260-r9.md` and the mirror at `.agent/last_block.md`, with `cmp` silent for both pairs; per §3 item 37 that chain covers those three artefacts and is not a claim about the bytes emitted into the prompt. THE RECORD: 898817 bytes to 902842 at C2, a growth of 4025 equal to a newline plus the 4023-byte slice plus a newline, with the post-image EQUAL to the pre-image plus that exact append and the last blank-line unit equal to the slice byte for byte; then to 904283 at C5, a growth of 1441 for the 1439-byte `Landed:` line the worker measured and reported. Blank-line units ran 426 to 427 to 428. Registrations 299 over 299 DISTINCT ids, `Done:` lines 4 over only TWO distinct ids, eighteen `Gate:` headers, and `Landed: R-0814` exactly once. THE SLIPS: 97989 to 101682 bytes, an image EQUAL to the pre-image plus the three slices with two-newline separators, units 131 to 134 — a rise of exactly THREE, one per slip. THE MOVE IS COMPLETE. By AST over 1030 tracked Python files under `packages/`, `apps/` and `tests/`, references resolving to exactly `task_jobs_dir`, `task_job_dir` or `task_job_record_path` number ZERO, against a non-vacuity control of 76 for `job_dir`; `hasattr(data_paths, n)` is False for all three deleted names and True for the five survivors; and with a scratch root, `job_dir`, `job_record_path`, `job_evidence_dir` and `run_dir` all honour a `root` argument set to a different directory from the environment root. THE SUITES, re-run serially by the reviewer, all exit 0 at 93, 165 and 186 — 444 tests — with the canary among them, and `integrity check --json` returned `"passed": true` with `"fail_count": 0` over 5 checks. The count of 93 is unchanged from the base because C4 deleted the two task-layout tests whose functions no longer exist and C5 added two, leaving `tests/test_data_paths.py` at 42 test functions before and after. THE MUTATION RED-PROOF REPRODUCES INDEPENDENTLY, in the reviewer's own disposable worktree at `01c8c692` with both modules confirmed to resolve from it: control exit 0 at 46 passed; the matcher pointed back at `task_jobs` reddens exactly the resolvability test with `Error: no job matches prefix`; the writer moved off `job_record_path` reddens the one-root test and also the evidence-owning guard; and `git diff` was empty after each restore with the control green again. RUFF over exactly the fourteen changed paths exits 0, scoped to files because `ruff check packages/` and `ruff check tests/orchestration/` are red at the base with pre-existing errors that are not this feature's. TWO GATE CLAUSES WENT RED AND BOTH ARE THE REVIEWER'S DEFECTS, NOT THE WORKER'S, and the reviewer reproduced both. G2(c) demanded that a byte flip be rejected by reading (a) as well as by reading (b), but (a) was worded as a length equality plus a prefix test and a same-length substitution changes neither, so no run could satisfy it; the protection was intact throughout because (b) rejects the flip, and the round-10 block rewords (a) as an exact-image equality. G5(c) required the literal `task_jobs` to occur zero times under `packages/`, `apps/` and `tests/`, while the SAME block's SPEC ordered a test asserting the record is not filed under a `task_jobs` component — an assertion that must contain the literal. All three surviving occurrences are inside that ordered test in `tests/test_data_paths.py` and there are ZERO anywhere else, so the move itself is complete and only the gate was unmeetable; it is §3 item 2, the self-counting gate, written by the checklist's own author. THE WORKER DECLARED EIGHT DEVIATIONS AND EVERY ONE IS UPHELD; three are worth the record. It applied the SPEC and refused to reword the test to shrink the count a reviewer gate demanded, which is the correct precedence and the reason the defect is visible at all. It found two stale sites the block's own list missed, both inside files the block already named — a comment calling four names "FOUR DIFFERENT names" where the deletion leaves three, and a docstring naming the deleted `task_job_dir` — and corrected the numeral with the list, which is §3 item 16 applied by the worker to the reviewer's omission. And its G7(iii) run reddened a second, unpredicted test, which it recognised as the evidence-owning guard proving itself live rather than as a failure of its own change.
-<<<END GATE_R9>>>
+<<<BEGIN SLIP7>>>
+2026-09-06 · F260 R10 (reviewer) · Gate G6 of the round-10 block named a THREE-file group — `tests/ui_server/test_command_channel.py`, `tests/ui_server/test_live_state.py` and `tests/orchestration/test_test_runner.py` — and annotated it "(262 passed at base)". That figure came from a FIVE-file selection the reviewer had run during its blast-radius probe, which also carried `tests/test_data_paths.py` and `tests/cli/test_patch_cmd.py`, and the reviewer attached it to the three-file gate without re-running the smaller selection. The worker measured the real base at 203, and the reviewer confirmed 203 independently at `2cedf98c`; `git log` over those three paths across the round's range is empty, so no test was lost and only the numeral was wrong. THE LESSON is §3 item 16 as widened by finding R-0585 — resolve every count to the LIST IT NAMES, wherever that list lives — arriving through a reviewer's own scratch measurement rather than through a drifting body: a number measured over one selection may not be carried onto a different selection, and the cheap counter-measure is to re-run the exact command the gate orders, which §3 item 12 already requires and which was not done for this one clause. Reviewer-prose numeral error in a gate annotation; the gate's load-bearing property was measured and holds, and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
+<<<END SLIP7>>>
 
-<<<BEGIN SLIP4>>>
-2026-09-06 · F260 R9 (reviewer) · Gate G2(c) of the round-9 block ordered a negative control no run could satisfy: it required a byte flipped inside the appended paragraph to be rejected by reading (a) AS WELL AS reading (b), while reading (a) was worded as "length equals pre plus the slice plus two newlines, and the pre-image is a byte-exact PREFIX". A same-length byte substitution inside the appended region changes neither the length nor the prefix, so (a) accepts it by construction. The reviewer reproduced this independently at offset 898918 of the C2 post-image: (a) accepts, (b) rejects, and both accept again after the restore — so the record was protected the whole time by the structural reading alone. THE LESSON: a byte-level reading of an append must be an EXACT IMAGE equality against `pre + separator + slice + terminator`, never a length plus a prefix, because the two properties a prefix test fixes are the two a substitution leaves alone. This is the gate-that-cannot-pass face of §3 item 33's "the gate that cannot fail and the gate that cannot pass are the same defect wearing two faces", and the round-10 block rewords the clause as an equality. Reviewer-authored unsatisfiable gate clause; the property it guarded was measured intact, and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP4>>>
+<<<BEGIN SLIP8>>>
+2026-09-06 · F260 R10 (reviewer) · The PLAN slice of the round-10 block wrote, of the resolver collapse, "Finding R-0809 — four wordings for 'unknown id', and a real id of the other store rejected — belongs here", and R-0809 does not belong to F260 at all. Read at `2cedf98c`, that finding's own registration records its routing: "Applied: acceptance line added to `docs/roadmap/features/T2_F261.md` ## Acceptance", and it is "resolved when the four-wordings-gone test is green" against F261's acceptance list, F261 being the feature that owns command naming and message shape. The reviewer named it from memory of the neighbouring subject matter — both concern what happens to an unresolvable id — instead of reading the finding's routing line, and the claim landed on disk in `.agent/plan.md`, the file AGENTS.md's Session Resume tells the next session to read SECOND. THE LESSON is §3 item 34's last clause, the one about the OPEN SET being a target that must be READ and not recalled: a finding cited in a plan or a block is opened and its routing read, because a finding that names another feature's acceptance list cannot be discharged by this feature's rounds and a plan promising otherwise sends a later session looking for work that is not there. The round-11 PLAN slice drops the claim. Reviewer-prose misattribution in a rewritten state file, never in the append-only record; nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
+<<<END SLIP8>>>
 
-<<<BEGIN SLIP5>>>
-2026-09-06 · F260 R9 (reviewer) · Gate G5(c) of the round-9 block required the literal `task_jobs` to occur ZERO times under `packages/`, `apps/` and `tests/`, while the SAME block's SPEC for C5(A) ordered a test asserting "the record is NOT under any path containing a `task_jobs` component" — an assertion that cannot be written without the literal it forbids. The worker applied the SPEC, declared the contradiction, and did NOT reword the test to make the gate green, which is the correct precedence and the only reason the defect is visible. Measured at `ce08cfd0`: all three surviving occurrences sit in `tests/test_data_paths.py` at lines 396, 414 and 415, inside that ordered test and its docstring, and there are ZERO anywhere else under the three roots, so the record move itself is complete and only the gate was unmeetable. THE LESSON is §3 item 2 verbatim — a "must be 0" done-when may not count a string that the same block writes into that same file — and it was broken by the author of the checklist that carries it, over a SPEC rather than over a slice, which is the form item 2 does not name. Scope such a count to the files the block does not write, or assert the absence over the module under change rather than over a directory the block's own test lives in. Reviewer-authored self-counting gate; the load-bearing property holds and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP5>>>
+<<<BEGIN DECISION_D5>>>
+### DECISION F260 D5 (2026-09-06, F260 round 11) — the resolver collapse lands in T004, with the store that makes it true
+DECISION F260 D4 placed the ONE resolver "inside T002, in the same round group as
+the unified record and its loader", and rounds 9 and 10 built both halves that
+ruling named: the record now lives at `<data_root>/jobs/<16hex>/job.json` beside
+its own evidence, and `resolve_job_id` returns a `str` exactly as
+`resolve_any_job_id` does. The collapse itself is now measured as belonging one
+task later, and this decision records why rather than leaving the discrepancy for
+a later reader to find.
 
-<<<BEGIN SLIP6>>>
-2026-09-06 · F260 R9 (reviewer) · Gate G1 of the round-9 block ordered the saved copy's digest compared against "the digest in this block's BEGIN marker", and the block carried no such marker: its only BEGIN markers delimit the five authored slices and none of them states a digest. The worker declared it and used the digest the delegation itself carried, which is the value the reviewer actually supplied and computed over the same bytes, so the transport proof is sound and one reading short of nothing. THE CAUSE is a phrase carried forward from the two-window relay of docs/agents/planner_reviewer_prompt.md §4 item 9, where the reviewer emits a hash-stamped BEGIN marker into a paste block; under docs/agents/self_drive_protocol.md there is no paste block and the digest travels in the delegation instead, which §3 item 37 already says in as many words. A block that names the artefact carrying its own digest must name the one this workflow actually produces. Reviewer-authored stale pointer in a gate; the gate ran against the correct value and nothing under `packages/`, `apps/`, `tests/` or `docs/` is wrong as a result; no R-id spent (amend0827-process-diet rule 2).
-<<<END SLIP6>>>
+MEASURED at `2cedf98c`. `resolve_job_id` searches the CLASSIC store only;
+`resolve_any_job_id` searches both. Collapsing them means the survivor searches
+both, and forty call sites across nine `apps/cli/commands/` modules then accept a
+16-hex ping-pong id they reject today. Every one of those call sites feeds
+`storage.load_job`, which reads `<data_root>/jobs/<id>.json` — a FILE. A ping-pong
+id names a DIRECTORY, so the resolver would succeed and the loader would then
+raise `JobNotFoundError`, replacing today's clean `exit 1` with an exception on a
+path forty commands share. The collapse is therefore not a rename; it is a
+behaviour change to an error path, and it is only harmless once the classic store
+is gone.
+
+CHOSEN: the collapse happens in T004, in the same commit range that deletes the
+classic store `<data_root>/jobs/<uuid>.json` and the classic runner. At that point
+"one resolver over one store" is true rather than aspirational, the
+`JobNotFoundError` case above cannot arise because there is no second shape left
+to resolve into, and the feature file's existing T004 order — which already lists
+`resolve_any_job_id` and every which-store branch as T004's deletions — is
+satisfied by one change instead of two. T002's remaining work is what it always
+was: the run directory, the unified record's fields and the Mission extension.
+
+ALTERNATIVES CONSIDERED. Collapsing now and letting the loader raise — rejected:
+it degrades a shared error path for forty commands for the length of a task, in a
+feature whose own reason for existing is that unresolvable ids confuse the
+operator. Collapsing now and teaching the loader to read both shapes — rejected:
+that builds a compatibility reader, which AGENTS.md "Replacing is deleting" and
+DECISION D-A forbid outright, and T004 would then delete code written two rounds
+earlier. Leaving D4 unamended and letting a later session rediscover the
+sequencing — rejected: D4 is quoted by the plan and by two round blocks, so an
+unrecorded departure from it reads as drift rather than as a ruling.
+
+NOT CHANGED BY THIS RULING: the deliverable, the scope, and D4's own reasoning
+about why the resolver could not land in T001. Only the task the collapse sits in
+moves, from T002 to T004.
+
+REVERSE by deleting this paragraph, at which point D4's placement binds again and
+the collapse returns to T002 with the error-path change unresolved.
+<<<END DECISION_D5>>>
 
 <<<BEGIN PLAN>>>
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 9 are reviewed and 2 to 9 PASSED. T001 is
-CLOSED. T002 is open: the record has MOVED and finding R-0814 is resolved; what
-remains of T002 is the one resolver over it.
+pull request 240 (F259). Rounds 1 to 10 are reviewed and 2 to 10 PASSED. T001 is
+CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, and both
+resolvers now return `str`.
 
 ## Goal
 
@@ -286,30 +366,29 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-THE RESOLVER RETURNS A STRING. `data_paths.resolve_job_id` is annotated and
-returns `str` instead of `UUID`, and `storage.load_job` / `load_job_safe` accept
-either. DECISION F260 D4 named this the one thing standing between the two
-resolvers and a collapse into one. Measured in a worktree before the round: the
-change costs FIVE tests, every one asserting the return type, and ZERO
-production call sites, because `load_job` formats its path from the id.
+ONE SPELLING FOR THE RUN STORE. `data_paths` gains `pingpong_runs_dir` and
+`pingpong_run_dir`, and `pingpong_loop._pingpong_runs_dir` is DELETED with its
+thirty-nine production references and its test references moved onto the pair.
+The store does NOT move: only its spelling changes, so D1's collapse into
+`<data_root>/runs/<run_id>/` becomes two function bodies. DECISION F260 D5 is
+recorded in the same round, moving the resolver collapse to T004.
 
 ## Next Steps
 
-- COLLAPSE the two resolvers into one, now that they share a return type: one
-  `str`-returning function over both stores, the loser deleted in the same
-  commit. Finding R-0809 — four wordings for "unknown id", and a real id of the
-  other store rejected — belongs here.
-- Then `runs/<run_id>/` keyed by run id, replacing `pingpong_runs/`.
-- Then T003 consumer by consumer, T004 the classic runner and the classic
-  store, T005 the reachability test and the cluster deletion.
+- The run move itself: `pingpong_runs_dir` and `pingpong_run_dir` collapse into
+  `runs_dir` and `run_dir`. The run LOG at `<data_root>/runs/<job_id>/` must
+  move to the run id in the same commit, or `timeline.load_run_events` reads a
+  directory keyed two ways — DECISION F260 D0 measured that collision.
+- The unified record's own fields, and the Mission extension (order, contract,
+  mission plan, job refs), which is the rest of T002.
+- Then T003 consumer by consumer; T004 the classic runner, the classic store and
+  the resolver collapse together (DECISION F260 D5); T005 the reachability test
+  and the cluster deletion.
 
 ## Risks
 
-- Widening what `resolve_job_id` accepts changes an ERROR path: an id of the
-  other store today exits 1 with "no job matches prefix" and would instead
-  reach `load_job` and raise. That is R-0809's territory and needs its own test.
-- D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
-  reader of the old shape must move in the same commit as its writer.
+- `<data_root>/runs/` is keyed by JOB id today and D1 keys it by RUN id. Every
+  reader of the old shape moves in the same commit as its writer.
 - `<data_root>/jobs/` holds both `<uuid>.json` files and `<16hex>/` directories.
   Any new reader of that directory must make the same file/directory
   distinction the two matchers make.
