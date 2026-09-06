@@ -398,41 +398,6 @@ class TestJobAndRunLayout:
                   job_evidence_dir(jid, arg_root), run_dir(rid, arg_root)):
             assert env_root not in p.parents, f"{p} ignored its root argument"
 
-    def test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir(
-        self, monkeypatch, tmp_path,
-    ):
-        """The run store has ONE spelling, built one function on the other.
-
-        DECISION F272 D1 moved this pair onto ``<root>/runs/<run_id>/``, D1's
-        TARGET layout, which was reachable only once the job-keyed run log left
-        ``runs/``. The two names are therefore now exact aliases of ``runs_dir``
-        and ``run_dir``, and D1 DELETES them next round in favour of those two;
-        that the move was two function bodies is what F260 rounds 11 and 12
-        bought by giving the store one spelling.
-
-        The ``root`` argument is read against an env root pointing SOMEWHERE
-        ELSE, so a function that quietly drops ``root`` returns the env path and
-        is caught here rather than passing by coincidence.
-        """
-        env_root = tmp_path / "env"
-        arg_root = tmp_path / "arg"
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
-        from packages.orchestration.data_paths import (
-            pingpong_run_dir,
-            pingpong_runs_dir,
-        )
-
-        rid = "fedcba9876543210"
-        assert pingpong_run_dir(rid) == pingpong_runs_dir() / rid
-        assert pingpong_run_dir(rid).parent == pingpong_runs_dir()
-
-        assert pingpong_runs_dir(arg_root) == arg_root / "runs"
-        assert pingpong_run_dir(rid, arg_root) == arg_root / "runs" / rid
-        for p in (pingpong_runs_dir(arg_root), pingpong_run_dir(rid, arg_root)):
-            assert env_root not in p.parents and p != env_root, (
-                f"{p} ignored its root argument and answered from the env root"
-            )
-
     def test_pingpong_job_evidence_paths_equal_the_data_paths_ones(self, monkeypatch, tmp_path):
         """No behaviour change: both call sites return exactly what they returned before."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -728,13 +693,13 @@ class TestJobAndRunLayout:
         assert not hasattr(pingpong_loop, "_pingpong_runs_dir"), (
             "pingpong_loop._pingpong_runs_dir is back; F260 round 11 deleted it "
             "so the live ping-pong run store has ONE spelling, "
-            "data_paths.pingpong_runs_dir / pingpong_run_dir"
+            "data_paths.runs_dir / run_dir"
         )
         hits = self._names_of(pingpong_loop, "_pingpong_runs_dir")
         assert hits == [], (
             "pingpong_loop names _pingpong_runs_dir at lines "
             f"{[getattr(n, 'lineno', '?') for n in hits]}; F260 round 11 deleted "
-            "that helper and data_paths.pingpong_run_dir replaced it"
+            "that helper and data_paths.run_dir replaced it"
         )
         assert hasattr(pingpong_loop, "load_run"), (
             "hasattr found nothing at all on pingpong_loop; the absence above "
