@@ -351,7 +351,7 @@ def export_job_evidence(
             written[rel] = str(err_path)
         # Per-task execution evidence (execution_mode classification)
         try:
-            from packages.orchestration.data_paths import pingpong_run_dir
+            from packages.orchestration.data_paths import run_dir
             from packages.orchestration.evidence_mode import (
                 build_task_execution_evidence,
                 classify_execution_mode,
@@ -366,7 +366,7 @@ def export_job_evidence(
                 getattr(job.execution_config, "reviewer", None) or ""
             ) if job.execution_config else ""
             if task.run_id:
-                _trace_file = pingpong_run_dir(task.run_id) / "prompt_trace_summary.json"
+                _trace_file = run_dir(task.run_id) / "prompt_trace_summary.json"
                 if _trace_file.exists():
                     try:
                         _tdata = json.loads(_trace_file.read_text())
@@ -1494,8 +1494,8 @@ def _linked_job_summary(jid: str) -> dict[str, Any]:
     status = str(getattr(j, "status", "") or "") or "unknown"
     total: int | None = None
     try:
-        from packages.orchestration.data_paths import pingpong_runs_dir
-        pp_runs_root = Path(pingpong_runs_dir())
+        from packages.orchestration.data_paths import runs_dir
+        pp_runs_root = Path(runs_dir())
         for t in getattr(j, "tasks", []) or []:
             rid = getattr(t, "run_id", "") or ""
             if not rid:
@@ -2412,7 +2412,7 @@ def _write_task_postmortems(
     could not do: a streamed failure's record never left the job store, so the rollup
     pointed at nothing and the stats saw nothing.
     """
-    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration import data_paths
     from packages.orchestration.failure_postmortem import (
         CALL_POSTMORTEM_SUBDIR,
         POSTMORTEM_FILENAME,
@@ -2429,7 +2429,7 @@ def _write_task_postmortems(
     task_out = _task_evidence_dir(out_base, task.task_id)
 
     run_id = str(getattr(task, "run_id", "") or "")
-    run_dir = pingpong_run_dir(run_id) if run_id else None
+    run_dir = data_paths.run_dir(run_id) if run_id else None
     # The provider streams into ``…/task_runs/<task>/streams/<role>/round-NN/<kind>-II``;
     # that ``streams`` directory is the root of the streamed call layout.
     stream_dir = _task_stream_dir(job_id, task.task_id) / "streams"
@@ -2470,8 +2470,8 @@ def _read_run_json(run_id: str) -> dict[str, Any]:
     if not run_id:
         return {}
     try:
-        from packages.orchestration.data_paths import pingpong_run_dir
-        path = pingpong_run_dir(run_id) / "result.json"
+        from packages.orchestration.data_paths import run_dir
+        path = run_dir(run_id) / "result.json"
         if not path.is_file():
             return {}
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -2588,8 +2588,8 @@ def _write_task_run_evidence(
     bundle = build_evidence_bundle(run_data, promotion_data)
 
     # Include prompt traces from persisted run dir
-    from packages.orchestration.data_paths import pingpong_run_dir
-    trace_file = pingpong_run_dir(task.run_id) / "prompt_trace.jsonl"
+    from packages.orchestration.data_paths import run_dir
+    trace_file = run_dir(task.run_id) / "prompt_trace.jsonl"
     if trace_file.exists():
         bundle["prompt_trace_jsonl_path"] = str(trace_file)
 
@@ -2692,7 +2692,7 @@ def _write_task_worktree_evidence(
     if wt.get("isolation_mode") != "worktree":
         return
 
-    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration import data_paths
 
     doc: dict[str, Any] = {
         "schema_version": "1.0.0",
@@ -2712,7 +2712,7 @@ def _write_task_worktree_evidence(
 
     rd = wt.get("result_diff") or {}
     if rd:
-        run_dir = pingpong_run_dir(str(task.run_id))
+        run_dir = data_paths.run_dir(str(task.run_id))
         src, err = _resolve_result_diff_source(run_dir, rd)
         if err:
             # Report the validation failure; NEVER rewrite the persisted metadata
@@ -2765,7 +2765,7 @@ def _write_job_prompt_trace_summary(
     written: dict[str, str],
 ) -> None:
     """Write aggregate prompt trace summary across all tasks."""
-    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration.data_paths import run_dir
 
     total_builder = 0
     total_reviewer = 0
@@ -2776,7 +2776,7 @@ def _write_job_prompt_trace_summary(
     for task in job.tasks:
         if not task.run_id:
             continue
-        summary_file = pingpong_run_dir(task.run_id) / "prompt_trace_summary.json"
+        summary_file = run_dir(task.run_id) / "prompt_trace_summary.json"
         if not summary_file.exists():
             task_traces.append({
                 "task_id": task.task_id,
