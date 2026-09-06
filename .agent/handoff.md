@@ -1,264 +1,315 @@
-# Handoff — F260 One world · round 24 · THE CLOSURE ROUND · LAST ROUND OF THE BRANCH
-
-SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
-(the banner announces the REPORT, not a stop — amend0905-throughput)
-
-F260 IS CLOSED. This round booked round 23's verdict, authored the resolution of
-`R-0817`, and then flipped `docs/roadmap/STATUS.md` to `[x]`, synced `README.md`,
-marked self-use item `SU-011` consumed and rewrote this handback — ALL FOUR IN ONE
-COMMIT, which is the last commit on this branch (Rule A4, R-0154). The pull request
-is opened and left UNMERGED: it is the operator's manual-review window.
-
-THIS IS THE LAST ROUND OF THE BRANCH. Its own verdict lives HERE and in the pull
-request, never in a ledger entry — §4 item 13, the branch terminator. No `Gate: R24`
-record exists or will exist in `.agent/live_review.md`.
+# Handback — F272 round 1
 
 ## Session
 
-SESSION 8 of feature F260 · round 24 · rounds so far 24
+SESSION 1 of feature F272 · round 1 · rounds so far 1
 
-`.agent/STOP` was read from disk with `os.path.exists` before C0a (**False**),
-before C3 (**False**) and before the pull request (**False**).
+Context self-assessment: this is the feature's first round on a fresh branch;
+the worker's context was comfortable throughout and nothing was abbreviated.
 
-Context self-assessment (amend0905-throughput): context is comfortable — this round
-is four small commits and eight gates, and nothing about it pressed the margin.
+## Range
 
-F260 IS PAST ITS 7-SESSION SOFT LIMIT. **DECISION F260 D8** (2026-09-06, round 17)
-IS THE AUTHORITY FOR CLOSING THIS FEATURE AT THE SCOPE IT BUILT; the remainder is
-carried by the follow-up feature the STATUS ledger registers directly after F260,
-which Rule A5 therefore proposes first.
+Review of b18fad576252f7f2739a5807b6408031da8fcde6..HEAD (the branch point of
+`feature/f272-one-world-completion`, i.e. the merge commit of pull request 242).
 
-THE LEDGER ROTATION RAN IN ROUND 22, AT `6cebdce6`, WHERE THE CLOSURE SEQUENCE
-PLACES IT — after the verdict bookings and before the STATUS flip. IT WAS
-DELIBERATELY NOT REPEATED HERE. `scripts/rotate_live_review.py` was not run and
-`.agent/live_review_archive.md` is untouched by this round; the `R-0817` pair this
-round resolves stays in the live ledger and is archived by the NEXT feature's
-closure rotation, exactly as F259's closure left its own last pair.
+## Item status — C0a through C6
 
-`100 % fuer den gebauten Umfang (T001 komplett, T002 Run-Haelfte; Rest per DECISION F260 D8 abgespalten) — Schaetzung`
-
-## The closure inputs — repeated verbatim from the round 24 block
-
-    EVIDENCE JOB   017d918464634206
-    PACKAGE        remedy-review-20260906-133417-READY_FOR_REVIEW.zip
-    SHA-256        0f87ce8e9c4c506f82a6eb401deb6d85fb6ad1b3f7b066ad35808ca3df21c804
-    PACKAGE PATH   /home/decodeux/Repos/remedy-history/zips
-    ACCEPTED HEAD  1eb980675b2c553f4aa8b949265eb3b6f30d6964 (round 23's C3)
-
-These are the values the STATUS line was authored from, and the F260 STATUS line on
-disk carries each of them — see G5 below, which prints that line in full. Nothing
-was rebuilt this round: no evidence job, no package.
+| Item | Status | Reason |
+|------|--------|--------|
+| C0a  | done   | |
+| C0b  | done   | |
+| C1   | done   | |
+| C2   | done   | |
+| C3   | done   | |
+| C4   | done   | |
+| C5   | done   | |
+| C6   | done   | this commit |
 
 ## Commits
 
-Range `790e6605`..`HEAD`. Every commit single-parent. The insertion and deletion
-cells below are the numbers `git diff --numstat <parent> <commit>` printed in G7,
-compared cell by cell against that tool rather than re-derived by eye.
+### 4e524d0b f272: save the round 1 block as the authored original
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/authored/f272-r1.md | +488/-0 | C0a — the round's block, copied with `shutil.copyfile` |
 
-| Item | SHA | Subject | Path | Ins | Del |
-|---|---|---|---|---|---|
-| C0a | `e683058e` | f260: save the round 24 closure block as the authored original | `.agent/authored/f260-r24.md` | 398 | 0 |
-| C0b | `e45b2c7e` | f260: mirror the round 24 closure block into the last-block slot | `.agent/last_block.md` | 347 | 305 |
-| C1 | `1591d33c` | f260: point the plan at the round 24 closure and the review window | `.agent/plan.md` | 20 | 25 |
-| C2 | `819a1618` | f260: book the round 23 verdict and resolve the closure base finding | `.agent/live_review.md` | 4 | 0 |
-| C3 | this commit | f260: close F260 at the built scope and consume the self-use item | `docs/roadmap/STATUS.md`, `README.md`, `scripts/self_use_queue.json`, `.agent/handoff.md` | not reported | not reported |
+### a23c3748 f272: mirror the round 1 block into the last-block slot
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/last_block.md | +472/-382 | C0b — same bytes, one indivisible `.agent/**` state rewrite |
 
-C3's row states its four paths and NO numbers: its own insertion count and this
-handback's own length cannot exist while the text inside it is being written, so per
-checklist items 14 and 31 they are reported NOWHERE. Every insertion cell above —
-398, 347, 20 and 4 — is far under the AGENTS.md DECISION F104 D1 cap of 500, which
-counts INSERTIONS ONLY and never insertions plus deletions, so no oversize
-declaration is needed.
+### 9b5312b2 f272: point the plan and the context at the F272 branch
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/plan.md | +43/-34 | C1 — PLANF272R1 slice, whole file |
+| .agent/context.md | +14/-13 | C1 — CONTEXTF272 slice, whole file |
 
-## Item status
+### 5b14f469 f272: re-head the live review record at the F272 claim
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/live_review.md | +28/-22 | C2 — HEAD1 and STEPS pairs only; nothing below `## Findings` moved |
 
-| Item | Status | Reason |
-|--------|----------|------------------------------|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | this commit; the last on the branch |
+### 754bd14e f272: claim F272 in the roadmap ledger
+| Path | +/- | Reason |
+|------|-----|--------|
+| docs/roadmap/STATUS.md | +1/-1 | C3 — STATUS pair, `[ ]` → `[~]` on F272 |
 
-## Gates — one line each, real exit codes and real readings
+### 6955a197 f272: give the job record the plural run list run_refs
+| Path | +/- | Reason |
+|------|-----|--------|
+| packages/orchestration/pingpong_job.py | +10/-0 | C4 — the field (a), the export/import (b), the population in `run_job` (c) |
 
-**G1 TRANSPORT — PASS.** One digest three times: `.remedy-wt/f260-r24-block.md`,
-`.agent/authored/f260-r24.md` and `.agent/last_block.md` are each **31310** bytes and
-each hash to `32e72deee2217943d79528c01befd333288772f46b95b67ef932fdb4210e142e`, which
-is the digest the delegation named and which was verified against the source file
-BEFORE anything else in the block was executed; `filecmp.cmp(shallow=False)` is
-**True** for source-vs-saved and **True** for source-vs-mirror; both measured before
-C0a was staged, and both saves are `shutil.copyfile` of the same source file, never
-retyped.
+### c16ad23d f272: pin the plural run list with four tests
+| Path | +/- | Reason |
+|------|-----|--------|
+| tests/orchestration/test_job_run_refs.py | +122/-0 | C5 — the four tests, new file |
 
-**G2 THE RECORD — PASS.** `.agent/live_review.md`, at C2 `819a1618`:
-(a) BYTE — post equals pre + newline + GATE_R23 + blank line + DONE0817 + newline
-**True**; pre is a byte-exact PREFIX of post **True**; **948369** → **955525** bytes,
-delta **7156**; pre ended in exactly one newline **True** (asserted from the file's
-own measured terminal byte BEFORE writing) and post ends in exactly one newline
-**True**; written in ONE write.
-(b) STRUCTURAL, computed independently of (a) by splitting the WHOLE image on
-`\n{2,}`, dropping units empty after stripping and stripping each survivor of leading
-and trailing newlines — unit count **435** before, **437** after; N = **2**, COUNTED
-BY THE SCRIPT from the slices' own paragraphs and not taken from the block; the last
-2 units equal those paragraphs IN ORDER **True**, with unit[-2] = GATE_R23
-(`Gate: R23 — the F260 R23 entry, CLOSURE PART 2 REDONE. VERDI…`) and unit[-1] =
-DONE0817 (`Done: R-0817 — RESOLVED at \`1eb980675b2c553f4aa8b949265eb3b6…`).
-(c) NEGATIVE CONTROL, in memory on a `bytes` object and NEVER on disk — offset
-**951000** was first ASSERTED by the script to lie inside the FIRST appended
-paragraph, GATE_R23 and not DONE0817 (GATE_R23 occupies bytes 948370..953630); the
-byte `'i'` XOR 0x20 became `'I'`; reader (a) REJECTS **True** and reader (b) REJECTS
-**True**; after restoring, reader (a) ACCEPTS **True**, reader (b) ACCEPTS **True**,
-and the restored image equals the disk image **True**.
-LEDGER COUNTS before → after: `^Gate: ` **22 → 23**; `^Gate: R23 — ` **0 → 1**;
-`^Done: R-0817 — ` **0 → 1** — the last two each 0 to exactly 1.
-OPEN SET BY DISTINCT ID before → after: distinct `^- R-\d{4} — ` ids **301 → 301**
-minus distinct `^Done: R-\d{4} — ` ids **2 → 3**, so the open set is **299 → 298** —
-it went DOWN BY EXACTLY ONE, which is the arithmetic of resolving one id and minting
-none. New registration lines added: **0**. `R-0817` is registered **True** and now
-resolved **True**. NO ID WAS MINTED, as constraint 4 requires.
+### C6 — this commit (a handoff cannot table the commit that writes it, R-0149)
+| Path | +/- | Reason |
+|------|-----|--------|
+| .agent/handoff.md | rewrite | C6 — this handback |
 
-**G3 THE PLAN — PASS.** `.agent/plan.md` equals the PLANF260R24 slice plus exactly one
-trailing newline **True**, measured length **1607** bytes; **34** lines, under the
-AGENTS.md cap of 50 **True**; it carries `## Goal` **True** and `## Next Steps`
-**True**.
+Per-commit insertion counts (`git diff --numstat <parent> <commit>`, the `+`
+column only, AGENTS.md DECISION F104 D1), each commit single-parent:
 
-**G4 THE CLOSURE PAIRS — PASS.** Measured on the WORKING TREE after the edits and
-before C3 was staged. **5** pairs extracted from the committed authored file and **5**
-applied — the count is this script's own, not the block's sentence. Containment was
-measured here, not taken from the block; each line below is one pair, with the label
-derived from that same line's output:
+    C0a 4e524d0b insertions=488 parents=1
+    C0b a23c3748 insertions=472 parents=1
+    C1  9b5312b2 insertions=57  parents=1
+    C2  5b14f469 insertions=28  parents=1
+    C3  754bd14e insertions=1   parents=1
+    C4  6955a197 insertions=10  parents=1
+    C5  c16ad23d insertions=122 parents=1
 
-| Pair | Target | Containment | Label | FROM before | FROM after | TO after |
-|---|---|---|---|---|---|---|
-| STATUS | `docs/roadmap/STATUS.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
-| COUNT | `README.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
-| TIER | `README.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
-| LIST | `README.md` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
-| QUEUE | `scripts/self_use_queue.json` | `TO contains FROM: false` | REWRITE | 1 | 0 | 1 |
+## External actions
 
-Per FILE, the edited file was reconstructed INDEPENDENTLY by the script from the
-pre-edit image (taken from `git show HEAD:<path>`, and asserted equal to the working
-tree before any edit) with ONLY that file's own pairs applied and nothing else:
+    git checkout -b feature/f272-one-world-completion      -> on main at b18fad57, clean tree
+    git worktree add .remedy-wt/f272-g7-wt c16ad23d        -> detached HEAD c16ad23d (G7 only)
+    git worktree remove --force .remedy-wt/f272-g7-wt      -> removed
+    git worktree prune                                     -> ok; `git worktree list` no longer lists it
+    git push -u origin feature/f272-one-world-completion    (run immediately after this commit)
 
-| File | Equals the independent reconstruction | Bytes before → after | Ends in exactly one newline |
-|---|---|---|---|
-| `docs/roadmap/STATUS.md` | **True** | 39107 → 39499 | **True** |
-| `README.md` | **True** | 14615 → 15225 | **True** |
-| `scripts/self_use_queue.json` | **True** | 33718 → 33722 | **True** |
+No `gh pr merge`, no `gh pr create`, no merge, no force-push. The Open PR Gate
+was NOT re-run: the block records that it already ran in the reviewer's session
+and that pull request 242 was merged at b18fad57.
 
-**G5 THE DOCS PINS — PASS**, run on the working tree BEFORE C3 was staged.
-`python3 -m pytest tests/docs/ -q -p no:randomly` exit **0**, `303 passed in 0.49s` —
-**303**, exactly the count the reviewer measured at `790e6605` and expected after the
-edits. Computed DIRECTLY, not only through the suite:
-`^- \[x\] F\d{3} — ` lines in `docs/roadmap/STATUS.md` = **74**;
-the README `N of M registered items accepted.` line reads N = **74**, M = **272**,
-with N equal to the STATUS accepted count **True** and M equal to the STATUS ledger's
-**272** distinct feature lines **True**;
-the README Tier 2 row's Done cell = **17** (Total 25);
-`scripts/self_use_queue.json` parses as JSON **True**, **11** items, exactly one whose
-`consumed_by` is `F260` **True** (that item is `SU-011`), and none left empty
-**True**.
-The F260 STATUS line in full, as it stands on disk:
+## Verification
 
-    - [x] F260 — One world: mission → job → run (T001 complete and the run half of T002; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 017d918464634206 · package remedy-review-20260906-133417-READY_FOR_REVIEW.zip · SHA-256 0f87ce8e9c4c506f82a6eb401deb6d85fb6ad1b3f7b066ad35808ca3df21c804 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 1eb980675b2c553f4aa8b949265eb3b6f30d6964)
+**G1 TRANSPORT** — exit 0.
 
-**G6 THE CANARY AND INTEGRITY — PASS**, run SERIALLY in the primary checkout.
-`python3 -m pytest tests/cli/test_golden_path.py -q -p no:randomly` exit **0**,
-`42 passed in 20.99s` — the canary at the expected **42**.
-`python3 -m apps.cli.grouped integrity check --json` exit **0**, `"passed": true`,
-`"fail_count": 0`.
-`git status --porcelain --untracked-files=all` reports **no untracked paths at all
-(0)**, because every scratch artifact this round produced sits under `.remedy-wt/`,
-which `.gitignore` excludes; there is therefore no untracked path to classify.
+    sha256      = 229900f50fc6cf7dfc85d54ab2e6631cc6e8ec5cf08be54db92bf13f627e0165
+    byte length = 27393
+    filecmp source-vs-saved  (shallow=False) = True
+    filecmp source-vs-mirror (shallow=False) = True
+    committed C0a  .agent/authored/f272-r1.md  sha256 229900f5...627e0165  bytes 27393
+    committed C0b  .agent/last_block.md        sha256 229900f5...627e0165  bytes 27393
 
-**G7 STRUCTURE AND TREE — PASS.** `git status --porcelain` was EMPTY immediately
-before the C3 edits were made and staged, and is EMPTY again after C3 is committed
-(the post-commit reading is taken after this text is sealed and is reported in the
-round's handback message). `git ls-files .remedy-wt` returns **nothing** (`''`).
-All four prior commits are single-parent (parents=1 each), and the
-`git diff --numstat <parent> <commit>` cells are the table above: C0a 398/0, C0b
-347/305, C1 20/25, C2 4/0 — the INSERTIONS column only, which is the count AGENTS.md
-DECISION F104 D1 caps at 500, never insertions plus deletions, and every one of 398,
-347, 20 and 4 is under that cap. `git diff --name-only` over C3 lists exactly the four
-paths of the change set and nothing more: `docs/roadmap/STATUS.md`, `README.md`,
-`scripts/self_use_queue.json`, `.agent/handoff.md`. C3 is the branch tip with no
-commit after it. Marker lines beginning with the BEGIN or END prefix that reached any
-written file: `.agent/plan.md` **0**, `.agent/live_review.md` **0**,
-`docs/roadmap/STATUS.md` **0**, `README.md` **0**, `scripts/self_use_queue.json`
-**0** — zero in each.
+That digest equals BLOCK_SHA as stated in the delegating prompt; it was verified
+against the source file BEFORE any other step of this round.
 
-**G8 THE PULL REQUEST — runs after this commit is pushed.** The PR_BODY slice is
-written to a file under the gitignored `.remedy-wt/` and the request is created with
-`gh pr create --base main --head feature/f260-one-world --title "f260: one world -
-mission, job, run" --body-file <that file>`. NOTHING IS MERGED AND NO MERGE IS
-ATTEMPTED: `gh pr merge` is never run, per constraint 9 — the pull request is the
-operator's review window and it stays open. Its readings — the PR number, the URL and
-`gh pr view <n> --json state,isDraft,baseRefName,headRefName,mergeable` — cannot
-exist while this text is being written (see deviation 1) and are reported in the
-round's handback message to the reviewer; they are re-derivable at any time with
-`gh pr list --state open`.
+**G2 THE RECORD**, at C2 5b14f469.
 
-## Open findings
+(a) BYTE. pre 955525 bytes → post 955908 bytes; disk image == committed image.
+An independent reconstruction, built from the C1 pre-image with ONLY
+HEAD1_FROM→HEAD1_TO and STEPS_FROM→STEPS_TO applied, is 955908 bytes and
+compares EQUAL to the committed post-image. The file ends in exactly one
+newline. Per-pair containment at apply time: HEAD1 FROM 1→0, TO 0→1;
+STEPS FROM 1→0, TO 0→1.
 
-**298 by distinct id** after C2, down by exactly one from 299, because `R-0817` was
-resolved and no id was minted.
+(b) THE CARRIED REGION, before and after:
 
-## Deviations
+    reviewer's convention (region starts at the newline terminating the
+    line before `## Findings`):
+      before  953408 bytes  147ce009557d42bc81def2249853ed1a8fccd60676077a08e9532aea0bc0f8dc
+      after   953408 bytes  147ce009557d42bc81def2249853ed1a8fccd60676077a08e9532aea0bc0f8dc
+    the strictly-from-the-`#` reading, reported for completeness:
+      before  953407 bytes  447b08c3937da2d0c600f4f20f1e8736b24913022cc28c7a1f68f4ae7ec5a45a
+      after   953407 bytes  447b08c3937da2d0c600f4f20f1e8736b24913022cc28c7a1f68f4ae7ec5a45a
 
-1. **The block orders this handback to carry "the PR number", and that number cannot
-   exist while this text is written.** The handback is rewritten INSIDE C3;
-   constraint 5 makes C3 the last commit on the branch, so no later commit may add
-   the number; and the Bundle orders the pull request created only after C3 is pushed.
-   The value is therefore unobtainable at authoring time by exactly the construction
-   the block itself invokes for C3's insertion count and this file's own length
-   (checklist items 14 and 31), and it is the R-0418 class — an instruction to repeat
-   a value that does not yet exist. NOTHING WAS INVENTED: no number was guessed from
-   the `gh pr list` sequence. The real PR number and URL are reported in the round's
-   handback message to the reviewer, and `gh pr list --state open` re-derives them on
-   demand. The alternative — creating the pull request before C3 — was rejected
-   because it would put a body describing the closure commit onto a branch that did
-   not yet carry it, and would contradict the Bundle's stated order.
-2. **G7's `git status --porcelain` EMPTY "immediately before C3 is staged" was
-   measured before the C3 edits were made**, since the working tree necessarily
-   carries those edits between the edit and the staging. The reading was taken
-   directly after C2 was committed and printed nothing. The post-commit reading is
-   taken after this file is sealed, for the same reason, and is reported in the
-   handback message.
-3. **Constraint 1 — no slice was believed wrong.** All 14 slices (PLANF260R24,
-   GATE_R23, DONE0817, STATUS_FROM/TO, COUNT_FROM/TO, TIER_FROM/TO, LIST_FROM/TO,
-   QUEUE_FROM/TO, PR_BODY) were extracted from the COMMITTED
-   `.agent/authored/f260-r24.md` by exact-position marker matching, with exactly one
-   BEGIN and one END asserted for each, and applied byte for byte. Nothing was edited,
-   reflowed or corrected.
-4. **`python3 <script>` followed by `echo "EXIT=$?"` was refused by this session's
-   shell guard**, verbatim: `Permission to use Bash has been denied.` — the `$?`
-   inside a compound command, exactly as constraint 7 warned. Every exit code above
-   was therefore read from `subprocess.run(...).returncode` inside a Python file under
-   `.remedy-wt/`, never from a word. The scripts run were `r24_c0_g1.py`,
-   `r24_slices.py`, `r24_c1_g3.py`, `r24_c2_g2.py`, `r24_g4_pairs.py`,
-   `r24_g5_direct.py`, `r24_g6.py` and `r24_g7_pre.py`; none was ever `git add`ed and
-   `git ls-files .remedy-wt` is empty.
-5. **One G5 reading was re-run after a fault in the measuring script, not in the
-   product.** The first `r24_g5_direct.py` run anchored the README count regex with a
-   trailing `$` and matched nothing, because that line continues `… accepted. Next:
-   the first unchecked item in docs/roadmap/STATUS.md.` The regex was corrected and
-   the gate re-run; no file under `README.md`, `docs/` or `scripts/` was touched to
-   make a reading come out, and the pytest exit code in the same run was already 0.
-6. **No git worktree was created and nothing destructive ran**, per constraint 10.
-   The ledger rotation was NOT run (constraint 6), the package was NOT rebuilt and the
-   evidence job was NOT re-run (constraint 6).
+The block's stated figures (953408 / 147ce009…) reproduce exactly under the
+first convention and are UNCHANGED across C2. Both readings are unchanged.
 
-## Next expected action
+(c) COUNTS, before → after:
 
-1. **Phase 1 rule 1 before rule 2**: re-read `.agent/STOP` from disk first.
-2. **THE REVIEWER'S GATE on round 24** — re-run G1 through G8 independently. This is
-   the branch terminator: the verdict is recorded HERE and in the pull request, and NO
-   `Gate: R24` line is ever written to `.agent/live_review.md` (§4 item 13).
-3. **THE PULL REQUEST STAYS OPEN AND UNMERGED.** It is the operator's manual-review
-   window. It merges at the START OF THE NEXT FEATURE through the AGENTS.md Open PR
-   Gate, or manually by the operator at any time before that. This session merged
-   nothing and attempted no merge.
-4. **The next feature** is the follow-up registered directly after F260 in
-   `docs/roadmap/STATUS.md`, which Rule A5 proposes first; it starts in a FRESH
-   session, whose first reviewed round also picks up any closure candidates.
+    distinct ids '^- R-\d{4} — '     301 → 301
+    distinct ids '^Done: R-\d{4} — '   3 → 3
+    open set BY DISTINCT ID          298 → 298
+    '^Gate: ' lines                   23 → 23
+
+(d) NEGATIVE CONTROL, on in-memory `bytes` objects only, nothing written to
+disk: one byte flipped at offset 20, inside the HEAD1_TO span (0..1650) —
+reader (a) ACCEPTS = False. Restored — reader (a) ACCEPTS = True, and the
+restored image == the disk image.
+
+**G3 THE PLAN AND THE CONTEXT**, at C1 9b5312b2.
+
+    .agent/plan.md    bytes=2097  equals PLANF272R1 + exactly one trailing newline = True
+    .agent/context.md bytes=3366  equals CONTEXTF272 + exactly one trailing newline = True
+    .agent/plan.md line count = 43 (< 50 = True); '## Goal' = True; '## Next Steps' = True
+
+    $ python3 -m pytest tests/ui_server/ -q -p no:randomly
+    exit = 0 ; 515 passed in 33.42s
+    $ python3 -m pytest tests/orchestration/test_test_runner.py \
+        tests/regression/test_resource_safety.py \
+        tests/orchestration/test_integrity_gate.py -q -p no:randomly
+    exit = 0 ; 89 passed in 17.13s
+
+**G4 THE STATUS CLAIM**, at C3 754bd14e.
+
+    '^- \[~\] F272 — '        = 1  (expected 1)
+    '^- \[ \] F272 — '        = 0  (expected 0)
+    '^- \[x\] F\d{3} — '      = 74 (expected 74)
+    '^- \[[ x~!]\] F\d{3} — ' = 272 (expected 272)
+    '^- \[~\] F\d{3} — '      = 1  (the at-most-one-claim invariant)
+
+    $ git diff --name-only HEAD~1 HEAD   -> exit 0
+    docs/roadmap/STATUS.md
+    $ python3 -m pytest tests/docs/ -q -p no:randomly
+    exit = 0 ; 303 passed in 0.66s
+    $ python3 -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
+    exit = 0 ; 30 passed in 0.36s
+
+**G5 THE CODE**, at C4 6955a197.
+
+    $ python3 -m ruff check packages/orchestration/pingpong_job.py
+    exit = 0 ; All checks passed!
+
+    SHIPPED dataclass, two constructed JobPlan() objects:
+      a.run_refs = []   b.run_refs = []   both empty lists = True
+      a.run_refs is b.run_refs = False  -> distinct list objects
+    occurrences of the string 'run_refs' in the file = 7 (was 0 at b18fad57; >= 4 required)
+
+    $ git diff --name-only HEAD~1 HEAD   -> exit 0
+    packages/orchestration/pingpong_job.py
+
+**G6 THE NEW TESTS**, at C5 c16ad23d.
+
+    $ python3 -m pytest tests/orchestration/test_job_run_refs.py -q -p no:randomly
+    exit = 0 ; 4 passed in 0.73s
+    $ python3 -m pytest tests/test_do_job_flow.py -q -p no:randomly
+    exit = 0 ; 178 passed in 28.02s
+    $ python3 -m pytest tests/orchestration/test_job_budgets.py -q -p no:randomly
+    exit = 0 ; 135 passed in 30.61s
+
+**G7 THE RED PROOF**, inside the disposable worktree `.remedy-wt/f272-g7-wt`
+created at c16ad23d; never in the primary checkout.
+
+Shadow probe first, because an editable install of `remedy` points at the
+primary checkout:
+
+    $ python3 -B -c "import packages.orchestration.pingpong_job as m; print(m.__file__)"  (cwd=worktree)
+    exit 0 ; /home/decodeux/Repos/remedy/.remedy-wt/f272-g7-wt/packages/orchestration/pingpong_job.py
+
+so the worktree's own module is the one under test. `__pycache__` purge before
+each run removed 0 directories, and every run used `python3 -B`.
+
+(i) UNMUTATED CONTROL
+
+    $ python3 -B -m pytest tests/orchestration/test_job_run_refs.py -q -p no:randomly
+    exit = 0 ; 4 passed in 1.08s
+
+(ii) THE MUTATION — the two lines C4(c) inserted were deleted; occurrences of
+`job.run_refs.append` in that file went 1 → 0.
+
+    $ python3 -B -m pytest tests/orchestration/test_job_run_refs.py -q -p no:randomly
+    exit = 1 ; 1 failed, 3 passed in 1.11s
+    FAILED tests/orchestration/test_job_run_refs.py::TestJobRunRefsEndToEnd::test_run_refs_names_every_task_run_in_order
+    E  AssertionError: assert [] == ['c23c4080058...103b8ee94132']
+
+The failing test is the C5 item 4 end-to-end test, as required.
+
+(iii) WHAT WAS MUTATED
+
+    $ git -C <worktree> diff --name-only   -> exit 0
+    packages/orchestration/pingpong_job.py
+
+Then `git worktree remove --force <worktree>` and `git worktree prune`;
+`git worktree list` afterwards no longer contains `f272-g7-wt` (only the primary
+checkout and twelve pre-existing, unrelated `remedy/job-*` worktrees).
+
+**G8 THE CANARY, INTEGRITY AND THE TREE**, primary checkout, after C5 and before
+C6 was staged.
+
+    $ python3 -m pytest tests/cli/test_golden_path.py -q -p no:randomly
+    exit = 0 ; 42 passed in 22.95s
+    $ python3 -m apps.cli.grouped integrity check --json
+    exit = 0 ; "passed" = True ; "fail_count" = 0
+    $ git status --porcelain   -> exit 0 ; output '' (EMPTY)
+    $ git ls-files .remedy-wt  -> exit 0 ; output '' (nothing tracked)
+
+Per-commit insertions and single-parent readings for C0a..C5 are in the Commits
+section above. Marker lines (prefix `<<<BEGIN` or `<<<END`) per changed file:
+
+    .agent/plan.md                            0
+    .agent/context.md                         0
+    .agent/live_review.md                     0
+    docs/roadmap/STATUS.md                    0
+    packages/orchestration/pingpong_job.py    0
+    tests/orchestration/test_job_run_refs.py  0
+
+**Constraint 11 — the block's own size, re-measured on the committed
+`.agent/authored/f272-r1.md`:**
+
+    TOTAL lines            = 488  (budget 490, DECISION F085 D6)
+    slice BODY lines       = 174
+    PROSE = TOTAL - slices = 314  (cap 400, DECISION F105 D5)
+
+Both figures agree with the block's own statement; no drift.
+
+**`.agent/STOP` readings (constraint 10), read with `os.path.exists`:**
+
+    before C0a : False
+    before C4  : False
+    before C6  : False
+
+## Authored-text proofs
+
+| Slice | Target | Result |
+|-------|--------|--------|
+| the whole block | .agent/authored/f272-r1.md, .agent/last_block.md | `filecmp.cmp(shallow=False)` True against the source for both; one sha256 229900f5…627e0165, 27393 bytes |
+| PLANF272R1 | .agent/plan.md | equals slice + exactly one trailing newline (2097 bytes) |
+| CONTEXTF272 | .agent/context.md | equals slice + exactly one trailing newline (3366 bytes) |
+| HEAD1_FROM/TO | .agent/live_review.md | FROM 1→0, TO 0→1; independent reconstruction equals the committed image |
+| STEPS_FROM/TO | .agent/live_review.md | FROM 1→0, TO 0→1; same reconstruction |
+| STATUS_FROM/TO | docs/roadmap/STATUS.md | FROM 1→0, TO 0→1 |
+
+Every slice was extracted by exact-position marker matching, asserting exactly
+one BEGIN and one END line per name, and applied byte for byte. No slice was
+edited.
+
+## Deviations & assumptions
+
+1. **G2(b) region-boundary convention — a reading difference, not an edit.**
+   Taking "the bytes from and including the line `## Findings` to end of file"
+   literally from the `#` character yields 953407 bytes hashing to
+   `447b08c3…a45a`, one byte short of the block's stated 953408 /
+   `147ce009…f8dc`. Including the newline that terminates the preceding line
+   reproduces the block's figures exactly. BOTH readings are byte-identical
+   before and after C2, so the carried region is unchanged under either
+   convention; both are reported above. Nothing was changed to make either
+   match.
+2. **C0a and C0b precede the plan advance.** AGENTS.md requires `.agent/plan.md`
+   to reflect the current state before every commit; at C0a and C0b it still
+   named F260. This follows the block's ordered bundle, which names C1 the
+   round's FIRST SUBSTANTIVE commit and puts the two transport commits ahead of
+   it, and matches the standing pattern of this repository's rounds. Declared
+   rather than silently reordered.
+3. **No objection to any slice.** No slice was believed wrong; none was edited.
+4. **No commit was added, dropped or reordered.** The committed sequence is
+   exactly C0a, C0b, C1, C2, C3, C4, C5, C6, each single-parent.
+5. **No finding was minted, resolved or renumbered** (constraint 4). The open
+   set is 298 by distinct id before and after C2; R-0818 remains the next free
+   id and this round did not spend it. No `Gate:` paragraph was appended: this
+   round's verdict is written by the NEXT round's first commit.
+6. **The change set was not widened.** `README.md`,
+   `docs/roadmap/features/T2_F272.md` and `docs/roadmap/features/T2_F260.md`
+   were not touched.
+7. **Assumption, declared:** `git worktree list` still shows twelve pre-existing
+   `remedy/job-*` worktrees under `.remedy-wt/`. They predate this round, were
+   not created or removed by it, and were left alone.
+
+## Next
+
+The planner/reviewer re-runs G1–G8 against `b18fad57..HEAD` on
+`feature/f272-one-world-completion` and issues the round 1 verdict; that verdict
+is booked into `.agent/live_review.md` by the FIRST commit of round 2, which
+then lands the run re-key — `run_log_dir` and `pingpong_run_dir` collapsing onto
+the one `run_dir` keyed by RUN id — as the second half of T001.
