@@ -28,9 +28,9 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from packages.orchestration.artifact_summary import render_tiered_diff_text, summary_call_fn
+from packages.orchestration.data_paths import mint_run_id
 from packages.orchestration.exec_guard import run_guarded_test_command
 from packages.orchestration.hunk_repair_findings import render_rejection_findings
 from packages.orchestration.pingpong_provider import (
@@ -119,7 +119,8 @@ class PingPongRound:
 @dataclass
 class PingPongResult:
     """Complete result of a ping-pong run."""
-    run_id: str = field(default_factory=lambda: uuid4().hex[:16])
+    # F260 D2: a RUN id is minted by its own function, not by an inline uuid4.
+    run_id: str = field(default_factory=mint_run_id)
     job_id: str = ""
     goal: str = ""
     repo_path: str = ""

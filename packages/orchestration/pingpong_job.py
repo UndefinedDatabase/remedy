@@ -25,7 +25,12 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
+
+# F260 D2: one minting function per KIND of id. This module names JOBs and
+# EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
+# Module-level and not function-scoped: JobPlan's default_factory below is read
+# when the class body runs, which a local import could never reach.
+from packages.orchestration.data_paths import mint_episode_id, mint_job_id
 
 if TYPE_CHECKING:
     from packages.orchestration.schemas.models import PlannedTask
@@ -287,7 +292,7 @@ class ExecutionConfig:
 @dataclass
 class JobPlan:
     """Durable job plan with ordered tasks."""
-    job_id: str = field(default_factory=lambda: uuid4().hex[:16])
+    job_id: str = field(default_factory=mint_job_id)
     job_file_sha256: str = ""
     repo_path: str = ""
     job_workspace_path: str = ""
@@ -2265,7 +2270,7 @@ def run_job(
     # F018: allocate episode BEFORE computing budget identity so the stop
     # request_id is stable across finalization failures.
     if not job.active_episode_id:
-        job.active_episode_id = uuid4().hex[:16]
+        job.active_episode_id = mint_episode_id()
 
     # Deliberately argument-free: there is no "next task" before the episode loop,
     # and inventing one would predict against a task that may never be reached.
@@ -2288,7 +2293,7 @@ def run_job(
     # F012: no pending pre-work stop — this is a real execution EPISODE. Allocate a fresh
     # episode id now (a resume gets its own episode; only calls made in THIS episode are
     # collected into its manifest).
-    job.active_episode_id = uuid4().hex[:16]
+    job.active_episode_id = mint_episode_id()
 
     # F006: the job workspace IS a job-owned git worktree for a git target.
     # The runner owns the handle (and its lock) for the whole execution.
