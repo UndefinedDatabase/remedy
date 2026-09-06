@@ -165,9 +165,9 @@ class TestBlockedReviewerNotPass:
 class TestBlockedNoStagedFiles:
     def test_no_staged_files_blocks(self, demo_repo, isolate_data_root):
         """Manually create a run record with empty staged_files."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_no_staged"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -191,9 +191,9 @@ class TestBlockedNoStagedFiles:
 
 class TestBlockedTargetMutated:
     def test_target_mutated_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_mutated"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -217,9 +217,9 @@ class TestBlockedTargetMutated:
 
 class TestBlockedChangedTargetFiles:
     def test_changed_target_files_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_changed"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -315,9 +315,9 @@ class TestBlockedBinary:
 class TestBlockedDeletes:
     def test_delete_not_supported(self, demo_repo, isolate_data_root):
         """If artifact file doesn't exist in artifacts dir, it's treated as delete."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_delete"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         # Create run data
         data = {
@@ -479,9 +479,9 @@ class TestNoAutoPromote:
 class TestArtifactPersistence:
     def test_artifacts_saved_on_pass(self, demo_repo, isolate_data_root):
         """Artifacts persisted for passing runs."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = _run_passing(demo_repo)
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         manifest = run_dir / "artifacts" / "manifest.json"
         assert manifest.exists()
         data = json.loads(manifest.read_text())
@@ -497,9 +497,9 @@ class TestArtifactPersistence:
 
 class TestArtifactManifestFields:
     def test_manifest_has_required_fields(self, demo_repo):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = _run_passing(demo_repo)
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         data = json.loads((run_dir / "artifacts" / "manifest.json").read_text())
         assert "artifacts" in data
         assert "skipped" in data
@@ -582,9 +582,9 @@ class TestAbsolutePathBlocked:
 class TestArtifactHashMismatch:
     def test_hash_mismatch_blocks(self, demo_repo, isolate_data_root):
         """Tampered artifact blocks promotion, lists affected files."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_hash_mismatch"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         # Create run data
         data = {
@@ -630,9 +630,9 @@ class TestArtifactHashMismatch:
 class TestMissingArtifact:
     def test_missing_artifact_blocks(self, demo_repo, isolate_data_root):
         """Staged file not in manifest blocks promotion."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_missing_artifact"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -678,9 +678,9 @@ class TestMissingArtifact:
 class TestSkippedUnsafeBlocks:
     def test_skipped_blocks(self, demo_repo, isolate_data_root):
         """Skipped files in manifest block promotion."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_skipped"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -726,9 +726,9 @@ class TestSkippedUnsafeBlocks:
 class TestAllValidationBeforeWrites:
     def test_no_partial_apply(self, demo_repo, isolate_data_root):
         """Multiple files: one bad hash. No files written to target."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_no_partial"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -818,9 +818,9 @@ class TestNoApprovePersisted:
 
 class TestBlockedAttemptPersisted:
     def test_blocked_persisted(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_blocked_persist"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
         data = {
             "run_id": run_id,
@@ -983,9 +983,9 @@ def _write_manifest(run_dir, artifacts, skipped=None):
 class TestUnexpectedArtifactBlocks:
     def test_extra_artifact_blocks(self, demo_repo, isolate_data_root):
         """Exact primary-review reproduction: MALICIOUS.md in manifest but not in staged_files."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_unexpected"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         # staged_files only has README.md
@@ -1019,9 +1019,9 @@ class TestUnexpectedArtifactBlocks:
 
     def test_extra_code_artifact_not_written(self, demo_repo, isolate_data_root):
         """Extra code artifact not in staged_files does not get written."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_unexpected_code"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
@@ -1061,9 +1061,9 @@ class TestExactArtifactSetPromotes:
 
 class TestMissingArtifactStillBlocks:
     def test_missing_still_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_missing_still"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo,
@@ -1087,9 +1087,9 @@ class TestMissingArtifactStillBlocks:
 
 class TestDuplicateArtifacts:
     def test_duplicate_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_duplicate"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
@@ -1124,9 +1124,9 @@ class TestDuplicateArtifacts:
 
     def test_duplicate_listed(self, demo_repo, isolate_data_root):
         """duplicate_artifacts field lists affected paths."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_dup_listed"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
@@ -1187,9 +1187,9 @@ class TestPathNormalization:
 
 class TestTargetRepoMismatch:
     def test_mismatch_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_repo_mismatch"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         # Run was for demo_repo, but promote targets /tmp/other
@@ -1206,9 +1206,9 @@ class TestTargetRepoMismatch:
 
     def test_mismatch_persisted(self, demo_repo, isolate_data_root):
         """Target repo mismatch persists promotion attempt."""
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_repo_mismatch_persist"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         other_repo = demo_repo.parent / "other_repo2"
@@ -1238,9 +1238,9 @@ class TestTargetRepoMismatch:
 
 class TestMissingRunRepoPath:
     def test_missing_repo_path_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_no_repo_path"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         # Old run data without repo_path
@@ -1260,9 +1260,9 @@ class TestMissingRunRepoPath:
         assert "missing_run_repo_path" in result.blocked_reason
 
     def test_empty_repo_path_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_empty_repo_path"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo, repo_path="")
@@ -1331,9 +1331,9 @@ class TestApprovedExactModify:
 
 class TestHashMismatchStillBlocks:
     def test_hash_still_blocks(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_hash_still"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo, staged_files=["src/main.py"])
@@ -1399,9 +1399,9 @@ class TestPostTestStillFails:
 
 class TestReportShowsUnexpected:
     def test_report_unexpected(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_report_unexp"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         data = _make_run_data(run_id, demo_repo, staged_files=["README.md"])
@@ -1429,9 +1429,9 @@ class TestReportShowsUnexpected:
 
 class TestReportShowsRepoMismatch:
     def test_report_repo_mismatch(self, demo_repo, isolate_data_root):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration import data_paths
         run_id = "test_report_mismatch"
-        run_dir = pingpong_run_dir(run_id)
+        run_dir = data_paths.run_dir(run_id)
         run_dir.mkdir(parents=True)
 
         other = demo_repo.parent / "other_for_report"
