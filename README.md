@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-73 of 272 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+74 of 272 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 16 | 25 |
+| 2 | Minimal Self-Build Runtime | 17 | 25 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -81,7 +81,16 @@ F259 vocabulary & concept model v1 (the binding page
 spelling today and after the rename features, its CLI spelling and what it
 is NOT; the do-not-confuse table; the concept diagram, byte-equal in this
 README and pinned against the page by a test; and the rulings that decided
-them, copied verbatim from the build record).
+them, copied verbatim from the build record),
+F260 one world: mission, job, run (the ping-pong job record moved under the
+one jobs root beside its own evidence; one 16-hex id shape, minted by one
+function per kind, at its call sites; both job-id resolvers returning `str`;
+the ping-pong run store and the job-keyed run-log store each given one
+spelling in `data_paths`; and a run made an invocation rather than an event.
+The run re-key, the eleven named consumers, the classic cycle runner and the
+prototype-cluster deletion were split off at the seven-session soft limit and
+belong to the follow-up feature the STATUS ledger registers directly after
+it).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
