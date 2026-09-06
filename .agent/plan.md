@@ -1,34 +1,36 @@
-# Plan — F260 One world: mission → job → run
+# Plan — amend0906-triage-throughput
 
-Branch: feature/f260-one-world. Rounds 1 to 23 are reviewed; round 1 FAILED and was
-repaired, and 2 to 23 PASSED. DECISION F260 D8 closes this feature at the scope it
-built; the follow-up feature registered directly after F260 carries the remainder.
+Branch: feature/amend0906-triage-throughput, cut from main at `b18fad57`. Planning,
+ledger and protocol text only; no product code and no test code except the
+`TOTAL_FEATURES` pin.
 
 ## Goal
 
-Close F260. This is the LAST round of the branch: the STATUS line goes to `[x]`,
-the README is synced in the same commit, self-use item SU-011 is marked consumed,
-and the pull request is opened and left UNMERGED as the operator's review window.
+Triage every open finding into fixed / deletion-bound / process-only / product,
+register the product remainder as F273, and land the three throughput rules for the
+rebuild block. Then carry main into the open F272 branch so that branch can see all
+of it.
 
 ## Current Step
 
-Round 24 books round 23's verdict and the resolution of `R-0817`, then lands the
-STATUS flip, the README capability sync, the `consumed_by` edit and the handback in
-ONE commit — the last on this branch (Rule A4) — and opens the pull request. The
-ledger rotation ran in round 22 and is not repeated. The evidence job and the
-review package were built in round 23 and are not rebuilt.
+Parts 0, A and B are complete and committed in six commits: the triage table, the
+ledger resolutions, the prose_slips classes, the deletion-bound tag with the F272
+and F261 sentences, the F273 registration with its pins, and the protocol paragraph
+with DECISION amend0906-triage-throughput. The handoff is the sixth. Next is the
+push, the pull request and its merge, then Part C.
 
 ## Next Steps
 
-1. The operator's review window: the pull request stays OPEN and UNMERGED. It is
-   merged at the start of the next feature through the AGENTS.md Open PR Gate, or
-   manually by the operator at any time before that.
-2. The next feature is the follow-up registered directly after F260 in the ledger,
-   which Rule A5 proposes first; it starts in a fresh session.
+1. Push, open the PR, wait for hosted CI, merge on green, verify main.
+2. Part C: merge `origin/main` into `feature/f272-one-world-completion` with
+   `--no-ff`, keeping BOTH sides of every append-only conflict (main's block first),
+   re-run `tests/docs/` and the canary on the merged branch, push, and append the
+   merge record to that branch's `.agent/handoff.md` as one commit.
+3. The operator runs `remedy-resume` and restarts the loop; F272 continues on its
+   own branch at 12 sessions / 40 rounds.
 
 ## Risks
 
-- Nothing may follow the closure commit on this branch. A commit after it breaks
-  Rule A4's rendering, which the ledger cross-check pins.
-- README and STATUS may never disagree in any committed state, which is why both
-  land in the same commit (R-0154).
+- `.agent/STOP` is present and untouched; this branch never starts the loop.
+- The F272 branch has unpushed rounds of its own. Part C merges main INTO it and
+  never rebases or force-pushes it.

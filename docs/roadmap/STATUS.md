@@ -37,6 +37,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [ ] F269 — Contract & contract templates
 - [ ] F270 — History apply: one commit per task, merge on demand
 - [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
+- [ ] F273 — Findings paydown v1
 
 ## Tier 2 — Human-change absorption (operator order amend0831)
 

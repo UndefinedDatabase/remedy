@@ -227,6 +227,23 @@ T-slices carried over — copied from the parent's file, not re-planned. The
 parent's file states in its Built State which slices moved to F<q>. Reverse by
 deleting this paragraph.
 
+Operator amendment amend0906-triage-throughput (2026-09-06) — DELETION ROUNDS AND
+THE F272 LIMIT. (1) A DELETION ROUND is a round whose change set contains no
+edited line under packages/, apps/ or tests/ — only deleted files, deleted
+catalog entries, deleted cockpit sections and the test/import edits those
+deletions force. A deletion round is verified by four measurements and nothing
+else: the import-reachability test green, the full suite green, a repo-wide
+grep for every deleted module and symbol at zero, and ruff clean on the touched
+files. No byte-arithmetic transport, no per-file reconstruction, no mutation
+red-proof of deleted code. The block for a deletion round is at most sixty
+lines and lists the paths; a whole deletion list may be one round. (2) F272's
+soft limit is 12 sessions and 40 rounds, by operator order, because it was
+measured before registration as the largest feature of the block and a second
+split would only mint F274 with the same remainder; the split-and-close default
+still applies at 12/40. (3) The session round target of 6 to 8 stands; a session
+ending below it states the reason in one sentence in its handoff. Reverse by
+deleting this paragraph.
+
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
 while a feature is open. A lesson learned mid-feature goes into
