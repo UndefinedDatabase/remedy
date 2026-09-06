@@ -24,10 +24,12 @@ Public API::
     job_dir(job_id, root: Path | None = None) -> Path
     job_record_path(job_id, root: Path | None = None) -> Path
     job_evidence_dir(job_id, root: Path | None = None) -> Path
+    runs_dir(root: Path | None = None) -> Path               # keyed by RUN id
     run_dir(run_id, root: Path | None = None) -> Path
-    runs_dir(root: Path | None = None) -> Path
-    pingpong_runs_dir(root: Path | None = None) -> Path    # the LIVE run store
-    pingpong_run_dir(run_id, root: Path | None = None) -> Path
+    job_logs_dir(root: Path | None = None) -> Path           # keyed by JOB id
+    run_log_dir(job_id, root: Path | None = None) -> Path
+    pingpong_runs_dir(root: Path | None = None) -> Path      # == runs_dir today
+    pingpong_run_dir(run_id, root: Path | None = None) -> Path  # == run_dir today
     projects_dir(root: Path | None = None) -> Path
     workspaces_dir(root: Path | None = None) -> Path
     viewers_dir(root: Path | None = None) -> Path
@@ -69,21 +71,27 @@ def jobs_dir(root: Path | None = None) -> Path:
 
 
 def runs_dir(root: Path | None = None) -> Path:
-    """Return the run-log base directory (<root>/runs)."""
+    """Return the run store, keyed by RUN id (<root>/runs)."""
     return (root if root is not None else resolve_data_root()) / "runs"
 
 
-# The LIVE run-log store, named as it is TODAY: ``<data_root>/runs/<job_id>/``,
-# keyed by JOB id. ``run_dir`` below is the TARGET spelling and is keyed by RUN
-# id: DECISION F260 D1 re-keys this directory by run id, so the two are NOT the
-# same function and are not merged here. Giving the live layout ONE spelling is
-# what turns D1's re-key into a change to the body below instead of a sweep of
-# every caller — the same move rounds 11 and 12 made for the ping-pong run store.
+def job_logs_dir(root: Path | None = None) -> Path:
+    """The job-keyed run-log area (<root>/job_logs)."""
+    return (root if root is not None else resolve_data_root()) / "job_logs"
+
+
+# The run-log store, keyed by JOB id and living at ``<data_root>/job_logs/<job_id>/``
+# since DECISION F272 D1 moved it out of ``runs/``. It moved because ``runs/`` is
+# now keyed by RUN id and nothing else, which is what DECISION F260 D0 required
+# before any directory moved; the move was one function body because every one of
+# the 74 readers and 35 writers resolves through ``run_log_dir`` rather than
+# spelling the path. Whether this log ultimately merges INTO the per-run directory
+# is NOT settled — DECISION F272 D1 defers that to T003, where the consumers move.
 
 
 def run_log_dir(job_id: UUID | str, root: Path | None = None) -> Path:
-    """One JOB's run-log directory as it is today (<root>/runs/<job_id>)."""
-    return runs_dir(root) / str(job_id)
+    """One JOB's run-log directory (<root>/job_logs/<job_id>)."""
+    return job_logs_dir(root) / str(job_id)
 
 
 def projects_dir(root: Path | None = None) -> Path:
@@ -213,24 +221,26 @@ def run_dir(run_id: str, root: Path | None = None) -> Path:
     return runs_dir(root) / run_id
 
 
-# The LIVE ping-pong run store, named as it is TODAY: ``<data_root>/pingpong_runs/``.
-# ``run_dir`` above is the TARGET spelling and this pair is the LIVE one — exactly
-# the relationship ``job_dir`` and ``task_job_dir`` had before F260 round 9
-# collapsed them. DECISION F260 D1 says a run belongs at
-# ``<data_root>/runs/<run_id>/``, and until round 11 the live store was spelled by
-# ``pingpong_loop._pingpong_runs_dir`` with thirty-nine references hanging off it.
-# Giving it ONE spelling here is what turns D1's collapse into a change to the two
-# function bodies below instead of a sweep of every caller; that collapse is F260
-# T002's remaining work.
+# The ping-pong run store now IS the run store: DECISION F272 D1 moved it to
+# ``<data_root>/runs/<run_id>/``, the layout DECISION F260 D1 names, which was
+# only reachable once the job-keyed run log left ``runs/`` above. Giving the store
+# ONE spelling in F260 rounds 11 and 12 is what turned that move into a change to
+# the two bodies below instead of a sweep of every caller.
+#
+# The two names below are therefore now EXACT ALIASES of ``runs_dir`` and
+# ``run_dir``, and DECISION F272 D1 DELETES them in the next round in favour of
+# those two at every call site — no alias, no attic, per AGENTS.md "Replacing is
+# deleting". They survive this round only so that a nineteen-site rename is not
+# mixed into a directory move; do not add a new caller.
 
 
 def pingpong_runs_dir(root: Path | None = None) -> Path:
-    """The ping-pong run store as it is today (<root>/pingpong_runs)."""
-    return (root if root is not None else resolve_data_root()) / "pingpong_runs"
+    """The ping-pong run store, which is now the run store (<root>/runs)."""
+    return runs_dir(root)
 
 
 def pingpong_run_dir(run_id: str, root: Path | None = None) -> Path:
-    """One ping-pong RUN's directory, keyed by run id, under the live run store."""
+    """One ping-pong RUN's directory, keyed by run id (<root>/runs/<run_id>)."""
     return pingpong_runs_dir(root) / run_id
 
 
@@ -328,7 +338,7 @@ def resolve_any_job_id(raw: str) -> str:
     ``jobs/`` directory and are told apart by FILE versus DIRECTORY: the classic
     id is a ``.json`` file's stem, the ping-pong id is a directory holding a
     ``job.json``. Both file their run logs the same way, under
-    ``<data_root>/runs/<job-id>/``, so ``timeline.load_run_events`` reaches
+    ``<data_root>/job_logs/<job-id>/``, so ``timeline.load_run_events`` reaches
     either — but :func:`resolve_job_id` SEARCHES only the classic store, where a
     16-hex task-job id can never match. Both now return a ``str``; F260 T004 is
     where the two become one.

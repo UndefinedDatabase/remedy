@@ -63,7 +63,13 @@ def _write_jsonl(path: Path, events: list[dict[str, Any]]) -> None:
 
 
 def _runs_path(data_dir: Path, job_id) -> Path:
-    return data_dir / "runs" / str(job_id)
+    """One job's run-log directory, hand-spelled: ``<data_dir>/job_logs/<job_id>``.
+
+    DECISION F272 D1 moved this log out of ``runs/`` so that ``runs/`` is keyed by
+    RUN id and by nothing else. The join stays spelled by hand on purpose — that
+    is what keeps these tests an independent observer of ``run_log_dir``.
+    """
+    return data_dir / "job_logs" / str(job_id)
 
 
 def _make_job(**kwargs) -> Job:
@@ -252,7 +258,7 @@ class TestOneRunPerInvocation:
         for name in self.RESUME_EVENTS:
             append_run_event(tmp_path, job_id, event=name, metadata={"exit_code": 0})
 
-        job_dir = tmp_path / "runs" / str(job_id)
+        job_dir = tmp_path / "job_logs" / str(job_id)
         files = sorted(job_dir.glob("*.jsonl"))
         assert len(files) == 1
 
@@ -270,8 +276,8 @@ class TestOneRunPerInvocation:
         append_run_event(tmp_path, job_a, event="resume_started", metadata={})
         append_run_event(tmp_path, job_b, event="resume_started", metadata={})
 
-        dir_a = tmp_path / "runs" / str(job_a)
-        dir_b = tmp_path / "runs" / str(job_b)
+        dir_a = tmp_path / "job_logs" / str(job_a)
+        dir_b = tmp_path / "job_logs" / str(job_b)
         assert dir_a.is_dir()
         assert dir_b.is_dir()
         assert dir_a != dir_b
@@ -764,7 +770,7 @@ class TestCmdTimeline:
         return job
 
     def _write_events(self, tmp_path, job_id, events: list[dict]) -> None:
-        run_dir = tmp_path / "runs" / str(job_id)
+        run_dir = tmp_path / "job_logs" / str(job_id)
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "run1.jsonl").write_text(
             "\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8"

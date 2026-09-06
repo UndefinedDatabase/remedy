@@ -121,21 +121,25 @@ class TestDirectoryHelpers:
         assert projects_dir() == tmp_path / "projects"
 
     def test_run_log_dir_explicit_root(self, tmp_path):
-        """The LIVE run-log store, keyed by JOB id, under an explicit root."""
+        """The run-log store, keyed by JOB id, under an explicit root.
+
+        DECISION F272 D1 moved it out of ``runs/`` and into ``job_logs/`` so that
+        ``runs/`` is keyed by RUN id and by nothing else.
+        """
         from packages.orchestration.data_paths import run_log_dir
-        assert run_log_dir("j1", tmp_path) == tmp_path / "runs" / "j1"
+        assert run_log_dir("j1", tmp_path) == tmp_path / "job_logs" / "j1"
 
     def test_run_log_dir_follows_the_process_data_root(self, monkeypatch, tmp_path):
         """With no root argument the accessor follows the process data root."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import run_log_dir, runs_dir
-        assert run_log_dir("j1") == runs_dir() / "j1"
+        from packages.orchestration.data_paths import job_logs_dir, run_log_dir
+        assert run_log_dir("j1") == job_logs_dir() / "j1"
 
     def test_run_log_dir_coerces_a_uuid_job_id_to_its_string_form(self, tmp_path):
         """A ``UUID`` job id builds the same path as its ``str()`` form."""
         from packages.orchestration.data_paths import run_log_dir
         jid = uuid4()
-        assert run_log_dir(jid, tmp_path) == tmp_path / "runs" / str(jid)
+        assert run_log_dir(jid, tmp_path) == tmp_path / "job_logs" / str(jid)
 
 
 class TestResolveJobId:
@@ -397,12 +401,14 @@ class TestJobAndRunLayout:
     def test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir(
         self, monkeypatch, tmp_path,
     ):
-        """The LIVE run store has ONE spelling, built one function on the other.
+        """The run store has ONE spelling, built one function on the other.
 
-        ``run_dir`` above is D1's TARGET spelling; this pair is the store as it
-        is TODAY. Until F260 round 11 it was ``pingpong_loop._pingpong_runs_dir``
-        with thirty-nine references hanging off it, and D1's collapse is two
-        function bodies only while the two spellings stay in lock step.
+        DECISION F272 D1 moved this pair onto ``<root>/runs/<run_id>/``, D1's
+        TARGET layout, which was reachable only once the job-keyed run log left
+        ``runs/``. The two names are therefore now exact aliases of ``runs_dir``
+        and ``run_dir``, and D1 DELETES them next round in favour of those two;
+        that the move was two function bodies is what F260 rounds 11 and 12
+        bought by giving the store one spelling.
 
         The ``root`` argument is read against an env root pointing SOMEWHERE
         ELSE, so a function that quietly drops ``root`` returns the env path and
@@ -420,8 +426,8 @@ class TestJobAndRunLayout:
         assert pingpong_run_dir(rid) == pingpong_runs_dir() / rid
         assert pingpong_run_dir(rid).parent == pingpong_runs_dir()
 
-        assert pingpong_runs_dir(arg_root) == arg_root / "pingpong_runs"
-        assert pingpong_run_dir(rid, arg_root) == arg_root / "pingpong_runs" / rid
+        assert pingpong_runs_dir(arg_root) == arg_root / "runs"
+        assert pingpong_run_dir(rid, arg_root) == arg_root / "runs" / rid
         for p in (pingpong_runs_dir(arg_root), pingpong_run_dir(rid, arg_root)):
             assert env_root not in p.parents and p != env_root, (
                 f"{p} ignored its root argument and answered from the env root"
