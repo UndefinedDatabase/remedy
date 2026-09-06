@@ -124,48 +124,55 @@ class TestRunEventToJsonLine:
 class TestRunLogWriterConstruction:
     def test_creates_job_directory(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
-        job_dir = tmp_path / str(job_id)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
+        job_dir = tmp_path / "runs" / str(job_id)
         assert job_dir.is_dir()
 
     def test_path_is_inside_job_directory(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
-        assert writer.path.parent == tmp_path / str(job_id)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
+        assert writer.path.parent == tmp_path / "runs" / str(job_id)
 
     def test_path_has_jsonl_extension(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
         assert writer.path.suffix == ".jsonl"
 
     def test_path_filename_is_run_id(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
         assert writer.path.stem == writer.run_id
 
     def test_explicit_run_id_is_used(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, run_id="fixed-run-id", runs_root=tmp_path)
+        writer = RunLogWriter(job_id=job_id, run_id="fixed-run-id", data_root=tmp_path)
         assert writer.run_id == "fixed-run-id"
         assert writer.path.name == "fixed-run-id.jsonl"
 
     def test_auto_generated_run_id_is_nonempty(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
         assert len(writer.run_id) > 0
 
     def test_two_writers_for_same_job_get_different_run_ids(self, tmp_path):
         job_id = uuid4()
-        w1 = RunLogWriter(job_id=job_id, runs_root=tmp_path)
-        w2 = RunLogWriter(job_id=job_id, runs_root=tmp_path)
+        w1 = RunLogWriter(job_id=job_id, data_root=tmp_path)
+        w2 = RunLogWriter(job_id=job_id, data_root=tmp_path)
         assert w1.run_id != w2.run_id
 
     def test_file_does_not_exist_until_first_append(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
         # File should not exist yet (created lazily on first write)
         # Note: directory is created eagerly; file is created on first write.
         assert not writer.path.exists()
+
+    def test_default_data_root_is_the_process_data_dir(self, tmp_path, monkeypatch):
+        # Pins the default path the deleted `_runs_dir_default` alias used to carry.
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job_id = uuid4()
+        writer = RunLogWriter(job_id=job_id)
+        assert writer.path.parent == tmp_path / "runs" / str(job_id)
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +182,7 @@ class TestRunLogWriterConstruction:
 
 class TestRunLogWriterAppend:
     def _writer(self, tmp_path) -> RunLogWriter:
-        return RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        return RunLogWriter(job_id=uuid4(), data_root=tmp_path)
 
     def _make_event(self, writer: RunLogWriter, event: str = "test") -> RunEvent:
         return RunEvent(
@@ -243,7 +250,7 @@ class TestRunLogWriterAppend:
 class TestRunLogWriterLog:
     def test_log_writes_event_name(self, tmp_path):
 
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("my_event")
         events = read_run_events(writer.path)
         assert len(events) == 1
@@ -251,14 +258,14 @@ class TestRunLogWriterLog:
 
     def test_log_includes_job_id_and_run_id(self, tmp_path):
         job_id = uuid4()
-        writer = RunLogWriter(job_id=job_id, runs_root=tmp_path)
+        writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
         writer.log("e")
         events = read_run_events(writer.path)
         assert events[0]["job_id"] == str(job_id)
         assert events[0]["run_id"] == writer.run_id
 
     def test_log_includes_timestamp(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e")
         events = read_run_events(writer.path)
         assert "timestamp" in events[0]
@@ -267,7 +274,7 @@ class TestRunLogWriterLog:
     def test_timestamp_is_utc_isoformat(self, tmp_path):
         from datetime import datetime
 
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e")
         events = read_run_events(writer.path)
         ts = events[0]["timestamp"]
@@ -276,7 +283,7 @@ class TestRunLogWriterLog:
         assert dt.tzinfo is not None
 
     def test_log_top_level_fields(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log(
             "builder_started",
             task_id="t-1",
@@ -298,7 +305,7 @@ class TestRunLogWriterLog:
         assert e["message"] == "ok"
 
     def test_extra_kwargs_go_into_metadata(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e", elapsed_ms=500, task_count=3)
         events = read_run_events(writer.path)
         assert events[0]["metadata"]["elapsed_ms"] == 500
@@ -306,7 +313,7 @@ class TestRunLogWriterLog:
 
     def test_metadata_default_not_shared_between_events(self, tmp_path):
         """Each event must have its own independent metadata dict."""
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e1", x=1)
         writer.log("e2", y=2)
         events = read_run_events(writer.path)
@@ -314,7 +321,7 @@ class TestRunLogWriterLog:
         assert "x" not in events[1]["metadata"]
 
     def test_none_optional_fields_not_in_output(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e")  # no optional fields
         events = read_run_events(writer.path)
         e = events[0]
@@ -334,14 +341,14 @@ class TestReadRunEvents:
         assert result == []
 
     def test_returns_all_events_in_order(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         for name in ("alpha", "beta", "gamma"):
             writer.log(name)
         events = read_run_events(writer.path)
         assert [e["event"] for e in events] == ["alpha", "beta", "gamma"]
 
     def test_returns_list_of_dicts(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e")
         events = read_run_events(writer.path)
         assert isinstance(events, list)
@@ -353,7 +360,7 @@ class TestReadRunEvents:
         assert read_run_events(path) == []
 
     def test_metadata_is_preserved(self, tmp_path):
-        writer = RunLogWriter(job_id=uuid4(), runs_root=tmp_path)
+        writer = RunLogWriter(job_id=uuid4(), data_root=tmp_path)
         writer.log("e", task_type="write_readme", count=7)
         events = read_run_events(writer.path)
         assert events[0]["metadata"]["task_type"] == "write_readme"
