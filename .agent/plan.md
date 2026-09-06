@@ -1,10 +1,9 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 7 are reviewed; 2 through 7 PASSED. T001 is
-CLOSED. T002 is open: `data_paths` holds the one spelling of DECISION F260 D1's
-target layout, every evidence path is built from it, and DECISION F260 D4 records
-why the resolver waits for the store.
+pull request 240 (F259). Rounds 1 to 8 are reviewed and 2 to 8 PASSED. T001 is
+CLOSED. T002 is open, and this round is its centre: the ping-pong record moves
+to the root DECISION F260 D1 rules.
 
 ## Goal
 
@@ -18,31 +17,32 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Give the PING-PONG store one spelling too. `data_paths` gains `task_job_dir` and
-`task_job_record_path`, mirroring the D1 pair; `pingpong_job._jobs_dir` is
-DELETED and its six users, `job_evidence`'s cross-module import of it, and
-seventeen test call sites across seven files all move onto the accessors. The
-store does not move: only its spelling changes, so the record move that follows
-is a change to two function bodies rather than a sweep of every caller.
+THE RECORD MOVE. `data_paths.task_job_dir` and `task_job_record_path` are
+deleted and `pingpong_job._persist_job` writes through `job_record_path`, so
+`<data_root>/task_jobs/<16hex>/job.json` becomes
+`<data_root>/jobs/<16hex>/job.json` and a job's record and its evidence share
+one root. `data_paths._task_job_id_matches` moves onto `jobs_dir()` in the SAME
+commit, or every ping-pong job becomes unresolvable. Finding R-0814's remaining
+fix conditions — one root, and a test asserting it — are discharged here.
 
 ## Next Steps
 
-- The record move itself: `task_job_dir` and `task_job_record_path` collapse into
-  `job_dir` and `job_record_path`, so `<data_root>/task_jobs/<16hex>/job.json`
-  becomes `<data_root>/jobs/<16hex>/job.json`. `data_paths._task_job_id_matches`
-  moves with it, in the same commit, or every ping-pong job becomes unresolvable.
-  Finding R-0814 is resolved there, against the fix clause it carries.
-- The ONE resolver, in the same round group as that move, because 40 of the 42
-  job-taking call sites take a `UUID` today (DECISION F260 D4).
-- Then `runs/<run_id>/` keyed by run id, T003 consumer by consumer, T004 the
-  classic runner, T005 the reachability test and the cluster deletion.
+- The ONE resolver over the one store: `resolve_job_id` and `resolve_any_job_id`
+  collapse into one `str`-returning function, which needs `storage.load_job`'s
+  signature and its forty call sites across nine `apps/cli/commands/` modules
+  (DECISION F260 D4). Finding R-0809 belongs to that step.
+- Then `runs/<run_id>/` keyed by run id, replacing `pingpong_runs/`.
+- Then T003 consumer by consumer, T004 the classic runner, T005 the
+  reachability test and the cluster deletion.
 
 ## Risks
 
 - D1 changes what `<data_root>/runs/` is keyed by, from job id to run id. Every
   reader of the old shape must move in the same commit as its writer.
 - `pingpong_job` imports `data_paths` only inside function bodies, so each call
-  site carries its own import; one such site sits inside a compound boolean and
-  is easy to miss.
+  site carries its own import; one such site sits inside a compound boolean.
+- `<data_root>/jobs/` now holds both `<uuid>.json` files and `<16hex>/`
+  directories. The two matchers were measured not to see each other's entries,
+  but any new reader of that directory must make the same distinction.
 - The T005 cluster deletion is large and reversible in one direction only. It
   runs last, behind a reachability test green BEFORE the first `git rm`.
