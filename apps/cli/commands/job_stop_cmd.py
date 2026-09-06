@@ -116,7 +116,7 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
     if _load_job(job_id) is None:
         from packages.orchestration.data_paths import resolve_job_id
         try:
-            job_id = str(resolve_job_id(job_id))
+            job_id = resolve_job_id(job_id)
         except SystemExit as exc:
             if exc.code == 2:
                 raise

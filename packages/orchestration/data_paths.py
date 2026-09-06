@@ -16,7 +16,7 @@ Public API::
 
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
-    resolve_job_id(raw) -> UUID              # the classic store
+    resolve_job_id(raw) -> str               # the classic store
     resolve_any_job_id(raw) -> str           # both stores
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
     mint_run_id() -> str                     # a run id
@@ -251,17 +251,21 @@ def _exit_ambiguous(raw: str, matches: list[str]) -> None:
     sys.exit(2)
 
 
-def resolve_job_id(raw: str) -> UUID:
-    """Parse a full UUID or resolve a short hex prefix to a unique job UUID.
+def resolve_job_id(raw: str) -> str:
+    """Parse a full UUID or resolve a short hex prefix to a unique job id.
 
-    Searches the CLASSIC job store only, and its return type says so: a
-    task-job id is sixteen hex characters and ``UUID()`` rejects it. Callers
-    that must reach both stores use :func:`resolve_any_job_id`.
+    Searches the CLASSIC job store ONLY — that restriction is now carried by
+    the SEARCH, not by the return type, since a ``str`` could hold either id
+    shape. Callers that must reach both stores use :func:`resolve_any_job_id`.
+
+    Returns the canonical id as a string: lowercase, hyphenated, the form
+    ``str(UUID(...))`` produces. F260 T004 is where this function and
+    :func:`resolve_any_job_id` become one.
 
     Exits with code 1 on invalid input, code 2 on ambiguous prefix.
     """
     try:
-        return UUID(raw)
+        return str(UUID(raw))
     except ValueError:
         pass
 
@@ -271,7 +275,7 @@ def resolve_job_id(raw: str) -> UUID:
 
     matches = _classic_job_id_matches(raw)
     if len(matches) == 1:
-        return UUID(matches[0])
+        return matches[0]
     if len(matches) > 1:
         _exit_ambiguous(raw, matches)
 
@@ -289,17 +293,18 @@ def resolve_any_job_id(raw: str) -> str:
     id is a ``.json`` file's stem, the ping-pong id is a directory holding a
     ``job.json``. Both file their run logs the same way, under
     ``<data_root>/runs/<job-id>/``, so ``timeline.load_run_events`` reaches
-    either — but :func:`resolve_job_id` searches only the classic store and
-    returns a ``UUID``, which a 16-hex task-job id can never be.
+    either — but :func:`resolve_job_id` SEARCHES only the classic store, where a
+    16-hex task-job id can never match. Both now return a ``str``; F260 T004 is
+    where the two become one.
 
     That is why `remedy teach narrate <task-job-id>` answered "no job matches
     prefix" for a job whose run log was sitting on disk the whole time
     (operator dogfooding, 2026-08-25). The teacher was built against the
     classic store and could not see a job-based run at all.
 
-    The return type is ``str`` rather than ``UUID`` because the two stores mint
-    different id shapes and only one of them is a UUID. Callers print it or
-    join it onto a path; nothing needs the parsed form.
+    The return type is ``str`` because the two stores mint different id shapes
+    and only one of them is a UUID. Callers print it or join it onto a path;
+    nothing needs the parsed form.
 
     READ-ONLY: this opens directories and stats files, and writes nothing —
     which is what lets the teacher, whose whole stance is passivity, use it.

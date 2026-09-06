@@ -334,7 +334,8 @@ class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
         job = _job()
         self._premise(tmp_path, job)
         prefix = job.id.hex[:8]
-        assert resolve_job_id(prefix) == job.id, "the fixture's prefix must name THIS job"
+        assert resolve_job_id(prefix) == str(job.id), \
+            "the fixture's prefix must name THIS job"
 
         CMD._cmd_approve_hunks(
             prefix, approve=[HUNK_IDS[0]], reject=[f"{HUNK_IDS[1]}={REASON}"])
@@ -353,7 +354,7 @@ class TestTheEvidenceDirectoryComesFromTheRESOLVEDJobId:
         self._premise(tmp_path, job)
         shouted = str(job.id).upper()
         assert shouted != str(job.id), "the fixture must really change case"
-        assert resolve_job_id(shouted) == job.id
+        assert resolve_job_id(shouted) == str(job.id)
 
         CMD._cmd_approve_hunks(shouted, approve=[HUNK_IDS[0]])
 

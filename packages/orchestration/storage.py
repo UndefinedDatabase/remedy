@@ -28,7 +28,7 @@ from packages.orchestration.data_paths import jobs_dir
 class JobNotFoundError(Exception):
     """Raised when a requested Job cannot be found in storage."""
 
-    def __init__(self, job_id: UUID) -> None:
+    def __init__(self, job_id: UUID | str) -> None:
         super().__init__(f"Job not found: {job_id}")
         self.job_id = job_id
 
@@ -80,8 +80,13 @@ def save_job(job: Job, root: Path | None = None) -> None:
     _atomic_write_job(path, job.model_dump_json(indent=2))
 
 
-def load_job(job_id: UUID, root: Path | None = None) -> Job:
+# Takes BOTH spellings on purpose: ``Job.id`` is a ``UUID`` model field and many
+# callers pass ``job.id`` straight in, while a resolver now hands back a ``str``.
+def load_job(job_id: UUID | str, root: Path | None = None) -> Job:
     """Load a Job from disk by ID.
+
+    Accepts the id as a ``UUID`` or as a ``str``; the path is built by
+    formatting it, which both spellings do identically.
 
     Raises JobNotFoundError if the job does not exist.
     Raises JobStoreError if the file exists but is corrupt.
@@ -97,7 +102,7 @@ def load_job(job_id: UUID, root: Path | None = None) -> Job:
         raise JobStoreError(f"Cannot read job file for {job_id}: {exc}") from exc
 
 
-def load_job_safe(job_id: UUID, root: Path | None = None) -> tuple[Job | None, bool]:
+def load_job_safe(job_id: UUID | str, root: Path | None = None) -> tuple[Job | None, bool]:
     """Load a Job, returning (job, degraded).
 
     Returns (None, True) if corrupt, (None, False) if not found, (job, False) if ok.
