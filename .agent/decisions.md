@@ -10717,3 +10717,48 @@ Routed to planning under §4 item 7: the reviewer authored this ruling and proce
 
 ### DECISION F260 D7 (2026-09-06, F260 round 15) — a run is an INVOCATION, not an event, and the run id is one module constant
 Routed to planning under §4 item 7: the reviewer authored this ruling and proceeded under it rather than asking. It rules the repair of finding `R-0816` and it re-orders this feature's remaining plan. THE PLAN AT `1d344b48` named `Job.run_refs` as the next step and the re-key as the one after it. Measured against the disk, `run_refs` cannot be built first: `timeline.append_run_event` mints a run id per EVENT, so a run list assembled today would enumerate events, and DECISION F260 D1's `<data_root>/runs/<run_id>/` would hold one directory per event. The cardinality of a run is therefore a PREREQUISITE of both, and it is repaired first. CHOSEN: `timeline.py` holds ONE module-level `_PROCESS_RUN_ID = new_run_id()`, computed once at import, and `append_run_event` passes it to every `RunLogWriter` it constructs. A run is then exactly what `RunLogWriter`'s docstring has always said it is — one invocation — and different jobs stay in different directories because the job id, not the run id, keys the directory today. The mechanism was DRY-RUN by the reviewer against the SHIPPED writer before being ordered: five events for one job under one fixed run id produce ONE file, FIVE lines, ONE distinct `run_id`, in append order, while a second job in the same process gets its own directory and its own file. ALTERNATIVES CONSIDERED. A per-`(data root, job id)` cache of writers in a module dict — rejected: it is process-global mutable state that needs an eviction rule and a test-visible reset, and it buys nothing the constant does not, since the directory is already keyed by job. Giving each caller its own run id to pass — rejected: it moves the decision to eleven call sites and is the shape this feature exists to remove. Deriving the run id from the job id — rejected: it would make a job's runs indistinguishable from each other, which is precisely what D1's plural `run_refs` needs to be able to tell apart. Leaving it and letting the re-key absorb it — rejected: the re-key would then be written against a cardinality nobody had measured, and the finding's own product effect would ship one directory per event. KNOWN CONSEQUENCE, STATED RATHER THAN HIDDEN: a long-lived process — `ui_server.py` is the case — keeps ONE run id for its lifetime, so its events form one long run rather than many. That is a strict improvement on one run per event and it is the same trade `BUDGET_TICK_RUN_ID` already makes on the safe-point path; if a server ever needs a run per request, the run id becomes a parameter of the request and this constant is its default. NOT CHANGED BY THIS RULING: D1's target layout, `RunLogWriter`'s signature and docstring, `load_run_events`, and DECISION F022 D2's chosen option. REVERSE by deleting this paragraph, removing `_PROCESS_RUN_ID` and its argument, at which point `R-0816` is open again and `run_refs` returns to being the plan's next step.
+
+
+## DECISION amend0906-split-placement (2026-09-06, operator order amend0906-split-placement) — a split-off follow-up feature is registered directly after its parent
+
+CONTEXT: amend0905-throughput made split-and-close the standing default at the
+soft limit — the session registers the remaining scope of the open feature as a
+new follow-up feature on its own authority. It says WHAT to register but never
+WHERE the new STATUS line goes.
+
+PRECEDENT THAT MOTIVATED THIS: F267 — "List commands v2 completion", the nine
+wirings split off F262 — was registered under the heading
+`## Tier 2 — Minimal Self-Build Runtime` at line 109 of `docs/roadmap/STATUS.md`,
+not beside its parent F262 at line 24 under
+`## Tier 2 — Vocabulary & Concept Block`. Rule A5 takes the FIRST unchecked entry
+top to bottom, so a remainder placed that far down is proposed only after every
+feature between it and its parent has been built — on exactly the half-finished
+substrate the remainder exists to finish. F260's remainder (record move, consumer
+moves, classic-runner deletion, prototype-cluster deletion) would be reached
+after F261, F266 and F268, and F268's mission record plus the operator's
+Level-4.1 acceptance depend on precisely that deferred scope.
+
+CHOSEN: the placement rule is written verbatim into
+`docs/agents/self_drive_protocol.md`, directly after the amend0905-throughput
+split-and-close paragraph, and referenced in one sentence from
+`docs/roadmap/STATUS_closure_protocol.md` under the Algorithm step that governs
+the closure STATUS line (step 4) — the step a closing session actually reads
+when it writes that line. The new line goes IMMEDIATELY after the parent's, inside
+the same tier heading, which the docs suite already permits: repeated
+`## Tier 2` headings are accepted and
+`tests/docs/test_docs_consistency.py::TestFeatureLedger::test_the_filename_tier_matches_the_status_tier`
+pins the filename tier to the ENCLOSING heading, so the follow-up's file keeps
+the parent's tier prefix. The five open feature files that name F260 as a
+dependency — T2_F261, T2_F268, T2_F269, T2_F270, T2_F271 — gain the follow-up in
+their `Depends on` clause now, so the dependency is recorded before the split
+session runs. F260's own feature file is deliberately NOT edited here: it is open
+on `feature/f260-one-world`, and the split session applies the rule to it itself.
+
+ALTERNATIVES CONSIDERED: (a) leave placement to the closing session's judgement —
+rejected, because F267 is the measured evidence that the judgement goes the other
+way without a rule; (b) require the follow-up to reuse the parent's own STATUS
+line — rejected, because two ids on one line breaks the line grammar the docs
+suite pins and Rule A5 reads. Reverse by deleting this paragraph and the
+amend0906-split-placement paragraph in `docs/agents/self_drive_protocol.md`, the
+sentence in `docs/roadmap/STATUS_closure_protocol.md`, and the appended clause in
+the five feature files.

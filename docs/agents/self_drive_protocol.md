@@ -215,6 +215,18 @@ already past its limit with a pending scope report at session start.
 Rationale: F262's round 23 wrote a correct scope report and then waited a
 session for a ruling the default would have supplied. Reverse by deleting this paragraph.
 
+Operator amendment amend0906-split-placement (2026-09-06) — A FOLLOW-UP FEATURE
+SPLIT OFF AN OPEN FEATURE IS PLACED DIRECTLY AFTER ITS PARENT. When a session
+registers the remaining scope of feature F<p> as a new feature F<q>, the new
+STATUS line goes IMMEDIATELY after F<p>'s line, inside the same tier heading
+(the filename tier follows the enclosing heading, as the docs test pins), so that
+Rule A5 proposes F<q> before any other unchecked feature. Every open feature file
+that names F<p> in its "Depends on" line gains F<q> there in the same commit, and
+F<q>'s file names the parent, the closure evidence it starts from, and the exact
+T-slices carried over — copied from the parent's file, not re-planned. The
+parent's file states in its Built State which slices moved to F<q>. Reverse by
+deleting this paragraph.
+
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
 while a feature is open. A lesson learned mid-feature goes into
