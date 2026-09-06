@@ -341,7 +341,7 @@ class TestRunLogEventSchema:
         from packages.orchestration.run_log import RunLogWriter, read_run_events
 
         job = Job(name="test", state=RunState.PENDING)
-        log = RunLogWriter(job_id=job.id, runs_root=tmp_path / "runs")
+        log = RunLogWriter(job_id=job.id, data_root=tmp_path)
         log.log(
             "test_run_completed",
             test_run_id="abc123",
