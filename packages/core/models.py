@@ -45,6 +45,10 @@ class RunState(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    # These two come from `JobPlan`'s `JOB_*` vocabulary and exist so DECISION F272 D5's
+    # collapse can rename `status` to `state` without losing a state.
+    BLOCKED = "blocked"
+    STOPPED = "stopped"
 
 
 class ArtifactKind(str, Enum):
