@@ -118,7 +118,7 @@ def mirror_job_run_into_ledger(job_id: str) -> dict[str, Any]:
     """Export a finished job's evidence so its cost reaches the F103 token ledger.
 
     THIS IS THE JOB RUNNER'S COST-TRUTH SEAM. `remedy do job-run` used to complete
-    a job, write ``task_jobs/<id>/job.json`` and its run log, and touch no ledger
+    a job, write ``jobs/<id>/job.json`` and its run log, and touch no ledger
     at all, so `remedy stats cost` reported "No ledger on disk for this scope"
     after a run that had spent real money. The mirror is armed in exactly one
     place — ``_resolve_job_ledger_project_id``, reached only from
@@ -1146,7 +1146,7 @@ def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
     regular file (never a symlink), resolving inside that job directory, and match
     the sha256 and size recorded in job.json.
     """
-    from packages.orchestration.data_paths import task_job_dir
+    from packages.orchestration.data_paths import job_dir
 
     if getattr(job, "isolation_mode", "copy") != "worktree":
         return None, "not_a_worktree_job"
@@ -1157,7 +1157,7 @@ def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
     }
     if not recorded["path"]:
         return None, "job records no result.diff"
-    return _resolve_result_diff_source(task_job_dir(job.job_id), recorded)
+    return _resolve_result_diff_source(job_dir(job.job_id), recorded)
 
 
 def _write_job_worktree_evidence(

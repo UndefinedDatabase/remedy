@@ -43,7 +43,7 @@ Exit codes:
 * 1 or 2 — raised by ``resolve_any_job_id`` itself: an unusable id, or a short
   prefix matching more than one job. These commands add no exit path of their
   own. Both job stores are searched — the classic ``jobs/<uuid>.json`` one and
-  the ``task_jobs/<16-hex>/`` one `remedy do job-run` writes — so a job-based
+  the ``jobs/<16hex>/`` one `remedy do job-run` writes — so a job-based
   run is narratable; the exit codes and messages are unchanged.
 """
 from __future__ import annotations
@@ -58,7 +58,7 @@ def _cmd_teach_narrate(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.timeline import load_run_events
 
     # BOTH job stores, not just the classic one: `remedy do job-run` files its
-    # jobs under `task_jobs/<16-hex>/` with 16-hex ids, and `resolve_job_id`
+    # jobs under `jobs/<16hex>/` with 16-hex ids, and `resolve_job_id`
     # searches `jobs/*.json` and returns a UUID. The teacher answered "no job
     # matches prefix" for every job-based run, whose run log was on disk the
     # whole time (operator dogfooding, 2026-08-25). Still read-only: the

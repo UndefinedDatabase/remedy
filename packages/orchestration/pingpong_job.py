@@ -379,9 +379,9 @@ class JobPlan:
 def _persist_job(job: JobPlan) -> Path:
     # ``data_paths`` owns "where the ping-pong record lives" (DECISION F260 D1),
     # so this writer and the readers that resolve an id cannot drift apart.
-    from packages.orchestration.data_paths import task_job_record_path
+    from packages.orchestration.data_paths import job_record_path
 
-    out = task_job_record_path(job.job_id)
+    out = job_record_path(job.job_id)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
     return out
@@ -393,9 +393,9 @@ def save_job_plan(job: JobPlan) -> Path:
 
 
 def load_job_plan(job_id: str) -> JobPlan | None:
-    from packages.orchestration.data_paths import task_job_record_path
+    from packages.orchestration.data_paths import job_record_path
 
-    job_file = task_job_record_path(job_id)
+    job_file = job_record_path(job_id)
     if not job_file.exists():
         return None
     try:
@@ -1179,9 +1179,9 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     if handle is None:
         return
     from packages.orchestration import worktrees as W
-    from packages.orchestration.data_paths import task_job_dir
+    from packages.orchestration.data_paths import job_dir
 
-    job_dir = task_job_dir(job.job_id)
+    job_root = job_dir(job.job_id)
 
     # --- Completion gate: the root hand-off must be exactly the reviewed work ---
     coverage_error = ""
@@ -1200,7 +1200,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
             job.result_diff_sha256 = ""
             job.result_diff_size_bytes = 0
             try:
-                (job_dir / "result.diff").unlink()
+                (job_root / "result.diff").unlink()
             except OSError:
                 pass
 
@@ -1210,7 +1210,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
         if not coverage_error:
             info = W.write_tree_diff(
                 handle, job.job_initial_tree, W.write_tree(handle),
-                job_dir / "result.diff",
+                job_root / "result.diff",
             )
             job.result_diff_path = "result.diff"
             job.result_diff_sha256 = info["sha256"]
@@ -2672,7 +2672,7 @@ def run_job(
 
             # Final job review — job-level review after all per-task reviewers pass
             try:
-                from packages.orchestration.data_paths import task_job_dir
+                from packages.orchestration.data_paths import job_dir
                 from packages.orchestration.final_job_review import build_final_job_review
 
                 _task_verdicts_fjr = [
@@ -2694,7 +2694,7 @@ def run_job(
                     gate_verdicts=[],
                     job_id=job.job_id,
                 )
-                _fjr_dir = task_job_dir(job.job_id)
+                _fjr_dir = job_dir(job.job_id)
                 _fjr_dir.mkdir(parents=True, exist_ok=True)
                 (_fjr_dir / "final_job_review.json").write_text(
                     _json.dumps(_fjr, indent=2) + "\n"
@@ -2741,7 +2741,7 @@ JOB_RECOVERABLE_STATES = frozenset({"active", "retained", "failed_recoverable"})
 def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     """Resume an interrupted JobPlan in its OWN job-owned worktree.
 
-    This is the JobPlan-level recovery record: it reads ``task_jobs/<job-id>/
+    This is the JobPlan-level recovery record: it reads ``jobs/<job-id>/
     job.json``, NOT a Core Job event log and not per-task ping-pong run records
     (those correctly say ``cleanup_status=job_owned``; the job owns the worktree).
 
@@ -2850,7 +2850,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     # single use below sits inside a compound boolean, where a missing import is
     # a runtime NameError on the worktree path only — so it is bound HERE, at
     # the top of the function, where it is visible to a reader.
-    from packages.orchestration.data_paths import task_job_dir
+    from packages.orchestration.data_paths import job_dir
 
     task_reports = []
     for t in job.tasks:
@@ -2881,7 +2881,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         handoff_available = bool(
             job.result_diff_path
             and job.result_diff_sha256
-            and (task_job_dir(job.job_id) / job.result_diff_path).is_file()
+            and (job_dir(job.job_id) / job.result_diff_path).is_file()
         )
         has_workspace_changes = handoff_available and any(
             t.status == TASK_APPLIED for t in job.tasks

@@ -1352,12 +1352,12 @@ class TestJobBudgetCliRendersPredictions:
     def test_the_command_does_not_mutate_the_persisted_job(
             self, budget_cli_repo, capsys, monkeypatch):
         # action_class="read_only" has to be true of the bytes on disk.
-        from packages.orchestration.data_paths import resolve_data_root
+        from packages.orchestration.data_paths import job_record_path
         _cli_arm_ledger(monkeypatch)
         _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
         job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
         _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
-        job_file = resolve_data_root() / "task_jobs" / job.job_id / "job.json"
+        job_file = job_record_path(job.job_id)
         before = job_file.read_bytes()
         self._text(job.job_id, capsys)
         assert job_file.read_bytes() == before

@@ -16,9 +16,6 @@ Public API::
 
     resolve_data_root() -> Path
     jobs_dir(root: Path | None = None) -> Path
-    task_jobs_dir(root: Path | None = None) -> Path
-    task_job_dir(job_id, root: Path | None = None) -> Path
-    task_job_record_path(job_id, root: Path | None = None) -> Path
     resolve_job_id(raw) -> UUID              # the classic store
     resolve_any_job_id(raw) -> str           # both stores
     mint_job_id() -> str                     # a job id (16-hex, DECISION F260 D2)
@@ -67,47 +64,6 @@ def resolve_data_root() -> Path:
 def jobs_dir(root: Path | None = None) -> Path:
     """Return the jobs storage directory (<root>/jobs)."""
     return (root if root is not None else resolve_data_root()) / "jobs"
-
-
-def task_jobs_dir(root: Path | None = None) -> Path:
-    """Return the ping-pong task-job storage directory (<root>/task_jobs).
-
-    Remedy has TWO job stores and they are shaped differently. The classic
-    store above holds one ``<uuid>.json`` file per job. This one holds one
-    DIRECTORY per job, named by a 16-hex id (``uuid4().hex[:16]``), containing
-    ``job.json`` and the run's artifacts; ``packages.orchestration.pingpong_job``
-    writes it and ``remedy do job-run`` fills it.
-
-    Named here, beside the store it is a sibling of, so the two spellings of
-    "where the task jobs live" cannot drift apart.
-    """
-    return (root if root is not None else resolve_data_root()) / "task_jobs"
-
-
-# The pair below NAMES THE PING-PONG STORE AS IT IS TODAY —
-# ``<data_root>/task_jobs/<16hex>/job.json`` — and nothing more. It is the
-# TARGET layout's mirror image: ``job_dir`` and ``job_record_path`` further down
-# spell where DECISION F260 D1 says the record BELONGS, these two spell where it
-# actually sits. Until T002 moves it, both spellings have to exist, and the
-# alternative — every caller hand-building the live path — is finding R-0814's
-# root cause. Giving the live store one spelling too is what makes DECISION F260
-# D1's collapse of this pair into ``job_dir`` / ``job_record_path`` ONE EDIT to
-# two function bodies here, instead of a sweep of every caller in the tree.
-
-
-def task_job_dir(job_id: str, root: Path | None = None) -> Path:
-    """The one directory holding everything about one PING-PONG job, as it is today."""
-    return task_jobs_dir(root) / job_id
-
-
-def task_job_record_path(job_id: str, root: Path | None = None) -> Path:
-    """The ping-pong job's own record — the file ``pingpong_job._persist_job`` writes.
-
-    THIS ONE IS LIVE, which is the whole difference between it and
-    :func:`job_record_path` above: a reader who wants the record on disk right
-    now wants this path, and T002 is what makes the other one true.
-    """
-    return task_job_dir(job_id, root) / "job.json"
 
 
 def runs_dir(root: Path | None = None) -> Path:
@@ -225,11 +181,9 @@ def job_dir(job_id: str, root: Path | None = None) -> Path:
 def job_record_path(job_id: str, root: Path | None = None) -> Path:
     """The job's own record — its plan, status and tasks as one JSON file.
 
-    NOTHING WRITES HERE YET. The live ping-pong record is still at
-    ``<data_root>/task_jobs/<16hex>/job.json`` via
-    ``pingpong_job._persist_job``, and TASK T002 of F260 is what moves that
-    writer onto this path. A reader who takes this for a live path today finds
-    nothing on disk; it is the target spelling every T002 writer will use.
+    ``pingpong_job._persist_job`` WRITES HERE: F260 T002 moved the ping-pong
+    record onto this path, so the record and that job's evidence now hang off
+    the one ``job_dir`` above. ``pingpong_job.load_job_plan`` reads it back.
     """
     return job_dir(job_id, root) / "job.json"
 
@@ -265,11 +219,19 @@ def _classic_job_id_matches(prefix: str) -> list[str]:
 def _task_job_id_matches(prefix: str) -> list[str]:
     """Every id in the TASK-JOB store starting with ``prefix``.
 
+    Since F260 T002 both stores live under ``<data_root>/jobs/``: the classic
+    one as ``<uuid>.json`` FILES, this one as ``<16hex>/`` DIRECTORIES holding
+    a ``job.json``. The ``is_dir()`` test plus the ``job.json`` check is what
+    keeps the two populations apart — a classic ``<uuid>.json`` file is not a
+    directory and never reaches this reading, and the sibling
+    :func:`_classic_job_id_matches` globs ``*.json`` and so never sees a
+    ping-pong directory.
+
     One directory per job, so the id is the directory name. A directory
     without a ``job.json`` is not a job — a half-created or hand-made
     directory must not be resolvable as one.
     """
-    tdir = task_jobs_dir()
+    tdir = jobs_dir()
     if not tdir.exists():
         return []
     lower = prefix.lower()
@@ -321,8 +283,11 @@ def resolve_any_job_id(raw: str) -> str:
     """Resolve a job id across BOTH job stores, and return it as a string.
 
     Remedy runs jobs into two stores. ``<data_root>/jobs/<uuid>.json`` is the
-    classic one; ``<data_root>/task_jobs/<16-hex>/job.json`` is the one
-    ``remedy do job-run`` writes. Both file their run logs the same way, under
+    classic one; ``<data_root>/jobs/<16hex>/job.json`` is the one
+    ``remedy do job-run`` writes. Since F260 T002 both stores share the one
+    ``jobs/`` directory and are told apart by FILE versus DIRECTORY: the classic
+    id is a ``.json`` file's stem, the ping-pong id is a directory holding a
+    ``job.json``. Both file their run logs the same way, under
     ``<data_root>/runs/<job-id>/``, so ``timeline.load_run_events`` reaches
     either — but :func:`resolve_job_id` searches only the classic store and
     returns a ``UUID``, which a 16-hex task-job id can never be.

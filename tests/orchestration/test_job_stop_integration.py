@@ -22,7 +22,7 @@ from pathlib import Path
 import psutil
 import pytest
 
-from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.data_paths import job_record_path, resolve_data_root
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_STOPPED,
@@ -524,7 +524,7 @@ class TestALiveRunnerStopsCleanly:
             while time.monotonic() < deadline:
                 if idfile.is_file() and idfile.read_text().strip():
                     job_id = idfile.read_text().strip()
-                    job_json = data_dir / "task_jobs" / job_id / "job.json"
+                    job_json = job_record_path(job_id, data_dir)
                     if job_json.is_file():
                         data = json.loads(job_json.read_text() or "{}")
                         statuses = [t["status"] for t in data.get("tasks", [])]
@@ -555,7 +555,7 @@ class TestALiveRunnerStopsCleanly:
                 proc.kill()
                 proc.wait(timeout=30)
 
-        data = json.loads((data_dir / "task_jobs" / job_id / "job.json").read_text())
+        data = json.loads(job_record_path(job_id, data_dir).read_text())
         statuses = [t["status"] for t in data["tasks"]]
         assert data["status"] == "stopped"
         assert statuses.count("applied_to_job_workspace") == 1
@@ -857,7 +857,7 @@ class TestNothingUntrustedReachesTheEvidence:
 
         record = (_stop_episodes(job.job_id)[0] / "postmortem.json").read_text()
         events = json.dumps(_events(isolate_data_root, job.job_id, "job_stopped"))
-        job_json = (isolate_data_root / "task_jobs" / job.job_id / "job.json").read_text()
+        job_json = job_record_path(job.job_id, isolate_data_root).read_text()
 
         for blob in (record, events, job_json):
             assert "sk-live-abcdef123456" not in blob

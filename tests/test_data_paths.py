@@ -290,7 +290,7 @@ _JOB_EVIDENCE_OWNING_MODULES = (
 
 # The modules that reached the live ping-pong store through
 # ``pingpong_job._jobs_dir`` until F260 T002 DELETED that helper. They now spell
-# it as ``data_paths.task_job_dir`` / ``task_job_record_path`` and nothing else.
+# it as ``data_paths.job_dir`` / ``job_record_path`` and nothing else.
 # ``packages.orchestration.storage`` is NOT in this set and must never be added:
 # its ``_resolve_jobs_dir`` is a different symbol naming the CLASSIC store that
 # F260 T004 deletes, and it merely shares a substring with the deleted name.
@@ -389,8 +389,8 @@ class TestJobAndRunLayout:
 
         Read via ``ast`` rather than as a substring, so a comment or a docstring
         naming the old layout cannot trip the guard and an ``import ... as``
-        alias cannot dodge it. ``jobs_dir``, ``_jobs_dir``, ``task_jobs_dir`` and
-        ``_resolve_jobs_dir`` are FOUR DIFFERENT names that merely share a
+        alias cannot dodge it. ``jobs_dir``, ``_jobs_dir`` and
+        ``_resolve_jobs_dir`` are THREE DIFFERENT names that merely share a
         substring; matching on the resolved name is exactly what keeps each of
         them correctly invisible to a reading aimed at another.
         """
@@ -493,53 +493,6 @@ class TestJobAndRunLayout:
                 "nothing"
             )
 
-    # -- The LIVE ping-pong store: one spelling, and the deleted helper --------
-    #
-    # ``task_job_dir`` and ``task_job_record_path`` name the store AS IT IS
-    # TODAY, ``<data_root>/task_jobs/<16hex>/job.json``. The readings below are
-    # deliberately the same ones the D1 pair above already has, because the two
-    # pairs collapse into one in T002 and a reading that exists for only one of
-    # them would be lost in that collapse.
-
-    def _task_layout(self):
-        from packages.orchestration.data_paths import (
-            task_job_dir,
-            task_job_record_path,
-            task_jobs_dir,
-        )
-        return task_jobs_dir, task_job_dir, task_job_record_path
-
-    def test_the_task_job_record_is_job_json_under_the_task_job_dir(
-        self, monkeypatch, tmp_path,
-    ):
-        """Each function is built on the one above it, so there is one layout, not three."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        task_jobs_dir, task_job_dir, task_job_record_path = self._task_layout()
-        jid = "0123456789abcdef"
-        assert task_job_dir(jid) == task_jobs_dir() / jid
-        assert task_job_record_path(jid) == task_job_dir(jid) / "job.json"
-        assert task_job_record_path(jid).parent == task_job_dir(jid)
-        assert task_job_record_path(jid).name == "job.json"
-
-    def test_the_root_override_is_honoured_by_both_task_job_helpers(
-        self, monkeypatch, tmp_path,
-    ):
-        """Set the env root to a DIFFERENT directory from the argument root.
-
-        A helper that quietly drops its ``root`` argument returns the env path,
-        and would pass a same-root comparison by coincidence.
-        """
-        env_root = tmp_path / "env"
-        arg_root = tmp_path / "arg"
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
-        _, task_job_dir, task_job_record_path = self._task_layout()
-        jid = "0123456789abcdef"
-        assert task_job_dir(jid, arg_root) == arg_root / "task_jobs" / jid
-        assert task_job_record_path(jid, arg_root) == \
-            arg_root / "task_jobs" / jid / "job.json"
-        for p in (task_job_dir(jid, arg_root), task_job_record_path(jid, arg_root)):
-            assert env_root not in p.parents, f"{p} ignored its root argument"
-
     def test_pingpong_job_has_no_jobs_dir_attribute_at_all(self):
         """``pingpong_job._jobs_dir`` is GONE, not merely unused.
 
@@ -552,7 +505,7 @@ class TestJobAndRunLayout:
 
         assert not hasattr(pingpong_job, "_jobs_dir"), (
             "pingpong_job._jobs_dir is back; F260 T002 deleted it so the live "
-            "ping-pong store has ONE spelling, data_paths.task_job_dir"
+            "ping-pong store has ONE spelling, data_paths.job_dir"
         )
         assert hasattr(pingpong_job, "_persist_job"), (
             "hasattr found nothing at all on pingpong_job; the absence above "
@@ -563,7 +516,7 @@ class TestJobAndRunLayout:
     def test_no_migrated_module_names_the_deleted_jobs_dir_helper(self, modname):
         """The VALUE readings above cannot see the deleted spelling come back.
 
-        ``_jobs_dir() / job_id`` was EQUAL to what ``task_job_dir`` returns, so
+        ``_jobs_dir() / job_id`` was EQUAL to what ``job_dir`` returns, so
         an equality test stays green while the second spelling returns. Only
         reading the module itself sees it.
 
@@ -580,7 +533,7 @@ class TestJobAndRunLayout:
         assert hits == [], (
             f"{modname} names _jobs_dir at lines "
             f"{[getattr(n, 'lineno', '?') for n in hits]}; F260 T002 deleted "
-            "that helper and data_paths.task_job_dir replaced it"
+            "that helper and data_paths.job_dir replaced it"
         )
 
     def test_the_deleted_name_guard_is_not_vacuous(self):

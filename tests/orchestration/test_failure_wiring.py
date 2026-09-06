@@ -858,13 +858,13 @@ class TestJobPostmortemFailurePersists:
         self, demo_repo, monkeypatch,
     ):
         from packages.orchestration import pingpong_job as PJ
-        from packages.orchestration.data_paths import task_job_dir
+        from packages.orchestration.data_paths import job_dir
 
         job = PJ.JobPlan(repo_path=str(demo_repo), job_title="old",
                          tasks=[PJ.TaskEntry(task_id="T001", title="t", body="b")])
         PJ._persist_job(job)
 
-        path = task_job_dir(job.job_id) / "job.json"
+        path = job_dir(job.job_id) / "job.json"
         data = json.loads(path.read_text())
         data.pop("postmortem", None)           # a job written before F010 existed
         path.write_text(json.dumps(data, indent=2))

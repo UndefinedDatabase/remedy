@@ -22,7 +22,7 @@ from packages.orchestration import job_promote as JP
 from packages.orchestration import pingpong_job as PJ
 from packages.orchestration import worktrees as W
 from packages.orchestration.artifact_contract_gate import check_worktree_artifacts
-from packages.orchestration.data_paths import task_job_dir
+from packages.orchestration.data_paths import job_dir
 from packages.orchestration.job_evidence import export_job_evidence
 from packages.orchestration.job_promote import promote_job
 from packages.orchestration.pingpong_job import (
@@ -277,7 +277,7 @@ class TestHandoffCoverage:
         assert done.unexpected_root_files == ["rogue.txt"]
         # No authoritative root hand-off is exported, and the work is retained.
         assert done.result_diff_path == ""
-        assert not (task_job_dir(done.job_id) / "result.diff").exists()
+        assert not (job_dir(done.job_id) / "result.diff").exists()
         assert done.worktree_cleanup_status == "retained"
         assert Path(holder["path"]).is_dir()
 

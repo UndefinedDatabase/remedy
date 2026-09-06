@@ -348,10 +348,10 @@ def _break_diff(job) -> None:
     """Make result.diff verified-but-unapplicable (hash and size stay correct)."""
     import hashlib
 
-    from packages.orchestration.data_paths import task_job_dir
+    from packages.orchestration.data_paths import job_dir
     from packages.orchestration.pingpong_job import _persist_job, load_job_plan
 
-    path = task_job_dir(job.job_id) / "result.diff"
+    path = job_dir(job.job_id) / "result.diff"
     data = (
         b"diff --git a/absent.txt b/absent.txt\n"
         b"--- a/absent.txt\n+++ b/absent.txt\n"
