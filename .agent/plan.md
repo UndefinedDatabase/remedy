@@ -1,9 +1,9 @@
 # Plan — F260 One world: mission → job → run
 
 Branch: feature/f260-one-world, cut from `main` at b5cd6c20, the merge commit of
-pull request 240 (F259). Rounds 1 to 10 are reviewed and 2 to 10 PASSED. T001 is
-CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, and both
-resolvers now return `str`.
+pull request 240 (F259). Rounds 1 to 11 are reviewed and 2 to 11 PASSED. T001 is
+CLOSED. T002 is open: the job record has MOVED, R-0814 is resolved, both
+resolvers return `str`, and the run store has one spelling.
 
 ## Goal
 
@@ -17,19 +17,21 @@ T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-ONE SPELLING FOR THE RUN STORE. `data_paths` gains `pingpong_runs_dir` and
-`pingpong_run_dir`, and `pingpong_loop._pingpong_runs_dir` is DELETED with its
-thirty-nine production references and its test references moved onto the pair.
-The store does NOT move: only its spelling changes, so D1's collapse into
-`<data_root>/runs/<run_id>/` becomes two function bodies. DECISION F260 D5 is
-recorded in the same round, moving the resolver collapse to T004.
+THE TEST SIDE OF THE ONE SPELLING. Round 11 moved every `_pingpong_runs_dir`
+reference onto `data_paths.pingpong_runs_dir` / `pingpong_run_dir` and left
+fourteen hand-spelled `"pingpong_runs"` path components in seven test files,
+which never named the deleted helper and so were invisible to that sweep. They
+are the test-side twin of R-0814 — a path built by hand does not follow its
+writer — and this round moves them onto the pair.
 
 ## Next Steps
 
-- The run move itself: `pingpong_runs_dir` and `pingpong_run_dir` collapse into
-  `runs_dir` and `run_dir`. The run LOG at `<data_root>/runs/<job_id>/` must
-  move to the run id in the same commit, or `timeline.load_run_events` reads a
-  directory keyed two ways — DECISION F260 D0 measured that collision.
+- THE RUN MOVE, which needs its own session: `pingpong_runs_dir` and
+  `pingpong_run_dir` collapse into `runs_dir` and `run_dir`, AND the run LOG at
+  `<data_root>/runs/<job_id>/` must move to the run id in the SAME commit, or
+  `timeline.load_run_events` reads one directory keyed two ways — DECISION F260
+  D0 measured that collision. It needs a fresh reading of `run_log.py` and
+  `timeline.py`, which no round so far has touched.
 - The unified record's own fields, and the Mission extension (order, contract,
   mission plan, job refs), which is the rest of T002.
 - Then T003 consumer by consumer; T004 the classic runner, the classic store and
