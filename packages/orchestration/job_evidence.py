@@ -1343,9 +1343,9 @@ def _snapshot_attestation_artifacts(
     Must be called BEFORE _write_task_run_evidence to capture attestation
     data that would otherwise be overwritten when src and dst dirs are the same.
     """
-    from packages.orchestration.data_paths import jobs_dir
+    from packages.orchestration.data_paths import job_evidence_dir
 
-    ev_base = jobs_dir() / job.job_id / "evidence"
+    ev_base = job_evidence_dir(job.job_id)
     if not ev_base.exists():
         return {}
 
@@ -2882,14 +2882,14 @@ def _copy_task_stream_artifacts(
     """
     import hashlib as _hl
 
-    from packages.orchestration.data_paths import jobs_dir
+    from packages.orchestration.data_paths import job_evidence_dir
     from packages.orchestration.stream_evidence import (
         RAW_STREAM_FILENAME,
         RUN_EVENTS_FILENAME,
     )
 
     listing: dict[str, Any] = {}
-    src_task = jobs_dir() / job_id / "evidence" / "task_runs" / task_id / "streams"
+    src_task = job_evidence_dir(job_id) / "task_runs" / task_id / "streams"
     if not src_task.is_dir():
         return listing
 

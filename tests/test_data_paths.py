@@ -267,6 +267,28 @@ class TestMintIds:
             UUID(mint_job_id())
 
 
+# DECISION F260 D1: the set of modules that OWN part of a job's evidence
+# directory and have been migrated onto ``data_paths.job_evidence_dir``. The set
+# is defined SEMANTICALLY — membership is "F260 moved this module's hand-built
+# ``jobs_dir() / <id> / 'evidence'`` onto the one spelling" — so a later reader
+# knows what earns a place here rather than guessing from the list.
+#
+# ``packages/orchestration/checkpoints.py`` and ``packages/orchestration/
+# storage.py`` are DELIBERATELY EXCLUDED and correctly keep their ``jobs_dir``
+# calls. They name the CLASSIC job store, ``<data_root>/jobs/<uuid>.json``,
+# which is one FILE per job and a different concept from a job's evidence
+# DIRECTORY; that store is deleted in F260 T004, not here. The reason is written
+# down because an exclusion a later reader cannot justify is one a later reader
+# deletes — or, worse, "fixes" by migrating the classic store onto an evidence
+# path it was never meant to share.
+_JOB_EVIDENCE_OWNING_MODULES = (
+    "packages.orchestration.pingpong_job",
+    "packages.orchestration.job_evidence",
+    "packages.orchestration.repair_attest",
+    "apps.cli.commands.do_cmd",
+)
+
+
 class TestJobAndRunLayout:
     """DECISION F260 D1: ONE root per job, and ONE spelling of that layout.
 
@@ -351,30 +373,83 @@ class TestJobAndRunLayout:
         assert pingpong_job._task_stream_dir(jid, "t1") == \
             data_paths.job_evidence_dir(jid) / "task_runs" / "t1"
 
-    def test_pingpong_job_no_longer_spells_the_evidence_path_itself(self):
-        """The VALUE reading above cannot see a regression to the hand-built path.
+    def _jobs_dir_references(self, module):
+        """Every AST reference in ``module`` resolving to exactly ``jobs_dir``.
 
-        ``jobs_dir() / job_id / "evidence"`` is EQUAL to what ``data_paths`` now
-        returns, so an equality test stays green while the second spelling comes
-        back. Only reading the module itself sees it. Read via ``ast`` rather
-        than as a substring, so a comment or a docstring naming the old layout
-        cannot trip the guard and an ``import ... as`` alias cannot dodge it.
-        ``_jobs_dir`` and ``task_jobs_dir`` are DIFFERENT names and out of scope
-        here — they hold the ping-pong store and move in F260 T002.
+        Read via ``ast`` rather than as a substring, so a comment or a docstring
+        naming the old layout cannot trip the guard and an ``import ... as``
+        alias cannot dodge it. ``_jobs_dir`` and ``task_jobs_dir`` are DIFFERENT
+        names that merely contain the same substring; matching on the resolved
+        name is exactly what keeps them correctly invisible here.
         """
         import ast
 
-        from packages.orchestration import pingpong_job
-        tree = ast.parse(Path(pingpong_job.__file__).read_text())
-        hits = [
+        tree = ast.parse(Path(module.__file__).read_text())
+        return [
             node for node in ast.walk(tree)
             if (isinstance(node, ast.Name) and node.id == "jobs_dir")
             or (isinstance(node, ast.Attribute) and node.attr == "jobs_dir")
             or (isinstance(node, ast.alias)
                 and (node.asname or node.name) == "jobs_dir")
         ]
+
+    @pytest.mark.parametrize("modname", _JOB_EVIDENCE_OWNING_MODULES)
+    def test_no_module_that_owns_job_evidence_spells_the_path_itself(self, modname):
+        """The VALUE readings above cannot see a regression to the hand-built path.
+
+        ``jobs_dir() / job_id / "evidence"`` is EQUAL to what ``data_paths`` now
+        returns, so an equality test stays green while the second spelling comes
+        back. Only reading the module itself sees it, which is why BOTH readings
+        ship rather than either one alone.
+
+        ``checkpoints.py`` and ``storage.py`` are not in this set on purpose:
+        they name the CLASSIC store ``<data_root>/jobs/<uuid>.json``, a file per
+        job rather than a job's evidence directory, and F260 T004 deletes it.
+        """
+        import importlib
+
+        module = importlib.import_module(modname)
+        hits = self._jobs_dir_references(module)
         assert hits == [], (
-            "pingpong_job.py references data_paths.jobs_dir at lines "
+            f"{modname} references data_paths.jobs_dir at lines "
             f"{[getattr(n, 'lineno', '?') for n in hits]}; DECISION F260 D1 puts "
             "the job evidence layout in data_paths and nowhere else"
         )
+
+    def test_the_job_evidence_owning_module_set_is_real(self):
+        """Non-vacuity: a guard over an empty set would pass while measuring nothing.
+
+        The absence assertion above is only as strong as the set it ranges over,
+        so the set is checked to be non-empty, free of duplicates, and made
+        entirely of modules that actually import and have a readable source file.
+        """
+        import importlib
+
+        assert _JOB_EVIDENCE_OWNING_MODULES, (
+            "the evidence-owning module set is EMPTY; the absence guard above "
+            "would then range over nothing and pass without reading any module"
+        )
+        assert len(set(_JOB_EVIDENCE_OWNING_MODULES)) == \
+            len(_JOB_EVIDENCE_OWNING_MODULES), "duplicate module in the set"
+        for modname in _JOB_EVIDENCE_OWNING_MODULES:
+            module = importlib.import_module(modname)
+            assert Path(module.__file__).is_file(), f"{modname} has no source file"
+
+    def test_the_classic_store_modules_still_call_jobs_dir(self):
+        """The excluded pair must keep naming the classic store, not lose it quietly.
+
+        This is the other half of the non-vacuity reading: if ``jobs_dir`` had
+        simply been deleted everywhere, the absence guard above would pass for
+        the wrong reason. ``checkpoints.py`` and ``storage.py`` are the modules
+        that legitimately still call it, until F260 T004 deletes that store.
+        """
+        from packages.orchestration import checkpoints, storage
+
+        for module in (checkpoints, storage):
+            hits = self._jobs_dir_references(module)
+            assert hits, (
+                f"{module.__name__} no longer references jobs_dir; the classic "
+                "store is still live until F260 T004 deletes it, so this is "
+                "either a real regression or a sign this guard now measures "
+                "nothing"
+            )
