@@ -522,7 +522,7 @@ class TestCmdConstitution:
         _cmd_constitution(str(job.id))
         capsys.readouterr()
         # Check run log
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():

@@ -51,7 +51,7 @@ def repo(tmp_path) -> Path:
 
 def _write_events(job_id: str) -> None:
     from packages.orchestration.data_paths import resolve_data_root
-    runs = resolve_data_root() / "runs" / job_id
+    runs = resolve_data_root() / "job_logs" / job_id
     runs.mkdir(parents=True, exist_ok=True)
     events = [
         {"event": "autorun_started", "metadata": {}, "timestamp": "2026-07-11T00:00:00Z"},

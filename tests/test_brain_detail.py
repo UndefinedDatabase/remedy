@@ -838,7 +838,7 @@ class TestCLIBrainNode:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
 
     def test_run_log_metadata_exact_keys(self, tmp_path, monkeypatch):
@@ -850,7 +850,7 @@ class TestCLIBrainNode:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = [
             json.loads(line)
             for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()
@@ -877,7 +877,7 @@ class TestCLIBrainNode:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "node", str(job.id), self._job_node_id(job)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
         assert ARTIFACT_CONTENT_MUST_NOT_RENDER not in raw
 

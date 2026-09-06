@@ -653,7 +653,7 @@ class TestRunLogSchema:
         # F146 (2727114) made `project context` strictly read-only and removed
         # its RunLog write: "zero writes on read-only commands". The pin is now
         # that contract — the command must leave no run log behind at all.
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         assert not runs_dir.exists(), \
             "project context is read-only and must not write a run log"
         assert self._REQUIRED_META_KEYS, "the recorded metadata contract is kept for the writer paths"
@@ -679,9 +679,9 @@ class TestRunLogSchema:
 
         _cmd_project_context(str(p.id))
 
-        # Same F146 read-only contract: nothing under the data root's runs/
+        # Same F146 read-only contract: nothing under the data root's job_logs/
         # may appear because a project was merely inspected.
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         assert not list(runs_dir.glob("*.jsonl")) if runs_dir.exists() else True
 
     def test_run_log_no_sentinels(self, tmp_path, monkeypatch):
@@ -704,7 +704,7 @@ class TestRunLogSchema:
 
         _cmd_project_context(str(p.id))
 
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         for f in runs_dir.glob("*.jsonl"):
             content = f.read_text()
             for sentinel in _REDACTION_SENTINELS:

@@ -133,7 +133,7 @@ class TestKeepStagingReleasesItsLock:
 
 def _write_events(job_id: str) -> None:
     from packages.orchestration.data_paths import resolve_data_root
-    runs = resolve_data_root() / "runs" / job_id
+    runs = resolve_data_root() / "job_logs" / job_id
     runs.mkdir(parents=True, exist_ok=True)
     with (runs / "run.jsonl").open("w") as fh:
         for e in [{"event": "autorun_started", "metadata": {}},

@@ -42,8 +42,8 @@ def _make_and_save_job(tmp_path, monkeypatch, **metadata_overrides) -> Job:
 
 
 def _find_run_log(tmp_path, job_id) -> Path | None:
-    """Find the first .jsonl file for a given job_id under tmp_path/runs/."""
-    runs_dir = tmp_path / "runs" / str(job_id)
+    """Find the first .jsonl file for a given job_id under tmp_path/job_logs/."""
+    runs_dir = tmp_path / "job_logs" / str(job_id)
     if not runs_dir.exists():
         return None
     files = list(runs_dir.glob("*.jsonl"))

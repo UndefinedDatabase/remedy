@@ -83,7 +83,7 @@ class TestRunAgentLoopEvents:
         run_agent_loop(job, max_cycles=1)
 
         # Check run log for agent_loop_started event
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         assert runs_dir.exists()
         log_files = list(runs_dir.glob("*.jsonl"))
         assert log_files
@@ -101,7 +101,7 @@ class TestRunAgentLoopEvents:
         save_job(job)
         run_agent_loop(job, max_cycles=1)
 
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for lf in runs_dir.glob("*.jsonl"):
             for line in lf.read_text().splitlines():
@@ -122,7 +122,7 @@ class TestAgentLoopEventSchema:
     """Every agent_loop_* event must have the exact 11-key metadata schema."""
 
     def _collect_events(self, tmp_path, job_id):
-        runs_dir = tmp_path / "runs" / str(job_id)
+        runs_dir = tmp_path / "job_logs" / str(job_id)
         events = []
         if runs_dir.exists():
             for lf in runs_dir.glob("*.jsonl"):

@@ -150,7 +150,7 @@ def _stop_episodes(job_id: str) -> list[Path]:
 
 
 def _events(data_root: Path, job_id: str, event: str) -> list[dict]:
-    runs = data_root / "runs" / job_id
+    runs = data_root / "job_logs" / job_id
     out: list[dict] = []
     for f in sorted(runs.glob("*.jsonl")) if runs.is_dir() else []:
         for line in f.read_text().splitlines():
@@ -571,7 +571,7 @@ class TestALiveRunnerStopsCleanly:
         assert (episodes[0] / "postmortem.json").is_file()
 
         events = [json.loads(line)
-                  for f in (data_dir / "runs" / job_id).glob("*.jsonl")
+                  for f in (data_dir / "job_logs" / job_id).glob("*.jsonl")
                   for line in f.read_text().splitlines() if line.strip()]
         assert len([e for e in events if e["event"] == "job_stopped"]) == 1
 

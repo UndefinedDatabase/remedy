@@ -26,7 +26,7 @@ def test_complete_on_valid(tmp_path):
     r = emit_important_event(tmp_path, jid, "evt", {"k": "v"})
     assert r.status == "complete"
     assert r.persisted is True
-    assert (tmp_path / "runs" / jid).exists()
+    assert (tmp_path / "job_logs" / jid).exists()
 
 
 def test_no_raw_exception_text():

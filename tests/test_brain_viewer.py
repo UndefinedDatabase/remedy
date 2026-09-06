@@ -78,14 +78,14 @@ def _make_job(**kwargs) -> Job:
 
 
 def _write_run_events(tmp_path: Path, job_id, events: list[dict]) -> None:
-    runs_dir = tmp_path / "runs" / str(job_id)
+    runs_dir = tmp_path / "job_logs" / str(job_id)
     runs_dir.mkdir(parents=True, exist_ok=True)
     lines = [json.dumps(e) for e in events]
     (runs_dir / "viewer_test_events.jsonl").write_text("\n".join(lines) + "\n")
 
 
 def _read_run_log(tmp_path: Path, job_id) -> list[dict]:
-    runs_dir = tmp_path / "runs" / str(job_id)
+    runs_dir = tmp_path / "job_logs" / str(job_id)
     if not runs_dir.exists():
         return []
     events: list[dict] = []

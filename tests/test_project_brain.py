@@ -844,7 +844,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         jsonl_files = list(runs_dir.glob("*.jsonl"))
         assert len(jsonl_files) == 1
         events = [
@@ -864,7 +864,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = [
             json.loads(line)
             for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()
@@ -894,7 +894,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         raw = next(runs_dir.glob("*.jsonl")).read_text()
         assert ARTIFACT_CONTENT_MUST_NOT_RENDER not in raw
 
@@ -907,7 +907,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id)])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
 
     def test_json_flag_returns_parseable_json(self, tmp_path, monkeypatch, capsys):
@@ -988,7 +988,7 @@ class TestCLIBrain:
         from apps.cli.main import main
         monkeypatch.setattr(sys, "argv", ["remedy", "brain", "graph", str(job.id), "--json"])
         main()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = [
             json.loads(line)
             for line in next(runs_dir.glob("*.jsonl")).read_text().splitlines()

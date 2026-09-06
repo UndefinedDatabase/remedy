@@ -81,7 +81,7 @@ def _counters(
 
 def _tick_files(root: Path, job_id: str) -> list[Path]:
     """Every run-log file this job has, whatever it holds."""
-    job_dir = root / "runs" / job_id
+    job_dir = root / "job_logs" / job_id
     return sorted(job_dir.glob("*.jsonl")) if job_dir.is_dir() else []
 
 

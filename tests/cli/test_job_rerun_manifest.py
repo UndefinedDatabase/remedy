@@ -273,7 +273,7 @@ class TestStopTransaction:
         assert len(archived_signals(job.job_id)) == 1
         eps = job_evidence_dir(job.job_id) / STOP_POSTMORTEM_SUBDIR
         assert len(list(eps.iterdir())) == 1
-        runs = data_root / "runs" / job.job_id
+        runs = data_root / "job_logs" / job.job_id
         events = [json.loads(ln) for f in runs.glob("*.jsonl")
                   for ln in f.read_text().splitlines() if ln.strip()]
         assert len([e for e in events if e["event"] == "job_stopped"]) == 1
