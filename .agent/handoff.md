@@ -1,454 +1,322 @@
-# Handoff — F260 One world: mission → job → run, round 7
+# Handback — F260 round 8
 
 ## Session
 
-`SESSION 2 of feature F260 · round 7 · rounds so far 7`
-
-Well inside the 25-round / 7-session soft limit, so no scope report is owed.
-
-Open findings: **295** (299 `^- R-\d{4} — ` registrations minus 4
-`^Done: R-\d{4} — ` lines) — unchanged, because this round registers and
-resolves nothing. Maximum id in use: **R-0814**. R-0814's root cause is what
-this round's code finishes addressing — "one spelling per concept" failing
-across modules — but the finding itself is resolved in the T002 writer round,
-against the fix clause it already carries.
-
-Branch `feature/f260-one-world`, resumed at `99ca6406`. No branch created, no
-merge, no pull request touched — the pull request belongs to the closure
-sequence.
+`SESSION 2 of feature F260 · round 8 · rounds so far 8`
 
 ## Range
 
-Review of `99ca6406..HEAD`.
+Review of `072b54ed..b92d096f`.
+
+Branch `feature/f260-one-world`. No branch created, no merge, no pull request
+created or touched.
 
 ## Commits
 
-### 7afe3056 f260: save the round 7 step block as authored input (C0a, +294)
+Six commits, all single-parent, in the block's ordered sequence C0a → C4.
+Insertion counts are the `+` column of `git diff --numstat`.
+
+### 76dc7a47 f260: save the round 8 step block as authored text — C0a, +349
 
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/authored/f260-r7.md | +294 / -0 | the round 7 block, copied with `shutil.copyfile`, never retyped |
+|------|-----|--------|
+| `.agent/authored/f260-r8.md` | +349 / -0 | `shutil.copyfile` of `.remedy-wt/f260-r8-block.md`; not retyped |
 
-### f9c648ac f260: mirror the round 7 step block into last_block (C0b, +197)
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/last_block.md | +197 / -267 | same bytes as C0a; the round 6 block it replaces was longer |
-
-### adc66ae4 f260: book the round 6 gate record into the live review ledger (C1, +2)
+### 3037d75b f260: mirror the round 8 block into the last block slot — C0b, +251
 
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +2 / -0 | `"\n"` + the 6674-byte GATE_R6 slice + `"\n"`; 887129 → 893805 bytes |
+|------|-----|--------|
+| `.agent/last_block.md` | +251 / -196 | same bytes copied over the round-7 block |
 
-### 36c4c375 f260: append the round 6 reviewer recipe slip (C2, +2)
-
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/prose_slips.md | +2 / -0 | `"\n"` + the 2127-byte SLIP6 slice + `"\n"`; 92673 → 94802 bytes |
-
-### 1ad4c238 f260: point the plan at the remaining evidence path swaps (C3, +17)
+### ec1defd0 f260: book the round 7 gate record into the live review ledger — C1, +2
 
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | +17 / -19 | replaced entirely with the PLANF260R7 slice plus one trailing newline; 46 lines |
+|------|-----|--------|
+| `.agent/live_review.md` | +2 / -0 | append of `"\n"` + GATE_R7 (5010 bytes) + `"\n"` |
 
-### 246efbb9 f260: put the last four evidence paths on data_paths and widen the guard (C4, +96)
-
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/job_evidence.py | +4 / -4 | two sites: `ev_base` in the attestation-snapshot reader and `src_task` in the task-stream export, both onto `job_evidence_dir`; each function-scoped import moved with its site |
-| packages/orchestration/repair_attest.py | +2 / -2 | `base` onto `job_evidence_dir`; its import is MODULE-LEVEL and moved in place, keeping the module's existing import style |
-| apps/cli/commands/do_cmd.py | +2 / -2 | `_task_ev_dir` in the task-stream trace reader onto `job_evidence_dir`; function-scoped import moved with it |
-| tests/test_data_paths.py | +88 / -13 | the round 6 guard widened from one module to the semantically-defined set of four, parametrized, plus two non-vacuity tests |
-
-### C5 f260: hand back round 7 (this file)
+### 5a910981 f260: append the two round 7 reviewer prose slips — C2, +4
 
 | Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | this rewrite | a handoff cannot table the commit that writes it (R-0149 pattern) |
+|------|-----|--------|
+| `.agent/prose_slips.md` | +4 / -0 | append of `"\n"` + SLIP7 + `"\n\n"` + SLIP8 + `"\n"` |
 
-Largest commit this round is 294 insertions, a single `.agent/**` state write;
-the largest code commit is 96. Both are under the AGENTS.md 500-insertion cap.
+### c333d06d f260: point the plan at the one spelling for the ping-pong store — C3, +21
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `.agent/plan.md` | +21 / -19 | whole-file replacement by the PLANF260R8 slice + one newline |
+
+### b92d096f f260: give the ping-pong store one spelling and delete the module-local jobs dir helper — C4, +257
+
+One commit, eleven files, 257 insertions / 42 deletions — under the AGENTS.md
+500-insertion cap, so no oversize declaration is owed. Deleting `_jobs_dir`
+breaks every caller at once, so a production-only or test-only split would have
+been red on its own.
+
+| Path | +/- | Reason |
+|------|-----|--------|
+| `packages/orchestration/data_paths.py` | +28 / -0 | `task_job_dir`, `task_job_record_path`, the group comment, the `Public API::` lines |
+| `packages/orchestration/pingpong_job.py` | +22 / -15 | `_jobs_dir` DELETED; its six users moved, each with its own function-scoped import |
+| `packages/orchestration/job_evidence.py` | +2 / -2 | cross-module reach into `pingpong_job._jobs_dir` replaced by `data_paths.task_job_dir` |
+| `tests/test_data_paths.py` | +183 / -8 | the guard: layout, root override, `hasattr`, the AST absence, the non-vacuity readings |
+| `tests/orchestration/test_failure_wiring.py` | +2 / -1 | 1 call site + local import |
+| `tests/orchestration/test_job_promote_consistency.py` | +3 / -2 | 1 call site + function-scoped from-import list |
+| `tests/orchestration/test_job_stop_integration.py` | +3 / -3 | 2 `.parent` data-root readings + module-level from-import list |
+| `tests/orchestration/test_job_worktree_handoff.py` | +6 / -5 | 5 call sites + module-level import |
+| `tests/orchestration/test_job_worktree_integration.py` | +2 / -1 | 1 call site + module-level import |
+| `tests/orchestration/test_job_worktree_integrity.py` | +2 / -1 | 1 call site + module-level import |
+| `tests/orchestration/test_pingpong_integration.py` | +4 / -4 | 3 call sites + module-level from-import list |
+
+Seventeen test sites, counted mechanically: 12 of shape `_jobs_dir() / <id> /
+<tail>`, 2 `_jobs_dir().parent` data-root readings, 3 from-import lists.
+
+C5 rewrites `.agent/handoff.md` (this file) and is not tabled above — a handoff
+cannot table the commit that writes it (R-0149 pattern).
 
 ## External actions
 
-| Action | Outcome |
-|---|---|
-| `git worktree add .remedy-wt/f260-r7-mut 246efbb9` | created, detached at `246efbb9`; name confirmed not to exist beforehand |
-| `git worktree remove --force .remedy-wt/f260-r7-mut` | removed; `git worktree list` then holds only the primary checkout and eleven PRE-EXISTING `job-*` worktrees, none created this round |
-| `git push origin feature/f260-one-world` | run after C5; never force-pushed |
+| Command | Outcome |
+|---------|---------|
+| `git worktree add --detach .remedy-wt/f260-r8-mut 86750459` | created (first C4) |
+| `git worktree remove --force .remedy-wt/f260-r8-mut` | removed after the G6(iii) gap was measured |
+| `git worktree add --detach .remedy-wt/f260-r8-mut b92d096f` | re-created at the amended C4; full G6 re-run there |
+| `git worktree remove --force .remedy-wt/f260-r8-mut` | removed before C5; `git worktree list` = 12 entries, all pre-existing `job-*` plus the primary |
+| `git push origin feature/f260-one-world` | run after C5 — see below |
 
-No branch created, no merge, no pull request created, edited or merged. No `gh`
-command run.
+No PR created, edited or merged. No `gh` command run.
 
-## Verification
+## Verification — G1..G8, real exit codes
 
-One line per gate, with its real exit code.
+| Gate | Result | Exit |
+|------|--------|------|
+| G1 TRANSPORT | `sha256sum` over the scratch block, `.agent/authored/f260-r8.md` and `.agent/last_block.md` returns ONE value `f362c984379e56fb99a3d1d6f58fb62cff55d7f02ebef6d26f4d15bf56209ed1`, equal to BLOCK_SHA | 0 |
+| G2 THE RECORD | 893805 → 898817, growth 5012 = 1 + 5010 + 1; prefix exact; remainder exact; last unit STRIPPED equals the slice; units 425 → 426; one terminating newline; 299 / 4 / 17 `Gate:` headers all distinct; both negative controls reject in their own region only | 0 |
+| G3 THE PROSE FILES | terminal byte before append `b'\n'`; 94802 → 97989 (+3187); prefix exact; remainder exact; units 129 → 131, a rise of exactly two. `.agent/plan.md` == PLANF260R8 + one newline, 48 lines (< 50) | 0 |
+| G4 THE NAME IS GONE | (a) `hasattr(pingpong_job, "_jobs_dir")` = False. (b) `_jobs_dir` AST refs: `pingpong_job.py` 0, `job_evidence.py` 0, `storage.py` 0 — see deviation 1. (c) value preservation holds under a temp `REMEDY_DATA_DIR` | 0 |
+| G5 RUFF | `python3 -m ruff check` over exactly the eleven C4 files: "All checks passed!" — not widened | 0 |
+| G6 MUTATION RED-PROOF | control 46 passed; (i) 2 failed; (ii) 1 failed; (iii) 2 failed; import-removal proof RED with the predicted `NameError`; control green after every restore | see below |
+| G7 THE SUITES | eleven suites serially, never through a pipe: 58, 34, 26, 26, 13, 24, 10, 46, 93, 178, 42 = 550 passed | 0 each |
+| G8 THE TREE | `git status --porcelain` empty; `git ls-files .remedy-wt` empty; `.agent/STOP` absent; no worktree this round created survives; `git diff --name-only 072b54ed..b92d096f` printed 16 paths; `integrity check --json` `"passed": true`, `"fail_count": 0`, 5 checks, handlers=342 | 0 |
 
-| Gate | Exit | Result |
-|---|---|---|
-| G1 TRANSPORT | 0 | one digest `dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0` across all three artefacts, equal to BLOCK_SHA |
-| G2 THE RECORD | 0 | 887129 → 893805, growth 6676 = `"\n"` + 6674 + `"\n"`; prefix, remainder and last-unit all exact; both region-disjoint controls reject in their own region; 424 → 425 units; 299 / 4 / 16 distinct `Gate:` headers |
-| G3 THE PROSE FILES | 0 | terminal byte before the append was `\n`; 92673 → 94802; units 128 → 129, a rise of EXACTLY ONE; plan == slice + one newline, 46 lines |
-| G4 THE SWAPS ARE VALUE-PRESERVING | 0 | all four migrated expressions equal their hand-built forms, paths reported below |
-| G5 THE CODE | 0 | ruff clean; AST counts 0/0/0/0 migrated and 2/2 excluded; range numstat exactly four code paths |
-| G6 THE MUTATION RED-PROOF | 0 | control exit 0 at 40 passed before and after each; three mutations each exit 1 |
-| G7 THE SUITES | 0 | eight suites serially, every one exit 0, 603 tests |
-| G8 THE TREE AND THE CHANGE SET | 0 | porcelain empty, `ls-files .remedy-wt` empty, no STOP, no worktree left; integrity `passed: true`, `fail_count: 0` |
+### G4(b), reported as measured
 
-### G1 TRANSPORT — exit 0
+    packages/orchestration/pingpong_job.py: 0   lines=[]
+    packages/orchestration/job_evidence.py: 0   lines=[]
+    packages/orchestration/storage.py:      0   lines=[]
 
-    $ sha256sum .remedy-wt/f260-r7-block.md .agent/authored/f260-r7.md .agent/last_block.md
-    dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0  .remedy-wt/f260-r7-block.md
-    dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0  .agent/authored/f260-r7.md
-    dcc306d01cc944bf8b03993c76882ff8ccb30881909cd2855160c573e66de8c0  .agent/last_block.md
+The third is ZERO, not non-zero. See deviation 1. Substitute non-vacuity
+readings, supplied because the ordered one measures nothing:
 
-ONE value, equal to the BLOCK_SHA the delegating prompt stated. Per §3 item 37
-this chain covers those three artefacts on disk and is NOT a claim about the
-bytes emitted into the worker's prompt.
+* the same AST reading over `storage.py` for `_resolve_jobs_dir` returns 3 — the
+  reader can find an underscore-prefixed private helper;
+* the same reading for `_jobs_dir` at `072b54ed`, before any edit, returned 6 in
+  `pingpong_job.py` and 2 in `job_evidence.py` — it can find *this* name when it
+  is there. Both are now 0 because the name was deleted.
 
-### G2 THE RECORD — exit 0
+### G6 transcript, in a disposable worktree at `b92d096f`
 
-    pre  bytes (99ca6406): 887129
-    post bytes (246efbb9): 893805
-    growth: 6676 | appended byte count: 6676 | equal: True
-    slice bytes: 6674
-    (a) pre-image is a byte-exact PREFIX      : True
-    (b) remainder is exactly \n + slice + \n  : True
-    (c) last blank-line unit == GATE_R6 slice : True
+Module resolution confirmed to come from the worktree
+(`.remedy-wt/f260-r8-mut/packages/orchestration/data_paths.py`), not an editable
+install. Every run used `python3 -B`.
 
-    -- negative controls, in scratch copies, one per region --
-    control 1 flip INSIDE appended paragraph at offset 890467
-       (c) last-unit reading rejects : True   [(a) still True ]
-    control 2 flip INSIDE pre-image region at offset 443564
-       (a) prefix reading rejects    : True   [(c) still True ]
+| Run | Exit | Result |
+|-----|------|--------|
+| unmutated control | 0 | 46 passed |
+| (i) record path re-spelled `task_jobs_dir(root) / "job.json" / job_id` | 1 | 2 failed, 44 passed |
+| control after restore | 0 | 46 passed |
+| (ii) `task_job_dir` ignores `root` | 1 | 1 failed, 45 passed |
+| control after restore | 0 | 46 passed |
+| (iii) `_jobs_dir` added back to `pingpong_job.py` | 1 | 2 failed, 44 passed |
+| control after restore | 0 | 46 passed |
+| import removed at the compound-`and` site, `test_job_worktree_handoff.py` | 1 | 2 failed, 24 passed |
+| same suite after restore | 0 | 26 passed |
 
-    blank-line units before: 424  after: 425
-    post ends with exactly one newline: True
-    ^- R-[0-9]{4} — matches      : 299 (expected 299)
-    ^Done: R-[0-9]{4} — matches  : 4 (expected 4)
-    ^Gate:  headers              : 16
-    Gate headers all distinct    : True
+Failing node ids:
 
-The controls are region-disjoint as the round 5 deviation earned: a flip in the
-appended paragraph is caught ONLY by the last-unit reading and leaves the prefix
-reading true, and a flip in the pre-image region is caught ONLY by the prefix
-reading and leaves the last-unit reading true. Neither reading subsumes the
-other. Sixteen `Gate:` headers, one more than round 6's fifteen, which is this
-round's C1 append and nothing else.
+* (i) `tests/test_data_paths.py::TestJobAndRunLayout::test_the_task_job_record_is_job_json_under_the_task_job_dir`
+  and `::TestJobAndRunLayout::test_the_root_override_is_honoured_by_both_task_job_helpers`
+* (ii) `tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_both_task_job_helpers`
+* (iii) BOTH readings, as G6(iii) requires:
+  `tests/test_data_paths.py::TestJobAndRunLayout::test_pingpong_job_has_no_jobs_dir_attribute_at_all` (the `hasattr` reading)
+  and `tests/test_data_paths.py::TestJobAndRunLayout::test_no_migrated_module_names_the_deleted_jobs_dir_helper[packages.orchestration.pingpong_job]` (the AST reading).
+  Only the `pingpong_job` parametrization failed — the `job_evidence` case stayed
+  green, so the parametrization is genuinely per-module and not one assertion
+  wearing two names.
+* import-removal proof:
+  `tests/orchestration/test_job_worktree_handoff.py::TestJobPlanResumeCli::test_the_cli_resumes_a_16_char_jobplan_id`
+  and `::TestEndToEndJobFlow::test_plan_run_report_evidence_promote_dry_run`,
+  both with `NameError: name 'task_job_dir' is not defined` at
+  `packages/orchestration/pingpong_job.py:2878` — exactly the failure the block
+  predicted, in exactly the two tests it predicted, and in no other suite.
 
-### G3 THE PROSE FILES — exit 0
+### G7, per suite
 
-THE READING THIS ROUND EXISTS FOR, reported before the append as ordered:
+| Suite | Passed | Exit |
+|-------|--------|------|
+| `tests/orchestration/test_failure_wiring.py` | 58 | 0 |
+| `tests/orchestration/test_job_promote_consistency.py` | 34 | 0 |
+| `tests/orchestration/test_job_stop_integration.py` | 26 | 0 |
+| `tests/orchestration/test_job_worktree_handoff.py` | 26 | 0 |
+| `tests/orchestration/test_job_worktree_integration.py` | 13 | 0 |
+| `tests/orchestration/test_job_worktree_integrity.py` | 24 | 0 |
+| `tests/orchestration/test_pingpong_integration.py` | 10 | 0 |
+| `tests/test_data_paths.py` | 46 | 0 |
+| `tests/orchestration/test_job_evidence.py` | 93 | 0 |
+| `tests/test_do_job_flow.py` | 178 | 0 |
+| `tests/cli/test_golden_path.py` (canary) | 42 | 0 |
 
-    LAST BYTE BEFORE THE APPEND: b'\n' = newline
-      tail before: b'end0827-process-diet rule 2).\n'
-    bytes before: 92673  after: 94802
-    growth: 2129 | appended: 2129 | equal: True
-    pre-image is a byte-exact PREFIX     : True
-    remainder is exactly \n + SLIP6 + \n : True
-    blank-line units before: 128  after: 129  rise: 1
-    RISES BY EXACTLY ONE, to 129        : True
-    bytes at the seam: b'\n\n' -> blank line present: True
-    last unit == SLIP6: True
-    ends with exactly one newline: True
+### G8, the path list as the command printed it
 
-`.agent/prose_slips.md` NOW ENDS WITH A NEWLINE, so the block's C2 paragraph is
-correct and the leading `"\n"` created a real blank-line separator. The file
-gained that terminal newline precisely because round 6's malformed append
-terminated the previous line — the defect repaired its own precondition. The
-structural count is the reading that proves it: 128 → 129, and the two bytes at
-the seam are `\n\n`. Under the round 6 recipe against the round 6 pre-image this
-number would not have moved, which is exactly what the counter-measure is for.
-
-    .agent/plan.md
-    equals PLANF260R7 + exactly one trailing newline: True
-    line count: 46  under 50: True
-
-### G4 THE SWAPS ARE VALUE-PRESERVING — exit 0
-
-`REMEDY_DATA_DIR` = `/tmp/f260r7-g4-s2c8nxx3`, job id `0123456789abcdef`, task
-id `T001`. Paths reported, not just booleans:
-
-    job_evidence.py / attestation-snapshot  ev_base
-      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
-      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
-      equal: True
-
-    job_evidence.py / task-stream export    src_task
-      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001/streams
-      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001/streams
-      equal: True
-
-    repair_attest.py                        base
-      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
-      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence
-      equal: True
-
-    do_cmd.py / trace reader                _task_ev_dir
-      new  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001
-      old  : /tmp/f260r7-g4-s2c8nxx3/jobs/0123456789abcdef/evidence/task_runs/T001
-      equal: True
-
-    ALL FOUR VALUE-PRESERVING: True
-
-This is the no-behaviour-change property the four swaps rest on.
-
-### G5 THE CODE — exit 0, all three readings
-
-(a) ruff:
-
-    $ python3 -m ruff check packages/orchestration/job_evidence.py \
-        packages/orchestration/repair_attest.py apps/cli/commands/do_cmd.py
-    All checks passed!            [exit 0]
-
-    $ python3 -m ruff check tests/test_data_paths.py
-    All checks passed!            [exit 0]
-
-The second command is beyond the gate; the guard file changed, so it was read.
-
-(b) AST references resolving to exactly `jobs_dir` — all six numbers:
-
-    pingpong_job.py       0  lines=[]
-    job_evidence.py       0  lines=[]
-    repair_attest.py      0  lines=[]
-    do_cmd.py             0  lines=[]
-    checkpoints.py        2  lines=[225, 227]
-    storage.py            2  lines=[25, 49]
-
-The migrated set is 0 across the board; the excluded pair is NON-ZERO, which is
-the non-vacuity half — a guard reading zero everywhere would be measuring
-nothing. `job_evidence.py` still names `_jobs_dir` at lines 1149 and 1160 and
-`pingpong_job.py` names it at seven sites; that is a DIFFERENT symbol which
-merely contains the same substring, it is correctly invisible to the AST
-reading, and it was left alone as ordered.
-
-(c) `git diff --numstat 99ca6406..246efbb9` over code, exactly four rows:
-
-    2   2   apps/cli/commands/do_cmd.py
-    4   4   packages/orchestration/job_evidence.py
-    2   2   packages/orchestration/repair_attest.py
-    88  13  tests/test_data_paths.py
-
-### G6 THE MUTATION RED-PROOF — exit 0
-
-Disposable worktree `.remedy-wt/f260-r7-mut` at `246efbb9`. An editable install
-`remedy 0.1.0 -> /home/decodeux/Repos/remedy` exists and COULD have shadowed the
-worktree, so resolution was probed before any mutation was trusted:
-
-    data_paths -> /home/decodeux/Repos/remedy/.remedy-wt/f260-r7-mut/packages/orchestration/data_paths.py
-
-Every run purges `__pycache__` inside the worktree and uses `python3 -B` and
-`-p no:cacheprovider`. Restores write back the captured original bytes; no
-`git checkout --` was used on any file.
-
-    UNMUTATED CONTROL (before):
-      exit=0  passed=40  failed=0
-
-    MUTATION (i)   job_evidence.py spells the evidence path itself again
-      exit=1  passed=39  failed=1
-         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_no_module_that_owns_job_evidence_spells_the_path_itself[packages.orchestration.job_evidence]
-      restored; control again: exit=0  passed=40  failed=0
-
-    MUTATION (ii)  repair_attest.py spells the evidence path itself again
-      exit=1  passed=39  failed=1
-         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_no_module_that_owns_job_evidence_spells_the_path_itself[packages.orchestration.repair_attest]
-      restored; control again: exit=0  passed=40  failed=0
-
-    MUTATION (iii) data_paths.job_evidence_dir returns jobs_dir(root)/"evidence"/job_id
-      exit=1  passed=38  failed=2
-         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_record_and_the_evidence_share_one_root
-         FAILED tests/test_data_paths.py::TestJobAndRunLayout::test_the_root_override_is_honoured_by_all_four
-      restored; control again: exit=0  passed=40  failed=0
-
-Mutations (i) and (ii) each fail ONLY their own parametrized case, which is the
-discriminator: the parametrization is real, and a regression in one module
-cannot be masked by another module being clean. Mutation (iii) is the one the
-block predicted — breaking the layout function reddens the ROUND 6 value tests,
-not the widened guard, proving the guard did not replace them and that both
-readings still ship. `git worktree list` after the removal holds the primary
-checkout plus eleven pre-existing `job-*` worktrees; the round created one
-worktree and removed it, and deleted nothing it did not create.
-
-### G7 THE SUITES — every suite exit 0
-
-Run serially, one process per suite, exit code captured per process — never
-through a pipe.
-
-| Suite | Exit | Passed |
-|---|---|---|
-| tests/test_data_paths.py | 0 | 40 |
-| tests/orchestration/test_job_evidence.py | 0 | 93 |
-| tests/orchestration/test_repair_attest.py | 0 | 37 |
-| tests/orchestration/test_stream_export_e2e.py | 0 | 7 |
-| tests/orchestration/test_evidence_index.py | 0 | 33 |
-| tests/test_do_job_flow.py | 0 | 178 |
-| tests/orchestration/test_pingpong_cli.py | 0 | 173 |
-| tests/cli/test_golden_path.py | 0 | 42 |
-
-603 tests, all green. `tests/test_data_paths.py` went 35 → 40: the single guard
-became four parametrized cases (+3) and two non-vacuity tests were added (+2).
-The other seven suites are unchanged in count, which is the no-behaviour-change
-claim read from the consumers of all four migrated call sites.
-
-### G8 THE TREE AND THE CHANGE SET — exit 0
-
-    $ git status --porcelain          -> empty
-    $ git ls-files .remedy-wt         -> empty
-    $ ls .agent/STOP                  -> No such file or directory (absent)
-    $ git check-ignore -v .remedy-wt/f260-r7-block.md
-      .gitignore:235:.remedy-wt/	.remedy-wt/f260-r7-block.md
-
-`git diff --name-only 99ca6406..246efbb9`, as the command printed it:
-
-    .agent/authored/f260-r7.md
+    .agent/authored/f260-r8.md
     .agent/last_block.md
     .agent/live_review.md
     .agent/plan.md
     .agent/prose_slips.md
-    apps/cli/commands/do_cmd.py
+    packages/orchestration/data_paths.py
     packages/orchestration/job_evidence.py
-    packages/orchestration/repair_attest.py
+    packages/orchestration/pingpong_job.py
+    tests/orchestration/test_failure_wiring.py
+    tests/orchestration/test_job_promote_consistency.py
+    tests/orchestration/test_job_stop_integration.py
+    tests/orchestration/test_job_worktree_handoff.py
+    tests/orchestration/test_job_worktree_integration.py
+    tests/orchestration/test_job_worktree_integrity.py
+    tests/orchestration/test_pingpong_integration.py
     tests/test_data_paths.py
 
-NINE paths, not eight — see deviation 1. The SET is exactly the block's change
-set minus `.agent/handoff.md`, verified by set comparison, not by eye.
-
-    $ python3 -m apps.cli.grouped integrity check --json
-    "passed": true, "fail_count": 0, "check_count": 5
-      handler_import       pass  handlers=342
-      live_review_verdict  pass
-      plan_consistency     pass  unchecked=0, context_complete=False
-      relevant_untracked   pass  untracked=0, relevant=0
-      high_blockers_open   pass  no open blocker/high findings
+`wc -l` on that output: **16**. Reported as the command printed it, not checked
+against a numeral this block asserts (SLIP7's lesson, applied).
 
 ## Authored-text proofs
 
-Re-extracted from the COMMITTED `.agent/authored/f260-r7.md`, not from the
-scratch original, so the proof runs disk to disk across the transport:
+| Slice | Target | Result |
+|-------|--------|--------|
+| whole block | `.agent/authored/f260-r8.md`, `.agent/last_block.md` | sha256 identical to the scratch original and to BLOCK_SHA |
+| GATE_R7 (5010 B) | `.agent/live_review.md` | appended remainder byte-identical to `"\n"` + slice + `"\n"`; last blank-line unit, newline stripped, equals the slice |
+| SLIP7 (1581 B), SLIP8 (1602 B) | `.agent/prose_slips.md` | appended remainder byte-identical to `"\n"` + SLIP7 + `"\n\n"` + SLIP8 + `"\n"` |
+| PLANF260R8 (2623 B) | `.agent/plan.md` | file equals slice + exactly one trailing newline |
 
-| Slice | Bytes | Target | Result |
-|---|---|---|---|
-| GATE_R6 | 6674 | .agent/live_review.md | prefix exact, remainder `\n`+slice+`\n` exact, last unit == slice |
-| SLIP6 | 2127 | .agent/prose_slips.md | prefix exact, remainder `\n`+slice+`\n` exact, last unit == slice |
-| PLANF260R7 | 2408 | .agent/plan.md | file == slice + exactly one trailing newline |
-
-No slice carries trailing whitespace on any line. No slice was retyped: C0a and
-C0b used `shutil.copyfile`, and every application read the slice out of the
-block file's bytes programmatically.
+The block's warning about the double newline was reproduced before applying it:
+the ordered recipe yields 131 units, the single-newline recipe yields 130.
 
 ## Deviations & assumptions
 
-**1. The block's G8 says "eight paths"; the correct number is NINE. Measured,
-not estimated.** The block's own change-set list holds TEN entries, so minus
-`.agent/handoff.md` it is nine, and `git diff --name-only 99ca6406..246efbb9`
-prints nine. Counted mechanically rather than by eye:
+**1. Gate G4(b)'s non-vacuity clause is unmeetable as written — block defect,
+measured.** G4(b) orders references resolving to exactly `_jobs_dir` to be
+"NON-ZERO in `storage.py` — the third being the non-vacuity reading that proves
+the search can find the name at all". Measured with the exact AST reading the
+gate names: `storage.py` has **0** such references — and had 0 at `072b54ed`,
+before this round touched anything. `storage.py` names `_resolve_jobs_dir`, a
+DIFFERENT symbol, which is what the block's own "DO NOT TOUCH" paragraph says
+fifty lines earlier ("a DIFFERENT symbol that merely contains the same
+substring") and what the round-7 guard's docstring calls "correctly invisible".
+So the clause contradicts the block's own reading of the same file, and as
+ordered it proves nothing. The gate was applied exactly as ordered and 0/0/0 is
+reported above; two substitute non-vacuity readings that DO discriminate are
+reported beside it, not in place of it. Nothing on disk is wrong as a result.
 
-    change-set entries in the block (10)
-    change set MINUS .agent/handoff.md: 9 paths
-    block's G8 asserts: eight
-    actual cardinality : 9
-    git diff --name-only reports 9 paths
-    range set == change set minus handoff: True
+**2. Gate G6(iii) cannot fail BOTH readings against the guard the block
+specifies — block defect, measured, and the guard was changed to satisfy the
+gate.** The guard paragraph orders the absence to be read "by the same AST
+reference reading the round-7 guard uses". G6(iii) then requires that reviving
+`_jobs_dir` as a function in `pingpong_job.py` "must fail BOTH the `hasattr`
+reading and the AST reading". These two clauses are inconsistent: a reference
+reading matches `ast.Name` / `ast.Attribute` / `ast.alias`, and a `def` is an
+`ast.FunctionDef`, so an uncalled revived helper is invisible to it. Measured at
+the first C4 (`86750459`): under mutation (iii) both parametrized AST cases
+PASSED and only `hasattr` failed — 1 failed, 45 passed.
 
-The numeral is wrong; the SET is right and complete. Nothing outside the change
-set was created, edited or deleted. This is the "count your own enumeration"
-class: a gate that states a cardinality it never counted. Applied as ordered and
-declared here rather than repaired.
+Resolution: `_names_of` was added beside `_references_to`. It is the round-7
+reference reading PLUS the binding forms (`FunctionDef`, `AsyncFunctionDef`,
+`ClassDef`) whose `.name` equals the target, and the new absence guard uses it.
+The round-7 helper and the round-7 guard are untouched, so nothing that shipped
+last round changed behaviour. Re-measured at `b92d096f`: mutation (iii) now
+fails both readings, which is what G6(iii) ordered. A discriminator test pins the
+definition arm as live (`len(_names_of(...)) > len(_references_to(...))` on
+`storage._resolve_jobs_dir`), so the widening cannot silently collapse back.
 
-**2. "Last blank-line unit equals the slice" needs a stated convention, and the
-raw comparison is False without it.** A blank-line unit split on `\n[ \t]*\n`
-gives a FINAL unit that carries the file's own terminating newline, so it is
-slice + `"\n"` and one byte longer than the slice, which by the block's own
-definition excludes the newline ending its last content line. Measured:
+This is a deliberate departure from the guard paragraph's "same AST reference
+reading" phrasing. It was chosen because G6(iii) is the binding gate, and
+because the guard's own claim — "no module in the migrated set NAMES `_jobs_dir`
+at all" — is what a definition-inclusive reading measures and a reference-only
+reading does not. Flagging it explicitly for the reviewer to overrule if the
+phrasing was meant to bind instead.
 
-    raw last unit len: 6675 slice len: 6674
-    raw last == slice: False
-    raw last rstripped of \n == slice: True
-    diff is exactly one trailing newline: True
+**3. C4 was amended once — a departure from the ordered commit sequence in
+mechanism, not in shape.** The first C4 was `86750459`. After deviation 2 was
+measured, the guard fix was folded into C4 with `git commit --amend` rather than
+added as a twelfth commit, so the block's ordered sequence C0a, C0b, C1, C2, C3,
+C4, C5 stays exactly as ordered and the change set is unchanged. Nothing had
+been pushed at that point, so this is not a force-push and G2 of
+self_drive_protocol.md is not engaged. Final C4 = `b92d096f`. Every gate was
+re-run at `b92d096f`, and G6 was re-run from the control in a FRESHLY created
+worktree at that commit — the earlier worktree was removed first.
 
-G2(c) and G3 are therefore evaluated with the file's terminating newline
-stripped from the final unit. This is a reading convention, not a change to what
-landed; the bytes on disk are exactly `"\n"` + slice + `"\n"` as G2(b) proves
-independently. Flagged because a reviewer running the naive comparison will get
-False on a correct file.
+**4. The block says "Two of them import `_jobs_dir` by name in a from-import
+list"; there are THREE.** Measured: `test_pingpong_integration.py:17` and
+`test_job_stop_integration.py:31` (module level) and
+`test_job_promote_consistency.py:351` (function-scoped). All three moved to
+`data_paths`. The block's count of SEVENTEEN test sites is correct and already
+includes all three: 12 call sites of shape `_jobs_dir() / <id> / <tail>`, 2
+`_jobs_dir().parent` data-root readings, 3 from-import lists. Only the adjective
+"two" is wrong; the set is complete.
 
-**3. The widened guard was RENAMED, and two tests were added beyond the block.**
-The block named `test_pingpong_job_no_longer_spells_the_evidence_path_itself` to
-identify what to widen. Since it now ranges over four modules, that name would
-falsely claim single-module scope, so it is
-`test_no_module_that_owns_job_evidence_spells_the_path_itself`, parametrized
-over `_JOB_EVIDENCE_OWNING_MODULES`. Constraint 1 binds authored SLICES byte for
-byte; the guard is described in prose, not shipped as a slice, so naming is mine.
-The block ordered parametrization, which changes node ids regardless. Verified
-first that no code depends on the old node id — the only references are frozen
-prose in `.agent/live_review.md`, `.agent/last_block.md` and the previous
-handoff. Two tests were added beyond the ordered non-vacuity assertion:
+**5. Two added test imports are function-scoped, not module-level.** In
+`test_failure_wiring.py` and `test_job_promote_consistency.py` the `_jobs_dir`
+use sits inside a function whose own imports are function-local, so the added
+import went into that local block in isort order — that is "where that file's
+existing imports live" for those two sites. ruff is clean over both.
 
-  * `test_the_job_evidence_owning_module_set_is_real` — the ordered one: the set
-    is non-empty, duplicate-free, and every member imports with a readable
-    source file.
-  * `test_the_classic_store_modules_still_call_jobs_dir` — NOT ordered. It makes
-    G5(b)'s non-vacuity half permanent: if `jobs_dir` were simply deleted
-    everywhere, the absence guard would pass for the wrong reason. Measured 2
-    references in each of `checkpoints.py` and `storage.py` before asserting it,
-    rather than assuming the block's claim.
+**6. Two of the seventeen test sites have `job.json` as their tail** —
+`test_failure_wiring.py` and `test_job_worktree_handoff.py:170`. They were
+written as `task_job_dir(<id>) / "job.json"`, exactly the transformation the
+block states, even though `task_job_record_path(<id>)` would give the same value
+without a test re-spelling the record layout by hand — the practice
+`TestJobAndRunLayout`'s own docstring warns against. Applied as ordered rather
+than repaired, per constraint 1; noted here for the reviewer to rule on.
 
-**4. `repair_attest.py`'s import is module-level and one swap retired the whole
-import in three modules.** Each of the four sites was the LAST use of `jobs_dir`
-in its module, so each import had to move to `job_evidence_dir` in the same edit
-or ruff would report an unused import. Verified per module by AST both before
-and after — the block's claim that these modules reference `jobs_dir` at exactly
-those four sites is confirmed, not assumed. Each module's existing import style
-was kept: module-level in `repair_attest.py`, function-scoped in the other three.
+**7. Open-findings arithmetic, both readings.** 299 registration paragraphs, 4
+`Done:` lines over 2 distinct ids (R-0721 and R-0725 each carry two). By the
+ledger's stated arithmetic — paragraphs minus `Done:` lines — **295 open**. By
+distinct id, 297. Reporting the stated convention as the headline, and the other
+because the two disagree.
 
-**5. Line numbers were re-grepped, not trusted, and the block's were correct.**
-The block warned they might be stale after round 6's deviation 2. At `99ca6406`
-they resolve as `repair_attest.py:34` import / `:153` site,
-`job_evidence.py:1346` import / `:1348` site and `:2885` import / `:2892` site,
-`do_cmd.py:2414` import / `:2458` site. All four matched the block's description
-exactly; the one line number the block asserted, `repair_attest.py:34`, is right.
+No other deviation. No `docs/` change was needed: this round moves no behaviour
+and adds no user-visible surface, only a spelling. `.agent/context.md` and
+`.agent/decisions.md` were not touched — DECISION F260 D1 and D2 already record
+the layout and id rules this round builds on, and no new decision was made.
 
-**6. `checkpoints.py` and `storage.py` were not touched**, as ordered, and the
-reason is now written into the guard's docstring and the module-set comment so a
-later reader can justify the exclusion instead of deleting it.
-
-**7. No deviation from the ordered commit sequence.** C0a, C0b, C1, C2, C3, C4,
-C5, each its own commit, in order, with C4 as ONE commit carrying the four swaps
-and the widened guard together. No extra commit, none dropped, none reordered.
-
-Assumption: none load-bearing. Every number in this handback was measured this
-round; nothing was carried forward from the round 6 record.
-
-## Item status
+## Item-status table
 
 | Item | Status | Reason |
-|---|---|---|
-| C0a save the block | done | 7afe3056, +294, `shutil.copyfile` |
-| C0b mirror the block | done | f9c648ac, +197 |
-| C1 the record | done | adc66ae4, +2 |
-| C2 the slip | done | 36c4c375, +2; terminal byte was `\n`, units rose by exactly one |
-| C3 the plan | done | 1ad4c238, +17, 46 lines |
-| C4 the four call sites and the widened guard | done | 246efbb9, one commit, +96 |
+|------|--------|--------|
+| C0a save the block | done | |
+| C0b mirror the block | done | |
+| C1 the R7 gate record | done | |
+| C2 the two prose slips | done | |
+| C3 the plan | done | |
+| C4 accessors + 6 production + 17 test sites + guard | deviated | guard reading widened to satisfy G6(iii); commit amended once — deviations 2 and 3 |
 | C5 the handback | done | this file |
-| G1 TRANSPORT | done | exit 0, one digest = BLOCK_SHA |
-| G2 THE RECORD | done | exit 0, both region-disjoint controls behave as split |
-| G3 THE PROSE FILES | done | exit 0, 128 → 129, the round 6 counter-measure holds |
-| G4 THE SWAPS ARE VALUE-PRESERVING | done | exit 0, all four paths equal |
-| G5 THE CODE | done | exit 0, all three readings, six AST numbers |
-| G6 THE MUTATION RED-PROOF | done | control exit 0 at 40, three mutations each exit 1 |
-| G7 THE SUITES | done | eight suites, all exit 0, 603 tests |
-| G8 THE TREE AND THE CHANGE SET | done | exit 0, integrity passed; block's "eight" is nine — deviation 1 |
+| G1 transport | done | one digest, equals BLOCK_SHA |
+| G2 the record | done | |
+| G3 the prose files | done | |
+| G4 the name is gone | deviated | (b)'s `storage.py` non-vacuity clause unmeetable; applied as ordered, substitutes supplied — deviation 1 |
+| G5 ruff | done | eleven files only, not widened |
+| G6 mutation red-proof | done | all four proofs red, controls green throughout — after deviation 2's fix |
+| G7 the suites | done | 11 suites, 550 passed, all exit 0 |
+| G8 the tree and change set | done | 16 paths printed; integrity `passed: true` |
 
-DECISION F260 D1 now has ONE spelling in every module that owns a job's
-evidence. T002's layout consolidation is finished; what remains in T002 is the
-unified record and its writer.
+## Open findings
+
+**295** open by the ledger's stated arithmetic (299 registrations − 4 `Done:`
+lines); 297 by distinct id. No blocker or high finding is open —
+`integrity check` reports `high_blockers_open: pass`.
 
 ## Next
 
-The reviewer independently re-runs G1 through G8 and reads the real diff of
-`99ca6406..HEAD` before any verdict. The next build round is the unified Job
-record and its writer under `jobs/<16hex>/job.json`, moving `_persist_job` and
-`load_job_plan` off `task_jobs/` and DELETING `pingpong_job._jobs_dir`, with
-finding R-0814 resolved there against the fix clause it already carries.
+Reviewer verdict on round 8, then T002's actual record move: collapse
+`task_job_dir` / `task_job_record_path` into `job_dir` / `job_record_path` so
+`<data_root>/task_jobs/<16hex>/job.json` becomes
+`<data_root>/jobs/<16hex>/job.json`, moving `data_paths._task_job_id_matches` in
+the SAME commit or every ping-pong job becomes unresolvable. Finding R-0814
+resolves there, against the fix clause it carries.
