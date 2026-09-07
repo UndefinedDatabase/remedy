@@ -417,13 +417,140 @@ str-subclassing enum (`RunState.COMPLETED == "completed"` is True) and the emitt
 payload carries `"job_status": "completed"`, a plain JSON string. G4(iii) shows
 the real bytes. The external contract is unchanged in value as well as in key.
 
+## Reviewer verdict — round 16
+
+VERDICT PASS. Every gate was RE-RUN by the reviewer rather than read, in the primary
+checkout at `d6e5f5e7`.
+
+- Range `c80f32ce`..`d6e5f5e7`, nine commits, every one single-parent, in exactly the
+  ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6, C7, with the change set exactly
+  the eight ordered paths and nothing else. `git status --porcelain` empty.
+- G1 TRANSPORT is a REAL chain, not merely self-consistent: the reviewer's own scratch
+  original `.remedy-wt/f272-r16-block.md`, written and hashed BEFORE delegation, and the
+  committed `.agent/authored/f272-r16.md` and `.agent/last_block.md` are all 24740 bytes
+  at 306 lines and all hash to
+  `3ac45e7eeef9ed166ebd01b912423e45fdddc600e114bf4ed4dc02b8223c9c8b`. Per §3 item 37
+  this covers the saved copy and its mirror, not the bytes emitted into a prompt.
+- G2 THE RECORD: `.agent/live_review.md` 1149219 to 1157784 across TWO appends, the
+  pre-image a byte-exact prefix of the final image. ALL SEVEN ORDERED COUNTS REPRODUCE
+  EXACTLY — registrations 305 to 306, resolutions 248 unchanged, open set BY DISTINCT ID
+  57 to 58, `^Gate: ` 38 to 39, `^Gate: F272 R15 ` 0 to 1, `^- R-0822 ` 0 to 1 and
+  `^Landed: R-0822 ` 0 to 1 — and `^Done: R-0822 ` is 0, so the worker wrote the
+  `Landed:` line and left `Done:` to the reviewer, exactly as §4 item 4 requires.
+- G3 THE PLAN is 1907 bytes byte-equal to its slice at 39 lines against the cap of 50.
+- G4 THE FIX reproduces against the SHIPPED handler, run rather than read: with
+  `_load_job` returning a completed `JobPlan`, `_cmd_job_stop(job_id, json_output=True)`
+  now raises SystemExit with code 1 and prints `"error": "job_not_stoppable"` with
+  `"job_status": 'completed'` as a plain `str` — no AttributeError. `job.status` in that
+  file is 0 and the external JSON key `"job_status"` is still 4, so the contract did not
+  move while the Python field did.
+- G5 THE RED-PROOF was re-run by the reviewer in its own disposable worktree at
+  `1240a6c5`, provenance confirmed inside the worktree and the worktree removed
+  afterwards by exact path: with C4 alone reverted the run is EXIT 1 with EXACTLY
+  `TestItRefusesToLie::test_a_completed_job_says_so_in_json_too` failing and 26 passing,
+  carrying the real `AttributeError: 'JobPlan' object has no attribute 'status'`; with
+  C4 restored it is EXIT 0 at 27 passed. The mutation here is the SHIPPED DEFECT itself
+  rather than an invented one, which is the strongest form this gate takes.
+- G6 THE SUITES, re-run serially: `tests/cli/` EXIT 0 at 1538 passed, which is the base
+  of 1537 plus exactly the one test C5 adds; `tests/ui_server/` EXIT 0 at 515;
+  `test_test_runner.py` EXIT 0 at 52; `test_resource_safety.py` EXIT 0 at 21;
+  `test_integrity_gate.py` EXIT 0 at 16 — the last four all identical to round 15's
+  readings, so nothing regressed.
+- G7 ruff EXIT 0 `All checks passed!` over both changed files; integrity EXIT 0 with
+  `"passed": true`, `"fail_count": 0`, and `high_blockers_open` PASS despite the newly
+  registered open Medium, which is the behaviour the block predicted.
+- G8 THE TREE: `git status --porcelain` empty, `git ls-files .remedy-wt` empty, thirteen
+  worktree entries being the primary plus the twelve pre-existing `remedy/job-*`, and
+  the guard slice landed byte-identical to the block's own bytes.
+
+THE WORKER DECLARED NO DEVIATIONS AND NONE IS OWED — the reviewer looked for them
+independently and found the block's own arithmetic correct on every count this time.
+Its three stated ASSUMPTIONS are accepted as assumptions rather than deviations: the C3
+separator was read from the target's own convention and proved with both readers; the
+Commit Gate reading at C0a/C0b is the conservative one; and naming `RunState`'s real
+home, `packages.core.models`, is a correction the registration text should have carried
+and the reviewer used that same import when re-running G4.
+
+R-0822 IS FIXED ON DISK AND ITS `Done:` IS OWED BY ROUND 17, not by this session: the
+`Landed:` line is on the record with its commits, which is precisely the "unreviewed
+fix" state §4 item 4 wants visible, and DECISION F272 D10 rules that the line SURVIVES
+beside the `Done:` paragraph that will supersede it.
+
 ## Next
 
-Reviewer: re-run G1-G8 over `c80f32ce`..`HEAD` and issue the round 16 verdict.
-Phase 1 rule 1 first — read `.agent/STOP` from disk before anything else. On PASS,
-the reviewer owes R-0822 its `Done:` line in the next round's first commit, beside
-the `Landed:` line this round wrote (DECISION F272 D10 — a `Landed:` survives
-beside its `Done:`), and T003 continues with the rest of the consumers re-grepped
-rather than taken from F260's 2026-09-05 list: `teach_cmd.py`, `ui_server.py`,
-`job_context_cmd.py` and the `_JobPlanTaskAdapter` shim. R-0820 remains OPEN and
-this round's record paragraph narrows its completeness claim to the suite's reach.
+**SESSION 8 OF F272 ENDS HERE**, after two delegated rounds (15 and 16), both PASS at
+the first attempt with no repair round. F272's soft limit under operator amendment
+amend0906-triage-throughput is 12 sessions and 40 rounds, so at session 8 and round 16
+the feature is inside it and NO SCOPE REPORT IS OWED.
+
+Why the session ends below the six-to-eight round target, in one sentence as amend0906
+rule 3 requires: the reviewer's own authoring errors accumulated — round 15's block
+carried TWO defects, a count gate never resolved against its own slice's paragraph count
+and a containment claim written in a measurement's format without the measurement being
+run — which is exactly the signal operator amendment amend0905-throughput names as an
+honest early end, and the next slice is a design change that deserves a fresh context
+rather than the tail of this one.
+
+THE NEXT SESSION'S FIRST ACTION: run Phase 0, the state probe; then check `.agent/STOP`
+under Phase 1 rule 1 BEFORE the Open PR Gate under rule 2, in that order. No PR exists
+for this branch and none was created.
+
+Round 17's FIRST COMMIT owes the bookings persisted here and not yet in the ledger, per
+amend0827 rule 1 — exactly two, and nothing else:
+
+1. the round 16 `Gate: F272 R16` PASS entry recorded in the verdict section above; and
+2. `Done: R-0822`, the reviewer's resolution, APPENDED BESIDE the existing
+   `Landed: R-0822` line and never over it, per DECISION F272 D10.
+
+No id is minted for either.
+
+T001 AND T002 ARE COMPLETE. Round 16 opened T003 and closed its first consumer.
+
+ROUND 17 IS THE NEXT T003 CONSUMER, and the re-grep this session performed is the thing
+to start from rather than F260's 2026-09-05 list, which is measurably stale. Measured at
+`c80f32ce` over the eleven consumers F260's Design section names, the classic-store
+surface that actually survives is FOUR modules, not eleven:
+
+- `apps/cli/commands/job_context_cmd.py:223` — `load_job(resolve_job_id(job_id_str))`,
+  the classic store ONLY, so `job context <ping-pong-job-id>` cannot work. F260's Design
+  says this one "must work for every job". THIS IS THE RECOMMENDED ROUND 17: it is a real
+  behaviour change with a provable red, and the pattern to follow is `ui_server._load_job`,
+  which already tries both stores.
+- `packages/orchestration/ui_server.py` — `_JobPlanTaskAdapter` at line 99, wrapped over
+  `plan.tasks` at line 149. CAUTION: this is finding R-0804's subject, and the
+  2026-09-06 triage in `.agent/live_review.md` routes R-0803 through R-0812 to F273
+  T001 as "BOOK, do not build". See the unsettled question below before touching it.
+- `apps/cli/commands/teach_cmd.py` — `resolve_any_job_id` at five sites. DO NOT move
+  these in T003: DECISION F260 D5 places the resolver collapse in T004, with the store
+  that makes it true.
+- `apps/cli/commands/job_stop_cmd.py` — `_CoreJobAdapter` survives on purpose. It exists
+  solely to adapt `storage.load_job`, so it dies in T004 WITH the classic store; deleting
+  it earlier would break `job stop` for classic jobs while they still exist.
+
+Every other consumer on F260's list — `orchestrator_loop.py`, `mission_state.py`,
+`self_use_runner.py`, `self_use_job.py`, `gauntlet_runner.py`, `bench_run.py`,
+`decision_inbox.py`, `checkpoints.py` — reads ZERO classic-store symbols at `c80f32ce`;
+their `load_job_plan` hits are the unified reader and are the TARGET state, not work.
+Re-grep before writing a slice anyway: that instruction is F260's own, and this
+paragraph is a reading taken at one commit.
+
+AN UNSETTLED QUESTION THAT MUST BE RULED BEFORE F272 CAN CLOSE, and that no round should
+guess at. `docs/roadmap/features/T2_F272.md` names five tests.md finding ids — R-0803,
+R-0804, R-0807, R-0810 and R-0812 — inside its Acceptance section, while the
+2026-09-06 triage recorded in `.agent/live_review.md` routes those same ten ids to
+**F273 T001** with the words "BOOK, do not build". F273 — Findings paydown v1 — is
+registered at `docs/roadmap/STATUS.md:40` and its file `docs/roadmap/features/T2_F273.md`
+exists. So F272's Acceptance currently requires items another feature owns, and F272
+cannot be closed self-consistently until that is ruled. The recommended ruling, to be
+recorded as DECISION F272 D12 under §4 item 7 rather than referred to the operator: the
+triage is the LATER and more specific instrument and it wins, so those five ids are
+F273's and F272's Acceptance is read as not requiring them, with F272's file gaining one
+sentence saying so. This session did not execute that ruling because it belongs with the
+round that acts on it, and because a round whose whole change set is a DECISION is the
+pure-bookkeeping round amend0827 rule 1 forbids.
+
+CONTEXT SELF-ASSESSMENT (amend0905-throughput): the context was spent on two complete
+round cycles in which the reviewer applied BOTH production changes in disposable
+worktrees and ran the suites BEFORE authoring either block, then independently re-ran
+all sixteen gates after delegation, including two full `tests/orchestration/` runs at
+roughly twelve minutes each and two `tests/cli/` runs at roughly five.
