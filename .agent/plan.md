@@ -1,9 +1,10 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 11 PASSED;
+Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 12 PASSED;
 round 2 FAILED on a premise DECISION F272 D2 has corrected. T001 is COMPLETE;
-T002 has landed the eight administrative fields, widened `RunState`, and renamed
-`JobPlan.status` to `state` at the 234 measured sites of DECISION F272 D7.
+T002 has landed the eight administrative fields, widened `RunState`, renamed
+`JobPlan.status` to `state` at the 234 measured sites of DECISION F272 D7, and
+given `blocked` and `stopped` their place in the cockpit.
 
 ## Goal
 
@@ -15,21 +16,19 @@ classic runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Land R-0821's fix. Round 11 ruled the placement as DECISION F272 D8 and then
-measured that a third guard, an arity pin in
-`tests/ui_contracts/test_digest_hero_card.py`, reddens the moment the label map
-widens; DECISION F272 D9 rules that guard a FLOOR, as its two siblings already
-are. This round frees the guard, then gives `blocked` and `stopped` their place
-in `digestVisibility.ts` and `digestCardCopy.ts`.
+Readiness for move three. The measurements that round need — what a str-Enum
+retype does and does not change, the counted rendering hazard, the three record
+boundaries, the six constants and their blast radius — land as
+`.agent/f272_retype_readiness.md`, and R-0821 is resolved. The retype itself is
+the next session's first round, authored from that file.
 
 ## Next Steps
 
-1. Move three of the `state` collapse: retype `JobPlan.state` to `RunState` and
-   make the six `JOB_*` constants `RunState` members, with `.value` at every
-   boundary leaving the record. The rendering guard round 10 shipped in
-   `tests/orchestration/test_job_state_field.py` is what that move must keep
-   green, D7's probe is the method for finding its site set, and R-0821's clause
-   puts `tests/ui_contracts/` in that round's gate list.
+1. Move three: retype `JobPlan.state` to `RunState`, make the six `JOB_*`
+   constants `RunState` members keeping their names and values, and put `.value`
+   at the two record boundaries `.agent/f272_retype_readiness.md` names. Gate it
+   on that file's readings, on round 10's rendering guard, and on
+   `tests/ui_contracts/` per R-0821's clause.
 2. The Mission extension — the order, the contract, the mission plan and the
    ordered job references.
 3. T003, the eleven consumers named under Design in `T2_F260.md`, one per commit
@@ -39,6 +38,6 @@ in `digestVisibility.ts` and `digestCardCopy.ts`.
 
 ## Risks
 
-- A vacuity guard written as an equality pins an arity nobody meant to pin, and
-  goes stale exactly when a vocabulary grows. Two more sit in this suite over
-  zoom levels; both are genuine fixed arities and neither is F272's business.
+- A str-Enum changes `str()` and `%s` and nothing else; both are counted in the
+  readiness file, and the count is what makes move three a bounded change rather
+  than the open-ended one D5 assumed.
