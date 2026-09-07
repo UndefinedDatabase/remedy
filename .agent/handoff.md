@@ -1,350 +1,272 @@
-# Handback — F274 ROUND 8 — a DELETION ROUND: smoke section 12ah is cut and `context_optimizer` reaches zero edges
+# Handback — F274 SESSION 4 END — rounds 6, 7 and 8 delegated; one FAIL, its repair, and a deletion round
 
-This file supersedes the round 7 handback. It is written by the delegated worker on the reviewer's
-authored block `.agent/authored/f274-r8.md`.
-
-THE CUT LANDED AND THE EDGE TRUTH IS EXACTLY WHAT THE BLOCK PREDICTED: measured edges 37, the
-consumers of `packages.orchestration.context_optimizer` are THE EMPTY LIST, the zero-edge modules
-are the four the block names, and the non-`.py` consumers the widened walk finds are THE EMPTY LIST.
-G1, G2, G3, G5 and G6 are GREEN in every clause with every stated numeral matching on the nose.
-
-TWO DEVIATIONS ARE DECLARED AND NEITHER WAS REPAIRED INTO AGREEMENT. **D1: gate G4(d)'s ruff clause
-is RED, and it is RED AT THE BASE COMMIT TOO** — `python3 -m ruff check` on an explicitly-named `.sh`
-path is unmeetable by construction. **D2: gate G4(b), the full suite, is INTERMITTENT** — 6 of 8 runs
-green, 2 runs red on the same two node ids, whose cause is the already-registered OPEN finding
-R-0569. Both are reported with the real commands, the real exit codes and the real output below.
-Nothing was adjusted to make a gate agree, and no number in the block was edited.
+This file supersedes the round 8 handback as the session-end state. It is written by a delegated
+worker on the reviewer's authored text, because the reviewer never edits a work-tree file. It
+carries the ROUND 8 VERDICT and the draft of a RECURRENCE paragraph under finding R-0819, both
+persisted here under operator amendment amend0827-process-diet rule 1 and both booked into
+`.agent/live_review.md` in the FIRST COMMIT of the next round that is happening anyway.
 
 ## Session
 
-SESSION 4 of feature F274 · round 8 · rounds so far 8
+SESSION 4 of feature F274 · rounds delegated this session 3 · verdicts FAIL, PASS, PASS · feature
+rounds so far 8 of the soft limit of 25, sessions 4 of 7.
 
-Soft limit 25 rounds / 7 sessions: 8 rounds and 4 sessions used. `.agent/STOP` was ABSENT at session
-start, re-checked at every commit boundary, and still absent at C5. The Open PR Gate is clear:
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` returned `[]`. No branch was
-created or switched, nothing was force-pushed, and NO PR WAS CREATED — the block orders a push and
-nothing more.
+The session opened with `.agent/STOP` ABSENT, no open pull request, and `.agent/candidates.md`
+EMPTY, so Phase 1 fell through rules 1 to 4 to rule 5: continue the claimed feature.
 
-CONTEXT SELF-ASSESSMENT (amend0905-throughput, one sentence): this round consumed a moderate share of
-context — a six-commit bundle, three slice applications, one 49-line excision and six gates, of which
-G4 alone cost eight full-suite runs and a base-commit worktree to characterise two red readings
-honestly — and enough headroom remains for one more delegated round in this session.
+CONTEXT SELF-ASSESSMENT (amend0905-throughput, one sentence): context is not exhausted and was not
+the binding constraint this session — what binds is the reviewer's own error rate, two authoring
+defects in three rounds, one of which cost a full repair round, and the next round is the largest
+structural change left in the feature.
 
-## Range
+## WHY THIS SESSION ENDS AT THREE ROUNDS RATHER THAN THE TARGET OF SIX TO EIGHT
 
-Review of `b7b954b0c50f311ea74403eaaf9e43fef5192835`..HEAD, where HEAD is C5, the commit that writes
-this file. Five commits precede it, every one single-parent, in exactly the block's ordered sequence
-C0a, C0b, C1, C2, C3, C4.
+Below the floor of four, so the reason is stated rather than implied, and BOTH of the honest
+early-end reasons amend0905-throughput names apply.
 
-## Commits
+FIRST, THE REVIEWER'S OWN AUTHORING ERRORS ACCUMULATED, which amend0905 names explicitly as the
+signal to stop. Two landed this session. The first sank round 6: the pre-emission dry run swept for
+five deleted symbols with a file filter of `.py`, `.ts`, `.tsx` and `.txt`, so `scripts/remedy_smoke.sh`
+could not appear in it, the block's change set was authored one file short, and the branch tip
+shipped a script that raised `ImportError` until round 7 repaired it. The second is round 8's gate
+G4(d), which ordered `ruff check scripts/remedy_smoke.sh` — a Python linter pointed at a shell
+script, EXIT 1 with 1207 diagnostics AT ITS OWN BASE, so it was unmeetable by construction and
+measured nothing about that round. Both were caught by the WORKER rather than by the reviewer.
+Authoring a fourth round in this state is how a third and more expensive error lands.
 
-### 32b8da42 F274 R8 C0a: save the round 8 step block verbatim as authored text
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/authored/f274-r8.md | +235 / -0 | the block's 23487 bytes copied by `shutil.copyfile`, never retyped |
+SECOND, ROUND 9 EXPLICITLY NEEDS A FRESH SESSION. It is the largest single block of remaining work
+in the feature — eight cluster modules whose ONLY edge is `packages/orchestration/ui_server.py` —
+and it needs a DECISION authored before a line is cut, the way DECISION F274 D3 preceded round 5's
+endpoint deletion. It is measured below so the next session starts by authoring rather than
+investigating.
 
-### e2450957 F274 R8 C0b: mirror the round 8 block into the last-block state file
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/last_block.md | +148 / -293 | the same bytes mirrored by `shutil.copyfile`; the round 7 block it replaced was longer, hence the negative net |
+## Branch and range
 
-### 3ecacc94 F274 R8 C1: point the plan at round 8, the context_optimizer deletion round
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/plan.md | +17 / -19 | full replacement by the PLAN8 slice |
+`feature/f274-one-world-completion-part-two`, cut from `main` at
+`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, with `main` merged back in at `f85200e4`. This session
+ran `fcb77eab139faec83ffd88963bd5888d59dad677`..`0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84`, 23
+commits over three rounds, 19 files, 1556 insertions and 771 deletions. The branch is PUSHED and in
+sync with its remote. NO PULL REQUEST EXISTS and none was created.
 
-### 6fd13516 F274 R8 C2: book round 7 PASS and resolve R-0833 and R-0834 in the record
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | +6 / -0 | RECORD8 appended: the `Gate: F274 R7` PASS entry and the two reviewer-authored `Done:` paragraphs |
+## What landed this session
 
-### cfde9141 F274 R8 C3: append the two round 7 prose slips to the slips log
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/prose_slips.md | +4 / -0 | SLIPS8 appended: two dated lines, no ids |
+Round 6, seven commits, `014c2484` to `450365a7214b3d6c04c394a645a5fee65cc00867` — DELETED THE
+`context_budget` BRAIN NODE across six production files, its deletion-map line and four tests.
+VERDICT FAIL on gate G6.
 
-### 0064898b F274 R8 C4: cut smoke section 12ah and its context_optimizer map edge
-| Path | +/- | Reason |
-|------|-----|--------|
-| scripts/remedy_smoke.sh | +0 / -49 | section 12ah excised entire: the banner, the heading comment, the `_SMOKE_SECTION` assignment, the `echo`, the whole `python3 -c` body with its closing quote and the trailing blank line |
-| tests/orchestration/cluster_deletion_map.txt | +0 / -1 | the `packages.orchestration.context_optimizer <- scripts/remedy_smoke.sh` line, deleted in the SAME commit as the edge it records |
+| SHA | Item |
+|---|---|
+| `014c2484` `b107e842` | block saved and mirrored |
+| `b43fed17` | plan advanced |
+| `f6b6f752` | round 5 verdict booked, R-0832 registered |
+| `9f973824` | two prose slips |
+| `1755b6db` | the cut — six production files, the map line, four tests |
+| `450365a7` | handback, G6 red declared |
 
-A PURE DELETION: this commit's `+` column is ZERO across both files, which is the reading G6 asks
-for. Section 12ai SURVIVES UNTOUCHED — `12ai` still occurs 3 times in the script.
+Round 7, nine commits, `b7b88ee9` to `b7b954b0c50f311ea74403eaaf9e43fef5192835` — REPAIRED THE
+BREAKAGE AND CLOSED THE BLINDNESS THAT HID IT. VERDICT PASS.
 
-### HEAD F274 R8 C5: hand back round 8 (self-reference exception, R-0149 pattern)
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/handoff.md | rewrite | this file; a handoff cannot table the commit that writes it |
+| SHA | Item |
+|---|---|
+| `b7b88ee9` `68e6b0db` | block saved and mirrored |
+| `58085c38` | plan advanced |
+| `f40a94d2` | round 6 FAIL booked, R-0833 and R-0834 registered |
+| `09bb3959` | two prose slips |
+| `a81aef39` | the repair — the `context_budget` half of smoke section 12ai cut |
+| `a3082c28` | the guard — the map walker widened to embedded python, the edge recorded |
+| `685af2ab` | both findings marked Landed |
+| `b7b954b0` | handback |
 
-## External actions
+Round 8, seven commits, `32b8da42` to `0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84` — A DELETION ROUND
+under amend0906-triage-throughput. VERDICT PASS.
 
-| Command | Outcome |
-|---------|---------|
-| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — Open PR Gate clear |
-| `git worktree add --detach .remedy-wt/r8-base b7b954b0…` | created to measure D1's ruff behaviour AT THE BASE; 14 -> 15 entries |
-| `git worktree remove --force .remedy-wt/r8-base` | removed |
-| `git worktree prune` | ran; `git worktree list` back to 14 entries |
-| `git worktree add --detach .remedy-wt/r8-c4 0064898b` | created for G5; 14 -> 15 entries |
-| `git worktree remove --force .remedy-wt/r8-c4` | removed after `git -C .remedy-wt/r8-c4 status --porcelain` came back EMPTY |
-| `git worktree prune` | ran; `git worktree list` back to 14 entries |
-| `git push` | see below |
+| SHA | Item |
+|---|---|
+| `32b8da42` `e2450957` | block saved and mirrored |
+| `3ecacc94` | plan advanced |
+| `6fd13516` | round 7 verdict booked, R-0833 and R-0834 RESOLVED |
+| `cfde9141` | two prose slips |
+| `0064898b` | the cut — smoke section 12ah and its map line, +0 insertions |
+| `0466d1ae` | handback, two deviations declared |
 
-No PR was created. No branch was created or switched. Nothing was force-pushed. NO FILE WAS DELETED
-BY GLOB: the one file mutated for a red-proof was restored by exact path with a sha256 identity
-check, and the one scratch probe written into the disposable worktree
-(`.remedy-wt/r8-c4/probe_g5.py`) was removed by exact path with `os.remove` before that worktree's
-porcelain was read.
+THE FEATURE'S POSITION. The deletion map went from 38 edges to 37, and the modules with NO recorded
+edge went from three to FOUR: `context_optimizer` joined `context_pack`, `review_bundle` and
+`self_repair_proposal`. More important than the count: THE MAP ITSELF IS NOW MORE HONEST THAN IT WAS
+AT THE START OF THE SESSION, because round 7 widened its walker to see consumers that embed
+first-party python in non-python files — a blindness that had made round 6's zero-edge reading FALSE
+OF THE TREE while every gate reported green.
 
-## Verification
+## ROUND 8 VERDICT — PASS
 
-**G1 TRANSPORT, at C0b — PASS.** Re-derived from the COMMITTED blobs with `git show`:
-`.agent/authored/f274-r8.md` and `.agent/last_block.md` are both **23487 bytes** at sha256
-**`2f9c169e3416cd9d528e5957b4547456510cc95146231fa87675bc3ff6d5f5c9`**, byte-equal to each other and
-equal to the digest the delegation message states. The same digest was measured on
-`.remedy-wt/f274-r8-block.md` BEFORE the file was used. Both copies were produced by
-`shutil.copyfile`, never by re-emission.
+Issued by the reviewer after re-running EVERY gate itself, in the primary checkout and in a
+disposable worktree, against the COMMITTED blobs. This is the text the next round books into
+`.agent/live_review.md` as `Gate: F274 R8`.
 
-**G2 THE RECORD APPEND, at C2 `6fd13516`, re-derived from the COMMITTED blobs — PASS in all four
-clauses.**
-(a) BYTES: `.agent/live_review.md` **554669 -> 563333**, exactly as ordered. Pre-image is a byte-exact
-PREFIX (True) and the post-image equals pre plus the **8664-byte** RECORD8 slice with NO separator
-added (`post == pre + slice` True).
-(b) STRUCTURE over the whole appended region, unit = a maximal run of consecutive non-empty lines,
-**N counted FROM THE SLICE = 3** (not taken from the block): units **222 -> 225**; the file's last 3
-units equal the slice's 3 units IN ORDER (True) and everything before them is unchanged (True).
-(c) NEGATIVE CONTROL: the post-image byte at ZERO-INDEXED offset **554670** reads as **`G`** — the `G`
-opening the first appended paragraph, exactly as the block says. Flipped IN MEMORY to `F`, the byte
-reader REJECTS and the structural reader REJECTS. The primary checkout was never touched.
-(d) COUNTS, base -> C2, all by the stated patterns: registrations **68 -> 68**, resolutions
-**3 -> 5**, **OPEN SET 65 -> 63 BY DISTINCT ID**, `^Gate: ` **38 -> 39**, `^Gate: F274 R7` **0 -> 1**,
-`^Done: R-0833 — ` **exactly 1**, `^Done: R-0834 — ` **exactly 1**. THE TWO `Landed:` LINES ROUND 7
-WROTE SURVIVE BESIDE THE RESOLUTIONS: `^Landed: ` is **unchanged at 37 lines**. Every numeral matches
-the block exactly; unlike round 7 there is no line-vs-distinct-id gap to declare here, because this
-clause is stated as a line count and was measured as one.
+Range `b7b954b0c50f311ea74403eaaf9e43fef5192835`..`0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84`, seven
+commits, every one single-parent, in the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, with the
+path set over the range to C4 naming exactly the seven declared paths. G1 TRANSPORT covers the
+emitted bytes, because the block travelled as a FILE the worker copied rather than as text it
+retyped: the reviewer's scratch original `.remedy-wt/f274-r8-block.md`, hashed BEFORE delegation, is
+BYTE-IDENTICAL to both committed copies, all three 23487 bytes at
+`2f9c169e3416cd9d528e5957b4547456510cc95146231fa87675bc3ff6d5f5c9`. G2 THE RECORD APPEND at
+`6fd135160a697ca7ac6c405c1e7b5a73b2cb2ce0`: 554669 to 563333 bytes, prefix a byte-exact PREFIX, post
+equal to pre plus the 8664-byte RECORD8 slice, N counted from the slice as 3, units 222 to 225,
+ordered equality true with everything before unchanged, the control flipped at zero-indexed byte
+offset 554670 rejected by BOTH readers; registrations 68 to 68, RESOLUTIONS 3 TO 5, OPEN SET 65 TO 63
+BY DISTINCT ID, `^Gate: ` 38 to 39, and `^Landed: ` UNCHANGED at 37 — the two `Landed:` lines round 7
+wrote SURVIVE beside the resolutions, per DECISION F272 D10. G3: `.agent/plan.md` byte-equal to its
+slice at 41 lines against the cap of 50 with both mandated headings; `.agent/prose_slips.md` 159553 to
+160319 with each appended line once. G4 THE DELETION ROUND'S MEASUREMENTS: import reachability EXIT 0;
+THE FULL SUITE GREEN IN THE REVIEWER'S OWN RUN at 19791 passed, 23 skipped, 0 failed; the token `12ah`
+ZERO across `scripts/`, `packages/`, `apps/` and `tests/` against three at the base, and
+`packages.orchestration.context_optimizer` ZERO under `scripts/` against one; `bash -n` EXIT 0, so a
+49-line excision left the script parsing. G5 THE EDGE TRUTH AND THE RATCHET: control EXIT 0, measured
+equals recorded at 37, the consumers of `packages.orchestration.context_optimizer` THE EMPTY LIST, the
+zero-edge modules exactly `context_optimizer`, `context_pack`, `review_bundle` and
+`self_repair_proposal`, the non-`.py` consumers THE EMPTY LIST, and restoring the deleted map line EXIT 1
+reporting `DISAPPEARED (1)` and naming that exact edge before a byte-identical restore. G6 THE TREE:
+porcelain empty, `git ls-files .remedy-wt` empty, worktrees 14 before and after, per-commit insertions
+235, 148, 17, 6, 4 and ZERO for C0a through C4 — C4, the cut, is a PURE DELETION as a deletion round
+requires. THE FROZEN LINT CEILING HELD at 26 errors from `ruff check .` at the base in a worktree run
+from its own root and 26 in the primary checkout, so DECISION F083 D5 is untouched.
 
-**G3 THE STATE PROSE FILES — PASS.**
-`.agent/plan.md` at C1 is BYTE-EQUAL to the PLAN8 slice (2376 bytes, sha256
-`01c2d47f6880255f2a44a6eb22decbd756190d2127e33d2925cb80b32cec0f71`), is **41 lines** against the cap
-of 50, and carries both `## Goal` and `## Next Steps`.
-`.agent/prose_slips.md` at C3 `cfde9141` goes **159553 -> 160319**, pre-image a byte-exact prefix
-(True), post-image equal to pre plus the 766-byte SLIPS8 slice with no separator (True), and each of
-the two appended lines occurs **EXACTLY ONCE** in the post-image.
+TWO DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS BOTH. THE FIRST IS THE REVIEWER'S OWN DEFECT
+and is the R-0819 recurrence drafted below: gate G4(d) ordered `ruff check scripts/remedy_smoke.sh`
+EXIT 0, and the reviewer independently measured that command as EXIT 1 with 1207 diagnostics at
+`b7b954b0c50f311ea74403eaaf9e43fef5192835` and 1202 at the head, because naming a `.sh` path
+explicitly bypasses ruff's file-type discovery and every bash line is then read as invalid Python —
+so the clause was unmeetable at its own base and measured nothing about this round, while the
+meaningful half of the same gate, `bash -n`, passed and the real ceiling gate held at 26. The worker
+reported 1204 and 1199 where the reviewer measures 1207 and 1202; the reviewer records both readings
+rather than overwriting one, notes that the load-bearing fact is identical under either — red at the
+base, red at the head, delta approximately the 49 deleted lines — and does not treat a numeral it
+cannot reproduce exactly as a defect of the worker. THE SECOND DEVIATION IS AN INTERMITTENT FULL
+SUITE UNDER `-n auto`, correctly attributed by the worker to the ALREADY-OPEN finding R-0569 rather
+than to this round, and the reviewer confirmed the attribution rather than accepting it: R-0569 is
+registered and unresolved, it names the fixed port 5273 under xdist, `tests/orchestration/test_product_smoke.py`
+line 90 still carries `port: int = 5273`, that file is BYTE-UNCHANGED across this round's range, the
+two named ids pass serially, and the reviewer's own full-suite run was green. NO FINDING IS RESOLVED
+BY THIS GATE AND NO NEW ID IS MINTED.
 
-**G4 THE DELETION ROUND'S FOUR MEASUREMENTS, at C4 — (a) PASS, (b) INTERMITTENT (D2), (c) PASS,
-(d) SPLIT: `bash -n` PASS, `ruff` RED and unmeetable (D1).**
+## R-0819 RECURRENCE — drafted here, booked by round 9's first commit
 
-(a) `python3 -B -m pytest tests/orchestration/test_import_reachability.py -q` — **EXIT 0**,
-`3 passed in 1.27s`.
+NO NEW ID IS SPENT. `docs/agents/planner_reviewer_prompt.md` §3 item 30 requires the open set to be
+searched for the DEFECT before an id is minted, and R-0819 is OPEN and its headline already states
+this exact class: a gate demanding a value that is already impossible at its own base, because the
+reviewer did not run it at the base before ordering it. The paragraph below is appended as a
+RECURRENCE under that finding, in the shape the checklist's own recurrence paragraphs use, and it
+does not restate R-0819's fix clause.
 
-(b) `python3 -m pytest -q -n auto` in the PRIMARY CHECKOUT per constraint 7 — **8 runs, 6 green and
-2 red on the same two node ids.** See D2. The green reading is **EXIT 0, `19791 passed, 23 skipped,
-1 warning`**; the red reading is **EXIT 1, `2 failed, 19789 passed, 23 skipped, 1 warning`**, the two
-failures being
-`tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes` and
-`tests/orchestration/test_product_smoke.py::TestBrokenStartHoldsTheJob::test_the_job_is_held_open`.
-Exit code by run, in order: run 1 NOT CAPTURED (the command was piped to `tail`, though its summary
-line reads `19791 passed, 23 skipped`), then **1, 0, 0, 0, 0, 0, 1**.
+RECURRENCE of R-0819 at F274 round 8, measured by the reviewer at
+`0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84`. The round 8 block's gate G4(d) ordered
+`python3 -m ruff check scripts/remedy_smoke.sh` to be EXIT 0. Ruff is a Python linter, and naming a
+`.sh` path explicitly bypasses its file-type discovery, so it parses the shell script as Python: EXIT
+1 with 1207 diagnostics at the base `b7b954b0c50f311ea74403eaaf9e43fef5192835` and 1202 at the head,
+the first at `remedy_smoke.sh:22:16` on `remedy_smoke() {`. The gate could not pass in any round and
+measured nothing. It did no harm only because the same gate's `bash -n` clause carried the real
+property and passed, and because the frozen ceiling is gated separately by `ruff check .` at 26. THE
+ADDITION THIS RECURRENCE MAKES TO R-0819's FIX, binding on the next block of this feature that gates a
+NON-PYTHON file: name the tool that reads that file's LANGUAGE — `bash -n` or `shellcheck` for a shell
+script — and never a tool whose file-type discovery the explicit path suppresses. R-0819's own fix
+clause already requires every gate to be RUN AT THE BASE BEFORE BEING ORDERED, and this instance is
+that clause going unperformed a second time in the same feature, by the same reviewer, one round after
+it was quoted in the round 7 record.
 
-(c) A sweep over **every tracked file** under `scripts/`, `packages/`, `apps/` and `tests/` — **1313
-files, ALL FILE TYPES, no extension filter**, read as bytes:
- - the token `12ah` **TOTALS ZERO**, against 3 at the base, all three inside the deleted section;
- - the string `packages.orchestration.context_optimizer` **TOTALS ZERO UNDER `scripts/` ALONE**,
-   against 1 at the base, in the deleted section.
-Both scopes are the ones the block states and the block's reasons were checked rather than taken on
-trust. The `12ah` sweep excludes `.agent/` because this very block names the section and C0a and C0b
-commit this block, so a repo-wide zero is unmeetable BY CONSTRUCTION. The `context_optimizer` clause
-is scoped to `scripts/` because the string legitimately SURVIVES elsewhere, and the survivors were
-enumerated and match the block's list exactly: **3 in `apps/cli/commands/context_optimizer_cmd.py`,
-5 in `tests/orchestration/test_project_brain.py`, 1 in
-`tests/orchestration/import_reachability_allowlist.txt` and 1 in
-`tests/orchestration/test_cluster_deletion_map.py`** — the MODULE is not deleted this round, only its
-last consumer edge.
+## Reviewer prose slips owed to `.agent/prose_slips.md`
 
-(d) `bash -n scripts/remedy_smoke.sh` — **EXIT 0.** The script STILL PARSES after the 49-line
-excision, which is what this clause exists to test.
-`python3 -m ruff check scripts/remedy_smoke.sh` — **EXIT 1**, and **EXIT 1 at the base commit too**.
-See D1.
+One dated line, to be appended by round 9 in the commit that is happening anyway. The round 8 block's
+gate G4(c) is NOT among them: its two clauses were deliberately scoped, the block stated why for each,
+and both passed as written.
 
-**G5 THE EDGE TRUTH AND THE RATCHET, at C4, in the disposable worktree `.remedy-wt/r8-c4` — PASS in
-all three clauses.** `__pycache__` was purged first (0 directories present) and every run used
-`python3 -B`. The primary checkout was never mutated.
-(a) CONTROL: `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py -q` — **EXIT 0**,
-`3 passed in 1.39s`.
-(b) THE FOUR READINGS, taken through the shipped module's own `measured_edges()` and `CLUSTER_MODULES`
-rather than by grep:
- - measured edges **37**, recorded edges **37**, `measured == recorded` **True**;
- - measured consumers of `packages.orchestration.context_optimizer` = **`[]`, THE EMPTY LIST** — the
-   module now has zero consumer edges under the WIDENED walker, which is what this round existed to
-   produce;
- - modules with NO edge = **`['context_optimizer', 'context_pack', 'review_bundle',
-   'self_repair_proposal']`**, exactly the four the block names, `context_optimizer` newly among them;
- - non-`.py` consumers the widened walk finds = **`[]`, THE EMPTY LIST** — round 7's single non-python
-   consumer was the section just deleted, and no other file embeds a first-party import.
-(c) RED: the deleted line `packages.orchestration.context_optimizer <- scripts/remedy_smoke.sh` was
-appended back to `tests/orchestration/cluster_deletion_map.txt` (4038 -> 4106 bytes). The command of
-(a) is then **EXIT 1**, `1 failed, 2 passed in 1.42s`, its output carrying **`DISAPPEARED (1)`** and
-naming **`packages.orchestration.context_optimizer <- scripts/remedy_smoke.sh`**, with
-`APPEARED (0)`. So the map guard is load-bearing in this direction and a line left behind is as red
-as a new edge. RESTORED BY EXACT PATH
-(`.remedy-wt/r8-c4/tests/orchestration/cluster_deletion_map.txt`), back to 4038 bytes at sha256
-`b0501ec816fd3a50a90862c230d6a1da0eed8132796fb21355274d1cdf59f0c3`, **byte-identical True**, and the
-control of (a) RETURNS TO **EXIT 0**, `3 passed in 1.28s`.
-
-**G6 THE TREE, at C4 — PASS in every clause.**
-`git status --porcelain` **EMPTY**, and empty at every commit boundary of the round.
-`git ls-files .remedy-wt` **EMPTY** — nothing under the gitignored scratch dir was ever staged.
-`git worktree list` **14 entries** before the first `worktree add` and **14** after the last `prune`.
-`git diff --name-only b7b954b0c50f311ea74403eaaf9e43fef5192835..0064898b` names **exactly 7 paths** —
-the 8 of the change set minus `.agent/handoff.md`, which C5 writes — and nothing else:
-`.agent/authored/f274-r8.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`,
-`.agent/prose_slips.md`, `scripts/remedy_smoke.sh`, `tests/orchestration/cluster_deletion_map.txt`.
-Set equality against constraint 3 was asserted, not eyeballed: **True**.
-Every commit C0a through C4 is **SINGLE-PARENT** (parent count 1 for each).
-INSERTIONS ONLY, the `+` column, per AGENTS.md DECISION F104 D1:
-**C0a 235, C0b 148, C1 17, C2 6, C3 4, C4 0.**
-**C4's insertion count is ZERO**, as a deletion round's cut must be. Every figure is under the 500
-cap, no oversize commit was needed or declared, and each was cross-checked cell by cell against the
-`+/-` column of the Commits table above, taken from `git diff --numstat`. C5's own numbers are
-deliberately not quoted; that commit does not exist while this file is being written.
-
-## Authored-text proofs
-
-| Slice | Bytes | sha256 (measured) | Result |
-|-------|-------|-------------------|--------|
-| PLAN8 | 2376 | `01c2d47f…2cec0f71` | verified against its BEGIN marker BEFORE applying; committed `.agent/plan.md` at C1 is BYTE-EQUAL |
-| RECORD8 | 8664 | `dff683cb…80a2f19d` | verified before applying; committed `.agent/live_review.md` at C2 is pre + slice exactly, no separator added |
-| SLIPS8 | 766 | `d30b0fca…6b3c7f3ff` | verified before applying; committed `.agent/prose_slips.md` at C3 is pre + slice exactly, no separator added |
-| whole block | 23487 | `2f9c169e…3ff6d5f5c9` | measured on `.remedy-wt/f274-r8-block.md` BEFORE use, and again on both committed copies |
-
-Every slice was extracted from the block's own bytes by its BEGIN/END marker lines and written byte
-for byte; each measured length and digest matched its BEGIN marker before a single byte was applied.
-RECORD8 and SLIPS8 each CARRY THEIR OWN LEADING NEWLINE and no separator of any kind was added — both
-were confirmed to begin with `\n`, and PLAN8 was confirmed to begin with `#` since it replaces rather
-than appends. Nothing was reflowed, re-indented, retyped or "fixed". Marker lines were never written
-to any file.
-
-**NO `Done:` PARAGRAPH OF THE WORKER'S OWN WAS WRITTEN ANYWHERE.** The two `Done:` paragraphs now in
-the record — R-0833 and R-0834 — are reviewer-authored text carried inside the RECORD8 slice and
-applied verbatim as part of it; nothing was added beside them.
-
-THE CUT WAS VERIFIED BEFORE IT WAS MADE, and every figure the block states was confirmed
-independently: the run is **49 lines and 2011 bytes**, it occurs **exactly once** in the file at the
-base commit (`raw.count(run) == 1`), it BEGINS at the banner line immediately preceding
-`    # 12ah. Context Optimizer (Step 71)` and ENDS immediately before the banner line preceding
-`    # 12ai. Brain nodes: decision_queue (Step 69)`, and the excision removed exactly 2011 bytes
-(111867 -> 109856) and 49 lines (2725 -> 2676). The map line occurred **exactly once** (53 -> 52
-lines). No figure the block states differed from what was measured.
-
-## Deviations & assumptions
-
-| Item | Status | Reason |
-|------|--------|--------|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | done | |
-| C4 | done | |
-| C5 | done | this commit |
-| G1 | done | PASS |
-| G2 | done | PASS — all four clauses, every numeral exact |
-| G3 | done | PASS |
-| G4(a) | done | PASS — EXIT 0, 3 passed |
-| G4(b) | deviated | INTERMITTENT: 6 green / 2 red in 8 runs — D2 |
-| G4(c) | done | PASS — both totals ZERO |
-| G4(d) | deviated | `bash -n` EXIT 0 PASS; `ruff` EXIT 1, red at the base too — D1 |
-| G5 | done | PASS — control 0, four readings exact, red 1 with `DISAPPEARED (1)`, restore byte-identical, control back to 0 |
-| G6 | done | PASS — porcelain empty, 7 paths, all single-parent, C4 insertions ZERO |
-
-NO DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE: six commits, C0a, C0b, C1, C2, C3, C4 then
-C5, in that order, none added, none dropped, none reordered. The path set of C0a through C4 is
-exactly the change set minus `.agent/handoff.md`, as constraint 3 requires.
-
-**D1 — G4(d)'s RUFF CLAUSE IS RED, AND IT IS RED AT THE BASE COMMIT TOO, SO IT IS UNMEETABLE BY
-CONSTRUCTION RATHER THAN BROKEN BY THIS ROUND.** The block orders
-`python3 -m ruff check scripts/remedy_smoke.sh` EXIT 0. The real result:
-
-    $ python3 -m ruff check scripts/remedy_smoke.sh          # primary checkout, at C4
-    EXIT 1 — 1199 `invalid-syntax` diagnostics, beginning
-    invalid-syntax: Simple statements must be separated by newlines or semicolons
-      --> scripts/remedy_smoke.sh:22:16
-       |
-    22 | remedy_smoke() {
-       |                ^
-
-    $ python3 -m ruff check scripts/remedy_smoke.sh          # worktree at b7b954b0, THE BASE
-    EXIT 1 — 1204 `invalid-syntax` diagnostics, the same first diagnostic at the same line 22:16
-
-MECHANISM, measured rather than argued: ruff is a PYTHON linter and selects its parser by file type
-during directory traversal, so `ruff check .` never picks up a `.sh` file — but naming the path
-EXPLICITLY bypasses that discovery and forces bash source through the Python parser, which cannot
-parse `remedy_smoke() {`. The count moves 1204 -> 1199 only because the excision removed 49 lines of
-bash that were themselves being mis-parsed; it is not a lint improvement and must not be read as one.
-THE FROZEN CEILING IS UNTOUCHED, which is the reading that actually matters here:
-`python3 -m ruff check .` gives **`Found 26 errors.`** in a worktree at the BASE and **`Found 26
-errors.`** in the primary checkout at C4 — identical, so DECISION F083 D5's ceiling holds.
-The other half of G4(d), `bash -n scripts/remedy_smoke.sh`, is **EXIT 0** at both the base and C4, and
-that is the clause that tests the property the block names ("the script must still PARSE after a
-49-line excision"). NOTHING WAS REPAIRED: no lint config was touched, no `# noqa` added, no ruff
-exclusion written, and the block's text was not edited to match. The reviewer may wish to restate this
-clause as `bash -n` alone, or as `ruff check .` against the 26-error ceiling, since a python linter
-pointed at a shell script can never return 0.
-
-**D2 — G4(b), THE FULL SUITE, IS INTERMITTENT, AND THE CAUSE IS THE ALREADY-REGISTERED OPEN FINDING
-R-0569 RATHER THAN THIS ROUND'S CUT.** Eight `python3 -m pytest -q -n auto` runs in the primary
-checkout at C4: **6 green at `19791 passed, 23 skipped`, 2 red at `2 failed, 19789 passed, 23
-skipped`**, exit codes in order — run 1 not captured (piped to `tail`, summary line green), then
-1, 0, 0, 0, 0, 0, 1. The two red node ids are identical on both red runs:
-
-    FAILED tests/orchestration/test_product_smoke.py::TestAppStartsGreen::test_a_clean_app_passes
-    FAILED tests/orchestration/test_product_smoke.py::TestBrokenStartHoldsTheJob::test_the_job_is_held_open
-
-THIS IS R-0569 — Low, OPEN, registered in `.agent/live_review.md` and explicitly NOT FIXED IN THIS
-FEATURE — which states that `tests/orchestration/test_product_smoke.py` "builds its app fixtures with
-a `port` parameter defaulting to 5273" inside a suite that runs under `-n auto`, so a second xdist
-worker holding 5273 produces exactly this failure. VERIFIED AGAINST THE FILE RATHER THAN TAKEN FROM
-THE FINDING'S PROSE: line 90 carries `port: int = 5273` as a default in the fixture builder's
-signature, and both failing tests reach it through
-`project()` without an explicit port. THE DISCRIMINATOR IS SERIALISATION, which is decisive:
-
-| Selection | Command | Result |
-|-----------|---------|--------|
-| the two red node ids, SERIALLY | `python3 -m pytest -q <two node ids>` | **EXIT 0, `2 passed in 0.59s`** |
-| the whole file, SERIALLY | `python3 -m pytest -q tests/orchestration/test_product_smoke.py` | **EXIT 0, `76 passed in 8.83s`** |
-| the whole file, under `-n auto` | `python3 -m pytest -q -n auto tests/orchestration/test_product_smoke.py` | EXIT 1 on all 4 runs — `7 failed`, `6 failed`, `12 failed`, `10 failed`, each in ~2.6s |
-
-The last row is the same mechanism amplified rather than a second one: concentrating 76 tests that all
-default to port 5273 across parallel workers maximises the collision, and the file's own docstring
-says "a port already in use is reported as a start failure", which is why those runs fail in 2.6s
-instead of timing out.
-NOT COUPLED TO THIS ROUND'S CUT, measured three ways: (i) `tests/orchestration/test_product_smoke.py`
-is NOT in this round's change set and is byte-unchanged across
-`b7b954b0..0064898b`; (ii) that file contains **ZERO** occurrences of `remedy_smoke`, `12ah`,
-`context_optimizer` or `cluster_deletion`, so the cut cannot reach it textually; (iii) this round's
-entire production diff is one excised bash section and one deleted data line, neither of which is
-imported by any python module. NO TEST WAS DELETED, NO ASSERTION WEAKENED AND NO CEILING RAISED to
-make this green — the intermittency is reported as it was measured.
-
-No assumption_log entry was needed. `.agent/STOP` was absent throughout, re-checked at every commit
-boundary.
+2026-09-08 · F274 R8 · The round 8 block's gate G4(d) paired a real property, `bash -n`, with an
+unmeetable one, `ruff check` against a `.sh` path, in a single lettered clause, so an honest worker had
+to split one gate's answer into a pass and a fail; the substantive defect is booked as the R-0819
+recurrence and this line records only the packaging error of putting two properties under one letter.
 
 ## Open findings
 
-**63, measured** — the G2(d) count over the committed post-image of `.agent/live_review.md` at C2,
-BY DISTINCT ID: 68 distinct `^- R-\d+ — ` registrations minus 5 distinct `^Done: R-\d+ — `
-resolutions, down from 65 because R-0833 and R-0834 both resolved this round. The open High findings
-remain R-0803, R-0804, R-0806 and R-0807, all F273's rather than this feature's per DECISION F272
-D12; R-0834 has left that set. R-0832 — the deletion map's blindness to event-name coupling — is
-still OPEN and still binds the round that drafts DECISION F260 D3. R-0569, the fixed-port flake D2
-names, is likewise still open and unrepaired here.
+63 BY DISTINCT ID at `0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84`: 68 distinct registrations against 5
+distinct resolutions, verified mechanically by the reviewer at every gate this session. The session
+opened at 62, registered R-0832, R-0833 and R-0834, and resolved R-0833 and R-0834. Booking the R-0819
+recurrence does NOT change the count, because it spends no id. The next free id is R-0835. The open
+High findings are R-0803, R-0804, R-0806 and R-0807, and all four are F273's rather than this
+feature's, per DECISION F272 D12.
 
-## Next
+## NEXT — round 9, measured, with a recommendation
 
-The reviewer re-runs G1 through G6 against this committed diff and rules D1 and D2 — D1 wanting a
-restatement of G4(d)'s ruff clause, since a python linter aimed at a `.sh` path cannot return 0 at
-any commit, and D2 wanting only a note that R-0569 is the cause, since it is already registered and
-already routed away from this feature. The substantive next round is the first item of the plan's
-Next Steps: `worker_recommend`'s three edges in `agent_loop.py`, `autonomy_loop.py` and
-`dashboard.py`, which are LIVE RUNTIME CALLS rather than read-only views and so need a DECISION
-naming what inherits worker recommendation authored BEFORE the cut.
+FIRST ACTION NEXT SESSION is Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: read
+`.agent/STOP` from disk. It is ABSENT as this file is written. Then rule 2 finds no open pull request,
+rule 3 finds `.agent/candidates.md` empty, and work resumes on this branch at
+`0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84`.
+
+ROUND 9 IS THE COCKPIT SECTION BLOCK, AND IT IS THE LARGEST SINGLE ADVANCE LEFT IN THE FEATURE.
+EIGHT cluster modules have exactly ONE recorded edge each, and in every case that edge is
+`packages/orchestration/ui_server.py`. Cutting their read-only cockpit sections would take the map
+from 37 edges to 29 and the zero-edge set from four modules to TWELVE — half the cluster deletable in
+one round. Measured at `0466d1ae0afd16a6fb31cb902b9c8a46aeed9e84`, each module pairs with one section
+builder and one key in the dashboard dict near line 1950 of that file:
+
+| Module | Section builder | Dashboard key |
+|---|---|---|
+| `repair_loop_v2` | `_build_repair_loop_section` | `repair_loop` |
+| `overnight_readiness` | `_build_overnight_section` | `overnight` |
+| `external_builder_sandbox` | `_build_external_builder_section` | `external_builder` |
+| `overnight_mission` | `_build_overnight_mission_section` | `overnight_mission` |
+| `model_route_tournament` | `_build_model_route_tournament_section` | `model_route_tournament` |
+| `candidate_quality` | `_build_candidate_quality_section` | `candidate_quality` |
+| `local_candidate_generator` | `_build_local_candidate_section` | `local_candidate` |
+| `builder_routing` | `_build_builder_routing_section` | `builder_routing` |
+
+THREE FACTS THAT MAKE THIS TRACTABLE, EACH MEASURED RATHER THAN ASSUMED:
+
+1. THE REACT UI DOES NOT READ THESE KEYS. A grep of `apps/ui/src` for `builder_routing`,
+   `candidate_quality`, `model_route_tournament` and `overnight_mission` returns NOTHING, so the
+   deletion does not reach the browser half and no `tsc` or vitest gate is needed.
+2. THE ONLY COCKPIT-CONTRACT CONSUMER IS ONE TEST FILE, `tests/ui_server/test_dashboard_cockpit_truth.py`,
+   which asserts each key's presence — for example `test_builder_routing_section_present` at line 313.
+   The other test files that match these module names test the MODULES themselves and must NOT move,
+   because the modules survive this round and die with the cluster later.
+3. THE BLAST RADIUS PER MODULE IS THEREFORE THREE SITES: the section function in `ui_server.py`, its
+   line in the dashboard dict, and its presence test. Plus one deletion-map line each.
+
+AUTHOR A DECISION FIRST. DECISION F274 D3 ruled round 5's single cockpit endpoint deletion before a
+line was cut, and eight sections deserve the same treatment in one entry: name the eight keys, state
+that the cockpit loses eight read-only diagnostic views whose subjects are cluster modules already
+slated for deletion, and state what inherits the idea — nothing does, because the cluster is being
+deleted rather than replaced, which AGENTS.md's "Replacing is deleting" rule requires to be said out
+loud rather than left implicit.
+
+DRY-RUN OBLIGATION, and this session is the evidence for it: APPLY the whole cut in a disposable
+worktree and RUN it BEFORE authoring the block, and sweep for the deleted symbols with NO FILE-TYPE
+FILTER AT ALL. Round 6 failed for exactly that reason, and `scripts/remedy_smoke.sh` is now known to
+embed python that the `.py` habit does not see.
+
+AFTER ROUND 9, in order: `worker_recommend`'s three edges in `agent_loop.py`, `autonomy_loop.py` and
+`dashboard.py`, which are LIVE RUNTIME CALLS and need a DECISION naming what inherits worker
+recommendation; the remaining `ui_server.py` edges; the `worker_facade_cmd.py` edges carrying the
+`mission report` name collision DECISION F274 D2 rules and the two `feature_cmd.py` edges; the two
+F260 carry-overs; DECISION F260 D3, which R-0832's fix clause binds; then the deletion itself in a
+session that can finish it; and last T001 and T002.
+
+## Item status
+
+| Item | Status | Reason |
+|---|---|---|
+| Phase 0 state probe | done | tree clean, no PR, no STOP, candidates empty |
+| Phase 1 decision | done | rule 5 — continue the claimed feature F274 |
+| F274 R6 authored, dry-run, delegated, gated | done | FAIL on G6; every gate re-run by the reviewer |
+| F274 R7 authored, dry-run, delegated, gated | done | PASS; every gate re-run by the reviewer |
+| F274 R8 authored, dry-run, delegated, gated | done | PASS; every gate re-run by the reviewer |
+| R5 verdict booked | done | `Gate: F274 R5` at `f6b6f752` |
+| R6 verdict booked | done | `Gate: F274 R6` at `f40a94d2` |
+| R7 verdict booked | done | `Gate: F274 R7` at `6fd13516` |
+| R8 verdict booked | not done — carried | this file is the durable carrier; booked by round 9's first commit per amend0827 rule 1 |
+| R-0832 registered | done | `f6b6f752` |
+| R-0833 and R-0834 registered | done | `f40a94d2` |
+| R-0833 and R-0834 resolved | done | `6fd13516`, with the `Landed:` lines surviving beside them |
+| R-0819 recurrence | not done — carried | drafted above; booked by round 9's first commit; spends no id |
+| Round 8's prose slip | not done — owed | one line, listed above; appended by round 9 |
+| Round 9 | not done — measured, not authored | eight modules, their builders and keys tabulated above |
+| DECISION for round 9 | not done | to be authored before the cut, as D3 preceded round 5 |
+| Pull request | not done | none exists; the branch is pushed and reviewable |
+| Session round target of six to eight | NOT MET — 3 rounds | both honest reasons stated above under amend0905-throughput |
