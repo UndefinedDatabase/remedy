@@ -1,465 +1,340 @@
-# Handback — F272 round 23
+# Handback — F272 round 24
 
 ## Session
 
-SESSION 11 of feature F272 · round 23 · rounds so far 23
+SESSION 11 of feature F272 · round 24 · rounds so far 24
 
-Soft limit under amend0906-triage-throughput: 12 sessions and 40 rounds. At
-session 11 and round 23 the feature is INSIDE the limit, so no scope report is
-owed and no `SITZUNGS-LIMIT` line is emitted.
+Soft limit under amend0906-triage-throughput is 12 sessions and 40 rounds. At
+session 11 and round 24 the feature is INSIDE the limit, so no scope report is
+owed yet. DECISION F272 D14, committed this round, supplies the figures the next
+scope report will use (60 production files and 127 test files, not 199).
 
-Context self-assessment: comfortable with wide margin. The session read
-AGENTS.md, the handback template and the 367-line block in full, read both
-target regions of `do_cmd.py` and `job_evidence.py` before editing them, and ran
-every gate for real; the only long call was G5's `tests/orchestration/` at 12m19s.
+Context self-assessment: the round used a small fraction of the available
+context — eight state-file operations, four gate scripts and three pytest runs —
+and nothing was truncated, elided or read from memory rather than from disk.
 
 ## Range
 
-Review of `67515ab7`..`222c211e`, the seven-commit sequence C0a, C0b, C1, C2, C3,
-C4, C5. The C6 commit that writes this file follows `222c211e` and cannot name
-its own SHA, exactly as rounds 21 and 22 did.
+Review of `81b2dc86`..`da930e3c`, the seven-commit sequence C0a, C0b, C1, C2,
+C3, C4, C5. The C6 commit that writes this file follows `da930e3c` and cannot
+name its own SHA — the same shape rounds 21, 22 and 23 used. Never an
+unmeasured SHA.
 
 ## Commits
 
-Seven commits, every one single-parent, in the block's ordered sequence C0a, C0b,
-C1, C2, C3, C4, C5. C6 writes this file and cannot table itself. Every `+/-` cell
-below is taken from `git diff --numstat <parent> <commit>` and was compared cell
-for cell against G7's figures.
+Eight commits, every one single-parent, in exactly the block's ordered sequence
+C0a, C0b, C1, C2, C3, C4, C5, C6. The `+/-` column is `git diff --numstat
+<parent> <commit>` and every cell was compared against G6's figures.
 
-### 79f6dd8f f272: save the round 23 block verbatim as the authored record
+### 6c3cc698 f272: save the round 24 block verbatim
 | Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/authored/f272-r23.md` | +367 / -0 | C0a — `shutil.copyfile` of `.remedy-wt/f272-r23-block.md`, 30290 bytes, 367 lines |
+|---|---|---|
+| `.agent/authored/f272-r24.md` | +285/-0 | C0a — `shutil.copyfile` of `.remedy-wt/f272-r24-block.md`, the round's block saved verbatim |
 
-### 9edd01d2 f272: mirror the round 23 block into the last block slot
+### d8e4c027 f272: mirror the round 24 block into last_block
 | Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/last_block.md` | +265 / -175 | C0b — same `shutil.copyfile`, replacing the round 22 block |
+|---|---|---|
+| `.agent/last_block.md` | +178/-260 | C0b — same bytes by `shutil.copyfile`; the churn is round 23's 367-line block being replaced by round 24's 285-line one |
 
-### b021f398 f272: point the plan at round 23 and the R-0825 repair
+### f490b86d f272: point the plan at the round 24 staging ruling
 | Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/plan.md` | +29 / -29 | C1 — replaced byte for byte with the PLANF272R23 slice, 2592 bytes, 49 lines |
+|---|---|---|
+| `.agent/plan.md` | +20/-22 | C1 — replaced byte for byte with slice PLANF272R24 |
 
-### 5249cd6e f272: book the round 22 PASS verdict and register R-0825
+### 4b84d3d9 f272: book the round 23 PASS gate entry
 | Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/live_review.md` | +4 / -0 | C2 — RECORDR23 appended: the round 22 PASS gate entry owed by amend0827 rule 1, and the R-0825 registration; findings persist before the repair |
+|---|---|---|
+| `.agent/live_review.md` | +2/-0 | C2 — append of slice RECORDR24, the round 23 PASS gate entry owed by amend0827 rule 1. No finding minted |
 
-### 5de6f81a f272: record the two round 21 prose slips
+### dd81d87a f272: append the round 23 prose slip line
 | Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/prose_slips.md` | +4 / -0 | C3 — SLIPSR23 appended, the two dated round 21 lines round 22's handback records as owed |
+|---|---|---|
+| `.agent/prose_slips.md` | +2/-0 | C3 — append of slice SLIPSR24, the dated line round 23's worker declared and correctly declined to write on its own initiative |
 
-### b63a88b6 f272: make both retired JobPlan status readers read state, pinned by behaviour tests and a standing scan
+### bc80adf0 f272: record the T004 staging measurements
 | Path | +/- | Reason |
-|------|-----|--------|
-| `apps/cli/commands/do_cmd.py` | +2 / -2 | C4 — pair P1: `getattr(_existing, "status", "") == "stopped"` becomes `_existing.state == JOB_STOPPED`, with the constant imported beside `load_job_plan` |
-| `packages/orchestration/job_evidence.py` | +2 / -1 | C4 — pair P2: `_linked_job_summary` reads `state` through the `str(getattr(_state, "value", _state) or "")` idiom |
-| `tests/orchestration/test_job_plan_state_reads.py` | +155 / -0 | C4 — NEW standing scan, `shutil.copyfile` of `.remedy-wt/f272-r23-new-guard.py`, 6473 bytes, 155 lines |
-| `tests/orchestration/test_job_state_field.py` | +50 / -0 | C4 — `shutil.copyfile` of `.remedy-wt/f272-r23-state-field.py`, 8135 bytes, 169 lines; additions only plus the `import pytest` line, ZERO deletions, as constraint 4 requires |
+|---|---|---|
+| `.agent/f272_t004_staging.md` | +120/-0 | C4 — NEW file, `shutil.copyfile` of `.remedy-wt/f272-r24-staging.md` per constraint 4 |
 
-### 222c211e f272: resolve R-0825 in the record
+### da930e3c f272: rule how T004 is staged as DECISION F272 D14
 | Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/live_review.md` | +2 / -0 | C5 — DONER23 appended, resolving R-0825; it runs after C4 and after G4, per constraints 6 and 7 |
+|---|---|---|
+| `docs/roadmap/features/T2_F272.md` | +18/-0 | C5 — append of slice D14SLICE, the ruling. Append, never a rewrite, per constraint 5 |
+
+### C6 (SHA unmeasurable here) f272: hand back round 24 on the T004 staging ruling
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | (self) | C6 — this file, rewritten completely. A handoff cannot table the commit that writes it (R-0149 pattern), so neither its SHA nor its `+/-` can be measured from inside it; both are in the round report |
 
 ## Item status
 
 | Item | Status | Reason |
-|------|--------|--------|
-| C0a  | done   | |
-| C0b  | done   | |
-| C1   | done   | |
-| C2   | done   | |
-| C3   | done   | |
-| C4   | done   | |
-| C5   | done   | |
-| C6   | done   | this commit; it rewrites this file and cannot table itself |
-
-No commit was added, dropped or reordered. The bundle landed exactly as ordered.
+|---|---|---|
+| C0a | done | `.agent/authored/f272-r24.md`, sha256 `255fd4f0…`, 24493 bytes, 285 lines |
+| C0b | done | `.agent/last_block.md`, identical bytes to C0a and to the delivery file |
+| C1 | done | `.agent/plan.md` byte-equal to PLANF272R24, 2525 bytes, 47 lines |
+| C2 | done | append proved byte-exact; 1204799 -> 1209111 |
+| C3 | done | append proved byte-exact; 148270 -> 148887 |
+| C4 | done | copied file matches constraint 4's sha256, 5921 bytes and 120 lines exactly |
+| C5 | done | append proved byte-exact; 52485 -> 58026; D14 is the fourteenth and last DECISION heading |
+| C6 | done | this handback |
 
 ## External actions
 
-| Command | Outcome |
-|---------|---------|
-| `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/r23-base 67515ab77f0d6a9103cdb4c521182ead37663590 --detach` | EXIT 0 — `Preparing worktree (detached HEAD 67515ab7)` |
-| `git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/r23-base` | EXIT 0, removed BY EXACT PATH; `git worktree list` afterwards shows only the primary checkout and the twelve pre-existing `remedy/job-*` product worktrees, no `r23-base`; `os.path.exists` on that exact path is `False` |
-| `git push -u origin feature/f272-one-world-completion` (after C5) | EXIT 0 — `67515ab7..222c211e  feature/f272-one-world-completion -> feature/f272-one-world-completion`; branch set up to track origin |
-| second `git push` carrying C6 | executed immediately after this commit; its real output is in the round report — a handback cannot contain the transcript of a push of itself |
-
-No PR was created, nothing was merged, nothing was force-pushed, no history was
-rewritten. No `gh` command was run.
+- `git push -u origin feature/f272-one-world-completion` after C5 — EXIT 0.
+  `To github.com:UndefinedDatabase/remedy.git` /
+  `81b2dc86..da930e3c  feature/f272-one-world-completion -> feature/f272-one-world-completion` /
+  `Branch 'feature/f272-one-world-completion' set up to track remote branch 'feature/f272-one-world-completion' from 'origin'.`
+- A second `git push` carrying C6 is executed immediately after that commit. Its
+  real transcript is in the round report, because a handback cannot contain the
+  transcript of a push of itself.
+- No PR created, none edited, none merged. No worktree added or removed —
+  constraint 8 forbids one and none was needed.
+- No `gh` command run.
 
 ## Verification
 
-Every gate was run with `bash -c '<cmd>; echo "REAL_EXIT=$?"'`, no pipe between
-the command and the echo. G1 through G6 all ran before C6; G4 additionally ran
-before C5, as the block's gate preamble orders, because DONER23 states G4's
-outcome. G2's C5 half and G7 are the readings that follow C5.
+Every gate run with `bash -c '<cmd>; echo "REAL_EXIT=$?"'`, no pipe between the
+command and the echo. Every gate ran BEFORE C6.
 
-### G1 TRANSPORT — PASS, REAL_EXIT=0, 4 artifacts compared
+**G1 TRANSPORT — PASS.** Three artifacts compared, every one byte-identical to
+its delivery file. REAL_EXIT=0.
 
-    DELIVERED .remedy-wt/f272-r23-block.md
-              sha256 4463fbcc8c9cf39bc51056ccb43e9c6be9449f16686e6ddc4058c3c250c44a0f
-              30290 bytes, 367 lines
-    COMMITTED .agent/authored/f272-r23.md
-              sha256 4463fbcc8c9cf39bc51056ccb43e9c6be9449f16686e6ddc4058c3c250c44a0f
-              30290 bytes, 367 lines   EQUALS_DELIVERED=True
-    COMMITTED .agent/last_block.md
-              sha256 4463fbcc8c9cf39bc51056ccb43e9c6be9449f16686e6ddc4058c3c250c44a0f
-              30290 bytes, 367 lines   EQUALS_DELIVERED=True
-    COMMITTED tests/orchestration/test_job_plan_state_reads.py
-              sha256 573be0549248c8a7535d9bb2cd6e3ca68d32a31fd3c82dbad564cead2ff3bbf7
-              6473 bytes, 155 lines
-              MATCHES_CONSTRAINT4=True  EQUALS_DELIVERY_ARTIFACT=True
-    COMMITTED tests/orchestration/test_job_state_field.py
-              sha256 69e13d0d5e37156fece0d2979a3411072e356484d66852ec8a3569a8af8374f3
-              8135 bytes, 169 lines
-              MATCHES_CONSTRAINT4=True  EQUALS_DELIVERY_ARTIFACT=True
-    ARTIFACTS_COMPARED=4
+    ARTIFACTS_COMPARED: 3
+    .agent/authored/f272-r24.md   len=24493 lines=285 sha=255fd4f05f3ee938fcbc470037428918862cbae2f347cbde0f437eece3edf5f5 MATCHES_DELIVERY=True
+    .agent/last_block.md          len=24493 lines=285 sha=255fd4f05f3ee938fcbc470037428918862cbae2f347cbde0f437eece3edf5f5 MATCHES_DELIVERY=True
+    .remedy-wt/f272-r24-block.md  len=24493 lines=285 sha=255fd4f05f3ee938fcbc470037428918862cbae2f347cbde0f437eece3edf5f5
+    .agent/f272_t004_staging.md   len=5921  lines=120 sha=25ed0b5a1fc1180e4339e28b95bec986b9f51ccdc946d5a7f56de48e4d7ff526 MATCHES_CONSTRAINT4=True
+    staging delivery file identical: True
 
-The delivered block's sha256, byte length and line count were verified against
-the three figures the delegation stated BEFORE the block was read, and matched.
+The delivery file was verified against the three figures the delegation stated
+BEFORE it was read: sha256 `255fd4f0…`, 24493 bytes, 285 lines — all three
+matched, so the chain runs delivery -> committed artifact, not merely
+artifact -> artifact. The staging file likewise matched constraint 4's stated
+sha256, 5921 bytes and 120 lines before it was copied.
 
-### G2 THE RECORD — PASS, REAL_EXIT=0 on both appends
+**G2 THE RECORD — PASS, all four parts.** REAL_EXIT=0.
 
-(a) BYTE, C2:
+    (a) BYTE
+      pre_len    1204799  pre_sha256  0a3287c979d7ebc52510df56b9c1c149571d6413b152bf61ba0e734e945c3315
+      post_len   1209111  post_sha256 8ca58e083752f4163c14f05320ec4b352cd767165333760e2033156560ea75f1
+      pre  terminal12 b' it CANNOT.\n' nl_run 1
+      post terminal12 b'for all 17.\n' nl_run 1
+      PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
+      POST_EQUALS_PRE_NL_SLICE: True
+      base pre_len==1204799: True   pre_sha16 == 0a3287c979d7ebc5: True
 
-    SLICE RECORDR23  6681 bytes, 3 lines, sha256 ca92ddd65fa22fdc56198a7c26fed4a7f24939cf99f3b511eb9ed202e343e2b9
-    pre_len=1195379  pre_sha256=88040b630cc1a85df824001c22d4a5736124d4a6e991c28829bf7f800b8efcb8
-    post_len=1202061 post_sha256=9fe9b8cd9f39341585d1f85ee1a22783eb7c09ea637383f9a74d25e8f1f5f186
-    pre_terminal_12=b'e document.\n'  pre_trailing_nl_run=1
-    post_terminal_12=b'_job_plan`.\n' post_trailing_nl_run=1
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST True
-    POST_EQUALS_PRE_NL_SLICE True
+    (b) STRUCTURAL
+      N (counted from slice by the script, not taken from the block): 1
+      units before: 729   units after: 730
+      LAST_N_EQUAL_SLICE_PARAS_IN_ORDER: True
+      EVERYTHING_BEFORE_UNCHANGED: True
 
-The C2 pre-image is 1195379 bytes at sha256 `88040b63…`, which is exactly the
-figure the block states for the base commit.
+    (c) NEGATIVE CONTROL (in memory only, never on disk)
+      flipped byte offset in first added paragraph: 2155
+      BYTE_READER_REJECTS: True
+      STRUCTURAL_READER_REJECTS: True
+      DISK_UNTOUCHED (re-read == real post): True sha 8ca58e083752f4163c14f05320ec4b352cd767165333760e2033156560ea75f1
 
-(a) BYTE, C5:
+    (d) COUNTS — each measured, none adjusted to agree
+      ^- R-\d{4} distinct        309 ->  309   (block said 309 -> 309)
+      ^Done: R-\d{4} distinct    252 ->  252   (block said 252 -> 252)
+      open set BY DISTINCT ID     57 ->   57   (block said  57 ->  57)
+      ^Gate:                      46 ->   47   (block said  46 ->  47)
+      ^Gate: F272 R23              0 ->    1   (block said   0 ->   1)
+      ^- R-0826                    0 ->    0   (block said   0 ->   0)
 
-    SLICE DONER23  2737 bytes, 1 line, sha256 bc38a879826f8b8dc2cabe6ed644545366bb741eaffa7b01236fe2f83dba0240
-    pre_len=1202061  pre_sha256=9fe9b8cd9f39341585d1f85ee1a22783eb7c09ea637383f9a74d25e8f1f5f186
-    post_len=1204799 post_sha256=0a3287c979d7ebc52510df56b9c1c149571d6413b152bf61ba0e734e945c3315
-    pre_terminal_12=b'_job_plan`.\n' pre_trailing_nl_run=1
-    post_terminal_12=b' it CANNOT.\n'  post_trailing_nl_run=1
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST True
-    POST_EQUALS_PRE_NL_SLICE True
+    OPEN FINDINGS BY DISTINCT ID, arithmetic: 309 distinct registrations
+    minus 252 distinct resolutions = 57 open. Registrations and resolutions
+    are both unchanged because this round mints nothing and resolves nothing;
+    only the gate entry is added. `R-0826` IS STILL FREE, as constraint 6
+    requires.
 
-Each append was proved against its OWN pre-image: C5's pre-image sha256 is
-byte-identical to C2's post-image sha256, so the two proofs chain.
+The negative control was run on the FIRST paragraph the append adds — which for
+a one-paragraph slice is the whole of it — and both readers rejected the flipped
+copy; the file was then re-read from disk and hashed to confirm the control
+never touched it.
 
-(b) STRUCTURAL, C2 and C5. The reader strips the single terminal newline, splits
-on `\n{2,}`, and compares the LAST N units against the slice's paragraphs in
-order. N is counted by the script from the slice itself and was never taken from
-the block:
+**G3 THE TWO PROSE FILES — PASS.** REAL_EXIT=0.
 
-    C2  N_COUNTED_FROM_SLICE=2  UNITS_BEFORE=726  UNITS_AFTER=728
-        LAST_N_UNITS_EQUAL_SLICE_PARAGRAPHS_IN_ORDER True
-        EVERYTHING_BEFORE_UNCHANGED True
-    C5  N_COUNTED_FROM_SLICE=1  UNITS_BEFORE=728  UNITS_AFTER=729
-        LAST_N_UNITS_EQUAL_SLICE_PARAGRAPHS_IN_ORDER True
-        EVERYTHING_BEFORE_UNCHANGED True
+    .agent/plan.md   bytes 2525   lines 47   AGENTS.md cap 50 -> OK
+      BYTE_EQUAL_TO_PLANF272R24: True   sha 95ab14452d3d9ce532cb4ec883cbae5e37a13529dae7a4f7c1047b8a113d1fea
+      '## Goal' present: True
+      '## Next Steps' present: True
 
-(c) NEGATIVE CONTROL on the first paragraph appended by C2, in memory only, one
-byte flipped by XOR at offset 1779, which is inside that first paragraph:
+    .agent/prose_slips.md
+      pre_len 148270 (block said 148270: True)  sha 057d93fd3e9ffbe73a5ef3f4d17097a6d8afe6337eb5deb67f1f40f07e0c5a6f
+      post_len 148887                            sha c54572e71819375d288304861c7de65879d8f419fcf6de51e2d5327724568d20
+      PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
+      POST_EQUALS_PRE_NL_SLICE: True
+      lines 553 -> 555   LINES GAINED: 2 (the blank separator and the slip line)
 
-    NEGCTRL flipped_byte_offset=1779 inside_first_paragraph=True
-    NEGCTRL BYTE_READER_REJECTS True
-    NEGCTRL STRUCTURAL_READER_REJECTS True
-    NEGCTRL FILE_UNTOUCHED_AFTER_CONTROL True
-            sha256=9fe9b8cd9f39341585d1f85ee1a22783eb7c09ea637383f9a74d25e8f1f5f186
+**G4 THE FEATURE FILE — PASS. No number is duplicated and none is skipped.**
+REAL_EXIT=0.
 
-BOTH readers rejected the flipped image, and the file re-read after the control
-is byte-identical to the real post-image. The same control was additionally run
-for C5 (offset 1368) and for C3's SLIPSR23 (offset 258); both rejected by both
-readers, both files untouched.
+    pre_len  52485  pre_sha256  15ca3b629acb37d9a2a799ea6205c0b5d30653815c950066dfb74000ebef25bd  lines 736
+    post_len 58026  post_sha256 1227d1d7ce16b6ca1df26e128b263023aa3dd95f556df020ff3faf78d85dc224  lines 754
+    PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
+    POST_EQUALS_PRE_NL_SLICE: True
+    '^### DECISION F272 D' headings: 13 -> 14   (block said 13 at the base)
+    numbers in order: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    D1..D14 each heads EXACTLY ONE section: True
 
-(d) COUNTS, each measured at the base commit via `git show` and at HEAD, none
-adjusted to agree:
+Every heading line, listed in file order:
 
-    ^- R-\d{4} distinct        308 -> 309
-    ^Done: R-\d{4} distinct    251 -> 252
-    ^Gate:                      45 -> 46
-    ^Gate: F272 R22              0 -> 1
-    ^- R-0825                    0 -> 1
-    ^Done: R-0825                0 -> 1
-    Done: LINES                253 -> 254
+    ### DECISION F272 D1 (2026-09-06, F272 round 2) — the run re-key lands in two moves, and the run LOG keeps its job key
+    ### DECISION F272 D2 (2026-09-06, F272 round 4) — correction to D1's premise: the observer set is the repository, not the three files the search read
+    ### DECISION F272 D3 (2026-09-06, F272 round 5) — the name collapse takes two call shapes, chosen by whether the caller already binds the new name
+    ### DECISION F272 D4 (2026-09-06, F272 round 7) — `job_id` stays the ONE required key of a job record, and the round 7 gate that said otherwise was the thing that was wrong
+    ### DECISION F272 D5 (2026-09-06, F272 round 8) — the `state` collapse widens `RunState` first, then replaces `status` in ONE atomic move
+    ### DECISION F272 D6 (2026-09-07, F272 round 9) — the `state` collapse is three moves, not two: the RENAME and the RETYPE are separated because only the retype can change what a state RENDERS as
+    ### DECISION F272 D7 (2026-09-07, F272 round 10) — the `JobPlan.status` rename set is determined by RUNTIME PROBE, not by static classification, because `.status` is polymorphic in this repository and only a running object knows its own type
+    ### DECISION F272 D8 (2026-09-07, F272 round 11) — `blocked` and `stopped` are SETTLED states in the cockpit, and a state vocabulary change is not finished until the cockpit can name it
+    ### DECISION F272 D9 (2026-09-07, F272 round 12) — the run-state phrase guard in `test_digest_hero_card.py` is a FLOOR, as its two siblings already are; an equality there pinned an arity nobody meant to pin
+    ### DECISION F272 D10 (2026-09-07, F272 round 13) — a `Landed:` line SURVIVES beside the `Done:` paragraph that resolves it; the record is append-only and is never overwritten
+    ### DECISION F272 D11 (2026-09-07, F272 round 15) — the "D9 shape" the Mission contract is owed is `DECISION amend0905-vocab D9` in the binding vocabulary page, and under it the contract lands RESERVED
+    ### DECISION F272 D12 (2026-09-07, F272 round 18) — the 2026-09-06 triage wins over this file's Acceptance, so the five tests.md ids are F273's; T003 is COMPLETE, and T004's blast radius is measured rather than estimated
+    ### DECISION F272 D13 (2026-09-07, F272 round 20) — a command's ADVERTISEMENTS are deleted in the same commit as the command, and T004's remaining order is set by that rule rather than by the size of each handler
+    ### DECISION F272 D14 (2026-09-07, F272 round 24) — T004 is staged BY CALLER, the twelve cluster-bound consumers are never migrated, and `job.run-next` dies WITH the rails rather than ahead of them
 
-All seven ordered figures reproduce exactly. The `Done:` LINE count confirms the
-block's arithmetic note: 253 lines carry 251 distinct ids at the base, because
-two ids each carry a two-paragraph resolution.
+**G5 NOTHING ELSE MOVED, AND THE DOCS GATE — PASS.** All three run serially in
+the PRIMARY checkout at C5, and every count equals the reviewer's own
+already-appended measurement.
 
-    OPEN FINDINGS BY DISTINCT ID base = 308 - 251 = 57
-    OPEN FINDINGS BY DISTINCT ID head = 309 - 252 = 57
+    $ python3 -B -m pytest tests/docs/ -q -p no:randomly
+    303 passed in 0.67s
+    REAL_EXIT=0                                   (reviewer measured 303)
 
-The open set is UNCHANGED at 57 because this round both mints and resolves
-R-0825. `R-0826` stays free: `^- R-0826` matches 0 times at HEAD.
+    $ python3 -B -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
+    30 passed in 0.46s
+    REAL_EXIT=0                                   (reviewer measured 30)
 
-### G3 THE TWO PROSE FILES — PASS, REAL_EXIT=0
+    $ python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
+    42 passed in 22.72s
+    REAL_EXIT=0                                   (reviewer measured 42)
 
-    .agent/plan.md  2592 bytes, 49 lines
-                    sha256 478442d29f3151bf3f45372e679d2def46a9f8985daa0b9818f32fbc8a1aa71a
-    BYTE_EQUAL_TO_PLANF272R23 True
-    LINES 49 against the AGENTS.md cap of 50 — UNDER_CAP True
-    HAS_GOAL_HEADING True
-    HAS_NEXT_STEPS_HEADING True
+No `.py` file changed this round, so no ruff reading is owed and none was taken.
 
-    .agent/prose_slips.md  pre_len=147269  post_len=148270
-    POST_EQUALS_PRE_NL_SLICE True
-    LINES_GAINED=4
+**G6 THE TREE — PASS.** REAL_EXIT=0 for each command.
 
-`prose_slips.md`'s pre-image is 147269 bytes, exactly the figure the block states
-for the base commit, and it gains 4 lines: the two dated slip lines plus the two
-blank separators the paragraph convention carries.
+    $ git status --porcelain      (after EVERY commit boundary: C0a, C0b, C1, C2, C3, C4, C5)
+    <no output — empty>
 
-### G4 THE ORDERED COLOUR — PASS. (i) REAL_EXIT=1 as required, (ii) REAL_EXIT=0
+    $ git ls-files .remedy-wt
+    <no output — empty>
 
-(i) In a disposable worktree at the BASE commit `67515ab7`, with ONLY the two
-test artifacts copied in by `shutil.copyfile` and both production files left at
-their base bytes — verified by digest before the run:
+    $ git worktree list
+    /home/decodeux/Repos/remedy                                  da930e3c [feature/f272-one-world-completion]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-101fad068c0741f4  3c10561b [remedy/job-101fad068c0741f4]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-1cbb6972bf7c4ffc  db21957a [remedy/job-1cbb6972bf7c4ffc]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-21c19578b8754287  79a73b5a [remedy/job-21c19578b8754287]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-2ac1522a7034440b  3afc78c5 [remedy/job-2ac1522a7034440b]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-5e91e080219342d9  9fdb3b4b [remedy/job-5e91e080219342d9]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-6f74dd7367704fd5  cf0e00e9 [remedy/job-6f74dd7367704fd5]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-848fc4c67d7b405b  7bea3efc [remedy/job-848fc4c67d7b405b]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-962cb3c9b96244ed  05852956 [remedy/job-962cb3c9b96244ed]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
+    /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
 
-    UNTOUCHED apps/cli/commands/do_cmd.py
-              sha256 c19a93a09ccccb32b395329e1ee36c3b0bc0de2d08eb5319a149ae6082890bb6, 126114 bytes
-    UNTOUCHED packages/orchestration/job_evidence.py
-              sha256 03e9adf25ef6fc9ae2f6ce9890f969692fadc6964fbfd3d821943070631b27a0, 141004 bytes
-    PYCACHE_DIRS_PURGED=0   (the fresh worktree carried none)
+    the primary plus the twelve pre-existing remedy/job-* entries — UNCHANGED
+    from the base. No worktree was added this round; constraint 8 forbids one.
 
-An import-path probe was run first, because an editable install can shadow a
-worktree; it does not here:
+Per-commit insertions from `git diff --numstat <parent> <commit>`, each under the
+DECISION F104 D1 cap of 500 (insertions only), each commit single-parent:
 
-    packages.orchestration.job_evidence -> .remedy-wt/r23-base/packages/orchestration/job_evidence.py
-    apps.cli.commands.do_cmd            -> .remedy-wt/r23-base/apps/cli/commands/do_cmd.py
+    C0a  6c3cc698  insertions=285  cap500=OK  | .agent/authored/f272-r24.md +285/-0        parents 1
+    C0b  d8e4c027  insertions=178  cap500=OK  | .agent/last_block.md +178/-260              parents 1
+    C1   f490b86d  insertions=20   cap500=OK  | .agent/plan.md +20/-22                      parents 1
+    C2   4b84d3d9  insertions=2    cap500=OK  | .agent/live_review.md +2/-0                 parents 1
+    C3   dd81d87a  insertions=2    cap500=OK  | .agent/prose_slips.md +2/-0                 parents 1
+    C4   bc80adf0  insertions=120  cap500=OK  | .agent/f272_t004_staging.md +120/-0         parents 1
+    C5   da930e3c  insertions=18   cap500=OK  | docs/roadmap/features/T2_F272.md +18/-0     parents 1
 
-Then, from the worktree root:
+C6 is excluded, because a commit cannot count its own insertions while it is
+being written.
 
-    python3 -B -m pytest tests/orchestration/test_job_state_field.py \
-        tests/orchestration/test_job_plan_state_reads.py -q -p no:randomly
-    3 failed, 14 passed in 2.64s
-    REAL_EXIT=1
+The three `.agent/STOP` readings by `os.path.exists`, all taken in the primary
+checkout, all REAL_EXIT=0:
 
-Exactly the three ordered node ids failed and no others:
-
-    tests/orchestration/test_job_state_field.py::TestTheRenameLeftNoSilentReaderBehind::test_budget_flags_are_refused_on_a_stopped_job
-    tests/orchestration/test_job_state_field.py::TestTheRenameLeftNoSilentReaderBehind::test_a_linked_job_that_loads_reports_its_real_state
-    tests/orchestration/test_job_plan_state_reads.py::TestNoRetiredJobPlanStateReads::test_no_production_site_reads_the_retired_status_off_a_job_plan
-
-The red is OBSERVED, not manufactured — the defect is its own mutation. The first
-failure's captured stdout carries the product effect the finding names:
-
-    Job 0123456789abcdef:
-    Status: stopped
-    ...
-    WARNING: Real target repo was NOT mutated. ...
-    Cost recorded to the ledger. See: remedy stats cost
-    E       Failed: DID NOT RAISE <class 'SystemExit'>
-
-The second failure prints the self-contradicting document:
-
-    E   AssertionError: {'job_id': '0123456789abcdee', 'provider_call_count': None,
-                         'source': 'persisted_job_state', 'status': 'unknown'}
-    E   assert 'unknown' == 'completed'
-
-The guard's own failure message IN FULL, and it names the two ordered sites AND
-NO OTHER:
-
-    E   AssertionError: a production site reads the retired `status` spelling off a
-        JobPlan; F272 round 9 renamed that field to `state`, and a `getattr` with a
-        default answers silently instead of raising — read `.state` instead:
-    E       apps/cli/commands/do_cmd.py:1456: getattr(_existing, "status", ...)
-    E       packages/orchestration/job_evidence.py:1494: getattr(j, "status", ...)
-    E   assert ['apps/cli/co...tatus", ...)'] == []
-    E     Left contains 2 more items, first extra item: 'apps/cli/commands/do_cmd.py:1456: getattr(_existing, "status", ...)'
-
-(ii) In the PRIMARY checkout at C4 `b63a88b6`, the same command:
-
-    17 passed in 2.23s
-    REAL_EXIT=0
-
-`--collect-only` in the primary checkout collects 17 tests, REAL_EXIT=0, the same
-17 the worktree run accounted for as 3 failed + 14 passed:
-
-    test_job_state_field.py::TestTheFieldIsState::test_the_dataclass_field_is_named_state
-    test_job_state_field.py::TestTheFieldIsState::test_the_old_name_is_gone_rather_than_kept_beside_the_new_one
-    test_job_state_field.py::TestTheFieldIsState::test_the_default_is_the_unchanged_planned_constant
-    test_job_state_field.py::TestTheFieldIsState::test_nothing_was_retyped
-    test_job_state_field.py::TestTheStoredKeyDidNotMove::test_the_exporter_still_writes_status_and_never_state
-    test_job_state_field.py::TestTheStoredKeyDidNotMove::test_the_importer_reads_the_old_key_into_the_new_field
-    test_job_state_field.py::TestTheStoredKeyDidNotMove::test_a_record_without_any_lifecycle_key_still_defaults
-    test_job_state_field.py::TestTheStoredKeyDidNotMove::test_the_round_trip_through_json_preserves_a_non_default_state
-    test_job_state_field.py::TestTheRenderingIsUnchanged::test_a_blocked_job_renders_and_exports_as_the_plain_word_blocked
-    test_job_state_field.py::TestTheRetypeIsComplete::test_the_exported_status_is_a_plain_str_and_not_a_run_state
-    test_job_state_field.py::TestTheRetypeIsComplete::test_every_construction_path_settles_as_a_run_state
-    test_job_state_field.py::TestTheRetypeIsComplete::test_a_record_whose_status_is_not_a_run_state_value_still_loads
-    test_job_state_field.py::TestTheRenameLeftNoSilentReaderBehind::test_budget_flags_are_refused_on_a_stopped_job
-    test_job_state_field.py::TestTheRenameLeftNoSilentReaderBehind::test_a_linked_job_that_loads_reports_its_real_state
-    test_job_plan_state_reads.py::TestNoRetiredJobPlanStateReads::test_the_scan_reaches_a_real_corpus
-    test_job_plan_state_reads.py::TestNoRetiredJobPlanStateReads::test_the_scan_sees_a_retired_read_when_one_is_there
-    test_job_plan_state_reads.py::TestNoRetiredJobPlanStateReads::test_no_production_site_reads_the_retired_status_off_a_job_plan
-
-Worktree removed BY EXACT PATH; see External actions for the command and the
-`git worktree list` reading.
-
-### G5 NOTHING ELSE MOVED — PASS, five serial runs, every REAL_EXIT=0
-
-    python3 -B -m pytest tests/orchestration/ -q -p no:randomly
-        12861 passed, 10 skipped, 1 warning in 739.26s   REAL_EXIT=0
-    python3 -B -m pytest tests/cli/test_do_cmd_cli_path.py -q -p no:randomly
-        9 passed in 0.71s                                 REAL_EXIT=0
-    python3 -B -m pytest tests/cli/test_do_cmd_pingpong_budget.py -q -p no:randomly
-        6 passed in 0.35s                                 REAL_EXIT=0
-    python3 -B -m pytest tests/docs/ -q -p no:randomly
-        303 passed in 0.59s                               REAL_EXIT=0
-    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
-        42 passed in 22.97s                               REAL_EXIT=0
-
-`tests/orchestration/` measures 12861 passed and 10 skipped, which is EXACTLY the
-block's expected reading: the base 12856 plus the five tests this round adds,
-three in the new guard file and two in the replaced one. The single warning is
-`model_routing`'s pre-existing undeclared-role `UserWarning` and is unrelated to
-this round. Note that the block's own measurement note describes the base
-worktree reading of `tests/orchestration/` as "EXIT 0 at 12855 passed ... the
-single failure being `test_vitest_passes`" — a run with a failure is EXIT 1, not
-EXIT 0; see Deviations, item 2. That sentence bears on no gate here, because G5
-runs in the PRIMARY checkout, where `apps/ui/node_modules` is present and the
-vitest test passes.
-
-### G6 RUFF — PASS, REAL_EXIT=0
-
-    python3 -m ruff check apps/cli/commands/do_cmd.py \
-        packages/orchestration/job_evidence.py \
-        tests/orchestration/test_job_state_field.py \
-        tests/orchestration/test_job_plan_state_reads.py
-    All checks passed!
-    REAL_EXIT=0
-
-One invocation, the repository's own configuration, no `--isolated`.
-
-### G7 THE TREE — PASS, REAL_EXIT=0
-
-`git status --porcelain` was read after EVERY commit and was EMPTY every time —
-after C0a, C0b, C1, C2, C3, C4 and C5. At the C5 boundary:
-
-    git status --porcelain OUTPUT=''
-    git ls-files .remedy-wt OUTPUT=''
-
-Per-commit insertions from `git diff --numstat <parent> <commit>`, C6 excluded
-because a commit cannot count its own insertions while it is being written:
-
-    C0a 79f6dd8f  367 insertions  UNDER_CAP_500=True
-    C0b 9edd01d2  265 insertions  UNDER_CAP_500=True
-    C1  b021f398   29 insertions  UNDER_CAP_500=True
-    C2  5249cd6e    4 insertions  UNDER_CAP_500=True
-    C3  5de6f81a    4 insertions  UNDER_CAP_500=True
-    C4  b63a88b6  209 insertions  UNDER_CAP_500=True
-    C5  222c211e    2 insertions  UNDER_CAP_500=True
-
-Maximum 367, against the DECISION F104 D1 cap of 500 counting INSERTIONS only.
-No commit is oversize and no overage is declared.
-
-The three `.agent/STOP` readings by `os.path.exists`, as constraint 8 orders:
-
-    before C0a  False
-    before C4   False
-    before C6   False
+    STOP_BEFORE_C0a: False
+    STOP_BEFORE_C5:  False
+    STOP_BEFORE_C6:  False
 
 ## Authored-text proofs
 
-Every slice was extracted PROGRAMMATICALLY from the COMMITTED
-`.agent/authored/f272-r23.md` by `.remedy-wt/r23_slices.py`, which locates the
-unique `<<<BEGIN NAME …>>>` and `<<<END NAME>>>` lines, asserts there is exactly
-one of each, and joins the lines strictly between them — inclusive of the newline
-ending the last content line, exclusive of the markers. Nothing was retyped.
+Five reviewer-authored artifacts were applied, every one extracted
+PROGRAMMATICALLY from the committed `.agent/authored/f272-r24.md` between its
+`<<<BEGIN NAME>>>` and `<<<END NAME>>>` lines, inclusive of the newline ending
+the last content line and exclusive of the two marker lines. Nothing was
+retyped.
 
-    P1 FROM       196 bytes,  3 lines  f861d07a24fc49cbcf1bc39d4aa93620f057efe9cfe3e0973098e0201d3b7db1
-    P1 TO         194 bytes,  3 lines  66d1b088b404fc54ebd8b33eaa22ebe183bb01fb33ceafa7e35cbec81672acca
-    P2 FROM        62 bytes,  1 line   5e4c7a91ef3571b332b55fa498781724bfe191db76ad4e72b06ef2b2ed149778
-    P2 TO         107 bytes,  2 lines  fce5aca6a73bf09684e0ba692e31aabfc96e22b3e37d216893277140b0d68a31
-    PLANF272R23  2592 bytes, 49 lines  478442d29f3151bf3f45372e679d2def46a9f8985daa0b9818f32fbc8a1aa71a
-    RECORDR23    6681 bytes,  3 lines  ca92ddd65fa22fdc56198a7c26fed4a7f24939cf99f3b511eb9ed202e343e2b9
-    SLIPSR23     1000 bytes,  3 lines  cd10ed33b29de1c0072995f5a0ad0f5ac26d5d45dff615a1fad12769c0b22de6
-    DONER23      2737 bytes,  1 line   bc38a879826f8b8dc2cabe6ed644545366bb741eaffa7b01236fe2f83dba0240
-
-Disk-to-disk comparison results:
-
-- `.agent/plan.md` is byte-equal to PLANF272R23 — G3, `BYTE_EQUAL_TO_PLANF272R23 True`.
-- `.agent/live_review.md` after C2 is byte-equal to its pre-image plus a newline
-  plus RECORDR23 — G2(a), `POST_EQUALS_PRE_NL_SLICE True`.
-- `.agent/prose_slips.md` after C3 is byte-equal to its pre-image plus a newline
-  plus SLIPSR23 — G3, `POST_EQUALS_PRE_NL_SLICE True`.
-- `.agent/live_review.md` after C5 is byte-equal to its pre-image plus a newline
-  plus DONER23 — G2(a), `POST_EQUALS_PRE_NL_SLICE True`.
-
-Pairs P1 and P2 — the containment test was RUN in the primary checkout at C4's
-pre-image, not rendered from the block:
-
-    P1  TO_CONTAINS_FROM=False  FROM_CONTAINS_TO=False
-        PRE  FROM_COUNT=1  TO_COUNT=0
-        POST FROM_COUNT=0  TO_COUNT=1
-        apps/cli/commands/do_cmd.py 126114 -> 126112 bytes
-        ONLY_THE_PAIR_CHANGED=True
-    P2  TO_CONTAINS_FROM=False  FROM_CONTAINS_TO=False
-        PRE  FROM_COUNT=1  TO_COUNT=0
-        POST FROM_COUNT=0  TO_COUNT=1
-        packages/orchestration/job_evidence.py 141004 -> 141049 bytes
-        ONLY_THE_PAIR_CHANGED=True
-
-Both test artifacts were applied by `shutil.copyfile`, never by text extraction,
-and each source was verified against the sha256, byte length AND line count
-constraint 4 states BEFORE the copy — `MATCHES_CONSTRAINT4=True` for both. The
-`test_job_state_field.py` replacement shows `50 insertions, 0 deletions`: the
-`import pytest` line plus one test class of two tests, and NOTHING else changed,
-exactly as constraint 4 requires. Had it shown any other deletion the round would
-have stopped there.
+| Artifact | Route | Disk-to-disk result |
+|---|---|---|
+| block -> `.agent/authored/f272-r24.md` | `shutil.copyfile` | identical, 24493 B / 285 L / `255fd4f0…` |
+| block -> `.agent/last_block.md` | `shutil.copyfile` | identical, 24493 B / 285 L / `255fd4f0…` |
+| PLANF272R24 -> `.agent/plan.md` | slice, whole-file write | BYTE_EQUAL_TO_SLICE True, 2525 B / 47 L |
+| RECORDR24 -> `.agent/live_review.md` | slice, append | POST_EQUALS_PRE_NL_SLICE True |
+| SLIPSR24 -> `.agent/prose_slips.md` | slice, append | POST_EQUALS_PRE_NL_SLICE True |
+| D14SLICE -> `docs/roadmap/features/T2_F272.md` | slice, append | POST_EQUALS_PRE_NL_SLICE True |
+| staging -> `.agent/f272_t004_staging.md` | `shutil.copyfile` per constraint 4 | identical, 5921 B / 120 L / `25ed0b5a…` |
 
 ## Deviations & assumptions
 
-1. NO DEVIATION FROM THE BUNDLE. The block was applied verbatim. Every commit,
-   every slice, every gate and every constraint landed as written. The change set
-   was not left: `git diff --stat 67515ab7..HEAD` touches only paths on the
-   block's list, and nothing under `docs/`, `scripts/` or `apps/ui/` moved.
+**No departure from the block's ordered commit sequence.** All eight commits
+landed, in the order C0a, C0b, C1, C2, C3, C4, C5, C6, none added, none dropped,
+none reordered.
 
-2. DISAGREEMENT WITH THE BLOCK'S OWN PROSE, declared rather than silently
-   corrected, and it binds no gate. The block's measurement note 3 reads
-   "`tests/orchestration/` is EXIT 0 at 12855 passed and 10 skipped in a
-   worktree, the single failure being `test_vitest_passes`". A run with one
-   failure exits 1, so "EXIT 0" and "the single failure" cannot both be true of
-   the same reading; the intended sentence is presumably EXIT 1 with 12855 passed
-   and one failure. I applied nothing from that sentence — it is background, not
-   an order — and the gate it feeds, G5, runs in the PRIMARY checkout, where the
-   measured reading is EXIT 0 at 12861 passed and 10 skipped, exactly as G5
-   predicts. Under amend0827 rule 2 this is reviewer prose that damaged nothing
-   on disk, so it belongs in `.agent/prose_slips.md`, not in an R-id; I have NOT
-   appended it myself, because the SLIPSR23 slice is what this round was ordered
-   to append and inventing a third line would be silently correcting the block.
-   Round 24's slips append is where it belongs.
+1. **DEVIATION — the branch was pushed TWICE, after C5 and again after C6.**
+   The block orders one push. A handback cannot transcribe a push of itself, so
+   the C5 push is recorded verbatim under "External actions" above and the C6
+   push follows this file. This is the same shape round 23 used and the reviewer
+   upheld; it is declared here because the handback template requires every
+   departure to appear in this section even when it is correct. The C5 push's
+   transcript is recorded above because it HAS happened; the C6 push's is named
+   as belonging to the round report because it has not, and writing its SHA here
+   would be an unmeasured SHA. That is the shape round 22's handback got wrong
+   by promising a transcript "below" that did not exist.
 
-3. ASSUMPTION on the push, stated because the block orders a push but a handback
-   cannot transcribe a push of itself. I pushed once after C5, whose real
-   transcript is in External actions above, and push C6 immediately after this
-   commit; that second transcript is in the round report. This is the shape round
-   22's handback got wrong by promising a transcript "below" that did not exist,
-   and the correction is to record the push that HAS happened and to name where
-   the one that has not yet happened will be recorded.
+2. **ASSUMPTION — the append separator is one blank line, i.e.
+   `post = pre + b"\n" + slice`.** The block states the gate name
+   `POST_EQUALS_PRE_NL_SLICE` but never spells the separator's bytes. It was
+   derived from the files themselves rather than assumed: `.agent/live_review.md`
+   and `docs/roadmap/features/T2_F272.md` each contain ZERO occurrences of three
+   consecutive newlines at the base and each ends in exactly one newline, so a
+   single blank line is the only separator either file uses — which is also what
+   constraint 5 states for the feature file. All three appends were written that
+   way and all three gates pass on it.
 
-4. ASSUMPTION on the G4(i) collect-only reading. The block asks for the node ids
-   from `--collect-only` "so the two runs are demonstrably over the same tests".
-   I ran `--collect-only` in the PRIMARY checkout, where it collects 17; the
-   worktree run at base reports 3 failed + 14 passed = 17 over the same two file
-   paths, with the two files byte-identical in both trees by sha256 (G1 and
-   G4(i)), so the two runs are over the same 17 tests. I did not re-add the
-   worktree solely to collect there.
+3. **TOOLING NOTE, not a deviation.** The session's bash guard rejects a command
+   containing a `{2,}` regex quantifier as brace expansion, so every gate script
+   was written to a file under `.remedy-wt/` and run as
+   `bash -c 'python3 -B <path>; echo "REAL_EXIT=$?"'`. The `\n{2,}` split G2(b)
+   orders was written as the equivalent `\n\n+`. No gate was weakened: `\n\n+`
+   and `\n{2,}` match the identical language.
 
-5. NO SCRATCH LEAKED. Every helper this round wrote lives under the gitignored
-   `.remedy-wt/`; `git ls-files .remedy-wt` is empty at HEAD. The one worktree
-   created was removed by exact path, never by a glob, and the twelve
-   `remedy/job-*` worktrees that `git worktree list` shows are pre-existing
-   product artifacts that this round neither created nor touched.
+4. **SCRATCH.** Seven scratch files were created under the gitignored
+   `.remedy-wt/` — `f272-r24-extract.py`, `f272-r24-c2.py`, `f272-r24-c3.py`,
+   `f272-r24-c4.py`, `f272-r24-c5.py`, `f272-r24-gates.py` and
+   `f272-r24-numstat.py` — and removed BY EXACT PATH, never by a glob, after the
+   gates were reported. `git ls-files .remedy-wt` is empty and
+   `git status --porcelain` is empty. The two delivery files
+   `.remedy-wt/f272-r24-block.md` and `.remedy-wt/f272-r24-staging.md` are the
+   reviewer's and were left in place.
+
+**Nothing in the block was found wrong.** Every figure it stated in advance
+reproduced exactly: the base pre-images 1204799 / `0a3287c979d7ebc5`, 148270 and
+52485 at 736 lines; the six count transitions; the 13 DECISION headings; the
+delivery digests; and all three of G5's suite counts, 303, 30 and 42. The change
+set was honoured exactly — eight paths, nothing under `packages/`, `apps/`,
+`tests/` or `scripts/`, no worktree, no finding id minted, and `R-0826` still
+free at the end of the round.
 
 ## Next
 
-Round 24: the block's Next Step 1 — a DECISION naming F114's cost-preview carrier
-before `job.run` is deleted, since `apps/cli/commands/job.py:726` is the product's
-only call site of `confirm_cost_preview` and it sits inside the handler being
-removed, while `do.job-run` carries neither `is_expensive` nor `--yes`.
+The reviewer re-runs G1 through G6 over `81b2dc86`..HEAD in the primary
+checkout and books a round 24 verdict. If it PASSES, round 25 begins T004's
+first BY-CALLER migration under DECISION F272 D14 — a classic-store consumer
+moved to `load_job_plan` together with every renderer it feeds, in one commit
+range, taking none of the twelve cluster-bound files.
