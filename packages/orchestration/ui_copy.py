@@ -38,7 +38,6 @@ _NODE_LABELS: dict[str, tuple[str, str]] = {
     "run_event":            ("Event",              "A logged workflow event"),
     "agent_loop":           ("Agent cycle",        "One automation loop cycle"),
     "context_coverage":     ("Context check",      "How much context is available"),
-    "context_budget":       ("Context budget",     "Token budget for this job"),
     "context_pack":         ("Context snapshot",   "Compact context for providers"),
     "constitution":         ("Project rules",      "Rules from your project config"),
     "project_placeholder":  ("Project",            "Project configuration"),
@@ -105,7 +104,7 @@ _STATE_LABELS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 _DIAGNOSTICS_ONLY: frozenset[str] = frozenset({
-    "context_coverage", "context_budget", "context_pack",
+    "context_coverage", "context_pack",
     "constitution", "run_contract", "token_policy",
     "worker_adapter", "event_ledger", "agent_loop",
     "run_event", "autonomy_readiness", "git_status",

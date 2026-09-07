@@ -91,7 +91,6 @@ LAYER_CLASSES: dict[str, str] = {
     "token_policy": "remedy-layer-policy",
     "context_coverage": "remedy-layer-context",
     "context_pack": "remedy-layer-context",
-    "context_budget": "remedy-layer-context",
     "autonomy_readiness": "remedy-layer-readiness",
     "worker_adapter": "remedy-layer-worker",
     "git_status": "remedy-layer-repo",

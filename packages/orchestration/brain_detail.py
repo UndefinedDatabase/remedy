@@ -67,7 +67,6 @@ from packages.orchestration.project_brain import (
     NT_BLOCKER,
     NT_CHANGE_SET,
     NT_CONSTITUTION,
-    NT_CONTEXT_BUDGET,
     NT_CONTEXT_COVERAGE,
     NT_CONTEXT_PACK,
     NT_DECISION_QUEUE,
@@ -1629,50 +1628,6 @@ def _detail_decision_queue(
     )
 
 
-def _detail_context_budget(
-    node: Any,
-    job_id_str: str,
-    connected: list[dict[str, str]],
-) -> BrainNodeDetail:
-    meta = node.metadata or {}
-    mode = str(meta.get("recommended_mode", "?"))
-    budget = int(meta.get("budget", 0))
-    tokens = int(meta.get("estimated_tokens", 0))
-    savings = int(meta.get("token_savings", 0))
-
-    explanation = (
-        f"Recommended mode: {mode}, budget: {budget}, "
-        f"estimated: {tokens} tokens, savings: {savings}."
-    )
-
-    return BrainNodeDetail(
-        job_id=job_id_str,
-        node_id=node.id,
-        node_type=NT_CONTEXT_BUDGET,
-        title=f"Context: {mode}",
-        status="ok",
-        risk=None,
-        explanation=explanation,
-        why_it_exists=(
-            "Deterministic context budget optimizer recommendation.",
-            "Compares modes and picks best fit for the token budget.",
-        ),
-        connected_to=tuple(connected),
-        evidence=(
-            f"recommended_mode: {mode}",
-            f"budget: {budget}",
-            f"estimated_tokens: {tokens}",
-            f"token_savings: {savings}",
-        ),
-        affected_files=(),
-        next_actions=(
-            f"remedy context explain {job_id_str[:8]}",
-            f"remedy context optimize {job_id_str[:8]}",
-        ),
-        redaction_notes=("Counts and mode only — no raw content.",),
-    )
-
-
 # ---------------------------------------------------------------------------
 # Detail handler registries — maps node type to handler function.
 # Handlers needing the Job model use _DETAIL_REGISTRY_JOB.
@@ -1712,7 +1667,6 @@ _DETAIL_REGISTRY: dict[str, Any] = {
     NT_EVENT_LEDGER: _detail_event_ledger,
     NT_STOP_REASON: _detail_stop_reason,
     NT_DECISION_QUEUE: _detail_decision_queue,
-    NT_CONTEXT_BUDGET: _detail_context_budget,
 }
 
 
