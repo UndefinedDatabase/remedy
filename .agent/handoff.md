@@ -2,542 +2,373 @@
 
 ## Session
 
-`SESSION 9 of feature F272 · round 19 · rounds so far 19`
+`SESSION 10 of feature F272 · round 20 · rounds so far 20`
 
 Soft limit under amend0906-triage-throughput is 12 sessions and 40 rounds; at
-session 9 and round 19 the feature is inside it and no scope report is owed.
+session 10 and round 20 the feature is inside it and no scope report is owed.
 
-Context self-assessment: context is comfortable — this round read four source
-regions and ran the suite three times, and nothing was dropped or re-read for
-want of room.
+Context self-assessment: context is comfortable — this round read the catalog,
+five one-line repair sites and one prior test for idiom, and ran the full suite
+once; nothing was dropped or re-read for want of room.
 
 ## Range
 
-Review of `4c70ba90`..HEAD, where HEAD is the C4 commit that writes this file.
-Five commits precede it: C0a, C0b, C1, C2, C3, in exactly that order, every one
-single-parent.
+Review of `8bcdc4dc`..HEAD, where HEAD is the C6 commit that writes this file.
+Seven commits precede it — C0a, C0b, C1, C2, C3, C4, C5, in exactly that order,
+every one single-parent, with no reordering and no extra or dropped commit.
 
 ## Commits
 
-### c0033e53 f272: save the round 19 step block as authored text
+### 7f759a64 f272: save the round 20 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f272-r19.md` | +179/-0 | C0a — the step block saved verbatim by `shutil.copyfile` |
+| `.agent/authored/f272-r20.md` | +463/-0 | C0a — the step block saved verbatim by `shutil.copyfile` |
 
-### 10e2559e f272: mirror the round 19 block into the last block record
+### 7c55af84 f272: mirror the round 20 block into the last block slot
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +151/-368 | C0b — same bytes mirrored by `shutil.copyfile` |
+| `.agent/last_block.md` | +438/-154 | C0b — the same bytes mirrored by `shutil.copyfile` |
 
-### bb6a7932 f272: point the plan at the first T004 deletion
+### 328cddfd f272: point the plan at the stale advertisement repair
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +24/-24 | C1 — replaced byte-for-byte with the PLANF272R19 slice |
+| `.agent/plan.md` | +22/-20 | C1 — replaced byte-for-byte with the PLANF272R20 slice |
 
-### ad83b299 f272: book the round 18 PASS verdict into the record
+### 652a29f3 f272: book the round 19 PASS verdict and register the stale advertisement finding
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +2/-0 | C2 — RECORDR19 appended as `pre + NL + slice` |
+| `.agent/live_review.md` | +4/-0 | C2 — RECORDR20 appended as `pre + NL + slice`; the R19 gate entry and R-0823 |
 
-### dc4471ef f272: delete the classic job run-loop command surface
+### d16c7285 f272: append the round 19 prose slips
 | Path | +/- | Reason |
 |---|---|---|
-| `apps/cli/commands/job.py` | +0/-88 | the whole `_cmd_run_loop` handler and its `"job.run-loop"` COMMAND_HANDLERS entry |
-| `apps/cli/command_catalog.py` | +0/-19 | the whole `CommandEntry(command_id="job.run-loop", ...)`, its `related=` tuple with it |
-| `tests/test_agent_loop_execution.py` | +1/-60 | classes `TestRunLoopCLI` and `TestRunLoopGroupedHelp`; the orphaned `subprocess` and `sys` imports; the one corrected docstring sentence (the single added line in the whole commit) |
-| `tests/cli/test_command_catalog.py` | +0/-13 | the class `TestRunLoopCLIHelp` with its blank separators |
-| `apps/ui/src/api/humanizeCatalog.ts` | +0/-2 | FORCED, NOT ORDERED — see Deviations 1: the two run-log keys the deleted handler was the only emitter of |
+| `.agent/prose_slips.md` | +6/-0 | C3 — SLIPSR20 appended as `pre + NL + slice`, three slips |
 
-### C4 — the commit that writes this file
+### a333617b f272: repair the stale command advertisements and guard the class
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | (self-referential) | C4 — a handoff cannot table its own commit (R-0149 pattern) |
+| `tests/cli/test_advertised_commands.py` | +110/-0 | C4 — the new guard test, written to GUARDSPEC (S1–S5) |
+| `apps/cli/commands/decision.py` | +1/-1 | C4 — P1, `remedy job run-loop` → `remedy job run` |
+| `apps/cli/commands/job.py` | +1/-1 | C4 — P2, `_cmd_job_status`'s `next_action` |
+| `packages/orchestration/autonomy_readiness.py` | +1/-1 | C4 — P3, level-4 hint → `remedy dev agent-loop` |
+| `packages/orchestration/model_route_tournament.py` | +1/-1 | C4 — P4, `remedy guide next` → `guide job` / `job list` |
+| `packages/orchestration/worker_registry.py` | +1/-1 | C4 — P5, same replacement |
+
+### 79b45aa3 f272: rule that a command advertisement dies with its command
+| Path | +/- | Reason |
+|---|---|---|
+| `docs/roadmap/features/T2_F272.md` | +74/-0 | C5 — DECISION F272 D13 appended as `pre + NL + slice` |
+
+### C6 — this commit
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | rewrite | C6 — a handoff cannot table the commit that writes it (R-0149 pattern) |
+
+Every `+/-` cell above is taken from `git diff --numstat <parent> <commit>` and
+matches the G8 per-commit figures cell for cell.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | |
-| C0b | done | |
-| C1 | done | |
-| C2 | done | |
-| C3 | deviated | one path beyond the block's four: `apps/ui/src/api/humanizeCatalog.ts`, forced by the deletion — Deviations 1 |
-| C4 | done | this file |
+| C0a | done | `shutil.copyfile` to `.agent/authored/f272-r20.md`, digest verified |
+| C0b | done | `shutil.copyfile` of the same bytes to `.agent/last_block.md` |
+| C1 | done | `.agent/plan.md` byte-equal to PLANF272R20 |
+| C2 | done | RECORDR20 appended; all six counts match the block |
+| C3 | done | SLIPSR20 appended |
+| C4 | done | guard test + P1–P5 in ONE commit |
+| C5 | done | DECISION F272 D13 appended to the feature file |
+| C6 | done | this file |
 
 ## External actions
 
-- `git push -u origin feature/f272-one-world-completion` — run after C4 was
-  committed; outcome recorded in the round report.
-- `npm --prefix apps/ui run build` — EXIT 0. Run to warm `apps/ui/dist`, which
-  the `humanizeCatalog.ts` edit invalidated. `apps/ui/dist/` is gitignored
-  (`.gitignore:13`, confirmed with `git check-ignore -v`), so this changed no
-  tracked file and `git status --porcelain` stayed empty. See Deviations 5.
-- `gh pr list --state open --json number,headRefName,baseRefName,isDraft` —
-  EXIT 0, result `[]`. No open PR; the Open PR Gate is satisfied.
-- No PR created. No merge. No force-push. No worktree added or removed.
+| Command | Outcome |
+|---|---|
+| `git worktree add --detach .remedy-wt/r20-g4 a333617b` | exit 0 — the G4 disposable worktree |
+| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/r20-g4` | exit 0 — removed BY EXACT PATH; 13 entries remain, the primary plus the twelve pre-existing `remedy/job-*` |
+| `git push -u origin feature/f272-one-world-completion` | run after this commit; see the push line below |
 
-## Verification
+No PR was created, no merge, no force-push, no `gh` command.
 
-Every gate was RUN and its REAL exit code recorded via
-`bash -c '<cmd>; echo "REAL_EXIT=$?"'` with no pipe between command and echo.
+## Verification — one line per gate
 
-ONE LINE PER GATE:
+| Gate | Real exit | Reading |
+|---|---|---|
+| G1 TRANSPORT | 0 | all three artefacts 32027 bytes, 463 lines, sha256 `9a48d5ad…9a83f` |
+| G2 THE RECORD | 0 | byte, structural, negative control and all six counts as the block predicted |
+| G3 THE PROSE FILES | 0 | plan 2213 bytes / 45 lines ≤ 50; slips 146054 → 147269 |
+| G4 THE GUARD IS REAL | 0 / 1 / 0 | control green, one-line revert red naming ONE path, restore green |
+| G5 SWEEP ZERO, SCAN NOT BLIND | 0 | 4 passed; 738 advertisements seen; 0 unresolved |
+| G6 THE FULL SUITE | 0 | 19784 passed, 23 skipped, 0 `^FAILED` |
+| G7 RUFF + DOCS + CANARY | 0 / 0 / 0 | `All checks passed!`; 303 passed; 42 passed |
+| G8 THE TREE | 0 | clean at every boundary; `.remedy-wt` untracked; max insertions 463 < 500 |
 
-- G1 TRANSPORT — EXIT 0. All three artefacts share one sha256, length and line count.
-- G2 THE RECORD — EXIT 0. Byte, structural, negative control and all five counts.
-- G3 THE PLAN — EXIT 0. 2179 bytes, 43 lines against the cap of 50, byte-equal.
-- G4 THE DELETION BY EXACT SYMBOL — EXIT 0. Both symbols reach 0.
-- G5 THE FULL SUITE — EXIT 0. 19780 passed, 23 skipped, zero `^FAILED` lines.
-- G6 RUFF — EXIT 0. `All checks passed!`, no F401.
-- G7 THE TREE — EXIT 0. Porcelain empty at all five boundaries.
+## Verification — transcripts
 
-Transcripts:
+### G1 TRANSPORT
 
-**G1 TRANSPORT.** One digest comparison, source hashed on arrival before any
-other work:
+    .remedy-wt/f272-r20-block.md    bytes=32027 lines=463 sha256=9a48d5ad812eaa278d703be4c29fd416a168d25f3f5e0fc50b3d79d323a9f83f
+    .agent/authored/f272-r20.md     bytes=32027 lines=463 sha256=9a48d5ad812eaa278d703be4c29fd416a168d25f3f5e0fc50b3d79d323a9f83f
+    .agent/last_block.md            bytes=32027 lines=463 sha256=9a48d5ad812eaa278d703be4c29fd416a168d25f3f5e0fc50b3d79d323a9f83f
+    REAL_EXIT=0
 
-    .remedy-wt/f272-r19-block.md   14856  90e7de9e0aa27c105b864fbb8d385e69b66f6c7af86a564202ff51d1d68f92c3  179
-    .agent/authored/f272-r19.md    14856  90e7de9e0aa27c105b864fbb8d385e69b66f6c7af86a564202ff51d1d68f92c3  179
-    .agent/last_block.md           14856  90e7de9e0aa27c105b864fbb8d385e69b66f6c7af86a564202ff51d1d68f92c3  179
+The delivered digest was verified against disk BEFORE the block was trusted.
 
-One sha256, one byte length, one line count. C0a and C0b were both
-`shutil.copyfile`.
+### G2 THE RECORD
 
-**G2 THE RECORD**, over the C2 append.
+    SLICE RECORDR20 bytes=6309 lines=3 sha256=4092dfc7e3b02fc6a0e7fe50a39a5004a57f7713a2863b1e9ded977b89cbcf7a
+    G2a pre_len=1173866
+    G2a pre_sha256=8363661be8b7dbb9ebc0982b1e60fffab1cefbedb70c6a603a3a299d332b3236
+    G2a pre_terminal_12=b'obe output.\n'      pre_trailing_newline_run=1
+    G2a post_len=1180176
+    G2a post_sha256=a8a4a67b628e6cf2ec9dda440965beaab39a8b0fd099422d6b0a661804c73b3c
+    G2a post_terminal_12=b'satisfy it.\n'     post_trailing_newline_run=1
+    G2a PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
+    G2a POST_EQUALS_PRE_NL_SLICE: True
+    G2b N_COUNTED_FROM_SLICE=2   units_before=719 units_after=721
+    G2b LAST_N_EQUAL_SLICE_PARAS_IN_ORDER: True
+    G2b EVERYTHING_BEFORE_UNCHANGED: True
+    G2c flipped_byte_offset=1173907 in_first_appended_paragraph=True
+    G2c BYTE_READER_REJECTS: True
+    G2c STRUCTURAL_READER_REJECTS: True
+    G2c DISK_UNTOUCHED_BY_CONTROL: True True
+    REAL_EXIT=0
 
-(a) BYTE. Pre-image read immediately before the write:
+The block's pre-image prediction was met exactly: 1173866 bytes, that sha256,
+terminal twelve bytes `b'obe output.\n'`, trailing-newline run 1.
 
-    pre_len=1169833
-    pre_sha256=6f84687a6b9b34903858bd679af8c9be4baf7cff469459de03d12ad3f849f363
-    pre_terminal_12_bytes=b'wn message.\n'
-    pre_trailing_newline_run=1
-    post_len=1173866
-    post_sha256=8363661be8b7dbb9ebc0982b1e60fffab1cefbedb70c6a603a3a299d332b3236
-    post_terminal_12_bytes=b'obe output.\n'
-    post_trailing_newline_run=1
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST=True
-    POST_EQUALS_PRE_NL_SLICE=True
-    delta_bytes=4033  (1 + slice 4032)
+G2(d), each figure measured and none adjusted to agree:
 
-(b) STRUCTURAL. The single terminal newline was stripped before splitting on
-blank lines, and this states so explicitly. N was COUNTED BY THE SCRIPT from the
-slice, not taken from the block:
+    reg_distinct         306 -> 307   block_said 306 -> 307   AGREES=True
+    done_distinct        249 -> 249   block_said 249 -> 249   AGREES=True
+    open_by_distinct_id   57 -> 58    block_said  57 -> 58    AGREES=True
+    gate_lines            42 -> 43    block_said  42 -> 43    AGREES=True
+    gate_f272_r19          0 -> 1     block_said   0 -> 1     AGREES=True
+    r0823                  0 -> 1     block_said   0 -> 1     AGREES=True
 
-    N_COUNTED_BY_SCRIPT_FROM_SLICE=1
-    units_before=718 units_after=719 delta=1
-    LAST_N_UNITS_EQUAL_SLICE_PARAGRAPHS_IN_ORDER=True
-    EVERYTHING_BEFORE_UNCHANGED=True
+OPEN FINDINGS BY DISTINCT ID, with its arithmetic: pre `306 − 249 = 57`;
+post `307 − 249 = 58`. Ids minted this round: `['R-0823']` — exactly one, as
+the block said. New `Done:` ids: none.
 
-(c) NEGATIVE CONTROL on the FIRST appended paragraph, in memory only, never on
-disk. Byte 40 of that paragraph flipped, `b'r'` to `b'R'`:
+### G3 THE PROSE FILES
 
-    BYTE_READER_rejects (post==pre+NL+slice) -> False (must be False)
-    STRUCTURAL_READER_rejects (last N == slice paras) -> False (must be False)
-    DISK_UNTOUCHED_BY_CONTROL=True
+    PRE  bytes=2179 lines=43 sha256=1a0bf72c…
+    SLICE PLANF272R20 bytes=2213 lines=45 sha256=1ad5f4cc…
+    POST bytes=2213 lines=45 sha256=1ad5f4cc…
+    G3 PLAN_BYTE_EQUAL_TO_SLICE: True
+    G3 PLAN_LINE_COUNT: 45 CAP: 50 UNDER_CAP: True
+    G3 HAS_GOAL_HEADING: True
+    G3 HAS_NEXT_STEPS_HEADING: True
 
-Both readers reject the mutant; the file on disk was re-read afterwards and is
-byte-identical to the real post-image.
+    SLICE SLIPSR20 bytes=1214 lines=5 sha256=ef25d8db…
+    G3 slips pre_len=146054  post_len=147269
+    G3 slips POST_EQUALS_PRE_NL_SLICE: True
+    G3 slips PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
+    G3 slips block_said_base_pre_len=146054 AGREES=True
+    REAL_EXIT=0
 
-(d) COUNTS before and after. Every one matches the block; nothing was adjusted
-to make it agree:
+### G4 THE GUARD IS REAL — ordered colour, CONTROL FIRST
 
-    ^- R-\d{4} distinct         306 -> 306    expected  306 -> 306    OK
-    ^Done: R-\d{4} distinct     249 -> 249    expected  249 -> 249    OK
-    open set BY DISTINCT ID      57 -> 57     expected   57 -> 57     OK
-    ^Gate:                       41 -> 42     expected   41 -> 42     OK
-    ^Gate: F272 R18               0 -> 1      expected    0 -> 1      OK
+Worktree path `/home/decodeux/Repos/remedy/.remedy-wt/r20-g4`, detached at
+`a333617b` (C4). `__pycache__` purge under it removed 0 directories (a fresh
+worktree carries none). Resolution confirmed INSIDE the worktree before any
+colour was trusted — no editable install shadowed it:
 
-OPEN FINDINGS BY DISTINCT ID = 57, arithmetic 306 distinct registrations minus
-249 distinct resolutions = 57. ZERO ids minted this round; R-0823 stays free.
+    catalog __file__ = /home/decodeux/Repos/remedy/.remedy-wt/r20-g4/apps/cli/command_catalog.py
+    INSIDE_WORKTREE = True
+    test REPO_ROOT  = /home/decodeux/Repos/remedy/.remedy-wt/r20-g4
 
-Constraint 2, measured after C3:
+(i) control — `python3 -B -m pytest tests/cli/test_advertised_commands.py -q -p no:randomly`
 
-    .agent/plan.md          ^<<<(BEGIN|END) .*>>>$ count = 0
-    .agent/live_review.md   ^<<<(BEGIN|END) .*>>>$ count = 0
+    4 passed in 0.28s
+    REAL_EXIT=0
 
-**G3 THE PLAN.**
+(ii) revert of EXACTLY ONE line, in
+`/home/decodeux/Repos/remedy/.remedy-wt/r20-g4/packages/orchestration/autonomy_readiness.py`:
 
-    plan bytes=2179 lines=43 sha256=1a0bf72cfb93b5b4e16af66b573931d33e7b17a7e30e6a75c7afcd6810fb764e
-    BYTE_EQUALS_SLICE=True
-    has_Goal=True has_Next_Steps=True
-    line_count_vs_cap50: 43 <= 50 -> True
+    replacing b'        _check("agent_loop", "remedy dev agent-loop <job_id>")\n'
+    with      b'        _check("agent_loop", "remedy job run-loop <job_id>")\n'
+    OCCURRENCES_OF_SOURCE_BEFORE_WRITE=1 (must be 1)
+    AFTER: source=0 dest=1
 
-`## Goal` and `## Next Steps` are both present; 43 lines against the AGENTS.md
-cap of 50.
+(iii) the same command is now red, and the FULL unresolved list the assertion
+printed is one entry naming that file AND NO OTHER PATH:
 
-**G4 THE DELETION, BY EXACT SYMBOL.** Over every tracked `.py` from
-`git ls-files` (1066 files), before and after C3:
+    E  AssertionError: production code advertises commands the catalog does not carry —
+    E  delete a command's advertisements in the same commit as the command:
+    E    packages/orchestration/autonomy_readiness.py:315: remedy job run-loop
+    1 failed, 3 passed in 0.28s
+    REAL_EXIT=1
 
-    BEFORE C3   _cmd_run_loop  = 2   apps/cli/commands/job.py:2
-    BEFORE C3   job.run-loop   = 3   apps/cli/command_catalog.py:1 apps/cli/commands/job.py:1 tests/test_agent_loop_execution.py:1
-    AFTER  C3   _cmd_run_loop  = 0   (none)
-    AFTER  C3   job.run-loop   = 0   (none)
-    packages/orchestration/autonomy_loop.py EXISTS = True
+(iv) restore, re-run:
 
-Both symbols reach 0. The bare word `run-loop` was deliberately NOT swept, as
-the block orders. `packages/orchestration/autonomy_loop.py` was NOT deleted and
-still exists; `job.run-next` and `job.run` were not touched, which the C3 diff
-shows directly.
+    4 passed in 0.30s
+    REAL_EXIT=0
 
-**G5 THE FULL SUITE**, in the PRIMARY checkout, never a worktree:
+`git status --porcelain` inside the worktree was EMPTY after the restore, so the
+restore was byte-exact. Removal command, BY EXACT PATH:
+`git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/r20-g4` — exit 0.
+
+### G5 THE SWEEP IS ZERO AND THE SCAN IS NOT BLIND
+
+Primary checkout at C4:
+
+    4 passed in 0.33s
+    REAL_EXIT=0
+
+The advertisement figure, printed from the SHIPPED functions rather than
+asserted from the block:
+
+    G5 shipped module REPO_ROOT      = /home/decodeux/Repos/remedy
+    G5 tracked production .py files  = 367
+    G5 ADVERTISEMENTS THE SCAN SAW   = 738
+    G5 UNRESOLVED ADVERTISEMENTS     = 0 []
+
+738 is unchanged from the base reading, as it must be: P1–P3 replace one
+advertisement with one, and P4/P5 each carry two before and two after.
+
+### G6 THE FULL SUITE — primary checkout
 
     python3 -B -m pytest -n auto -q -p no:randomly
+    19784 passed, 23 skipped, 1 warning in 136.76s (0:02:16)
     REAL_EXIT=0
-    19780 passed, 23 skipped, 1 warning in 157.21s (0:02:37)
     grep -c '^FAILED' -> 0
 
-Three runs were needed and all three are reported honestly:
+RECONCILIATION, and it closes exactly: the reviewer measured the base at
+`8bcdc4dc` as 19780 passed; an `ast` count of the new file gives four test
+functions —
 
-1. First run, after the four ordered deletions: `REAL_EXIT=1`,
-   `1 failed, 19779 passed, 23 skipped`. The single failure was
-   `tests/ui_contracts/test_humanize_catalog.py::TestCatalogCoversTheStreamVocabulary::test_catalog_keys_equal_the_static_stream_vocabulary`
-   reporting `in the catalog but NOT emitted (2)`. This is Deviations 1 and was
-   repaired by deletion, never by weakening the test.
-2. Second run, after that repair: `REAL_EXIT=1`, `3 failed, 19777 passed, 23
-   skipped`, all three under `tests/ui_server/` with `Failed: Server did not
-   start in time` and captured stderr `ERROR: React UI not built.` — the
-   cold-`dist` trap, caused by my own `.ts` edit invalidating `apps/ui/dist`,
-   not by the branch.
-3. Third run, after `npm --prefix apps/ui run build` (EXIT 0) and after
-   asserting `apps/ui/dist/index.html` is newer than every file under
-   `apps/ui/src` (`DIST_IS_WARM = True`): the EXIT 0 reading above.
+    TEST_FUNCTIONS= 4 ['test_every_advertised_command_exists_in_the_catalog',
+    'test_scanner_reports_a_command_the_catalog_does_not_carry',
+    'test_scanner_ignores_prose_that_merely_starts_with_a_group_name',
+    'test_scanner_finds_a_real_next_action_f_string']
 
-RECONCILIATION, as G5 orders rather than an assertion. `ast`-counted test
-functions in the two touched test files:
+— and 19780 + 4 = 19784, the figure measured. Nothing was changed to make it
+agree. Skips are 23, unchanged.
 
-    tests/test_agent_loop_execution.py    14 -> 10   (TestRunLoopCLI 3, TestRunLoopGroupedHelp 1)
-    tests/cli/test_command_catalog.py     23 -> 22   (TestRunLoopCLIHelp 1)
-    TOTAL                                 37 -> 32   = 5 test functions removed
+### G7 RUFF AND THE DOCS GATE
 
-Reviewer's base at `4c70ba90` was EXIT 0, 19785 passed, 23 skipped. 19785 - 5 =
-19780, which is exactly what ran. The block predicted 4 removed and 19781
-passed; that prediction is one short — see Deviations 2. The skip count is
-unchanged at 23, so no removed test was a skipped one.
-
-**G6 RUFF.**
-
-    python3 -m ruff check apps/cli/commands/job.py apps/cli/command_catalog.py tests/test_agent_loop_execution.py tests/cli/test_command_catalog.py
+    python3 -m ruff check <the five edited .py files> tests/cli/test_advertised_commands.py
     All checks passed!
     REAL_EXIT=0
 
-No F401, so no orphaned import was left. `subprocess` and `sys` were measured to
-be used ONLY inside the two deleted classes of
-`tests/test_agent_loop_execution.py` and were removed with them; in
-`tests/cli/test_command_catalog.py` both imports are still used by five other
-classes and were correctly KEPT.
+    python3 -B -m pytest tests/docs/ -q -p no:randomly
+    303 passed in 0.49s
+    REAL_EXIT=0
 
-The block states that the import-reachability test amend0906 names is NOT
-ordered because it does not exist at `4c70ba90`; nothing was run for it and it
-is not being reported as skipped.
+    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
+    42 passed in 20.98s
+    REAL_EXIT=0
 
-**G7 THE TREE.** `git status --porcelain` was run at every commit boundary with
-real output each time and was EMPTY every time — after C0a, C0b, C1, C2 and C3
-(five boundaries; the C4 boundary is the push that follows this file).
+### G8 THE TREE
 
-    git ls-files .remedy-wt  ->  '' (empty, as expected)
-    git worktree list        ->  13 entries (as expected)
+`git status --porcelain` was EMPTY and printed empty at every one of the seven
+commit boundaries C0a…C5 and at the final boundary; `git ls-files .remedy-wt`
+is EMPTY. Per-commit insertions from `git diff --numstat <parent> <commit>`,
+C6 excluded:
 
-Per-commit insertions from `git diff --numstat <parent> <commit>`, C4 excluded,
-each under the DECISION F104 D1 cap of 500 — these match the commit tables above
-cell for cell:
+    C0a  7f759a64  insertions=463  deletions=0    UNDER_500=True
+    C0b  7c55af84  insertions=438  deletions=154  UNDER_500=True
+    C1   328cddfd  insertions=22   deletions=20   UNDER_500=True
+    C2   652a29f3  insertions=4    deletions=0    UNDER_500=True
+    C3   d16c7285  insertions=6    deletions=0    UNDER_500=True
+    C4   a333617b  insertions=115  deletions=5    UNDER_500=True
+    C5   79b45aa3  insertions=74   deletions=0    UNDER_500=True
 
-    C0a  c0033e53  parents=1  insertions=179   under500=True
-    C0b  10e2559e  parents=1  insertions=151   under500=True
-    C1   bb6a7932  parents=1  insertions=24    under500=True
-    C2   ad83b299  parents=1  insertions=2     under500=True
-    C3   dc4471ef  parents=1  insertions=1     under500=True
+The three `.agent/STOP` readings by `os.path.exists`, all False:
+before C0a `False`, before C4 `False`, before C6 `False`.
 
-Maximum insertions in the round is 179. No oversize commit, so no
-inseparability declaration is owed.
-
-THE THREE `.agent/STOP` READINGS, all by `os.path.exists`:
-
-    before C0a  -> False
-    before C3   -> False
-    before C4   -> False
+Feature file `docs/roadmap/features/T2_F272.md` across C5:
+47484 bytes / 662 lines → 52485 bytes / 736 lines. DECISION headings D1 through
+D13 each occur exactly once; D13 is new and unique.
 
 ## Authored-text proofs
 
-Both slices were extracted PROGRAMMATICALLY from the committed copy at
-`.agent/authored/f272-r19.md`, between their `<<<BEGIN NAME>>>` and
-`<<<END NAME>>>` lines. Neither was retyped.
+Every applied slice was extracted PROGRAMMATICALLY from the committed
+`.agent/authored/f272-r20.md` between its `<<<BEGIN NAME>>>` and `<<<END NAME>>>`
+lines by one shared extractor, inclusive of the newline ending the last content
+line. Nothing was retyped.
 
-| Slice | Bytes | sha256 | Applied to | Result |
-|---|---|---|---|---|
-| PLANF272R19 | 2179 | `1a0bf72cfb93b5b4e16af66b573931d33e7b17a7e30e6a75c7afcd6810fb764e` | `.agent/plan.md` | byte-equal, `BYTE_EQUALS_SLICE=True` |
-| RECORDR19 | 4032 | `b8130ca25bc899430b601b19937fb4536543eaad976f44fd1b8278bf397a72fd` | `.agent/live_review.md` | `post == pre + NL + slice` True |
+| Slice | Bytes | sha256 | Disk-to-disk result |
+|---|---|---|---|
+| PLANF272R20 | 2213 | `1ad5f4cc…` | `.agent/plan.md` byte-EQUAL to the slice |
+| RECORDR20 | 6309 | `4092dfc7…` | `post == pre + NL + slice` TRUE |
+| SLIPSR20 | 1214 | `ef25d8db…` | `post == pre + NL + slice` TRUE |
+| DECISIONR20 | 5000 | `6695df96…` | `post == pre + NL + slice` TRUE |
+| P1…P5 FROM/TO | — | — | each FROM 1x→0x and TO 0x→1x in its file |
+
+C4's production test is the one artefact NOT sliced: GUARDSPEC describes it, and
+it was written in this repository's idiom per constraint 5.
 
 ## Deviations & assumptions
 
-**1. DEVIATION — C3's change set is FIVE paths, not the block's four.**
-`apps/ui/src/api/humanizeCatalog.ts` had to lose two lines. This was MEASURED,
-not anticipated: with only the four ordered deletions applied, the full suite
-was EXIT 1 on
-`tests/ui_contracts/test_humanize_catalog.py::TestCatalogCoversTheStreamVocabulary::test_catalog_keys_equal_the_static_stream_vocabulary`,
-reporting `in the catalog but NOT emitted (2): ['agent_loop_cycle_decision',
-'agent_loop_stopped']`. The deleted `_cmd_run_loop` was the ONLY emitter of
-those two run-log events, so that contract test — which asserts set equality
-between the UI catalog and the Python stream vocabulary, and which the block did
-not foresee — went red from the catalog side. I removed exactly those two
-catalog keys: two deleted lines, zero added. `agent_loop_inspected` has another
-emitter and was KEPT. I did NOT weaken the assertion, delete the test, or add
-any shim. I read this as inside amend0906's own definition of a deletion round
-("the test/import edits those deletions force") even though the block's list
-said "exactly this and nothing else", and I am declaring it rather than choosing
-silently. Note for the reviewer: `agent_loop_cycle_decision` and
-`agent_loop_stopped` still have entries in
-`packages/orchestration/event_schemas.py` and assertions in
-`tests/orchestration/test_event_ledger.py`; those belong to the autonomy-loop
-cluster and therefore to T005, so I left them alone.
+**No deviation from the block's ordered commit sequence.** The eight commits are
+C0a, C0b, C1, C2, C3, C4, C5, C6 in exactly that order; no commit was added,
+dropped, split or reordered. The change set is exactly the thirteen declared
+paths and nothing else — no measurement forced a path outside the list, so the
+escape clause the block offers was not used.
 
-**2. DEVIATION — the block's G5 arithmetic is one short.** The block says "C3
-removes 4 test functions, so the expected reading is EXIT 0 at 19781 passed".
-The measured removal is 5 (37 -> 32), giving 19780. The block counted
-`TestRunLoopCLI` (3 tests) and `TestRunLoopGroupedHelp` (1 test) but omitted the
-single test in `TestRunLoopCLIHelp`, which its own C3 item 4 orders deleted.
-G5's RECONCILE clause is exactly what this is; reported, not asserted, and
-nothing was changed to reach the block's number.
+1. **Assumption — the scanner's "followed by" test admits an intervening
+   space.** GUARDSPEC S1 requires the pair to be "followed by" a placeholder,
+   an option, a quote or end of string. Read literally as the very next
+   character, `remedy job run <job_id>` would fail to match, because a space
+   separates `run` from `<`. I implemented it as: skip spaces, then require
+   `<`, `{`, `--`, `"` or `'`, or end of string. This reading is what reproduces
+   the reviewer's own numbers — 738 advertisements and exactly the seven
+   occurrences at the five listed sites, with all three prose probes rejected —
+   so I take it as the intended one. Recorded because it is a genuine
+   interpretation of the spec, not a transcription.
 
-**3. ASSUMPTION — the orphaned section comment was KEPT.**
-`tests/cli/test_command_catalog.py` line 283 is the banner comment
-`# -- Step 68: Autonomy Loop --` (box-drawing rule in the file). It labelled
-`TestRunLoopCLIHelp` and nothing else, so after C3 it labels nothing, and it is
-now the file's last line. The block orders "the class `TestRunLoopCLIHelp`" and
-says "exactly this and nothing else", so under the conservative reading I did
-NOT delete it. It is a candidate for the next deletion round. Its four blank
-separator lines DID go with the class, so the file does not end in trailing
-blank lines.
+2. **Assumption — the scan is line-based.** S2 requires the failure message to
+   name `path:line:`, so the module scans each file line by line and hands one
+   line at a time to the scanner. "The end of the string" therefore means the
+   end of a line. All four S4 discriminators are single strings and are
+   unaffected.
 
-**4. ASSUMPTION — blank separators.** In `apps/cli/command_catalog.py` I deleted
-exactly the `CommandEntry` node's lines 451-469 and KEPT the blank line 470,
-which now separates `job.plan` from `job.assumptions` and matches the file's
-dominant blank-separated style. In `apps/cli/commands/job.py` the handler's two
-trailing blank lines went with it, leaving the standard two blank lines between
-top-level defs.
+3. **Assumption — G5's advertisement figure is reported from the shipped
+   functions.** G5 asks for the passed count and, "separately", the number the
+   scan saw, printed rather than asserted. Rather than add a bare `print` to a
+   shipped test, the count is produced by importing the shipped
+   `collect_command_advertisements` and printing its return value. The figure is
+   therefore the shipped code's own, not a re-implementation.
 
-**5. DEVIATION — an external build was run.** `npm --prefix apps/ui run build`,
-EXIT 0. My `humanizeCatalog.ts` edit invalidated `apps/ui/dist`, and without a
-warm dist three `tests/ui_server/` tests fail with `Server did not start in
-time` / `React UI not built` for a reason that has nothing to do with this
-branch. `apps/ui/dist/` is gitignored, so no tracked file changed and porcelain
-stayed empty; I asserted `dist/index.html` is newer than every file under
-`apps/ui/src` before the green run and report both readings under G5.
+4. **Note — the guard's own docstring contains the strings it forbids.** The new
+   test file spells out `remedy job run-loop` and `remedy guide next` in its
+   module docstring to explain the class. This is safe by construction and not
+   by luck: S2 scopes the sweep to tracked `.py` under `packages/` and `apps/`,
+   and the file lives under `tests/`. Flagged so a future round that widens the
+   sweep to `tests/` knows this file will trip it.
 
-**6. ASSUMPTION — slice terminal newline.** A slice is read INCLUSIVE of the
-newline that ends its last content line, so `.agent/plan.md` ends in exactly one
-newline and the append is `pre + b"\n" + slice`. Same reading as round 18, which
-the reviewer's own byte proofs confirmed.
+5. **Note — `grep -c '^FAILED'` exits 1, and that is grep's semantics, not a
+   suite failure.** The count is 0 and grep exits non-zero when it matches
+   nothing. The suite's own real exit code is 0.
 
-**7. ASSUMPTION — the Commit Gate at C0a and C0b.** `.agent/plan.md` still
-described round 18 at those two commits and was brought current by C1, the
-block's ordered position for it. Conservative reading, same as round 18.
+6. **Verification beyond the block, none of it contradicting it.** I re-ran the
+   two premises the block asserts rather than accepting them: the shipped
+   `_has_agent_loop([{"event": "agent_loop_inspected"}])` is `True` and
+   `_has_agent_loop([])` is `False`, so P3's new hint is satisfiable and the
+   predicate is not vacuous; and `('dev','agent-loop')`, `('guide','job')`,
+   `('job','list')` and `('job','run')` are all real catalog pairs, so no repair
+   introduced a second stale advertisement. I also checked D13's load-bearing
+   measurements: `remedy job run-next` occurs 16 times across exactly the eight
+   named modules, twice in `scripts/remedy_smoke.sh`, six test `.py` files carry
+   the spaced form `job run-next`, both `tests/cli/test_plan_approval.py`
+   shell-outs are at lines 372 and 716, and `job.run` is the catalog's only
+   `is_expensive` command. Every one of these confirms the block. **No
+   disagreement with the block was found anywhere in this round.**
 
-**8. DECLARED CONFLICT — `.agent/decisions.md` was NOT opened.** AGENTS.md
-Commit Gate item 7 asks whether `decisions.md` needs an update, and Deviations 1
-and 3 are meaningful choices that would ordinarily earn an entry. The block's
-change set does not include `.agent/decisions.md`, so widening it further on my
-own authority looked worse than recording both here, which amend0827 rule 1
-makes a durable carrier. The reviewer may order a DECISION next round.
-
-**9. DECLARED CONFLICT — the block's own ordering of the verdict booking.** The
-block's prose says the previous round's verdict is booked "in this round's first
-commit (amend0827 rule 1)", but the block ORDERS that append at C2, the fourth
-commit. I followed the block's ordered sequence, not its prose. Recording the
-disagreement because it is the block's, not mine. The block separately declares
-that it exceeds amend0906's sixty-line cap for a deletion round; that
-declaration is the block's own and I have not tried to resolve it.
-
-**10. NOTE — no repo effect.** My first C3 scratch script had a truncated
-assertion string for the section comment and stopped at the fourth file after
-applying the first three. The stop was an assertion BEFORE any write to that
-file, so nothing was left half-edited; I re-ran only the fourth deletion with a
-prefix check. Mentioned for transparency only.
-
-Not deviations, stated so they are not read as omissions: no id was minted; no
-PR was created; nothing was merged; nothing was force-pushed; no worktree was
-added or removed; `packages/orchestration/autonomy_loop.py`, `job.run-next` and
-`job.run` were all left exactly as they were.
+7. **Note — RED at base was additionally observed in the primary checkout**
+   before P1–P5 were applied, as a sanity check on the guard: 1 failed, 3
+   passed, the failure naming exactly the seven occurrences at the five sites
+   and nothing else, matching GUARDSPEC's own measurement. G4 remains the
+   binding destructive proof and ran in the disposable worktree as ordered.
 
 ## Next
 
-The reviewer reviews round 19 over `4c70ba90`..HEAD and issues a verdict. Phase
-1 rule 1 first: read `.agent/STOP` before anything else. On PASS, round 20 is
-T004's next step — rule and then delete `job.run-next` and `job.run`, neither of
-which is a clean cut: `_cmd_run_next_task_local` has a production caller at
-`packages/orchestration/agent_loop.py:626` and `_cmd_job_run_cycles` is called by
-`_cmd_job_resume`, so the fate of `job resume` and of the agent loop's step must
-be ruled by measurement first. The reviewer should also rule on Deviations 1 and
-3 — whether the `humanizeCatalog.ts` widening is accepted as a forced edit, and
-whether the orphaned Step 68 banner comment is deleted next round.
-
-## Reviewer verdict — round 19
-
-VERDICT PASS. Every gate was RE-RUN by the reviewer rather than read, in the primary
-checkout at `743c1e64`.
-
-- Range `4c70ba90`..`743c1e64`, six commits, every one single-parent, in exactly the
-  ordered sequence C0a, C0b, C1, C2, C3, C4. The change set is the five `.agent/` and
-  production paths of the block plus `apps/ui/src/api/humanizeCatalog.ts`, which
-  deviation 1 declares. `git status --porcelain` empty; `git ls-files .remedy-wt`
-  empty; thirteen worktree entries, being the primary plus the twelve pre-existing
-  `remedy/job-*`. Per-commit insertions 179, 151, 24, 2, 1 and 328, every one under
-  the DECISION F104 D1 cap of 500.
-- G1 TRANSPORT is a REAL chain: the reviewer's own scratch original
-  `.remedy-wt/f272-r19-block.md`, written and hashed BEFORE delegation, and the
-  committed `.agent/authored/f272-r19.md` and `.agent/last_block.md` are all 14856
-  bytes at 179 lines and all hash to
-  `90e7de9e0aa27c105b864fbb8d385e69b66f6c7af86a564202ff51d1d68f92c3`. Per §3 item 37
-  that chain covers those three artefacts and is not a claim about emitted bytes.
-- G2 THE RECORD reproduces on every reader: `.agent/live_review.md` 1169833 to
-  1173866, the pre-image a byte-exact prefix, `post == pre + NL + slice` TRUE, N
-  counted from the slice as 1 with units 718 to 719, and a byte flipped in the
-  appended paragraph rejected by BOTH readers. All five ordered counts reproduce —
-  registrations 306 unchanged, resolutions 249 unchanged, open set BY DISTINCT ID 57
-  unchanged, `^Gate: ` 41 to 42 and `^Gate: F272 R18 ` 0 to 1.
-- G3 THE PLAN is 2179 bytes byte-equal to its slice at 43 lines against the cap of 50.
-- G4 THE DELETION, by EXACT SYMBOL over every tracked `.py`: `_cmd_run_loop` and
-  `job.run-loop` both reach 0. `packages/orchestration/autonomy_loop.py` still exists,
-  and `job.run-next` and `job.run` are untouched, exactly as the block required.
-- G5 THE FULL SUITE, re-run by the reviewer in the PRIMARY checkout: EXIT 0 at 19780
-  passed, 23 skipped, and ZERO `FAILED` lines. The arithmetic closes exactly: the
-  reviewer measured the base at `4c70ba90` as 19785 passed, an `ast` count gives the
-  two touched test files 14 to 10 and 23 to 22, so five test functions were removed
-  and 19785 − 5 = 19780, which is what ran.
-- G6 ruff EXIT 0, `All checks passed!`, no F401 over the touched files.
-- G7 THE TREE holds at every boundary, and the three `.agent/STOP` readings are False.
-- C3 IS A TRUE DELETION: across all five files its diff adds exactly ONE line, the
-  corrected module docstring the block ordered, against 182 deletions. No shim, no
-  alias, no deprecation path.
-
-DEVIATION 1 IS UPHELD AND WAS THE RIGHT CALL. The worker extended C3 to a fifth path,
-`apps/ui/src/api/humanizeCatalog.ts`, dropping the two entries `agent_loop_cycle_decision`
-and `agent_loop_stopped`. The reviewer verified the premise independently rather than
-accepting it: at `4c70ba90` the only emitter of either kind was `apps/cli/commands/job.py`
-lines 1135 and 1146, both inside the deleted `_cmd_run_loop`, so deleting that function
-orphaned both catalog entries; `agent_loop_inspected` has a separate emitter at
-`apps/cli/commands/brain.py:514` and was correctly KEPT. The guard test was NOT edited —
-`git diff 4c70ba90..743c1e64 -- tests/ui_contracts/` is empty — so the worker fixed the
-code the test measures rather than the test, and that file's own header comment states the
-rule it was obeying: "a Python emitter without adding an entry here goes red, and so does
-the reverse". Operator amendment amend0906 names "deleted cockpit sections" as part of a
-deletion round's change set, so the fifth path is IN SCOPE; the block's four-path list was
-the reviewer's omission, not the worker's overreach.
-
-DEVIATION 2 IS THE REVIEWER'S ARITHMETIC ERROR, correctly reported and correctly not
-papered over. The block predicted four removed tests and 19781 passed; the true figures are
-five and 19780, because the reviewer read 13 where the file held 14. The worker measured
-both, reported the difference through the block's own RECONCILE clause and adjusted nothing
-to make the numbers agree, which is exactly what that clause exists for.
-
-DEVIATIONS 3 TO 9 ARE ACCEPTED. The orphaned `# ── Step 68: Autonomy Loop ──` banner was
-left standing on the block's "exactly this and nothing else" wording, which is the
-conservative reading and is named below as round 20 work. The `npm --prefix apps/ui run
-build` was an external action on the gitignored `apps/ui/dist`, necessary because the `.ts`
-edit invalidated it; the reviewer confirms it changed NO tracked file — `git status
---porcelain` is empty and the range touches exactly ten paths. The declared conflict about
-`.agent/decisions.md` is correctly resolved by the block's closed change set. The declared
-conflict about "first commit" is the reviewer's own imprecision: the block's framing
-paragraph says the verdict books "in this round's first commit" while the bundle orders it
-at C2, and C2 is right — §3 item 23 lets only the two block-save commits and the plan
-precede it, which is the sequence rounds 16 through 18 also used.
-
-R-0823 REMAINS FREE. No id was minted this round and none was owed.
-
-## Session
-
-SESSION 9 OF F272 ENDS HERE, after three delegated rounds — 17, 18 and 19 — every one
-PASS at the first attempt with no repair round. F272's soft limit under amend0906 is 12
-sessions and 40 rounds; at session 9 and round 19 the feature is inside it, so NO SCOPE
-REPORT IS OWED.
-
-Why the session ends below the six-to-eight round target, in one sentence as amend0906 rule
-3 requires: the reviewer's own authoring errors accumulated — round 19's block alone
-carried three, an incomplete C3 path list that pushed the worker outside the declared
-change set, a test-count prediction off by one, and a framing sentence contradicting its own
-bundle ordering — which is precisely the signal operator amendment amend0905-throughput
-names as an honest early end, and round 20 deletes three user-facing commands and is the
-highest-stakes round of this feature so far.
-
-CONTEXT SELF-ASSESSMENT (amend0905-throughput): context was not the constraint and remained
-comfortable throughout; it was spent on three complete round cycles in which the reviewer
-applied each production change in a disposable worktree and ran it BEFORE authoring, then
-independently re-ran every gate afterwards, including four full-suite runs at roughly three
-and a half minutes each and two `tests/cli/` runs at roughly five.
-
-## Owed by round 20's first commits, per amend0827 rule 1
-
-Exactly these, and nothing else — no id is minted for any of them:
-
-1. The `Gate: F272 R19` PASS entry recorded in the verdict section above, appended to
-   `.agent/live_review.md`.
-2. THREE dated lines appended to `.agent/prose_slips.md`, all of them the reviewer's own
-   and none of them touching disk state:
-   - 2026-09-07, F272 round 19 — the block's C3 list named four paths and the deletion
-     really reached five: `_cmd_run_loop` was the sole emitter of the two
-     `humanizeCatalog.ts` entries `agent_loop_cycle_decision` and `agent_loop_stopped`, so
-     deleting it orphaned them and the worker had to leave the declared change set to keep
-     `tests/ui_contracts/test_humanize_catalog.py` green. Before ordering a deletion, grep
-     the cockpit catalog for every event kind the deleted code is the only emitter of.
-   - 2026-09-07, F272 round 19 — the block's G5 predicted four removed test functions and
-     19781 passing; the true figures are five and 19780, because the reviewer read 13 test
-     functions in `tests/test_agent_loop_execution.py` where the file held 14, having
-     counted a run in which three of them were failing rather than counting by `ast`. Count
-     a file's tests with `ast`, never from a pytest summary line.
-   - 2026-09-07, F272 round 19 — the block's framing paragraph said the previous round's
-     verdict books "in this round's first commit" while its own bundle ordered it at C2;
-     C2 is correct under §3 item 23 and the sentence was loose. A framing sentence about
-     commit order must quote the bundle rather than paraphrase it.
-
-## Next
-
-THE NEXT SESSION'S FIRST ACTION: run Phase 0, the state probe; then check `.agent/STOP`
-under Phase 1 rule 1 BEFORE the Open PR Gate under rule 2, in that order. No PR exists for
-this branch and none was created.
-
-T001, T002 AND T003 ARE COMPLETE. T004 has begun: round 19 deleted the `job run-loop`
-command surface, the one of the three classic-runner commands that deletes cleanly.
-
-ROUND 20 IS THE REST OF THE CLASSIC RUNNER, and the measurements it needs were taken this
-session at `743c1e64` and are recorded here so the next session does not re-derive them:
-
-- `_cmd_job_resume` (`apps/cli/commands/job.py`, 150 lines) is CLASSIC-ONLY: it names
-  `load_job`, `resolve_job_id` and `JobNotFoundError` once each and NO unified symbol —
-  no `load_job_plan`, no `resume_job_plan`. It calls `_cmd_job_run_cycles`, which is why
-  `job run` cannot be deleted without ruling on `job resume`.
-- THE UNIFIED WORLD ALREADY HAS RESUME: `packages/orchestration/pingpong_job.py:2824`
-  defines `resume_job_plan`, and `apps/cli/commands/do_cmd.py:1601` already calls it. So
-  the classic `job resume` is superseded rather than merely deleted, which is the
-  condition AGENTS.md's "Replacing is deleting" asks for.
-- `packages/orchestration/agent_loop.py:623` `_run_next_task_step` is a FOUR-LINE shim
-  whose whole body delegates to `_cmd_run_next_task_local`, and its own caller
-  `run_agent_loop` has NO production caller at all — only `tests/storage/test_persistence.py`
-  and `tests/test_agent_loop_execution.py`. So `agent_loop.py` is production-unreachable,
-  exactly as `autonomy_loop.py` became this round, and BOTH belong to T005's reachability
-  test and cluster deletion rather than to T004.
-- SIZES, so round 20 can be staged rather than guessed: `_cmd_run_next_task_local` is 243
-  lines with 39 call sites, `_cmd_job_run_cycles` is 143 lines with 18, and
-  `_cmd_job_resume` is 150. Most of those call sites are tests — `tests/test_cli_main.py`,
-  `tests/test_run_log_cli.py`, `tests/cli/test_cost_preview.py`,
-  `tests/orchestration/test_escalation.py` and `tests/orchestration/test_long_run_executor.py`.
-  That is roughly 57 test call sites, so round 20 is very likely MORE THAN ONE round and
-  should be staged before it is started.
-- THE RULING ROUND 20 SHOULD RECORD, recommended rather than owed, under §4 item 7: the
-  classic `job run`, `job run-next` and `job resume` are superseded by the unified
-  `remedy do` path and die together, while `agent_loop.py` and `autonomy_loop.py` go to
-  T005 with the rest of the cluster. Nothing about that ruling is settled on disk yet.
-- SMALL CLEANUP round 19 deliberately left, on the block's "exactly this and nothing else"
-  wording: the orphaned `# ── Step 68: Autonomy Loop ──` banner in
-  `tests/cli/test_command_catalog.py` now labels nothing, and
-  `packages/orchestration/event_schemas.py` still carries schemas for
-  `agent_loop_cycle_decision` and `agent_loop_stopped`, which nothing emits any more.
-  Both are T005 cluster material and neither breaks anything today.
-
-STILL TRUE AND STILL THE BOUND ON T004: `.agent/f272_t004_deletion_inventory.md` measures
-199 tracked files referencing a classic job-store symbol, 72 of them under `packages/` and
-`apps/`. DECISION F260 D5 keeps the resolver collapse in the SAME commit range as the
-classic store deletion, so that inventory — not a grep — is what stages the rest of T004.
-
-THE FULL SUITE IS GREEN AT `743c1e64` IN THE PRIMARY CHECKOUT: EXIT 0, 19780 passed, 23
-skipped. Note for any future deletion round: the same suite run inside a FRESH WORKTREE
-fails about ten tests for want of `apps/ui/node_modules`, so a deletion round's full-suite
-measurement must name the primary checkout, as round 19's G5 did.
+Delete the `job.run-next` command surface per DECISION F272 D13 — its catalog
+entry, its handler entry and its test pin, TOGETHER WITH the sixteen
+advertisements across the eight `packages/orchestration/` modules, the two in
+`scripts/remedy_smoke.sh`, the six test files carrying the spaced form, and the
+two `tests/cli/test_plan_approval.py` shell-outs, all in the same commit, with
+`tests/cli/test_advertised_commands.py` now standing as the gate that proves no
+advertisement was left behind.
