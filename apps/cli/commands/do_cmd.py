@@ -1451,9 +1451,9 @@ def _cmd_do_job_run(
     if _has_budget_flags:
         # F018: raw budget flags must not silently override a stopped job's limits.
         # Changing limits requires an explicit Decision answer (extend/abandon).
-        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.pingpong_job import JOB_STOPPED, load_job_plan
         _existing = load_job_plan(job_id)
-        if _existing is not None and getattr(_existing, "status", "") == "stopped":
+        if _existing is not None and _existing.state == JOB_STOPPED:
             print(
                 "Error: job is stopped — budget limits cannot be changed via CLI flags. "
                 "Use the Decision workflow (extend/abandon) to resume a stopped job.",

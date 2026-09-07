@@ -1491,7 +1491,8 @@ def _linked_job_summary(jid: str) -> dict[str, Any]:
             "provider_call_count": None,
             "source": "unavailable",
         }
-    status = str(getattr(j, "status", "") or "") or "unknown"
+    _state = getattr(j, "state", "")
+    status = str(getattr(_state, "value", _state) or "") or "unknown"
     total: int | None = None
     try:
         from packages.orchestration.data_paths import runs_dir

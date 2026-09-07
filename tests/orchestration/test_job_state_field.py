@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_PLANNED,
@@ -117,3 +119,51 @@ class TestTheRetypeIsComplete:
         job = _import_job({"job_id": "j1", "status": "complete"})
         assert job.state == "complete"
         assert _export_job(job)["status"] == "complete"
+
+
+class TestTheRenameLeftNoSilentReaderBehind:
+    """The two production guards a ``getattr(job, "status", <default>)`` broke.
+
+    DECISION F272 D7's raising-property probe cannot see these: a string-named
+    read with a default answers with the default instead of raising, so the
+    probe stayed green while both guards stopped working. The class-wide scan
+    lives in ``test_job_plan_state_reads.py``; these two pin the BEHAVIOUR,
+    because a scan proves a spelling is absent and never that a guard fires.
+    """
+
+    def _isolated_data_root(self, tmp_path, monkeypatch):
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        return data_dir
+
+    def test_budget_flags_are_refused_on_a_stopped_job(self, tmp_path, monkeypatch, capsys):
+        """F018: raw budget flags must not silently override a stopped job's
+        limits. With the retired read the test was ``"" == "stopped"``, so the
+        refusal never fired and the job re-ran under the new limits."""
+        from apps.cli.commands.do_cmd import _cmd_do_job_run
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        self._isolated_data_root(tmp_path, monkeypatch)
+        save_job_plan(JobPlan(job_id="0123456789abcdef", state="stopped"))
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_do_job_run("0123456789abcdef", max_cost_usd="5.0")
+
+        assert exc.value.code == 2
+        assert "budget limits cannot be changed" in capsys.readouterr().err
+
+    def test_a_linked_job_that_loads_reports_its_real_state(self, tmp_path, monkeypatch):
+        """``_linked_job_summary`` reserves ``unknown`` for a job it could not
+        load. With the retired read every linked job read ``unknown`` while the
+        same summary reported that the job WAS available."""
+        from packages.orchestration.job_evidence import _linked_job_summary
+        from packages.orchestration.pingpong_job import save_job_plan
+
+        self._isolated_data_root(tmp_path, monkeypatch)
+        save_job_plan(JobPlan(job_id="0123456789abcdee", state="completed"))
+
+        summary = _linked_job_summary("0123456789abcdee")
+
+        assert summary["status"] == "completed", summary
+        assert summary["source"] != "unavailable", summary
