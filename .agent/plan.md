@@ -1,39 +1,44 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 15 PASSED;
+Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 16 PASSED;
 round 2 FAILED on a premise DECISION F272 D2 has corrected. T001 and T002 are
-COMPLETE: the run re-key, the eight administrative fields, the widened
-`RunState`, the `state` rename and retype, the cockpit's two settled states, and
-the Mission record's order and contract.
+COMPLETE. T003 is open: round 16 moved its first consumer, `job stop`, and this
+round moves the second.
 
 ## Goal
 
 Finish what F260 began: a Job that carries MANY runs, every consumer on the
 unified model, and the classic runner, its resolver and the prototype cluster
 deleted. Task slicing per `docs/roadmap/features/T2_F272.md` — T001 the run
-re-key, T002 the rest of the unified record, T003 the consumers, T004 the classic
-runner, T005 the reachability test and the cluster deletion.
+re-key, T002 the rest of the unified record, T003 the consumers, T004 the
+classic runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-T003's first consumer, and a defect found while re-grepping the consumer list:
-`apps/cli/commands/job_stop_cmd.py` still reads `job.status`, a field the round 9
-rename moved to `state`, on the branch that emits the completed-job error JSON.
-Registered as R-0822, fixed and guarded in the same round with the JSON sibling
-test the file never had.
+T003's second consumer. `remedy job context` searched the CLASSIC store alone,
+so it answered "no job matches prefix" for every job `remedy do job-run`
+created. It now resolves across both stores and reads a `TaskEntry`'s own
+`task_id` and `files_hint`, the way `job_stop_cmd._load_job` already reads
+unified first and classic second.
 
 ## Next Steps
 
-1. The rest of T003's consumers, re-grepped rather than taken from F260's
-   2026-09-05 list: `teach_cmd.py`, `ui_server.py`, `job_context_cmd.py` and the
-   `_JobPlanTaskAdapter` shim, each with a test on a ping-pong-created job.
-2. T004, the classic runner and the resolver collapse, which is where
-   `_CoreJobAdapter` dies with the classic store it exists to adapt.
-3. T005, the reachability test and the cluster deletion, which is never split.
+1. The remaining T003 consumer surface, re-grepped rather than taken from
+   F260's 2026-09-05 list: `packages/orchestration/ui_server.py` and its
+   `_JobPlanTaskAdapter`. That shim is finding R-0804's subject and the
+   2026-09-06 triage routes R-0804 to F273 T001, so the boundary is ruled
+   before it is touched. The `resolve_any_job_id` sites in
+   `apps/cli/commands/teach_cmd.py` STAY: DECISION F260 D5 puts the resolver
+   collapse in T004, with the store that makes it true.
+2. Rule the Acceptance conflict as a DECISION, inside a round doing other
+   work: this feature's Acceptance names tests.md ids that the 2026-09-06
+   triage gave to F273 T001, and F272 cannot close while both claims stand.
+3. T004, the classic runner and the resolver collapse, where `_CoreJobAdapter`
+   dies with the classic store it exists to adapt.
+4. T005, the reachability test and the cluster deletion, which is never split.
 
 ## Risks
 
-- The five tests.md ids named in this feature's Acceptance (R-0803, R-0804,
-  R-0807, R-0810, R-0812) were routed to F273 by the 2026-09-06 triage. Whether
-  F272's Acceptance still requires them is UNSETTLED and must be ruled before
-  closure, or the feature cannot be closed self-consistently.
+- F272's soft limit is 12 sessions and 40 rounds under operator amendment
+  amend0906-triage-throughput. At session 9 and round 17 the feature is
+  inside it and no scope report is owed.
