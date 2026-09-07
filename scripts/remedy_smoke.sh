@@ -1927,10 +1927,10 @@ print('    context_optimizer: OK (mode=' + opt['recommended_mode'] + ', tokens='
 "
 
     # -------------------------------------------------------------------------
-    # 12ai. Brain nodes: decision_queue + context_budget (Steps 69, 71)
+    # 12ai. Brain nodes: decision_queue (Step 69)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ai"
-    echo "--- 12ai. Brain decision_queue + context_budget nodes"
+    echo "--- 12ai. Brain decision_queue node"
     python3 -c "
 import sys
 def chk(cond, msg):
@@ -1939,8 +1939,8 @@ def chk(cond, msg):
         sys.exit(1)
 
 from packages.orchestration.project_brain import (
-    NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
-    ET_HAS_DECISION_QUEUE, ET_HAS_CONTEXT_BUDGET,
+    NT_DECISION_QUEUE,
+    ET_HAS_DECISION_QUEUE,
     _NODE_TYPE_ORDER, build_project_brain,
 )
 from packages.core.models import Job, Task, RunState
@@ -1953,21 +1953,15 @@ events = []
 graph = build_project_brain(job, events)
 
 dq = [n for n in graph.nodes if n.type == NT_DECISION_QUEUE]
-cb = [n for n in graph.nodes if n.type == NT_CONTEXT_BUDGET]
 chk(len(dq) == 1, 'missing decision_queue node')
-chk(len(cb) == 1, 'missing context_budget node')
 chk(dq[0].id == 'decision_queue', 'bad dq id')
-chk(cb[0].id == 'context_budget', 'bad cb id')
 
 dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
-cb_edges = [e for e in graph.edges if e.type == ET_HAS_CONTEXT_BUDGET]
 chk(len(dq_edges) == 1, 'missing decision_queue edge')
-chk(len(cb_edges) == 1, 'missing context_budget edge')
 
 chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
-chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
 
-print('    brain nodes: OK (decision_queue + context_budget)')
+print('    brain nodes: OK (decision_queue)')
 "
 
     # -------------------------------------------------------------------------
