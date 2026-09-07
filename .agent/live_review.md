@@ -10,7 +10,13 @@
 > continue the monotonic R-XXXX series across the re-head. Measured by the reviewer at
 > `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, the branch point: 62 DISTINCT ids matching
 > `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 60 findings are open
-> BY DISTINCT ID, and the next id this feature mints is R-0829.
+> BY DISTINCT ID. THOSE THREE NUMERALS ARE THE BRANCH POINT'S AND ARE LEFT AS MEASURED; the
+> merge of `origin/main` at `d0d8b24d` moved two of them. Operator amendment
+> amend0907-cluster-first resolved R-0827 and registered R-0829, so at this commit the record
+> holds 63 DISTINCT registered ids against 3 DISTINCT resolved ids — the open set is 60 either
+> way, which is why only the components moved. THE NEXT ID THIS FEATURE MINTS IS R-0830, NOT
+> the R-0829 this paragraph promised before the merge: that id is taken. See DECISION
+> amend0907-cluster-first D2 in `.agent/decisions.md`.
 > F272's LAST round has an entry here, which is the exception rather than the rule: under
 > docs/agents/self_drive_protocol.md there is no second window, so the reviewer books a
 > branch-terminating verdict into the FIRST commit of the next feature's first round rather
