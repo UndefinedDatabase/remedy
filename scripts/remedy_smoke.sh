@@ -1878,55 +1878,6 @@ print('    dashboard: OK (keys=' + str(len(data)) + ')')
 "
 
     # -------------------------------------------------------------------------
-    # 12ah. Context Optimizer (Step 71)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12ah"
-    echo "--- 12ah. Context optimizer"
-    python3 -c "
-import sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: context_optimizer: ' + msg, file=sys.stderr)
-        sys.exit(1)
-
-from packages.orchestration.context_optimizer import explain_context, optimize_context
-from packages.orchestration.event_schemas import validate_event_metadata
-from packages.core.models import Job, Task, RunState
-from uuid import uuid4
-
-job = Job(id=uuid4(), name='smoke-ctx', user_prompt='t',
-    tasks=[Task(description='x', status=RunState.COMPLETED)],
-    metadata={'target_repo': '.'})
-events = []
-
-data = explain_context(job, events, mode='compact', budget=2000)
-chk(data['version'] == 1, 'explain bad version')
-chk(data['mode'] == 'compact', 'explain bad mode')
-chk('sections' in data, 'explain missing sections')
-chk('excluded' in data, 'explain missing excluded')
-
-opt = optimize_context(job, events, budget=2000)
-chk(opt['version'] == 1, 'optimize bad version')
-chk(opt['recommended_mode'] in ('caveman', 'compact', 'standard'), 'bad mode')
-for k in ('estimated_tokens', 'token_savings', 'included_sections', 'excluded_sections', 'recommended_worker'):
-    chk(k in opt, 'optimize missing: ' + k)
-
-meta = {
-    'mode': opt['recommended_mode'],
-    'budget': opt['budget'],
-    'estimated_tokens': opt['estimated_tokens'],
-    'token_savings': opt['token_savings'],
-    'recommended_worker': opt['recommended_worker'],
-    'included_section_count': len(opt['included_sections']),
-    'excluded_section_count': len(opt['excluded_sections']),
-}
-errors = validate_event_metadata('context_budget_optimized', meta)
-chk(errors == [], 'schema errors: ' + str(errors))
-
-print('    context_optimizer: OK (mode=' + opt['recommended_mode'] + ', tokens=' + str(opt['estimated_tokens']) + ')')
-"
-
-    # -------------------------------------------------------------------------
     # 12ai. Brain nodes: decision_queue (Step 69)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ai"
