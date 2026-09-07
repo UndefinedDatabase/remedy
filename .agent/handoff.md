@@ -416,3 +416,116 @@ checkout and books a verdict on round 25. Session 11 is then closed; session
 12 opens with Phase 0, then the `.agent/STOP` check, then the Open PR Gate,
 and owes the scope report and the split-and-close default before any further
 building.
+
+## Reviewer verdict — round 25
+
+VERDICT PASS. Every gate was RE-RUN by the reviewer rather than read, in the primary
+checkout at `85074909`.
+
+- Range `4491ec9e`..`85074909`, seven commits, every one single-parent, in exactly the
+  ordered sequence C0a, C0b, C1, C2, C3, C4, C5. `git diff --stat` names exactly the
+  seven declared paths and nothing under `packages/`, `apps/`, `tests/` or `scripts/`.
+- G1 TRANSPORT IS A REAL CHAIN AND NOT MERELY SELF-CONSISTENT: the reviewer's own
+  scratch original `.remedy-wt/f272-r25-block.md`, written and hashed BEFORE
+  delegation, and the committed `.agent/authored/f272-r25.md` and
+  `.agent/last_block.md` are all 23414 bytes at 280 lines and all hash to
+  `b9dda40e327c491305014c62b16058997f6c475298407004fa0aca3a3ea9ee92`. Per §3 item 37
+  that chain covers those artefacts and is not a claim about the bytes emitted into a
+  prompt.
+- G2 THE RECORD: `.agent/live_review.md` 1209111 to 1212690 with the pre-image a
+  byte-exact prefix; registrations 309 unchanged, resolutions BY DISTINCT ID 252
+  unchanged, open set 57 unchanged, `^Gate: ` 47 to 48, `^Gate: F272 R24 ` 0 to 1,
+  `^- R-0826 ` 0 to 0 — the exact shape a round that mints and resolves nothing must
+  have.
+- G3 THE PLAN is 2545 bytes at 47 lines against the cap of 50 and byte-equal to its
+  slice.
+- G4 THE FEATURE FILE went 58026 to 62897 bytes with the pre-image a byte-exact
+  prefix, the DECISION headings 14 to 15, the numbers reading exactly 1 through 15
+  each once and in order, and D14's own body byte-unchanged.
+- G5 THE DOCS GATE is EXIT 0 at 375 passed — 303 for `tests/docs/`, 30 for the roadmap
+  index and 42 for the canary — matching the reviewer's own pre-measured figures cell
+  for cell.
+- G6 THE TREE: `git status --porcelain` empty, `git ls-files .remedy-wt` empty, every
+  per-commit insertion under the DECISION F104 D1 cap of 500 at a maximum of 280.
+
+ALL THREE OF THE WORKER'S DISAGREEMENTS ARE UPHELD, AND ALL THREE ARE THE REVIEWER'S
+ERRORS RATHER THAN THE WORKER'S. Each was applied verbatim and declared instead of
+being silently corrected, which is exactly what constraint 1 asks for.
+
+1. CONSTRAINT 4's claim that all three append targets hold ZERO occurrences of three
+   consecutive newlines is FALSE for `.agent/prose_slips.md`, which holds exactly one,
+   at byte offset 39213 after line 310 — a pre-existing double blank line that landed
+   long before this round. The reviewer confirms the offset and the count
+   independently. The claim was not load-bearing: what the appends depend on is each
+   file ending in exactly one newline, which holds for all three, and
+   `POST_EQUALS_PRE_NL_SLICE` is true for all three on disk. The reviewer had measured
+   this very figure earlier in the same session and generalised from the other two
+   files anyway.
+2. G4's order to compare D14's span "against the same span at the base commit" is not
+   literally satisfiable, because at the base there is no D15 heading and the base span
+   can only run to end of file, so the two differ by exactly the one newline the append
+   itself contributes. The worker reported the strict result AND the reading that
+   answers the intended question rather than relaxing the gate, which is the right
+   handling; the whole-file prefix check in the same gate proves the property more
+   strongly in any case.
+3. THE PLANF272R25 SLICE CLAIMS A VERDICT THAT DID NOT EXIST WHEN IT WAS WRITTEN: it
+   opens "Rounds 1 to 25 PASSED" while round 25 is the round applying it. That is the
+   §3 item 20 class — a slice asserting a fact about its own round's outcome — and the
+   carve-out for a claim about the round's own commits does not reach a claim about the
+   round's own VERDICT, which only the reviewer writes. It is true as of this
+   paragraph and was not true when it landed.
+
+Under operator amendment amend0827-process-diet rule 2 all three are reviewer prose
+that left nothing wrong on disk, so each is one dated line in `.agent/prose_slips.md`,
+with no id, no severity and no correction round.
+
+## Owed by round 26's first commits, per amend0827 rule 1
+
+Exactly these, and nothing else — no id is minted for any of them:
+
+1. The `Gate: F272 R25` PASS entry recorded in the verdict section above, appended to
+   `.agent/live_review.md`.
+2. THREE dated lines appended to `.agent/prose_slips.md`, all three the reviewer's own
+   and none touching disk state:
+   - 2026-09-07, F272 round 25 — the block's constraint 4 stated that all three append
+     targets contain zero occurrences of three consecutive newlines; `.agent/prose_slips.md`
+     contains one, at byte offset 39213, and the reviewer had measured that very count
+     earlier in the same session before generalising from the other two files. A property
+     asserted over a SET of files is measured over every member of the set, never over the
+     members that were convenient to read.
+   - 2026-09-07, F272 round 25 — G4 ordered a section's bytes compared "against the same
+     span at the base commit" where the span's end anchor is a heading THIS ROUND creates,
+     so at the base the span can only run to end of file and the two differ by the
+     separator the append itself contributes. A span whose end anchor the round introduces
+     cannot be delimited the same way before and after; name the anchor that exists at
+     both commits, or compare to end of file deliberately and say so.
+   - 2026-09-07, F272 round 25 — the PLANF272R25 slice opened "Rounds 1 to 25 PASSED"
+     while round 25 was the round applying it and had no verdict; §3 item 20's carve-out
+     covers a claim about the round's own COMMITS and not one about its own VERDICT, which
+     only the reviewer writes. A state slice describes the round it is written for in the
+     present tense and never books its outcome in advance.
+
+## Session
+
+SESSION 11 OF F272 ENDS HERE, after three delegated rounds — 23, 24 and 25 — every one
+of which PASSED at the first attempt.
+
+Why the session ends below the six-to-eight round target, in one sentence as amend0906
+rule 3 requires: four reviewer authoring errors landed in two of this session's three
+blocks — one in round 23's measurement notes and three in round 25's — and a run of
+`.agent/prose_slips.md` lines in one session is precisely the accumulating-authoring-error
+signal operator amendment amend0905-throughput names as an honest reason to stop
+authoring rather than to keep going.
+
+CONTEXT SELF-ASSESSMENT (amend0905-throughput): context was NOT the binding constraint
+and remained comfortable throughout; what ended the session is the reviewer's own error
+rate, measured above, together with the fact that the next unit of work is the atomic
+record flip DECISION F272 D15 rules too large for this feature's budget, which is the
+scope report's question rather than another round's.
+
+WHAT SESSION 11 PRODUCED, so the next session does not re-derive it: a real product
+repair with a standing class guard (round 23, R-0825), the T004 staging measurement and
+DECISION F272 D14 (round 24), and DECISION F272 D15 correcting D14's second part with
+the measurement that the classic-to-unified flip is atomic over the consumer graph
+(round 25). The open-findings count is 57 by distinct id, unchanged across all three
+rounds.
