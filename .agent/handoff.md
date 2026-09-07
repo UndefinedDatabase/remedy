@@ -1,216 +1,256 @@
-# Handoff — F272 One world completion, round 11
+# Handoff — F272 One world completion, round 12
 
 ## Session
 
-SESSION 6 of feature F272 · round 11 · rounds so far 11
+SESSION 6 of feature F272 · round 12 · rounds so far 12
 
 Context self-assessment (amend0905-throughput): context is comfortable — this round
-read two TypeScript modules and four test files, ran short suites only, and wrote no
-production code, so a further round in this session is affordable.
+read two TypeScript modules and three test regions, ran four short suites and two
+disposable worktrees, and wrote nine lines of production code, so a further round in
+this session is affordable.
 
-THE ROUND STOPPED AT C4 ON THE CONDITION THE BLOCK ITSELF NAMES. C0a through C3
-landed in the ordered sequence. C4 was NOT committed and C5 was NOT written, because
-`tests/ui_contracts/` — this round's gate, which the block forbids editing — CANNOT
-reach EXIT 0 with C4 applied: a THIRD test in that directory pins the label map at
-exactly seven entries and goes red the moment the two new ones are added. That is
-measured, not predicted, and the measurement is below. The block says in its own
-words: "If a test there cannot pass without being changed, STOP and hand off — that
-is a finding about this block, not a licence to edit the gate." So I stopped.
+THE ROUND IS COMPLETE. C0a through C7 all landed in the ordered sequence, nothing was
+reordered and no commit was made outside it. R-0821's fix is on disk: `blocked` and
+`stopped` are settled states in `digestVisibility.ts` and carry `"Blocked"` and
+`"Stopped"` in `digestCardCopy.ts`, and `tests/ui_contracts/` reads EXIT 0 at 809
+passed, 0 failed, 4 skipped where the base read EXIT 1 at 2 failed, 807 passed, 4
+skipped.
 
 ## Range
 
-Review of `1bfb1cd9`..`HEAD` (branch `feature/f272-one-world-completion`).
+Review of `fcde1983`..`HEAD` (branch `feature/f272-one-world-completion`).
 
 ## Commits
 
-### 3599cfd9 f272: save the round 11 step block as authored text
+### d1bb92a9 f272: save the round 12 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f272-r11.md` | +363 / -0 | C0a, `shutil.copyfile` of the reviewer's scratch original |
+| `.agent/authored/f272-r12.md` | +395 / -0 | C0a, `shutil.copyfile` of the reviewer's scratch original |
 
-### dee60fac f272: mirror the round 11 step block into last_block
+### f929564d f272: mirror the round 12 step block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +277 / -314 | C0b, byte copy of the same original |
+| `.agent/last_block.md` | +276 / -244 | C0b, byte copy of the same original |
 
-### 1a2c0017 f272: set the plan to the round 11 cockpit state step
+### b3a8644e f272: set the plan to the round 12 guard and modules step
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +16 / -17 | C1, replaced by the PLANF272R11 slice |
+| `.agent/plan.md` | +12 / -10 | C1, replaced by the PLANF272R12 slice |
 
-### 6373dc0e f272: book the round 10 PASS verdict, register R-0821 and three prose slips
+### 879504f7 f272: book the round 11 PASS verdict, correct R-0821 and two prose slips
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +4 / -0 | C2, RECORDR11 appended |
-| `.agent/prose_slips.md` | +6 / -0 | C2, SLIPSR11 appended |
+| `.agent/live_review.md` | +4 / -0 | C2, RECORDR12 appended |
+| `.agent/prose_slips.md` | +4 / -0 | C2, SLIPSR12 appended |
 
-### 35f50db8 f272: rule blocked and stopped as settled cockpit states in DECISION F272 D8
+### 64bed56f f272: rule the run-state phrase guard a floor in DECISION F272 D9
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T2_F272.md` | +45 / -0 | C3, DECISIONR11 appended |
+| `docs/roadmap/features/T2_F272.md` | +47 / -0 | C3, DECISIONR12 appended |
 
-### C6 — this handoff
+### a39dfe52 f272: make the run-state phrase vacuity guard a floor per DECISION F272 D9
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/handoff.md` | self-referential | C6 cannot table the commit that writes it (R-0149 pattern) |
+| `tests/ui_contracts/test_digest_hero_card.py` | +3 / -3 | C4, `== 7` → `>= 7` at line 230 and two docstring numerals |
+
+### dd51f8a6 f272: give blocked and stopped their place in the two digest cockpit modules
+| Path | +/- | Reason |
+|---|---|---|
+| `apps/ui/src/api/digestVisibility.ts` | +13 / -4 | C5, `SETTLED_STATES` gains both states; two counting comments rewritten |
+| `apps/ui/src/api/digestCardCopy.ts` | +5 / -2 | C5, `DIGEST_STATE_LABELS` gains both entries; the "seven" comment rewritten |
+
+### 2868d924 f272: record R-0821 as landed by the round 12 module commit
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/live_review.md` | +2 / -0 | C6, the single `Landed: R-0821` line |
+
+### C7 — this handoff
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/handoff.md` | self-referential | C7 cannot table the commit that writes it (R-0149 pattern) |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | `.agent/authored/f272-r11.md`, byte copy, digest verified before any other action |
+| C0a | done | `.agent/authored/f272-r12.md`, `shutil.copyfile`, digest verified BEFORE any other action |
 | C0b | done | `.agent/last_block.md`, byte copy of the same original |
-| C1 | done | plan replaced by the PLANF272R11 slice, byte-equal; its prose is now stale — Deviation 2 |
-| C2 | done | RECORDR11 and SLIPSR11 appended; every ordered count matched exactly |
-| C3 | done | DECISION F272 D8 appended; headings read D1..D8 in order |
-| C4 | skipped | NOT COMMITTED. Its gate `tests/ui_contracts/` cannot reach EXIT 0 without an edit to `tests/ui_contracts/test_digest_hero_card.py`, which the block forbids. Measured in a disposable worktree; see G4 |
-| C5 | skipped | a `Landed: R-0821` line would be false — C4 did not land. Constraint 6 leaves me no wording for "attempted", and inventing one is not mine to do |
-| C6 | done | this handoff |
+| C1 | done | plan replaced by the PLANF272R12 slice, byte-equal at 2284 B / 44 lines |
+| C2 | done | RECORDR12 and SLIPSR12 appended; every ordered count matched exactly |
+| C3 | done | DECISION F272 D9 appended; headings read D1..D9 in order |
+| C4 | done | ONE assertion and TWO docstrings in ONE file; the suite read EXACTLY the base afterwards |
+| C5 | done | both modules; the suite went EXIT 0 at 809 / 0 / 4 |
+| C6 | done | one `Landed: R-0821 — ` line, no `Done:` paragraph, no second line |
+| C7 | done | this handoff |
 
-No commit exists outside this ordered sequence; the range holds exactly five commits
-before this handoff and they are C0a, C0b, C1, C2 and C3 in that order.
+No commit exists outside this ordered sequence: the range holds exactly eight commits
+before this handoff and they are C0a, C0b, C1, C2, C3, C4, C5 and C6 in that order.
 
 ## Verification
 
 One line per gate with its REAL exit code, then the transcripts. "Green" as a word
-appears nowhere; where a gate is red or unreachable it says so and says why.
+appears nowhere.
 
 | Gate | Exit | Reading |
 |---|---|---|
-| G1 TRANSPORT | 0 | three artefacts, all 32960 bytes / 363 lines, all sha256 `6575c005…5be9d1d3` |
-| G2 THE RECORD | 0 | readers (a)(b)(c)(d) accept over both files; all six ordered counts matched |
-| G3 PLAN + FEATURE FILE | 0 | plan byte-equal at 2187 B / 42 lines; feature file readers accept; D1..D8 |
-| G4 THE TWO RED TESTS | **1** | UNREACHABLE AS ORDERED. C4 fixes both ordered tests and reddens a third. The red control, the label reading and the two-file run all pass — see below |
-| G5 VITEST | 0 | `52 passed`, in the primary checkout AND, separately, in a worktree with C4 applied |
-| G6 THE SUITES | 0 and 0 | `tests/docs/` 303, canary 42, both matching base |
-| G7 LINT AND INTEGRITY | n/a and 0 | ruff's ordered file set is EMPTY — no `.py` file changed; integrity EXIT 0 |
-| G8 THE TREE | 0 | tree empty, `git ls-files .remedy-wt` empty, the one worktree removed by exact path |
+| G1 TRANSPORT | 0 | three artefacts, all 29750 bytes / 395 lines, all sha256 `bac95d44…3845a238a` |
+| G2 THE RECORD | 0 | readers (a)(b)(c)(d) accept over both files; every ordered count matched, including the three that had to STAY put |
+| G3 PLAN + FEATURE FILE | 0 | plan byte-equal at 2284 B / 44 lines; feature file readers accept; D1..D9 |
+| G4 THE GUARD IS STILL A GUARD | 0 | (i) EXACTLY the base — EXIT 1, 2 failed, 807 passed, 4 skipped; (ii) discriminator passes; (iii) the real assertion still bites |
+| G5 THE TWO RED TESTS GO GREEN | 0 | 809 passed, 0 failed, 4 skipped; red control fires naming `blocked`; both labels readable |
+| G6 VITEST AND THE SUITES | 0, 0, 0 | vitest node 52 passed; `tests/docs/` 303; canary 42 — all matching base |
+| G7 LINT AND INTEGRITY | 0 and 0 | ruff clean over the one changed `.py` file; integrity `"passed": true` |
+| G8 THE TREE | 0 | tree empty, `git ls-files .remedy-wt` empty, both worktrees removed by exact path and pruned |
 
 ### G1 TRANSPORT — a real three-artefact chain
 
-Per §3 item 37 this covers the saved copy and its mirror, not the bytes emitted into
-my prompt.
+Per §3 item 37 this covers the saved copy and its mirror, NOT the bytes emitted into
+my prompt. The digest and length were verified against the file BEFORE any other
+action, and re-read here from the COMMITTED blobs.
 
 | Artefact | Bytes | Lines | sha256 |
 |---|---|---|---|
-| `.remedy-wt/f272-r11-block.md` (reviewer's surviving original) | 32960 | 363 | `6575c005b2b8bfca32818ff20c24122921aa205a86858f310b3860f75be9d1d3` |
-| `.agent/authored/f272-r11.md` at HEAD (C0a) | 32960 | 363 | same |
-| `.agent/last_block.md` at HEAD (C0b) | 32960 | 363 | same |
+| `.remedy-wt/f272-r12-block.md` (reviewer's surviving original) | 29750 | 395 | `bac95d441478084ec6cc29c60adc7b17fc571d82b689e0ea11600fa3845a238a` |
+| `.agent/authored/f272-r12.md` at HEAD (C0a) | 29750 | 395 | same |
+| `.agent/last_block.md` at HEAD (C0b) | 29750 | 395 | same |
 
 All three equal each other and equal the delegation's BLOCK_SHA, BLOCK_LENGTH and
-BLOCK_LINES. Verified BEFORE any other action was taken, and re-read from the
-COMMITTED blobs afterwards.
+BLOCK_LINES.
 
-### G2 THE RECORD at C2 — exit 0
+### G2 THE RECORD at C2 and at C6 — exit 0
 
-`.agent/live_review.md` ← RECORDR11, readers (a) to (d):
+`.agent/live_review.md` ← RECORDR12, readers (a) to (d):
 
-- (a) BYTE: pre 1118077 → post 1127168; pre a byte-exact prefix; `post == pre + b"\n" +
+- (a) BYTE: pre 1127168 → post 1132490; pre a byte-exact prefix; `post == pre + b"\n" +
   slice` TRUE; pre's terminal byte asserted to be exactly one `\n` BEFORE writing;
-  post ends in exactly one `\n`. Slice 9090 bytes, sha256 `caed60c3f12d…`.
+  post ends in exactly one `\n`. Slice 5321 bytes, sha256 `7c79ef8f7688…`.
 - (b) STRUCTURAL, computed independently of (a) by splitting the WHOLE image on
-  `\n{2,}`: N counted by my script from the slice's own paragraphs = 2; units 701 →
-  703, delta 2; the last 2 units equal the slice's paragraphs in order; the units
+  `\n{2,}`: N counted by my script from the slice's own paragraphs = 2; units 703 →
+  705, delta 2; the last 2 units equal the slice's paragraphs in order; the units
   before are an unchanged prefix.
-- (c) NEGATIVE CONTROL, in memory on a `bytes` object, never on disk: offset 1118098
-  asserted to lie inside the FIRST appended paragraph, one bit flipped — reader (a)
-  rejected AND reader (b) rejected; restored, both accepted, and the restored image
-  equalled the disk image.
+- (c) NEGATIVE CONTROL, in memory on a `bytes` object, never on disk: offset 1127189
+  asserted to lie inside the FIRST appended paragraph `[1127169, 1131119)`, one bit
+  flipped — reader (a) rejected AND reader (b) rejected; restored, both accepted, and
+  the restored image equalled the disk image.
 - (d) COUNTS before → after C2, every one exactly as ordered:
 
 | reading | ordered | measured |
 |---|---|---|
-| `^- R-\d{4} — ` distinct ids | 304 → 305 | 304 → 305 |
+| `^- R-\d{4} — ` distinct ids | 305 → 305 | 305 → 305 |
 | `^Done: R-\d{4} — ` distinct | 247 → 247 | 247 → 247 |
-| open set BY DISTINCT ID | 57 → 58 | 57 → 58 |
-| `^Gate: ` | 32 → 33 | 32 → 33 |
-| `^Gate: F272 R10 ` | 0 → 1 | 0 → 1 |
-| `^- R-0821 — ` | 0 → 1 | 0 → 1 |
+| open set BY DISTINCT ID | 58 → 58 | 58 → 58 |
+| `^Gate: ` | 33 → 34 | 33 → 34 |
+| `^Gate: F272 R11 ` | 0 → 1 | 0 → 1 |
 
-AFTER C5 the block orders `^Landed: R-0821 ` 0 → 1. C5 did not happen, so the
-measured reading is 0 → **0**, and `^Done: R-0821 ` is 0, as it must be.
+The first three are unchanged because this round mints no id and resolves none, which
+is exactly what the block ordered and what constraint 6 requires.
 
-`.agent/prose_slips.md` ← SLIPSR11, readers (a) and (b) and the same negative
-control: pre 136942 → post 139621; prefix, append arithmetic and terminal newline all
-TRUE; N counted 3, units 174 → 177, last 3 units equal the slice's paragraphs in
-order; the control's flip at offset 136963 was rejected by both readers and the
-restore equalled the disk image. Slice 2678 bytes, sha256 `2b6ac0dd5af6…`.
+`.agent/prose_slips.md` ← SLIPSR12, readers (a), (b) and the same negative control:
+pre 139621 → post 141124; prefix, append arithmetic and terminal newline all TRUE; N
+counted 2, units 177 → 179, the last 2 units equal the slice's paragraphs in order;
+the control's flip at offset 139642 (inside the first appended paragraph
+`[139622, 140423)`) was rejected by both readers and the restore equalled the disk
+image. Slice 1502 bytes, sha256 `fc18b45c7283…`.
+
+AFTER C6, as the block orders:
+
+| reading | ordered | measured |
+|---|---|---|
+| `^Landed: R-0821 ` | 0 → 1 | 0 → 1 |
+| `^Done: R-0821 ` | still 0 | 0 |
+
+C6's own append arithmetic: pre 1132490 → post 1132952, `post == pre + b"\n" + line`
+TRUE, the appended text is exactly ONE line, and `^Gate: ` stayed 34.
 
 ### G3 THE PLAN at C1, AND THE FEATURE FILE at C3 — exit 0
 
-Plan: `.agent/plan.md` equals the PLANF272R11 slice bytes exactly. Both byte lengths
-2187. 42 lines against the AGENTS.md cap of 50. `## Goal` present, `## Next Steps`
+Plan: `.agent/plan.md` equals the PLANF272R12 slice bytes exactly. Both byte lengths
+2284. 44 lines against the AGENTS.md cap of 50. `## Goal` present, `## Next Steps`
 present.
 
-Feature file: readers (a) and (b), no negative control (gate budget). Pre 30008 →
-post 32918; prefix, append arithmetic and terminal newline all TRUE; N counted 7,
-units 63 → 70, last 7 units equal the slice's paragraphs in order. Lines matching
-`^### DECISION F272 D\d+ ` counted by me: 7 before, 8 after, naming in order
-D1 D2 D3 D4 D5 D6 D7 D8.
+Feature file: readers (a) and (b), no negative control (gate budget). Pre 32918 →
+post 35898; prefix, append arithmetic and terminal newline all TRUE; N counted 7,
+units 70 → 77, the last 7 units equal the slice's paragraphs in order. Lines matching
+`^### DECISION F272 D\d+ ` counted by me: 8 before, 9 after, naming in order
+D1 D2 D3 D4 D5 D6 D7 D8 D9.
 
-### G4 THE TWO RED TESTS — the gate the round could not reach, measured five ways
+### G4 THE GUARD IS STILL A GUARD, at C4 — exit 0
 
-ALL OF G4 RAN IN THE DISPOSABLE WORKTREE `.remedy-wt/f272-r11-probe` AT `1bfb1cd9`,
-never in the primary checkout, and C4 was never committed. `node_modules` and
-`apps/ui/node_modules` were restored into it with `shutil.copytree(..., symlinks=True)`
-— the argument, not the default, per R-0591 and constraint 7.
-
-**THE BASE, in the primary checkout, unmodified:**
+**THE BASE, measured by me in the primary checkout before C4 was written:**
 
     python3 -B -m pytest tests/ui_contracts/ -q -p no:randomly
-    EXIT = 1 — 2 failed, 807 passed, 4 skipped in 6.77s
+    EXIT = 1 — 2 failed, 807 passed, 4 skipped in 6.28s
+    FAILED …/test_digest_card_copy.py::TestEveryRunStateIsAccountedFor::test_all_seven_run_states_are_named_by_the_label_map
+    FAILED …/test_job_digest_card_contract.py::TestTheTriggerRuleIsPureAndPortless::test_all_seven_run_states_are_accounted_for_in_the_rule
 
-exactly the three numbers the block names. The worktree reads 806 passed / 5 skipped
-for the same two failures — one further skip inside a worktree — so every comparison
-below is worktree-against-worktree.
+Exactly the three numbers the block names, and the two failures are the pair R-0821
+names.
 
-**THE FIVE MEASUREMENTS.** C4 was written to the letter of the spec: `"blocked"` and
-`"stopped"` appended to `SETTLED_STATES`, the two counting comments rewritten to name
-the set instead of counting it, and `"blocked": "Blocked"` and `"stopped": "Stopped"`
-appended to `DIGEST_STATE_LABELS` with its "seven" comment rewritten.
+**G4(i) AFTER C4, the same command:**
 
-| # | tree | exit | summary | the tests that failed |
-|---|---|---|---|---|
-| M1 | control, C4 absent | 1 | 2 failed, 806 passed, 5 skipped | the two the block names |
-| M2 | BOTH modules edited | **1** | 1 failed, 807 passed, 5 skipped | `test_digest_hero_card.py::TestNoRuleHasASecondHome::test_no_run_state_phrase_is_restated_as_a_literal` |
-| M3 | `digestVisibility.ts` ONLY | 1 | 1 failed, 807 passed, 5 skipped | the copy one only — this half introduces NO new red |
-| M4 | `digestCardCopy.ts` ONLY | 1 | 2 failed, 806 passed, 5 skipped | the contract one, plus the hero-card one — this half is the whole cause |
-| M5 | both modules + `== 7` → `>= 7` in the gate file | **0** | 808 passed, 5 skipped | none |
+    EXIT = 1 — 2 failed, 807 passed, 4 skipped in 6.35s
 
-**WHY THE THIRD TEST GOES RED.** `tests/ui_contracts/test_digest_hero_card.py:230`,
-inside `TestNoRuleHasASecondHome`, is a vacuity guard on its own parser:
+EXACTLY the base, as the block requires. C4 loosened a bound that 7 already satisfied,
+so nothing moved — no test changed colour, and the count proves C4 did no more than it
+was ordered to.
 
-    phrases = digest_state_phrases()
-    assert len(phrases) == 7, (...)
+**G4(ii) THE DISCRIMINATOR, named explicitly with its own result:**
 
-`digest_state_phrases()` parses `DIGEST_STATE_LABELS` out of `digestCardCopy.ts`. Two
-new entries make it 9, and the guard is written as an EQUALITY where its own docstring
-("a reader that returns almost nothing would make the loop below vacuous") wants a
-FLOOR. It is the same defect class as R-0821 itself — a hard-coded seven that goes
-stale the day the enum widens — one layer further out, and it is invisible until the
-fix for R-0821 lands. The assertion it guards (`restated == []`, no state phrase
-restated as a literal in `DigestHeroCard.tsx`) still holds for all nine phrases: M5
-shows the whole suite at EXIT 0 once the constant is a floor.
+    python3 -B -m pytest "tests/ui_contracts/test_digest_hero_card.py::\
+    TestNoRuleHasASecondHome::test_the_phrase_restatement_scan_can_see_a_restated_phrase" \
+        -q -p no:randomly
+    EXIT = 0 — 1 passed in 0.19s
 
-There is no honest C4 that avoids it. Any two entries make the count 9; the only ways
-round it are to not add them (leaving the ordered test red), to hide them from the
-parser with computed keys (gaming a guard), or to edit the gate (forbidden here). So
-G4(i) is UNREACHABLE inside this block's change set, and I stopped rather than
-committing a change whose gate is red or widening the change set to route around it.
+`test_the_phrase_restatement_scan_can_see_a_restated_phrase` PASSES. It was not
+touched by C4 and it is the thing that keeps the loosened floor honest.
 
-**G4(ii) THE RED CONTROL — the gate can still fail, and was shown to fail.** Run with
-C4 applied in the worktree. The byte string `  "blocked",\n` occurs exactly 1 time in
-`digestVisibility.ts` (§3 item 25). Removed it, file sha256 `4808d86a…dfe2bc1d` before:
+**G4(iii) THE REAL ASSERTION STILL BITES** — run in the disposable worktree
+`.remedy-wt/f272-r12-g4` at `a39dfe52`, the commit C4 creates, never in the primary
+checkout. `CARD` in that test module is the expression
+`UI_SRC / "components" / "digest" / "DigestHeroCard.tsx"`, and I printed the path it
+resolves to rather than assuming it:
+
+    CARD RESOLVED PATH: …/.remedy-wt/f272-r12-g4/apps/ui/src/components/digest/DigestHeroCard.tsx
+    exists: True   bytes: 5568   sha256 before: 1f4f084e…c92e467dc
+
+5568 bytes, exactly as the block states. The phrase restated is the one the parser
+itself returns first, `'Waiting to start'`, added as `const leak = "Waiting to start";`:
+
+| run | exit | reading |
+|---|---|---|
+| before the restatement | 0 | 1 passed |
+| with the phrase restated as a literal | **1** | `AssertionError: … found ['Waiting to start'] restated as literals here` |
+| after restore | 0 | 1 passed |
+
+The failure names the phrase. The restore is byte-identical — sha256 back to
+`1f4f084e…c92e467dc`. Loosening `==` to `>=` did NOT turn the test vacuous.
+
+### G5 THE TWO RED TESTS GO GREEN, at C5 — exit 0
+
+**G5(i)** `python3 -B -m pytest tests/ui_contracts/ -q -p no:randomly`
+
+    EXIT = 0 — 809 passed, 4 skipped in 6.70s
+
+Against the base of 2 failed / 807 passed / 4 skipped: passed rose by exactly 2 to
+**809**, failed is **0**, skipped stayed **4**. All three numbers as ordered.
+
+**G5(ii) THE RED CONTROL**, in the disposable worktree `.remedy-wt/f272-r12-g5` at
+`dd51f8a6`, the commit C5 creates. The byte string `  "blocked",\n` occurs exactly
+**1** time in `digestVisibility.ts` (§3 item 25) — which is why C5 wrote that array
+multi-line. File sha256 `3cceb6ea…43372ff8` before:
 
     python3 -B -m pytest tests/ui_contracts/test_job_digest_card_contract.py -q -p no:randomly
-    EXIT = 1 — 1 failed, 28 passed in 0.25s
+    before removal:            EXIT = 0 — 29 passed in 0.28s
+    with "blocked" removed:    EXIT = 1 — 1 failed, 28 passed in 0.30s
     E  AssertionError: ['blocked'] appear in RunState but not in digestVisibility.ts, …
+    after restore:             EXIT = 0 — 29 passed in 0.28s
 
-The failure names `blocked` and nothing else. Restored: sha256 back to
-`4808d86a…dfe2bc1d`, byte-identical, and the re-run reads EXIT 0 at 29 passed.
+The failure names `blocked` and ONLY `blocked` — `stopped` does not appear in it,
+which is the discrimination the control is for. Restored file sha256 back to
+`3cceb6ea…43372ff8`, byte-identical.
 
-**G4(iii) WHAT A READER OF THE CARD ACTUALLY SEES**, parsed out of the module rather
-than inferred from the test names, with C4 applied:
+**G5(iii) WHAT A READER OF THE CARD ACTUALLY SEES**, parsed out of the module rather
+than inferred from test names:
 
 | call | answer | is `UNREADABLE_STATE_LABEL` |
 |---|---|---|
@@ -218,201 +258,198 @@ than inferred from the test names, with C4 applied:
 | `digestStateLabel("stopped")` | `"Stopped"` | False |
 
 `UNREADABLE_STATE_LABEL` is still `"State not recorded"`, unchanged. The label map
-carries nine keys, in `RunState` declaration order; `SETTLED_STATES` reads `paused,
-completed, failed, cancelled, blocked, stopped`.
+carries nine keys in `RunState` declaration order: `pending, planned, running, paused,
+completed, failed, cancelled, blocked, stopped`. `DIGEST_CTA_RULE_IDS` is UNTOUCHED and
+still reads `open-decision, stopped-by-operator, blocked-failed, all-green,
+indeterminate` — those are rule ids from `recommended_next_action`, the different
+vocabulary the module's own comment names as a trap.
 
-**THE TWO ORDERED FILES ALONE, with C4 applied:**
+### G6 VITEST AND THE SUITES — run SERIALLY, each its own invocation
 
-    python3 -B -m pytest tests/ui_contracts/test_digest_card_copy.py \
-        tests/ui_contracts/test_job_digest_card_contract.py -q -p no:randomly
-    EXIT = 0 — 52 passed in 0.29s
-
-52 passed is exactly the reading the reviewer's bisection took at `b5cde726`, the
-commit before round 8 widened the enum. C4 restores those two files to their
-pre-round-8 state precisely.
-
-### G5 VITEST — exit 0, twice
-
-    python3 -B -m pytest tests/orchestration/test_test_runner.py -q -p no:randomly
-    PRIMARY CHECKOUT, at the commit handed back:  EXIT = 0 — 52 passed in 5.87s
-    WORKTREE WITH C4 APPLIED:                     EXIT = 0 — 52 passed in 3.54s
-
-The second run is the one that matters and was the reason for the `copytree`: it is
-this repository's own route to `npx vitest run` over the whole UI suite, so it gates
-all three `.test.ts` files that import the modules C4 edits. No bare `npx` was
-invoked. C4 is vitest-safe: `digestVisibility.test.ts` and `digestCardCopy.test.ts`
-each hold a seven-row state table, but each asserts only that ITS OWN table lists
-those seven — neither compares itself to `RunState` — so widening the modules moves
-nothing there.
-
-### G6 THE SUITES — run SERIALLY, each its own invocation
-
-| invocation | exit | summary line | base at `1bfb1cd9` |
+| invocation | exit | summary line | base |
 |---|---|---|---|
+| `tests/orchestration/test_test_runner.py` (VITEST) | 0 | `52 passed in 5.86s` | 52 |
 | `tests/docs/` | 0 | `303 passed in 0.49s` | 303 |
-| `tests/cli/test_golden_path.py` (THE CANARY) | 0 | `42 passed in 20.98s` | 42 |
+| `tests/cli/test_golden_path.py` (THE CANARY) | 0 | `42 passed in 20.84s` | 42 |
+
+The vitest node ran in the PRIMARY CHECKOUT, the only tree carrying
+`apps/ui/node_modules`. It did not go red, so there was nothing to report verbatim and
+NO `.test.ts` file needed changing — the change set stayed as listed. No bare `npx` was
+invoked and `npm run lint` was not run and is never ordered here.
 
 `tests/orchestration/` and `tests/cli/` were correctly NOT run in full, for the reason
-the block gives: no `.py` file changed this round, and G5 already runs the one
-orchestration node this change could reach. The whole change set is four `.agent/`
-files and one `docs/` file.
+the block gives and which I verified rather than assumed: the only `.py` file this
+round changed is `tests/ui_contracts/test_digest_hero_card.py`. The full changed-file
+list for `fcde1983..HEAD` is the five `.agent/` paths, `docs/roadmap/features/T2_F272.md`,
+the two `.ts` modules and that one test file.
 
-### G7 LINT AND INTEGRITY — an empty ruff set, stated rather than passed
+### G7 LINT AND INTEGRITY, at C5 — exit 0 and exit 0
 
-The `.py` files this round changed: NONE. The full changed-file list for
-`1bfb1cd9..HEAD` is `.agent/authored/f272-r11.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md` and
-`docs/roadmap/features/T2_F272.md`. So ruff's ordered file set is EMPTY and ruff was
-not run: an empty invocation would report a pass that measured nothing. `npm run
-lint` was not run and is never ordered in this repository.
+    python3 -m ruff check tests/ui_contracts/test_digest_hero_card.py
+    EXIT = 0 — All checks passed!
 
-`python3 -m apps.cli.grouped integrity check --json`: EXIT 0, `"passed": true`,
-`"fail_count": 0`, over 5 checks.
+ONE invocation over exactly the `.py` files this round changed, which is that file and
+nothing else. EXIT 0, so the `--stdin-filename` pre-existing-diagnostic route was not
+needed.
+
+    python3 -m apps.cli.grouped integrity check --json
+    EXIT = 0 — "passed": true, "fail_count": 0, over 5 checks
 
 ### G8 THE TREE — exit 0
 
-- `git status --porcelain` EMPTY when C6 is staged.
+- `git status --porcelain` EMPTY when C7 is staged.
 - `git ls-files .remedy-wt` EMPTY.
-- `git worktree list`: ONE worktree was created and removed BY EXACT PATH and pruned —
-  `/home/decodeux/Repos/remedy/.remedy-wt/f272-r11-probe`. Never by glob. Only the
-  twelve pre-existing `remedy/job-*` entries remain, exactly as before. The FOUR
-  scratch files I wrote under `.remedy-wt/` were deleted by exact path, never by
-  glob: `r11_c2.py`, `r11_c3.py`, `r11_c4_probe.py` and `r11_g8.py`. The reviewer's
-  own `.remedy-wt/f272-r11-block.md` was left where it is.
+- `git worktree list`: TWO worktrees were created and each removed BY EXACT PATH and
+  pruned — `/home/decodeux/Repos/remedy/.remedy-wt/f272-r12-g4` and
+  `/home/decodeux/Repos/remedy/.remedy-wt/f272-r12-g5`. Never by glob. Only the twelve
+  pre-existing `remedy/job-*` entries remain, exactly as at session start. The SIX
+  scratch paths I wrote under `.remedy-wt/` were deleted BY EXACT PATH:
+  `r12_slices.py`, `r12_c2.py`, `r12_g4iii.py`, `r12_g5.py` and the two `__pycache__`
+  entries `r12_c2.cpython-310.pyc` and `r12_slices.cpython-310.pyc`. The reviewer's own
+  `.remedy-wt/f272-r12-block.md` was left where it is. See Deviation 3 on why a glob
+  would have been a disaster here.
 - Per-commit insertions from `git diff --numstat <parent> <commit>`, each
   single-parent, each under the DECISION F104 D1 cap of 500, each matching the
   `## Commits` table above cell for cell:
 
 | commit | item | parents | `+` | `-` | ≤500 | matches `## Commits` |
 |---|---|---|---|---|---|---|
-| `3599cfd9` | C0a | 1 | 363 | 0 | yes | yes |
-| `dee60fac` | C0b | 1 | 277 | 314 | yes | yes |
-| `1a2c0017` | C1 | 1 | 16 | 17 | yes | yes |
-| `6373dc0e` | C2 | 1 | 10 | 0 | yes | yes (2 rows) |
-| `35f50db8` | C3 | 1 | 45 | 0 | yes | yes |
+| `d1bb92a9` | C0a | 1 | 395 | 0 | yes | yes |
+| `f929564d` | C0b | 1 | 276 | 244 | yes | yes |
+| `b3a8644e` | C1 | 1 | 12 | 10 | yes | yes |
+| `879504f7` | C2 | 1 | 8 | 0 | yes | yes (2 rows, +4/-0 each) |
+| `64bed56f` | C3 | 1 | 47 | 0 | yes | yes |
+| `a39dfe52` | C4 | 1 | 3 | 3 | yes | yes |
+| `dd51f8a6` | C5 | 1 | 18 | 6 | yes | yes (2 rows, +13/-4 and +5/-2) |
+| `2868d924` | C6 | 1 | 2 | 0 | yes | yes |
 
-C6 is excluded by §3 item 14: it cannot count its own insertions. C4 and C5 have no
-row because they were not committed.
+C7 is excluded by §3 item 14: it cannot count its own insertions.
 
-- Marker sweep, counted by me, lines beginning `<<<BEGIN ` or `<<<END ` in every
+- Marker sweep, counted by me, LINES beginning `<<<BEGIN ` or `<<<END ` in every
   written non-block file: `.agent/plan.md` 0, `.agent/live_review.md` 0,
-  `.agent/prose_slips.md` 0, `docs/roadmap/features/T2_F272.md` 0.
+  `.agent/prose_slips.md` 0, `docs/roadmap/features/T2_F272.md` 0,
+  `tests/ui_contracts/test_digest_hero_card.py` 0,
+  `apps/ui/src/api/digestVisibility.ts` 0, `apps/ui/src/api/digestCardCopy.ts` 0.
+  See Deviation 2 on the non-anchored substrings the ledger already carried.
 
 - The three `.agent/STOP` readings of constraint 8, each by `os.path.exists`:
 
 | when | `.agent/STOP` exists |
 |---|---|
 | before C0a | False |
-| before C4 | False |
-| before C6 | False |
+| before C5 | False |
+| before C7 | False |
 
 ## External actions
 
 | action | outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/f272-r11-probe 1bfb1cd9` | created at `1bfb1cd9` |
-| `git worktree remove --force .remedy-wt/f272-r11-probe` | removed by exact path |
-| `git worktree prune` | run after the removal |
+| `git worktree add --detach .remedy-wt/f272-r12-g4 a39dfe52` | created at `a39dfe52` |
+| `git worktree remove --force .remedy-wt/f272-r12-g4` | removed by exact path |
+| `git worktree prune` | run after that removal |
+| `git worktree add --detach .remedy-wt/f272-r12-g5 dd51f8a6` | created at `dd51f8a6` |
+| `git worktree remove --force .remedy-wt/f272-r12-g5` | removed by exact path |
+| `git worktree prune` | run after that removal |
 | `git push -u origin feature/f272-one-world-completion` | see below |
 
 No PR created, none merged, nothing force-pushed, no branch deleted.
 
 ## Authored-text proofs
 
-Disk-to-disk against the committed `.agent/authored/f272-r11.md`:
+Disk-to-disk against the COMMITTED `.agent/authored/f272-r12.md`, both sides read back
+out of git rather than from my working tree:
 
 | slice | target | bytes | mode | result | sha256 |
 |---|---|---|---|---|---|
-| PLANF272R11 | `.agent/plan.md` | 2187 | replace | IDENTICAL | `3682beb3c561…` |
-| RECORDR11 | `.agent/live_review.md` | 9090 | append | IDENTICAL | `caed60c3f12d…` |
-| SLIPSR11 | `.agent/prose_slips.md` | 2678 | append | IDENTICAL | `2b6ac0dd5af6…` |
-| DECISIONR11 | `docs/roadmap/features/T2_F272.md` | 2909 | append | IDENTICAL | `437bdbcbb405…` |
+| PLANF272R12 | `.agent/plan.md` | 2284 | replace | IDENTICAL | `6835d956e384…` |
+| RECORDR12 | `.agent/live_review.md` | 5321 | append | IDENTICAL | `7c79ef8f7688…` |
+| SLIPSR12 | `.agent/prose_slips.md` | 1502 | append | IDENTICAL | `fc18b45c7283…` |
+| DECISIONR12 | `docs/roadmap/features/T2_F272.md` | 2979 | append | IDENTICAL | `fde21e28f690…` |
 
-All four slices were applied byte for byte, none was edited, and no
-`<<<BEGIN`/`<<<END` marker LINE reached any target file. C4 and C5 were a SPEC and not
-a slice, and neither was committed.
+All four slices were applied byte for byte, none was edited, and no `<<<BEGIN`/`<<<END`
+marker LINE reached any target file. C4, C5 and C6 were a SPEC and not a slice; I wrote
+that code myself.
 
 ## Deviations & assumptions
 
-TWO COMMITS OF THE ORDERED SEQUENCE WERE NOT MADE, AND NO COMMIT WAS MADE BEYOND IT.
-Per the fix clause OPEN in the record and binding on this handback: any commit beyond
-the ordered sequence receives its OWN `## Commits` row and its OWN item-status row,
-and the Deviations section says so in those same words. There is no such commit — the
-range `1bfb1cd9..HEAD` holds exactly five commits before this handoff, they are C0a,
-C0b, C1, C2 and C3 in that order, and the departure runs the other way: C4 and C5 are
-ABSENT, each with its own item-status row saying so.
+NO COMMIT WAS MADE BEYOND THE BLOCK'S ORDERED SEQUENCE, AND NONE WAS DROPPED OR
+REORDERED. Per the fix clause OPEN in the record and binding on this handback: any
+commit beyond the ordered sequence receives its OWN `## Commits` row and its OWN
+item-status row, and the Deviations section says so in those same words. There is no
+such commit — the range `fcde1983..HEAD` holds exactly eight commits before this
+handoff and they are C0a, C0b, C1, C2, C3, C4, C5 and C6 in that order, C4 landing
+BEFORE C5 as constraint 3 requires.
 
-### Deviation 1 — C4 and C5 were not committed, on the block's own STOP condition
+### Deviation 1 — my first reader (b) was wrong, and the C2 append was written twice
 
-Stated in full under G4. In one sentence: the ordered gate `tests/ui_contracts/`
-cannot read EXIT 0 with C4 applied, because a third test in that directory pins
-`len(phrases) == 7` over the very map C4 widens, and the block forbids editing that
-directory. I applied C4 in a disposable worktree, measured it five ways, proved the
-red control fires, proved vitest unaffected, proved the two ordered tests go green and
-the third goes red, then discarded it. C5's `Landed:` line would have asserted a fix
-that is not on the branch, so it was not written.
+Reader (b) splits the whole image on `\n{2,}`. My first implementation compared the
+pre-image's units against the post-image's units WITHOUT normalising them, and it
+rejected a correct append: the pre-image's own terminal `\n` is a lone newline at the
+end of `pre`, but once the append lands that same newline is the first half of the
+`\n\n` separator, so the last pre-unit loses a trailing byte in the post-image and the
+prefix comparison failed on a difference that is a property of the SPLITTER and not of
+the disk. The negative control was uninformative in that state — reader (b) was
+rejecting everything, including the restore — which is precisely how I noticed.
 
-WHAT THE NEXT ROUND NEEDS, so this costs one small round and not a session: land C4
-exactly as measured, and change ONE character in
-`tests/ui_contracts/test_digest_hero_card.py:230` from `== 7` to `>= 7` (or, better,
-to a comparison against `run_state_values()`, which that file does not yet import).
-M5 shows that combination at EXIT 0, 808 passed, 5 skipped. Whether the gate file may
-be edited is a ruling for the reviewer, not a call for me: it is the same edit R-0821
-already argues for one layer in, and refusing it leaves the cockpit unable to name two
-states the orchestrator really produces.
+I did NOT commit and then fix. I reverted both files with
+`git checkout -- .agent/live_review.md .agent/prose_slips.md`, confirmed
+`git status --porcelain` empty, corrected the reader to strip trailing newlines per
+unit with the reason written into the code as a comment, and re-ran the whole of C2
+from the clean pre-image. The committed C2 is therefore a single clean append, and
+every G2 number above was measured by the corrected reader. Declared because a reader
+auditing this round should know one gate was authored wrong before it was authored
+right, even though no wrong byte ever reached a commit.
 
-### Deviation 2 — the plan and the record now describe a fix that did not land
+### Deviation 2 — `.agent/live_review.md` already carried `<<<BEGIN`/`<<<END` substrings
 
-Constraint 1 is absolute — "if one looks wrong, apply it anyway and say so" — so all
-four slices went in byte for byte, and two of them now overstate what is on disk:
+My first marker sweep counted SUBSTRINGS and read `BEGIN=1 END=3` in
+`.agent/live_review.md`, which looked like a transport leak. It is not one. Measured at
+`fcde1983`, BEFORE this round wrote anything, that file already carried those counts:
+they are earlier findings QUOTING the marker syntax inside prose, mid-line, and not one
+of them starts a line. Line-anchored, the count is **0 before and 0 after**, and both
+RECORDR12 and SLIPSR12 contribute 0 of either form. The sweep reported under G8 is the
+line-anchored one, which is what "marker LINES never reach a target file" actually
+means.
 
-- `.agent/plan.md` (C1) says "This round gives them their place", and the round did
-  not.
-- `.agent/live_review.md` (C2), inside R-0821, says "FIX, LANDED BY THIS ROUND:
-  `blocked` and `stopped` join `SETTLED_STATES` and gain `DIGEST_STATE_LABELS`
-  entries". They do not yet. Everything else in that registration — the bisection, the
-  two module readings, the product effect, the counter-measure — is accurate and was
-  independently reproduced by me at base.
-- `docs/roadmap/features/T2_F272.md` (C3) states DECISION F272 D8. A DECISION is a
-  RULING and the ruling stands on its own; but its REVERSE clause ("REVERSE by
-  removing the two entries from each module") names entries that do not exist yet.
+### Deviation 3 — the scratch cleanup was by exact path, and a glob would have been a disaster
 
-I did not edit a single byte of any of them. Correcting them is the reviewer's, and
-the cheapest correction is the next round landing C4, after which all three read true.
+`.remedy-wt/` holds 42 pre-existing files matching `r12_*` — `r12_g8.py`,
+`r12_gates.py`, `r12_vitest.config.mjs` and so on — left by the round-12 sessions of
+OTHER features. I removed only my own six paths, named individually. An
+`rm .remedy-wt/r12_*` would have destroyed all 42. Recording it because this is the
+first round in this feature where the never-delete-by-glob rule had a live blast radius
+rather than a hypothetical one.
 
-### Deviation 3 — the block's G4 gate was run in a worktree, and C4 lives nowhere now
+### Deviation 4 — no `node_modules` was copied into either worktree, and none was needed
 
-The block places G4(ii) in a disposable worktree at "the commit C4 creates". There is
-no such commit, so the whole of G4 ran in a worktree at `1bfb1cd9` with C4 applied to
-the working tree and never committed. The primary checkout never carried the edit;
-`git status --porcelain` was empty at every point after C3. The exact C4 text is not
-preserved anywhere on the branch — it is reproducible from the spec in
-`.agent/authored/f272-r11.md`, and the shape it took is recorded under G4(iii) above:
-`SETTLED_STATES` gains `"blocked"` and `"stopped"` as a six-element multi-line array,
-`DIGEST_STATE_LABELS` gains `"blocked": "Blocked"` and `"stopped": "Stopped"` in
-`RunState` declaration order, and the two comments that counted the partition — "the
-most report-worthy rest of the four" and "The seven members of `RunState`" — were
-rewritten to name the set instead, per the block's preference for naming over
-counting.
+Constraint 7 requires `shutil.copytree(..., symlinks=True)` for any VITEST run inside a
+worktree. Neither destructive check this round runs vitest: G4(iii) and G5(ii) are both
+pytest-only, over files read from disk as TEXT, so both worktrees ran without
+`node_modules` at all. The one vitest gate, G6, ran in the PRIMARY checkout exactly as
+the block orders. No `copytree` was therefore invoked, and this is a deviation from the
+letter of round 11's route and not from constraint 7, whose condition never triggered.
 
-### Deviation 4 — `node_modules` was copied into the worktree, 305 MB
+### Deviation 5 — C5 wrote `SETTLED_STATES` multi-line, which the block implies but does not say
 
-Constraint 7's route, taken as written: `shutil.copytree(..., symlinks=True)` for both
-`node_modules` and `apps/ui/node_modules`, rather than round 10's symlink. It is what
-made the C4 vitest run possible at all, and it is also why the worktree's
-`tests/ui_contracts/` reading is 5 skipped where the primary reads 4 — the extra skip
-is not the `tsc` node, which ran. The whole worktree was removed by exact path.
+The block's G5(ii) counts the byte string `  "blocked",\n` — two leading spaces, a
+trailing newline — and requires it to occur exactly once. That string can only exist in
+a MULTI-LINE array, so C5 reformatted `SETTLED_STATES` from its one-line form into six
+indented entries. I confirmed first that nothing depends on the old shape: the contract
+test reads `f'"{state}"' not in code` over the whole file, so formatting is free to it,
+and G6's vitest and tsc node passed afterwards. The comment above it gained a sentence
+naming DECISION F272 D8 as the reason both states are settled, rather than only losing
+its "four".
 
-### Deviation 5 — the labels were chosen without needing the copy audit's permission
+### Deviation 6 — the copy audit was re-measured at this tree and refused neither label
 
-The block says use `"Blocked"` and `"Stopped"` unless the copy audit refuses them. It
-did not refuse: `scrubUiText`'s forbidden-word list, parsed out of `humanCopy.ts`,
-holds neither word, both are short capitalised phrases in the voice of `"Paused"` and
-`"Cancelled"`, and both are distinct from every existing phrase, which
-`digestCardCopy.test.ts` requires. They also collide with nothing in
-`DIGEST_CTA_RULE_IDS`, which I did not touch: `"blocked-failed"` does not contain the
-literal `"blocked"` including its closing quote, which is exactly why the ordered test
-was failing rather than passing by accident.
+The block permits `"Blocked"` and `"Stopped"` "unless the audit refuses them at this
+tree". I parsed `scrubUiText`'s `forbidden` list out of `humanCopy.ts` at `fcde1983`:
+it holds 17 entries, `rank` through `traceback`, and neither `blocked` nor `stopped` nor
+either capitalised form is among them. `"Blocked"` DOES occur as a literal in
+`humanCopy.ts` — it is the CHECKLIST vocabulary's label for its own `blocked`, which is
+the exact trap `digestCardCopy.ts`'s own comment warns about, and it constrains nothing
+here because the two maps are different vocabularies. Both labels were used as
+authorised.
 
 ### Assumption
 
@@ -421,13 +458,15 @@ names the tree it was taken in.
 
 ## Next
 
-RULE ON C4's BLOCKER, which is the one thing this round could not decide for itself:
-may `tests/ui_contracts/test_digest_hero_card.py:230` change `len(phrases) == 7` to a
-floor, so that the R-0821 fix can land? Everything else is measured and ready — M5 in
-the table above is the whole answer at EXIT 0, 808 passed, 5 skipped. The next block
-can be small: C4 as specified, that one-character gate repair, C5's `Landed:` line,
-and the handback. Then move three of DECISION F272 D6 — retype `JobPlan.state` to
-`RunState`, make the six `JOB_*` constants members, `.value` at every boundary leaving
-the record — with `tests/ui_contracts/` in its gate list, which R-0821's
-counter-measure now makes binding on exactly that round. Phase 1 rule 1
-(`.agent/STOP`) is checked before Phase 1 rule 2, as always.
+REVIEW THIS ROUND AND, ON PASS, REPLACE C6's `Landed: R-0821` LINE WITH THE AUTHORED
+`Done: R-0821` RESOLUTION — that is the one thing this round is forbidden to write for
+itself, and a surviving `Landed:` line is an unreviewed fix by construction. R-0821's
+counter-measure survives its resolution: a block changing a state vocabulary names
+`tests/ui_contracts/` in its gate list.
+
+Then move three of DECISION F272 D6 — retype `JobPlan.state` to `RunState`, make the
+six `JOB_*` constants `RunState` members, `.value` at every boundary leaving the record
+— with `tests/orchestration/test_job_state_field.py` as the rendering guard that move
+must keep green, D7's probe as the method for finding its site set, and
+`tests/ui_contracts/` in the gate list. Phase 1 rule 1 (`.agent/STOP`) is checked
+before Phase 1 rule 2, as always.
