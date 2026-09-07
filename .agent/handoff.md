@@ -349,3 +349,146 @@ the next-action rails advertising `remedy job run-next` all sit in functions
 typed `job: Job`, so the classic record must move before the advertisements can,
 and DECISION F272 D13 forbids deleting a command ahead of its advertisements.
 Awaiting the reviewer's verdict on round 22 and the round 23 block.
+
+## Reviewer verdict — round 22
+
+VERDICT PASS. Every gate was RE-RUN by the reviewer rather than read, in the primary
+checkout at `b926992b`.
+
+- Range `3ca66aac`..`b926992b`, seven commits, every one single-parent, in exactly the
+  ordered sequence C0a, C0b, C1, C2, C3, C4, C5. The change set is exactly the six
+  ordered paths and nothing else — `git diff --stat` names `.agent/authored/f272-r22.md`,
+  `.agent/handoff.md`, `.agent/last_block.md`, `.agent/live_review.md`, `.agent/plan.md`
+  and `docs/system/architecture.md`. Nothing under `tests/`, `packages/`, `apps/` or
+  `scripts/` moved, which is the constraint that matters most this round: THE GUARD WAS
+  NOT EDITED.
+- G1 TRANSPORT IS A REAL CHAIN AND NOT MERELY SELF-CONSISTENT: the reviewer's own scratch
+  original `.remedy-wt/f272-r22-block.md`, written and hashed BEFORE delegation, and the
+  committed `.agent/authored/f272-r22.md` and `.agent/last_block.md` are all 22595 bytes
+  at 277 lines and all hash to
+  `13d10059a62be82131c8d5ea90f2a1fe419c8aa490f8a8b60c78d599942ad73b`. Per §3 item 37 that
+  chain covers those three artefacts and is not a claim about the bytes emitted into a
+  prompt.
+- G2 THE RECORD reproduces on both appends: `.agent/live_review.md` 1186986 to 1193650 to
+  1195379, each proved against its own pre-image, and all seven ordered counts reproduce
+  exactly — registrations 307 to 308, resolutions 250 to 251, open set BY DISTINCT ID 57
+  unchanged, `^Gate: ` 44 to 45, `^Gate: F272 R21 ` 0 to 1, `^- R-0824 ` 0 to 1 and
+  `^Done: R-0824 ` 0 to 1. The open set is unchanged because this round both minted and
+  resolved the id; the arithmetic closes at 308 − 251 = 57.
+- G3 THE PLAN is 49 lines against the AGENTS.md cap of 50, byte-equal to its slice.
+- G4 THE ORDERED COLOUR IS OBSERVED, NOT MANUFACTURED, which is the strongest form this
+  gate takes: the red existed on disk at `3ca66aac` before the round began — EXIT 1 with
+  an unresolved list of exactly one entry, `docs/system/architecture.md:927: remedy job
+  run-loop` — and at C3 the same node id is EXIT 0. No mutation was invented, because the
+  defect itself was the mutation.
+- G5 and G6 re-run by the reviewer as one serial invocation: 613 passed, EXIT 0, across
+  `tests/cli/test_advertised_commands.py`, `tests/cli/test_product_spine.py`,
+  `tests/test_remedy_smoke_script.py`, `tests/docs/` and `tests/cli/test_golden_path.py`.
+  The exact string `remedy job run-loop` counts 0 in `docs/system/` and 0 in `scripts/`.
+- G7 THE TREE: `git status --porcelain` empty, `git ls-files .remedy-wt` empty, and every
+  per-commit insertion under the DECISION F104 D1 cap of 500 at a maximum of 277.
+
+THE REPAIR IS THE RIGHT ONE AND WAS VERIFIED BEFORE IT WAS ORDERED. The reviewer ran the
+SHIPPED `scan_advertised_commands` over P1's TO before emission and it yields ZERO
+advertisements — the check whose absence caused the round 21 failure, run this time
+against the widened corpus rather than the old one.
+
+THE WORKER'S DEVIATIONS ARE ACCEPTED AND ITS ONE DECLARED PROSE INACCURACY SPENDS NOTHING.
+Deviation 1 is not a deviation but an honest arithmetic note: the operator-facing
+collector's `seen` falls 404 to 403 because the deleted string was itself one of the 404
+matches, and both collectors stay far above their anti-blindness floors. The note that
+`.agent/handoff.md` says "see the push transcript below" where no such transcript exists
+is correct, declared, and self-healing — that file is rewritten every round — so under
+amend0827 rule 2 it earns no id and no round.
+
+## Session
+
+SESSION 10 OF F272 ENDS HERE, after three delegated rounds — 20, 21 and 22. Round 20
+PASSED at the first attempt. ROUND 21 FAILED, on the reviewer's block rather than on the
+worker's execution, and round 22 is its repair and PASSED. F272's soft limit under
+amend0906-triage-throughput is 12 sessions and 40 rounds; at session 10 and round 22 the
+feature is inside it, so NO SCOPE REPORT IS OWED.
+
+Why the session ends below the six-to-eight round target, in one sentence as amend0906
+rule 3 requires: the reviewer authored a block that ordered a string written into a file
+the same block ordered swept to zero, which cost a FAIL and a repair round out of the
+three this session ran, and the honest reading of that is the accumulating-authoring-error
+signal amend0905-throughput names as a reason to stop rather than to keep authoring.
+
+CONTEXT SELF-ASSESSMENT (amend0905-throughput): context was substantial but not the
+binding constraint; it was spent on a large pre-authoring measurement campaign — the
+classic-runner component, the advisory-rail typing and two dry runs of production changes
+in disposable worktrees before any block was written — plus three independent gate re-runs
+including a full suite, and the reviewer's own error rate rather than its remaining room
+is what ends the session.
+
+## Owed by round 23's first commits, per amend0827 rule 1
+
+Exactly these, and nothing else — no id is minted for any of them:
+
+1. The `Gate: F272 R22` PASS entry recorded in the verdict section above, appended to
+   `.agent/live_review.md`.
+2. TWO dated lines appended to `.agent/prose_slips.md`, both the reviewer's own and
+   neither touching disk state, both from the round 21 block:
+   - 2026-09-07, F272 round 21 — SMOKESPEC's S1 and S2 bounded each deleted section as
+     ending at "the last line before the next `_SMOKE_SECTION=` assignment", which
+     swallows the FOLLOWING section's banner comment and contradicts the same spec's S4
+     and its own "delete section in full"; the worker measured the conflict and used the
+     banner-to-banner reading, which is the one that satisfies both sentences. A span
+     ordered for deletion is bounded by the anchor that OPENS the next unit, never by the
+     assignment inside it.
+   - 2026-09-07, F272 round 21 — the block's change set omitted
+     `tests/test_remedy_smoke_script.py` while ordering the deletion of the two smoke
+     sections four of its tests pin by text, so the worker had to leave the declared change
+     set to keep the suite green; `agent_loop` and `agent_loop_task_exit` both reach zero
+     occurrences in the script, so at least two of those deletions were forced. Before
+     ordering a section deleted, grep the suite for tests that assert that section's text.
+
+## Next
+
+THE NEXT SESSION'S FIRST ACTION: run Phase 0, the state probe; then check `.agent/STOP`
+under Phase 1 rule 1 BEFORE the Open PR Gate under rule 2, in that order. No PR exists for
+this branch and none was created.
+
+T001, T002 AND T003 ARE COMPLETE. T004 is under way: round 19 deleted the `job run-loop`
+command surface, and rounds 20 through 22 repaired the advertisements that deletion left
+behind and shipped `tests/cli/test_advertised_commands.py`, the standing guard that makes
+the class visible in every medium an operator reads — tracked `.py` under `packages/` and
+`apps/`, tracked `.sh` under `scripts/`, and tracked `.md` under `docs/system/` and
+`docs/guides/`.
+
+ROUND 23 IS THE CLASSIC STORE DELETION, AND THE ORDERING THAT PUTS IT FIRST WAS MEASURED
+THIS SESSION AT `5f4f0405` RATHER THAN ASSUMED. Every next-action rail that advertises
+`remedy job run-next` — in `cockpit.py`, `timeline.py`, `trust_report.py`, `dashboard.py`,
+`brain_detail.py`, `agent_loop.py` and `autonomy_loop.py` — sits inside a function whose
+job parameter is annotated `job: Job`, the CLASSIC record; not one of them takes a
+`JobPlan`. So none can be pointed at `remedy do job-run`, whose argument is a 16-character
+JobPlan id, and DECISION F272 D13 forbids deleting a command ahead of its advertisements.
+The advertisements cannot move before the classic record does, which is why the store
+deletion now LEADS T004 instead of following it.
+
+WHAT ROUND 23 SHOULD NOT RE-DERIVE, all measured this session:
+
+- `.agent/f272_t004_deletion_inventory.md` bounds the store at 199 tracked files, 72 under
+  `packages/` and `apps/` and 127 under `tests/`, with `save_job` in 152 and `load_job` in
+  105. That file, not a grep, stages the work.
+- THE CLASSIC RUNNER IS ONE CONNECTED COMPONENT and cannot be cut piecewise:
+  `_cmd_job_run_cycles` (143 lines) calls `_cmd_run_next_task_local` (243);
+  `_cmd_job_resume` (150) calls `_cmd_job_run_cycles`, `_resume_preview` (57) and
+  `_print_resume_preview` (41); and `agent_loop._run_next_task_step` (4), reached only
+  from `run_agent_loop` (127), calls `_cmd_run_next_task_local` as well.
+- `agent_loop.py` SURVIVES T004. The round 19 handback called the module
+  production-unreachable and that is corrected in DECISION F272 D13: `apps/cli/commands/
+  brain.py` imports `derive_agent_loop_state` and `summarize_agent_loop_state` from it for
+  `remedy dev agent-loop`, so only `run_agent_loop` and its private helpers are unreachable.
+- `job.run` is the catalog's ONLY `is_expensive` command, pinned by three tests in
+  `tests/test_command_catalog.py`, so F114's cost preview needs a named carrier before it
+  can be deleted.
+- `tests/cli/test_plan_approval.py` shells out to `remedy job run-next` at lines 372 and
+  716 to prove the approval gate blocks execution; a dry run of the three-line catalog cut
+  turned exactly those two red with `Error: Unknown command 'run-next'`.
+- THE FULL SUITE IS GREEN AT `b926992b` IN THE PRIMARY CHECKOUT: EXIT 0, 19784 passed, 23
+  skipped, measured at round 20's C4 and unchanged by rounds 21 and 22, neither of which
+  touched `packages/` or `apps/`. A deletion round's full-suite measurement must name the
+  primary checkout: the same run inside a fresh worktree fails about ten tests for want of
+  `apps/ui/node_modules`.
