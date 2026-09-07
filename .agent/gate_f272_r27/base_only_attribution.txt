@@ -1,0 +1,150 @@
+ATTRIBUTION OF EVERY BASE-ONLY ID — F272 round 27 integration gate
+
+Class: ENVIRONMENT (stale copied build artefact), R-0736 mechanism.
+Missing/stale artefact, named once because it is the SAME artefact
+for all 126 ids: apps/ui/dist/index.html in the base worktree.
+shutil.copytree PRESERVES the primary's mtime on it
+(1788776043.146 = 2026-09-07T12:14:03), while `git worktree add`
+STAMPS all 142 apps/ui/src files at checkout time
+(1788791451.55 = 2026-09-07T16:30:51). ui_server._frontend_is_stale()
+therefore returns True, _auto_build_frontend('source changed') is
+suppressed by REMEDY_UI_NO_AUTO_BUILD=1 and returns None, and
+start_ui_server prints 'ERROR: React UI not built.' and never writes
+server_info.json. Every listed test waits 50 x 0.1s for that file and
+fails 'Server did not start in time'. The base log holds 126 E-lines
+and all 126 are that one string.
+
+MEASURED, NOT INFERRED: with ONLY the staleness removed (dist mtimes
+touched forward; no rebuild, no code change) the same 126 node ids
+were re-run at the SAME base commit in the same worktree:
+  python3 -m pytest -n auto -q <the 126 ids>
+  real exit code 0 -- 126 passed in 2.78s
+=> ZERO genuine base failures. No base-only id is unattributed.
+
+| # | node id | class | named artefact | control re-run |
+| 1 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_args_is_valid_and_reaches_the_effect | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 2 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_absent_body_is_400_on_field_body | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 3 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_decision_resolve_naming_an_open_decision_is_answered_and_saved | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 4 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_dispatched_command_is_audited_as_accepted | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 5 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_mistyped_limit_falls_back_to_the_default_and_still_limits | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 6 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_accepted_command_reaches_the_sse_frame_it_announces | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 7 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_audit_writer_that_raises_changes_neither_status_nor_body | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 8 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_near_miss_of_the_commands_path_is_405 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 9 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_event_writer_that_raises_changes_neither_status_nor_body | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 10 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_exposed_id_with_no_dispatch_branch_is_the_501_guard | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 11 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_approve_is_accepted | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 12 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_reject_is_accepted | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 13 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answered_with_a_next_action_string_is_409 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 14 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_answering_an_unknown_question_id_is_409 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 15 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_on_a_plan_that_is_not_pending_is_409 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 16 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_fp_approval_whose_answers_are_not_a_map_is_409 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 17 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa] | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 18 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[../escape] | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 19 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[has space] | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 20 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_nonce_that_cannot_be_a_filename_is_400_on_its_own_field[with/slash] | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 21 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_does_not_spend_budget | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 22 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unexposed_command_is_audited_as_rejected_command | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 23 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unknown_path_is_405_for_every_mutating_method | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 24 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unresolvable_job_is_audited_as_rejected_job | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 25 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_an_unseeded_nonce_is_dispatched_rather_than_replayed | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 26 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_rate_limited_attempt_is_audited_as_rejected_rate | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 27 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_refused_command_announces_nothing | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 28 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_announces_nothing_a_second_time | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 29 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replayed_nonce_answers_from_the_store_byte_for_byte | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 30 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_is_not_the_acceptance_it_repeats | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 31 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_replay_spends_no_rate_budget | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 32 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_second_job_has_its_own_budget | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 33 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_does_not_spend_budget | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 34 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_shape_error_is_audited_as_rejected_shape | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 35 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_bearer_is_audited_as_rejected_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 36 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_credential_on_a_job_with_no_control_dir_leaves_no_file | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 37 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_a_wrong_csrf_header_is_audited_as_rejected_csrf | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 38 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_bearer_without_a_token_is_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 39 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_command_in_no_catalog_is_400_on_field_command | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 40 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_csrf_is_checked_after_the_bearer | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 41 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_delete_is_405_even_on_the_commands_path | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 42 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_client_nonce_is_400_on_field_client_nonce | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 43 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_400_on_field_command | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 44 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_empty_command_is_still_a_shape_error_not_a_subset_error | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 45 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_exposed_command_reaches_the_answer_its_effect_gives | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 46 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_outcome_the_door_writes_is_in_the_ruled_vocabulary | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 47 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_every_route_the_server_serves_refuses_post_put_and_delete | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 48 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_answers_403_for_a_non_ascii_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 49 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_200_for_the_correct_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 50 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_get_door_still_answers_403_for_a_wrong_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 51 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_invalid_json_body_is_400_on_field_body | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 52 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_job_id_is_checked_after_the_credentials | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 53 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_malformed_bearer_is_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 54 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_bearer_is_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 55 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_client_nonce_is_400_on_field_client_nonce | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 56 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_command_is_400_on_field_command | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 57 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_missing_csrf_header_is_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 58 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_ascii_bearer_is_403_and_does_not_raise | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 59 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_args_is_400_on_field_args | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 60 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_object_body_is_400_on_field_body | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 61 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_non_string_command_is_400_on_field_command | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 62 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_oversize_body_is_400_on_field_body | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 63 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_job_dashboard_is_405 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 64 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_post_to_non_commands_path_is_405 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 65 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_present_args_object_is_valid_and_is_accepted | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 66 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_put_is_405_even_on_the_commands_path | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 67 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_commands_path_is_the_only_post_that_is_not_405 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 68 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_last_command_in_budget_is_accepted_and_the_next_is_429 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 69 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_raw_token_never_reaches_the_audit_file | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 70 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_the_two_refusals_are_indistinguishable | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 71 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_catalog_command_is_400_on_field_command | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 72 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_on_an_unresolvable_job_is_404 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 73 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unexposed_command_with_a_bad_bearer_is_403_and_never_400 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 74 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_is_404 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 75 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_unresolvable_job_id_matches_the_get_door | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 76 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_well_formed_command_is_dispatched_and_accepted | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 77 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_bearer_is_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 78 | tests/ui_server/test_command_channel.py::TestCommandChannelDoor::test_wrong_csrf_header_is_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 79 | tests/ui_server/test_command_dispatch.py::TestApproveHunksDispatchEffects::test_an_accepted_submission_records_the_decision_and_persists_it | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 80 | tests/ui_server/test_command_dispatch.py::TestApproveHunksDispatchEffects::test_an_unresolvable_evidence_directory_takes_the_same_409_path | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 81 | tests/ui_server/test_command_dispatch.py::TestApproveHunksDispatchEffects::test_a_refused_decision_is_409_audited_rejected_state_and_writes_nothing | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 82 | tests/ui_server/test_command_dispatch.py::TestApproveHunksDispatchEffects::test_the_accepted_body_carries_the_attempt_key_and_the_three_counts | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 83 | tests/ui_server/test_command_dispatch.py::TestApproveHunksDispatchEffects::test_the_rejected_wire_form_reaches_the_recorder_with_its_reason_verbatim | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 84 | tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_an_accepted_fp_approval_really_resolved_the_plan | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 85 | tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_a_supplied_clarification_answer_is_recorded_as_human | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 86 | tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 87 | tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_an_effect_that_raises_is_500_and_audited_rejected_effect | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 88 | tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_a_retry_of_the_same_nonce_is_audited_replayed | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 89 | tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_dispatch_publishes_the_stop_request_the_body_names | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 90 | tests/ui_server/test_command_dispatch.py::TestJobStopDispatchEffects::test_the_nonce_record_holds_the_body_the_client_received | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 91 | tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decision_card_carries_age_and_blocked_count | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 92 | tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_answers_404_for_an_unknown_job | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 93 | tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_refuses_an_invalid_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 94 | tests/ui_server/test_decisions_endpoint.py::TestDecisionsEndpoint::test_decisions_endpoint_returns_the_inbox_document | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 95 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 96 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_route_stays_linear_in_body_lines | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 97 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_refuses_a_bad_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 98 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_route_serves_the_workspace_diff | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 99 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_job_without_evidence_names_the_absence_at_status_200 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 100 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_refuses_a_bad_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 101 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_task_run_route_serves_only_that_runs_diff | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 102 | tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 103 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_a_neighbouring_endpoint_is_still_unhandled | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 104 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_body_carries_exactly_the_envelope_key_set | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 105 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_endpoint_answers_404_for_an_unknown_job | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 106 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_endpoint_answers_json_for_a_job_with_a_plan | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 107 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_endpoint_is_a_pass_through_of_the_composition | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 108 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_endpoint_refuses_an_invalid_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 109 | tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_version_is_the_modules_own_and_never_a_literal | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 110 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 111 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404 | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 112 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_requires_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 113 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 114 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 115 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 116 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_context_budget_endpoint | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 117 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 118 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_delete_rejected | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 119 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_events_endpoint | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 120 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_guide_endpoint | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 121 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_post_rejected | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 122 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 123 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 124 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 125 | tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
+| 126 | tests/ui_server/test_server_concurrency.py::TestServerServesConcurrentRequests::test_two_requests_are_in_flight_at_once | environment | stale apps/ui/dist/index.html vs worktree-stamped apps/ui/src | passed |
