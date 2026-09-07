@@ -1,37 +1,36 @@
-# Plan — F272 One world completion
+# Plan — F274 One world completion, part two
 
-Branch: feature/f272-one-world-completion. Rounds 1 to 30 PASSED except round 2 (premise
-corrected by DECISION F272 D2) and round 21 (R-0824, repaired by round 22). T001, T002 and
-T003 are COMPLETE; T004's remainder and T005 are F274's, split off in round 26 by DECISION
-F272 D16.
+Branch: feature/f274-one-world-completion-part-two, cut from `main` at
+`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, the merge commit of pull request 244. F272 closed
+at the scope DECISION F272 D16 fixed; this feature owns the remainder.
 
 ## Goal
 
-Close F272 at the self-consistent scope DECISION F272 D16 fixed. Every closure precondition
-of `docs/roadmap/STATUS_closure_protocol.md` is now met: the integration gate ran in round
-27 with zero branch-only failures, the self-use item was run in round 28 and its defects
-registered in round 29, and round 30 rotated the ledger and built a READY_FOR_REVIEW package.
+Finish what F272 could not reach inside its own limit: the classic-to-unified record flip
+DECISION F272 D15 measured as ATOMIC, and the prototype cluster deletion. T001 moves no
+production line — it replaces D15's receiver-name BOUND with a measured site set and rules how
+an atomic change lands under a per-commit cap that forbids it.
 
 ## Current Step
 
-Round 31, the last round on this branch: the closure commit — the STATUS `[x]` line, the
-README capability sync and SU-012's `consumed_by` in ONE commit, with the final handoff —
-and then the pull request, which is NOT merged this session.
+Round 1: claim F274 in the ledger, cut the branch, re-point this file and `.agent/context.md`,
+re-head `.agent/live_review.md` and book F272's round 31 verdict into it, run the DECISION F272
+D7 raising-property probe over `Job.id` in a disposable worktree, commit the measured site set
+as `.agent/f274_id_probe_inventory.md`, and record the route as DECISION F274 D1.
 
 ## Next Steps
 
-1. The PR merges at the NEXT feature's start through the AGENTS.md Open PR Gate. That gap is
-   the operator's manual-review window, and guardrail G1 forbids this session merging a PR
-   it created.
-2. Rule A5 then proposes F274, which sits directly after F272 by amend0906-split-placement
-   and owns the atomic record flip and the cluster deletion.
-3. F274's first slice is the DECISION F272 D7 raising-property probe and a ruling on the
-   per-commit cap, NOT the flip itself.
+1. Rule the persisted-key question the probe exposed, before any consumer moves: `Job` stores
+   its identity under the JSON key `"id"`, so renaming the field alone makes a stored job load
+   with a FRESH id. DECISION F272 D5 answered the same question for `status` by ruling the
+   stored key does not move.
+2. T002 — the classic runner and the resolver collapse, on the route DECISION F274 D1 fixes.
+3. T003 — the reachability test, the two carry-overs, DECISION F260 D3, then the cluster
+   deletion, one commit per module group. NEVER SPLIT INSIDE T003.
 
 ## Risks
 
-- Five open High findings — R-0803, R-0804, R-0806, R-0807 and R-0827 — all owned by F273,
-  whose own Done clause covers "anything registered after 2026-09-06". DECISION F272 D17
-  rules why the close names them rather than waiting.
-- `remedy integrity check` passes while its `high_blockers_open` check is vacuous; that is
-  the open R-0648 and the PR body states it.
+- The flip is atomic by construction and far over the DECISION F104 D1 cap of 500 insertions.
+  D1 rules the route, and that ruling bounds every later commit's size.
+- Five open High findings — R-0803, R-0804, R-0806, R-0807 and R-0827 — are F273's and not
+  this feature's, per DECISION F272 D12.
