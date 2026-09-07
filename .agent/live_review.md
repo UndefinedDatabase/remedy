@@ -1,41 +1,37 @@
-# Live Review — F272 One world completion
+# Live Review — F274 One world completion, part two
 
-> Round-by-round review record, re-headed at the F272 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named
-> F260, which is accepted: its STATUS line went `[x]` at `f5beb700` and its pull
-> request 242 merged at `b18fad57`. Only the heading, this paragraph and the
-> `## Steps` section below are rewritten. Every finding record below
-> `## Findings` is carried forward BYTE-IDENTICAL — the block that ordered this
-> re-head gates that region's sha256 equal before and after the edit, as its
-> gate G2(b) — and finding ids continue the monotonic R-XXXX series across the
-> re-head. Measured by the reviewer at `b18fad57`, the branch point: 301
-> DISTINCT ids matching `^- R-\d{4} — ` against 3 DISTINCT ids matching
-> `^Done: R-\d{4} — `, so 298 findings are open BY DISTINCT ID, and the maximum
-> id in use is R-0817 — the next id this feature mints is R-0818.
-> F260's LAST round has no entry here and never will:
-> docs/agents/planner_reviewer_prompt.md §4 item 13 makes a branch
-> terminator's verdict live in `.agent/handoff.md`, in the reviewer's
-> completion report and in the pull request, where the reviewer wrote it before
-> merging 242; that absence is the terminator and not a missing gate.
-> Records belonging to features already marked `[x]` in docs/roadmap/STATUS.md
-> are not here at all: `scripts/rotate_live_review.py` moves them byte-verbatim
-> into the append-only `.agent/live_review_archive.md` in every closure
-> sequence, under operator amendment amend0905-throughput, and that archive is
-> read on demand by id, never at session start.
+> Round-by-round review record, re-headed at the F274 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F272, which is
+> accepted: its STATUS line went `[x]` at `65c5ccd65c4d801b22ead89d3fb138eb54153828` and its
+> pull request 244 merged at `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`. Only the heading,
+> this paragraph and the `## Steps` section below are rewritten. Every finding record below
+> `## Findings` is carried forward BYTE-IDENTICAL — the block that ordered this re-head gates
+> that region's sha256 equal before and after the edit, as its gate G2 — and finding ids
+> continue the monotonic R-XXXX series across the re-head. Measured by the reviewer at
+> `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, the branch point: 62 DISTINCT ids matching
+> `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 60 findings are open
+> BY DISTINCT ID, and the next id this feature mints is R-0829.
+> F272's LAST round has an entry here, which is the exception rather than the rule: under
+> docs/agents/self_drive_protocol.md there is no second window, so the reviewer books a
+> branch-terminating verdict into the FIRST commit of the next feature's first round rather
+> than losing it with the session. Records belonging to features already marked `[x]` in
+> docs/roadmap/STATUS.md are not here at all: `scripts/rotate_live_review.py` moves them
+> byte-verbatim into the append-only `.agent/live_review_archive.md` in every closure
+> sequence, under operator amendment amend0905-throughput, and that archive is read on demand
+> by id, never at session start.
 
 ## Steps
 
-R1 claim F272 in the roadmap ledger, cut the branch, re-point `.agent/plan.md`
-and `.agent/context.md`, re-head this record, and land the first half of T001 —
-`JobPlan.run_refs`, the ordered ids of the runs one job produced, persisted
-through the job record and populated where a task's run is recorded → the run
-re-key, `run_log_dir` and `pingpong_run_dir` collapsing onto the one `run_dir`
-keyed by RUN id, with the test-side spelling sweep DECISION F260 D6 declined
-and this feature inherits → the rest of the unified record, T002 → the eleven
-consumers named under Design in T2_F260.md, T003 → the classic runner and the
-resolver collapse, T004 → the reachability test, the two carry-overs, DECISION
-F260 D3 and the prototype cluster deletion, T005, which is never split → the
-integration gate → the closure sequence.
+R1 claim F274 in the roadmap ledger, cut the branch, re-point `.agent/plan.md` and
+`.agent/context.md`, re-head this record and book F272's round 31 verdict into it, and land
+T001 — the DECISION F272 D7 raising-property probe over `Job.id`, the measured site set
+committed as `.agent/f274_id_probe_inventory.md`, and the route recorded as DECISION F274 D1 →
+the persisted-key ruling the probe exposed, before any consumer moves → T002, the classic
+runner, `job.run --cycles`, `job.run-next`, their handlers and tests, and the resolver collapse
+DECISION F260 D5 places in the same commit range → T003, the D11c reachability test run green
+BEFORE deletion, the two carry-overs, DECISION F260 D3 drafted, then the prototype cluster
+deletion one commit per module group, which is NEVER split → the integration gate → the closure
+sequence.
 
 ## Findings
 
