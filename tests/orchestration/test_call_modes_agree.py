@@ -14,7 +14,6 @@ the constant imported below runs beside, editable install or worktree alike.
 from __future__ import annotations
 
 import ast
-import io
 from pathlib import Path
 
 from packages.orchestration import pingpong_provider
@@ -31,7 +30,7 @@ def stamped_modes() -> dict[str, list[int]]:
     (`mode="api-structured" if structured else "api-legacy"`) and both of its
     branches are modes the manifest will see.
     """
-    tree = ast.parse(io.open(PROVIDER_SOURCE, encoding="utf-8").read())
+    tree = ast.parse(PROVIDER_SOURCE.read_text(encoding="utf-8"))
     modes: dict[str, list[int]] = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -50,8 +49,8 @@ class TestTheProviderStampsOnlyModesTheManifestAccepts:
         """Non-vacuity: a collector that finds nothing would pass the next test."""
         modes = stamped_modes()
         assert modes, (
-            "no `mode=` keyword string literal found in %s — the collector, not "
-            "the provider, is what changed" % PROVIDER_SOURCE
+            f"no `mode=` keyword string literal found in {PROVIDER_SOURCE} — the "
+            f"collector, not the provider, is what changed"
         )
         assert "fake" in modes, (
             "the fake provider's own mode is missing from the collected set, so "
@@ -64,10 +63,10 @@ class TestTheProviderStampsOnlyModesTheManifestAccepts:
         modes = stamped_modes()
         unknown = {m: lines for m, lines in modes.items() if m not in VALID_CALL_MODES}
         assert not unknown, (
-            "%s stamps modes that run_manifest.VALID_CALL_MODES rejects: %s — "
-            "every run on the affected transport ends with "
-            "run_manifest_write_failed (R-0827)"
-            % (PROVIDER_SOURCE.name, sorted((m, lines) for m, lines in unknown.items()))
+            f"{PROVIDER_SOURCE.name} stamps modes that "
+            f"run_manifest.VALID_CALL_MODES rejects: "
+            f"{sorted((m, lines) for m, lines in unknown.items())} — every run on the "
+            f"affected transport ends with run_manifest_write_failed (R-0827)"
         )
 
 
