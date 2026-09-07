@@ -86,7 +86,7 @@ def _run_job(repo, monkeypatch, write, text="# J\n\n## Task 1 — go\n\nDo it.\n
     prov = _Builder(holder, write)
     done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                    builder_name="fake", reviewer_name="fake", max_rounds=1)
-    assert done.status == JOB_COMPLETED, done.error
+    assert done.state == JOB_COMPLETED, done.error
     return done
 
 

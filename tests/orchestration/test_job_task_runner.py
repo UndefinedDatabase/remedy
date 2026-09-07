@@ -397,7 +397,7 @@ class TestTaskCompletionGate:
             reviewer_provider=FakeProvider(pass_on_round=99),
             max_rounds=1, repair_rounds=0,
         )
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert result.tasks[0].status in (TASK_FAILED, TASK_BLOCKED)
         assert result.tasks[1].status == TASK_SKIPPED
 
@@ -792,7 +792,7 @@ class TestSafeCopyNoSymlinkFollow:
 class TestExistingFlowsPreserved:
     def test_two_task_success(self, isolate_data_root, demo_repo):
         result = _run_success_job(demo_repo)
-        assert result.status == JOB_COMPLETED
+        assert result.state == JOB_COMPLETED
         assert result.tasks[0].status == TASK_APPLIED
         assert result.tasks[1].status == TASK_APPLIED
 
@@ -955,7 +955,7 @@ class TestJobPlanParsing:
     def test_parses_two_tasks(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
         assert len(job.tasks) == 2
-        assert job.status == JOB_PLANNED
+        assert job.state == JOB_PLANNED
 
     def test_job_title_extracted(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
@@ -975,7 +975,7 @@ class TestJobPlanParsing:
 
     def test_no_tasks_blocks(self, isolate_data_root):
         job = parse_job_file(_NO_TASK_JOB, "/tmp/repo")
-        assert job.status == JOB_BLOCKED
+        assert job.state == JOB_BLOCKED
         assert "no_tasks_found" in job.error
 
     def test_sha256_recorded(self, isolate_data_root):
@@ -988,11 +988,11 @@ class TestJobPlanParsing:
 
     def test_plan_file_not_found(self, isolate_data_root):
         job = plan_job_from_file("/nonexistent/job.md", "/tmp/repo")
-        assert job.status == JOB_BLOCKED
+        assert job.state == JOB_BLOCKED
 
     def test_no_provider_call(self, isolate_data_root):
         job = parse_job_file(_TWO_TASK_JOB, "/tmp/repo")
-        assert job.status == JOB_PLANNED
+        assert job.state == JOB_PLANNED
 
 
 # ---------------------------------------------------------------------------
@@ -1224,7 +1224,7 @@ class TestTargetMutationNegative:
             repair_rounds_source="cli",
         )
 
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert result.target_guard is not None
         assert result.target_guard.target_mutated is True
         assert "INJECTED.txt" in result.target_guard.changed_target_files
@@ -1270,14 +1270,14 @@ class TestPartialRunStatus:
     def test_max_tasks_gives_paused(self, isolate_data_root, demo_repo):
         """--max-tasks 1 on 2-task job sets status to paused."""
         result = _run_success_job(demo_repo, max_tasks=1)
-        assert result.status == JOB_PAUSED
+        assert result.state == JOB_PAUSED
         assert result.tasks[0].status == TASK_APPLIED
         assert result.tasks[1].status == TASK_PENDING
 
     def test_paused_not_running(self, isolate_data_root, demo_repo):
         """Paused status != running (no false implication of background work)."""
         result = _run_success_job(demo_repo, max_tasks=1)
-        assert result.status != "running"
+        assert result.state != "running"
 
     def test_paused_next_command_copyable(self, isolate_data_root, demo_repo):
         """Paused job suggests job-run as next command."""
@@ -1296,7 +1296,7 @@ class TestPartialRunStatus:
     def test_continuation_after_pause(self, isolate_data_root, demo_repo):
         """Re-running job-run after max-tasks pause continues pending tasks."""
         result = _run_success_job(demo_repo, max_tasks=1)
-        assert result.status == JOB_PAUSED
+        assert result.state == JOB_PAUSED
         assert result.tasks[1].status == TASK_PENDING
 
         # Continue the remaining tasks
@@ -1306,14 +1306,14 @@ class TestPartialRunStatus:
             reviewer_provider=_pass_provider(),
             repair_rounds=0,
         )
-        assert result2.status == JOB_COMPLETED
+        assert result2.state == JOB_COMPLETED
         assert result2.tasks[0].status == TASK_APPLIED
         assert result2.tasks[1].status == TASK_APPLIED
 
     def test_full_run_gives_completed(self, isolate_data_root, demo_repo):
         """Full run (no --max-tasks) still gives completed."""
         result = _run_success_job(demo_repo)
-        assert result.status == JOB_COMPLETED
+        assert result.state == JOB_COMPLETED
 
 
 # ---------------------------------------------------------------------------
@@ -1566,12 +1566,12 @@ class TestCorruptedResultJobBlock:
 
     def test_test_failed_but_final_pass_blocks(self, isolate_data_root, demo_repo, monkeypatch):
         result = self._run_with_corrupt_result(demo_repo, monkeypatch, test_passed=False)
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert any("test_passed" in (t.error or "") for t in result.tasks)
 
     def test_reviewer_fail_but_final_pass_blocks(self, isolate_data_root, demo_repo, monkeypatch):
         result = self._run_with_corrupt_result(demo_repo, monkeypatch, reviewer_verdict="fail")
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert any("reviewer_verdict" in (t.error or "") for t in result.tasks)
 
     def test_reviewer_pass_with_findings_blocks(self, isolate_data_root, demo_repo, monkeypatch):
@@ -1579,12 +1579,12 @@ class TestCorruptedResultJobBlock:
             demo_repo, monkeypatch,
             reviewer_findings=["unexpected bug"],
         )
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert any("findings" in (t.error or "") for t in result.tasks)
 
     def test_target_mutated_but_final_pass_blocks(self, isolate_data_root, demo_repo, monkeypatch):
         result = self._run_with_corrupt_result(demo_repo, monkeypatch, target_mutated=True)
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert any("target_mutated" in (t.error or "") for t in result.tasks)
 
     def test_blocked_result_not_applied(self, isolate_data_root, demo_repo, monkeypatch):
@@ -1653,7 +1653,7 @@ class TestContinuationConfig:
             test_command="true",
             max_tasks=1,
         )
-        assert result.status == JOB_PAUSED
+        assert result.state == JOB_PAUSED
         loaded = load_job_plan(result.job_id)
         assert loaded.execution_config.builder == "claude-cli"
         assert loaded.execution_config.test_command == "true"
@@ -1679,7 +1679,7 @@ class TestContinuationConfig:
             builder_provider=_pass_provider(),
             reviewer_provider=_pass_provider(),
         )
-        assert result2.status == JOB_COMPLETED
+        assert result2.state == JOB_COMPLETED
         # Config should be restored, not fallen back to defaults
         assert result2.execution_config.builder == "claude-cli"
         assert result2.execution_config.reviewer == "claude-cli"
@@ -1903,7 +1903,7 @@ class TestMaxRoundsContinuation:
             max_rounds=7,
             max_tasks=1,
         )
-        assert result.status == JOB_PAUSED
+        assert result.state == JOB_PAUSED
         assert result.execution_config.max_rounds == 7
         assert result.execution_config.max_rounds_source == "cli"
 
@@ -1922,7 +1922,7 @@ class TestMaxRoundsContinuation:
             builder_provider=_pass_provider(),
             reviewer_provider=_pass_provider(),
         )
-        assert result2.status == JOB_COMPLETED
+        assert result2.state == JOB_COMPLETED
         assert result2.execution_config.max_rounds == 7
         assert result2.execution_config.max_rounds_source == "persisted"
 
@@ -1986,7 +1986,7 @@ class TestProviderOverrideToFake:
             reviewer_name="claude-cli",
             max_tasks=1,
         )
-        assert result.status == JOB_PAUSED
+        assert result.state == JOB_PAUSED
         assert result.execution_config.builder == "claude-cli"
         assert result.execution_config.reviewer == "claude-cli"
 
@@ -2562,7 +2562,7 @@ class TestMissingReviewerE2E:
             reviewer_provider=_pass_provider(),
             repair_rounds=0,
         )
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert any("missing_reviewer_output" in (t.error or "") for t in result.tasks)
 
     def test_missing_reviewer_no_workspace_apply(self, isolate_data_root, demo_repo, monkeypatch):
@@ -2808,7 +2808,7 @@ class TestPreApplyTargetGuard:
             repair_rounds=0,
         )
 
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert result.tasks[0].status == TASK_BLOCKED
         assert "target_repo_mutated" in result.tasks[0].error
         assert result.target_guard.target_mutated is True
@@ -3065,7 +3065,7 @@ class TestPostApplyTargetGuard:
             repair_rounds=0,
         )
 
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         blocked_task = next(t for t in result.tasks if t.status == TASK_BLOCKED)
         assert "target_repo_mutated_after_apply" in blocked_task.error
 
@@ -3100,7 +3100,7 @@ class TestTargetMutatedResultGatePreserved:
     def test_target_mutated_result_blocks_at_gate(self, isolate_data_root, demo_repo, monkeypatch):
         """result.target_mutated=True blocks at completion gate, before target guard."""
         result_obj = self._run_with_target_mutated_result(demo_repo, monkeypatch)
-        assert result_obj.status == JOB_BLOCKED
+        assert result_obj.state == JOB_BLOCKED
         assert result_obj.tasks[0].status == TASK_BLOCKED
         assert "target_mutated" in result_obj.tasks[0].error
         assert "completion_gate_failed" in result_obj.tasks[0].error
@@ -3485,7 +3485,7 @@ class TestClassBudgetCannotFitEscalation:
         assert result.tasks[1].status == TASK_APPLIED
         assert result.tasks[2].status == TASK_APPLIED
         assert titles == ["Task 1 (1/2)", "Task 1 (2/2)"]
-        assert result.status == JOB_COMPLETED
+        assert result.state == JOB_COMPLETED
 
         # Children inherit the parent's files_hint (task_granularity's own
         # rule: "an over-broad hint is less harmful than none"), so they are

@@ -50,8 +50,9 @@
 import { scrubUiText } from "../copy/humanCopy";
 
 /** The digest's OWN state vocabulary, rendered for a human. The keys are the
- *  seven `RunState` members in `packages/core/models.py`, spelled exactly as the
- *  wire spells them, so a state added to that enum has an obvious place to land.
+ *  `RunState` members in `packages/core/models.py`, spelled exactly as the
+ *  wire spells them and listed in that enum's own declaration order, so a state
+ *  added to that enum has an obvious place to land.
  *
  *  DO NOT REACH FOR `stateLabel` IN `../copy/humanCopy` HERE, however much its
  *  name suggests it. Its vocabulary is the CHECKLIST's — `done`, `current`,
@@ -66,6 +67,8 @@ const DIGEST_STATE_LABELS: Readonly<Record<string, string>> = {
   "completed": "Completed",
   "failed": "Failed",
   "cancelled": "Cancelled",
+  "blocked": "Blocked",
+  "stopped": "Stopped",
 };
 
 /** What an unreadable state becomes. A word this client has never heard of is

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from packages.orchestration.data_paths import pingpong_run_dir
+from packages.orchestration import data_paths
 from packages.orchestration.pingpong_evidence import (
     _redact_json_value,
     _redact_secrets,
@@ -199,7 +199,7 @@ def _make_run_data(
 def _persist_fake_run(data_dir: Path, run_data: dict) -> str:
     """Persist a fake run for CLI testing."""
     run_id = run_data["run_id"]
-    run_dir = pingpong_run_dir(run_id, data_dir)
+    run_dir = data_paths.run_dir(run_id, data_dir)
     run_dir.mkdir(parents=True)
     (run_dir / "result.json").write_text(json.dumps(run_data, indent=2))
     return run_id
@@ -207,7 +207,7 @@ def _persist_fake_run(data_dir: Path, run_data: dict) -> str:
 
 def _persist_fake_promotion(data_dir: Path, run_id: str, promo_data: dict) -> None:
     """Persist a fake promotion for CLI testing."""
-    run_dir = pingpong_run_dir(run_id, data_dir)
+    run_dir = data_paths.run_dir(run_id, data_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "promotion.json").write_text(json.dumps(promo_data, indent=2))
 

@@ -22,7 +22,7 @@ from pathlib import Path
 import psutil
 import pytest
 
-from packages.orchestration.data_paths import job_record_path, pingpong_runs_dir
+from packages.orchestration.data_paths import job_record_path, runs_dir
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
     JOB_STOPPED,
@@ -150,7 +150,7 @@ def _stop_episodes(job_id: str) -> list[Path]:
 
 
 def _events(data_root: Path, job_id: str, event: str) -> list[dict]:
-    runs = data_root / "runs" / job_id
+    runs = data_root / "job_logs" / job_id
     out: list[dict] = []
     for f in sorted(runs.glob("*.jsonl")) if runs.is_dir() else []:
         for line in f.read_text().splitlines():
@@ -172,7 +172,7 @@ class TestStopBeforeTheFirstTask:
         stopped = run_job(job.job_id, builder_provider=builder,
                           reviewer_provider=reviewer, repair_rounds=0)
 
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert builder.build_calls == 0 and reviewer.review_calls == 0
         assert all(t.status == TASK_PENDING for t in stopped.tasks)
 
@@ -192,7 +192,7 @@ class TestStopBeforeTheFirstTask:
                 reviewer_provider=_pass_provider(), repair_rounds=0)
 
         reloaded = load_job_plan(job.job_id)
-        assert reloaded.status == JOB_STOPPED
+        assert reloaded.state == JOB_STOPPED
         assert reloaded.stop_request_id and reloaded.stop_reason == "later"
         assert reloaded.stop_source == "cli" and reloaded.stopped_at
         assert reloaded.stop_postmortem_path.startswith(STOP_POSTMORTEM_SUBDIR)
@@ -211,7 +211,7 @@ class TestStopDuringAProviderCall:
 
         assert builder.build_calls == 1          # the call in flight was NOT killed
         assert reviewer.review_calls == 0        # ...and the next one never began
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.tasks[0].status == TASK_PENDING
         assert stopped.tasks[0].final_status == "stopped"
         assert len(_stop_episodes(job.job_id)) == 1
@@ -228,7 +228,7 @@ class TestStopDuringAProviderCall:
 
         assert reviewer.review_calls == 1        # the reviewer call finished
         assert builder.build_calls == 1          # the repair Builder call never started
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.tasks[0].status == TASK_PENDING
 
     def test_a_stop_before_the_parse_retry_leaves_the_malformed_response_alone(
@@ -242,12 +242,12 @@ class TestStopDuringAProviderCall:
                           reviewer_provider=reviewer, repair_rounds=0)
 
         assert reviewer.review_calls == 1        # the bounded parse retry never ran
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.tasks[0].status == TASK_PENDING
 
-        run = json.loads((pingpong_runs_dir()
+        run = json.loads((runs_dir()
                           / f"{stopped.tasks[0].run_id}.json").read_text()) \
-            if (pingpong_runs_dir()
+            if (runs_dir()
                 / f"{stopped.tasks[0].run_id}.json").is_file() else None
         if run is not None:
             assert run["reviewer_parse_retry_count"] == 0
@@ -258,7 +258,7 @@ class TestStopDuringAProviderCall:
         stopped = run_job(job.job_id, builder_provider=builder,
                           reviewer_provider=_pass_provider(), repair_rounds=0)
 
-        assert stopped.status == JOB_STOPPED and not stopped.error
+        assert stopped.state == JOB_STOPPED and not stopped.error
         assert stopped.tasks[0].final_status == "stopped"
         assert stopped.tasks[0].error == ""
 
@@ -282,7 +282,7 @@ class TestStopBetweenTasks:
         stopped = run_job(job.job_id, builder_provider=builder,
                           reviewer_provider=reviewer, repair_rounds=0)
 
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.tasks[0].status == TASK_APPLIED   # durable work is never rolled back
         assert stopped.tasks[1].status == TASK_PENDING
         assert builder.build_calls == 1                  # task 2's Builder never ran
@@ -296,14 +296,14 @@ class TestResume:
         reviewer = _pass_provider(job_id=job.job_id, stop_on_review=1)
         stopped = run_job(job.job_id, builder_provider=builder,
                           reviewer_provider=reviewer, repair_rounds=0)
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         first_run_id = stopped.tasks[0].run_id
 
         # No new request: the resume just continues.
         resumed = run_job(job.job_id, builder_provider=_pass_provider(),
                           reviewer_provider=_pass_provider(), repair_rounds=0)
 
-        assert resumed.status == JOB_COMPLETED
+        assert resumed.state == JOB_COMPLETED
         assert resumed.tasks[0].status == TASK_APPLIED
         assert resumed.tasks[0].run_id == first_run_id     # task 1 was NOT rerun
         assert resumed.tasks[1].status == TASK_APPLIED
@@ -317,7 +317,7 @@ class TestResume:
             builder_provider=_pass_provider(job_id=job.job_id),
             reviewer_provider=_pass_provider(job_id=job.job_id, stop_on_review=1),
             repair_rounds=0)
-        assert first.status == JOB_STOPPED
+        assert first.state == JOB_STOPPED
 
         second = run_job(
             job.job_id,
@@ -325,7 +325,7 @@ class TestResume:
             reviewer_provider=_pass_provider(job_id=job.job_id, stop_on_review=1,
                                              reason="second stop"),
             repair_rounds=0)
-        assert second.status == JOB_STOPPED
+        assert second.state == JOB_STOPPED
         assert second.stop_request_id != first.stop_request_id
         assert second.stop_reason == "second stop"
 
@@ -357,7 +357,7 @@ class TestARecordingFailureIsNeverSilent:
 
         # The primary stop survives — as a PENDING request, not as a job that claims to be
         # cleanly stopped with no record of why. The recording failure is durable.
-        assert stopped.status != JOB_STOPPED          # no false clean checkpoint
+        assert stopped.state != JOB_STOPPED          # no false clean checkpoint
         assert stopped.stop_request_id
         assert "stop_postmortem_write_failed" in stopped.stop_error
         assert not stopped.stop_postmortem_path
@@ -454,7 +454,7 @@ def provider():
 
 final = run_job(job.job_id, builder_provider=provider(),
                 reviewer_provider=provider(), repair_rounds=0)
-print("FINAL:" + final.status, flush=True)
+print("FINAL:" + final.state, flush=True)
 """
 
 
@@ -571,7 +571,7 @@ class TestALiveRunnerStopsCleanly:
         assert (episodes[0] / "postmortem.json").is_file()
 
         events = [json.loads(line)
-                  for f in (data_dir / "runs" / job_id).glob("*.jsonl")
+                  for f in (data_dir / "job_logs" / job_id).glob("*.jsonl")
                   for line in f.read_text().splitlines() if line.strip()]
         assert len([e for e in events if e["event"] == "job_stopped"]) == 1
 
@@ -619,7 +619,7 @@ class TestAPreExistingStopBeatsEveryKindOfWork:
                           reviewer_provider=_pass_provider(), repair_rounds=0)
 
         assert acquisitions == [], "the workspace was acquired despite a pending stop"
-        assert stopped.status == JOB_STOPPED and stopped.status != JOB_BLOCKED
+        assert stopped.state == JOB_STOPPED and stopped.state != JOB_BLOCKED
         assert builder.build_calls == 0
         assert all(t.status == TASK_PENDING for t in stopped.tasks)
         assert stop_requested(job.job_id) is None
@@ -644,7 +644,7 @@ class TestTheStopIsNeverLost:
         real_persist = PJ._persist_job
 
         def _fail_on_the_stopped_write(j):
-            if j.status == JOB_STOPPED:
+            if j.state == JOB_STOPPED:
                 calls["n"] += 1
                 raise OSError("disk full")
             return real_persist(j)
@@ -657,7 +657,7 @@ class TestTheStopIsNeverLost:
 
         assert calls["n"] == 1
         on_disk = load_job_plan(job.job_id)
-        assert on_disk.status != JOB_STOPPED          # nothing lied about being stopped
+        assert on_disk.state != JOB_STOPPED          # nothing lied about being stopped
         pending = stop_requested(job.job_id)
         assert pending is not None                    # ...and the request is still there
 
@@ -666,7 +666,7 @@ class TestTheStopIsNeverLost:
         stopped = run_job(job.job_id, builder_provider=builder,
                           reviewer_provider=_pass_provider(), repair_rounds=0)
 
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.stop_request_id == pending.request_id
         assert builder.build_calls == 0
         assert len(archived_signals(job.job_id)) == 1
@@ -694,7 +694,7 @@ class TestTheStopIsNeverLost:
                              reviewer_provider=_pass_provider(), repair_rounds=0)
 
         assert builder.build_calls == 0               # no work began: fail-safe
-        assert result.status != JOB_STOPPED           # no false clean episode
+        assert result.state != JOB_STOPPED           # no false clean episode
         assert "stop_archive_failed" in result.stop_error
         assert stop_requested(job.job_id) == pending  # the request is still pending
         assert _events(isolate_data_root, job.job_id, "job_stopped") == []
@@ -712,7 +712,7 @@ class TestTheStopIsNeverLost:
         # Restore the archive and finish: ONE of everything, for the same request id.
         stopped = run_job(job.job_id, builder_provider=_pass_provider(),
                           reviewer_provider=_pass_provider(), repair_rounds=0)
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.stop_request_id == pending.request_id
         assert len(archived_signals(job.job_id)) == 1
         assert len(_stop_episodes(job.job_id)) == 1
@@ -746,7 +746,7 @@ class TestTheStopIsNeverLost:
 
         def _persist_then_crash(j):
             real_persist(j)
-            if j.status == JOB_STOPPED:
+            if j.state == JOB_STOPPED:
                 raise _Crash("persist")
 
         with monkeypatch.context() as m:
@@ -764,13 +764,13 @@ class TestTheStopIsNeverLost:
             with contextlib.suppress(_Crash):
                 run_job(job.job_id, builder_provider=_pass_provider(),
                         reviewer_provider=_pass_provider(), repair_rounds=0)
-            assert load_job_plan(job.job_id).status != JOB_COMPLETED
+            assert load_job_plan(job.job_id).state != JOB_COMPLETED
 
         # Replay: the runner sees the pending request (or the stopped job) and finishes.
         stopped = run_job(job.job_id, builder_provider=_pass_provider(),
                           reviewer_provider=_pass_provider(), repair_rounds=0)
 
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert stopped.stop_request_id == pending.request_id
         assert len(archived_signals(job.job_id)) == 1
         assert len(_stop_episodes(job.job_id)) == 1
@@ -789,13 +789,13 @@ class TestTheStopIsNeverLost:
             stopped = run_job(job.job_id, builder_provider=_pass_provider(),
                               reviewer_provider=_pass_provider(), repair_rounds=0)
 
-        assert stopped.status == JOB_STOPPED          # the job IS stopped and durable
+        assert stopped.state == JOB_STOPPED          # the job IS stopped and durable
         assert "stop_acknowledge_failed" in stopped.stop_error
         assert stop_requested(job.job_id) == pending  # only the tidying failed
 
         again = run_job(job.job_id, builder_provider=_pass_provider(),
                         reviewer_provider=_pass_provider(), repair_rounds=0)
-        assert again.status == JOB_STOPPED
+        assert again.state == JOB_STOPPED
         assert stop_requested(job.job_id) is None     # now acknowledged
         assert len(_events(isolate_data_root, job.job_id, "job_stopped")) == 1
         assert len(_stop_episodes(job.job_id)) == 1
@@ -833,7 +833,7 @@ class TestTheRunRecordCarriesTheStop:
         job = parse_job_file(_ONE_TASK_JOB, str(demo_repo))
         done = run_job(job.job_id, builder_provider=_pass_provider(),
                        reviewer_provider=_pass_provider(), repair_rounds=0)
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert "stop" not in load_run(done.tasks[0].run_id)
 
 
@@ -853,7 +853,7 @@ class TestNothingUntrustedReachesTheEvidence:
 
         stopped = run_job(job.job_id, builder_provider=_pass_provider(),
                           reviewer_provider=_pass_provider(), repair_rounds=0)
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
 
         record = (_stop_episodes(job.job_id)[0] / "postmortem.json").read_text()
         events = json.dumps(_events(isolate_data_root, job.job_id, "job_stopped"))

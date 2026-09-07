@@ -125,13 +125,13 @@ class TestRunLogWriterConstruction:
     def test_creates_job_directory(self, tmp_path):
         job_id = uuid4()
         writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
-        job_dir = tmp_path / "runs" / str(job_id)
+        job_dir = tmp_path / "job_logs" / str(job_id)
         assert job_dir.is_dir()
 
     def test_path_is_inside_job_directory(self, tmp_path):
         job_id = uuid4()
         writer = RunLogWriter(job_id=job_id, data_root=tmp_path)
-        assert writer.path.parent == tmp_path / "runs" / str(job_id)
+        assert writer.path.parent == tmp_path / "job_logs" / str(job_id)
 
     def test_path_has_jsonl_extension(self, tmp_path):
         job_id = uuid4()
@@ -172,7 +172,7 @@ class TestRunLogWriterConstruction:
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job_id = uuid4()
         writer = RunLogWriter(job_id=job_id)
-        assert writer.path.parent == tmp_path / "runs" / str(job_id)
+        assert writer.path.parent == tmp_path / "job_logs" / str(job_id)
 
 
 # ---------------------------------------------------------------------------

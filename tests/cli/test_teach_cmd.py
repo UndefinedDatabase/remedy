@@ -54,7 +54,7 @@ _EVENTS = [
 
 def _write_run_log(root: Path, job_id: str, events: list[dict]) -> Path:
     """A run log at the real relative path ``load_run_events`` reads."""
-    runs = root / "runs" / job_id
+    runs = root / "job_logs" / job_id
     runs.mkdir(parents=True, exist_ok=True)
     log = runs / "run-1.jsonl"
     log.write_text(

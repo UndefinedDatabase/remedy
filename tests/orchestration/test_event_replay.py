@@ -7,7 +7,7 @@ from uuid import uuid4
 
 
 def _write_events(tmp_path, job_id, events):
-    runs_dir = tmp_path / "runs" / str(job_id)
+    runs_dir = tmp_path / "job_logs" / str(job_id)
     runs_dir.mkdir(parents=True, exist_ok=True)
     with open(runs_dir / "run.jsonl", "w") as f:
         for e in events:

@@ -26,10 +26,10 @@ _FINISHED_STATES = frozenset({"completed"})
 class _CoreJobAdapter:
     """Adapt a Core Job (storage.load_job) to the interface _cmd_job_stop expects."""
 
-    __slots__ = ("status", "stop_request_id", "stop_reason", "stop_source", "stopped_at")
+    __slots__ = ("state", "stop_request_id", "stop_reason", "stop_source", "stopped_at")
 
     def __init__(self, core_job):
-        self.status = core_job.state.value
+        self.state = core_job.state.value
         self.stop_request_id = ""
         self.stop_reason = ""
         self.stop_source = ""
@@ -64,14 +64,14 @@ def _print_status(job_id: str, *, json_output: bool) -> None:
 
     status = stop_status(job_id)
     payload = status.to_json()
-    payload["job_status"] = job.status
-    payload["stopped"] = job.status == "stopped"
+    payload["job_status"] = job.state
+    payload["stopped"] = job.state == "stopped"
 
     if json_output:
         print(_json.dumps(payload, indent=2))
         return
 
-    print(f"Job {job_id} — state: {job.status}")
+    print(f"Job {job_id} — state: {job.state}")
     if status.pending is not None:
         p = status.pending
         print(f"Stop request PENDING — {p.request_id} · reason: {p.reason} "
@@ -130,7 +130,7 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
     if job is None:
         _unknown_job(job_id, json_output=json_output)
 
-    if job.status == "stopped":
+    if job.state == "stopped":
         # The reviewed build happily wrote a NEW request here — a trap: the operator's next
         # resume would stop again immediately, for a stop that had already happened. A stop
         # request for a job that is already stopped is the same stop, and it is idempotent.
@@ -141,7 +141,7 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
             if json_output:
                 print(_json.dumps({
                     "ok": True, "already_stopped": True, "job_id": job_id,
-                    "job_status": job.status,
+                    "job_status": job.state,
                     "stop": {
                         "request_id": job.stop_request_id,
                         "reason": job.stop_reason,
@@ -157,14 +157,14 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         # A pending request on a stopped job is an unfinished finalization, not a new
         # episode: report it as it is.
 
-    if job.status in _FINISHED_STATES:
+    if job.state in _FINISHED_STATES:
         # No safe point will ever arrive. Pretending otherwise would leave an operator
         # waiting for a stop that cannot happen.
-        message = (f"job {job_id} is already {job.status}; there is no work left to stop "
+        message = (f"job {job_id} is already {job.state}; there is no work left to stop "
                    f"and no stop was requested")
         if json_output:
             print(_json.dumps({"ok": False, "error": "job_not_stoppable",
-                               "job_id": job_id, "job_status": job.status}, indent=2))
+                               "job_id": job_id, "job_status": job.state}, indent=2))
         else:
             print(f"Error: {message}", file=sys.stderr)
         raise SystemExit(EXIT_ERROR)
@@ -182,7 +182,7 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         raise SystemExit(EXIT_ERROR) from None
 
     if json_output:
-        print(_json.dumps({"ok": True, "job_id": job_id, "job_status": job.status,
+        print(_json.dumps({"ok": True, "job_id": job_id, "job_status": job.state,
                            "stop": signal.to_json()}, indent=2))
     else:
         print("Stop requested — it will take effect at the next safe point.")

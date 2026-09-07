@@ -714,7 +714,7 @@ def _worker_next_action(spec: WorkerSpec | None, job_id: str) -> str:
     if spec.kind == WorkerKind.REVIEWER:
         return "remedy review list --json"
     if spec.kind == WorkerKind.HUMAN:
-        return f"remedy guide next {jid} --json" if job_id else "remedy guide next --json"
+        return f"remedy guide job {jid} --json" if job_id else "remedy job list --json"
     return "remedy worker registry-list --json"
 
 

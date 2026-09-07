@@ -88,7 +88,7 @@ class TestTheHappyPath:
     def test_stopping_an_already_stopped_job_creates_no_new_trap_request(self, job, capsys):
         """The reviewed build wrote a NEW pending request here — which would stop the job
         again the moment somebody resumed it. Same stop, same answer, no new episode."""
-        job.status = JOB_STOPPED
+        job.state = JOB_STOPPED
         job.stop_request_id = "oldrequest123"
         job.stop_reason = "operator requested stop"
         job.stopped_at = "2026-07-14T10:00:00+00:00"
@@ -102,7 +102,7 @@ class TestTheHappyPath:
         assert stop_requested(job.job_id) is None      # NO new pending file
 
     def test_the_human_already_stopped_message_is_honest(self, job, capsys):
-        job.status = JOB_STOPPED
+        job.state = JOB_STOPPED
         job.stop_request_id = "oldrequest123"
         _persist_job(job)
 
@@ -139,7 +139,7 @@ class TestStatus:
         assert pending["consumed_count"] == 0
 
         consume_stop(job.job_id)
-        job.status = JOB_STOPPED
+        job.state = JOB_STOPPED
         _persist_job(job)
         CMD._cmd_job_stop(job.job_id, status=True, json_output=True)
         consumed = json.loads(capsys.readouterr().out)
@@ -149,7 +149,7 @@ class TestStatus:
     def test_status_shows_the_archived_history_of_a_resumed_job(self, job, capsys):
         request_stop(job.job_id, "first", "cli")
         consume_stop(job.job_id)
-        job.status = "running"                      # resumed
+        job.state = "running"                      # resumed
         _persist_job(job)
         request_stop(job.job_id, "second", "cli")
         consume_stop(job.job_id)
@@ -194,7 +194,7 @@ class TestItRefusesToLie:
         assert "invalid job id" in capsys.readouterr().err
 
     def test_a_completed_job_is_not_told_that_work_will_stop(self, job, capsys):
-        job.status = JOB_COMPLETED
+        job.state = JOB_COMPLETED
         _persist_job(job)
 
         with pytest.raises(SystemExit) as exc:
@@ -202,6 +202,25 @@ class TestItRefusesToLie:
         assert exc.value.code == 1
         err = capsys.readouterr().err
         assert "no stop was requested" in err or "no work left to stop" in err
+        assert stop_requested(job.job_id) is None
+
+    def test_a_completed_job_says_so_in_json_too(self, job, capsys):
+        """The JSON sibling of the test above.
+
+        Its absence is why a stale attribute survived the F272 state rename: the
+        plain-text branch never reads it, so only this path can see it.
+        """
+        job.state = JOB_COMPLETED
+        _persist_job(job)
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_job_stop(job.job_id, json_output=True)
+
+        assert exc.value.code == 1
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["ok"] is False
+        assert payload["error"] == "job_not_stoppable"
+        assert payload["job_status"] == JOB_COMPLETED
         assert stop_requested(job.job_id) is None
 
     def test_an_unwritable_control_area_is_loud_and_requests_nothing(self, job, capsys):

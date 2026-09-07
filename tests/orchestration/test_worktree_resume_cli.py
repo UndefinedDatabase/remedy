@@ -19,9 +19,8 @@ import pytest
 
 from apps.cli.commands import job as job_cmd
 from packages.core.models import Job, RunState
-from packages.orchestration import event_replay
+from packages.orchestration import data_paths, event_replay
 from packages.orchestration import worktrees as W
-from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.storage import save_job
 
 
@@ -51,7 +50,7 @@ def repo(tmp_path) -> Path:
 
 def _write_events(job_id: str) -> None:
     from packages.orchestration.data_paths import resolve_data_root
-    runs = resolve_data_root() / "runs" / job_id
+    runs = resolve_data_root() / "job_logs" / job_id
     runs.mkdir(parents=True, exist_ok=True)
     events = [
         {"event": "autorun_started", "metadata": {}, "timestamp": "2026-07-11T00:00:00Z"},
@@ -64,7 +63,7 @@ def _write_events(job_id: str) -> None:
 
 def _persist_interrupted_run(run_id: str, job_id: str, repo: Path, handle) -> Path:
     """The record a killed run leaves behind: a worktree still marked active."""
-    run_dir = pingpong_run_dir(run_id)
+    run_dir = data_paths.run_dir(run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "result.json").write_text(json.dumps({
         "run_id": run_id,

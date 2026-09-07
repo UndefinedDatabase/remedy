@@ -269,14 +269,14 @@ def run_json(args: list[str], root: Path, *, timeout: int = 10) -> dict:
 
 
 def read_events(root: Path, job_id: str, *, max_files: int = 5, max_bytes: int = 10000) -> str:
-    """Read bounded event content from runs/<job_id>/*.jsonl only.
+    """Read bounded event content from job_logs/<job_id>/*.jsonl only.
 
-    - Only reads from runs/<job_id>/ (no broad directory scans)
+    - Only reads from job_logs/<job_id>/ (no broad directory scans)
     - Caps file count to max_files
     - Caps bytes per file to max_bytes
     - Ignores unreadable files
     """
-    runs_dir = root / "runs" / job_id
+    runs_dir = root / "job_logs" / job_id
     if not runs_dir.is_dir():
         return ""
     files = sorted(runs_dir.glob("*.jsonl"))[:max_files]

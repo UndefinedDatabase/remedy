@@ -1,0 +1,18 @@
+R-0444 EVENT MEASUREMENT — did anything write apps/ui/dist during the
+G6 base run? Measured as an EVENT (per-file mtime), not as an outcome.
+
+base run window start = 1788791504.190902 (2026-09-07T16:31:44.190902)
+base run window end   = 1788791671.544701 (2026-09-07T16:34:31.544701)
+window width          = 167.35s
+
+dist files before = 4, after = 4, file set identical = True
+  assets/diffHighlightGrammars-o9XqnLhb.js  1788776043.1460497 -> same
+  assets/index-D_qZGOuo.css                 1788776043.1430497 -> same
+  assets/index-SSfmtKy1.js                  1788776043.1460497 -> same
+  index.html                                1788776043.1460497 -> same
+
+FILES_WITH_MTIME_INSIDE_RUN_WINDOW = 0
+FILES_WITH_CHANGED_MTIME           = 0
+PARITY_CLAIM_HOLDS                 = True
+(The forward touch in the attribution control happened AFTER this
+window closed and is declared as such.)

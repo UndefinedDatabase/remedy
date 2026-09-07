@@ -124,7 +124,7 @@ def run_next_self_use_item(
             to run under the fake provider (for tests).
     """
     entry, job_file_path, plan = plan_next_self_use_item(dest_dir, repo_path, queue_path)
-    if plan.status == JOB_BLOCKED:
+    if plan.state == JOB_BLOCKED:
         raise SelfUseRunError(
             f"{entry.id}: planning already blocked it ({plan.error!r}) — "
             "this item cannot be run"

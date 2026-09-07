@@ -923,21 +923,29 @@ or exception messages appear in the run log.
 
 **CLI commands:**
 - `remedy dev agent-loop <job_id>` — inspect-only: derives state, prints summary, writes `agent_loop_inspected` event.
-- `remedy job run-loop <job_id>` — execution loop: runs cycles, emits structured events, stops on approval/block/completion.
+
+The execution loop invoked as `job run-loop` was DELETED at F272 round 19, and
+the command no longer exists; the guard in
+`tests/cli/test_advertised_commands.py` is why this sentence names it without
+spelling it as an invocation.
+The six cycle events below keep their schemas in
+`packages/orchestration/event_schemas.py` and are still emitted by
+`agent_loop.run_agent_loop()`, which no production caller reaches; DECISION F272
+D13 assigns that function to T004's classic-runner deletion.
 
 **Run-log event names:**
 
 | Event | Status | Description |
 |-------|--------|-------------|
 | `agent_loop_inspected` | active — `dev agent-loop` | Loop state snapshot |
-| `agent_loop_started` | active — `job run-loop` | Loop begins |
-| `agent_loop_cycle_started` | active — `job run-loop` | Each cycle begins |
-| `agent_loop_decision` | active — `job run-loop` | Decision made (run_next_task, needs_planning) |
-| `agent_loop_cycle_completed` | active — `job run-loop` | Each cycle ends |
-| `agent_loop_paused` | active — `job run-loop` | Loop paused (needs_approval, blocked) |
-| `agent_loop_completed` | active — `job run-loop` | Loop finished (all_done, max_cycles_reached) |
+| `agent_loop_started` | no live emitter | Loop begins |
+| `agent_loop_cycle_started` | no live emitter | Each cycle begins |
+| `agent_loop_decision` | no live emitter | Decision made (run_next_task, needs_planning) |
+| `agent_loop_cycle_completed` | no live emitter | Each cycle ends |
+| `agent_loop_paused` | no live emitter | Loop paused (needs_approval, blocked) |
+| `agent_loop_completed` | no live emitter | Loop finished (all_done, max_cycles_reached) |
 
-**`job run-loop` execution events — 10-key metadata schema (exact keyset):**
+**Agent-loop execution events — 10-key metadata schema (exact keyset):**
 
 All `agent_loop_*` events emitted by `run_agent_loop()` use the same metadata schema:
 

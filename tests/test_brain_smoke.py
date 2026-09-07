@@ -139,8 +139,8 @@ def _add_patch_artifact(
 
 
 def _write_run_events(tmp_path: Path, job_id, events: list[dict]) -> None:
-    """Write events to the runs directory so the CLI can load them."""
-    runs_dir = tmp_path / "runs" / str(job_id)
+    """Write events to the job_logs directory so the CLI can load them."""
+    runs_dir = tmp_path / "job_logs" / str(job_id)
     runs_dir.mkdir(parents=True, exist_ok=True)
     lines = [json.dumps(e) for e in events]
     (runs_dir / "smoke_test_events.jsonl").write_text("\n".join(lines) + "\n")
@@ -148,7 +148,7 @@ def _write_run_events(tmp_path: Path, job_id, events: list[dict]) -> None:
 
 def _read_run_log(tmp_path: Path, job_id) -> list[dict]:
     """Read all JSONL run-log events for a job."""
-    runs_dir = tmp_path / "runs" / str(job_id)
+    runs_dir = tmp_path / "job_logs" / str(job_id)
     if not runs_dir.exists():
         return []
     events: list[dict] = []

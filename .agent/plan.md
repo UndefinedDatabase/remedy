@@ -1,36 +1,37 @@
-# Plan — amend0906-triage-throughput
+# Plan — F272 One world completion
 
-Branch: feature/amend0906-triage-throughput, cut from main at `b18fad57`. Planning,
-ledger and protocol text only; no product code and no test code except the
-`TOTAL_FEATURES` pin.
+Branch: feature/f272-one-world-completion. Rounds 1 to 30 PASSED except round 2 (premise
+corrected by DECISION F272 D2) and round 21 (R-0824, repaired by round 22). T001, T002 and
+T003 are COMPLETE; T004's remainder and T005 are F274's, split off in round 26 by DECISION
+F272 D16.
 
 ## Goal
 
-Triage every open finding into fixed / deletion-bound / process-only / product,
-register the product remainder as F273, and land the three throughput rules for the
-rebuild block. Then carry main into the open F272 branch so that branch can see all
-of it.
+Close F272 at the self-consistent scope DECISION F272 D16 fixed. Every closure precondition
+of `docs/roadmap/STATUS_closure_protocol.md` is now met: the integration gate ran in round
+27 with zero branch-only failures, the self-use item was run in round 28 and its defects
+registered in round 29, and round 30 rotated the ledger and built a READY_FOR_REVIEW package.
 
 ## Current Step
 
-Parts 0, A and B are complete and committed in six commits: the triage table, the
-ledger resolutions, the prose_slips classes, the deletion-bound tag with the F272
-and F261 sentences, the F273 registration with its pins, and the protocol paragraph
-with DECISION amend0906-triage-throughput. The handoff is the sixth. Next is the
-push, the pull request and its merge, then Part C.
+Round 31, the last round on this branch: the closure commit — the STATUS `[x]` line, the
+README capability sync and SU-012's `consumed_by` in ONE commit, with the final handoff —
+and then the pull request, which is NOT merged this session.
 
 ## Next Steps
 
-1. Push, open the PR, wait for hosted CI, merge on green, verify main.
-2. Part C: merge `origin/main` into `feature/f272-one-world-completion` with
-   `--no-ff`, keeping BOTH sides of every append-only conflict (main's block first),
-   re-run `tests/docs/` and the canary on the merged branch, push, and append the
-   merge record to that branch's `.agent/handoff.md` as one commit.
-3. The operator runs `remedy-resume` and restarts the loop; F272 continues on its
-   own branch at 12 sessions / 40 rounds.
+1. The PR merges at the NEXT feature's start through the AGENTS.md Open PR Gate. That gap is
+   the operator's manual-review window, and guardrail G1 forbids this session merging a PR
+   it created.
+2. Rule A5 then proposes F274, which sits directly after F272 by amend0906-split-placement
+   and owns the atomic record flip and the cluster deletion.
+3. F274's first slice is the DECISION F272 D7 raising-property probe and a ruling on the
+   per-commit cap, NOT the flip itself.
 
 ## Risks
 
-- `.agent/STOP` is present and untouched; this branch never starts the loop.
-- The F272 branch has unpushed rounds of its own. Part C merges main INTO it and
-  never rebases or force-pushes it.
+- Five open High findings — R-0803, R-0804, R-0806, R-0807 and R-0827 — all owned by F273,
+  whose own Done clause covers "anything registered after 2026-09-06". DECISION F272 D17
+  rules why the close names them rather than waiting.
+- `remedy integrity check` passes while its `high_blockers_open` check is vacuous; that is
+  the open R-0648 and the PR body states it.

@@ -289,7 +289,7 @@ def _cmd_decision_resolve(
         print(f"Answered {decision_id} for job {job_id_str}: {answered['answer']}")
         for ref in answered.get("cross_references", []):
             print(f"  Same question also asked as: {ref}")
-        print(f"Resume the run: remedy job run-loop {job_id_str} --json")
+        print(f"Resume the run: remedy job run {job_id_str} --json")
     elif decision_id.startswith("fp:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.storage import JobNotFoundError, load_job

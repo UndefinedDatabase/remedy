@@ -58,7 +58,7 @@ class TestDescribeSelfUseRunDefects:
         )
         defects = describe_self_use_run_defects(result)
         assert len(defects) == 2
-        assert defects[0] == f"job {result.job_id} ({result.status}): {result.error}"
+        assert defects[0] == f"job {result.job_id} ({result.state}): {result.error}"
         assert defects[1] == f"{result.tasks[0].task_id} ({result.tasks[0].status}): {result.tasks[0].error}"
         assert result.error in defects[0]
         assert result.tasks[0].error in defects[1]

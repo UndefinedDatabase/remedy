@@ -20,10 +20,9 @@ import pytest
 
 from apps.cli.commands import job as job_cmd
 from packages.core.models import Job, RunState
-from packages.orchestration import event_replay
+from packages.orchestration import data_paths, event_replay
 from packages.orchestration import worktree_resume as WR
 from packages.orchestration import worktrees as W
-from packages.orchestration.data_paths import pingpong_run_dir
 from packages.orchestration.pingpong_loop import (
     load_run,
     run_pingpong,
@@ -133,7 +132,7 @@ class TestKeepStagingReleasesItsLock:
 
 def _write_events(job_id: str) -> None:
     from packages.orchestration.data_paths import resolve_data_root
-    runs = resolve_data_root() / "runs" / job_id
+    runs = resolve_data_root() / "job_logs" / job_id
     runs.mkdir(parents=True, exist_ok=True)
     with (runs / "run.jsonl").open("w") as fh:
         for e in [{"event": "autorun_started", "metadata": {}},
@@ -144,7 +143,7 @@ def _write_events(job_id: str) -> None:
 
 def _persist_run_record(run_id: str, job_id: str, repo: Path, handle,
                         status: str = "active", result_diff=None) -> Path:
-    run_dir = pingpong_run_dir(run_id)
+    run_dir = data_paths.run_dir(run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "result.json").write_text(json.dumps({
         "run_id": run_id, "job_id": job_id, "repo_path": str(repo),

@@ -90,7 +90,7 @@ def _plant_stream_evidence(job) -> tuple[str, list[str]]:
     Also records the refs in the persisted run result, which is what the export
     reads to build ``provider_evidence.json``.
     """
-    from packages.orchestration.data_paths import jobs_dir, pingpong_run_dir
+    from packages.orchestration.data_paths import jobs_dir, run_dir
 
     task = job.tasks[0]
     task_dir = jobs_dir() / job.job_id / "evidence" / "task_runs" / task.task_id
@@ -103,7 +103,7 @@ def _plant_stream_evidence(job) -> tuple[str, list[str]]:
         (call_dir / "run_events.jsonl").write_text(_EVENT_LINE, encoding="utf-8")
         refs += [f"{call}/raw_stream.jsonl", f"{call}/run_events.jsonl"]
 
-    result_file = pingpong_run_dir(task.run_id) / "result.json"
+    result_file = run_dir(task.run_id) / "result.json"
     data = json.loads(result_file.read_text())
     pe = dict(data.get("provider_evidence") or {})
     pe["stream_evidence_present"] = True

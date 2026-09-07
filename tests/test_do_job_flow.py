@@ -1195,7 +1195,7 @@ class TestJobFlowEndToEnd:
 class _FakeJob:
     """Minimal job stub for _build_final_audit unit tests."""
     def __init__(self, status="completed", tasks=None):
-        self.status = status
+        self.state = status
         self.tasks = tasks or [_FakeTask()]
 
 

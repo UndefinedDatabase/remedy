@@ -170,7 +170,7 @@ class TestExecutionEvents:
         enqueue_job(jid, root)
         run_worker_once(root, job_id=jid, provider="fixture")
 
-        runs_dir = root / "runs" / jid
+        runs_dir = root / "job_logs" / jid
         assert runs_dir.exists()
         events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         assert "task_execution_completed" in events
@@ -285,7 +285,7 @@ class TestFullBackendLoop:
         ok, _ = can_finalize(jid, root=root)
         assert ok is True
 
-        runs_dir = root / "runs" / jid
+        runs_dir = root / "job_logs" / jid
         if runs_dir.exists():
             events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
             assert "task_execution_started" in events
@@ -389,7 +389,7 @@ class TestStartedCompletedEvents:
         enqueue_job(jid, root)
         run_worker_once(root, job_id=jid, provider="fixture")
 
-        runs_dir = root / "runs" / jid
+        runs_dir = root / "job_logs" / jid
         assert runs_dir.exists()
         events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         assert "task_execution_started" in events
@@ -406,7 +406,7 @@ class TestStartedCompletedEvents:
         enqueue_job(jid, root)
         run_worker_once(root, job_id=jid, provider="fixture")
 
-        runs_dir = root / "runs" / jid
+        runs_dir = root / "job_logs" / jid
         events = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         assert "task_execution_started" in events
         assert "task_execution_blocked" in events

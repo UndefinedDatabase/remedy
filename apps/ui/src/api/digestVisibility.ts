@@ -52,9 +52,18 @@ const IN_FLIGHT_STATES: readonly string[] = ["running"];
 
 /** The states in which the run has come to rest and there is something to
  *  report. `paused` sits here rather than with `running` on purpose — a paused
- *  job is waiting for the operator, which is the most report-worthy rest of the
- *  four. */
-const SETTLED_STATES: readonly string[] = ["paused", "completed", "failed", "cancelled"];
+ *  job is waiting for the operator, which is the most report-worthy way for a
+ *  run to have come to rest. `blocked` and `stopped` join it under DECISION
+ *  F272 D8: both are settled states the orchestrator really produces, and a
+ *  run halted by an obstacle or by the operator is news worth a card. */
+const SETTLED_STATES: readonly string[] = [
+  "paused",
+  "completed",
+  "failed",
+  "cancelled",
+  "blocked",
+  "stopped",
+];
 
 /** The THREE-WAY partition over `RunState`, plus the honest fourth answer for a
  *  word this client has never heard of. Two-way would be the real defect: read
@@ -62,7 +71,7 @@ const SETTLED_STATES: readonly string[] = ["paused", "completed", "failed", "can
  *  the settled one and announces a job that never began. */
 type DigestStateClass = "not-yet-started" | "in-flight" | "settled" | "unknown";
 
-/** Which of the four a state string belongs to. The seven members of `RunState`
+/** Which of the four a state string belongs to. The members of `RunState`
  *  in `packages/core/models.py` are partitioned by the three tuples above; an
  *  UNKNOWN string falls through to `unknown` and is NOT treated as settled,
  *  because claiming a run finished on the strength of a word you cannot read is

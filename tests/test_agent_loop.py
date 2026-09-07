@@ -718,7 +718,7 @@ class TestRedactionHardening:
         from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         combined = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         for sentinel in self.SENTINELS:
             assert sentinel not in combined, f"sentinel {sentinel!r} leaked into run log"
@@ -761,7 +761,7 @@ class TestCLIAgentLoop:
         from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -778,7 +778,7 @@ class TestCLIAgentLoop:
         from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -802,7 +802,7 @@ class TestCLIAgentLoop:
         from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         combined = "".join(f.read_text() for f in runs_dir.glob("*.jsonl"))
         assert "ARTIFACT RAW CONTENT MUST NOT BE LOGGED" not in combined
 
@@ -813,7 +813,7 @@ class TestCLIAgentLoop:
         from apps.cli.commands.brain import _cmd_agent_loop
         _cmd_agent_loop(str(job.id))
         capsys.readouterr()
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         assert len(list(runs_dir.glob("*.jsonl"))) == 1
 
     def test_cli_output_no_raw_approval_reason(self, tmp_path, monkeypatch, capsys):

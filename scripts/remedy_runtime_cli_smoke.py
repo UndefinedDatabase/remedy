@@ -165,7 +165,7 @@ def create_task(root: Path, jid: str, *, title: str = "Smoke", status: str = "pr
 
 
 def read_events(root: Path, jid: str) -> str:
-    runs_dir = root / "runs" / jid
+    runs_dir = root / "job_logs" / jid
     if not runs_dir.is_dir():
         return ""
     files = sorted(runs_dir.glob("*.jsonl"))[:5]

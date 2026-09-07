@@ -257,14 +257,14 @@ class TestReadOnly:
 
         from packages.orchestration.pingpong_job import load_job_plan
         before = load_job_plan(job.job_id)
-        before_status = before.status
+        before_status = before.state
         before_tasks = [(t.task_id, t.status) for t in before.tasks]
 
         from packages.orchestration.job_evidence import export_job_evidence
         export_job_evidence(job.job_id, str(tmp_path / "evidence"))
 
         after = load_job_plan(job.job_id)
-        assert after.status == before_status
+        assert after.state == before_status
         assert [(t.task_id, t.status) for t in after.tasks] == before_tasks
 
 
@@ -1201,8 +1201,8 @@ class TestPromptTraceRoleMetadata:
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             written: dict[str, str] = {}
-            from packages.orchestration.data_paths import pingpong_run_dir
-            run_dir = pingpong_run_dir("run1")
+            from packages.orchestration import data_paths
+            run_dir = data_paths.run_dir("run1")
             run_dir.mkdir(parents=True, exist_ok=True)
             summary = {
                 "builder_prompts": 3,
@@ -1246,8 +1246,8 @@ class TestPromptTraceRoleMetadata:
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             written: dict[str, str] = {}
-            from packages.orchestration.data_paths import pingpong_run_dir
-            run_dir = pingpong_run_dir("run2")
+            from packages.orchestration import data_paths
+            run_dir = data_paths.run_dir("run2")
             run_dir.mkdir(parents=True, exist_ok=True)
             summary = {
                 "builder_prompts": 2,
@@ -1284,8 +1284,8 @@ class TestPromptTraceRoleMetadata:
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             written: dict[str, str] = {}
-            from packages.orchestration.data_paths import pingpong_run_dir
-            run_dir = pingpong_run_dir("run3")
+            from packages.orchestration import data_paths
+            run_dir = data_paths.run_dir("run3")
             run_dir.mkdir(parents=True, exist_ok=True)
             summary = {
                 "builder_prompts": 1,
@@ -1318,8 +1318,8 @@ class TestPromptTraceRoleMetadata:
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             written: dict[str, str] = {}
-            from packages.orchestration.data_paths import pingpong_run_dir
-            run_dir = pingpong_run_dir("run4")
+            from packages.orchestration import data_paths
+            run_dir = data_paths.run_dir("run4")
             run_dir.mkdir(parents=True, exist_ok=True)
             summary = {
                 "builder_prompts": 1,

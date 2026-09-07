@@ -1,0 +1,22 @@
+INTEGRATION GATE — F272 round 27 — docs/agents/integration_gate.md
+
+step 1 BRANCH RUN  primary checkout, HEAD d47c9983 (C4)
+  python3 -m pytest -n auto -q
+  exit 0 | 19786 passed, 23 skipped, 1 warning in 115.98s | FAILED 0
+
+step 2 BASE RUN    throwaway worktree, branch tmp/f272-base-gate,
+  fork point b18fad576252f7f2739a5807b6408031da8fcde6 (NOT merge-base)
+  rev-list --ancestry-path base..412ce673 = 213; rev-list base.. = 213
+  merge-base 148fbd0b for contrast: 184 and 205 -- the unequal shape
+  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+  exit 1 | 126 failed, 19605 passed, 23 skipped in 166.70s
+  parity restored first: shutil.copytree(src, dst, symlinks=True) for
+  apps/ui/node_modules (43032 files, 27 symlinks preserved, matching the
+  primary's 27) and apps/ui/dist (4 files)
+
+step 3 COMPARE
+  comm -13 base_failed.txt branch_failed.txt  = 0 ids  <== VERDICT
+  comm -23 base_failed.txt branch_failed.txt  = 126 ids, all attributed
+
+BRANCH-ONLY FAILURES: NONE. A branch with zero failures can have no
+branch-only failure, and the branch run measured zero.

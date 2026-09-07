@@ -1076,86 +1076,6 @@ def _cmd_job_resume(
     _cmd_job_run_cycles(job_id_str, cycles=cycles, json_output=json_output)
 
 
-def _cmd_run_loop(
-    job_id_str: str,
-    *,
-    max_cycles: int = 3,
-    autonomy_level: int = 1,
-    auto_approve_low_risk: bool = False,
-    no_tests: bool = False,
-    json_output: bool = False,
-) -> None:
-    import json as _json
-
-    job_id = resolve_job_id(job_id_str)
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    from packages.orchestration.flight_plan import flight_plan_blocks_execution
-    block_reason = flight_plan_blocks_execution(job)
-    if block_reason == "pending":
-        print(
-            f"Error: plan awaiting approval. "
-            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
-            file=sys.stderr,
-        )
-        sys.exit(3)
-    elif block_reason == "rejected":
-        print(
-            f"Error: flight plan rejected. "
-            f"Run: remedy do replan {job_id_str[:8]}",
-            file=sys.stderr,
-        )
-        sys.exit(3)
-
-    from packages.orchestration.autonomy_loop import (
-        export_loop_result_json,
-        run_autonomy_loop,
-        summarize_loop_result,
-    )
-    from packages.orchestration.run_log import RunLogWriter
-    from packages.orchestration.timeline import load_run_events
-
-    data_dir = resolve_data_root()
-    events = load_run_events(data_dir, job_id)
-
-    result = run_autonomy_loop(
-        job, events,
-        max_cycles=max_cycles,
-        autonomy_level=autonomy_level,
-    )
-
-    # Emit run-log events
-    log = RunLogWriter(job_id=job.id)
-    for c in result.cycles:
-        log.log(
-            "agent_loop_cycle_decision",
-            cycle=c.cycle,
-            decision=c.decision,
-            reason=c.reason,
-            next_action=c.next_action,
-            blocked_by=c.blocked_by,
-            token_mode=c.token_mode,
-            selected_worker=c.selected_worker,
-            readiness_level=c.readiness_level,
-        )
-    log.log(
-        "agent_loop_stopped",
-        final_decision=result.final_decision,
-        stop_reason=result.stop_reasons[0] if result.stop_reasons else "",
-        cycles_run=len(result.cycles),
-        unresolved_blocker_count=len(result.stop_reasons),
-    )
-
-    if json_output:
-        print(_json.dumps(export_loop_result_json(result), sort_keys=True))
-    else:
-        print(summarize_loop_result(result))
-
-
 def _cmd_job_assumptions(job_id_str: str) -> None:
     """Print the job's assumption log (F034).
 
@@ -1675,7 +1595,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
         next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
-        next_action = 'remedy job run-loop <job_id> --json'
+        next_action = 'remedy job run <job_id> --json'
     elif state in ('completed', 'failed'):
         next_action = f'remedy job report {job_id_str} --json'
     else:
@@ -2491,14 +2411,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
-    "job.run-loop": lambda args: _cmd_run_loop(
-        args.job_id,
-        max_cycles=int(getattr(args, "max_cycles", "3")),
-        autonomy_level=int(getattr(args, "autonomy_level", "1")),
-        auto_approve_low_risk=getattr(args, "auto_approve_low_risk", False),
-        no_tests=getattr(args, "no_tests", False),
-        json_output=getattr(args, "json", False),
-    ),
     "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
     "job.summary": lambda args: _cmd_job_summary(
         args.job_id,

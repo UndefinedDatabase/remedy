@@ -1,0 +1,10 @@
+# G6 base run, throwaway worktree at fork point b18fad57,
+# branch tmp/f272-base-gate, REMEDY_UI_NO_AUTO_BUILD=1
+# command: python3 -m pytest -n auto -q
+# real exit code: 1        wall: 167s shell / 166.70s pytest
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpoint::test_unknown_task_run_is_a_named_absence_at_status_200
+FAILED tests/ui_server/test_diff_endpoint.py::TestDiffEndpointPerfBudget::test_the_acceptance_fixture_is_served_inside_the_hang_net
+FAILED tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_body_carries_exactly_the_envelope_key_set
+FAILED tests/ui_server/test_digest_route.py::TestDigestRoute::test_digest_endpoint_refuses_an_invalid_token
+FAILED tests/ui_server/test_command_dispatch.py::TestFlightPlanApprovalDispatchEffects::test_the_accepted_fp_approval_saves_the_job_exactly_once
+126 failed, 19605 passed, 23 skipped, 1 warning in 166.70s (0:02:46)

@@ -114,7 +114,7 @@ def _run_job(repo: Path, monkeypatch, files: dict[str, str], text=ONE_TASK, seen
 class TestCompletedJobPromotion:
     def test_dry_run_is_ready_not_workspace_missing(self, repo, monkeypatch):
         job, holder = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        assert job.status == JOB_COMPLETED
+        assert job.state == JOB_COMPLETED
         assert job.worktree_cleanup_status == "clean"
         assert not Path(holder["path"]).exists()     # workspace is gone by design
 
@@ -344,7 +344,7 @@ class TestJobPlanResumeAfterCrash:
         job.job_initial_tree = W.write_tree(handle)
         job.job_initial_tree_ref = W.checkpoint_ref(wt_id, "job-initial")
         W.set_checkpoint_ref(repo, job.job_initial_tree_ref, job.job_initial_tree)
-        job.status = PJ.JOB_RUNNING
+        job.state = PJ.JOB_RUNNING
 
         task = job.tasks[0]
         task.status = PJ.TASK_RUNNING
@@ -370,7 +370,7 @@ class TestJobPlanResumeAfterCrash:
                                reviewer_provider=prov, builder_name="fake",
                                reviewer_name="fake", max_rounds=1)
 
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert done.worktree_branch == job.worktree_branch     # same branch
         assert done.worktree_path == job.worktree_path         # same path
         branches = _git(repo, "branch", "--format=%(refname:short)").split()
@@ -379,7 +379,7 @@ class TestJobPlanResumeAfterCrash:
     def test_the_pre_crash_file_stays_inside_the_task_diff_and_review(
         self, repo, monkeypatch,
     ):
-        from packages.orchestration.data_paths import pingpong_run_dir
+        from packages.orchestration.data_paths import run_dir
 
         job, handle = self._crashed_job(repo, monkeypatch)
         holder = {"path": handle.path}
@@ -395,7 +395,7 @@ class TestJobPlanResumeAfterCrash:
         assert "partial.txt" in seen["reviewer_prompt"]
         assert "finished.txt" in seen["reviewer_prompt"]
         # Task-local diff, safe-diff file list and apply manifest all carry both.
-        task_diff = (pingpong_run_dir(task.run_id) / "result.diff").read_text()
+        task_diff = (run_dir(task.run_id) / "result.diff").read_text()
         assert "partial.txt" in task_diff and "finished.txt" in task_diff
         assert sorted(task.safe_diff_files) == ["finished.txt", "partial.txt"]
         assert sorted(task.apply_manifest.applied_files) == ["finished.txt", "partial.txt"]
@@ -428,7 +428,7 @@ class TestJobPlanResumeAfterCrash:
         done = resume_job_plan(job.job_id, builder_provider=prov,
                                reviewer_provider=prov, builder_name="fake",
                                reviewer_name="fake", max_rounds=1)
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert done.tasks[0].safe_diff_files == ["finished.txt"]
 
     def test_a_second_crash_during_the_resumed_attempt_is_still_recoverable(
@@ -448,7 +448,7 @@ class TestJobPlanResumeAfterCrash:
                                reviewer_name="fake", max_rounds=1)
 
         task = done.tasks[0]
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert sorted(task.safe_diff_files) == [
             "finished.txt", "partial.txt", "partial2.txt",
         ]                                       # every crash artifact was reviewed
@@ -458,7 +458,7 @@ class TestJobPlanResumeAfterCrash:
     ):
         job, holder = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
         again = resume_job_plan(job.job_id)
-        assert again.status == JOB_COMPLETED
+        assert again.state == JOB_COMPLETED
         assert again.worktree_cleanup_status == "clean"
         assert not Path(holder["path"]).exists()     # no worktree recreated
         assert len(W.list_worktrees(repo)) == 1
@@ -503,7 +503,7 @@ class TestEndToEndJobFlow:
         head_before = _git(repo, "rev-parse", "HEAD").strip()
 
         job, _ = _run_job(repo, monkeypatch, {"one.txt": "hello\n"})
-        assert job.status == JOB_COMPLETED
+        assert job.state == JOB_COMPLETED
         assert job.isolation_mode == "worktree"       # a copy here is a FAILURE
 
         report = export_job_report(job)

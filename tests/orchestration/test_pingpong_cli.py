@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import packages.orchestration.pingpong_loop as pingpong_loop
-from packages.orchestration.data_paths import pingpong_run_dir, pingpong_runs_dir
+from packages.orchestration.data_paths import run_dir, runs_dir
 from packages.orchestration.pingpong_loop import (
     _OVERSIZED_DIFF_THRESHOLD_CHARS,
     _OVERSIZED_REVIEWER_SCOPED_DIFF_THRESHOLD_CHARS,
@@ -278,9 +278,9 @@ class TestExternalRunStorage:
     def test_storage_outside_target(self, demo_repo, isolate_data_root):
         result = run_pingpong("Fix README", str(demo_repo), builder_name="fake", reviewer_name="fake")
         # Must NOT exist in target repo
-        assert not pingpong_runs_dir(demo_repo / ".data").exists()
+        assert not runs_dir(demo_repo / ".data").exists()
         # Must exist in remedy data root
-        stored = pingpong_run_dir(result.run_id, isolate_data_root) / "result.json"
+        stored = run_dir(result.run_id, isolate_data_root) / "result.json"
         assert stored.exists()
 
 
@@ -2730,10 +2730,10 @@ class TestTieredSummariesReduceComposedPromptSize:
             t for t in result.prompt_traces if t.role == "builder" and t.round == 2)
 
         reviewer_artifact = (
-            pingpong_run_dir(result.run_id) / "calls" / "reviewer"
+            run_dir(result.run_id) / "calls" / "reviewer"
             / "round-01" / "tiered_diff.diff")
         builder_artifact = (
-            pingpong_run_dir(result.run_id) / "calls" / "builder"
+            run_dir(result.run_id) / "calls" / "builder"
             / "round-02" / "tiered_diff.diff")
         assert reviewer_artifact.exists()
         assert builder_artifact.exists()

@@ -48,7 +48,7 @@ def describe_self_use_run_defects(result: JobPlan) -> tuple[str, ...]:
     """
     defects: list[str] = []
     if result.error:
-        defects.append(f"job {result.job_id} ({result.status}): {result.error}")
+        defects.append(f"job {result.job_id} ({result.state}): {result.error}")
     for task in result.tasks:
         if task.error:
             defects.append(f"{task.task_id} ({task.status}): {task.error}")

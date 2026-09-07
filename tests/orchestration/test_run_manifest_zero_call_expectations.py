@@ -113,8 +113,8 @@ def _with_live_workspace(job, repo):
 
 
 def _run_path(job, ix=0):
-    from packages.orchestration.data_paths import pingpong_run_dir
-    return pingpong_run_dir(job.tasks[ix].run_id) / "result.json"
+    from packages.orchestration.data_paths import run_dir
+    return run_dir(job.tasks[ix].run_id) / "result.json"
 
 
 # --------------------------------------------------------------------------- FALSE zero calls
@@ -210,7 +210,7 @@ class TestGenuineZeroCallReferencesStayValid:
         request_stop(job.job_id, "operator requested stop", "test")
         done = run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
                        repair_rounds=0)
-        assert done.status == JOB_STOPPED
+        assert done.state == JOB_STOPPED
 
         ref = load_latest_manifest_verified(job_evidence_dir(job.job_id), job_id=job.job_id)
         assert ref.calls == ()

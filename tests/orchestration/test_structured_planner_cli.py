@@ -57,14 +57,14 @@ def _run(job_id):
 
 def _events(tmp_path, job_id):
     from packages.orchestration.run_log import read_run_events
-    d = tmp_path / "runs" / str(job_id)
+    d = tmp_path / "job_logs" / str(job_id)
     # Exclude prompt_trace.jsonl — the run log is the <run_id>.jsonl file.
     files = [f for f in d.glob("*.jsonl") if f.name != "prompt_trace.jsonl"] if d.exists() else []
     return read_run_events(files[0]) if files else []
 
 
 def _plan_traces(tmp_path, job_id):
-    p = tmp_path / "runs" / str(job_id) / "prompt_trace.jsonl"
+    p = tmp_path / "job_logs" / str(job_id) / "prompt_trace.jsonl"
     if not p.exists():
         return []
     return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]

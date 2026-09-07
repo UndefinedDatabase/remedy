@@ -312,7 +312,7 @@ def _assess_level(
 
     elif lvl == 4:
         # bounded_loop: need agent loop + run contract + token policy + no open decisions
-        _check("agent_loop", "remedy job run-loop <job_id>")
+        _check("agent_loop", "remedy dev agent-loop <job_id>")
         _check("run_contract")
         _check("token_policy")
         _check("token_policy_applied")

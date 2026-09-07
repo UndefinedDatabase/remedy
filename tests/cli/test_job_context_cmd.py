@@ -229,3 +229,60 @@ def test_empty_files_hint_is_rendered_rather_than_treated_as_an_error(tmp_path, 
         "gamma.py",
         "unrelated.py",
     ]
+
+
+def _make_ping_pong_job(repo, *, files_hint=("alpha.py",), attach_repo=True):
+    """Persist a real UNIFIED job record — the shape `remedy do job-run` writes.
+
+    Its task carries no flight-plan block at all: a `TaskEntry` spells its
+    planned id and its fenced scope as its OWN fields, which is exactly what
+    this command must read to answer for a job of either store.
+    """
+    from packages.orchestration.pingpong_job import JobPlan, TaskEntry, save_job_plan
+
+    task = TaskEntry(task_id="T001", title="edit alpha", files_hint=list(files_hint))
+    job = JobPlan(
+        job_title="f272-context",
+        repo_path=str(repo) if attach_repo else "",
+        tasks=[task],
+    )
+    save_job_plan(job)
+    return job, task
+
+
+def test_a_ping_pong_created_job_compiles_context_like_a_classic_one(tmp_path, env):
+    repo = _make_repo(tmp_path)
+    job, _task = _make_ping_pong_job(repo)
+
+    data = _run_json(env, job.job_id, "--task", "T001")
+
+    assert data["job_id"] == job.job_id
+    assert data["task_id"] == "T001"
+    assert data["task_label"] == "T001"
+    assert data["fenced_paths"] == ["alpha.py"]
+    assert _entry(data["included"], "alpha.py")["tier"] == 1
+    assert _entry(data["included"], "beta.py")["tier"] == 2
+    assert data["candidate_count"] == 4
+
+
+def test_a_ping_pong_job_without_a_repo_path_exits_two(tmp_path, env):
+    """The unified record spells the target repo `repo_path`, so an empty one
+    must reach the SAME exit 2 an unattached classic job reaches."""
+    repo = _make_repo(tmp_path)
+    job, _task = _make_ping_pong_job(repo, attach_repo=False)
+
+    r = run_grouped_cli(["job", "context", job.job_id, "--task", "T001"], env)
+    assert r.returncode == 2
+    assert "target_repo" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
+def test_an_unknown_job_of_either_shape_still_exits_one(tmp_path, env):
+    """The exit-1 contract this module's docstring states, pinned across BOTH
+    id shapes now that the lookup reaches both stores."""
+    from uuid import uuid4
+
+    for unknown in (str(uuid4()), "0123456789abcdef"):
+        r = run_grouped_cli(["job", "context", unknown, "--task", "T001"], env)
+        assert r.returncode == 1, f"{unknown}: {r.stdout}{r.stderr}"
+        assert "Traceback" not in r.stderr

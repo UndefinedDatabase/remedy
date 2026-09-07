@@ -532,7 +532,7 @@ class TestCmdApprovePatchIntent:
         from apps.cli.commands.patch import _cmd_approve_patch_intent
         # Capture events by reading the JSONL file after the command.
         _cmd_approve_patch_intent(str(job.id), intent_id, None)
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -640,7 +640,7 @@ class TestCmdRejectPatchIntent:
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -711,7 +711,7 @@ class TestCmdRejectPatchIntent:
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, None)
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -724,7 +724,7 @@ class TestCmdRejectPatchIntent:
         job, intent_id = self._setup(tmp_path, monkeypatch)
         from apps.cli.commands.patch import _cmd_reject_patch_intent
         _cmd_reject_patch_intent(str(job.id), intent_id, "not ready")
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for f in runs_dir.glob("*.jsonl"):
             for line in f.read_text().splitlines():
@@ -739,7 +739,7 @@ class TestCmdRejectPatchIntent:
         from apps.cli.commands.patch import _cmd_reject_patch_intent
         secret_reason = "SECRET_REASON_TEXT_MUST_NOT_LOG"
         _cmd_reject_patch_intent(str(job.id), intent_id, secret_reason)
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         for f in runs_dir.glob("*.jsonl"):
             assert secret_reason not in f.read_text()
 

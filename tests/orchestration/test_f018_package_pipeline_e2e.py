@@ -458,7 +458,7 @@ class TestStoppedJobGuard:
 
         fake_job = pj.JobPlan(
             job_id="test-stopped-guard",
-            status=pj.JOB_STOPPED,
+            state=pj.JOB_STOPPED,
             stop_reason="test_stop",
         )
         monkeypatch.setattr(pj, "load_job_plan", lambda _: fake_job)
@@ -484,7 +484,7 @@ class TestStoppedJobGuard:
 
         fake_job = pj.JobPlan(
             job_id="test-resume",
-            status=pj.JOB_STOPPED,
+            state=pj.JOB_STOPPED,
             tasks=[],
         )
         monkeypatch.setattr(pj, "load_job_plan", lambda _: fake_job)
@@ -511,7 +511,7 @@ class TestFirstRunningAtTiming:
 
         fake_job = pj.JobPlan(
             job_id="test-timing",
-            status="planned",
+            state="planned",
             budgets={"invalid": True},
             first_running_at="",
             tasks=[],
@@ -528,7 +528,7 @@ class TestFirstRunningAtTiming:
             lambda *a, **kw: scratch)
 
         result = pj.run_job("test-timing")
-        assert result.status == pj.JOB_BLOCKED
+        assert result.state == pj.JOB_BLOCKED
         assert result.first_running_at == "", \
             "first_running_at must not be set when budget validation blocks"
 

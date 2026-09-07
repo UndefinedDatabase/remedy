@@ -351,7 +351,7 @@ def export_job_evidence(
             written[rel] = str(err_path)
         # Per-task execution evidence (execution_mode classification)
         try:
-            from packages.orchestration.data_paths import pingpong_run_dir
+            from packages.orchestration.data_paths import run_dir
             from packages.orchestration.evidence_mode import (
                 build_task_execution_evidence,
                 classify_execution_mode,
@@ -366,7 +366,7 @@ def export_job_evidence(
                 getattr(job.execution_config, "reviewer", None) or ""
             ) if job.execution_config else ""
             if task.run_id:
-                _trace_file = pingpong_run_dir(task.run_id) / "prompt_trace_summary.json"
+                _trace_file = run_dir(task.run_id) / "prompt_trace_summary.json"
                 if _trace_file.exists():
                     try:
                         _tdata = json.loads(_trace_file.read_text())
@@ -915,7 +915,7 @@ def _build_job_manifest(job: Any) -> dict[str, Any]:
         "job_id": job.job_id,
         "job_title": job.job_title,
         "job_file_sha256": job.job_file_sha256,
-        "status": job.status,
+        "status": job.state,
         "repo_identity": _sanitize_path(job.repo_path),
         "job_workspace_path": _sanitize_path(job.job_workspace_path) if job.job_workspace_path else "",
         "created_at": job.created_at,
@@ -936,7 +936,7 @@ def _build_job_summary_md(job: Any) -> str:
         f"# Remedy Job Evidence — {job.job_id}",
         "",
         f"**Title:** {job.job_title}",
-        f"**Status:** {job.status}",
+        f"**Status:** {job.state}",
         f"**Repo:** {_sanitize_path(job.repo_path)}",
         f"**Created:** {job.created_at}",
     ]
@@ -964,7 +964,7 @@ def _build_job_summary_md(job: Any) -> str:
         repair_str = f", repair: {task.repair_rounds_used}/{task.repair_rounds_allowed}" if task.repair_rounds_used else ""
         lines.append(f"2. {task.task_id}: {task.title} — {status_str}{run_str}{verdict_str}{repair_str}")
     if job.finished_at:
-        lines.append(f"3. Job {job.status} at {job.finished_at}")
+        lines.append(f"3. Job {job.state} at {job.finished_at}")
     lines.append("")
 
     tg = job.target_guard
@@ -1026,7 +1026,7 @@ def _build_job_report_safe(job: Any) -> dict[str, Any]:
     return {
         "job_id": job.job_id,
         "job_title": job.job_title,
-        "status": job.status,
+        "status": job.state,
         "repo_identity": _sanitize_path(job.repo_path),
         "created_at": job.created_at,
         "finished_at": job.finished_at,
@@ -1077,7 +1077,7 @@ def _build_job_timeline(job: Any) -> dict[str, Any]:
     events.append({
         "event": "job_final",
         "timestamp": job.finished_at or "unavailable",
-        "detail": f"Job {job.status}",
+        "detail": f"Job {job.state}",
     })
 
     return {
@@ -1097,7 +1097,7 @@ def _check_sequencing(job: Any) -> bool:
             return True
         elif task.status == "applied_to_job_workspace" and applied_seen:
             pass
-    if job.status == "completed":
+    if job.state == "completed":
         return all(
             t.status in ("applied_to_job_workspace", "skipped")
             for t in job.tasks
@@ -1491,11 +1491,12 @@ def _linked_job_summary(jid: str) -> dict[str, Any]:
             "provider_call_count": None,
             "source": "unavailable",
         }
-    status = str(getattr(j, "status", "") or "") or "unknown"
+    _state = getattr(j, "state", "")
+    status = str(getattr(_state, "value", _state) or "") or "unknown"
     total: int | None = None
     try:
-        from packages.orchestration.data_paths import pingpong_runs_dir
-        pp_runs_root = Path(pingpong_runs_dir())
+        from packages.orchestration.data_paths import runs_dir
+        pp_runs_root = Path(runs_dir())
         for t in getattr(j, "tasks", []) or []:
             rid = getattr(t, "run_id", "") or ""
             if not rid:
@@ -2181,7 +2182,7 @@ def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[s
                                 f"{idx_latest!r}")
 
     # A terminal job's active episode must be one of the recorded episodes.
-    if getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED):
+    if getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED):
         active = str(getattr(job, "active_episode_id", "") or "")
         if active and active not in idx_eps:
             problems.append(f"terminal job's active episode {active!r} is not in the index")
@@ -2195,7 +2196,8 @@ def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str
     from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
 
     problems: list[str] = []
-    status = str(getattr(job, "status", "") or "")
+    _state = getattr(job, "state", "")
+    status = str(getattr(_state, "value", _state) or "")
     if status not in (JOB_COMPLETED, JOB_STOPPED):
         return problems
 
@@ -2283,7 +2285,7 @@ def _write_run_manifest_export(
         validate_index_and_tree,
     )
 
-    terminal = getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED)
+    terminal = getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED)
     marked = int(getattr(job, "run_manifest_required_v", 0) or 0) > 0
     mandatory = terminal and marked
 
@@ -2308,7 +2310,7 @@ def _write_run_manifest_export(
         if mandatory:
             failures.append({
                 "scope": "job", "job_id": job.job_id,
-                "error": f"a {job.status} F012-marked job has no run manifest"})
+                "error": f"a {job.state} F012-marked job has no run manifest"})
             for prob in tree_problems:
                 failures.append({"scope": "job", "job_id": job.job_id,
                                  "error": safe_text(f"manifest tree: {prob}")[:500]})
@@ -2412,7 +2414,7 @@ def _write_task_postmortems(
     could not do: a streamed failure's record never left the job store, so the rollup
     pointed at nothing and the stats saw nothing.
     """
-    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration import data_paths
     from packages.orchestration.failure_postmortem import (
         CALL_POSTMORTEM_SUBDIR,
         POSTMORTEM_FILENAME,
@@ -2429,7 +2431,7 @@ def _write_task_postmortems(
     task_out = _task_evidence_dir(out_base, task.task_id)
 
     run_id = str(getattr(task, "run_id", "") or "")
-    run_dir = pingpong_run_dir(run_id) if run_id else None
+    run_dir = data_paths.run_dir(run_id) if run_id else None
     # The provider streams into ``…/task_runs/<task>/streams/<role>/round-NN/<kind>-II``;
     # that ``streams`` directory is the root of the streamed call layout.
     stream_dir = _task_stream_dir(job_id, task.task_id) / "streams"
@@ -2470,8 +2472,8 @@ def _read_run_json(run_id: str) -> dict[str, Any]:
     if not run_id:
         return {}
     try:
-        from packages.orchestration.data_paths import pingpong_run_dir
-        path = pingpong_run_dir(run_id) / "result.json"
+        from packages.orchestration.data_paths import run_dir
+        path = run_dir(run_id) / "result.json"
         if not path.is_file():
             return {}
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -2588,8 +2590,8 @@ def _write_task_run_evidence(
     bundle = build_evidence_bundle(run_data, promotion_data)
 
     # Include prompt traces from persisted run dir
-    from packages.orchestration.data_paths import pingpong_run_dir
-    trace_file = pingpong_run_dir(task.run_id) / "prompt_trace.jsonl"
+    from packages.orchestration.data_paths import run_dir
+    trace_file = run_dir(task.run_id) / "prompt_trace.jsonl"
     if trace_file.exists():
         bundle["prompt_trace_jsonl_path"] = str(trace_file)
 
@@ -2692,7 +2694,7 @@ def _write_task_worktree_evidence(
     if wt.get("isolation_mode") != "worktree":
         return
 
-    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration import data_paths
 
     doc: dict[str, Any] = {
         "schema_version": "1.0.0",
@@ -2712,7 +2714,7 @@ def _write_task_worktree_evidence(
 
     rd = wt.get("result_diff") or {}
     if rd:
-        run_dir = pingpong_run_dir(str(task.run_id))
+        run_dir = data_paths.run_dir(str(task.run_id))
         src, err = _resolve_result_diff_source(run_dir, rd)
         if err:
             # Report the validation failure; NEVER rewrite the persisted metadata
@@ -2765,7 +2767,7 @@ def _write_job_prompt_trace_summary(
     written: dict[str, str],
 ) -> None:
     """Write aggregate prompt trace summary across all tasks."""
-    from packages.orchestration.data_paths import pingpong_run_dir
+    from packages.orchestration.data_paths import run_dir
 
     total_builder = 0
     total_reviewer = 0
@@ -2776,7 +2778,7 @@ def _write_job_prompt_trace_summary(
     for task in job.tasks:
         if not task.run_id:
             continue
-        summary_file = pingpong_run_dir(task.run_id) / "prompt_trace_summary.json"
+        summary_file = run_dir(task.run_id) / "prompt_trace_summary.json"
         if not summary_file.exists():
             task_traces.append({
                 "task_id": task.task_id,

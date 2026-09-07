@@ -1,0 +1,3 @@
+describe_self_use_run_defects(result)
+TUPLE LENGTH: 0
+THE TUPLE IS EMPTY: ()

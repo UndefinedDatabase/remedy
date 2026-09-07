@@ -197,7 +197,7 @@ class TestDryRunMissingRun:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Missing run test",
-            status="completed",
+            state="completed",
             tasks=[
                 TaskEntry(task_id="T001", title="Task 1", body="test",
                           status="applied_to_job_workspace", run_id="",
@@ -223,7 +223,7 @@ class TestDryRunBadReviewer:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Bad reviewer test",
-            status="completed",
+            state="completed",
             tasks=[
                 TaskEntry(task_id="T001", title="Task 1", body="test",
                           status="applied_to_job_workspace", run_id="abc123",
@@ -249,7 +249,7 @@ class TestDryRunFailedTests:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Failed tests test",
-            status="completed",
+            state="completed",
             tasks=[
                 TaskEntry(task_id="T001", title="Task 1", body="test",
                           status="applied_to_job_workspace", run_id="abc123",
@@ -276,7 +276,7 @@ class TestDryRunTargetMutation:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Target mutation test",
-            status="completed",
+            state="completed",
             target_guard=TargetGuard(target_mutated=True, changed_target_files=["x.py"]),
             tasks=[
                 TaskEntry(task_id="T001", title="Task 1", body="test",
@@ -304,7 +304,7 @@ class TestDryRunUnsafePaths:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Traversal test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(demo_repo),
             tasks=[
                 TaskEntry(task_id="T001", title="Task 1", body="test",
@@ -335,7 +335,7 @@ class TestDryRunUnsafePaths:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Env file test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(demo_repo),
             tasks=[
                 TaskEntry(task_id="T001", title="Task 1", body="test",
@@ -445,7 +445,7 @@ class TestApproveApplies:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Traversal approve test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(demo_repo),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -475,7 +475,7 @@ class TestApproveApplies:
         job = JobPlan(
             repo_path=str(demo_repo),
             job_title="Sensitive path test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(demo_repo),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -701,7 +701,7 @@ class TestWorkspaceSymlinkBlocked:
         job = JobPlan(
             repo_path=str(target),
             job_title="Symlink leak test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -745,7 +745,7 @@ class TestWorkspaceSymlinkBlocked:
         job = JobPlan(
             repo_path=str(target),
             job_title="Parent symlink test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -791,7 +791,7 @@ class TestWorkspaceSymlinkBlocked:
         job = JobPlan(
             repo_path=str(target),
             job_title="Dest symlink test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -836,7 +836,7 @@ class TestMissingApplyManifestBlocks:
         job = JobPlan(
             repo_path=str(target),
             job_title="No manifest test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -870,7 +870,7 @@ class TestMissingApplyManifestBlocks:
         job = JobPlan(
             repo_path=str(target),
             job_title="Empty manifest test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -908,7 +908,7 @@ class TestMissingApplyManifestBlocks:
         job = JobPlan(
             repo_path=str(target),
             job_title="Pending manifest test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(task_id="T001", title="t", body="t",
@@ -1125,7 +1125,7 @@ def _make_baselined_job(tmp_path, *, existing_content="original\n", new_content=
     job = JobPlan(
         repo_path=str(target),
         job_title="Baseline test",
-        status="completed",
+        state="completed",
         job_workspace_path=str(workspace),
         tasks=[
             TaskEntry(
@@ -1177,7 +1177,7 @@ def _make_new_file_job(tmp_path, *, content="new content\n"):
     job = JobPlan(
         repo_path=str(target),
         job_title="New file test",
-        status="completed",
+        state="completed",
         job_workspace_path=str(workspace),
         tasks=[
             TaskEntry(
@@ -1342,7 +1342,7 @@ class TestLegacyJobsWithoutBaseline:
         job = JobPlan(
             repo_path=str(target),
             job_title="Legacy new file",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(
@@ -1385,7 +1385,7 @@ class TestLegacyJobsWithoutBaseline:
         job = JobPlan(
             repo_path=str(target),
             job_title="Legacy existing file",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(
@@ -1622,7 +1622,7 @@ class TestDestParentSymlinkInsideTarget:
         job = JobPlan(
             repo_path=str(target),
             job_title="Parent symlink test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(
@@ -1692,7 +1692,7 @@ class TestDestContainmentRecheckBeforeWrite:
         job = JobPlan(
             repo_path=str(target),
             job_title="Race test",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(
@@ -1933,7 +1933,7 @@ class TestGroupedCLINewFailureModes:
         job = JobPlan(
             repo_path=str(target),
             job_title="CLI parent symlink",
-            status="completed",
+            state="completed",
             job_workspace_path=str(workspace),
             tasks=[
                 TaskEntry(
@@ -2014,7 +2014,7 @@ def _make_two_file_baselined_job(tmp_path):
     job = JobPlan(
         repo_path=str(target),
         job_title="Two file test",
-        status="completed",
+        state="completed",
         job_workspace_path=str(workspace),
         tasks=[
             TaskEntry(
@@ -2224,7 +2224,7 @@ def _make_partially_blocked_job(tmp_path, *, free_paths=_OPERATOR_FREE_PATHS,
     job = JobPlan(
         repo_path=str(target),
         job_title="FizzBuzz Demo v2",
-        status="completed",
+        state="completed",
         job_workspace_path=str(workspace),
         tasks=[
             TaskEntry(

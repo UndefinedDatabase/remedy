@@ -281,16 +281,3 @@ class TestBlockerCLIHelp:
 
 
 # ── Step 68: Autonomy Loop ──────────────────────────────────────────────
-
-
-
-
-class TestRunLoopCLIHelp:
-    def test_run_loop_help(self):
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "job", "run-loop", "--help"],
-            capture_output=True, text=True, timeout=10,
-        )
-        assert result.returncode == 0
-        assert "autonomy" in result.stdout.lower()
-

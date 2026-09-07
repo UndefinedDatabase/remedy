@@ -43,6 +43,7 @@ from packages.orchestration.mission_state import (
     MissionJobAlreadyLinkedError,
     MissionLinkRoleError,
     MissionNotFoundError,
+    MissionOrder,
     MissionVerifyFirstError,
     assert_verify_first,
     build_follow_up_task,
@@ -67,6 +68,8 @@ from packages.orchestration.mission_state import (
     resolve_verify_command,
     run_verify_task,
     save_mission,
+    set_mission_contract,
+    set_mission_order,
     set_mission_status,
 )
 from packages.orchestration.schemas.models import JobIntake
@@ -889,3 +892,88 @@ class TestTwoJobFixtureEndToEnd:
         assert run.verify.result == VERIFY_RESULT_UNVERIFIABLE
         assert "nothing was verified" in run.message
         assert run.follow_up_started is True
+
+
+class TestTheMissionCarriesItsOrderAndItsContract:
+    """F272 T002 — the last two Mission fields DECISION F260 D1 names.
+
+    Both are ADDITIVE and OPTIONAL, exactly as ``mission_plan`` already is: the
+    key is written only when there is a value, so every record written before
+    this round stays byte-identical and every reader that predates it keeps
+    working.  That is why ``MISSION_SCHEMA_VERSION`` does not move for them.
+    """
+
+    def test_a_mission_that_has_neither_writes_neither_key(self, tmp_path):
+        """The additive property, stated as the absence it actually is."""
+        mission = create_mission("proj", "ship the thing", root=tmp_path)
+
+        body = mission.to_json()
+
+        assert "order" not in body
+        assert "contract" not in body
+
+    def test_a_record_written_before_this_round_re_exports_byte_identically(self):
+        """A pre-F272 record must survive a load/save cycle unchanged."""
+        legacy = {
+            "schema_version": MISSION_SCHEMA_VERSION,
+            "id": "abc",
+            "project_id": "proj",
+            "goal": "an older goal",
+            "status": MISSION_STATUS_ACTIVE,
+            "job_links": [],
+            "dossier_ref": "",
+            "created_at": "2026-01-01T00:00:00+00:00",
+        }
+
+        loaded = Mission.from_json(legacy)
+
+        assert loaded.order is None
+        assert loaded.contract is None
+        assert loaded.to_json() == legacy
+
+    def test_the_order_round_trips_through_disk(self, tmp_path):
+        mission = create_mission("proj", "ship the thing", root=tmp_path)
+        order = MissionOrder(text="build a cli",
+                             source_path="orders/cli.md",
+                             source_sha256="deadbeef")
+
+        set_mission_order("proj", mission.id, order, root=tmp_path)
+
+        assert load_mission("proj", mission.id, root=tmp_path).order == order
+
+    def test_the_contract_round_trips_through_disk(self, tmp_path):
+        """RESERVED for F269 per DECISION amend0905-vocab D9; empty until then."""
+        mission = create_mission("proj", "ship the thing", root=tmp_path)
+
+        set_mission_contract("proj", mission.id, {"criteria": ["tests pass"]},
+                             root=tmp_path)
+
+        loaded = load_mission("proj", mission.id, root=tmp_path)
+        assert loaded.contract == {"criteria": ["tests pass"]}
+
+    def test_writing_an_order_leaves_the_immutable_goal_alone(self, tmp_path):
+        mission = create_mission("proj", "ship the thing", root=tmp_path)
+
+        updated = set_mission_order("proj", mission.id,
+                                    MissionOrder(text="ship the thing"),
+                                    root=tmp_path)
+
+        assert updated.goal == "ship the thing"
+        assert updated.schema_version == MISSION_SCHEMA_VERSION
+
+    def test_a_body_that_is_not_an_object_is_refused_on_both_fields(self):
+        base = {
+            "schema_version": MISSION_SCHEMA_VERSION,
+            "id": "abc",
+            "project_id": "proj",
+            "goal": "g",
+            "status": MISSION_STATUS_ACTIVE,
+            "job_links": [],
+            "dossier_ref": "",
+            "created_at": "",
+        }
+
+        with pytest.raises(ValueError):
+            Mission.from_json(dict(base, order="just a string"))
+        with pytest.raises(ValueError):
+            Mission.from_json(dict(base, contract=["not", "an", "object"]))

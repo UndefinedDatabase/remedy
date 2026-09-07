@@ -448,25 +448,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(_JOB_ID,),
         related=("job.create", "job.run-next"),
     ),
-    CommandEntry(
-        command_id="job.run-loop",
-        group_id="job",
-        subcommand="run-loop",
-        description="Run the contract-gated autonomy loop for a job.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("--max-cycles", "Maximum cycles (default: 3)", required=False, is_option=True, default="3"),
-            ArgDef("--autonomy-level", "Autonomy level 0-6 (default: 1)", required=False, is_option=True, default="1"),
-            ArgDef("--auto-approve-low-risk", "Auto-approve low-risk intents", required=False, is_option=True, default="false"),
-            ArgDef("--no-tests", "Skip test runs", required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_execute_commands=True,
-        requires_permission=True,
-        related=("job.run-next", "job.plan"),
-    ),
 
     CommandEntry(
         command_id="job.assumptions",

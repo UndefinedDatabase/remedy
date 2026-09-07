@@ -331,7 +331,7 @@ class TestLLMIntakeWiring:
         assert data["intake"]["goal"] == "Fake-provider goal for R-0112."
 
         job_id = data["job_id"]
-        runs_dir = tmp_path / "data" / "runs" / job_id
+        runs_dir = tmp_path / "data" / "job_logs" / job_id
         assert runs_dir.exists(), "evidence directory must exist"
         trace_files = list(runs_dir.glob("prompt_trace.jsonl"))
         assert trace_files, "prompt_trace.jsonl must exist in evidence dir"
@@ -625,7 +625,7 @@ class TestStatus:
         assert do_result.returncode == 0
         job_id = json.loads(do_result.stdout)["job_id"]
 
-        runs_dir = tmp_path / "data" / "runs" / job_id
+        runs_dir = tmp_path / "data" / "job_logs" / job_id
         runs_dir.mkdir(parents=True, exist_ok=True)
         event = json.dumps({
             "event": "test_run_completed",

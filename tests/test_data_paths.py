@@ -121,21 +121,25 @@ class TestDirectoryHelpers:
         assert projects_dir() == tmp_path / "projects"
 
     def test_run_log_dir_explicit_root(self, tmp_path):
-        """The LIVE run-log store, keyed by JOB id, under an explicit root."""
+        """The run-log store, keyed by JOB id, under an explicit root.
+
+        DECISION F272 D1 moved it out of ``runs/`` and into ``job_logs/`` so that
+        ``runs/`` is keyed by RUN id and by nothing else.
+        """
         from packages.orchestration.data_paths import run_log_dir
-        assert run_log_dir("j1", tmp_path) == tmp_path / "runs" / "j1"
+        assert run_log_dir("j1", tmp_path) == tmp_path / "job_logs" / "j1"
 
     def test_run_log_dir_follows_the_process_data_root(self, monkeypatch, tmp_path):
         """With no root argument the accessor follows the process data root."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import run_log_dir, runs_dir
-        assert run_log_dir("j1") == runs_dir() / "j1"
+        from packages.orchestration.data_paths import job_logs_dir, run_log_dir
+        assert run_log_dir("j1") == job_logs_dir() / "j1"
 
     def test_run_log_dir_coerces_a_uuid_job_id_to_its_string_form(self, tmp_path):
         """A ``UUID`` job id builds the same path as its ``str()`` form."""
         from packages.orchestration.data_paths import run_log_dir
         jid = uuid4()
-        assert run_log_dir(jid, tmp_path) == tmp_path / "runs" / str(jid)
+        assert run_log_dir(jid, tmp_path) == tmp_path / "job_logs" / str(jid)
 
 
 class TestResolveJobId:
@@ -393,39 +397,6 @@ class TestJobAndRunLayout:
         for p in (job_dir(jid, arg_root), job_record_path(jid, arg_root),
                   job_evidence_dir(jid, arg_root), run_dir(rid, arg_root)):
             assert env_root not in p.parents, f"{p} ignored its root argument"
-
-    def test_the_pingpong_run_dir_is_the_run_id_under_the_pingpong_runs_dir(
-        self, monkeypatch, tmp_path,
-    ):
-        """The LIVE run store has ONE spelling, built one function on the other.
-
-        ``run_dir`` above is D1's TARGET spelling; this pair is the store as it
-        is TODAY. Until F260 round 11 it was ``pingpong_loop._pingpong_runs_dir``
-        with thirty-nine references hanging off it, and D1's collapse is two
-        function bodies only while the two spellings stay in lock step.
-
-        The ``root`` argument is read against an env root pointing SOMEWHERE
-        ELSE, so a function that quietly drops ``root`` returns the env path and
-        is caught here rather than passing by coincidence.
-        """
-        env_root = tmp_path / "env"
-        arg_root = tmp_path / "arg"
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(env_root))
-        from packages.orchestration.data_paths import (
-            pingpong_run_dir,
-            pingpong_runs_dir,
-        )
-
-        rid = "fedcba9876543210"
-        assert pingpong_run_dir(rid) == pingpong_runs_dir() / rid
-        assert pingpong_run_dir(rid).parent == pingpong_runs_dir()
-
-        assert pingpong_runs_dir(arg_root) == arg_root / "pingpong_runs"
-        assert pingpong_run_dir(rid, arg_root) == arg_root / "pingpong_runs" / rid
-        for p in (pingpong_runs_dir(arg_root), pingpong_run_dir(rid, arg_root)):
-            assert env_root not in p.parents and p != env_root, (
-                f"{p} ignored its root argument and answered from the env root"
-            )
 
     def test_pingpong_job_evidence_paths_equal_the_data_paths_ones(self, monkeypatch, tmp_path):
         """No behaviour change: both call sites return exactly what they returned before."""
@@ -722,13 +693,13 @@ class TestJobAndRunLayout:
         assert not hasattr(pingpong_loop, "_pingpong_runs_dir"), (
             "pingpong_loop._pingpong_runs_dir is back; F260 round 11 deleted it "
             "so the live ping-pong run store has ONE spelling, "
-            "data_paths.pingpong_runs_dir / pingpong_run_dir"
+            "data_paths.runs_dir / run_dir"
         )
         hits = self._names_of(pingpong_loop, "_pingpong_runs_dir")
         assert hits == [], (
             "pingpong_loop names _pingpong_runs_dir at lines "
             f"{[getattr(n, 'lineno', '?') for n in hits]}; F260 round 11 deleted "
-            "that helper and data_paths.pingpong_run_dir replaced it"
+            "that helper and data_paths.run_dir replaced it"
         )
         assert hasattr(pingpong_loop, "load_run"), (
             "hasattr found nothing at all on pingpong_loop; the absence above "

@@ -210,7 +210,7 @@ class TestEpisodes:
         job = parse_job_file(_JOB, str(repo))
         stopped = run_job(job.job_id, builder_provider=_Stopper(job.job_id),
                           reviewer_provider=_prov(), repair_rounds=0)
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         ev = job_evidence_dir(job.job_id)
         stop_ep = read_index(ev)["latest_episode_id"]
         stop_manifest_before = (ev / "run_manifests" / stop_ep / "run_manifest.json").read_text()
@@ -218,7 +218,7 @@ class TestEpisodes:
         # resume → complete
         done = run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
                        repair_rounds=0)
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
 
         idx = read_index(ev)
         assert len(idx["episodes"]) == 2
@@ -257,7 +257,7 @@ class TestStopTransaction:
                       lambda *a, **k: (_ for _ in ()).throw(OSError("disk gone")))
             res = run_job(job.job_id, builder_provider=_prov(),
                           reviewer_provider=_prov(), repair_rounds=0)
-        assert res.status != JOB_STOPPED               # no false clean stop
+        assert res.state != JOB_STOPPED               # no false clean stop
         assert "run_manifest_write_failed" in res.run_manifest_error
         assert stop_requested(job.job_id) is not None  # request still pending
 
@@ -269,11 +269,11 @@ class TestStopTransaction:
         from packages.orchestration.safe_points import archived_signals
         stopped = run_job(job.job_id, builder_provider=_prov(),
                           reviewer_provider=_prov(), repair_rounds=0)
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         assert len(archived_signals(job.job_id)) == 1
         eps = job_evidence_dir(job.job_id) / STOP_POSTMORTEM_SUBDIR
         assert len(list(eps.iterdir())) == 1
-        runs = data_root / "runs" / job.job_id
+        runs = data_root / "job_logs" / job.job_id
         events = [json.loads(ln) for f in runs.glob("*.jsonl")
                   for ln in f.read_text().splitlines() if ln.strip()]
         assert len([e for e in events if e["event"] == "job_stopped"]) == 1
@@ -293,7 +293,7 @@ class TestLegacyMarker:
             parse_job_file,
         )
         job = parse_job_file(_JOB, str(repo))
-        job.status = JOB_COMPLETED
+        job.state = JOB_COMPLETED
         job.tasks[0].status = "applied_to_job_workspace"
         job.run_manifest_required_v = 0            # unmarked = legacy
         _persist_job(job)
@@ -310,7 +310,7 @@ class TestLegacyMarker:
             parse_job_file,
         )
         job = parse_job_file(_JOB, str(repo))
-        job.status = JOB_COMPLETED
+        job.state = JOB_COMPLETED
         job.tasks[0].status = "applied_to_job_workspace"
         job.run_manifest_required_v = 1            # marked, but no manifest present
         _persist_job(job)
@@ -580,7 +580,7 @@ class TestEpisodeIsolation:
         stopped = run_job(job.job_id, builder_provider=FakeProvider(pass_on_round=1,
                           fail_on_round=99), reviewer_provider=_StopAfter1(job.job_id),
                           repair_rounds=0)
-        assert stopped.status == JOB_STOPPED
+        assert stopped.state == JOB_STOPPED
         ev = job_evidence_dir(job.job_id)
         stop_ep = read_index(ev)["latest_episode_id"]
         stop_m = read_run_manifest(ev / "run_manifests" / stop_ep / "run_manifest.json")
@@ -589,7 +589,7 @@ class TestEpisodeIsolation:
         done = run_job(job.job_id, builder_provider=FakeProvider(pass_on_round=1,
                        fail_on_round=99), reviewer_provider=FakeProvider(pass_on_round=1,
                        fail_on_round=99), repair_rounds=0)
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         idx = read_index(ev)
         assert len(idx["episodes"]) == 2
         comp_ep = idx["latest_episode_id"]

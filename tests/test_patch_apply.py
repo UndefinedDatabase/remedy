@@ -214,7 +214,7 @@ class TestPathSafety:
         # External file must not have been created
         assert not (external_dir / "file.md").exists()
         # Run log event must still be emitted (structurally)
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         if runs_dir.exists():
             for jsonl in sorted(runs_dir.glob("*.jsonl")):
@@ -864,7 +864,7 @@ class TestApplyRecord:
 
 class TestRunLog:
     def _find_apply_event(self, tmp_path: Path, job_id: str) -> dict | None:
-        runs_dir = tmp_path / "runs" / job_id
+        runs_dir = tmp_path / "job_logs" / job_id
         if not runs_dir.exists():
             return None
         for jsonl in sorted(runs_dir.glob("*.jsonl")):
@@ -921,7 +921,7 @@ class TestRunLog:
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
         # Second event should have outcome=noop
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         for jsonl in sorted(runs_dir.glob("*.jsonl")):
             for line in jsonl.read_text().splitlines():
@@ -937,7 +937,7 @@ class TestRunLog:
         _approve(job, intent_id)
         _grant_repo_write(job)
         apply_patch_intent(job, intent_id, data_dir=tmp_path)
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         events = []
         if runs_dir.exists():
             for jsonl in sorted(runs_dir.glob("*.jsonl")):
@@ -1507,7 +1507,7 @@ class TestRunLogProof:
     """Tests for the patch_apply_proof_recorded run-log event (Step 31)."""
 
     def _find_events_by_name(self, tmp_path: Path, job_id: str, ev_name: str) -> list[dict]:
-        runs_dir = tmp_path / "runs" / job_id
+        runs_dir = tmp_path / "job_logs" / job_id
         found = []
         if not runs_dir.exists():
             return found
@@ -1769,7 +1769,7 @@ class TestProofDictIdentity:
         return {}
 
     def _get_runlog_proof(self, tmp_path: Path, job, intent_id: str) -> dict:
-        runs_dir = tmp_path / "runs" / str(job.id)
+        runs_dir = tmp_path / "job_logs" / str(job.id)
         if not runs_dir.exists():
             return {}
         for jsonl in sorted(runs_dir.glob("*.jsonl")):
