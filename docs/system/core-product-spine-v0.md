@@ -33,7 +33,7 @@ operator approval.
 4. Open the UI        →  remedy ui <job_id>
 5. Review results     →  remedy review run <job_id> --json
 6. Check worker       →  remedy worker doctor <name> --json
-7. Approve if needed  →  remedy approval summary --json
+7. Approve if needed  →  remedy patch approve <job_id> <patch_intent_id>
 ```
 
 Each step is explicit. No step runs automatically from the previous one.
@@ -97,7 +97,7 @@ to give to a worker. The proposal itself never executes anything.
 | `do "<goal>" --repo <path>` | Create and start a job | Yes | No* |
 | `job status <id> --json` | Show job state | No | No |
 | `job report <id> --json` | Read job progress report | No | No |
-| `job run-loop <id> --json` | Contract-gated autonomy loop | Metadata | No* |
+| `do job-run <id> --json` | Run pending tasks through Builder/Reviewer/Repair | Yes | Yes |
 | `ui <id>` | Open interactive UI | No | No |
 | `review run <id> --json` | Reviewer recommendations | No | No |
 | `worker doctor <name>` | Check worker readiness | No | No |

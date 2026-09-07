@@ -10,6 +10,11 @@ the SPACED form that neither spelling greps for; two older sites advertised a
 for that class: any ``remedy <group> <sub>`` string in tracked production code
 whose pair the catalog does not carry fails the sweep here rather than in an
 operator's terminal.
+
+F272 round 21 widened the sweep beyond ``.py`` to the shell scripts under
+``scripts/`` and the operator-facing pages under ``docs/system/`` and
+``docs/guides/``, because an operator reads a command line from a doc exactly as
+they read one from a terminal.
 """
 from __future__ import annotations
 
@@ -61,12 +66,37 @@ def _tracked_production_python_files() -> list[str]:
     return [line for line in listing.splitlines() if line.endswith(".py")]
 
 
-def collect_command_advertisements() -> tuple[int, list[str]]:
-    """Sweep production code; return (advertisements seen, unresolved sites)."""
+#: The operator-facing corpus: the shell scripts an operator runs and the pages
+#: an operator reads. NEITHER collector may reach ``tests/`` — this module's own
+#: docstring quotes the very strings it forbids, so a corpus that swept the test
+#: tree would fail on the guard's own prose. That exclusion is a property of the
+#: corpus, not a way to make the sweep pass: no advertisement below is skipped.
+_OPERATOR_FACING_ROOTS: tuple[tuple[str, str], ...] = (
+    ("scripts", ".sh"),
+    ("docs/system", ".md"),
+    ("docs/guides", ".md"),
+)
+
+
+def _tracked_files_under(directory: str, suffix: str) -> list[str]:
+    """Every tracked file under `directory` whose name ends in `suffix`.
+
+    Enumerated from ``git ls-files`` — a shell glob would silently pick up
+    untracked scratch files and miss nothing else.
+    """
+    listing = subprocess.run(
+        ["git", "ls-files", directory],
+        cwd=REPO_ROOT, capture_output=True, text=True, check=True,
+    ).stdout
+    return [line for line in listing.splitlines() if line.endswith(suffix)]
+
+
+def _sweep(relative_paths: list[str]) -> tuple[int, list[str]]:
+    """Return (advertisements seen, unresolved sites) over `relative_paths`."""
     catalog_pairs = {(entry.group_id, entry.subcommand) for entry in CATALOG}
     seen = 0
     unresolved: list[str] = []
-    for relative_path in _tracked_production_python_files():
+    for relative_path in relative_paths:
         source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for line_number, line in enumerate(source.splitlines(), 1):
             for group, subcommand in scan_advertised_commands(line):
@@ -74,6 +104,19 @@ def collect_command_advertisements() -> tuple[int, list[str]]:
                 if (group, subcommand) not in catalog_pairs:
                     unresolved.append(f"{relative_path}:{line_number}: remedy {group} {subcommand}")
     return seen, unresolved
+
+
+def collect_command_advertisements() -> tuple[int, list[str]]:
+    """Sweep production code; return (advertisements seen, unresolved sites)."""
+    return _sweep(_tracked_production_python_files())
+
+
+def collect_operator_facing_advertisements() -> tuple[int, list[str]]:
+    """Sweep the shell scripts and the operator-facing docs the same way."""
+    paths: list[str] = []
+    for directory, suffix in _OPERATOR_FACING_ROOTS:
+        paths.extend(_tracked_files_under(directory, suffix))
+    return _sweep(paths)
 
 
 def test_every_advertised_command_exists_in_the_catalog() -> None:
@@ -88,6 +131,21 @@ def test_every_advertised_command_exists_in_the_catalog() -> None:
         "production code advertises commands the catalog does not carry — "
         "delete a command's advertisements in the same commit as the command:\n"
         + "\n".join(unresolved)
+    )
+
+
+def test_every_operator_facing_advertised_command_exists_in_the_catalog() -> None:
+    seen, unresolved = collect_operator_facing_advertisements()
+
+    # Anti-blindness, exactly as the production sweep above: the real figures
+    # were 88 in scripts/ and 318 in the two doc trees when this widening was
+    # written, so 100 is a floor with room rather than a pin on today's count.
+    assert seen > 100, f"the advertisement scan went blind: only {seen} advertisements matched"
+
+    assert not unresolved, (
+        "an operator-facing script or page advertises commands the catalog does "
+        "not carry — delete a command's advertisements in the same commit as the "
+        "command:\n" + "\n".join(unresolved)
     )
 
 

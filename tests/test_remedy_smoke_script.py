@@ -935,35 +935,12 @@ class TestSmokeScriptText:
             "smoke must verify project_memory signal in context_coverage"
         )
 
-    # --- Step 46.2: Agent loop run-log schema (step 12h) -------------------
-
-    def test_smoke_has_agent_loop_schema_check(self):
-        text = _script_text()
-        assert "agent_loop" in text and "schema" in text.lower(), (
-            "smoke must verify agent_loop event schema"
-        )
-
-    def test_smoke_checks_agent_loop_required_meta_keys(self):
-        text = _script_text()
-        for key in ("cycle", "max_cycles", "decision", "stage", "reason",
-                     "task_count", "pending_task_count", "pending_approval_count",
-                     "applied_count", "test_run_count"):
-            assert key in text, (
-                f"smoke agent_loop schema check must reference key '{key}'"
-            )
-
-    def test_smoke_checks_no_agent_loop_task_exit(self):
-        text = _script_text()
-        assert "agent_loop_task_exit" in text, (
-            "smoke must verify agent_loop_task_exit event does not exist"
-        )
-
-    def test_smoke_checks_agent_loop_forbidden_strings(self):
-        text = _script_text()
-        for s in ("stdout", "stderr", "raw_output", "Traceback"):
-            assert s in text, (
-                f"smoke agent_loop schema check must forbid '{s}'"
-            )
+    # Smoke sections 12h and 12ae — the agent-loop run-log schema check and the
+    # autonomy-loop level-0 check — were DELETED at F272 round 21, because both
+    # existed only to exercise `remedy job run-loop`, which round 19 deleted.
+    # Their four text-presence guards went with them: a guard that pins a string
+    # into a section that no longer exists is the stale advertisement this
+    # feature is removing, not a test of anything.
 
     # --- Step 48: Readiness job JSON (step 12i) ----------------------------
 

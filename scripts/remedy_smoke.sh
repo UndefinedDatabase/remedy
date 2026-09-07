@@ -1168,76 +1168,6 @@ print('    context project_memory: OK (present=true)')
 " "${CTX_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12h. Agent loop run-log schema (Step 68.1 — per-event-type exact schemas)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12h"
-    echo "--- 12h. Agent loop run-log schema (per-event-type)"
-    # Run the agent loop on a completed job to generate events
-    remedy job run-loop "${JOB_ID}" --max-cycles 1 >/dev/null 2>&1 || true
-    python3 -c "
-import json, sys
-from pathlib import Path
-job_id   = sys.argv[1]
-runs_dir = Path(sys.argv[2]) / job_id
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: agent_loop schema: ' + msg, file=sys.stderr)
-        sys.exit(1)
-events = []
-if runs_dir.exists():
-    for f in sorted(runs_dir.glob('*.jsonl')):
-        for line in f.read_text().splitlines():
-            if line.strip():
-                events.append(json.loads(line))
-loop_events = [e for e in events if e.get('event', '').startswith('agent_loop_')]
-chk(len(loop_events) >= 2, 'expected >= 2 agent_loop events, got ' + str(len(loop_events)))
-# Per-event-type exact schemas (must match EVENT_METADATA_SCHEMAS in event_schemas.py)
-schemas = {
-    'agent_loop_started': frozenset({
-        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
-        'task_count', 'pending_task_count', 'pending_approval_count',
-        'applied_count', 'test_run_count',
-    }),
-    'agent_loop_cycle_started': frozenset({
-        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
-        'task_count', 'pending_task_count', 'pending_approval_count',
-        'applied_count', 'test_run_count',
-    }),
-    'agent_loop_completed': frozenset({
-        'cycle', 'max_cycles', 'decision', 'stage', 'reason',
-        'task_count', 'pending_task_count', 'pending_approval_count',
-        'applied_count', 'test_run_count',
-    }),
-    'agent_loop_cycle_decision': frozenset({
-        'cycle', 'decision', 'reason', 'next_action', 'blocked_by',
-        'token_mode', 'selected_worker', 'readiness_level',
-    }),
-    'agent_loop_stopped': frozenset({
-        'final_decision', 'stop_reason', 'cycles_run',
-        'unresolved_blocker_count',
-    }),
-}
-for ev in loop_events:
-    ename = ev['event']
-    meta = ev.get('metadata', {})
-    got = frozenset(meta.keys())
-    schema = schemas.get(ename)
-    if schema is None:
-        chk(False, 'unknown agent_loop event: ' + ename)
-    chk(got == schema,
-        'event ' + ename + ' metadata keys mismatch: extra=' + str(sorted(got - schema))
-        + ' missing=' + str(sorted(schema - got)))
-# Must NOT have agent_loop_task_exit
-loop_names = [e['event'] for e in loop_events]
-chk('agent_loop_task_exit' not in loop_names, 'agent_loop_task_exit must not exist')
-# Forbidden strings in full event dump
-full = json.dumps(loop_events)
-for forbidden in ('stdout', 'stderr', 'raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
-    chk(forbidden not in full, 'forbidden string in agent_loop events: ' + forbidden)
-print('    agent_loop schema: OK (events=' + str(len(loop_events)) + ', names=' + str(sorted(set(loop_names))) + ')')
-" "${JOB_ID}" "${RUNS_ROOT}"
-
-    # -------------------------------------------------------------------------
     # 12i. Readiness job JSON (Step 48)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12i"
@@ -1867,23 +1797,6 @@ nodes = data.get('nodes', [])
 sr_nodes = [n for n in nodes if n.get('type') == 'stop_reason']
 # stop_reason nodes may or may not exist depending on job state
 print('    brain stop_reason: OK (' + str(len(sr_nodes)) + ' nodes)')
-"
-
-    # Step 68: Autonomy Loop
-    _SMOKE_SECTION="12ae"
-    echo "--- 12ae. Run-loop (autonomy level 0, observe only)"
-    remedy job run-loop "${JOB_ID}" --autonomy-level 0 --json | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-if data.get('version') != 1:
-    print('ERROR: bad version', file=sys.stderr); sys.exit(1)
-if data.get('autonomy_level') != 0:
-    print('ERROR: expected autonomy_level=0', file=sys.stderr); sys.exit(1)
-if data.get('final_decision') != 'complete':
-    print('ERROR: level 0 should be complete', file=sys.stderr); sys.exit(1)
-if not isinstance(data.get('cycles'), list):
-    print('ERROR: missing cycles', file=sys.stderr); sys.exit(1)
-print('    run-loop level 0: OK (decision=' + data['final_decision'] + ', cycles=' + str(len(data['cycles'])) + ')')
 "
 
     # -------------------------------------------------------------------------
