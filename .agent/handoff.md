@@ -369,3 +369,175 @@ which is a clean cut: `_cmd_run_next_task_local` has a production caller at
 be ruled by measurement first. The reviewer should also rule on Deviations 1 and
 3 — whether the `humanizeCatalog.ts` widening is accepted as a forced edit, and
 whether the orphaned Step 68 banner comment is deleted next round.
+
+## Reviewer verdict — round 19
+
+VERDICT PASS. Every gate was RE-RUN by the reviewer rather than read, in the primary
+checkout at `743c1e64`.
+
+- Range `4c70ba90`..`743c1e64`, six commits, every one single-parent, in exactly the
+  ordered sequence C0a, C0b, C1, C2, C3, C4. The change set is the five `.agent/` and
+  production paths of the block plus `apps/ui/src/api/humanizeCatalog.ts`, which
+  deviation 1 declares. `git status --porcelain` empty; `git ls-files .remedy-wt`
+  empty; thirteen worktree entries, being the primary plus the twelve pre-existing
+  `remedy/job-*`. Per-commit insertions 179, 151, 24, 2, 1 and 328, every one under
+  the DECISION F104 D1 cap of 500.
+- G1 TRANSPORT is a REAL chain: the reviewer's own scratch original
+  `.remedy-wt/f272-r19-block.md`, written and hashed BEFORE delegation, and the
+  committed `.agent/authored/f272-r19.md` and `.agent/last_block.md` are all 14856
+  bytes at 179 lines and all hash to
+  `90e7de9e0aa27c105b864fbb8d385e69b66f6c7af86a564202ff51d1d68f92c3`. Per §3 item 37
+  that chain covers those three artefacts and is not a claim about emitted bytes.
+- G2 THE RECORD reproduces on every reader: `.agent/live_review.md` 1169833 to
+  1173866, the pre-image a byte-exact prefix, `post == pre + NL + slice` TRUE, N
+  counted from the slice as 1 with units 718 to 719, and a byte flipped in the
+  appended paragraph rejected by BOTH readers. All five ordered counts reproduce —
+  registrations 306 unchanged, resolutions 249 unchanged, open set BY DISTINCT ID 57
+  unchanged, `^Gate: ` 41 to 42 and `^Gate: F272 R18 ` 0 to 1.
+- G3 THE PLAN is 2179 bytes byte-equal to its slice at 43 lines against the cap of 50.
+- G4 THE DELETION, by EXACT SYMBOL over every tracked `.py`: `_cmd_run_loop` and
+  `job.run-loop` both reach 0. `packages/orchestration/autonomy_loop.py` still exists,
+  and `job.run-next` and `job.run` are untouched, exactly as the block required.
+- G5 THE FULL SUITE, re-run by the reviewer in the PRIMARY checkout: EXIT 0 at 19780
+  passed, 23 skipped, and ZERO `FAILED` lines. The arithmetic closes exactly: the
+  reviewer measured the base at `4c70ba90` as 19785 passed, an `ast` count gives the
+  two touched test files 14 to 10 and 23 to 22, so five test functions were removed
+  and 19785 − 5 = 19780, which is what ran.
+- G6 ruff EXIT 0, `All checks passed!`, no F401 over the touched files.
+- G7 THE TREE holds at every boundary, and the three `.agent/STOP` readings are False.
+- C3 IS A TRUE DELETION: across all five files its diff adds exactly ONE line, the
+  corrected module docstring the block ordered, against 182 deletions. No shim, no
+  alias, no deprecation path.
+
+DEVIATION 1 IS UPHELD AND WAS THE RIGHT CALL. The worker extended C3 to a fifth path,
+`apps/ui/src/api/humanizeCatalog.ts`, dropping the two entries `agent_loop_cycle_decision`
+and `agent_loop_stopped`. The reviewer verified the premise independently rather than
+accepting it: at `4c70ba90` the only emitter of either kind was `apps/cli/commands/job.py`
+lines 1135 and 1146, both inside the deleted `_cmd_run_loop`, so deleting that function
+orphaned both catalog entries; `agent_loop_inspected` has a separate emitter at
+`apps/cli/commands/brain.py:514` and was correctly KEPT. The guard test was NOT edited —
+`git diff 4c70ba90..743c1e64 -- tests/ui_contracts/` is empty — so the worker fixed the
+code the test measures rather than the test, and that file's own header comment states the
+rule it was obeying: "a Python emitter without adding an entry here goes red, and so does
+the reverse". Operator amendment amend0906 names "deleted cockpit sections" as part of a
+deletion round's change set, so the fifth path is IN SCOPE; the block's four-path list was
+the reviewer's omission, not the worker's overreach.
+
+DEVIATION 2 IS THE REVIEWER'S ARITHMETIC ERROR, correctly reported and correctly not
+papered over. The block predicted four removed tests and 19781 passed; the true figures are
+five and 19780, because the reviewer read 13 where the file held 14. The worker measured
+both, reported the difference through the block's own RECONCILE clause and adjusted nothing
+to make the numbers agree, which is exactly what that clause exists for.
+
+DEVIATIONS 3 TO 9 ARE ACCEPTED. The orphaned `# ── Step 68: Autonomy Loop ──` banner was
+left standing on the block's "exactly this and nothing else" wording, which is the
+conservative reading and is named below as round 20 work. The `npm --prefix apps/ui run
+build` was an external action on the gitignored `apps/ui/dist`, necessary because the `.ts`
+edit invalidated it; the reviewer confirms it changed NO tracked file — `git status
+--porcelain` is empty and the range touches exactly ten paths. The declared conflict about
+`.agent/decisions.md` is correctly resolved by the block's closed change set. The declared
+conflict about "first commit" is the reviewer's own imprecision: the block's framing
+paragraph says the verdict books "in this round's first commit" while the bundle orders it
+at C2, and C2 is right — §3 item 23 lets only the two block-save commits and the plan
+precede it, which is the sequence rounds 16 through 18 also used.
+
+R-0823 REMAINS FREE. No id was minted this round and none was owed.
+
+## Session
+
+SESSION 9 OF F272 ENDS HERE, after three delegated rounds — 17, 18 and 19 — every one
+PASS at the first attempt with no repair round. F272's soft limit under amend0906 is 12
+sessions and 40 rounds; at session 9 and round 19 the feature is inside it, so NO SCOPE
+REPORT IS OWED.
+
+Why the session ends below the six-to-eight round target, in one sentence as amend0906 rule
+3 requires: the reviewer's own authoring errors accumulated — round 19's block alone
+carried three, an incomplete C3 path list that pushed the worker outside the declared
+change set, a test-count prediction off by one, and a framing sentence contradicting its own
+bundle ordering — which is precisely the signal operator amendment amend0905-throughput
+names as an honest early end, and round 20 deletes three user-facing commands and is the
+highest-stakes round of this feature so far.
+
+CONTEXT SELF-ASSESSMENT (amend0905-throughput): context was not the constraint and remained
+comfortable throughout; it was spent on three complete round cycles in which the reviewer
+applied each production change in a disposable worktree and ran it BEFORE authoring, then
+independently re-ran every gate afterwards, including four full-suite runs at roughly three
+and a half minutes each and two `tests/cli/` runs at roughly five.
+
+## Owed by round 20's first commits, per amend0827 rule 1
+
+Exactly these, and nothing else — no id is minted for any of them:
+
+1. The `Gate: F272 R19` PASS entry recorded in the verdict section above, appended to
+   `.agent/live_review.md`.
+2. THREE dated lines appended to `.agent/prose_slips.md`, all of them the reviewer's own
+   and none of them touching disk state:
+   - 2026-09-07, F272 round 19 — the block's C3 list named four paths and the deletion
+     really reached five: `_cmd_run_loop` was the sole emitter of the two
+     `humanizeCatalog.ts` entries `agent_loop_cycle_decision` and `agent_loop_stopped`, so
+     deleting it orphaned them and the worker had to leave the declared change set to keep
+     `tests/ui_contracts/test_humanize_catalog.py` green. Before ordering a deletion, grep
+     the cockpit catalog for every event kind the deleted code is the only emitter of.
+   - 2026-09-07, F272 round 19 — the block's G5 predicted four removed test functions and
+     19781 passing; the true figures are five and 19780, because the reviewer read 13 test
+     functions in `tests/test_agent_loop_execution.py` where the file held 14, having
+     counted a run in which three of them were failing rather than counting by `ast`. Count
+     a file's tests with `ast`, never from a pytest summary line.
+   - 2026-09-07, F272 round 19 — the block's framing paragraph said the previous round's
+     verdict books "in this round's first commit" while its own bundle ordered it at C2;
+     C2 is correct under §3 item 23 and the sentence was loose. A framing sentence about
+     commit order must quote the bundle rather than paraphrase it.
+
+## Next
+
+THE NEXT SESSION'S FIRST ACTION: run Phase 0, the state probe; then check `.agent/STOP`
+under Phase 1 rule 1 BEFORE the Open PR Gate under rule 2, in that order. No PR exists for
+this branch and none was created.
+
+T001, T002 AND T003 ARE COMPLETE. T004 has begun: round 19 deleted the `job run-loop`
+command surface, the one of the three classic-runner commands that deletes cleanly.
+
+ROUND 20 IS THE REST OF THE CLASSIC RUNNER, and the measurements it needs were taken this
+session at `743c1e64` and are recorded here so the next session does not re-derive them:
+
+- `_cmd_job_resume` (`apps/cli/commands/job.py`, 150 lines) is CLASSIC-ONLY: it names
+  `load_job`, `resolve_job_id` and `JobNotFoundError` once each and NO unified symbol —
+  no `load_job_plan`, no `resume_job_plan`. It calls `_cmd_job_run_cycles`, which is why
+  `job run` cannot be deleted without ruling on `job resume`.
+- THE UNIFIED WORLD ALREADY HAS RESUME: `packages/orchestration/pingpong_job.py:2824`
+  defines `resume_job_plan`, and `apps/cli/commands/do_cmd.py:1601` already calls it. So
+  the classic `job resume` is superseded rather than merely deleted, which is the
+  condition AGENTS.md's "Replacing is deleting" asks for.
+- `packages/orchestration/agent_loop.py:623` `_run_next_task_step` is a FOUR-LINE shim
+  whose whole body delegates to `_cmd_run_next_task_local`, and its own caller
+  `run_agent_loop` has NO production caller at all — only `tests/storage/test_persistence.py`
+  and `tests/test_agent_loop_execution.py`. So `agent_loop.py` is production-unreachable,
+  exactly as `autonomy_loop.py` became this round, and BOTH belong to T005's reachability
+  test and cluster deletion rather than to T004.
+- SIZES, so round 20 can be staged rather than guessed: `_cmd_run_next_task_local` is 243
+  lines with 39 call sites, `_cmd_job_run_cycles` is 143 lines with 18, and
+  `_cmd_job_resume` is 150. Most of those call sites are tests — `tests/test_cli_main.py`,
+  `tests/test_run_log_cli.py`, `tests/cli/test_cost_preview.py`,
+  `tests/orchestration/test_escalation.py` and `tests/orchestration/test_long_run_executor.py`.
+  That is roughly 57 test call sites, so round 20 is very likely MORE THAN ONE round and
+  should be staged before it is started.
+- THE RULING ROUND 20 SHOULD RECORD, recommended rather than owed, under §4 item 7: the
+  classic `job run`, `job run-next` and `job resume` are superseded by the unified
+  `remedy do` path and die together, while `agent_loop.py` and `autonomy_loop.py` go to
+  T005 with the rest of the cluster. Nothing about that ruling is settled on disk yet.
+- SMALL CLEANUP round 19 deliberately left, on the block's "exactly this and nothing else"
+  wording: the orphaned `# ── Step 68: Autonomy Loop ──` banner in
+  `tests/cli/test_command_catalog.py` now labels nothing, and
+  `packages/orchestration/event_schemas.py` still carries schemas for
+  `agent_loop_cycle_decision` and `agent_loop_stopped`, which nothing emits any more.
+  Both are T005 cluster material and neither breaks anything today.
+
+STILL TRUE AND STILL THE BOUND ON T004: `.agent/f272_t004_deletion_inventory.md` measures
+199 tracked files referencing a classic job-store symbol, 72 of them under `packages/` and
+`apps/`. DECISION F260 D5 keeps the resolver collapse in the SAME commit range as the
+classic store deletion, so that inventory — not a grep — is what stages the rest of T004.
+
+THE FULL SUITE IS GREEN AT `743c1e64` IN THE PRIMARY CHECKOUT: EXIT 0, 19780 passed, 23
+skipped. Note for any future deletion round: the same suite run inside a FRESH WORKTREE
+fails about ten tests for want of `apps/ui/node_modules`, so a deletion round's full-suite
+measurement must name the primary checkout, as round 19's G5 did.
