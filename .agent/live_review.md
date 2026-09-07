@@ -12,8 +12,8 @@
 > `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 60 findings are open
 > BY DISTINCT ID. THOSE THREE NUMERALS ARE THE BRANCH POINT'S AND ARE LEFT AS MEASURED; the
 > merge of `origin/main` at `d0d8b24d` moved two of them. Operator amendment
-> amend0907-cluster-first resolved R-0827 and registered R-0829, so at this commit the record
-> holds 63 DISTINCT registered ids against 3 DISTINCT resolved ids — the open set is 60 either
+> amend0907-cluster-first resolved R-0827 and registered R-0829, so at that commit the record
+> held 63 DISTINCT registered ids against 3 DISTINCT resolved ids — the open set is 60 either
 > way, which is why only the components moved. THE NEXT ID THIS FEATURE MINTS IS R-0830, NOT
 > the R-0829 this paragraph promised before the merge: that id is taken. See DECISION
 > amend0907-cluster-first D2 in `.agent/decisions.md`.
@@ -28,16 +28,19 @@
 
 ## Steps
 
+THE SLICE ORDER BELOW IS THE ONE DECISION amend0907-cluster-first D1 RULED ON 2026-09-07,
+reversing the order F260's Orchestrator brief inherited: the deletion runs FIRST, because it
+was last in three consecutive features and each closed by split-and-close before reaching it.
 R1 claim F274 in the roadmap ledger, cut the branch, re-point `.agent/plan.md` and
-`.agent/context.md`, re-head this record and book F272's round 31 verdict into it, and land
-T001 — the DECISION F272 D7 raising-property probe over `Job.id`, the measured site set
-committed as `.agent/f274_id_probe_inventory.md`, and the route recorded as DECISION F274 D1 →
-the persisted-key ruling the probe exposed, before any consumer moves → T002, the classic
-runner, `job.run --cycles`, `job.run-next`, their handlers and tests, and the resolver collapse
-DECISION F260 D5 places in the same commit range → T003, the D11c reachability test run green
-BEFORE deletion, the two carry-overs, DECISION F260 D3 drafted, then the prototype cluster
-deletion one commit per module group, which is NEVER split → the integration gate → the closure
-sequence.
+`.agent/context.md`, re-head this record and book F272's round 31 verdict into it → R2 the D11c
+import-reachability test and its allowlist, DECISION F274 D1 ruling that test's shape and T003's
+split boundary, and R-0830 → the two carry-overs F260's Design names, done before the first
+`git rm` → DECISION F260 D3, the deletion paragraph, drafted → the prototype cluster deletion
+itself, one commit per module group, which is NEVER SPLIT ACROSS SESSIONS → T001, the `Job.id`
+flip measured with a recording property, its cap route ruled, and the persisted-key question the
+round 1 probe exposed → T002, the classic runner, `job.run --cycles`, `job.run-next`, their
+handlers and tests, and the resolver collapse DECISION F260 D5 places in the same commit range →
+the integration gate → the closure sequence.
 
 ## Findings
 
