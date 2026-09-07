@@ -1,374 +1,491 @@
-# Handoff — F272 One world completion
+# Handback — F272 round 21
 
 ## Session
 
-`SESSION 10 of feature F272 · round 20 · rounds so far 20`
+SESSION 10 of feature F272 · round 21 · rounds so far 21
 
-Soft limit under amend0906-triage-throughput is 12 sessions and 40 rounds; at
-session 10 and round 20 the feature is inside it and no scope report is owed.
+Soft limit under amend0906-triage-throughput: 12 sessions and 40 rounds. At
+session 10 and round 21 the feature is INSIDE the limit, so no scope report is
+owed and no `SITZUNGS-LIMIT` line is emitted.
 
-Context self-assessment: context is comfortable — this round read the catalog,
-five one-line repair sites and one prior test for idiom, and ran the full suite
-once; nothing was dropped or re-read for want of room.
+Context self-assessment: comfortable. The round read AGENTS.md, the handback
+template, the 401-line block, the widened guard, both smoke sections and the
+four pair targets in full, and still had room to run every gate plus a
+counterfactual measurement in a disposable worktree.
 
 ## Range
 
-Review of `8bcdc4dc`..HEAD, where HEAD is the C6 commit that writes this file.
-Seven commits precede it — C0a, C0b, C1, C2, C3, C4, C5, in exactly that order,
-every one single-parent, with no reordering and no extra or dropped commit.
+Review of `5f4f0405`..`0e660a50`
 
 ## Commits
 
-### 7f759a64 f272: save the round 20 step block as authored text
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f272-r20.md` | +463/-0 | C0a — the step block saved verbatim by `shutil.copyfile` |
+Five commits, every one single-parent, in the block's ordered sequence
+C0a, C0b, C1, C2, C3. C4 writes this file and cannot table itself.
 
-### 7c55af84 f272: mirror the round 20 block into the last block slot
+### 3885b14d f272: save the round 21 step block verbatim  (C0a)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +438/-154 | C0b — the same bytes mirrored by `shutil.copyfile` |
+|------|-----|--------|
+| .agent/authored/f272-r21.md | +401 / -0 | `shutil.copyfile` of the delivered block, byte for byte |
 
-### 328cddfd f272: point the plan at the stale advertisement repair
+### db46f137 f272: mirror the round 21 block into the last-block slot  (C0b)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +22/-20 | C1 — replaced byte-for-byte with the PLANF272R20 slice |
+|------|-----|--------|
+| .agent/last_block.md | +294 / -356 | `shutil.copyfile` of the same bytes over round 20's block |
 
-### 652a29f3 f272: book the round 19 PASS verdict and register the stale advertisement finding
+### a1742194 f272: point the plan at the operator-facing half of R-0823  (C1)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +4/-0 | C2 — RECORDR20 appended as `pre + NL + slice`; the R19 gate entry and R-0823 |
+|------|-----|--------|
+| .agent/plan.md | +26 / -23 | replaced byte for byte with PLANF272R21 |
 
-### d16c7285 f272: append the round 19 prose slips
+### c1034332 f272: book the round 20 PASS verdict and resolve R-0823  (C2)
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/prose_slips.md` | +6/-0 | C3 — SLIPSR20 appended as `pre + NL + slice`, three slips |
+|------|-----|--------|
+| .agent/live_review.md | +4 / -0 | RECORDR21 appended: the `Gate: F272 R20` entry and the `Done: R-0823` resolution |
 
-### a333617b f272: repair the stale command advertisements and guard the class
+### 0e660a50 f272: widen the advertisement guard to scripts and operator docs  (C3)
 | Path | +/- | Reason |
-|---|---|---|
-| `tests/cli/test_advertised_commands.py` | +110/-0 | C4 — the new guard test, written to GUARDSPEC (S1–S5) |
-| `apps/cli/commands/decision.py` | +1/-1 | C4 — P1, `remedy job run-loop` → `remedy job run` |
-| `apps/cli/commands/job.py` | +1/-1 | C4 — P2, `_cmd_job_status`'s `next_action` |
-| `packages/orchestration/autonomy_readiness.py` | +1/-1 | C4 — P3, level-4 hint → `remedy dev agent-loop` |
-| `packages/orchestration/model_route_tournament.py` | +1/-1 | C4 — P4, `remedy guide next` → `guide job` / `job list` |
-| `packages/orchestration/worker_registry.py` | +1/-1 | C4 — P5, same replacement |
+|------|-----|--------|
+| tests/cli/test_advertised_commands.py | +61 / -3 | WIDENSPEC W1-W5: second collector over the operator-facing corpus, one new zero-gate, docstring sentence, `tests/` exclusion comment |
+| scripts/remedy_smoke.sh | +0 / -87 | SMOKESPEC S1/S2: sections `12h` and `12ae` deleted in full |
+| docs/system/architecture.md | +14 / -9 | pairs P3 and P4 |
+| docs/system/core-product-spine-v0.md | +2 / -2 | pairs P1 and P2 |
+| tests/test_remedy_smoke_script.py | +6 / -29 | DEVIATION 2 — the four text-presence guards for the deleted smoke section `12h`, replaced by a comment recording the deletion |
 
-### 79b45aa3 f272: rule that a command advertisement dies with its command
-| Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/features/T2_F272.md` | +74/-0 | C5 — DECISION F272 D13 appended as `pre + NL + slice` |
-
-### C6 — this commit
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | rewrite | C6 — a handoff cannot table the commit that writes it (R-0149 pattern) |
-
-Every `+/-` cell above is taken from `git diff --numstat <parent> <commit>` and
-matches the G8 per-commit figures cell for cell.
+Per-commit insertions from `git diff --numstat <parent> <commit>`, compared cell
+for cell against the table above: 401, 294, 26, 4 and 83 for C0a through C3 —
+each under the DECISION F104 D1 cap of 500. C3's 83 is 14 + 2 + 0 + 61 + 6.
 
 ## Item status
 
 | Item | Status | Reason |
-|---|---|---|
-| C0a | done | `shutil.copyfile` to `.agent/authored/f272-r20.md`, digest verified |
-| C0b | done | `shutil.copyfile` of the same bytes to `.agent/last_block.md` |
-| C1 | done | `.agent/plan.md` byte-equal to PLANF272R20 |
-| C2 | done | RECORDR20 appended; all six counts match the block |
-| C3 | done | SLIPSR20 appended |
-| C4 | done | guard test + P1–P5 in ONE commit |
-| C5 | done | DECISION F272 D13 appended to the feature file |
-| C6 | done | this file |
+|------|--------|--------|
+| C0a | done | `.agent/authored/f272-r21.md`, one sha with the delivered file |
+| C0b | done | `.agent/last_block.md`, the same bytes |
+| C1 | done | `.agent/plan.md` byte-equal to PLANF272R21, 2538 bytes, 48 lines |
+| C2 | done | RECORDR21 appended; every one of G2's six counts reproduced exactly |
+| C3 | deviated | applied as written, and the block's own P3 TO makes G4, G5 and G6 unmeetable — see DEVIATION 3. Two further deviations, 1 and 2, are recorded below |
+| C4 | done | this file |
 
 ## External actions
 
-| Command | Outcome |
-|---|---|
-| `git worktree add --detach .remedy-wt/r20-g4 a333617b` | exit 0 — the G4 disposable worktree |
-| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/r20-g4` | exit 0 — removed BY EXACT PATH; 13 entries remain, the primary plus the twelve pre-existing `remedy/job-*` |
-| `git push -u origin feature/f272-one-world-completion` | run after this commit; see the push line below |
+| Action | Outcome |
+|--------|---------|
+| `git worktree add --detach .remedy-wt/g4wt 0e660a50` | EXIT 0, detached HEAD at `0e660a50` |
+| `git worktree remove --force .remedy-wt/g4wt` | EXIT 0; `git worktree list` back to the primary plus the twelve pre-existing `remedy/job-*` |
+| `git push -u origin feature/f272-one-world-completion` | issued after C4; outcome in the round report |
 
-No PR was created, no merge, no force-push, no `gh` command.
+No PR was created, none merged, nothing force-pushed, and no work touched `main`.
 
-## Verification — one line per gate
+## Verification
 
-| Gate | Real exit | Reading |
-|---|---|---|
-| G1 TRANSPORT | 0 | all three artefacts 32027 bytes, 463 lines, sha256 `9a48d5ad…9a83f` |
-| G2 THE RECORD | 0 | byte, structural, negative control and all six counts as the block predicted |
-| G3 THE PROSE FILES | 0 | plan 2213 bytes / 45 lines ≤ 50; slips 146054 → 147269 |
-| G4 THE GUARD IS REAL | 0 / 1 / 0 | control green, one-line revert red naming ONE path, restore green |
-| G5 SWEEP ZERO, SCAN NOT BLIND | 0 | 4 passed; 738 advertisements seen; 0 unresolved |
-| G6 THE FULL SUITE | 0 | 19784 passed, 23 skipped, 0 `^FAILED` |
-| G7 RUFF + DOCS + CANARY | 0 / 0 / 0 | `All checks passed!`; 303 passed; 42 passed |
-| G8 THE TREE | 0 | clean at every boundary; `.remedy-wt` untracked; max insertions 463 < 500 |
+Every gate was run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with no pipe between
+the command and the echo; where a transcript was needed the output was redirected
+to a scratch file rather than piped, so the reported code is the command's own.
 
-## Verification — transcripts
+| Gate | REAL_EXIT | Result |
+|------|-----------|--------|
+| G1 TRANSPORT | 0 | PASS |
+| G2 THE RECORD | 0 | PASS |
+| G3 THE PLAN | 0 | PASS |
+| G4 THE WIDENED GUARD | (i) 1, (ii) 0, (iii) 1, (iv) 1 | FAIL — (i) and (iv) were ordered EXIT 0, and (iii) names one path more than ordered |
+| G5 THE SWEEPS | 1, 0, 0, 0, 0 | FAIL on the first suite only |
+| G6 SHELL + STRING | `bash -n` 0; sweep 0 | FAIL — `scripts/` is 0 as ordered, `docs/system/` is 1, not 0 |
+| G7 RUFF | 0 | PASS |
+| G8 THE TREE | 0 | PASS |
 
-### G1 TRANSPORT
+Every one of the three failures is the SAME byte string, introduced by the
+block's own P3 TO. DEVIATION 3 below carries the measurement.
 
-    .remedy-wt/f272-r20-block.md    bytes=32027 lines=463 sha256=9a48d5ad812eaa278d703be4c29fd416a168d25f3f5e0fc50b3d79d323a9f83f
-    .agent/authored/f272-r20.md     bytes=32027 lines=463 sha256=9a48d5ad812eaa278d703be4c29fd416a168d25f3f5e0fc50b3d79d323a9f83f
-    .agent/last_block.md            bytes=32027 lines=463 sha256=9a48d5ad812eaa278d703be4c29fd416a168d25f3f5e0fc50b3d79d323a9f83f
-    REAL_EXIT=0
+### G1 TRANSPORT — EXIT 0
 
-The delivered digest was verified against disk BEFORE the block was trusted.
+    .remedy-wt/f272-r21-block.md   27279 bytes   401 lines   784455aab97960fca16aeecb89830a862b91f8f3f362b1c70b63c1e6867c05e1
+    .agent/authored/f272-r21.md    27279 bytes   401 lines   784455aab97960fca16aeecb89830a862b91f8f3f362b1c70b63c1e6867c05e1
+    .agent/last_block.md           27279 bytes   401 lines   784455aab97960fca16aeecb89830a862b91f8f3f362b1c70b63c1e6867c05e1
+    ONE_SHA_ACROSS_ALL_THREE: True
 
-### G2 THE RECORD
+The digest was verified against the one stated in the delegation BEFORE the file
+was read or copied. Per §3 item 37 this chain covers those three artefacts and
+is not a claim about the bytes emitted into a prompt.
 
-    SLICE RECORDR20 bytes=6309 lines=3 sha256=4092dfc7e3b02fc6a0e7fe50a39a5004a57f7713a2863b1e9ded977b89cbcf7a
-    G2a pre_len=1173866
-    G2a pre_sha256=8363661be8b7dbb9ebc0982b1e60fffab1cefbedb70c6a603a3a299d332b3236
-    G2a pre_terminal_12=b'obe output.\n'      pre_trailing_newline_run=1
-    G2a post_len=1180176
-    G2a post_sha256=a8a4a67b628e6cf2ec9dda440965beaab39a8b0fd099422d6b0a661804c73b3c
-    G2a post_terminal_12=b'satisfy it.\n'     post_trailing_newline_run=1
-    G2a PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
-    G2a POST_EQUALS_PRE_NL_SLICE: True
-    G2b N_COUNTED_FROM_SLICE=2   units_before=719 units_after=721
-    G2b LAST_N_EQUAL_SLICE_PARAS_IN_ORDER: True
-    G2b EVERYTHING_BEFORE_UNCHANGED: True
-    G2c flipped_byte_offset=1173907 in_first_appended_paragraph=True
-    G2c BYTE_READER_REJECTS: True
-    G2c STRUCTURAL_READER_REJECTS: True
-    G2c DISK_UNTOUCHED_BY_CONTROL: True True
-    REAL_EXIT=0
+### G2 THE RECORD — EXIT 0
 
-The block's pre-image prediction was met exactly: 1173866 bytes, that sha256,
-terminal twelve bytes `b'obe output.\n'`, trailing-newline run 1.
+    (a) BYTE
+    pre_len               1180176
+    pre_sha256            a8a4a67b628e6cf2ec9dda440965beaab39a8b0fd099422d6b0a661804c73b3c
+    pre_tail12            b'satisfy it.\n'
+    pre_trailing_nl_run   1
+    post_len              1186986
+    post_sha256           57d68efac9db84febae0f91c4b5aaeb8973f4e08f93733c6ce2afb9aa0371ccf
+    post_tail12           b'st of T004.\n'
+    post_trailing_nl_run  1
+    slice_len             6809
+    PRE_IS_BYTE_EXACT_PREFIX_OF_POST True
+    POST_EQUALS_PRE_NL_SLICE         True
 
-G2(d), each figure measured and none adjusted to agree:
+The pre-image reproduces the block's stated 1180176 bytes and its stated sha256
+exactly.
 
-    reg_distinct         306 -> 307   block_said 306 -> 307   AGREES=True
-    done_distinct        249 -> 249   block_said 249 -> 249   AGREES=True
-    open_by_distinct_id   57 -> 58    block_said  57 -> 58    AGREES=True
-    gate_lines            42 -> 43    block_said  42 -> 43    AGREES=True
-    gate_f272_r19          0 -> 1     block_said   0 -> 1     AGREES=True
-    r0823                  0 -> 1     block_said   0 -> 1     AGREES=True
+    (b) STRUCTURAL
+    N_counted_from_slice  2      (counted by the script from the slice, not read from the block)
+    units_before          721
+    units_after           723
+    LAST_N_EQUAL_IN_ORDER True
+    EVERYTHING_BEFORE_UNCHANGED True
 
-OPEN FINDINGS BY DISTINCT ID, with its arithmetic: pre `306 − 249 = 57`;
-post `307 − 249 = 58`. Ids minted this round: `['R-0823']` — exactly one, as
-the block said. New `Done:` ids: none.
+    (c) NEGATIVE CONTROL, in memory only
+    flipped_byte_index    1180182  inside_first_appended_paragraph True
+    BYTE_READER_REJECTS   True
+    STRUCT_READER_REJECTS True
+    BOTH_READERS_ACCEPT_REAL True
+    DISK_UNMOVED_AFTER_CONTROL True 57d68efac9db84febae0f91c4b5aaeb8973f4e08f93733c6ce2afb9aa0371ccf
 
-### G3 THE PROSE FILES
+    (d) COUNTS, each measured, none adjusted to agree
+    ^- R-\d{4} distinct        307 -> 307    (ordered 307 -> 307)
+    ^Done: R-\d{4} distinct    249 -> 250    (ordered 249 -> 250)
+    ^Gate:                      43 -> 44     (ordered 43 -> 44)
+    ^Gate: F272 R20              0 -> 1      (ordered 0 -> 1)
+    ^Done: R-0823                0 -> 1      (ordered 0 -> 1)
 
-    PRE  bytes=2179 lines=43 sha256=1a0bf72c…
-    SLICE PLANF272R20 bytes=2213 lines=45 sha256=1ad5f4cc…
-    POST bytes=2213 lines=45 sha256=1ad5f4cc…
-    G3 PLAN_BYTE_EQUAL_TO_SLICE: True
-    G3 PLAN_LINE_COUNT: 45 CAP: 50 UNDER_CAP: True
-    G3 HAS_GOAL_HEADING: True
-    G3 HAS_NEXT_STEPS_HEADING: True
+    OPEN FINDINGS BY DISTINCT ID
+      pre : 307 registered - 249 distinct resolved = 58
+      post: 307 registered - 250 distinct resolved = 57
 
-    SLICE SLIPSR20 bytes=1214 lines=5 sha256=ef25d8db…
-    G3 slips pre_len=146054  post_len=147269
-    G3 slips POST_EQUALS_PRE_NL_SLICE: True
-    G3 slips PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
-    G3 slips block_said_base_pre_len=146054 AGREES=True
-    REAL_EXIT=0
+All six ordered readings reproduce. No id was minted this round; R-0824 stays
+free.
 
-### G4 THE GUARD IS REAL — ordered colour, CONTROL FIRST
+### G3 THE PLAN — EXIT 0
 
-Worktree path `/home/decodeux/Repos/remedy/.remedy-wt/r20-g4`, detached at
-`a333617b` (C4). `__pycache__` purge under it removed 0 directories (a fresh
-worktree carries none). Resolution confirmed INSIDE the worktree before any
-colour was trusted — no editable install shadowed it:
+    plan_bytes       2538
+    plan_lines       48 against the AGENTS.md cap of 50
+    BYTE_EQUAL_TO_PLANF272R21: True  95a8013c7b2f952d8f6c0d5b8f9016eb436aa5025087405ce89ade7e28b3c0ff
+    HAS_##_Goal      : True
+    HAS_##_Next_Steps: True
 
-    catalog __file__ = /home/decodeux/Repos/remedy/.remedy-wt/r20-g4/apps/cli/command_catalog.py
-    INSIDE_WORKTREE = True
-    test REPO_ROOT  = /home/decodeux/Repos/remedy/.remedy-wt/r20-g4
+### G4 THE WIDENED GUARD — FAIL, in a disposable worktree detached at C3
 
-(i) control — `python3 -B -m pytest tests/cli/test_advertised_commands.py -q -p no:randomly`
+Setup, all of it measured rather than assumed:
 
-    4 passed in 0.28s
-    REAL_EXIT=0
+    worktree path                       /home/decodeux/Repos/remedy/.remedy-wt/g4wt   (detached at 0e660a50)
+    __pycache__ dirs before the first run   0
+    __pycache__ dirs after the last run     0
+    python3 -B throughout                   yes
+    catalog __file__  /home/decodeux/Repos/remedy/.remedy-wt/g4wt/apps/cli/command_catalog.py
+    guard   __file__  /home/decodeux/Repos/remedy/.remedy-wt/g4wt/tests/cli/test_advertised_commands.py
+    REPO_ROOT         /home/decodeux/Repos/remedy/.remedy-wt/g4wt
 
-(ii) revert of EXACTLY ONE line, in
-`/home/decodeux/Repos/remedy/.remedy-wt/r20-g4/packages/orchestration/autonomy_readiness.py`:
+An editable install DOES exist and DOES point at the primary checkout — from a
+neutral cwd, `import apps.cli.command_catalog` resolves to
+`/home/decodeux/Repos/remedy/apps/cli/command_catalog.py`. Run from inside the
+worktree it does not shadow, because the cwd precedes site-packages on
+`sys.path`; the three readings above are the proof, taken inside the worktree
+with no explicit path insertion.
 
-    replacing b'        _check("agent_loop", "remedy dev agent-loop <job_id>")\n'
-    with      b'        _check("agent_loop", "remedy job run-loop <job_id>")\n'
-    OCCURRENCES_OF_SOURCE_BEFORE_WRITE=1 (must be 1)
-    AFTER: source=0 dest=1
+    (i) CONTROL FIRST
+    cd .remedy-wt/g4wt && python3 -B -m pytest tests/cli/test_advertised_commands.py -q -p no:randomly
+    REAL_EXIT=1        ORDERED: 0
+    1 failed, 4 passed in 0.30s
+    E  an operator-facing script or page advertises commands the catalog does not carry:
+    E    docs/system/architecture.md:927: remedy job run-loop
 
-(iii) the same command is now red, and the FULL unresolved list the assertion
-printed is one entry naming that file AND NO OTHER PATH:
+    (ii) REVERT EXACTLY ONE LINE — P1's TO back to P1's FROM
+    occurrences of P1 TO before revert: 1        (asserted before writing)
+    after revert: P1 TO x0  P1 FROM x1
+    bytes changed: 6599 -> 6582
 
-    E  AssertionError: production code advertises commands the catalog does not carry —
-    E  delete a command's advertisements in the same commit as the command:
-    E    packages/orchestration/autonomy_readiness.py:315: remedy job run-loop
-    1 failed, 3 passed in 0.28s
-    REAL_EXIT=1
+    (iii) THE MUTATED RUN
+    REAL_EXIT=1        ORDERED: 1
+    1 failed, 4 passed in 0.34s
+    full unresolved list the assertion printed:
+      docs/system/architecture.md:927: remedy job run-loop
+      docs/system/core-product-spine-v0.md:36: remedy approval summary
+    ORDERED: core-product-spine-v0.md AND NO OTHER PATH. It names one more.
 
-(iv) restore, re-run:
+    (iv) RESTORE AND RE-RUN
+    restored: P1 TO x1  P1 FROM x0
+    BYTE_IDENTICAL_TO_PRIMARY_AT_C3: True  726d651e23e22ce35d82b7c90a4585485d393d0007314344bf86dc73b6d59466
+    REAL_EXIT=1        ORDERED: 0
+    1 failed, 4 passed in 0.35s
 
-    4 passed in 0.30s
-    REAL_EXIT=0
+    removal command: git worktree remove --force /home/decodeux/Repos/remedy/.remedy-wt/g4wt   (EXIT 0)
 
-`git status --porcelain` inside the worktree was EMPTY after the restore, so the
-restore was byte-exact. Removal command, BY EXACT PATH:
-`git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/r20-g4` — exit 0.
+THE MUTATION DISCRIMINATOR STILL HOLDS. Comparing (i) with (iii), the reverted
+line adds `docs/system/core-product-spine-v0.md:36` to the unresolved list and
+nothing else, and (iv) removes it again. The guard therefore does reach P1's
+site and does discriminate on it. What it also reports, in all four runs alike,
+is P3 TO's own prose — see DEVIATION 3 and the counterfactual below.
 
-### G5 THE SWEEP IS ZERO AND THE SCAN IS NOT BLIND
+COUNTERFACTUAL, run in the same disposable worktree and NEVER on disk in the
+primary checkout, to isolate the blocker. P3 TO's prose line was respelled from
 
-Primary checkout at C4:
+    The execution loop `remedy job run-loop <job_id>` was DELETED at F272 round 19.
 
-    4 passed in 0.33s
-    REAL_EXIT=0
+to
 
-The advertisement figure, printed from the SHIPPED functions rather than
-asserted from the block:
+    The execution loop `job run-loop` was DELETED at F272 round 19.
 
-    G5 shipped module REPO_ROOT      = /home/decodeux/Repos/remedy
-    G5 tracked production .py files  = 367
-    G5 ADVERTISEMENTS THE SCAN SAW   = 738
-    G5 UNRESOLVED ADVERTISEMENTS     = 0 []
+and the ordered colour was run again, unchanged in every other respect:
 
-738 is unchanged from the base reading, as it must be: P1–P3 replace one
-advertisement with one, and P4/P5 each carry two before and two after.
+    control : REAL_EXIT=0   5 passed in 0.33s
+    mutated : REAL_EXIT=1   1 failed, 4 passed
+              docs/system/core-product-spine-v0.md:36: remedy approval summary
+              — that path AND NO OTHER, exactly as G4 (iii) ordered
+    restored: REAL_EXIT=0   5 passed in 0.33s
 
-### G6 THE FULL SUITE — primary checkout
+Every figure the block predicted for G4 is reproduced once, and only once, P3
+TO's own spelling is out of the corpus. The widening, the corpus, the
+discriminator and the four pairs are all sound; the single blocker is fifteen
+characters of the block's own replacement text.
 
-    python3 -B -m pytest -n auto -q -p no:randomly
-    19784 passed, 23 skipped, 1 warning in 136.76s (0:02:16)
-    REAL_EXIT=0
-    grep -c '^FAILED' -> 0
+### G5 THE SWEEPS — FAIL on the first suite only, primary checkout at C3, serial
 
-RECONCILIATION, and it closes exactly: the reviewer measured the base at
-`8bcdc4dc` as 19780 passed; an `ast` count of the new file gives four test
-functions —
+    python3 -B -m pytest tests/cli/test_advertised_commands.py -q -p no:randomly   REAL_EXIT=1   1 failed, 4 passed in 0.35s
+    python3 -B -m pytest tests/cli/test_product_spine.py -q -p no:randomly         REAL_EXIT=0   72 passed in 0.34s
+    python3 -B -m pytest tests/test_remedy_smoke_script.py -q -p no:randomly       REAL_EXIT=0   191 passed in 0.53s
+    python3 -B -m pytest tests/docs/ -q -p no:randomly                             REAL_EXIT=0   303 passed in 0.59s
+    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly           REAL_EXIT=0   42 passed in 22.80s
 
-    TEST_FUNCTIONS= 4 ['test_every_advertised_command_exists_in_the_catalog',
-    'test_scanner_reports_a_command_the_catalog_does_not_carry',
-    'test_scanner_ignores_prose_that_merely_starts_with_a_group_name',
-    'test_scanner_finds_a_real_next_action_f_string']
+The single failure is the new zero-gate, on `docs/system/architecture.md:927`.
 
-— and 19780 + 4 = 19784, the figure measured. Nothing was changed to make it
-agree. Skips are 23, unchanged.
+Collector counts, PRINTED and not asserted from the block:
 
-### G7 RUFF AND THE DOCS GATE
+    production .py collector : 738 advertisements, 0 unresolved
+    operator-facing collector: 404 advertisements, 1 unresolved
+       docs/system/architecture.md:927: remedy job run-loop
 
-    python3 -m ruff check <the five edited .py files> tests/cli/test_advertised_commands.py
-    All checks passed!
-    REAL_EXIT=0
+738 is the block's base-commit figure exactly. The operator-facing 404 closes
+against the block's base reading of 88 + 318 = 406: the smoke deletion removed
+the two `remedy job run-loop` invocations from `scripts/` (88 -> 86), and the
+doc trees are unchanged at 318, because P1, P3 and P4 each replaced one
+advertisement with one advertisement and P2's two cells carry no `remedy `
+prefix and never matched. 86 + 318 = 404.
 
-    python3 -B -m pytest tests/docs/ -q -p no:randomly
-    303 passed in 0.49s
-    REAL_EXIT=0
+`tests/test_remedy_smoke_script.py` was 195 passed before C3 and is 191 after —
+the four deleted guards, and no other movement.
 
-    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
-    42 passed in 20.98s
-    REAL_EXIT=0
+### G6 THE SHELL STILL PARSES AND THE COMMAND IS GONE — FAIL
 
-### G8 THE TREE
+    bash -n scripts/remedy_smoke.sh        REAL_EXIT=0
 
-`git status --porcelain` was EMPTY and printed empty at every one of the seven
-commit boundaries C0a…C5 and at the final boundary; `git ls-files .remedy-wt`
-is EMPTY. Per-commit insertions from `git diff --numstat <parent> <commit>`,
-C6 excluded:
+Repository-wide count of the string `remedy job run-loop`, enumerated from
+`git ls-files` and excluding the path prefixes `.agent/`, `.data/` and
+`docs/roadmap/`:
 
-    C0a  7f759a64  insertions=463  deletions=0    UNDER_500=True
-    C0b  7c55af84  insertions=438  deletions=154  UNDER_500=True
-    C1   328cddfd  insertions=22   deletions=20   UNDER_500=True
-    C2   652a29f3  insertions=4    deletions=0    UNDER_500=True
-    C3   d16c7285  insertions=6    deletions=0    UNDER_500=True
-    C4   a333617b  insertions=115  deletions=5    UNDER_500=True
-    C5   79b45aa3  insertions=74   deletions=0    UNDER_500=True
+    docs/system/architecture.md              x1
+    tests/cli/test_advertised_commands.py    x1
+    tests/test_remedy_smoke_script.py        x1
+    TOTAL 3
+    count in scripts/     : 0     ORDERED: 0   MET
+    count in docs/system/ : 1     ORDERED: 0   NOT MET
 
-The three `.agent/STOP` readings by `os.path.exists`, all False:
-before C0a `False`, before C4 `False`, before C6 `False`.
+The one occurrence in `docs/system/` is P3 TO's prose. The two in `tests/` are
+this feature's own guard prose, in a corpus both collectors deliberately exclude.
 
-Feature file `docs/roadmap/features/T2_F272.md` across C5:
-47484 bytes / 662 lines → 52485 bytes / 736 lines. DECISION headings D1 through
-D13 each occur exactly once; D13 is new and unique.
+    before C3: 2818 lines, 75 _SMOKE_SECTION= assignments
+    after  C3: 2731 lines, 73 _SMOKE_SECTION= assignments
+    lines removed: 87
+    assignment FALL: 2  (ordered: exactly 2)   MET
+    12h  present after C3: False
+    12ae present after C3: False
+    12g  present after C3: True
+    12i  present after C3: True
+    12ad present after C3: True
+    12af present after C3: True
+
+The four neighbours are listed to show that the sections bracketing the two
+deletions survive intact, which is what DEVIATION 1 turns on.
+
+### G7 RUFF — EXIT 0
+
+    python3 -m ruff check tests/cli/test_advertised_commands.py    REAL_EXIT=0   All checks passed!
+
+A second `.py` was touched, so a second reading is owed and was taken:
+
+    python3 -m ruff check tests/test_remedy_smoke_script.py        REAL_EXIT=0   All checks passed!
+
+### G8 THE TREE — EXIT 0
+
+`git status --porcelain` was EMPTY at every commit boundary; the real output was
+empty each time, printed after C0a, C0b, C1, C2 and C3.
+
+    git ls-files .remedy-wt      (empty)      REAL_EXIT=0
+
+    .agent/STOP readings, all three by os.path.exists:
+      before C0a  False
+      before C3   False
+      before C4   False
 
 ## Authored-text proofs
 
-Every applied slice was extracted PROGRAMMATICALLY from the committed
-`.agent/authored/f272-r20.md` between its `<<<BEGIN NAME>>>` and `<<<END NAME>>>`
-lines by one shared extractor, inclusive of the newline ending the last content
-line. Nothing was retyped.
+Every slice was extracted PROGRAMMATICALLY from the committed
+`.agent/authored/f272-r21.md`, between its `<<<BEGIN NAME>>>` and
+`<<<END NAME>>>` lines, inclusive of the newline ending the last content line.
+Nothing was retyped.
 
-| Slice | Bytes | sha256 | Disk-to-disk result |
-|---|---|---|---|
-| PLANF272R20 | 2213 | `1ad5f4cc…` | `.agent/plan.md` byte-EQUAL to the slice |
-| RECORDR20 | 6309 | `4092dfc7…` | `post == pre + NL + slice` TRUE |
-| SLIPSR20 | 1214 | `ef25d8db…` | `post == pre + NL + slice` TRUE |
-| DECISIONR20 | 5000 | `6695df96…` | `post == pre + NL + slice` TRUE |
-| P1…P5 FROM/TO | — | — | each FROM 1x→0x and TO 0x→1x in its file |
+| Slice | Bytes | Disk-to-disk result |
+|-------|-------|---------------------|
+| PLANF272R21 | 2538 | `.agent/plan.md` byte-equal, sha256 `95a8013c7b2f952d8f6c0d5b8f9016eb436aa5025087405ce89ade7e28b3c0ff` |
+| RECORDR21 | 6809 | `post == pre + NL + slice` TRUE; last 2 units equal the slice's 2 paragraphs in order |
+| P1 FROM / TO | 58 / 75 | pre FROM x1 TO x0, post FROM x0 TO x1, `TO contains FROM: false` |
+| P2 FROM / TO | 79 / 93 | pre FROM x1 TO x0, post FROM x0 TO x1, `TO contains FROM: false` |
+| P3 FROM / TO | 941 / 1093 | pre FROM x1 TO x0, post FROM x0 TO x1, `TO contains FROM: false` |
+| P4 FROM / TO | 79 / 75 | pre FROM x1 TO x0, post FROM x0 TO x1, `TO contains FROM: false` |
 
-C4's production test is the one artefact NOT sliced: GUARDSPEC describes it, and
-it was written in this repository's idiom per constraint 5.
+Every one of the block's constraint-4 readings reproduced on measurement before
+any pair was written. All four pairs landed byte-exact.
 
 ## Deviations & assumptions
 
-**No deviation from the block's ordered commit sequence.** The eight commits are
-C0a, C0b, C1, C2, C3, C4, C5, C6 in exactly that order; no commit was added,
-dropped, split or reordered. The change set is exactly the thirteen declared
-paths and nothing else — no measurement forced a path outside the list, so the
-escape clause the block offers was not used.
+### DEVIATION 1 — SMOKESPEC's end-bound contradicts SMOKESPEC's own S4
 
-1. **Assumption — the scanner's "followed by" test admits an intervening
-   space.** GUARDSPEC S1 requires the pair to be "followed by" a placeholder,
-   an option, a quote or end of string. Read literally as the very next
-   character, `remedy job run <job_id>` would fail to match, because a space
-   separates `run` from `<`. I implemented it as: skip spaces, then require
-   `<`, `{`, `--`, `"` or `'`, or end of string. This reading is what reproduces
-   the reviewer's own numbers — 738 advertisements and exactly the seven
-   occurrences at the five listed sites, with all three prose probes rejected —
-   so I take it as the intended one. Recorded because it is a genuine
-   interpretation of the spec, not a transcription.
+S1 and S2 place each section's START at its banner comment — the rule line above
+`# 12h. …`, and the line `# Step 68: Autonomy Loop`. Both then place the END at
+"the last line before the next `_SMOKE_SECTION=` assignment". Read literally,
+that end-bound swallows the NEXT section's banner as well, because a banner sits
+above its own assignment. Measured at `5f4f0405`:
 
-2. **Assumption — the scan is line-based.** S2 requires the failure message to
-   name `path:line:`, so the module scans each file line by line and hands one
-   line at a time to the scanner. "The end of the string" therefore means the
-   end of a line. All four S4 discriminators are single strings and are
-   unaffected.
+    section 12h : banner 1170-1172, assignment 1173, body to 1238, blank 1239,
+                  section 12i's banner 1240-1242, assignment 1243
+    section 12ae: banner 1872,      assignment 1873, body to 1887, blank 1888,
+                  section 12af's banner 1889-1891, assignment 1892
 
-3. **Assumption — G5's advertisement figure is reported from the shipped
-   functions.** G5 asks for the passed count and, "separately", the number the
-   scan saw, printed rather than asserted. Rather than add a bare `print` to a
-   shipped test, the count is produced by importing the shipped
-   `collect_command_advertisements` and printing its return value. The figure is
-   therefore the shipped code's own, not a re-implementation.
+The literal end-bound is 1242 and 1891, which deletes the banners of sections
+12i and 12af. That contradicts S4, "Nothing else in the script changes", and it
+contradicts SMOKESPEC's own opening sentence, "Delete section `12h` and section
+`12ae` in full" — deleting the next section's banner is deleting more than the
+named section. No application can satisfy both clauses.
 
-4. **Note — the guard's own docstring contains the strings it forbids.** The new
-   test file spells out `remedy job run-loop` and `remedy guide next` in its
-   module docstring to explain the class. This is safe by construction and not
-   by luck: S2 scopes the sweep to tracked `.py` under `packages/` and `apps/`,
-   and the file lives under `tests/`. Flagged so a future round that widens the
-   sweep to `tests/` knows this file will trip it.
+APPLIED: banner-to-banner, 1170-1239 and 1872-1888, 70 + 17 = 87 lines. Each
+deleted span ends at the blank separator, so the surviving neighbour keeps its
+banner and the file keeps the blank-line spacing it had before. G6 confirms 12i,
+12ad, 12af and 12g all survive and that the assignment count falls by exactly 2,
+which is the figure G6 itself ordered — and which the literal reading would also
+have produced, so the assignment count alone does not discriminate between the
+two readings. The banner survival does.
 
-5. **Note — `grep -c '^FAILED'` exits 1, and that is grep's semantics, not a
-   suite failure.** The count is 0 and grep exits non-zero when it matches
-   nothing. The suite's own real exit code is 0.
+The spans were determined BY READING the file for S1's and S2's anchors, per S3.
+Each anchor was asserted UNIQUE, the assignment line following it was asserted to
+be the expected one, and the reviewer's line numbers were then confirmed against
+the located spans rather than used to slice.
 
-6. **Verification beyond the block, none of it contradicting it.** I re-ran the
-   two premises the block asserts rather than accepting them: the shipped
-   `_has_agent_loop([{"event": "agent_loop_inspected"}])` is `True` and
-   `_has_agent_loop([])` is `False`, so P3's new hint is satisfiable and the
-   predicate is not vacuous; and `('dev','agent-loop')`, `('guide','job')`,
-   `('job','list')` and `('job','run')` are all real catalog pairs, so no repair
-   introduced a second stale advertisement. I also checked D13's load-bearing
-   measurements: `remedy job run-next` occurs 16 times across exactly the eight
-   named modules, twice in `scripts/remedy_smoke.sh`, six test `.py` files carry
-   the spaced form `job run-next`, both `tests/cli/test_plan_approval.py`
-   shell-outs are at lines 372 and 716, and `job.run` is the catalog's only
-   `is_expensive` command. Every one of these confirms the block. **No
-   disagreement with the block was found anywhere in this round.**
+### DEVIATION 2 — one path outside the change set, forced by measurement
 
-7. **Note — RED at base was additionally observed in the primary checkout**
-   before P1–P5 were applied, as a sanity check on the guard: 1 failed, 3
-   passed, the failure naming exactly the seven occurrences at the five sites
-   and nothing else, matching GUARDSPEC's own measurement. G4 remains the
-   binding destructive proof and ran in the disposable worktree as ordered.
+`tests/test_remedy_smoke_script.py` is not in the block's change set. Deleting
+smoke section `12h` turned three of its tests red, measured immediately after the
+SMOKESPEC edit and before anything else:
+
+    python3 -B -m pytest tests/test_remedy_smoke_script.py -q -p no:randomly
+    REAL_EXIT=1    3 failed, 192 passed in 0.39s
+    FAILED TestSmokeScriptText::test_smoke_has_agent_loop_schema_check
+    FAILED TestSmokeScriptText::test_smoke_checks_agent_loop_required_meta_keys
+    FAILED TestSmokeScriptText::test_smoke_checks_no_agent_loop_task_exit
+
+All three are text-presence guards over the smoke script, grouped in the file
+under the banner `# --- Step 46.2: Agent loop run-log schema (step 12h) ---`, and
+all three pin strings that existed ONLY inside the section the block ordered
+deleted. The change-set clause forbids the alternative in terms: "Do not weaken a
+test or an assertion to stay inside the list."
+
+APPLIED: the whole four-test group and its banner were deleted, and a comment
+recording the deletion and its reason put in their place. The fourth test,
+`test_smoke_checks_agent_loop_forbidden_strings`, was GREEN after the deletion
+and is not forced by the measurement — it survives only incidentally, because
+`stdout`, `stderr`, `raw_output` and `Traceback` appear elsewhere in a
+2731-line script. It was removed with the other three because a guard that
+pins strings into a section that no longer exists is a stale advertisement, which
+is the exact class this feature is removing; leaving it under a banner naming a
+deleted section would have re-created the defect in the guard file itself. That
+fourth removal is the judgement call in this deviation and the reviewer may
+reverse it; the other three are forced.
+
+No test was weakened and no assertion was relaxed. Nothing guards smoke section
+`12ae`: `autonomy_level` is pinned only by the two `step 12a` run-contract tests,
+which still pass.
+
+### DEVIATION 3 — the block contradicts itself: P3 TO re-introduces the string every gate forbids
+
+This is the load-bearing one. P3 TO's third line reads
+
+    The execution loop `remedy job run-loop <job_id>` was DELETED at F272 round 19.
+
+That sentence contains `remedy job run-loop`, and the tail after the pair is
+` <job_id>` — whose first non-space character is `<`, a member of the shipped
+`_COMMAND_TAIL_CHARS`. Round 20's `scan_advertised_commands`, which WIDENSPEC W1
+leaves untouched, therefore reads it as an advertisement of the pair
+`("job", "run-loop")`, which the catalog does not carry. Measured on P3 TO's
+bytes BEFORE the pair was applied, by importing the shipped scanner:
+
+    line 1: remedy dev agent-loop   IN_CATALOG=True
+    line 3: remedy job run-loop     IN_CATALOG=False
+       >>> UNRESOLVED, text: 'The execution loop `remedy job run-loop <job_id>` was DELETED at F272 round 19.'
+
+Consequences, all three measured after the pair was applied:
+
+- G4 (i) and (iv) were ordered EXIT 0 and are EXIT 1.
+- G4 (iii) was ordered to name `core-product-spine-v0.md` AND NO OTHER PATH; it
+  names `architecture.md:927` as well.
+- G5's first suite was ordered EXIT 0 and is EXIT 1.
+- G6 was ordered `remedy job run-loop` count 0 in `docs/system/`; it is 1.
+
+APPLIED AS WRITTEN, per constraint 1 and per the standing order that a declared
+deviation is a correct outcome and a silent correction is not. P3 TO went to disk
+byte-exact; nothing was reworded to make a gate green. The counterfactual under
+G4 above shows, in the disposable worktree only, that respelling that one clause
+turns every ordered figure green exactly as the block predicted — so the fix is a
+wording change to P3 TO and nothing structural. The reviewer rules on the
+wording; a worker choosing it silently is precisely what the rule forbids.
+
+Note for whoever authors that wording: the discriminator is the `remedy ` prefix,
+not the command name. Measured after C3, the only two surviving `job run-loop`
+strings in the swept corpus are
+
+    docs/guides/simple-operator-quickstart-v0.md:108  | `job run-loop <id>` | `mission run <run_id> --job-id <id>` |
+    docs/system/architecture.md:927                   The execution loop `remedy job run-loop <job_id>` was DELETED …
+
+and only the second is flagged, because only the second carries `remedy `. The
+first is the migration-table row the block's own "NOT FLAGGED, AND CORRECTLY SO"
+paragraph names, and it survives untouched, as intended. P3 TO's own table rows
+no longer name the command at all — they read `no live emitter`.
+
+### ASSUMPTIONS
+
+1. "Delete the section in full" means banner-to-banner, ending at the blank
+   separator before the next section's banner. See DEVIATION 1 for the
+   measurement that forced the reading.
+2. W2's corpus is `git ls-files` over `scripts` filtered to `.sh`, and over
+   `docs/system` and `docs/guides` filtered to `.md` — three enumerations, one
+   shared sweep. It reproduces the block's own 15 files / 88 advertisements and
+   88 files / 318 advertisements at the base commit, exactly, including all four
+   unresolved sites. That reproduction is the evidence the reading is the
+   intended one.
+3. W3's anti-blindness floor is `seen > 100` over the COMBINED corpus, matching
+   the shape of the existing production zero-gate rather than one floor per
+   directory. The block's "the combined figure clears that floor with room"
+   states the combined reading.
+4. W5's constraint is enforced by construction and stated in a comment beside
+   `_OPERATOR_FACING_ROOTS`: neither collector reaches `tests/`. G6 shows why it
+   matters — `remedy job run-loop` appears twice under `tests/`, both times in
+   this feature's own guard prose.
+5. G6's "excluding `.agent/`, `.data/` and `docs/roadmap/`" was read as path
+   prefixes over the tracked file list, not as a directory-name match anywhere in
+   a path.
+6. The counterfactual respelling under G4 is EVIDENCE ONLY. It was applied inside
+   the disposable worktree, never in the primary checkout, and the worktree was
+   removed by exact path afterwards. `git status --porcelain` is empty and
+   `git ls-files .remedy-wt` is empty.
+
+7. AGENTS.md "If Blocked" asks for the blocker in `.agent/plan.md`, while G3
+   pins that file byte-equal to PLANF272R21 and constraint 1 forbids editing a
+   slice. G3 wins and `.agent/plan.md` was left byte-equal. The blocker lives in
+   this handback instead, which under amend0827-process-diet rule 1 is a durable
+   carrier once committed and pushed.
+
+No other departure from the block's ordered commit sequence occurred: five
+commits in the order C0a, C0b, C1, C2, C3, then C4, no extra commit, none
+dropped, none reordered.
 
 ## Next
 
-Delete the `job.run-next` command surface per DECISION F272 D13 — its catalog
-entry, its handler entry and its test pin, TOGETHER WITH the sixteen
-advertisements across the eight `packages/orchestration/` modules, the two in
-`scripts/remedy_smoke.sh`, the six test files carrying the spaced form, and the
-two `tests/cli/test_plan_approval.py` shell-outs, all in the same commit, with
-`tests/cli/test_advertised_commands.py` now standing as the gate that proves no
-advertisement was left behind.
+The reviewer rules on DEVIATION 3 — the wording of P3 TO — and on DEVIATION 2's
+fourth test removal. Once P3 TO's prose no longer spells `remedy job run-loop`
+with a command-shaped tail, G4, G5 and G6 go green with no other change, as the
+counterfactual measured.
