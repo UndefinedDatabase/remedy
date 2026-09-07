@@ -1,10 +1,10 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 13 PASSED;
-round 2 FAILED on a premise DECISION F272 D2 has corrected. T001 is COMPLETE;
+Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 14 PASSED;
+round 2 FAILED on a premise DECISION F272 D2 has corrected. T001 is COMPLETE.
 T002 has landed the eight administrative fields, widened `RunState`, renamed
-`JobPlan.status` to `state`, given `blocked` and `stopped` their place in the
-cockpit, and now retypes the field itself.
+`JobPlan.status` to `state`, retyped that field onto `RunState`, given `blocked`
+and `stopped` their place in the cockpit, and now completes the Mission record.
 
 ## Goal
 
@@ -16,23 +16,24 @@ runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Move three of DECISION F272 D6: `JobPlan.state` is retyped to `RunState`, the six
-`JOB_*` constants become `RunState` members keeping their names and values, and
-`__post_init__` coerces every construction path so one type describes the field.
-Two record boundaries emit the plain value, and the two `str(getattr(job,
-"state", …))` sites that would otherwise silently stop checking are fixed.
+The Mission extension, T002's last item: `Mission.order` and `Mission.contract`,
+the two fields of DECISION F260 D1 that had no counterpart on the record. Both
+are ADDITIVE and OPTIONAL on the terms `mission_plan` already set, so
+`MISSION_SCHEMA_VERSION` does not move and every mission record already written
+stays byte-identical. The contract lands RESERVED and empty for F269, per
+DECISION amend0905-vocab D9, which DECISION F272 D11 resolves the feature files'
+"D9 shape" reference to.
 
 ## Next Steps
 
-1. The Mission extension — the order, the contract, the mission plan and the
-   ordered job references.
-2. T003, the eleven consumers named under Design in `T2_F260.md`, one per commit
+1. T003, the eleven consumers named under Design in `T2_F260.md`, one per commit
    where the diff allows, each tested on a job built through the ping-pong path.
-3. T004, the classic runner and the resolver collapse.
-4. T005, the reachability test and the cluster deletion, which is never split.
+2. T004, the classic runner and the resolver collapse.
+3. T005, the reachability test and the cluster deletion, which is never split.
 
 ## Risks
 
-- A str-Enum changes `str()` and `%s` and nothing else, but the SITE SET of those
-  renderings is wider than a bare-attribute predicate sees: `getattr(job,
-  "state", …)` hid two, one an integrity check that passed by not looking.
+- T002 completes here, so the next round opens T003, whose eleven consumers are
+  measured in F260's file by line citation rather than listed here. Read that
+  list from `T2_F260.md` before scoping, never from memory: DECISION F272 D7
+  records what a site set inferred rather than measured cost this branch.
