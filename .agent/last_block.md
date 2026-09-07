@@ -1,44 +1,36 @@
-STEP — F274 ROUND 7 — the repair round for round 6's G6 FAIL: fix the broken smoke section, then close the blindness that let it through
+STEP — F274 ROUND 8 — a DELETION ROUND: cut smoke section 12ah, the last consumer of `context_optimizer`
 
-Goal: repair `scripts/remedy_smoke.sh` section 12ai, which round 6 left importing two symbols it
-had just deleted, and then widen the cluster deletion map's walker so that a consumer embedding
-first-party python in a NON-PYTHON file under a consumer root can no longer hide from it. Recording
-the edge that widened walk newly sees returns `packages.orchestration.context_optimizer` to ONE
-consumer, so it is NOT deletable and round 6's zero-edge reading is corrected on disk by the guard
-itself. NO CLUSTER MODULE IS DELETED THIS ROUND.
+Goal: delete section 12ah of `scripts/remedy_smoke.sh` and its line in the deletion map, which
+takes `packages.orchestration.context_optimizer` to ZERO consumer edges under the WIDENED walker
+round 7 landed — so unlike round 6's reading, this one is honest about non-python consumers. Book
+round 7's PASS verdict and resolve findings R-0833 and R-0834. NO CLUSTER MODULE IS DELETED THIS
+ROUND.
 
-Base commit for every reading in this block: `450365a7214b3d6c04c394a645a5fee65cc00867`.
+Base commit for every reading in this block: `b7b954b0c50f311ea74403eaaf9e43fef5192835`.
 
-ROUND 6 FAILED ON G6 AND THE FAULT WAS THE REVIEWER'S, NOT THE WORKER'S. The round 6 block ordered
-five deleted symbols to total zero across four roots; the worker measured FIVE, reported the real
-number, located them all in `scripts/remedy_smoke.sh`, refused to widen its change set and declared
-it. That is exactly right. The reviewer's pre-emission dry run had swept with a file filter of
-`.py`, `.ts`, `.tsx` and `.txt`, so a `.sh` file could not appear in it. This round repairs both the
-breakage and the blindness.
+THIS IS A DELETION ROUND under operator amendment amend0906-triage-throughput rule 1: the change
+set carries NO edited line under `packages/`, `apps/` or `tests/` — only a deleted script section,
+the deleted map line it forces, and this workflow's own `.agent/` bookkeeping. That rule's four
+measurements are gate G4 below, and it is why NO mutation red-proof of the deleted code is ordered
+and no per-file byte reconstruction is asked for. The append into the record keeps its full
+forensics regardless, per the gate-budget rule of docs/agents/planner_reviewer_prompt.md §3.
 
 FRAME CONVENTION. No line of this block is a run of a single repeated character. Every slice is
 delimited by a line reading `BEGIN <NAME> sha256=<hex> bytes=<n>` and a line reading `END <NAME>`,
 and the slice is the bytes BETWEEN those two lines, the leading newline of an appended slice
-included. Every FROM/TO pair is delimited by lines reading `FROM <id>`, `TO <id>` and `ENDPAIR <id>`
-on their own; the pair's text is the bytes between those markers, and the marker lines are never
-written to any file. Each pair's containment reading was MEASURED mechanically before emission and
-is printed beside it.
+included. Marker lines are never written to any file.
 
 
 ## Bundle — the commits of this round, in this order
 
-C0a  Save this block verbatim as `.agent/authored/f274-r7.md`.
+C0a  Save this block verbatim as `.agent/authored/f274-r8.md`.
 C0b  Mirror the same bytes into `.agent/last_block.md`.
-C1   Replace `.agent/plan.md` with the PLAN7 slice.
-C2   Append the RECORD7 slice to `.agent/live_review.md` — books round 6's FAIL verdict and
-     registers R-0833 and R-0834.
-C3   Append the SLIPS7 slice to `.agent/prose_slips.md`.
-C4   THE REPAIR: pairs P1 through P4 against `scripts/remedy_smoke.sh`.
-C5   THE GUARD: pairs P5 through P7 against `tests/orchestration/test_cluster_deletion_map.py`, and
-     pair P8 against `tests/orchestration/cluster_deletion_map.txt`. ONE commit — the walker and the
-     edge it newly sees land together, because the map test reds if either lands alone.
-C6   Append the LANDED7 slice to `.agent/live_review.md`.
-C7   The handback: rewrite `.agent/handoff.md`, then push.
+C1   Replace `.agent/plan.md` with the PLAN8 slice.
+C2   Append the RECORD8 slice to `.agent/live_review.md` — books round 7's PASS verdict and
+     RESOLVES R-0833 and R-0834.
+C3   Append the SLIPS8 slice to `.agent/prose_slips.md`.
+C4   THE CUT: section 12ah and its map line. A PURE DELETION — this commit adds no line to any file.
+C5   The handback: rewrite `.agent/handoff.md`, then push.
 
 C1 is the first substantive commit because this round touches the finding ledger and the plan must
 be current before every commit.
@@ -46,268 +38,141 @@ be current before every commit.
 
 ## Change set — these paths and nothing else
 
-  .agent/authored/f274-r7.md
+  .agent/authored/f274-r8.md
   .agent/last_block.md
   .agent/plan.md
   .agent/live_review.md
   .agent/prose_slips.md
   .agent/handoff.md
   scripts/remedy_smoke.sh
-  tests/orchestration/test_cluster_deletion_map.py
   tests/orchestration/cluster_deletion_map.txt
 
 
-## C4 — the repair, four pairs against `scripts/remedy_smoke.sh`
+## C4 — the cut
 
-Each FROM occurs EXACTLY ONCE in that file at the base commit; the reviewer measured each count.
-The `decision_queue` half of section 12ai SURVIVES in every one of these pairs, including the
-assertion pinning its ordering weight — only the `context_budget` half goes.
+`scripts/remedy_smoke.sh` — delete SECTION 12ah ENTIRELY. It is one contiguous run of 49 lines and
+2011 bytes that occurs exactly once in the file at the base commit; the reviewer measured both
+figures and the uniqueness. The run BEGINS at the comment banner line that immediately precedes the
+line `    # 12ah. Context Optimizer (Step 71)` and ENDS immediately before the comment banner line
+that precedes the line `    # 12ai. Brain nodes: decision_queue (Step 69)`. Everything between goes:
+the banner, the `12ah` heading comment, the `_SMOKE_SECTION="12ah"` assignment, the `echo`, the
+whole `python3 -c` body with its closing quote, and the blank line that ends the run. SECTION 12ai
+SURVIVES UNTOUCHED — round 7 repaired it and it is not this round's business. After the cut the
+token `12ah` occurs ZERO times under `scripts/`, `packages/`, `apps/` and `tests/` — NOT zero
+repo-wide, because this block names the section and C0a and C0b commit this block under `.agent/`,
+which is exactly the scope G4(c) states. The smoke script must still parse: `bash -n` is part of
+gate G4.
 
-P1  TO contains FROM: false  -> REWRITE
-FROM P1
-    # 12ai. Brain nodes: decision_queue + context_budget (Steps 69, 71)
-TO P1
-    # 12ai. Brain nodes: decision_queue (Step 69)
-ENDPAIR P1
+`tests/orchestration/cluster_deletion_map.txt` — delete the single line
+`packages.orchestration.context_optimizer <- scripts/remedy_smoke.sh`. It occurs exactly once at the
+base commit. THE MAP LINE GOES IN THE SAME COMMIT AS THE CUT, because the map test reds in both
+directions and a line left behind is as red as a new edge.
 
-P2  TO contains FROM: false  -> REWRITE
-FROM P2
-    echo "--- 12ai. Brain decision_queue + context_budget nodes"
-TO P2
-    echo "--- 12ai. Brain decision_queue node"
-ENDPAIR P2
-
-P3  TO contains FROM: false  -> REWRITE
-FROM P3
-    NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
-    ET_HAS_DECISION_QUEUE, ET_HAS_CONTEXT_BUDGET,
-TO P3
-    NT_DECISION_QUEUE,
-    ET_HAS_DECISION_QUEUE,
-ENDPAIR P3
-
-P4  TO contains FROM: false  -> REWRITE
-FROM P4
-dq = [n for n in graph.nodes if n.type == NT_DECISION_QUEUE]
-cb = [n for n in graph.nodes if n.type == NT_CONTEXT_BUDGET]
-chk(len(dq) == 1, 'missing decision_queue node')
-chk(len(cb) == 1, 'missing context_budget node')
-chk(dq[0].id == 'decision_queue', 'bad dq id')
-chk(cb[0].id == 'context_budget', 'bad cb id')
-
-dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
-cb_edges = [e for e in graph.edges if e.type == ET_HAS_CONTEXT_BUDGET]
-chk(len(dq_edges) == 1, 'missing decision_queue edge')
-chk(len(cb_edges) == 1, 'missing context_budget edge')
-
-chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
-chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
-
-print('    brain nodes: OK (decision_queue + context_budget)')
-TO P4
-dq = [n for n in graph.nodes if n.type == NT_DECISION_QUEUE]
-chk(len(dq) == 1, 'missing decision_queue node')
-chk(dq[0].id == 'decision_queue', 'bad dq id')
-
-dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
-chk(len(dq_edges) == 1, 'missing decision_queue edge')
-
-chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
-
-print('    brain nodes: OK (decision_queue)')
-ENDPAIR P4
-
-
-## C5 — the guard, three pairs against the map test and one against the map data
-
-P5 is a REWRITE and not the append it resembles: inserting `import re` between two lines breaks the
-FROM's contiguity, so the TO does not contain the FROM verbatim. The reviewer measured that rather
-than reading it.
-
-P5  TO contains FROM: false  -> REWRITE
-FROM P5
-from __future__ import annotations
-
-from pathlib import Path
-TO P5
-from __future__ import annotations
-
-import re
-from pathlib import Path
-ENDPAIR P5
-
-P6  TO contains FROM: true  -> APPEND
-FROM P6
-# Production trees a surviving consumer can live in. `tests/` is deliberately
-# excluded: a test of a deleted module is deleted with it and blocks nothing.
-CONSUMER_ROOTS = ("packages", "apps", "scripts")
-TO P6
-# Production trees a surviving consumer can live in. `tests/` is deliberately
-# excluded: a test of a deleted module is deleted with it and blocks nothing.
-CONSUMER_ROOTS = ("packages", "apps", "scripts")
-
-# A python import statement naming a first-party module, matched as TEXT rather
-# than parsed. Finding R-0834: `scripts/remedy_smoke.sh` embeds its checks in
-# `python3 -c "..."` heredocs, so the module it imports is real, executed and
-# breaks on deletion exactly like an import in a `.py` file — but `ast` cannot
-# reach it, because the file it lives in is not python. The walker below is
-# therefore deliberately a REGEX over non-python files and deliberately matches
-# only the two IMPORT FORMS: a bare mention of a dotted name is not an edge, and
-# `cluster_deletion_map.txt` is itself full of bare mentions.
-_EMBEDDED_IMPORT = re.compile(
-    r"^[ \t]*(?:from|import)[ \t]+(packages\.[A-Za-z0-9_.]+)", re.MULTILINE
-)
-
-
-def embedded_first_party_imports(path: Path) -> set[str]:
-    """First-party modules imported by python EMBEDDED in a non-python file."""
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return set()
-    return set(_EMBEDDED_IMPORT.findall(text))
-ENDPAIR P6
-
-P7  TO contains FROM: false  -> REWRITE
-FROM P7
-        for path in sorted((REPO_ROOT / root).rglob("*.py")):
-            if path.resolve() in excluded:
-                continue
-            for dotted in first_party_imports(path):
-TO P7
-        for path in sorted((REPO_ROOT / root).rglob("*")):
-            if not path.is_file() or path.resolve() in excluded:
-                continue
-            if path.suffix == ".py":
-                dotted_names = first_party_imports(path)
-            else:
-                dotted_names = embedded_first_party_imports(path)
-            for dotted in dotted_names:
-ENDPAIR P7
-
-P8  TO contains FROM: false  -> REWRITE
-FROM P8
-packages.orchestration.candidate_quality <- packages/orchestration/ui_server.py
-packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py
-TO P8
-packages.orchestration.candidate_quality <- packages/orchestration/ui_server.py
-packages.orchestration.context_optimizer <- scripts/remedy_smoke.sh
-packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py
-ENDPAIR P8
-
-The map data file is SORTED and the new line is placed by that sort, which is why P8 spans its two
-neighbours rather than appending at the end — and why P8 is a REWRITE for the same reason P5 is:
-the TO inserts a line BETWEEN the FROM's two lines, so the FROM does not survive contiguously.
+Nothing else. In particular do NOT touch `tests/orchestration/test_cluster_deletion_map.py`: round
+7's widened walker is what makes this round's reading trustworthy and it stays exactly as it is.
 
 
 ## Constraints
 
-1. Apply every slice and every pair BYTE FOR BYTE. Do not reflow, retype, re-indent or "fix" one.
-   If something looks wrong, apply it as given and DECLARE the doubt in the handback.
-2. RECORD7, LANDED7 and SLIPS7 are APPENDS: the target's existing bytes are a byte-exact PREFIX of
-   the result and the slice is an exact SUFFIX. Each carries its OWN leading newline, which supplies
-   the blank-line separation — ADD NO SEPARATOR of your own. PLAN7 replaces `.agent/plan.md`
-   entirely. `.agent/live_review.md` is appended to TWICE this round, at C2 and again at C6; C6's
-   base is C2's result.
-3. The path set of C0a through C6 is exactly the paths listed under "Change set" other than
-   `.agent/handoff.md`, which C7 writes. Nothing outside that list is created, edited or deleted.
-4. Every destructive check runs ONLY inside a disposable `git worktree`, never in the primary
+1. Apply every slice BYTE FOR BYTE. Do not reflow, retype or re-indent one. If something looks
+   wrong, apply it as given and DECLARE the doubt in the handback.
+2. RECORD8 and SLIPS8 are APPENDS: the target's existing bytes are a byte-exact PREFIX of the
+   result and the slice is an exact SUFFIX. Each carries its OWN leading newline — ADD NO SEPARATOR
+   of your own. PLAN8 replaces `.agent/plan.md` entirely.
+3. The path set of C0a through C4 is exactly the paths listed under "Change set" other than
+   `.agent/handoff.md`, which C5 writes.
+4. Any destructive check runs ONLY inside a disposable `git worktree`, never in the primary
    checkout, which satisfies `git status --porcelain` == empty at every commit boundary. Remove and
    prune each worktree you create.
-5. Do not write a `Done:` paragraph. The LANDED7 slice's `Landed:` lines are reviewer-authored text
-   you apply verbatim; only the reviewer writes `Done:`, at the next gate.
-6. Every gate below runs at a commit STRICTLY EARLIER than C7, so the handback can quote each
-   result.
-7. C4 must not touch the map test and C5 must not touch the smoke script: the two halves are
-   separately revertible on purpose, because one is a repair and the other is a new guard.
+5. Do not write a `Done:` paragraph of your own. RECORD8 already carries the two the reviewer
+   authored; apply them verbatim and add nothing.
+6. Every gate below runs at a commit STRICTLY EARLIER than C5, so the handback can quote each.
+7. RUN THE FULL SUITE IN THE PRIMARY CHECKOUT, never in a fresh worktree: `apps/ui/node_modules`
+   and `apps/ui/dist` are gitignored, so a fresh worktree has neither and the server-backed tests
+   fail on a missing UI build rather than on anything this round did.
 
 
 ## Done when — the gates, one line per gate in the handback
 
-G1  TRANSPORT, at C0b. `sha256` of the committed `.agent/authored/f274-r7.md` equals `sha256` of
+G1  TRANSPORT, at C0b. `sha256` of the committed `.agent/authored/f274-r8.md` equals `sha256` of
     the committed `.agent/last_block.md`, and both equal the digest the delegation message states.
     Report the digest you measured.
 
-G2  THE TWO RECORD APPENDS, re-derived from the COMMITTED blobs.
-    (a) AT C2: `.agent/live_review.md` 543921 -> 554047; pre-image a byte-exact PREFIX; post-image
-        equal to pre plus the 10126-byte RECORD7 slice with no separator added. Structural reader
-        over the WHOLE appended region: a unit is a maximal run of consecutive non-empty lines;
-        COUNT N from the slice itself (do not take it from this block); the file's last N units
-        equal the slice's units IN ORDER and everything before them is unchanged. Units 217 -> 220.
-        NEGATIVE CONTROL: flip the byte at ZERO-INDEXED BYTE offset 543922 of the post-image — the
-        `G` opening the first appended paragraph — and confirm BOTH readers reject it.
-    (b) AT C6: 554047 -> 554669; same prefix, suffix and ordered-unit readings against the
-        622-byte LANDED7 slice; units 220 -> 222; NEGATIVE CONTROL at zero-indexed byte offset
-        554048, the `L` opening the first appended `Landed:` paragraph.
-    (c) COUNTS at C6: registrations 66 -> 68, resolutions 3 -> 3, OPEN SET 63 -> 65 BY DISTINCT ID,
-        `^Gate: ` 37 -> 38, `^Gate: F274 R6` 0 -> 1, `^- R-0833 — ` exactly 1, `^- R-0834 — `
-        exactly 1, `^Landed: ` 31 -> 33.
-    Do every flip in memory or in a disposable worktree; the primary checkout stays clean.
+G2  THE RECORD APPEND, at C2, re-derived from the COMMITTED blobs.
+    (a) BYTES: `.agent/live_review.md` 554669 -> 563333; pre-image a byte-exact PREFIX; post-image
+        equal to pre plus the 8664-byte RECORD8 slice with no separator added.
+    (b) STRUCTURE, over the WHOLE appended region: a unit is a maximal run of consecutive non-empty
+        lines; COUNT N from the slice itself (do not take it from this block); the file's last N
+        units equal the slice's units IN ORDER and everything before them is unchanged.
+        Units 222 -> 225.
+    (c) NEGATIVE CONTROL: flip the byte at ZERO-INDEXED BYTE offset 554670 of the post-image — read
+        as bytes, not characters; it is the `G` opening the first appended paragraph — and confirm
+        BOTH readers reject it. Flip in memory or in a disposable worktree.
+    (d) COUNTS: registrations 68 -> 68, RESOLUTIONS 3 -> 5, OPEN SET 65 -> 63 BY DISTINCT ID
+        (distinct `^- R-\d+ — ` ids minus distinct `^Done: R-\d+ — ` ids), `^Gate: ` 38 -> 39,
+        `^Gate: F274 R7` 0 -> 1, `^Done: R-0833 — ` exactly 1, `^Done: R-0834 — ` exactly 1. The
+        two `Landed:` lines round 7 wrote SURVIVE beside the resolutions: `^Landed: ` is unchanged
+        at 37 lines.
 
-G3  THE STATE PROSE FILES. `.agent/plan.md` at C1 is BYTE-EQUAL to the PLAN7 slice, is 43 lines
+G3  THE STATE PROSE FILES. `.agent/plan.md` at C1 is BYTE-EQUAL to the PLAN8 slice, is 41 lines
     against the cap of 50, and carries both `## Goal` and `## Next Steps`. `.agent/prose_slips.md`
-    at C3 goes 158733 -> 159553 with the pre-image a byte-exact prefix and each appended line
-    occurring once.
+    at C3 goes 159553 -> 160319 with the pre-image a byte-exact prefix and each appended line once.
 
-G4  THE REPAIR PROVES ITSELF BY RUNNING, at C4. Extract section 12ai's embedded python FROM THE
-    COMMITTED `scripts/remedy_smoke.sh` — do not retype it — and EXECUTE it. It must be EXIT 0 and
-    print `brain nodes: OK (decision_queue)`. Report the exit code. Then confirm the sweep round 6
-    could not pass: over `packages/`, `apps/`, `tests/` and `scripts/`, ALL FILE TYPES and not only
-    python, the tokens `NT_CONTEXT_BUDGET`, `ET_HAS_CONTEXT_BUDGET`, `_build_context_budget_node`,
-    `_detail_context_budget` and `has_context_budget` now total ZERO. Report the total.
+G4  THE DELETION ROUND'S FOUR MEASUREMENTS, at C4 — amend0906-triage-throughput rule 1 asks for
+    these and for nothing else about the deleted code.
+    (a) `python3 -B -m pytest tests/orchestration/test_import_reachability.py -q` EXIT 0.
+    (b) THE FULL SUITE green, in the PRIMARY CHECKOUT per constraint 7:
+        `python3 -m pytest -q -n auto`. Report the exit code and the passed/failed/skipped counts.
+    (c) A grep over every tracked file under `scripts/`, `packages/`, `apps/` and `tests/`, ALL
+        FILE TYPES. The token `12ah` totals ZERO — it occurs 3 times at the base, all three inside
+        the deleted section. The string `packages.orchestration.context_optimizer` totals ZERO
+        UNDER `scripts/` ALONE — it occurs once there at the base, in the deleted section. Report
+        both totals. THE SCOPE OF EACH CLAUSE IS DELIBERATE AND THE REVIEWER MEASURED WHY. `.agent/`
+        is excluded from the `12ah` sweep because THIS BLOCK NAMES THAT SECTION and C0a and C0b
+        commit this block, so a repo-wide zero would be unmeetable by construction. And the
+        `context_optimizer` clause is scoped to `scripts/` because that string legitimately SURVIVES
+        elsewhere at the base — 3 times in `apps/cli/commands/context_optimizer_cmd.py`, 5 in
+        `tests/orchestration/test_project_brain.py`, once in
+        `tests/orchestration/import_reachability_allowlist.txt` and once in the map test's own
+        module list — none of which is this round's business, since the MODULE is not being deleted
+        this round, only its last consumer edge.
+    (d) `python3 -m ruff check scripts/remedy_smoke.sh` EXIT 0, and `bash -n scripts/remedy_smoke.sh`
+        EXIT 0 — the script must still PARSE after a 49-line excision.
 
-G5  THE EXTENDED GUARD IS LOAD-BEARING, BOTH WAYS, in a disposable worktree at C5. Report the exit
-    code of every run, and the UNMUTATED control both before and after the mutations.
+G5  THE EDGE TRUTH AND THE RATCHET, at C4, in a disposable worktree.
     (a) CONTROL: `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py -q` EXIT 0.
-    (b) RED ONE — the new walker is what produces the new edge: replace the single line
-        `    return set(_EMBEDDED_IMPORT.findall(text))` in
-        `tests/orchestration/test_cluster_deletion_map.py` with `    return set()`. That exact line
-        occurs once in that file at C5. The command must be EXIT 1 reporting `DISAPPEARED (1)` and
-        naming `context_optimizer <- scripts/remedy_smoke.sh`. Restore BY EXACT PATH, byte-identical.
-    (c) RED TWO — the new walker sees a NEW embedded consumer: append the single line
-        `from packages.orchestration.review_bundle import build_review_bundle` to
-        `scripts/remedy_smoke.sh`. The command must be EXIT 1 reporting `APPEARED (1)` and naming
-        `review_bundle <- scripts/remedy_smoke.sh`. Restore BY EXACT PATH, byte-identical.
-    (d) The control returns to EXIT 0 after both restorations.
+    (b) Measured edges equal recorded edges at 37. The measured consumers of
+        `packages.orchestration.context_optimizer` are THE EMPTY LIST. The modules with no edge are
+        exactly `context_optimizer`, `context_pack`, `review_bundle` and `self_repair_proposal`.
+        The non-`.py` consumers the widened walk finds are THE EMPTY LIST. Report all four.
+    (c) RED: append the deleted line back to `tests/orchestration/cluster_deletion_map.txt`. The
+        command of (a) must be EXIT 1 reporting `DISAPPEARED (1)` and naming that exact edge.
+        Restore BY EXACT PATH and confirm byte-identity. The control of (a) returns to EXIT 0.
 
-G6  THE EDGE TRUTH, at C5. Measured edges equal recorded edges at 38. The measured consumers of
-    `packages.orchestration.context_optimizer` are EXACTLY `['scripts/remedy_smoke.sh']`, so that
-    module is NOT deletable and round 6's zero-edge reading is corrected. The modules with no edge
-    are exactly `context_pack`, `review_bundle` and `self_repair_proposal`. The non-`.py` consumers
-    the widened walk finds are exactly `['scripts/remedy_smoke.sh']`. Report all four readings.
-
-G7  THE SUITES AND THE CEILING, run serially in the primary checkout at C6.
-    `tests/orchestration/test_cluster_deletion_map.py` 3, `tests/orchestration/test_import_reachability.py` 3,
-    `tests/test_remedy_smoke_script.py` 191, `tests/orchestration/test_project_brain.py` 82, and the
-    canary `tests/cli/test_golden_path.py` 42 — each EXIT 0, and report each NUMBER. Then
-    `python3 -m ruff check .` is 26 errors in a disposable worktree checked out at
-    `450365a7214b3d6c04c394a645a5fee65cc00867` and RUN FROM THAT WORKTREE'S OWN ROOT, and 26 in the
-    primary checkout at C6; `tests/orchestration/test_ci_budgets.py` EXIT 0 at 10.
-
-G8  THE TREE, at C6. `git status --porcelain` EMPTY; `git ls-files .remedy-wt` EMPTY;
+G6  THE TREE, at C4. `git status --porcelain` EMPTY; `git ls-files .remedy-wt` EMPTY;
     `git worktree list` the same count as before your first worktree and after your last prune;
-    `git diff --name-only 450365a7214b3d6c04c394a645a5fee65cc00867..<C6>` naming exactly the paths
-    of constraint 3 and nothing else; every commit C0a through C6 single-parent. Report the
-    INSERTION count of each commit C0a through C6 — the `+` column only, per AGENTS.md DECISION
-    F104 D1. Do not report C7's own numbers; the reviewer measures them at the next gate.
+    `git diff --name-only b7b954b0c50f311ea74403eaaf9e43fef5192835..<C4>` naming exactly the paths
+    of constraint 3 and nothing else; every commit C0a through C4 single-parent. Report the
+    INSERTION count of each commit C0a through C4 — the `+` column only, per AGENTS.md DECISION
+    F104 D1 — and confirm that C4's is ZERO, because a deletion round's cut adds no line. Do not
+    report C5's own numbers; the reviewer measures them at the next gate.
 
 
-## Handback — rewrite `.agent/handoff.md` at C7, then push
+## Handback — rewrite `.agent/handoff.md` at C5, then push
 
 Carry the mandated sections of `docs/agents/handback_template.md`: the state block, the commits
 table with its `+/-` column taken from `git diff --numstat` and compared cell by cell against the
-insertion counts G8 reports, the changed-files table, ONE LINE PER GATE G1 through G8 with its real
+insertion counts G6 reports, the changed-files table, ONE LINE PER GATE G1 through G6 with its real
 result, the deviations, the open-findings count, and the next expected action. No length cap. Name
-the SESSION NUMBER as SESSION 4 of feature F274 and the round as 7. State the open-findings count
-as the number G2(c) MEASURED. Add the one sentence of context self-assessment
+the SESSION NUMBER as SESSION 4 of feature F274 and the round as 8. State the open-findings count
+as the number G2(d) MEASURED. Add the one sentence of context self-assessment
 amend0905-throughput requires.
 
-DECLARE, do not silently repair: if any gate goes red, or any pair or slice does not apply as
-described, report the real command, the real exit code and the real output and say what you did.
-Round 6's G6 red is in this record precisely because its worker did that.
+DECLARE, do not silently repair: if any gate goes red, or any slice does not apply as described,
+report the real command, the real exit code and the real output and say what you did.
 
 
-BEGIN PLAN7 sha256=ab2fd8b46fcdcf1e6efddf66142eee5be02edb133073f7557a88cdf97d4b5576 bytes=2512
+BEGIN PLAN8 sha256=01c2d47f6880255f2a44a6eb22decbd756190d2127e33d2925cb80b32cec0f71 bytes=2376
 # Plan — F274 One world completion, part two
 
 Branch: feature/f274-one-world-completion-part-two, cut from `main` at
@@ -322,59 +187,49 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 7, the repair round for round 6's FAIL on gate G6. Cut the `context_budget` half of
-`scripts/remedy_smoke.sh` section 12ai, which round 6 left importing two deleted symbols, and then
-widen the deletion map's walker so a consumer that embeds first-party python in a non-python file
-under a consumer root can no longer hide from it. Recording the edge that walk newly sees returns
-`context_optimizer` to ONE consumer, so it is NOT deletable and round 6's zero-edge reading is
-corrected on disk. Book round 6's FAIL verdict, register R-0833 and R-0834, and mark both Landed.
+Round 8, a DELETION ROUND under operator amendment amend0906-triage-throughput: delete section
+12ah of `scripts/remedy_smoke.sh`, the last recorded consumer of `context_optimizer`, and its line
+in the deletion map. That takes the module to zero edges under the WIDENED walker round 7 landed,
+so this time the reading is honest about non-python consumers. Book round 7's PASS verdict and
+resolve R-0833 and R-0834. No cluster module is deleted this round.
 
 ## Next Steps
 
-1. Cut section 12ah of `scripts/remedy_smoke.sh`, the last recorded consumer of
-   `context_optimizer`, in the round that takes that module to zero for real.
-2. `worker_recommend`'s three remaining edges, in `agent_loop.py`, `autonomy_loop.py` and
-   `dashboard.py`. These are LIVE RUNTIME CALLS rather than read-only views, so a DECISION naming
-   what inherits worker recommendation is authored before the cut.
+1. `worker_recommend`'s three edges, in `agent_loop.py`, `autonomy_loop.py` and `dashboard.py`.
+   These are LIVE RUNTIME CALLS rather than read-only views, so a DECISION naming what inherits
+   worker recommendation is authored before the cut.
+2. The fifteen edges `packages/orchestration/ui_server.py` still holds, which is the largest single
+   block of remaining work and wants a DECISION covering the cockpit endpoints as a group.
 3. The `worker_facade_cmd.py` edges, which carry the `mission report` name collision DECISION
-   F274 D2 rules.
-4. The remaining edges, of which `packages/orchestration/ui_server.py` holds the most by far.
-5. The first carry-over, on the route DECISION F274 D2 fixes: the read-only overnight readiness
+   F274 D2 rules, and the two `feature_cmd.py` edges, which are live CLI commands.
+4. The first carry-over, on the route DECISION F274 D2 fixes: the read-only overnight readiness
    and report views survive as `mission readiness` and `mission report`.
-6. Draft DECISION F260 D3, the deletion paragraph. R-0832's and R-0834's fix clauses bind it.
-7. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
-8. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
+5. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it.
+6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
+7. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
 
 ## Risks
 
-- The map is now proven blind twice: to event-name coupling (R-0832) and, until this round, to
-  embedded python (R-0834). Treat every "zero edges" reading as a claim about the WALKER.
+- The map was blind twice and is now fixed once: R-0834's file-type blindness is closed, R-0832's
+  event-name coupling is OPEN. Treat every "zero edges" reading as a claim about the WALKER.
 - The open High findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
   feature's, per DECISION F272 D12.
-END PLAN7
+END PLAN8
 
 
-BEGIN RECORD7 sha256=fc0342bea4038e7d8a26a3f87cfd0a945d9717308847373da2590e40a071078c bytes=10126
+BEGIN RECORD8 sha256=dff683cb2b9e8b3b340ea3c33f083899145301f80e168d06f079d25e80a2f19d bytes=8664
 
-Gate: F274 R6 — the F274 round 6 entry. VERDICT FAIL, ON GATE G6 AND ON NOTHING ELSE, AND THE FAILURE IS THE REVIEWER'S AUTHORING ERROR RATHER THAN THE WORKER'S EXECUTION. Every gate was re-run by the reviewer itself, in the primary checkout and in a disposable worktree at `1755b6dbd387854b866fd6d1cf0a7647c1713044`, against the COMMITTED blobs rather than the working tree. Range `fcb77eab139faec83ffd88963bd5888d59dad677`..`450365a7214b3d6c04c394a645a5fee65cc00867`, seven commits, every one single-parent, in exactly the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, with the path set over `fcb77eab139faec83ffd88963bd5888d59dad677`..`1755b6dbd387854b866fd6d1cf0a7647c1713044` naming exactly the fourteen declared paths and nothing else. G1 TRANSPORT IS A REAL CHAIN AND FOR ONCE IT COVERS THE EMITTED BYTES: the block travelled as a FILE the worker copied rather than as text it retyped, so the reviewer's own scratch original `.remedy-wt/f274-r6-block.md`, written and hashed BEFORE delegation, is BYTE-IDENTICAL to the committed `.agent/authored/f274-r6.md` and `.agent/last_block.md`, all three 27569 bytes at `bd1d2cb8c10835c99c4ae7a0a2fcad4603febe145a30868f4ebe7af881f4b176`. G2 THE RECORD APPEND at `f6b6f7528f707101f163ec2672c470b0d98df5de`, re-derived from the committed blobs: 535659 to 543921 bytes, pre-image a byte-exact PREFIX, post-image equal to pre plus the 8262-byte RECORD6 slice with no separator added; units 215 to 217 under the maximal-run-of-non-empty-lines definition, N counted from the slice as 2, the last two units matching IN ORDER and everything before them unchanged, and the control flipped at zero-indexed BYTE offset 535660 — the `G` opening the first appended paragraph — rejected by BOTH readers; registrations 65 to 66, resolutions 3 to 3, OPEN SET 62 TO 63 BY DISTINCT ID, `^Gate: ` 36 to 37, `^Gate: F274 R5` 0 to 1, `^- R-0832 — ` exactly 1. G3: `.agent/plan.md` is byte-equal to its slice at 43 lines against the cap of 50 and carries both mandated headings; `.agent/prose_slips.md` 158178 to 158733 bytes with each appended line occurring once. G4 THE RATCHET HELD BOTH WAYS in the reviewer's own disposable worktree: control EXIT 0 at 6 passed, measured edges equal recorded edges at 37, the measured consumers of `packages.orchestration.context_optimizer` the EMPTY LIST, restoring the deleted map line EXIT 1 reporting `DISAPPEARED (1)` and naming that edge, appending an import to `packages/orchestration/ui_server.py` EXIT 1 reporting `APPEARED (1)`, each mutated file restored byte-identically by exact path and the control returning to EXIT 0. G5 THE ORDERED COUNTS ARE EXACT: `tests/orchestration/test_project_brain.py` 84 to 82, `tests/ui_server/test_brain_view_model.py` 39 to 38, `tests/ui_server/` 514 to 513, the four suites that match only a SURVIVING spelling unmoved together at 108, and the canary at 42. G7 THE LINT CEILING HELD at 26 errors at the base in a worktree run from its own root and 26 in the primary checkout, so DECISION F083 D5's frozen ceiling is untouched, and `test_ci_budgets.py` EXIT 0 at 10 passed. G8 THE TREE: porcelain empty, `git ls-files .remedy-wt` empty, worktrees 14 before and after. G6 IS THE ONE THAT FAILED, AND IT FAILED HONESTLY: it ordered the five deleted node symbols to total ZERO across `packages/`, `apps/`, `tests/` and `scripts/`, and the worker MEASURED FIVE, reported the real number, located every one of them in `scripts/remedy_smoke.sh`, declared it as a deviation and DID NOT REPAIR IT because that path was outside the change set the block bound it to. The reviewer independently re-measured the same reading: 30 occurrences across six files at `fcb77eab139faec83ffd88963bd5888d59dad677` and 5 at `1755b6dbd387854b866fd6d1cf0a7647c1713044`, all five in that one file, so all twenty-five in-scope occurrences went and only the out-of-scope file remains. THE CAUSE IS THE REVIEWER'S PRE-EMISSION DRY RUN: it swept for the five symbols with a file filter of `.py`, `.ts`, `.tsx` and `.txt`, so a `.sh` file could not appear in its result, and the block's change set was therefore authored one file short. The worker did exactly what this workflow asks of it — measure, report the real number, refuse to widen scope, declare. TWO FINDINGS ARE MINTED AND THEY ARE THE TWO PARAGRAPHS BELOW: R-0833 for the breakage on disk and R-0834 for the guard that could not see it. NO FINDING IS RESOLVED BY THIS GATE. The reviewer additionally sustains the worker's deviation D2 as a REVIEWER PROSE SLIP rather than an id, per amend0827 rule 2, because it left nothing wrong on disk: the block named `brain_viewer.py`'s two entries a "layer entry and weight entry" where the file calls those maps `_ZONE_MAP` and `_LAYER_MAP`, and named `ui_view_model.py`'s two integer maps "the two weight maps" where the file calls them `_RANK_MAP` and `_ZOOM_MAP`; the KEYS and the COUNTS the block gave were exact, so the site set was never ambiguous and the worker applied it as specified.
+Gate: F274 R7 — the F274 round 7 entry. VERDICT PASS, AND EVERY GATE WAS RE-RUN BY THE REVIEWER ITSELF, in the primary checkout and in two disposable worktrees, against the COMMITTED blobs rather than the working tree. Range `450365a7214b3d6c04c394a645a5fee65cc00867`..`b7b954b0c50f311ea74403eaaf9e43fef5192835`, nine commits, every one single-parent, in exactly the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6, C7, with the path set over `450365a7214b3d6c04c394a645a5fee65cc00867`..`685af2abb467eb0f53eae972abf03f7037c3f8d4` naming exactly the eight declared paths and nothing else. G1 TRANSPORT covers the emitted bytes rather than only the worker's self-consistency, because the block travelled as a FILE the worker copied rather than as text it retyped: the reviewer's own scratch original `.remedy-wt/f274-r7-block.md`, written and hashed BEFORE delegation, is BYTE-IDENTICAL to the committed `.agent/authored/f274-r7.md` and `.agent/last_block.md`, all three 31076 bytes at `fef320ac5fb35964459f808402ed4f61f5d3718e8232aff6b987d168a1bb6e70`. G2 THE TWO RECORD APPENDS both hold, re-derived from the committed blobs: at `f40a94d240061e730f98d59265eeac14b2fd21bb` 543921 to 554047 bytes against the 10126-byte RECORD7 slice, prefix true, post equal to pre plus slice, N counted from the slice as 3, units 217 to 220, the last three units matching IN ORDER with everything before them unchanged, and the control flipped at zero-indexed byte offset 543922 — the `G` opening the first appended paragraph — rejected by BOTH readers; at `685af2abb467eb0f53eae972abf03f7037c3f8d4` 554047 to 554669 against the 622-byte LANDED7 slice, N counted as 2, units 220 to 222, ordered equality true, and the control at byte offset 554048 — the `L` opening the first appended paragraph — rejected by both. Registrations 66 to 68, resolutions 3 to 3, OPEN SET 63 TO 65 BY DISTINCT ID, `^Gate: ` 37 to 38, `^Gate: F274 R6` 0 to 1, `^- R-0833 — ` and `^- R-0834 — ` exactly 1 each. G3: `.agent/plan.md` is byte-equal to its slice at 43 lines against the cap of 50 and carries both mandated headings; `.agent/prose_slips.md` 158733 to 159553 bytes with each appended line occurring once. G4 IS THE GATE THIS ROUND EXISTED FOR AND IT IS THE ONE THE REVIEWER RAN MOST CAREFULLY: section 12ai's embedded python was EXTRACTED FROM THE COMMITTED `scripts/remedy_smoke.sh` at `a81aef39e18ac09f94c16d219045048c46cde43c` — 961 bytes — and EXECUTED, giving EXIT 0 and printing `brain nodes: OK (decision_queue)`, with no occurrence of `context_budget` anywhere in the extracted body; and the sweep round 6 could not pass, re-run over all 1313 tracked files of `packages/`, `apps/`, `tests/` and `scripts/` with NO file-type filter at all, TOTALS ZERO against round 6's five. G5 THE EXTENDED GUARD IS LOAD-BEARING IN BOTH DIRECTIONS, proved in the reviewer's own disposable worktree at `a3082c281d130da20fa80947b81b063ba34b9302` with `__pycache__` purged and `python3 -B`: control EXIT 0 at 3 passed; neutering the new walker's return to `set()` is EXIT 1 reporting `DISAPPEARED (1)` and naming `context_optimizer <- scripts/remedy_smoke.sh`, which proves the new walker and not something else produces that edge; appending an embedded import of `review_bundle` to the smoke script is EXIT 1 reporting `APPEARED (1)` and naming `review_bundle <- scripts/remedy_smoke.sh`, which proves the walker sees a NEW embedded consumer rather than only the one it was written for; each mutated file restored byte-identically by exact path and the control returned to EXIT 0. G6 THE EDGE TRUTH: measured equals recorded at 38, the consumers of `packages.orchestration.context_optimizer` are EXACTLY `['scripts/remedy_smoke.sh']`, the zero-edge modules are `context_pack`, `review_bundle` and `self_repair_proposal`, and the non-`.py` consumers the widened walk finds are exactly `['scripts/remedy_smoke.sh']` — so round 6's zero-edge reading for that module IS CORRECTED ON DISK BY THE GUARD ITSELF, which is the outcome this round was designed to produce. G7 THE SUITES AND THE CEILING, re-run serially by the reviewer: the deletion map 3, import reachability 3, the smoke-script test 191, `test_project_brain.py` 82, the canary 42 and `test_ci_budgets.py` 10, every one EXIT 0; `ruff check .` 26 errors in a worktree checked out at `450365a7214b3d6c04c394a645a5fee65cc00867` and run from that worktree's own root, and 26 in the primary checkout, so DECISION F083 D5's frozen ceiling is untouched. G8 THE TREE: porcelain empty, `git ls-files .remedy-wt` empty, worktrees 14 before and after, per-commit insertions 380, 304, 18, 6, 4, 5, 30 and 4 for C0a through C6. TWO DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS BOTH, AND BOTH ARE THE REVIEWER'S OWN PROSE rather than ids, per amend0827 rule 2, because neither left anything wrong on disk: the block's G2(c) wrote the pattern `^Landed: ` beside the numeral 31 to 33, which is the DISTINCT-ID reading while the line reading is 35 to 37 — four ids carry two `Landed:` lines each — and both readings move by exactly two, which the reviewer re-measured; and the RECORD7 slice described section 12ai's surviving ordering assertion as "the one pinning the ordering weight 25" when that section asserts only membership in `_NODE_TYPE_ORDER` and the numeral 25 is pinned in `tests/orchestration/test_project_brain.py` instead, so the sub-clause described the wrong file while the pair that preserved the assertion was exact. NEITHER IS LOAD-BEARING AND NEITHER EARNS A CORRECTION ROUND. TWO FINDINGS ARE RESOLVED BY THIS GATE, R-0833 and R-0834, and their resolutions are the two paragraphs below.
 
-- R-0833 — Medium, THE BRANCH TIP SHIPS A SMOKE-SCRIPT SECTION THAT EXITS NON-ZERO ON AN IMPORT OF SYMBOLS ROUND 6 DELETED, AND NO SUITE CATCHES IT. Raised by the worker at the F274 round 6 handback as deviation D1, measured independently by the reviewer, and booked by round 7's first substantive commit. THE MEASUREMENT, taken at `450365a7214b3d6c04c394a645a5fee65cc00867`. `scripts/remedy_smoke.sh` section 12ai runs an embedded `python3 -c` whose first statement imports `NT_DECISION_QUEUE`, `NT_CONTEXT_BUDGET`, `ET_HAS_DECISION_QUEUE` and `ET_HAS_CONTEXT_BUDGET` from `packages.orchestration.project_brain`. Round 6 deleted the second and fourth of those, so that import is now `ImportError: cannot import name 'NT_CONTEXT_BUDGET' from 'packages.orchestration.project_brain'`, which the reviewer reproduced by executing the statement directly. The section's own body then reads the `context_budget` node and its edge and asserts each is present, so even a repaired import would fail on the node that no longer exists. `tests/test_remedy_smoke_script.py` is EXIT 0 at 191 passed at that same commit, so the suite does NOT reach this: it checks the script's structure and not its execution, which is why a green round shipped a red script. THE SEVERITY IS MEDIUM RATHER THAN HIGH because the product runtime is unaffected — the deleted node was a diagnostic view and no shipped code path imports these symbols — but the state on disk is genuinely wrong under `scripts/`, which is what amend0827 rule 2 spends an id on. FIX, discharged in F274 round 7 in the commit that this record's `Landed: R-0833` line names: cut the `context_budget` half of section 12ai and keep the `decision_queue` half, which is the half whose subject still exists — the import tuple loses two names, the node, edge and order assertions for `context_budget` go, and the section's comment, banner and success line stop naming it. The `decision_queue` assertions are UNCHANGED, including the one pinning the ordering weight 25.
+Done: R-0833 — RESOLVED at `a81aef39e18ac09f94c16d219045048c46cde43c`, verified by the reviewer at the F274 round 7 gate. The `context_budget` half of `scripts/remedy_smoke.sh` section 12ai is cut and the `decision_queue` half is unchanged. THE PROOF IS EXECUTION RATHER THAN INSPECTION, which is what this finding's own evidence demanded: the section's embedded python was extracted from the COMMITTED blob at that commit, 961 bytes, and RUN, giving EXIT 0 and printing `brain nodes: OK (decision_queue)` where at `450365a7214b3d6c04c394a645a5fee65cc00867` the same extraction raised `ImportError: cannot import name 'NT_CONTEXT_BUDGET' from 'packages.orchestration.project_brain'`. The five deleted node symbols now total ZERO across all 1313 tracked files of `packages/`, `apps/`, `tests/` and `scripts/` with no file-type filter, against five at the base. The `Landed: R-0833` line above this paragraph is the worker's own marker and STANDS BESIDE this resolution rather than being replaced by it, per DECISION F272 D10. Note for the record, and not a defect: this resolution does NOT restore smoke coverage of the `context_budget` brain node, because that node no longer exists — the section now covers `decision_queue` alone, which is the only half whose subject survives.
 
-- R-0834 — High, THE CLUSTER DELETION MAP WALKS `*.py` ONLY, SO A CONSUMER THAT EMBEDS FIRST-PARTY PYTHON IN A NON-PYTHON FILE UNDER A CONSUMER ROOT IS INVISIBLE TO IT — WHICH BOTH HID R-0833 AND MADE ROUND 6's ZERO-EDGE READING FALSE OF THE TREE. Raised by the reviewer at the F274 round 6 gate, from the worker's D1 measurement, and booked by round 7's first substantive commit. THE RULE. `tests/orchestration/test_cluster_deletion_map.py` declares `CONSUMER_ROOTS = ("packages", "apps", "scripts")` and then walks each root with `rglob("*.py")`, so `scripts` is named as a place a surviving consumer may live while every non-python file in it is skipped; DECISION F274 D2 rules the deletion bounded by the edges that walk produces. THE MEASUREMENT, taken at `450365a7214b3d6c04c394a645a5fee65cc00867`. `scripts/remedy_smoke.sh` section 12ah contains the statement `from packages.orchestration.context_optimizer import explain_context, optimize_context`, executed inside a `python3 -c` heredoc. That is a real, live, first-party import of a cluster module by a file under a CONSUMER_ROOT, and the map records NO edge for it. The consequence is not hypothetical and is not confined to R-0833: round 6's own goal, its plan slice and its `Gate: F274 R6` verdict all read `context_optimizer` as having ZERO consumer edges and therefore as the fourth module the deletion may take, and that reading is FALSE OF THE TREE — deleting `packages/orchestration/context_optimizer.py` on the map's authority would break section 12ah exactly as round 6 broke section 12ai. This is a gate over production code shown to be BLIND to a real coupling, and unlike R-0832's event-name shape it is blind to an ordinary `import` statement, which is the very thing the walker exists to find. THE REACH IS BOUNDED AND WAS MEASURED RATHER THAN ASSUMED: of the 240 tracked non-`.py` files under `packages/`, `apps/`, `scripts/` and `tests/`, exactly three name a cluster module at all, and two of those are the data files `tests/orchestration/cluster_deletion_map.txt` and `tests/orchestration/import_reachability_allowlist.txt`, which are bare dotted-name inventories under a root that is deliberately not a CONSUMER_ROOT. `scripts/remedy_smoke.sh` is the only real instance, and it is the one that broke. FIX, discharged in F274 round 7 in the commit that this record's `Landed: R-0834` line names: widen the walker to every file under a CONSUMER_ROOT, keep `ast` for `.py`, and read a non-python file with a regex that matches ONLY the two python IMPORT FORMS at line start, so that a bare mention of a dotted name is not an edge — `cluster_deletion_map.txt` is itself full of bare mentions and a substring sweep would turn the map into its own consumer. Record the newly visible edge in the map in the same commit, which returns `context_optimizer` to ONE consumer and the zero-edge set to `context_pack`, `review_bundle` and `self_repair_proposal`. This finding does not license widening the walker to non-import syntax: R-0832's event-name coupling is a different defect with a different fix, and the two are deliberately not merged.
-END RECORD7
-
-
-BEGIN LANDED7 sha256=935ddc6df4f195249384b2f7afd535f97cc639f11a4f6a949e7efa9191901a04 bytes=622
-
-Landed: R-0833 — the `context_budget` half of `scripts/remedy_smoke.sh` section 12ai is cut and the `decision_queue` half is unchanged, in the commit this round's block names C4; the section's embedded python, extracted from the committed script and executed, is EXIT 0.
-
-Landed: R-0834 — `measured_edges` in `tests/orchestration/test_cluster_deletion_map.py` now walks every file under a CONSUMER_ROOT, reading `.py` with `ast` and every other file with an import-form regex, and the edge that walk newly sees is recorded in `tests/orchestration/cluster_deletion_map.txt`, in the commit this round's block names C5.
-END LANDED7
+Done: R-0834 — RESOLVED at `a3082c281d130da20fa80947b81b063ba34b9302`, verified by the reviewer at the F274 round 7 gate. `measured_edges` in `tests/orchestration/test_cluster_deletion_map.py` now walks EVERY file under a CONSUMER_ROOT rather than `rglob("*.py")`, reading a `.py` file with the existing `ast` walker and every other file with `embedded_first_party_imports`, a regex that matches ONLY the two python import forms at line start so that a bare dotted mention is not an edge — which is why `cluster_deletion_map.txt` does not become its own consumer. THE GUARD WAS PROVED LOAD-BEARING IN BOTH DIRECTIONS in a disposable worktree, with the unmutated control EXIT 0 on each side of the pair: neutering the new function's return to `set()` gives EXIT 1 and `DISAPPEARED (1)` naming `context_optimizer <- scripts/remedy_smoke.sh`, so the new walker is demonstrably what produces that edge; and appending an embedded import of `review_bundle` to the smoke script gives EXIT 1 and `APPEARED (1)` naming `review_bundle <- scripts/remedy_smoke.sh`, so the walker sees a consumer it was NOT written for. THE FALSE READING THIS FINDING NAMED IS CORRECTED ON DISK: the edge is recorded, measured equals recorded at 38, and `packages.orchestration.context_optimizer` reads as having exactly one consumer rather than none, so it is NOT deletable and round 6's claim that it was the fourth takeable module no longer stands anywhere but in the dated `Gate: F274 R6` entry that made it. The `Landed: R-0834` line above stands beside this resolution. THE SCOPE OF THIS RESOLUTION IS THE FILE-TYPE BLINDNESS AND NOTHING ELSE: R-0832's event-name coupling is untouched, still open, and still binds the round that drafts DECISION F260 D3.
+END RECORD8
 
 
-BEGIN SLIPS7 sha256=f1745333fb56148cfff1cf7506a7caafc6432a584f44dba91ce4914240fdceed bytes=820
+BEGIN SLIPS8 sha256=d30b0fca15a66c9f93739b2a20a473b94f200590f3209290c555b8e6b3c7f3ff bytes=766
 
-2026-09-08 · F274 R6 · The round 6 block named `brain_viewer.py`'s two entries a "layer entry and weight entry" where the file calls those maps `_ZONE_MAP` and `_LAYER_MAP`, and named `ui_view_model.py`'s two integer maps "the two weight maps" where the file calls them `_RANK_MAP` and `_ZOOM_MAP`; the keys and the counts were exact, so the site set was never ambiguous and the worker applied it as specified.
+2026-09-08 · F274 R7 · The round 7 block's gate G2(c) wrote the pattern `^Landed: ` beside the numeral 31 to 33, which is the DISTINCT-ID reading, while the line reading of that same pattern is 35 to 37 because four ids carry two `Landed:` lines each; both readings move by exactly two, the worker measured both and declared the gap, and the reviewer re-measured it.
 
-2026-09-08 · F274 R6 · The reviewer's pre-emission dry run swept for the five deleted node symbols with a file filter of `.py`, `.ts`, `.tsx` and `.txt`, so `scripts/remedy_smoke.sh` could not appear in its result and the block's change set was authored one file short — the cause of round 6's G6 red, registered as R-0833 and R-0834 rather than left here, because both left real state wrong on disk.
-END SLIPS7
+2026-09-08 · F274 R7 · The RECORD7 slice described section 12ai's surviving ordering assertion as "the one pinning the ordering weight 25" when that section asserts only membership in `_NODE_TYPE_ORDER`, the numeral 25 being pinned in `tests/orchestration/test_project_brain.py` instead — the sub-clause named the wrong file while pair P4, which actually preserved the assertion, was exact.
+END SLIPS8
