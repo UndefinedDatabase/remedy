@@ -125,7 +125,7 @@ def imported_names(code: str, module_suffix: str) -> set[str]:
 
 
 def digest_state_phrases() -> list[str]:
-    """The seven `RunState` label PHRASES, PARSED out of `DIGEST_STATE_LABELS`
+    """The `RunState` label PHRASES, PARSED out of `DIGEST_STATE_LABELS`
     in `digestCardCopy.ts` rather than retyped — a retyped list would be a
     second home for exactly the words this guard exists to keep singly-owned."""
     code = code_of(COPY)
@@ -222,12 +222,12 @@ class TestTheCardIsTheEdgeAndNothingMore:
 
 
 class TestNoRuleHasASecondHome:
-    """SPEC item 2. None of the seven `RunState` phrases, and neither the
+    """SPEC item 2. None of the `RunState` phrases, and neither the
     estimate mark nor the estimate phrase, may be restated as a literal here."""
 
     def test_no_run_state_phrase_is_restated_as_a_literal(self):
         phrases = digest_state_phrases()
-        assert len(phrases) == 7, (
+        assert len(phrases) >= 7, (
             f"the parse found only {phrases}; a reader that returns almost "
             f"nothing would make the loop below vacuous"
         )
