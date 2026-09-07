@@ -1,228 +1,245 @@
-# STEP T003/4 — F274 round 5 — take the first cluster module to ZERO edges
+STEP — F274 ROUND 6 — cut `context_optimizer`'s last edge by deleting the `context_budget` brain node
 
-Goal: cut the edge `packages.orchestration.context_pack <- packages/orchestration/ui_server.py`,
-which is that module's LAST recorded edge, so `context_pack` joins `review_bundle` and
-`self_repair_proposal` as a module the deletion may take whenever the deletion itself may start.
-Rule the cockpit endpoint that dies with it as DECISION F274 D3, and book round 4's PASS verdict.
-No module is deleted this round.
+Goal: take `packages.orchestration.context_optimizer` to ZERO recorded consumer edges by deleting
+the `context_budget` BRAIN NODE — its builder, its constants, its ordering weight, its detail
+renderer, its viewer and view-model entries and its copy — together with the deletion-map line that
+records the edge and the four tests that read the node. That makes `context_optimizer` the fourth
+cluster module the deletion may take. NO CLUSTER MODULE IS DELETED THIS ROUND.
 
-Base: `feature/f274-one-world-completion-part-two` at
-`0d68507bd5b794109db45d6d5765798fa87f7b97`. Stay on that branch; do not cut a new one, and do
-not merge anything. Every fact this block states about a file was read at that commit.
+Base commit for every reading in this block: `fcb77eab139faec83ffd88963bd5888d59dad677`.
 
-WHY THIS EDGE AND NOT ANOTHER. At the base the map holds 39 edges over 22 cluster modules.
-`context_pack` has exactly one left, and cutting it is the first time this feature moves a module
-from "blocked" to "deletable" — which is the unit of progress DECISION F274 D2 defines. The
-alternative candidate, `context_optimizer`, also has one edge, but its consumer
-`packages/orchestration/project_brain.py` builds a whole BRAIN NODE TYPE that reaches
-`brain_detail.py`, `brain_viewer.py`, `brain_viewer_theme.py`, `ui_view_model.py` and
-`ui_copy.py`; that is a larger round and it is deliberately left for its own.
+FRAME CONVENTION. No line of this block is a run of a single repeated character. Every slice is
+delimited by a line reading `BEGIN <NAME> sha256=<hex> bytes=<n>` and a line reading `END <NAME>`,
+and the slice is the bytes BETWEEN those two lines, the leading newline of an appended slice
+included. The marker lines themselves are never written to any file.
 
-WHAT IS BEING DELETED, STATED PLAINLY. `_build_context_budget_json` in
-`packages/orchestration/ui_server.py` is the cockpit read endpoint `context-budget`. It is built
-on `packages.orchestration.context_pack`, it has NO consumer in `apps/ui/src` — the reviewer
-grepped the string `context-budget` across `apps/`, `packages/`, `tests/`, `scripts/` and `docs/`
-at the base and the only occurrences are its own definition, its route registration and the one
-test that calls it — and no document describes it. AGENTS.md's Scope Control rules that replacing
-is deleting and that a deletion carries a dated DECISION; D3 is that decision.
 
-THE NAME COLLISION THAT MUST NOT CLAIM A VICTIM. `context_budget` also names a SURVIVING concept:
-`estimate_context_budget` and `export_context_budget_estimate_json` in
-`packages/orchestration/token_economy.py`, surfaced through the key `context_budget_estimate`
-which `packages/orchestration/ui_server.py` reads near the top of the file. That concept is NOT
-cluster-bound and is NOT touched. The only bytes this round removes from `ui_server.py` are the
-function `_build_context_budget_json` and the single route line naming it.
+## Bundle — the commits of this round, in this order
 
-## Conventions
+C0a  Save this block verbatim as `.agent/authored/f274-r6.md`.
+C0b  Mirror the same bytes into `.agent/last_block.md`.
+C1   Replace `.agent/plan.md` with the PLAN6 slice.
+C2   Append the RECORD6 slice to `.agent/live_review.md` — this books round 5's PASS verdict and
+     registers finding R-0832, both carried by the committed handoff under amend0827 rule 1.
+C3   Append the SLIPS6 slice to `.agent/prose_slips.md` — round 5's two reviewer prose slips.
+C4   THE CUT: the node deletion across the six production files, the deletion-map line, and the
+     four tests. One commit.
+C5   The handback: rewrite `.agent/handoff.md`, then push.
 
-This block carries authored TEXTS. A whole text begins on a line whose PREFIX is
-`<<<BEGIN <NAME> ` and ends on a line reading exactly `<<<END <NAME>>>`, and it is read INCLUSIVE
-of the newline ending its last content line. Extract every text programmatically by matching those
-two marker lines; never retype one and never hand-type a digest. The named units in this block are
-PLANF274R5, RECORD5 and D3SLICE274. RECORD5 and D3SLICE274 EACH CARRY THEIR OWN leading blank
-line — append each as-is and never add a separator newline of your own. PLANF274R5 is a whole-file
-replacement and carries no leading blank line. No line of this block is a run of a single repeated
-character.
+C1 is the first substantive commit because this round touches the finding ledger and the plan must
+be current before every commit.
 
-THE PRODUCTION CHANGE IS SPECIFIED, NOT SLICED. Section "The cut" is a SPEC you implement; it is
-not authored bytes to copy.
 
-## Bundle
+## Change set — these paths and nothing else
 
-C0a  save this block to `.agent/authored/f274-r5.md` by `shutil.copyfile`
-C0b  mirror the same file to `.agent/last_block.md` by `shutil.copyfile`
-C1   `.agent/plan.md` = PLANF274R5
-C2   `.agent/live_review.md` findings region append RECORD5
-C3   `.agent/decisions.md` append D3SLICE274
-C4   the cut, written by you to the SPEC below
-C5   `.agent/handoff.md` full rewrite
+  .agent/authored/f274-r6.md
+  .agent/last_block.md
+  .agent/plan.md
+  .agent/live_review.md
+  .agent/prose_slips.md
+  .agent/handoff.md
+  packages/orchestration/project_brain.py
+  packages/orchestration/brain_detail.py
+  packages/orchestration/brain_viewer.py
+  packages/orchestration/brain_viewer_theme.py
+  packages/orchestration/ui_view_model.py
+  packages/orchestration/ui_copy.py
+  tests/orchestration/cluster_deletion_map.txt
+  tests/orchestration/test_project_brain.py
+  tests/ui_server/test_brain_view_model.py
 
-C3 PRECEDES C4 DELIBERATELY: the plan's own rule is that nothing is deleted before the decision
-recording the deletion exists. Do not reorder them.
 
-## Change set
+## C4 — the cut, specified per file
 
-Exactly these paths, and nothing else:
+The reviewer applied this exact change in a disposable worktree at the base commit and ran it
+before authoring; every count below was MEASURED there, not predicted. Delete the text described;
+where a line is EDITED rather than deleted, the surviving half is named explicitly.
 
-    .agent/authored/f274-r5.md
-    .agent/last_block.md
-    .agent/plan.md
-    .agent/live_review.md
-    .agent/decisions.md
-    .agent/handoff.md
-    packages/orchestration/ui_server.py
-    tests/ui_server/test_live_state.py
-    tests/orchestration/test_test_runner.py
-    tests/orchestration/cluster_deletion_map.txt
+`packages/orchestration/project_brain.py` — delete, in the order they appear:
+  - the module-docstring node line for `context_budget` (the "context budget optimizer summary"
+    entry in the node-type list);
+  - the module-docstring edge line for `has_context_budget` (the "job → context_budget" entry);
+  - the constant assignment `NT_CONTEXT_BUDGET`;
+  - the constant assignment `ET_HAS_CONTEXT_BUDGET`;
+  - the `_NODE_TYPE_ORDER` entry mapping `NT_CONTEXT_BUDGET` to 26;
+  - the WHOLE function `_build_context_budget_node`, including its docstring and the two blank
+    lines that separate it from the function following it;
+  - the call `_build_context_budget_node(acc)` in the node-build sequence;
+  - `NT_CONTEXT_BUDGET` from the `_all_types` list near the end of the file. That name shares its
+    line with `NT_DECISION_QUEUE`: EDIT the line so `NT_DECISION_QUEUE` SURVIVES on it.
+  Nothing else in this file changes. `_build_context_pack_node`, `NT_CONTEXT_PACK` and every
+  `context_pack` spelling SURVIVE — they read an event rather than an import, they carry no edge,
+  and they are R-0832's business rather than this round's.
 
-Nothing under `docs/`, nothing under `apps/`, and no allowlist change: this round adds no module,
-so `tests/orchestration/import_reachability_allowlist.txt` is NOT touched.
+`packages/orchestration/brain_detail.py` — delete:
+  - `NT_CONTEXT_BUDGET` from the sorted import block it appears in;
+  - the WHOLE function `_detail_context_budget`, including the two blank lines separating it from
+    what follows;
+  - the dispatch-table entry mapping `NT_CONTEXT_BUDGET` to `_detail_context_budget`.
 
-## The cut
+`packages/orchestration/brain_viewer.py` — delete the `"context_budget"` layer entry and the
+  `"context_budget"` weight entry, and EDIT the colour branch in the embedded script that reads
+  `context_pack` and `context_budget` in ONE condition so that it tests `context_pack` ALONE and
+  returns the same value. `context_pack` MUST SURVIVE that line.
 
-All of C4, in ONE commit, because the map ratchet reds unless the edge and its recorded line move
-together:
+`packages/orchestration/brain_viewer_theme.py` — delete the `"context_budget"` layer entry.
 
-DELETE from `packages/orchestration/ui_server.py` the whole function
-`_build_context_budget_json`, including its docstring and its `except` fallback, and including
-the blank lines that separated it from its neighbours, so no double blank line is left behind.
-At the base it sits between the UI-not-built error exit above it and the `# Command Channel`
-banner comment below it. DELETE ALSO the single line registering it in the endpoint table inside
-the request handler, which at the base reads exactly:
+`packages/orchestration/ui_view_model.py` — delete the `"context_budget"` entry from each of the
+  two weight maps, from the class map, and from the copy map, and delete the
+  `"has_context_budget"` entry from the edge map. The neighbouring `"context_coverage"` and
+  `"constitution"` entries SURVIVE in every one of those maps.
 
-                    "context-budget": _build_context_budget_json,
+`packages/orchestration/ui_copy.py` — delete the `"context_budget"` copy tuple, and EDIT the
+  `_DIAGNOSTICS_ONLY` line that lists `context_coverage`, `context_budget` and `context_pack` so
+  that `context_coverage` and `context_pack` BOTH SURVIVE on it.
 
-Those exact bytes occur ONCE in that file at the base — count them before you delete them and
-report the count. Change no other endpoint, and change nothing that mentions
-`context_budget_estimate`.
+`tests/orchestration/cluster_deletion_map.txt` — delete the single line
+  `packages.orchestration.context_optimizer <- packages/orchestration/project_brain.py`. That line
+  occurs exactly once in that file at the base commit. THE MAP LINE GOES IN THE SAME COMMIT AS THE
+  CUT — the map test reds in both directions and a line left behind is as red as a new edge.
 
-DELETE from `tests/ui_server/test_live_state.py` the whole test method
-`test_context_budget_endpoint`, which requests `/api/jobs/<id>/context-budget` and asserts status
-200. A test of a deleted endpoint is deleted with it; it is not rewritten to assert a 404.
+`tests/orchestration/test_project_brain.py` — delete the whole test methods
+  `test_brain_has_context_budget_node` and `test_brain_context_budget_edges`, and EDIT
+  `test_brain_node_type_order` to drop `NT_CONTEXT_BUDGET` from its import tuple and to drop its
+  two `NT_CONTEXT_BUDGET` assertions. THAT TEST SURVIVES: its `NT_DECISION_QUEUE` import and both
+  of its `NT_DECISION_QUEUE` assertions, including the one pinning the weight 25, are UNCHANGED.
 
-DELETE from `tests/orchestration/test_test_runner.py` the whole test method whose docstring reads
-`_build_context_budget_json failure returns structured degraded signal.`, which imports that
-function by name. Deleting the function without this test leaves the suite red on an ImportError.
+`tests/ui_server/test_brain_view_model.py` — delete the whole test method
+  `test_detail_context_budget`.
 
-DELETE from `tests/orchestration/cluster_deletion_map.txt` the single line
+DO NOT TOUCH, and the reviewer measured each of these as byte-identical between the base commit
+and its own applied worktree: `packages/orchestration/token_economy.py`,
+`packages/orchestration/token_cost_policy.py`, `packages/orchestration/event_schemas.py`,
+`packages/orchestration/worker_registry.py`, `apps/ui/src/api/humanizeCatalog.ts`,
+`apps/ui/src/api/actionClass.ts` and `apps/cli/commands/context_optimizer_cmd.py`. The token
+`context_budget` NAMES A SURVIVING CONCEPT in the first four of those — `estimate_context_budget`,
+`context_budget_estimate`, `context_budget_policy`, `context_budget_hint` — and the event name
+`context_budget_optimized` survives in the rest. NONE of them is cluster-bound and none is in this
+round's change set.
 
-    packages.orchestration.context_pack <- packages/orchestration/ui_server.py
-
-IN THIS SAME COMMIT. Leaving it reds the map test with `DISAPPEARED (1)`; that redness is the
-ratchet working and is this round's own proof that the edge was really cut.
-
-WHAT THE ROUND MUST NOT DO. Do not add a replacement endpoint, a stub, a deprecation alias or a
-404 route: AGENTS.md forbids the attic by name and git is the archive. Do not touch
-`packages/orchestration/context_pack.py` itself — the module survives this round with zero edges
-and is deleted later, by the deletion round, under DECISION F260 D3.
 
 ## Constraints
 
-1. Apply every authored TEXT byte for byte. If a text cannot be applied as given, STOP and
-   declare it; never adjust it to fit.
-2. Commit in the order C0a, C0b, C1, C2, C3, C4, C5 and in no other. C1 advances the plan before
-   any substantive commit, per §3 item 23, and only the two block-save commits precede it.
-3. RECORD5 is appended to the END of `.agent/live_review.md`. At the base that file is 528978
-   bytes and ends with a single newline. D3SLICE274 is appended to the END of
-   `.agent/decisions.md`, which at the base is 886003 bytes and ends with a single newline.
-4. No finding is minted and none is resolved this round. Write no `Done:` paragraph and no
-   `Landed:` line. The open set is 62 by distinct id at the base and must be 62 at C5.
-5. Do not run `ruff --fix`. The 26 pre-existing errors are a frozen ceiling, not a backlog.
-6. Destructive verification runs ONLY inside a disposable `git worktree`, never in the primary
-   checkout, which satisfies `git status --porcelain` empty at every commit boundary. Remove and
-   prune the worktree before the handback.
-7. The four state readers are run as FOUR, not as three.
-8. Bare `ruff` is denied to this session's shell; every lint command is spelled
-   `python3 -m ruff check <path>`.
+1. Apply every slice BYTE FOR BYTE. Do not reflow, retype, re-indent or "fix" a slice. If a slice
+   looks wrong, apply it as given and DECLARE the doubt in the handback.
+2. Two slices are APPENDS and one is a full REPLACEMENT. RECORD6 and SLIPS6 are appends: the
+   target's existing bytes are a byte-exact PREFIX of the result and the slice is an exact SUFFIX.
+   Each carries its OWN leading newline, which supplies the blank-line separation — ADD NO
+   SEPARATOR of your own. PLAN6 replaces `.agent/plan.md` entirely.
+3. The path set of C0a through C4 is exactly the paths listed under "Change set" other than
+   `.agent/handoff.md`, which C5 writes. Nothing outside that list is created, edited or deleted.
+4. Every destructive check runs ONLY inside a disposable `git worktree`, never in the primary
+   checkout, which satisfies `git status --porcelain` == empty at every commit boundary. Remove and
+   prune each worktree you create.
+5. Do not write a `Done:` paragraph. Only reviewer-authored text resolves a finding.
+6. Every gate below runs at a commit STRICTLY EARLIER than C5, so the handback can quote each
+   result. Where a gate names the commit it runs at, run it there and nowhere else.
+7. The two `.remedy-wt` scratch directories the reviewer used are gitignored and are not yours to
+   clean up; `git ls-files .remedy-wt` must stay empty.
 
-## Done when
 
-Run every gate, record its REAL exit code, and give each one line in the handback. G1 through G7
-are ordered at commits that PRECEDE C5, so C5 can quote them.
+## Done when — the gates, one line per gate in the handback
 
-G1 TRANSPORT (after C0b). `.agent/authored/f274-r5.md` and `.agent/last_block.md` are
-byte-identical to each other and to the reviewer's scratch original
-`.remedy-wt/f274-r5-block.md`; report the shared byte length and the shared sha256. This chain
-covers those three artefacts and claims nothing about the bytes emitted into your prompt.
+G1  TRANSPORT, at C0b. `sha256` of the committed `.agent/authored/f274-r6.md` equals `sha256` of
+    the committed `.agent/last_block.md`, and both equal the digest the delegation message states
+    for this block. Report the digest you measured. ONE comparison; do not build a chain.
 
-G2 THE RECORD APPEND (C2). (a) BYTE: the pre-image of `.agent/live_review.md` is a byte-exact
-PREFIX of the post-image, and the post-image equals the pre-image plus RECORD5 exactly, with no
-separator newline added. (b) STRUCTURAL, independently of (a): splitting BOTH images on the blank
-line, the last N blank-line units of the post-image equal RECORD5's N paragraphs IN ORDER, where
-N is a number your script COUNTS from the slice and never one this block asserts, and every unit
-before those N is unchanged. State the unit definition your reader used. (c) NEGATIVE CONTROL:
-flip one byte inside the FIRST appended paragraph and confirm BOTH readers reject it, then
-confirm the file on disk is unchanged. (d) COUNTS across the commit, each as before-to-after:
-distinct `^- R-\d+ — ` registrations, distinct `^Done: R-\d+ — ` resolutions, the OPEN SET BY
-DISTINCT ID, `^Gate: `, and `^Gate: F274 R4`. At the base those read 65, 3, 62, 35 and 0.
+G2  THE RECORD APPEND, at C2, re-derived from the COMMITTED blobs and not the working tree.
+    (a) BYTES: `.agent/live_review.md` goes 535659 -> 543921, the pre-image is a byte-exact PREFIX
+        of the post-image, and the post-image equals pre plus the 8262-byte RECORD6 slice with no
+        separator added.
+    (b) STRUCTURE, an independent reader over the WHOLE appended region: define a unit as a
+        maximal run of consecutive non-empty lines; COUNT N as the number of units in the RECORD6
+        slice itself (do not take N from this block); assert that the file's last N units equal the
+        slice's N units IN ORDER and that everything before them is unchanged. Units go 215 -> 217.
+    (c) NEGATIVE CONTROL: flip one byte INSIDE THE FIRST APPENDED PARAGRAPH — the byte at
+        ZERO-INDEXED BYTE offset 535660 of the post-image, read as bytes and not as characters
+        because this file carries multi-byte UTF-8; that byte is the `G` that opens this slice's
+        `Gate:` header — and confirm BOTH readers (a) and (b) REJECT it. Do the flip in memory or
+        in a disposable worktree; the primary checkout stays clean.
+    (d) COUNTS over the post-image: registrations 65 -> 66, resolutions 3 -> 3, OPEN SET 62 -> 63
+        BY DISTINCT ID (distinct `^- R-\d+ — ` ids minus distinct `^Done: R-\d+ — ` ids),
+        `^Gate: ` 36 -> 37, `^Gate: F274 R5` 0 -> 1, and `^- R-0832 — ` exactly 1.
 
-G3 THE DECISION APPEND (C3). This slice is a MULTI-PARAGRAPH append into a record file, so it
-carries the same two readers as G2 and not a prefix check alone. (a) BYTE: the pre-image of
-`.agent/decisions.md` is a byte-exact PREFIX of the post-image and the post-image equals the
-pre-image plus D3SLICE274 exactly; report both byte lengths. (b) STRUCTURAL, independently of
-(a): the last N blank-line units of the post-image equal D3SLICE274's N paragraphs IN ORDER,
-where N is a number your script COUNTS from the slice and never one this block asserts, and every
-unit before those N is unchanged; state the unit definition your reader used. (c) NEGATIVE
-CONTROL: flip one byte inside the FIRST appended paragraph — not the last — and confirm BOTH
-readers reject it, then confirm the file on disk is unchanged. (d) Report `^## DECISION F274 D`
-as before-to-after, which at the base counts 2, and confirm `^## DECISION F274 D3 ` heads exactly
-ONE section.
+G3  THE STATE PROSE FILES, at C3.
+    (a) `.agent/plan.md` at C1 is BYTE-EQUAL to the PLAN6 slice, is 43 lines against the cap of 50,
+        and carries both `## Goal` and `## Next Steps`.
+    (b) `.agent/prose_slips.md` at C3: the pre-image is a byte-exact PREFIX, the post-image is pre
+        plus the 555-byte SLIPS6 slice, bytes go 158178 -> 158733, and each of the two appended
+        lines occurs exactly once in the file.
 
-G4 THE PLAN (C1). `.agent/plan.md` is byte-equal to PLANF274R5; report its line count against the
-cap of 50, and confirm it carries `## Goal` and `## Next Steps`.
+G4  THE RATCHET, BOTH WAYS, in a disposable worktree checked out at C4. Report the exit code of
+    every run, and the UNMUTATED control BEFORE the mutations as well as after.
+    (a) CONTROL: `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py
+        tests/orchestration/test_import_reachability.py -q` is EXIT 0.
+    (b) MEASURED equals RECORDED at 37 edges; the measured consumers of
+        `packages.orchestration.context_optimizer` are THE EMPTY LIST; and the modules with no
+        edge are exactly `context_optimizer`, `context_pack`, `review_bundle` and
+        `self_repair_proposal`.
+    (c) RED ONE: append the deleted line back to `tests/orchestration/cluster_deletion_map.txt`.
+        `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py -q` must be EXIT 1
+        and its output must contain `DISAPPEARED (1)` and name that exact edge. Restore that file
+        BY EXACT PATH and confirm it is byte-identical to before the mutation.
+    (d) RED TWO: append the single line `from packages.orchestration import context_optimizer` to
+        `packages/orchestration/ui_server.py`. The same command must be EXIT 1 and its output must
+        contain `APPEARED (1)` and name `context_optimizer <- packages/orchestration/ui_server.py`.
+        This proves the map still SEES that consumer, so the cut is a real cut and not a hidden
+        exclusion. Restore that file BY EXACT PATH and confirm it is byte-identical.
+    (e) The control of (a) returns to EXIT 0 after both restorations.
 
-G5 THE EDGE IS CUT AND THE RATCHET IS PROVED BOTH WAYS, in a disposable worktree at C4. Report,
-in this order: (a) the UNMUTATED control — `tests/orchestration/test_cluster_deletion_map.py` and
-`tests/orchestration/test_import_reachability.py` run in ONE command, with exit code and passed
-count. (b) The measured edge count and the recorded edge count, which must be EQUAL, the number
-of cluster modules carrying at least one edge, and — the reading this round exists for — the list
-of recorded consumers of `packages.orchestration.context_pack`, which must be EMPTY. Report that
-list, not a claim about it. (c) RED: append the deleted edge line back to
-`tests/orchestration/cluster_deletion_map.txt`, report the exit code and the `DISAPPEARED (n)`
-figure, restore that one file by exact path and confirm exit 0 again. (d) RED, the other
-direction: append the line `from packages.orchestration import context_pack` to
-`packages/orchestration/ui_server.py`, report the exit code and the `APPEARED (n)` figure,
-restore that one file by exact path and confirm exit 0 again — this is what proves the map still
-SEES that consumer and that the cut was a real cut rather than a hidden exclusion.
+G5  THE ORDERED COUNTS, run serially in the primary checkout at C4. These are the discriminator
+    between "the tests went with their subject", "a test was left behind" and "something else was
+    deleted too", so report the NUMBER for each, not a colour.
+    (a) MOVED, and each must fall by exactly the stated amount:
+        `tests/orchestration/test_project_brain.py` 84 -> 82 (two tests deleted, one edited),
+        `tests/ui_server/test_brain_view_model.py` 39 -> 38, `tests/ui_server/` 514 -> 513.
+    (b) NOT MOVED, each EXIT 0 and each at the same count as the base commit:
+        `tests/orchestration/test_event_ledger.py`, `tests/orchestration/test_token_economy.py`,
+        `tests/orchestration/test_token_cost_policy.py`, `tests/orchestration/test_source_apply.py`
+        — all four match on a SURVIVING spelling and must not move. Together they are 108 passed.
+    (c) The canary `pytest tests/cli/test_golden_path.py -q` is EXIT 0 at 42 passed.
 
-G6 THE LINT CEILING AND THE BUDGETS. Report `python3 -m ruff check .` TWICE, naming the mechanism
-for each. The BASE reading is taken in a disposable `git worktree` checked out at
-`0d68507bd5b794109db45d6d5765798fa87f7b97`, with the command run from that worktree's own root so
-`pyproject.toml` and its `per-file-ignores` resolve against the same paths; nothing in the primary
-checkout is overwritten to obtain it. The HEAD reading is taken in the primary checkout at C4.
-Both must read 26 errors. Report both numbers, not one, and report the exit code of
-`python3 -m pytest tests/orchestration/test_ci_budgets.py -q`, which must be 0.
+G6  THE SWEEP, at C4. Over `packages/`, `apps/`, `tests/` and `scripts/`, excluding
+    `node_modules` and `dist`, the tokens `NT_CONTEXT_BUDGET`, `ET_HAS_CONTEXT_BUDGET`,
+    `_build_context_budget_node`, `_detail_context_budget` and `has_context_budget` occur ZERO
+    times in total — report the total you measured. In the same run confirm that the colour branch
+    in `packages/orchestration/brain_viewer.py` still names `context_pack` exactly once, and that
+    each of the seven DO-NOT-TOUCH files named above is byte-identical between
+    `fcb77eab139faec83ffd88963bd5888d59dad677` and C4. READ THE BASE BLOB WITH
+    `git show fcb77eab139faec83ffd88963bd5888d59dad677:<path>` into memory or into a gitignored
+    scratch file — never by writing the base bytes over the tracked file, which would dirty the
+    primary checkout that constraint 4 requires to stay clean.
 
-G7 THE SUITES, run SERIALLY in the PRIMARY CHECKOUT, each with its own exit code and passed
-count: the four state readers `tests/ui_server/`,
-`tests/orchestration/test_test_runner.py`, `tests/regression/test_resource_safety.py` and
-`tests/orchestration/test_integrity_gate.py`; then `tests/regression/test_named_bugs.py`,
-`tests/orchestration/test_cluster_deletion_map.py`,
-`tests/orchestration/test_import_reachability.py`, and the canary
-`tests/cli/test_golden_path.py`. TWO OF THESE COUNTS MUST GO DOWN BY EXACTLY ONE, because this
-round deletes one test from each: at the base `tests/ui_server/` is 515 passed and
-`tests/orchestration/test_test_runner.py` is 52 passed. Report the new numbers and say explicitly
-whether each fell by exactly one. A count that did NOT fall means a test was left behind; a count
-that fell by more than one means something else was deleted.
+G7  THE LINT CEILING, which DECISION F083 D5 freezes. `python3 -m ruff check .` is 26 errors in a
+    disposable worktree checked out at `fcb77eab139faec83ffd88963bd5888d59dad677` and RUN FROM
+    THAT WORKTREE'S OWN ROOT, and 26 in the primary checkout at C4. Report both numbers.
+    `python3 -B -m pytest tests/orchestration/test_ci_budgets.py -q` is EXIT 0.
 
-G8 THE TREE AND THE COMMITS. `git status --porcelain` is EMPTY at every commit boundary;
-`git ls-files .remedy-wt` is empty; report `git worktree list` counts before and after; report
-`git diff --name-only 0d68507bd5b794109db45d6d5765798fa87f7b97..<C5>` and confirm it names exactly
-the change set above and nothing else; report the insertion count of each commit C0a through C4
-against the DECISION F104 D1 cap of 500. C5's own numbers go in the handback's `## Commits`
-table, and the reviewer measures them at the next gate.
+G8  THE TREE, at C4. `git status --porcelain` is EMPTY; `git ls-files .remedy-wt` is EMPTY;
+    `git worktree list` has the same number of entries as before your first worktree and after
+    your last prune; `git diff --name-only fcb77eab139faec83ffd88963bd5888d59dad677..<C4>` names
+    exactly the paths of constraint 3 and nothing else; and every commit from C0a through C4 is
+    single-parent. Report the INSERTION count of each commit C0a through C4 — the `+` column only,
+    per AGENTS.md DECISION F104 D1. Do not report C5's own numbers: that commit does not exist when
+    the handback quoting it is written, and the reviewer measures them at the next gate.
 
-## Handback
 
-Rewrite `.agent/handoff.md` in full per docs/agents/handback_template.md: feature and round, the
-SESSION NUMBER of the running feature — this is SESSION 3 of F274 — branch, commit SHAs, the
-changed-files table with its `+/-` column taken from `git diff --numstat` and compared cell by
-cell against the per-commit numbers G8 reports, one line per gate with its real exit code, the
-open-findings count, every deviation, the item-status table AGENTS.md requires, and the next
-expected action. There is no length cap. Push the branch. Do NOT create a pull request and do NOT
-merge anything.
+## Handback — rewrite `.agent/handoff.md` at C5, then push
 
-<<<BEGIN PLANF274R5 whole-text
+Carry the mandated sections of `docs/agents/handback_template.md`: the state block, the commits
+table with its `+/-` column taken from `git diff --numstat` and compared cell by cell against the
+insertion counts G8 reports, the changed-files table, ONE LINE PER GATE G1 through G8 with its real
+result, the deviations, the open-findings count, and the next expected action. The handback has NO
+length cap. Name the SESSION NUMBER as SESSION 4 of feature F274 and the round as 6. State the
+open-findings count as the number G2(d) MEASURED. Add the one sentence of context self-assessment
+amend0905-throughput requires.
+
+DECLARE, do not silently repair: if any gate goes red, or any slice does not apply as described,
+report the real exit code and the real output and say what you did. A worker who reports a red gate
+honestly is doing the thing this workflow exists for.
+
+
+BEGIN PLAN6 sha256=715a57a19adf05d4e08ed0828b8a4dce01aa93d97d2b01624968ebd50de0f7c3 bytes=2532
 # Plan — F274 One world completion, part two
 
 Branch: feature/f274-one-world-completion-part-two, cut from `main` at
@@ -237,28 +254,27 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 5: cut `context_pack`'s last recorded edge by deleting the cockpit `context-budget` read
-endpoint that is built on it, ruled as DECISION F274 D3. That takes `context_pack` to zero edges
-and makes it the third module the deletion may take. Book round 4's PASS verdict. No module is
-deleted this round.
+Round 6: cut `context_optimizer`'s last recorded edge by deleting the `context_budget` BRAIN NODE
+from the six production files that build, render, weight, colour and describe it, together with
+its deletion-map line and the four tests that read it. That takes `context_optimizer` to zero
+edges and makes it the fourth module the deletion may take. Book round 5's PASS verdict, register
+R-0832 and append round 5's two prose slips. No module is deleted this round.
 
 ## Next Steps
 
-1. `context_optimizer`'s last edge: the `context_budget` BRAIN NODE that
-   `packages/orchestration/project_brain.py` builds, which also reaches `brain_detail.py`,
-   `brain_viewer.py`, `brain_viewer_theme.py`, `ui_view_model.py` and `ui_copy.py`. Its own round.
-2. `worker_recommend`'s three remaining edges, in `agent_loop.py`, `autonomy_loop.py` and
-   `dashboard.py`.
-3. The `worker_facade_cmd.py` edges, which carry the `mission report` name collision DECISION
+1. `worker_recommend`'s three remaining edges, in `agent_loop.py`, `autonomy_loop.py` and
+   `dashboard.py`. These are LIVE RUNTIME CALLS rather than read-only views, so a DECISION naming
+   what inherits worker recommendation is authored before the cut.
+2. The `worker_facade_cmd.py` edges, which carry the `mission report` name collision DECISION
    F274 D2 rules.
-4. The remaining edges, of which `packages/orchestration/ui_server.py` holds the most by far.
-5. The first carry-over, on the route DECISION F274 D2 fixes: the read-only overnight readiness
+3. The remaining edges, of which `packages/orchestration/ui_server.py` holds the most by far.
+4. The first carry-over, on the route DECISION F274 D2 fixes: the read-only overnight readiness
    and report views survive as `mission readiness` and `mission report`, the latter only in the
    commit that deletes the cluster-bound command already holding that name.
-6. Draft DECISION F260 D3, the deletion paragraph, naming every deleted module and the feature
-   that inherited its idea. Nothing is deleted before it exists.
-7. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
-8. T001 — measure the `Job.id` flip with a recording property, rule the cap route, and rule the
+5. Draft DECISION F260 D3, the deletion paragraph, naming every deleted module and the feature
+   that inherited its idea. R-0832's fix clause binds it. Nothing is deleted before it exists.
+6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
+7. T001 — measure the `Job.id` flip with a recording property, rule the cap route, and rule the
    persisted key. Then T002 — the classic runner and the resolver collapse.
 
 ## Risks
@@ -267,58 +283,20 @@ deleted this round.
   one of the 21 files that import a cluster module, `mission.run` and `mission.report` among them.
 - The open High findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
   feature's, per DECISION F272 D12.
-<<<END PLANF274R5>>>
+END PLAN6
 
-<<<BEGIN RECORD5 findings-append
 
-Gate: F274 R4 — the F274 round 4 entry. VERDICT PASS, AND EVERY GATE WAS RE-RUN BY THE REVIEWER ITSELF, in the primary checkout and in two disposable worktrees, against the COMMITTED blobs rather than the working tree. Range `57d6698bf0af530dedd3d4df4b82cfb17163ba6b`..`0d68507bd5b794109db45d6d5765798fa87f7b97`, eight commits, every one single-parent, in exactly the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6, with `git diff --name-only` over that range naming exactly the fifteen declared paths and nothing else. THIS ROUND CUT THREE OF THE DELETION MAP'S FORTY-TWO EDGES, and it is the first round of this feature to change the shape of the deletion rather than to describe it. G1 TRANSPORT IS A REAL CHAIN, not a self-consistency check: the reviewer's own scratch original `.remedy-wt/f274-r4-block.md`, written and hashed BEFORE delegation, and the committed `.agent/authored/f274-r4.md` and `.agent/last_block.md` are all 28379 bytes and all hash to `88e60a6ee1dd0468158f9eac7182d4cb595bf46ef0697120761fcc522a63cc55`; per §3 item 37 that chain covers those three artefacts and claims nothing about emitted bytes. G2 THE RECORD APPEND at C2, re-derived by the reviewer from the committed blobs: 522330 to 528978 bytes, the pre-image a byte-exact PREFIX of the post-image, the post-image equal to the pre-image plus the 6648-byte RECORD4 slice with no separator added; under the unit definition "a maximal run of consecutive non-empty lines" the units went 213 to 214, N counted from the slice is 1, the last unit equals the slice's one paragraph and everything before it is unchanged; the negative control flipped at byte 522331 — inside the FIRST appended paragraph — is rejected by BOTH readers. Registrations 65 to 65, resolutions 3 to 3, OPEN SET 62 TO 62 BY DISTINCT ID, `^Gate: ` 34 to 35, `^Gate: F274 R3` 0 to 1. G3 THE MOVES ARE BYTE-IDENTICAL AND THE REVIEWER PROVED IT BY PARSING RATHER THAN BY READING THE DIFF: extracting each moved function with `ast.get_source_segment` at the base and at the head, `_cmd_context_pack` (1361 bytes), `_cmd_context_explain` (1528), `_cmd_context_optimize` (2024), `_cmd_worker_recommend` (980) and `_cmd_worker_explain` (1514) are each identical in the new file and absent from the old one. The COMMAND_HANDLERS key partition is exact and loses nothing: `context.py` went from four keys to `context.inspect` alone, `worker.py` from eight to six, and the three new files hold `context.pack`, then `context.explain` and `context.optimize`, then `worker.recommend` and `worker.explain`. G4 THE RATCHET IS REAL AND THE REVIEWER PROVED IT THREE WAYS IN ITS OWN DISPOSABLE WORKTREE AT `0d68507b`: the unmutated control over both suites in ONE command is EXIT 0 at 6 passed; restoring the three cut lines to the map is EXIT 1 reporting `DISAPPEARED (3)`; dropping `apps/cli/commands/worker_recommend_cmd.py` from `CLUSTER_COMMAND_HANDLERS` — bytes confirmed to occur exactly once first — is EXIT 1 reporting `APPEARED (1)`; and dropping the three new dotted names from the allowlist reds the reachability test. Each mutated file was restored byte-identically by exact path and each control returned to EXIT 0. THE EDGE ARITHMETIC IS 42 TO 39 AND THE MODULE COUNT DID NOT MOVE: measured edges equal recorded edges at 39, over 22 cluster modules, because `context_pack` keeps `packages/orchestration/ui_server.py`, `context_optimizer` keeps `packages/orchestration/project_brain.py` and `worker_recommend` keeps `agent_loop.py`, `autonomy_loop.py` and `dashboard.py`. G5 THE LINT CEILING HELD ON BOTH SIDES, each reading taken by a named mechanism: 26 errors at the base in a worktree checked out at `57d6698bf0af530dedd3d4df4b82cfb17163ba6b` and run from that worktree's own root, and 26 in the primary checkout at the head, so DECISION F083 D5's frozen ceiling is untouched; `test_ci_budgets.py` is EXIT 0 at 10 passed. This gate is the one the ROUND WOULD HAVE FAILED without its pre-emission dry run: the two moved worker bodies were the only users of `UUID`, `JobNotFoundError` and `load_job` in `apps/cli/commands/worker.py`, so a split that left the header alone lands three `F401` diagnostics and reads 29. The block ordered those imports removed for exactly that measured reason, and the reviewer confirms all three names now occur ZERO times in that file. G6 THE DISPATCH TABLE IS INTACT: through the shipped reader `apps.cli.commands.collect_all_handlers` the table is 341 entries before and after, and `context.pack`, `context.explain`, `context.optimize`, `context.inspect`, `worker.recommend`, `worker.explain`, `worker.list` and `worker.status` all resolve. G7 THE SUITES, re-run by the reviewer serially in the primary checkout, every one EXIT 0: the deletion map 3 passed, import reachability 3, `test_command_discovery.py` 17, `test_context_inspect_cli.py` 13, `test_persistence.py` 26, `tests/ui_server/` 515, `test_test_runner.py` 52, `test_resource_safety.py` 21, `test_integrity_gate.py` 16, and the canary `tests/cli/test_golden_path.py` 42. G8 THE TREE: porcelain empty at every boundary, `git ls-files .remedy-wt` empty, worktrees 14 before and after, and per-commit insertions 327, 266, 11, 2, 8, 233, 118 and 272 for C0a through C6, every one far under the DECISION F104 D1 cap of 500. SIX DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS ALL SIX. TWO DESERVE THE RECORD. THE FIRST IS AN UNORDERED EDIT THE REVIEWER SUSTAINS AS CORRECT: the worker swept the comment above `CLUSTER_COMMAND_HANDLERS`, which still said that `worker.py` and `context.py` host cluster commands alongside surviving ones — a sentence this round's own change made false. The path was in the change set, the edit is not executable, and leaving it would have landed a staleness defect of exactly the kind §3 item 20 exists to prevent; a worker that repairs the prose its own commit falsified is doing the job. THE SECOND is that the block's phrase "the WHOLE of the line" understated the deletion by one byte, because the dead storage import was its own import group and its preceding blank line went with it; the worker declared the extra byte rather than letting it pass, and the reviewer confirms the result is what the gate demanded. The worker also ran G2's negative control IN MEMORY rather than by writing to the primary checkout, which is the correct reading of constraint 8 rather than a weakening of the gate: an in-memory flip exercises both readers exactly as a written one does and cannot leave the tree dirty, and the reviewer reproduced it the same way with the same result. NO FINDING IS MINTED BY THIS GATE and none is resolved; R-0830 and R-0831 both stay open, and the next free id is R-0832.
-<<<END RECORD5>>>
+BEGIN RECORD6 sha256=beb0acbaa2a96564c6cdbe9ea8d36fcbf6856f3e8ec5d804829333f14d417f6f bytes=8262
 
-<<<BEGIN D3SLICE274 decisions-append
+Gate: F274 R5 — the F274 round 5 entry. VERDICT PASS, AND EVERY GATE WAS RE-RUN BY THE REVIEWER ITSELF, in the primary checkout and in two disposable worktrees, against the COMMITTED blobs rather than the working tree. THIS ENTRY IS BOOKED BY ROUND 6 RATHER THAN BY ROUND 5, under operator amendment amend0827-process-diet rule 1, which makes the committed and pushed `.agent/handoff.md` a durable carrier and forbids a round whose whole change set is bookkeeping. Range `0d68507bd5b794109db45d6d5765798fa87f7b97`..`f8e2c69ef1f3abb336d0001d8c62072056f858dd`, seven commits, every one single-parent, in exactly the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, with `git diff --name-only` over that range naming exactly the ten declared paths and nothing else. G1 TRANSPORT IS A REAL CHAIN, AND IT IS NAMED FOR WHAT IT COVERS RATHER THAN FOR WHAT IT CANNOT: the reviewer's own scratch original `.remedy-wt/f274-r5-block.md`, written and hashed BEFORE delegation, and the committed `.agent/authored/f274-r5.md` and `.agent/last_block.md` are all 26865 bytes and all hash to `086b486a775911164ac34029a7583a6e556aba9d11c439334950e8c3cc8ab301`. G2 THE RECORD APPEND at `5e2a9e07`, re-derived from the committed blobs: 528978 to 535659 bytes, pre-image a byte-exact PREFIX, post-image equal to pre plus the 6681-byte RECORD5 slice with no separator added; under the unit definition "a maximal run of consecutive non-empty lines" units went 214 to 215, N counted from the slice is 1, the last unit matches in order and everything before it is unchanged, and the control flipped at byte 528979 — inside the FIRST appended paragraph — is rejected by BOTH readers; registrations 65 to 65, resolutions 3 to 3, OPEN SET 62 TO 62 BY DISTINCT ID, `^Gate: ` 35 to 36, `^Gate: F274 R4` 0 to 1. G3 THE DECISION APPEND at `97403515` is the first MULTI-PARAGRAPH append this feature has gated under the checklist item covering a whole appended region and it holds: 886003 to 889313 bytes, prefix and ordered equality true, units 1951 to 1959, N counted from the slice as 8, the last eight units matching IN ORDER, the control flipped inside the FIRST of the eight rejected by both readers, `^## DECISION F274 D` 2 to 3, and `^## DECISION F274 D3 ` heading exactly one section. G4: `.agent/plan.md` is byte-equal to its slice at 44 lines against the cap of 50 and carries both mandated headings. G5 THE EDGE IS CUT AND THE REVIEWER PROVED THE RATCHET BOTH WAYS IN ITS OWN DISPOSABLE WORKTREE AT `f8e2c69ef1f3abb336d0001d8c62072056f858dd`: the unmutated control over both suites in ONE command is EXIT 0 at 6 passed; measured edges equal recorded edges at 38 over 21 modules; THE RECORDED AND MEASURED CONSUMERS OF `packages.orchestration.context_pack` ARE BOTH THE EMPTY LIST, which is the reading this round existed for, and the zero-edge modules are `context_pack`, `review_bundle` and `self_repair_proposal`; restoring the deleted map line is EXIT 1 reporting `DISAPPEARED (1)` and naming that exact edge; appending `from packages.orchestration import context_pack` to `packages/orchestration/ui_server.py` is EXIT 1 reporting `APPEARED (1)`, which proves the map still SEES that consumer and that the cut was a real cut rather than a hidden exclusion; each mutated file was restored byte-identically by exact path and each control returned to EXIT 0. G6 THE LINT CEILING HELD: 26 errors at the base in a worktree checked out at `0d68507bd5b794109db45d6d5765798fa87f7b97` and run from that worktree's own root, and 26 in the primary checkout at `f8e2c69ef1f3abb336d0001d8c62072056f858dd`, so DECISION F083 D5's frozen ceiling is untouched; `test_ci_budgets.py` EXIT 0 at 10 passed. G7 THE SUITES, re-run serially in the primary checkout, every one EXIT 0: `tests/ui_server/` 514 passed, `test_test_runner.py` 51, `test_resource_safety.py` 21, `test_integrity_gate.py` 16, `test_named_bugs.py` 64 passed with 6 skipped, the deletion map 3, import reachability 3, and the canary `tests/cli/test_golden_path.py` 42. BOTH ORDERED COUNTS FELL BY EXACTLY ONE, 515 to 514 and 52 to 51, which is the gate that distinguishes "the tests were deleted with their subject" from "a test was left behind" and from "something else was deleted too". G8 THE TREE: porcelain empty at every boundary, `git ls-files .remedy-wt` empty, worktrees 14 before and after, per-commit insertions 324, 230, 19, 2, 46, 0 and 257 for C0a through C5 — C4, the cut itself, is a PURE DELETION at zero insertions. THE NAME COLLISION CLAIMED NO VICTIM, AND THE REVIEWER MEASURED THAT RATHER THAN TRUSTING IT: `_build_context_budget_json` and the route string both occur ZERO times at `f8e2c69ef1f3abb336d0001d8c62072056f858dd`, while the surviving `context_budget_estimate` read still occurs once and `packages/orchestration/token_economy.py` is BYTE-IDENTICAL between base and that commit. SIX DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS ALL SIX. THE ONE THAT MATTERS IS THE WORKER'S OWN GATE SCRIPT GOING RED FIRST: its structural reader split on blank lines with a regex that left boundary newlines attached asymmetrically, so both structural clauses read False while the byte reader read True; the worker reported the real EXIT 1, diagnosed it as a defect of its own reader rather than of the file, redefined a unit as a maximal run of consecutive non-empty lines, re-ran to EXIT 0 and said so — which is the standard this workflow exists to hold, and the reviewer independently reproduced the corrected reading. TWO DEVIATIONS ARE THE REVIEWER'S OWN PROSE AND ARE RECORDED AS DATED `.agent/prose_slips.md` LINES rather than as ids, per amend0827 rule 2, because neither left anything wrong on disk. NO FINDING IS RESOLVED BY THIS GATE. ONE IS MINTED, R-0832, and it is the paragraph directly below this one.
 
-## DECISION F274 D3 — the cockpit `context-budget` endpoint is DELETED, not carried
+- R-0832 — Medium, THE CLUSTER DELETION MAP MEASURES IMPORT EDGES ONLY, SO A CONSUMER COUPLED TO THE CLUSTER BY EVENT NAME IS INVISIBLE TO IT AND WILL SURVIVE THE DELETION AS DEAD CODE. Raised by the reviewer at the F274 round 5 gate and booked by round 6's first substantive commit. THE RULE. `tests/orchestration/test_cluster_deletion_map.py` builds its edge set from `first_party_imports`, which parses `import` statements with `ast`; DECISION F274 D2 then rules the deletion bounded by those edges. THE MEASUREMENT, taken at `f8e2c69ef1f3abb336d0001d8c62072056f858dd`. `_build_context_pack_node` in `packages/orchestration/project_brain.py` builds the `NT_CONTEXT_PACK` brain node from events whose `event` field equals `context_pack_created`, and it imports NOTHING from the cluster — that file carries no import of `packages.orchestration.context_pack`, and the map correctly records no such edge, so nothing here is a defect of the map's arithmetic. That event is emitted by `_cmd_context_pack`, which round 4 moved into the deletion-bound `apps/cli/commands/context_pack_cmd.py`. So when the cluster goes, the event stops being emitted, the node silently stops appearing, and the builder, the node type constant, its ordering weight and its detail renderer all remain on disk — reachable, tested, and dead. THE SAME SHAPE REACHES `context_budget_optimized`, emitted by `_cmd_context_optimize` in `apps/cli/commands/context_optimizer_cmd.py` and named in `packages/orchestration/event_schemas.py`, `apps/ui/src/api/humanizeCatalog.ts` and `apps/ui/src/api/actionClass.ts`; F274 round 6 deletes the `context_budget` BRAIN NODE for its IMPORT edge and deliberately leaves every one of those event-name sites standing, which is this finding's scope and not that round's. This is a gate over production code shown to be BLIND to a real coupling, which is what amend0827 rule 2 spends an id on. FIX, binding on the round that drafts DECISION F260 D3: extend the map, or add a second measurement beside it, that records EVENT-NAME couplings from the cluster's emitters to their non-cluster readers, and name the event-coupled consumers in D3 so the deletion round removes them in the same commit as their emitter. Do not widen the import walker to do it — the events are string literals, not imports, and the lesson of the checklist item covering stubs and patched targets is that a guard which cannot see a coupling is not made honest by being pointed at the wrong syntax.
+END RECORD6
 
-Date: 2026-09-07. Feature F274, round 5. Status: decided by the reviewer under
-docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
 
-CONTEXT. `packages.orchestration.context_pack` is one of the twenty-four prototype-cluster modules
-F260's Design deletes. After round 4 moved the `context.pack` command handler into a cluster-bound
-file, the module had exactly ONE recorded edge left: `packages/orchestration/ui_server.py`, whose
-function `_build_context_budget_json` serves the cockpit read endpoint `context-budget`. Under
-DECISION F274 D2 the deletion is bounded by edges, so this one edge is the whole of what stands
-between `context_pack` and deletability.
+BEGIN SLIPS6 sha256=16646ff77babc1929130f39d17206ec599bcc1de057c4d8a07957835077e8c16 bytes=555
 
-CHOSEN. The endpoint is DELETED with its builder, its route registration and its two tests, and
-nothing replaces it. AGENTS.md's Scope Control states that replacing is deleting, that there is no
-attic, no deprecated alias and no compatibility reader, and that git is the archive. The idea the
-endpoint served — telling a reader what a job's context costs — is INHERITED by the token-economy
-surface that already exists beside it and is not cluster-bound:
-`estimate_context_budget` in `packages/orchestration/token_economy.py`, surfaced through the
-`context_budget_estimate` key that `packages/orchestration/ui_server.py` already reads. That
-surface is untouched by this decision and by this feature.
+2026-09-07 · F274 R5 · The round 5 block quoted the cockpit `context-budget` route line with four more leading spaces than `packages/orchestration/ui_server.py` carries, so the worker counted the identifying bytes instead and reported the count of 1.
 
-ALTERNATIVES CONSIDERED AND REJECTED. (a) REPOINT the endpoint at `token_economy` instead of
-deleting it. Rejected: the two produce different shapes — `context_pack` returns per-section
-structure while `estimate_context_budget` returns a band estimate — so this would be a new
-endpoint wearing an old name, which is the synonym drift AGENTS.md's discoverability rules forbid,
-and F261 rather than F274 owns naming. (b) KEEP the endpoint and exempt `context_pack` from the
-deletion. Rejected: it is on F260's Design list, and an exemption granted to keep one read
-endpoint alive is how the previous three attempts at this deletion ended. (c) LEAVE a 404 route so
-a client learns the endpoint is gone. Rejected: no client exists — the string `context-budget`
-occurs nowhere in `apps/ui/src`, and at the base its only occurrences anywhere are its definition,
-its route line and the one test that calls it.
-
-EVIDENCE THIS RESTS ON, measured at `0d68507bd5b794109db45d6d5765798fa87f7b97`. The endpoint has
-no consumer outside its own test; no document under `docs/` describes it; and the deletion map
-records `packages.orchestration.context_pack` with exactly one edge, which this round removes,
-leaving the module with none.
-
-CONSEQUENCE. `context_pack` becomes the third cluster module with no recorded edge, after
-`review_bundle` and `self_repair_proposal`. It is NOT deleted by this decision — the module and
-its file survive until the deletion round, which runs under DECISION F260 D3 and names every
-module it removes.
-
-REVERSE THIS DECISION by restoring `_build_context_budget_json`, its route line and its two tests
-from git history at `0d68507bd5b794109db45d6d5765798fa87f7b97`, and restoring the map line
-`packages.orchestration.context_pack <- packages/orchestration/ui_server.py` in the same commit.
-<<<END D3SLICE274>>>
+2026-09-07 · F274 R5 · That block's gate G8 ordered a `git diff --name-only` path-set reading over a range ending at C5 while stating only that G1 through G7 precede C5, so the commit at which G8 itself runs was never fixed, and an honest worker ran it before C5 existed and saw nine paths of ten.
+END SLIPS6
