@@ -204,6 +204,25 @@ class TestItRefusesToLie:
         assert "no stop was requested" in err or "no work left to stop" in err
         assert stop_requested(job.job_id) is None
 
+    def test_a_completed_job_says_so_in_json_too(self, job, capsys):
+        """The JSON sibling of the test above.
+
+        Its absence is why a stale attribute survived the F272 state rename: the
+        plain-text branch never reads it, so only this path can see it.
+        """
+        job.state = JOB_COMPLETED
+        _persist_job(job)
+
+        with pytest.raises(SystemExit) as exc:
+            CMD._cmd_job_stop(job.job_id, json_output=True)
+
+        assert exc.value.code == 1
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["ok"] is False
+        assert payload["error"] == "job_not_stoppable"
+        assert payload["job_status"] == JOB_COMPLETED
+        assert stop_requested(job.job_id) is None
+
     def test_an_unwritable_control_area_is_loud_and_requests_nothing(self, job, capsys):
         root = control_root()
         root.mkdir(parents=True, exist_ok=True)
