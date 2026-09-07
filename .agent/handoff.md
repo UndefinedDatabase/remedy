@@ -1,279 +1,219 @@
-# Handoff — F274 One world completion, part two — round 3
+# Handback — F274 SESSION 2 END — rounds 2 and 3 delegated, both gated PASS
 
-Branch: `feature/f274-one-world-completion-part-two`. No PR was created and nothing was merged.
+This file supersedes the round 3 handback as the session-end state. It is written by the round 3
+worker on the reviewer's authored text, because the reviewer never edits a work-tree file. It
+carries the round 3 VERDICT, which is persisted here under operator amendment
+amend0827-process-diet rule 1 and is booked into `.agent/live_review.md` in the FIRST COMMIT of
+the next round that happens anyway — exactly as round 2 booked round 1's and round 3 booked
+round 2's.
 
 ## Session
 
-SESSION 2 of feature F274 · round 3 · rounds so far 3
+SESSION 2 of feature F274 · rounds delegated this session 2 · both gated PASS · feature rounds
+so far 3 of the soft limit of 25, sessions 2 of 7.
 
-## Range
+The session opened with `.agent/STOP` ABSENT — the operator had removed the sentinel that ended
+session 1 — no open pull request, and `.agent/candidates.md` empty, so Phase 1 fell through to
+continuing the claimed feature.
 
-Review of `4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6`..`HEAD`.
+CONTEXT SELF-ASSESSMENT (amend0905-throughput, one sentence): context remained abundant
+throughout and was never the binding constraint; the session ends below the round floor for the
+reason stated in the next section, not for want of context.
 
-The round landed the test-backed cluster deletion map: per cluster module, the surviving consumers
-that must be cut before that module can be deleted. Nothing was deleted, no command changed, and
-nothing under `packages/`, `apps/`, `docs/` or `scripts/` was edited.
-`tests/orchestration/test_import_reachability.py` was NOT edited — the new test imports its walker.
+## WHY THIS SESSION ENDS AT TWO ROUNDS RATHER THAN THE FLOOR OF FOUR
 
-## Commits
+Operator amendment amend0905-throughput names three honest early-end reasons, and the third
+applies: THE REVIEWER'S OWN AUTHORING ERRORS ACCUMULATED. In one session the reviewer
+(a) hand-counted three numerals wrongly in the round 2 draft — a direct-import count, a module
+count and a consumer count — all caught by a mechanical re-measurement before emission;
+(b) WROTE A FABRICATED FORTY-CHARACTER SHA into three separate slice locations of the round 3
+block, inventing the characters after a real short prefix, caught only by the pre-emission check
+that resolves every SHA with `git cat-file -t`, one step away from landing a false identifier in
+an append-only record; and (c) stated the "105 of 341 command ids" figure without stating how
+command ownership was attributed, which is why the worker could not reproduce it and spent a
+declared deviation on it.
 
-### 4321e022 F274 R3 C0a: save the round 3 step block as authored input
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f274-r3.md` | +309/-0 | the block saved by `shutil.copyfile`, first link of the transport chain |
+Every one of those was caught by a MECHANICAL check rather than by reading, which is the system
+working, but the density is the signal amend0905 describes. Continuing to author blocks in this
+state trades a real risk of a false claim landing in an append-only record against one more
+round, and that is a bad trade. Round 4 is left FULLY MEASURED below so the next session starts
+authoring rather than investigating.
 
-### 25be04a1 F274 R3 C0b: mirror the round 3 block into the live block slot
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +227/-278 | same bytes mirrored by `shutil.copyfile`; the churn is round 2's block leaving the slot |
+## Branch and range
 
-### d854c8f8 F274 R3 C1: advance the plan to the deletion-map round
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +20/-21 | whole-file replacement by the PLANF274R3 slice |
+`feature/f274-one-world-completion-part-two`, cut from `main` at
+`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, with `main` merged back in at `f85200e4` to take
+operator amendment amend0907-cluster-first. This session ran
+`9c65a9225cdf4d60822d459d698b66d2d7cb19d7`..`9d58db022fca1df933f0b47f24f390841b4d3e7b`.
+The branch is PUSHED and in sync with its remote. NO PULL REQUEST EXISTS and none was created.
 
-### 2cb732eb F274 R3 C2: book the round 2 PASS verdict and register R-0831
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +4/-0 | RECORDR3 appended to the findings region; head region byte-identical |
+## What landed this session
 
-### 0d6da86f F274 R3 C3: land the cluster deletion map and the edge ratchet over it
-| Path | +/- | Reason |
-|---|---|---|
-| `tests/orchestration/test_cluster_deletion_map.py` | +190/-0 | new; the edge ratchet, reusing the walker `test_import_reachability.py` ships |
-| `tests/orchestration/cluster_deletion_map.txt` | +57/-0 | new; 15 comment lines plus 42 generated edge lines |
+Round 2, nine commits, `24d0b6bc` to `4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6`:
 
-### 41c949ae F274 R3 C4: rule the deletion by edges and the mission report collision as D2
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/decisions.md` | +55/-0 | DECISION F274 D2 appended as the D2SLICE274 slice |
+| SHA | Item |
+|---|---|
+| `24d0b6bc` `4d78bbac` | block saved and mirrored |
+| `ce0aef81` | plan advanced |
+| `d2cc78cd` | record head re-pointed at the amend0907 slice order |
+| `a09d4ea5` | round 1 verdict booked, R-0830 registered |
+| `88543f2d` | DECISION F274 D1 |
+| `1c36e9f7` | THE D11c IMPORT-REACHABILITY RATCHET and its 319-entry allowlist |
+| `2a0287d6` | three prose slips |
+| `4ba5e0f6` | handback |
 
-### C5 — the handback commit (grouped, self-reference exception)
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | n/a | this file; a handback cannot table the commit that writes it (R-0149 pattern) |
+Round 3, seven commits, `4321e022` to `9d58db022fca1df933f0b47f24f390841b4d3e7b`:
 
-Every commit in the range is single-parent. Insertion counts against the DECISION F104 D1 cap of
-500: C0a 309, C0b 227, C1 20, C2 4, C3 247, C4 55. The largest is C0a at 309. No commit is
-oversize and no declared-oversize allowance was spent.
+| SHA | Item |
+|---|---|
+| `4321e022` `25be04a1` | block saved and mirrored |
+| `d854c8f8` | plan advanced |
+| `2cb732eb` | round 2 verdict booked, R-0831 registered |
+| `0d6da86f` | THE CLUSTER DELETION MAP and its edge ratchet |
+| `41c949ae` | DECISION F274 D2 |
+| `9d58db02` | handback |
 
-`git status --porcelain` was EMPTY immediately before every one of the six commits above, and
-`git ls-files .remedy-wt` is EMPTY.
+## ROUND 3 VERDICT — PASS
 
-## External actions
+Issued by the reviewer after re-running every gate itself, in the primary checkout and in a
+disposable worktree, against the COMMITTED blobs rather than the working tree. This paragraph is
+the text the next round books into `.agent/live_review.md` as `Gate: F274 R3`.
 
-| Action | Command | Outcome |
-|---|---|---|
-| worktree add | `git worktree add --detach .remedy-wt/f274-r3-redctl 0d6da86f...` | created at the C3 commit; `git worktree list` went 14 → 15 |
-| worktree remove | `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/f274-r3-redctl` | removed BY EXACT PATH |
-| worktree prune | `git worktree prune` | `git worktree list` back to 14 |
-| push | `git push origin feature/f274-one-world-completion-part-two` | see the push line at the end of Verification |
+G1 TRANSPORT: `.remedy-wt/f274-r3-block.md`, `.agent/authored/f274-r3.md` and
+`.agent/last_block.md` are all 28580 bytes and all hash to
+`7138ea1b960639e12b0a70d5b641440225b365761cfafbac8a14e16e50bc1e9f`; per §3 item 37 that chain
+covers those three artefacts and claims nothing about emitted bytes. G2 THE RECORD APPEND: the
+head region is byte-identical across the commit, the findings pre-image is a byte-exact prefix of
+the post-image, the post-image equals the pre-image plus the RECORDR3 slice, N counted from the
+slice is 2, the last two units match in order, and the negative control flipped at byte 515000 —
+inside the FIRST appended paragraph, the append beginning at 514989 — is rejected by BOTH readers
+with the disk unchanged; registrations 64 to 65, resolutions 3 to 3, OPEN SET 61 TO 62 BY
+DISTINCT ID, `^Gate: ` 33 to 34, `^Gate: F274 R2` 0 to 1, `^- R-0831` 0 to 1. G3 THE DECISION
+APPEND: prefix true, post equals pre plus the slice, `^## DECISION F274 D` 1 to 2, and
+`^## DECISION F274 D2 ` heads exactly one section. G4 THE DELETION MAP IS A REAL RATCHET AND THE
+REVIEWER PROVED IT BOTH WAYS IN ITS OWN DISPOSABLE WORKTREE AT `0d6da86f`: the test alone is EXIT
+0 at 3 passed and, run in ONE command with `tests/orchestration/test_import_reachability.py`,
+EXIT 0 at 6 passed, which is what proves the reuse import resolves under collection; with a
+single `review_bundle` import appended to `packages/orchestration/data_paths.py` it is EXIT 1
+reporting `APPEARED (1)` and naming that exact edge, and EXIT 0 again after restoring that one
+file by exact path; with one bogus line added to the map it is EXIT 1 reporting `DISAPPEARED (1)`,
+and EXIT 0 again after removing that one line. The map holds 42 edges over 22 of the 24 cluster
+modules from 16 distinct surviving consumer files, reproducing the reviewer's own pre-emission
+dry run on every figure. `python3 -m ruff check .` reports 26 both before and after, so the
+frozen ceiling DECISION F083 D5 protects is untouched, and `test_ci_budgets.py` is EXIT 0 at 10
+passed. G5: `.agent/plan.md` is byte-equal to its slice at 40 lines against the cap of 50. G6 THE
+SUITES, re-run serially by the reviewer in the primary checkout, every one EXIT 0: `tests/ui_server/`
+515 passed, `test_test_runner.py` 52, `test_resource_safety.py` 21, `test_integrity_gate.py` 16,
+and the canary `tests/cli/test_golden_path.py` 42 passed. Seven commits, every one single-parent,
+every one under the 500-insertion cap, the tree empty at every boundary, `git ls-files .remedy-wt`
+empty and worktrees 14 to 15 to 14.
 
-No PR was created, no PR was merged, no `gh` command was run, nothing was force-pushed, and the
-two destructive red controls ran ONLY inside the disposable worktree, never in the primary
-checkout.
+SIX DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS ALL SIX. THE ONE THAT MATTERS IS
+DEVIATION 3, AND IT IS RESOLVED IN THE REVIEWER'S FAVOUR ON A RE-MEASUREMENT RATHER THAN ON
+AUTHORITY. The worker could not reproduce the claim, carried in DECISION F274 D2 and in
+`.agent/plan.md`, that 105 of the catalog's 341 command ids sit in a handler file importing the
+cluster, and reported 134 and 26 under two other attributions. The reviewer re-measured at
+`9d58db022fca1df933f0b47f24f390841b4d3e7b` with an owner map built by `ast` from every
+COMMAND_HANDLERS-shaped dict literal under `apps/cli/commands/` rather than by regex, and
+REPRODUCED 105 EXACTLY: of 341 catalog ids, 311 resolve to an owning handler file, and 105 of
+those sit in one of the 21 files that import a cluster module. The worker's 26 is the SHARPER and
+more useful figure and is not in conflict: it is the subset owned by files that are NOT among the
+17 pinned cluster-command handlers — 4 files, `context.py`, `feature_cmd.py`, `worker.py` and
+`worker_facade_cmd.py`, holding `mission.run` and `mission.report` among others. THE LANDED
+SENTENCE IS TRUE; what it omitted is the ATTRIBUTION METHOD, which is why it was not
+reproducible, and that omission is a reviewer prose defect recorded as a dated
+`.agent/prose_slips.md` line rather than an id, per amend0827 rule 2, because nothing on disk is
+wrong. NO FINDING IS RESOLVED BY THIS GATE and none is minted; R-0830 and R-0831 both stay open.
 
-## Verification
+## Open findings
 
-One line per gate, with the REAL exit code of a command actually run. Exit codes were read in
-Python (`.remedy-wt/f274-r3-exit.py`) because this session's shell guard refuses `$?` inside a
-compound command; there is no pipe between the command and the exit reading.
+62 BY DISTINCT ID: 65 distinct registrations against 3 distinct resolutions. The next free id is
+R-0832. Two ids were minted this session, R-0830 and R-0831, and both are OPEN by design — each
+records work this feature still owes. The open High findings are R-0803, R-0804, R-0806 and
+R-0807, and all four are F273's rather than this feature's, per DECISION F272 D12.
 
-**G1 TRANSPORT — PASS.** `.remedy-wt/f274-r3-block.md`, `.agent/authored/f274-r3.md` and
-`.agent/last_block.md` are all 28580 bytes, byte-identical to each other, and all three hash to
-`7138ea1b960639e12b0a70d5b641440225b365761cfafbac8a14e16e50bc1e9f` — the digest the delegation
-states beside the block. Per §3 item 37 this chain covers those three artefacts and claims nothing
-about the bytes emitted to the worker.
+## What this session learned, which changes the feature's plan
 
-**G2 THE RECORD APPEND — PASS, all four parts.**
-(a) BYTE: the head region is byte-identical across the commit at 3396 bytes / 43 lines; the
-findings pre-image is a byte-exact PREFIX of the post-image; the post-image equals the pre-image
-followed by RECORDR3 exactly, with no separator newline added. Findings region sha256
-`991f2c0e4b6eb6184dc9f96799ee02681d9a962d9ece80ee51ef1aa1165e911e` before →
-`f694b378f3c37606a35168480ce08f27e00fdee9abf86ef03f8b3b99afd0f965` after. The marker
-`\n## Findings\n` occurs exactly once on both sides. The pre-image was taken from `git show HEAD:`,
-not from a copy this round made.
-(b) STRUCTURAL: N was COUNTED by the script from the slice as **2**. The last 2 blank-line
-separated units of the whole file equal the slice's 2 paragraphs in order, under the unit
-definition the block states — split on a blank line, compare with leading and trailing newlines
-STRIPPED.
-(c) NEGATIVE CONTROL, in memory only: the flip was located over ENCODED BYTES at or after the
-append point (offset 514989), landing at byte offset **515002**, inside the FIRST appended
-paragraph. BOTH readers accept the real image and BOTH reject the flipped one. The file on disk
-was re-read afterwards and is unchanged.
-(d) COUNTS, before → after: distinct `^- R-\d{4}` **64 → 65**; distinct `^Done: R-\d{4}`
-**3 → 3**; OPEN SET BY DISTINCT ID **61 → 62**; `^Gate: ` **33 → 34**; `^Gate: F274 R2`
-**0 → 1**; `^- R-0831` **0 → 1**. File 514989 bytes / 552 lines → 522330 / 556.
+1. THE CLUSTER DELETION'S OWN PRECONDITION IS UNMEETABLE AS WRITTEN (R-0830). All 24 cluster
+   modules are reachable from the six D11 (c) entry points, every one of them via
+   `packages.orchestration.ui_server`, which is itself one of those entry points. F260's Design
+   required the proof to "already pass with these modules absent from the reachable set", and no
+   tree containing the cluster can satisfy that. DECISION F274 D1 replaces it with a RATCHET.
+2. THE DELETION IS BOUNDED BY EDGES, NOT BY F260's MODULE LIST (DECISION F274 D2). 42 surviving
+   edges from 16 consumer files reach 22 of the 24 modules. Only `review_bundle` and
+   `self_repair_proposal` have none.
+3. THE CARRY-OVER'S DESTINATION NAME IS OCCUPIED. `mission report` already exists, and its
+   handler imports `dogfood_run`, a cluster module, so the command holding the name is itself
+   deletion-bound. D2 rules that the carried report takes the name in the SAME COMMIT that
+   deletes the current holder, and never coexists with it.
+4. ROUTE POLICY HAS NO F110 HOME (R-0831). None of the eight knobs F260 names occurs anywhere in
+   `role_config.py` or `model_routing.py`; F110 owns only `model_routing.task_class_tiers` and
+   `model_routing.promotion_evidence`. Every knob falls on F260's "missing → register, never
+   rebuild" branch.
 
-**G3 THE DECISION APPEND — PASS.** The pre-image of `.agent/decisions.md` (taken from
-`git show HEAD:`) is a byte-exact PREFIX of the post-image and the post-image equals the pre-image
-followed by D2SLICE274 exactly. 881507 bytes / 10961 lines → 886003 / 11016.
-`^## DECISION F274 D` occurs **1 time before and exactly 2 after**, and `^## DECISION F274 D2 `
-heads **exactly one** section.
+## NEXT — round 4 is fully measured and ready to author
 
-**G4 THE DELETION MAP — PASS, all four parts. Each ran as its own command.**
-(a) GREEN. `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py -q -p no:randomly`
-→ **EXIT 0, 3 passed**. Together in one command with the reachability test,
-`python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py tests/orchestration/test_import_reachability.py -q -p no:randomly`
-→ **EXIT 0, 6 passed**, which is what proves the reuse import resolves under pytest's collection.
-`tests/orchestration/cluster_deletion_map.txt` holds **42 edge lines** (57 lines total: 15 comment
-lines and 42 edges), 4409 bytes.
-(b) RED CONTROL ONE, an edge that APPEARS. In the disposable worktree at the C3 commit, one line
-`import packages.orchestration.review_bundle` was appended to
-`packages/orchestration/data_paths.py` — a surviving module the map does not list as a consumer,
-confirmed by reading the file first. The test went **EXIT 1**, naming
-`APPEARED (1) — packages.orchestration.review_bundle <- packages/orchestration/data_paths.py` and
-`DISAPPEARED (0) (none)`. That ONE file was restored by exact path with
-`git checkout -- packages/orchestration/data_paths.py`, the worktree tree was confirmed clean, and
-the re-run is **EXIT 0, 3 passed**.
-(c) RED CONTROL TWO, an edge that DISAPPEARS. In the same worktree the line
-`packages.orchestration.review_bundle <- packages/orchestration/storage.py` was appended to the map
-(57 → 58 lines). The test went **EXIT 1**, naming `APPEARED (0) (none)` and
-`DISAPPEARED (1) — packages.orchestration.review_bundle <- packages/orchestration/storage.py`, so
-the two directions are reported separately as the SPEC requires. That ONE line was removed by exact
-path, the tree was confirmed clean, and the re-run is **EXIT 0, 3 passed**.
-(d) THE CEILING. `python3 -m ruff check .` in the primary checkout: **26 errors at the base and 26
-after C3** — the FROZEN ceiling DECISION F083 D5 protects is untouched, and the new test file alone
-reports `All checks passed!`, so it adds zero.
-`python3 -B -m pytest tests/orchestration/test_ci_budgets.py -q -p no:randomly` → **EXIT 0, 10
-passed**. `git worktree list` was **14 at the start of the round, 15 with the control worktree, and
-14 again at the end**.
+FIRST ACTION NEXT SESSION is Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: read
+`.agent/STOP` from disk. It is ABSENT as this file is written. Then rule 2 finds no open pull
+request, and work resumes on this branch at `9d58db022fca1df933f0b47f24f390841b4d3e7b`.
 
-**G5 THE PLAN — PASS.** `.agent/plan.md` is BYTE-EQUAL to the PLANF274R3 slice at 2226 bytes,
-**40 lines** against the AGENTS.md cap of 50, and carries both `## Goal` and `## Next Steps`.
+ROUND 4 IS AN EDGE-CUTTING ROUND, NOT A DELETION. Under DECISION F274 D1 the prohibition
+"NEVER SPLIT INSIDE T003" binds the `git rm` sequence, which a session that cannot finish it must
+not start; cutting edges is ordinary product work and is not that sequence. Round 4 therefore
+deletes NOTHING and starts nothing.
 
-**G6 THE SUITES AND THE TREE — PASS.** Run SERIALLY in the primary checkout, each as its own
-command, the four state readers AS FOUR:
+THE WORK: two handler files each host BOTH surviving and cluster-bound commands, and splitting
+them removes three of the map's 42 edges. Measured at
+`9d58db022fca1df933f0b47f24f390841b4d3e7b`:
 
-| Command | Exit | Result |
-|---|---|---|
-| `python3 -B -m pytest tests/ui_server/ -q -p no:randomly` | 0 | 515 passed |
-| `python3 -B -m pytest tests/orchestration/test_test_runner.py -q -p no:randomly` | 0 | 52 passed |
-| `python3 -B -m pytest tests/regression/test_resource_safety.py -q -p no:randomly` | 0 | 21 passed |
-| `python3 -B -m pytest tests/orchestration/test_integrity_gate.py -q -p no:randomly` | 0 | 16 passed |
-| `python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly` (canary) | 0 | 42 passed |
+- `apps/cli/commands/context.py` — cluster-bound handlers are `_cmd_context_pack` (imports
+  `context_pack` at line 35), `_cmd_context_explain` (`context_optimizer` at line 82) and
+  `_cmd_context_optimize` (`context_optimizer` at line 123), serving command ids `context.pack`,
+  `context.explain` and `context.optimize`. ONLY `_cmd_context_inspect` / `context.inspect`
+  survives. Moving the three out removes the edges `context_pack <- apps/cli/commands/context.py`
+  and `context_optimizer <- apps/cli/commands/context.py`.
+- `apps/cli/commands/worker.py` — cluster-bound handlers are `_cmd_worker_recommend`
+  (`worker_recommend` at line 70) and `_cmd_worker_explain` (`worker_recommend` at line 122),
+  serving `worker.recommend` and `worker.explain`. The other six — `worker.list`, `worker.show`,
+  `worker.resources`, `worker.unload`, `worker.run`, `worker.status` — survive. Moving the two
+  out removes the edge `worker_recommend <- apps/cli/commands/worker.py`.
 
-The tree, `git ls-files .remedy-wt` and the per-commit insertion counts are reported in the Commits
-section above.
+WHAT THE ROUND MUST ALSO DO, or it goes red:
+- Each new handler module is added to the explicit import list in `collect_all_handlers()` in
+  `apps/cli/commands/__init__.py`, which is how every COMMAND_HANDLERS mapping is merged; a
+  handler file that is not listed there is never dispatched.
+- Each new handler module is added to `CLUSTER_COMMAND_HANDLERS` in
+  `tests/orchestration/test_cluster_deletion_map.py`, or its own cluster imports register as new
+  edges.
+- `tests/orchestration/cluster_deletion_map.txt` loses exactly the three lines above IN THE SAME
+  COMMIT, or the map test reds with `DISAPPEARED (3)`. That is the ratchet working and is the
+  round's own proof that the edges were really cut.
+- PREDICTION, stated as a prediction and not a measurement: the map goes from 42 edges to 39, and
+  the count of cluster modules carrying at least one edge goes from 22 to 20, since
+  `context_pack` and `worker_recommend` each lose their only recorded consumer while
+  `context_optimizer` keeps `packages/orchestration/project_brain.py`. The round MEASURES this
+  rather than asserting it.
+- No catalog entry changes: the command ids are unchanged, only the file defining their handlers
+  moves. This is NOT a rename and does not trespass on F261.
 
-**THE MEASUREMENT THIS ROUND PRODUCED, which is mine and was not reconciled toward the block's:**
-**42 edges**, over **22 of the 24 cluster modules**, from **16 distinct surviving consumer files**.
-The two cluster modules with **ZERO surviving consumers** are `packages.orchestration.review_bundle`
-and `packages.orchestration.self_repair_proposal`. All 24 cluster modules and all 17 pinned
-cluster-command handler paths resolve to files on disk; 358 files under `packages/`, `apps/` and
-`scripts/` were scanned. This reproduces the reviewer's pre-emission dry run exactly, on every one
-of those figures.
-
-**STOP readings (block Constraint 3), all three reported:** `os.path.exists('.agent/STOP')` was
-**False** before C0a, **False** before C3, and **False** before C5.
-
-**NEW-FILE CONFIRMATION (block Constraint 8), both reported:**
-`git ls-tree 4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6 -- tests/orchestration/test_cluster_deletion_map.py`
-returned EMPTY and the same command for `tests/orchestration/cluster_deletion_map.txt` returned
-EMPTY, so both files C3 creates are genuinely new.
-
-**BASE MEASUREMENTS (block Constraint 7), confirmed on disk before use, NO divergence:**
-`.agent/plan.md` 2292 bytes / 41 lines. `.agent/live_review.md` 514989 bytes / 552 lines; HEAD
-region 3396 bytes / 43 lines at
-`9622379fe041a62bb69372e6b6dc2266ee639e2be6bdf87a12d905c3db998cda`; FINDINGS region 511593 bytes /
-509 lines at `991f2c0e4b6eb6184dc9f96799ee02681d9a962d9ece80ee51ef1aa1165e911e`.
-`.agent/decisions.md` 881507 bytes / 10961 lines at
-`d2981fda0c5d1e103e97220fd0c71bbe3cc03fa1a0abedea6694e10b5258c477`. Every one matched the block.
-
-## Authored-text proofs
-
-Compared disk-to-disk against the COMMITTED `.agent/authored/f274-r3.md`, re-extracting each slice
-from that file by its `<<<BEGIN NAME ` / `<<<END NAME>>>` marker lines. No slice was retyped and no
-digest was hand-typed.
-
-| Slice | Bytes | Result |
-|---|---|---|
-| PLANF274R3 | 2226 | `.agent/plan.md` is BYTE-EQUAL to it |
-| RECORDR3 | 7341 | it is the exact byte TAIL of `.agent/live_review.md` |
-| D2SLICE274 | 4496 | it is the exact byte TAIL of `.agent/decisions.md` |
-
-RECORDR3 and D2SLICE274 each carried their own leading blank line and were appended as-is; no
-separator newline was added to either.
+AFTER ROUND 4, in order: the remaining edge cuts, the two F260 carry-overs on the route DECISION
+F274 D2 fixes, DECISION F260 D3 drafted, then the deletion itself in a session that can finish it
+— and only then T001 and T002.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | block saved to `.agent/authored/f274-r3.md` by `shutil.copyfile` |
-| C0b | done | mirrored to `.agent/last_block.md` by `shutil.copyfile` |
-| C1 | done | `.agent/plan.md` replaced by PLANF274R3, byte-equal |
-| C2 | done | RECORDR3 appended to the findings region; head untouched |
-| C3 | done | test and generated map file written to the SPEC; both new |
-| C4 | done | D2SLICE274 appended to `.agent/decisions.md` |
-| C5 | done | this file, rewritten in full |
-| G1 | PASS | one digest comparison, three artefacts, value reported untruncated |
-| G2 | PASS | byte, structural (N=2), negative control, and all six counts |
-| G3 | PASS | prefix true, 1 → 2 occurrences, D2 heads exactly one section |
-| G4 | PASS | green both ways, both red controls EXIT 1 then EXIT 0, ceiling held at 26 |
-| G5 | PASS | byte-equal, 40 lines under the cap of 50, both headings present |
-| G6 | PASS | four state readers AS FOUR plus the canary, all EXIT 0 |
-
-The commit order C0a, C0b, C1, C2, C3, C4, C5 was followed exactly and was not varied.
-
-## Open findings
-
-**62 open by distinct id** (65 distinct `^- R-\d{4}` registrations minus 3 distinct `^Done:`
-resolutions), up from 61, because this round minted exactly one id, **R-0831**, and resolved none.
-No `Done:` paragraph was written — only reviewer-authored text resolves a finding. **R-0830 stays
-OPEN**: this round delivers the plan it stays open for but does not discharge the deletion it plans.
-The open High findings remain R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
-feature's, per DECISION F272 D12.
-
-## Deviations & assumptions
-
-No departure from the block's ordered commit sequence: seven commits, C0a → C5, in the stated
-order, none added, none dropped, none reordered.
-
-1. **SHELL-FORM RE-EXPRESSIONS, reported as `.agent/context.md` requires.** This session's shell
-   guard refused two command FORMS outright. `$?` inside a compound command was refused, so every
-   gate exit code was read in Python via `.remedy-wt/f274-r3-exit.py`, which runs the command with
-   `subprocess.run` and prints `proc.returncode` with no pipe between the command and the reading.
-   A `{...}` set literal containing quotes was also refused inline, so the G1 digest comparison was
-   moved into the script file `.remedy-wt/f274-r3-g1.py`. Neither re-expression weakens a gate.
-2. **`cd` INTO THE WORKTREE FOR GIT WAS REFUSED**, so the two red-control restores were run as
-   `git -C <absolute worktree path> checkout -- <exact path>`. Same act, permitted spelling.
-3. **A CLAIM IN THE BLOCK I COULD NOT REPRODUCE, APPLIED AS WRITTEN PER CONSTRAINT 1.** Both
-   PLANF274R3 (its first Risk bullet) and D2SLICE274 (its CONTEXT paragraph) state that **105** of
-   the catalog's 341 command ids sit in a handler file that imports the cluster. I confirmed the
-   **341** exactly — `CATALOG` holds 341 entries with 341 distinct command ids, and all 341 are
-   attributable to a handler file by the dispatch tables those files declare. I could NOT reproduce
-   the 105 under either attribution I tried: counting ids owned by ANY handler file that imports a
-   cluster module gives **134** over 21 such files, and counting only those handler files that are
-   NOT among the 17 pinned cluster-command handlers gives **26** over 4 files
-   (`context.py`, `feature_cmd.py`, `worker.py`, `worker_facade_cmd.py`). I applied both slices
-   VERBATIM and did not repair either text. The claim's POINT is unaffected and I verified it
-   directly: `mission.run` and `mission.report` are both in the cluster-importing set under BOTH
-   readings, so the deletion does reach that command surface. Only the numeral is unreproduced, it
-   is load-bearing on no gate of this round, and the reviewer owns whichever method produced it.
-4. **AN IMPLEMENTATION CHOICE INSIDE THE SPEC, declared because it is visible in the diff.** The
-   SPEC's assertion (c) is "no recorded consumer is itself a cluster module". I first wrote it over
-   the union of cluster modules AND the 17 cluster-command handlers, then narrowed it to assert
-   EXACTLY the property the SPEC names, so the test does not silently guard more than it was
-   ordered to. Handler files are still excluded from the measurement itself, by construction, in
-   `_excluded_paths()`.
-5. **ASSUMPTION ON `tests/`.** The SPEC defines a surviving consumer as a `.py` file under
-   `packages/`, `apps/` or `scripts/`, so `tests/` is outside the scanned roots. I recorded that
-   reasoning in the map's own comment header and in `CONSUMER_ROOTS`: a test of a deleted module is
-   deleted with it and blocks nothing. `scripts/` IS scanned as ordered, and contributed no edge.
-6. **SCRATCH.** All scratch lived under the gitignored `.remedy-wt/` and was removed BY EXACT PATH,
-   never by a glob. `.remedy-wt/f274-r3-block.md` is KEPT as the first link of the transport chain.
-   The disposable worktree `.remedy-wt/f274-r3-redctl` was removed by exact path and pruned.
-
-I did not run the built `remedy` CLI; it is denied to this session and nothing in this round needed
-it. Bare `ruff` was never invoked — every ruff reading used `python3 -m ruff check <path>`.
-
-**Context self-assessment (amend0905-throughput):** context use was comfortable for this round —
-the block, the two authored appends and the C3 measurement fit with room to spare, so a further
-round of this size would be safe in this session.
-
-## Next
-
-The reviewer re-runs G1–G6 over `4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6..HEAD` and books a
-verdict for round 3. The next production step, per the plan and DECISION F274 D2, is to cut the
-edges the map records starting with the two modules that already have none —
-`review_bundle` and `self_repair_proposal`.
+| Phase 0 state probe | done | tree clean, no PR, no STOP, candidates empty |
+| Phase 1 decision | done | rule 5 — continue the claimed feature F274 |
+| F274 R2 authored, delegated, gated | done | PASS; every gate re-run by the reviewer |
+| F274 R3 authored, delegated, gated | done | PASS; every gate re-run by the reviewer |
+| R1 verdict booked | done | `Gate: F274 R1` at `a09d4ea5` |
+| R2 verdict booked | done | `Gate: F274 R2` at `2cb732eb` |
+| R3 verdict booked | not done — carried | this file is the durable carrier; booked by round 4's first commit per amend0827 rule 1 |
+| R-0830, R-0831 registered | done | both OPEN by design |
+| DECISION F274 D1, D2 | done | `88543f2d`, `41c949ae` |
+| Reviewer prose slips this session | not done — owed | three dated lines owed to `.agent/prose_slips.md`: the fabricated SHA, the unstated attribution method behind 105, and the undefined structural unit in the round 2 G3(b) |
+| Round 4 | not done — authored next session | fully measured above |
+| Pull request | not done | none exists; the branch is pushed and reviewable |
+| Session round floor of four | NOT MET — 2 rounds | reason stated above under amend0905-throughput's third honest reason |
