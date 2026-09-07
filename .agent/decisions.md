@@ -10959,3 +10959,58 @@ than from F260's module list, because that list names modules and the deletion i
 EDGES. R-0830 stays OPEN until that plan exists. REVERSE by deleting this section: the test then
 has no ruled shape and the split boundary returns to being ambiguous, which is the state this
 ruling replaced.
+
+## DECISION F274 D2 — the cluster deletion is bounded by EDGES and ordered by the map, and the name `mission report` is not free until its current holder dies (2026-09-07)
+
+CONTEXT. Finding R-0830 established that every module of the prototype cluster is reachable from
+the six D11 (c) entry points and that modules outside the cluster import it, so the deletion
+cannot be planned from F260's module list alone. Round 3 measured the graph the other way round,
+at `4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6`, and the numbers are what force this ruling: 42
+SURVIVING EDGES from 16 distinct consumer files into 22 of the 24 cluster modules, and 105 of the
+catalog's 341 command ids sitting in a handler file that imports the cluster.
+
+CHOSEN, FIRST: THE MAP IS THE PLAN, AND IT IS A TEST RATHER THAN A DOCUMENT.
+`tests/orchestration/cluster_deletion_map.txt` records one `module <- consumer` edge per line and
+`tests/orchestration/test_cluster_deletion_map.py` holds it against the live import graph in both
+directions, so an edge that appears reds the suite and an edge cut without removing its line reds
+it too. A plan written as prose goes stale silently; this one cannot. It reuses the walker
+`test_import_reachability.py` already ships, because this repository keeps one call-directory
+walker. ALTERNATIVE: an `.agent/` inventory like `.agent/f272_t004_staging.md`, rejected because
+the deletion will run over several rounds and possibly several sessions, and an inventory that
+nothing re-measures is exactly the artefact that told three consecutive features the deletion was
+cheap.
+
+CHOSEN, SECOND: A CLUSTER MODULE IS DELETABLE ONLY WHEN ITS EDGE COUNT IN THE MAP IS ZERO, AND THE
+ORDER FOLLOWS FROM THAT rather than from any list a human writes. At this commit exactly two
+modules qualify — `review_bundle` and `self_repair_proposal` — and they are where the deletion
+starts. Every other module is preceded by the work of cutting its edges, and each such cut is
+ordinary product work with its own tests, not part of a deletion round under
+amend0906-triage-throughput. This is what "one commit per module group" means once the graph is
+known: the group is the module plus the edges that end on it.
+
+CHOSEN, THIRD: THE FIRST CARRY-OVER'S DESTINATION NAME IS OCCUPIED, AND THE COLLISION IS RESOLVED
+BY DELETION RATHER THAN BY RENAMING. F260's Design sends the read-only overnight readiness and
+report views to `mission readiness` and `mission report`. `mission readiness` is free.
+`mission report` IS NOT: the catalog already carries a `mission.report` entry whose handler
+`_cmd_mission_report` in `apps/cli/commands/worker_facade_cmd.py` imports
+`packages.orchestration.dogfood_run`, a cluster module, so the command that holds the name is
+itself deletion-bound. THE RULING: the carried-over report takes the name `mission report` IN THE
+SAME COMMIT that deletes the existing cluster-bound handler and its catalog entry, and not before;
+the two never coexist, which is what AGENTS.md's "replacing is deleting" requires. `mission
+readiness` may land earlier, since nothing holds that name. This is NOT a rename and does not
+trespass on F261, which owns renames: the old command is DELETED with its module and a different
+command inherits a freed name, which is the same move DECISION F272 D13 made for advertisements.
+
+CONSEQUENCE, AND THE MEASUREMENT THE NEXT ROUND STARTS FROM. The first carry-over is a MOVE of 25
+of the 29 top-level definitions of `packages/orchestration/overnight_readiness.py`, 650 of its 894
+lines, into a surviving module; the four left behind are the plan path, which dies. That move is
+safe, and this is the measured reason: every module the carried definitions import — `permissions`,
+`run_contract`, `approval_queue`, `repair_loop`, `repository_snapshot`, `storage`, `proof_chain`,
+`timeline`, `integrity_gate` and `data_paths` — survives the cluster deletion, so the carried code
+acquires no new cluster edge. At 650 lines the move exceeds the DECISION F104 D1 cap of 500
+insertions and is therefore staged across commits with the new module UNWIRED until the last of
+them, which keeps every intermediate commit green without spending this feature's single
+declared-oversize allowance; that allowance is reserved for T001's atomic flip, which cannot be
+staged at all. REVERSE by deleting this section: the map then has no ruled standing, the deletion
+order returns to F260's module list, and the `mission report` collision returns to being
+undiscovered.
