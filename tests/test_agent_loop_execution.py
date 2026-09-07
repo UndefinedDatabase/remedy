@@ -1,13 +1,11 @@
 """Tests for agent loop execution (Step 46).
 
-Tests: run_agent_loop, job.run-loop CLI, run-log events.
+Tests: run_agent_loop, run-log events.
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 from uuid import uuid4
 
 from packages.core.models import Job, RunState, Task
@@ -185,60 +183,3 @@ class TestAgentLoopEventSchema:
         for forbidden in ("stdout", "stderr", "raw_output", "command_output",
                           "Traceback", "diff_preview", "approval_reason"):
             assert forbidden not in full, f"Forbidden string in events: {forbidden}"
-
-
-class TestRunLoopCLI:
-    def _run(self, argv: list[str], env_extra: dict | None = None) -> tuple[str, str, int]:
-        env = {**subprocess.os.environ, **(env_extra or {})}
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped"] + argv,
-            capture_output=True, text=True, timeout=30, env=env,
-        )
-        return result.stdout, result.stderr, result.returncode
-
-    def test_run_loop_help(self) -> None:
-        stdout, _, rc = self._run(["job", "run-loop", "--help"])
-        assert rc == 0
-        assert "job_id" in stdout.lower()
-
-    def test_run_loop_missing_job(self, tmp_path) -> None:
-        env = {"REMEDY_DATA_DIR": str(tmp_path)}
-        stdout, stderr, rc = self._run(
-            ["job", "run-loop", str(uuid4())], env_extra=env,
-        )
-        assert rc != 0
-
-    def test_run_loop_completed_job(self, tmp_path, monkeypatch) -> None:
-        # Must patch _DATA_DIR on storage module — it's cached at import time,
-        # so monkeypatch.setenv alone won't redirect save_job.
-        import packages.orchestration.storage as _storage
-        monkeypatch.setattr(_storage, "_DATA_DIR", tmp_path / "jobs")
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = Job(
-            id=uuid4(), name="done", user_prompt="done",
-            tasks=[Task(description="t", status=RunState.COMPLETED)],
-            metadata={"target_repo": "."},
-        )
-        save_job(job)
-        assert (tmp_path / "jobs" / f"{job.id}.json").exists()
-        # Run via subprocess sharing same data dir
-        stdout, stderr, rc = self._run(
-            ["job", "run-loop", str(job.id)],
-            env_extra={"REMEDY_DATA_DIR": str(tmp_path)},
-        )
-        assert rc == 0, f"stderr={stderr}\nstdout={stdout}"
-        assert "complete" in stdout.lower() or "completed" in stdout.lower()
-
-
-class TestRunLoopGroupedHelp:
-    def _run(self, argv: list[str]) -> tuple[str, str, int]:
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped"] + argv,
-            capture_output=True, text=True, timeout=30,
-        )
-        return result.stdout, result.stderr, result.returncode
-
-    def test_job_group_shows_run_loop(self) -> None:
-        stdout, _, rc = self._run(["job"])
-        assert rc == 0
-        assert "run-loop" in stdout

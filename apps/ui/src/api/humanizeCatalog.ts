@@ -6,9 +6,7 @@
 // Python emitter without adding an entry here goes red, and so does the reverse.
 // A kind absent from this map is not dropped: humanize.ts renders it generically.
 export const STREAM_EVENT_CATALOG: Readonly<Record<string, string>> = {
-  "agent_loop_cycle_decision": "The agent loop decided what to do next in this cycle.",
   "agent_loop_inspected": "The agent loop's current state was inspected.",
-  "agent_loop_stopped": "The agent loop stopped.",
   "api_retry": "A provider API call failed and was retried.",
   "brain_node_inspected": "A node in the project brain was inspected.",
   "brain_viewer_prepared": "The brain viewer's data was prepared for display.",
