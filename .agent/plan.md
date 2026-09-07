@@ -1,6 +1,6 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 19 PASSED;
+Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 20 PASSED;
 round 2 FAILED on a premise DECISION F272 D2 has corrected. T001, T002 and T003
 are COMPLETE. T004 is under way.
 
@@ -14,32 +14,35 @@ classic runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Repair the production strings that advertise commands which do not exist, and
-ship the guard that keeps them repaired. Round 19 deleted `job run-loop` and
-left three such strings; two more, naming a `guide next` that never existed,
-were found by the same measurement.
+Repair the operator-facing half of R-0823 — the smoke script that invokes the
+deleted `job run-loop` and the `docs/system/` pages that document it as live —
+and widen the round 20 guard to sweep the shell scripts and those pages, so the
+class is caught in every medium an operator reads.
 
 ## Next Steps
 
-1. Delete the `job.run-next` command surface. Its catalog entry, its handler
-   entry and one test pin are a clean cut, but sixteen other sites advertise
-   `remedy job run-next` as a next action and both approval-gate tests in
-   `tests/cli/test_plan_approval.py` shell out to it, so the advisory layer
-   and those two tests move in the same commit.
-2. Delete `job.run`. It is the catalog's ONLY `is_expensive` command and three
-   tests pin that, so F114's cost preview needs a carrier before it goes.
-3. Rule and delete the classic `_cmd_job_resume`, and with it
-   `agent_loop.run_agent_loop`, which is the last production caller of
-   `_cmd_run_next_task_local`.
-4. The resolver collapse, which DECISION F260 D5 puts in the SAME commit range
-   as the classic store deletion — 199 files by
-   `.agent/f272_t004_deletion_inventory.md`, so many rounds.
-5. T005, the reachability test and the cluster deletion, which is never split.
+1. The classic store deletion, which now leads T004 rather than following it.
+   Measured at `5f4f0405`: every next-action rail advertising `remedy job
+   run-next` — in `cockpit.py`, `timeline.py`, `trust_report.py`,
+   `dashboard.py`, `brain_detail.py`, `agent_loop.py` and `autonomy_loop.py` —
+   sits in a function typed `job: Job`, the CLASSIC record. None takes a
+   `JobPlan`, so none can point at `remedy do job-run`, whose id is a
+   16-character JobPlan id. The advertisements therefore cannot move before the
+   classic record does, and DECISION F272 D13 forbids deleting a command ahead
+   of its advertisements.
+2. `job.run-next` and `job.run` die inside that same commit range, with their
+   rails. `job.run` is the catalog's only `is_expensive` command and three
+   tests pin that, so F114's cost preview needs a carrier named before it goes.
+3. `_cmd_job_resume` and `agent_loop.run_agent_loop`, the last production
+   caller of `_cmd_run_next_task_local`, die with them per DECISION F272 D13.
+4. T005, the reachability test and the cluster deletion, which is never split.
 
 ## Risks
 
-- A half-performed deletion is the one state the feature's Orchestrator brief
-  says this work must not leave behind, so every deletion round ends with the
-  full suite green in the PRIMARY checkout.
+- The store deletion is 199 files by `.agent/f272_t004_deletion_inventory.md`,
+  72 of them production, so it is many rounds and no single commit holds it.
+- A half-performed deletion is the one state the Orchestrator brief says this
+  work must not leave behind, so every deletion round ends with the full suite
+  green in the PRIMARY checkout.
 - F272's soft limit is 12 sessions and 40 rounds under amend0906. At session 10
-  and round 20 the feature is inside it and no scope report is owed.
+  and round 21 the feature is inside it and no scope report is owed.
