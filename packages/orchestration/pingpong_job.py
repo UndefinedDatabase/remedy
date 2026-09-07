@@ -302,7 +302,7 @@ class JobPlan:
     repo_path: str = ""
     job_workspace_path: str = ""
     job_title: str = ""
-    status: str = JOB_PLANNED
+    state: str = JOB_PLANNED
     tasks: list[TaskEntry] = field(default_factory=list)
     # F272 T001, DECISION F260 D1: a Job has MANY runs. The ordered ids of
     # the runs this job produced, oldest first and each exactly once. F260
@@ -664,7 +664,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "repo_path": job.repo_path,
         "job_workspace_path": job.job_workspace_path,
         "job_title": job.job_title,
-        "status": job.status,
+        "status": job.state,
         "created_at": job.created_at,
         "finished_at": job.finished_at,
         "error": job.error,
@@ -786,7 +786,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         repo_path=data.get("repo_path", ""),
         job_workspace_path=data.get("job_workspace_path", ""),
         job_title=data.get("job_title", ""),
-        status=data.get("status", JOB_PLANNED),
+        state=data.get("status", JOB_PLANNED),
         created_at=data.get("created_at", ""),
         finished_at=data.get("finished_at", ""),
         error=data.get("error", ""),
@@ -960,7 +960,7 @@ def parse_job_file(text: str, repo_path: str = ".") -> JobPlan:
             job_file_sha256=sha256,
             repo_path=str(Path(repo_path).resolve()),
             job_title=job_title or "(untitled)",
-            status=JOB_BLOCKED,
+            state=JOB_BLOCKED,
             error="no_tasks_found: job file has no ## Task N headings",
         )
         _persist_job(job)
@@ -1011,7 +1011,7 @@ def plan_job_from_file(job_file_path: str, repo_path: str = ".") -> JobPlan:
     if not path.exists():
         job = JobPlan(
             repo_path=str(Path(repo_path).resolve()),
-            status=JOB_BLOCKED,
+            state=JOB_BLOCKED,
             error=f"job_file_not_found: {job_file_path}",
         )
         _persist_job(job)
@@ -1247,7 +1247,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
 
     # --- Completion gate: the root hand-off must be exactly the reviewed work ---
     coverage_error = ""
-    if job.status == JOB_COMPLETED:
+    if job.state == JOB_COMPLETED:
         try:
             coverage_error = _check_handoff_coverage(job, handle)
         except Exception as exc:
@@ -1255,7 +1255,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
         if coverage_error:
             # Block BEFORE the worktree may be removed and before any root hand-off
             # is presented as authoritative.
-            job.status = JOB_BLOCKED
+            job.state = JOB_BLOCKED
             job.error = coverage_error
             job.finished_at = ""
             job.result_diff_path = ""
@@ -1281,7 +1281,7 @@ def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
     except Exception as exc:
         job.result_diff_error = f"{type(exc).__name__}: {exc}"
 
-    if job.status == JOB_COMPLETED and not job.result_diff_error:
+    if job.state == JOB_COMPLETED and not job.result_diff_error:
         try:
             res = W.remove(handle, keep_branch=True)      # never a merge
             job.worktree_cleanup_status = res["cleanup_status"]
@@ -1903,14 +1903,14 @@ def run_job(
     if job is None:
         return JobPlan(
             job_id=job_id,
-            status=JOB_BLOCKED,
+            state=JOB_BLOCKED,
             error=f"job_not_found: {job_id}",
         )
 
     # F018 Scope 6: a stopped job with a pending operator stop signal must not silently
     # resume.  Check HERE — before config resolution, budget setup, or any timestamp —
     # so the guard lives in the run_job boundary, not only in the CLI.
-    if job.status == JOB_STOPPED:
+    if job.state == JOB_STOPPED:
         from packages.orchestration.safe_points import (
             acknowledge_stop as _ack_guard,
         )
@@ -1935,7 +1935,7 @@ def run_job(
                 _persist_job(job)
             return job
 
-    if budgets is not None and job.status == JOB_STOPPED:
+    if budgets is not None and job.state == JOB_STOPPED:
         job.error = (
             "stopped_budget_override_rejected: a stopped job's budget cannot be "
             "replaced via run_job; use the Decision workflow (extend/abandon)")
@@ -2093,13 +2093,13 @@ def run_job(
         try:
             _fra_parsed = datetime.fromisoformat(_fra_raw)
         except (ValueError, TypeError) as _fra_exc:
-            job.status = JOB_BLOCKED
+            job.state = JOB_BLOCKED
             job.error = (
                 f"corrupt_first_running_at: cannot parse {_fra_raw!r}: {_fra_exc}")
             _persist_job(job)
             return job
         if _fra_parsed.tzinfo is None:
-            job.status = JOB_BLOCKED
+            job.state = JOB_BLOCKED
             job.error = (
                 f"corrupt_first_running_at: timezone-naive value {_fra_raw!r}")
             _persist_job(job)
@@ -2114,7 +2114,7 @@ def run_job(
         try:
             _job_budgets = _JobBudgets.model_validate(job.budgets)
         except Exception as _budget_exc:
-            job.status = JOB_BLOCKED
+            job.state = JOB_BLOCKED
             job.error = f"corrupt_budget_state: {_budget_exc}"
             _write_job_postmortem_record(job, _budget_exc)
             _persist_job(job)
@@ -2366,7 +2366,7 @@ def run_job(
         # F010: the job died before ANY task could own the failure. A worktree lock is not
         # a pending task's fault, so it gets a JOB-scope post-mortem — with the typed
         # exception reaching the classifier intact, not stringified into anonymity.
-        job.status = JOB_BLOCKED
+        job.state = JOB_BLOCKED
         job.error = f"workspace_creation_failed: {exc}"
         _write_job_postmortem_record(job, exc)
         _persist_job(job)
@@ -2407,13 +2407,13 @@ def run_job(
         # discovered HERE, not later at terminal manifest writing.
         _snap_block = _snapshot_block_reason(job, _snap_wrapper, phase=_PHASE_EPISODE_START)
         if _snap_block:
-            job.status = JOB_BLOCKED
+            job.state = JOB_BLOCKED
             job.input_snapshot_error = _snap_block
             job.error = f"episode_start_snapshot_failed: {_snap_block}"
             _persist_job(job)
             return job
 
-        job.status = JOB_RUNNING
+        job.state = JOB_RUNNING
         _persist_job(job)
 
         tasks_run = 0
@@ -2594,7 +2594,7 @@ def run_job(
             except Exception as exc:
                 task.status = TASK_FAILED
                 task.error = f"pingpong_exception: {exc}"
-                job.status = JOB_BLOCKED
+                job.state = JOB_BLOCKED
                 job.error = f"task_{task.task_id}_failed: {exc}"
                 _persist_job(job)
                 return job
@@ -2718,7 +2718,7 @@ def run_job(
                     except StopFinalizationError:
                         return job          # no further task is dispatched
                 else:
-                    job.status = JOB_BLOCKED
+                    job.state = JOB_BLOCKED
                     job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
                     _persist_job(job)
                     return job
@@ -2731,7 +2731,7 @@ def run_job(
         has_pending = any(t.status == TASK_PENDING for t in job.tasks)
 
         if all_done:
-            job.status = JOB_COMPLETED
+            job.state = JOB_COMPLETED
             job.finished_at = datetime.now(timezone.utc).isoformat()
 
             # Final job review — job-level review after all per-task reviewers pass
@@ -2781,13 +2781,13 @@ def run_job(
                 pass  # Best-effort; do not block job completion
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
-            job.status = JOB_PAUSED
+            job.state = JOB_PAUSED
 
         _persist_budget_actuals()
 
         # F012: a completed job records its episode's manifest, after every call input is
         # known. A paused/partial job is not a finished run and gets none yet.
-        if job.status == JOB_COMPLETED:
+        if job.state == JOB_COMPLETED:
             _write_run_manifest_record(job, status="completed",
                                        episode_id=job.active_episode_id)
 
@@ -2819,7 +2819,7 @@ def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
     if job is None:
         raise ValueError(f"job_not_found: {job_id}")
 
-    if job.status == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
+    if job.state == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
         return job                      # nothing to resume; do not recreate anything
 
     if job.isolation_mode == "worktree":
@@ -2840,7 +2840,7 @@ def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
 
 def _block_job(job: JobPlan, failed_idx: int, error: str) -> None:
     """Block job and skip remaining pending tasks."""
-    job.status = JOB_BLOCKED
+    job.state = JOB_BLOCKED
     job.error = error
     for remaining in job.tasks[failed_idx + 1:]:
         if remaining.status == TASK_PENDING:
@@ -2965,7 +2965,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     return {
         "job_id": job.job_id,
         "job_title": job.job_title,
-        "status": job.status,
+        "status": job.state,
         "repo_path": job.repo_path,
         "job_workspace_path": job.job_workspace_path,
         "created_at": job.created_at,
@@ -3023,7 +3023,7 @@ def format_job_report_text(job: JobPlan) -> str:
     """Format a human-readable job report."""
     lines = [
         f"Job {job.job_id}: {job.job_title}",
-        f"Status: {job.status}",
+        f"Status: {job.state}",
         f"Repo: {job.repo_path}",
         "",
         "Tasks:",
@@ -3068,7 +3068,7 @@ def format_job_report_text(job: JobPlan) -> str:
         )
 
     pending_count = sum(1 for t in job.tasks if t.status == TASK_PENDING)
-    if job.status == JOB_PAUSED and pending_count > 0:
+    if job.state == JOB_PAUSED and pending_count > 0:
         lines.append(f"Paused: {pending_count} tasks pending")
 
     ec = job.execution_config
@@ -3085,7 +3085,7 @@ def format_job_report_text(job: JobPlan) -> str:
                 f"Write mode: {ec.claude_cli_write_mode}"
                 f" (source: {ec.claude_cli_write_mode_source})"
             )
-        if job.status == JOB_PAUSED:
+        if job.state == JOB_PAUSED:
             lines.append("Continuation config: persisted from previous run")
 
     if any(t.status == TASK_APPLIED for t in job.tasks):
@@ -3109,13 +3109,13 @@ def _suggest_next_command(job: JobPlan) -> str:
     is restored from persistence. The report text shows the config that will
     be used.
     """
-    if job.status == JOB_PLANNED:
+    if job.state == JOB_PLANNED:
         return f"remedy do job-run {job.job_id}"
-    if job.status == JOB_PAUSED:
+    if job.state == JOB_PAUSED:
         return f"remedy do job-run {job.job_id}"
-    if job.status == JOB_COMPLETED:
+    if job.state == JOB_COMPLETED:
         return f"remedy do job-promote {job.job_id} --repo . --dry-run"
-    if job.status == JOB_BLOCKED:
+    if job.state == JOB_BLOCKED:
         return f"remedy do job-report {job.job_id}"
     pending = [t for t in job.tasks if t.status == TASK_PENDING]
     if pending:
@@ -3398,7 +3398,7 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
         raise StopFinalizationError(job.run_manifest_error)
 
     # --- 5. the durable STOPPED checkpoint --------------------------------------------
-    job.status = JOB_STOPPED
+    job.state = JOB_STOPPED
     job.error = ""
     _persist_job(job)                 # if THIS throws, the request is still pending: good
 

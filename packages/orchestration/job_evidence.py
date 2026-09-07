@@ -915,7 +915,7 @@ def _build_job_manifest(job: Any) -> dict[str, Any]:
         "job_id": job.job_id,
         "job_title": job.job_title,
         "job_file_sha256": job.job_file_sha256,
-        "status": job.status,
+        "status": job.state,
         "repo_identity": _sanitize_path(job.repo_path),
         "job_workspace_path": _sanitize_path(job.job_workspace_path) if job.job_workspace_path else "",
         "created_at": job.created_at,
@@ -936,7 +936,7 @@ def _build_job_summary_md(job: Any) -> str:
         f"# Remedy Job Evidence — {job.job_id}",
         "",
         f"**Title:** {job.job_title}",
-        f"**Status:** {job.status}",
+        f"**Status:** {job.state}",
         f"**Repo:** {_sanitize_path(job.repo_path)}",
         f"**Created:** {job.created_at}",
     ]
@@ -964,7 +964,7 @@ def _build_job_summary_md(job: Any) -> str:
         repair_str = f", repair: {task.repair_rounds_used}/{task.repair_rounds_allowed}" if task.repair_rounds_used else ""
         lines.append(f"2. {task.task_id}: {task.title} — {status_str}{run_str}{verdict_str}{repair_str}")
     if job.finished_at:
-        lines.append(f"3. Job {job.status} at {job.finished_at}")
+        lines.append(f"3. Job {job.state} at {job.finished_at}")
     lines.append("")
 
     tg = job.target_guard
@@ -1026,7 +1026,7 @@ def _build_job_report_safe(job: Any) -> dict[str, Any]:
     return {
         "job_id": job.job_id,
         "job_title": job.job_title,
-        "status": job.status,
+        "status": job.state,
         "repo_identity": _sanitize_path(job.repo_path),
         "created_at": job.created_at,
         "finished_at": job.finished_at,
@@ -1077,7 +1077,7 @@ def _build_job_timeline(job: Any) -> dict[str, Any]:
     events.append({
         "event": "job_final",
         "timestamp": job.finished_at or "unavailable",
-        "detail": f"Job {job.status}",
+        "detail": f"Job {job.state}",
     })
 
     return {
@@ -1097,7 +1097,7 @@ def _check_sequencing(job: Any) -> bool:
             return True
         elif task.status == "applied_to_job_workspace" and applied_seen:
             pass
-    if job.status == "completed":
+    if job.state == "completed":
         return all(
             t.status in ("applied_to_job_workspace", "skipped")
             for t in job.tasks
@@ -2181,7 +2181,7 @@ def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[s
                                 f"{idx_latest!r}")
 
     # A terminal job's active episode must be one of the recorded episodes.
-    if getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED):
+    if getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED):
         active = str(getattr(job, "active_episode_id", "") or "")
         if active and active not in idx_eps:
             problems.append(f"terminal job's active episode {active!r} is not in the index")
@@ -2195,7 +2195,7 @@ def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str
     from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
 
     problems: list[str] = []
-    status = str(getattr(job, "status", "") or "")
+    status = str(getattr(job, "state", "") or "")
     if status not in (JOB_COMPLETED, JOB_STOPPED):
         return problems
 
@@ -2283,7 +2283,7 @@ def _write_run_manifest_export(
         validate_index_and_tree,
     )
 
-    terminal = getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED)
+    terminal = getattr(job, "state", "") in (JOB_COMPLETED, JOB_STOPPED)
     marked = int(getattr(job, "run_manifest_required_v", 0) or 0) > 0
     mandatory = terminal and marked
 
@@ -2308,7 +2308,7 @@ def _write_run_manifest_export(
         if mandatory:
             failures.append({
                 "scope": "job", "job_id": job.job_id,
-                "error": f"a {job.status} F012-marked job has no run manifest"})
+                "error": f"a {job.state} F012-marked job has no run manifest"})
             for prob in tree_problems:
                 failures.append({"scope": "job", "job_id": job.job_id,
                                  "error": safe_text(f"manifest tree: {prob}")[:500]})

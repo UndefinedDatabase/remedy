@@ -210,7 +210,7 @@ class TestGenuineZeroCallReferencesStayValid:
         request_stop(job.job_id, "operator requested stop", "test")
         done = run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
                        repair_rounds=0)
-        assert done.status == JOB_STOPPED
+        assert done.state == JOB_STOPPED
 
         ref = load_latest_manifest_verified(job_evidence_dir(job.job_id), job_id=job.job_id)
         assert ref.calls == ()

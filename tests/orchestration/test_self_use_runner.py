@@ -96,7 +96,7 @@ class TestRunNextSelfUseItem:
         )
         assert entry.id == "SU-042"
         assert job_file_path.exists()
-        assert result.status == JOB_COMPLETED
+        assert result.state == JOB_COMPLETED
         assert result.isolation_mode == "worktree"
 
     def test_it_attaches_the_small_budget(self, tmp_path, isolate_data_root, demo_repo):
@@ -278,4 +278,4 @@ class TestGenerateThenRunEndToEnd:
         )
         assert entry.id == generated.id
         assert job_file_path.exists()
-        assert result.status == JOB_COMPLETED
+        assert result.state == JOB_COMPLETED

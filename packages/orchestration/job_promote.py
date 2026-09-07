@@ -688,7 +688,7 @@ def promote_job(
     if job is None:
         return _block(result, f"job_not_found: {job_id}")
 
-    result.job_status = job.status
+    result.job_status = job.state
     result.job_title = job.job_title
     result.job_workspace_path = job.job_workspace_path or ""
 
@@ -717,8 +717,8 @@ def promote_job(
         ))
 
     # --- Readiness gates ---
-    if job.status != JOB_COMPLETED:
-        return _block(result, f"job_not_completed: status={job.status}")
+    if job.state != JOB_COMPLETED:
+        return _block(result, f"job_not_completed: status={job.state}")
 
     for t in job.tasks:
         if t.status != TASK_APPLIED:

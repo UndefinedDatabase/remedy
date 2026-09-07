@@ -741,7 +741,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
             budgets={"max_cost_usd": 1.00},
             seeded_cost=0.95,
         )
-        assert done.status == JOB_STOPPED
+        assert done.state == JOB_STOPPED
         assert done.stop_reason == "predicted_budget_exhausted:max_cost_usd"
         # R-0225: the F012 manifest write and the stop recording both have to
         # SUCCEED for the checkpoint to be reached. An empty error on each is
@@ -763,7 +763,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
             budgets={"max_cost_usd": 1.00},
             seeded_cost=5.00,
         )
-        assert done.status == JOB_STOPPED
+        assert done.state == JOB_STOPPED
         assert done.stop_reason == "budget_exhausted:max_cost_usd"
         assert done.run_manifest_error == ""
         assert done.stop_error == ""
@@ -782,7 +782,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
             monkeypatch, demo_repo,
             budgets={"max_total_tokens": 1_000_000},
         )
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert done.budget_prediction is None
         assert builder.build_calls >= 1
 
@@ -798,7 +798,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
             budgets={"max_cost_usd": 1.00},
             seeded_cost=0.95,
         )
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert done.budget_prediction is None
         assert builder.build_calls >= 1
 
@@ -906,7 +906,7 @@ class TestSelectNextPredictableTaskAgreesWithTheLiveSafePoint:
             repair_rounds=0,
             budgets={"max_cost_usd": 1000.0},
         )
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
 
         # Two dispatches really happened, and the summaries really grew.
         assert len(observed) == 2, observed

@@ -121,7 +121,7 @@ class TestCheckpointRefsSurviveGc:
         """Task 1 accepted prior.txt; task 2 started, wrote partial.txt, died."""
         job, holder = _run(repo, monkeypatch, [{"prior.txt": "prior\n"}],
                            text=TWO_TASKS, max_tasks=1)
-        assert job.status == "paused"
+        assert job.state == "paused"
         assert job.tasks[0].status == PJ.TASK_APPLIED
 
         handle = W.recover(job_worktree_id(job.job_id), repo)
@@ -133,7 +133,7 @@ class TestCheckpointRefsSurviveGc:
             job_worktree_id(job.job_id), "start", task2.task_id)
         W.set_checkpoint_ref(repo, task2.task_start_tree_ref, task2.task_start_tree)
         task2.task_attempt_state = "active"
-        job.status = PJ.JOB_RUNNING
+        job.state = PJ.JOB_RUNNING
         PJ._persist_job(job)
 
         (Path(handle.path) / "partial.txt").write_text("partial\n")
@@ -165,7 +165,7 @@ class TestCheckpointRefsSurviveGc:
                                reviewer_provider=prov, builder_name="fake",
                                reviewer_name="fake", max_rounds=1)
 
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         t2 = done.tasks[1]
         assert "partial.txt" in seen["reviewer_prompt"]
         assert "finished.txt" in seen["reviewer_prompt"]
@@ -186,7 +186,7 @@ class TestCheckpointRefsSurviveGc:
                                reviewer_provider=prov, builder_name="fake",
                                reviewer_name="fake", max_rounds=1)
 
-        assert done.status == JOB_BLOCKED
+        assert done.state == JOB_BLOCKED
         assert "checkpoint_ref_missing" in done.error
         # The work is kept, the lock is free, no hidden fresh baseline was taken.
         assert (Path(handle.path) / "partial.txt").read_text() == "partial\n"
@@ -207,12 +207,12 @@ class TestCheckpointRefsSurviveGc:
         done = resume_job_plan(job.job_id, builder_provider=prov,
                                reviewer_provider=prov, builder_name="fake",
                                reviewer_name="fake", max_rounds=1)
-        assert done.status == JOB_BLOCKED
+        assert done.state == JOB_BLOCKED
         assert "checkpoint_ref_mismatch" in done.error
 
     def test_a_completed_job_drops_its_checkpoint_refs(self, repo, monkeypatch):
         job, _ = _run(repo, monkeypatch, [{"one.txt": "hello\n"}])
-        assert job.status == JOB_COMPLETED and job.worktree_cleanup_status == "clean"
+        assert job.state == JOB_COMPLETED and job.worktree_cleanup_status == "clean"
 
         assert W.resolve_checkpoint_ref(repo, job.job_initial_tree_ref) == ""
         for t in job.tasks:
@@ -271,7 +271,7 @@ class TestHandoffCoverage:
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
 
-        assert done.status == JOB_BLOCKED
+        assert done.state == JOB_BLOCKED
         assert "job_handoff_coverage_failed" in done.error
         assert done.handoff_coverage_verdict == "FAIL"
         assert done.unexpected_root_files == ["rogue.txt"]
@@ -411,7 +411,7 @@ class TestFileModePromotion:
         prov.target_mode = 0o755
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         proof = done.tasks[0].apply_manifest.applied_file_proofs[0]
         assert proof.baseline_mode == "100644" and proof.final_mode == "100755"
 

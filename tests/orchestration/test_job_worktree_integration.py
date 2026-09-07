@@ -121,7 +121,7 @@ class TestGitJobUsesAWorktree:
         seen: dict = {}
         job = _run_two_task_job(repo, monkeypatch, seen)
 
-        assert job.status == JOB_COMPLETED
+        assert job.state == JOB_COMPLETED
         assert job.isolation_mode == "worktree"       # a copy here is a FAILURE
         assert job.worktree_branch == f"remedy/{job_worktree_id(job.job_id)}"
         assert job.worktree_path == f".remedy-wt/{job_worktree_id(job.job_id)}"
@@ -137,7 +137,7 @@ class TestGitJobUsesAWorktree:
         monkeypatch.setattr(PJ, "_create_job_workspace_copy", forbidden)
         seen: dict = {}
         job = _run_two_task_job(repo, monkeypatch, seen)
-        assert job.status == JOB_COMPLETED
+        assert job.state == JOB_COMPLETED
         assert "job_workspaces" not in job.job_workspace_path
 
     def test_exactly_one_worktree_is_created_for_the_whole_job(self, repo, monkeypatch):
@@ -158,7 +158,7 @@ class TestSequentialTasksShareTheWorkspace:
         seen: dict = {}
         job = _run_two_task_job(repo, monkeypatch, seen)
         assert seen["task2_read"] == "from task one\n"
-        assert job.status == JOB_COMPLETED
+        assert job.state == JOB_COMPLETED
         assert [t.status for t in job.tasks] == [PJ.TASK_APPLIED, PJ.TASK_APPLIED]
 
     def test_each_task_has_an_exact_task_local_diff(self, repo, monkeypatch):
@@ -229,7 +229,7 @@ class TestJobWorkspaceLifecycle:
         done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
 
-        assert done.status == JOB_BLOCKED
+        assert done.state == JOB_BLOCKED
         assert done.worktree_cleanup_status == "retained"     # never "clean"
         assert Path(holder["path"]).is_dir()                  # work is kept
         assert (Path(holder["path"]) / "one.txt").read_text() == "from task one\n"
@@ -258,7 +258,7 @@ class TestJobWorkspaceLifecycle:
         paused = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov,
                          builder_name="fake", reviewer_name="fake", max_rounds=1,
                          max_tasks=1)
-        assert paused.status == "paused"
+        assert paused.state == "paused"
         assert paused.worktree_cleanup_status == "retained"
         assert Path(holder["path"]).is_dir()
 
@@ -267,7 +267,7 @@ class TestJobWorkspaceLifecycle:
         prov2.calls = 1                        # continue as the second task
         done = run_job(job.job_id, builder_provider=prov2, reviewer_provider=prov2,
                        builder_name="fake", reviewer_name="fake", max_rounds=1)
-        assert done.status == JOB_COMPLETED
+        assert done.state == JOB_COMPLETED
         assert seen["task2_read"] == "from task one\n"
         assert done.worktree_branch == paused.worktree_branch
         assert done.worktree_cleanup_status == "clean"

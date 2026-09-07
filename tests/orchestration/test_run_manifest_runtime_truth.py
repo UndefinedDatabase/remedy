@@ -91,7 +91,7 @@ def test_persisted_invocation_controls_are_executed_and_recorded(
     # No explicit invocation controls on the call → everything resolves from the persisted config.
     done = run_job(job.job_id, builder_provider=_prov(), reviewer_provider=_prov(),
                    repair_rounds=0)
-    assert done.status == JOB_COMPLETED
+    assert done.state == JOB_COMPLETED
 
     # --- the runtime dispatch received exactly the persisted values (every task) ---
     assert spy_run_pingpong, "run_pingpong was never dispatched"

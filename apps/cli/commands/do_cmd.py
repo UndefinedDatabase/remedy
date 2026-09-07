@@ -1349,7 +1349,7 @@ def _cmd_do_job_plan(
         print(json.dumps({
             "job_id": job.job_id,
             "job_title": job.job_title,
-            "status": job.status,
+            "status": job.state,
             "budgets": job.budgets,
             "tasks": [
                 {"task_id": t.task_id, "title": t.title, "status": t.status}
@@ -1615,7 +1615,7 @@ def _cmd_do_job_resume(
     if json_output:
         print(_json.dumps(report, indent=2))
         return
-    print(f"Job {job.job_id}: {job.status}")
+    print(f"Job {job.job_id}: {job.state}")
     print(f"  Isolation:  {job.isolation_mode}")
     if job.isolation_mode == "worktree":
         print(f"  Branch:     {job.worktree_branch}")
@@ -1889,7 +1889,7 @@ def _build_final_audit(
     evidence_bundle_available = ev_path.joinpath("manifest.json").exists()
 
     promote_ready = promo.status == "dry_run"
-    all_passed = job.status == "completed" and blocked == 0 and pending == 0
+    all_passed = job.state == "completed" and blocked == 0 and pending == 0
 
     agent_run_trace_summary_available = ev_path.joinpath("agent_run_trace_summary.json").exists()
 
@@ -1936,7 +1936,7 @@ def _build_final_audit(
     elif all_passed and promote_ready and missing_artifacts:
         status = "NEEDS_REVIEW"
         action = f"Promote-ready but observability artifacts missing: {', '.join(missing_artifacts)}."
-    elif blocked > 0 or job.status == "blocked":
+    elif blocked > 0 or job.state == "blocked":
         status = "BLOCKED"
         action = "Review blocked tasks, fix issues, and re-run the job."
     else:
@@ -1955,7 +1955,7 @@ def _build_final_audit(
 
     result = {
         "status": status,
-        "job_status": job.status,
+        "job_status": job.state,
         "task_count": len(job.tasks),
         "passed_task_count": passed,
         "blocked_task_count": blocked,
@@ -2138,7 +2138,7 @@ def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> 
 
         job = load_job_plan(job_id)
         repo = getattr(job, "repo_path", "") or "."
-        status = getattr(job, "status", "") or ""
+        status = getattr(job, "state", "") or ""
         changed: list[str] = []
         try:
             from packages.orchestration.job_evidence import _read_changed_files_for_index
@@ -2428,7 +2428,7 @@ def _build_agent_run_trace(
     events.append(create_trace_event(
         "job_planned", job_id=job_id,
         safe_summary=f"{len(job.tasks)} tasks planned",
-        status=job.status,
+        status=job.state,
         trace_source=_SRC,
     ))
 
@@ -2882,7 +2882,7 @@ def _cmd_do_job_flow(
 
     print(f"Job flow: {job_file}")
     print(f"Job: {job_id} ({report_job.job_title}) — {len(report_job.tasks)} task(s)")
-    print(f"Run status: {report_job.status}")
+    print(f"Run status: {report_job.state}")
     print("This flow stops at a promote dry-run. The target repo is not changed.")
     print()
     print(format_job_report_text(report_job))

@@ -257,14 +257,14 @@ class TestReadOnly:
 
         from packages.orchestration.pingpong_job import load_job_plan
         before = load_job_plan(job.job_id)
-        before_status = before.status
+        before_status = before.state
         before_tasks = [(t.task_id, t.status) for t in before.tasks]
 
         from packages.orchestration.job_evidence import export_job_evidence
         export_job_evidence(job.job_id, str(tmp_path / "evidence"))
 
         after = load_job_plan(job.job_id)
-        assert after.status == before_status
+        assert after.state == before_status
         assert [(t.task_id, t.status) for t in after.tasks] == before_tasks
 
 

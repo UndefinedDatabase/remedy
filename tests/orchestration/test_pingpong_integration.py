@@ -142,7 +142,7 @@ class TestRunJobFinalReview:
             reviewer_provider=_pass_provider(),
             repair_rounds=0,
         )
-        assert completed_job.status == JOB_COMPLETED
+        assert completed_job.state == JOB_COMPLETED
 
         fjr_path = job_dir(completed_job.job_id) / "final_job_review.json"
         assert fjr_path.exists(), "final_job_review.json not persisted"
@@ -236,7 +236,7 @@ class TestFinalAuditWiring:
         @dataclass
         class FakeJob:
             tasks: list = field(default_factory=lambda: [FakeTask()])
-            status: str = "completed"
+            state: str = "completed"
 
         @dataclass
         class FakePromo:

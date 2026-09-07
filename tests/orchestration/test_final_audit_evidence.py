@@ -16,7 +16,7 @@ class _FakeTask:
 
 class _FakeJob:
     def __init__(self, status: str, tasks: list):
-        self.status = status
+        self.state = status
         self.tasks = tasks
 
 
@@ -249,7 +249,7 @@ class TestCockpitBridgeAdapter:
         class FakePlan:
             job_id = "abc123"
             job_title = "Test Job"
-            status = "completed"
+            state = "completed"
             tasks = [FakeTask()]
 
         adapter = _JobPlanAdapter(FakePlan())
@@ -273,7 +273,7 @@ class TestCockpitBridgeAdapter:
         class FakePlan:
             job_id = "x"
             job_title = "J"
-            status = "blocked"
+            state = "blocked"
             tasks = [FakeTask()]
 
         adapter = _JobPlanAdapter(FakePlan())

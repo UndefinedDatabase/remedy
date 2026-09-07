@@ -82,13 +82,13 @@ def test_failed_snapshot_capture_blocks_before_any_provider_call(
     done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov, repair_rounds=0)
 
     assert prov.build_calls == 0 and prov.review_calls == 0   # zero provider work
-    assert done.status == JOB_BLOCKED                         # not running, not completed
-    assert done.status != "completed"
+    assert done.state == JOB_BLOCKED                         # not running, not completed
+    assert done.state != "completed"
     assert done.input_snapshot_error                          # durable reason recorded
     # No terminal manifest was written from a re-probe.
     reloaded = load_job_plan(job.job_id)
     assert reloaded.input_snapshot_error
-    assert reloaded.status == JOB_BLOCKED
+    assert reloaded.state == JOB_BLOCKED
 
 
 def test_failed_workspace_tree_capture_is_a_snapshot_failure(data_root, repo, monkeypatch):
@@ -116,7 +116,7 @@ def test_failed_workspace_tree_capture_is_a_snapshot_failure(data_root, repo, mo
     done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov, repair_rounds=0)
 
     assert prov.build_calls == 0 and prov.review_calls == 0
-    assert done.status == JOB_BLOCKED
+    assert done.state == JOB_BLOCKED
     assert "workspace_tree" in done.input_snapshot_error
     # the empty tree was NOT accepted as a valid snapshot
     reloaded = load_job_plan(job.job_id)
@@ -140,7 +140,7 @@ def test_stopped_manifest_snapshot_and_calls_share_one_episode(data_root, repo):
     prov = _StopDuringBuild()
     done = run_job(job.job_id, builder_provider=prov, reviewer_provider=_CountingProvider(),
                    repair_rounds=0)
-    assert done.status == JOB_STOPPED
+    assert done.state == JOB_STOPPED
 
     ref = load_latest_manifest_verified(job_evidence_dir(job.job_id), job_id=job.job_id)
     assert ref.status == "stopped"
@@ -161,7 +161,7 @@ def test_pre_work_stop_uses_one_coherent_episode(data_root, repo):
     prov = _CountingProvider()
     done = run_job(job.job_id, builder_provider=prov, reviewer_provider=prov, repair_rounds=0)
 
-    assert done.status == JOB_STOPPED
+    assert done.state == JOB_STOPPED
     assert prov.build_calls == 0                     # no work began
     ref = load_latest_manifest_verified(job_evidence_dir(job.job_id), job_id=job.job_id)
     assert ref.episode_snapshot.episode_id == ref.episode_id == done.active_episode_id

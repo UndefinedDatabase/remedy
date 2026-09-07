@@ -216,7 +216,7 @@ class TestJobPlanIndexCrosscheck:
     def _job(self, episodes, status="completed", active=""):
         class _J:
             run_manifest_episodes = episodes
-        _J.status = status
+        _J.state = status
         _J.active_episode_id = active
         return _J()
 

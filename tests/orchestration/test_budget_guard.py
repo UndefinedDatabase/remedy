@@ -778,7 +778,7 @@ class TestLiveSafePointReadsTheLedgerCost:
 
         fake_job = pj.JobPlan(
             job_id="job-ledger-cost",
-            status="planned",
+            state="planned",
             budgets=budgets,
             tasks=[],
         )

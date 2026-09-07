@@ -836,7 +836,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"max_provider_calls": 0})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_negative_limit_blocks(self):
@@ -844,7 +844,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"max_provider_calls": -5})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_boolean_limit_blocks(self):
@@ -852,7 +852,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"max_provider_calls": True})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_string_limit_blocks(self):
@@ -860,7 +860,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"max_provider_calls": "10"})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_float_limit_blocks(self):
@@ -868,7 +868,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"max_provider_calls": 3.5})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_unknown_field_blocks(self):
@@ -876,7 +876,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"max_provider_calls": 5, "unknown_key": 42})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_naive_deadline_blocks(self):
@@ -884,7 +884,7 @@ class TestCorruptPersistedBudgetsBlock:
         job = JobPlan(budgets={"deadline": "2026-12-31T00:00:00"})
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == "blocked"
+        assert result.state == "blocked"
         assert "corrupt_budget_state" in result.error
 
     def test_none_budgets_ok(self):
@@ -1018,7 +1018,7 @@ class TestRealJobPlanDecision:
         from packages.orchestration.pingpong_job import JOB_STOPPED, JobPlan
 
         job = JobPlan(
-            status=JOB_STOPPED,
+            state=JOB_STOPPED,
             stop_reason="budget_exhausted:max_provider_calls",
             stop_source="budget",
             stop_request_id="budget_abc123",
@@ -1061,7 +1061,7 @@ class TestRealJobPlanDecision:
         from packages.orchestration.pingpong_job import JOB_STOPPED, JobPlan
 
         job = JobPlan(
-            status=JOB_STOPPED,
+            state=JOB_STOPPED,
             stop_source="budget",
             stop_reason="budget_exhausted:max_provider_calls",
             stop_request_id="budget_xyz",
@@ -1093,13 +1093,13 @@ class TestStoppedJobBudgetOverrideBlocked:
             _persist_job,
         )
 
-        job = JobPlan(status=JOB_STOPPED, stop_source="budget")
+        job = JobPlan(state=JOB_STOPPED, stop_source="budget")
         _persist_job(job)
 
         from packages.orchestration.pingpong_job import load_job_plan
         loaded = load_job_plan(job.job_id)
         assert loaded is not None
-        assert loaded.status == "stopped"
+        assert loaded.state == "stopped"
 
     def test_run_job_rejects_budget_on_stopped(self):
         """Repro 1: direct run_job budget override blocked on stopped job."""
@@ -1110,7 +1110,7 @@ class TestStoppedJobBudgetOverrideBlocked:
             run_job,
         )
 
-        job = JobPlan(status=JOB_STOPPED, stop_source="budget")
+        job = JobPlan(state=JOB_STOPPED, stop_source="budget")
         _persist_job(job)
 
         result = run_job(job.job_id, budgets={"max_provider_calls": 999})
@@ -1125,7 +1125,7 @@ class TestStoppedJobBudgetOverrideBlocked:
             run_job,
         )
 
-        job = JobPlan(status="pending")
+        job = JobPlan(state="pending")
         _persist_job(job)
 
         result = run_job(job.job_id, budgets={"max_provider_calls": 5})
@@ -1472,7 +1472,7 @@ class TestPersistedActualsSchemaVersion:
         })
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status != "blocked" or "schema_version" not in (result.error or "")
+        assert result.state != "blocked" or "schema_version" not in (result.error or "")
 
 
 class TestPersistedActualsMissingSources:
@@ -1522,7 +1522,7 @@ class TestPersistedActualsMissingSources:
         })
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status != "blocked" or "actual_sources" not in (result.error or "")
+        assert result.state != "blocked" or "actual_sources" not in (result.error or "")
 
 
 class TestCorruptFirstRunningAt:
@@ -1531,28 +1531,28 @@ class TestCorruptFirstRunningAt:
     def test_unparseable_value_blocks(self):
         from packages.orchestration.pingpong_job import JOB_BLOCKED, JobPlan, _persist_job, run_job
         job = JobPlan(first_running_at="not-a-date")
-        job.status = "running"
+        job.state = "running"
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert "corrupt_first_running_at" in (result.error or "")
 
     def test_naive_datetime_blocks(self):
         from packages.orchestration.pingpong_job import JOB_BLOCKED, JobPlan, _persist_job, run_job
         job = JobPlan(first_running_at="2026-07-01T12:00:00")
-        job.status = "running"
+        job.state = "running"
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status == JOB_BLOCKED
+        assert result.state == JOB_BLOCKED
         assert "timezone-naive" in (result.error or "")
 
     def test_valid_iso_utc_passes(self):
         from packages.orchestration.pingpong_job import JOB_BLOCKED, JobPlan, _persist_job, run_job
         job = JobPlan(first_running_at="2026-07-01T12:00:00+00:00")
-        job.status = "running"
+        job.state = "running"
         _persist_job(job)
         result = run_job(job.job_id)
-        assert result.status != JOB_BLOCKED or "first_running_at" not in (result.error or "")
+        assert result.state != JOB_BLOCKED or "first_running_at" not in (result.error or "")
 
 
 class TestWallClockSplit:
@@ -1686,7 +1686,7 @@ Acceptance:
             repair_rounds=5,
         )
 
-        assert result.status == "stopped", f"expected stopped, got {result.status}: {result.error}"
+        assert result.state == "stopped", f"expected stopped, got {result.state}: {result.error}"
         actuals = result.budget_actuals
         assert actuals is not None
         assert actuals["provider_call_count"] == 3

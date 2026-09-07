@@ -501,7 +501,7 @@ class TestJobLevelPostmortem:
         PJ._persist_job(job)
 
         done = PJ.run_job(job.job_id)
-        assert done.status == "blocked"
+        assert done.state == "blocked"
         assert done.tasks[0].status == "pending", "no task ever ran"
 
         record = json.loads(PJ.job_postmortem_path(job.job_id).read_text())
@@ -833,7 +833,7 @@ class TestJobPostmortemFailurePersists:
 
         # the process/reload boundary the reviewed build lost the failure across
         reloaded = PJ.load_job_plan(job.job_id)
-        assert reloaded.status == "blocked"
+        assert reloaded.state == "blocked"
         assert "workspace_creation_failed" in reloaded.error, "the PRIMARY failure survives"
         assert "forced fail" in reloaded.postmortem_error, "the recording failure survives"
         assert "read-only" in reloaded.postmortem_error

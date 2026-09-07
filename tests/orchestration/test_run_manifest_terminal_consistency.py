@@ -14,7 +14,7 @@ from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
 
 class _Job:
     def __init__(self, **kw):
-        self.status = kw.get("status", JOB_COMPLETED)
+        self.state = kw.get("status", JOB_COMPLETED)
         self.active_episode_id = kw.get("active", "ep1")
         self.run_manifest_created_at = kw.get("created_at", "2026-07-15T00:00:00+00:00")
         self.run_manifest_path = kw.get("path", "run_manifest.json")

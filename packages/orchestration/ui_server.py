@@ -145,7 +145,7 @@ class _JobPlanAdapter:
             "planned": "active",
             "paused": "blocked",
         }
-        self.state = _State(state_map.get(plan.status, plan.status))
+        self.state = _State(state_map.get(plan.state, plan.state))
         self.tasks = [_JobPlanTaskAdapter(t) for t in plan.tasks]
         self.artifacts = []
         self.metadata = {"source": "job_plan", "job_plan_id": plan.job_id}
