@@ -1,438 +1,354 @@
-# Handback — F272 round 31 — THE CLOSURE ROUND
+# Handback — F274 round 1 — THE ROUND STOPPED UNDER G8 AT THE CONTROL RUN
 
-F272 is CLOSED. `docs/roadmap/STATUS.md` carries the `[x]` line, `README.md` carries the
-matching capability sync in the SAME commit (R-0154), SU-012's `consumed_by` reads `F272`,
-and this file is the final `.agent/` state the closure protocol's step 5 asks for. The pull
-request is created after this commit and is NOT merged by this session.
+F274 is CLAIMED. The branch is cut, both state files are re-pointed, `.agent/live_review.md`
+is re-headed with its findings region byte-identical, F272's round 31 verdict is booked, and
+the ledger line reads `[~]`. C0a, C0b, C1, C2, C3 and C4 landed in the block's order.
+
+**C5 AND C6 WERE NOT PERFORMED.** The block's probe specification orders an UNMUTATED CONTROL
+before any mutated run and states, in its own words: "a control failure OUTSIDE it stops the
+round under G8." The control produced failures outside the block's declared environment class.
+No `Job.id` probe was installed, no site set was measured, and DECISION F274 D1 — whose text
+asserts a measurement recorded in `.agent/f274_id_probe_inventory.md` — was NOT appended,
+because appending a ruling whose premise was never measured would land a false claim in the
+append-only decisions record. The disposable worktree was removed and pruned. The evidence the
+next block needs to re-scope the control is in the Verification section below.
 
 ## Session
 
-SESSION 12 of feature F272 · round 31 · rounds so far 31
-
-SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
-
-The session half of F272's operator-set soft limit (amend0906-triage-throughput rule 2: 12
-SESSIONS and 40 ROUNDS by name) REMAINS REACHED — this is still session 12 of 12. The round
-half is not: this is round 31 of 40. The SPLIT half of the amend0905-throughput
-split-and-close default was executed in round 26 (F274 registered, DECISION F272 D16); this
-round is the LAST step of the CLOSE half — closure algorithm steps 4 and 5.
-
-The scope report the limit obliges is durable on disk as the `## Built State` section of
-`docs/roadmap/features/T2_F272.md` and is not re-derived here. WHAT IS FINISHED: T001, T002
-and T003 complete, plus the `run-loop` half of T004; all six closure preconditions and all
-five closure algorithm steps that belong to this branch. WHAT IS MISSING: nothing on this
-branch — T004's remainder (the atomic classic-to-unified record flip) and T005 (the prototype
-cluster deletion) are F274's by DECISION F272 D16, and F274 is registered directly after F272
-in the ledger by amend0906-split-placement. The only act left anywhere is the MERGE of the
-pull request, which happens at the NEXT feature's start through the Open PR Gate.
+SESSION 1 of feature F274 · round 1 · rounds so far 1
 
 CONTEXT SELF-ASSESSMENT (amend0905-throughput, one sentence): context is comfortable — this
-round read the block, AGENTS.md, the closure protocol, the self-drive protocol, the handback
-template, `README.md` and the previous handoff in full, and handled every large state file
-(`decisions.md` 872 KB, `prose_slips.md` 154 KB, `live_review.md` 493 KB) by measurement
-rather than by reading it.
+round read the block, AGENTS.md, the self-drive protocol and the handback template in full,
+and handled every large state file (`live_review.md` 493 KB, `decisions.md` 872 KB) by
+measurement rather than by reading it.
 
 ## Range
 
-Review of `e388c603`..HEAD.
+Review of `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`..HEAD.
 
-This file is written BEFORE the commit that carries it exists, so C5's own SHA, its own
-numstat row and the PR number cannot appear here — the R-0149 self-reference exception. The
-worker's round report to Window 1 carries all three as measured values.
+This file is written BEFORE the commit that carries it exists, so C7's own SHA and its own
+numstat row cannot appear here — the R-0149 self-reference exception.
 
 ## Commits
 
-### 33c6acb8 f272: save the round 31 step block  (C0a)
+### 75a7bf17 f274: archive the round 1 step block as the authored original  (C0a)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f272-r31.md | +347 / -0 | `shutil.copyfile` of `.remedy-wt/f272-r31-block.md` per constraint 3 |
+| .agent/authored/f274-r1.md | +401 / -0 | `shutil.copyfile` of `.remedy-wt/f274-r1-block.md` per C0a |
 
-### e347d91c f272: mirror the round 31 step block into the last block state  (C0b)
+### cd1a0222 f274: mirror the round 1 step block into the last block state file  (C0b)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +276 / -233 | the same `shutil.copyfile`, the mirror |
+| .agent/last_block.md | +383 / -329 | the same `shutil.copyfile`, the mirror |
 
-### bed400a7 f272: set the plan to round 31, the closure round  (C1)
+### e165afe2 f274: re-point the plan and the context onto the F274 branch  (C1)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +20 / -21 | replaced byte for byte with the PLANF272R31 slice |
+| .agent/context.md | +37 / -42 | byte-equal to CONTEXTF274R1 |
+| .agent/plan.md | +23 / -24 | byte-equal to PLANF274R1 |
 
-### 672db03e f272: book the round 30 PASS verdict into the record  (C2)
+### 6600442e f274: re-head the live review record at the F274 claim  (C2)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2 / -0 | append of RECORDR31, the `Gate: F272 R30` PASS entry |
+| .agent/live_review.md | +31 / -35 | head replaced by REHEADTO; the `## Findings` tail is byte-identical |
 
-### 4304b56d f272: record the round 30 block prose slip on the manifest module path  (C3)
+### 42f63af4 f274: book the F272 round 31 verdict into the review record  (C3)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/prose_slips.md | +2 / -0 | append of SLIPSR31, one dated line, no id spent |
+| .agent/live_review.md | +2 / -0 | RECORDR31 appended against C2's post-image |
 
-### d2e9da48 f272: rule the ledger rotation oversize exception as decision D18  (C4)
+### f0e953a4 f274: claim F274 in the roadmap ledger  (C4)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/decisions.md | +10 / -0 | append of D18SLICE, DECISION F272 D18 |
+| docs/roadmap/STATUS.md | +1 / -1 | STATUSPAIR, one replacement, `[ ]` → `[~]` |
 
-### (C5) f272: close F272 in the ledger and the README and consume the self-use item
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md | +1 / -1 | STATUSPAIR — the `[~]` F272 line becomes the `[x]` closure line |
-| README.md | +14 / -3 | READMECOUNTPAIR 74→75, READMETIERPAIR Tier 2 Done 17→18, READMECAPPAIR the F272 capability paragraph |
-| scripts/self_use_queue.json | +1 / -1 | QUEUEPAIR — SU-012's `consumed_by` set to `F272`, closure precondition 6 |
-| .agent/handoff.md | full rewrite | this file; it cannot table its own line counts before it is written (R-0149) |
-
-C5 is the LAST commit on this branch. No fix-up, no second handback, no trim follows it.
+Per-commit insertions against the DECISION F104 D1 cap of 500: 401, 383, 60, 31, 2, 1. Every
+commit is single-parent. No commit is oversize and none needs the declared-oversize exception.
 
 ## External actions
 
-Performed AFTER this file is written, in this order, and reported with their real outcomes in
-the round report:
+| Command | Outcome |
+|---|---|
+| `gh pr list --state open --json number,headRefName,baseRefName,isDraft` | `[]` — Open PR Gate passes, no open PR |
+| `git checkout -b feature/f274-one-world-completion-part-two` | cut from `main` at `13dfaabd93d7b6452a1d23ca698e29ed47ecf035` |
+| `git worktree add .remedy-wt/f274-probe 13dfaabd…` | created, detached HEAD at the base SHA; worktree count 14 → 15 |
+| `git worktree remove --force .remedy-wt/f274-probe` + `git worktree prune` | removed and pruned; worktree count 15 → 14 |
+| `git push -u origin feature/f274-one-world-completion-part-two` | run after this commit |
 
-1. `git push -u origin feature/f272-one-world-completion` — the closure commit pushed.
-2. `gh pr create --base main --head feature/f272-one-world-completion --title 'F272 — One
-   world completion: the run re-key, the unified record and the migrated consumers'
-   --body-file <scratch path>` — the PR number and URL are in the round report; this file
-   predates them.
-3. `gh pr list --state open --json number,headRefName,baseRefName,isDraft` — confirming the
-   PR is open, targets `main`, comes from this branch and is not a draft.
-
-`gh pr merge` IS NOT RUN. Guardrail G1 of `docs/agents/self_drive_protocol.md` forbids the
-session that created a PR from merging it, and closure protocol step 6 defers the merge to
-the next feature's start through the Open PR Gate — that gap is the operator's manual-review
-window.
-
-No worktree was added or removed: `git worktree list` reads 14 entries at every boundary of
-this round, unchanged from `e388c603`.
+NO pull request was created and NOTHING was merged, as the block orders.
 
 ## Verification
 
-Every gate was RUN. Exit codes are real; no gate is reported as a word.
+### G1 TRANSPORT — one digest comparison, EXIT n/a (in-process)
 
-**G1 TRANSPORT — one digest comparison over three artefacts.** All three are identical,
-and the digest equals the one the reviewer stated when it delivered the block. Every hex
-string below is the untruncated 64-character value the script printed; none is abbreviated.
+    .remedy-wt/f274-r1-block.md   30618 bytes  401 lines
+    .agent/authored/f274-r1.md    30618 bytes  401 lines
+    .agent/last_block.md          30618 bytes  401 lines
+    all three byte-identical: True
+    all three sha256: 0a01672609eb7de5034f478647ee324397039562b5321690d626e8938426eccc
+    equal to the digest the delegation states: True
 
-    .remedy-wt/f272-r31-block.md  bytes=28287 lines=347
-        sha256=cd3ecd6d4c1499eead29cab5f571ec8c9d051038bf5a6939927254d62b368079
-    .agent/authored/f272-r31.md   bytes=28287 lines=347
-        sha256=cd3ecd6d4c1499eead29cab5f571ec8c9d051038bf5a6939927254d62b368079
-    .agent/last_block.md          bytes=28287 lines=347
-        sha256=cd3ecd6d4c1499eead29cab5f571ec8c9d051038bf5a6939927254d62b368079
+Per §3 item 37 this chain covers those three artefacts and claims nothing about emitted bytes.
 
-    ALL_THREE_IDENTICAL          = True
-    MATCHES_REVIEWER_STATED_SHA  = True
+### G2 THE RE-HEAD (C2) — PASSED, all four readings
 
-The three delivered measurements — 28287 bytes, 347 lines and that digest — were verified
-against the file on disk BEFORE the block was opened, as the round order required.
+    '\n## Findings\n' occurrences: 1 BEFORE, 1 AFTER
+    HEAD before: 2501 bytes / 39 lines
+    TAIL before: 490724 bytes / 498 lines
+      sha256 d7ed620f9242c7929e0d8ae77070ef28b87c063578d8b03acd8cef88fac1cb03
+    TAIL after:  490724 bytes / 498 lines
+      sha256 d7ed620f9242c7929e0d8ae77070ef28b87c063578d8b03acd8cef88fac1cb03  (UNCHANGED)
+    HEAD after:  2534 bytes / 35 lines, BYTE-EQUAL to REHEADTO: True
 
-**G2 THE FINDING RECORD (C2), against its own pre-image.**
+### G3 THE RECORD APPEND (C3), against C2's post-image — PASSED, (a)(b)(c)(d)
 
-(a) BYTE.
+    pre-image  493258 bytes / 533 lines  sha256 c7c2e000bcd84e3529e8f61b84090416e9b00e617384e0c1225ad331426e4a65
+    slice      4613 bytes / 2 lines, carries its own leading blank line: True
+    post-image 497871 bytes / 535 lines  sha256 799cadf2680c53315f25d3bd174720cd112040e2626d95ef13102cdebf3f5d14
+    (a) BYTE   pre is a byte-exact prefix of post: True | post == pre + slice: True
+    (b) STRUCT N counted from the slice = 1; the last 1 blank-line-separated units of the
+        whole file equal the slice's 1 paragraph in order: True
+    (c) CONTROL byte flipped at offset 493269, inside the FIRST appended paragraph (' ' -> NUL)
+        byte reader   REJECTS flipped: True | ACCEPTS real: True
+        struct reader REJECTS flipped: True | ACCEPTS real: True
+        file on disk UNCHANGED by the control: True (sha256 799cadf2… as above)
+    (d) COUNTS                          BEFORE   AFTER
+        distinct '^- R-\d{4}'               62      62
+        distinct '^Done: R-\d{4}'            2       2
+        open set BY DISTINCT ID             60      60
+        '^Gate: '                           31      32
+        '^Gate: F272 R31'                    0       1
+        '^- R-0829'                          0       0
 
-    pre_len    = 487792   pre_lines  = 535
-    pre_sha256 = 90bb842f424f8dea43d8a3e2338b43da65f4277967f27926f85f4ca2d8d8a737
-    pre terminal 12 bytes = b'ng to hold.\n'      pre trailing newline run = 1
-    SLICE RECORDR31 bytes=5432 lines=1
-    post_len   = 493225   post_lines = 537
-    post_sha256 = 9b104c3cb3fbd36b9aaf4cb1d4340f9812b768bda128805cc5c08aaf71201438
-    post terminal 12 bytes = b'd or an id.\n'     post trailing newline run = 1
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST = True
-    POST_EQUALS_PRE_NL_SLICE         = True
+### G4 THE TWO STATE FILES (C1) — PASSED
 
-(b) STRUCTURAL. N counted by the script from the slice, not stated to it.
+    plan.md BYTE-EQUAL to PLANF274R1: True | 36 lines, under the AGENTS.md cap of 50: True
+    plan.md carries '## Goal': True | '## Next Steps': True
+    context.md BYTE-EQUAL to CONTEXTF274R1: True
+    reader 1  contains the substring 'Steps':                        True
+    reader 2  '## Active Branch' followed by a feature/ slug:        True
+              -> feature/f274-one-world-completion-part-two
+    reader 3  a roadmap F-id present:                                True  (F017, F259, F260, …)
+    reader 4  contains the substring 'pytest':                       True
 
-    N (counted from the slice) = 1
-    units before = 205   units after = 206
-    LAST_N_EQUAL_SLICE_PARAGRAPHS_IN_ORDER = True
-    EVERYTHING_BEFORE_UNCHANGED            = True
+### G5 THE CLAIM (C4) — PASSED
 
-(c) NEGATIVE CONTROL, in memory only, on the FIRST paragraph the append adds — byte 40 of the
-slice, `r` flipped to `R`:
+    PAIR CLASSIFICATION re-derived before use: TO CONTAINS FROM = False
+      -> label REWRITE, therefore NO append obligation
+    FROM count: 1 BEFORE, 0 AFTER      TO count: 0 BEFORE, 1 AFTER
+    post == pre with that ONE replacement and nothing else: True
+    file 40038 bytes before and after
+    '^- \[~\] '      occurs exactly once after: 1
+    '^- \[~\] F274 ' occurs exactly once after: 1
 
-    BYTE_READER_REJECTS_FLIPPED       = True
-    STRUCTURAL_READER_REJECTS_FLIPPED = True
-    BYTE_READER_ACCEPTS_REAL          = True
-    STRUCTURAL_READER_ACCEPTS_REAL    = True
-    FILE_ON_DISK_UNCHANGED_BY_CONTROL = True (re-read sha256 equals the real post-image)
+### G6 THE MEASUREMENT (C5) — NOT REACHED. The control stopped the round.
 
-(d) COUNTS, with the open-set arithmetic:
+(a) THE UNMUTATED CONTROL, run FIRST and before any edit, in the disposable worktree at the
+base SHA, exactly as the block spells it:
 
-    distinct ^- R-\d{4}      62 -> 62
-    distinct ^Done: R-\d{4}   2 ->  2   (R-0721, R-0725)
-    OPEN SET BY DISTINCT ID  pre  62 - 2 = 60
-    OPEN SET BY DISTINCT ID  post 62 - 2 = 60
-    ^Gate:                   30 -> 31
-    ^Gate: F272 R30          0 -> 1
-    ^- R-0829                0 -> 0     (the next free id is still free, constraint 6)
+    python3 -B -m pytest tests/ -q -p no:randomly -n auto
+    EXIT 1
+    11 failed, 19739 passed, 29 skipped, 1 warning in 206.65s (0:03:26)
 
-**G3 THE TWO PROSE FILES.**
+Classification of every one of the 11 against the block's declared class — "`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`
+plus `tests/ui_server/` ids":
 
-`.agent/plan.md` — byte-equal to PLANF272R31:
+| Failed id | In the declared class? |
+|---|---|
+| tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes | YES — named explicitly |
+| tests/ui_server/test_command_channel.py::TestCommandChannelDoor — 8 ids | YES — `tests/ui_server/` ids |
+| tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift | **NO** |
+| tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup | **NO** |
 
-    PLAN_BYTE_EQUAL_TO_SLICE = True
-    bytes = 1838   lines = 37   AGENTS.md cap = 50   UNDER_CAP = True
-    HAS_GOAL = True   HAS_NEXT_STEPS = True   (HAS_CURRENT_STEP = True as well)
+Two control failures fall OUTSIDE the declared class, so the block's own clause applies and
+the round stops there. The worker then measured — rather than asserted — what those two are,
+so the next block can re-scope the control rather than re-discover this:
 
-`.agent/prose_slips.md` — byte append only:
+1. BOTH PASS IN ISOLATION.
 
-    pre_len 153776 (block stated 153776)   pre_lines 571 (block stated 571)
-    SLICE SLIPSR31 bytes=695 lines=1
-    post_len 154472   post_lines 573
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST = True
-    POST_EQUALS_PRE_NL_SLICE         = True
+        python3 -B -m pytest \
+          "tests/cli/test_job_rerun_workspace_identity.py::TestNoFalseWorkspaceDrift::test_a_mutated_workspace_shows_blocking_drift" \
+          "tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup" \
+          -q -p no:randomly
+        EXIT 0
+        2 passed in 1.94s
 
-**G4 THE DECISION RECORD (C4).**
+2. A SECOND UNMUTATED CONTROL, same command, same worktree, no edit in between:
 
-    pre_len 869442 (block stated 869442)   pre_lines 10887 (block stated 10887)
-    pre_sha256  = f369060b43a9dce22bc7b37862b3f569c72197256c92f6a122ae1aa65f56084d
-    SLICE D18SLICE bytes=3042 lines=9
-    post_len 872485   post_lines 10897
-    post_sha256 = 6db4150fe9437cc702fcbd1199be58a5342e80678183f05944f14ba6a5e73993
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST = True
-    POST_EQUALS_PRE_NL_SLICE         = True
-    ^## DECISION F272 D     2 -> 3   (D16, D17, D18)
-    ^## DECISION F272 D18   heads exactly 1 section
+        python3 -B -m pytest tests/ -q -p no:randomly -n auto
+        EXIT 1
+        1 failed, 19755 passed, 23 skipped, 1 warning in 137.55s (0:02:17)
+        FAILED tests/cli/test_review_bundle_runtime.py::TestSubprocessCleanup::test_timeout_raises_with_cleanup
 
-**G5 THE CLOSURE COMMIT.**
+   The vitest id and all eight `tests/ui_server/` ids WENT GREEN on the second run, and so did
+   the workspace-drift id. The cause is on disk: the first run's auto-build populated
+   `apps/ui/node_modules` and `apps/ui/dist` INSIDE the worktree (both directories exist there
+   now; the run-1 output carries the "cd apps/ui && npm install && npm run build" hint and the
+   `REMEDY_UI_NO_AUTO_BUILD=1` escape). So the block's environment class is TRANSIENT — it
+   exists on the FIRST full-suite run in a fresh worktree and is self-healing afterwards.
 
-(a) The staged path set of C5, read with `git diff --cached --name-only` immediately before
-the commit, is EXACTLY: `README.md`, `docs/roadmap/STATUS.md`,
-`scripts/self_use_queue.json`, `.agent/handoff.md` — four paths, nothing else, which is the
-block's list. The equivalent post-commit reading, `git diff --name-only d2e9da48 <C5>`, is
-taken after this file is committed and its real output is in the round report.
+3. THE TWO OUT-OF-CLASS IDS, DIAGNOSED FROM THEIR REAL OUTPUT:
 
-(b) Per pair, in the ordered form the block asked for — FROM before, FROM after, TO after,
-and the boolean that the post-image is the pre-image with that ONE replacement and nothing
-else:
+   - `test_a_mutated_workspace_shows_blocking_drift` failed on
+     `assert diff_manifests(ref, clean)["blocking"] == []` with a single blocking entry whose
+     `field` is `remedy_worktree_digest`. It compares a digest of the remedy worktree while the
+     UI auto-build of run 1 was writing `node_modules` and `dist` into that same worktree. This
+     failure has the SAME ROOT CAUSE the block names — a fresh worktree without node_modules or
+     dist — but is NOT in the block's ENUMERATED id list, and it disappeared in run 2.
+   - `test_timeout_raises_with_cleanup` failed on
+     `assert result.returncode != 0, "Orphan process found after timeout cleanup"` where
+     `pgrep -f "apps.cli.grouped.*--help"` returned PID 2115172. The assertion is a HOST-WIDE
+     pgrep with no worker scoping, so under `-n auto` it sees a SIBLING xdist worker's
+     subprocess. It is the one id that failed in BOTH control runs and it passes serially.
 
-    STATUSPAIR      docs/roadmap/STATUS.md       1 -> 0   TO=1   ONE_REPLACEMENT_ONLY=True
-    READMECOUNTPAIR README.md                    1 -> 0   TO=1   ONE_REPLACEMENT_ONLY=True
-    READMETIERPAIR  README.md                    1 -> 0   TO=1   ONE_REPLACEMENT_ONLY=True
-    READMECAPPAIR   README.md                    1 -> 0   TO=1   ONE_REPLACEMENT_ONLY=True
-    QUEUEPAIR       scripts/self_use_queue.json  1 -> 0   TO=1   ONE_REPLACEMENT_ONLY=True
+(b) THE MUTATED PROBE RUN — NOT RUN. No edit was made to
+`packages/core/models.py` in the worktree or anywhere else. No per-PID site files exist, no
+site set was aggregated, and `.agent/f274_id_probe_inventory.md` DOES NOT EXIST.
 
-    docs/roadmap/STATUS.md      39632 -> 40038 bytes
-    README.md                   15225 -> 16057 bytes (three sequential replacements)
-    scripts/self_use_queue.json 38741 -> 38745 bytes
+THE LOAD-BEARING PROPERTY G6 ASKS FOR — the distinct site count and the boolean `sites > 500` —
+IS THEREFORE UNMEASURED BY THIS ROUND. It is not reported, not estimated, and not carried over
+from the reviewer's figure of 1978. The persisted-key demonstration was likewise NOT run, so no
+exit code and no pair of UUIDs is reported for it.
 
-Every pair was re-classified before use: `TO.find(FROM) >= 0` is FALSE for all five, so all
-five are REWRITES and none carries an append obligation — the reviewer's table is confirmed
-by measurement, not accepted on report.
+### G7 THE DECISION APPEND (C6) — NOT REACHED, deliberately
 
-(c) The F272 STATUS line in the post-image is BYTE-EQUAL to the STATUSPAIR_TO slice, at 520
-bytes:
+`.agent/decisions.md` is UNTOUCHED by this round: 872485 bytes / 10897 lines, sha256
+`6db4150fe9437cc702fcbd1199be58a5342e80678183f05944f14ba6a5e73993`, identical to the base
+reading the block asserts. `^## DECISION F274 D` occurs 0 times, and D1SLICE is NOT applied.
 
-    - [x] F272 — One world completion — the run re-key, the consumers, the classic runner and the cluster deletion (T001–T003 complete and the `run-loop` half of T004; accepted 2026-09-07 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job abf14422b1badab6 · package remedy-review-20260907-173909-READY_FOR_REVIEW.zip · SHA-256 8bbce2fa27ddd6c68398d381d1367e6e509b49cbacac0a29ff06329d9aebb706 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f71b30ac3b2f1fefb2da6063f0453d650d3835a)
+### G8 THE GATES AND THE TREE — every gate EXIT 0, run serially in the primary checkout
 
-(d) `^- \[~\] ` occurs ZERO times in `docs/roadmap/STATUS.md` after the edit — F272 was the
-only `[~]` line in the ledger and it is now `[x]`. `^- \[x\] F272 ` occurs 1 time.
+| Command | Exit | Tail |
+|---|---|---|
+| `python3 -B -m pytest tests/docs/ -q -p no:randomly` | 0 | `303 passed in 0.65s` |
+| `python3 -B -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly` | 0 | `30 passed in 0.37s` |
+| `python3 -B -m pytest tests/ui_server/ -q -p no:randomly` | 0 | `515 passed in 35.23s` |
+| `python3 -B -m pytest tests/orchestration/test_test_runner.py -q -p no:randomly` | 0 | `52 passed in 5.74s` |
+| `python3 -B -m pytest tests/regression/test_resource_safety.py -q -p no:randomly` | 0 | `21 passed in 11.51s` |
+| `python3 -B -m pytest tests/orchestration/test_integrity_gate.py -q -p no:randomly` | 0 | `16 passed in 0.28s` |
+| `python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly` | 0 | `42 passed in 20.79s` |
 
-(e) README pins:
+The four state readers were run as FOUR, not three. Each command was run on its own, with its
+exit code captured by a Python runner rather than through a pipe, because this session's shell
+guard refuses `$?` inside a compound command.
 
-    contains "75 of 274 registered items accepted."          = True
-    contains "| 2 | Minimal Self-Build Runtime | 18 | 27 |"   = True
-    "F272" occurrences inside the "Accepted in Tier 2 so far:" block = 1
+THE TREE:
 
-Every F-id inside EVERY `Accepted…:` block was resolved against STATUS and every one is `[x]`
-there — Tier 0 block 16 ids, Tier 1 block 13, Tier 2 block 10 (now including F272), Tier 3
-block 6, Tier 5 block 13. The list of ids in an Accepted block that are NOT `[x]` in STATUS
-is EMPTY.
+    git status --porcelain  — EMPTY immediately before every one of the six commits and now
+    git ls-files .remedy-wt — 0 entries (the directory is gitignored at .gitignore:235)
+    git worktree list       — 14 at the start of the round, 15 with the probe worktree, 14 now
 
-(f) SU-012's `consumed_by` reads `F272` and every other item's `consumed_by` is unchanged —
-the full map read back from disk is SU-001 F257, SU-002 F258, SU-003 F106, SU-004 F108,
-SU-005 F109, SU-006 F110, SU-007 F112, SU-008 F114, SU-009 F262, SU-010 F259, SU-011 F260,
-SU-012 F272. Through the SHIPPED reader
-`packages.orchestration.self_use_queue`:
+### THE THREE `.agent/STOP` READINGS, by `os.path.exists`
 
-    pending_self_use_items() = ()      -> EMPTY = True
-    next_self_use_item()     = None
-    item count = 12 (unchanged)   schema_version = 2 (unchanged)
+| Reading | When | Result |
+|---|---|---|
+| 1 | before C0a | False |
+| 2 | before C5 | False |
+| 3 | before C7 | False |
 
-The self-use track is EXHAUSTED again: the next feature's closure will need
-`generate_and_append_if_empty` (F258 T001) before it can consume an item.
-
-(g) `json.loads` succeeds on `scripts/self_use_queue.json`.
-
-**G6 THE LEDGER GATES — run SERIALLY in the primary checkout with C5's content on disk.**
-Every command was run as `bash -c '<cmd>; echo "REAL_EXIT=$?"'` with no pipe between the
-command and the echo.
-
-    python3 -B -m pytest tests/docs/ -q -p no:randomly
-        303 passed in 0.59s          REAL_EXIT=0
-    python3 -B -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
-        30 passed in 0.43s           REAL_EXIT=0
-    python3 -B -m pytest tests/orchestration/test_self_use_queue.py -q -p no:randomly
-        23 passed in 0.30s           REAL_EXIT=0
-    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
-        42 passed in 20.99s          REAL_EXIT=0
-
-The measured counts — 303, 30, 23 and the canary's 42 — equal the four the reviewer measured
-in its own disposable worktree at `e388c603` with these same five edits applied. Neither
-README pin is a gate that cannot fail: the reviewer showed
-`test_the_readme_tier_table_done_column_matches_the_ledger` reddens when the Tier 2 Done cell
-goes back to 17 with F272 `[x]`, and
-`test_the_readme_accepted_count_equals_the_status_count` reddens when the accepted count goes
-back to 74 — one failure each. That mutation proof was the reviewer's and is not re-derived
-here; this round ran the four suites and reports what it measured.
-
-**G7 THE TREE.**
-
-    git status --porcelain    Run immediately BEFORE each of C0a, C0b, C1, C2, C3 and C4, it
-                              listed EXACTLY the one path that commit was about and nothing
-                              else — `A  .agent/authored/f272-r31.md`, then `M
-                              .agent/last_block.md`, `M  .agent/plan.md`, `M
-                              .agent/live_review.md`, `M  .agent/prose_slips.md`, `M
-                              .agent/decisions.md` — so each commit consumed the whole working
-                              set and the tree was EMPTY at every one of those boundaries. The
-                              reading at C5's own boundary is in the round report, taken after
-                              the commit this file rides in.
-    git ls-files .remedy-wt   EMPTY — the scratch directory is gitignored and untracked.
-    git worktree list         14 entries at the start and 14 at the end; none added, none
-                              removed (constraint 7).
-
-Per-commit insertions from `git diff --numstat <parent> <commit>`, C5 excluded because it
-carries the handoff that would have to count itself, against the DECISION F104 D1 cap of 500:
-
-    C0a 33c6acb8  1 parent  347 insertions  under_500 = True
-    C0b e347d91c  1 parent  276 insertions  under_500 = True
-    C1  bed400a7  1 parent   20 insertions  under_500 = True
-    C2  672db03e  1 parent    2 insertions  under_500 = True
-    C3  4304b56d  1 parent    2 insertions  under_500 = True
-    C4  d2e9da48  1 parent   10 insertions  under_500 = True
-
-Every commit in this round is SINGLE-PARENT. No oversize commit was created this round, so
-F272's single declared-oversize allowance remains spent exactly once — on round 30's ledger
-rotation, which DECISION F272 D18 (appended at C4 above) now rules on as a standing answer.
-
-**THE THREE `.agent/STOP` READINGS**, taken with `os.path.exists` as constraint 8 requires:
-
-    before C0a                 False
-    before C5                  False
-    before the PR is created   reported in the round report — this file predates that reading
+The round did not stop on the sentinel. It stopped on the block's own control clause.
 
 ## Authored-text proofs
 
-Every applied text was extracted PROGRAMMATICALLY from the committed
-`.agent/authored/f272-r31.md` by prefix-matching the BEGIN line `<<<BEGIN <NAME> ` and
-exact-matching the END line `<<<END <NAME>>>`; nothing was retyped. Each name matched exactly
-one BEGIN and one END line, asserted in the extractor. Whole texts were read INCLUSIVE of the
-newline ending their last content line; every `_FROM`/`_TO` pair half was read with that final
-newline STRIPPED (constraint 2).
+Every authored text was extracted PROGRAMMATICALLY from `.agent/authored/f274-r1.md` by
+matching the marker lines the block's Conventions section defines, with an assertion that each
+name matches exactly one BEGIN and one END line. None was retyped.
 
-| Text | Convention | Disk-to-disk result |
-|---|---|---|
-| PLANF272R31 | whole | `.agent/plan.md` BYTE-EQUAL to the slice (1838 bytes) |
-| RECORDR31 | whole | `POST_EQUALS_PRE_NL_SLICE = True`, prefix True, ordered paragraph equality True |
-| SLIPSR31 | whole | `POST_EQUALS_PRE_NL_SLICE = True`, prefix True |
-| D18SLICE | whole | `POST_EQUALS_PRE_NL_SLICE = True`, prefix True |
-| STATUSPAIR_FROM/_TO | pair | FROM 1→0, TO 1, one-replacement equality True; the applied line is byte-equal to _TO |
-| READMECOUNTPAIR_FROM/_TO | pair | FROM 1→0, TO 1, one-replacement equality True |
-| READMETIERPAIR_FROM/_TO | pair | FROM 1→0, TO 1, one-replacement equality True |
-| READMECAPPAIR_FROM/_TO | pair | FROM 1→0, TO 1, one-replacement equality True |
-| QUEUEPAIR_FROM/_TO | pair | FROM 1→0, TO 1, one-replacement equality True |
+| Name | Bytes | Lines | sha256 of the extracted text | Applied? |
+|---|---|---|---|---|
+| PLANF274R1 | 1909 | 36 | 69231b29f7a71fc56914cf7bd54b301787f11353427006e8c47c83db5e791f26 | yes — `.agent/plan.md` byte-equal |
+| CONTEXTF274R1 | 3475 | 60 | 19f3ae628a709c7a366a948b2cd5ceddf36b601203be3e2ff5e1e770206bc4f7 | yes — `.agent/context.md` byte-equal |
+| REHEADTO | 2534 | 35 | 4b300a4042a0480154111da39b9ac15e46be97583eb5ed496078d9a7b37c422a | yes — the new head is byte-equal |
+| RECORDR31 | 4613 | 2 | a80e6d5da7d7f873ade72b79216daad1b767582c1d39b63aa17ba1c26b8ef1fa | yes — appended verbatim |
+| STATUSPAIR_FROM | 97 | 0 | 43256980ef8a9c6fb8198f4edd51de1f9b7a8f2ef689c70f8936325ba1b6ad87 | yes — matched once, replaced once |
+| STATUSPAIR_TO | 97 | 0 | e76c1b1887853b191d1401c8c70e59606f20da587a809f0714a28eeacf65ed05 | yes — present once after |
+| D1SLICE | 3939 | 51 | da8fc271c9734f15b72e0f91457b90852d8b4904e75d4e8d38ae83af33f506f1 | **NO — C6 not reached** |
 
-Every FROM was counted BEFORE anything was written, and the script was built to ABORT without
-touching a single file had any FROM not occurred exactly once. None had to.
+The transport chain's first link was verified before anything was written:
+`.remedy-wt/f274-r1-block.md` measured 30618 bytes, 401 lines and sha256
+`0a01672609eb7de5034f478647ee324397039562b5321690d626e8938426eccc`, matching all three values
+the delegation stated.
+
+The block's five asserted base measurements were CONFIRMED ON DISK before use, with no
+divergence: `.agent/live_review.md` 493225 bytes / 537 lines sha256 `9b104c3c…1438`;
+`.agent/decisions.md` 872485 bytes / 10897 lines sha256 `6db4150f…3993`; `.agent/plan.md` 1838
+bytes; `.agent/context.md` 3366 bytes; `docs/roadmap/STATUS.md` 40038 bytes.
 
 ## Deviations & assumptions
 
-1. NO DEPARTURE FROM THE BLOCK'S ORDERED COMMIT SEQUENCE. C0a, C0b, C1, C2, C3, C4, C5 were
-   committed in that order, one commit each, with the block's declared path set and nothing
-   else. No commit was added, dropped or reordered.
+1. **C5 AND C6 WERE NOT PERFORMED — the block's ordered commit sequence is incomplete.** The
+   sequence executed was C0a, C0b, C1, C2, C3, C4, C7. Nothing was reordered and nothing extra
+   was added; two ordered items are absent. The trigger is the block's own probe specification:
+   "Report your control's failures and state whether each is in that class; a control failure
+   OUTSIDE it stops the round under G8." Two of the control's eleven failures are outside the
+   declared class, so the clause fired. The worker did NOT widen the class on its own
+   authority, did not install the probe, and did not append a DECISION asserting a measurement
+   that was never taken.
 
-2. ASSUMPTION — THE SESSION NUMBER. The block does not state it and the previous handback
-   records `SESSION 12 · round 30`. This round is booked as SESSION 12, round 31, on the
-   ground that no session boundary was crossed between round 30's handback and this round's
-   block: the reviewer gated round 30 in the primary checkout at `e388c603` and issued round
-   31 in continuation. If Window 1 knows a boundary WAS crossed, the correct reading is
-   session 13, and the F272 session soft limit is then breached by one — which changes
-   nothing about this closure, because the split-and-close default was already executed in
-   round 26 and this round is the close it prescribes. Recorded here rather than guessed
-   silently.
+2. **THE WORKER DISAGREES WITH THE CLAUSE'S SCOPE AND SAYS SO RATHER THAN ACTING ON IT.** The
+   measurements in G6 above show the declared class is under-drawn in two different ways: it is
+   drawn by ENUMERATED ID where its own stated CAUSE (no `node_modules`, no `dist`) reaches at
+   least one further id, `test_a_mutated_workspace_shows_blocking_drift`; and it does not cover
+   `test_timeout_raises_with_cleanup`, a host-wide `pgrep` assertion that cannot be stable under
+   `-n auto` because it matches sibling workers. A control that runs the full suite in a fresh
+   worktree under `-n auto` therefore cannot be all-green on its first pass by construction.
+   That is a reviewer decision to take, not the worker's, and the round ended instead of
+   absorbing it.
 
-3. SELF-REFERENCE, three values this file cannot carry. C5's own SHA, C5's own `numstat` row
-   for `.agent/handoff.md`, and the PR number and URL do not appear above, because the file
-   is written before the commit exists and the PR is created after it (the R-0149 pattern the
-   handback template names). All three are measured and reported in the round report to
-   Window 1. The `.agent/STOP` reading before the PR is created is in the same position.
+3. **A SPEC GAP THE NEXT BLOCK SHOULD CLOSE BEFORE THE PROBE IS RE-ORDERED.** The block
+   specifies a `property` named `id` with a getter only. `job.id = uuid4()` is a live
+   assignment pattern in the suite — `tests/ui_server/test_live_state.py:40` and `:51`,
+   `tests/ui_server/test_brain_view_model.py:150`, `:256`, `:280`,
+   `tests/regression/test_named_bugs.py:69`, `tests/orchestration/test_approval_queue.py:99`,
+   `tests/orchestration/test_autorun.py:19`, `tests/orchestration/test_source_apply.py:50` and
+   `:61` among others. A getter-only property makes every one of those raise on WRITE, which
+   both contradicts the block's "do NOT raise `AttributeError` anywhere in this probe" and
+   truncates those tests before they reach their reads — the exact UNDER-COUNTING the
+   specification exists to prevent. The probe needs a setter that writes `self.job_id` and
+   records nothing. This was NOT applied; it is reported so the ruling is the reviewer's.
 
-4. NO DISAGREEMENT WITH ANY SLICE OR PAIR. Constraint 1 asks that a slice believed wrong be
-   applied as written and the disagreement declared. Every slice and every pair was applied
-   verbatim and none was believed wrong: all five FROM counts were 1 as stated, all five
-   `TO.find(FROM)` classifications came back REWRITE as the block's table said, and every
-   base measurement the block asserted — `live_review.md` 487792/535 with sha256 beginning
-   `90bb842f424f8dea`, `prose_slips.md` 153776/571, `decisions.md` 869442/10887, the three
-   triple-newline counts of 0, 1 and 5, HEAD `e388c603`, 14 worktrees — was confirmed on disk
-   before it was used. The block's expected count transitions (62→62, 2→2, 60→60, 30→31,
-   0→1, 0→0, 2→3) were all met exactly, and G6's four suite sizes (303, 30, 23, 42) matched
-   the reviewer's own measurements.
+4. **AN ENVIRONMENT FACT THAT AFFECTS THE PROBE'S VALIDITY, MEASURED NOT ASSUMED.** `remedy`
+   0.1.0 is installed EDITABLE at `/home/decodeux/Repos/remedy`, so `packages` is a namespace
+   package whose `__path__` inside the worktree is
+   `['…/.remedy-wt/f274-probe/packages', '/home/decodeux/Repos/remedy/packages']`. The worktree
+   entry is FIRST, and `packages.core.models.__file__` resolved to the worktree copy, so a
+   mutation there IS the one the suite imports. Confirmed before the control ran.
 
-5. SCRATCH FILES. The round's scripts were written under the gitignored `.remedy-wt/` and
-   removed BY EXACT PATH afterwards — never by a glob. `.remedy-wt/f272-r31-block.md` is
-   deliberately KEPT: it is the first link of the G1 transport chain. `git ls-files
-   .remedy-wt` is empty and `git status --porcelain` is empty, so none of this reached the
-   index at any point.
+5. C0a and C0b precede C1, so the first two commits land while `.agent/plan.md` still names
+   F272. This is the block's explicit ordering and its stated reason (§3 item 23); it is noted
+   here only because AGENTS.md's Commit Gate item 1 reads on every commit.
 
-6. THE CLOSE IS `PASS_WITH_RISKS` AND IT NAMES ITS RISKS. Five High findings are open —
-   R-0803, R-0804, R-0806, R-0807 and R-0827 — all owned by F273, whose Done clause covers
-   "anything registered after 2026-09-06". DECISION F272 D17 rules why naming them is the
-   honest close rather than a stop. Separately, `remedy integrity check` PASSES while its
-   `high_blockers_open` check reports "no open blocker/high findings", which is false with
-   five High findings open; that is the already-open R-0648, the PR body states it, and this
-   closure rests on the named list rather than on that check.
-
-7. ONE AUTHORING SLIP IN THIS FILE, CAUGHT BY THE PRE-COMMIT SELF-REVIEW AND NEVER COMMITTED.
-   The first draft of the G1 section above carried a HAND-TYPED, ABBREVIATED transport digest
-   instead of the measured one. The AGENTS.md self-review loop caught it before C5 existed,
-   and the section was rewritten by a script that recomputes all three digests from disk and
-   prints the untruncated 64-character value, so no digest in this file was typed by hand. The
-   slip damaged nothing on disk and is recorded here rather than as an R-id, per amend0827
-   rule 2: a reviewer-or-worker prose inaccuracy that reached no committed state is a
-   deviation, not a finding. The lesson generalises — a digest is copied from a measurement,
-   never retyped, and that applies to the handback as much as to a gate.
+6. The block's control assertion of "13 failed and 19737 passed" was not reproduced: this
+   worker measured 11 failed / 19739 passed on the cold run and 1 failed / 19755 passed on the
+   warm run, over the same 19779 collected. The divergence is declared rather than absorbed.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a save the block to `.agent/authored/f272-r31.md` | done | |
-| C0b mirror to `.agent/last_block.md` | done | |
-| C1 `.agent/plan.md` = PLANF272R31 | done | |
-| C2 append RECORDR31 to `.agent/live_review.md` | done | |
-| C3 append SLIPSR31 to `.agent/prose_slips.md` | done | |
-| C4 append D18SLICE to `.agent/decisions.md` | done | |
-| C5 the closure commit (STATUS, README, queue, handoff) | done | one commit, last on the branch |
-| G1 transport | done | one digest comparison, three artefacts identical |
-| G2 the finding record | done | (a) byte (b) structural (c) negative control (d) counts |
-| G3 the two prose files | done | plan byte-equal and under the 50-line cap; slips byte-append |
-| G4 the decision record | done | D18 heads exactly one section, 2→3 |
-| G5 the closure commit gates | done | (a)–(g) all measured |
-| G6 the ledger gates | done | four suites, serial, exit 0, 303/30/23/42 |
-| G7 the tree and the pull request | done | tree clean throughout; push and PR after this commit, reported in the round report |
-| PR created | done | after C5; number and URL in the round report |
-| PR merged | not done — FORBIDDEN | guardrail G1: the session that creates a PR never merges it; the merge belongs to the next feature's Open PR Gate |
+| C0a | done | `.agent/authored/f274-r1.md` by `shutil.copyfile` |
+| C0b | done | `.agent/last_block.md` by `shutil.copyfile` |
+| C1 | done | both state files byte-equal to their slices |
+| C2 | done | re-head applied, findings tail digest unchanged |
+| C3 | done | RECORDR31 appended against C2's post-image |
+| C4 | done | STATUSPAIR applied, one replacement |
+| C5 | skipped | the block's control clause stopped the round under G8; no probe installed, no inventory written |
+| C6 | skipped | D1SLICE asserts a measurement C5 never took; appending it would land a false claim in an append-only record |
+| C7 | done | this file |
+| G1 | done | three artefacts byte-identical at the delegation's digest |
+| G2 | done | all four readings reported; tail digest unchanged |
+| G3 | done | (a) (b) (c) (d) all reported and all pass |
+| G4 | done | both files byte-equal; all four context readers reported as booleans |
+| G5 | done | pair re-classified as a REWRITE; counts 1→0 and 0→1 |
+| G6 | skipped | the measurement was not taken; the control and its diagnosis are reported in full instead |
+| G7 | skipped | C6 was not performed; `.agent/decisions.md` is proven untouched at its base digest |
+| G8 | done | seven gate commands, every one EXIT 0; tree, worktree counts and per-commit insertions reported |
 
 ## Next
 
-MERGE THE PULL REQUEST AT THE NEXT FEATURE'S START, and not before — that gap is the
-operator's manual-review window, and the operator may merge manually at any time instead. The
-next session's FIRST action is Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: read
-`.agent/STOP` from disk. Then rule 2, the AGENTS.md Open PR Gate, which merges this PR with
-`gh pr merge <n> --merge --delete-branch`, then `git checkout main` and `git pull --ff-only`.
-
-Then Rule A5 proposes F274 — One world completion, part two — which sits directly after F272
-in the ledger by amend0906-split-placement and owns T004's remainder (the atomic
-classic-to-unified record flip) and T005 (the prototype cluster deletion). F274's first slice
-is the DECISION F272 D7 raising-property probe and a ruling on the per-commit cap, NOT the
-flip itself: DECISION F272 D15 measured the flip as ATOMIC over the consumer graph, so it
-cannot be staged, and its size against the 500-insertion cap has to be ruled on before it is
-attempted.
-
-`.agent/candidates.md` CARRIES NO OPEN CANDIDATE — the file is 1903 bytes of header and
-discharge history and its state line reads "EMPTY — no candidate is open." — so no candidate
-registration is owed at the next feature's first reviewed round. If the reviewer's gate over
-THIS closure commit raises one, DECISION amend0827 D2 permits a `.agent/candidates.md`-only
-commit after C5 as the single permitted successor; this worker was ordered that C5 is the
-last commit and therefore wrote no such commit. The self-use queue is EXHAUSTED (SU-012 consumed by F272, zero pending),
-so the next closure must call `generate_and_append_if_empty` before it can consume an item.
-The next free finding id is R-0829; this round minted none and resolved none, and the open set
-stands at 60 by distinct id.
+Phase 1 rule 1 first: re-read `.agent/STOP`. Then the reviewer rules the control's scope — either
+widen the declared environment class to cover the auto-build's transient reach and the
+`-n auto` `pgrep` interference, or order the control as a WARM second run, or order the probe
+run serially — and re-issues T001's probe as F274 round 2, with the getter/setter gap of
+deviation 3 closed. `.agent/f274_id_probe_inventory.md` and DECISION F274 D1 are still owed.
+No pull request exists for this branch and none is owed yet.
