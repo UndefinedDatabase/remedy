@@ -5,7 +5,8 @@ tests: it compiles one task's context and renders what that task would receive
 and what was left out, without sending anything to a provider and without
 writing a byte to disk.
 
-The fenced scope compiled here is exactly the task's
+The fenced scope compiled here is exactly the task's own declared write scope: a
+unified ``TaskEntry``'s ``files_hint`` field, or a classic Task's
 ``inputs["flight"]["files_hint"]``. Remedy deliberately does NOT consult the
 job's scope-fence globs (``remedy job fences``, F017) in this view — merging
 fence allow-globs into the compiled scope is out of scope for this round, so a
@@ -78,6 +79,34 @@ def list_repo_candidate_paths(root: Path) -> list[str]:
     return _repo_candidate_paths_with_source(root)[0]
 
 
+# WHY this reads two spellings: the unified record (`JobPlan`) spells a job's
+# own id `job_id`, while the classic core `Job` spells it `id`.
+def _job_identity(job: Any) -> str:
+    """The job's own id as a string, whichever store minted it."""
+    return str(getattr(job, "job_id", "") or getattr(job, "id", ""))
+
+
+# WHY this reads two spellings: the unified record carries the checkout as its
+# own `repo_path` field, while the classic core `Job` carries it inside
+# `metadata["target_repo"]`.
+def _job_target_repo(job: Any) -> str:
+    """The job's target repo, or "" for a job carrying neither spelling."""
+    repo_path = getattr(job, "repo_path", "")
+    if repo_path:
+        return str(repo_path)
+    metadata = getattr(job, "metadata", None)
+    if isinstance(metadata, dict):
+        return str(metadata.get("target_repo", "") or "")
+    return ""
+
+
+# WHY this reads two spellings: a `TaskEntry` spells its id `task_id` (`T001`),
+# while the classic core `Task` spells it `id` (a UUID).
+def _task_identity(task: Any) -> str:
+    """The task's own id as a string, whichever store minted it."""
+    return str(getattr(task, "task_id", "") or getattr(task, "id", ""))
+
+
 def _task_flight_inputs(task: Any) -> dict:
     """The task's flight-plan block, or an empty dict when it carries none."""
     inputs = getattr(task, "inputs", None)
@@ -87,21 +116,29 @@ def _task_flight_inputs(task: Any) -> dict:
 
 def _task_planned_id(task: Any) -> str:
     """The planned id (`T001`) `map_flight_plan_to_tasks` wrote, or ""."""
+    # A `TaskEntry` IS its planned id — it carries `T001` as its own field and
+    # no flight-plan block at all — so that spelling wins where it is present.
+    own = getattr(task, "task_id", "")
+    if own:
+        return str(own)
     return str(_task_flight_inputs(task).get("planned_id") or "")
 
 
 def _task_files_hint(task: Any) -> list[str]:
     """The task's declared write scope. An absent hint is an EMPTY scope, which
     is a real answer this command renders — not an error."""
-    hint = _task_flight_inputs(task).get("files_hint")
+    # A `TaskEntry` carries the fenced scope as its OWN `files_hint` field; the
+    # classic Task carries it inside the flight-plan block.
+    own = getattr(task, "files_hint", None)
+    hint = own if isinstance(own, list) else _task_flight_inputs(task).get("files_hint")
     return [str(entry) for entry in hint] if isinstance(hint, list) else []
 
 
 def _task_label(task: Any) -> str:
     """How one task is named in an error listing: planned id when it has one,
-    otherwise the first 8 hex of its UUID."""
+    otherwise the first 8 characters of its id."""
     planned = _task_planned_id(task)
-    return planned if planned else str(task.id)[:8]
+    return planned if planned else _task_identity(task)[:8]
 
 
 def resolve_task_for_context(task_ref: str | None, tasks: list) -> tuple[Any, str]:
@@ -133,7 +170,13 @@ def resolve_task_for_context(task_ref: str | None, tasks: list) -> tuple[Any, st
         )
 
     lowered = ref.lower()
-    by_prefix = [task for task in tasks if str(task.id).startswith(lowered)]
+    # The `.lower()` here is load-bearing, not cosmetic: `ref` is already
+    # lowercased and a classic UUID is already lowercase, so the classic path
+    # does not move — but `T001` is not, and without it a `TaskEntry` would not
+    # be prefix-addressable at all.
+    by_prefix = [
+        task for task in tasks if _task_identity(task).lower().startswith(lowered)
+    ]
     if len(by_prefix) == 1:
         return by_prefix[0], ""
     if len(by_prefix) > 1:
@@ -216,16 +259,25 @@ def _cmd_job_context(
         compile_task_context,
         export_omitted_context_json,
     )
-    from packages.orchestration.data_paths import resolve_job_id
+    from packages.orchestration.data_paths import resolve_any_job_id
+    from packages.orchestration.pingpong_job import load_job_plan
     from packages.orchestration.storage import JobNotFoundError, load_job
 
     try:
-        job = load_job(resolve_job_id(job_id_str))
+        # Resolving across BOTH stores is what lets this command answer for a
+        # job `remedy do job-run` created; `resolve_job_id` searched the classic
+        # store alone and so answered "no job matches prefix" for every one of
+        # them. WHY the unified record is read FIRST: it is the same order
+        # `apps/cli/commands/job_stop_cmd.py::_load_job` already reads in.
+        resolved = resolve_any_job_id(job_id_str)
+        job = load_job_plan(resolved)
+        if job is None:
+            job = load_job(resolved)
     except JobNotFoundError:
         print(f"Job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
 
-    repo_str = job.metadata.get("target_repo", "") or ""
+    repo_str = _job_target_repo(job)
     if not repo_str:
         print(f"Job {job_id_str[:8]} has no target_repo attached", file=sys.stderr)
         sys.exit(2)
@@ -244,8 +296,8 @@ def _cmd_job_context(
     compiled = compile_task_context(repo_root, fenced_paths, candidates)
 
     result = {
-        "job_id": str(job.id),
-        "task_id": str(task.id),
+        "job_id": _job_identity(job),
+        "task_id": _task_identity(task),
         "task_label": _task_label(task),
         "fenced_paths": fenced_paths,
         "candidate_count": len(candidates),
