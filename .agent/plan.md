@@ -1,6 +1,6 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 10 PASSED;
+Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 11 PASSED;
 round 2 FAILED on a premise DECISION F272 D2 has corrected. T001 is COMPLETE;
 T002 has landed the eight administrative fields, widened `RunState`, and renamed
 `JobPlan.status` to `state` at the 234 measured sites of DECISION F272 D7.
@@ -15,11 +15,12 @@ classic runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Repair R-0821, the two cockpit modules round 8's `RunState` widening never
-reached. `blocked` and `stopped` are in no partition of `digestVisibility.ts`
-and have no key in `digestCardCopy.ts`, so the hero card calls both "State not
-recorded" and two `tests/ui_contracts/` tests have been red on this branch since
-round 8. This round gives them their place and rules it as DECISION F272 D8.
+Land R-0821's fix. Round 11 ruled the placement as DECISION F272 D8 and then
+measured that a third guard, an arity pin in
+`tests/ui_contracts/test_digest_hero_card.py`, reddens the moment the label map
+widens; DECISION F272 D9 rules that guard a FLOOR, as its two siblings already
+are. This round frees the guard, then gives `blocked` and `stopped` their place
+in `digestVisibility.ts` and `digestCardCopy.ts`.
 
 ## Next Steps
 
@@ -27,7 +28,8 @@ round 8. This round gives them their place and rules it as DECISION F272 D8.
    make the six `JOB_*` constants `RunState` members, with `.value` at every
    boundary leaving the record. The rendering guard round 10 shipped in
    `tests/orchestration/test_job_state_field.py` is what that move must keep
-   green, and D7's probe is the method for finding its site set.
+   green, D7's probe is the method for finding its site set, and R-0821's clause
+   puts `tests/ui_contracts/` in that round's gate list.
 2. The Mission extension — the order, the contract, the mission plan and the
    ordered job references.
 3. T003, the eleven consumers named under Design in `T2_F260.md`, one per commit
@@ -37,6 +39,6 @@ round 8. This round gives them their place and rules it as DECISION F272 D8.
 
 ## Risks
 
-- A `RunState` member added without a matching cockpit entry is invisible to
-  every gate this feature has run so far; `tests/ui_contracts/` is the suite
-  that sees it and it belongs in the gate list of any round touching the enum.
+- A vacuity guard written as an equality pins an arity nobody meant to pin, and
+  goes stale exactly when a vocabulary grows. Two more sit in this suite over
+  zoom levels; both are genuine fixed arities and neither is F272's business.
