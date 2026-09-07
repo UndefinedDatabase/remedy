@@ -3751,8 +3751,11 @@ def _contains_local_path(value: str) -> bool:
 
 
 #: The provider transport modes a PreparedCallInput may declare (F7).
+# WHY: the ollama transport stamps its own two modes and this set rejected both, so every
+# WHY: run on the repository's own default provider died with run_manifest_write_failed
+# WHY: (R-0827, repaired under operator amendment amend0907-cluster-first, 2026-09-07).
 VALID_CALL_MODES = frozenset({"api-structured", "api-legacy", "cli-native", "cli-legacy",
-                              "fake"})
+                              "fake", "ollama-legacy", "ollama-native"})
 #: F8: the EXACT PreparedCallInput field set — one definition used by the decoder and the
 #: validator so no boundary can silently accept an extra field.
 PREPARED_CALL_INPUT_FIELDS = frozenset({"prompt_sha256", "prompt_len_bytes", "schema_sha256",
