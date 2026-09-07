@@ -1,9 +1,8 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 20 PASSED;
-round 2 FAILED on a premise DECISION F272 D2 has corrected, and round 21 FAILED
-on R-0824, which this round repairs. T001, T002 and T003 are COMPLETE. T004 is
-under way.
+Branch: feature/f272-one-world-completion. Rounds 1 to 22 PASSED except round 2
+(premise corrected by DECISION F272 D2) and round 21 (R-0824, repaired by round
+22). T001, T002 and T003 are COMPLETE. T004 is under way.
 
 ## Goal
 
@@ -15,35 +14,36 @@ classic runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-Repair R-0824: the round 21 block's own replacement prose wrote `remedy job
-run-loop` into `docs/system/architecture.md` while the same block widened the
-guard's zero-gate corpus to sweep that directory, so the branch tip shipped RED.
-The sentence now names the deleted command without spelling it as an invocation.
+Repair R-0825: the round 9 rename of `JobPlan.status` to `state` left two
+production guards reading the retired name through `getattr` with a default,
+which answers silently rather than raising, so DECISION F272 D7's probe was
+blind to them. Both are fixed, each pinned by a behaviour test, and a standing
+scan now makes the class visible.
 
 ## Next Steps
 
-1. The classic store deletion, which leads T004 rather than following it.
-   Measured at `5f4f0405`: every next-action rail advertising `remedy job
-   run-next` — in `cockpit.py`, `timeline.py`, `trust_report.py`,
-   `dashboard.py`, `brain_detail.py`, `agent_loop.py` and `autonomy_loop.py` —
-   sits in a function typed `job: Job`, the CLASSIC record. None takes a
-   `JobPlan`, so none can point at `remedy do job-run`, whose id is a
-   16-character JobPlan id. The advertisements cannot move before the classic
-   record does, and DECISION F272 D13 forbids deleting a command ahead of its
-   advertisements.
-2. `job.run-next` and `job.run` die inside that same commit range, with their
-   rails. `job.run` is the catalog's only `is_expensive` command and three tests
-   pin that, so F114's cost preview needs a carrier named before it goes.
-3. `_cmd_job_resume` and `agent_loop.run_agent_loop`, the last production caller
-   of `_cmd_run_next_task_local`, die with them per DECISION F272 D13.
+1. Name F114's cost-preview carrier BEFORE `job.run` goes. Measured at
+   `67515ab7`: `apps/cli/commands/job.py:726` is the ONLY call site of
+   `confirm_cost_preview` in the product and it sits inside the handler being
+   deleted, so the capability is lost silently unless `do.job-run` inherits it.
+   `do.job-run` carries neither `is_expensive` nor `--yes`, and wiring the helper
+   as-is would exit 2 on every non-tty run, so this needs a DECISION.
+2. Delete `job.run-next` and `job.run` with their handlers and their sixteen
+   advertisement sites. MEASURED at `67515ab7`: the store migration is NOT a
+   prerequisite. DECISION F272 D13 requires a command's advertisements to DIE
+   with it rather than be repointed, and rounds 20 through 22 established that
+   shape for `job run-loop`. The classic runner is one connected component, so
+   `_cmd_run_next_task_local`, `_cmd_job_run_cycles`, `_cmd_job_resume` and
+   `agent_loop.run_agent_loop` fall together.
+3. The classic store deletion: 199 files by
+   `.agent/f272_t004_deletion_inventory.md`, staged in groups.
 4. T005, the reachability test and the cluster deletion, which is never split.
 
 ## Risks
 
-- The store deletion is 199 files by `.agent/f272_t004_deletion_inventory.md`,
-  72 of them production, so it is many rounds and no single commit holds it.
-- A half-performed deletion is the one state the Orchestrator brief says this
-  work must not leave behind, so every deletion round ends with the full suite
-  green in the PRIMARY checkout.
-- F272's soft limit is 12 sessions and 40 rounds under amend0906. At session 10
-  and round 22 the feature is inside it and no scope report is owed.
+- The store deletion is 199 files, 72 of them production, so it is many rounds
+  and no single commit holds it.
+- A half-performed deletion is the state the Orchestrator brief forbids, so every
+  deletion round ends with the full suite green in the PRIMARY checkout.
+- F272's soft limit is 12 sessions and 40 rounds under amend0906. At session 11
+  and round 23 the feature is inside it and no scope report is owed.
