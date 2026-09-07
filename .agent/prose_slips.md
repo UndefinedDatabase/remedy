@@ -589,3 +589,7 @@
 2026-09-07 · F274 R5 · The round 5 block quoted the cockpit `context-budget` route line with four more leading spaces than `packages/orchestration/ui_server.py` carries, so the worker counted the identifying bytes instead and reported the count of 1.
 
 2026-09-07 · F274 R5 · That block's gate G8 ordered a `git diff --name-only` path-set reading over a range ending at C5 while stating only that G1 through G7 precede C5, so the commit at which G8 itself runs was never fixed, and an honest worker ran it before C5 existed and saw nine paths of ten.
+
+2026-09-08 · F274 R6 · The round 6 block named `brain_viewer.py`'s two entries a "layer entry and weight entry" where the file calls those maps `_ZONE_MAP` and `_LAYER_MAP`, and named `ui_view_model.py`'s two integer maps "the two weight maps" where the file calls them `_RANK_MAP` and `_ZOOM_MAP`; the keys and the counts were exact, so the site set was never ambiguous and the worker applied it as specified.
+
+2026-09-08 · F274 R6 · The reviewer's pre-emission dry run swept for the five deleted node symbols with a file filter of `.py`, `.ts`, `.tsx` and `.txt`, so `scripts/remedy_smoke.sh` could not appear in its result and the block's change set was authored one file short — the cause of round 6's G6 red, registered as R-0833 and R-0834 rather than left here, because both left real state wrong on disk.
