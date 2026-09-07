@@ -25,7 +25,7 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [x] F259 — Vocabulary & concept model v1 (T001–T004 complete; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job ace7fa4d9d782a7a · package remedy-review-20260906-004320-READY_FOR_REVIEW.zip · SHA-256 164f9513a4608030989590daf647d9a96a1c2c0b78f4fb469461966024fd56e3 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD efd2a4fb04bb82b8ee87b812327a7c3f9776853a)
 - [x] F260 — One world: mission → job → run (T001 complete and the run half of T002; accepted 2026-09-06 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 017d918464634206 · package remedy-review-20260906-133417-READY_FOR_REVIEW.zip · SHA-256 0f87ce8e9c4c506f82a6eb401deb6d85fb6ad1b3f7b066ad35808ca3df21c804 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 1eb980675b2c553f4aa8b949265eb3b6f30d6964)
 - [x] F272 — One world completion — the run re-key, the consumers, the classic runner and the cluster deletion (T001–T003 complete and the `run-loop` half of T004; accepted 2026-09-07 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job abf14422b1badab6 · package remedy-review-20260907-173909-READY_FOR_REVIEW.zip · SHA-256 8bbce2fa27ddd6c68398d381d1367e6e509b49cbacac0a29ff06329d9aebb706 · package path /home/decodeux/Repos/remedy-history/zips · accepted HEAD 7f71b30ac3b2f1fefb2da6063f0453d650d3835a)
-- [ ] F274 — One world completion, part two — the atomic record flip and the cluster deletion
+- [~] F274 — One world completion, part two — the atomic record flip and the cluster deletion
 - [ ] F261 — CLI vocabulary v2 (rename & prune)
 
 ## Tier 4 — Repo Comprehension (operator order amend0831)
