@@ -12,15 +12,17 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 3: land the test-backed cluster deletion map — per cluster module, the surviving consumers
-that must be cut before it can go — rule what that map forces as DECISION F274 D2, and register
-R-0831, the route-policy knobs the second carry-over has no F110 home for. This is the plan
-finding R-0830 stays open for. Nothing is deleted and no command changes.
+Round 4: cut three of the deletion map's forty-two edges. `apps/cli/commands/context.py` and
+`apps/cli/commands/worker.py` each host both surviving and cluster-bound commands; move the
+cluster-bound handlers into three new files that are themselves cluster-bound, so their imports
+die with the cluster instead of blocking it. Book round 3's PASS verdict. Nothing is deleted and
+no command id changes.
 
 ## Next Steps
 
-1. Cut the edges the map records, module group by module group, starting with the two modules
-   that already have none: `review_bundle` and `self_repair_proposal`.
+1. The remaining edge cuts the map records, module group by module group. The two modules with no
+   edge at all, `review_bundle` and `self_repair_proposal`, are deletable whenever the deletion
+   itself may start.
 2. The first carry-over, on the route DECISION F274 D2 fixes: the read-only overnight readiness
    and report views survive as `mission readiness` and `mission report`, the latter only in the
    commit that deletes the cluster-bound command already holding that name.
@@ -34,7 +36,8 @@ finding R-0830 stays open for. Nothing is deleted and no command changes.
 
 ## Risks
 
-- The deletion reaches further than F260's Design describes: 105 of the catalog's 341 command ids
-  sit in a handler file that imports the cluster, `mission.run` and `mission.report` among them.
+- The deletion reaches further than F260's Design describes: of the catalog's 341 command ids,
+  311 resolve to an owning handler file and 105 of those sit in one of the 21 files that import a
+  cluster module, `mission.run` and `mission.report` among them.
 - The open High findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
   feature's, per DECISION F272 D12.
