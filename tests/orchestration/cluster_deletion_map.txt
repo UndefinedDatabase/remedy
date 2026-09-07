@@ -47,7 +47,6 @@ packages.orchestration.provider_trust <- packages/orchestration/ui_server.py
 packages.orchestration.provider_trust_verification <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.provider_trust_verification <- packages/orchestration/ui_server.py
 packages.orchestration.repair_loop_v2 <- packages/orchestration/ui_server.py
-packages.orchestration.worker_recommend <- apps/cli/commands/worker.py
 packages.orchestration.worker_recommend <- packages/orchestration/agent_loop.py
 packages.orchestration.worker_recommend <- packages/orchestration/autonomy_loop.py
 packages.orchestration.worker_recommend <- packages/orchestration/dashboard.py

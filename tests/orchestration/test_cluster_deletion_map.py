@@ -67,8 +67,11 @@ CLUSTER_MODULES = (
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports
 # are not blockers. Listed BY PATH and never matched by filename pattern:
-# `apps/cli/commands/worker.py` and `apps/cli/commands/context.py` host
-# surviving commands alongside cluster ones and must stay measurable.
+# `apps/cli/commands/worker.py` and `apps/cli/commands/context.py` keep only
+# SURVIVING commands and are deliberately NOT listed here, so they stay
+# measurable. F274 round 4 moved their cluster-bound handlers out into
+# `context_pack_cmd.py`, `context_optimizer_cmd.py` and
+# `worker_recommend_cmd.py` for exactly that reason.
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/builder_routing_cmd.py",
     "apps/cli/commands/candidate_quality_cmd.py",
@@ -89,6 +92,7 @@ CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/route_policy_cmd.py",
     "apps/cli/commands/self_repair_cmd.py",
     "apps/cli/commands/tournament_cmd.py",
+    "apps/cli/commands/worker_recommend_cmd.py",
 )
 
 # Production trees a surviving consumer can live in. `tests/` is deliberately
