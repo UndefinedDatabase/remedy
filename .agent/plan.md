@@ -1,9 +1,8 @@
 # Plan — F272 One world completion
 
-Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 16 PASSED;
-round 2 FAILED on a premise DECISION F272 D2 has corrected. T001 and T002 are
-COMPLETE. T003 is open: round 16 moved its first consumer, `job stop`, and this
-round moves the second.
+Branch: feature/f272-one-world-completion. Rounds 1 and 3 through 17 PASSED;
+round 2 FAILED on a premise DECISION F272 D2 has corrected. T001, T002 and now
+T003 are COMPLETE.
 
 ## Goal
 
@@ -15,30 +14,30 @@ classic runner, T005 the reachability test and the cluster deletion.
 
 ## Current Step
 
-T003's second consumer. `remedy job context` searched the CLASSIC store alone,
-so it answered "no job matches prefix" for every job `remedy do job-run`
-created. It now resolves across both stores and reads a `TaskEntry`'s own
-`task_id` and `files_hint`, the way `job_stop_cmd._load_job` already reads
-unified first and classic second.
+Ruling the boundary this feature could not close over. F272's Acceptance names
+five tests.md ids that the 2026-09-06 triage gives to F273 T001, and one of
+them, R-0804, is the `ui_server.py` adapter that was the last unmoved item on
+T003's list. DECISION F272 D12 rules the triage the winner, which closes T003 at
+round 17's `job context` move and hands the cockpit adapter to F273. The same
+round commits the probe-measured inventory that bounds T004.
 
 ## Next Steps
 
-1. The remaining T003 consumer surface, re-grepped rather than taken from
-   F260's 2026-09-05 list: `packages/orchestration/ui_server.py` and its
-   `_JobPlanTaskAdapter`. That shim is finding R-0804's subject and the
-   2026-09-06 triage routes R-0804 to F273 T001, so the boundary is ruled
-   before it is touched. The `resolve_any_job_id` sites in
-   `apps/cli/commands/teach_cmd.py` STAY: DECISION F260 D5 puts the resolver
-   collapse in T004, with the store that makes it true.
-2. Rule the Acceptance conflict as a DECISION, inside a round doing other
-   work: this feature's Acceptance names tests.md ids that the 2026-09-06
-   triage gave to F273 T001, and F272 cannot close while both claims stand.
-3. T004, the classic runner and the resolver collapse, where `_CoreJobAdapter`
-   dies with the classic store it exists to adapt.
-4. T005, the reachability test and the cluster deletion, which is never split.
+1. T004, the classic runner and the resolver collapse, staged from
+   `.agent/f272_t004_deletion_inventory.md` rather than from any grep. That
+   inventory is why T004 is many rounds and not one: 199 tracked files
+   reference a classic job-store symbol by AST reading, 72 of them under
+   `packages/` and `apps/`. DECISION F260 D5 keeps the resolver collapse in
+   the SAME commit range as the store deletion.
+2. T005, the reachability test and the cluster deletion. The Orchestrator
+   brief's one hard rule: NEVER SPLIT INSIDE T005, so a session splits before
+   it and never within it.
 
 ## Risks
 
+- T004 is the largest remaining slice and its blast radius is measured rather
+  than estimated. A round that tries to take it whole will exceed the
+  DECISION F104 D1 insertion cap; the inventory exists to stage it.
 - F272's soft limit is 12 sessions and 40 rounds under operator amendment
-  amend0906-triage-throughput. At session 9 and round 17 the feature is
+  amend0906-triage-throughput. At session 9 and round 18 the feature is
   inside it and no scope report is owed.
