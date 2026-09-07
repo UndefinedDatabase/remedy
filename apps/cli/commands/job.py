@@ -1595,7 +1595,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     elif state == 'completed' and truth.get('fulfillment_status') == 'completed_verified':
         next_action = f'remedy propose list {job_id_str} --json'
     elif pending_count > 0:
-        next_action = 'remedy job run-loop <job_id> --json'
+        next_action = 'remedy job run <job_id> --json'
     elif state in ('completed', 'failed'):
         next_action = f'remedy job report {job_id_str} --json'
     else:

@@ -319,7 +319,7 @@ def _competitor_next_action(c: TournamentCompetitor, job_id: str) -> str:
     if c.worker_kind in ("local_candidate",):
         return f"remedy builder-routing report --job-id {jid} --json"
     if c.worker_kind == "human":
-        return f"remedy guide next {jid} --json" if job_id else "remedy guide next --json"
+        return f"remedy guide job {jid} --json" if job_id else "remedy job list --json"
     if c.worker_kind == "reviewer":
         return "remedy review list --json"
     return f"remedy tournament report {jid} --json"
