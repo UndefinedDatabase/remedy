@@ -1,0 +1,28 @@
+=== G5(a) ENTRY AND JOB FILE ===
+entry.id: SU-012
+entry.title: Address ledger finding R-0445
+entry.provenance: generated (self-use-generator tier 1, ledger scan, R-0445)
+entry.consumed_by: ''
+job_file_path: /home/decodeux/Repos/remedy/.agent/selfuse_f272_r28/job/SU-012.md
+job_file bytes: 2494
+job_file lines: 7
+job_file sha256: 950747cd1b75dc45c1f177c881471ab672a57f56a6bb8b13f20213e115c2ef66
+
+=== G5(b) RESULT STATE ===
+result.state (literal): <RunState.RUNNING: 'running'>
+result.job_id: '020c1ef366af4f07'
+result.error: ''
+number of tasks: 1
+  task_id='T001' status='pending' error=''
+
+=== G5(c) EXECUTION CONFIG — WHICH PROVIDER ACTUALLY RAN ===
+ExecutionConfig(builder='ollama', builder_source='cli', reviewer='ollama', reviewer_source='cli', builder_model='', builder_model_source='default', builder_effort='', builder_effort_source='default', reviewer_model='', reviewer_model_source='default', reviewer_effort='', reviewer_effort_source='default', repair_provider='', repair_provider_source='default', repair_model='', repair_model_source='default', repair_effort='', repair_effort_source='default', max_rounds=3, max_rounds_source='default', repair_rounds_allowed=2, repair_rounds_source='default', test_command='', test_command_source='default', claude_cli_write_mode='none', claude_cli_write_mode_source='default', context_strategy='task_bounded_sequential_job', timeout_sec=120, timeout_sec_source='default', timeout_profile='', timeout_profile_source='default', max_output_chars=50000, max_output_chars_source='default', stream_evidence=False, stream_evidence_source='default', max_tasks=1, max_tasks_source='invocation')
+FAKE_APPEARS_IN_EXECUTION_CONFIG: False
+
+=== G5(d) WALL CLOCK AND PROVIDER CALLS ===
+wall_clock_seconds: 251.76
+result.budgets = {'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
+
+=== G5(e) describe_self_use_run_defects(result) ===
+TUPLE LENGTH: 0
+THE TUPLE IS EMPTY: ()

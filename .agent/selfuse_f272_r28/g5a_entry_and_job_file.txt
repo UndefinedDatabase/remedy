@@ -1,0 +1,8 @@
+entry.id: SU-012
+entry.title: Address ledger finding R-0445
+entry.provenance: generated (self-use-generator tier 1, ledger scan, R-0445)
+entry.consumed_by: ''
+job_file_path: /home/decodeux/Repos/remedy/.agent/selfuse_f272_r28/job/SU-012.md
+job_file_bytes: 2494
+job_file_lines: 7
+job_file_sha256: 950747cd1b75dc45c1f177c881471ab672a57f56a6bb8b13f20213e115c2ef66

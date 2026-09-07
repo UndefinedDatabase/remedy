@@ -1,0 +1,29 @@
+Re-read of the persisted JobPlan through the shipped loader
+packages.orchestration.pingpong_job.load_job_plan('020c1ef366af4f07')
+
+state:                 <RunState.RUNNING: 'running'>
+finished_at:           ''
+error:                 ''
+stop_reason:           'budget_exhausted:max_provider_calls'
+stop_source:           'budget'
+stop_request_id:       'budget_a0b7276e530e4e0c'
+stopped_at:            '2026-09-07T15:03:52.142876+00:00'
+stop_error:            ''
+budgets:               {'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
+budget_actuals:        {'schema_version': '1.0.0', 'provider_call_count': 6, 'actual_call_count': 0, 'total_tokens': 0, 'started_at': '2026-09-07T14:59:40.633887+00:00', 'actual_sources': [], 'unmeasured_call_count': 6}
+repair_rounds_allowed: 2
+isolation_mode:        'worktree'
+worktree_branch:       'remedy/job-020c1ef366af4f07'
+worktree_path:         '.remedy-wt/job-020c1ef366af4f07'
+worktree_cleanup_status: 'retained'
+result_diff_size_bytes:  0
+root_changed_files:      []
+
+run_manifest_path:     ''
+run_manifest_error:
+run_manifest_write_failed: ManifestError: invalid run manifest (write (bound)): a published stopped reference manifest must have complete call coverage; incomplete coverage is manifest corruption (task T001: call lineage is invalid: call calls/builder/round-01/attempt prepared_input.mode 'ollama-legacy' is not a supported transport mode; task T001: call lineage is invalid: stored sequence 2 != )
+
+task T001: status='pending' final_status='stopped' error='' repair_rounds_used=2 task_attempt_state='active' reviewer_verdict='' test_passed=None
+
+describe_self_use_run_defects(reloaded_plan) length: 0
+value: ()
