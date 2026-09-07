@@ -164,7 +164,7 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
                    f"and no stop was requested")
         if json_output:
             print(_json.dumps({"ok": False, "error": "job_not_stoppable",
-                               "job_id": job_id, "job_status": job.status}, indent=2))
+                               "job_id": job_id, "job_status": job.state}, indent=2))
         else:
             print(f"Error: {message}", file=sys.stderr)
         raise SystemExit(EXIT_ERROR)
