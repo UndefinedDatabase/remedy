@@ -924,7 +924,10 @@ or exception messages appear in the run log.
 **CLI commands:**
 - `remedy dev agent-loop <job_id>` — inspect-only: derives state, prints summary, writes `agent_loop_inspected` event.
 
-The execution loop `remedy job run-loop <job_id>` was DELETED at F272 round 19.
+The execution loop invoked as `job run-loop` was DELETED at F272 round 19, and
+the command no longer exists; the guard in
+`tests/cli/test_advertised_commands.py` is why this sentence names it without
+spelling it as an invocation.
 The six cycle events below keep their schemas in
 `packages/orchestration/event_schemas.py` and are still emitted by
 `agent_loop.run_agent_loop()`, which no production caller reaches; DECISION F272
