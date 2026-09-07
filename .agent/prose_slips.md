@@ -593,3 +593,7 @@
 2026-09-08 · F274 R6 · The round 6 block named `brain_viewer.py`'s two entries a "layer entry and weight entry" where the file calls those maps `_ZONE_MAP` and `_LAYER_MAP`, and named `ui_view_model.py`'s two integer maps "the two weight maps" where the file calls them `_RANK_MAP` and `_ZOOM_MAP`; the keys and the counts were exact, so the site set was never ambiguous and the worker applied it as specified.
 
 2026-09-08 · F274 R6 · The reviewer's pre-emission dry run swept for the five deleted node symbols with a file filter of `.py`, `.ts`, `.tsx` and `.txt`, so `scripts/remedy_smoke.sh` could not appear in its result and the block's change set was authored one file short — the cause of round 6's G6 red, registered as R-0833 and R-0834 rather than left here, because both left real state wrong on disk.
+
+2026-09-08 · F274 R7 · The round 7 block's gate G2(c) wrote the pattern `^Landed: ` beside the numeral 31 to 33, which is the DISTINCT-ID reading, while the line reading of that same pattern is 35 to 37 because four ids carry two `Landed:` lines each; both readings move by exactly two, the worker measured both and declared the gap, and the reviewer re-measured it.
+
+2026-09-08 · F274 R7 · The RECORD7 slice described section 12ai's surviving ordering assertion as "the one pinning the ordering weight 25" when that section asserts only membership in `_NODE_TYPE_ORDER`, the numeral 25 being pinned in `tests/orchestration/test_project_brain.py` instead — the sub-clause named the wrong file while pair P4, which actually preserved the assertion, was exact.
