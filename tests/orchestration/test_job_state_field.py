@@ -50,7 +50,7 @@ class TestTheFieldIsState:
 
     def test_nothing_was_retyped(self):
         """Move two renames; move THREE retypes. A ``RunState`` here means they merged."""
-        assert type(JobPlan().state).__name__ == "str"
+        assert type(JobPlan().state).__name__ == "RunState"
 
 
 class TestTheStoredKeyDidNotMove:

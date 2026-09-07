@@ -6506,7 +6506,8 @@ def _job_is_resumable(job: Any) -> bool:
     """F12: a job whose next episode would RESUME into the existing job-owned worktree — i.e. a
     stopped/blocked/planned/running job, as opposed to a completed job whose worktree may have
     been intentionally cleaned (the documented rerun-from-recorded-target case)."""
-    status = str(getattr(job, "state", "") or "")
+    _state = getattr(job, "state", "")
+    status = str(getattr(_state, "value", _state) or "")
     if status != "completed":
         return True
     # A completed job that still owns an un-cleaned worktree is still resumable-ish; the

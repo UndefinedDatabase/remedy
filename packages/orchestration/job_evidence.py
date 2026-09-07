@@ -2195,7 +2195,8 @@ def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str
     from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
 
     problems: list[str] = []
-    status = str(getattr(job, "state", "") or "")
+    _state = getattr(job, "state", "")
+    status = str(getattr(_state, "value", _state) or "")
     if status not in (JOB_COMPLETED, JOB_STOPPED):
         return problems
 

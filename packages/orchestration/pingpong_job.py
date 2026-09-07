@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 # F272 T002: the closed types JobPlan's administrative fields carry. Imported at
 # module level and not under TYPE_CHECKING because `_import_job` reconstructs
 # them at runtime from the job record's plain JSON.
-from packages.core.models import Artifact, Budget, JobFences
+from packages.core.models import Artifact, Budget, JobFences, RunState
 
 # F260 D2: one minting function per KIND of id. This module names JOBs and
 # EPISODEs, so it mints through data_paths rather than spelling uuid4 inline.
@@ -62,15 +62,29 @@ TASK_SPLIT = "split"
 # model_routing.TASK_CLASS_TIERS key F016's own build/repair tasks already are.
 TASK_CLASS_DEFAULT = "standard_build"
 
-JOB_PLANNED = "planned"
-JOB_RUNNING = "running"
-JOB_BLOCKED = "blocked"
-JOB_COMPLETED = "completed"
-JOB_PAUSED = "paused"
+JOB_PLANNED = RunState.PLANNED
+JOB_RUNNING = RunState.RUNNING
+JOB_BLOCKED = RunState.BLOCKED
+JOB_COMPLETED = RunState.COMPLETED
+JOB_PAUSED = RunState.PAUSED
 #: F011. Additive and distinct: a STOPPED job was stopped ON PURPOSE at a safe point. It is
 #: not `blocked` (nothing failed), not `paused` (nothing hit a task cap) and not a cancelled
 #: queue item. It keeps its pending work and resumes at the first pending task.
-JOB_STOPPED = "stopped"
+JOB_STOPPED = RunState.STOPPED
+
+# F272 move three: the lifecycle field is a ``RunState``, but a job record
+# written before this round may carry ANY string — `complete`, `dry_run` and
+# `promoted` all occur in records on disk today — so DECISION F272 D5's
+# promise that every stored record still loads is kept by KEEPING an
+# unrecognised value verbatim rather than raising on it.
+_JOB_STATE_BY_VALUE = {member.value: member for member in RunState}
+
+
+def _coerce_job_state(value: object) -> object:
+    """Map a stored status string onto its ``RunState`` member, or keep it as-is."""
+    if isinstance(value, RunState):
+        return value
+    return _JOB_STATE_BY_VALUE.get(value, value)
 
 # Token context policy constants
 _PREVIOUS_SUMMARY_LIMIT = 5
@@ -302,7 +316,7 @@ class JobPlan:
     repo_path: str = ""
     job_workspace_path: str = ""
     job_title: str = ""
-    state: str = JOB_PLANNED
+    state: RunState = JOB_PLANNED
     tasks: list[TaskEntry] = field(default_factory=list)
     # F272 T001, DECISION F260 D1: a Job has MANY runs. The ordered ids of
     # the runs this job produced, oldest first and each exactly once. F260
@@ -407,6 +421,11 @@ class JobPlan:
     # budget object would write a meaningless `{}` into every job record.
     budget: Budget | None = None
     fences: JobFences | None = None
+
+    def __post_init__(self) -> None:
+        # One spelling per concept: however the field was set — a raw literal, a
+        # JOB_* constant or an imported record — it settles as a RunState.
+        self.state = _coerce_job_state(self.state)
 
 
 # ---------------------------------------------------------------------------
@@ -664,7 +683,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "repo_path": job.repo_path,
         "job_workspace_path": job.job_workspace_path,
         "job_title": job.job_title,
-        "status": job.state,
+        "status": job.state.value if isinstance(job.state, RunState) else job.state,
         "created_at": job.created_at,
         "finished_at": job.finished_at,
         "error": job.error,
@@ -2965,7 +2984,7 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
     return {
         "job_id": job.job_id,
         "job_title": job.job_title,
-        "status": job.state,
+        "status": job.state.value if isinstance(job.state, RunState) else job.state,
         "repo_path": job.repo_path,
         "job_workspace_path": job.job_workspace_path,
         "created_at": job.created_at,
