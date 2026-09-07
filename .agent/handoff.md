@@ -4,10 +4,12 @@
 
 SESSION 7 of feature F272 · round 14 · rounds so far 14
 
-Context self-assessment (amend0905-throughput): context is comfortable — this round
-read four production regions, applied eight FROM→TO pairs, ran one disposable worktree
-and four suites, and nothing in it approached a limit; F272's own soft limit is 12
-sessions and 40 rounds by amend0906-triage-throughput, so 7/14 is mid-feature.
+Context self-assessment (amend0905-throughput): the context is spent, and it went on the
+verification described below — move three applied in a disposable worktree BEFORE it was
+authored, 111 failing tests measured, a rendering-site class the round 13 inventory's
+predicate could not see found and fixed, and then every one of the eight gates re-run by
+the reviewer itself; F272's own soft limit is 12 sessions and 40 rounds by
+amend0906-triage-throughput, so 7/14 is well inside it.
 
 THE ROUND IS COMPLETE. C0a through C6 all landed in the block's ordered sequence,
 nothing was added, dropped or reordered, and no commit was made outside it.
@@ -313,10 +315,120 @@ matters with nothing wrong left on disk; the reviewer rules on each.
 lines of its own. Inserting a separator would have produced three blank lines between
 top-level classes; as applied, ruff passes and the appended region byte-equals the slice.
 
+## Reviewer verdict — round 14
+
+VERDICT PASS. Every gate was RE-RUN by the reviewer rather than read, in the primary
+checkout at `0554bb5f`.
+
+- Range `6c2225b8`..`0554bb5f`, eight commits, every one single-parent, in exactly the
+  ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6, with the change set exactly the
+  eleven ordered paths and nothing else.
+- G1 TRANSPORT is a REAL chain, not merely self-consistent: the reviewer's own scratch
+  original `.remedy-wt/f272-r14-block.md`, written and hashed BEFORE delegation, and the
+  committed `.agent/authored/f272-r14.md` and `.agent/last_block.md` are all 27108 bytes
+  at 399 lines and all hash to
+  `ad0f32b61f0488c27d0752f058fbe49a1faf1b7cec0e6b89b38ebfb209a78a87`.
+- G2 THE RECORD reproduces byte for byte: `.agent/live_review.md` 1138931 to 1145308,
+  pre-image a byte-exact prefix, `post == pre + NL + slice` TRUE; registrations 305
+  unchanged, resolutions 248 unchanged, open set BY DISTINCT ID 57 unchanged, `^Gate: `
+  35 to 36, `^Gate: F272 R13 ` 0 to 1. The `.agent/prose_slips.md` and
+  `docs/roadmap/features/T2_F272.md` appends are byte-exact by the same reading, and the
+  feature file's DECISION headings read D1 through D10 in order.
+- G3 THE PLAN is 1850 bytes byte-equal to its slice at 38 lines against the cap of 50,
+  with `## Goal` and `## Next Steps` present.
+- G4 THE RETYPE reproduces against the SHIPPED module: every construction path — default,
+  raw literal, `JOB_*` constant and imported record — yields `RunState`; `JOB_BLOCKED` is
+  a `RunState` and still equals `"blocked"`; the nine members are unchanged;
+  `type(_export_job(job)["status"]) is str` is True; and a legacy record whose status is
+  `complete` still loads and exports back unchanged, so DECISION F272 D5 holds.
+- G5 THE RED-PROOF was re-run by the reviewer in its own disposable worktree, removed
+  afterwards by exact path: the unmutated control is EXIT 0 at 12 passed, and with
+  `_export_job`'s `.value` removed the run is EXIT 1 with ELEVEN TESTS STILL PASSING and
+  only `test_the_exported_status_is_a_plain_str_and_not_a_run_state` failing. That is the
+  round's whole point on one line: every pre-existing guard is blind to the missing
+  `.value`, and only the new discriminator sees it.
+- G6 THE SUITES, re-run serially: `tests/orchestration/` EXIT 0 at 12850 passed and 10
+  skipped, which is the reviewer's own base of 12847 plus exactly the three tests C5 adds
+  with skips unchanged; `tests/ui_contracts/` EXIT 0 at 809 passed and 4 skipped, exactly
+  the base; `tests/docs/` EXIT 0 at 303; the canary EXIT 0 at 42.
+- G7 ruff EXIT 0 `All checks passed!` over the four changed `.py` files, integrity EXIT 0
+  with `"passed": true` and `"fail_count": 0`.
+- G8 THE TREE: `git status --porcelain` empty, `git ls-files .remedy-wt` empty, thirteen
+  worktree entries being the primary and the twelve pre-existing `remedy/job-*`,
+  line-anchored marker sweep 0 in every written file, and per-commit insertions 399, 375,
+  17, 4, 41, 34 and 29, each under the DECISION F104 D1 cap of 500 and each matching the
+  `## Commits` table.
+
+DEVIATION 1 IS UPHELD IN FULL AND IS THE REVIEWER'S DEFECT, NOT THE WORKER'S. The block
+rendered its C4 pairs inside markdown code blocks without a consistent rule for the
+four-space fence indent, so P5's FROM appeared with 4 leading spaces where the file has 8,
+while P6 and P7's appeared with 4 where the file also has 4 — the same convention giving
+the right answer in one pair and the wrong one in another. The worker resolved it from the
+block's own count assertions, which only the 8-space reading can satisfy, applied every
+pair at the file's real indentation, and reported that every pre-edit FROM count matched.
+Nothing wrong reached disk, so no id is spent; it is one dated line owed to
+`.agent/prose_slips.md` in round 15's first commit, per amend0827 rule 2. DEVIATION 2 is
+accepted and confirmed: the two marker substrings in `.agent/live_review.md` are
+pre-existing and mid-line, the line-anchored count is 0 before and after, and RECORDR14
+contributes neither.
+
+THE WORKER'S TWO CLOSING NOTES ARE CONFIRMED AND BINDING ON THE NEXT BLOCK. C4 inserts 19
+lines above them, so the two record boundaries are now
+`packages/orchestration/pingpong_job.py:686` and `:2987`, and the protected f-string is at
+`:3045`, untouched byte for byte. A later block citing 667, 2968 or 3026 would cite the
+wrong lines.
+
 ## Next
 
-Review `6c2225b8`..`HEAD` and rule on round 14: re-run the eight gates, rule on the two
-declared deviations, and — on PASS — author round 15 as the Mission extension (the order,
-the contract, the mission plan and the ordered job references), which `.agent/plan.md`
-now names as the next step. Phase 1 rule 1 first: re-read `.agent/STOP` from disk before
-authoring.
+**SESSION 7 OF F272 ENDS HERE**, after one delegated round (round 14). F272's soft limit
+under operator amendment amend0906-triage-throughput is 12 sessions and 40 rounds, so at
+session 7 and round 14 the feature is well inside it and NO SCOPE REPORT IS OWED.
+
+Why the session ends below the six-to-eight round target, in one sentence as amend0906
+rule 3 requires: the session spent its budget on an unusually heavy verification round —
+the reviewer applied move three in a disposable worktree BEFORE authoring it, measured 111
+failing tests, found and fixed a rendering-site class the round 13 inventory's predicate
+could not see, and then re-ran every gate itself — and the next round opens a subsystem
+that needs a fresh context.
+
+THE NEXT SESSION'S FIRST ACTION: run Phase 0, the state probe; then check `.agent/STOP`
+under Phase 1 rule 1 BEFORE the Open PR Gate under rule 2, in that order. No PR exists for
+this branch and none was created.
+
+Round 15's FIRST COMMIT owes the bookings persisted here and not yet in the ledger, per
+amend0827 rule 1 — exactly two, and nothing else:
+
+1. the round 14 `Gate: F272 R14` PASS entry recorded in the verdict section above; and
+2. one dated `.agent/prose_slips.md` line recording the block's inconsistent code-fence
+   indentation (deviation 1).
+
+No id is minted for either.
+
+ROUND 15 IS THE MISSION EXTENSION, the last item of T002, and it needs a fresh context
+because it opens `packages/orchestration/mission_state.py`, a subsystem this session did
+not measure. `docs/roadmap/features/T2_F260.md:21-25` defines the target: a Mission record
+carries the **order** (text, or file path + sha256), the **contract** (described only as
+"D9 shape; may be empty until F269 fills it"), the **mission plan** and the ordered **job
+references**.
+
+TWO OF THOSE FOUR ALREADY EXIST and must not be rebuilt: `Mission.mission_plan` and
+`Mission.job_links` are both live fields of the `Mission` dataclass at
+`packages/orchestration/mission_state.py:168`. The genuinely new work is `order` and
+`contract`.
+
+AN UNRESOLVED REFERENCE BLOCKS THE CONTRACT'S SHAPE AND MUST BE SETTLED BEFORE IT IS
+BUILT, NEVER GUESSED: "D9 shape" resolves to no DECISION that exists.
+`docs/roadmap/features/T2_F260.md` contains no `### DECISION F260 D9` heading, and F272's
+own D9 is the unrelated digest-hero-card phrase guard. The next session settles this as a
+§4.7 DECISION rather than by asking the operator. The recommended reading, which the
+`Mission` docstring's own precedent supports, is that `contract` is ADDITIVE, OPTIONAL and
+RESERVED — added empty now and filled by F269 — exactly as `dossier_ref` is documented at
+`packages/orchestration/mission_state.py:168-183` as reserved for a later feature and
+never filled by the one that added it, and exactly as `mission_plan` is additive without
+moving `MISSION_SCHEMA_VERSION`. Under that reading round 15 adds both fields without
+needing D9 at all.
+
+Before authoring round 15, read `mission_state.py` IN FULL — `to_json`, the loader,
+`save_mission`, `create_mission` and the validation helpers — and grep every test that
+reads a mission record, because an additive field must leave every record written before
+it byte-identical and every existing reader working.
