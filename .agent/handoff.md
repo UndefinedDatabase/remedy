@@ -1,186 +1,213 @@
-# Handback — F272 round 24
+# Handback — F272 round 25 — SESSION 11 CLOSES
 
 ## Session
 
-SESSION 11 of feature F272 · round 24 · rounds so far 24
+SESSION 11 of feature F272 · round 25 · rounds so far 25
 
-Soft limit under amend0906-triage-throughput is 12 sessions and 40 rounds. At
-session 11 and round 24 the feature is INSIDE the limit, so no scope report is
-owed yet. DECISION F272 D14, committed this round, supplies the figures the next
-scope report will use (60 production files and 127 test files, not 199).
+Soft limit under amend0906-triage-throughput: 12 SESSIONS and 40 ROUNDS. At
+session 11 and round 25 the feature is still INSIDE the limit, so no scope
+report is owed by THIS round; session 12 reaches the session half of it and
+owes one. See the session-closing section below, which the block ordered.
 
-Context self-assessment: the round used a small fraction of the available
-context — eight state-file operations, four gate scripts and three pytest runs —
-and nothing was truncated, elided or read from memory rather than from disk.
+Context self-assessment, one sentence: this session spent its whole
+measurement budget on a single question and answered it — whether T004's
+remaining work can be staged by caller — so it closes with three rounds
+rather than the six-to-eight target, with the answer on disk rather than in
+a session that is about to be discarded.
 
 ## Range
 
-Review of `81b2dc86`..`da930e3c`, the seven-commit sequence C0a, C0b, C1, C2,
-C3, C4, C5. The C6 commit that writes this file follows `da930e3c` and cannot
-name its own SHA — the same shape rounds 21, 22 and 23 used. Never an
-unmeasured SHA.
+Review of `4491ec9e`..`e72a9602`, PLUS the C5 commit that writes this file.
+C5's SHA is deliberately absent: a commit cannot name its own SHA, and no SHA
+is written in this repository that has not been measured. The reviewer reads
+the true range as `4491ec9e`..`HEAD` after C5 lands; every figure below was
+measured at or before `e72a9602`.
 
 ## Commits
 
-Eight commits, every one single-parent, in exactly the block's ordered sequence
-C0a, C0b, C1, C2, C3, C4, C5, C6. The `+/-` column is `git diff --numstat
-<parent> <commit>` and every cell was compared against G6's figures.
-
-### 6c3cc698 f272: save the round 24 block verbatim
+### 17d7e06c f272: save the round 25 step block verbatim
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/authored/f272-r24.md` | +285/-0 | C0a — `shutil.copyfile` of `.remedy-wt/f272-r24-block.md`, the round's block saved verbatim |
+|------|-----|--------|
+| `.agent/authored/f272-r25.md` | +280 / -0 | C0a — `shutil.copyfile` of the delivered block, byte-identical (G1) |
 
-### d8e4c027 f272: mirror the round 24 block into last_block
+### 1bfce0ee f272: mirror the round 25 block into the last block slot
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/last_block.md` | +178/-260 | C0b — same bytes by `shutil.copyfile`; the churn is round 23's 367-line block being replaced by round 24's 285-line one |
+|------|-----|--------|
+| `.agent/last_block.md` | +167 / -172 | C0b — same `copyfile`, same bytes as C0a and as the delivered file (G1) |
 
-### f490b86d f272: point the plan at the round 24 staging ruling
+### 9448a35d f272: point the plan at the atomic record flip and the session 12 scope report
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/plan.md` | +20/-22 | C1 — replaced byte for byte with slice PLANF272R24 |
+|------|-----|--------|
+| `.agent/plan.md` | +23 / -23 | C1 — replaced byte for byte with slice PLANF272R25; 47 lines, under the AGENTS.md cap of 50 (G3) |
 
-### 4b84d3d9 f272: book the round 23 PASS gate entry
+### 1d8741b6 f272: book the round 24 PASS verdict into the record
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/live_review.md` | +2/-0 | C2 — append of slice RECORDR24, the round 23 PASS gate entry owed by amend0827 rule 1. No finding minted |
+|------|-----|--------|
+| `.agent/live_review.md` | +2 / -0 | C2 — append of RECORDR25, the round 24 PASS gate entry owed by amend0827 rule 1. No finding minted (G2) |
 
-### dd81d87a f272: append the round 23 prose slip line
+### 869b6a43 f272: record the round 24 block prose slip on the append separator
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/prose_slips.md` | +2/-0 | C3 — append of slice SLIPSR24, the dated line round 23's worker declared and correctly declined to write on its own initiative |
+|------|-----|--------|
+| `.agent/prose_slips.md` | +2 / -0 | C3 — append of SLIPSR25, one dated line, no id spent (G3) |
 
-### bc80adf0 f272: record the T004 staging measurements
+### e72a9602 f272: correct D14 part 2 with DECISION F272 D15, the atomic record flip
 | Path | +/- | Reason |
-|---|---|---|
-| `.agent/f272_t004_staging.md` | +120/-0 | C4 — NEW file, `shutil.copyfile` of `.remedy-wt/f272-r24-staging.md` per constraint 4 |
+|------|-----|--------|
+| `docs/roadmap/features/T2_F272.md` | +14 / -0 | C4 — append of D15SLICE. D14's own section byte-unchanged (G4) |
 
-### da930e3c f272: rule how T004 is staged as DECISION F272 D14
+### C5 — SHA unmeasurable at write time — f272: close session 11 with the round 25 handback
 | Path | +/- | Reason |
-|---|---|---|
-| `docs/roadmap/features/T2_F272.md` | +18/-0 | C5 — append of slice D14SLICE, the ruling. Append, never a rewrite, per constraint 5 |
+|------|-----|--------|
+| `.agent/handoff.md` | rewritten in full | C5 — this file. A handoff cannot table the commit that writes it (R-0149 pattern), and it cannot count its own insertions, which is why G6 covers C0a through C4 only |
 
-### C6 (SHA unmeasurable here) f272: hand back round 24 on the T004 staging ruling
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | (self) | C6 — this file, rewritten completely. A handoff cannot table the commit that writes it (R-0149 pattern), so neither its SHA nor its `+/-` can be measured from inside it; both are in the round report |
+Every `+/-` cell above was taken from `git diff --numstat <parent> <commit>`
+and compared CELL FOR CELL against G6's independently-run figures; all six
+agree. The change set is exactly the seven paths the block declared and
+nothing else. NOTHING under `packages/`, `apps/`, `tests/` or `scripts/`
+changed this round.
 
 ## Item status
 
 | Item | Status | Reason |
-|---|---|---|
-| C0a | done | `.agent/authored/f272-r24.md`, sha256 `255fd4f0…`, 24493 bytes, 285 lines |
-| C0b | done | `.agent/last_block.md`, identical bytes to C0a and to the delivery file |
-| C1 | done | `.agent/plan.md` byte-equal to PLANF272R24, 2525 bytes, 47 lines |
-| C2 | done | append proved byte-exact; 1204799 -> 1209111 |
-| C3 | done | append proved byte-exact; 148270 -> 148887 |
-| C4 | done | copied file matches constraint 4's sha256, 5921 bytes and 120 lines exactly |
-| C5 | done | append proved byte-exact; 52485 -> 58026; D14 is the fourteenth and last DECISION heading |
-| C6 | done | this handback |
+|------|--------|--------|
+| C0a  | done   | |
+| C0b  | done   | |
+| C1   | done   | |
+| C2   | done   | |
+| C3   | done   | |
+| C4   | done   | |
+| C5   | done   | this commit |
 
 ## External actions
 
-- `git push -u origin feature/f272-one-world-completion` after C5 — EXIT 0.
-  `To github.com:UndefinedDatabase/remedy.git` /
-  `81b2dc86..da930e3c  feature/f272-one-world-completion -> feature/f272-one-world-completion` /
-  `Branch 'feature/f272-one-world-completion' set up to track remote branch 'feature/f272-one-world-completion' from 'origin'.`
-- A second `git push` carrying C6 is executed immediately after that commit. Its
-  real transcript is in the round report, because a handback cannot contain the
-  transcript of a push of itself.
-- No PR created, none edited, none merged. No worktree added or removed —
-  constraint 8 forbids one and none was needed.
-- No `gh` command run.
+    git push -u origin feature/f272-one-world-completion
+    -> To github.com:UndefinedDatabase/remedy.git
+       4491ec9e..e72a9602  feature/f272-one-world-completion -> feature/f272-one-world-completion
+       Branch 'feature/f272-one-world-completion' set up to track remote branch ...
+       REAL_EXIT=0
+
+    gh pr list --state open --json number,headRefName,baseRefName,isDraft
+    -> []   REAL_EXIT=0     (no PR exists for this branch; none was created)
+
+A SECOND push follows C5, because a handback cannot transcribe the push of
+itself. Its output is in the round report. No PR was created, nothing was
+merged, no worktree was added or removed (constraint 8 forbade one), and no
+history was rewritten or force-pushed.
 
 ## Verification
 
-Every gate run with `bash -c '<cmd>; echo "REAL_EXIT=$?"'`, no pipe between the
-command and the echo. Every gate ran BEFORE C6.
+Every gate was run with `bash -c '<cmd>; echo "REAL_EXIT=$?"'`, no pipe
+between the command and the echo, in the PRIMARY checkout. All six PASS.
 
-**G1 TRANSPORT — PASS.** Three artifacts compared, every one byte-identical to
-its delivery file. REAL_EXIT=0.
+**G1 TRANSPORT — PASS, REAL_EXIT=0.** Five blobs, one digest.
 
-    ARTIFACTS_COMPARED: 3
-    .agent/authored/f272-r24.md   len=24493 lines=285 sha=255fd4f05f3ee938fcbc470037428918862cbae2f347cbde0f437eece3edf5f5 MATCHES_DELIVERY=True
-    .agent/last_block.md          len=24493 lines=285 sha=255fd4f05f3ee938fcbc470037428918862cbae2f347cbde0f437eece3edf5f5 MATCHES_DELIVERY=True
-    .remedy-wt/f272-r24-block.md  len=24493 lines=285 sha=255fd4f05f3ee938fcbc470037428918862cbae2f347cbde0f437eece3edf5f5
-    .agent/f272_t004_staging.md   len=5921  lines=120 sha=25ed0b5a1fc1180e4339e28b95bec986b9f51ccdc946d5a7f56de48e4d7ff526 MATCHES_CONSTRAINT4=True
-    staging delivery file identical: True
+    delivered .remedy-wt/f272-r25-block.md      len 23414  lines 280  sha256 b9dda40e...3ea9ee92
+    worktree  .agent/authored/f272-r25.md       len 23414  lines 280  sha256 b9dda40e...3ea9ee92
+    worktree  .agent/last_block.md              len 23414  lines 280  sha256 b9dda40e...3ea9ee92
+    COMMITTED HEAD:.agent/authored/f272-r25.md  len 23414  lines 280  sha256 b9dda40e...3ea9ee92
+    COMMITTED HEAD:.agent/last_block.md         len 23414  lines 280  sha256 b9dda40e...3ea9ee92
+    ALL_FIVE_IDENTICAL True
+    DELIVERED_MATCHES_DELEGATED_DIGEST True
 
-The delivery file was verified against the three figures the delegation stated
-BEFORE it was read: sha256 `255fd4f0…`, 24493 bytes, 285 lines — all three
-matched, so the chain runs delivery -> committed artifact, not merely
-artifact -> artifact. The staging file likewise matched constraint 4's stated
-sha256, 5921 bytes and 120 lines before it was copied.
+Full digest: `b9dda40e327c491305014c62b16058997f6c475298407004fa0aca3a3ea9ee92`.
+The delegating message stated that digest, 23414 bytes and 280 lines BEFORE
+the block was opened, and all three were verified against disk before any
+work began. Per §3 item 37 this chain covers these artefacts and is not a
+claim about the bytes emitted into a prompt.
 
-**G2 THE RECORD — PASS, all four parts.** REAL_EXIT=0.
+**G2 THE RECORD — PASS, REAL_EXIT=0.** The single append at C2.
 
-    (a) BYTE
-      pre_len    1204799  pre_sha256  0a3287c979d7ebc52510df56b9c1c149571d6413b152bf61ba0e734e945c3315
-      post_len   1209111  post_sha256 8ca58e083752f4163c14f05320ec4b352cd767165333760e2033156560ea75f1
-      pre  terminal12 b' it CANNOT.\n' nl_run 1
-      post terminal12 b'for all 17.\n' nl_run 1
-      PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
-      POST_EQUALS_PRE_NL_SLICE: True
-      base pre_len==1204799: True   pre_sha16 == 0a3287c979d7ebc5: True
+(a) BYTE
 
-    (b) STRUCTURAL
-      N (counted from slice by the script, not taken from the block): 1
-      units before: 729   units after: 730
-      LAST_N_EQUAL_SLICE_PARAS_IN_ORDER: True
-      EVERYTHING_BEFORE_UNCHANGED: True
+    pre_len 1209111   pre_lines 2129
+    pre_sha256 8ca58e083752f4163c14f05320ec4b352cd767165333760e2033156560ea75f1
+    pre_terminal_12  b'for all 17.\n'    pre_trailing_newline_run 1
+    slice_len 3578    slice_lines 1
+    slice_sha256 d98e1cdd71952bc110b1356cec301085ce6e547d0e5555d947c95094842b2ef0
+    slice_terminal_12 b'd `\n{2,}`.\n'
+    post_len 1212690  post_lines 2131
+    post_sha256 57a35edca4ea83a2c5ae06abda967e5e5a7eac4cf6b1e835f12d8c8067cc4f16
+    post_terminal_12 b'd `\n{2,}`.\n'    post_trailing_newline_run 1
+    PRE_IS_BYTE_EXACT_PREFIX_OF_POST True
+    POST_EQUALS_PRE_NL_SLICE          True
 
-    (c) NEGATIVE CONTROL (in memory only, never on disk)
-      flipped byte offset in first added paragraph: 2155
-      BYTE_READER_REJECTS: True
-      STRUCTURAL_READER_REJECTS: True
-      DISK_UNTOUCHED (re-read == real post): True sha 8ca58e083752f4163c14f05320ec4b352cd767165333760e2033156560ea75f1
+The pre-image is 1209111 bytes at 2129 lines and its sha256 begins
+`8ca58e083752f416`, exactly as the block predicted.
 
-    (d) COUNTS — each measured, none adjusted to agree
-      ^- R-\d{4} distinct        309 ->  309   (block said 309 -> 309)
-      ^Done: R-\d{4} distinct    252 ->  252   (block said 252 -> 252)
-      open set BY DISTINCT ID     57 ->   57   (block said  57 ->  57)
-      ^Gate:                      46 ->   47   (block said  46 ->  47)
-      ^Gate: F272 R23              0 ->    1   (block said   0 ->   1)
-      ^- R-0826                    0 ->    0   (block said   0 ->   0)
+(b) STRUCTURAL — terminal newline stripped, split on blank lines.
 
-    OPEN FINDINGS BY DISTINCT ID, arithmetic: 309 distinct registrations
-    minus 252 distinct resolutions = 57 open. Registrations and resolutions
-    are both unchanged because this round mints nothing and resolves nothing;
-    only the gate entry is added. `R-0826` IS STILL FREE, as constraint 6
-    requires.
+    N (COUNTED BY THE SCRIPT from the slice, not read from the block)  1
+    units_before 730   units_after 731
+    LAST_N_UNITS_EQUAL_SLICE_PARAGRAPHS_IN_ORDER True
+    EVERYTHING_BEFORE_UNCHANGED                  True
+    para 0  len 3577  sha256 4daea5953e355308  head "Gate: F272 R24 — the F272 round 24 entry. VERDICT PASS, AN"
 
-The negative control was run on the FIRST paragraph the append adds — which for
-a one-paragraph slice is the whole of it — and both readers rejected the flipped
-copy; the file was then re-read from disk and hashed to confirm the control
-never touched it.
+(c) NEGATIVE CONTROL — in memory only, never on disk.
 
-**G3 THE TWO PROSE FILES — PASS.** REAL_EXIT=0.
+    flipped byte at offset 1210900, inside the FIRST added paragraph: 's' -> 'r'
+    mutant_differs_from_post          True
+    BYTE_READER_REJECTS_MUTANT        True
+    STRUCTURAL_READER_REJECTS_MUTANT  True
+    BYTE_READER_ACCEPTS_REAL_POST     True
+    STRUCTURAL_READER_ACCEPTS_REAL_POST True
+    DISK_REREAD_IDENTICAL_TO_REAL_POST True
+    DISK_REREAD_SHA256 57a35edca4ea83a2c5ae06abda967e5e5a7eac4cf6b1e835f12d8c8067cc4f16
+    DISK_NEVER_SAW_MUTANT             True
 
-    .agent/plan.md   bytes 2525   lines 47   AGENTS.md cap 50 -> OK
-      BYTE_EQUAL_TO_PLANF272R24: True   sha 95ab14452d3d9ce532cb4ec883cbae5e37a13529dae7a4f7c1047b8a113d1fea
-      '## Goal' present: True
-      '## Next Steps' present: True
+Both readers reject the one-byte mutant and both accept the real post-image,
+so neither reader is a gate that cannot fail.
 
-    .agent/prose_slips.md
-      pre_len 148270 (block said 148270: True)  sha 057d93fd3e9ffbe73a5ef3f4d17097a6d8afe6337eb5deb67f1f40f07e0c5a6f
-      post_len 148887                            sha c54572e71819375d288304861c7de65879d8f419fcf6de51e2d5327724568d20
-      PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
-      POST_EQUALS_PRE_NL_SLICE: True
-      lines 553 -> 555   LINES GAINED: 2 (the blank separator and the slip line)
+(d) COUNTS — each measured, none adjusted to agree. Block target on the left.
 
-**G4 THE FEATURE FILE — PASS. No number is duplicated and none is skipped.**
-REAL_EXIT=0.
+    ^- R-\d{4} distinct       309 -> 309    (block: 309 -> 309)  MATCH
+    ^Done: R-\d{4} distinct   252 -> 252    (block: 252 -> 252)  MATCH
+    open set BY DISTINCT ID    57 ->  57    (block:  57 ->  57)  MATCH
+    ^Gate:                     47 ->  48    (block:  47 ->  48)  MATCH
+    ^Gate: F272 R24             0 ->   1    (block:   0 ->   1)  MATCH
+    ^- R-0826                   0 ->   0    (block:   0 ->   0)  MATCH
 
-    pre_len  52485  pre_sha256  15ca3b629acb37d9a2a799ea6205c0b5d30653815c950066dfb74000ebef25bd  lines 736
-    post_len 58026  post_sha256 1227d1d7ce16b6ca1df26e128b263023aa3dd95f556df020ff3faf78d85dc224  lines 754
-    PRE_IS_BYTE_EXACT_PREFIX_OF_POST: True
-    POST_EQUALS_PRE_NL_SLICE: True
-    '^### DECISION F272 D' headings: 13 -> 14   (block said 13 at the base)
-    numbers in order: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-    D1..D14 each heads EXACTLY ONE section: True
+OPEN FINDINGS BY DISTINCT ID, with its arithmetic: 309 DISTINCT registered
+ids minus 252 DISTINCT `Done:` ids = 57, before and after. The count is over
+DISTINCT ids on both sides, not over lines, so a two-paragraph resolution is
+not double-counted. `R-0826` occurs twice in the post-image as prose — once
+in the round 23 entry and once in the RECORDR25 entry just added, both
+saying the id is still free — and ZERO times as a `^- R-0826` registration.
+R-0826 IS STILL FREE, as constraint 6 required.
 
-Every heading line, listed in file order:
+**G3 THE TWO PROSE FILES — PASS, REAL_EXIT=0.**
+
+    .agent/plan.md
+      slice PLANF272R25       len 2545  lines 47  sha256 396c542e...8ecc271c
+      worktree                len 2545  lines 47  sha256 396c542e...8ecc271c
+      COMMITTED HEAD:         len 2545  lines 47  sha256 396c542e...8ecc271c
+      PLAN_BYTE_EQUAL_TO_PLANF272R25   True (worktree AND committed)
+      line count 47 vs the AGENTS.md cap of 50 -> UNDER, headroom 3
+      '## Goal' present True     '## Next Steps' present True
+      headings: ['## Goal', '## Current Step', '## Next Steps', '## Risks']
+
+    .agent/prose_slips.md   (byte append check only)
+      pre_len 148887 at base 4491ec9e — the block states 148887 -> MATCH
+      pre_lines 555   pre_sha256 c54572e7...24568d20
+      post_len 149432 post_lines 557  post_sha256 820d0c89...cff8ea10
+      PRE_IS_BYTE_EXACT_PREFIX_OF_POST True
+      POST_EQUALS_PRE_NL_SLICE          True
+      LINE COUNT GAINED: 2 (one blank separator plus the one dated line)
+
+**G4 THE FEATURE FILE — PASS, REAL_EXIT=0.**
+
+    pre_len 58026   pre_lines 754   (block states 58026 bytes, 754 lines -> MATCH)
+    pre_sha256  1227d1d7ce16b6ca1df26e128b263023aa3dd95f556df020ff3faf78d85dc224
+    WORKING_PRE_EQUALS_BASE_BLOB (git show 4491ec9e:...) True
+    slice_len 4870  slice_lines 13  sha256 3dc695e9...401f68e1
+    post_len 62897  post_lines 768
+    post_sha256 075e72d74c8a382afc7c09684531573b9a3dc2b04eb7863160f5d2d99aae4042
+    PRE_IS_BYTE_EXACT_PREFIX_OF_POST True
+    POST_EQUALS_PRE_NL_SLICE          True
+
+`^### DECISION F272 D` headings: 14 before -> 15 after. The block states 14
+at the base commit: MATCH. Numbers after, in file order, are exactly
+`1,2,3,4,5,6,7,8,9,10,11,12,13,14,15` — no duplicate, no gap, each of D1
+through D15 heading EXACTLY ONE section. Every heading line, in file order:
 
     ### DECISION F272 D1 (2026-09-06, F272 round 2) — the run re-key lands in two moves, and the run LOG keeps its job key
     ### DECISION F272 D2 (2026-09-06, F272 round 4) — correction to D1's premise: the observer set is the repository, not the three files the search read
@@ -196,145 +223,196 @@ Every heading line, listed in file order:
     ### DECISION F272 D12 (2026-09-07, F272 round 18) — the 2026-09-06 triage wins over this file's Acceptance, so the five tests.md ids are F273's; T003 is COMPLETE, and T004's blast radius is measured rather than estimated
     ### DECISION F272 D13 (2026-09-07, F272 round 20) — a command's ADVERTISEMENTS are deleted in the same commit as the command, and T004's remaining order is set by that rule rather than by the size of each handler
     ### DECISION F272 D14 (2026-09-07, F272 round 24) — T004 is staged BY CALLER, the twelve cluster-bound consumers are never migrated, and `job.run-next` dies WITH the rails rather than ahead of them
+    ### DECISION F272 D15 (2026-09-07, F272 round 25) — correction to D14 part 2: the classic-to-unified flip is ATOMIC over the consumer graph, not stageable by caller, because `.id` is the last gap and it sits on shared helpers
 
-**G5 NOTHING ELSE MOVED, AND THE DOCS GATE — PASS.** All three run serially in
-the PRIMARY checkout at C5, and every count equals the reviewer's own
-already-appended measurement.
+D14's OWN SECTION IS BYTE-UNCHANGED. Base span, D14's heading to EOF at
+`4491ec9e`: 5540 bytes, sha256 `e964d3f8...2209c667`. Post span, D14's
+heading to the first byte of D15's heading: 5541 bytes, sha256
+`f1178a88...04037702`.
 
-    $ python3 -B -m pytest tests/docs/ -q -p no:randomly
-    303 passed in 0.67s
-    REAL_EXIT=0                                   (reviewer measured 303)
+    BASE_SPAN_IS_BYTE_EXACT_PREFIX_OF_POST_SPAN True
+    DELTA_BYTES b'\n'
+    D14_SECTION_BYTE_UNCHANGED_MODULO_TRAILING_BLANK True
 
-    $ python3 -B -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
-    30 passed in 0.46s
-    REAL_EXIT=0                                   (reviewer measured 30)
+The one-byte delta is the append's own blank-line SEPARATOR, which belongs to
+the append and not to D14 — see the assumption declared below, where this is
+stated rather than smoothed over. Every byte of D14's text is unchanged:
+5539 bytes, sha256 `2ee226cc...57f2488f`. The whole pre-image being a
+byte-exact prefix of the post-image (G4, above) independently proves the same
+thing for every earlier byte in the file.
 
-    $ python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
-    42 passed in 22.72s
-    REAL_EXIT=0                                   (reviewer measured 42)
+**G5 THE DOCS GATE — PASS, three suites run SERIALLY, REAL_EXIT=0 each.**
 
-No `.py` file changed this round, so no ruff reading is owed and none was taken.
+    python3 -B -m pytest tests/docs/ -q -p no:randomly
+    -> 303 passed in 0.68s                                  REAL_EXIT=0
 
-**G6 THE TREE — PASS.** REAL_EXIT=0 for each command.
+    python3 -B -m pytest tests/orchestration/test_roadmap_index.py -q -p no:randomly
+    -> 30 passed in 0.45s                                   REAL_EXIT=0
 
-    $ git status --porcelain      (after EVERY commit boundary: C0a, C0b, C1, C2, C3, C4, C5)
-    <no output — empty>
+    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
+    -> 42 passed in 23.20s                                  REAL_EXIT=0
 
-    $ git ls-files .remedy-wt
-    <no output — empty>
+MEASURED 303, 30 and 42 — the reviewer's pre-measured figures were 303, 30
+and 42, so all three match cell for cell, total 375. No `.py` file changed
+this round, so no ruff reading is owed and none was taken.
 
-    $ git worktree list
-    /home/decodeux/Repos/remedy                                  da930e3c [feature/f272-one-world-completion]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-101fad068c0741f4  3c10561b [remedy/job-101fad068c0741f4]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-1cbb6972bf7c4ffc  db21957a [remedy/job-1cbb6972bf7c4ffc]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-21c19578b8754287  79a73b5a [remedy/job-21c19578b8754287]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-2ac1522a7034440b  3afc78c5 [remedy/job-2ac1522a7034440b]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-48a379ab5ca44ec5  f0e6b9a3 [remedy/job-48a379ab5ca44ec5]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-5e91e080219342d9  9fdb3b4b [remedy/job-5e91e080219342d9]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-6f74dd7367704fd5  cf0e00e9 [remedy/job-6f74dd7367704fd5]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-7d1c93e2dc98415a  f0e6b9a3 [remedy/job-7d1c93e2dc98415a]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-848fc4c67d7b405b  7bea3efc [remedy/job-848fc4c67d7b405b]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-962cb3c9b96244ed  05852956 [remedy/job-962cb3c9b96244ed]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-98e9364a83a34872  21a45836 [remedy/job-98e9364a83a34872]
-    /home/decodeux/Repos/remedy/.remedy-wt/job-f76686b8435640e9  4b49af98 [remedy/job-f76686b8435640e9]
+**G6 THE TREE — PASS, REAL_EXIT=0.**
 
-    the primary plus the twelve pre-existing remedy/job-* entries — UNCHANGED
-    from the base. No worktree was added this round; constraint 8 forbids one.
+`git status --porcelain` was run at EVERY commit boundary and was EMPTY every
+time — after C0a, C0b, C1, C2, C3 and C4, each printing nothing before the
+`PORCELAIN_END` marker, and `''` on the final scripted read.
 
-Per-commit insertions from `git diff --numstat <parent> <commit>`, each under the
-DECISION F104 D1 cap of 500 (insertions only), each commit single-parent:
+    git ls-files .remedy-wt -> ''   EMPTY True
+    git worktree list -> 13 entries: the primary at feature/f272-one-world-completion
+      plus exactly the twelve pre-existing remedy/job-* entries. UNCHANGED FROM BASE.
 
-    C0a  6c3cc698  insertions=285  cap500=OK  | .agent/authored/f272-r24.md +285/-0        parents 1
-    C0b  d8e4c027  insertions=178  cap500=OK  | .agent/last_block.md +178/-260              parents 1
-    C1   f490b86d  insertions=20   cap500=OK  | .agent/plan.md +20/-22                      parents 1
-    C2   4b84d3d9  insertions=2    cap500=OK  | .agent/live_review.md +2/-0                 parents 1
-    C3   dd81d87a  insertions=2    cap500=OK  | .agent/prose_slips.md +2/-0                 parents 1
-    C4   bc80adf0  insertions=120  cap500=OK  | .agent/f272_t004_staging.md +120/-0         parents 1
-    C5   da930e3c  insertions=18   cap500=OK  | docs/roadmap/features/T2_F272.md +18/-0     parents 1
+Per-commit insertions, `git diff --numstat <parent> <commit>`, against the
+DECISION F104 D1 cap of 500 INSERTIONS:
 
-C6 is excluded, because a commit cannot count its own insertions while it is
-being written.
+    C0a 17d7e06c  insertions=280  under 500: True   (280/0   .agent/authored/f272-r25.md)
+    C0b 1bfce0ee  insertions=167  under 500: True   (167/172 .agent/last_block.md)
+    C1  9448a35d  insertions=23   under 500: True   (23/23   .agent/plan.md)
+    C2  1d8741b6  insertions=2    under 500: True   (2/0     .agent/live_review.md)
+    C3  869b6a43  insertions=2    under 500: True   (2/0     .agent/prose_slips.md)
+    C4  e72a9602  insertions=14   under 500: True   (14/0    docs/roadmap/features/T2_F272.md)
 
-The three `.agent/STOP` readings by `os.path.exists`, all taken in the primary
-checkout, all REAL_EXIT=0:
+C5 is excluded because a commit cannot count its own insertions while it is
+being written. It is in any case the verbatim rewrite of a SINGLE `.agent/**`
+state file, which DECISION F104 D1 exempts by name.
 
-    STOP_BEFORE_C0a: False
-    STOP_BEFORE_C5:  False
-    STOP_BEFORE_C6:  False
+THE THREE `.agent/STOP` READINGS, all by `os.path.exists`:
+
+    before C0a  os.path.exists('.agent/STOP') = False
+    before C4   os.path.exists('.agent/STOP') = False
+    before C5   os.path.exists('.agent/STOP') = False
+
+No STOP file exists; the round proceeded.
 
 ## Authored-text proofs
 
-Five reviewer-authored artifacts were applied, every one extracted
-PROGRAMMATICALLY from the committed `.agent/authored/f272-r24.md` between its
-`<<<BEGIN NAME>>>` and `<<<END NAME>>>` lines, inclusive of the newline ending
-the last content line and exclusive of the two marker lines. Nothing was
-retyped.
+Four reviewer-authored texts were applied, ALL extracted PROGRAMMATICALLY by
+a regex over the marker lines of the COMMITTED `.agent/authored/f272-r25.md`,
+inclusive of the newline ending each slice's last content line and exclusive
+of both marker lines. Not one character was retyped. The extractor asserts
+exactly one BEGIN and one END marker per name before it returns.
 
-| Artifact | Route | Disk-to-disk result |
-|---|---|---|
-| block -> `.agent/authored/f272-r24.md` | `shutil.copyfile` | identical, 24493 B / 285 L / `255fd4f0…` |
-| block -> `.agent/last_block.md` | `shutil.copyfile` | identical, 24493 B / 285 L / `255fd4f0…` |
-| PLANF272R24 -> `.agent/plan.md` | slice, whole-file write | BYTE_EQUAL_TO_SLICE True, 2525 B / 47 L |
-| RECORDR24 -> `.agent/live_review.md` | slice, append | POST_EQUALS_PRE_NL_SLICE True |
-| SLIPSR24 -> `.agent/prose_slips.md` | slice, append | POST_EQUALS_PRE_NL_SLICE True |
-| D14SLICE -> `docs/roadmap/features/T2_F272.md` | slice, append | POST_EQUALS_PRE_NL_SLICE True |
-| staging -> `.agent/f272_t004_staging.md` | `shutil.copyfile` per constraint 4 | identical, 5921 B / 120 L / `25ed0b5a…` |
+| Slice | Target | Mode | Result |
+|-------|--------|------|--------|
+| PLANF272R25 | `.agent/plan.md` | replace | 2545 bytes, sha256 `396c542e...8ecc271c`; disk byte-equal to the slice, in the worktree AND as committed |
+| RECORDR25 | `.agent/live_review.md` | append | 3578 bytes, sha256 `d98e1cdd...842b2ef0`; `POST_EQUALS_PRE_NL_SLICE` True |
+| SLIPSR25 | `.agent/prose_slips.md` | append | 544 bytes, sha256 `150ed591...ff27894c`; `POST_EQUALS_PRE_NL_SLICE` True |
+| D15SLICE | `docs/roadmap/features/T2_F272.md` | append | 4870 bytes, sha256 `3dc695e9...401f68e1`; `POST_EQUALS_PRE_NL_SLICE` True |
+
+C0a and C0b were `shutil.copyfile` of `.remedy-wt/f272-r25-block.md`, per
+constraint 3, and G1 shows all five blobs identical.
+
+## SESSION 11 CLOSES — the four points the block orders here
+
+**1. THREE DELEGATED ROUNDS, AND WHY THAT IS BELOW TARGET.** Session 11 ran
+rounds 23, 24 and 25. All three PASSED. Three is below the six-to-eight
+target amend0905-throughput sets, and amend0906 rule 3 requires the reason in
+one sentence: the session spent its measurement budget establishing that
+T004's remaining work is a single atomic record flip rather than the
+per-caller sequence the plan assumed, and that finding is what rounds 24 and
+25 put on disk.
+
+**2. THE NEXT SESSION IS SESSION 12, WHICH REACHES F272'S SOFT LIMIT of 12
+sessions.** Its first obligation after the Phase 0 probe is therefore NOT
+more building. It is the SCOPE REPORT, and then the amend0905-throughput
+SPLIT-AND-CLOSE DEFAULT, EXECUTED ON THE SESSION'S OWN AUTHORITY — register
+the remaining scope as a new feature placed directly after F272 per
+amend0906-split-placement, close F272 at a self-consistent scope through the
+normal closure sequence, and record the whole move as a dated DECISION. The
+session output carries the line `SITZUNGS-LIMIT ERREICHT —
+OPERATOR-BERICHT IN DER ÜBERGABE` when it writes that report.
+
+**3. THE FIGURES THAT SCOPE REPORT NEEDS ARE ALREADY MEASURED AND MUST NOT BE
+RE-DERIVED.** They are in `.agent/f272_t004_staging.md` and in DECISIONs
+F272 D14 and D15: 60 production and 127 test files migrate, twelve
+cluster-bound consumers never do, and the `.id` flip has an upper bound of
+468 reads in 74 production files and 1545 in 137 test files — a bound from a
+receiver-name heuristic, NOT a probe measurement, as D15 states in terms.
+
+**4. THE NEXT SESSION'S FIRST ACTION.** Run Phase 0, the state probe. Then
+check `.agent/STOP` under Phase 1 rule 1 BEFORE the Open PR Gate under rule
+2, in that order. No PR exists for this branch and none was created —
+`gh pr list --state open` returned `[]` this round.
 
 ## Deviations & assumptions
 
-**No departure from the block's ordered commit sequence.** All eight commits
-landed, in the order C0a, C0b, C1, C2, C3, C4, C5, C6, none added, none dropped,
-none reordered.
+**No deviation from the block's ordered commit sequence.** C0a, C0b, C1, C2,
+C3, C4, C5 were committed in exactly that order, one commit each, no extra
+commit, none dropped, none reordered. Every path written is one of the seven
+in the Change set; nothing outside it was touched.
 
-1. **DEVIATION — the branch was pushed TWICE, after C5 and again after C6.**
-   The block orders one push. A handback cannot transcribe a push of itself, so
-   the C5 push is recorded verbatim under "External actions" above and the C6
-   push follows this file. This is the same shape round 23 used and the reviewer
-   upheld; it is declared here because the handback template requires every
-   departure to appear in this section even when it is correct. The C5 push's
-   transcript is recorded above because it HAS happened; the C6 push's is named
-   as belonging to the round report because it has not, and writing its SHA here
-   would be an unmeasured SHA. That is the shape round 22's handback got wrong
-   by promising a transcript "below" that did not exist.
+**D1 — DECLARED DISAGREEMENT WITH CONSTRAINT 4, which I applied as written.**
+Constraint 4 asserts that each of the three append targets "contains ZERO
+occurrences of three consecutive newlines". That is TRUE for
+`.agent/live_review.md` (measured 0) and for
+`docs/roadmap/features/T2_F272.md` (measured 0), and FALSE for
+`.agent/prose_slips.md`, which contains ONE such occurrence at byte offset
+39213, after line 310, between a 2026-08 slip line and the
+`2026-09-02 · F108 R7` line — a pre-existing double blank line that landed
+long before this round. I did not repair it and I did not alter the append:
+the ordered relation `post == pre + b"\n" + slice` was applied verbatim to
+all three targets and `POST_EQUALS_PRE_NL_SLICE` is True for each. The
+claim is not load-bearing — the property the appends actually depend on is
+that each target ends in exactly ONE newline, which I measured as true for
+all three (`pre_trailing_newline_run` 1, 1 and 1) — so under amend0827 rule
+2 this is a reviewer-prose inaccuracy that reached no file, it spends no
+R-id, and it earns no correction round. It is recorded here, and here only,
+per the prose_slips.md rule that a non-load-bearing inaccuracy goes in the
+handback's deviations.
 
-2. **ASSUMPTION — the append separator is one blank line, i.e.
-   `post = pre + b"\n" + slice`.** The block states the gate name
-   `POST_EQUALS_PRE_NL_SLICE` but never spells the separator's bytes. It was
-   derived from the files themselves rather than assumed: `.agent/live_review.md`
-   and `docs/roadmap/features/T2_F272.md` each contain ZERO occurrences of three
-   consecutive newlines at the base and each ends in exactly one newline, so a
-   single blank line is the only separator either file uses — which is also what
-   constraint 5 states for the feature file. All three appends were written that
-   way and all three gates pass on it.
+**D2 — DECLARED READING OF G4's D14 SPAN COMPARISON.** G4 orders D14's
+section proved byte-unchanged "by comparing the bytes between its heading and
+the start of D15's heading against the same span at the base commit". At the
+base commit there IS no D15 heading, so the base span can only run from D14's
+heading to EOF. Those two spans are therefore not literally equal: the post
+span is 5541 bytes and the base span 5540, and the single extra byte is the
+`\n` that the append itself contributes as the blank-line separator before
+D15. I did NOT relax the gate to make it pass. I reported the strict result
+(`BASE_SPAN_IS_BYTE_EXACT_PREFIX_OF_POST_SPAN` True, `DELTA_BYTES` b'\n')
+alongside the reading that answers the question the gate was asking
+(`D14_SECTION_BYTE_UNCHANGED_MODULO_TRAILING_BLANK` True), so the reviewer
+can see the exact delta rather than a rounded verdict. The independent and
+stronger proof is in G4's own byte section: the entire 58026-byte pre-image
+is a byte-exact prefix of the post-image, so no byte of D14 — or of anything
+else already in that file — moved.
 
-3. **TOOLING NOTE, not a deviation.** The session's bash guard rejects a command
-   containing a `{2,}` regex quantifier as brace expansion, so every gate script
-   was written to a file under `.remedy-wt/` and run as
-   `bash -c 'python3 -B <path>; echo "REAL_EXIT=$?"'`. The `\n{2,}` split G2(b)
-   orders was written as the equivalent `\n\n+`. No gate was weakened: `\n\n+`
-   and `\n{2,}` match the identical language.
+**D3 — TWO PUSHES, NOT ONE.** The branch was pushed after C4 so that this
+handback could transcribe a REAL push with its real exit code, and it is
+pushed again after C5. A handback cannot transcribe the push of itself. This
+follows the round 24 precedent, which the reviewer accepted in the RECORDR25
+entry booked this round.
 
-4. **SCRATCH.** Seven scratch files were created under the gitignored
-   `.remedy-wt/` — `f272-r24-extract.py`, `f272-r24-c2.py`, `f272-r24-c3.py`,
-   `f272-r24-c4.py`, `f272-r24-c5.py`, `f272-r24-gates.py` and
-   `f272-r24-numstat.py` — and removed BY EXACT PATH, never by a glob, after the
-   gates were reported. `git ls-files .remedy-wt` is empty and
-   `git status --porcelain` is empty. The two delivery files
-   `.remedy-wt/f272-r24-block.md` and `.remedy-wt/f272-r24-staging.md` are the
-   reviewer's and were left in place.
+**D4 — SCRATCH SCRIPTS ON DISK.** The gate scripts were written under the
+gitignored `.remedy-wt/r25scratch/` rather than passed inline, because this
+session's bash guard rejects heredocs by form — the first attempt at one was
+refused with "Parser skipped input between top-level statements". They are
+deleted BY EXACT PATH after the final push, never by a glob, and
+`git ls-files .remedy-wt` is empty (G6).
 
-**Nothing in the block was found wrong.** Every figure it stated in advance
-reproduced exactly: the base pre-images 1204799 / `0a3287c979d7ebc5`, 148270 and
-52485 at 736 lines; the six count transitions; the 13 DECISION headings; the
-delivery digests; and all three of G5's suite counts, 303, 30 and 42. The change
-set was honoured exactly — eight paths, nothing under `packages/`, `apps/`,
-`tests/` or `scripts/`, no worktree, no finding id minted, and `R-0826` still
-free at the end of the round.
+**D5 — ASSUMPTION ON THE PLAN SLICE, applied verbatim, not corrected.**
+PLANF272R25's opening line reads "Rounds 1 to 25 PASSED except round 2 ...
+and round 21". Round 25 is THIS round and has no verdict yet; only the
+reviewer can write one. I applied the slice byte for byte as constraint 1
+requires and did not silently correct it. The claim is self-correcting — the
+reviewer's verdict on this round either confirms it or is the thing that
+contradicts it — and no gate depends on it.
+
+**No worktree was created.** Constraint 8 forbade one; `git worktree list`
+is unchanged from the base at the primary plus twelve pre-existing
+`remedy/job-*` entries (G6).
+
+**No finding id was minted.** Constraint 6 required `R-0826` to still be
+free when the round ends, and G2(d) measures `^- R-0826` at 0 before and 0
+after.
 
 ## Next
 
-The reviewer re-runs G1 through G6 over `81b2dc86`..HEAD in the primary
-checkout and books a round 24 verdict. If it PASSES, round 25 begins T004's
-first BY-CALLER migration under DECISION F272 D14 — a classic-store consumer
-moved to `load_job_plan` together with every renderer it feeds, in one commit
-range, taking none of the twelve cluster-bound files.
+The reviewer re-runs G1 through G6 over `4491ec9e`..`HEAD` in the primary
+checkout and books a verdict on round 25. Session 11 is then closed; session
+12 opens with Phase 0, then the `.agent/STOP` check, then the Open PR Gate,
+and owes the scope report and the split-and-close default before any further
+building.
