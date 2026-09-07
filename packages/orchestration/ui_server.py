@@ -3190,26 +3190,6 @@ def _load_frontend(job_id: str, token: str) -> str:
     sys.exit(1)
 
 
-def _build_context_budget_json(job: Any) -> dict[str, Any]:
-    """Build safe context budget payload."""
-    try:
-        from packages.orchestration.context_pack import build_context_pack, export_context_pack_json
-
-        events = _load_events(job)
-        pack = build_context_pack(job, events, budget=2000, mode="compact")
-        data = export_context_pack_json(pack)
-        # Strip section content — only return structure
-        for s in data.get("sections", []):
-            s.pop("content", None)
-        return data
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {
-            "version": 1,
-            "error": "context budget unavailable",
-            "degraded": True, "error_kind": "context_budget_build_failed", "source": "server",
-        }
-
-
 # ---------------------------------------------------------------------------
 # Command Channel — the single write door (F009 T001)
 # ---------------------------------------------------------------------------
@@ -3467,7 +3447,6 @@ class _RemedyHandler(BaseHTTPRequestHandler):
                 "guide": _build_guide_json,
                 "events": _build_events_json,
                 "readiness": _build_readiness_json,
-                "context-budget": _build_context_budget_json,
                 "story": _build_story_json,
                 "checklist": _build_checklist_json,
                 "diagnostics": _build_diagnostics_json,

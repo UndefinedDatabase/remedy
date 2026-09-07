@@ -16,7 +16,6 @@
 packages.orchestration.builder_routing <- packages/orchestration/ui_server.py
 packages.orchestration.candidate_quality <- packages/orchestration/ui_server.py
 packages.orchestration.context_optimizer <- packages/orchestration/project_brain.py
-packages.orchestration.context_pack <- packages/orchestration/ui_server.py
 packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.execution_approval_policy <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.external_builder_sandbox <- packages/orchestration/ui_server.py
