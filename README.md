@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-74 of 274 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+75 of 274 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 17 | 27 |
+| 2 | Minimal Self-Build Runtime | 18 | 27 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -90,7 +90,18 @@ spelling in `data_paths`; and a run made an invocation rather than an event.
 The run re-key, the eleven named consumers, the classic cycle runner and the
 prototype-cluster deletion were split off at the seven-session soft limit and
 belong to the follow-up feature the STATUS ledger registers directly after
-it).
+it),
+F272 one world completion (the plural run list `Job.run_refs` and the run
+re-key onto one `run_dir` keyed by RUN id; the rest of the unified record —
+the administrative fields, the Mission extension, `job_id` settled as the one
+required key, and the `state` collapse staged as widen, rename and retype with
+the rename set found by runtime probe rather than by static classification;
+every named consumer moved onto the unified model; and `job run-loop` deleted
+together with its advertisements. The classic-to-unified record flip was
+measured ATOMIC over the consumer graph — `.id` is the last gap and it sits on
+helpers with seven and six call sites — and was split off with the prototype
+cluster deletion at the twelve-session soft limit; both belong to the follow-up
+feature the STATUS ledger registers directly after it).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original
