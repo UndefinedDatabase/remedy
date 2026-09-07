@@ -1,135 +1,90 @@
-# Handoff — F272 One world completion, round 10
+# Handoff — F272 One world completion, round 11
 
 ## Session
 
-SESSION 4 of feature F272 · round 10 · rounds so far 10
+SESSION 6 of feature F272 · round 11 · rounds so far 11
 
 Context self-assessment (amend0905-throughput): context is comfortable — this round
-spent its budget on eight full suite runs rather than on writing, and the reading
-volume was small, so a further round in this session is affordable.
+read two TypeScript modules and four test files, ran short suites only, and wrote no
+production code, so a further round in this session is affordable.
 
-ROUND 10 EXECUTED THE BUNDLE IN FULL. C0a through C7 all landed, in the ordered
-sequence, with nothing added and nothing reordered. The rename round 9 refused to
-guess at is now MEASURED: the ordered command reaches EXIT 0 with the raising probe
-installed, and the site set it converged on is 234 sites across 35 files — eighteen
-of those files outside the seventeen the block named as its expected core.
+THE ROUND STOPPED AT C4 ON THE CONDITION THE BLOCK ITSELF NAMES. C0a through C3
+landed in the ordered sequence. C4 was NOT committed and C5 was NOT written, because
+`tests/ui_contracts/` — this round's gate, which the block forbids editing — CANNOT
+reach EXIT 0 with C4 applied: a THIRD test in that directory pins the label map at
+exactly seven entries and goes red the moment the two new ones are added. That is
+measured, not predicted, and the measurement is below. The block says in its own
+words: "If a test there cannot pass without being changed, STOP and hand off — that
+is a finding about this block, not a licence to edit the gate." So I stopped.
 
 ## Range
 
-Review of `027bdc2c`..`HEAD` (branch `feature/f272-one-world-completion`).
+Review of `1bfb1cd9`..`HEAD` (branch `feature/f272-one-world-completion`).
 
 ## Commits
 
-### 31c4ed95 f272: save the round 10 step block as authored text
+### 3599cfd9 f272: save the round 11 step block as authored text
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f272-r10.md` | +400 / -0 | C0a, `shutil.copyfile` of the reviewer's scratch original |
+| `.agent/authored/f272-r11.md` | +363 / -0 | C0a, `shutil.copyfile` of the reviewer's scratch original |
 
-### 33ecf575 f272: mirror the round 10 step block into last_block
+### dee60fac f272: mirror the round 11 step block into last_block
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | +307 / -307 | C0b, byte copy of the same original |
+| `.agent/last_block.md` | +277 / -314 | C0b, byte copy of the same original |
 
-### cdab7fbe f272: set the plan to the round 10 measured rename step
+### 1a2c0017 f272: set the plan to the round 11 cockpit state step
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | +14 / -14 | C1, replaced by the PLANF272R10 slice |
+| `.agent/plan.md` | +16 / -17 | C1, replaced by the PLANF272R11 slice |
 
-### 6b679548 f272: book the round 9 PASS verdict and register finding R-0820
+### 6373dc0e f272: book the round 10 PASS verdict, register R-0821 and three prose slips
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | +4 / -0 | C2, RECORDR10 appended |
+| `.agent/live_review.md` | +4 / -0 | C2, RECORDR11 appended |
+| `.agent/prose_slips.md` | +6 / -0 | C2, SLIPSR11 appended |
 
-### c1597759 f272: rule the rename set as measured by runtime probe in DECISION F272 D7
+### 35f50db8 f272: rule blocked and stopped as settled cockpit states in DECISION F272 D8
 | Path | +/- | Reason |
 |---|---|---|
-| `docs/roadmap/features/T2_F272.md` | +42 / -0 | C3, DECISIONR10 appended |
+| `docs/roadmap/features/T2_F272.md` | +45 / -0 | C3, DECISIONR11 appended |
 
-### e869aad9 f272: record the measured state rename inventory from the runtime probe
+### C6 — this handoff
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/f272_state_rename_inventory.md` | +380 / -0 | C4, the inventory, written from the measurement and not from a prediction |
-
-### f4136d24 f272: rename JobPlan.status to JobPlan.state at every measured site
-| Path | +/- | Reason |
-|---|---|---|
-| `apps/cli/commands/do_cmd.py` | +8 / -8 | C5, 5 probe sites, 1 getattr, 2 annotation |
-| `apps/cli/commands/job_stop_cmd.py` | +10 / -10 | C5, 8 probe sites + the `_CoreJobAdapter` stand-in (slot and assignment) |
-| `packages/orchestration/job_evidence.py` | +10 / -10 | C5, 7 probe sites, 3 getattr |
-| `packages/orchestration/job_promote.py` | +3 / -3 | C5, 3 probe sites |
-| `packages/orchestration/pingpong_job.py` | +33 / -33 | C5, the dataclass field + 26 probe sites + 4 constructor keywords + 2 annotation sites = 33 |
-| `packages/orchestration/run_manifest.py` | +1 / -1 | C5, 1 getattr site in `_job_is_resumable` |
-| `packages/orchestration/self_use_findings.py` | +1 / -1 | C5, the production site round 9 named |
-| `packages/orchestration/self_use_runner.py` | +1 / -1 | C5, 1 probe site |
-| `packages/orchestration/ui_server.py` | +1 / -1 | C5, `_JobPlanAdapter.__init__`, 2 reads on one line |
-| `tests/cli/test_job_rerun_manifest.py` | +8 / -8 | C5, 8 probe sites |
-| `tests/cli/test_job_stop.py` | +5 / -5 | C5, 5 probe write sites |
-| `tests/orchestration/test_budget_guard.py` | +1 / -1 | C5, 1 constructor keyword |
-| `tests/orchestration/test_episode_snapshot_lifecycle.py` | +6 / -6 | C5, 6 probe sites |
-| `tests/orchestration/test_f018_authority_integration.py` | +22 / -22 | C5, 17 probe sites, 5 constructor keywords |
-| `tests/orchestration/test_f018_package_pipeline_e2e.py` | +4 / -4 | C5, 1 probe site, 3 constructor keywords |
-| `tests/orchestration/test_failure_wiring.py` | +2 / -2 | C5, 2 probe sites |
-| `tests/orchestration/test_final_audit_evidence.py` | +3 / -3 | C5, three stand-ins — `_FakeJob` and two `FakePlan` classes |
-| `tests/orchestration/test_job_evidence.py` | +2 / -2 | C5, 2 probe sites |
-| `tests/orchestration/test_job_promote.py` | +23 / -23 | C5, 23 constructor keywords |
-| `tests/orchestration/test_job_promote_consistency.py` | +1 / -1 | C5, 1 probe site |
-| `tests/orchestration/test_job_stop_integration.py` | +26 / -26 | C5, 25 probe sites + the site inside the generated runner script |
-| `tests/orchestration/test_job_task_runner.py` | +26 / -26 | C5, 26 probe sites |
-| `tests/orchestration/test_job_worktree_handoff.py` | +7 / -7 | C5, 7 probe sites |
-| `tests/orchestration/test_job_worktree_integration.py` | +6 / -6 | C5, 6 probe sites |
-| `tests/orchestration/test_job_worktree_integrity.py` | +8 / -8 | C5, 8 probe sites |
-| `tests/orchestration/test_pingpong_integration.py` | +2 / -2 | C5, 1 probe site + the `FakeJob` stand-in |
-| `tests/orchestration/test_predictive_budget.py` | +5 / -5 | C5, 5 probe sites |
-| `tests/orchestration/test_run_manifest_episode_graph.py` | +1 / -1 | C5, the `_J` stand-in |
-| `tests/orchestration/test_run_manifest_reference_coverage.py` | +1 / -1 | C5, 1 probe site |
-| `tests/orchestration/test_run_manifest_runtime_truth.py` | +1 / -1 | C5, 1 probe site |
-| `tests/orchestration/test_run_manifest_terminal_consistency.py` | +1 / -1 | C5, the `_Job` stand-in |
-| `tests/orchestration/test_run_manifest_zero_call_expectations.py` | +1 / -1 | C5, 1 probe site |
-| `tests/orchestration/test_self_use_findings.py` | +1 / -1 | C5, 1 probe site |
-| `tests/orchestration/test_self_use_runner.py` | +2 / -2 | C5, 2 probe sites |
-| `tests/test_do_job_flow.py` | +1 / -1 | C5, the `_FakeJob` stand-in, OUTSIDE both ordered suites |
-
-### 868ba410 f272: pin the state field, the unchanged stored key and the rendering
-| Path | +/- | Reason |
-|---|---|---|
-| `tests/orchestration/test_job_state_field.py` | +90 / -0 | C6, new file, 9 tests |
-
-### C7 — this handoff
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | self-referential | C7 cannot table the commit that writes it (R-0149 pattern) |
+| `.agent/handoff.md` | self-referential | C6 cannot table the commit that writes it (R-0149 pattern) |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | `.agent/authored/f272-r10.md`, byte copy, digest verified before any other action |
+| C0a | done | `.agent/authored/f272-r11.md`, byte copy, digest verified before any other action |
 | C0b | done | `.agent/last_block.md`, byte copy of the same original |
-| C1 | done | plan replaced by the PLANF272R10 slice, byte-equal |
-| C2 | done | RECORDR10 appended; every ordered count matched exactly |
-| C3 | done | DECISION F272 D7 appended; headings read D1..D7 in order |
-| C4 | done | the inventory, 234 sites over 35 files, written from the converged measurement |
-| C5 | done | one commit, 35 files, 234 insertions |
-| C6 | done | `tests/orchestration/test_job_state_field.py`, 9 tests, all five minima covered |
-| C7 | done | this handoff |
+| C1 | done | plan replaced by the PLANF272R11 slice, byte-equal; its prose is now stale — Deviation 2 |
+| C2 | done | RECORDR11 and SLIPSR11 appended; every ordered count matched exactly |
+| C3 | done | DECISION F272 D8 appended; headings read D1..D8 in order |
+| C4 | skipped | NOT COMMITTED. Its gate `tests/ui_contracts/` cannot reach EXIT 0 without an edit to `tests/ui_contracts/test_digest_hero_card.py`, which the block forbids. Measured in a disposable worktree; see G4 |
+| C5 | skipped | a `Landed: R-0821` line would be false — C4 did not land. Constraint 6 leaves me no wording for "attempted", and inventing one is not mine to do |
+| C6 | done | this handoff |
 
-No commit exists outside this ordered sequence; see the Deviations section.
+No commit exists outside this ordered sequence; the range holds exactly five commits
+before this handoff and they are C0a, C0b, C1, C2 and C3 in that order.
 
 ## Verification
 
 One line per gate with its REAL exit code, then the transcripts. "Green" as a word
-appears nowhere; where a gate is red it says so and says why.
+appears nowhere; where a gate is red or unreachable it says so and says why.
 
 | Gate | Exit | Reading |
 |---|---|---|
-| G1 TRANSPORT | 0 | three artefacts, all 32692 bytes / 400 lines, all sha256 `e0aea48b…d8d2a13` |
-| G2 THE RECORD | 0 | readers (a)(b)(c)(d) all accept; all six ordered counts matched |
-| G3 PLAN + FEATURE FILE | 0 | plan byte-equal at 2173 B / 43 lines; feature file readers accept; D1..D7 |
-| G4 THE RENAME IS COMPLETE | 0 | control EXIT 1 naming exactly the reverted site; residual run EXIT 0; (iii)(iv)(v) all as required |
-| G5 MUTATION RED-PROOF | 0 | control EXIT 0; three mutations EXIT 1, 1, 1; three restores byte-identical; three control re-runs EXIT 0 |
-| G6 THE SUITES | 0 | five invocations, every one EXIT 0; `tests/orchestration/` rose 12838 → 12847 |
-| G7 LINT AND INTEGRITY | **1** and 0 | ruff EXIT 1 on ONE pre-existing `I001`, proven present at `027bdc2c`; integrity EXIT 0 |
-| G8 THE TREE | 0 | tree empty, `git ls-files .remedy-wt` empty, both worktrees removed by exact path |
+| G1 TRANSPORT | 0 | three artefacts, all 32960 bytes / 363 lines, all sha256 `6575c005…5be9d1d3` |
+| G2 THE RECORD | 0 | readers (a)(b)(c)(d) accept over both files; all six ordered counts matched |
+| G3 PLAN + FEATURE FILE | 0 | plan byte-equal at 2187 B / 42 lines; feature file readers accept; D1..D8 |
+| G4 THE TWO RED TESTS | **1** | UNREACHABLE AS ORDERED. C4 fixes both ordered tests and reddens a third. The red control, the label reading and the two-file run all pass — see below |
+| G5 VITEST | 0 | `52 passed`, in the primary checkout AND, separately, in a worktree with C4 applied |
+| G6 THE SUITES | 0 and 0 | `tests/docs/` 303, canary 42, both matching base |
+| G7 LINT AND INTEGRITY | n/a and 0 | ruff's ordered file set is EMPTY — no `.py` file changed; integrity EXIT 0 |
+| G8 THE TREE | 0 | tree empty, `git ls-files .remedy-wt` empty, the one worktree removed by exact path |
 
 ### G1 TRANSPORT — a real three-artefact chain
 
@@ -138,25 +93,26 @@ my prompt.
 
 | Artefact | Bytes | Lines | sha256 |
 |---|---|---|---|
-| `.remedy-wt/f272-r10-block.md` (reviewer's surviving original) | 32692 | 400 | `e0aea48b27d07b255fa7c18c7ad1abbbd5bfa4893ac04dafd14d7daaad8d2a13` |
-| `.agent/authored/f272-r10.md` at HEAD (C0a) | 32692 | 400 | same |
-| `.agent/last_block.md` at HEAD (C0b) | 32692 | 400 | same |
+| `.remedy-wt/f272-r11-block.md` (reviewer's surviving original) | 32960 | 363 | `6575c005b2b8bfca32818ff20c24122921aa205a86858f310b3860f75be9d1d3` |
+| `.agent/authored/f272-r11.md` at HEAD (C0a) | 32960 | 363 | same |
+| `.agent/last_block.md` at HEAD (C0b) | 32960 | 363 | same |
 
 All three equal each other and equal the delegation's BLOCK_SHA, BLOCK_LENGTH and
-BLOCK_LINES. Verified BEFORE any other action was taken.
+BLOCK_LINES. Verified BEFORE any other action was taken, and re-read from the
+COMMITTED blobs afterwards.
 
 ### G2 THE RECORD at C2 — exit 0
 
-`.agent/live_review.md`, readers (a) to (d):
+`.agent/live_review.md` ← RECORDR11, readers (a) to (d):
 
-- (a) BYTE: pre 1109691 → post 1118077; pre a byte-exact prefix; `post == pre + b"\n" +
+- (a) BYTE: pre 1118077 → post 1127168; pre a byte-exact prefix; `post == pre + b"\n" +
   slice` TRUE; pre's terminal byte asserted to be exactly one `\n` BEFORE writing;
-  post ends in exactly one `\n`. Slice 8385 bytes, sha256 `2438a28cece5…`.
+  post ends in exactly one `\n`. Slice 9090 bytes, sha256 `caed60c3f12d…`.
 - (b) STRUCTURAL, computed independently of (a) by splitting the WHOLE image on
-  `\n{2,}`: N counted by my script from the slice's own paragraphs = 2; units 699 →
-  701, delta 2; the last 2 units equal the slice's paragraphs in order; the units
+  `\n{2,}`: N counted by my script from the slice's own paragraphs = 2; units 701 →
+  703, delta 2; the last 2 units equal the slice's paragraphs in order; the units
   before are an unchanged prefix.
-- (c) NEGATIVE CONTROL, in memory on a `bytes` object, never on disk: offset 1109732
+- (c) NEGATIVE CONTROL, in memory on a `bytes` object, never on disk: offset 1118098
   asserted to lie inside the FIRST appended paragraph, one bit flipped — reader (a)
   rejected AND reader (b) rejected; restored, both accepted, and the restored image
   equalled the disk image.
@@ -164,355 +120,314 @@ BLOCK_LINES. Verified BEFORE any other action was taken.
 
 | reading | ordered | measured |
 |---|---|---|
-| `^- R-\d{4} — ` distinct ids | 303 → 304 | 303 → 304 |
+| `^- R-\d{4} — ` distinct ids | 304 → 305 | 304 → 305 |
 | `^Done: R-\d{4} — ` distinct | 247 → 247 | 247 → 247 |
-| open set BY DISTINCT ID | 56 → 57 | 56 → 57 |
-| `^Gate: ` | 31 → 32 | 31 → 32 |
-| `^Gate: F272 R9 ` | 0 → 1 | 0 → 1 |
-| `^- R-0820 — ` | 0 → 1 | 0 → 1 |
+| open set BY DISTINCT ID | 57 → 58 | 57 → 58 |
+| `^Gate: ` | 32 → 33 | 32 → 33 |
+| `^Gate: F272 R10 ` | 0 → 1 | 0 → 1 |
+| `^- R-0821 — ` | 0 → 1 | 0 → 1 |
+
+AFTER C5 the block orders `^Landed: R-0821 ` 0 → 1. C5 did not happen, so the
+measured reading is 0 → **0**, and `^Done: R-0821 ` is 0, as it must be.
+
+`.agent/prose_slips.md` ← SLIPSR11, readers (a) and (b) and the same negative
+control: pre 136942 → post 139621; prefix, append arithmetic and terminal newline all
+TRUE; N counted 3, units 174 → 177, last 3 units equal the slice's paragraphs in
+order; the control's flip at offset 136963 was rejected by both readers and the
+restore equalled the disk image. Slice 2678 bytes, sha256 `2b6ac0dd5af6…`.
 
 ### G3 THE PLAN at C1, AND THE FEATURE FILE at C3 — exit 0
 
-Plan: `.agent/plan.md` equals the PLANF272R10 slice bytes exactly. Both byte lengths
-2173. 43 lines against the AGENTS.md cap of 50. `## Goal` present, `## Next Steps`
+Plan: `.agent/plan.md` equals the PLANF272R11 slice bytes exactly. Both byte lengths
+2187. 42 lines against the AGENTS.md cap of 50. `## Goal` present, `## Next Steps`
 present.
 
-Feature file: readers (a) and (b), no negative control (gate budget). Pre 27130 →
-post 30008; prefix, append arithmetic and terminal newline all TRUE; N counted 6,
-units 57 → 63, last 6 units equal the slice's paragraphs in order. Lines matching
-`^### DECISION F272 D\d+ ` counted by me: 6 before, 7 after, naming in order
-D1 D2 D3 D4 D5 D6 D7.
+Feature file: readers (a) and (b), no negative control (gate budget). Pre 30008 →
+post 32918; prefix, append arithmetic and terminal newline all TRUE; N counted 7,
+units 63 → 70, last 7 units equal the slice's paragraphs in order. Lines matching
+`^### DECISION F272 D\d+ ` counted by me: 7 before, 8 after, naming in order
+D1 D2 D3 D4 D5 D6 D7 D8.
 
-### G4 THE RENAME IS COMPLETE — a gate that CAN fail, and was shown to fail
+### G4 THE TWO RED TESTS — the gate the round could not reach, measured five ways
 
-All of G4 ran in the disposable worktree `.remedy-wt/f272-r10-gate` at commit
-`868ba410`, the commit C6 creates.
+ALL OF G4 RAN IN THE DISPOSABLE WORKTREE `.remedy-wt/f272-r11-probe` AT `1bfb1cd9`,
+never in the primary checkout, and C4 was never committed. `node_modules` and
+`apps/ui/node_modules` were restored into it with `shutil.copytree(..., symlinks=True)`
+— the argument, not the default, per R-0591 and constraint 7.
 
-**(ii) THE NON-VACUITY CONTROL, run FIRST.** One inventory site was reverted to
-`.status` — `packages/orchestration/self_use_findings.py:51`, a PRODUCTION site,
-sha256 `2dc0caee…51c6fb` → `a6cc5f50…3b60e2`. Then the ordered command:
+**THE BASE, in the primary checkout, unmodified:**
 
-    python3 -B -m pytest tests/orchestration/ tests/cli/ -q -p no:randomly
-    EXIT = 1 — 2 failed, 14382 passed, 10 skipped in 999.86s
+    python3 -B -m pytest tests/ui_contracts/ -q -p no:randomly
+    EXIT = 1 — 2 failed, 807 passed, 4 skipped in 6.77s
 
-The site log named the reverted site and nothing else that is not the instrument
-itself:
+exactly the three numbers the block names. The worktree reads 806 passed / 5 skipped
+for the same two failures — one further skip inside a worktree — so every comparison
+below is worktree-against-worktree.
 
-| logged site | times | what it is |
-|---|---|---|
-| `packages/orchestration/self_use_findings.py:51` `[describe_self_use_run_defects]` | 2 | the reverted site, named exactly |
-| `tests/orchestration/test_job_state_field.py:45` | 1 | C6's own absence assertion — see Deviation 6 |
+**THE FIVE MEASUREMENTS.** C4 was written to the letter of the spec: `"blocked"` and
+`"stopped"` appended to `SETTLED_STATES`, the two counting comments rewritten to name
+the set instead of counting it, and `"blocked": "Blocked"` and `"stopped": "Stopped"`
+appended to `DIGEST_STATE_LABELS` with its "seven" comment rewritten.
 
-Both failures were the two tests that read that line. Restored: sha256 back to
-`2dc0caee…51c6fb`, byte-identical, and `git status --porcelain` for that path empty.
-
-**(i) THE RESIDUAL PROBE.** Same worktree, same probe, nothing reverted:
-
-    python3 -B -m pytest tests/orchestration/ tests/cli/ -q -p no:randomly
-    EXIT = 0 — 14384 passed, 10 skipped in 1053.97s
-
-Site log: ONE entry, `tests/orchestration/test_job_state_field.py:45`, C6's own
-assertion that the old name is gone. No production site and no other test site
-appears. Both readings are reported because an empty log with a red run proves
-nothing: here the log is free of every site that is not the instrument observing
-itself, AND the run is EXIT 0.
-
-**(iii) THE FIELD.** `packages.orchestration.pingpong_job.__file__` printed first and
-read `/home/decodeux/Repos/remedy/.remedy-wt/f272-r10-gate/packages/orchestration/pingpong_job.py`.
-Then `"state" in JobPlan.__dataclass_fields__` TRUE, `"status" in …` FALSE. The base
-at `027bdc2c` is the exact inverse, measured by parsing the base blob out of git:
-`status` present TRUE, `state` present FALSE.
-
-**(iv) THE STORED KEY DID NOT MOVE.** For `JobPlan(job_id="g1", state=JOB_BLOCKED)`,
-`_export_job` has key `"status"` valued `'blocked'` and NO key `"state"`.
-`_import_job({"job_id": "g1", "status": "blocked"})`, a dict with no `"state"` key,
-returns a JobPlan whose `state` is `'blocked'`.
-
-**(v) NOTHING WAS RETYPED.** `type(JobPlan().state).__name__` is `str`;
-`isinstance(JobPlan().state, RunState)` is FALSE.
-
-### G5 MUTATION RED-PROOF — exit codes, one per mutation
-
-Same worktree at `868ba410`, probe removed, `__pycache__` purged before every run,
-`pingpong_job` confirmed resolving from inside the worktree. Target sha256
-`a5227241…c04fc653`.
-
-    UNMUTATED CONTROL   EXIT = 0 | 9 passed in 0.29s
-
-| mutation | occurrences of the byte string in the target | mutated EXIT | restored byte-identical | control re-run EXIT |
+| # | tree | exit | summary | the tests that failed |
 |---|---|---|---|---|
-| 1 the dataclass field `state` goes back to `status` | 1 | 1 (`9 failed`) | yes | 0 (`9 passed`) |
-| 2 the exporter writes the key `"state"` instead of `"status"` | 1 | 1 (`3 failed, 6 passed`) | yes | 0 (`9 passed`) |
-| 3 the importer reads `data.get("state", …)`, the old-record path | 1 | 1 (`2 failed, 7 passed`) | yes | 0 (`9 passed`) |
+| M1 | control, C4 absent | 1 | 2 failed, 806 passed, 5 skipped | the two the block names |
+| M2 | BOTH modules edited | **1** | 1 failed, 807 passed, 5 skipped | `test_digest_hero_card.py::TestNoRuleHasASecondHome::test_no_run_state_phrase_is_restated_as_a_literal` |
+| M3 | `digestVisibility.ts` ONLY | 1 | 1 failed, 807 passed, 5 skipped | the copy one only — this half introduces NO new red |
+| M4 | `digestCardCopy.ts` ONLY | 1 | 2 failed, 806 passed, 5 skipped | the contract one, plus the hero-card one — this half is the whole cause |
+| M5 | both modules + `== 7` → `>= 7` in the gate file | **0** | 808 passed, 5 skipped | none |
 
-Mutation 2 needed a three-line anchor because `"status": job.state,` occurs TWICE in
-`pingpong_job.py` (the exporter at 667 and a report builder at 2968) and §3 item 25
-requires the mutated byte string to be unique; the anchor used carries the preceding
-`"job_workspace_path"` and `"job_title"` lines and occurs exactly once.
+**WHY THE THIRD TEST GOES RED.** `tests/ui_contracts/test_digest_hero_card.py:230`,
+inside `TestNoRuleHasASecondHome`, is a vacuity guard on its own parser:
 
-### G6 THE SUITES at C6 — run SERIALLY, each its own invocation
+    phrases = digest_state_phrases()
+    assert len(phrases) == 7, (...)
 
-Run in the gate worktree at `868ba410` (Deviation 9), `__pycache__` purged before each.
+`digest_state_phrases()` parses `DIGEST_STATE_LABELS` out of `digestCardCopy.ts`. Two
+new entries make it 9, and the guard is written as an EQUALITY where its own docstring
+("a reader that returns almost nothing would make the loop below vacuous") wants a
+FLOOR. It is the same defect class as R-0821 itself — a hard-coded seven that goes
+stale the day the enum widens — one layer further out, and it is invisible until the
+fix for R-0821 lands. The assertion it guards (`restated == []`, no state phrase
+restated as a literal in `DigestHeroCard.tsx`) still holds for all nine phrases: M5
+shows the whole suite at EXIT 0 once the constant is a floor.
 
-| invocation | exit | summary line |
+There is no honest C4 that avoids it. Any two entries make the count 9; the only ways
+round it are to not add them (leaving the ordered test red), to hide them from the
+parser with computed keys (gaming a guard), or to edit the gate (forbidden here). So
+G4(i) is UNREACHABLE inside this block's change set, and I stopped rather than
+committing a change whose gate is red or widening the change set to route around it.
+
+**G4(ii) THE RED CONTROL — the gate can still fail, and was shown to fail.** Run with
+C4 applied in the worktree. The byte string `  "blocked",\n` occurs exactly 1 time in
+`digestVisibility.ts` (§3 item 25). Removed it, file sha256 `4808d86a…dfe2bc1d` before:
+
+    python3 -B -m pytest tests/ui_contracts/test_job_digest_card_contract.py -q -p no:randomly
+    EXIT = 1 — 1 failed, 28 passed in 0.25s
+    E  AssertionError: ['blocked'] appear in RunState but not in digestVisibility.ts, …
+
+The failure names `blocked` and nothing else. Restored: sha256 back to
+`4808d86a…dfe2bc1d`, byte-identical, and the re-run reads EXIT 0 at 29 passed.
+
+**G4(iii) WHAT A READER OF THE CARD ACTUALLY SEES**, parsed out of the module rather
+than inferred from the test names, with C4 applied:
+
+| call | answer | is `UNREADABLE_STATE_LABEL` |
 |---|---|---|
-| `tests/orchestration/test_job_state_field.py` | 0 | `9 passed in 0.24s` |
-| `tests/orchestration/` | 0 | `12847 passed, 10 skipped, 1 warning in 750.73s (0:12:30)` |
-| `tests/docs/` | 0 | `303 passed in 0.66s` |
-| `tests/cli/` | 0 | `1537 passed in 293.41s (0:04:53)` |
-| `tests/cli/test_golden_path.py` (THE CANARY) | 0 | `42 passed in 21.20s` |
+| `digestStateLabel("blocked")` | `"Blocked"` | False |
+| `digestStateLabel("stopped")` | `"Stopped"` | False |
 
-Against the block's base at `027bdc2c` — `tests/orchestration/` 12838 and 10 skipped,
-`tests/docs/` 303, `tests/cli/` 1537, canary 42. No count is lower anywhere, and
-`tests/orchestration/` ROSE by exactly 9, which is C6's test count.
+`UNREADABLE_STATE_LABEL` is still `"State not recorded"`, unchanged. The label map
+carries nine keys, in `RunState` declaration order; `SETTLED_STATES` reads `paused,
+completed, failed, cancelled, blocked, stopped`.
 
-### G7 LINT AND INTEGRITY at C6 — ruff EXIT 1, integrity EXIT 0
+**THE TWO ORDERED FILES ALONE, with C4 applied:**
 
-`python3 -m ruff check` over exactly the 36 `.py` files this round changed, in ONE
-invocation:
+    python3 -B -m pytest tests/ui_contracts/test_digest_card_copy.py \
+        tests/ui_contracts/test_job_digest_card_contract.py -q -p no:randomly
+    EXIT = 0 — 52 passed in 0.29s
 
-    EXIT = 1
-    I001 [*] Import block is un-sorted or un-formatted
-        --> tests/orchestration/test_predictive_budget.py:1127:9
-    Found 1 error.
+52 passed is exactly the reading the reviewer's bisection took at `b5cde726`, the
+commit before round 8 widened the enum. C4 restores those two files to their
+pre-round-8 state precisely.
 
-THIS IS PRE-EXISTING AND NOT THIS ROUND'S, proven rather than asserted: the base blob
-`027bdc2c:tests/orchestration/test_predictive_budget.py` was written to a scratch path
-and linted on its own, and reads the same `I001` at the same import block, `Found 1
-error.`, EXIT 1. This round's five edits in that file are at lines 744, 766, 785, 801
-and 909; the finding is at 1127. I fixed nothing: the repair is unrelated to the
-change set and AGENTS.md forbids the "while I'm here" edit. The scratch path
-`/home/decodeux/Repos/remedy/.remedy-wt/base_lint_probe` was removed BY EXACT PATH
-afterwards. The repo-wide `ruff check .` was correctly NOT run (EXIT 1 on base under
-open R-0468).
+### G5 VITEST — exit 0, twice
+
+    python3 -B -m pytest tests/orchestration/test_test_runner.py -q -p no:randomly
+    PRIMARY CHECKOUT, at the commit handed back:  EXIT = 0 — 52 passed in 5.87s
+    WORKTREE WITH C4 APPLIED:                     EXIT = 0 — 52 passed in 3.54s
+
+The second run is the one that matters and was the reason for the `copytree`: it is
+this repository's own route to `npx vitest run` over the whole UI suite, so it gates
+all three `.test.ts` files that import the modules C4 edits. No bare `npx` was
+invoked. C4 is vitest-safe: `digestVisibility.test.ts` and `digestCardCopy.test.ts`
+each hold a seven-row state table, but each asserts only that ITS OWN table lists
+those seven — neither compares itself to `RunState` — so widening the modules moves
+nothing there.
+
+### G6 THE SUITES — run SERIALLY, each its own invocation
+
+| invocation | exit | summary line | base at `1bfb1cd9` |
+|---|---|---|---|
+| `tests/docs/` | 0 | `303 passed in 0.49s` | 303 |
+| `tests/cli/test_golden_path.py` (THE CANARY) | 0 | `42 passed in 20.98s` | 42 |
+
+`tests/orchestration/` and `tests/cli/` were correctly NOT run in full, for the reason
+the block gives: no `.py` file changed this round, and G5 already runs the one
+orchestration node this change could reach. The whole change set is four `.agent/`
+files and one `docs/` file.
+
+### G7 LINT AND INTEGRITY — an empty ruff set, stated rather than passed
+
+The `.py` files this round changed: NONE. The full changed-file list for
+`1bfb1cd9..HEAD` is `.agent/authored/f272-r11.md`, `.agent/last_block.md`,
+`.agent/live_review.md`, `.agent/plan.md`, `.agent/prose_slips.md` and
+`docs/roadmap/features/T2_F272.md`. So ruff's ordered file set is EMPTY and ruff was
+not run: an empty invocation would report a pass that measured nothing. `npm run
+lint` was not run and is never ordered in this repository.
 
 `python3 -m apps.cli.grouped integrity check --json`: EXIT 0, `"passed": true`,
 `"fail_count": 0`, over 5 checks.
 
 ### G8 THE TREE — exit 0
 
-- `git status --porcelain` EMPTY when C7 is staged.
+- `git status --porcelain` EMPTY when C6 is staged.
 - `git ls-files .remedy-wt` EMPTY.
-- `git worktree list`: two worktrees were created and both removed BY EXACT PATH and
-  pruned — `/home/decodeux/Repos/remedy/.remedy-wt/f272-r10-probe` and
-  `/home/decodeux/Repos/remedy/.remedy-wt/f272-r10-gate`. Never by glob. Only the
-  twelve pre-existing `remedy/job-*` entries remain, exactly as before.
+- `git worktree list`: ONE worktree was created and removed BY EXACT PATH and pruned —
+  `/home/decodeux/Repos/remedy/.remedy-wt/f272-r11-probe`. Never by glob. Only the
+  twelve pre-existing `remedy/job-*` entries remain, exactly as before. The FOUR
+  scratch files I wrote under `.remedy-wt/` were deleted by exact path, never by
+  glob: `r11_c2.py`, `r11_c3.py`, `r11_c4_probe.py` and `r11_g8.py`. The reviewer's
+  own `.remedy-wt/f272-r11-block.md` was left where it is.
 - Per-commit insertions from `git diff --numstat <parent> <commit>`, each
   single-parent, each under the DECISION F104 D1 cap of 500, each matching the
   `## Commits` table above cell for cell:
 
 | commit | item | parents | `+` | `-` | ≤500 | matches `## Commits` |
 |---|---|---|---|---|---|---|
-| `31c4ed95` | C0a | 1 | 400 | 0 | yes | yes |
-| `33ecf575` | C0b | 1 | 307 | 307 | yes | yes |
-| `cdab7fbe` | C1 | 1 | 14 | 14 | yes | yes |
-| `6b679548` | C2 | 1 | 4 | 0 | yes | yes |
-| `c1597759` | C3 | 1 | 42 | 0 | yes | yes |
-| `e869aad9` | C4 | 1 | 380 | 0 | yes | yes |
-| `f4136d24` | C5 | 1 | 234 | 234 | yes | yes (35 rows) |
-| `868ba410` | C6 | 1 | 90 | 0 | yes | yes |
+| `3599cfd9` | C0a | 1 | 363 | 0 | yes | yes |
+| `dee60fac` | C0b | 1 | 277 | 314 | yes | yes |
+| `1a2c0017` | C1 | 1 | 16 | 17 | yes | yes |
+| `6373dc0e` | C2 | 1 | 10 | 0 | yes | yes (2 rows) |
+| `35f50db8` | C3 | 1 | 45 | 0 | yes | yes |
 
-C7 is excluded by §3 item 14: it cannot count its own insertions.
+C6 is excluded by §3 item 14: it cannot count its own insertions. C4 and C5 have no
+row because they were not committed.
 
 - Marker sweep, counted by me, lines beginning `<<<BEGIN ` or `<<<END ` in every
   written non-block file: `.agent/plan.md` 0, `.agent/live_review.md` 0,
-  `docs/roadmap/features/T2_F272.md` 0, `.agent/f272_state_rename_inventory.md` 0,
-  `tests/orchestration/test_job_state_field.py` 0.
+  `.agent/prose_slips.md` 0, `docs/roadmap/features/T2_F272.md` 0.
 
 - The three `.agent/STOP` readings of constraint 8, each by `os.path.exists`:
 
 | when | `.agent/STOP` exists |
 |---|---|
 | before C0a | False |
-| before C5 | False |
-| before C7 | False |
-
-### C5's change set beyond the seventeen the block named
-
-All seventeen named files were changed. EIGHTEEN more were, each with the evidence
-that put it there. Per the block, a file the probe named is INSIDE the change set.
-
-| file | the evidence that put it there |
-|---|---|
-| `packages/orchestration/run_manifest.py` | probe named `:6509`, `getattr(job, "status", "")` in `_job_is_resumable`, 39 hits |
-| `packages/orchestration/self_use_runner.py` | probe named `:127`, `plan.status` in `run_next_self_use_item`, 10 hits |
-| `tests/cli/test_job_stop.py` | probe named 5 WRITE sites — 91, 105, 142, 152, 197 |
-| `tests/orchestration/test_budget_guard.py` | probe named the constructor at `:779`, keyword at `:781`, 6 hits |
-| `tests/orchestration/test_episode_snapshot_lifecycle.py` | probe named 6 sites — 85, 86, 91, 119, 143, 164 |
-| `tests/orchestration/test_final_audit_evidence.py` | 14 tests here went RED with an EMPTY probe log after the first application of C5 — the signature of an unfound STAND-IN; three were found by reading: `_FakeJob` and two `FakePlan` classes |
-| `tests/orchestration/test_job_promote_consistency.py` | probe named `:89`, 34 hits |
-| `tests/orchestration/test_job_stop_integration.py` | probe named 25 sites, plus `/tmp/…/runner.py:31` — a GENERATED script whose source template is `:457` |
-| `tests/orchestration/test_job_worktree_integration.py` | probe named 6 sites — 124, 140, 161, 232, 261, 270 |
-| `tests/orchestration/test_job_worktree_integrity.py` | probe named 8 sites, two of them writes |
-| `tests/orchestration/test_pingpong_integration.py` | probe named `:145`; the `FakeJob` stand-in at 237-239 is the double for `do_cmd.py:1892` |
-| `tests/orchestration/test_predictive_budget.py` | probe named 5 sites — 744, 766, 785, 801, 909 |
-| `tests/orchestration/test_run_manifest_episode_graph.py` | the `_J` stand-in at `:219`, the double this file passes to `_crosscheck_job_episodes_vs_index`, whose `getattr` this round renamed |
-| `tests/orchestration/test_run_manifest_reference_coverage.py` | probe named `:145` |
-| `tests/orchestration/test_run_manifest_terminal_consistency.py` | the `_Job` stand-in at `:17`, the double this file passes to `_crosscheck_terminal_jobplan_manifest` |
-| `tests/orchestration/test_run_manifest_zero_call_expectations.py` | probe named `:213` |
-| `tests/orchestration/test_self_use_runner.py` | probe named `:99` and `:281` |
-| `tests/test_do_job_flow.py` | the `_FakeJob` stand-in at `:1198`, the double for `_build_final_audit`. It lives OUTSIDE BOTH ordered suites and was found only by running the probe over the REST of `tests/` (Deviation 3) |
+| before C4 | False |
+| before C6 | False |
 
 ## External actions
 
 | action | outcome |
 |---|---|
-| `git worktree add --detach .remedy-wt/f272-r10-probe 027bdc2c` | created at `027bdc2c` |
-| `git worktree remove --force .remedy-wt/f272-r10-probe` | removed by exact path |
-| `git worktree add --detach .remedy-wt/f272-r10-gate 868ba410` | created at `868ba410` |
-| `git worktree remove --force .remedy-wt/f272-r10-gate` | removed by exact path |
-| `git worktree prune` | run after the removals |
+| `git worktree add --detach .remedy-wt/f272-r11-probe 1bfb1cd9` | created at `1bfb1cd9` |
+| `git worktree remove --force .remedy-wt/f272-r11-probe` | removed by exact path |
+| `git worktree prune` | run after the removal |
 | `git push -u origin feature/f272-one-world-completion` | see below |
 
 No PR created, none merged, nothing force-pushed, no branch deleted.
 
 ## Authored-text proofs
 
-Disk-to-disk against the committed `.agent/authored/f272-r10.md`:
+Disk-to-disk against the committed `.agent/authored/f272-r11.md`:
 
 | slice | target | bytes | mode | result | sha256 |
 |---|---|---|---|---|---|
-| PLANF272R10 | `.agent/plan.md` | 2173 | replace | IDENTICAL | `a99735caf764…` |
-| RECORDR10 | `.agent/live_review.md` | 8385 | append | IDENTICAL | `2438a28cece5…` |
-| DECISIONR10 | `docs/roadmap/features/T2_F272.md` | 2877 | append | IDENTICAL | `7198c0f95720…` |
+| PLANF272R11 | `.agent/plan.md` | 2187 | replace | IDENTICAL | `3682beb3c561…` |
+| RECORDR11 | `.agent/live_review.md` | 9090 | append | IDENTICAL | `caed60c3f12d…` |
+| SLIPSR11 | `.agent/prose_slips.md` | 2678 | append | IDENTICAL | `2b6ac0dd5af6…` |
+| DECISIONR11 | `docs/roadmap/features/T2_F272.md` | 2909 | append | IDENTICAL | `437bdbcbb405…` |
 
-Every slice was applied byte for byte, none was edited, and no `<<<BEGIN`/`<<<END`
-marker LINE reached any target file. (`.agent/live_review.md` contains one INLINE
-`<<<BEGIN ` occurrence mid-line; it is in the pre-image at `HEAD~`, is not a marker
-line, and the line-anchored count is 0 before and after.) C4, C5 and C6 were a SPEC
-and not a slice, so they carry no authored text.
+All four slices were applied byte for byte, none was edited, and no
+`<<<BEGIN`/`<<<END` marker LINE reached any target file. C4 and C5 were a SPEC and not
+a slice, and neither was committed.
 
 ## Deviations & assumptions
 
-NO COMMIT WAS MADE BEYOND THE BLOCK'S ORDERED SEQUENCE. The fix clause OPEN in the
-record and binding on this handback — that any commit beyond the ordered sequence
-receives its OWN `## Commits` row and its OWN item-status row, and the Deviations
-section says so in those same words — is discharged with nothing owed: the range
-`027bdc2c..HEAD` holds exactly eight commits before this handoff, they are C0a, C0b,
-C1, C2, C3, C4, C5 and C6 in that order, and no row beside this one says otherwise.
+TWO COMMITS OF THE ORDERED SEQUENCE WERE NOT MADE, AND NO COMMIT WAS MADE BEYOND IT.
+Per the fix clause OPEN in the record and binding on this handback: any commit beyond
+the ordered sequence receives its OWN `## Commits` row and its OWN item-status row,
+and the Deviations section says so in those same words. There is no such commit — the
+range `1bfb1cd9..HEAD` holds exactly five commits before this handoff, they are C0a,
+C0b, C1, C2 and C3 in that order, and the departure runs the other way: C4 and C5 are
+ABSENT, each with its own item-status row saying so.
 
-### Deviation 1 — the probe got a second MODE the block did not order
+### Deviation 1 — C4 and C5 were not committed, on the block's own STOP condition
 
-C4 step 2 orders a `status` property that logs the caller and RAISES. I built that,
-and I also gave it a `forward` mode that logs and then forwards to `state`. Reason,
-measured rather than assumed: under the raising probe alone, `_export_job:667` fires
-on nearly every job in the suite, so each test dies at its FIRST site and the rest of
-that test's sites stay invisible — the first raising pass logged 40 distinct sites
-against 766 failures. One forwarding pass logged 218. The forwarding pass is an
-ACCELERATOR only; every claim in this round rests on the RAISING probe, which is what
-G4 re-ran and what had to reach EXIT 0.
+Stated in full under G4. In one sentence: the ordered gate `tests/ui_contracts/`
+cannot read EXIT 0 with C4 applied, because a third test in that directory pins
+`len(phrases) == 7` over the very map C4 widens, and the block forbids editing that
+directory. I applied C4 in a disposable worktree, measured it five ways, proved the
+red control fires, proved vitest unaffected, proved the two ordered tests go green and
+the third goes red, then discarded it. C5's `Landed:` line would have asserted a fix
+that is not on the branch, so it was not written.
 
-### Deviation 2 — the probe also instruments the CONSTRUCTOR
+WHAT THE NEXT ROUND NEEDS, so this costs one small round and not a session: land C4
+exactly as measured, and change ONE character in
+`tests/ui_contracts/test_digest_hero_card.py:230` from `== 7` to `>= 7` (or, better,
+to a comparison against `run_state_values()`, which that file does not yet import).
+M5 shows that combination at EXIT 0, 808 passed, 5 skipped. Whether the gate file may
+be edited is a ruling for the reviewer, not a call for me: it is the same edit R-0821
+already argues for one layer in, and refusing it leaves the cockpit unable to name two
+states the orchestrator really produces.
 
-A property cannot see `JobPlan(status=...)`: after the field is renamed that path
-raises `TypeError` from the generated `__init__` and never reaches a descriptor. I
-wrapped `JobPlan.__init__` so a `status=` keyword is logged with its caller and then
-raises (or, in forward mode, is forwarded). Without this the 36 constructor sites
-would have had to be inferred statically, which is the thing D7 forbids. All 36 were
-in fact named by the running probe.
+### Deviation 2 — the plan and the record now describe a fix that did not land
 
-### Deviation 3 — the probe was ALSO run over the rest of `tests/`
+Constraint 1 is absolute — "if one looks wrong, apply it anyway and say so" — so all
+four slices went in byte for byte, and two of them now overstate what is on disk:
 
-The block orders `tests/orchestration/ tests/cli/`. I additionally ran
-`tests/ --ignore=tests/orchestration --ignore=tests/cli` under the probe, twice. It
-named one further site — `apps/cli/commands/do_cmd.py:2885` — and, once C5 was
-applied, it is what exposed the `_FakeJob` stand-in in `tests/test_do_job_flow.py`,
-which no ordered suite reaches. Had I run only the two ordered suites, this round
-would have landed a file that is silently wrong and gated it EXIT 0.
+- `.agent/plan.md` (C1) says "This round gives them their place", and the round did
+  not.
+- `.agent/live_review.md` (C2), inside R-0821, says "FIX, LANDED BY THIS ROUND:
+  `blocked` and `stopped` join `SETTLED_STATES` and gain `DIGEST_STATE_LABELS`
+  entries". They do not yet. Everything else in that registration — the bisection, the
+  two module readings, the product effect, the counter-measure — is accurate and was
+  independently reproduced by me at base.
+- `docs/roadmap/features/T2_F272.md` (C3) states DECISION F272 D8. A DECISION is a
+  RULING and the ruling stands on its own; but its REVERSE clause ("REVERSE by
+  removing the two entries from each module") names entries that do not exist yet.
 
-### Deviation 4 — `node_modules` was symlinked into both worktrees
+I did not edit a single byte of any of them. Correcting them is the reviewer's, and
+the cheapest correction is the next round landing C4, after which all three read true.
 
-Round 9 recorded `test_test_runner.py::…::test_vitest_passes` as an unavoidable
-worktree artifact (`ERR_MODULE_NOT_FOUND`, a fresh worktree has no `node_modules`)
-and excluded it from its count. That exclusion is not necessary: the primary checkout
-has `node_modules` and `apps/ui/node_modules`, and symlinking both into the worktree
-makes the test pass there — verified before any edit, `52 passed in 4.05s` for that
-file. This is environment provisioning, not a source change, and it is what makes an
-honest EXIT 0 reachable inside a worktree at all.
+### Deviation 3 — the block's G4 gate was run in a worktree, and C4 lives nowhere now
 
-### Deviation 5 — the scaffolding was made lint-clean so it stops tripping a test
+The block places G4(ii) in a disposable worktree at "the commit C4 creates". There is
+no such commit, so the whole of G4 ran in a worktree at `1bfb1cd9` with C4 applied to
+the working tree and never committed. The primary checkout never carried the edit;
+`git status --porcelain` was empty at every point after C3. The exact C4 text is not
+preserved anywhere on the branch — it is reproducible from the spec in
+`.agent/authored/f272-r11.md`, and the shape it took is recorded under G4(iii) above:
+`SETTLED_STATES` gains `"blocked"` and `"stopped"` as a six-element multi-line array,
+`DIGEST_STATE_LABELS` gains `"blocked": "Blocked"` and `"stopped": "Stopped"` in
+`RunState` declaration order, and the two comments that counted the partition — "the
+most report-worthy rest of the four" and "The seven members of `RunState`" — were
+rewritten to name the set instead, per the block's preference for naming over
+counting.
 
-With the site set fully applied, the ordered command still read EXIT 1 on exactly one
-test: `test_ci_budgets.py::test_this_repository_really_is_at_or_below_the_lint_ceiling`.
-`python3 -m ruff check` on the worktree's `pingpong_job.py` showed the cause was the
-SCAFFOLDING — two `E402` and one `UP031` from my own probe block, three errors over a
-ceiling of 26. I rewrote the scaffolding (imports inside functions, an f-string
-instead of `%`) until `ruff` read `All checks passed!` on that file, and the same
-ordered command then read EXIT 0. No test was changed, no assertion weakened and no
-ceiling raised; the instrument was fixed, not the measurement. The scaffolding never
-reaches a commit — the diff C5 landed was produced from a tree with the probe removed.
+### Deviation 4 — `node_modules` was copied into the worktree, 305 MB
 
-### Deviation 6 — G4's site log is NOT empty, and cannot be
+Constraint 7's route, taken as written: `shutil.copytree(..., symlinks=True)` for both
+`node_modules` and `apps/ui/node_modules`, rather than round 10's symlink. It is what
+made the C4 vitest run possible at all, and it is also why the worktree's
+`tests/ui_contracts/` reading is 5 skipped where the primary reads 4 — the extra skip
+is not the `tsc` node, which ran. The whole worktree was removed by exact path.
 
-G4(i) requires an EMPTY site log. The log carries exactly one entry:
-`tests/orchestration/test_job_state_field.py:45`, which is C6's own assertion
-`assert not hasattr(JobPlan(), "status")` — the assertion that makes the rename a
-REPLACEMENT rather than an alias. Under the probe an artificial `status` property
-exists, so that assertion reads it and is logged; it still PASSES, because the getter
-raises `AttributeError` and `hasattr` is therefore False. This is not a site C5
-missed: it is the gate's own instrument being observed by the test whose subject is
-the instrument's absence. I could not formulate the assertion to satisfy both: any
-INSTANCE-level check logs, and any CLASS-level check (`"status" in dir(JobPlan)`,
-`JobPlan.__dict__`, `getattr(JobPlan, "status", None)`) FAILS under the probe, which
-would redden G4 instead. I applied the block as written and report the log verbatim
-rather than trimming it, excluding it by name, or deleting the assertion. The
-reviewer may prefer the assertion dropped; that is a ruling, not my call.
+### Deviation 5 — the labels were chosen without needing the copy audit's permission
 
-### Deviation 7 — G7's ruff is EXIT 1 on a pre-existing finding
-
-Reported above with its base proof. Not fixed: out of the change set's substance and
-untouched by any of this round's edits.
-
-### Deviation 8 — two tests are RED AT BASE, outside every ordered suite
-
-`tests/ui_contracts/test_digest_card_copy.py::TestEveryRunStateIsAccountedFor::test_all_seven_run_states_are_named_by_the_label_map`
-and
-`tests/ui_contracts/test_job_digest_card_contract.py::TestTheTriggerRuleIsPureAndPortless::test_all_seven_run_states_are_accounted_for_in_the_rule`
-fail at `027bdc2c`. I reproduced both RED in the UNMODIFIED primary checkout before
-any edit of this round, so they are not a rename effect. Both concern "all seven run
-states", which is what round 8 widened. They lie outside `tests/orchestration/`,
-`tests/cli/`, `tests/docs/` and the canary, so no gate this round orders can see
-them. I mint no id; registering this is the reviewer's call.
-
-### Deviation 9 — G4, G5 and G6 ran in the gate worktree, not the primary checkout
-
-The block places G4 and G5 in a disposable worktree at the commit C6 creates. I ran
-G6 there too, at that same commit `868ba410`, so that no suite run could leave an
-artifact in the primary checkout and put G8's `git status --porcelain` at risk. The
-worktree's content is the committed tree; `pingpong_job.__file__` was printed and
-resolves from inside it. G7 and G8 ran in the primary checkout.
-
-### Deviation 10 — the inventory uses a fourth classification
-
-C4 step 6 names `probe`, `annotation` and `stand-in`. The inventory carries a fourth,
-`field`, used once, for the dataclass field itself — it is neither a call site nor a
-double, and calling it any of the three would have been a small lie in the one row
-that anchors all the others. `probe` covers 219 sites, `annotation` 5, `stand-in` 9.
-
-### Deviation 11 — two stand-ins keep their `status` KEYWORD
-
-`_Job` in `test_run_manifest_terminal_consistency.py` and `_J` in
-`test_run_manifest_episode_graph.py` build their attribute from a keyword their own
-callers pass. I renamed the ATTRIBUTE (`self.state = kw.get("status", …)`) and left
-the keyword, because the keyword is the double's own local API and renaming it would
-have pulled unrelated call sites into a rename commit that must stay atomic.
+The block says use `"Blocked"` and `"Stopped"` unless the copy audit refuses them. It
+did not refuse: `scrubUiText`'s forbidden-word list, parsed out of `humanCopy.ts`,
+holds neither word, both are short capitalised phrases in the voice of `"Paused"` and
+`"Cancelled"`, and both are distinct from every existing phrase, which
+`digestCardCopy.test.ts` requires. They also collide with nothing in
+`DIGEST_CTA_RULE_IDS`, which I did not touch: `"blocked-failed"` does not contain the
+literal `"blocked"` including its closing quote, which is exactly why the ordered test
+was failing rather than passing by accident.
 
 ### Assumption
 
-The forwarding pass and the raising pass see the same site set. Basis rather than
-belief: after applying everything the forwarding pass named, the RAISING pass over
-the same suites reached EXIT 0 with no production site logged, and the non-vacuity
-control proves that same instrument does fire when a site is put back.
+None load-bearing. Every claim above is a measurement I took in this round, and each
+names the tree it was taken in.
 
 ## Next
 
-The reviewer re-runs these gates and rules on round 10. The three readings that most
-need an independent re-run are G4's control/residual pair (the gate R-0820 exists to
-replace), G6's `tests/orchestration/` count of 12847 against the base 12838, and
-G7's ruff, which is EXIT 1 for a reason this round did not create. Then move THREE of
-DECISION F272 D6: retype `JobPlan.state` to `RunState`, make the six `JOB_*`
-constants `RunState` members, and put `.value` at every boundary leaving the record —
-`tests/orchestration/test_job_state_field.py::TestTheRenderingIsUnchanged` is the
-guard that move must keep green, and `.agent/f272_state_rename_inventory.md` is the
-site list it inherits. Phase 1 rule 1 (`.agent/STOP`) is checked before Phase 1
-rule 2, as always.
+RULE ON C4's BLOCKER, which is the one thing this round could not decide for itself:
+may `tests/ui_contracts/test_digest_hero_card.py:230` change `len(phrases) == 7` to a
+floor, so that the R-0821 fix can land? Everything else is measured and ready — M5 in
+the table above is the whole answer at EXIT 0, 808 passed, 5 skipped. The next block
+can be small: C4 as specified, that one-character gate repair, C5's `Landed:` line,
+and the handback. Then move three of DECISION F272 D6 — retype `JobPlan.state` to
+`RunState`, make the six `JOB_*` constants members, `.value` at every boundary leaving
+the record — with `tests/ui_contracts/` in its gate list, which R-0821's
+counter-measure now makes binding on exactly that round. Phase 1 rule 1
+(`.agent/STOP`) is checked before Phase 1 rule 2, as always.
