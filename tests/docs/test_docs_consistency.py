@@ -54,8 +54,12 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: triaged all 298 open findings and collected the 54 with product effect
 #: into one feature; it is placed directly after F271 under the Easy Start &
 #: Contract Block heading, as that order requires. See T2_F273.md and
-#: .agent/triage_2026-09-06.md.
-TOTAL_FEATURES = 273
+#: .agent/triage_2026-09-06.md. One more, F274 (one world completion part
+#: two: the atomic record flip and the cluster deletion), was registered on
+#: 2026-09-07 by DECISION F272 D16, which split it off F272 at the
+#: amend0906-triage-throughput soft limit of 12 sessions and placed it
+#: directly after its parent per amend0906-split-placement; see T2_F274.md.
+TOTAL_FEATURES = 274
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [
