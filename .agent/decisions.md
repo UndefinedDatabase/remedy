@@ -11014,3 +11014,49 @@ declared-oversize allowance; that allowance is reserved for T001's atomic flip, 
 staged at all. REVERSE by deleting this section: the map then has no ruled standing, the deletion
 order returns to F260's module list, and the `mission report` collision returns to being
 undiscovered.
+
+## DECISION F274 D3 — the cockpit `context-budget` endpoint is DELETED, not carried
+
+Date: 2026-09-07. Feature F274, round 5. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT. `packages.orchestration.context_pack` is one of the twenty-four prototype-cluster modules
+F260's Design deletes. After round 4 moved the `context.pack` command handler into a cluster-bound
+file, the module had exactly ONE recorded edge left: `packages/orchestration/ui_server.py`, whose
+function `_build_context_budget_json` serves the cockpit read endpoint `context-budget`. Under
+DECISION F274 D2 the deletion is bounded by edges, so this one edge is the whole of what stands
+between `context_pack` and deletability.
+
+CHOSEN. The endpoint is DELETED with its builder, its route registration and its two tests, and
+nothing replaces it. AGENTS.md's Scope Control states that replacing is deleting, that there is no
+attic, no deprecated alias and no compatibility reader, and that git is the archive. The idea the
+endpoint served — telling a reader what a job's context costs — is INHERITED by the token-economy
+surface that already exists beside it and is not cluster-bound:
+`estimate_context_budget` in `packages/orchestration/token_economy.py`, surfaced through the
+`context_budget_estimate` key that `packages/orchestration/ui_server.py` already reads. That
+surface is untouched by this decision and by this feature.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) REPOINT the endpoint at `token_economy` instead of
+deleting it. Rejected: the two produce different shapes — `context_pack` returns per-section
+structure while `estimate_context_budget` returns a band estimate — so this would be a new
+endpoint wearing an old name, which is the synonym drift AGENTS.md's discoverability rules forbid,
+and F261 rather than F274 owns naming. (b) KEEP the endpoint and exempt `context_pack` from the
+deletion. Rejected: it is on F260's Design list, and an exemption granted to keep one read
+endpoint alive is how the previous three attempts at this deletion ended. (c) LEAVE a 404 route so
+a client learns the endpoint is gone. Rejected: no client exists — the string `context-budget`
+occurs nowhere in `apps/ui/src`, and at the base its only occurrences anywhere are its definition,
+its route line and the one test that calls it.
+
+EVIDENCE THIS RESTS ON, measured at `0d68507bd5b794109db45d6d5765798fa87f7b97`. The endpoint has
+no consumer outside its own test; no document under `docs/` describes it; and the deletion map
+records `packages.orchestration.context_pack` with exactly one edge, which this round removes,
+leaving the module with none.
+
+CONSEQUENCE. `context_pack` becomes the third cluster module with no recorded edge, after
+`review_bundle` and `self_repair_proposal`. It is NOT deleted by this decision — the module and
+its file survive until the deletion round, which runs under DECISION F260 D3 and names every
+module it removes.
+
+REVERSE THIS DECISION by restoring `_build_context_budget_json`, its route line and its two tests
+from git history at `0d68507bd5b794109db45d6d5765798fa87f7b97`, and restoring the map line
+`packages.orchestration.context_pack <- packages/orchestration/ui_server.py` in the same commit.
