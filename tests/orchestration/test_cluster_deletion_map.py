@@ -25,6 +25,7 @@ from the first and the two guards would disagree about the same graph.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from tests.orchestration.test_import_reachability import (
@@ -99,6 +100,27 @@ CLUSTER_COMMAND_HANDLERS = (
 # excluded: a test of a deleted module is deleted with it and blocks nothing.
 CONSUMER_ROOTS = ("packages", "apps", "scripts")
 
+# A python import statement naming a first-party module, matched as TEXT rather
+# than parsed. Finding R-0834: `scripts/remedy_smoke.sh` embeds its checks in
+# `python3 -c "..."` heredocs, so the module it imports is real, executed and
+# breaks on deletion exactly like an import in a `.py` file — but `ast` cannot
+# reach it, because the file it lives in is not python. The walker below is
+# therefore deliberately a REGEX over non-python files and deliberately matches
+# only the two IMPORT FORMS: a bare mention of a dotted name is not an edge, and
+# `cluster_deletion_map.txt` is itself full of bare mentions.
+_EMBEDDED_IMPORT = re.compile(
+    r"^[ \t]*(?:from|import)[ \t]+(packages\.[A-Za-z0-9_.]+)", re.MULTILINE
+)
+
+
+def embedded_first_party_imports(path: Path) -> set[str]:
+    """First-party modules imported by python EMBEDDED in a non-python file."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return set()
+    return set(_EMBEDDED_IMPORT.findall(text))
+
 
 def _cluster_module_of(dotted: str) -> str | None:
     """The cluster module a dotted import name refers to, or None.
@@ -125,10 +147,14 @@ def measured_edges() -> set[tuple[str, str]]:
     excluded = _excluded_paths()
     edges: set[tuple[str, str]] = set()
     for root in CONSUMER_ROOTS:
-        for path in sorted((REPO_ROOT / root).rglob("*.py")):
-            if path.resolve() in excluded:
+        for path in sorted((REPO_ROOT / root).rglob("*")):
+            if not path.is_file() or path.resolve() in excluded:
                 continue
-            for dotted in first_party_imports(path):
+            if path.suffix == ".py":
+                dotted_names = first_party_imports(path)
+            else:
+                dotted_names = embedded_first_party_imports(path)
+            for dotted in dotted_names:
                 module = _cluster_module_of(dotted)
                 if module is not None:
                     edges.add((module, str(path.relative_to(REPO_ROOT))))
