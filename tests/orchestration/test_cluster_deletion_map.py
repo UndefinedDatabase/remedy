@@ -72,6 +72,8 @@ CLUSTER_MODULES = (
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/builder_routing_cmd.py",
     "apps/cli/commands/candidate_quality_cmd.py",
+    "apps/cli/commands/context_optimizer_cmd.py",
+    "apps/cli/commands/context_pack_cmd.py",
     "apps/cli/commands/dogfood_cmd.py",
     "apps/cli/commands/external_builder_cmd.py",
     "apps/cli/commands/local_advisor_cmd.py",

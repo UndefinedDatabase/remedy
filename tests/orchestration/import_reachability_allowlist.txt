@@ -14,6 +14,8 @@ apps.cli.commands.change
 apps.cli.commands.ci_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.context
+apps.cli.commands.context_optimizer_cmd
+apps.cli.commands.context_pack_cmd
 apps.cli.commands.contract_cmd
 apps.cli.commands.dashboard_cmd
 apps.cli.commands.decision
