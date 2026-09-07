@@ -88,3 +88,32 @@ class TestTheRenderingIsUnchanged:
         assert f"{job.state}" == "blocked"
         assert _export_job(job)["status"] == "blocked"
         assert isinstance(_export_job(job)["status"], str)
+
+
+class TestTheRetypeIsComplete:
+    """F272 move three — the guards round 13 measured as MISSING.
+
+    Round 10's rendering guard cannot see a missing ``.value`` at the record
+    boundary: a ``RunState`` member equals, formats and JSON-serialises exactly
+    like its value, so that guard's three assertions are all TRUE for a bare
+    member. Only its TYPE tells them apart, which is what the first test reads.
+    """
+
+    def test_the_exported_status_is_a_plain_str_and_not_a_run_state(self):
+        """The discriminator. A bare ``RunState`` passes every other guard."""
+        job = JobPlan(job_id="j1", state=JOB_BLOCKED)
+        assert type(_export_job(job)["status"]) is str
+
+    def test_every_construction_path_settles_as_a_run_state(self):
+        """One spelling per concept: a raw literal, a JOB_* constant and an
+        imported record reach the same type, or the annotation is a lie."""
+        assert type(JobPlan(state="completed").state).__name__ == "RunState"
+        assert type(JobPlan(state=JOB_BLOCKED).state).__name__ == "RunState"
+        assert type(_import_job({"job_id": "j1", "status": "blocked"}).state).__name__ == "RunState"
+
+    def test_a_record_whose_status_is_not_a_run_state_value_still_loads(self):
+        """DECISION F272 D5. ``complete``, ``dry_run`` and ``promoted`` occur in
+        records on disk; an unrecognised value is KEPT, never raised on."""
+        job = _import_job({"job_id": "j1", "status": "complete"})
+        assert job.state == "complete"
+        assert _export_job(job)["status"] == "complete"
