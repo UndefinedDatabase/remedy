@@ -164,6 +164,40 @@ class MissionJobLink:
                    created_at=str(body.get("created_at", "")))
 
 
+# Three fields rather than a union, because they answer different questions.
+@dataclass(frozen=True)
+class MissionOrder:
+    """What a mission was ASKED for, and where the asking came from.
+
+    DECISION F260 D1 words the order as "text, or file path + sha256".  All
+    three are carried instead of a union because they are not alternatives: the
+    text is what Remedy actually acted on, while the path and the digest are
+    what a later reader checks the file against to see whether the order has
+    moved underneath the mission since.  ``source_sha256`` is spelled to match
+    ``JobPlan.job_file_sha256``, which the vocabulary page's Order row names as
+    the same concept under another name — one spelling per concept.
+
+    Every field defaults to the empty string: an order given as pasted text has
+    no file, and one given as a file has no separate text.
+    """
+
+    text: str = ""
+    source_path: str = ""
+    source_sha256: str = ""
+
+    def to_json(self) -> dict[str, Any]:
+        return {"text": self.text, "source_path": self.source_path,
+                "source_sha256": self.source_sha256}
+
+    @classmethod
+    def from_json(cls, body: Any) -> MissionOrder:
+        if not isinstance(body, dict):
+            raise ValueError("mission order must be an object")
+        return cls(text=str(body.get("text", "")),
+                   source_path=str(body.get("source_path", "")),
+                   source_sha256=str(body.get("source_sha256", "")))
+
+
 @dataclass(frozen=True)
 class Mission:
     """A persistent goal plus the ordered chain of jobs that served it.
@@ -180,6 +214,19 @@ class Mission:
     body is the plan's ``model_dump()`` plus the ``_versions``/``_version``
     keys the flight-plan replan precedent established; ``None`` and an absent
     key both mean "not compiled yet".
+
+    ``order`` and ``contract`` (F272) are the last two fields DECISION F260 D1
+    names, and both are ADDITIVE and OPTIONAL on exactly ``mission_plan``'s
+    terms: each key is written only once its value exists, so every record
+    written before F272 stays byte-identical and every reader that predates it
+    keeps working — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move
+    for them either.  ``order`` is the :class:`MissionOrder` this mission came
+    from.  ``contract`` is RESERVED for F269 by DECISION amend0905-vocab D9 in
+    ``docs/system/vocabulary.md``, which rules that the contract is compiled
+    from the order and gives the building of it to that feature; this module
+    stores it and defines no shape for it, exactly as ``dossier_ref`` is
+    reserved for the dossier.  ``None`` and an absent key both mean "no
+    contract compiled yet", which is the truth today for every mission.
     """
 
     id: str
@@ -191,6 +238,8 @@ class Mission:
     created_at: str = ""
     schema_version: int = MISSION_SCHEMA_VERSION
     mission_plan: dict[str, Any] | None = None
+    order: MissionOrder | None = None
+    contract: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
         body = {
@@ -208,6 +257,14 @@ class Mission:
         # start differing from the bytes already on disk.
         if self.mission_plan is not None:
             body["mission_plan"] = self.mission_plan
+        # Each written only when there IS one, on the same terms and for the
+        # same reason as the plan above: an absent key is how a pre-F272 record
+        # says "no order" and "no contract", and a record that never gained
+        # either must not start differing from the bytes already on disk.
+        if self.order is not None:
+            body["order"] = self.order.to_json()
+        if self.contract is not None:
+            body["contract"] = self.contract
         return body
 
     @classmethod
@@ -230,6 +287,10 @@ class Mission:
         plan = body.get("mission_plan")
         if plan is not None and not isinstance(plan, dict):
             raise ValueError("mission_plan must be an object")
+        order = body.get("order")
+        contract = body.get("contract")
+        if contract is not None and not isinstance(contract, dict):
+            raise ValueError("mission contract must be an object")
         return cls(
             id=mission_id,
             project_id=project_id,
@@ -240,6 +301,8 @@ class Mission:
             created_at=str(body.get("created_at", "")),
             schema_version=version,
             mission_plan=plan,
+            order=MissionOrder.from_json(order) if order is not None else None,
+            contract=contract,
         )
 
     def job_ids(self) -> tuple[str, ...]:
@@ -513,6 +576,45 @@ def set_mission_plan(project_id: str, mission_id: str,
         raise MissionError("a mission plan body must be an object")
     mission = load_mission(project_id, mission_id, root)
     updated = replace(mission, mission_plan=plan_body)
+    save_mission(updated, root)
+    return updated
+
+
+def set_mission_order(project_id: str, mission_id: str,
+                      order: MissionOrder | None,
+                      root: Path | None = None) -> Mission:
+    """Persist the ORDER a mission came from on the mission record.
+
+    The record is the order's home for the same reason the plan lives there:
+    the order describes the MISSION, not any one job.  Writing it changes
+    nothing else — the goal stays immutable, the status and the job chain are
+    untouched — and nothing is started, because recording what was asked for is
+    not acting on it.
+    """
+    if order is not None and not isinstance(order, MissionOrder):
+        raise MissionError("a mission order must be a MissionOrder")
+    mission = load_mission(project_id, mission_id, root)
+    updated = replace(mission, order=order)
+    save_mission(updated, root)
+    return updated
+
+
+def set_mission_contract(project_id: str, mission_id: str,
+                         contract: dict[str, Any] | None,
+                         root: Path | None = None) -> Mission:
+    """Persist the compiled CONTRACT on the mission record.
+
+    What belongs in this body is NOT ruled here: DECISION amend0905-vocab D9 in
+    ``docs/system/vocabulary.md`` rules that the contract is compiled from the
+    order, and gives the building of it to F269.  This function stores whatever
+    that feature compiles and defines no shape of its own, which is why the
+    field is reserved and empty until then.  Like :func:`set_mission_plan`, it
+    touches neither the goal, nor the status, nor the job chain.
+    """
+    if contract is not None and not isinstance(contract, dict):
+        raise MissionError("a mission contract body must be an object")
+    mission = load_mission(project_id, mission_id, root)
+    updated = replace(mission, contract=contract)
     save_mission(updated, root)
     return updated
 
