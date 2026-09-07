@@ -10917,3 +10917,45 @@ CHOSEN. THE HEADER IS CORRECTED IN THIS BRANCH, in the commit that follows the m
 WHY THIS IS A DECISION AND NOT A SILENT EDIT. It is an edit to a REVIEWER'S measured prose made by an operator amendment rather than by the round that wrote it, and the standing rule is that quoted wording goes stale and a correction carries the old fact. Both are honoured here: the old promise is quoted in the correction, and the reason it died is named. The alternative considered was to leave the header alone and rely on the next round re-measuring the record at Phase 0 — rejected, because the sentence is an INSTRUCTION rather than an observation, and a round that follows it has already spent the id before any re-measurement would catch it.
 
 CONSEQUENCE. F274's next minted finding id is R-0830. REVERSE by restoring the single sentence "and the next id this feature mints is R-0829" and deleting the added ones; nothing else reads this paragraph, and the record's own counts are recomputed from the file by `scripts/rotate_live_review.py` rather than from this prose.
+
+## DECISION F274 D1 — the reachability proof lands as a RATCHET, and "never split inside T003" binds the deletion rather than its prerequisites (2026-09-07)
+
+CONTEXT. Operator amendment amend0907-cluster-first D1 reordered this feature so the prototype
+cluster deletion runs first, and named its reachability test as "the gate that opens it". Two
+questions had to be answered before that test could be written, and neither is settled by the
+texts that order it. Both were forced by the reviewer's own dry run at
+`9c65a9225cdf4d60822d459d698b66d2d7cb19d7`, which is registered as finding R-0830: the closure of
+the six DECISION amend0905-vocab D11 (c) entry points holds all twenty-four cluster modules, so
+F260's Design sentence requiring the test to "already pass with these modules absent from the
+reachable set" is satisfied by no tree that still contains them.
+
+THE FIRST QUESTION: what shape does the test take? CHOSEN — A RATCHET, NOT A PRECONDITION. The
+test computes the reachable closure and asserts it against an ALLOWLIST file, which is D11c's own
+wording — "no module outside an allowlist is importable from" the entry points — and not F260's
+paraphrase. It is GREEN at this commit with the measured set recorded, a new orphan reaching the
+graph reds it, and a third assertion reds when an allowlist entry names a module that has left
+the tree, so a deletion round cannot forget to shrink it. The allowlist is generated from the
+closure rather than typed, so the file is a measurement and not a wish. ALTERNATIVES: assert the
+cluster absent, rejected because R-0830 measures that as unmeetable today and a gate that cannot
+pass is the same defect as one that cannot fail; assert set EQUALITY against a snapshot, rejected
+because it reds on every unrelated refactor that removes an import, which trains readers to
+regenerate the file without reading it.
+
+THE SECOND QUESTION: what does "NEVER SPLIT INSIDE T003" forbid? CHOSEN — IT BINDS THE DELETION
+ITSELF AND NOT ITS PREREQUISITES. F260's brief and `docs/roadmap/features/T2_F274.md` both give
+the rule the same stated reason: "a half-performed deletion is the single state this work must
+not leave behind." The reachability test, the two carry-overs and the DECISION F260 D3 draft are
+ordered BEFORE the first `git rm` and each leaves the tree fully consistent at every commit
+boundary, so none of them can produce that state; they may therefore land across sessions. The
+`git rm` sequence may not be started by a session that cannot finish it, and that prohibition is
+unchanged and unweakened. ALTERNATIVE: read the rule as binding the whole slice, rejected because
+it makes the prerequisites unstartable — no session can guarantee in advance that it will finish
+a 54-file deletion it has not yet measured — which is the reading under which three consecutive
+features never reached this work at all.
+
+CONSEQUENCE. F274 R2 lands the test and the allowlist; the carry-overs and DECISION F260 D3
+follow; the deletion round is planned from the reverse-import measurement R-0830 carries rather
+than from F260's module list, because that list names modules and the deletion is bounded by
+EDGES. R-0830 stays OPEN until that plan exists. REVERSE by deleting this section: the test then
+has no ruled shape and the split boundary returns to being ambiguous, which is the state this
+ruling replaced.
