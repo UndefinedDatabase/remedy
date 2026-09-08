@@ -1930,6 +1930,18 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("mission.pause", "mission.watchdog"),
     ),
+    CommandEntry(
+        command_id="mission.readiness",
+        group_id="mission",
+        subcommand="readiness",
+        description="Read-only: is this job safe to run unattended?",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("mission.show", "mission.watchdog"),
+    ),
 
     # ── doctor (product spine health check) ──────────────────────────────
     CommandEntry(

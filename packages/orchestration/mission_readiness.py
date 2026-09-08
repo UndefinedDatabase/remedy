@@ -8,11 +8,12 @@ in `packages/orchestration/overnight_readiness.py`, so the move is provable by a
 gate rather than reviewable by eye, and nothing is renamed: the carried symbols
 keep their `overnight_` spelling because F261 owns renames.
 
-STAGED BATCH 1 OF 2, AND UNWIRED. The full carry-over is 655 lines, which exceeds
-the DECISION F104 D1 cap of 500 insertions for one commit, so it lands across two
-commits in different rounds. Until the wiring round NOTHING IMPORTS THIS MODULE —
-that is deliberate, it is what keeps every intermediate commit green, and it is
-gated. `overnight_readiness.py` itself is not touched by either batch.
+COMPLETE AND WIRED. The carry-over is 655 lines, which exceeds the DECISION F104 D1
+cap of 500 insertions for one commit, so it landed across two commits in two rounds.
+`remedy mission readiness` and the cockpit readiness section both read it, and those
+two consumers are why `packages/orchestration/overnight_readiness.py` has no
+surviving consumer left. That module is still on disk and is deleted with its
+cluster group; it was never touched by this move.
 """
 
 from __future__ import annotations

@@ -195,6 +195,7 @@ packages.orchestration.missing_tests_gate
 packages.orchestration.mission_compiler
 packages.orchestration.mission_dossier
 packages.orchestration.mission_plan_schema
+packages.orchestration.mission_readiness
 packages.orchestration.mission_state
 packages.orchestration.model_aliases
 packages.orchestration.model_route_tournament

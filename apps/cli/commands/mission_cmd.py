@@ -550,7 +550,40 @@ def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
         print(f"    - {gap.get('source', '')}: {gap.get('detail', '')}")
 
 
+def _cmd_mission_readiness(job_id: str, *, json_output: bool = False) -> None:
+    """Read-only: is this job safe to run unattended?
+
+    The readiness view carried out of the prototype cluster into
+    ``packages/orchestration/mission_readiness.py`` by DECISION F275 D1. The
+    JSON payload is the carried module's own export, unwrapped, so the view
+    survives the cluster deletion byte for byte rather than being redesigned.
+    """
+    from packages.orchestration.mission_readiness import (
+        build_overnight_readiness,
+        export_readiness_json,
+    )
+    data = export_readiness_json(build_overnight_readiness(str(job_id)))
+    if json_output:
+        print(_json.dumps(data, indent=2))
+        return
+    print(f"Mission readiness: {str(job_id)[:8]}")
+    print(f"  level: {data['readiness_level']}  ready: {data['ready']}  "
+          f"unattended: {data['can_run_unattended']}")
+    if data["blockers"]:
+        print("  blockers: " + ", ".join(data["blockers"]))
+    top_risks = [r for r in data["risks"] if r["severity"] in ("blocker", "high")]
+    if top_risks:
+        print("  top risks: " + "; ".join(r["summary"] for r in top_risks[:3]))
+    na = data.get("next_action")
+    if na:
+        print(f"  next: {na['label']} -> {na['command']}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "mission.readiness": lambda args: _cmd_mission_readiness(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
     "mission.handoff": lambda args: _cmd_mission_handoff(
         args.mission_id,
         json_output=getattr(args, "json", False),

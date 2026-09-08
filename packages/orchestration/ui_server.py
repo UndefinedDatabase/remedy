@@ -740,7 +740,7 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
     if data_dir is None:
         return unknown
     try:
-        from packages.orchestration.overnight_readiness import (
+        from packages.orchestration.mission_readiness import (
             build_overnight_readiness,
             export_readiness_json,
         )
@@ -755,7 +755,7 @@ def _build_overnight_section(job: Any, data_dir: Path | None) -> dict[str, Any]:
             "next_action_label": na["label"] if na else "",
             "checklist_done": sum(1 for i in checklist if i["status"] == "done"),
             "checklist_total": len(checklist),
-            "source": "overnight_readiness",
+            "source": "mission_readiness",
         }
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
         return unknown
