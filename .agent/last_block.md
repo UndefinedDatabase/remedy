@@ -1,111 +1,103 @@
-STEP — F274 ROUND 14 — the last two `worker_recommend` edges, and the event vocabulary D7 ruled down
+STEP — F274 ROUND 15 — fix R-0836: delete the two event kinds nothing has emitted since F272 round 19
 
-Goal: cut the `agent_loop.py` and `autonomy_loop.py` edges, which is where DECISION F274 D7 item 4
-lands. Both loops stop calling `recommend_worker` and take their token mode from
-`derive_token_mode`; `CycleDecision.selected_worker` goes; and `token_policy_applied` loses
-`estimated_context_tokens`, `remote_model_requires_approval` and `selected_worker` in
-`packages/orchestration/event_schemas.py` IN THE SAME COMMIT as the last emitter that writes them,
-with the test and smoke-script pins moved in that commit too. `packages.orchestration.worker_recommend`
-then holds NO recorded edge and becomes deletable. Also book round 13's PASS verdict, register
-R-0836 and append the prose slip round 13 owed.
+Goal: finish a deletion F272 left half-performed. `packages/orchestration/event_schemas.py` registers
+`agent_loop_cycle_decision` and `agent_loop_stopped`, and `tests/orchestration/test_event_ledger.py`
+pins both there, while NO production code has emitted either since F272 round 19 deleted their sole
+emitter `_cmd_run_loop`. That round repaired the cockpit half — it deleted the two orphaned
+`humanizeCatalog.ts` entries — and left the registry half standing. This round deletes both entries
+and the sites that pin them. Also book round 14's PASS verdict, book a RECURRENCE of R-0819 for a
+per-pair count two of that block's pairs could not meet, and RESOLVE R-0836 in this same round.
 
-Base commit for every reading in this block: `f1f50ecd`.
+Base commit for every reading in this block: `ea0d78c4`.
 
-WHY THE REGISTRY AND THE EMITTERS MOVE TOGETHER. `token_policy_applied` is a readiness signal that
-SURVIVES the cluster deletion — `autonomy_readiness.py` reads it at lines 129, 248 and 318 and
-`project_brain.py` at line 661 — so this round shrinks its vocabulary rather than deleting the
-event. `validate_event_metadata` rejects BOTH extra and missing keys, so a tree where the registry
-and an emitter disagree is red; one commit is what keeps every boundary green, and G7(a) proves it.
+NO CLUSTER MODULE AND NO EDGE MOVES THIS ROUND, and gate G8 proves it:
+`tests/orchestration/cluster_deletion_map.txt` is byte-identical at the base and at C3.
 
 WHAT THE REVIEWER RAN BEFORE AUTHORING. The whole change was applied in a disposable worktree at the
-base commit above and every gate below, both red proofs included, was run against the applied tree.
-That run also covered `tests/orchestration/` and `tests/storage/` entire: 12145 passed with ONE
-failure, `test_vitest_passes`, reading `Cannot find package 'vitest'` because a fresh worktree has no
-`apps/ui/node_modules` — the known environment class, and why constraint 7 orders G6 into the
-primary checkout.
+base commit above, and every gate below plus both red proofs was run against the applied tree.
+
+THE COUNTER-MEASURE THE R-0819 RECURRENCE ADDS WAS APPLIED TO THIS BLOCK BEFORE IT WAS EMITTED, which
+is why gate G4(a) can order a per-pair TO count here and round 14's could not. The reviewer grouped
+this block's TO blocks BY TARGET FILE and compared them for byte equality: `event_schemas.py` holds
+one pair, `test_event_ledger.py` holds five, and NO two TO blocks in either group are byte-identical.
+It then applied all six pairs to the committed base in memory and measured each pair in the
+POST-image, getting FROM 0 and TO 1 for every one. Both readings are what G4(a) orders back.
 
 FRAME CONVENTION. Every slice is delimited by a line reading `BEGIN <NAME> sha256=<hex> bytes=<n>`
 and a line reading `END <NAME>`; the slice is the bytes BETWEEN those two lines, its leading newline
-included, and marker lines never reach any file. No line of this block's FRAME — every line outside
-a BEGIN/END pair — is a run of a single repeated character; inside PAIRS14 such runs occur, being
-the closing parentheses of the python it carries, and each is pinned by its slice's byte count.
+included, and marker lines never reach any file. No line of this block's FRAME — every line outside a
+BEGIN/END pair — is a run of a single repeated character.
 
 
 ## Bundle — the commits of this round, in this order
 
-C0a  Save this block verbatim as `.agent/authored/f274-r14.md`.
+C0a  Save this block verbatim as `.agent/authored/f274-r15.md`.
 C0b  Mirror the same bytes into `.agent/last_block.md`.
-C1   Replace `.agent/plan.md` with the PLAN14 slice.
-C2   Append the RECORD14 slice to `.agent/live_review.md` — books round 13's PASS verdict and
-     REGISTERS R-0836.
-C3   Append the SLIPS14 slice to `.agent/prose_slips.md`.
-C4   THE CUT: apply the pairs of PAIRS14. ONE commit.
+C1   Replace `.agent/plan.md` with the PLAN15 slice.
+C2   Append the RECORD15 slice to `.agent/live_review.md` — books round 14's PASS verdict and the
+     R-0819 RECURRENCE.
+C3   THE FIX: apply the pairs of PAIRS15. ONE commit.
+C4   Append the RESOLVE15 slice to `.agent/live_review.md` — the authored `Done: R-0836`.
 C5   The handback: rewrite `.agent/handoff.md`, then push.
 
 C1 is the first substantive commit because this round touches the finding ledger and the plan must be
-current before every commit (§3 item 23); C2 precedes C4 because findings persist FIRST (§4 item 4).
+current before every commit (§3 item 23). C2 precedes C3 because findings persist FIRST (§4 item 4).
 
 
 ## Change set — these paths and nothing else
 
-  .agent/authored/f274-r14.md
+  .agent/authored/f274-r15.md
   .agent/last_block.md
   .agent/plan.md
   .agent/live_review.md
-  .agent/prose_slips.md
   .agent/handoff.md
-  packages/orchestration/agent_loop.py
-  packages/orchestration/autonomy_loop.py
   packages/orchestration/event_schemas.py
-  tests/storage/test_persistence.py
-  tests/orchestration/cluster_deletion_map.txt
-  scripts/remedy_smoke.sh
+  tests/orchestration/test_event_ledger.py
 
 
-## C4 — the cut
+## C3 — the fix
 
-PAIRS14 carries the pairs. `--- Q<n> FILE <path>` opens a pair, `--- Q<n> FROM` opens its FROM block
-and `--- Q<n> TO` opens its TO block; a block is every following line up to the next marker. Replace
-each FROM block with its TO block, once, keeping line endings. Marker lines reach no file. Q5's TO
-block is EMPTY, which is a deletion, and its FROM block ends with the blank line that followed the
-deleted call, so no double blank line is left behind.
+PAIRS15 carries the pairs. `--- S<n> FILE <path>` opens a pair, `--- S<n> FROM` opens its FROM block
+and `--- S<n> TO` opens its TO block; a block is every following line up to the next marker. Replace
+each FROM block with its TO block, once, keeping line endings. Marker lines reach no file.
 
 PAIR SHAPES, MEASURED MECHANICALLY AND NOT BY EYE. The reviewer ran the containment test on every
 pair at the base commit and records the output rather than a label: every pair printed
-`TO contains FROM: false`, so EVERY pair here is a REWRITE owing the FROM-zero proof gate G4(a)
-orders, and none carries the §4.9 append obligation. At that same commit each FROM block occurs
-EXACTLY ONCE in its file; every pair was measured.
+`TO contains FROM: false`, so EVERY pair here is a REWRITE and none carries the §4.9 append
+obligation. At that same commit each FROM block occurs EXACTLY ONCE in its file.
 
-TWO REMOVALS THAT ARE EASY TO MISS, both already inside the pairs. `_initial_events` in
-`agent_loop.py` existed ONLY to feed `recommend_worker`, so Q1 removes it — left behind it is an
-unused local and `ruff` says so. And `_emit_token_policy_applied` loses its `events` parameter for
-the same reason, so Q4 updates its ONE call site in the same commit.
+WHAT EACH PAIR DOES, because four of the six are not simple deletions. S1 deletes both registry
+entries, spanning forward to the `context_budget_optimized` line that follows them. S2 drops the two
+membership assertions and adds one for `token_policy_applied`, so the test still asserts something
+the product really writes. S3 re-points `test_different_schemas_for_different_events` at three LIVE
+kinds. S4 re-points the `get_event_schema` probe at `agent_loop_started`. S5 deletes the two whole
+test methods that existed only to describe the dead schemas, spanning forward to the `def
+test_forbidden_strings` line that follows them. S6 re-points a scope SAMPLE.
 
-DELIBERATELY NOT DONE. `packages/orchestration/worker_recommend.py` is NOT deleted here: it loses
-its last recorded EDGE, which makes it deletable, and it dies with the cluster in the deletion round
-DECISION F260 D3 governs. R-0836, which this round REGISTERS, is NOT fixed here — it is F272's
-residue rather than D7's, and mixing it in is what AGENTS.md Scope Control forbids — so
-`event_schemas.py` keeps its `agent_loop_cycle_decision` and `agent_loop_stopped` entries, and
-`selected_worker` still occurs there ONCE afterwards, inside that surviving entry. That is why gate
-G4(b) scopes its zero-gate away from this file.
+S6 IS THE ONE PAIR THE FINDING DID NOT STRICTLY REQUIRE, and the block says so rather than widening
+its scope silently. `_normalize_event` derives an event's scope from its PREFIX, not from the
+registry, so that sample would have stayed green untouched. It is changed because a sample naming an
+event the product no longer writes is the stale-prose class R-0835 recorded, and the RESOLVE15 slice
+records the refinement against the registration's own wording.
 
 
 ## Constraints
 
-1. Apply every slice BYTE FOR BYTE. Do not reflow, retype or re-indent one. If something looks
-   wrong, apply it as given and DECLARE the doubt in the handback.
-2. RECORD14 and SLIPS14 are APPENDS: the target's existing bytes are a byte-exact PREFIX of the
+1. Apply every slice BYTE FOR BYTE. Do not reflow, retype or re-indent one. If something looks wrong,
+   apply it as given and DECLARE the doubt in the handback.
+2. RECORD15 and RESOLVE15 are APPENDS: the target's existing bytes are a byte-exact PREFIX of the
    result and the slice is an exact SUFFIX. Each carries its OWN leading newline — ADD NO SEPARATOR
-   of your own. PLAN14 replaces `.agent/plan.md` entirely. PAIRS14 is appended to no file.
+   of your own. PLAN15 replaces `.agent/plan.md` entirely. PAIRS15 is appended to no file.
 3. The path set of C0a..C4 is exactly the "Change set" paths other than `.agent/handoff.md`, at C5.
-4. C4 IS ONE COMMIT and the reason is load-bearing: `validate_event_metadata` rejects extra keys, so
-   a commit that shrinks the registry without the emitters, or the emitters without the registry,
-   is RED at its own boundary. The map line and the edge it records are cut together for the same
-   reason — `tests/orchestration/test_cluster_deletion_map.py` reds in both directions.
+4. COMMIT ORDER IS LOAD-BEARING AND THIS CONSTRAINT IS WHAT MAKES THE RESOLUTION TRUE. C3, the fix,
+   is committed BEFORE C4, the commit that writes `Done: R-0836`. That paragraph asserts a fact about
+   this round's OWN landed change, and under §3 item 20 such a claim names the ordering constraint
+   fixing its commit rather than a SHA that cannot exist when the text is authored. This is it.
 5. Any destructive check runs ONLY inside a disposable `git worktree`, never in the primary checkout,
    which satisfies `git status --porcelain` == empty at every commit boundary; prune each worktree.
-6. Do not write a `Done:` paragraph of your own. This round registers R-0836 and resolves nothing.
-7. Every gate runs at a commit STRICTLY EARLIER than C5, so the handback can quote each. Run G6 in
+6. Do not write a `Done:` paragraph of your own. RESOLVE15 is the reviewer-authored resolution; apply
+   it verbatim and add nothing.
+7. Every gate runs at a commit STRICTLY EARLIER than C5, so the handback can quote each. Run G5 in
    the PRIMARY CHECKOUT: `apps/ui/node_modules` and `apps/ui/dist` are gitignored, so npm-backed
    tests in a fresh worktree fail on the missing build, not on this round. Do not report C5's own
    insertion count; the reviewer measures it at the next gate.
@@ -118,93 +110,89 @@ G4(b) scopes its zero-gate away from this file.
 
 ## Done when — the gates, one line per gate in the handback
 
-G1  TRANSPORT, at C0b. `sha256` of the committed `.agent/authored/f274-r14.md` equals `sha256` of the
+G1  TRANSPORT, at C0b. `sha256` of the committed `.agent/authored/f274-r15.md` equals `sha256` of the
     committed `.agent/last_block.md`, and both equal the digest the delegation message states. Report
     the digest you measured. Per §3 item 37 this covers those artefacts and is not a claim about the
     bytes emitted into a prompt.
 
-G2  THE RECORD APPEND, at C2, re-derived from the COMMITTED blobs.
-    (a) BYTES: `.agent/live_review.md` 594390 -> 602276; pre-image a byte-exact PREFIX; post-image
-        equal to pre plus the RECORD14 slice — that second clause is the BYTE reader, the prefix
+G2  THE VERDICT APPEND, at C2, re-derived from the COMMITTED blobs.
+    (a) BYTES: `.agent/live_review.md` 602276 -> 607839; pre-image a byte-exact PREFIX; post-image
+        equal to pre plus the RECORD15 slice — that second clause is the BYTE reader, the prefix
         clause alone being blind to a flip inside the appended region.
     (b) STRUCTURE over the WHOLE appended region: a unit is a maximal run of consecutive non-empty
         lines; COUNT N from the slice and REPORT it; the file's last N units equal the slice's units
-        IN ORDER and everything before is unchanged. Units 234 -> 236.
-    (c) NEGATIVE CONTROL: flip the byte at ZERO-INDEXED offset 594391 of the post-image — the `G`
+        IN ORDER and everything before is unchanged. Units 236 -> 238.
+    (c) NEGATIVE CONTROL: flip the byte at ZERO-INDEXED offset 602277 of the post-image — the `G`
         opening the FIRST appended paragraph, not the last — and confirm the BYTE reader of (a) and
         the STRUCTURAL reader of (b) each reject it.
-    (d) COUNTS: registrations 69 -> 70, distinct resolutions 6 -> 6, OPEN SET 63 -> 64 BY DISTINCT
-        ID, `^Gate: ` 44 -> 45, `^Gate: F274 R13 ` 0 -> 1, `^- R-0836 — ` 0 -> 1. The open set RISES
-        by design: this round registers a finding it does not fix.
+    (d) COUNTS: registrations 70 -> 70, distinct resolutions 6 -> 6, OPEN SET 64 -> 64 BY DISTINCT
+        ID, `^Gate: ` 45 -> 46, `^Gate: F274 R14 ` 0 -> 1. G7 is what moves the open set.
 
-G3  THE PROSE STATE FILES. `.agent/plan.md` at C1 is BYTE-EQUAL to the PLAN14 slice, is 46 lines
-    against the cap of 50, and carries both `## Goal` and `## Next Steps`. `.agent/prose_slips.md` at
-    C3 goes 163225 -> 163910 with the pre-image a byte-exact prefix and the appended line once.
+G3  THE PLAN. `.agent/plan.md` at C1 is BYTE-EQUAL to the PLAN15 slice, is 42 lines against the cap
+    of 50, and carries both `## Goal` and `## Next Steps`.
 
-G4  THE CUT LANDED WHOLE, at C4, measured against the COMMITTED blobs.
-    (a) THE PAIRS: every pair is a REWRITE, so for each the FROM block occurs ZERO times in its file
-        and the TO block EXACTLY ONCE. Report the readings.
-    (b) THE ZERO-GATE, scoped to exactly these files: `worker_recommend` totals ZERO in
-        `packages/orchestration/agent_loop.py` and `packages/orchestration/autonomy_loop.py`, and
-        `selected_worker` totals ZERO in those two, in `tests/storage/test_persistence.py` and in
-        `scripts/remedy_smoke.sh`. `event_schemas.py` IS DELIBERATELY EXCLUDED and its count is
-        REPORTED, not gated: it keeps `selected_worker` once, as the prose above measures.
-    (c) THE SCHEMA: `EVENT_METADATA_SCHEMAS["token_policy_applied"]` has EXACTLY THREE keys, `mode`,
-        `max_context_tokens` and `local_first`. Read it by IMPORTING the module and inspecting the
-        frozenset, not by grepping the source.
-    (d) THE MAP: `tests/orchestration/cluster_deletion_map.txt` goes 37 -> 35 lines, its edges — the
-        lines neither blank nor comments — go 22 -> 20, its `worker_recommend` edges go 2 -> 0, the
-        cluster modules holding at least one edge go 12 -> 11, and its post-image `sha256` is
-        `7fbf3909fd6d094e0ab3654e8842222a1adf6a51cd6c74bf119b1f7c256d5155`.
-    (e) Every touched `.py` file parses under `ast`, and `git diff --name-only f1f50ecd..<C4>` names
-        exactly the paths of constraint 3.
+G4  THE FIX, at C3, measured against the COMMITTED blobs.
+    (a) THE PAIRS: for each of the six, the FROM block occurs ZERO times in its file and the TO block
+        EXACTLY ONCE. Both halves are reachable here — see the counter-measure paragraph above, which
+        measured them before this gate was written. Report twelve numbers.
+    (b) THE SWEEP: `git grep -E 'agent_loop_cycle_decision|agent_loop_stopped' -- packages apps tests
+        scripts docs` finds NO MATCH and exits 1, against twelve sites at the base. `.agent/` is
+        deliberately outside the sweep: the ledger and this block both name the two kinds and must.
+    (c) THE REGISTRY, read BY IMPORTING the module rather than by grepping the source: neither kind
+        is a key of `EVENT_METADATA_SCHEMAS`, `get_event_schema` returns None for both, and the keys
+        that DO survive still include `agent_loop_started`, `context_budget_optimized` and
+        `token_policy_applied`.
+    (d) Both touched files still parse under `ast`, and `git diff --name-only ea0d78c4..<C3>` names
+        exactly those two paths.
 
-G5  LINT, at C4. `python3 -m ruff check` over `packages/orchestration/agent_loop.py`,
-    `packages/orchestration/autonomy_loop.py`, `packages/orchestration/event_schemas.py` and
-    `tests/storage/test_persistence.py` EXIT 0 — this is the gate that catches an unused
-    `_initial_events` or a stale import — and `python3 -m ruff check .` REPORTS 26 ERRORS, unchanged,
-    so DECISION F083 D5's frozen ceiling is untouched; that command EXITS 1 while reporting them,
-    which is the gate PASSING, the ceiling being 26 and not 0.
-
-G6  THE SUITES, at C4, in the primary checkout per constraint 7. RUN EACH COMMAND ALONE and report
-    its own number, per constraint 9. Prefix every pytest path with `python3 -B -m pytest` and suffix
-    it with `-q`.
+G5  THE SUITES, at C3, in the primary checkout per constraint 7. RUN EACH COMMAND ALONE and report
+    its own number, per constraint 9. Prefix each path with `python3 -B -m pytest` and suffix `-q`.
     (a) EACH OF THESE EXIT 0, with the reviewer's own worktree count in brackets:
-        `tests/storage/test_persistence.py` [26], `tests/orchestration/test_autonomy.py` [81],
-        `tests/orchestration/test_event_ledger.py` [21],
-        `tests/orchestration/test_cluster_deletion_map.py` [3],
-        `tests/orchestration/test_import_reachability.py` [3],
-        `tests/test_remedy_smoke_script.py` [191], `tests/test_token_policy.py` [28], and THE CANARY
+        `tests/orchestration/test_event_ledger.py` [19, down from 21 because two whole test methods
+        are deleted], `tests/storage/test_persistence.py` [26],
+        `tests/orchestration/test_autonomy.py` [81], `tests/orchestration/test_project_brain.py` [82],
+        `tests/orchestration/test_import_reachability.py` [3], and THE CANARY
         `tests/cli/test_golden_path.py` [42, measured at round 13].
-    (b) THE FULL SUITE, because this round changes a run-log event schema the whole product reads:
-        `python3 -m pytest -q -n auto`, ORDERED PROPERTY ZERO FAILED. The reviewer states NO passed
-        count here on purpose — it has not run the full suite at this base — so report the exit code
-        and the passed, failed and skipped counts you measure, and the reviewer reconciles them at
-        the next gate. If a server-backed file fails, re-run THAT FILE serially and report both
-        results; do not edit any file to make a red go away.
+    (b) `python3 -m ruff check packages/orchestration/event_schemas.py
+        tests/orchestration/test_event_ledger.py` EXIT 0, and `python3 -m ruff check .` REPORTS 26
+        ERRORS, unchanged, so DECISION F083 D5's frozen ceiling is untouched; that command EXITS 1
+        while reporting them, which is the gate PASSING, the ceiling being 26 and not 0.
 
-G7  THE RED PROOFS, in a disposable worktree at C4 per constraint 5, each run with its UNMUTATED
+G6  THE RED PROOFS, in a disposable worktree at C3 per constraint 5, each run with its UNMUTATED
     control FIRST in that same worktree, so a colour has a baseline.
-    (a) THE REGISTRY AND THE EMITTERS ARE HELD IN AGREEMENT — the property D7 item 4 promises and the
-        reason C4 is one commit. Control: `tests/storage/test_persistence.py` EXIT 0. Then add the
-        line `            selected_worker="ollama/qwen3:8b",` to the `log.log` call inside
-        `_emit_token_policy_applied` in `packages/orchestration/autonomy_loop.py`, directly after its
-        `local_first=True,` line — that three-line window occurs ONCE in that file at C4 — and confirm
-        EXIT 1 with `TestTokenPolicyAppliedSchema::test_autonomy_loop_emits` among the failures, which
-        is `validate_event_metadata` reporting an extra key. Restore, confirm EXIT 0, report the ids.
-    (b) THE MAP RATCHET REALLY BITES FOR BOTH CUT EDGES. Control:
-        `tests/orchestration/test_cluster_deletion_map.py` EXIT 0. Then re-insert both lines
-        `packages.orchestration.worker_recommend <- packages/orchestration/agent_loop.py` and
-        `packages.orchestration.worker_recommend <- packages/orchestration/autonomy_loop.py` into
-        `tests/orchestration/cluster_deletion_map.txt` — those exact bytes occur ZERO times in that
-        file at C4 — and confirm EXIT 1 with `DISAPPEARED (2)`. Restore, confirm EXIT 0, and report
-        the digest you restored to.
+    (a) THE SWEEP GATE CAN FAIL, which is what makes G4(b) evidence rather than decoration. Control:
+        the G4(b) command exits 1 with no match. Then insert an `"agent_loop_stopped"` entry into
+        `EVENT_METADATA_SCHEMAS` in `packages/orchestration/event_schemas.py`, directly above its
+        `    "context_budget_optimized": frozenset({` line — that line occurs ONCE in that file at C3
+        — and confirm the same command now EXITS 0 and names that file. Restore and confirm exit 1.
+    (b) THE REWRITTEN ASSERTIONS BIND rather than merely pass. Control:
+        `tests/orchestration/test_event_ledger.py` EXIT 0. Then delete the whole
+        `"token_policy_applied"` entry from `EVENT_METADATA_SCHEMAS` — the three-line block from
+        `    "token_policy_applied": frozenset({` to its closing `    }),`, which occurs ONCE in that
+        file at C3 — and confirm EXIT 1 with BOTH `TestEventSchemaRegistry::test_schemas_exist` and
+        `TestEventSchemaRegistry::test_different_schemas_for_different_events` failing, which are
+        exactly the two tests S2 and S3 rewrote. Restore, confirm EXIT 0, report the ids.
 
-G8  THE TREE, at C4. `git status --porcelain` EMPTY; `git ls-files .remedy-wt` EMPTY; `git worktree
-    list` the same count as before your first worktree and after your last prune; every commit C0a
-    through C4 single-parent. Report each commit's INSERTION count; the reviewer measured C4's
-    applied change as 24 insertions and 49 deletions over six files, against the DECISION F104 D1 cap
-    of 500. Read `.agent/STOP` at the round's start, before C4 and after C5, reporting all three.
+G7  THE RESOLUTION APPEND, at C4, re-derived from the COMMITTED blobs, and it runs at a commit LATER
+    than C3 so the paragraph it lands is true when it lands.
+    (a) BYTES: `.agent/live_review.md` 607839 -> 609858; prefix exact; post equal to pre plus the
+        RESOLVE15 slice.
+    (b) STRUCTURE, N counted from the slice and REPORTED: units 238 -> 239, the last N units equal
+        the slice's units IN ORDER, everything before unchanged.
+    (c) NEGATIVE CONTROL at zero-indexed offset 607840 — the `D` opening the appended paragraph —
+        rejected by both readers.
+    (d) COUNTS: distinct resolutions 6 -> 7, OPEN SET 64 -> 63 BY DISTINCT ID, `^Done: R-0836 — `
+        0 -> 1. The round opens at 64 and closes at 63, having resolved exactly one finding.
+
+G8  THE TREE AND THE SCOPE GUARD, at C4. `git status --porcelain` EMPTY; `git ls-files .remedy-wt`
+    EMPTY; `git worktree list` the same count as before your first worktree and after your last
+    prune; every commit C0a through C4 single-parent. Report each commit's INSERTION count; the
+    reviewer measured C3's applied change as 8 insertions and 34 deletions over two files, against
+    the DECISION F104 D1 cap of 500. AND THE SCOPE GUARD:
+    `tests/orchestration/cluster_deletion_map.txt` is BYTE-IDENTICAL at the base and at C4 — report
+    the sha256 you measured for both — and no file under `packages/orchestration/` other than
+    `event_schemas.py` changed in the range. Read `.agent/STOP` at the round's start, before C3 and
+    after C5, reporting all three.
 
 
 ## Handback — rewrite `.agent/handoff.md` at C5, then push
@@ -212,13 +200,13 @@ G8  THE TREE, at C4. `git status --porcelain` EMPTY; `git ls-files .remedy-wt` E
 Carry the mandated sections of `docs/agents/handback_template.md`: the state block, the commits table
 with its `+/-` column from `git diff --numstat`, the changed-files table, ONE LINE PER GATE G1
 through G8 with its real result, the deviations, the open-findings count and the next expected
-action. No length cap. Name the SESSION NUMBER as SESSION 6 of feature F274 and the round as 14,
-state the open-findings count as the number G2(d) MEASURED, and add the one sentence of context
+action. No length cap. Name the SESSION NUMBER as SESSION 6 of feature F274 and the round as 15,
+state the open-findings count as the number G7(d) MEASURED, and add the one sentence of context
 self-assessment amend0905-throughput requires. DECLARE, do not silently repair: report the real
 command, the real exit code and the real output, and say what you did.
 
 
-BEGIN PLAN14 sha256=92cb34938c23dbf8999d499759ff7d24638e5ef9f8ed1fb30d36fbfa5f15d4e8 bytes=2813
+BEGIN PLAN15 sha256=f33facfa1a64da6167d48cd6b84ac68acafa7688fdfaa27ea0fd5a786eaa090b bytes=2468
 # Plan — F274 One world completion, part two
 
 Branch: feature/f274-one-world-completion-part-two, cut from `main` at
@@ -233,31 +221,27 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 14, the last two `worker_recommend` edges, in `agent_loop.py` and `autonomy_loop.py`. This is
-where DECISION F274 D7 item 4 lands: both loops stop calling `recommend_worker` and take their token
-mode from `derive_token_mode`, `CycleDecision.selected_worker` goes, and `token_policy_applied`
-loses `estimated_context_tokens`, `remote_model_requires_approval` and `selected_worker` in
-`packages/orchestration/event_schemas.py` in the SAME commit as the last emitter that writes them,
-with the test and smoke-script pins moved with them. `worker_recommend` then holds NO recorded edge
-and becomes deletable. Book round 13's PASS verdict, register R-0836 and append the slip round 13
-owed.
+Round 15, the R-0836 fix: delete the `agent_loop_cycle_decision` and `agent_loop_stopped` entries of
+`EVENT_METADATA_SCHEMAS` and the sites in `tests/orchestration/test_event_ledger.py` that pin them.
+Their sole emitter died with `_cmd_run_loop` in F272 round 19, so the registry has been describing
+two events the product does not write; this finishes that deletion. Book round 14's PASS verdict and
+a RECURRENCE of R-0819 for a per-pair count two of that block's pairs could not meet, and resolve
+R-0836 in this same round. No cluster module and no edge moves.
 
 ## Next Steps
 
-1. Fix R-0836: delete the `agent_loop_cycle_decision` and `agent_loop_stopped` entries of
-   `EVENT_METADATA_SCHEMAS` and the ten sites in `tests/orchestration/test_event_ledger.py` that
-   pin them. Their sole emitter died with `_cmd_run_loop` in F272 round 19; this is that deletion
-   finished, and it is a ruled vocabulary the product no longer speaks.
-2. The two carry-overs F260's Design names: overnight readiness to `mission readiness`, and the
+1. The two carry-overs F260's Design names: overnight readiness to `mission readiness`, and the
    route-policy knobs checked against F110's config keys. `mission report` waits for the commit
    deleting its current holder, per DECISION F274 D2; that holder is in `worker_facade_cmd.py`.
-3. `orchestrator_brain.py`'s four edges, measured as live signal reads in `_scrub`, `_review_state`,
+2. `orchestrator_brain.py`'s four edges, measured as live signal reads in `_scrub`, `_review_state`,
    `_gather_signals` and `consult_local_advisor_for_decision` — a surviving module reading cluster
    modules, so a behaviour change rather than a deletion.
-4. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
-5. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it.
-6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
-7. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
+3. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
+4. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it, and it must name
+   the event-name couplings the import map cannot see.
+5. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
+   `worker_recommend` is already edge-free and goes with that round.
+6. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
 
 ## Risks
 
@@ -265,226 +249,93 @@ owed.
   event-name coupling is OPEN. Treat every "zero edges" reading as a claim about the WALKER.
 - The open High findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
   feature's, per DECISION F272 D12.
-END PLAN14
+END PLAN15
 
 
-BEGIN RECORD14 sha256=fe77ced157d331f2376fae7a8ca563a0d3c45011e7a3e9d8d21bdcf5391b2587 bytes=7886
+BEGIN RECORD15 sha256=c0719cac0a7a574d2d7a31a17638bb107d2d6dc54b5f373ee1a5cfa2649bdf50 bytes=5563
 
-Gate: F274 R13 — the F274 round 13 entry. VERDICT PASS, AND EVERY GATE WAS RE-RUN BY THE REVIEWER ITSELF against the COMMITTED blobs, in the primary checkout and in a disposable worktree. Range `64346333`..`f1f50ecd`, eight commits, every one single-parent, in the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6, with the path set over the range to C5 naming exactly the twelve declared paths. G1 TRANSPORT covers the chain this workflow can walk, per docs/agents/planner_reviewer_prompt.md §3 item 37 and not the emitted bytes: the reviewer's scratch original `.remedy-wt/f274-r13-FINAL.md`, hashed BEFORE delegation, and both committed copies are all 34537 bytes at `cc5af71b9c5ca531b5c84d3238259240dd62cb2ba05c5d173e52711566a4487a`. G2 THE RECORD APPEND at `ede3c2c6`: 589620 to 594390 bytes, prefix exact, post equal to pre plus the slice, N counted as 1, units 233 to 234, ordered equality true, the control at byte offset 589621 rejected by BOTH readers; registrations 69 to 69, resolutions 6 to 6, OPEN SET 63 TO 63 BY DISTINCT ID, `^Gate: ` 43 to 44, `^Gate: F274 R12 ` 0 to 1. G3 THE DECISION APPEND at `67068126`: 905078 to 911446 bytes, exact append, N counted as 14, units 1986 to 2000, control at 905079 rejected by both readers, `^## DECISION F274 D7` 0 to 1. G4: `.agent/plan.md` byte-equal to its slice at 44 lines against the cap of 50, carrying both mandated headings; `.agent/prose_slips.md` 162746 to 163225 as an exact append. G5 THE CUT at `04ff73a7`: every pair's containment reading reproduced exactly as the block recorded it, `true` for P5 and P8 and `false` for the other nine; `worker_recommend` and `worker_recommendation` both total ZERO in `packages/orchestration/dashboard.py` against 3 and 2 at the base, and `worker_recommendation` totals ZERO in `scripts/remedy_smoke.sh` and `tests/ui_server/test_dashboard_contract.py` against 1 and 1; the map goes 38 to 37 lines and 23 to 22 edges with `worker_recommend` at 3 to 2, and its post-image sha256 is `abacf799bc8716ffbfe54a15ff8d1236e13e3dae44f7f322e962a675acb60c00`, WHICH IS THE DIGEST THE BLOCK PREDICTED BEFORE THE ROUND RAN; and `event_schemas.py`, `agent_loop.py`, `autonomy_loop.py` and `worker_recommend.py` are each BYTE-IDENTICAL at the base and at C5, which is the scope guard that proves the round stopped where D7 item 6 says it stops. G6 THE SUITES, each run ALONE by the reviewer in the primary checkout: 28, 74, 3, 191, 26 passed and the canary at 42, `ruff` EXIT 0 over the four touched paths, and the frozen ceiling of DECISION F083 D5 unchanged at 26 errors. G7 THE RED PROOFS, re-run by the reviewer in its own disposable worktree at the round head: the map ratchet gives control EXIT 0 at 3 passed, mutated EXIT 1 with `DISAPPEARED (1)` naming the re-inserted edge, restored EXIT 0; the new guard gives control EXIT 0 at 28 passed, mutated EXIT 1 with `TestDeriveTokenMode::test_one_or_two_tasks_is_compact` as the ONLY failing node id and 27 still green, restored EXIT 0. G8 THE TREE: porcelain empty, `git ls-files .remedy-wt` empty, worktrees 14, per-commit insertions 490, 429, 17, 2, 2, 84 and 44 for C0a through C5, every one under the DECISION F104 D1 cap of 500. ONE DEVIATION WAS DECLARED AND IT IS THE REVIEWER'S OWN DEFECT, sustained: gate G6(b) ordered `tests/ui_server/test_dashboard_contract.py` at 73 passed and 1 skipped, and the primary checkout gives 74 passed and 0 skipped. The worker measured the cause rather than adjusting anything — `test_typescript_compiles` skips if and only if `apps/ui/node_modules/.bin/tsc` is absent, which is true in a fresh worktree and false in the primary checkout — so the block stated a WORKTREE reading for a command its own constraint 8 orders into the PRIMARY CHECKOUT. The reviewer reproduced 74 passed and confirmed the skip condition by reading the test. The gate's ORDERED PROPERTY was EXIT 0 and that held exactly, so the figure is not load-bearing and earns a dated line in `.agent/prose_slips.md` rather than a correction round. THE WORKER ALSO REPORTED A READING THE BLOCK DID NOT ASK FOR AND THE REVIEWER SUSTAINS IT: the literal `^Done: R-\d+ — ` LINE count is 8 while the DISTINCT resolved-id count is 6, because `R-0721` and `R-0725` each carry two resolution paragraphs; both predate this round, the block's numeral was the DISTINCT one that §3 item 10 requires, and the open set is 63 on either reading. ONE FINDING IS REGISTERED BY THIS GATE, R-0836, and it is NOT this round's to fix.
+Gate: F274 R14 — the F274 round 14 entry. VERDICT PASS, AND EVERY GATE WAS RE-RUN BY THE REVIEWER ITSELF against the COMMITTED blobs, in the primary checkout and in a disposable worktree. Range `f1f50ecd`..`ea0d78c4`, seven commits, every one single-parent, in the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, with the path set over the range to C4 naming exactly the eleven declared paths. G1 TRANSPORT covers the chain this workflow can walk, per §3 item 37: the reviewer's scratch original `.remedy-wt/f274-r14-FINAL.md`, hashed BEFORE delegation, and both committed copies are all 35305 bytes at `445b54f35bdf5f4f9fc3b58d7fe413027ea7b5bdd3d51c079421d5e4beff0dc9`. G2 THE RECORD APPEND at `4bfb8001`: 594390 to 602276 bytes, exact append, N counted as 2, units 234 to 236, ordered equality true, the control at byte offset 594391 rejected by BOTH readers; registrations 69 to 70, distinct resolutions 6 to 6, OPEN SET 63 TO 64 BY DISTINCT ID, `^Gate: ` 44 to 45, `^Gate: F274 R13 ` 0 to 1, `^- R-0836 — ` 0 to 1. G3: `.agent/plan.md` byte-equal to its slice at 46 lines against the cap of 50; `.agent/prose_slips.md` 163225 to 163910 as an exact append. G4 THE CUT at `e3d87b25`: every pair reads FROM 0; `worker_recommend` and `selected_worker` both total ZERO in `agent_loop.py` and `autonomy_loop.py`, and `selected_worker` totals ZERO in `tests/storage/test_persistence.py` and `scripts/remedy_smoke.sh` and ONE in `event_schemas.py`, exactly as the block predicted; `EVENT_METADATA_SCHEMAS["token_policy_applied"]` read BY IMPORT holds exactly the three keys `local_first`, `max_context_tokens` and `mode`; and the map goes 37 to 35 lines and 22 to 20 edges with `worker_recommend` at 2 to 0 and the cluster modules holding an edge at 12 to 11, its post-image sha256 `7fbf3909fd6d094e0ab3654e8842222a1adf6a51cd6c74bf119b1f7c256d5155` being THE DIGEST THE BLOCK PREDICTED BEFORE THE ROUND RAN. G5 LINT: EXIT 0 over the four touched paths and the frozen ceiling of DECISION F083 D5 unchanged at 26. G6 THE SUITES, each run ALONE: 26, 81, 21, 3, 3, 191, 28 and the canary at 42, every figure the block's reference; AND THE FULL SUITE IN THE REVIEWER'S OWN RUN IN THE PRIMARY CHECKOUT, EXIT 0 at 19769 passed, 23 skipped and 0 failed, which reconciles exactly with the 19765 the round 12 gate measured plus the four tests round 13 added. G7 THE RED PROOFS, re-run by the reviewer in its own disposable worktree at the round head: the registry-versus-emitter proof gives control EXIT 0 at 26 passed, mutated EXIT 1 with `TestTokenPolicyAppliedSchema::test_autonomy_loop_emits` as the SOLE failing node id and `extra keys ['selected_worker']` as the message, restored EXIT 0; the map ratchet gives control EXIT 0 at 3 passed, mutated EXIT 1 with `DISAPPEARED (2)` naming both re-inserted edges, restored EXIT 0. G8 THE TREE: porcelain empty, `git ls-files .remedy-wt` empty, worktrees 14, per-commit insertions 490, 397, 12, 4, 2 and 24 for C0a through C4, every one under the DECISION F104 D1 cap of 500. THE FEATURE'S POSITION AFTER THIS ROUND: `packages.orchestration.worker_recommend` holds NO recorded consumer edge and is deletable, and the cluster modules with no edge at all go from twelve to thirteen. FOUR DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS ALL FOUR; the first is the reviewer's own defect and is booked as the R-0819 recurrence below. ONE FINDING WAS REGISTERED BY THE ROUND THIS GATE COVERS, R-0836, and it is resolved later in the round this entry is written in.
 
-- R-0836 — Medium — THE EVENT-SCHEMA REGISTRY DESCRIBES TWO EVENT KINDS THAT NO PRODUCTION CODE HAS EMITTED SINCE F272 ROUND 19, AND FOUR TESTS PIN THEM THERE, SO NOTHING CAN GO RED WHILE THE PRODUCT'S RULED VOCABULARY DISAGREES WITH WHAT IT ACTUALLY WRITES. Raised by the reviewer at the F274 round 13 gate while authoring round 14, from its own sweep rather than from a reading of the prose, and measured at `f1f50ecd`. THE MEASUREMENT. A repo-wide grep for `agent_loop_cycle_decision` and `agent_loop_stopped` over `packages/`, `apps/`, `tests/` and `scripts/` returns TWELVE sites and NOT ONE of them emits either event: two are the `EVENT_METADATA_SCHEMAS` entries at `packages/orchestration/event_schemas.py` lines 39 and 43, and the other ten are in `tests/orchestration/test_event_ledger.py` at lines 49, 50, 62, 63, 103, 118, 120, 126, 128 and 206 — nine of them assertions and the last a parametrize entry feeding one. THE CAUSE IS ON THE RECORD ALREADY. The `Gate: F272 R19` entry of this ledger records that `_cmd_run_loop` in `apps/cli/commands/job.py` was the SOLE emitter of both kinds, that F272 round 19 deleted it, and that the round correctly deleted the two orphaned `apps/ui/src/api/humanizeCatalog.ts` entries in the same commit — the cockpit half was repaired and the REGISTRY half was not, so the deletion is half-performed on disk. THIS IS NOT R-0832 AND NO SECOND ID IS BEING SPENT ON ONE DEFECT: R-0832 is a SURVIVING reader of an emitter the cluster deletion is ABOUT to remove, and its fix clause binds the map and DECISION F260 D3; this is a registry entry whose emitter is ALREADY GONE, its emitter was a job command rather than a cluster module, and no measurement R-0832 orders would ever reach it. The open set was searched for the defect before this id was minted, per §3 item 30. THE PRODUCT EFFECT, which is why this spends an id under amend0827 rule 2 rather than becoming a prose slip. `validate_event_metadata` returns the empty list for an UNREGISTERED kind and validates a REGISTERED one, so these two entries are unreachable validation that can never fire; a reader of the registry — the file whose own docstring calls it "the single source of truth for what keys each event type must have" — is told the product emits two events it does not; and the tests that assert the entries exist are guards over dead vocabulary, which is exactly why nothing has gone red since. THE FIX, and this finding is NOT resolved by the round that registers it: delete both `EVENT_METADATA_SCHEMAS` entries and the ten test sites that pin them, in one commit, and confirm by the same repo-wide grep reaching ZERO outside that commit's own diff. It is deliberately NOT folded into F274 round 14, whose change set is the two `worker_recommend` loop edges under DECISION F274 D7: this is F272's residue rather than D7's, AGENTS.md Scope Control forbids mixing it in, and a round that deletes a ruled vocabulary deserves its own gate. THE GENERAL LESSON, binding on every later command deletion in this feature and the one the `Gate: F272 R19` deviation half-learned: a round deleting the sole emitter of an event kind sweeps EVERY artefact that names that kind — the cockpit catalog, the action classifier, the schema registry and the tests over all three — because the catalog was the only one a red test made visible, and the registry has no such test by construction.
-END RECORD14
-
-
-BEGIN SLIPS14 sha256=db33a94bb1bcc2202e28459007cd62973acef15f3247a5ceebaaeb213d0171af bytes=685
-
-2026-09-08 · F274 R13 · The round 13 block's gate G6(b) ordered `tests/ui_server/test_dashboard_contract.py` at 73 passed and 1 skipped where the primary checkout gives 74 passed and 0 skipped; the reviewer stated a reading taken in its own dry-run WORKTREE for a command the same block's constraint 8 orders into the PRIMARY CHECKOUT, and `test_typescript_compiles` skips exactly when `apps/ui/node_modules/.bin/tsc` is absent, which is the difference between the two trees. Not load-bearing — the gate's ordered property is EXIT 0 and that held — and the lesson is that a per-suite COUNT measured in a worktree may not be stated for a command ordered in the primary checkout.
-END SLIPS14
+RECURRENCE of R-0819 at F274 round 14, measured by the reviewer at `ea0d78c4`. NO NEW ID IS SPENT: §3 item 30 requires the open set searched for the DEFECT before an id is minted, and R-0819 is OPEN with the headline "A GATE OVER PRODUCTION CODE DEMANDED ZERO OF A CONDITION THAT IS ALREADY NON-ZERO AT ITS OWN BASE", which is this class exactly — a gate ordering a value no correct run can produce. THE INSTANCE. The round 14 block's gate G4(a) ordered, for every one of its sixteen pairs, that "the FROM block occurs ZERO times in its file and the TO block EXACTLY ONCE". Pairs Q10 and Q12 have BYTE-IDENTICAL TO blocks — both are the single line `        required = {"mode", "max_context_tokens", "local_first"}` — and both land in `tests/storage/test_persistence.py`, so the post-image count for each is TWO and can never be one. Q5's TO block is EMPTY by design, being a deletion, so the clause is undefined for it rather than merely unmeetable. THE CAUSE IS NEW AND IS WHAT THIS RECURRENCE ADDS. The reviewer DID apply the whole change in a worktree before authoring and DID run a mechanical containment test over every pair — the counter-measure R-0819's own fix clause requires, and the one the round 12 recurrence added — but that test measured each pair's FROM against the PRE-image and never measured the TO blocks against EACH OTHER. A per-pair reading cannot see a collision between two pairs, because the property that fails is a property of the SET. THE ADDITION TO R-0819's FIX, binding on every later block of this feature that orders a per-pair count: before ordering "the TO block occurs EXACTLY ONCE", group the block's TO blocks BY TARGET FILE and compare them for byte equality; where two coincide, order the count they can actually meet or drop the clause and rely on the FROM-zero half, which is unaffected. THE ROUND LOST NOTHING: FROM 0 held for all sixteen pairs, the independent zero-gate G4(b) proved the old vocabulary gone, and the worker reported the real numbers and declared the gap rather than adjusting anything.
+END RECORD15
 
 
-BEGIN PAIRS14 sha256=8f89acaf1f718acb187d0069cb573f0d857b98b80c5aab814991c432ba72aea1 bytes=8130
+BEGIN PAIRS15 sha256=279db4e3bc54686c32f083914559d8befe3f5e5bb0b11b278afff6bb3e7e0dea bytes=3165
 
---- Q1 FILE packages/orchestration/agent_loop.py
---- Q1 FROM
-    # Emit token_policy_applied once at loop start
-    from packages.orchestration.token_policy import build_default_token_policy
-    from packages.orchestration.worker_recommend import recommend_worker
-    _tp = build_default_token_policy(job)
-    _initial_events = load_run_events(data_dir, job.id)
-    _rec = recommend_worker(job, _initial_events)
-    log.log(
-        "token_policy_applied",
-        outcome="applied",
-        mode=_rec.token_mode,
-        max_context_tokens=_tp.budget.get("expensive_tokens", 100_000),
-        estimated_context_tokens=_rec.estimated_context_tokens,
-        local_first=True,
-        remote_model_requires_approval=_rec.requires_approval,
-        selected_worker=_rec.recommended_worker,
-    )
---- Q1 TO
-    # Emit token_policy_applied once at loop start
-    from packages.orchestration.token_policy import (
-        build_default_token_policy,
-        derive_token_mode,
-    )
-    _tp = build_default_token_policy(job)
-    log.log(
-        "token_policy_applied",
-        outcome="applied",
-        mode=derive_token_mode(job),
-        max_context_tokens=_tp.budget.get("expensive_tokens", 100_000),
-        local_first=True,
-    )
---- Q2 FILE packages/orchestration/autonomy_loop.py
---- Q2 FROM
-    token_mode: str
-    selected_worker: str
-    readiness_level: int
---- Q2 TO
-    token_mode: str
-    readiness_level: int
---- Q3 FILE packages/orchestration/autonomy_loop.py
---- Q3 FROM
-    from packages.orchestration.stop_reasons import derive_stop_reasons
-    from packages.orchestration.worker_recommend import recommend_worker
---- Q3 TO
-    from packages.orchestration.stop_reasons import derive_stop_reasons
-    from packages.orchestration.token_policy import derive_token_mode
---- Q4 FILE packages/orchestration/autonomy_loop.py
---- Q4 FROM
-    # Emit token_policy_applied once at loop start
-    _emit_token_policy_applied(job, events)
---- Q4 TO
-    # Emit token_policy_applied once at loop start
-    _emit_token_policy_applied(job)
---- Q5 FILE packages/orchestration/autonomy_loop.py
---- Q5 FROM
-        # Get worker recommendation
-        rec = recommend_worker(job, events)
-
---- Q5 TO
---- Q6 FILE packages/orchestration/autonomy_loop.py
---- Q6 FROM
-            token_mode=rec.token_mode,
-            selected_worker=rec.recommended_worker,
-            readiness_level=readiness_level,
---- Q6 TO
-            token_mode=derive_token_mode(job),
-            readiness_level=readiness_level,
---- Q7 FILE packages/orchestration/autonomy_loop.py
---- Q7 FROM
-def _emit_token_policy_applied(job: Job, events: list[dict[str, Any]]) -> None:
-    """Emit token_policy_applied run-log event once at loop start."""
-    try:
-        from packages.orchestration.run_log import RunLogWriter
-        from packages.orchestration.token_policy import build_default_token_policy
-        from packages.orchestration.worker_recommend import recommend_worker
-
-        tp = build_default_token_policy(job)
-        rec = recommend_worker(job, events)
-        log = RunLogWriter(job_id=job.id)
-        log.log(
-            "token_policy_applied",
-            outcome="applied",
-            mode=rec.token_mode,
-            max_context_tokens=tp.budget.get("expensive_tokens", 100_000),
-            estimated_context_tokens=rec.estimated_context_tokens,
-            local_first=True,
-            remote_model_requires_approval=rec.requires_approval,
-            selected_worker=rec.recommended_worker,
-        )
---- Q7 TO
-def _emit_token_policy_applied(job: Job) -> None:
-    """Emit token_policy_applied run-log event once at loop start."""
-    try:
-        from packages.orchestration.run_log import RunLogWriter
-        from packages.orchestration.token_policy import (
-            build_default_token_policy,
-            derive_token_mode,
-        )
-
-        tp = build_default_token_policy(job)
-        log = RunLogWriter(job_id=job.id)
-        log.log(
-            "token_policy_applied",
-            outcome="applied",
-            mode=derive_token_mode(job),
-            max_context_tokens=tp.budget.get("expensive_tokens", 100_000),
-            local_first=True,
-        )
---- Q8 FILE packages/orchestration/autonomy_loop.py
---- Q8 FROM
-                "token_mode": c.token_mode,
-                "selected_worker": c.selected_worker,
-                "readiness_level": c.readiness_level,
---- Q8 TO
-                "token_mode": c.token_mode,
-                "readiness_level": c.readiness_level,
---- Q9 FILE packages/orchestration/event_schemas.py
---- Q9 FROM
-    "token_policy_applied": frozenset({
-        "mode", "max_context_tokens", "estimated_context_tokens",
-        "local_first", "remote_model_requires_approval",
-        "selected_worker",
+--- S1 FILE packages/orchestration/event_schemas.py
+--- S1 FROM
+    "agent_loop_cycle_decision": frozenset({
+        "cycle", "decision", "reason", "next_action", "blocked_by",
+        "token_mode", "selected_worker", "readiness_level",
     }),
---- Q9 TO
-    # DECISION F274 D7: the three fields worker recommendation produced die with
-    # it — the cluster-bound context pack and the adapter scoring both go.
-    "token_policy_applied": frozenset({
-        "mode", "max_context_tokens", "local_first",
+    "agent_loop_stopped": frozenset({
+        "final_decision", "stop_reason", "cycles_run",
+        "unresolved_blocker_count",
     }),
---- Q10 FILE tests/storage/test_persistence.py
---- Q10 FROM
-        required = {
-            "mode", "max_context_tokens", "estimated_context_tokens",
-            "local_first", "remote_model_requires_approval", "selected_worker",
-        }
---- Q10 TO
-        required = {"mode", "max_context_tokens", "local_first"}
---- Q11 FILE tests/storage/test_persistence.py
---- Q11 FROM
-        assert len(schema) == 6
-        assert "mode" in schema
-        assert "max_context_tokens" in schema
-        assert "estimated_context_tokens" in schema
-        assert "local_first" in schema
-        assert "remote_model_requires_approval" in schema
-        assert "selected_worker" in schema
---- Q11 TO
-        assert len(schema) == 3
-        assert "mode" in schema
-        assert "max_context_tokens" in schema
-        assert "local_first" in schema
---- Q12 FILE tests/storage/test_persistence.py
---- Q12 FROM
-        required = {"mode", "max_context_tokens", "estimated_context_tokens",
-                     "local_first", "remote_model_requires_approval", "selected_worker"}
---- Q12 TO
-        required = {"mode", "max_context_tokens", "local_first"}
---- Q13 FILE tests/storage/test_persistence.py
---- Q13 FROM
-        valid_meta = {
-            "mode": "compact",
-            "max_context_tokens": 100000,
-            "estimated_context_tokens": 500,
-            "local_first": True,
-            "remote_model_requires_approval": True,
-            "selected_worker": "ollama/qwen3:8b",
-        }
---- Q13 TO
-        valid_meta = {
-            "mode": "compact",
-            "max_context_tokens": 100000,
-            "local_first": True,
-        }
---- Q14 FILE tests/storage/test_persistence.py
---- Q14 FROM
-        assert len(schema) == 6
-        expected = {"mode", "max_context_tokens", "estimated_context_tokens",
-                    "local_first", "remote_model_requires_approval", "selected_worker"}
---- Q14 TO
-        assert len(schema) == 3
-        expected = {"mode", "max_context_tokens", "local_first"}
---- Q15 FILE scripts/remedy_smoke.sh
---- Q15 FROM
-for key in ['mode', 'max_context_tokens', 'estimated_context_tokens',
-            'local_first', 'remote_model_requires_approval', 'selected_worker']:
-    if key not in meta:
-        print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
-        sys.exit(1)
-print('    token_policy_applied: OK (worker=' + str(meta['selected_worker']) + ', mode=' + str(meta['mode']) + ')')
---- Q15 TO
-for key in ['mode', 'max_context_tokens', 'local_first']:
-    if key not in meta:
-        print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
-        sys.exit(1)
-print('    token_policy_applied: OK (mode=' + str(meta['mode']) + ')')
---- Q16 FILE tests/orchestration/cluster_deletion_map.txt
---- Q16 FROM
-packages.orchestration.worker_recommend <- packages/orchestration/agent_loop.py
-packages.orchestration.worker_recommend <- packages/orchestration/autonomy_loop.py
-packages.orchestration.worker_registry <- packages/orchestration/token_economy.py
---- Q16 TO
-packages.orchestration.worker_registry <- packages/orchestration/token_economy.py
-END PAIRS14
+    "context_budget_optimized": frozenset({
+--- S1 TO
+    "context_budget_optimized": frozenset({
+--- S2 FILE tests/orchestration/test_event_ledger.py
+--- S2 FROM
+        assert "agent_loop_started" in EVENT_METADATA_SCHEMAS
+        assert "agent_loop_cycle_decision" in EVENT_METADATA_SCHEMAS
+        assert "agent_loop_stopped" in EVENT_METADATA_SCHEMAS
+        assert "context_budget_optimized" in EVENT_METADATA_SCHEMAS
+--- S2 TO
+        assert "agent_loop_started" in EVENT_METADATA_SCHEMAS
+        assert "context_budget_optimized" in EVENT_METADATA_SCHEMAS
+        assert "token_policy_applied" in EVENT_METADATA_SCHEMAS
+--- S3 FILE tests/orchestration/test_event_ledger.py
+--- S3 FROM
+        started = EVENT_METADATA_SCHEMAS["agent_loop_started"]
+        decision = EVENT_METADATA_SCHEMAS["agent_loop_cycle_decision"]
+        stopped = EVENT_METADATA_SCHEMAS["agent_loop_stopped"]
+        assert started != decision, "started and decision must differ"
+        assert decision != stopped, "decision and stopped must differ"
+        assert started != stopped, "started and stopped must differ"
+--- S3 TO
+        started = EVENT_METADATA_SCHEMAS["agent_loop_started"]
+        budget = EVENT_METADATA_SCHEMAS["context_budget_optimized"]
+        policy = EVENT_METADATA_SCHEMAS["token_policy_applied"]
+        assert started != budget, "started and budget must differ"
+        assert budget != policy, "budget and policy must differ"
+        assert started != policy, "started and policy must differ"
+--- S4 FILE tests/orchestration/test_event_ledger.py
+--- S4 FROM
+        assert get_event_schema("agent_loop_stopped") is not None
+--- S4 TO
+        assert get_event_schema("agent_loop_started") is not None
+--- S5 FILE tests/orchestration/test_event_ledger.py
+--- S5 FROM
+    def test_agent_loop_cycle_decision_schema(self):
+        from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
+        schema = EVENT_METADATA_SCHEMAS["agent_loop_cycle_decision"]
+        assert len(schema) == 8
+        assert "next_action" in schema
+        assert "blocked_by" in schema
+        assert "readiness_level" in schema
+
+    def test_agent_loop_stopped_schema(self):
+        from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
+        schema = EVENT_METADATA_SCHEMAS["agent_loop_stopped"]
+        assert len(schema) == 4
+        assert "final_decision" in schema
+        assert "stop_reason" in schema
+        assert "cycles_run" in schema
+        assert "unresolved_blocker_count" in schema
+
+    def test_forbidden_strings(self):
+--- S5 TO
+    def test_forbidden_strings(self):
+--- S6 FILE tests/orchestration/test_event_ledger.py
+--- S6 FROM
+            ("agent_loop_cycle_decision", "agent"),
+--- S6 TO
+            ("agent_loop_started", "agent"),
+END PAIRS15
+
+
+BEGIN RESOLVE15 sha256=21e3cf850c2935164c7fa0fd2e35c98a76e8dfc94929a336bcf539ffe64afb89 bytes=2019
+
+Done: R-0836 — RESOLVED in F274 round 15, in the commit this round's own constraint fixes immediately before the commit that writes this paragraph. Both `EVENT_METADATA_SCHEMAS` entries are deleted from `packages/orchestration/event_schemas.py`, and the sites in `tests/orchestration/test_event_ledger.py` that pinned them are gone with them: the two membership assertions, the two whole test methods `test_agent_loop_cycle_decision_schema` and `test_agent_loop_stopped_schema`, and the `get_event_schema` probe are removed or re-pointed at a SURVIVING kind, and `test_different_schemas_for_different_events` now compares `agent_loop_started`, `context_budget_optimized` and `token_policy_applied`, which the product really writes. THE VERIFICATION IS A SWEEP AND A DISCRIMINATOR, not an inspection. A repo-wide `git grep` for `agent_loop_cycle_decision` and `agent_loop_stopped` over `packages/`, `apps/`, `tests/`, `scripts/` and `docs/` returns NO MATCH, against twelve sites before; and the sweep is shown to be capable of failing, because re-inserting one entry into the registry makes that same grep find it again. The rewritten assertions are shown to BIND rather than merely pass: deleting `token_policy_applied` from the registry reds exactly `test_schemas_exist` and `test_different_schemas_for_different_events`, the two the fix rewrote. `tests/orchestration/test_event_ledger.py` goes from 21 tests to 19, which is the two dead-vocabulary tests removed and no other loss. ONE REFINEMENT OF THE REGISTRATION IS RECORDED HERE RATHER THAN LEFT SILENT: the fix clause said "the ten test sites that pin them", and the site at line 206 was NOT a pin — it is a sample in `test_scope_derivation`, which reads a prefix rather than the registry and would have stayed green untouched. It was changed to `agent_loop_started` anyway, because a scope sample naming an event the product no longer writes is the same stale-prose class R-0835 recorded, and the round says so rather than quietly widening its own scope.
+END RESOLVE15
