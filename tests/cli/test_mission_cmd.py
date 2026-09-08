@@ -1420,3 +1420,51 @@ class TestMissionReadinessIsWiredToTheCarriedModule:
 
         assert "packages.orchestration.overnight_readiness" not in source
         assert "from packages.orchestration.mission_readiness import" in source
+
+
+class TestMissionReportIsTheCarriedReportView:
+    """F275 T001: the second carry-over, and the death of the name's old holder.
+
+    DECISION F274 D2 rules that `mission report` is not free until its current
+    holder dies, so the two happen in one commit. These tests pin both halves:
+    the name now resolves to the carried view in `mission_cmd`, and the facade
+    in `worker_facade_cmd` no longer provides it.
+    """
+
+    JOB_ID = "11111111-2222-3333-4444-555555555555"
+
+    def test_the_catalog_entry_is_job_keyed_now(self):
+        from apps.cli.command_catalog import get_command
+
+        names = [a.name for a in get_command("mission.report").args]
+
+        assert names == ["job_id", "--markdown", "--json"]
+
+    def test_the_facade_no_longer_provides_the_command(self):
+        from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
+
+        assert "mission.report" not in COMMAND_HANDLERS
+
+    def test_the_dispatch_table_still_reaches_it(self):
+        from apps.cli.commands import collect_all_handlers
+
+        assert "mission.report" in collect_all_handlers()
+
+    def test_the_real_cli_answers_with_the_carried_report(self, project):
+        data_root, _project_id = project
+
+        body = json.loads(_run(["mission", "report", self.JOB_ID, "--json"],
+                               data_root).stdout)
+
+        assert "report" in body
+        for key in ("completed_checklist", "blocked_checklist", "completed_count",
+                    "blocked_count"):
+            assert key in body["report"], f"the carried report lost {key}"
+
+    def test_the_facade_module_no_longer_names_the_cluster_builder(self):
+        """The CLI path to the cluster builder is what this round removed."""
+        source = (REPO_ROOT / "apps" / "cli" / "commands" / "worker_facade_cmd.py").read_text(
+            encoding="utf-8")
+
+        assert "build_mission_morning_report" not in source
+        assert "_cmd_mission_report" not in source
