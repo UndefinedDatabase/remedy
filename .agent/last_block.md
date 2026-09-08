@@ -1,92 +1,95 @@
-── STEP T001/4 — F275 ────────────────────────────────
-Goal:        Land the SECOND carry-over. `mission report` stops being a facade over the cluster module `dogfood_run` and becomes the carried report view, and the handler holding that name DIES IN THE SAME COMMIT — DECISION F274 D2 rules the name is not free until its current holder does.
-Bundle:      C0a save block · C0b mirror block · C1 plan · C2 book round 3 PASS, register R-0840, append two prose slips · C3 the carry-over and the death (one commit) · C4 the tests · C5 gates (writes no file) · C6 handback
+── STEP T001/5 — F275 ────────────────────────────────
+Goal:        Derive and record the deletion ORDER operator RULE 2 requires before the first `git rm`, with the ratchet that keeps it true; rule the atomic unit in a DECISION, because the cluster's internal import graph is CYCLIC and RULE 2's wording is unsatisfiable at module granularity; and discharge the route-policy knob check the same ruling pairs with it.
+Bundle:      C0a save block · C0b mirror block · C1 plan · C2 book round 4 PASS, confirm R-0831, append two prose slips · C3 the order file and its ratchet · C4 DECISION F275 D2 · C5 gates (writes no file) · C6 handback
 Change:      EXACTLY these eleven paths and nothing else —
-             `.agent/authored/f275-r4.md`, `.agent/last_block.md`, `.agent/plan.md`,
-             `.agent/live_review.md`, `.agent/prose_slips.md`,
-             `apps/cli/command_catalog.py`, `apps/cli/commands/mission_cmd.py`,
-             `apps/cli/commands/worker_facade_cmd.py`, `tests/cli/test_worker_facade_cmd.py`,
-             `tests/cli/test_mission_cmd.py`, `.agent/handoff.md`.
-Constraints: below, numbered 1 to 10.
+             `.agent/authored/f275-r5.md`, `.agent/last_block.md`, `.agent/plan.md`,
+             `.agent/live_review.md`, `.agent/prose_slips.md`, `.agent/decisions.md`,
+             `.agent/f275_deletion_order.md`,
+             `tests/orchestration/test_cluster_deletion_order.py`, `.agent/handoff.md`.
+             That list is NINE paths; no production file under `packages/` or `apps/` is touched.
+Constraints: below, numbered 1 to 9.
 Done when:   the eight gates G1 to G8 below all report exit 0, with G8 last.
 Handback:    completion report + rewrite `.agent/handoff.md`.
 ──────────────────────────────────────────────────────
 
-WHAT THIS ROUND IS. Round 3 wired the readiness half of the carry-over and took
-`packages.orchestration.overnight_readiness` to zero edges. This round does the report half.
-`remedy mission report` today is a facade in `apps/cli/commands/worker_facade_cmd.py` over
-`packages.orchestration.dogfood_run.build_mission_morning_report`, keyed on a dogfood RUN id;
-after this round it is the carried `build_overnight_report` in
-`packages/orchestration/mission_readiness.py`, keyed on a JOB id. That is a user-observable
-change, so operator RULE 3 requires a FINDING naming the behaviour and who inherits the idea —
-R-0840, authored in C2. It is NOT a deletion round: no module is `git rm`-ed. The reviewer
-applied every production edit in a disposable worktree at `280fd101` and ran every gate before
-authoring; the numerals in G4 to G7 are that run's.
+WHAT THIS ROUND IS, AND THE MEASUREMENT THAT SHAPED IT. Operator ruling amend0908-f275-finish
+RULE 2 orders the deletion to proceed "in dependency order — leaf modules first, the modules they
+import last — so that each group commit leaves no dangling import", derived from the map and
+written into `.agent/f275_deletion_order.md` BEFORE the first `git rm`. The reviewer performed
+that derivation at `a040b60c` and found the cluster's internal import graph is CYCLIC: a
+topological order over single modules is IMPOSSIBLE, and a first attempt needed twelve cycle
+breaks and left twelve modules deleted after something that imports them. Three cycles exist —
+`provider_trust` ↔ `provider_trust_verification`, a four-module cycle around `builder_routing`,
+and a six-module cycle around `dogfood_run`. The reviewer confirmed one of them by reading the
+source rather than trusting the walker: `provider_trust.py` imports from
+`provider_trust_verification` inside a function body, and `provider_trust_verification.py`
+imports from `provider_trust` at module level — both real, executable imports.
 
-THE ONE THING A READER WILL EXPECT AND NOT GET: this round does NOT cut the deletion map's
-`packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py` edge, and it must
-not appear to. `_cmd_mission_run` in that same file imports `run_mission_loop` from `dogfood_run`
-at two more sites, so the edge survives on `mission run`, which belongs to a later module group.
-The dotted name goes from THREE occurrences to TWO in that file and the map is UNCHANGED. G5
-gates exactly that, because a round that quietly shrank the map here would be hiding a live edge.
+So RULE 2's "leaf modules first" is unsatisfiable as literally worded, and this round rules the
+atomic unit to be the STRONGLY CONNECTED COMPONENT: one module wherever the graph is acyclic, the
+whole cycle where it is not. That reading is the only one consistent with all three operator
+rules at once — RULE 1's "a half-deleted module is the state this work must not leave behind",
+RULE 1's requirement that the tree is green after every group commit, and RULE 3's ban on stubs
+and shims. It is recorded as DECISION F275 D2 rather than referred to the operator, because
+§4.7 makes a dated, reversible DECISION the instrument for exactly this. Over components the
+order is clean: fifteen components covering all twenty-four modules, ZERO cross-component
+violations, and stable across twelve consecutive derivations.
+
+NO PRODUCTION FILE IS TOUCHED and nothing is deleted. This round writes the plan for the deletion
+and the guard that keeps that plan honest; the first `git rm` is the NEXT round's.
 
 ────────────────────────── CONSTRAINTS ──────────────────────────
 
-1. NO SLICE IS EDITED. Every authored text below is applied byte for byte. If a slice looks
-   wrong, apply it anyway and DECLARE it in the handback's deviations.
+1. NO SLICE IS EDITED. Every authored text is applied byte for byte. If a slice looks wrong,
+   apply it anyway and DECLARE it in the handback's deviations.
 
-2. C0a and C0b are `shutil.copyfile` from the reviewer's scratch original
-   `.remedy-wt/f275-r4-FINAL.md` — NEVER retyped — to `.agent/authored/f275-r4.md` and
-   `.agent/last_block.md`. Both are whole-file writes of a single `.agent/**` state file, which
-   AGENTS.md DECISION F104 D1 exempts from the 500-insertion cap by name.
+2. C0a and C0b are `shutil.copyfile` from `.remedy-wt/f275-r5-FINAL.md` — NEVER retyped — to
+   `.agent/authored/f275-r5.md` and `.agent/last_block.md`.
 
-3. C1 IS THE FIRST SUBSTANTIVE COMMIT; only C0a and C0b may precede it. This round touches the
-   finding ledger, so `.agent/plan.md` advances before the ledger commit (§3 item 23).
+3. C1 IS THE FIRST SUBSTANTIVE COMMIT; only C0a and C0b may precede it (§3 item 23).
 
-4. C3 IS ONE COMMIT AND IS INDIVISIBLE, because DECISION F274 D2 rules that the carry-over and
-   the death of the name's current holder are one commit. A commit that added the new handler
-   before removing the old one would have two live claims on `mission.report`, and a commit that
-   removed the old one first would leave the catalog naming a handler nothing provides.
+4. C3's TWO FILES ARE WHOLE NEW FILES AND TRAVEL BY `shutil.copyfile`, NEVER BY RETYPING:
+     `.remedy-wt/f275-r5-ORDER.md` → `.agent/f275_deletion_order.md`
+       410360ec0225340aff2bf4ff61d743598500d21d105c37e3e55b72a21a65fed4 · 2714 bytes · 41 lines
+     `.remedy-wt/f275-r5-TEST.py`  → `tests/orchestration/test_cluster_deletion_order.py`
+       a80d4c9610cc89afb2cf2eb6bd9d56d5e31745dcc0d4644f6649f75efefbf1f7 · 7792 bytes · 185 lines
+   Verify each digest and byte count BEFORE copying and again after. A 185-line test retyped is a
+   185-line test with a typo in it; the copy is the proof and the digest is the gate.
 
-5. `packages/orchestration/dogfood_run.py` IS NOT TOUCHED, and neither is
-   `packages/orchestration/mission_readiness.py`. `build_mission_morning_report` keeps its
-   module-level tests in `tests/orchestration/test_dogfood_run.py`; only the CLI path to it goes.
-   The module dies later, with its own group commit. G4 and G7 gate both halves.
+5. C3 IS ONE COMMIT. The ratchet and the file it ratchets land together: a test whose subject
+   does not exist yet reds, and an order file nothing measures is precisely the artefact
+   `tests/orchestration/test_cluster_deletion_map.py` names in its own docstring as having told
+   three consecutive features this deletion was cheap.
 
-6. THE CARRIED SYMBOLS KEEP THEIR `overnight_` SPELLING — `build_overnight_report` and
-   `render_overnight_report_markdown` are imported under those names. DECISION F275 D1 ruled the
-   move renames nothing, and F261 owns renames.
+6. NOTHING UNDER `packages/`, `apps/` OR `docs/` CHANGES. No module is deleted, no import is cut,
+   no catalog entry moves. `tests/orchestration/cluster_deletion_map.txt` and
+   `tests/orchestration/import_reachability_allowlist.txt` are NOT touched — G8 gates all three
+   of those files byte-identical to their blobs at `a040b60c`.
 
-7. THE NEW HANDLER MIRRORS THE ORIGINAL'S FLAG PRECEDENCE EXACTLY: `--markdown` first, then
-   `--json`, then markdown as the default. The reviewer checked this against
-   `_cmd_overnight_report` in `apps/cli/commands/overnight_cmd.py` at `280fd101`, where the two
-   flags are tested in that order. Reversing them would silently change what
-   `--markdown --json` prints, which is the one input where the order is observable.
+7. THE ORDER FILE IS GENERATED OUTPUT, NOT PROSE. Its component lines were produced by the
+   derivation `tests/orchestration/test_cluster_deletion_order.py` ships as `measured_order()`,
+   not typed by hand. Do not reflow, re-sort or "tidy" them; the ratchet compares them literally.
 
-8. `mission.report` STAYS IN THE CATALOG THROUGHOUT. Its entry is REWRITTEN, never removed and
-   re-added. `tests/cli/test_product_spine.py` asserts the id is present and read-only, and the
-   reviewer confirmed at `280fd101` that both assertions still pass after the rewrite — this
-   round is not permitted to red the product-spine pins and does not.
+8. THIS ROUND ADDS A TEST THE OPERATOR DID NOT ORDER, AND THAT IS A DELIBERATE, DECLARED CHOICE.
+   RULE 2 orders a FILE. The reviewer adds `tests/orchestration/test_cluster_deletion_order.py`
+   beside it because this repository's own precedent — F274 building
+   `test_cluster_deletion_map.py` for the identical reason — and that module's own docstring both
+   say an unmeasured inventory is what misled three features. It is recorded in DECISION F275 D2
+   so the operator can reverse it by deleting one file and one paragraph. If the operator would
+   rather have the bare file, that reversal costs nothing and loses nothing else.
 
-9. PAIR SHAPES, CLASSIFIED BY A MECHANICAL CONTAINMENT TEST AND NOT BY EYE (§3 items 4 and 15).
-   The reviewer ran the test per pair and records its OUTPUT; the label derives from that output:
-     pair (a) catalog entry rewrite ..... TO contains FROM: false -> REWRITE
-     pair (b) handler registration ...... TO contains FROM: true  -> APPEND
-     pair (d) registry expectation ...... TO contains FROM: false -> REWRITE
-     pair (e) facade count pin .......... TO contains FROM: false -> REWRITE
-   Edits (c), (f) and (g) are DELETIONS and are not pairs. No gate orders a "FROM occurs 0 times"
-   reading for pair (b), whose FROM legitimately survives inside its TO.
-
-10. EVERY SEPARATOR LINE IN THIS BLOCK'S FRAME IS A RUN OF EXACTLY 54 `─` CHARACTERS (§3 item 37),
-    stated because a run has no length a reader recovers by eye. Nothing appliable travels in the
-    frame: every appliable byte is a slice, proved against its own target.
+9. PAIR SHAPES (§3 items 4 and 15). This round authors NO FROM/TO pair: C1 is a whole-file
+   replacement, C2 and C4 are appends, and C3 is two whole new files. There is nothing to
+   classify, so no containment test is ordered and no APPEND/REWRITE label appears anywhere.
+   EVERY SEPARATOR LINE IN THIS BLOCK'S FRAME IS A RUN OF EXACTLY 54 `─` CHARACTERS (§3 item 37),
+   stated because a run has no length a reader recovers by eye.
 
 ────────────────────────── C1 — THE PLAN ──────────────────────────
 
-Replace the WHOLE of `.agent/plan.md` with the text between the markers. 41 lines and 2362 bytes,
-under the AGENTS.md cap of 50 lines. The marker lines themselves are NOT part of the file.
+Replace the WHOLE of `.agent/plan.md` with the text between the markers. The marker lines
+themselves are NOT part of the file.
 
-<<<BEGIN PLAN4>>>
+<<<BEGIN PLAN5>>>
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -97,363 +100,226 @@ Branch: feature/f275-one-world-completion-part-three, cut from `main` at
 Finish what F274 could not reach inside its own limit: the two carry-overs F260's Design
 names, DECISION F260 D3, the prototype-cluster deletion itself, the atomic record flip that
 T002 rules but does not perform, and the classic runner. Operator ruling amend0908-f275-finish
-orders T001 PERFORMED, not prepared, with one module group as the atomic unit.
+orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 4 books round 3's PASS verdict, registers R-0840 for the behaviour operator RULE 3
-requires a finding for, and lands the SECOND carry-over: `mission report` stops being a facade
-over the cluster module `dogfood_run` and becomes the carried report view over a job's
-evidence, while the handler holding that name dies in the SAME commit, as DECISION F274 D2
-rules. The map is deliberately UNCHANGED — `mission run` keeps the `dogfood_run` edge.
+ROUND 5 books round 4's PASS, confirms R-0831's measurement still holds, and writes the
+DELETION ORDER operator RULE 2 requires before the first `git rm`, with a ratchet holding it
+against the live import graph. The cluster's internal graph is CYCLIC, so the atomic unit is
+the strongly connected component — fifteen of them over twenty-four modules — which DECISION
+F275 D2 rules and records. No production file is touched and nothing is deleted.
 
 ## Next Steps
 
-1. The route-policy knobs checked against F110's config keys — R-0831 already records that none
-   has an equivalent, so this is a finding update and not a rebuild. It rides with substantive
-   work, because amend0827 rule 1 forbids a round that is only bookkeeping.
-2. `.agent/f275_deletion_order.md`, derived from the deletion map in dependency order, leaf
-   modules first, written BEFORE the first `git rm`.
-3. The module groups, one commit each, in that order, under the four measurements
-   amend0906-triage-throughput names for a deletion round, until the map holds zero cluster
-   lines and every module F260's Design lists is gone from disk.
-4. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831 and
+1. The FIRST module groups, in the recorded order, one commit each: `context_optimizer`, then
+   `review_bundle`. Each commit takes the module, its handler, its catalog entries, its
+   cockpit section, its tests and its map lines together, and leaves the tree green.
+2. The remaining thirteen components in the recorded order, the three multi-module ones deleted
+   as single commits because their members import each other.
+3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831 and
    R-0840 named among the ideas deleted rather than inherited.
+4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
 
 ## Risks
 
-- 66 findings are open by distinct id once R-0840 lands, four of them High — R-0803, R-0804,
-  R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12. The
-  integrity gate's `high_blockers_open` check is WRONG about them, which is R-0648 and open.
-- `packages/orchestration/overnight_readiness.py` has zero consumer edges and is DELETABLE but
-  not deleted; only its group commit removes it. A half-deleted module is the state operator
-  RULE 1 forbids.
-<<<END PLAN4>>>
+- 66 findings are open by distinct id, four of them High — R-0803, R-0804, R-0806 and R-0807 —
+  all F273's rather than this feature's, per DECISION F272 D12.
+- R-0832 records that the map measures IMPORT edges only, so a consumer coupled to the cluster
+  by EVENT NAME is invisible to both the map and the deletion order. The order is a safe
+  sequence for imports and is not a completeness claim about couplings.
+- The full suite must be run in the PRIMARY checkout: a fresh worktree has no
+  `apps/ui/node_modules`, so `test_test_runner.py`'s vitest node fails there for the
+  environment rather than for the change.
+<<<END PLAN5>>>
 
 ────────────────────────── C2 — THE RECORD AND THE SLIPS ──────────────────────────
 
 ONE commit, two files.
 
-(i) APPEND the two paragraphs between the RECORD4 markers to `.agent/live_review.md`, followed
-by exactly one newline. They are TWO blank-line units — the round 3 gate entry, then the R-0840
-registration. The file is 519228 bytes before this commit and ends with a newline; append a
-single `\n` FIRST so the new units are separated from the current last one by a blank line.
+(i) APPEND the two paragraphs between the RECORD5 markers to `.agent/live_review.md`, preceded
+by a single `\n` and followed by exactly one newline. They are TWO blank-line units — the round
+4 gate entry, then the R-0831 confirmation. The file is 527075 bytes before this commit.
 
-(ii) APPEND the two paragraphs between the SLIPS4 markers to `.agent/prose_slips.md`, the same
-way: one leading `\n`, then the text, then one newline. That file is 168030 bytes before this
-commit. Both are reviewer-prose defects of ROUND 3 that left nothing wrong on disk, so under
-amend0827 rule 2 they are dated lines here and NOT ids.
+(ii) APPEND the two paragraphs between the SLIPS5 markers to `.agent/prose_slips.md` the same
+way: one leading `\n`, the text, one trailing newline. That file is 168666 bytes before this
+commit. Both are reviewer-prose defects of ROUND 4 that left nothing wrong on disk, so under
+amend0827 rule 2 they are dated lines and NOT ids.
 
-Do not renumber, reflow or edit anything already in either file.
+IF ANY FORMULA IN THIS BLOCK DISAGREES WITH THE OPERATION ORDERED HERE, THE OPERATION WINS and
+the disagreement is declared. Round 3 lost a deviation to exactly that and round 4 caught it.
 
-<<<BEGIN RECORD4>>>
-Gate: F275 R3 — the F275 round 3 entry. VERDICT PASS, booked by round 4 rather than by a round of its own, under operator amendment amend0827-process-diet rule 1, whose durable carrier was the round 3 handback committed at `8325f20c` with the verdict appended at `280fd101`. Range `3068e9c1`..`8325f20c`, seven commits — C0a, C0b, C1, C2, C3, C4, C6 — every one single-parent, with no C5 commit because C5 is the measurement step and writes no file. THE CHANGE SET IS EXACTLY THE TWELVE PATHS the block named, by `git diff --name-status`, and the reviewer re-ran every gate itself against the COMMITTED blobs rather than reading the worker's report. THIS IS THE ROUND THAT MADE THE FIRST CARRY-OVER REAL: `packages/orchestration/mission_readiness.py` had been dead code since round 1, and round 3 gave it two consumers — the new `mission readiness` command and the cockpit's readiness section — while taking both away from `packages.orchestration.overnight_readiness`, which now has ZERO surviving consumer edges and is DELETABLE. G1 TRANSPORT covers the chain this workflow can walk, per docs/agents/planner_reviewer_prompt.md §3 item 37, and NOT the emitted bytes: the reviewer's scratch original `.remedy-wt/f275-r3-FINAL.md`, the committed `.agent/authored/f275-r3.md` and the committed `.agent/last_block.md` are all 34166 bytes at `7e7d8cdc7fdfea446b5a1e01c03ab8fe07ab172bc82205cb27c0aca779d31d3b`. G2: `.agent/plan.md` byte-identical to its slice at 2425 bytes and 43 lines. G3 THE RECORD: `.agent/live_review.md` 515349 to 519228, the pre-blob an exact PREFIX, the slice plus one newline an exact SUFFIX, the new unit blank-line separated, units 215 to 216, `^Gate: ` 24 to 25, `^Gate: F275 R2 ` 0 to 1, and the OPEN SET UNCHANGED AT 65 BY DISTINCT ID — 68 distinct registrations against 3 distinct resolutions, subtracted over DISTINCT ids and never over the 5 `Done:` LINES. G4 THE WIRING: C3's real `git diff --numstat` columns are 12, 33, 6, 2, 0, 1 across six files, `ruff` exit 0 over all five touched python files, and `packages/orchestration/mission_readiness.py` is proved changed in its DOCSTRING ALONE by the strongest available reading — every byte after the closing triple quote is IDENTICAL to the base blob at `3068e9c1`, which subsumes the twenty-nine-definition count and does not depend on how a definition is counted. G5 THE RATCHETS ARE REAL AND THE REVIEWER PROVED BOTH DIRECTIONS AT `3068e9c1` BEFORE THE BLOCK WAS EMITTED: green with the round's edits, then RED on restoring the deleted map line, reporting `DISAPPEARED (1)` and naming that exact edge, and RED on removing the allowlist entry, naming `packages.orchestration.mission_readiness` as reachable-but-unlisted — which is the round's independent proof that the wiring really made the module reachable, since a module nothing imports cannot red that test. G6 THE CARRY-OVER IS BEHAVIOUR-PRESERVING, measured through the SHIPPED dispatch table rather than by importing the module: `apps.cli.grouped.build_parser()` parses the command path, and the `overnight.readiness` and `mission.readiness` handlers each emit 1097 characters differing in `generated_at` ALONE — the differing-key list with that key removed is EMPTY. G7 THE SUITES, each run alone: 48 · 645 · 506 · 42, all exit 0, and the discriminating count moved 639 to 645 exactly as predicted, which is the six new tests being real and collected rather than asserted. G8 THE TREE: the dotted path `packages.orchestration.overnight_readiness` occurs ZERO times in `packages/orchestration/ui_server.py` and ZERO times in `tests/orchestration/cluster_deletion_map.txt`, the map holds 19 recorded edges across 10 modules, and `packages/orchestration/overnight_readiness.py` is BYTE-IDENTICAL to its base blob; tree clean, no `.agent/STOP`, one worktree, branch pushed. FOUR DEVIATIONS WERE DECLARED AND ALL FOUR ARE SUSTAINED. The one that matters is the SECOND, and it is the REVIEWER'S ERROR: G3(a)'s formula `515349 + len(RECORD3) + 1` omits the LEADING newline that the same block's C2 operation requires, so it predicts 519227 where the correct result is 519228. The worker followed the OPERATION rather than the formula, landed the right bytes, and DECLARED the conflict instead of silently choosing one — which is exactly what constraint 1 asks of it. The reviewer re-measured: gain 3879 = 1 + 3877 + 1, prefix and suffix both exact. The first deviation is a reviewer anchor written short — edit (a)'s FIND text ended at `    # ── doctor` while the real line carries a banner tail — which the worker resolved by measuring both readings and using the only one that resolves; the committed diff shows the banner intact. The third is that "twenty-nine definitions" needs module-level bindings counted, not only `def` and `class`: 25 plus 4 equals 29, and the docstring-only proof is stronger either way. The fourth is the worker's own two gate readers being defective on first pass and corrected before reporting — reader bugs only, no disk state changed, and declaring them is the behaviour this workflow wants. NO FINDING IS MINTED BY THIS GATE and none is resolved; the two reviewer-prose defects are dated lines in `.agent/prose_slips.md`, per amend0827 rule 2, because nothing wrong reached disk.
+<<<BEGIN RECORD5>>>
+Gate: F275 R4 — the F275 round 4 entry. VERDICT PASS, booked by round 5 rather than by a round of its own, under operator amendment amend0827-process-diet rule 1, whose durable carrier was the round 4 handback committed at `d6c8deb1` with the verdict appended at `a040b60c`. Range `280fd101`..`d6c8deb1`, seven commits — C0a, C0b, C1, C2, C3, C4, C6 — every one single-parent, no C5 commit because C5 writes no file. THE CHANGE SET IS EXACTLY THE ELEVEN PATHS the block named, and the reviewer re-ran every gate itself against the COMMITTED blobs. THIS ROUND COMPLETED BOTH CARRY-OVERS F260's DESIGN ORDERS BEFORE THE FIRST `git rm`: `mission readiness` landed in round 3 and `mission report` here, the second onto a name that was not free. DECISION F274 D2's coupling was honoured exactly — the carry-over and the death of the old holder are ONE commit, `d045eaf6`, so at no commit boundary did two handlers claim `mission.report` or the catalog name a handler nothing provided. G1 TRANSPORT covers the chain this workflow can walk, per §3 item 37, and not the emitted bytes: scratch original, `.agent/authored/f275-r4.md` and `.agent/last_block.md` all 36589 bytes at `bbbb408cf1971d2ffb34af15d626b61b0b0f51132de733ff7e8de7bc816ce260`. G2: `.agent/plan.md` byte-identical to PLAN4 at 2362 bytes and 41 lines. G3 THE RECORD: `.agent/live_review.md` 519228 to 527075, gain 7847 = 1 + 7845 + 1, pre-blob an exact PREFIX, RECORD4 plus one newline an exact SUFFIX, blank-line separated; units 216 to 218, `^Gate: ` 25 to 26, `^Gate: F275 R3 ` 0 to 1, `^- R-0840 — ` 0 to 1, OPEN SET 65 TO 66 BY DISTINCT ID over DISTINCT ids and never over the 5 `Done:` LINES; `.agent/prose_slips.md` 168030 to 168666 with prefix and suffix exact. G4: C3's real numstat is 7/4, 28/0, 0/27 and 2/38, and in `apps/cli/commands/worker_facade_cmd.py` the dead symbols `_cmd_mission_report` and `build_mission_morning_report` each went 2 to 0 while `packages.orchestration.dogfood_run` went 3 to 2 — the import site that died is the handler's, and the two that survive are `mission run`'s. `packages/orchestration/dogfood_run.py` and `packages/orchestration/mission_readiness.py` are BYTE-IDENTICAL to their blobs at `280fd101`. G5: the deletion map is UNCHANGED at 19 edges over 10 modules with the `dogfood_run <- worker_facade_cmd.py` edge still present — an EQUALITY gate on purpose, because a shrinking map here would have meant more was deleted than was asked for. G6: the parser reaches `mission report` with a `job_id` and a `--markdown` flag, the facade no longer provides the id, and the `overnight.report` and `mission.report` payloads are 1225 characters each differing in `generated_at` ALONE. G7: 146 · 650 · 93 · 42, all exit 0 — down exactly two where the deleted handler's tests died with it, up exactly five where C4 added five, unmoved on the cluster builder's own suite and on the canary. G8: tree clean, no `.agent/STOP`, one worktree, branch pushed. FIVE DEVIATIONS WERE DECLARED. DEVIATION 4 IS DECLINED ON A MEASUREMENT: the worker flagged that RECORD4 and PLAN4 call `packages.orchestration.overnight_readiness` DELETABLE at zero consumer edges while six live import sites remain in three production files, and raising it was correct, but the claim is TRUE as written and the word carrying it is SURVIVING — `apps/cli/commands/overnight_cmd.py` is in `CLUSTER_COMMAND_HANDLERS` and `review_bundle` and `overnight_executor` are both in `CLUSTER_MODULES`, and operator RULE 2 says of exactly this case that such an importer "is deleted WITH its target and never counted as a blocking edge". The worry that a later round could break three production files is answered by RULE 1: each dies inside its own module-group commit. Nothing on disk needs repair and no id is minted. DEVIATION 2 IS THE BLOCK WORKING AS DESIGNED: G3(a) told the worker that where a formula and the ordered OPERATION disagree the OPERATION wins and the disagreement is declared, and the operation produced 527075, the only value under which the exact-SUFFIX reading can hold. DEVIATIONS 1 AND 3 ARE THE REVIEWER'S OWN PROSE and are dated `.agent/prose_slips.md` lines rather than ids, per amend0827 rule 2, because neither left anything wrong on disk. NO FINDING IS RESOLVED BY THIS GATE and none is minted here; R-0840 was minted by round 4's own C2.
 
-- R-0840 — Medium, `remedy mission report` LOSES ITS RUN-KEYED DOGFOOD REPORT WHEN THE NAME IS HANDED TO THE CARRIED VIEW, AND THE LOST FIELDS HAVE NO HOME IN THE SURVIVING TREE. Raised by the reviewer at the F275 round 4 authoring, and registered because operator ruling amend0908-f275-finish RULE 3 orders it: "Where that removal takes away a behaviour a user could observe, the round REGISTERS a finding naming the behaviour and the feature that inherits the idea." THE RULE. DECISION F274 D2 rules that `mission report` is not free for the second carry-over until its current holder dies, so the carry-over and that deletion are one commit; RULE 3 then requires the observable loss to be recorded rather than discovered from a deleted file, exactly as R-0831 records the route-policy knobs. THE MEASUREMENT, taken at `280fd101`. `_cmd_mission_report` in `apps/cli/commands/worker_facade_cmd.py` reads `packages.orchestration.dogfood_run.build_mission_morning_report(run_id, job_id=job_id)`, is addressed by a dogfood RUN id, and prints five fields the carried view does not produce: `mission_status`, `final_status`, `stopped_because`, `steps_completed` and `operator_summary`. The catalog entry's positional argument is `run_id` and its options are `--job-id` and `--json`. After this round the same command name is addressed by a JOB id and answers from `build_overnight_report` in `packages/orchestration/mission_readiness.py`, whose payload the reviewer measured as byte-equal to `overnight report`'s but for `generated_at`. So the IDEA of a morning report survives and is inherited by `mission report` itself in its carried form; what is lost is the RUN-KEYED ADDRESSING and those five dogfood-run fields. WHAT IS NOT LOST HERE: `build_mission_morning_report` stays on disk in `dogfood_run` with its module-level tests in `tests/orchestration/test_dogfood_run.py`, and this round removes only the CLI path to it — the function dies later, with its own module group, which is why this id is registered now and resolved then. WHY THIS IS A FINDING AND NOT A REPAIR: AGENTS.md Scope Control forbids a stub, a shim, a copy or a compatibility reader by name, and RULE 3 repeats the prohibition, so nothing is rebuilt to preserve the run-keyed form. WHAT WOULD RESOLVE IT: the module group commit that deletes `dogfood_run` deleting these five fields with it, while DECISION F260 D3 names the run-keyed mission report among the ideas deleted rather than inherited and names this id. That paragraph is owed before the first `git rm` and is not written yet.
-<<<END RECORD4>>>
+- R-0831 CONFIRMED, NOT RESOLVED, at `a040b60c` — the route-policy knob check operator ruling amend0908-f275-finish pairs with the carry-overs is now DISCHARGED as a check, and its answer is unchanged. That ruling says the knobs "are checked against F110's config keys (R-0831 already records that none has an equivalent, so this is a finding update, not a rebuild)". THE RE-MEASUREMENT, taken by the reviewer at `a040b60c` over the two modules F260's Design names: all eight knobs R-0831 lists — `prefer_local_for_cheap_tasks`, `prefer_ollama_for_cheap_tasks`, `preferred_worker_ids`, `user_selected_worker_ids`, `prefer_local_advisor`, `require_human_approval`, `risk_tier` and `default_autonomy_ceiling` — occur ZERO times in `packages/orchestration/role_config.py` and ZERO times in `packages/orchestration/model_routing.py`, both of which still exist on disk. That is the same reading R-0831 recorded at `4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6`, re-taken 46 commits later against a tree that has since gained both carry-overs. So every one of the eight still falls on F260's "missing knob" branch, F260's own rule "never rebuild" continues to bind, and NOTHING IS OWED IN CODE. R-0831 STAYS OPEN and its original text is not rewritten: what resolves it is unchanged and is the deletion round deleting these knobs with their modules while DECISION F260 D3 names route policy among the ideas deleted rather than inherited. This paragraph exists so that the ordered check has a dated answer on the record rather than being discharged silently, and so the deletion round can cite a confirmation taken after the carry-overs rather than before them.
+<<<END RECORD5>>>
 
-<<<BEGIN SLIPS4>>>
-2026-09-08 · F275 R3 · The round 3 block's gate G3(a) stated the post-append byte count as `515349 + len(RECORD3) + 1`, omitting the leading newline the same block's C2 operation orders, so it predicted 519227 against a correct 519228; the worker followed the operation, landed the right bytes and declared the conflict.
+<<<BEGIN SLIPS5>>>
+2026-09-08 · F275 R4 · The round 4 block's gate G7 suite 3 gave `tests/orchestration/test_dogfood_run.py` a BASE of 135, which was the COMBINED count of that suite and the canary from the reviewer's own paired dry run; the suite alone is 93, the worker re-measured 93 at the base `280fd101` and 93 again at the round's own tip, and the no-regression property the gate exists for held exactly.
 
-2026-09-08 · F275 R3 · The round 3 block's edit (a) gave its FIND anchor as `    # ── doctor`, a prefix of the real banner line rather than the whole line, so the anchor resolved only under the unterminated-prefix reading; the worker measured both readings before applying and used the one that resolves.
-<<<END SLIPS4>>>
+2026-09-08 · F275 R4 · The round 4 block's constraint 9 lettered the pairs (a), (b), (d), (e) and the deletions (c), (f), (g) while its C3 labels the pairs (a), (b), (e), (f) and the deletions (c), (d), (g), leaving C3's registry-line deletion in neither list; the worker re-ran the containment test mechanically and reproduced all four classifications unchanged.
+<<<END SLIPS5>>>
 
-────────────────────────── C3 — THE CARRY-OVER AND THE DEATH (SPEC) ──────────────────────────
+────────────────────────── C3 — THE ORDER AND ITS RATCHET ──────────────────────────
 
-SEVEN labelled edits across FOUR files, ONE commit. The reviewer applied all seven in a
-disposable worktree at `280fd101` and measured `git diff --numstat` as 7/4, 28/0, 0/27 and
-2/38 — 37 insertions in total, far under the DECISION F104 D1 cap of 500.
+ONE commit, two WHOLE NEW FILES, both by `shutil.copyfile` per constraint 4. Neither file exists
+at `a040b60c`; both are additions, so `git diff --numstat` reads them as pure insertions.
 
-(a) `apps/cli/command_catalog.py` — REWRITE the `mission.report` entry. FIND these lines, which
-occur exactly once, and replace them with the block beneath:
+  `.remedy-wt/f275-r5-ORDER.md` → `.agent/f275_deletion_order.md`
+  `.remedy-wt/f275-r5-TEST.py`  → `tests/orchestration/test_cluster_deletion_order.py`
 
-  FROM:
-        description="Generate a safe morning report — what happened, is it done, what to do next (read-only; no execution; no raw logs).",
-        action_class="read_only",
-        args=(
-            ArgDef("run_id", "Run ID"),
-            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        related=("mission.run", "dogfood.morning-report"),
+WHAT THE ORDER FILE SAYS, so the worker can recognise a corrupted copy without reading the
+derivation: 26 comment lines, then FIFTEEN component lines, each a comma-separated list of
+dotted cluster module names, in deletion order. The first line is
+`packages.orchestration.context_optimizer` and the last is
+`packages.orchestration.provider_trust, packages.orchestration.provider_trust_verification`.
+Three lines name more than one module: the six-module cycle around `dogfood_run` at line 3 of
+the fifteen, the four-module cycle around `builder_routing` at line 5, and the
+`provider_trust` pair at line 15. Twenty-four modules in total, each named exactly once.
 
-  TO:
-        description="Read-only morning-style report built from the job's current evidence.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--markdown", "Render the report as markdown",
-                   required=False, is_option=True, default="false"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-        may_mutate_repo=False,
-        may_execute_commands=False,
-        related=("mission.readiness", "mission.show"),
+WHAT THE TEST DOES: it imports the ONE first-party walker this repository keeps, rebuilds the
+cluster's internal dependency graph, computes the strongly connected components with Tarjan
+walking every neighbour set SORTED so the result is stable, condenses them, and orders the
+condensation with importers first and ties broken by the component's own sorted module names.
+It then asserts three things — the recorded order EQUALS the measured one; no module is deleted
+before a module it imports; and every cluster module still on disk appears exactly once. The
+reviewer measured the derivation as STABLE ACROSS TWELVE CONSECUTIVE RUNS at `a040b60c`, which
+is why a ratchet over it is safe: an order that flapped would red for no reason and be turned off
+within a round.
 
-The `command_id`, `group_id` and `subcommand` lines above this region are NOT touched, which is
-what keeps `mission.report` continuously present in the catalog per constraint 8.
+────────────────────────── C4 — THE DECISION ──────────────────────────
 
-(b) `apps/cli/commands/mission_cmd.py` — INSERT the carried handler and register it. FIND the
-single line
+APPEND the text between the markers to `.agent/decisions.md`, preceded by a single `\n` and
+followed by exactly one newline. It is ONE blank-line unit. The file is 927408 bytes before this
+commit. `^## DECISION F275 D` goes from 1 to 2 and `^## DECISION F275 D2 ` heads exactly one
+section.
 
-COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+<<<BEGIN DECISION5>>>
+## DECISION F275 D2 — the atomic unit of the cluster deletion is the strongly connected COMPONENT, because the cluster's internal import graph is cyclic (2026-09-08)
 
-and REPLACE it with the handler, two blank lines, that same line, and the registration:
+CONTEXT. Operator ruling amend0908-f275-finish RULE 1 makes "one module group" the atomic unit of the deletion and requires the tree green after every group commit. RULE 2 orders the sequence: "The deletion proceeds in dependency order — leaf modules first, the modules they import last — so that each group commit leaves no dangling import. The deletion order is derived from the map by the first round of this slice and written into `.agent/f275_deletion_order.md` before the first `git rm`." This round is that first round, and performing the derivation surfaced a fact none of F260, F272 or F274 had recorded.
 
-def _cmd_mission_report(job_id: str, *, markdown: bool = False,
-                        json_output: bool = False) -> None:
-    """Read-only morning-style report built from the job's current evidence.
+THE MEASUREMENT, taken by the reviewer at `a040b60c` over the twenty-four modules `tests/orchestration/test_cluster_deletion_map.py` names as `CLUSTER_MODULES`, using the same first-party `ast` walker the map uses. The cluster's INTERNAL import graph — cluster module importing cluster module — is CYCLIC. A topological sort over single modules is therefore impossible: a first attempt required TWELVE cycle breaks and produced an order in which twelve modules were deleted after a module that imports them, which is exactly the dangling import RULE 2 exists to prevent. There are three cycles. `packages.orchestration.provider_trust` and `packages.orchestration.provider_trust_verification` import each other. A four-module cycle joins `builder_routing`, `candidate_quality`, `local_candidate_generator` and `model_route_tournament`. A six-module cycle joins `dogfood_run`, `feature_planner`, `overnight_mission`, `progress_ledger`, `repair_loop_v2` and `self_repair_proposal`. The reviewer verified one cycle by READING THE SOURCE rather than trusting the walker: `packages/orchestration/provider_trust.py` imports from `provider_trust_verification` inside a function body — the usual dodge for a circular import at module load — and `packages/orchestration/provider_trust_verification.py` imports from `provider_trust` at module level. Both are real, executable imports, so the cycle is a property of the code and not an artefact of static analysis.
 
-    The second of the two carry-overs F260's Design orders before the cluster
-    deletion, landing on the name DECISION F274 D2 reserved for it. It reads
-    ``packages/orchestration/mission_readiness.py`` — the module rounds 1 and 2
-    carried — and never the cluster.
-    """
-    from packages.orchestration.mission_readiness import (
-        build_overnight_report,
-        render_overnight_report_markdown,
-    )
-    data = build_overnight_report(str(job_id))
-    if markdown:
-        print(render_overnight_report_markdown(data))
-        return
-    if json_output:
-        print(_json.dumps(data, indent=2))
-        return
-    print(render_overnight_report_markdown(data))
+CHOSEN. The atomic unit of the deletion is the STRONGLY CONNECTED COMPONENT of the cluster's internal import graph: a single module wherever that graph is acyclic, and the entire cycle in ONE commit where it is not. Over components the order is well defined — fifteen components covering all twenty-four modules, with ZERO cross-component violations, stable across twelve consecutive derivations. `.agent/f275_deletion_order.md` records that order, one component per line, and `tests/orchestration/test_cluster_deletion_order.py` holds it against the live graph in the same way `test_cluster_deletion_map.py` holds the map.
 
+WHY, and why this is a ruling rather than a question to the operator. RULE 2's "leaf modules first" is unsatisfiable AS LITERALLY WORDED against a cyclic graph, so some reading has to be chosen before the first `git rm`. Only one reading satisfies all three operator rules at once. Deleting a cycle member alone leaves its partner importing a deleted module, which breaks RULE 1's "the tree is green after every group commit" and leaves precisely the half-deleted state RULE 1 names as the thing this work must not leave behind. Keeping a shim or a temporary re-export to break the cycle is forbidden by name in RULE 3 and in AGENTS.md's Scope Control. Deleting the whole cluster in one commit would abandon the group granularity RULE 1 exists to give. The component reading keeps every rule: it is the SMALLEST unit that can be deleted without a dangling import, it degenerates to RULE 1's single module wherever the graph allows, and it changes the sequencing without weakening a single guarantee. Under docs/agents/planner_reviewer_prompt.md §4 item 7 a dated, reversible DECISION is the instrument for exactly this, and the reviewer does not stop a session to ask what the rules already answer.
 
-COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
-    "mission.report": lambda args: _cmd_mission_report(
-        args.job_id,
-        markdown=getattr(args, "markdown", False),
-        json_output=getattr(args, "json", False),
-    ),
+ALTERNATIVES CONSIDERED AND REJECTED. (1) Break each cycle by deleting the function-local import first, in its own commit, then order the modules normally — rejected because it edits a module that is about to be deleted, spending a commit and a review on code with hours to live, and because it does not generalise: the four- and six-module cycles are joined at module level, not by a single dodgeable import. (2) Order by number of importers and accept the dangling imports for one commit — rejected outright; it makes the suite red at a commit boundary, which RULE 1 forbids. (3) Ask the operator — rejected under the standing practice that a rule the existing rules determine is ruled here and recorded, not relayed.
 
-The module already imports `json as _json`. The flag order is constraint 7's and is not a choice.
+CONSEQUENCE. The deletion is FIFTEEN group commits and not twenty-four. Three of them delete more than one module and are correspondingly larger, though all three are pure deletions and so cannot approach the DECISION F104 D1 insertion cap. The order file and its ratchet are maintained exactly as the map is: a group commit removes its modules from `.agent/f275_deletion_order.md` in the SAME commit that removes them from disk, and the ratchet reds if it does not. This ruling says NOTHING about event-name couplings, which R-0832 records as invisible to the import map and therefore invisible to this order too; the order is a safe sequence for IMPORTS and is not a completeness claim.
 
-(c) `apps/cli/commands/worker_facade_cmd.py` — DELETE the old handler together with the banner
-that titles it: the region beginning with the line
-
-# ---------------------------------------------------------------------------
-
-that carries `# mission report facade (Step 2625)` on its second line, through the last line of
-`_cmd_mission_report`, which is
-
-    print(f"  summary: {report.operator_summary}")
-
-and the two blank lines that follow it. The next surviving line is the `# ----` banner opening
-`# doctor core (Step 2665)`. Dropping the banner with the class it titles is the same reading
-round 2 took for `# Plan (1256)` and the reviewer sustained.
-
-(d) `apps/cli/commands/worker_facade_cmd.py` — DELETE the single registry line
-
-    "mission.report": _cmd_mission_report,
-
-(e) `tests/cli/test_worker_facade_cmd.py` — the registry expectation loses the moved id.
-
-  FROM:        expected = {"worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report", "doctor.core",
-  TO:          expected = {"worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "doctor.core",
-
-(f) `tests/cli/test_worker_facade_cmd.py` — the facade count pin.
-
-  FROM:        assert len(facade_cmds) == 12
-  TO:          assert len(facade_cmds) == 11
-
-(g) `tests/cli/test_worker_facade_cmd.py` — DELETE the deleted handler's own tests: the `# ----`
-banner carrying `# mission report facade`, the whole of `class TestMissionReport` with its two
-test methods, and the two blank lines after it; the next surviving line is the `# ----` banner
-opening `# collect_all_handlers includes facade`. ALSO delete the single line
-
-_MORNING_REPORT = "packages.orchestration.dogfood_run.build_mission_morning_report"
-
-which is that class's only user — the reviewer measured it at 2 occurrences in the file at
-`280fd101`, the definition and the one `@patch` that goes with the class. Under operator RULE 1
-a handler's tests die in the commit that deletes the handler; leaving them would red the suite.
-`patch`, `MagicMock` and `pytest` all keep other users in that file, so no import is removed —
-the reviewer confirmed this by running `ruff` over the file after the deletion.
-
-────────────────────────── C4 — THE TESTS (SPEC) ──────────────────────────
-
-APPEND to `tests/cli/test_mission_cmd.py`, after its final newline, exactly two blank lines and
-then the class below. It joins the class round 3 added, which is the last thing in that file.
-
-class TestMissionReportIsTheCarriedReportView:
-    """F275 T001: the second carry-over, and the death of the name's old holder.
-
-    DECISION F274 D2 rules that `mission report` is not free until its current
-    holder dies, so the two happen in one commit. These tests pin both halves:
-    the name now resolves to the carried view in `mission_cmd`, and the facade
-    in `worker_facade_cmd` no longer provides it.
-    """
-
-    JOB_ID = "11111111-2222-3333-4444-555555555555"
-
-    def test_the_catalog_entry_is_job_keyed_now(self):
-        from apps.cli.command_catalog import get_command
-
-        names = [a.name for a in get_command("mission.report").args]
-
-        assert names == ["job_id", "--markdown", "--json"]
-
-    def test_the_facade_no_longer_provides_the_command(self):
-        from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
-
-        assert "mission.report" not in COMMAND_HANDLERS
-
-    def test_the_dispatch_table_still_reaches_it(self):
-        from apps.cli.commands import collect_all_handlers
-
-        assert "mission.report" in collect_all_handlers()
-
-    def test_the_real_cli_answers_with_the_carried_report(self, project):
-        data_root, _project_id = project
-
-        body = json.loads(_run(["mission", "report", self.JOB_ID, "--json"],
-                               data_root).stdout)
-
-        assert "report" in body
-        for key in ("completed_checklist", "blocked_checklist", "completed_count",
-                    "blocked_count"):
-            assert key in body["report"], f"the carried report lost {key}"
-
-    def test_the_facade_module_no_longer_names_the_cluster_builder(self):
-        """The CLI path to the cluster builder is what this round removed."""
-        source = (REPO_ROOT / "apps" / "cli" / "commands" / "worker_facade_cmd.py").read_text(
-            encoding="utf-8")
-
-        assert "build_mission_morning_report" not in source
-        assert "_cmd_mission_report" not in source
-
-`json`, `Path` and `REPO_ROOT` are already imported at the top of that file, and `project` is its
-existing fixture. The last test's two tokens were measured at 2 occurrences each at `280fd101`
-and are 0 after edits (c) and (d); the file still imports `dogfood_run` for `mission run`, which
-is why the assertion names these two symbols and NOT the module.
+REVERSE by deleting this section, `.agent/f275_deletion_order.md` and `tests/orchestration/test_cluster_deletion_order.py`. The deletion then has no recorded order and RULE 2's derivation is owed again by whichever round next approaches the first `git rm`. Reversing ONLY the test, and keeping the file as the plain inventory RULE 2 literally asks for, costs nothing else and is the narrower reversal if the operator would rather not carry the guard.
+<<<END DECISION5>>>
 
 ────────────────────────── C5 — THE GATES ──────────────────────────
 
-Run ALL EIGHT at C5, after C4 and STRICTLY BEFORE the C6 handback commit, so the handback can
-quote every one of them (§3 item 31). C5 writes no file and has no commit. Report ONE LINE PER
-GATE with the REAL exit code. A gate that cannot be run is reported as not run — never as green.
+Run ALL EIGHT at C5, after C4 and STRICTLY BEFORE the C6 handback commit (§3 item 31). C5 writes
+no file and has no commit. Report ONE LINE PER GATE with the REAL exit code. A gate that cannot
+be run is reported as not run — never as green.
 
-EVERY GATE BELOW WAS RUN BY THE REVIEWER AT THE BASE `280fd101` BEFORE EMISSION, and each carries
-its BASE reading beside its expected one, per the procedure finding R-0819's recurrence paragraph
-strengthened from a clause. Readings that are deliberately NON-DISCRIMINATING are labelled as
-such. The open fix clause R-0741 carries — a grep-derived leave-alone set naming each hit by file,
-line and enclosing symbol — is DECLINED AS NOT APPLICABLE on its own terms: it binds "the next
-block that orders such a set", and this block orders none.
+EVERY GATE BELOW WAS RUN BY THE REVIEWER AT THE BASE `a040b60c` BEFORE EMISSION, and each carries
+its BASE reading beside its expected one, per the procedure R-0819's recurrence paragraph
+strengthened from a clause. Non-discriminating readings are labelled. R-0741's fix clause is
+DECLINED AS NOT APPLICABLE on its own terms — it binds "the next block that orders such a set",
+and this block orders no grep-derived leave-alone set.
 
-G1 TRANSPORT. sha256 and byte count of the scratch original `.remedy-wt/f275-r4-FINAL.md`, of the
-committed `.agent/authored/f275-r4.md`, and of the committed `.agent/last_block.md`. All three
-must be ONE value. Per §3 item 37 this proves the chain this workflow can walk — saved copy,
-mirror, working copy — and NOT the bytes the reviewer emitted; do not claim more.
+G1 TRANSPORT. sha256 and byte count of `.remedy-wt/f275-r5-FINAL.md`, of the committed
+`.agent/authored/f275-r5.md`, and of the committed `.agent/last_block.md`. All three must be ONE
+value. Per §3 item 37 this covers the chain this workflow can walk — saved copy, mirror, working
+copy — and NOT the bytes the reviewer emitted; do not claim more.
 
-G2 THE PLAN. `.agent/plan.md` byte-identical to PLAN4. Report its sha256, byte count, line count
+G2 THE PLAN. `.agent/plan.md` byte-identical to PLAN5. Report its sha256, byte count, line count
 (under the AGENTS.md cap of 50), and that `^## Goal$` and `^## Next Steps$` occur once each.
 
 G3 THE RECORD. Six parts over `.agent/live_review.md`, plus one byte-equality reading for
 `.agent/prose_slips.md`, which is a `.agent/` prose file and earns no more under the gate budget.
-  (a) BYTES: 519228 before; after = 519228 + 1 + len(RECORD4) + 1. State the operation's result
-      and both the before and after counts. If any formula in this block disagrees with the
-      OPERATION ordered in C2(i), THE OPERATION WINS and the disagreement is declared — round 3
-      lost a deviation to exactly this and the reviewer would rather be told twice.
-  (b) EXACT EDGES: the pre-commit blob is a byte-exact PREFIX of the post-commit blob, and
-      RECORD4 is a byte-exact SUFFIX of it. Report both booleans.
-  (c) ORDERED EQUALITY by an independent paragraph reader: compare the LAST N blank-line units of
-      the whole file against RECORD4's N paragraphs IN ORDER, where N is COUNTED FROM THE SLICE by
-      your script and is NEVER taken from this block. Report N and the per-unit sha256 pairs.
+  (a) BYTES: 527075 before; after = the result of the C2(i) operation. State both.
+  (b) EXACT EDGES: pre-commit blob a byte-exact PREFIX; RECORD5 a byte-exact SUFFIX. Both booleans.
+  (c) ORDERED EQUALITY by an independent paragraph reader: the LAST N blank-line units of the
+      whole file against RECORD5's N paragraphs IN ORDER, N COUNTED FROM THE SLICE by your script
+      and never taken from this block. Report N and the per-unit sha256 pairs.
   (d) NEGATIVE CONTROL on the FIRST appended paragraph, in scratch or memory only: flip one byte
-      inside it and confirm BOTH the reader of (b) and the reader of (c) REJECT it. Re-read the
-      tracked file afterwards and report its byte count to show the mutation never touched it.
-  (e) COUNTS: blank-line units 216 → 218; `^Gate: ` 25 → 26; `^Gate: F275 R3 ` 0 → 1;
-      `^- R-0840 — ` 0 → 1.
-  (f) THE OPEN SET GAINS EXACTLY ONE: distinct `^- R-\d+ — ` ids 68 → 69, distinct
-      `^Done: R-\d+ — ` ids 3 → 3, OPEN SET BY DISTINCT ID 65 → 66. Subtract DISTINCT IDS, never
-      the 5 `Done:` LINES. This round mints R-0840 and resolves none.
-  (g) `.agent/prose_slips.md`: 168030 before; after = 168030 + 1 + len(SLIPS4) + 1; the pre-blob
-      an exact PREFIX and SLIPS4 an exact SUFFIX. Two readings, no arithmetic proof beyond them.
+      and confirm BOTH the reader of (b) and the reader of (c) REJECT it. Re-read the tracked file
+      afterwards and report its byte count.
+  (e) COUNTS: blank-line units 218 → 220; `^Gate: ` 26 → 27; `^Gate: F275 R4 ` 0 → 1.
+  (f) THE OPEN SET DOES NOT MOVE: distinct `^- R-\d+ — ` ids 69 → 69, distinct `^Done: R-\d+ — `
+      ids 3 → 3, OPEN SET BY DISTINCT ID 66 → 66. Subtract DISTINCT IDS, never the 5 `Done:`
+      LINES. The R-0831 paragraph is a CONFIRMATION, not a registration and not a resolution:
+      it opens `- R-0831 CONFIRMED` and so matches neither `^- R-\d+ — ` nor `^Done: R-\d+ — `.
+      Report the count of `^- R-0831 CONFIRMED` as 0 → 1 to show it landed.
+  (g) `.agent/prose_slips.md`: 168666 before; after = the result of the C2(ii) operation; the
+      pre-blob an exact PREFIX and SLIPS5 an exact SUFFIX. Two readings and no more.
 
-G4 THE CARRY-OVER AND THE DEATH. Over the C3 commit: `git diff --numstat` must read 7/4, 28/0,
-0/27 and 2/38 for the four files in the order (a)/(b)/(c,d)/(e,f,g) — report the real columns
-whatever they are. `python3 -m ruff check` exit 0 over `apps/cli/command_catalog.py`,
-`apps/cli/commands/mission_cmd.py`, `apps/cli/commands/worker_facade_cmd.py` and
-`tests/cli/test_worker_facade_cmd.py`; `ast.parse` clean on all four. Then the death, measured in
-`apps/cli/commands/worker_facade_cmd.py`: `_cmd_mission_report` occurs ZERO times (BASE 2) and
-`build_mission_morning_report` occurs ZERO times (BASE 2). Then the survival, in the SAME file:
-`packages.orchestration.dogfood_run` occurs TWO times (BASE 3) — `mission run` keeps its import,
-and a reading of 0 here would mean the round deleted more than it was asked to.
-`packages/orchestration/dogfood_run.py` and `packages/orchestration/mission_readiness.py` are
-BYTE-IDENTICAL to their blobs at `280fd101`; read them with `git show 280fd101:<path>` into
-memory or gitignored scratch, never by overwriting the tracked file (§3 item 29, guardrail G5).
+G4 THE TWO NEW FILES ARE THE REVIEWER'S BYTES. For each of `.agent/f275_deletion_order.md` and
+`tests/orchestration/test_cluster_deletion_order.py`: sha256 and byte count of the committed blob
+equal to the scratch original's, as constraint 4 states them. Then `git ls-tree a040b60c -- <path>`
+must be EMPTY for both, proving they are additions and not overwrites. Then
+`python3 -m ruff check tests/orchestration/test_cluster_deletion_order.py` exit 0 and `ast.parse`
+clean. BASE reading: both paths absent at `a040b60c`, so this gate is unmeetable there.
 
-G5 THE MAP DOES NOT MOVE, AND THAT IS THE POINT. `python3 -m pytest
-tests/orchestration/test_cluster_deletion_map.py tests/orchestration/test_import_reachability.py
--q` exit 0. Then, through the shipped reader `recorded_edges()`: the edge set still holds
-`('packages.orchestration.dogfood_run', 'apps/cli/commands/worker_facade_cmd.py')`, and the total
-is 19 edges over 10 modules — IDENTICAL to round 3's close. BASE reading: 19 and 10, with that
-edge present. This gate is deliberately an EQUALITY rather than a decrease: the discrimination is
-carried by G4's 3 → 2 occurrence count, which proves one of the three import sites really went
-while the edge legitimately survived on the other two. A round that reported a shrinking map here
-would have deleted something it was not asked to.
+G5 THE DECISION. Over `.agent/decisions.md`: 927408 bytes before, and after = the result of the
+C4 operation; the pre-blob a byte-exact PREFIX and DECISION5 a byte-exact SUFFIX; a negative
+control flipping one byte inside the appended paragraph REJECTED by both readers, in scratch or
+memory only; `^## DECISION F275 D` 1 → 2 and `^## DECISION F275 D2 ` exactly 1.
 
-G6 THE CARRY-OVER IS BEHAVIOUR-PRESERVING. Through the SHIPPED dispatch table, not by importing
-the module: build the parser with `apps.cli.grouped.build_parser()` and parse
-`["mission","report","11111111-2222-3333-4444-555555555555","--json"]`; then call BOTH
-`collect_all_handlers()["overnight.report"]` and `collect_all_handlers()["mission.report"]` on
-that namespace, capture each one's stdout, and compare the two JSON payloads. They must differ in
-`generated_at` ALONE — report the full differing-key list and the list with `generated_at`
-removed, which must be EMPTY. The reviewer measured 1225 characters from each and
-`['generated_at']` as the only difference. BASE reading at `280fd101`: the same parse raises
-`SystemExit` because the old entry's positional is `run_id` and `--markdown` is not a flag it
-declares, and the two handlers' payloads are not comparable at all — so this gate is UNMEETABLE
-at the base and fully discriminating.
+G6 THE RATCHET IS REAL, AND BOTH CONTROLS RUN IN A DISPOSABLE WORKTREE, NEVER THE PRIMARY
+CHECKOUT (guardrail G5). Green first, in the primary checkout: `python3 -m pytest
+tests/orchestration/test_cluster_deletion_order.py tests/orchestration/test_cluster_deletion_map.py
+tests/orchestration/test_import_reachability.py -q` exit 0 at 9 passed. Then in the worktree:
+  control 1 — SWAP the `packages.orchestration.overnight_readiness` line with the
+  `packages.orchestration.overnight_executor` line in the order file and re-run the order test
+  ALONE. It must FAIL, and its message must name
+  `overnight_executor imports ... overnight_readiness, but ... overnight_readiness is deleted first`.
+  control 2 — restore that swap, then DELETE the `packages.orchestration.context_pack` line and
+  re-run. It must FAIL naming `packages.orchestration.context_pack` as on disk but not in the order.
+Report all four exit codes, then remove the worktree BY ITS EXACT PATH and show `git worktree list`
+holding only the primary checkout. The reviewer measured all four at `a040b60c`: green, then
+2 failed / 1 passed on control 1 and 2 failed / 1 passed on control 2, with exactly those messages.
 
-G7 THE SUITES, each run ALONE and serially, in this order. Report the real exit code and passed
-count for each:
-  1. `python3 -m pytest tests/cli/test_worker_facade_cmd.py tests/cli/test_product_spine.py
-     tests/orchestration/test_cluster_deletion_map.py
-     tests/orchestration/test_import_reachability.py -q`
-     BASE 148, expected 146 — DISCRIMINATING DOWNWARD: edit (g) deletes exactly two tests, and
-     this is the reading that separates "the tests died with their handler" from "a test was left
-     behind" and from "something else was deleted too".
-  2. `python3 -m pytest tests/test_command_catalog.py tests/test_grouped_cli.py
-     tests/cli/test_mission_cmd.py -q`
-     BASE 645, expected 650 — DISCRIMINATING UPWARD: C4 adds exactly five tests, counted from the
-     class above and not asserted from memory.
-  3. `python3 -m pytest tests/orchestration/test_dogfood_run.py -q`
-     BASE 135, expected 135 — NO-REGRESSION, and it is the gate for constraint 5: the cluster
-     builder keeps every one of its module-level tests because only the CLI path to it went.
-  4. `python3 -m pytest tests/cli/test_golden_path.py -q`
+G7 THE SUITES, IN THE PRIMARY CHECKOUT and each run ALONE. `apps/ui/node_modules` is gitignored,
+so `test_test_runner.py`'s vitest node fails in any fresh worktree for the ENVIRONMENT rather than
+for the change — the reviewer hit exactly that at `a040b60c` and it is why this gate names the
+checkout. Report the real exit code and passed count for each:
+  1. `python3 -m pytest tests/orchestration/ -q`
+     BASE 12886 passed with 10 skipped, expected 12889 with 10 skipped — DISCRIMINATING UPWARD by
+     exactly the three tests C3 adds, counted from the test file and not asserted from memory.
+     The reviewer took that base reading in the PRIMARY CHECKOUT at `a040b60c`, where the vitest
+     node passes; the same command in a fresh worktree reports one failure and a count three
+     higher, which is the environment and the not-yet-committed test file, not the tree.
+  2. `python3 -m pytest tests/docs/ tests/test_test_categories.py -q`
+     BASE 315, expected 315 — NO-REGRESSION, and the gate for "a new test file trips no pin".
+  3. `python3 -m pytest tests/cli/test_golden_path.py -q`
      BASE 42, expected 42 — the canary, NO-REGRESSION.
 
-G8 THE TREE. All of: `.agent/STOP` does not exist; `git status --porcelain` is EMPTY; the branch
-is `feature/f275-one-world-completion-part-three`; `git worktree list` shows ONLY the primary
-checkout; and `git log --oneline` over this round's range shows C0a, C0b, C1, C2, C3, C4 in that
-order, each single-parent. C6's OWN numbers are ordered NOWHERE: under
-docs/agents/self_drive_protocol.md there is no second window, so a value routed to a "round
-report" is written to a channel that ends with the session (§3 item 31). The REVIEWER measures
-C6's commit and its numstat columns itself at the next gate and records them in that round's
-ledger entry. Do not guess them and do not leave a blank where they would go.
+G8 THE TREE AND THE UNTOUCHED FILES. All of: `.agent/STOP` does not exist; `git status
+--porcelain` is EMPTY; the branch is `feature/f275-one-world-completion-part-three`; `git worktree
+list` shows ONLY the primary checkout; `git diff --name-only a040b60c..HEAD` names NOTHING under
+`packages/`, `apps/` or `docs/`; and `tests/orchestration/cluster_deletion_map.txt`,
+`tests/orchestration/import_reachability_allowlist.txt` and
+`packages/orchestration/overnight_readiness.py` are each BYTE-IDENTICAL to their blobs at
+`a040b60c` — read them with `git show a040b60c:<path>` into memory or gitignored scratch, never by
+overwriting the tracked file (§3 item 29). Finally `git log --oneline` over this round's range
+shows C0a, C0b, C1, C2, C3, C4 in that order, each single-parent. C6's OWN numbers are ordered
+NOWHERE: under docs/agents/self_drive_protocol.md there is no second window, so a value routed to
+a "round report" ends with the session (§3 item 31). The REVIEWER measures C6's commit at the next
+gate and records it in that round's ledger entry. Do not guess them.
 
 ────────────────────────── C6 — THE HANDBACK ──────────────────────────
 
 Rewrite `.agent/handoff.md` per `docs/agents/handback_template.md`. NO length cap (amend0827 rule
 3); valid when its mandated sections are present. It MUST carry: the state block naming FEATURE
-F275, ROUND 4, SESSION 2, the branch, the base `280fd101` and every commit SHA; the changed-files
+F275, ROUND 5, SESSION 2, the branch, the base `a040b60c` and every commit SHA; the changed-files
 table with the REAL `git diff --numstat` columns per commit, taken from the tool and not
-re-derived (§3 item 28); ONE LINE PER GATE with its real exit code, plus the G3, G4, G5, G6 and
-G7 transcripts; the open-findings count (66 by distinct id after R-0840); the item-status table
-covering C0a, C0b, C1, C2, C3, C4, C5, C6 and G1 to G8 exactly once each; the deviations; the
-Fortschritt line below verbatim; ONE SENTENCE of context self-assessment per amend0905-throughput;
-and the next expected action — the route-policy knob check against F110's config keys updating
-R-0831, riding with `.agent/f275_deletion_order.md`, which operator RULE 2 requires written before
-the first `git rm`. Write NO verdict: the verdict is the reviewer's and is written after this
-commit.
+re-derived (§3 item 28); ONE LINE PER GATE with its real exit code, plus the G3, G4, G5, G6 and G7
+transcripts; the open-findings count (66 by distinct id, UNCHANGED — this round mints none and
+resolves none); the item-status table covering C0a, C0b, C1, C2, C3, C4, C5, C6 and G1 to G8
+exactly once each; the deviations; the Fortschritt line below verbatim; ONE SENTENCE of context
+self-assessment per amend0905-throughput; and the next expected action — the FIRST module group
+commit, `context_optimizer`, taking its module, handler, catalog entries, cockpit section, tests
+and map lines together. Write NO verdict: the verdict is the reviewer's.
 
-Fortschritt: ~28 % (T001: Claim ✅ · Record ✅ · D1 ✅ · Carry-over readiness ✅ · Carry-over
-report ✅ · Kante geschnitten ✅ · Löschreihenfolge offen · F260 D3 offen · Löschung offen ·
-T002 offen · T003 offen) — Schätzung
+Fortschritt: ~34 % (T001: Claim ✅ · Record ✅ · D1 ✅ · Carry-over readiness ✅ · Carry-over
+report ✅ · R-0831 geprüft ✅ · Löschreihenfolge ✅ · D2 ✅ · Löschung offen (15 Gruppen) ·
+F260 D3 offen · T002 offen · T003 offen) — Schätzung
