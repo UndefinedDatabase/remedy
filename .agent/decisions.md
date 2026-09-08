@@ -11260,3 +11260,87 @@ outright rather than trimming.
 REVERSE THIS DECISION by restoring `apps/cli/commands/feature_cmd.py`, its catalog group and two
 entries, its wiring, packaging, allowlist and boundary-doc rows, its two runtime test classes and its
 two map lines from git history at `fb0d56c4`.
+
+## DECISION F274 D7 — worker recommendation DIES with the cluster and nothing inherits it; the token mode MOVES because it never belonged to it; and the `token_policy_applied` vocabulary is ruled DOWN rather than by omission (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 13. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `64346333` BY READING WHAT PRODUCES EACH VALUE RATHER THAN WHAT IT IS NAMED.
+`packages.orchestration.worker_recommend` holds THREE surviving consumer edges — `agent_loop.py`,
+`autonomy_loop.py` and `dashboard.py`, all under `packages/orchestration/`. UNLIKE ROUNDS 9 THROUGH
+12, NONE IS A READ-ONLY VIEW: the two loops each fill four fields of the `token_policy_applied`
+run-log event from a `WorkerRecommendation` — `mode`, `estimated_context_tokens`,
+`remote_model_requires_approval` and `selected_worker` — `autonomy_loop` additionally fills
+`CycleDecision.token_mode` and `CycleDecision.selected_worker`, and `dashboard` fills its
+`token_policy` and `worker_recommendation` sections.
+
+THE EVENT DOES NOT DIE WITH THE CLUSTER, WHICH IS WHY THIS IS A RULING RATHER THAN A DELETION.
+`token_policy_applied` is a READINESS SIGNAL: `packages/orchestration/autonomy_readiness.py` reads
+it in `_has_token_policy_applied` at line 129, publishes it at line 248 and checks it at line 318,
+and `packages/orchestration/project_brain.py` reads it at line 661. Both emitters survive, and
+`scripts/remedy_smoke.sh` and `tests/storage/test_persistence.py` pin it. Deleting the producer of
+its fields without ruling what the event carries afterwards would leave a vocabulary in
+`packages/orchestration/event_schemas.py` describing fields nothing writes — the R-0832 shape,
+arriving through a schema instead of through a brain node.
+
+THE FOUR FIELDS HAVE THREE DIFFERENT FATES, measured rather than assumed. `token_mode` is computed
+inside `recommend_worker` from `len(job.tasks)` and `job.state` alone and reaches no cluster module.
+`estimated_context_tokens` is `build_context_pack(...).estimated_tokens`, and
+`packages.orchestration.context_pack` IS on the cluster list. `selected_worker` and
+`remote_model_requires_approval` come from scoring `worker_adapters.list_worker_specs()`, and
+`packages.orchestration.worker_adapters` is NOT on that list and survives.
+
+CHOSEN.
+
+1. NOTHING INHERITS WORKER RECOMMENDATION, as DECISION F274 D6 ruled for the `feature` group. F110's
+   model routing was the candidate checked first and is NOT the inheritor:
+   `packages/orchestration/model_routing.py` routes a TASK CLASS to a model TIER, a different
+   question from which worker provider executes a job, and the module that does answer that
+   question, `packages.orchestration.worker_registry`, is itself on the cluster list.
+   `selected_worker` and `remote_model_requires_approval` are therefore DELETED rather than
+   re-sourced: re-deriving them from `worker_adapters` under another name would be
+   `recommend_worker` living on without its file, and AGENTS.md Scope Control rules that replacing
+   is deleting — no attic, no alias, no compatibility reader.
+
+2. `estimated_context_tokens` is DELETED. Its only producer is a cluster module, and substituting a
+   surviving estimator would put a number into a run-log event that no longer measures the thing the
+   field is named for. A fabricated measurement is worse than an absent one.
+
+3. `token_mode` SURVIVES AND MOVES, and this is a MOVE rather than an inheritance.
+   `derive_token_mode(job) -> str` lands in `packages/orchestration/token_policy.py` with the same
+   three branches, in the same order, that `recommend_worker` computes today. A token mode is token
+   policy; both surviving emitters already import that module; it is not on the cluster list. The
+   derivation never belonged to worker recommendation and only lived there.
+
+4. THE EVENT VOCABULARY IS RULED EXPLICITLY. `token_policy_applied` KEEPS `mode`,
+   `max_context_tokens` and `local_first` and LOSES `estimated_context_tokens`,
+   `remote_model_requires_approval` and `selected_worker`. `packages/orchestration/event_schemas.py`
+   changes in the SAME COMMIT as the last emitter that writes a removed key, so no tree exists in
+   which the registry and the emitters disagree. The event KIND is unchanged, so
+   `apps/ui/src/api/humanizeCatalog.ts` and `apps/ui/src/api/actionClass.ts` are untouched and
+   `tests/ui_contracts/test_humanize_catalog.py` cannot go red — the R-0823 lesson about a deletion
+   orphaning a catalog entry, applied ahead of the cut rather than after it.
+
+5. The dashboard's `worker_recommendation` section is DELETED with the two pins holding it: the
+   assertion in `tests/ui_server/test_dashboard_contract.py` and the key in the dashboard tuple of
+   `scripts/remedy_smoke.sh`. That tuple keeps a key rather than shrinking, checking `token_policy`
+   instead, so the section that survives is the one still covered.
+
+6. SEQUENCING, BY EDGE. Round 13 lands items 3 and 5 and cuts the `dashboard.py` edge, the one of
+   the three emitting no run-log event; the round after it cuts the two loop edges and lands item 4.
+   The unit of the split is the EDGE, which is what DECISION F274 D2 rules the deletion by, and each
+   round leaves a tree that is green and self-consistent rather than half-migrated.
+
+ALTERNATIVES CONSIDERED. (a) KEEP ALL SIX KEYS and re-source three from `worker_adapters` plus a
+surviving estimator such as `packages/orchestration/context_inspector.py` — rejected under items 1
+and 2: it rebuilds `recommend_worker` under a new name and keeps a number whose referent is gone.
+(b) DELETE `token_policy_applied` ENTIRELY — rejected: it is a readiness signal with two surviving
+emitters and four surviving readers, so it is not cluster-bound at all. (c) MOVE `worker_recommend`
+OFF the cluster list — rejected: `docs/roadmap/features/T2_F260.md`'s Design section fixes that
+list, and this feature executes it rather than re-planning it.
+
+HOW TO REVERSE. Delete this paragraph and restore, from git history at `64346333`,
+`packages/orchestration/worker_recommend.py`'s three consumer edges, the `worker_recommendation`
+dashboard section with its two pins, and the three removed keys of `token_policy_applied` in
+`packages/orchestration/event_schemas.py`.
