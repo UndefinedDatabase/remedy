@@ -12,12 +12,13 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 10, a DELETION ROUND under operator amendment amend0906-triage-throughput and the second
-half of the cockpit cut round 9 began: delete the six remaining read-only cockpit sections of
-`packages/orchestration/ui_server.py` whose subject modules KEEP an edge afterwards, with their six
-deletion-map lines and the test edits those cuts force. DECISION F274 D5 rules the cut and records
-why `worker_registry` is not among them. Book round 9's PASS verdict. No cluster module is deleted
-this round and no module reaches zero edges, so D4's carry-over hazard cannot arise here.
+Round 11, a DELETION ROUND under operator amendment amend0906-triage-throughput and the first that
+deletes COMMANDS rather than read-only views: delete the `feature` command group entirely — the
+handler file `apps/cli/commands/feature_cmd.py`, its two catalog entries and their group, its
+package wiring, its packaging and allowlist memberships, its boundary-doc row, its two runtime test
+classes and its two deletion-map lines. `feature_planner` and `progress_ledger` both reach ZERO
+recorded edges. DECISION F274 D6 rules the deletion before a line is cut. Book round 10's PASS
+verdict. No cluster module is deleted this round.
 
 ## Next Steps
 
@@ -30,11 +31,11 @@ this round and no module reaches zero edges, so D4's carry-over hazard cannot ar
 2. The two carry-overs F260's Design names, each freeing a cockpit section held back so far:
    overnight readiness to `mission readiness`, and the route-policy knobs checked against F110's
    config keys. `mission report` waits for the commit that deletes its current holder, per
-   DECISION F274 D2.
-3. `worker_registry`'s remaining edge, which is NOT a cockpit deletion: it is carried by
-   `_build_token_economy_section` as well, and that view's subject module survives the cluster.
-4. The `worker_facade_cmd.py` edges, which carry the `mission report` name collision, and the two
-   `feature_cmd.py` edges, which are live CLI commands.
+   DECISION F274 D2, and that holder is in `worker_facade_cmd.py`.
+3. `orchestrator_brain.py`'s four edges, which the reviewer measured as live signal reads in
+   `_scrub`, `_review_state`, `_gather_signals` and `consult_local_advisor_for_decision` — a
+   surviving module reading cluster modules, so a behaviour change rather than a deletion.
+4. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
 5. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it.
 6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
 7. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
