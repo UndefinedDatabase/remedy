@@ -1,213 +1,283 @@
-# Handback — F274 SESSION 5 END — rounds 9, 10, 11 and 12 delegated, all four PASS
+# Handback — F274 ROUND 13 — DECISION F274 D7 ruled, the first `worker_recommend` edge cut
 
-This file supersedes the round 12 handback as the session-end state. It is written by a delegated
-worker on the reviewer's authored text, because the reviewer never edits a work-tree file. It carries
-the ROUND 12 VERDICT and one owed prose slip, both persisted here under operator amendment
-amend0827-process-diet rule 1 and both booked into `.agent/live_review.md` in the FIRST COMMIT of the
-next round that is happening anyway.
+This file supersedes the session-5-end handback. It is written by a delegated worker on the
+reviewer's authored block, because the reviewer never edits a work-tree file. Round 13 rules
+DECISION F274 D7 before a line moves, then cuts the one of `worker_recommend`'s three edges that
+emits no run-log event. The two loop edges did NOT move and
+`packages/orchestration/event_schemas.py` is untouched — that is the next round, per D7 item 6.
 
 ## Session
 
-SESSION 5 of feature F274 · rounds delegated this session 4 · verdicts PASS, PASS, PASS, PASS ·
-feature rounds so far 12 of the soft limit of 25, sessions 5 of 7.
+SESSION 6 of feature F274 · round 13 · feature rounds so far 13 of the soft limit of 25,
+sessions 6 of 7.
 
-The session opened with `.agent/STOP` ABSENT, no open pull request, `.agent/candidates.md` EMPTY and
-round 8 already gated, so Phase 1 fell through rules 1 to 4 to rule 5: continue the claimed feature.
+`.agent/STOP` was ABSENT at the round's start, ABSENT after C5, and ABSENT after C6.
 
-CONTEXT SELF-ASSESSMENT (amend0905-throughput, one sentence): context was NOT the binding constraint
-and is not exhausted — what binds is the reviewer's own numeral error rate, which did not fall across
-the session and produced a wrong figure even in the round that booked the recurrence about wrong
-figures.
+CONTEXT SELF-ASSESSMENT (amend0905-throughput, one sentence): worker context is comfortable and
+was never the binding constraint this round — every slice verified on first read and every gate
+ran once, so nothing here argues for ending the session.
 
-## WHY THIS SESSION ENDS AT FOUR ROUNDS RATHER THAN THE TARGET OF SIX TO EIGHT
+## Range
 
-Four is the FLOOR, not below it, and both of the honest early-end reasons amend0905-throughput names
-apply.
+Review of `64346333`..`04ff73a7` (C6, the commit writing this file, follows and is not gated here).
 
-FIRST, ROUND 13 EXPLICITLY NEEDS A FRESH SESSION. Every remaining edge is LIVE RUNTIME CODE rather
-than a read-only view, and the next one is the largest design question left in the feature. It is
-measured below so the next session starts by authoring rather than investigating.
+## Commits
 
-SECOND, THE REVIEWER'S OWN AUTHORING ERRORS DID NOT FALL. Round 11's block shipped FOUR wrong derived
-numerals; round 12's block, whose whole job included booking the recurrence for exactly that class,
-shipped a fifth. Every one was caught — by the worker, or by the reviewer before emission — and
-nothing wrong reached disk except one non-load-bearing sentence, so no round failed and the product
-state is correct. But the rate is the signal amend0905 names, and the next round is the one where a
-wrong numeral would be most expensive: it changes behaviour rather than deleting a view, so no
-mechanical deletion-round gate would catch it.
+Seven commits, every one single-parent, in the ordered sequence C0a, C0b, C1, C2, C3, C4, C5.
 
-## Branch and range
+### a0506de9 C0a: save the round 13 step block verbatim as the authored original
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/authored/f274-r13.md | +490 / -0 | `shutil.copyfile` of the reviewer's scratch original, byte for byte |
 
-`feature/f274-one-world-completion-part-two`, cut from `main` at
-`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, with `main` merged back in at `f85200e4`. This session ran
-`a903a44cdc73bd9588f65a2a3534fc9c4a6e4b1a`..`379d73f290a3a33ceb3b84fd717ef3ae544d424d`, 32 commits
-over four rounds, 26 files, 2227 insertions and 1221 deletions. The branch is PUSHED and in sync with
-its remote. NO PULL REQUEST EXISTS and none was created.
+### bf0158ed C0b: mirror the round 13 block into the last-block state file
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/last_block.md | +429 / -229 | same bytes mirrored; verbatim rewrite of ONE `.agent/**` state file, DECISION F104 D1 exempt, and under 500 regardless |
 
-## What landed this session
+### b5e933c1 C1: point the plan at round 13, the first worker recommendation edge
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +17 / -19 | replaced entirely by the PLAN13 slice; plan current before every later commit |
 
-Every round was a DELETION ROUND under amend0906-triage-throughput except round 12, which was a
-repair round. Every gate of every round was RE-RUN BY THE REVIEWER ITSELF against the committed blobs.
+### ede3c2c6 C2: book round 12 PASS verdict into the finding ledger
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/live_review.md | +2 / -0 | RECORD13 appended; books round 12's PASS, registers and resolves nothing |
 
-| Round | Range | What it did | Verdict |
-|---|---|---|---|
-| 9 | `a903a44c`..`3bcaa45c` | six cockpit sections, six map edges, six tests | PASS |
-| 10 | `3bcaa45c`..`fb0d56c4` | six more cockpit sections, six map edges, four tests | PASS |
-| 11 | `fb0d56c4`..`5c7b856b` | the whole `feature` command group, two map edges | PASS |
-| 12 | `5c7b856b`..`379d73f2` | three stale prose mentions; R-0835 registered and resolved | PASS |
+### 68cbb909 C3: append the round 12 prose slip on the miscounted word total
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/prose_slips.md | +2 / -0 | SLIPS13 appended, one dated line |
 
-THE FEATURE'S POSITION. The deletion map went from 37 edges to 23, and the cluster modules with NO
-recorded edge went from four to TWELVE — half the twenty-four-module cluster is now deletable.
-`packages/orchestration/ui_server.py` holds exactly THREE cluster edges, every one deliberately held
-with its reason on the record, so THE COCKPIT IS NO LONGER WHAT BLOCKS THE DELETION. That is the
-session's real result: the read-only-view class of work is finished.
+### 67068126 C4: rule DECISION F274 D7 on worker recommendation and the token mode
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +84 / -0 | DECIDE13 appended; the ruling C5 executes, so it precedes C5 |
 
-Four DECISIONs were ruled before their cuts: F274 D4 (six sections, and why two are held), D5 (six
-more, and why `worker_registry` is not a cockpit deletion at all), D6 (the `feature` group dies and
-nothing inherits it). D4's hold rule is the one a later session must not lose: a module that owes a
-carry-over keeps its edge, so the map never reads "deletable" for something that is not.
+### 04ff73a7 C5: move the token mode into token policy and cut the dashboard worker recommendation edge
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/dashboard.py | +4 / -10 | P1-P4: import swap, `recommend_worker` call replaced by `derive_token_mode`, `worker_recommendation` section and its `Worker:` summary line deleted |
+| packages/orchestration/token_policy.py | +17 / -1 | P5, P6 and the TOKENMODE append: `derive_token_mode` lands with its `Public API::` entry and the `RunState` import |
+| tests/test_token_policy.py | +22 / -1 | P7, P8 and the TESTS13 append: `TestDeriveTokenMode`, four tests |
+| tests/ui_server/test_dashboard_contract.py | +0 / -1 | P9: the `worker_recommendation` pin deleted |
+| scripts/remedy_smoke.sh | +1 / -1 | P10: the dashboard key tuple checks `token_policy` instead, keeping a key rather than shrinking |
+| tests/orchestration/cluster_deletion_map.txt | +0 / -1 | P11: the retired edge line removed in the SAME commit as the edge, per constraint 4 |
 
-## ROUND 12 VERDICT — PASS
-
-Issued by the reviewer after re-running EVERY gate itself against the COMMITTED blobs. This is the
-text the next round books into `.agent/live_review.md` as `Gate: F274 R12`.
-
-Range `5c7b856b2f3bb35e623e1d1cebd6fc9bf7fbf527`..`379d73f290a3a33ceb3b84fd717ef3ae544d424d`, eight
-commits, every one single-parent, in the ordered sequence C0a, C0b, C1, C2, C3, C4, C5, C6, with the
-path set over the range to C5 naming exactly the seven declared paths. G1 TRANSPORT covers the emitted
-bytes: the reviewer's scratch original `.remedy-wt/f274-r12-FINAL.md`, hashed BEFORE delegation, is
-BYTE-IDENTICAL to both committed copies, all three 28151 bytes at
-`217599381b0074252e4081fa3fa049c4ebf044e59342bc6206f6451cba48a47e`. G2 THE REGISTRATION APPEND at
-`14158d03`: 579917 to 588670 bytes, prefix exact, post equal to pre plus the 8753-byte RECORD12 slice,
-N counted as 3, units 229 to 232, ordered equality true, the control at byte offset 579918 rejected by
-both readers; registrations 68 to 69, OPEN SET 63 TO 64 BY DISTINCT ID, `^Gate: ` 42 to 43,
-`^- R-0835 — ` 0 to 1, `^Landed: ` unchanged at 37. G3: `.agent/plan.md` byte-equal to its slice at 46
-lines; `.agent/prose_slips.md` 162264 to 162746 with the appended line once. G4 THE FIX at `f3d6ac65`:
-each of the three pairs reads FROM 0 and TO 1 in its own file, both files keep their line counts at 85
-and 73 because every pair is one line in and one line out, the bare word `feature` totals ZERO across
-the two touched files, and the test file still parses and still holds exactly one class,
-`TestProgressChecklistRuntime`, unrenamed. G5 THE SUITES, each command run ALONE as the block ordered:
-`tests/docs/` 303 passed, `test_development_artifact_boundary.py` 18 passed,
-`test_progress_feature_runtime.py` 5 passed, and THE FULL SUITE IN THE REVIEWER'S OWN RUN IN THE
-PRIMARY CHECKOUT at 19765 passed, 23 skipped, 0 failed — IDENTICAL to the base, which is the property
-this round owed, since it changed one docstring and two markdown lines; `ruff` EXIT 0 on the touched
-file and the frozen ceiling of DECISION F083 D5 unchanged at 26. G6 THE RESOLUTION APPEND at
-`35b39b28`, which runs AFTER the fix so the paragraph it lands is true when it lands: 588670 to 589620
-bytes against the 950-byte slice, N counted as 1, units 232 to 233, control at 588671 rejected by both
-readers, resolutions 5 to 6, `^Done: R-0835 — ` 0 to 1, and THE OPEN SET BACK TO 63 BY DISTINCT ID —
-the round opened and closed at 63, having registered and resolved exactly one finding. G7 THE TREE AND
-THE SCOPE GUARD: porcelain empty, `git ls-files .remedy-wt` empty, worktrees 14 throughout, per-commit
-insertions 290, 190, 8, 6, 2, 3 and 2 for C0a through C5, and the scope guard holds —
-`tests/orchestration/cluster_deletion_map.txt` is BYTE-IDENTICAL at the base and at C5, both
-`cfdbbe8ecdf2727a526cf49083265201d4f1ab43aabad85fe2204c29cf980702`, and NO file under
-`packages/orchestration/` changed in the range at all.
-
-TWO DEVIATIONS WERE DECLARED AND THE REVIEWER SUSTAINS BOTH. THE FIRST IS THE REVIEWER'S OWN DEFECT:
-gate G4(c) stated that the bare word `feature` occurred THREE times across the two touched files at
-the base, and the reviewer re-measured it as TWO by substring and by word-boundary regex, per file and
-in total. The block conflated three SITES with a word count — the P1 site is a stale plural sentence
-that contains no occurrence of the word, exactly as the block's own registration paragraph describes
-it. The gate's ORDERED PROPERTY was a post-fix total of ZERO, and that passed exactly, so the gate
-measured what it existed to measure. The same wrong figure landed inside RESOLVE12, which constraints
-1 and 6 required applied verbatim; it is NOT load-bearing there either — the resolution's claim is
-that the fix worked, and the zero proves it — so under AGENTS.md's `prose_slips.md` rules it earns a
-dated line and NOT a correction round. THE SECOND DEVIATION IS PROCEDURAL AND CORRECTLY REASONED: the
-worker ran G5 against the tree at C5 rather than at C4, because checking C4 out would detach or dirty
-the primary checkout while constraint 8 forbids running the full suite in a worktree, and it showed
-that `git diff --name-only f3d6ac65..35b39b28` returns exactly one path, `.agent/live_review.md`,
-which no command in G5 reads. The reviewer confirmed that diff independently. NO FINDING IS REGISTERED
-BY THIS GATE AND NO NEW ID IS MINTED.
-
-## Reviewer prose slip owed to `.agent/prose_slips.md`
-
-One dated line, to be appended by round 13 in the commit that is happening anyway.
-
-2026-09-08 · F274 R12 · The round 12 block's gate G4(c) and the RESOLVE12 slice both stated that the
-bare word `feature` occurred three times across the two touched files at the base when it occurred
-twice; the reviewer had counted the three SITES it was repairing, one of which is a plural sentence
-containing no occurrence of the word, and the worker re-measured it four ways and declared the gap
-while the gate's ordered property — zero after the fix — passed exactly.
-
-## Open findings
-
-63 BY DISTINCT ID at `379d73f290a3a33ceb3b84fd717ef3ae544d424d`: 69 distinct registrations against 6
-distinct resolutions, verified mechanically by the reviewer at every gate this session. The session
-opened at 63, registered R-0835 and resolved it in the same round, and booked two RECURRENCES under
-the already-open R-0819 without spending an id. The next free id is R-0836. The open High findings are
-R-0803, R-0804, R-0806 and R-0807, and all four are F273's rather than this feature's, per DECISION
-F272 D12.
-
-## NEXT — round 13, measured, with a recommendation
-
-FIRST ACTION NEXT SESSION is Phase 1 rule 1 of `docs/agents/self_drive_protocol.md`: read
-`.agent/STOP` from disk. It is ABSENT as this file is written. Then rule 2 finds no open pull request,
-rule 3 finds `.agent/candidates.md` empty, and work resumes on this branch at
-`379d73f290a3a33ceb3b84fd717ef3ae544d424d`.
-
-THE 23 REMAINING EDGES, BY CONSUMER, measured at that commit: `orchestrator_brain.py` 4,
-`worker_facade_cmd.py` 4, `ui_server.py` 3, `token_economy.py` 2, `self_dogfood.py` 2,
-`self_dogfood_execution.py` 2, and one each in `dashboard.py`, `agent_loop.py`, `autonomy_loop.py`,
-`provider_patch_material.py`, `real_test_execution.py` and `repair_request_builder.py`. EVERY ONE IS
-LIVE CODE. The read-only cockpit class is exhausted, so no further round of this feature is the shape
-rounds 9 and 10 were, and the deletion-round machinery will not carry the next one.
-
-ROUND 13 IS `worker_recommend`, AND IT NEEDS A DECISION BEFORE A LINE MOVES. Its three edges are
-`packages/orchestration/agent_loop.py`, `packages/orchestration/autonomy_loop.py` and
-`packages/orchestration/dashboard.py`. Measured at the commit above, this is what they carry, and the
-last item is why the round is not a simple deletion:
-
-- `agent_loop.py` line 513 imports `recommend_worker` and uses its result to fill four fields of the
-  `token_policy_applied` run-log event: `mode`, `estimated_context_tokens`,
-  `remote_model_requires_approval` and `selected_worker`.
-- `autonomy_loop.py` imports it twice, at lines 60 and 124, once per cycle for the decision and once
-  in `_emit_token_policy_applied`. `CycleDecision.selected_worker` is a dataclass field at line 33,
-  set at line 93 and surfaced at line 255.
-- `dashboard.py` line 29 imports it and builds a `worker_recommendation` section at line 111, read
-  back at line 197.
-- THE RULED EVENT VOCABULARY IS PART OF THE QUESTION. `packages/orchestration/event_schemas.py` names
-  `token_mode` and `selected_worker` at line 41 and `local_first`, `remote_model_requires_approval`
-  and `selected_worker` at lines 54 and 55. Deleting the producer of those fields without ruling what
-  the event carries afterwards would leave a ruled vocabulary describing fields nothing writes.
-
-AUTHOR THE DECISION FIRST, as D3, D4, D5 and D6 all were. It must name what inherits worker
-recommendation — F110's model routing in `packages/orchestration/model_routing.py` and
-`role_config.py` is the candidate the reviewer would check first — and it must rule the event
-vocabulary explicitly rather than by omission.
-
-AFTER ROUND 13, in order: the two carry-overs F260's Design names, which free the two `ui_server.py`
-sections D4 holds; `orchestrator_brain.py`'s four live signal reads in `_scrub`, `_review_state`,
-`_gather_signals` and `consult_local_advisor_for_decision`; the four `worker_facade_cmd.py` edges,
-which carry the `mission report` name collision DECISION F274 D2 rules; `worker_registry`'s remaining
-pair, whose `ui_server.py` half needs `_build_token_economy_section` to stop reading a cluster module;
-DECISION F260 D3, which R-0832's fix clause binds; then the deletion itself in a session that can
-finish it; and last T001 and T002.
-
-THE BINDING LESSON FOR THE NEXT BLOCK, and it is the R-0819 recurrence this session booked twice: read
-every numeral a block states out of the SAME applied dry run whose result the block's prose describes,
-by re-measuring the tree after that application rather than from the script that produced it, and
-measure a numeral for one command by running THAT COMMAND ALONE. Where the two cannot be reconciled
-before emission, order the WORKER to report the number it measured and state none.
+### The C6 commit writing this file
+Self-reference exception (R-0149 pattern): a handoff cannot table the commit that writes it.
+`.agent/handoff.md` is rewritten whole, then pushed.
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| Phase 0 state probe | done | tree clean, no PR, no STOP, candidates empty |
-| Phase 1 decision | done | rule 5 — continue the claimed feature F274 |
-| F274 R9 authored, dry-run, delegated, gated | done | PASS; every gate re-run by the reviewer |
-| F274 R10 authored, dry-run, delegated, gated | done | PASS; every gate re-run by the reviewer |
-| F274 R11 authored, dry-run, delegated, gated | done | PASS; every gate re-run by the reviewer |
-| F274 R12 authored, dry-run, delegated, gated | done | PASS; every gate re-run by the reviewer |
-| R8 verdict booked | done | `Gate: F274 R8` at `2aa946f0` |
-| R9 verdict booked | done | `Gate: F274 R9` at `2ab5bb20` |
-| R10 verdict booked | done | `Gate: F274 R10` at `87e5249d` |
-| R11 verdict booked | done | `Gate: F274 R11` at `14158d03` |
-| R12 verdict booked | not done — carried | this file is the durable carrier; booked by round 13's first commit per amend0827 rule 1 |
-| R-0819 recurrences | done | two, at `2aa946f0` and `14158d03`; neither spends an id |
-| R-0835 registered and resolved | done | `14158d03` and `35b39b28`; open set 63 to 64 to 63 |
-| DECISION F274 D4, D5, D6 | done | `0f01d8ef`, `de3cbcb8`, `5c6a234b`, each before its cut |
-| Round 12's prose slip | not done — owed | one line, given above; appended by round 13 |
-| Round 13 | not done — measured, not authored | three edges, their four event fields and the ruled vocabulary tabulated above |
-| DECISION for round 13 | not done | to be authored before the cut, as D3 through D6 all were |
-| Pull request | not done | none exists; the branch is pushed and reviewable |
-| Session round target of six to eight | NOT MET — 4 rounds, the floor | both honest reasons stated above under amend0905-throughput |
+| C0a | done | |
+| C0b | done | |
+| C1 | done | |
+| C2 | done | |
+| C3 | done | |
+| C4 | done | |
+| C5 | done | one commit, as constraint 4 requires |
+| C6 | done | this file, then the push |
+
+## External actions
+
+| Command | Outcome |
+|---|---|
+| `git worktree add --detach .remedy-wt/r13wt 04ff73a7` | created, count 14 -> 15 |
+| `git worktree remove --force .remedy-wt/r13wt` + `git worktree prune` | removed by EXACT path, count back to 14 |
+| `git push -u origin feature/f274-one-world-completion-part-two` | see Next |
+
+No PR was created, edited or merged. No `gh` command was run.
+
+## Verification — one line per gate, real command, real exit code, real numbers
+
+G1 TRANSPORT — PASS. `git show <c>:<path>` into sha256 for both committed copies:
+`.agent/authored/f274-r13.md` at a0506de9 and `.agent/last_block.md` at bf0158ed are each 34537
+bytes at `cc5af71b9c5ca531b5c84d3238259240dd62cb2ba05c5d173e52711566a4487a`, equal to each other and
+equal to the digest the delegation message states; the reviewer's scratch original
+`.remedy-wt/f274-r13-FINAL.md` hashed to the same 34537 bytes and the same digest as the worker's
+FIRST action, before any file was touched. Per §3 item 37 this covers those artefacts, not the bytes
+emitted into a prompt.
+
+G2 THE RECORD APPEND at ede3c2c6 — PASS, all four parts, re-derived from the committed blobs.
+(a) BYTES 589620 -> 594390, pre-image a byte-exact PREFIX = True, post == pre + the 4770-byte
+RECORD13 slice = True. (b) STRUCTURE: N counted from the slice = 1, units 233 -> 234, the last N
+units equal the slice's units IN ORDER = True, everything before them unchanged = True. (c) NEGATIVE
+CONTROL: the byte at zero-indexed offset 589621 read `G` as the block states; flipped to `X`, the
+BYTE reader accepted = False and the STRUCTURAL reader accepted = False, so both readers reject it.
+(d) COUNTS registrations 69 -> 69, resolutions 6 -> 6 BY DISTINCT ID, OPEN SET 63 -> 63 BY DISTINCT
+ID, `^Gate: ` 43 -> 44, `^Gate: F274 R12 ` 0 -> 1. This round registered and resolved nothing.
+
+G3 THE DECISION APPEND at 67068126 — PASS, all four parts, re-derived from the committed blobs.
+(a) BYTES 905078 -> 911446, prefix exact = True, post == pre + the 6368-byte DECIDE13 slice = True.
+(b) STRUCTURE: N counted from the slice = 14, units 1986 -> 2000, last N units ordered-equal = True,
+everything before unchanged = True. (c) NEGATIVE CONTROL: the byte at zero-indexed offset 905079
+read `#` as the block states; flipped, byte reader accepted = False, structural reader accepted =
+False. (d) `^## DECISION F274 D7` 0 -> 1.
+
+G4 THE PROSE STATE FILES — PASS. `.agent/plan.md` at b5e933c1 is 2691 bytes, BYTE-EQUAL to the
+PLAN13 slice = True at `955118d161f90d65f027ecb5986d13b5c064d1321afa0da1c24d6102f7e8ab6c`, is 44
+lines against the cap of 50, and carries both `## Goal` and `## Next Steps`. `.agent/prose_slips.md`
+at 68cbb909 goes 162746 -> 163225 with the pre-image a byte-exact prefix = True, post == pre + slice
+= True, and the appended line occurring exactly 1 time.
+
+G5 THE CUT at 04ff73a7 — PASS, all five parts, measured against the committed blobs.
+(a) THE PAIRS: the containment test was RUN on every pair, not eyeballed, and each pair's own
+reading matches the block exactly — `TO contains FROM: true` for P5 and P8 only, `false` for P1, P2,
+P3, P4, P6, P7, P9, P10, P11. Each FROM block occurred EXACTLY ONCE at the pre-image. For the nine
+REWRITEs the post-image reads FROM = 0 and TO = 1 in its own file, every one. For the APPEND-shaped
+P5 and P8 the §4.9 obligation was applied instead: FROM = 1 in the post-image, and the single
+TO-only line of each — `    derive_token_mode(job) -> str` for P5 and `    derive_token_mode,` for
+P8 — is among the lines C5's diff ADDS.
+(b) THE ZERO-GATE, scoped to exactly three files: `worker_recommend` in
+`packages/orchestration/dashboard.py` 3 -> 0; `worker_recommendation` in that file 2 -> 0, in
+`scripts/remedy_smoke.sh` 1 -> 0, in `tests/ui_server/test_dashboard_contract.py` 1 -> 0. Every base
+figure the block states was re-measured at `64346333` and reproduced exactly.
+(c) THE MAP: `tests/orchestration/cluster_deletion_map.txt` 38 -> 37 lines, edges (neither blank nor
+comment) 23 -> 22, `worker_recommend` edges 3 -> 2, and the post-image sha256 is
+`abacf799bc8716ffbfe54a15ff8d1236e13e3dae44f7f322e962a675acb60c00` — IDENTICAL to the digest the
+block predicted.
+(d) THE MOVE LANDED WHOLE, read by AST rather than by grep: `derive_token_mode` is defined exactly
+1 time in `packages/orchestration/token_policy.py`, is named inside that module docstring's
+`Public API::` block, and the module's `from packages.core.models import ...` names `RunState`.
+Every touched `.py` file parses under `ast.parse` at the committed blob.
+(e) NOTHING ELSE MOVED: `git diff --name-only 64346333..04ff73a7` names 12 paths and the sorted set
+equals the constraint-3 set exactly. `event_schemas.py`, `agent_loop.py`, `autonomy_loop.py` and
+`worker_recommend.py`, all under `packages/orchestration/`, are each BYTE-IDENTICAL at the base and
+at C5.
+
+G6 THE SUITES at 04ff73a7, each command RUN ALONE in the PRIMARY CHECKOUT per constraint 8 —
+PASS on every ordered property, with ONE numeral deviation at (b), declared below.
+(a) `python3 -B -m pytest tests/test_token_policy.py -q` EXIT 0, 28 passed.
+(b) `python3 -B -m pytest tests/ui_server/test_dashboard_contract.py -q` EXIT 0, 74 passed, 0
+    skipped. The block states 73 passed and 1 skipped — see Deviations.
+(c) `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py -q` EXIT 0, 3 passed.
+(d) `python3 -B -m pytest tests/test_remedy_smoke_script.py -q` EXIT 0, 191 passed.
+(e) `python3 -B -m pytest tests/storage/test_persistence.py -q` EXIT 0, 26 passed — the
+    `token_policy_applied` pin this round deliberately leaves alone.
+(f) THE CANARY `python3 -B -m pytest tests/cli/test_golden_path.py -q` EXIT 0, 42 passed.
+(g) `python3 -m ruff check` over the four touched `.py` paths EXIT 0, `All checks passed!`; and
+    `python3 -m ruff check .` EXIT 1 REPORTING `Found 26 errors.` — the frozen ceiling of DECISION
+    F083 D5 unchanged at 26, which is the gate PASSING, the ceiling being 26 and not 0.
+
+G7 THE RED PROOFS, in the disposable worktree `.remedy-wt/r13wt` at 04ff73a7 per constraint 5, each
+with its UNMUTATED control FIRST in that same worktree, `__pycache__` purged before every run and
+pytest invoked with `-B` — PASS, both.
+(a) THE MAP RATCHET REALLY BITES. The exact mutation bytes occur 0 times in the map at C5, as the
+    block states. CONTROL `python3 -B -m pytest tests/orchestration/test_cluster_deletion_map.py -q`
+    EXIT 0, 3 passed. MUTATED, the single line
+    `packages.orchestration.worker_recommend <- packages/orchestration/dashboard.py` re-inserted:
+    EXIT 1, `1 failed, 2 passed`, the failure being
+    `test_the_recorded_map_equals_the_measured_import_graph` and the message reading
+    `DISAPPEARED (1) — an edge was cut but its line was left behind` followed by that exact edge.
+    RESTORED: EXIT 0, 3 passed, restored digest
+    `abacf799bc8716ffbfe54a15ff8d1236e13e3dae44f7f322e962a675acb60c00`, equal to the C5 blob.
+    EXIT CODES control 0, mutated 1, restored 0.
+(b) THE NEW GUARD DISCRIMINATES. The exact two-line sequence occurs 1 time in
+    `packages/orchestration/token_policy.py` at C5, as the block states. CONTROL
+    `python3 -B -m pytest tests/test_token_policy.py -q` EXIT 0, 28 passed. MUTATED, the two lines
+    `    if task_count <= 2:` and `        return "compact"` deleted: EXIT 1, `1 failed, 27 passed`,
+    and the ONLY failing node id is
+    `tests/test_token_policy.py::TestDeriveTokenMode::test_one_or_two_tasks_is_compact`, asserting
+    `'standard' == 'compact'`. It DISCRIMINATES: the other 27 stayed green, so the guard is not a
+    blanket. RESTORED: EXIT 0, 28 passed, restored sha256
+    `1002cf4fd0b08c2c43a58eef2cfb145e52109f51cde3a27272cfca742274978d`, byte-equal to the C5
+    committed blob.
+    SHADOW PROBE, run before either mutation because
+    `/home/decodeux/.local/lib/python3.10/site-packages/_editable_impl_remedy.pth` puts the PRIMARY
+    checkout on `sys.path` unconditionally: inside the worktree,
+    `python3 -B -c "import packages.orchestration.token_policy as m; print(m.__file__)"` resolved to
+    `.remedy-wt/r13wt/packages/orchestration/token_policy.py`, so the mutation reached the test and
+    the editable install did not shadow the worktree under this invocation form.
+
+G8 THE TREE at 04ff73a7 — PASS. `git status --porcelain` EMPTY; `git ls-files .remedy-wt` EMPTY;
+`git worktree list` 14 before the first add and 14 after the last prune, having gone to 15 in
+between. Every commit C0a through C5 is SINGLE-PARENT. INSERTIONS per commit: C0a 490, C0b 429,
+C1 17, C2 2, C3 2, C4 84, C5 44 — every one under the DECISION F104 D1 cap of 500, and C5's applied
+change measured +44 / -15 over six files, IDENTICAL to the reviewer's stated measurement. C6's own
+insertion count is deliberately not reported, per constraint 7. `.agent/STOP` readings: ABSENT at the
+round's start, ABSENT at the C5 boundary, ABSENT after C6.
+
+## Authored-text proofs
+
+All seven slices were extracted between their `BEGIN <NAME> sha256=<hex> bytes=<n>` and
+`END <NAME>` marker lines and verified against their OWN marker BEFORE application. Every one
+matched on both byte count and digest, first read, no repair:
+
+| Slice | bytes | sha256 verified |
+|---|---|---|
+| PLAN13 | 2691 | OK |
+| RECORD13 | 4770 | OK |
+| SLIPS13 | 479 | OK |
+| DECIDE13 | 6368 | OK |
+| PAIRS13 | 2441 | OK |
+| TOKENMODE | 550 | OK |
+| TESTS13 | 807 | OK |
+
+Marker lines reached no file. `.agent/plan.md` is byte-equal to PLAN13; `.agent/live_review.md`,
+`.agent/prose_slips.md`, `.agent/decisions.md`, `packages/orchestration/token_policy.py` and
+`tests/test_token_policy.py` each satisfy `post == pre + slice` exactly, so no separator of the
+worker's own was added and each slice's own leading newlines are what landed. Both appends of C5
+landed two blank lines below the last definition of their file, as PEP 8 asks and as the byte
+equality proves.
+
+## Deviations & assumptions
+
+The block's ordered commit sequence C0a, C0b, C1, C2, C3, C4, C5, C6 was followed EXACTLY: no extra
+commit, none dropped, none reordered. The change set was respected; no path outside it was written.
+
+1. G6(b) NUMERAL DEVIATION, DECLARED NOT ADJUSTED. The block states
+   `tests/ui_server/test_dashboard_contract.py` EXIT 0, 73 passed and 1 skipped. The primary
+   checkout measured EXIT 0, **74 passed, 0 skipped**. Nothing was changed to make a number come
+   out; the cause was measured. `pytest --collect-only -q` reports 74 tests collected in both
+   readings, so no test appeared or vanished. The single conditional skip is
+   `TestDashboard::test_typescript_compiles`, which at line 468 calls `pytest.skip` if and only if
+   `apps/ui/node_modules/.bin/tsc` is not a file. In the primary checkout that path exists (a
+   symlink to `../typescript/bin/tsc`), so the test RUNS and PASSES instead of skipping. The
+   block's own note says every G6 figure was measured on the applied tree at the base commit, and
+   the reviewer's disposable worktree has no `apps/ui/node_modules` because it is gitignored —
+   which is precisely the condition constraint 8 anticipates when it orders G6 into the PRIMARY
+   CHECKOUT. So the block's figure is the WORKTREE reading and 74/0 is the reading constraint 8
+   asks for. The gate's ordered property, EXIT 0 over the whole file, holds; no assertion was
+   weakened and no test was skipped or deselected.
+2. G2(d) READING NOTE on "resolutions 6 -> 6". The literal LINE count of `^Done: R-\d{4} — ` in
+   `.agent/live_review.md` is 8 -> 8, not 6 -> 6; the count of DISTINCT resolved IDs is 6 -> 6 and
+   matches the block exactly. Both were measured and both are reported. The distinct reading is the
+   one the block's numeral names and the one the OPEN SET formula must use, so this is a reading
+   note rather than a defect — the gate passes on the distinct-id reading and the open set is
+   63 -> 63 by distinct id either way.
+3. G8 STOP TIMING. The block orders `.agent/STOP` read "at the round's start, before C5 and after
+   C6". It was read at the round's start (ABSENT) and again IMMEDIATELY AFTER the C5 commit
+   (ABSENT) rather than in the instant between C4 and C5, plus after C6 (ABSENT). Declaring the
+   real timing rather than claiming the ordered one.
+4. SHELL GUARD, re-expressed in Python as the delegation message instructs. The guard rejected
+   `echo "... EXIT=$?"` and `${PIPESTATUS[0]}` by FORM, and rejected one heredoc containing a brace
+   with a quote character. Every gate that needed an exit code was therefore run through small
+   Python runners written under the gitignored `.remedy-wt/`
+   (`run_gates.py`, `g4.py`, `g5.py`, `g7.py`, `g8.py`, `apply_pairs13.py`), each using
+   `subprocess.run` and printing the REAL `returncode`. No exit code in this handback was inferred.
+5. NO DOUBT ABOUT ANY SLICE. Every slice applied exactly as the block describes, on first read,
+   including the two the block flagged for a second reading: P6's TO does not contain its FROM
+   because the FROM ends in a newline the TO lacks, and the containment test confirmed `false` for
+   it mechanically. Nothing was silently repaired because nothing needed repairing.
+6. SCRATCH HYGIENE. `.remedy-wt/` stayed untracked throughout — `git ls-files .remedy-wt` is empty
+   at C5 — and the disposable worktree was removed by EXACT path, never by glob.
+
+## Open findings
+
+63, BY DISTINCT ID, as G2(d) MEASURED at the committed blob. The round opened and closed at 63,
+registering and resolving nothing, per constraint 6. The next free id remains R-0836. The open High
+findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this feature's, per
+DECISION F272 D12.
+
+## Next
+
+The reviewer re-runs this round's gates against `64346333`..`04ff73a7` and issues the round 13
+verdict. On PASS, the next round cuts the two remaining `worker_recommend` edges in
+`packages/orchestration/agent_loop.py` and `packages/orchestration/autonomy_loop.py` and lands
+DECISION F274 D7 item 4 — `estimated_context_tokens`, `remote_model_requires_approval` and
+`selected_worker` leaving `packages/orchestration/event_schemas.py` in the SAME commit as the last
+emitter that writes them, with `CycleDecision.selected_worker` going with them.
