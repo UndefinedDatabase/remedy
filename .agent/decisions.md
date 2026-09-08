@@ -11191,3 +11191,72 @@ D4, `worker_registry` by this decision. The cockpit is no longer what blocks the
 REVERSE THIS DECISION by restoring the six section builders and their six dashboard dict lines from
 git history at `3bcaa45c85c779dece35a02d369cc333416a0963`, restoring the four cockpit presence tests and the three redaction
 surfaces, and restoring the six map lines in the same commit.
+
+## DECISION F274 D6 — the `feature` command group is DELETED with its module edges, and nothing inherits it (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 11. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `fb0d56c4`. `apps/cli/commands/feature_cmd.py` is the last consumer of TWO
+prototype-cluster modules, `packages.orchestration.feature_planner` and
+`packages.orchestration.progress_ledger`, and it is WHOLLY cluster-bound: an `ast` walk shows all
+three of its top-level definitions — `_build_ledger_and_plan`, `_cmd_feature_plan` and
+`_cmd_feature_accept` — import one or both. There is no surviving half to keep, so the file dies
+rather than being trimmed. DECISION F272 D14 part 1 already rules that the cluster-bound consumers
+are never migrated, and DECISION F272 D13 that a command's ADVERTISEMENTS die in the same commit as
+the command.
+
+CHOSEN. The whole `feature` group goes in one commit: the handler file, the catalog `GroupDef`
+`"feature"` and both `CommandEntry` blocks (`feature.plan` and `feature.accept`), the import and the
+registration-tuple entry in `apps/cli/commands/__init__.py`, the `apps.cli.commands.feature_cmd`
+memberships in `pyproject.toml` and
+`tests/orchestration/import_reachability_allowlist.txt`, the row and the sentence naming it in
+`docs/system/development-artifact-boundary-v0.md`, its entry in
+`tests/orchestration/test_development_artifact_boundary.py`, the two runtime test classes
+`TestFeaturePlanRuntime` and `TestFeatureAcceptRuntime`, and the two deletion-map lines. NOTHING
+INHERITS THE IDEA. `remedy feature plan` printed deterministic feature suggestions and
+`remedy feature accept` turned one into a ProposedTask; both read `.agent/live_review.md` for
+developer convenience, both are classified as DEVELOPMENT rather than product commands by
+`docs/system/development-artifact-boundary-v0.md`, and the roadmap they served is now kept in
+`docs/roadmap/STATUS.md` and driven by the planner/reviewer loop rather than by a CLI suggestion
+engine. AGENTS.md's Scope Control requires this to be said out loud rather than left implicit.
+
+WHAT IS DELIBERATELY NOT DONE, so a later reader does not read it as an omission. The modules
+`feature_planner.py` and `progress_ledger.py` SURVIVE this round with their own tests
+(`test_feature_planner.py` and the progress-ledger suites) and die with the cluster, which is the
+same separation every round of this feature has kept: an edge cut is not a module deletion.
+`tests/cli/test_progress_feature_runtime.py` keeps its name although it now covers only
+`TestProgressChecklistRuntime`, because renaming it would break `git log --follow` on a file this
+round already touches and buys nothing that the surviving class name does not already say; F261 owns
+renames.
+
+THIS ROUND IS NOT A PURE DELETION AND SAYS SO. amend0906-triage-throughput rule 1 permits "the
+test/import edits those deletions force", and two lines are EDITED rather than removed: the
+registration tuple in `apps/cli/commands/__init__.py`, where `feature_cmd` is one token in a long
+line, and the sentence in the boundary doc that named two commands and now names one. The commit is
++2 insertions against -217 deletions. Rounds 9 and 10 happened to reach +0; this one cannot, and the
+difference is declared rather than discovered at review.
+
+EVIDENCE THIS RESTS ON, all of it measured by the reviewer in a disposable worktree with the cut
+applied and COMMITTED, before this decision was written. THE COMMIT MATTERS TO THE MEASUREMENT: two
+tests enumerate paths from git rather than from disk —
+`tests/cli/test_advertised_commands.py::test_every_advertised_command_exists_in_the_catalog` and
+`tests/orchestration/test_evidence_index.py::TestPorcelainParsing::test_every_enumerated_path_exists_in_this_repo`
+— so both are RED while the deletion sits unstaged or staged-but-uncommitted, and both are GREEN once
+it is committed. That is an artefact of measuring mid-flight, not a property of the change, and it is
+recorded here because the next reader to delete a tracked file will see the same two reds. The
+collected-test set goes from 19804 to 19788 and the reviewer diffed the node-id SETS rather than the
+counts: exactly 16 ids disappear and NONE appears — the eight tests of the two deleted runtime
+classes, and eight `[feature]` parametrizations in `tests/test_grouped_cli.py`, which parametrize over
+catalog GROUPS and lose the group this round deletes. The full suite is 19765 passed, 23 skipped, 0
+failed. `ruff check .` is 26 errors before and after, so DECISION F083 D5's frozen ceiling is
+untouched, and `tests/docs/` is green at 306 passed.
+
+CONSEQUENCE. The map goes from 25 edges to 23, and the cluster modules with NO recorded edge go from
+ten to TWELVE — `feature_planner` and `progress_ledger` join the set — which is half the
+twenty-four-module cluster. `apps/cli/commands/feature_cmd.py` is the first FILE this feature deletes
+outright rather than trimming.
+
+REVERSE THIS DECISION by restoring `apps/cli/commands/feature_cmd.py`, its catalog group and two
+entries, its wiring, packaging, allowlist and boundary-doc rows, its two runtime test classes and its
+two map lines from git history at `fb0d56c4`.
