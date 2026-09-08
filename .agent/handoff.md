@@ -253,3 +253,66 @@ paths — G5 measured that, not asserted it — so the wiring round has no code 
 The branch is pushed. NO PULL REQUEST EXISTS, which is correct: under
 `docs/roadmap/STATUS_closure_protocol.md` the pull request is created by the closure sequence, not
 by an ordinary round.
+
+## Reviewer verdict on round 2 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 2: **PASS.** Written by the planner/reviewer of session 1 AFTER reading the
+committed range `b382ab02`..`2a2f2b5b` and RE-RUNNING the round's verification independently;
+the worker's report was not taken as evidence for any line below. This paragraph exists because
+under `docs/agents/self_drive_protocol.md` there is no second window: a verdict that stays in the
+session is lost, so it is carried here and is booked into `.agent/live_review.md` by the FIRST
+commit of the next round that happens anyway, per operator amendment amend0827-process-diet rule
+1. It is NOT a `Done:` paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED, all of it against the committed blobs. The change set is EXACTLY
+the eight paths the block named, by `git diff --name-status`. G1: the scratch original, the
+committed `.agent/authored/f275-r2.md` and the committed `.agent/last_block.md` are all 25131
+bytes at `dd9532377da9b2e4…`. G2: `.agent/plan.md` byte-equal to PLAN2 at 2368 bytes and 41
+lines. G3: `.agent/live_review.md` 510121 to 515349 and `.agent/prose_slips.md` 166737 to 168030,
+each the slice's bytes plus one newline, each pre-blob an exact PREFIX and each slice an exact
+SUFFIX; units 214 to 215 and 229 to 233; `^Gate: ` 24 with `^Gate: F275 R1 ` at 1; and the OPEN
+SET UNCHANGED AT 65 BY DISTINCT ID, 68 distinct registrations against 3 distinct resolutions.
+G4: ALL TWENTY-NINE carried definitions are BYTE-IDENTICAL to their spans in
+`packages/orchestration/overnight_readiness.py` at the branch point, the round-1 blob is an exact
+PREFIX of the round-2 blob, the module parses, and all five deliberately excluded names are
+absent from the module and present in the source — checked in both directions. G6: the new test
+file collects and passes 20, holds no `class TestPlan`, no `build_overnight_plan` and no
+`export_plan_json`, and imports `mission_readiness` rather than the original; its twelve
+`overnight_readiness` occurrences are all `OV.build_overnight_readiness(...)`, which is the
+CARRIED FUNCTION keeping the name DECISION F275 D1 ruled it keeps, not a reference to the old
+module. G7: the ratchets and the original module's own test run 28 passed together, and the
+canary 42, both exit 0. `python3 -m ruff check` exits 0 over both touched files.
+`packages/orchestration/overnight_readiness.py`, `tests/orchestration/cluster_deletion_map.txt`
+and `tests/orchestration/import_reachability_allowlist.txt` are byte-identical to the branch
+point: this round cut no edge and shrank no allowlist.
+
+WHY G8's RED DOES NOT MAKE THIS ROUND A FAIL. G8's only failing clause is that `.agent/STOP`
+exists and therefore `git status --porcelain` is not empty. The reviewer confirmed the sentinel
+independently: 0 bytes, UNTRACKED, created 10:10 while the round's gates were running, and no
+tracked file in this repository writes that path — the single occurrence outside `.data/` is a
+read-only assertion in `tests/test_agent_tooling.py`. It is an EXTERNAL SIGNAL that arrived
+during the round, not a product of the round's change set, and every other G8 clause passes:
+the branch is correct, one worktree, and the dotted-import search returns exactly one file,
+`tests/orchestration/test_mission_readiness.py`, with NOTHING under `packages/` or `apps/`, so
+production is still unwired exactly as DECISION F275 D1 requires at this stage. Grading the
+round down for a sentinel the operator placed would be grading the worker for the operator's
+action; the worker did precisely what guardrail G6 orders — finished the one owed commit, left
+the sentinel untouched and unremoved, and stopped.
+
+THE THREE DEVIATIONS ARE ACCEPTED AND NONE IS A FINDING. (1) The dangling `# Plan (1256)` banner
+dropped with `class TestPlan` — correct; the banner titled only the class that went. (2) The
+module docstring still reading "STAGED BATCH 1 OF 2", now stale: the worker was RIGHT not to
+repair it, because constraint 3 required the round-1 bytes to remain an exact prefix, and the
+reviewer would rather carry one stale sentence for a round than lose that proof. THE WIRING
+ROUND OWES THAT EDIT, and this sentence is the pointer. (3) The docstring's "655 lines" checked
+rather than assumed and found exact. None of the three put anything wrong on disk beyond the one
+stale sentence just named, so under amend0827 rule 2 none earns an id; the stale docstring is
+owed as work, not as a finding, because it is this feature's own half-finished sentence and the
+next round rewrites that file anyway.
+
+THE SESSION ENDS HERE UNDER GUARDRAIL G6, not at a round limit and not on exhausted context.
+Two rounds were delegated, reviewed and PASSED against a session target of six to eight; the
+reason for the shortfall is the STOP sentinel and nothing else, which
+`docs/agents/self_drive_protocol.md` names as a valid and complete reason to end. The reviewer
+removed nothing: clearing `.agent/STOP` is the operator's decision, and the next session opens
+at Phase 1 rule 1 to make it.
