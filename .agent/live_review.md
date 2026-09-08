@@ -1,23 +1,20 @@
-# Live Review — F274 One world completion, part two
+# Live Review — F275 One world completion, part three
 
-> Round-by-round review record, re-headed at the F274 claim per
-> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F272, which is
-> accepted: its STATUS line went `[x]` at `65c5ccd65c4d801b22ead89d3fb138eb54153828` and its
-> pull request 244 merged at `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`. Only the heading,
-> this paragraph and the `## Steps` section below are rewritten. Every finding record below
-> `## Findings` is carried forward BYTE-IDENTICAL — the block that ordered this re-head gates
-> that region's sha256 equal before and after the edit, as its gate G2 — and finding ids
-> continue the monotonic R-XXXX series across the re-head. Measured by the reviewer at
-> `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, the branch point: 62 DISTINCT ids matching
-> `^- R-\d{4} — ` against 2 DISTINCT ids matching `^Done: R-\d{4} — `, so 60 findings are open
-> BY DISTINCT ID. THOSE THREE NUMERALS ARE THE BRANCH POINT'S AND ARE LEFT AS MEASURED; the
-> merge of `origin/main` at `d0d8b24d` moved two of them. Operator amendment
-> amend0907-cluster-first resolved R-0827 and registered R-0829, so at that commit the record
-> held 63 DISTINCT registered ids against 3 DISTINCT resolved ids — the open set is 60 either
-> way, which is why only the components moved. THE NEXT ID THIS FEATURE MINTS IS R-0830, NOT
-> the R-0829 this paragraph promised before the merge: that id is taken. See DECISION
-> amend0907-cluster-first D2 in `.agent/decisions.md`.
-> F272's LAST round has an entry here, which is the exception rather than the rule: under
+> Round-by-round review record, re-headed at the F275 claim per
+> docs/agents/planner_reviewer_prompt.md §1. The heading this replaces named F274, which is
+> accepted: its STATUS line went `[x]` at `c6003e5d2638efd783f45cb83f1108f906e5ef3b` and its
+> pull request 246 merged at `a5bf894946ab6de053a4232109d6341a63533768`, at this session's
+> Open PR Gate. Only the heading, this paragraph and the `## Steps` section below are
+> rewritten. Every finding record below `## Findings` is carried forward BYTE-IDENTICAL — the
+> block that ordered this re-head gates that region's sha256 equal before and after the edit,
+> as its gate G3 — and finding ids continue the monotonic R-XXXX series across the re-head.
+> Measured by the reviewer at `a5bf894946ab6de053a4232109d6341a63533768`, the branch point: 68
+> DISTINCT ids matching `^- R-\d{4} — ` against 3 DISTINCT ids matching `^Done: R-\d{4} — `, so
+> 65 findings are open BY DISTINCT ID. The subtraction is over DISTINCT resolved IDS and not
+> over `Done:` LINES, of which the record carries five: two ids are resolved by two paragraphs
+> each, and counting lines would report the open set two too low. THE NEXT ID THIS FEATURE
+> MINTS IS R-0840.
+> F274's LAST round has an entry here, which is the exception rather than the rule: under
 > docs/agents/self_drive_protocol.md there is no second window, so the reviewer books a
 > branch-terminating verdict into the FIRST commit of the next feature's first round rather
 > than losing it with the session. Records belonging to features already marked `[x]` in
@@ -28,19 +25,28 @@
 
 ## Steps
 
-THE SLICE ORDER BELOW IS THE ONE DECISION amend0907-cluster-first D1 RULED ON 2026-09-07,
-reversing the order F260's Orchestrator brief inherited: the deletion runs FIRST, because it
-was last in three consecutive features and each closed by split-and-close before reaching it.
-R1 claim F274 in the roadmap ledger, cut the branch, re-point `.agent/plan.md` and
-`.agent/context.md`, re-head this record and book F272's round 31 verdict into it → R2 the D11c
-import-reachability test and its allowlist, DECISION F274 D1 ruling that test's shape and T003's
-split boundary, and R-0830 → the two carry-overs F260's Design names, done before the first
-`git rm` → DECISION F260 D3, the deletion paragraph, drafted → the prototype cluster deletion
-itself, one commit per module group, which is NEVER SPLIT ACROSS SESSIONS → T001, the `Job.id`
-flip measured with a recording property, its cap route ruled, and the persisted-key question the
-round 1 probe exposed → T002, the classic runner, `job.run --cycles`, `job.run-next`, their
-handlers and tests, and the resolver collapse DECISION F260 D5 places in the same commit range →
-the integration gate → the closure sequence.
+THE SLICE ORDER BELOW IS THE ONE DECISION amend0907-cluster-first D1 RULED ON 2026-09-07 and
+DECISION F274 D8 CARRIED INTO THIS FEATURE: the deletion runs FIRST, because it was last in
+three consecutive features and each of them closed by split-and-close before reaching it.
+R1 claim F275 in the roadmap ledger, cut the branch, re-point `.agent/plan.md` and
+`.agent/context.md`, re-head this record, book F274's round 23 verdict into it, rule DECISION
+F275 D1 and land the first staged batch of the carried readiness module UNWIRED → the second
+staged batch and the module's own test → the wiring round, which cuts the one surviving
+`packages/orchestration/ui_server.py` edge and removes its line from the deletion map in the
+same commit → DECISION F260 D3, the deletion paragraph, drafted → the prototype cluster
+deletion itself, one commit per module group, which is NEVER SPLIT ACROSS SESSIONS → T002, the
+`Job.id` flip measured with a recording property and its cap route ruled → T003, the classic
+runner, `job.run --cycles`, `job.run-next`, their handlers and tests, and the resolver collapse
+DECISION F260 D5 places in the same commit range → the integration gate → the closure sequence.
+
+The two carry-overs F260's Design orders before the first `git rm` are NOT both owed as work.
+The SECOND — every user-settable route-policy knob checked against F110's config keys — was
+performed at F274 round 3 and registered as R-0831, which is OPEN and stays open until the
+deletion round deletes those knobs with their modules and DECISION F260 D3 names route policy
+among the ideas deleted rather than inherited. The reviewer re-measured it at
+`a5bf894946ab6de053a4232109d6341a63533768` and confirms it unchanged: not one of the eight
+knob names occurs in `packages/orchestration/role_config.py` or
+`packages/orchestration/model_routing.py`. No second id is minted for it, per §3 item 30.
 
 ## Findings
 
@@ -552,3 +558,5 @@ Gate: F274 R22 — the F274 round 22 entry, CLOSURE ROUND A. VERDICT PASS, AND E
 Done: R-0837 — RESOLVED in F274 rounds 20 and 21, and confirmed by the closure package round 22 built. The finding's resolution condition had TWO clauses and both are now met, which is stated here because the second clause is the only reason this finding was not closed a round early. CLAUSE ONE, the guard with a regression test that goes red without it, at BOTH sites: `packages/orchestration/job_evidence.py` at `cacd42af`, where the attestation authority set gained the conjunct `and f.current_sha256`, and `scripts/build_review_zip.py` at `45c17555`, where `_assert_authority_equality`'s independent recomputation gained the same conjunct. Each shipped its own regression test and each was proved by MUTATION IN A DISPOSABLE WORKTREE, RE-RUN BY THE REVIEWER ITSELF: for the producer the control exited 0 and the mutant exited 1 with `ValueError: T002: safe-diff path set does not match the task partition`; for the coordinator the control exited 0 at 2 passed and the mutant exited 1 at EXACTLY 1 failed and 1 passed, the failing test being the regression and the PASSING one the discriminator that proves the mutation repaired a guard rather than deleted a check. CLAUSE TWO, that ONE CLOSURE PACKAGE BUILDS READY_FOR_REVIEW FROM A BRANCH THAT DELETES A SOURCE FILE: round 22 built it. This branch deletes `apps/cli/commands/feature_cmd.py`, and the package `remedy-review-20260908-083448-READY_FOR_REVIEW.zip` covers head `5d329d20` with `PACKAGE_STATUS=READY_FOR_REVIEW`, `REVIEW_SUBJECT_ALIGNMENT=PASS` and `EVIDENCE_AUTHORITATIVE=true`. WHY THAT SECOND CLAUSE EARNED ITS KEEP, recorded because the lesson is the point: after round 20 the producer succeeded and the reviewer called the closure unblocked, and the zip still refused the branch — the closure is a TWO-STEP algorithm and only step 1 had been run. A resolution condition written as an OBSERVABLE END STATE rather than as a list of edits is what caught that, and it cost one round instead of a failed close. What this finding does NOT claim is that a deleted path is fully attested everywhere in the package: it is attested by `review_subject.json`'s `base_sha256` and counted by the packaging summary, while the content proof carries no tombstone at all — that residue is R-0839 below, registered rather than folded in here, because it is a different defect with a different fix.
 
 - R-0839 — Medium, THE CLOSURE BUNDLE'S CONTENT PROOF CARRIES NO TOMBSTONE FOR A DELETED PATH, SO THE ONE DOCUMENT THE PACKAGER CALLS THE AUTHORITY SOURCE CANNOT TELL 'DELETED' FROM 'NEVER IN SCOPE', AND THREE DOCUMENTS IN ONE PACKAGE DISAGREE ABOUT WHETHER A TOMBSTONE EXISTS. Offered unprompted by the WORKER of round 22 as an observation it was not asked for, and MEASURED INDEPENDENTLY BY THE REVIEWER against the round 22 bundle itself rather than taken from that report. §3 item 30 was performed FIRST: the open set was searched for `tombstone`, `current_change_content_proof` and `content proof`, and no open registration holds this defect, so the id is not a duplicate. MEASURED, in the bundle for job `a19161d4ff0df836` at head `5d329d20`, whose branch deletes `apps/cli/commands/feature_cmd.py`: `current_change_content_proof.json` reports `file_count` 60, `tombstone_count` 0 and an EMPTY `tombstones` map, and the deleted path is absent from its `file_hashes`; `review_subject.json` DOES carry that path, with `base_sha256` set and `current_sha256` null; and the packaging summary reports `tombstone_count` 1, computed downstream from the review subject. THE MECHANISM: `create_manual_completion_bundle` writes `"tombstones": {}` and `"tombstone_count": 0` as LITERAL CONSTANTS, so no run of the producer can ever emit a tombstone, although `ContentProofV1.authority_paths()` is the union of files AND tombstones and `ReviewFileV1.base_sha256` exists precisely to hold one. WHY THIS MATTERS RATHER THAN BEING TIDINESS: `tests/orchestration/test_review_subject_deletions.py`'s own module docstring names this exact failure — "No entry is indistinguishable from never looked, and a removed file is emphatically part of a change" — and the tombstone machinery was built in answer to it, so the producer is defeating a guarantee the repository already implemented and tests. WHY MEDIUM AND NOT HIGH: the deletion is not lost, because `review_subject.json` carries it and the packaging summary counts it, so no package is wrong about WHAT changed and none of this blocked the F274 close; and why not Low, because F275 is a deletion feature by construction and every package it produces will under-attest its central act. WHY IT IS NOT FOLDED INTO R-0837: that finding is that a deletion feature cannot be packaged AT ALL, and it is resolved; this one is that a deletion feature packages successfully while under-attesting, and its fix is to emit the tombstones the schema already accepts rather than to guard a comprehension. Resolved when the producer emits a tombstone for every deleted attestable path, with a test asserting that the content proof's tombstone set equals the deleted set and that `ContentProofV1.authority_paths()` therefore covers the deleted path.
+
+Gate: F274 R23 — the F274 round 23 entry. VERDICT PASS, and it is booked here by F275's round 1 rather than by a round of its own, under operator amendment amend0827-process-diet rule 1: round 23 was the LAST round of its branch, so docs/agents/planner_reviewer_prompt.md §4 item 13 gives it no gate entry on its own branch by construction, and the carrier was the round 23 handback committed at `c6003e5d2638efd783f45cb83f1108f906e5ef3b` and pushed. WHAT THIS ENTRY MEASURES, AND WHY IT MEASURES ANYTHING AT ALL. Round 23's own text routed gates G4 through G8 to "the completion message", because Rule A4 makes the closure commit the last commit on the branch and a handback cannot transcribe a gate over the commit that writes it. Under docs/agents/self_drive_protocol.md there is no second window, so that channel ended with the session and those five readings are NOT recoverable; §3 item 31's last clause rules that the reviewer measures such numbers at the NEXT gate and records them in that round's ledger entry, which is this paragraph. G1 through G3 were transcribed in full in the round 23 handback and are not re-derived here. THE RE-MEASUREMENT, taken by the reviewer of F275 round 1 at `a5bf894946ab6de053a4232109d6341a63533768`, the merge commit of pull request 246, over the merged tree rather than over any report: `docs/roadmap/STATUS.md` carries exactly ONE line matching `^- \[x\] F274 — ` and 76 lines matching `^- \[x\] F\d{3} — `; `README.md` states "76 of 275 registered items accepted." and its tier-2 row reads `| 2 | Minimal Self-Build Runtime | 19 | 28 |`, so the counter and the tier Done column both agree with the ledger rather than merely with each other; and `SU-013` in `scripts/self_use_queue.json` carries `consumed_by` exactly `F274`. Those are the four edits round 23's C3 claimed, and all four are on disk as claimed. The docs gate that C3's own STATUS and README edits must satisfy was re-run by this reviewer at the same commit: `python3 -m pytest tests/docs/ -q` exits 0 at 303 passed, and a red control in a disposable worktree — flipping the F275 line to `[x]` — takes it to exit 1 with 2 failed, so the gate is demonstrably able to fail and its pass is evidence. THE OPEN SET IS UNCHANGED at 65 by DISTINCT id, 68 distinct registrations against 3 distinct resolutions, and four of the 65 are High — R-0803, R-0804, R-0806 and R-0807 — every one of them F273's rather than F274's, per DECISION F272 D12, which is why F274's close is PASS_WITH_RISKS and not PASS. THE PULL REQUEST: 246 was open, non-draft, from `feature/f274-one-world-completion-part-two` into `main` and MERGEABLE, its CI run 34197259162 completed with conclusion `success` on the branch tip, and this session merged it at the Open PR Gate with `gh pr merge 246 --merge --delete-branch`, which is the first action Phase 1 rule 2 of docs/agents/self_drive_protocol.md orders and the action round 23's own handback named as owed. NOT CLAIMED BY THIS ENTRY: the byte-level forensics of C3 itself. This reviewer did not witness round 23's C3 numstat columns, its per-slice application proofs or its `git worktree list` reading, and reconstructing them from the merged tree would be a claim about a measurement nobody took — the honesty shape §4.9's digest fallback requires. What is claimed is exactly what was re-measured above.
