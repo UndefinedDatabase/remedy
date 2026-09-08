@@ -456,3 +456,73 @@ then rule 2 on open PRs (there are none for this branch).
 Fortschritt: ~20 % (T001: Claim ✅ · Record ✅ · D1 ✅ · Carry-over Batch 1 ✅ · Batch 2 ✅ ·
 Testdatei ✅ · Verdrahtung ✅ · Kante geschnitten ✅ · mission report offen · F260 D3 offen ·
 Löschung offen · T002 offen · T003 offen) — Schätzung
+
+## Reviewer verdict on round 3 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 3: **PASS.** Written by the planner/reviewer of session 2 AFTER reading the
+committed range `3068e9c1`..`8325f20c` and RE-RUNNING the round's verification independently;
+the worker's report was not taken as evidence for any line below. This paragraph exists because
+under `docs/agents/self_drive_protocol.md` there is no second window: a verdict that stays in
+the session is lost, so it is carried here and is booked into `.agent/live_review.md` by the
+FIRST commit of the next round that happens anyway, per operator amendment
+amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED, all of it against the committed blobs. The change set is EXACTLY
+the twelve paths the block named, by `git diff --name-status`, in the ordered commits C0a, C0b,
+C1, C2, C3, C4, C6 with no C5 commit — C5 writes no file by the bundle's own text. G1: the
+scratch original `.remedy-wt/f275-r3-FINAL.md`, the committed `.agent/authored/f275-r3.md` and
+the committed `.agent/last_block.md` are all 34166 bytes at
+`7e7d8cdc7fdfea446b5a1e01c03ab8fe07ab172bc82205cb27c0aca779d31d3b`. Per §3 item 37 that proves
+the chain this workflow can walk — saved copy, mirror, working copy — and NOT the bytes the
+reviewer emitted; no larger claim is made. G2: `.agent/plan.md` byte-identical to PLAN3 at 2425
+bytes and 43 lines. G3: `.agent/live_review.md` 515349 to 519228, the pre-blob an exact PREFIX,
+RECORD3 plus one newline an exact SUFFIX, the new unit blank-line separated, units 215 to 216,
+`^Gate: ` 24 to 25, `^Gate: F275 R2 ` 0 to 1, and THE OPEN SET UNCHANGED AT 65 BY DISTINCT ID —
+68 distinct registrations against 3 distinct resolutions, the subtraction taken over DISTINCT
+ids and never over the 5 `Done:` LINES. G4: C3's real `git diff --numstat` columns are
+12, 33, 6, 2, 0, 1 — the predicted six — `ruff` exits 0 over all five touched python files, and
+`packages/orchestration/mission_readiness.py` is proved changed in its DOCSTRING ALONE by the
+strongest available reading: every byte after the closing triple quote is IDENTICAL to the base
+blob at `3068e9c1`. G6: `mission.readiness` is registered, `apps.cli.grouped.build_parser()`
+parses the command path, and the two handlers' JSON payloads are 1097 characters each and differ
+in `generated_at` ALONE — the differing-key list with that key removed is EMPTY. G7: 48 · 645 ·
+506 · 42, four suites each run alone, and the discriminating one moved 639 to 645 exactly as
+predicted, which is the six new tests being real and collected rather than asserted. G8: the
+dotted path `packages.orchestration.overnight_readiness` occurs ZERO times in
+`packages/orchestration/ui_server.py` and ZERO times in
+`tests/orchestration/cluster_deletion_map.txt`, the map holds 19 recorded edges across 10
+modules, and `packages/orchestration/overnight_readiness.py` is BYTE-IDENTICAL to its base blob.
+The tree is clean, `.agent/STOP` does not exist, one worktree, branch correct, branch pushed.
+
+WHAT THIS ROUND ACTUALLY ACHIEVED, stated as the measurement rather than as the intention.
+`packages.orchestration.overnight_readiness` now has ZERO surviving consumer edges. It was one
+of eleven cluster modules still blocking the deletion and is now the first to be fully unblocked
+by a carry-over rather than by a plain import cut, which is what operator ruling
+amend0908-f275-finish orders done BEFORE the first `git rm`. The module is DELETABLE and is NOT
+DELETED, which is correct: RULE 1 makes one module group the atomic unit, and this round is not
+that group's commit.
+
+THE FOUR DEVIATIONS ARE ACCEPTED AND NONE IS A FINDING. (1) Edit (a)'s FIND text ended at the
+prefix `    # ── doctor` while the real line continues with its banner tail. The worker measured
+both readings — 1 as an unterminated prefix, 0 as a whole line — used the only one that
+resolves, and the committed diff shows the banner intact and the entry correctly placed. That is
+a reviewer anchor written short, and the worker read it the one way that could work. (2) G3(a)'s
+FORMULA WAS THE REVIEWER'S ERROR AND THE WORKER IS RIGHT. The gate's arithmetic
+`515349 + len(RECORD3) + 1` omits the LEADING newline that C2's own ordered operation requires,
+so it predicts 519227 where the correct result is 519228. The reviewer re-measured: gain 3879 =
+1 + 3877 + 1, the pre-blob is an exact prefix and the slice an exact suffix, and every other G3
+clause landed on its predicted value. The worker followed the OPERATION rather than the formula
+and declared the conflict instead of silently choosing — which is exactly what constraint 1
+asks for. Nothing wrong reached disk, so under amend0827 rule 2 this earns no id; it is a
+reviewer-prose defect and is recorded as a dated line in `.agent/prose_slips.md` by the next
+round. (3) "Twenty-nine definitions" needs module-level bindings counted, not only `def` and
+`class`: the reviewer confirms 25 `def`/`class` plus 4 module-level assignments equals 29, the
+same 29 round 2 carried, and the docstring-only proof above is stronger than the count either
+way. (4) The worker's own two gate readers were defective on first pass and were corrected
+before reporting — a newline-sensitive comparison and a definition counter. Both were reader
+bugs; no disk state changed and no production file was edited to satisfy either. Declaring them
+is the behaviour this workflow wants, not a defect in the round.
+
+NOTHING WAS ADJUSTED TO FIT A GATE. Every numeral the block predicted was independently
+re-measured by the reviewer and matched, with the single exception of G3(a)'s formula, whose
+error was the reviewer's own and whose correct value the round landed.
