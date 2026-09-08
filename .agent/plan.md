@@ -6,33 +6,28 @@ operator amendment amend0907-cluster-first.
 
 ## Goal
 
-Finish what F272 could not reach inside its own limit: the prototype cluster deletion and the
-classic-to-unified record flip DECISION F272 D15 measured as ATOMIC. DECISION
-amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
+Finish what F272 could not reach inside its own limit. AT SESSION SEVEN OF SEVEN THE SOFT LIMIT
+BINDS, so the goal is now the amend0905-throughput SPLIT-AND-CLOSE default: close F274 at the edge
+work it actually built, and carry the cluster deletion, the atomic record flip and the classic
+runner to a follow-up feature registered directly after it.
 
 ## Current Step
 
-Round 15, the R-0836 fix: delete the `agent_loop_cycle_decision` and `agent_loop_stopped` entries of
-`EVENT_METADATA_SCHEMAS` and the sites in `tests/orchestration/test_event_ledger.py` that pin them.
-Their sole emitter died with `_cmd_run_loop` in F272 round 19, so the registry has been describing
-two events the product does not write; this finishes that deletion. Book round 14's PASS verdict and
-a RECURRENCE of R-0819 for a per-pair count two of that block's pairs could not meet, and resolve
-R-0836 in this same round. No cluster module and no edge moves.
+The closure sequence's first round: book round 15's PASS verdict and the second R-0819 recurrence
+this feature owes, then record DECISION F274 D8 — the dated split ruling with its scope report, its
+rejected alternatives and its reversal. No line under `packages/`, `apps/` or `tests/` moves.
 
 ## Next Steps
 
-1. The two carry-overs F260's Design names: overnight readiness to `mission readiness`, and the
-   route-policy knobs checked against F110's config keys. `mission report` waits for the commit
-   deleting its current holder, per DECISION F274 D2; that holder is in `worker_facade_cmd.py`.
-2. `orchestrator_brain.py`'s four edges, measured as live signal reads in `_scrub`, `_review_state`,
-   `_gather_signals` and `consult_local_advisor_for_decision` — a surviving module reading cluster
-   modules, so a behaviour change rather than a deletion.
-3. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
-4. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it, and it must name
-   the event-name couplings the import map cannot see.
-5. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
-   `worker_recommend` is already edge-free and goes with that round.
-6. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
+1. Register the follow-up feature in ONE atomic ledger commit — the STATUS line directly after
+   F274's inside the same Tier 2 heading, the feature file, the `TOTAL_FEATURES` pin, the README
+   counters, and the `Depends on` edit in every open feature naming F274 — and give F274's own file
+   a Built State section naming which slices moved.
+2. The integration-gate round: the full suite per docs/agents/integration_gate.md.
+3. The self-use item closure precondition 6 requires. The queue holds no pending item, so
+   `generate_and_append_if_empty` runs first, then the item is planned and run to the approval gate.
+4. The closure sequence itself: the remaining verdict bookings, the ledger rotation, the evidence
+   job, the fresh review zip, the STATUS `[x]` flip with the README sync, and the pull request.
 
 ## Risks
 
