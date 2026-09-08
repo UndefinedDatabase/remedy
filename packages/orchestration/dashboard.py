@@ -26,7 +26,7 @@ def build_job_dashboard(
     from packages.orchestration.autonomy_readiness import assess_job_readiness
     from packages.orchestration.decision_queue import build_decision_summary, list_decisions
     from packages.orchestration.event_ledger import build_event_summary
-    from packages.orchestration.worker_recommend import recommend_worker
+    from packages.orchestration.token_policy import derive_token_mode
 
     job_id = str(job.id)
 
@@ -67,8 +67,8 @@ def build_job_dashboard(
             "changed_file_count": gm.get("changed_file_count", 0),
         }
 
-    # Token/worker
-    rec = recommend_worker(job, events)
+    # Token mode
+    token_mode = derive_token_mode(job)
 
     # Memory
     mem_count = 0
@@ -106,10 +106,7 @@ def build_job_dashboard(
         "test_status": test_status,
         "git_status": git_status,
         "token_policy": {
-            "token_mode": rec.token_mode,
-        },
-        "worker_recommendation": {
-            "recommended_worker": rec.recommended_worker,
+            "token_mode": token_mode,
         },
         "memory": {
             "active_count": mem_count,
@@ -193,9 +190,6 @@ def summarize_job_dashboard(data: dict[str, Any]) -> str:
     if gs:
         dirty = "dirty" if gs.get("dirty") else "clean"
         lines.append(f"  Git: {gs.get('branch', '?')} ({dirty})")
-
-    wr = data.get("worker_recommendation", {})
-    lines.append(f"  Worker: {wr.get('recommended_worker', '?')}")
 
     mem = data.get("memory", {})
     lines.append(f"  Memory: {mem.get('active_count', 0)} active, {mem.get('stale_count', 0)} stale")

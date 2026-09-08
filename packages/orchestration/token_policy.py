@@ -11,6 +11,7 @@ no external processes.  Pure data contract only.
 Public API::
 
     build_default_token_policy(job) -> TokenPolicy
+    derive_token_mode(job) -> str
     export_token_policy_json(policy) -> dict[str, Any]
     summarize_token_policy(policy) -> str
 """
@@ -21,7 +22,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
-from packages.core.models import Job
+from packages.core.models import Job, RunState
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -196,3 +197,18 @@ def summarize_token_policy(policy: TokenPolicy) -> str:
         lines.append(f"    > {fl}")
 
     return "\n".join(lines)
+
+
+def derive_token_mode(job: Job) -> str:
+    """The token mode a job's shape asks for: caveman, compact or standard.
+
+    Deterministic — reads the task count and the run state and nothing else.
+    DECISION F274 D7 moved this here out of `worker_recommend`, which dies
+    with the prototype cluster: a token mode is token policy.
+    """
+    task_count = len(job.tasks) if job.tasks else 0
+    if task_count == 0 or job.state == RunState.COMPLETED:
+        return "caveman"
+    if task_count <= 2:
+        return "compact"
+    return "standard"

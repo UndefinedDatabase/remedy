@@ -88,7 +88,6 @@ class TestDashboard:
         assert "decisions" in data
         assert "test_status" in data
         assert "git_status" in data or data["git_status"] == {}
-        assert "worker_recommendation" in data
         assert "memory" in data
         assert "events" in data
         assert "next_actions" in data

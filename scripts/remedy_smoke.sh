@@ -1864,7 +1864,7 @@ events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': str(job.id),
 data = build_job_dashboard(job, events)
 chk(data['version'] == 1, 'bad version')
 chk(data['scope'] == 'job', 'bad scope')
-for k in ('readiness', 'decisions', 'test_status', 'worker_recommendation', 'memory', 'events', 'next_actions'):
+for k in ('readiness', 'decisions', 'test_status', 'token_policy', 'memory', 'events', 'next_actions'):
     chk(k in data, 'missing key: ' + k)
 
 text = summarize_job_dashboard(data)

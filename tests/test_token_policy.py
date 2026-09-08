@@ -16,10 +16,11 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, Task
+from packages.core.models import Job, RunState, Task
 from packages.orchestration.token_policy import (
     TokenPolicy,
     build_default_token_policy,
+    derive_token_mode,
     export_token_policy_json,
     summarize_token_policy,
 )
@@ -191,3 +192,23 @@ class TestTokenPolicyNoSubprocess:
         assert "urllib" not in source
         assert "requests" not in source
         assert "httpx" not in source
+
+
+class TestDeriveTokenMode:
+    """DECISION F274 D7: the token mode derivation survives the cluster deletion."""
+
+    def test_no_tasks_is_caveman(self):
+        assert derive_token_mode(_make_job(task_count=0)) == "caveman"
+
+    def test_completed_job_is_caveman_however_many_tasks(self):
+        job = _make_job(task_count=5)
+        job.state = RunState.COMPLETED
+        assert derive_token_mode(job) == "caveman"
+
+    def test_one_or_two_tasks_is_compact(self):
+        assert derive_token_mode(_make_job(task_count=1)) == "compact"
+        assert derive_token_mode(_make_job(task_count=2)) == "compact"
+
+    def test_three_or_more_tasks_is_standard(self):
+        assert derive_token_mode(_make_job(task_count=3)) == "standard"
+        assert derive_token_mode(_make_job(task_count=9)) == "standard"
