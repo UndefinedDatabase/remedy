@@ -367,3 +367,378 @@ def _build_capabilities(inp: _Inputs, job_id: str) -> list[OvernightCapability]:
         reason="Bounded overnight executor not enabled; default policy is report-only."))
 
     return caps
+
+
+def _build_risks(inp: _Inputs) -> list[OvernightRisk]:
+    risks: list[OvernightRisk] = []
+    if inp.unresolved_failures > 0:
+        risks.append(OvernightRisk(
+            id="unresolved_failures", severity="high",
+            summary=f"{inp.unresolved_failures} unresolved test failure(s).",
+            source="failure_artifacts"))
+    if inp.pending_repair_intents:
+        risks.append(OvernightRisk(
+            id="repair_pending_approval", severity="medium",
+            summary="Repair patch intent pending approval.", source="repair_attempts"))
+    if inp.pending_intents:
+        risks.append(OvernightRisk(
+            id="intents_pending_approval", severity="medium",
+            summary=f"{len(inp.pending_intents)} patch intent(s) pending approval.",
+            source="approval_queue"))
+    if inp.applied_records > 0 and inp.verified_snapshots < inp.applied_records:
+        risks.append(OvernightRisk(
+            id="apply_without_verified_snapshot", severity="high",
+            summary="Applied record without a verified snapshot.", source="snapshot_truth"))
+    if inp.proof_status in ("incomplete", "unverified", "unknown") and inp.applied_records > 0:
+        risks.append(OvernightRisk(
+            id="proof_incomplete", severity="medium",
+            summary=f"Proof status is {inp.proof_status} after apply.", source="proof_chain"))
+    # Integrity gate (lightweight, best-effort).
+    integ = _integrity_status()
+    if integ == "fail":
+        risks.append(OvernightRisk(id="integrity_failed", severity="blocker",
+                                   summary="Integrity gate failed.", source="integrity_gate"))
+    elif integ == "unknown":
+        risks.append(OvernightRisk(id="integrity_unknown", severity="low",
+                                   summary="Integrity status unknown.", source="integrity_gate"))
+    # Open blocker/high review findings (Step 1254 / R-0080). No per-job
+    # programmatic findings source exists in v0 — report the dimension as an
+    # explicit unknown rather than silently omitting it (truthful-unknown).
+    risks.append(OvernightRisk(
+        id="review_findings_unknown", severity="low",
+        summary="Open review findings status is unknown (no per-job findings source in v0).",
+        source="review"))
+    return risks
+
+
+def _integrity_status() -> str:
+    """Lightweight integrity status: pass | fail | unknown.
+
+    Truly read-only: no subprocess, no pytest, no git, no .agent file reads.
+    Returns 'unknown' because no persisted integrity record exists in v0.
+    Explicit integrity checks are available via 'run_integrity_checks()' for
+    developer-invoked commands only.
+    """
+    try:
+        from packages.orchestration.integrity_gate import export_readonly_integrity_status
+        result = export_readonly_integrity_status()
+        s = result.get("status", "unknown")
+        if s in ("pass", "fail"):
+            return s
+        return "unknown"
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        return "unknown"
+
+
+def _ci(id, label, status, **kw) -> OvernightChecklistItem:
+    return OvernightChecklistItem(id=id, label=label, status=status, **kw)
+
+
+def _build_checklist(inp: _Inputs, job_id: str) -> list[OvernightChecklistItem]:
+    items: list[OvernightChecklistItem] = []
+    items.append(_ci("job_initialized", "Job initialized", "done",
+                     evidence_kind="job", evidence_id=job_id))
+    items.append(_ci("task_selected", "Task selected",
+                     "done" if inp.job.tasks else "pending", evidence_kind="task",
+                     evidence_id=str(inp.job.tasks[0].id) if inp.job.tasks else ""))
+    items.append(_ci("patch_intent_created", "Patch intent created",
+                     "done" if inp.intents else "pending", evidence_kind="intent",
+                     evidence_id=inp.intents[0]["intent_id"] if inp.intents else ""))
+    items.append(_ci("intent_approved", "Intent approved",
+                     "done" if inp.approved_intents else ("pending" if inp.intents else "skipped"),
+                     evidence_kind="intent",
+                     evidence_id=inp.approved_intents[0]["intent_id"] if inp.approved_intents else "",
+                     next_action=(f"remedy patch approve {job_id} {inp.pending_intents[0]['intent_id']}"
+                                  if inp.pending_intents else "")))
+    items.append(_ci("snapshot_verified", "Snapshot verified",
+                     "done" if inp.verified_snapshots > 0 else ("pending" if inp.applied_records else "skipped"),
+                     evidence_kind="snapshot_truth"))
+    items.append(_ci("apply_completed", "Apply completed",
+                     "done" if inp.applied_records > 0 else "pending", evidence_kind="apply_record"))
+    items.append(_ci("test_run_completed", "Test run completed",
+                     "done" if (inp.usage.test_runs_used > 0) else "pending", evidence_kind="run_usage"))
+    items.append(_ci("proof_verified", "Proof verified",
+                     "done" if inp.proof_status == "verified" else (
+                         "blocked" if inp.proof_status in ("failed",) else
+                         "pending" if inp.applied_records else "skipped"),
+                     evidence_kind="proof_chain", reason=f"proof={inp.proof_status}"))
+    items.append(_ci("failure_artifact_created", "Failure artifact created",
+                     "done" if inp.failure_artifacts else "skipped", evidence_kind="failure_artifact"))
+    proposed = [a for a in inp.repair_attempts if a.repair_intent_id]
+    items.append(_ci("repair_proposed", "Repair proposed",
+                     "done" if proposed else ("pending" if inp.failure_artifacts else "skipped"),
+                     evidence_kind="repair_attempt"))
+    repair_approved = [a for a in inp.repair_attempts
+                       if a.status in ("approved", "applied", "tested_passed", "tested_failed")]
+    items.append(_ci("repair_approved", "Repair approved",
+                     "done" if repair_approved else ("pending" if proposed else "skipped"),
+                     evidence_kind="repair_attempt"))
+    repair_applied = [a for a in inp.repair_attempts
+                      if a.status in ("applied", "tested_passed", "tested_failed")]
+    items.append(_ci("repair_applied", "Repair applied",
+                     "done" if repair_applied else ("pending" if repair_approved else "skipped"),
+                     evidence_kind="repair_attempt"))
+    resolved = [a for a in inp.repair_attempts if a.resolved_failure]
+    items.append(_ci("failure_resolved", "Failure resolved",
+                     "done" if resolved else ("pending" if inp.unresolved_failures else "skipped"),
+                     evidence_kind="failure_artifact"))
+    human_needed = bool(inp.pending_intents or inp.pending_repair_intents)
+    items.append(_ci("human_decision_needed", "Human decision needed",
+                     "pending" if human_needed else "skipped",
+                     reason="Approvals pending." if human_needed else "",
+                     next_action=(f"remedy patch approve {job_id} {inp.pending_intents[0]['intent_id']}"
+                                  if inp.pending_intents else "")))
+    return items
+
+
+def select_overnight_next_action(inp: _Inputs | None, job_id: str) -> OvernightNextAction:
+    """One best next action. Never fake; only when the entity exists."""
+    if inp is None:
+        return OvernightNextAction("Review jobs", "remedy job list --json",
+                                   "Job not found.", requires_human=True)
+    # Pending repair intent → approve it.
+    if inp.pending_repair_intents:
+        iid = inp.pending_repair_intents[0].repair_intent_id
+        return OvernightNextAction("Approve repair patch", f"remedy patch approve {job_id} {iid}",
+                                   "A repair patch intent is pending approval.", requires_human=True)
+    # Pending normal intent → approve it.
+    if inp.pending_intents:
+        iid = inp.pending_intents[0]["intent_id"]
+        return OvernightNextAction("Approve patch", f"remedy patch approve {job_id} {iid}",
+                                   "A patch intent is pending approval.", requires_human=True)
+    # Approved intent + plausible apply gates → continue one cycle.
+    if inp.approved_intents and not inp.contract.stop_before_apply:
+        return OvernightNextAction("Continue one cycle", f"remedy do continue {job_id} --json",
+                                   "An approved intent is ready for one continuation cycle.",
+                                   requires_human=True)
+    # Unresolved failure with no repair attempt yet → propose repair.
+    if inp.failure_artifacts and inp.unresolved_failures > 0 and not any(
+            a.repair_intent_id for a in inp.repair_attempts):
+        fa = str(inp.failure_artifacts[0].id)
+        return OvernightNextAction("Propose repair", f"remedy repair propose {job_id} {fa} --json",
+                                   "An unresolved failure has no repair proposal yet.",
+                                   requires_human=True)
+    # Uncertain → human review.
+    return OvernightNextAction("Review job state", f"remedy job show {job_id} --json",
+                               "No safe automatic action; human review required.", requires_human=True)
+
+
+def _build_stop_reasons(inp: _Inputs, budget: dict[str, Any], risks: list[OvernightRisk]) -> list[str]:
+    out: list[str] = []
+    if inp.pending_intents or inp.pending_repair_intents:
+        out.append(OvernightStopReason.HUMAN_APPROVAL_REQUIRED)
+    if inp.contract.stop_before_apply:
+        out.append(OvernightStopReason.CONTRACT_BLOCKED)
+    if budget.get("loops_exhausted") or budget.get("test_runs_exhausted"):
+        out.append(OvernightStopReason.BUDGET_EXHAUSTED)
+    if inp.unresolved_failures > 0:
+        out.append(OvernightStopReason.TEST_FAILED)
+    if inp.pending_repair_intents:
+        out.append(OvernightStopReason.REPAIR_PENDING_APPROVAL)
+    if any(r.severity in ("blocker", "high") for r in risks):
+        out.append(OvernightStopReason.MEDIUM_OR_HIGH_RISK)
+    if any(r.id == "integrity_failed" for r in risks):
+        out.append(OvernightStopReason.INTEGRITY_FAILED)
+    out.append(OvernightStopReason.PROVIDER_UNAVAILABLE)  # provider deferred this block
+    if not out:
+        out.append(OvernightStopReason.NO_SAFE_ACTION)
+    return out
+
+
+def build_overnight_readiness(
+    job_id: str,
+    data_dir: Path | None = None,
+    policy: BoundedOvernightPolicy | None = None,
+) -> OvernightReadinessReport:
+    """Read-only readiness assessment. Never executes anything."""
+    from packages.orchestration.data_paths import resolve_data_root
+
+    ddir = Path(data_dir) if data_dir is not None else resolve_data_root()
+    policy = policy or default_overnight_policy()
+    report = OvernightReadinessReport(job_id=job_id, generated_at=_now())
+    report.policy_summary = _policy_summary(policy)
+
+    inp = _gather_inputs(job_id, ddir)
+    if inp is None:
+        report.blockers.append("job_not_found")
+        report.stop_reasons = [OvernightStopReason.UNSUPPORTED_STATE]
+        report.next_action = select_overnight_next_action(None, job_id)
+        report.safe_summary = "Job not found."
+        return report
+
+    report.budget_summary = _build_budget_summary(inp)
+    report.evidence_summary = _build_evidence_summary(inp)
+    report.capabilities = _build_capabilities(inp, job_id)
+    report.risks = _build_risks(inp)
+    # Exhausted budgets block readiness (Step 1253 / R-0079): an exhausted
+    # loop/test budget is a blocker, surfaced as a blocker-severity risk too.
+    _budget_exhausted = bool(report.budget_summary.get("loops_exhausted")
+                             or report.budget_summary.get("test_runs_exhausted"))
+    if _budget_exhausted:
+        report.risks.append(OvernightRisk(
+            id="budget_exhausted", severity="blocker",
+            summary="A run-contract budget (loops/test runs) is exhausted.",
+            source="run_contract+run_usage"))
+    report.checklist = _build_checklist(inp, job_id)
+    report.next_action = select_overnight_next_action(inp, job_id)
+    report.stop_reasons = _build_stop_reasons(inp, report.budget_summary, report.risks)
+
+    # Blockers: hard reasons a future unattended run could not proceed.
+    if not inp.job.tasks:
+        report.blockers.append("no_tasks")
+    if inp.unresolved_failures > 0:
+        report.blockers.append("unresolved_failures")
+    if inp.pending_repair_intents:
+        report.blockers.append("repair_pending_approval")
+    if _budget_exhausted:
+        report.blockers.append("budget_exhausted")
+    if any(r.severity == "blocker" for r in report.risks):
+        report.blockers.append("blocker_risk")
+
+    # Report-readiness: the job is coherent enough to assess (always, if it loads
+    # with tasks). Unattended-readiness additionally requires the policy to permit
+    # execution AND no blockers — under the default policy this is ALWAYS False.
+    report.ready = bool(inp.job.tasks) and "no_tasks" not in report.blockers
+    report.can_run_unattended = (
+        report.ready and not report.blockers and policy.execution_enabled
+    )
+    if report.can_run_unattended:
+        report.readiness_level = "execution_candidate"
+        report.recommended_mode = "bounded_execution"
+    elif report.ready and not report.blockers:
+        report.readiness_level = "plan_only"
+        report.recommended_mode = "plan_only"
+    elif report.ready:
+        report.readiness_level = "report_only"
+        report.recommended_mode = "report_only"
+    else:
+        report.readiness_level = "not_ready"
+        report.recommended_mode = "report_only"
+
+    nb = len(report.blockers)
+    report.safe_summary = (
+        f"Readiness: {report.readiness_level}; unattended={report.can_run_unattended}; "
+        f"{nb} blocker(s), {len(report.risks)} risk(s)."
+    )
+    return report
+
+
+def _policy_summary(p: BoundedOvernightPolicy) -> dict[str, Any]:
+    return {
+        "max_cycles": p.max_cycles, "max_test_runs": p.max_test_runs,
+        "max_repair_attempts": p.max_repair_attempts, "max_apply_count": p.max_apply_count,
+        "allow_apply": p.allow_apply, "allow_repair_propose": p.allow_repair_propose,
+        "allow_repair_apply": p.allow_repair_apply, "allow_provider": p.allow_provider,
+        "allow_revert": p.allow_revert, "require_verified_snapshot": p.require_verified_snapshot,
+        "require_linked_tests": p.require_linked_tests, "require_clean_review": p.require_clean_review,
+        "require_human_approval_for_new_intents": p.require_human_approval_for_new_intents,
+        "execution_enabled": p.execution_enabled,
+    }
+
+
+def build_overnight_report(
+    job_id: str,
+    data_dir: Path | None = None,
+    policy: BoundedOvernightPolicy | None = None,
+) -> dict[str, Any]:
+    """Morning-style report built from current job evidence (read-only)."""
+    report = build_overnight_readiness(job_id, data_dir, policy)
+    data = export_readiness_json(report)
+    done = [c for c in report.checklist if c.status == "done"]
+    blocked = [c for c in report.checklist if c.status in ("blocked", "pending", "risk")]
+    data["report"] = {
+        "completed_checklist": [c.id for c in done],
+        "blocked_checklist": [c.id for c in blocked],
+        "completed_count": len(done),
+        "blocked_count": len(blocked),
+    }
+    return data
+
+
+def export_readiness_json(report: OvernightReadinessReport) -> dict[str, Any]:
+    return {
+        "version": 1,
+        "job_id": report.job_id,
+        "generated_at": report.generated_at,
+        "readiness_level": report.readiness_level,
+        "ready": report.ready,
+        "can_run_unattended": report.can_run_unattended,
+        "recommended_mode": report.recommended_mode,
+        "blockers": report.blockers,
+        "stop_reasons": report.stop_reasons,
+        "risks": [{"id": r.id, "severity": r.severity, "summary": r.summary, "source": r.source}
+                  for r in report.risks],
+        "capabilities": [
+            {"name": c.name, "status": c.status, "reason": c.reason,
+             "required_permission": c.required_permission,
+             "required_contract_action": c.required_contract_action,
+             "evidence_ids": c.evidence_ids, "next_safe_action": c.next_safe_action}
+            for c in report.capabilities
+        ],
+        "checklist": [
+            {"id": i.id, "label": i.label, "status": i.status,
+             "evidence_kind": i.evidence_kind, "evidence_id": i.evidence_id,
+             "reason": i.reason, "next_action": i.next_action}
+            for i in report.checklist
+        ],
+        "next_action": (
+            {"label": report.next_action.label, "command": report.next_action.command,
+             "reason": report.next_action.reason, "requires_human": report.next_action.requires_human}
+            if report.next_action else None
+        ),
+        "budget_summary": report.budget_summary,
+        "evidence_summary": report.evidence_summary,
+        "policy_summary": report.policy_summary,
+        "safe_summary": report.safe_summary,
+    }
+
+
+_CHECK_ICON = {"done": "[x]", "pending": "[ ]", "blocked": "[!]", "risk": "[~]",
+               "skipped": "[-]", "unknown": "[?]"}
+
+
+def render_overnight_report_markdown(data: dict[str, Any]) -> str:
+    """Render a morning report as safe markdown. No raw content."""
+    lines: list[str] = []
+    lines.append(f"# Overnight Report — job {str(data.get('job_id',''))[:8]}")
+    lines.append("")
+    lines.append(f"- Readiness: **{data.get('readiness_level')}**")
+    lines.append(f"- Can run unattended: **{data.get('can_run_unattended')}**")
+    lines.append(f"- Recommended mode: {data.get('recommended_mode')}")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append(data.get("safe_summary", ""))
+    lines.append("")
+    lines.append("## Completed checklist")
+    for c in data.get("checklist", []):
+        if c["status"] == "done":
+            lines.append(f"- {_CHECK_ICON['done']} {c['label']}")
+    lines.append("")
+    lines.append("## Blocked / pending checklist")
+    for c in data.get("checklist", []):
+        if c["status"] in ("blocked", "pending", "risk"):
+            icon = _CHECK_ICON.get(c["status"], "[ ]")
+            lines.append(f"- {icon} {c['label']}" + (f" — {c['reason']}" if c.get("reason") else ""))
+    lines.append("")
+    lines.append("## Risks")
+    for r in data.get("risks", []):
+        lines.append(f"- ({r['severity']}) {r['summary']}")
+    lines.append("")
+    bs = data.get("budget_summary", {})
+    lines.append("## Budgets")
+    lines.append(f"- Loops: {bs.get('loops_used')}/{bs.get('max_loops')} "
+                 f"(remaining {bs.get('remaining_loops')})")
+    lines.append(f"- Test runs: {bs.get('test_runs_used')}/{bs.get('max_test_runs')} "
+                 f"(remaining {bs.get('remaining_test_runs')})")
+    lines.append(f"- Tokens used: {bs.get('tokens_used')}")
+    lines.append("")
+    lines.append("## Stop reasons")
+    for s in data.get("stop_reasons", []):
+        lines.append(f"- {s}")
+    lines.append("")
+    na = data.get("next_action")
+    lines.append("## Next safe action")
+    if na:
+        lines.append(f"- {na['label']}: `{na['command']}`")
+        lines.append(f"  - {na['reason']}")
+    return "\n".join(lines)
