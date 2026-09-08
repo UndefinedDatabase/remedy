@@ -26,13 +26,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-75 of 275 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
+76 of 275 registered items accepted. Next: the first unchecked item in docs/roadmap/STATUS.md.
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 18 | 28 |
+| 2 | Minimal Self-Build Runtime | 19 | 28 |
 | 3 | Full Token Economy & Autonomy | 6 | 26 |
 | 4 | Memory & Learning | 0 | 17 |
 | 5 | Operator Cockpit | 13 | 34 |
@@ -101,7 +101,18 @@ together with its advertisements. The classic-to-unified record flip was
 measured ATOMIC over the consumer graph — `.id` is the last gap and it sits on
 helpers with seven and six call sites — and was split off with the prototype
 cluster deletion at the twelve-session soft limit; both belong to the follow-up
-feature the STATUS ledger registers directly after it).
+feature the STATUS ledger registers directly after it),
+F274 one world completion, part two (the prototype-cluster deletion map,
+GENERATED from the live import graph rather than typed and held against it
+in BOTH directions, so a re-inserted edge reddens a test instead of passing
+unnoticed; the import-reachability ratchet, ruled a ratchet rather than a
+one-shot gate; the cockpit and command-layer edge cuts, with `ui_server.py`
+losing 458 lines and gaining none and the `feature` command group deleted
+whole; and the retirement of `worker_recommend`. Nothing was deleted from
+the prototype cluster here, only made SAFE to delete: that deletion, the
+atomic record flip and the classic runner were split off at the
+eight-session soft limit and belong to the follow-up feature the STATUS
+ledger registers directly after it).
 
 Accepted in Tier 3 so far:
 F106 session resume instead of rebuild (repair rounds resume the original

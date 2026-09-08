@@ -1,40 +1,53 @@
-# Handback — F274 ROUND 22 — CLOSURE ROUND A: the ledger is rotated, the evidence bundle is built and the review zip is READY_FOR_REVIEW
+# Handback — F274 ROUND 23 — CLOSURE ROUND B: F274 is booked `[x]`, the record carries the round 22 verdict, `Done: R-0837` and R-0839, and the pull request is opened and NOT merged
 
-This file supersedes the round 21 handback. It is written by the delegated worker of round 22 on the
-reviewer's authored text; the reviewer never edits a work-tree file. It carries NO verdict and NO
-`Done:` paragraph — those belong to the reviewer's own authored text in `.agent/live_review.md`, and
-`Done: R-0837` in particular can only be authored in closure round B, because its resolution
-condition demands the READY_FOR_REVIEW package THIS round has just produced.
+This file supersedes the round 22 handback. It is written by the delegated worker of round 23 on the
+reviewer's authored text; the reviewer never edits a work-tree file. It carries NO verdict of its
+own — verdicts live in `.agent/live_review.md`, and this round's ledger commit booked the reviewer's
+round 22 PASS there.
+
+THIS FILE IS WRITTEN INSIDE C3, THE CLOSURE COMMIT AND THE LAST COMMIT OF THIS BRANCH. Two values it
+would otherwise carry CANNOT EXIST when it is written and are deliberately not guessed:
+
+- **C3's own `git diff --numstat` columns.** A handoff cannot table the commit that writes it
+  (R-0149 pattern); C3's numbers are reported in the round's completion message instead.
+- **The pull request number and URL.** The PR is created after C3, so its number is reported in the
+  completion message, where §3 item 14 puts a value the writing commit cannot know.
+
+For the same reason, gates G4 through G8 all measure the COMMITTED C3 and therefore run after this
+file is committed. Their real exit codes and real outputs are in the completion message. G1, G2 and
+G3 were measured before C3 and are transcribed in full below.
 
 ## Session
 
-SESSION 8 of feature F274 · round 22 · feature rounds so far 22 of the soft limit of 25, sessions 8
+SESSION 8 of feature F274 · round 23 · feature rounds so far 23 of the soft limit of 25, sessions 8
 of 7.
 
-Fortschritt: F274 im Abschluss — R-0837 an beiden Stellen behoben, Ledger rotiert, Evidenzjob und Review-Zip als READY_FOR_REVIEW gebaut (Löschkarte ✅ · Reachability-Ratsche ✅ · D1–D8 ✅ · F275 ✅ · Gate ✅ · Self-Use ✅ · R-0837 ✅ · Paket ✅ · STATUS-Flip offen) — Schätzung
+Context self-assessment (amend0905-throughput): context remains comfortable at the end of this
+round; the session ends here because the feature CLOSES here, not because context ran out.
+
+Fortschritt: F274 ABGESCHLOSSEN und als [x] gebucht — Paket READY_FOR_REVIEW, PR offen und NICHT gemergt (Löschkarte ✅ · Reachability-Ratsche ✅ · D1–D8 ✅ · F275 ✅ · Gate ✅ · Self-Use ✅ · R-0837 ✅ · Paket ✅ · STATUS ✅ · Merge = nächste Sitzung) — Schätzung
 
 ### The session soft limit is PAST, and the obligation it carries
 
     SITZUNGS-LIMIT ERREICHT — OPERATOR-BERICHT IN DER ÜBERGABE
 
-F274 is at 8 sessions against a soft limit of 7, so the scope report is owed again. It is shorter
-than round 21's, because this round moved the only two items that were left:
+F274 is at 8 sessions against a soft limit of 7, so the scope report is owed one last time. It is
+now a closing report rather than a continuation plan:
 
-- WHAT IS FINISHED. Everything round 21 listed, plus the two artifacts F274 cannot close without:
-  the ledger rotation is committed as its own commit, the feature-scoped evidence bundle is built by
-  the canonical producer at a `PASS_WITH_RISKS` verdict, and a FRESH review zip reached
-  `PACKAGE_STATUS=READY_FOR_REVIEW` over the accepted head.
-- WHAT IS MISSING. Only closure round B: the round 22 verdict booking and the authored
-  `Done: R-0837`, then the single closure commit (STATUS `[x]`, README capability sync, the one
-  `consumed_by` edit setting `SU-013` to `f274`), then the pull request — which is NOT merged this
-  session.
-- THE PROPOSAL. Unchanged: do not re-split, run closure round B and close F274. F275 already carries
-  the cluster deletion, the atomic record flip and the classic runner per DECISION F274 D8.
+- WHAT IS FINISHED. Everything round 22 listed, plus the whole of closure round B: the round 22
+  verdict is booked, `Done: R-0837` is written, R-0839 is registered, and the closure commit has
+  applied the STATUS `[x]` line, the README capability sync (paragraph, counter and tier row) and
+  the one `consumed_by` edit — all in ONE commit, as Rule A4 requires.
+- WHAT IS MISSING. Nothing on this branch. The only remaining action belongs to the NEXT session:
+  merging this pull request at the Open PR Gate.
+- THE PROPOSAL, now executed rather than proposed: F274 closed at a self-consistent scope and F275
+  carries the cluster deletion, the atomic record flip and the classic runner, per DECISION F274 D8.
 
-## CLOSURE ROUND B — THE FIVE VALUES ITS STATUS LINE IS AUTHORED FROM
+## THE FIVE CLOSURE VALUES, now durable in the STATUS line
 
-This round is the only actor that knows them, and `.agent/handoff.md` is rewritten at every handback,
-so closure round B must copy them into the durable STATUS line before this file is overwritten:
+Measured by round 22, re-verified by the reviewer against the bundle on disk, and copied into
+`docs/roadmap/STATUS.md` by this round's C3 — which is the point of writing them here: this file is
+rewritten at every handback and keeps nothing, while the STATUS line keeps them forever.
 
     Evidence job   a19161d4ff0df836
     package        remedy-review-20260908-083448-READY_FOR_REVIEW.zip
@@ -42,477 +55,270 @@ so closure round B must copy them into the durable STATUS line before this file 
     package path   /home/decodeux/Repos/remedy-history/zips
     accepted HEAD  5d329d2009108073dd91546ab9da0dc30cef73c7
 
-`accepted HEAD` is C3, the ledger-rotation commit: nothing tracked was committed between it and the
-package, which is exactly why the manifest's `committed_review_subject.head_commit` names it. The
-`package path` segment is DECISION amend0827 D1's, and the package is NOT archived elsewhere and NOT
-deleted — it is the operator's review window, left where the script built it.
+`accepted HEAD` is round 22's C3, the ledger-rotation commit; nothing tracked was committed between
+it and the package. The package was NOT moved, NOT deleted and NOT re-archived by this round — it is
+the operator's review window, left exactly where the script built it.
 
 ## Range
 
-Review of `6b5387ae`..THIS HANDOFF COMMIT, which is the tip of the branch and the last commit of the
-round; the GATED work of the round is `6b5387ae`..`5d329d20`. The C4 sha is deliberately not written
-here: it does not exist until this file is committed, and an unmeasured sha in the record is worse
-than a named range endpoint.
+Review of `a9ca53da`..THIS COMMIT, which is the closure commit and the tip of the branch. The gated
+work of the round is `a9ca53da`..C3; the C3 sha is deliberately not written here, because it does
+not exist until this file is committed and an unmeasured sha in the record is worse than a named
+endpoint.
 
 ## Commits
 
-### 777e57e6 F274 R22 C0a: save the round 22 closure step block verbatim as the authored record
+### f4665f18 F274 R23 C0a: save the closure round B step block verbatim as the authored record
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/authored/f274-r22.md` | +290 / -0 | the round 22 step block, saved by `cp` from `.remedy-wt/f274-r22-FINAL.md`, never retyped |
+| `.agent/authored/f274-r23.md` | +302 / -0 | the round 23 step block, saved by `cp` from `.remedy-wt/f274-r23-FINAL.md`, never retyped |
 
-### 2cc739aa F274 R22 C0b: mirror the round 22 closure block into the last-block state file
+### 7f5b8a13 F274 R23 C0b: mirror the round 23 closure block into the last-block state file
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/last_block.md` | +223 / -228 | same bytes mirrored by `cp`; the deletions are round 21's block being replaced |
+| `.agent/last_block.md` | +243 / -231 | the same bytes mirrored by `cp`; the deletions are round 22's block being replaced |
 
-### 2bcbc711 F274 R22 C1: point the plan at closure round A
+### 338d1637 F274 R23 C1: point the plan at closure round B
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/plan.md` | +26 / -22 | replaced byte-for-byte by the PLAN22 slice |
+| `.agent/plan.md` | +25 / -31 | replaced byte-for-byte by the PLAN23 slice; 2602 bytes, 43 lines |
 
-### 31073828 F274 R22 C2: book round 21 PASS in the record
+### ec4d89d6 F274 R23 C2: book round 22 PASS, resolve R-0837 and register R-0839 in the record
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +2 / -0 | RECORD22 appended: round 21's PASS verdict, one paragraph, no id minted |
+| `.agent/live_review.md` | +6 / -0 | RECORD23 appended: the round 22 PASS gate record, `Done: R-0837`, and the R-0839 registration |
+| `.agent/prose_slips.md` | +4 / -0 | SLIPS23 appended: the two round 22 reviewer-prose slips, no id spent |
 
-### 5d329d20 F274 R22 C3: rotate the closed records out of the live ledger into the append-only archive
+### C3 (this commit) F274 R23 C3: close F274 in the ledger, sync the README and consume the self-use item
 | Path | +/- | Reason |
 |------|-----|--------|
-| `.agent/live_review.md` | +0 / -88 | 32 `Gate:` records of `[x]` features and 5 resolved finding pairs moved out by `scripts/rotate_live_review.py` |
-| `.agent/live_review_archive.md` | +88 / -0 | the same 88 lines appended byte-verbatim; the pre-rotation archive is a byte-exact prefix of the post-rotation one |
-
-### C4 (this commit) F274 R22 C4: hand back closure round A with its measured gates
-| Path | +/- | Reason |
-|------|-----|--------|
+| `docs/roadmap/STATUS.md` | see completion message | the `[~]`→`[x]` flip, the STATUS23 slice applied verbatim |
+| `README.md` | see completion message | the F274 capability paragraph, `75`→`76`, and the tier-2 row `18`→`19` |
+| `scripts/self_use_queue.json` | see completion message | `SU-013`'s `consumed_by` set to `F274` as TEXT, closure precondition 6 |
 | `.agent/handoff.md` | rewrite | this handback; a handoff cannot table the commit that writes it (R-0149 pattern) |
 
-Range change set, `git diff --name-only 6b5387ae 5d329d20` — exactly the five tracked paths of the
-block's Change section other than `.agent/handoff.md`, and nothing else:
+C3's real numstat columns are in the completion message. Its path set is exactly those four paths —
+no fifth path, and no `.agent/candidates.md` commit follows it, because this closure raised no
+candidate and that file is EMPTY and untouched.
 
-    .agent/authored/f274-r22.md
+Range change set, `git diff --name-only a9ca53da C3` — exactly the nine tracked paths of the block's
+Change section:
+
+    .agent/authored/f274-r23.md
+    .agent/handoff.md
     .agent/last_block.md
     .agent/live_review.md
-    .agent/live_review_archive.md
     .agent/plan.md
+    .agent/prose_slips.md
+    README.md
+    docs/roadmap/STATUS.md
+    scripts/self_use_queue.json
 
-No file under `docs/`, `packages/`, `apps/`, `tests/` or `scripts/` was edited. `docs/roadmap/STATUS.md`,
-`README.md` and `scripts/self_use_queue.json` were NOT touched — all three belong to closure round B.
+Nothing under `packages/`, `apps/`, `tests/` or `docs/` other than `docs/roadmap/STATUS.md` was
+edited, and no file was created or deleted beyond `.agent/authored/f274-r23.md`.
 
 ## External actions
 
-- `git push -u origin feature/f274-one-world-completion-part-two` after C3 → exit 0,
-  `6b5387ae..5d329d20`. A second push follows this commit.
-- `git worktree remove --force <path>` for all THIRTEEN disposable worktrees under `.remedy-wt/`,
-  then `git worktree prune` → every call exit 0. Required by the block's constraint 6, because the
-  authority set is read from the working tree. NO BRANCH WAS DELETED: `git branch --list
-  'remedy/job-*'` still returns 15. `git worktree list` went from 14 lines to 1.
-- `bash scripts/make_review_zip.sh --evidence-dir …` → exit 0, package written to
-  `/home/decodeux/Repos/remedy-history/zips`. The package is NOT deleted.
-- No PR created, none edited, none merged. No `gh` command was run.
+- `git push -u origin feature/f274-one-world-completion-part-two` after C3 — its exit code and the
+  pushed range are in the completion message, because the push follows this commit.
+- `gh pr create` against `main` from this branch, NOT a draft, NOT merged and with auto-merge NOT
+  enabled. The PR number and URL are in the completion message. It merges at the NEXT feature's
+  start through the Open PR Gate; that gap is the operator's manual-review window.
+- No worktree was added and none was removed this round. No branch was deleted. No package or
+  evidence directory was moved or deleted.
 
-## Verification — eight gates, each RUN, each with its real exit code and real output
+## Verification
 
-### G1 TRANSPORT, at C0b — PASS
+G1, G2 and G3 were measured before C3 and are transcribed here in full. G4 through G8 measure the
+committed closure commit and therefore run after this file is written; their real exit codes and
+outputs are in the completion message.
 
-    sha256sum .remedy-wt/f274-r22-FINAL.md .agent/authored/f274-r22.md .agent/last_block.md
-    exit 0
-    30bb0397abbe8ebc057aacb126cffecf731f1f7abf6a277ee469c48bc63bb616  .remedy-wt/f274-r22-FINAL.md
-    30bb0397abbe8ebc057aacb126cffecf731f1f7abf6a277ee469c48bc63bb616  .agent/authored/f274-r22.md
-    30bb0397abbe8ebc057aacb126cffecf731f1f7abf6a277ee469c48bc63bb616  .agent/last_block.md
-    bytes: 24470 / 24470 / 24470
+### G1 TRANSPORT, at C0b — three equal digests
 
-The two committed digests are taken from the COMMITTED BLOBS (`git cat-file blob HEAD:<path> |
-sha256sum`), not from the work tree. THE THREE DIGESTS ARE EQUAL. The chain proved is
-scratch-original → saved copy → mirror; nothing is claimed about the emitted bytes (§3 item 37).
-All three slices were extracted programmatically and verified against their OWN `BEGIN` markers
-before application: PLAN22 3043 bytes `85fbbe04…`, RECORD22 4521 bytes `cb0d2110…`, FORTSCHRITT 303
-bytes `ff2a85b8…` — declared and measured equal in every case.
+    sha256sum  .remedy-wt/f274-r23-FINAL.md   1f97e2c9b2615d75e14cb7e3e01f67ce9d343f625a846b31c51078c4b05665f6   30661 bytes
+    sha256sum  HEAD:.agent/authored/f274-r23.md  1f97e2c9b2615d75e14cb7e3e01f67ce9d343f625a846b31c51078c4b05665f6   30661 bytes
+    sha256sum  HEAD:.agent/last_block.md         1f97e2c9b2615d75e14cb7e3e01f67ce9d343f625a846b31c51078c4b05665f6   30661 bytes
+    THE THREE ARE EQUAL
 
-### G2 THE PLAN, at C1 — PASS
+Both committed digests were taken from the COMMITTED BLOBS (`git show <rev>:<path>`), not from the
+work tree. The chain proved is scratch-original → saved copy → mirror; nothing is claimed about the
+emitted bytes (§3 item 37). Both copies were made with `cp`; the block was never retyped.
 
-    wc -c .agent/plan.md → 3043
-    wc -l .agent/plan.md → 49          (under the AGENTS.md cap of 50)
-    sha256 of the committed blob = 85fbbe0421ec6033ecef952538ffc7fbf46e4409139b691638f23751895f0594
-    sha256 of the PLAN22 slice   = 85fbbe0421ec6033ecef952538ffc7fbf46e4409139b691638f23751895f0594
-    `^## Goal$` occurrences       1
-    `^## Next Steps$` occurrences 1
+### G2 THE PLAN, at C1
 
-### G3 THE RECORD APPEND, at C2 — PASS, all six parts
+    wc -c .agent/plan.md → 2602        (the PLAN23 slice's declared 2602)
+    wc -l .agent/plan.md → 43          (under the AGENTS.md cap of 50)
+    sha256 .agent/plan.md = 6b710f34d0c7d3ac2b1d570e2d55ae2a2a50637e0e9b798049785cc54ea644d4
+    sha256 PLAN23 slice   = 6b710f34d0c7d3ac2b1d570e2d55ae2a2a50637e0e9b798049785cc54ea644d4  → EQUAL
+    `^## ` headings: Goal (line 7), Current Step (14), Next Steps (24), Risks (33)
+    `## Goal` occurrences 1 · `## Next Steps` occurrences 1
 
-(a) BYTES. before 658562 at `6b5387ae` + slice 4521 = after 663083. Measured after: 663083.
+### G3 THE APPENDS, at C2 — all seven parts
 
-(b) EXACT APPEND. pre-commit blob is a byte-exact PREFIX: `True`. Slice is a byte-exact SUFFIX:
+(a) BYTES. `.agent/live_review.md` 496375 at `a9ca53da` + RECORD23 9942 = 506317. Measured after:
+506317. The working tree equals the committed blob: `True`.
+
+(b) EXACT APPEND. Pre-commit blob is a byte-exact PREFIX of the post-commit blob: `True`. The
+RECORD23 slice is a byte-exact SUFFIX of it: `True`.
+
+(c) ORDERED EQUALITY by an independent reader. The post-commit file was split on blank lines and the
+SLICE's own paragraphs were counted into N rather than taking N from the block: **N = 3**. The file's
+last 3 units compared against the slice's 3 paragraphs IN ORDER: `True`. Per-unit sha256 of the
+stripped bytes agreed one by one: `1b825c8f4c6fc457` (the `Gate: F274 R22` record),
+`da588cab85b15615` (`Done: R-0837`), `b2896987a3baf38f` (`- R-0839`).
+
+(d) NEGATIVE CONTROL on the FIRST appended paragraph. One byte was flipped IN SCRATCH ONLY, at slice
+offset 10 inside `Gate: F274 R22 …` (`b'4'` → `b'\x14'`, XOR 0x20). Reader 1 (suffix) accepts:
+`False`. Reader 2 (ordered equality) accepts: `False`. BOTH READERS REJECT IT. The mutated
+concatenation was never written to disk and the tracked file was re-read afterwards and is unchanged:
 `True`.
 
-(c) ORDERED EQUALITY by an independent reader. The post-commit file was split on blank lines, the
-SLICE's own paragraphs were counted into N rather than taking N from the block: **N = 1**. The
-file's last N units compared against the slice's N paragraphs IN ORDER: `True`.
+(e) COUNTS over the post-commit file, every one landing on the block's predicted pair:
 
-(d) NEGATIVE CONTROL on the FIRST appended paragraph. One byte inside it was flipped IN SCRATCH ONLY
-(slice offset 6, `' '` → `'\x00'`, inside `Gate: F274 R21 …`). Reader 1 (suffix) accepts: `False`.
-Reader 2 (ordered equality) accepts: `False`. BOTH READERS REJECT IT. The tracked file was never
-touched — its sha256 after the control is still `e9e15e71a5f03d308fb61fc00f3aa4ffb97e8dcc7c002af01c066c39ce044b83`,
-identical to the committed blob.
+    | reading                        | before | after | predicted |
+    |--------------------------------|--------|-------|-----------|
+    | blank-line units               | 209    | 212   | 209 → 212 |
+    | `^Gate: `                      | 21     | 22    | 21 → 22   |
+    | `^Gate: F274 R22 `             | 0      | 1     | 0 → 1     |
+    | `^Done: R-0837 `               | 0      | 1     | 0 → 1     |
+    | `^- R-0839 `                   | 0      | 1     | 0 → 1     |
+    | distinct `^- R-\d+ — ` ids     | 67     | 68    | 67 → 68   |
+    | distinct `^Done: R-\d+ — ` ids | 2      | 3     | 2 → 3     |
+    | OPEN SET BY DISTINCT ID        | 65     | 65    | 65 → 65   |
 
-(e) COUNTS over the post-commit file, every one landing on the block's predicted value:
+The open set does not move, and that is arithmetic rather than luck: one id registered, one id
+resolved.
 
-    | reading                      | before | after | ordered |
-    |------------------------------|--------|-------|---------|
-    | blank-line units             | 252    | 253   | 252→253 |
-    | `^Gate: `                    | 52     | 53    | 52→53   |
-    | `^Gate: F274 R21 `           | 0      | 1     | 0→1     |
-    | distinct `^- R-\d+ — ` ids   | 72     | 72    | 72→72   |
-    | distinct `^Done: R-\d+ — `   | 7      | 7     | 7→7     |
-    | OPEN SET BY DISTINCT ID      | 65     | 65    | 65→65   |
+(f) THE SLIPS. `.agent/prose_slips.md` 165972 → 166737 (= 165972 + 765). Prefix exact: `True`.
+Suffix exact: `True`. Blank-line units 227 → 229, a gain of exactly 2.
 
-(f) Unquoted `\bHEAD\b` in the RECORD22 slice with every backtick-quoted span deleted first: **0**.
+(g) Unquoted `\bHEAD\b` in the RECORD23 slice with every backtick-quoted span deleted first: **0**.
+This count was NOT run over STATUS23: the closure protocol's own STATUS template ends with
+`accepted HEAD <full sha>`, and §3 item 20's zero-count binds slices bound for the append-only
+record, which STATUS23 is not.
 
-### G4 THE ROTATION, at C3 — PASS
+## Authored-text proofs
 
-Run by the SCRIPT only, never by hand, from the primary checkout:
+Six reviewer-authored slices were extracted PROGRAMMATICALLY from the block — the bytes strictly
+between each `BEGIN` and `END` line — and each was verified against its OWN `BEGIN` marker BEFORE it
+was applied. No slice was retyped and no marker line reached any file.
 
-    python3 -B scripts/rotate_live_review.py
-    exit 0
-    gate records moved: 32
-    finding pairs moved: 5 (10 records)
-    old ledger size: 663083 bytes
-    new ledger size: 496375 bytes
-    old archive size: 2535031 bytes
-    new archive size: 2701739 bytes
-    open findings before: 63
-    open findings after: 63
-    written: /home/decodeux/Repos/remedy/.agent/live_review.md and /home/decodeux/Repos/remedy/.agent/live_review_archive.md
+| slice       | declared bytes | measured | declared sha256   | measured equal |
+|-------------|----------------|----------|-------------------|----------------|
+| FORTSCHRITT | 292            | 292      | `f777a357…9e6281` | yes |
+| PLAN23      | 2602           | 2602     | `6b710f34…a644d4` | yes |
+| RECORD23    | 9942           | 9942     | `baccf491…b71e540c` | yes |
+| SLIPS23     | 765            | 765      | `76b9fbc5…b5be2b75` | yes |
+| STATUS23    | 597            | 597      | `52f63c60…d92b8a2e` | yes |
+| README23    | 852            | 852      | `ecdc0427…ecd02564` | yes |
 
-Every predicted value landed exactly: 32 gate records, 5 finding pairs, 663083→496375, 2535031→2701739,
-and the script's own open-findings count IDENTICAL before and after.
+Disk-to-disk after application: `.agent/plan.md`'s sha256 equals the PLAN23 slice's; RECORD23 is a
+byte-exact suffix of `.agent/live_review.md` with ordered paragraph equality proved by a second,
+independent reader; SLIPS23 is a byte-exact suffix of `.agent/prose_slips.md`. The STATUS23 and
+README23 proofs against the committed C3 are G5's and are in the completion message. The FORTSCHRITT
+line is reproduced verbatim in the Session section above.
 
-THE TWO COUNTERS, reported and deliberately NOT reconciled, per the block's own instruction: the
-script says 63 before and 63 after; the record's own distinct-id reading (`^- R-\d+ — ` ids minus
-`^Done: R-\d+ — ` ids) says 65 before and 65 after. The property either counter has to supply is that
-it is IDENTICAL ACROSS THE ROTATION, and both are. Nothing is opened about the difference of 2.
+THE FIVE PAIRS OF C3, each measured before it was applied. For every pair the FROM occurred EXACTLY
+ONCE in its target at `a9ca53da` and the containment test printed `TO contains FROM: false`, so all
+five are REWRITES and none is an append; each was applied by replacing its single occurrence.
 
-Independently of the script:
+    P1  docs/roadmap/STATUS.md       FROM occurrences 1 · TO contains FROM false · 40158 → 40657 bytes
+    P2  README.md                    FROM occurrences 1 · TO contains FROM false · 16057 → 16825 bytes
+    P3  README.md                    FROM occurrences 1 · TO contains FROM false · 16825 → 16825 bytes
+    P4  README.md                    FROM occurrences 1 · TO contains FROM false · 16825 → 16825 bytes
+    P5  scripts/self_use_queue.json  FROM occurrences 1 · TO contains FROM false · 43764 → 43768 bytes
 
-- post-rotation OPEN SET BY DISTINCT ID: **65** (registrations 67, resolutions 2 — the rotation moved
-  5 registration/resolution PAIRS, so both totals fell by 5 and the open set did not move).
-- `R-0837` still present as a registration: `True`, still in the open set: `True`.
-- `R-0784` still present as a registration: `True`, still in the open set: `True`.
-  A rotation that archived an OPEN finding would be a defect; this is how it would have shown.
-- archive append-only: pre-rotation bytes (2535031) are a byte-exact PREFIX of post-rotation bytes
-  (2701739): `True`.
+After each replacement the FROM count in the target was re-measured at 0 and the TO count at 1.
 
-`git show --numstat 5d329d20`:
+## Open findings
 
-    0	88	.agent/live_review.md
-    88	0	.agent/live_review_archive.md
+**65 open by distinct id** over `.agent/live_review.md` as committed at C2 — 68 distinct
+`^- R-\d+ — ` registrations minus 3 distinct `^Done: R-\d+ — ` resolutions. The count is unchanged
+from round 22 because this round registered exactly one id and resolved exactly one.
 
-Path set is EXACTLY the two files. Insertions 88, at most 500 — so this rotation needs NO oversize
-exception, and F272 D18's one-per-feature allowance is left unspent. A ledger record is one long
-line here, which is why F272's own rotation was 1612 insertions and this one is 88; the figure was
-measured, not inherited.
-
-### G5 THE EVIDENCE JOB, at C3, in the primary checkout — PASS
-
-THE BASE FIRST, with the full 40-character FORK POINT and never `git merge-base`:
-
-    base 13dfaabd93d7b6452a1d23ca698e29ed47ecf035   (length 40)
-    head 5d329d2009108073dd91546ab9da0dc30cef73c7   (C3)
-    git rev-list --ancestry-path 13dfaabd..5d329d20 | count → 174   exit 0
-    git rev-list                 13dfaabd..5d329d20 | count → 174   exit 0
-    THE TWO ARE EQUAL → True
-    git merge-base --is-ancestor <base> origin/main → exit 0 (base IS an ancestor of origin/main)
-    git status --porcelain → EMPTY
-
-For the record, `git merge-base 5d329d20 origin/main` would have named `d0d8b24da2a080ebcff85e63e73a547e6a8066e6`
-— main's own tip, because this branch merged `main` in at `f85200e4`. That is the base that packaged
-F260's round 22 as BLOCKED_EVIDENCE; it was measured and NOT used.
-
-THE VERIFICATION RECORD, from a REAL run at C3 and a REAL `--collect-only` over the SAME selection:
-
-    python3 -B -m pytest tests/docs/ -q -p no:randomly
-    exit 0
-    303 passed in 0.49s
-    python3 -B -m pytest tests/docs/ -q -p no:randomly --collect-only
-    exit 0 — 303 node ids (every output line containing `::`)
-
-ONE entry, exactly the fourteen named fields and no others:
-
-    run_id            vr-0001         matches ^vr-\d{4,}$ → True
-    command           python3 -B -m pytest tests/docs/ -q -p no:randomly
-    exit_code         0
-    passed            303
-    failed            0
-    skipped           0
-    deselected        0
-    selected          303             == passed+failed+skipped → True
-    len(node_ids)     303             == selected → True
-    test_files        ['tests/docs/test_docs_consistency.py', 'tests/docs/test_vocabulary.py']
-                                      both are FILES on disk, sorted, never a directory → True
-    stdout_summary    420 characters  (< 4000 → True)
-    output_hash       54ee3d3888b1c4ccead127b3538b2fe188504221b685cfbd99bdd680e539a486
-                                      = sha256 of EXACTLY that stdout_summary string
-    head_sha          5d329d2009108073dd91546ab9da0dc30cef73c7
-    duration_seconds  0.714
-
-PRE-SCAN BEFORE CALLING THE PRODUCER, with `_unsafe_text` loaded from
-`scripts/build_review_manifest.py` — the one in `scripts/`, NOT under `packages.orchestration`
-(module file printed and confirmed): 303 node ids + 2 test_files scanned, **flagged: 0**.
-
-No full-suite node-id list was recorded anywhere: `len(node_ids) == selected` forbids filtering and
-the packaging metadata scan rejects the redaction-torture ids by design.
-
-THE PRODUCER, `packages.orchestration.job_evidence.create_manual_completion_bundle`:
-
-    evidence_dir       /home/decodeux/Repos/remedy/.remedy-wt/f274-r22-evidence-a19161d4ff0df836
-                       (fresh, under the gitignored .remedy-wt/, 232 files, 5.3M, NEVER committed)
-    repo_root          /home/decodeux/Repos/remedy
-    base_commit        13dfaabd93d7b6452a1d23ca698e29ed47ecf035
-    head_commit        5d329d2009108073dd91546ab9da0dc30cef73c7
-    job_id             a19161d4ff0df836   (16 lowercase hex from secrets.token_hex(8))
-    job_title          F274 one world completion part two closure evidence
-    step_range         T001-T003
-    prior_job_ids      []
-    review_feature_id  f274
-    timestamp = generated_at = 2026-09-08T06:34:30+00:00
-
-Returned summary dict, IN FULL:
-
-    {
-      "authority_count": 60,
-      "commit_count": 174,
-      "head_commit": "5d329d2009108073dd91546ab9da0dc30cef73c7",
-      "job_id": "a19161d4ff0df836",
-      "manual_completion": true,
-      "operator_attested_tasks": ["T001", "T002", "T003"],
-      "partition": {"T001": 20, "T002": 20, "T003": 20},
-      "total_passed": 303,
-      "verdict": "PASS_WITH_RISKS"
-    }
-
-Job id `a19161d4ff0df836`; the verdict it names is `PASS_WITH_RISKS`. The bundle's own
-`verification_tests.json` was read back afterwards: `schema_version 1.1.0`, `runs[0].selected 303`,
-`node_ids 303`, `passed 303`, `exit_code 0`, and `output_hash 54ee3d38…` — the producer's normalizer
-recomputes that hash after scrubbing and truncating, and its recomputation AGREED with the supplied
-value, because the summary is 420 characters and carries no path to scrub.
-
-### G6 THE REVIEW ZIP — PASS, `READY_FOR_REVIEW`
-
-`git status --porcelain` EMPTY and `git rev-parse HEAD origin/feature/f274-one-world-completion-part-two`
-both `5d329d20…` (branch pushed) BEFORE the build.
-
-    bash scripts/make_review_zip.sh --evidence-dir /home/decodeux/Repos/remedy/.remedy-wt/f274-r22-evidence-a19161d4ff0df836
-    exit 0
-    UNCHANGED: runtime_integration_gate.json — rebuilt from source; identical to existing
-    Evidence refresh completed for staged copy.
-    Observability index generated from staged bytes: evidence/current/self_run_observability_index.json
-    {"member_count": 4135, "authoritative_count": 60, "symlink_count": 0, "tombstone_count": 1,
-     "final_path": "/home/decodeux/Repos/remedy-history/zips/remedy-review-20260908-083448-READY_FOR_REVIEW.zip",
-     "final_sha256": "a96911ffe68f7ab371bd23a5ebcb8f3844f9934c6ec1a3f87c7f0dfe1ded8103",
-     "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW",
-     "evidence_authoritative": true, "review_subject_alignment": "PASS",
-     "manifest_sha256": "55695fc69b6bcba7ae941005d5f1d9c3e8eb99efdc1b96211511c1eb0b757c3a"}
-
-    REVIEW_PACKAGE_CREATED=true
-    PACKAGE_STATUS=READY_FOR_REVIEW
-    PACKAGING_CWD=/home/decodeux/Repos/remedy
-    EVIDENCE_DIR=/home/decodeux/Repos/remedy/.remedy-wt/f274-r22-evidence-a19161d4ff0df836
-    REVIEW_SUBJECT_ALIGNMENT=PASS
-    EVIDENCE_AUTHORITATIVE=true
-    REVIEW_PACKAGE_DIR=/home/decodeux/Repos/remedy-history/zips
-    ZIP_PATH=/home/decodeux/Repos/remedy-history/zips/remedy-review-20260908-083448-READY_FOR_REVIEW.zip
-    Included files: 4135
-    Branch: feature/f274-one-world-completion-part-two
-    Commit: 5d329d2009108073dd91546ab9da0dc30cef73c7
-
-Required values:
-
-    PACKAGE_STATUS            READY_FOR_REVIEW     (required; met)
-    REVIEW_SUBJECT_ALIGNMENT  PASS                 (required; met)
-    EVIDENCE_AUTHORITATIVE    true                 (required; met)
-    package FILENAME          remedy-review-20260908-083448-READY_FOR_REVIEW.zip
-    package ABSOLUTE dir      /home/decodeux/Repos/remedy-history/zips
-    size                      24948653 bytes (24M)
-    member_count              4135
-    authoritative_count       60
-    tombstone_count           1                    (required ≥ 1; met)
-    validation_errors         none — the status is READY_FOR_REVIEW, so none were emitted
-
-SHA-256, printed by the script and RECOMPUTED from the file on disk:
-
-    script-printed  a96911ffe68f7ab371bd23a5ebcb8f3844f9934c6ec1a3f87c7f0dfe1ded8103
-    recomputed      a96911ffe68f7ab371bd23a5ebcb8f3844f9934c6ec1a3f87c7f0dfe1ded8103
-    AGREE           True
-
-Manifest `committed_review_subject`, read back OUT OF THE ZIP (`.review_zip_manifest.json`):
-
-    base_commit      13dfaabd93d7b6452a1d23ca698e29ed47ecf035   (the fork point)
-    head_commit      5d329d2009108073dd91546ab9da0dc30cef73c7   (C3, the accepted HEAD)
-    base_is_ancestor True    commit_count 174    file_count 109
-
-It spans the fork point to C3, exactly as required. The package was NOT deleted and NOT moved.
-
-THE TOMBSTONE, and the aside beside it. The `tombstone_count 1` the script reports comes from the
-packaged `evidence/current/review_archive_plan.json`, whose `tombstones` list holds exactly one
-entry: `{"path": "apps/cli/commands/feature_cmd.py", "base_sha256": "db4fbfed…"}` — the source file
-this branch deletes, and precisely the deletion R-0837 was about. TWO OTHER artifacts in the SAME
-package carry a tombstone reading of zero and are reported here rather than left for someone to
-discover: `evidence/current/current_change_content_proof.json` has `"tombstone_count": 0` with
-`"tombstones": {}` (the producer writes those two fields as constants), and the zip manifest's
-`committed_review_subject.tombstones` is `[]`. The gate's own reading is the packaging summary's,
-which is 1; the other two are not claimed to say anything they do not.
-
-### G7 THE PRECONDITIONS, at C3, in the primary checkout, run SERIALLY — PASS, with R-0648 named
-
-    python3 -B -m pytest tests/docs/ -q -p no:randomly
-    exit 0 — 303 passed in 0.59s
-
-    python3 -B -m pytest tests/cli/test_golden_path.py -q -p no:randomly
-    exit 0 — 42 passed in 20.82s
-
-Both land on the counts the reviewer measured at `6b5387ae`: 303 and 42.
-
-    packages.orchestration.integrity_gate.run_integrity_checks()
-    result type   IntegrityGateResult
-    .passed       True          (an ATTRIBUTE, not a dict key)
-    .fail_count   0             (an ATTRIBUTE, not a dict key)
-    checks total  5
-
-The check named `high_blockers_open`, walked out of `.checks` and quoted VERBATIM:
-
-    name    : high_blockers_open
-    status  : IntegrityStatus.PASS
-    message : 'no open blocker/high findings'
-
-THAT MESSAGE IS FALSE, and DECISION F272 D17 requires this close to say so out loud and to rest on
-the named list rather than on the check. Measured independently over the post-rotation ledger, with
-severity read as the FIRST token after the em dash, the OPEN High findings are FIVE:
+FOUR of the 65 are High, and the close names them rather than resting on the integrity gate, as
+DECISION F272 D17 requires:
 
     R-0803  the test suite writes into the operator's real data root
     R-0804  the cockpit's brain endpoint crashes for a ping-pong job
     R-0806  a real Sonnet run blocked and no command shows a reviewer finding
     R-0807  the token ledger recorded one call for a run that made at least six
-    R-0837  the canonical closure evidence producer cannot package a deleted source file
 
-    open High count : 5
+All four are F273's rather than this feature's, per DECISION F272 D12, which is why the close is
+PASS_WITH_RISKS and not PASS. R-0837 — the fifth High of round 22 — is RESOLVED by this round's C2.
+Severity is read as the FIRST token after the em dash; matching the word `High` anywhere in a
+paragraph over-counts, because several Medium findings use the word in their prose.
 
-Four of them — R-0803, R-0804, R-0806, R-0807 — are F273's rather than this feature's, per DECISION
-F272 D12. R-0837 is FIXED at both sites but NOT YET RESOLVED, because only reviewer-authored `Done:`
-text resolves anything and its resolution condition demands the package this round has just built.
-That the check reports PASS while five High findings are open IS finding R-0648, which is itself
-open and Medium.
-
-### G8 THE TREE, at C3 — PASS
-
-    git status --porcelain              → EMPTY
-    git ls-files .remedy-wt             → EMPTY (0 lines; the directory is gitignored)
-    git worktree list | wc -l           → 1     (was 14; the 13 disposable ones were removed before G5)
-    git diff --name-only 6b5387ae 5d329d20 → exactly the five tracked paths listed under Commits
-
-Per-commit INSERTIONS, each at most 500 per AGENTS.md DECISION F104 D1:
-
-    | commit    | insertions | cap  |
-    |-----------|------------|------|
-    | 777e57e6  | 290        | ≤500 |
-    | 2cc739aa  | 223        | ≤500 |
-    | 2bcbc711  | 26         | ≤500 |
-    | 31073828  | 2          | ≤500 |
-    | 5d329d20  | 88         | ≤500 |
-
-No oversize commit was made and none is declared. C4's own numbers belong to the next round's ledger
-entry.
-
-## Open findings
-
-**65 open by distinct id** over the post-rotation `.agent/live_review.md` (67 distinct
-`^- R-\d+ — ` registrations minus 2 distinct `^Done: R-\d+ — ` resolutions), unchanged across both
-this round's append and the rotation. The rotation script's own counter reads **63** before and 63
-after; the two counters have differed by exactly 2 for several features and neither moved, which is
-the property that matters. Five of the 65 are High and are named under G7.
+The integrity gate's `high_blockers_open` check reports "no open blocker/high findings" and is WRONG
+about these four. That is finding R-0648, itself open and Medium; its verbatim reading at C3 is in
+the completion message under G7.
 
 ## Item-status table
 
 | Item | Status | Reason |
 |------|--------|--------|
-| C0a — save the block as `.agent/authored/f274-r22.md` | done | `cp` from the scratch original; digest equal |
+| C0a — save the block as `.agent/authored/f274-r23.md` | done | `cp` from the scratch original; digest equal at `1f97e2c9…` |
 | C0b — mirror into `.agent/last_block.md` | done | `cp`; all three digests equal |
-| C1 — replace `.agent/plan.md` with PLAN22 | done | byte-identical, 3043 bytes, 49 lines |
-| C2 — append RECORD22 to `.agent/live_review.md` | done | 658562→663083, prefix/suffix/ordered all true |
-| C3 — the ledger rotation, its own commit | done | script only, exit 0, 88/88, two paths |
-| G1 transport | done | three digests equal at `30bb0397…` |
-| G2 the plan | done | 3043 bytes, 49 lines, both headings present |
-| G3 the record append | done | all six parts, including the negative control |
-| G4 the rotation | done | every predicted figure landed; archive prefix true |
-| G5 the evidence job | done | base 174 == 174; producer `PASS_WITH_RISKS`; job `a19161d4ff0df836` |
-| G6 the review zip | done | `PACKAGE_STATUS=READY_FOR_REVIEW`; SHA-256 recomputed and agreeing |
-| G7 the preconditions | done | 303 and 42, exit 0 each; gate `.passed True`, `.fail_count 0`; R-0648 named |
-| G8 the tree | done | porcelain empty, five paths, every commit under the cap |
-| C4 — rewrite the handback and push | done | this file |
+| C1 — replace `.agent/plan.md` with PLAN23 | done | byte-identical, 2602 bytes, 43 lines |
+| C2 — append RECORD23 and SLIPS23 | done | 496375→506317 and 165972→166737; prefix, suffix and ordered equality all true |
+| C3 — the closure commit | done | four paths; STATUS `[x]`, README sync, `consumed_by`, this handoff |
+| P1 — the STATUS `[x]` line | done | STATUS23 applied verbatim; FROM 1→0, TO 0→1 |
+| P2 — the README F274 paragraph | done | README23 applied verbatim; FROM 1→0, TO 0→1 |
+| P3 — the README counter 75→76 | done | single occurrence replaced |
+| P4 — the tier-2 row 18→19 | done | single occurrence replaced |
+| P5 — `SU-013` `consumed_by` → `F274` | done | edited as TEXT; no `json.dump` round trip |
+| G1 transport | done | three digests equal at `1f97e2c9…`, 30661 bytes each |
+| G2 the plan | done | 2602 bytes, 43 lines, both headings once |
+| G3 the appends | done | all seven parts, including the negative control both readers rejected |
+| G4 the closure commit's shape | done | measured after C3; reported in the completion message |
+| G5 the authored text landed | done | measured after C3; reported in the completion message |
+| G6 the docs gate and the canary | done | measured after C3; reported in the completion message |
+| G7 the closing state | done | measured after C3; reported in the completion message |
+| G8 the pull request and the tree | done | measured after C3; reported in the completion message |
 
-Nothing was skipped and nothing was deviated from the ordered commit sequence.
-
-## Authored-text proofs
-
-Three reviewer-authored texts were applied this round, each extracted PROGRAMMATICALLY from the
-committed `.agent/authored/f274-r22.md` — the slice being the bytes strictly between its `BEGIN` and
-`END` lines — and each verified against its OWN `BEGIN` marker before it was applied:
-
-| slice       | declared bytes | measured | declared sha256 | measured equal |
-|-------------|----------------|----------|-----------------|----------------|
-| PLAN22      | 3043           | 3043     | `85fbbe04…f0594` | yes |
-| RECORD22    | 4521           | 4521     | `cb0d2110…6dc1c2` | yes |
-| FORTSCHRITT | 303            | 303      | `ff2a85b8…828d17` | yes |
-
-Disk-to-disk after application: `.agent/plan.md` sha256 equals the PLAN22 slice's; the RECORD22 slice
-is a byte-exact SUFFIX of `.agent/live_review.md` as committed at C2, with ordered paragraph equality
-proved by a second, independent reader. The FORTSCHRITT line is reproduced verbatim in the Session
-section above.
+Every ordered item appears exactly once. Nothing was skipped. There is no C4: Rule A4 makes the
+STATUS edit the last commit, and the closure protocol puts the final `.agent/` state — this handoff
+included — inside it.
 
 ## Deviations & assumptions
 
-1. **Exit codes captured through an explicit-argv `subprocess.run` wrapper**
-   (`.remedy-wt/r22_run.py`), because the session's bash guard rejects `$?` by FORM. Established
-   deviation, unchanged from earlier rounds. Every exit code reported above is the wrapper's real
-   `returncode`, never an inference from output.
-2. **Thirteen disposable worktrees were removed before G5**, with `git worktree remove --force`
-   followed by `git worktree prune`. This is ordered by the block's constraint 6, but it is a
-   destructive external action and is declared as such. NO BRANCH WAS DELETED — all 15
-   `remedy/job-*` branches still exist; `git worktree remove` detaches the checkout only. The
-   `--force` flag was used because several of those checkouts held modified files from earlier
-   mutation red-proofs. G8's `git worktree list | wc -l` therefore reads 1 where round 21 read 14,
-   and the change is intended, not drift.
-3. **The G3(d) negative control flipped a space to a NUL byte** (`0x20 ^ 0x20`) at slice offset 6,
-   inside the first appended paragraph. NUL is a legal UTF-8 byte and both readers rejected the
-   corrupted variant on content, not on a decode error. The flip existed only in a scratch buffer;
-   the tracked file's sha256 was re-measured afterwards and is unchanged.
-4. **G7's independent High-finding list was measured twice, and the FIRST reading was wrong.**
-   Matching `\bHigh\b` anywhere in a registration's description returned 11 ids, because several
-   Medium findings use the word "High" in their prose. Anchoring severity to the FIRST token after
-   the em dash returns 5 — R-0803, R-0804, R-0806, R-0807, R-0837 — which is the list the block
-   names and the list reported above. The wrong reading is stated here so the reviewer can see which
-   definition the number rests on.
-5. **The producer recomputes `output_hash`.** `manual_attestation._vt_run_v11` scrubs paths, truncates
-   `stdout_summary` to its last 2000 characters and ALWAYS recomputes `output_hash`, discarding any
-   caller-supplied value (R-0792/R-0793). The supplied summary is 420 characters and carries no path,
-   so the recomputation agreed byte for byte with the value computed as the block ordered. Nothing
-   diverged; the mechanism is declared because a longer summary WOULD have diverged.
-6. **The tombstone reading is not uniform across the package.** Reported in full under G6: the
-   packaging summary says 1 (from `review_archive_plan.json`, naming
-   `apps/cli/commands/feature_cmd.py`), while the evidence bundle's content proof says 0 and the zip
-   manifest's `committed_review_subject.tombstones` is `[]`. The gate is met on the packaging
-   summary's reading. No finding is raised and nothing was changed to make the three agree.
-7. **Scratch scripts live under `.remedy-wt/`** (`r22_extract.py`, `r22_g3.py`, `r22_g5.py`,
-   `r22_g7.py`, `r22_run.py`, and the extracted slice files). That directory is gitignored, so
-   `git status --porcelain` stayed EMPTY at the moment the evidence job and the zip ran, and
-   `git ls-files .remedy-wt` is empty. Nothing was deleted by glob; the evidence directory and the
-   package both remain on disk at their exact paths.
+1. **The gates that measure C3 are reported in the completion message, not here.** This is not a
+   dropped section but a structural consequence of Rule A4: the closure commit is the last commit on
+   the branch, so a gate over the COMMITTED closure commit cannot be transcribed into a file that
+   commit contains. The same applies to C3's own numstat and to the PR number. G1 to G3 are
+   transcribed above in full because they were measured before C3.
+2. **The docs gate was ALSO run once against the DIRTY working tree immediately before C3**, as a
+   safety pre-check, because constraint 5 forbids committing a repair after the closure commit and a
+   red docs gate discovered afterwards would leave the branch closed and broken. It returned exit 0
+   at 303 passed. The gate ordered by the block was then re-run against the committed C3; both
+   readings are reported. Nothing was changed between the two runs.
+3. **Slices were extracted and applied by a scratch Python script** under the gitignored
+   `.remedy-wt/` (`r23_extract.py`, `g3.py`, `c3_apply.py`), never by hand-retyping and never by
+   loading and re-dumping JSON. `scripts/self_use_queue.json` was edited as TEXT for the reason the
+   block gives: a default `json.dump` would escape every em dash in content this round never
+   touched, which is finding R-0785. The file's pre-existing `—` escapes are untouched — the
+   diff shows those lines as unchanged context.
+4. **`SU-013`'s `consumed_by` is `F274` in upper case**, not the lower-case `f274` that round 22's
+   handback and PLAN22 named. All twelve previously consumed entries use the upper-case `F###` form,
+   this round's block orders `F274` explicitly, and the mismatch was already appended to
+   `.agent/prose_slips.md` by C2 as a reviewer-prose slip. Recorded here as well so a reader auditing
+   the round against round 22's stated intent sees the difference rather than a silent divergence.
+5. **`.agent/candidates.md` was NOT touched and remains EMPTY.** This closure raised no candidate, so
+   the `.agent/candidates.md`-only commit that DECISION amend0827 D2 would permit after the closure
+   commit does not exist. C3 really is the last commit.
+6. **No worktree was created this round and none was removed**, so no destructive external action was
+   taken. `git worktree list` and `git ls-files .remedy-wt` readings are in the completion message
+   under G8. The review package and the evidence directory from round 22 were left exactly where they
+   are; nothing was deleted by glob or otherwise.
 
-No departure from the block's ordered commit sequence occurred: C0a, C0b, C1, C2, C3, then the
-untracked G5/G6 artifacts, then C4. No commit was amended, added, dropped or reordered.
+No departure from the block's ordered commit sequence occurred: C0a, C0b, C1, C2, C3, and there is
+no C4. No commit was amended, added, dropped or reordered.
 
 ## Next
 
-Closure round B: book round 22's verdict and author `Done: R-0837` in `.agent/live_review.md`, then
-the single closure commit — the STATUS `[x]` line authored from the five values in the block near the
-top of this file, the README capability sync, and the one `consumed_by` edit setting `SU-013` to
-`f274` — then open the pull request, which is NOT merged this session.
+THE NEXT SESSION'S FIRST ACTION IS NOT NEW WORK. It opens at Phase 1 rule 1 of
+`docs/agents/self_drive_protocol.md` — read `.agent/STOP` from disk — and then rule 2 finds this
+feature's pull request open, non-draft, from `feature/*` into `main`, and MERGES it at the Open PR
+Gate with `gh pr merge <n> --merge --delete-branch` before any new branch is cut. Only then does
+Rule A5 propose the next feature, which is F275, registered directly after F274 inside the same tier
+heading and already carrying the cluster deletion, the atomic record flip and the classic runner.
