@@ -7,36 +7,37 @@ operator amendment amend0907-cluster-first.
 ## Goal
 
 Close F274 at the edge work it actually built and carry the cluster deletion, the atomic record
-flip and the classic runner to F275, per DECISION F274 D8. F275 is registered and the
-integration gate has PASSED; what remains is the self-use precondition and the closure itself.
+flip and the classic runner to F275, per DECISION F274 D8. F275 is registered, the integration
+gate has PASSED and the self-use precondition is met; the close is BLOCKED by R-0837 until this
+round lands its fix.
 
 ## Current Step
 
-The self-use round closure precondition 6 requires. Every queue item is consumed, so
-`generate_and_append_if_empty` runs FIRST and appends the tier-1 item; that item is then planned
-and RUN through `run_next_self_use_item` to the normal approval gate under a real provider, never
-applied, with its `consumed_by` left EMPTY for the closure commit to set. The run's evidence and
-whatever `describe_self_use_run_defects` returns are recorded verbatim. It also books round 18's
-PASS verdict and the two R-0819 recurrences that round's gates earned.
+The R-0837 repair. `create_manual_completion_bundle` builds its attestation authority set from
+every attestable changed path, including one this branch DELETED, then requires both that the task
+partition cover that set exactly and that each task's safe diff yield exactly its own paths — which
+a deleted file's safe diff never does. The two checks are jointly unsatisfiable, so the canonical
+closure evidence producer refuses every deletion feature, and F274 and F275 are both one. This
+round guards the comprehension with `f.current_sha256`, the idiom the same function already uses
+twenty lines below it for `file_hashes`, and ships a regression test that goes red without it. Its
+ledger commit books round 19's PASS verdict, registers R-0837 and R-0838 and appends the R-0784
+recurrence.
 
 ## Next Steps
 
-1. Register, as normal R-id findings, every string `describe_self_use_run_defects` returned for
-   the self-use run — or record that it returned the empty tuple, which means nothing to register
-   rather than nothing checked. This is the first commit of the closure round.
-2. The ledger rotation by `scripts/rotate_live_review.py`, as its own commit, after the verdict
-   bookings and before the STATUS flip.
-3. The evidence job and the fresh review zip. The zip's `base_commit` is the FORK POINT
+1. CLOSURE ROUND A: the ledger rotation by `scripts/rotate_live_review.py` as its own commit, then
+   the evidence job and the fresh review zip. The zip's `base_commit` is the FORK POINT
    `13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, whose ancestry-path and plain `rev-list` counts are
    EQUAL — never `git merge-base`, which names `origin/main`'s tip here and gives unequal counts.
-4. The closure commit: the STATUS `[x]` flip, the README sync and the one `consumed_by` edit in
-   ONE commit; then the pull request, which is NOT merged this session.
+2. CLOSURE ROUND B: the STATUS `[x]` flip, the README sync and the one `consumed_by` edit setting
+   `SU-013` to `f274`, in ONE commit; then the pull request, which is NOT merged this session.
 
 ## Risks
 
-- The map was blind twice and is fixed once: R-0834's file-type blindness is closed, R-0832's
-  event-name coupling is OPEN. Treat every "zero edges" reading as a claim about the WALKER.
+- The authority set is read from the WORKING TREE and not from the commit, so an untracked `.py`
+  file under the repo root joins it and shifts every count the closure round reports. The tree is
+  clean before the evidence job runs, and closure round A gates that first.
 - The open High findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
-  feature's, per DECISION F272 D12.
-- The self-use run needs a REAL provider: `run_next_self_use_item` refuses to run unflagged when
-  role config resolves to `fake`. Role config resolves `builder` and `reviewer` to `ollama`.
+  feature's, per DECISION F272 D12. The integrity gate's `high_blockers_open` check reports "no
+  open blocker/high findings" and is WRONG while those four are open — that is R-0648, and
+  DECISION F272 D17 requires the close to say so and to rest on the named list instead.
