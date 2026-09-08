@@ -631,3 +631,7 @@
 2026-09-08 · F275 R1 · The round 1 block ordered the handback to repeat the Fortschritt line verbatim and supplied no Fortschritt line to repeat, because under self-drive that line lives in the reviewer's operator brief rather than in the block; the worker authored one and labelled it a Schätzung.
 
 2026-09-08 · F275 R1 · The round 1 block ordered all eight gates run at C5 and then had G8 assert `git log` shows C0a through C6, a commit that does not exist until after the gates run — the §3 item 14 shape of a gate reaching a commit it cannot honestly measure; the worker marked it deviated and re-confirmed the clause after C6.
+
+2026-09-08 · F275 R3 · The round 3 block's gate G3(a) stated the post-append byte count as `515349 + len(RECORD3) + 1`, omitting the leading newline the same block's C2 operation orders, so it predicted 519227 against a correct 519228; the worker followed the operation, landed the right bytes and declared the conflict.
+
+2026-09-08 · F275 R3 · The round 3 block's edit (a) gave its FIND anchor as `    # ── doctor`, a prefix of the real banner line rather than the whole line, so the anchor resolved only under the unterminated-prefix reading; the worker measured both readings before applying and used the one that resolves.
