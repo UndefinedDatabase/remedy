@@ -419,3 +419,230 @@ FIRST body line of `.agent/f275_deletion_order.md`: its six modules import each 
 DECISION F275 D2 makes the whole component ONE commit. That round also inherits R-0844's fix
 clause pointer for DECISION F260 D3 and R-0843's clause binding the next block that touches
 `docs/system/architecture.md`. The next free finding id is R-0845.
+
+## Reviewer verdict on round 9 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 9: **PASS.** Written by the planner/reviewer of session 5 AFTER reading the
+committed range `aae6d313dbedc64c84703eae7a782e67439ccdec`..`1300bd3dd46977d766885862f9831597564df860`
+and RE-RUNNING every one of the eight gates independently against the committed blobs; the
+worker's report was not taken as evidence for any line below. It is carried here because under
+`docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it is
+booked into `.agent/live_review.md` by the FIRST substantive commit of the next round, per
+amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED. Six single-parent commits C0a `b3db8d01`, C0b `effecd77`,
+C1 `2901e0b2`, C2 `ea039fc8`, C3 `6c601b35` and C4 `1300bd3d`, each parent verified by
+`git rev-list --parents`, with per-commit insertions 400, 372, 19, 12, 11 and 365, every one
+under the AGENTS.md DECISION F104 D1 cap of 500. G1: the reviewer's OWN scratchpad original and
+the committed `.agent/authored/f275-r9.md` and `.agent/last_block.md` are all 36871 bytes at
+`178bd6cae149517cab73a806385dd9bd608176e4416247713b3c6ca34333d7fe`, so this round has the
+primary cmp-against-scratchpad proof of §4 item 9 rather than the digest fallback; per §3 item
+37 that chain covers those three artefacts and claims nothing about the emitted bytes. G2:
+`.agent/plan.md` byte-identical to PLAN9 at 2616 bytes and 45 lines. G3: `.agent/live_review.md`
+552280 to 559516, growth 7236 = 1 + 7235; `.agent/prose_slips.md` 173925 to 175541, growth
+1616 = 1 + 1615; both edges byte-exact with the joining byte read back as a newline, N counted
+from each slice by the reviewer's own reader as 4 and 2 with ordered equality holding over the
+WHOLE appended region, and both negative controls — flipped in memory on the FIRST appended
+paragraph — REJECTED by both readers, the tracked files re-read from disk unchanged afterwards.
+`^Gate: ` 30 to 31, and `^Gate: F275 R8 `, `^Done: R-0841 `, `^- R-0843 — ` and `^- R-0844 — `
+exactly 1 each, with THE OPEN SET 68 TO 69 BY DISTINCT ID against registrations 71 to 73 and
+resolutions 3 to 4. G4: all five deleted files absent from `git ls-tree` at C3 over 4632 tracked
+files; all TEN gated strings at ZERO over the 1753 tracked files outside `.agent/` and `.data/`;
+and the whole-word token `review_bundle` at EXACTLY FIVE lines, every one printed and every one
+a must-not-touch item — `T2_F260.md` line 346 and `T2_F272.md` line 744, the specification, and
+three lines in `packages/orchestration/self_repair_proposal.py`, a cluster module RULE 2 defers.
+G5: the three ratchets 9 passed at exit 0, and through the SHIPPED readers `_BASE_CATALOG` and
+`collect_all_handlers()` both fell 335 to 334 with `review.bundle` ABSENT from both, all four of
+`review.run`, `review.list`, `review.accept` and `review.reject` PRESENT in both, the `review`
+GroupDef still present and zero duplicate command ids; the regenerated order file holds ELEVEN
+components against twelve at a `0  1` numstat, a PURE DELETION. THE RED-PROOF WAS RE-RUN BY THE
+REVIEWER IN ITS OWN DISPOSABLE WORKTREE AT `6c601b35`: control exit 0 at 9 passed, then the
+three restorations exit 1 at 2, 2 and 1 failures, then the control exit 0 again, each FROM
+string counted unique in its named file first and each file reverted byte-identically by sha256.
+G6: ruff `All checks passed!` over the 24 edited Python files still existing at C3, every one
+re-parsed with `ast` without error, and repo-wide ruff `Found 24 errors.` at BOTH the base —
+read in a disposable worktree, never by writing to the primary checkout — and the tip. G7: THE
+FULL SUITE WAS RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT at exit code 0 read from
+the process object, 19590 passed and 23 skipped, and the arithmetic closes exactly:
+`--collect-only` 19751 at the base and 19613 at C3, a fall of 138 = 104 for the two deleted test
+files plus 34 for the collected-id fall over the 16 swept files, and 19590 + 23 = 19613. G8:
+`.agent/STOP` absent, `git status --porcelain` empty, one worktree, and the range's diff naming
+45 paths in an EXACT SET MATCH against the block's enumeration minus `.agent/handoff.md`.
+
+WHAT THIS ROUND ACHIEVED, AND THE SCOPE CORRECTION THAT IS ITS REAL CONTENT. The fourth module
+group is gone, and it is the first whose ONLY surviving importer was invisible to every import
+graph this repository owns: `apps/cli/commands/worker_facade_cmd.py` probed the module by STRING
+through `importlib`, which is why `tests/orchestration/cluster_deletion_map.txt` carried no
+`review_bundle` line and the module read as free. That is the R-0832 class reaching the deletion
+map itself rather than a cockpit reader. THE SESSION-4 MAP FOR THIS ROUND WAS WRONG AND WAS
+CAUGHT BY APPLYING IT. It prescribed deleting `apps/cli/commands/review_cmd.py` whole, the entire
+`review` catalog group with its `GroupDef`, the smoke script's section 12ap, three surviving
+command-string emitters and about eighteen further tests. Applied in a disposable worktree at
+`aae6d313` BEFORE this block was authored, that reading measured RED at FIFTEEN failures, because
+only ONE of the five handlers in that file imports `review_bundle` and the other four drive
+`packages/orchestration/reviewer.py` — a module that SURVIVES, is not on F260's Design list, and
+keeps a production importer at `apps/cli/commands/dev.py` line 125. The over-wide reading would
+have deleted four working commands and the coverage of a surviving module. The correct scope runs
+green: 2232 passed and ZERO failed over the affected suites, against fifteen failures at the
+inherited scope. THE COUNTER-MEASURE, stated as a reading rather than a habit: a `*_cmd.py`
+handler file belongs to a module group only for the handlers that IMPORT the module, and the
+group's boundary is established by APPLYING the deletion, never by reading the file's name.
+
+THREE DEVIATIONS WERE DECLARED AND ALL THREE ARE SUSTAINED; TWO ARE THE REVIEWER'S OWN NUMERALS
+AND NEITHER EARNS AN ID. FIRST, the block's `Change (45 paths…)` heading and G8's "the 44 paths"
+are each ONE LOW: the enumeration holds 46 distinct paths, 45 other than `.agent/handoff.md`, and
+the reviewer re-counted them mechanically from the committed authored copy and confirmed an EXACT
+SET MATCH against the 45-path diff. The enumeration — the half that gets executed — was right and
+only the hand-counted heading drifted: the R-0510 class item 16 exists to prevent, arriving in the
+very block that had to be trimmed to the 400-line cap. SECOND, the catalog readers are 335 at the
+base and 334 at C3, not 336 and 335; the DELTA of −1 the gate exists to establish is exactly
+right, and the reviewer confirmed 335 at the base by running the shipped readers in a disposable
+worktree at `aae6d313`. The error was carrying round 8's PRE-deletion figure of 336 out of its
+handback instead of re-measuring at this round's own base — the item 34 shape, a numeral taken
+from prose rather than from the file. That same wrong pair sits inside the R-0844 paragraph this
+round appended, which the worker applied BYTE FOR BYTE as constraint 1 required rather than
+repairing reviewer text, so the ledger reads "one of 336 catalog entries" and "falls 336 to 335"
+where the measured figures are 335 and 334. IT BUYS NO CORRECTION ROUND: the claim is not
+load-bearing, because R-0844's substance is that `remedy review bundle` and the doctor row are
+gone with no inheritor and that holds at either count, and AGENTS.md permits a correction round
+only for a load-bearing false claim in the append-only record. THIRD, step (13) as worded took
+both blank lines wherever the deleted function was its class's last member, leaving three
+single-blank-line seams; the reviewer measured that these same files already carried sixteen such
+seams at the base, ruff is clean because this repository's `select` does not enable the
+preview-only `E301`–`E306` rules, and no test reads the shape. Cosmetic, sustained, no repair
+round: step (14)'s "the blank run AROUND it" is the wording a later block should reuse.
+
+## Session 5 ends here — ONE delegated round, reviewed and PASSED
+
+`.agent/STOP` does not exist; it was measured absent at the Phase 0 probe, again before authoring
+round 9, and again now. No pull request exists and none is owed: under
+`docs/roadmap/STATUS_closure_protocol.md` the PR belongs to the closure sequence. F275's soft
+limit is 20 sessions and 60 rounds by operator amendment amend0908-f275-finish RULE 1, and the
+feature stands at session 5, round 9 — well inside it, so no scope report is owed.
+
+THE REASON THIS SESSION ENDS AT ONE ROUND, STATED PLAINLY, AND IT IS THE SECOND SESSION IN A ROW
+TO DO SO. This is a throughput problem and the reviewer names it rather than dressing it up. The
+cause is not a nice seam: the next component cannot be split. `.agent/f275_deletion_order.md`
+line 1 is a SIX-MODULE strongly connected component, and DECISION F275 D2 plus operator RULE 1
+make it ONE commit; the components below it are all imported by it, so nothing smaller is
+deletable. Its measured size is 7952 module lines across 46 tracked files, against
+`review_bundle`'s 2254 across 40 — and this round proved that establishing such a group's true
+boundary requires an APPLIED dry run with a full-suite run, because the boundary is exactly what
+the inherited map got wrong. Authoring, delegating and then INDEPENDENTLY verifying a one-commit
+deletion of that size does not fit beside the round already completed, and starting it without
+the budget to verify it would leave an UNGATED round on the branch, which Phase 1 rule 4 forbids
+planning over. That is amend0905-throughput's honest reason "a round that explicitly needs a
+fresh session", and it is backed below by measurement rather than by estimate. Operator amendment
+amend0908-f275-finish rule 5 is NOT cited: this session does not end on authoring errors
+accumulating.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the session spent its
+budget on two applied dry runs of the same round — the inherited over-wide scope, which it ran to
+red before discarding, and then the corrected scope — plus three full-suite runs of about
+twenty-four minutes each, and it ends with enough context to have MEASURED the next round's map
+in full but not enough to author, delegate and independently verify a deletion of that size.
+
+## THE ROUND 10 MAP — MEASURED at `1300bd3dd46977d766885862f9831597564df860`, not estimated
+
+Everything below was read off the tree by running the shipped readers and an `ast` pass at the
+tip named above. WHERE THE SESSION-4 MAP FOR ROUND 9 WENT WRONG WAS EXACTLY HERE — it assumed a
+handler file dies with its module — so the FIRST fact recorded is the one that was assumed last
+time, and it is measured this time.
+
+HANDLER PURITY, THE FACT THAT DECIDES THE SCOPE. All five handler files of this component DO die
+whole, unlike `review_cmd.py`. Measured by parsing each file's `COMMAND_HANDLERS` — note it is an
+ANNOTATED assignment, so an `ast.Assign`-only reader silently finds nothing — and resolving every
+`from packages.orchestration.X import` in it:
+
+| Handler file | lines | commands | orchestration imports beyond shared utils |
+|---|---|---|---|
+| `apps/cli/commands/dogfood_cmd.py` | 281 | 12 | NONE |
+| `apps/cli/commands/overnight_mission_cmd.py` | 156 | 7 | NONE |
+| `apps/cli/commands/progress_cmd.py` | 57 | 1 | NONE (`storage` only, a shared utility) |
+| `apps/cli/commands/repair_loop_v2_cmd.py` | 187 | 11 | NONE |
+| `apps/cli/commands/self_repair_cmd.py` | 213 | 7 | NONE |
+
+THIRTY-EIGHT COMMANDS DIE, and the catalog goes 334 to 296. All 38 ids were confirmed present in
+the live `_BASE_CATALOG`. By group, and this is the half a `review_bundle`-style sweep cannot see:
+
+- `dogfood` — catalog has 12, all 12 die: THE WHOLE GROUP GOES, `GroupDef` included.
+- `progress` — catalog has 1, it dies: THE WHOLE GROUP GOES, `GroupDef` included.
+- `self-repair` — catalog has 7, all 7 die: THE WHOLE GROUP GOES, `GroupDef` included.
+- `overnight` — catalog has 11 and only 7 die. THE GROUP AND ITS `GroupDef` SURVIVE, keeping
+  `overnight.plan`, `overnight.readiness`, `overnight.report` and `overnight.run`.
+- `repair` — catalog has 17 and only 11 die. THE GROUP AND ITS `GroupDef` SURVIVE, keeping
+  `repair.failure-show`, `repair.propose`, `repair.request`, `repair.request-show`,
+  `repair.start` and `repair.status`.
+
+`tests/test_command_catalog.py::TestCatalogIntegrity::test_every_group_has_at_least_one_command`
+is what catches a `GroupDef` left behind, and it reads the catalog rather than any module, so no
+grep for the six module names can see it.
+
+THE CARRY-OVER COLLIDES WITH THIS ROUND AND MUST BE SETTLED BEFORE IT. `overnight.readiness` and
+`overnight.report` are two of the four `overnight` survivors, and they are precisely F260's Design
+"two carry-overs before deletion" — overnight readiness and the overnight report become
+`mission readiness` and `mission report`, with DECISION F274 D2 ruling that `mission report` is
+NOT FREE UNTIL ITS CURRENT HOLDER DIES. Their handler is NOT `overnight_mission_cmd.py`, which
+dies here. T001's "WHAT IS OWED HERE, IN ORDER" puts both carry-overs BEFORE the first `git rm`,
+and neither has landed. The next session must therefore decide, and record as a DECISION, whether
+the carry-over rides in this component's commit or precedes it — that ordering question is the
+first thing the round 10 block has to answer, and it is not answered here.
+
+THE SIX MODULES AND THEIR OWN TESTS: `dogfood_run.py` 1725, `progress_ledger.py` 2284,
+`repair_loop_v2.py` 1167, `feature_planner.py` 1045, `overnight_mission.py` 918 and
+`self_repair_proposal.py` 813 — 7952 lines. Their own suites are
+`tests/orchestration/test_dogfood_run.py`, `test_feature_planner.py`, `test_overnight_mission.py`,
+`test_progress_ledger.py`, `test_repair_loop_v2.py`, `test_self_repair_proposal.py` and
+`tests/cli/test_self_repair_cmd.py`.
+
+THE SURVIVING CONSUMER, and there is exactly one under `apps/` or `packages/`:
+`apps/cli/commands/worker_facade_cmd.py` names BOTH `dogfood_run` and `self_repair_proposal`.
+Round 9 already removed its `review_bundle` probe; these two are STRING-keyed `importlib` probes
+of the same shape, so the same class applies and `tests/cli/test_worker_facade_cmd.py` names
+`dogfood_run` too. `tests/orchestration/cluster_deletion_map.txt` carries exactly one edge for
+this component, `packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py`,
+which goes in the same commit.
+
+THE FOURTEEN OTHER TEST FILES that name a dying module and whose subject SURVIVES need the round 9
+treatment — an AST sweep classified by hand, not applied blind: `test_builder_routing.py`,
+`test_development_artifact_boundary.py`, `test_do_continue.py`, `test_local_model_advisor.py`,
+`test_model_route_tournament_integration.py`, `test_overnight_mission_integration.py`,
+`test_progress_redaction.py`, `test_real_test_execution.py`, `test_token_economy_integration.py`,
+`test_worker_route_integration.py`, `test_cluster_deletion_map.py`,
+`tests/orchestration/import_reachability_allowlist.txt` (six lines) and
+`tests/cli/test_worker_facade_cmd.py`. Round 9's lesson applies in full: some of these reference a
+SURVIVING artefact that merely shares a name, and deleting the test destroys real coverage —
+five tests were spared on exactly that ground last round.
+
+THE DOCS: two pages have a dying module as their SUBJECT and go whole, with their `docs/README.md`
+index rows — `docs/system/open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md` and
+`docs/system/token-aware-repair-loop-v1-v2.md`. Line-level edits are owed in
+`development-artifact-boundary-v0.md`, `run-contract-v1.md`, `snapshot-rollback-v1.md`,
+`real-test-execution-snapshot-rollback-proof-v1.md` and `docs/system/vocabulary.md` — that last
+one is F259's binding concept model and is edited with care. `pyproject.toml` names three of the
+six. MUST NOT BE TOUCHED: `docs/roadmap/features/T1_F034.md`, `T2_F260.md`, `T2_F269.md`,
+`T2_F272.md` and `T2_F277.md`, which are the specification and other features' plans.
+
+A WARNING ABOUT THE BLOCK ITSELF. Round 9's block landed at EXACTLY the 400-line cap of §3 item 1
+for a 40-path change set, and this round's is larger in every dimension while operator RULE 1
+still forbids splitting the commit. The cap binds the BLOCK, not the commit, so the next session
+should plan the block as a SPEC plus a per-file roster rather than a per-line FROM/TO enumeration,
+and should expect to spend a constraint on that choice.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not exist
+as this session ends. Then the Open PR Gate: no PR is open.
+
+SECOND, the next round's FIRST substantive commit books, from this file as the durable carrier:
+the ROUND 9 PASS verdict above as a `Gate: F275 R9` entry in `.agent/live_review.md`, and TWO
+dated `.agent/prose_slips.md` lines — one for the round 9 block's path-count heading being 45
+over a body of 46 and G8's 44 over 45, and one for the catalog numerals 336 and 335 that landed
+inside the R-0844 registration where the measured figures are 335 and 334. No id is spent on
+either, per amend0827-process-diet rule 2, and neither buys a correction round.
+`.agent/plan.md` is advanced in that same commit, per §3 item 23. The next free id is R-0845.
+
+THIRD, settle the carry-over ordering question named above as a dated DECISION, then the work:
+the six-module component, whole, in ONE commit, using the map above and re-running its own
+applied dry run before authoring. Plan the session around ONE round and do not start the commit
+without the budget to verify it.
