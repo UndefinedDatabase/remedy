@@ -623,3 +623,11 @@
 2026-09-08 · F274 R22 · The round 22 block's constraint 6 said to prune every disposable worktree before the evidence job, meaning the ones that round created, and the worker reasonably read it as reaching the thirteen pre-existing `remedy/job-*` checkouts and removed them, taking the worktree count from 14 to 1; all fifteen `remedy/job-*` branches survive, so nothing committed was lost and only uncommitted scratch went.
 
 2026-09-08 · F274 R22 · The PLAN22 slice said the closure commit sets `SU-013`'s `consumed_by` to `f274` in lower case, while every one of the twelve consumed entries in `scripts/self_use_queue.json` uses the upper-case `F###` form; the closure commit uses `F274`, which is the one spelling AGENTS.md's discoverability rule asks for.
+
+2026-09-08 · F275 R1 · The round 1 block's constraint 2 ordered the live-review prefix "replaced" by the HEAD1 slice, while its own gates G3(a) and G3(f) were computed from HEAD1 plus one separator newline; a literal substitution gives 510120 bytes and 213 units and fails both, so the worker measured both readings in scratch and applied the only one satisfying the block.
+
+2026-09-08 · F275 R1 · The round 1 block's constraint 1 says every slice's BEGIN line carries its own sha256 and byte count, and the two P1 pair markers carried neither; the worker measured both at 120 bytes and re-ran the containment test rather than trusting the label.
+
+2026-09-08 · F275 R1 · The round 1 block ordered the handback to repeat the Fortschritt line verbatim and supplied no Fortschritt line to repeat, because under self-drive that line lives in the reviewer's operator brief rather than in the block; the worker authored one and labelled it a Schätzung.
+
+2026-09-08 · F275 R1 · The round 1 block ordered all eight gates run at C5 and then had G8 assert `git log` shows C0a through C6, a commit that does not exist until after the gates run — the §3 item 14 shape of a gate reaching a commit it cannot honestly measure; the worker marked it deviated and re-confirmed the clause after C6.
