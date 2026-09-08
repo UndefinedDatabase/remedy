@@ -11447,6 +11447,205 @@ go with it; and resume at `.agent/plan.md`'s step list as this round found it. N
 `packages/`, `apps/` or `tests/` changes behaviour by this ruling, so the reversal is a
 documentation revert and carries no product risk.
 
+## DECISION amend0908-brainstorm-intake D1 — F272 D12 WINS, and F273 BUILDS the five tests.md ids it handed over (2026-09-08)
+
+CONTEXT: DECISION F272 D12 ruled that R-0803, R-0804, R-0807, R-0810 and R-0812 belong to F273 and
+not to F272. F274 and F275 each carried that ruling forward verbatim, "are F273's and NOT this
+feature's", and neither built them. But F273's own T001, written before D12, says "This slice builds
+NOTHING" and names all ten tests.md ids as owned elsewhere — five of them in F272, which D12 had
+already ruled out. The result was a closed ownership loop: four High findings that every feature
+pointed at another feature to build. R-0803 is the root cause of the 77 874 job records in the
+operator's data root and, on the 2026-09-08 measurement, most likely of the 650 GB of `staging_*`
+copies beside them, because the test suite writes into the configured data root.
+
+CHOSEN: F272 D12 wins, and F273's T001 splits. R-0803, R-0804, R-0807, R-0810 and R-0812 are BUILT
+in F273, with R-0803 FIRST in the feature's order — before T003, which the Orchestrator brief
+previously ordered first — because every later measurement in this repository is polluted until the
+suite stops writing into the operator's data root. R-0805, R-0806, R-0809 (owned by F261) and
+R-0808, R-0811 (owned by F268) keep the booking rule unchanged. The Acceptance list now states the
+two obligations separately: evidence that discharged the five, and an owning feature's acceptance
+test plus its green commit for the other five.
+
+REVERSE: restore T001's heading, body, its Acceptance line and the two Orchestrator-brief sentences
+from git history at `a5bf8949`, and record which feature then builds the five — leaving them
+unowned is the state this ruling exists to end.
+
+## DECISION amend0908-brainstorm-intake D2 — the forty brainstorm proposals of 2026-09-08, verdict by proposal (2026-09-08)
+
+CONTEXT: on 2026-09-08 the operator ran `remedy brain` four times — `.brain/2026-09-08_10-36-32_001`,
+`_10-52-28_002`, `_11-08-43_003` and `_11-26-10_006`, ten tasks each. The orchestrator verified all
+forty proposals against the code at the F275 round-3 review package and produced a verdict per
+proposal. This ruling is the record of those verdicts, so that a later reader can tell a proposal
+that was rejected on evidence from one nobody looked at.
+
+CHOSEN: the table below. LANDED means the proposal is on disk in the named feature or slice as of
+this amendment. LATER means it is structurally sound but rests on code F275 or F261 is about to
+change, so it is re-measured after the cluster deletion and the CLI rebuild rather than registered
+against numbers that are about to move. REJECTED means the proposal's premise was measured false, or
+the operator ruled it out.
+
+| Run | Task | Title | Verdict |
+|-----|------|-------|---------|
+| 002 | 01 | Data-root footprint & reclaim | LANDED IN F276 T001/T002 |
+| 002 | 09 | Disk budget & safe-point stop | LANDED IN F276 T003/T004 |
+| 006 | 01 | Event vocabulary declaration | LANDED IN F277 T001 |
+| 006 | 04 | JSON envelope, error boundary, exit codes | LANDED IN F277 T002/T003/T004 |
+| 003 | 04 | One durable write | LANDED IN F278 T001/T002 |
+| 003 | 09 | Loud failures / BLE001 | LANDED IN F278 T003 |
+| 003 | 10 | Environment variable registry | LANDED IN F279 T001 |
+| 003 | 03 | Pinned dependencies | LANDED IN F279 T002 |
+| 002 | 07 | Block lint for the §3 checklist | LANDED IN F279 T003 |
+| 006 | 03 | Orphan modules under packages/orchestration | LANDED IN F271 Design item (c) |
+| 006 | 06 | Direct-API provider drops its usage | LANDED IN F273 T015 (a) |
+| 006 | 02 | CI stage table does not provably partition | LANDED IN F273 T015 (b) |
+| 002 | 03 | vitest never runs in CI | REJECTED — premise false |
+| 006 | 05 | Exec-guard environment floor | REJECTED — premise false |
+| 001 | 07 | Architecture doc names missing providers | REJECTED — premise false |
+| 002 | 02 | Job index scaling | REJECTED — symptom of R-0803 |
+| 002 | 06 | Runtime budgets from the job index | REJECTED — symptom of R-0803 |
+| 003 | 07 | CLI surface budget | REJECTED — that is F261 |
+| 002 | 04 | ESLint parser | REJECTED — that is R-0622, in F273 T006 |
+| 001 | 01 | Declarative CLI parser | REJECTED — F261 deletes the groups |
+| 001 | 02 | Catalog split | REJECTED — F261 deletes most of the catalog |
+| 001 | 03 | Coverage for contract_cmd, dogfood_cmd, route_policy_cmd | REJECTED — F261 deletes those groups |
+| 006 | 09 | Mutation red-proof tool | REJECTED — operator ruling |
+| 006 | 07, 08, 10 | (three structural proposals) | LATER — re-measure after F275/F261 |
+| 003 | 02, 05, 06, 08 | (four structural proposals) | LATER — re-measure after F275/F261 |
+| 001 | 04, 05, 06, 08, 09, 10 | (six structural proposals) | LATER — re-measure after F275/F261 |
+| 002 | 10 | (one structural proposal) | LATER — re-measure after F275/F261 |
+| 002 | 05 | (not enumerated) | NO VERDICT RECORDED |
+| 002 | 08 | (not enumerated) | NO VERDICT RECORDED |
+| 003 | 01 | (not enumerated) | NO VERDICT RECORDED |
+
+COUNT: forty proposals, forty rows. Twelve LANDED, eleven REJECTED, fourteen LATER, and THREE with
+NO VERDICT RECORDED. Those three — run 002 tasks 05 and 08, and run 003 task 01 — are named here
+rather than left silently absent: the amendment's own enumeration lists neither a landing, a
+rejection nor a LATER bucket for them, so this ruling cannot say what the orchestrator concluded
+about them, only that it did not reach this record. A later reader who needs them re-reads
+`.brain/2026-09-08_10-52-28_002` and `.brain/2026-09-08_11-08-43_003` directly. They are NOT
+rejected by omission.
+
+THE REJECTIONS AND THEIR REASONS, as the orchestrator recorded them.
+
+Run 002 Task 03, "vitest never runs in CI" — FALSE.
+`tests/orchestration/test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes` runs
+`npx vitest run` over the 38 suites, and collecting it under the `standard` stage's marker
+expression `(integration or subprocess) and not real_ollama` returns it. That test IS the wire. The
+only real gap is its unmeasured 30-second ceiling, which is why the item survives as F273 T015 (c)
+at Low rather than as the proposal's High.
+
+Run 006 Task 05, "exec-guard environment floor" — PREMISE FALSE. The CLI and stream provider
+policies pass no allowlist ON PURPOSE; that is the documented F085 stage-1 gap, not an oversight.
+The proposed unconditional strip could break the CLI path, and the duplicate key set the proposal
+targets lives in a cluster module F275 deletes.
+
+Run 001 Task 07, "architecture doc names missing providers" — FALSE.
+`packages/providers/mempalace/` and `docker_runtime/` both exist.
+
+Run 002 Tasks 02 and 06, "job index / runtime budgets" — REJECTED AS SYMPTOM. The 77 874 job records
+the proposals scale for are R-0803 test pollution. Fixing the cause is F273 T001; building an index
+over pollution would make the pollution permanent.
+
+Run 003 Task 07, "CLI surface budget" — that is F261.
+
+Run 002 Task 04, "ESLint parser" — that is open finding R-0622, already in F273 T006.
+
+Run 001 Tasks 01, 02 and 03, "declarative parser / catalog split / coverage for `contract_cmd`,
+`dogfood_cmd`, `route_policy_cmd`" — F261 deletes those groups and most of the catalog. Every one of
+the three would be work thrown away.
+
+Run 006 Task 09, "mutation red-proof tool" — OPERATOR RULING: not worth its sessions. F279 T003 is
+the only process tooling the operator accepted from this brainstorm.
+
+REVERSE: this is a record of verdicts, not a change to any mechanism. Reversing a single row means
+registering that proposal as its own feature or slice with its own re-measurement; the row here then
+becomes history and stays, because this file is append-only.
+
+## DECISION amend0908-brainstorm-intake D3 — non-git targets stay supported, so the copy isolation mode is REPAIRED and not deleted (2026-09-08)
+
+CONTEXT: the 650 GB measured under `.data/job_workspaces` on 2026-09-08 is produced by the copy
+isolation mode — `pingpong_job._create_job_workspace_copy`, the non-git fallback — which creates a
+staging workspace and never discards it. The worktree path, used when the target IS a git
+repository, has a cleanup path and does not leak. The cheapest repair available is therefore to
+delete the copy mode and require a git target, and AGENTS.md's "replacing is deleting" rule would
+normally push in exactly that direction.
+
+CHOSEN: OPERATOR RULING 2026-09-08 — non-git targets stay supported. Remedy is meant for people who
+do not use git, and removing the only isolation mode that serves them would remove the audience.
+The copy mode is REPAIRED in F276 T003: a release call on the same terminal-state hook the worktree
+cleanup uses, a `.gitignore`-aware file filter, and a per-file size ceiling. It is not the operator's
+own priority, which is why F276 sits after F273 in the order rather than ahead of it.
+
+REVERSE: delete this paragraph and F276 T003, delete `_create_job_workspace_copy` and its
+`isolation_mode="copy"` branch with a dated ruling naming what replaced it, and record in the
+release notes that a non-git target is no longer supported.
+
+## DECISION amend0908-brainstorm-intake D4 — this amendment mints NO finding ids (2026-09-08)
+
+CONTEXT: the self-drive loop is minting finding ids on the F275 branch — R-0840 at the time this
+amendment was written — while this amendment runs from `main`. Two minters against one monotonic
+series collide, and a collision in an append-only ledger is not repairable by a later round; it is
+repairable only by retiring one of the two ids, which spends a round on bookkeeping.
+
+CHOSEN: no id is minted here. The defects this amendment measured are written as measured DEFECT
+TEXT into feature slices — F273 T015 items (a), (b) and (c), and the Why-this-exists sections of
+F276, F277, F278 and F279 — and the round that takes each slice mints its id at the round's start,
+in the live ledger's monotonic series, with that text as the finding text. That is the rule F273's
+own preamble already states: the text is the spec.
+
+REVERSE: none needed. When the F275 branch has merged and a single minter is running again, a round
+that takes one of these slices mints the ids in the ordinary way; nothing here has to be undone
+first.
+
+## DECISION amend0908-brainstorm-intake D5 — every numeral in this amendment's output was RE-MEASURED at the base commit, and the re-measured value is what landed (2026-09-08)
+
+CONTEXT: the amendment text carries numerals the orchestrator measured at `3068e9c1`, the F275
+round-3 review package. This amendment branches from `a5bf8949`, which is `3068e9c1` plus the F274
+merge. A numeral written into a feature file outlives the session that wrote it and is read later as
+a measurement of this repository, so carrying a number across two commits without re-measuring it is
+how a feature file starts lying.
+
+CHOSEN: every numeral was re-measured on this branch at `a5bf8949` before it was written, and where
+the two differ the RE-MEASURED value is what the feature files carry. The differences, all recorded
+here so the amendment text and the repository can be reconciled:
+
+- CATALOG: 288 of 339 commands declare `supports_json`; the amendment says 289 of 340.
+- `remedy do plan --json` exits 2, not 0. It is still not JSON, which is the defect; the exit code
+  is not the one the amendment predicted.
+- There is no `read_only` field on the catalog's command specification. The read-only set derived
+  as `not may_mutate_repo and not may_execute_commands` holds 320 commands, 49 of which do not
+  declare `supports_json`. F277 T003's acceptance line is stated against that derivation.
+- ATOMIC WRITES: 30 modules derive the temporary path as a fixed sibling, only 4 of them via
+  `with_suffix(".tmp")` and the rest by string concatenation; the amendment says 26 via
+  `with_suffix`. The 26 helper DEFINITIONS across 24 modules, the 31 `os.replace(tmp…)` sites and
+  the 14 `fsync` lines all reproduce exactly.
+- `stream_evidence.py` holds 9 bare `except …: pass` handlers, not 8; the repository-wide count is
+  312, measured by AST rather than by grep.
+- ENVIRONMENT: 82 distinct `REMEDY_*` literals under `packages/`, `apps/` and `scripts/`, not 88.
+  The 48 under `docs/` reproduces; 41 appear in both.
+- The §3 checklist's highest live item number is 37, not 35, so F279 T003 describes the checklist
+  without pinning a count that would go stale.
+- ORPHAN MODULES: all nine names and all nine line counts reproduce exactly, and the 2 113-line
+  total is correct. Two descriptions did not: `builder_eval.py` is additionally invoked by
+  `scripts/remedy_builder_eval.sh`, and `patch_revert.py`'s single importer is
+  `tests/orchestration/test_source_apply.py` rather than a test named after it. Both are stated in
+  F271's paragraph, because "no importer outside their own test file" is false for those two while
+  "exactly one Python importer, and it is a test file" is true for all nine.
+- The eight untimed `subprocess` sites of Part 5 reproduce exactly, at the same eight lines.
+
+Two further execution deviations, neither of them a measurement:
+
+- `.agent/plan.md` WAS NOT TOUCHED, though AGENTS.md's Commit Gate asks every commit to verify it.
+  That file is the self-drive loop's rewrite-in-place state for F275 and is currently ahead of
+  `main` on the F275 branch; rewriting it here would conflict on a file whose merge rule is
+  "rewrite, never append" and would corrupt the loop's own record. It is also absent from the file
+  list this amendment delegates authority over.
+- The `---` rule that follows T015 in the amendment text was read as the amendment document's own
+  section separator and NOT inserted into `T2_F273.md`, where no other slice carries one.
+
+REVERSE: re-measure at `3068e9c1` and restore the amendment's original numerals, recording which
+commit each was measured at.
+
 ## DECISION F275 D1 — the first carry-over lands in a NEW `mission_readiness` module, as a BYTE-IDENTICAL move of a measured definition set, staged and unwired (2026-09-08)
 
 CONTEXT. F260's Design section orders two carry-overs before the first `git rm`, and DECISION F274 D2 measured the first of them — the read-only overnight readiness and report views — as a move of "25 of the 29 top-level definitions" and "650 of its 894 lines" of `packages/orchestration/overnight_readiness.py` "into a surviving module". D2 did not NAME that module, did not fix which definitions move, and did not settle whether the moved symbols keep their names. Those three questions block the round that performs the move, and none of them is answered by any text on disk.
@@ -11478,3 +11677,4 @@ ALTERNATIVES CONSIDERED AND REJECTED. (1) Break each cycle by deleting the funct
 CONSEQUENCE. The deletion is FIFTEEN group commits and not twenty-four. Three of them delete more than one module and are correspondingly larger, though all three are pure deletions and so cannot approach the DECISION F104 D1 insertion cap. The order file and its ratchet are maintained exactly as the map is: a group commit removes its modules from `.agent/f275_deletion_order.md` in the SAME commit that removes them from disk, and the ratchet reds if it does not. This ruling says NOTHING about event-name couplings, which R-0832 records as invisible to the import map and therefore invisible to this order too; the order is a safe sequence for IMPORTS and is not a completeness claim.
 
 REVERSE by deleting this section, `.agent/f275_deletion_order.md` and `tests/orchestration/test_cluster_deletion_order.py`. The deletion then has no recorded order and RULE 2's derivation is owed again by whichever round next approaches the first `git rm`. Reversing ONLY the test, and keeping the file as the plain inventory RULE 2 literally asks for, costs nothing else and is the narrower reversal if the operator would rather not carry the guard.
+

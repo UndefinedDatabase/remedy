@@ -193,8 +193,10 @@ def materialise_sample_project(run_dir: Path,
     for argv in (["git", "init", "-q"],
                  ["git", "add", "-A"],
                  ["git", "commit", "-q", "-m", "baseline: the sample project"]):
+        # A fresh init/add/commit of a sample project is seconds; 120 is
+        # headroom, and a hung git must not hang the gauntlet forever.
         subprocess.run(argv, cwd=str(workspace), env=env, check=True,
-                       capture_output=True)
+                       capture_output=True, timeout=120)
     return workspace
 
 

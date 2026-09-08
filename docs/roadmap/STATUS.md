@@ -40,6 +40,10 @@ The tier-block order below is the operator-decided Self-Use sequence of 2026-08-
 - [ ] F270 — History apply: one commit per task, merge on demand
 - [ ] F271 — No more legacy: ownership, reachability, replace-is-delete
 - [ ] F273 — Findings paydown v1
+- [ ] F276 — Data-root hygiene & disk budget
+- [ ] F277 — Machine contracts: event vocabulary, JSON envelope, exit codes
+- [ ] F278 — Durable writes & loud failures
+- [ ] F279 — Configuration & toolchain truth: env registry, pinned dependencies, block lint
 
 ## Tier 2 — Human-change absorption (operator order amend0831)
 
