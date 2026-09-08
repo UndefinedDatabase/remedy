@@ -52,12 +52,12 @@ All current `.agent/live_review.md` reads are in development/self-dogfood paths.
 No product-facing operator command depends on it for core functionality.
 
 `progress_cmd.py` reads it for developer convenience display.
-These are classified as development commands, not core product operator commands.
+It is classified as a development command, not a core product operator command.
 
 ## Planned migration path
 
 1. Core operator commands (`worker`, `mission`, `approval`) already use structured state
-2. Development commands (`feature`, `progress`) may continue reading `.agent/` files
+2. The development command `progress` may continue reading `.agent/` files
 3. Future blocks may migrate remaining self-dogfood paths to structured event ledger
 4. No urgent migration needed — boundary is enforced for new product paths
 

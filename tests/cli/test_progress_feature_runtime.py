@@ -1,4 +1,4 @@
-"""Runtime subprocess tests for ``remedy progress`` and ``remedy feature`` CLI.
+"""Runtime subprocess tests for the ``remedy progress`` CLI.
 
 No shell=True. No background pytest.
 """
