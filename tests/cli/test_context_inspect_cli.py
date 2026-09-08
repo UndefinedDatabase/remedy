@@ -39,13 +39,6 @@ def test_context_inspect_in_catalog():
     assert "--budget" in arg_names
 
 
-def test_context_inspect_related_commands():
-    from apps.cli.command_catalog import CATALOG
-    cmds = {c.command_id: c for c in CATALOG}
-    entry = cmds["context.inspect"]
-    assert "context.pack" in entry.related
-
-
 # ---------------------------------------------------------------------------
 # Handler tests
 # ---------------------------------------------------------------------------

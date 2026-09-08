@@ -73,7 +73,6 @@ _ZONE_MAP: dict[str, str] = {
     "mcp_placeholder": "future",
     "project_placeholder": "intent",
     "autonomy_readiness": "policy",
-    "context_pack": "policy",
     "run_contract": "policy",
     "token_policy": "policy",
     "worker_adapter": "policy",
@@ -101,7 +100,6 @@ _LAYER_MAP: dict[str, int] = {
     "project_placeholder": 1,
     "patch_apply": 4,
     "autonomy_readiness": 1,
-    "context_pack": 2,
     "event_ledger": 2,
     "stop_reason": 3,
     "decision_queue": 3,
@@ -679,7 +677,6 @@ function col(n){
   var t=n.type,s=n.status||'';
   if(t==='memory_placeholder'||t==='memory')return'var(--remedy-memory)';
   if(t==='autonomy_readiness')return'var(--remedy-proof)';
-  if(t==='context_pack')return'var(--remedy-cyan)';
   if(t==='mcp_placeholder')return'var(--remedy-muted)';
   if(s==='blocked'||s==='failed'||s==='rejected')return'var(--remedy-risk)';
   if(s==='running')return'var(--remedy-cyan)';

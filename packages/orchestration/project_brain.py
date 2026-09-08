@@ -54,7 +54,6 @@ Edge types:
   recorded_proof        — patch_apply → patch_apply_proof (causal)
   proof_verified_by     — patch_apply_proof → test_run (causal)
   informed_memory       — patch_apply_proof → memory (causal)
-  summarizes            — context_pack → readiness or job (causal)
   continued_as          — origin_node → child_job_placeholder (Step 52)
 
 Redaction policy:
@@ -134,7 +133,6 @@ NT_RUN_CONTRACT        = "run_contract"
 NT_TOKEN_POLICY        = "token_policy"
 NT_WORKER_ADAPTER      = "worker_adapter"
 NT_AUTONOMY_READINESS  = "autonomy_readiness"
-NT_CONTEXT_PACK        = "context_pack"
 NT_PATCH_APPLY_PROOF   = "patch_apply_proof"
 NT_PATCH_REVERT        = "patch_revert"
 NT_CHANGE_SET          = "change_set"
@@ -164,14 +162,12 @@ ET_HAS_RUN_CONTRACT      = "has_run_contract"
 ET_HAS_TOKEN_POLICY      = "has_token_policy"
 ET_HAS_WORKER_ADAPTER    = "has_worker_adapter"
 ET_HAS_READINESS         = "has_readiness"
-ET_HAS_CONTEXT_PACK      = "has_context_pack"
 # Causal chain edges (Step 51)
 ET_APPROVED_BY           = "approved_by"
 ET_ALLOWED_APPLY         = "allowed_apply"
 ET_RECORDED_PROOF        = "recorded_proof"
 ET_PROOF_VERIFIED_BY     = "proof_verified_by"
 ET_INFORMED_MEMORY       = "informed_memory"
-ET_SUMMARIZES            = "summarizes"
 ET_CONTINUED_AS          = "continued_as"
 ET_REVERTED_BY           = "reverted_by"
 ET_INCLUDES_INTENT       = "includes_intent"
@@ -203,7 +199,6 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_TOKEN_POLICY:        17,
     NT_WORKER_ADAPTER:      18,
     NT_AUTONOMY_READINESS:  19,
-    NT_CONTEXT_PACK:        20,
     NT_PATCH_APPLY_PROOF:   21,
     NT_GIT_STATUS:          22,
     NT_EVENT_LEDGER:        23,
@@ -666,25 +661,6 @@ def _build_readiness_node(acc: _Acc) -> None:
         acc.degraded.append("readiness")
 
 
-def _build_context_pack_node(acc: _Acc) -> None:
-    cp_events = [e for e in acc.events if e.get("event") == "context_pack_created"]
-    if not cp_events:
-        return
-    meta = cp_events[-1].get("metadata", {})
-    acc.nodes.append(BrainNode(
-        id="context_pack", type=NT_CONTEXT_PACK,
-        label=f"Context Pack ({meta.get('mode', 'compact')})", status="active",
-        metadata={
-            "mode": str(meta.get("mode", "compact")),
-            "budget": int(meta.get("budget", 0)),
-            "estimated_tokens": int(meta.get("estimated_tokens", 0)),
-            "truncated": bool(meta.get("truncated", False)),
-            "section_count": int(meta.get("section_count", 0)),
-        },
-    ))
-    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_pack", type=ET_HAS_CONTEXT_PACK))
-
-
 def _build_proof_nodes(acc: _Acc) -> None:
     proof_events = [e for e in acc.events if e.get("event") == "patch_apply_proof_recorded"]
     nids = acc.node_id_set()
@@ -924,13 +900,6 @@ def _build_causal_edges(acc: _Acc) -> None:
                 # Fallback: last proof for unmatched memory
                 acc.edges.append(BrainEdge(source=proof_ids[-1], target=mn.id, type=ET_INFORMED_MEMORY))
 
-    # context_pack --summarizes--> readiness or job
-    cp = next((n for n in acc.nodes if n.type == NT_CONTEXT_PACK), None)
-    if cp:
-        ar = next((n for n in acc.nodes if n.type == NT_AUTONOMY_READINESS), None)
-        target = ar.id if ar else acc.job_node_id
-        acc.edges.append(BrainEdge(source=cp.id, target=target, type=ET_SUMMARIZES))
-
 
 def _build_continuation_edges(acc: _Acc) -> None:
     nids = acc.node_id_set()
@@ -992,7 +961,6 @@ def build_project_brain(
     _build_token_policy_node(acc)
     _build_worker_adapter_nodes(acc)
     _build_readiness_node(acc)
-    _build_context_pack_node(acc)
     _build_proof_nodes(acc)
     _build_revert_nodes(acc)
     _build_change_set_nodes(acc)
@@ -1041,7 +1009,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_CONSTITUTION, NT_CONTEXT_COVERAGE, NT_MEMORY, NT_MCP,
         NT_PROJECT_PLACEHOLDER, NT_PATCH_APPLY, NT_TEST_RUN,
         NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
-        NT_AUTONOMY_READINESS, NT_CONTEXT_PACK, NT_PATCH_APPLY_PROOF,
+        NT_AUTONOMY_READINESS, NT_PATCH_APPLY_PROOF,
         NT_GIT_STATUS, NT_EVENT_LEDGER, NT_STOP_REASON,
         NT_DECISION_QUEUE,
     ]

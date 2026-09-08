@@ -177,41 +177,7 @@ def _make_events() -> list[dict]:
 
 
 class TestTokenEconomy:
-    """Token Economy v1 — context pack modes, worker recommend."""
-
-    def test_context_pack_caveman_smaller_than_compact(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack
-        caveman = build_context_pack(job, [], budget=10000, mode="caveman")
-        compact = build_context_pack(job, [], budget=10000, mode="compact")
-        standard = build_context_pack(job, [], budget=10000, mode="standard")
-        assert caveman.estimated_tokens <= compact.estimated_tokens
-        assert compact.estimated_tokens <= standard.estimated_tokens
-
-    def test_context_pack_standard_mode(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack
-        pack = build_context_pack(job, [], budget=10000, mode="standard")
-        assert pack.mode == "standard"
-
-    def test_caveman_no_long_prose(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack
-        pack = build_context_pack(job, [], budget=10000, mode="caveman")
-        for s in pack.sections:
-            # Caveman sections should be short fragments
-            lines = s.content.split("\n")
-            for line in lines:
-                assert len(line) < 200, f"Caveman line too long: {line[:50]}..."
+    """Token Economy v1 — the token policy."""
 
     def test_token_policy_json_has_all_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -258,19 +224,6 @@ class TestTokenEconomy:
         required = {"mode", "max_context_tokens", "local_first"}
         assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
         assert meta["local_first"] is True
-
-    def test_all_modes_obey_redaction(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.context_pack import build_context_pack, export_context_pack_json
-        for mode in ("caveman", "compact", "standard"):
-            pack = build_context_pack(job, [], budget=10000, mode=mode)
-            exported = export_context_pack_json(pack)
-            exported_str = json.dumps(exported)
-            for forbidden in ("api_key", "password", "secret", "credential"):
-                assert forbidden not in exported_str.lower() or mode in exported_str
 
 
 
@@ -461,62 +414,3 @@ class TestWorkerResourcesAndUnloadCli:
         with patch("shutil.which", return_value="/usr/bin/ollama"):
             with pytest.raises(SystemExit):
                 _cmd_worker_unload(json_output=False)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Step 113 — Semantic Zoom Truth Table v4
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-
-
-class TestContextPackMemory:
-    def test_approved_only(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.memory.local_gateway import store_memory
-        from packages.orchestration.context_pack import build_context_pack
-
-        job = Job(
-            id=uuid4(), name="ctx-mem", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        # Store globally (context pack reads global scope)
-        store_memory("approved.key", "val1", approved=True)
-        store_memory("unapproved.key", "val2", approved=False)
-
-        pack = build_context_pack(job, [], budget=5000, mode="compact")
-        mem_section = next((s for s in pack.sections if s.name == "memory_keys"), None)
-        assert mem_section is not None
-        assert "approved.key" in mem_section.content
-        assert "unapproved.key" not in mem_section.content
-
-    def test_caveman_mode_count(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.memory.local_gateway import store_memory
-        from packages.orchestration.context_pack import build_context_pack
-
-        job = Job(
-            id=uuid4(), name="ctx-cave", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        store_memory("k1", "v1", approved=True)
-        pack = build_context_pack(job, [], budget=5000, mode="caveman")
-        mem_section = next((s for s in pack.sections if s.name == "memory_keys"), None)
-        assert mem_section is not None
-        assert "mem:" in mem_section.content
-
-    def test_no_raw_values_in_pack(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.memory.local_gateway import store_memory
-        from packages.orchestration.context_pack import build_context_pack
-
-        job = Job(
-            id=uuid4(), name="ctx-raw", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        store_memory("secret.key", "SECRET_RAW_VALUE_12345", approved=True)
-        pack = build_context_pack(job, [], budget=5000, mode="compact")
-        mem_section = next((s for s in pack.sections if s.name == "memory_keys"), None)
-        assert mem_section is not None
-        assert "SECRET_RAW_VALUE_12345" not in mem_section.content
-

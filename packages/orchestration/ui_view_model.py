@@ -157,7 +157,6 @@ _EDGE_KIND_MAP: dict[str, tuple[str, str]] = {
     "recorded_proof": ("proved_by", "Apply recorded proof"),
     "proof_verified_by": ("verified_by", "Proof verified by test"),
     "informed_memory": ("remembers", "Proof informed memory"),
-    "summarizes": ("informed_by", "Context summarizes job"),
     "continued_as": ("leads_to", "Origin continued as child"),
 }
 

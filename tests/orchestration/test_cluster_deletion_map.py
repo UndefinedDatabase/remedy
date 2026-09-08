@@ -49,7 +49,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.builder_routing",
     "packages.orchestration.worker_registry",
     "packages.orchestration.model_route_tournament",
-    "packages.orchestration.context_pack",
     "packages.orchestration.overnight_mission",
     "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
@@ -69,11 +68,10 @@ CLUSTER_MODULES = (
 # `apps/cli/commands/worker.py` and `apps/cli/commands/context.py` keep only
 # SURVIVING commands and are deliberately NOT listed here, so they stay
 # measurable. F274 round 4 moved their cluster-bound handlers out into
-# `context_pack_cmd.py` for exactly that reason.
+# their own deletion-bound handler files for exactly that reason.
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/builder_routing_cmd.py",
     "apps/cli/commands/candidate_quality_cmd.py",
-    "apps/cli/commands/context_pack_cmd.py",
     "apps/cli/commands/dogfood_cmd.py",
     "apps/cli/commands/external_builder_cmd.py",
     "apps/cli/commands/local_advisor_cmd.py",

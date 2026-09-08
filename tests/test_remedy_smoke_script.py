@@ -977,38 +977,6 @@ class TestSmokeScriptText:
             "smoke 12i must verify autonomy_readiness node in brain graph"
         )
 
-    # --- Step 49: Context pack JSON (step 12j) ----------------------------
-
-    def test_smoke_has_context_pack_step(self):
-        text = _script_text()
-        assert "context pack" in text and "--json" in text, (
-            "smoke must call remedy context pack --json (Step 49)"
-        )
-
-    def test_smoke_context_pack_checks_compact_mode(self):
-        text = _script_text()
-        assert "compact" in text and "mode" in text, (
-            "smoke 12j must verify compact mode in context pack JSON"
-        )
-
-    def test_smoke_context_pack_checks_caveman_mode(self):
-        text = _script_text()
-        assert "caveman" in text, (
-            "smoke 12j must verify caveman mode in context pack JSON"
-        )
-
-    def test_smoke_context_pack_checks_sections(self):
-        text = _script_text()
-        assert "sections" in text and "estimated_tokens" in text, (
-            "smoke 12j must verify sections and estimated_tokens"
-        )
-
-    def test_smoke_context_pack_caveman_le_compact(self):
-        text = _script_text()
-        assert "caveman" in text and "compact" in text, (
-            "smoke 12j must verify caveman tokens <= compact tokens"
-        )
-
     # --- Step 50: Memory learn JSON (step 12k) ----------------------------
 
     def test_smoke_has_memory_learn_step(self):
@@ -1037,12 +1005,6 @@ class TestSmokeScriptText:
             "smoke 12l must verify readiness_assessed run-log event"
         )
 
-    def test_smoke_has_context_pack_created_event(self):
-        text = _script_text()
-        assert "context_pack_created" in text, (
-            "smoke 12l must verify context_pack_created run-log event"
-        )
-
     def test_smoke_has_memory_learned_event(self):
         text = _script_text()
         assert "memory_learned" in text, (
@@ -1054,13 +1016,6 @@ class TestSmokeScriptText:
         for key in ("scope", "highest_eligible_level", "missing_count", "blocker_count"):
             assert key in text, (
                 f"smoke 12l must verify readiness_assessed metadata key '{key}'"
-            )
-
-    def test_smoke_context_pack_created_metadata_keys(self):
-        text = _script_text()
-        for key in ("budget", "estimated_tokens", "mode", "truncated", "section_count"):
-            assert key in text, (
-                f"smoke 12l must verify context_pack_created metadata key '{key}'"
             )
 
     def test_smoke_memory_learned_metadata_keys(self):
@@ -1365,14 +1320,6 @@ class TestSmokeScriptText:
             "smoke must verify changes key in change list JSON"
         )
 
-    # --- Step 56: Token economy (step 12s) -----------------------------------
-
-    def test_smoke_has_token_ordering(self):
-        text = _script_text()
-        assert "caveman" in text and "compact" in text and "standard" in text, (
-            "smoke must check all three context pack modes"
-        )
-
     # --- Step 54-56: Brain nodes (step 12t) ----------------------------------
 
     def test_smoke_brain_checks_change_set_node(self):
@@ -1389,7 +1336,7 @@ class TestSmokeScriptText:
             "smoke must verify memory card-show help"
         )
 
-    # --- Step 64: Worker show + explain (steps 12v-12w) ----------------------
+    # --- Step 64: Worker show (step 12v) -------------------------------------
 
     def test_smoke_has_worker_show(self):
         text = _script_text()

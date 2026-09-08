@@ -2982,8 +2982,8 @@ Root help shows only the 12 groups — no old flat commands appear.
 `packages/orchestration/file_provenance.py` — traces why a file was changed within a Remedy job.
 
 - New brain node: `patch_apply_proof` — created from `patch_apply_proof_recorded` events
-- Causal chain edges: `approved_by`, `allowed_apply`, `recorded_proof`, `proof_verified_by`, `informed_memory`, `summarizes`
-- Full chain: job → task → artifact → patch_intent → approval_decision → patch_apply → patch_apply_proof → test_run → memory → readiness/context_pack
+- Causal chain edges: `approved_by`, `allowed_apply`, `recorded_proof`, `proof_verified_by`, `informed_memory`
+- Full chain: job → task → artifact → patch_intent → approval_decision → patch_apply → patch_apply_proof → test_run → memory → readiness
 - CLI: `remedy file why <job_id> <path> [--json]`
 - Brain detail for `patch_apply_proof` node type
 - `patch_apply_proof` metadata: 13 keys from the `patch_apply_proof_recorded` event (intent_id, target_path, action, outcome, before/after SHA256, bytes/lines deltas, applied_at)
@@ -3023,18 +3023,6 @@ Root help shows only the 12 groups — no old flat commands appear.
 - Brain: `autonomy_readiness` node type, `has_readiness` edge, layer=1, color=#2ea043
 - Run-log: `readiness_assessed` event with metadata: scope, highest_eligible_level, missing_count, blocker_count
 - Project readiness aggregates across jobs (ANY-eligible logic)
-
-### Token Budget + Context Pack v0 (Step 49)
-
-`packages/orchestration/context_pack.py` — deterministic compact context generator with budget enforcement.
-
-- 8 priority-ordered sections (job_summary through run_events)
-- Token estimation: `ceil(chars / 4)` — no LLM, no network
-- Modes: `compact` (readable) vs `caveman` (ultra-short, always ≤ compact tokens)
-- Budget enforcement: sections included in priority order until budget exceeded; truncated flag set when budget is too small
-- CLI: `remedy context pack <id> --budget N --mode compact|caveman --json`
-- Brain: `context_pack` node type, `has_context_pack` edge, layer=2, color=#58a6ff
-- Run-log: `context_pack_created` event with metadata: budget, estimated_tokens, mode, truncated, section_count
 
 ### Memory Learn v0 (Step 50)
 

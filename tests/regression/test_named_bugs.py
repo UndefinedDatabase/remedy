@@ -859,7 +859,6 @@ class TestNoSilentSwallow:
             "packages/orchestration/project_brain.py",
             "packages/orchestration/autonomy_readiness.py",
             "packages/orchestration/brain_detail.py",
-            "packages/orchestration/context_pack.py",
             "packages/orchestration/storage.py",
         ]
         for mod in modules:

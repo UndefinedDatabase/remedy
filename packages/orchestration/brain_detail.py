@@ -68,7 +68,6 @@ from packages.orchestration.project_brain import (
     NT_CHANGE_SET,
     NT_CONSTITUTION,
     NT_CONTEXT_COVERAGE,
-    NT_CONTEXT_PACK,
     NT_DECISION_QUEUE,
     NT_EVENT_LEDGER,
     NT_GIT_STATUS,
@@ -1239,45 +1238,6 @@ def _detail_autonomy_readiness(
     )
 
 
-def _detail_context_pack(
-    node: Any,
-    job_id_str: str,
-    connected: list[dict[str, str]],
-) -> BrainNodeDetail:
-    tokens = node.metadata.get("estimated_tokens", 0)
-    budget = node.metadata.get("budget", 0)
-    truncated = node.metadata.get("truncated", False)
-
-    return BrainNodeDetail(
-        job_id=job_id_str,
-        node_id=node.id,
-        node_type=NT_CONTEXT_PACK,
-        title="Context Pack",
-        status=node.status or "active",
-        risk=None,
-        explanation=(
-            f"Context pack: ~{tokens} tokens (budget={budget}). "
-            f"Truncated: {truncated}. "
-            "Deterministic compact context for future provider calls."
-        ),
-        why_it_exists=(
-            "Reduces token usage by preparing compact structured context.",
-            "No LLM calls, no network, no raw content included.",
-        ),
-        connected_to=tuple(connected),
-        evidence=(
-            f"estimated_tokens: {tokens}",
-            f"budget: {budget}",
-            f"truncated: {truncated}",
-        ),
-        affected_files=(),
-        next_actions=(
-            f"Build with `remedy context pack {job_id_str[:8]}`.",
-        ),
-        redaction_notes=("No raw content in context pack metadata.",),
-    )
-
-
 def _detail_patch_apply_proof(
     node: Any,
     job_id_str: str,
@@ -1658,7 +1618,6 @@ _DETAIL_REGISTRY: dict[str, Any] = {
     NT_TOKEN_POLICY: _detail_token_policy,
     NT_WORKER_ADAPTER: _detail_worker_adapter,
     NT_AUTONOMY_READINESS: _detail_autonomy_readiness,
-    NT_CONTEXT_PACK: _detail_context_pack,
     NT_PATCH_APPLY_PROOF: _detail_patch_apply_proof,
     NT_PROJECT_PLACEHOLDER: _detail_project_placeholder,
     NT_PATCH_REVERT: _detail_patch_revert,

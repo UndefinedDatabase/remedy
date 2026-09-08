@@ -2424,23 +2424,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("context.pack",),
     ),
-    CommandEntry(
-        command_id="context.pack",
-        group_id="context",
-        subcommand="pack",
-        description="Build a token-budget-aware context pack.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--budget", "Max tokens (default: 2000)", required=False, is_option=True, default="2000"),
-            ArgDef("--mode", "Pack mode: caveman, compact, or standard (default: compact)", required=False, is_option=True, default="compact"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-
     # ── change ───────────────────────────────────────────────────────────
     CommandEntry(
         command_id="change.list",

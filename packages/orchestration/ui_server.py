@@ -1318,13 +1318,6 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
             "timestamp": te.get("timestamp", ""),
         }
 
-    # Token budget
-    token_mode = "compact"
-    for e in reversed(events):
-        if e.get("event") == "context_pack_created":
-            token_mode = e.get("metadata", {}).get("mode", "compact")
-            break
-
     # Guidance
     guidance_cards: list[dict[str, str]] = []
     try:
@@ -1791,9 +1784,6 @@ def _build_token_usage(events: list[dict[str, Any]]) -> dict[str, Any]:
         elif ev == "repair_context_created":
             by_role["repair"] = by_role.get("repair", 0) + tokens
             sources_seen.add("repair_context")
-        elif ev in ("context_pack_created",):
-            by_role["planner"] = by_role.get("planner", 0) + tokens
-            sources_seen.add("context_pack")
         else:
             by_role["other"] = by_role.get("other", 0) + tokens
 

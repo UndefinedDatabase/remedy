@@ -1213,49 +1213,6 @@ print('    brain autonomy_readiness: OK')
 "
 
     # -------------------------------------------------------------------------
-    # 12j. Context pack JSON (Step 49)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12j"
-    echo "--- 12j. Context pack compact + caveman"
-    PACK_COMPACT="$(remedy context pack "${JOB_ID}" --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: context pack compact: ' + msg, file=sys.stderr)
-        sys.exit(1)
-data = json.loads(sys.argv[1])
-chk(data.get('version') == 1, 'version must be 1')
-chk(data.get('mode') == 'compact', 'mode must be compact')
-chk('budget' in data, 'missing budget')
-chk('estimated_tokens' in data, 'missing estimated_tokens')
-chk('truncated' in data, 'missing truncated')
-chk('sections' in data, 'missing sections')
-chk(len(data['sections']) > 0, 'no sections')
-for s in data['sections']:
-    for k in ('name', 'priority', 'content', 'estimated_tokens'):
-        chk(k in s, 'section missing key: ' + k)
-full = json.dumps(data)
-for bad in ('raw_output', 'command_output', 'Traceback', 'diff_preview', 'approval_reason'):
-    chk(bad not in full, 'forbidden string in pack: ' + bad)
-print('    context pack compact: OK (sections=' + str(len(data['sections'])) + ', tokens=' + str(data['estimated_tokens']) + ')')
-" "${PACK_COMPACT}"
-
-    PACK_CAVEMAN="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
-    python3 -c "
-import json, sys
-data = json.loads(sys.argv[1])
-if data.get('mode') != 'caveman':
-    print('ERROR: context pack caveman mode != caveman', file=sys.stderr)
-    sys.exit(1)
-compact_tokens = int(sys.argv[2])
-if data['estimated_tokens'] > compact_tokens:
-    print('ERROR: caveman should not use more tokens than compact', file=sys.stderr)
-    sys.exit(1)
-print('    context pack caveman: OK (tokens=' + str(data['estimated_tokens']) + ' <= compact=' + str(compact_tokens) + ')')
-" "${PACK_CAVEMAN}" "$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['estimated_tokens'])" "${PACK_COMPACT}")"
-
-    # -------------------------------------------------------------------------
     # 12k. Memory learn JSON (Step 50)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12k"
@@ -1291,10 +1248,10 @@ print('    memory learn idempotent: OK (learned=0, skipped=' + str(data['skipped
 " "${LEARN2_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12l. Run-log schema: readiness_assessed + context_pack_created + memory_learned
+    # 12l. Run-log schema: readiness_assessed + memory_learned
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12l"
-    echo "--- 12l. Run-log schema: readiness + context_pack + memory_learned"
+    echo "--- 12l. Run-log schema: readiness + memory_learned"
     python3 -c "
 import json, sys
 from pathlib import Path
@@ -1312,7 +1269,6 @@ if runs_dir.exists():
                 events.append(json.loads(line))
 event_names = [e['event'] for e in events]
 chk('readiness_assessed' in event_names, 'no readiness_assessed event')
-chk('context_pack_created' in event_names, 'no context_pack_created event')
 chk('memory_learned' in event_names, 'no memory_learned event')
 # Check readiness_assessed metadata
 ra = [e for e in events if e['event'] == 'readiness_assessed']
@@ -1320,19 +1276,13 @@ ra_required = frozenset({'scope', 'highest_eligible_level', 'missing_count', 'bl
 for ev in ra:
     got = frozenset(ev.get('metadata', {}).keys())
     chk(got == ra_required, 'readiness_assessed keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ra_required)))
-# Check context_pack_created metadata
-cp = [e for e in events if e['event'] == 'context_pack_created']
-cp_required = frozenset({'budget', 'estimated_tokens', 'mode', 'truncated', 'section_count'})
-for ev in cp:
-    got = frozenset(ev.get('metadata', {}).keys())
-    chk(got == cp_required, 'context_pack_created keys: got=' + str(sorted(got)) + ' want=' + str(sorted(cp_required)))
 # Check memory_learned metadata
 ml = [e for e in events if e['event'] == 'memory_learned']
 ml_required = frozenset({'learned_count', 'skipped_count', 'approved', 'source_count'})
 for ev in ml:
     got = frozenset(ev.get('metadata', {}).keys())
     chk(got == ml_required, 'memory_learned keys: got=' + str(sorted(got)) + ' want=' + str(sorted(ml_required)))
-print('    run-log schema: OK (readiness=' + str(len(ra)) + ', pack=' + str(len(cp)) + ', learn=' + str(len(ml)) + ')')
+print('    run-log schema: OK (readiness=' + str(len(ra)) + ', learn=' + str(len(ml)) + ')')
 " "${JOB_ID}" "${RUNS_ROOT}"
 
     # -------------------------------------------------------------------------
@@ -1574,32 +1524,10 @@ print('    change list: OK (count=' + str(len(data['changes'])) + ')')
 " "${CHANGE_LIST_JSON}"
 
     # -------------------------------------------------------------------------
-    # 12s. Token economy (Step 56) — caveman/compact/standard ordering
+    # 12s. Token policy (Step 56)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12s"
-    echo "--- 12s. Token economy"
-    CAVE_JSON="$(remedy context pack "${JOB_ID}" --mode caveman --json)"
-    COMP_JSON="$(remedy context pack "${JOB_ID}" --mode compact --json)"
-    STD_JSON="$(remedy context pack "${JOB_ID}" --mode standard --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: token economy: ' + msg, file=sys.stderr)
-        sys.exit(1)
-cave = json.loads(sys.argv[1])
-comp = json.loads(sys.argv[2])
-std  = json.loads(sys.argv[3])
-chk(cave['mode'] == 'caveman', 'caveman mode')
-chk(comp['mode'] == 'compact', 'compact mode')
-chk(std['mode'] == 'standard', 'standard mode')
-chk(cave['estimated_tokens'] <= comp['estimated_tokens'], 'caveman must be <= compact tokens')
-chk(comp['estimated_tokens'] <= std['estimated_tokens'], 'compact must be <= standard tokens')
-print('    token ordering: OK (caveman=' + str(cave['estimated_tokens'])
-      + ', compact=' + str(comp['estimated_tokens'])
-      + ', standard=' + str(std['estimated_tokens']) + ')')
-" "${CAVE_JSON}" "${COMP_JSON}" "${STD_JSON}"
-
+    echo "--- 12s. Token policy"
     # Token policy required fields
     TP_JSON="$(remedy policy token "${JOB_ID}" --json)"
     python3 -c "
