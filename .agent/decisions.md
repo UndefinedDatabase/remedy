@@ -11060,3 +11060,73 @@ module it removes.
 REVERSE THIS DECISION by restoring `_build_context_budget_json`, its route line and its two tests
 from git history at `0d68507bd5b794109db45d6d5765798fa87f7b97`, and restoring the map line
 `packages.orchestration.context_pack <- packages/orchestration/ui_server.py` in the same commit.
+
+## DECISION F274 D4 — six cockpit sections are DELETED, and the two whose modules owe a carry-over are HELD so the map stays the whole plan (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 9. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `a903a44cdc73bd9588f65a2a3534fc9c4a6e4b1a`. Eight prototype-cluster modules
+have exactly ONE recorded edge each in `tests/orchestration/cluster_deletion_map.txt`, and in every
+case that edge is `packages/orchestration/ui_server.py`, where a read-only cockpit section builder
+imports the module and one line of the dashboard dict calls it. F260's Design names those sections
+for deletion by name. Under DECISION F274 D2 the deletion is bounded by edges, so these eight edges
+are the whole of what stands between eight modules and deletability — a quarter of the
+twenty-four-module cluster in one round.
+
+CHOSEN, FIRST. SIX of the eight sections are deleted, with their six map lines and the six tests
+those cuts force, and nothing replaces them: `_build_repair_loop_section`,
+`_build_external_builder_section`, `_build_overnight_mission_section`,
+`_build_model_route_tournament_section`, `_build_candidate_quality_section` and
+`_build_local_candidate_section`. AGENTS.md's Scope Control states that replacing is deleting, that
+there is no attic and no compatibility reader, and that git is the archive. NOTHING INHERITS THE
+IDEA, and this decision says so out loud rather than leaving it implicit: the cockpit loses six
+read-only diagnostic views whose SUBJECTS are modules the same feature is deleting, so there is no
+surviving thing for the view to be about. That is the one case in which "what inherits it" has the
+honest answer "nothing".
+
+CHOSEN, SECOND, AND THIS IS WHY THE NUMBER IS SIX RATHER THAN EIGHT. `_build_overnight_section` and
+`_build_builder_routing_section` are HELD, and their two map lines with them. Their subject modules
+are the sources of the two carry-overs F260's Design requires BEFORE deletion: `overnight_readiness`
+owes 25 of its 29 top-level definitions to `mission readiness`, as DECISION F274 D2's CONSEQUENCE
+clause measured, and `builder_routing.BuilderRoutingPolicy` owes the knobs `prefer_local_advisor`
+and `require_human_approval` to the route-policy check against F110's config keys. Cutting those two
+edges now would take both modules to ZERO recorded edges while both are still undeletable, and
+DECISION F274 D2's CHOSEN FIRST makes the map the plan precisely so that no prose has to be trusted
+about what is deletable. A module that reads deletable in the map and is not deletable in a
+paragraph elsewhere is the prose plan D2 abolished, arriving through an exception instead of through
+a document. Holding the edge is not a fiction: the section really exists and really imports the
+module, so the map stays literally true and needs no new mechanism to stay safe.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) Cut all eight and record the carry-over debt in this
+decision. Rejected on the reason above and on the checklist's own lesson at §3 item 23 and finding
+R-0548 — a rule that lives only in prose is a rule the next block does not read — and the next block
+here may be a deletion round in a later session, which is exactly when a forgotten debt becomes the
+half-performed deletion F274's Orchestrator brief names as the single state this work must not leave
+behind. (b) Cut all eight and add a mechanical carry-over-debt guard to the map test in the same
+round. Rejected because adding a guard puts an ADDED line under `tests/`, which by
+amend0906-triage-throughput rule 1 stops this being a deletion round at all and pulls the full
+verification apparatus onto a change that does not need it; the guard is also unnecessary if the
+edges are simply not cut yet. (c) Defer all eight until after both carry-overs. Rejected because six
+of the modules owe nothing and there is no reason to make them wait.
+
+EVIDENCE THIS RESTS ON, all of it measured by the reviewer in a disposable worktree with the cut
+applied, before this decision was written. The React UI does not read the six deleted dashboard
+keys: over all 4592 tracked files the quoted keys occur nowhere under `apps/ui/`, and the one
+`repair_loop` key the UI does read is the PIPELINE payload built elsewhere in `ui_server.py`, which
+this round does not touch. The six builder symbols occur 18 times over the 1313 tracked files of
+`packages/`, `apps/`, `tests/` and `scripts/` — all file types, no filter — and ZERO after the cut.
+The full suite is 19785 passed, 23 skipped, 0 failed against 19791 passed before, a difference of
+exactly the six deleted tests. `ruff check .` is 26 errors before and after, so DECISION F083 D5's
+frozen ceiling is untouched.
+
+CONSEQUENCE. The map goes from 37 edges to 31, and the cluster modules with NO recorded edge go from
+four to TEN: `candidate_quality`, `external_builder_sandbox`, `local_candidate_generator`,
+`model_route_tournament`, `overnight_mission` and `repair_loop_v2` join `context_optimizer`,
+`context_pack`, `review_bundle` and `self_repair_proposal`. None of the ten is deleted by this
+decision — the modules and their files survive until the deletion round, which runs under DECISION
+F260 D3 and names every module it removes.
+
+REVERSE THIS DECISION by restoring the six section builders and their six dashboard dict lines from
+git history at `a903a44cdc73bd9588f65a2a3534fc9c4a6e4b1a`, restoring the six tests those cuts
+forced, and restoring the six map lines in the same commit.
