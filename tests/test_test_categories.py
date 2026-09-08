@@ -24,7 +24,6 @@ def test_fast_script_targets_core_suites():
     source = (SCRIPTS / "remedy_test_fast.sh").read_text()
     for suite in [
         "test_worker_facade_cmd.py",
-        "test_dogfood_run.py",
         "test_managed_builder_execution.py",
         "test_product_spine.py",
     ]:

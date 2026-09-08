@@ -229,46 +229,6 @@ class TestIntegrity:
 # ---------------------------------------------------------------------------
 
 
-class TestMissionGates:
-    def test_snapshot_gate_blocks_without_snapshot(self, env, monkeypatch):
-        from packages.orchestration import overnight_mission as om
-        rf = env.parent / "lr.md"; rf.write_text("## Verdict\nPASS\n")
-        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rf))
-        jid = _job(env)
-        c = om.create_mission_contract_from_job(
-            jid, acceptance_criteria=["done"],
-            required_gates=[om.GATE_CLEAN_REVIEW, om.GATE_SNAPSHOT_BEFORE_APPLY], data_dir=env)
-        e = om.evaluate_mission_contract(c, data_dir=env)
-        assert e.satisfied is False
-        assert any("snapshot_before_apply" in m for m in e.missing_proofs)
-
-    def test_snapshot_gate_satisfied_after_snapshot(self, env, monkeypatch):
-        from packages.orchestration import overnight_mission as om
-        rf = env.parent / "lr.md"; rf.write_text("## Verdict\nPASS\n")
-        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rf))
-        jid = _job(env)
-        rte.create_snapshot_proof(jid, data_dir=env)
-        c = om.create_mission_contract_from_job(
-            jid, acceptance_criteria=["done"],
-            required_gates=[om.GATE_CLEAN_REVIEW, om.GATE_SNAPSHOT_BEFORE_APPLY], data_dir=env)
-        e = om.evaluate_mission_contract(c, data_dir=env)
-        assert not any("snapshot_before_apply" in m for m in e.missing_proofs)
-
-    def test_rollback_gate_blocks_metadata_only(self, env, monkeypatch):
-        from packages.orchestration import overnight_mission as om
-        rf = env.parent / "lr.md"; rf.write_text("## Verdict\nPASS\n")
-        monkeypatch.setenv("REMEDY_REVIEW_FILE", str(rf))
-        jid = _job(env)
-        sp = rte.create_snapshot_proof(jid, data_dir=env)
-        rte.create_rollback_proof(jid, sp.snapshot_id, data_dir=env)
-        c = om.create_mission_contract_from_job(
-            jid, acceptance_criteria=["done"],
-            required_gates=[om.GATE_CLEAN_REVIEW, om.GATE_ROLLBACK_RESTORE], data_dir=env)
-        e = om.evaluate_mission_contract(c, data_dir=env)
-        assert e.satisfied is False
-        assert any("rollback_restore" in m for m in e.missing_proofs)
-
-
 # ---------------------------------------------------------------------------
 # Architecture guards (Step 1895)
 # ---------------------------------------------------------------------------

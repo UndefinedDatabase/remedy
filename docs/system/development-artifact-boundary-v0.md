@@ -25,9 +25,7 @@ Normal Remedy users never need to read, edit, or depend on this file.
 | Parse review verdict for self-dogfood gates | `packages/orchestration/self_dogfood.py` | development self-test |
 | Parse review findings for self-dogfood execution | `packages/orchestration/self_dogfood_execution.py` | development self-test |
 | Parse review findings for overnight self-dev | `packages/orchestration/overnight_executor.py` | development self-dev |
-| Parse review findings for overnight mission | `packages/orchestration/overnight_mission.py` | development self-dev |
 | Parse review findings for builder routing | `packages/orchestration/builder_routing.py` | development self-dev |
-| Parse review findings for repair loop | `packages/orchestration/repair_loop_v2.py` | development self-dev |
 | Orchestrator brain context | `packages/orchestration/orchestrator_brain.py` | development context |
 | Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
 | Progress command display | `apps/cli/commands/progress_cmd.py` | development progress display |
@@ -39,7 +37,6 @@ The following modules must NOT depend on `.agent/live_review.md`:
 - `execution_approval_policy.py` — policy evaluation must use structured policy/package state
 - `managed_builder_execution.py` — execution must use approval records
 - `worker_facade_cmd.py` — worker commands must use structured run/mission state
-- `dogfood_run.py` (new policy paths) — morning report policy section uses structured summaries
 - Approval CLI commands — must use policy/approval records
 
 Guard tests enforce this boundary (see `test_execution_approval_policy.py::TestNoLiveReviewDependency`
@@ -68,7 +65,7 @@ Product questions must be answered from structured Remedy state:
 
 | Question | Structured Source | Relative Path |
 |----------|------------------|--------|
-| Mission status | Mission/run records | `dogfood_run.py`, `overnight_mission.py` |
+| Mission status | Mission records | `mission_state.py` |
 | Execution status | Managed execution records, event ledger | `managed_builder_execution.py` |
 | Approval status | Approval/policy records | `execution_approval_policy.py` |
 | Builder status | Builder session records | `main_builder_adapter.py` |
@@ -76,7 +73,6 @@ Product questions must be answered from structured Remedy state:
 | Test status | Real test execution records | `real_test_execution.py` |
 | Repair proposal status | Self-repair proposal records | `self_repair_proposals.py` |
 | Proof status | Proof chain records | `file_provenance.py` |
-| Operator next action | Progress ledger, mission report | `progress_ledger.py`, `dogfood_run.py` |
 | Config status | Config diagnostics | `config_diagnostics.py` |
 | Policy evaluation | Policy + package + session + template records | `execution_approval_policy.py` |
 | Package truth | BuilderRequestPackage on disk | `main_builder_adapter.py` |

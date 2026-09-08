@@ -348,24 +348,6 @@ class TestAdvisorImpact:
         assert d.advisor["enabled"] is False
         assert d.next_safe_action == "remedy do continue X --json"
 
-    def test_advisor_dict_redacted_for_downstream(self, tmp_path):
-        # The decision.advisor dict feeds Progress/Feature/Review/Cockpit — it must be scrubbed.
-        from packages.orchestration import orchestrator_brain as OB
-        from packages.orchestration import progress_ledger as PL
-        d = self._dec()
-        inner = {"summary": "leak sk-abcdef0123456789abcd /home/u/.ssh/id_rsa",
-                 "concerns": [{"severity": "low", "message": "Traceback (most recent call last) "
-                               "token=supersecretvalue321"}],
-                 "missing_evidence": ["/root/.env"], "loop_risk": "none", "confidence_hint": "low"}
-        self._consult(d, self._sit(weak=False), inner, tmp_path)
-        export = json.dumps(OB.export_decision_json(d))
-        items = PL.extract_local_advisor_items(OB.export_decision_json(d))
-        blob = export + json.dumps([i.__dict__ for i in items], default=str)
-        for bad in ("sk-abcdef0123456789abcd", "/home/", "id_rsa", "Traceback",
-                    "supersecretvalue321"):
-            assert bad not in blob
-
-
 # ---------------------------------------------------------------------------
 # Architecture guards (Step 1526)
 # ---------------------------------------------------------------------------

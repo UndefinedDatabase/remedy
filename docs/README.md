@@ -109,11 +109,9 @@ Specifications and design documents for the built system.
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
 | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | Model/route tournament comparison harness |
-| [open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md](system/open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md) | Open-ended dogfood run + replay analysis |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
 | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | Main orchestrator brain (decision engine) |
 | [orchestrator-loop.md](system/orchestrator-loop.md) | Orchestrator loop contract |
-| [overnight-mission-contract-review-repair-spine-v0.md](system/overnight-mission-contract-review-repair-spine-v0.md) | Overnight mission contract + review/repair *(overnight superseded)* |
 | [progress-ledger-v1.md](system/progress-ledger-v1.md) | Progress ledger for tracking feature/task state |
 | [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
 | [project-scoping-v0.md](system/project-scoping-v0.md) | Project-scoped job listings and creation guard |
@@ -140,7 +138,6 @@ Specifications and design documents for the built system.
 | [session-resume-v1.md](system/session-resume-v1.md) | Provider session resume + delta-prompt shrink: capability surface, resume threading, fallback-once, and the measured reduction |
 | [snapshot-rollback-v1.md](system/snapshot-rollback-v1.md) | Snapshot/rollback proof system |
 | [test-lanes-v0.md](system/test-lanes-v0.md) | Test lane isolation and routing |
-| [token-aware-repair-loop-v1-v2.md](system/token-aware-repair-loop-v1-v2.md) | Token-aware repair loop architecture |
 | [token-economy-context-budget-optimizer-v0.md](system/token-economy-context-budget-optimizer-v0.md) | Token economy + context budget optimizer |
 | [vocabulary.md](system/vocabulary.md) | The binding vocabulary: one row per word with its meaning, its code spelling today and after F260/F261, its CLI spelling and what it is NOT; the do-not-confuse table; the concept diagram; and the rulings that decided them |
 | [worker.md](system/worker.md) | Worker architecture and guide |
@@ -163,13 +160,11 @@ User-facing guides, quickstarts, and usage documentation.
 | [main-builder-adapter-user-guide-v0.md](guides/main-builder-adapter-user-guide-v0.md) | Main builder adapter usage |
 | [managed-external-builder-execution-user-guide-v1.md](guides/managed-external-builder-execution-user-guide-v1.md) | Managed external builder usage |
 | [model-route-tournament-user-guide-v0.md](guides/model-route-tournament-user-guide-v0.md) | Comparing routes with tournament harness |
-| [overnight-mission-user-guide-v0.md](guides/overnight-mission-user-guide-v0.md) | Overnight missions *(overnight superseded)* |
 | [real-test-execution-snapshot-rollback-user-guide-v1.md](guides/real-test-execution-snapshot-rollback-user-guide-v1.md) | Test execution + snapshot/rollback usage |
 | [remedy-toml-user-guide.md](guides/remedy-toml-user-guide.md) | remedy.toml configuration guide |
 | [resume.md](guides/resume.md) | Resuming interrupted jobs |
 | [self-repair-proposal-user-guide-v0.md](guides/self-repair-proposal-user-guide-v0.md) | Self-repair proposal workflow |
 | [simple-operator-quickstart-v0.md](guides/simple-operator-quickstart-v0.md) | Quickstart for new operators |
-| [token-aware-repair-loop-user-guide-v1.md](guides/token-aware-repair-loop-user-guide-v1.md) | Token-aware repair loop usage |
 | [token-economy-user-guide-v0.md](guides/token-economy-user-guide-v0.md) | Token budgets and context packs |
 | [worker-route-policy-user-guide-v0.md](guides/worker-route-policy-user-guide-v0.md) | Choosing workers and routes |
 

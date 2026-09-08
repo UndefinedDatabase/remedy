@@ -38,50 +38,6 @@ class TestRoutingIntegration:
         assert " run" not in str(t.get("next_safe_action", ""))
 
 
-class TestProgressLedger:
-    def test_items_from_report(self):
-        from packages.orchestration.progress_ledger import extract_tournament_items
-        rep = {"competitors": [{"competitor_id": "c1", "worker_id": "w1"}],
-               "status": "insufficient_evidence", "winner_competitor_id": "", "confidence": "low"}
-        items = {i.item_id for i in extract_tournament_items(rep)}
-        assert "tournament-report-exists" in items
-        assert "tournament-insufficient-evidence" in items
-
-    def test_winner_item(self):
-        from packages.orchestration.progress_ledger import extract_tournament_items
-        rep = {"competitors": [{"competitor_id": "c1", "worker_id": "local.candidate_generator"}],
-               "status": "complete", "winner_competitor_id": "c1", "confidence": "high"}
-        items = {i.item_id for i in extract_tournament_items(rep)}
-        assert "tournament-winner" in items
-
-    def test_no_items_without_report(self):
-        from packages.orchestration.progress_ledger import extract_tournament_items
-        assert extract_tournament_items(None) == []
-
-
-class TestFeatureSuggestions:
-    def test_insufficient_evidence_suggestion(self):
-        from packages.orchestration.feature_planner import build_feature_plan
-        from packages.orchestration.progress_ledger import ProgressLedger, extract_tournament_items
-        rep = {"competitors": [{"competitor_id": "c1", "worker_id": "w1"}],
-               "status": "insufficient_evidence", "winner_competitor_id": "", "confidence": "low"}
-        ledger = ProgressLedger(); ledger.items.extend(extract_tournament_items(rep))
-        plan = build_feature_plan(ledger)
-        titles = " ".join(s.title for s in plan.suggestions).lower()
-        assert "evidence" in titles or "external builder" in titles
-        for s in plan.suggestions:
-            if s.source_refs and str(s.source_refs[0]).startswith("tournament-"):
-                assert s.creates_proposed_task is False
-                assert s.suggested_steps and s.priority
-
-    def test_no_tournament_suggestions_without_items(self):
-        from packages.orchestration.feature_planner import build_feature_plan
-        from packages.orchestration.progress_ledger import ProgressLedger
-        plan = build_feature_plan(ProgressLedger())
-        for s in plan.suggestions:
-            assert not (s.source_refs and str(s.source_refs[0]).startswith("tournament-"))
-
-
 class TestSafeSurfaces:
     def _job(self):
         return SimpleNamespace(id=uuid4())

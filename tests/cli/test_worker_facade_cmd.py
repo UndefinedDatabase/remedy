@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -130,7 +130,6 @@ _TMPL_PATCH = "packages.orchestration.managed_builder_execution.get_command_temp
 _SAVE_ADAPTER = "packages.orchestration.main_builder_adapter.save_builder_adapter_spec"
 _ENABLE_TMPL = "packages.orchestration.managed_builder_execution.enable_command_template"
 _DISABLE_TMPL = "packages.orchestration.managed_builder_execution.disable_command_template"
-_MISSION_LOOP = "packages.orchestration.dogfood_run.run_mission_loop"
 
 
 class TestWorkerDoctor:
@@ -280,30 +279,6 @@ class TestWorkerDisable:
 
 
 class TestMissionRun:
-    @patch(_MISSION_LOOP)
-    def test_run_calls_loop(self, mock_loop, capsys):
-        result = MagicMock()
-        result.run_id = "r-1"
-        result.steps_attempted = 3
-        result.final_status = "satisfied"
-        result.stop_reason = "mission_satisfied"
-        result.next_safe_action = None
-        result.blocking_reasons = []
-        result.to_dict.return_value = {
-            "run_id": "r-1", "steps_attempted": 3,
-            "final_status": "satisfied", "stop_reason": "mission_satisfied",
-        }
-        mock_loop.return_value = result
-
-        from apps.cli.commands.worker_facade_cmd import _cmd_mission_run
-        _cmd_mission_run(_ns(run_id="r-1", job_id="j-1", max_steps=5,
-                             max_seconds=60, json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["run_id"] == "r-1"
-        assert out["stop_reason"] == "mission_satisfied"
-        mock_loop.assert_called_once_with(
-            "r-1", job_id="j-1", max_steps=5, max_seconds=60)
-
     def test_run_no_run_id(self):
         from apps.cli.commands.worker_facade_cmd import _cmd_mission_run
         with pytest.raises(SystemExit):
@@ -332,7 +307,6 @@ class TestDoctorCore:
         assert "worker_facade" in check_names
         assert "command_catalog" in check_names
         assert "run_contract" in check_names
-        assert "mission_facade" in check_names
         assert "fast_test_lane" in check_names
 
     def test_core_error_messages_safe(self, capsys):

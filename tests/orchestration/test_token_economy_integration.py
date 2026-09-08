@@ -71,68 +71,9 @@ class TestRoutingIntegration:
 # ---------------------------------------------------------------------------
 
 
-class TestProgressLedger:
-    def test_items_extracted_from_report(self):
-        from packages.orchestration.progress_ledger import extract_token_economy_items
-        report = {
-            "budget_profile": {"profile_id": "tb-x", "max_total_estimated_tokens": 40000},
-            "decision": {"budget_status": "over_budget", "requires_human_approval": True,
-                         "recommended_worker_id": "external.builder_package"},
-            "context_pack_recommendation": {"compression_recommendation": "compress to cap",
-                                            "memory_candidates": ["README.md"]},
-        }
-        items = extract_token_economy_items(report)
-        ids = {i.item_id for i in items}
-        assert "token-budget-profile-exists" in ids
-        assert "token-budget-over" in ids
-        assert "token-economy-expensive-route" in ids
-        assert "token-context-compression" in ids
-        assert "token-memory-candidates" in ids
-        # honest: no fake persistence claim
-        mem = next(i for i in items if i.item_id == "token-memory-candidates")
-        assert "not persisted" in mem.safe_summary.lower()
-
-    def test_no_items_without_report(self):
-        from packages.orchestration.progress_ledger import extract_token_economy_items
-        assert extract_token_economy_items(None) == []
-
-
 # ---------------------------------------------------------------------------
 # Feature suggestions (Step 1768)
 # ---------------------------------------------------------------------------
-
-
-class TestFeatureSuggestions:
-    def test_suggestions_from_evidence(self):
-        from packages.orchestration.feature_planner import build_feature_plan
-        from packages.orchestration.progress_ledger import (
-            ProgressLedger,
-            extract_token_economy_items,
-        )
-        report = {
-            "budget_profile": {"profile_id": "tb-x", "max_total_estimated_tokens": 40000},
-            "decision": {"budget_status": "over_budget", "requires_human_approval": True,
-                         "recommended_worker_id": "external.builder_package"},
-            "context_pack_recommendation": {"compression_recommendation": "compress",
-                                            "memory_candidates": ["README.md"]},
-        }
-        ledger = ProgressLedger()
-        ledger.items.extend(extract_token_economy_items(report))
-        plan = build_feature_plan(ledger)
-        titles = " ".join(s.title for s in plan.suggestions).lower()
-        assert "mempalace" in titles or "approval" in titles or "optimizer" in titles
-        for s in plan.suggestions:
-            if s.source_refs and str(s.source_refs[0]).startswith("token-"):
-                assert s.creates_proposed_task is False
-                assert s.suggested_steps  # effort included
-                assert s.priority  # impact included
-
-    def test_no_token_suggestions_without_items(self):
-        from packages.orchestration.feature_planner import build_feature_plan
-        from packages.orchestration.progress_ledger import ProgressLedger
-        plan = build_feature_plan(ProgressLedger())
-        for s in plan.suggestions:
-            assert not (s.source_refs and str(s.source_refs[0]).startswith("token-"))
 
 
 # ---------------------------------------------------------------------------

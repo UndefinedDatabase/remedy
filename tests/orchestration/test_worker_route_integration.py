@@ -52,54 +52,9 @@ class TestRoutingPolicyConstraint:
 # ---------------------------------------------------------------------------
 
 
-class TestProgressLedgerItems:
-    def test_registry_items_extracted(self):
-        from packages.orchestration.progress_ledger import extract_worker_registry_items
-        from packages.orchestration.worker_registry import default_route_policy, load_worker_registry
-        registry = load_worker_registry()
-        policy = default_route_policy("j")
-        items = extract_worker_registry_items(registry, policy)
-        ids = {i.item_id for i in items}
-        assert "worker-registry-available" in ids
-        # No fake "running" state.
-        for i in items:
-            assert "running" not in i.safe_summary.lower() or "no worker is running" in i.safe_summary.lower()
-
-    def test_no_items_without_registry(self):
-        from packages.orchestration.progress_ledger import extract_worker_registry_items
-        assert extract_worker_registry_items([], None) == []
-
-
 # ---------------------------------------------------------------------------
 # Feature suggestions (Step 1728)
 # ---------------------------------------------------------------------------
-
-
-class TestFeatureSuggestions:
-    def test_suggestions_only_with_evidence(self):
-        from packages.orchestration.feature_planner import build_feature_plan
-        from packages.orchestration.progress_ledger import (
-            ProgressLedger,
-            extract_worker_registry_items,
-        )
-        from packages.orchestration.worker_registry import default_route_policy, load_worker_registry
-        ledger = ProgressLedger()
-        ledger.items.extend(extract_worker_registry_items(load_worker_registry(),
-                                                          default_route_policy("j")))
-        plan = build_feature_plan(ledger)
-        titles = " ".join(s.title for s in plan.suggestions).lower()
-        assert "tournament" in titles or "ollama" in titles
-        # Suggestions don't auto-create execution.
-        for s in plan.suggestions:
-            if s.source_refs and s.source_refs[0].startswith(("worker-registry", "route-policy")):
-                assert s.creates_proposed_task is False
-
-    def test_no_registry_suggestions_without_items(self):
-        from packages.orchestration.feature_planner import build_feature_plan
-        from packages.orchestration.progress_ledger import ProgressLedger
-        plan = build_feature_plan(ProgressLedger())
-        for s in plan.suggestions:
-            assert not (s.source_refs and str(s.source_refs[0]).startswith("worker-registry"))
 
 
 # ---------------------------------------------------------------------------

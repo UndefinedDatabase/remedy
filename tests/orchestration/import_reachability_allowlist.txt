@@ -19,7 +19,6 @@ apps.cli.commands.dashboard_cmd
 apps.cli.commands.decision
 apps.cli.commands.dev
 apps.cli.commands.do_cmd
-apps.cli.commands.dogfood_cmd
 apps.cli.commands.event
 apps.cli.commands.external_builder_cmd
 apps.cli.commands.failure_stats_cmd
@@ -40,11 +39,9 @@ apps.cli.commands.memory
 apps.cli.commands.mission_cmd
 apps.cli.commands.orchestrator_cmd
 apps.cli.commands.overnight_cmd
-apps.cli.commands.overnight_mission_cmd
 apps.cli.commands.patch
 apps.cli.commands.plan_cmd
 apps.cli.commands.policy
-apps.cli.commands.progress_cmd
 apps.cli.commands.project
 apps.cli.commands.propose_cmd
 apps.cli.commands.provider_cmd
@@ -52,14 +49,12 @@ apps.cli.commands.queue_cmd
 apps.cli.commands.readiness
 apps.cli.commands.real_test_execution_cmd
 apps.cli.commands.repair_cmd
-apps.cli.commands.repair_loop_v2_cmd
 apps.cli.commands.repo
 apps.cli.commands.review_cmd
 apps.cli.commands.route_policy_cmd
 apps.cli.commands.run_invocation
 apps.cli.commands.runtime_cmd
 apps.cli.commands.self_cmd
-apps.cli.commands.self_repair_cmd
 apps.cli.commands.snapshot_cmds
 apps.cli.commands.stats_ledger_cmd
 apps.cli.commands.status_cmd
@@ -137,7 +132,6 @@ packages.orchestration.dod_compiler
 packages.orchestration.dod_gate
 packages.orchestration.dod_runners
 packages.orchestration.dod_schema
-packages.orchestration.dogfood_run
 packages.orchestration.era_integrity
 packages.orchestration.escalation
 packages.orchestration.event_ledger
@@ -150,7 +144,6 @@ packages.orchestration.execution_approval_policy
 packages.orchestration.external_builder_sandbox
 packages.orchestration.failure_postmortem
 packages.orchestration.failure_stats
-packages.orchestration.feature_planner
 packages.orchestration.file_provenance
 packages.orchestration.final_job_review
 packages.orchestration.final_verifier
@@ -199,7 +192,6 @@ packages.orchestration.orchestrator_brain
 packages.orchestration.orchestrator_loop
 packages.orchestration.orchestrator_move_schema
 packages.orchestration.overnight_executor
-packages.orchestration.overnight_mission
 packages.orchestration.overnight_readiness
 packages.orchestration.patch_apply
 packages.orchestration.patch_intent
@@ -212,7 +204,6 @@ packages.orchestration.pingpong_promote
 packages.orchestration.pingpong_provider
 packages.orchestration.planner_models
 packages.orchestration.product_smoke
-packages.orchestration.progress_ledger
 packages.orchestration.project_brain
 packages.orchestration.project_brain_aggregate
 packages.orchestration.project_constitution
@@ -237,7 +228,6 @@ packages.orchestration.redaction_patterns
 packages.orchestration.repair_attest
 packages.orchestration.repair_context
 packages.orchestration.repair_loop
-packages.orchestration.repair_loop_v2
 packages.orchestration.repair_request_builder
 packages.orchestration.repo_applicator
 packages.orchestration.repository_snapshot
@@ -260,7 +250,6 @@ packages.orchestration.scope_plan
 packages.orchestration.scratch_file_guard
 packages.orchestration.self_dogfood
 packages.orchestration.self_dogfood_execution
-packages.orchestration.self_repair_proposal
 packages.orchestration.self_use_job
 packages.orchestration.self_use_queue
 packages.orchestration.self_use_runner

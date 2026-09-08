@@ -49,17 +49,11 @@ CLUSTER_MODULES = (
     "packages.orchestration.builder_routing",
     "packages.orchestration.worker_registry",
     "packages.orchestration.model_route_tournament",
-    "packages.orchestration.overnight_mission",
     "packages.orchestration.overnight_executor",
     "packages.orchestration.overnight_readiness",
-    "packages.orchestration.repair_loop_v2",
-    "packages.orchestration.dogfood_run",
-    "packages.orchestration.self_repair_proposal",
     "packages.orchestration.main_builder_adapter",
     "packages.orchestration.managed_builder_execution",
     "packages.orchestration.execution_approval_policy",
-    "packages.orchestration.progress_ledger",
-    "packages.orchestration.feature_planner",
 )
 
 # The handlers of cluster COMMANDS. They die with the cluster, so their imports
@@ -117,7 +111,7 @@ def embedded_first_party_imports(path: Path) -> set[str]:
 def _cluster_module_of(dotted: str) -> str | None:
     """The cluster module a dotted import name refers to, or None.
 
-    `from packages.orchestration.dogfood_run import run` contributes both the
+    `from packages.orchestration.builder_routing import run` contributes both the
     module and `module.run`, so an attribute suffix still names the module.
     """
     for module in CLUSTER_MODULES:

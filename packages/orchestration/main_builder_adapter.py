@@ -594,8 +594,11 @@ def record_builder_session_intake_complete(
     session.candidate_quality_status = candidate_quality_status
     session.status = BuilderSessionStatus.COMPLETED_INTAKE_ONLY
     session.ended_at = _now()
-    # Intake complete ≠ repaired — downstream gates still required.
-    session.next_safe_action = f"remedy repair evaluate {session.repair_id} --json" if session.repair_id else ""
+    # Intake complete ≠ repaired — downstream gates still required. The
+    # command this pointed at, `remedy repair evaluate`, was deleted with the
+    # prototype cluster (F275 T001) and Remedy deliberately does not name a
+    # replacement here: no surviving command evaluates a repair WORK ITEM.
+    session.next_safe_action = ""
     _save_session(session, ddir)
     return session
 

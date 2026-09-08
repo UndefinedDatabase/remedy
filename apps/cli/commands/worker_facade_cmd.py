@@ -292,71 +292,27 @@ def _cmd_worker_disable(ns: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _names_a_mission(candidate: str, project_flag: str | None) -> bool:
-    """True when this id resolves to a mission record in the selected project.
-
-    A lookup, never a guess about the id's shape. Any failure to resolve — no
-    project, no mission area, an ambiguous prefix — means "not a mission", so
-    the pre-F070 path stays the default in every uncertain case.
-    """
-    try:
-        from apps.cli.commands.mission_cmd import _resolve_project_id
-        from packages.orchestration.mission_state import list_missions
-
-        project_id = _resolve_project_id(project_flag)
-        return any(m.id == candidate or m.id.startswith(candidate)
-                   for m in list_missions(project_id))
-    except SystemExit:
-        return False
-    except Exception:
-        return False
-
-
 def _cmd_mission_run(ns: argparse.Namespace) -> None:
-    """One command, two modes on the same name — the F047 `job resume` pattern.
+    """Run the F070 orchestrator loop for one mission, keyed on a MISSION id.
 
-    `remedy mission run` predates F070 as a facade over the dogfood run loop,
-    keyed on a RUN id. F070's feature file mandates the same spelling for the
-    orchestrator loop, keyed on a MISSION id. The two are different objects,
-    so the mode is RESOLVED rather than guessed: if the positional names a
-    mission record in the selected project, the orchestrator loop runs;
-    otherwise the dogfood facade runs exactly as it always did. A dogfood run
-    id never resolves to a mission, so no existing invocation changes.
+    Until F275 T001 this command carried a SECOND mode on the same name: a
+    facade over the prototype cluster's dogfood run loop, keyed on a RUN id
+    and selected by resolving the positional against the mission records. The
+    cluster is deleted, so the resolution has nothing left to choose between
+    and the command resolves exactly one object.
     """
-    from packages.orchestration.dogfood_run import run_mission_loop
     run_id = getattr(ns, "run_id", "")
     if not run_id:
         _err("run_id required")
 
-    if _names_a_mission(run_id, getattr(ns, "project", None)):
-        from apps.cli.commands.mission_cmd import _cmd_mission_run_loop
-        _cmd_mission_run_loop(
-            run_id,
-            project=getattr(ns, "project", None),
-            iterations=getattr(ns, "iterations", None),
-            json_output=getattr(ns, "json", False),
-            no_llm=getattr(ns, "no_llm", False),
-        )
-        return
-
-    job_id = getattr(ns, "job_id", "") or ""
-    max_steps = int(getattr(ns, "max_steps", None) or 10)
-    max_seconds = int(getattr(ns, "max_seconds", None) or 300)
-    result = run_mission_loop(
-        run_id, job_id=job_id,
-        max_steps=max_steps, max_seconds=max_seconds,
+    from apps.cli.commands.mission_cmd import _cmd_mission_run_loop
+    _cmd_mission_run_loop(
+        run_id,
+        project=getattr(ns, "project", None),
+        iterations=getattr(ns, "iterations", None),
+        json_output=getattr(ns, "json", False),
+        no_llm=getattr(ns, "no_llm", False),
     )
-    data = result.to_dict()
-    if getattr(ns, "json", False):
-        print(json.dumps(data, indent=2))
-        return
-    print(f"Mission run: {result.run_id}")
-    print(f"  steps: {result.steps_attempted}  status: {result.final_status}")
-    print(f"  stop: {result.stop_reason}")
-    if result.next_safe_action:
-        print(f"  next: {result.next_safe_action}")
-    if result.blocking_reasons:
-        print(f"  blockers: {', '.join(result.blocking_reasons)}")
 
 
 # ---------------------------------------------------------------------------
@@ -447,9 +403,6 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         _check("command_catalog", False, _safe_err(exc))
 
     _try_import("run_contract", "packages.orchestration.run_contract", "ContractAction")
-    _try_import("mission_facade", "packages.orchestration.dogfood_run", "run_mission_loop")
-    _try_import("self_repair_proposal", "packages.orchestration.self_repair_proposal",
-                "list_self_repair_proposals")
     _try_import("config", "packages.orchestration.config", "get_config")
     _try_import("approval_policy", "packages.orchestration.execution_approval_policy",
                 "evaluate_execution_approval_policy")

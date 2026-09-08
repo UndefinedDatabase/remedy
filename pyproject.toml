@@ -70,7 +70,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["F811"]  # redefined-while-unused — pytest fixtures redefine names intentionally
-"packages/orchestration/progress_ledger.py" = ["E402"]  # re import after class defs — intentional layout
 "packages/orchestration/provider_trust_verification.py" = ["UP031"]  # %-format in regex — clearer than f-string
 "packages/orchestration/run_contract.py" = ["F402"]  # loop var `field` shadows dataclass import — safe
 
@@ -100,7 +99,6 @@ module = [
     "packages.orchestration.worker_queue",
     "packages.orchestration.command_discovery",
     "packages.orchestration.project_brain",
-    "packages.orchestration.feature_planner",
     "packages.orchestration.verifier",
     "packages.orchestration.do_run",
     "packages.orchestration.autonomy_readiness",
@@ -110,12 +108,10 @@ module = [
     "packages.orchestration.change_set",
     "packages.orchestration.context_coverage",
     "packages.orchestration.do_continue",
-    "packages.orchestration.dogfood_run",
     "packages.orchestration.guidance",
     "packages.orchestration.local_candidate_generator",
     "packages.orchestration.local_model_advisor",
     "packages.orchestration.orchestrator_brain",
-    "packages.orchestration.progress_ledger",
     "packages.orchestration.proof_chain",
     "packages.orchestration.provider_patch_material",
     "packages.orchestration.real_test_execution",
@@ -132,7 +128,6 @@ module = [
     "apps.cli.commands.local_advisor_cmd",
     "apps.cli.commands.main_builder_adapter_cmd",
     "apps.cli.commands.managed_builder_execution_cmd",
-    "apps.cli.commands.progress_cmd",
     "apps.cli.commands.repair_cmd",
     "apps.cli.commands.snapshot_cmds",
 ]

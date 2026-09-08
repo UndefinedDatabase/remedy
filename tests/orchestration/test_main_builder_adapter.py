@@ -221,8 +221,11 @@ class TestSessionLifecycle:
         mba.record_builder_session_output(session.session_id, candidate_artifact_ref="ref", data_dir=env)
         updated = mba.record_builder_session_intake_complete(session.session_id, sandbox_submission_id="sub1", data_dir=env)
         assert updated.status == mba.BuilderSessionStatus.COMPLETED_INTAKE_ONLY
-        # Next action should point to repair evaluate, not claim done.
-        assert "repair evaluate" in updated.next_safe_action
+        # Intake complete must not CLAIM done. It used to say so by naming
+        # `remedy repair evaluate`; that command was deleted with the prototype
+        # cluster (F275 T001) and no surviving command evaluates a repair work
+        # item, so the honest next action is now the empty one.
+        assert updated.next_safe_action == ""
 
     def test_load_and_list(self, env):
         jid = _job(env)

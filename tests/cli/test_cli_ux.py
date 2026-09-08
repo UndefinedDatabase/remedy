@@ -15,8 +15,8 @@ _USER_FACING_GROUPS = {"do", "job", "project", "ui", "doctor", "config", "worker
 # Internal groups that MUST NOT appear in default help
 _INTERNAL_GROUPS = {
     "tournament", "local-candidate", "candidate-quality", "route-policy",
-    "token", "context-pack", "self-repair", "execution", "builder",
-    "dogfood", "snapshot", "contract", "integrity",
+    "token", "context-pack", "execution", "builder",
+    "snapshot", "contract", "integrity",
 }
 
 
@@ -122,7 +122,7 @@ class TestNoInternalInDefault:
     def test_no_internal_names(self, capsys):
         grouped_main([])
         out = capsys.readouterr().out
-        for name in ["self-repair", "execution", "dogfood", "snapshot",
+        for name in ["execution", "snapshot",
                       "contract", "integrity", "builder-routing"]:
             lines = [l.strip() for l in out.split("\n") if l.strip().startswith(name)]
             assert not lines, f"{name} should not appear in default help"

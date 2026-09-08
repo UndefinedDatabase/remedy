@@ -24,12 +24,9 @@ _ALLOWED_LEGACY = {
     "packages/orchestration/self_dogfood.py",
     "packages/orchestration/self_dogfood_execution.py",
     "packages/orchestration/overnight_executor.py",
-    "packages/orchestration/overnight_mission.py",
     "packages/orchestration/builder_routing.py",
-    "packages/orchestration/repair_loop_v2.py",
     "packages/orchestration/orchestrator_brain.py",
     "packages/orchestration/integrity_gate.py",
-    "apps/cli/commands/progress_cmd.py",
     # The freshness gate binds packaged evidence to the agent's live review by
     # design: it derives the step range from .agent/plan.md AND
     # .agent/live_review.md and reports a mismatch. Development-only by
@@ -237,27 +234,3 @@ class TestFunctionalNoAgent:
         assert isinstance(result, dict)
         assert "healthy" in result
 
-    def test_real_mission_morning_report_no_agent(self, tmp_path):
-        """Real build_mission_morning_report returns report for missing run."""
-        from packages.orchestration.dogfood_run import (
-            build_mission_morning_report,
-        )
-        report = build_mission_morning_report(
-            "nonexistent-run-id", data_dir=tmp_path,
-        )
-        assert report.run_id == "nonexistent-run-id"
-        assert "not found" in report.operator_summary.lower()
-
-    def test_real_doctor_core_imports_no_agent(self, tmp_path):
-        """Doctor core checks (import-based) pass without .agent/."""
-        import importlib
-        checks = [
-            ("apps.cli.commands.worker_facade_cmd", "COMMAND_HANDLERS"),
-            ("apps.cli.command_catalog", "CATALOG"),
-            ("packages.orchestration.run_contract", "ContractAction"),
-            ("packages.orchestration.dogfood_run", "run_mission_loop"),
-        ]
-        for module, attr in checks:
-            mod = importlib.import_module(module)
-            val = getattr(mod, attr, None)
-            assert val is not None, f"{attr} not found in {module}"
