@@ -6,28 +6,28 @@ operator amendment amend0907-cluster-first.
 
 ## Goal
 
-Finish what F272 could not reach inside its own limit. AT SESSION SEVEN OF SEVEN THE SOFT LIMIT
-BINDS, so the goal is now the amend0905-throughput SPLIT-AND-CLOSE default: close F274 at the edge
-work it actually built, and carry the cluster deletion, the atomic record flip and the classic
-runner to a follow-up feature registered directly after it.
+Close F274 at the edge work it actually built and carry the cluster deletion, the atomic record
+flip and the classic runner to F275, per DECISION F274 D8 — the split-and-close default operator
+amendment amend0905-throughput makes standing at the soft limit, which this feature reached at
+session seven of seven.
 
 ## Current Step
 
-The closure sequence's first round: book round 15's PASS verdict and the second R-0819 recurrence
-this feature owes, then record DECISION F274 D8 — the dated split ruling with its scope report, its
-rejected alternatives and its reversal. No line under `packages/`, `apps/` or `tests/` moves.
+The registration round: book round 16's PASS verdict, then register F275 in ONE atomic ledger
+commit — the STATUS line directly after F274's inside the same Tier 2 heading, the feature file,
+the `TOTAL_FEATURES` pin and the README counters, plus the `Depends on` edit in every open
+feature naming F274 — and give F274's own file a Built State section naming which slices moved.
 
 ## Next Steps
 
-1. Register the follow-up feature in ONE atomic ledger commit — the STATUS line directly after
-   F274's inside the same Tier 2 heading, the feature file, the `TOTAL_FEATURES` pin, the README
-   counters, and the `Depends on` edit in every open feature naming F274 — and give F274's own file
-   a Built State section naming which slices moved.
-2. The integration-gate round: the full suite per docs/agents/integration_gate.md.
-3. The self-use item closure precondition 6 requires. The queue holds no pending item, so
-   `generate_and_append_if_empty` runs first, then the item is planned and run to the approval gate.
-4. The closure sequence itself: the remaining verdict bookings, the ledger rotation, the evidence
-   job, the fresh review zip, the STATUS `[x]` flip with the README sync, and the pull request.
+1. The integration-gate round: the full suite per docs/agents/integration_gate.md, whose verdict
+   closure precondition 2 re-confirms.
+2. The self-use item closure precondition 6 requires. Every queue item is consumed, so
+   `generate_and_append_if_empty` runs FIRST; whatever it yields is planned and run to the normal
+   approval gate, and every defect its findings reader returns is registered before the close.
+3. The closure sequence itself: the remaining verdict bookings, the ledger rotation by
+   `scripts/rotate_live_review.py` as its own commit, the evidence job, the fresh review zip, the
+   STATUS `[x]` flip with the README sync in one commit, and the pull request.
 
 ## Risks
 
@@ -35,3 +35,5 @@ rejected alternatives and its reversal. No line under `packages/`, `apps/` or `t
   event-name coupling is OPEN. Treat every "zero edges" reading as a claim about the WALKER.
 - The open High findings are R-0803, R-0804, R-0806 and R-0807, all F273's rather than this
   feature's, per DECISION F272 D12.
+- The registration's four ledger pins must land in ONE commit; splitting them leaves an
+  intermediate state in which `tests/docs/` is red.
