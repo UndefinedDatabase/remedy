@@ -14,7 +14,6 @@ apps.cli.commands.change
 apps.cli.commands.ci_cmd
 apps.cli.commands.config_cmd
 apps.cli.commands.context
-apps.cli.commands.context_optimizer_cmd
 apps.cli.commands.context_pack_cmd
 apps.cli.commands.contract_cmd
 apps.cli.commands.dashboard_cmd
@@ -119,7 +118,6 @@ packages.orchestration.config
 packages.orchestration.context_compiler
 packages.orchestration.context_coverage
 packages.orchestration.context_inspector
-packages.orchestration.context_optimizer
 packages.orchestration.context_pack
 packages.orchestration.continue_from_node
 packages.orchestration.cost_preview

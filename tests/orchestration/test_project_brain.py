@@ -469,67 +469,6 @@ class TestCausalAccuracy:
 
 
 
-class TestContextOptimizer:
-    def test_explain_context(self):
-        from packages.orchestration.context_optimizer import explain_context
-        job = _make_job_s68()
-        data = explain_context(job, _make_events(), mode="compact", budget=2000)
-        assert data["version"] == 1
-        assert data["mode"] == "compact"
-        assert data["budget"] == 2000
-        assert "sections" in data
-        assert "excluded" in data
-        assert "recommendations" in data
-        assert isinstance(data["sections"], list)
-
-    def test_explain_context_invalid_mode(self):
-        from packages.orchestration.context_optimizer import explain_context
-        job = _make_job_s68()
-        data = explain_context(job, [], mode="invalid_mode", budget=2000)
-        assert data["mode"] == "compact"  # fallback
-
-    def test_optimize_context(self):
-        from packages.orchestration.context_optimizer import optimize_context
-        job = _make_job_s68()
-        data = optimize_context(job, _make_events(), budget=2000)
-        assert data["version"] == 1
-        assert data["budget"] == 2000
-        assert "recommended_mode" in data
-        assert data["recommended_mode"] in ("caveman", "compact", "standard")
-        assert "estimated_tokens" in data
-        assert "token_savings" in data
-        assert "included_sections" in data
-        assert "excluded_sections" in data
-        assert "recommended_worker" in data
-        assert "recommendations" in data
-
-    def test_optimize_context_tight_budget(self):
-        from packages.orchestration.context_optimizer import optimize_context
-        job = _make_job_s68()
-        data = optimize_context(job, [], budget=50)
-        # Very tight budget should pick caveman
-        assert data["recommended_mode"] in ("caveman", "compact", "standard")
-
-    def test_optimize_context_7_field_schema(self):
-        """context_budget_optimized event must match 7-field schema."""
-        from packages.orchestration.context_optimizer import optimize_context
-        from packages.orchestration.event_schemas import validate_event_metadata
-        job = _make_job_s68()
-        data = optimize_context(job, _make_events(), budget=2000)
-        # Build metadata as the CLI handler would
-        meta = {
-            "mode": data["recommended_mode"],
-            "budget": data["budget"],
-            "estimated_tokens": data["estimated_tokens"],
-            "token_savings": data["token_savings"],
-            "recommended_worker": data["recommended_worker"],
-            "included_section_count": len(data["included_sections"]),
-            "excluded_section_count": len(data["excluded_sections"]),
-        }
-        errors = validate_event_metadata("context_budget_optimized", meta)
-        assert errors == [], f"Schema errors: {errors}"
-
-
 # ── Brain Integration ───────────────────────────────────────────────────
 
 

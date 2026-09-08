@@ -2446,7 +2446,7 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("context.pack", "context.explain"),
+        related=("context.pack",),
     ),
     CommandEntry(
         command_id="context.pack",
@@ -2731,35 +2731,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         description="Show the project dashboard overview.",
         action_class="read_only",
         args=(_PROJECT_ID, _JSON_OPT),
-        supports_json=True,
-    ),
-
-    # ── context (additional) ──────────────────────────────────────────
-    CommandEntry(
-        command_id="context.explain",
-        group_id="context",
-        subcommand="explain",
-        description="Explain what a context pack contains and why.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--mode", "Pack mode: caveman, compact, or standard", required=False, is_option=True, default="compact"),
-            ArgDef("--budget", "Token budget (default: 2000)", required=False, is_option=True, default="2000"),
-            _JSON_OPT,
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="context.optimize",
-        group_id="context",
-        subcommand="optimize",
-        description="Recommend optimal context configuration for a budget.",
-        action_class="read_only",
-        args=(
-            _JOB_ID,
-            ArgDef("--budget", "Token budget (default: 2000)", required=False, is_option=True, default="2000"),
-            _JSON_OPT,
-        ),
         supports_json=True,
     ),
 
