@@ -12,21 +12,20 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 5 books round 4's PASS, confirms R-0831's measurement still holds, and writes the
-DELETION ORDER operator RULE 2 requires before the first `git rm`, with a ratchet holding it
-against the live import graph. The cluster's internal graph is CYCLIC, so the atomic unit is
-the strongly connected component — fifteen of them over twenty-four modules — which DECISION
-F275 D2 rules and records. No production file is touched and nothing is deleted.
+ROUND 6 books round 5's PASS and performs THE FIRST `git rm` of this feature: the
+`context_optimizer` module group — the module, its handler, its two catalog entries, the
+`related` tuple naming one of them, its tests, its allowlist and cluster-map lines, and the
+humanize-catalog entry for the event only that handler emitted. The deletion order file is
+REGENERATED from the live graph rather than line-edited, because removing the module reorders
+the condensation.
 
 ## Next Steps
 
-1. The FIRST module groups, in the recorded order, one commit each: `context_optimizer`, then
-   `review_bundle`. Each commit takes the module, its handler, its catalog entries, its
-   cockpit section, its tests and its map lines together, and leaves the tree green.
-2. The remaining thirteen components in the recorded order, the three multi-module ones deleted
-   as single commits because their members import each other.
-3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831 and
-   R-0840 named among the ideas deleted rather than inherited.
+1. The `review_bundle` group, the order file's new first line, in its own commit.
+2. The remaining components in the recorded order, the multi-module ones as single commits
+   because their members import each other.
+3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831
+   and R-0840 named among the ideas deleted rather than inherited.
 4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
 
 ## Risks
@@ -34,8 +33,8 @@ F275 D2 rules and records. No production file is touched and nothing is deleted.
 - 66 findings are open by distinct id, four of them High — R-0803, R-0804, R-0806 and R-0807 —
   all F273's rather than this feature's, per DECISION F272 D12.
 - R-0832 records that the map measures IMPORT edges only, so a consumer coupled to the cluster
-  by EVENT NAME is invisible to both the map and the deletion order. The order is a safe
-  sequence for imports and is not a completeness claim about couplings.
-- The full suite must be run in the PRIMARY checkout: a fresh worktree has no
-  `apps/ui/node_modules`, so `test_test_runner.py`'s vitest node fails there for the
-  environment rather than for the change.
+  by EVENT NAME is invisible to both the map and the deletion order. Round 6 measured that
+  coupling for real: `tests/ui_contracts/test_humanize_catalog.py` pins the UI catalog's keys
+  to the Python emitters, so every group whose module emits an event edits that catalog too.
+- The full suite runs in the PRIMARY checkout: a fresh worktree may lack `apps/ui/node_modules`
+  or a built `apps/ui/dist`, and both failure classes are the environment rather than the change.
