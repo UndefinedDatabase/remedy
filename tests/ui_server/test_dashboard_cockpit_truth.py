@@ -322,40 +322,6 @@ class TestDashboardShape:
         assert "next_safe_action_label" in br
         assert "buttons" not in br and "actions" not in br
 
-    def test_local_candidate_section_present(self):
-        # Read-only Automated Local Candidate Generator v0 summary (Step 1627).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "local_candidate" in dash
-        lc = dash["local_candidate"]
-        assert "enabled" in lc
-        assert "run_count" in lc
-        assert "pending_approval_count" in lc
-        assert "buttons" not in lc and "actions" not in lc
-
-    def test_candidate_quality_section_present(self):
-        # Read-only Local Candidate Quality Evaluation v1 summary (Step 1664).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "candidate_quality" in dash
-        cq = dash["candidate_quality"]
-        assert "evaluation_count" in cq
-        assert "latest_outcome" in cq
-        assert "pending_with_quality_count" in cq
-        assert "buttons" not in cq and "actions" not in cq
-
-    def test_external_builder_section_present(self):
-        # Read-only External Builder Sandbox v0 summary (Step 1693).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "external_builder" in dash
-        eb = dash["external_builder"]
-        assert "external_packages" in eb
-        assert "external_submissions" in eb
-        assert "verified_external_candidates" in eb
-        assert eb["live"] is False
-        assert "buttons" not in eb and "actions" not in eb
-
     def test_worker_registry_section_present(self):
         # Read-only Worker Registry + Route Policy v0 summary (Step 1730).
         job = Job(name="t")

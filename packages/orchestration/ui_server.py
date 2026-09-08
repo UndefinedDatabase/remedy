@@ -593,44 +593,6 @@ def _build_snapshot_rollback_section(job: Any) -> dict[str, Any]:
                 "next_safe_action": "", "live": False, "source": "unavailable"}
 
 
-def _build_repair_loop_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Token-Aware Repair Loop v1/v2 cockpit summary (Step 1935). Counts/status/IDs +
-    next safe action only; no mutation buttons; no fake live repair; no raw/private data."""
-    try:
-        from packages.orchestration.repair_loop_v2 import (
-            list_repair_attempts,
-            list_repair_work_items,
-            load_latest_repair_evaluation,
-        )
-        items = list_repair_work_items(job_id=str(job.id))
-        open_count = sum(1 for i in items if i.get("status") not in ("repaired", "abandoned"))
-        blocked = sum(1 for i in items if i.get("status") in ("blocked", "abandoned"))
-        latest = items[-1] if items else {}
-        latest_id = latest.get("repair_id", "")
-        attempts = list_repair_attempts(latest_id, str(job.id)) if latest_id else []
-        ev = (load_latest_repair_evaluation(latest_id) or {}) if latest_id else {}
-        token_band = attempts[-1].get("token_estimate_band", "unknown") if attempts else "unknown"
-        route = attempts[-1].get("route_id", "") if attempts else ""
-        retest = attempts[-1].get("retest_status", "unknown") if attempts else "unknown"
-        return {
-            "open_repair_count": open_count,
-            "blocked_repair_count": blocked,
-            "latest_status": latest.get("status", "none"),
-            "latest_repair_id": latest_id,
-            "token_band": token_band,
-            "route_recommendation": route,
-            "retest_status": retest,
-            "user_decision_required": bool(blocked) or latest.get("status") == "abandoned",
-            "next_safe_action": (ev.get("required_next_actions", []) or
-                                 [f"remedy repair item-list {str(job.id)} --json"])[0],
-            "live": False, "source": "repair_loop_v2",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"open_repair_count": 0, "blocked_repair_count": 0, "latest_status": "none",
-                "user_decision_required": False, "next_safe_action": "", "live": False,
-                "source": "unavailable"}
-
-
 def _build_main_builder_adapter_section(job: Any) -> dict[str, Any]:
     """Safe read-only Main Builder Adapter v0 cockpit summary (Step 1993). Counts/status + next safe
     action only; no mutation buttons; no fake live builder; no raw/private data."""
@@ -958,37 +920,6 @@ def _build_provider_trust_section(job: Any) -> dict[str, Any]:
                 "source": "unavailable"}
 
 
-def _build_external_builder_section(job: Any) -> dict[str, Any]:
-    """Safe read-only External Builder Sandbox v0 summary for the cockpit (Step 1693).
-
-    Counts + latest state only. No buttons, no mutation, no "run external builder", no raw.
-    LIVE only with real running evidence — in this block normally false (ingress only)."""
-    try:
-        from packages.orchestration.external_builder_sandbox import (
-            load_external_packages,
-            load_external_submissions,
-        )
-        pkgs = load_external_packages(job_id=str(job.id))
-        subs = load_external_submissions(job_id=str(job.id))
-        latest = subs[-1] if subs else None
-        return {
-            "external_packages": len(pkgs),
-            "external_submissions": len(subs),
-            "pending_external_reviews": sum(1 for s in subs if s.get("state") == "needs_review"),
-            "rejected_external_candidates": sum(
-                1 for s in subs if s.get("state") in ("trust_rejected", "verification_rejected")),
-            "verified_external_candidates": sum(1 for s in subs if s.get("state") == "pending_approval"),
-            "latest_state": (latest or {}).get("state", ""),
-            "live": False,
-            "source": "external_builder",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"external_packages": "unknown", "external_submissions": "unknown",
-                "pending_external_reviews": "unknown", "rejected_external_candidates": "unknown",
-                "verified_external_candidates": "unknown", "latest_state": "", "live": False,
-                "source": "unavailable"}
-
-
 def _build_token_economy_section(job: Any) -> dict[str, Any]:
     """Safe read-only Token Economy + Context Budget v0 summary for the cockpit (Step 1770).
 
@@ -1025,79 +956,6 @@ def _build_token_economy_section(job: Any) -> dict[str, Any]:
                 "ollama_placeholder_available": "unknown", "requires_human_approval": True,
                 "warning_count": "unknown", "next_safe_action": "", "live": False,
                 "source": "unavailable"}
-
-
-def _build_overnight_mission_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Overnight Mission Contract v0 summary for the cockpit (Step 1849).
-
-    Status + satisfied + open finding/gate counts + required next actions + optional ideas + next
-    safe action only. No mutation buttons, no fake live overnight run, no raw/private data. LIVE is
-    false unless real active evidence exists — in this metadata-only block it stays false."""
-    try:
-        from packages.orchestration.overnight_mission import (
-            _contract_from_dict,
-            evaluate_mission_contract,
-            list_mission_contracts,
-        )
-        contracts = list_mission_contracts(job_id=str(job.id))
-        if not contracts:
-            return {"status": "not_started", "satisfied": False, "open_findings_count": 0,
-                    "missing_gates_count": 0, "required_next_actions": [], "optional_next_ideas": [],
-                    "user_decision_required": False,
-                    "next_safe_action": f"remedy overnight contract-create {str(job.id)} --json",
-                    "live": False, "source": "overnight_mission"}
-        ev = evaluate_mission_contract(_contract_from_dict(contracts[-1]), persist=False)
-        return {
-            "status": ev.status,
-            "satisfied": ev.satisfied,
-            "open_findings_count": ev.open_review_findings,
-            "missing_gates_count": len(ev.missing_proofs),
-            "required_next_actions": [a.get("command") for a in ev.required_next_actions],
-            "optional_next_ideas": [i.get("title") for i in ev.optional_next_ideas],
-            "user_decision_required": ev.user_decision_required,
-            "next_safe_action": (ev.next_safe_actions or [""])[0],
-            "live": False,
-            "source": "overnight_mission",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"status": "not_started", "satisfied": False, "open_findings_count": "unknown",
-                "missing_gates_count": "unknown", "required_next_actions": [], "optional_next_ideas": [],
-                "user_decision_required": False, "next_safe_action": "", "live": False,
-                "source": "unavailable"}
-
-
-def _build_model_route_tournament_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Model/Route Tournament v0 summary for the cockpit (Step 1811).
-
-    Latest status + competitor count + evidence status + recommended route + confidence + warning
-    count + next action only. No mutation buttons, no fake live tournament, no raw data, no provider
-    readiness claim. LIVE is always false — evidence/reporting only."""
-    try:
-        from packages.orchestration.model_route_tournament import generate_tournament_report
-        rep = generate_tournament_report(str(job.id), persist=False)
-        d = rep.to_dict()
-        winner = next((c for c in d.get("competitors", [])
-                       if c.get("competitor_id") == d.get("winner_competitor_id")), None)
-        ev_status = "complete" if any(
-            e.get("evidence_status") == "complete" for e in d.get("evidence", [])) else (
-            "partial" if any(e.get("evidence_status") == "partial" for e in d.get("evidence", []))
-            else "insufficient_evidence")
-        return {
-            "latest_status": d.get("status"),
-            "competitor_count": len(d.get("competitors", [])),
-            "evidence_status": ev_status,
-            "recommended_route": (winner or {}).get("worker_id", ""),
-            "confidence": d.get("confidence"),
-            "warning_count": len(d.get("warnings", [])),
-            "next_safe_action": (d.get("next_safe_actions") or [""])[0],
-            "live": False,
-            "source": "model_route_tournament",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"latest_status": "insufficient_evidence", "competitor_count": "unknown",
-                "evidence_status": "insufficient_evidence", "recommended_route": "",
-                "confidence": "low", "warning_count": "unknown", "next_safe_action": "",
-                "live": False, "source": "unavailable"}
 
 
 def _build_worker_registry_section(job: Any) -> dict[str, Any]:
@@ -1141,71 +999,6 @@ def _build_worker_registry_section(job: Any) -> dict[str, Any]:
                 "preferred_workers": [], "blocked_workers": [], "local_first_enabled": "unknown",
                 "ollama_preference_enabled": "unknown", "recommended_worker_id": "",
                 "recommended_next_action": "", "live": False, "source": "unavailable"}
-
-
-def _build_candidate_quality_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Local Candidate Quality Evaluation v1 summary for the cockpit (Step 1664).
-
-    Status + latest outcome + pending-with-quality + best route + loop-risk counts only.
-    No buttons, no mutation, no raw content."""
-    try:
-        from packages.orchestration.candidate_quality import (
-            build_candidate_scorecards,
-            load_candidate_quality_evaluations,
-        )
-        evals = load_candidate_quality_evaluations(job_id=str(job.id))
-        latest = evals[-1] if evals else None
-        pending = sum(1 for e in evals if e.get("outcome") == "pending_approval")
-        loop = sum(1 for e in evals
-                   if (e.get("score", {}) or {}).get("dimensions", {}).get("loop_risk") == "fail")
-        cards = build_candidate_scorecards(job_id=str(job.id))
-        ranked = sorted((cards.get("by_route_tier", {}) or {}).items(),
-                        key=lambda kv: kv[1].get("average_score", 0.0), reverse=True)
-        return {
-            "evaluation_count": len(evals),
-            "latest_outcome": (latest or {}).get("outcome", ""),
-            "latest_score_band": ((latest or {}).get("score", {}) or {}).get("band", ""),
-            "pending_with_quality_count": pending,
-            "best_route": ranked[0][0] if ranked else "",
-            "loop_risk_count": loop,
-            "source": "candidate_quality",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"evaluation_count": "unknown", "latest_outcome": "", "latest_score_band": "",
-                "pending_with_quality_count": "unknown", "best_route": "",
-                "loop_risk_count": "unknown", "source": "unavailable"}
-
-
-def _build_local_candidate_section(job: Any) -> dict[str, Any]:
-    """Safe read-only Automated Local Candidate Generator v0 summary for the cockpit (Step 1627).
-
-    Status + latest generation state + pending-approval + trust/verification rejection counts only.
-    No buttons, no mutation, no model execution, no raw output."""
-    try:
-        from packages.orchestration.local_candidate_generator import (
-            list_local_candidate_runs,
-            load_local_candidate_config,
-        )
-        cfg = load_local_candidate_config()
-        runs = [r for r in list_local_candidate_runs() if r.get("job_id") == str(job.id)]
-        latest = runs[-1] if runs else None
-        pending = sum(1 for r in runs
-                      if r.get("status") == "intent_pending_approval" and r.get("intent_id"))
-        return {
-            "enabled": cfg.enabled,
-            "run_count": len(runs),
-            "latest_status": (latest or {}).get("status", ""),
-            "pending_approval_count": pending,
-            "trust_rejected_count": sum(1 for r in runs if r.get("status") == "trust_rejected"),
-            "verification_rejected_count": sum(1 for r in runs if r.get("status") == "verification_rejected"),
-            "needs_review_count": sum(1 for r in runs if r.get("status") == "needs_review"),
-            "source": "local_candidate",
-        }
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        return {"enabled": False, "run_count": "unknown", "latest_status": "",
-                "pending_approval_count": "unknown", "trust_rejected_count": "unknown",
-                "verification_rejected_count": "unknown", "needs_review_count": "unknown",
-                "source": "unavailable"}
 
 
 def _build_builder_routing_section(job: Any) -> dict[str, Any]:
@@ -1948,16 +1741,10 @@ def _build_dashboard(job: Any) -> dict[str, Any]:
         "provider_trust": _build_provider_trust_section(job),
         "provider_verification": _build_provider_verification_section(job),
         "builder_routing": _build_builder_routing_section(job),
-        "local_candidate": _build_local_candidate_section(job),
-        "candidate_quality": _build_candidate_quality_section(job),
-        "external_builder": _build_external_builder_section(job),
         "worker_registry": _build_worker_registry_section(job),
         "token_economy": _build_token_economy_section(job),
-        "model_route_tournament": _build_model_route_tournament_section(job),
-        "overnight_mission": _build_overnight_mission_section(job),
         "test_execution": _build_test_execution_section(job),
         "snapshot_rollback": _build_snapshot_rollback_section(job),
-        "repair_loop": _build_repair_loop_section(job),
         "main_builder_adapter": _build_main_builder_adapter_section(job),
         "managed_execution": _build_managed_execution_section(job),
         "repair_request": _build_repair_request_section(job),

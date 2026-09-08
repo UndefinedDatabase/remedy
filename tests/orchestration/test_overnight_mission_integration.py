@@ -57,14 +57,6 @@ class TestSafeSurfaces:
         blob = json.dumps(s).lower()
         assert "/home/" not in blob and "sk-ant" not in blob
 
-    def test_cockpit_section_readonly(self, env):
-        from packages.orchestration.ui_server import _build_overnight_mission_section
-        s = _build_overnight_mission_section(self._job())
-        assert s["live"] is False
-        assert s["source"] in ("overnight_mission", "unavailable")
-        assert "buttons" not in s and "actions" not in s
-        assert " run" not in str(s.get("next_safe_action", ""))
-
     def test_review_bundle_with_contract(self, env, monkeypatch):
         from packages.orchestration.overnight_mission import create_mission_contract_from_job
         from packages.orchestration.review_bundle import _build_overnight_mission_summary

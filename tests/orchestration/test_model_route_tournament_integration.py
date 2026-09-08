@@ -95,17 +95,3 @@ class TestSafeSurfaces:
         for marker in ("/home/", "sk-ant", "api_key", "-----begin"):
             assert marker not in blob
 
-    def test_cockpit_section_readonly(self, env):
-        from packages.orchestration.ui_server import _build_model_route_tournament_section
-        s = _build_model_route_tournament_section(self._job())
-        assert s["live"] is False
-        assert s["source"] in ("model_route_tournament", "unavailable")
-        assert "buttons" not in s and "actions" not in s
-        assert " run" not in str(s.get("next_safe_action", ""))
-
-    def test_cockpit_no_fake_winner(self, env):
-        # Empty job → insufficient evidence → no recommended route claimed.
-        from packages.orchestration.ui_server import _build_model_route_tournament_section
-        s = _build_model_route_tournament_section(self._job())
-        if s["source"] == "model_route_tournament":
-            assert s["recommended_route"] == ""
