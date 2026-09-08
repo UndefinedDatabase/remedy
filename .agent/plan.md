@@ -8,34 +8,34 @@ Branch: feature/f275-one-world-completion-part-three, cut from `main` at
 Finish what F274 could not reach inside its own limit: the two carry-overs F260's Design
 names, DECISION F260 D3, the prototype-cluster deletion itself, the atomic record flip that
 T002 rules but does not perform, and the classic runner. Operator ruling amend0908-f275-finish
-orders T001 PERFORMED, not prepared, with one module group as the atomic unit.
+orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 4 books round 3's PASS verdict, registers R-0840 for the behaviour operator RULE 3
-requires a finding for, and lands the SECOND carry-over: `mission report` stops being a facade
-over the cluster module `dogfood_run` and becomes the carried report view over a job's
-evidence, while the handler holding that name dies in the SAME commit, as DECISION F274 D2
-rules. The map is deliberately UNCHANGED — `mission run` keeps the `dogfood_run` edge.
+ROUND 5 books round 4's PASS, confirms R-0831's measurement still holds, and writes the
+DELETION ORDER operator RULE 2 requires before the first `git rm`, with a ratchet holding it
+against the live import graph. The cluster's internal graph is CYCLIC, so the atomic unit is
+the strongly connected component — fifteen of them over twenty-four modules — which DECISION
+F275 D2 rules and records. No production file is touched and nothing is deleted.
 
 ## Next Steps
 
-1. The route-policy knobs checked against F110's config keys — R-0831 already records that none
-   has an equivalent, so this is a finding update and not a rebuild. It rides with substantive
-   work, because amend0827 rule 1 forbids a round that is only bookkeeping.
-2. `.agent/f275_deletion_order.md`, derived from the deletion map in dependency order, leaf
-   modules first, written BEFORE the first `git rm`.
-3. The module groups, one commit each, in that order, under the four measurements
-   amend0906-triage-throughput names for a deletion round, until the map holds zero cluster
-   lines and every module F260's Design lists is gone from disk.
-4. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831 and
+1. The FIRST module groups, in the recorded order, one commit each: `context_optimizer`, then
+   `review_bundle`. Each commit takes the module, its handler, its catalog entries, its
+   cockpit section, its tests and its map lines together, and leaves the tree green.
+2. The remaining thirteen components in the recorded order, the three multi-module ones deleted
+   as single commits because their members import each other.
+3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831 and
    R-0840 named among the ideas deleted rather than inherited.
+4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
 
 ## Risks
 
-- 66 findings are open by distinct id once R-0840 lands, four of them High — R-0803, R-0804,
-  R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12. The
-  integrity gate's `high_blockers_open` check is WRONG about them, which is R-0648 and open.
-- `packages/orchestration/overnight_readiness.py` has zero consumer edges and is DELETABLE but
-  not deleted; only its group commit removes it. A half-deleted module is the state operator
-  RULE 1 forbids.
+- 66 findings are open by distinct id, four of them High — R-0803, R-0804, R-0806 and R-0807 —
+  all F273's rather than this feature's, per DECISION F272 D12.
+- R-0832 records that the map measures IMPORT edges only, so a consumer coupled to the cluster
+  by EVENT NAME is invisible to both the map and the deletion order. The order is a safe
+  sequence for imports and is not a completeness claim about couplings.
+- The full suite must be run in the PRIMARY checkout: a fresh worktree has no
+  `apps/ui/node_modules`, so `test_test_runner.py`'s vitest node fails there for the
+  environment rather than for the change.
