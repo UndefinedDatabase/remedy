@@ -79,7 +79,6 @@ Proposals contain evidence references, not raw data:
 
 - `replay:<run_id>` — links to a dogfood run replay analysis
 - `integrity:<check_code>` — links to a specific integrity check result
-- `review_bundle:<section_name>` — links to a degraded bundle section
 - `config:<warning_text>` — links to a config diagnostic warning
 - `managed_execution:<execution_id>` — links to a failed execution result
 

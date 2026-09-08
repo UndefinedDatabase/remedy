@@ -189,7 +189,6 @@ remedy snapshot list-applies <job_id> [--json]
 | `file_provenance.py` | `build_file_provenance()` accepts `data_dir` param; loads `DurableApplyRecord` for authoritative revert state — overrides stale artifact metadata (Step 1146). |
 | `progress_ledger.py` | `merge_job_risks()` surfaces RISK item for applies without `snapshot_verified=True` (Step 1147). |
 | `feature_planner.py` | Snapshot-gap proof items get HIGH priority + "revert capability unavailable" rationale (Step 1148). |
-| `review_bundle.py` | `ChangedFileSafe.snapshot_verified` field; `changed_files_safe.json` includes `snapshot_verified` per file. No blob content exposed (Step 1149). |
 | `autonomy_readiness.py` | `_has_verified_snapshot()` reads artifact metadata as authoritative source. Level 5 `revert_capable` gates on `verified_snapshot` signal (Step 1150). |
 
 ---

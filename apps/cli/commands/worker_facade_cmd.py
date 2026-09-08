@@ -450,7 +450,6 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     _try_import("mission_facade", "packages.orchestration.dogfood_run", "run_mission_loop")
     _try_import("self_repair_proposal", "packages.orchestration.self_repair_proposal",
                 "list_self_repair_proposals")
-    _try_import("review_bundle", "packages.orchestration.review_bundle", "build_review_bundle")
     _try_import("config", "packages.orchestration.config", "get_config")
     _try_import("approval_policy", "packages.orchestration.execution_approval_policy",
                 "evaluate_execution_approval_policy")

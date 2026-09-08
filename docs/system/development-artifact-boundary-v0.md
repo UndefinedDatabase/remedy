@@ -30,7 +30,6 @@ Normal Remedy users never need to read, edit, or depend on this file.
 | Parse review findings for repair loop | `packages/orchestration/repair_loop_v2.py` | development self-dev |
 | Orchestrator brain context | `packages/orchestration/orchestrator_brain.py` | development context |
 | Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
-| Review bundle artifact inclusion | `packages/orchestration/review_bundle.py` | development evidence |
 | Progress command display | `apps/cli/commands/progress_cmd.py` | development progress display |
 
 ## Disallowed product/runtime uses

@@ -301,45 +301,6 @@ class TestIntake:
 
 
 # ---------------------------------------------------------------------------
-# Redaction (Step 1326)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak_across_surfaces(self, env):
-        job, fid = _job(env)
-        text = (
-            "Here is the fix.\n```diff\n--- a/src/app.py\n+++ b/src/app.py\n"
-            "@@ -1,3 +1,4 @@\n value = 1\n"
-            '+api_key = "sk-secretsecretsecret01"\n'
-            "+password = hunter2hunter2\n"
-            "+path = /home/victim/.ssh/id_rsa\n"
-            "+# Traceback (most recent call last)\n```\n"
-        )
-        r = _intake(job, env, text, fid=fid)
-        reloaded = load_job(UUID(str(job.id)), env)
-        rep = PT.get_trust_report(reloaded, r.trust_report_id)
-        from packages.orchestration.progress_ledger import extract_provider_trust_items
-        from packages.orchestration.review_bundle import _build_provider_trust_summary
-        items = extract_provider_trust_items(PT.load_trust_reports(reloaded))
-        blobs = [
-            json.dumps(PT.export_intake_result_json(r)),
-            json.dumps(rep),
-            json.dumps([{"id": i.item_id, "s": i.safe_summary, "n": i.next_action} for i in items]),
-            json.dumps(_build_provider_trust_summary(reloaded)),
-            json.dumps([a.metadata for a in reloaded.artifacts], default=str),
-        ]
-        for b in blobs:
-            assert "sk-secretsecretsecret01" not in b
-            assert "hunter2hunter2" not in b
-            assert "/home/" not in b
-            assert "id_rsa" not in b
-            assert "Traceback" not in b
-            assert "value = 1" not in b  # no raw source line
-            assert "diff --git" not in b
-
-
-# ---------------------------------------------------------------------------
 # Architecture guards (Step 1328)
 # ---------------------------------------------------------------------------
 

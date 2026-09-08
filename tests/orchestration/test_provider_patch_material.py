@@ -223,29 +223,6 @@ class TestApplyCompatibility:
 
 
 class TestRedaction:
-    def test_no_raw_leak_across_surfaces(self, env):
-        # An accepted candidate cannot carry secrets (trust gate rejects them), but
-        # materialization surfaces + the manifest must still expose no raw diff/source.
-        job, fid = _job(env)
-        r = _intake(job, env, _md_diff(), fid=fid)
-        reloaded = load_job(UUID(str(job.id)), env)
-        from packages.orchestration.progress_ledger import extract_provider_material_items
-        from packages.orchestration.provider_patch_material import get_material, load_materials
-        from packages.orchestration.review_bundle import _build_provider_material_summary
-        items = extract_provider_material_items(load_materials(reloaded))
-        blobs = [
-            json.dumps(PT.export_intake_result_json(r)),
-            json.dumps(get_material(reloaded, r.material_id)),
-            json.dumps([{"id": i.item_id, "s": i.safe_summary} for i in items]),
-            json.dumps(_build_provider_material_summary(reloaded)),
-        ]
-        for b in blobs:
-            assert "@@ " not in b           # no raw hunk header
-            assert "+++ " not in b
-            assert "diff --git" not in b
-            assert "/home/" not in b
-            assert "Traceback" not in b
-
     def test_secret_diff_rejected_no_material(self, env):
         job, fid = _job(env)
         text = ("Fix.\n```diff\n--- a/docs/guide.md\n+++ b/docs/guide.md\n@@ -1 +1,2 @@\n a\n"

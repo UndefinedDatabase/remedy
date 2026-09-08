@@ -29,7 +29,6 @@ _ALLOWED_LEGACY = {
     "packages/orchestration/repair_loop_v2.py",
     "packages/orchestration/orchestrator_brain.py",
     "packages/orchestration/integrity_gate.py",
-    "packages/orchestration/review_bundle.py",
     "apps/cli/commands/progress_cmd.py",
     # The freshness gate binds packaged evidence to the agent's live review by
     # design: it derives the step range from .agent/plan.md AND
@@ -221,8 +220,8 @@ class TestFunctionalNoAgent:
         assert not decision.allowed
         assert decision.decision_code in ("missing_template", "missing_session")
 
-    def test_review_bundle_structured_sections_no_agent(self, tmp_path):
-        """Structured review bundle sections do not require .agent/live_review.md."""
+    def test_execution_approval_policy_summary_no_agent(self, tmp_path):
+        """The execution approval policy summary does not require .agent/live_review.md."""
         from packages.orchestration.execution_approval_policy import (
             execution_approval_policy_summary,
         )
@@ -237,40 +236,6 @@ class TestFunctionalNoAgent:
         result = execution_approval_policy_integrity(tmp_path)
         assert isinstance(result, dict)
         assert "healthy" in result
-
-    def test_real_review_bundle_build_no_agent(self, tmp_path):
-        """Real build_review_bundle returns error for missing job, no .agent/."""
-        import os
-        data_dir = tmp_path / "data"
-        data_dir.mkdir()
-        old = os.environ.get("REMEDY_DATA_DIR")
-        os.environ["REMEDY_DATA_DIR"] = str(data_dir)
-        try:
-            from packages.orchestration.review_bundle import build_review_bundle
-            result = build_review_bundle("00000000-0000-0000-0000-000000000000")
-            assert result.error
-            assert "not found" in result.error.lower()
-        finally:
-            if old:
-                os.environ["REMEDY_DATA_DIR"] = old
-            else:
-                os.environ.pop("REMEDY_DATA_DIR", None)
-
-    def test_real_review_bundle_export_no_agent(self, tmp_path):
-        """Real export_review_bundle_json works on error result, no .agent/."""
-        from packages.orchestration.review_bundle import (
-            ReviewBundleResult,
-            export_review_bundle_json,
-        )
-        result = ReviewBundleResult(
-            job_id="test-no-agent",
-            error="test error — no .agent/ needed",
-        )
-        exported = export_review_bundle_json(result)
-        assert isinstance(exported, dict)
-        assert exported["job_id"] == "test-no-agent"
-        assert exported["error"] == "test error — no .agent/ needed"
-        assert exported["safety"]["is_safe"] is True
 
     def test_real_mission_morning_report_no_agent(self, tmp_path):
         """Real build_mission_morning_report returns report for missing run."""

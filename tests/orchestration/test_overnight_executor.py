@@ -7,7 +7,6 @@ subprocess for command execution.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -343,38 +342,6 @@ class TestDoContinueAdapter:
         job, _ = self._continue_job(env, monkeypatch)
         r = _run(str(job.id), env, allow_one_cycle=True, allow_repair_propose=True)  # wrong flag
         assert r.executed_action.get("kind") == OX.OvernightActionKind.NONE
-
-
-# ---------------------------------------------------------------------------
-# Redaction (Step 1295)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak(self, env):
-        job = _job(env)
-        _add_failure(env, job, related_files=["/home/u/.env", "/etc/passwd"],
-                     safe_summary="token=sk-secret-123 Traceback (most recent call last)")
-        r = _run(str(job.id), env, allow_one_cycle=True, allow_repair_propose=True)
-        from packages.orchestration.progress_ledger import (
-            extract_overnight_run_items,
-        )
-        from packages.orchestration.review_bundle import _build_overnight_run_summary
-        rec = OX.load_run_record(str(job.id), r.run_id, env)
-        items = extract_overnight_run_items(rec)
-        blobs = [
-            json.dumps(OX.export_run_result_json(r)),
-            json.dumps(OX.export_run_record_json(r)),
-            OX.render_overnight_run_report_markdown(r),
-            json.dumps([{"id": i.item_id, "s": i.safe_summary} for i in items]),
-            json.dumps(_build_overnight_run_summary(job, env)),
-        ]
-        for b in blobs:
-            assert "/home/" not in b
-            assert "/etc/passwd" not in b
-            assert "Traceback" not in b
-            assert "sk-secret-123" not in b
-            assert "diff --git" not in b
 
 
 # ---------------------------------------------------------------------------

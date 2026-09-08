@@ -61,4 +61,3 @@ remedy contract set <job_id> <field> <value>
 - **repair_loop**: Loads same persisted contract via `ensure_contract(job)`, checks before create_fix_task and create_patch_intent, records usage
 - **progress_ledger**: Auto-extracts contract decisions from timeline events; blockers appear as `run_contract_blocker` items
 - **feature_planner**: Blocked contract items trigger high-priority suggestions via existing rules
-- **review_bundle**: `run_contract_summary.json` uses persisted contract + usage summary

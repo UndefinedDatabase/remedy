@@ -7,15 +7,14 @@ Job.tasks/creates PRs.
 from __future__ import annotations
 
 import dataclasses
-import json
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from packages.core.models import Artifact, ArtifactKind, Job, Task
 from packages.orchestration import self_dogfood as SD
-from packages.orchestration.storage import load_job, save_job
+from packages.orchestration.storage import save_job
 
 
 @pytest.fixture()
@@ -158,38 +157,6 @@ class TestPlanAndPropose:
         r = SD.propose_self_improvement(str(job.id), top=1, data_dir=d)
         assert r.stop_reason == "contract_blocked"
         assert not r.proposed_task_ids
-
-
-# ---------------------------------------------------------------------------
-# Redaction (Step 1421)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak(self, env):
-        d, ad = env
-        (ad / "live_review.md").write_text(
-            "## Verdict\nPASS\nleak token sk-abcdef0123456789abcd at /home/u/.ssh/id_rsa\n"
-            "Traceback (most recent call last)\n")
-        job = _job(d)
-        SD.propose_self_improvement(str(job.id), top=2, data_dir=d)
-        reloaded = load_job(UUID(str(job.id)), d)
-        from packages.orchestration.proposed_tasks import load_proposed_tasks
-        from packages.orchestration.review_bundle import _build_self_dogfood_summary
-        from packages.orchestration.ui_server import _build_self_dogfood_section
-        blobs = [
-            json.dumps(SD.export_inspection_json(SD.build_self_dogfood_inspection(str(job.id), d))),
-            json.dumps(SD.export_plan_json(SD.build_self_improvement_plan(str(job.id), d))),
-            SD.render_report_markdown(SD.build_self_dogfood_report(str(job.id), d)),
-            json.dumps(_build_self_dogfood_summary(reloaded)),
-            json.dumps(_build_self_dogfood_section(reloaded)),
-            json.dumps([t.model_dump(mode="json") for t in load_proposed_tasks(str(job.id), d)], default=str),
-        ]
-        for b in blobs:
-            assert "sk-abcdef0123456789abcd" not in b
-            assert "/home/" not in b
-            assert "id_rsa" not in b
-            assert "Traceback" not in b
 
 
 # ---------------------------------------------------------------------------

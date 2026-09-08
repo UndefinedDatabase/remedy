@@ -7,7 +7,6 @@ reconcile → approve → do continue → completed). No real provider / git / m
 from __future__ import annotations
 
 import dataclasses
-import json
 import subprocess
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -236,36 +235,6 @@ class TestEndToEnd:
         SE.save_attempt(a, env)
         r = SE.reconcile_self_attempt("done1", env)
         assert r.state == SE.AttemptState.COMPLETED
-
-
-# ---------------------------------------------------------------------------
-# Redaction (Step 1449)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak(self, env):
-        ad = Path(__import__("os").environ["REMEDY_AGENT_DIR"])
-        (ad / "live_review.md").write_text(
-            "## Verdict\nPASS\nleak sk-abcdef0123456789abcd at /home/u/.ssh/id_rsa\n"
-            "Traceback (most recent call last)\n")
-        job, pt = _approved_task(env)
-        r = SE.start_self_execution(pt.id, str(job.id), env)
-        reloaded = load_job(UUID(str(job.id)), env)
-        from packages.orchestration.review_bundle import _build_self_execution_summary
-        from packages.orchestration.ui_server import _build_self_execution_section
-        blobs = [
-            json.dumps(SE.export_result_json(r)),
-            json.dumps(SE.get_attempt(r.attempt_id, env)),
-            json.dumps(_build_self_execution_summary(reloaded)),
-            json.dumps(_build_self_execution_section(reloaded)),
-            (env / "self_dogfood" / "attempts" / r.attempt_id / "request.md").read_text(),
-        ]
-        for b in blobs:
-            assert "sk-abcdef0123456789abcd" not in b
-            assert "/home/" not in b
-            assert "id_rsa" not in b
-            assert "Traceback" not in b
 
 
 # ---------------------------------------------------------------------------

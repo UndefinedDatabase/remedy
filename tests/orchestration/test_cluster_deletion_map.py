@@ -59,7 +59,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.managed_builder_execution",
     "packages.orchestration.execution_approval_policy",
     "packages.orchestration.progress_ledger",
-    "packages.orchestration.review_bundle",
     "packages.orchestration.feature_planner",
 )
 

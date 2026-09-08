@@ -7,7 +7,6 @@ approve → do continue). No real provider/model/network/subprocess.
 from __future__ import annotations
 
 import dataclasses
-import json
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -144,39 +143,6 @@ class TestRequestQuality:
         text = _rendered(load_job(UUID(str(job.id)), env), r.request_package_id).lower()
         for bad in ("subscription", "claude max", "account required", "vs code", "jetbrains"):
             assert bad not in text
-
-
-# ---------------------------------------------------------------------------
-# Redaction (Step 1384)
-# ---------------------------------------------------------------------------
-
-
-class TestRedaction:
-    def test_no_raw_leak(self, env):
-        job, fid = _job(
-            env,
-            related=["/home/u/.ssh/id_rsa", "docs/guide.md"],
-            safe_summary='token sk-abcdef0123456789abcd at /home/u/.env Traceback (most recent call last)',
-            command_display="pytest /home/u/secret/path.py")
-        r = RB.build_repair_request_package(str(job.id), fid, data_dir=env)
-        reloaded = load_job(UUID(str(job.id)), env)
-        from packages.orchestration.progress_ledger import extract_repair_request_items
-        from packages.orchestration.review_bundle import _build_repair_request_summary
-        from packages.orchestration.ui_server import _build_repair_request_section
-        items = extract_repair_request_items(RB.load_request_packages(reloaded), {})
-        blobs = [
-            json.dumps(RB.export_build_result_json(r)),
-            json.dumps(RB.get_request_package(reloaded, r.request_package_id)),
-            _rendered(reloaded, r.request_package_id),
-            json.dumps([{"id": i.item_id, "s": i.safe_summary} for i in items]),
-            json.dumps(_build_repair_request_summary(reloaded)),
-            json.dumps(_build_repair_request_section(reloaded)),
-        ]
-        for b in blobs:
-            assert "sk-abcdef0123456789abcd" not in b
-            assert "/home/" not in b
-            assert "id_rsa" not in b
-            assert "Traceback" not in b
 
 
 # ---------------------------------------------------------------------------

@@ -448,56 +448,6 @@ class TestRedactionClosure:
         assert _SECRET_RE.sub("[REDACTED]", "No secrets here") == "No secrets here"
         assert _SECRET_RE.sub("[REDACTED]", "environment_secrets") == "environment_secrets"
 
-    def test_r0122_is_optional_is_bug_used(self):
-        from packages.orchestration.review_bundle import (
-            ReviewBundleSectionSpec,
-            _build_section_safe,
-        )
-
-        def _fail():
-            raise ImportError("missing module")
-
-        spec = ReviewBundleSectionSpec("test.json", _fail, description="test")
-        _, _, section = _build_section_safe(spec, builder_args={})
-        assert section.structured_error is not None
-        assert section.structured_error.is_optional_dependency is True
-        assert section.structured_error.is_bug is False
-
-    def test_r0122_bug_category(self):
-        from packages.orchestration.review_bundle import (
-            ReviewBundleSectionSpec,
-            _build_section_safe,
-        )
-
-        def _fail():
-            raise RuntimeError("unexpected")
-
-        spec = ReviewBundleSectionSpec("test.json", _fail, description="test")
-        _, _, section = _build_section_safe(spec, builder_args={})
-        assert section.structured_error is not None
-        assert section.structured_error.is_bug is True
-        assert section.structured_error.is_optional_dependency is False
-
-    def test_r0123_structured_error_in_production(self):
-        from packages.orchestration.review_bundle import (
-            ReviewBundleSectionError,
-            ReviewBundleSectionSpec,
-            _build_section_safe,
-        )
-
-        def _fail():
-            raise ValueError("bad data")
-
-        spec = ReviewBundleSectionSpec("test.json", _fail, description="test")
-        _, _, section = _build_section_safe(spec, builder_args={})
-        assert isinstance(section.structured_error, ReviewBundleSectionError)
-        d = section.structured_error.to_dict()
-        assert d["section_name"] == "test.json"
-        assert d["error_type"] == "ValueError"
-        assert d["is_bug"] is True
-        assert "occurred_at" in d
-
-
 class TestPostmortemConfig:
     """F010: generated summaries are OFF, and the key says so."""
 

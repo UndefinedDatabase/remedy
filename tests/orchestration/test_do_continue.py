@@ -400,26 +400,6 @@ class TestContinuationIntegrations:
         assert repair, "expected a repair-continuation suggestion"
         assert repair[0].priority.value == "high"
 
-    def test_review_bundle_continuation_summary(self, env, monkeypatch):
-        data_dir, repo = env
-        job, iid = make_continue_job(data_dir, repo)
-        self._run(data_dir, job, monkeypatch)
-        import json as _json
-        import zipfile
-
-        from packages.orchestration.review_bundle import build_review_bundle
-        result = build_review_bundle(str(job.id))
-        with zipfile.ZipFile(result.output_path) as zf:
-            raw = zf.read("continuation_summary.json").decode()
-        summary = _json.loads(raw)
-        assert summary["present"] is True
-        assert summary["stop_reason"] == "completed_verified"
-        assert summary["apply_status"] == "completed"
-        assert str(repo.resolve()) not in raw
-        assert "blob_" not in raw
-        assert result.safety.is_safe
-
-
 # ---------------------------------------------------------------------------
 # Architecture guards (Step 1178)
 # ---------------------------------------------------------------------------

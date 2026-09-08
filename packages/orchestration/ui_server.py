@@ -3573,7 +3573,7 @@ class _RemedyHandler(BaseHTTPRequestHandler):
         """True when `command_id` is one of the ids the UI door accepts.
 
         Imported inside the function, the idiom this module already uses for
-        the same catalog in `do_run`, `proof_chain` and `review_bundle`: the
+        the same catalog in `do_run` and `proof_chain`: the
         catalog is a large module and the write door must not pull it in at
         import time.
         """

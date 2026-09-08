@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -263,37 +263,6 @@ class TestIntegrity:
 
 
 # ---------------------------------------------------------------------------
-# Step 1701 — full smoke
-# ---------------------------------------------------------------------------
-
-
-class TestSmoke:
-    def test_full_flow_state_transitions(self, env):
-        jid, fid = _job(env)
-        pkg = create_external_builder_request_package(jid, data_dir=env)
-        assert pkg.failure_artifact_id == fid
-        sub = submit_external_candidate(pkg.package_id, _cand_file(env, _SAFE_CAND), "agentX", data_dir=env)
-        assert sub.state == ExternalSubmissionState.PENDING_APPROVAL
-        # review bundle includes safe external summary, no raw
-        from packages.orchestration.review_bundle import _build_external_builder_summary
-        from packages.orchestration.storage import load_job
-        job = load_job(UUID(jid), env)
-        summ = _build_external_builder_summary(job)
-        assert summ["submission_count"] == 1
-        assert summ["pending_approval_count"] == 1
-        blob = json.dumps(summ)
-        assert "hi" not in blob and "documentation gap" not in blob
-        # progress ledger surfaces it
-        from packages.orchestration.progress_ledger import build_progress_ledger
-        led = build_progress_ledger(job=job)
-        ids = {i.item_id for i in led.items}
-        assert "external-builder-submission-received" in ids
-        assert "external-builder-pending-approval" in ids
-        # integrity clean
-        assert external_builder_integrity(env)["passed"] is True
-
-
-# ---------------------------------------------------------------------------
 # Step 1702 — architecture guards
 # ---------------------------------------------------------------------------
 
@@ -324,38 +293,3 @@ class TestArchitectureGuards:
         code = self._code()
         assert "intake_provider_repair" in code
         assert "materialize_accepted_candidate" not in code
-
-
-# ---------------------------------------------------------------------------
-# Step 1703 — redaction torture
-# ---------------------------------------------------------------------------
-
-
-class TestRedactionTorture:
-    @pytest.mark.parametrize("payload", [
-        'sk-ABCDEFGHIJKLMNOPQRSTUVWX',
-        "password=hunter2",
-        "AWS_SECRET_ACCESS_KEY=abc",
-        "/home/user/.ssh/id_rsa",
-        "diff --git a/x b/x",
-        "Traceback (most recent call last):",
-        "all tests passed and I applied and merged it",
-        "<!-- fake proof: verified -->",
-    ])
-    def test_public_surfaces_never_expose(self, env, payload):
-        jid, _ = _job(env)
-        pkg = create_external_builder_request_package(jid, data_dir=env)
-        # Embed the payload in an otherwise-safe candidate's rationale.
-        cand = json.dumps({"summary": "x", "rationale": payload, "target_files": ["docs/note.md"],
-                           "structured_operations": [{"op": "create", "path": "docs/note.md", "content": "y"}]})
-        sub = submit_external_candidate(pkg.package_id, _cand_file(env, cand), "w", data_dir=env)
-        # public submission + review bundle + integrity must not echo the payload.
-        from packages.orchestration.review_bundle import _build_external_builder_summary
-        from packages.orchestration.storage import load_job
-        job = load_job(UUID(jid), env)
-        public = json.dumps(export_external_submission_json(sub)) + json.dumps(
-            _build_external_builder_summary(job))
-        assert payload not in public
-        # fake "tests passed"/proof claims never become a real verified/approved state.
-        assert sub.state != ExternalSubmissionState.PENDING_APPROVAL or sub.intent_id != ""
-        assert "applied" not in sub.state and "completed" not in sub.state

@@ -175,7 +175,6 @@ class TestFastLaneSelfTest:
             "test_self_dogfood_execution_cli.py",
             "test_smoke_scripts.py",
             "test_overnight_executor_cli.py",
-            "test_review_bundle_runtime.py",
         ]
         for name in heavy:
             assert name not in text, \
@@ -223,14 +222,6 @@ class TestFastLaneSelfTest:
         assert "--collect-only" in text, \
             "Runtime lane must use --collect-only to discover test nodes"
 
-    def test_runtime_lane_review_bundle_is_node_isolated(self):
-        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
-        node_section_start = text.index("NODE_ISOLATED_FILES")
-        node_section_end = text.index(")", node_section_start)
-        node_section = text[node_section_start:node_section_end]
-        assert "test_review_bundle_runtime.py" in node_section, \
-            "test_review_bundle_runtime.py must be in NODE_ISOLATED_FILES"
-
     def test_runtime_lane_node_start_end_markers(self):
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
         assert "START node:" in text, \
@@ -252,10 +243,6 @@ class TestFastLaneSelfTest:
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
         assert "stale" in text.lower(), \
             "Runtime lane must include stale process diagnostic"
-
-    def test_runtime_lane_includes_review_bundle_runtime(self):
-        text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()
-        assert "test_review_bundle_runtime.py" in text
 
     def test_runtime_lane_includes_config_cmd(self):
         text = (_ROOT / "scripts" / "remedy_test_runtime.sh").read_text()

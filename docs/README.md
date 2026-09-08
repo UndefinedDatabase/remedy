@@ -55,7 +55,6 @@
 | repair | [repair-loop-v1.md](system/repair-loop-v1.md) | system |
 | repair | [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | system |
 | resume | [resume.md](guides/resume.md) | guide |
-| review bundle | [review-bundle-v1.md](system/review-bundle-v1.md) | system |
 | routing | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | system |
 | runtime harness | [runtime-harness-v1.md](system/runtime-harness-v1.md) | system |
 | routing policy | [model_routing_policy.md](agents/model_routing_policy.md) | agents |
@@ -130,8 +129,6 @@ Specifications and design documents for the built system.
 | [repair-loop-v0.md](system/repair-loop-v0.md) | Repair loop v0 (legacy) |
 | [repair-loop-v1.md](system/repair-loop-v1.md) | Repair loop v1 (bounded, approval-gated) |
 | [repair-request-builder-v0.md](system/repair-request-builder-v0.md) | Provider-agnostic repair request builder |
-| [review-bundle-structured-error-reporting-v1.md](system/review-bundle-structured-error-reporting-v1.md) | Structured error reporting in review bundles |
-| [review-bundle-v1.md](system/review-bundle-v1.md) | Review bundle format and contents |
 | [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
 | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy plan status`/`next`, feature→mission adapter |
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |

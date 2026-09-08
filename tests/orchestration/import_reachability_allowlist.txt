@@ -241,7 +241,6 @@ packages.orchestration.repair_loop_v2
 packages.orchestration.repair_request_builder
 packages.orchestration.repo_applicator
 packages.orchestration.repository_snapshot
-packages.orchestration.review_bundle
 packages.orchestration.review_scope
 packages.orchestration.review_subject
 packages.orchestration.reviewer

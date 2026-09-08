@@ -1563,32 +1563,6 @@ class TestExistingMarkdownFulfillment:
         )
 
 
-class TestReviewBundleFulfillment:
-    """Review bundle must include fulfillment/staging/promotion truth."""
-
-    def test_fulfillment_summary_in_bundle(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.core.models import Job
-        from packages.orchestration.job_fulfillment import create_demo_repo, run_job_fulfill
-        from packages.orchestration.review_bundle import build_review_bundle
-        from packages.orchestration.storage import save_job
-
-        repo = create_demo_repo(tmp_path)
-        job = Job(name="Bundle test", metadata={"target_repo": str(repo)})
-        save_job(job, root=tmp_path)
-
-        run_job_fulfill(str(job.id), repo, data_dir=tmp_path)
-
-        result = build_review_bundle(str(job.id))
-        section_names = [s.filename for s in result.sections]
-        assert "fulfillment_summary.json" in section_names
-
-        # Check the section was included (not degraded)
-        for s in result.sections:
-            if s.filename == "fulfillment_summary.json":
-                assert s.status == "included", f"Fulfillment section status: {s.status}"
-
-
 class TestDemoDocsCommands:
     """Demo docs commands must match actual CLI support."""
 
@@ -1701,21 +1675,6 @@ class TestSuccessfulFulfillmentTruthV05:
             assert f in record.staged_files
 
 
-class TestReviewBundleSafeError:
-    """Review bundle must not leak raw exception text."""
-
-    def test_error_no_raw_traceback(self):
-        from pathlib import Path
-
-        from packages.orchestration.review_bundle import _build_fulfillment_summary
-        # Non-existent data_dir triggers error path
-        result = _build_fulfillment_summary("nonexistent-job", Path("/tmp/no-such-dir"))
-        assert result["status"] in ("no_fulfillment_records", "error")
-        if result["status"] == "error":
-            assert "error_type" in result
-            assert "error" not in result  # no raw str(exc)
-
-
 # ---------------------------------------------------------------------------
 # v0.6 — Review bundle side-effect + public truth (Steps 3696-3714)
 # ---------------------------------------------------------------------------
@@ -1754,32 +1713,6 @@ class TestIntegrityReadOnlyV07:
         from packages.orchestration.overnight_readiness import _integrity_status
         result = _integrity_status()
         assert result == "unknown"
-
-    def test_build_integrity_summary_no_run_integrity_checks(self, monkeypatch):
-        """Review bundle integrity must not call run_integrity_checks."""
-        import packages.orchestration.integrity_gate as ig
-
-        def bomb(**kwargs):
-            raise AssertionError("run_integrity_checks must not be called from bundle")
-
-        monkeypatch.setattr(ig, "run_integrity_checks", bomb)
-
-        from packages.orchestration.review_bundle import _build_integrity_summary
-        result = _build_integrity_summary()
-        assert result.get("status") == "unknown"
-
-    def test_build_integrity_summary_no_subprocess(self, monkeypatch):
-        """No subprocess.run from _build_integrity_summary."""
-        import subprocess as sp
-
-        def bomb(*args, **kwargs):
-            raise AssertionError(f"subprocess.run called: {args}")
-
-        monkeypatch.setattr(sp, "run", bomb)
-
-        from packages.orchestration.review_bundle import _build_integrity_summary
-        result = _build_integrity_summary()
-        assert result.get("status") == "unknown"
 
     def test_no_agent_dependency(self, tmp_path, monkeypatch):
         """Read-only integrity works without .agent directory."""
@@ -1823,20 +1756,6 @@ class TestChangedFilesPublicTruth:
         exported = export_job_fulfillment_json(rec)
         assert exported["changed_files"] == [], \
             "Blocked job changed_files must be empty"
-
-
-class TestChangedFilesSafeScope:
-    """changed_files_safe.json must include scope metadata."""
-
-    def test_scope_field_present(self):
-        from unittest.mock import MagicMock
-
-        from packages.orchestration.review_bundle import _build_changed_files_safe
-        job = MagicMock()
-        job.artifacts = []
-        result = _build_changed_files_safe(job, [])
-        assert result["scope"] == "artifact_intent"
-        assert "scope_note" in result
 
 
 class TestDocsCommandShapesV06:

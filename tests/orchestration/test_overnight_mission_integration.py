@@ -4,7 +4,6 @@ Progress ledger items, review-bundle section, cockpit section. All read-only; no
 """
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -49,20 +48,3 @@ class TestProgressLedger:
 class TestSafeSurfaces:
     def _job(self):
         return SimpleNamespace(id=uuid4())
-
-    def test_review_bundle_summary_no_contract(self, env):
-        from packages.orchestration.review_bundle import _build_overnight_mission_summary
-        s = _build_overnight_mission_summary(self._job())
-        assert s["has_contract"] is False and s["satisfied"] is False
-        blob = json.dumps(s).lower()
-        assert "/home/" not in blob and "sk-ant" not in blob
-
-    def test_review_bundle_with_contract(self, env, monkeypatch):
-        from packages.orchestration.overnight_mission import create_mission_contract_from_job
-        from packages.orchestration.review_bundle import _build_overnight_mission_summary
-        job = self._job()
-        # review verdict in repo is PENDING → not satisfied; summary must reflect honestly
-        create_mission_contract_from_job(str(job.id), acceptance_criteria=["done"], data_dir=env)
-        s = _build_overnight_mission_summary(job)
-        assert s["has_contract"] is True
-        assert s["satisfied"] in (True, False)  # never crashes; honest flag

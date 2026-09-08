@@ -70,7 +70,7 @@ PASS
         assert "__pycache__" not in text
         assert "raw_stdout" not in text
 
-    def test_review_bundle_progress_no_raw_secrets(self):
+    def test_progress_ledger_export_no_raw_secrets(self):
         """Export from ledger with secret-like title — verify bounded."""
         plan_text = """\
 # Plan — Test

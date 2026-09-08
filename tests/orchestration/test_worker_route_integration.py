@@ -112,15 +112,6 @@ class TestSafeSurfaces:
         from uuid import uuid4
         return SimpleNamespace(id=uuid4())
 
-    def test_review_bundle_summary_safe(self):
-        from packages.orchestration.review_bundle import _build_worker_registry_summary
-        s = _build_worker_registry_summary(self._job())
-        assert "enabled_workers" in s
-        assert "route_policy" in s
-        blob = str(s).lower()
-        for marker in ("/home/", "/users/", "sk-ant", "sk-proj", "api_key", "-----begin", "secret_key"):
-            assert marker not in blob, marker
-
     def test_cockpit_section_is_readonly(self):
         from packages.orchestration.ui_server import _build_worker_registry_section
         s = _build_worker_registry_section(self._job())

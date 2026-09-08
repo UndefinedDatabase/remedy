@@ -5,7 +5,6 @@ cockpit section, and placeholder-readiness hardening. All read-only; nothing exe
 """
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -145,15 +144,6 @@ class TestSafeSurfaces:
     def _job(self):
         return SimpleNamespace(id=uuid4())
 
-    def test_review_bundle_summary_safe(self):
-        from packages.orchestration.review_bundle import _build_token_economy_summary
-        s = _build_token_economy_summary(self._job())
-        assert "budget_status" in s
-        assert s.get("memory_candidates_persisted") is False
-        blob = json.dumps(s).lower()
-        for marker in ("/home/", "sk-ant", "api_key", "price_usd", "cost_usd"):
-            assert marker not in blob
-
     def test_cockpit_section_readonly(self):
         from packages.orchestration.ui_server import _build_token_economy_section
         s = _build_token_economy_section(self._job())
@@ -161,12 +151,6 @@ class TestSafeSurfaces:
         assert s["source"] in ("token_economy", "unavailable")
         assert "buttons" not in s and "actions" not in s
         assert " run" not in str(s.get("next_safe_action", ""))
-
-    def test_no_verified_savings_claim(self):
-        from packages.orchestration.review_bundle import _build_token_economy_summary
-        s = _build_token_economy_summary(self._job())
-        assert s.get("verified") is False
-
 
 # ---------------------------------------------------------------------------
 # Placeholder readiness hardening (Step 1772)

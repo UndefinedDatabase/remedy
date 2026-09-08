@@ -72,7 +72,6 @@ ignore = [
 "tests/**" = ["F811"]  # redefined-while-unused — pytest fixtures redefine names intentionally
 "packages/orchestration/progress_ledger.py" = ["E402"]  # re import after class defs — intentional layout
 "packages/orchestration/provider_trust_verification.py" = ["UP031"]  # %-format in regex — clearer than f-string
-"packages/orchestration/review_bundle.py" = ["F402"]  # loop var `field` shadows dataclass import — safe
 "packages/orchestration/run_contract.py" = ["F402"]  # loop var `field` shadows dataclass import — safe
 
 # -- Mypy (permissive baseline v0) --
@@ -103,7 +102,6 @@ module = [
     "packages.orchestration.project_brain",
     "packages.orchestration.feature_planner",
     "packages.orchestration.verifier",
-    "packages.orchestration.review_bundle",
     "packages.orchestration.do_run",
     "packages.orchestration.autonomy_readiness",
     "packages.orchestration.autorun",

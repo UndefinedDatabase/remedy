@@ -439,7 +439,7 @@ class TestDoctorCoreSafeErr:
         def _boom(name, *a, **kw):
             if name == "apps.cli.commands.worker_facade_cmd":
                 return orig(name, *a, **kw)
-            if name == "packages.orchestration.review_bundle":
+            if name == "packages.orchestration.run_contract":
                 raise ImportError(
                     "Error at /mnt/data/x and /tmp/build/y and /Users/bob/.config/z"
                 )

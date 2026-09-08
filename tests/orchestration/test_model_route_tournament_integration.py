@@ -5,7 +5,6 @@ section. All read-only; nothing executes a worker.
 """
 from __future__ import annotations
 
-import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -86,12 +85,3 @@ class TestFeatureSuggestions:
 class TestSafeSurfaces:
     def _job(self):
         return SimpleNamespace(id=uuid4())
-
-    def test_review_bundle_summary_safe(self, env):
-        from packages.orchestration.review_bundle import _build_model_route_tournament_summary
-        s = _build_model_route_tournament_summary(self._job())
-        assert "latest_status" in s and "competitor_count" in s
-        blob = json.dumps(s).lower()
-        for marker in ("/home/", "sk-ant", "api_key", "-----begin"):
-            assert marker not in blob
-

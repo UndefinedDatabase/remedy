@@ -76,7 +76,6 @@ Proposals contain evidence references like:
 
 - `replay:<run_id>` — points to a dogfood run replay analysis
 - `integrity:<check_code>` — points to a specific integrity check result
-- `review_bundle:<section_name>` — points to a degraded review bundle section
 - `config:<warning>` — points to a config diagnostic warning
 
 Follow these references to inspect the underlying evidence. Raw logs, prompts,
