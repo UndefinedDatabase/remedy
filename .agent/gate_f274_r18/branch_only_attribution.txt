@@ -1,0 +1,32 @@
+STEP 4 ATTRIBUTION — every branch-only id.
+The branch-only set is NOT empty this round: 2 ids, both from
+tests/orchestration/test_product_smoke.py, both on xdist worker gw6.
+
+Shared failure mode, read from the branch run's own traceback: the first
+id asserted that no smoke-check port stayed open after teardown and found
+port 5273 still open; the second id then failed to bind that same port
+5273 with OSError [Errno 98] Address already in use.  One leaked child
+process on one worker, two dependent assertions.
+
+id: tests/orchestration/test_product_smoke.py::TestDisabledStartsNothing::test_the_enabled_default_still_runs_the_app
+  branch serial re-run: exit 0 | 1 passed in 0.48s
+  branch serial re-run: exit 0 | 1 passed in 0.43s
+  branch serial re-run: exit 0 | 1 passed in 0.42s
+  base   serial re-run: exit 0 | 1 passed in 0.41s
+  classification: SERIAL-PASS => xdist-flake class (integration_gate.md step 4, F135/F052 pattern) — recorded, not a blocker
+
+id: tests/orchestration/test_product_smoke.py::test_no_zombie_processes_after_every_outcome
+  branch serial re-run: exit 0 | 1 passed in 0.99s
+  branch serial re-run: exit 0 | 1 passed in 1.01s
+  branch serial re-run: exit 0 | 1 passed in 1.03s
+  base   serial re-run: exit 0 | 1 passed in 0.99s
+  classification: SERIAL-PASS => xdist-flake class (integration_gate.md step 4, F135/F052 pattern) — recorded, not a blocker
+
+COUPLING TO FEATURE CODE: none.
+  git diff --name-status d0d8b24d..HEAD -- tests/orchestration/test_product_smoke.py
+  returns EMPTY — this branch never touched the file either id lives in,
+  and this round's whole change set is under .agent/.
+
+VERDICT MATERIAL: serial-pass, therefore the xdist-flake class, therefore
+recorded and NOT a blocker.  It is still a branch-only failure and the
+gate summary says so rather than calling the branch half green.

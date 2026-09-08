@@ -1,0 +1,10 @@
+STEP 3 / R-0155 ATTRIBUTION — every base-only id.
+
+comm -23 base_failed.txt branch_failed.txt = 0 ids.
+
+The base failure set is EMPTY, so there is no base-only id and nothing to
+attribute.  That emptiness is itself the R-0736 fix clause working: without
+the forward mtime stamp on the copied apps/ui/dist, _frontend_is_stale
+fires in the throwaway worktree and roughly 114 tests/ui_server/ ids fail
+with 'React UI not built.'  The base run's output contains that marker 0
+times.

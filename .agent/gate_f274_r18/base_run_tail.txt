@@ -1,0 +1,15 @@
+# G5 base run — step 2 — throwaway worktree at the GATE BASE
+# base commit: d0d8b24da2a080ebcff85e63e73a547e6a8066e6
+# throwaway branch: tmp/f274-r18-base (removed, pruned and deleted after the run)
+# command: REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+# real exit code: 0        wall: 147.44s shell / pytest's own figure below
+# parity restored first: shutil.copytree(src, dst, symlinks=True)
+#   apps/ui/node_modules  43005 regular files, 27 symlinks preserved (primary: 27)
+#   apps/ui/dist          4 regular files, 0 symlinks preserved (primary: 0)
+# R-0736 fix clause applied: dist stamped strictly newer than the newest source
+#   newest mtime under apps/ui/src = 1788842038.964950
+#   stamp applied to every dist entry and to dist itself = 1788842158.964950
+#   dist/index.html newer than newest source = True
+# 'React UI not built' occurrences in the run output: 0
+# FAILED node ids: none
+19790 passed, 23 skipped, 1 warning in 146.79s (0:02:26)
