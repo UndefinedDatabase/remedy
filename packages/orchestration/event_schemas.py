@@ -49,10 +49,10 @@ EVENT_METADATA_SCHEMAS: dict[str, frozenset[str]] = {
         "recommended_worker", "included_section_count",
         "excluded_section_count",
     }),
+    # DECISION F274 D7: the three fields worker recommendation produced die with
+    # it — the cluster-bound context pack and the adapter scoring both go.
     "token_policy_applied": frozenset({
-        "mode", "max_context_tokens", "estimated_context_tokens",
-        "local_first", "remote_model_requires_approval",
-        "selected_worker",
+        "mode", "max_context_tokens", "local_first",
     }),
 }
 

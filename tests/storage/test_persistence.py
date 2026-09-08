@@ -284,10 +284,7 @@ class TestTokenEconomy:
         tpa = [e for e in events if e.get("event") == "token_policy_applied"]
         assert len(tpa) >= 1, "must emit token_policy_applied"
         meta = tpa[0].get("metadata", {})
-        required = {
-            "mode", "max_context_tokens", "estimated_context_tokens",
-            "local_first", "remote_model_requires_approval", "selected_worker",
-        }
+        required = {"mode", "max_context_tokens", "local_first"}
         assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
         assert meta["local_first"] is True
 
@@ -325,13 +322,10 @@ class TestTokenPolicyApplied:
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
         assert "token_policy_applied" in EVENT_METADATA_SCHEMAS
         schema = EVENT_METADATA_SCHEMAS["token_policy_applied"]
-        assert len(schema) == 6
+        assert len(schema) == 3
         assert "mode" in schema
         assert "max_context_tokens" in schema
-        assert "estimated_context_tokens" in schema
         assert "local_first" in schema
-        assert "remote_model_requires_approval" in schema
-        assert "selected_worker" in schema
 
     def test_autonomy_loop_emits_event(self, tmp_path, monkeypatch):
         """Autonomy loop must emit token_policy_applied at start."""
@@ -350,8 +344,7 @@ class TestTokenPolicyApplied:
         tpa = [e for e in events if e.get("event") == "token_policy_applied"]
         assert len(tpa) >= 1, "must emit token_policy_applied"
         meta = tpa[0].get("metadata", {})
-        required = {"mode", "max_context_tokens", "estimated_context_tokens",
-                     "local_first", "remote_model_requires_approval", "selected_worker"}
+        required = {"mode", "max_context_tokens", "local_first"}
         assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
 
     def test_schema_validation(self):
@@ -359,10 +352,7 @@ class TestTokenPolicyApplied:
         valid_meta = {
             "mode": "compact",
             "max_context_tokens": 100000,
-            "estimated_context_tokens": 500,
             "local_first": True,
-            "remote_model_requires_approval": True,
-            "selected_worker": "ollama/qwen3:8b",
         }
         errors = validate_event_metadata("token_policy_applied", valid_meta)
         assert errors == []
@@ -384,9 +374,8 @@ class TestTokenPolicyAppliedSchema:
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
         assert "token_policy_applied" in EVENT_METADATA_SCHEMAS
         schema = EVENT_METADATA_SCHEMAS["token_policy_applied"]
-        assert len(schema) == 6
-        expected = {"mode", "max_context_tokens", "estimated_context_tokens",
-                    "local_first", "remote_model_requires_approval", "selected_worker"}
+        assert len(schema) == 3
+        expected = {"mode", "max_context_tokens", "local_first"}
         assert schema == frozenset(expected)
 
     def test_autonomy_loop_emits(self, tmp_path, monkeypatch):

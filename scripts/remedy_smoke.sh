@@ -1666,12 +1666,11 @@ if not tpa:
     print('ERROR: no token_policy_applied event', file=sys.stderr)
     sys.exit(1)
 meta = tpa[0].get('metadata', {})
-for key in ['mode', 'max_context_tokens', 'estimated_context_tokens',
-            'local_first', 'remote_model_requires_approval', 'selected_worker']:
+for key in ['mode', 'max_context_tokens', 'local_first']:
     if key not in meta:
         print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
         sys.exit(1)
-print('    token_policy_applied: OK (worker=' + str(meta['selected_worker']) + ', mode=' + str(meta['mode']) + ')')
+print('    token_policy_applied: OK (mode=' + str(meta['mode']) + ')')
 " "${RUNS_ROOT}" "${JOB_ID}"
 
     # Brain has patch_revert, change_set nodes
