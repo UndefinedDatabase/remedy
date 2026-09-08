@@ -353,3 +353,117 @@ The FIRST module group commit: `context_optimizer`, taking its module, its handl
 entries, its cockpit section, its tests and its map lines together in ONE commit that leaves the
 tree green — the first line of `.agent/f275_deletion_order.md`, and the first `git rm` of this
 feature.
+
+## Reviewer verdict on round 5 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 5: **PASS.** Written by the planner/reviewer of session 2 AFTER reading the
+committed range `a040b60c`..`77c0ae11` and RE-RUNNING the round's verification independently;
+the worker's report was not taken as evidence for any line below. It is carried here because
+under `docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it
+is booked into `.agent/live_review.md` by the FIRST commit of the next round that happens
+anyway, per amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED, against the committed blobs. The change set is EXACTLY the NINE
+paths the block's enumeration names, by `git diff --name-status`, in the ordered single-parent
+commits C0a, C0b, C1, C2, C3, C4, C6, with no C5 commit. G1: the scratch original, the committed
+`.agent/authored/f275-r5.md` and the committed `.agent/last_block.md` are all 34690 bytes at
+`6bcc12bd383f8955…`; per §3 item 37 that is the chain this workflow can walk and not the emitted
+bytes. G2: `.agent/plan.md` byte-identical to PLAN5 at 2330 bytes and 41 lines. G3:
+`.agent/live_review.md` 527075 to 533079, gain 6004 = 1 + 6002 + 1, pre-blob an exact PREFIX and
+RECORD5 plus one newline an exact SUFFIX; units 218 to 220, `^Gate: ` 26 to 27,
+`^Gate: F275 R4 ` 0 to 1, `^- R-0831 CONFIRMED` 0 to 1, and THE OPEN SET UNCHANGED AT 66 BY
+DISTINCT ID — the R-0831 paragraph is a confirmation and matches neither the registration nor the
+resolution pattern, exactly as the gate predicted. `.agent/prose_slips.md` 168666 to 169429 with
+prefix and suffix exact. G4: both new files are BYTE-IDENTICAL to the reviewer's scratch
+originals — `.agent/f275_deletion_order.md` 2714 bytes at `410360ec0225340a…` and
+`tests/orchestration/test_cluster_deletion_order.py` 7792 bytes at `a80d4c9610cc89af…` — and
+`git ls-tree a040b60c` is EMPTY for both, so both are additions and neither overwrote anything.
+G5: `.agent/decisions.md` 927408 to 933355, prefix and suffix exact, `^## DECISION F275 D` 1 to 2
+and the D2 heading exactly once. G6: the three ratchets are GREEN at 9 passed, and the reviewer
+had already proved both red controls in its own disposable worktree before emission — swapping
+`overnight_readiness` past `overnight_executor` reds with the exact dangling-import message, and
+dropping `context_pack` reds naming it as on disk but not in the order. G7: the reviewer RE-RAN
+the twelve-minute orchestration suite itself in the primary checkout and measured 12889 passed
+with 10 skipped, against its own base reading of 12886 — up by exactly the three tests C3 adds.
+315 and 42 for the other two. G8: `git diff --name-only a040b60c..HEAD` names NOTHING under
+`packages/`, `apps/` or `docs/`, and `cluster_deletion_map.txt`,
+`import_reachability_allowlist.txt` and `packages/orchestration/overnight_readiness.py` are each
+BYTE-IDENTICAL to their blobs at `a040b60c`.
+
+WHAT THIS ROUND ACHIEVED. The deletion now has a derived, recorded and RATCHETED order, which is
+what operator RULE 2 requires before the first `git rm`, and the derivation surfaced a fact three
+previous features never recorded: the cluster's internal import graph is CYCLIC in three places,
+so RULE 2's "leaf modules first" is unsatisfiable at module granularity. DECISION F275 D2 rules
+the atomic unit to be the strongly connected component and records the measurement, including the
+one cycle the reviewer verified by reading the source rather than trusting the walker. The
+deletion is therefore FIFTEEN group commits over twenty-four modules, not twenty-four.
+
+SIX DEVIATIONS WERE DECLARED AND ALL SIX ARE SUSTAINED. FIVE OF THEM ARE THE REVIEWER'S OWN BLOCK
+PROSE and are dated `.agent/prose_slips.md` lines rather than ids, per amend0827 rule 2, because
+not one of them put anything wrong on disk: the `Change:` header said "eleven paths" over an
+enumeration of nine, carried from round 4; C4 called DECISION5 "ONE blank-line unit" when it is
+EIGHT, a figure the reviewer's own pre-emission checklist had printed and the reviewer did not
+read back against the slice's own sentence; G6 said "all four exit codes" while enumerating
+three; G6's base clause said all four controls were measured "at `a040b60c`" when they were
+measured in a worktree based on that commit WITH this round's own artefacts applied, which G4's
+correct "absent at base" reading contradicts on its face; and constraint 6 wrote "all three of
+those files" while naming two, which G8 resolves by naming the third. The sixth is not a defect:
+C6 cannot table its own numstat columns, the R-0149 self-reference, and the worker reported them
+to the reviewer instead of guessing them inside the file — 285 insertions and 390 deletions,
+which the reviewer confirms and records here rather than in a channel that ends with the session.
+
+FIVE PROSE SLIPS IN ONE BLOCK IS A HIGHER RATE THAN ROUNDS 3 AND 4, WHICH CARRIED TWO EACH, AND
+THE REVIEWER RECORDS THAT PLAINLY RATHER THAN LETTING IT PASS. Every one is non-load-bearing, no
+gate was weakened and nothing on disk is wrong; the worker caught each by applying the
+enumeration over the adjective, which is what constraint 1 asks of it. It is not the reason this
+session ends — operator amendment amend0908 rule 5 would in any case forbid citing accumulating
+authoring errors before four delegated rounds, and this session delegated three.
+
+NOTHING WAS ADJUSTED TO FIT A GATE. Every numeral the block predicted was independently
+re-measured by the reviewer and matched, including the discriminating 12886 to 12889.
+
+## Session 2 ends here under guardrail G6 — `.agent/STOP` EXISTS
+
+`.agent/STOP` DID NOT EXIST while round 5's gates ran — the round's own G8 measured an empty
+`git status --porcelain` — and EXISTS NOW. It is a 0-byte file created at
+`2026-09-08 12:44:45.717299658 +0200`, carrying no message. The reviewer investigated it before
+treating it as an order, because acting on a guess about an operator sentinel is not recoverable:
+the string `.agent/STOP` occurs at EXACTLY ONE place in the repository outside `.data/` job
+workspaces — `tests/test_agent_tooling.py:115`, inside
+`test_self_drive_protocol_states_its_guardrails`, which asserts only that the string is PRESENT
+in `docs/agents/self_drive_protocol.md`. It reads; it writes nothing. Nothing in this repository
+writes that path, so it was placed by an EXTERNAL actor, which is exactly the case guardrail G6
+and Phase 1 rule 1 describe.
+
+THE SENTINEL IS DELIBERATELY LEFT ON DISK, UNTOUCHED AND UNREMOVED. Clearing it is the operator's
+decision, not the reviewer's. As a direct consequence `git status --porcelain` is not empty: it
+reads exactly `?? .agent/STOP` and nothing else, because the sentinel is untracked and not
+ignored. No commit of this session left the tree dirty.
+
+SESSION 2 DELIVERED THREE DELEGATED ROUNDS — 3, 4 and 5 — EVERY ONE REVIEWED AND PASSED. That is
+below the four-round floor amend0905-throughput sets, and the reason is the sentinel and nothing
+else: context was not exhausted, no round needed a fresh session, and no seam was being sought.
+`docs/agents/self_drive_protocol.md` names a G6 stop as a valid and complete reason to end, and a
+session that ends at a guardrail with a written handoff is a success.
+
+WHAT THE NEXT SESSION OWES, IN ORDER. FIRST, Phase 1 rule 1: `.agent/STOP` exists, so read it and
+act on that decision BEFORE the Open PR Gate. It is 0 bytes and carries no message. If and only
+if the operator has cleared it, the next round's FIRST substantive commit books, from this file
+as the durable carrier: the ROUND 5 PASS verdict above as a `Gate: F275 R5` entry, and FIVE dated
+`.agent/prose_slips.md` lines for the five reviewer-prose defects the verdict names — the
+"eleven paths" header over a nine-path enumeration, DECISION5 called one unit when it is eight,
+G6's "all four" over three enumerated controls, G6's base clause naming `a040b60c` for a reading
+taken in a worktree with this round's artefacts applied, and constraint 6's "all three" over two
+named files. The open-findings count is 66 BY DISTINCT ID — 69 distinct registrations against 3
+distinct resolutions — and this session minted exactly one, R-0840.
+
+THEN THE WORK ITSELF, which is now unblocked in a way it has not been for four features: both
+carry-overs are landed and wired, R-0831's check is discharged with a dated answer, and the
+deletion order exists and is ratcheted. The next round is THE FIRST MODULE GROUP COMMIT —
+`packages.orchestration.context_optimizer`, the first line of `.agent/f275_deletion_order.md` —
+taking the module, its `apps/cli/commands/context_optimizer_cmd.py` handler, its catalog entries,
+its cockpit section, its tests and its deletion-map lines TOGETHER in one commit, under the four
+measurements amend0906-triage-throughput names for a deletion round, and removing its line from
+the order file in that same commit or the new ratchet reds. NO PULL REQUEST EXISTS and that is
+correct: under `docs/roadmap/STATUS_closure_protocol.md` the pull request belongs to the closure
+sequence, not to an ordinary round.
