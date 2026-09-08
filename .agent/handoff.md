@@ -381,3 +381,80 @@ only bookkeeping. Before anything else the next session re-reads `.agent/STOP` f
 
 Push: `git push -u origin feature/f275-one-world-completion-part-three`, run immediately after the
 commit that writes this file.
+
+## Reviewer verdict on round 4 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 4: **PASS.** Written by the planner/reviewer of session 2 AFTER reading the
+committed range `280fd101`..`d6c8deb1` and RE-RUNNING the round's verification independently;
+the worker's report was not taken as evidence for any line below. It is carried here because
+under `docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it
+is booked into `.agent/live_review.md` by the FIRST commit of the next round that happens
+anyway, per amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED, against the committed blobs. The change set is EXACTLY the eleven
+paths the block named, by `git diff --name-status`, in the ordered single-parent commits C0a,
+C0b, C1, C2, C3, C4, C6 with no C5 commit. G1: the scratch original, the committed
+`.agent/authored/f275-r4.md` and the committed `.agent/last_block.md` are all 36589 bytes at
+`bbbb408cf1971d2f…`; per §3 item 37 that is the chain this workflow can walk and not the emitted
+bytes. G2: `.agent/plan.md` byte-identical to PLAN4 at 2362 bytes and 41 lines. G3:
+`.agent/live_review.md` 519228 to 527075, gain 7847 = 1 + 7845 + 1, pre-blob an exact PREFIX,
+RECORD4 plus one newline an exact SUFFIX, blank-line separated; units 216 to 218, `^Gate: ` 25 to
+26, `^Gate: F275 R3 ` 0 to 1, `^- R-0840 — ` 0 to 1, and THE OPEN SET 65 TO 66 BY DISTINCT ID —
+one minted, none resolved, subtracted over DISTINCT ids and never over the 5 `Done:` LINES.
+`.agent/prose_slips.md` 168030 to 168666 with prefix and suffix both exact. G4: C3's real numstat
+is 7/4, 28/0, 0/27 and 2/38, and in `apps/cli/commands/worker_facade_cmd.py` the two dead symbols
+`_cmd_mission_report` and `build_mission_morning_report` went 2 to 0 EACH while
+`packages.orchestration.dogfood_run` went 3 to 2 — the import site that died is the one the
+handler owned, and the two that survive belong to `mission run`. `packages/orchestration/
+dogfood_run.py` and `packages/orchestration/mission_readiness.py` are BYTE-IDENTICAL to their
+blobs at `280fd101`. G5: the deletion map is UNCHANGED at 19 edges over 10 modules with the
+`dogfood_run <- worker_facade_cmd.py` edge still present, which is the reading this round wanted
+— a shrinking map here would have meant more was deleted than was asked for. G6: the parser
+reaches `mission report` with a `job_id` and a `--markdown` flag, the facade no longer provides
+the id, and the `overnight.report` and `mission.report` payloads are 1225 characters each
+differing in `generated_at` ALONE. G7: 146 · 650 · 93 · 42, all exit 0 — down exactly two where
+the deleted handler's tests died with it, up exactly five where C4 added five, and unmoved on
+the cluster builder's own suite and the canary. G8: tree clean, no `.agent/STOP`, one worktree,
+branch correct and pushed.
+
+WHAT THIS ROUND ACHIEVED. Both carry-overs F260's Design ordered before the first `git rm` now
+exist and are wired: `mission readiness` since round 3, `mission report` since this one. The
+second landed on a name that was not free, and DECISION F274 D2's coupling was honoured exactly
+— the carry-over and the death of the old holder are one commit, `d045eaf6`, so at no commit
+boundary did two handlers claim `mission.report` or the catalog name a handler nothing provided.
+
+DEVIATION 4 IS DECLINED, AND THE REVIEWER MEASURED IT RATHER THAN ASSERTING IT. The worker
+flagged that RECORD4 and PLAN4 call `packages.orchestration.overnight_readiness` DELETABLE at
+zero consumer edges while six live import sites remain in `apps/cli/commands/overnight_cmd.py`,
+`packages/orchestration/review_bundle.py` and `packages/orchestration/overnight_executor.py`.
+Raising it was correct and is the behaviour this workflow wants. The claim is nevertheless TRUE
+as written, and the word carrying it is SURVIVING. Measured at `d6c8deb1` against the shipped
+constants: `apps/cli/commands/overnight_cmd.py` is in `CLUSTER_COMMAND_HANDLERS`, and
+`packages.orchestration.review_bundle` and `packages.orchestration.overnight_executor` are both
+in `CLUSTER_MODULES`. Operator ruling amend0908-f275-finish RULE 2 says of exactly this case that
+an importer which is a cluster module or a cluster handler "is deleted WITH its target and never
+counted as a blocking edge". The worker's concern that a later round could break three production
+files is answered by RULE 1: each of those three dies inside its own module-group commit, with
+its handler, catalog entries, cockpit section and tests, so none is ever left importing a deleted
+module. Nothing on disk needs repair and no id is minted.
+
+THE OTHER DEVIATIONS. Deviation 2 — the `len(RECORD4)` ambiguity between 7845 and 7846 — is the
+block working as designed: G3(a) told the worker that where a formula and the ordered OPERATION
+disagree the OPERATION wins and the disagreement is declared, and the operation produced 527075,
+which the reviewer independently confirms and which is the only value under which G3(b)'s exact
+SUFFIX reading can hold. That instruction existed because round 3 lost a deviation to the same
+shape; it earned its place. Deviation 5 records no departure. Deviations 1 and 3 ARE THE
+REVIEWER'S OWN PROSE and are recorded as dated `.agent/prose_slips.md` lines by the next round,
+per amend0827 rule 2, because neither left anything wrong on disk: G7's suite 3 was given a BASE
+of 135, which is the COMBINED count of the canary and the cluster builder's suite from the
+reviewer's own paired dry run, where the builder's suite alone is 93 — the worker re-measured 93
+at the base in a purged worktree and 93 at HEAD, so the no-regression property the gate exists
+for holds exactly; and constraint 9 lettered the pairs (a), (b), (d), (e) and the deletions (c),
+(f), (g) while C3 labels the pairs (a), (b), (e), (f) and the deletions (c), (d), (g), leaving
+C3's registry-line deletion in neither list. The worker re-ran the containment test mechanically
+and reproduced all four classifications, so the misalignment cost a re-derivation and nothing
+else.
+
+NOTHING WAS ADJUSTED TO FIT A GATE. Every numeral the block predicted was independently
+re-measured and matched, except G7 suite 3's base, whose error was the reviewer's own and whose
+correct value the round measured and reported.
