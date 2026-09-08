@@ -130,7 +130,6 @@ module = [
     "apps.cli.command_catalog",
     "apps.cli.grouped",
     "apps.cli.commands.contract_cmd",
-    "apps.cli.commands.feature_cmd",
     "apps.cli.commands.job",
     "apps.cli.commands.local_advisor_cmd",
     "apps.cli.commands.main_builder_adapter_cmd",

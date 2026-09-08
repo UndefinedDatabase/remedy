@@ -125,16 +125,6 @@ class TestBrainDetail:
         assert detail is not None
         assert "decision" in detail.title.lower() or "Decision" in detail.title
 
-    def test_detail_context_budget(self):
-        from packages.orchestration.brain_detail import build_brain_node_detail
-        from packages.orchestration.project_brain import build_project_brain
-        job = _make_job()
-        events = _make_events()
-        graph = build_project_brain(job, events)
-        detail = build_brain_node_detail(job, graph, "context_budget", events)
-        assert detail is not None
-        assert "context" in detail.title.lower() or "Context" in detail.title
-
 
 # ── Step 71.1: Token Policy Applied ──────────────────────────────────────
 

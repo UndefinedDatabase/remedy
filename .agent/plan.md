@@ -1,37 +1,43 @@
-# Plan — F272 One world completion
+# Plan — F274 One world completion, part two
 
-Branch: feature/f272-one-world-completion. Rounds 1 to 30 PASSED except round 2 (premise
-corrected by DECISION F272 D2) and round 21 (R-0824, repaired by round 22). T001, T002 and
-T003 are COMPLETE; T004's remainder and T005 are F274's, split off in round 26 by DECISION
-F272 D16.
+Branch: feature/f274-one-world-completion-part-two, cut from `main` at
+`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, with `main` merged back in at `f85200e4` to take
+operator amendment amend0907-cluster-first.
 
 ## Goal
 
-Close F272 at the self-consistent scope DECISION F272 D16 fixed. Every closure precondition
-of `docs/roadmap/STATUS_closure_protocol.md` is now met: the integration gate ran in round
-27 with zero branch-only failures, the self-use item was run in round 28 and its defects
-registered in round 29, and round 30 rotated the ledger and built a READY_FOR_REVIEW package.
+Close F274 at the edge work it actually built and carry the cluster deletion, the atomic record
+flip and the classic runner to F275, per DECISION F274 D8. Everything the closure protocol asks for
+is now on disk: F275 registered, the integration gate PASSED, the self-use item run, R-0837 fixed
+at both sites, and a package that reaches READY_FOR_REVIEW.
 
 ## Current Step
 
-Round 31, the last round on this branch: the closure commit — the STATUS `[x]` line, the
-README capability sync and SU-012's `consumed_by` in ONE commit, with the final handoff —
-and then the pull request, which is NOT merged this session.
+CLOSURE ROUND B, the last round of this branch. Its ledger commit books round 22's PASS verdict,
+writes the authored `Done: R-0837` — whose condition needed a package that actually reached
+READY_FOR_REVIEW, which round 22 produced — and registers R-0839. Its closure commit then applies
+the STATUS `[x]` line, the README capability sync and the one `consumed_by` edit in ONE commit, per
+the closure protocol's Rule A4, after which the pull request is opened. THE PULL REQUEST IS NOT
+MERGED in this session: it merges at the next feature's start through the Open PR Gate, and that
+gap is the operator's manual-review window.
 
 ## Next Steps
 
-1. The PR merges at the NEXT feature's start through the AGENTS.md Open PR Gate. That gap is
-   the operator's manual-review window, and guardrail G1 forbids this session merging a PR
-   it created.
-2. Rule A5 then proposes F274, which sits directly after F272 by amend0906-split-placement
-   and owns the atomic record flip and the cluster deletion.
-3. F274's first slice is the DECISION F272 D7 raising-property probe and a ruling on the
-   per-commit cap, NOT the flip itself.
+1. The next session opens at Phase 1 rule 1 of `docs/agents/self_drive_protocol.md` — read
+   `.agent/STOP` from disk — and then rule 2 finds this feature's pull request open and MERGES it
+   before any new branch is cut. That merge is the next session's first action, not this one's.
+2. F275 is registered and placed directly after F274 inside the same tier heading, so Rule A5
+   proposes it first once the Open PR Gate has merged this branch. It inherits a bounded,
+   machine-checked work list and seven dated rulings rather than a fresh investigation.
 
 ## Risks
 
-- Five open High findings — R-0803, R-0804, R-0806, R-0807 and R-0827 — all owned by F273,
-  whose own Done clause covers "anything registered after 2026-09-06". DECISION F272 D17
-  rules why the close names them rather than waiting.
-- `remedy integrity check` passes while its `high_blockers_open` check is vacuous; that is
-  the open R-0648 and the PR body states it.
+- The open findings stand at 65 by distinct id, of which four are High — R-0803, R-0804, R-0806 and
+  R-0807, all F273's rather than this feature's, per DECISION F272 D12. The integrity gate's
+  `high_blockers_open` check reports "no open blocker/high findings" and is WRONG about them; that
+  is R-0648, and DECISION F272 D17 requires this close to say so and to rest on the named list.
+  This is why the close is PASS_WITH_RISKS and not PASS.
+- The closure commit is the LAST commit on the branch (Rule A4). The docs gate that its own STATUS
+  and README edits must satisfy therefore runs AFTER it; the reviewer pre-verified that edit in a
+  disposable worktree and `tests/docs/` returned 303 passed against it before the round was
+  authored.

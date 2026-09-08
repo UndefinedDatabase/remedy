@@ -30,7 +30,6 @@ class CycleDecision:
     next_action: str
     blocked_by: str
     token_mode: str
-    selected_worker: str
     readiness_level: int
 
 
@@ -57,22 +56,19 @@ def run_autonomy_loop(
     """Execute a limited autonomy loop. No auto-approval, no external providers."""
     from packages.orchestration.autonomy_readiness import assess_job_readiness
     from packages.orchestration.stop_reasons import derive_stop_reasons
-    from packages.orchestration.worker_recommend import recommend_worker
+    from packages.orchestration.token_policy import derive_token_mode
 
     job_id = str(job.id)
     cycles: list[CycleDecision] = []
     stop_reason_summaries: list[str] = []
 
     # Emit token_policy_applied once at loop start
-    _emit_token_policy_applied(job, events)
+    _emit_token_policy_applied(job)
 
     for cycle_num in range(1, max_cycles + 1):
         # Assess readiness
         report = assess_job_readiness(job, events)
         readiness_level = report.highest_eligible_level
-
-        # Get worker recommendation
-        rec = recommend_worker(job, events)
 
         # Derive blockers
         blockers = derive_stop_reasons(job, events)
@@ -89,8 +85,7 @@ def run_autonomy_loop(
             reason=reason,
             next_action=next_action,
             blocked_by=blocked_by,
-            token_mode=rec.token_mode,
-            selected_worker=rec.recommended_worker,
+            token_mode=derive_token_mode(job),
             readiness_level=readiness_level,
         ))
 
@@ -116,25 +111,23 @@ def run_autonomy_loop(
     )
 
 
-def _emit_token_policy_applied(job: Job, events: list[dict[str, Any]]) -> None:
+def _emit_token_policy_applied(job: Job) -> None:
     """Emit token_policy_applied run-log event once at loop start."""
     try:
         from packages.orchestration.run_log import RunLogWriter
-        from packages.orchestration.token_policy import build_default_token_policy
-        from packages.orchestration.worker_recommend import recommend_worker
+        from packages.orchestration.token_policy import (
+            build_default_token_policy,
+            derive_token_mode,
+        )
 
         tp = build_default_token_policy(job)
-        rec = recommend_worker(job, events)
         log = RunLogWriter(job_id=job.id)
         log.log(
             "token_policy_applied",
             outcome="applied",
-            mode=rec.token_mode,
+            mode=derive_token_mode(job),
             max_context_tokens=tp.budget.get("expensive_tokens", 100_000),
-            estimated_context_tokens=rec.estimated_context_tokens,
             local_first=True,
-            remote_model_requires_approval=rec.requires_approval,
-            selected_worker=rec.recommended_worker,
         )
     except (ImportError, OSError):
         pass  # Non-critical — don't block loop
@@ -252,7 +245,6 @@ def export_loop_result_json(result: LoopResult) -> dict[str, Any]:
                 "next_action": c.next_action,
                 "blocked_by": c.blocked_by,
                 "token_mode": c.token_mode,
-                "selected_worker": c.selected_worker,
                 "readiness_level": c.readiness_level,
             }
             for c in result.cycles

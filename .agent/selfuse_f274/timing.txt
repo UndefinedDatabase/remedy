@@ -1,0 +1,13 @@
+Wall clock of the run_next_self_use_item call, and the JobPlan's budgets.
+
+started:  2026-09-08T06:59:57+0200
+ended:    2026-09-08T07:01:40+0200
+wall_clock_seconds: 102.36
+
+budgets: {
+  "deadline": null,
+  "max_cost_usd": 0.5,
+  "max_provider_calls": 6,
+  "max_total_tokens": null,
+  "max_wall_clock_minutes": null
+}

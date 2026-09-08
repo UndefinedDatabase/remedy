@@ -509,20 +509,17 @@ def run_agent_loop(
         outcome="started", reason="loop_started"))
 
     # Emit token_policy_applied once at loop start
-    from packages.orchestration.token_policy import build_default_token_policy
-    from packages.orchestration.worker_recommend import recommend_worker
+    from packages.orchestration.token_policy import (
+        build_default_token_policy,
+        derive_token_mode,
+    )
     _tp = build_default_token_policy(job)
-    _initial_events = load_run_events(data_dir, job.id)
-    _rec = recommend_worker(job, _initial_events)
     log.log(
         "token_policy_applied",
         outcome="applied",
-        mode=_rec.token_mode,
+        mode=derive_token_mode(job),
         max_context_tokens=_tp.budget.get("expensive_tokens", 100_000),
-        estimated_context_tokens=_rec.estimated_context_tokens,
         local_first=True,
-        remote_model_requires_approval=_rec.requires_approval,
-        selected_worker=_rec.recommended_worker,
     )
 
     state: AgentLoopState | None = None

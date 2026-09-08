@@ -1,0 +1,42 @@
+G6 — WHY THE BRANCH RUNS FEWER TESTS THAN THE BASE.
+
+passed counts        branch 19765   base 19790
+non-skipped collected branch 19767 (19765 passed + 2 failed)   base 19790
+difference                       23
+
+Measured directly, not inferred: `python3 -m pytest --collect-only -q` in
+both trees, node-id sets differenced.
+
+  at base but NOT on branch (removed) = 33 ids
+  on branch but NOT at base (added)   = 10 ids
+  net                                 = 23
+
+REMOVED, grouped by file:
+  tests/cli/test_progress_feature_runtime.py                     8
+  tests/orchestration/test_event_ledger.py                       2
+  tests/orchestration/test_model_route_tournament_integration.py 2
+  tests/orchestration/test_overnight_mission_integration.py      1
+  tests/orchestration/test_project_brain.py                      2
+  tests/orchestration/test_test_runner.py                        1
+  tests/test_grouped_cli.py                                      8
+  tests/ui_server/test_brain_view_model.py                       1
+  tests/ui_server/test_dashboard_cockpit_truth.py                7
+  tests/ui_server/test_live_state.py                             1
+
+ADDED, grouped by file:
+  tests/orchestration/test_cluster_deletion_map.py               3
+  tests/orchestration/test_import_reachability.py                3
+  tests/test_token_policy.py                                     4
+
+THE BLOCK'S EXPECTED EVIDENCE DOES NOT EXIST AND THIS FILE SAYS SO.
+G6 asks for "at least three deleted test files" from
+  git diff --name-status d0d8b24d..HEAD -- tests/
+That command reports D=0.  F274 deleted no test FILE at all; it modified
+17 and added 4.  The 23 fewer tests are deleted test FUNCTIONS inside kept
+files, plus parametrised cases that vanished because the PRODUCTION
+mechanism they were parametrised over was deleted.  The clearest instance
+is tests/test_grouped_cli.py, which is BYTE-IDENTICAL in both trees
+(sha256 ea48f3001ce2ff0d..., 27854 bytes in each) and still loses 8 ids,
+every one of them a [feature] parameter — the CLI group F274 deleted.
+
+So the lower count is tests this feature deleted, not tests that vanished.

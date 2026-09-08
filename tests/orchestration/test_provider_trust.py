@@ -321,14 +321,12 @@ class TestRedaction:
         rep = PT.get_trust_report(reloaded, r.trust_report_id)
         from packages.orchestration.progress_ledger import extract_provider_trust_items
         from packages.orchestration.review_bundle import _build_provider_trust_summary
-        from packages.orchestration.ui_server import _build_provider_trust_section
         items = extract_provider_trust_items(PT.load_trust_reports(reloaded))
         blobs = [
             json.dumps(PT.export_intake_result_json(r)),
             json.dumps(rep),
             json.dumps([{"id": i.item_id, "s": i.safe_summary, "n": i.next_action} for i in items]),
             json.dumps(_build_provider_trust_summary(reloaded)),
-            json.dumps(_build_provider_trust_section(reloaded)),
             json.dumps([a.metadata for a in reloaded.artifacts], default=str),
         ]
         for b in blobs:

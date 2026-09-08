@@ -1,0 +1,8 @@
+The JobPlan run_job returned: its job_id, its state, and every task's
+own task_id and status.
+
+job_id: 1a5b417ef7b64fe5
+state:  blocked
+tasks:  1
+
+  task_id='T001'  status='blocked'

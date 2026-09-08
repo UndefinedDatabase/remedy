@@ -1,0 +1,38 @@
+INTEGRATION GATE — F274 round 18 — docs/agents/integration_gate.md
+
+step 1 BRANCH RUN  primary checkout, HEAD 40e4e35a (C3)
+  python3 -m pytest -n auto -q
+  exit 1 | 2 failed, 19765 passed, 23 skipped, 1 warning in 173.93s (0:02:53) | FAILED 2
+
+step 2 BASE RUN    throwaway worktree, branch tmp/f274-r18-base,
+  GATE BASE d0d8b24da2a080ebcff85e63e73a547e6a8066e6 = git merge-base HEAD origin/main,
+  which is origin/main's own tip because this branch merged main IN at f85200e4.
+  (The PACKAGE base the closure round uses is a DIFFERENT value, the fork
+  point 13dfaabd93d7b6452a1d23ca698e29ed47ecf035; it is not used here.)
+  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+  exit 0 | 19790 passed, 23 skipped, 1 warning in 146.79s (0:02:26) | FAILED 0
+  parity restored first: shutil.copytree(src, dst, symlinks=True) for
+  apps/ui/node_modules (43005 files, 27 symlinks preserved, matching the
+  primary's 27) and apps/ui/dist (4 files)
+  R-0736 fix clause applied: dist stamped strictly newer than apps/ui/src
+  'React UI not built' occurrences: 0
+  the base worktree imported ITS OWN packages, not the primary's — the
+  warnings summary names /home/decodeux/Repos/remedy/.remedy-wt/f274-r18-base/packages/orchestration/model_routing.py,
+  so the editable install did not shadow the worktree
+
+step 3 COMPARE
+  comm -13 base_failed.txt branch_failed.txt  = 2 ids  <== VERDICT
+  comm -23 base_failed.txt branch_failed.txt  = 0 ids
+
+BRANCH-ONLY FAILURES: NOT NONE.  The branch-only set is NOT empty.  It
+holds 2 ids, both in tests/orchestration/test_product_smoke.py, both from
+one leaked port (5273) on one xdist worker (gw6).  Step 4 attribution ran
+on each: 3 serial re-runs on the branch and 1 at the base, all 8 runs
+green, so both fall in the SERIAL-PASS => xdist-flake class, which
+integration_gate.md step 4 records rather than treats as a blocker.
+Neither id is coupled to feature code: the branch never touched their file.
+See branch_only_attribution.txt.
+
+test count: branch 19765 passed + 2 failed = 19767 non-skipped, base 19790,
+difference 23 — deleted test FUNCTIONS and parametrised cases, no deleted
+test FILE at all.  See test_count_delta.txt.

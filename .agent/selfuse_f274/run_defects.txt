@@ -1,0 +1,7 @@
+describe_self_use_run_defects(result) — the tuple, VERBATIM.
+Nothing here is reworded, summarised or truncated.
+
+TUPLE LENGTH: 2
+
+job 1a5b417ef7b64fe5 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail

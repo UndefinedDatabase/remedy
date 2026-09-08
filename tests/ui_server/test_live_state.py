@@ -314,14 +314,6 @@ class TestUIServerIntegration:
         assert resp.status == 200
         conn.close()
 
-    def test_context_budget_endpoint(self):
-        port, token, t = self._start_server()
-        conn = HTTPConnection("127.0.0.1", port, timeout=5)
-        conn.request("GET", f"/api/jobs/{self.job_id}/context-budget?token={token}")
-        resp = conn.getresponse()
-        assert resp.status == 200
-        conn.close()
-
 
 # ---------------------------------------------------------------------------
 # Step 81 — Calm Entry UX

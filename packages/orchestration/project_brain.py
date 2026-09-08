@@ -30,7 +30,6 @@ Node types:
   test_run            — a permission-gated local test run result (Step 33)
   patch_apply_proof   — cryptographic proof of a successful file apply (Step 51)
   decision_queue      — human decision queue summary (Step 69)
-  context_budget      — context budget optimizer summary (Step 71)
 
 Edge types:
   has_task              — job → task
@@ -51,7 +50,6 @@ Edge types:
   verified_after_apply  — test_run → patch_apply (optional, when present)
   approved_by           — patch_intent → approval_decision (causal)
   has_decision_queue    — job → decision_queue
-  has_context_budget    — job → context_budget
   allowed_apply         — approval_decision → patch_apply (causal)
   recorded_proof        — patch_apply → patch_apply_proof (causal)
   proof_verified_by     — patch_apply_proof → test_run (causal)
@@ -144,7 +142,6 @@ NT_GIT_STATUS          = "git_status"
 NT_EVENT_LEDGER        = "event_ledger"
 NT_STOP_REASON         = "stop_reason"
 NT_DECISION_QUEUE      = "decision_queue"
-NT_CONTEXT_BUDGET      = "context_budget"
 
 ET_HAS_TASK             = "has_task"
 ET_CREATED              = "created_artifact"
@@ -183,7 +180,6 @@ ET_HAS_GIT_STATUS        = "has_git_status"
 ET_HAS_EVENT_LEDGER      = "has_event_ledger"
 ET_HAS_STOP_REASON       = "has_stop_reason"
 ET_HAS_DECISION_QUEUE    = "has_decision_queue"
-ET_HAS_CONTEXT_BUDGET    = "has_context_budget"
 
 _NODE_TYPE_ORDER: dict[str, int] = {
     NT_JOB:              0,
@@ -213,7 +209,6 @@ _NODE_TYPE_ORDER: dict[str, int] = {
     NT_EVENT_LEDGER:        23,
     NT_STOP_REASON:         24,
     NT_DECISION_QUEUE:      25,
-    NT_CONTEXT_BUDGET:      26,
 }
 
 # Run-log events promoted to run_event nodes (not already covered by other types).
@@ -883,31 +878,6 @@ def _build_decision_queue_node(acc: _Acc) -> None:
     acc.edges.append(BrainEdge(source=acc.job_node_id, target="decision_queue", type=ET_HAS_DECISION_QUEUE))
 
 
-def _build_context_budget_node(acc: _Acc) -> None:
-    """Add context budget summary node."""
-    try:
-        from packages.orchestration.context_optimizer import optimize_context
-        data = optimize_context(acc.job, acc.events)
-    except (ImportError, OSError):
-        acc.degraded.append("context_budget")
-        return
-    acc.nodes.append(BrainNode(
-        id="context_budget", type=NT_CONTEXT_BUDGET,
-        label=f"context: {data.get('recommended_mode', '?')}",
-        status="ok",
-        metadata={
-            "recommended_mode": data.get("recommended_mode", ""),
-            "budget": data.get("budget", 0),
-            "estimated_tokens": data.get("estimated_tokens", 0),
-            "token_savings": data.get("token_savings", 0),
-            "recommended_worker": data.get("recommended_worker", ""),
-            "included_section_count": len(data.get("included_sections", [])),
-            "excluded_section_count": len(data.get("excluded_sections", [])),
-        },
-    ))
-    acc.edges.append(BrainEdge(source=acc.job_node_id, target="context_budget", type=ET_HAS_CONTEXT_BUDGET))
-
-
 def _build_causal_edges(acc: _Acc) -> None:
     nids = acc.node_id_set()
 
@@ -1030,7 +1000,6 @@ def build_project_brain(
     _build_event_ledger_node(acc)
     _build_stop_reason_nodes(acc)
     _build_decision_queue_node(acc)
-    _build_context_budget_node(acc)
 
     # Edge builders (need full node set)
     _build_causal_edges(acc)
@@ -1074,7 +1043,7 @@ def summarize_project_brain(graph: ProjectBrainGraph) -> str:
         NT_RUN_CONTRACT, NT_TOKEN_POLICY, NT_WORKER_ADAPTER,
         NT_AUTONOMY_READINESS, NT_CONTEXT_PACK, NT_PATCH_APPLY_PROOF,
         NT_GIT_STATUS, NT_EVENT_LEDGER, NT_STOP_REASON,
-        NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
+        NT_DECISION_QUEUE,
     ]
     for nt in _all_types:
         count = by_type.get(nt, 0)

@@ -220,7 +220,8 @@ def _assert_authority_equality(*, authority: set, subject, content_proof, staged
                 or content_proof.head_commit != subject.head_commit:
             raise ArchivePlanError("Content-Proof base/head != ReviewSubject base/head")
 
-    attestable_subject = {f.path for f in subject.files if is_attestable_source(f.path)}
+    # R-0837: a DELETED path attests through its tombstone (base_sha256), never through current content.
+    attestable_subject = {f.path for f in subject.files if is_attestable_source(f.path) and f.current_sha256}
     if authority != attestable_subject:
         only_auth = sorted(authority - attestable_subject)[:4]
         only_subj = sorted(attestable_subject - authority)[:4]

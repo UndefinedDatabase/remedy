@@ -1,0 +1,9 @@
+The queue entry run_next_self_use_item consumed, and the job file
+plan_next_self_use_item rendered it to.
+
+id:          'SU-013'
+title:       'Address ledger finding R-0445'
+provenance:  'generated (self-use-generator tier 1, ledger scan, R-0445)'
+consumed_by: ''   (empty string: True)
+job_file_path: /home/decodeux/Repos/remedy/.remedy-wt/f274-r19-selfuse-dest/SU-013.md
+job_file bytes: 2494

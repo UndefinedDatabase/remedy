@@ -59,7 +59,12 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: 2026-09-07 by DECISION F272 D16, which split it off F272 at the
 #: amend0906-triage-throughput soft limit of 12 sessions and placed it
 #: directly after its parent per amend0906-split-placement; see T2_F274.md.
-TOTAL_FEATURES = 274
+#: One more, F275 (one world completion part three: the cluster deletion, the
+#: atomic record flip and the classic runner), was registered on 2026-09-08 by
+#: DECISION F274 D8, which split it off F274 at the standing soft limit of 7
+#: sessions and 25 rounds and placed it directly after its parent per
+#: amend0906-split-placement; see T2_F275.md.
+TOTAL_FEATURES = 275
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

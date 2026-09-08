@@ -284,32 +284,6 @@ class TestDashboardShape:
         # No fabricated "ready" overnight state without evidence/policy.
         assert ov["can_run_unattended"] in (False, "unknown")
 
-    def test_provider_trust_section_present(self):
-        # Read-only Provider Trust Gate summary (Step 1325).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "provider_trust" in dash
-        pt = dash["provider_trust"]
-        assert "report_count" in pt
-        assert "rejected" in pt
-        assert "pending_provider_repair_approval" in pt
-        assert "materialized_count" in pt
-        assert "materialization_failed_count" in pt
-
-    def test_provider_verification_section_present(self):
-        # Read-only Provider Trust Verification v1 summary (Step 1559).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "provider_verification" in dash
-        pv = dash["provider_verification"]
-        assert "verification_count" in pv
-        assert "passed" in pv
-        assert "needs_review" in pv
-        assert "rejected" in pv
-        assert "pending_approval_after_verification" in pv
-        # No buttons / mutation surface.
-        assert "buttons" not in pv and "actions" not in pv
-
     def test_builder_routing_section_present(self):
         # Read-only Expensive Builder Routing v0 summary (Step 1595).
         job = Job(name="t")
@@ -321,40 +295,6 @@ class TestDashboardShape:
         assert "external_builder_recommended" in br
         assert "next_safe_action_label" in br
         assert "buttons" not in br and "actions" not in br
-
-    def test_local_candidate_section_present(self):
-        # Read-only Automated Local Candidate Generator v0 summary (Step 1627).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "local_candidate" in dash
-        lc = dash["local_candidate"]
-        assert "enabled" in lc
-        assert "run_count" in lc
-        assert "pending_approval_count" in lc
-        assert "buttons" not in lc and "actions" not in lc
-
-    def test_candidate_quality_section_present(self):
-        # Read-only Local Candidate Quality Evaluation v1 summary (Step 1664).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "candidate_quality" in dash
-        cq = dash["candidate_quality"]
-        assert "evaluation_count" in cq
-        assert "latest_outcome" in cq
-        assert "pending_with_quality_count" in cq
-        assert "buttons" not in cq and "actions" not in cq
-
-    def test_external_builder_section_present(self):
-        # Read-only External Builder Sandbox v0 summary (Step 1693).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "external_builder" in dash
-        eb = dash["external_builder"]
-        assert "external_packages" in eb
-        assert "external_submissions" in eb
-        assert "verified_external_candidates" in eb
-        assert eb["live"] is False
-        assert "buttons" not in eb and "actions" not in eb
 
     def test_worker_registry_section_present(self):
         # Read-only Worker Registry + Route Policy v0 summary (Step 1730).
@@ -408,31 +348,6 @@ class TestDashboardShape:
         assert "decision_count" in ob
         assert "latest_stop_reason" in ob
         assert "model_routing_tier" in ob
-
-    def test_local_advisor_section_present(self):
-        # Read-only Local Model Advisor summary (Step 1520).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "local_advisor" in dash
-        la = dash["local_advisor"]
-        assert "run_count" in la
-        assert "enabled" in la
-        assert "available" in la
-        assert "latest_status" in la
-        # No fabricated availability without a real local advisor run.
-        assert la["available"] in (False, "unknown")
-
-    def test_overnight_run_section_present(self):
-        # Read-only Bounded Overnight Executor run summary (Step 1292).
-        job = Job(name="t")
-        dash = _build_dashboard(job)
-        assert "overnight_run" in dash
-        ovr = dash["overnight_run"]
-        assert "latest_status" in ovr
-        assert "stop_reason" in ovr
-        assert "checkpoint_count" in ovr
-        # No fabricated running state without a durable run record.
-        assert ovr.get("executed_action", "") in ("", "none")
 
     def test_unknown_when_data_dir_unavailable(self, monkeypatch):
         monkeypatch.setattr(ui_server, "_resolve_dashboard_data_dir", lambda: None)

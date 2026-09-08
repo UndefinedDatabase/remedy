@@ -1666,12 +1666,11 @@ if not tpa:
     print('ERROR: no token_policy_applied event', file=sys.stderr)
     sys.exit(1)
 meta = tpa[0].get('metadata', {})
-for key in ['mode', 'max_context_tokens', 'estimated_context_tokens',
-            'local_first', 'remote_model_requires_approval', 'selected_worker']:
+for key in ['mode', 'max_context_tokens', 'local_first']:
     if key not in meta:
         print('ERROR: token_policy_applied missing ' + key, file=sys.stderr)
         sys.exit(1)
-print('    token_policy_applied: OK (worker=' + str(meta['selected_worker']) + ', mode=' + str(meta['mode']) + ')')
+print('    token_policy_applied: OK (mode=' + str(meta['mode']) + ')')
 " "${RUNS_ROOT}" "${JOB_ID}"
 
     # Brain has patch_revert, change_set nodes
@@ -1864,7 +1863,7 @@ events = [{'event': 'job_created', 'run_id': 'r1', 'job_id': str(job.id),
 data = build_job_dashboard(job, events)
 chk(data['version'] == 1, 'bad version')
 chk(data['scope'] == 'job', 'bad scope')
-for k in ('readiness', 'decisions', 'test_status', 'worker_recommendation', 'memory', 'events', 'next_actions'):
+for k in ('readiness', 'decisions', 'test_status', 'token_policy', 'memory', 'events', 'next_actions'):
     chk(k in data, 'missing key: ' + k)
 
 text = summarize_job_dashboard(data)
@@ -1878,59 +1877,10 @@ print('    dashboard: OK (keys=' + str(len(data)) + ')')
 "
 
     # -------------------------------------------------------------------------
-    # 12ah. Context Optimizer (Step 71)
-    # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12ah"
-    echo "--- 12ah. Context optimizer"
-    python3 -c "
-import sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: context_optimizer: ' + msg, file=sys.stderr)
-        sys.exit(1)
-
-from packages.orchestration.context_optimizer import explain_context, optimize_context
-from packages.orchestration.event_schemas import validate_event_metadata
-from packages.core.models import Job, Task, RunState
-from uuid import uuid4
-
-job = Job(id=uuid4(), name='smoke-ctx', user_prompt='t',
-    tasks=[Task(description='x', status=RunState.COMPLETED)],
-    metadata={'target_repo': '.'})
-events = []
-
-data = explain_context(job, events, mode='compact', budget=2000)
-chk(data['version'] == 1, 'explain bad version')
-chk(data['mode'] == 'compact', 'explain bad mode')
-chk('sections' in data, 'explain missing sections')
-chk('excluded' in data, 'explain missing excluded')
-
-opt = optimize_context(job, events, budget=2000)
-chk(opt['version'] == 1, 'optimize bad version')
-chk(opt['recommended_mode'] in ('caveman', 'compact', 'standard'), 'bad mode')
-for k in ('estimated_tokens', 'token_savings', 'included_sections', 'excluded_sections', 'recommended_worker'):
-    chk(k in opt, 'optimize missing: ' + k)
-
-meta = {
-    'mode': opt['recommended_mode'],
-    'budget': opt['budget'],
-    'estimated_tokens': opt['estimated_tokens'],
-    'token_savings': opt['token_savings'],
-    'recommended_worker': opt['recommended_worker'],
-    'included_section_count': len(opt['included_sections']),
-    'excluded_section_count': len(opt['excluded_sections']),
-}
-errors = validate_event_metadata('context_budget_optimized', meta)
-chk(errors == [], 'schema errors: ' + str(errors))
-
-print('    context_optimizer: OK (mode=' + opt['recommended_mode'] + ', tokens=' + str(opt['estimated_tokens']) + ')')
-"
-
-    # -------------------------------------------------------------------------
-    # 12ai. Brain nodes: decision_queue + context_budget (Steps 69, 71)
+    # 12ai. Brain nodes: decision_queue (Step 69)
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12ai"
-    echo "--- 12ai. Brain decision_queue + context_budget nodes"
+    echo "--- 12ai. Brain decision_queue node"
     python3 -c "
 import sys
 def chk(cond, msg):
@@ -1939,8 +1889,8 @@ def chk(cond, msg):
         sys.exit(1)
 
 from packages.orchestration.project_brain import (
-    NT_DECISION_QUEUE, NT_CONTEXT_BUDGET,
-    ET_HAS_DECISION_QUEUE, ET_HAS_CONTEXT_BUDGET,
+    NT_DECISION_QUEUE,
+    ET_HAS_DECISION_QUEUE,
     _NODE_TYPE_ORDER, build_project_brain,
 )
 from packages.core.models import Job, Task, RunState
@@ -1953,21 +1903,15 @@ events = []
 graph = build_project_brain(job, events)
 
 dq = [n for n in graph.nodes if n.type == NT_DECISION_QUEUE]
-cb = [n for n in graph.nodes if n.type == NT_CONTEXT_BUDGET]
 chk(len(dq) == 1, 'missing decision_queue node')
-chk(len(cb) == 1, 'missing context_budget node')
 chk(dq[0].id == 'decision_queue', 'bad dq id')
-chk(cb[0].id == 'context_budget', 'bad cb id')
 
 dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
-cb_edges = [e for e in graph.edges if e.type == ET_HAS_CONTEXT_BUDGET]
 chk(len(dq_edges) == 1, 'missing decision_queue edge')
-chk(len(cb_edges) == 1, 'missing context_budget edge')
 
 chk(NT_DECISION_QUEUE in _NODE_TYPE_ORDER, 'missing dq in order')
-chk(NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER, 'missing cb in order')
 
-print('    brain nodes: OK (decision_queue + context_budget)')
+print('    brain nodes: OK (decision_queue)')
 "
 
     # -------------------------------------------------------------------------

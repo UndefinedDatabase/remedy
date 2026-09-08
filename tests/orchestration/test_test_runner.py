@@ -766,17 +766,6 @@ class TestNoBroadExceptAndDegradedSignals:
         result_str = json.dumps(result)
         assert "Traceback" not in result_str
 
-    def test_context_budget_returns_degraded_signal(self):
-        """_build_context_budget_json failure returns structured degraded signal."""
-        from packages.orchestration.ui_server import _build_context_budget_json
-
-        job = _make_job_s261()
-        with patch.dict("sys.modules", {"packages.orchestration.context_pack": None}):
-            result = _build_context_budget_json(job)
-        assert result.get("degraded") is True or result.get("error") is not None
-        result_str = json.dumps(result)
-        assert "Traceback" not in result_str
-
     def test_live_review_has_steps_section(self):
         """live_review.md contains a Steps section."""
         content = Path(".agent/live_review.md").read_text()

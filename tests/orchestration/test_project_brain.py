@@ -547,17 +547,6 @@ class TestBrainIntegration:
         assert len(dq_nodes) == 1
         assert dq_nodes[0].id == "decision_queue"
 
-    def test_brain_has_context_budget_node(self):
-        from packages.orchestration.project_brain import (
-            NT_CONTEXT_BUDGET,
-            build_project_brain,
-        )
-        job = _make_job_s68()
-        graph = build_project_brain(job, _make_events())
-        cb_nodes = [n for n in graph.nodes if n.type == NT_CONTEXT_BUDGET]
-        assert len(cb_nodes) == 1
-        assert cb_nodes[0].id == "context_budget"
-
     def test_brain_decision_queue_edges(self):
         from packages.orchestration.project_brain import (
             ET_HAS_DECISION_QUEUE,
@@ -568,26 +557,13 @@ class TestBrainIntegration:
         dq_edges = [e for e in graph.edges if e.type == ET_HAS_DECISION_QUEUE]
         assert len(dq_edges) == 1
 
-    def test_brain_context_budget_edges(self):
-        from packages.orchestration.project_brain import (
-            ET_HAS_CONTEXT_BUDGET,
-            build_project_brain,
-        )
-        job = _make_job_s68()
-        graph = build_project_brain(job, _make_events())
-        cb_edges = [e for e in graph.edges if e.type == ET_HAS_CONTEXT_BUDGET]
-        assert len(cb_edges) == 1
-
     def test_brain_node_type_order(self):
         from packages.orchestration.project_brain import (
             _NODE_TYPE_ORDER,
-            NT_CONTEXT_BUDGET,
             NT_DECISION_QUEUE,
         )
         assert NT_DECISION_QUEUE in _NODE_TYPE_ORDER
-        assert NT_CONTEXT_BUDGET in _NODE_TYPE_ORDER
         assert _NODE_TYPE_ORDER[NT_DECISION_QUEUE] == 25
-        assert _NODE_TYPE_ORDER[NT_CONTEXT_BUDGET] == 26
 
 
 # ── Brain Detail ────────────────────────────────────────────────────────

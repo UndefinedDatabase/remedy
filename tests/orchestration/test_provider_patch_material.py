@@ -232,14 +232,12 @@ class TestRedaction:
         from packages.orchestration.progress_ledger import extract_provider_material_items
         from packages.orchestration.provider_patch_material import get_material, load_materials
         from packages.orchestration.review_bundle import _build_provider_material_summary
-        from packages.orchestration.ui_server import _build_provider_trust_section
         items = extract_provider_material_items(load_materials(reloaded))
         blobs = [
             json.dumps(PT.export_intake_result_json(r)),
             json.dumps(get_material(reloaded, r.material_id)),
             json.dumps([{"id": i.item_id, "s": i.safe_summary} for i in items]),
             json.dumps(_build_provider_material_summary(reloaded)),
-            json.dumps(_build_provider_trust_section(reloaded)),
         ]
         for b in blobs:
             assert "@@ " not in b           # no raw hunk header

@@ -1,0 +1,31 @@
+R-0444 EVENT MEASUREMENT — did anything write apps/ui/dist during the
+G5 base run? Measured as an EVENT (per-file mtime), not as an outcome.
+
+base run window start = 1788842058.173586 (2026-09-08T06:34:18.173586)
+base run window end   = 1788842205.617038 (2026-09-08T06:36:45.617038)
+window width          = 147.44s
+
+dist files before = 4, after = 4, file set identical = True
+  assets/diffHighlightGrammars-o9XqnLhb.js   1788842158.964950 -> same
+  assets/index-D_qZGOuo.css                  1788842158.964950 -> same
+  assets/index-SSfmtKy1.js                   1788842158.964950 -> same
+  index.html                                 1788842158.964950 -> same
+
+FILES_WITH_CHANGED_MTIME           = 0
+FILES_WITH_MTIME_INSIDE_RUN_WINDOW = 4
+
+READ THIS PAIR TOGETHER.  No dist file changed mtime across the run, so
+nothing wrote to dist while the suite ran.  All four dist mtimes
+nevertheless fall numerically INSIDE the window, and that is an artifact
+of the R-0736 fix clause this same gate orders: G5(b) stamps every dist
+entry STRICTLY NEWER than the newest file under apps/ui/src, and
+`git worktree add` had stamped those sources at checkout time, seconds
+before the run — so the forward stamp necessarily lands after the window
+opened.  The stamp was on disk BEFORE the window opened, and the proof is
+independent of the run: the setup record .remedy-wt/r18scratch/base_setup.json
+already carried the value 1788842158.964950 and was itself written at
+1788842040.793881 (2026-09-08T06:34:00.793881), which is 17.38s BEFORE the window start.
+
+The literal G5(e) clause therefore fires and the round reports it firing.
+Its stated consequence — "forces per-id attribution" — is vacuous here,
+because the base failure set is EMPTY and there is no id to attribute.

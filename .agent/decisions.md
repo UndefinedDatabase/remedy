@@ -10907,3 +10907,542 @@ CHOSEN. T003 RUNS FIRST IN F274, before T001 and T002. The order is recorded in 
 ALTERNATIVES CONSIDERED. Keep T003 last, as F260's brief wrote it — rejected on the record: three consecutive features ordered it last and it was never reached, so "last" has been equivalent to "not done" for the whole life of this scope. Delete the cluster piecewise across several features, a few module groups at a time — rejected because F260's brief forbids splitting inside the deletion by name, and a half-performed deletion is the single state this work must not leave behind; a piecewise plan makes that state the normal one between features.
 
 CONSEQUENCE. F274's first slice is the deletion round, and its reachability test is the gate that opens it. The reachability verdict is FINAL for the slice without an operator relay: a module the probe reaches is reported with its import chain and deferred in DECISION F260 D3, not deleted. REVERSE by moving the sentence in the Orchestrator brief back to "T003 LAST" and dropping the ORDER RULING paragraph from the T003 section. Nothing else depends on this decision, because the T-numbers did not change.
+
+## DECISION amend0907-cluster-first D2 (2026-09-07) — the F274 record's next-id promise is corrected in the merge that invalidated it
+
+CONTEXT. F274's round 1 re-headed `.agent/live_review.md` and its header paragraph recorded three measured numerals at the branch point `13dfaabd` — 62 distinct registered ids, 2 distinct resolved ids, 60 open by distinct id — and closed with the sentence "the next id this feature mints is R-0829". Operator amendment amend0907-cluster-first then resolved R-0827 and registered R-0829 on `main`, and Part C of that amendment merges `main` into this branch at `d0d8b24d`. The sentence is therefore false the moment the merge lands, and it is false in the one direction that costs something: a round that obeys it mints a DUPLICATE id, which §3 item 30 exists to prevent and whose repair is retiring the newer paragraph after it is already written.
+
+CHOSEN. THE HEADER IS CORRECTED IN THIS BRANCH, in the commit that follows the merge. The three branch-point numerals are LEFT AS MEASURED, because they are a measurement of `13dfaabd` and rewriting them would destroy the fact rather than update it; a following sentence names the merge, states the post-merge counts of 63 registered against 3 resolved, and observes that the open set is 60 on both sides — the amendment resolved one open id and registered one new one, so only the components moved. The last sentence is replaced outright: the next id this feature mints is R-0830.
+
+WHY THIS IS A DECISION AND NOT A SILENT EDIT. It is an edit to a REVIEWER'S measured prose made by an operator amendment rather than by the round that wrote it, and the standing rule is that quoted wording goes stale and a correction carries the old fact. Both are honoured here: the old promise is quoted in the correction, and the reason it died is named. The alternative considered was to leave the header alone and rely on the next round re-measuring the record at Phase 0 — rejected, because the sentence is an INSTRUCTION rather than an observation, and a round that follows it has already spent the id before any re-measurement would catch it.
+
+CONSEQUENCE. F274's next minted finding id is R-0830. REVERSE by restoring the single sentence "and the next id this feature mints is R-0829" and deleting the added ones; nothing else reads this paragraph, and the record's own counts are recomputed from the file by `scripts/rotate_live_review.py` rather than from this prose.
+
+## DECISION F274 D1 — the reachability proof lands as a RATCHET, and "never split inside T003" binds the deletion rather than its prerequisites (2026-09-07)
+
+CONTEXT. Operator amendment amend0907-cluster-first D1 reordered this feature so the prototype
+cluster deletion runs first, and named its reachability test as "the gate that opens it". Two
+questions had to be answered before that test could be written, and neither is settled by the
+texts that order it. Both were forced by the reviewer's own dry run at
+`9c65a9225cdf4d60822d459d698b66d2d7cb19d7`, which is registered as finding R-0830: the closure of
+the six DECISION amend0905-vocab D11 (c) entry points holds all twenty-four cluster modules, so
+F260's Design sentence requiring the test to "already pass with these modules absent from the
+reachable set" is satisfied by no tree that still contains them.
+
+THE FIRST QUESTION: what shape does the test take? CHOSEN — A RATCHET, NOT A PRECONDITION. The
+test computes the reachable closure and asserts it against an ALLOWLIST file, which is D11c's own
+wording — "no module outside an allowlist is importable from" the entry points — and not F260's
+paraphrase. It is GREEN at this commit with the measured set recorded, a new orphan reaching the
+graph reds it, and a third assertion reds when an allowlist entry names a module that has left
+the tree, so a deletion round cannot forget to shrink it. The allowlist is generated from the
+closure rather than typed, so the file is a measurement and not a wish. ALTERNATIVES: assert the
+cluster absent, rejected because R-0830 measures that as unmeetable today and a gate that cannot
+pass is the same defect as one that cannot fail; assert set EQUALITY against a snapshot, rejected
+because it reds on every unrelated refactor that removes an import, which trains readers to
+regenerate the file without reading it.
+
+THE SECOND QUESTION: what does "NEVER SPLIT INSIDE T003" forbid? CHOSEN — IT BINDS THE DELETION
+ITSELF AND NOT ITS PREREQUISITES. F260's brief and `docs/roadmap/features/T2_F274.md` both give
+the rule the same stated reason: "a half-performed deletion is the single state this work must
+not leave behind." The reachability test, the two carry-overs and the DECISION F260 D3 draft are
+ordered BEFORE the first `git rm` and each leaves the tree fully consistent at every commit
+boundary, so none of them can produce that state; they may therefore land across sessions. The
+`git rm` sequence may not be started by a session that cannot finish it, and that prohibition is
+unchanged and unweakened. ALTERNATIVE: read the rule as binding the whole slice, rejected because
+it makes the prerequisites unstartable — no session can guarantee in advance that it will finish
+a 54-file deletion it has not yet measured — which is the reading under which three consecutive
+features never reached this work at all.
+
+CONSEQUENCE. F274 R2 lands the test and the allowlist; the carry-overs and DECISION F260 D3
+follow; the deletion round is planned from the reverse-import measurement R-0830 carries rather
+than from F260's module list, because that list names modules and the deletion is bounded by
+EDGES. R-0830 stays OPEN until that plan exists. REVERSE by deleting this section: the test then
+has no ruled shape and the split boundary returns to being ambiguous, which is the state this
+ruling replaced.
+
+## DECISION F274 D2 — the cluster deletion is bounded by EDGES and ordered by the map, and the name `mission report` is not free until its current holder dies (2026-09-07)
+
+CONTEXT. Finding R-0830 established that every module of the prototype cluster is reachable from
+the six D11 (c) entry points and that modules outside the cluster import it, so the deletion
+cannot be planned from F260's module list alone. Round 3 measured the graph the other way round,
+at `4ba5e0f6df26fbf0ed791f1eaa4d072d722802a6`, and the numbers are what force this ruling: 42
+SURVIVING EDGES from 16 distinct consumer files into 22 of the 24 cluster modules, and 105 of the
+catalog's 341 command ids sitting in a handler file that imports the cluster.
+
+CHOSEN, FIRST: THE MAP IS THE PLAN, AND IT IS A TEST RATHER THAN A DOCUMENT.
+`tests/orchestration/cluster_deletion_map.txt` records one `module <- consumer` edge per line and
+`tests/orchestration/test_cluster_deletion_map.py` holds it against the live import graph in both
+directions, so an edge that appears reds the suite and an edge cut without removing its line reds
+it too. A plan written as prose goes stale silently; this one cannot. It reuses the walker
+`test_import_reachability.py` already ships, because this repository keeps one call-directory
+walker. ALTERNATIVE: an `.agent/` inventory like `.agent/f272_t004_staging.md`, rejected because
+the deletion will run over several rounds and possibly several sessions, and an inventory that
+nothing re-measures is exactly the artefact that told three consecutive features the deletion was
+cheap.
+
+CHOSEN, SECOND: A CLUSTER MODULE IS DELETABLE ONLY WHEN ITS EDGE COUNT IN THE MAP IS ZERO, AND THE
+ORDER FOLLOWS FROM THAT rather than from any list a human writes. At this commit exactly two
+modules qualify — `review_bundle` and `self_repair_proposal` — and they are where the deletion
+starts. Every other module is preceded by the work of cutting its edges, and each such cut is
+ordinary product work with its own tests, not part of a deletion round under
+amend0906-triage-throughput. This is what "one commit per module group" means once the graph is
+known: the group is the module plus the edges that end on it.
+
+CHOSEN, THIRD: THE FIRST CARRY-OVER'S DESTINATION NAME IS OCCUPIED, AND THE COLLISION IS RESOLVED
+BY DELETION RATHER THAN BY RENAMING. F260's Design sends the read-only overnight readiness and
+report views to `mission readiness` and `mission report`. `mission readiness` is free.
+`mission report` IS NOT: the catalog already carries a `mission.report` entry whose handler
+`_cmd_mission_report` in `apps/cli/commands/worker_facade_cmd.py` imports
+`packages.orchestration.dogfood_run`, a cluster module, so the command that holds the name is
+itself deletion-bound. THE RULING: the carried-over report takes the name `mission report` IN THE
+SAME COMMIT that deletes the existing cluster-bound handler and its catalog entry, and not before;
+the two never coexist, which is what AGENTS.md's "replacing is deleting" requires. `mission
+readiness` may land earlier, since nothing holds that name. This is NOT a rename and does not
+trespass on F261, which owns renames: the old command is DELETED with its module and a different
+command inherits a freed name, which is the same move DECISION F272 D13 made for advertisements.
+
+CONSEQUENCE, AND THE MEASUREMENT THE NEXT ROUND STARTS FROM. The first carry-over is a MOVE of 25
+of the 29 top-level definitions of `packages/orchestration/overnight_readiness.py`, 650 of its 894
+lines, into a surviving module; the four left behind are the plan path, which dies. That move is
+safe, and this is the measured reason: every module the carried definitions import — `permissions`,
+`run_contract`, `approval_queue`, `repair_loop`, `repository_snapshot`, `storage`, `proof_chain`,
+`timeline`, `integrity_gate` and `data_paths` — survives the cluster deletion, so the carried code
+acquires no new cluster edge. At 650 lines the move exceeds the DECISION F104 D1 cap of 500
+insertions and is therefore staged across commits with the new module UNWIRED until the last of
+them, which keeps every intermediate commit green without spending this feature's single
+declared-oversize allowance; that allowance is reserved for T001's atomic flip, which cannot be
+staged at all. REVERSE by deleting this section: the map then has no ruled standing, the deletion
+order returns to F260's module list, and the `mission report` collision returns to being
+undiscovered.
+
+## DECISION F274 D3 — the cockpit `context-budget` endpoint is DELETED, not carried
+
+Date: 2026-09-07. Feature F274, round 5. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT. `packages.orchestration.context_pack` is one of the twenty-four prototype-cluster modules
+F260's Design deletes. After round 4 moved the `context.pack` command handler into a cluster-bound
+file, the module had exactly ONE recorded edge left: `packages/orchestration/ui_server.py`, whose
+function `_build_context_budget_json` serves the cockpit read endpoint `context-budget`. Under
+DECISION F274 D2 the deletion is bounded by edges, so this one edge is the whole of what stands
+between `context_pack` and deletability.
+
+CHOSEN. The endpoint is DELETED with its builder, its route registration and its two tests, and
+nothing replaces it. AGENTS.md's Scope Control states that replacing is deleting, that there is no
+attic, no deprecated alias and no compatibility reader, and that git is the archive. The idea the
+endpoint served — telling a reader what a job's context costs — is INHERITED by the token-economy
+surface that already exists beside it and is not cluster-bound:
+`estimate_context_budget` in `packages/orchestration/token_economy.py`, surfaced through the
+`context_budget_estimate` key that `packages/orchestration/ui_server.py` already reads. That
+surface is untouched by this decision and by this feature.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) REPOINT the endpoint at `token_economy` instead of
+deleting it. Rejected: the two produce different shapes — `context_pack` returns per-section
+structure while `estimate_context_budget` returns a band estimate — so this would be a new
+endpoint wearing an old name, which is the synonym drift AGENTS.md's discoverability rules forbid,
+and F261 rather than F274 owns naming. (b) KEEP the endpoint and exempt `context_pack` from the
+deletion. Rejected: it is on F260's Design list, and an exemption granted to keep one read
+endpoint alive is how the previous three attempts at this deletion ended. (c) LEAVE a 404 route so
+a client learns the endpoint is gone. Rejected: no client exists — the string `context-budget`
+occurs nowhere in `apps/ui/src`, and at the base its only occurrences anywhere are its definition,
+its route line and the one test that calls it.
+
+EVIDENCE THIS RESTS ON, measured at `0d68507bd5b794109db45d6d5765798fa87f7b97`. The endpoint has
+no consumer outside its own test; no document under `docs/` describes it; and the deletion map
+records `packages.orchestration.context_pack` with exactly one edge, which this round removes,
+leaving the module with none.
+
+CONSEQUENCE. `context_pack` becomes the third cluster module with no recorded edge, after
+`review_bundle` and `self_repair_proposal`. It is NOT deleted by this decision — the module and
+its file survive until the deletion round, which runs under DECISION F260 D3 and names every
+module it removes.
+
+REVERSE THIS DECISION by restoring `_build_context_budget_json`, its route line and its two tests
+from git history at `0d68507bd5b794109db45d6d5765798fa87f7b97`, and restoring the map line
+`packages.orchestration.context_pack <- packages/orchestration/ui_server.py` in the same commit.
+
+## DECISION F274 D4 — six cockpit sections are DELETED, and the two whose modules owe a carry-over are HELD so the map stays the whole plan (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 9. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `a903a44cdc73bd9588f65a2a3534fc9c4a6e4b1a`. Eight prototype-cluster modules
+have exactly ONE recorded edge each in `tests/orchestration/cluster_deletion_map.txt`, and in every
+case that edge is `packages/orchestration/ui_server.py`, where a read-only cockpit section builder
+imports the module and one line of the dashboard dict calls it. F260's Design names those sections
+for deletion by name. Under DECISION F274 D2 the deletion is bounded by edges, so these eight edges
+are the whole of what stands between eight modules and deletability — a quarter of the
+twenty-four-module cluster in one round.
+
+CHOSEN, FIRST. SIX of the eight sections are deleted, with their six map lines and the six tests
+those cuts force, and nothing replaces them: `_build_repair_loop_section`,
+`_build_external_builder_section`, `_build_overnight_mission_section`,
+`_build_model_route_tournament_section`, `_build_candidate_quality_section` and
+`_build_local_candidate_section`. AGENTS.md's Scope Control states that replacing is deleting, that
+there is no attic and no compatibility reader, and that git is the archive. NOTHING INHERITS THE
+IDEA, and this decision says so out loud rather than leaving it implicit: the cockpit loses six
+read-only diagnostic views whose SUBJECTS are modules the same feature is deleting, so there is no
+surviving thing for the view to be about. That is the one case in which "what inherits it" has the
+honest answer "nothing".
+
+CHOSEN, SECOND, AND THIS IS WHY THE NUMBER IS SIX RATHER THAN EIGHT. `_build_overnight_section` and
+`_build_builder_routing_section` are HELD, and their two map lines with them. Their subject modules
+are the sources of the two carry-overs F260's Design requires BEFORE deletion: `overnight_readiness`
+owes 25 of its 29 top-level definitions to `mission readiness`, as DECISION F274 D2's CONSEQUENCE
+clause measured, and `builder_routing.BuilderRoutingPolicy` owes the knobs `prefer_local_advisor`
+and `require_human_approval` to the route-policy check against F110's config keys. Cutting those two
+edges now would take both modules to ZERO recorded edges while both are still undeletable, and
+DECISION F274 D2's CHOSEN FIRST makes the map the plan precisely so that no prose has to be trusted
+about what is deletable. A module that reads deletable in the map and is not deletable in a
+paragraph elsewhere is the prose plan D2 abolished, arriving through an exception instead of through
+a document. Holding the edge is not a fiction: the section really exists and really imports the
+module, so the map stays literally true and needs no new mechanism to stay safe.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) Cut all eight and record the carry-over debt in this
+decision. Rejected on the reason above and on the checklist's own lesson at §3 item 23 and finding
+R-0548 — a rule that lives only in prose is a rule the next block does not read — and the next block
+here may be a deletion round in a later session, which is exactly when a forgotten debt becomes the
+half-performed deletion F274's Orchestrator brief names as the single state this work must not leave
+behind. (b) Cut all eight and add a mechanical carry-over-debt guard to the map test in the same
+round. Rejected because adding a guard puts an ADDED line under `tests/`, which by
+amend0906-triage-throughput rule 1 stops this being a deletion round at all and pulls the full
+verification apparatus onto a change that does not need it; the guard is also unnecessary if the
+edges are simply not cut yet. (c) Defer all eight until after both carry-overs. Rejected because six
+of the modules owe nothing and there is no reason to make them wait.
+
+EVIDENCE THIS RESTS ON, all of it measured by the reviewer in a disposable worktree with the cut
+applied, before this decision was written. The React UI does not read the six deleted dashboard
+keys: over all 4592 tracked files the quoted keys occur nowhere under `apps/ui/`, and the one
+`repair_loop` key the UI does read is the PIPELINE payload built elsewhere in `ui_server.py`, which
+this round does not touch. The six builder symbols occur 18 times over the 1313 tracked files of
+`packages/`, `apps/`, `tests/` and `scripts/` — all file types, no filter — and ZERO after the cut.
+The full suite is 19785 passed, 23 skipped, 0 failed against 19791 passed before, a difference of
+exactly the six deleted tests. `ruff check .` is 26 errors before and after, so DECISION F083 D5's
+frozen ceiling is untouched.
+
+CONSEQUENCE. The map goes from 37 edges to 31, and the cluster modules with NO recorded edge go from
+four to TEN: `candidate_quality`, `external_builder_sandbox`, `local_candidate_generator`,
+`model_route_tournament`, `overnight_mission` and `repair_loop_v2` join `context_optimizer`,
+`context_pack`, `review_bundle` and `self_repair_proposal`. None of the ten is deleted by this
+decision — the modules and their files survive until the deletion round, which runs under DECISION
+F260 D3 and names every module it removes.
+
+REVERSE THIS DECISION by restoring the six section builders and their six dashboard dict lines from
+git history at `a903a44cdc73bd9588f65a2a3534fc9c4a6e4b1a`, restoring the six tests those cuts
+forced, and restoring the six map lines in the same commit.
+
+## DECISION F274 D5 — the remaining cockpit sections of cluster modules are DELETED, and `worker_registry`'s edge is not a cockpit deletion at all (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 10. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `3bcaa45c85c779dece35a02d369cc333416a0963`. DECISION F274 D4 deleted six cockpit sections whose subject modules
+had exactly one edge each. Nine cluster modules still hold an edge into
+`packages/orchestration/ui_server.py`. Two of them — `overnight_readiness` and `builder_routing` —
+are the carry-over sources D4 deliberately held and they stay held. The other seven each keep at
+least one edge OUTSIDE `ui_server.py` after their cockpit section goes, so cutting those sections
+cannot take any module to zero and D4's hazard — a module reading deletable in the map while a
+paragraph elsewhere says otherwise — cannot arise in this round at all.
+
+CHOSEN, FIRST. SIX cockpit sections are deleted with their six map lines and the test edits those
+cuts force, and nothing replaces them: `_build_local_advisor_section`,
+`_build_main_builder_adapter_section`, `_build_managed_execution_section`,
+`_build_overnight_run_section`, `_build_provider_trust_section` and
+`_build_provider_verification_section`. AGENTS.md's Scope Control states that replacing is deleting,
+that there is no attic and no compatibility reader, and that git is the archive. NOTHING INHERITS
+THE IDEA: the cockpit loses six read-only diagnostic views whose SUBJECTS are modules this feature
+is deleting, so there is no surviving thing left for the view to be about.
+
+CHOSEN, SECOND, AND THIS IS THE MEASUREMENT THAT CHANGED THE ROUND. `worker_registry` is NOT among
+them, and its edge is NOT a cockpit deletion. An `ast` walk of `ui_server.py` — rather than a grep
+for section names — shows that the module is imported by TWO top-level definitions:
+`_build_worker_registry_section`, which is a cluster-bound cockpit view, and
+`_build_token_economy_section`, which is the cockpit view of `packages/orchestration/token_economy.py`,
+a module that SURVIVES the cluster deletion and that DECISION F274 D3 already named as the inheritor
+of the context-budget idea. Deleting the worker-registry section alone would therefore leave the edge
+standing and the map unchanged, and deleting the token-economy section as well would destroy a view
+of a surviving module, which is outside this feature's scope. That edge is retired later, by making
+`_build_token_economy_section` stop reading a cluster module — ordinary product work with its own
+tests, not a deletion round.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) Cut the worker-registry section anyway, for tidiness.
+Rejected: it removes a test surface and buys no edge, so it is churn against a suite that was just
+stabilised. (b) Cut both worker-registry and token-economy sections. Rejected: the token-economy view
+is not this feature's to delete, and AGENTS.md's Scope Control forbids the "while I'm here" edit by
+name. (c) Fold the seven into round 9. Rejected before round 9 ran, because the two carry-over
+sources needed a ruling first and mixing a ruled hold with an unruled one is how a hold gets lost.
+
+EVIDENCE THIS RESTS ON, all of it measured by the reviewer in a disposable worktree with the cut
+applied, before this decision was written. The six builder symbols occur 18 times over the 1313
+tracked files of `packages/`, `apps/`, `tests/` and `scripts/` — all file types, no filter — and ZERO
+after the cut. The full suite is 19781 passed, 23 skipped, 0 failed against 19785 before, a
+difference of exactly the four deleted cockpit presence tests; the three redaction guards in
+`test_provider_trust.py`, `test_provider_patch_material.py` and `test_overnight_executor.py` SURVIVE
+and still assert every other surface they covered, each having lost only the one surface that no
+longer exists. `ruff check .` is 26 errors before and after, so DECISION F083 D5's frozen ceiling is
+untouched.
+
+CONSEQUENCE. The map goes from 31 edges to 25 and the zero-edge set does NOT move, staying at the ten
+modules D4 left it at — which is the point of this round rather than a shortfall in it. After this
+round `packages/orchestration/ui_server.py` holds exactly THREE cluster edges, and every one of them
+is deliberately held with its reason on the record: `overnight_readiness` and `builder_routing` by
+D4, `worker_registry` by this decision. The cockpit is no longer what blocks the deletion.
+
+REVERSE THIS DECISION by restoring the six section builders and their six dashboard dict lines from
+git history at `3bcaa45c85c779dece35a02d369cc333416a0963`, restoring the four cockpit presence tests and the three redaction
+surfaces, and restoring the six map lines in the same commit.
+
+## DECISION F274 D6 — the `feature` command group is DELETED with its module edges, and nothing inherits it (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 11. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `fb0d56c4`. `apps/cli/commands/feature_cmd.py` is the last consumer of TWO
+prototype-cluster modules, `packages.orchestration.feature_planner` and
+`packages.orchestration.progress_ledger`, and it is WHOLLY cluster-bound: an `ast` walk shows all
+three of its top-level definitions — `_build_ledger_and_plan`, `_cmd_feature_plan` and
+`_cmd_feature_accept` — import one or both. There is no surviving half to keep, so the file dies
+rather than being trimmed. DECISION F272 D14 part 1 already rules that the cluster-bound consumers
+are never migrated, and DECISION F272 D13 that a command's ADVERTISEMENTS die in the same commit as
+the command.
+
+CHOSEN. The whole `feature` group goes in one commit: the handler file, the catalog `GroupDef`
+`"feature"` and both `CommandEntry` blocks (`feature.plan` and `feature.accept`), the import and the
+registration-tuple entry in `apps/cli/commands/__init__.py`, the `apps.cli.commands.feature_cmd`
+memberships in `pyproject.toml` and
+`tests/orchestration/import_reachability_allowlist.txt`, the row and the sentence naming it in
+`docs/system/development-artifact-boundary-v0.md`, its entry in
+`tests/orchestration/test_development_artifact_boundary.py`, the two runtime test classes
+`TestFeaturePlanRuntime` and `TestFeatureAcceptRuntime`, and the two deletion-map lines. NOTHING
+INHERITS THE IDEA. `remedy feature plan` printed deterministic feature suggestions and
+`remedy feature accept` turned one into a ProposedTask; both read `.agent/live_review.md` for
+developer convenience, both are classified as DEVELOPMENT rather than product commands by
+`docs/system/development-artifact-boundary-v0.md`, and the roadmap they served is now kept in
+`docs/roadmap/STATUS.md` and driven by the planner/reviewer loop rather than by a CLI suggestion
+engine. AGENTS.md's Scope Control requires this to be said out loud rather than left implicit.
+
+WHAT IS DELIBERATELY NOT DONE, so a later reader does not read it as an omission. The modules
+`feature_planner.py` and `progress_ledger.py` SURVIVE this round with their own tests
+(`test_feature_planner.py` and the progress-ledger suites) and die with the cluster, which is the
+same separation every round of this feature has kept: an edge cut is not a module deletion.
+`tests/cli/test_progress_feature_runtime.py` keeps its name although it now covers only
+`TestProgressChecklistRuntime`, because renaming it would break `git log --follow` on a file this
+round already touches and buys nothing that the surviving class name does not already say; F261 owns
+renames.
+
+THIS ROUND IS NOT A PURE DELETION AND SAYS SO. amend0906-triage-throughput rule 1 permits "the
+test/import edits those deletions force", and two lines are EDITED rather than removed: the
+registration tuple in `apps/cli/commands/__init__.py`, where `feature_cmd` is one token in a long
+line, and the sentence in the boundary doc that named two commands and now names one. The commit is
++2 insertions against -217 deletions. Rounds 9 and 10 happened to reach +0; this one cannot, and the
+difference is declared rather than discovered at review.
+
+EVIDENCE THIS RESTS ON, all of it measured by the reviewer in a disposable worktree with the cut
+applied and COMMITTED, before this decision was written. THE COMMIT MATTERS TO THE MEASUREMENT: two
+tests enumerate paths from git rather than from disk —
+`tests/cli/test_advertised_commands.py::test_every_advertised_command_exists_in_the_catalog` and
+`tests/orchestration/test_evidence_index.py::TestPorcelainParsing::test_every_enumerated_path_exists_in_this_repo`
+— so both are RED while the deletion sits unstaged or staged-but-uncommitted, and both are GREEN once
+it is committed. That is an artefact of measuring mid-flight, not a property of the change, and it is
+recorded here because the next reader to delete a tracked file will see the same two reds. The
+collected-test set goes from 19804 to 19788 and the reviewer diffed the node-id SETS rather than the
+counts: exactly 16 ids disappear and NONE appears — the eight tests of the two deleted runtime
+classes, and eight `[feature]` parametrizations in `tests/test_grouped_cli.py`, which parametrize over
+catalog GROUPS and lose the group this round deletes. The full suite is 19765 passed, 23 skipped, 0
+failed. `ruff check .` is 26 errors before and after, so DECISION F083 D5's frozen ceiling is
+untouched, and `tests/docs/` is green at 306 passed.
+
+CONSEQUENCE. The map goes from 25 edges to 23, and the cluster modules with NO recorded edge go from
+ten to TWELVE — `feature_planner` and `progress_ledger` join the set — which is half the
+twenty-four-module cluster. `apps/cli/commands/feature_cmd.py` is the first FILE this feature deletes
+outright rather than trimming.
+
+REVERSE THIS DECISION by restoring `apps/cli/commands/feature_cmd.py`, its catalog group and two
+entries, its wiring, packaging, allowlist and boundary-doc rows, its two runtime test classes and its
+two map lines from git history at `fb0d56c4`.
+
+## DECISION F274 D7 — worker recommendation DIES with the cluster and nothing inherits it; the token mode MOVES because it never belonged to it; and the `token_policy_applied` vocabulary is ruled DOWN rather than by omission (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 13. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `64346333` BY READING WHAT PRODUCES EACH VALUE RATHER THAN WHAT IT IS NAMED.
+`packages.orchestration.worker_recommend` holds THREE surviving consumer edges — `agent_loop.py`,
+`autonomy_loop.py` and `dashboard.py`, all under `packages/orchestration/`. UNLIKE ROUNDS 9 THROUGH
+12, NONE IS A READ-ONLY VIEW: the two loops each fill four fields of the `token_policy_applied`
+run-log event from a `WorkerRecommendation` — `mode`, `estimated_context_tokens`,
+`remote_model_requires_approval` and `selected_worker` — `autonomy_loop` additionally fills
+`CycleDecision.token_mode` and `CycleDecision.selected_worker`, and `dashboard` fills its
+`token_policy` and `worker_recommendation` sections.
+
+THE EVENT DOES NOT DIE WITH THE CLUSTER, WHICH IS WHY THIS IS A RULING RATHER THAN A DELETION.
+`token_policy_applied` is a READINESS SIGNAL: `packages/orchestration/autonomy_readiness.py` reads
+it in `_has_token_policy_applied` at line 129, publishes it at line 248 and checks it at line 318,
+and `packages/orchestration/project_brain.py` reads it at line 661. Both emitters survive, and
+`scripts/remedy_smoke.sh` and `tests/storage/test_persistence.py` pin it. Deleting the producer of
+its fields without ruling what the event carries afterwards would leave a vocabulary in
+`packages/orchestration/event_schemas.py` describing fields nothing writes — the R-0832 shape,
+arriving through a schema instead of through a brain node.
+
+THE FOUR FIELDS HAVE THREE DIFFERENT FATES, measured rather than assumed. `token_mode` is computed
+inside `recommend_worker` from `len(job.tasks)` and `job.state` alone and reaches no cluster module.
+`estimated_context_tokens` is `build_context_pack(...).estimated_tokens`, and
+`packages.orchestration.context_pack` IS on the cluster list. `selected_worker` and
+`remote_model_requires_approval` come from scoring `worker_adapters.list_worker_specs()`, and
+`packages.orchestration.worker_adapters` is NOT on that list and survives.
+
+CHOSEN.
+
+1. NOTHING INHERITS WORKER RECOMMENDATION, as DECISION F274 D6 ruled for the `feature` group. F110's
+   model routing was the candidate checked first and is NOT the inheritor:
+   `packages/orchestration/model_routing.py` routes a TASK CLASS to a model TIER, a different
+   question from which worker provider executes a job, and the module that does answer that
+   question, `packages.orchestration.worker_registry`, is itself on the cluster list.
+   `selected_worker` and `remote_model_requires_approval` are therefore DELETED rather than
+   re-sourced: re-deriving them from `worker_adapters` under another name would be
+   `recommend_worker` living on without its file, and AGENTS.md Scope Control rules that replacing
+   is deleting — no attic, no alias, no compatibility reader.
+
+2. `estimated_context_tokens` is DELETED. Its only producer is a cluster module, and substituting a
+   surviving estimator would put a number into a run-log event that no longer measures the thing the
+   field is named for. A fabricated measurement is worse than an absent one.
+
+3. `token_mode` SURVIVES AND MOVES, and this is a MOVE rather than an inheritance.
+   `derive_token_mode(job) -> str` lands in `packages/orchestration/token_policy.py` with the same
+   three branches, in the same order, that `recommend_worker` computes today. A token mode is token
+   policy; both surviving emitters already import that module; it is not on the cluster list. The
+   derivation never belonged to worker recommendation and only lived there.
+
+4. THE EVENT VOCABULARY IS RULED EXPLICITLY. `token_policy_applied` KEEPS `mode`,
+   `max_context_tokens` and `local_first` and LOSES `estimated_context_tokens`,
+   `remote_model_requires_approval` and `selected_worker`. `packages/orchestration/event_schemas.py`
+   changes in the SAME COMMIT as the last emitter that writes a removed key, so no tree exists in
+   which the registry and the emitters disagree. The event KIND is unchanged, so
+   `apps/ui/src/api/humanizeCatalog.ts` and `apps/ui/src/api/actionClass.ts` are untouched and
+   `tests/ui_contracts/test_humanize_catalog.py` cannot go red — the R-0823 lesson about a deletion
+   orphaning a catalog entry, applied ahead of the cut rather than after it.
+
+5. The dashboard's `worker_recommendation` section is DELETED with the two pins holding it: the
+   assertion in `tests/ui_server/test_dashboard_contract.py` and the key in the dashboard tuple of
+   `scripts/remedy_smoke.sh`. That tuple keeps a key rather than shrinking, checking `token_policy`
+   instead, so the section that survives is the one still covered.
+
+6. SEQUENCING, BY EDGE. Round 13 lands items 3 and 5 and cuts the `dashboard.py` edge, the one of
+   the three emitting no run-log event; the round after it cuts the two loop edges and lands item 4.
+   The unit of the split is the EDGE, which is what DECISION F274 D2 rules the deletion by, and each
+   round leaves a tree that is green and self-consistent rather than half-migrated.
+
+ALTERNATIVES CONSIDERED. (a) KEEP ALL SIX KEYS and re-source three from `worker_adapters` plus a
+surviving estimator such as `packages/orchestration/context_inspector.py` — rejected under items 1
+and 2: it rebuilds `recommend_worker` under a new name and keeps a number whose referent is gone.
+(b) DELETE `token_policy_applied` ENTIRELY — rejected: it is a readiness signal with two surviving
+emitters and four surviving readers, so it is not cluster-bound at all. (c) MOVE `worker_recommend`
+OFF the cluster list — rejected: `docs/roadmap/features/T2_F260.md`'s Design section fixes that
+list, and this feature executes it rather than re-planning it.
+
+HOW TO REVERSE. Delete this paragraph and restore, from git history at `64346333`,
+`packages/orchestration/worker_recommend.py`'s three consumer edges, the `worker_recommendation`
+dashboard section with its two pins, and the three removed keys of `token_policy_applied` in
+`packages/orchestration/event_schemas.py`.
+
+## DECISION F274 D8 — F274 CLOSES AT THE EDGE WORK IT BUILT, and the cluster deletion, the atomic record flip and the classic runner move to a follow-up feature registered directly after it (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 16, session 7. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7 and EXECUTED on the session's own authority under
+operator amendment amend0905-throughput; the operator's veto is any later session.
+
+WHY THIS RULING HAPPENS NOW RATHER THAN LATER. F274 stands at 15 delegated rounds and this is its
+SEVENTH session, so the SESSION half of the soft limit binds first and the ROUND half does not bind
+at all. `docs/roadmap/features/T2_F274.md` rules the applicable limit explicitly in its Orchestrator
+brief — "This feature's soft limit is the standing 7 sessions and 25 rounds: amend0906 granted
+12-and-40 to F272 BY NAME, on a measurement of F272's scope, and such a grant does not travel with a
+split" — so the wider budget F272 ran under is not available here and no reading of amend0906 makes
+it so. Operator amendment amend0827-process-diet rule 6 makes the obligation at the limit a SCOPE
+REPORT rather than more work, and amend0905-throughput makes the standing default at that point
+SPLIT-AND-CLOSE, EXECUTED BY THE SESSION rather than proposed and waited on. Rowing on quietly is a
+protocol violation; so is stopping to ask a question the default already answers.
+
+THE SCOPE REPORT, PART ONE — WHAT F274 ACTUALLY BUILT. Measured by the reviewer at `2cc1211f`, this
+round's base, over the range from the branch's fork point
+`13dfaabd93d7b6452a1d23ca698e29ed47ecf035`, which is 130
+commits, and 46 files under `packages/`, `apps/`, `tests/`, `scripts/` and `docs/` at 1269
+insertions against 1340 deletions — a feature that removed more than it added, which is what a
+deletion feature should read like.
+
+- THE DELETION MAP AS A LIVE RATCHET. `tests/orchestration/cluster_deletion_map.txt` records one
+  surviving consumer edge per line, is GENERATED from the live import graph rather than typed, and
+  is held against that graph in BOTH directions by `tests/orchestration/test_cluster_deletion_map.py`
+  — so a re-inserted edge reddens a test instead of passing unnoticed. Neither file existed before
+  this feature. Finding R-0830 is why the deletion is bounded by edges rather than by F260's module
+  list at all.
+- THE IMPORT-REACHABILITY RATCHET that T003's deletion runs behind:
+  `tests/orchestration/test_import_reachability.py` with its 326-line allowlist, ruled a RATCHET
+  rather than a one-shot gate by DECISION F274 D1.
+- THE EDGE WORK ITSELF. The map today records TWENTY surviving consumer edges across ELEVEN of the
+  twenty-four cluster modules, leaving THIRTEEN with no edge at all, and
+  `packages.orchestration.worker_recommend` is one of the thirteen and is deletable now. At the
+  map's creation commit `0d6da86f` it recorded 42 edges across 22 modules; those two readings are
+  NOT a clean before-and-after, because R-0834's fix widened the walker to non-Python files in
+  between, so the honest claim is the direction and the current absolute figure, never their
+  difference.
+- THE COCKPIT AND COMMAND-LAYER CUTS. `packages/orchestration/ui_server.py` lost 458 lines and
+  gained none; the `feature` command group was deleted whole at 101 lines; and
+  `apps/cli/commands/context.py` and `apps/cli/commands/worker.py` were cut into the per-command
+  modules their surviving halves needed.
+- SEVEN DATED RULINGS, DECISION F274 D1 through D7, each naming what dies, what inherits its idea
+  and how to reverse it — the replace-is-delete discipline AGENTS.md Scope Control requires, applied
+  ruling by ruling rather than assembled at the end.
+- THE FINDINGS. Seven were registered by this feature, R-0830 through R-0836; four are resolved,
+  R-0833, R-0834, R-0835 and R-0836; three stand open as documented risks, R-0830, R-0831 and
+  R-0832. The High findings still open on the record are R-0803, R-0804, R-0806 and R-0807, and
+  every one of them is F273's rather than this feature's, per DECISION F272 D12.
+
+THE SCOPE REPORT, PART TWO — WHAT IS MISSING, measured at the same commit. Twenty consumer edges
+survive across eleven cluster modules: `orchestrator_brain.py` and `apps/cli/commands/
+worker_facade_cmd.py` carry four each, `ui_server.py` three, `token_economy.py`, `self_dogfood.py`
+and `self_dogfood_execution.py` two each, and `provider_patch_material.py`, `real_test_execution.py`
+and `repair_request_builder.py` one each; on the other side `packages.orchestration.provider_trust`
+alone is the target of seven of the twenty and is the single biggest blocker. The two carry-overs
+F260's Design section names have not begun, DECISION F260 D3 is undrafted, and T001 and T002 have
+not begun at all. `.agent/plan.md` carried five open steps into this round, read at `2cc1211f`.
+
+CHOSEN: SPLIT AT THE T-SLICE SEAM THE FEATURE FILE ALREADY NAMES. F274 closes at what it built — the
+map, the reachability ratchet, D1 through D7, the cockpit and command-layer edge cuts and the
+`worker_recommend` retirement — and a follow-up feature inherits the remaining edges, the two
+carry-overs, DECISION F260 D3, the deletion itself, T001 and T002. Three mechanical obligations come
+with that and are executed in the registration round, not left as intentions. The follow-up's STATUS
+line is placed IMMEDIATELY after F274's inside the SAME Tier 2 heading, per operator amendment
+amend0906-split-placement, so Rule A5 proposes it before any other unchecked feature. Every OPEN
+feature file naming F274 in its `Depends on` line gains the follow-up there in the same commit. And
+the registration is ONE commit carrying the STATUS line, the feature file, the `TOTAL_FEATURES` pin
+in `tests/docs/test_docs_consistency.py` and the README counters together, because splitting it
+leaves an intermediate state in which `tests/docs/` is red.
+
+WHY THIS CLOSE IS SELF-CONSISTENT AND NOT A HALF-PERFORMED ONE. The single state this work must not
+leave behind is a partly-deleted cluster, and there is none: no cluster module has been removed, the
+map is a complete generated work list rather than a partial one, and every edge cut so far landed
+with its own tests and its own dated ruling. What F274 hands over is a SMALLER problem described by
+a machine-checked file, not a broken one — which is exactly the condition amend0905-throughput
+attaches to the split-and-close default.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) RUN ON PAST THE LIMIT and finish T003 — rejected because
+amend0827 rule 6 names continuing quietly past the limit a protocol violation in as many words, and
+because T003 does not fit: twenty edges across nine consumer files, four of them the Orchestrator
+brain's live signal reads, is not one session's work at this feature's measured rate of three to
+five rounds per session. (b) START T003 NOW AND SPLIT INSIDE IT — rejected outright; the feature
+file's Orchestrator brief states that a session which cannot finish T003 does not start it, and a
+half-performed deletion is the one state that brief forbids by name. (c) HARD STOP WITH AN OPERATOR
+QUESTION — rejected because amend0905-throughput reserves that for the case where NO self-consistent
+close is possible, and one is, as the paragraph above measures. (d) CLOSE F274 WITH NO FOLLOW-UP and
+let the remaining scope be absorbed by F271, "no more legacy" — rejected because the deletion is
+bounded by a generated map this feature owns and by DECISION F260 D3, which is owed by the deletion
+round and by nothing else; routing a specific owed ruling into a feature with a different Goal is
+how such a ruling gets lost, which is the failure DECISION F272 D16 was written to avoid one split
+earlier.
+
+HOW TO REVERSE. Delete this paragraph; revert the single registration commit that adds the follow-up
+feature's STATUS line, its feature file, the `TOTAL_FEATURES` pin, the README counters and the
+`Depends on` edits; restore F274's STATUS marker from `[x]` to `[~]` with the README counters that
+go with it; and resume at `.agent/plan.md`'s step list as this round found it. Nothing under
+`packages/`, `apps/` or `tests/` changes behaviour by this ruling, so the reversal is a
+documentation revert and carries no product risk.

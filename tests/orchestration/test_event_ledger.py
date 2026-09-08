@@ -46,9 +46,8 @@ class TestEventSchemaRegistry:
     def test_schemas_exist(self):
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
         assert "agent_loop_started" in EVENT_METADATA_SCHEMAS
-        assert "agent_loop_cycle_decision" in EVENT_METADATA_SCHEMAS
-        assert "agent_loop_stopped" in EVENT_METADATA_SCHEMAS
         assert "context_budget_optimized" in EVENT_METADATA_SCHEMAS
+        assert "token_policy_applied" in EVENT_METADATA_SCHEMAS
 
     def test_schemas_are_frozensets(self):
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
@@ -59,11 +58,11 @@ class TestEventSchemaRegistry:
     def test_different_schemas_for_different_events(self):
         from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
         started = EVENT_METADATA_SCHEMAS["agent_loop_started"]
-        decision = EVENT_METADATA_SCHEMAS["agent_loop_cycle_decision"]
-        stopped = EVENT_METADATA_SCHEMAS["agent_loop_stopped"]
-        assert started != decision, "started and decision must differ"
-        assert decision != stopped, "decision and stopped must differ"
-        assert started != stopped, "started and stopped must differ"
+        budget = EVENT_METADATA_SCHEMAS["context_budget_optimized"]
+        policy = EVENT_METADATA_SCHEMAS["token_policy_applied"]
+        assert started != budget, "started and budget must differ"
+        assert budget != policy, "budget and policy must differ"
+        assert started != policy, "started and policy must differ"
 
     def test_validate_valid_metadata(self):
         from packages.orchestration.event_schemas import validate_event_metadata
@@ -100,7 +99,7 @@ class TestEventSchemaRegistry:
 
     def test_get_event_schema(self):
         from packages.orchestration.event_schemas import get_event_schema
-        assert get_event_schema("agent_loop_stopped") is not None
+        assert get_event_schema("agent_loop_started") is not None
         assert get_event_schema("nonexistent") is None
 
     def test_context_budget_optimized_schema(self):
@@ -114,23 +113,6 @@ class TestEventSchemaRegistry:
         assert "recommended_worker" in schema
         assert "included_section_count" in schema
         assert "excluded_section_count" in schema
-
-    def test_agent_loop_cycle_decision_schema(self):
-        from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
-        schema = EVENT_METADATA_SCHEMAS["agent_loop_cycle_decision"]
-        assert len(schema) == 8
-        assert "next_action" in schema
-        assert "blocked_by" in schema
-        assert "readiness_level" in schema
-
-    def test_agent_loop_stopped_schema(self):
-        from packages.orchestration.event_schemas import EVENT_METADATA_SCHEMAS
-        schema = EVENT_METADATA_SCHEMAS["agent_loop_stopped"]
-        assert len(schema) == 4
-        assert "final_decision" in schema
-        assert "stop_reason" in schema
-        assert "cycles_run" in schema
-        assert "unresolved_blocker_count" in schema
 
     def test_forbidden_strings(self):
         from packages.orchestration.event_schemas import FORBIDDEN_STRINGS
@@ -203,7 +185,7 @@ class TestEventLedgerScope:
         cases = [
             ("patch_applied", "patch"),
             ("test_run_completed", "test"),
-            ("agent_loop_cycle_decision", "agent"),
+            ("agent_loop_started", "agent"),
             ("memory_stored", "memory"),
             ("token_budget_check", "policy"),
             ("git_status_read", "repo"),

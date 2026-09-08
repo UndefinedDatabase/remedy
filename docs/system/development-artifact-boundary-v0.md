@@ -32,7 +32,6 @@ Normal Remedy users never need to read, edit, or depend on this file.
 | Integrity gate checks | `packages/orchestration/integrity_gate.py` | development process health |
 | Review bundle artifact inclusion | `packages/orchestration/review_bundle.py` | development evidence |
 | Progress command display | `apps/cli/commands/progress_cmd.py` | development progress display |
-| Feature command display | `apps/cli/commands/feature_cmd.py` | development feature display |
 
 ## Disallowed product/runtime uses
 
@@ -52,13 +51,13 @@ and `tests/orchestration/test_development_artifact_boundary.py`).
 All current `.agent/live_review.md` reads are in development/self-dogfood paths.
 No product-facing operator command depends on it for core functionality.
 
-`progress_cmd.py` and `feature_cmd.py` read it for developer convenience display.
-These are classified as development commands, not core product operator commands.
+`progress_cmd.py` reads it for developer convenience display.
+It is classified as a development command, not a core product operator command.
 
 ## Planned migration path
 
 1. Core operator commands (`worker`, `mission`, `approval`) already use structured state
-2. Development commands (`feature`, `progress`) may continue reading `.agent/` files
+2. The development command `progress` may continue reading `.agent/` files
 3. Future blocks may migrate remaining self-dogfood paths to structured event ledger
 4. No urgent migration needed — boundary is enforced for new product paths
 
