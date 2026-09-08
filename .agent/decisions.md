@@ -11130,3 +11130,64 @@ F260 D3 and names every module it removes.
 REVERSE THIS DECISION by restoring the six section builders and their six dashboard dict lines from
 git history at `a903a44cdc73bd9588f65a2a3534fc9c4a6e4b1a`, restoring the six tests those cuts
 forced, and restoring the six map lines in the same commit.
+
+## DECISION F274 D5 — the remaining cockpit sections of cluster modules are DELETED, and `worker_registry`'s edge is not a cockpit deletion at all (2026-09-08)
+
+Date: 2026-09-08. Feature F274, round 10. Status: decided by the reviewer under
+docs/agents/planner_reviewer_prompt.md §4 item 7; the operator's veto is any later session.
+
+CONTEXT, MEASURED AT `3bcaa45c85c779dece35a02d369cc333416a0963`. DECISION F274 D4 deleted six cockpit sections whose subject modules
+had exactly one edge each. Nine cluster modules still hold an edge into
+`packages/orchestration/ui_server.py`. Two of them — `overnight_readiness` and `builder_routing` —
+are the carry-over sources D4 deliberately held and they stay held. The other seven each keep at
+least one edge OUTSIDE `ui_server.py` after their cockpit section goes, so cutting those sections
+cannot take any module to zero and D4's hazard — a module reading deletable in the map while a
+paragraph elsewhere says otherwise — cannot arise in this round at all.
+
+CHOSEN, FIRST. SIX cockpit sections are deleted with their six map lines and the test edits those
+cuts force, and nothing replaces them: `_build_local_advisor_section`,
+`_build_main_builder_adapter_section`, `_build_managed_execution_section`,
+`_build_overnight_run_section`, `_build_provider_trust_section` and
+`_build_provider_verification_section`. AGENTS.md's Scope Control states that replacing is deleting,
+that there is no attic and no compatibility reader, and that git is the archive. NOTHING INHERITS
+THE IDEA: the cockpit loses six read-only diagnostic views whose SUBJECTS are modules this feature
+is deleting, so there is no surviving thing left for the view to be about.
+
+CHOSEN, SECOND, AND THIS IS THE MEASUREMENT THAT CHANGED THE ROUND. `worker_registry` is NOT among
+them, and its edge is NOT a cockpit deletion. An `ast` walk of `ui_server.py` — rather than a grep
+for section names — shows that the module is imported by TWO top-level definitions:
+`_build_worker_registry_section`, which is a cluster-bound cockpit view, and
+`_build_token_economy_section`, which is the cockpit view of `packages/orchestration/token_economy.py`,
+a module that SURVIVES the cluster deletion and that DECISION F274 D3 already named as the inheritor
+of the context-budget idea. Deleting the worker-registry section alone would therefore leave the edge
+standing and the map unchanged, and deleting the token-economy section as well would destroy a view
+of a surviving module, which is outside this feature's scope. That edge is retired later, by making
+`_build_token_economy_section` stop reading a cluster module — ordinary product work with its own
+tests, not a deletion round.
+
+ALTERNATIVES CONSIDERED AND REJECTED. (a) Cut the worker-registry section anyway, for tidiness.
+Rejected: it removes a test surface and buys no edge, so it is churn against a suite that was just
+stabilised. (b) Cut both worker-registry and token-economy sections. Rejected: the token-economy view
+is not this feature's to delete, and AGENTS.md's Scope Control forbids the "while I'm here" edit by
+name. (c) Fold the seven into round 9. Rejected before round 9 ran, because the two carry-over
+sources needed a ruling first and mixing a ruled hold with an unruled one is how a hold gets lost.
+
+EVIDENCE THIS RESTS ON, all of it measured by the reviewer in a disposable worktree with the cut
+applied, before this decision was written. The six builder symbols occur 18 times over the 1313
+tracked files of `packages/`, `apps/`, `tests/` and `scripts/` — all file types, no filter — and ZERO
+after the cut. The full suite is 19781 passed, 23 skipped, 0 failed against 19785 before, a
+difference of exactly the four deleted cockpit presence tests; the three redaction guards in
+`test_provider_trust.py`, `test_provider_patch_material.py` and `test_overnight_executor.py` SURVIVE
+and still assert every other surface they covered, each having lost only the one surface that no
+longer exists. `ruff check .` is 26 errors before and after, so DECISION F083 D5's frozen ceiling is
+untouched.
+
+CONSEQUENCE. The map goes from 31 edges to 25 and the zero-edge set does NOT move, staying at the ten
+modules D4 left it at — which is the point of this round rather than a shortfall in it. After this
+round `packages/orchestration/ui_server.py` holds exactly THREE cluster edges, and every one of them
+is deliberately held with its reason on the record: `overnight_readiness` and `builder_routing` by
+D4, `worker_registry` by this decision. The cockpit is no longer what blocks the deletion.
+
+REVERSE THIS DECISION by restoring the six section builders and their six dashboard dict lines from
+git history at `3bcaa45c85c779dece35a02d369cc333416a0963`, restoring the four cockpit presence tests and the three redaction
+surfaces, and restoring the six map lines in the same commit.
