@@ -635,3 +635,7 @@
 2026-09-08 · F275 R3 · The round 3 block's gate G3(a) stated the post-append byte count as `515349 + len(RECORD3) + 1`, omitting the leading newline the same block's C2 operation orders, so it predicted 519227 against a correct 519228; the worker followed the operation, landed the right bytes and declared the conflict.
 
 2026-09-08 · F275 R3 · The round 3 block's edit (a) gave its FIND anchor as `    # ── doctor`, a prefix of the real banner line rather than the whole line, so the anchor resolved only under the unterminated-prefix reading; the worker measured both readings before applying and used the one that resolves.
+
+2026-09-08 · F275 R4 · The round 4 block's gate G7 suite 3 gave `tests/orchestration/test_dogfood_run.py` a BASE of 135, which was the COMBINED count of that suite and the canary from the reviewer's own paired dry run; the suite alone is 93, the worker re-measured 93 at the base `280fd101` and 93 again at the round's own tip, and the no-regression property the gate exists for held exactly.
+
+2026-09-08 · F275 R4 · The round 4 block's constraint 9 lettered the pairs (a), (b), (d), (e) and the deletions (c), (f), (g) while its C3 labels the pairs (a), (b), (e), (f) and the deletions (c), (d), (g), leaving C3's registry-line deletion in neither list; the worker re-ran the containment test mechanically and reproduced all four classifications unchanged.
