@@ -657,3 +657,9 @@
 2026-09-08 · F275 R6 · The round 6 block's gate G5 predicted `tests/ui_contracts/` at "808 passed and 5 skipped", a reading the reviewer had taken in its own dry worktree; the primary checkout the gate orders reads 809 passed and 4 skipped, the same total of 813, the difference being one legacy-`.tsx` quarantine skip that resolves differently in a fresh worktree.
 
 2026-09-08 · F275 R6 · The round 6 block's gate G7 was ordered to "run LAST, after G1..G6" and before C5, while its own sequence clause required it to see the commit sequence "C0a, C0b, C1, C2, C3, C5" — a commit that does not exist when the gate runs; the worker obeyed the ordering, reported the reading at C3, and re-ran the two range readings after C5, which is the two-readings answer §3 item 14 already prescribes.
+
+2026-09-08 · F275 R7 · The round 7 block's gate G5 ordered `recommend_worker` to ZERO over the tracked tree while the same block's must-not-touch list keeps `docs/roadmap/features/T2_F272.md`, which contains that token, so the two clauses of one gate could not both be satisfied; the worker obeyed the must-not-touch half, which was the correct half, and declared the disagreement instead of silently repairing it.
+
+2026-09-08 · F275 R7 · The round 7 block's gate G5 ordered the shell string `worker recommend` to ZERO in `scripts/` and `tests/` and one literal survives as a class docstring in `tests/storage/test_persistence.py`, which is prose rather than an invocation; `scripts/` really was at zero, which is the reading the gate existed for.
+
+2026-09-08 · F275 R7 · The round 7 block's gate G5 predicted a SEVEN-file survivor set for `worker_recommend` and the true set is FIVE, because that block's own step (9) takes `tests/orchestration/test_cluster_deletion_map.py` to zero and `tests/STEP_TEST_MIGRATION.md` never held the token at all — it holds `TestWorkerExplain`, which the reviewer conflated with it.
