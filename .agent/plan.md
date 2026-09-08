@@ -12,19 +12,21 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 13, the FIRST of `worker_recommend`'s three edges. Rule DECISION F274 D7 before a line moves:
-worker recommendation dies with the cluster and nothing inherits it, the token mode never belonged
-to it and moves to `packages/orchestration/token_policy.py`, and the `token_policy_applied`
-vocabulary is ruled down to what a surviving producer measures. Then cut the `dashboard.py` edge —
-the one emitting no run-log event — deleting the `worker_recommendation` section with its
-contract-test and smoke-script pins. Book round 12's PASS verdict and the slip round 12 owed.
+Round 14, the last two `worker_recommend` edges, in `agent_loop.py` and `autonomy_loop.py`. This is
+where DECISION F274 D7 item 4 lands: both loops stop calling `recommend_worker` and take their token
+mode from `derive_token_mode`, `CycleDecision.selected_worker` goes, and `token_policy_applied`
+loses `estimated_context_tokens`, `remote_model_requires_approval` and `selected_worker` in
+`packages/orchestration/event_schemas.py` in the SAME commit as the last emitter that writes them,
+with the test and smoke-script pins moved with them. `worker_recommend` then holds NO recorded edge
+and becomes deletable. Book round 13's PASS verdict, register R-0836 and append the slip round 13
+owed.
 
 ## Next Steps
 
-1. The two remaining `worker_recommend` edges, in `agent_loop.py` and `autonomy_loop.py`. Both emit
-   `token_policy_applied`, so this is where DECISION F274 D7 item 4 lands: three keys leave
-   `packages/orchestration/event_schemas.py` in the same commit as the last emitter that writes
-   them, and `CycleDecision.selected_worker` goes with them.
+1. Fix R-0836: delete the `agent_loop_cycle_decision` and `agent_loop_stopped` entries of
+   `EVENT_METADATA_SCHEMAS` and the ten sites in `tests/orchestration/test_event_ledger.py` that
+   pin them. Their sole emitter died with `_cmd_run_loop` in F272 round 19; this is that deletion
+   finished, and it is a ruled vocabulary the product no longer speaks.
 2. The two carry-overs F260's Design names: overnight readiness to `mission readiness`, and the
    route-policy knobs checked against F110's config keys. `mission report` waits for the commit
    deleting its current holder, per DECISION F274 D2; that holder is in `worker_facade_cmd.py`.
