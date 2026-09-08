@@ -244,6 +244,27 @@ still applies at 12/40. (3) The session round target of 6 to 8 stands; a session
 ending below it states the reason in one sentence in its handoff. Reverse by
 deleting this paragraph.
 
+Operator amendment amend0908-f275-finish (2026-09-08) — F275 FINISHES THE
+PROTOTYPE-CLUSTER DELETION; NO FOURTH SPLIT. (1) F275's soft limit is 20 sessions
+and 60 rounds, by operator order and BY NAME; it travels to no other feature.
+(2) The amend0905-throughput split-and-close default does NOT apply to F275. On
+reaching the limit the session writes the scope report and continues; the only
+permitted close of F275 below its full scope is the old hard stop with an
+operator question, and only when a module group is genuinely undeletable under
+the three rules in `docs/roadmap/features/T2_F275.md` T001. (3) For F275's T001
+the atomic unit of "never split" is ONE MODULE GROUP (module, handler, catalog
+entries, cockpit section, tests, map lines) in one commit, not the whole slice;
+sessions and rounds may end between group commits with the tree green. (4) An
+importer that is itself on F260's deletion list is not a blocking edge; it is
+deleted with its target. A surviving importer loses the import and the code path
+in the same commit, and any user-observable behaviour lost is registered as a
+finding naming the inheriting feature — never a stub, shim or copy. (5) A session
+of F275 may cite "authoring errors accumulating" as its reason to end only after
+at least four delegated rounds. Rationale: the deletion was the last slice of
+F260, F272 and F274 and each closed before reaching it; F274 cut one import edge
+per round and left 20 of 42. Reverse by deleting this paragraph and the two
+amend0908 paragraphs in `docs/roadmap/features/T2_F275.md`.
+
 Operator amendment amend0827-process-diet (2026-08-27), rule 4 — the
 pre-emission checklist of docs/agents/planner_reviewer_prompt.md §3 is FROZEN
 while a feature is open. A lesson learned mid-feature goes into
