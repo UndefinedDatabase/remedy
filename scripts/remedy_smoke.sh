@@ -1600,24 +1600,6 @@ print('    token ordering: OK (caveman=' + str(cave['estimated_tokens'])
       + ', standard=' + str(std['estimated_tokens']) + ')')
 " "${CAVE_JSON}" "${COMP_JSON}" "${STD_JSON}"
 
-    # Worker recommend
-    WORKER_JSON="$(remedy worker recommend "${JOB_ID}" --json)"
-    python3 -c "
-import json, sys
-def chk(cond, msg):
-    if not cond:
-        print('ERROR: worker recommend: ' + msg, file=sys.stderr)
-        sys.exit(1)
-data = json.loads(sys.argv[1])
-chk(data.get('version') == 1, 'version must be 1')
-chk('recommended_worker' in data, 'missing recommended_worker')
-chk('token_mode' in data, 'missing token_mode')
-chk('estimated_context_tokens' in data, 'missing estimated_context_tokens')
-chk('requires_approval' in data, 'missing requires_approval')
-chk('candidates' in data, 'missing candidates')
-print('    worker recommend: OK (worker=' + data['recommended_worker'] + ', mode=' + data['token_mode'] + ')')
-" "${WORKER_JSON}"
-
     # Token policy required fields
     TP_JSON="$(remedy policy token "${JOB_ID}" --json)"
     python3 -c "
@@ -1691,14 +1673,10 @@ print('    brain nodes: OK (has change_set)')
     echo "--- 12u. Memory card-show help"
     remedy memory card-show --help | grep -qi "memory_id"
 
-    # Step 64: Worker show + explain
+    # Step 64: Worker show
     _SMOKE_SECTION="12v"
     echo "--- 12v. Worker show ollama"
     remedy worker show ollama | grep -q "Ollama"
-
-    _SMOKE_SECTION="12w"
-    echo "--- 12w. Worker explain"
-    remedy worker explain "${JOB_ID}" | grep -q "Scoring breakdown"
 
     # Step 65.1: Repo status (job-aware)
     _SMOKE_SECTION="12x"

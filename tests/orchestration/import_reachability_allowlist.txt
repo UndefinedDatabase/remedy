@@ -71,7 +71,6 @@ apps.cli.commands.tournament_cmd
 apps.cli.commands.ui
 apps.cli.commands.worker
 apps.cli.commands.worker_facade_cmd
-apps.cli.commands.worker_recommend_cmd
 apps.cli.cost_preview_confirm
 packages.common
 packages.common.path_redaction
@@ -312,7 +311,6 @@ packages.orchestration.verifier_profiles
 packages.orchestration.watchdog
 packages.orchestration.worker_adapters
 packages.orchestration.worker_queue
-packages.orchestration.worker_recommend
 packages.orchestration.worker_registry
 packages.orchestration.workspace
 packages.orchestration.worktree_resume

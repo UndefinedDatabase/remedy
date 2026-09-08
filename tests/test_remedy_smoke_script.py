@@ -1373,18 +1373,6 @@ class TestSmokeScriptText:
             "smoke must check all three context pack modes"
         )
 
-    def test_smoke_has_worker_recommend(self):
-        text = _script_text()
-        assert "worker recommend" in text, (
-            "smoke must call remedy worker recommend"
-        )
-
-    def test_smoke_worker_recommend_checks_schema(self):
-        text = _script_text()
-        assert "recommended_worker" in text and "token_mode" in text, (
-            "smoke must verify worker recommend JSON schema"
-        )
-
     # --- Step 54-56: Brain nodes (step 12t) ----------------------------------
 
     def test_smoke_brain_checks_change_set_node(self):
@@ -1407,12 +1395,6 @@ class TestSmokeScriptText:
         text = _script_text()
         assert "worker show" in text, (
             "smoke must call remedy worker show"
-        )
-
-    def test_smoke_has_worker_explain(self):
-        text = _script_text()
-        assert "worker explain" in text, (
-            "smoke must call remedy worker explain"
         )
 
     # --- Step 65: Repo status + git_status brain (steps 12x-12y) -------------

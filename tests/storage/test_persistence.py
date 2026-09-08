@@ -213,35 +213,6 @@ class TestTokenEconomy:
             for line in lines:
                 assert len(line) < 200, f"Caveman line too long: {line[:50]}..."
 
-    def test_worker_recommend_json_schema(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.worker_recommend import (
-            export_worker_recommendation_json,
-            recommend_worker,
-        )
-        rec = recommend_worker(job, [])
-        exported = export_worker_recommendation_json(rec)
-        required = {
-            "version", "job_id", "recommended_worker", "reason",
-            "token_mode", "estimated_context_tokens",
-            "requires_approval", "candidates",
-        }
-        assert required <= set(exported.keys())
-        assert exported["version"] == 1
-
-    def test_worker_recommend_local_first(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.worker_recommend import recommend_worker
-        rec = recommend_worker(job, [])
-        assert rec.recommended_worker == "ollama"  # local-first
-        assert not rec.requires_approval
-
     def test_token_policy_json_has_all_fields(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         job = _make_job()
@@ -287,19 +258,6 @@ class TestTokenEconomy:
         required = {"mode", "max_context_tokens", "local_first"}
         assert required <= set(meta.keys()), f"missing: {required - set(meta.keys())}"
         assert meta["local_first"] is True
-
-    def test_worker_recommend_no_execution(self, tmp_path, monkeypatch):
-        """Worker recommend must not execute any provider."""
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        job = _make_job()
-        save_job(job)
-
-        from packages.orchestration.worker_recommend import recommend_worker
-        rec = recommend_worker(job, [])
-        # All candidates must be inert metadata — no subprocess, network, or shell
-        for c in rec.candidates:
-            assert c.execution_mode in ("local_process", "external_harness", "api")
-            assert c.status in ("available", "future")
 
     def test_all_modes_obey_redaction(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

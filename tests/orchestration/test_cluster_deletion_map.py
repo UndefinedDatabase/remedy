@@ -61,7 +61,6 @@ CLUSTER_MODULES = (
     "packages.orchestration.execution_approval_policy",
     "packages.orchestration.progress_ledger",
     "packages.orchestration.review_bundle",
-    "packages.orchestration.worker_recommend",
     "packages.orchestration.feature_planner",
 )
 
@@ -70,7 +69,7 @@ CLUSTER_MODULES = (
 # `apps/cli/commands/worker.py` and `apps/cli/commands/context.py` keep only
 # SURVIVING commands and are deliberately NOT listed here, so they stay
 # measurable. F274 round 4 moved their cluster-bound handlers out into
-# `context_pack_cmd.py` and `worker_recommend_cmd.py` for exactly that reason.
+# `context_pack_cmd.py` for exactly that reason.
 CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/builder_routing_cmd.py",
     "apps/cli/commands/candidate_quality_cmd.py",
@@ -90,7 +89,6 @@ CLUSTER_COMMAND_HANDLERS = (
     "apps/cli/commands/route_policy_cmd.py",
     "apps/cli/commands/self_repair_cmd.py",
     "apps/cli/commands/tournament_cmd.py",
-    "apps/cli/commands/worker_recommend_cmd.py",
 )
 
 # Production trees a surviving consumer can live in. `tests/` is deliberately

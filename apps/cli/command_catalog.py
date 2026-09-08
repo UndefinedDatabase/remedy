@@ -1576,17 +1576,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
-        command_id="worker.recommend",
-        group_id="worker",
-        subcommand="recommend",
-        description="Recommend a worker for a job (local-first, no execution).",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("worker.list", "policy.token"),
-    ),
-
-    CommandEntry(
         command_id="worker.show",
         group_id="worker",
         subcommand="show",
@@ -1595,17 +1584,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(ArgDef("provider_id", "Provider ID (e.g. ollama)"), _JSON_OPT),
         supports_json=True,
         related=("worker.list",),
-    ),
-
-    CommandEntry(
-        command_id="worker.explain",
-        group_id="worker",
-        subcommand="explain",
-        description="Explain worker recommendation scoring for a job.",
-        action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
-        supports_json=True,
-        related=("worker.recommend", "policy.token"),
     ),
 
     CommandEntry(

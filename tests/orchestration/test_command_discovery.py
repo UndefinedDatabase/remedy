@@ -226,35 +226,6 @@ class TestWorkerShow:
 
 
 
-class TestWorkerExplain:
-    def test_explain_cli_help(self):
-        result = subprocess.run(
-            [sys.executable, "-m", "apps.cli.grouped", "worker", "explain", "--help"],
-            capture_output=True, text=True, timeout=10,
-        )
-        assert result.returncode == 0
-        assert "job_id" in result.stdout.lower()
-
-    def test_explain_produces_scoring(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.storage import save_job
-        from packages.orchestration.worker_recommend import recommend_worker
-
-        job = Job(
-            id=uuid4(), name="explain-test", user_prompt="test",
-            tasks=[Task(description="t", status=RunState.PENDING)],
-        )
-        save_job(job)
-        rec = recommend_worker(job, [])
-        assert rec.recommended_worker == "ollama"
-        assert len(rec.candidates) >= 3
-        # ollama should score highest (local + available)
-        assert rec.candidates[0].provider_id == "ollama"
-        assert rec.candidates[0].score > rec.candidates[-1].score
-
-
-
-
 class TestWorkerBrainNode:
     def test_worker_adapter_node_in_graph(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

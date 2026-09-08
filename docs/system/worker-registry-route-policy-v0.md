@@ -89,8 +89,8 @@ All are catalog + run_contract backed. None carry `may_execute_commands`. None e
 
 ## Relationship to the existing `worker` group
 
-There is a pre-existing `worker` group (`worker_adapters.py` / `worker_recommend.py` /
-`worker_queue.py`) that catalogs **providers** (`ollama`, `claude_code`, …) and includes a
+There is a pre-existing `worker` group (`worker_adapters.py` / `worker_queue.py`) that catalogs
+**providers** (`ollama`, `claude_code`, …) and includes a
 `worker run` execution loop. That is a **different taxonomy**. To avoid breaking it, the Worker
 Registry is surfaced as `worker registry-*` plus the new `route-policy` group. The two views coexist
 intentionally; a future block may unify them.
