@@ -3030,7 +3030,9 @@ def create_manual_completion_bundle(
 
     # 1) The committed review subject — resolved once by the production helper.
     subject = resolve_review_subject(repo_root, base_commit)
-    authority = sorted({f.path for f in subject.files if is_attestable_source(f.path)})
+    # A path DELETED in this range has no content at the head tip, so it can attest no sha256 and no
+    # safe diff; leaving it in the authority set makes the two checks below jointly unsatisfiable (R-0837).
+    authority = sorted({f.path for f in subject.files if is_attestable_source(f.path) and f.current_sha256})
     opstate = sorted(p for p in (f.path for f in subject.files) if not is_attestable_source(p))
     if not authority:
         raise ValueError("no attestable source files changed between base and head")

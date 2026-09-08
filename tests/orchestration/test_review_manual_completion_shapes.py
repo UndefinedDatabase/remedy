@@ -421,3 +421,61 @@ class TestMixedCompletionIdentityBlocks:
         assert _brm._is_manual_completion(ev) is True
         vc = _brm.validate_evidence_candidate(ev)
         assert not any("mixed completion identity" in e for e in vc["validation_errors"])
+
+
+class TestDeletedSourceFileDoesNotBlockTheBundle:
+    """R-0837 — a branch that DELETES an attestable source file must still be packageable: without
+    the ``f.current_sha256`` guard on the authority comprehension this same call raises ``ValueError``
+    from one of two mutually exclusive checks — with the deleted path INSIDE the task partition it
+    fails ``T00n: safe-diff path set does not match the task partition``, and with it OUTSIDE it
+    fails ``task partition does not exactly cover the attestable authority set``."""
+
+    def test_deleted_path_is_excluded_and_the_bundle_builds(self, tmp_path):
+        import subprocess
+
+        from packages.orchestration.job_evidence import create_manual_completion_bundle
+
+        repo = tmp_path / "repo"
+        _init_repo(repo)
+        # Base: three attestable source files, plus the tests the verification run names.
+        _commit(repo, "src_pkg/alpha.py", "def a():\n    return 1\n", "base alpha")
+        _commit(repo, "src_pkg/beta.py", "def b():\n    return 2\n", "base beta")
+        _commit(repo, "src_pkg/gamma.py", "def g():\n    return 3\n", "base gamma")
+        _commit(repo, "tests_pkg/test_alpha.py", "def test_a():\n    assert True\n", "base ta")
+        _commit(repo, "tests_pkg/test_beta.py", "def test_b():\n    assert True\n", "base tb")
+        base = _rev(repo)
+
+        # Head: two of those source files MODIFIED, exactly one DELETED.
+        _commit(repo, "src_pkg/alpha.py", "def a():\n    return 10\n", "work alpha")
+        _commit(repo, "src_pkg/beta.py", "def b():\n    return 20\n", "work beta")
+        subprocess.run(["git", "rm", "-q", "src_pkg/gamma.py"], cwd=repo, check=True,
+                       capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "drop gamma"], cwd=repo, check=True,
+                       capture_output=True)
+        head = _rev(repo)
+
+        runs = [{"run_id": "vr-0001", "command": "pytest -q tests_pkg", "exit_code": 0,
+                 "passed": 2, "failed": 0, "test_files": ["tests_pkg/test_alpha.py",
+                 "tests_pkg/test_beta.py"],
+                 "node_ids": ["tests_pkg/test_alpha.py::test_alpha",
+                              "tests_pkg/test_beta.py::test_beta"],
+                 "stdout_summary": "2 passed"}]
+        evd = tmp_path / "evidence"
+        # The call RETURNS rather than raising: this statement WAS the ValueError before the guard.
+        summary = create_manual_completion_bundle(
+            str(evd), repo_root=str(repo), base_commit=base, head_commit=head,
+            job_id="r0837deletion01", job_title="R-0837 deletion bundle", step_range="1-2",
+            prior_job_ids=["priorr08370001"], verification_runs=runs,
+            timestamp="2026-09-08T00:00:00+00:00",
+            generated_at="2026-09-08T00:00:00.000000+00:00", num_tasks=2,
+            note_prefix="R-0837 deletion bundle", review_feature_id="r0837deletion")
+
+        assert summary["verdict"] == "PASS_WITH_RISKS"
+
+        proof = json.loads((evd / "current_change_content_proof.json").read_text(encoding="utf-8"))
+        hashes = proof["file_hashes"]
+        # The deleted path has no content at the head tip, so it attests nothing.
+        assert "src_pkg/gamma.py" not in hashes, sorted(hashes)
+        # Every SURVIVING changed source path still attests its content.
+        for surviving in ("src_pkg/alpha.py", "src_pkg/beta.py"):
+            assert surviving in hashes, sorted(hashes)
