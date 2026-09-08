@@ -63,8 +63,15 @@ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 #: atomic record flip and the classic runner), was registered on 2026-09-08 by
 #: DECISION F274 D8, which split it off F274 at the standing soft limit of 7
 #: sessions and 25 rounds and placed it directly after its parent per
-#: amend0906-split-placement; see T2_F275.md.
-TOTAL_FEATURES = 275
+#: amend0906-split-placement; see T2_F275.md. Four more — F276 (data-root
+#: hygiene & disk budget), F277 (machine contracts: event vocabulary, JSON
+#: envelope, exit codes), F278 (durable writes & loud failures) and F279
+#: (configuration & toolchain truth: env registry, pinned dependencies, block
+#: lint) — were registered on 2026-09-08 by operator order
+#: amend0908-brainstorm-intake, which landed the verified proposals of that
+#: day's four `remedy brain` runs; see T2_F276.md, T2_F277.md, T2_F278.md and
+#: T2_F279.md.
+TOTAL_FEATURES = 279
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

@@ -204,6 +204,7 @@ ARCHITECTURE_FILES = {
     "test_imports.py",
     "test_reserved_namespaces.py",
     "test_data_paths.py",
+    "test_subprocess_timeouts.py",
 }
 
 

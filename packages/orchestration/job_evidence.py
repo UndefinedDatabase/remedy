@@ -3018,7 +3018,8 @@ def create_manual_completion_bundle(
 
     def _git(*args: str) -> str:
         return subprocess.run(["git", "-C", repo_root, *args],
-                              capture_output=True, text=True).stdout
+                              capture_output=True, text=True,
+                              timeout=60).stdout
 
     if head_commit is None:
         head_commit = _git("rev-parse", "HEAD").strip()
