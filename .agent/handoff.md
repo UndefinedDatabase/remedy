@@ -453,3 +453,167 @@ next block the reviewer re-reads `.agent/STOP` (Phase 1 rule 1 before rule 2), a
 generalises further: an AST importer sweep is necessary and NOT sufficient — this round's three
 non-importing consumers were a shell script, a text-reading guard suite and a subprocess `--help`
 test, and only running the suite found the last of them.
+
+## Reviewer verdict on round 7 — appended after the handback, by the reviewer's authored text
+
+VERDICT ROUND 7: **PASS.** Written by the planner/reviewer of session 3 AFTER reading the
+committed range `d4402dc2`..`ce671728` and RE-RUNNING every gate independently against the
+committed blobs; the worker's report was not taken as evidence for any line below. It is
+carried here because under `docs/agents/self_drive_protocol.md` a verdict that stays in the
+session is lost, and it is booked into `.agent/live_review.md` by the FIRST commit of the next
+round that is happening anyway, per amend0827-process-diet rule 1. It is NOT a `Done:`
+paragraph and resolves no finding.
+
+WHAT THE REVIEWER RE-MEASURED. The change set is EXACTLY the nineteen paths the block's
+enumeration names, by `git diff --name-status`, in seven single-parent commits C0a `dbefb640`,
+C0b `596c7780`, C1 `793f139f`, C2 `8f23fc41`, C3 `1e870c39`, C4 `2cb9d947` and C6 `ce671728`,
+with no C5 commit, each parent verified by `git rev-list --parents`. G1: the reviewer's own
+scratch original, the committed `.agent/authored/f275-r7.md` and the committed
+`.agent/last_block.md` are all 35103 bytes at `32dbccc7104faa375e0a18a9f70b72fb8dd06dadb568a9890c72f285a3dc5413`;
+per §3 item 37 that chain covers those three artefacts and claims nothing about emitted bytes.
+G2: `.agent/plan.md` byte-identical to PLAN7 at 2394 bytes and 41 lines. G3: `.agent/live_review.md`
+536113 to 541694, gain 5581 = 1 + 5580; `.agent/prose_slips.md` 171102 to 172799, gain
+1697 = 1 + 1696; both with the pre-image a byte-exact PREFIX and one newline plus the slice a
+byte-exact SUFFIX, N counted from each slice by the reviewer's own reader as 1 and 4 with
+ordered equality holding, units 221 to 222 and 242 to 246, `^Gate: ` 28 to 29,
+`^Gate: F275 R6 ` 0 to 1, and THE OPEN SET UNCHANGED AT 66 BY DISTINCT ID. G4:
+`.agent/decisions.md` 947292 to 953044, gain 5752 = 1 + 5751, edges exact, N = 8,
+`^## DECISION F275 D` 2 to 3 and the D3 heading over exactly one section. G5: both group files
+absent from `git ls-tree` at the tip, `worker.recommend` and `worker.explain` at ZERO over the
+tracked tree. G6: the three ratchets 9 passed, the docs trio 345 passed, the canary 42 passed,
+and through the SHIPPED readers the dispatch table and the catalog are BOTH 336 where the base
+measured 338, with `worker.recommend` and `worker.explain` absent and `worker.list` and
+`worker.show` present; the regenerated order file holds THIRTEEN components with
+`context_pack` first. G7: ruff "All checks passed!" over the six touched Python files, and the
+FULL SUITE RE-RUN BY THE REVIEWER SERIALLY IN THE PRIMARY CHECKOUT is EXIT 0 at 19760 passed
+and 23 skipped with ZERO failures — down EXACTLY EIGHT from round 6's 19768, which is the
+count of tests this round deletes. G8: `git status --porcelain` empty, one worktree, `.agent/STOP`
+absent, and per-commit insertions 385, 295, 17, 10, 16, 6 and 316, every one under the
+DECISION F104 D1 cap of 500.
+
+EIGHT DEVIATIONS WERE DECLARED AND ALL EIGHT ARE SUSTAINED. THREE OF THEM ARE THE REVIEWER'S
+OWN GATE CLAUSES BEING WRONG, and the worker measured each rather than reporting the number
+the block asked for. G5 ordered `recommend_worker` to ZERO while the reviewer's own
+must-not-touch list keeps `docs/roadmap/features/T2_F272.md`, which contains it — the two
+clauses of one gate contradicted each other and the worker obeyed the must-not-touch half,
+which is the correct half. G5 ordered the shell string `worker recommend` to ZERO in `scripts/`
+and `tests/`, and one literal survives in a class docstring at
+`tests/storage/test_persistence.py:180`. G5 predicted a seven-file survivor set for
+`worker_recommend` and the true set is FIVE, because this round's own step (9) takes
+`tests/orchestration/test_cluster_deletion_map.py` to zero and `tests/STEP_TEST_MIGRATION.md`
+never held that token at all — it holds `TestWorkerExplain`, which the reviewer conflated with
+it. All three are dated `.agent/prose_slips.md` lines rather than ids, per amend0827 rule 2,
+because not one put anything wrong on disk. A FOURTH DEVIATION IS THE WORKER'S APPLICATION
+BEING BETTER THAN THE REVIEWER'S: three of C4's twelve numstat cells exceed the reviewer's dry
+run by three to five deletions each, because the worker took every deleted unit together with
+its separating blank line while the reviewer's own AST prune left the blanks behind, which
+would have left a nine-blank run between two classes. The reviewer inspected the committed
+diff and confirms the worker's reading is the correct one; the other nine cells reproduce
+exactly.
+
+ONE DEVIATION IS A REAL DEFECT ON DISK AND IS REGISTERED AS A FINDING, not as a prose slip.
+See the R-0841 draft below.
+
+WHAT THIS ROUND ACHIEVED. The second module group is gone, DECISION F275 D3 rules the deletion
+order a CERTIFICATE rather than a queue — so a round may take any component no surviving
+cluster module imports, which is what let this round choose a 170-line group over a 2254-line
+one — and the order file now holds thirteen components with `context_pack` first.
+
+## Finding drafted by session 3, to be booked by the next round's first substantive commit
+
+- R-0841 — Low — TWO COMMENTS FALSIFIED BY THE ROUND 7 DELETION SURVIVE ON DISK UNDER `tests/`.
+  `tests/test_remedy_smoke_script.py:1392` still reads
+  `# --- Step 64: Worker show + explain (steps 12v-12w) ----------------------` while section
+  12w and the `remedy worker explain` call it named were deleted from `scripts/remedy_smoke.sh`
+  in the same commit `2cb9d9473cc692f5d19404f8c191d495dfabb294`, and the guard test that read
+  it was deleted beside it; the `remedy_smoke.sh` sibling of that heading WAS repaired, because
+  the block's step (4)(c) named it, and this one was not, because step (5) enumerated three
+  function names without naming the section comment above them. `tests/storage/test_persistence.py:180`
+  still reads `"""Token Economy v1 — context pack modes, worker recommend."""` on a class whose
+  worker-recommend half this round removed. Neither is executable and neither changes a result,
+  so this is LOW; it is an id rather than a `.agent/prose_slips.md` line because the wrong state
+  is on disk under `tests/` rather than in the reviewer's own prose, which is the line
+  amend0827-process-diet rule 2 draws. The worker declined to repair either without an order,
+  which constraint 1 requires of it and which is correct behaviour. FIX CLAUSE, BINDING ON THE
+  NEXT BLOCK THAT TOUCHES EITHER FILE: repair both comments in that same commit, and where a
+  deletion round removes a named step, sweep the SECTION COMMENTS above the deleted units in
+  every file of the change set rather than only in the file whose banner the block happened to
+  name. This is the third occurrence of the class in three rounds — round 6 repaired one such
+  comment in `tests/orchestration/test_cluster_deletion_map.py`, round 7 repaired that same
+  comment a second time as its own TRAP 2, and round 7 then left these two — so the sweep is
+  the counter-measure, not another instance-fix.
+
+## Session 3 ends here — TWO delegated rounds, both reviewed and PASSED
+
+`.agent/STOP` does not exist; it was measured absent at the Phase 0 probe, before authoring
+round 6, before authoring round 7 and again now. The operator cleared the session 2 sentinel,
+which is the only reason this feature continued.
+
+THE REASON THIS SESSION ENDS BELOW THE FOUR-ROUND FLOOR IS STRUCTURAL AND IS NOT "a nice seam".
+After round 7 the deletion certificate's free set — the components no surviving cluster module
+imports — holds exactly TWO members, and the reviewer measured both before stopping. Neither
+is a mechanical deletion round. `packages.orchestration.context_pack` is 317 lines but its
+`context_pack_created` event is READ by two SURVIVING production modules,
+`packages/orchestration/project_brain.py:670` and `packages/orchestration/ui_server.py:1324`
+and `:1794`, so its group edits production code under RULE 3 and must REGISTER a finding for
+the cockpit behaviour that dies with it; it also reaches three separate sections of
+`scripts/remedy_smoke.sh`, their guards in `tests/test_remedy_smoke_script.py`, and
+`docs/system/architecture.md`, which documents the event's metadata contract.
+`packages.orchestration.review_bundle` is 2254 lines with SIXTEEN surviving test importers,
+eight `docs/system/` pages, a `pyproject.toml` per-file ignore and list entry, and
+`scripts/remedy_test_runtime.sh`. THE CHEAP GROUPS ARE NOW GONE: every remaining group is
+either large or touches surviving production code, which is a fact about the cluster and not
+about this session, and it is recorded here so the next session plans for one substantial
+round rather than expecting another two mechanical ones.
+
+The honest reason under amend0905-throughput is therefore "a round that explicitly needs a
+fresh session", and it is the FIRST reason rather than a rationalisation of the second: the
+reviewer's context was also well spent — two full dry runs applied and committed in disposable
+worktrees, and two independent 23-minute serial full-suite runs — and starting a round that
+edits `ui_server.py` without the context left to review it independently would produce an
+unreviewed production change, which is the one outcome this protocol exists to prevent.
+Operator amendment amend0908-f275-finish rule 5 is NOT cited: it forbids ending on
+"authoring errors accumulating" before four delegated rounds, and this session does not end on
+that reason. The reviewer records plainly that it made four block-prose slips in round 6 and
+three in round 7 — seven dated `.agent/prose_slips.md` lines across two rounds — and that every
+one was caught by the worker measuring rather than complying.
+
+CONTEXT SELF-ASSESSMENT, as amend0905-throughput requires in one sentence: the session's cost
+was dominated by two applied dry runs and two independent full-suite verifications, and it ends
+with enough context to write this handoff carefully but not enough to author, delegate and then
+INDEPENDENTLY verify a production-code round of the size both remaining groups demand.
+
+## What the next session owes, in order
+
+FIRST, Phase 1 rule 1: re-read `.agent/STOP` from disk before the Open PR Gate. It does not
+exist as this session ends.
+
+SECOND, the next round's FIRST substantive commit books, from this file as the durable carrier:
+the ROUND 7 PASS verdict above as a `Gate: F275 R7` entry in `.agent/live_review.md`; the
+R-0841 registration above, verbatim, which takes the open set from 66 to 67 BY DISTINCT ID and
+makes the next free id R-0842; and THREE dated `.agent/prose_slips.md` lines for the three
+reviewer gate-clause defects the verdict names — G5's `recommend_worker` zero contradicting the
+block's own must-not-touch list, G5's `worker recommend` shell-string zero against a surviving
+docstring, and G5's seven-file survivor set against a true set of five. `.agent/plan.md` is
+advanced in that same first substantive commit, per §3 item 23.
+
+THIRD, the work. `context_pack` is the recommended next group and is a PRODUCTION-CODE round:
+it needs a dry run that cuts the two surviving consumers' branches, a RULE 3 finding naming the
+cockpit behaviour and the feature that inherits it, the smoke-script sections and their guards,
+and the `docs/system/architecture.md` line. `review_bundle` remains DEFERRED under DECISION
+F275 D3 until a session can carry it whole — a ruling, not an oversight.
+
+NO PULL REQUEST EXISTS and that is correct: under `docs/roadmap/STATUS_closure_protocol.md` the
+pull request belongs to the closure sequence, not to an ordinary round. The branch is pushed
+and `git status --porcelain` is empty.
+
+THREE MEASURED FACTS THE NEXT SESSION SHOULD NOT RE-DERIVE. (1) The deletion order file is
+REGENERATED by the shipped `measured_order()` in every group commit and never line-edited;
+striking a line reds `test_the_recorded_order_equals_the_measured_condensation`, because
+removing a module reorders the condensation. (2) An AST importer sweep is NECESSARY AND NOT
+SUFFICIENT: rounds 6 and 7 between them found a UI catalog pinned to the Python emitters by an
+AST walk, a shell script driving a command by string, a guard suite reading that script as
+text, and a subprocess `--help` test — and only running the full suite found the last. (3) The
+full suite is run SERIALLY; under `pytest -n auto` this tree yields about a dozen failures that
+are the `ui_server` command-channel tests racing for a port and the vitest node, not the change,
+and the reviewer confirmed the same families at 121 passed and EXIT 0 when run serially.
