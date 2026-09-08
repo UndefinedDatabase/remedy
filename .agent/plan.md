@@ -12,13 +12,11 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 11, a DELETION ROUND under operator amendment amend0906-triage-throughput and the first that
-deletes COMMANDS rather than read-only views: delete the `feature` command group entirely — the
-handler file `apps/cli/commands/feature_cmd.py`, its two catalog entries and their group, its
-package wiring, its packaging and allowlist memberships, its boundary-doc row, its two runtime test
-classes and its two deletion-map lines. `feature_planner` and `progress_ledger` both reach ZERO
-recorded edges. DECISION F274 D6 rules the deletion before a line is cut. Book round 10's PASS
-verdict. No cluster module is deleted this round.
+Round 12, a REPAIR ROUND: fix the three stale prose mentions round 11's `feature` command deletion
+left on disk — two in `docs/system/development-artifact-boundary-v0.md` and the module docstring of
+`tests/cli/test_progress_feature_runtime.py`. Book round 11's PASS verdict, register the stale
+prose as R-0835 and resolve it in the same round, and book a RECURRENCE of R-0819 for four wrong
+derived numerals in the round 11 block. No cluster module and no edge moves this round.
 
 ## Next Steps
 
@@ -32,9 +30,9 @@ verdict. No cluster module is deleted this round.
    overnight readiness to `mission readiness`, and the route-policy knobs checked against F110's
    config keys. `mission report` waits for the commit that deletes its current holder, per
    DECISION F274 D2, and that holder is in `worker_facade_cmd.py`.
-3. `orchestrator_brain.py`'s four edges, which the reviewer measured as live signal reads in
-   `_scrub`, `_review_state`, `_gather_signals` and `consult_local_advisor_for_decision` — a
-   surviving module reading cluster modules, so a behaviour change rather than a deletion.
+3. `orchestrator_brain.py`'s four edges, measured as live signal reads in `_scrub`,
+   `_review_state`, `_gather_signals` and `consult_local_advisor_for_decision` — a surviving module
+   reading cluster modules, so a behaviour change rather than a deletion.
 4. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
 5. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it.
 6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
