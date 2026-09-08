@@ -100,9 +100,17 @@ def branch_for(job_id: str) -> str:
     return f"{BRANCH_PREFIX}{validate_job_id(job_id)}"
 
 
+#: Wall-clock ceiling for a single git query in this module. A hung git — a
+#: stale index.lock, a hook that prompts — otherwise blocks the unattended loop
+#: forever, because the deadline budget is checked BETWEEN steps and cannot see
+#: a step that never returns.
+GIT_QUERY_TIMEOUT_SEC = 60
+
+
 def _git(repo: str | Path, *args: str, check: bool = True) -> str:
     proc = subprocess.run(
-        ["git", *args], cwd=str(repo), capture_output=True, text=True, timeout=60,
+        ["git", *args], cwd=str(repo), capture_output=True, text=True,
+        timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     if check and proc.returncode != 0:
         raise WorktreeError(
@@ -255,6 +263,7 @@ def _branch_exists(repo: str | Path, branch: str) -> bool:
     proc = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"],
         cwd=str(repo), capture_output=True, text=True,
+        timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     return proc.returncode == 0
 
@@ -279,6 +288,7 @@ def commit_exists(repo: str | Path, sha: str) -> bool:
     proc = subprocess.run(
         ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
         cwd=str(repo), capture_output=True, text=True,
+        timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     return proc.returncode == 0
 
@@ -294,6 +304,7 @@ def is_ancestor(repo: str | Path, ancestor: str, descendant: str) -> bool:
     proc = subprocess.run(
         ["git", "merge-base", "--is-ancestor", ancestor, descendant],
         cwd=str(repo), capture_output=True, text=True,
+        timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     return proc.returncode == 0
 
@@ -602,6 +613,7 @@ def resolve_checkpoint_ref(repo: str | Path, ref: str) -> str:
     proc = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", ref],
         cwd=str(repo), capture_output=True, text=True,
+        timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
@@ -612,7 +624,7 @@ def delete_checkpoint_ref(repo: str | Path, ref: str) -> str:
         return f"refusing to delete non-checkpoint ref {ref!r}"
     proc = subprocess.run(
         ["git", "update-ref", "-d", ref], cwd=str(repo),
-        capture_output=True, text=True,
+        capture_output=True, text=True, timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     if proc.returncode != 0:
         return proc.stderr.strip()[:200]
@@ -624,7 +636,7 @@ def object_exists(repo: str | Path, sha: str) -> bool:
         return False
     proc = subprocess.run(
         ["git", "cat-file", "-e", sha], cwd=str(repo),
-        capture_output=True, text=True,
+        capture_output=True, text=True, timeout=GIT_QUERY_TIMEOUT_SEC,
     )
     return proc.returncode == 0
 
