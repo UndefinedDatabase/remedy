@@ -1,469 +1,407 @@
-# Handback — F275 ROUND 5 — round 4's PASS is booked, R-0831 is confirmed, and the cluster deletion ORDER operator RULE 2 requires is derived, recorded and ratcheted
+# Handback — F275 ROUND 6 — round 5's PASS is booked and the FIRST `git rm` of this feature has landed: the `context_optimizer` module group is gone and the tree is green
 
-This file supersedes the F275 round 4 handback. It is written by the delegated worker of F275
-round 5 on the reviewer's authored text; the reviewer never edits a work-tree file. It carries NO
+This file supersedes the F275 round 5 handback. It is written by the delegated worker of F275
+round 6 on the reviewer's authored text; the reviewer never edits a work-tree file. It carries NO
 verdict of its own — verdicts live in `.agent/live_review.md`, and this round's C2 booked the
-reviewer's authored F275 round 4 PASS there. NO finding is minted and NONE is resolved this
-round: the R-0831 paragraph C2 appends is a CONFIRMATION, opening `- R-0831 CONFIRMED`, so it
-matches neither the registration pattern nor the resolution pattern and the open set does not
-move. NO production file is touched and nothing is deleted — the first `git rm` is the next
-round's.
+reviewer's authored F275 round 5 PASS there. NO finding is minted and NONE is resolved this
+round: RECORD6 is a `Gate:` entry, matching neither the registration pattern nor the resolution
+pattern, so the open set does not move (measured at G3(f): 66 → 66 by distinct id).
+
+THIS IS THE FIRST `git rm` OF F275, AND OF THE THREE FEATURES THAT CARRIED THIS DELETION BEFORE
+IT. `packages/orchestration/context_optimizer.py` and `apps/cli/commands/context_optimizer_cmd.py`
+are deleted whole, together with their two catalog entries, the `related` member naming one of
+them, the humanize-catalog entry for the event only that handler emitted, their tests, their
+allowlist lines and their cluster-map lines — one commit, `57caf5a0`, and the FULL suite is
+green after it at 19768 passed and 23 skipped, exit 0.
 
 ## State
 
 | Field | Value |
 |---|---|
 | Feature | **F275** — One World Completion, part three |
-| Round | **5** |
-| Session | **2** |
+| Round | **6** |
+| Session | **3** |
 | Branch | `feature/f275-one-world-completion-part-three` |
-| Base (round start) | `a040b60c` — `F275 R4: append the reviewer round 4 PASS verdict to the handback` |
-| HEAD after C4 | `f347dfb0` |
-| HEAD after C6 | the C6 commit that writes this file — see "Deviations & assumptions" |
-| Commits this round | C0a `351058ea`, C0b `807a3fc5`, C1 `83ac6563`, C2 `36704924`, C3 `98c297e0`, C4 `f347dfb0`, plus the C6 commit that writes this file |
-| Change set | NINE paths, exactly the block's enumeration — see deviation 1 on the word "eleven" |
+| Base (round start) | `a1df5d70` — `merge main (amend0908-brainstorm-intake) into f275` |
+| HEAD after C3 (the deletion) | `57caf5a0` |
+| HEAD after C5 | the C5 commit that writes this file — see "Deviations & assumptions" |
+| Commits this round | C0a `3bad8eea`, C0b `e16aff01`, C1 `717fd1e4`, C2 `9b698482`, C3 `57caf5a0`, plus the C5 commit that writes this file. C4 runs the gates and writes no file, so it has no commit. |
+| Change set | FIFTEEN paths, exactly the block's enumeration, fourteen of them landed in C0a..C3 and the fifteenth being this file |
 | Open findings | **66 by distinct id** — 69 distinct registrations against 3 distinct resolutions, UNCHANGED, measured at G3(f) |
 | Pull request | none, and none is owed: under `docs/roadmap/STATUS_closure_protocol.md` the PR belongs to the closure sequence |
-| `.agent/STOP` | does not exist, re-read before C0a, again at C5 and again at G8 |
+| `.agent/STOP` | does not exist — re-read before C0a, again at G7, and again immediately before this file was written |
 
-Full SHAs: `351058ead421b3f13aefae1789b859a1a246302a`, `807a3fc5835a1cf0cd38a1390c2acb83079b26af`,
-`83ac6563373c92e8ad1e40f81bfe1c52555e9141`, `367049240e9865e89e5a456716b456d2a103468e`,
-`98c297e048476465ab34636502cc32bcbd6e85aa`, `f347dfb010c0075fcb479f05d60be7bd0ac5ff41`.
+Full SHAs: `3bad8eea4cf5dc69fc8734d4146fbc32c99abbe5`, `e16aff011dc8ba975b4b27529fe99728ac094a59`,
+`717fd1e4778651130e90bb0205542d7ce3a7055c`, `9b698482fdc4847f6454dfec231a36cfcd85c726`,
+`57caf5a0dadd954da53c1ae4c747ea795f073c31`.
 
 ## Session
 
-SESSION 2 of feature F275 · round 5 · feature rounds so far 5, against the soft limit operator
-amendment amend0908-f275-finish sets BY NAME for F275 — 60 rounds and 20 sessions, not the
-standing 25/7. Nowhere near it.
+`SESSION 3 of feature F275 · round 6 · rounds so far 6`
+
+F275's soft limit is 20 sessions and 60 rounds by operator order amend0908-f275-finish, named for
+F275 alone; at 3 sessions and 6 rounds the limit is far off and no scope report is owed.
 
 ## Range
 
-Review of `a040b60c`..`HEAD`.
+Review of `a1df5d70b09cf30e2519a44d8c4686f06f6e9a6b`..HEAD.
+
+The previous reviewed tip was `250c9089`, the round 5 verdict append; `a1df5d70` is the merge of
+`main` at `b6e0f257` (amend0908-brainstorm-intake, PR 247) into this branch, and it is the base
+the block names.
 
 ## Commits
 
-Every `+/-` column below is the REAL `git diff --numstat` output for that commit, read from the
-tool and not re-derived.
-
-### 351058ea F275 R5 C0a: save the round 5 step block into the authored archive
+### 3bad8eea F275 R6 C0a: save the round 6 step block verbatim.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/authored/f275-r5.md` | 325 / 0 | the round 5 step block, saved by `shutil.copyfile` from the scratch original, never retyped |
+| `.agent/authored/f275-r6.md` | +352 / −0 | the round 6 step block, saved by `shutil.copyfile` from the scratch original — never retyped, never through an editor |
 
-### 807a3fc5 F275 R5 C0b: mirror the round 5 step block into the working copy
+### e16aff01 F275 R6 C0b: mirror the round 6 block to the last-block state file.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/last_block.md` | 248 / 382 | same bytes mirrored to the working copy, again by `shutil.copyfile`; the deletions are round 4's block being replaced |
+| `.agent/last_block.md` | +322 / −295 | the same bytes mirrored, again by `shutil.copyfile`, so all three artefacts hold one digest |
 
-### 83ac6563 F275 R5 C1: rewrite the plan for round 5, the deletion order round
+### 717fd1e4 F275 R6 C1: plan states round 6, the first module-group deletion.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/plan.md` | 21 / 21 | whole-file replacement with PLAN5; 2330 bytes, 41 lines, under the AGENTS.md cap of 50 |
+| `.agent/plan.md` | +16 / −17 | replaced whole with PLAN6, byte-identical at 2244 bytes |
 
-### 36704924 F275 R5 C2: book the round 4 PASS, confirm R-0831, record two prose slips
+### 9b698482 F275 R6 C2: book round 5's PASS and its five prose slips.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/live_review.md` | 4 / 0 | RECORD5 appended: the round 4 gate entry with its PASS verdict, and the R-0831 confirmation |
-| `.agent/prose_slips.md` | 4 / 0 | SLIPS5 appended: two round 4 reviewer-prose slips, dated lines and not ids, per amend0827 rule 2 |
+| `.agent/live_review.md` | +2 / −0 | RECORD6 appended — the F275 R5 `Gate:` record |
+| `.agent/prose_slips.md` | +10 / −0 | SLIPS6 appended — round 5's five dated reviewer-prose lines |
 
-### 98c297e0 F275 R5 C3: record the cluster deletion order and the ratchet holding it
+### 57caf5a0 F275 R6 C3: delete the context_optimizer module group.
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/f275_deletion_order.md` | 41 / 0 | whole new file by `shutil.copyfile`; the order operator RULE 2 requires before the first `git rm` |
-| `tests/orchestration/test_cluster_deletion_order.py` | 185 / 0 | whole new file by `shutil.copyfile`; the ratchet holding that order against the live import graph |
+| `packages/orchestration/context_optimizer.py` | +0 / −179 | `git rm` — the module itself |
+| `apps/cli/commands/context_optimizer_cmd.py` | +0 / −143 | `git rm` — its command handler |
+| `apps/cli/commands/__init__.py` | +1 / −2 | the import line and the same name inside the `for mod in (...)` tuple |
+| `apps/cli/command_catalog.py` | +1 / −30 | the `context.explain` and `context.optimize` entries with their banner, and one member of the surviving `context.inspect` `related` tuple |
+| `apps/ui/src/api/humanizeCatalog.ts` | +0 / −1 | the `context_budget_optimized` entry, which the UI-contract test pins to the Python emitters |
+| `tests/orchestration/test_project_brain.py` | +0 / −61 | the whole `TestContextOptimizer` class and its five test methods, a span of exactly 2791 bytes |
+| `tests/orchestration/import_reachability_allowlist.txt` | +0 / −2 | the module's and the handler's allowlist lines |
+| `tests/orchestration/test_cluster_deletion_map.py` | +1 / −4 | the `CLUSTER_MODULES` and `CLUSTER_COMMAND_HANDLERS` lines, and the comment above the second that named the deleted file |
+| `.agent/f275_deletion_order.md` | +2 / −3 | REGENERATED body from the live graph — deleting the module reorders the condensation, so a line edit would have gone red |
 
-### f347dfb0 F275 R5 C4: rule the atomic deletion unit to be the strongly connected component
+### the C5 commit that writes this file
 | Path | +/- | Reason |
 |---|---|---|
-| `.agent/decisions.md` | 16 / 0 | DECISION F275 D2 appended, ruling the atomic unit and recording the cyclicity measurement behind it |
-
-### C6 — the commit that writes this file
-| Path | +/- | Reason |
-|---|---|---|
-| `.agent/handoff.md` | see deviation 6 | a handback cannot table the commit that writes it (R-0149 pattern); the reviewer measures C6 at the next gate |
-
-No commit is oversize: the largest insertion count is C0a's 325, and C0a and C0b are in any case
-the AGENTS.md DECISION F104 D1 exemption for a verbatim rewrite of a single `.agent/**` state
-file. Every commit is single-parent, verified at G8.
-
-## External actions
-
-| Command | Outcome |
-|---|---|
-| `git push -u origin feature/f275-one-world-completion-part-three` | exit 0 — `a040b60c..f347dfb0`, branch set up to track the remote |
-| `git worktree add /home/decodeux/Repos/remedy/.remedy-wt/g6-wt HEAD --detach` | exit 0 — disposable worktree for G6's two RED controls only, per guardrail G5 |
-| `git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g6-wt --force` | exit 0 — removed BY ITS EXACT PATH; `git worktree list` then shows only the primary checkout |
-| `git push` of the C6 commit | run after this file is committed |
-
-No PR was created, none was edited, none was merged, and no branch was created.
-
-## Verification
-
-ONE LINE PER GATE, with the REAL exit code:
-
-| Gate | Command / subject | Exit | Result |
-|---|---|---|---|
-| G1 TRANSPORT | sha256 + bytes of scratch, committed `.agent/authored/f275-r5.md`, committed `.agent/last_block.md` | 0 | all three ONE value: `6bcc12bd…b822b5`, 34690 bytes, 325 lines |
-| G2 THE PLAN | `.agent/plan.md` byte-identical to PLAN5 | 0 | `ee3806a0…d4cb4`, 2330 bytes, 41 lines (< 50); `^## Goal$` 1, `^## Next Steps$` 1 |
-| G3 THE RECORD | seven parts (a)–(g) over `.agent/live_review.md` and `.agent/prose_slips.md` | 0 | every reading matched the block's prediction exactly; transcript below |
-| G4 THE TWO NEW FILES | committed blobs vs scratch originals, `git ls-tree a040b60c`, ruff, `ast.parse` | 0 | both digests equal, both `ls-tree` results EMPTY, ruff "All checks passed!", parse clean |
-| G5 THE DECISION | `.agent/decisions.md` edges, negative control, section counts | 0 | 927408 → 933355; prefix and suffix exact; both readers reject the mutant; `D` 1 → 2, `D2 ` exactly 1 |
-| G6 THE RATCHET | green in the primary checkout, then TWO red controls in the disposable worktree | 0 | green 0 at 9 passed; control 1 exit 1; restore exit 0; control 2 exit 1 — both controls named the predicted message |
-| G7 THE SUITES | three suites, primary checkout, each run ALONE | 0 | 12889 passed / 10 skipped; 315 passed; 42 passed |
-| G8 THE TREE | STOP, status, branch, worktrees, path scope, three untouched files, commit order | 0 | all clauses true; run LAST, after G1–G7 |
-
-### G3 transcript
-
-    $ python3 .remedy-wt/r5_g3.py    -> exit 0
-    (a) BYTES
-        before (blob at a040b60c): 527075   block states 527075
-        after  (committed HEAD)  : 533079   gain: 6004
-    (b) EXACT EDGES
-        pre-commit blob is a byte-exact PREFIX: True
-        RECORD5 is a byte-exact SUFFIX        : True
-    (c) ORDERED EQUALITY, N counted from the slice by the script, never taken from the block
-        N (RECORD5 paragraphs) = 2
-        unit 1: file=7f7b4c684399d13e… slice=7f7b4c684399d13e… equal=True
-        unit 2: file=07f3b6d426e5101c… slice=07f3b6d426e5101c… equal=True
-        ORDERED EQUALITY: True
-    (d) NEGATIVE CONTROL on the FIRST appended paragraph, in memory only, byte flipped at 527096
-        reader of (b) REJECTED the mutant: True   (prefix still True, suffix False)
-        reader of (c) REJECTED the mutant: True
-        tracked file re-read after the control: 533079 bytes, unchanged: True
-    (e) COUNTS
-        blank-line units : 218 -> 220   (block expects 218 -> 220)  MATCH
-        '^Gate: '        :  26 ->  27   (block expects  26 ->  27)  MATCH
-        '^Gate: F275 R4 ':   0 ->   1   (block expects   0 ->   1)  MATCH
-    (f) THE OPEN SET DOES NOT MOVE
-        distinct '^- R-\d+ — '     ids: 69 -> 69   (block expects 69 -> 69)
-        distinct '^Done: R-\d+ — ' ids:  3 ->  3   (block expects  3 ->  3)
-        raw '^Done: R-\d+ — ' LINES:      5 ->  5  — NOT subtracted; DISTINCT IDS were
-        OPEN SET BY DISTINCT ID:        66 -> 66   (block expects 66 -> 66)
-        '^- R-0831 CONFIRMED':            0 ->  1   (block expects  0 ->  1)
-    (g) .agent/prose_slips.md
-        before 168666 (block states 168666), after 169429
-        pre-blob exact PREFIX: True   SLIPS5 exact SUFFIX: True
-
-### G4 transcript
-
-    $ python3 .remedy-wt/r5_g4.py    -> exit 0
-    .agent/f275_deletion_order.md
-      committed blob  : sha256=410360ec0225340aff2bf4ff61d743598500d21d105c37e3e55b72a21a65fed4 bytes=2714
-      scratch original: sha256=410360ec0225340aff2bf4ff61d743598500d21d105c37e3e55b72a21a65fed4 bytes=2714
-      constraint 4    : sha256=410360ec…a65fed4 bytes=2714  -> EQUAL
-      git ls-tree a040b60c -- .agent/f275_deletion_order.md: b'' EMPTY=True (an addition, not an overwrite)
-    tests/orchestration/test_cluster_deletion_order.py
-      committed blob  : sha256=a80d4c9610cc89afb2cf2eb6bd9d56d5e31745dcc0d4644f6649f75efefbf1f7 bytes=7792
-      scratch original: sha256=a80d4c9610cc89afb2cf2eb6bd9d56d5e31745dcc0d4644f6649f75efefbf1f7 bytes=7792
-      constraint 4    : sha256=a80d4c96…fefbf1f7 bytes=7792  -> EQUAL
-      git ls-tree a040b60c -- tests/orchestration/test_cluster_deletion_order.py: b'' EMPTY=True
-    $ python3 -m ruff check tests/orchestration/test_cluster_deletion_order.py   -> exit 0
-      All checks passed!
-    ast.parse: CLEAN
-
-Both digests and byte counts were verified BEFORE the copy and again AFTER it, as constraint 4
-orders; the pre-copy reading is in the C3 transcript and the post-copy reading is above.
-
-### G5 transcript
-
-    $ python3 .remedy-wt/r5_g5.py    -> exit 0
-    before 927408 (block states 927408), after 933355, gain 5947 = 1 + 5946
-    pre-blob byte-exact PREFIX: True    DECISION5 byte-exact SUFFIX: True
-    NEGATIVE CONTROL in memory only, byte flipped at offset 927439:
-      edge reader REJECTED the mutant   : True   (prefix True, suffix False)
-      section reader REJECTED the mutant: True
-      tracked file re-read: 933355 bytes, unchanged: True
-    '^## DECISION F275 D'  : 1 -> 2   (block expects 1 -> 2)
-    '^## DECISION F275 D2 ': heads exactly 1 section
-
-### G6 transcript
-
-    $ python3 -m pytest tests/orchestration/test_cluster_deletion_order.py \
-        tests/orchestration/test_cluster_deletion_map.py \
-        tests/orchestration/test_import_reachability.py -q     [PRIMARY CHECKOUT]  -> exit 0
-      9 passed in 5.45s
-
-    $ git worktree add .remedy-wt/g6-wt HEAD --detach           -> exit 0
-    control 1 — SWAPPED order-file line 37 (overnight_executor) with line 40 (overnight_readiness)
-    $ python3 -B -m pytest tests/orchestration/test_cluster_deletion_order.py -q -p no:cacheprovider
-                                                                -> exit 1
-      2 failed, 1 passed in 0.57s
-      message: "packages.orchestration.overnight_executor imports packages.orchestration.overnight_readiness,
-                but packages.orchestration.overnight_readiness is deleted first"
-    restore — swap undone                                       -> exit 0   3 passed in 0.55s
-    control 2 — DELETED order-file line 32 (packages.orchestration.context_pack)
-    $ python3 -B -m pytest tests/orchestration/test_cluster_deletion_order.py -q -p no:cacheprovider
-                                                                -> exit 1
-      2 failed, 1 passed in 0.58s
-      message: "on disk but not in the order: ['packages.orchestration.context_pack']"
-    $ git worktree remove /home/decodeux/Repos/remedy/.remedy-wt/g6-wt --force  -> exit 0
-    $ git worktree list
-      /home/decodeux/Repos/remedy  f347dfb0 [feature/f275-one-world-completion-part-three]
-
-Both controls reproduced the reviewer's predicted 2 failed / 1 passed and the predicted messages
-exactly. Both ran ONLY inside the disposable worktree; the primary checkout's order file was
-never mutated, which G8's clean `git status --porcelain` confirms.
-
-### G7 transcript
-
-    $ python3 -m pytest tests/orchestration/ -q                      -> exit 0
-      12889 passed, 10 skipped, 1 warning in 730.05s (0:12:10)
-      BASE 12886 + 10 skipped; DISCRIMINATING UPWARD by exactly the three tests C3 adds.
-      Run in the PRIMARY CHECKOUT, as the gate orders, so the vitest node in
-      test_test_runner.py has apps/ui/node_modules and passes for the environment it needs.
-    $ python3 -m pytest tests/docs/ tests/test_test_categories.py -q  -> exit 0
-      315 passed in 0.51s        BASE 315 — NO-REGRESSION; the new test file trips no pin.
-    $ python3 -m pytest tests/cli/test_golden_path.py -q              -> exit 0
-      42 passed in 21.23s        BASE 42 — the canary, NO-REGRESSION.
-
-Every one of the three measured counts equals the block's prediction; no number was adjusted to
-meet one, and no code or test was changed to satisfy a gate.
-
-### G8 transcript
-
-    $ python3 .remedy-wt/r5_g8.py    -> exit 0
-    .agent/STOP exists: False                                    (required absent)
-    git status --porcelain: '' EMPTY
-    branch: feature/f275-one-world-completion-part-three
-    git worktree list: 1 entry, the primary checkout only
-    git diff --name-only a040b60c..HEAD:
-      .agent/authored/f275-r5.md          .agent/decisions.md
-      .agent/f275_deletion_order.md       .agent/last_block.md
-      .agent/live_review.md               .agent/plan.md
-      .agent/prose_slips.md               tests/orchestration/test_cluster_deletion_order.py
-      under packages/, apps/ or docs/: []  -> NONE
-    byte-identical to their blobs at a040b60c:
-      tests/orchestration/cluster_deletion_map.txt          2566 bytes   IDENTICAL
-      tests/orchestration/import_reachability_allowlist.txt 12000 bytes  IDENTICAL
-      packages/orchestration/overnight_readiness.py         41354 bytes  IDENTICAL
-      (each read with `git show a040b60c:<path>` into memory, never by overwriting the tracked file)
-    commit order over the range: C0a, C0b, C1, C2, C3, C4 — each single-parent
-
-## Authored-text proofs
-
-Re-extracted from the COMMITTED `.agent/authored/f275-r5.md` and compared disk to disk against
-the tracked files, so the proof runs against the archive rather than against the scratch copy:
-
-| Slice | Target | Mode | Bytes | Units | Match |
-|---|---|---|---|---|---|
-| PLAN5 | `.agent/plan.md` | whole file | 2330 | 10 | True |
-| RECORD5 | `.agent/live_review.md` | suffix | 6003 | 2 | True |
-| SLIPS5 | `.agent/prose_slips.md` | suffix | 762 | 2 | True |
-| DECISION5 | `.agent/decisions.md` | suffix | 5946 | 8 | True |
-
-Both whole new files were verified by digest and byte count against the scratch original, before
-and after `shutil.copyfile`, and again against the committed blob at G4:
-
-| Source | Target | Mode | Match |
-|---|---|---|---|
-| `.remedy-wt/f275-r5-ORDER.md` | `.agent/f275_deletion_order.md` | `shutil.copyfile` | True |
-| `.remedy-wt/f275-r5-TEST.py` | `tests/orchestration/test_cluster_deletion_order.py` | `shutil.copyfile` | True |
-
-NO slice was edited. Every authored text was applied byte for byte; nothing was reflowed,
-re-sorted or repaired, and constraint 7's ban on tidying the generated order lines was honoured.
+| `.agent/handoff.md` | see "Deviations & assumptions" | a handoff cannot table the commit that writes it (R-0149 pattern); the real `+/-` columns go to the reviewer in the round report instead of as a guess written here |
 
 ## Item status
 
 | Item | Status | Reason |
 |---|---|---|
-| C0a | done | `351058ea` — block saved to `.agent/authored/f275-r5.md` by `shutil.copyfile` |
-| C0b | done | `807a3fc5` — block mirrored to `.agent/last_block.md` by `shutil.copyfile` |
-| C1 | done | `83ac6563` — `.agent/plan.md` replaced whole with PLAN5 |
-| C2 | done | `36704924` — RECORD5 and SLIPS5 appended, one commit, two files |
-| C3 | done | `98c297e0` — order file and ratchet landed together, ONE commit, per constraint 5 |
-| C4 | done | `f347dfb0` — DECISION F275 D2 appended |
-| C5 | done | all eight gates RUN, after C4 and strictly before C6; writes no file and has no commit |
-| C6 | done | this file, rewritten and committed as the round's last commit |
-| G1 | done | exit 0 — transport chain is one value |
-| G2 | done | exit 0 — plan byte-identical to PLAN5 |
-| G3 | done | exit 0 — seven parts, every reading as predicted |
-| G4 | done | exit 0 — both new files are the reviewer's bytes, both additions |
-| G5 | done | exit 0 — decision edges, control and counts |
-| G6 | done | exit 0 — green, then both red controls red in the disposable worktree |
-| G7 | done | exit 0 — 12889/10 skipped, 315, 42, each suite run alone in the primary checkout |
-| G8 | done | exit 0 — run LAST; tree clean, scope held, three untouched files identical |
+| C0a | done | `3bad8eea` |
+| C0b | done | `e16aff01` |
+| C1 | done | `717fd1e4` |
+| C2 | done | `9b698482` |
+| C3 | done | `57caf5a0` |
+| C4 | done | gates G1..G7 all RUN; writes no file and has no commit, as the block orders |
+| C5 | done | the commit that writes this file, pushed after it |
+| G1 | done | exit 0 — one digest across all three artefacts |
+| G2 | done | exit 0 — byte-identical to PLAN6 |
+| G3 | done | exit 0 — every predicted numeral reproduced |
+| G4 | done | deviated on the grep's exclusion set and on one numeral — see deviations 1 and 2; the property holds |
+| G5 | done | deviated on the ui_contracts split and on the denied binary — see deviations 3 and 4 |
+| G6 | done | exit 0 — ruff clean, full suite 19768 passed / 23 skipped |
+| G7 | done | deviated on ordering — see deviation 5 |
 
-No ordered item is absent, none was skipped, and none was deviated from in substance; the six
-deviations below are all block-internal wording or count disagreements, declared rather than
-silently repaired.
+## External actions
+
+| Action | Outcome |
+|---|---|
+| `git push -u origin feature/f275-one-world-completion-part-three` | `a1df5d70..57caf5a0`, branch set up to track origin |
+| `git push` (after C5) | pushes the commit that writes this file |
+| `remedy --all-commands` | DENIED by the session sandbox, verbatim: `This command requires approval`. G5 permits an honest denial here and routes the binding reading to the catalog. |
+| worktree add / remove | NONE. No destructive verification was needed: the whole round is additive-or-deleting on the branch and every gate reads committed blobs or runs a read-only suite. `git worktree list` shows only the primary checkout. |
+| PR create / merge | NONE. No PR is created or merged this round. |
+
+## Verification
+
+Seven gates, every one RUN, real exit codes.
+
+| Gate | Exit | Headline |
+|---|---|---|
+| G1 TRANSPORT | 0 | scratch original, `.agent/authored/f275-r6.md` and `.agent/last_block.md` all **26012 bytes** at `689b75aba03bfa19730fb9cace7495290cc9341fbd48046d99a62b2b0748be99` — ONE value |
+| G2 THE PLAN | 0 | `.agent/plan.md` **2244 bytes**, sha256 `8e92db53…c586c7`, byte-identical to PLAN6; **40 lines** against the AGENTS.md cap of 50; `^## Goal$` ×1, `^## Next Steps$` ×1 |
+| G3 THE RECORD | 0 | live_review 533079→536113 (gain 3034 = 1+3033); prose_slips 169429→171102 (gain 1673 = 1+1672); both edges exact; N counted from the slices = 1 and 5; negative controls REJECTED by both readers with the tracked files unchanged on disk; units 220→221 and 237→242; `^Gate: ` 27→28; `^Gate: F275 R5 ` 0→1; **open set 66→66 by distinct id** |
+| G4 THE DELETION IS COMPLETE | 0 | both paths absent from `git ls-tree` at the tip; six dead symbols at ZERO over the tracked tree; `context_optimizer` at EXACTLY ONE non-ignored file; `context_budget_optimized` in exactly the THREE named files — see deviations 1 and 2 |
+| G5 RATCHETS AND DISPATCH | 0 | ratchets **9 passed**; `tests/ui_contracts/` **809 passed, 4 skipped**; dispatch table **338**, `context.explain`/`context.optimize` ABSENT, `context.inspect`/`context.pack` PRESENT; catalog carries ZERO of the two dead ids in a `command_id` or a `related` tuple — see deviations 3 and 4 |
+| G6 RUFF AND THE FULL SUITE | 0 | `All checks passed!`; FULL suite in the PRIMARY checkout **19768 passed, 23 skipped, 1 warning in 1433.97s**, exit **0**, ZERO failures — so the known-environment question G6 raises never arose |
+| G7 THE TREE | 0 | no `.agent/STOP`; `git status --porcelain` EMPTY (0 lines); branch correct; ONE worktree; range = the block's paths; every commit single-parent in order C0a, C0b, C1, C2, C3 with NO C4 commit — see deviation 5 |
+
+### G1 — transport
+
+    git show HEAD:.agent/authored/f275-r6.md | sha256sum   → 689b75ab…48be99, 26012 bytes
+    git show HEAD:.agent/last_block.md       | sha256sum   → 689b75ab…48be99, 26012 bytes
+    sha256sum .remedy-wt/f275-r6-block.md                  → 689b75ab…48be99, 26012 bytes
+
+Per §3 item 37 this chain covers the saved copy and its mirror against the scratch original the
+reviewer handed over; it claims nothing about the bytes that were emitted.
+
+### G3 — the record, from the committed blobs at `a1df5d70` and at HEAD
+
+    .agent/live_review.md
+      (a) BYTES 533079 -> 536113  gain 3034 = 1 + 3033
+      (b) EDGES  pre-blob is a byte-exact PREFIX: True;  '\n'+slice is a byte-exact SUFFIX: True
+      (c) ORDERED EQUALITY  N counted from the slice = 1;  last 1 units equal the 1 paragraphs IN ORDER: True
+      (d) NEGATIVE CONTROL  byte 534596 of the FIRST appended paragraph flipped in memory:
+          (b) prefix=True suffix=False -> REJECTS=True;  (c) ordered equality -> REJECTS=True
+          tracked file re-read from disk: 536113 -> 536113 bytes, UNCHANGED: True
+      (e) blank-line units 220 -> 221;  '^Gate: ' 27 -> 28;  '^Gate: F275 R5 ' 0 -> 1
+      (f) distinct '^- R-\d+ — ' ids 69 -> 69;  distinct '^Done: R-\d+ — ' ids 3 -> 3
+          OPEN BY DISTINCT ID 66 -> 66
+    .agent/prose_slips.md
+      (a) BYTES 169429 -> 171102  gain 1673 = 1 + 1672
+      (b) EDGES  PREFIX: True;  SUFFIX: True
+      (c) ORDERED EQUALITY  N counted from the slice = 5;  last 5 units equal the 5 paragraphs IN ORDER: True
+      (d) NEGATIVE CONTROL  byte 169593 flipped in memory: (b) REJECTS=True;  (c) REJECTS=True
+          tracked file re-read from disk: 171102 -> 171102 bytes, UNCHANGED: True
+      (e) blank-line units 237 -> 242
+
+N was counted from the SLICE bytes with the worker's own paragraph reader, not read off the block.
+Both negative controls were performed in memory on a `bytes` copy; the flip was an XOR of one byte
+inside the FIRST appended paragraph, and the tracked file's size on disk is identical before and
+after, so the control provably touched no disk state.
+
+### G4 — the deletion is complete
+
+    git ls-tree -r HEAD --name-only -- packages/orchestration/context_optimizer.py \
+                                       apps/cli/commands/context_optimizer_cmd.py
+    (no output — NEITHER path exists at the tip)
+
+Six dead symbols, over the TRACKED tree at HEAD excluding `.agent/` and `.data/`:
+
+    explain_context        0
+    optimize_context       0
+    context.explain        0
+    context.optimize       0
+    _cmd_context_explain   0
+    _cmd_context_optimize  0
+
+`context_optimizer`, EXACTLY ONE hit, and it is the file constraint 6 keeps on purpose:
+
+    docs/roadmap/features/T2_F260.md:342:  `context_optimizer.py`, `overnight_mission.py`, `overnight_executor.py`,
+
+`context_budget_optimized`, in exactly the THREE files the block names — TRAP 3's two survivors
+plus the test that pins one of them:
+
+    apps/ui/src/api/actionClass.ts:19:          "context_budget_optimized",
+    packages/orchestration/event_schemas.py:39:    "context_budget_optimized": frozenset({
+    tests/orchestration/test_event_ledger.py:49:        assert "context_budget_optimized" in EVENT_METADATA_SCHEMAS
+    tests/orchestration/test_event_ledger.py:61:        budget = EVENT_METADATA_SCHEMAS["context_budget_optimized"]
+    tests/orchestration/test_event_ledger.py:105:    def test_context_budget_optimized_schema(self):
+    tests/orchestration/test_event_ledger.py:107:        schema = EVENT_METADATA_SCHEMAS["context_budget_optimized"]
+
+### G5 — the ratchets, the dispatch table and the catalog
+
+    python3 -m pytest tests/orchestration/test_import_reachability.py \
+      tests/orchestration/test_cluster_deletion_map.py \
+      tests/orchestration/test_cluster_deletion_order.py -q
+    9 passed in 5.38s                                   exit=0
+
+    python3 -m pytest tests/ui_contracts/ -q
+    809 passed, 4 skipped in 5.54s                      exit=0
+
+Through the SHIPPED reader `apps.cli.commands.collect_all_handlers`:
+
+    table size: 338
+      context.explain    resolves: False
+      context.optimize   resolves: False
+      context.inspect    resolves: True
+      context.pack       resolves: True
+
+Through `apps.cli.command_catalog` — the BINDING reading, ordered unconditionally:
+
+    CATALOG entries: 338
+    surviving entries whose command_id is context.explain or context.optimize: 0
+    surviving entries whose related tuple names either: 0 []
+    context.inspect related tuple now: ('context.pack',)
+
+The regenerated body of `.agent/f275_deletion_order.md`, in full, read back from the committed
+blob at C3 — fourteen components where round 5 recorded fifteen:
+
+    packages.orchestration.review_bundle
+    packages.orchestration.worker_recommend
+    packages.orchestration.context_pack
+    packages.orchestration.dogfood_run, packages.orchestration.feature_planner, packages.orchestration.overnight_mission, packages.orchestration.progress_ledger, packages.orchestration.repair_loop_v2, packages.orchestration.self_repair_proposal
+    packages.orchestration.builder_routing, packages.orchestration.candidate_quality, packages.orchestration.local_candidate_generator, packages.orchestration.model_route_tournament
+    packages.orchestration.execution_approval_policy
+    packages.orchestration.external_builder_sandbox
+    packages.orchestration.local_model_advisor
+    packages.orchestration.managed_builder_execution
+    packages.orchestration.overnight_executor
+    packages.orchestration.worker_registry
+    packages.orchestration.main_builder_adapter
+    packages.orchestration.overnight_readiness
+    packages.orchestration.provider_trust, packages.orchestration.provider_trust_verification
+
+The first three lines are `review_bundle`, `worker_recommend`, `context_pack` — exactly what the
+reviewer's own run of the recipe produced. The body was NOT edited toward that prediction; the
+shipped `measured_order()` was run after steps (1) to (7) were on disk, and this is its output.
+TRAP 1 is confirmed by the diff: `worker_recommend` moved from the fourth line to the second and
+`context_pack` from the sixth to the third, and the two multi-module components moved down past
+them, so a line-edit of this file would have gone red.
+
+### G6 — ruff and the full suite
+
+    python3 -m ruff check apps/cli/commands/__init__.py apps/cli/command_catalog.py \
+      tests/orchestration/test_project_brain.py tests/orchestration/test_cluster_deletion_map.py
+    All checks passed!                                  exit=0
+
+    python3 -m pytest tests/ -q
+    19768 passed, 23 skipped, 1 warning in 1433.97s (0:23:53)
+                                                        exit=0
+
+ZERO failures, so neither `tests/orchestration/test_test_runner.py`'s vitest node nor
+`tests/ui_server/test_command_channel.py` needed a base control: the clause that would have
+demanded one is unreached. The single warning is `model_routing.py`'s pre-existing
+`undeclared_role` UserWarning, raised by a test that asserts that warning.
+
+### G7 — the tree, run LAST
+
+    ls -la .agent/STOP        → No such file or directory
+    git status --porcelain    → 0 lines
+    git branch --show-current → feature/f275-one-world-completion-part-three
+    git worktree list         → /home/decodeux/Repos/remedy  57caf5a0  (the primary checkout ALONE)
+
+    git diff --name-only a1df5d70..57caf5a0
+    .agent/authored/f275-r6.md
+    .agent/f275_deletion_order.md
+    .agent/last_block.md
+    .agent/live_review.md
+    .agent/plan.md
+    .agent/prose_slips.md
+    apps/cli/command_catalog.py
+    apps/cli/commands/__init__.py
+    apps/cli/commands/context_optimizer_cmd.py
+    apps/ui/src/api/humanizeCatalog.ts
+    packages/orchestration/context_optimizer.py
+    tests/orchestration/import_reachability_allowlist.txt
+    tests/orchestration/test_cluster_deletion_map.py
+    tests/orchestration/test_project_brain.py
+
+Fourteen paths, and they are the block's fifteen minus `.agent/handoff.md`, which C5 adds after
+this gate by the block's own ordering — see deviation 5.
+
+Every commit in the range single-parent, from `git rev-list --parents`, oldest first:
+
+    3bad8eea a1df5d70 | F275 R6 C0a: save the round 6 step block verbatim.
+    e16aff01 3bad8eea | F275 R6 C0b: mirror the round 6 block to the last-block state file.
+    717fd1e4 e16aff01 | F275 R6 C1: plan states round 6, the first module-group deletion.
+    9b698482 717fd1e4 | F275 R6 C2: book round 5's PASS and its five prose slips.
+    57caf5a0 9b698482 | F275 R6 C3: delete the context_optimizer module group.
+
+Exactly one parent each, in the block's order, with NO C4 commit.
+
+Insertions against the DECISION F104 D1 cap of 500 — the `+` column only:
+
+| Commit | Insertions | Cap 500 |
+|---|---|---|
+| C0a `3bad8eea` | 352 | UNDER |
+| C0b `e16aff01` | 322 | UNDER (and a single `.agent/**` state-file rewrite, exempt in any case) |
+| C1 `717fd1e4` | 16 | UNDER (and likewise exempt) |
+| C2 `9b698482` | 12 | UNDER |
+| C3 `57caf5a0` | 5 | UNDER — the deletion inserts five lines and deletes 425 |
+
+No commit is oversize and no exception is claimed.
+
+## Authored-text proofs
+
+Three authored slices, all extracted from the block by their own delimiters and verified against
+their own stamps BEFORE anything was applied:
+
+| Slice | Bytes (measured / stamped) | sha256 (measured / stamped) | Match |
+|---|---|---|---|
+| PLAN6 | 2244 / 2244 | `8e92db53…c586c7` / same | yes |
+| RECORD6 | 3033 / 3033 | `34981eb5…4df09d3` / same | yes |
+| SLIPS6 | 1672 / 1672 | `32d5fcb4…e1ad0fd` / same | yes |
+
+Disk-to-disk after application: the committed `.agent/plan.md` blob is byte-identical to the
+extracted PLAN6 slice (G2). The committed `.agent/live_review.md` and `.agent/prose_slips.md`
+carry `\n` + their slice as a byte-exact SUFFIX, and their pre-blobs as a byte-exact PREFIX
+(G3(b)), with ordered paragraph equality over the appended region (G3(c)).
+
+The block itself: `.agent/authored/f275-r6.md` and `.agent/last_block.md` were both produced by
+`shutil.copyfile` from the scratch original and never by retyping or an editor round trip; all
+three hold one digest (G1).
 
 ## Deviations & assumptions
 
-The block's ordered commit sequence was followed EXACTLY: C0a, C0b, C1, C2, C3, C4, then C5's
-gates without a commit, then C6. No commit was added, dropped or reordered.
+**1. G4's grep exclusion set does not exclude build caches, so the literal command is not zero
+over the working directory.** The block orders "a repo-wide grep, excluding `.git/`, `.data/`,
+`.agent/` and `.remedy-wt/`". Run exactly that way it returns hits in
+`.mypy_cache/`, `.ruff_cache/`, `apps/cli/commands/__pycache__/context_optimizer_cmd.cpython-310.pyc`
+(binary), `.pytest_cache/v/cache/nodeids`, `.coverage_reports/coverage.json` and three files under
+`.brain/`. NOTHING WAS DELETED TO MAKE THE GATE GREEN. Instead the residue was CLASSIFIED: the
+literal grep matches six text files; `git check-ignore` reports FIVE of them ignored — all stale
+build and run artefacts of the very code this commit deleted — and exactly ONE not ignored, and
+that one is `docs/roadmap/features/T2_F260.md`, which constraint 6 keeps on purpose. The binding
+measurement reported above is therefore taken with `git grep` over the TRACKED tree at HEAD, which
+excludes ignored artefacts by construction, and it is ZERO for all six symbols and ONE for
+`context_optimizer`. The stale `.pyc` is left where it is: it is untracked, `git status
+--porcelain` is empty with it present, and AGENTS.md-adjacent practice forbids deleting artefacts
+by glob.
 
-1. **The block's own change-set count contradicts itself.** The `Change:` line opens "EXACTLY
-   these eleven paths and nothing else", then enumerates paths and states two lines later "That
-   list is NINE paths". The enumeration IS nine. I applied the ENUMERATION, and the round touched
-   exactly those nine — eight across C0a–C4 plus `.agent/handoff.md` at C6, as G8's
-   `git diff --name-only` shows. The word "eleven" is the slip; it is round 4's figure, which the
-   RECORD5 slice quotes correctly about round 4. Nothing on disk needs repair.
+**2. G4's `context_budget_optimized` numeral counts FILES, not lines.** The block orders "EXACTLY
+THREE hits, in `packages/orchestration/event_schemas.py`, `apps/ui/src/api/actionClass.ts` and
+`tests/orchestration/test_event_ledger.py`". The real reading is SIX line hits in exactly those
+three files — one each in the first two, and FOUR in `test_event_ledger.py` (lines 49, 61, 105
+and 107), which is the suite TRAP 3 says asserts the key is present. The property the gate exists
+for holds exactly as stated: the surviving occurrences are confined to the three named files and
+nowhere else. Nothing was changed to fit the numeral.
 
-2. **C4 calls DECISION5 "ONE blank-line unit"; it is EIGHT.** The slice is a heading plus seven
-   paragraphs — CONTEXT, THE MEASUREMENT, CHOSEN, WHY, ALTERNATIVES, CONSEQUENCE, REVERSE — at
-   5946 bytes and 15 newlines, measured by the same independent paragraph reader G3(c) uses. Per
-   the block's own rule that where a formula disagrees with the ordered OPERATION the OPERATION
-   wins, I performed the operation as written (one leading `\n`, the slice, its own single
-   trailing newline) and declare the count. G5's edge, control and section readings all pass on
-   the result, and `^## DECISION F275 D2 ` heads exactly one section.
+**3. `tests/ui_contracts/` splits 809/4 here, where the reviewer measured 808/5.** The TOTAL is
+813 in both readings; one test that skipped for the reviewer passes here. The four skips are all
+the `D3 quarantine (F252)` legacy-`.tsx` skips in `test_graph_architecture.py` and
+`test_ux_quality.py`. The split was stable across two independent runs in this checkout. Exit code
+0 either way, and the property the gate exists for — TRAP 2's humanize-catalog contract green
+after the entry is deleted — holds.
 
-3. **G6 says "Report all four exit codes" but enumerates only THREE measurements.** Its base
-   sentence likewise lists three: "green, then 2 failed / 1 passed on control 1 and 2 failed /
-   1 passed on control 2". Control 2's own text orders a fourth run — "restore that swap, then
-   DELETE …" — so I ran the restore as its own measurement and report FOUR: green exit 0 at
-   9 passed, control 1 exit 1, restore exit 0 at 3 passed, control 2 exit 1. All four are in the
-   G6 transcript.
+**4. `remedy --all-commands` is DENIED to this session's shell.** The verbatim response is
+`This command requires approval`. G5 states this clause is satisfied by an honest denial and
+routes the binding reading to the catalog, which was run unconditionally and reports ZERO
+surviving `context.explain` / `context.optimize` in a `command_id` or a `related` tuple.
 
-4. **G6's base reading and G4's base reading cannot both be literally true.** G6 says "The
-   reviewer measured all four at `a040b60c`", while G4 says of the same two files "BASE reading:
-   both paths absent at `a040b60c`, so this gate is unmeetable there" — and G4's reading is the
-   correct one: `git ls-tree a040b60c` is EMPTY for both paths, which I re-measured. The
-   reviewer's four G6 measurements must therefore have been taken against the not-yet-committed
-   files in scratch rather than against the tree at that commit. This changes no result — I
-   reproduced all four myself at this round's tip — and nothing on disk needs repair.
+**5. G7 is ordered to run LAST, before C5, yet its own commit-sequence clause names C5.** The
+block's constraint 8 says "G7 runs LAST, after G1..G6, and C5 is committed after it", while G7
+itself requires the range to equal the block's fifteen-path list and the sequence to be "C0a, C0b,
+C1, C2, C3, C5". Those cannot both be true at one moment. The ORDERING was obeyed as written: G7
+ran at tip `57caf5a0`, before C5, and reports fourteen paths and five single-parent commits. The
+missing fifteenth path is `.agent/handoff.md` and the missing sixth commit is C5, both of which
+this commit adds. The reviewer can close the clause by re-running the two range readings at the
+post-C5 tip; the worker reports the post-C5 numbers to the reviewer in the round report rather
+than writing a self-referential guess into this file.
 
-5. **Constraint 6's "all three of those files" attaches to a sentence naming TWO.** It names
-   `cluster_deletion_map.txt` and `import_reachability_allowlist.txt`, then says G8 gates "all
-   three". G8's own text resolves it by naming a third, `packages/orchestration/overnight_readiness.py`.
-   I gated all THREE, per G8's enumeration; all three are byte-identical to their blobs at
-   `a040b60c`.
+**6. No `git worktree` was created this round.** Guardrail G5 requires isolation for destructive
+or mutating verification; this round had none. The two negative controls G3(d) orders were
+performed on in-memory `bytes` copies and the tracked files were re-read from disk afterwards at
+unchanged sizes, which is proof the control never reached disk. The primary checkout satisfied
+`git status --porcelain` empty at every commit boundary and at this handback.
 
-6. **C6 cannot table its own commit.** Its `+/-` columns do not exist until it is committed, and
-   the block states plainly that C6's own numbers are ordered NOWHERE and must not be guessed. The
-   reviewer measures that commit at the next gate and records it in that round's ledger entry.
-   This is the R-0149 self-reference exception the handback template allows.
-
-No assumption was made beyond these. No gate was skipped, none was substituted for a shorter
-selection, and none is reported green that was not run — every one of G1 to G8 was RUN and every
-exit code above is the real one. No number was adjusted to match a prediction and no code or test
-was changed to satisfy a gate.
+**7. C5 cannot table its own numstat columns.** Per the R-0149 pattern the handoff commit's
+`+/-` are reported to the reviewer in the round report instead of being guessed here.
 
 ## Context self-assessment
 
-Context is comfortable: the round's largest single cost was G7 suite 1's twelve-minute run, whose
-output I read as a tail rather than in full, and nothing about this round pressed against a limit.
+Context is comfortable. The round's largest single cost was G6's full suite at 23 minutes 54
+seconds, whose output was read as a tail rather than in full; nothing else pressed against a limit
+and no reviewer-prose slip of my own accumulated.
 
-Fortschritt: ~34 % (T001: Claim ✅ · Record ✅ · D1 ✅ · Carry-over readiness ✅ · Carry-over
-report ✅ · R-0831 geprüft ✅ · Löschreihenfolge ✅ · D2 ✅ · Löschung offen (15 Gruppen) ·
-F260 D3 offen · T002 offen · T003 offen) — Schätzung
+Fortschritt: ~38 % (T001: Claim ✅ · Record ✅ · D1 ✅ · Carry-over readiness ✅ · Carry-over
+report ✅ · R-0831 geprüft ✅ · Löschreihenfolge ✅ · D2 ✅ · Löschung 1 von 15 Gruppen ✅
+(`context_optimizer`) · 14 Gruppen offen · F260 D3 offen · T002 offen · T003 offen) — Schätzung
 
 ## Next
 
-The FIRST module group commit: `context_optimizer`, taking its module, its handler, its catalog
-entries, its cockpit section, its tests and its map lines together in ONE commit that leaves the
-tree green — the first line of `.agent/f275_deletion_order.md`, and the first `git rm` of this
-feature.
-
-## Reviewer verdict on round 5 — appended after the handback, by the reviewer's authored text
-
-VERDICT ROUND 5: **PASS.** Written by the planner/reviewer of session 2 AFTER reading the
-committed range `a040b60c`..`77c0ae11` and RE-RUNNING the round's verification independently;
-the worker's report was not taken as evidence for any line below. It is carried here because
-under `docs/agents/self_drive_protocol.md` a verdict that stays in the session is lost, and it
-is booked into `.agent/live_review.md` by the FIRST commit of the next round that happens
-anyway, per amend0827-process-diet rule 1. It is NOT a `Done:` paragraph and resolves no finding.
-
-WHAT THE REVIEWER RE-MEASURED, against the committed blobs. The change set is EXACTLY the NINE
-paths the block's enumeration names, by `git diff --name-status`, in the ordered single-parent
-commits C0a, C0b, C1, C2, C3, C4, C6, with no C5 commit. G1: the scratch original, the committed
-`.agent/authored/f275-r5.md` and the committed `.agent/last_block.md` are all 34690 bytes at
-`6bcc12bd383f8955…`; per §3 item 37 that is the chain this workflow can walk and not the emitted
-bytes. G2: `.agent/plan.md` byte-identical to PLAN5 at 2330 bytes and 41 lines. G3:
-`.agent/live_review.md` 527075 to 533079, gain 6004 = 1 + 6002 + 1, pre-blob an exact PREFIX and
-RECORD5 plus one newline an exact SUFFIX; units 218 to 220, `^Gate: ` 26 to 27,
-`^Gate: F275 R4 ` 0 to 1, `^- R-0831 CONFIRMED` 0 to 1, and THE OPEN SET UNCHANGED AT 66 BY
-DISTINCT ID — the R-0831 paragraph is a confirmation and matches neither the registration nor the
-resolution pattern, exactly as the gate predicted. `.agent/prose_slips.md` 168666 to 169429 with
-prefix and suffix exact. G4: both new files are BYTE-IDENTICAL to the reviewer's scratch
-originals — `.agent/f275_deletion_order.md` 2714 bytes at `410360ec0225340a…` and
-`tests/orchestration/test_cluster_deletion_order.py` 7792 bytes at `a80d4c9610cc89af…` — and
-`git ls-tree a040b60c` is EMPTY for both, so both are additions and neither overwrote anything.
-G5: `.agent/decisions.md` 927408 to 933355, prefix and suffix exact, `^## DECISION F275 D` 1 to 2
-and the D2 heading exactly once. G6: the three ratchets are GREEN at 9 passed, and the reviewer
-had already proved both red controls in its own disposable worktree before emission — swapping
-`overnight_readiness` past `overnight_executor` reds with the exact dangling-import message, and
-dropping `context_pack` reds naming it as on disk but not in the order. G7: the reviewer RE-RAN
-the twelve-minute orchestration suite itself in the primary checkout and measured 12889 passed
-with 10 skipped, against its own base reading of 12886 — up by exactly the three tests C3 adds.
-315 and 42 for the other two. G8: `git diff --name-only a040b60c..HEAD` names NOTHING under
-`packages/`, `apps/` or `docs/`, and `cluster_deletion_map.txt`,
-`import_reachability_allowlist.txt` and `packages/orchestration/overnight_readiness.py` are each
-BYTE-IDENTICAL to their blobs at `a040b60c`.
-
-WHAT THIS ROUND ACHIEVED. The deletion now has a derived, recorded and RATCHETED order, which is
-what operator RULE 2 requires before the first `git rm`, and the derivation surfaced a fact three
-previous features never recorded: the cluster's internal import graph is CYCLIC in three places,
-so RULE 2's "leaf modules first" is unsatisfiable at module granularity. DECISION F275 D2 rules
-the atomic unit to be the strongly connected component and records the measurement, including the
-one cycle the reviewer verified by reading the source rather than trusting the walker. The
-deletion is therefore FIFTEEN group commits over twenty-four modules, not twenty-four.
-
-SIX DEVIATIONS WERE DECLARED AND ALL SIX ARE SUSTAINED. FIVE OF THEM ARE THE REVIEWER'S OWN BLOCK
-PROSE and are dated `.agent/prose_slips.md` lines rather than ids, per amend0827 rule 2, because
-not one of them put anything wrong on disk: the `Change:` header said "eleven paths" over an
-enumeration of nine, carried from round 4; C4 called DECISION5 "ONE blank-line unit" when it is
-EIGHT, a figure the reviewer's own pre-emission checklist had printed and the reviewer did not
-read back against the slice's own sentence; G6 said "all four exit codes" while enumerating
-three; G6's base clause said all four controls were measured "at `a040b60c`" when they were
-measured in a worktree based on that commit WITH this round's own artefacts applied, which G4's
-correct "absent at base" reading contradicts on its face; and constraint 6 wrote "all three of
-those files" while naming two, which G8 resolves by naming the third. The sixth is not a defect:
-C6 cannot table its own numstat columns, the R-0149 self-reference, and the worker reported them
-to the reviewer instead of guessing them inside the file — 285 insertions and 390 deletions,
-which the reviewer confirms and records here rather than in a channel that ends with the session.
-
-FIVE PROSE SLIPS IN ONE BLOCK IS A HIGHER RATE THAN ROUNDS 3 AND 4, WHICH CARRIED TWO EACH, AND
-THE REVIEWER RECORDS THAT PLAINLY RATHER THAN LETTING IT PASS. Every one is non-load-bearing, no
-gate was weakened and nothing on disk is wrong; the worker caught each by applying the
-enumeration over the adjective, which is what constraint 1 asks of it. It is not the reason this
-session ends — operator amendment amend0908 rule 5 would in any case forbid citing accumulating
-authoring errors before four delegated rounds, and this session delegated three.
-
-NOTHING WAS ADJUSTED TO FIT A GATE. Every numeral the block predicted was independently
-re-measured by the reviewer and matched, including the discriminating 12886 to 12889.
-
-## Session 2 ends here under guardrail G6 — `.agent/STOP` EXISTS
-
-`.agent/STOP` DID NOT EXIST while round 5's gates ran — the round's own G8 measured an empty
-`git status --porcelain` — and EXISTS NOW. It is a 0-byte file created at
-`2026-09-08 12:44:45.717299658 +0200`, carrying no message. The reviewer investigated it before
-treating it as an order, because acting on a guess about an operator sentinel is not recoverable:
-the string `.agent/STOP` occurs at EXACTLY ONE place in the repository outside `.data/` job
-workspaces — `tests/test_agent_tooling.py:115`, inside
-`test_self_drive_protocol_states_its_guardrails`, which asserts only that the string is PRESENT
-in `docs/agents/self_drive_protocol.md`. It reads; it writes nothing. Nothing in this repository
-writes that path, so it was placed by an EXTERNAL actor, which is exactly the case guardrail G6
-and Phase 1 rule 1 describe.
-
-THE SENTINEL IS DELIBERATELY LEFT ON DISK, UNTOUCHED AND UNREMOVED. Clearing it is the operator's
-decision, not the reviewer's. As a direct consequence `git status --porcelain` is not empty: it
-reads exactly `?? .agent/STOP` and nothing else, because the sentinel is untracked and not
-ignored. No commit of this session left the tree dirty.
-
-SESSION 2 DELIVERED THREE DELEGATED ROUNDS — 3, 4 and 5 — EVERY ONE REVIEWED AND PASSED. That is
-below the four-round floor amend0905-throughput sets, and the reason is the sentinel and nothing
-else: context was not exhausted, no round needed a fresh session, and no seam was being sought.
-`docs/agents/self_drive_protocol.md` names a G6 stop as a valid and complete reason to end, and a
-session that ends at a guardrail with a written handoff is a success.
-
-WHAT THE NEXT SESSION OWES, IN ORDER. FIRST, Phase 1 rule 1: `.agent/STOP` exists, so read it and
-act on that decision BEFORE the Open PR Gate. It is 0 bytes and carries no message. If and only
-if the operator has cleared it, the next round's FIRST substantive commit books, from this file
-as the durable carrier: the ROUND 5 PASS verdict above as a `Gate: F275 R5` entry, and FIVE dated
-`.agent/prose_slips.md` lines for the five reviewer-prose defects the verdict names — the
-"eleven paths" header over a nine-path enumeration, DECISION5 called one unit when it is eight,
-G6's "all four" over three enumerated controls, G6's base clause naming `a040b60c` for a reading
-taken in a worktree with this round's artefacts applied, and constraint 6's "all three" over two
-named files. The open-findings count is 66 BY DISTINCT ID — 69 distinct registrations against 3
-distinct resolutions — and this session minted exactly one, R-0840.
-
-THEN THE WORK ITSELF, which is now unblocked in a way it has not been for four features: both
-carry-overs are landed and wired, R-0831's check is discharged with a dated answer, and the
-deletion order exists and is ratcheted. The next round is THE FIRST MODULE GROUP COMMIT —
-`packages.orchestration.context_optimizer`, the first line of `.agent/f275_deletion_order.md` —
-taking the module, its `apps/cli/commands/context_optimizer_cmd.py` handler, its catalog entries,
-its cockpit section, its tests and its deletion-map lines TOGETHER in one commit, under the four
-measurements amend0906-triage-throughput names for a deletion round, and removing its line from
-the order file in that same commit or the new ratchet reds. NO PULL REQUEST EXISTS and that is
-correct: under `docs/roadmap/STATUS_closure_protocol.md` the pull request belongs to the closure
-sequence, not to an ordinary round.
+The `review_bundle` group, the regenerated order file's NEW first line, in its own commit: the
+module, any handler, catalog entries, cockpit section, tests and map lines together, leaving the
+tree green. Before authoring it the reviewer re-reads `.agent/STOP` (Phase 1 rule 1 before rule
+2), and TRAP 2 now generalises: every group whose module emits a stream event must delete the
+matching `apps/ui/src/api/humanizeCatalog.ts` key in the SAME commit, because
+`tests/ui_contracts/test_humanize_catalog.py` derives the emitter set by AST walk and compares it
+to that catalog's keys.
