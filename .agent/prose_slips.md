@@ -649,3 +649,11 @@
 2026-09-08 · F275 R5 · The round 5 block's gate G6 said the reviewer "measured all four at `a040b60c`" for readings actually taken in a worktree based on that commit WITH the round's own not-yet-committed artefacts applied, which G4's correct "both paths absent at the base" reading contradicts on its face; G4's reading is the true one and no result changed.
 
 2026-09-08 · F275 R5 · The round 5 block's constraint 6 wrote "all three of those files" in a sentence naming two, `cluster_deletion_map.txt` and `import_reachability_allowlist.txt`; G8's own enumeration supplied the third, `packages/orchestration/overnight_readiness.py`, and the worker gated all three.
+
+2026-09-08 · F275 R6 · The round 6 block's gate G4 ordered a repo-wide grep "excluding `.git/`, `.data/`, `.agent/` and `.remedy-wt/`" and named no build cache, so run literally it also reads `__pycache__`, `.mypy_cache/`, `.ruff_cache/`, `.pytest_cache/`, `.coverage_reports/` and `.brain/`, which hold stale artefacts of the very code being deleted; the worker answered the question with `git grep` over the TRACKED tree and classified the residue with `git check-ignore`, which is the instrument the gate should have named.
+
+2026-09-08 · F275 R6 · The round 6 block's gate G4 predicted `context_budget_optimized` at "EXACTLY THREE hits" while its own sentence enumerated three FILES; the real reading is six LINE hits in those three files, four of them in `tests/orchestration/test_event_ledger.py`, so the numeral counted the wrong unit and the property it stood for held exactly as written.
+
+2026-09-08 · F275 R6 · The round 6 block's gate G5 predicted `tests/ui_contracts/` at "808 passed and 5 skipped", a reading the reviewer had taken in its own dry worktree; the primary checkout the gate orders reads 809 passed and 4 skipped, the same total of 813, the difference being one legacy-`.tsx` quarantine skip that resolves differently in a fresh worktree.
+
+2026-09-08 · F275 R6 · The round 6 block's gate G7 was ordered to "run LAST, after G1..G6" and before C5, while its own sequence clause required it to see the commit sequence "C0a, C0b, C1, C2, C3, C5" — a commit that does not exist when the gate runs; the worker obeyed the ordering, reported the reading at C3, and re-ran the two range readings after C5, which is the two-readings answer §3 item 14 already prescribes.
