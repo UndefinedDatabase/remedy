@@ -494,3 +494,35 @@ item 23.
 
 THIRD, the work: `review_bundle`, whole, using the map above. It is the only member of the free
 set, so nothing smaller exists in T001. Plan the session around ONE round.
+
+## Correction by the reviewer of session 4, made before the next round quotes this file
+
+CORRECTION, and it is the only one this session makes. Two sentences in this file give
+DIFFERENT NUMERALS FOR ONE MEASUREMENT, and the worker of the session-close commit found the
+disagreement and declared it rather than editing text it had been ordered to apply verbatim,
+which is exactly the behaviour this workflow asks for.
+
+THE MEASURED FIGURE IS NINE. Re-measured by the reviewer at
+`657b004031c1754926f1fbdc35e4765591cbe0f9` by counting, in `apps/cli/command_catalog.py`, every
+`# ── … ──` group comment whose immediately preceding line is a closing `    ),`: the count is
+TEN including the `# ── change ──` boundary that round 8 itself created, so NINE others already
+carried that shape before this round. The "What the next session owes" section says "a shape
+eleven other group boundaries in that file already have". THAT NUMERAL IS WRONG and is
+superseded by this paragraph; the deviation-5 paragraph's NINE is correct.
+
+WHY THIS IS CORRECTED HERE RATHER THAN LEFT TO THE NEXT ROUND. The next round is instructed to
+turn that sentence into a dated line in `.agent/prose_slips.md`, and that file is APPEND-ONLY,
+so a wrong numeral written there could never be corrected — only annotated. THE PROSE-SLIP LINE
+THE NEXT ROUND WRITES MUST SAY NINE, and one dated sentence covers both halves of this slip:
+the round 8 block's step (3) wording "and the blank line that follows it", which took the
+separator between the surviving `context.inspect` entry and the `# ── change ──` group comment,
+and this miscount in the reviewer's own account of it.
+
+THE DEFECT IS THE REVIEWER'S OWN AND IT IS THE STALENESS SHAPE THE CHECKLIST ALREADY NAMES. It
+measured NINE, corrected the numeral in the deviation-5 paragraph, and did not re-grep the file
+for the other occurrence — which is precisely the shape
+`docs/agents/planner_reviewer_prompt.md` §3 item 14 records, where correcting one occurrence is
+where the next wrong one lands. It buys no round: this paragraph is the whole repair, nothing
+under `packages/`, `apps/`, `tests/` or `docs/` is wrong on disk because of it, and no id is
+spent on it, per operator amendment amend0827-process-diet rule 2. No further correction of
+this correction will be made.
