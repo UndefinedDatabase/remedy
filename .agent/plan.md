@@ -12,31 +12,27 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 14, the last two `worker_recommend` edges, in `agent_loop.py` and `autonomy_loop.py`. This is
-where DECISION F274 D7 item 4 lands: both loops stop calling `recommend_worker` and take their token
-mode from `derive_token_mode`, `CycleDecision.selected_worker` goes, and `token_policy_applied`
-loses `estimated_context_tokens`, `remote_model_requires_approval` and `selected_worker` in
-`packages/orchestration/event_schemas.py` in the SAME commit as the last emitter that writes them,
-with the test and smoke-script pins moved with them. `worker_recommend` then holds NO recorded edge
-and becomes deletable. Book round 13's PASS verdict, register R-0836 and append the slip round 13
-owed.
+Round 15, the R-0836 fix: delete the `agent_loop_cycle_decision` and `agent_loop_stopped` entries of
+`EVENT_METADATA_SCHEMAS` and the sites in `tests/orchestration/test_event_ledger.py` that pin them.
+Their sole emitter died with `_cmd_run_loop` in F272 round 19, so the registry has been describing
+two events the product does not write; this finishes that deletion. Book round 14's PASS verdict and
+a RECURRENCE of R-0819 for a per-pair count two of that block's pairs could not meet, and resolve
+R-0836 in this same round. No cluster module and no edge moves.
 
 ## Next Steps
 
-1. Fix R-0836: delete the `agent_loop_cycle_decision` and `agent_loop_stopped` entries of
-   `EVENT_METADATA_SCHEMAS` and the ten sites in `tests/orchestration/test_event_ledger.py` that
-   pin them. Their sole emitter died with `_cmd_run_loop` in F272 round 19; this is that deletion
-   finished, and it is a ruled vocabulary the product no longer speaks.
-2. The two carry-overs F260's Design names: overnight readiness to `mission readiness`, and the
+1. The two carry-overs F260's Design names: overnight readiness to `mission readiness`, and the
    route-policy knobs checked against F110's config keys. `mission report` waits for the commit
    deleting its current holder, per DECISION F274 D2; that holder is in `worker_facade_cmd.py`.
-3. `orchestrator_brain.py`'s four edges, measured as live signal reads in `_scrub`, `_review_state`,
+2. `orchestrator_brain.py`'s four edges, measured as live signal reads in `_scrub`, `_review_state`,
    `_gather_signals` and `consult_local_advisor_for_decision` — a surviving module reading cluster
    modules, so a behaviour change rather than a deletion.
-4. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
-5. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it.
-6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
-7. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
+3. The four `worker_facade_cmd.py` edges and `worker_registry`'s remaining pair.
+4. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it, and it must name
+   the event-name couplings the import map cannot see.
+5. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
+   `worker_recommend` is already edge-free and goes with that round.
+6. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
 
 ## Risks
 
