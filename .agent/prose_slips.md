@@ -639,3 +639,13 @@
 2026-09-08 · F275 R4 · The round 4 block's gate G7 suite 3 gave `tests/orchestration/test_dogfood_run.py` a BASE of 135, which was the COMBINED count of that suite and the canary from the reviewer's own paired dry run; the suite alone is 93, the worker re-measured 93 at the base `280fd101` and 93 again at the round's own tip, and the no-regression property the gate exists for held exactly.
 
 2026-09-08 · F275 R4 · The round 4 block's constraint 9 lettered the pairs (a), (b), (d), (e) and the deletions (c), (f), (g) while its C3 labels the pairs (a), (b), (e), (f) and the deletions (c), (d), (g), leaving C3's registry-line deletion in neither list; the worker re-ran the containment test mechanically and reproduced all four classifications unchanged.
+
+2026-09-08 · F275 R5 · The round 5 block's `Change:` line opened "EXACTLY these eleven paths and nothing else" over an enumeration of nine, and stated the correct figure two lines later; "eleven" was round 4's number carried forward, the worker applied the enumeration as constraint 1 requires, and nothing on disk was wrong.
+
+2026-09-08 · F275 R5 · The round 5 block's C4 called the DECISION5 slice "ONE blank-line unit" when it is EIGHT — a heading plus seven paragraphs at 5946 bytes — a figure the reviewer's own pre-emission reader had printed and the reviewer did not read back against the slice's own sentence; the ordered OPERATION was performed as written and every G5 reading passed on the result.
+
+2026-09-08 · F275 R5 · The round 5 block's gate G6 ordered "Report all four exit codes" while enumerating only three measurements, and its own base sentence also listed three; the worker resolved it by running control 2's ordered restore as a fourth measurement and reporting four.
+
+2026-09-08 · F275 R5 · The round 5 block's gate G6 said the reviewer "measured all four at `a040b60c`" for readings actually taken in a worktree based on that commit WITH the round's own not-yet-committed artefacts applied, which G4's correct "both paths absent at the base" reading contradicts on its face; G4's reading is the true one and no result changed.
+
+2026-09-08 · F275 R5 · The round 5 block's constraint 6 wrote "all three of those files" in a sentence naming two, `cluster_deletion_map.txt` and `import_reachability_allowlist.txt`; G8's own enumeration supplied the third, `packages/orchestration/overnight_readiness.py`, and the worker gated all three.
