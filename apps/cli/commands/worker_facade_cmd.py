@@ -360,32 +360,6 @@ def _cmd_mission_run(ns: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
-# mission report facade (Step 2625)
-# ---------------------------------------------------------------------------
-
-
-def _cmd_mission_report(ns: argparse.Namespace) -> None:
-    from packages.orchestration.dogfood_run import build_mission_morning_report
-    run_id = getattr(ns, "run_id", "")
-    if not run_id:
-        _err("run_id required")
-    job_id = getattr(ns, "job_id", "") or ""
-    report = build_mission_morning_report(run_id, job_id=job_id)
-    data = report.to_dict()
-    if getattr(ns, "json", False):
-        print(json.dumps(data, indent=2))
-        return
-    print(f"Mission Report: {report.run_id}")
-    print(f"  mission: {report.mission_status}  status: {report.final_status}")
-    if report.stopped_because:
-        print(f"  stopped: {report.stopped_because}")
-    print(f"  steps: {report.steps_completed}")
-    if report.next_safe_action:
-        print(f"  next: {report.next_safe_action}")
-    print(f"  summary: {report.operator_summary}")
-
-
-# ---------------------------------------------------------------------------
 # doctor core (Step 2665)
 # ---------------------------------------------------------------------------
 
@@ -838,7 +812,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "worker.add": _cmd_worker_add,
     "worker.disable": _cmd_worker_disable,
     "mission.run": _cmd_mission_run,
-    "mission.report": _cmd_mission_report,
     "doctor.core": _cmd_doctor_core,
     "approval.policy-list": _cmd_approval_policy_list,
     "approval.policy-show": _cmd_approval_policy_show,

@@ -1792,15 +1792,18 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         command_id="mission.report",
         group_id="mission",
         subcommand="report",
-        description="Generate a safe morning report — what happened, is it done, what to do next (read-only; no execution; no raw logs).",
+        description="Read-only morning-style report built from the job's current evidence.",
         action_class="read_only",
         args=(
-            ArgDef("run_id", "Run ID"),
-            ArgDef("--job-id", "Job UUID", required=False, is_option=True),
+            _JOB_ID,
+            ArgDef("--markdown", "Render the report as markdown",
+                   required=False, is_option=True, default="false"),
             _JSON_OPT,
         ),
         supports_json=True,
-        related=("mission.run", "dogfood.morning-report"),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("mission.readiness", "mission.show"),
     ),
 
     # ── mission (F056: the persistent goal above a chain of jobs) ────────

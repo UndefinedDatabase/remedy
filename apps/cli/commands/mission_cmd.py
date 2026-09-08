@@ -579,7 +579,35 @@ def _cmd_mission_readiness(job_id: str, *, json_output: bool = False) -> None:
         print(f"  next: {na['label']} -> {na['command']}")
 
 
+def _cmd_mission_report(job_id: str, *, markdown: bool = False,
+                        json_output: bool = False) -> None:
+    """Read-only morning-style report built from the job's current evidence.
+
+    The second of the two carry-overs F260's Design orders before the cluster
+    deletion, landing on the name DECISION F274 D2 reserved for it. It reads
+    ``packages/orchestration/mission_readiness.py`` — the module rounds 1 and 2
+    carried — and never the cluster.
+    """
+    from packages.orchestration.mission_readiness import (
+        build_overnight_report,
+        render_overnight_report_markdown,
+    )
+    data = build_overnight_report(str(job_id))
+    if markdown:
+        print(render_overnight_report_markdown(data))
+        return
+    if json_output:
+        print(_json.dumps(data, indent=2))
+        return
+    print(render_overnight_report_markdown(data))
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "mission.report": lambda args: _cmd_mission_report(
+        args.job_id,
+        markdown=getattr(args, "markdown", False),
+        json_output=getattr(args, "json", False),
+    ),
     "mission.readiness": lambda args: _cmd_mission_readiness(
         args.job_id,
         json_output=getattr(args, "json", False),

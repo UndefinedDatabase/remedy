@@ -48,7 +48,7 @@ class TestHandlerRegistry:
     def test_all_handlers_present(self):
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         expected = {"worker.doctor", "worker.add", "worker.disable",
-                    "mission.run", "mission.report", "doctor.core",
+                    "mission.run", "doctor.core",
                     "approval.policy-list", "approval.policy-show",
                     "approval.policy-enable", "approval.policy-disable",
                     "approval.policy-evaluate", "approval.policy-grant"}
@@ -93,7 +93,7 @@ class TestCatalogIntegration:
         from apps.cli.commands.worker_facade_cmd import COMMAND_HANDLERS
         facade_cmds = [c for c in CATALOG
                        if c.command_id in COMMAND_HANDLERS]
-        assert len(facade_cmds) == 12
+        assert len(facade_cmds) == 11
         for cmd in facade_cmds:
             assert cmd.command_id in COMMAND_HANDLERS
 
@@ -131,7 +131,6 @@ _SAVE_ADAPTER = "packages.orchestration.main_builder_adapter.save_builder_adapte
 _ENABLE_TMPL = "packages.orchestration.managed_builder_execution.enable_command_template"
 _DISABLE_TMPL = "packages.orchestration.managed_builder_execution.disable_command_template"
 _MISSION_LOOP = "packages.orchestration.dogfood_run.run_mission_loop"
-_MORNING_REPORT = "packages.orchestration.dogfood_run.build_mission_morning_report"
 
 
 class TestWorkerDoctor:
@@ -310,41 +309,6 @@ class TestMissionRun:
         with pytest.raises(SystemExit):
             _cmd_mission_run(_ns(run_id="", job_id="", max_steps=10,
                                  max_seconds=300, json=True))
-
-
-# ---------------------------------------------------------------------------
-# mission report facade
-# ---------------------------------------------------------------------------
-
-
-class TestMissionReport:
-    @patch(_MORNING_REPORT)
-    def test_report_calls_builder(self, mock_report, capsys):
-        rpt = MagicMock()
-        rpt.run_id = "r-1"
-        rpt.mission_status = "in_progress"
-        rpt.final_status = "running"
-        rpt.stopped_because = None
-        rpt.steps_completed = 5
-        rpt.next_safe_action = "step"
-        rpt.operator_summary = "All systems go."
-        rpt.to_dict.return_value = {
-            "run_id": "r-1", "mission_status": "in_progress",
-            "steps_completed": 5, "operator_summary": "All systems go.",
-        }
-        mock_report.return_value = rpt
-
-        from apps.cli.commands.worker_facade_cmd import _cmd_mission_report
-        _cmd_mission_report(_ns(run_id="r-1", job_id="j-1", json=True))
-        out = json.loads(capsys.readouterr().out)
-        assert out["run_id"] == "r-1"
-        assert out["operator_summary"] == "All systems go."
-        mock_report.assert_called_once_with("r-1", job_id="j-1")
-
-    def test_report_no_run_id(self):
-        from apps.cli.commands.worker_facade_cmd import _cmd_mission_report
-        with pytest.raises(SystemExit):
-            _cmd_mission_report(_ns(run_id="", job_id="", json=True))
 
 
 # ---------------------------------------------------------------------------
