@@ -1,212 +1,88 @@
-STEP T001 (carry-over 1, batch 2 and its test) — F275 One world completion, part three — ROUND 2
+── STEP T001/3 — F275 ────────────────────────────────
+Goal:        Wire the carried readiness module into the CLI and the cockpit as `mission readiness`, cut the ONE surviving consumer edge the deletion map records for `packages.orchestration.overnight_readiness`, and remove that map line in the SAME commit — which takes that module to ZERO edges and makes it deletable.
+Bundle:      C0a save block · C0b mirror block · C1 plan · C2 book round 2 PASS · C3 the wiring (one commit) · C4 the CLI test · C5 gates (writes no file) · C6 handback
+Change:      EXACTLY these twelve paths and nothing else —
+             `.agent/authored/f275-r3.md`, `.agent/last_block.md`, `.agent/plan.md`,
+             `.agent/live_review.md`, `apps/cli/command_catalog.py`,
+             `apps/cli/commands/mission_cmd.py`, `packages/orchestration/mission_readiness.py`,
+             `packages/orchestration/ui_server.py`, `tests/orchestration/cluster_deletion_map.txt`,
+             `tests/orchestration/import_reachability_allowlist.txt`,
+             `tests/cli/test_mission_cmd.py`, `.agent/handoff.md`.
+Constraints: below, numbered 1 to 11.
+Done when:   the eight gates G1 to G8 below all report exit 0, with G8 last.
+Handback:    completion report + rewrite `.agent/handoff.md`.
+──────────────────────────────────────────────────────
 
-Goal:
-  Book round 1's PASS verdict and its four reviewer-prose slips, then COMPLETE the first
-  carry-over's code move — the second and last staged batch of
-  `packages/orchestration/mission_readiness.py` — and land the test file named after it. The
-  module is STILL UNWIRED in production when this round ends.
+WHAT THIS ROUND IS. Rounds 1 and 2 moved twenty-nine definitions out of
+`packages/orchestration/overnight_readiness.py` into `packages/orchestration/mission_readiness.py`
+byte-identically and left it UNWIRED — dead code for two rounds. This round gives it its two
+consumers and takes them off the cluster module in the same breath. It is NOT a deletion round:
+nothing is `git rm`-ed, and operator ruling amend0908-f275-finish orders the carry-overs done
+BEFORE the first `git rm`. The reviewer applied every production edit in a disposable worktree at
+`3068e9c1` and ran every gate before authoring; the numerals in G4 to G8 are that run's.
 
-Read first: AGENTS.md · docs/agents/self_drive_protocol.md · docs/roadmap/features/T2_F275.md ·
-DECISION F275 D1 in `.agent/decisions.md`, which round 1 landed and which rules this move.
+────────────────────────── CONSTRAINTS ──────────────────────────
 
-ENVIRONMENT, the same list round 1 carried; none of it has changed:
-  - `VAR=x cmd`, `env VAR=x cmd` and `export VAR=x; cmd` are ALL DENIED. Set env in-process.
-  - `cp` is DENIED. Copy with `python3 -c "import shutil; shutil.copyfile(a, b)"`.
-  - Bare `ruff` is DENIED. Use `python3 -m ruff check <path>`.
-  - Wrap a gate as `bash -c '<cmd>; echo "REAL_EXIT=$?"'`. NEVER pipe into `tail` when you need
-    the exit code — the pipe reports tail's status. Redirect to a file and read it.
-  - Shell loops, `$(...)` in a compound and `$?` in a compound are refused by FORM. Use
-    `python3 - <<'PY'` heredocs; if the guard rejects one, write the script to a file under
-    `.remedy-wt/` and run `python3 <file>`. The guard also rejects an f-string containing a
-    backslash and some brace-and-quote combinations, so prefer plain `%` formatting in probes.
-  - Commit subjects carry no leading-slash token, no absolute path and no secret-like string.
+1. NO SLICE IS EDITED. Every authored text below is applied byte for byte. If a slice looks wrong,
+   apply it anyway and DECLARE it in the handback's deviations. Repairing a reviewer's text
+   silently is the one thing that makes a gate meaningless.
 
-Bundle, in this exact commit order. There is no commit after C6.
-  C0a  Save THIS ENTIRE BLOCK verbatim as `.agent/authored/f275-r2.md`, copied with
-       `shutil.copyfile` from the file the delegating message names. Never retype it.
-  C0b  Mirror the same bytes into `.agent/last_block.md` with `shutil.copyfile`.
-  C1   Replace `.agent/plan.md` with the PLAN2 slice, byte for byte.
-  C2   The record, in ONE commit: append the RECORD2 slice to `.agent/live_review.md` and the
-       SLIPS2 slice to `.agent/prose_slips.md`. This is the round's FIRST substantive commit
-       after the plan, because it books a verdict that until now exists only in a handback.
-  C3   Append batch 2 to `packages/orchestration/mission_readiness.py` per SPEC A.
-  C4   Create `tests/orchestration/test_mission_readiness.py` per SPEC B.
-  C5   Run every gate G1 to G8 and record its REAL exit code and REAL output. C5 writes no file.
-  C6   Rewrite `.agent/handoff.md` as the handback. It quotes all eight gates, which is why they
-       run at C5, strictly before this commit. G8's `git log` clause is the one reading that can
-       only be completed after C6 exists; take it again after C6 and say so, as round 1 did.
+2. C0a and C0b are `shutil.copyfile` from the reviewer's scratch original
+   `.remedy-wt/f275-r3-FINAL.md` — NEVER retyped, never re-wrapped — to `.agent/authored/f275-r3.md`
+   and `.agent/last_block.md`. Both are whole-file writes of a single `.agent/**` state file, which
+   AGENTS.md DECISION F104 D1 exempts from the 500-insertion cap by name.
 
-Change set — exactly these paths, and nothing else:
-  .agent/authored/f275-r2.md · .agent/last_block.md · .agent/plan.md · .agent/live_review.md ·
-  .agent/prose_slips.md · packages/orchestration/mission_readiness.py ·
-  tests/orchestration/test_mission_readiness.py · .agent/handoff.md
-  NOTHING under `docs/` changes this round, so no docs gate is ordered.
+3. C1 IS THE FIRST SUBSTANTIVE COMMIT; only C0a and C0b may precede it. This round touches the
+   finding ledger, so `.agent/plan.md` advances before the ledger commit (§3 item 23).
 
-Constraints:
-  1. Apply every slice BYTE FOR BYTE. Extract each as the bytes strictly between its
-     `BEGIN <NAME>` line and its `END <NAME>` line, verify the extracted bytes against that
-     BEGIN line's own sha256 and byte count BEFORE applying, and never let a marker line reach
-     any file. Every slice in this block carries both values; round 1's P1 markers did not, and
-     that is one of the four slips this round books. Do not edit a slice: if one is wrong, apply
-     it as given and declare it.
-  2. APPEND CONVENTION, and it is stated as arithmetic because round 1's was not.
-     `.agent/live_review.md` and `.agent/prose_slips.md` each end with exactly one newline, and
-     each slice ends with its own newline. An append writes ONE newline and then the slice, so
-     the file grows by exactly 1 + the slice's byte count. Both predicted totals in G3 are
-     computed that way; if your measurement disagrees with the prediction, stop and report.
-  3. C3 APPENDS to the existing module and rewrites none of it: the bytes of
-     `packages/orchestration/mission_readiness.py` at the base of this round are a byte-exact
-     PREFIX of the file after C3.
-  4. `packages/orchestration/overnight_readiness.py` IS NOT TOUCHED, and neither is
-     `tests/orchestration/cluster_deletion_map.txt` or
-     `tests/orchestration/import_reachability_allowlist.txt`. This round cuts no edge and
-     deletes nothing; it only adds.
-  5. NOTHING UNDER `packages/` OR `apps/` IMPORTS THE NEW MODULE when this round ends. The only
-     file in the repository that may import it is the new test.
-  6. Run the suites SERIALLY, one command per call.
-  7. Nothing destructive runs in the primary checkout. Probe scripts and their temporary data
-     roots live under the gitignored `.remedy-wt/`; remove what you create there by EXACT PATH.
-  8. Never force-push. Never merge. Push with
-     `git push -u origin feature/f275-one-world-completion-part-three`. Do NOT create a pull
-     request: under docs/roadmap/STATUS_closure_protocol.md the closure sequence creates it.
+4. C3 IS ONE COMMIT AND IS INDIVISIBLE. `tests/orchestration/test_cluster_deletion_map.py` reds
+   BOTH when an edge appears and when a cut edge's line is left behind, so the import switch in
+   `packages/orchestration/ui_server.py` and the removal of the map line MUST land together.
+   `tests/orchestration/import_reachability_allowlist.txt` gains its line in that same commit for
+   the same reason: wiring the module makes it reachable, and
+   `tests/orchestration/test_import_reachability.py` reds on a reachable module the allowlist does
+   not name. The reviewer confirmed both reds by control — see G5.
 
-SPEC A for C3 — complete `packages/orchestration/mission_readiness.py`, batch 2 of 2, UNWIRED.
-  Parse `packages/orchestration/overnight_readiness.py` with `ast` and APPEND, BYTE-IDENTICALLY,
-  the source span of each of these TWELVE top-level definitions, in this order, which is their
-  source order:
-      _build_risks, _integrity_status, _ci, _build_checklist, select_overnight_next_action,
-      _build_stop_reasons, build_overnight_readiness, _policy_summary, build_overnight_report,
-      export_readiness_json, _CHECK_ICON, render_overnight_report_markdown
-  A definition's span STARTS AT ITS FIRST DECORATOR where it has one, exactly as in round 1.
-  Separate the appended definitions from each other and from the existing tail by two blank
-  lines, which is the convention the file already uses and what `python3 -m ruff check` requires.
-  Add NO import: the reviewer verified that the twelve carry no name the module's existing
-  import block does not already provide.
-  STILL DELIBERATELY EXCLUDED, and this completes the carried set at twenty-nine definitions:
-  `OvernightEvidenceStatus`, `_CAP_UNKNOWN`, `OvernightRunPlan`, `build_overnight_plan` and
-  `export_plan_json`. The last three are the plan path, which dies with the cluster; the first
-  two are reachable from nothing. DECISION F275 D1 carries the measurement.
-  RENAME NOTHING.
+5. `packages/orchestration/overnight_readiness.py` IS NOT TOUCHED. Not one byte. It stays on disk
+   with all its definitions and is deleted later, with its cluster group. G8 gates that.
 
-SPEC B for C4 — `tests/orchestration/test_mission_readiness.py`.
-  It is `tests/orchestration/test_overnight_readiness.py` MIRRORED onto the carried module, and
-  it is written so that it survives the deletion of the original. Take the existing file as the
-  starting point and make exactly these changes:
-    (a) Import `from packages.orchestration import mission_readiness as OV` in place of the
-        `overnight_readiness` import. Every other import, the `env` fixture and the `_job` and
-        `_add_failure` helpers carry over unchanged.
-    (b) DROP the whole of `class TestPlan` — both of its tests — because
-        `build_overnight_plan` is not carried. This is the only class that disappears.
-    (c) In `TestRedaction.test_no_raw_leak`, DROP the one blob built from
-        `export_plan_json(build_overnight_plan(...))` and keep the other two. The assertions
-        beneath it are unchanged and still run over both surviving blobs.
-    (d) In `TestArchitectureGuards`, re-point `SRC` to
-        `Path("packages/orchestration/mission_readiness.py").read_text()`. All six guard tests
-        carry over unchanged — they are the read-only, no-execution guarantees of this code and
-        they must follow it to its new home.
-    (e) Give the module a docstring naming the carry-over and DECISION F275 D1.
-  That leaves TWENTY tests: 2 in `TestPolicy`, 11 in `TestReadinessTruth`, 1 in `TestRedaction`
-  and 6 in `TestArchitectureGuards`. Report the number pytest collects rather than asserting
-  this one — if it disagrees, the disagreement is the finding.
-  DO NOT write an equivalence test that imports BOTH modules: it would die with the original in
-  the deletion round. The equivalence proof is gate G5 of this round, which is a probe.
+6. NO COMMAND IS RENAMED. `overnight readiness` still exists and still works after this round; this
+   round ADDS `mission readiness` beside it. F261 owns renames, and the feature file's "Do not
+   touch" forbids one here. The old command dies by DELETION with its handler, in a later round.
 
-Done when — EIGHT gates. Run every one at C5, after C4 and before the handback commit C6.
-Record the REAL exit code and the REAL output of each; the word "green" is not a result.
+7. THE CARRIED SYMBOLS KEEP THEIR `overnight_` SPELLING. `build_overnight_readiness` and
+   `export_readiness_json` are imported under those names from the new module. DECISION F275 D1
+   ruled the move renames nothing, and rounds 1 and 2 are byte-identical moves on that basis.
 
-  G1 TRANSPORT. sha256 of the committed blob `.agent/authored/f275-r2.md` equals the sha256 of
-     the committed blob `.agent/last_block.md`, and both equal the digest of the scratch
-     original the delegating message names. Report the three digests and the byte count. This
-     proves the chain scratch-original to saved copy to mirror and claims nothing about the
-     emitted bytes.
-  G2 THE PLAN. `.agent/plan.md` sha256 equals
-     `074c2c5ad69e33a96a880b46aa1aa7f8584146abfbb3433f431391973135ff3e`; its byte count is 2368;
-     its line count is 41, under the AGENTS.md cap of 50; `^## Goal$` occurs once and
-     `^## Next Steps$` occurs once.
-  G3 THE RECORD, all six parts, over the committed C2.
-     (a) BYTES. `.agent/live_review.md` is 510121 before and 515349 after, a gain of 5228 which
-         is RECORD2's 5227 bytes plus one newline. `.agent/prose_slips.md` is 166737 before and
-         168030 after, a gain of 1293 which is SLIPS2's 1292 bytes plus one newline. Report both
-         numbers you measured.
-     (b) EXACT EDGES. For each of the two files the pre-commit blob is a byte-exact PREFIX of
-         the post-commit blob, and the slice is a byte-exact SUFFIX of it.
-     (c) ORDERED EQUALITY over `.agent/prose_slips.md`, by a reader independent of (b), because
-         SLIPS2 is the multi-paragraph append this round carries. Split the post-commit file on
-         blank lines, COUNT the SLIPS2 slice's own paragraphs into N rather than taking N from
-         this block, and compare the file's last N units against the slice's N paragraphs IN
-         ORDER, reporting a per-unit sha256.
-     (d) NEGATIVE CONTROL on the FIRST appended paragraph of SLIPS2, in scratch only: flip one
-         byte and confirm BOTH the reader of (b) and the reader of (c) REJECT it. Re-read the
-         tracked file afterwards and confirm it is unchanged. Never write the mutation to disk.
-     (e) COUNTS. In `.agent/live_review.md`: blank-line units 214 to 215 · `^Gate: ` 23 to 24 ·
-         `^Gate: F275 R1 ` 0 to 1. In `.agent/prose_slips.md`: blank-line units 229 to 233.
-     (f) THE OPEN SET DOES NOT MOVE. Distinct `^- R-\d+ — ` ids 68 to 68, distinct
-         `^Done: R-\d+ — ` ids 3 to 3, OPEN SET BY DISTINCT ID 65 to 65. This round mints no id
-         and resolves none: all four slips are reviewer-prose defects under amend0827 rule 2 and
-         none of them earns an id. Subtract DISTINCT resolved IDS, never `Done:` LINES, of which
-         the record carries five.
-  G4 THE COMPLETED MODULE, over the committed C3. The base blob of
-     `packages/orchestration/mission_readiness.py` is a byte-exact PREFIX of the post-commit
-     blob. For EACH of the TWENTY-NINE carried definitions — the seventeen of round 1 and the
-     twelve of SPEC A — its byte span in the module is IDENTICAL to that definition's byte span
-     in `packages/orchestration/overnight_readiness.py` at
-     `a5bf894946ab6de053a4232109d6341a63533768`; report how many of the twenty-nine matched.
-     Each of the five excluded names is ABSENT from the module and PRESENT in the source; report
-     both readings. The module PARSES under `ast.parse`.
-     `bash -c 'python3 -m ruff check packages/orchestration/mission_readiness.py; echo "REAL_EXIT=$?"'`
-     exits 0. C3's insertions on that path are UNDER 500 — report the number you measured.
-  G5 EQUIVALENCE, THE BEHAVIOURAL PROOF, run as a probe script under `.remedy-wt/`, not as a
-     committed test. Build a job fixture the way the test file's `_job` helper does, under a
-     temporary data root inside `.remedy-wt/`, with `REMEDY_DATA_DIR` set IN-PROCESS. Then, for
-     the SAME job and the SAME data root, compare the carried module against
-     `packages.orchestration.overnight_readiness`:
-       - `export_readiness_json(build_overnight_readiness(...))` from both must be equal ON
-         EVERY KEY EXCEPT `generated_at`, and their key SETS must be equal.
-       - `render_overnight_report_markdown(build_overnight_report(...))` from both must be
-         EXACTLY equal.
-     `generated_at` is excluded because it is a timestamp: the reviewer measured the ORIGINAL
-     module disagreeing with ITSELF on that one key across two consecutive calls, so demanding
-     equality there would be a gate no correct code can pass. Report the differing-key list you
-     measured; it must be empty once `generated_at` is removed. Remove the probe and its data
-     root by EXACT PATH afterwards.
-  G6 THE TEST FILE, over the committed C4.
-     `bash -c 'python3 -m pytest tests/orchestration/test_mission_readiness.py -q; echo "REAL_EXIT=$?"'`
-     exits 0; report the collected count. `class TestPlan` does NOT occur in the file and
-     `build_overnight_plan` does not either. `TestArchitectureGuards`'s `SRC` names
-     `packages/orchestration/mission_readiness.py` and not the original. The file contains no
-     import of `overnight_readiness`.
-  G7 THE SUITES, each run ALONE and in this order, every one from the primary checkout: the
-     FOUR state readers as FOUR separate runs — `tests/ui_server/`,
-     `tests/orchestration/test_test_runner.py`, `tests/regression/test_resource_safety.py` and
-     `tests/orchestration/test_integrity_gate.py` — then THIS FEATURE'S OWN RATCHETS as one run,
-     `tests/orchestration/test_import_reachability.py` with
-     `tests/orchestration/test_cluster_deletion_map.py` and
-     `tests/orchestration/test_overnight_readiness.py`, and last the canary
-     `tests/cli/test_golden_path.py`. Report each command's REAL exit code and REAL passed
-     count. The reviewer measured the four readers at 506, 51, 21 and 16, the three ratchets
-     together at 28, and the canary at 42, all at C6 of round 1; the original module's own test
-     is in that list because it must STILL PASS — this round copies its subject, it does not
-     move it.
-  G8 THE TREE AND THE WIRING. `.agent/STOP` does not exist. `git status --porcelain` is EMPTY.
-     The branch is `feature/f275-one-world-completion-part-three`. `git worktree list` shows
-     only the primary checkout. A repo-wide search over `packages/`, `apps/`, `tests/`,
-     `scripts/` and `docs/` for the two dotted import forms of the new module —
-     `orchestration\.mission_readiness` and `orchestration import mission_readiness` — returns
-     EXACTLY ONE file, `tests/orchestration/test_mission_readiness.py`, and NOTHING under
-     `packages/` or `apps/`: production is still unwired. Do NOT gate on the bare token
-     `mission_readiness`, which occurs at four unrelated sites in the cluster module
-     `packages/orchestration/overnight_mission.py` and its handler. `overnight_readiness.py`,
-     `cluster_deletion_map.txt` and `import_reachability_allowlist.txt` are byte-identical to
-     their versions at the base of this round.
+8. C4's append goes at the END of `tests/cli/test_mission_cmd.py`, whose last byte at `3068e9c1`
+   is a single `\n` closing the line `        assert body["watchdog_trips"] == []`. The appended
+   region begins with exactly two blank lines, which is how that file separates its classes.
 
-Handback: rewrite `.agent/handoff.md`. It carries the mandated sections — the state block with
-the SESSION NUMBER (this is still SESSION 1 of F275) and a Fortschritt line you author and label
-`Schätzung`, the per-commit changed-files table with real `git diff --numstat` columns, one line
-per gate with its REAL exit code, the open-findings count, the item-status table covering every C
-and every G exactly once, the deviations, and the next expected action. It has NO length cap. Do
-not write a `Done:` paragraph anywhere: only the reviewer's authored text resolves a finding.
+9. NOTHING UNDER `docs/` CHANGES this round, so the docs gate does not apply. No pull request is
+   created: under `docs/roadmap/STATUS_closure_protocol.md` the PR belongs to the closure sequence.
 
-BEGIN PLAN2 sha256=074c2c5ad69e33a96a880b46aa1aa7f8584146abfbb3433f431391973135ff3e bytes=2368
+10. PAIR SHAPES, CLASSIFIED BY A MECHANICAL CONTAINMENT TEST AND NOT BY EYE (§3 items 4 and 15).
+    The reviewer ran the test per pair and records its OUTPUT here; the label is derived from that
+    output on the same line:
+      pair (a) catalog entry ........ TO contains FROM: false -> REWRITE
+      pair (b) handler registration . TO contains FROM: true  -> APPEND
+      pair (c) cockpit import ....... TO contains FROM: false -> REWRITE
+      pair (d) cockpit source ....... TO contains FROM: false -> REWRITE
+      pair (f) allowlist line ....... TO contains FROM: true  -> APPEND
+      pair (g) module docstring ..... TO contains FROM: false -> REWRITE
+    Edit (e) is a DELETION and is not a pair. No gate orders a "FROM occurs 0 times" reading for
+    the two APPEND pairs, because their FROM legitimately survives inside their TO.
+
+11. EVERY SEPARATOR LINE IN THIS BLOCK'S FRAME IS A RUN OF EXACTLY 54 `─` CHARACTERS (§3 item 37),
+    stated because a run has no length a reader recovers by eye. Nothing appliable travels in the
+    frame: every appliable byte is a slice, proved against its own target.
+
+────────────────────────── C1 — THE PLAN ──────────────────────────
+
+Replace the WHOLE of `.agent/plan.md` with the text between the markers. 43 lines and 2425 bytes,
+under the AGENTS.md cap of 50 lines. The marker lines themselves are NOT part of the file.
+
+<<<BEGIN PLAN3>>>
 # Plan — F275 One world completion, part three
 
 Branch: feature/f275-one-world-completion-part-three, cut from `main` at
@@ -216,51 +92,398 @@ Branch: feature/f275-one-world-completion-part-three, cut from `main` at
 
 Finish what F274 could not reach inside its own limit: the two carry-overs F260's Design
 names, DECISION F260 D3, the prototype-cluster deletion itself, the atomic record flip that
-T002 rules but does not perform, and the classic runner. T001 runs FIRST, and its `git rm`
-sequence is never started by a session that cannot finish it.
+T002 rules but does not perform, and the classic runner. Operator ruling amend0908-f275-finish
+orders T001 PERFORMED, not prepared, with one module group as the atomic unit.
 
 ## Current Step
 
-ROUND 2 books round 1's PASS verdict and its four reviewer-prose slips into the record, then
-COMPLETES the first carry-over's code move: the second and last staged batch of
-`packages/orchestration/mission_readiness.py`, which brings the carried set to all twenty-nine
-definitions, and the test file named after that module. The module is STILL UNWIRED at the end
-of this round — no consumer imports it and no cluster edge is cut yet — so every commit
-boundary stays green.
+ROUND 3 books round 2's PASS verdict into the record and then WIRES the carried readiness
+module. `mission readiness` joins the catalog and `apps/cli/commands/mission_cmd.py`, the
+cockpit's readiness section switches its import from the cluster module to the carried one,
+and the deletion map loses the one line it recorded for
+`packages.orchestration.overnight_readiness` in that same commit. That module ends the round
+with ZERO surviving consumer edges, which is what makes it deletable.
 
 ## Next Steps
 
-1. The wiring round gives the CLI and the cockpit the carried readiness view as
-   `mission readiness`, cuts the one surviving `packages/orchestration/ui_server.py` edge the
-   deletion map records for `overnight_readiness`, and removes that line from the map in the
-   SAME commit, which is what `tests/orchestration/test_cluster_deletion_map.py` requires.
-2. DECISION F260 D3, the deletion paragraph, drafted with R-0832's fix clause binding it and
-   R-0831 named among the ideas deleted rather than inherited.
-3. The prototype-cluster deletion itself, bounded by the map's edges, one commit per module
-   group, under the four measurements amend0906-triage-throughput names for a deletion round.
-   It is not started by a session that cannot finish it.
+1. The `mission report` carry-over, which DECISION F274 D2 couples to the death of the current
+   holder of `mission.report` in `apps/cli/commands/worker_facade_cmd.py`: the carry-over and
+   that deletion are ONE commit.
+2. The route-policy knobs checked against F110's config keys — R-0831 already records that none
+   has an equivalent, so this is a finding update and not a rebuild.
+3. `.agent/f275_deletion_order.md`, derived from the map in dependency order, leaf modules
+   first, written BEFORE the first `git rm`.
+4. The module groups, one commit each, under the four measurements
+   amend0906-triage-throughput names for a deletion round.
+5. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831
+   named among the ideas deleted rather than inherited.
 
 ## Risks
 
 - 65 findings are open by distinct id, four of them High — R-0803, R-0804, R-0806 and R-0807 —
   all F273's rather than this feature's, per DECISION F272 D12. The integrity gate's
   `high_blockers_open` check is WRONG about them, which is R-0648 and itself open.
-- The carried module is dead code until the wiring round, by design and by DECISION F275 D1.
-  That is the price of staying under the DECISION F104 D1 cap of 500 insertions per commit;
-  this feature's single declared-oversize allowance is reserved for T002's atomic flip.
-END PLAN2
+- `packages/orchestration/overnight_readiness.py` keeps its own tests and its own cluster
+  consumers after this round. It is deletable, not deleted, and only its GROUP commit removes
+  it — a half-deleted module is the state operator RULE 1 forbids.
+<<<END PLAN3>>>
 
-BEGIN RECORD2 sha256=7f528e43195663edc0b91cfbf24c00a95b5b5bc6e89eb8bef9fe3d23d0d956cc bytes=5227
-Gate: F275 R1 — the F275 round 1 entry. VERDICT PASS, and EVERY ONE OF THE EIGHT GATES WAS RE-RUN BY THE REVIEWER ITSELF against the COMMITTED blobs rather than read from the worker's report. This entry is booked by round 2 rather than by a round of its own, under operator amendment amend0827-process-diet rule 1, whose durable carrier was the round 1 handback committed at `b382ab02` and pushed. Range `a5bf894946ab6de053a4232109d6341a63533768`..`b382ab02`, seven commits, every one single-parent, in the ordered sequence C0a, C0b, C1, C2, C3, C4, C6 — there is no C5 commit because C5 is the measurement step and writes no file, which the block ordered and the handback declares. THE CHANGE SET IS EXACTLY THE NINE PATHS the block named and nothing else, confirmed by the reviewer with `git diff --name-status` over the range. G1 TRANSPORT covers the chain this workflow can walk, per docs/agents/planner_reviewer_prompt.md §3 item 37, and NOT the emitted bytes: the reviewer's scratch original `.remedy-wt/f275-r1-FINAL.md`, the committed `.agent/authored/f275-r1.md` and the committed `.agent/last_block.md` are all 36124 bytes at `6c75575db624c8e932909fc02cb68e667dc4235f4ff14e27daaace496f886071`. G2 THE PLAN: `.agent/plan.md` byte-equal to its slice at 2526 bytes and 43 lines against the AGENTS.md cap of 50, with `^## Goal$` and `^## Next Steps$` once each. G3 THE RECORD at `46e5336d`: `.agent/live_review.md` 506317 to 510121 and `.agent/decisions.md` 919768 to 927408, a gain of 7640 which is the DEC1 slice's 7639 bytes plus one newline; the CARRIED REGION from the `^## Findings$` line to end of file is BYTE-IDENTICAL across the re-head at `ac08353106bfe118095963282161da9db92051b5be4fe03a8a86b53da920169e` before and after, which is the whole point of a re-head and was measured rather than assumed; the file starts with the HEAD1 bytes and ends with the RECORD1 bytes, the pre-commit decisions blob is an exact PREFIX and DEC1 an exact SUFFIX; ordered equality was proved by a second independent reader with N counted from the slice at 8; the negative control on the FIRST appended paragraph was rejected by BOTH readers and never written to disk; and the counts landed on every predicted pair — blank-line units 212 to 214, `^Gate: ` 22 to 23, `^Gate: F274 R23 ` 0 to 1, distinct registrations 68 to 68, distinct resolutions 3 to 3, OPEN SET 65 TO 65 BY DISTINCT ID. The open set does not move because this round minted no id and resolved none. G4 THE CLAIM at `c4cebfcb`: the pair FROM reads 0 and the TO reads 1, `^- \[~\] F275 ` occurs once, `^- \[~\] ` occurs exactly once in the whole ledger, and `^- \[x\] F\d{3} — ` still reads 76 — a claim accepts nothing. G5 THE CARRIED CODE at `352659da`: ALL SEVENTEEN of the batch-1 definitions are BYTE-IDENTICAL to their spans in `packages/orchestration/overnight_readiness.py` at the base commit, the new module parses under `ast.parse`, `python3 -m ruff check` exits 0, and the commit is 369 insertions against the DECISION F104 D1 cap of 500; the five deliberately excluded names — `OvernightEvidenceStatus`, `_CAP_UNKNOWN`, `OvernightRunPlan`, `build_overnight_plan` and `export_plan_json` — are present in the source and ABSENT from the new module, which the reviewer checked in both directions. G6 UNWIRED: both dotted import forms of the new module return ZERO matches over `packages/`, `apps/`, `tests/`, `scripts/` and `docs/`, so nothing imports it; `packages/orchestration/overnight_readiness.py` and `tests/orchestration/cluster_deletion_map.txt` are byte-identical between the base and the tip, so no edge was cut and no map line was removed. G7 THE SUITES, each re-run ALONE by the reviewer, every one exit 0: `tests/docs/` 303, `tests/orchestration/test_roadmap_index.py` 30, `tests/ui_server/` 506, `tests/orchestration/test_test_runner.py` 51, `tests/regression/test_resource_safety.py` 21, `tests/orchestration/test_integrity_gate.py` 16, and the canary `tests/cli/test_golden_path.py` 42. G8 THE TREE: no `.agent/STOP`, `git status --porcelain` empty, the branch is `feature/f275-one-world-completion-part-three`, and `git worktree list` shows only the primary checkout. NO PULL REQUEST EXISTS, which is correct: under docs/roadmap/STATUS_closure_protocol.md the pull request is created by the closure sequence, not by an ordinary round. THE FOUR DEVIATIONS THE WORKER DECLARED ARE ALL DEFECTS OF THE REVIEWER'S OWN BLOCK TEXT AND NONE OF THEM PUT ANYTHING WRONG ON DISK, so under operator amendment amend0827-process-diet rule 2 they are dated lines in `.agent/prose_slips.md` and NOT findings, and no id is spent on them: the head-swap separator newline the block's arithmetic required but its prose never stated, the two P1 marker lines carrying no digest while constraint 1 says every slice carries one, the Fortschritt line ordered "repeated verbatim" with no line supplied to repeat, and G8's `git log` clause naming a commit later than the commit the gates were ordered at, which is the §3 item 14 shape. The worker declared each rather than working around it, measured both candidate readings of the first before applying either, and applied the block as written throughout; that is the behaviour the block asks for.
-END RECORD2
+────────────────────────── C2 — THE RECORD ──────────────────────────
 
-BEGIN SLIPS2 sha256=a7fc937315393a92a00815e4b6d173cf97383dfba4553c836dfd69f2fe717f31 bytes=1292
-2026-09-08 · F275 R1 · The round 1 block's constraint 2 ordered the live-review prefix "replaced" by the HEAD1 slice, while its own gates G3(a) and G3(f) were computed from HEAD1 plus one separator newline; a literal substitution gives 510120 bytes and 213 units and fails both, so the worker measured both readings in scratch and applied the only one satisfying the block.
+APPEND the text between the markers to `.agent/live_review.md`, followed by exactly one newline.
+It is ONE blank-line unit, 3877 bytes. The file is 515349 bytes before this commit and ends with a
+newline; append a single `\n` FIRST so the new unit is separated from the current last one by a
+blank line. Do not renumber, reflow or edit anything already in the file.
 
-2026-09-08 · F275 R1 · The round 1 block's constraint 1 says every slice's BEGIN line carries its own sha256 and byte count, and the two P1 pair markers carried neither; the worker measured both at 120 bytes and re-ran the containment test rather than trusting the label.
+<<<BEGIN RECORD3>>>
+Gate: F275 R2 — the F275 round 2 entry. VERDICT PASS, booked by round 3 rather than by a round of its own, under operator amendment amend0827-process-diet rule 1, whose durable carrier was the round 2 handback committed at `2a2f2b5b` and pushed, with the verdict appended at `09086390`. Range `b382ab02`..`2a2f2b5b`, and the reviewer re-ran the round's verification itself against the COMMITTED blobs rather than reading the worker's report. THE CHANGE SET IS EXACTLY THE EIGHT PATHS the block named, by `git diff --name-status`. G1 TRANSPORT covers the chain this workflow can walk, per docs/agents/planner_reviewer_prompt.md §3 item 37, and NOT the emitted bytes: the scratch original, the committed `.agent/authored/f275-r2.md` and the committed `.agent/last_block.md` are all 25131 bytes at `dd9532377da9b2e460e83618b56a776d395b96e548b88679c61856812e040d3f`. G2 THE PLAN: `.agent/plan.md` byte-equal to its slice at 2368 bytes and 41 lines. G3 THE RECORD: `.agent/live_review.md` 510121 to 515349 and `.agent/prose_slips.md` 166737 to 168030, each gain the slice's bytes plus one newline, each pre-blob an exact PREFIX and each slice an exact SUFFIX, blank-line units 214 to 215 and 229 to 233, `^Gate: ` 23 to 24, and the OPEN SET UNCHANGED AT 65 BY DISTINCT ID — 68 distinct registrations against 3 distinct resolutions, the subtraction taken over DISTINCT ids and never over the 5 `Done:` LINES. G4 THE MODULE: all twenty-nine carried definitions BYTE-IDENTICAL to their spans in `packages/orchestration/overnight_readiness.py` at `a5bf894946ab6de053a4232109d6341a63533768`, the round-1 blob an exact PREFIX of the round-2 blob, `ast.parse` clean, and all five deliberately excluded names absent from the module and present in the source — checked in BOTH directions. G6: `tests/orchestration/test_mission_readiness.py` collects 20 and passes 20, holds no `class TestPlan`, no `build_overnight_plan` and no `export_plan_json`, and its twelve `overnight_readiness` occurrences are every one of them the CARRIED symbol `build_overnight_readiness` or `select_overnight_next_action`, never an import of the old module. G7: 506 · 51 · 21 · 16 · 28 · 42, six suites each run ALONE, every count the one predicted, and run 5 includes the ORIGINAL module's own test, which still passes because round 2 COPIED its subject and did not move it. G8 WAS RED and the round is a PASS ANYWAY: its only failing clause was that `.agent/STOP` existed and therefore `git status --porcelain` was not empty. The reviewer confirmed the sentinel independently — 0 bytes, UNTRACKED, created 10:10 while the gates ran, and the single occurrence of that path in a tracked file is a READ-ONLY assertion in `tests/test_agent_tooling.py`, inside `test_self_drive_protocol_states_its_guardrails`, measured at `3068e9c1`, so nothing in this repository writes it. It was an EXTERNAL signal arriving mid-round, not a product of the change set; every other G8 clause passed, including the dotted-import search returning exactly one file with NOTHING under `packages/` or `apps/`. Grading the round down for a sentinel the operator placed would grade the worker for the operator's action, and the worker did exactly what guardrail G6 orders: finished the one owed commit, left the sentinel untouched, and stopped. The operator has since cleared it and committed amend0908-f275-finish at `3068e9c1`. THREE DEVIATIONS WERE DECLARED AND NONE IS A FINDING: the `# Plan (1256)` banner dropped with the class it titled; the module docstring left reading "STAGED BATCH 1 OF 2" because constraint 3 required the round-1 bytes to stay an exact prefix, which round 3 repairs in the commit that wires the module; and the docstring's "655 lines" CHECKED rather than assumed and found exact. Under amend0827 rule 2 none of the three put anything wrong on disk that a round must repair, so none earns an id.
+<<<END RECORD3>>>
 
-2026-09-08 · F275 R1 · The round 1 block ordered the handback to repeat the Fortschritt line verbatim and supplied no Fortschritt line to repeat, because under self-drive that line lives in the reviewer's operator brief rather than in the block; the worker authored one and labelled it a Schätzung.
+────────────────────────── C3 — THE WIRING (SPEC) ──────────────────────────
 
-2026-09-08 · F275 R1 · The round 1 block ordered all eight gates run at C5 and then had G8 assert `git log` shows C0a through C6, a commit that does not exist until after the gates run — the §3 item 14 shape of a gate reaching a commit it cannot honestly measure; the worker marked it deviated and re-confirmed the clause after C6.
-END SLIPS2
+SEVEN labelled edits across SIX files, ONE commit — (c) and (d) are two edits to the same file.
+The reviewer applied all seven in a disposable worktree at `3068e9c1` and measured
+`git diff --numstat` as 12, 33, 6, 2, 0, 1 insertions — 54 in total, far under the DECISION F104
+D1 cap of 500 insertions per commit.
 
+(a) `apps/cli/command_catalog.py` — INSERT a catalog entry. The anchor is the END of the
+`mission.resume` entry, which is the last entry before the doctor group's comment banner. FIND
+this text, which occurs exactly ONCE in the file:
+
+        related=("mission.pause", "mission.watchdog"),
+    ),
+
+    # ── doctor
+
+REPLACE it with the same text carrying the new entry between the `),` and the blank line:
+
+        related=("mission.pause", "mission.watchdog"),
+    ),
+    CommandEntry(
+        command_id="mission.readiness",
+        group_id="mission",
+        subcommand="readiness",
+        description="Read-only: is this job safe to run unattended?",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("mission.show", "mission.watchdog"),
+    ),
+
+    # ── doctor
+
+The reviewer checked this entry against every invariant `tests/test_command_catalog.py` asserts
+over the whole catalog — unique id, unique (group, subcommand) path, known group, id format, a
+valid `action_class`, `is_expensive` a bool with only `job.run` marked, a `--json` arg because
+`supports_json` is True, no forbidden term in the description. `mission.readiness` is FREE;
+`mission.report` is NOT, which is what DECISION F274 D2 is about and why report is a later round.
+
+(b) `apps/cli/commands/mission_cmd.py` — INSERT a handler and register it. FIND the single line
+
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+
+and REPLACE it with the handler, two blank lines, that same line, and the registration:
+
+def _cmd_mission_readiness(job_id: str, *, json_output: bool = False) -> None:
+    """Read-only: is this job safe to run unattended?
+
+    The readiness view carried out of the prototype cluster into
+    ``packages/orchestration/mission_readiness.py`` by DECISION F275 D1. The
+    JSON payload is the carried module's own export, unwrapped, so the view
+    survives the cluster deletion byte for byte rather than being redesigned.
+    """
+    from packages.orchestration.mission_readiness import (
+        build_overnight_readiness,
+        export_readiness_json,
+    )
+    data = export_readiness_json(build_overnight_readiness(str(job_id)))
+    if json_output:
+        print(_json.dumps(data, indent=2))
+        return
+    print(f"Mission readiness: {str(job_id)[:8]}")
+    print(f"  level: {data['readiness_level']}  ready: {data['ready']}  "
+          f"unattended: {data['can_run_unattended']}")
+    if data["blockers"]:
+        print("  blockers: " + ", ".join(data["blockers"]))
+    top_risks = [r for r in data["risks"] if r["severity"] in ("blocker", "high")]
+    if top_risks:
+        print("  top risks: " + "; ".join(r["summary"] for r in top_risks[:3]))
+    na = data.get("next_action")
+    if na:
+        print(f"  next: {na['label']} -> {na['command']}")
+
+
+COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "mission.readiness": lambda args: _cmd_mission_readiness(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+
+The module already imports `json as _json`, so no import is added. The handler is the body of
+`_cmd_overnight_readiness` in `apps/cli/commands/overnight_cmd.py` with its module swapped and
+its header changed from `Overnight readiness:` to `Mission readiness:` — the payload is
+byte-for-byte the old one, which G6 measures rather than assumes.
+
+(c) `packages/orchestration/ui_server.py` — the EDGE CUT, inside `_build_overnight_section`.
+Each line below occurs exactly once in the file; replace FROM with TO, keeping the indentation:
+
+  FROM:         from packages.orchestration.overnight_readiness import (
+  TO:           from packages.orchestration.mission_readiness import (
+
+(d) `packages/orchestration/ui_server.py`, second edit, SAME commit:
+
+  FROM:             "source": "overnight_readiness",
+  TO:               "source": "mission_readiness",
+
+The reviewer searched the whole repository for that string as a VALUE before ordering this: no
+test, no `apps/ui` source, no doc and no JSON fixture reads it, so the relabel breaks no
+consumer, and leaving it saying `overnight_readiness` after the import moved would make the
+field name a module that no longer produces it.
+
+(e) `tests/orchestration/cluster_deletion_map.txt` — DELETE the whole line
+
+packages.orchestration.overnight_readiness <- packages/orchestration/ui_server.py
+
+and its newline. It occurs exactly once. The file goes from 20 recorded edges to 19, and the
+number of cluster modules still carrying any edge goes from 11 to 10.
+
+(f) `tests/orchestration/import_reachability_allowlist.txt` — INSERT the single line
+
+packages.orchestration.mission_readiness
+
+directly BEFORE the existing line `packages.orchestration.mission_state`. That is its sorted
+position: `mission_plan_schema` < `mission_readiness` < `mission_state`. The file is generated
+and sorted; an entry out of order is a defect even when the test passes.
+
+(g) `packages/orchestration/mission_readiness.py` — the stale docstring sentence round 2
+declared and could not repair. FIND the paragraph beginning `STAGED BATCH 1 OF 2, AND UNWIRED.`
+and ending `not touched by either batch.` — five lines — and REPLACE all five with these six:
+
+COMPLETE AND WIRED. The carry-over is 655 lines, which exceeds the DECISION F104 D1
+cap of 500 insertions for one commit, so it landed across two commits in two rounds.
+`remedy mission readiness` and the cockpit readiness section both read it, and those
+two consumers are why `packages/orchestration/overnight_readiness.py` has no
+surviving consumer left. That module is still on disk and is deleted with its
+cluster group; it was never touched by this move.
+
+This is the ONLY edit this round makes to that module and it touches the docstring alone: all
+twenty-nine carried definitions stay byte-identical, which G4 gates.
+
+────────────────────────── C4 — THE TEST (SPEC) ──────────────────────────
+
+APPEND to `tests/cli/test_mission_cmd.py`, after its final newline, exactly two blank lines and
+then the class below. This file runs the REAL grouped CLI in a subprocess against a tmp data
+root, which is why the wiring is proven end to end here rather than by importing the handler.
+
+class TestMissionReadinessIsWiredToTheCarriedModule:
+    """F275 T001: the readiness view carried out of the prototype cluster.
+
+    `packages/orchestration/mission_readiness.py` was moved definition by
+    definition in rounds 1 and 2 and left deliberately UNWIRED, so for two
+    rounds it was dead code. These are the tests that stop it being dead: the
+    catalog carries the command, the dispatch table reaches the handler, the
+    real CLI answers with the carried payload, and the cockpit no longer
+    imports the cluster module it was carried out of.
+    """
+
+    JOB_ID = "11111111-2222-3333-4444-555555555555"
+
+    def test_the_catalog_registers_mission_readiness_exactly_once(self):
+        from apps.cli.command_catalog import CATALOG
+
+        assert len([c for c in CATALOG if c.command_id == "mission.readiness"]) == 1
+
+    def test_the_dispatch_table_reaches_the_handler(self):
+        from apps.cli.commands import collect_all_handlers
+
+        assert "mission.readiness" in collect_all_handlers()
+
+    def test_the_real_cli_answers_with_the_carried_payload(self, project):
+        data_root, _project_id = project
+
+        body = json.loads(_run(["mission", "readiness", self.JOB_ID, "--json"],
+                               data_root).stdout)
+
+        for key in ("readiness_level", "ready", "can_run_unattended", "blockers",
+                    "risks", "checklist"):
+            assert key in body, f"the carried payload lost {key}"
+
+    def test_the_text_view_names_the_mission_command(self, project):
+        data_root, _project_id = project
+
+        out = _run(["mission", "readiness", self.JOB_ID], data_root).stdout
+
+        assert out.startswith("Mission readiness:")
+
+    def test_the_cockpit_reads_the_carried_module_and_says_so(self):
+        from packages.orchestration.ui_server import _build_overnight_section
+
+        class _Job:
+            id = "11111111-2222-3333-4444-555555555555"
+
+        section = _build_overnight_section(_Job(), Path(".data"))
+
+        assert section["source"] == "mission_readiness"
+
+    def test_the_cockpit_no_longer_imports_the_cluster_readiness_module(self):
+        """The edge this round cut. The map ratchet proves the graph; this names the file.
+
+        The token is the DOTTED MODULE PATH, never the bare word: the carried
+        symbol `build_overnight_readiness` keeps its spelling by DECISION F275
+        D1, so a substring check would red on the very names the move preserves.
+        """
+        source = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text(
+            encoding="utf-8")
+
+        assert "packages.orchestration.overnight_readiness" not in source
+        assert "from packages.orchestration.mission_readiness import" in source
+
+`json`, `Path` and `REPO_ROOT` are already imported at the top of that file, and `project` is its
+existing fixture returning `(data_root, project_id)`. The reviewer ran the fifth test's body in
+the worktree with that exact `Path(".data")` argument — which did NOT exist there, and the section
+still reported `mission_readiness`, so it does not depend on a data root being present.
+
+WHY THAT TEST READS A DOTTED PATH, measured at `3068e9c1`: `ui_server.py` holds the substring
+`overnight_readiness` FOUR times — the import, the `source` value, and TWICE inside the carried
+symbol `build_overnight_readiness`, which constraint 7 keeps. Edits (c) and (d) remove two, the
+other two legitimately survive, and the dotted path occurs ONCE at base and ZERO times after (c).
+A bare-word assertion would have landed RED on a correct change.
+
+────────────────────────── C5 — THE GATES ──────────────────────────
+
+Run ALL EIGHT at C5, after C4 and STRICTLY BEFORE the C6 handback commit, so the handback can
+quote every one of them (§3 item 31). C5 writes no file and has no commit. Report ONE LINE PER
+GATE with the REAL exit code. A gate that cannot be run is reported as not run — never as green.
+
+EVERY GATE BELOW WAS RUN BY THE REVIEWER AT THE BASE `3068e9c1` BEFORE EMISSION, and each carries
+its BASE reading beside its expected one — the procedure finding R-0819's recurrence paragraph
+strengthened from a clause, so that a gate which cannot discriminate is visible on this page.
+Readings that are deliberately NON-DISCRIMINATING are labelled: they are no-regression gates, and
+G5's two red controls carry the discrimination. The other open fix clause read before emission is
+R-0741's grep-derived leave-alone set; it is DECLINED AS NOT APPLICABLE on its own terms — it
+binds "the next block that orders such a set", and this block orders none.
+
+G1 TRANSPORT. sha256 and byte count of the scratch original `.remedy-wt/f275-r3-FINAL.md`, of
+the committed `.agent/authored/f275-r3.md`, and of the committed `.agent/last_block.md`. All
+three must be ONE value. Per §3 item 37 this proves the chain this workflow can walk — saved
+copy, mirror, working copy — and NOT the bytes the reviewer emitted; do not claim more.
+
+G2 THE PLAN. `.agent/plan.md` byte-identical to PLAN3. Report its sha256, its byte count, its
+line count (must be under the AGENTS.md cap of 50), and that `^## Goal$` and `^## Next Steps$`
+each occur exactly once.
+
+G3 THE RECORD. Six parts, over `.agent/live_review.md` only.
+  (a) BYTES: 515349 before, and after = 515349 + len(RECORD3) + 1. State both numbers.
+  (b) EXACT EDGES: the pre-commit blob is a byte-exact PREFIX of the post-commit blob, and
+      RECORD3 is a byte-exact SUFFIX of it. Report both booleans.
+  (c) ORDERED EQUALITY by an independent paragraph reader: compare the LAST N blank-line units
+      of the whole file against RECORD3's N paragraphs IN ORDER, where N is COUNTED FROM THE
+      SLICE by your script and is never taken from this block. Report N and the per-unit
+      sha256 pairs.
+  (d) NEGATIVE CONTROL on the FIRST appended paragraph, in scratch only: flip one byte inside
+      it and confirm BOTH the reader of (b) and the reader of (c) REJECT it. Re-read the
+      tracked file afterwards and report its byte count to show the mutation never touched it.
+  (e) COUNTS: blank-line units 215 → 216; `^Gate: ` 24 → 25; `^Gate: F275 R2 ` 0 → 1.
+  (f) THE OPEN SET DOES NOT MOVE: distinct `^- R-\d+ — ` ids 68 → 68, distinct `^Done: R-\d+ — `
+      ids 3 → 3, OPEN SET BY DISTINCT ID 65 → 65. Subtract DISTINCT IDS, never the 5 `Done:`
+      LINES. This round mints no id and resolves none.
+
+G4 THE WIRING. Over the C3 commit: `git diff --numstat` must read 12, 33, 6, 2, 0, 1 insertions
+for the six files in the order (a)/(b)/(g)/(c,d)/(e)/(f) — report the real columns whatever they
+are. `python3 -m ruff check` exit 0 over `apps/cli/command_catalog.py`,
+`apps/cli/commands/mission_cmd.py`, `packages/orchestration/ui_server.py` and
+`packages/orchestration/mission_readiness.py`. `ast.parse` clean on all four. And the docstring
+edit is the ONLY change to `packages/orchestration/mission_readiness.py`: every one of its
+twenty-nine top-level definitions is byte-identical to its span in the file at `3068e9c1`.
+READ THE BASE BLOB WITH `git show 3068e9c1:packages/orchestration/mission_readiness.py` INTO
+MEMORY OR INTO GITIGNORED SCRATCH — never by overwriting and restoring the tracked file, which
+guardrail G5 forbids outright (§3 item 29). BASE reading, measured by the reviewer: ruff exit 0
+on all four files, and all twenty-nine definitions identical to themselves, so the definition
+half of this gate is a no-regression reading; the numstat columns are what discriminate.
+
+G5 THE RATCHETS, WITH BOTH RED CONTROLS. Green first, in the primary checkout:
+`python3 -m pytest tests/orchestration/test_import_reachability.py
+tests/orchestration/test_cluster_deletion_map.py -q` must be exit 0. Then, in a DISPOSABLE
+`git worktree` and NEVER in the primary checkout, per guardrail G5:
+  control 1 — put the deleted map line back and re-run the map test ALONE. It must FAIL, and its
+  message must name `DISAPPEARED (1)` with that exact edge.
+  control 2 — remove `packages.orchestration.mission_readiness` from the allowlist and re-run
+  the reachability test ALONE. It must FAIL naming `packages.orchestration.mission_readiness`
+  as reachable-but-unlisted, which is the round's independent proof that the wiring REALLY made
+  the module reachable.
+Report all four exit codes, then remove the worktree BY ITS EXACT PATH and show
+`git worktree list` holding only the primary checkout. BASE readings, measured by the reviewer at
+`3068e9c1`: both ratchets GREEN with the map line present and the allowlist entry absent — which
+is the untouched base — and then, with this round's edits applied, GREEN again, and both controls
+RED with exactly those two messages. So both halves can fail and both halves can pass, which is
+what makes this gate evidence rather than decoration.
+
+G6 THE CARRY-OVER IS BEHAVIOUR-PRESERVING. Through the SHIPPED dispatch table, not by importing
+the module: build the parser with `apps.cli.grouped.build_parser()` and parse
+`["mission","readiness","11111111-2222-3333-4444-555555555555","--json"]`; then call BOTH
+`collect_all_handlers()["overnight.readiness"]` and `collect_all_handlers()["mission.readiness"]`
+on that namespace, capture each one's stdout, and compare the two JSON payloads. They must
+differ in `generated_at` ALONE — report the full list of differing keys and the list with
+`generated_at` removed, which must be empty. `generated_at` is a timestamp that differs between
+two consecutive calls to the SAME module, which round 2's G5 already measured. Also report
+`_build_overnight_section` returning `source` == `mission_readiness`. The reviewer measured
+1097 characters from each handler and `['generated_at']` as the only difference.
+BASE reading at `3068e9c1`: `"mission.readiness" in collect_all_handlers()` is FALSE and the
+lookup raises `KeyError`, while `overnight.readiness` is registered — so this gate is UNMEETABLE
+at the base and fully discriminating.
+
+G7 THE SUITES, each run ALONE and serially, in this order. Report the real exit code and the
+passed count for each:
+  1. `python3 -m pytest tests/orchestration/test_import_reachability.py
+     tests/orchestration/test_cluster_deletion_map.py
+     tests/orchestration/test_overnight_readiness.py
+     tests/orchestration/test_mission_readiness.py -q`
+     BASE 48, expected 48 — NO-REGRESSION, this reading does not discriminate.
+  2. `python3 -m pytest tests/test_command_catalog.py tests/test_grouped_cli.py
+     tests/cli/test_mission_cmd.py -q`
+     BASE 639, expected 645 — DISCRIMINATING: C4 adds exactly six tests, counted from the class
+     above and not asserted from memory. Report what you measure.
+  3. `python3 -m pytest tests/ui_server/ -q`
+     BASE 506, expected 506 — NO-REGRESSION. This is the suite the edge cut could break.
+  4. `python3 -m pytest tests/cli/test_golden_path.py -q`
+     BASE 42, expected 42 — the canary, NO-REGRESSION.
+
+G8 THE TREE AND THE UNTOUCHED MODULE. All of:
+  - `.agent/STOP` does not exist;
+  - `git status --porcelain` is EMPTY;
+  - the branch is `feature/f275-one-world-completion-part-three`;
+  - `git worktree list` shows ONLY the primary checkout;
+  - `packages/orchestration/overnight_readiness.py` is BYTE-IDENTICAL to its blob at
+    `3068e9c1`, read with `git show 3068e9c1:packages/orchestration/overnight_readiness.py`
+    into scratch and never by touching the tracked file — report both sha256 values;
+  - `tests/orchestration/cluster_deletion_map.txt` contains the DOTTED PATH
+    `packages.orchestration.overnight_readiness` ZERO times (BASE reading: exactly 1), and its
+    recorded-edge count read through `recorded_edges()` is 19 (BASE reading: 20);
+  - `git log --oneline` over this round's range shows the commits C0a, C0b, C1, C2, C3, C4 in
+    that order, each single-parent.
+C6's OWN numbers are deliberately ordered NOWHERE. Under docs/agents/self_drive_protocol.md there
+is no second window, so a value routed to a "round report" or a "completion message" is written to
+a channel that ends with the session (§3 item 31). The REVIEWER measures C6's commit and its
+numstat columns itself at the next gate and records them in that round's ledger entry. Do not
+guess them, and do not leave a blank where they would go.
+
+────────────────────────── C6 — THE HANDBACK ──────────────────────────
+
+Rewrite `.agent/handoff.md` per `docs/agents/handback_template.md`. NO length cap (amend0827 rule
+3); valid when its mandated sections are present. It MUST carry: the state block naming FEATURE
+F275, ROUND 3, SESSION 2, the branch, the base `3068e9c1` and every commit SHA; the changed-files
+table with the REAL `git diff --numstat` columns per commit, taken from the tool and not
+re-derived (§3 item 28); ONE LINE PER GATE with its real exit code, plus the G3, G5, G6 and G7
+transcripts; the open-findings count (65 by distinct id, unchanged); the item-status table
+covering C0a, C0b, C1, C2, C3, C4, C5, C6 and G1 to G8 exactly once each; the deviations; the
+Fortschritt line below verbatim; ONE SENTENCE of context self-assessment per amend0905-throughput;
+and the next expected action — the `mission report` carry-over, which DECISION F274 D2 couples to
+the deletion of the current holder of `mission.report` in
+`apps/cli/commands/worker_facade_cmd.py`, carry-over and deletion in ONE commit. Write NO verdict:
+the verdict is the reviewer's and is written after this commit.
+
+Fortschritt: ~20 % (T001: Claim ✅ · Record ✅ · D1 ✅ · Carry-over Batch 1 ✅ · Batch 2 ✅ ·
+Testdatei ✅ · Verdrahtung ✅ · Kante geschnitten ✅ · mission report offen · F260 D3 offen ·
+Löschung offen · T002 offen · T003 offen) — Schätzung
