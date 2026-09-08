@@ -1356,3 +1356,67 @@ class TestShowLeadsWithTheTrip:
                                 project_id, "--json"], data_root).stdout)
 
         assert body["watchdog_trips"] == []
+
+
+class TestMissionReadinessIsWiredToTheCarriedModule:
+    """F275 T001: the readiness view carried out of the prototype cluster.
+
+    `packages/orchestration/mission_readiness.py` was moved definition by
+    definition in rounds 1 and 2 and left deliberately UNWIRED, so for two
+    rounds it was dead code. These are the tests that stop it being dead: the
+    catalog carries the command, the dispatch table reaches the handler, the
+    real CLI answers with the carried payload, and the cockpit no longer
+    imports the cluster module it was carried out of.
+    """
+
+    JOB_ID = "11111111-2222-3333-4444-555555555555"
+
+    def test_the_catalog_registers_mission_readiness_exactly_once(self):
+        from apps.cli.command_catalog import CATALOG
+
+        assert len([c for c in CATALOG if c.command_id == "mission.readiness"]) == 1
+
+    def test_the_dispatch_table_reaches_the_handler(self):
+        from apps.cli.commands import collect_all_handlers
+
+        assert "mission.readiness" in collect_all_handlers()
+
+    def test_the_real_cli_answers_with_the_carried_payload(self, project):
+        data_root, _project_id = project
+
+        body = json.loads(_run(["mission", "readiness", self.JOB_ID, "--json"],
+                               data_root).stdout)
+
+        for key in ("readiness_level", "ready", "can_run_unattended", "blockers",
+                    "risks", "checklist"):
+            assert key in body, f"the carried payload lost {key}"
+
+    def test_the_text_view_names_the_mission_command(self, project):
+        data_root, _project_id = project
+
+        out = _run(["mission", "readiness", self.JOB_ID], data_root).stdout
+
+        assert out.startswith("Mission readiness:")
+
+    def test_the_cockpit_reads_the_carried_module_and_says_so(self):
+        from packages.orchestration.ui_server import _build_overnight_section
+
+        class _Job:
+            id = "11111111-2222-3333-4444-555555555555"
+
+        section = _build_overnight_section(_Job(), Path(".data"))
+
+        assert section["source"] == "mission_readiness"
+
+    def test_the_cockpit_no_longer_imports_the_cluster_readiness_module(self):
+        """The edge this round cut. The map ratchet proves the graph; this names the file.
+
+        The token is the DOTTED MODULE PATH, never the bare word: the carried
+        symbol `build_overnight_readiness` keeps its spelling by DECISION F275
+        D1, so a substring check would red on the very names the move preserves.
+        """
+        source = (REPO_ROOT / "packages" / "orchestration" / "ui_server.py").read_text(
+            encoding="utf-8")
+
+        assert "packages.orchestration.overnight_readiness" not in source
+        assert "from packages.orchestration.mission_readiness import" in source
