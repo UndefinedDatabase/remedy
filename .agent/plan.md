@@ -12,30 +12,32 @@ orders T001 PERFORMED, not prepared.
 
 ## Current Step
 
-ROUND 7 books round 6's PASS and deletes the SECOND module group, `worker_recommend` — the
-module, its handler, its two catalog entries, the two smoke-script steps that drove them and
-the guards asserting those steps, the surviving test call sites, and one stale sentence in an
-ist-doc. DECISION F275 D3 rules that the recorded order is a valid topological order rather
-than a mandated sequence, which is why this group is taken before `review_bundle`.
+ROUND 8 books round 7's PASS, registers R-0841 and R-0842, and deletes the THIRD module group,
+`context_pack` — the module, its handler, its catalog entry, the brain-graph node that read its
+event by NAME rather than by import, that node's detail renderer and its viewer, theme, copy and
+edge-humanization entries, two dead `ui_server.py` readers, three smoke-script sections with
+their guards, the surviving test call sites, one ist-doc section and its map lines. DECISION
+F275 D4 rules that an event-coupled consumer dies in the same commit as the emitter that fed it.
 
 ## Next Steps
 
-1. `context_pack`, which this round's regeneration makes the order file's first line.
-2. `review_bundle`, deferred by DECISION F275 D3 and needing a session of its own: 2254 lines,
-   sixteen surviving test importers, eight `docs/system/` pages, `pyproject.toml` and a script.
-3. The remaining components in the recorded order, the multi-module ones as single commits
+1. `review_bundle`, which this round's regeneration makes the order file's first line: 2254
+   lines, sixteen surviving test importers, eight `docs/system/` pages, a `pyproject.toml`
+   per-file ignore and list entry, and `scripts/remedy_test_runtime.sh`. It needs a session
+   that can carry it whole, and DECISION F275 D3 keeps it deferred until one can.
+2. The remaining components in the recorded order, the multi-module ones as single commits
    because their members import each other.
-4. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831
-   and R-0840 named among the ideas deleted rather than inherited.
-5. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
+3. DECISION F260 D3, the deletion paragraph, with R-0832's fix clause binding it and R-0831,
+   R-0840 and R-0842 named among the ideas deleted rather than inherited.
+4. T002, the atomic record flip, alone, because every later commit's size depends on its ruling.
 
 ## Risks
 
-- 66 findings are open by distinct id, four of them High — R-0803, R-0804, R-0806 and R-0807 —
-  all F273's rather than this feature's, per DECISION F272 D12.
-- R-0832 records that the map measures IMPORT edges only. Rounds 6 and 7 both measured that
-  gap for real: a UI catalog pinned to the Python emitters, and a smoke script plus its guards
-  that drive a command by STRING. An AST importer sweep is necessary and not sufficient.
+- The open set is 66 by distinct id at this round's base `65409e64`; the ledger commit this
+  block fixes as C2 registers R-0841 and R-0842 and takes it to 68. Four are High — R-0803,
+  R-0804, R-0806 and R-0807 — all F273's rather than this feature's, per DECISION F272 D12.
+- R-0832 records that the map measures IMPORT edges only. This is the first group whose
+  surviving readers are coupled ONLY by event name, and an AST importer sweep saw none of
+  them; they were found by reading the emitter's event string back out of the tree.
 - The full suite is run SERIALLY. Under `pytest -n auto` the `ui_server` command-channel tests
-  race for a server port and the vitest node needs `apps/ui/node_modules`; round 7 measured 12
-  such failures in parallel and 0 in the same worktree run serially.
+  race for a server port and the vitest node needs `apps/ui/node_modules`.
