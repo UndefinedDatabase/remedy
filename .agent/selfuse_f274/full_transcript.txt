@@ -1,0 +1,69 @@
+G5(a) THE EXACT CALL
+run_next_self_use_item(
+    dest_dir=PosixPath('/home/decodeux/Repos/remedy/.remedy-wt/f274-r19-selfuse-dest'),
+    repo_path='/home/decodeux/Repos/remedy/.remedy-wt/f274-r19-selfuse-wt',
+    queue_path='/home/decodeux/Repos/remedy/scripts/self_use_queue.json',
+    max_provider_calls=6,
+    max_cost_usd=0.5,
+    max_tasks=1,
+)
+
+G5(b) THE RESULT
+  job_id: 1a5b417ef7b64fe5
+  state:  blocked
+  task_id='T001'  status='blocked'
+
+G5(c) EXECUTION CONFIG
+{
+  "builder": "ollama",
+  "builder_effort": "",
+  "builder_effort_source": "default",
+  "builder_model": "",
+  "builder_model_source": "default",
+  "builder_source": "cli",
+  "claude_cli_write_mode": "none",
+  "claude_cli_write_mode_source": "default",
+  "context_strategy": "task_bounded_sequential_job",
+  "max_output_chars": 50000,
+  "max_output_chars_source": "default",
+  "max_rounds": 3,
+  "max_rounds_source": "default",
+  "max_tasks": 1,
+  "max_tasks_source": "invocation",
+  "repair_effort": "",
+  "repair_effort_source": "default",
+  "repair_model": "",
+  "repair_model_source": "default",
+  "repair_provider": "",
+  "repair_provider_source": "default",
+  "repair_rounds_allowed": 2,
+  "repair_rounds_source": "default",
+  "reviewer": "ollama",
+  "reviewer_effort": "",
+  "reviewer_effort_source": "default",
+  "reviewer_model": "",
+  "reviewer_model_source": "default",
+  "reviewer_source": "cli",
+  "stream_evidence": false,
+  "stream_evidence_source": "default",
+  "test_command": "",
+  "test_command_present": false,
+  "test_command_source": "default",
+  "timeout_profile": "",
+  "timeout_profile_source": "default",
+  "timeout_sec": 120,
+  "timeout_sec_source": "default"
+}
+FAKE_APPEARS_IN_EXECUTION_CONFIG: False
+
+G5(d) TIMING AND BUDGETS
+  wall_clock_seconds: 102.36
+  budgets: {'max_total_tokens': None, 'max_provider_calls': 6, 'max_wall_clock_minutes': None, 'max_cost_usd': 0.5, 'deadline': None}
+
+G5(e) DEFECTS
+  TUPLE LENGTH: 2
+  [1] job 1a5b417ef7b64fe5 (blocked): task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+  [2] T001 (blocked): completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail
+
+job_file_path: /home/decodeux/Repos/remedy/.remedy-wt/f274-r19-selfuse-dest/SU-013.md
+entry: SU-013 'Address ledger finding R-0445' consumed_by=''

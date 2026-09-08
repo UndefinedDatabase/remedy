@@ -1,0 +1,579 @@
+{
+  "artifacts": [],
+  "budget": null,
+  "budget_actuals": null,
+  "budget_prediction": null,
+  "budgets": {
+    "deadline": null,
+    "max_cost_usd": 0.5,
+    "max_provider_calls": 6,
+    "max_total_tokens": null,
+    "max_wall_clock_minutes": null
+  },
+  "created_at": "2026-09-08T04:59:57.847720+00:00",
+  "error": "task_T001_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail",
+  "execution_config": {
+    "builder": "ollama",
+    "builder_effort": "",
+    "builder_effort_source": "default",
+    "builder_model": "",
+    "builder_model_source": "default",
+    "builder_source": "cli",
+    "claude_cli_write_mode": "none",
+    "claude_cli_write_mode_source": "default",
+    "context_strategy": "task_bounded_sequential_job",
+    "max_output_chars": 50000,
+    "max_output_chars_source": "default",
+    "max_rounds": 3,
+    "max_rounds_source": "default",
+    "max_tasks": 1,
+    "max_tasks_source": "invocation",
+    "repair_effort": "",
+    "repair_effort_source": "default",
+    "repair_model": "",
+    "repair_model_source": "default",
+    "repair_provider": "",
+    "repair_provider_source": "default",
+    "repair_rounds_allowed": 2,
+    "repair_rounds_source": "default",
+    "reviewer": "ollama",
+    "reviewer_effort": "",
+    "reviewer_effort_source": "default",
+    "reviewer_model": "",
+    "reviewer_model_source": "default",
+    "reviewer_source": "cli",
+    "stream_evidence": false,
+    "stream_evidence_source": "default",
+    "test_command": "",
+    "test_command_present": false,
+    "test_command_source": "default",
+    "timeout_profile": "",
+    "timeout_profile_source": "default",
+    "timeout_sec": 120,
+    "timeout_sec_source": "default"
+  },
+  "fences": null,
+  "finished_at": "",
+  "first_running_at": "2026-09-08T04:59:57.919255+00:00",
+  "flight_plan": null,
+  "handoff_coverage": {
+    "missing_root_files": [],
+    "reviewed_task_files": [],
+    "root_changed_files": [],
+    "unexpected_root_files": [],
+    "verdict": ""
+  },
+  "intake": null,
+  "isolation_mode": "worktree",
+  "job_file_sha256": "950747cd1b75dc45c1f177c881471ab672a57f56a6bb8b13f20213e115c2ef66",
+  "job_id": "1a5b417ef7b64fe5",
+  "job_initial_tree": "867ad986f915a5579a31799ecbcd89579e1ad71a",
+  "job_initial_tree_ref": "refs/remedy/checkpoints/job-1a5b417ef7b64fe5/job-initial",
+  "job_title": "Address ledger finding R-0445",
+  "job_workspace_path": "/home/decodeux/Repos/remedy/.remedy-wt/f274-r19-selfuse-wt/.remedy-wt/job-1a5b417ef7b64fe5",
+  "metadata": {},
+  "mission": "",
+  "postmortem": {
+    "error": "",
+    "path": ""
+  },
+  "project_id": "",
+  "repair_rounds_allowed": 2,
+  "repair_rounds_source": "default",
+  "repo_path": "/home/decodeux/Repos/remedy/.remedy-wt/f274-r19-selfuse-wt",
+  "run_manifest": {
+    "active_episode_id": "11b7398e92b74162",
+    "created_at": "",
+    "episode_start_workspace_tree": "867ad986f915a5579a31799ecbcd89579e1ad71a",
+    "episodes": [],
+    "error": "",
+    "input_snapshot": {
+      "capture_phase": "episode_start",
+      "captured_at": "2026-09-08T04:59:58.980227+00:00",
+      "episode_id": "11b7398e92b74162",
+      "input": {
+        "config": [
+          {
+            "key": "budget.class_default_tokens_high",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "budget.class_default_tokens_low",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "budget.class_default_tokens_medium",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "budget.deadline",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "budget.max_cost_usd",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "budget.max_provider_calls",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "budget.max_total_tokens",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "budget.max_wall_clock_minutes",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "budget.price_basis_usd_per_1k_tokens",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "claude_enabled",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "cost_preview.confirm_above_usd",
+            "source": "default",
+            "value": 0.5
+          },
+          {
+            "key": "cycles.batch_size",
+            "source": "default",
+            "value": 1
+          },
+          {
+            "key": "cycles.checkpoint_retention",
+            "source": "default",
+            "value": 5
+          },
+          {
+            "key": "cycles.max_cycles",
+            "source": "default",
+            "value": 1
+          },
+          {
+            "key": "cycles.repair_rounds",
+            "source": "default",
+            "value": 2
+          },
+          {
+            "key": "cycles.verify_command",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "data_dir",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "doctor.dead_models",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "dossier.max_tokens",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "external_memory_enabled",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "logging.level",
+            "source": "default",
+            "value": "WARNING"
+          },
+          {
+            "key": "model_routing.promotion_evidence",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "model_routing.task_class_tiers",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "ollama.builder.model",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "ollama.builder.num_predict",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "ollama.builder.temperature",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "ollama.host",
+            "source": "default",
+            "value": "http://localhost:11434"
+          },
+          {
+            "key": "ollama.model",
+            "source": "default",
+            "value": "muse-glimmer:latest"
+          },
+          {
+            "key": "ollama.planner.model",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "ollama.planner.num_predict",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "ollama.planner.temperature",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "opencode_enabled",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "orchestrator.max_iterations",
+            "source": "default",
+            "value": 10
+          },
+          {
+            "key": "orchestrator.model",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "pi_dev_enabled",
+            "source": "default",
+            "value": "[REDACTED]"
+          },
+          {
+            "key": "planning.granularity.enabled",
+            "source": "default",
+            "value": true
+          },
+          {
+            "key": "planning.granularity.max_acceptance",
+            "source": "default",
+            "value": 3
+          },
+          {
+            "key": "planning.granularity.merge_group_size",
+            "source": "default",
+            "value": 3
+          },
+          {
+            "key": "planning.granularity.split_band",
+            "source": "default",
+            "value": "XL"
+          },
+          {
+            "key": "postmortem.llm_summary",
+            "source": "default",
+            "value": false
+          },
+          {
+            "key": "prompt_budget.default_cap",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "prompt_budget.task_class_caps",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "quality.coverage_fail_under",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "queue.executor_binding",
+            "source": "default",
+            "value": false
+          },
+          {
+            "key": "queue.reclaim_ttl_minutes",
+            "source": "default",
+            "value": 60
+          },
+          {
+            "key": "scope.allow",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "scope.deny",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "smoke.enabled",
+            "source": "default",
+            "value": true
+          },
+          {
+            "key": "smoke.error_patterns",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "smoke.paths",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "smoke.ready_timeout_s",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "teacher.model",
+            "source": "default",
+            "value": null
+          },
+          {
+            "key": "tests.pytest_timeout_seconds",
+            "source": "default",
+            "value": 300
+          },
+          {
+            "key": "ui.command_rate_limit_per_minute",
+            "source": "default",
+            "value": 30
+          },
+          {
+            "key": "ui.host",
+            "source": "default",
+            "value": "127.0.0.1"
+          },
+          {
+            "key": "ui.port",
+            "source": "default",
+            "value": 8765
+          },
+          {
+            "key": "watchdog.burn_min_samples",
+            "source": "default",
+            "value": 5
+          },
+          {
+            "key": "watchdog.burn_multiplier",
+            "source": "default",
+            "value": 3.0
+          },
+          {
+            "key": "watchdog.burn_window",
+            "source": "default",
+            "value": 3
+          },
+          {
+            "key": "watchdog.no_progress_repeats",
+            "source": "default",
+            "value": 3
+          }
+        ],
+        "environment": [
+          {
+            "key": "REMEDY_LOOP_DIR",
+            "value": "[path]/.remedy-loop"
+          },
+          {
+            "key": "REMEDY_MODEL",
+            "value": "opus"
+          },
+          {
+            "key": "REMEDY_REPO",
+            "value": "[path]/remedy"
+          },
+          {
+            "key": "REMEDY_SUBAGENT_MODEL",
+            "value": "opus"
+          }
+        ],
+        "episode_start_workspace_identity": {
+          "digest": "8150bfc46ce8dbc5c71728e788405f0c66f99256d627a3087891bda14ed91eb4",
+          "dirty": false,
+          "head": "ae7607e6190e7abd136adaf5679a864cd203ceff",
+          "problems": [],
+          "status": "ok"
+        },
+        "episode_start_workspace_tree": "867ad986f915a5579a31799ecbcd89579e1ad71a",
+        "job_file_sha256": "950747cd1b75dc45c1f177c881471ab672a57f56a6bb8b13f20213e115c2ef66",
+        "job_initial_tree": "867ad986f915a5579a31799ecbcd89579e1ad71a",
+        "job_input": {
+          "execution": {
+            "builder": "ollama",
+            "builder_effort": "",
+            "builder_effort_source": "default",
+            "builder_model": "",
+            "builder_model_source": "default",
+            "builder_source": "cli",
+            "claude_cli_write_mode": "none",
+            "claude_cli_write_mode_source": "default",
+            "context_strategy": "task_bounded_sequential_job",
+            "max_output_chars": 50000,
+            "max_output_chars_source": "default",
+            "max_rounds": 3,
+            "max_rounds_source": "default",
+            "max_tasks": 1,
+            "max_tasks_source": "invocation",
+            "repair_effort": "",
+            "repair_effort_source": "default",
+            "repair_model": "",
+            "repair_model_source": "default",
+            "repair_provider": "",
+            "repair_provider_source": "default",
+            "repair_rounds_allowed": 2,
+            "repair_rounds_source": "default",
+            "reviewer": "ollama",
+            "reviewer_effort": "",
+            "reviewer_effort_source": "default",
+            "reviewer_model": "",
+            "reviewer_model_source": "default",
+            "reviewer_source": "cli",
+            "stream_evidence": false,
+            "stream_evidence_source": "default",
+            "test_command": {
+              "redacted": "",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "test_command_source": "default",
+            "timeout_profile": "",
+            "timeout_profile_source": "default",
+            "timeout_sec": 120,
+            "timeout_sec_source": "default"
+          },
+          "isolation_mode": "worktree",
+          "job_file_sha256": "950747cd1b75dc45c1f177c881471ab672a57f56a6bb8b13f20213e115c2ef66",
+          "job_input_v": 1,
+          "job_title_sha256": "c41ec38e94f50e46b30170cc11ede474db00bf0336d81c973cb695d7e16ee14d",
+          "tasks": [
+            {
+              "acceptance_sha256": "62e3290e9114a8777983639f3c4988971cca49cef2b722ebd3aae64c1c267798",
+              "body_sha256": "63458ab3f2dc939742373792d6f634b038233aaf2837aba9c728bd4390edbc32",
+              "order": 0,
+              "source_heading_number": 1,
+              "task_id": "T001",
+              "title_sha256": "15e66171bb9efb190e598e1c95888b318d2a83951816b8f7294ca7ba16fdff8e"
+            }
+          ]
+        },
+        "models": {
+          "builder": "ollama",
+          "reviewer": "ollama"
+        },
+        "platform": "Linux-6.17.9-76061709-generic-x86_64-with-glibc2.35",
+        "provider_versions": {
+          "ollama": "ollama version is 0.32.9"
+        },
+        "python_version": "3.10.12",
+        "pythonhashseed": "",
+        "remedy_dirty": true,
+        "remedy_git_sha": "16c9d0701a57dd83a1d8f998e2b6846c685a4da8",
+        "remedy_worktree": {
+          "digest": "7ff89ee2fb69300c7e48a5d1853e4e23e0c7fc45601172d5c5350b409300ca3f",
+          "dirty": true,
+          "head": "16c9d0701a57dd83a1d8f998e2b6846c685a4da8",
+          "problems": [],
+          "status": "ok"
+        },
+        "target_base_commit": "ae7607e6190e7abd136adaf5679a864cd203ceff",
+        "target_head": "ae7607e6190e7abd136adaf5679a864cd203ceff",
+        "target_tree": "8150bfc46ce8dbc5c71728e788405f0c66f99256d627a3087891bda14ed91eb4",
+        "target_worktree": {
+          "digest": "8150bfc46ce8dbc5c71728e788405f0c66f99256d627a3087891bda14ed91eb4",
+          "dirty": false,
+          "head": "ae7607e6190e7abd136adaf5679a864cd203ceff",
+          "problems": [],
+          "status": "ok"
+        }
+      },
+      "problems": [],
+      "snapshot_v": 1,
+      "status": "ok"
+    },
+    "input_snapshot_error": "",
+    "path": "",
+    "required_v": 1
+  },
+  "run_refs": [
+    "e6e1e3b405474f7b"
+  ],
+  "status": "blocked",
+  "stop": {
+    "archive_ref": "",
+    "error": "",
+    "event_error": "",
+    "postmortem_path": "",
+    "reason": "",
+    "request_id": "",
+    "source": "",
+    "stopped_at": ""
+  },
+  "target_guard": null,
+  "tasks": [
+    {
+      "acceptance": "- R-0445 is repaired with a red-to-green proof, or the reviewer records in `.agent/live_review.md` why it cannot be \u2014 either way the ledger gains a `Done: R-0445` line.",
+      "apply_manifest": null,
+      "body": "- R-0445 \u2014 Medium, A STANDING DEFECT IN THE CANONICAL INTEGRATION-GATE PROCEDURE THAT MANUFACTURES EIGHT FALSE BASE FAILURES ON EVERY RUN AND MASKS REAL ONES. Found by the WORKER and declared as R21 deviation 5; proven in both directions before it was believed. `docs/agents/integration_gate.md` step 3 orders environment parity restored by COPYING `apps/ui/node_modules` and `apps/ui/dist` into the base worktree, and explicitly forbids symlinking for a good reason of its own. But a copy preserves the SOURCE mtime while `git worktree add` stamps the freshly checked-out sources with the checkout time, so the copied build is ALWAYS older than the sources it was built from. `ui_server.py::_frontend_is_stale` therefore returns True, `::_auto_build_frontend` returns None under the flag the same procedure sets, and `::_load_frontend` calls `sys.exit(1)`; the server thread dies and all eight `tests/ui_server/test_live_state.py::TestUIServerIntegration` ids fail with \"Server did not start in time\". The procedure cannot restore freshness by copying, so this recurs on EVERY gate run for EVERY feature \u2014 the same eight ids appear in `.agent/gate_f077_r16/base_failed.txt` from the previous feature, which is the recurrence already on disk and unrecognised at the time. Medium and not Low because integration_gate.md step 3 states in its own words that a genuine base failure in those same files WOULD BE MASKED by the environment-class attribution, and eight permanently-failing ids in the UI server's integration tests are exactly the place a real regression would hide. Not High because it produces no false GREEN \u2014 the branch side is unaffected, and every gate run so far has attributed the ids rather than ignoring them. The repair is one line of procedure and belongs to `docs/agents/integration_gate.md`, NOT to this feature branch: after the parity copy, touch `apps/ui/dist/index.html` forward of every file under `apps/ui/src` (or build in the worktree), and have the procedure verify `_f\n[truncated]",
+      "error": "completion_gate_failed: final_status=repair_exhausted; reviewer_verdict=fail",
+      "files_hint": [],
+      "final_status": "repair_exhausted",
+      "inputs": {},
+      "proof_summary": null,
+      "repair_rounds_allowed": 2,
+      "repair_rounds_used": 2,
+      "reviewer_verdict": "fail",
+      "run_id": "e6e1e3b405474f7b",
+      "safe_diff_files": [],
+      "source_heading_number": 1,
+      "status": "blocked",
+      "task_attempt_state": "active",
+      "task_class": "standard_build",
+      "task_id": "T001",
+      "task_start_recorded_at": "2026-09-08T04:59:59.779520+00:00",
+      "task_start_tree": "867ad986f915a5579a31799ecbcd89579e1ad71a",
+      "task_start_tree_ref": "refs/remedy/checkpoints/job-1a5b417ef7b64fe5/tasks/T001-start",
+      "test_passed": null,
+      "title": "Task 1"
+    }
+  ],
+  "user_prompt": "",
+  "worktree": {
+    "base_commit": "ae7607e6190e7abd136adaf5679a864cd203ceff",
+    "branch": "remedy/job-1a5b417ef7b64fe5",
+    "cleanup_error": "",
+    "cleanup_status": "retained",
+    "head": "ae7607e6190e7abd136adaf5679a864cd203ceff",
+    "isolation_mode": "worktree",
+    "path": ".remedy-wt/job-1a5b417ef7b64fe5",
+    "result_diff": {
+      "path": "result.diff",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    "result_diff_error": ""
+  }
+}
