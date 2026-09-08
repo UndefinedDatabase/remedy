@@ -12,23 +12,29 @@ amend0907-cluster-first D1 reorders the slices so the deletion runs FIRST.
 
 ## Current Step
 
-Round 8, a DELETION ROUND under operator amendment amend0906-triage-throughput: delete section
-12ah of `scripts/remedy_smoke.sh`, the last recorded consumer of `context_optimizer`, and its line
-in the deletion map. That takes the module to zero edges under the WIDENED walker round 7 landed,
-so this time the reading is honest about non-python consumers. Book round 7's PASS verdict and
-resolve R-0833 and R-0834. No cluster module is deleted this round.
+Round 9, a DELETION ROUND under operator amendment amend0906-triage-throughput: cut the six
+read-only cockpit sections of `packages/orchestration/ui_server.py` whose subject modules owe no
+carry-over, with the six deletion-map lines and the six tests those cuts force. DECISION F274 D4
+rules the deletion first, and rules why SIX rather than the eight the round 8 handback measured:
+`overnight_readiness` and `builder_routing` are the sources of F260's two carry-overs, so their
+edges are held until the carry-over lands. Book round 8's PASS verdict and the R-0819 recurrence.
+No cluster module is deleted this round.
 
 ## Next Steps
 
 1. `worker_recommend`'s three edges, in `agent_loop.py`, `autonomy_loop.py` and `dashboard.py`.
    These are LIVE RUNTIME CALLS rather than read-only views, so a DECISION naming what inherits
    worker recommendation is authored before the cut.
-2. The fifteen edges `packages/orchestration/ui_server.py` still holds, which is the largest single
-   block of remaining work and wants a DECISION covering the cockpit endpoints as a group.
-3. The `worker_facade_cmd.py` edges, which carry the `mission report` name collision DECISION
-   F274 D2 rules, and the two `feature_cmd.py` edges, which are live CLI commands.
-4. The first carry-over, on the route DECISION F274 D2 fixes: the read-only overnight readiness
-   and report views survive as `mission readiness` and `mission report`.
+2. The two carry-overs F260's Design names, each with the cockpit section this round held back:
+   overnight readiness to `mission readiness`, and the route-policy knobs checked against F110's
+   config keys. `mission report` waits for the commit that deletes its current holder, per
+   DECISION F274 D2.
+3. The `ui_server.py` edges that survive both of the above: `local_model_advisor`,
+   `main_builder_adapter`, `managed_builder_execution`, `overnight_executor`, `provider_trust`,
+   `provider_trust_verification` and `worker_registry` — each has a second consumer outside
+   `ui_server.py`, so cutting its cockpit section alone does not free it.
+4. The `worker_facade_cmd.py` edges, which carry the `mission report` name collision, and the two
+   `feature_cmd.py` edges, which are live CLI commands.
 5. Draft DECISION F260 D3, the deletion paragraph. R-0832's fix clause binds it.
 6. The cluster deletion itself, one commit per module group, NEVER SPLIT ACROSS SESSIONS.
 7. T001 — the `Job.id` flip. Then T002 — the classic runner and the resolver collapse.
