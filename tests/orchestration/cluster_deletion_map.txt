@@ -16,7 +16,6 @@
 packages.orchestration.builder_routing <- packages/orchestration/ui_server.py
 packages.orchestration.dogfood_run <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.execution_approval_policy <- apps/cli/commands/worker_facade_cmd.py
-packages.orchestration.feature_planner <- apps/cli/commands/feature_cmd.py
 packages.orchestration.local_model_advisor <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.main_builder_adapter <- apps/cli/commands/worker_facade_cmd.py
 packages.orchestration.managed_builder_execution <- apps/cli/commands/worker_facade_cmd.py
@@ -24,7 +23,6 @@ packages.orchestration.overnight_executor <- packages/orchestration/orchestrator
 packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood.py
 packages.orchestration.overnight_executor <- packages/orchestration/self_dogfood_execution.py
 packages.orchestration.overnight_readiness <- packages/orchestration/ui_server.py
-packages.orchestration.progress_ledger <- apps/cli/commands/feature_cmd.py
 packages.orchestration.provider_trust <- packages/orchestration/orchestrator_brain.py
 packages.orchestration.provider_trust <- packages/orchestration/provider_patch_material.py
 packages.orchestration.provider_trust <- packages/orchestration/real_test_execution.py

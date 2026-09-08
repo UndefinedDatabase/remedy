@@ -154,7 +154,6 @@ GROUPS: dict[str, GroupDef] = {
     "integrity": GroupDef("integrity", "Integrity", "Pre-handoff integrity checks.", user_facing=False),
     "contract": GroupDef("contract", "Contract", "Run contract inspection.", user_facing=False),
     "progress": GroupDef("progress", "Progress", "Progress ledger.", user_facing=False),
-    "feature": GroupDef("feature", "Feature", "Feature planner.", user_facing=False),
     "snapshot": GroupDef("snapshot", "Snapshot", "Repository snapshot and rollback.", user_facing=False),
     "builder": GroupDef("builder", "Builder", "Builder session rail.", user_facing=False),
     "execution": GroupDef("execution", "Execution", "Managed builder execution.", user_facing=False),
@@ -4338,34 +4337,6 @@ _BASE_CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("job_id", "Job UUID (omit for agent mode)", required=False, default=""),
             ArgDef("--agent", "Use .agent/ files instead of job", required=False, is_option=True, default="false"),
-            ArgDef("--json", "Output as JSON", required=False, is_option=True),
-        ),
-        supports_json=True,
-    ),
-
-    # ── feature ─────────────────────────────────────────────────────────
-    CommandEntry(
-        command_id="feature.plan",
-        group_id="feature",
-        subcommand="plan",
-        description="Show deterministic feature suggestions.",
-        action_class="read_only",
-        args=(
-            ArgDef("job_id", "Job UUID (omit for agent mode)", required=False, default=""),
-            ArgDef("--agent", "Use .agent/ files instead of job", required=False, is_option=True, default="false"),
-            ArgDef("--json", "Output as JSON", required=False, is_option=True),
-        ),
-        supports_json=True,
-    ),
-    CommandEntry(
-        command_id="feature.accept",
-        group_id="feature",
-        subcommand="accept",
-        description="Accept a feature suggestion — creates ProposedTask.",
-        action_class="write_metadata",
-        args=(
-            _JOB_ID,
-            ArgDef("suggestion_id", "Suggestion ID to accept"),
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,

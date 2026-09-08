@@ -25,7 +25,6 @@ apps.cli.commands.dogfood_cmd
 apps.cli.commands.event
 apps.cli.commands.external_builder_cmd
 apps.cli.commands.failure_stats_cmd
-apps.cli.commands.feature_cmd
 apps.cli.commands.file
 apps.cli.commands.guide
 apps.cli.commands.init_cmd

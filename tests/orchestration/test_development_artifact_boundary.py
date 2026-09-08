@@ -31,7 +31,6 @@ _ALLOWED_LEGACY = {
     "packages/orchestration/integrity_gate.py",
     "packages/orchestration/review_bundle.py",
     "apps/cli/commands/progress_cmd.py",
-    "apps/cli/commands/feature_cmd.py",
     # The freshness gate binds packaged evidence to the agent's live review by
     # design: it derives the step range from .agent/plan.md AND
     # .agent/live_review.md and reports a mismatch. Development-only by
